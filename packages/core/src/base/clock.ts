@@ -7,7 +7,7 @@ const now = () => {
 
 export class Clock {
 
-  public static readonly globalClock: Clock = new Clock(of(undefined, animationFrameScheduler).pipe(
+  public static readonly animationFrameClock: Clock = new Clock(of(undefined, animationFrameScheduler).pipe(
     repeat(),
   ), true);
 
