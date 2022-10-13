@@ -1,7 +1,6 @@
 import { Clock } from './clock';
 import { GgEntity } from './entities/gg-entity';
 import { isITickListener, ITickListener } from './entities/interfaces/i-tick-listener';
-import { SpawnOptions } from './models/spawn-options';
 import { GgPhysicsWorld } from './interfaces/gg-physics-world';
 import { GgVisualScene } from './interfaces/gg-visual-scene';
 
@@ -58,7 +57,7 @@ export class GgWorld<D, R> {
     this.visualScene.dispose();
   }
 
-  public addEntity(entity: GgEntity, options: Partial<SpawnOptions<D, R>> = {}): void {
+  public addEntity(entity: GgEntity): void {
     if (!!entity.world) {
       throw new Error('Entity already spawned');
     }
@@ -71,7 +70,7 @@ export class GgWorld<D, R> {
 
   public removeEntity(entity: GgEntity, dispose = true): void {
     if (entity.world !== this) {
-      throw new Error('Entity not present in world');
+      throw new Error('Entity is not a part of this world');
     }
     this.children.splice(this.children.findIndex(x => x === entity), 1);
     if (isITickListener(entity)) {
