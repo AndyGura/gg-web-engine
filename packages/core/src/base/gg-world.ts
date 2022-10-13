@@ -57,21 +57,27 @@ export class GgWorld<D, R> {
   }
 
   public addEntity(entity: GgEntity, options: Partial<SpawnOptions<D, R>> = {}): void {
-    // TODO
+    if (!!entity.world) {
+      throw new Error('Entity already spawned');
+    }
     this.children.push(entity);
     if (isITickListener(entity)) {
       this.tickListeners.push(entity as any as ITickListener);
     }
+    entity.onSpawned(this);
   }
 
   public removeEntity(entity: GgEntity, dispose = true): void {
-    const index = this.children.findIndex(x => x === entity);
-    if (index > -1) {
-      // TODO
-      this.children.splice(index, 1);
-      if (isITickListener(entity)) {
-        this.tickListeners.splice(this.tickListeners.findIndex(x => x as any === entity), 1);
-      }
+    if (entity.world !== this) {
+      throw new Error('Entity not present in world');
+    }
+    this.children.splice(this.children.findIndex(x => x === entity), 1);
+    if (isITickListener(entity)) {
+      this.tickListeners.splice(this.tickListeners.findIndex(x => x as any === entity), 1);
+    }
+    entity.onRemoved();
+    if (dispose) {
+      entity.dispose();
     }
   }
 
