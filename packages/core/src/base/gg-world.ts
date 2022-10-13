@@ -2,6 +2,8 @@ import { Clock } from './clock';
 import { GgEntity } from './entities/gg-entity';
 import { isITickListener, ITickListener } from './entities/interfaces/i-tick-listener';
 import { SpawnOptions } from './models/spawn-options';
+import { GgPhysicsWorld } from './interfaces/gg-physics-world';
+import { GgVisualScene } from './interfaces/gg-visual-scene';
 
 export class GgWorld<D, R> {
 
@@ -13,9 +15,18 @@ export class GgWorld<D, R> {
   readonly children: GgEntity[] = [];
   readonly tickListeners: ITickListener[] = [];
 
-  public async init() {
-    // TODO
+  constructor(
+    public readonly visualScene: GgVisualScene<D, R>,
+    public readonly physicsWorld: GgPhysicsWorld<D, R>,
+  ) {
+  }
+
+  public async init(
+  ) {
+    this.physicsWorld.init();
+    this.visualScene.init();
     this.worldClock.deltaTick$.subscribe((delta) => {
+      this.physicsWorld.simulate(delta);
       for (let i = 0; i < this.tickListeners.length; i++) {
         this.tickListeners[i].tick$.next(delta);
       }
@@ -41,6 +52,8 @@ export class GgWorld<D, R> {
     }
     this.children.splice(0, this.children.length);
     this.tickListeners.splice(0, this.tickListeners.length);
+    this.physicsWorld.dispose();
+    this.visualScene.dispose();
   }
 
   public addEntity(entity: GgEntity, options: Partial<SpawnOptions<D, R>> = {}): void {
