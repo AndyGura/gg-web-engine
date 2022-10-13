@@ -1,6 +1,6 @@
 export interface GgVisualScene<D, R> {
 
-  init(): void;
+  init(): Promise<void>;
 
   dispose(): void;
 

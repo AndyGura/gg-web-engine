@@ -1,6 +1,6 @@
 export interface GgPhysicsWorld<D, R> {
 
-  init(): void;
+  init(): Promise<void>;
 
   /**
    * Runs simulation of the physics world.

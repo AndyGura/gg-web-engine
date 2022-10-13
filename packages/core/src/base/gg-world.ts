@@ -23,8 +23,10 @@ export class GgWorld<D, R> {
 
   public async init(
   ) {
-    this.physicsWorld.init();
-    this.visualScene.init();
+    await Promise.all([
+      this.physicsWorld.init(),
+      this.visualScene.init(),
+    ]);
     this.worldClock.deltaTick$.subscribe((delta) => {
       this.physicsWorld.simulate(delta);
       for (let i = 0; i < this.tickListeners.length; i++) {
