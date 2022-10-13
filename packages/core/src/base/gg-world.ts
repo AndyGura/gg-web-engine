@@ -1,9 +1,9 @@
 import { Clock } from './clock';
-import { GgEntity } from '../entities/gg-entity';
-import { SpawnOptions } from '../models/spawn-options';
-import { isITickListener, ITickListener } from '../entities/interfaces/i-tick-listener';
+import { GgEntity } from './entities/gg-entity';
+import { isITickListener, ITickListener } from './entities/interfaces/i-tick-listener';
+import { SpawnOptions } from './models/spawn-options';
 
-export class GgWorld {
+export class GgWorld<D, R> {
 
   // inner clock, runs constantly
   private readonly animationFrameClock: Clock = Clock.animationFrameClock;
@@ -36,14 +36,18 @@ export class GgWorld {
 
   public dispose(): void {
     this.worldClock.stop();
-    // TODO
+    for (let i = 0; i < this.children.length; i++) {
+      this.children[i].dispose();
+    }
+    this.children.splice(0, this.children.length);
+    this.tickListeners.splice(0, this.tickListeners.length);
   }
 
-  public addEntity(entity: GgEntity, options: Partial<SpawnOptions> = {}): void {
+  public addEntity(entity: GgEntity, options: Partial<SpawnOptions<D, R>> = {}): void {
     // TODO
     this.children.push(entity);
     if (isITickListener(entity)) {
-      this.tickListeners.push(entity as ITickListener);
+      this.tickListeners.push(entity as any as ITickListener);
     }
   }
 
@@ -53,7 +57,7 @@ export class GgWorld {
       // TODO
       this.children.splice(index, 1);
       if (isITickListener(entity)) {
-        this.tickListeners.splice(this.tickListeners.findIndex(x => x === entity), 1);
+        this.tickListeners.splice(this.tickListeners.findIndex(x => x as any === entity), 1);
       }
     }
   }

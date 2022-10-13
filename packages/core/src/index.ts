@@ -1,6 +1,20 @@
 export * from './base/clock';
 export * from './base/gg-world';
-export * from './entities/interfaces/i-tick-listener';
-export * from './entities/gg-entity';
-export * from './models/points';
-export * from './models/spawn-options';
+export * from './base/entities/interfaces/i-tick-listener';
+export * from './base/entities/gg-entity';
+export * from './base/interfaces/gg-body';
+export * from './base/interfaces/gg-object';
+export * from './base/models/points';
+export * from './base/models/spawn-options';
+
+export * from './2d/entities/gg-2d-entity';
+export * from './2d/entities/gg-positionable-2d-entity';
+export * from './2d/interfaces/gg-2d-body';
+export * from './2d/interfaces/gg-2d-object';
+export * from './2d/models/spawn-options-2d';
+
+export * from './3d/entities/gg-3d-entity';
+export * from './3d/entities/gg-positionable-3d-entity';
+export * from './3d/interfaces/gg-3d-body';
+export * from './3d/interfaces/gg-3d-object';
+export * from './3d/models/spawn-options-3d';
