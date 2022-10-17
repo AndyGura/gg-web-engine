@@ -11,12 +11,9 @@ export class Clock {
     repeat(),
   ), true);
 
-  public get deltaTick$(): Observable<number> {
-    return this.tick$.pipe(map(([oldTime, newTime]) => newTime - oldTime));
-  }
-
-  public get clockTick$(): Observable<number> {
-    return this.tick$.pipe(map(([_, newTime]) => newTime));
+  // value is global clock time, delta ms from last tick
+  public get tick$(): Observable<[number, number]> {
+    return this._tick$.pipe(map(([oldTime, newTime]) => ([newTime, newTime - oldTime])));
   }
 
   public get isRunning(): boolean {
@@ -35,7 +32,7 @@ export class Clock {
   }
 
   private tickSub: Subscription | null = null;
-  private readonly tick$: Subject<[number, number]> = new Subject<[number, number]>();
+  private readonly _tick$: Subject<[number, number]> = new Subject<[number, number]>();
 
   // state
   private startedAt: number = -1;
@@ -85,7 +82,7 @@ export class Clock {
     this.tickSub = this.tickSource.pipe(
       map(() => ([oldRelativeTime, now() - this.startedAt] as [number, number])),
       tap(([_, cur]) => oldRelativeTime = cur),
-    ).subscribe(this.tick$);
+    ).subscribe(this._tick$);
   }
 
   private stopListeningTicks() {

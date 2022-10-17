@@ -3,7 +3,7 @@ import { Point2 } from '../../base/models/points';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { Gg2dWorld } from '../gg-2d-world';
 
-export class GgPositionable2dEntity extends GgEntity {
+export abstract class GgPositionable2dEntity extends GgEntity {
 
   protected readonly _position$: BehaviorSubject<Point2> = new BehaviorSubject<Point2>({ x: 0, y: 0 });
   protected readonly _rotation$: BehaviorSubject<number> = new BehaviorSubject<number>(0);

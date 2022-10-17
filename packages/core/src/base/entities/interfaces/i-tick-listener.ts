@@ -3,8 +3,8 @@ import { GgEntity } from '../gg-entity';
 
 export interface ITickListener {
 
-  // will receive delta of each world clock tick
-  tick$: Subject<number>;
+  // will receive [elapsed time, delta] of each world clock tick
+  tick$: Subject<[number, number]>;
 
 }
 

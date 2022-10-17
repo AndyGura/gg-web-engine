@@ -1,6 +1,6 @@
 import { GgWorld } from '../gg-world';
 
-export class GgEntity {
+export abstract class GgEntity {
 
   get world(): GgWorld<any, any> | null {
     return this._world;
@@ -15,8 +15,6 @@ export class GgEntity {
     this._world = null;
   }
 
-  public dispose(): void {
-
-  }
+  abstract dispose(): void
 
 }

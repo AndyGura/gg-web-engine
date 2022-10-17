@@ -9,10 +9,10 @@ export class GgWorld<D, R> {
   // inner clock, runs constantly
   private readonly animationFrameClock: Clock = Clock.animationFrameClock;
   // world clock, can be paused/resumed. Stops when disposing world
-  private readonly worldClock: Clock = new Clock(this.animationFrameClock.clockTick$);
+  private readonly worldClock: Clock = new Clock(this.animationFrameClock.tick$);
 
   readonly children: GgEntity[] = [];
-  readonly tickListeners: ITickListener[] = [];
+  protected readonly tickListeners: ITickListener[] = [];
 
   constructor(
     public readonly visualScene: GgVisualScene<D, R>,
@@ -26,10 +26,10 @@ export class GgWorld<D, R> {
       this.physicsWorld.init(),
       this.visualScene.init(),
     ]);
-    this.worldClock.deltaTick$.subscribe((delta) => {
+    this.worldClock.tick$.subscribe(([elapsed, delta]) => {
       this.physicsWorld.simulate(delta);
       for (let i = 0; i < this.tickListeners.length; i++) {
-        this.tickListeners[i].tick$.next(delta);
+        this.tickListeners[i].tick$.next([elapsed, delta]);
       }
     });
   }

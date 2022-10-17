@@ -3,17 +3,17 @@ import { Scene } from 'three';
 
 export class ThreeVisualScene implements Gg3dVisualScene {
 
-  private _scene: Scene | null = null;
-  public get scene(): Scene | null {
-    return this._scene;
+  private _nativeScene: Scene | null = null;
+  public get nativeScene(): Scene | null {
+    return this._nativeScene;
   }
 
   async init(): Promise<void> {
-    this._scene = new Scene();
+    this._nativeScene = new Scene();
   }
 
   dispose(): void {
-    this._scene = new Scene();
+    this._nativeScene = new Scene();
   }
 
 }

@@ -3,7 +3,7 @@ import { Point3, Point4 } from '../../base/models/points';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { Gg3dWorld } from '../gg-3d-world';
 
-export class GgPositionable3dEntity extends GgEntity {
+export abstract class GgPositionable3dEntity extends GgEntity {
 
   protected readonly _position$: BehaviorSubject<Point3> = new BehaviorSubject<Point3>({ x: 0, y: 0, z: 0 });
   protected readonly _quaternion$: BehaviorSubject<Point4> = new BehaviorSubject<Point4>({ x: 0, y: 0, z: 0, w: 1 });
