@@ -1,5 +1,4 @@
 import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
-import { Gg3dWorld, Point2, createInlineController } from '@gg-web-engine/core';
 import { ThreeCameraRenderer, ThreeVisualScene } from '@gg-web-engine/three';
 import { AmmoWorld } from '@gg-web-engine/ammo';
 import {
@@ -12,6 +11,7 @@ import {
   Vector3,
   WebGLRenderer
 } from 'three';
+import { createInlineTickController, Gg3dWorld, Point2 } from '@gg-web-engine/core';
 
 @Component({
   selector: 'app-root',
@@ -49,7 +49,7 @@ export class AppComponent implements OnInit {
     renderer.nativeCamera.lookAt(new Vector3(0, 0, 0));
     world.addEntity(renderer);
     renderer.nativeCamera.up = new Vector3(0, 0, 1);
-    createInlineController(world, (elapsed, _) => {
+    createInlineTickController(world).subscribe(([elapsed, _]) => {
       renderer.nativeCamera.position.x = 5 * Math.sin(elapsed / 1000);
       renderer.nativeCamera.position.y = 5 * Math.cos(elapsed / 1000);
       renderer.nativeCamera.position.z = 3;

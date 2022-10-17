@@ -1,28 +1,21 @@
 import { GgWorld } from '../gg-world';
 import { GgEntity } from './gg-entity';
 import { ITickListener } from './interfaces/i-tick-listener';
-import { Subject, Subscription } from 'rxjs';
+import { finalize, Observable, Subject } from 'rxjs';
 
-export class InlineTickController extends GgEntity implements ITickListener {
-  readonly tick$: Subject<[number, number]> = new Subject<[number, number]>();
-  protected tickSub: Subscription;
-
-  constructor(handler: (elapsed: number, delta: number) => void) {
-    super();
-    this.tickSub = this.tick$.subscribe((value) => { handler(...value); });
-  }
+class InlineTickController extends GgEntity implements ITickListener {
+  public readonly tick$: Subject<[number, number]> = new Subject<[number, number]>();
 
   dispose(): void {
-    this.tickSub.unsubscribe();
   }
-
 }
 
-export function createInlineController(world: GgWorld<any, any>, tickCallback: (elapsed: number, delta: number) => void): () => void {
-  const controller: InlineTickController = new InlineTickController(tickCallback);
+export function createInlineTickController(world: GgWorld<any, any>): Observable<[number, number]> {
+  const controller: InlineTickController = new InlineTickController();
   world.addEntity(controller);
-  return () => {
-    world.removeEntity(controller);
-    controller.dispose();
-  }
+  return controller.tick$.pipe(
+    finalize(() => {
+      world.removeEntity(controller);
+    })
+  );
 }
