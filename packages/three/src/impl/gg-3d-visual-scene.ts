@@ -1,7 +1,7 @@
-import { Gg3dVisualScene } from '@gg-web-engine/core';
+import { IGg3dVisualScene } from '@gg-web-engine/core';
 import { Scene } from 'three';
 
-export class ThreeVisualScene implements Gg3dVisualScene {
+export class Gg3dVisualScene implements IGg3dVisualScene {
 
   private _nativeScene: Scene | null = null;
   public get nativeScene(): Scene | null {

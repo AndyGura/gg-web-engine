@@ -1,11 +1,11 @@
-import { GgRenderer } from '@gg-web-engine/core';
+import { BaseGgRenderer } from '@gg-web-engine/core';
 import { Camera, PerspectiveCamera, Renderer, WebGLRenderer } from 'three';
-import { ThreeVisualScene } from './three-visual-scene';
+import { Gg3dVisualScene } from './gg-3d-visual-scene';
 
-export class ThreeCameraRenderer extends GgRenderer {
+export class GgRenderer extends BaseGgRenderer {
 
   constructor(
-    protected readonly scene: ThreeVisualScene,
+    protected readonly scene: Gg3dVisualScene,
     public readonly renderer: Renderer,
     public nativeCamera: Camera = new PerspectiveCamera(75, 1, 1, 10000),
   ) {

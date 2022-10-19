@@ -1,8 +1,8 @@
-import { Gg3dBody, Point3, Point4 } from '@gg-web-engine/core';
-import { AmmoWorld } from './ammo-world';
+import { IGg3dBody, Point3, Point4 } from '@gg-web-engine/core';
+import { Gg3dPhysicsWorld } from './gg-3d-physics-world';
 import Ammo from 'ammojs-typed';
 
-export class AmmoBody implements Gg3dBody {
+export class Gg3dBody implements IGg3dBody {
 
   private _tmpTrans: Ammo.btTransform | undefined;
   private get tmpTrans(): Ammo.btTransform {
@@ -55,19 +55,19 @@ export class AmmoBody implements Gg3dBody {
   }
 
   constructor(
-    private readonly world: AmmoWorld,
+    private readonly world: Gg3dPhysicsWorld,
     public nativeBody: Ammo.btRigidBody,
   ) {
   }
 
-  addToWorld(world: AmmoWorld): void {
+  addToWorld(world: Gg3dPhysicsWorld): void {
     if (world != this.world) {
       throw new Error('Ammo bodies cannot be shared between different worlds');
     }
     world.dynamicAmmoWorld?.addRigidBody(this.nativeBody);
   }
 
-  removeFromWorld(world: AmmoWorld): void {
+  removeFromWorld(world: Gg3dPhysicsWorld): void {
     world.dynamicAmmoWorld?.removeRigidBody(this.nativeBody);
   }
 

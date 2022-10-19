@@ -1,8 +1,8 @@
-import { Gg3dObject, Point3, Point4 } from '@gg-web-engine/core';
+import { IGg3dObject, Point3, Point4 } from '@gg-web-engine/core';
 import { Mesh, Object3D } from 'three';
-import { ThreeVisualScene } from './three-visual-scene';
+import { Gg3dVisualScene } from './gg-3d-visual-scene';
 
-export class Three3dObject implements Gg3dObject {
+export class Gg3dObject implements IGg3dObject {
   constructor(
     public nativeMesh: Object3D,
   ) {
@@ -49,11 +49,11 @@ export class Three3dObject implements Gg3dObject {
     this.nativeMesh.scale.z = value.z;
   }
 
-  addToWorld(world: ThreeVisualScene): void {
+  addToWorld(world: Gg3dVisualScene): void {
     world.nativeScene?.add(this.nativeMesh);
   }
 
-  removeFromWorld(world: ThreeVisualScene): void {
+  removeFromWorld(world: Gg3dVisualScene): void {
     world.nativeScene?.remove(this.nativeMesh);
   }
 

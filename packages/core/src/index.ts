@@ -9,7 +9,7 @@
 export * from './base/clock';
 export * from './base/entities/interfaces/i-tick-listener';
 export * from './base/entities/gg-entity';
-export * from './base/entities/gg-renderer';
+export * from './base/entities/base-gg-renderer';
 export * from './base/entities/inline-controller';
 export * from './base/interfaces/gg-body';
 export * from './base/interfaces/gg-object';
@@ -27,10 +27,10 @@ export * from './2d/gg-2d-world';
 
 export * from './3d/entities/gg-3d-entity';
 export * from './3d/entities/gg-positionable-3d-entity';
-export * from './3d/interfaces/gg-3d-body';
-export * from './3d/interfaces/gg-3d-body-factory';
-export * from './3d/interfaces/gg-3d-object';
-export * from './3d/interfaces/gg-3d-object-factory';
-export * from './3d/interfaces/gg-3d-physics-world';
-export * from './3d/interfaces/gg-3d-visual-scene';
+export * from './3d/interfaces/i-gg-3d-body';
+export * from './3d/interfaces/i-gg-3d-body-factory';
+export * from './3d/interfaces/i-gg-3d-object';
+export * from './3d/interfaces/i-gg-3d-object-factory';
+export * from './3d/interfaces/i-gg-3d-physics-world';
+export * from './3d/interfaces/i-gg-3d-visual-scene';
 export * from './3d/gg-3d-world';

@@ -1,9 +1,9 @@
 import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
-import { ThreeCameraRenderer, ThreeObjectFactory, ThreeVisualScene } from '@gg-web-engine/three';
-import { AmmoBodyFactory, AmmoWorld } from '@gg-web-engine/ammo';
 import { PCFSoftShadowMap, sRGBEncoding, Vector3, WebGLRenderer } from 'three';
 import { createInlineTickController, Gg3dEntity, Gg3dWorld, Point2 } from '@gg-web-engine/core';
 import { interval } from 'rxjs';
+import { Gg3dObjectFactory, Gg3dVisualScene, GgRenderer } from '@gg-web-engine/three';
+import { Gg3dBodyFactory, Gg3dPhysicsWorld } from '@gg-web-engine/ammo';
 
 @Component({
   selector: 'app-root',
@@ -16,8 +16,8 @@ export class AppComponent implements OnInit {
   @ViewChild('stage') stage!: ElementRef<HTMLCanvasElement>;
 
   async ngOnInit(): Promise<void> {
-    const scene: ThreeVisualScene = new ThreeVisualScene();
-    const physScene: AmmoWorld = new AmmoWorld();
+    const scene: Gg3dVisualScene = new Gg3dVisualScene();
+    const physScene: Gg3dPhysicsWorld = new Gg3dPhysicsWorld();
     const world: Gg3dWorld = new Gg3dWorld(scene, physScene);
     await world.init();
 
@@ -37,7 +37,7 @@ export class AppComponent implements OnInit {
     webgl.shadowMap.type = PCFSoftShadowMap;
     webgl.setPixelRatio(devicePixelRatio);
 
-    const renderer: ThreeCameraRenderer = new ThreeCameraRenderer(scene, webgl);
+    const renderer: GgRenderer = new GgRenderer(scene, webgl);
     renderer.nativeCamera.lookAt(new Vector3(0, 0, 0));
     world.addEntity(renderer);
     renderer.nativeCamera.up = new Vector3(0, 0, 1);
@@ -49,8 +49,8 @@ export class AppComponent implements OnInit {
     });
     renderer.activate();
 
-    const objectFactory = new ThreeObjectFactory();
-    const bodyFactory = new AmmoBodyFactory(physScene);
+    const objectFactory = new Gg3dObjectFactory();
+    const bodyFactory = new Gg3dBodyFactory(physScene);
     const floor = new Gg3dEntity(
       objectFactory.createBox(50, 50, 1),
       bodyFactory.createBox(50, 50, 1, 0),

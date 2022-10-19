@@ -2,8 +2,8 @@ import { Subject, Subscription } from 'rxjs';
 import { GgPositionable3dEntity } from './gg-positionable-3d-entity';
 import { ITickListener } from '../../base/entities/interfaces/i-tick-listener';
 import { Point3, Point4 } from '../../base/models/points';
-import { Gg3dBody } from '../interfaces/gg-3d-body';
-import { Gg3dObject } from '../interfaces/gg-3d-object';
+import { IGg3dBody } from '../interfaces/i-gg-3d-body';
+import { IGg3dObject } from '../interfaces/i-gg-3d-object';
 import { Gg3dWorld } from '../gg-3d-world';
 
 export class Gg3dEntity extends GgPositionable3dEntity implements ITickListener {
@@ -43,8 +43,8 @@ export class Gg3dEntity extends GgPositionable3dEntity implements ITickListener 
   }
 
   constructor(
-    public readonly object3D: Gg3dObject | null,
-    public readonly objectBody: Gg3dBody | null,
+    public readonly object3D: IGg3dObject | null,
+    public readonly objectBody: IGg3dBody | null,
   ) {
     super();
     if (objectBody && object3D) {

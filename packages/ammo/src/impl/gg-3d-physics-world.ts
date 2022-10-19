@@ -1,7 +1,7 @@
-import { Gg3dPhysicsWorld } from '@gg-web-engine/core';
+import { IGg3dPhysicsWorld } from '@gg-web-engine/core';
 import Ammo, * as AmmoModule from 'ammojs-typed';
 
-export class AmmoWorld implements Gg3dPhysicsWorld {
+export class Gg3dPhysicsWorld implements IGg3dPhysicsWorld {
 
   private ammoInstance: typeof Ammo | undefined;
 

@@ -3,7 +3,7 @@ import { ITickListener } from './interfaces/i-tick-listener';
 import { Subject, Subscription } from 'rxjs';
 import { GgEntity } from './gg-entity';
 
-export abstract class GgRenderer extends GgEntity implements ITickListener {
+export abstract class BaseGgRenderer extends GgEntity implements ITickListener {
 
   protected _permanentRenderMethods: Map<number, Function>;
   protected _singularRenderMethods: Map<number, Function>;
