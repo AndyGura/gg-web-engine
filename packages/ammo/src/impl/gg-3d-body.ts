@@ -29,24 +29,17 @@ export class Gg3dBody implements IGg3dBody {
     this.ammo.destroy(transform);
   }
 
-  public get quaternion(): Point4 {
+  public get rotation(): Point4 {
     this.nativeBody.getMotionState().getWorldTransform(this.tmpTrans);
     const quaternion = this.tmpTrans.getRotation();
     return { x: quaternion.x(), y: quaternion.y(), z: quaternion.z(), w: quaternion.w() };
   }
 
-  public set quaternion(value: Point4) {
+  public set rotation(value: Point4) {
     const transform = new this.ammo.btTransform();
     transform.setRotation(new this.ammo.btQuaternion(value.x, value.y, value.z, value.w));
     this.nativeBody.setMotionState(new this.ammo.btDefaultMotionState(transform));
     this.ammo.destroy(transform);
-  }
-
-  public get rotation(): Point3 {
-    this.nativeBody.getMotionState().getWorldTransform(this.tmpTrans);
-    const quaternion = this.tmpTrans.getRotation();
-    // TODO quaternion -> Euler
-    return { x: quaternion.x(), y: quaternion.y(), z: quaternion.z() };
   }
 
   public get scale(): Point3 {

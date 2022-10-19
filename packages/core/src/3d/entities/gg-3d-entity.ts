@@ -22,14 +22,14 @@ export class Gg3dEntity extends GgPositionable3dEntity implements ITickListener 
     super.position = value;
   }
 
-  set quaternion(value: Point4) {
+  set rotation(value: Point4) {
     if (this.object3D) {
-      this.object3D.quaternion = value;
+      this.object3D.rotation = value;
     }
     if (this.objectBody) {
-      this.objectBody.quaternion = value;
+      this.objectBody.rotation = value;
     }
-    super.quaternion = value;
+    super.rotation = value;
   }
 
   set scale(value: Point3) {
@@ -51,11 +51,11 @@ export class Gg3dEntity extends GgPositionable3dEntity implements ITickListener 
       this.tickSub = this.tick$.subscribe(() => {
         // bind physics body transform to mesh transform
         const pos = objectBody.position;
-        const quat = objectBody.quaternion;
+        const quat = objectBody.rotation;
         object3D.position = pos;
-        object3D.quaternion = quat;
+        object3D.rotation = quat;
         this._position$.next(pos);
-        this._quaternion$.next(quat);
+        this._rotation$.next(quat);
       });
     } else if (!objectBody && !object3D) {
       throw new Error('Cannot create entity without a mesh and a body');

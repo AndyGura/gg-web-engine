@@ -1,10 +1,11 @@
-// TODO Gg2dEntity & Gg3dEntity share most of the code!
 // TODO viewport logic
-// TODO finish demo
+// TODO migrate old engine
+// TODO make old engine obsolete
 // TODO migrate sandbox
 // TODO migrate NFS
 // TODO some engine console
 // TODO physics debug view (turn on in console) - check old engine physics-world.ts
+// TODO demo: add cones, less code, FPS counter
 
 export * from './base/clock';
 export * from './base/entities/interfaces/i-tick-listener';

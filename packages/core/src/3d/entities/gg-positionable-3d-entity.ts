@@ -1,66 +1,33 @@
-import { GgEntity } from '../../base/entities/gg-entity';
 import { Point3, Point4 } from '../../base/models/points';
-import { BehaviorSubject, Observable } from 'rxjs';
-import { Gg3dWorld } from '../gg-3d-world';
+import { Observable } from 'rxjs';
+import { GgPositionableEntity } from '../../base/entities/gg-positionable-entity';
 
-export abstract class GgPositionable3dEntity extends GgEntity {
+export abstract class GgPositionable3dEntity extends GgPositionableEntity<Point3, Point4> {
 
-  protected readonly _position$: BehaviorSubject<Point3> = new BehaviorSubject<Point3>({ x: 0, y: 0, z: 0 });
-  protected readonly _quaternion$: BehaviorSubject<Point4> = new BehaviorSubject<Point4>({ x: 0, y: 0, z: 0, w: 1 });
-  protected readonly _scale$: BehaviorSubject<Point3> = new BehaviorSubject<Point3>({ x: 1, y: 1, z: 1 });
-
-  get world(): Gg3dWorld | null {
-    return super.world;
+  getDefaultPosition(): Point3 {
+    return { x: 0, y: 0, z: 0 };
   }
 
-  public get position(): Point3 {
-    return this._position$.getValue();
+  getDefaultRotation(): Point4 {
+    return { x: 0, y: 0, z: 0, w: 1 };
   }
 
-  public get position$(): Observable<Point3> {
-    return this._position$.asObservable();
+  getDefaultScale(): Point3 {
+    return { x: 1, y: 1, z: 1 };
   }
 
-  public set position(value: Point3) {
-    this._position$.next(value);
-  }
-
-  public get rotation(): Point3 {
+  public get euler$(): Observable<Point3> {
     // TODO quaternion -> euler
-    return this.quaternion;
+    return this._rotation$.asObservable();
   }
 
-  public get rotation$(): Observable<Point3> {
+  public get euler(): Point3 {
     // TODO quaternion -> euler
-    return this.quaternion$;
+    return this._rotation$.getValue();
   }
 
-  public set rotation(value: Point3) {
+  public set euler(value: Point3) {
     // TODO euler -> quaternion
-    this.quaternion = { ...value, w: 1 };
-  }
-
-  public get quaternion(): Point4 {
-    return this._quaternion$.getValue();
-  }
-
-  public get quaternion$(): Observable<Point4> {
-    return this._quaternion$.asObservable();
-  }
-
-  public set quaternion(value: Point4) {
-    this._quaternion$.next(value);
-  }
-
-  public get scale(): Point3 {
-    return this._scale$.getValue();
-  }
-
-  public get scale$(): Observable<Point3> {
-    return this._scale$.asObservable();
-  }
-
-  public set scale(value: Point3) {
-    this._scale$.next(value);
+    this._rotation$.next({ ...value, w: 1 });
   }
 }

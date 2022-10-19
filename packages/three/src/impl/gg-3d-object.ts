@@ -18,25 +18,15 @@ export class Gg3dObject implements IGg3dObject {
     this.nativeMesh.position.z = value.z;
   }
 
-  public get quaternion(): Point4 {
+  public get rotation(): Point4 {
     return this.nativeMesh.quaternion;
   }
 
-  public set quaternion(value: Point4) {
+  public set rotation(value: Point4) {
     this.nativeMesh.quaternion.x = value.x;
     this.nativeMesh.quaternion.y = value.y;
     this.nativeMesh.quaternion.z = value.z;
     this.nativeMesh.quaternion.w = value.w;
-  }
-
-  public get rotation(): Point3 {
-    return this.nativeMesh.rotation;
-  }
-
-  public set rotation(value: Point3) {
-    this.nativeMesh.rotation.x = value.x;
-    this.nativeMesh.rotation.y = value.y;
-    this.nativeMesh.rotation.z = value.z;
   }
 
   public get scale(): Point3 {
