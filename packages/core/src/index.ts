@@ -1,4 +1,3 @@
-// TODO viewport logic
 // TODO migrate old engine
 // TODO make old engine obsolete
 // TODO migrate sandbox
@@ -8,6 +7,8 @@
 // TODO demo: add cones, less code, FPS counter
 
 export * from './base/clock';
+export * from './base/gg-viewport';
+export * from './base/gg-viewport-manager';
 export * from './base/entities/interfaces/i-tick-listener';
 export * from './base/entities/gg-entity';
 export * from './base/entities/base-gg-renderer';
