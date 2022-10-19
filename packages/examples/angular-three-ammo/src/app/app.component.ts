@@ -1,17 +1,9 @@
 import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
-import { ThreeCameraRenderer, ThreeVisualScene } from '@gg-web-engine/three';
-import { AmmoWorld } from '@gg-web-engine/ammo';
-import {
-  BoxGeometry,
-  Mesh,
-  MeshBasicMaterial,
-  Object3D,
-  PCFSoftShadowMap,
-  sRGBEncoding,
-  Vector3,
-  WebGLRenderer
-} from 'three';
-import { createInlineTickController, Gg3dWorld, Point2 } from '@gg-web-engine/core';
+import { ThreeCameraRenderer, ThreeObjectFactory, ThreeVisualScene } from '@gg-web-engine/three';
+import { AmmoBodyFactory, AmmoWorld } from '@gg-web-engine/ammo';
+import { PCFSoftShadowMap, sRGBEncoding, Vector3, WebGLRenderer } from 'three';
+import { createInlineTickController, Gg3dEntity, Gg3dWorld, Point2 } from '@gg-web-engine/core';
+import { interval } from 'rxjs';
 
 @Component({
   selector: 'app-root',
@@ -50,15 +42,37 @@ export class AppComponent implements OnInit {
     world.addEntity(renderer);
     renderer.nativeCamera.up = new Vector3(0, 0, 1);
     createInlineTickController(world).subscribe(([elapsed, _]) => {
-      renderer.nativeCamera.position.x = 5 * Math.sin(elapsed / 1000);
-      renderer.nativeCamera.position.y = 5 * Math.cos(elapsed / 1000);
-      renderer.nativeCamera.position.z = 3;
+      renderer.nativeCamera.position.x = 15 * Math.sin(elapsed / 2000);
+      renderer.nativeCamera.position.y = 15 * Math.cos(elapsed / 2000);
+      renderer.nativeCamera.position.z = 9;
       renderer.nativeCamera.lookAt(new Vector3(0, 0, 0));
     });
     renderer.activate();
 
-    const cube: Object3D = new Mesh(new BoxGeometry(3, 3, 3), new MeshBasicMaterial({ color: 0xff0000 }));
-    scene.nativeScene!.add(cube);
+    const objectFactory = new ThreeObjectFactory();
+    const bodyFactory = new AmmoBodyFactory(physScene);
+    const floor = new Gg3dEntity(
+      objectFactory.createBox(50, 50, 1),
+      bodyFactory.createBox(50, 50, 1, 0),
+    );
+    world.addEntity(floor);
+
+    interval(500).subscribe(() => {
+      let item: Gg3dEntity;
+      if (Math.random() >= 0.5) {
+        item = new Gg3dEntity(
+          objectFactory.createBox(1, 1, 1),
+          bodyFactory.createBox(1, 1, 1, 1),
+        );
+      } else {
+        item = new Gg3dEntity(
+          objectFactory.createSphere(0.5),
+          bodyFactory.createSphere(0.5, 1),
+        );
+      }
+      item.position = { x: Math.random() * 5 - 2.5, y: Math.random() * 5 - 2.5, z: 10 };
+      world.addEntity(item);
+    });
 
     world.start();
   }

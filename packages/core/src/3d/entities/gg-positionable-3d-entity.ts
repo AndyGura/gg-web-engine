@@ -63,8 +63,4 @@ export abstract class GgPositionable3dEntity extends GgEntity {
   public set scale(value: Point3) {
     this._scale$.next(value);
   }
-
-  onSpawned(world: Gg3dWorld) {
-    super.onSpawned(world);
-  }
 }

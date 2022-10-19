@@ -10,6 +10,7 @@ export abstract class GgRenderer extends GgEntity implements ITickListener {
   private initialized = false;
 
   readonly tick$: Subject<[number, number]>;
+  public readonly tickOrder = 1000;
   protected tickListener: Subscription | null = null;
 
   protected constructor(

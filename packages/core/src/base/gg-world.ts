@@ -4,7 +4,7 @@ import { isITickListener, ITickListener } from './entities/interfaces/i-tick-lis
 import { GgPhysicsWorld } from './interfaces/gg-physics-world';
 import { GgVisualScene } from './interfaces/gg-visual-scene';
 
-export class GgWorld<D, R> {
+export abstract class GgWorld<D, R> {
 
   // inner clock, runs constantly
   private readonly animationFrameClock: Clock = Clock.animationFrameClock;
@@ -27,9 +27,16 @@ export class GgWorld<D, R> {
       this.visualScene.init(),
     ]);
     this.worldClock.tick$.subscribe(([elapsed, delta]) => {
-      this.physicsWorld.simulate(delta);
+      let physicsTickPerformed = false;
       for (let i = 0; i < this.tickListeners.length; i++) {
+        if (!physicsTickPerformed && this.tickListeners[i].tickOrder >= 500) {
+          this.physicsWorld.simulate(delta);
+          physicsTickPerformed = true;
+        }
         this.tickListeners[i].tick$.next([elapsed, delta]);
+      }
+      if (!physicsTickPerformed) {
+        this.physicsWorld.simulate(delta);
       }
     });
   }
@@ -64,6 +71,7 @@ export class GgWorld<D, R> {
     this.children.push(entity);
     if (isITickListener(entity)) {
       this.tickListeners.push(entity as any as ITickListener);
+      this.tickListeners.sort((l1, l2) => l1.tickOrder - l2.tickOrder);
     }
     entity.onSpawned(this);
   }
