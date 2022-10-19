@@ -1,3 +1,4 @@
+// TODO some 2D example, similar to current demo: PIXI + ???
 // TODO migrate old engine
 // TODO make old engine obsolete
 // TODO migrate sandbox
