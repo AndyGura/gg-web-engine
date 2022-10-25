@@ -1,10 +1,9 @@
 import { Subject, Subscription } from 'rxjs';
 import { GgPositionable2dEntity } from './gg-positionable-2d-entity';
 import { ITickListener } from '../../base/entities/interfaces/i-tick-listener';
-import { Point3 } from '../../base/models/points';
-import { Gg2dBody } from '../interfaces/gg-2d-body';
-import { Gg2dObject } from '../interfaces/gg-2d-object';
+import { Point2 } from '../../base/models/points';
 import { Gg3dWorld } from '../../3d/gg-3d-world';
+import { IGg2dBody, IGg2dObject } from '../interfaces';
 
 export class Gg2dEntity extends GgPositionable2dEntity implements ITickListener {
 
@@ -12,7 +11,7 @@ export class Gg2dEntity extends GgPositionable2dEntity implements ITickListener 
   public readonly tickOrder = 750;
   private tickSub: Subscription | null = null;
 
-  set position(value: Point3) {
+  set position(value: Point2) {
     if (this.object2D) {
       this.object2D.position = value;
     }
@@ -32,7 +31,7 @@ export class Gg2dEntity extends GgPositionable2dEntity implements ITickListener 
     super.rotation = value;
   }
 
-  set scale(value: Point3) {
+  set scale(value: Point2) {
     if (this.object2D) {
       this.object2D.scale = value;
     }
@@ -43,8 +42,8 @@ export class Gg2dEntity extends GgPositionable2dEntity implements ITickListener 
   }
 
   constructor(
-    public readonly object2D: Gg2dObject | null,
-    public readonly objectBody: Gg2dBody | null,
+    public readonly object2D: IGg2dObject | null,
+    public readonly objectBody: IGg2dBody | null,
   ) {
     super();
     if (objectBody && object2D) {

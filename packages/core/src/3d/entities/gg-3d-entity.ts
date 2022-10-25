@@ -2,9 +2,8 @@ import { Subject, Subscription } from 'rxjs';
 import { GgPositionable3dEntity } from './gg-positionable-3d-entity';
 import { ITickListener } from '../../base/entities/interfaces/i-tick-listener';
 import { Point3, Point4 } from '../../base/models/points';
-import { IGg3dBody } from '../interfaces/i-gg-3d-body';
-import { IGg3dObject } from '../interfaces/i-gg-3d-object';
 import { Gg3dWorld } from '../gg-3d-world';
+import { IGg3dBody, IGg3dObject } from '../interfaces';
 
 export class Gg3dEntity extends GgPositionable3dEntity implements ITickListener {
 

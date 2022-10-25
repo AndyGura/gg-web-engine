@@ -1,8 +1,8 @@
-// TODO some 2D example, similar to current demo: PIXI + ???
 // TODO migrate old engine
 // TODO make old engine obsolete
 // TODO migrate sandbox
 // TODO migrate NFS
+// TODO viewport refactoring? allow non-fullscreen apps
 // TODO some engine console
 // TODO physics debug view (turn on in console) - check old engine physics-world.ts
 // TODO demo: add cones, less code, FPS counter
@@ -22,18 +22,10 @@ export * from './base/models/points';
 
 export * from './2d/entities/gg-2d-entity';
 export * from './2d/entities/gg-positionable-2d-entity';
-export * from './2d/interfaces/gg-2d-body';
-export * from './2d/interfaces/gg-2d-object';
-export * from './2d/interfaces/gg-2d-physics-world';
-export * from './2d/interfaces/gg-2d-visual-scene';
+export * from './2d/interfaces';
 export * from './2d/gg-2d-world';
 
 export * from './3d/entities/gg-3d-entity';
 export * from './3d/entities/gg-positionable-3d-entity';
-export * from './3d/interfaces/i-gg-3d-body';
-export * from './3d/interfaces/i-gg-3d-body-factory';
-export * from './3d/interfaces/i-gg-3d-object';
-export * from './3d/interfaces/i-gg-3d-object-factory';
-export * from './3d/interfaces/i-gg-3d-physics-world';
-export * from './3d/interfaces/i-gg-3d-visual-scene';
+export * from './3d/interfaces';
 export * from './3d/gg-3d-world';
