@@ -2,8 +2,8 @@ import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { Vector3 } from 'three';
 import { createInlineTickController, Gg3dEntity, Gg3dWorld, GgViewportManager } from '@gg-web-engine/core';
 import { interval } from 'rxjs';
-import { Gg3dObjectFactory, Gg3dVisualScene, GgRenderer } from '@gg-web-engine/three';
-import { Gg3dBodyFactory, Gg3dPhysicsWorld } from '@gg-web-engine/ammo';
+import { Gg3dVisualScene, GgRenderer } from '@gg-web-engine/three';
+import { Gg3dPhysicsWorld } from '@gg-web-engine/ammo';
 
 @Component({
   selector: 'app-root',
@@ -35,12 +35,9 @@ export class AppComponent implements OnInit {
     });
     renderer.activate();
 
-    const objectFactory = new Gg3dObjectFactory();
-    const bodyFactory = new Gg3dBodyFactory(physScene);
-
     const floor = new Gg3dEntity(
-      objectFactory.createBox(50, 50, 1),
-      bodyFactory.createBox(50, 50, 1, 0),
+      world.visualScene.factory.createBox(50, 50, 1),
+      world.physicsWorld.factory.createBox(50, 50, 1, 0),
     );
     world.addEntity(floor);
 
@@ -48,13 +45,13 @@ export class AppComponent implements OnInit {
       let item: Gg3dEntity;
       if (Math.random() >= 0.5) {
         item = new Gg3dEntity(
-          objectFactory.createBox(1, 1, 1),
-          bodyFactory.createBox(1, 1, 1, 1),
+          world.visualScene.factory.createBox(1, 1, 1),
+          world.physicsWorld.factory.createBox(1, 1, 1, 1),
         );
       } else {
         item = new Gg3dEntity(
-          objectFactory.createSphere(0.5),
-          bodyFactory.createSphere(0.5, 1),
+          world.visualScene.factory.createSphere(0.5),
+          world.physicsWorld.factory.createSphere(0.5, 1),
         );
       }
       item.position = { x: Math.random() * 5 - 2.5, y: Math.random() * 5 - 2.5, z: 10 };
