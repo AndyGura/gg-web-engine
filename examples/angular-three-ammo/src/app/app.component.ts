@@ -36,22 +36,37 @@ export class AppComponent implements OnInit {
     renderer.activate();
 
     const floor = new Gg3dEntity(
-      world.visualScene.factory.createBox(50, 50, 1),
-      world.physicsWorld.factory.createBox(50, 50, 1, 0),
+      world.visualScene.factory.createBox({ x: 50, y: 50, z: 1 }),
+      world.physicsWorld.factory.createBox({ x: 50, y: 50, z: 1 }, { dynamic: false }),
     );
     world.addEntity(floor);
 
     interval(500).subscribe(() => {
       let item: Gg3dEntity;
-      if (Math.random() >= 0.5) {
+      if (Math.random() < 0.2) {
         item = new Gg3dEntity(
-          world.visualScene.factory.createBox(1, 1, 1),
-          world.physicsWorld.factory.createBox(1, 1, 1, 1),
+          world.visualScene.factory.createBox({ x: 1, y: 1, z: 1 }),
+          world.physicsWorld.factory.createBox({ x: 1, y: 1, z: 1 }, { mass: 1 }),
+        );
+      } else if (Math.random() < 0.4) {
+        item = new Gg3dEntity(
+          world.visualScene.factory.createCapsule(0.5, 1),
+          world.physicsWorld.factory.createCapsule(0.5, 1, { mass: 1 }),
+        );
+      } else if (Math.random() < 0.6) {
+        item = new Gg3dEntity(
+          world.visualScene.factory.createCylinder(0.5, 1),
+          world.physicsWorld.factory.createCylinder(0.5, 1, { mass: 1 }),
+        );
+      } else if (Math.random() < 0.8) {
+        item = new Gg3dEntity(
+          world.visualScene.factory.createCone(0.5, 1),
+          world.physicsWorld.factory.createCone(0.5, 1, { mass: 1 }),
         );
       } else {
         item = new Gg3dEntity(
           world.visualScene.factory.createSphere(0.5),
-          world.physicsWorld.factory.createSphere(0.5, 1),
+          world.physicsWorld.factory.createSphere(0.5, { mass: 1 }),
         );
       }
       item.position = { x: Math.random() * 5 - 2.5, y: Math.random() * 5 - 2.5, z: 10 };

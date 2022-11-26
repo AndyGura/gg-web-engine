@@ -1,0 +1,1 @@
+{"curves": [], "dummies": [], "rigidBodies": [{"name": "Sphere", "dynamic": true, "shape": "SPHERE", "position": {"x": 0.0, "y": 0.0, "z": 0.0}, "rotation": {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0}, "mass": 1.0, "restitution": 0.0, "friction": 0.5, "radius": 0.4000000059604645}]}

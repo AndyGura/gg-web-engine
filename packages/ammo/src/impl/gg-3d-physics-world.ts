@@ -1,6 +1,7 @@
 import { IGg3dPhysicsWorld } from '@gg-web-engine/core';
 import Ammo, * as AmmoModule from 'ammojs-typed';
 import { Gg3dBodyFactory } from './gg-3d-body-factory';
+import { Gg3dBodyLoader } from './gg-3d-body-loader';
 
 export class Gg3dPhysicsWorld implements IGg3dPhysicsWorld {
 
@@ -10,6 +11,14 @@ export class Gg3dPhysicsWorld implements IGg3dPhysicsWorld {
       throw new Error('Ammo world not initialized');
     }
     return this._factory;
+  }
+
+  private _loader: Gg3dBodyLoader | null = null;
+  public get loader(): Gg3dBodyLoader {
+    if (!this._loader) {
+      throw new Error('Ammo world not initialized');
+    }
+    return this._loader;
   }
 
   private ammoInstance: typeof Ammo | undefined;
@@ -48,6 +57,7 @@ export class Gg3dPhysicsWorld implements IGg3dPhysicsWorld {
     );
     this._dynamicAmmoWorld.setGravity(this.gravityVector);
     this._factory = new Gg3dBodyFactory(this);
+    this._loader = new Gg3dBodyLoader(this);
   }
 
   simulate(delta: number): void {

@@ -1,6 +1,7 @@
 import { IGg3dVisualScene } from '@gg-web-engine/core';
 import { Scene } from 'three';
 import { Gg3dObjectFactory } from './gg-3d-object-factory';
+import { Gg3dObjectLoader } from './gg-3d-object-loader';
 
 export class Gg3dVisualScene implements IGg3dVisualScene {
 
@@ -10,6 +11,7 @@ export class Gg3dVisualScene implements IGg3dVisualScene {
   }
 
   public readonly factory: Gg3dObjectFactory = new Gg3dObjectFactory();
+  public readonly loader: Gg3dObjectLoader = new Gg3dObjectLoader();
 
   async init(): Promise<void> {
     this._nativeScene = new Scene();

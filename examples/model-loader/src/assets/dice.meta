@@ -1,0 +1,1 @@
+{"curves": [], "dummies": [], "rigidBodies": [{"name": "Cube", "dynamic": true, "shape": "BOX", "position": {"x": 0.0, "y": 0.0, "z": 0.0}, "rotation": {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0}, "mass": 1.0, "restitution": 0.0, "friction": 0.5, "dimensions": {"x": 0.5386216044425964, "y": 0.5386216640472412, "z": 0.5386215448379517}}]}
