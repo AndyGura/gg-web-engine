@@ -1,4 +1,4 @@
-import { IGg3dPhysicsWorld } from '@gg-web-engine/core';
+import { IGg3dPhysicsWorld, Point3 } from '@gg-web-engine/core';
 import Ammo, * as AmmoModule from 'ammojs-typed';
 import { Gg3dBodyFactory } from './gg-3d-body-factory';
 import { Gg3dBodyLoader } from './gg-3d-body-loader';
@@ -19,6 +19,18 @@ export class Gg3dPhysicsWorld implements IGg3dPhysicsWorld {
       throw new Error('Ammo world not initialized');
     }
     return this._loader;
+  }
+
+  private _gravity: Point3 = { x: 0, y: 0, z: -9.82 };
+  public get gravity(): Point3 {
+    return this._gravity;
+  }
+  public set gravity(value: Point3) {
+    this._gravity = value;
+    if (this.gravityVector) {
+      this.gravityVector.setValue(value.x, value.y, value.z);
+      this._dynamicAmmoWorld?.setGravity(this.gravityVector);
+    }
   }
 
   private ammoInstance: typeof Ammo | undefined;
@@ -47,7 +59,7 @@ export class Gg3dPhysicsWorld implements IGg3dPhysicsWorld {
     this.dispatcher = new this.ammo.btCollisionDispatcher(this.collisionConfiguration);
     this.broadphase = new this.ammo.btDbvtBroadphase();
     this.solver = new this.ammo.btSequentialImpulseConstraintSolver();
-    this.gravityVector = new this.ammo.btVector3(0, 0, -9.82);
+    this.gravityVector = new this.ammo.btVector3(this._gravity.x, this._gravity.y, this._gravity.z);
 
     this._dynamicAmmoWorld = new this.ammo.btDiscreteDynamicsWorld(
       this.dispatcher,

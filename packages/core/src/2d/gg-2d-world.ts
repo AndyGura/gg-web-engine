@@ -7,8 +7,20 @@ export class Gg2dWorld extends GgWorld<Point2, number> {
   constructor(
     public readonly visualScene: IGg2dVisualScene,
     public readonly physicsWorld: IGg2dPhysicsWorld,
+    protected readonly consoleEnabled: boolean = false,
   ) {
-    super(visualScene, physicsWorld)
+    super(visualScene, physicsWorld, consoleEnabled);
+    if (consoleEnabled) {
+      this.registerConsoleCommand('ph_gravity', (...args: string[]) => {
+        if (args.length == 1) {
+          args = ['0', args[0]]; // mean Y axis
+        }
+        if (args.length > 0) {
+          this.physicsWorld.gravity = { x: +args[0], y: +args[1] };
+        }
+        return JSON.stringify(this.physicsWorld.gravity);
+      });
+    }
   }
 
 }

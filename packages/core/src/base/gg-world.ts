@@ -3,6 +3,7 @@ import { GgEntity } from './entities/gg-entity';
 import { isITickListener, ITickListener } from './entities/interfaces/i-tick-listener';
 import { GgPhysicsWorld } from './interfaces/gg-physics-world';
 import { GgVisualScene } from './interfaces/gg-visual-scene';
+import { GgStatic } from './gg-static';
 
 export abstract class GgWorld<D, R> {
 
@@ -17,7 +18,10 @@ export abstract class GgWorld<D, R> {
   constructor(
     public readonly visualScene: GgVisualScene<D, R>,
     public readonly physicsWorld: GgPhysicsWorld<D, R>,
+    protected readonly consoleEnabled: boolean = false,
   ) {
+    GgStatic.instance.worlds.push(this);
+    GgStatic.instance.selectedWorld = this;
   }
 
   public async init(
@@ -88,6 +92,25 @@ export abstract class GgWorld<D, R> {
     if (dispose) {
       entity.dispose();
     }
+  }
+
+  protected commands: { [key: string]: (...args: string[]) => string } = {};
+
+  public registerConsoleCommand(command: string, handler: (...args: string[]) => string): void {
+    if (!this.consoleEnabled) {
+      throw new Error('Console not enabled for this world');
+    }
+    this.commands[command] = handler;
+  }
+
+  public runConsoleCommand(command: string, args: string[]): string {
+    if (!this.consoleEnabled) {
+      throw new Error('Console not enabled for this world');
+    }
+    if (!this.commands[command]) {
+      return 'Unrecognized command: ' + command;
+    }
+    return this.commands[command](...args);
   }
 
 }

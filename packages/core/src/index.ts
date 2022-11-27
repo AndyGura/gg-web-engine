@@ -1,9 +1,6 @@
-// TODO migrate old engine
-// TODO make old engine obsolete
-// TODO migrate sandbox
+// TODO migrate sandbox (create new one in gg-web-engine/examples)
 // TODO migrate NFS
 // TODO viewport refactoring? allow non-fullscreen apps
-// TODO some engine console
 // TODO physics debug view (turn on in console) - check old engine physics-world.ts
 // TODO demo: less code, FPS counter
 
