@@ -15,7 +15,7 @@ export class GgStatic {
   public readonly worlds: GgWorld<any, any>[] = [];
   public selectedWorld: GgWorld<any, any> | null = null;
 
-  console(input: string): void {
+  async console(input: string): Promise<void> {
     if (!this.selectedWorld) {
       console.log('World not selected');
       return;
@@ -23,7 +23,7 @@ export class GgStatic {
     const commands: string[] = input.split('\n');
     for (const command of commands) {
       const parts = command.split(' ');
-      console.log(this.selectedWorld.runConsoleCommand(parts.splice(0, 1)[0], parts));
+      console.log(await this.selectedWorld.runConsoleCommand(parts.splice(0, 1)[0], parts));
     }
   }
 

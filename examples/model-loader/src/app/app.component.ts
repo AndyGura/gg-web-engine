@@ -19,7 +19,7 @@ export class AppComponent implements OnInit {
 
     const scene: Gg3dVisualScene = new Gg3dVisualScene();
     const physScene: Gg3dPhysicsWorld = new Gg3dPhysicsWorld();
-    const world: Gg3dWorld = new Gg3dWorld(scene, physScene);
+    const world: Gg3dWorld = new Gg3dWorld(scene, physScene, true);
     await world.init();
 
     const canvas = await GgViewportManager.instance.createCanvas(1);

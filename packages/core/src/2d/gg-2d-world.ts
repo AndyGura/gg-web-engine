@@ -11,7 +11,7 @@ export class Gg2dWorld extends GgWorld<Point2, number> {
   ) {
     super(visualScene, physicsWorld, consoleEnabled);
     if (consoleEnabled) {
-      this.registerConsoleCommand('ph_gravity', (...args: string[]) => {
+      this.registerConsoleCommand('ph_gravity', async (...args: string[]) => {
         if (args.length == 1) {
           args = ['0', args[0]]; // mean Y axis
         }

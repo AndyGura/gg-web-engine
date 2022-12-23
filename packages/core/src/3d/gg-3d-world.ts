@@ -15,9 +15,9 @@ export class Gg3dWorld extends GgWorld<Point3, Point4> {
     super(visualScene, physicsWorld, consoleEnabled);
     this.loader = new Gg3dLoader(this);
     if (consoleEnabled) {
-      this.registerConsoleCommand('ph_gravity', (...args: string[]) => {
+      this.registerConsoleCommand('ph_gravity', async (...args: string[]) => {
         if (args.length == 1) {
-          args = ['0', '0', args[0]]; // mean Z axis
+          args = ['0', '0', '' + -+args[0]]; // mean -Z axis
         }
         if (args.length > 0) {
           this.physicsWorld.gravity = { x: +args[0], y: +args[1], z: +args[2] };

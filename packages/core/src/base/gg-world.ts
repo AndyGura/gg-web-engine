@@ -94,16 +94,16 @@ export abstract class GgWorld<D, R> {
     }
   }
 
-  protected commands: { [key: string]: (...args: string[]) => string } = {};
+  protected commands: { [key: string]: (...args: string[]) => Promise<string> } = {};
 
-  public registerConsoleCommand(command: string, handler: (...args: string[]) => string): void {
+  public registerConsoleCommand(command: string, handler: (...args: string[]) => Promise<string>): void {
     if (!this.consoleEnabled) {
       throw new Error('Console not enabled for this world');
     }
     this.commands[command] = handler;
   }
 
-  public runConsoleCommand(command: string, args: string[]): string {
+  public async runConsoleCommand(command: string, args: string[]): Promise<string> {
     if (!this.consoleEnabled) {
       throw new Error('Console not enabled for this world');
     }
