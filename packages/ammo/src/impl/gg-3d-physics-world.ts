@@ -33,6 +33,14 @@ export class Gg3dPhysicsWorld implements IGg3dPhysicsWorld {
     }
   }
 
+  private _timeScale: number = 1;
+  public get timeScale(): number {
+    return this._timeScale;
+  }
+  public set timeScale(value: number) {
+    this._timeScale = value;
+  }
+
   private ammoInstance: typeof Ammo | undefined;
 
   public get ammo(): typeof Ammo {
@@ -73,7 +81,7 @@ export class Gg3dPhysicsWorld implements IGg3dPhysicsWorld {
   }
 
   simulate(delta: number): void {
-    this._dynamicAmmoWorld?.stepSimulation(delta / 1000, 50);
+    this._dynamicAmmoWorld?.stepSimulation(this._timeScale * delta / 1000, 50);
   }
 
   dispose(): void {

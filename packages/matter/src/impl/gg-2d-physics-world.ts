@@ -24,12 +24,20 @@ export class Gg2dPhysicsWorld implements IGg2dPhysicsWorld {
     }
   }
 
+  private _timeScale: number = 1;
+  public get timeScale(): number {
+    return this._timeScale;
+  }
+  public set timeScale(value: number) {
+    this._timeScale = value;
+  }
+
   async init(): Promise<void> {
     this.matterEngine = Engine.create({ gravity: { ...this._gravity, scale: 0.0001 }});
   }
 
   simulate(delta: number): void {
-    Engine.update(this.matterEngine!, delta, );
+    Engine.update(this.matterEngine!, this._timeScale * delta, );
   }
 
   dispose(): void {

@@ -2,6 +2,7 @@ export interface GgPhysicsWorld<D, R> {
 
   readonly factory: any; // type defined in sub-interfaces
   gravity: D;
+  timeScale: number;
 
   init(): Promise<void>;
 
