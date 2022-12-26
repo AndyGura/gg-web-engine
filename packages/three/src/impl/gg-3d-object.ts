@@ -7,7 +7,6 @@ export class Gg3dObject implements IGg3dObject {
     public nativeMesh: Object3D,
   ) {
   }
-
   public get position(): Point3 {
     return this.nativeMesh.position;
   }

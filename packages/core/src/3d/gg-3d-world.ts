@@ -24,10 +24,6 @@ export class Gg3dWorld extends GgWorld<Point3, Point4> {
         }
         return JSON.stringify(this.physicsWorld.gravity);
       });
-      this.registerConsoleCommand('ph_timescale', async (...args: string[]) => {
-        this.physicsWorld.timeScale = +args[0];
-        return JSON.stringify(this.physicsWorld.timeScale);
-      });
     }
   }
 

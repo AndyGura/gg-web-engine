@@ -4,6 +4,7 @@ import { isITickListener, ITickListener } from './entities/interfaces/i-tick-lis
 import { GgPhysicsWorld } from './interfaces/gg-physics-world';
 import { GgVisualScene } from './interfaces/gg-visual-scene';
 import { GgStatic } from './gg-static';
+import { createInlineTickController } from './entities/inline-controller';
 
 export abstract class GgWorld<D, R> {
 
@@ -22,6 +23,27 @@ export abstract class GgWorld<D, R> {
   ) {
     GgStatic.instance.worlds.push(this);
     GgStatic.instance.selectedWorld = this;
+    if (consoleEnabled) {
+      this.registerConsoleCommand('ph_timescale', async (...args: string[]) => {
+        this.physicsWorld.timeScale = +args[0];
+        return JSON.stringify(this.physicsWorld.timeScale);
+      });
+      this.registerConsoleCommand('dr_drawphysics', async (...args: string[]) => {
+        const shouldDraw = ['1', 'true', '+'].includes(args[0]);
+        if (shouldDraw != this.physicsWorld.debuggerActive) {
+          if (shouldDraw) {
+            const cls = this.visualScene.debugPhysicsDrawerClass;
+            if (!cls) {
+              throw new Error('Debug drawer is not available');
+            }
+            this.physicsWorld.startDebugger(this, new cls());
+          } else {
+            this.physicsWorld.stopDebugger(this);
+          }
+        }
+        return '' + this.physicsWorld.debuggerActive;
+      });
+    }
   }
 
   public async init(

@@ -1,4 +1,3 @@
-// TODO physics debug view (turn on in console) - check old engine physics-world.ts
 // TODO migrate sandbox (create new one in gg-web-engine/examples)
 // TODO migrate NFS
 // TODO viewport refactoring? allow non-fullscreen apps
@@ -12,6 +11,7 @@ export * from './base/entities/gg-entity';
 export * from './base/entities/base-gg-renderer';
 export * from './base/entities/inline-controller';
 export * from './base/interfaces/gg-body';
+export * from './base/interfaces/gg-debug-physics-drawer';
 export * from './base/interfaces/gg-object';
 export * from './base/interfaces/gg-physics-world';
 export * from './base/interfaces/gg-visual-scene';

@@ -2,8 +2,8 @@ import { Subject, Subscription } from 'rxjs';
 import { GgPositionable2dEntity } from './gg-positionable-2d-entity';
 import { ITickListener } from '../../base/entities/interfaces/i-tick-listener';
 import { Point2 } from '../../base/models/points';
-import { Gg3dWorld } from '../../3d/gg-3d-world';
 import { IGg2dBody, IGg2dObject } from '../interfaces';
+import { Gg2dWorld } from '../gg-2d-world';
 
 export class Gg2dEntity extends GgPositionable2dEntity implements ITickListener {
 
@@ -61,7 +61,7 @@ export class Gg2dEntity extends GgPositionable2dEntity implements ITickListener 
     }
   }
 
-  onSpawned(world: Gg3dWorld) {
+  onSpawned(world: Gg2dWorld) {
     super.onSpawned(world);
     this.object2D?.addToWorld(world.visualScene);
     this.objectBody?.addToWorld(world.physicsWorld);

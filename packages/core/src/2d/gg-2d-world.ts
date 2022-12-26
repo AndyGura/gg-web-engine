@@ -20,10 +20,6 @@ export class Gg2dWorld extends GgWorld<Point2, number> {
         }
         return JSON.stringify(this.physicsWorld.gravity);
       });
-      this.registerConsoleCommand('ph_timescale', async (...args: string[]) => {
-        this.physicsWorld.timeScale = +args[0];
-        return JSON.stringify(this.physicsWorld.timeScale);
-      });
     }
   }
 
