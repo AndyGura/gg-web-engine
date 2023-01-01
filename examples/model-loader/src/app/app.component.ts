@@ -1,6 +1,6 @@
 import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
-import { DirectionalLight, HemisphereLight, Mesh, MeshLambertMaterial, Vector3 } from 'three';
-import { createInlineTickController, Gg3dEntity, Gg3dWorld, GgViewportManager } from '@gg-web-engine/core';
+import { DirectionalLight, HemisphereLight, Vector3 } from 'three';
+import { createInlineTickController, Gg3dWorld, GgViewportManager } from '@gg-web-engine/core';
 import { interval } from 'rxjs';
 import { Gg3dObject, Gg3dVisualScene, GgRenderer } from '@gg-web-engine/three';
 import { Gg3dPhysicsWorld } from '@gg-web-engine/ammo';
@@ -35,17 +35,6 @@ export class AppComponent implements OnInit {
     });
     renderer.activate();
 
-    const floor = new Gg3dEntity(
-      world.visualScene.factory.createBox({ x: 50, y: 50, z: 1 }),
-      world.physicsWorld.factory.createBox({ x: 50, y: 50, z: 1 }, { dynamic: false }),
-    );
-    const groundMaterial = new MeshLambertMaterial({ color: 0xffffff });
-    groundMaterial.color.setHSL(0.095, 1, 0.75);
-    ((floor.object3D as Gg3dObject).nativeMesh as Mesh).material = groundMaterial;
-    ((floor.object3D as Gg3dObject).nativeMesh as Mesh).castShadow = true;
-    ((floor.object3D as Gg3dObject).nativeMesh as Mesh).receiveShadow = true;
-    world.addEntity(floor);
-
     const hemiLight = new HemisphereLight(0xffffff, 0xffffff, 0.6);
     hemiLight.color.setHSL(0.6, 1, 0.6);
     hemiLight.groundColor.setHSL(0.095, 1, 0.75);
@@ -66,26 +55,39 @@ export class AppComponent implements OnInit {
     dirLight.shadow.camera.far = 3500;
     scene.nativeScene?.add(dirLight);
 
+    const [items] = await world.loader.loadGgGlb('assets/', 'ph_scene');
+    for (const item of items) {
+      if (item.object3D) {
+        (item.object3D as Gg3dObject).nativeMesh.traverse((obj) => {
+          obj.castShadow = true;
+          obj.receiveShadow = true;
+        });
+      }
+      world.addEntity(item);
+    }
+
+    // (window as any).gg.console('dr_drawphysics 1');
+
     interval(500).subscribe(async () => {
       const itemTypeRand = Math.random();
       let glbId = '';
-      if (itemTypeRand < 1/7) {
+      if (itemTypeRand < 1 / 7) {
         glbId = 'ball';
-      } else if (itemTypeRand < 2/7) {
+      } else if (itemTypeRand < 2 / 7) {
         glbId = 'dice';
-      } else if (itemTypeRand < 3/7) {
+      } else if (itemTypeRand < 3 / 7) {
         glbId = 'christmas_tree';
-      } else if (itemTypeRand < 4/7) {
+      } else if (itemTypeRand < 4 / 7) {
         glbId = 'battery';
-      } else if (itemTypeRand < 5/7) {
+      } else if (itemTypeRand < 5 / 7) {
         glbId = 'capsule';
-      } else if (itemTypeRand < 6/7) {
+      } else if (itemTypeRand < 6 / 7) {
         glbId = 'convex_hull';
       } else {
         glbId = 'compound';
       }
-      const [object, body] = await world.loader.loadGgGlb('assets/', glbId);
-      let item: Gg3dEntity = new Gg3dEntity(object, body);
+      const [items] = await world.loader.loadGgGlb('assets/', glbId);
+      const item = items[0];
       item.position = { x: Math.random() * 5 - 2.5, y: Math.random() * 5 - 2.5, z: 10 };
       (item.object3D as Gg3dObject).nativeMesh.traverse((obj) => {
         obj.castShadow = true;

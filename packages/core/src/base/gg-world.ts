@@ -32,6 +32,7 @@ export abstract class GgWorld<D, R> {
         const shouldDraw = ['1', 'true', '+'].includes(args[0]);
         if (shouldDraw != this.physicsWorld.debuggerActive) {
           if (shouldDraw) {
+            // TODO move to function so can be called in the code
             const cls = this.visualScene.debugPhysicsDrawerClass;
             if (!cls) {
               throw new Error('Debug drawer is not available');

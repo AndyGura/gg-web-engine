@@ -21,7 +21,7 @@ export abstract class IGg3dBodyFactory<T extends IGg3dBody = IGg3dBody> {
   abstract createCylinder(radius: number, height: number, options: Partial<Body3DOptions>): T;
   abstract createCone(radius: number, height: number, options: Partial<Body3DOptions>): T;
   abstract createSphere(radius: number, options: Partial<Body3DOptions>): T;
-  abstract createCompoundBody(items: BodyPrimitiveDescriptor[]): T;
+  abstract createCompoundBody(items: BodyPrimitiveDescriptor[], options: Partial<Body3DOptions>): T;
   abstract createConvexHull(vertices: Point3[], options: Partial<Body3DOptions>): T;
   abstract createMesh(vertices: Point3[], faces: [number, number, number][], options: Partial<Body3DOptions>): T;
 
@@ -38,7 +38,7 @@ export abstract class IGg3dBodyFactory<T extends IGg3dBody = IGg3dBody> {
       case 'SPHERE':
         return this.createSphere(descriptor.radius, descriptor);
       case 'COMPOUND':
-        return this.createCompoundBody(descriptor.children);
+        return this.createCompoundBody(descriptor.children, descriptor);
       case 'CONVEX_HULL':
         return this.createConvexHull(descriptor.vertices, descriptor);
       case 'MESH':
@@ -54,14 +54,12 @@ export abstract class IGg3dBodyLoader {
   protected constructor(protected readonly world: IGg3dPhysicsWorld) {
   }
 
-  async loadFromGgGlb(glbFile: ArrayBuffer, meta: GgMeta): Promise<IGg3dBody | null> {
-    const descriptions = (meta?.rigidBodies || []);
-    if (descriptions.length == 0) {
-      return null;
-    } else if (descriptions.length == 1) {
-      return this.world.factory.createPrimitive(descriptions[0]);
-    }
-    return this.world.factory.createCompoundBody(descriptions);
+  async loadFromGgGlb(glbFile: ArrayBuffer, meta: GgMeta): Promise<IGg3dBody[]> {
+    return (meta?.rigidBodies || []).map(d => {
+      const body = this.world.factory.createPrimitive(d);
+      body.name = d.name;
+      return body;
+    });
   }
 }
 

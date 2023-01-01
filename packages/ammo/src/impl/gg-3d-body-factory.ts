@@ -41,39 +41,54 @@ export class Gg3dBodyFactory extends IGg3dBodyFactory<Gg3dBody> {
     return this.createBody(new this.world.ammo.btSphereShape(radius), options);
   }
 
-  createCompoundBody(items: BodyPrimitiveDescriptor[]): Gg3dBody {
-    let shapeMass = 0;
-    let shapeTotalFriction = 0;
-    let shapeTotalRestitution = 0;
-    const isDynamic = items[0].dynamic;
+  createCompoundBody(items: BodyPrimitiveDescriptor[], options: Partial<Body3DOptions>): Gg3dBody {
+    if (options.mass === undefined || options.dynamic === undefined) {
+      let shapeMass = 0;
+      let shapeTotalFriction = 0;
+      let shapeTotalRestitution = 0;
+      let isDynamic = undefined;
+      for (const item of items) {
+        if (item.dynamic !== undefined && isDynamic !== undefined && isDynamic != item.dynamic) {
+          throw new Error('Rigid body dynamic flag differs in children of one single scene!');
+        }
+        if (isDynamic === undefined) {
+          isDynamic = item.dynamic;
+        }
+        const subShape = this.createPrimitive(item);
+        if (!subShape) {
+          continue;
+        }
+        shapeMass += item.mass || 0;
+        shapeTotalFriction += item.friction || 0;
+        shapeTotalRestitution += item.restitution || 0;
+      }
+      if (options.dynamic === undefined) {
+        options.dynamic = !!isDynamic;
+      }
+      if (options.mass === undefined) {
+        options.mass = shapeMass;
+      }
+      if (options.friction === undefined) {
+        options.friction = shapeTotalFriction / items.length;
+      }
+      if (options.restitution === undefined) {
+        options.restitution = shapeTotalRestitution / items.length;
+      }
+    }
     const shape: Ammo.btCollisionShape = new this.world.ammo.btCompoundShape();
     for (const item of items) {
-      if (isDynamic != item.dynamic) {
-        throw new Error('Rigid body dynamic flag differs in children of one single scene!');
-      }
       const subShape = this.createPrimitive(item);
       if (!subShape) {
         continue;
       }
       const subShapeTransform = new this.world.ammo.btTransform();
       const pos = item.position || { x: 0, y: 0, z: 0 };
-      const rot = item.rotation || { x: 0, y: 0, z: 0, w: 0 };
+      const rot = item.rotation || { x: 0, y: 0, z: 0, w: 1 };
       subShapeTransform.setOrigin(new this.world.ammo.btVector3(pos.x, pos.y, pos.z));
       subShapeTransform.setRotation(new this.world.ammo.btQuaternion(rot.x, rot.y, rot.z, rot.w));
       (shape as Ammo.btCompoundShape).addChildShape(subShapeTransform, subShape.nativeBody.getCollisionShape());
-      shapeMass += item.mass || 0;
-      shapeTotalFriction += item.friction || 0;
-      shapeTotalRestitution += item.restitution || 0;
     }
-    const motionState = new this.world.ammo.btDefaultMotionState(new this.world.ammo.btTransform());
-    const localInertia = new this.world.ammo.btVector3(0, 0, 0);
-    const mass = isDynamic ? shapeMass : 0;
-    shape.calculateLocalInertia(mass, localInertia);
-    const environmentBodyCI = new this.world.ammo.btRigidBodyConstructionInfo(mass, motionState, shape, localInertia);
-    environmentBodyCI.set_m_friction(shapeTotalFriction / items.length);
-    environmentBodyCI.set_m_rollingFriction(shapeTotalFriction / items.length);
-    environmentBodyCI.set_m_restitution(shapeTotalRestitution / items.length);
-    return new Gg3dBody(this.world, new this.world.ammo.btRigidBody(environmentBodyCI));
+    return this.createBody(shape, options);
   }
 
   createConvexHull(vertices: Point3[], options: Partial<Body3DOptions>): Gg3dBody {
@@ -108,10 +123,15 @@ export class Gg3dBodyFactory extends IGg3dBodyFactory<Gg3dBody> {
   }
 
   private createBody(shape: Ammo.btCollisionShape, options: Partial<Body3DOptions>): Gg3dBody {
+    if (options.dynamic === false) {
+      options.mass = 0;
+    }
+    const pos = options.position || { x: 0, y: 0, z: 0 };
+    const rot = options.rotation || { x: 0, y: 0, z: 0, w: 1 };
     const ammo = this.world.ammo;
     const transform = new ammo.btTransform();
-    transform.setOrigin(new ammo.btVector3(0, 0, 0));
-    transform.setRotation(new ammo.btQuaternion(0, 0, 0, 1));
+    transform.setOrigin(new ammo.btVector3(pos.x, pos.y, pos.z));
+    transform.setRotation(new ammo.btQuaternion(rot.x, rot.y, rot.z, rot.w));
     const motionState = new ammo.btDefaultMotionState(transform);
     const localInertia = new ammo.btVector3(0, 0, 0);
     shape.calculateLocalInertia(options.mass || 0, localInertia);

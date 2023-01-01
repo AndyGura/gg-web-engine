@@ -1,5 +1,5 @@
 import { IGg3dObject, Point3, Point4 } from '@gg-web-engine/core';
-import { Mesh, Object3D } from 'three';
+import { Group, Mesh, Object3D, Scene } from 'three';
 import { Gg3dVisualScene } from './gg-3d-visual-scene';
 
 export class Gg3dObject implements IGg3dObject {
@@ -37,6 +37,24 @@ export class Gg3dObject implements IGg3dObject {
     this.nativeMesh.scale.y = value.y;
     this.nativeMesh.scale.z = value.z;
   }
+
+  public name: string = '';
+
+  public isEmpty(): boolean {
+    if (this.nativeMesh instanceof Scene || this.nativeMesh instanceof Group) {
+      return this.nativeMesh.children.length == 0;
+    }
+    return false;
+  };
+
+  popChild(name: string): Gg3dObject | null {
+    const childMesh = this.nativeMesh.children.find(c => c.name === name || c.userData.name === name);
+    if (childMesh) {
+      childMesh.removeFromParent();
+      return new Gg3dObject(childMesh);
+    }
+    return null;
+  };
 
   addToWorld(world: Gg3dVisualScene): void {
     world.nativeScene?.add(this.nativeMesh);

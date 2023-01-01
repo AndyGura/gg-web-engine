@@ -5,6 +5,8 @@ export interface GgBody<D, R> {
   rotation: R;
   scale: D;
 
+  name: string;
+
   addToWorld(world: GgPhysicsWorld<D, R>): void;
 
   removeFromWorld(world: GgPhysicsWorld<D, R>): void;

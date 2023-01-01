@@ -47,6 +47,8 @@ export class Gg3dBody implements IGg3dBody {
     return { x: 1, y: 1, z: 1 };
   }
 
+  public name: string = '';
+
   constructor(
     private readonly world: Gg3dPhysicsWorld,
     public nativeBody: Ammo.btRigidBody,

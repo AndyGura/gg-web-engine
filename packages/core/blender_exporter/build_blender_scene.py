@@ -50,12 +50,26 @@ def get_rigid_body_description(obj):
         "name": obj.name,
         "dynamic": body.type == "ACTIVE",
         "shape": body.collision_shape,
-        "position": { 'x': obj.location.x, 'y': obj.location.y, 'z': obj.location.z },
+        "position": { 
+            'x': obj.location.x, 
+            'y': obj.location.y, 
+            'z': obj.location.z,
+        },
+        # FIXME relative rotation
         "rotation": { 'x': obj.rotation_quaternion.x, 'y': obj.rotation_quaternion.y, 'z': obj.rotation_quaternion.z, 'w': obj.rotation_quaternion.w },
         "mass": body.mass,
         "restitution": body.restitution,
         "friction": body.friction,
     }
+    parent = obj.parent
+    while parent:
+        meta['position']['x'] -= parent.location.x
+        meta['position']['y'] -= parent.location.y
+        meta['position']['z'] -= parent.location.z
+        parent = parent.parent
+    meta['position']['x'] = round(meta['position']['x'], 6)
+    meta['position']['y'] = round(meta['position']['y'], 6)
+    meta['position']['z'] = round(meta['position']['z'], 6)
     if meta['shape'] == 'SPHERE':
         meta['radius'] = max(obj.dimensions.x, obj.dimensions.y, obj.dimensions.z) / 2
     elif meta['shape'] == 'BOX':
