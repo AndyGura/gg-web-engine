@@ -46,6 +46,7 @@ def parse_dummy_obj(object):
     
 def get_rigid_body_description(obj):
     body = obj.rigid_body
+    obj.rotation_mode = 'QUATERNION'
     meta = {
         "name": obj.name,
         "dynamic": body.type == "ACTIVE",

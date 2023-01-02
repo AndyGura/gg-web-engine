@@ -30,8 +30,7 @@ export class Gg3dLoader {
       // TODO implement hierarchy between entities and preserve it here
       const res: Gg3dEntity[] = [];
       for (const body of bodies) {
-        const subObj = object.popChild(body.name);
-        res.push(new Gg3dEntity(subObj, body));
+        res.push(new Gg3dEntity(object.popChild(body.name), body));
       }
       if (!object.isEmpty()) {
         res.push(new Gg3dEntity(object, null));
