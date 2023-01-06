@@ -26,9 +26,9 @@
   },
   "homepage": "https://github.com/AndyGura/gg-web-engine#readme",
   "dependencies": {
-    "three": "^0.145.0"
+    "three": "^0.148.0"
   },
   "devDependencies": {
-    "@types/three": "^0.144.0"
+    "@types/three": "^0.148.0"
   }
 }
