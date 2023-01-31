@@ -1,7 +1,8 @@
 // TODO migrate sandbox (create new one in gg-web-engine/examples)
-// TODO migrate NFS
 // TODO viewport refactoring? allow non-fullscreen apps
 // TODO demo: less code, FPS counter
+// TODO readme
+// TODO merge to main
 
 export * from './base/clock';
 export * from './base/gg-viewport';
