@@ -55,8 +55,8 @@ export class AppComponent implements OnInit {
     dirLight.shadow.camera.far = 3500;
     scene.nativeScene?.add(dirLight);
 
-    const [items] = await world.loader.loadGgGlb('assets/ph_scene');
-    for (const item of items) {
+    const { entities } = await world.loader.loadGgGlb('assets/ph_scene');
+    for (const item of entities) {
       if (item.object3D) {
         (item.object3D as Gg3dObject).nativeMesh.traverse((obj) => {
           obj.castShadow = true;
@@ -86,8 +86,8 @@ export class AppComponent implements OnInit {
       } else {
         glbId = 'compound';
       }
-      const [items] = await world.loader.loadGgGlb('assets/' + glbId);
-      const item = items[0];
+      const { entities } = await world.loader.loadGgGlb('assets/' + glbId);
+      const item = entities[0];
       item.position = { x: Math.random() * 5 - 2.5, y: Math.random() * 5 - 2.5, z: 10 };
       (item.object3D as Gg3dObject).nativeMesh.traverse((obj) => {
         obj.castShadow = true;
