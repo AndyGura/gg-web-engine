@@ -25,6 +25,8 @@ export class Gg2dBody implements IGg2dBody {
     return { x: 1, y: 1 };
   }
 
+  public name: string = '';
+
   constructor(
     public nativeBody: Body,
   ) {

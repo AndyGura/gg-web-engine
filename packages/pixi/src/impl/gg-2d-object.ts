@@ -34,6 +34,16 @@ export class Gg2dObject implements IGg2dObject {
     this.nativeSprite.scale.y = value.y;
   }
 
+  public name: string = '';
+
+  public isEmpty(): boolean {
+    return false;
+  };
+
+  popChild(name: string): Gg2dObject | null {
+    return null;
+  };
+
   addToWorld(world: Gg2dVisualScene): void {
     world.nativeContainer?.addChild(this.nativeSprite);
   }
