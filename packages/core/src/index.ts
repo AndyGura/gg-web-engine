@@ -18,6 +18,9 @@ export * from './base/interfaces/gg-physics-world';
 export * from './base/interfaces/gg-visual-scene';
 export * from './base/models/body-options';
 export * from './base/models/points';
+export * from './base/math/point2';
+export * from './base/math/point3';
+export * from './base/math/quaternion';
 
 export * from './2d/entities/gg-2d-entity';
 export * from './2d/entities/gg-positionable-2d-entity';

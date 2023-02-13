@@ -17,29 +17,25 @@ export class Gg3dBody implements IGg3dBody {
   }
 
   public get position(): Point3 {
-    this.nativeBody.getMotionState().getWorldTransform(this.tmpTrans);
-    const origin = this.tmpTrans.getOrigin();
+    const origin = this.nativeBody.getWorldTransform().getOrigin();
     return { x: origin.x(), y: origin.y(), z: origin.z() };
   }
 
   public set position(value: Point3) {
-    const transform = new this.ammo.btTransform();
+    const transform = this.nativeBody.getWorldTransform();
     transform.setOrigin(new this.ammo.btVector3(value.x, value.y, value.z));
-    this.nativeBody.setMotionState(new this.ammo.btDefaultMotionState(transform));
-    this.ammo.destroy(transform);
+    this.nativeBody.setWorldTransform(transform);
   }
 
   public get rotation(): Point4 {
-    this.nativeBody.getMotionState().getWorldTransform(this.tmpTrans);
-    const quaternion = this.tmpTrans.getRotation();
+    const quaternion = this.nativeBody.getWorldTransform().getRotation();
     return { x: quaternion.x(), y: quaternion.y(), z: quaternion.z(), w: quaternion.w() };
   }
 
   public set rotation(value: Point4) {
-    const transform = new this.ammo.btTransform();
+    const transform = this.nativeBody.getWorldTransform();
     transform.setRotation(new this.ammo.btQuaternion(value.x, value.y, value.z, value.w));
-    this.nativeBody.setMotionState(new this.ammo.btDefaultMotionState(transform));
-    this.ammo.destroy(transform);
+    this.nativeBody.setWorldTransform(transform);
   }
 
   public get scale(): Point3 {
