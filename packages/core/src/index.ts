@@ -1,4 +1,3 @@
-// TODO WASD + mouse camera controller
 // TODO port map graph to new engine
 // TODO raycast vehicle car + arrows controller on car
 // TODO migrate sandbox (create new one in gg-web-engine/examples), make map better
@@ -24,6 +23,9 @@ export * from './base/models/points';
 export * from './base/math/point2';
 export * from './base/math/point3';
 export * from './base/math/quaternion';
+export * from './base/controllers/i-controller';
+export * from './base/controllers/keyboard.controller';
+export * from './base/controllers/mouse.controller';
 
 export * from './2d/entities/gg-2d-entity';
 export * from './2d/entities/gg-positionable-2d-entity';

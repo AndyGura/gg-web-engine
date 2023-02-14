@@ -26,6 +26,6 @@
   },
   "homepage": "https://github.com/AndyGura/gg-web-engine#readme",
   "dependencies": {
-    "rxjs": "~7.3.0"
+    "rxjs": "~7.5.0"
   }
 }

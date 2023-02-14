@@ -4,7 +4,7 @@ import { isITickListener, ITickListener } from './entities/interfaces/i-tick-lis
 import { GgPhysicsWorld } from './interfaces/gg-physics-world';
 import { GgVisualScene } from './interfaces/gg-visual-scene';
 import { GgStatic } from './gg-static';
-import { createInlineTickController } from './entities/inline-controller';
+import { KeyboardController } from './controllers/keyboard.controller';
 
 export abstract class GgWorld<D, R> {
 
@@ -12,6 +12,9 @@ export abstract class GgWorld<D, R> {
   private readonly animationFrameClock: Clock = Clock.animationFrameClock;
   // world clock, can be paused/resumed. Stops when disposing world
   private readonly worldClock: Clock = new Clock(this.animationFrameClock.tick$);
+
+  // TODO consider adding mouse controller
+  public readonly keyboardController: KeyboardController = new KeyboardController();
 
   readonly children: GgEntity[] = [];
   protected readonly tickListeners: ITickListener[] = [];
@@ -23,6 +26,7 @@ export abstract class GgWorld<D, R> {
   ) {
     GgStatic.instance.worlds.push(this);
     GgStatic.instance.selectedWorld = this;
+    this.keyboardController.start().then();
     if (consoleEnabled) {
       this.registerConsoleCommand('ph_timescale', async (...args: string[]) => {
         this.physicsWorld.timeScale = +args[0];
@@ -47,8 +51,7 @@ export abstract class GgWorld<D, R> {
     }
   }
 
-  public async init(
-  ) {
+  public async init() {
     await Promise.all([
       this.physicsWorld.init(),
       this.visualScene.init(),
