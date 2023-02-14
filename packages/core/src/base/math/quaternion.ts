@@ -17,12 +17,22 @@ export class Qtrn {
   }
 
   static mult(a: Point4, b: Point4): Point4 {
-    let w = a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z;
-    let x = a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y;
-    let y = a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x;
-    let z = a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w;
-    return { w, x, y, z };
+    return {
+      w: a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z,
+      x: a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y,
+      y: a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x,
+      z: a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w
+    };
   }
+
+  static combineRotations(...quaternions: Point4[]): Point4 {
+    let result = {w: 1, x: 0, y: 0, z: 0};
+    for (const quat of quaternions) {
+      result = this.mult(result, quat);
+    }
+    return result;
+  }
+
 
   static lerp(a: Point4, b: Point4, t: number): Point4 {
     return {

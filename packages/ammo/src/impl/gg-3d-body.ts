@@ -4,14 +4,6 @@ import Ammo from 'ammojs-typed';
 
 export class Gg3dBody implements IGg3dBody {
 
-  private _tmpTrans: Ammo.btTransform | undefined;
-  private get tmpTrans(): Ammo.btTransform {
-    if (!this._tmpTrans) {
-      this._tmpTrans = new this.ammo.btTransform() as Ammo.btTransform;
-    }
-    return this._tmpTrans;
-  }
-
   protected get ammo(): typeof Ammo {
     return this.world.ammo as any;
   }
@@ -63,8 +55,11 @@ export class Gg3dBody implements IGg3dBody {
   }
 
   dispose(): void {
-    this.ammo.destroy(this.nativeBody);
-    this.ammo.destroy(this._tmpTrans);
+    try {
+      this.ammo.destroy(this.nativeBody);
+    } catch {
+      // pass
+    }
   }
 
 }

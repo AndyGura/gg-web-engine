@@ -1,4 +1,7 @@
-// TODO migrate sandbox (create new one in gg-web-engine/examples)
+// TODO WASD + mouse camera controller
+// TODO port map graph to new engine
+// TODO raycast vehicle car + arrows controller on car
+// TODO migrate sandbox (create new one in gg-web-engine/examples), make map better
 // TODO viewport refactoring? allow non-fullscreen apps
 // TODO demo: less code, FPS counter
 // TODO readme

@@ -60,8 +60,8 @@ export class Gg3dLoader {
             (loadOptions.propsPath || path.substring(0, path.lastIndexOf('/') + 1)) + dummy.prop_id,
             {
               loadProps: false,
-              position: Pnt3.add(Pnt3.rot(Pnt3.clone(dummy.position), loadOptions.rotation), loadOptions.position),
-              rotation: Qtrn.mult(Qtrn.clone(dummy.rotation), loadOptions.rotation),
+              position: Pnt3.add(Pnt3.rot(dummy.position, loadOptions.rotation), loadOptions.position),
+              rotation: Qtrn.combineRotations(dummy.rotation, loadOptions.rotation),
             },
           ))
         );
