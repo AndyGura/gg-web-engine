@@ -55,11 +55,11 @@ export class Gg3dLoader {
     if (loadOptions.loadProps) {
       result.props =
         await Promise.all((meta as GgMeta).dummies
-          .filter(x => x.is_prop)
+          .filter(x => x.is_prop || x.is_scene)
           .map(dummy => this.loadGgGlb(
-            (loadOptions.propsPath || path.substring(0, path.lastIndexOf('/') + 1)) + dummy.prop_id,
+            dummy.is_prop ? (loadOptions.propsPath || path.substring(0, path.lastIndexOf('/') + 1)) + dummy.prop_id : dummy.scene_id,
             {
-              loadProps: false,
+              loadProps: !!dummy.is_scene,
               position: Pnt3.add(Pnt3.rot(dummy.position, loadOptions.rotation), loadOptions.position),
               rotation: Qtrn.combineRotations(dummy.rotation, loadOptions.rotation),
             },

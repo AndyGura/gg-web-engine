@@ -8,6 +8,13 @@ import { Pnt2 } from '../math/point2';
 import { Point2 } from '../models/points';
 import { Qtrn } from '../math/quaternion';
 
+type FreeCameraControllerOptions = {
+  movementOptions: {
+    speed: number
+  },
+  mouseOptions: MouseControllerOptions;
+}
+
 export class FreeCameraController implements IController {
   private readonly mController: MouseController;
   private readonly stop$: Subject<void> = new Subject<void>();
@@ -15,9 +22,9 @@ export class FreeCameraController implements IController {
   constructor(
     private readonly keyboardController: KeyboardController,
     private readonly camera: Gg3dCameraEntity,
-    private readonly mouseOptions: MouseControllerOptions = {},
+    private readonly options: FreeCameraControllerOptions = { movementOptions: { speed: 0.5}, mouseOptions: {} },
   ) {
-    this.mController = new MouseController(mouseOptions);
+    this.mController = new MouseController(options.mouseOptions);
   }
 
   async start(): Promise<void> {
@@ -52,7 +59,7 @@ export class FreeCameraController implements IController {
           this.camera.position = Pnt3.add(
             this.camera.position,
             Pnt3.rot(
-              Pnt3.scalarMult(Pnt3.norm(translateVector), 0.5),
+              Pnt3.scalarMult(Pnt3.norm(translateVector), this.options.movementOptions.speed),
               this.camera.rotation
             )
           );
