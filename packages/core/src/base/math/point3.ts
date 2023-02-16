@@ -1,15 +1,64 @@
-import { Point2, Point3, Point4 } from '../models/points';
-import { Qtrn } from './quaternion';
+import { Point3, Point4 } from '../models/points';
 
 export class Pnt3 {
   /** clone point */
   static clone(p: Point3): Point3 {
-    return {...p};
+    return { ...p };
   }
+
   /** add point b to point a */
   static add(a: Point3, b: Point3): Point3 {
     return { x: a.x + b.x, y: a.y + b.y, z: a.z + b.z };
   }
+
+  /** subtract point b from point a */
+  static sub(a: Point3, b: Point3): Point3 {
+    return { x: a.x - b.x, y: a.y - b.y, z: a.z - b.z };
+  }
+
+  /** calculate vector length (squared) */
+  static lenSq(v: Point3) {
+    return v.x * v.x + v.y * v.y + v.z * v.z;
+  }
+
+  /** calculate vector length */
+  static len(v: Point3) {
+    return Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+  }
+
+  /** cross vectors */
+  static cross(a: Point3, b: Point3): Point3 {
+    const ax = a.x, ay = a.y, az = a.z;
+    const bx = b.x, by = b.y, bz = b.z;
+    return {
+      x: ay * bz - az * by,
+      y: az * bx - ax * bz,
+      z: ax * by - ay * bx,
+    }
+  }
+
+  /** normalize */
+  static norm(p: Point3): Point3 {
+    const length = Math.sqrt(p.x ** 2 + p.y ** 2 + p.z ** 2);
+    if (length === 0) {
+      return p;
+    }
+    return {
+      x: p.x / length,
+      y: p.y / length,
+      z: p.z / length
+    };
+  }
+
+  /** scalar multiplication */
+  static scalarMult(p: Point3, m: number): Point3 {
+    return {
+      x: p.x * m,
+      y: p.y * m,
+      z: p.z * m,
+    };
+  }
+
   /** rotate point a with quaternion q */
   static rot(v: Point3, q: Point4): Point3 {
     // faster version of:

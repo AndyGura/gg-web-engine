@@ -5,11 +5,27 @@ import { GgPhysicsWorld } from '../base/interfaces/gg-physics-world';
 import { GgVisualScene } from '../base/interfaces/gg-visual-scene';
 import { BodyPrimitiveDescriptor, GgMeta } from './models/gg-meta';
 import { Body3DOptions } from './models/body-options';
+import { BaseGgRenderer } from '../base/entities/base-gg-renderer';
+import { Gg3dCameraEntity } from './entities/gg-3d-camera.entity';
+import { GgWorld } from '../base/gg-world';
 
 // These interfaces have to be implemented for a particular 3D physics engine
 export interface IGg3dPhysicsWorld extends GgPhysicsWorld<Point3, Point4> {
   readonly factory: IGg3dBodyFactory;
   readonly loader: IGg3dBodyLoader;
+}
+
+export abstract class Gg3dRenderer extends BaseGgRenderer {
+  abstract readonly camera: Gg3dCameraEntity;
+
+  public onSpawned(world: GgWorld<any, any>) {
+    super.onSpawned(world);
+    world.addEntity(this.camera);
+  }
+  onRemoved() {
+    super.onRemoved();
+    this.world?.removeEntity(this.camera);
+  }
 }
 
 export interface IGg3dBody extends GgBody<Point3, Point4> {
@@ -70,6 +86,12 @@ export interface IGg3dVisualScene extends GgVisualScene<Point3, Point4> {
 }
 
 export interface IGg3dObject extends GgObject<Point3, Point4> {
+}
+
+export interface IGg3dCamera extends IGg3dObject {
+  get supportsFov(): boolean;
+  get fov(): number;
+  set fov(f: number);
 }
 
 export interface IGg3dObjectFactory<T extends IGg3dObject = IGg3dObject> {

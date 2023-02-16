@@ -1,6 +1,5 @@
 import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
-import { Vector3 } from 'three';
-import { createInlineTickController, Gg3dEntity, Gg3dWorld, GgViewportManager } from '@gg-web-engine/core';
+import { createInlineTickController, Gg3dEntity, Gg3dWorld, GgViewportManager, Mtrx4, Qtrn } from '@gg-web-engine/core';
 import { interval } from 'rxjs';
 import { Gg3dVisualScene, GgRenderer } from '@gg-web-engine/three';
 import { Gg3dPhysicsWorld } from '@gg-web-engine/ammo';
@@ -24,14 +23,16 @@ export class AppComponent implements OnInit {
 
     const canvas = await GgViewportManager.instance.createCanvas(1);
     const renderer: GgRenderer = new GgRenderer(canvas);
-    renderer.nativeCamera.lookAt(new Vector3(0, 0, 0));
-    renderer.nativeCamera.up = new Vector3(0, 0, 1);
     world.addEntity(renderer);
     createInlineTickController(world).subscribe(([elapsed, _]) => {
-      renderer.nativeCamera.position.x = 15 * Math.sin(elapsed / 2000);
-      renderer.nativeCamera.position.y = 15 * Math.cos(elapsed / 2000);
-      renderer.nativeCamera.position.z = 9;
-      renderer.nativeCamera.lookAt(new Vector3(0, 0, 0));
+      renderer.camera.position = {
+        x: 15 * Math.sin(elapsed / 2000),
+        y: 15 * Math.cos(elapsed / 2000),
+        z: 9,
+      };
+      renderer.camera.rotation = Qtrn.fromMatrix4(Mtrx4.lookAt(
+        renderer.camera.position, { x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 1 }
+      ));
     });
     renderer.activate();
 

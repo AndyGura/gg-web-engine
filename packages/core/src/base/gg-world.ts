@@ -4,7 +4,7 @@ import { isITickListener, ITickListener } from './entities/interfaces/i-tick-lis
 import { GgPhysicsWorld } from './interfaces/gg-physics-world';
 import { GgVisualScene } from './interfaces/gg-visual-scene';
 import { GgStatic } from './gg-static';
-import { KeyboardController } from './controllers/keyboard.controller';
+import { KeyboardController } from './controllers/base/keyboard.controller';
 
 export abstract class GgWorld<D, R> {
 

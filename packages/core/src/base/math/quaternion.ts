@@ -1,4 +1,5 @@
-import { Point4 } from '../models/points';
+import { Point3, Point4 } from '../models/points';
+import { Pnt3 } from './point3';
 
 export class Qtrn {
   /** clone quaternion */
@@ -54,5 +55,58 @@ export class Qtrn {
     let w = a.w * Math.sin((1 - t) * theta) / sinTheta + b.w * Math.sin(t * theta) / sinTheta;
 
     return { x, y, z, w };
+  }
+
+  /** creates quaternion from simple angle around axis. Assumes that axis vector is normalized */
+  static fromAngle( axis: Point3, angle: number ) {
+    // http://www.euclideanspace.com/maths/geometry/rotations/conversions/angleToQuaternion/index.htm
+    const halfAngle = angle / 2, s = Math.sin( halfAngle );
+    return {
+      ...Pnt3.scalarMult(axis, s),
+      w: Math.cos( halfAngle ),
+    };
+  }
+
+  /** creates quaternion from 4-dimension rotation matrix */
+  static fromMatrix4(m: number[]): Point4 {
+    // http://www.euclideanspace.com/maths/geometry/rotations/conversions/matrixToQuaternion/index.htm
+    // assumes the upper 3x3 of m is a pure rotation matrix (i.e, unscaled)
+    const m11 = m[ 0 ], m12 = m[ 4 ], m13 = m[ 8 ],
+      m21 = m[ 1 ], m22 = m[ 5 ], m23 = m[ 9 ],
+      m31 = m[ 2 ], m32 = m[ 6 ], m33 = m[ 10 ],
+      trace = m11 + m22 + m33;
+    if ( trace > 0 ) {
+      const s = 0.5 / Math.sqrt( trace + 1.0 );
+      return {
+        x: ( m32 - m23 ) * s,
+        y: ( m13 - m31 ) * s,
+        z: ( m21 - m12 ) * s,
+        w: 0.25 / s,
+      }
+    } else if ( m11 > m22 && m11 > m33 ) {
+      const s = 2.0 * Math.sqrt( 1.0 + m11 - m22 - m33 );
+      return {
+        x: 0.25 * s,
+        y: ( m12 + m21 ) / s,
+        z: ( m13 + m31 ) / s,
+        w: ( m32 - m23 ) / s,
+      }
+    } else if ( m22 > m33 ) {
+      const s = 2.0 * Math.sqrt( 1.0 + m22 - m11 - m33 );
+      return {
+        x: ( m12 + m21 ) / s,
+        y: 0.25 * s,
+        z: ( m23 + m32 ) / s,
+        w: ( m13 - m31 ) / s,
+      }
+    } else {
+      const s = 2.0 * Math.sqrt( 1.0 + m33 - m11 - m22 );
+      return {
+        x: ( m13 + m31 ) / s,
+        y: ( m23 + m32 ) / s,
+        z: 0.25 * s,
+        w: ( m21 - m12 ) / s,
+      }
+    }
   }
 }

@@ -1,15 +1,17 @@
-import { BaseGgRenderer, Gg3dWorld, GgViewport, Point2, RendererOptions } from '@gg-web-engine/core';
-import { Camera, PCFSoftShadowMap, PerspectiveCamera, sRGBEncoding, WebGLRenderer } from 'three';
+import { Gg3dRenderer, GgViewport, Point2, RendererOptions } from '@gg-web-engine/core';
+import { PCFSoftShadowMap, PerspectiveCamera, sRGBEncoding, WebGLRenderer } from 'three';
 import { Gg3dVisualScene } from './gg-3d-visual-scene';
+import { ThreeCameraEntity } from './three-camera.entity';
+import { ThreeCamera } from './three-camera';
 
-export class GgRenderer extends BaseGgRenderer {
+export class GgRenderer extends Gg3dRenderer {
 
   public readonly renderer: WebGLRenderer;
 
   constructor(
     canvas?: HTMLCanvasElement,
     rendererOptions: Partial<RendererOptions> = {},
-    public nativeCamera: Camera = new PerspectiveCamera(75, 1, 1, 10000),
+    public camera: ThreeCameraEntity = new ThreeCameraEntity(new ThreeCamera(new PerspectiveCamera(75, 1, 1, 10000))),
   ) {
     super(canvas, rendererOptions);
     this.renderer = new WebGLRenderer({
@@ -29,33 +31,22 @@ export class GgRenderer extends BaseGgRenderer {
     this.renderer.setPixelRatio(this.rendererOptions.forceResolution || devicePixelRatio);
   }
 
-  onSpawned(world: Gg3dWorld): void {
-    super.onSpawned(world);
-    (world.visualScene as Gg3dVisualScene).nativeScene?.add(this.nativeCamera);
-  };
-
-  onRemoved(): void {
-    (this.world!.visualScene as Gg3dVisualScene).nativeScene?.remove(this.nativeCamera);
-    super.onRemoved();
-  }
-
   resize(newSize: Point2): void {
     this.renderer.setSize(newSize.x, newSize.y);
-    if (this.nativeCamera instanceof PerspectiveCamera) {
+    if (this.camera.object3D.nativeCamera instanceof PerspectiveCamera) {
       const newAspect = newSize.x / newSize.y;
-      if (Math.abs(this.nativeCamera.aspect - newAspect) > 0.01) {
-        this.nativeCamera.aspect = newSize.x / newSize.y;
-        this.nativeCamera.updateProjectionMatrix();
+      if (Math.abs(this.camera.object3D.nativeCamera.aspect - newAspect) > 0.01) {
+        this.camera.object3D.nativeCamera.aspect = newSize.x / newSize.y;
+        this.camera.object3D.nativeCamera.updateProjectionMatrix();
       }
     }
   }
 
   render(): void {
-    this.renderer.render((this.world!.visualScene as Gg3dVisualScene).nativeScene!, this.nativeCamera);
+    this.renderer.render((this.world!.visualScene as Gg3dVisualScene).nativeScene!, this.camera.object3D.nativeCamera);
   }
 
   dispose(): void {
-    this.nativeCamera?.removeFromParent();
     if (this.renderer instanceof WebGLRenderer) {
       this.renderer.dispose();
       this.renderer.forceContextLoss();

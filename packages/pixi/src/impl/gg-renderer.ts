@@ -1,9 +1,9 @@
-import { BaseGgRenderer, Gg2dWorld, GgViewport, Point2, RendererOptions } from '@gg-web-engine/core';
+import { Gg2dRenderer, Gg2dWorld, GgViewport, Point2, RendererOptions } from '@gg-web-engine/core';
 import { Application, Renderer, Ticker } from 'pixi.js';
 import { Gg2dVisualScene } from './gg-2d-visual-scene';
 
 
-export class GgRenderer extends BaseGgRenderer {
+export class GgRenderer extends Gg2dRenderer {
 
   public readonly application: Application;
 

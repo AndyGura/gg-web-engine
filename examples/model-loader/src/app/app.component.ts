@@ -1,6 +1,6 @@
 import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
-import { DirectionalLight, HemisphereLight, Vector3 } from 'three';
-import { createInlineTickController, Gg3dWorld, GgViewportManager } from '@gg-web-engine/core';
+import { DirectionalLight, HemisphereLight } from 'three';
+import { createInlineTickController, Gg3dWorld, GgViewportManager, Mtrx4, Qtrn } from '@gg-web-engine/core';
 import { interval } from 'rxjs';
 import { Gg3dObject, Gg3dVisualScene, GgRenderer } from '@gg-web-engine/three';
 import { Gg3dPhysicsWorld } from '@gg-web-engine/ammo';
@@ -24,14 +24,16 @@ export class AppComponent implements OnInit {
 
     const canvas = await GgViewportManager.instance.createCanvas(1);
     const renderer: GgRenderer = new GgRenderer(canvas);
-    renderer.nativeCamera.lookAt(new Vector3(0, 0, 0));
-    renderer.nativeCamera.up = new Vector3(0, 0, 1);
     world.addEntity(renderer);
     createInlineTickController(world).subscribe(([elapsed, _]) => {
-      renderer.nativeCamera.position.x = 10 * Math.sin(elapsed / 2000);
-      renderer.nativeCamera.position.y = 10 * Math.cos(elapsed / 2000);
-      renderer.nativeCamera.position.z = 6;
-      renderer.nativeCamera.lookAt(new Vector3(0, 0, 0));
+      renderer.camera.position = {
+        x: 10 * Math.sin(elapsed / 2000),
+        y: 10 * Math.cos(elapsed / 2000),
+        z: 6,
+      };
+      renderer.camera.rotation = Qtrn.fromMatrix4(Mtrx4.lookAt(
+        renderer.camera.position, { x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 1 }
+      ));
     });
     renderer.activate();
 
@@ -86,7 +88,13 @@ export class AppComponent implements OnInit {
       } else {
         glbId = 'compound';
       }
-      const { entities } = await world.loader.loadGgGlb('assets/' + glbId, { position: { x: Math.random() * 5 - 2.5, y: Math.random() * 5 - 2.5, z: 10 } });
+      const { entities } = await world.loader.loadGgGlb('assets/' + glbId, {
+        position: {
+          x: Math.random() * 5 - 2.5,
+          y: Math.random() * 5 - 2.5,
+          z: 10
+        }
+      });
       const item = entities[0];
       (item.object3D as Gg3dObject).nativeMesh.traverse((obj) => {
         obj.castShadow = true;

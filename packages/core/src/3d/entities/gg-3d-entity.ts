@@ -65,7 +65,7 @@ export class Gg3dEntity extends GgPositionable3dEntity implements ITickListener 
 
   constructor(
     public readonly object3D: IGg3dObject | null,
-    public readonly objectBody: IGg3dBody | null,
+    public readonly objectBody: IGg3dBody | null = null,
   ) {
     super();
     if (objectBody && object3D) {

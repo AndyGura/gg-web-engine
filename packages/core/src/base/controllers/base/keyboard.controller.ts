@@ -20,7 +20,10 @@ export class KeyboardController implements IController {
     }
     const subj = new BehaviorSubject<boolean>(false);
     this.bindings[code].push(subj);
-    return subj.pipe(finalize(() => this.bindings[code].splice(this.bindings[code].indexOf(subj), 1)));
+    return subj.pipe(finalize(() => {
+      this.bindings[code].splice(this.bindings[code].indexOf(subj), 1);
+      subj.complete();
+    }));
   }
 
   async start() {
