@@ -1,8 +1,10 @@
 import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
-import { DirectionalLight, HemisphereLight } from 'three';
+import { AmbientLight, DirectionalLight, HemisphereLight, PerspectiveCamera } from 'three';
 import { FreeCameraController, Gg3dWorld, GgViewportManager, Mtrx4, Qtrn, } from '@gg-web-engine/core';
 import { Gg3dVisualScene, GgRenderer } from '@gg-web-engine/three';
 import { Gg3dPhysicsWorld } from '@gg-web-engine/ammo';
+import { ThreeCameraEntity } from '@gg-web-engine/three/dist/impl/three-camera.entity';
+import { ThreeCamera } from '@gg-web-engine/three/dist/impl/three-camera';
 
 @Component({
   selector: 'app-root',
@@ -22,14 +24,17 @@ export class AppComponent implements OnInit {
     await world.init();
 
     const canvas = await GgViewportManager.instance.createCanvas(1);
-    const renderer: GgRenderer = new GgRenderer(canvas);
+    const renderer: GgRenderer = new GgRenderer(canvas, {}, new ThreeCameraEntity(
+      new ThreeCamera(new PerspectiveCamera(75, 1, 1, 10000)),
+      world.physicsWorld.factory.createSphere(2, {}),
+    ));
     world.addEntity(renderer);
     renderer.camera.position = { x: 0, y: 120, z: 112 };
-    renderer.camera.rotation = Qtrn.fromMatrix4(Mtrx4.lookAt(renderer.camera.position, { x: 0, y: 0, z: 10 }, {
-      x: 0,
-      y: 0,
-      z: 1
-    }));
+    renderer.camera.rotation = Qtrn.fromMatrix4(Mtrx4.lookAt(
+      renderer.camera.position,
+      { x: 0, y: 0, z: 10 },
+      { x: 0, y: 0, z: 1 },
+    ));
     renderer.activate();
 
     const freeCameraController: FreeCameraController = new FreeCameraController(
@@ -59,9 +64,7 @@ export class AppComponent implements OnInit {
     hemiLight.position.set(0, 50, 0);
     scene.nativeScene?.add(hemiLight);
 
-    const { entities, props } = await world.loader.loadGgGlb('assets/city', {
-      propsPath: 'assets/props/',
-    });
+    const { entities, props } = await world.loader.loadGgGlb('assets/city');
     for (const item of entities) {
       world.addEntity(item);
     }

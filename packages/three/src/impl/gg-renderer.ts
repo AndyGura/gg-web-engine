@@ -33,11 +33,11 @@ export class GgRenderer extends Gg3dRenderer {
 
   resize(newSize: Point2): void {
     this.renderer.setSize(newSize.x, newSize.y);
-    if (this.camera.object3D.nativeCamera instanceof PerspectiveCamera) {
+    if (this.camera.object3D.nativeCamera instanceof PerspectiveCamera || this.camera.object3D.nativeCamera.type == "PerspectiveCamera") {
       const newAspect = newSize.x / newSize.y;
-      if (Math.abs(this.camera.object3D.nativeCamera.aspect - newAspect) > 0.01) {
-        this.camera.object3D.nativeCamera.aspect = newSize.x / newSize.y;
-        this.camera.object3D.nativeCamera.updateProjectionMatrix();
+      if (Math.abs((this.camera.object3D.nativeCamera as PerspectiveCamera).aspect - newAspect) > 0.01) {
+        (this.camera.object3D.nativeCamera as PerspectiveCamera).aspect = newSize.x / newSize.y;
+        (this.camera.object3D.nativeCamera as PerspectiveCamera).updateProjectionMatrix();
       }
     }
   }

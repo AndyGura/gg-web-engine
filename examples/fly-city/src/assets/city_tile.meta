@@ -1,1 +1,1 @@
-{"curves": [], "dummies": [], "rigidBodies": [{"name": "ground", "dynamic": false, "shape": "BOX", "position": {"x": 0.0, "y": 0.0, "z": 0.0}, "rotation": {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0}, "mass": 1.0, "restitution": 0.0, "friction": 0.5, "dimensions": {"x": 100.0, "y": 100.0, "z": 0.0}}]}
+{"curves": [], "dummies": [], "rigidBodies": []}

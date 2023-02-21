@@ -5,7 +5,7 @@ import { Gg3dObject } from './gg-3d-object';
 export class ThreeCamera extends Gg3dObject implements IGg3dCamera {
 
   get supportsFov(): boolean {
-    return this.nativeCamera instanceof PerspectiveCamera;
+    return this.nativeCamera instanceof PerspectiveCamera || this.nativeCamera.type == "PerspectiveCamera";
   }
 
   get fov(): number {
