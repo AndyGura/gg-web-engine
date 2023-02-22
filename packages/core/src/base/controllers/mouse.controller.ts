@@ -1,7 +1,7 @@
 import { IController } from './i-controller';
 import { filter, fromEvent, Observable, Subject, takeUntil } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { Point2 } from '../../models/points';
+import { Point2 } from '../models/points';
 
 export type MouseControllerPointLockOptions = { ignoreMovementWhenNotLocked: boolean, canvas: HTMLCanvasElement };
 export type MouseControllerOptions = {

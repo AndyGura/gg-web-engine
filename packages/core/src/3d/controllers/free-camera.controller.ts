@@ -1,12 +1,12 @@
-import { IController } from './base/i-controller';
+import { IController } from '../../base/controllers/i-controller';
 import { combineLatest, Subject, takeUntil } from 'rxjs';
-import { MouseController, MouseControllerOptions } from './base/mouse.controller';
-import { Pnt3 } from '../math/point3';
-import { Gg3dCameraEntity } from '../../3d/entities/gg-3d-camera.entity';
-import { KeyboardController } from './base/keyboard.controller';
-import { Pnt2 } from '../math/point2';
-import { Point2 } from '../models/points';
-import { Qtrn } from '../math/quaternion';
+import { MouseController, MouseControllerOptions } from '../../base/controllers/mouse.controller';
+import { Pnt3 } from '../../base/math/point3';
+import { Gg3dCameraEntity } from '../entities/gg-3d-camera.entity';
+import { KeyboardController } from '../../base/controllers/keyboard.controller';
+import { Pnt2 } from '../../base/math/point2';
+import { Point2 } from '../../base/models/points';
+import { Qtrn } from '../../base/math/quaternion';
 
 type FreeCameraControllerOptions = {
   movementOptions: {

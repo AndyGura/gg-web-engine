@@ -1,4 +1,3 @@
-// TODO port map graph to new engine
 // TODO raycast vehicle car + arrows controller on car
 // TODO migrate sandbox (create new one in gg-web-engine/examples), make map better
 // TODO viewport refactoring? allow non-fullscreen apps
@@ -24,10 +23,9 @@ export * from './base/math/point2';
 export * from './base/math/point3';
 export * from './base/math/quaternion';
 export * from './base/math/matrix4';
-export * from './base/controllers/base/i-controller';
-export * from './base/controllers/base/keyboard.controller';
-export * from './base/controllers/base/mouse.controller';
-export * from './base/controllers/free-camera.controller';
+export * from './base/controllers/i-controller';
+export * from './base/controllers/keyboard.controller';
+export * from './base/controllers/mouse.controller';
 
 export * from './2d/entities/gg-2d-entity';
 export * from './2d/entities/gg-positionable-2d-entity';
@@ -35,9 +33,11 @@ export * from './2d/models/body-options';
 export * from './2d/interfaces';
 export * from './2d/gg-2d-world';
 
+export * from './3d/controllers/free-camera.controller';
 export * from './3d/entities/gg-3d-entity';
 export * from './3d/entities/gg-positionable-3d-entity';
 export * from './3d/entities/gg-3d-camera.entity';
+export * from './3d/entities/gg-3d-map-graph.entity';
 export * from './3d/models/body-options';
 export * from './3d/models/gg-meta';
 export * from './3d/interfaces';

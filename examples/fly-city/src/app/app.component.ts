@@ -7,7 +7,7 @@ import {
   PerspectiveCamera,
   RGBFormat
 } from 'three';
-import { FreeCameraController, Gg3dWorld, GgViewportManager, Mtrx4, Qtrn, } from '@gg-web-engine/core';
+import { FreeCameraController, Gg3dWorld, GgViewportManager, Mtrx4, Qtrn, MapGraph, Gg3dMapGraphEntity } from '@gg-web-engine/core';
 import { Gg3dVisualScene, GgRenderer, ThreeCamera, ThreeCameraEntity } from '@gg-web-engine/three';
 import { Gg3dPhysicsWorld } from '@gg-web-engine/ammo';
 
@@ -37,7 +37,7 @@ export class AppComponent implements OnInit {
     renderer.camera.position = { x: 0, y: 0, z: 10 };
     renderer.camera.rotation = Qtrn.fromMatrix4(Mtrx4.lookAt(
       renderer.camera.position,
-      { x: 0, y: -10, z: 10 },
+      { x: 0, y: 10, z: 10 },
       { x: 0, y: 0, z: 1 },
     ));
     renderer.activate();
@@ -47,7 +47,7 @@ export class AppComponent implements OnInit {
       renderer.camera,
       {
         movementOptions: {
-          speed: 3,
+          speed: 5,
         },
         mouseOptions: {
           pointerLock: {
@@ -77,15 +77,14 @@ export class AppComponent implements OnInit {
     envMap.mapping = CubeReflectionMapping;
     scene.nativeScene!.background = envMap;
 
-    const { entities, props } = await world.loader.loadGgGlb('assets/city');
-    for (const item of entities) {
-      world.addEntity(item);
-    }
-    for (const prop of props || []) {
-      for (const item of prop.entities) {
-        world.addEntity(item);
-      }
-    }
+    const mapGraph = MapGraph.fromSquareGrid(
+      Array(100).fill(null).map((_, i) => (
+        Array(100).fill(null).map((_, j) => ({ path: 'assets/city_tile', position: { x: (j - 50) * 153, y: (i - 50) * 153, z: 0 }}))
+      ))
+    );
+    const map = new Gg3dMapGraphEntity(mapGraph, { loadDepth: 5 });
+    world.addEntity(map);
+    map.loaderCursorEntity$.next(renderer.camera);
 
     world.start();
 
