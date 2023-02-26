@@ -8,6 +8,7 @@ import { Body3DOptions } from './models/body-options';
 import { BaseGgRenderer } from '../base/entities/base-gg-renderer';
 import { Gg3dCameraEntity } from './entities/gg-3d-camera.entity';
 import { GgWorld } from '../base/gg-world';
+import { SuspensionOptions, WheelOptions } from './entities/gg-3d-raycast-vehicle.entity';
 
 // These interfaces have to be implemented for a particular 3D physics engine
 export interface IGg3dPhysicsWorld extends GgPhysicsWorld<Point3, Point4> {
@@ -29,6 +30,28 @@ export abstract class Gg3dRenderer extends BaseGgRenderer {
 }
 
 export interface IGg3dBody extends GgBody<Point3, Point4> {
+}
+
+export interface IGg3dRaycastVehicle extends IGg3dBody {
+  /** Return speed in m/s, calculated by car itself (which should be shown on the speedometer) */
+  get wheelSpeed(): number;
+
+  addWheel(options: WheelOptions, suspensionOptions: SuspensionOptions): void;
+
+  /** Set steering value for wheel. The unit of steering is radian */
+  setSteering(wheelIndex: number, steering: number): void;
+
+  /** Apply force to wheel. Units? */
+  applyEngineForce(wheelIndex: number, force: number): void;
+
+  /** Apply brake force to wheel. Units? */
+  applyBrake(wheelIndex: number, force: number): void;
+
+  isWheelTouchesGround(wheelIndex: number): boolean;
+
+  getWheelTransform(wheelIndex: number): { position: Point3, rotation: Point4 };
+
+  resetSuspension(): void;
 }
 
 export abstract class IGg3dBodyFactory<T extends IGg3dBody = IGg3dBody> {
