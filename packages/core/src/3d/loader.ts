@@ -4,6 +4,7 @@ import { Gg3dEntity } from './entities/gg-3d-entity';
 import { Point3, Point4 } from '../base/models/points';
 import { Pnt3 } from '../base/math/point3';
 import { Qtrn } from '../base/math/quaternion';
+import { IGg3dBody, IGg3dObject } from './interfaces';
 
 export type LoadOptions = {
   // initial position
@@ -22,6 +23,8 @@ const defaultLoadOptions: LoadOptions = {
   loadProps: true,
 };
 
+export type LoadResourcesResult = { resources: { object3D: IGg3dObject | null, body: IGg3dBody | null }[], meta: GgMeta };
+
 export type LoadResult = {
   entities: Gg3dEntity[],
   meta: GgMeta
@@ -32,8 +35,7 @@ export class Gg3dLoader {
   constructor(protected readonly world: Gg3dWorld) {
   }
 
-  public async loadGgGlb(path: string, options: Partial<LoadOptions> = defaultLoadOptions): Promise<LoadResult & { props?: LoadResult[] }> {
-    const loadOptions = { ...defaultLoadOptions, ...options };
+  public async loadGgGlbResources(path: string): Promise<LoadResourcesResult> {
     const [glb, meta] = await Promise.all([
       fetch(`${path}.glb`).then(r => r.arrayBuffer()),
       fetch(`${path}.meta`).then(r => r.text()).then(r => JSON.parse(r)),
@@ -41,16 +43,36 @@ export class Gg3dLoader {
     if (!glb) {
       throw new Error('GLB not found');
     }
-    const result: LoadResult & { props?: LoadResult[] } = {
-      entities: [],
-      meta,
-    }
     const [object, bodies] = await Promise.all([
       this.world.visualScene.loader.loadFromGgGlb(glb, meta),
       this.world.physicsWorld.loader.loadFromGgGlb(glb, meta),
     ]);
+    const result: LoadResourcesResult = { resources: [], meta };
     if (!object) {
       return result;
+    }
+    if (bodies.length == 0) {
+      result.resources.push({ object3D: object, body: null });
+    } else if (bodies.length == 1) {
+      result.resources.push({ object3D: object, body: bodies[0] });
+    } else {
+      // TODO implement hierarchy between entities and preserve it here
+      for (const body of bodies) {
+        result.resources.push({ object3D: object.popChild(body.name), body });
+      }
+      if (!object.isEmpty()) {
+        result.resources.push({ object3D: object, body: null });
+      }
+    }
+    return result;
+  }
+
+  public async loadGgGlb(path: string, options: Partial<LoadOptions> = defaultLoadOptions): Promise<LoadResult & { props?: LoadResult[] }> {
+    const loadOptions = { ...defaultLoadOptions, ...options };
+    const { resources, meta } = await this.loadGgGlbResources(path);
+    const result: LoadResult & { props?: LoadResult[] } = {
+      entities: resources.map(({ object3D, body }) => new Gg3dEntity(object3D, body)),
+      meta,
     }
     if (loadOptions.loadProps) {
       result.props =
@@ -65,19 +87,6 @@ export class Gg3dLoader {
             },
           ))
         );
-    }
-    if (bodies.length == 0) {
-      result.entities.push(new Gg3dEntity(object, null));
-    } else if (bodies.length == 1) {
-      result.entities.push(new Gg3dEntity(object, bodies[0]));
-    } else {
-      // TODO implement hierarchy between entities and preserve it here
-      for (const body of bodies) {
-        result.entities.push(new Gg3dEntity(object.popChild(body.name), body));
-      }
-      if (!object.isEmpty()) {
-        result.entities.push(new Gg3dEntity(object, null));
-      }
     }
     result.entities.forEach(e => {
       e.position = Pnt3.add(Pnt3.rot(Pnt3.clone(e.position), loadOptions.rotation), loadOptions.position);

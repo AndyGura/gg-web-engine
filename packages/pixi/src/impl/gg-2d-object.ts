@@ -1,4 +1,4 @@
-import { IGg2dObject, Point2 } from '@gg-web-engine/core';
+import { GgBox2d, IGg2dObject, Point2 } from '@gg-web-engine/core';
 import { Gg2dVisualScene } from './gg-2d-visual-scene';
 import { DisplayObject } from 'pixi.js';
 
@@ -34,6 +34,14 @@ export class Gg2dObject implements IGg2dObject {
     this.nativeSprite.scale.y = value.y;
   }
 
+  public get visible(): boolean {
+    return this.nativeSprite.visible;
+  }
+
+  public set visible(value: boolean) {
+    this.nativeSprite.visible = value;
+  }
+
   public name: string = '';
 
   public isEmpty(): boolean {
@@ -43,6 +51,18 @@ export class Gg2dObject implements IGg2dObject {
   popChild(name: string): Gg2dObject | null {
     return null;
   };
+
+  getBoundings(): GgBox2d {
+    const bounds = this.nativeSprite._bounds;
+    return {
+      min: { x: bounds.minX, y: bounds.minY },
+      max: { x: bounds.maxX, y: bounds.maxY },
+    };
+  }
+
+  clone(): Gg2dObject {
+    return new Gg2dObject(this.nativeSprite);
+  }
 
   addToWorld(world: Gg2dVisualScene): void {
     world.nativeContainer?.addChild(this.nativeSprite);

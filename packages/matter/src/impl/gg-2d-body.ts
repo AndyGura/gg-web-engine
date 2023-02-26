@@ -43,4 +43,9 @@ export class Gg2dBody implements IGg2dBody {
   dispose(): void {
   }
 
+  resetMotion(): void {
+    Body.setVelocity(this.nativeBody, { x: 0, y: 0 });
+    Body.setAngularVelocity(this.nativeBody, 0);
+  }
+
 }

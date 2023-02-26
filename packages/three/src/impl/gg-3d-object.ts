@@ -1,5 +1,5 @@
-import { IGg3dObject, Point3, Point4 } from '@gg-web-engine/core';
-import { Group, Mesh, Object3D, Scene } from 'three';
+import { IGg3dObject, Point3, Point4, GgBox3d } from '@gg-web-engine/core';
+import { Box3, Group, Mesh, Object3D, Scene } from 'three';
 import { Gg3dVisualScene } from './gg-3d-visual-scene';
 
 export class Gg3dObject implements IGg3dObject {
@@ -38,6 +38,14 @@ export class Gg3dObject implements IGg3dObject {
     this.nativeMesh.scale.z = value.z;
   }
 
+  public get visible(): boolean {
+    return this.nativeMesh.visible;
+  }
+
+  public set visible(value: boolean) {
+    this.nativeMesh.visible = value;
+  }
+
   public name: string = '';
 
   public isEmpty(): boolean {
@@ -55,6 +63,14 @@ export class Gg3dObject implements IGg3dObject {
     }
     return null;
   };
+
+  getBoundings(): GgBox3d {
+    return new Box3().setFromObject(this.nativeMesh);
+  }
+
+  clone(): Gg3dObject {
+    return new Gg3dObject(this.nativeMesh.clone());
+  }
 
   addToWorld(world: Gg3dVisualScene): void {
     world.nativeScene?.add(this.nativeMesh);

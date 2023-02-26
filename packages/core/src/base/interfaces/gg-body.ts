@@ -12,4 +12,7 @@ export interface GgBody<D, R> {
   removeFromWorld(world: GgPhysicsWorld<D, R>): void;
 
   dispose(): void;
+
+  /** clear velocities etc. */
+  resetMotion(): void;
 }

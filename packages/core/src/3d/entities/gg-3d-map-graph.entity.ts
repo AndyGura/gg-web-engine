@@ -1,4 +1,4 @@
-import { BehaviorSubject, NEVER, Observable, Subject, switchMap } from 'rxjs';
+import { BehaviorSubject, NEVER, Observable, startWith, Subject, switchMap } from 'rxjs';
 import { distinctUntilChanged, map, throttleTime } from 'rxjs/operators';
 import { Point3 } from '../../base/models/points';
 import { Graph } from '../../base/data-structures/graph';
@@ -94,6 +94,7 @@ export class Gg3dMapGraphEntity extends GgEntity implements ITickListener {
     this.loaderCursorEntity$.pipe(
       switchMap(entity => entity
         ? this.tick$.pipe(
+          startWith(null), // map will perform initial loading even if world not started yet. Handy to preload map
           throttleTime(1000),
           map(() => entity.position)
         )
@@ -123,6 +124,8 @@ export class Gg3dMapGraphEntity extends GgEntity implements ITickListener {
   }
 
   dispose() {
+    // TODO implement hierarchy: entity has own children and they are being added/removed/disposed with the parent.
+    // make it here for nodes and in car for wheels
     for (const node of this.loaded.keys()) {
       this.disposeChunk(node);
     }

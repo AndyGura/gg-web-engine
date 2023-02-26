@@ -8,9 +8,12 @@ export class Pnt2 {
 
   /** add point b to point a */
   static add(a: Point2, b: Point2): Point2 {
-    a.x += b.x;
-    a.y += b.y;
-    return a;
+    return { x: a.x + b.x, y: a.y + b.y };
+  }
+
+  /** subtract point b from point a */
+  static sub(a: Point2, b: Point2): Point2 {
+    return { x: a.x - b.x, y: a.y - b.y };
   }
 
   /** normalize */

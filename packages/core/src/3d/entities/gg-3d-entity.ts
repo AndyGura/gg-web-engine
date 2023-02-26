@@ -9,7 +9,6 @@ export class Gg3dEntity extends GgPositionable3dEntity implements ITickListener 
 
   public readonly tick$: Subject<[number, number]> = new Subject<[number, number]>();
   public readonly tickOrder = 750;
-  private tickSub: Subscription | null = null;
 
   public get position(): Point3 {
     return super.position;
@@ -53,7 +52,18 @@ export class Gg3dEntity extends GgPositionable3dEntity implements ITickListener 
     super.scale = value;
   }
 
-  private runTransformBinding(objectBody: IGg3dBody, object3D: IGg3dObject): void {
+  public get visible(): boolean {
+    return !!this.object3D?.visible;
+  }
+
+  set visible(value: boolean) {
+    // TODO should work for all child entities after hierarchy implemented, re-check overrides
+    if (this.object3D) {
+      this.object3D.visible = value;
+    }
+  }
+
+  protected runTransformBinding(objectBody: IGg3dBody, object3D: IGg3dObject): void {
     // bind physics body transform to mesh transform
     const pos = objectBody.position;
     const quat = objectBody.rotation;
@@ -69,7 +79,7 @@ export class Gg3dEntity extends GgPositionable3dEntity implements ITickListener 
   ) {
     super();
     if (objectBody && object3D) {
-      this.tickSub = this.tick$.subscribe(() => {
+      this.tick$.subscribe(() => {
         this.runTransformBinding(objectBody, object3D);
       });
       this.runTransformBinding(objectBody, object3D);
@@ -91,8 +101,7 @@ export class Gg3dEntity extends GgPositionable3dEntity implements ITickListener 
   }
 
   dispose(): void {
-    this.tickSub?.unsubscribe();
-    this.tickSub = null;
+    this.tick$.unsubscribe();
     if (this.object3D) {
       this.object3D.dispose();
     }

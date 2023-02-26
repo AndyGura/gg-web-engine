@@ -38,7 +38,7 @@ export class Gg3dBody implements IGg3dBody {
   public name: string = '';
 
   constructor(
-    private readonly world: Gg3dPhysicsWorld,
+    protected readonly world: Gg3dPhysicsWorld,
     public nativeBody: Ammo.btRigidBody,
   ) {
   }
@@ -60,6 +60,14 @@ export class Gg3dBody implements IGg3dBody {
     } catch {
       // pass
     }
+  }
+
+  resetMotion(): void {
+    const emptyVector = new this.ammo.btVector3();
+    this.nativeBody.setLinearVelocity(emptyVector);
+    this.nativeBody.setAngularVelocity(emptyVector);
+    this.nativeBody.clearForces();
+    this.ammo.destroy(emptyVector);
   }
 
 }
