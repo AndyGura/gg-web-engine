@@ -123,14 +123,6 @@ export class Gg3dMapGraphEntity extends GgEntity implements ITickListener {
     this.loaderCursorEntity$.next(null);
   }
 
-  dispose() {
-    // TODO implement hierarchy: entity has own children and they are being added/removed/disposed with the parent.
-    // make it here for nodes and in car for wheels
-    for (const node of this.loaded.keys()) {
-      this.disposeChunk(node);
-    }
-  }
-
   protected async loadChunk(node: MapGraphNodeType): Promise<Gg3dEntity[]> {
     // TODO provide all loader options in the node
     const loaded = await this.world!.loader.loadGgGlb(node.path, {
@@ -146,10 +138,8 @@ export class Gg3dMapGraphEntity extends GgEntity implements ITickListener {
           return p;
         }, [])
     ];
-    for (const item of entities) {
-      this.world!.addEntity(item);
-    }
     this.loaded.set(node, entities);
+    this.addChildren(...entities);
     return entities;
   }
 
@@ -157,9 +147,7 @@ export class Gg3dMapGraphEntity extends GgEntity implements ITickListener {
     if (!this.loaded.has(node)) {
       return;
     }
-    for (const entity of this.loaded.get(node)!) {
-      this.world!.removeEntity(entity, true);
-    }
+    this.removeChildren(this.loaded.get(node)!, true);
     this.loaded.delete(node);
   }
 }

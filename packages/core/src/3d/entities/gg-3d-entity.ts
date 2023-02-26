@@ -1,4 +1,4 @@
-import { Subject, Subscription } from 'rxjs';
+import { Subject } from 'rxjs';
 import { GgPositionable3dEntity } from './gg-positionable-3d-entity';
 import { ITickListener } from '../../base/entities/interfaces/i-tick-listener';
 import { Point3, Point4 } from '../../base/models/points';
@@ -57,9 +57,13 @@ export class Gg3dEntity extends GgPositionable3dEntity implements ITickListener 
   }
 
   set visible(value: boolean) {
-    // TODO should work for all child entities after hierarchy implemented, re-check overrides
     if (this.object3D) {
       this.object3D.visible = value;
+    }
+    for (const entity of this._children) {
+      if (entity instanceof Gg3dEntity && entity.object3D) {
+        entity.object3D.visible = value;
+      }
     }
   }
 

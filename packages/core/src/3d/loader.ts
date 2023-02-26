@@ -56,7 +56,6 @@ export class Gg3dLoader {
     } else if (bodies.length == 1) {
       result.resources.push({ object3D: object, body: bodies[0] });
     } else {
-      // TODO implement hierarchy between entities and preserve it here
       for (const body of bodies) {
         result.resources.push({ object3D: object.popChild(body.name), body });
       }
