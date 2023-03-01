@@ -30,9 +30,7 @@ export class AppComponent implements OnInit {
         y: 15 * Math.cos(elapsed / 2000),
         z: 9,
       };
-      renderer.camera.rotation = Qtrn.fromMatrix4(Mtrx4.lookAt(
-        renderer.camera.position, { x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 1 }
-      ));
+      renderer.camera.rotation = Qtrn.lookAt(renderer.camera.position, { x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 1 });
     });
     renderer.activate();
 

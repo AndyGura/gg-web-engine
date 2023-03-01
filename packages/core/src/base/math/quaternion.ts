@@ -1,5 +1,6 @@
 import { Point3, Point4 } from '../models/points';
 import { Pnt3 } from './point3';
+import { Mtrx4 } from './matrix4';
 
 export class Qtrn {
   /** clone quaternion */
@@ -108,5 +109,10 @@ export class Qtrn {
         w: ( m21 - m12 ) / s,
       }
     }
+  }
+
+  /** creates a rotation for object, so it will look at some point in space */
+  static lookAt(eye: Point3, target: Point3, up: Point3): Point4 {
+    return this.fromMatrix4(Mtrx4.lookAt(eye, target, up));
   }
 }
