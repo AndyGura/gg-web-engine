@@ -174,9 +174,7 @@ export class AppComponent implements OnInit {
         chassisMesh,
         new Gg3dRaycastVehicle(
           physScene,
-          physScene.factory.createCompoundBody([{ shape: 'BOX', position: { x: 0, y: 0, z: 0.8}, dimensions: { x: 2, y: 5, z: 0.8} }], { mass: 1600, dynamic: true }).nativeBody,
-          // FIXME loaded compound body does not work for some reason (was working in the legacy sandbox demo)
-          // (chassisBody as Gg3dBody).nativeBody,
+          (chassisBody as Gg3dBody).nativeBody,
         ),
         wheelMesh,
         'x',
@@ -202,6 +200,7 @@ export class AppComponent implements OnInit {
         };
       const elasticZAngle = elasticAngle(250);
       createInlineTickController(world).subscribe(([elapsed, delta]) => {
+        // FIXME jitters when turning
         const vectorLength = 6.5;
         const vectorAngle = 0.3948;
         const objectPosition = this.car!.position;
