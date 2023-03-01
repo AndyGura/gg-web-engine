@@ -6,7 +6,9 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "postinstall": "npm link @gg-web-engine/core @gg-web-engine/three @gg-web-engine/ammo",
+    "postupdate": "npm link @gg-web-engine/core @gg-web-engine/three @gg-web-engine/ammo"
   },
   "private": true,
   "dependencies": {
@@ -18,12 +20,7 @@
     "@angular/platform-browser": "^14.1.0",
     "@angular/platform-browser-dynamic": "^14.1.0",
     "@angular/router": "^14.1.0",
-    "ammojs-typed": "^1.0.6",
-    "fs-web": "^1.0.1",
-    "mini-signals": "^1.2.0",
-    "path-browserify": "^1.0.1",
     "rxjs": "~7.5.0",
-    "three": "^0.148.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.11.4"
   },

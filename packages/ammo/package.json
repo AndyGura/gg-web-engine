@@ -7,7 +7,9 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "prepublish": "tsc",
-    "build": "tsc"
+    "build": "tsc",
+    "postinstall": "npm link @gg-web-engine/core",
+    "postupdate": "npm link @gg-web-engine/core"
   },
   "repository": {
     "type": "git",
@@ -30,5 +32,8 @@
     "fs-web": "^1.0.1",
     "mini-signals": "^1.2.0",
     "path-browserify": "^1.0.1"
+  },
+  "devDependencies": {
+    "typescript": "~4.7.2"
   }
 }

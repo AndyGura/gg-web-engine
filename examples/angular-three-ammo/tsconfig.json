@@ -25,7 +25,9 @@
     "paths": {
       "mini-signals": ["./node_modules/@gg-web-engine/ammo/node_modules/mini-signals/index.js"],
       "path": ["./node_modules/@gg-web-engine/ammo/node_modules/path-browserify"],
-      "fs": ["./node_modules/@gg-web-engine/ammo/node_modules/fs-web"]
+      "fs": ["./node_modules/@gg-web-engine/ammo/node_modules/fs-web"],
+      "three": ["./node_modules/@gg-web-engine/three/node_modules/three"],
+      "ammojs-typed": ["./node_modules/@gg-web-engine/ammo/node_modules/ammojs-typed"]
     }
   },
   "angularCompilerOptions": {

@@ -7,7 +7,9 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "prepublish": "tsc",
-    "build": "tsc"
+    "build": "tsc",
+    "postinstall": "npm link @gg-web-engine/core",
+    "postupdate": "npm link @gg-web-engine/core"
   },
   "repository": {
     "type": "git",
@@ -29,6 +31,7 @@
     "matter-js": "^0.18.0"
   },
   "devDependencies": {
-    "@types/matter-js": "^0.18.2"
+    "@types/matter-js": "^0.18.2",
+    "typescript": "~4.7.2"
   }
 }

@@ -6,7 +6,9 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "postinstall": "npm link @gg-web-engine/core @gg-web-engine/pixi @gg-web-engine/matter",
+    "postupdate": "npm link @gg-web-engine/core @gg-web-engine/pixi @gg-web-engine/matter"
   },
   "private": true,
   "dependencies": {
