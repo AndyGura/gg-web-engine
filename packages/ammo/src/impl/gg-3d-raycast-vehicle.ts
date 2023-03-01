@@ -25,7 +25,7 @@ export class Gg3dRaycastVehicle extends Gg3dBody implements IGg3dRaycastVehicle 
 
   get wheelSpeed(): number {
     // FIXME not correct (shows chassis speed in world)
-    return this.nativeVehicle.getCurrentSpeedKmHour();
+    return this.nativeVehicle.getCurrentSpeedKmHour() / 3.6;
   }
 
   addToWorld(world: Gg3dPhysicsWorld) {
@@ -72,7 +72,8 @@ export class Gg3dRaycastVehicle extends Gg3dBody implements IGg3dRaycastVehicle 
   }
 
   getWheelTransform(wheelIndex: number): { position: Point3, rotation: Point4 } {
-    this.nativeVehicle.updateWheelTransform(wheelIndex, true);
+    // FIXME when set to `true`, wheels are jittering, but it was not the case in old sandbox app. Check why
+    this.nativeVehicle.updateWheelTransform(wheelIndex, false);
     const transform = this.nativeVehicle.getWheelTransformWS(wheelIndex);
     const origin = transform.getOrigin();
     const quaternion = transform.getRotation();
@@ -85,7 +86,7 @@ export class Gg3dRaycastVehicle extends Gg3dBody implements IGg3dRaycastVehicle 
   resetSuspension(): void {
     this.nativeVehicle.resetSuspension();
     for(let i=0;i<this.nativeVehicle.getNumWheels();i++){
-      this.nativeVehicle.updateWheelTransform(i,true);
+      this.nativeVehicle.updateWheelTransform(i, true);
     }
   }
 

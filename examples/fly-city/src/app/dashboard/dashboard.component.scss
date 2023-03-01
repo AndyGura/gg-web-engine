@@ -1,0 +1,347 @@
+@import url(https://fonts.googleapis.com/css?family=Coda:400|Roboto+Mono:400,400italic);
+
+$container-size: 20rem;
+$container-bg-color: white;
+
+$border-size: 0.7rem;
+$border-color: #333;
+
+$grad-font-size: 1.25rem;
+$grad-font-size-big: 2rem;
+$grad-color: #555;
+
+$tick-color: $grad-color;
+
+$needle-width: 5px;
+$needle-side-width: 3px;
+$needle-height: 140px;
+$needle-color: #e30;
+$needle-shading: 5%;
+
+$needle-axle-bg-color: $border-color;
+$needle-axle-color: #eee;
+$needle-axle-size: 15%;
+$needle-axle-size-big: 37.5%;
+
+$label-color: $grad-color;
+
+
+@mixin shadow($level: 2, $inset: false) {
+
+  @if $inset {
+
+    @if $level == 1 {
+      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.12), inset 0 1px 2px rgba(0, 0, 0, 0.24);
+    } @else if $level == 2 {
+      box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.16), inset 0 3px 6px rgba(0, 0, 0, 0.23);
+    } @else if $level == 3 {
+      box-shadow: inset 0 10px 20px rgba(0, 0, 0, 0.19), inset 0 6px 6px rgba(0, 0, 0, 0.23);
+    } @else if $level == 4 {
+      box-shadow: inset 0 14px 28px rgba(0, 0, 0, 0.25), inset 0 10px 10px rgba(0, 0, 0, 0.22);
+    } @else if $level == 5 {
+      box-shadow: inset 0 19px 38px rgba(0, 0, 0, 0.30), inset 0 15px 12px rgba(0, 0, 0, 0.22);
+    }
+
+  } @else {
+    @if $level == 1 {
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+    } @else if $level == 2 {
+      box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23);
+    } @else if $level == 3 {
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.19), 0 6px 6px rgba(0, 0, 0, 0.23);
+    } @else if $level == 4 {
+      box-shadow: 0 14px 28px rgba(0, 0, 0, 0.25), 0 10px 10px rgba(0, 0, 0, 0.22);
+    } @else if $level == 5 {
+      box-shadow: 0 19px 38px rgba(0, 0, 0, 0.30), 0 15px 12px rgba(0, 0, 0, 0.22);
+    }
+  }
+}
+
+* {
+  box-sizing: border-box;
+  user-select: none;
+}
+
+:host {
+  display: inline-block;
+  padding: 2rem;
+  font-family: 'Coda', cursive;
+  position: fixed;
+  z-index: 5;
+}
+
+.hud-element {
+  display: inline-block;
+  position: relative;
+  width: $container-size;
+  background-color: $container-bg-color;
+  margin: 0 0.5rem;
+  @include shadow(2, true);
+
+  &:before {
+    content: "";
+    display: block;
+    position: absolute;
+    width: calc(100% + #{$border-size} * 2);
+    left: -$border-size;
+    top: -$border-size;
+    bottom: -$border-size;
+    background: $border-color;
+    z-index: -1;
+    @include shadow(3);
+  }
+}
+
+.redzone {
+  color: $needle-color;
+}
+
+@media screen and (max-width: 50rem), screen and (max-height: 50rem) {
+  :host {
+    transform: scale(0.8);
+  }
+}
+
+@media screen and (max-width: 42rem), screen and (max-height: 42rem) {
+  :host {
+    transform: scale(0.6);
+  }
+}
+
+@media screen and (max-width: 30rem), screen and (max-height: 30rem) {
+  :host {
+    transform: scale(0.5);
+  }
+}
+
+@media screen and (max-width: 26rem), screen and (max-height: 26rem) {
+  :host {
+    transform: scale(0.4);
+  }
+}
+
+@media screen and (max-width: 21rem), screen and (max-height: 21rem) {
+  :host {
+    transform: scale(0.35);
+  }
+}
+
+@media screen and (max-width: 17rem), screen and (max-height: 17rem) {
+  :host {
+    transform: scale(0.3);
+  }
+}
+
+@media screen and (max-width: 15rem), screen and (max-height: 15rem) {
+  :host {
+    transform: scale(0.25);
+  }
+}
+
+:host {
+  right: 0;
+  bottom: 0;
+  transform-origin: bottom right;
+}
+
+.circular {
+  border-radius: 50%;
+  height: $container-size;
+
+  &:before {
+    border-radius: 50%;
+  }
+}
+
+.label {
+  position: absolute;
+  left: 50%;
+  transform: translate3d(-50%, -50%, 0);
+  text-align: center;
+  color: $label-color;
+
+  &.label-value {
+    color: $needle-axle-color;
+  }
+
+  span {
+    text-transform: uppercase;
+  }
+}
+
+.label-unit {
+  top: 82.5%;
+
+  div {
+
+    font-size: 1rem;
+
+    .meter--big-label & {
+      font-size: 0;
+    }
+  }
+}
+
+.label-value {
+  top: 50%;
+  line-height: 1.25;
+
+  div, span {
+    font-size: 0;
+
+    .meter--big-label & {
+      font-size: 2.5rem;
+    }
+  }
+
+  div {
+    font-family: 'Roboto Mono', monospace;
+    font-style: italic;
+  }
+
+  span {
+    .meter--big-label & {
+      font-size: 1rem;
+    }
+  }
+
+  span {
+    display: block;
+    position: absolute;
+    left: 50%;
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.needle,
+.needle-axle {
+
+}
+
+.needle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: block;
+  width: $needle-width;
+  height: $needle-height;
+  transform: translate3d(-50%, 0, 0);
+  transform-origin: 50% 0;
+  background-color: $needle-color;
+  @include shadow(1);
+
+  &:before,
+  &:after {
+    display: block;
+    position: absolute;
+    content: "";
+    width: 0;
+    height: 0;
+    border-style: solid;
+  }
+
+  &:before {
+    left: -$needle-side-width;
+    border-width: 0 $needle-side-width $needle-height 0;
+    border-color: transparent lighten($needle-color, $needle-shading * 2) transparent transparent;
+  }
+
+  &:after {
+    right: -$needle-side-width;
+    border-width: $needle-height $needle-side-width 0 0;
+    border-color: darken($needle-color, $needle-shading) transparent transparent transparent;
+  }
+}
+
+.needle-axle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: block;
+  width: $needle-axle-size;
+  height: $needle-axle-size;
+  transform: translate3d(-50%, -50%, 0);
+  border-radius: 50%;
+  background-color: $needle-axle-bg-color;
+  color: $needle-axle-color;
+  @include shadow(2);
+
+  .meter--big-label & {
+    width: $needle-axle-size-big;
+    height: $needle-axle-size-big;
+  }
+}
+
+.grad {
+  position: absolute;
+  display: inline-block;
+  font-size: $grad-font-size;
+  line-height: 1;
+  color: $grad-color;
+  transform: translate3d(-50%, -50%, 0);
+  font-weight: bold;
+
+  &.redzone {
+    color: $needle-color;
+  }
+
+  .meter--rpm & {
+    font-size: $grad-font-size-big;
+  }
+}
+
+.grad-tick,
+.grad-tick--half,
+.grad-tick--quarter {
+
+  &.redzone {
+    background-color: $needle-color;
+  }
+}
+
+
+.grad-tick {
+  position: absolute;
+  display: block;
+  width: 4px;
+  height: 0.75em;
+  transform-origin: 50% 0;
+  background-color: $tick-color;
+}
+
+.grad-tick--half {
+  width: 2px;
+  height: 0.5em;
+}
+
+.grad-tick--quarter {
+  width: 2px;
+  height: 0.25em;
+}
+
+
+// Gear-meter
+
+.meter--gear {
+  width: 5rem;
+  height: 5rem;
+  margin: 0;
+  margin-left: -2rem;
+  margin-right: -2rem;
+  @include shadow(2, true);
+
+  div {
+    font-size: 2.5rem;
+    text-align: center;
+    line-height: 5rem;
+    font-family: 'Roboto Mono', monospace;
+    font-style: italic;
+    font-weight: bold;
+    color: $grad-color;
+
+    &.redzone {
+      color: $needle-color;
+    }
+  }
+
+}

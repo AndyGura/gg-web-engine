@@ -31,7 +31,7 @@ export type SuspensionOptions = {
 }
 
 export type CarProperties = {
-  typeOfDrive: 'RWD' | 'FWD' | '4WD';
+  typeOfDrive: 'RWD' | 'FWD' | '4WD'; // FIXME 4WD car won't brake
   wheelOptions: WheelOptions[];
   mpsToRpmFactor?: number,
   engine: {
