@@ -46,7 +46,7 @@ export class MouseController implements IController {
         filter(() => !this.options.pointerLock || !this.options.pointerLock.ignoreMovementWhenNotLocked || !!document.pointerLockElement),
         map((e: any) => ({ x: e.movementX, y: e.movementY }))
       )
-      .subscribe(this._delta$);
+      .subscribe((v) => this._delta$.next(v));
     if (!!this.options.pointerLock) {
       this.options.pointerLock.canvas.addEventListener('click', this.canvasClickListener);
     }
