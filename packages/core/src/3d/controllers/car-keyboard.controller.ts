@@ -1,13 +1,19 @@
-import { BehaviorSubject, combineLatest, interval, pipe, Subject, takeUntil } from 'rxjs';
+import { BehaviorSubject, combineLatest, interval, pipe, Subject, takeUntil, filter } from 'rxjs';
 import { distinctUntilChanged, map, pairwise, startWith, switchMap, take, tap } from 'rxjs/operators';
 import { IController } from '../../base/controllers/i-controller';
 import { KeyboardController } from '../../base/controllers/keyboard.controller';
 import { Gg3dRaycastVehicleEntity } from '../entities/gg-3d-raycast-vehicle.entity';
+import { bindDirectionKeys, DirectionKeymap, DirectionOutput } from '../../base/controllers/common';
 
 // TODO pass as settings
 // TODO smooth y?
 const TICKER_INTERVAL = 16;
 const TICKER_MAX_STEPS = 10;
+
+type CarKeyboardControllerOptions = {
+  keymap: DirectionKeymap;
+  gearUpDownKeys: [string, string],
+}
 
 export class CarKeyboardController implements IController {
 
@@ -41,25 +47,24 @@ export class CarKeyboardController implements IController {
   constructor(
     private readonly keyboardController: KeyboardController,
     private readonly car: Gg3dRaycastVehicleEntity,
+    private readonly options: CarKeyboardControllerOptions = { keymap: 'arrows', gearUpDownKeys: ['KeyA', 'KeyZ'] },
   ) {
   }
 
   async start(): Promise<void> {
-    const keys = ['ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight'];
-    let moveDirection: boolean[] = [];
-    combineLatest(keys.map(c => this.keyboardController.bind(c)))
+    let moveDirection: DirectionOutput = {};
+    bindDirectionKeys(this.keyboardController, this.options.keymap)
       .pipe(takeUntil(this.stop$))
-      .subscribe((d: boolean[]) => {
+      .subscribe((d) => {
         moveDirection = d;
       });
     this.car.tick$
       .pipe(
         takeUntil(this.stop$),
         map(() => {
-          const [f, l, b, r] = moveDirection;
           const direction = [0, 0];
-          if (l != r) direction[0] = l ? -1 : 1;
-          if (f != b) direction[1] = f ? 1 : -1;
+          if (moveDirection.leftRight !== undefined) direction[0] = moveDirection.leftRight ? -1 : 1;
+          if (moveDirection.upDown !== undefined) direction[1] = moveDirection.upDown ? 1 : -1;
           return direction;
         }),
       )
@@ -69,16 +74,30 @@ export class CarKeyboardController implements IController {
       });
     combineLatest([
       this.x$.pipe(
+        takeUntil(this.stop$),
         distinctUntilChanged(),
         this.pairTickerPipe,
       ),
       this.y$.pipe(
+        takeUntil(this.stop$),
         distinctUntilChanged()
       ),
     ]).subscribe(([x, y]) => {
       this.car.setXAxisControlValue(x);
       this.car.setYAxisControlValue(y);
-    })
+    });
+    this.keyboardController.bind(this.options.gearUpDownKeys[0]).pipe(takeUntil(this.stop$), filter(x => !!x)).subscribe(() => {
+      if (this.car && (!this.car.carProperties.transmission.isAuto || this.car.gear <= 0)) {
+        this.car.gear++;
+      }
+    });
+    this.keyboardController.bind(this.options.gearUpDownKeys[1]).pipe(takeUntil(this.stop$), filter(x => !!x)).subscribe(() => {
+      if (this.car.carProperties.transmission.isAuto && this.car.gear > 1) {
+        this.car.gear = 0;
+      } else {
+        this.car.gear--;
+      }
+    });
   }
 
   async stop(): Promise<void> {

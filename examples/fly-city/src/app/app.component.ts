@@ -53,30 +53,13 @@ export class AppComponent implements OnInit {
       new ThreeCamera(new PerspectiveCamera(75, 1, 1, 10000))
     ));
     world.addEntity(renderer);
-    renderer.camera.position = { x: 0, y: 0, z: 10 };
+    renderer.camera.position = { x: 0, y: -15, z: 10 };
     renderer.camera.rotation = Qtrn.lookAt(
       renderer.camera.position,
-      { x: 0, y: 10, z: 10 },
+      { x: 0, y: 0, z: 0 },
       { x: 0, y: 0, z: 1 },
     );
     renderer.activate();
-
-    const freeCameraController: FreeCameraController = new FreeCameraController(
-      world.keyboardController,
-      renderer.camera,
-      {
-        movementOptions: {
-          speed: 1,
-        },
-        mouseOptions: {
-          pointerLock: {
-            ignoreMovementWhenNotLocked: true,
-            canvas,
-          },
-        },
-      },
-    );
-    freeCameraController.start();
 
     const sun = new DirectionalLight(0xffffff, 3);
     sun.position.set(200, 150, 120);
@@ -182,11 +165,26 @@ export class AppComponent implements OnInit {
         'x',
       );
       this.car.position = { x: 0, y: 0, z: 1 };
-      this.car.gear = 1;
       world.addEntity(this.car);
       // TODO rename controllers (which are keyboard/mouse related) globally to something else
-      const carController = new CarKeyboardController(world.keyboardController, this.car);
+      const carController = new CarKeyboardController(world.keyboardController, this.car, { keymap: 'wasd+arrows', gearUpDownKeys: ['KeyE', 'KeyQ'] });
       let carCameraController: CameraFollowEntityController = new CameraFollowEntityController(renderer.camera, this.car!);
+      const freeCameraController: FreeCameraController = new FreeCameraController(
+        world.keyboardController,
+        renderer.camera,
+        {
+          keymap: 'wasd+arrows',
+          movementOptions: {
+            speed: 1,
+          },
+          mouseOptions: {
+            pointerLock: {
+              ignoreMovementWhenNotLocked: true,
+              canvas,
+            },
+          },
+        },
+      );
 
       this.mode$.subscribe((mode) => {
         if (mode === 'freecamera') {

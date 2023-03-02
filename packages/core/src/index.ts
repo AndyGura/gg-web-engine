@@ -20,6 +20,7 @@ export * from './base/math/point3';
 export * from './base/math/quaternion';
 export * from './base/math/numbers';
 export * from './base/math/matrix4';
+export * from './base/controllers/common';
 export * from './base/controllers/i-controller';
 export * from './base/controllers/keyboard.controller';
 export * from './base/controllers/mouse.controller';
