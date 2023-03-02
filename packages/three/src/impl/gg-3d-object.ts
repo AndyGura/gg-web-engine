@@ -12,9 +12,7 @@ export class Gg3dObject implements IGg3dObject {
   }
 
   public set position(value: Point3) {
-    this.nativeMesh.position.x = value.x;
-    this.nativeMesh.position.y = value.y;
-    this.nativeMesh.position.z = value.z;
+    this.nativeMesh.position.set(value.x, value.y, value.z);
   }
 
   public get rotation(): Point4 {
@@ -22,10 +20,7 @@ export class Gg3dObject implements IGg3dObject {
   }
 
   public set rotation(value: Point4) {
-    this.nativeMesh.quaternion.x = value.x;
-    this.nativeMesh.quaternion.y = value.y;
-    this.nativeMesh.quaternion.z = value.z;
-    this.nativeMesh.quaternion.w = value.w;
+    this.nativeMesh.quaternion.set(value.x, value.y, value.z, value.w);
   }
 
   public get scale(): Point3 {
@@ -33,9 +28,7 @@ export class Gg3dObject implements IGg3dObject {
   }
 
   public set scale(value: Point3) {
-    this.nativeMesh.scale.x = value.x;
-    this.nativeMesh.scale.y = value.y;
-    this.nativeMesh.scale.z = value.z;
+    this.nativeMesh.scale.set(value.x, value.y, value.z);
   }
 
   public get visible(): boolean {

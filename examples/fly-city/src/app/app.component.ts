@@ -101,14 +101,6 @@ export class AppComponent implements OnInit {
     world.addEntity(map);
     map.loaderCursorEntity$.next(renderer.camera);
 
-    const planeBody = new physScene.ammo.btStaticPlaneShape(new physScene.ammo.btVector3(0, 0, 1), 0);
-    const environmentBodyCI = new physScene.ammo.btRigidBodyConstructionInfo(0, new physScene.ammo.btDefaultMotionState(), planeBody);
-    const environmentBody = new physScene.ammo.btRigidBody(environmentBodyCI);
-    const plane = new Gg3dEntity(null, new Gg3dBody(physScene, environmentBody));
-    plane.position = { x: 0, y: 0, z: 0 };
-    world.addEntity(plane);
-    physScene.dynamicAmmoWorld?.addRigidBody(environmentBody);
-
     map.initialLoadComplete$.pipe(filter(x => !!x), first()).subscribe(async () => {
       world.start();
 
@@ -179,7 +171,7 @@ export class AppComponent implements OnInit {
         wheelMesh,
         'x',
       );
-      this.car.position = { x: 0, y: 0, z: 30};
+      this.car.position = { x: 0, y: 0, z: 1};
       this.car.gear = 1;
       world.addEntity(this.car);
       const c = new CarKeyboardController(world.keyboardController, this.car);
@@ -200,11 +192,11 @@ export class AppComponent implements OnInit {
         };
       const elasticZAngle = elasticAngle(250);
       createInlineTickController(world).subscribe(([elapsed, delta]) => {
-        // FIXME jitters when turning
         const vectorLength = 6.5;
         const vectorAngle = 0.3948;
         const objectPosition = this.car!.position;
         const carVector = Pnt3.rot({ x: 0, y: 1, z: 0}, this.car!.rotation);
+        // FIXME jitters when turning during FPS drop, but elasticZAngle calculation is correct
         const zAngle = elasticZAngle(Math.atan2(carVector.y, carVector.x) - Math.PI / 2, delta);
         const cameraVector = Pnt3.rotAround(
           Pnt3.rotAround(
@@ -223,6 +215,7 @@ export class AppComponent implements OnInit {
           Pnt3.norm(cameraTargetVector),
         );
       });
+      freeCameraController.stop();
 
 
       // const cls = world.visualScene.debugPhysicsDrawerClass;
