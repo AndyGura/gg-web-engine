@@ -1,2 +1,2 @@
 <div id="gg-stage"></div>
-<app-dashboard [car]="car"></app-dashboard>
+<app-dashboard *ngIf="!!(controlCar$ | async)" [car]="(controlCar$ | async)"></app-dashboard>

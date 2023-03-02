@@ -78,8 +78,8 @@ export class FreeCameraController implements IController {
     await this.mController.start();
   }
 
-  async stop(): Promise<void> {
+  async stop(unlockPointer: boolean = true): Promise<void> {
     this.stop$.next();
-    await this.mController.stop();
+    await this.mController.stop(unlockPointer);
   }
 }

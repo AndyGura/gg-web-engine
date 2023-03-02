@@ -57,12 +57,12 @@ export class MouseController implements IController {
     this.options.pointerLock!.canvas.requestPointerLock();
   }
 
-  async stop() {
+  async stop(unlockPointer: boolean = true) {
     if (!this.running) {
       return;
     }
     this.stopped$.next();
-    if (!!this.options.pointerLock) {
+    if (unlockPointer && !!this.options.pointerLock) {
       this.options.pointerLock.canvas.removeEventListener('click', this.canvasClickListener);
       document.exitPointerLock();
     }

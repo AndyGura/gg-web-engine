@@ -1,10 +1,3 @@
-// TODO raycast vehicle car + arrows controller on car
-// TODO migrate sandbox (create new one in gg-web-engine/examples), make map better
-// TODO viewport refactoring? allow non-fullscreen apps
-// TODO demo: less code, FPS counter
-// TODO readme
-// TODO merge to main
-
 export * from './base/clock';
 export * from './base/gg-viewport';
 export * from './base/gg-viewport-manager';
@@ -39,6 +32,7 @@ export * from './2d/gg-2d-world';
 
 export * from './3d/controllers/car-keyboard.controller';
 export * from './3d/controllers/free-camera.controller';
+export * from './3d/entities/controllers/camera-follow-entity.controller';
 export * from './3d/entities/gg-3d-entity';
 export * from './3d/entities/gg-positionable-3d-entity';
 export * from './3d/entities/gg-3d-camera.entity';

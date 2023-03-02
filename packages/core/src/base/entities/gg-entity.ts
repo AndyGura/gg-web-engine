@@ -43,6 +43,7 @@ export abstract class GgEntity {
     }
   }
 
+  // TODO add some flag to entity that it is disposed, and throw a normal error when trying to add such entity to world again
   public dispose(): void {
     for (const c of this._children) {
       c.dispose();

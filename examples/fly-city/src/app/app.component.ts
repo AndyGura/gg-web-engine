@@ -8,22 +8,20 @@ import {
   RGBAFormat
 } from 'three';
 import {
-  averageAngle,
+  CameraFollowEntityController,
   CarKeyboardController,
-  createInlineTickController,
   FreeCameraController,
-  Gg3dEntity,
   Gg3dMapGraphEntity,
   Gg3dRaycastVehicleEntity,
   Gg3dWorld,
   GgViewportManager,
   MapGraph,
-  Pnt3,
   Qtrn
 } from '@gg-web-engine/core';
 import { Gg3dVisualScene, GgRenderer, ThreeCamera, ThreeCameraEntity } from '@gg-web-engine/three';
 import { Gg3dBody, Gg3dPhysicsWorld, Gg3dRaycastVehicle } from '@gg-web-engine/ammo';
-import { filter, first } from 'rxjs';
+import { BehaviorSubject, filter, first, Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 @Component({
   selector: 'app-root',
@@ -36,6 +34,12 @@ export class AppComponent implements OnInit {
   @ViewChild('stage') stage!: ElementRef<HTMLCanvasElement>;
 
   car: Gg3dRaycastVehicleEntity | null = null;
+
+  mode$: BehaviorSubject<Gg3dRaycastVehicleEntity | 'freecamera'> = new BehaviorSubject<Gg3dRaycastVehicleEntity | "freecamera">('freecamera');
+
+  get controlCar$(): Observable<Gg3dRaycastVehicleEntity | null> {
+    return this.mode$.pipe(map(x => x instanceof Gg3dRaycastVehicleEntity ? x : null));
+  }
 
   async ngOnInit(): Promise<void> {
 
@@ -62,7 +66,7 @@ export class AppComponent implements OnInit {
       renderer.camera,
       {
         movementOptions: {
-          speed: 2,
+          speed: 1,
         },
         mouseOptions: {
           pointerLock: {
@@ -94,7 +98,10 @@ export class AppComponent implements OnInit {
 
     const mapGraph = MapGraph.fromSquareGrid(
       Array(10).fill(null).map((_, i) => (
-        Array(10).fill(null).map((_, j) => ({ path: 'assets/city_tile', position: { x: (j - 5) * 75, y: (i - 5) * 75, z: 0 }}))
+        Array(10).fill(null).map((_, j) => ({
+          path: 'assets/city_tile',
+          position: { x: (j - 5) * 75, y: (i - 5) * 75, z: 0 }
+        }))
       ))
     );
     const map = new Gg3dMapGraphEntity(mapGraph, { loadDepth: 3 });
@@ -104,7 +111,10 @@ export class AppComponent implements OnInit {
     map.initialLoadComplete$.pipe(filter(x => !!x), first()).subscribe(async () => {
       world.start();
 
-      const [{ resources: [{ object3D: chassisMesh, body: chassisBody }], meta: { dummies: chassisDummies } }, { resources: [{ object3D: wheelMesh }] }] = await Promise.all([
+      const [{
+        resources: [{ object3D: chassisMesh, body: chassisBody }],
+        meta: { dummies: chassisDummies }
+      }, { resources: [{ object3D: wheelMesh }] }] = await Promise.all([
         world.loader.loadGgGlbResources('assets/testCar/body'),
         world.loader.loadGgGlbResources('assets/testCar/wheel'),
       ]);
@@ -159,7 +169,7 @@ export class AppComponent implements OnInit {
             finalDriveRatio: 3.21,
             reverseGearRatio: -2.33,
             gearRatios: [2.92, 1.87, 1.42, 1.09, 0.81],
-            upShifts: [ 7140, 7140, 7140, 7140, 2829625512]
+            upShifts: [7140, 7140, 7140, 7140, 2829625512]
           },
           suspension: { stiffness: 20.0, damping: 2.3, compression: 4.4, restLength: 0.53 },
         },
@@ -171,51 +181,36 @@ export class AppComponent implements OnInit {
         wheelMesh,
         'x',
       );
-      this.car.position = { x: 0, y: 0, z: 1};
+      this.car.position = { x: 0, y: 0, z: 1 };
       this.car.gear = 1;
       world.addEntity(this.car);
-      const c = new CarKeyboardController(world.keyboardController, this.car);
-      c.start();
-      const elasticAngle: (inertia: number, easing?: (x: number) => number) => ((value: number, deltaMs: number) => number) =
-        (inertia: number, easing: ((x: number) => number) = x => x) => {
-          let latestValue: number | null = null;
-          return (value, deltaMs) => {
-            if (latestValue !== null) {
-              let newFactor = easing(deltaMs / inertia);
-              if (newFactor < 1) {
-                value = averageAngle(latestValue, value, newFactor);
-              }
-            }
-            latestValue = value;
-            return value;
-          };
-        };
-      const elasticZAngle = elasticAngle(250);
-      createInlineTickController(world).subscribe(([elapsed, delta]) => {
-        const vectorLength = 6.5;
-        const vectorAngle = 0.3948;
-        const objectPosition = this.car!.position;
-        const carVector = Pnt3.rot({ x: 0, y: 1, z: 0}, this.car!.rotation);
-        // FIXME jitters when turning during FPS drop, but elasticZAngle calculation is correct
-        const zAngle = elasticZAngle(Math.atan2(carVector.y, carVector.x) - Math.PI / 2, delta);
-        const cameraVector = Pnt3.rotAround(
-          Pnt3.rotAround(
-            { x: 0, y: -vectorLength, z: 0 },
-            { x: 1, y: 0, z: 0 },
-            -vectorAngle
-          ),
-          { x: 0, y: 0, z: 1 },
-          zAngle
-        );
-        let cameraTargetVector = { x: 0, y: 0, z: vectorLength * Math.sin(vectorAngle) };
-        renderer.camera.position = Pnt3.add(objectPosition, cameraVector);
-        renderer.camera.rotation = Qtrn.lookAt(
-          renderer.camera.position,
-          Pnt3.add(objectPosition, cameraTargetVector),
-          Pnt3.norm(cameraTargetVector),
-        );
+      // TODO rename controllers (which are keyboard/mouse related) globally to something else
+      const carController = new CarKeyboardController(world.keyboardController, this.car);
+      let carCameraController: CameraFollowEntityController = new CameraFollowEntityController(renderer.camera, this.car!);
+
+      this.mode$.subscribe((mode) => {
+        if (mode === 'freecamera') {
+          carController.stop();
+          try {
+            world.removeEntity(carCameraController, false);
+          } catch {
+            //pass
+          }
+          freeCameraController.start();
+        } else if (mode instanceof Gg3dRaycastVehicleEntity) {
+          freeCameraController.stop(false);
+          carController.start();
+          world.addEntity(carCameraController);
+        }
       });
-      freeCameraController.stop();
+
+      world.keyboardController.bind('KeyF').pipe(filter(x => x)).subscribe(() => {
+        if (this.mode$.getValue() === 'freecamera') {
+          this.mode$.next(this.car!);
+        } else {
+          this.mode$.next('freecamera');
+        }
+      });
 
 
       // const cls = world.visualScene.debugPhysicsDrawerClass;
