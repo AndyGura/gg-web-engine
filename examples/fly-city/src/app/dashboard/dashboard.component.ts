@@ -38,7 +38,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   speedometerAngleStep: number = (this.angleMax - this.angleMin) / this.speedometerStepsCount;
 
   $currentRpm: BehaviorSubject<number> = new BehaviorSubject<number>(0);
-  $currentGear: BehaviorSubject<number> = new BehaviorSubject<number>(1);
+  $currentGear: BehaviorSubject<string> = new BehaviorSubject<string>('N');
   $currentSpeed: BehaviorSubject<number> = new BehaviorSubject<number>(0);
 
   destroyed$: Subject<void> = new Subject<void>();
@@ -65,8 +65,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
       )
       .subscribe(([speed, maxRpm, engineRpm, gear]) => {
         this.$currentRpm.next(engineRpm);
-        this.$currentGear.next(gear);
-        this.$currentSpeed.next(speed);
+        this.$currentGear.next(gear > 0 ? gear.toString() : (gear < 0 ? 'R' : 'N'));
+        this.$currentSpeed.next(Math.abs(speed));
         this.maxRpm = maxRpm;
       });
   }

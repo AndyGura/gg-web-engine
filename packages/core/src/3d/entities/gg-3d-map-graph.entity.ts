@@ -1,5 +1,5 @@
 import { BehaviorSubject, NEVER, Observable, startWith, Subject, switchMap } from 'rxjs';
-import { distinctUntilChanged, map, throttleTime } from 'rxjs/operators';
+import { distinctUntilChanged, map, tap, throttleTime } from 'rxjs/operators';
 import { Point3 } from '../../base/models/points';
 import { Graph } from '../../base/data-structures/graph';
 import { GgEntity } from '../../base/entities/gg-entity';
@@ -74,6 +74,11 @@ export class Gg3dMapGraphEntity extends GgEntity implements ITickListener {
     return this._initialLoadComplete$.asObservable();
   }
 
+  private _nearestDummy$: BehaviorSubject<Graph<MapGraphNodeType> | null> = new BehaviorSubject<Graph<MapGraphNodeType> | null>(null);
+  public get nearestDummy(): Graph<MapGraphNodeType> | null {
+    return this._nearestDummy$.getValue();
+  }
+
   get world(): Gg3dWorld | null {
     return this._world;
   }
@@ -101,6 +106,7 @@ export class Gg3dMapGraphEntity extends GgEntity implements ITickListener {
         : NEVER
       ),
       map((pos) => this.mapGraph.getNearestDummy(this.mapGraphNodes, pos)),
+      tap((node) => this._nearestDummy$.next(node)),
       distinctUntilChanged(),
     ).subscribe((currentChunk) => {
       const expectedChunkNames: Set<MapGraphNodeType> = new Set();

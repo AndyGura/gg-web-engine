@@ -167,7 +167,7 @@ export class AppComponent implements OnInit {
       this.car.position = { x: 0, y: 0, z: 1 };
       world.addEntity(this.car);
       // TODO rename controllers (which are keyboard/mouse related) globally to something else
-      const carController = new CarKeyboardController(world.keyboardController, this.car, { keymap: 'wasd+arrows', gearUpDownKeys: ['KeyE', 'KeyQ'] });
+      const carController = new CarKeyboardController(world.keyboardController, this.car, { keymap: 'wasd+arrows', gearUpDownKeys: ['CapsLock', 'ShiftLeft'] });
       let carCameraController: CameraFollowEntityController = new CameraFollowEntityController(renderer.camera, this.car!);
       const freeCameraController: FreeCameraController = new FreeCameraController(
         world.keyboardController,
@@ -207,6 +207,14 @@ export class AppComponent implements OnInit {
           this.mode$.next(this.car!);
         } else {
           this.mode$.next('freecamera');
+        }
+      });
+
+      world.keyboardController.bind('KeyR').pipe(filter(x => x)).subscribe(() => {
+        const nearest = map.nearestDummy;
+        const car = this.car;
+        if (car && nearest) {
+          car.resetTo({ position: nearest.data.position, rotation: { x: 0, y: 0, z: 0, w: 1 } });
         }
       });
 
