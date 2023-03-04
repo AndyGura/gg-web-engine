@@ -8,20 +8,23 @@ import {
   RGBAFormat
 } from 'three';
 import {
-  CameraFollowEntityController,
   CarKeyboardController,
+  EntityMotionController,
   FreeCameraController,
   Gg3dMapGraphEntity,
   Gg3dRaycastVehicleEntity,
   Gg3dWorld,
   GgViewportManager,
+  lerpNumber,
   MapGraph,
-  Qtrn
+  MotionControlFunction,
+  Qtrn,
 } from '@gg-web-engine/core';
 import { Gg3dVisualScene, GgRenderer, ThreeCamera, ThreeCameraEntity } from '@gg-web-engine/three';
 import { Gg3dBody, Gg3dPhysicsWorld, Gg3dRaycastVehicle } from '@gg-web-engine/ammo';
-import { BehaviorSubject, filter, first, Observable } from 'rxjs';
+import { BehaviorSubject, combineLatest, filter, first, Observable, skip } from 'rxjs';
 import { map } from 'rxjs/operators';
+import { bumperCamera, farCamera, nearCamera } from './car-cameras';
 
 @Component({
   selector: 'app-root',
@@ -167,8 +170,49 @@ export class AppComponent implements OnInit {
       this.car.position = { x: 0, y: 0, z: 1 };
       world.addEntity(this.car);
       // TODO rename controllers (which are keyboard/mouse related) globally to something else
-      const carController = new CarKeyboardController(world.keyboardController, this.car, { keymap: 'wasd+arrows', gearUpDownKeys: ['CapsLock', 'ShiftLeft'] });
-      let carCameraController: CameraFollowEntityController = new CameraFollowEntityController(renderer.camera, this.car!);
+      const carController = new CarKeyboardController(world.keyboardController, this.car, {
+        keymap: 'wasd+arrows',
+        gearUpDownKeys: ['CapsLock', 'ShiftLeft']
+      });
+
+      const cameraMotionFactory: [(car: Gg3dRaycastVehicleEntity) => MotionControlFunction, number, (t: number) => number][] = [
+        [farCamera, 600, (t: number) => Math.pow(t, 0.3)],
+        [bumperCamera, 250, (t: number) => 0.7 * Math.pow(t, 0.3)],
+        [nearCamera, 250, (t: number) => 0.7 + 0.3 * Math.pow(t, 0.3)],
+      ];
+      let cameraIndex$: BehaviorSubject<number> = new BehaviorSubject<number>(0);
+      let carCameraController: EntityMotionController = new EntityMotionController(
+        renderer.camera,
+        cameraMotionFactory[0][0](this.car!),
+        (camera, p) => {
+          if (p.fov) {
+            (camera as ThreeCameraEntity).object3D.fov = p.fov;
+          }
+        }
+      );
+      world.keyboardController.bind('KeyC').pipe(
+        filter(x => !!x && this.mode$.getValue() != 'freecamera')
+      ).subscribe(() => {
+        if (cameraIndex$.getValue() >= cameraMotionFactory.length - 1) {
+          cameraIndex$.next(0);
+        } else {
+          cameraIndex$.next(cameraIndex$.getValue() + 1);
+        }
+      });
+      combineLatest(cameraIndex$, this.mode$)
+        .subscribe(([index, mode]) => {
+          this.car!.visible = mode == 'freecamera' || index != 1; // invisible if bumper camera
+        });
+      cameraIndex$.pipe(skip(1)).subscribe(index => {
+        const [funcProto, duration, easing] = cameraMotionFactory[index];
+        carCameraController.transitControlFunction(
+          funcProto(this.car!),
+          duration,
+          easing,
+          ({ fov: fovA }, { fov: fovB }, t) => ({ fov: lerpNumber(fovA, fovB, t) })
+        );
+      });
+
       const freeCameraController: FreeCameraController = new FreeCameraController(
         world.keyboardController,
         renderer.camera,
@@ -199,6 +243,17 @@ export class AppComponent implements OnInit {
           freeCameraController.stop(false);
           carController.start();
           world.addEntity(carCameraController);
+          carCameraController.transitFromStaticState(
+            {
+              position: renderer.camera.position,
+              rotation: renderer.camera.rotation,
+              customParameters: { fov: renderer.camera.object3D.fov }
+            },
+            cameraMotionFactory[cameraIndex$.getValue()][0](this.car!),
+            800,
+            t => Math.pow(t, 0.5),
+            ({ fov: fovA }, { fov: fovB }, t) => ({ fov: lerpNumber(fovA, fovB, t) }),
+          );
         }
       });
 
@@ -215,6 +270,7 @@ export class AppComponent implements OnInit {
         const car = this.car;
         if (car && nearest) {
           car.resetTo({ position: nearest.data.position, rotation: { x: 0, y: 0, z: 0, w: 1 } });
+          carCameraController.motionControlFunction = cameraMotionFactory[cameraIndex$.getValue()][0](this.car!); // reset elastic camera
         }
       });
 

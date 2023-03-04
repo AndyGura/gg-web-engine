@@ -33,7 +33,7 @@ export * from './2d/gg-2d-world';
 
 export * from './3d/controllers/car-keyboard.controller';
 export * from './3d/controllers/free-camera.controller';
-export * from './3d/entities/controllers/camera-follow-entity.controller';
+export * from './3d/entities/controllers/entity-motion.controller';
 export * from './3d/entities/gg-3d-entity';
 export * from './3d/entities/gg-positionable-3d-entity';
 export * from './3d/entities/gg-3d-camera.entity';

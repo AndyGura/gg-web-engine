@@ -60,6 +60,15 @@ export class Pnt3 {
     };
   }
 
+  /** linear interpolation */
+  static lerp(a: Point3, b: Point3, t: number): Point3 {
+    return {
+      x: a.x + t * (b.x - a.x),
+      y: a.y + t * (b.y - a.y),
+      z: a.z + t * (b.z - a.z)
+    };
+  }
+
   /** rotate point a with quaternion q */
   static rot(p: Point3, q: Point4): Point3 {
     // faster version of:

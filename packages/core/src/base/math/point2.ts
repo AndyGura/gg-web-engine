@@ -24,4 +24,20 @@ export class Pnt2 {
       y: p.y / length,
     };
   }
+
+  /** scalar multiplication */
+  static scalarMult(p: Point2, m: number): Point2 {
+    return {
+      x: p.x * m,
+      y: p.y * m,
+    };
+  }
+
+  /** linear interpolation */
+  static lerp(a: Point2, b: Point2, t: number): Point2 {
+    return {
+      x: a.x + t * (b.x - a.x),
+      y: a.y + t * (b.y - a.y),
+    };
+  }
 }

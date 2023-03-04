@@ -74,6 +74,7 @@ export class Gg2dEntity extends GgPositionable2dEntity implements ITickListener 
   }
 
   dispose(): void {
+    super.dispose();
     this.tickSub?.unsubscribe();
     this.tickSub = null;
     if (this.object2D) {

@@ -105,6 +105,7 @@ export class Gg3dEntity extends GgPositionable3dEntity implements ITickListener 
   }
 
   dispose(): void {
+    super.dispose();
     this.tick$.unsubscribe();
     if (this.object3D) {
       this.object3D.dispose();

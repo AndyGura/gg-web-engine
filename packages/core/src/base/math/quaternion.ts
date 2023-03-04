@@ -35,7 +35,7 @@ export class Qtrn {
     return result;
   }
 
-
+  /** linear interpolation */
   static lerp(a: Point4, b: Point4, t: number): Point4 {
     return {
       x: a.x + t * (b.x - a.x),
@@ -45,6 +45,7 @@ export class Qtrn {
     };
   }
 
+  /** spherical interpolation */
   static slerp(a: Point4, b: Point4, t: number): Point4 {
     let dot = a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
     let theta = Math.acos(dot);
@@ -55,6 +56,10 @@ export class Qtrn {
     let z = a.z * Math.sin((1 - t) * theta) / sinTheta + b.z * Math.sin(t * theta) / sinTheta;
     let w = a.w * Math.sin((1 - t) * theta) / sinTheta + b.w * Math.sin(t * theta) / sinTheta;
 
+    if (isNaN(x) || isNaN(y) || isNaN(z) || isNaN(w)) {
+      // happens when they are equal
+      return Qtrn.clone(a);
+    }
     return { x, y, z, w };
   }
 
