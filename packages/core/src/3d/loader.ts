@@ -29,6 +29,7 @@ export type LoadResult = {
   entities: Gg3dEntity[],
   meta: GgMeta
 };
+export type LoadResultWithProps = LoadResult & { props?: LoadResult[] };
 
 export class Gg3dLoader {
 
@@ -66,10 +67,10 @@ export class Gg3dLoader {
     return result;
   }
 
-  public async loadGgGlb(path: string, options: Partial<LoadOptions> = defaultLoadOptions): Promise<LoadResult & { props?: LoadResult[] }> {
+  public async loadGgGlb(path: string, options: Partial<LoadOptions> = defaultLoadOptions): Promise<LoadResultWithProps> {
     const loadOptions = { ...defaultLoadOptions, ...options };
     const { resources, meta } = await this.loadGgGlbResources(path);
-    const result: LoadResult & { props?: LoadResult[] } = {
+    const result: LoadResultWithProps = {
       entities: resources.map(({ object3D, body }) => new Gg3dEntity(object3D, body)),
       meta,
     }

@@ -7,6 +7,7 @@ import { ITickListener } from '../../base/entities/interfaces/i-tick-listener';
 import { GgPositionable3dEntity } from './gg-positionable-3d-entity';
 import { Gg3dWorld } from '../gg-3d-world';
 import { Gg3dEntity } from './gg-3d-entity';
+import { LoadResultWithProps } from '../loader';
 
 type MapGraphNodeType = { path: string, position: Point3 };
 
@@ -78,6 +79,11 @@ export class Gg3dMapGraphEntity extends GgEntity implements ITickListener {
   public get nearestDummy(): Graph<MapGraphNodeType> | null {
     return this._nearestDummy$.getValue();
   }
+  
+  private _chunkLoaded$: Subject<LoadResultWithProps> = new Subject<LoadResultWithProps>();
+  public get chunkLoaded$(): Observable<LoadResultWithProps> {
+    return this._chunkLoaded$.asObservable();
+  }
 
   get world(): Gg3dWorld | null {
     return this._world;
@@ -146,6 +152,7 @@ export class Gg3dMapGraphEntity extends GgEntity implements ITickListener {
     ];
     this.loaded.set(node, entities);
     this.addChildren(...entities);
+    this._chunkLoaded$.next(loaded);
     return entities;
   }
 
