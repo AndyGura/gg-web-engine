@@ -1,6 +1,6 @@
 import { BehaviorSubject, NEVER, Observable, startWith, Subject, switchMap } from 'rxjs';
 import { distinctUntilChanged, map, tap, throttleTime } from 'rxjs/operators';
-import { Point3 } from '../../base/models/points';
+import { Point3, Point4 } from '../../base/models/points';
 import { Graph } from '../../base/data-structures/graph';
 import { GgEntity } from '../../base/entities/gg-entity';
 import { ITickListener } from '../../base/entities/interfaces/i-tick-listener';
@@ -80,8 +80,8 @@ export class Gg3dMapGraphEntity extends GgEntity implements ITickListener {
     return this._nearestDummy$.getValue();
   }
   
-  private _chunkLoaded$: Subject<LoadResultWithProps> = new Subject<LoadResultWithProps>();
-  public get chunkLoaded$(): Observable<LoadResultWithProps> {
+  private _chunkLoaded$: Subject<[LoadResultWithProps, { position: Point3, rotation: Point4 }]> = new Subject<[LoadResultWithProps, { position: Point3, rotation: Point4 }]>();
+  public get chunkLoaded$(): Observable<[LoadResultWithProps, { position: Point3, rotation: Point4 }]> {
     return this._chunkLoaded$.asObservable();
   }
 
@@ -152,7 +152,8 @@ export class Gg3dMapGraphEntity extends GgEntity implements ITickListener {
     ];
     this.loaded.set(node, entities);
     this.addChildren(...entities);
-    this._chunkLoaded$.next(loaded);
+    // TODO where is rotation should come from?
+    this._chunkLoaded$.next([loaded, { position: node.position, rotation: { x: 0, y: 0, z: 0, w: 1 }}]);
     return entities;
   }
 

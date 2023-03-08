@@ -8,6 +8,16 @@ export abstract class GgEntity {
 
   protected _world: GgWorld<any, any> | null = null;
 
+  protected _name: string = '';
+
+  public get name(): string {
+    return this._name;
+  }
+
+  public set name(value: string) {
+    this._name = value;
+  }
+
   protected _children: GgEntity[] = [];
 
   public addChildren(...entities: GgEntity[]) {

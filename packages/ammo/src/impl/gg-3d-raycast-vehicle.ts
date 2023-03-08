@@ -32,6 +32,7 @@ export class Gg3dRaycastVehicle extends Gg3dBody implements IGg3dRaycastVehicle 
     if (world != this.world) {
       throw new Error('Ammo raycast vehicle cannot be shared between different worlds');
     }
+    // TODO parked cars can be deactivated until we start handling them. Needs explicit activation call
     this.chassisBody.setActivationState(4); // btCollisionObject::DISABLE_DEACTIVATION
     world.dynamicAmmoWorld?.addRigidBody(this.chassisBody);
     this.world.dynamicAmmoWorld!.addAction(this.nativeVehicle);

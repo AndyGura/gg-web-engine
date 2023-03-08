@@ -14,17 +14,25 @@ import {
   Gg3dMapGraphEntity,
   Gg3dRaycastVehicleEntity,
   Gg3dWorld,
+  GgDummy,
   GgViewportManager,
+  IGg3dBody,
+  IGg3dObject,
   lerpNumber,
   MapGraph,
   MotionControlFunction,
+  Pnt3,
   Qtrn,
 } from '@gg-web-engine/core';
 import { Gg3dVisualScene, GgRenderer, ThreeCamera, ThreeCameraEntity } from '@gg-web-engine/three';
 import { Gg3dBody, Gg3dPhysicsWorld, Gg3dRaycastVehicle } from '@gg-web-engine/ammo';
-import { BehaviorSubject, combineLatest, filter, first, Observable, skip } from 'rxjs';
+import { BehaviorSubject, combineLatest, filter, first, Observable, pairwise, skip } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { bumperCamera, farCamera, nearCamera } from './car-cameras';
+
+type CurrentState =
+  { mode: 'freecamera' }
+  | { mode: 'driving', car: Gg3dRaycastVehicleEntity, carType: 'lambo' | 'truck' | 'car' };
 
 @Component({
   selector: 'app-root',
@@ -36,12 +44,10 @@ export class AppComponent implements OnInit {
 
   @ViewChild('stage') stage!: ElementRef<HTMLCanvasElement>;
 
-  car: Gg3dRaycastVehicleEntity | null = null;
-
-  mode$: BehaviorSubject<Gg3dRaycastVehicleEntity | 'freecamera'> = new BehaviorSubject<Gg3dRaycastVehicleEntity | "freecamera">('freecamera');
+  state$: BehaviorSubject<CurrentState> = new BehaviorSubject<CurrentState>({ mode: 'freecamera' });
 
   get controlCar$(): Observable<Gg3dRaycastVehicleEntity | null> {
-    return this.mode$.pipe(map(x => x instanceof Gg3dRaycastVehicleEntity ? x : null));
+    return this.state$.pipe(map(x => x.mode === 'driving' ? x.car : null));
   }
 
   async ngOnInit(): Promise<void> {
@@ -91,91 +97,64 @@ export class AppComponent implements OnInit {
       ))
     );
     const map = new Gg3dMapGraphEntity(mapGraph, { loadDepth: 3 });
-    world.addEntity(map);
     map.loaderCursorEntity$.next(renderer.camera);
+    map.chunkLoaded$.subscribe(async ([{ meta }, { position }]) => {
+      // spawn cars
+      const cars =
+        await Promise.all(meta.dummies
+          .filter(x => x.is_car && (Math.random() < (x.spawn_probability || 1)))
+          .map(async dummy => {
+            const [
+              {
+                resources: [{ object3D: chassisMesh, body: chassisBody }],
+                meta: { dummies: chassisDummies }
+              },
+              { resources: [{ object3D: wheelMesh }] },
+              specs,
+            ] = await Promise.all([
+              world.loader.loadGgGlbResources('assets/' + dummy.car_id),
+              world.loader.loadGgGlbResources('assets/' + (dummy.car_id.startsWith('truck') ? 'truck_wheel' : 'wheel')),
+              fetch(`assets/${dummy.car_id.startsWith('truck') ? 'truck' : 'car'}_specs.json`).then(r => r.text()).then(r => JSON.parse(r))
+            ]);
+            const entity = this.generateCar(physScene, chassisMesh, chassisBody, chassisDummies, wheelMesh, specs);
+            entity.name = dummy.car_id;
+            entity.position = Pnt3.add(position, dummy.position);
+            entity.rotation = dummy.rotation;
+            return entity;
+          }),
+        );
+      for (const car of cars) {
+        world.addEntity(car);
+      }
+    });
+    world.addEntity(map);
 
     map.initialLoadComplete$.pipe(filter(x => !!x), first()).subscribe(async () => {
       world.start();
 
-      const [{
-        resources: [{ object3D: chassisMesh, body: chassisBody }],
-        meta: { dummies: chassisDummies }
-      }, { resources: [{ object3D: wheelMesh }] }] = await Promise.all([
-        world.loader.loadGgGlbResources('assets/testCar/body'),
-        world.loader.loadGgGlbResources('assets/testCar/wheel'),
-      ]);
-
-      this.car = new Gg3dRaycastVehicleEntity(
+      const [
         {
-          wheelOptions: chassisDummies
-            .filter(x => x.name.startsWith('wheel_'))
-            .map((wheel) => {
-              const tyre_width = wheel.tyre_width || 0.4;
-              const isLeft = wheel.name.endsWith('l');
-              return {
-                tyre_radius: wheel.tyre_radius || 0.3,
-                tyre_width,
-                position: {
-                  x: wheel.position.x + tyre_width * (isLeft ? -1 : 1),
-                  y: wheel.position.y,
-                  z: wheel.position.z
-                },
-                isFront: wheel.name.startsWith('wheel_f'),
-                isLeft,
-                frictionSlip: 3,
-                rollInfluence: 0.2,
-                maxTravel: 0.25,
-              }
-            }),
-          mpsToRpmFactor: 104.0,
-          typeOfDrive: 'RWD',
-          engine: {
-            minRpm: 700,
-            maxRpm: 7240,
-            maxRpmIncreasePerSecond: 8000,
-            maxRpmDecreasePerSecond: 8000,
-            torques: [
-              { rpm: 1000, torque: 270 }, { rpm: 1200, torque: 290 }, { rpm: 1400, torque: 320 }, { rpm: 1600, torque: 340 },
-              { rpm: 1800, torque: 357 }, { rpm: 2000, torque: 365 }, { rpm: 2200, torque: 370 }, { rpm: 2400, torque: 377 },
-              { rpm: 2600, torque: 382 }, { rpm: 2800, torque: 385 }, { rpm: 3000, torque: 390 }, { rpm: 3200, torque: 392 },
-              { rpm: 3400, torque: 395 }, { rpm: 3600, torque: 398 }, { rpm: 3800, torque: 405 }, { rpm: 4000, torque: 410 },
-              { rpm: 4200, torque: 420 }, { rpm: 4400, torque: 440 }, { rpm: 4600, torque: 460 }, { rpm: 4800, torque: 470 },
-              { rpm: 5000, torque: 480 }, { rpm: 5200, torque: 485 }, { rpm: 5400, torque: 490 }, { rpm: 5600, torque: 490 },
-              { rpm: 5800, torque: 487 }, { rpm: 6000, torque: 485 }, { rpm: 6200, torque: 470 }, { rpm: 6400, torque: 460 },
-              { rpm: 6600, torque: 450 }, { rpm: 6800, torque: 440 }, { rpm: 7000, torque: 430 }, { rpm: 7200, torque: 420 },
-              { rpm: 7400, torque: 410 }, { rpm: 7600, torque: 400 }, { rpm: 7800, torque: 390 }, { rpm: 8000, torque: 380 },
-              { rpm: 8200, torque: 370 }, { rpm: 8400, torque: 360 }, { rpm: 8600, torque: 350 }, { rpm: 8800, torque: 340 },
-              { rpm: 9000, torque: 330 }, { rpm: 9200, torque: 320 }, { rpm: 9400, torque: 300 }, { rpm: 9600, torque: 280 },
-              { rpm: 9800, torque: 260 }, { rpm: 10000, torque: 240 }, { rpm: 10200, torque: 220 }, { rpm: 10400, torque: 200 },
-              { rpm: 10600, torque: 180 }, { rpm: 10800, torque: 160 }, { rpm: 11000, torque: 140 }],
-          },
-          transmission: {
-            isAuto: true,
-            drivelineEfficiency: 0.85,
-            finalDriveRatio: 3.21,
-            reverseGearRatio: -2.33,
-            gearRatios: [2.92, 1.87, 1.42, 1.09, 0.81],
-            upShifts: [7140, 7140, 7140, 7140, 2829625512]
-          },
-          suspension: { stiffness: 20.0, damping: 2.3, compression: 4.4, restLength: 0.53 },
+          resources: [{ object3D: chassisMesh, body: chassisBody }],
+          meta: { dummies: chassisDummies }
         },
-        chassisMesh,
-        new Gg3dRaycastVehicle(
-          physScene,
-          (chassisBody as Gg3dBody).nativeBody,
-        ),
-        wheelMesh,
-        'x',
+        { resources: [{ object3D: wheelMesh }] },
+        specs
+      ] = await Promise.all([
+          world.loader.loadGgGlbResources('assets/lambo/body'),
+          world.loader.loadGgGlbResources('assets/lambo/wheel'),
+          fetch(`assets/lambo/specs.json`).then(r => r.text()).then(r => JSON.parse(r))
+        ]
       );
-      this.car.position = { x: 0, y: 0, z: 1 };
-      world.addEntity(this.car);
+      const lambo = this.generateCar(physScene, chassisMesh, chassisBody, chassisDummies, wheelMesh, specs);
+      lambo.name = 'lambo';
+      world.addEntity(lambo);
       // TODO rename controllers (which are keyboard/mouse related) globally to something else
-      const carController = new CarKeyboardController(world.keyboardController, this.car, {
+      const carController = new CarKeyboardController(world.keyboardController, lambo, {
         keymap: 'wasd+arrows',
         gearUpDownKeys: ['CapsLock', 'ShiftLeft']
       });
 
-      const cameraMotionFactory: [(car: Gg3dRaycastVehicleEntity) => MotionControlFunction, number, (t: number) => number][] = [
+      const cameraMotionFactory: [(car: Gg3dRaycastVehicleEntity, type: 'lambo' | 'truck' | 'car') => MotionControlFunction, number, (t: number) => number][] = [
         [farCamera, 600, (t: number) => Math.pow(t, 0.3)],
         [bumperCamera, 250, (t: number) => 0.7 * Math.pow(t, 0.3)],
         [nearCamera, 250, (t: number) => 0.7 + 0.3 * Math.pow(t, 0.3)],
@@ -183,7 +162,7 @@ export class AppComponent implements OnInit {
       let cameraIndex$: BehaviorSubject<number> = new BehaviorSubject<number>(0);
       let carCameraController: EntityMotionController = new EntityMotionController(
         renderer.camera,
-        cameraMotionFactory[0][0](this.car!),
+        cameraMotionFactory[0][0](lambo, 'lambo'),
         (camera, p) => {
           if (p.fov) {
             (camera as ThreeCameraEntity).object3D.fov = p.fov;
@@ -191,7 +170,7 @@ export class AppComponent implements OnInit {
         }
       );
       world.keyboardController.bind('KeyC').pipe(
-        filter(x => !!x && this.mode$.getValue() != 'freecamera')
+        filter(x => !!x && this.state$.getValue().mode != 'freecamera')
       ).subscribe(() => {
         if (cameraIndex$.getValue() >= cameraMotionFactory.length - 1) {
           cameraIndex$.next(0);
@@ -199,18 +178,24 @@ export class AppComponent implements OnInit {
           cameraIndex$.next(cameraIndex$.getValue() + 1);
         }
       });
-      combineLatest(cameraIndex$, this.mode$)
-        .subscribe(([index, mode]) => {
-          this.car!.visible = mode == 'freecamera' || index != 1; // invisible if bumper camera
+      combineLatest(cameraIndex$, this.state$.pipe(pairwise()))
+        .subscribe(([index, [oldState, newState]]) => {
+          const car: Gg3dRaycastVehicleEntity | undefined = (newState as any).car || (oldState as any).car;
+          if (car) {
+            car.visible = newState.mode == 'freecamera' || index != 1; // invisible if bumper camera
+          }
         });
       cameraIndex$.pipe(skip(1)).subscribe(index => {
-        const [funcProto, duration, easing] = cameraMotionFactory[index];
-        carCameraController.transitControlFunction(
-          funcProto(this.car!),
-          duration,
-          easing,
-          ({ fov: fovA }, { fov: fovB }, t) => ({ fov: lerpNumber(fovA, fovB, t) })
-        );
+        const state = this.state$.getValue();
+        if (state.mode == 'driving') {
+          const [funcProto, duration, easing] = cameraMotionFactory[index];
+          carCameraController.transitControlFunction(
+            funcProto(state.car, state.carType),
+            duration,
+            easing,
+            ({ fov: fovA }, { fov: fovB }, t) => ({ fov: lerpNumber(fovA, fovB, t) })
+          );
+        }
       });
 
       const freeCameraController: FreeCameraController = new FreeCameraController(
@@ -230,8 +215,8 @@ export class AppComponent implements OnInit {
         },
       );
 
-      this.mode$.subscribe((mode) => {
-        if (mode === 'freecamera') {
+      this.state$.subscribe((state) => {
+        if (state.mode === 'freecamera') {
           carController.stop();
           try {
             world.removeEntity(carCameraController, false);
@@ -239,8 +224,9 @@ export class AppComponent implements OnInit {
             //pass
           }
           freeCameraController.start();
-        } else if (mode instanceof Gg3dRaycastVehicleEntity) {
+        } else if (state.mode === 'driving') {
           freeCameraController.stop(false);
+          carController.car = state.car;
           carController.start();
           world.addEntity(carCameraController);
           carCameraController.transitFromStaticState(
@@ -249,7 +235,7 @@ export class AppComponent implements OnInit {
               rotation: renderer.camera.rotation,
               customParameters: { fov: renderer.camera.object3D.fov }
             },
-            cameraMotionFactory[cameraIndex$.getValue()][0](this.car!),
+            cameraMotionFactory[cameraIndex$.getValue()][0](state.car, state.carType),
             800,
             t => Math.pow(t, 0.5),
             ({ fov: fovA }, { fov: fovB }, t) => ({ fov: lerpNumber(fovA, fovB, t) }),
@@ -258,22 +244,41 @@ export class AppComponent implements OnInit {
       });
 
       world.keyboardController.bind('KeyF').pipe(filter(x => x)).subscribe(() => {
-        if (this.mode$.getValue() === 'freecamera') {
-          this.mode$.next(this.car!);
+        if (this.state$.getValue().mode === 'freecamera') {
+          let distance = Number.MAX_SAFE_INTEGER;
+          let car: Gg3dRaycastVehicleEntity | null = null;
+          for (const entity of world.children) {
+            if (entity instanceof Gg3dRaycastVehicleEntity) {
+              const curDistance = Pnt3.len(Pnt3.sub(renderer.camera.position, entity.position));
+              if (curDistance < distance) {
+                distance = curDistance;
+                car = entity;
+              }
+            }
+          }
+          if (car) {
+            this.state$.next({
+              mode: 'driving',
+              car,
+              carType: car.name.startsWith('lambo') ? 'lambo' : (car.name.startsWith('truck') ? 'truck' : 'car'),
+            });
+          }
         } else {
-          this.mode$.next('freecamera');
+          this.state$.next({ mode: 'freecamera' });
         }
       });
 
       world.keyboardController.bind('KeyR').pipe(filter(x => x)).subscribe(() => {
-        const nearest = map.nearestDummy;
-        const car = this.car;
-        if (car && nearest) {
-          car.resetTo({ position: nearest.data.position, rotation: { x: 0, y: 0, z: 0, w: 1 } });
-          carCameraController.motionControlFunction = cameraMotionFactory[cameraIndex$.getValue()][0](this.car!); // reset elastic camera
+        const state = this.state$.getValue();
+        if (state.mode === 'driving') {
+          const nearest = map.nearestDummy;
+          const car = state.car;
+          if (car && nearest) {
+            car.resetTo({ position: nearest.data.position, rotation: { x: 0, y: 0, z: 0, w: 1 } });
+            carCameraController.motionControlFunction = cameraMotionFactory[cameraIndex$.getValue()][0](car, state.carType); // reset elastic camera
+          }
         }
       });
-
 
       // const cls = world.visualScene.debugPhysicsDrawerClass;
       // if (!cls) {
@@ -285,5 +290,43 @@ export class AppComponent implements OnInit {
       //   world.pauseWorld();
       // }, 5000);
     });
+  }
+
+  private generateCar(
+    physScene: Gg3dPhysicsWorld, chassisMesh: IGg3dObject | null, chassisBody: IGg3dBody | null,
+    chassisDummies: GgDummy[], wheelMesh: IGg3dObject | null, specs: any
+  ): Gg3dRaycastVehicleEntity {
+    return new Gg3dRaycastVehicleEntity(
+      {
+        wheelOptions: chassisDummies
+          .filter(x => x.name.startsWith('wheel_'))
+          .map((wheel) => {
+            const tyre_width = wheel.tyre_width || 0.4;
+            const isLeft = wheel.name.endsWith('l');
+            return {
+              tyre_radius: wheel.tyre_radius || 0.3,
+              tyre_width,
+              position: {
+                x: wheel.position.x + tyre_width * (isLeft ? -1 : 1),
+                y: wheel.position.y,
+                z: wheel.position.z
+              },
+              isFront: wheel.name.startsWith('wheel_f'),
+              isLeft,
+              frictionSlip: 3,
+              rollInfluence: 0.2,
+              maxTravel: 0.25,
+            }
+          }),
+        ...specs,
+      },
+      chassisMesh,
+      new Gg3dRaycastVehicle(
+        physScene,
+        (chassisBody as Gg3dBody).nativeBody,
+      ),
+      wheelMesh,
+      'x',
+    );
   }
 }

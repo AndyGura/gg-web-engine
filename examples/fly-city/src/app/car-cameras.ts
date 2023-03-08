@@ -72,14 +72,32 @@ const lockedCameraControlFunction: (car: Gg3dRaycastVehicleEntity, cameraPositio
     }
   };
 
-export const farCamera: (car: Gg3dRaycastVehicleEntity) => MotionControlFunction = (car) => {
-  return elasticCarCameraControlFunction(car, 6.5, 0.3948, 65);
+export const farCamera: (car: Gg3dRaycastVehicleEntity, type: 'lambo' | 'truck' | 'car') => MotionControlFunction = (car, type) => {
+  if (type === 'lambo') {
+    return elasticCarCameraControlFunction(car, 6.5, 0.3948, 65);
+  } else if (type === 'car') {
+    return elasticCarCameraControlFunction(car, 9, 0.3948, 65);
+  } else {
+    return elasticCarCameraControlFunction(car, 22, 0.4448, 65);
+  }
 };
 
-export const nearCamera: (car: Gg3dRaycastVehicleEntity) => MotionControlFunction = (car) => {
-  return elasticCarCameraControlFunction(car, 4.09, 0.376, 80);
+export const nearCamera: (car: Gg3dRaycastVehicleEntity, type: 'lambo' | 'truck' | 'car') => MotionControlFunction = (car, type) => {
+  if (type === 'lambo') {
+    return elasticCarCameraControlFunction(car, 4.09, 0.376, 80);
+  } else if (type === 'car') {
+    return elasticCarCameraControlFunction(car, 6, 0.476, 80);
+  } else {
+    return elasticCarCameraControlFunction(car, 9, 0.576, 80);
+  }
 };
 
-export const bumperCamera: (car: Gg3dRaycastVehicleEntity) => MotionControlFunction = (car) => {
-  return lockedCameraControlFunction(car, { x: 0, y: 1, z: 0.7 }, { x: 0, y: 2, z: 0.7 }, 70);
+export const bumperCamera: (car: Gg3dRaycastVehicleEntity, type: 'lambo' | 'truck' | 'car') => MotionControlFunction = (car, type) => {
+  if (type === 'lambo') {
+    return lockedCameraControlFunction(car, { x: 0, y: 1, z: 0.7 }, { x: 0, y: 2, z: 0.7 }, 70);
+  } else if (type === 'car') {
+    return lockedCameraControlFunction(car, { x: 0, y: 1, z: 1.2 }, { x: 0, y: 2, z: 1.2 }, 70);
+  } else {
+    return lockedCameraControlFunction(car, { x: 0, y: 1.3, z: 2.5 }, { x: 0, y: 2, z: 2.5 }, 70);
+  }
 };
