@@ -10,6 +10,8 @@ import { GgWorld } from '../base/gg-world';
 import { SuspensionOptions, WheelOptions } from './entities/gg-3d-raycast-vehicle.entity';
 import { GgTrigger } from '../base/interfaces/gg-trigger';
 import { BodyShape3DDescriptor, Shape3DDescriptor } from './models/shapes';
+import { Observable } from 'rxjs';
+import { GgPositionable3dEntity } from './entities/gg-positionable-3d-entity';
 
 // These interfaces have to be implemented for a particular 3D physics engine
 export interface IGg3dPhysicsWorld extends GgPhysicsWorld<Point3, Point4> {
@@ -35,6 +37,7 @@ export interface IGg3dBody extends GgBody<Point3, Point4> {
 }
 
 export interface IGg3dTrigger extends GgTrigger<Point3, Point4> {
+  get onEntityEntered(): Observable<GgPositionable3dEntity>;
 }
 
 export interface IGg3dRaycastVehicle extends IGg3dBody {

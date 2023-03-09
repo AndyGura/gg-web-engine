@@ -28,6 +28,7 @@ export * from './base/controllers/mouse.controller';
 
 export * from './2d/entities/gg-2d-entity';
 export * from './2d/entities/gg-positionable-2d-entity';
+export * from './2d/entities/gg-2d-trigger.entity';
 export * from './2d/models/body-options';
 export * from './2d/models/shapes';
 export * from './2d/interfaces';
@@ -41,6 +42,7 @@ export * from './3d/entities/gg-positionable-3d-entity';
 export * from './3d/entities/gg-3d-camera.entity';
 export * from './3d/entities/gg-3d-map-graph.entity';
 export * from './3d/entities/gg-3d-raycast-vehicle.entity';
+export * from './3d/entities/gg-3d-trigger.entity';
 export * from './3d/models/body-options';
 export * from './3d/models/gg-meta';
 export * from './3d/models/shapes';
