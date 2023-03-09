@@ -1,125 +1,76 @@
-import { Body3DOptions, BodyPrimitiveDescriptor, IGg3dBodyFactory, Point3 } from '@gg-web-engine/core';
+import { Body3DOptions, BodyShape3DDescriptor, IGg3dBodyFactory, Shape3DDescriptor } from '@gg-web-engine/core';
 import { Gg3dBody } from './gg-3d-body';
 import { Gg3dPhysicsWorld } from './gg-3d-physics-world';
 import Ammo from 'ammojs-typed';
 
-export class Gg3dBodyFactory extends IGg3dBodyFactory<Gg3dBody> {
+export class Gg3dBodyFactory implements IGg3dBodyFactory<Gg3dBody, any> {
 
   constructor(private readonly world: Gg3dPhysicsWorld) {
-    super();
   }
 
-  createBox(dimensions: Point3, options: Partial<Body3DOptions>): Gg3dBody {
-    return this.createBody(
-      new this.world.ammo.btBoxShape(new this.world.ammo.btVector3(dimensions.x / 2, dimensions.y / 2, dimensions.z / 2)),
-      options
-    );
+  createPrimitiveBody(descriptor: BodyShape3DDescriptor): Gg3dBody {
+    return this.createBody(this.createShape(descriptor), descriptor);
   }
 
-  createCapsule(radius: number, centersDistance: number, options: Partial<Body3DOptions>): Gg3dBody {
-    return this.createBody(
-      new this.world.ammo.btCapsuleShapeZ(radius, centersDistance + radius * 2),
-      options
-    );
+  createTrigger(descriptor: Shape3DDescriptor): any {
+    throw new Error('Triggers not implemented for Ammo.js');
   }
 
-  createCylinder(radius: number, height: number, options: Partial<Body3DOptions>): Gg3dBody {
-    return this.createBody(
-      new this.world.ammo.btCylinderShapeZ(new this.world.ammo.btVector3(radius, radius, height / 2)),
-      options
-    );
-  }
-
-  createCone(radius: number, height: number, options: Partial<Body3DOptions>): Gg3dBody {
-    return this.createBody(
-      new this.world.ammo.btConeShapeZ(radius, height),
-      options
-    );
-  }
-
-  createSphere(radius: number, options: Partial<Body3DOptions>): Gg3dBody {
-    return this.createBody(new this.world.ammo.btSphereShape(radius), options);
-  }
-
-  createCompoundBody(items: BodyPrimitiveDescriptor[], options: Partial<Body3DOptions>): Gg3dBody {
-    if (options.mass === undefined || options.dynamic === undefined) {
-      let shapeMass = 0;
-      let shapeTotalFriction = 0;
-      let shapeTotalRestitution = 0;
-      let isDynamic = undefined;
-      for (const item of items) {
-        if (item.dynamic !== undefined && isDynamic !== undefined && isDynamic != item.dynamic) {
-          throw new Error('Rigid body dynamic flag differs in children of one single scene!');
+  private createShape(descriptor: Shape3DDescriptor): Ammo.btCollisionShape {
+    switch (descriptor.shape) {
+      case 'BOX':
+        return new this.world.ammo.btBoxShape(new this.world.ammo.btVector3(descriptor.dimensions.x / 2, descriptor.dimensions.y / 2, descriptor.dimensions.z / 2));
+      case 'CAPSULE':
+        return new this.world.ammo.btCapsuleShapeZ(descriptor.radius, descriptor.centersDistance + descriptor.radius * 2);
+      case 'CYLINDER':
+        return new this.world.ammo.btCylinderShapeZ(new this.world.ammo.btVector3(descriptor.radius, descriptor.radius, descriptor.height / 2));
+      case 'CONE':
+        return new this.world.ammo.btConeShapeZ(descriptor.radius, descriptor.height);
+      case 'SPHERE':
+        return new this.world.ammo.btSphereShape(descriptor.radius);
+      case 'COMPOUND':
+        const compoundShape: Ammo.btCollisionShape = new this.world.ammo.btCompoundShape();
+        for (const item of descriptor.children) {
+          const subShape = this.createShape(item);
+          if (!subShape) {
+            continue;
+          }
+          const subShapeTransform = new this.world.ammo.btTransform();
+          const pos = item.position || { x: 0, y: 0, z: 0 };
+          const rot = item.rotation || { x: 0, y: 0, z: 0, w: 1 };
+          subShapeTransform.setOrigin(new this.world.ammo.btVector3(pos.x, pos.y, pos.z));
+          subShapeTransform.setRotation(new this.world.ammo.btQuaternion(rot.x, rot.y, rot.z, rot.w));
+          (compoundShape as Ammo.btCompoundShape).addChildShape(subShapeTransform, subShape);
         }
-        if (isDynamic === undefined) {
-          isDynamic = item.dynamic;
+        return compoundShape;
+      case 'CONVEX_HULL':
+        const shape = new this.world.ammo.btConvexHullShape();
+        const tmpVector = new this.world.ammo.btVector3();
+        for (const v of descriptor.vertices) {
+          tmpVector.setValue(v.x, v.y, v.z);
+          shape.addPoint(tmpVector);
         }
-        const subShape = this.createPrimitive(item);
-        if (!subShape) {
-          continue;
+        this.world.ammo.destroy(tmpVector);
+        shape.recalcLocalAabb();
+        return shape;
+      case 'MESH':
+        const mesh = new this.world.ammo.btTriangleMesh(true, true);
+        const tmpVectors: [Ammo.btVector3, Ammo.btVector3, Ammo.btVector3] = [
+          new this.world.ammo.btVector3(),
+          new this.world.ammo.btVector3(),
+          new this.world.ammo.btVector3()
+        ];
+        for (const f of descriptor.faces) {
+          for (let j = 0; j < 3; j++) {
+            tmpVectors[j].setValue(descriptor.vertices[f[0]].x, descriptor.vertices[f[1]].y, descriptor.vertices[f[2]].z);
+          }
+          mesh.addTriangle(...tmpVectors, true);
         }
-        shapeMass += item.mass || 0;
-        shapeTotalFriction += item.friction || 0;
-        shapeTotalRestitution += item.restitution || 0;
-      }
-      if (options.dynamic === undefined) {
-        options.dynamic = !!isDynamic;
-      }
-      if (options.mass === undefined) {
-        options.mass = shapeMass;
-      }
-      if (options.friction === undefined) {
-        options.friction = shapeTotalFriction / items.length;
-      }
-      if (options.restitution === undefined) {
-        options.restitution = shapeTotalRestitution / items.length;
-      }
+        tmpVectors.forEach((v) => {
+          this.world.ammo.destroy(v);
+        });
+        return new this.world.ammo.btBvhTriangleMeshShape(mesh, false, true);
     }
-    const shape: Ammo.btCollisionShape = new this.world.ammo.btCompoundShape();
-    for (const item of items) {
-      const subShape = this.createPrimitive(item);
-      if (!subShape) {
-        continue;
-      }
-      const subShapeTransform = new this.world.ammo.btTransform();
-      const pos = item.position || { x: 0, y: 0, z: 0 };
-      const rot = item.rotation || { x: 0, y: 0, z: 0, w: 1 };
-      subShapeTransform.setOrigin(new this.world.ammo.btVector3(pos.x, pos.y, pos.z));
-      subShapeTransform.setRotation(new this.world.ammo.btQuaternion(rot.x, rot.y, rot.z, rot.w));
-      (shape as Ammo.btCompoundShape).addChildShape(subShapeTransform, subShape.nativeBody.getCollisionShape());
-    }
-    return this.createBody(shape, options);
-  }
-
-  createConvexHull(vertices: Point3[], options: Partial<Body3DOptions>): Gg3dBody {
-    const shape = new this.world.ammo.btConvexHullShape();
-    const tmpVector = new this.world.ammo.btVector3();
-    for (const v of vertices) {
-      tmpVector.setValue(v.x, v.y, v.z);
-      shape.addPoint(tmpVector);
-    }
-    this.world.ammo.destroy(tmpVector);
-    shape.recalcLocalAabb();
-    return this.createBody(shape, options);
-  }
-
-  createMesh(vertices: Point3[], faces: [number, number, number][], options: Partial<Body3DOptions>): Gg3dBody {
-    const mesh = new this.world.ammo.btTriangleMesh(true, true);
-    const tmpVectors: [Ammo.btVector3, Ammo.btVector3, Ammo.btVector3] = [
-      new this.world.ammo.btVector3(),
-      new this.world.ammo.btVector3(),
-      new this.world.ammo.btVector3()
-    ];
-    for (const f of faces) {
-      for (let j = 0; j < 3; j++) {
-        tmpVectors[j].setValue(vertices[f[0]].x, vertices[f[1]].y, vertices[f[2]].z);
-      }
-      mesh.addTriangle(...tmpVectors, true);
-    }
-    tmpVectors.forEach((v) => {
-      this.world.ammo.destroy(v);
-    })
-    return this.createBody(new this.world.ammo.btBvhTriangleMeshShape(mesh, false, true), options);
   }
 
   private createBody(shape: Ammo.btCollisionShape, options: Partial<Body3DOptions>): Gg3dBody {

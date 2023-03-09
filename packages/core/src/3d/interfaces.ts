@@ -3,12 +3,13 @@ import { Point3, Point4 } from '../base/models/points';
 import { GgObject } from '../base/interfaces/gg-object';
 import { GgPhysicsWorld } from '../base/interfaces/gg-physics-world';
 import { GgVisualScene } from '../base/interfaces/gg-visual-scene';
-import { BodyPrimitiveDescriptor, GgMeta } from './models/gg-meta';
-import { Body3DOptions } from './models/body-options';
+import { GgMeta } from './models/gg-meta';
 import { BaseGgRenderer } from '../base/entities/base-gg-renderer';
 import { Gg3dCameraEntity } from './entities/gg-3d-camera.entity';
 import { GgWorld } from '../base/gg-world';
 import { SuspensionOptions, WheelOptions } from './entities/gg-3d-raycast-vehicle.entity';
+import { GgTrigger } from '../base/interfaces/gg-trigger';
+import { BodyShape3DDescriptor, Shape3DDescriptor } from './models/shapes';
 
 // These interfaces have to be implemented for a particular 3D physics engine
 export interface IGg3dPhysicsWorld extends GgPhysicsWorld<Point3, Point4> {
@@ -23,6 +24,7 @@ export abstract class Gg3dRenderer extends BaseGgRenderer {
     super.onSpawned(world);
     world.addEntity(this.camera);
   }
+
   onRemoved() {
     super.onRemoved();
     this.world?.removeEntity(this.camera);
@@ -30,6 +32,9 @@ export abstract class Gg3dRenderer extends BaseGgRenderer {
 }
 
 export interface IGg3dBody extends GgBody<Point3, Point4> {
+}
+
+export interface IGg3dTrigger extends GgTrigger<Point3, Point4> {
 }
 
 export interface IGg3dRaycastVehicle extends IGg3dBody {
@@ -54,38 +59,11 @@ export interface IGg3dRaycastVehicle extends IGg3dBody {
   resetSuspension(): void;
 }
 
-export abstract class IGg3dBodyFactory<T extends IGg3dBody = IGg3dBody> {
-  abstract createBox(dimensions: Point3, options: Partial<Body3DOptions>): T;
-  abstract createCapsule(radius: number, centersDistance: number, options: Partial<Body3DOptions>): T;
-  abstract createCylinder(radius: number, height: number, options: Partial<Body3DOptions>): T;
-  abstract createCone(radius: number, height: number, options: Partial<Body3DOptions>): T;
-  abstract createSphere(radius: number, options: Partial<Body3DOptions>): T;
-  abstract createCompoundBody(items: BodyPrimitiveDescriptor[], options: Partial<Body3DOptions>): T;
-  abstract createConvexHull(vertices: Point3[], options: Partial<Body3DOptions>): T;
-  abstract createMesh(vertices: Point3[], faces: [number, number, number][], options: Partial<Body3DOptions>): T;
+export interface IGg3dBodyFactory<T extends IGg3dBody = IGg3dBody, K extends IGg3dTrigger = IGg3dTrigger> {
 
-  createPrimitive(descriptor: BodyPrimitiveDescriptor): T {
-    switch (descriptor.shape) {
-      case 'BOX':
-        return this.createBox(descriptor.dimensions, descriptor);
-      case 'CAPSULE':
-        return this.createCapsule(descriptor.radius, descriptor.centersDistance, descriptor);
-      case 'CYLINDER':
-        return this.createCylinder(descriptor.radius, descriptor.height, descriptor);
-      case 'CONE':
-        return this.createCone(descriptor.radius, descriptor.height, descriptor);
-      case 'SPHERE':
-        return this.createSphere(descriptor.radius, descriptor);
-      case 'COMPOUND':
-        return this.createCompoundBody(descriptor.children, descriptor);
-      case 'CONVEX_HULL':
-        return this.createConvexHull(descriptor.vertices, descriptor);
-      case 'MESH':
-        return this.createMesh(descriptor.vertices, descriptor.faces, descriptor);
-    }
-    throw new Error(`Body shape ${descriptor['shape']} creation not implemented`);
-  };
+  createPrimitiveBody(descriptor: BodyShape3DDescriptor): T;
 
+  createTrigger(descriptor: Shape3DDescriptor): K;
 }
 
 export abstract class IGg3dBodyLoader {
@@ -95,7 +73,7 @@ export abstract class IGg3dBodyLoader {
 
   async loadFromGgGlb(glbFile: ArrayBuffer, meta: GgMeta): Promise<IGg3dBody[]> {
     return (meta?.rigidBodies || []).map(d => {
-      const body = this.world.factory.createPrimitive(d);
+      const body = this.world.factory.createPrimitiveBody(d);
       body.name = d.name;
       return body;
     });

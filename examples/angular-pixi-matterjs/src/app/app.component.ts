@@ -28,7 +28,7 @@ export class AppComponent implements OnInit {
 
     const floor = new Gg2dEntity(
       world.visualScene.factory.createSquare({ x : 800, y: 100 }),
-      world.physicsWorld.factory.createSquare({ x : 800, y: 100 }, { dynamic: false }),
+      world.physicsWorld.factory.createPrimitiveBody({ shape: 'SQUARE', dimensions: { x : 800, y: 100 }, dynamic: false }),
     );
     GgViewport.instance.subscribeOnViewportSize().subscribe((newSize: Point2) => {
       floor.position = { x: newSize.x / 2, y: newSize.y - 75 };
@@ -40,12 +40,12 @@ export class AppComponent implements OnInit {
       if (Math.random() >= 0.5) {
         item = new Gg2dEntity(
           world.visualScene.factory.createSquare({ x: 25, y: 25 }),
-          world.physicsWorld.factory.createSquare({ x: 25, y: 25 }, {  mass: 1 }),
+          world.physicsWorld.factory.createPrimitiveBody({ shape: 'SQUARE', dimensions: { x: 25, y: 25 },  mass: 1 }),
         );
       } else {
         item = new Gg2dEntity(
           world.visualScene.factory.createCircle(13),
-          world.physicsWorld.factory.createCircle(13, {  mass: 1 }),
+          world.physicsWorld.factory.createPrimitiveBody({ shape: 'CIRCLE', radius: 13,  mass: 1 }),
         );
       }
       item.position = { x: GgViewport.instance.getCurrentViewportSize().x / 2 + Math.random() * 100 - 50, y: 75 };
