@@ -7,6 +7,9 @@ export class Gg2dTriggerEntity extends Gg2dEntity {
   get onEntityEntered(): Observable<GgPositionable2dEntity> {
     return this.objectBody.onEntityEntered;
   }
+  get onEntityLeft(): Observable<GgPositionable2dEntity> {
+    return this.objectBody.onEntityLeft;
+  }
 
   constructor(
     public readonly objectBody: IGg2dTrigger,

@@ -4,4 +4,7 @@ import { Observable } from 'rxjs';
 
 export interface GgTrigger<D, R> extends GgBody<D, R> {
   get onEntityEntered(): Observable<GgPositionableEntity<D, R>>;
+  get onEntityLeft(): Observable<GgPositionableEntity<D, R>>;
+
+  checkOverlaps(): void;
 }
