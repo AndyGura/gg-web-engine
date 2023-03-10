@@ -1,5 +1,5 @@
 import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
-import { createInlineTickController, Gg3dEntity, Gg3dWorld, GgViewportManager, Mtrx4, Qtrn } from '@gg-web-engine/core';
+import { createInlineTickController, Gg3dEntity, Gg3dWorld, GgViewportManager, Gg3dTriggerEntity, GgPositionable3dEntity, Qtrn } from '@gg-web-engine/core';
 import { interval } from 'rxjs';
 import { Gg3dVisualScene, GgRenderer } from '@gg-web-engine/three';
 import { Gg3dPhysicsWorld } from '@gg-web-engine/ammo';
@@ -18,7 +18,7 @@ export class AppComponent implements OnInit {
 
     const scene: Gg3dVisualScene = new Gg3dVisualScene();
     const physScene: Gg3dPhysicsWorld = new Gg3dPhysicsWorld();
-    const world: Gg3dWorld = new Gg3dWorld(scene, physScene);
+    const world: Gg3dWorld = new Gg3dWorld(scene, physScene, true);
     await world.init();
 
     const canvas = await GgViewportManager.instance.createCanvas(1);
@@ -35,10 +35,18 @@ export class AppComponent implements OnInit {
     renderer.activate();
 
     const floor = new Gg3dEntity(
-      world.visualScene.factory.createBox({ x: 50, y: 50, z: 1 }),
-      world.physicsWorld.factory.createPrimitiveBody({ shape: 'BOX', dimensions: { x: 50, y: 50, z: 1 }, dynamic: false }),
+      world.visualScene.factory.createBox({ x: 7, y: 7, z: 1 }),
+      world.physicsWorld.factory.createPrimitiveBody({ shape: 'BOX', dimensions: { x: 7, y: 7, z: 1 }, dynamic: false }),
     );
     world.addEntity(floor);
+
+    const destroyTrigger = new Gg3dTriggerEntity(world.physicsWorld.factory.createTrigger({ shape: 'BOX', dimensions: { x: 1000, y: 1000, z: 1 }}));
+    destroyTrigger.position = { x: 0, y: 0, z: -5 };
+    destroyTrigger.onEntityEntered.subscribe((entity: GgPositionable3dEntity) => {
+      console.log(entity);
+      // world.removeEntity(entity, true);
+    });
+    world.addEntity(destroyTrigger);
 
     interval(500).subscribe(() => {
       let item: Gg3dEntity;

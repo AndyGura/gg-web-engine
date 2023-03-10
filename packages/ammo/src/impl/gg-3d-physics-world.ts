@@ -65,6 +65,7 @@ export class Gg3dPhysicsWorld implements IGg3dPhysicsWorld {
 
   private collisionConfiguration: Ammo.btDefaultCollisionConfiguration | undefined;
   private dispatcher: Ammo.btCollisionDispatcher | undefined;
+  private ghostPairCallback: Ammo.btGhostPairCallback | undefined;
   private broadphase: Ammo.btBroadphaseInterface | undefined;
   private solver: Ammo.btSequentialImpulseConstraintSolver | undefined;
   private gravityVector: Ammo.btVector3 | undefined;
@@ -75,6 +76,7 @@ export class Gg3dPhysicsWorld implements IGg3dPhysicsWorld {
     this.collisionConfiguration = new this.ammo.btDefaultCollisionConfiguration();
     this.dispatcher = new this.ammo.btCollisionDispatcher(this.collisionConfiguration);
     this.broadphase = new this.ammo.btDbvtBroadphase();
+    this.ghostPairCallback = new this.ammo.btGhostPairCallback();
     this.solver = new this.ammo.btSequentialImpulseConstraintSolver();
     this.gravityVector = new this.ammo.btVector3(this._gravity.x, this._gravity.y, this._gravity.z);
 
@@ -84,6 +86,7 @@ export class Gg3dPhysicsWorld implements IGg3dPhysicsWorld {
       this.solver,
       this.collisionConfiguration,
     );
+    this._dynamicAmmoWorld.getPairCache().setInternalGhostPairCallback(this.ghostPairCallback);
     this._dynamicAmmoWorld.setGravity(this.gravityVector);
     this._factory = new Gg3dBodyFactory(this);
     this._loader = new Gg3dBodyLoader(this);

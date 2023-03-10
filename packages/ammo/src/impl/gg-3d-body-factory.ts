@@ -2,8 +2,9 @@ import { Body3DOptions, BodyShape3DDescriptor, IGg3dBodyFactory, Shape3DDescript
 import { Gg3dBody } from './gg-3d-body';
 import { Gg3dPhysicsWorld } from './gg-3d-physics-world';
 import Ammo from 'ammojs-typed';
+import { Gg3dTrigger } from './gg-3d-trigger';
 
-export class Gg3dBodyFactory implements IGg3dBodyFactory<Gg3dBody, any> {
+export class Gg3dBodyFactory implements IGg3dBodyFactory<Gg3dBody, Gg3dTrigger> {
 
   constructor(private readonly world: Gg3dPhysicsWorld) {
   }
@@ -12,8 +13,11 @@ export class Gg3dBodyFactory implements IGg3dBodyFactory<Gg3dBody, any> {
     return this.createBody(this.createShape(descriptor), descriptor);
   }
 
-  createTrigger(descriptor: Shape3DDescriptor): any {
-    throw new Error('Triggers not implemented for Ammo.js');
+  createTrigger(descriptor: Shape3DDescriptor): Gg3dTrigger {
+    const ghostObject = new this.world.ammo.btPairCachingGhostObject();
+    ghostObject.setCollisionShape(this.createShape(descriptor));
+    ghostObject.setCollisionFlags(ghostObject.getCollisionFlags() | 4); // 4 is a CF_NO_CONTACT_RESPONSE collision flag
+    return new Gg3dTrigger(this.world, ghostObject);
   }
 
   private createShape(descriptor: Shape3DDescriptor): Ammo.btCollisionShape {
