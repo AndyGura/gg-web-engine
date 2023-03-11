@@ -44,13 +44,11 @@ def parse_dummy_obj(object):
         **{x: object[x] for x in object.keys() if x != '_RNA_UI'}
     }
     
-def get_rigid_body_description(obj):
+def get_rigid_body_description(obj, export_body_parameters=True):
     body = obj.rigid_body
     obj.rotation_mode = 'QUATERNION'
     meta = {
         "name": obj.name,
-        "dynamic": body.type == "ACTIVE",
-        "shape": body.collision_shape,
         "position": { 
             'x': obj.location.x, 
             'y': obj.location.y, 
@@ -58,10 +56,17 @@ def get_rigid_body_description(obj):
         },
         # FIXME relative rotation
         "rotation": { 'x': obj.rotation_quaternion.x, 'y': obj.rotation_quaternion.y, 'z': obj.rotation_quaternion.z, 'w': obj.rotation_quaternion.w },
-        "mass": body.mass,
-        "restitution": body.restitution,
-        "friction": body.friction,
+        "shape": {
+            "shape": body.collision_shape,
+        },
     }
+    if (export_body_parameters):
+        meta['body'] = {
+            "dynamic": body.type == "ACTIVE",
+            "mass": body.mass,
+            "restitution": body.restitution,
+            "friction": body.friction,
+        }
     parent = obj.parent
     while parent:
         meta['position']['x'] -= parent.location.x
@@ -71,32 +76,32 @@ def get_rigid_body_description(obj):
     meta['position']['x'] = round(meta['position']['x'], 6)
     meta['position']['y'] = round(meta['position']['y'], 6)
     meta['position']['z'] = round(meta['position']['z'], 6)
-    if meta['shape'] == 'SPHERE':
-        meta['radius'] = max(obj.dimensions.x, obj.dimensions.y, obj.dimensions.z) / 2
-    elif meta['shape'] == 'BOX':
-        meta['dimensions'] = { 'x': obj.dimensions.x, 'y': obj.dimensions.y, 'z': obj.dimensions.z }
-    elif meta['shape'] in ['CONE', 'CYLINDER']:
-        meta['radius'] = max(obj.dimensions.x, obj.dimensions.y) / 2
-        meta['height'] = obj.dimensions.z
-    elif meta['shape'] == 'CAPSULE':
-        meta['radius'] = max(obj.dimensions.x, obj.dimensions.y) / 2
-        meta['centersDistance'] = obj.dimensions.z - max(obj.dimensions.x, obj.dimensions.y)
-    elif meta['shape'] == 'CONVEX_HULL':
-        meta['vertices'] = [{ 'x': v.co.x, 'y': v.co.y, 'z': v.co.z } for v in obj.data.vertices]
-    elif meta['shape'] == 'MESH':
-        meta['vertices'] = [{ 'x': v.co.x, 'y': v.co.y, 'z': v.co.z } for v in obj.data.vertices]
+    if meta['shape']['shape'] == 'SPHERE':
+        meta['shape']['radius'] = max(obj.dimensions.x, obj.dimensions.y, obj.dimensions.z) / 2
+    elif meta['shape']['shape'] == 'BOX':
+        meta['shape']['dimensions'] = { 'x': obj.dimensions.x, 'y': obj.dimensions.y, 'z': obj.dimensions.z }
+    elif meta['shape']['shape'] in ['CONE', 'CYLINDER']:
+        meta['shape']['radius'] = max(obj.dimensions.x, obj.dimensions.y) / 2
+        meta['shape']['height'] = obj.dimensions.z
+    elif meta['shape']['shape'] == 'CAPSULE':
+        meta['shape']['radius'] = max(obj.dimensions.x, obj.dimensions.y) / 2
+        meta['shape']['centersDistance'] = obj.dimensions.z - max(obj.dimensions.x, obj.dimensions.y)
+    elif meta['shape']['shape'] == 'CONVEX_HULL':
+        meta['shape']['vertices'] = [{ 'x': v.co.x, 'y': v.co.y, 'z': v.co.z } for v in obj.data.vertices]
+    elif meta['shape']['shape'] == 'MESH':
+        meta['shape']['vertices'] = [{ 'x': v.co.x, 'y': v.co.y, 'z': v.co.z } for v in obj.data.vertices]
         import bmesh
         bm = bmesh.new()
         bm.from_mesh(obj.data)
         bmesh.ops.triangulate(bm, faces=bm.faces[:])
-        meta['faces'] = [[v.index for v in f.verts] for f in bm.faces]
+        meta['shape']['faces'] = [[v.index for v in f.verts] for f in bm.faces]
         bm.free()
-    elif meta['shape'] == 'COMPOUND':
-        meta['children'] = [get_rigid_body_description(sub_obj) 
-                            for sub_obj in bpy.context.scene.objects 
-                            if sub_obj.rigid_body is not None and sub_obj.parent == obj]
+    elif meta['shape']['shape'] == 'COMPOUND':
+        meta['shape']['children'] = [get_rigid_body_description(sub_obj, export_body_parameters=False)
+                                    for sub_obj in bpy.context.scene.objects
+                                    if sub_obj.rigid_body is not None and sub_obj.parent == obj]
     else:
-        raise NotImplementedError(f'GG does not support exporting rigid body {meta["shape"]} shape')
+        raise NotImplementedError(f'GG does not support exporting rigid body {meta["shape"]["shape"]} shape')
     return meta
 
 if "$src_file":

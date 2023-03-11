@@ -32,6 +32,7 @@ export * from './2d/entities/gg-2d-trigger.entity';
 export * from './2d/models/body-options';
 export * from './2d/models/shapes';
 export * from './2d/interfaces';
+export * from './2d/factories';
 export * from './2d/gg-2d-world';
 
 export * from './3d/controllers/car-keyboard.controller';
@@ -47,5 +48,6 @@ export * from './3d/models/body-options';
 export * from './3d/models/gg-meta';
 export * from './3d/models/shapes';
 export * from './3d/interfaces';
+export * from './3d/factories';
 export * from './3d/gg-3d-world';
 export * from './3d/loader';

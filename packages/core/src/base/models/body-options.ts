@@ -1,8 +1,6 @@
-export interface BodyOptions<D, R> {
+export interface BodyOptions {
   dynamic: boolean;
   mass: number;
   restitution: number;
   friction: number;
-  position: D;
-  rotation: R;
 }

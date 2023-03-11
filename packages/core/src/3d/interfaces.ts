@@ -9,9 +9,9 @@ import { Gg3dCameraEntity } from './entities/gg-3d-camera.entity';
 import { GgWorld } from '../base/gg-world';
 import { SuspensionOptions, WheelOptions } from './entities/gg-3d-raycast-vehicle.entity';
 import { GgTrigger } from '../base/interfaces/gg-trigger';
-import { BodyShape3DDescriptor, Shape3DDescriptor } from './models/shapes';
 import { Observable } from 'rxjs';
 import { GgPositionable3dEntity } from './entities/gg-positionable-3d-entity';
+import {IGg3dBodyFactory, IGg3dObjectFactory} from "./factories";
 
 // These interfaces have to be implemented for a particular 3D physics engine
 export interface IGg3dPhysicsWorld extends GgPhysicsWorld<Point3, Point4> {
@@ -63,13 +63,6 @@ export interface IGg3dRaycastVehicle extends IGg3dBody {
   resetSuspension(): void;
 }
 
-export interface IGg3dBodyFactory<T extends IGg3dBody = IGg3dBody, K extends IGg3dTrigger = IGg3dTrigger> {
-
-  createPrimitiveBody(descriptor: BodyShape3DDescriptor): T;
-
-  createTrigger(descriptor: Shape3DDescriptor): K;
-}
-
 export abstract class IGg3dBodyLoader {
 
   protected constructor(protected readonly world: IGg3dPhysicsWorld) {
@@ -77,7 +70,7 @@ export abstract class IGg3dBodyLoader {
 
   async loadFromGgGlb(glbFile: ArrayBuffer, meta: GgMeta): Promise<IGg3dBody[]> {
     return (meta?.rigidBodies || []).map(d => {
-      const body = this.world.factory.createPrimitiveBody(d);
+      const body = this.world.factory.createRigidBody({ shape: d.shape, body: d.body }, { position: d.position, rotation: d.rotation});
       body.name = d.name;
       return body;
     });
@@ -97,14 +90,6 @@ export interface IGg3dCamera extends IGg3dObject {
   get supportsFov(): boolean;
   get fov(): number;
   set fov(f: number);
-}
-
-export interface IGg3dObjectFactory<T extends IGg3dObject = IGg3dObject> {
-  createBox(dimensions: Point3): T;
-  createCapsule(radius: number, centersDistance: number): T;
-  createCylinder(radius: number, height: number): T;
-  createCone(radius: number, height: number): T;
-  createSphere(radius: number): T;
 }
 
 export interface IGg3dObjectLoader {

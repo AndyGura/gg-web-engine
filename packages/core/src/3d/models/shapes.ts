@@ -6,9 +6,9 @@ export type Shape3DDescriptor = (
   | { shape: 'CONE' | 'CYLINDER', radius: number, height: number }
   | { shape: 'CAPSULE', radius: number, centersDistance: number }
   | { shape: 'SPHERE', radius: number }
-  | { shape: 'COMPOUND', children: (Shape3DDescriptor & { position?: Point3, rotation?: Point4 })[] }
+  | { shape: 'COMPOUND', children: { position?: Point3, rotation?: Point4, shape: Shape3DDescriptor }[] }
   | { shape: 'CONVEX_HULL', vertices: Point3[] }
   | { shape: 'MESH', vertices: Point3[], faces: [number, number, number][] }
   );
 
-export type BodyShape3DDescriptor = Partial<Body3DOptions> & Shape3DDescriptor
+export type BodyShape3DDescriptor = { shape: Shape3DDescriptor, body: Partial<Body3DOptions> };

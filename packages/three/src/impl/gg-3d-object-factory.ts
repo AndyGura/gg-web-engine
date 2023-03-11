@@ -1,4 +1,4 @@
-import { IGg3dObjectFactory, Point3 } from '@gg-web-engine/core';
+import {IGg3dObjectFactory, Point3, Shape3DDescriptor} from '@gg-web-engine/core';
 import {
   BoxGeometry,
   CapsuleGeometry, ConeGeometry,
@@ -10,7 +10,7 @@ import {
 } from 'three';
 import { Gg3dObject } from './gg-3d-object';
 
-export class Gg3dObjectFactory implements IGg3dObjectFactory<Gg3dObject> {
+export class Gg3dObjectFactory extends IGg3dObjectFactory<Gg3dObject> {
   getRandomMaterial(): Material {
     return new MeshBasicMaterial(
       { color: Math.floor(Math.random() * 256) << 16 | Math.floor(Math.random() * 256) << 8 | Math.floor(Math.random() * 256) }
@@ -23,19 +23,29 @@ export class Gg3dObjectFactory implements IGg3dObjectFactory<Gg3dObject> {
     group.add(object);
     return group;
   }
-  createBox(dimensions: Point3, material: Material = this.getRandomMaterial()): Gg3dObject {
-    return new Gg3dObject(new Mesh(new BoxGeometry(dimensions.x, dimensions.y, dimensions.z), material));
-  }
-  createCapsule(radius: number, centersDistance: number, material: Material = this.getRandomMaterial()): Gg3dObject {
-    return new Gg3dObject(this.transformPrimitiveZUp(new Mesh(new CapsuleGeometry(radius, centersDistance), material)));
-  }
-  createCylinder(radius: number, height: number, material: Material = this.getRandomMaterial()): Gg3dObject {
-    return new Gg3dObject(this.transformPrimitiveZUp(new Mesh(new CylinderGeometry(radius, radius, height), material)));
-  }
-  createCone(radius: number, height: number, material: Material = this.getRandomMaterial()): Gg3dObject {
-    return new Gg3dObject(this.transformPrimitiveZUp(new Mesh(new ConeGeometry(radius, height), material)));
-  }
-  createSphere(radius: number, material: Material = this.getRandomMaterial()): Gg3dObject {
-    return new Gg3dObject(new Mesh(new SphereGeometry(radius), material));
+
+  createPrimitive(descriptor: Shape3DDescriptor, material: Material = this.getRandomMaterial()): Gg3dObject {
+    let mesh: Object3D | null = null;
+    switch (descriptor.shape) {
+      case "BOX":
+        mesh = new Mesh(new BoxGeometry(descriptor.dimensions.x, descriptor.dimensions.y, descriptor.dimensions.z), material);
+        break;
+      case "CAPSULE":
+        mesh = this.transformPrimitiveZUp(new Mesh(new CapsuleGeometry(descriptor.radius, descriptor.centersDistance), material));
+        break;
+      case "CYLINDER":
+        mesh = this.transformPrimitiveZUp(new Mesh(new CylinderGeometry(descriptor.radius, descriptor.radius, descriptor.height), material));
+        break;
+      case "CONE":
+        mesh = this.transformPrimitiveZUp(new Mesh(new ConeGeometry(descriptor.radius, descriptor.height), material));
+        break;
+      case "SPHERE":
+        mesh = new Mesh(new SphereGeometry(descriptor.radius), material);
+        break;
+    }
+    if (!mesh) {
+      throw new Error(`Primitive with shape "${descriptor.shape}" not implemented`);
+    }
+    return new Gg3dObject(mesh);
   }
 }

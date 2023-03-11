@@ -1,8 +1,16 @@
-import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
-import { createInlineTickController, Gg3dEntity, Gg3dWorld, GgViewportManager, Gg3dTriggerEntity, GgPositionable3dEntity, Qtrn } from '@gg-web-engine/core';
-import { interval } from 'rxjs';
-import { Gg3dVisualScene, GgRenderer } from '@gg-web-engine/three';
-import { Gg3dPhysicsWorld } from '@gg-web-engine/ammo';
+import {Component, ElementRef, OnInit, ViewChild} from '@angular/core';
+import {
+  createInlineTickController,
+  Gg3dEntity,
+  Gg3dWorld,
+  GgViewportManager,
+  Gg3dTriggerEntity,
+  GgPositionable3dEntity,
+  Qtrn
+} from '@gg-web-engine/core';
+import {interval} from 'rxjs';
+import {Gg3dVisualScene, GgRenderer} from '@gg-web-engine/three';
+import {Gg3dPhysicsWorld} from '@gg-web-engine/ammo';
 
 @Component({
   selector: 'app-root',
@@ -30,18 +38,24 @@ export class AppComponent implements OnInit {
         y: 15 * Math.cos(elapsed / 2000),
         z: 9,
       };
-      renderer.camera.rotation = Qtrn.lookAt(renderer.camera.position, { x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 1 });
+      renderer.camera.rotation = Qtrn.lookAt(renderer.camera.position, {x: 0, y: 0, z: 0}, {x: 0, y: 0, z: 1});
     });
     renderer.activate();
 
     const floor = new Gg3dEntity(
-      world.visualScene.factory.createBox({ x: 7, y: 7, z: 1 }),
-      world.physicsWorld.factory.createPrimitiveBody({ shape: 'BOX', dimensions: { x: 7, y: 7, z: 1 }, dynamic: false }),
+      world.visualScene.factory.createBox({x: 7, y: 7, z: 1}),
+      world.physicsWorld.factory.createRigidBody({
+        shape: {shape: 'BOX', dimensions: {x: 7, y: 7, z: 1}},
+        body: {dynamic: false}
+      }),
     );
     world.addEntity(floor);
 
-    const destroyTrigger = new Gg3dTriggerEntity(world.physicsWorld.factory.createTrigger({ shape: 'BOX', dimensions: { x: 1000, y: 1000, z: 1 }}));
-    destroyTrigger.position = { x: 0, y: 0, z: -5 };
+    const destroyTrigger = new Gg3dTriggerEntity(world.physicsWorld.factory.createTrigger({
+      shape: 'BOX',
+      dimensions: {x: 1000, y: 1000, z: 1}
+    }));
+    destroyTrigger.position = {x: 0, y: 0, z: -5};
     destroyTrigger.onEntityEntered.subscribe((entity: GgPositionable3dEntity) => {
       console.log(entity);
       // world.removeEntity(entity, true);
@@ -52,31 +66,40 @@ export class AppComponent implements OnInit {
       let item: Gg3dEntity;
       if (Math.random() < 0.2) {
         item = new Gg3dEntity(
-          world.visualScene.factory.createBox({ x: 1, y: 1, z: 1 }),
-          world.physicsWorld.factory.createPrimitiveBody({ shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 }, mass: 1 }),
+          world.visualScene.factory.createBox({x: 1, y: 1, z: 1}),
+          world.physicsWorld.factory.createRigidBody({
+            shape: {shape: 'BOX', dimensions: {x: 1, y: 1, z: 1}},
+            body: {mass: 1}
+          }),
         );
       } else if (Math.random() < 0.4) {
         item = new Gg3dEntity(
           world.visualScene.factory.createCapsule(0.5, 1),
-          world.physicsWorld.factory.createPrimitiveBody({ shape: 'CAPSULE', radius: 0.5, centersDistance: 1, mass: 1 }),
+          world.physicsWorld.factory.createRigidBody({
+            shape: {shape: 'CAPSULE', radius: 0.5, centersDistance: 1},
+            body: {mass: 1}
+          }),
         );
       } else if (Math.random() < 0.6) {
         item = new Gg3dEntity(
           world.visualScene.factory.createCylinder(0.5, 1),
-          world.physicsWorld.factory.createPrimitiveBody({ shape: 'CYLINDER', radius: 0.5, height: 1, mass: 1 }),
+          world.physicsWorld.factory.createRigidBody({
+            shape: {shape: 'CYLINDER', radius: 0.5, height: 1},
+            body: {mass: 1}
+          }),
         );
       } else if (Math.random() < 0.8) {
         item = new Gg3dEntity(
           world.visualScene.factory.createCone(0.5, 1),
-          world.physicsWorld.factory.createPrimitiveBody({ shape: 'CONE', radius: 0.5, height: 1, mass: 1 }),
+          world.physicsWorld.factory.createRigidBody({shape: {shape: 'CONE', radius: 0.5, height: 1}, body: {mass: 1}}),
         );
       } else {
         item = new Gg3dEntity(
           world.visualScene.factory.createSphere(0.5),
-          world.physicsWorld.factory.createPrimitiveBody({ shape: 'SPHERE', radius: 0.5, mass: 1 }),
+          world.physicsWorld.factory.createRigidBody({shape: {shape: 'SPHERE', radius: 0.5}, body: {mass: 1}}),
         );
       }
-      item.position = { x: Math.random() * 5 - 2.5, y: Math.random() * 5 - 2.5, z: 10 };
+      item.position = {x: Math.random() * 5 - 2.5, y: Math.random() * 5 - 2.5, z: 10};
       world.addEntity(item);
     });
 

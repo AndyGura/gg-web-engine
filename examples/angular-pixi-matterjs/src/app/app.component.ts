@@ -1,8 +1,8 @@
-import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
-import { Gg2dEntity, Gg2dWorld, GgViewport, GgViewportManager, Point2 } from '@gg-web-engine/core';
-import { interval } from 'rxjs';
-import { Gg2dVisualScene, GgRenderer } from '@gg-web-engine/pixi';
-import { Gg2dPhysicsWorld } from '@gg-web-engine/matter';
+import {Component, ElementRef, OnInit, ViewChild} from '@angular/core';
+import {Gg2dEntity, Gg2dWorld, GgViewport, GgViewportManager, Point2} from '@gg-web-engine/core';
+import {interval} from 'rxjs';
+import {Gg2dVisualScene, GgRenderer} from '@gg-web-engine/pixi';
+import {Gg2dPhysicsWorld} from '@gg-web-engine/matter';
 
 @Component({
   selector: 'app-root',
@@ -27,11 +27,14 @@ export class AppComponent implements OnInit {
     renderer.activate();
 
     const floor = new Gg2dEntity(
-      world.visualScene.factory.createSquare({ x : 800, y: 100 }),
-      world.physicsWorld.factory.createPrimitiveBody({ shape: 'SQUARE', dimensions: { x : 800, y: 100 }, dynamic: false }),
+      world.visualScene.factory.createSquare({x: 800, y: 100}),
+      world.physicsWorld.factory.createRigidBody({
+        shape: {shape: 'SQUARE', dimensions: {x: 800, y: 100}},
+        body: {dynamic: false}
+      }),
     );
     GgViewport.instance.subscribeOnViewportSize().subscribe((newSize: Point2) => {
-      floor.position = { x: newSize.x / 2, y: newSize.y - 75 };
+      floor.position = {x: newSize.x / 2, y: newSize.y - 75};
     });
     world.addEntity(floor);
 
@@ -39,16 +42,19 @@ export class AppComponent implements OnInit {
       let item: Gg2dEntity;
       if (Math.random() >= 0.5) {
         item = new Gg2dEntity(
-          world.visualScene.factory.createSquare({ x: 25, y: 25 }),
-          world.physicsWorld.factory.createPrimitiveBody({ shape: 'SQUARE', dimensions: { x: 25, y: 25 },  mass: 1 }),
+          world.visualScene.factory.createSquare({x: 25, y: 25}),
+          world.physicsWorld.factory.createRigidBody({
+            shape: {shape: 'SQUARE', dimensions: {x: 25, y: 25}},
+            body: {mass: 1}
+          }),
         );
       } else {
         item = new Gg2dEntity(
           world.visualScene.factory.createCircle(13),
-          world.physicsWorld.factory.createPrimitiveBody({ shape: 'CIRCLE', radius: 13,  mass: 1 }),
+          world.physicsWorld.factory.createRigidBody({shape: {shape: 'CIRCLE', radius: 13}, body: {mass: 1}}),
         );
       }
-      item.position = { x: GgViewport.instance.getCurrentViewportSize().x / 2 + Math.random() * 100 - 50, y: 75 };
+      item.position = {x: GgViewport.instance.getCurrentViewportSize().x / 2 + Math.random() * 100 - 50, y: 75};
       world.addEntity(item);
     });
 

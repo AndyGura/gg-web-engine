@@ -7,4 +7,4 @@ export type Shape2DDescriptor = (
   // TODO add more
   );
 
-export type BodyShape2DDescriptor = Partial<Body2DOptions> & Shape2DDescriptor;
+export type BodyShape2DDescriptor = { shape: Shape2DDescriptor, body: Partial<Body2DOptions> };
