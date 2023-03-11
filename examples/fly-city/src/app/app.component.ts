@@ -173,12 +173,15 @@ export class AppComponent implements OnInit {
         }
       );
 
-      const destroyTrigger = new Gg3dTriggerEntity(world.physicsWorld.factory.createTrigger({
+      const playingArea = new Gg3dTriggerEntity(world.physicsWorld.factory.createTrigger({
         shape: 'BOX',
-        dimensions: {x: 1000, y: 1000, z: 1}
+        dimensions: {x: 1000, y: 1000, z: 200},
       }));
-      destroyTrigger.position = {x: 0, y: 0, z: -10};
-      destroyTrigger.onEntityEntered.subscribe((entity) => {
+      playingArea.position = { x: 0, y: 0, z: 90 };
+      playingArea.onEntityLeft.subscribe((entity) => {
+        if (!entity) {
+          return;
+        }
         const state = this.state$.getValue();
         if (state.mode === 'driving' && state.car === entity) {
           this.resetCar(map, carCameraController);
@@ -186,7 +189,7 @@ export class AppComponent implements OnInit {
           world.removeEntity(entity, true);
         }
       });
-      world.addEntity(destroyTrigger);
+      world.addEntity(playingArea);
 
       world.keyboardController.bind('KeyC').pipe(
         filter(x => !!x && this.state$.getValue().mode != 'freecamera')
