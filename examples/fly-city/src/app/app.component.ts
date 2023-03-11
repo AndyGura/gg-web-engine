@@ -23,6 +23,7 @@ import {
   MotionControlFunction,
   Pnt3,
   Qtrn,
+  Gg3dTriggerEntity,
 } from '@gg-web-engine/core';
 import { Gg3dVisualScene, GgRenderer, ThreeCamera, ThreeCameraEntity } from '@gg-web-engine/three';
 import { Gg3dBody, Gg3dPhysicsWorld, Gg3dRaycastVehicle } from '@gg-web-engine/ammo';
@@ -46,11 +47,20 @@ export class AppComponent implements OnInit {
 
   state$: BehaviorSubject<CurrentState> = new BehaviorSubject<CurrentState>({ mode: 'freecamera' });
 
+  cameraMotionFactory: [(car: Gg3dRaycastVehicleEntity, type: 'lambo' | 'truck' | 'car') => MotionControlFunction, number, (t: number) => number][] = [
+    [farCamera, 600, (t: number) => Math.pow(t, 0.3)],
+    [bumperCamera, 250, (t: number) => 0.7 * Math.pow(t, 0.3)],
+    [nearCamera, 250, (t: number) => 0.7 + 0.3 * Math.pow(t, 0.3)],
+  ];
+
+  cameraIndex$: BehaviorSubject<number> = new BehaviorSubject<number>(0);
+
   get controlCar$(): Observable<Gg3dRaycastVehicleEntity | null> {
     return this.state$.pipe(map(x => x.mode === 'driving' ? x.car : null));
   }
 
   async ngOnInit(): Promise<void> {
+    // TODO refactor this mess
 
     const scene: Gg3dVisualScene = new Gg3dVisualScene();
     const physScene: Gg3dPhysicsWorld = new Gg3dPhysicsWorld();
@@ -153,42 +163,51 @@ export class AppComponent implements OnInit {
         keymap: 'wasd+arrows',
         gearUpDownKeys: ['CapsLock', 'ShiftLeft']
       });
-
-      const cameraMotionFactory: [(car: Gg3dRaycastVehicleEntity, type: 'lambo' | 'truck' | 'car') => MotionControlFunction, number, (t: number) => number][] = [
-        [farCamera, 600, (t: number) => Math.pow(t, 0.3)],
-        [bumperCamera, 250, (t: number) => 0.7 * Math.pow(t, 0.3)],
-        [nearCamera, 250, (t: number) => 0.7 + 0.3 * Math.pow(t, 0.3)],
-      ];
-      let cameraIndex$: BehaviorSubject<number> = new BehaviorSubject<number>(0);
       let carCameraController: EntityMotionController = new EntityMotionController(
         renderer.camera,
-        cameraMotionFactory[0][0](lambo, 'lambo'),
+        this.cameraMotionFactory[0][0](lambo, 'lambo'),
         (camera, p) => {
           if (p.fov) {
             (camera as ThreeCameraEntity).object3D.fov = p.fov;
           }
         }
       );
+
+      const destroyTrigger = new Gg3dTriggerEntity(world.physicsWorld.factory.createTrigger({
+        shape: 'BOX',
+        dimensions: {x: 1000, y: 1000, z: 1}
+      }));
+      destroyTrigger.position = {x: 0, y: 0, z: -10};
+      destroyTrigger.onEntityEntered.subscribe((entity) => {
+        const state = this.state$.getValue();
+        if (state.mode === 'driving' && state.car === entity) {
+          this.resetCar(map, carCameraController);
+        } else {
+          world.removeEntity(entity, true);
+        }
+      });
+      world.addEntity(destroyTrigger);
+
       world.keyboardController.bind('KeyC').pipe(
         filter(x => !!x && this.state$.getValue().mode != 'freecamera')
       ).subscribe(() => {
-        if (cameraIndex$.getValue() >= cameraMotionFactory.length - 1) {
-          cameraIndex$.next(0);
+        if (this.cameraIndex$.getValue() >= this.cameraMotionFactory.length - 1) {
+          this.cameraIndex$.next(0);
         } else {
-          cameraIndex$.next(cameraIndex$.getValue() + 1);
+          this.cameraIndex$.next(this.cameraIndex$.getValue() + 1);
         }
       });
-      combineLatest(cameraIndex$, this.state$.pipe(pairwise()))
+      combineLatest(this.cameraIndex$, this.state$.pipe(pairwise()))
         .subscribe(([index, [oldState, newState]]) => {
           const car: Gg3dRaycastVehicleEntity | undefined = (newState as any).car || (oldState as any).car;
           if (car) {
             car.visible = newState.mode == 'freecamera' || index != 1; // invisible if bumper camera
           }
         });
-      cameraIndex$.pipe(skip(1)).subscribe(index => {
+      this.cameraIndex$.pipe(skip(1)).subscribe(index => {
         const state = this.state$.getValue();
         if (state.mode == 'driving') {
-          const [funcProto, duration, easing] = cameraMotionFactory[index];
+          const [funcProto, duration, easing] = this.cameraMotionFactory[index];
           carCameraController.transitControlFunction(
             funcProto(state.car, state.carType),
             duration,
@@ -235,7 +254,7 @@ export class AppComponent implements OnInit {
               rotation: renderer.camera.rotation,
               customParameters: { fov: renderer.camera.object3D.fov }
             },
-            cameraMotionFactory[cameraIndex$.getValue()][0](state.car, state.carType),
+            this.cameraMotionFactory[this.cameraIndex$.getValue()][0](state.car, state.carType),
             800,
             t => Math.pow(t, 0.5),
             ({ fov: fovA }, { fov: fovB }, t) => ({ fov: lerpNumber(fovA, fovB, t) }),
@@ -269,15 +288,7 @@ export class AppComponent implements OnInit {
       });
 
       world.keyboardController.bind('KeyR').pipe(filter(x => x)).subscribe(() => {
-        const state = this.state$.getValue();
-        if (state.mode === 'driving') {
-          const nearest = map.nearestDummy;
-          const car = state.car;
-          if (car && nearest) {
-            car.resetTo({ position: nearest.data.position, rotation: { x: 0, y: 0, z: 0, w: 1 } });
-            carCameraController.motionControlFunction = cameraMotionFactory[cameraIndex$.getValue()][0](car, state.carType); // reset elastic camera
-          }
-        }
+        this.resetCar(map, carCameraController);
       });
 
       // const cls = world.visualScene.debugPhysicsDrawerClass;
@@ -290,6 +301,18 @@ export class AppComponent implements OnInit {
       //   world.pauseWorld();
       // }, 5000);
     });
+  }
+
+  private resetCar(map: Gg3dMapGraphEntity, carCameraController: EntityMotionController) {
+    const state = this.state$.getValue();
+    if (state.mode !== 'driving') {
+      return;
+    }
+    const nearest = map.nearestDummy;
+    if (nearest) {
+      state.car.resetTo({ position: nearest.data.position, rotation: { x: 0, y: 0, z: 0, w: 1 } });
+      carCameraController.motionControlFunction = this.cameraMotionFactory[this.cameraIndex$.getValue()][0](state.car, state.carType); // reset elastic camera
+    }
   }
 
   private generateCar(
