@@ -1,1 +1,1 @@
-{"curves": [], "dummies": [], "rigidBodies": [{"name": "Car_04.4", "dynamic": true, "shape": "COMPOUND", "position": {"x": 0.0, "y": 0.0, "z": 0.0}, "rotation": {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0}, "mass": 1300.0, "restitution": 0.0, "friction": 0.5, "children": []}]}
+{"curves": [], "dummies": [], "rigidBodies": [{"name": "Car_04.4", "position": {"x": 0.0, "y": 0.0, "z": 0.0}, "rotation": {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0}, "shape": {"shape": "COMPOUND", "children": []}, "body": {"dynamic": true, "mass": 1300.0, "restitution": 0.0, "friction": 0.5}}]}
