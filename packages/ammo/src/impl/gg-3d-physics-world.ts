@@ -112,7 +112,7 @@ export class Gg3dPhysicsWorld implements IGg3dPhysicsWorld {
 
   stopDebugger(world: Gg3dWorld): void {
     if (this._debugger) {
-      this.dynamicAmmoWorld?.setDebugDrawer(null as any);
+      this.dynamicAmmoWorld?.setDebugDrawer(null!);
       this.ammo.destroy(this._debugger.ammoInstance);
       this._debugger = null;
     }

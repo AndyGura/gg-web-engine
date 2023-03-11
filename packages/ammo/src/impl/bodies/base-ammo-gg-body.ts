@@ -1,11 +1,14 @@
-import { IGg3dBody, Point3, Point4 } from '@gg-web-engine/core';
-import { Gg3dPhysicsWorld } from './gg-3d-physics-world';
+import { IGg3dBody, Point3, Point4, Gg3dEntity } from '@gg-web-engine/core';
+import { Gg3dPhysicsWorld } from '../gg-3d-physics-world';
 import Ammo from 'ammojs-typed';
+import { ammoId } from '../../ammo-utils';
 
-export class Gg3dBody implements IGg3dBody {
+export abstract class BaseAmmoGGBody<T extends Ammo.btCollisionObject> implements IGg3dBody {
+
+  protected static nativeBodyReverseMap: Map<number, IGg3dBody> = new Map<number, IGg3dBody>();
 
   protected get ammo(): typeof Ammo {
-    return this.world.ammo as any;
+    return this.world.ammo;
   }
 
   public get position(): Point3 {
@@ -34,25 +37,33 @@ export class Gg3dBody implements IGg3dBody {
     // hmm, is it even possible to be different?
     return { x: 1, y: 1, z: 1 };
   }
+  get nativeBody(): T {
+    return this._nativeBody;
+  }
+
+  set nativeBody(value: T) {
+    if (value == this._nativeBody) {
+      return;
+    }
+    BaseAmmoGGBody.nativeBodyReverseMap.delete(ammoId(this._nativeBody));
+    this._nativeBody = value;
+    BaseAmmoGGBody.nativeBodyReverseMap.set(ammoId(value), this);
+  }
 
   public name: string = '';
 
-  constructor(
+  abstract entity: Gg3dEntity | null;
+
+  protected constructor(
     protected readonly world: Gg3dPhysicsWorld,
-    public nativeBody: Ammo.btRigidBody,
+    protected _nativeBody: T,
   ) {
+    BaseAmmoGGBody.nativeBodyReverseMap.set(ammoId(this.nativeBody), this);
   }
 
-  addToWorld(world: Gg3dPhysicsWorld): void {
-    if (world != this.world) {
-      throw new Error('Ammo bodies cannot be shared between different worlds');
-    }
-    world.dynamicAmmoWorld?.addRigidBody(this.nativeBody);
-  }
+  abstract addToWorld(world: Gg3dPhysicsWorld): void;
 
-  removeFromWorld(world: Gg3dPhysicsWorld): void {
-    world.dynamicAmmoWorld?.removeRigidBody(this.nativeBody);
-  }
+  abstract removeFromWorld(world: Gg3dPhysicsWorld): void;
 
   dispose(): void {
     try {
@@ -60,14 +71,9 @@ export class Gg3dBody implements IGg3dBody {
     } catch {
       // pass
     }
+    BaseAmmoGGBody.nativeBodyReverseMap.delete(ammoId(this.nativeBody));
   }
 
-  resetMotion(): void {
-    const emptyVector = new this.ammo.btVector3();
-    this.nativeBody.setLinearVelocity(emptyVector);
-    this.nativeBody.setAngularVelocity(emptyVector);
-    this.nativeBody.clearForces();
-    this.ammo.destroy(emptyVector);
-  }
+  abstract resetMotion(): void;
 
 }

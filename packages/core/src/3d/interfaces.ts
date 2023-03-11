@@ -38,7 +38,7 @@ export interface IGg3dBody extends GgBody<Point3, Point4> {
 
 export interface IGg3dTrigger extends GgTrigger<Point3, Point4> {
   get onEntityEntered(): Observable<GgPositionable3dEntity>;
-  get onEntityLeft(): Observable<GgPositionable3dEntity>;
+  get onEntityLeft(): Observable<GgPositionable3dEntity | null>;
 }
 
 export interface IGg3dRaycastVehicle extends IGg3dBody {

@@ -55,10 +55,9 @@ export class AppComponent implements OnInit {
       shape: 'BOX',
       dimensions: {x: 1000, y: 1000, z: 1}
     }));
-    destroyTrigger.position = {x: 0, y: 0, z: -5};
+    destroyTrigger.position = {x: 0, y: 0, z: -15};
     destroyTrigger.onEntityEntered.subscribe((entity: GgPositionable3dEntity) => {
-      console.log(entity);
-      // world.removeEntity(entity, true);
+      world.removeEntity(entity, true);
     });
     world.addEntity(destroyTrigger);
 

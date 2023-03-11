@@ -7,7 +7,8 @@ export class Gg3dTriggerEntity extends Gg3dEntity {
   get onEntityEntered(): Observable<GgPositionable3dEntity> {
     return this.objectBody.onEntityEntered;
   }
-  get onEntityLeft(): Observable<GgPositionable3dEntity> {
+
+  get onEntityLeft(): Observable<GgPositionable3dEntity | null> {
     return this.objectBody.onEntityLeft;
   }
 
@@ -18,5 +19,6 @@ export class Gg3dTriggerEntity extends Gg3dEntity {
     this.tick$.subscribe(() => {
       this.objectBody.checkOverlaps();
     });
+    this.objectBody.entity = this;
   }
 }

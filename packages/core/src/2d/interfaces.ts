@@ -22,7 +22,7 @@ export interface IGg2dBody extends GgBody<Point2, number> {
 
 export interface IGg2dTrigger extends GgTrigger<Point2, number> {
   get onEntityEntered(): Observable<GgPositionable2dEntity>;
-  get onEntityLeft(): Observable<GgPositionable2dEntity>;
+  get onEntityLeft(): Observable<GgPositionable2dEntity | null>;
 }
 
 // These interfaces have to be implemented for a particular 2D rendering engine

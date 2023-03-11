@@ -1,4 +1,4 @@
-import { IGg2dBody, Point2 } from '@gg-web-engine/core';
+import { IGg2dBody, Point2, Gg2dEntity } from '@gg-web-engine/core';
 import { Gg2dPhysicsWorld } from './gg-2d-physics-world';
 import { Body, Composite, Vector } from 'matter-js';
 
@@ -26,6 +26,8 @@ export class Gg2dBody implements IGg2dBody {
   }
 
   public name: string = '';
+
+  public entity: Gg2dEntity | null = null;
 
   constructor(
     public nativeBody: Body,

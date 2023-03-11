@@ -1,6 +1,6 @@
-import { IGg3dRaycastVehicle, WheelOptions, SuspensionOptions, Point3, Point4 } from '@gg-web-engine/core';
+import { IGg3dRaycastVehicle, WheelOptions, SuspensionOptions, Point3, Point4, Gg3dRaycastVehicleEntity } from '@gg-web-engine/core';
 import Ammo from 'ammojs-typed';
-import { Gg3dBody } from './gg-3d-body';
+import { Gg3dBody } from './bodies/gg-3d-body';
 import { Gg3dPhysicsWorld } from './gg-3d-physics-world';
 export class Gg3dRaycastVehicle extends Gg3dBody implements IGg3dRaycastVehicle {
 
@@ -8,6 +8,8 @@ export class Gg3dRaycastVehicle extends Gg3dBody implements IGg3dRaycastVehicle 
   public readonly vehicleTuning: Ammo.btVehicleTuning = new this.ammo.btVehicleTuning();
   protected readonly wheelDirectionCS0: Ammo.btVector3 = new this.ammo.btVector3(0, 0, -1);
   protected readonly wheelAxleCS: Ammo.btVector3 = new this.ammo.btVector3(1, 0, 0);
+
+  public entity: Gg3dRaycastVehicleEntity | null = null;
 
   constructor(
     protected readonly world: Gg3dPhysicsWorld,

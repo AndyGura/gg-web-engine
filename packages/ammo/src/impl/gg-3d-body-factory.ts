@@ -6,10 +6,10 @@ import {
   Point4,
   Shape3DDescriptor
 } from '@gg-web-engine/core';
-import { Gg3dBody } from './gg-3d-body';
+import { Gg3dBody } from './bodies/gg-3d-body';
 import { Gg3dPhysicsWorld } from './gg-3d-physics-world';
 import Ammo from 'ammojs-typed';
-import { Gg3dTrigger } from './gg-3d-trigger';
+import { Gg3dTrigger } from './bodies/gg-3d-trigger';
 
 export class Gg3dBodyFactory implements IGg3dBodyFactory<Gg3dBody, Gg3dTrigger> {
 

@@ -59,6 +59,9 @@ export class Gg2dEntity extends GgPositionable2dEntity implements ITickListener 
     } else if (!objectBody && !object2D) {
       throw new Error('Cannot create entity without a sprite and a body');
     }
+    if (objectBody) {
+      objectBody.entity = this;
+    }
   }
 
   onSpawned(world: Gg2dWorld) {

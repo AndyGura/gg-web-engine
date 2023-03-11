@@ -90,6 +90,9 @@ export class Gg3dEntity extends GgPositionable3dEntity implements ITickListener 
     } else if (!objectBody && !object3D) {
       throw new Error('Cannot create entity without a mesh and a body');
     }
+    if (objectBody) {
+      objectBody.entity = this;
+    }
   }
 
   onSpawned(world: Gg3dWorld) {

@@ -278,6 +278,7 @@ export class Gg3dRaycastVehicleEntity extends Gg3dEntity {
       }
     }
     this._children = [...this.wheels.filter(x => !!x) as GgPositionable3dEntity[]];
+    this.chassisBody.entity = this;
   }
 
   onSpawned(world: Gg3dWorld) {
