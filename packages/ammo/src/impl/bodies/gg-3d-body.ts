@@ -14,6 +14,20 @@ export class Gg3dBody extends BaseAmmoGGBody<Ammo.btRigidBody> {
     super(world, _nativeBody);
   }
 
+  clone(): Gg3dBody {
+    return this.world.factory.createRigidBodyFromShape(
+      this._nativeBody.getCollisionShape(), {
+        dynamic: !this._nativeBody.isStaticObject(),
+        mass: 5, // FIXME how to get mass??
+        friction: this._nativeBody.getFriction(),
+        restitution: this._nativeBody.getRestitution(),
+      }, {
+        position: this.position,
+        rotation: this.rotation,
+      }
+    );
+  }
+
   addToWorld(world: Gg3dPhysicsWorld): void {
     if (world != this.world) {
       throw new Error('Ammo bodies cannot be shared between different worlds');
@@ -30,6 +44,7 @@ export class Gg3dBody extends BaseAmmoGGBody<Ammo.btRigidBody> {
     this.nativeBody.setLinearVelocity(emptyVector);
     this.nativeBody.setAngularVelocity(emptyVector);
     this.nativeBody.clearForces();
+    this.nativeBody.updateInertiaTensor();
     this.ammo.destroy(emptyVector);
   }
 

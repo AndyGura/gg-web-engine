@@ -50,6 +50,14 @@ export class Gg3dTrigger extends BaseAmmoGGBody<Ammo.btPairCachingGhostObject> i
     }
   }
 
+  clone(): Gg3dTrigger {
+    return this.world.factory.createTriggerFromShape(
+      this._nativeBody.getCollisionShape(), {
+        position: this.position,
+        rotation: this.rotation,
+      }
+    );
+  }
 
   addToWorld(world: Gg3dPhysicsWorld) {
     if (world != this.world) {

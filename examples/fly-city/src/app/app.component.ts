@@ -24,6 +24,7 @@ import {
   Pnt3,
   Qtrn,
   Gg3dTriggerEntity,
+  CachingStrategy,
 } from '@gg-web-engine/core';
 import { Gg3dVisualScene, GgRenderer, ThreeCamera, ThreeCameraEntity } from '@gg-web-engine/three';
 import { Gg3dBody, Gg3dPhysicsWorld, Gg3dRaycastVehicle } from '@gg-web-engine/ammo';
@@ -102,7 +103,10 @@ export class AppComponent implements OnInit {
       Array(10).fill(null).map((_, i) => (
         Array(10).fill(null).map((_, j) => ({
           path: 'assets/city_tile',
-          position: { x: (j - 5) * 75, y: (i - 5) * 75, z: 0 }
+          position: { x: (j - 5) * 75, y: (i - 5) * 75, z: 0 },
+          loadOptions: {
+            cachingStrategy: CachingStrategy.Entities,
+          },
         }))
       ))
     );
@@ -122,8 +126,9 @@ export class AppComponent implements OnInit {
               { resources: [{ object3D: wheelMesh }] },
               specs,
             ] = await Promise.all([
-              world.loader.loadGgGlbResources('assets/' + dummy.car_id),
-              world.loader.loadGgGlbResources('assets/' + (dummy.car_id.startsWith('truck') ? 'truck_wheel' : 'wheel')),
+              // TODO use caching strategy "Entities" after cloned Ammo.js object mass will be fixed
+              world.loader.loadGgGlbResources('assets/' + dummy.car_id, CachingStrategy.Files),
+              world.loader.loadGgGlbResources('assets/' + (dummy.car_id.startsWith('truck') ? 'truck_wheel' : 'wheel'), CachingStrategy.Files),
               fetch(`assets/${dummy.car_id.startsWith('truck') ? 'truck' : 'car'}_specs.json`).then(r => r.text()).then(r => JSON.parse(r))
             ]);
             const entity = this.generateCar(physScene, chassisMesh, chassisBody, chassisDummies, wheelMesh, specs);

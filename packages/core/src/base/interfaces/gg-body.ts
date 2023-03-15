@@ -10,6 +10,8 @@ export interface GgBody<D, R> {
 
   entity: GgEntity | null;
 
+  clone(): GgBody<D, R>;
+
   addToWorld(world: GgPhysicsWorld<D, R>): void;
 
   removeFromWorld(world: GgPhysicsWorld<D, R>): void;

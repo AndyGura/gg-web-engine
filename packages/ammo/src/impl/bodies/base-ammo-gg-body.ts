@@ -61,6 +61,8 @@ export abstract class BaseAmmoGGBody<T extends Ammo.btCollisionObject> implement
     BaseAmmoGGBody.nativeBodyReverseMap.set(ammoId(this.nativeBody), this);
   }
 
+  abstract clone(): BaseAmmoGGBody<T>;
+
   abstract addToWorld(world: Gg3dPhysicsWorld): void;
 
   abstract removeFromWorld(world: Gg3dPhysicsWorld): void;

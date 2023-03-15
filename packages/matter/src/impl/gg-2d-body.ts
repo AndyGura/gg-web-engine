@@ -34,6 +34,11 @@ export class Gg2dBody implements IGg2dBody {
   ) {
   }
 
+  clone(): Gg2dBody {
+    // TODO
+    throw new Error('Gg2dBody.clone() not implemented for Matter.js');
+  }
+
   addToWorld(world: Gg2dPhysicsWorld): void {
     Composite.add(world.matterWorld!, this.nativeBody);
   }

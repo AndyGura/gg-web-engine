@@ -7,9 +7,9 @@ import { ITickListener } from '../../base/entities/interfaces/i-tick-listener';
 import { GgPositionable3dEntity } from './gg-positionable-3d-entity';
 import { Gg3dWorld } from '../gg-3d-world';
 import { Gg3dEntity } from './gg-3d-entity';
-import { LoadResultWithProps } from '../loader';
+import { LoadOptions, LoadResultWithProps } from '../loader';
 
-type MapGraphNodeType = { path: string, position: Point3 };
+type MapGraphNodeType = { path: string, position: Point3, rotation?: Point4, loadOptions: Partial<Omit<LoadOptions, 'position' | 'rotation'>> };
 
 export class MapGraph extends Graph<MapGraphNodeType> {
   static fromArray(array: MapGraphNodeType[]): MapGraph {
@@ -136,10 +136,10 @@ export class Gg3dMapGraphEntity extends GgEntity implements ITickListener {
   }
 
   protected async loadChunk(node: MapGraphNodeType): Promise<Gg3dEntity[]> {
-    // TODO provide all loader options in the node
     const loaded = await this.world!.loader.loadGgGlb(node.path, {
-      loadProps: true,
-      position: node.position
+      position: node.position,
+      rotation: node.rotation || { x: 0, y: 0, z: 0, w: 1 },
+      ...node.loadOptions
     });
     const entities = [
       ...loaded.entities,
@@ -152,8 +152,7 @@ export class Gg3dMapGraphEntity extends GgEntity implements ITickListener {
     ];
     this.loaded.set(node, entities);
     this.addChildren(...entities);
-    // TODO where is rotation should come from?
-    this._chunkLoaded$.next([loaded, { position: node.position, rotation: { x: 0, y: 0, z: 0, w: 1 }}]);
+    this._chunkLoaded$.next([loaded, { position: node.position, rotation: node.rotation || { x: 0, y: 0, z: 0, w: 1 } }]);
     return entities;
   }
 

@@ -20,19 +20,14 @@ export class Gg3dBodyFactory implements IGg3dBodyFactory<Gg3dBody, Gg3dTrigger> 
     position?: Point3;
     rotation?: Point4;
   }): Gg3dBody {
-    return this.createBody(this.createShape(descriptor.shape), descriptor.body, transform);
+    return this.createRigidBodyFromShape(this.createShape(descriptor.shape), descriptor.body, transform);
   }
 
   createTrigger(descriptor: Shape3DDescriptor, transform?: {
     position?: Point3;
     rotation?: Point4;
   }): Gg3dTrigger {
-    const ghostObject = new this.world.ammo.btPairCachingGhostObject();
-    ghostObject.setCollisionShape(this.createShape(descriptor));
-    ghostObject.setCollisionFlags(ghostObject.getCollisionFlags() | 4); // 4 is a CF_NO_CONTACT_RESPONSE collision flag
-    ghostObject.getWorldTransform().setOrigin(new this.world.ammo.btVector3(transform?.position?.x || 0, transform?.position?.y || 0, transform?.position?.z || 0));
-    ghostObject.getWorldTransform().setRotation(new this.world.ammo.btQuaternion(transform?.rotation?.x || 0, transform?.rotation?.y || 0, transform?.rotation?.z || 0, transform?.rotation?.w || 1));
-    return new Gg3dTrigger(this.world, ghostObject);
+    return this.createTriggerFromShape(this.createShape(descriptor), transform);
   }
 
   private createShape(descriptor: Shape3DDescriptor): Ammo.btCollisionShape {
@@ -94,7 +89,7 @@ export class Gg3dBodyFactory implements IGg3dBodyFactory<Gg3dBody, Gg3dTrigger> 
   }
 
 
-  private createBody(shape: Ammo.btCollisionShape, options: Partial<Body3DOptions>, transform?: { position?: Point3, rotation?: Point4;}): Gg3dBody {
+  public createRigidBodyFromShape(shape: Ammo.btCollisionShape, options: Partial<Body3DOptions>, transform?: { position?: Point3, rotation?: Point4;}): Gg3dBody {
     if (options.dynamic === false) {
       options.mass = 0;
     }
@@ -117,6 +112,16 @@ export class Gg3dBodyFactory implements IGg3dBodyFactory<Gg3dBody, Gg3dTrigger> 
     }
     const body = new this.world.ammo.btRigidBody(environmentBodyCI);
     return new Gg3dBody(this.world, body);
+  }
+
+
+  public createTriggerFromShape(shape: Ammo.btCollisionShape, transform?: { position?: Point3, rotation?: Point4;}): Gg3dTrigger {
+    const ghostObject = new this.world.ammo.btPairCachingGhostObject();
+    ghostObject.setCollisionShape(shape);
+    ghostObject.setCollisionFlags(ghostObject.getCollisionFlags() | 4); // 4 is a CF_NO_CONTACT_RESPONSE collision flag
+    ghostObject.getWorldTransform().setOrigin(new this.world.ammo.btVector3(transform?.position?.x || 0, transform?.position?.y || 0, transform?.position?.z || 0));
+    ghostObject.getWorldTransform().setRotation(new this.world.ammo.btQuaternion(transform?.rotation?.x || 0, transform?.rotation?.y || 0, transform?.rotation?.z || 0, transform?.rotation?.w || 1));
+    return new Gg3dTrigger(this.world, ghostObject);
   }
 
 }
