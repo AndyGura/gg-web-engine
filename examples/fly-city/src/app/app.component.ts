@@ -116,7 +116,7 @@ export class AppComponent implements OnInit {
       // spawn cars
       const cars =
         await Promise.all(meta.dummies
-          .filter(x => x.is_car && (Math.random() < (x.spawn_probability || 1)))
+          .filter(x => x.is_car && (Math.random() < (x.spawn_probability || 1) / 3))
           .map(async dummy => {
             const [
               {
