@@ -1,4 +1,4 @@
-import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import {
   CubeReflectionMapping,
   CubeTexture,
@@ -8,11 +8,13 @@ import {
   RGBAFormat
 } from 'three';
 import {
+  CachingStrategy,
   CarKeyboardController,
   EntityMotionController,
   FreeCameraController,
   Gg3dMapGraphEntity,
   Gg3dRaycastVehicleEntity,
+  Gg3dTriggerEntity,
   Gg3dWorld,
   GgDummy,
   GgViewportManager,
@@ -23,8 +25,6 @@ import {
   MotionControlFunction,
   Pnt3,
   Qtrn,
-  Gg3dTriggerEntity,
-  CachingStrategy,
 } from '@gg-web-engine/core';
 import { Gg3dVisualScene, GgRenderer, ThreeCamera, ThreeCameraEntity } from '@gg-web-engine/three';
 import { Gg3dBody, Gg3dPhysicsWorld, Gg3dRaycastVehicle } from '@gg-web-engine/ammo';
@@ -39,12 +39,15 @@ type CurrentState =
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
-  styleUrls: ['./app.component.css']
+  styleUrls: ['./app.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AppComponent implements OnInit {
   title = 'fly-city';
 
   @ViewChild('stage') stage!: ElementRef<HTMLCanvasElement>;
+
+  world!: Gg3dWorld;
 
   state$: BehaviorSubject<CurrentState> = new BehaviorSubject<CurrentState>({ mode: 'freecamera' });
 
@@ -65,14 +68,14 @@ export class AppComponent implements OnInit {
 
     const scene: Gg3dVisualScene = new Gg3dVisualScene();
     const physScene: Gg3dPhysicsWorld = new Gg3dPhysicsWorld();
-    const world: Gg3dWorld = new Gg3dWorld(scene, physScene, true);
-    await world.init();
+    this.world = new Gg3dWorld(scene, physScene, true);
+    await this.world.init();
 
     const canvas = await GgViewportManager.instance.createCanvas(1);
     const renderer: GgRenderer = new GgRenderer(canvas, {}, new ThreeCameraEntity(
       new ThreeCamera(new PerspectiveCamera(75, 1, 1, 10000))
     ));
-    world.addEntity(renderer);
+    this.world.addEntity(renderer);
     renderer.camera.position = { x: 0, y: -15, z: 10 };
     renderer.camera.rotation = Qtrn.lookAt(
       renderer.camera.position,
@@ -127,8 +130,8 @@ export class AppComponent implements OnInit {
               specs,
             ] = await Promise.all([
               // TODO use caching strategy "Entities" after cloned Ammo.js object mass will be fixed
-              world.loader.loadGgGlbResources('assets/' + dummy.car_id, CachingStrategy.Files),
-              world.loader.loadGgGlbResources('assets/' + (dummy.car_id.startsWith('truck') ? 'truck_wheel' : 'wheel'), CachingStrategy.Files),
+              this.world.loader.loadGgGlbResources('assets/' + dummy.car_id, CachingStrategy.Files),
+              this.world.loader.loadGgGlbResources('assets/' + (dummy.car_id.startsWith('truck') ? 'truck_wheel' : 'wheel'), CachingStrategy.Files),
               fetch(`assets/${dummy.car_id.startsWith('truck') ? 'truck' : 'car'}_specs.json`).then(r => r.text()).then(r => JSON.parse(r))
             ]);
             const entity = this.generateCar(physScene, chassisMesh, chassisBody, chassisDummies, wheelMesh, specs);
@@ -139,13 +142,13 @@ export class AppComponent implements OnInit {
           }),
         );
       for (const car of cars) {
-        world.addEntity(car);
+        this.world.addEntity(car);
       }
     });
-    world.addEntity(map);
+    this.world.addEntity(map);
 
     map.initialLoadComplete$.pipe(filter(x => !!x), first()).subscribe(async () => {
-      world.start();
+      this.world.start();
 
       const [
         {
@@ -155,16 +158,16 @@ export class AppComponent implements OnInit {
         { resources: [{ object3D: wheelMesh }] },
         specs
       ] = await Promise.all([
-          world.loader.loadGgGlbResources('assets/lambo/body'),
-          world.loader.loadGgGlbResources('assets/lambo/wheel'),
+          this.world.loader.loadGgGlbResources('assets/lambo/body'),
+          this.world.loader.loadGgGlbResources('assets/lambo/wheel'),
           fetch(`assets/lambo/specs.json`).then(r => r.text()).then(r => JSON.parse(r))
         ]
       );
       const lambo = this.generateCar(physScene, chassisMesh, chassisBody, chassisDummies, wheelMesh, specs);
       lambo.name = 'lambo';
-      world.addEntity(lambo);
+      this.world.addEntity(lambo);
       // TODO rename controllers (which are keyboard/mouse related) globally to something else
-      const carController = new CarKeyboardController(world.keyboardController, lambo, {
+      const carController = new CarKeyboardController(this.world.keyboardController, lambo, {
         keymap: 'wasd+arrows',
         gearUpDownKeys: ['CapsLock', 'ShiftLeft']
       });
@@ -178,9 +181,9 @@ export class AppComponent implements OnInit {
         }
       );
 
-      const playingArea = new Gg3dTriggerEntity(world.physicsWorld.factory.createTrigger({
+      const playingArea = new Gg3dTriggerEntity(this.world.physicsWorld.factory.createTrigger({
         shape: 'BOX',
-        dimensions: {x: 1000, y: 1000, z: 200},
+        dimensions: { x: 1000, y: 1000, z: 200 },
       }));
       playingArea.position = { x: 0, y: 0, z: 90 };
       playingArea.onEntityLeft.subscribe((entity) => {
@@ -191,12 +194,12 @@ export class AppComponent implements OnInit {
         if (state.mode === 'driving' && state.car === entity) {
           this.resetCar(map, carCameraController);
         } else {
-          world.removeEntity(entity, true);
+          this.world.removeEntity(entity, true);
         }
       });
-      world.addEntity(playingArea);
+      this.world.addEntity(playingArea);
 
-      world.keyboardController.bind('KeyC').pipe(
+      this.world.keyboardController.bind('KeyC').pipe(
         filter(x => !!x && this.state$.getValue().mode != 'freecamera')
       ).subscribe(() => {
         if (this.cameraIndex$.getValue() >= this.cameraMotionFactory.length - 1) {
@@ -226,7 +229,7 @@ export class AppComponent implements OnInit {
       });
 
       const freeCameraController: FreeCameraController = new FreeCameraController(
-        world.keyboardController,
+        this.world.keyboardController,
         renderer.camera,
         {
           keymap: 'wasd+arrows',
@@ -246,7 +249,7 @@ export class AppComponent implements OnInit {
         if (state.mode === 'freecamera') {
           carController.stop();
           try {
-            world.removeEntity(carCameraController, false);
+            this.world.removeEntity(carCameraController, false);
           } catch {
             //pass
           }
@@ -255,7 +258,7 @@ export class AppComponent implements OnInit {
           freeCameraController.stop(false);
           carController.car = state.car;
           carController.start();
-          world.addEntity(carCameraController);
+          this.world.addEntity(carCameraController);
           carCameraController.transitFromStaticState(
             {
               position: renderer.camera.position,
@@ -270,11 +273,11 @@ export class AppComponent implements OnInit {
         }
       });
 
-      world.keyboardController.bind('KeyF').pipe(filter(x => x)).subscribe(() => {
+      this.world.keyboardController.bind('KeyF').pipe(filter(x => x)).subscribe(() => {
         if (this.state$.getValue().mode === 'freecamera') {
           let distance = Number.MAX_SAFE_INTEGER;
           let car: Gg3dRaycastVehicleEntity | null = null;
-          for (const entity of world.children) {
+          for (const entity of this.world.children) {
             if (entity instanceof Gg3dRaycastVehicleEntity) {
               const curDistance = Pnt3.len(Pnt3.sub(renderer.camera.position, entity.position));
               if (curDistance < distance) {
@@ -295,7 +298,7 @@ export class AppComponent implements OnInit {
         }
       });
 
-      world.keyboardController.bind('KeyR').pipe(filter(x => x)).subscribe(() => {
+      this.world.keyboardController.bind('KeyR').pipe(filter(x => x)).subscribe(() => {
         this.resetCar(map, carCameraController);
       });
 
