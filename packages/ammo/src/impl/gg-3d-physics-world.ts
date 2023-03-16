@@ -93,8 +93,7 @@ export class Gg3dPhysicsWorld implements IGg3dPhysicsWorld {
   }
 
   simulate(delta: number): void {
-    // FIXME ammo.js jitters when calculating too small step (with timescale 0.25 and below)
-    this._dynamicAmmoWorld?.stepSimulation(this._timeScale * delta / 1000, 50);
+    this._dynamicAmmoWorld?.stepSimulation(this._timeScale * delta / 1000, 100, this._timeScale * 0.01);
     if (this._debugger) {
       this._debugger.update();
     }
