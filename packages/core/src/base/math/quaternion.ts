@@ -116,6 +116,48 @@ export class Qtrn {
     }
   }
 
+  /** creates a quaternion from euler */
+  static fromEuler(e: Point3): Point4 {
+    const roll = e.x;
+    const pitch = e.y;
+    const yaw = e.z;
+
+    const cy = Math.cos(yaw * 0.5);
+    const sy = Math.sin(yaw * 0.5);
+    const cp = Math.cos(pitch * 0.5);
+    const sp = Math.sin(pitch * 0.5);
+    const cr = Math.cos(roll * 0.5);
+    const sr = Math.sin(roll * 0.5);
+
+    const qw = cr * cp * cy + sr * sp * sy;
+    const qx = sr * cp * cy - cr * sp * sy;
+    const qy = cr * sp * cy + sr * cp * sy;
+    const qz = cr * cp * sy - sr * sp * cy;
+
+    return {w: qw, x: qx, y: qy, z: qz};
+  }
+
+  /** converts a quaternion to euler */
+  static toEuler(q: Point4): Point3 {
+    const qw = q.w;
+    const qx = q.x;
+    const qy = q.y;
+    const qz = q.z;
+
+    const sinr_cosp = 2 * (qw * qx + qy * qz);
+    const cosr_cosp = 1 - 2 * (qx * qx + qy * qy);
+    const roll = Math.atan2(sinr_cosp, cosr_cosp);
+
+    const sinp = 2 * (qw * qy - qz * qx);
+    const pitch = Math.abs(sinp) >= 1 ? Math.sign(sinp) * Math.PI / 2 : Math.asin(sinp);
+
+    const siny_cosp = 2 * (qw * qz + qx * qy);
+    const cosy_cosp = 1 - 2 * (qy * qy + qz * qz);
+    const yaw = Math.atan2(siny_cosp, cosy_cosp);
+
+    return {x: roll, y: pitch, z: yaw};
+  }
+
   /** creates a rotation for object, so it will look at some point in space */
   static lookAt(eye: Point3, target: Point3, up: Point3): Point4 {
     return this.fromMatrix4(Mtrx4.lookAt(eye, target, up));

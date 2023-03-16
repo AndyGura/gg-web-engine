@@ -1,6 +1,8 @@
 import { Point3, Point4 } from '../../base/models/points';
 import { Observable } from 'rxjs';
 import { GgPositionableEntity } from '../../base/entities/gg-positionable-entity';
+import { map } from 'rxjs/operators';
+import { Qtrn } from '../../base/math/quaternion';
 
 export abstract class GgPositionable3dEntity extends GgPositionableEntity<Point3, Point4> {
 
@@ -17,17 +19,14 @@ export abstract class GgPositionable3dEntity extends GgPositionableEntity<Point3
   }
 
   public get euler$(): Observable<Point3> {
-    // TODO quaternion -> euler
-    return this._rotation$.asObservable();
+    return this._rotation$.pipe(map(q => Qtrn.toEuler(q)));
   }
 
   public get euler(): Point3 {
-    // TODO quaternion -> euler
-    return this._rotation$.getValue();
+    return Qtrn.toEuler(this._rotation$.getValue());
   }
 
   public set euler(value: Point3) {
-    // TODO euler -> quaternion
-    this._rotation$.next({ ...value, w: 1 });
+    this._rotation$.next(Qtrn.fromEuler(value));
   }
 }
