@@ -55,6 +55,29 @@ export class KeyboardController implements IController {
     );
   }
 
+  emulateKeyDown(code: string): void {
+    if (!this.running) {
+      return;
+    }
+    for (const subj of (this.bindings[code] || [])) {
+      subj.next(true);
+    }
+  }
+
+  emulateKeyUp(code: string): void {
+    if (!this.running) {
+      return;
+    }
+    for (const subj of (this.bindings[code] || [])) {
+      subj.next(false);
+    }
+  }
+
+  emulateKeyPress(code: string): void {
+    this.emulateKeyDown(code);
+    this.emulateKeyUp(code);
+  }
+
   async start() {
     if (this.running) {
       return;
