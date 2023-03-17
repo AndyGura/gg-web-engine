@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import {
   CubeReflectionMapping,
   CubeTexture,
@@ -65,6 +65,8 @@ export class AppComponent implements OnInit {
 
   state$: BehaviorSubject<CurrentState> = new BehaviorSubject<CurrentState>({ mode: 'freecamera' });
 
+  showHelpText: boolean = true;
+
   cameraMotionFactory: [(car: Gg3dRaycastVehicleEntity, type: 'lambo' | 'truck' | 'car') => MotionControlFunction, number, (t: number) => number][] = [
     [farCamera, 600, (t: number) => Math.pow(t, 0.3)],
     [bumperCamera, 250, (t: number) => 0.7 * Math.pow(t, 0.3)],
@@ -79,6 +81,7 @@ export class AppComponent implements OnInit {
 
   constructor(
     private readonly http: HttpClient,
+    private readonly cdr: ChangeDetectorRef,
   ) {
   }
 
@@ -321,6 +324,11 @@ export class AppComponent implements OnInit {
         this.resetCar(cityMapGraph, carCameraController);
       });
 
+      this.world.keyboardController.bind('KeyX').pipe(filter(x => x)).subscribe(() => {
+        this.showHelpText = !this.showHelpText;
+        this.cdr.markForCheck();
+      });
+
       const engineOnMeta: any = await this.http.get(`assets/engine_on.meta.json`).toPromise();
       const engineOnHowl = new Howl({
         src: `assets/engine_on.mp3`,
@@ -341,6 +349,10 @@ export class AppComponent implements OnInit {
         } : undefined,
       });
       const changeGearHowl = new Howl({ src: `assets/gear.mp3` });
+      const honkHowl = new Howl({
+        src: `assets/honk_loop.mp3`,
+        loop: true,
+      });
 
       this.state$.pipe(
         switchMap(state => state.mode === 'freecamera' ? NEVER : state.car.gear$.pipe(skip(1))),
@@ -378,6 +390,15 @@ export class AppComponent implements OnInit {
         const engineRpmFactor = ((rpm - 800) / car.carProperties.engine.maxRpm) - 0.5;
         engineOnHowl.rate(1 + engineRpmFactor);
         engineOffHowl.rate(1 + engineRpmFactor);
+      });
+
+      combineLatest(this.state$.pipe(map(s => s.mode === 'driving')), this.world.keyboardController.bind('KeyH')).pipe(map(([a, b]) => a && b)).subscribe((honk) => {
+        if (honk && !honkHowl.playing()) {
+          honkHowl.play();
+        }
+        if (!honk && honkHowl.playing()) {
+          honkHowl.stop();
+        }
       });
     });
   }

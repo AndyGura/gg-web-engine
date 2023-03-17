@@ -1,0 +1,13 @@
+.app-helper {
+    z-index: 5;
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+    color: white;
+    font-size: larger;
+    row-gap: 0.5rem;
+    font-family: monospace;
+    text-shadow: 0.05rem 0 0 #000, 0 -0.05rem 0 #000, 0 0.05rem 0 #000, -0.05rem 0 0 #000;
+    font-weight: bold;
+}
