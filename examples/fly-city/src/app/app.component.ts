@@ -7,6 +7,7 @@ import {
   PerspectiveCamera,
   RGBAFormat
 } from 'three';
+import { Howl } from 'howler';
 import {
   CachingStrategy,
   CarKeyboardController,
@@ -28,9 +29,22 @@ import {
 } from '@gg-web-engine/core';
 import { Gg3dVisualScene, GgRenderer, ThreeCamera, ThreeCameraEntity } from '@gg-web-engine/three';
 import { Gg3dBody, Gg3dPhysicsWorld, Gg3dRaycastVehicle } from '@gg-web-engine/ammo';
-import { BehaviorSubject, combineLatest, filter, first, Observable, pairwise, skip } from 'rxjs';
+import {
+  BehaviorSubject,
+  combineLatest,
+  distinctUntilChanged,
+  filter,
+  first,
+  NEVER,
+  Observable,
+  of,
+  pairwise,
+  skip,
+  switchMap
+} from 'rxjs';
 import { map } from 'rxjs/operators';
 import { bumperCamera, farCamera, nearCamera } from './car-cameras';
+import { HttpClient } from '@angular/common/http';
 
 type CurrentState =
   { mode: 'freecamera' }
@@ -61,6 +75,11 @@ export class AppComponent implements OnInit {
 
   get controlCar$(): Observable<Gg3dRaycastVehicleEntity | null> {
     return this.state$.pipe(map(x => x.mode === 'driving' ? x.car : null));
+  }
+
+  constructor(
+    private readonly http: HttpClient,
+  ) {
   }
 
   async ngOnInit(): Promise<void> {
@@ -113,9 +132,9 @@ export class AppComponent implements OnInit {
         }))
       ))
     );
-    const map = new Gg3dMapGraphEntity(mapGraph, { loadDepth: 3 });
-    map.loaderCursorEntity$.next(renderer.camera);
-    map.chunkLoaded$.subscribe(async ([{ meta }, { position }]) => {
+    const cityMapGraph = new Gg3dMapGraphEntity(mapGraph, { loadDepth: 3 });
+    cityMapGraph.loaderCursorEntity$.next(renderer.camera);
+    cityMapGraph.chunkLoaded$.subscribe(async ([{ meta }, { position }]) => {
       // spawn cars
       const cars =
         await Promise.all(meta.dummies
@@ -145,9 +164,9 @@ export class AppComponent implements OnInit {
         this.world.addEntity(car);
       }
     });
-    this.world.addEntity(map);
+    this.world.addEntity(cityMapGraph);
 
-    map.initialLoadComplete$.pipe(filter(x => !!x), first()).subscribe(async () => {
+    cityMapGraph.initialLoadComplete$.pipe(filter(x => !!x), first()).subscribe(async () => {
       this.world.start();
 
       const [
@@ -192,7 +211,7 @@ export class AppComponent implements OnInit {
         }
         const state = this.state$.getValue();
         if (state.mode === 'driving' && state.car === entity) {
-          this.resetCar(map, carCameraController);
+          this.resetCar(cityMapGraph, carCameraController);
         } else {
           this.world.removeEntity(entity, true);
         }
@@ -299,18 +318,67 @@ export class AppComponent implements OnInit {
       });
 
       this.world.keyboardController.bind('KeyR').pipe(filter(x => x)).subscribe(() => {
-        this.resetCar(map, carCameraController);
+        this.resetCar(cityMapGraph, carCameraController);
       });
 
-      // const cls = world.visualScene.debugPhysicsDrawerClass;
-      // if (!cls) {
-      //   throw new Error('Debug drawer is not available');
-      // }
-      // world.physicsWorld.startDebugger(world, new cls());
+      const engineOnMeta: any = await this.http.get(`assets/engine_on.meta.json`).toPromise();
+      const engineOnHowl = new Howl({
+        src: `assets/engine_on.mp3`,
+        loop: true,
+        sprite: engineOnMeta.loop_end_time_ms ? {
+          __default: [0, engineOnMeta.loop_end_time_ms, false],
+          loop: [engineOnMeta.loop_start_time_ms, engineOnMeta.loop_end_time_ms, true]
+        } : undefined,
+      });
 
-      // setTimeout(() => {
-      //   world.pauseWorld();
-      // }, 5000);
+      const engineOffMeta: any = await this.http.get(`assets/engine_off.meta.json`).toPromise();
+      const engineOffHowl = new Howl({
+        src: `assets/engine_off.mp3`,
+        loop: true,
+        sprite: engineOffMeta.loop_end_time_ms ? {
+          __default: [0, engineOffMeta.loop_end_time_ms, false],
+          loop: [engineOffMeta.loop_start_time_ms, engineOffMeta.loop_end_time_ms, true]
+        } : undefined,
+      });
+      const changeGearHowl = new Howl({ src: `assets/gear.mp3` });
+
+      this.state$.pipe(
+        switchMap(state => state.mode === 'freecamera' ? NEVER : state.car.gear$.pipe(skip(1))),
+      ).subscribe(() => {
+        changeGearHowl.play();
+      });
+
+      engineOnHowl.rate(0);
+      engineOffHowl.rate(0);
+      engineOnHowl.volume(0);
+      engineOffHowl.volume(0);
+      engineOnHowl.play();
+      engineOffHowl.play();
+
+      this.state$.pipe(
+        switchMap(state => state.mode === 'freecamera' ? of(null) : state.car.acceleration$),
+        map((acc: number | null) => acc === null ? null : (acc > 0 ? engineOnHowl : engineOffHowl)),
+        distinctUntilChanged(),
+      ).subscribe((activeHowl: any) => {
+        if (activeHowl) {
+          activeHowl.fade(activeHowl.volume(), 0.25, 100);
+          const inactiveHowl = (activeHowl == engineOffHowl ? engineOnHowl : engineOffHowl);
+          if (inactiveHowl && inactiveHowl.volume() > 0) {
+            inactiveHowl.fade(inactiveHowl.volume(), 0, 100);
+          }
+        } else {
+          engineOnHowl.fade(engineOnHowl.volume(), 0, 100);
+          engineOffHowl.fade(engineOffHowl.volume(), 0, 100);
+        }
+      });
+
+      this.state$.pipe(
+        switchMap(state => state.mode === 'freecamera' ? NEVER : state.car.engineRpm$.pipe(map(rpm => [state.car, rpm] as [Gg3dRaycastVehicleEntity, number]))),
+      ).subscribe(([car, rpm]: [Gg3dRaycastVehicleEntity, number]) => {
+        const engineRpmFactor = ((rpm - 800) / car.carProperties.engine.maxRpm) - 0.5;
+        engineOnHowl.rate(1 + engineRpmFactor);
+        engineOffHowl.rate(1 + engineRpmFactor);
+      });
     });
   }
 

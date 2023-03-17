@@ -1,7 +1,7 @@
 import { Point3, Point4 } from '../../base/models/points';
 import { Gg3dEntity } from './gg-3d-entity';
 import { IGg3dBody, IGg3dObject, IGg3dRaycastVehicle } from '../interfaces';
-import { BehaviorSubject, filter, takeUntil } from 'rxjs';
+import { BehaviorSubject, filter, Observable } from 'rxjs';
 import { throttleTime } from 'rxjs/operators';
 import { GgPositionable3dEntity } from './gg-positionable-3d-entity';
 import { Gg3dWorld } from '../gg-3d-world';
@@ -123,10 +123,14 @@ export class Gg3dRaycastVehicleEntity extends Gg3dEntity {
     return kmh;
   }
 
-  protected readonly rpm$: BehaviorSubject<number> = new BehaviorSubject<number>(this.carProperties.engine.minRpm);
+  protected readonly _rpm$: BehaviorSubject<number> = new BehaviorSubject<number>(this.carProperties.engine.minRpm);
+
+  public get engineRpm$(): Observable<number> {
+    return this._rpm$.asObservable();
+  }
 
   public get engineRpm(): number {
-    return this.rpm$.getValue();
+    return this._rpm$.getValue();
   }
 
   protected get tractionForce(): number {
@@ -162,14 +166,18 @@ export class Gg3dRaycastVehicleEntity extends Gg3dEntity {
   }
 
   // 0..1
-  protected acceleration$: BehaviorSubject<number> = new BehaviorSubject(0);
+  protected _acceleration$: BehaviorSubject<number> = new BehaviorSubject(0);
 
   protected get acceleration(): number {
-    return this.acceleration$.getValue();
+    return this._acceleration$.getValue();
+  }
+
+  public get acceleration$(): Observable<number> {
+    return this._acceleration$.asObservable();
   }
 
   protected set acceleration(value: number) {
-    this.acceleration$.next(value);
+    this._acceleration$.next(value);
   }
 
   // 0..1
@@ -184,15 +192,23 @@ export class Gg3dRaycastVehicleEntity extends Gg3dEntity {
   }
 
   private _gear = 0;
+  private _gear$: BehaviorSubject<number> = new BehaviorSubject<number>(0);
+
   get gear(): number {
     return this._gear;
   }
 
+  get gear$(): Observable<number> {
+    return this._gear$.asObservable();
+  }
+
   set gear(value: number) {
+    value = Math.max(-1, Math.min(this.carProperties.transmission.gearRatios.length, value));
     if (value === this._gear) {
       return;
     }
-    this._gear = Math.max(-1, Math.min(this.carProperties.transmission.gearRatios.length, value));
+    this._gear = value;
+    this._gear$.next(value);
   }
 
   // TODO remove
@@ -264,7 +280,7 @@ export class Gg3dRaycastVehicleEntity extends Gg3dEntity {
         let localRotation: Point4 | null = null;
         if (direction.includes('x')) {
           // rotate PI around Z if opposite position (x is correct for right wheel, -x is correct for left wheel)
-          if (flip) localRotation = { x: 0, y: 0, z: 1, w: 0};
+          if (flip) localRotation = { x: 0, y: 0, z: 1, w: 0 };
         } else if (direction.includes('y')) {
           // rotate PI/2 around Z
           localRotation = { x: 0, y: 0, z: 0.707107 * (flip ? 1 : -1), w: 0.707107 };
@@ -365,7 +381,7 @@ export class Gg3dRaycastVehicleEntity extends Gg3dEntity {
 
   private updateEngine(delta: number) {
     delta = delta / 1000; // ms -> s
-    const acceleration = this.acceleration$.getValue();
+    const acceleration = this._acceleration$.getValue();
     let rpm = this.engineRpm;
     // TODO here I will take perioud between gears and drift into account someday :)
     const gripKoeff = (this.gear === 0 || !this.isTouchingGround) ? 0 : 1;
@@ -381,7 +397,7 @@ export class Gg3dRaycastVehicleEntity extends Gg3dEntity {
         rpm = Math.max(rpmFromSpeed, rpm - this.carProperties.engine.maxRpmDecreasePerSecond * delta);
       }
     }
-    this.rpm$.next(Math.max(
+    this._rpm$.next(Math.max(
       this.carProperties.engine.minRpm,
       Math.min(
         this.carProperties.engine.maxRpm,
@@ -402,7 +418,7 @@ export class Gg3dRaycastVehicleEntity extends Gg3dEntity {
     }
     this._steeringValue = 0;
     this.gear = 0;
-    this.rpm$.next(this.carProperties.engine.minRpm);
+    this._rpm$.next(this.carProperties.engine.minRpm);
   }
 
 // TODO refactor: control has to be in control service, here we receive separately braking, acceleration, steering
