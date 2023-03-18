@@ -6,7 +6,7 @@ import { GgVisualScene } from './interfaces/gg-visual-scene';
 import { GgStatic } from './gg-static';
 import { KeyboardController } from './controllers/keyboard.controller';
 
-export abstract class GgWorld<D, R> {
+export abstract class GgWorld<D, R, V extends GgVisualScene<D, R> = GgVisualScene<D, R>, P extends GgPhysicsWorld<D, R> = GgPhysicsWorld<D, R>> {
 
   // inner clock, runs constantly
   private readonly animationFrameClock: Clock = Clock.animationFrameClock;
@@ -20,8 +20,8 @@ export abstract class GgWorld<D, R> {
   protected readonly tickListeners: ITickListener[] = [];
 
   constructor(
-    public readonly visualScene: GgVisualScene<D, R>,
-    public readonly physicsWorld: GgPhysicsWorld<D, R>,
+    public readonly visualScene: V,
+    public readonly physicsWorld: P,
     protected readonly consoleEnabled: boolean = false,
   ) {
     GgStatic.instance.worlds.push(this);

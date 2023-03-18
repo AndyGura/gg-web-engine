@@ -3,13 +3,13 @@ import { Point3, Point4 } from '../base/models/points';
 import { IGg3dPhysicsWorld, IGg3dVisualScene } from './interfaces';
 import { Gg3dLoader } from './loader';
 
-export class Gg3dWorld extends GgWorld<Point3, Point4> {
+export class Gg3dWorld<V extends IGg3dVisualScene = IGg3dVisualScene, P extends IGg3dPhysicsWorld = IGg3dPhysicsWorld> extends GgWorld<Point3, Point4, V, P> {
 
   public readonly loader: Gg3dLoader;
 
   constructor(
-    public readonly visualScene: IGg3dVisualScene,
-    public readonly physicsWorld: IGg3dPhysicsWorld,
+    public readonly visualScene: V,
+    public readonly physicsWorld: P,
     protected readonly consoleEnabled: boolean = false,
   ) {
     super(visualScene, physicsWorld, consoleEnabled);

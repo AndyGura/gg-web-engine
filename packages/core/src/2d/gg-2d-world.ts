@@ -2,11 +2,11 @@ import { GgWorld } from '../base/gg-world';
 import { Point2 } from '../base/models/points';
 import { IGg2dPhysicsWorld, IGg2dVisualScene } from './interfaces';
 
-export class Gg2dWorld extends GgWorld<Point2, number> {
+export class Gg2dWorld<V extends IGg2dVisualScene = IGg2dVisualScene, P extends IGg2dPhysicsWorld = IGg2dPhysicsWorld> extends GgWorld<Point2, number, V, P> {
 
   constructor(
-    public readonly visualScene: IGg2dVisualScene,
-    public readonly physicsWorld: IGg2dPhysicsWorld,
+    public readonly visualScene: V,
+    public readonly physicsWorld: P,
     protected readonly consoleEnabled: boolean = false,
   ) {
     super(visualScene, physicsWorld, consoleEnabled);

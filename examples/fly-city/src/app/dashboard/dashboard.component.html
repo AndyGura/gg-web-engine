@@ -1,101 +1,101 @@
 <div class="hud-element circular meter--rpm meter--big-label">
-<ng-container *ngFor="let step of tachometerSteps;">
-<div class="grad-tick grad-tick--{{step}}"
-[ngClass]="{'redzone': step * maxRpm/tachometerStepsCount > rpmRedzone}"
-[ngStyle]="{
+    <ng-container *ngFor="let step of tachometerSteps;">
+        <div class="grad-tick grad-tick--{{step}}"
+             [ngClass]="{'redzone': step * maxRpm/tachometerStepsCount > rpmRedzone}"
+             [ngStyle]="{
 'left': (50 - 50 * Math.sin(getAngleForRpm(step * maxRpm/tachometerStepsCount) * (Math.PI / 180))) + '%',
 'top': (50 + 50 * Math.cos(getAngleForRpm(step * maxRpm/tachometerStepsCount) * (Math.PI / 180))) + '%',
 'transform': 'translate3d(-50%, 0, 0) rotate(' + (getAngleForRpm(step * maxRpm/tachometerStepsCount) + 180) + 'deg)'
 }">
-</div>
-<div *ngIf="step < tachometerStepsCount"
-class="grad-tick grad-tick--half grad-tick--{{step}}"
-[ngClass]="{'redzone': step * maxRpm/tachometerStepsCount > rpmRedzone}"
-[ngStyle]="{
+        </div>
+        <div *ngIf="step < tachometerStepsCount"
+             class="grad-tick grad-tick--half grad-tick--{{step}}"
+             [ngClass]="{'redzone': step * maxRpm/tachometerStepsCount > rpmRedzone}"
+             [ngStyle]="{
 'left': (50 - 50 * Math.sin((getAngleForRpm(step * maxRpm/tachometerStepsCount) + tachometerAngleStep/2) * (Math.PI / 180))) + '%',
 'top': (50 + 50 * Math.cos((getAngleForRpm(step * maxRpm/tachometerStepsCount) + tachometerAngleStep/2) * (Math.PI / 180))) + '%',
 'transform': 'translate3d(-50%, 0, 0) rotate(' + (getAngleForRpm(step * maxRpm/tachometerStepsCount) + tachometerAngleStep/2 + 180) + 'deg)'
 }">
-</div>
-<div *ngIf="step < tachometerStepsCount"
-class="grad-tick grad-tick--quarter grad-tick--{{step}}"
-[ngClass]="{'redzone': step * maxRpm/tachometerStepsCount > rpmRedzone}"
-[ngStyle]="{
+        </div>
+        <div *ngIf="step < tachometerStepsCount"
+             class="grad-tick grad-tick--quarter grad-tick--{{step}}"
+             [ngClass]="{'redzone': step * maxRpm/tachometerStepsCount > rpmRedzone}"
+             [ngStyle]="{
 'left': (50 - 50 * Math.sin((getAngleForRpm(step * maxRpm/tachometerStepsCount) + tachometerAngleStep/4) * (Math.PI / 180))) + '%',
 'top': (50 + 50 * Math.cos((getAngleForRpm(step * maxRpm/tachometerStepsCount) + tachometerAngleStep/4) * (Math.PI / 180))) + '%',
 'transform': 'translate3d(-50%, 0, 0) rotate(' + (getAngleForRpm(step * maxRpm/tachometerStepsCount) + tachometerAngleStep/4 + 180) + 'deg)'
 }">
-</div>
-<div *ngIf="step < tachometerStepsCount"
-class="grad-tick grad-tick--quarter grad-tick--{{step}}"
-[ngClass]="{'redzone': step * maxRpm/tachometerStepsCount > rpmRedzone}"
-[ngStyle]="{
+        </div>
+        <div *ngIf="step < tachometerStepsCount"
+             class="grad-tick grad-tick--quarter grad-tick--{{step}}"
+             [ngClass]="{'redzone': step * maxRpm/tachometerStepsCount > rpmRedzone}"
+             [ngStyle]="{
 'left': (50 - 50 * Math.sin((getAngleForRpm(step * maxRpm/tachometerStepsCount) + 3*tachometerAngleStep/4) * (Math.PI / 180))) + '%',
 'top': (50 + 50 * Math.cos((getAngleForRpm(step * maxRpm/tachometerStepsCount) + 3*tachometerAngleStep/4) * (Math.PI / 180))) + '%',
 'transform': 'translate3d(-50%, 0, 0) rotate(' + (getAngleForRpm(step * maxRpm/tachometerStepsCount) + 3*tachometerAngleStep/4 + 180) + 'deg)'
 }">
-</div>
-<div class="grad grad--{{step}}"
-[ngClass]="{'redzone': step * maxRpm/tachometerStepsCount > rpmRedzone}"
-[ngStyle]="{
+        </div>
+        <div class="grad grad--{{step}}"
+             [ngClass]="{'redzone': step * maxRpm/tachometerStepsCount > rpmRedzone}"
+             [ngStyle]="{
 'left': (50 - (50 - margin) * Math.sin(getAngleForRpm(step * maxRpm/tachometerStepsCount) * (Math.PI / 180))) + '%',
 'top': (50 + (50 - margin) * Math.cos(getAngleForRpm(step * maxRpm/tachometerStepsCount) * (Math.PI / 180))) + '%'
 }">
-{{(step * maxRpm / tachometerStepsCount / 1000) | number: '1.0-0'}}
-</div>
-</ng-container>
+            {{(step * maxRpm / tachometerStepsCount / 1000) | number: '1.0-0'}}
+        </div>
+    </ng-container>
 
-<div class="needle"
-[ngStyle]="{ 'transform': 'translate3d(-50%, 0, 0) rotate(' + getAngleForRpm($currentRpm | async) + 'deg)'}">
-</div>
-<div class="needle-axle"></div>
-<div class="label label-value">
-<div>{{Math.round(($currentRpm | async) || 0)}}</div>
-<span>RPM</span></div>
-<div class="label label-unit">
-<span>x1000</span>
-</div>
+    <div class="needle"
+         [ngStyle]="{ 'transform': 'translate3d(-50%, 0, 0) rotate(' + getAngleForRpm($currentRpm | async) + 'deg)'}">
+    </div>
+    <div class="needle-axle"></div>
+    <div class="label label-value">
+        <div>{{Math.round(($currentRpm | async) || 0)}}</div>
+        <span>RPM</span></div>
+    <div class="label label-unit">
+        <span>x1000</span>
+    </div>
 </div>
 
 <div class="hud-element circular meter--gear"
-[ngClass]="{ 'redzone': (($currentRpm | async) || 0) > rpmRedzone }">
-<div>{{$currentGear | async}}</div>
+     [ngClass]="{ 'redzone': (($currentRpm | async) || 0) > rpmRedzone }">
+    <div>{{$currentGear | async}}</div>
 </div>
 
 <div class="hud-element circular meter--speed meter--big-label">
-  <ng-container *ngFor="let step of speedometerSteps;">
-    <div [ngStyle]="{
+    <ng-container *ngFor="let step of speedometerSteps;">
+        <div [ngStyle]="{
            'left': (50 - 50 * Math.sin(getAngleForSpeed(step * maxSpeed/speedometerStepsCount) * (Math.PI / 180))) + '%',
            'top': (50 + 50 * Math.cos(getAngleForSpeed(step * maxSpeed/speedometerStepsCount) * (Math.PI / 180))) + '%',
            'transform': 'translate3d(-50%, 0, 0) rotate(' + (getAngleForSpeed(step * maxSpeed/speedometerStepsCount) + 180) + 'deg)'
          }"
-         class="grad-tick grad-tick--{{step}}">
-    </div>
-    <div *ngIf="step < speedometerStepsCount"
-         [ngStyle]="{
+             class="grad-tick grad-tick--{{step}}">
+        </div>
+        <div *ngIf="step < speedometerStepsCount"
+             [ngStyle]="{
             'left': (50 - 50 * Math.sin((getAngleForSpeed(step * maxSpeed/speedometerStepsCount) + speedometerAngleStep/2) * (Math.PI / 180))) + '%',
             'top': (50 + 50 * Math.cos((getAngleForSpeed(step * maxSpeed/speedometerStepsCount) + speedometerAngleStep/2) * (Math.PI / 180))) + '%',
             'transform': 'translate3d(-50%, 0, 0) rotate(' + (getAngleForSpeed(step * maxSpeed/speedometerStepsCount) + speedometerAngleStep/2 + 180) + 'deg)'
          }"
-         class="grad-tick grad-tick--half grad-tick--{{step}}">
-    </div>
-    <div [ngStyle]="{
+             class="grad-tick grad-tick--half grad-tick--{{step}}">
+        </div>
+        <div [ngStyle]="{
            'left': (50 - (50 - margin) * Math.sin(getAngleForSpeed(step * maxSpeed/speedometerStepsCount) * (Math.PI / 180))) + '%',
            'top': (50 + (50 - margin) * Math.cos(getAngleForSpeed(step * maxSpeed/speedometerStepsCount) * (Math.PI / 180))) + '%'
          }"
-         class="grad grad--{{step}}">
-      {{(step * maxSpeed / speedometerStepsCount) | number: '1.0-0'}}
-    </div>
-  </ng-container>
+             class="grad grad--{{step}}">
+            {{(step * maxSpeed / speedometerStepsCount) | number: '1.0-0'}}
+        </div>
+    </ng-container>
 
-  <div [ngStyle]="{ 'transform': 'translate3d(-50%, 0, 0) rotate(' + getAngleForSpeed($currentSpeed | async) + 'deg)'}"
-       class="needle">
-  </div>
-  <div class="needle-axle"></div>
-  <div class="label label-value">
-    <div>{{$currentSpeed | async | number: '1.0-0'}}</div>
-    <span>Km/h</span></div>
-  <div class="label label-unit"><span>Speed</span>
-    <div>Km/h</div>
-  </div>
+    <div [ngStyle]="{ 'transform': 'translate3d(-50%, 0, 0) rotate(' + getAngleForSpeed($currentSpeed | async) + 'deg)'}"
+         class="needle">
+    </div>
+    <div class="needle-axle"></div>
+    <div class="label label-value">
+        <div>{{$currentSpeed | async | number: '1.0-0'}}</div>
+        <span>Km/h</span></div>
+    <div class="label label-unit"><span>Speed</span>
+        <div>Km/h</div>
+    </div>
 </div>

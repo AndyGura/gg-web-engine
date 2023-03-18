@@ -1,5 +1,5 @@
 <div id="gg-stage"></div>
-<app-dashboard *ngIf="!!(controlCar$ | async)" [car]="(controlCar$ | async)"></app-dashboard>
+<app-dashboard *ngIf="!!(runner?.controlCar$ | async)" [car]="(runner?.controlCar$ | async)"></app-dashboard>
 <div class="app-helper" *ngIf="showHelpText">
     <span>FLY MODE CONTROLS</span>
     <span>Click on page and move mouse to look around (ESC to exit)</span>

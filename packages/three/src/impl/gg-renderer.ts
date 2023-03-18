@@ -11,7 +11,7 @@ export class GgRenderer extends Gg3dRenderer {
   public readonly renderer: WebGLRenderer;
 
   constructor(
-    canvas?: HTMLCanvasElement,
+    public readonly canvas?: HTMLCanvasElement,
     rendererOptions: Partial<RendererOptions> = {},
     public camera: ThreeCameraEntity = new ThreeCameraEntity(new ThreeCamera(new PerspectiveCamera(75, 1, 1, 10000))),
   ) {
