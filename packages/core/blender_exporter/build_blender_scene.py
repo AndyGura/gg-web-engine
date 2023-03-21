@@ -28,6 +28,7 @@ def parse_curve_obj(object):
     }
 
 def parse_dummy_obj(object):
+    object.rotation_mode = 'QUATERNION'
     return {
         "name": object.name,
         "position": {
