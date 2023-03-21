@@ -81,10 +81,7 @@ export class Graph<T> {
     const stack: [Graph<T>, number][] = [[this, depth]];
     visited.add(this);
     while (stack.length) {
-      const next = stack.shift();
-      if (!next) {
-        continue;
-      }
+      const next = stack.shift()!;
       const [node, depthLeft] = next;
       if (depthLeft !== 0) {
         const children = Array.from(node.adjacent).filter(c => !visited.has(c));
@@ -104,10 +101,7 @@ export class Graph<T> {
     const stack: [Graph<T>, number][] = [[this, depth]];
     visited.add(this);
     while (stack.length) {
-      const next = stack.shift();
-      if (!next) {
-        continue;
-      }
+      const next = stack.shift()!;
       const [node, depthLeft] = next;
       const distance = depth - depthLeft;
       if (!result[distance]) {
