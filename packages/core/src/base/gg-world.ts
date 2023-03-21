@@ -5,6 +5,8 @@ import { GgPhysicsWorld } from './interfaces/gg-physics-world';
 import { GgVisualScene } from './interfaces/gg-visual-scene';
 import { GgStatic } from './gg-static';
 import { KeyboardController } from './controllers/keyboard.controller';
+import { filter } from 'rxjs';
+import { GgConsoleUI } from './ui/gg-console.ui';
 
 export abstract class GgWorld<D, R, V extends GgVisualScene<D, R> = GgVisualScene<D, R>, P extends GgPhysicsWorld<D, R> = GgPhysicsWorld<D, R>> {
 
@@ -28,10 +30,21 @@ export abstract class GgWorld<D, R, V extends GgVisualScene<D, R> = GgVisualScen
     GgStatic.instance.selectedWorld = this;
     this.keyboardController.start().then();
     if (consoleEnabled) {
+      this.keyboardController.bind('Backquote').pipe(filter(x => x)).subscribe(() => {
+        // open console UI
+        if (GgConsoleUI.instance.isUIShown) {
+          GgConsoleUI.instance.destroyUI();
+        } else {
+          GgConsoleUI.instance.createUI();
+        }
+      });
+      this.registerConsoleCommand('commandslist', async () => {
+        return Object.entries(this.commands).map(([key, value]) => `${key}${value.doc ? '\t// ' + value.doc : ''}`).sort().join('\n\n');
+      }, 'no args; print all available commands');
       this.registerConsoleCommand('ph_timescale', async (...args: string[]) => {
         this.physicsWorld.timeScale = +args[0];
         return JSON.stringify(this.physicsWorld.timeScale);
-      });
+      }, 'args: [float]; change time scale of physics engine. Default value is 1.0');
       this.registerConsoleCommand('dr_drawphysics', async (...args: string[]) => {
         const shouldDraw = ['1', 'true', '+'].includes(args[0]);
         if (shouldDraw != this.physicsWorld.debuggerActive) {
@@ -47,7 +60,7 @@ export abstract class GgWorld<D, R, V extends GgVisualScene<D, R> = GgVisualScen
           }
         }
         return '' + this.physicsWorld.debuggerActive;
-      });
+      }, 'args: [0 or 1]; turn on/off physics debug view. Default value is 0');
     }
   }
 
@@ -120,13 +133,13 @@ export abstract class GgWorld<D, R, V extends GgVisualScene<D, R> = GgVisualScen
     }
   }
 
-  protected commands: { [key: string]: (...args: string[]) => Promise<string> } = {};
+  protected commands: { [key: string]: { handler: (...args: string[]) => Promise<string>, doc?: string } } = {};
 
-  public registerConsoleCommand(command: string, handler: (...args: string[]) => Promise<string>): void {
+  public registerConsoleCommand(command: string, handler: (...args: string[]) => Promise<string>, doc?: string): void {
     if (!this.consoleEnabled) {
       throw new Error('Console not enabled for this world');
     }
-    this.commands[command] = handler;
+    this.commands[command] = { handler, doc };
   }
 
   public async runConsoleCommand(command: string, args: string[]): Promise<string> {
@@ -136,7 +149,7 @@ export abstract class GgWorld<D, R, V extends GgVisualScene<D, R> = GgVisualScen
     if (!this.commands[command]) {
       return 'Unrecognized command: ' + command;
     }
-    return this.commands[command](...args);
+    return this.commands[command].handler(...args);
   }
 
 }

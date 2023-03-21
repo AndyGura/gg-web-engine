@@ -15,16 +15,17 @@ export class GgStatic {
   public readonly worlds: GgWorld<any, any>[] = [];
   public selectedWorld: GgWorld<any, any> | null = null;
 
-  async console(input: string): Promise<void> {
+  async console(input: string): Promise<string> {
     if (!this.selectedWorld) {
-      console.log('World not selected');
-      return;
+      return 'World not selected';
     }
     const commands: string[] = input.split('\n');
+    let output: string[] = [];
     for (const command of commands) {
       const parts = command.split(' ');
-      console.log(await this.selectedWorld.runConsoleCommand(parts.splice(0, 1)[0], parts));
+      output.push(await this.selectedWorld.runConsoleCommand(parts.splice(0, 1)[0], parts));
     }
+    return output.join('\n');
   }
 
 }
