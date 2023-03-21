@@ -35,7 +35,7 @@ export class Gg3dBodyFactory implements IGg3dBodyFactory<Gg3dBody, Gg3dTrigger> 
       case 'BOX':
         return new this.world.ammo.btBoxShape(new this.world.ammo.btVector3(descriptor.dimensions.x / 2, descriptor.dimensions.y / 2, descriptor.dimensions.z / 2));
       case 'CAPSULE':
-        return new this.world.ammo.btCapsuleShapeZ(descriptor.radius, descriptor.centersDistance + descriptor.radius * 2);
+        return new this.world.ammo.btCapsuleShapeZ(descriptor.radius, descriptor.centersDistance);
       case 'CYLINDER':
         return new this.world.ammo.btCylinderShapeZ(new this.world.ammo.btVector3(descriptor.radius, descriptor.radius, descriptor.height / 2));
       case 'CONE':
