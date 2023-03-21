@@ -12,7 +12,7 @@ import { LoadOptions, LoadResultWithProps } from '../loader';
 type MapGraphNodeType = { path: string, position: Point3, rotation?: Point4, loadOptions: Partial<Omit<LoadOptions, 'position' | 'rotation'>> };
 
 export class MapGraph extends Graph<MapGraphNodeType> {
-  static fromArray(array: MapGraphNodeType[]): MapGraph {
+  static fromMapArray(array: MapGraphNodeType[]): MapGraph {
     const root = new MapGraph(array[0]);
     let tail = root;
     for (let i = 1; i < array.length; i++) {
@@ -22,7 +22,7 @@ export class MapGraph extends Graph<MapGraphNodeType> {
     }
     return root;
   }
-  static fromSquareGrid(grid: MapGraphNodeType[][]): MapGraph {
+  static fromMapSquareGrid(grid: MapGraphNodeType[][]): MapGraph {
     const nodes = grid.map((sgrid) => sgrid.map(item => new MapGraph(item)));
     // bind them
     for (let j = 0; j < nodes.length; j++) {

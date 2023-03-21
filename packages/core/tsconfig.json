@@ -4,5 +4,6 @@
     "baseUrl": "./src/",
     "outDir": "./dist/"
   },
-  "include": ["*.ts", "**/*.ts"]
+  "include": ["*.ts", "**/*.ts"],
+  "exclude": ["**/*.spec.ts", "node_modules", "dist/**/*"]
 }

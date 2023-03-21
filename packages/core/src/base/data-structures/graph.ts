@@ -1,4 +1,31 @@
 export class Graph<T> {
+
+  static fromArray<T>(array: T[]): Graph<T> {
+    const root = new Graph(array[0]);
+    let tail = root;
+    for (let i = 1; i < array.length; i++) {
+      const newTail = new Graph<T>(array[i]);
+      tail.addAdjacent(newTail);
+      tail = newTail;
+    }
+    return root;
+  }
+  static fromSquareGrid<T>(grid: T[][]): Graph<T> {
+    const nodes = grid.map((sgrid) => sgrid.map(item => new Graph<T>(item)));
+    // bind them
+    for (let j = 0; j < nodes.length; j++) {
+      for (let i = 0; i < nodes.length; i++) {
+        if (i > 0) {
+          nodes[j][i].addAdjacent(nodes[j][i - 1]);
+        }
+        if (j > 0) {
+          nodes[j][i].addAdjacent(nodes[j - 1][i]);
+        }
+      }
+    }
+    return nodes[0][0];
+  }
+
   data: T;
   private adjacent: Set<Graph<T>>;
 
@@ -52,13 +79,13 @@ export class Graph<T> {
   walkRead(depth: number): Set<Graph<T>> {
     const visited: Set<Graph<T>> = new Set();
     const stack: [Graph<T>, number][] = [[this, depth]];
+    visited.add(this);
     while (stack.length) {
-      const next = stack.pop();
+      const next = stack.shift();
       if (!next) {
         continue;
       }
       const [node, depthLeft] = next;
-      visited.add(node);
       if (depthLeft !== 0) {
         const children = Array.from(node.adjacent).filter(c => !visited.has(c));
         for (const child of children) {
@@ -68,6 +95,34 @@ export class Graph<T> {
       }
     }
     return visited;
+  }
+
+  // the same as "walkRead", but returns array of sets (per depth), so distance to each found node can be tracked
+  walkReadPreserveDepth(depth: number): Set<Graph<T>>[] {
+    const visited: Set<Graph<T>> = new Set();
+    const result: Set<Graph<T>>[] = [];
+    const stack: [Graph<T>, number][] = [[this, depth]];
+    visited.add(this);
+    while (stack.length) {
+      const next = stack.shift();
+      if (!next) {
+        continue;
+      }
+      const [node, depthLeft] = next;
+      const distance = depth - depthLeft;
+      if (!result[distance]) {
+        result[distance] = new Set<Graph<T>>();
+      }
+      result[distance].add(node);
+      if (depthLeft !== 0) {
+        const children = Array.from(node.adjacent).filter(c => !visited.has(c));
+        for (const child of children) {
+          visited.add(child);
+          stack.push([child, depthLeft - 1]);
+        }
+      }
+    }
+    return result;
   }
 
   // TODO return iterable?
