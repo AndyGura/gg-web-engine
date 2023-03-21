@@ -61,7 +61,17 @@ export class MapGraph extends Graph<MapGraphNodeType> {
   }
 }
 
-export type Gg3dMapGraphEntityOptions = { loadDepth: number };
+export type Gg3dMapGraphEntityOptions = {
+  // depth in tree to load. 0 means load only the nearest node, 1 means nearest + all of it's neighbours etc.
+  loadDepth: number,
+  // additional depth, means unload delay. Nodes with this depth won't load, but if already loaded, will not be destroyed
+  inertia: number
+};
+
+const defaultOptions: Gg3dMapGraphEntityOptions = {
+  loadDepth: 5,
+  inertia: 0,
+}
 
 export class Gg3dMapGraphEntity extends GgEntity implements ITickListener {
   public readonly tick$: Subject<[number, number]> = new Subject<[number, number]>();
@@ -91,11 +101,14 @@ export class Gg3dMapGraphEntity extends GgEntity implements ITickListener {
   protected _world: Gg3dWorld | null = null;
   private readonly mapGraphNodes: MapGraph[];
 
+  protected readonly options: Gg3dMapGraphEntityOptions;
+
   constructor(
     public readonly mapGraph: MapGraph,
-    protected readonly options: Gg3dMapGraphEntityOptions = { loadDepth: 10 },
+    options: Partial<Gg3dMapGraphEntityOptions> = {},
   ) {
     super();
+    this.options = { ...defaultOptions, ...options };
     this.mapGraphNodes = mapGraph.nodes();
   }
 
@@ -115,17 +128,30 @@ export class Gg3dMapGraphEntity extends GgEntity implements ITickListener {
       tap((node) => this._nearestDummy$.next(node)),
       distinctUntilChanged(),
     ).subscribe((currentChunk) => {
-      const expectedChunkNames: Set<MapGraphNodeType> = new Set();
-      currentChunk.walkRead(this.options.loadDepth).forEach(node => expectedChunkNames.add(node.data));
+      let haveToBeLoaded: Set<MapGraphNodeType> = new Set();
+      let canBeLoaded: Set<MapGraphNodeType>;
+      if (this.options.inertia > 0) {
+        canBeLoaded = new Set();
+        const nodes = currentChunk.walkReadPreserveDepth(this.options.loadDepth + this.options.inertia);
+        for (let distance = 0; distance < nodes.length; distance++) {
+          nodes[distance].forEach(node => canBeLoaded.add(node.data));
+          if (distance <= this.options.loadDepth) {
+            nodes[distance].forEach(node => haveToBeLoaded.add(node.data));
+          }
+        }
+      } else {
+        currentChunk.walkRead(this.options.loadDepth).forEach(node => haveToBeLoaded.add(node.data));
+        canBeLoaded = haveToBeLoaded;
+      }
       for (const loadedNode of this.loaded.keys()) {
-        if (!expectedChunkNames.has(loadedNode)) {
+        if (!canBeLoaded.has(loadedNode)) {
           this.disposeChunk(loadedNode);
         } else {
-          expectedChunkNames.delete(loadedNode);
+          haveToBeLoaded.delete(loadedNode);
         }
       }
       Promise.all(
-        Array.from(expectedChunkNames.keys()).map(n => this.loadChunk(n))
+        Array.from(haveToBeLoaded.keys()).map(n => this.loadChunk(n))
       ).then(() => this._initialLoadComplete$.next(true));
     });
   }

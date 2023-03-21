@@ -80,9 +80,9 @@ export class GameFactory {
   }
 
   private setupMapGraph(renderCursor: GgPositionable3dEntity): Gg3dMapGraphEntity {
-    const mapGraph = MapGraph.fromSquareGrid(
-      Array(10).fill(null).map((_, i) => (
-        Array(10).fill(null).map((_, j) => ({
+    const mapGraph = MapGraph.fromMapSquareGrid(
+      Array(11).fill(null).map((_, i) => (
+        Array(11).fill(null).map((_, j) => ({
           path: 'assets/city_tile',
           position: { x: (j - 5) * 75, y: (i - 5) * 75, z: 0 },
           loadOptions: {
@@ -91,7 +91,7 @@ export class GameFactory {
         }))
       ))
     );
-    const cityMapGraph = new Gg3dMapGraphEntity(mapGraph, { loadDepth: 3 });
+    const cityMapGraph = new Gg3dMapGraphEntity(mapGraph, { loadDepth: 3, inertia: 2 });
     cityMapGraph.loaderCursorEntity$.next(renderCursor);
     cityMapGraph.chunkLoaded$.subscribe(async ([{ meta }, { position }]) => {
       // spawn cars
