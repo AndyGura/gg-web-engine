@@ -8,7 +8,7 @@ const getCurrentWindowSize = (): Point2 => {
     x: window.innerWidth,
     y: window.innerHeight,
   };
-}
+};
 
 const getMousePositionFromEvent = (event: MouseEvent | TouchEvent): Point2 | null => {
   if (event instanceof MouseEvent) {
@@ -21,10 +21,9 @@ const getMousePositionFromEvent = (event: MouseEvent | TouchEvent): Point2 | nul
   }
   console.warn('Cannot determine mouse position from event', event);
   return null;
-}
+};
 
 export class GgViewport {
-
   private static _instance: GgViewport | null;
   static get instance(): GgViewport {
     if (!this._instance) {
@@ -33,8 +32,7 @@ export class GgViewport {
     return this._instance;
   }
 
-  private constructor() {
-  }
+  private constructor() {}
 
   protected destroy$: Subject<void> | null = null;
 
@@ -50,58 +48,52 @@ export class GgViewport {
     }
     this.destroy$ = new Subject();
     // cursor position
-    merge(
-      fromEvent(window, 'mousemove'),
-      fromEvent(window, 'touchstart'),
-      fromEvent(window, 'touchmove'),
-    ).pipe(
-      takeUntil(this.destroy$),
-      map(event => event as MouseEvent | TouchEvent)
-    ).subscribe((event) => {
-      const point = getMousePositionFromEvent(event);
-      if (point) {
-        this.mousePosition.next(point);
-      }
-    });
+    merge(fromEvent(window, 'mousemove'), fromEvent(window, 'touchstart'), fromEvent(window, 'touchmove'))
+      .pipe(
+        takeUntil(this.destroy$),
+        map(event => event as MouseEvent | TouchEvent),
+      )
+      .subscribe(event => {
+        const point = getMousePositionFromEvent(event);
+        if (point) {
+          this.mousePosition.next(point);
+        }
+      });
     // clicks
-    merge(
-      fromEvent(window, 'mousedown'),
-      fromEvent(window, 'touchstart'),
-    ).pipe(
-      takeUntil(this.destroy$),
-      map(event => event as MouseEvent | TouchEvent)
-    ).subscribe((event) => {
-      const point = getMousePositionFromEvent(event);
-      if (point) {
-        this.mousePosition.next(point);
-      }
-      this.isMouseDown.next(true);
-    });
-    merge(
-      fromEvent(window, 'mouseup'),
-      fromEvent(window, 'click'),
-      fromEvent(window, 'touchend'),
-    ).pipe(
-      takeUntil(this.destroy$),
-      map(event => event as MouseEvent | TouchEvent)
-    ).subscribe((event) => {
-      const point = getMousePositionFromEvent(event);
-      if (point) {
-        this.mousePosition.next(point);
-      }
-      this.isMouseDown.next(false);
-      if ((event.target as any)['nodeName'] === 'canvas') {
-        this.mouseClicked.next(this.mousePosition.getValue());
-      }
-    });
+    merge(fromEvent(window, 'mousedown'), fromEvent(window, 'touchstart'))
+      .pipe(
+        takeUntil(this.destroy$),
+        map(event => event as MouseEvent | TouchEvent),
+      )
+      .subscribe(event => {
+        const point = getMousePositionFromEvent(event);
+        if (point) {
+          this.mousePosition.next(point);
+        }
+        this.isMouseDown.next(true);
+      });
+    merge(fromEvent(window, 'mouseup'), fromEvent(window, 'click'), fromEvent(window, 'touchend'))
+      .pipe(
+        takeUntil(this.destroy$),
+        map(event => event as MouseEvent | TouchEvent),
+      )
+      .subscribe(event => {
+        const point = getMousePositionFromEvent(event);
+        if (point) {
+          this.mousePosition.next(point);
+        }
+        this.isMouseDown.next(false);
+        if ((event.target as any)['nodeName'] === 'canvas') {
+          this.mouseClicked.next(this.mousePosition.getValue());
+        }
+      });
     // viewport size
-    merge(
-      fromEvent(window, 'resize'),
-      fromEvent(window, 'orientationchange'),
-    ).pipe(
-      takeUntil(this.destroy$),
-      map(() => getCurrentWindowSize()),
-    ).subscribe(this.viewportSize);
+    merge(fromEvent(window, 'resize'), fromEvent(window, 'orientationchange'))
+      .pipe(
+        takeUntil(this.destroy$),
+        map(() => getCurrentWindowSize()),
+      )
+      .subscribe(this.viewportSize);
   }
 
   public deactivate(): void {
@@ -121,17 +113,14 @@ export class GgViewport {
   }
 
   subscribeOnViewportSize(): Observable<Point2> {
-    return this.viewportSize
-      .asObservable()
-      .pipe(
-        distinctUntilChanged((v1, v2) => {
-          return v1.x === v2.x && v1.y === v2.y;
-        })
-      );
+    return this.viewportSize.asObservable().pipe(
+      distinctUntilChanged((v1, v2) => {
+        return v1.x === v2.x && v1.y === v2.y;
+      }),
+    );
   }
 
   // ================================================== VIEWPORT SIZE ==================================================
-
 
   // ================================================== POINTER LOGIC ==================================================
   private mousePosition: BehaviorSubject<Point2> = new BehaviorSubject<Point2>({ x: 0, y: 0 });
@@ -143,26 +132,23 @@ export class GgViewport {
   }
 
   isTouchDevice(): boolean {
-    return 'createTouch' in document ||
-      !!navigator.userAgent.match(/(iPhone|iPod|iPad)/) || !!navigator.userAgent.match(/Android/);
+    return (
+      'createTouch' in document ||
+      !!navigator.userAgent.match(/(iPhone|iPod|iPad)/) ||
+      !!navigator.userAgent.match(/Android/)
+    );
   }
 
   subscribeOnMouseMove(): Observable<Point2> {
-    return this.mousePosition
-      .asObservable()
-      .pipe(
-        distinctUntilChanged((v1, v2) => {
-          return v1.x === v2.x && v1.y === v2.y;
-        })
-      );
+    return this.mousePosition.asObservable().pipe(
+      distinctUntilChanged((v1, v2) => {
+        return v1.x === v2.x && v1.y === v2.y;
+      }),
+    );
   }
 
   subscribeOnIsMouseDown(): Observable<boolean> {
-    return this.isMouseDown
-      .asObservable()
-      .pipe(
-        distinctUntilChanged(),
-      );
+    return this.isMouseDown.asObservable().pipe(distinctUntilChanged());
   }
 
   subscribeOnMouseClick(): Observable<Point2> {
@@ -170,5 +156,4 @@ export class GgViewport {
   }
 
   // ================================================== POINTER LOGIC ==================================================
-
 }

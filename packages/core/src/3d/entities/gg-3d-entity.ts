@@ -6,7 +6,6 @@ import { Gg3dWorld } from '../gg-3d-world';
 import { IGg3dBody, IGg3dObject } from '../interfaces';
 
 export class Gg3dEntity extends GgPositionable3dEntity implements ITickListener {
-
   public readonly tick$: Subject<[number, number]> = new Subject<[number, number]>();
   public readonly tickOrder = 750;
 
@@ -77,10 +76,7 @@ export class Gg3dEntity extends GgPositionable3dEntity implements ITickListener 
     this._rotation$.next(quat);
   }
 
-  constructor(
-    public readonly object3D: IGg3dObject | null,
-    public readonly objectBody: IGg3dBody | null = null,
-  ) {
+  constructor(public readonly object3D: IGg3dObject | null, public readonly objectBody: IGg3dBody | null = null) {
     super();
     if (objectBody && object3D) {
       this.tick$.subscribe(() => {
@@ -117,5 +113,4 @@ export class Gg3dEntity extends GgPositionable3dEntity implements ITickListener 
       this.objectBody.dispose();
     }
   }
-
 }

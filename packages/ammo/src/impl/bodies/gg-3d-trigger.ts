@@ -6,26 +6,22 @@ import { BaseAmmoGGBody } from './base-ammo-gg-body';
 import { ammoId } from '../../ammo-utils';
 
 export class Gg3dTrigger extends BaseAmmoGGBody<Ammo.btPairCachingGhostObject> implements IGg3dTrigger {
-
   public entity: Gg3dTriggerEntity | null = null;
 
   get onEntityEntered(): Observable<GgPositionable3dEntity> {
     return this.onEnter$.pipe(
-      map(b => (BaseAmmoGGBody.nativeBodyReverseMap.get(b))?.entity),
+      map(b => BaseAmmoGGBody.nativeBodyReverseMap.get(b)?.entity),
       filter(x => !!x && x instanceof GgPositionable3dEntity),
     ) as Observable<GgPositionable3dEntity>;
   }
 
   get onEntityLeft(): Observable<GgPositionable3dEntity | null> {
     return this.onLeft$.pipe(
-      map(b => (BaseAmmoGGBody.nativeBodyReverseMap.get(b))?.entity || null),
+      map(b => BaseAmmoGGBody.nativeBodyReverseMap.get(b)?.entity || null),
     ) as Observable<GgPositionable3dEntity | null>;
   }
 
-  constructor(
-    protected readonly world: Gg3dPhysicsWorld,
-    protected _nativeBody: Ammo.btPairCachingGhostObject,
-  ) {
+  constructor(protected readonly world: Gg3dPhysicsWorld, protected _nativeBody: Ammo.btPairCachingGhostObject) {
     super(world, _nativeBody);
   }
 
@@ -35,7 +31,9 @@ export class Gg3dTrigger extends BaseAmmoGGBody<Ammo.btPairCachingGhostObject> i
 
   checkOverlaps(): void {
     const numOverlappingObjects = this.nativeBody.getNumOverlappingObjects();
-    const newOverlaps = new Set(new Array(numOverlappingObjects).fill(null).map((_, i) => this.nativeBody.getOverlappingObject(i)));
+    const newOverlaps = new Set(
+      new Array(numOverlappingObjects).fill(null).map((_, i) => this.nativeBody.getOverlappingObject(i)),
+    );
     for (const overlap of this.overlaps.keys()) {
       if (!newOverlaps.has(overlap)) {
         this.overlaps.delete(overlap);
@@ -51,12 +49,10 @@ export class Gg3dTrigger extends BaseAmmoGGBody<Ammo.btPairCachingGhostObject> i
   }
 
   clone(): Gg3dTrigger {
-    return this.world.factory.createTriggerFromShape(
-      this._nativeBody.getCollisionShape(), {
-        position: this.position,
-        rotation: this.rotation,
-      }
-    );
+    return this.world.factory.createTriggerFromShape(this._nativeBody.getCollisionShape(), {
+      position: this.position,
+      rotation: this.rotation,
+    });
   }
 
   addToWorld(world: Gg3dPhysicsWorld) {
@@ -82,6 +78,5 @@ export class Gg3dTrigger extends BaseAmmoGGBody<Ammo.btPairCachingGhostObject> i
     this.onLeft$.complete();
   }
 
-  resetMotion(): void {
-  }
+  resetMotion(): void {}
 }

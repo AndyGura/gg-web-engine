@@ -12,9 +12,7 @@ export class Gg3dTriggerEntity extends Gg3dEntity {
     return this.objectBody.onEntityLeft;
   }
 
-  constructor(
-    public readonly objectBody: IGg3dTrigger,
-  ) {
+  constructor(public readonly objectBody: IGg3dTrigger) {
     super(null, objectBody);
     this.tick$.subscribe(() => {
       this.objectBody.checkOverlaps();

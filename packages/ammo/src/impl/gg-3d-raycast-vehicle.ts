@@ -1,9 +1,15 @@
-import { IGg3dRaycastVehicle, WheelOptions, SuspensionOptions, Point3, Point4, Gg3dRaycastVehicleEntity } from '@gg-web-engine/core';
+import {
+  IGg3dRaycastVehicle,
+  WheelOptions,
+  SuspensionOptions,
+  Point3,
+  Point4,
+  Gg3dRaycastVehicleEntity,
+} from '@gg-web-engine/core';
 import Ammo from 'ammojs-typed';
 import { Gg3dBody } from './bodies/gg-3d-body';
 import { Gg3dPhysicsWorld } from './gg-3d-physics-world';
 export class Gg3dRaycastVehicle extends Gg3dBody implements IGg3dRaycastVehicle {
-
   public readonly nativeVehicle: Ammo.btRaycastVehicle;
   public readonly vehicleTuning: Ammo.btVehicleTuning = new this.ammo.btVehicleTuning();
   protected readonly wheelDirectionCS0: Ammo.btVector3 = new this.ammo.btVector3(0, 0, -1);
@@ -11,16 +17,12 @@ export class Gg3dRaycastVehicle extends Gg3dBody implements IGg3dRaycastVehicle 
 
   public entity: Gg3dRaycastVehicleEntity | null = null;
 
-  constructor(
-    protected readonly world: Gg3dPhysicsWorld,
-    public chassisBody: Ammo.btRigidBody,
-
-  ) {
+  constructor(protected readonly world: Gg3dPhysicsWorld, public chassisBody: Ammo.btRigidBody) {
     super(world, chassisBody);
     this.nativeVehicle = new this.ammo.btRaycastVehicle(
       this.vehicleTuning,
       this.chassisBody,
-      new this.ammo.btDefaultVehicleRaycaster(world.dynamicAmmoWorld!)
+      new this.ammo.btDefaultVehicleRaycaster(world.dynamicAmmoWorld!),
     );
     this.nativeVehicle.setCoordinateSystem(0, 2, 1);
   }
@@ -48,7 +50,7 @@ export class Gg3dRaycastVehicle extends Gg3dBody implements IGg3dRaycastVehicle 
       suspensionOptions.restLength,
       options.tyre_radius,
       this.vehicleTuning,
-      options.isFront
+      options.isFront,
     );
     wheelInfo.set_m_suspensionStiffness(suspensionOptions.stiffness);
     wheelInfo.set_m_wheelsDampingRelaxation(suspensionOptions.damping);
@@ -63,18 +65,18 @@ export class Gg3dRaycastVehicle extends Gg3dBody implements IGg3dRaycastVehicle 
   }
 
   applyEngineForce(wheelIndex: number, force: number): void {
-    this.nativeVehicle.applyEngineForce(force, wheelIndex)
+    this.nativeVehicle.applyEngineForce(force, wheelIndex);
   }
 
   applyBrake(wheelIndex: number, force: number): void {
-    this.nativeVehicle.setBrake(force, wheelIndex)
+    this.nativeVehicle.setBrake(force, wheelIndex);
   }
 
   isWheelTouchesGround(wheelIndex: number): boolean {
     return this.nativeVehicle.getWheelInfo(wheelIndex).get_m_raycastInfo().get_m_groundObject() > 0;
   }
 
-  getWheelTransform(wheelIndex: number): { position: Point3, rotation: Point4 } {
+  getWheelTransform(wheelIndex: number): { position: Point3; rotation: Point4 } {
     // FIXME when set to `true`, wheels are jittering, but it was not the case in old sandbox app. Check why
     this.nativeVehicle.updateWheelTransform(wheelIndex, false);
     const transform = this.nativeVehicle.getWheelTransformWS(wheelIndex);
@@ -83,14 +85,13 @@ export class Gg3dRaycastVehicle extends Gg3dBody implements IGg3dRaycastVehicle 
     return {
       position: { x: origin.x(), y: origin.y(), z: origin.z() },
       rotation: { x: quaternion.x(), y: quaternion.y(), z: quaternion.z(), w: quaternion.w() },
-    }
+    };
   }
 
   resetSuspension(): void {
     this.nativeVehicle.resetSuspension();
-    for(let i=0;i<this.nativeVehicle.getNumWheels();i++){
+    for (let i = 0; i < this.nativeVehicle.getNumWheels(); i++) {
       this.nativeVehicle.updateWheelTransform(i, true);
     }
   }
-
 }

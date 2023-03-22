@@ -2,10 +2,9 @@ import { BehaviorSubject, filter, first, Subject, takeUntil } from 'rxjs';
 import { GgViewport } from './gg-viewport';
 import { BaseGgRenderer } from './entities/base-gg-renderer';
 
-type CanvasAppDescr = { canvas: HTMLCanvasElement, renderer?: BaseGgRenderer };
+type CanvasAppDescr = { canvas: HTMLCanvasElement; renderer?: BaseGgRenderer };
 
 export class GgViewportManager {
-
   private static _instance: GgViewportManager | null;
   static get instance(): GgViewportManager {
     if (!this._instance) {
@@ -24,14 +23,15 @@ export class GgViewportManager {
         if (stage) {
           break;
         }
-        await new Promise((r) => setTimeout(r, 250));
+        await new Promise(r => setTimeout(r, 250));
       }
       if (!stage) {
         this.gameStage$.error(new Error('Div with id "gg-stage" not found in 30 seconds'));
       } else {
-        GgViewport.instance.subscribeOnViewportSize()
+        GgViewport.instance
+          .subscribeOnViewportSize()
           .pipe(takeUntil(this.destroyed))
-          .subscribe((size) => {
+          .subscribe(size => {
             for (const zIndex of Object.keys(this.canvases)) {
               const canvasDescr = this.canvases[+zIndex];
               if (canvasDescr.renderer && !canvasDescr.renderer.rendererOptions.forceRendererSize) {
@@ -55,16 +55,19 @@ export class GgViewportManager {
     if (current) {
       return Promise.resolve(current);
     }
-    return Promise.race([this.gameStage$.pipe(
-      takeUntil(this.destroyed),
-      filter(x => !!x),
-      first()
-    ).toPromise(),
+    return Promise.race([
+      this.gameStage$
+        .pipe(
+          takeUntil(this.destroyed),
+          filter(x => !!x),
+          first(),
+        )
+        .toPromise(),
       new Promise((resolve, reject) => {
         setTimeout(() => {
           reject('Cannot find div with id "gg-stage" in 30 seconds');
         }, 30000);
-      })
+      }),
     ]) as Promise<HTMLDivElement>;
   }
 

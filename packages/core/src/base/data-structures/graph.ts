@@ -1,5 +1,4 @@
 export class Graph<T> {
-
   static fromArray<T>(array: T[]): Graph<T> {
     const root = new Graph(array[0]);
     let tail = root;
@@ -11,7 +10,7 @@ export class Graph<T> {
     return root;
   }
   static fromSquareGrid<T>(grid: T[][]): Graph<T> {
-    const nodes = grid.map((sgrid) => sgrid.map(item => new Graph<T>(item)));
+    const nodes = grid.map(sgrid => sgrid.map(item => new Graph<T>(item)));
     // bind them
     for (let j = 0; j < nodes.length; j++) {
       for (let i = 0; i < nodes.length; i++) {

@@ -1,15 +1,17 @@
-import {IGg2dObjectFactory, Shape2DDescriptor} from '@gg-web-engine/core';
+import { IGg2dObjectFactory, Shape2DDescriptor } from '@gg-web-engine/core';
 import { Gg2dObject } from './gg-2d-object';
 import { Graphics, Sprite, Texture } from 'pixi.js';
 
 export class Gg2dObjectFactory extends IGg2dObjectFactory<Gg2dObject> {
   getRandomColor(): number {
-    return Math.floor(Math.random() * 256) << 16 | Math.floor(Math.random() * 256) << 8 | Math.floor(Math.random() * 256);
+    return (
+      (Math.floor(Math.random() * 256) << 16) | (Math.floor(Math.random() * 256) << 8) | Math.floor(Math.random() * 256)
+    );
   }
 
   createPrimitive(descriptor: Shape2DDescriptor, texture: Texture | null = null): Gg2dObject {
     switch (descriptor.shape) {
-      case "SQUARE":
+      case 'SQUARE':
         const sprite = new Sprite(texture || Texture.WHITE);
         sprite.width = descriptor.dimensions.x;
         sprite.height = descriptor.dimensions.y;
@@ -18,7 +20,7 @@ export class Gg2dObjectFactory extends IGg2dObjectFactory<Gg2dObject> {
         }
         sprite.anchor.x = sprite.anchor.y = 0.5;
         return new Gg2dObject(sprite);
-      case "CIRCLE":
+      case 'CIRCLE':
         if (texture) {
           // assume that texture is circular
           const sprite = new Sprite(texture);

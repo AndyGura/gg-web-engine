@@ -11,7 +11,7 @@ import { SuspensionOptions, WheelOptions } from './entities/gg-3d-raycast-vehicl
 import { GgTrigger } from '../base/interfaces/gg-trigger';
 import { Observable } from 'rxjs';
 import { GgPositionable3dEntity } from './entities/gg-positionable-3d-entity';
-import {IGg3dBodyFactory, IGg3dObjectFactory} from "./factories";
+import { IGg3dBodyFactory, IGg3dObjectFactory } from './factories';
 
 // These interfaces have to be implemented for a particular 3D physics engine
 export interface IGg3dPhysicsWorld extends GgPhysicsWorld<Point3, Point4> {
@@ -33,8 +33,7 @@ export abstract class Gg3dRenderer extends BaseGgRenderer {
   }
 }
 
-export interface IGg3dBody extends GgBody<Point3, Point4> {
-}
+export interface IGg3dBody extends GgBody<Point3, Point4> {}
 
 export interface IGg3dTrigger extends GgTrigger<Point3, Point4> {
   get onEntityEntered(): Observable<GgPositionable3dEntity>;
@@ -58,19 +57,20 @@ export interface IGg3dRaycastVehicle extends IGg3dBody {
 
   isWheelTouchesGround(wheelIndex: number): boolean;
 
-  getWheelTransform(wheelIndex: number): { position: Point3, rotation: Point4 };
+  getWheelTransform(wheelIndex: number): { position: Point3; rotation: Point4 };
 
   resetSuspension(): void;
 }
 
 export abstract class IGg3dBodyLoader {
-
-  protected constructor(protected readonly world: IGg3dPhysicsWorld) {
-  }
+  protected constructor(protected readonly world: IGg3dPhysicsWorld) {}
 
   async loadFromGgGlb(glbFile: ArrayBuffer, meta: GgMeta): Promise<IGg3dBody[]> {
     return (meta?.rigidBodies || []).map(d => {
-      const body = this.world.factory.createRigidBody({ shape: d.shape, body: d.body }, { position: d.position, rotation: d.rotation});
+      const body = this.world.factory.createRigidBody(
+        { shape: d.shape, body: d.body },
+        { position: d.position, rotation: d.rotation },
+      );
       body.name = d.name;
       return body;
     });
@@ -83,8 +83,7 @@ export interface IGg3dVisualScene extends GgVisualScene<Point3, Point4> {
   readonly loader: IGg3dObjectLoader;
 }
 
-export interface IGg3dObject extends GgObject<Point3, Point4> {
-}
+export interface IGg3dObject extends GgObject<Point3, Point4> {}
 
 export interface IGg3dCamera extends IGg3dObject {
   get supportsFov(): boolean;

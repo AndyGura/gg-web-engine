@@ -5,7 +5,6 @@ import { Gg3dObjectLoader } from './gg-3d-object-loader';
 import { ThreePhysicsDrawer } from '../three-physics-drawer';
 
 export class Gg3dVisualScene implements IGg3dVisualScene {
-
   private _nativeScene: Scene | null = null;
   public get nativeScene(): Scene | null {
     return this._nativeScene;
@@ -23,5 +22,4 @@ export class Gg3dVisualScene implements IGg3dVisualScene {
   dispose(): void {
     this._nativeScene = new Scene();
   }
-
 }

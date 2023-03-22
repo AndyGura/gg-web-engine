@@ -23,12 +23,12 @@ export class Qtrn {
       w: a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z,
       x: a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y,
       y: a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x,
-      z: a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w
+      z: a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w,
     };
   }
 
   static combineRotations(...quaternions: Point4[]): Point4 {
-    let result = {w: 1, x: 0, y: 0, z: 0};
+    let result = { w: 1, x: 0, y: 0, z: 0 };
     for (const quat of quaternions) {
       result = this.mult(result, quat);
     }
@@ -41,7 +41,7 @@ export class Qtrn {
       x: a.x + t * (b.x - a.x),
       y: a.y + t * (b.y - a.y),
       z: a.z + t * (b.z - a.z),
-      w: a.w + t * (b.w - a.w)
+      w: a.w + t * (b.w - a.w),
     };
   }
 
@@ -51,10 +51,10 @@ export class Qtrn {
     let theta = Math.acos(dot);
     let sinTheta = Math.sin(theta);
 
-    let x = a.x * Math.sin((1 - t) * theta) / sinTheta + b.x * Math.sin(t * theta) / sinTheta;
-    let y = a.y * Math.sin((1 - t) * theta) / sinTheta + b.y * Math.sin(t * theta) / sinTheta;
-    let z = a.z * Math.sin((1 - t) * theta) / sinTheta + b.z * Math.sin(t * theta) / sinTheta;
-    let w = a.w * Math.sin((1 - t) * theta) / sinTheta + b.w * Math.sin(t * theta) / sinTheta;
+    let x = (a.x * Math.sin((1 - t) * theta)) / sinTheta + (b.x * Math.sin(t * theta)) / sinTheta;
+    let y = (a.y * Math.sin((1 - t) * theta)) / sinTheta + (b.y * Math.sin(t * theta)) / sinTheta;
+    let z = (a.z * Math.sin((1 - t) * theta)) / sinTheta + (b.z * Math.sin(t * theta)) / sinTheta;
+    let w = (a.w * Math.sin((1 - t) * theta)) / sinTheta + (b.w * Math.sin(t * theta)) / sinTheta;
 
     if (isNaN(x) || isNaN(y) || isNaN(z) || isNaN(w)) {
       // happens when they are equal
@@ -64,12 +64,13 @@ export class Qtrn {
   }
 
   /** creates quaternion from simple angle around axis. Assumes that axis vector is normalized */
-  static fromAngle( axis: Point3, angle: number ) {
+  static fromAngle(axis: Point3, angle: number) {
     // http://www.euclideanspace.com/maths/geometry/rotations/conversions/angleToQuaternion/index.htm
-    const halfAngle = angle / 2, s = Math.sin( halfAngle );
+    const halfAngle = angle / 2,
+      s = Math.sin(halfAngle);
     return {
       ...Pnt3.scalarMult(axis, s),
-      w: Math.cos( halfAngle ),
+      w: Math.cos(halfAngle),
     };
   }
 
@@ -77,42 +78,48 @@ export class Qtrn {
   static fromMatrix4(m: number[]): Point4 {
     // http://www.euclideanspace.com/maths/geometry/rotations/conversions/matrixToQuaternion/index.htm
     // assumes the upper 3x3 of m is a pure rotation matrix (i.e, unscaled)
-    const m11 = m[ 0 ], m12 = m[ 4 ], m13 = m[ 8 ],
-      m21 = m[ 1 ], m22 = m[ 5 ], m23 = m[ 9 ],
-      m31 = m[ 2 ], m32 = m[ 6 ], m33 = m[ 10 ],
+    const m11 = m[0],
+      m12 = m[4],
+      m13 = m[8],
+      m21 = m[1],
+      m22 = m[5],
+      m23 = m[9],
+      m31 = m[2],
+      m32 = m[6],
+      m33 = m[10],
       trace = m11 + m22 + m33;
-    if ( trace > 0 ) {
-      const s = 0.5 / Math.sqrt( trace + 1.0 );
+    if (trace > 0) {
+      const s = 0.5 / Math.sqrt(trace + 1.0);
       return {
-        x: ( m32 - m23 ) * s,
-        y: ( m13 - m31 ) * s,
-        z: ( m21 - m12 ) * s,
+        x: (m32 - m23) * s,
+        y: (m13 - m31) * s,
+        z: (m21 - m12) * s,
         w: 0.25 / s,
-      }
-    } else if ( m11 > m22 && m11 > m33 ) {
-      const s = 2.0 * Math.sqrt( 1.0 + m11 - m22 - m33 );
+      };
+    } else if (m11 > m22 && m11 > m33) {
+      const s = 2.0 * Math.sqrt(1.0 + m11 - m22 - m33);
       return {
         x: 0.25 * s,
-        y: ( m12 + m21 ) / s,
-        z: ( m13 + m31 ) / s,
-        w: ( m32 - m23 ) / s,
-      }
-    } else if ( m22 > m33 ) {
-      const s = 2.0 * Math.sqrt( 1.0 + m22 - m11 - m33 );
+        y: (m12 + m21) / s,
+        z: (m13 + m31) / s,
+        w: (m32 - m23) / s,
+      };
+    } else if (m22 > m33) {
+      const s = 2.0 * Math.sqrt(1.0 + m22 - m11 - m33);
       return {
-        x: ( m12 + m21 ) / s,
+        x: (m12 + m21) / s,
         y: 0.25 * s,
-        z: ( m23 + m32 ) / s,
-        w: ( m13 - m31 ) / s,
-      }
+        z: (m23 + m32) / s,
+        w: (m13 - m31) / s,
+      };
     } else {
-      const s = 2.0 * Math.sqrt( 1.0 + m33 - m11 - m22 );
+      const s = 2.0 * Math.sqrt(1.0 + m33 - m11 - m22);
       return {
-        x: ( m13 + m31 ) / s,
-        y: ( m23 + m32 ) / s,
+        x: (m13 + m31) / s,
+        y: (m23 + m32) / s,
         z: 0.25 * s,
-        w: ( m21 - m12 ) / s,
-      }
+        w: (m21 - m12) / s,
+      };
     }
   }
 
@@ -134,7 +141,7 @@ export class Qtrn {
     const qy = cr * sp * cy + sr * cp * sy;
     const qz = cr * cp * sy - sr * sp * cy;
 
-    return {w: qw, x: qx, y: qy, z: qz};
+    return { w: qw, x: qx, y: qy, z: qz };
   }
 
   /** converts a quaternion to euler */
@@ -149,13 +156,13 @@ export class Qtrn {
     const roll = Math.atan2(sinr_cosp, cosr_cosp);
 
     const sinp = 2 * (qw * qy - qz * qx);
-    const pitch = Math.abs(sinp) >= 1 ? Math.sign(sinp) * Math.PI / 2 : Math.asin(sinp);
+    const pitch = Math.abs(sinp) >= 1 ? (Math.sign(sinp) * Math.PI) / 2 : Math.asin(sinp);
 
     const siny_cosp = 2 * (qw * qz + qx * qy);
     const cosy_cosp = 1 - 2 * (qy * qy + qz * qz);
     const yaw = Math.atan2(siny_cosp, cosy_cosp);
 
-    return {x: roll, y: pitch, z: yaw};
+    return { x: roll, y: pitch, z: yaw };
   }
 
   /** creates a rotation for object, so it will look at some point in space */

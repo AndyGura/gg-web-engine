@@ -2,7 +2,7 @@ import { GgBox } from '../models/geometry-nodes';
 
 export class Box {
   static clone<T>(box: GgBox<T>): GgBox<T> {
-    return { min: {...box.min}, max: {...box.max} };
+    return { min: { ...box.min }, max: { ...box.max } };
   }
   static expandByPoint<T>(box: GgBox<T>, point: T): GgBox<T> {
     const res: GgBox<T> = Box.clone(box);

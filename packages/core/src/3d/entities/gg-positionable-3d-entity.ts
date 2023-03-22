@@ -5,7 +5,6 @@ import { map } from 'rxjs/operators';
 import { Qtrn } from '../../base/math/quaternion';
 
 export abstract class GgPositionable3dEntity extends GgPositionableEntity<Point3, Point4> {
-
   getDefaultPosition(): Point3 {
     return { x: 0, y: 0, z: 0 };
   }

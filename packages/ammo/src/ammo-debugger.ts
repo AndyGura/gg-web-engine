@@ -21,28 +21,25 @@ export enum AmmoDebugMode {
   DrawConstraintLimits = 1 << 12, //4096
   FastWireframe = 1 << 13, //8192
   DrawNormals = 1 << 14, //16384
-  MAX_DEBUG_DRAW_MODE = 0xffffffff
+  MAX_DEBUG_DRAW_MODE = 0xffffffff,
 }
 
 const deserializeVector = function (ammo: typeof Ammo, vec: Ammo.btVector3): Point3 {
   if (!isNaN(+vec)) {
     const heap = ammo.HEAPF32;
     return {
-      x: heap[(+vec) / 4],
+      x: heap[+vec / 4],
       y: heap[(+vec + 4) / 4],
       z: heap[(+vec + 8) / 4],
     };
   }
   return { x: vec.x(), y: vec.y(), z: vec.z() };
-}
+};
 
 export class AmmoDebugger implements Ammo.btIDebugDraw {
   private debugMode: AmmoDebugMode = AmmoDebugMode.DrawWireframe;
 
-  constructor(
-    private readonly world: Gg3dPhysicsWorld,
-    private readonly drawer: GgDebugPhysicsDrawer<Point3, Point4>,
-  ) {
+  constructor(private readonly world: Gg3dPhysicsWorld, private readonly drawer: GgDebugPhysicsDrawer<Point3, Point4>) {
     this.ammoInstance = new this.world.ammo.DebugDrawer();
     this.ammoInstance.drawLine = this.drawLine.bind(this);
     this.ammoInstance.drawContactPoint = this.drawContactPoint.bind(this);
@@ -54,12 +51,17 @@ export class AmmoDebugger implements Ammo.btIDebugDraw {
 
   public readonly ammoInstance: Ammo.btIDebugDraw;
 
-
   draw3dText(location: Ammo.btVector3, textString: string): void {
     console.log('DRAWER DEBUG', 'draw3dtext');
   }
 
-  drawContactPoint(pointOnB: Ammo.btVector3, normalOnB: Ammo.btVector3, distance: number, lifeTime: number, color: Ammo.btVector3): void {
+  drawContactPoint(
+    pointOnB: Ammo.btVector3,
+    normalOnB: Ammo.btVector3,
+    distance: number,
+    lifeTime: number,
+    color: Ammo.btVector3,
+  ): void {
     this.drawer.drawContactPoint(
       deserializeVector(this.world.ammo, pointOnB),
       deserializeVector(this.world.ammo, normalOnB),
@@ -99,5 +101,4 @@ export class AmmoDebugger implements Ammo.btIDebugDraw {
   reportErrorWarning(warningString: string): void {
     console.log('DRAWER DEBUG', 'reportErrorWarning', warningString);
   }
-
 }

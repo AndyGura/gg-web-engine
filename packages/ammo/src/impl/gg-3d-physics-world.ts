@@ -5,7 +5,6 @@ import { Gg3dBodyLoader } from './gg-3d-body-loader';
 import { AmmoDebugger, AmmoDebugMode } from '../ammo-debugger';
 
 export class Gg3dPhysicsWorld implements IGg3dPhysicsWorld {
-
   private _factory: Gg3dBodyFactory | null = null;
   public get factory(): Gg3dBodyFactory {
     if (!this._factory) {
@@ -93,7 +92,7 @@ export class Gg3dPhysicsWorld implements IGg3dPhysicsWorld {
   }
 
   simulate(delta: number): void {
-    this._dynamicAmmoWorld?.stepSimulation(this._timeScale * delta / 1000, 100, this._timeScale * 0.01);
+    this._dynamicAmmoWorld?.stepSimulation((this._timeScale * delta) / 1000, 100, this._timeScale * 0.01);
     if (this._debugger) {
       this._debugger.update();
     }
@@ -131,9 +130,12 @@ export class Gg3dPhysicsWorld implements IGg3dPhysicsWorld {
     if (this._debugger) {
       this.ammo.destroy(this._debugger.ammoInstance);
     }
-    this._dynamicAmmoWorld = this.solver =
-      this.broadphase = this.dispatcher =
-        this.collisionConfiguration = this.ammoInstance = undefined;
+    this._dynamicAmmoWorld =
+      this.solver =
+      this.broadphase =
+      this.dispatcher =
+      this.collisionConfiguration =
+      this.ammoInstance =
+        undefined;
   }
-
 }

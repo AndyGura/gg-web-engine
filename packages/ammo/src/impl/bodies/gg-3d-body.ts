@@ -4,27 +4,25 @@ import { BaseAmmoGGBody } from './base-ammo-gg-body';
 import { Gg3dEntity } from '@gg-web-engine/core';
 
 export class Gg3dBody extends BaseAmmoGGBody<Ammo.btRigidBody> {
-
   public entity: Gg3dEntity | null = null;
 
-  constructor(
-    protected readonly world: Gg3dPhysicsWorld,
-    protected _nativeBody: Ammo.btRigidBody,
-  ) {
+  constructor(protected readonly world: Gg3dPhysicsWorld, protected _nativeBody: Ammo.btRigidBody) {
     super(world, _nativeBody);
   }
 
   clone(): Gg3dBody {
     return this.world.factory.createRigidBodyFromShape(
-      this._nativeBody.getCollisionShape(), {
+      this._nativeBody.getCollisionShape(),
+      {
         dynamic: !this._nativeBody.isStaticObject(),
         mass: 5, // FIXME how to get mass??
         friction: this._nativeBody.getFriction(),
         restitution: this._nativeBody.getRestitution(),
-      }, {
+      },
+      {
         position: this.position,
         rotation: this.rotation,
-      }
+      },
     );
   }
 
@@ -47,5 +45,4 @@ export class Gg3dBody extends BaseAmmoGGBody<Ammo.btRigidBody> {
     this.nativeBody.updateInertiaTensor();
     this.ammo.destroy(emptyVector);
   }
-
 }

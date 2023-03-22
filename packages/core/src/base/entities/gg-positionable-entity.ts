@@ -3,7 +3,6 @@ import { GgEntity } from './gg-entity';
 import { GgWorld } from '../gg-world';
 
 export abstract class GgPositionableEntity<D, R> extends GgEntity {
-
   protected readonly _position$: BehaviorSubject<D>;
   protected readonly _rotation$: BehaviorSubject<R>;
   protected readonly _scale$: BehaviorSubject<D>;

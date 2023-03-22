@@ -6,7 +6,6 @@ import { IGg2dBody, IGg2dObject } from '../interfaces';
 import { Gg2dWorld } from '../gg-2d-world';
 
 export class Gg2dEntity extends GgPositionable2dEntity implements ITickListener {
-
   public readonly tick$: Subject<[number, number]> = new Subject<[number, number]>();
   public readonly tickOrder = 750;
   private tickSub: Subscription | null = null;
@@ -41,10 +40,7 @@ export class Gg2dEntity extends GgPositionable2dEntity implements ITickListener 
     super.scale = value;
   }
 
-  constructor(
-    public readonly object2D: IGg2dObject | null,
-    public readonly objectBody: IGg2dBody | null,
-  ) {
+  constructor(public readonly object2D: IGg2dObject | null, public readonly objectBody: IGg2dBody | null) {
     super();
     if (objectBody && object2D) {
       this.tickSub = this.tick$.subscribe(() => {
@@ -87,5 +83,4 @@ export class Gg2dEntity extends GgPositionable2dEntity implements ITickListener 
       this.objectBody.dispose();
     }
   }
-
 }

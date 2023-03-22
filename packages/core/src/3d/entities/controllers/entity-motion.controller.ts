@@ -7,7 +7,7 @@ import { Point3, Point4 } from '../../../base/models/points';
 import { Pnt3 } from '../../../base/math/point3';
 import { Qtrn } from '../../../base/math/quaternion';
 
-export type MotionControlFuncReturn = { position: Point3, rotation: Point4, customParameters: {[key: string]: any} };
+export type MotionControlFuncReturn = { position: Point3; rotation: Point4; customParameters: { [key: string]: any } };
 export type MotionControlFunction = (delta: number) => MotionControlFuncReturn;
 
 export class EntityMotionController extends GgEntity implements ITickListener {
@@ -39,21 +39,25 @@ export class EntityMotionController extends GgEntity implements ITickListener {
   private currentTransition: Subscription | null = null;
 
   // smoothly set controller function, animate from some determined state
-  transitFromStaticState(state: MotionControlFuncReturn,
-                         newFunc: MotionControlFunction,
-                         transitionDuration: number,
-                         easing: (t: number) => number = x => x,
-                         customParametersLerpFunc: (a: any, b: any, t: number) => any = (a, b, t) => b) {
+  transitFromStaticState(
+    state: MotionControlFuncReturn,
+    newFunc: MotionControlFunction,
+    transitionDuration: number,
+    easing: (t: number) => number = x => x,
+    customParametersLerpFunc: (a: any, b: any, t: number) => any = (a, b, t) => b,
+  ) {
     this.lastValue = state;
     this._motionControlFunction = () => state;
     return this.transitControlFunction(newFunc, transitionDuration, easing, customParametersLerpFunc);
   }
 
   // smoothly change controller function
-  transitControlFunction(newFunc: MotionControlFunction,
-                         transitionDuration: number,
-                         easing: (t: number) => number = x => x,
-                         customParametersLerpFunc: (a: any, b: any, t: number) => any = (a, b, t) => b) {
+  transitControlFunction(
+    newFunc: MotionControlFunction,
+    transitionDuration: number,
+    easing: (t: number) => number = x => x,
+    customParametersLerpFunc: (a: any, b: any, t: number) => any = (a, b, t) => b,
+  ) {
     let oldControlFunc: MotionControlFunction;
     if (this.currentTransition) {
       this.currentTransition.unsubscribe();
@@ -68,14 +72,14 @@ export class EntityMotionController extends GgEntity implements ITickListener {
       oldControlFunc = this._motionControlFunction;
     }
     let k = 0;
-    this._motionControlFunction = (delta) => {
+    this._motionControlFunction = delta => {
       const oldRes = oldControlFunc(delta);
       const newRes = newFunc(delta);
       return {
         customParameters: customParametersLerpFunc(oldRes.customParameters, newRes.customParameters, k),
         position: Pnt3.lerp(oldRes.position, newRes.position, k),
         rotation: Qtrn.slerp(oldRes.rotation, newRes.rotation, k),
-      }
+      };
     };
     let startTime: number | undefined;
     this.currentTransition = this.tick$.pipe(takeUntil(this.removed$)).subscribe(([elapsed, _]) => {

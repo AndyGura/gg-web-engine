@@ -9,7 +9,12 @@ import { Gg3dWorld } from '../gg-3d-world';
 import { Gg3dEntity } from './gg-3d-entity';
 import { LoadOptions, LoadResultWithProps } from '../loader';
 
-type MapGraphNodeType = { path: string, position: Point3, rotation?: Point4, loadOptions: Partial<Omit<LoadOptions, 'position' | 'rotation'>> };
+type MapGraphNodeType = {
+  path: string;
+  position: Point3;
+  rotation?: Point4;
+  loadOptions: Partial<Omit<LoadOptions, 'position' | 'rotation'>>;
+};
 
 export class MapGraph extends Graph<MapGraphNodeType> {
   static fromMapArray(array: MapGraphNodeType[]): MapGraph {
@@ -23,7 +28,7 @@ export class MapGraph extends Graph<MapGraphNodeType> {
     return root;
   }
   static fromMapSquareGrid(grid: MapGraphNodeType[][]): MapGraph {
-    const nodes = grid.map((sgrid) => sgrid.map(item => new MapGraph(item)));
+    const nodes = grid.map(sgrid => sgrid.map(item => new MapGraph(item)));
     // bind them
     for (let j = 0; j < nodes.length; j++) {
       for (let i = 0; i < nodes.length; i++) {
@@ -43,12 +48,12 @@ export class MapGraph extends Graph<MapGraphNodeType> {
     // TODO should be heavily optimized with kd-tree-javascript, but building spatial index takes too much time. Serialize to file?
     thisNodes.forEach(n => {
       let dist = Math.sqrt(
-        Math.pow(cursor.x - n.data.position.x, 2)
-        + Math.pow(cursor.y - n.data.position.y, 2)
-        + Math.pow(cursor.z - n.data.position.z, 2)
+        Math.pow(cursor.x - n.data.position.x, 2) +
+          Math.pow(cursor.y - n.data.position.y, 2) +
+          Math.pow(cursor.z - n.data.position.z, 2),
       );
       if (dist < min) {
-        min = dist
+        min = dist;
         node = n;
       }
     });
@@ -63,21 +68,22 @@ export class MapGraph extends Graph<MapGraphNodeType> {
 
 export type Gg3dMapGraphEntityOptions = {
   // depth in tree to load. 0 means load only the nearest node, 1 means nearest + all of it's neighbours etc.
-  loadDepth: number,
+  loadDepth: number;
   // additional depth, means unload delay. Nodes with this depth won't load, but if already loaded, will not be destroyed
-  inertia: number
+  inertia: number;
 };
 
 const defaultOptions: Gg3dMapGraphEntityOptions = {
   loadDepth: 5,
   inertia: 0,
-}
+};
 
 export class Gg3dMapGraphEntity extends GgEntity implements ITickListener {
   public readonly tick$: Subject<[number, number]> = new Subject<[number, number]>();
   public readonly tickOrder = 1500;
 
-  public readonly loaderCursorEntity$: BehaviorSubject<GgPositionable3dEntity | null> = new BehaviorSubject<GgPositionable3dEntity | null>(null);
+  public readonly loaderCursorEntity$: BehaviorSubject<GgPositionable3dEntity | null> =
+    new BehaviorSubject<GgPositionable3dEntity | null>(null);
   readonly loaded: Map<MapGraphNodeType, GgPositionable3dEntity[]> = new Map();
 
   private _initialLoadComplete$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
@@ -85,13 +91,16 @@ export class Gg3dMapGraphEntity extends GgEntity implements ITickListener {
     return this._initialLoadComplete$.asObservable();
   }
 
-  private _nearestDummy$: BehaviorSubject<Graph<MapGraphNodeType> | null> = new BehaviorSubject<Graph<MapGraphNodeType> | null>(null);
+  private _nearestDummy$: BehaviorSubject<Graph<MapGraphNodeType> | null> =
+    new BehaviorSubject<Graph<MapGraphNodeType> | null>(null);
   public get nearestDummy(): Graph<MapGraphNodeType> | null {
     return this._nearestDummy$.getValue();
   }
-  
-  private _chunkLoaded$: Subject<[LoadResultWithProps, { position: Point3, rotation: Point4 }]> = new Subject<[LoadResultWithProps, { position: Point3, rotation: Point4 }]>();
-  public get chunkLoaded$(): Observable<[LoadResultWithProps, { position: Point3, rotation: Point4 }]> {
+
+  private _chunkLoaded$: Subject<[LoadResultWithProps, { position: Point3; rotation: Point4 }]> = new Subject<
+    [LoadResultWithProps, { position: Point3; rotation: Point4 }]
+  >();
+  public get chunkLoaded$(): Observable<[LoadResultWithProps, { position: Point3; rotation: Point4 }]> {
     return this._chunkLoaded$.asObservable();
   }
 
@@ -103,10 +112,7 @@ export class Gg3dMapGraphEntity extends GgEntity implements ITickListener {
 
   protected readonly options: Gg3dMapGraphEntityOptions;
 
-  constructor(
-    public readonly mapGraph: MapGraph,
-    options: Partial<Gg3dMapGraphEntityOptions> = {},
-  ) {
+  constructor(public readonly mapGraph: MapGraph, options: Partial<Gg3dMapGraphEntityOptions> = {}) {
     super();
     this.options = { ...defaultOptions, ...options };
     this.mapGraphNodes = mapGraph.nodes();
@@ -115,45 +121,48 @@ export class Gg3dMapGraphEntity extends GgEntity implements ITickListener {
   onSpawned(world: Gg3dWorld) {
     super.onSpawned(world);
     // TODO takeUntil removed from world?
-    this.loaderCursorEntity$.pipe(
-      switchMap(entity => entity
-        ? this.tick$.pipe(
-          startWith(null), // map will perform initial loading even if world not started yet. Handy to preload map
-          throttleTime(1000),
-          map(() => entity.position)
-        )
-        : NEVER
-      ),
-      map((pos) => this.mapGraph.getNearestDummy(this.mapGraphNodes, pos)),
-      tap((node) => this._nearestDummy$.next(node)),
-      distinctUntilChanged(),
-    ).subscribe((currentChunk) => {
-      let haveToBeLoaded: Set<MapGraphNodeType> = new Set();
-      let canBeLoaded: Set<MapGraphNodeType>;
-      if (this.options.inertia > 0) {
-        canBeLoaded = new Set();
-        const nodes = currentChunk.walkReadPreserveDepth(this.options.loadDepth + this.options.inertia);
-        for (let distance = 0; distance < nodes.length; distance++) {
-          nodes[distance].forEach(node => canBeLoaded.add(node.data));
-          if (distance <= this.options.loadDepth) {
-            nodes[distance].forEach(node => haveToBeLoaded.add(node.data));
+    this.loaderCursorEntity$
+      .pipe(
+        switchMap(entity =>
+          entity
+            ? this.tick$.pipe(
+                startWith(null), // map will perform initial loading even if world not started yet. Handy to preload map
+                throttleTime(1000),
+                map(() => entity.position),
+              )
+            : NEVER,
+        ),
+        map(pos => this.mapGraph.getNearestDummy(this.mapGraphNodes, pos)),
+        tap(node => this._nearestDummy$.next(node)),
+        distinctUntilChanged(),
+      )
+      .subscribe(currentChunk => {
+        let haveToBeLoaded: Set<MapGraphNodeType> = new Set();
+        let canBeLoaded: Set<MapGraphNodeType>;
+        if (this.options.inertia > 0) {
+          canBeLoaded = new Set();
+          const nodes = currentChunk.walkReadPreserveDepth(this.options.loadDepth + this.options.inertia);
+          for (let distance = 0; distance < nodes.length; distance++) {
+            nodes[distance].forEach(node => canBeLoaded.add(node.data));
+            if (distance <= this.options.loadDepth) {
+              nodes[distance].forEach(node => haveToBeLoaded.add(node.data));
+            }
+          }
+        } else {
+          currentChunk.walkRead(this.options.loadDepth).forEach(node => haveToBeLoaded.add(node.data));
+          canBeLoaded = haveToBeLoaded;
+        }
+        for (const loadedNode of this.loaded.keys()) {
+          if (!canBeLoaded.has(loadedNode)) {
+            this.disposeChunk(loadedNode);
+          } else {
+            haveToBeLoaded.delete(loadedNode);
           }
         }
-      } else {
-        currentChunk.walkRead(this.options.loadDepth).forEach(node => haveToBeLoaded.add(node.data));
-        canBeLoaded = haveToBeLoaded;
-      }
-      for (const loadedNode of this.loaded.keys()) {
-        if (!canBeLoaded.has(loadedNode)) {
-          this.disposeChunk(loadedNode);
-        } else {
-          haveToBeLoaded.delete(loadedNode);
-        }
-      }
-      Promise.all(
-        Array.from(haveToBeLoaded.keys()).map(n => this.loadChunk(n))
-      ).then(() => this._initialLoadComplete$.next(true));
-    });
+        Promise.all(Array.from(haveToBeLoaded.keys()).map(n => this.loadChunk(n))).then(() =>
+          this._initialLoadComplete$.next(true),
+        );
+      });
   }
 
   onRemoved() {
@@ -165,7 +174,7 @@ export class Gg3dMapGraphEntity extends GgEntity implements ITickListener {
     const loaded = await this.world!.loader.loadGgGlb(node.path, {
       position: node.position,
       rotation: node.rotation || { x: 0, y: 0, z: 0, w: 1 },
-      ...node.loadOptions
+      ...node.loadOptions,
     });
     const entities = [
       ...loaded.entities,
@@ -174,11 +183,14 @@ export class Gg3dMapGraphEntity extends GgEntity implements ITickListener {
         .reduce((p, c) => {
           p.push(...c);
           return p;
-        }, [])
+        }, []),
     ];
     this.loaded.set(node, entities);
     this.addChildren(...entities);
-    this._chunkLoaded$.next([loaded, { position: node.position, rotation: node.rotation || { x: 0, y: 0, z: 0, w: 1 } }]);
+    this._chunkLoaded$.next([
+      loaded,
+      { position: node.position, rotation: node.rotation || { x: 0, y: 0, z: 0, w: 1 } },
+    ]);
     return entities;
   }
 

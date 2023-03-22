@@ -3,17 +3,17 @@ import { map, repeat, tap } from 'rxjs/operators';
 
 const now = () => {
   return (typeof performance === 'undefined' ? Date : performance).now();
-}
+};
 
 export class Clock {
-
-  public static readonly animationFrameClock: Clock = new Clock(of(undefined, animationFrameScheduler).pipe(
-    repeat(),
-  ), true);
+  public static readonly animationFrameClock: Clock = new Clock(
+    of(undefined, animationFrameScheduler).pipe(repeat()),
+    true,
+  );
 
   // value is global clock time, delta ms from last tick
   public get tick$(): Observable<[number, number]> {
-    return this._tick$.pipe(map(([oldTime, newTime]) => ([newTime, newTime - oldTime])));
+    return this._tick$.pipe(map(([oldTime, newTime]) => [newTime, newTime - oldTime]));
   }
 
   public get isRunning(): boolean {
@@ -38,10 +38,7 @@ export class Clock {
   private startedAt: number = -1;
   private pausedAt: number = -1;
 
-  constructor(
-    private readonly tickSource: Observable<any>,
-    autoStart: boolean = false,
-  ) {
+  constructor(private readonly tickSource: Observable<any>, autoStart: boolean = false) {
     if (autoStart) {
       this.start();
     }
@@ -79,15 +76,16 @@ export class Clock {
       throw new Error('Clock is already ticking!');
     }
     let oldRelativeTime = 0;
-    this.tickSub = this.tickSource.pipe(
-      map(() => ([oldRelativeTime, now() - this.startedAt] as [number, number])),
-      tap(([_, cur]) => oldRelativeTime = cur),
-    ).subscribe(this._tick$);
+    this.tickSub = this.tickSource
+      .pipe(
+        map(() => [oldRelativeTime, now() - this.startedAt] as [number, number]),
+        tap(([_, cur]) => (oldRelativeTime = cur)),
+      )
+      .subscribe(this._tick$);
   }
 
   private stopListeningTicks() {
     this.tickSub?.unsubscribe();
     this.tickSub = null;
   }
-
 }

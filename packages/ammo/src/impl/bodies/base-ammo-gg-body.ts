@@ -4,7 +4,6 @@ import Ammo from 'ammojs-typed';
 import { ammoId } from '../../ammo-utils';
 
 export abstract class BaseAmmoGGBody<T extends Ammo.btCollisionObject> implements IGg3dBody {
-
   protected static nativeBodyReverseMap: Map<number, IGg3dBody> = new Map<number, IGg3dBody>();
 
   protected get ammo(): typeof Ammo {
@@ -54,10 +53,7 @@ export abstract class BaseAmmoGGBody<T extends Ammo.btCollisionObject> implement
 
   abstract entity: Gg3dEntity | null;
 
-  protected constructor(
-    protected readonly world: Gg3dPhysicsWorld,
-    protected _nativeBody: T,
-  ) {
+  protected constructor(protected readonly world: Gg3dPhysicsWorld, protected _nativeBody: T) {
     BaseAmmoGGBody.nativeBodyReverseMap.set(ammoId(this.nativeBody), this);
   }
 
@@ -77,5 +73,4 @@ export abstract class BaseAmmoGGBody<T extends Ammo.btCollisionObject> implement
   }
 
   abstract resetMotion(): void;
-
 }

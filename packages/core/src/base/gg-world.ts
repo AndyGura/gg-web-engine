@@ -9,8 +9,12 @@ import { filter } from 'rxjs';
 import { GgConsoleUI } from './ui/gg-console.ui';
 import { GgDebuggerUI } from './ui/gg-debugger.ui';
 
-export abstract class GgWorld<D, R, V extends GgVisualScene<D, R> = GgVisualScene<D, R>, P extends GgPhysicsWorld<D, R> = GgPhysicsWorld<D, R>> {
-
+export abstract class GgWorld<
+  D,
+  R,
+  V extends GgVisualScene<D, R> = GgVisualScene<D, R>,
+  P extends GgPhysicsWorld<D, R> = GgPhysicsWorld<D, R>,
+> {
   // inner clock, runs constantly
   private readonly animationFrameClock: Clock = Clock.animationFrameClock;
   // world clock, can be paused/resumed. Stops when disposing world
@@ -31,47 +35,66 @@ export abstract class GgWorld<D, R, V extends GgVisualScene<D, R> = GgVisualScen
     GgStatic.instance.selectedWorld = this;
     this.keyboardController.start().then();
     if (consoleEnabled) {
-      this.keyboardController.bind('Backquote').pipe(filter(x => x)).subscribe(() => {
-        // open console UI
-        if (GgConsoleUI.instance.isUIShown) {
-          GgConsoleUI.instance.destroyUI();
-        } else {
-          GgConsoleUI.instance.createUI();
-        }
-      });
-      this.registerConsoleCommand('commandslist', async () => {
-        return Object.entries(this.commands).map(([key, value]) => `${key}${value.doc ? '\t// ' + value.doc : ''}`).sort().join('\n\n');
-      }, 'no args; print all available commands');
-      this.registerConsoleCommand('debugger', async (...args: string[]) => {
-        const shouldDraw = ['1', 'true', '+'].includes(args[0]);
-        if (shouldDraw != GgDebuggerUI.instance.isUIShown) {
-          if (GgDebuggerUI.instance.isUIShown) {
-            GgDebuggerUI.instance.destroyUI();
+      this.keyboardController
+        .bind('Backquote')
+        .pipe(filter(x => x))
+        .subscribe(() => {
+          // open console UI
+          if (GgConsoleUI.instance.isUIShown) {
+            GgConsoleUI.instance.destroyUI();
           } else {
-            GgDebuggerUI.instance.createUI();
+            GgConsoleUI.instance.createUI();
           }
-        }
-        return '' + GgDebuggerUI.instance.isUIShown;
-      }, 'args: [0 or 1]; turn on/off debug panel. Default value is 0');
-      this.registerConsoleCommand('ph_timescale', async (...args: string[]) => {
-        this.physicsWorld.timeScale = +args[0];
-        return JSON.stringify(this.physicsWorld.timeScale);
-      }, 'args: [float]; change time scale of physics engine. Default value is 1.0');
-      this.registerConsoleCommand('dr_drawphysics', async (...args: string[]) => {
-        const shouldDraw = ['1', 'true', '+'].includes(args[0]);
-        if (shouldDraw != this.physicsWorld.physicsDebugViewActive) {
-          this.triggerPhysicsDebugView();
-        }
-        return '' + this.physicsWorld.physicsDebugViewActive;
-      }, 'args: [0 or 1]; turn on/off physics debug view. Default value is 0');
+        });
+      this.registerConsoleCommand(
+        'commandslist',
+        async () => {
+          return Object.entries(this.commands)
+            .map(([key, value]) => `${key}${value.doc ? '\t// ' + value.doc : ''}`)
+            .sort()
+            .join('\n\n');
+        },
+        'no args; print all available commands',
+      );
+      this.registerConsoleCommand(
+        'debugger',
+        async (...args: string[]) => {
+          const shouldDraw = ['1', 'true', '+'].includes(args[0]);
+          if (shouldDraw != GgDebuggerUI.instance.isUIShown) {
+            if (GgDebuggerUI.instance.isUIShown) {
+              GgDebuggerUI.instance.destroyUI();
+            } else {
+              GgDebuggerUI.instance.createUI();
+            }
+          }
+          return '' + GgDebuggerUI.instance.isUIShown;
+        },
+        'args: [0 or 1]; turn on/off debug panel. Default value is 0',
+      );
+      this.registerConsoleCommand(
+        'ph_timescale',
+        async (...args: string[]) => {
+          this.physicsWorld.timeScale = +args[0];
+          return JSON.stringify(this.physicsWorld.timeScale);
+        },
+        'args: [float]; change time scale of physics engine. Default value is 1.0',
+      );
+      this.registerConsoleCommand(
+        'dr_drawphysics',
+        async (...args: string[]) => {
+          const shouldDraw = ['1', 'true', '+'].includes(args[0]);
+          if (shouldDraw != this.physicsWorld.physicsDebugViewActive) {
+            this.triggerPhysicsDebugView();
+          }
+          return '' + this.physicsWorld.physicsDebugViewActive;
+        },
+        'args: [0 or 1]; turn on/off physics debug view. Default value is 0',
+      );
     }
   }
 
   public async init() {
-    await Promise.all([
-      this.physicsWorld.init(),
-      this.visualScene.init(),
-    ]);
+    await Promise.all([this.physicsWorld.init(), this.visualScene.init()]);
     this.worldClock.tick$.subscribe(([elapsed, delta]) => {
       let physicsTickPerformed = false;
       for (let i = 0; i < this.tickListeners.length; i++) {
@@ -126,9 +149,15 @@ export abstract class GgWorld<D, R, V extends GgVisualScene<D, R> = GgVisualScen
     if (entity.world !== this) {
       throw new Error('Entity is not a part of this world');
     }
-    this.children.splice(this.children.findIndex(x => x === entity), 1);
+    this.children.splice(
+      this.children.findIndex(x => x === entity),
+      1,
+    );
     if (isITickListener(entity)) {
-      this.tickListeners.splice(this.tickListeners.findIndex(x => x as any === entity), 1);
+      this.tickListeners.splice(
+        this.tickListeners.findIndex(x => (x as any) === entity),
+        1,
+      );
     }
     entity.onRemoved();
     if (dispose) {
@@ -136,7 +165,7 @@ export abstract class GgWorld<D, R, V extends GgVisualScene<D, R> = GgVisualScen
     }
   }
 
-  protected commands: { [key: string]: { handler: (...args: string[]) => Promise<string>, doc?: string } } = {};
+  protected commands: { [key: string]: { handler: (...args: string[]) => Promise<string>; doc?: string } } = {};
 
   public registerConsoleCommand(command: string, handler: (...args: string[]) => Promise<string>, doc?: string): void {
     if (!this.consoleEnabled) {
@@ -166,5 +195,4 @@ export abstract class GgWorld<D, R, V extends GgVisualScene<D, R> = GgVisualScen
       this.physicsWorld.startDebugger(this, new cls());
     }
   }
-
 }

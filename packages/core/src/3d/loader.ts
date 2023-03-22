@@ -17,7 +17,7 @@ export type LoadOptions = {
   // "Nothing" does not cache anything
   // "Files" caches GLB+Meta file contents
   // "Entities" clones and saves parsed from GLB+Meta objects and bodies
-  cachingStrategy: CachingStrategy,
+  cachingStrategy: CachingStrategy;
   // initial position
   position: Point3;
   // initial rotation
@@ -35,28 +35,38 @@ const defaultLoadOptions: LoadOptions = {
   loadProps: true,
 };
 
-export type LoadResourcesResult = { resources: { object3D: IGg3dObject | null, body: IGg3dBody | null }[], meta: GgMeta };
+export type LoadResourcesResult = {
+  resources: { object3D: IGg3dObject | null; body: IGg3dBody | null }[];
+  meta: GgMeta;
+};
 
 export type LoadResult = {
-  entities: Gg3dEntity[],
-  meta: GgMeta
+  entities: Gg3dEntity[];
+  meta: GgMeta;
 };
 
 const cloneLoadResourcesResult = (loadResult: LoadResourcesResult) => ({
   meta: loadResult.meta, // TODO deep clone it
-  resources: loadResult.resources.map(({ object3D, body}) => ({ object3D: object3D && object3D.clone(), body: body && body.clone() })),
+  resources: loadResult.resources.map(({ object3D, body }) => ({
+    object3D: object3D && object3D.clone(),
+    body: body && body.clone(),
+  })),
 });
 
 export type LoadResultWithProps = LoadResult & { props?: LoadResult[] };
 
 export class Gg3dLoader {
+  readonly filesCache: Map<string, [ArrayBuffer, GgMeta] | Promise<[ArrayBuffer, GgMeta]>> = new Map<
+    string,
+    [ArrayBuffer, GgMeta] | Promise<[ArrayBuffer, GgMeta]>
+  >();
 
-  readonly filesCache: Map<string, [ArrayBuffer, GgMeta] | Promise<[ArrayBuffer, GgMeta]>> = new Map<string, [ArrayBuffer, GgMeta] | Promise<[ArrayBuffer, GgMeta]>>();
+  readonly loadResultCache: Map<string, LoadResourcesResult | Promise<LoadResourcesResult>> = new Map<
+    string,
+    LoadResourcesResult | Promise<LoadResourcesResult>
+  >();
 
-  readonly loadResultCache: Map<string, LoadResourcesResult | Promise<LoadResourcesResult>> = new Map<string, LoadResourcesResult | Promise<LoadResourcesResult>>();
-
-  constructor(protected readonly world: Gg3dWorld) {
-  }
+  constructor(protected readonly world: Gg3dWorld) {}
 
   public async loadGgGlbFiles(path: string, useCache: boolean = false): Promise<[ArrayBuffer, GgMeta]> {
     if (useCache && this.filesCache.has(path)) {
@@ -64,7 +74,9 @@ export class Gg3dLoader {
     }
     const loadPromise = Promise.all([
       fetch(`${path}.glb`).then(r => r.arrayBuffer()),
-      fetch(`${path}.meta`).then(r => r.text()).then(r => JSON.parse(r)),
+      fetch(`${path}.meta`)
+        .then(r => r.text())
+        .then(r => JSON.parse(r)),
     ]);
     if (useCache) {
       this.filesCache.set(path, loadPromise);
@@ -76,7 +88,10 @@ export class Gg3dLoader {
     return result;
   }
 
-  public async loadGgGlbResources(path: string, cachingStrategy: CachingStrategy = CachingStrategy.Nothing): Promise<LoadResourcesResult> {
+  public async loadGgGlbResources(
+    path: string,
+    cachingStrategy: CachingStrategy = CachingStrategy.Nothing,
+  ): Promise<LoadResourcesResult> {
     if (cachingStrategy == CachingStrategy.Entities && this.loadResultCache.has(path)) {
       const cached = this.loadResultCache.get(path);
       const cachedResult = cached instanceof Promise ? await cached : cached;
@@ -112,26 +127,33 @@ export class Gg3dLoader {
     return result;
   }
 
-  public async loadGgGlb(path: string, options: Partial<LoadOptions> = defaultLoadOptions): Promise<LoadResultWithProps> {
+  public async loadGgGlb(
+    path: string,
+    options: Partial<LoadOptions> = defaultLoadOptions,
+  ): Promise<LoadResultWithProps> {
     const loadOptions = { ...defaultLoadOptions, ...options };
     const { resources, meta } = await this.loadGgGlbResources(path, loadOptions.cachingStrategy);
     const result: LoadResultWithProps = {
       entities: resources.map(({ object3D, body }) => new Gg3dEntity(object3D, body)),
       meta,
-    }
+    };
     if (loadOptions.loadProps) {
-      result.props =
-        await Promise.all((meta as GgMeta).dummies
+      result.props = await Promise.all(
+        (meta as GgMeta).dummies
           .filter(x => x.is_prop || x.is_scene)
-          .map(dummy => this.loadGgGlb(
-            dummy.is_prop ? (loadOptions.propsPath || path.substring(0, path.lastIndexOf('/') + 1)) + dummy.prop_id : dummy.scene_id,
-            {
-              loadProps: !!dummy.is_scene,
-              position: Pnt3.add(Pnt3.rot(dummy.position, loadOptions.rotation), loadOptions.position),
-              rotation: Qtrn.combineRotations(dummy.rotation, loadOptions.rotation),
-            },
-          ))
-        );
+          .map(dummy =>
+            this.loadGgGlb(
+              dummy.is_prop
+                ? (loadOptions.propsPath || path.substring(0, path.lastIndexOf('/') + 1)) + dummy.prop_id
+                : dummy.scene_id,
+              {
+                loadProps: !!dummy.is_scene,
+                position: Pnt3.add(Pnt3.rot(dummy.position, loadOptions.rotation), loadOptions.position),
+                rotation: Qtrn.combineRotations(dummy.rotation, loadOptions.rotation),
+              },
+            ),
+          ),
+      );
     }
     result.entities.forEach(e => {
       e.position = Pnt3.add(Pnt3.rot(Pnt3.clone(e.position), loadOptions.rotation), loadOptions.position);
@@ -140,5 +162,4 @@ export class Gg3dLoader {
     });
     return result;
   }
-
 }

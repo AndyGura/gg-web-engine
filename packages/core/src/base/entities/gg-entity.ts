@@ -1,7 +1,6 @@
 import { GgWorld } from '../gg-world';
 
 export abstract class GgEntity {
-
   get world(): GgWorld<any, any> | null {
     return this._world;
   }
@@ -59,5 +58,4 @@ export abstract class GgEntity {
       c.dispose();
     }
   }
-
 }

@@ -1,7 +1,6 @@
 import { GgStatic } from '../gg-static';
 
 export class GgConsoleUI {
-
   private static _instance: GgConsoleUI | null;
   static get instance(): GgConsoleUI {
     if (!this._instance) {
@@ -10,8 +9,7 @@ export class GgConsoleUI {
     return this._instance;
   }
 
-  private constructor() {
-  }
+  private constructor() {}
 
   private output: string = `
                   ▄████   ▄████     █     █░▓█████  ▄▄▄▄   
@@ -35,11 +33,10 @@ List of available commands: commandslist
   private currentCommandIndex = 0; // for repeating command using up/down arrow keys
 
   elements: {
-    main: HTMLDivElement,
-    input: HTMLInputElement,
-    output: HTMLTextAreaElement,
+    main: HTMLDivElement;
+    input: HTMLInputElement;
+    output: HTMLTextAreaElement;
   } | null = null;
-  
 
   public get isUIShown(): boolean {
     return !!this.elements;
@@ -70,11 +67,11 @@ List of available commands: commandslist
     document.body.append(main);
     this.elements = {
       main,
-      input: document.getElementById("gg-console-input")! as HTMLInputElement,
-      output: document.getElementById("gg-console-output")! as HTMLTextAreaElement,
+      input: document.getElementById('gg-console-input')! as HTMLInputElement,
+      output: document.getElementById('gg-console-output')! as HTMLTextAreaElement,
     };
-    this.elements.input.onkeydown = (event) => {
-      if (event?.keyCode === 13)  {
+    this.elements.input.onkeydown = event => {
+      if (event?.keyCode === 13) {
         event.preventDefault();
         this.onInput().then();
       } else if (event?.keyCode === 38) {
@@ -121,11 +118,11 @@ List of available commands: commandslist
     const command = this.elements!.input.value;
     this.elements!.input.value = '';
     this.stdout('\n> ' + command);
-    this.stdout('\n' + await GgStatic.instance.console(command));
+    this.stdout('\n' + (await GgStatic.instance.console(command)));
     this.commandHistory.push(command);
     this.currentCommandIndex = this.commandHistory.length;
   }
-  
+
   private stdout(s: string = ''): void {
     this.output += s;
     this.elements!.output.value = this.output;
@@ -133,7 +130,8 @@ List of available commands: commandslist
   }
 
   setupDragging() {
-    let x = 0, y = 0;
+    let x = 0,
+      y = 0;
     const dragMouseDown = (e: MouseEvent) => {
       e = e || window.event;
       e.preventDefault();
@@ -143,7 +141,7 @@ List of available commands: commandslist
       document.onmouseup = closeDragElement;
       // call a function whenever the cursor moves:
       document.onmousemove = elementDrag;
-    }
+    };
 
     const elementDrag = (e: MouseEvent) => {
       e.preventDefault();
@@ -153,16 +151,15 @@ List of available commands: commandslist
       x = e.clientX;
       y = e.clientY;
       // set the element's new position:
-      this.elements!.main.style.left = (this.elements!.main.offsetLeft - curX) + "px";
-      this.elements!.main.style.top = (this.elements!.main.offsetTop - curY) + "px";
-    }
+      this.elements!.main.style.left = this.elements!.main.offsetLeft - curX + 'px';
+      this.elements!.main.style.top = this.elements!.main.offsetTop - curY + 'px';
+    };
 
     const closeDragElement = () => {
       // stop moving when mouse button is released:
       document.onmouseup = null;
       document.onmousemove = null;
-    }
-    document.getElementById("gg-console-header")!.onmousedown = dragMouseDown;
+    };
+    document.getElementById('gg-console-header')!.onmousedown = dragMouseDown;
   }
-
 }

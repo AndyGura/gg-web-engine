@@ -3,7 +3,6 @@ import { Engine, World } from 'matter-js';
 import { Gg2dBodyFactory } from './gg-2d-body-factory';
 
 export class Gg2dPhysicsWorld implements IGg2dPhysicsWorld {
-
   private matterEngine: Engine | null = null;
 
   public get matterWorld(): World | null {
@@ -12,7 +11,7 @@ export class Gg2dPhysicsWorld implements IGg2dPhysicsWorld {
 
   public readonly factory: Gg2dBodyFactory = new Gg2dBodyFactory();
 
-  private _gravity: Point2 = {x: 0, y: 9.82 };
+  private _gravity: Point2 = { x: 0, y: 9.82 };
   public get gravity(): Point2 {
     return this._gravity;
   }
@@ -37,11 +36,11 @@ export class Gg2dPhysicsWorld implements IGg2dPhysicsWorld {
   }
 
   async init(): Promise<void> {
-    this.matterEngine = Engine.create({ gravity: { ...this._gravity, scale: 0.0001 }});
+    this.matterEngine = Engine.create({ gravity: { ...this._gravity, scale: 0.0001 } });
   }
 
   simulate(delta: number): void {
-    Engine.update(this.matterEngine!, this._timeScale * delta, );
+    Engine.update(this.matterEngine!, this._timeScale * delta);
   }
 
   startDebugger(world: Gg2dWorld, drawer: GgDebugPhysicsDrawer<Point2, number>): void {
@@ -57,5 +56,4 @@ export class Gg2dPhysicsWorld implements IGg2dPhysicsWorld {
   dispose(): void {
     Engine.clear(this.matterEngine!);
   }
-
 }

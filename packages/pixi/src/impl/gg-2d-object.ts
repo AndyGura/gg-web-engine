@@ -3,10 +3,7 @@ import { Gg2dVisualScene } from './gg-2d-visual-scene';
 import { DisplayObject } from 'pixi.js';
 
 export class Gg2dObject implements IGg2dObject {
-  constructor(
-    public nativeSprite: DisplayObject,
-  ) {
-  }
+  constructor(public nativeSprite: DisplayObject) {}
 
   public get position(): Point2 {
     return this.nativeSprite.position;
@@ -46,11 +43,11 @@ export class Gg2dObject implements IGg2dObject {
 
   public isEmpty(): boolean {
     return false;
-  };
+  }
 
   popChild(name: string): Gg2dObject | null {
     return null;
-  };
+  }
 
   getBoundings(): GgBox2d {
     const bounds = this.nativeSprite._bounds;
@@ -75,5 +72,4 @@ export class Gg2dObject implements IGg2dObject {
   dispose(): void {
     this.nativeSprite.destroy();
   }
-
 }

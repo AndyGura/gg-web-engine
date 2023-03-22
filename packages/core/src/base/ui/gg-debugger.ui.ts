@@ -16,9 +16,7 @@ export class GgDebuggerUI {
 
   private removed$: Subject<void> = new Subject<void>();
 
-  private constructor() {
-  }
-
+  private constructor() {}
 
   public get isUIShown(): boolean {
     return !!this.ui;
@@ -30,26 +28,33 @@ export class GgDebuggerUI {
     stats.dom.style.right = '0';
     stats.showPanel(0); // 0: fps, 1: ms, 2: mb
     document.body.appendChild(stats.dom);
-    createInlineTickController(GgStatic.instance.selectedWorld!, -1).pipe(takeUntil(this.removed$)).subscribe(() => {
-      stats?.begin();
-    });
-    createInlineTickController(GgStatic.instance.selectedWorld!, 10000).pipe(takeUntil(this.removed$)).subscribe(() => {
-      stats?.end();
-    });
+    createInlineTickController(GgStatic.instance.selectedWorld!, -1)
+      .pipe(takeUntil(this.removed$))
+      .subscribe(() => {
+        stats?.begin();
+      });
+    createInlineTickController(GgStatic.instance.selectedWorld!, 10000)
+      .pipe(takeUntil(this.removed$))
+      .subscribe(() => {
+        stats?.end();
+      });
     const customContainer: HTMLDivElement = document.createElement('div');
-    customContainer.style.cssText = 'position:fixed;top:48px;right:0;opacity:0.9;z-index:9999;background-color:#333;color:white';
-    customContainer.innerHTML = `<input type="checkbox" name="checkbox" id="physics_debugger_checkbox_id" value="1"${GgStatic.instance.selectedWorld?.physicsWorld.physicsDebugViewActive ? ' checked' : ''}>
+    customContainer.style.cssText =
+      'position:fixed;top:48px;right:0;opacity:0.9;z-index:9999;background-color:#333;color:white';
+    customContainer.innerHTML = `<input type="checkbox" name="checkbox" id="physics_debugger_checkbox_id" value="1"${
+      GgStatic.instance.selectedWorld?.physicsWorld.physicsDebugViewActive ? ' checked' : ''
+    }>
                                  <label for="physics_debugger_checkbox_id" style="user-select: none;">Show physics bodies in scene</label>`;
     document.body.appendChild(customContainer);
     fromEvent(document.getElementById('physics_debugger_checkbox_id')! as HTMLInputElement, 'change')
       .pipe(takeUntil(this.removed$))
-      .subscribe((e) => {
+      .subscribe(e => {
         GgStatic.instance.console('dr_drawphysics ' + (e.target as HTMLInputElement).checked).then();
       });
     this.ui = {
       stats,
       customContainer,
-    }
+    };
   }
 
   public destroyUI() {
@@ -61,5 +66,4 @@ export class GgDebuggerUI {
     }
     this.removed$.next();
   }
-
 }

@@ -4,7 +4,7 @@ import {
   IGg3dBodyFactory,
   Point3,
   Point4,
-  Shape3DDescriptor
+  Shape3DDescriptor,
 } from '@gg-web-engine/core';
 import { Gg3dBody } from './bodies/gg-3d-body';
 import { Gg3dPhysicsWorld } from './gg-3d-physics-world';
@@ -12,32 +12,44 @@ import Ammo from 'ammojs-typed';
 import { Gg3dTrigger } from './bodies/gg-3d-trigger';
 
 export class Gg3dBodyFactory implements IGg3dBodyFactory<Gg3dBody, Gg3dTrigger> {
+  constructor(private readonly world: Gg3dPhysicsWorld) {}
 
-  constructor(private readonly world: Gg3dPhysicsWorld) {
-  }
-
-  createRigidBody(descriptor: BodyShape3DDescriptor, transform?: {
-    position?: Point3;
-    rotation?: Point4;
-  }): Gg3dBody {
+  createRigidBody(
+    descriptor: BodyShape3DDescriptor,
+    transform?: {
+      position?: Point3;
+      rotation?: Point4;
+    },
+  ): Gg3dBody {
     return this.createRigidBodyFromShape(this.createShape(descriptor.shape), descriptor.body, transform);
   }
 
-  createTrigger(descriptor: Shape3DDescriptor, transform?: {
-    position?: Point3;
-    rotation?: Point4;
-  }): Gg3dTrigger {
+  createTrigger(
+    descriptor: Shape3DDescriptor,
+    transform?: {
+      position?: Point3;
+      rotation?: Point4;
+    },
+  ): Gg3dTrigger {
     return this.createTriggerFromShape(this.createShape(descriptor), transform);
   }
 
   private createShape(descriptor: Shape3DDescriptor): Ammo.btCollisionShape {
     switch (descriptor.shape) {
       case 'BOX':
-        return new this.world.ammo.btBoxShape(new this.world.ammo.btVector3(descriptor.dimensions.x / 2, descriptor.dimensions.y / 2, descriptor.dimensions.z / 2));
+        return new this.world.ammo.btBoxShape(
+          new this.world.ammo.btVector3(
+            descriptor.dimensions.x / 2,
+            descriptor.dimensions.y / 2,
+            descriptor.dimensions.z / 2,
+          ),
+        );
       case 'CAPSULE':
         return new this.world.ammo.btCapsuleShapeZ(descriptor.radius, descriptor.centersDistance);
       case 'CYLINDER':
-        return new this.world.ammo.btCylinderShapeZ(new this.world.ammo.btVector3(descriptor.radius, descriptor.radius, descriptor.height / 2));
+        return new this.world.ammo.btCylinderShapeZ(
+          new this.world.ammo.btVector3(descriptor.radius, descriptor.radius, descriptor.height / 2),
+        );
       case 'CONE':
         return new this.world.ammo.btConeShapeZ(descriptor.radius, descriptor.height);
       case 'SPHERE':
@@ -72,15 +84,19 @@ export class Gg3dBodyFactory implements IGg3dBodyFactory<Gg3dBody, Gg3dTrigger> 
         const tmpVectors: [Ammo.btVector3, Ammo.btVector3, Ammo.btVector3] = [
           new this.world.ammo.btVector3(),
           new this.world.ammo.btVector3(),
-          new this.world.ammo.btVector3()
+          new this.world.ammo.btVector3(),
         ];
         for (const f of descriptor.faces) {
           for (let j = 0; j < 3; j++) {
-            tmpVectors[j].setValue(descriptor.vertices[f[0]].x, descriptor.vertices[f[1]].y, descriptor.vertices[f[2]].z);
+            tmpVectors[j].setValue(
+              descriptor.vertices[f[0]].x,
+              descriptor.vertices[f[1]].y,
+              descriptor.vertices[f[2]].z,
+            );
           }
           mesh.addTriangle(...tmpVectors, true);
         }
-        tmpVectors.forEach((v) => {
+        tmpVectors.forEach(v => {
           this.world.ammo.destroy(v);
         });
         return new this.world.ammo.btBvhTriangleMeshShape(mesh, false, true);
@@ -88,8 +104,11 @@ export class Gg3dBodyFactory implements IGg3dBodyFactory<Gg3dBody, Gg3dTrigger> 
     throw new Error(`Shape "${(descriptor as any).shape}" not implemented for Ammo.js`);
   }
 
-
-  public createRigidBodyFromShape(shape: Ammo.btCollisionShape, options: Partial<Body3DOptions>, transform?: { position?: Point3, rotation?: Point4;}): Gg3dBody {
+  public createRigidBodyFromShape(
+    shape: Ammo.btCollisionShape,
+    options: Partial<Body3DOptions>,
+    transform?: { position?: Point3; rotation?: Point4 },
+  ): Gg3dBody {
     if (options.dynamic === false) {
       options.mass = 0;
     }
@@ -114,14 +133,32 @@ export class Gg3dBodyFactory implements IGg3dBodyFactory<Gg3dBody, Gg3dTrigger> 
     return new Gg3dBody(this.world, body);
   }
 
-
-  public createTriggerFromShape(shape: Ammo.btCollisionShape, transform?: { position?: Point3, rotation?: Point4;}): Gg3dTrigger {
+  public createTriggerFromShape(
+    shape: Ammo.btCollisionShape,
+    transform?: { position?: Point3; rotation?: Point4 },
+  ): Gg3dTrigger {
     const ghostObject = new this.world.ammo.btPairCachingGhostObject();
     ghostObject.setCollisionShape(shape);
     ghostObject.setCollisionFlags(ghostObject.getCollisionFlags() | 4); // 4 is a CF_NO_CONTACT_RESPONSE collision flag
-    ghostObject.getWorldTransform().setOrigin(new this.world.ammo.btVector3(transform?.position?.x || 0, transform?.position?.y || 0, transform?.position?.z || 0));
-    ghostObject.getWorldTransform().setRotation(new this.world.ammo.btQuaternion(transform?.rotation?.x || 0, transform?.rotation?.y || 0, transform?.rotation?.z || 0, transform?.rotation?.w || 1));
+    ghostObject
+      .getWorldTransform()
+      .setOrigin(
+        new this.world.ammo.btVector3(
+          transform?.position?.x || 0,
+          transform?.position?.y || 0,
+          transform?.position?.z || 0,
+        ),
+      );
+    ghostObject
+      .getWorldTransform()
+      .setRotation(
+        new this.world.ammo.btQuaternion(
+          transform?.rotation?.x || 0,
+          transform?.rotation?.y || 0,
+          transform?.rotation?.z || 0,
+          transform?.rotation?.w || 1,
+        ),
+      );
     return new Gg3dTrigger(this.world, ghostObject);
   }
-
 }

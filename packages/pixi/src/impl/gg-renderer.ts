@@ -2,15 +2,10 @@ import { Gg2dRenderer, Gg2dWorld, GgViewport, Point2, RendererOptions } from '@g
 import { Application, Renderer, Ticker } from 'pixi.js';
 import { Gg2dVisualScene } from './gg-2d-visual-scene';
 
-
 export class GgRenderer extends Gg2dRenderer {
-
   public readonly application: Application;
 
-  constructor(
-    canvas?: HTMLCanvasElement,
-    rendererOptions: Partial<RendererOptions> = {},
-  ) {
+  constructor(canvas?: HTMLCanvasElement, rendererOptions: Partial<RendererOptions> = {}) {
     super(canvas, rendererOptions);
     // GG uses own ticker, disable pixi ticker
     Ticker.shared.autoStart = false;
@@ -52,5 +47,4 @@ export class GgRenderer extends Gg2dRenderer {
     }
     this.application.destroy(true, true);
   }
-
 }

@@ -3,7 +3,6 @@ import { Container } from 'pixi.js';
 import { Gg2dObjectFactory } from './gg-2d-object-factory';
 
 export class Gg2dVisualScene implements IGg2dVisualScene {
-
   private _nativeContainer: Container | null = null;
   public get nativeContainer(): Container | null {
     return this._nativeContainer;
@@ -19,5 +18,4 @@ export class Gg2dVisualScene implements IGg2dVisualScene {
     this._nativeContainer?.destroy();
     this._nativeContainer = null;
   }
-
 }

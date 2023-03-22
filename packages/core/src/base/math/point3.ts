@@ -29,13 +29,17 @@ export class Pnt3 {
 
   /** cross vectors */
   static cross(a: Point3, b: Point3): Point3 {
-    const ax = a.x, ay = a.y, az = a.z;
-    const bx = b.x, by = b.y, bz = b.z;
+    const ax = a.x,
+      ay = a.y,
+      az = a.z;
+    const bx = b.x,
+      by = b.y,
+      bz = b.z;
     return {
       x: ay * bz - az * by,
       y: az * bx - ax * bz,
       z: ax * by - ay * bx,
-    }
+    };
   }
 
   /** normalize */
@@ -47,7 +51,7 @@ export class Pnt3 {
     return {
       x: p.x / length,
       y: p.y / length,
-      z: p.z / length
+      z: p.z / length,
     };
   }
 
@@ -65,7 +69,7 @@ export class Pnt3 {
     return {
       x: a.x + t * (b.x - a.x),
       y: a.y + t * (b.y - a.y),
-      z: a.z + t * (b.z - a.z)
+      z: a.z + t * (b.z - a.z),
     };
   }
 
@@ -78,9 +82,33 @@ export class Pnt3 {
     // return {x: res.x, y: res.y, z: res.z};
     const { x, y, z } = p;
     return {
-      x: q.w * q.w * x + 2 * q.y * q.w * z - 2 * q.z * q.w * y + q.x * q.x * x + 2 * q.y * q.x * y + 2 * q.z * q.x * z - q.y * q.y * x - q.z * q.z * x,
-      y: 2 * q.x * q.y * x + q.y * q.y * y + 2 * q.z * q.y * z + 2 * q.w * q.z * x - q.z * q.z * y + q.w * q.w * y - 2 * q.x * q.w * z - q.x * q.x * y,
-      z: 2 * q.x * q.z * x + 2 * q.y * q.z * y + q.z * q.z * z - 2 * q.w * q.y * x - q.y * q.y * z + 2 * q.w * q.x * y - q.x * q.x * z + q.w * q.w * z
+      x:
+        q.w * q.w * x +
+        2 * q.y * q.w * z -
+        2 * q.z * q.w * y +
+        q.x * q.x * x +
+        2 * q.y * q.x * y +
+        2 * q.z * q.x * z -
+        q.y * q.y * x -
+        q.z * q.z * x,
+      y:
+        2 * q.x * q.y * x +
+        q.y * q.y * y +
+        2 * q.z * q.y * z +
+        2 * q.w * q.z * x -
+        q.z * q.z * y +
+        q.w * q.w * y -
+        2 * q.x * q.w * z -
+        q.x * q.x * y,
+      z:
+        2 * q.x * q.z * x +
+        2 * q.y * q.z * y +
+        q.z * q.z * z -
+        2 * q.w * q.y * x -
+        q.y * q.y * z +
+        2 * q.w * q.x * y -
+        q.x * q.x * z +
+        q.w * q.w * z,
     };
   }
 

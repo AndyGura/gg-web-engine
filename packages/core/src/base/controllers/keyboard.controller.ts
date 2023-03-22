@@ -3,7 +3,6 @@ import { BehaviorSubject, combineLatest, finalize, NEVER, Observable } from 'rxj
 import { map } from 'rxjs/operators';
 
 export class KeyboardController implements IController {
-
   private bindings: { [code: string]: BehaviorSubject<boolean>[] } = {};
 
   constructor() {
@@ -21,10 +20,12 @@ export class KeyboardController implements IController {
     }
     const subj = new BehaviorSubject<boolean>(false);
     this.bindings[code].push(subj);
-    return subj.pipe(finalize(() => {
-      this.bindings[code].splice(this.bindings[code].indexOf(subj), 1);
-      subj.complete();
-    }));
+    return subj.pipe(
+      finalize(() => {
+        this.bindings[code].splice(this.bindings[code].indexOf(subj), 1);
+        subj.complete();
+      }),
+    );
   }
 
   bindMany(...codes: string[]): Observable<boolean> {
@@ -51,7 +52,7 @@ export class KeyboardController implements IController {
           subjects[i].complete();
         }
       }),
-      map((values) => values.includes(true)),
+      map(values => values.includes(true)),
     );
   }
 
@@ -59,7 +60,7 @@ export class KeyboardController implements IController {
     if (!this.running) {
       return;
     }
-    for (const subj of (this.bindings[code] || [])) {
+    for (const subj of this.bindings[code] || []) {
       subj.next(true);
     }
   }
@@ -68,7 +69,7 @@ export class KeyboardController implements IController {
     if (!this.running) {
       return;
     }
-    for (const subj of (this.bindings[code] || [])) {
+    for (const subj of this.bindings[code] || []) {
       subj.next(false);
     }
   }
@@ -92,7 +93,7 @@ export class KeyboardController implements IController {
       return;
     }
     const pressed = e.type == 'keydown';
-    for (const subj of (this.bindings[e.code] || [])) {
+    for (const subj of this.bindings[e.code] || []) {
       subj.next(pressed);
     }
   }
@@ -105,5 +106,4 @@ export class KeyboardController implements IController {
     window.removeEventListener('keyup', this.handleKeys);
     this._running = false;
   }
-
 }

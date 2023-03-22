@@ -7,7 +7,6 @@ import { ThreeCamera } from './three-camera';
 // FIXME when resizing camera target is wrong
 // FIXME scroll appeared at some point
 export class GgRenderer extends Gg3dRenderer {
-
   public readonly renderer: WebGLRenderer;
 
   constructor(
@@ -35,7 +34,10 @@ export class GgRenderer extends Gg3dRenderer {
 
   resize(newSize: Point2): void {
     this.renderer.setSize(newSize.x, newSize.y);
-    if (this.camera.object3D.nativeCamera instanceof PerspectiveCamera || this.camera.object3D.nativeCamera.type == "PerspectiveCamera") {
+    if (
+      this.camera.object3D.nativeCamera instanceof PerspectiveCamera ||
+      this.camera.object3D.nativeCamera.type == 'PerspectiveCamera'
+    ) {
       const newAspect = newSize.x / newSize.y;
       if (Math.abs((this.camera.object3D.nativeCamera as PerspectiveCamera).aspect - newAspect) > 0.01) {
         (this.camera.object3D.nativeCamera as PerspectiveCamera).aspect = newSize.x / newSize.y;
@@ -55,5 +57,4 @@ export class GgRenderer extends Gg3dRenderer {
     }
     this.renderer.domElement = null as any;
   }
-
 }

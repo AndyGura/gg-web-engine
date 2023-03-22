@@ -10,10 +10,9 @@ export type RendererOptions = {
   forceRendererSize?: Point2;
   forceResolution?: number;
   antialias: boolean;
-}
+};
 
 export abstract class BaseGgRenderer extends GgEntity implements ITickListener {
-
   protected _permanentRenderMethods: Map<number, Function>;
   protected _singularRenderMethods: Map<number, Function>;
   private initialized = false;
@@ -24,10 +23,7 @@ export abstract class BaseGgRenderer extends GgEntity implements ITickListener {
 
   public readonly rendererOptions: RendererOptions;
 
-  protected constructor(
-    canvas?: HTMLCanvasElement,
-    options: Partial<RendererOptions> = {},
-  ) {
+  protected constructor(canvas?: HTMLCanvasElement, options: Partial<RendererOptions> = {}) {
     super();
     this.rendererOptions = {
       transparent: false,
@@ -40,7 +36,7 @@ export abstract class BaseGgRenderer extends GgEntity implements ITickListener {
     this.tick$ = new Subject<[number, number]>();
     if (canvas) {
       setTimeout(() => {
-        GgViewportManager.instance.assignRendererToCanvas(this, canvas).then()
+        GgViewportManager.instance.assignRendererToCanvas(this, canvas).then();
       }, 0);
     }
   }
@@ -71,12 +67,11 @@ export abstract class BaseGgRenderer extends GgEntity implements ITickListener {
 
   init(): void {
     this.initialized = true;
-  };
+  }
 
   abstract render(): void;
 
   abstract resize(newSize: Point2): void;
 
   abstract dispose(): void;
-
 }

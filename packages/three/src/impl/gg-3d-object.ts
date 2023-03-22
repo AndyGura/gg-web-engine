@@ -3,10 +3,7 @@ import { Box3, Group, Mesh, Object3D, Scene } from 'three';
 import { Gg3dVisualScene } from './gg-3d-visual-scene';
 
 export class Gg3dObject implements IGg3dObject {
-  constructor(
-    public nativeMesh: Object3D,
-  ) {
-  }
+  constructor(public nativeMesh: Object3D) {}
   public get position(): Point3 {
     return this.nativeMesh.position;
   }
@@ -46,7 +43,7 @@ export class Gg3dObject implements IGg3dObject {
       return this.nativeMesh.children.length == 0;
     }
     return false;
-  };
+  }
 
   popChild(name: string): Gg3dObject | null {
     const childMesh = this.nativeMesh.children.find(c => c.name === name || c.userData.name === name);
@@ -55,7 +52,7 @@ export class Gg3dObject implements IGg3dObject {
       return new Gg3dObject(childMesh);
     }
     return null;
-  };
+  }
 
   getBoundings(): GgBox3d {
     return new Box3().setFromObject(this.nativeMesh);
@@ -74,7 +71,7 @@ export class Gg3dObject implements IGg3dObject {
   }
 
   dispose(): void {
-    this.nativeMesh.traverse((obj) => {
+    this.nativeMesh.traverse(obj => {
       if (obj instanceof Mesh) {
         this.disposeMesh(obj);
       }
@@ -91,5 +88,4 @@ export class Gg3dObject implements IGg3dObject {
       material.dispose();
     }
   }
-
 }

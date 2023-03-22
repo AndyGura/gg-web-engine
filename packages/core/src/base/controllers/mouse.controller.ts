@@ -3,13 +3,12 @@ import { filter, fromEvent, Observable, Subject, takeUntil } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { Point2 } from '../models/points';
 
-export type MouseControllerPointLockOptions = { ignoreMovementWhenNotLocked: boolean, canvas: HTMLCanvasElement };
+export type MouseControllerPointLockOptions = { ignoreMovementWhenNotLocked: boolean; canvas: HTMLCanvasElement };
 export type MouseControllerOptions = {
-  pointerLock?: MouseControllerPointLockOptions,
-}
+  pointerLock?: MouseControllerPointLockOptions;
+};
 
 export class MouseController implements IController {
-
   private readonly _delta$: Subject<Point2> = new Subject<Point2>();
 
   public get deltaX$(): Observable<number> {
@@ -24,9 +23,7 @@ export class MouseController implements IController {
     return this._delta$.asObservable();
   }
 
-  constructor(
-    private readonly options: MouseControllerOptions = {},
-  ) {
+  constructor(private readonly options: MouseControllerOptions = {}) {
     this.canvasClickListener = this.canvasClickListener.bind(this);
   }
 
@@ -43,10 +40,15 @@ export class MouseController implements IController {
     fromEvent(window, 'mousemove')
       .pipe(
         takeUntil(this.stopped$),
-        filter(() => !this.options.pointerLock || !this.options.pointerLock.ignoreMovementWhenNotLocked || !!document.pointerLockElement),
-        map((e: any) => ({ x: e.movementX, y: e.movementY }))
+        filter(
+          () =>
+            !this.options.pointerLock ||
+            !this.options.pointerLock.ignoreMovementWhenNotLocked ||
+            !!document.pointerLockElement,
+        ),
+        map((e: any) => ({ x: e.movementX, y: e.movementY })),
       )
-      .subscribe((v) => this._delta$.next(v));
+      .subscribe(v => this._delta$.next(v));
     if (!!this.options.pointerLock) {
       this.options.pointerLock.canvas.addEventListener('click', this.canvasClickListener);
     }
@@ -68,5 +70,4 @@ export class MouseController implements IController {
     }
     this._running = false;
   }
-
 }

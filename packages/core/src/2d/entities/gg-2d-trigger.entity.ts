@@ -11,9 +11,7 @@ export class Gg2dTriggerEntity extends Gg2dEntity {
     return this.objectBody.onEntityLeft;
   }
 
-  constructor(
-    public readonly objectBody: IGg2dTrigger,
-  ) {
+  constructor(public readonly objectBody: IGg2dTrigger) {
     super(null, objectBody);
   }
 }

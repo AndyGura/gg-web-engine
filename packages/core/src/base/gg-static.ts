@@ -27,5 +27,4 @@ export class GgStatic {
     }
     return output.join('\n');
   }
-
 }

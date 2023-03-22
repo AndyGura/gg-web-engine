@@ -11,14 +11,14 @@ import { Pnt3 } from '../../base/math/point3';
 import { AxisDirection3 } from '../../base/models/axis-directions';
 
 export type WheelOptions = {
-  tyre_width: number,
-  tyre_radius: number,
-  wheelObject?: IGg3dObject,
-  wheelObjectDirection?: AxisDirection3,
-  isLeft: boolean,
-  isFront: boolean,
-  position: Point3,
-  frictionSlip: number,  // friction with road
+  tyre_width: number;
+  tyre_radius: number;
+  wheelObject?: IGg3dObject;
+  wheelObjectDirection?: AxisDirection3;
+  isLeft: boolean;
+  isFront: boolean;
+  position: Point3;
+  frictionSlip: number; // friction with road
   rollInfluence: number;
   maxTravel: number;
 };
@@ -28,28 +28,28 @@ export type SuspensionOptions = {
   damping: number;
   compression: number;
   restLength: number;
-}
+};
 
 export type CarProperties = {
   typeOfDrive: 'RWD' | 'FWD' | '4WD'; // FIXME 4WD car won't brake
   wheelOptions: WheelOptions[];
-  mpsToRpmFactor?: number,
+  mpsToRpmFactor?: number;
   engine: {
     minRpm: number;
     maxRpm: number;
-    torques: { rpm: number, torque: number }[];
+    torques: { rpm: number; torque: number }[];
     maxRpmIncreasePerSecond: number;
     maxRpmDecreasePerSecond: number;
-  },
+  };
   transmission: {
-    isAuto: boolean,
-    reverseGearRatio: number,
+    isAuto: boolean;
+    reverseGearRatio: number;
     gearRatios: number[];
     drivelineEfficiency: number;
     finalDriveRatio: number; // differential
-    upShifts: number[],
-  },
-  suspension: SuspensionOptions,
+    upShifts: number[];
+  };
+  suspension: SuspensionOptions;
 };
 
 export class Gg3dRaycastVehicleEntity extends Gg3dEntity {
@@ -71,7 +71,10 @@ export class Gg3dRaycastVehicleEntity extends Gg3dEntity {
     const currentRPM = this.engineRpm;
     const maxMapTorque = this.carProperties.engine.torques[this.carProperties.engine.torques.length - 1].rpm;
     if (currentRPM >= maxMapTorque) {
-      return Math.pow(Math.max(0, (1 - (currentRPM - maxMapTorque) / (this.carProperties.engine.maxRpm - maxMapTorque))), 2) * this.carProperties.engine.torques[this.carProperties.engine.torques.length - 1].torque;
+      return (
+        Math.pow(Math.max(0, 1 - (currentRPM - maxMapTorque) / (this.carProperties.engine.maxRpm - maxMapTorque)), 2) *
+        this.carProperties.engine.torques[this.carProperties.engine.torques.length - 1].torque
+      );
     }
     let index = 0;
     let factor = 0;
@@ -80,13 +83,20 @@ export class Gg3dRaycastVehicleEntity extends Gg3dEntity {
         index = i;
         continue;
       }
-      factor = Math.max(0, (currentRPM - this.carProperties.engine.torques[index].rpm) / (this.carProperties.engine.torques[index + 1].rpm - this.carProperties.engine.torques[index].rpm));
+      factor = Math.max(
+        0,
+        (currentRPM - this.carProperties.engine.torques[index].rpm) /
+          (this.carProperties.engine.torques[index + 1].rpm - this.carProperties.engine.torques[index].rpm),
+      );
       break;
     }
     if (factor === 0) {
       return this.carProperties.engine.torques[index].torque;
     } else {
-      return this.carProperties.engine.torques[index].torque + factor * (this.carProperties.engine.torques[index + 1].torque - this.carProperties.engine.torques[index].torque)
+      return (
+        this.carProperties.engine.torques[index].torque +
+        factor * (this.carProperties.engine.torques[index + 1].torque - this.carProperties.engine.torques[index].torque)
+      );
     }
   }
 
@@ -98,7 +108,10 @@ export class Gg3dRaycastVehicleEntity extends Gg3dEntity {
   }
 
   protected get mpsToRpm(): number {
-    return this.carProperties.mpsToRpmFactor || (30 * this.carProperties.transmission.finalDriveRatio / (Math.PI * this.dynamicTractionWheelRadius));
+    return (
+      this.carProperties.mpsToRpmFactor ||
+      (30 * this.carProperties.transmission.finalDriveRatio) / (Math.PI * this.dynamicTractionWheelRadius)
+    );
   }
 
   // m/s
@@ -134,7 +147,13 @@ export class Gg3dRaycastVehicleEntity extends Gg3dEntity {
   }
 
   protected get tractionForce(): number {
-    return this.engineTorque * this.transmissionGearRatio * this.carProperties.transmission.finalDriveRatio * this.carProperties.transmission.drivelineEfficiency / this.dynamicTractionWheelRadius;
+    return (
+      (this.engineTorque *
+        this.transmissionGearRatio *
+        this.carProperties.transmission.finalDriveRatio *
+        this.carProperties.transmission.drivelineEfficiency) /
+      this.dynamicTractionWheelRadius
+    );
   }
 
   // TODO should be parameters
@@ -212,8 +231,7 @@ export class Gg3dRaycastVehicleEntity extends Gg3dEntity {
   }
 
   // TODO remove
-  set isHonking(value: boolean) {
-  }
+  set isHonking(value: boolean) {}
 
   private _steeringValue: number = 0;
   public get steeringValue(): number {
@@ -249,7 +267,7 @@ export class Gg3dRaycastVehicleEntity extends Gg3dEntity {
     this.tractionWheelRadius = this.carProperties.wheelOptions[this.tractionWheelIndices[0]].tyre_radius;
     // TODO perform this in a parent application
     // chassisBody.setDamping(0.02, 0.02); // TODO imitates air resistance. calculate from properties
-    this.carProperties.wheelOptions.forEach((wheelOpts) => {
+    this.carProperties.wheelOptions.forEach(wheelOpts => {
       this.chassisBody.addWheel(wheelOpts, this.carProperties.suspension);
     });
     if (this.wheelObject) {
@@ -265,13 +283,16 @@ export class Gg3dRaycastVehicleEntity extends Gg3dEntity {
         const boundingBox = Box.expandByPoint(entity.getBoundings(), { x: 0, y: 0, z: 0 });
         const scale: Point3 = { x: 0, y: 0, z: 0 };
         for (const dir of ['x', 'y', 'z'] as (keyof Point3)[]) {
-          const wheelObjectDirection = (options.wheelObjectDirection || this.wheelObjectDirection);
+          const wheelObjectDirection = options.wheelObjectDirection || this.wheelObjectDirection;
           const isNormal = wheelObjectDirection.includes(dir);
           scale[dir] = isNormal
             ? options.tyre_width / (boundingBox.max[dir] - boundingBox.min[dir])
-            : options.tyre_radius * 2 / (boundingBox.max[dir] - boundingBox.min[dir]);
+            : (options.tyre_radius * 2) / (boundingBox.max[dir] - boundingBox.min[dir]);
           if (isNormal) {
-            localTranslation.x += (wheelObjectDirection.startsWith('-') ? boundingBox.max[dir] : boundingBox.min[dir]) * scale[dir] * (options.isLeft ? 1 : -1)
+            localTranslation.x +=
+              (wheelObjectDirection.startsWith('-') ? boundingBox.max[dir] : boundingBox.min[dir]) *
+              scale[dir] *
+              (options.isLeft ? 1 : -1);
           }
         }
         entity.scale = scale;
@@ -293,7 +314,7 @@ export class Gg3dRaycastVehicleEntity extends Gg3dEntity {
         this.wheels.push(new Gg3dEntity(entity));
       }
     }
-    this._children = [...this.wheels.filter(x => !!x) as GgPositionable3dEntity[]];
+    this._children = [...(this.wheels.filter(x => !!x) as GgPositionable3dEntity[])];
     this.chassisBody.entity = this;
   }
 
@@ -310,16 +331,19 @@ export class Gg3dRaycastVehicleEntity extends Gg3dEntity {
           // engine brake, this is related to clutch, better clutch condition - bigger force
           force = this.gear > 0 ? -12000 : 12000;
         } else {
-          force = this.acceleration > 0
-            ? this.tractionForce * this.acceleration // apply torque
-            : 0.5 * (this.carProperties.engine.minRpm - calculatedRpm) * (this.gear > 0 ? 1 : -1); // released, use engine brake
+          force =
+            this.acceleration > 0
+              ? this.tractionForce * this.acceleration // apply torque
+              : 0.5 * (this.carProperties.engine.minRpm - calculatedRpm) * (this.gear > 0 ? 1 : -1); // released, use engine brake
           // this functionality makes car stay still (parking gear) when speed is low
           const speedThreshold = 3;
           if (Math.abs(this.getSpeed()) < speedThreshold && (this.gear == 0 || this.acceleration == 0)) {
-            brakeForce = Math.max(brakeForce, 0.3 * (speedThreshold - this.getSpeed()) * this.brakingForce / speedThreshold);
+            brakeForce = Math.max(
+              brakeForce,
+              (0.3 * (speedThreshold - this.getSpeed()) * this.brakingForce) / speedThreshold,
+            );
             force = 0;
           }
-
         }
         const forcePerWheel = force / this.tractionWheelIndices.length;
         this.tractionWheelIndices.forEach(index => this.chassisBody.applyEngineForce(index, forcePerWheel));
@@ -327,31 +351,36 @@ export class Gg3dRaycastVehicleEntity extends Gg3dEntity {
       }
     });
     if (this.carProperties.transmission.isAuto) {
-      this.tick$.pipe(
-        throttleTime(50),
-        filter(() => this.isTouchingGround)
-      ).subscribe(() => {
-        let gear = this.gear;
-        let upshifted = false;
-        if (gear > 0) {
-          let rpm = this.engineRpm;
-          while (rpm >= this.carProperties.transmission.upShifts[gear - 1]) {
-            rpm *= this.carProperties.transmission.gearRatios[gear] / this.carProperties.transmission.gearRatios[gear - 1];
-            gear++;
-            upshifted = true;
-          }
-          if (!upshifted) {
-            while (gear > 1) {
-              rpm *= this.carProperties.transmission.gearRatios[gear - 2] / this.carProperties.transmission.gearRatios[gear - 1];
-              if (rpm > this.carProperties.transmission.upShifts[gear - 2]) {
-                break;
-              }
-              gear--;
+      this.tick$
+        .pipe(
+          throttleTime(50),
+          filter(() => this.isTouchingGround),
+        )
+        .subscribe(() => {
+          let gear = this.gear;
+          let upshifted = false;
+          if (gear > 0) {
+            let rpm = this.engineRpm;
+            while (rpm >= this.carProperties.transmission.upShifts[gear - 1]) {
+              rpm *=
+                this.carProperties.transmission.gearRatios[gear] / this.carProperties.transmission.gearRatios[gear - 1];
+              gear++;
+              upshifted = true;
             }
+            if (!upshifted) {
+              while (gear > 1) {
+                rpm *=
+                  this.carProperties.transmission.gearRatios[gear - 2] /
+                  this.carProperties.transmission.gearRatios[gear - 1];
+                if (rpm > this.carProperties.transmission.upShifts[gear - 2]) {
+                  break;
+                }
+                gear--;
+              }
+            }
+            this.gear = gear;
           }
-          this.gear = gear;
-        }
-      });
+        });
     }
   }
 
@@ -384,11 +413,14 @@ export class Gg3dRaycastVehicleEntity extends Gg3dEntity {
     const acceleration = this._acceleration$.getValue();
     let rpm = this.engineRpm;
     // TODO here I will take perioud between gears and drift into account someday :)
-    const gripKoeff = (this.gear === 0 || !this.isTouchingGround) ? 0 : 1;
+    const gripKoeff = this.gear === 0 || !this.isTouchingGround ? 0 : 1;
     if (gripKoeff == 0) {
-      rpm += (acceleration * 2 - 1)
-        * (acceleration > 0.5 ? this.carProperties.engine.maxRpmIncreasePerSecond : this.carProperties.engine.maxRpmDecreasePerSecond)
-        * delta;
+      rpm +=
+        (acceleration * 2 - 1) *
+        (acceleration > 0.5
+          ? this.carProperties.engine.maxRpmIncreasePerSecond
+          : this.carProperties.engine.maxRpmDecreasePerSecond) *
+        delta;
     } else {
       const rpmFromSpeed = this.calculateRpmFromCarSpeed();
       if (rpmFromSpeed > rpm) {
@@ -397,17 +429,11 @@ export class Gg3dRaycastVehicleEntity extends Gg3dEntity {
         rpm = Math.max(rpmFromSpeed, rpm - this.carProperties.engine.maxRpmDecreasePerSecond * delta);
       }
     }
-    this._rpm$.next(Math.max(
-      this.carProperties.engine.minRpm,
-      Math.min(
-        this.carProperties.engine.maxRpm,
-        rpm,
-      ),
-    ))
+    this._rpm$.next(Math.max(this.carProperties.engine.minRpm, Math.min(this.carProperties.engine.maxRpm, rpm)));
   }
 
   // TODO delete and let game application do all the steps
-  resetTo(options: { position?: Point3, rotation?: Point4 } = {}) {
+  resetTo(options: { position?: Point3; rotation?: Point4 } = {}) {
     this.chassisBody.resetMotion();
     this.chassisBody.resetSuspension();
     if (options.position) {
@@ -421,7 +447,7 @@ export class Gg3dRaycastVehicleEntity extends Gg3dEntity {
     this._rpm$.next(this.carProperties.engine.minRpm);
   }
 
-// TODO refactor: control has to be in control service, here we receive separately braking, acceleration, steering
+  // TODO refactor: control has to be in control service, here we receive separately braking, acceleration, steering
   public setXAxisControlValue(value: number) {
     const steering = this.getMaxStableSteerVal() * value;
     this.frontWheelsIndices.forEach(index => this.chassisBody.setSteering(index, -steering));

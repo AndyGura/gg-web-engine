@@ -3,7 +3,6 @@ import { Gg2dPhysicsWorld } from './gg-2d-physics-world';
 import { Body, Composite, Vector } from 'matter-js';
 
 export class Gg2dBody implements IGg2dBody {
-
   public get position(): Point2 {
     return this.nativeBody.position;
   }
@@ -29,10 +28,7 @@ export class Gg2dBody implements IGg2dBody {
 
   public entity: Gg2dEntity | null = null;
 
-  constructor(
-    public nativeBody: Body,
-  ) {
-  }
+  constructor(public nativeBody: Body) {}
 
   clone(): Gg2dBody {
     // TODO
@@ -47,12 +43,10 @@ export class Gg2dBody implements IGg2dBody {
     Composite.remove(world.matterWorld!, this.nativeBody);
   }
 
-  dispose(): void {
-  }
+  dispose(): void {}
 
   resetMotion(): void {
     Body.setVelocity(this.nativeBody, { x: 0, y: 0 });
     Body.setAngularVelocity(this.nativeBody, 0);
   }
-
 }
