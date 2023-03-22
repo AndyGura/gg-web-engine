@@ -46,7 +46,7 @@ export class Gg3dPhysicsWorld implements IGg3dPhysicsWorld {
   private _debugger: AmmoDebugger | null = null;
   private _debugDrawer: GgDebugPhysicsDrawer<Point3, Point4> | null = null;
 
-  get debuggerActive(): boolean {
+  get physicsDebugViewActive(): boolean {
     return !!this._debugger;
   }
 

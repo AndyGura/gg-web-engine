@@ -32,7 +32,7 @@ export class Gg2dPhysicsWorld implements IGg2dPhysicsWorld {
     this._timeScale = value;
   }
 
-  public get debuggerActive(): boolean {
+  public get physicsDebugViewActive(): boolean {
     return false;
   }
 

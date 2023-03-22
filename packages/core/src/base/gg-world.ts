@@ -7,6 +7,7 @@ import { GgStatic } from './gg-static';
 import { KeyboardController } from './controllers/keyboard.controller';
 import { filter } from 'rxjs';
 import { GgConsoleUI } from './ui/gg-console.ui';
+import { GgDebuggerUI } from './ui/gg-debugger.ui';
 
 export abstract class GgWorld<D, R, V extends GgVisualScene<D, R> = GgVisualScene<D, R>, P extends GgPhysicsWorld<D, R> = GgPhysicsWorld<D, R>> {
 
@@ -41,25 +42,27 @@ export abstract class GgWorld<D, R, V extends GgVisualScene<D, R> = GgVisualScen
       this.registerConsoleCommand('commandslist', async () => {
         return Object.entries(this.commands).map(([key, value]) => `${key}${value.doc ? '\t// ' + value.doc : ''}`).sort().join('\n\n');
       }, 'no args; print all available commands');
+      this.registerConsoleCommand('debugger', async (...args: string[]) => {
+        const shouldDraw = ['1', 'true', '+'].includes(args[0]);
+        if (shouldDraw != GgDebuggerUI.instance.isUIShown) {
+          if (GgDebuggerUI.instance.isUIShown) {
+            GgDebuggerUI.instance.destroyUI();
+          } else {
+            GgDebuggerUI.instance.createUI();
+          }
+        }
+        return '' + GgDebuggerUI.instance.isUIShown;
+      }, 'args: [0 or 1]; turn on/off debug panel. Default value is 0');
       this.registerConsoleCommand('ph_timescale', async (...args: string[]) => {
         this.physicsWorld.timeScale = +args[0];
         return JSON.stringify(this.physicsWorld.timeScale);
       }, 'args: [float]; change time scale of physics engine. Default value is 1.0');
       this.registerConsoleCommand('dr_drawphysics', async (...args: string[]) => {
         const shouldDraw = ['1', 'true', '+'].includes(args[0]);
-        if (shouldDraw != this.physicsWorld.debuggerActive) {
-          if (shouldDraw) {
-            // TODO move to function so can be called in the code
-            const cls = this.visualScene.debugPhysicsDrawerClass;
-            if (!cls) {
-              throw new Error('Debug drawer is not available');
-            }
-            this.physicsWorld.startDebugger(this, new cls());
-          } else {
-            this.physicsWorld.stopDebugger(this);
-          }
+        if (shouldDraw != this.physicsWorld.physicsDebugViewActive) {
+          this.triggerPhysicsDebugView();
         }
-        return '' + this.physicsWorld.debuggerActive;
+        return '' + this.physicsWorld.physicsDebugViewActive;
       }, 'args: [0 or 1]; turn on/off physics debug view. Default value is 0');
     }
   }
@@ -150,6 +153,18 @@ export abstract class GgWorld<D, R, V extends GgVisualScene<D, R> = GgVisualScen
       return 'Unrecognized command: ' + command;
     }
     return this.commands[command].handler(...args);
+  }
+
+  public triggerPhysicsDebugView() {
+    if (this.physicsWorld.physicsDebugViewActive) {
+      this.physicsWorld.stopDebugger(this);
+    } else {
+      const cls = this.visualScene.debugPhysicsDrawerClass;
+      if (!cls) {
+        throw new Error('Debug drawer is not available');
+      }
+      this.physicsWorld.startDebugger(this, new cls());
+    }
   }
 
 }
