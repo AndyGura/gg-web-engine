@@ -4,8 +4,6 @@ import { Gg3dVisualScene } from './gg-3d-visual-scene';
 import { ThreeCameraEntity } from './three-camera.entity';
 import { ThreeCamera } from './three-camera';
 
-// FIXME when resizing camera target is wrong
-// FIXME scroll appeared at some point
 export class GgRenderer extends Gg3dRenderer {
   public readonly renderer: WebGLRenderer;
 
