@@ -5,7 +5,13 @@ const now = () => {
   return (typeof performance === 'undefined' ? Date : performance).now();
 };
 
+/**
+ * A class, providing ability to track time, fire ticks, provide time elapsed + tick delta with ability to suspend/resume it.
+ */
 export class Clock {
+  /**
+   * A global clock, based on animation frame ticks
+   */
   public static readonly animationFrameClock: Clock = new Clock(
     of(undefined, animationFrameScheduler).pipe(repeat()),
     true,

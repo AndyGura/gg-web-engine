@@ -1,0 +1,38 @@
+site_name: GG-web-engine
+repo_url: https://github.com/AndyGura/gg-web-engine
+site_url: https://AndyGura.github.io/gg-web-engine
+use_directory_urls: true
+theme:
+  name: material
+  language: en
+  icon:
+    logo: material/library
+  features:
+    - navigation.indexes
+    - navigation.instant
+    - navigation.tracking
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+nav:
+  - 'Overview': index.md
+  - 'Modules':
+    - 'Modules': modules/index.md
+    - 'ammo': modules/ammo
+    - 'core': modules/core
+    - 'matter': modules/matter
+    - 'pixi': modules/pixi
+    - 'three': modules/three

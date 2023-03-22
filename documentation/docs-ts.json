@@ -1,0 +1,10 @@
+{
+  "enforceVersion": false,
+  "exclude": [
+    "src/core/index.ts",
+    "src/ammo/index.ts",
+    "src/three/index.ts",
+    "src/matter/index.ts",
+    "src/pixi/index.ts"
+  ]
+}

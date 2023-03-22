@@ -1,0 +1,29 @@
+{
+  "name": "gg-web-engine-docs",
+  "version": "0.0.000",
+  "description": "An attempt to create open source game engine for browser",
+  "scripts": {
+    "generate": "bash generate.sh",
+    "run-doc-gen": "docs-ts && docs-ts-mkdocs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AndyGura/gg-web-engine.git"
+  },
+  "keywords": [
+    "game-development",
+    "game-engine",
+    "game-engine-framework",
+    "gamedev"
+  ],
+  "author": "AndyGura",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/AndyGura/gg-web-engine/issues"
+  },
+  "homepage": "https://github.com/AndyGura/gg-web-engine#readme",
+  "dependencies": {
+    "docs-ts": "^0.7.0",
+    "docs-ts-mkdocs": "^0.0.2"
+  }
+}
