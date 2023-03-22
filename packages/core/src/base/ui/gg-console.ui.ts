@@ -87,6 +87,7 @@ List of available commands: commandslist
     };
     this.stdout();
     this.setupDragging();
+    setTimeout(() => this.elements!.input.focus(), 20);
   }
 
   public destroyUI() {
