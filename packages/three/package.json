@@ -1,6 +1,6 @@
 {
   "name": "@gg-web-engine/three",
-  "version": "0.0.000",
+  "version": "0.0.01",
   "description": "An attempt to create open source game engine for browser",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -8,9 +8,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "prettier-format": "prettier --config ../core/.prettierrc 'src/**/*.ts' --write",
     "prepublish": "tsc",
-    "build": "tsc",
-    "postinstall": "npm link @gg-web-engine/core",
-    "postupdate": "npm link @gg-web-engine/core"
+    "build": "tsc"
   },
   "repository": {
     "type": "git",
@@ -29,6 +27,7 @@
   },
   "homepage": "https://github.com/AndyGura/gg-web-engine#readme",
   "dependencies": {
+    "@gg-web-engine/core": "^0.0.1",
     "three": "^0.148.0"
   },
   "devDependencies": {
