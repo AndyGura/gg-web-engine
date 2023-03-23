@@ -55,10 +55,10 @@ that there is currently lack of functionality which is not related to racing gam
 
 ## Integrations
 Note: at this early step, the project does not give much flexibility in that regard, will be changed in future
-- **@gg-web-engine/three** - 3D world rendering module [Three.js](https://github.com/mrdoob/three.js)
-- **@gg-web-engine/ammo** - 3D world physics simulation module [Ammo.js](https://github.com/kripken/ammo.js)
-- **@gg-web-engine/pixi** - 2D world rendering module [Pixi.js](https://github.com/pixijs/pixijs)
-- **@gg-web-engine/matter** - 2D world physics simulation module [Matter.js](https://github.com/liabru/matter-js)
+- [**@gg-web-engine/three**](https://github.com/AndyGura/gg-web-engine/tree/main/packages/three) - 3D world rendering module [Three.js](https://github.com/mrdoob/three.js)
+- [**@gg-web-engine/ammo**](https://github.com/AndyGura/gg-web-engine/tree/main/packages/ammo) - 3D world physics simulation module [Ammo.js](https://github.com/kripken/ammo.js)
+- [**@gg-web-engine/pixi**](https://github.com/AndyGura/gg-web-engine/tree/main/packages/pixi) - 2D world rendering module [Pixi.js](https://github.com/pixijs/pixijs)
+- [**@gg-web-engine/matter**](https://github.com/AndyGura/gg-web-engine/tree/main/packages/matter) - 2D world physics simulation module [Matter.js](https://github.com/liabru/matter-js)
 
 ## Quickstart
 **Note: right now it does not provide CommonJS/UMD modules**
@@ -67,10 +67,21 @@ Note: at this early step, the project does not give much flexibility in that reg
 And install integration modules, for instance if I want to create 3D world:<br/>
 `npm install --save @gg-web-engine/three`<br/>
 `npm install --save @gg-web-engine/ammo`
+
+Add to your `tsconfig.json` in the record `compilerOptions.paths` (example for three+ammo):
+```json lines
+"three": ["./node_modules/@gg-web-engine/three/node_modules/three"],
+"mini-signals": ["./node_modules/@gg-web-engine/ammo/node_modules/mini-signals/index.js"],
+"path": ["./node_modules/@gg-web-engine/ammo/node_modules/path-browserify"],
+"fs": ["./node_modules/@gg-web-engine/ammo/node_modules/fs-web"],
+"ammojs-typed": ["./node_modules/@gg-web-engine/ammo/node_modules/ammojs-typed"]
+```
+You can check all required paths per integration in their own README, check the <a href="#integrations">integrations list</a>
+
 ### Usage:
 1) add somewhere in dom tree: ```<div id="gg-stage"></div>```
 2) write bootstrap script, example:
-```
+```typescript
 import { Gg3dEntity, Gg3dWorld, GgViewportManager, Qtrn } from '@gg-web-engine/core';
 import { Gg3dVisualScene, GgRenderer } from '@gg-web-engine/three';
 import { Gg3dPhysicsWorld } from '@gg-web-engine/ammo';
