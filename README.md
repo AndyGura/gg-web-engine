@@ -7,9 +7,9 @@
   <a href="#about">About</a> •
   <a href="#vision">Vision</a> •
   <a href="#status">Status</a> •
+  <a href="#features">Features</a> •
   <a href="#integrations">Integrations</a> •
   <a href="#quickstart">Quickstart</a> •
-  <a href="#features">Features</a> •
   <a href="#examples">Examples</a> •
   <a href="#architecture">Architecture</a> •
   <a href="#support">Support</a> •
@@ -52,6 +52,21 @@ and then migrated to ammo.js with minimum changes to the architecture, which in 
 there was a lot to learn and realize that game development for browsers deserves more than available. Right now the 
 engine is still focused on that NFS project and all the functionality is written specifically for it, so one can notice 
 that there is currently lack of functionality which is not related to racing games.
+
+## Features
+
+- Automatically working physics/rendering ticks
+- Automatic physics body/visual mesh position/rotation binding
+- Controllers interface, allowing to add some functions as part of tick
+- keyboard controller, supports key bindings
+- mouse controller, supports pointer lock
+- rigid bodies
+- trigger zones
+- free-fly camera controller (3D world only)
+- raycast car entity (3D world only) and dedicated keyboard controller for it
+- map graph, allowing to load only nearest part of map, using graph of map areas (3D world only)
+- UI dev console (enable console for world in your code and press ` at runtime)
+- physics debugger renderer (3D world only)
 
 ## Integrations
 Note: at this early step, the project does not give much flexibility in that regard, will be changed in future
@@ -133,16 +148,11 @@ And run it:
   <img src="documentation/assets/example.gif" alt=''/>
 </p>
 
-## Features
-TBD
-
 ## Examples
-TBD
+Not documented yet, please check [the code](https://github.com/AndyGura/gg-web-engine/tree/main/examples)
 
 ## Architecture
-Extended technical documentation available here: [GitHub Pages](https://andygura.github.io/gg-web-engine/)
-
-TBD
+Technical documentation available at [GitHub Pages](https://andygura.github.io/gg-web-engine/)
 
 ## Support
 You can help by giving any feedback, bug report, feature request to [Issues](https://github.com/AndyGura/gg-web-engine/issues) 
