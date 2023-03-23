@@ -1,6 +1,6 @@
-<div style="text-align: center;">
+<p align="center">
   <img src="documentation/assets/logo.png" style="height: 400px; width:400px;" alt=''/>
-</div>
+</p>
 <h2 align="center">An attempt to create open source abstract game engine for browser</h2>
 
 <p align="center">
@@ -118,10 +118,9 @@ interval(500).subscribe(() => {
 world.start();
 ```
 And run it:
-
-<div style="text-align: center;">
+<p align="center">
   <img src="documentation/assets/example.gif" alt=''/>
-</div>
+</p>
 
 ## Features
 TBD
