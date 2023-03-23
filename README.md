@@ -149,7 +149,10 @@ And run it:
 </p>
 
 ## Examples
-Not documented yet, please check [the code](https://github.com/AndyGura/gg-web-engine/tree/main/examples)
+### [Fly city demo](https://gg-web-demos.guraklgames.com/index.html)
+source code is available [here](https://github.com/AndyGura/gg-web-engine/tree/main/examples/fly-city)
+
+Demos are not properly documented yet (and only one is deployed), please check [the code](https://github.com/AndyGura/gg-web-engine/tree/main/examples)
 
 ## Architecture
 Technical documentation available at [GitHub Pages](https://andygura.github.io/gg-web-engine/)
