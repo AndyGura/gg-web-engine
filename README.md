@@ -1,45 +1,142 @@
-# gg-web-engine
-### An attempt to create open source abstract game engine for browser
+<div style="text-align: center;">
+  <img src="documentation/assets/logo.png" style="height: 400px; width:400px;" alt=''/>
+</div>
+<h2 align="center">An attempt to create open source abstract game engine for browser</h2>
 
-#### WARNING: It is not even pre-alpha version yet, do not try to install and use it
+<p align="center">
+  <a href="#about">About</a> •
+  <a href="#vision">Vision</a> •
+  <a href="#status">Status</a> •
+  <a href="#integrations">Integrations</a> •
+  <a href="#quickstart">Quickstart</a> •
+  <a href="#features">Features</a> •
+  <a href="#examples">Examples</a> •
+  <a href="#architecture">Architecture</a> •
+  <a href="#support">Support</a> •
+  <a href="#license">License</a>
+</p>
 
-Browser API nowadays is rich enough: with it's hardware accelerated rendering, WebAssembly, Service Workers and other 
-features, it is technically capable of running games seamlessly inside the browser, without installation, drivers etc: 
-you just open the game in your browser tab and play it. Well, there are many cool demos with 3D, physics, but too low 
-amount of more or less complex games. After quick overview of demos and games for browser, one can notice, that the 
-crucial problem in them is a code: even small demos usually have a huge js file, where it handles everything: key 
-presses, rendering loop, physics simulation, binding physics object position to 3D mesh, game logic etc. It is obvious 
-that such code is very hard to support, extend, and even understand what's going on. The second problem IMO is that in 
-JS world there are too many solutions for the same problems, but not so many perfect ones. In fact, when starting to 
-make some demo/game, the developer almost always starts resolving the same issues over and over: scale canvas to full 
-screen on android, implement rendering loop etc., because you can easily get lost in numerous of NPM libraries which can
- do it for you.
+---
 
-This project is going to be the open-source framework, providing ready-to-use project structure and minimum tool set 
-for making game building quickly and easily. There are plenty of cool libraries for in-browser games, such as 
-[three.js](https://github.com/mrdoob/three.js) for rendering using WebGL, [ammo.js](https://github.com/kripken/ammo.js) 
-for WebAssembly physics and many more: the **gg-web-engine** is not going to compete with any of them and re-invent the 
-bicycle, but rather work on top of such libraries: the developer, using **gg-web-engine**, will have full control on 
-those libraries, besides the built-in **gg-web-engine** functionality. The core of the engine **DO NOT** rely on any 
-specific library and can be quickly switched to another physics/3D library.
+## About
+This project strives to be an open-source framework, providing ready-to-use tool set for making web applications, 
+related to 2D/3D graphics and physics simulation (mostly games), quickly and easily. There are plenty of cool libraries 
+for in-browser games, such as [three.js](https://github.com/mrdoob/three.js) for rendering using WebGL, 
+[ammo.js](https://github.com/kripken/ammo.js) for WebAssembly physics and many more: **gg-web-engine** is not going to 
+compete with any of them and re-invent the bicycle, but rather work on top of such libraries: the developer, using 
+**gg-web-engine**, will have full control on those libraries, besides the built-in **gg-web-engine** functionality. 
+The core of the engine **DO NOT** rely on any specific library and the end product can be quickly switched from one 
+stack of physics/rendering libraries to anothers or even have self-implemented own solutions by implementing simple 
+bindings to **gg-web-engine** core.
 
-## Project vision notes:
+## Vision
 - The project is not going to provide low-level solutions for rendering, physics, sounds etc. but have the integration 
 with other libraries for that
+- The project is going to work with both 2D and 3D worlds
 - The project provides ready-to-use common functionality: canvas, game world, rendering loop, physics ticks, key/mouse 
-controls, LOD system etc.
-- The project initially works with [three.js](https://github.com/mrdoob/three.js) + 
-[ammo.js](https://github.com/kripken/ammo.js), but it is designed to not be dependent on them and support other 
-libraries later on
-- The project does not restrict developer from working with integrated libraries (three.js/ammo.js) directly
+controls and many more down the road
+- The project provides common entities: rigid primitive, cameras, raycast vehicle and many more down the road
+- The project provides own way of serialization objects: has a built-in blender exporter which will export geometry
+  and rigid body properties to files, seamlessly supported by the engine (**3D world only** for now)
+- The project does not restrict developer from working with integrated libraries directly
 - The project is written on [TypeScript](https://github.com/microsoft/TypeScript)
-- The project is module-based, so games will not have unneeded functionality in the final build
-- The project provides common actors: rigid primitive, cameras, raycast vehicle etc.
+- The project is module-based ES6 code
 - The project intensively uses [rxjs](https://github.com/ReactiveX/rxjs)
-- The project provides own way of serialization objects: has a built-in blender exporter which will export geometry, 
-materials, animations, bones and physics properties directly to the engine
 
-## Project status:
-Initialization, not usable yet. Right now I'm polishing and pulling some parts of code from my 
-[The Need For Speed Web](https://tnfsw.guraklgames.com/) project, which by the way was using cannon.js and then migrated to 
-ammo.js with minimum changes to the architecture, which in fact inspired me to start this project 
+## Status
+Pre-pre-alpha super-experimental release. I'll be happy to see any feature requests and bug reports in the 
+[Issues](https://github.com/AndyGura/gg-web-engine/issues) and [Pull Requests](https://github.com/AndyGura/gg-web-engine/pulls) 
+are more than welcome. This project is initialized with parts of my own attempt to implement replica of old NFS game
+[The Need For Speed Web](https://tnfsw.guraklgames.com/) (far from final version), by the way it was using cannon.js 
+and then migrated to ammo.js with minimum changes to the architecture, which in fact inspired me to start this project: 
+there was a lot to learn and realize that game development for browsers deserves more than available. Right now the 
+engine is still focused on that NFS project and all the functionality is written specifically for it, so one can notice 
+that there is currently lack of functionality which is not related to racing games.
+
+## Integrations
+Note: at this early step, the project does not give much flexibility in that regard, will be changed in future
+- **@gg-web-engine/three** - 3D world rendering module [Three.js](https://github.com/mrdoob/three.js)
+- **@gg-web-engine/ammo** - 3D world physics simulation module [Ammo.js](https://github.com/kripken/ammo.js)
+- **@gg-web-engine/pixi** - 2D world rendering module [Pixi.js](https://github.com/pixijs/pixijs)
+- **@gg-web-engine/matter** - 2D world physics simulation module [Matter.js](https://github.com/liabru/matter-js)
+
+## Quickstart
+**Note: right now it does not provide CommonJS/UMD modules**
+### Installation:
+`npm install --save @gg-web-engine/core`<br/>
+And install integration modules, for instance if I want to create 3D world:<br/>
+`npm install --save @gg-web-engine/three`<br/>
+`npm install --save @gg-web-engine/ammo`
+### Usage:
+1) add somewhere in dom tree: ```<div id="gg-stage"></div>```
+2) write bootstrap script, example:
+```
+import { Gg3dEntity, Gg3dWorld, GgViewportManager, Qtrn } from '@gg-web-engine/core';
+import { Gg3dVisualScene, GgRenderer } from '@gg-web-engine/three';
+import { Gg3dPhysicsWorld } from '@gg-web-engine/ammo';
+
+// create world
+const world: Gg3dWorld = new Gg3dWorld(new Gg3dVisualScene(), new Gg3dPhysicsWorld());
+await world.init();
+
+// create viewport and renderer
+const canvas = await GgViewportManager.instance.createCanvas(1);
+const renderer: GgRenderer = new GgRenderer(canvas);
+renderer.camera.position = { x: 15, y: 15, z: 9 };
+renderer.camera.rotation = Qtrn.lookAt(renderer.camera.position, {x: 0, y: 0, z: 0}, {x: 0, y: 0, z: 1});
+world.addEntity(renderer);
+renderer.activate();
+
+// create floor (static rigid body)
+const floor = new Gg3dEntity(
+  world.visualScene.factory.createBox({ x: 7, y: 7, z: 1 }),
+  world.physicsWorld.factory.createRigidBody({
+    shape: { shape: 'BOX', dimensions: { x: 7, y: 7, z: 1 } },
+    body: { dynamic: false },
+  }),
+);
+world.addEntity(floor);
+
+// spawn cubes with mass 5kg twice a second
+interval(500).subscribe(() => {
+  // generate cube
+  let item: Gg3dEntity = new Gg3dEntity(
+    world.visualScene.factory.createBox({ x: 1, y: 1, z: 1 }),
+    world.physicsWorld.factory.createRigidBody({
+      shape: { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } },
+      body: { mass: 1 },
+    }),
+  );
+  // set position to cube
+  item.position = { x: Math.random() * 5 - 2.5, y: Math.random() * 5 - 2.5, z: 10 };
+  world.addEntity(item);
+  // delete cube from world after 30 seconds
+  setTimeout(() => { world.removeEntity(item, true); }, 30000);
+});
+
+// start simulation
+world.start();
+```
+And run it:
+
+<div style="text-align: center;">
+  <img src="documentation/assets/example.gif" alt=''/>
+</div>
+
+## Features
+TBD
+
+## Examples
+TBD
+
+## Architecture
+Extended technical documentation available here: [GitHub Pages](https://andygura.github.io/gg-web-engine/)
+
+TBD
+
+## Support
+You can help by giving any feedback, bug report, feature request to [Issues](https://github.com/AndyGura/gg-web-engine/issues) 
+or help me directly by submitting a [Pull Request](https://github.com/AndyGura/gg-web-engine/pulls)
+
+## License
+[Apache License](LICENSE)
