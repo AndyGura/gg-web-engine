@@ -7,7 +7,11 @@
 ### Installation:
 1) make sure **@gg-web-engine/core** installed
 1) `npm install --save @gg-web-engine/pixi`
-1) Add to your `tsconfig.json` in the record `compilerOptions`:
-```json lines
-"allowSyntheticDefaultImports": true,
-```
+1) add to your `tsconfig.json` in the record `compilerOptions`:
+    ```json lines
+    "allowSyntheticDefaultImports": true,
+    ```
+1) add to your `tsconfig.json` in the array `compilerOptions.types`:
+    ```
+    "offscreencanvas"
+    ```
