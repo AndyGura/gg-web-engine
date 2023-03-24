@@ -7,7 +7,7 @@
 ### Installation:
 1) make sure **@gg-web-engine/core** installed
 1) `npm install --save @gg-web-engine/pixi`
-1) Add to your `tsconfig.json` in the record `compilerOptions.paths`:
+1) Add to your `tsconfig.json` in the record `compilerOptions`:
 ```json lines
-"pixi.js": ["./node_modules/@gg-web-engine/pixi/node_modules/pixi.js"]
+"allowSyntheticDefaultImports": true,
 ```

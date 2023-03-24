@@ -27,11 +27,11 @@
   },
   "homepage": "https://github.com/AndyGura/gg-web-engine#readme",
   "dependencies": {
+    "@types/three": "^0.148.1",
     "@gg-web-engine/core": "^0.0.1",
     "three": "^0.148.0"
   },
   "devDependencies": {
-    "@types/three": "^0.148.0",
     "prettier": "^2.8.6",
     "typescript": "~4.7.2"
   }

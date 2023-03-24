@@ -27,11 +27,11 @@
   },
   "homepage": "https://github.com/AndyGura/gg-web-engine#readme",
   "dependencies": {
+    "@types/matter-js": "^0.18.2",
     "@gg-web-engine/core": "^0.0.1",
     "matter-js": "^0.18.0"
   },
   "devDependencies": {
-    "@types/matter-js": "^0.18.2",
     "prettier": "^2.8.6",
     "typescript": "~4.7.2"
   }

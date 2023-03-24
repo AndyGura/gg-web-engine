@@ -7,7 +7,3 @@
 ### Installation:
 1) make sure **@gg-web-engine/core** installed
 1) `npm install --save @gg-web-engine/matter`
-1) Add to your `tsconfig.json` in the record `compilerOptions.paths`:
-```json lines
-"matter-js": ["./node_modules/@gg-web-engine/matter/node_modules/matter-js"]
-```

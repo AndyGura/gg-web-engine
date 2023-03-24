@@ -9,8 +9,7 @@
 1) `npm install --save @gg-web-engine/ammo`
 1) Add to your `tsconfig.json` in the record `compilerOptions.paths`:
 ```json lines
-"mini-signals": ["./node_modules/@gg-web-engine/ammo/node_modules/mini-signals/index.js"],
-"path": ["./node_modules/@gg-web-engine/ammo/node_modules/path-browserify"],
-"fs": ["./node_modules/@gg-web-engine/ammo/node_modules/fs-web"],
-"ammojs-typed": ["./node_modules/@gg-web-engine/ammo/node_modules/ammojs-typed"]
+"mini-signals": ["./node_modules/mini-signals/index.js"],
+"path": ["./node_modules/path-browserify"],
+"fs": ["./node_modules/fs-web"],
 ```
