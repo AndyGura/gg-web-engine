@@ -1,5 +1,5 @@
 #!/bin/bash
-rm -rf docs
+rm -rf docs site
 packages=("core" "ammo" "three" "pixi" "matter")
 for str in ${packages[@]}; do
   mkdir -p src/$str
