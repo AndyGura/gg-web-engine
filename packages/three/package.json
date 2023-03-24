@@ -1,6 +1,6 @@
 {
   "name": "@gg-web-engine/three",
-  "version": "0.0.01",
+  "version": "0.0.02",
   "description": "An attempt to create open source game engine for browser",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -28,7 +28,7 @@
   "homepage": "https://github.com/AndyGura/gg-web-engine#readme",
   "dependencies": {
     "@types/three": "^0.148.1",
-    "@gg-web-engine/core": "^0.0.1",
+    "@gg-web-engine/core": "^0.0.2",
     "three": "^0.148.0"
   },
   "devDependencies": {
