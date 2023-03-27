@@ -44,28 +44,28 @@ describe(`Graph<T>`, () => {
       expect(result[0].size).toBe(1);
       expect(result[0].has(middleNode)).toBe(true);
     });
-    it('should return correct amount for depth 4', () => {
+    it('should return correct amounts for depth 4', () => {
       const result = middleNode.walkReadPreserveDepth(4);
       expect(result.length).toBe(5);
       for (let i = 0; i < result.length; i++) {
         expect(result[i].size).toBe(i > 0 ? i * 4 : 1);
       }
     });
-    it('should return correct amount for depth 5', () => {
+    it('should return correct amounts for depth 5', () => {
       const result = middleNode.walkReadPreserveDepth(5);
       expect(result.length).toBe(6);
       for (let i = 0; i < result.length; i++) {
         expect(result[i].size).toBe(i > 0 ? i * 4 : 1);
       }
     });
-    it('should return correct amount for depth 6', () => {
+    it('should return correct amounts for depth 6', () => {
       const result = middleNode.walkReadPreserveDepth(6);
       expect(result.length).toBe(7);
       for (let i = 0; i < result.length; i++) {
         expect(result[i].size).toBe(i > 0 ? i * 4 : 1);
       }
     });
-    it('should return correct amount for depth 7', () => {
+    it('should return correct amounts for depth 7', () => {
       const result = middleNode.walkReadPreserveDepth(7);
       expect(result.length).toBe(8);
       for (let i = 0; i < result.length; i++) {

@@ -66,28 +66,36 @@ export class Gg3dEntity extends GgPositionable3dEntity implements ITickListener 
     }
   }
 
-  protected runTransformBinding(objectBody: IGg3dBody, object3D: IGg3dObject): void {
-    // bind physics body transform to mesh transform
+  /**
+   * Synchronize physics body transform with entity (and mesh if defined)
+   * */
+  protected runTransformBinding(objectBody: IGg3dBody, object3D: IGg3dObject | null): void {
     const pos = objectBody.position;
     const quat = objectBody.rotation;
-    object3D.position = pos;
-    object3D.rotation = quat;
+    if (object3D) {
+      object3D.position = pos;
+      object3D.rotation = quat;
+    }
     this._position$.next(pos);
     this._rotation$.next(quat);
   }
 
   constructor(public readonly object3D: IGg3dObject | null, public readonly objectBody: IGg3dBody | null = null) {
     super();
-    if (objectBody && object3D) {
+    if (objectBody) {
+      objectBody.entity = this;
       this.tick$.subscribe(() => {
         this.runTransformBinding(objectBody, object3D);
       });
       this.runTransformBinding(objectBody, object3D);
-    } else if (!objectBody && !object3D) {
+      this.name = objectBody.name;
+    } else if (object3D) {
+      this.position = object3D.position;
+      this.rotation = object3D.rotation;
+      this.scale = object3D.scale;
+      this.name = object3D.name;
+    } else {
       throw new Error('Cannot create entity without a mesh and a body');
-    }
-    if (objectBody) {
-      objectBody.entity = this;
     }
   }
 

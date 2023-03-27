@@ -10,6 +10,10 @@ export class Gg2dEntity extends GgPositionable2dEntity implements ITickListener 
   public readonly tickOrder = 750;
   private tickSub: Subscription | null = null;
 
+  public get position(): Point2 {
+    return super.position;
+  }
+
   set position(value: Point2) {
     if (this.object2D) {
       this.object2D.position = value;
@@ -18,6 +22,10 @@ export class Gg2dEntity extends GgPositionable2dEntity implements ITickListener 
       this.objectBody.position = value;
     }
     super.position = value;
+  }
+
+  public get rotation(): number {
+    return super.rotation;
   }
 
   set rotation(value: number) {
@@ -30,6 +38,10 @@ export class Gg2dEntity extends GgPositionable2dEntity implements ITickListener 
     super.rotation = value;
   }
 
+  public get scale(): Point2 {
+    return super.scale;
+  }
+
   set scale(value: Point2) {
     if (this.object2D) {
       this.object2D.scale = value;
@@ -40,23 +52,36 @@ export class Gg2dEntity extends GgPositionable2dEntity implements ITickListener 
     super.scale = value;
   }
 
+  /**
+   * Synchronize physics body transform with entity (and object2d if defined)
+   * */
+  protected runTransformBinding(objectBody: IGg2dBody, object2D: IGg2dObject | null): void {
+    const pos = objectBody.position;
+    const quat = objectBody.rotation;
+    if (object2D) {
+      object2D.position = pos;
+      object2D.rotation = quat;
+    }
+    this._position$.next(pos);
+    this._rotation$.next(quat);
+  }
+
   constructor(public readonly object2D: IGg2dObject | null, public readonly objectBody: IGg2dBody | null) {
     super();
-    if (objectBody && object2D) {
-      this.tickSub = this.tick$.subscribe(() => {
-        // bind physics body transform to object transform
-        const pos = objectBody.position;
-        const rot = objectBody.rotation;
-        object2D.position = pos;
-        object2D.rotation = rot;
-        this._position$.next(pos);
-        this._rotation$.next(rot);
-      });
-    } else if (!objectBody && !object2D) {
-      throw new Error('Cannot create entity without a sprite and a body');
-    }
     if (objectBody) {
       objectBody.entity = this;
+      this.tick$.subscribe(() => {
+        this.runTransformBinding(objectBody, object2D);
+      });
+      this.runTransformBinding(objectBody, object2D);
+      this.name = objectBody.name;
+    } else if (object2D) {
+      this.position = object2D.position;
+      this.rotation = object2D.rotation;
+      this.scale = object2D.scale;
+      this.name = object2D.name;
+    } else {
+      throw new Error('Cannot create entity without an object2D and a body');
     }
   }
 
