@@ -1,6 +1,6 @@
 import { GgEntity } from '../../../base/entities/gg-entity';
 import { ITickListener } from '../../../base/entities/interfaces/i-tick-listener';
-import { Subject, Subscription, takeUntil } from 'rxjs';
+import { BehaviorSubject, distinctUntilChanged, Observable, Subject, Subscription, takeUntil } from 'rxjs';
 import { Gg3dWorld } from '../../gg-3d-world';
 import { GgPositionable3dEntity } from '../gg-positionable-3d-entity';
 import { Point3, Point4 } from '../../../base/models/points';
@@ -11,6 +11,10 @@ export type MotionControlFuncReturn = { position: Point3; rotation: Point4; cust
 export type MotionControlFunction = (delta: number) => MotionControlFuncReturn;
 
 export class EntityMotionController extends GgEntity implements ITickListener {
+  public readonly tick$: Subject<[number, number]> = new Subject<[number, number]>();
+  // after all object bindings to avoid visual jittering
+  public readonly tickOrder: number = 800;
+
   get motionControlFunction(): MotionControlFunction {
     return this._motionControlFunction;
   }
@@ -22,10 +26,25 @@ export class EntityMotionController extends GgEntity implements ITickListener {
     }
     this._motionControlFunction = value;
   }
-  public readonly tick$: Subject<[number, number]> = new Subject<[number, number]>();
 
   protected readonly removed$: Subject<void> = new Subject<void>();
-  public readonly tickOrder: number = 750;
+
+  protected lastValue: MotionControlFuncReturn | undefined;
+  private _currentTransition: Subscription | null = null;
+
+  protected get currentTransition(): Subscription | null {
+    return this._currentTransition;
+  }
+
+  protected set currentTransition(value: Subscription | null) {
+    this._currentTransition = value;
+    this._isInTransition$.next(!!value);
+  }
+
+  private _isInTransition$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
+  public get isInTransition$(): Observable<boolean> {
+    return this._isInTransition$.pipe(distinctUntilChanged());
+  }
 
   constructor(
     public target: GgPositionable3dEntity,
@@ -34,9 +53,6 @@ export class EntityMotionController extends GgEntity implements ITickListener {
   ) {
     super();
   }
-
-  protected lastValue: MotionControlFuncReturn | undefined;
-  private currentTransition: Subscription | null = null;
 
   // smoothly set controller function, animate from some determined state
   transitFromStaticState(
