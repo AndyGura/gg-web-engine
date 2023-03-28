@@ -2,13 +2,32 @@ import { Point3, Point4 } from '../models/points';
 import { Pnt3 } from './point3';
 import { Mtrx4 } from './matrix4';
 
+/**
+ * Helper class with static functions, containing util functions, related to Quaternion (represented as Point4 type).
+ * In terms of rotation, a quaternion is a mathematical representation of an orientation or rotation in 3D space.
+ * It consists of a scalar component and a vector component, and can be written as q = w + xi + yj + zk, where w is the
+ * scalar component, and i, j, and k are the vector components. The scalar component, w, represents the amount of
+ * rotation, and the vector component, (x, y, z), represents the axis of rotation. The length of the vector component
+ * represents the amount of rotation around the axis. Quaternions are often used in 3D computer graphics and animation
+ * because they can be used to interpolate between two rotations, and they can avoid some of the issues with using
+ * Euler angles (such as gimbal lock).
+ */
 export class Qtrn {
-  /** clone quaternion */
+  /**
+   * Returns a new quaternion instance with the same values as the given quaternion object.
+   * @param q The Point4 object to clone.
+   * @returns A new Point4 instance with the same values as the given Point4 object.
+   */
   static clone(q: Point4): Point4 {
     return { ...q };
   }
 
-  /** add quaternion b to quaternion a */
+  /**
+   * Returns the sum of two Point4 objects.
+   * @param a The first Point4 object to add.
+   * @param b The second Point4 object to add.
+   * @returns The sum of the two Point4 objects.
+   */
   static add(a: Point4, b: Point4): Point4 {
     const w = a.w + b.w;
     const x = a.x + b.x;
@@ -18,6 +37,12 @@ export class Qtrn {
     return { w: w / magnitude, x: x / magnitude, y: y / magnitude, z: z / magnitude };
   }
 
+  /**
+   * Returns the result of multiplying two Point4 objects. This can be used for combining rotations
+   * @param a The first Point4 object to multiply.
+   * @param b The second Point4 object to multiply.
+   * @returns The product of the two Point4 objects.
+   */
   static mult(a: Point4, b: Point4): Point4 {
     return {
       w: a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z,
@@ -27,6 +52,11 @@ export class Qtrn {
     };
   }
 
+  /**
+   * Combines an arbitrary number of quaternions by multiplying them together in order.
+   * @param quaternions The quaternions to combine.
+   * @returns The combined quaternion.
+   */
   static combineRotations(...quaternions: Point4[]): Point4 {
     let result = { w: 1, x: 0, y: 0, z: 0 };
     for (const quat of quaternions) {
@@ -35,7 +65,13 @@ export class Qtrn {
     return result;
   }
 
-  /** linear interpolation */
+  /**
+   * Performs a linear interpolation between two Point4 objects.
+   * @param a The first Point4 object.
+   * @param b The second Point4 object.
+   * @param t The interpolation factor.
+   * @returns The interpolated Point4 object.
+   */
   static lerp(a: Point4, b: Point4, t: number): Point4 {
     return {
       x: a.x + t * (b.x - a.x),
@@ -45,7 +81,13 @@ export class Qtrn {
     };
   }
 
-  /** spherical interpolation */
+  /**
+   * Performs a spherical linear interpolation between two Point4 objects.
+   * @param a The first Point4 object.
+   * @param b The second Point4 object.
+   * @param t The interpolation factor.
+   * @returns The interpolated Point4 object.
+   */
   static slerp(a: Point4, b: Point4, t: number): Point4 {
     let dot = a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
     let theta = Math.acos(dot);
@@ -63,7 +105,12 @@ export class Qtrn {
     return { x, y, z, w };
   }
 
-  /** creates quaternion from simple angle around axis. Assumes that axis vector is normalized */
+  /**
+   * Converts an angle and an axis of rotation into a quaternion
+   * @param axis the axis of rotation
+   * @param angle the angle of rotation in radians
+   * @returns a quaternion representing the rotation
+   */
   static fromAngle(axis: Point3, angle: number) {
     // http://www.euclideanspace.com/maths/geometry/rotations/conversions/angleToQuaternion/index.htm
     const halfAngle = angle / 2,
@@ -74,7 +121,11 @@ export class Qtrn {
     };
   }
 
-  /** creates quaternion from 4-dimension rotation matrix */
+  /**
+   * Converts a 4x4 matrix representing a rotation into a quaternion
+   * @param m the matrix representing the rotation
+   * @returns a quaternion representing the rotation
+   */
   static fromMatrix4(m: number[]): Point4 {
     // http://www.euclideanspace.com/maths/geometry/rotations/conversions/matrixToQuaternion/index.htm
     // assumes the upper 3x3 of m is a pure rotation matrix (i.e, unscaled)
@@ -123,7 +174,11 @@ export class Qtrn {
     }
   }
 
-  /** creates a quaternion from euler */
+  /**
+   * Creates a quaternion from euler
+   * @param e the euler vector
+   * @returns a quaternion representing the rotation
+   */
   static fromEuler(e: Point3): Point4 {
     const roll = e.x;
     const pitch = e.y;
@@ -144,7 +199,11 @@ export class Qtrn {
     return { w: qw, x: qx, y: qy, z: qz };
   }
 
-  /** converts a quaternion to euler */
+  /**
+   * Converts a quaternion to euler
+   * @param q Point4 object
+   * @returns an Euler vector, representing the same rotation
+   */
   static toEuler(q: Point4): Point3 {
     const qw = q.w;
     const qx = q.x;
@@ -165,8 +224,33 @@ export class Qtrn {
     return { x: roll, y: pitch, z: yaw };
   }
 
-  /** creates a rotation for object, so it will look at some point in space */
+  /**
+   * Returns a quaternion that represents the rotation required to align an object to face towards a target point.
+   * @param eye - The position of the camera or object that needs to be rotated to face the target point.
+   * @param target - The target point to look at
+   * @param up - The up direction of the object
+   * @returns A new quaternion representing the rotation required to face towards the target point.
+   */
   static lookAt(eye: Point3, target: Point3, up: Point3): Point4 {
     return this.fromMatrix4(Mtrx4.lookAt(eye, target, up));
+  }
+
+  /**
+   * Returns a quaternion that represents the input quaternion, rotated around provided axis vector by provided angle.
+   * Assumes that axis vector is already normalized
+   * @param q - Input quaternion.
+   * @param axis - Axis vector
+   * @param angle - Angle
+   * @returns A new quaternion representing the updated rotation.
+   */
+  static rotAround(q: Point4, axis: Point3, angle: number): Point4 {
+    const sinHalfAngle = Math.sin(angle / 2);
+    const rotationQuat = {
+      w: Math.cos(angle / 2),
+      x: axis.x * sinHalfAngle,
+      y: axis.y * sinHalfAngle,
+      z: axis.z * sinHalfAngle,
+    };
+    return this.mult(rotationQuat, q);
   }
 }
