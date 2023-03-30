@@ -1,11 +1,11 @@
 import { GgWorld } from '../gg-world';
+import { Subject } from 'rxjs';
 
 export abstract class GgEntity {
+  protected _world: GgWorld<any, any> | null = null;
   get world(): GgWorld<any, any> | null {
     return this._world;
   }
-
-  protected _world: GgWorld<any, any> | null = null;
 
   protected _name: string = '';
 
@@ -37,11 +37,15 @@ export abstract class GgEntity {
     }
   }
 
+  protected _onSpawned$: Subject<void> = new Subject<void>();
+  protected _onRemoved$: Subject<void> = new Subject<void>();
+
   public onSpawned(world: GgWorld<any, any>) {
     this._world = world;
     for (const c of this._children) {
       world.addEntity(c);
     }
+    this._onSpawned$.next();
   }
 
   public onRemoved() {
@@ -50,10 +54,13 @@ export abstract class GgEntity {
     for (const c of this._children) {
       world.removeEntity(c);
     }
+    this._onRemoved$.next();
   }
 
   // TODO add some flag to entity that it is disposed, and throw a normal error when trying to add such entity to world again
   public dispose(): void {
+    this._onSpawned$.complete();
+    this._onRemoved$.complete();
     for (const c of this._children) {
       c.dispose();
     }

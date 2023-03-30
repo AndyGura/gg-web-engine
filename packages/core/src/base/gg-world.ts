@@ -23,6 +23,10 @@ export abstract class GgWorld<
   // TODO consider adding mouse controller
   public readonly keyboardController: KeyboardController = new KeyboardController();
 
+  public get worldTime(): number {
+    return this.worldClock.elapsedTime;
+  }
+
   readonly children: GgEntity[] = [];
   protected readonly tickListeners: ITickListener[] = [];
 

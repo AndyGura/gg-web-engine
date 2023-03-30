@@ -170,7 +170,7 @@ export class Gg3dMapGraphEntity extends GgEntity implements ITickListener {
     this.loaderCursorEntity$.next(null);
   }
 
-  protected async loadChunk(node: MapGraphNodeType): Promise<Gg3dEntity[]> {
+  protected async loadChunk(node: MapGraphNodeType): Promise<[Gg3dEntity[], LoadResultWithProps]> {
     const loaded = await this.world!.loader.loadGgGlb(node.path, {
       position: node.position,
       rotation: node.rotation || { x: 0, y: 0, z: 0, w: 1 },
@@ -191,7 +191,7 @@ export class Gg3dMapGraphEntity extends GgEntity implements ITickListener {
       loaded,
       { position: node.position, rotation: node.rotation || { x: 0, y: 0, z: 0, w: 1 } },
     ]);
-    return entities;
+    return [entities, loaded];
   }
 
   protected disposeChunk(node: MapGraphNodeType) {
