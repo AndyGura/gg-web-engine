@@ -119,7 +119,7 @@ export abstract class GgWorld<
   }
 
   public resumeWorld() {
-    this.worldClock.pause();
+    this.worldClock.resume();
   }
 
   public dispose(): void {
