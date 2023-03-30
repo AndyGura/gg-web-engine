@@ -25,9 +25,9 @@ export class Gg3dTrigger extends BaseAmmoGGBody<Ammo.btPairCachingGhostObject> i
     super(world, _nativeBody);
   }
 
-  private readonly onEnter$: Subject<number> = new Subject<number>();
-  private readonly onLeft$: Subject<number> = new Subject<number>();
-  private readonly overlaps: Set<Ammo.btCollisionObject> = new Set<Ammo.btCollisionObject>();
+  protected readonly onEnter$: Subject<number> = new Subject<number>();
+  protected readonly onLeft$: Subject<number> = new Subject<number>();
+  protected readonly overlaps: Set<Ammo.btCollisionObject> = new Set<Ammo.btCollisionObject>();
 
   checkOverlaps(): void {
     const numOverlappingObjects = this.nativeBody.getNumOverlappingObjects();

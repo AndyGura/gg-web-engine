@@ -9,7 +9,7 @@ import { Point2 } from '../../base/models/points';
 import { Qtrn } from '../../base/math/quaternion';
 import { bindDirectionKeys, DirectionKeymap, DirectionOutput } from '../../base/controllers/common';
 
-type FreeCameraControllerOptions = {
+export type FreeCameraControllerOptions = {
   keymap: DirectionKeymap;
   movementOptions: {
     speed: number;
@@ -18,13 +18,13 @@ type FreeCameraControllerOptions = {
 };
 
 export class FreeCameraController implements IController {
-  private readonly mController: MouseController;
-  private readonly stop$: Subject<void> = new Subject<void>();
+  protected readonly mController: MouseController;
+  protected readonly stop$: Subject<void> = new Subject<void>();
 
   constructor(
-    private readonly keyboardController: KeyboardController,
-    private readonly camera: Gg3dCameraEntity,
-    private readonly options: FreeCameraControllerOptions = {
+    protected readonly keyboardController: KeyboardController,
+    protected readonly camera: Gg3dCameraEntity,
+    protected readonly options: FreeCameraControllerOptions = {
       keymap: 'wasd',
       movementOptions: { speed: 0.5 },
       mouseOptions: {},

@@ -53,9 +53,9 @@ export type CarProperties = {
 };
 
 export class Gg3dRaycastVehicleEntity extends Gg3dEntity {
-  private readonly wheels: (GgPositionable3dEntity | null)[] = [];
-  private readonly wheelLocalRotation: (Point4 | null)[] = [];
-  private readonly wheelLocalTranslation: Point3[] = [];
+  protected readonly wheels: (GgPositionable3dEntity | null)[] = [];
+  protected readonly wheelLocalRotation: (Point4 | null)[] = [];
+  protected readonly wheelLocalTranslation: Point3[] = [];
   protected readonly frontWheelsIndices: number[] = [];
   protected readonly tractionWheelIndices: number[] = [];
 
@@ -401,14 +401,14 @@ export class Gg3dRaycastVehicleEntity extends Gg3dEntity {
     }
   }
 
-  private get isTouchingGround(): boolean {
+  protected get isTouchingGround(): boolean {
     // is at least one traction wheel touches the ground
     return this.tractionWheelIndices
       .map(i => this.chassisBody.isWheelTouchesGround(i))
       .reduce((prev, cur) => cur || prev, false);
   }
 
-  private updateEngine(delta: number) {
+  protected updateEngine(delta: number) {
     delta = delta / 1000; // ms -> s
     const acceleration = this._acceleration$.getValue();
     let rpm = this.engineRpm;
@@ -433,7 +433,7 @@ export class Gg3dRaycastVehicleEntity extends Gg3dEntity {
   }
 
   // TODO delete and let game application do all the steps
-  resetTo(options: { position?: Point3; rotation?: Point4 } = {}) {
+  public resetTo(options: { position?: Point3; rotation?: Point4 } = {}) {
     this.chassisBody.resetMotion();
     this.chassisBody.resetSuspension();
     if (options.position) {

@@ -3,7 +3,7 @@ import { Engine, World } from 'matter-js';
 import { Gg2dBodyFactory } from './gg-2d-body-factory';
 
 export class Gg2dPhysicsWorld implements IGg2dPhysicsWorld {
-  private matterEngine: Engine | null = null;
+  protected matterEngine: Engine | null = null;
 
   public get matterWorld(): World | null {
     return this.matterEngine && this.matterEngine.world;

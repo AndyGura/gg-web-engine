@@ -1,4 +1,4 @@
-import { Subject, Subscription } from 'rxjs';
+import { Subject } from 'rxjs';
 import { GgPositionable2dEntity } from './gg-positionable-2d-entity';
 import { ITickListener } from '../../base/entities/interfaces/i-tick-listener';
 import { Point2 } from '../../base/models/points';
@@ -8,7 +8,6 @@ import { Gg2dWorld } from '../gg-2d-world';
 export class Gg2dEntity extends GgPositionable2dEntity implements ITickListener {
   public readonly tick$: Subject<[number, number]> = new Subject<[number, number]>();
   public readonly tickOrder = 750;
-  private tickSub: Subscription | null = null;
 
   public get position(): Point2 {
     return super.position;
@@ -50,6 +49,21 @@ export class Gg2dEntity extends GgPositionable2dEntity implements ITickListener 
       this.objectBody.scale = value;
     }
     super.scale = value;
+  }
+
+  public get visible(): boolean {
+    return !!this.object2D?.visible;
+  }
+
+  set visible(value: boolean) {
+    if (this.object2D) {
+      this.object2D.visible = value;
+    }
+    for (const entity of this._children) {
+      if (entity instanceof Gg2dEntity) {
+        entity.visible = value;
+      }
+    }
   }
 
   /**
@@ -99,8 +113,7 @@ export class Gg2dEntity extends GgPositionable2dEntity implements ITickListener 
 
   dispose(): void {
     super.dispose();
-    this.tickSub?.unsubscribe();
-    this.tickSub = null;
+    this.tick$.unsubscribe();
     if (this.object2D) {
       this.object2D.dispose();
     }

@@ -9,7 +9,7 @@ import { Gg3dWorld } from '../gg-3d-world';
 import { Gg3dEntity } from './gg-3d-entity';
 import { LoadOptions, LoadResultWithProps } from '../loader';
 
-type MapGraphNodeType = {
+export type MapGraphNodeType = {
   path: string;
   position: Point3;
   rotation?: Point4;
@@ -97,7 +97,7 @@ export class Gg3dMapGraphEntity extends GgEntity implements ITickListener {
     return this._nearestDummy$.getValue();
   }
 
-  private _chunkLoaded$: Subject<[LoadResultWithProps, { position: Point3; rotation: Point4 }]> = new Subject<
+  protected _chunkLoaded$: Subject<[LoadResultWithProps, { position: Point3; rotation: Point4 }]> = new Subject<
     [LoadResultWithProps, { position: Point3; rotation: Point4 }]
   >();
   public get chunkLoaded$(): Observable<[LoadResultWithProps, { position: Point3; rotation: Point4 }]> {
@@ -108,7 +108,7 @@ export class Gg3dMapGraphEntity extends GgEntity implements ITickListener {
     return this._world;
   }
   protected _world: Gg3dWorld | null = null;
-  private readonly mapGraphNodes: MapGraph[];
+  protected readonly mapGraphNodes: MapGraph[];
 
   protected readonly options: Gg3dMapGraphEntityOptions;
 

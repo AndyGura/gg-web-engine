@@ -10,19 +10,19 @@ import { bindDirectionKeys, DirectionKeymap, DirectionOutput } from '../../base/
 const TICKER_INTERVAL = 16;
 const TICKER_MAX_STEPS = 10;
 
-type CarKeyboardControllerOptions = {
+export type CarKeyboardControllerOptions = {
   keymap: DirectionKeymap;
   gearUpDownKeys: [string, string];
 };
 
 export class CarKeyboardController implements IController {
   // emits values -1 - 1; -1 = full turn left; 1 = full turn right
-  private readonly x$: BehaviorSubject<number> = new BehaviorSubject<number>(0);
+  protected readonly x$: BehaviorSubject<number> = new BehaviorSubject<number>(0);
   // emits values -1 - 1; -1 = full brake; 1 = full acceleration
-  private readonly y$: BehaviorSubject<number> = new BehaviorSubject<number>(0);
+  protected readonly y$: BehaviorSubject<number> = new BehaviorSubject<number>(0);
 
-  private lastX: number = 0;
-  private readonly stop$: Subject<void> = new Subject<void>();
+  protected lastX: number = 0;
+  protected readonly stop$: Subject<void> = new Subject<void>();
 
   protected readonly car$: BehaviorSubject<Gg3dRaycastVehicleEntity> = new BehaviorSubject<Gg3dRaycastVehicleEntity>(
     null!,
@@ -56,9 +56,9 @@ export class CarKeyboardController implements IController {
   }
 
   constructor(
-    private readonly keyboardController: KeyboardController,
+    protected readonly keyboardController: KeyboardController,
     car: Gg3dRaycastVehicleEntity,
-    private readonly options: CarKeyboardControllerOptions = { keymap: 'arrows', gearUpDownKeys: ['KeyA', 'KeyZ'] },
+    protected readonly options: CarKeyboardControllerOptions = { keymap: 'arrows', gearUpDownKeys: ['KeyA', 'KeyZ'] },
   ) {
     this.car$.next(car);
   }

@@ -60,8 +60,8 @@ export class Gg3dEntity extends GgPositionable3dEntity implements ITickListener 
       this.object3D.visible = value;
     }
     for (const entity of this._children) {
-      if (entity instanceof Gg3dEntity && entity.object3D) {
-        entity.object3D.visible = value;
+      if (entity instanceof Gg3dEntity) {
+        entity.visible = value;
       }
     }
   }

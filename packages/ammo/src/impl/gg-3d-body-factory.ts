@@ -12,7 +12,7 @@ import Ammo from 'ammojs-typed';
 import { Gg3dTrigger } from './bodies/gg-3d-trigger';
 
 export class Gg3dBodyFactory implements IGg3dBodyFactory<Gg3dBody, Gg3dTrigger> {
-  constructor(private readonly world: Gg3dPhysicsWorld) {}
+  constructor(protected readonly world: Gg3dPhysicsWorld) {}
 
   createRigidBody(
     descriptor: BodyShape3DDescriptor,
@@ -34,7 +34,7 @@ export class Gg3dBodyFactory implements IGg3dBodyFactory<Gg3dBody, Gg3dTrigger> 
     return this.createTriggerFromShape(this.createShape(descriptor), transform);
   }
 
-  private createShape(descriptor: Shape3DDescriptor): Ammo.btCollisionShape {
+  protected createShape(descriptor: Shape3DDescriptor): Ammo.btCollisionShape {
     switch (descriptor.shape) {
       case 'BOX':
         return new this.world.ammo.btBoxShape(

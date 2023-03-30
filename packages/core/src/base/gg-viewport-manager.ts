@@ -2,7 +2,7 @@ import { BehaviorSubject, filter, first, Subject, takeUntil } from 'rxjs';
 import { GgViewport } from './gg-viewport';
 import { BaseGgRenderer } from './entities/base-gg-renderer';
 
-type CanvasAppDescr = { canvas: HTMLCanvasElement; renderer?: BaseGgRenderer };
+export type CanvasAppDescr = { canvas: HTMLCanvasElement; renderer?: BaseGgRenderer };
 
 export class GgViewportManager {
   private static _instance: GgViewportManager | null;

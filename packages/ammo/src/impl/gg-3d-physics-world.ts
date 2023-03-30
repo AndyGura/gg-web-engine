@@ -68,7 +68,7 @@ export class Gg3dPhysicsWorld implements IGg3dPhysicsWorld {
   private broadphase: Ammo.btBroadphaseInterface | undefined;
   private solver: Ammo.btSequentialImpulseConstraintSolver | undefined;
   private gravityVector: Ammo.btVector3 | undefined;
-  private _dynamicAmmoWorld: Ammo.btDiscreteDynamicsWorld | undefined;
+  protected _dynamicAmmoWorld: Ammo.btDiscreteDynamicsWorld | undefined;
 
   async init(): Promise<void> {
     this.ammoInstance = await AmmoModule.default.bind(AmmoModule)();
