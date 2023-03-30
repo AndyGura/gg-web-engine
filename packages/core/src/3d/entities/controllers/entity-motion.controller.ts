@@ -132,7 +132,6 @@ export class EntityMotionController extends GgEntity implements ITickListener {
 
   dispose(): void {
     super.dispose();
-    this.tick$.unsubscribe();
     this.tick$.complete();
   }
 }
