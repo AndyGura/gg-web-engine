@@ -1,6 +1,7 @@
 export * from './base/clock';
 export * from './base/gg-viewport';
 export * from './base/gg-viewport-manager';
+export * from './base/entities/controllers/animation-mixer';
 export * from './base/entities/interfaces/i-tick-listener';
 export * from './base/entities/gg-entity';
 export * from './base/entities/base-gg-renderer';
@@ -26,6 +27,7 @@ export * from './base/controllers/i-controller';
 export * from './base/controllers/keyboard.controller';
 export * from './base/controllers/mouse.controller';
 
+export * from './2d/entities/controllers/entity-2d-positioning.animator';
 export * from './2d/entities/gg-2d-entity';
 export * from './2d/entities/gg-positionable-2d-entity';
 export * from './2d/entities/gg-2d-trigger.entity';
@@ -37,7 +39,8 @@ export * from './2d/gg-2d-world';
 
 export * from './3d/controllers/car-keyboard.controller';
 export * from './3d/controllers/free-camera.controller';
-export * from './3d/entities/controllers/entity-motion.controller';
+export * from './3d/entities/controllers/camera-3d.animator';
+export * from './3d/entities/controllers/entity-3d-positioning.animator';
 export * from './3d/entities/gg-3d-entity';
 export * from './3d/entities/gg-positionable-3d-entity';
 export * from './3d/entities/gg-3d-camera.entity';
