@@ -8,7 +8,7 @@ import {
   Pnt3,
 } from '@gg-web-engine/core';
 import { Gg3dVisualScene } from '@gg-web-engine/three';
-import { Gg3dPhysicsWorld, } from '@gg-web-engine/ammo';
+import { Gg3dPhysicsWorld } from '@gg-web-engine/ammo';
 import { BehaviorSubject, combineLatest, filter, Observable, pairwise } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { GameCameraController } from './game-camera-controller';
@@ -81,7 +81,7 @@ export class GameRunner {
     const nearest = this.cityMapGraph.nearestDummy;
     if (nearest) {
       state.car.resetTo({ position: nearest.data.position, rotation: { x: 0, y: 0, z: 0, w: 1 } });
-      this.gameCameraController.carCameraController.motionControlFunction = this.gameCameraController.cameraMotionFactory[this.gameCameraController.cameraIndex$.getValue()][0](state.car, state.carType); // reset elastic camera
+      this.gameCameraController.carCameraController.animationFunction = this.gameCameraController.cameraMotionFactory[this.gameCameraController.cameraIndex$.getValue()][0](state.car, state.carType); // reset elastic camera
     }
   }
 
@@ -89,10 +89,10 @@ export class GameRunner {
     // TODO rename controllers (which are keyboard/mouse related) globally to something else
     this.carController = new CarKeyboardController(this.world.keyboardController, null!, {
       keymap: 'wasd+arrows',
-      gearUpDownKeys: ['CapsLock', 'ShiftLeft']
+      gearUpDownKeys: ['CapsLock', 'ShiftLeft'],
     });
     this.world.keyboardController.bind('KeyC').pipe(
-      filter(x => !!x && this.state$.getValue().mode != 'freecamera')
+      filter(x => !!x && this.state$.getValue().mode != 'freecamera'),
     ).subscribe(() => {
       if (this.gameCameraController.cameraIndex$.getValue() >= this.gameCameraController.cameraMotionFactory.length - 1) {
         this.gameCameraController.cameraIndex$.next(0);
@@ -131,7 +131,7 @@ export class GameRunner {
 
     combineLatest(
       this.state$.pipe(map(s => s.mode === 'driving')),
-      this.world.keyboardController.bind('KeyH')
+      this.world.keyboardController.bind('KeyH'),
     )
       .pipe(map(([a, b]) => a && b))
       .subscribe((honk) => {

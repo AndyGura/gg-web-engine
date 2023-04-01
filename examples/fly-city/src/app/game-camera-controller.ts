@@ -1,14 +1,15 @@
 import {
-  EntityMotionController,
+  AnimationFunction,
+  Camera3dAnimationArgs,
+  Camera3dAnimator,
   FreeCameraController,
   Gg3dRaycastVehicleEntity,
   Gg3dRenderer,
   Gg3dWorld,
-  lerpNumber,
-  MotionControlFunction,
+  Pnt3,
 } from '@gg-web-engine/core';
-import { Gg3dVisualScene, GgRenderer, ThreeCameraEntity } from '@gg-web-engine/three';
-import { Gg3dPhysicsWorld, } from '@gg-web-engine/ammo';
+import { Gg3dVisualScene, GgRenderer } from '@gg-web-engine/three';
+import { Gg3dPhysicsWorld } from '@gg-web-engine/ammo';
 import { bumperCamera, farCamera, nearCamera } from './car-cameras';
 import { BehaviorSubject, skip } from 'rxjs';
 import { CurrentState } from './game-runner';
@@ -16,10 +17,10 @@ import { CurrentState } from './game-runner';
 export class GameCameraController {
 
   public readonly freeCameraController: FreeCameraController;
-  public readonly carCameraController: EntityMotionController;
+  public readonly carCameraController: Camera3dAnimator;
   public readonly cameraIndex$: BehaviorSubject<number> = new BehaviorSubject<number>(0);
 
-  cameraMotionFactory: [(car: Gg3dRaycastVehicleEntity, type: 'lambo' | 'truck' | 'car') => MotionControlFunction, number, (t: number) => number][] = [
+  cameraMotionFactory: [(car: Gg3dRaycastVehicleEntity, type: 'lambo' | 'truck' | 'car') => AnimationFunction<Camera3dAnimationArgs>, number, (t: number) => number][] = [
     [farCamera, 600, (t: number) => Math.pow(t, 0.3)],
     [bumperCamera, 250, (t: number) => 0.7 * Math.pow(t, 0.3)],
     [nearCamera, 250, (t: number) => 0.7 + 0.3 * Math.pow(t, 0.3)],
@@ -41,13 +42,19 @@ export class GameCameraController {
       this.carCameraController.transitFromStaticState(
         {
           position: this.renderer.camera.position,
-          rotation: this.renderer.camera.rotation,
-          customParameters: { fov: this.renderer.camera.object3D.fov }
+          target: Pnt3.add(
+            this.renderer.camera.position,
+            Pnt3.rot(
+              { x: 0, y: 0, z: -Pnt3.len(Pnt3.sub(state.car.position, this.renderer.camera.position)) },
+              this.renderer.camera.rotation,
+            ),
+          ),
+          up: Pnt3.rot({ x: 0, y: 1, z: 0 }, this.renderer.camera.rotation),
+          fov: this.renderer.camera.fov,
         },
         this.cameraMotionFactory[this.cameraIndex$.getValue()][0](state.car, state.carType),
         800,
         t => Math.pow(t, 0.5),
-        ({ fov: fovA }, { fov: fovB }, t) => ({ fov: lerpNumber(fovA, fovB, t) }),
       );
     }
     this.state_ = state;
@@ -74,23 +81,14 @@ export class GameCameraController {
         },
       },
     );
-    this.carCameraController = new EntityMotionController(
-      renderer.camera,
-      null!,
-      (camera, p) => {
-        if (p.fov) {
-          (camera as ThreeCameraEntity).object3D.fov = p.fov;
-        }
-      }
-    );
+    this.carCameraController = new Camera3dAnimator(renderer.camera, null!);
     this.cameraIndex$.pipe(skip(1)).subscribe(index => {
       if (this.state_.mode == 'driving') {
         const [funcProto, duration, easing] = this.cameraMotionFactory[index];
-        this.carCameraController.transitControlFunction(
+        this.carCameraController.transitAnimationFunction(
           funcProto(this.state_.car, this.state_.carType),
           duration,
           easing,
-          ({ fov: fovA }, { fov: fovB }, t) => ({ fov: lerpNumber(fovA, fovB, t) })
         );
       }
     });

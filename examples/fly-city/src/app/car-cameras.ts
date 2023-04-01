@@ -1,4 +1,11 @@
-import { averageAngle, MotionControlFunction, Gg3dRaycastVehicleEntity, Pnt3, Point3, Qtrn } from '@gg-web-engine/core';
+import {
+  AnimationFunction,
+  averageAngle,
+  Camera3dAnimationArgs,
+  Gg3dRaycastVehicleEntity,
+  Pnt3,
+  Point3,
+} from '@gg-web-engine/core';
 
 const elasticAngle: (inertia: number, easing?: (x: number) => number) => ((value: number, deltaMs: number) => number) =
   (inertia: number, easing: ((x: number) => number) = x => x) => {
@@ -15,10 +22,10 @@ const elasticAngle: (inertia: number, easing?: (x: number) => number) => ((value
     };
   };
 
-const elasticCarCameraControlFunction: (car: Gg3dRaycastVehicleEntity, vectorLength: number, vectorAngle: number, fov: number) => MotionControlFunction =
+const elasticCarCameraControlFunction: (car: Gg3dRaycastVehicleEntity, vectorLength: number, vectorAngle: number, fov: number) => AnimationFunction<Camera3dAnimationArgs> =
   (car: Gg3dRaycastVehicleEntity, vectorLength: number, vectorAngle: number, fov: number) => {
     const elasticZAngle = elasticAngle(250, x => Math.pow(x, 0.75));
-    return (delta) => {
+    return (elapsed, delta) => {
       const objectPosition = car.position;
       const carVector = Pnt3.rot({ x: 0, y: 1, z: 0 }, car.rotation);
       // FIXME jitters when turning during FPS drop, but elasticZAngle calculation is correct
@@ -27,52 +34,38 @@ const elasticCarCameraControlFunction: (car: Gg3dRaycastVehicleEntity, vectorLen
         Pnt3.rotAround(
           { x: 0, y: -vectorLength, z: 0 },
           { x: 1, y: 0, z: 0 },
-          -vectorAngle
+          -vectorAngle,
         ),
         { x: 0, y: 0, z: 1 },
-        zAngle
+        zAngle,
       );
       let cameraTargetVector = { x: 0, y: 0, z: vectorLength * Math.sin(vectorAngle) };
-      const position = Pnt3.add(objectPosition, cameraVector);
       return {
-        position,
-        rotation: Qtrn.lookAt(
-          position,
-          Pnt3.add(objectPosition, cameraTargetVector),
-          Pnt3.norm(cameraTargetVector),
-        ),
-        customParameters: {
-          fov,
-        },
+        position: Pnt3.add(objectPosition, cameraVector),
+        target: Pnt3.add(objectPosition, cameraTargetVector),
+        up: Pnt3.norm(cameraTargetVector),
+        fov,
       };
-    }
+    };
   };
 
-const lockedCameraControlFunction: (car: Gg3dRaycastVehicleEntity, cameraPosition: Point3, targetPosition: Point3, fov: number) => MotionControlFunction =
+const lockedCameraControlFunction: (car: Gg3dRaycastVehicleEntity, cameraPosition: Point3, targetPosition: Point3, fov: number) => AnimationFunction<Camera3dAnimationArgs> =
   (car: Gg3dRaycastVehicleEntity, cameraPosition: Point3, targetPosition: Point3, fov: number) => {
     return () => {
       const objectPosition = car.position;
       const rotation = car.rotation;
       const cameraVector = Pnt3.rot(cameraPosition, rotation);
       const cameraTargetVector = Pnt3.rot(targetPosition, rotation);
-      const cameraUpVector = Pnt3.rot({ x: 0, y: 0, z: 1 }, rotation);
-
-      const position = Pnt3.add(objectPosition, cameraVector);
       return {
-        position,
-        rotation: Qtrn.lookAt(
-          position,
-          Pnt3.add(objectPosition, cameraTargetVector),
-          cameraUpVector,
-        ),
-        customParameters: {
-          fov,
-        },
+        position: Pnt3.add(objectPosition, cameraVector),
+        target: Pnt3.add(objectPosition, cameraTargetVector),
+        up: Pnt3.rot({ x: 0, y: 0, z: 1 }, rotation),
+        fov,
       };
-    }
+    };
   };
 
-export const farCamera: (car: Gg3dRaycastVehicleEntity, type: 'lambo' | 'truck' | 'car') => MotionControlFunction = (car, type) => {
+export const farCamera: (car: Gg3dRaycastVehicleEntity, type: 'lambo' | 'truck' | 'car') => AnimationFunction<Camera3dAnimationArgs> = (car, type) => {
   if (type === 'lambo') {
     return elasticCarCameraControlFunction(car, 6.5, 0.3948, 65);
   } else if (type === 'car') {
@@ -82,7 +75,7 @@ export const farCamera: (car: Gg3dRaycastVehicleEntity, type: 'lambo' | 'truck' 
   }
 };
 
-export const nearCamera: (car: Gg3dRaycastVehicleEntity, type: 'lambo' | 'truck' | 'car') => MotionControlFunction = (car, type) => {
+export const nearCamera: (car: Gg3dRaycastVehicleEntity, type: 'lambo' | 'truck' | 'car') => AnimationFunction<Camera3dAnimationArgs> = (car, type) => {
   if (type === 'lambo') {
     return elasticCarCameraControlFunction(car, 4.09, 0.376, 80);
   } else if (type === 'car') {
@@ -92,7 +85,7 @@ export const nearCamera: (car: Gg3dRaycastVehicleEntity, type: 'lambo' | 'truck'
   }
 };
 
-export const bumperCamera: (car: Gg3dRaycastVehicleEntity, type: 'lambo' | 'truck' | 'car') => MotionControlFunction = (car, type) => {
+export const bumperCamera: (car: Gg3dRaycastVehicleEntity, type: 'lambo' | 'truck' | 'car') => AnimationFunction<Camera3dAnimationArgs> = (car, type) => {
   if (type === 'lambo') {
     return lockedCameraControlFunction(car, { x: 0, y: 1, z: 0.7 }, { x: 0, y: 2, z: 0.7 }, 70);
   } else if (type === 'car') {
