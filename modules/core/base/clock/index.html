@@ -8,7 +8,7 @@
       
       
       
-        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/base/gg-world.ts/">
+        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/base/clock/">
       
       
       
@@ -17,7 +17,7 @@
     
     
       
-        <title>core/base/gg-world.ts - GG-web-engine</title>
+        <title>Modules - GG-web-engine</title>
       
     
     
@@ -68,11 +68,6 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
-        
-        <a href="#gg-world-overview" class="md-skip">
-          Skip to content
-        </a>
-      
     </div>
     <div data-md-component="announce">
       
@@ -104,7 +99,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              core/base/gg-world.ts
+              Modules
             
           </span>
         </div>
@@ -388,152 +383,6 @@
   
   
   
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#gg-world-overview" class="md-nav__link">
-    gg-world overview
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#utils" class="md-nav__link">
-    utils
-  </a>
-  
-    <nav class="md-nav" aria-label="utils">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#ggworld-class" class="md-nav__link">
-    GgWorld (class)
-  </a>
-  
-    <nav class="md-nav" aria-label="GgWorld (class)">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#init-method" class="md-nav__link">
-    init (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#start-method" class="md-nav__link">
-    start (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pauseworld-method" class="md-nav__link">
-    pauseWorld (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#resumeworld-method" class="md-nav__link">
-    resumeWorld (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#dispose-method" class="md-nav__link">
-    dispose (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#addprimitiverigidbody-method" class="md-nav__link">
-    addPrimitiveRigidBody (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#addentity-method" class="md-nav__link">
-    addEntity (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#removeentity-method" class="md-nav__link">
-    removeEntity (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#registerconsolecommand-method" class="md-nav__link">
-    registerConsoleCommand (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#runconsolecommand-method" class="md-nav__link">
-    runConsoleCommand (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#triggerphysicsdebugview-method" class="md-nav__link">
-    triggerPhysicsDebugView (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#keyboardcontroller-property" class="md-nav__link">
-    keyboardController (property)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#children-property" class="md-nav__link">
-    children (property)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#ticklisteners-property" class="md-nav__link">
-    tickListeners (property)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#commands-property" class="md-nav__link">
-    commands (property)
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
 </nav>
                   </div>
                 </div>
@@ -550,103 +399,14 @@
   
 
 
-<h2 id="gg-world-overview">gg-world overview</h2>
-<hr />
-<h2 class="text-delta">Table of contents</h2>
+  <h1>Modules</h1>
+
+<h2 class="text-delta">Directory table of contents</h2>
 
 <ul>
-<li><a href="#utils">utils</a></li>
-<li><a href="#ggworld-class">GgWorld (class)</a><ul>
-<li><a href="#init-method">init (method)</a></li>
-<li><a href="#start-method">start (method)</a></li>
-<li><a href="#pauseworld-method">pauseWorld (method)</a></li>
-<li><a href="#resumeworld-method">resumeWorld (method)</a></li>
-<li><a href="#dispose-method">dispose (method)</a></li>
-<li><a href="#addprimitiverigidbody-method">addPrimitiveRigidBody (method)</a></li>
-<li><a href="#addentity-method">addEntity (method)</a></li>
-<li><a href="#removeentity-method">removeEntity (method)</a></li>
-<li><a href="#registerconsolecommand-method">registerConsoleCommand (method)</a></li>
-<li><a href="#runconsolecommand-method">runConsoleCommand (method)</a></li>
-<li><a href="#triggerphysicsdebugview-method">triggerPhysicsDebugView (method)</a></li>
-<li><a href="#keyboardcontroller-property">keyboardController (property)</a></li>
-<li><a href="#children-property">children (property)</a></li>
-<li><a href="#ticklisteners-property">tickListeners (property)</a></li>
-<li><a href="#commands-property">commands (property)</a></li>
+<li><a href="/gg-web-engine/modules/core/base/clock/clock.ts">core/base/clock/clock.ts</a></li>
+<li><a href="/gg-web-engine/modules/core/base/clock/global-clock.ts">core/base/clock/global-clock.ts</a></li>
 </ul>
-</li>
-</ul>
-<hr />
-<h1 id="utils">utils</h1>
-<h2 id="ggworld-class">GgWorld (class)</h2>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class GgWorld&lt;D, R, V, P&gt; {
-  constructor(
-    public readonly visualScene: V,
-    public readonly physicsWorld: P,
-    protected readonly consoleEnabled: boolean = false
-  )
-}
-</code></pre>
-<h3 id="init-method">init (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">public async init()
-</code></pre>
-<h3 id="start-method">start (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">public start()
-</code></pre>
-<h3 id="pauseworld-method">pauseWorld (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">public pauseWorld()
-</code></pre>
-<h3 id="resumeworld-method">resumeWorld (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">public resumeWorld()
-</code></pre>
-<h3 id="dispose-method">dispose (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">public dispose(): void
-</code></pre>
-<h3 id="addprimitiverigidbody-method">addPrimitiveRigidBody (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">abstract addPrimitiveRigidBody(descr: any, position?: D, rotation?: R): GgPositionableEntity&lt;D, R&gt;;
-</code></pre>
-<h3 id="addentity-method">addEntity (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">public addEntity(entity: GgEntity): void
-</code></pre>
-<h3 id="removeentity-method">removeEntity (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">public removeEntity(entity: GgEntity, dispose = true): void
-</code></pre>
-<h3 id="registerconsolecommand-method">registerConsoleCommand (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">public registerConsoleCommand(command: string, handler: (...args: string[]) =&gt; Promise&lt;string&gt;, doc?: string): void
-</code></pre>
-<h3 id="runconsolecommand-method">runConsoleCommand (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">public async runConsoleCommand(command: string, args: string[]): Promise&lt;string&gt;
-</code></pre>
-<h3 id="triggerphysicsdebugview-method">triggerPhysicsDebugView (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">public triggerPhysicsDebugView()
-</code></pre>
-<h3 id="keyboardcontroller-property">keyboardController (property)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly keyboardController: KeyboardController
-</code></pre>
-<h3 id="children-property">children (property)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly children: GgEntity[]
-</code></pre>
-<h3 id="ticklisteners-property">tickListeners (property)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly tickListeners: ITickListener[]
-</code></pre>
-<h3 id="commands-property">commands (property)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">commands: { [key: string]: { handler: (...args: string[]) =&gt; Promise&lt;string&gt;; doc?: string | undefined; }; }
-</code></pre>
 
 
 

@@ -494,6 +494,13 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#rotaround-static-method" class="md-nav__link">
+    rotAround (static method)
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -540,67 +547,84 @@
 <li><a href="#fromeuler-static-method">fromEuler (static method)</a></li>
 <li><a href="#toeuler-static-method">toEuler (static method)</a></li>
 <li><a href="#lookat-static-method">lookAt (static method)</a></li>
+<li><a href="#rotaround-static-method">rotAround (static method)</a></li>
 </ul>
 </li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
 <h2 id="qtrn-class">Qtrn (class)</h2>
+<p>Helper class with static functions, containing util functions, related to Quaternion (represented as Point4 type).
+In terms of rotation, a quaternion is a mathematical representation of an orientation or rotation in 3D space.
+It consists of a scalar component and a vector component, and can be written as q = w + xi + yj + zk, where w is the
+scalar component, and i, j, and k are the vector components. The scalar component, w, represents the amount of
+rotation, and the vector component, (x, y, z), represents the axis of rotation. The length of the vector component
+represents the amount of rotation around the axis. Quaternions are often used in 3D computer graphics and animation
+because they can be used to interpolate between two rotations, and they can avoid some of the issues with using
+Euler angles (such as gimbal lock).</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export declare class Qtrn
 </code></pre>
 <h3 id="clone-static-method">clone (static method)</h3>
-<p>clone quaternion</p>
+<p>Returns a new quaternion instance with the same values as the given quaternion object.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">static clone(q: Point4): Point4
 </code></pre>
 <h3 id="add-static-method">add (static method)</h3>
-<p>add quaternion b to quaternion a</p>
+<p>Returns the sum of two Point4 objects.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">static add(a: Point4, b: Point4): Point4
 </code></pre>
 <h3 id="mult-static-method">mult (static method)</h3>
+<p>Returns the result of multiplying two Point4 objects. This can be used for combining rotations</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">static mult(a: Point4, b: Point4): Point4
 </code></pre>
 <h3 id="combinerotations-static-method">combineRotations (static method)</h3>
+<p>Combines an arbitrary number of quaternions by multiplying them together in order.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">static combineRotations(...quaternions: Point4[]): Point4
 </code></pre>
 <h3 id="lerp-static-method">lerp (static method)</h3>
-<p>linear interpolation</p>
+<p>Performs a linear interpolation between two Point4 objects.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">static lerp(a: Point4, b: Point4, t: number): Point4
 </code></pre>
 <h3 id="slerp-static-method">slerp (static method)</h3>
-<p>spherical interpolation</p>
+<p>Performs a spherical linear interpolation between two Point4 objects.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">static slerp(a: Point4, b: Point4, t: number): Point4
 </code></pre>
 <h3 id="fromangle-static-method">fromAngle (static method)</h3>
-<p>creates quaternion from simple angle around axis. Assumes that axis vector is normalized</p>
+<p>Converts an angle and an axis of rotation into a quaternion</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">static fromAngle(axis: Point3, angle: number)
 </code></pre>
 <h3 id="frommatrix4-static-method">fromMatrix4 (static method)</h3>
-<p>creates quaternion from 4-dimension rotation matrix</p>
+<p>Converts a 4x4 matrix representing a rotation into a quaternion</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">static fromMatrix4(m: number[]): Point4
 </code></pre>
 <h3 id="fromeuler-static-method">fromEuler (static method)</h3>
-<p>creates a quaternion from euler</p>
+<p>Creates a quaternion from euler</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">static fromEuler(e: Point3): Point4
 </code></pre>
 <h3 id="toeuler-static-method">toEuler (static method)</h3>
-<p>converts a quaternion to euler</p>
+<p>Converts a quaternion to euler</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">static toEuler(q: Point4): Point3
 </code></pre>
 <h3 id="lookat-static-method">lookAt (static method)</h3>
-<p>creates a rotation for object, so it will look at some point in space</p>
+<p>Returns a quaternion that represents the rotation required to align an object to face towards a target point.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">static lookAt(eye: Point3, target: Point3, up: Point3): Point4
+</code></pre>
+<h3 id="rotaround-static-method">rotAround (static method)</h3>
+<p>Returns a quaternion that represents the input quaternion, rotated around provided axis vector by provided angle.
+Assumes that axis vector is already normalized</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">static rotAround(q: Point4, axis: Point3, angle: number): Point4
 </code></pre>
 
 

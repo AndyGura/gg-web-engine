@@ -418,6 +418,13 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#runtransformbinding-method" class="md-nav__link">
+    runTransformBinding (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#onspawned-method" class="md-nav__link">
     onSpawned (method)
   </a>
@@ -487,6 +494,7 @@
 <ul>
 <li><a href="#utils">utils</a></li>
 <li><a href="#gg2dentity-class">Gg2dEntity (class)</a><ul>
+<li><a href="#runtransformbinding-method">runTransformBinding (method)</a></li>
 <li><a href="#onspawned-method">onSpawned (method)</a></li>
 <li><a href="#onremoved-method">onRemoved (method)</a></li>
 <li><a href="#dispose-method">dispose (method)</a></li>
@@ -502,6 +510,11 @@
 <pre><code class="language-ts">export declare class Gg2dEntity {
   constructor(public readonly object2D: IGg2dObject | null, public readonly objectBody: IGg2dBody | null)
 }
+</code></pre>
+<h3 id="runtransformbinding-method">runTransformBinding (method)</h3>
+<p>Synchronize physics body transform with entity (and object2d if defined)</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">protected runTransformBinding(objectBody: IGg2dBody, object2D: IGg2dObject | null): void
 </code></pre>
 <h3 id="onspawned-method">onSpawned (method)</h3>
 <p><strong>Signature</strong></p>

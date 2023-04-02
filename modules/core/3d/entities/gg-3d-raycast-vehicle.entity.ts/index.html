@@ -509,6 +509,27 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#wheels-property" class="md-nav__link">
+    wheels (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wheellocalrotation-property" class="md-nav__link">
+    wheelLocalRotation (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wheellocaltranslation-property" class="md-nav__link">
+    wheelLocalTranslation (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#frontwheelsindices-property" class="md-nav__link">
     frontWheelsIndices (property)
   </a>
@@ -612,6 +633,9 @@
 <li><a href="#resetto-method">resetTo (method)</a></li>
 <li><a href="#setxaxiscontrolvalue-method">setXAxisControlValue (method)</a></li>
 <li><a href="#setyaxiscontrolvalue-method">setYAxisControlValue (method)</a></li>
+<li><a href="#wheels-property">wheels (property)</a></li>
+<li><a href="#wheellocalrotation-property">wheelLocalRotation (property)</a></li>
+<li><a href="#wheellocaltranslation-property">wheelLocalTranslation (property)</a></li>
 <li><a href="#frontwheelsindices-property">frontWheelsIndices (property)</a></li>
 <li><a href="#tractionwheelindices-property">tractionWheelIndices (property)</a></li>
 <li><a href="#tractionwheelradius-property">tractionWheelRadius (property)</a></li>
@@ -695,11 +719,11 @@
 </code></pre>
 <h3 id="updateengine-method">updateEngine (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">private updateEngine(delta: number)
+<pre><code class="language-ts">protected updateEngine(delta: number)
 </code></pre>
 <h3 id="resetto-method">resetTo (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">resetTo(options: { position?: Point3; rotation?: Point4 } = {})
+<pre><code class="language-ts">public resetTo(options: { position?: Point3; rotation?: Point4 } = {})
 </code></pre>
 <h3 id="setxaxiscontrolvalue-method">setXAxisControlValue (method)</h3>
 <p><strong>Signature</strong></p>
@@ -708,6 +732,18 @@
 <h3 id="setyaxiscontrolvalue-method">setYAxisControlValue (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public setYAxisControlValue(value: number)
+</code></pre>
+<h3 id="wheels-property">wheels (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly wheels: (GgPositionable3dEntity | null)[]
+</code></pre>
+<h3 id="wheellocalrotation-property">wheelLocalRotation (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly wheelLocalRotation: (Point4 | null)[]
+</code></pre>
+<h3 id="wheellocaltranslation-property">wheelLocalTranslation (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly wheelLocalTranslation: Point3[]
 </code></pre>
 <h3 id="frontwheelsindices-property">frontWheelsIndices (property)</h3>
 <p><strong>Signature</strong></p>

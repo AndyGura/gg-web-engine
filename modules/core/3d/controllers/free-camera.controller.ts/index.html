@@ -431,8 +431,29 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#mcontroller-property" class="md-nav__link">
+    mController (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stop-property" class="md-nav__link">
+    stop$ (property)
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#freecameracontrolleroptions-type-alias" class="md-nav__link">
+    FreeCameraControllerOptions (type alias)
+  </a>
   
 </li>
         
@@ -468,8 +489,11 @@
 <li><a href="#freecameracontroller-class">FreeCameraController (class)</a><ul>
 <li><a href="#start-method">start (method)</a></li>
 <li><a href="#stop-method">stop (method)</a></li>
+<li><a href="#mcontroller-property">mController (property)</a></li>
+<li><a href="#stop-property">stop$ (property)</a></li>
 </ul>
 </li>
+<li><a href="#freecameracontrolleroptions-type-alias">FreeCameraControllerOptions (type alias)</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
@@ -477,9 +501,9 @@
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export declare class FreeCameraController {
   constructor(
-    private readonly keyboardController: KeyboardController,
-    private readonly camera: Gg3dCameraEntity,
-    private readonly options: FreeCameraControllerOptions = {
+    protected readonly keyboardController: KeyboardController,
+    protected readonly camera: Gg3dCameraEntity,
+    protected readonly options: FreeCameraControllerOptions = {
       keymap: 'wasd',
       movementOptions: { speed: 0.5 },
       mouseOptions: {},
@@ -494,6 +518,24 @@
 <h3 id="stop-method">stop (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">async stop(unlockPointer: boolean = true): Promise&lt;void&gt;
+</code></pre>
+<h3 id="mcontroller-property">mController (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly mController: MouseController
+</code></pre>
+<h3 id="stop-property">stop$ (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly stop$: any
+</code></pre>
+<h2 id="freecameracontrolleroptions-type-alias">FreeCameraControllerOptions (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type FreeCameraControllerOptions = {
+  keymap: DirectionKeymap
+  movementOptions: {
+    speed: number
+  }
+  mouseOptions: MouseControllerOptions
+}
 </code></pre>
 
 

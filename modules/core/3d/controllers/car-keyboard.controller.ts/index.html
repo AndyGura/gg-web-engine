@@ -432,8 +432,43 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#x-property" class="md-nav__link">
+    x$ (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#y-property" class="md-nav__link">
+    y$ (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lastx-property" class="md-nav__link">
+    lastX (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stop-property" class="md-nav__link">
+    stop$ (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#car-property" class="md-nav__link">
     car$ (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#switchinggearsenabled-property" class="md-nav__link">
+    switchingGearsEnabled (property)
   </a>
   
 </li>
@@ -447,6 +482,13 @@
         
       </ul>
     </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#carkeyboardcontrolleroptions-type-alias" class="md-nav__link">
+    CarKeyboardControllerOptions (type alias)
+  </a>
   
 </li>
         
@@ -482,10 +524,16 @@
 <li><a href="#carkeyboardcontroller-class">CarKeyboardController (class)</a><ul>
 <li><a href="#start-method">start (method)</a></li>
 <li><a href="#stop-method">stop (method)</a></li>
+<li><a href="#x-property">x$ (property)</a></li>
+<li><a href="#y-property">y$ (property)</a></li>
+<li><a href="#lastx-property">lastX (property)</a></li>
+<li><a href="#stop-property">stop$ (property)</a></li>
 <li><a href="#car-property">car$ (property)</a></li>
+<li><a href="#switchinggearsenabled-property">switchingGearsEnabled (property)</a></li>
 <li><a href="#pairtickerpipe-property">pairTickerPipe (property)</a></li>
 </ul>
 </li>
+<li><a href="#carkeyboardcontrolleroptions-type-alias">CarKeyboardControllerOptions (type alias)</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
@@ -493,9 +541,9 @@
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export declare class CarKeyboardController {
   constructor(
-    private readonly keyboardController: KeyboardController,
+    protected readonly keyboardController: KeyboardController,
     car: Gg3dRaycastVehicleEntity,
-    private readonly options: CarKeyboardControllerOptions = { keymap: 'arrows', gearUpDownKeys: ['KeyA', 'KeyZ'] }
+    protected readonly options: CarKeyboardControllerOptions = { keymap: 'arrows', gearUpDownKeys: ['KeyA', 'KeyZ'] }
   )
 }
 </code></pre>
@@ -507,13 +555,40 @@
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">async stop(): Promise&lt;void&gt;
 </code></pre>
+<h3 id="x-property">x$ (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly x$: any
+</code></pre>
+<h3 id="y-property">y$ (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly y$: any
+</code></pre>
+<h3 id="lastx-property">lastX (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">lastX: number
+</code></pre>
+<h3 id="stop-property">stop$ (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly stop$: any
+</code></pre>
 <h3 id="car-property">car$ (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly car$: any
 </code></pre>
+<h3 id="switchinggearsenabled-property">switchingGearsEnabled (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">switchingGearsEnabled: boolean
+</code></pre>
 <h3 id="pairtickerpipe-property">pairTickerPipe (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">pairTickerPipe: any
+</code></pre>
+<h2 id="carkeyboardcontrolleroptions-type-alias">CarKeyboardControllerOptions (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type CarKeyboardControllerOptions = {
+  keymap: DirectionKeymap
+  gearUpDownKeys: [string, string]
+}
 </code></pre>
 
 
