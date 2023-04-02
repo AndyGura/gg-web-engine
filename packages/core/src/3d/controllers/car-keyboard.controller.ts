@@ -28,6 +28,16 @@ export class CarKeyboardController implements IController {
     null!,
   );
 
+  public set car(value: Gg3dRaycastVehicleEntity) {
+    this.car$.next(value);
+  }
+
+  public get car(): Gg3dRaycastVehicleEntity {
+    return this.car$.getValue();
+  }
+
+  public switchingGearsEnabled: boolean = true;
+
   pairTickerPipe = pipe(
     startWith(0),
     pairwise<number>(),
@@ -47,14 +57,6 @@ export class CarKeyboardController implements IController {
     ),
   );
 
-  public set car(value: Gg3dRaycastVehicleEntity) {
-    this.car$.next(value);
-  }
-
-  public get car(): Gg3dRaycastVehicleEntity {
-    return this.car$.getValue();
-  }
-
   constructor(
     protected readonly keyboardController: KeyboardController,
     car: Gg3dRaycastVehicleEntity,
@@ -65,6 +67,33 @@ export class CarKeyboardController implements IController {
 
   async start(): Promise<void> {
     let moveDirection: DirectionOutput = {};
+    this.keyboardController
+      .bind(this.options.gearUpDownKeys[0])
+      .pipe(
+        takeUntil(this.stop$),
+        filter(x => this.switchingGearsEnabled && !!x),
+      )
+      .subscribe(() => {
+        if (
+          this.car$.getValue() &&
+          (!this.car$.getValue().carProperties.transmission.isAuto || this.car$.getValue().gear <= 0)
+        ) {
+          this.car$.getValue().gear++;
+        }
+      });
+    this.keyboardController
+      .bind(this.options.gearUpDownKeys[1])
+      .pipe(
+        takeUntil(this.stop$),
+        filter(x => this.switchingGearsEnabled && !!x),
+      )
+      .subscribe(() => {
+        if (this.car$.getValue().carProperties.transmission.isAuto && this.car.gear > 1) {
+          this.car$.getValue().gear = 0;
+        } else {
+          this.car$.getValue().gear--;
+        }
+      });
     bindDirectionKeys(this.keyboardController, this.options.keymap)
       .pipe(takeUntil(this.stop$))
       .subscribe(d => {
@@ -93,33 +122,6 @@ export class CarKeyboardController implements IController {
       this.car$.getValue().setXAxisControlValue(x);
       this.car$.getValue().setYAxisControlValue(y);
     });
-    this.keyboardController
-      .bind(this.options.gearUpDownKeys[0])
-      .pipe(
-        takeUntil(this.stop$),
-        filter(x => !!x),
-      )
-      .subscribe(() => {
-        if (
-          this.car$.getValue() &&
-          (!this.car$.getValue().carProperties.transmission.isAuto || this.car$.getValue().gear <= 0)
-        ) {
-          this.car$.getValue().gear++;
-        }
-      });
-    this.keyboardController
-      .bind(this.options.gearUpDownKeys[1])
-      .pipe(
-        takeUntil(this.stop$),
-        filter(x => !!x),
-      )
-      .subscribe(() => {
-        if (this.car$.getValue().carProperties.transmission.isAuto && this.car.gear > 1) {
-          this.car$.getValue().gear = 0;
-        } else {
-          this.car$.getValue().gear--;
-        }
-      });
   }
 
   async stop(): Promise<void> {
