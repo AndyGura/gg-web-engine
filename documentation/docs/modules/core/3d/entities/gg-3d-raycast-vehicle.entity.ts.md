@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/gg-3d-raycast-vehicle.entity.ts
-nav_order: 24
+nav_order: 26
 parent: Modules
 ---
 
@@ -25,6 +25,9 @@ parent: Modules
     - [resetTo (method)](#resetto-method)
     - [setXAxisControlValue (method)](#setxaxiscontrolvalue-method)
     - [setYAxisControlValue (method)](#setyaxiscontrolvalue-method)
+    - [wheels (property)](#wheels-property)
+    - [wheelLocalRotation (property)](#wheellocalrotation-property)
+    - [wheelLocalTranslation (property)](#wheellocaltranslation-property)
     - [frontWheelsIndices (property)](#frontwheelsindices-property)
     - [tractionWheelIndices (property)](#tractionwheelindices-property)
     - [tractionWheelRadius (property)](#tractionwheelradius-property)
@@ -151,7 +154,7 @@ protected runTransformBinding(objectBody: IGg3dBody, object3D: IGg3dObject): voi
 **Signature**
 
 ```ts
-private updateEngine(delta: number)
+protected updateEngine(delta: number)
 ```
 
 ### resetTo (method)
@@ -159,7 +162,7 @@ private updateEngine(delta: number)
 **Signature**
 
 ```ts
-resetTo(options: { position?: Point3; rotation?: Point4 } = {})
+public resetTo(options: { position?: Point3; rotation?: Point4 } = {})
 ```
 
 ### setXAxisControlValue (method)
@@ -176,6 +179,30 @@ public setXAxisControlValue(value: number)
 
 ```ts
 public setYAxisControlValue(value: number)
+```
+
+### wheels (property)
+
+**Signature**
+
+```ts
+readonly wheels: (GgPositionable3dEntity | null)[]
+```
+
+### wheelLocalRotation (property)
+
+**Signature**
+
+```ts
+readonly wheelLocalRotation: (Point4 | null)[]
+```
+
+### wheelLocalTranslation (property)
+
+**Signature**
+
+```ts
+readonly wheelLocalTranslation: Point3[]
 ```
 
 ### frontWheelsIndices (property)

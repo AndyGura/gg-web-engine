@@ -1,6 +1,6 @@
 ---
 title: core/base/entities/gg-positionable-entity.ts
-nav_order: 42
+nav_order: 46
 parent: Modules
 ---
 

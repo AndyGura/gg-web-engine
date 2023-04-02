@@ -1,6 +1,6 @@
 ---
 title: three/impl/gg-3d-object-loader.ts
-nav_order: 75
+nav_order: 79
 parent: Modules
 ---
 

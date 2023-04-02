@@ -474,6 +474,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#debugmode-property" class="md-nav__link">
+    debugMode (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#ammoinstance-property" class="md-nav__link">
     ammoInstance (property)
   </a>
@@ -530,6 +537,7 @@
 <li><a href="#setdebugflags-method">setDebugFlags (method)</a></li>
 <li><a href="#setdebugmode-method">setDebugMode (method)</a></li>
 <li><a href="#reporterrorwarning-method">reportErrorWarning (method)</a></li>
+<li><a href="#debugmode-property">debugMode (property)</a></li>
 <li><a href="#ammoinstance-property">ammoInstance (property)</a></li>
 </ul>
 </li>
@@ -540,7 +548,7 @@
 <h2 id="ammodebugger-class">AmmoDebugger (class)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export declare class AmmoDebugger {
-  constructor(private readonly world: Gg3dPhysicsWorld, private readonly drawer: GgDebugPhysicsDrawer&lt;Point3, Point4&gt;)
+  constructor(protected readonly world: Gg3dPhysicsWorld, private readonly drawer: GgDebugPhysicsDrawer&lt;Point3, Point4&gt;)
 }
 </code></pre>
 <h3 id="draw3dtext-method">draw3dText (method)</h3>
@@ -580,6 +588,10 @@
 <h3 id="reporterrorwarning-method">reportErrorWarning (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">reportErrorWarning(warningString: string): void
+</code></pre>
+<h3 id="debugmode-property">debugMode (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">debugMode: AmmoDebugMode
 </code></pre>
 <h3 id="ammoinstance-property">ammoInstance (property)</h3>
 <p><strong>Signature</strong></p>

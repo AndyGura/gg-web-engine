@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/gg-3d-entity.ts
-nav_order: 22
+nav_order: 24
 parent: Modules
 ---
 
@@ -35,10 +35,12 @@ export declare class Gg3dEntity {
 
 ### runTransformBinding (method)
 
+Synchronize physics body transform with entity (and mesh if defined)
+
 **Signature**
 
 ```ts
-protected runTransformBinding(objectBody: IGg3dBody, object3D: IGg3dObject): void
+protected runTransformBinding(objectBody: IGg3dBody, object3D: IGg3dObject | null): void
 ```
 
 ### onSpawned (method)

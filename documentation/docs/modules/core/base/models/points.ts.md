@@ -1,6 +1,6 @@
 ---
 title: core/base/models/points.ts
-nav_order: 64
+nav_order: 68
 parent: Modules
 ---
 
@@ -24,7 +24,7 @@ parent: Modules
 **Signature**
 
 ```ts
-export type Point2 = { x: number; y: number }
+export type Point2 = { readonly x: number; readonly y: number }
 ```
 
 ## Point3 (type alias)
@@ -32,7 +32,7 @@ export type Point2 = { x: number; y: number }
 **Signature**
 
 ```ts
-export type Point3 = { x: number; y: number; z: number }
+export type Point3 = { readonly x: number; readonly y: number; readonly z: number }
 ```
 
 ## Point4 (type alias)
@@ -40,5 +40,5 @@ export type Point3 = { x: number; y: number; z: number }
 **Signature**
 
 ```ts
-export type Point4 = { x: number; y: number; z: number; w: number }
+export type Point4 = { readonly x: number; readonly y: number; readonly z: number; readonly w: number }
 ```

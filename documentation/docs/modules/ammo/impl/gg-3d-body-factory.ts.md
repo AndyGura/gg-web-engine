@@ -28,7 +28,7 @@ parent: Modules
 
 ```ts
 export declare class Gg3dBodyFactory {
-  constructor(private readonly world: Gg3dPhysicsWorld)
+  constructor(protected readonly world: Gg3dPhysicsWorld)
 }
 ```
 
@@ -65,7 +65,7 @@ createTrigger(
 **Signature**
 
 ```ts
-private createShape(descriptor: Shape3DDescriptor): Ammo.btCollisionShape
+protected createShape(descriptor: Shape3DDescriptor): Ammo.btCollisionShape
 ```
 
 ### createRigidBodyFromShape (method)

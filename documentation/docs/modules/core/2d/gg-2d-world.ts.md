@@ -1,6 +1,6 @@
 ---
 title: core/2d/gg-2d-world.ts
-nav_order: 14
+nav_order: 15
 parent: Modules
 ---
 
@@ -12,6 +12,7 @@ parent: Modules
 
 - [utils](#utils)
   - [Gg2dWorld (class)](#gg2dworld-class)
+    - [addPrimitiveRigidBody (method)](#addprimitiverigidbody-method)
 
 ---
 
@@ -29,4 +30,19 @@ export declare class Gg2dWorld<V, P> {
     protected readonly consoleEnabled: boolean = false
   )
 }
+```
+
+### addPrimitiveRigidBody (method)
+
+**Signature**
+
+```ts
+addPrimitiveRigidBody(
+    descr: BodyShape2DDescriptor,
+    position: Point2 = {
+      x: 0,
+      y: 0,
+    },
+    rotation: number = 0,
+  ): Gg2dEntity
 ```

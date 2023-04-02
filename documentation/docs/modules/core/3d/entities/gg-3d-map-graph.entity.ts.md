@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/gg-3d-map-graph.entity.ts
-nav_order: 23
+nav_order: 25
 parent: Modules
 ---
 
@@ -20,7 +20,9 @@ parent: Modules
     - [tickOrder (property)](#tickorder-property)
     - [loaderCursorEntity$ (property)](#loadercursorentity-property)
     - [loaded (property)](#loaded-property)
+    - [\_chunkLoaded$ (property)](#_chunkloaded-property)
     - [\_world (property)](#_world-property)
+    - [mapGraphNodes (property)](#mapgraphnodes-property)
     - [options (property)](#options-property)
   - [Gg3dMapGraphEntityOptions (type alias)](#gg3dmapgraphentityoptions-type-alias)
   - [MapGraph (class)](#mapgraph-class)
@@ -28,6 +30,7 @@ parent: Modules
     - [fromMapSquareGrid (static method)](#frommapsquaregrid-static-method)
     - [getNearestDummy (method)](#getnearestdummy-method)
     - [nodes (method)](#nodes-method)
+  - [MapGraphNodeType (type alias)](#mapgraphnodetype-type-alias)
 
 ---
 
@@ -64,7 +67,7 @@ onRemoved()
 **Signature**
 
 ```ts
-protected async loadChunk(node: MapGraphNodeType): Promise<Gg3dEntity[]>
+protected async loadChunk(node: MapGraphNodeType): Promise<[Gg3dEntity[], LoadResultWithProps]>
 ```
 
 ### disposeChunk (method)
@@ -107,12 +110,28 @@ readonly loaderCursorEntity$: any
 readonly loaded: any
 ```
 
+### \_chunkLoaded$ (property)
+
+**Signature**
+
+```ts
+_chunkLoaded$: any
+```
+
 ### \_world (property)
 
 **Signature**
 
 ```ts
 _world: Gg3dWorld<IGg3dVisualScene, IGg3dPhysicsWorld> | null
+```
+
+### mapGraphNodes (property)
+
+**Signature**
+
+```ts
+readonly mapGraphNodes: MapGraph[]
 ```
 
 ### options (property)
@@ -174,4 +193,17 @@ public getNearestDummy(thisNodes: Graph<MapGraphNodeType>[], cursor: Point3): Gr
 
 ```ts
 nodes(): MapGraph[]
+```
+
+## MapGraphNodeType (type alias)
+
+**Signature**
+
+```ts
+export type MapGraphNodeType = {
+  path: string
+  position: Point3
+  rotation?: Point4
+  loadOptions: Partial<Omit<LoadOptions, 'position' | 'rotation'>>
+}
 ```

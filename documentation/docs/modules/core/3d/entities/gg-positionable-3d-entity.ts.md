@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/gg-positionable-3d-entity.ts
-nav_order: 26
+nav_order: 28
 parent: Modules
 ---
 

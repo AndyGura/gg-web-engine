@@ -19,6 +19,9 @@ parent: Modules
     - [dispose (method)](#dispose-method)
     - [resetMotion (method)](#resetmotion-method)
     - [entity (property)](#entity-property)
+    - [onEnter$ (property)](#onenter-property)
+    - [onLeft$ (property)](#onleft-property)
+    - [overlaps (property)](#overlaps-property)
 
 ---
 
@@ -88,4 +91,28 @@ resetMotion(): void
 
 ```ts
 entity: any
+```
+
+### onEnter$ (property)
+
+**Signature**
+
+```ts
+readonly onEnter$: any
+```
+
+### onLeft$ (property)
+
+**Signature**
+
+```ts
+readonly onLeft$: any
+```
+
+### overlaps (property)
+
+**Signature**
+
+```ts
+readonly overlaps: any
 ```

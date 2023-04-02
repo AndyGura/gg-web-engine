@@ -1,6 +1,6 @@
 ---
 title: core/base/entities/interfaces/i-tick-listener.ts
-nav_order: 44
+nav_order: 48
 parent: Modules
 ---
 
@@ -29,6 +29,7 @@ export interface ITickListener {
   // the priority of ticker: the less value, the earlier tick will be run.
   // 500 is a physics tick order
   // 750 is a default objects binding tick order
+  // 850 is a default animation mixer tick order
   // 1000 is a rendering tick order
   // e.g. 499 will run before physics, 1001 will run after rendering
   readonly tickOrder: number

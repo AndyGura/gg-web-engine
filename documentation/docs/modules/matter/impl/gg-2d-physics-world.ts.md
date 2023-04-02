@@ -1,6 +1,6 @@
 ---
 title: matter/impl/gg-2d-physics-world.ts
-nav_order: 69
+nav_order: 73
 parent: Modules
 ---
 
@@ -17,6 +17,7 @@ parent: Modules
     - [startDebugger (method)](#startdebugger-method)
     - [stopDebugger (method)](#stopdebugger-method)
     - [dispose (method)](#dispose-method)
+    - [matterEngine (property)](#matterengine-property)
     - [factory (property)](#factory-property)
 
 ---
@@ -69,6 +70,14 @@ stopDebugger(): void
 
 ```ts
 dispose(): void
+```
+
+### matterEngine (property)
+
+**Signature**
+
+```ts
+matterEngine: any
 ```
 
 ### factory (property)

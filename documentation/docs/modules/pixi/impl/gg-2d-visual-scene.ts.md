@@ -1,6 +1,6 @@
 ---
 title: pixi/impl/gg-2d-visual-scene.ts
-nav_order: 72
+nav_order: 76
 parent: Modules
 ---
 

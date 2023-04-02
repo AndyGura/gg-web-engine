@@ -17,6 +17,7 @@ parent: Modules
     - [startDebugger (method)](#startdebugger-method)
     - [stopDebugger (method)](#stopdebugger-method)
     - [dispose (method)](#dispose-method)
+    - [\_dynamicAmmoWorld (property)](#_dynamicammoworld-property)
 
 ---
 
@@ -68,4 +69,12 @@ stopDebugger(world: Gg3dWorld): void
 
 ```ts
 dispose(): void
+```
+
+### \_dynamicAmmoWorld (property)
+
+**Signature**
+
+```ts
+_dynamicAmmoWorld: any
 ```

@@ -1,6 +1,6 @@
 ---
 title: pixi/impl/gg-renderer.ts
-nav_order: 73
+nav_order: 77
 parent: Modules
 ---
 

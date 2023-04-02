@@ -1,6 +1,6 @@
 ---
 title: core/base/interfaces/gg-trigger.ts
-nav_order: 53
+nav_order: 57
 parent: Modules
 ---
 

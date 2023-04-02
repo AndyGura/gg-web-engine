@@ -1,6 +1,6 @@
 ---
 title: core/base/entities/gg-entity.ts
-nav_order: 41
+nav_order: 45
 parent: Modules
 ---
 
@@ -20,6 +20,8 @@ parent: Modules
     - [\_world (property)](#_world-property)
     - [\_name (property)](#_name-property)
     - [\_children (property)](#_children-property)
+    - [\_onSpawned$ (property)](#_onspawned-property)
+    - [\_onRemoved$ (property)](#_onremoved-property)
 
 ---
 
@@ -95,4 +97,20 @@ _name: string
 
 ```ts
 _children: GgEntity[]
+```
+
+### \_onSpawned$ (property)
+
+**Signature**
+
+```ts
+_onSpawned$: any
+```
+
+### \_onRemoved$ (property)
+
+**Signature**
+
+```ts
+_onRemoved$: any
 ```

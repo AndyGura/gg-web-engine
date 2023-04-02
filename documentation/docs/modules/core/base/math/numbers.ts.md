@@ -1,6 +1,6 @@
 ---
 title: core/base/math/numbers.ts
-nav_order: 57
+nav_order: 61
 parent: Modules
 ---
 

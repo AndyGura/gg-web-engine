@@ -1,6 +1,6 @@
 ---
 title: matter/impl/gg-2d-body-factory.ts
-nav_order: 67
+nav_order: 71
 parent: Modules
 ---
 

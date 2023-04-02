@@ -5,7 +5,7 @@ has_children: true
 
 <h2 class="text-delta">Directory table of contents</h2>
 
-- [core/base/clock.ts](/gg-web-engine/modules/core/base/clock.ts)
+- [core/base/clock](/gg-web-engine/modules/core/base/clock)
 - [core/base/controllers](/gg-web-engine/modules/core/base/controllers)
 - [core/base/data-structures](/gg-web-engine/modules/core/base/data-structures)
 - [core/base/entities](/gg-web-engine/modules/core/base/entities)

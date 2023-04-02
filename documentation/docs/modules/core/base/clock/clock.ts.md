@@ -1,6 +1,6 @@
 ---
-title: core/base/clock.ts
-nav_order: 34
+title: core/base/clock/clock.ts
+nav_order: 36
 parent: Modules
 ---
 
@@ -12,6 +12,7 @@ parent: Modules
 
 - [utils](#utils)
   - [Clock (class)](#clock-class)
+    - [createChildClock (method)](#createchildclock-method)
     - [start (method)](#start-method)
     - [stop (method)](#stop-method)
     - [pause (method)](#pause-method)
@@ -31,8 +32,19 @@ A class, providing ability to track time, fire ticks, provide time elapsed + tic
 
 ```ts
 export declare class Clock {
-  constructor(private readonly tickSource: Observable<any>, autoStart: boolean = false)
+  constructor(
+    autoStart: boolean = false,
+    protected readonly parentClock: Clock | GgGlobalClock = GgGlobalClock.instance
+  )
 }
+```
+
+### createChildClock (method)
+
+**Signature**
+
+```ts
+createChildClock(autoStart: boolean): Clock
 ```
 
 ### start (method)
@@ -72,7 +84,7 @@ resume()
 **Signature**
 
 ```ts
-private startListeningTicks()
+protected startListeningTicks()
 ```
 
 ### stopListeningTicks (method)
@@ -80,5 +92,5 @@ private startListeningTicks()
 **Signature**
 
 ```ts
-private stopListeningTicks()
+protected stopListeningTicks()
 ```

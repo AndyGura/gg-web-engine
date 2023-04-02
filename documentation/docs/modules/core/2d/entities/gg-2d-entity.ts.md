@@ -1,6 +1,6 @@
 ---
 title: core/2d/entities/gg-2d-entity.ts
-nav_order: 10
+nav_order: 11
 parent: Modules
 ---
 
@@ -12,6 +12,7 @@ parent: Modules
 
 - [utils](#utils)
   - [Gg2dEntity (class)](#gg2dentity-class)
+    - [runTransformBinding (method)](#runtransformbinding-method)
     - [onSpawned (method)](#onspawned-method)
     - [onRemoved (method)](#onremoved-method)
     - [dispose (method)](#dispose-method)
@@ -30,6 +31,16 @@ parent: Modules
 export declare class Gg2dEntity {
   constructor(public readonly object2D: IGg2dObject | null, public readonly objectBody: IGg2dBody | null)
 }
+```
+
+### runTransformBinding (method)
+
+Synchronize physics body transform with entity (and object2d if defined)
+
+**Signature**
+
+```ts
+protected runTransformBinding(objectBody: IGg2dBody, object2D: IGg2dObject | null): void
 ```
 
 ### onSpawned (method)

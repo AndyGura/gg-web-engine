@@ -1,6 +1,6 @@
 ---
 title: core/3d/controllers/free-camera.controller.ts
-nav_order: 19
+nav_order: 20
 parent: Modules
 ---
 
@@ -14,6 +14,9 @@ parent: Modules
   - [FreeCameraController (class)](#freecameracontroller-class)
     - [start (method)](#start-method)
     - [stop (method)](#stop-method)
+    - [mController (property)](#mcontroller-property)
+    - [stop$ (property)](#stop-property)
+  - [FreeCameraControllerOptions (type alias)](#freecameracontrolleroptions-type-alias)
 
 ---
 
@@ -26,9 +29,9 @@ parent: Modules
 ```ts
 export declare class FreeCameraController {
   constructor(
-    private readonly keyboardController: KeyboardController,
-    private readonly camera: Gg3dCameraEntity,
-    private readonly options: FreeCameraControllerOptions = {
+    protected readonly keyboardController: KeyboardController,
+    protected readonly camera: Gg3dCameraEntity,
+    protected readonly options: FreeCameraControllerOptions = {
       keymap: 'wasd',
       movementOptions: { speed: 0.5 },
       mouseOptions: {},
@@ -51,4 +54,34 @@ async start(): Promise<void>
 
 ```ts
 async stop(unlockPointer: boolean = true): Promise<void>
+```
+
+### mController (property)
+
+**Signature**
+
+```ts
+readonly mController: MouseController
+```
+
+### stop$ (property)
+
+**Signature**
+
+```ts
+readonly stop$: any
+```
+
+## FreeCameraControllerOptions (type alias)
+
+**Signature**
+
+```ts
+export type FreeCameraControllerOptions = {
+  keymap: DirectionKeymap
+  movementOptions: {
+    speed: number
+  }
+  mouseOptions: MouseControllerOptions
+}
 ```

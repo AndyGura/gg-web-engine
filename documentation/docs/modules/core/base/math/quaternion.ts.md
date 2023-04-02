@@ -1,6 +1,6 @@
 ---
 title: core/base/math/quaternion.ts
-nav_order: 60
+nav_order: 64
 parent: Modules
 ---
 
@@ -23,12 +23,22 @@ parent: Modules
     - [fromEuler (static method)](#fromeuler-static-method)
     - [toEuler (static method)](#toeuler-static-method)
     - [lookAt (static method)](#lookat-static-method)
+    - [rotAround (static method)](#rotaround-static-method)
 
 ---
 
 # utils
 
 ## Qtrn (class)
+
+Helper class with static functions, containing util functions, related to Quaternion (represented as Point4 type).
+In terms of rotation, a quaternion is a mathematical representation of an orientation or rotation in 3D space.
+It consists of a scalar component and a vector component, and can be written as q = w + xi + yj + zk, where w is the
+scalar component, and i, j, and k are the vector components. The scalar component, w, represents the amount of
+rotation, and the vector component, (x, y, z), represents the axis of rotation. The length of the vector component
+represents the amount of rotation around the axis. Quaternions are often used in 3D computer graphics and animation
+because they can be used to interpolate between two rotations, and they can avoid some of the issues with using
+Euler angles (such as gimbal lock).
 
 **Signature**
 
@@ -38,7 +48,7 @@ export declare class Qtrn
 
 ### clone (static method)
 
-clone quaternion
+Returns a new quaternion instance with the same values as the given quaternion object.
 
 **Signature**
 
@@ -48,7 +58,7 @@ static clone(q: Point4): Point4
 
 ### add (static method)
 
-add quaternion b to quaternion a
+Returns the sum of two Point4 objects.
 
 **Signature**
 
@@ -58,6 +68,8 @@ static add(a: Point4, b: Point4): Point4
 
 ### mult (static method)
 
+Returns the result of multiplying two Point4 objects. This can be used for combining rotations
+
 **Signature**
 
 ```ts
@@ -65,6 +77,8 @@ static mult(a: Point4, b: Point4): Point4
 ```
 
 ### combineRotations (static method)
+
+Combines an arbitrary number of quaternions by multiplying them together in order.
 
 **Signature**
 
@@ -74,7 +88,7 @@ static combineRotations(...quaternions: Point4[]): Point4
 
 ### lerp (static method)
 
-linear interpolation
+Performs a linear interpolation between two Point4 objects.
 
 **Signature**
 
@@ -84,7 +98,7 @@ static lerp(a: Point4, b: Point4, t: number): Point4
 
 ### slerp (static method)
 
-spherical interpolation
+Performs a spherical linear interpolation between two Point4 objects.
 
 **Signature**
 
@@ -94,7 +108,7 @@ static slerp(a: Point4, b: Point4, t: number): Point4
 
 ### fromAngle (static method)
 
-creates quaternion from simple angle around axis. Assumes that axis vector is normalized
+Converts an angle and an axis of rotation into a quaternion
 
 **Signature**
 
@@ -104,7 +118,7 @@ static fromAngle(axis: Point3, angle: number)
 
 ### fromMatrix4 (static method)
 
-creates quaternion from 4-dimension rotation matrix
+Converts a 4x4 matrix representing a rotation into a quaternion
 
 **Signature**
 
@@ -114,7 +128,7 @@ static fromMatrix4(m: number[]): Point4
 
 ### fromEuler (static method)
 
-creates a quaternion from euler
+Creates a quaternion from euler
 
 **Signature**
 
@@ -124,7 +138,7 @@ static fromEuler(e: Point3): Point4
 
 ### toEuler (static method)
 
-converts a quaternion to euler
+Converts a quaternion to euler
 
 **Signature**
 
@@ -134,10 +148,21 @@ static toEuler(q: Point4): Point3
 
 ### lookAt (static method)
 
-creates a rotation for object, so it will look at some point in space
+Returns a quaternion that represents the rotation required to align an object to face towards a target point.
 
 **Signature**
 
 ```ts
 static lookAt(eye: Point3, target: Point3, up: Point3): Point4
+```
+
+### rotAround (static method)
+
+Returns a quaternion that represents the input quaternion, rotated around provided axis vector by provided angle.
+Assumes that axis vector is already normalized
+
+**Signature**
+
+```ts
+static rotAround(q: Point4, axis: Point3, angle: number): Point4
 ```

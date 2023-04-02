@@ -1,6 +1,6 @@
 ---
 title: three/impl/gg-3d-object-factory.ts
-nav_order: 74
+nav_order: 78
 parent: Modules
 ---
 

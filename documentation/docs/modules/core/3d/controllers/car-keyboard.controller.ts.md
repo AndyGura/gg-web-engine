@@ -1,6 +1,6 @@
 ---
 title: core/3d/controllers/car-keyboard.controller.ts
-nav_order: 18
+nav_order: 19
 parent: Modules
 ---
 
@@ -14,8 +14,14 @@ parent: Modules
   - [CarKeyboardController (class)](#carkeyboardcontroller-class)
     - [start (method)](#start-method)
     - [stop (method)](#stop-method)
+    - [x$ (property)](#x-property)
+    - [y$ (property)](#y-property)
+    - [lastX (property)](#lastx-property)
+    - [stop$ (property)](#stop-property)
     - [car$ (property)](#car-property)
+    - [switchingGearsEnabled (property)](#switchinggearsenabled-property)
     - [pairTickerPipe (property)](#pairtickerpipe-property)
+  - [CarKeyboardControllerOptions (type alias)](#carkeyboardcontrolleroptions-type-alias)
 
 ---
 
@@ -28,9 +34,9 @@ parent: Modules
 ```ts
 export declare class CarKeyboardController {
   constructor(
-    private readonly keyboardController: KeyboardController,
+    protected readonly keyboardController: KeyboardController,
     car: Gg3dRaycastVehicleEntity,
-    private readonly options: CarKeyboardControllerOptions = { keymap: 'arrows', gearUpDownKeys: ['KeyA', 'KeyZ'] }
+    protected readonly options: CarKeyboardControllerOptions = { keymap: 'arrows', gearUpDownKeys: ['KeyA', 'KeyZ'] }
   )
 }
 ```
@@ -51,6 +57,38 @@ async start(): Promise<void>
 async stop(): Promise<void>
 ```
 
+### x$ (property)
+
+**Signature**
+
+```ts
+readonly x$: any
+```
+
+### y$ (property)
+
+**Signature**
+
+```ts
+readonly y$: any
+```
+
+### lastX (property)
+
+**Signature**
+
+```ts
+lastX: number
+```
+
+### stop$ (property)
+
+**Signature**
+
+```ts
+readonly stop$: any
+```
+
 ### car$ (property)
 
 **Signature**
@@ -59,10 +97,29 @@ async stop(): Promise<void>
 readonly car$: any
 ```
 
+### switchingGearsEnabled (property)
+
+**Signature**
+
+```ts
+switchingGearsEnabled: boolean
+```
+
 ### pairTickerPipe (property)
 
 **Signature**
 
 ```ts
 pairTickerPipe: any
+```
+
+## CarKeyboardControllerOptions (type alias)
+
+**Signature**
+
+```ts
+export type CarKeyboardControllerOptions = {
+  keymap: DirectionKeymap
+  gearUpDownKeys: [string, string]
+}
 ```

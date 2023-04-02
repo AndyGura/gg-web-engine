@@ -20,6 +20,7 @@ parent: Modules
     - [setDebugFlags (method)](#setdebugflags-method)
     - [setDebugMode (method)](#setdebugmode-method)
     - [reportErrorWarning (method)](#reporterrorwarning-method)
+    - [debugMode (property)](#debugmode-property)
     - [ammoInstance (property)](#ammoinstance-property)
   - [DebugBufferSize](#debugbuffersize)
 
@@ -33,7 +34,7 @@ parent: Modules
 
 ```ts
 export declare class AmmoDebugger {
-  constructor(private readonly world: Gg3dPhysicsWorld, private readonly drawer: GgDebugPhysicsDrawer<Point3, Point4>)
+  constructor(protected readonly world: Gg3dPhysicsWorld, private readonly drawer: GgDebugPhysicsDrawer<Point3, Point4>)
 }
 ```
 
@@ -105,6 +106,14 @@ setDebugMode(debugMode: number): void
 
 ```ts
 reportErrorWarning(warningString: string): void
+```
+
+### debugMode (property)
+
+**Signature**
+
+```ts
+debugMode: AmmoDebugMode
 ```
 
 ### ammoInstance (property)

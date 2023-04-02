@@ -1,6 +1,6 @@
 ---
 title: core/base/gg-viewport-manager.ts
-nav_order: 46
+nav_order: 50
 parent: Modules
 ---
 
@@ -11,6 +11,7 @@ parent: Modules
 <h2 class="text-delta">Table of contents</h2>
 
 - [utils](#utils)
+  - [CanvasAppDescr (type alias)](#canvasappdescr-type-alias)
   - [GgViewportManager (class)](#ggviewportmanager-class)
     - [getStageAsync (method)](#getstageasync-method)
     - [createCanvas (method)](#createcanvas-method)
@@ -21,6 +22,14 @@ parent: Modules
 ---
 
 # utils
+
+## CanvasAppDescr (type alias)
+
+**Signature**
+
+```ts
+export type CanvasAppDescr = { canvas: HTMLCanvasElement; renderer?: BaseGgRenderer }
+```
 
 ## GgViewportManager (class)
 

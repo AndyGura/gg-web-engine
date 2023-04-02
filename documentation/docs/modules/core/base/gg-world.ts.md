@@ -1,6 +1,6 @@
 ---
 title: core/base/gg-world.ts
-nav_order: 48
+nav_order: 52
 parent: Modules
 ---
 
@@ -17,6 +17,7 @@ parent: Modules
     - [pauseWorld (method)](#pauseworld-method)
     - [resumeWorld (method)](#resumeworld-method)
     - [dispose (method)](#dispose-method)
+    - [addPrimitiveRigidBody (method)](#addprimitiverigidbody-method)
     - [addEntity (method)](#addentity-method)
     - [removeEntity (method)](#removeentity-method)
     - [registerConsoleCommand (method)](#registerconsolecommand-method)
@@ -83,6 +84,14 @@ public resumeWorld()
 
 ```ts
 public dispose(): void
+```
+
+### addPrimitiveRigidBody (method)
+
+**Signature**
+
+```ts
+abstract addPrimitiveRigidBody(descr: any, position?: D, rotation?: R): GgPositionableEntity<D, R>;
 ```
 
 ### addEntity (method)

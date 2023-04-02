@@ -1,6 +1,6 @@
 ---
 title: core/3d/gg-3d-world.ts
-nav_order: 28
+nav_order: 30
 parent: Modules
 ---
 
@@ -12,6 +12,7 @@ parent: Modules
 
 - [utils](#utils)
   - [Gg3dWorld (class)](#gg3dworld-class)
+    - [addPrimitiveRigidBody (method)](#addprimitiverigidbody-method)
     - [loader (property)](#loader-property)
 
 ---
@@ -30,6 +31,22 @@ export declare class Gg3dWorld<V, P> {
     protected readonly consoleEnabled: boolean = false
   )
 }
+```
+
+### addPrimitiveRigidBody (method)
+
+**Signature**
+
+```ts
+addPrimitiveRigidBody(
+    descr: BodyShape3DDescriptor,
+    position: Point3 = {
+      x: 0,
+      y: 0,
+      z: 0,
+    },
+    rotation: Point4 = { x: 0, y: 0, z: 0, w: 1 },
+  ): Gg3dEntity
 ```
 
 ### loader (property)

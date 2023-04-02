@@ -1,6 +1,6 @@
 ---
 title: core/2d/entities/gg-2d-trigger.entity.ts
-nav_order: 11
+nav_order: 12
 parent: Modules
 ---
 

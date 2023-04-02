@@ -1,6 +1,6 @@
 ---
 title: pixi/impl/gg-2d-object.ts
-nav_order: 71
+nav_order: 75
 parent: Modules
 ---
 

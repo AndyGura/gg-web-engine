@@ -1,6 +1,6 @@
 ---
 title: three/impl/gg-3d-object.ts
-nav_order: 76
+nav_order: 80
 parent: Modules
 ---
 
