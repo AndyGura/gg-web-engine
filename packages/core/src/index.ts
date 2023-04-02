@@ -1,4 +1,5 @@
-export * from './base/clock';
+export * from './base/clock/clock';
+export * from './base/clock/global-clock';
 export * from './base/gg-viewport';
 export * from './base/gg-viewport-manager';
 export * from './base/entities/controllers/animation-mixer';

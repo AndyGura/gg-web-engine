@@ -1,4 +1,4 @@
-import { Point3, Point4 } from '../models/points';
+import { Point3 } from '../models/points';
 import { Pnt3 } from './point3';
 
 export class Mtrx4 {

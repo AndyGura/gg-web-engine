@@ -23,6 +23,7 @@ export class AppComponent implements OnInit {
 
 
   showHelpText: boolean = true;
+  paused: boolean = false;
 
   constructor(
     private readonly http: HttpClient,
@@ -42,6 +43,16 @@ export class AppComponent implements OnInit {
 
     this.world.keyboardController.bind('KeyX').pipe(filter(x => x)).subscribe(() => {
       this.showHelpText = !this.showHelpText;
+      this.cdr.markForCheck();
+    });
+
+    this.world.keyboardController.bind('KeyP').pipe(filter(x => x)).subscribe(() => {
+      this.paused = !this.paused;
+      if (this.paused) {
+        this.world.pauseWorld();
+      } else {
+        this.world.resumeWorld();
+      }
       this.cdr.markForCheck();
     });
 

@@ -1,4 +1,4 @@
-import { Clock } from './clock';
+import { Clock } from './clock/clock';
 import { GgEntity } from './entities/gg-entity';
 import { isITickListener, ITickListener } from './entities/interfaces/i-tick-listener';
 import { GgPhysicsWorld } from './interfaces/gg-physics-world';
@@ -8,6 +8,7 @@ import { KeyboardController } from './controllers/keyboard.controller';
 import { filter } from 'rxjs';
 import { GgConsoleUI } from './ui/gg-console.ui';
 import { GgDebuggerUI } from './ui/gg-debugger.ui';
+import { GgGlobalClock } from './clock/global-clock';
 
 export abstract class GgWorld<
   D,
@@ -15,10 +16,8 @@ export abstract class GgWorld<
   V extends GgVisualScene<D, R> = GgVisualScene<D, R>,
   P extends GgPhysicsWorld<D, R> = GgPhysicsWorld<D, R>,
 > {
-  // inner clock, runs constantly
-  private readonly animationFrameClock: Clock = Clock.animationFrameClock;
   // world clock, can be paused/resumed. Stops when disposing world
-  private readonly worldClock: Clock = new Clock(this.animationFrameClock.tick$);
+  private readonly worldClock: Clock = GgGlobalClock.instance.createChildClock(false);
 
   // TODO consider adding mouse controller
   public readonly keyboardController: KeyboardController = new KeyboardController();

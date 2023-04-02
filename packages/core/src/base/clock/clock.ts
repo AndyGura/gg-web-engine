@@ -1,23 +1,13 @@
-import { animationFrameScheduler, Observable, of, Subject, Subscription } from 'rxjs';
-import { map, repeat, tap } from 'rxjs/operators';
-
-const now = () => {
-  return (typeof performance === 'undefined' ? Date : performance).now();
-};
+import { Observable, Subject, Subscription } from 'rxjs';
+import { map, tap } from 'rxjs/operators';
+import { GgGlobalClock } from './global-clock';
 
 /**
  * A class, providing ability to track time, fire ticks, provide time elapsed + tick delta with ability to suspend/resume it.
  */
 export class Clock {
-  /**
-   * A global clock, based on animation frame ticks
-   */
-  public static readonly animationFrameClock: Clock = new Clock(
-    of(undefined, animationFrameScheduler).pipe(repeat()),
-    true,
-  );
-
-  // value is global clock time, delta ms from last tick
+  private tickSub: Subscription | null = null;
+  private readonly _tick$: Subject<[number, number]> = new Subject<[number, number]>();
   public get tick$(): Observable<[number, number]> {
     return this._tick$.pipe(map(([oldTime, newTime]) => [newTime, newTime - oldTime]));
   }
@@ -34,27 +24,33 @@ export class Clock {
     if (this.isPaused) {
       return this.pausedAt - this.startedAt;
     }
-    return now() - this.startedAt;
+    return this.parentClock.elapsedTime - this.startedAt;
   }
-
-  private tickSub: Subscription | null = null;
-  private readonly _tick$: Subject<[number, number]> = new Subject<[number, number]>();
 
   // state
   private startedAt: number = -1;
+  private oldRelativeTime: number = 0; // "elapsed", emitted on last tick
   private pausedAt: number = -1;
 
-  constructor(private readonly tickSource: Observable<any>, autoStart: boolean = false) {
+  constructor(
+    autoStart: boolean = false,
+    protected readonly parentClock: Clock | GgGlobalClock = GgGlobalClock.instance,
+  ) {
     if (autoStart) {
       this.start();
     }
+  }
+
+  createChildClock(autoStart: boolean): Clock {
+    return new Clock(autoStart, this);
   }
 
   start() {
     if (this.isRunning) {
       return;
     }
-    this.startedAt = now();
+    this.oldRelativeTime = 0;
+    this.startedAt = this.parentClock.elapsedTime;
     this.startListeningTicks();
   }
 
@@ -65,32 +61,31 @@ export class Clock {
 
   pause() {
     this.stopListeningTicks();
-    this.pausedAt = now();
+    this.pausedAt = this.parentClock.elapsedTime;
   }
 
   resume() {
     if (this.isRunning || this.pausedAt == -1) {
       return;
     }
-    this.startedAt += now() - this.pausedAt;
+    this.startedAt += this.parentClock.elapsedTime - this.pausedAt;
     this.pausedAt = -1;
     this.startListeningTicks();
   }
 
-  private startListeningTicks() {
+  protected startListeningTicks() {
     if (this.tickSub) {
       throw new Error('Clock is already ticking!');
     }
-    let oldRelativeTime = 0;
-    this.tickSub = this.tickSource
+    this.tickSub = this.parentClock.tick$
       .pipe(
-        map(() => [oldRelativeTime, now() - this.startedAt] as [number, number]),
-        tap(([_, cur]) => (oldRelativeTime = cur)),
+        map(([parentElapsed, _]) => [this.oldRelativeTime, parentElapsed - this.startedAt] as [number, number]),
+        tap(([_, cur]) => (this.oldRelativeTime = cur)),
       )
       .subscribe(this._tick$);
   }
 
-  private stopListeningTicks() {
+  protected stopListeningTicks() {
     this.tickSub?.unsubscribe();
     this.tickSub = null;
   }

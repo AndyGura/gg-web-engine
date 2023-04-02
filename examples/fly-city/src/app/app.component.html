@@ -1,6 +1,6 @@
 <div id="gg-stage"></div>
 <app-dashboard *ngIf="!!(runner?.controlCar$ | async)" [car]="(runner?.controlCar$ | async)"></app-dashboard>
-<div class="app-helper" *ngIf="showHelpText">
+<div class="screen-text app-helper" *ngIf="showHelpText">
     <span>FLY MODE CONTROLS</span>
     <span>Click on page and move mouse to look around (ESC to exit)</span>
     <span>WASD/Arrow keys to fly</span>
@@ -16,4 +16,8 @@
     <span>H key to honk</span>
     <span></span>
     <span>X to toggle this text</span>
+    <span>P to toggle pause</span>
+</div>
+<div class="screen-text paused-text" *ngIf="paused">
+    PAUSED
 </div>
