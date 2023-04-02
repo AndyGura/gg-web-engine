@@ -1,3 +1,3 @@
-export type Point2 = { x: number; y: number };
-export type Point3 = { x: number; y: number; z: number };
-export type Point4 = { x: number; y: number; z: number; w: number };
+export type Point2 = { readonly x: number; readonly y: number };
+export type Point3 = { readonly x: number; readonly y: number; readonly z: number };
+export type Point4 = { readonly x: number; readonly y: number; readonly z: number; readonly w: number };

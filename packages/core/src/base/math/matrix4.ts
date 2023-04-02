@@ -7,7 +7,7 @@ export class Mtrx4 {
     let z: Point3 = Pnt3.sub(eye, target);
     if (Pnt3.lenSq(z) === 0) {
       // same position
-      z.z = 1;
+      z = { ...z, z: 1 };
     } else {
       z = Pnt3.norm(z);
     }
@@ -15,9 +15,9 @@ export class Mtrx4 {
     if (Pnt3.lenSq(x) === 0) {
       // up and z are parallel
       if (Math.abs(up.z) === 1) {
-        z.x += 0.0001;
+        z = { ...z, x: z.x + 0.0001 };
       } else {
-        z.z += 0.0001;
+        z = { ...z, z: z.z + 0.0001 };
       }
       z = Pnt3.norm(z);
       x = Pnt3.cross(up, z);
