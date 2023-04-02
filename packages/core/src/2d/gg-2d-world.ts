@@ -1,6 +1,8 @@
 import { GgWorld } from '../base/gg-world';
 import { Point2 } from '../base/models/points';
 import { IGg2dPhysicsWorld, IGg2dVisualScene } from './interfaces';
+import { BodyShape2DDescriptor } from './models/shapes';
+import { Gg2dEntity } from './entities/gg-2d-entity';
 
 export class Gg2dWorld<
   V extends IGg2dVisualScene = IGg2dVisualScene,
@@ -28,5 +30,23 @@ export class Gg2dWorld<
           '{x: 0, y: value}, 2 arguments set the whole vector. Default value is "9.82" or "0 9.82"',
       );
     }
+  }
+
+  addPrimitiveRigidBody(
+    descr: BodyShape2DDescriptor,
+    position: Point2 = {
+      x: 0,
+      y: 0,
+    },
+    rotation: number = 0,
+  ): Gg2dEntity {
+    const entity = new Gg2dEntity(
+      this.visualScene.factory.createPrimitive(descr.shape),
+      this.physicsWorld.factory.createRigidBody(descr),
+    );
+    entity.position = position;
+    entity.rotation = rotation;
+    this.addEntity(entity);
+    return entity;
   }
 }

@@ -9,6 +9,7 @@ import { filter } from 'rxjs';
 import { GgConsoleUI } from './ui/gg-console.ui';
 import { GgDebuggerUI } from './ui/gg-debugger.ui';
 import { GgGlobalClock } from './clock/global-clock';
+import { GgPositionableEntity } from './entities/gg-positionable-entity';
 
 export abstract class GgWorld<
   D,
@@ -135,6 +136,8 @@ export abstract class GgWorld<
     this.physicsWorld.dispose();
     this.visualScene.dispose();
   }
+
+  abstract addPrimitiveRigidBody(descr: any, position?: D, rotation?: R): GgPositionableEntity<D, R>;
 
   public addEntity(entity: GgEntity): void {
     if (!!entity.world) {

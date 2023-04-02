@@ -154,7 +154,7 @@ export class AnimationMixer<T> extends GgEntity implements ITickListener {
     };
   }
 
-  onSpawned(world: GgWorld<unknown, unknown>) {
+  onSpawned(world: GgWorld<any, any>) {
     super.onSpawned(world);
     this.tick$
       .pipe(

@@ -2,6 +2,8 @@ import { GgWorld } from '../base/gg-world';
 import { Point3, Point4 } from '../base/models/points';
 import { IGg3dPhysicsWorld, IGg3dVisualScene } from './interfaces';
 import { Gg3dLoader } from './loader';
+import { Gg3dEntity } from './entities/gg-3d-entity';
+import { BodyShape3DDescriptor } from './models/shapes';
 
 export class Gg3dWorld<
   V extends IGg3dVisualScene = IGg3dVisualScene,
@@ -32,5 +34,24 @@ export class Gg3dWorld<
           '{x: 0, y: 0, z: -value}, 3 arguments set the whole vector. Default value is "9.82" or "0 0 -9.82"',
       );
     }
+  }
+
+  addPrimitiveRigidBody(
+    descr: BodyShape3DDescriptor,
+    position: Point3 = {
+      x: 0,
+      y: 0,
+      z: 0,
+    },
+    rotation: Point4 = { x: 0, y: 0, z: 0, w: 1 },
+  ): Gg3dEntity {
+    const entity = new Gg3dEntity(
+      this.visualScene.factory.createPrimitive(descr.shape),
+      this.physicsWorld.factory.createRigidBody(descr),
+    );
+    entity.position = position;
+    entity.rotation = rotation;
+    this.addEntity(entity);
+    return entity;
   }
 }
