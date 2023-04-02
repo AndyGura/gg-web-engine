@@ -27,7 +27,7 @@
   },
   "homepage": "https://github.com/AndyGura/gg-web-engine#readme",
   "dependencies": {
-    "@gg-web-engine/core": "^0.0.2",
+    "@gg-web-engine/core": "^0.0.3",
     "ammojs-typed": "^1.0.6",
     "fs-web": "^1.0.1",
     "mini-signals": "^1.2.0",
