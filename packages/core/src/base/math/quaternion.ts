@@ -19,7 +19,7 @@ export class Qtrn {
    * @returns A new Point4 instance with the same values as the given Point4 object.
    */
   static clone(q: Point4): Point4 {
-    return { ...q };
+    return { x: q.x, y: q.y, z: q.z, w: q.w };
   }
 
   /**

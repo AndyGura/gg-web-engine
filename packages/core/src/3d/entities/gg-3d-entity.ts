@@ -90,9 +90,9 @@ export class Gg3dEntity extends GgPositionable3dEntity implements ITickListener 
       this.runTransformBinding(objectBody, object3D);
       this.name = objectBody.name;
     } else if (object3D) {
-      this.position = object3D.position;
-      this.rotation = object3D.rotation;
-      this.scale = object3D.scale;
+      super.position = object3D.position;
+      super.rotation = object3D.rotation;
+      super.scale = object3D.scale;
       this.name = object3D.name;
     } else {
       throw new Error('Cannot create entity without a mesh and a body');

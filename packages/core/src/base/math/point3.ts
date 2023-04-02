@@ -4,7 +4,7 @@ import { Qtrn } from './quaternion';
 export class Pnt3 {
   /** clone point */
   static clone(p: Point3): Point3 {
-    return { ...p };
+    return { x: p.x, y: p.y, z: p.z };
   }
 
   /** add point b to point a */

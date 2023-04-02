@@ -3,7 +3,7 @@ import { Point2 } from '../models/points';
 export class Pnt2 {
   /** clone point */
   static clone(p: Point2): Point2 {
-    return { ...p };
+    return { x: p.x, y: p.y };
   }
 
   /** add point b to point a */

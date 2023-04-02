@@ -90,9 +90,9 @@ export class Gg2dEntity extends GgPositionable2dEntity implements ITickListener 
       this.runTransformBinding(objectBody, object2D);
       this.name = objectBody.name;
     } else if (object2D) {
-      this.position = object2D.position;
-      this.rotation = object2D.rotation;
-      this.scale = object2D.scale;
+      super.position = object2D.position;
+      super.rotation = object2D.rotation;
+      super.scale = object2D.scale;
       this.name = object2D.name;
     } else {
       throw new Error('Cannot create entity without an object2D and a body');
