@@ -1,6 +1,13 @@
 import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { DirectionalLight, HemisphereLight } from 'three';
-import { createInlineTickController, Gg3dWorld, GgViewportManager, Mtrx4, Qtrn } from '@gg-web-engine/core';
+import {
+  Camera3dAnimator,
+  createInlineTickController,
+  Gg3dWorld,
+  GgViewportManager,
+  Mtrx4,
+  Qtrn,
+} from '@gg-web-engine/core';
 import { interval } from 'rxjs';
 import { Gg3dObject, Gg3dVisualScene, GgRenderer } from '@gg-web-engine/three';
 import { Gg3dPhysicsWorld } from '@gg-web-engine/ammo';
@@ -25,14 +32,15 @@ export class AppComponent implements OnInit {
     const canvas = await GgViewportManager.instance.createCanvas(1);
     const renderer: GgRenderer = new GgRenderer(canvas);
     world.addEntity(renderer);
-    createInlineTickController(world).subscribe(([elapsed, _]) => {
-      renderer.camera.position = {
-        x: 10 * Math.sin(elapsed / 2000),
-        y: 10 * Math.cos(elapsed / 2000),
+    const cameraController: Camera3dAnimator = new Camera3dAnimator(renderer.camera, (timeElapsed, _) => ({
+      position: {
+        x: 10 * Math.sin(timeElapsed / 2000),
+        y: 10 * Math.cos(timeElapsed / 2000),
         z: 6,
-      };
-      renderer.camera.rotation = Qtrn.lookAt(renderer.camera.position, { x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 1 });
-    });
+      },
+      target: { x: 0, y: 0, z: 0 },
+    }));
+    world.addEntity(cameraController);
     renderer.activate();
 
     const hemiLight = new HemisphereLight(0xffffff, 0xffffff, 0.6);

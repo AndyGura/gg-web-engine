@@ -114,28 +114,20 @@ world.addEntity(renderer);
 renderer.activate();
 
 // create floor (static rigid body)
-const floor = new Gg3dEntity(
-  world.visualScene.factory.createBox({ x: 7, y: 7, z: 1 }),
-  world.physicsWorld.factory.createRigidBody({
-    shape: { shape: 'BOX', dimensions: { x: 7, y: 7, z: 1 } },
-    body: { dynamic: false },
-  }),
-);
-world.addEntity(floor);
+world.addPrimitiveRigidBody({
+  shape: { shape: 'BOX', dimensions: { x: 7, y: 7, z: 1 } },
+  body: { dynamic: false },
+});
 
-// spawn cubes with mass 5kg twice a second
+// spawn cubes with mass 1kg twice a second
 interval(500).subscribe(() => {
   // generate cube
-  let item: Gg3dEntity = new Gg3dEntity(
-    world.visualScene.factory.createBox({ x: 1, y: 1, z: 1 }),
-    world.physicsWorld.factory.createRigidBody({
-      shape: { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } },
-      body: { mass: 1 },
-    }),
-  );
+  let item: Gg3dEntity = world.addPrimitiveRigidBody({
+    shape: { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } },
+    body: { mass: 1 },
+  });
   // set position to cube
   item.position = { x: Math.random() * 5 - 2.5, y: Math.random() * 5 - 2.5, z: 10 };
-  world.addEntity(item);
   // delete cube from world after 30 seconds
   setTimeout(() => { world.removeEntity(item, true); }, 30000);
 });
