@@ -139,6 +139,10 @@ export abstract class GgWorld<
 
   abstract addPrimitiveRigidBody(descr: any, position?: D, rotation?: R): GgPositionableEntity<D, R>;
 
+  public createClock(autoStart: boolean): Clock {
+    return this.worldClock.createChildClock(autoStart);
+  }
+
   public addEntity(entity: GgEntity): void {
     if (!!entity.world) {
       throw new Error('Entity already spawned');
