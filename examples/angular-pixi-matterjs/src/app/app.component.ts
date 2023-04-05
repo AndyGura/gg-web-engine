@@ -1,4 +1,4 @@
-import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { Gg2dEntity, Gg2dWorld, GgViewport, GgViewportManager, Point2 } from '@gg-web-engine/core';
 import { interval } from 'rxjs';
 import { Gg2dVisualScene, GgRenderer } from '@gg-web-engine/pixi';
@@ -10,9 +10,6 @@ import { Gg2dPhysicsWorld } from '@gg-web-engine/matter';
   styleUrls: ['./app.component.css'],
 })
 export class AppComponent implements OnInit {
-  title = 'angular-three-ammo';
-
-  @ViewChild('stage') stage!: ElementRef<HTMLCanvasElement>;
 
   async ngOnInit(): Promise<void> {
 

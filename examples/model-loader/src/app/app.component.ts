@@ -1,13 +1,6 @@
-import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { DirectionalLight, HemisphereLight } from 'three';
-import {
-  Camera3dAnimator,
-  createInlineTickController,
-  Gg3dWorld,
-  GgViewportManager,
-  Mtrx4,
-  Qtrn,
-} from '@gg-web-engine/core';
+import { Camera3dAnimator, Gg3dWorld, GgViewportManager } from '@gg-web-engine/core';
 import { interval } from 'rxjs';
 import { Gg3dObject, Gg3dVisualScene, GgRenderer } from '@gg-web-engine/three';
 import { Gg3dPhysicsWorld } from '@gg-web-engine/ammo';
@@ -15,12 +8,9 @@ import { Gg3dPhysicsWorld } from '@gg-web-engine/ammo';
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
-  styleUrls: ['./app.component.css']
+  styleUrls: ['./app.component.css'],
 })
 export class AppComponent implements OnInit {
-  title = 'model-loader';
-
-  @ViewChild('stage') stage!: ElementRef<HTMLCanvasElement>;
 
   async ngOnInit(): Promise<void> {
 
@@ -74,8 +64,6 @@ export class AppComponent implements OnInit {
       world.addEntity(item);
     }
 
-    // (window as any).gg.console('dr_drawphysics 1');
-
     interval(500).subscribe(async () => {
       const itemTypeRand = Math.random();
       let glbId = '';
@@ -98,8 +86,8 @@ export class AppComponent implements OnInit {
         position: {
           x: Math.random() * 5 - 2.5,
           y: Math.random() * 5 - 2.5,
-          z: 10
-        }
+          z: 10,
+        },
       });
       const item = entities[0];
       (item.object3D as Gg3dObject).nativeMesh.traverse((obj) => {

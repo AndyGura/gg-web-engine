@@ -1,4 +1,4 @@
-import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import {
   Camera3dAnimator,
   Gg3dEntity,
@@ -17,9 +17,6 @@ import { Gg3dPhysicsWorld } from '@gg-web-engine/ammo';
   styleUrls: ['./app.component.css'],
 })
 export class AppComponent implements OnInit {
-  title = 'angular-three-ammo';
-
-  @ViewChild('stage') stage!: ElementRef<HTMLCanvasElement>;
 
   async ngOnInit(): Promise<void> {
 
