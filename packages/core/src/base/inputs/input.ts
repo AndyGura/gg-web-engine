@@ -24,6 +24,5 @@ export abstract class Input<T extends any[] = [], K extends any[] = []> {
   }
 
   protected abstract startInternal(...args: T): Promise<void>;
-  protected async stopInternal(...args: K): Promise<void> {
-  };
+  protected async stopInternal(...args: K): Promise<void> {}
 }

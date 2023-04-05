@@ -8,17 +8,13 @@ export type DirectionKeyboardKeymap = 'arrows' | 'wasd' | 'wasd+arrows';
 export type DirectionKeyboardOutput = { upDown?: boolean; leftRight?: boolean };
 
 export class DirectionKeyboardInput extends Input {
-
   private _output$: Subject<DirectionKeyboardOutput> = new Subject<DirectionKeyboardOutput>();
 
   public get output$(): Observable<DirectionKeyboardOutput> {
     return this._output$.asObservable();
   }
 
-  constructor(
-    protected readonly keyboard: KeyboardInput,
-    protected readonly keymap: DirectionKeyboardKeymap
-  ) {
+  constructor(protected readonly keyboard: KeyboardInput, protected readonly keymap: DirectionKeyboardKeymap) {
     super();
   }
   protected async startInternal(): Promise<void> {

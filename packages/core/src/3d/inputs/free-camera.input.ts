@@ -45,11 +45,9 @@ export class FreeCameraInput extends Input<[], [unlockPointer?: boolean]> {
     if (this.camera.object3D.supportsFov) {
       keys.push('KeyZ', 'KeyC');
     }
-    this.directionsInput.output$
-      .pipe(takeUntil(this.stop$))
-      .subscribe(d => {
-        controls.direction = d;
-      });
+    this.directionsInput.output$.pipe(takeUntil(this.stop$)).subscribe(d => {
+      controls.direction = d;
+    });
     combineLatest(keys.map(c => this.keyboard.bind(c)))
       .pipe(takeUntil(this.stop$))
       .subscribe((d: boolean[]) => {

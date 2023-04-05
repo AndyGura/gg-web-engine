@@ -100,11 +100,9 @@ export class CarKeyboardInput extends Input {
           this.car$.getValue().gear--;
         }
       });
-    this.directionsInput.output$
-      .pipe(takeUntil(this.stop$))
-      .subscribe(d => {
-        moveDirection = d;
-      });
+    this.directionsInput.output$.pipe(takeUntil(this.stop$)).subscribe(d => {
+      moveDirection = d;
+    });
     this.car$
       .pipe(
         takeUntil(this.stop$),
