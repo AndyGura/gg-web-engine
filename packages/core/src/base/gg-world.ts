@@ -138,6 +138,7 @@ export abstract class GgWorld<
   public dispose(): void {
     this.worldClock.stop();
     for (let i = 0; i < this.children.length; i++) {
+      this.children[i].onRemoved();
       this.children[i].dispose();
     }
     this.children.splice(0, this.children.length);
