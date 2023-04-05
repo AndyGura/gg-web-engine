@@ -1,4 +1,4 @@
-import { IController } from './i-controller';
+import { Input } from './input';
 import { filter, fromEvent, Observable, Subject, takeUntil } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { Point2 } from '../models/points';
@@ -8,7 +8,7 @@ export type MouseControllerOptions = {
   pointerLock?: MouseControllerPointLockOptions;
 };
 
-export class MouseController implements IController {
+export class MouseInput extends Input<[], [unlockPointer?: boolean]> {
   private readonly _delta$: Subject<Point2> = new Subject<Point2>();
 
   public get deltaX$(): Observable<number> {
@@ -23,20 +23,14 @@ export class MouseController implements IController {
     return this._delta$.asObservable();
   }
 
+  private stopped$: Subject<void> = new Subject();
+
   constructor(private readonly options: MouseControllerOptions = {}) {
+    super();
     this.canvasClickListener = this.canvasClickListener.bind(this);
   }
 
-  private stopped$: Subject<void> = new Subject();
-  private _running: boolean = false;
-  public get running(): boolean {
-    return this._running;
-  }
-
-  async start() {
-    if (this.running) {
-      return;
-    }
+  protected async startInternal() {
     fromEvent(window, 'mousemove')
       .pipe(
         takeUntil(this.stopped$),
@@ -52,22 +46,17 @@ export class MouseController implements IController {
     if (!!this.options.pointerLock) {
       this.options.pointerLock.canvas.addEventListener('click', this.canvasClickListener);
     }
-    this._running = true;
   }
 
-  private canvasClickListener(): void {
-    this.options.pointerLock!.canvas.requestPointerLock();
-  }
-
-  async stop(unlockPointer: boolean = true) {
-    if (!this.running) {
-      return;
-    }
+  protected async stopInternal(unlockPointer: boolean = true) {
     this.stopped$.next();
     if (unlockPointer && !!this.options.pointerLock) {
       this.options.pointerLock.canvas.removeEventListener('click', this.canvasClickListener);
       document.exitPointerLock();
     }
-    this._running = false;
+  }
+
+  private canvasClickListener(): void {
+    this.options.pointerLock!.canvas.requestPointerLock();
   }
 }

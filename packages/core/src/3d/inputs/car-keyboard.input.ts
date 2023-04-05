@@ -1,9 +1,13 @@
-import { BehaviorSubject, combineLatest, interval, pipe, Subject, takeUntil, filter } from 'rxjs';
+import { BehaviorSubject, combineLatest, filter, interval, pipe, takeUntil } from 'rxjs';
 import { distinctUntilChanged, map, pairwise, startWith, switchMap, take, tap } from 'rxjs/operators';
-import { IController } from '../../base/controllers/i-controller';
-import { KeyboardController } from '../../base/controllers/keyboard.controller';
+import { Input } from '../../base/inputs/input';
+import { KeyboardInput } from '../../base/inputs/keyboard.input';
 import { Gg3dRaycastVehicleEntity } from '../entities/gg-3d-raycast-vehicle.entity';
-import { bindDirectionKeys, DirectionKeymap, DirectionOutput } from '../../base/controllers/common';
+import {
+  DirectionKeyboardInput,
+  DirectionKeyboardKeymap,
+  DirectionKeyboardOutput,
+} from '../../base/inputs/direction.keyboard-input';
 
 // TODO pass as settings
 // TODO smooth y?
@@ -11,18 +15,18 @@ const TICKER_INTERVAL = 16;
 const TICKER_MAX_STEPS = 10;
 
 export type CarKeyboardControllerOptions = {
-  keymap: DirectionKeymap;
+  keymap: DirectionKeyboardKeymap;
   gearUpDownKeys: [string, string];
 };
 
-export class CarKeyboardController implements IController {
+export class CarKeyboardInput extends Input {
+  protected readonly directionsInput: DirectionKeyboardInput;
   // emits values -1 - 1; -1 = full turn left; 1 = full turn right
   protected readonly x$: BehaviorSubject<number> = new BehaviorSubject<number>(0);
   // emits values -1 - 1; -1 = full brake; 1 = full acceleration
   protected readonly y$: BehaviorSubject<number> = new BehaviorSubject<number>(0);
 
   protected lastX: number = 0;
-  protected readonly stop$: Subject<void> = new Subject<void>();
 
   protected readonly car$: BehaviorSubject<Gg3dRaycastVehicleEntity> = new BehaviorSubject<Gg3dRaycastVehicleEntity>(
     null!,
@@ -58,16 +62,18 @@ export class CarKeyboardController implements IController {
   );
 
   constructor(
-    protected readonly keyboardController: KeyboardController,
+    protected readonly keyboard: KeyboardInput,
     car: Gg3dRaycastVehicleEntity,
     protected readonly options: CarKeyboardControllerOptions = { keymap: 'arrows', gearUpDownKeys: ['KeyA', 'KeyZ'] },
   ) {
+    super();
     this.car$.next(car);
+    this.directionsInput = new DirectionKeyboardInput(keyboard, options.keymap);
   }
 
-  async start(): Promise<void> {
-    let moveDirection: DirectionOutput = {};
-    this.keyboardController
+  protected async startInternal(): Promise<void> {
+    let moveDirection: DirectionKeyboardOutput = {};
+    this.keyboard
       .bind(this.options.gearUpDownKeys[0])
       .pipe(
         takeUntil(this.stop$),
@@ -81,7 +87,7 @@ export class CarKeyboardController implements IController {
           this.car$.getValue().gear++;
         }
       });
-    this.keyboardController
+    this.keyboard
       .bind(this.options.gearUpDownKeys[1])
       .pipe(
         takeUntil(this.stop$),
@@ -94,7 +100,7 @@ export class CarKeyboardController implements IController {
           this.car$.getValue().gear--;
         }
       });
-    bindDirectionKeys(this.keyboardController, this.options.keymap)
+    this.directionsInput.output$
       .pipe(takeUntil(this.stop$))
       .subscribe(d => {
         moveDirection = d;
@@ -122,9 +128,10 @@ export class CarKeyboardController implements IController {
       this.car$.getValue().setXAxisControlValue(x);
       this.car$.getValue().setYAxisControlValue(y);
     });
+    await this.directionsInput.start();
   }
 
-  async stop(): Promise<void> {
-    this.stop$.next();
+  protected async stopInternal(): Promise<void> {
+    await this.directionsInput.stop();
   }
 }

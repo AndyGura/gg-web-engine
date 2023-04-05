@@ -117,6 +117,4 @@ export class GgViewportManager {
       renderer.resize(GgViewport.instance.getCurrentViewportSize());
     }
   }
-
-  // TODO remove canvas logic
 }

@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, OnInit, ViewChild } from '@angular/core';
-import { Gg3dWorld, } from '@gg-web-engine/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit } from '@angular/core';
+import { Gg3dWorld } from '@gg-web-engine/core';
 import { Gg3dVisualScene } from '@gg-web-engine/three';
 import { Gg3dPhysicsWorld } from '@gg-web-engine/ammo';
 import { filter } from 'rxjs';
@@ -14,13 +14,8 @@ import { GameFactory } from './game-factory';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AppComponent implements OnInit {
-  title = 'fly-city';
-
-  @ViewChild('stage') stage!: ElementRef<HTMLCanvasElement>;
-
   world!: Gg3dWorld<Gg3dVisualScene, Gg3dPhysicsWorld>;
   runner?: GameRunner;
-
 
   showHelpText: boolean = true;
   paused: boolean = false;
@@ -58,7 +53,7 @@ export class AppComponent implements OnInit {
 
     this.runner.state$.subscribe(() => {
       this.cdr.markForCheck();
-    })
+    });
 
     this.world.start();
   }

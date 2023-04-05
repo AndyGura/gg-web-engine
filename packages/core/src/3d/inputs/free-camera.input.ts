@@ -1,28 +1,32 @@
-import { IController } from '../../base/controllers/i-controller';
-import { combineLatest, Subject, takeUntil } from 'rxjs';
-import { MouseController, MouseControllerOptions } from '../../base/controllers/mouse.controller';
+import { Input } from '../../base/inputs/input';
+import { combineLatest, takeUntil } from 'rxjs';
+import { MouseControllerOptions, MouseInput } from '../../base/inputs/mouse.input';
 import { Pnt3 } from '../../base/math/point3';
 import { Gg3dCameraEntity } from '../entities/gg-3d-camera.entity';
-import { KeyboardController } from '../../base/controllers/keyboard.controller';
+import { KeyboardInput } from '../../base/inputs/keyboard.input';
 import { Pnt2 } from '../../base/math/point2';
 import { Point2 } from '../../base/models/points';
 import { Qtrn } from '../../base/math/quaternion';
-import { bindDirectionKeys, DirectionKeymap, DirectionOutput } from '../../base/controllers/common';
+import {
+  DirectionKeyboardInput,
+  DirectionKeyboardKeymap,
+  DirectionKeyboardOutput,
+} from '../../base/inputs/direction.keyboard-input';
 
 export type FreeCameraControllerOptions = {
-  keymap: DirectionKeymap;
+  keymap: DirectionKeyboardKeymap;
   movementOptions: {
     speed: number;
   };
   mouseOptions: MouseControllerOptions;
 };
 
-export class FreeCameraController implements IController {
-  protected readonly mController: MouseController;
-  protected readonly stop$: Subject<void> = new Subject<void>();
+export class FreeCameraInput extends Input<[], [unlockPointer?: boolean]> {
+  protected readonly mouseInput: MouseInput;
+  protected readonly directionsInput: DirectionKeyboardInput;
 
   constructor(
-    protected readonly keyboardController: KeyboardController,
+    protected readonly keyboard: KeyboardInput,
     protected readonly camera: Gg3dCameraEntity,
     protected readonly options: FreeCameraControllerOptions = {
       keymap: 'wasd',
@@ -30,28 +34,30 @@ export class FreeCameraController implements IController {
       mouseOptions: {},
     },
   ) {
-    this.mController = new MouseController(options.mouseOptions);
+    super();
+    this.mouseInput = new MouseInput(options.mouseOptions);
+    this.directionsInput = new DirectionKeyboardInput(keyboard, options.keymap);
   }
 
-  async start(): Promise<void> {
-    let controls: { direction: DirectionOutput; rest: boolean[] } = { direction: {}, rest: [] };
+  protected async startInternal(): Promise<void> {
+    let controls: { direction: DirectionKeyboardOutput; rest: boolean[] } = { direction: {}, rest: [] };
     const keys = ['KeyE', 'KeyQ'];
     if (this.camera.object3D.supportsFov) {
       keys.push('KeyZ', 'KeyC');
     }
-    bindDirectionKeys(this.keyboardController, this.options.keymap)
+    this.directionsInput.output$
       .pipe(takeUntil(this.stop$))
       .subscribe(d => {
         controls.direction = d;
       });
-    combineLatest(keys.map(c => this.keyboardController.bind(c)))
+    combineLatest(keys.map(c => this.keyboard.bind(c)))
       .pipe(takeUntil(this.stop$))
       .subscribe((d: boolean[]) => {
         controls.rest = d;
       });
 
     let rotationDelta: Point2 = { x: 0, y: 0 };
-    this.mController.delta$.pipe(takeUntil(this.stop$)).subscribe(delta => {
+    this.mouseInput.delta$.pipe(takeUntil(this.stop$)).subscribe(delta => {
       rotationDelta = Pnt2.add(rotationDelta, delta);
     });
 
@@ -75,12 +81,12 @@ export class FreeCameraController implements IController {
         rotationDelta = { x: 0, y: 0 };
       }
     });
-
-    await this.mController.start();
+    await this.mouseInput.start();
+    await this.directionsInput.start();
   }
 
-  async stop(unlockPointer: boolean = true): Promise<void> {
-    this.stop$.next();
-    await this.mController.stop(unlockPointer);
+  protected async stopInternal(unlockPointer: boolean = true): Promise<void> {
+    await this.mouseInput.stop(unlockPointer);
+    await this.directionsInput.stop();
   }
 }

@@ -4,7 +4,7 @@ import { isITickListener, ITickListener } from './entities/interfaces/i-tick-lis
 import { GgPhysicsWorld } from './interfaces/gg-physics-world';
 import { GgVisualScene } from './interfaces/gg-visual-scene';
 import { GgStatic } from './gg-static';
-import { KeyboardController } from './controllers/keyboard.controller';
+import { KeyboardInput } from './inputs/keyboard.input';
 import { filter } from 'rxjs';
 import { GgConsoleUI } from './ui/gg-console.ui';
 import { GgDebuggerUI } from './ui/gg-debugger.ui';
@@ -17,15 +17,8 @@ export abstract class GgWorld<
   V extends GgVisualScene<D, R> = GgVisualScene<D, R>,
   P extends GgPhysicsWorld<D, R> = GgPhysicsWorld<D, R>,
 > {
-  // world clock, can be paused/resumed. Stops when disposing world
   private readonly worldClock: Clock = GgGlobalClock.instance.createChildClock(false);
-
-  // TODO consider adding mouse controller
-  public readonly keyboardController: KeyboardController = new KeyboardController();
-
-  public get worldTime(): number {
-    return this.worldClock.elapsedTime;
-  }
+  public readonly keyboardInput: KeyboardInput = new KeyboardInput();
 
   readonly children: GgEntity[] = [];
   protected readonly tickListeners: ITickListener[] = [];
@@ -37,9 +30,9 @@ export abstract class GgWorld<
   ) {
     GgStatic.instance.worlds.push(this);
     GgStatic.instance.selectedWorld = this;
-    this.keyboardController.start().then();
+    this.keyboardInput.start().then();
     if (consoleEnabled) {
-      this.keyboardController
+      this.keyboardInput
         .bind('Backquote')
         .pipe(filter(x => x))
         .subscribe(() => {
@@ -126,6 +119,22 @@ export abstract class GgWorld<
     this.worldClock.resume();
   }
 
+  public get isRunning(): boolean {
+    return this.worldClock.isRunning;
+  }
+
+  public get isPaused(): boolean {
+    return this.worldClock.isPaused;
+  }
+
+  public get worldTime(): number {
+    return this.worldClock.elapsedTime;
+  }
+
+  public createClock(autoStart: boolean): Clock {
+    return this.worldClock.createChildClock(autoStart);
+  }
+
   public dispose(): void {
     this.worldClock.stop();
     for (let i = 0; i < this.children.length; i++) {
@@ -138,10 +147,6 @@ export abstract class GgWorld<
   }
 
   abstract addPrimitiveRigidBody(descr: any, position?: D, rotation?: R): GgPositionableEntity<D, R>;
-
-  public createClock(autoStart: boolean): Clock {
-    return this.worldClock.createChildClock(autoStart);
-  }
 
   public addEntity(entity: GgEntity): void {
     if (!!entity.world) {

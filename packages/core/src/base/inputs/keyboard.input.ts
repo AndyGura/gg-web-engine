@@ -1,17 +1,23 @@
-import { IController } from './i-controller';
+import { Input } from './input';
 import { BehaviorSubject, combineLatest, finalize, NEVER, Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
-export class KeyboardController implements IController {
+export class KeyboardInput extends Input {
   private bindings: { [code: string]: BehaviorSubject<boolean>[] } = {};
 
   constructor() {
+    super();
     this.handleKeys = this.handleKeys.bind(this);
   }
 
-  private _running: boolean = false;
-  public get running(): boolean {
-    return this._running;
+  protected async startInternal() {
+    window.addEventListener('keydown', this.handleKeys);
+    window.addEventListener('keyup', this.handleKeys);
+  }
+
+  protected async stopInternal() {
+    window.removeEventListener('keydown', this.handleKeys);
+    window.removeEventListener('keyup', this.handleKeys);
   }
 
   bind(code: string): Observable<boolean> {
@@ -79,15 +85,6 @@ export class KeyboardController implements IController {
     this.emulateKeyUp(code);
   }
 
-  async start() {
-    if (this.running) {
-      return;
-    }
-    window.addEventListener('keydown', this.handleKeys);
-    window.addEventListener('keyup', this.handleKeys);
-    this._running = true;
-  }
-
   private handleKeys(e: KeyboardEvent) {
     if (e.type != 'keydown' && e.type != 'keyup') {
       return;
@@ -96,14 +93,5 @@ export class KeyboardController implements IController {
     for (const subj of this.bindings[e.code] || []) {
       subj.next(pressed);
     }
-  }
-
-  async stop() {
-    if (!this.running) {
-      return;
-    }
-    window.removeEventListener('keydown', this.handleKeys);
-    window.removeEventListener('keyup', this.handleKeys);
-    this._running = false;
   }
 }

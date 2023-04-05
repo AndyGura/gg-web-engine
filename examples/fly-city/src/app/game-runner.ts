@@ -86,7 +86,6 @@ export class GameRunner {
   }
 
   public setupKeyBindings() {
-    // TODO rename controllers (which are keyboard/mouse related) globally to something else
     this.carController = new CarKeyboardController(this.world.keyboardController, null!, {
       keymap: 'wasd+arrows',
       gearUpDownKeys: ['CapsLock', 'ShiftLeft'],
