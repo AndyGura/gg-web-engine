@@ -1,6 +1,5 @@
-import { Input } from '../../../../base/inputs/input';
 import { combineLatest, Subject, takeUntil } from 'rxjs';
-import { MouseControllerOptions, MouseInput } from '../../../../base/inputs/mouse.input';
+import { MouseInput, MouseInputOptions } from '../../../../base/inputs/mouse.input';
 import { Pnt3 } from '../../../../base/math/point3';
 import { Gg3dCameraEntity } from '../../gg-3d-camera.entity';
 import { KeyboardInput } from '../../../../base/inputs/keyboard.input';
@@ -35,7 +34,7 @@ export type FreeCameraControllerOptions = {
   /**
    * Options for configuring mouse input.
    */
-  mouseOptions: MouseControllerOptions;
+  mouseOptions: MouseInputOptions;
 };
 
 /**

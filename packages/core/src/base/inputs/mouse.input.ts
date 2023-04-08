@@ -4,20 +4,20 @@ import { map } from 'rxjs/operators';
 import { Point2 } from '../models/points';
 
 /**
- * Options for pointer lock in a MouseController.
+ * Options for pointer lock in a MouseInput.
  *
  * ignoreMovementWhenNotLocked: Whether to ignore mouse movement when pointer lock is not active.
  *
  * canvas: The canvas element to request pointer lock on.
  */
-export type MouseControllerPointLockOptions = { ignoreMovementWhenNotLocked: boolean; canvas: HTMLCanvasElement };
+export type MouseInputPointLockOptions = { ignoreMovementWhenNotLocked: boolean; canvas: HTMLCanvasElement };
 /**
  * Options for a MouseInput.
  *
  * pointerLock: The options for pointer lock. Do not provide it to disable pointer lock functionality
  */
-export type MouseControllerOptions = {
-  pointerLock?: MouseControllerPointLockOptions;
+export type MouseInputOptions = {
+  pointerLock?: MouseInputPointLockOptions;
 };
 /**
  * A class representing mouse input.
@@ -46,9 +46,9 @@ export class MouseInput extends Input<[], [unlockPointer?: boolean]> {
 
   /**
    Creates an instance of MouseInput.
-   @param {MouseControllerOptions} options - The options for the MouseInput.
+   @param {MouseInputOptions} options - The options for the MouseInput.
    */
-  constructor(private readonly options: MouseControllerOptions = {}) {
+  constructor(private readonly options: MouseInputOptions = {}) {
     super();
     this.canvasClickListener = this.canvasClickListener.bind(this);
   }

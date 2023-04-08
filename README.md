@@ -55,11 +55,28 @@ that there is currently lack of functionality which is not related to racing gam
 
 ## Features
 
+### Inputs
+
+Input is a class, responsible for handling external actions, such as mouse move, key presses, gamepad interactions etc. 
+When implementing multiplayer, it probably will be the best place to handle incoming data for reflecting it on the world 
+state. Input does not depend on ticks and is not a part of the world, it should be creted and used by some controller 
+entity, added to the world. All inputs extend abstract class Input<TStartParams, TStartParams>. Engine provides those 
+inputs out-of-box:
+#### KeyboardInput 
+This input handles key presses, allows to setup key bindings: provides Observable<boolean>, which emits true on key down
+and false on key up. When binding many keys to the same functionality, will emit true when any of bound keys pressed, 
+and false only when all bound keys released. Every world has its own instance of keyboard controller, which will be 
+stopped when world stopped/paused.
+#### MouseInput
+This input handles mouse movements and provides an Observable, which emits how much mouse position changed after last 
+event. Supports pointer lock functionality
+#### DirectionKeyboardInput
+A shortcut for implementing direction key bindings: WASD, arrows, or both at once. Provides observable with direction
+
+### Other:
 - Automatically working physics/rendering ticks
 - Automatic physics body/visual mesh position/rotation binding
 - Controllers interface, allowing to add some functions as part of tick
-- keyboard controller, supports key bindings
-- mouse controller, supports pointer lock
 - rigid bodies
 - trigger zones
 - free-fly camera controller (3D world only)
