@@ -21,7 +21,7 @@ export class Entity2dPositioningAnimator<T extends Gg2dEntity = Gg2dEntity> exte
 
   onSpawned(world: Gg2dWorld) {
     super.onSpawned(world);
-    this.value$.pipe(takeUntil(this.removed$)).subscribe(value => this.applyPositioning(value));
+    this.value$.pipe(takeUntil(this._onRemoved$)).subscribe(value => this.applyPositioning(value));
   }
 
   protected applyPositioning(value: Positioning2d) {

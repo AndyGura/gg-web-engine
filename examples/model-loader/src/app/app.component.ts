@@ -31,7 +31,6 @@ export class AppComponent implements OnInit {
       target: { x: 0, y: 0, z: 0 },
     }));
     world.addEntity(cameraController);
-    renderer.activate();
 
     const hemiLight = new HemisphereLight(0xffffff, 0xffffff, 0.6);
     hemiLight.color.setHSL(0.6, 1, 0.6);

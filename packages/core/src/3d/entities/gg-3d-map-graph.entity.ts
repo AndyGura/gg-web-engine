@@ -2,8 +2,7 @@ import { BehaviorSubject, NEVER, Observable, startWith, Subject, switchMap } fro
 import { distinctUntilChanged, map, tap, throttleTime } from 'rxjs/operators';
 import { Point3, Point4 } from '../../base/models/points';
 import { Graph } from '../../base/data-structures/graph';
-import { GgEntity } from '../../base/entities/gg-entity';
-import { GGTickOrder, ITickListener } from '../../base/entities/interfaces/i-tick-listener';
+import { GgEntity, GGTickOrder } from '../../base/entities/gg-entity';
 import { GgPositionable3dEntity } from './gg-positionable-3d-entity';
 import { Gg3dWorld } from '../gg-3d-world';
 import { Gg3dEntity } from './gg-3d-entity';
@@ -27,6 +26,7 @@ export class MapGraph extends Graph<MapGraphNodeType> {
     }
     return root;
   }
+
   static fromMapSquareGrid(grid: MapGraphNodeType[][]): MapGraph {
     const nodes = grid.map(sgrid => sgrid.map(item => new MapGraph(item)));
     // bind them
@@ -42,6 +42,7 @@ export class MapGraph extends Graph<MapGraphNodeType> {
     }
     return nodes[0][0];
   }
+
   public getNearestDummy(thisNodes: Graph<MapGraphNodeType>[], cursor: Point3): Graph<MapGraphNodeType> {
     let min = Infinity;
     let node: Graph<MapGraphNodeType> = this;
@@ -78,8 +79,7 @@ const defaultOptions: Gg3dMapGraphEntityOptions = {
   inertia: 0,
 };
 
-export class Gg3dMapGraphEntity extends GgEntity implements ITickListener {
-  public readonly tick$: Subject<[number, number]> = new Subject<[number, number]>();
+export class Gg3dMapGraphEntity extends GgEntity {
   public readonly tickOrder = GGTickOrder.POST_RENDERING;
 
   public readonly loaderCursorEntity$: BehaviorSubject<GgPositionable3dEntity | null> =
@@ -93,6 +93,7 @@ export class Gg3dMapGraphEntity extends GgEntity implements ITickListener {
 
   private _nearestDummy$: BehaviorSubject<Graph<MapGraphNodeType> | null> =
     new BehaviorSubject<Graph<MapGraphNodeType> | null>(null);
+
   public get nearestDummy(): Graph<MapGraphNodeType> | null {
     return this._nearestDummy$.getValue();
   }
@@ -107,6 +108,7 @@ export class Gg3dMapGraphEntity extends GgEntity implements ITickListener {
   get world(): Gg3dWorld | null {
     return this._world;
   }
+
   protected _world: Gg3dWorld | null = null;
   protected readonly mapGraphNodes: MapGraph[];
 

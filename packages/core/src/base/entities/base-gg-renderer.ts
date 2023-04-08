@@ -1,6 +1,4 @@
-import { GGTickOrder, ITickListener } from './interfaces/i-tick-listener';
-import { Subject, Subscription } from 'rxjs';
-import { GgEntity } from './gg-entity';
+import { GgEntity, GGTickOrder } from './gg-entity';
 import { Point2 } from '../models/points';
 import { GgViewportManager } from '../gg-viewport-manager';
 
@@ -12,14 +10,8 @@ export type RendererOptions = {
   antialias: boolean;
 };
 
-export abstract class BaseGgRenderer extends GgEntity implements ITickListener {
-  protected _permanentRenderMethods: Map<number, Function>;
-  protected _singularRenderMethods: Map<number, Function>;
-  private initialized = false;
-
-  readonly tick$: Subject<[number, number]>;
+export abstract class BaseGgRenderer extends GgEntity {
   public readonly tickOrder = GGTickOrder.RENDERING;
-  protected tickListener: Subscription | null = null;
 
   public readonly rendererOptions: RendererOptions;
 
@@ -31,47 +23,17 @@ export abstract class BaseGgRenderer extends GgEntity implements ITickListener {
       antialias: true,
       ...(options || {}),
     };
-    this._permanentRenderMethods = new Map<number, Function>();
-    this._singularRenderMethods = new Map<number, Function>();
-    this.tick$ = new Subject<[number, number]>();
     if (canvas) {
       setTimeout(() => {
         GgViewportManager.instance.assignRendererToCanvas(this, canvas).then();
       }, 0);
     }
-  }
-
-  public get isActive(): boolean {
-    return !!this.tickListener;
-  }
-
-  public activate(): void {
-    if (this.isActive) {
-      return;
-    }
-    if (!this.initialized) {
-      this.init();
-    }
-    this.tickListener = this.tick$.subscribe(() => {
+    this.tick$.subscribe(() => {
       this.render();
     });
-  }
-
-  public deactivate(): void {
-    if (!this.isActive) {
-      return;
-    }
-    this.tickListener?.unsubscribe();
-    this.tickListener = null;
-  }
-
-  init(): void {
-    this.initialized = true;
   }
 
   abstract render(): void;
 
   abstract resize(newSize: Point2): void;
-
-  abstract dispose(): void;
 }

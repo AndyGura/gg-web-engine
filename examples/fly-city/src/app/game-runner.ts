@@ -1,5 +1,5 @@
 import {
-  CarKeyboardController,
+  CarKeyboardHandlingController,
   Gg3dMapGraphEntity,
   Gg3dRaycastVehicleEntity,
   Gg3dRenderer,
@@ -21,7 +21,7 @@ export type CurrentState =
 
 export class GameRunner {
 
-  public carController?: CarKeyboardController;
+  public handling?: CarKeyboardHandlingController;
   public readonly gameCameraController: GameCameraController;
   public readonly audio: GameAudio;
 
@@ -41,12 +41,12 @@ export class GameRunner {
     this.gameCameraController = new GameCameraController(this.world, this.renderer);
     this.state$.subscribe((state) => {
       this.gameCameraController.state = state;
-      if (this.carController) {
+      if (this.handling) {
         if (state.mode === 'freecamera') {
-          this.carController.stop();
+          this.handling.active = false;
         } else if (state.mode === 'driving') {
-          this.carController.car = state.car;
-          this.carController.start();
+          this.handling.car = state.car;
+          this.handling.active = true;
         }
       }
     });
@@ -86,11 +86,13 @@ export class GameRunner {
   }
 
   public setupKeyBindings() {
-    this.carController = new CarKeyboardController(this.world.keyboardController, null!, {
+    this.handling = new CarKeyboardHandlingController(this.world.keyboardInput, null!, {
       keymap: 'wasd+arrows',
       gearUpDownKeys: ['CapsLock', 'ShiftLeft'],
     });
-    this.world.keyboardController.bind('KeyC').pipe(
+    this.handling.active = false;
+    this.world.addEntity(this.handling);
+    this.world.keyboardInput.bind('KeyC').pipe(
       filter(x => !!x && this.state$.getValue().mode != 'freecamera'),
     ).subscribe(() => {
       if (this.gameCameraController.cameraIndex$.getValue() >= this.gameCameraController.cameraMotionFactory.length - 1) {
@@ -99,7 +101,7 @@ export class GameRunner {
         this.gameCameraController.cameraIndex$.next(this.gameCameraController.cameraIndex$.getValue() + 1);
       }
     });
-    this.world.keyboardController.bind('KeyF').pipe(filter(x => x)).subscribe(() => {
+    this.world.keyboardInput.bind('KeyF').pipe(filter(x => x)).subscribe(() => {
       if (this.state$.getValue().mode === 'freecamera') {
         let distance = Number.MAX_SAFE_INTEGER;
         let car: Gg3dRaycastVehicleEntity | null = null;
@@ -124,13 +126,13 @@ export class GameRunner {
       }
     });
 
-    this.world.keyboardController.bind('KeyR')
+    this.world.keyboardInput.bind('KeyR')
       .pipe(filter(x => x))
       .subscribe(() => this.resetMyCar());
 
     combineLatest(
       this.state$.pipe(map(s => s.mode === 'driving')),
-      this.world.keyboardController.bind('KeyH'),
+      this.world.keyboardInput.bind('KeyH'),
     )
       .pipe(map(([a, b]) => a && b))
       .subscribe((honk) => {

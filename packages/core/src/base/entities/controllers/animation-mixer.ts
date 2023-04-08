@@ -1,5 +1,4 @@
-import { GgEntity } from '../gg-entity';
-import { GGTickOrder, ITickListener } from '../interfaces/i-tick-listener';
+import { GgEntity, GGTickOrder } from '../gg-entity';
 import { BehaviorSubject, distinctUntilChanged, Observable, Subject, takeUntil } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
 import { GgWorld } from '../../gg-world';
@@ -12,17 +11,12 @@ export type AnimationFunction<T> = (elapsed: number, delta: number) => T;
  * The current value of the animation can be subscribed to using the `subscribeToValue` property.
  * The animation function can be changed with `transitAnimationFunction` or `transitFromStaticState`.
  */
-export class AnimationMixer<T> extends GgEntity implements ITickListener {
-  public readonly tick$: Subject<[number, number]> = new Subject<[number, number]>();
+export class AnimationMixer<T> extends GgEntity {
   public readonly tickOrder: number = GGTickOrder.ANIMATION_MIXERS;
   /**
    * A subject that emits the current value of the animation on every tick.
    */
   protected readonly _value$: Subject<T> = new Subject<T>();
-  /**
-   * A subject that emits when the animator has been removed from the world.
-   */
-  protected readonly removed$: Subject<void> = new Subject<void>();
 
   /**
    * The current transition time reference `[elapsed, delta]` that interpolates between the old and new functions.
@@ -158,16 +152,11 @@ export class AnimationMixer<T> extends GgEntity implements ITickListener {
     super.onSpawned(world);
     this.tick$
       .pipe(
-        takeUntil(this.removed$),
+        takeUntil(this._onRemoved$),
         tap(([elapsed, delta]) => this.currentTransition && this.currentTransition([elapsed, delta])),
         map(([elapsed, delta]) => this._animationFunction(elapsed, delta)),
       )
       .subscribe(value => this._value$.next(value));
-  }
-
-  onRemoved() {
-    super.onRemoved();
-    this.removed$.next();
   }
 
   dispose(): void {

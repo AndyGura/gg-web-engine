@@ -59,6 +59,9 @@ export class GameAudio {
     this.state$.pipe(
       switchMap(state => state.mode === 'freecamera' ? NEVER : state.car.gear$.pipe(skip(1))),
     ).subscribe(() => {
+      if (this.changeGearHowl.playing()) {
+        this.changeGearHowl.stop();
+      }
       this.changeGearHowl.play();
     });
 

@@ -36,12 +36,12 @@ export class AppComponent implements OnInit {
     await this.runner.audio.initAudio();
     this.runner.setupKeyBindings();
 
-    this.world.keyboardController.bind('KeyX').pipe(filter(x => x)).subscribe(() => {
+    this.world.keyboardInput.bind('KeyX').pipe(filter(x => x)).subscribe(() => {
       this.showHelpText = !this.showHelpText;
       this.cdr.markForCheck();
     });
 
-    this.world.keyboardController.bind('KeyP').pipe(filter(x => x)).subscribe(() => {
+    this.world.keyboardInput.bind('KeyP').pipe(filter(x => x)).subscribe(() => {
       this.paused = !this.paused;
       if (this.paused) {
         this.world.pauseWorld();

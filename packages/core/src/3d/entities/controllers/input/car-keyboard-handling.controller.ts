@@ -1,4 +1,4 @@
-import { BehaviorSubject, combineLatest, filter, interval, pipe, Subject, takeUntil } from 'rxjs';
+import { BehaviorSubject, combineLatest, filter, interval, pipe, takeUntil } from 'rxjs';
 import { distinctUntilChanged, map, pairwise, startWith, switchMap, take, tap } from 'rxjs/operators';
 import { KeyboardInput } from '../../../../base/inputs/keyboard.input';
 import { Gg3dRaycastVehicleEntity } from '../../gg-3d-raycast-vehicle.entity';
@@ -7,8 +7,7 @@ import {
   DirectionKeyboardKeymap,
   DirectionKeyboardOutput,
 } from '../../../../base/inputs/direction.keyboard-input';
-import { GgEntity } from '../../../../base/entities/gg-entity';
-import { GGTickOrder, ITickListener } from '../../../../base/entities/interfaces/i-tick-listener';
+import { GgEntity, GGTickOrder } from '../../../../base/entities/gg-entity';
 import { GgWorld } from '../../../../base/gg-world';
 
 // TODO pass as settings
@@ -21,8 +20,7 @@ export type CarKeyboardControllerOptions = {
   gearUpDownKeys: [string, string];
 };
 
-export class CarKeyboardHandlingController extends GgEntity implements ITickListener {
-  public readonly tick$: Subject<[number, number]> = new Subject<[number, number]>();
+export class CarKeyboardHandlingController extends GgEntity {
   public readonly tickOrder = GGTickOrder.INPUT_CONTROLLERS;
 
   protected readonly directionsInput: DirectionKeyboardInput;
@@ -32,18 +30,6 @@ export class CarKeyboardHandlingController extends GgEntity implements ITickList
   protected readonly y$: BehaviorSubject<number> = new BehaviorSubject<number>(0);
 
   protected lastX: number = 0;
-
-  protected readonly car$: BehaviorSubject<Gg3dRaycastVehicleEntity> = new BehaviorSubject<Gg3dRaycastVehicleEntity>(
-    null!,
-  );
-
-  public set car(value: Gg3dRaycastVehicleEntity) {
-    this.car$.next(value);
-  }
-
-  public get car(): Gg3dRaycastVehicleEntity {
-    return this.car$.getValue();
-  }
 
   public switchingGearsEnabled: boolean = true;
 
@@ -68,11 +54,10 @@ export class CarKeyboardHandlingController extends GgEntity implements ITickList
 
   constructor(
     protected readonly keyboard: KeyboardInput,
-    car: Gg3dRaycastVehicleEntity,
+    public car: Gg3dRaycastVehicleEntity | null,
     protected readonly options: CarKeyboardControllerOptions = { keymap: 'arrows', gearUpDownKeys: ['KeyA', 'KeyZ'] },
   ) {
     super();
-    this.car$.next(car);
     this.directionsInput = new DirectionKeyboardInput(keyboard, options.keymap);
   }
 
@@ -86,11 +71,8 @@ export class CarKeyboardHandlingController extends GgEntity implements ITickList
         filter(x => this.switchingGearsEnabled && !!x),
       )
       .subscribe(() => {
-        if (
-          this.car$.getValue() &&
-          (!this.car$.getValue().carProperties.transmission.isAuto || this.car$.getValue().gear <= 0)
-        ) {
-          this.car$.getValue().gear++;
+        if (this.car && (!this.car.carProperties.transmission.isAuto || this.car.gear <= 0)) {
+          this.car.gear++;
         }
       });
     this.keyboard
@@ -100,19 +82,19 @@ export class CarKeyboardHandlingController extends GgEntity implements ITickList
         filter(x => this.switchingGearsEnabled && !!x),
       )
       .subscribe(() => {
-        if (this.car$.getValue().carProperties.transmission.isAuto && this.car.gear > 1) {
-          this.car$.getValue().gear = 0;
-        } else {
-          this.car$.getValue().gear--;
+        if (this.car) {
+          if (this.car.carProperties.transmission.isAuto && this.car.gear > 1) {
+            this.car.gear = 0;
+          } else {
+            this.car.gear--;
+          }
         }
       });
     this.directionsInput.output$.pipe(takeUntil(this._onRemoved$)).subscribe(d => {
       moveDirection = d;
     });
-    this.car$
+    this.tick$
       .pipe(
-        takeUntil(this._onRemoved$),
-        switchMap(c => c.tick$),
         takeUntil(this._onRemoved$),
         map(() => {
           const direction = [0, 0];
@@ -129,13 +111,16 @@ export class CarKeyboardHandlingController extends GgEntity implements ITickList
       this.x$.pipe(takeUntil(this._onRemoved$), distinctUntilChanged(), this.pairTickerPipe),
       this.y$.pipe(takeUntil(this._onRemoved$), distinctUntilChanged()),
     ]).subscribe(([x, y]) => {
-      this.car$.getValue().setXAxisControlValue(x);
-      this.car$.getValue().setYAxisControlValue(y);
+      if (this.car) {
+        this.car.setXAxisControlValue(x);
+        this.car.setYAxisControlValue(y);
+      }
     });
     await this.directionsInput.start();
   }
 
   async onRemoved(): Promise<void> {
+    await super.onRemoved();
     await this.directionsInput.stop();
   }
 }

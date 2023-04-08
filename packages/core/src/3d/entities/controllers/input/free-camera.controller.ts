@@ -1,4 +1,4 @@
-import { combineLatest, Subject, takeUntil } from 'rxjs';
+import { combineLatest, takeUntil } from 'rxjs';
 import { MouseInput, MouseInputOptions } from '../../../../base/inputs/mouse.input';
 import { Pnt3 } from '../../../../base/math/point3';
 import { Gg3dCameraEntity } from '../../gg-3d-camera.entity';
@@ -11,8 +11,8 @@ import {
   DirectionKeyboardKeymap,
   DirectionKeyboardOutput,
 } from '../../../../base/inputs/direction.keyboard-input';
-import { GgEntity } from '../../../../base/entities/gg-entity';
-import { GGTickOrder, ITickListener } from '../../../../base/entities/interfaces/i-tick-listener';
+import { GgEntity, GGTickOrder } from '../../../../base/entities/gg-entity';
+import { GgWorld } from '../../../../base/gg-world';
 
 /**
  * Options for configuring a FreeCameraInput controller.
@@ -40,8 +40,7 @@ export type FreeCameraControllerOptions = {
 /**
  * A controller for a free-moving camera.
  */
-export class FreeCameraController extends GgEntity implements ITickListener {
-  public readonly tick$: Subject<[number, number]> = new Subject<[number, number]>();
+export class FreeCameraController extends GgEntity {
   public readonly tickOrder = GGTickOrder.INPUT_CONTROLLERS;
 
   /**
@@ -73,7 +72,8 @@ export class FreeCameraController extends GgEntity implements ITickListener {
     this.directionsInput = new DirectionKeyboardInput(keyboard, options.keymap);
   }
 
-  async onSpawned(): Promise<void> {
+  async onSpawned(world: GgWorld<any, any>): Promise<void> {
+    await super.onSpawned(world);
     // Subscribe to keyboard input for movement controls
     let controls: { direction: DirectionKeyboardOutput; rest: boolean[] } = { direction: {}, rest: [] };
     const keys = ['KeyE', 'KeyQ'];
@@ -123,6 +123,7 @@ export class FreeCameraController extends GgEntity implements ITickListener {
   }
 
   async onRemoved(): Promise<void> {
+    await super.onRemoved();
     await this.mouseInput.stop(true);
     await this.directionsInput.stop();
   }

@@ -29,7 +29,7 @@ export class Camera3dAnimator extends AnimationMixer<Camera3dAnimationArgs> {
 
   onSpawned(world: Gg3dWorld) {
     super.onSpawned(world);
-    this.value$.pipe(takeUntil(this.removed$)).subscribe(value => this.applyPositioning(value));
+    this.value$.pipe(takeUntil(this._onRemoved$)).subscribe(value => this.applyPositioning(value));
   }
 
   protected applyPositioning(value: Camera3dAnimationArgs) {

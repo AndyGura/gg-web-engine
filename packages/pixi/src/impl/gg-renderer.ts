@@ -42,6 +42,7 @@ export class GgRenderer extends Gg2dRenderer {
   }
 
   dispose(): void {
+    super.dispose();
     if (this.application.renderer instanceof Renderer) {
       this.application.renderer.gl.getExtension('WEBGL_lose_context')?.loseContext();
     }

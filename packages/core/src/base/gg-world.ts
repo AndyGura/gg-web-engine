@@ -1,6 +1,5 @@
 import { Clock } from './clock/clock';
-import { GgEntity } from './entities/gg-entity';
-import { GGTickOrder, isITickListener, ITickListener } from './entities/interfaces/i-tick-listener';
+import { GgEntity, GGTickOrder } from './entities/gg-entity';
 import { GgPhysicsWorld } from './interfaces/gg-physics-world';
 import { GgVisualScene } from './interfaces/gg-visual-scene';
 import { GgStatic } from './gg-static';
@@ -21,7 +20,8 @@ export abstract class GgWorld<
   public readonly keyboardInput: KeyboardInput = new KeyboardInput();
 
   readonly children: GgEntity[] = [];
-  protected readonly tickListeners: ITickListener[] = [];
+  // the same as children, but sorted by tick order
+  protected readonly tickListeners: GgEntity[] = [];
 
   constructor(
     public readonly visualScene: V,
@@ -99,13 +99,17 @@ export abstract class GgWorld<
         if (this.tickListeners[i].tickOrder >= GGTickOrder.PHYSICS_SIMULATION) {
           break;
         }
-        this.tickListeners[i].tick$.next([elapsed, delta]);
+        if (this.tickListeners[i].active) {
+          this.tickListeners[i].tick$.next([elapsed, delta]);
+        }
       }
       // run phycics simulation
       this.physicsWorld.simulate(delta);
       // emit tick to all remained entities
       for (i; i < this.tickListeners.length; i++) {
-        this.tickListeners[i].tick$.next([elapsed, delta]);
+        if (this.tickListeners[i].active) {
+          this.tickListeners[i].tick$.next([elapsed, delta]);
+        }
       }
     });
   }
@@ -154,31 +158,32 @@ export abstract class GgWorld<
 
   public addEntity(entity: GgEntity): void {
     if (!!entity.world) {
-      throw new Error('Entity already spawned');
+      console.warn('Trying to spawn entity, which is already spawned');
+      return;
     }
     this.children.push(entity);
-    if (isITickListener(entity)) {
-      this.tickListeners.push(entity as any as ITickListener);
-      this.tickListeners.sort((l1, l2) => l1.tickOrder - l2.tickOrder);
-    }
+    this.tickListeners.push(entity);
+    this.tickListeners.sort((l1, l2) => l1.tickOrder - l2.tickOrder);
     entity.onSpawned(this);
   }
 
   public removeEntity(entity: GgEntity, dispose = true): void {
-    if (entity.world !== this) {
-      throw new Error('Entity is not a part of this world');
-    }
-    this.children.splice(
-      this.children.findIndex(x => x === entity),
-      1,
-    );
-    if (isITickListener(entity)) {
+    if (entity.world) {
+      if (entity.world !== this) {
+        throw new Error('Entity is not a part of this world');
+      }
+      this.children.splice(
+        this.children.findIndex(x => x === entity),
+        1,
+      );
       this.tickListeners.splice(
         this.tickListeners.findIndex(x => (x as any) === entity),
         1,
       );
+      entity.onRemoved();
+    } else {
+      console.warn('Trying to remove entity, which is not spawned');
     }
-    entity.onRemoved();
     if (dispose) {
       entity.dispose();
     }

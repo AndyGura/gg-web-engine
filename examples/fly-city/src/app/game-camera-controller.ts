@@ -30,15 +30,11 @@ export class GameCameraController {
 
   public set state(state: CurrentState) {
     if (state.mode === 'freecamera') {
-      try {
-        this.world.removeEntity(this.carCameraController, false);
-      } catch {
-        //pass
-      }
-      this.freeCameraController.start();
+      this.freeCameraController.active = true;
+      this.carCameraController.active = false;
     } else if (state.mode === 'driving') {
-      this.freeCameraController.stop(false);
-      this.world.addEntity(this.carCameraController);
+      this.freeCameraController.active = false;
+      this.carCameraController.active = true;
       this.carCameraController.transitFromStaticState(
         {
           position: this.renderer.camera.position,
@@ -66,7 +62,7 @@ export class GameCameraController {
     public readonly renderer: Gg3dRenderer,
   ) {
     this.freeCameraController = new FreeCameraController(
-      this.world.keyboardController,
+      this.world.keyboardInput,
       renderer.camera,
       {
         keymap: 'wasd+arrows',
@@ -81,7 +77,11 @@ export class GameCameraController {
         },
       },
     );
+    this.freeCameraController.active = false;
+    this.world.addEntity(this.freeCameraController);
     this.carCameraController = new Camera3dAnimator(renderer.camera, null!);
+    this.carCameraController.active = false;
+    this.world.addEntity(this.carCameraController);
     this.cameraIndex$.pipe(skip(1)).subscribe(index => {
       if (this.state_.mode == 'driving') {
         const [funcProto, duration, easing] = this.cameraMotionFactory[index];

@@ -1,7 +1,32 @@
 import { GgWorld } from '../gg-world';
 import { Subject } from 'rxjs';
 
+/**
+ * Engine's default tick orders: the less value, the earlier tick will be run.
+ */
+export enum GGTickOrder {
+  INPUT_CONTROLLERS = 0,
+  PHYSICS_SIMULATION = 200,
+  OBJECTS_BINDING = 400,
+  ANIMATION_MIXERS = 600,
+  CONTROLLERS = 800,
+  RENDERING = 1000,
+  POST_RENDERING = 1200,
+}
+
 export abstract class GgEntity {
+  /**
+   * will receive [elapsed time, delta] of each world clock tick
+   */
+  readonly tick$: Subject<[number, number]> = new Subject<[number, number]>();
+  /**
+   * the priority of ticker: the less value, the earlier tick will be run.
+   */
+  abstract readonly tickOrder: GGTickOrder | number;
+
+  /**
+   * a world reference, where this entity was added to
+   */
   protected _world: GgWorld<any, any> | null = null;
   get world(): GgWorld<any, any> | null {
     return this._world;
@@ -15,6 +40,19 @@ export abstract class GgEntity {
 
   public set name(value: string) {
     this._name = value;
+  }
+
+  /**
+   * The flag whether entity should listen to ticks. If set to false, ticks will not be propagated to this entity
+   * */
+  protected _active: boolean = true;
+
+  public get active(): boolean {
+    return this._active;
+  }
+
+  public set active(value: boolean) {
+    this._active = value;
   }
 
   protected _children: GgEntity[] = [];
@@ -59,8 +97,12 @@ export abstract class GgEntity {
 
   // TODO add some flag to entity that it is disposed, and throw a normal error when trying to add such entity to world again
   public dispose(): void {
+    if (this.world) {
+      this.world.removeEntity(this);
+    }
     this._onSpawned$.complete();
     this._onRemoved$.complete();
+    this.tick$.complete();
     for (const c of this._children) {
       c.dispose();
     }

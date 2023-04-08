@@ -21,7 +21,7 @@ export class Entity3dPositioningAnimator<T extends Gg3dEntity = Gg3dEntity> exte
 
   onSpawned(world: Gg3dWorld) {
     super.onSpawned(world);
-    this.value$.pipe(takeUntil(this.removed$)).subscribe(value => this.applyPositioning(value));
+    this.value$.pipe(takeUntil(this._onRemoved$)).subscribe(value => this.applyPositioning(value));
   }
 
   protected applyPositioning(value: Positioning3d) {

@@ -21,7 +21,6 @@ export class AppComponent implements OnInit {
     const canvas = await GgViewportManager.instance.createCanvas(1);
     const renderer: GgRenderer = new GgRenderer(canvas);
     world.addEntity(renderer);
-    renderer.activate();
 
     const floor = world.addPrimitiveRigidBody({
       shape: { shape: 'SQUARE', dimensions: { x: 800, y: 100 } },

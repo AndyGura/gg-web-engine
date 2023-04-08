@@ -59,14 +59,13 @@ that there is currently lack of functionality which is not related to racing gam
 
 Input is a class, responsible for handling external actions, such as mouse move, key presses, gamepad interactions etc. 
 When implementing multiplayer, it probably will be the best place to handle incoming data for reflecting it on the world 
-state. Input does not depend on ticks and is not a part of the world, it should be creted and used by some controller 
+state. Input does not depend on ticks and is not a part of the world, it should be created and used by some controller 
 entity, added to the world. All inputs extend abstract class Input<TStartParams, TStartParams>. Engine provides those 
 inputs out-of-box:
 #### KeyboardInput 
 This input handles key presses, allows to setup key bindings: provides Observable<boolean>, which emits true on key down
 and false on key up. When binding many keys to the same functionality, will emit true when any of bound keys pressed, 
-and false only when all bound keys released. Every world has its own instance of keyboard controller, which will be 
-stopped when world stopped/paused.
+and false only when all bound keys released. Every world has its own instance of keyboard controller
 #### MouseInput
 This input handles mouse movements and provides an Observable, which emits how much mouse position changed after last 
 event. Supports pointer lock functionality
@@ -128,7 +127,6 @@ const renderer: GgRenderer = new GgRenderer(canvas);
 renderer.camera.position = { x: 15, y: 15, z: 9 };
 renderer.camera.rotation = Qtrn.lookAt(renderer.camera.position, {x: 0, y: 0, z: 0}, {x: 0, y: 0, z: 1});
 world.addEntity(renderer);
-renderer.activate();
 
 // create floor (static rigid body)
 world.addPrimitiveRigidBody({

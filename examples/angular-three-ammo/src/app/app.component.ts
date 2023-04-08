@@ -37,7 +37,6 @@ export class AppComponent implements OnInit {
       target: { x: 0, y: 0, z: 0 },
     }));
     world.addEntity(cameraController);
-    renderer.activate();
 
     world.addPrimitiveRigidBody({
       shape: { shape: 'BOX', dimensions: { x: 7, y: 7, z: 1 } },

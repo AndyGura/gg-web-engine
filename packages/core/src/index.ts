@@ -3,7 +3,6 @@ export * from './base/clock/global-clock';
 export * from './base/gg-viewport';
 export * from './base/gg-viewport-manager';
 export * from './base/entities/controllers/animation-mixer';
-export * from './base/entities/interfaces/i-tick-listener';
 export * from './base/entities/gg-entity';
 export * from './base/entities/base-gg-renderer';
 export * from './base/entities/inline-controller';
