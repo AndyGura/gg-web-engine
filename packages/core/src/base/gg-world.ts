@@ -1,6 +1,6 @@
 import { Clock } from './clock/clock';
 import { GgEntity } from './entities/gg-entity';
-import { isITickListener, ITickListener } from './entities/interfaces/i-tick-listener';
+import { GGTickOrder, isITickListener, ITickListener } from './entities/interfaces/i-tick-listener';
 import { GgPhysicsWorld } from './interfaces/gg-physics-world';
 import { GgVisualScene } from './interfaces/gg-visual-scene';
 import { GgStatic } from './gg-static';
@@ -93,16 +93,19 @@ export abstract class GgWorld<
   public async init() {
     await Promise.all([this.physicsWorld.init(), this.visualScene.init()]);
     this.worldClock.tick$.subscribe(([elapsed, delta]) => {
-      let physicsTickPerformed = false;
-      for (let i = 0; i < this.tickListeners.length; i++) {
-        if (!physicsTickPerformed && this.tickListeners[i].tickOrder >= 500) {
-          this.physicsWorld.simulate(delta);
-          physicsTickPerformed = true;
+      let i = 0;
+      // emit tick to all entities with tick order < GGTickOrder.PHYSICS_SIMULATION
+      for (i; i < this.tickListeners.length; i++) {
+        if (this.tickListeners[i].tickOrder >= GGTickOrder.PHYSICS_SIMULATION) {
+          break;
         }
         this.tickListeners[i].tick$.next([elapsed, delta]);
       }
-      if (!physicsTickPerformed) {
-        this.physicsWorld.simulate(delta);
+      // run phycics simulation
+      this.physicsWorld.simulate(delta);
+      // emit tick to all remained entities
+      for (i; i < this.tickListeners.length; i++) {
+        this.tickListeners[i].tick$.next([elapsed, delta]);
       }
     });
   }

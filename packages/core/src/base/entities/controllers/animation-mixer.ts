@@ -1,5 +1,5 @@
 import { GgEntity } from '../gg-entity';
-import { ITickListener } from '../interfaces/i-tick-listener';
+import { GGTickOrder, ITickListener } from '../interfaces/i-tick-listener';
 import { BehaviorSubject, distinctUntilChanged, Observable, Subject, takeUntil } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
 import { GgWorld } from '../../gg-world';
@@ -14,7 +14,7 @@ export type AnimationFunction<T> = (elapsed: number, delta: number) => T;
  */
 export class AnimationMixer<T> extends GgEntity implements ITickListener {
   public readonly tick$: Subject<[number, number]> = new Subject<[number, number]>();
-  public readonly tickOrder: number = 850;
+  public readonly tickOrder: number = GGTickOrder.ANIMATION_MIXERS;
   /**
    * A subject that emits the current value of the animation on every tick.
    */

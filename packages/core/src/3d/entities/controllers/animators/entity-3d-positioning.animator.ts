@@ -1,10 +1,10 @@
-import { Gg3dEntity } from '../gg-3d-entity';
-import { AnimationFunction, AnimationMixer } from '../../../base/entities/controllers/animation-mixer';
-import { Point3, Point4 } from '../../../base/models/points';
-import { Pnt3 } from '../../../base/math/point3';
-import { Qtrn } from '../../../base/math/quaternion';
+import { Gg3dEntity } from '../../gg-3d-entity';
+import { AnimationFunction, AnimationMixer } from '../../../../base/entities/controllers/animation-mixer';
+import { Point3, Point4 } from '../../../../base/models/points';
+import { Pnt3 } from '../../../../base/math/point3';
+import { Qtrn } from '../../../../base/math/quaternion';
 import { takeUntil } from 'rxjs';
-import { Gg3dWorld } from '../../gg-3d-world';
+import { Gg3dWorld } from '../../../gg-3d-world';
 
 type Positioning3d = {
   position: Point3;

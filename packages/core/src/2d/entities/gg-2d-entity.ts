@@ -1,13 +1,13 @@
 import { Subject } from 'rxjs';
 import { GgPositionable2dEntity } from './gg-positionable-2d-entity';
-import { ITickListener } from '../../base/entities/interfaces/i-tick-listener';
+import { GGTickOrder, ITickListener } from '../../base/entities/interfaces/i-tick-listener';
 import { Point2 } from '../../base/models/points';
 import { IGg2dBody, IGg2dObject } from '../interfaces';
 import { Gg2dWorld } from '../gg-2d-world';
 
 export class Gg2dEntity extends GgPositionable2dEntity implements ITickListener {
   public readonly tick$: Subject<[number, number]> = new Subject<[number, number]>();
-  public readonly tickOrder = 750;
+  public readonly tickOrder = GGTickOrder.OBJECTS_BINDING;
 
   public get position(): Point2 {
     return super.position;

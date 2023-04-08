@@ -1,13 +1,15 @@
-import { BehaviorSubject, combineLatest, filter, interval, pipe, takeUntil } from 'rxjs';
+import { BehaviorSubject, combineLatest, filter, interval, pipe, Subject, takeUntil } from 'rxjs';
 import { distinctUntilChanged, map, pairwise, startWith, switchMap, take, tap } from 'rxjs/operators';
-import { Input } from '../../base/inputs/input';
-import { KeyboardInput } from '../../base/inputs/keyboard.input';
-import { Gg3dRaycastVehicleEntity } from '../entities/gg-3d-raycast-vehicle.entity';
+import { KeyboardInput } from '../../../../base/inputs/keyboard.input';
+import { Gg3dRaycastVehicleEntity } from '../../gg-3d-raycast-vehicle.entity';
 import {
   DirectionKeyboardInput,
   DirectionKeyboardKeymap,
   DirectionKeyboardOutput,
-} from '../../base/inputs/direction.keyboard-input';
+} from '../../../../base/inputs/direction.keyboard-input';
+import { GgEntity } from '../../../../base/entities/gg-entity';
+import { GGTickOrder, ITickListener } from '../../../../base/entities/interfaces/i-tick-listener';
+import { GgWorld } from '../../../../base/gg-world';
 
 // TODO pass as settings
 // TODO smooth y?
@@ -19,7 +21,10 @@ export type CarKeyboardControllerOptions = {
   gearUpDownKeys: [string, string];
 };
 
-export class CarKeyboardInput extends Input {
+export class CarKeyboardHandlingController extends GgEntity implements ITickListener {
+  public readonly tick$: Subject<[number, number]> = new Subject<[number, number]>();
+  public readonly tickOrder = GGTickOrder.INPUT_CONTROLLERS;
+
   protected readonly directionsInput: DirectionKeyboardInput;
   // emits values -1 - 1; -1 = full turn left; 1 = full turn right
   protected readonly x$: BehaviorSubject<number> = new BehaviorSubject<number>(0);
@@ -71,12 +76,13 @@ export class CarKeyboardInput extends Input {
     this.directionsInput = new DirectionKeyboardInput(keyboard, options.keymap);
   }
 
-  protected async startInternal(): Promise<void> {
+  async onSpawned(world: GgWorld<any, any>): Promise<void> {
+    super.onSpawned(world);
     let moveDirection: DirectionKeyboardOutput = {};
     this.keyboard
       .bind(this.options.gearUpDownKeys[0])
       .pipe(
-        takeUntil(this.stop$),
+        takeUntil(this._onRemoved$),
         filter(x => this.switchingGearsEnabled && !!x),
       )
       .subscribe(() => {
@@ -90,7 +96,7 @@ export class CarKeyboardInput extends Input {
     this.keyboard
       .bind(this.options.gearUpDownKeys[1])
       .pipe(
-        takeUntil(this.stop$),
+        takeUntil(this._onRemoved$),
         filter(x => this.switchingGearsEnabled && !!x),
       )
       .subscribe(() => {
@@ -100,14 +106,14 @@ export class CarKeyboardInput extends Input {
           this.car$.getValue().gear--;
         }
       });
-    this.directionsInput.output$.pipe(takeUntil(this.stop$)).subscribe(d => {
+    this.directionsInput.output$.pipe(takeUntil(this._onRemoved$)).subscribe(d => {
       moveDirection = d;
     });
     this.car$
       .pipe(
-        takeUntil(this.stop$),
+        takeUntil(this._onRemoved$),
         switchMap(c => c.tick$),
-        takeUntil(this.stop$),
+        takeUntil(this._onRemoved$),
         map(() => {
           const direction = [0, 0];
           if (moveDirection.leftRight !== undefined) direction[0] = moveDirection.leftRight ? -1 : 1;
@@ -120,8 +126,8 @@ export class CarKeyboardInput extends Input {
         this.y$.next(y);
       });
     combineLatest([
-      this.x$.pipe(takeUntil(this.stop$), distinctUntilChanged(), this.pairTickerPipe),
-      this.y$.pipe(takeUntil(this.stop$), distinctUntilChanged()),
+      this.x$.pipe(takeUntil(this._onRemoved$), distinctUntilChanged(), this.pairTickerPipe),
+      this.y$.pipe(takeUntil(this._onRemoved$), distinctUntilChanged()),
     ]).subscribe(([x, y]) => {
       this.car$.getValue().setXAxisControlValue(x);
       this.car$.getValue().setYAxisControlValue(y);
@@ -129,7 +135,7 @@ export class CarKeyboardInput extends Input {
     await this.directionsInput.start();
   }
 
-  protected async stopInternal(): Promise<void> {
+  async onRemoved(): Promise<void> {
     await this.directionsInput.stop();
   }
 }

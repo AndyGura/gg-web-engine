@@ -1,13 +1,13 @@
 import { Subject } from 'rxjs';
 import { GgPositionable3dEntity } from './gg-positionable-3d-entity';
-import { ITickListener } from '../../base/entities/interfaces/i-tick-listener';
+import { GGTickOrder, ITickListener } from '../../base/entities/interfaces/i-tick-listener';
 import { Point3, Point4 } from '../../base/models/points';
 import { Gg3dWorld } from '../gg-3d-world';
 import { IGg3dBody, IGg3dObject } from '../interfaces';
 
 export class Gg3dEntity extends GgPositionable3dEntity implements ITickListener {
   public readonly tick$: Subject<[number, number]> = new Subject<[number, number]>();
-  public readonly tickOrder = 750;
+  public readonly tickOrder = GGTickOrder.OBJECTS_BINDING;
 
   public get position(): Point3 {
     return super.position;

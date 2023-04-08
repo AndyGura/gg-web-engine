@@ -3,7 +3,7 @@ import { distinctUntilChanged, map, tap, throttleTime } from 'rxjs/operators';
 import { Point3, Point4 } from '../../base/models/points';
 import { Graph } from '../../base/data-structures/graph';
 import { GgEntity } from '../../base/entities/gg-entity';
-import { ITickListener } from '../../base/entities/interfaces/i-tick-listener';
+import { GGTickOrder, ITickListener } from '../../base/entities/interfaces/i-tick-listener';
 import { GgPositionable3dEntity } from './gg-positionable-3d-entity';
 import { Gg3dWorld } from '../gg-3d-world';
 import { Gg3dEntity } from './gg-3d-entity';
@@ -80,7 +80,7 @@ const defaultOptions: Gg3dMapGraphEntityOptions = {
 
 export class Gg3dMapGraphEntity extends GgEntity implements ITickListener {
   public readonly tick$: Subject<[number, number]> = new Subject<[number, number]>();
-  public readonly tickOrder = 1500;
+  public readonly tickOrder = GGTickOrder.POST_RENDERING;
 
   public readonly loaderCursorEntity$: BehaviorSubject<GgPositionable3dEntity | null> =
     new BehaviorSubject<GgPositionable3dEntity | null>(null);

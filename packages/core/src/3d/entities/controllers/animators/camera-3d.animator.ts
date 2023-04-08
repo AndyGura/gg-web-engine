@@ -1,11 +1,11 @@
-import { AnimationFunction, AnimationMixer } from '../../../base/entities/controllers/animation-mixer';
-import { Point3 } from '../../../base/models/points';
-import { Pnt3 } from '../../../base/math/point3';
-import { Qtrn } from '../../../base/math/quaternion';
+import { AnimationFunction, AnimationMixer } from '../../../../base/entities/controllers/animation-mixer';
+import { Point3 } from '../../../../base/models/points';
+import { Pnt3 } from '../../../../base/math/point3';
+import { Qtrn } from '../../../../base/math/quaternion';
 import { takeUntil } from 'rxjs';
-import { Gg3dWorld } from '../../gg-3d-world';
-import { lerpNumber } from '../../../base/math/numbers';
-import { Gg3dCameraEntity } from '../gg-3d-camera.entity';
+import { Gg3dWorld } from '../../../gg-3d-world';
+import { lerpNumber } from '../../../../base/math/numbers';
+import { Gg3dCameraEntity } from '../../gg-3d-camera.entity';
 
 export type Camera3dAnimationArgs = {
   position: Point3;

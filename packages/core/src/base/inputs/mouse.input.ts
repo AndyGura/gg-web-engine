@@ -3,28 +3,51 @@ import { filter, fromEvent, Observable, Subject, takeUntil } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { Point2 } from '../models/points';
 
+/**
+ * Options for pointer lock in a MouseController.
+ *
+ * ignoreMovementWhenNotLocked: Whether to ignore mouse movement when pointer lock is not active.
+ *
+ * canvas: The canvas element to request pointer lock on.
+ */
 export type MouseControllerPointLockOptions = { ignoreMovementWhenNotLocked: boolean; canvas: HTMLCanvasElement };
+/**
+ * Options for a MouseInput.
+ *
+ * pointerLock: The options for pointer lock. Do not provide it to disable pointer lock functionality
+ */
 export type MouseControllerOptions = {
   pointerLock?: MouseControllerPointLockOptions;
 };
-
+/**
+ * A class representing mouse input.
+ */
 export class MouseInput extends Input<[], [unlockPointer?: boolean]> {
-  private readonly _delta$: Subject<Point2> = new Subject<Point2>();
-
+  /**
+   * An observable of the change in the x position of the mouse.
+   */
   public get deltaX$(): Observable<number> {
     return this._delta$.pipe(map(d => d.x));
   }
-
+  /**
+   * An observable of the change in the y position of the mouse.
+   */
   public get deltaY$(): Observable<number> {
     return this._delta$.pipe(map(d => d.y));
   }
-
+  /**
+   An observable of the change in the position of the mouse.
+   */
   public get delta$(): Observable<Point2> {
     return this._delta$.asObservable();
   }
-
+  private _delta$: Subject<Point2> = new Subject<Point2>();
   private stopped$: Subject<void> = new Subject();
 
+  /**
+   Creates an instance of MouseInput.
+   @param {MouseControllerOptions} options - The options for the MouseInput.
+   */
   constructor(private readonly options: MouseControllerOptions = {}) {
     super();
     this.canvasClickListener = this.canvasClickListener.bind(this);
@@ -47,7 +70,10 @@ export class MouseInput extends Input<[], [unlockPointer?: boolean]> {
       this.options.pointerLock.canvas.addEventListener('click', this.canvasClickListener);
     }
   }
-
+  /**
+   Stop listening for mouse movement events.
+   @param {boolean} [unlockPointer=true] - Whether to exit pointer lock.
+   */
   protected async stopInternal(unlockPointer: boolean = true) {
     this.stopped$.next();
     if (unlockPointer && !!this.options.pointerLock) {
@@ -55,7 +81,9 @@ export class MouseInput extends Input<[], [unlockPointer?: boolean]> {
       document.exitPointerLock();
     }
   }
-
+  /**
+   Request pointer lock on the canvas element.
+   */
   private canvasClickListener(): void {
     this.options.pointerLock!.canvas.requestPointerLock();
   }

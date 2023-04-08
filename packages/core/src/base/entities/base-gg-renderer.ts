@@ -1,4 +1,4 @@
-import { ITickListener } from './interfaces/i-tick-listener';
+import { GGTickOrder, ITickListener } from './interfaces/i-tick-listener';
 import { Subject, Subscription } from 'rxjs';
 import { GgEntity } from './gg-entity';
 import { Point2 } from '../models/points';
@@ -18,7 +18,7 @@ export abstract class BaseGgRenderer extends GgEntity implements ITickListener {
   private initialized = false;
 
   readonly tick$: Subject<[number, number]>;
-  public readonly tickOrder = 1000;
+  public readonly tickOrder = GGTickOrder.RENDERING;
   protected tickListener: Subscription | null = null;
 
   public readonly rendererOptions: RendererOptions;
