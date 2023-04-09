@@ -1,4 +1,4 @@
-import { Clock } from './clock/clock';
+import { PausableClock } from './clock/pausable-clock';
 import { GgEntity, GGTickOrder } from './entities/gg-entity';
 import { GgPhysicsWorld } from './interfaces/gg-physics-world';
 import { GgVisualScene } from './interfaces/gg-visual-scene';
@@ -16,7 +16,7 @@ export abstract class GgWorld<
   V extends GgVisualScene<D, R> = GgVisualScene<D, R>,
   P extends GgPhysicsWorld<D, R> = GgPhysicsWorld<D, R>,
 > {
-  private readonly worldClock: Clock = GgGlobalClock.instance.createChildClock(false);
+  public readonly worldClock: PausableClock = GgGlobalClock.instance.createChildClock(false);
   public readonly keyboardInput: KeyboardInput = new KeyboardInput();
 
   readonly children: GgEntity[] = [];
@@ -138,7 +138,7 @@ export abstract class GgWorld<
     return this.worldClock.elapsedTime;
   }
 
-  public createClock(autoStart: boolean): Clock {
+  public createClock(autoStart: boolean): PausableClock {
     return this.worldClock.createChildClock(autoStart);
   }
 

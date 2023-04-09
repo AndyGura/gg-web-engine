@@ -55,8 +55,29 @@ that there is currently lack of functionality which is not related to racing gam
 
 ## Features
 
-### Inputs
+### Clock
+Clock is a class, responsible for tracking time and firing ticks. It measures time and on each tick emits two numbers: 
+`elapsedTime` and `delta`, where `delta` always equals to difference between current elapsed time, and elapsed time, 
+fired on the previous tick. All clock instances have hierarchy: pausing clock will automatically pause all of its child 
+clocks, which is nice to use for in-game timers: all timers will be paused when world clock is paused. There are two 
+built-in implementations of clock:
+#### GgGlobalClock
+Singleton, starts emitting ticks as soon as accessed. For scheduling ticks, it uses `animationFrameScheduler` from rxjs,
+which uses `requestAnimationFrame` API. The elapsed time for each tick is a timestamp, e.g. total amount of
+milliseconds, passed from 01.01.1970 00:00:00.000 UTC. The instance of this clock is always the root clock in clocks hierarchy 
+#### PausableClock
+The class for all remaining clocks: it measures time elapsed when was started. Has the ability to be paused/resumed, 
+and elapsed time will not be affected by pause: it will proceed from the same state it was paused.
+#### Example of clock hierarchy
+```mermaid
+flowchart LR
+  GgGlobalClock.instance --> w1[world1 clock]
+  GgGlobalClock.instance --> w2[world2 clock]
+  w1 --> l1[Level clock]
+  l1 --> l2[Some timer on level]
+```
 
+### Inputs
 Input is a class, responsible for handling external actions, such as mouse move, key presses, gamepad interactions etc. 
 When implementing multiplayer, it probably will be the best place to handle incoming data for reflecting it on the world 
 state. Input does not depend on ticks and is not a part of the world, it should be created and used by some controller 

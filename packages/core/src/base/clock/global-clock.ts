@@ -1,12 +1,13 @@
 import { animationFrameScheduler, Observable, of, Subject } from 'rxjs';
 import { map, repeat, tap } from 'rxjs/operators';
-import { Clock } from './clock';
+import { PausableClock } from './pausable-clock';
+import { IClock } from './i-clock';
 
 /**
  * A singleton class, providing ability to track time, fire ticks, provide time elapsed + tick delta.
  * Starts as soon as accessed and counts time from 01/01/1970
  */
-export class GgGlobalClock {
+export class GgGlobalClock implements IClock {
   private static _instance: GgGlobalClock;
   public static get instance(): GgGlobalClock {
     if (!GgGlobalClock._instance) {
@@ -25,8 +26,8 @@ export class GgGlobalClock {
     return (typeof performance === 'undefined' ? Date : performance).now();
   }
 
-  createChildClock(autoStart: boolean): Clock {
-    return new Clock(autoStart, this);
+  createChildClock(autoStart: boolean): PausableClock {
+    return new PausableClock(autoStart, this);
   }
 
   private constructor() {

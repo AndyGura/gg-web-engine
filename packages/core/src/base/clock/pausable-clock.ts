@@ -1,11 +1,12 @@
 import { Observable, Subject, Subscription } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
 import { GgGlobalClock } from './global-clock';
+import { IClock } from './i-clock';
 
 /**
  * A class, providing ability to track time, fire ticks, provide time elapsed + tick delta with ability to suspend/resume it.
  */
-export class Clock {
+export class PausableClock implements IClock {
   private tickSub: Subscription | null = null;
   private readonly _tick$: Subject<[number, number]> = new Subject<[number, number]>();
   public get tick$(): Observable<[number, number]> {
@@ -32,17 +33,14 @@ export class Clock {
   private oldRelativeTime: number = 0; // "elapsed", emitted on last tick
   private pausedAt: number = -1;
 
-  constructor(
-    autoStart: boolean = false,
-    protected readonly parentClock: Clock | GgGlobalClock = GgGlobalClock.instance,
-  ) {
+  constructor(autoStart: boolean = false, protected readonly parentClock: IClock = GgGlobalClock.instance) {
     if (autoStart) {
       this.start();
     }
   }
 
-  createChildClock(autoStart: boolean): Clock {
-    return new Clock(autoStart, this);
+  createChildClock(autoStart: boolean): PausableClock {
+    return new PausableClock(autoStart, this);
   }
 
   start() {
