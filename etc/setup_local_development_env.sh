@@ -28,8 +28,6 @@ popd
 
 function fix_ammo_paths {
   sed -i 's/\/mini-signals/\/@gg-web-engine\/ammo\/node_modules\/mini-signals/' tsconfig.json
-  sed -i 's/\/path-browserify/\/@gg-web-engine\/ammo\/node_modules\/path-browserify/' tsconfig.json
-  sed -i 's/\/fs-web/\/@gg-web-engine\/ammo\/node_modules\/fs-web/' tsconfig.json
   sed -i 's/"paths": {/"paths": {\n"ammo-js-typed": [".\/node_modules\/@gg-web-engine\/three\/node_modules\/ammo-js-typed"],/' tsconfig.json
 }
 

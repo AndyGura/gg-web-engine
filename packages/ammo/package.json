@@ -26,12 +26,15 @@
     "url": "https://github.com/AndyGura/gg-web-engine/issues"
   },
   "homepage": "https://github.com/AndyGura/gg-web-engine#readme",
+  "browser": {
+    "fs": false,
+    "os": false,
+    "path": false
+  },
   "dependencies": {
     "@gg-web-engine/core": "^0.0.3",
     "ammojs-typed": "^1.0.6",
-    "fs-web": "^1.0.1",
     "mini-signals": "^1.2.0",
-    "path-browserify": "^1.0.1",
     "rxjs": "~7.5.0"
   },
   "devDependencies": {

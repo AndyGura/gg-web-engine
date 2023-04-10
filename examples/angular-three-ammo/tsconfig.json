@@ -23,9 +23,7 @@
       "dom"
     ],
     "paths": {
-      "mini-signals": ["./node_modules/mini-signals/index.js"],
-      "path": ["./node_modules/path-browserify"],
-      "fs": ["./node_modules/fs-web"]
+      "mini-signals": ["./node_modules/mini-signals/index.js"]
     }
   },
   "angularCompilerOptions": {
