@@ -1,6 +1,6 @@
 ---
 title: core/base/entities/gg-entity.ts
-nav_order: 45
+nav_order: 42
 parent: Modules
 ---
 
@@ -17,8 +17,11 @@ parent: Modules
     - [onSpawned (method)](#onspawned-method)
     - [onRemoved (method)](#onremoved-method)
     - [dispose (method)](#dispose-method)
+    - [tick$ (property)](#tick-property)
+    - [tickOrder (property)](#tickorder-property)
     - [\_world (property)](#_world-property)
     - [\_name (property)](#_name-property)
+    - [\_active (property)](#_active-property)
     - [\_children (property)](#_children-property)
     - [\_onSpawned$ (property)](#_onspawned-property)
     - [\_onRemoved$ (property)](#_onremoved-property)
@@ -75,7 +78,29 @@ public onRemoved()
 public dispose(): void
 ```
 
+### tick$ (property)
+
+will receive [elapsed time, delta] of each world clock tick
+
+**Signature**
+
+```ts
+readonly tick$: any
+```
+
+### tickOrder (property)
+
+the priority of ticker: the less value, the earlier tick will be run.
+
+**Signature**
+
+```ts
+readonly tickOrder: number
+```
+
 ### \_world (property)
+
+a world reference, where this entity was added to
 
 **Signature**
 
@@ -89,6 +114,16 @@ _world: GgWorld<any, any, GgVisualScene<any, any>, GgPhysicsWorld<any, any>> | n
 
 ```ts
 _name: string
+```
+
+### \_active (property)
+
+The flag whether entity should listen to ticks. If set to false, ticks will not be propagated to this entity
+
+**Signature**
+
+```ts
+_active: boolean
 ```
 
 ### \_children (property)

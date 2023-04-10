@@ -418,27 +418,6 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#activate-method" class="md-nav__link">
-    activate (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#deactivate-method" class="md-nav__link">
-    deactivate (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#init-method" class="md-nav__link">
-    init (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#render-method" class="md-nav__link">
     render (method)
   </a>
@@ -453,43 +432,8 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#dispose-method" class="md-nav__link">
-    dispose (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#_permanentrendermethods-property" class="md-nav__link">
-    _permanentRenderMethods (property)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#_singularrendermethods-property" class="md-nav__link">
-    _singularRenderMethods (property)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#tick-property" class="md-nav__link">
-    tick$ (property)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#tickorder-property" class="md-nav__link">
     tickOrder (property)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#ticklistener-property" class="md-nav__link">
-    tickListener (property)
   </a>
   
 </li>
@@ -543,17 +487,9 @@
 <ul>
 <li><a href="#utils">utils</a></li>
 <li><a href="#baseggrenderer-class">BaseGgRenderer (class)</a><ul>
-<li><a href="#activate-method">activate (method)</a></li>
-<li><a href="#deactivate-method">deactivate (method)</a></li>
-<li><a href="#init-method">init (method)</a></li>
 <li><a href="#render-method">render (method)</a></li>
 <li><a href="#resize-method">resize (method)</a></li>
-<li><a href="#dispose-method">dispose (method)</a></li>
-<li><a href="#_permanentrendermethods-property">_permanentRenderMethods (property)</a></li>
-<li><a href="#_singularrendermethods-property">_singularRenderMethods (property)</a></li>
-<li><a href="#tick-property">tick$ (property)</a></li>
 <li><a href="#tickorder-property">tickOrder (property)</a></li>
-<li><a href="#ticklistener-property">tickListener (property)</a></li>
 <li><a href="#rendereroptions-property">rendererOptions (property)</a></li>
 </ul>
 </li>
@@ -567,18 +503,6 @@
   protected constructor(canvas?: HTMLCanvasElement, options: Partial&lt;RendererOptions&gt; = {})
 }
 </code></pre>
-<h3 id="activate-method">activate (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">public activate(): void
-</code></pre>
-<h3 id="deactivate-method">deactivate (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">public deactivate(): void
-</code></pre>
-<h3 id="init-method">init (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">init(): void
-</code></pre>
 <h3 id="render-method">render (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">abstract render(): void;
@@ -587,29 +511,9 @@
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">abstract resize(newSize: Point2): void;
 </code></pre>
-<h3 id="dispose-method">dispose (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">abstract dispose(): void;
-</code></pre>
-<h3 id="_permanentrendermethods-property">_permanentRenderMethods (property)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">_permanentRenderMethods: any
-</code></pre>
-<h3 id="_singularrendermethods-property">_singularRenderMethods (property)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">_singularRenderMethods: any
-</code></pre>
-<h3 id="tick-property">tick$ (property)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly tick$: any
-</code></pre>
 <h3 id="tickorder-property">tickOrder (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly tickOrder: 1000
-</code></pre>
-<h3 id="ticklistener-property">tickListener (property)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">tickListener: any
+<pre><code class="language-ts">readonly tickOrder: GGTickOrder.RENDERING
 </code></pre>
 <h3 id="rendereroptions-property">rendererOptions (property)</h3>
 <p><strong>Signature</strong></p>

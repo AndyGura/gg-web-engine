@@ -16,7 +16,6 @@ parent: Modules
     - [onSpawned (method)](#onspawned-method)
     - [onRemoved (method)](#onremoved-method)
     - [dispose (method)](#dispose-method)
-    - [tick$ (property)](#tick-property)
     - [tickOrder (property)](#tickorder-property)
 
 ---
@@ -67,18 +66,10 @@ onRemoved()
 dispose(): void
 ```
 
-### tick$ (property)
-
-**Signature**
-
-```ts
-readonly tick$: any
-```
-
 ### tickOrder (property)
 
 **Signature**
 
 ```ts
-readonly tickOrder: 750
+readonly tickOrder: GGTickOrder.OBJECTS_BINDING
 ```

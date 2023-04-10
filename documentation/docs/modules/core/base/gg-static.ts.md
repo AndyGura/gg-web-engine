@@ -1,6 +1,6 @@
 ---
 title: core/base/gg-static.ts
-nav_order: 49
+nav_order: 45
 parent: Modules
 ---
 

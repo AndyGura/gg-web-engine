@@ -1,6 +1,6 @@
 ---
 title: core/base/clock/global-clock.ts
-nav_order: 37
+nav_order: 36
 parent: Modules
 ---
 
@@ -36,5 +36,5 @@ export declare class GgGlobalClock {
 **Signature**
 
 ```ts
-createChildClock(autoStart: boolean): Clock
+createChildClock(autoStart: boolean): PausableClock
 ```

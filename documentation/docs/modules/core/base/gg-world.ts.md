@@ -1,6 +1,6 @@
 ---
 title: core/base/gg-world.ts
-nav_order: 52
+nav_order: 48
 parent: Modules
 ---
 
@@ -16,6 +16,7 @@ parent: Modules
     - [start (method)](#start-method)
     - [pauseWorld (method)](#pauseworld-method)
     - [resumeWorld (method)](#resumeworld-method)
+    - [createClock (method)](#createclock-method)
     - [dispose (method)](#dispose-method)
     - [addPrimitiveRigidBody (method)](#addprimitiverigidbody-method)
     - [addEntity (method)](#addentity-method)
@@ -23,7 +24,8 @@ parent: Modules
     - [registerConsoleCommand (method)](#registerconsolecommand-method)
     - [runConsoleCommand (method)](#runconsolecommand-method)
     - [triggerPhysicsDebugView (method)](#triggerphysicsdebugview-method)
-    - [keyboardController (property)](#keyboardcontroller-property)
+    - [worldClock (property)](#worldclock-property)
+    - [keyboardInput (property)](#keyboardinput-property)
     - [children (property)](#children-property)
     - [tickListeners (property)](#ticklisteners-property)
     - [commands (property)](#commands-property)
@@ -76,6 +78,14 @@ public pauseWorld()
 
 ```ts
 public resumeWorld()
+```
+
+### createClock (method)
+
+**Signature**
+
+```ts
+public createClock(autoStart: boolean): PausableClock
 ```
 
 ### dispose (method)
@@ -134,12 +144,20 @@ public async runConsoleCommand(command: string, args: string[]): Promise<string>
 public triggerPhysicsDebugView()
 ```
 
-### keyboardController (property)
+### worldClock (property)
 
 **Signature**
 
 ```ts
-readonly keyboardController: KeyboardController
+readonly worldClock: PausableClock
+```
+
+### keyboardInput (property)
+
+**Signature**
+
+```ts
+readonly keyboardInput: KeyboardInput
 ```
 
 ### children (property)
@@ -155,7 +173,7 @@ readonly children: GgEntity[]
 **Signature**
 
 ```ts
-readonly tickListeners: ITickListener[]
+readonly tickListeners: GgEntity[]
 ```
 
 ### commands (property)

@@ -446,6 +446,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#createclock-method" class="md-nav__link">
+    createClock (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#dispose-method" class="md-nav__link">
     dispose (method)
   </a>
@@ -495,8 +502,15 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#keyboardcontroller-property" class="md-nav__link">
-    keyboardController (property)
+  <a href="#worldclock-property" class="md-nav__link">
+    worldClock (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#keyboardinput-property" class="md-nav__link">
+    keyboardInput (property)
   </a>
   
 </li>
@@ -561,6 +575,7 @@
 <li><a href="#start-method">start (method)</a></li>
 <li><a href="#pauseworld-method">pauseWorld (method)</a></li>
 <li><a href="#resumeworld-method">resumeWorld (method)</a></li>
+<li><a href="#createclock-method">createClock (method)</a></li>
 <li><a href="#dispose-method">dispose (method)</a></li>
 <li><a href="#addprimitiverigidbody-method">addPrimitiveRigidBody (method)</a></li>
 <li><a href="#addentity-method">addEntity (method)</a></li>
@@ -568,7 +583,8 @@
 <li><a href="#registerconsolecommand-method">registerConsoleCommand (method)</a></li>
 <li><a href="#runconsolecommand-method">runConsoleCommand (method)</a></li>
 <li><a href="#triggerphysicsdebugview-method">triggerPhysicsDebugView (method)</a></li>
-<li><a href="#keyboardcontroller-property">keyboardController (property)</a></li>
+<li><a href="#worldclock-property">worldClock (property)</a></li>
+<li><a href="#keyboardinput-property">keyboardInput (property)</a></li>
 <li><a href="#children-property">children (property)</a></li>
 <li><a href="#ticklisteners-property">tickListeners (property)</a></li>
 <li><a href="#commands-property">commands (property)</a></li>
@@ -603,6 +619,10 @@
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public resumeWorld()
 </code></pre>
+<h3 id="createclock-method">createClock (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public createClock(autoStart: boolean): PausableClock
+</code></pre>
 <h3 id="dispose-method">dispose (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public dispose(): void
@@ -631,9 +651,13 @@
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public triggerPhysicsDebugView()
 </code></pre>
-<h3 id="keyboardcontroller-property">keyboardController (property)</h3>
+<h3 id="worldclock-property">worldClock (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly keyboardController: KeyboardController
+<pre><code class="language-ts">readonly worldClock: PausableClock
+</code></pre>
+<h3 id="keyboardinput-property">keyboardInput (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly keyboardInput: KeyboardInput
 </code></pre>
 <h3 id="children-property">children (property)</h3>
 <p><strong>Signature</strong></p>
@@ -641,7 +665,7 @@
 </code></pre>
 <h3 id="ticklisteners-property">tickListeners (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly tickListeners: ITickListener[]
+<pre><code class="language-ts">readonly tickListeners: GgEntity[]
 </code></pre>
 <h3 id="commands-property">commands (property)</h3>
 <p><strong>Signature</strong></p>

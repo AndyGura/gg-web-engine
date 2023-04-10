@@ -1,6 +1,6 @@
 ---
 title: core/base/gg-viewport-manager.ts
-nav_order: 50
+nav_order: 46
 parent: Modules
 ---
 

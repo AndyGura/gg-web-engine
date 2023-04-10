@@ -16,7 +16,6 @@ parent: Modules
     - [onRemoved (method)](#onremoved-method)
     - [loadChunk (method)](#loadchunk-method)
     - [disposeChunk (method)](#disposechunk-method)
-    - [tick$ (property)](#tick-property)
     - [tickOrder (property)](#tickorder-property)
     - [loaderCursorEntity$ (property)](#loadercursorentity-property)
     - [loaded (property)](#loaded-property)
@@ -78,20 +77,12 @@ protected async loadChunk(node: MapGraphNodeType): Promise<[Gg3dEntity[], LoadRe
 protected disposeChunk(node: MapGraphNodeType)
 ```
 
-### tick$ (property)
-
-**Signature**
-
-```ts
-readonly tick$: any
-```
-
 ### tickOrder (property)
 
 **Signature**
 
 ```ts
-readonly tickOrder: 1500
+readonly tickOrder: GGTickOrder.POST_RENDERING
 ```
 
 ### loaderCursorEntity$ (property)

@@ -1,6 +1,6 @@
 ---
 title: core/base/entities/controllers/animation-mixer.ts
-nav_order: 44
+nav_order: 41
 parent: Modules
 ---
 
@@ -16,12 +16,9 @@ parent: Modules
     - [transitFromStaticState (method)](#transitfromstaticstate-method)
     - [transitAnimationFunction (method)](#transitanimationfunction-method)
     - [onSpawned (method)](#onspawned-method)
-    - [onRemoved (method)](#onremoved-method)
     - [dispose (method)](#dispose-method)
-    - [tick$ (property)](#tick-property)
     - [tickOrder (property)](#tickorder-property)
     - [\_value$ (property)](#_value-property)
-    - [removed$ (property)](#removed-property)
 
 ---
 
@@ -90,28 +87,12 @@ transitAnimationFunction(
 onSpawned(world: GgWorld<any, any>)
 ```
 
-### onRemoved (method)
-
-**Signature**
-
-```ts
-onRemoved()
-```
-
 ### dispose (method)
 
 **Signature**
 
 ```ts
 dispose(): void
-```
-
-### tick$ (property)
-
-**Signature**
-
-```ts
-readonly tick$: any
 ```
 
 ### tickOrder (property)
@@ -130,14 +111,4 @@ A subject that emits the current value of the animation on every tick.
 
 ```ts
 readonly _value$: any
-```
-
-### removed$ (property)
-
-A subject that emits when the animator has been removed from the world.
-
-**Signature**
-
-```ts
-readonly removed$: any
 ```
