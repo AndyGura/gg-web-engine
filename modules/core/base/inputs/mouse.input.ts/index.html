@@ -8,7 +8,7 @@
       
       
       
-        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/base/controllers/mouse.controller.ts/">
+        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/base/inputs/mouse.input.ts/">
       
       
       
@@ -17,7 +17,7 @@
     
     
       
-        <title>core/base/controllers/mouse.controller.ts - GG-web-engine</title>
+        <title>core/base/inputs/mouse.input.ts - GG-web-engine</title>
       
     
     
@@ -69,7 +69,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#mousecontroller-overview" class="md-skip">
+        <a href="#mouseinput-overview" class="md-skip">
           Skip to content
         </a>
       
@@ -104,7 +104,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              core/base/controllers/mouse.controller.ts
+              core/base/inputs/mouse.input.ts
             
           </span>
         </div>
@@ -395,8 +395,8 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#mousecontroller-overview" class="md-nav__link">
-    mouse.controller overview
+  <a href="#mouseinput-overview" class="md-nav__link">
+    mouse.input overview
   </a>
   
 </li>
@@ -410,16 +410,23 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#mousecontroller-class" class="md-nav__link">
-    MouseController (class)
+  <a href="#mouseinput-class" class="md-nav__link">
+    MouseInput (class)
   </a>
   
-    <nav class="md-nav" aria-label="MouseController (class)">
+    <nav class="md-nav" aria-label="MouseInput (class)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#start-method" class="md-nav__link">
-    start (method)
+  <a href="#startinternal-method" class="md-nav__link">
+    startInternal (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#stopinternal-method" class="md-nav__link">
+    stopInternal (method)
   </a>
   
 </li>
@@ -431,28 +438,21 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#stop-method" class="md-nav__link">
-    stop (method)
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#mousecontrolleroptions-type-alias" class="md-nav__link">
-    MouseControllerOptions (type alias)
+  <a href="#mouseinputoptions-type-alias" class="md-nav__link">
+    MouseInputOptions (type alias)
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#mousecontrollerpointlockoptions-type-alias" class="md-nav__link">
-    MouseControllerPointLockOptions (type alias)
+  <a href="#mouseinputpointlockoptions-type-alias" class="md-nav__link">
+    MouseInputPointLockOptions (type alias)
   </a>
   
 </li>
@@ -480,50 +480,58 @@
   
 
 
-<h2 id="mousecontroller-overview">mouse.controller overview</h2>
+<h2 id="mouseinput-overview">mouse.input overview</h2>
 <hr />
 <h2 class="text-delta">Table of contents</h2>
 
 <ul>
 <li><a href="#utils">utils</a></li>
-<li><a href="#mousecontroller-class">MouseController (class)</a><ul>
-<li><a href="#start-method">start (method)</a></li>
+<li><a href="#mouseinput-class">MouseInput (class)</a><ul>
+<li><a href="#startinternal-method">startInternal (method)</a></li>
+<li><a href="#stopinternal-method">stopInternal (method)</a></li>
 <li><a href="#canvasclicklistener-method">canvasClickListener (method)</a></li>
-<li><a href="#stop-method">stop (method)</a></li>
 </ul>
 </li>
-<li><a href="#mousecontrolleroptions-type-alias">MouseControllerOptions (type alias)</a></li>
-<li><a href="#mousecontrollerpointlockoptions-type-alias">MouseControllerPointLockOptions (type alias)</a></li>
+<li><a href="#mouseinputoptions-type-alias">MouseInputOptions (type alias)</a></li>
+<li><a href="#mouseinputpointlockoptions-type-alias">MouseInputPointLockOptions (type alias)</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
-<h2 id="mousecontroller-class">MouseController (class)</h2>
+<h2 id="mouseinput-class">MouseInput (class)</h2>
+<p>A class representing mouse input.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class MouseController {
-  constructor(private readonly options: MouseControllerOptions = {})
+<pre><code class="language-ts">export declare class MouseInput {
+  constructor(private readonly options: MouseInputOptions = {})
 }
 </code></pre>
-<h3 id="start-method">start (method)</h3>
+<h3 id="startinternal-method">startInternal (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">async start()
+<pre><code class="language-ts">protected async startInternal()
+</code></pre>
+<h3 id="stopinternal-method">stopInternal (method)</h3>
+<p>Stop listening for mouse movement events.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">protected async stopInternal(unlockPointer: boolean = true)
 </code></pre>
 <h3 id="canvasclicklistener-method">canvasClickListener (method)</h3>
+<p>Request pointer lock on the canvas element.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">private canvasClickListener(): void
 </code></pre>
-<h3 id="stop-method">stop (method)</h3>
+<h2 id="mouseinputoptions-type-alias">MouseInputOptions (type alias)</h2>
+<p>Options for a MouseInput.</p>
+<p>pointerLock: The options for pointer lock. Do not provide it to disable pointer lock functionality</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">async stop(unlockPointer: boolean = true)
-</code></pre>
-<h2 id="mousecontrolleroptions-type-alias">MouseControllerOptions (type alias)</h2>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type MouseControllerOptions = {
-  pointerLock?: MouseControllerPointLockOptions
+<pre><code class="language-ts">export type MouseInputOptions = {
+  pointerLock?: MouseInputPointLockOptions
 }
 </code></pre>
-<h2 id="mousecontrollerpointlockoptions-type-alias">MouseControllerPointLockOptions (type alias)</h2>
+<h2 id="mouseinputpointlockoptions-type-alias">MouseInputPointLockOptions (type alias)</h2>
+<p>Options for pointer lock in a MouseInput.</p>
+<p>ignoreMovementWhenNotLocked: Whether to ignore mouse movement when pointer lock is not active.</p>
+<p>canvas: The canvas element to request pointer lock on.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type MouseControllerPointLockOptions = { ignoreMovementWhenNotLocked: boolean; canvas: HTMLCanvasElement }
+<pre><code class="language-ts">export type MouseInputPointLockOptions = { ignoreMovementWhenNotLocked: boolean; canvas: HTMLCanvasElement }
 </code></pre>
 
 

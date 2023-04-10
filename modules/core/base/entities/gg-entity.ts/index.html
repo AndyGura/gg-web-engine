@@ -453,6 +453,20 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#tick-property" class="md-nav__link">
+    tick$ (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tickorder-property" class="md-nav__link">
+    tickOrder (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#_world-property" class="md-nav__link">
     _world (property)
   </a>
@@ -462,6 +476,13 @@
           <li class="md-nav__item">
   <a href="#_name-property" class="md-nav__link">
     _name (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_active-property" class="md-nav__link">
+    _active (property)
   </a>
   
 </li>
@@ -527,8 +548,11 @@
 <li><a href="#onspawned-method">onSpawned (method)</a></li>
 <li><a href="#onremoved-method">onRemoved (method)</a></li>
 <li><a href="#dispose-method">dispose (method)</a></li>
+<li><a href="#tick-property">tick$ (property)</a></li>
+<li><a href="#tickorder-property">tickOrder (property)</a></li>
 <li><a href="#_world-property">_world (property)</a></li>
 <li><a href="#_name-property">_name (property)</a></li>
+<li><a href="#_active-property">_active (property)</a></li>
 <li><a href="#_children-property">_children (property)</a></li>
 <li><a href="#_onspawned-property">_onSpawned$ (property)</a></li>
 <li><a href="#_onremoved-property">_onRemoved$ (property)</a></li>
@@ -561,13 +585,29 @@
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public dispose(): void
 </code></pre>
+<h3 id="tick-property">tick$ (property)</h3>
+<p>will receive [elapsed time, delta] of each world clock tick</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly tick$: any
+</code></pre>
+<h3 id="tickorder-property">tickOrder (property)</h3>
+<p>the priority of ticker: the less value, the earlier tick will be run.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly tickOrder: number
+</code></pre>
 <h3 id="_world-property">_world (property)</h3>
+<p>a world reference, where this entity was added to</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">_world: GgWorld&lt;any, any, GgVisualScene&lt;any, any&gt;, GgPhysicsWorld&lt;any, any&gt;&gt; | null
 </code></pre>
 <h3 id="_name-property">_name (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">_name: string
+</code></pre>
+<h3 id="_active-property">_active (property)</h3>
+<p>The flag whether entity should listen to ticks. If set to false, ticks will not be propagated to this entity</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">_active: boolean
 </code></pre>
 <h3 id="_children-property">_children (property)</h3>
 <p><strong>Signature</strong></p>

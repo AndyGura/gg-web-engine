@@ -8,7 +8,7 @@
       
       
       
-        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/base/clock/clock.ts/">
+        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/base/inputs/input.ts/">
       
       
       
@@ -17,7 +17,7 @@
     
     
       
-        <title>core/base/clock/clock.ts - GG-web-engine</title>
+        <title>core/base/inputs/input.ts - GG-web-engine</title>
       
     
     
@@ -69,7 +69,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#clock-overview" class="md-skip">
+        <a href="#input-overview" class="md-skip">
           Skip to content
         </a>
       
@@ -104,7 +104,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              core/base/clock/clock.ts
+              core/base/inputs/input.ts
             
           </span>
         </div>
@@ -395,8 +395,8 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#clock-overview" class="md-nav__link">
-    clock overview
+  <a href="#input-overview" class="md-nav__link">
+    input overview
   </a>
   
 </li>
@@ -410,19 +410,12 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#clock-class" class="md-nav__link">
-    Clock (class)
+  <a href="#input-class" class="md-nav__link">
+    Input (class)
   </a>
   
-    <nav class="md-nav" aria-label="Clock (class)">
+    <nav class="md-nav" aria-label="Input (class)">
       <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#createchildclock-method" class="md-nav__link">
-    createChildClock (method)
-  </a>
-  
-</li>
         
           <li class="md-nav__item">
   <a href="#start-method" class="md-nav__link">
@@ -439,29 +432,22 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pause-method" class="md-nav__link">
-    pause (method)
+  <a href="#startinternal-method" class="md-nav__link">
+    startInternal (method)
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#resume-method" class="md-nav__link">
-    resume (method)
+  <a href="#stopinternal-method" class="md-nav__link">
+    stopInternal (method)
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#startlisteningticks-method" class="md-nav__link">
-    startListeningTicks (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#stoplisteningticks-method" class="md-nav__link">
-    stopListeningTicks (method)
+  <a href="#stop-property" class="md-nav__link">
+    stop$ (property)
   </a>
   
 </li>
@@ -494,62 +480,58 @@
   
 
 
-<h2 id="clock-overview">clock overview</h2>
+<h2 id="input-overview">input overview</h2>
 <hr />
 <h2 class="text-delta">Table of contents</h2>
 
 <ul>
 <li><a href="#utils">utils</a></li>
-<li><a href="#clock-class">Clock (class)</a><ul>
-<li><a href="#createchildclock-method">createChildClock (method)</a></li>
+<li><a href="#input-class">Input (class)</a><ul>
 <li><a href="#start-method">start (method)</a></li>
 <li><a href="#stop-method">stop (method)</a></li>
-<li><a href="#pause-method">pause (method)</a></li>
-<li><a href="#resume-method">resume (method)</a></li>
-<li><a href="#startlisteningticks-method">startListeningTicks (method)</a></li>
-<li><a href="#stoplisteningticks-method">stopListeningTicks (method)</a></li>
+<li><a href="#startinternal-method">startInternal (method)</a></li>
+<li><a href="#stopinternal-method">stopInternal (method)</a></li>
+<li><a href="#stop-property">stop$ (property)</a></li>
 </ul>
 </li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
-<h2 id="clock-class">Clock (class)</h2>
-<p>A class, providing ability to track time, fire ticks, provide time elapsed + tick delta with ability to suspend/resume it.</p>
+<h2 id="input-class">Input (class)</h2>
+<p>An abstract class that provides basic implementation for Input class.
+Input is an entity for handling input from user, such as mouse movements, key presses etc.
+Inputs are not bound to World-s and working independently by design.</p>
+<p>TStartParams - A type representing an array of input arguments for the start method. Items are recommended to be named.</p>
+<p>TStopParams - A type representing an array of input arguments for the stop method. Items are recommended to be named.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class Clock {
-  constructor(
-    autoStart: boolean = false,
-    protected readonly parentClock: Clock | GgGlobalClock = GgGlobalClock.instance
-  )
-}
-</code></pre>
-<h3 id="createchildclock-method">createChildClock (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">createChildClock(autoStart: boolean): Clock
+<pre><code class="language-ts">export declare class Input&lt;TStartParams, TStopParams&gt;
 </code></pre>
 <h3 id="start-method">start (method)</h3>
+<p>An asynchronous method that starts the input. Do not override it</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">start()
+<pre><code class="language-ts">async start(...args: TStartParams): Promise&lt;void&gt;
 </code></pre>
 <h3 id="stop-method">stop (method)</h3>
+<p>An asynchronous method that stops the input. Do not override it</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">stop()
+<pre><code class="language-ts">async stop(...args: TStopParams): Promise&lt;void&gt;
 </code></pre>
-<h3 id="pause-method">pause (method)</h3>
+<h3 id="startinternal-method">startInternal (method)</h3>
+<p>An abstract asynchronous method that starts the input.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">pause()
+<pre><code class="language-ts">protected abstract startInternal(...args: TStartParams): Promise&lt;void&gt;;
 </code></pre>
-<h3 id="resume-method">resume (method)</h3>
+<h3 id="stopinternal-method">stopInternal (method)</h3>
+<p>An asynchronous method that stops the input.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">resume()
+<pre><code class="language-ts">protected async stopInternal(...args: TStopParams): Promise&lt;void&gt;
 </code></pre>
-<h3 id="startlisteningticks-method">startListeningTicks (method)</h3>
+<h3 id="stop-property">stop$ (property)</h3>
+<p>A protected subject that emits a void value when the process is stopped.
+Subclasses, when subscribing to something using rxjs, have to add pipe takeUntil(this.stop$),
+so everything will be unsubscribed when stopping input</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">protected startListeningTicks()
-</code></pre>
-<h3 id="stoplisteningticks-method">stopListeningTicks (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">protected stopListeningTicks()
+<pre><code class="language-ts">readonly stop$: any
 </code></pre>
 
 

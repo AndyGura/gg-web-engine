@@ -8,7 +8,7 @@
       
       
       
-        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/base/controllers/keyboard.controller.ts/">
+        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/base/clock/i-clock.ts/">
       
       
       
@@ -17,7 +17,7 @@
     
     
       
-        <title>core/base/controllers/keyboard.controller.ts - GG-web-engine</title>
+        <title>core/base/clock/i-clock.ts - GG-web-engine</title>
       
     
     
@@ -69,7 +69,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#keyboardcontroller-overview" class="md-skip">
+        <a href="#i-clock-overview" class="md-skip">
           Skip to content
         </a>
       
@@ -104,7 +104,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              core/base/controllers/keyboard.controller.ts
+              core/base/clock/i-clock.ts
             
           </span>
         </div>
@@ -395,8 +395,8 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#keyboardcontroller-overview" class="md-nav__link">
-    keyboard.controller overview
+  <a href="#i-clock-overview" class="md-nav__link">
+    i-clock overview
   </a>
   
 </li>
@@ -410,71 +410,9 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#keyboardcontroller-class" class="md-nav__link">
-    KeyboardController (class)
+  <a href="#iclock-interface" class="md-nav__link">
+    IClock (interface)
   </a>
-  
-    <nav class="md-nav" aria-label="KeyboardController (class)">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#bind-method" class="md-nav__link">
-    bind (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#bindmany-method" class="md-nav__link">
-    bindMany (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#emulatekeydown-method" class="md-nav__link">
-    emulateKeyDown (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#emulatekeyup-method" class="md-nav__link">
-    emulateKeyUp (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#emulatekeypress-method" class="md-nav__link">
-    emulateKeyPress (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#start-method" class="md-nav__link">
-    start (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#handlekeys-method" class="md-nav__link">
-    handleKeys (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#stop-method" class="md-nav__link">
-    stop (method)
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
         
@@ -501,63 +439,19 @@
   
 
 
-<h2 id="keyboardcontroller-overview">keyboard.controller overview</h2>
+<h2 id="i-clock-overview">i-clock overview</h2>
 <hr />
 <h2 class="text-delta">Table of contents</h2>
 
 <ul>
 <li><a href="#utils">utils</a></li>
-<li><a href="#keyboardcontroller-class">KeyboardController (class)</a><ul>
-<li><a href="#bind-method">bind (method)</a></li>
-<li><a href="#bindmany-method">bindMany (method)</a></li>
-<li><a href="#emulatekeydown-method">emulateKeyDown (method)</a></li>
-<li><a href="#emulatekeyup-method">emulateKeyUp (method)</a></li>
-<li><a href="#emulatekeypress-method">emulateKeyPress (method)</a></li>
-<li><a href="#start-method">start (method)</a></li>
-<li><a href="#handlekeys-method">handleKeys (method)</a></li>
-<li><a href="#stop-method">stop (method)</a></li>
-</ul>
-</li>
+<li><a href="#iclock-interface">IClock (interface)</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
-<h2 id="keyboardcontroller-class">KeyboardController (class)</h2>
+<h2 id="iclock-interface">IClock (interface)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class KeyboardController {
-  constructor()
-}
-</code></pre>
-<h3 id="bind-method">bind (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">bind(code: string): Observable&lt;boolean&gt;
-</code></pre>
-<h3 id="bindmany-method">bindMany (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">bindMany(...codes: string[]): Observable&lt;boolean&gt;
-</code></pre>
-<h3 id="emulatekeydown-method">emulateKeyDown (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">emulateKeyDown(code: string): void
-</code></pre>
-<h3 id="emulatekeyup-method">emulateKeyUp (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">emulateKeyUp(code: string): void
-</code></pre>
-<h3 id="emulatekeypress-method">emulateKeyPress (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">emulateKeyPress(code: string): void
-</code></pre>
-<h3 id="start-method">start (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">async start()
-</code></pre>
-<h3 id="handlekeys-method">handleKeys (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">private handleKeys(e: KeyboardEvent)
-</code></pre>
-<h3 id="stop-method">stop (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">async stop()
+<pre><code class="language-ts">export interface IClock {
 </code></pre>
 
 
