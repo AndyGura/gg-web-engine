@@ -54,46 +54,6 @@ engine is still focused on that NFS project and all the functionality is written
 that there is currently lack of functionality which is not related to racing games.
 
 ## Features
-
-### Clock
-Clock is a class, responsible for tracking time and firing ticks. It measures time and on each tick emits two numbers: 
-`elapsedTime` and `delta`, where `delta` always equals to difference between current elapsed time, and elapsed time, 
-fired on the previous tick. All clock instances have hierarchy: pausing clock will automatically pause all of its child 
-clocks, which is nice to use for in-game timers: all timers will be paused when world clock is paused. There are two 
-built-in implementations of clock:
-#### GgGlobalClock
-Singleton, starts emitting ticks as soon as accessed. For scheduling ticks, it uses `animationFrameScheduler` from rxjs,
-which uses `requestAnimationFrame` API. The elapsed time for each tick is a timestamp, e.g. total amount of
-milliseconds, passed from 01.01.1970 00:00:00.000 UTC. The instance of this clock is always the root clock in clocks hierarchy 
-#### PausableClock
-The class for all remaining clocks: it measures time elapsed when was started. Has the ability to be paused/resumed, 
-and elapsed time will not be affected by pause: it will proceed from the same state it was paused.
-#### Example of clock hierarchy
-```mermaid
-flowchart LR
-  GgGlobalClock.instance --> w1[world1 clock]
-  GgGlobalClock.instance --> w2[world2 clock]
-  w1 --> l1[Level clock]
-  l1 --> l2[Some timer on level]
-```
-
-### Inputs
-Input is a class, responsible for handling external actions, such as mouse move, key presses, gamepad interactions etc. 
-When implementing multiplayer, it probably will be the best place to handle incoming data for reflecting it on the world 
-state. Input does not depend on ticks and is not a part of the world, it should be created and used by some controller 
-entity, added to the world. All inputs extend abstract class Input<TStartParams, TStartParams>. Engine provides those 
-inputs out-of-box:
-#### KeyboardInput 
-This input handles key presses, allows to setup key bindings: provides Observable<boolean>, which emits true on key down
-and false on key up. When binding many keys to the same functionality, will emit true when any of bound keys pressed, 
-and false only when all bound keys released. Every world has its own instance of keyboard controller
-#### MouseInput
-This input handles mouse movements and provides an Observable, which emits how much mouse position changed after last 
-event. Supports pointer lock functionality
-#### DirectionKeyboardInput
-A shortcut for implementing direction key bindings: WASD, arrows, or both at once. Provides observable with direction
-
-### Other:
 - Automatically working physics/rendering ticks
 - Automatic physics body/visual mesh position/rotation binding
 - Controllers interface, allowing to add some functions as part of tick
@@ -190,6 +150,99 @@ Demos are not properly documented yet (and only one is deployed), please check [
 
 ## Architecture
 Technical documentation available at [GitHub Pages](https://andygura.github.io/gg-web-engine/)
+### Clock
+Clock is an entity, responsible for tracking time and firing ticks. It measures time and on each tick emits two numbers:
+`elapsedTime` and `delta`, where `delta` always equals to difference between current elapsed time, and elapsed time,
+fired on the previous tick. All clock instances have hierarchy: pausing clock will automatically pause all of its child
+clocks, which is nice to use for in-game timers: all timers will be paused when world clock is paused. There are two
+built-in implementations of clock:
+#### GgGlobalClock
+Singleton, starts emitting ticks as soon as accessed. For scheduling ticks, it uses `animationFrameScheduler` from rxjs,
+which uses `requestAnimationFrame` API. The elapsed time for each tick is a timestamp, e.g. total amount of
+milliseconds, passed from 01.01.1970 00:00:00.000 UTC. The instance of this clock is always the root clock in clocks hierarchy
+#### PausableClock
+The class for all remaining clocks: it measures time elapsed when was started. Has the ability to be paused/resumed,
+and elapsed time will not be affected by pause: it will proceed from the same state it was paused. Every world has its
+own instance of PausableClock, where parent clock is **GgGlobalClock**
+#### Example of clocks hierarchy
+```mermaid
+flowchart LR
+  GgGlobalClock.instance --> w1[world1 clock]
+  GgGlobalClock.instance --> w2[world2 clock]
+  w1 --> l1[Level clock]
+  l1 --> l2[Some timer on level]
+```
+
+### World
+World is a container of all entities of your game, manages the entire flow. Though it is possible to have multiple 
+worlds in one page, in most cases you only need one. World consists of:
+- clock
+- visual scene, e.g. "sub-world", containing everything related to rendering. This is an interface, which has to be 
+implemented by integration library
+- physics world, e.g. "sub-world", containing everything related to physics simulation. This is an interface, which has to be
+  implemented by integration library
+- list of all spawned world entities, sorted by tick order, and API for spawning/removing them
+- logic to propagate clock ticks to every spawned active entity
+- keyboard input
+
+There are two built-in variants of world implementation: **Gg2dWorld** and **Gg3dWorld**
+
+### Entity
+Basically, everything that listens ticks and can be added/removed from world. Built-in entities:
+- **Gg2dEntity**/**Gg3dEntity** encapsulates display object (sprite or mesh respectively) and physics body. 
+Synchronizes position/rotation each tick
+- **Gg2dTriggerEntity**/**Gg3dTriggerEntity** has only physics body, but instead of participating in collisions, emits
+events when some another positionable entity entered/left its area
+- **InlineTickController** simple controller, which can be created and added to world using one line of code
+- **Gg2dRenderer**/**Gg3dRenderer** controllers, which renders the scene
+- **AnimationMixer** controller, which mixes animations: use-case is if you have some animation function and you need a 
+smooth transition to another animation function
+- **Entity2dPositioningAnimator**/**Entity3dPositioningAnimator** controllers extending **AnimationMixer**, which apply 
+position/rotation to positionable entity
+- **Camera3dAnimator** dedicated **AnimationMixer** for perspective camera: translates camera, target, up, fov etc.
+- **FreeCameraController** a controller, allows to control camera with WASD + mouse
+- **CarKeyboardHandlingController** a controller allowing to control car with keyboard
+- **Gg3dMapGraphEntity** an entity, which loads parts of big map and disposes loaded map chunks, which are far away
+- **Gg3dRaycastVehicleEntity** a car
+
+### Input
+Input is a class, responsible for handling external actions, such as mouse move, key presses, gamepad interactions etc.
+When implementing multiplayer, it probably will be the best place to handle incoming data for reflecting it on the world
+state. Input does not depend on ticks and is not a part of the world, it should be created and used by some controller
+entity, added to the world. All inputs extend abstract class Input<TStartParams, TStartParams>. Engine provides those
+inputs out-of-box:
+#### KeyboardInput
+This input handles key presses, allows to setup key bindings: provides Observable<boolean>, which emits true on key down
+and false on key up. When binding many keys to the same functionality, will emit true when any of bound keys pressed,
+and false only when all bound keys released. Every world has its own instance of keyboard controller
+#### MouseInput
+This input handles mouse movements and provides an Observable, which emits how much mouse position changed after last
+event. Supports pointer lock functionality
+#### DirectionKeyboardInput
+A shortcut for implementing direction key bindings: WASD, arrows, or both at once. Provides observable with direction
+#### Example of input usage
+```mermaid
+flowchart LR
+  world --> e1[Player Character]
+  world --> e2[Player Controller]
+  world --> e0[...other world entities]
+  e2 --Creates input, listens to events--> DirectionKeyboardInput
+  e2 --Changes character state on tick--> e1
+```
+
+### Factory
+There is simple factory, allowing to easily create rigid bodies. See **IGg2dObjectFactory**, **IGg3dObjectFactory**,
+**IGg2dBodyFactory** and **IGg3dBodyFactory**
+
+### Loader
+Currently, there is only one loader available, and only for 3D world. It uses own format of serializing blender scene: 
+**.glb**+**.meta** files, where glb is a binary GLTF file, containing mesh+materials, and meta is a json file, 
+containing evverything from blend file, not included in glb, such as empty objects; rigid bodies; splines. Right now it 
+is on very early stage. The script to make glb+meta from blender file is here: [build_blender_scene.py](packages/core/blender_exporter/build_blender_scene.py)
+
+### Console
+Engine provides a simple console, which can be used at runtime (if enabled in world) by pressing \`. Your game can 
+provide custom console commands using `world.registerConsoleCommand` function
 
 ## Support
 You can help by giving any feedback, bug report, feature request to [Issues](https://github.com/AndyGura/gg-web-engine/issues) 
