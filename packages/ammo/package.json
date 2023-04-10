@@ -32,7 +32,7 @@
     "path": false
   },
   "dependencies": {
-    "@gg-web-engine/core": "^0.0.3",
+    "@gg-web-engine/core": "^0.0.4",
     "ammojs-typed": "^1.0.6",
     "mini-signals": "^1.2.0",
     "rxjs": "~7.5.0"
