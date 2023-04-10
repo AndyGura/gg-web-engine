@@ -111,7 +111,6 @@ export class Gg2dEntity extends GgPositionable2dEntity {
 
   dispose(): void {
     super.dispose();
-    this.tick$.unsubscribe();
     if (this.object2D) {
       this.object2D.dispose();
     }

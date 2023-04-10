@@ -15,6 +15,8 @@ const createBodyMock = () => {
     rotation: { x: 0, y: 0, z: 0, w: 1 },
     scale: { x: 1, y: 1, z: 1 },
     name: '',
+    dispose() {
+    },
   } as IGg3dBody;
 };
 describe(`Gg3dEntity`, () => {
@@ -78,6 +80,15 @@ describe(`Gg3dEntity`, () => {
       expect(entity.rotation).toEqual({ x: 2, y: 3, z: 1, w: -5 });
       expect(object.position).toEqual({ x: 4, y: -1, z: 0 });
       expect(object.rotation).toEqual({ x: 2, y: 3, z: 1, w: -5 });
+    });
+  });
+
+  describe(`dispose`, () => {
+    it(`should not fail if disposing twice (happens for sub-entities when disposing whole world)`, () => {
+      const body = createBodyMock();
+      const entity = new Gg3dEntity(null, body);
+      entity.dispose();
+      expect(() => entity.dispose()).not.toThrow(Error);
     });
   });
 });

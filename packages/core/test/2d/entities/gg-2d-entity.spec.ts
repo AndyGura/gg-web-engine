@@ -1,4 +1,4 @@
-import { Gg2dEntity, IGg2dBody, IGg2dObject } from '../../../src';
+import { Gg2dEntity, Gg3dEntity, IGg2dBody, IGg2dObject } from '../../../src';
 
 const createObjectMock = () => {
   return {
@@ -15,6 +15,8 @@ const createBodyMock = () => {
     rotation: 0,
     scale: { x: 1, y: 1 },
     name: '',
+    dispose() {
+    },
   } as IGg2dBody;
 };
 describe(`Gg2dEntity`, () => {
@@ -78,6 +80,15 @@ describe(`Gg2dEntity`, () => {
       expect(entity.rotation).toEqual(-1);
       expect(object.position).toEqual({ x: 4, y: -1 });
       expect(object.rotation).toEqual(-1);
+    });
+  });
+
+  describe(`dispose`, () => {
+    it(`should not fail if disposing twice (happens for sub-entities when disposing whole world)`, () => {
+      const body = createBodyMock();
+      const entity = new Gg2dEntity(null, body);
+      entity.dispose();
+      expect(() => entity.dispose()).not.toThrow(Error);
     });
   });
 });
