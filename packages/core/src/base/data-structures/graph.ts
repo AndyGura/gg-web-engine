@@ -1,5 +1,13 @@
 export class Graph<T> {
-  static fromArray<T>(array: T[]): Graph<T> {
+  /**
+   * Creates a new Graph instance from an array of elements, where each element in the array is a node in the graph.
+   * The first element of the array is used as the root node of the graph.
+   * @param array The array of elements to create the graph from.
+   * @param closed An optional boolean indicating whether the graph is closed, meaning that the last node is adjacent to the first node.
+   * @returns A new Graph instance created from the array.
+   * @typeparam T The type of elements in the array and nodes in the graph.
+   */
+  static fromArray<T>(array: T[], closed: boolean = false): Graph<T> {
     const root = new Graph(array[0]);
     let tail = root;
     for (let i = 1; i < array.length; i++) {
@@ -7,8 +15,20 @@ export class Graph<T> {
       tail.addAdjacent(newTail);
       tail = newTail;
     }
+    if (closed) {
+      tail.addAdjacent(root);
+    }
     return root;
   }
+
+  /**
+   * Creates a new Graph instance from a two-dimensional square grid of elements, where each element in the grid is a node in the graph.
+   * The top-left element of the grid is used as the root node of the graph.
+   * The nodes in the graph are created in the same order as the elements in the grid, from left to right and then from top to bottom.
+   * @param grid The two-dimensional square grid of elements to create the graph from.
+   * @returns A new Graph instance created from the square grid.
+   * @typeparam T The type of elements in the square grid and nodes in the graph.
+   */
   static fromSquareGrid<T>(grid: T[][]): Graph<T> {
     const nodes = grid.map(sgrid => sgrid.map(item => new Graph<T>(item)));
     // bind them
