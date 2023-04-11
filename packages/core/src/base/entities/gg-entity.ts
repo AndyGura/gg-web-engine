@@ -15,6 +15,7 @@ export enum GGTickOrder {
 }
 
 export abstract class GgEntity {
+  private static default_name_counter = 0;
   /**
    * will receive [elapsed time, delta] of each world clock tick
    */
@@ -32,7 +33,7 @@ export abstract class GgEntity {
     return this._world;
   }
 
-  protected _name: string = '';
+  protected _name: string = '0x' + (GgEntity.default_name_counter++).toString(16);
 
   public get name(): string {
     return this._name;
