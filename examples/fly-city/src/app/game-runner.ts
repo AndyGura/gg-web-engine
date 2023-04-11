@@ -140,5 +140,10 @@ export class GameRunner {
       });
   }
 
+  stopGame() {
+    this.world.dispose();
+    this.audio.disposeAudio();
+  }
+
 
 }

@@ -27,6 +27,11 @@ export class AppComponent implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
+    await this.initGame();
+  }
+
+  private async initGame() {
+    console.log('Initializing game');
     this.world = new Gg3dWorld(new Gg3dVisualScene(), new Gg3dPhysicsWorld(), true);
     const factory: GameFactory = new GameFactory(this.world);
     const [renderer, cityMapGraph, mapBounds] = await factory.initGame();
@@ -49,6 +54,11 @@ export class AppComponent implements OnInit {
         this.world.resumeWorld();
       }
       this.cdr.markForCheck();
+    });
+
+    this.world.keyboardInput.bind('KeyL').pipe(filter(x => x)).subscribe(() => {
+      this.runner?.stopGame();
+      this.initGame().then();
     });
 
     this.runner.state$.subscribe(() => {

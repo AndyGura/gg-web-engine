@@ -98,4 +98,19 @@ export class GameAudio {
     });
   }
 
+  disposeAudio() {
+    this.engineOnHowl.stop();
+    this.engineOffHowl.stop();
+    this.changeGearHowl.stop();
+    this.honkHowl.stop();
+    this.engineOnHowl.unload();
+    this.engineOffHowl.unload();
+    this.changeGearHowl.unload();
+    this.honkHowl.unload();
+    this.engineOnHowl = null!;
+    this.engineOffHowl = null!;
+    this.changeGearHowl = null!;
+    this.honkHowl = null!;
+  }
+
 }
