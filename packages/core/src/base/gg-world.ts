@@ -144,6 +144,7 @@ export abstract class GgWorld<
 
   public dispose(): void {
     this.worldClock.stop();
+    this.keyboardInput.stop().then();
     for (let i = 0; i < this.children.length; i++) {
       this.children[i].onRemoved();
       this.children[i].dispose();
@@ -181,8 +182,6 @@ export abstract class GgWorld<
         1,
       );
       entity.onRemoved();
-    } else {
-      console.warn('Trying to remove entity, which is not spawned');
     }
     if (dispose) {
       entity.dispose();

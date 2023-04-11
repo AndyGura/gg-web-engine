@@ -1,6 +1,7 @@
 import { GgEntity, GGTickOrder } from './gg-entity';
 import { Point2 } from '../models/points';
 import { GgViewportManager } from '../gg-viewport-manager';
+import { GgWorld } from '../gg-world';
 
 export type RendererOptions = {
   transparent: boolean;
@@ -15,7 +16,7 @@ export abstract class BaseGgRenderer extends GgEntity {
 
   public readonly rendererOptions: RendererOptions;
 
-  protected constructor(canvas?: HTMLCanvasElement, options: Partial<RendererOptions> = {}) {
+  protected constructor(protected readonly canvas?: HTMLCanvasElement, options: Partial<RendererOptions> = {}) {
     super();
     this.rendererOptions = {
       transparent: false,
@@ -23,11 +24,6 @@ export abstract class BaseGgRenderer extends GgEntity {
       antialias: true,
       ...(options || {}),
     };
-    if (canvas) {
-      setTimeout(() => {
-        GgViewportManager.instance.assignRendererToCanvas(this, canvas).then();
-      }, 0);
-    }
     this.tick$.subscribe(() => {
       this.render();
     });
@@ -36,4 +32,22 @@ export abstract class BaseGgRenderer extends GgEntity {
   abstract render(): void;
 
   abstract resize(newSize: Point2): void;
+
+  onSpawned(world: GgWorld<any, any>) {
+    super.onSpawned(world);
+    if (this.canvas) {
+      setTimeout(() => {
+        GgViewportManager.instance.assignRendererToCanvas(this, this.canvas!).then();
+      }, 0);
+    }
+  }
+
+  onRemoved() {
+    super.onRemoved();
+    if (this.canvas) {
+      setTimeout(() => {
+        GgViewportManager.instance.deregisterCanvas(this.canvas!).then();
+      }, 0);
+    }
+  }
 }

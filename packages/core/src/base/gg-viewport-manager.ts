@@ -95,6 +95,15 @@ export class GgViewportManager {
     canvas.height = size.y;
   }
 
+  public async deregisterCanvas(canvas: HTMLCanvasElement): Promise<void> {
+    for (const index in this.canvases) {
+      if (this.canvases[index].canvas === canvas) {
+        delete this.canvases[index];
+        break;
+      }
+    }
+  }
+
   public async assignRendererToCanvas(renderer: BaseGgRenderer, canvas: HTMLCanvasElement): Promise<void> {
     if (!GgViewport.instance.isActive) {
       GgViewport.instance.activate();
