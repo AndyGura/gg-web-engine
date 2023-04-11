@@ -1,4 +1,4 @@
-import { Point3, Point4 } from '../models/points';
+import { Point2, Point3, Point4 } from '../models/points';
 import { Qtrn } from './quaternion';
 
 export class Pnt3 {
@@ -71,6 +71,13 @@ export class Pnt3 {
       y: a.y + t * (b.y - a.y),
       z: a.z + t * (b.z - a.z),
     };
+  }
+
+  /** angle between vectors in radians */
+  static angle(a: Point3, b: Point3): number {
+    const dotProduct = a.x * b.x + a.y * b.y + a.z * b.z;
+    const magnitudeProduct = Math.sqrt(a.x ** 2 + a.y ** 2 + a.z ** 2) * Math.sqrt(b.x ** 2 + b.y ** 2 + b.z ** 2);
+    return Math.acos(dotProduct / magnitudeProduct);
   }
 
   /** rotate point a with quaternion q */
