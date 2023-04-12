@@ -1,7 +1,7 @@
 import { GgMeta, IGg3dObjectLoader } from '@gg-web-engine/core';
 import { Gg3dObject } from './gg-3d-object';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { Light, Object3D } from 'three';
+import { GLTFLoader } from '../three/loaders/GLTFLoader';
 
 export class Gg3dObjectLoader implements IGg3dObjectLoader {
   public async loadFromGgGlb(glbFile: ArrayBuffer, meta: GgMeta): Promise<Gg3dObject | null> {
