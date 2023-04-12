@@ -16,6 +16,7 @@ parent: Modules
     - [getStageAsync (method)](#getstageasync-method)
     - [createCanvas (method)](#createcanvas-method)
     - [registerCanvas (method)](#registercanvas-method)
+    - [deregisterCanvas (method)](#deregistercanvas-method)
     - [assignRendererToCanvas (method)](#assignrenderertocanvas-method)
     - [destroyed (property)](#destroyed-property)
 
@@ -63,6 +64,14 @@ public async createCanvas(zIndex: number): Promise<HTMLCanvasElement>
 
 ```ts
 public async registerCanvas(canvas: HTMLCanvasElement, zIndex: number): Promise<void>
+```
+
+### deregisterCanvas (method)
+
+**Signature**
+
+```ts
+public async deregisterCanvas(canvas: HTMLCanvasElement): Promise<void>
 ```
 
 ### assignRendererToCanvas (method)

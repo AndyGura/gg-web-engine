@@ -14,6 +14,8 @@ parent: Modules
   - [BaseGgRenderer (class)](#baseggrenderer-class)
     - [render (method)](#render-method)
     - [resize (method)](#resize-method)
+    - [onSpawned (method)](#onspawned-method)
+    - [onRemoved (method)](#onremoved-method)
     - [tickOrder (property)](#tickorder-property)
     - [rendererOptions (property)](#rendereroptions-property)
   - [RendererOptions (type alias)](#rendereroptions-type-alias)
@@ -28,7 +30,7 @@ parent: Modules
 
 ```ts
 export declare class BaseGgRenderer {
-  protected constructor(canvas?: HTMLCanvasElement, options: Partial<RendererOptions> = {})
+  protected constructor(protected readonly canvas?: HTMLCanvasElement, options: Partial<RendererOptions> = {})
 }
 ```
 
@@ -46,6 +48,22 @@ abstract render(): void;
 
 ```ts
 abstract resize(newSize: Point2): void;
+```
+
+### onSpawned (method)
+
+**Signature**
+
+```ts
+onSpawned(world: GgWorld<any, any>)
+```
+
+### onRemoved (method)
+
+**Signature**
+
+```ts
+onRemoved()
 ```
 
 ### tickOrder (property)

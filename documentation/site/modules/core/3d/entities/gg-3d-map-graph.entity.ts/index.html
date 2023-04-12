@@ -673,10 +673,15 @@
 <pre><code class="language-ts">export declare class MapGraph
 </code></pre>
 <h3 id="frommaparray-static-method">fromMapArray (static method)</h3>
+<p>Creates a new MapGraph instance from an array of elements, where each element in the array is a node in the graph.
+The first element of the array is used as the root node of the graph.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">static fromMapArray(array: MapGraphNodeType[]): MapGraph
+<pre><code class="language-ts">static fromMapArray(array: MapGraphNodeType[], closed: boolean = false): MapGraph
 </code></pre>
 <h3 id="frommapsquaregrid-static-method">fromMapSquareGrid (static method)</h3>
+<p>Creates a new MapGraph instance from a two-dimensional square grid of elements, where each element in the grid is a node in the graph.
+The top-left element of the grid is used as the root node of the graph.
+The nodes in the graph are created in the same order as the elements in the grid, from left to right and then from top to bottom.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">static fromMapSquareGrid(grid: MapGraphNodeType[][]): MapGraph
 </code></pre>

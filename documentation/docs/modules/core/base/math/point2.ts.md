@@ -18,6 +18,7 @@ parent: Modules
     - [norm (static method)](#norm-static-method)
     - [scalarMult (static method)](#scalarmult-static-method)
     - [lerp (static method)](#lerp-static-method)
+    - [angle (static method)](#angle-static-method)
 
 ---
 
@@ -89,4 +90,14 @@ linear interpolation
 
 ```ts
 static lerp(a: Point2, b: Point2, t: number): Point2
+```
+
+### angle (static method)
+
+angle between vectors in radians
+
+**Signature**
+
+```ts
+static angle(a: Point2, b: Point2): number
 ```

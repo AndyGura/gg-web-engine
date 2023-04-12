@@ -39,13 +39,20 @@ export declare class Graph<T> {
 
 ### fromArray (static method)
 
+Creates a new Graph instance from an array of elements, where each element in the array is a node in the graph.
+The first element of the array is used as the root node of the graph.
+
 **Signature**
 
 ```ts
-static fromArray<T>(array: T[]): Graph<T>
+static fromArray<T>(array: T[], closed: boolean = false): Graph<T>
 ```
 
 ### fromSquareGrid (static method)
+
+Creates a new Graph instance from a two-dimensional square grid of elements, where each element in the grid is a node in the graph.
+The top-left element of the grid is used as the root node of the graph.
+The nodes in the graph are created in the same order as the elements in the grid, from left to right and then from top to bottom.
 
 **Signature**
 

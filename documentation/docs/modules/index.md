@@ -99,3 +99,4 @@ has_children: true
 - [three/impl/gg-renderer.ts](/gg-web-engine/modules/three/impl/gg-renderer.ts)
 - [three/impl/three-camera.entity.ts](/gg-web-engine/modules/three/impl/three-camera.entity.ts)
 - [three/impl/three-camera.ts](/gg-web-engine/modules/three/impl/three-camera.ts)
+- [three/three/loaders/GLTFLoader.d.ts](/gg-web-engine/modules/three/three/loaders/GLTFLoader.d.ts)
