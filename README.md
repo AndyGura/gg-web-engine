@@ -143,10 +143,10 @@ And run it:
 </p>
 
 ## Examples
-### [Fly city demo](https://gg-web-demos.guraklgames.com/index.html)
-source code is available [here](https://github.com/AndyGura/gg-web-engine/tree/main/examples/fly-city)
-
-Demos are not properly documented yet (and only one is deployed), please check [the code](https://github.com/AndyGura/gg-web-engine/tree/main/examples)
+- #### [Angular three+ammo](https://stackblitz.com/edit/angular-kuunqq?file=src%2Fmain.ts)
+- #### [Angular pixi+matter](https://stackblitz.com/edit/angular-v67tt6?file=src%2Fmain.ts)
+- #### Entity Loader. [Source code](https://github.com/AndyGura/gg-web-engine/blob/main/examples/model-loader/src/app/app.component.ts)
+- #### Fly city. [Live demo](https://gg-web-demos.guraklgames.com/index.html), [Source code](https://github.com/AndyGura/gg-web-engine/blob/main/examples/fly-city/src/app/app.component.ts)
 
 ## Architecture
 Technical documentation available at [GitHub Pages](https://andygura.github.io/gg-web-engine/)
