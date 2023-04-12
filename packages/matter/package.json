@@ -28,7 +28,7 @@
   "homepage": "https://github.com/AndyGura/gg-web-engine#readme",
   "dependencies": {
     "@types/matter-js": "^0.18.2",
-    "@gg-web-engine/core": "^0.0.4",
+    "@gg-web-engine/core": "^0.0.5",
     "matter-js": "^0.18.0"
   },
   "devDependencies": {
