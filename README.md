@@ -247,8 +247,10 @@ Engine provides a simple console, which can be used at runtime (if enabled in wo
 provide custom console commands using `world.registerConsoleCommand` function
 
 ## Support
-You can help by giving any feedback, bug report, feature request to [Issues](https://github.com/AndyGura/gg-web-engine/issues) 
-or help me directly by submitting a [Pull Request](https://github.com/AndyGura/gg-web-engine/pulls)
+You can support project by:
+- giving any feedback, bug report, feature request to [Issues](https://github.com/AndyGura/gg-web-engine/issues) 
+- fork & submit a [Pull Request](https://github.com/AndyGura/gg-web-engine/pulls)
+- [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/andygura)
 
 ## License
 [Apache License](LICENSE)
