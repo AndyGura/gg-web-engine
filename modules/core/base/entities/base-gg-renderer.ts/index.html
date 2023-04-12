@@ -432,6 +432,20 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#onspawned-method" class="md-nav__link">
+    onSpawned (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#onremoved-method" class="md-nav__link">
+    onRemoved (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#tickorder-property" class="md-nav__link">
     tickOrder (property)
   </a>
@@ -489,6 +503,8 @@
 <li><a href="#baseggrenderer-class">BaseGgRenderer (class)</a><ul>
 <li><a href="#render-method">render (method)</a></li>
 <li><a href="#resize-method">resize (method)</a></li>
+<li><a href="#onspawned-method">onSpawned (method)</a></li>
+<li><a href="#onremoved-method">onRemoved (method)</a></li>
 <li><a href="#tickorder-property">tickOrder (property)</a></li>
 <li><a href="#rendereroptions-property">rendererOptions (property)</a></li>
 </ul>
@@ -500,7 +516,7 @@
 <h2 id="baseggrenderer-class">BaseGgRenderer (class)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export declare class BaseGgRenderer {
-  protected constructor(canvas?: HTMLCanvasElement, options: Partial&lt;RendererOptions&gt; = {})
+  protected constructor(protected readonly canvas?: HTMLCanvasElement, options: Partial&lt;RendererOptions&gt; = {})
 }
 </code></pre>
 <h3 id="render-method">render (method)</h3>
@@ -510,6 +526,14 @@
 <h3 id="resize-method">resize (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">abstract resize(newSize: Point2): void;
+</code></pre>
+<h3 id="onspawned-method">onSpawned (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">onSpawned(world: GgWorld&lt;any, any&gt;)
+</code></pre>
+<h3 id="onremoved-method">onRemoved (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">onRemoved()
 </code></pre>
 <h3 id="tickorder-property">tickOrder (property)</h3>
 <p><strong>Signature</strong></p>
