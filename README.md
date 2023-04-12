@@ -156,11 +156,11 @@ Clock is an entity, responsible for tracking time and firing ticks. It measures 
 fired on the previous tick. All clock instances have hierarchy: pausing clock will automatically pause all of its child
 clocks, which is nice to use for in-game timers: all timers will be paused when world clock is paused. There are two
 built-in implementations of clock:
-#### GgGlobalClock
+#### [GgGlobalClock](https://andygura.github.io/gg-web-engine/modules/core/base/clock/global-clock.ts/)
 Singleton, starts emitting ticks as soon as accessed. For scheduling ticks, it uses `animationFrameScheduler` from rxjs,
 which uses `requestAnimationFrame` API. The elapsed time for each tick is a timestamp, e.g. total amount of
 milliseconds, passed from 01.01.1970 00:00:00.000 UTC. The instance of this clock is always the root clock in clocks hierarchy
-#### PausableClock
+#### [PausableClock](https://andygura.github.io/gg-web-engine/modules/core/base/clock/pausable-clock.ts/)
 The class for all remaining clocks: it measures time elapsed when was started. Has the ability to be paused/resumed,
 and elapsed time will not be affected by pause: it will proceed from the same state it was paused. Every world has its
 own instance of PausableClock, where parent clock is **GgGlobalClock**
@@ -173,7 +173,7 @@ flowchart LR
   l1 --> l2[Some timer on level]
 ```
 
-### World
+### [World](https://andygura.github.io/gg-web-engine/modules/core/base/gg-world.ts/)
 World is a container of all entities of your game, manages the entire flow. Though it is possible to have multiple 
 worlds in one page, in most cases you only need one. World consists of:
 - clock
@@ -185,40 +185,40 @@ implemented by integration library
 - logic to propagate clock ticks to every spawned active entity
 - keyboard input
 
-There are two built-in variants of world implementation: **Gg2dWorld** and **Gg3dWorld**
+There are two built-in variants of world implementation: **[Gg2dWorld](https://andygura.github.io/gg-web-engine/modules/core/2d/gg-2d-world.ts/)** and **[Gg3dWorld](https://andygura.github.io/gg-web-engine/modules/core/3d/gg-3d-world.ts/)**
 
-### Entity
+### [Entity](https://andygura.github.io/gg-web-engine/modules/core/base/entities/gg-entity.ts/)
 Basically, everything that listens ticks and can be added/removed from world. Built-in entities:
-- **Gg2dEntity**/**Gg3dEntity** encapsulates display object (sprite or mesh respectively) and physics body. 
+- **[Gg2dEntity](https://andygura.github.io/gg-web-engine/modules/core/2d/entities/gg-2d-entity.ts/)**/**[Gg3dEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/gg-3d-entity.ts/)** encapsulates display object (sprite or mesh respectively) and physics body. 
 Synchronizes position/rotation each tick
-- **Gg2dTriggerEntity**/**Gg3dTriggerEntity** has only physics body, but instead of participating in collisions, emits
+- **[Gg2dTriggerEntity](https://andygura.github.io/gg-web-engine/modules/core/2d/entities/gg-2d-trigger.entity.ts/)**/**[Gg3dTriggerEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/gg-3d-trigger.entity.ts/)** has only physics body, but instead of participating in collisions, emits
 events when some another positionable entity entered/left its area
-- **InlineTickController** simple controller, which can be created and added to world using one line of code
-- **Gg2dRenderer**/**Gg3dRenderer** controllers, which renders the scene
-- **AnimationMixer** controller, which mixes animations: use-case is if you have some animation function and you need a 
+- **[InlineTickController](https://andygura.github.io/gg-web-engine/modules/core/base/entities/inline-controller.ts/)** simple controller, which can be created and added to world using one line of code
+- **[Renderer](https://andygura.github.io/gg-web-engine/modules/core/base/entities/base-gg-renderer.ts/)** controller, which renders the scene
+- **[AnimationMixer](https://andygura.github.io/gg-web-engine/modules/core/base/entities/controllers/animation-mixer.ts/)** controller, which mixes animations: use-case is if you have some animation function, and you need a 
 smooth transition to another animation function
-- **Entity2dPositioningAnimator**/**Entity3dPositioningAnimator** controllers extending **AnimationMixer**, which apply 
+- **[Entity2dPositioningAnimator](https://andygura.github.io/gg-web-engine/modules/core/2d/entities/controllers/entity-2d-positioning.animator.ts/)**/**[Entity3dPositioningAnimator](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/controllers/animators/entity-3d-positioning.animator.ts/)** controllers extending **AnimationMixer**, which apply 
 position/rotation to positionable entity
-- **Camera3dAnimator** dedicated **AnimationMixer** for perspective camera: translates camera, target, up, fov etc.
-- **FreeCameraController** a controller, allows to control camera with WASD + mouse
-- **CarKeyboardHandlingController** a controller allowing to control car with keyboard
-- **Gg3dMapGraphEntity** an entity, which loads parts of big map and disposes loaded map chunks, which are far away
-- **Gg3dRaycastVehicleEntity** a car
+- **[Camera3dAnimator](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/controllers/animators/camera-3d.animator.ts/)** dedicated **AnimationMixer** for perspective camera: translates camera, target, up, fov etc.
+- **[FreeCameraController](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/controllers/input/free-camera.controller.ts/)** a controller, allows to control camera with WASD + mouse
+- **[CarKeyboardHandlingController](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/controllers/input/car-keyboard-handling.controller.ts/)** a controller allowing to control car with keyboard
+- **[Gg3dMapGraphEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/gg-3d-map-graph.entity.ts/)** an entity, which loads parts of big map and disposes loaded map chunks, which are far away
+- **[Gg3dRaycastVehicleEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/gg-3d-raycast-vehicle.entity.ts/)** a car
 
-### Input
+### [Input](https://andygura.github.io/gg-web-engine/modules/core/base/inputs/input.ts/)
 Input is a class, responsible for handling external actions, such as mouse move, key presses, gamepad interactions etc.
 When implementing multiplayer, it probably will be the best place to handle incoming data for reflecting it on the world
 state. Input does not depend on ticks and is not a part of the world, it should be created and used by some controller
 entity, added to the world. All inputs extend abstract class Input<TStartParams, TStartParams>. Engine provides those
 inputs out-of-box:
-#### KeyboardInput
+#### [KeyboardInput](https://andygura.github.io/gg-web-engine/modules/core/base/inputs/keyboard.input.ts/)
 This input handles key presses, allows to setup key bindings: provides Observable<boolean>, which emits true on key down
 and false on key up. When binding many keys to the same functionality, will emit true when any of bound keys pressed,
 and false only when all bound keys released. Every world has its own instance of keyboard controller
-#### MouseInput
+#### [MouseInput](https://andygura.github.io/gg-web-engine/modules/core/base/inputs/mouse.input.ts/)
 This input handles mouse movements and provides an Observable, which emits how much mouse position changed after last
 event. Supports pointer lock functionality
-#### DirectionKeyboardInput
+#### [DirectionKeyboardInput](https://andygura.github.io/gg-web-engine/modules/core/base/inputs/direction.keyboard-input.ts/)
 A shortcut for implementing direction key bindings: WASD, arrows, or both at once. Provides observable with direction
 #### Example of input usage
 ```mermaid
@@ -231,14 +231,16 @@ flowchart LR
 ```
 
 ### Factory
-There is simple factory, allowing to easily create rigid bodies. See **IGg2dObjectFactory**, **IGg3dObjectFactory**,
-**IGg2dBodyFactory** and **IGg3dBodyFactory**
+There is simple factory, allowing to easily create rigid bodies. See 
+[2D](https://andygura.github.io/gg-web-engine/modules/core/2d/factories.ts/) and 
+[3D](https://andygura.github.io/gg-web-engine/modules/core/3d/factories.ts/) factories
 
 ### Loader
 Currently, there is only one loader available, and only for 3D world. It uses own format of serializing blender scene: 
 **.glb**+**.meta** files, where glb is a binary GLTF file, containing mesh+materials, and meta is a json file, 
 containing evverything from blend file, not included in glb, such as empty objects; rigid bodies; splines. Right now it 
-is on very early stage. The script to make glb+meta from blender file is here: [build_blender_scene.py](packages/core/blender_exporter/build_blender_scene.py)
+is on very early stage. The script to make glb+meta from blender file is here: 
+[build_blender_scene.py](packages/core/blender_exporter/build_blender_scene.py)
 
 ### Console
 Engine provides a simple console, which can be used at runtime (if enabled in world) by pressing \`. Your game can 
