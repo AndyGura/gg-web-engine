@@ -25,12 +25,15 @@ import {
 } from 'three';
 import { filter, firstValueFrom } from 'rxjs';
 import { CAR_SPECS, LAMBO_SPECS, TRUCK_SPECS } from './car-specs';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+
 
 export class GameFactory {
   constructor(public readonly world: Gg3dWorld<Gg3dVisualScene, Gg3dPhysicsWorld>) {
   }
 
   public async initGame(): Promise<[GgRenderer, Gg3dMapGraphEntity, Gg3dTriggerEntity]> {
+    this.world.visualScene.loader.registerGltfLoaderAddon(new GLTFLoader());
     await this.world.init();
     const renderer = await this.initRenderer();
     this.addLights();

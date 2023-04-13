@@ -4,6 +4,7 @@ import { Camera3dAnimator, Gg3dWorld, GgViewportManager } from '@gg-web-engine/c
 import { interval } from 'rxjs';
 import { Gg3dObject, Gg3dVisualScene, GgRenderer } from '@gg-web-engine/three';
 import { Gg3dPhysicsWorld } from '@gg-web-engine/ammo';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 
 @Component({
   selector: 'app-root',
@@ -15,6 +16,7 @@ export class AppComponent implements OnInit {
   async ngOnInit(): Promise<void> {
 
     const scene: Gg3dVisualScene = new Gg3dVisualScene();
+    scene.loader.registerGltfLoaderAddon(new GLTFLoader());
     const physScene: Gg3dPhysicsWorld = new Gg3dPhysicsWorld();
     const world: Gg3dWorld = new Gg3dWorld(scene, physScene, true);
     await world.init();

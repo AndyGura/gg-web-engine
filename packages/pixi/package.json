@@ -1,6 +1,6 @@
 {
   "name": "@gg-web-engine/pixi",
-  "version": "0.0.06",
+  "version": "0.0.15",
   "description": "An attempt to create open source game engine for browser",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -27,12 +27,16 @@
   },
   "homepage": "https://github.com/AndyGura/gg-web-engine#readme",
   "dependencies": {
-    "@types/offscreencanvas": "^2019.7.0",
-    "@gg-web-engine/core": "^0.0.5",
-    "pixi.js": "^6.5.7"
   },
   "devDependencies": {
+    "@types/offscreencanvas": "^2019.7.0",
+    "@gg-web-engine/core": "^0.0.15",
+    "pixi.js": "^6.5.7",
     "prettier": "^2.8.6",
     "typescript": "~4.7.2"
+  },
+  "peerDependencies": {
+    "@gg-web-engine/core": "^0.0.15",
+    "pixi.js": "^6.5.7"
   }
 }

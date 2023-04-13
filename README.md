@@ -73,7 +73,6 @@ Note: at this early step, the project does not give much flexibility in that reg
 - [**@gg-web-engine/matter**](https://github.com/AndyGura/gg-web-engine/tree/main/packages/matter/README.md) - 2D world physics simulation module [Matter.js](https://github.com/liabru/matter-js)
 
 ## Quickstart
-**Note: right now it does not provide CommonJS/UMD modules**
 ### Installation:
 `npm install --save @gg-web-engine/core`<br/>
 And install integration modules, for instance if I want to create 3D world:<br/>

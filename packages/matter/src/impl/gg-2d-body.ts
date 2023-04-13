@@ -8,7 +8,7 @@ export class Gg2dBody implements IGg2dBody {
   }
 
   public set position(value: Point2) {
-    Body.translate(this.nativeBody, Vector.create(value.x, value.y));
+    Body.setPosition(this.nativeBody, Vector.create(value.x, value.y));
   }
 
   public get rotation(): number {

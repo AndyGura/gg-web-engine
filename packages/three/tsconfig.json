@@ -1,9 +1,8 @@
 {
   "extends": "./../../tsconfig.base.json",
   "compilerOptions": {
-    "allowJs": true,
     "baseUrl": "./src/",
-    "outDir": "./dist/"
+    "outDir": "./dist/",
   },
-  "include": ["*.ts", "**/*.ts", "./src/three/**/*.js"]
+  "include": ["*.ts", "**/*.ts"]
 }

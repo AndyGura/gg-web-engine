@@ -7,3 +7,12 @@
 ### Installation:
 1) make sure **@gg-web-engine/core** installed
 1) `npm install --save @gg-web-engine/three`
+
+Addons are not included in three.js build, so they are not included here as well to omit error "Cannot use import 
+statement outside a module" on some systems. So if you need to use GLB loader in your project, you have to import loader
+instance and register it:
+```
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+
+world.visualScene.loader.registerGltfLoaderAddon(new GLTFLoader());
+```
