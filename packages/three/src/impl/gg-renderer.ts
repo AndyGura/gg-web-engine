@@ -21,7 +21,7 @@ export class GgRenderer extends Gg3dRenderer {
     });
     const size = this.rendererOptions.forceRendererSize || GgViewport.instance.getCurrentViewportSize();
     this.renderer.setSize(size.x, size.y);
-    this.renderer.physicallyCorrectLights = true;
+    this.renderer.useLegacyLights = false;
     this.renderer.outputEncoding = sRGBEncoding;
     this.renderer.toneMappingExposure = 2;
     this.renderer.shadowMap.enabled = true;

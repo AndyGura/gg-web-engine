@@ -20,7 +20,6 @@ type GLTF = {
 };
 
 export class Gg3dObjectLoader implements IGg3dObjectLoader {
-
   private gltfLoader: {
     parseAsync(data: ArrayBuffer | string, path: string): Promise<GLTF>;
   } | null = null;
@@ -30,7 +29,9 @@ export class Gg3dObjectLoader implements IGg3dObjectLoader {
   }
   public async loadFromGgGlb(glbFile: ArrayBuffer, meta: GgMeta): Promise<Gg3dObject | null> {
     if (!this.gltfLoader) {
-      throw new Error('Three GLTF loader addon not registered! Use loader.registerGltfLoaderAddon(new GLTFLoader()) before trying to load something');
+      throw new Error(
+        'Three GLTF loader addon not registered! Use loader.registerGltfLoaderAddon(new GLTFLoader()) before trying to load something',
+      );
     }
     const gltf = await this.gltfLoader!.parseAsync(glbFile, '');
     gltf.scene.traverse((obj: Object3D) => {

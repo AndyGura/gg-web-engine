@@ -39,7 +39,10 @@ const deserializeVector = function (ammo: typeof Ammo, vec: Ammo.btVector3): Poi
 export class AmmoDebugger implements Ammo.btIDebugDraw {
   protected debugMode: AmmoDebugMode = AmmoDebugMode.DrawWireframe;
 
-  constructor(protected readonly world: Gg3dPhysicsWorld, private readonly drawer: GgDebugPhysicsDrawer<Point3, Point4>) {
+  constructor(
+    protected readonly world: Gg3dPhysicsWorld,
+    private readonly drawer: GgDebugPhysicsDrawer<Point3, Point4>,
+  ) {
     this.ammoInstance = new this.world.ammo.DebugDrawer();
     this.ammoInstance.drawLine = this.drawLine.bind(this);
     this.ammoInstance.drawContactPoint = this.drawContactPoint.bind(this);

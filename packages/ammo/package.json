@@ -1,6 +1,6 @@
 {
   "name": "@gg-web-engine/ammo",
-  "version": "0.0.15",
+  "version": "0.0.16",
   "description": "An attempt to create open source game engine for browser",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -34,17 +34,15 @@
   "dependencies": {
   },
   "devDependencies": {
-    "@gg-web-engine/core": "^0.0.15",
+    "@gg-web-engine/core": "^0.0.16",
     "ammojs-typed": "^1.0.6",
     "mini-signals": "^1.2.0",
-    "rxjs": "~7.5.0",
     "prettier": "^2.8.6",
     "typescript": "~4.7.2"
   },
   "peerDependencies": {
-    "@gg-web-engine/core": "^0.0.15",
+    "@gg-web-engine/core": "^0.0.16",
     "ammojs-typed": "^1.0.6",
-    "mini-signals": "^1.2.0",
-    "rxjs": "~7.5.0"
+    "mini-signals": "^1.2.0"
   }
 }
