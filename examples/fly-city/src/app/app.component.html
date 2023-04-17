@@ -1,4 +1,4 @@
-<div id="gg-stage"></div>
+<canvas #canvas></canvas>
 <app-dashboard *ngIf="!!(runner?.controlCar$ | async)" [car]="(runner?.controlCar$ | async)"></app-dashboard>
 <div class="screen-text app-helper" *ngIf="showHelpText">
     <span>FLY MODE CONTROLS</span>

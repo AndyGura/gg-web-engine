@@ -1,6 +1,6 @@
 ---
 title: three/impl/gg-renderer.ts
-nav_order: 82
+nav_order: 81
 parent: Modules
 ---
 
@@ -12,7 +12,7 @@ parent: Modules
 
 - [utils](#utils)
   - [GgRenderer (class)](#ggrenderer-class)
-    - [resize (method)](#resize-method)
+    - [resizeRenderer (method)](#resizerenderer-method)
     - [render (method)](#render-method)
     - [dispose (method)](#dispose-method)
     - [renderer (property)](#renderer-property)
@@ -35,12 +35,12 @@ export declare class GgRenderer {
 }
 ```
 
-### resize (method)
+### resizeRenderer (method)
 
 **Signature**
 
 ```ts
-resize(newSize: Point2): void
+resizeRenderer(newSize: Point2): void
 ```
 
 ### render (method)

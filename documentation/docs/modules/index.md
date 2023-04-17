@@ -50,7 +50,6 @@ has_children: true
 - [core/3d/models/gg-meta.ts](/gg-web-engine/modules/core/3d/models/gg-meta.ts)
 - [core/3d/models/shapes.ts](/gg-web-engine/modules/core/3d/models/shapes.ts)
 - [core/base/gg-static.ts](/gg-web-engine/modules/core/base/gg-static.ts)
-- [core/base/gg-viewport-manager.ts](/gg-web-engine/modules/core/base/gg-viewport-manager.ts)
 - [core/base/gg-viewport.ts](/gg-web-engine/modules/core/base/gg-viewport.ts)
 - [core/base/gg-world.ts](/gg-web-engine/modules/core/base/gg-world.ts)
 - [core/base/clock/global-clock.ts](/gg-web-engine/modules/core/base/clock/global-clock.ts)
@@ -99,4 +98,3 @@ has_children: true
 - [three/impl/gg-renderer.ts](/gg-web-engine/modules/three/impl/gg-renderer.ts)
 - [three/impl/three-camera.entity.ts](/gg-web-engine/modules/three/impl/three-camera.entity.ts)
 - [three/impl/three-camera.ts](/gg-web-engine/modules/three/impl/three-camera.ts)
-- [three/three/loaders/GLTFLoader.d.ts](/gg-web-engine/modules/three/three/loaders/GLTFLoader.d.ts)

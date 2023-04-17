@@ -1,6 +1,6 @@
 ---
 title: pixi/impl/gg-renderer.ts
-nav_order: 77
+nav_order: 76
 parent: Modules
 ---
 
@@ -12,7 +12,7 @@ parent: Modules
 
 - [utils](#utils)
   - [GgRenderer (class)](#ggrenderer-class)
-    - [resize (method)](#resize-method)
+    - [resizeRenderer (method)](#resizerenderer-method)
     - [onSpawned (method)](#onspawned-method)
     - [onRemoved (method)](#onremoved-method)
     - [render (method)](#render-method)
@@ -33,12 +33,12 @@ export declare class GgRenderer {
 }
 ```
 
-### resize (method)
+### resizeRenderer (method)
 
 **Signature**
 
 ```ts
-resize(newSize: Point2): void
+resizeRenderer(newSize: Point2): void
 ```
 
 ### onSpawned (method)

@@ -1,6 +1,6 @@
 ---
 title: three/impl/gg-3d-visual-scene.ts
-nav_order: 81
+nav_order: 80
 parent: Modules
 ---
 

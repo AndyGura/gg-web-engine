@@ -7,23 +7,26 @@ export class GgRenderer extends Gg2dRenderer {
 
   constructor(canvas?: HTMLCanvasElement, rendererOptions: Partial<RendererOptions> = {}) {
     super(canvas, rendererOptions);
-    // GG uses own ticker, disable pixi ticker
-    Ticker.shared.autoStart = false;
-    Ticker.shared.stop();
-    const size = this.rendererOptions.forceRendererSize || GgViewport.instance.getCurrentViewportSize();
     this.application = new Application({
       view: canvas,
       backgroundAlpha: this.rendererOptions.transparent ? 0 : 1,
       autoDensity: this.rendererOptions.forceResolution === undefined,
       resolution: this.rendererOptions.forceResolution,
-      width: size.x,
-      height: size.y,
+      width: 0,
+      height: 0,
       antialias: this.rendererOptions.antialias,
       backgroundColor: this.rendererOptions.background,
+      // preventing ticks
+      autoStart: false,
+      sharedTicker: false,
     });
+    // GG uses own ticker, disable pixi ticker for this renderer
+    this.application.ticker.stop();
+    this.application.ticker.destroy();
+    (this.application as any)._ticker = null!;
   }
 
-  resize(newSize: Point2): void {
+  resizeRenderer(newSize: Point2): void {
     this.application.renderer.resize(newSize.x, newSize.y);
   }
 

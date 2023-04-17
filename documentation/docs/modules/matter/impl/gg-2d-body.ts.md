@@ -1,6 +1,6 @@
 ---
 title: matter/impl/gg-2d-body.ts
-nav_order: 72
+nav_order: 71
 parent: Modules
 ---
 

@@ -1,6 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { DirectionalLight, HemisphereLight } from 'three';
-import { Camera3dAnimator, Gg3dWorld, GgViewportManager } from '@gg-web-engine/core';
+import { Camera3dAnimator, Gg3dWorld } from '@gg-web-engine/core';
 import { interval } from 'rxjs';
 import { Gg3dObject, Gg3dVisualScene, GgRenderer } from '@gg-web-engine/three';
 import { Gg3dPhysicsWorld } from '@gg-web-engine/ammo';
@@ -13,6 +13,8 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 })
 export class AppComponent implements OnInit {
 
+  @ViewChild('canvas') canvas!: ElementRef<HTMLCanvasElement>;
+
   async ngOnInit(): Promise<void> {
 
     const scene: Gg3dVisualScene = new Gg3dVisualScene();
@@ -21,8 +23,7 @@ export class AppComponent implements OnInit {
     const world: Gg3dWorld = new Gg3dWorld(scene, physScene, true);
     await world.init();
 
-    const canvas = await GgViewportManager.instance.createCanvas(1);
-    const renderer: GgRenderer = new GgRenderer(canvas);
+    const renderer: GgRenderer = new GgRenderer(this.canvas.nativeElement);
     world.addEntity(renderer);
     const cameraController: Camera3dAnimator = new Camera3dAnimator(renderer.camera, (timeElapsed, _) => ({
       position: {

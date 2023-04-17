@@ -1,4 +1,4 @@
-import { Gg3dRenderer, GgViewport, Point2, RendererOptions } from '@gg-web-engine/core';
+import { Gg3dRenderer, Point2, RendererOptions } from '@gg-web-engine/core';
 import { PCFSoftShadowMap, PerspectiveCamera, sRGBEncoding, WebGLRenderer } from 'three';
 import { Gg3dVisualScene } from './gg-3d-visual-scene';
 import { ThreeCameraEntity } from './three-camera.entity';
@@ -19,8 +19,6 @@ export class GgRenderer extends Gg3dRenderer {
       preserveDrawingBuffer: true,
       alpha: this.rendererOptions.transparent,
     });
-    const size = this.rendererOptions.forceRendererSize || GgViewport.instance.getCurrentViewportSize();
-    this.renderer.setSize(size.x, size.y);
     this.renderer.useLegacyLights = false;
     this.renderer.outputEncoding = sRGBEncoding;
     this.renderer.toneMappingExposure = 2;
@@ -30,7 +28,7 @@ export class GgRenderer extends Gg3dRenderer {
     this.renderer.setPixelRatio(this.rendererOptions.forceResolution || devicePixelRatio);
   }
 
-  resize(newSize: Point2): void {
+  resizeRenderer(newSize: Point2): void {
     this.renderer.setSize(newSize.x, newSize.y);
     if (
       this.camera.object3D.nativeCamera instanceof PerspectiveCamera ||

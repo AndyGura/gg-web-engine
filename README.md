@@ -94,12 +94,12 @@ Add to your `package.json` (fix for ammo-js dependencies):
 You can check all required additional configurations per integration in their own README, check the <a href="#integrations">integrations list</a>
 
 ### Usage:
-1) add somewhere in dom tree: ```<div id="gg-stage"></div>```
+1) add somewhere in dom tree: ```<canvas id="gg"></canvas>```
 1) remove default margin from page via CSS: ```body { margin: 0; }```
 1) write bootstrap script, example:
 ```typescript
 import { interval } from 'rxjs';
-import { Gg3dEntity, Gg3dWorld, GgViewportManager, Qtrn } from '@gg-web-engine/core';
+import { Gg3dEntity, Gg3dWorld, Qtrn } from '@gg-web-engine/core';
 import { Gg3dVisualScene, GgRenderer } from '@gg-web-engine/three';
 import { Gg3dPhysicsWorld } from '@gg-web-engine/ammo';
 
@@ -108,8 +108,7 @@ const world: Gg3dWorld = new Gg3dWorld(new Gg3dVisualScene(), new Gg3dPhysicsWor
 await world.init();
 
 // create viewport and renderer
-const canvas = await GgViewportManager.instance.createCanvas(1);
-const renderer: GgRenderer = new GgRenderer(canvas);
+const renderer: GgRenderer = new GgRenderer(document.getElementById('gg')! as HTMLCanvasElement);
 renderer.camera.position = { x: 15, y: 15, z: 9 };
 renderer.camera.rotation = Qtrn.lookAt(renderer.camera.position, {x: 0, y: 0, z: 0}, {x: 0, y: 0, z: 1});
 world.addEntity(renderer);
@@ -193,7 +192,7 @@ Synchronizes position/rotation each tick
 - **[Gg2dTriggerEntity](https://andygura.github.io/gg-web-engine/modules/core/2d/entities/gg-2d-trigger.entity.ts/)**/**[Gg3dTriggerEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/gg-3d-trigger.entity.ts/)** has only physics body, but instead of participating in collisions, emits
 events when some another positionable entity entered/left its area
 - **[InlineTickController](https://andygura.github.io/gg-web-engine/modules/core/base/entities/inline-controller.ts/)** simple controller, which can be created and added to world using one line of code
-- **[Renderer](https://andygura.github.io/gg-web-engine/modules/core/base/entities/base-gg-renderer.ts/)** controller, which renders the scene
+- **[Renderer](https://andygura.github.io/gg-web-engine/modules/core/base/entities/base-gg-renderer.ts/)** controller, which renders the scene and controls canvas size (if canvas provided). Makes canvas appearing fullscreen by default
 - **[AnimationMixer](https://andygura.github.io/gg-web-engine/modules/core/base/entities/controllers/animation-mixer.ts/)** controller, which mixes animations: use-case is if you have some animation function, and you need a 
 smooth transition to another animation function
 - **[Entity2dPositioningAnimator](https://andygura.github.io/gg-web-engine/modules/core/2d/entities/controllers/entity-2d-positioning.animator.ts/)**/**[Entity3dPositioningAnimator](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/controllers/animators/entity-3d-positioning.animator.ts/)** controllers extending **AnimationMixer**, which apply 

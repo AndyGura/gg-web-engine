@@ -2,7 +2,6 @@ export * from './base/clock/i-clock';
 export * from './base/clock/pausable-clock';
 export * from './base/clock/global-clock';
 export * from './base/gg-viewport';
-export * from './base/gg-viewport-manager';
 export * from './base/entities/controllers/animation-mixer';
 export * from './base/entities/gg-entity';
 export * from './base/entities/base-gg-renderer';

@@ -1,11 +1,10 @@
-import { Component, OnInit } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import {
   Camera3dAnimator,
   Gg3dEntity,
   Gg3dTriggerEntity,
   Gg3dWorld,
   GgPositionable3dEntity,
-  GgViewportManager,
 } from '@gg-web-engine/core';
 import { interval } from 'rxjs';
 import { Gg3dVisualScene, GgRenderer } from '@gg-web-engine/three';
@@ -16,17 +15,18 @@ import { Gg3dPhysicsWorld } from '@gg-web-engine/ammo';
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css'],
 })
-export class AppComponent implements OnInit {
+export class AppComponent implements AfterViewInit {
 
-  async ngOnInit(): Promise<void> {
+  @ViewChild('canvas') canvas!: ElementRef<HTMLCanvasElement>;
+
+  async ngAfterViewInit(): Promise<void> {
 
     const scene: Gg3dVisualScene = new Gg3dVisualScene();
     const physScene: Gg3dPhysicsWorld = new Gg3dPhysicsWorld();
     const world: Gg3dWorld = new Gg3dWorld(scene, physScene, true);
     await world.init();
 
-    const canvas = await GgViewportManager.instance.createCanvas(1);
-    const renderer: GgRenderer = new GgRenderer(canvas);
+    const renderer: GgRenderer = new GgRenderer(this.canvas.nativeElement);
     world.addEntity(renderer);
     const cameraController: Camera3dAnimator = new Camera3dAnimator(renderer.camera, (timeElapsed, _) => ({
       position: {

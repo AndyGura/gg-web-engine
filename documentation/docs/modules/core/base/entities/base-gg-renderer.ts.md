@@ -13,11 +13,12 @@ parent: Modules
 - [utils](#utils)
   - [BaseGgRenderer (class)](#baseggrenderer-class)
     - [render (method)](#render-method)
-    - [resize (method)](#resize-method)
+    - [resizeRenderer (method)](#resizerenderer-method)
     - [onSpawned (method)](#onspawned-method)
-    - [onRemoved (method)](#onremoved-method)
+    - [dispose (method)](#dispose-method)
     - [tickOrder (property)](#tickorder-property)
     - [rendererOptions (property)](#rendereroptions-property)
+    - [\_rendererSize$ (property)](#_renderersize-property)
   - [RendererOptions (type alias)](#rendereroptions-type-alias)
 
 ---
@@ -25,6 +26,8 @@ parent: Modules
 # utils
 
 ## BaseGgRenderer (class)
+
+Represents an abstract base class for a renderer controller.
 
 **Signature**
 
@@ -36,18 +39,22 @@ export declare class BaseGgRenderer {
 
 ### render (method)
 
+Renders the scene.
+
 **Signature**
 
 ```ts
 abstract render(): void;
 ```
 
-### resize (method)
+### resizeRenderer (method)
+
+Resizes the renderer to the specified size.
 
 **Signature**
 
 ```ts
-abstract resize(newSize: Point2): void;
+protected abstract resizeRenderer(newSize: Point2): void;
 ```
 
 ### onSpawned (method)
@@ -58,12 +65,12 @@ abstract resize(newSize: Point2): void;
 onSpawned(world: GgWorld<any, any>)
 ```
 
-### onRemoved (method)
+### dispose (method)
 
 **Signature**
 
 ```ts
-onRemoved()
+dispose()
 ```
 
 ### tickOrder (property)
@@ -76,13 +83,27 @@ readonly tickOrder: GGTickOrder.RENDERING
 
 ### rendererOptions (property)
 
+Specifies the options for the renderer.
+
 **Signature**
 
 ```ts
 readonly rendererOptions: RendererOptions
 ```
 
+### \_rendererSize$ (property)
+
+Represents the current size of the renderer.
+
+**Signature**
+
+```ts
+_rendererSize$: any
+```
+
 ## RendererOptions (type alias)
+
+Represents the options that can be passed to a renderer.
 
 **Signature**
 
@@ -90,7 +111,7 @@ readonly rendererOptions: RendererOptions
 export type RendererOptions = {
   transparent: boolean
   background: number
-  forceRendererSize?: Point2
+  size: Point2 | 'fullscreen' | ((pageSize: Point2) => Point2)
   forceResolution?: number
   antialias: boolean
 }

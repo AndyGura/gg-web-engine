@@ -7,7 +7,6 @@ import {
   Gg3dWorld,
   GgDummy,
   GgPositionable3dEntity,
-  GgViewportManager,
   IGg3dObject,
   MapGraph,
   Pnt3,
@@ -32,10 +31,10 @@ export class GameFactory {
   constructor(public readonly world: Gg3dWorld<Gg3dVisualScene, Gg3dPhysicsWorld>) {
   }
 
-  public async initGame(): Promise<[GgRenderer, Gg3dMapGraphEntity, Gg3dTriggerEntity]> {
+  public async initGame(canvas: HTMLCanvasElement): Promise<[GgRenderer, Gg3dMapGraphEntity, Gg3dTriggerEntity]> {
     this.world.visualScene.loader.registerGltfLoaderAddon(new GLTFLoader());
     await this.world.init();
-    const renderer = await this.initRenderer();
+    const renderer = await this.initRenderer(canvas);
     this.addLights();
     this.setupSkybox();
     const cityMapGraph = this.setupMapGraph(renderer.camera);
@@ -44,8 +43,7 @@ export class GameFactory {
     return [renderer, cityMapGraph, mapBounds];
   }
 
-  private async initRenderer(): Promise<GgRenderer> {
-    const canvas = await GgViewportManager.instance.createCanvas(1);
+  private async initRenderer(canvas: HTMLCanvasElement): Promise<GgRenderer> {
     const renderer: GgRenderer = new GgRenderer(canvas, {}, new ThreeCameraEntity(
       new ThreeCamera(new PerspectiveCamera(75, 1, 1, 10000))
     ));

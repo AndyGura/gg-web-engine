@@ -1,6 +1,6 @@
 ---
 title: three/impl/gg-3d-object-loader.ts
-nav_order: 79
+nav_order: 78
 parent: Modules
 ---
 
@@ -12,6 +12,7 @@ parent: Modules
 
 - [utils](#utils)
   - [Gg3dObjectLoader (class)](#gg3dobjectloader-class)
+    - [registerGltfLoaderAddon (method)](#registergltfloaderaddon-method)
     - [loadFromGgGlb (method)](#loadfromggglb-method)
 
 ---
@@ -24,6 +25,14 @@ parent: Modules
 
 ```ts
 export declare class Gg3dObjectLoader
+```
+
+### registerGltfLoaderAddon (method)
+
+**Signature**
+
+```ts
+public registerGltfLoaderAddon(gltf: any): void
 ```
 
 ### loadFromGgGlb (method)

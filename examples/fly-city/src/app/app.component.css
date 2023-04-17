@@ -6,6 +6,11 @@
     text-shadow: 0.05rem 0 0 #000, 0 -0.05rem 0 #000, 0 0.05rem 0 #000, -0.05rem 0 0 #000;
     font-weight: bold;
     display: flex;
+    pointer-events: none;
+}
+
+app-dashboard {
+    pointer-events: none;
 }
 
 .app-helper {

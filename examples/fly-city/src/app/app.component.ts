@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit } from '@angular/core';
+import {
+  AfterViewInit,
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  ElementRef,
+  ViewChild,
+} from '@angular/core';
 import { Gg3dWorld } from '@gg-web-engine/core';
 import { Gg3dVisualScene } from '@gg-web-engine/three';
 import { Gg3dPhysicsWorld } from '@gg-web-engine/ammo';
@@ -13,7 +20,10 @@ import { GameFactory } from './game-factory';
   styleUrls: ['./app.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class AppComponent implements OnInit {
+export class AppComponent implements AfterViewInit {
+
+  @ViewChild('canvas') canvas!: ElementRef<HTMLCanvasElement>;
+
   world!: Gg3dWorld<Gg3dVisualScene, Gg3dPhysicsWorld>;
   runner?: GameRunner;
 
@@ -26,7 +36,7 @@ export class AppComponent implements OnInit {
   ) {
   }
 
-  async ngOnInit(): Promise<void> {
+  async ngAfterViewInit(): Promise<void> {
     await this.initGame();
   }
 
@@ -34,7 +44,7 @@ export class AppComponent implements OnInit {
     console.log('Initializing game');
     this.world = new Gg3dWorld(new Gg3dVisualScene(), new Gg3dPhysicsWorld(), true);
     const factory: GameFactory = new GameFactory(this.world);
-    const [renderer, cityMapGraph, mapBounds] = await factory.initGame();
+    const [renderer, cityMapGraph, mapBounds] = await factory.initGame(this.canvas.nativeElement);
     await factory.spawnLambo();
 
     this.runner = new GameRunner(this.http, this.world, renderer, cityMapGraph, mapBounds);

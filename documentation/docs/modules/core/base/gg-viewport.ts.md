@@ -1,6 +1,6 @@
 ---
 title: core/base/gg-viewport.ts
-nav_order: 47
+nav_order: 46
 parent: Modules
 ---
 
@@ -14,13 +14,8 @@ parent: Modules
   - [GgViewport (class)](#ggviewport-class)
     - [activate (method)](#activate-method)
     - [deactivate (method)](#deactivate-method)
-    - [getCurrentViewportSize (method)](#getcurrentviewportsize-method)
-    - [subscribeOnViewportSize (method)](#subscribeonviewportsize-method)
-    - [isMouseEnabled (method)](#ismouseenabled-method)
     - [isTouchDevice (method)](#istouchdevice-method)
     - [subscribeOnMouseMove (method)](#subscribeonmousemove-method)
-    - [subscribeOnIsMouseDown (method)](#subscribeonismousedown-method)
-    - [subscribeOnMouseClick (method)](#subscribeonmouseclick-method)
     - [destroy$ (property)](#destroy-property)
 
 ---
@@ -53,30 +48,6 @@ public activate()
 public deactivate(): void
 ```
 
-### getCurrentViewportSize (method)
-
-**Signature**
-
-```ts
-getCurrentViewportSize(): Point2
-```
-
-### subscribeOnViewportSize (method)
-
-**Signature**
-
-```ts
-subscribeOnViewportSize(): Observable<Point2>
-```
-
-### isMouseEnabled (method)
-
-**Signature**
-
-```ts
-isMouseEnabled(): boolean
-```
-
 ### isTouchDevice (method)
 
 **Signature**
@@ -91,22 +62,6 @@ isTouchDevice(): boolean
 
 ```ts
 subscribeOnMouseMove(): Observable<Point2>
-```
-
-### subscribeOnIsMouseDown (method)
-
-**Signature**
-
-```ts
-subscribeOnIsMouseDown(): Observable<boolean>
-```
-
-### subscribeOnMouseClick (method)
-
-**Signature**
-
-```ts
-subscribeOnMouseClick(): Observable<Point2>
 ```
 
 ### destroy$ (property)
