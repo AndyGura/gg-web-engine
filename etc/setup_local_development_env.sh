@@ -7,7 +7,7 @@ npm link
 popd
 
 function switch_gg_module {
-  sed -i '/@gg-web-engine\/core/d' ./package.json
+  sed -i 's/"@gg-web-engine\/core".*/"rxjs": "~7.8.0",/' ./package.json
   sed -i '/prepublish/d' ./package.json
   npm install
   npm link @gg-web-engine/core
