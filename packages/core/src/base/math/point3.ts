@@ -1,4 +1,4 @@
-import { Point2, Point3, Point4 } from '../models/points';
+import { Point3, Point4, Spherical } from '../models/points';
 import { Qtrn } from './quaternion';
 
 export class Pnt3 {
@@ -25,6 +25,11 @@ export class Pnt3 {
   /** calculate vector length */
   static len(v: Point3) {
     return Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+  }
+
+  /** distance between points */
+  static dist(a: Point3, b: Point3): number {
+    return Pnt3.len(Pnt3.sub(a, b));
   }
 
   /** cross vectors */
@@ -122,5 +127,34 @@ export class Pnt3 {
   /** rotate point around axis a (normalized vector) */
   static rotAround(p: Point3, axis: Point3, angle: number): Point3 {
     return this.rot(p, Qtrn.fromAngle(axis, angle));
+  }
+
+  /**
+   * Converts a cartesian 3D point to a spherical coordinate system, where theta is azimuth and phi is inclination,
+   * theta == 0 is faced towards X axis direction, and phi == 0 is faced towards zenith (Z axis)
+   * @param p - The cartesian 3D point.
+   * @returns The spherical coordinates as an object with radius, theta, and phi properties.
+   */
+  static toSpherical(p: Point3): Spherical {
+    const radius = Math.sqrt(p.x * p.x + p.y * p.y + p.z * p.z);
+    return {
+      radius,
+      theta: radius == 0 ? 0 : Math.atan2(p.y, p.x),
+      phi: radius == 0 ? 0 : Math.atan2(Math.sqrt(p.x * p.x + p.y * p.y), p.z),
+    };
+  }
+
+  /**
+   * Converts a spherical coordinate system to a cartesian 3D point. Used spherical coordinates, where theta is azimuth
+   * and phi is inclination, theta == 0 is faced towards X axis direction, and phi == 0 is faced towards zenith (Z axis)
+   * @param s - The spherical coordinate system.
+   * @returns The cartesian 3D point as an object with x, y, and z properties.
+   */
+  static fromSpherical(s: Spherical): Point3 {
+    return {
+      x: s.radius * Math.sin(s.phi) * Math.cos(s.theta),
+      y: s.radius * Math.sin(s.phi) * Math.sin(s.theta),
+      z: s.radius * Math.cos(s.phi),
+    };
   }
 }

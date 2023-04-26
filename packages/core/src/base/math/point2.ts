@@ -16,6 +16,21 @@ export class Pnt2 {
     return { x: a.x - b.x, y: a.y - b.y };
   }
 
+  /** calculate vector length (squared) */
+  static lenSq(v: Point2) {
+    return v.x * v.x + v.y * v.y;
+  }
+
+  /** calculate vector length */
+  static len(v: Point2) {
+    return Math.sqrt(v.x * v.x + v.y * v.y);
+  }
+
+  /** distance between points */
+  static dist(a: Point2, b: Point2): number {
+    return Pnt2.len(Pnt2.sub(a, b));
+  }
+
   /** normalize */
   static norm(p: Point2): Point2 {
     const length = Math.sqrt(p.x ** 2 + p.y ** 2);

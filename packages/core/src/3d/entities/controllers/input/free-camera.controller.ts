@@ -1,10 +1,10 @@
-import { combineLatest, takeUntil } from 'rxjs';
+import { combineLatest, filter, takeUntil } from 'rxjs';
 import { MouseInput, MouseInputOptions } from '../../../../base/inputs/mouse.input';
 import { Pnt3 } from '../../../../base/math/point3';
 import { Gg3dCameraEntity } from '../../gg-3d-camera.entity';
 import { KeyboardInput } from '../../../../base/inputs/keyboard.input';
 import { Pnt2 } from '../../../../base/math/point2';
-import { Point2 } from '../../../../base/models/points';
+import { MutableSpherical, Point2 } from '../../../../base/models/points';
 import { Qtrn } from '../../../../base/math/quaternion';
 import {
   DirectionKeyboardInput,
@@ -34,7 +34,7 @@ export type FreeCameraControllerOptions = {
   /**
    * Options for configuring mouse input.
    */
-  mouseOptions: MouseInputOptions;
+  mouseOptions: Partial<MouseInputOptions>;
 };
 
 /**
@@ -91,9 +91,14 @@ export class FreeCameraController extends GgEntity {
 
     // Subscribe to mouse input for camera rotation
     let rotationDelta: Point2 = { x: 0, y: 0 };
-    this.mouseInput.delta$.pipe(takeUntil(this._onRemoved$)).subscribe(delta => {
-      rotationDelta = Pnt2.add(rotationDelta, delta);
-    });
+    this.mouseInput.delta$
+      .pipe(
+        takeUntil(this._onRemoved$),
+        filter(() => this.mouseInput.isPointerLocked),
+      )
+      .subscribe(delta => {
+        rotationDelta = Pnt2.add(rotationDelta, delta);
+      });
 
     // Setup updating camera position and rotation based on input
     this.camera.tick$.pipe(takeUntil(this._onRemoved$)).subscribe(() => {
@@ -108,10 +113,14 @@ export class FreeCameraController extends GgEntity {
         Pnt3.rot(Pnt3.scalarMult(Pnt3.norm(translateVector), this.options.movementOptions.speed), this.camera.rotation),
       );
       if (rotationDelta.x != 0 || rotationDelta.y != 0) {
-        this.camera.rotation = Qtrn.combineRotations(
-          Qtrn.fromAngle({ x: 0, y: 0, z: 1 }, -rotationDelta.x / 300),
-          this.camera.rotation,
-          Qtrn.fromAngle({ x: 1, y: 0, z: 0 }, -rotationDelta.y / 300),
+        const spherical: MutableSpherical = Pnt3.toSpherical(Pnt3.rot({ x: 0, y: 0, z: -1 }, this.camera.rotation));
+        spherical.theta -= rotationDelta.x / 300;
+        spherical.phi += rotationDelta.y / 300;
+        spherical.phi = Math.max(0.000001, Math.min(Math.PI - 0.000001, spherical.phi));
+        this.camera.rotation = Qtrn.lookAt(
+          this.camera.position,
+          Pnt3.add(this.camera.position, Pnt3.fromSpherical(spherical)),
+          { x: 0, y: 0, z: 1 },
         );
         rotationDelta = { x: 0, y: 0 };
       }

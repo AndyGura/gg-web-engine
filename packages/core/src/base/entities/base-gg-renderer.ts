@@ -9,14 +9,14 @@ import { distinctUntilChanged, map, startWith } from 'rxjs/operators';
  * @typedef {Object} RendererOptions
  * @property {boolean} transparent - Specifies whether pixels can be transparent. false by default.
  * @property {number} background - Specifies the background color of the renderer. black by default.
- * @property {Point2 | 'fullscreen' | ((pageSize: Point2) => Point2)} size - Specifies the size of the renderer and canvas if set. 'fullscreen' by default.
+ * @property {Point2 | 'fullscreen' | ((pageSize: Point2) => Point2) | Observable<Point2>} size - Specifies the size of the renderer and canvas if set. 'fullscreen' by default.
  * @property {number} [forceResolution] - Specifies the pixel resolution. Not set by default, which means "use device resolution".
  * @property {boolean} antialias - Specifies whether antialiasing is turned on/off. true by default.
  */
 export type RendererOptions = {
   transparent: boolean;
   background: number;
-  size: Point2 | 'fullscreen' | ((pageSize: Point2) => Point2);
+  size: Point2 | 'fullscreen' | ((pageSize: Point2) => Point2) | Observable<Point2>;
   forceResolution?: number;
   antialias: boolean;
 };
@@ -70,6 +70,7 @@ export abstract class BaseGgRenderer extends GgEntity {
       this.render();
     });
   }
+
   /**
    * Renders the scene.
    */
@@ -101,6 +102,10 @@ export abstract class BaseGgRenderer extends GgEntity {
             this.rendererOptions.size instanceof Function ? this.rendererOptions.size(size) : size,
           );
         });
+    } else if (this.rendererOptions.size instanceof Observable) {
+      this.rendererOptions.size.pipe(takeUntil(this._onRemoved$)).subscribe(newSize => {
+        this._rendererSize$.next(newSize);
+      });
     } else {
       this._rendererSize$.next(this.rendererOptions.size);
     }

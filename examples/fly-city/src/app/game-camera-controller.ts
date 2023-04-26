@@ -70,10 +70,8 @@ export class GameCameraController {
           speed: 1,
         },
         mouseOptions: {
-          pointerLock: {
-            ignoreMovementWhenNotLocked: true,
-            canvas: (this.renderer as GgRenderer).canvas!,
-          },
+          canvas: (this.renderer as GgRenderer).canvas!,
+          pointerLock: true,
         },
       },
     );

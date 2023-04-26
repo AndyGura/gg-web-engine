@@ -1,7 +1,6 @@
 export * from './base/clock/i-clock';
 export * from './base/clock/pausable-clock';
 export * from './base/clock/global-clock';
-export * from './base/gg-viewport';
 export * from './base/entities/controllers/animation-mixer';
 export * from './base/entities/gg-entity';
 export * from './base/entities/base-gg-renderer';
@@ -47,6 +46,7 @@ export * from './3d/entities/gg-3d-raycast-vehicle.entity';
 export * from './3d/entities/gg-3d-trigger.entity';
 export * from './3d/entities/controllers/input/car-keyboard-handling.controller';
 export * from './3d/entities/controllers/input/free-camera.controller';
+export * from './3d/entities/controllers/input/orbit-camera.controller';
 export * from './3d/models/body-options';
 export * from './3d/models/gg-meta';
 export * from './3d/models/shapes';
