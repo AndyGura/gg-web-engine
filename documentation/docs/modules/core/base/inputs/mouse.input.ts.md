@@ -12,11 +12,11 @@ parent: Modules
 
 - [utils](#utils)
   - [MouseInput (class)](#mouseinput-class)
+    - [isTouchDevice (static method)](#istouchdevice-static-method)
     - [startInternal (method)](#startinternal-method)
     - [stopInternal (method)](#stopinternal-method)
     - [canvasClickListener (method)](#canvasclicklistener-method)
   - [MouseInputOptions (type alias)](#mouseinputoptions-type-alias)
-  - [MouseInputPointLockOptions (type alias)](#mouseinputpointlockoptions-type-alias)
 
 ---
 
@@ -30,8 +30,16 @@ A class representing mouse input.
 
 ```ts
 export declare class MouseInput {
-  constructor(private readonly options: MouseInputOptions = {})
+  constructor(options: Partial<MouseInputOptions> = {})
 }
+```
+
+### isTouchDevice (static method)
+
+**Signature**
+
+```ts
+static isTouchDevice(): boolean
 ```
 
 ### startInternal (method)
@@ -66,26 +74,14 @@ private canvasClickListener(): void
 
 Options for a MouseInput.
 
-pointerLock: The options for pointer lock. Do not provide it to disable pointer lock functionality
+canvas?: Canvas element. If not provided, mouse events will be listened on the whole window
+pointerLock: The flag to enable pointer lock when clicking on canvas
 
 **Signature**
 
 ```ts
 export type MouseInputOptions = {
-  pointerLock?: MouseInputPointLockOptions
+  canvas?: HTMLCanvasElement
+  pointerLock: boolean
 }
-```
-
-## MouseInputPointLockOptions (type alias)
-
-Options for pointer lock in a MouseInput.
-
-ignoreMovementWhenNotLocked: Whether to ignore mouse movement when pointer lock is not active.
-
-canvas: The canvas element to request pointer lock on.
-
-**Signature**
-
-```ts
-export type MouseInputPointLockOptions = { ignoreMovementWhenNotLocked: boolean; canvas: HTMLCanvasElement }
 ```

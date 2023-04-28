@@ -566,7 +566,7 @@
 <pre><code class="language-ts">export type RendererOptions = {
   transparent: boolean
   background: number
-  size: Point2 | 'fullscreen' | ((pageSize: Point2) =&gt; Point2)
+  size: Point2 | 'fullscreen' | ((pageSize: Point2) =&gt; Point2) | Observable&lt;Point2&gt;
   forceResolution?: number
   antialias: boolean
 }

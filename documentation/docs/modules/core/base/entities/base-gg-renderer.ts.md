@@ -1,6 +1,6 @@
 ---
 title: core/base/entities/base-gg-renderer.ts
-nav_order: 40
+nav_order: 41
 parent: Modules
 ---
 
@@ -111,7 +111,7 @@ Represents the options that can be passed to a renderer.
 export type RendererOptions = {
   transparent: boolean
   background: number
-  size: Point2 | 'fullscreen' | ((pageSize: Point2) => Point2)
+  size: Point2 | 'fullscreen' | ((pageSize: Point2) => Point2) | Observable<Point2>
   forceResolution?: number
   antialias: boolean
 }

@@ -17,6 +17,7 @@ parent: Modules
     - [sub (static method)](#sub-static-method)
     - [lenSq (static method)](#lensq-static-method)
     - [len (static method)](#len-static-method)
+    - [dist (static method)](#dist-static-method)
     - [cross (static method)](#cross-static-method)
     - [norm (static method)](#norm-static-method)
     - [scalarMult (static method)](#scalarmult-static-method)
@@ -24,6 +25,8 @@ parent: Modules
     - [angle (static method)](#angle-static-method)
     - [rot (static method)](#rot-static-method)
     - [rotAround (static method)](#rotaround-static-method)
+    - [toSpherical (static method)](#tospherical-static-method)
+    - [fromSpherical (static method)](#fromspherical-static-method)
 
 ---
 
@@ -85,6 +88,16 @@ calculate vector length
 
 ```ts
 static len(v: Point3)
+```
+
+### dist (static method)
+
+distance between points
+
+**Signature**
+
+```ts
+static dist(a: Point3, b: Point3): number
 ```
 
 ### cross (static method)
@@ -155,4 +168,26 @@ rotate point around axis a (normalized vector)
 
 ```ts
 static rotAround(p: Point3, axis: Point3, angle: number): Point3
+```
+
+### toSpherical (static method)
+
+Converts a cartesian 3D point to a spherical coordinate system, where theta is azimuth and phi is inclination,
+theta == 0 is faced towards X axis direction, and phi == 0 is faced towards zenith (Z axis)
+
+**Signature**
+
+```ts
+static toSpherical(p: Point3): Spherical
+```
+
+### fromSpherical (static method)
+
+Converts a spherical coordinate system to a cartesian 3D point. Used spherical coordinates, where theta is azimuth
+and phi is inclination, theta == 0 is faced towards X axis direction, and phi == 0 is faced towards zenith (Z axis)
+
+**Signature**
+
+```ts
+static fromSpherical(s: Spherical): Point3
 ```

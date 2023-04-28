@@ -15,6 +15,9 @@ parent: Modules
     - [clone (static method)](#clone-static-method)
     - [add (static method)](#add-static-method)
     - [sub (static method)](#sub-static-method)
+    - [lenSq (static method)](#lensq-static-method)
+    - [len (static method)](#len-static-method)
+    - [dist (static method)](#dist-static-method)
     - [norm (static method)](#norm-static-method)
     - [scalarMult (static method)](#scalarmult-static-method)
     - [lerp (static method)](#lerp-static-method)
@@ -60,6 +63,36 @@ subtract point b from point a
 
 ```ts
 static sub(a: Point2, b: Point2): Point2
+```
+
+### lenSq (static method)
+
+calculate vector length (squared)
+
+**Signature**
+
+```ts
+static lenSq(v: Point2)
+```
+
+### len (static method)
+
+calculate vector length
+
+**Signature**
+
+```ts
+static len(v: Point2)
+```
+
+### dist (static method)
+
+distance between points
+
+**Signature**
+
+```ts
+static dist(a: Point2, b: Point2): number
 ```
 
 ### norm (static method)
