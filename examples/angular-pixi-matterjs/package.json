@@ -18,9 +18,9 @@
     "@angular/platform-browser": "^14.1.0",
     "@angular/platform-browser-dynamic": "^14.1.0",
     "@angular/router": "^14.1.0",
-    "@gg-web-engine/core": "^0.0.16",
-    "@gg-web-engine/matter": "^0.0.16",
-    "@gg-web-engine/pixi": "^0.0.16",
+    "@gg-web-engine/core": "^0.0.18",
+    "@gg-web-engine/matter": "^0.0.18",
+    "@gg-web-engine/pixi": "^0.0.18",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.11.4"

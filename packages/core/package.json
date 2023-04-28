@@ -1,13 +1,13 @@
 {
   "name": "@gg-web-engine/core",
-  "version": "0.0.16",
+  "version": "0.0.18",
   "description": "An attempt to create open source game engine for browser",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "test": "jest",
     "prettier-format": "prettier --config .prettierrc 'src/**/*.ts' --write",
-    "prepublish": "tsc",
+    "prepublish": "rm -rf ./dist/ && tsc",
     "build": "tsc"
   },
   "repository": {
