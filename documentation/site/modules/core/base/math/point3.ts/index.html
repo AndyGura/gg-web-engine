@@ -453,6 +453,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#dist-static-method" class="md-nav__link">
+    dist (static method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#cross-static-method" class="md-nav__link">
     cross (static method)
   </a>
@@ -501,6 +508,20 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#tospherical-static-method" class="md-nav__link">
+    toSpherical (static method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fromspherical-static-method" class="md-nav__link">
+    fromSpherical (static method)
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -541,6 +562,7 @@
 <li><a href="#sub-static-method">sub (static method)</a></li>
 <li><a href="#lensq-static-method">lenSq (static method)</a></li>
 <li><a href="#len-static-method">len (static method)</a></li>
+<li><a href="#dist-static-method">dist (static method)</a></li>
 <li><a href="#cross-static-method">cross (static method)</a></li>
 <li><a href="#norm-static-method">norm (static method)</a></li>
 <li><a href="#scalarmult-static-method">scalarMult (static method)</a></li>
@@ -548,6 +570,8 @@
 <li><a href="#angle-static-method">angle (static method)</a></li>
 <li><a href="#rot-static-method">rot (static method)</a></li>
 <li><a href="#rotaround-static-method">rotAround (static method)</a></li>
+<li><a href="#tospherical-static-method">toSpherical (static method)</a></li>
+<li><a href="#fromspherical-static-method">fromSpherical (static method)</a></li>
 </ul>
 </li>
 </ul>
@@ -581,6 +605,11 @@
 <p>calculate vector length</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">static len(v: Point3)
+</code></pre>
+<h3 id="dist-static-method">dist (static method)</h3>
+<p>distance between points</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">static dist(a: Point3, b: Point3): number
 </code></pre>
 <h3 id="cross-static-method">cross (static method)</h3>
 <p>cross vectors</p>
@@ -616,6 +645,18 @@
 <p>rotate point around axis a (normalized vector)</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">static rotAround(p: Point3, axis: Point3, angle: number): Point3
+</code></pre>
+<h3 id="tospherical-static-method">toSpherical (static method)</h3>
+<p>Converts a cartesian 3D point to a spherical coordinate system, where theta is azimuth and phi is inclination,
+theta == 0 is faced towards X axis direction, and phi == 0 is faced towards zenith (Z axis)</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">static toSpherical(p: Point3): Spherical
+</code></pre>
+<h3 id="fromspherical-static-method">fromSpherical (static method)</h3>
+<p>Converts a spherical coordinate system to a cartesian 3D point. Used spherical coordinates, where theta is azimuth
+and phi is inclination, theta == 0 is faced towards X axis direction, and phi == 0 is faced towards zenith (Z axis)</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">static fromSpherical(s: Spherical): Point3
 </code></pre>
 
 

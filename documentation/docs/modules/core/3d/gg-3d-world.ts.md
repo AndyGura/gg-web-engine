@@ -1,6 +1,6 @@
 ---
 title: core/3d/gg-3d-world.ts
-nav_order: 30
+nav_order: 31
 parent: Modules
 ---
 

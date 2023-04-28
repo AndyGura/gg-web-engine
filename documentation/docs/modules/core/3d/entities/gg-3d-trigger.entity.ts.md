@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/gg-3d-trigger.entity.ts
-nav_order: 27
+nav_order: 28
 parent: Modules
 ---
 

@@ -111,6 +111,6 @@ export type FreeCameraControllerOptions = {
   /**
    * Options for configuring mouse input.
    */
-  mouseOptions: MouseInputOptions
+  mouseOptions: Partial<MouseInputOptions>
 }
 ```

@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/gg-3d-entity.ts
-nav_order: 24
+nav_order: 25
 parent: Modules
 ---
 

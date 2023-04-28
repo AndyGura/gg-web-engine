@@ -7,3 +7,4 @@ has_children: true
 
 - [core/3d/entities/controllers/input/car-keyboard-handling.controller.ts](/gg-web-engine/modules/core/3d/entities/controllers/input/car-keyboard-handling.controller.ts)
 - [core/3d/entities/controllers/input/free-camera.controller.ts](/gg-web-engine/modules/core/3d/entities/controllers/input/free-camera.controller.ts)
+- [core/3d/entities/controllers/input/orbit-camera.controller.ts](/gg-web-engine/modules/core/3d/entities/controllers/input/orbit-camera.controller.ts)
