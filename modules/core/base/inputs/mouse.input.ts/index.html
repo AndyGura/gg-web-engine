@@ -418,6 +418,13 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#istouchdevice-static-method" class="md-nav__link">
+    isTouchDevice (static method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#startinternal-method" class="md-nav__link">
     startInternal (method)
   </a>
@@ -446,13 +453,6 @@
           <li class="md-nav__item">
   <a href="#mouseinputoptions-type-alias" class="md-nav__link">
     MouseInputOptions (type alias)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#mouseinputpointlockoptions-type-alias" class="md-nav__link">
-    MouseInputPointLockOptions (type alias)
   </a>
   
 </li>
@@ -487,13 +487,13 @@
 <ul>
 <li><a href="#utils">utils</a></li>
 <li><a href="#mouseinput-class">MouseInput (class)</a><ul>
+<li><a href="#istouchdevice-static-method">isTouchDevice (static method)</a></li>
 <li><a href="#startinternal-method">startInternal (method)</a></li>
 <li><a href="#stopinternal-method">stopInternal (method)</a></li>
 <li><a href="#canvasclicklistener-method">canvasClickListener (method)</a></li>
 </ul>
 </li>
 <li><a href="#mouseinputoptions-type-alias">MouseInputOptions (type alias)</a></li>
-<li><a href="#mouseinputpointlockoptions-type-alias">MouseInputPointLockOptions (type alias)</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
@@ -501,8 +501,12 @@
 <p>A class representing mouse input.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export declare class MouseInput {
-  constructor(private readonly options: MouseInputOptions = {})
+  constructor(options: Partial&lt;MouseInputOptions&gt; = {})
 }
+</code></pre>
+<h3 id="istouchdevice-static-method">isTouchDevice (static method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">static isTouchDevice(): boolean
 </code></pre>
 <h3 id="startinternal-method">startInternal (method)</h3>
 <p><strong>Signature</strong></p>
@@ -520,18 +524,13 @@
 </code></pre>
 <h2 id="mouseinputoptions-type-alias">MouseInputOptions (type alias)</h2>
 <p>Options for a MouseInput.</p>
-<p>pointerLock: The options for pointer lock. Do not provide it to disable pointer lock functionality</p>
+<p>canvas?: Canvas element. If not provided, mouse events will be listened on the whole window
+pointerLock: The flag to enable pointer lock when clicking on canvas</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export type MouseInputOptions = {
-  pointerLock?: MouseInputPointLockOptions
+  canvas?: HTMLCanvasElement
+  pointerLock: boolean
 }
-</code></pre>
-<h2 id="mouseinputpointlockoptions-type-alias">MouseInputPointLockOptions (type alias)</h2>
-<p>Options for pointer lock in a MouseInput.</p>
-<p>ignoreMovementWhenNotLocked: Whether to ignore mouse movement when pointer lock is not active.</p>
-<p>canvas: The canvas element to request pointer lock on.</p>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type MouseInputPointLockOptions = { ignoreMovementWhenNotLocked: boolean; canvas: HTMLCanvasElement }
 </code></pre>
 
 

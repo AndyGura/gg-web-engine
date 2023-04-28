@@ -425,8 +425,8 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#resize-method" class="md-nav__link">
-    resize (method)
+  <a href="#resizerenderer-method" class="md-nav__link">
+    resizeRenderer (method)
   </a>
   
 </li>
@@ -439,8 +439,8 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#onremoved-method" class="md-nav__link">
-    onRemoved (method)
+  <a href="#dispose-method" class="md-nav__link">
+    dispose (method)
   </a>
   
 </li>
@@ -455,6 +455,13 @@
           <li class="md-nav__item">
   <a href="#rendereroptions-property" class="md-nav__link">
     rendererOptions (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_renderersize-property" class="md-nav__link">
+    _rendererSize$ (property)
   </a>
   
 </li>
@@ -502,11 +509,12 @@
 <li><a href="#utils">utils</a></li>
 <li><a href="#baseggrenderer-class">BaseGgRenderer (class)</a><ul>
 <li><a href="#render-method">render (method)</a></li>
-<li><a href="#resize-method">resize (method)</a></li>
+<li><a href="#resizerenderer-method">resizeRenderer (method)</a></li>
 <li><a href="#onspawned-method">onSpawned (method)</a></li>
-<li><a href="#onremoved-method">onRemoved (method)</a></li>
+<li><a href="#dispose-method">dispose (method)</a></li>
 <li><a href="#tickorder-property">tickOrder (property)</a></li>
 <li><a href="#rendereroptions-property">rendererOptions (property)</a></li>
+<li><a href="#_renderersize-property">_rendererSize$ (property)</a></li>
 </ul>
 </li>
 <li><a href="#rendereroptions-type-alias">RendererOptions (type alias)</a></li>
@@ -514,41 +522,51 @@
 <hr />
 <h1 id="utils">utils</h1>
 <h2 id="baseggrenderer-class">BaseGgRenderer (class)</h2>
+<p>Represents an abstract base class for a renderer controller.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export declare class BaseGgRenderer {
   protected constructor(protected readonly canvas?: HTMLCanvasElement, options: Partial&lt;RendererOptions&gt; = {})
 }
 </code></pre>
 <h3 id="render-method">render (method)</h3>
+<p>Renders the scene.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">abstract render(): void;
 </code></pre>
-<h3 id="resize-method">resize (method)</h3>
+<h3 id="resizerenderer-method">resizeRenderer (method)</h3>
+<p>Resizes the renderer to the specified size.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">abstract resize(newSize: Point2): void;
+<pre><code class="language-ts">protected abstract resizeRenderer(newSize: Point2): void;
 </code></pre>
 <h3 id="onspawned-method">onSpawned (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">onSpawned(world: GgWorld&lt;any, any&gt;)
 </code></pre>
-<h3 id="onremoved-method">onRemoved (method)</h3>
+<h3 id="dispose-method">dispose (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">onRemoved()
+<pre><code class="language-ts">dispose()
 </code></pre>
 <h3 id="tickorder-property">tickOrder (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly tickOrder: GGTickOrder.RENDERING
 </code></pre>
 <h3 id="rendereroptions-property">rendererOptions (property)</h3>
+<p>Specifies the options for the renderer.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly rendererOptions: RendererOptions
 </code></pre>
+<h3 id="_renderersize-property">_rendererSize$ (property)</h3>
+<p>Represents the current size of the renderer.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">_rendererSize$: any
+</code></pre>
 <h2 id="rendereroptions-type-alias">RendererOptions (type alias)</h2>
+<p>Represents the options that can be passed to a renderer.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export type RendererOptions = {
   transparent: boolean
   background: number
-  forceRendererSize?: Point2
+  size: Point2 | 'fullscreen' | ((pageSize: Point2) =&gt; Point2) | Observable&lt;Point2&gt;
   forceResolution?: number
   antialias: boolean
 }
