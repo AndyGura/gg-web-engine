@@ -65,6 +65,13 @@ export class MouseInput extends Input<[], [unlockPointer?: boolean]> {
   }
 
   /**
+   A global position of the mouse.
+   */
+  public get position(): Point2 {
+    return this._position$.getValue();
+  }
+
+  /**
    An observable of the global position of the mouse.
    */
   public get position$(): Observable<Point2> {
@@ -186,7 +193,7 @@ export class MouseInput extends Input<[], [unlockPointer?: boolean]> {
         }
         this._delta$.next({ x: event.movementX, y: event.movementY });
       });
-    if (this.options.pointerLock && this.options.canvas) {
+    if (!MouseInput.isTouchDevice() && this.options.pointerLock && this.options.canvas) {
       this.options.canvas.addEventListener('click', this.canvasClickListener);
     }
     const onPointerUp = (event: PointerEvent) => {
@@ -230,9 +237,12 @@ export class MouseInput extends Input<[], [unlockPointer?: boolean]> {
       .subscribe(event => {
         event.preventDefault();
       });
-    (fromEvent(this._element, 'wheel') as Observable<WheelEvent>).pipe(takeUntil(this.stopped$)).subscribe(e => {
-      this._wheel$.next(e.deltaY);
-    });
+    (fromEvent(this._element, 'wheel', { passive: false }) as Observable<WheelEvent>)
+      .pipe(takeUntil(this.stopped$))
+      .subscribe(e => {
+        e.preventDefault();
+        this._wheel$.next(e.deltaY);
+      });
   }
 
   /**

@@ -91,10 +91,11 @@ export class FreeCameraController extends GgEntity {
 
     // Subscribe to mouse input for camera rotation
     let rotationDelta: Point2 = { x: 0, y: 0 };
+    let isTouchScreen = MouseInput.isTouchDevice();
     this.mouseInput.delta$
       .pipe(
         takeUntil(this._onRemoved$),
-        filter(() => this.mouseInput.isPointerLocked),
+        filter(() => isTouchScreen || this.mouseInput.isPointerLocked),
       )
       .subscribe(delta => {
         rotationDelta = Pnt2.add(rotationDelta, delta);

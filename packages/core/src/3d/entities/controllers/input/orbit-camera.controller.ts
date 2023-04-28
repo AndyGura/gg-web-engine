@@ -83,7 +83,6 @@ export class OrbitCameraController extends GgEntity {
         ),
       );
     };
-    this.mouseInput.state$.subscribe(x => console.log(MouseInputState[x]));
     if (this.options.panning) {
       this.mouseInput.delta$
         .pipe(
@@ -101,7 +100,7 @@ export class OrbitCameraController extends GgEntity {
           filter(() => this.mouseInput.state == MouseInputState.DRAG_MIDDLE_BUTTON),
         )
         .subscribe(delta => {
-          this.spherical.radius *= Math.pow(0.95, (-(this.options.dollying as any).sensitivity * delta.y) / 5);
+          this.spherical.radius *= Math.pow(0.95, (-(this.options.dollying as any).sensitivity * delta.y) / 10);
         });
     }
     if (MouseInput.isTouchDevice() && (this.options.dollying || this.options.panning)) {
@@ -110,7 +109,7 @@ export class OrbitCameraController extends GgEntity {
         if (this.options.dollying) {
           this.spherical.radius *= Math.pow(
             0.95,
-            (-(this.options.dollying as any).sensitivity * delta.distanceDelta) / 5,
+            ((this.options.dollying as any).sensitivity * delta.distanceDelta) / 10,
           );
         }
         // pan on fingers move

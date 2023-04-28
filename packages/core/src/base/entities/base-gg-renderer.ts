@@ -88,8 +88,6 @@ export abstract class BaseGgRenderer extends GgEntity {
     if (this.rendererOptions.size == 'fullscreen' || this.rendererOptions.size instanceof Function) {
       if (this.canvas) {
         this.canvas.style.position = 'absolute';
-        this.canvas.style.width = '100%';
-        this.canvas.style.height = '100%';
       }
       merge(fromEvent(window, 'resize').pipe(auditTime(100)), fromEvent(window, 'orientationchange'))
         .pipe(
@@ -102,8 +100,12 @@ export abstract class BaseGgRenderer extends GgEntity {
             this.rendererOptions.size instanceof Function ? this.rendererOptions.size(size) : size,
           );
         });
-    } else if (this.rendererOptions.size instanceof Observable) {
-      this.rendererOptions.size.pipe(takeUntil(this._onRemoved$)).subscribe(newSize => {
+    } else if (
+      this.rendererOptions.size instanceof Observable ||
+      // for cases when project uses two separate rxjs packages, instanceof can return false for observable
+      (!!(this.rendererOptions as any).subscribe !== undefined && !!(this.rendererOptions as any).pipe !== undefined)
+    ) {
+      (this.rendererOptions.size as Observable<Point2>).pipe(takeUntil(this._onRemoved$)).subscribe(newSize => {
         this._rendererSize$.next(newSize);
       });
     } else {
