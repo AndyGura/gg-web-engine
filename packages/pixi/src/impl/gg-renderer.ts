@@ -11,7 +11,7 @@ export class GgRenderer extends Gg2dRenderer {
       view: canvas,
       backgroundAlpha: this.rendererOptions.transparent ? 0 : 1,
       autoDensity: this.rendererOptions.forceResolution === undefined,
-      resolution: this.rendererOptions.forceResolution,
+      resolution: this.rendererOptions.forceResolution || devicePixelRatio,
       width: 0,
       height: 0,
       antialias: this.rendererOptions.antialias,

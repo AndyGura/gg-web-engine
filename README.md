@@ -10,6 +10,7 @@
   <a href="#features">Features</a> •
   <a href="#integrations">Integrations</a> •
   <a href="#quickstart">Quickstart</a> •
+  <a href="#faq">FAQ</a> •
   <a href="#examples">Examples</a> •
   <a href="#architecture">Architecture</a> •
   <a href="#support">Support</a> •
@@ -74,24 +75,8 @@ Note: at this early step, the project does not give much flexibility in that reg
 
 ## Quickstart
 ### Installation:
-`npm install --save @gg-web-engine/core`<br/>
-And install integration modules, for instance if I want to create 3D world:<br/>
-`npm install --save @gg-web-engine/three`<br/>
-`npm install --save @gg-web-engine/ammo`
-
-Add to your `tsconfig.json` in the record `compilerOptions.paths` (example for ammo-js):
-```json lines
-"mini-signals": ["./node_modules/mini-signals/index.js"]
-```
-Add to your `package.json` (fix for ammo-js dependencies):
-```json lines
-"browser": {
-  "fs": false,
-  "os": false,
-  "path": false
-}
-```
-You can check all required additional configurations per integration in their own README, check the <a href="#integrations">integrations list</a>
+1) `npm install --save @gg-web-engine/core`
+1) install and setup integration modules, example below uses [**@gg-web-engine/three**](https://github.com/AndyGura/gg-web-engine/tree/main/packages/three/README.md) and [**@gg-web-engine/ammo**](https://github.com/AndyGura/gg-web-engine/tree/main/packages/ammo/README.md) integrations
 
 ### Usage:
 1) add somewhere in dom tree: ```<canvas id="gg"></canvas>```
@@ -139,6 +124,12 @@ And run it:
 <p align="center">
   <img src="documentation/assets/example.gif" alt=''/>
 </p>
+
+## FAQ
+#### Viewport looks not centered / bad rendering resolution on mobile / retina display
+Try to add to your html <head>:
+```<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1, maximum-scale=1">```
+
 
 ## Examples
 - #### [Angular three+ammo](https://stackblitz.com/edit/angular-kuunqq?file=src%2Fmain.ts)

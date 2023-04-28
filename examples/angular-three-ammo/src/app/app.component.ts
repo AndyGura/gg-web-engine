@@ -1,10 +1,10 @@
-import { AfterViewInit, Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, ViewChild } from '@angular/core';
 import {
-  Camera3dAnimator,
   Gg3dEntity,
   Gg3dTriggerEntity,
   Gg3dWorld,
   GgPositionable3dEntity,
+  OrbitCameraController,
 } from '@gg-web-engine/core';
 import { interval } from 'rxjs';
 import { Gg3dVisualScene, GgRenderer } from '@gg-web-engine/three';
@@ -27,16 +27,11 @@ export class AppComponent implements AfterViewInit {
     await world.init();
 
     const renderer: GgRenderer = new GgRenderer(this.canvas.nativeElement);
+    renderer.camera.position = { x: 9, y: 12, z: 9 };
     world.addEntity(renderer);
-    const cameraController: Camera3dAnimator = new Camera3dAnimator(renderer.camera, (timeElapsed, _) => ({
-      position: {
-        x: 15 * Math.sin(timeElapsed / 2000),
-        y: 15 * Math.cos(timeElapsed / 2000),
-        z: 9,
-      },
-      target: { x: 0, y: 0, z: 0 },
-    }));
-    world.addEntity(cameraController);
+
+    const controller = new OrbitCameraController(renderer.camera, { mouseOptions: { canvas: this.canvas.nativeElement }});
+    world.addEntity(controller);
 
     world.addPrimitiveRigidBody({
       shape: { shape: 'BOX', dimensions: { x: 7, y: 7, z: 1 } },

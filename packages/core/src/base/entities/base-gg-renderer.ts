@@ -119,10 +119,6 @@ export abstract class BaseGgRenderer extends GgEntity {
       .subscribe(size => {
         if (size) {
           this.resizeRenderer(size);
-          if (this.canvas) {
-            this.canvas!.width = size.x;
-            this.canvas!.height = size.y;
-          }
         }
       });
   }
