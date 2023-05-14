@@ -77,6 +77,6 @@ export class DirectionKeyboardInput extends Input {
         }),
       )
       // Emit the resulting `DirectionKeyboardOutput` object through the `_output$` subject
-      .subscribe(this._output$);
+      .subscribe(o => this._output$.next(o));
   }
 }

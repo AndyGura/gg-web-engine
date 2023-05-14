@@ -16,7 +16,7 @@ export function createInlineTickController(
   world.addEntity(controller);
   return controller.tick$.pipe(
     finalize(() => {
-      world.removeEntity(controller);
+      world.removeEntity(controller, true);
     }),
   );
 }

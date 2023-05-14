@@ -12,7 +12,7 @@ import { GgWorld } from '../../../../base/gg-world';
 
 // TODO pass as settings
 // TODO smooth y?
-const TICKER_INTERVAL = 16;
+const TICKER_INTERVAL = 16; // TODO when refactored, reflect in CarKeyboardHandlingController test
 const TICKER_MAX_STEPS = 10;
 
 export type CarKeyboardControllerOptions = {
@@ -34,13 +34,13 @@ export class CarKeyboardHandlingController extends GgEntity {
   public switchingGearsEnabled: boolean = true;
 
   pairTickerPipe = pipe(
-    startWith(0),
     pairwise<number>(),
     map(([beforeValue, afterValue]) => [this.lastX, afterValue] as [number, number]),
     switchMap(([beforeValue, afterValue]: [number, number]) =>
       interval(TICKER_INTERVAL).pipe(
+        startWith(-1),
         take(TICKER_MAX_STEPS),
-        map(count => ++count),
+        map(count => count + 2),
         map(
           count =>
             beforeValue * ((TICKER_MAX_STEPS - count) / TICKER_MAX_STEPS) + afterValue * (count / TICKER_MAX_STEPS),
@@ -108,14 +108,16 @@ export class CarKeyboardHandlingController extends GgEntity {
         this.y$.next(y);
       });
     combineLatest([
-      this.x$.pipe(takeUntil(this._onRemoved$), distinctUntilChanged(), this.pairTickerPipe),
-      this.y$.pipe(takeUntil(this._onRemoved$), distinctUntilChanged()),
-    ]).subscribe(([x, y]) => {
-      if (this.car) {
-        this.car.setXAxisControlValue(x);
-        this.car.setYAxisControlValue(y);
-      }
-    });
+      this.x$.pipe(takeUntil(this._onRemoved$), distinctUntilChanged(), startWith(0), this.pairTickerPipe),
+      this.y$.pipe(takeUntil(this._onRemoved$), distinctUntilChanged(), startWith(0)),
+    ])
+      .pipe(takeUntil(this._onRemoved$))
+      .subscribe(([x, y]) => {
+        if (this.car) {
+          this.car.setXAxisControlValue(x);
+          this.car.setYAxisControlValue(y);
+        }
+      });
     await this.directionsInput.start();
   }
 
