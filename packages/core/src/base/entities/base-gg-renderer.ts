@@ -85,7 +85,7 @@ export abstract class BaseGgRenderer extends GgEntity {
   onSpawned(world: GgWorld<any, any>) {
     super.onSpawned(world);
     this._rendererSize$.next(null);
-    if (this.rendererOptions.size == 'fullscreen' || this.rendererOptions.size instanceof Function) {
+    if (this.rendererOptions.size == 'fullscreen' || typeof this.rendererOptions.size === 'function') {
       if (this.canvas) {
         this.canvas.style.position = 'absolute';
       }
@@ -97,13 +97,14 @@ export abstract class BaseGgRenderer extends GgEntity {
         )
         .subscribe(size => {
           this._rendererSize$.next(
-            this.rendererOptions.size instanceof Function ? this.rendererOptions.size(size) : size,
+            typeof this.rendererOptions.size === 'function' ? this.rendererOptions.size(size) : size,
           );
         });
     } else if (
       this.rendererOptions.size instanceof Observable ||
       // for cases when project uses two separate rxjs packages, instanceof can return false for observable
-      (!!(this.rendererOptions as any).subscribe !== undefined && !!(this.rendererOptions as any).pipe !== undefined)
+      ((this.rendererOptions.size as any).subscribe !== undefined &&
+        (this.rendererOptions.size as any).pipe !== undefined)
     ) {
       (this.rendererOptions.size as Observable<Point2>).pipe(takeUntil(this._onRemoved$)).subscribe(newSize => {
         this._rendererSize$.next(newSize);
