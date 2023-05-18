@@ -280,8 +280,8 @@ export class Gg3dRaycastVehicleEntity extends Gg3dEntity {
         }
         const entity = options.wheelObject || this.wheelObject.clone();
         const localTranslation = { x: options.tyre_width * (options.isLeft ? 1 : -1), y: 0, z: 0 };
-        const boundingBox = Box.expandByPoint(entity.getBoundings(), { x: 0, y: 0, z: 0 });
-        const scale = { x: 0, y: 0, z: 0 };
+        const boundingBox = Box.expandByPoint(entity.getBoundings(), Pnt3.O);
+        const scale = { ...Pnt3.O };
         for (const dir of ['x', 'y', 'z'] as (keyof Point3)[]) {
           const wheelObjectDirection = options.wheelObjectDirection || this.wheelObjectDirection;
           const isNormal = wheelObjectDirection.includes(dir);

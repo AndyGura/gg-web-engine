@@ -90,7 +90,7 @@ export class FreeCameraController extends GgEntity {
       });
 
     // Subscribe to mouse input for camera rotation
-    let rotationDelta: Point2 = { x: 0, y: 0 };
+    let rotationDelta: Point2 = Pnt2.O;
     let isTouchScreen = MouseInput.isTouchDevice();
     this.mouseInput.delta$
       .pipe(
@@ -103,7 +103,7 @@ export class FreeCameraController extends GgEntity {
 
     // Setup updating camera position and rotation based on input
     this.camera.tick$.pipe(takeUntil(this._onRemoved$)).subscribe(() => {
-      let translateVector = { x: 0, y: 0, z: 0 };
+      let translateVector = { ...Pnt3.O };
       const [u, d, zo, zi] = controls.rest;
       if (controls.direction.upDown !== undefined) translateVector.z = controls.direction.upDown ? -1 : 1;
       if (controls.direction.leftRight !== undefined) translateVector.x = controls.direction.leftRight ? -1 : 1;
@@ -121,9 +121,8 @@ export class FreeCameraController extends GgEntity {
         this.camera.rotation = Qtrn.lookAt(
           this.camera.position,
           Pnt3.add(this.camera.position, Pnt3.fromSpherical(spherical)),
-          { x: 0, y: 0, z: 1 },
         );
-        rotationDelta = { x: 0, y: 0 };
+        rotationDelta = Pnt2.O;
       }
     });
 

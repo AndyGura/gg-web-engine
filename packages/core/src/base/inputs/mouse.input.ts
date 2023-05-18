@@ -91,7 +91,7 @@ export class MouseInput extends Input<[], [unlockPointer?: boolean]> {
 
   private readonly options: MouseInputOptions;
   private _delta$: Subject<Point2> = new Subject<Point2>();
-  private _position$: BehaviorSubject<Point2> = new BehaviorSubject<Point2>({ x: 0, y: 0 });
+  private _position$: BehaviorSubject<Point2> = new BehaviorSubject<Point2>(Pnt2.O);
   private _multiTouchPositions$: BehaviorSubject<Point2[]> = new BehaviorSubject<Point2[]>([]);
   private _wheel$: Subject<number> = new Subject<number>();
   private stopped$: Subject<void> = new Subject();
@@ -125,11 +125,11 @@ export class MouseInput extends Input<[], [unlockPointer?: boolean]> {
       map(([prev, cur]) => ({
         centerPointDelta: Pnt2.sub(
           Pnt2.scalarMult(
-            cur.reduce((p, c) => Pnt2.add(p, c), { x: 0, y: 0 }),
+            cur.reduce((p, c) => Pnt2.add(p, c), Pnt2.O),
             1 / cur.length,
           ),
           Pnt2.scalarMult(
-            prev.reduce((p, c) => Pnt2.add(p, c), { x: 0, y: 0 }),
+            prev.reduce((p, c) => Pnt2.add(p, c), Pnt2.O),
             1 / cur.length,
           ),
         ),

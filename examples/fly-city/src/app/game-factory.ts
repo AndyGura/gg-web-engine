@@ -13,14 +13,14 @@ import {
   Qtrn,
 } from '@gg-web-engine/core';
 import { Gg3dVisualScene, GgRenderer, ThreeCamera, ThreeCameraEntity } from '@gg-web-engine/three';
-import { Gg3dBody, Gg3dPhysicsWorld, Gg3dRaycastVehicle, } from '@gg-web-engine/ammo';
+import { Gg3dBody, Gg3dPhysicsWorld, Gg3dRaycastVehicle } from '@gg-web-engine/ammo';
 import {
   CubeReflectionMapping,
   CubeTexture,
   CubeTextureLoader,
   DirectionalLight,
   PerspectiveCamera,
-  RGBAFormat
+  RGBAFormat,
 } from 'three';
 import { filter, firstValueFrom } from 'rxjs';
 import { CAR_SPECS, LAMBO_SPECS, TRUCK_SPECS } from './car-specs';
@@ -44,16 +44,12 @@ export class GameFactory {
   }
 
   private async initRenderer(canvas: HTMLCanvasElement): Promise<GgRenderer> {
-    const renderer: GgRenderer = new GgRenderer(canvas, {}, new ThreeCameraEntity(
-      new ThreeCamera(new PerspectiveCamera(75, 1, 1, 10000))
+    const renderer: GgRenderer = new GgRenderer(canvas, { background: 0xffffff }, new ThreeCameraEntity(
+      new ThreeCamera(new PerspectiveCamera(75, 1, 1, 10000)),
     ));
     this.world.addEntity(renderer);
     renderer.camera.position = { x: 0, y: -15, z: 10 };
-    renderer.camera.rotation = Qtrn.lookAt(
-      renderer.camera.position,
-      { x: 0, y: 0, z: 0 },
-      { x: 0, y: 0, z: 1 },
-    );
+    renderer.camera.rotation = Qtrn.lookAt(renderer.camera.position, Pnt3.O);
     return renderer;
   }
 
@@ -72,7 +68,7 @@ export class GameFactory {
       .load([
         'sky_nx.png', 'sky_px.png',
         'sky_py.png', 'sky_ny.png',
-        'sky_pz.png', 'sky_nz.png'
+        'sky_pz.png', 'sky_nz.png',
       ]);
     envMap.format = RGBAFormat;
     envMap.mapping = CubeReflectionMapping;
@@ -89,7 +85,7 @@ export class GameFactory {
             cachingStrategy: CachingStrategy.Entities,
           },
         }))
-      ))
+      )),
     );
     const cityMapGraph = new Gg3dMapGraphEntity(mapGraph, { loadDepth: 3, inertia: 2 });
     cityMapGraph.loaderCursorEntity$.next(renderCursor);
@@ -102,7 +98,7 @@ export class GameFactory {
             const [
               {
                 resources: [{ object3D: chassisMesh, body: chassisBody }],
-                meta: { dummies: chassisDummies }
+                meta: { dummies: chassisDummies },
               },
               { resources: [{ object3D: wheelMesh }] },
             ] = await Promise.all([
@@ -145,13 +141,13 @@ export class GameFactory {
     const [
       {
         resources: [{ object3D: chassisMesh, body: chassisBody }],
-        meta: { dummies: chassisDummies }
+        meta: { dummies: chassisDummies },
       },
-      { resources: [{ object3D: wheelMesh }] }
+      { resources: [{ object3D: wheelMesh }] },
     ] = await Promise.all([
         this.world.loader.loadGgGlbResources('assets/lambo/body'),
         this.world.loader.loadGgGlbResources('assets/lambo/wheel'),
-      ]
+      ],
     );
     const lambo = this.generateCar(chassisMesh, chassisBody as Gg3dBody, chassisDummies, wheelMesh, LAMBO_SPECS);
     lambo.name = 'lambo';
@@ -161,7 +157,7 @@ export class GameFactory {
 
   private generateCar(
     chassisMesh: IGg3dObject | null, chassisBody: Gg3dBody,
-    chassisDummies: GgDummy[], wheelMesh: IGg3dObject | null, specs: Omit<CarProperties, 'wheelOptions'>
+    chassisDummies: GgDummy[], wheelMesh: IGg3dObject | null, specs: Omit<CarProperties, 'wheelOptions'>,
   ): Gg3dRaycastVehicleEntity {
     return new Gg3dRaycastVehicleEntity(
       {
@@ -176,14 +172,14 @@ export class GameFactory {
               position: {
                 x: wheel.position.x + tyre_width * (isLeft ? -1 : 1),
                 y: wheel.position.y,
-                z: wheel.position.z
+                z: wheel.position.z,
               },
               isFront: wheel.name.startsWith('wheel_f'),
               isLeft,
               frictionSlip: 3,
               rollInfluence: 0.2,
               maxTravel: 0.25,
-            }
+            };
           }),
         ...specs,
       },

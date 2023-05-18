@@ -19,7 +19,7 @@ export type OrbitCameraControllerOptions = {
 
 const DEFAULT_OPTIONS: OrbitCameraControllerOptions = {
   mouseOptions: {},
-  target: { x: 0, y: 0, z: 0 },
+  target: Pnt3.O,
   orbiting: { sensitivityX: 1, sensitivityY: 1 }, // sensitivity units: rotation degree per 5 pixels movement
   zooming: { sensitivity: 1 },
   panning: { sensitivityX: 1, sensitivityY: 1 },
@@ -127,7 +127,7 @@ export class OrbitCameraController extends GgEntity {
       )
       .subscribe(spherical => {
         this.camera.position = Pnt3.add(this.options.target, Pnt3.fromSpherical(spherical));
-        this.camera.rotation = Qtrn.lookAt(this.camera.position, this.options.target, { x: 0, y: 0, z: 1 });
+        this.camera.rotation = Qtrn.lookAt(this.camera.position, this.options.target);
       });
 
     // start input

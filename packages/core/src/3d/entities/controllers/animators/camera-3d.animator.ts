@@ -14,7 +14,7 @@ export type Camera3dAnimationArgs = {
   fov?: number;
 };
 
-const defaultUp = { x: 0, y: 0, z: 1 };
+const defaultUp = Pnt3.Z;
 const defaultFov = 65;
 
 export class Camera3dAnimator extends AnimationMixer<Camera3dAnimationArgs> {

@@ -7,6 +7,7 @@ import { GgPositionable3dEntity } from './gg-positionable-3d-entity';
 import { Gg3dWorld } from '../gg-3d-world';
 import { Gg3dEntity } from './gg-3d-entity';
 import { LoadOptions, LoadResultWithProps } from '../loader';
+import { Qtrn } from '../../base/math/quaternion';
 
 export type MapGraphNodeType = {
   path: string;
@@ -194,7 +195,7 @@ export class Gg3dMapGraphEntity extends GgEntity {
   protected async loadChunk(node: MapGraphNodeType): Promise<[Gg3dEntity[], LoadResultWithProps]> {
     const loaded = await this.world!.loader.loadGgGlb(node.path, {
       position: node.position,
-      rotation: node.rotation || { x: 0, y: 0, z: 0, w: 1 },
+      rotation: node.rotation || Qtrn.O,
       ...node.loadOptions,
     });
     const entities = [
@@ -208,10 +209,7 @@ export class Gg3dMapGraphEntity extends GgEntity {
     ];
     this.loaded.set(node, entities);
     this.addChildren(...entities);
-    this._chunkLoaded$.next([
-      loaded,
-      { position: node.position, rotation: node.rotation || { x: 0, y: 0, z: 0, w: 1 } },
-    ]);
+    this._chunkLoaded$.next([loaded, { position: node.position, rotation: node.rotation || Qtrn.O }]);
     return [entities, loaded];
   }
 

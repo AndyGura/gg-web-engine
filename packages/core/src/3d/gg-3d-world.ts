@@ -4,6 +4,8 @@ import { IGg3dPhysicsWorld, IGg3dVisualScene } from './interfaces';
 import { Gg3dLoader } from './loader';
 import { Gg3dEntity } from './entities/gg-3d-entity';
 import { BodyShape3DDescriptor } from './models/shapes';
+import { Qtrn } from '../base/math/quaternion';
+import { Pnt3 } from '../base/math/point3';
 
 export class Gg3dWorld<
   V extends IGg3dVisualScene = IGg3dVisualScene,
@@ -38,12 +40,8 @@ export class Gg3dWorld<
 
   addPrimitiveRigidBody(
     descr: BodyShape3DDescriptor,
-    position: Point3 = {
-      x: 0,
-      y: 0,
-      z: 0,
-    },
-    rotation: Point4 = { x: 0, y: 0, z: 0, w: 1 },
+    position: Point3 = Pnt3.O,
+    rotation: Point4 = Qtrn.O,
   ): Gg3dEntity {
     const entity = new Gg3dEntity(
       this.visualScene.factory.createPrimitive(descr.shape),

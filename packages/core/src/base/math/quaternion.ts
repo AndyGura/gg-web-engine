@@ -13,6 +13,11 @@ import { Mtrx4 } from './matrix4';
  * Euler angles (such as gimbal lock).
  */
 export class Qtrn {
+  /** empty rotation */
+  static get O(): Point4 {
+    return { x: 0, y: 0, z: 0, w: 1 };
+  }
+
   /**
    * Returns a new quaternion instance with the same values as the given quaternion object.
    * @param q The Point4 object to clone.
@@ -231,7 +236,7 @@ export class Qtrn {
    * @param up - The up direction of the object
    * @returns A new quaternion representing the rotation required to face towards the target point.
    */
-  static lookAt(eye: Point3, target: Point3, up: Point3): Point4 {
+  static lookAt(eye: Point3, target: Point3, up: Point3 = Pnt3.Z): Point4 {
     return this.fromMatrix4(Mtrx4.lookAt(eye, target, up));
   }
 

@@ -45,7 +45,7 @@ export class GameCameraController {
               this.renderer.camera.rotation,
             ),
           ),
-          up: Pnt3.rot({ x: 0, y: 1, z: 0 }, this.renderer.camera.rotation),
+          up: Pnt3.rot(Pnt3.Y, this.renderer.camera.rotation),
           fov: this.renderer.camera.fov,
         },
         this.cameraMotionFactory[this.cameraIndex$.getValue()][0](state.car, state.carType),

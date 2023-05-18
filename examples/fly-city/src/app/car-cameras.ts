@@ -27,16 +27,16 @@ const elasticCarCameraControlFunction: (car: Gg3dRaycastVehicleEntity, vectorLen
     const elasticZAngle = elasticAngle(250, x => Math.pow(x, 0.75));
     return (elapsed, delta) => {
       const objectPosition = car.position;
-      const carVector = Pnt3.rot({ x: 0, y: 1, z: 0 }, car.rotation);
+      const carVector = Pnt3.rot(Pnt3.Y, car.rotation);
       // FIXME jitters when turning during FPS drop, but elasticZAngle calculation is correct
       const zAngle = elasticZAngle(Math.atan2(carVector.y, carVector.x) - Math.PI / 2, delta);
       const cameraVector = Pnt3.rotAround(
         Pnt3.rotAround(
           { x: 0, y: -vectorLength, z: 0 },
-          { x: 1, y: 0, z: 0 },
+          Pnt3.X,
           -vectorAngle,
         ),
-        { x: 0, y: 0, z: 1 },
+        Pnt3.Z,
         zAngle,
       );
       let cameraTargetVector = { x: 0, y: 0, z: vectorLength * Math.sin(vectorAngle) };
@@ -59,7 +59,7 @@ const lockedCameraControlFunction: (car: Gg3dRaycastVehicleEntity, cameraPositio
       return {
         position: Pnt3.add(objectPosition, cameraVector),
         target: Pnt3.add(objectPosition, cameraTargetVector),
-        up: Pnt3.rot({ x: 0, y: 0, z: 1 }, rotation),
+        up: Pnt3.rot(Pnt3.Z, rotation),
         fov,
       };
     };

@@ -1,4 +1,4 @@
-import { IGg2dBody, Point2, Gg2dEntity } from '@gg-web-engine/core';
+import { Gg2dEntity, IGg2dBody, Pnt2, Point2 } from '@gg-web-engine/core';
 import { Gg2dPhysicsWorld } from './gg-2d-physics-world';
 import { Body, Composite, Vector } from 'matter-js';
 
@@ -46,7 +46,7 @@ export class Gg2dBody implements IGg2dBody {
   dispose(): void {}
 
   resetMotion(): void {
-    Body.setVelocity(this.nativeBody, { x: 0, y: 0 });
+    Body.setVelocity(this.nativeBody, Pnt2.O);
     Body.setAngularVelocity(this.nativeBody, 0);
   }
 }

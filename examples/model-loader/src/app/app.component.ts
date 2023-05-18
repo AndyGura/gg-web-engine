@@ -1,6 +1,6 @@
 import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { DirectionalLight, HemisphereLight } from 'three';
-import { Camera3dAnimator, Gg3dWorld } from '@gg-web-engine/core';
+import { Camera3dAnimator, Gg3dWorld, Pnt3 } from '@gg-web-engine/core';
 import { interval } from 'rxjs';
 import { Gg3dObject, Gg3dVisualScene, GgRenderer } from '@gg-web-engine/three';
 import { Gg3dPhysicsWorld } from '@gg-web-engine/ammo';
@@ -31,7 +31,7 @@ export class AppComponent implements OnInit {
         y: 10 * Math.cos(timeElapsed / 2000),
         z: 6,
       },
-      target: { x: 0, y: 0, z: 0 },
+      target: Pnt3.O,
     }));
     world.addEntity(cameraController);
 

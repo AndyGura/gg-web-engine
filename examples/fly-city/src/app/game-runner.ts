@@ -6,6 +6,7 @@ import {
   Gg3dTriggerEntity,
   Gg3dWorld,
   Pnt3,
+  Qtrn,
 } from '@gg-web-engine/core';
 import { Gg3dVisualScene } from '@gg-web-engine/three';
 import { Gg3dPhysicsWorld } from '@gg-web-engine/ammo';
@@ -80,7 +81,7 @@ export class GameRunner {
     }
     const nearest = this.cityMapGraph.nearestDummy;
     if (nearest) {
-      state.car.resetTo({ position: nearest.data.position, rotation: { x: 0, y: 0, z: 0, w: 1 } });
+      state.car.resetTo({ position: nearest.data.position, rotation: Qtrn.O });
       this.gameCameraController.carCameraController.animationFunction = this.gameCameraController.cameraMotionFactory[this.gameCameraController.cameraIndex$.getValue()][0](state.car, state.carType); // reset elastic camera
     }
   }

@@ -84,7 +84,7 @@ Note: at this early step, the project does not give much flexibility in that reg
 1) write bootstrap script, example:
 ```typescript
 import { interval } from 'rxjs';
-import { Gg3dEntity, Gg3dWorld, Qtrn } from '@gg-web-engine/core';
+import { Gg3dEntity, Gg3dWorld, Qtrn, Pnt3 } from '@gg-web-engine/core';
 import { Gg3dVisualScene, GgRenderer } from '@gg-web-engine/three';
 import { Gg3dPhysicsWorld } from '@gg-web-engine/ammo';
 
@@ -95,7 +95,7 @@ await world.init();
 // create viewport and renderer
 const renderer: GgRenderer = new GgRenderer(document.getElementById('gg')! as HTMLCanvasElement);
 renderer.camera.position = { x: 15, y: 15, z: 9 };
-renderer.camera.rotation = Qtrn.lookAt(renderer.camera.position, {x: 0, y: 0, z: 0}, {x: 0, y: 0, z: 1});
+renderer.camera.rotation = Qtrn.lookAt(renderer.camera.position, Pnt3.O);
 world.addEntity(renderer);
 
 // create floor (static rigid body)

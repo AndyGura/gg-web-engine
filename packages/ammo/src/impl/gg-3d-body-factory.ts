@@ -2,8 +2,10 @@ import {
   Body3DOptions,
   BodyShape3DDescriptor,
   IGg3dBodyFactory,
+  Pnt3,
   Point3,
   Point4,
+  Qtrn,
   Shape3DDescriptor,
 } from '@gg-web-engine/core';
 import { Gg3dBody } from './bodies/gg-3d-body';
@@ -62,8 +64,8 @@ export class Gg3dBodyFactory implements IGg3dBodyFactory<Gg3dBody, Gg3dTrigger> 
             continue;
           }
           const subShapeTransform = new this.world.ammo.btTransform();
-          const pos = item.position || { x: 0, y: 0, z: 0 };
-          const rot = item.rotation || { x: 0, y: 0, z: 0, w: 1 };
+          const pos = item.position || Pnt3.O;
+          const rot = item.rotation || Qtrn.O;
           subShapeTransform.setOrigin(new this.world.ammo.btVector3(pos.x, pos.y, pos.z));
           subShapeTransform.setRotation(new this.world.ammo.btQuaternion(rot.x, rot.y, rot.z, rot.w));
           (compoundShape as Ammo.btCompoundShape).addChildShape(subShapeTransform, subShape);
@@ -112,8 +114,8 @@ export class Gg3dBodyFactory implements IGg3dBodyFactory<Gg3dBody, Gg3dTrigger> 
     if (options.dynamic === false) {
       options.mass = 0;
     }
-    const pos = transform?.position || { x: 0, y: 0, z: 0 };
-    const rot = transform?.rotation || { x: 0, y: 0, z: 0, w: 1 };
+    const pos = transform?.position || Pnt3.O;
+    const rot = transform?.rotation || Qtrn.O;
     const ammo = this.world.ammo;
     const ammoTransform = new ammo.btTransform();
     ammoTransform.setOrigin(new ammo.btVector3(pos.x, pos.y, pos.z));

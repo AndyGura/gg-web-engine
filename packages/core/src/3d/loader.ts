@@ -30,8 +30,8 @@ export type LoadOptions = {
 
 const defaultLoadOptions: LoadOptions = {
   cachingStrategy: CachingStrategy.Nothing,
-  position: { x: 0, y: 0, z: 0 },
-  rotation: { x: 0, y: 0, z: 0, w: 1 },
+  position: Pnt3.O,
+  rotation: Qtrn.O,
   loadProps: true,
 };
 

@@ -2,6 +2,26 @@ import { Point3, Point4, Spherical } from '../models/points';
 import { Qtrn } from './quaternion';
 
 export class Pnt3 {
+  /** empty vector */
+  static get O(): Point3 {
+    return { x: 0, y: 0, z: 0 };
+  }
+
+  /** basis X vector */
+  static get X(): Point3 {
+    return { x: 1, y: 0, z: 0 };
+  }
+
+  /** basis Y vector */
+  static get Y(): Point3 {
+    return { x: 0, y: 1, z: 0 };
+  }
+
+  /** basis Z vector */
+  static get Z(): Point3 {
+    return { x: 0, y: 0, z: 1 };
+  }
+
   /** clone point */
   static clone(p: Point3): Point3 {
     return { x: p.x, y: p.y, z: p.z };

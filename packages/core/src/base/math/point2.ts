@@ -1,6 +1,21 @@
 import { Point2 } from '../models/points';
 
 export class Pnt2 {
+  /** empty vector */
+  static get O(): Point2 {
+    return { x: 0, y: 0 };
+  }
+
+  /** basis X vector */
+  static get X(): Point2 {
+    return { x: 1, y: 0 };
+  }
+
+  /** basis Y vector */
+  static get Y(): Point2 {
+    return { x: 0, y: 1 };
+  }
+
   /** clone point */
   static clone(p: Point2): Point2 {
     return { x: p.x, y: p.y };

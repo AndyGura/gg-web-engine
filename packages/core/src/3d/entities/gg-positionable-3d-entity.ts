@@ -3,14 +3,15 @@ import { Observable } from 'rxjs';
 import { GgPositionableEntity } from '../../base/entities/gg-positionable-entity';
 import { map } from 'rxjs/operators';
 import { Qtrn } from '../../base/math/quaternion';
+import { Pnt3 } from '../../base/math/point3';
 
 export abstract class GgPositionable3dEntity extends GgPositionableEntity<Point3, Point4> {
   getDefaultPosition(): Point3 {
-    return { x: 0, y: 0, z: 0 };
+    return Pnt3.O;
   }
 
   getDefaultRotation(): Point4 {
-    return { x: 0, y: 0, z: 0, w: 1 };
+    return Qtrn.O;
   }
 
   getDefaultScale(): Point3 {
