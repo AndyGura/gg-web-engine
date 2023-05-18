@@ -56,9 +56,17 @@ export abstract class GgEntity {
     this._active = value;
   }
 
+  public parent: GgEntity | null = null;
+
   protected _children: GgEntity[] = [];
 
   public addChildren(...entities: GgEntity[]) {
+    for (const entity of entities) {
+      if (entity.parent) {
+        entity.parent.removeChildren([entity]);
+      }
+      entity.parent = this;
+    }
     this._children.push(...entities);
     if (this._world) {
       for (const item of entities) {
@@ -69,8 +77,9 @@ export abstract class GgEntity {
 
   public removeChildren(entities: GgEntity[], dispose: boolean = false) {
     this._children = this._children.filter(c => !entities.includes(c));
-    if (this._world) {
-      for (const item of entities) {
+    for (const item of entities) {
+      item.parent = null;
+      if (this._world) {
         this._world.removeEntity(item, dispose);
       }
     }
@@ -99,7 +108,7 @@ export abstract class GgEntity {
   // TODO add some flag to entity that it is disposed, and throw a normal error when trying to add such entity to world again
   public dispose(): void {
     if (this.world) {
-      this.world.removeEntity(this);
+      this.world.removeEntity(this, false);
     }
     this._onSpawned$.complete();
     this._onRemoved$.complete();
