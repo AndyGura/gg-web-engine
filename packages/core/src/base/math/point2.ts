@@ -31,6 +31,11 @@ export class Pnt2 {
     return { x: a.x - b.x, y: a.y - b.y };
   }
 
+  /** average point between a and b */
+  static avg(a: Point2, b: Point2): Point2 {
+    return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  }
+
   /** calculate vector length (squared) */
   static lenSq(v: Point2) {
     return v.x * v.x + v.y * v.y;
@@ -48,7 +53,7 @@ export class Pnt2 {
 
   /** normalize */
   static norm(p: Point2): Point2 {
-    const length = Math.sqrt(p.x ** 2 + p.y ** 2);
+    const length = Pnt2.len(p);
     return {
       x: p.x / length,
       y: p.y / length,

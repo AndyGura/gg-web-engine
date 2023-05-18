@@ -37,6 +37,11 @@ export class Pnt3 {
     return { x: a.x - b.x, y: a.y - b.y, z: a.z - b.z };
   }
 
+  /** average point between a and b */
+  static avg(a: Point3, b: Point3): Point3 {
+    return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, z: (a.z + b.z) / 2 };
+  }
+
   /** calculate vector length (squared) */
   static lenSq(v: Point3) {
     return v.x * v.x + v.y * v.y + v.z * v.z;
@@ -69,7 +74,7 @@ export class Pnt3 {
 
   /** normalize */
   static norm(p: Point3): Point3 {
-    const length = Math.sqrt(p.x ** 2 + p.y ** 2 + p.z ** 2);
+    const length = Pnt3.len(p);
     if (length === 0) {
       return p;
     }
