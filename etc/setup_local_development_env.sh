@@ -2,6 +2,7 @@
 pushd "$(dirname "$0")"
 pushd ..
 pushd packages/core
+npm install
 npm run build
 npm link
 popd
