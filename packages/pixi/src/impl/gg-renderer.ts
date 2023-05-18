@@ -46,6 +46,7 @@ export class GgRenderer extends Gg2dRenderer {
 
   dispose(): void {
     super.dispose();
+    // cleanup everything including view (canvas). Canvas cannot be reused later anyway after "soft" destroy of PIXI app
     if (this.application.renderer instanceof Renderer) {
       this.application.renderer.gl.getExtension('WEBGL_lose_context')?.loseContext();
     }

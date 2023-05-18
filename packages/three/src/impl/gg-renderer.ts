@@ -48,10 +48,8 @@ export class GgRenderer extends Gg3dRenderer {
 
   dispose(): void {
     super.dispose();
-    if (this.renderer instanceof WebGLRenderer) {
-      this.renderer.dispose();
-      this.renderer.forceContextLoss();
-    }
+    this.renderer.clear();
+    this.renderer.dispose();
     this.renderer.domElement = null as any;
   }
 }
