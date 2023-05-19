@@ -3,8 +3,10 @@ import { Point3, Point4 } from '../../base/models/points';
 import { Gg3dWorld } from '../gg-3d-world';
 import { IGg3dBody, IGg3dObject } from '../interfaces';
 import { GGTickOrder } from '../../base/entities/gg-entity';
+import { Mixin } from 'ts-mixer';
+import { RenderableEntityMixin } from '../../base/entities/mixins/renderable-entity.mixin';
 
-export class Gg3dEntity extends GgPositionable3dEntity {
+export class Gg3dEntity extends Mixin(RenderableEntityMixin, GgPositionable3dEntity) {
   public readonly tickOrder = GGTickOrder.OBJECTS_BINDING;
 
   public get position(): Point3 {
@@ -49,19 +51,11 @@ export class Gg3dEntity extends GgPositionable3dEntity {
     super.scale = value;
   }
 
-  public get visible(): boolean {
-    return !!this.object3D?.visible;
-  }
-
-  set visible(value: boolean) {
+  public updateVisibility(): void {
     if (this.object3D) {
-      this.object3D.visible = value;
+      this.object3D.visible = this.worldVisible;
     }
-    for (const entity of this._children) {
-      if (entity instanceof Gg3dEntity) {
-        entity.visible = value;
-      }
-    }
+    super.updateVisibility();
   }
 
   /**

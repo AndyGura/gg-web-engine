@@ -1,5 +1,5 @@
 import { GgWorld } from '../../src/base/gg-world';
-import { GgPositionableEntity } from '../../src/base/entities/gg-positionable-entity';
+import { Gg2dEntity } from '../../src';
 
 export class MockWorld extends GgWorld<any, any> {
   constructor() {
@@ -14,7 +14,7 @@ export class MockWorld extends GgWorld<any, any> {
       } as any);
   }
 
-  addPrimitiveRigidBody(descr: any, position: any, rotation: any): GgPositionableEntity<any, any> {
+  addPrimitiveRigidBody(descr: any, position: any, rotation: any): Gg2dEntity {
     return undefined!;
   }
 

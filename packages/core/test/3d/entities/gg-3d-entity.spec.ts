@@ -1,4 +1,4 @@
-import { Gg3dEntity } from '../../../src';
+import { AnimationMixer, Gg3dEntity, Gg3dTriggerEntity } from '../../../src';
 import { mock3DBody } from '../../mocks/body.mock';
 import { mock3DObject } from '../../mocks/object.mock';
 
@@ -72,6 +72,123 @@ describe(`Gg3dEntity`, () => {
       const entity = new Gg3dEntity(null, body);
       entity.dispose();
       expect(() => entity.dispose()).not.toThrow(Error);
+    });
+  });
+
+  describe('visible', () => {
+    test('should set the visible property', () => {
+      const gg3dEntity = new Gg3dEntity(mock3DObject());
+      gg3dEntity.visible = false;
+      expect(gg3dEntity.visible).toBe(false);
+    });
+
+    test('should update visibility', () => {
+      const gg3dEntity = new Gg3dEntity(mock3DObject());
+      gg3dEntity.visible = false;
+      gg3dEntity.updateVisibility();
+      expect(gg3dEntity.object3D!.visible).toBe(false);
+    });
+  });
+
+  describe('worldVisible', () => {
+    test('should return true when all parent entities are visible', () => {
+      // Mock parent entities
+      const parentEntity1 = { visible: true, parent: null } as any;
+      const parentEntity2 = { visible: true, parent: parentEntity1 } as any;
+      const parentEntity3 = { visible: true, parent: parentEntity2 } as any;
+
+      const gg3dEntity = new Gg3dEntity(mock3DObject());
+      gg3dEntity.parent = parentEntity3;
+      expect(gg3dEntity.worldVisible).toBe(true);
+    });
+
+    test('should return false when any parent entity is not visible', () => {
+      const parentEntity1 = { visible: true, parent: null } as any;
+      const parentEntity2 = { visible: false, parent: parentEntity1 } as any;
+      const parentEntity3 = { visible: true, parent: parentEntity2 } as any;
+
+      const gg3dEntity = new Gg3dEntity(mock3DObject());
+      gg3dEntity.parent = parentEntity3;
+      expect(gg3dEntity.worldVisible).toBe(false);
+    });
+  });
+
+  describe('updateVisibility', () => {
+    test('should update object3D visibility when worldVisible is true', () => {
+      const gg3dEntity = new Gg3dEntity(mock3DObject());
+      gg3dEntity.visible = true;
+      gg3dEntity.updateVisibility();
+      expect(gg3dEntity.object3D!.visible).toBe(true);
+    });
+
+    test('should not update object3D visibility when worldVisible is false', () => {
+      const gg3dEntity = new Gg3dEntity(mock3DObject());
+      gg3dEntity.visible = false;
+      gg3dEntity.updateVisibility();
+      expect(gg3dEntity.object3D!.visible).toBe(false);
+    });
+
+    test('should update visibility of children', () => {
+      const a = new Gg3dEntity(mock3DObject());
+      const b = new Gg3dEntity(mock3DObject());
+      const gg3dEntity = new Gg3dEntity(mock3DObject());
+      a.addChildren(b);
+      b.addChildren(gg3dEntity);
+      expect(gg3dEntity.object3D!.visible).toBe(true);
+
+      a.visible = false;
+      expect(gg3dEntity.object3D!.visible).toBe(false);
+    });
+
+    test('should update visibility of children even if intermediate child is not renderable', () => {
+      const a = new Gg3dEntity(mock3DObject());
+      const b = new AnimationMixer(null!);
+      const c = new Gg3dEntity(mock3DObject());
+      const gg3dEntity = new Gg3dEntity(mock3DObject());
+      a.addChildren(b);
+      b.addChildren(c);
+      c.addChildren(gg3dEntity);
+      expect(gg3dEntity.object3D!.visible).toBe(true);
+
+      a.visible = false;
+      expect(gg3dEntity.object3D!.visible).toBe(false);
+    });
+
+    test('should be called when adding as child to entity', () => {
+      const a = new Gg3dEntity(mock3DObject());
+      const gg3dEntity = new Gg3dEntity(mock3DObject());
+      const call = jest.spyOn(gg3dEntity, 'updateVisibility');
+      a.addChildren(gg3dEntity);
+      expect(call).toHaveBeenCalledTimes(1);
+    });
+
+    test('should be called when adding own parent as child to entity', () => {
+      const a = new Gg3dEntity(mock3DObject());
+      const b = new Gg3dEntity(mock3DObject());
+      const gg3dEntity = new Gg3dEntity(mock3DObject());
+      b.addChildren(gg3dEntity);
+      const call = jest.spyOn(gg3dEntity, 'updateVisibility');
+      a.addChildren(b);
+      expect(call).toHaveBeenCalledTimes(1);
+    });
+
+    test('should be called when adding own non-renderable parent as child to entity', () => {
+      const a = new Gg3dEntity(mock3DObject());
+      const b = new AnimationMixer(null!);
+      const gg3dEntity = new Gg3dEntity(mock3DObject());
+      b.addChildren(gg3dEntity);
+      const call = jest.spyOn(gg3dEntity, 'updateVisibility');
+      a.addChildren(b);
+      expect(call).toHaveBeenCalledTimes(1);
+    });
+
+    test('should be called when removing as child from entity', () => {
+      const a = new Gg3dEntity(mock3DObject());
+      const gg3dEntity = new Gg3dEntity(mock3DObject());
+      a.addChildren(gg3dEntity);
+      const call = jest.spyOn(gg3dEntity, 'updateVisibility');
+      a.removeChildren([gg3dEntity]);
+      expect(call).toHaveBeenCalledTimes(1);
     });
   });
 });

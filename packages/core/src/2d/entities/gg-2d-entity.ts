@@ -3,8 +3,10 @@ import { Point2 } from '../../base/models/points';
 import { IGg2dBody, IGg2dObject } from '../interfaces';
 import { Gg2dWorld } from '../gg-2d-world';
 import { GGTickOrder } from '../../base/entities/gg-entity';
+import { Mixin } from 'ts-mixer';
+import { RenderableEntityMixin } from '../../base/entities/mixins/renderable-entity.mixin';
 
-export class Gg2dEntity extends GgPositionable2dEntity {
+export class Gg2dEntity extends Mixin(RenderableEntityMixin, GgPositionable2dEntity) {
   public readonly tickOrder = GGTickOrder.OBJECTS_BINDING;
 
   public get position(): Point2 {
@@ -49,19 +51,11 @@ export class Gg2dEntity extends GgPositionable2dEntity {
     super.scale = value;
   }
 
-  public get visible(): boolean {
-    return !!this.object2D?.visible;
-  }
-
-  set visible(value: boolean) {
+  public updateVisibility(): void {
     if (this.object2D) {
-      this.object2D.visible = value;
+      this.object2D.visible = this.worldVisible;
     }
-    for (const entity of this._children) {
-      if (entity instanceof Gg2dEntity) {
-        entity.visible = value;
-      }
-    }
+    super.updateVisibility();
   }
 
   /**

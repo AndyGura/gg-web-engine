@@ -3,6 +3,7 @@ import { Gg3dEntity } from './gg-3d-entity';
 import { Observable } from 'rxjs';
 import { GgPositionable3dEntity } from './gg-positionable-3d-entity';
 
+// FIXME it should be subclass of GgPositionable3dEntity (not renderable and bindable Gg3dEntity)
 export class Gg3dTriggerEntity extends Gg3dEntity {
   get onEntityEntered(): Observable<GgPositionable3dEntity> {
     return this.objectBody.onEntityEntered;

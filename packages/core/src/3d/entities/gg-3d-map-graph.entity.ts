@@ -8,6 +8,8 @@ import { Gg3dWorld } from '../gg-3d-world';
 import { Gg3dEntity } from './gg-3d-entity';
 import { LoadOptions, LoadResultWithProps } from '../loader';
 import { Qtrn } from '../../base/math/quaternion';
+import { RenderableEntityMixin } from '../../base/entities/mixins/renderable-entity.mixin';
+import { Mixin } from 'ts-mixer';
 
 export type MapGraphNodeType = {
   path: string;
@@ -99,7 +101,7 @@ const defaultOptions: Gg3dMapGraphEntityOptions = {
   inertia: 0,
 };
 
-export class Gg3dMapGraphEntity extends GgEntity {
+export class Gg3dMapGraphEntity extends Mixin(RenderableEntityMixin, GgEntity) {
   public readonly tickOrder = GGTickOrder.POST_RENDERING;
 
   public readonly loaderCursorEntity$: BehaviorSubject<GgPositionable3dEntity | null> =

@@ -1,4 +1,4 @@
-import { Gg2dEntity, Gg3dEntity, IGg2dBody, IGg2dObject } from '../../../src';
+import { Gg2dEntity, IGg2dBody, IGg2dObject } from '../../../src';
 
 const createObjectMock = () => {
   return {

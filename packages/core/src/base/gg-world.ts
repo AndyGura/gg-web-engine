@@ -8,6 +8,7 @@ import { filter } from 'rxjs';
 import { GgConsoleUI } from './ui/gg-console.ui';
 import { GgDebuggerUI } from './ui/gg-debugger.ui';
 import { GgGlobalClock } from './clock/global-clock';
+import { RenderableEntityMixin } from './entities/mixins/renderable-entity.mixin';
 import { GgPositionableEntity } from './entities/gg-positionable-entity';
 
 export abstract class GgWorld<
@@ -155,7 +156,11 @@ export abstract class GgWorld<
     this.visualScene.dispose();
   }
 
-  abstract addPrimitiveRigidBody(descr: any, position?: D, rotation?: R): GgPositionableEntity<D, R>;
+  abstract addPrimitiveRigidBody(
+    descr: any,
+    position?: D,
+    rotation?: R,
+  ): GgPositionableEntity<D, R> & RenderableEntityMixin;
 
   public addEntity(entity: GgEntity): void {
     if (!!entity.world) {

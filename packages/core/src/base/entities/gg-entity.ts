@@ -60,6 +60,10 @@ export abstract class GgEntity {
 
   protected _children: GgEntity[] = [];
 
+  public get children(): GgEntity[] {
+    return [...this._children];
+  }
+
   public addChildren(...entities: GgEntity[]) {
     for (const entity of entities) {
       if (entity.parent) {

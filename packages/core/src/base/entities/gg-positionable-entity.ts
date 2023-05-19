@@ -51,7 +51,7 @@ export abstract class GgPositionableEntity<D, R> extends GgEntity {
     this._scale$.next(value);
   }
 
-  protected constructor() {
+  constructor() {
     super();
     this._position$ = new BehaviorSubject<D>(this.getDefaultPosition());
     this._rotation$ = new BehaviorSubject<R>(this.getDefaultRotation());
