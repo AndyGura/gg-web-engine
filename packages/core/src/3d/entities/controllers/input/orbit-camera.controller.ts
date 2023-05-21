@@ -10,7 +10,6 @@ import { map } from 'rxjs/operators';
 
 export type OrbitCameraControllerOptions = {
   mouseOptions: Partial<MouseInputOptions>;
-  target: Point3;
   orbiting: { sensitivityX: number; sensitivityY: number } | false;
   zooming: { sensitivity: number } | false;
   panning: { sensitivityX: number; sensitivityY: number } | false;
@@ -19,7 +18,6 @@ export type OrbitCameraControllerOptions = {
 
 const DEFAULT_OPTIONS: OrbitCameraControllerOptions = {
   mouseOptions: {},
-  target: Pnt3.O,
   orbiting: { sensitivityX: 1, sensitivityY: 1 }, // sensitivity units: rotation degree per 5 pixels movement
   zooming: { sensitivity: 1 },
   panning: { sensitivityX: 1, sensitivityY: 1 },
@@ -32,7 +30,27 @@ export class OrbitCameraController extends GgEntity {
   protected readonly options: OrbitCameraControllerOptions;
   protected readonly mouseInput: MouseInput;
 
-  protected spherical: MutableSpherical = { phi: 0, radius: 0, theta: 0 };
+  protected spherical: MutableSpherical = { phi: 0, radius: 10, theta: 0 };
+
+  public target: Point3 = Pnt3.O;
+  public get radius(): number {
+    return this.spherical.radius;
+  };
+  public set radius(value: number) {
+    this.spherical.radius = value;
+  };
+  public get phi(): number {
+    return this.spherical.phi;
+  };
+  public set phi(value: number) {
+    this.spherical.phi = Math.max(0.000001, Math.min(Math.PI - 0.000001, value));
+  };
+  public get theta(): number {
+    return this.spherical.theta;
+  };
+  public set theta(value: number) {
+    this.spherical.theta = value;
+  };
 
   constructor(protected readonly camera: Gg3dCameraEntity, options: Partial<OrbitCameraControllerOptions> = {}) {
     super();
@@ -42,7 +60,7 @@ export class OrbitCameraController extends GgEntity {
 
   async onSpawned(world: GgWorld<any, any>): Promise<void> {
     await super.onSpawned(world);
-    this.spherical = Pnt3.toSpherical(Pnt3.sub(this.camera.position, this.options.target));
+    this.spherical = Pnt3.toSpherical(Pnt3.sub(this.camera.position, this.target));
     if (this.options.orbiting) {
       this.mouseInput.delta$
         .pipe(
@@ -75,8 +93,8 @@ export class OrbitCameraController extends GgEntity {
         Math.PI / 2,
       );
       const viewRight = Pnt3.rotAround(targetCameraVector, Pnt3.norm(viewUp), Math.PI / 2);
-      this.options.target = Pnt3.add(
-        this.options.target,
+      this.target = Pnt3.add(
+        this.target,
         Pnt3.add(
           Pnt3.scalarMult(viewUp, (-(this.options.panning as any).sensitivityY * delta.y) / 1000),
           Pnt3.scalarMult(viewRight, ((this.options.panning as any).sensitivityX * delta.x) / 1000),
@@ -126,8 +144,8 @@ export class OrbitCameraController extends GgEntity {
         map(() => this.spherical),
       )
       .subscribe(spherical => {
-        this.camera.position = Pnt3.add(this.options.target, Pnt3.fromSpherical(spherical));
-        this.camera.rotation = Qtrn.lookAt(this.camera.position, this.options.target);
+        this.camera.position = Pnt3.add(this.target, Pnt3.fromSpherical(spherical));
+        this.camera.rotation = Qtrn.lookAt(this.camera.position, this.target);
       });
 
     // start input
