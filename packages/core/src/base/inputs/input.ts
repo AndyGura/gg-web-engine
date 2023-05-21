@@ -27,40 +27,38 @@ export abstract class Input<TStartParams extends any[] = [], TStopParams extends
     return this._running;
   }
   /**
-   * An asynchronous method that starts the input. Do not override it
+   * A method that starts the input. Do not override it
    * @param args - An array of input arguments for the start method.
    * @returns A Promise that resolves when the input is started.
    */
-  async start(...args: TStartParams): Promise<void> {
+  start(...args: TStartParams): void {
     if (this.running) {
       return;
     }
-    await this.startInternal(...args);
+    this.startInternal(...args);
     this._running = true;
   }
   /**
-   * An asynchronous method that stops the input. Do not override it
+   * A method that stops the input. Do not override it
    * @param args - An array of input arguments for the stop method.
-   * @returns A Promise that resolves when the input is stopped.
    */
-  async stop(...args: TStopParams): Promise<void> {
+  stop(...args: TStopParams): void {
     if (!this.running) {
       return;
     }
     this.stop$.next();
-    await this.stopInternal(...args);
+    this.stopInternal(...args);
     this._running = false;
   }
   /**
-   * An abstract asynchronous method that starts the input.
+   * An abstract method that starts the input.
    * @param args - An array of input arguments for the start method.
-   * @returns A Promise that resolves when the process is started.
    */
-  protected abstract startInternal(...args: TStartParams): Promise<void>;
+  protected abstract startInternal(...args: TStartParams): void;
   /**
-   * An asynchronous method that stops the input.
+   * A method that stops the input.
    * @param args - An array of input arguments for the stop method.
    * @returns A Promise that resolves when the process is stopped.
    */
-  protected async stopInternal(...args: TStopParams): Promise<void> {}
+  protected stopInternal(...args: TStopParams): void {}
 }

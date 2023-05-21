@@ -18,12 +18,12 @@ export class KeyboardInput extends Input {
     this.handleKeys = this.handleKeys.bind(this);
   }
 
-  protected async startInternal() {
+  protected startInternal() {
     window.addEventListener('keydown', this.handleKeys);
     window.addEventListener('keyup', this.handleKeys);
   }
 
-  protected async stopInternal() {
+  protected stopInternal() {
     window.removeEventListener('keydown', this.handleKeys);
     window.removeEventListener('keyup', this.handleKeys);
   }

@@ -31,7 +31,7 @@ export abstract class GgWorld<
   ) {
     GgStatic.instance.worlds.push(this);
     GgStatic.instance.selectedWorld = this;
-    this.keyboardInput.start().then();
+    this.keyboardInput.start();
     if (consoleEnabled) {
       this.keyboardInput
         .bind('Backquote')
@@ -145,7 +145,7 @@ export abstract class GgWorld<
 
   public dispose(): void {
     this.worldClock.stop();
-    this.keyboardInput.stop().then();
+    this.keyboardInput.stop();
     for (let i = 0; i < this.children.length; i++) {
       this.children[i].onRemoved();
       this.children[i].dispose();
@@ -173,7 +173,7 @@ export abstract class GgWorld<
     entity.onSpawned(this);
   }
 
-  public removeEntity(entity: GgEntity, dispose = true): void {
+  public removeEntity(entity: GgEntity, dispose = false): void {
     if (entity.world) {
       if (entity.world !== this) {
         throw new Error('Entity is not a part of this world');

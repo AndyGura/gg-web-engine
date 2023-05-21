@@ -156,7 +156,7 @@ export class MouseInput extends Input<[], [unlockPointer?: boolean]> {
     this.canvasClickListener = this.canvasClickListener.bind(this);
   }
 
-  protected async startInternal() {
+  protected startInternal() {
     if (this.options.canvas) {
       this.options.canvas.style.touchAction = 'none';
     }
@@ -249,7 +249,7 @@ export class MouseInput extends Input<[], [unlockPointer?: boolean]> {
    Stop listening for mouse movement events.
    @param {boolean} [unlockPointer=true] - Whether to exit pointer lock.
    */
-  protected async stopInternal(unlockPointer: boolean = true) {
+  protected stopInternal(unlockPointer: boolean = true) {
     this.stopped$.next();
     if (unlockPointer && !!this.options.canvas) {
       this.options.canvas.removeEventListener('click', this.canvasClickListener);

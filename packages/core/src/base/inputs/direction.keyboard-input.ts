@@ -43,7 +43,7 @@ export class DirectionKeyboardInput extends Input {
   /**
    * Called when the input handling should start.
    */
-  protected async startInternal(): Promise<void> {
+  protected startInternal() {
     // Initialize an array to hold the keys to listen for
     const keys = [[], [], [], []] as string[][];
     // Add the "wasd" keys to the array if specified in the keymap
