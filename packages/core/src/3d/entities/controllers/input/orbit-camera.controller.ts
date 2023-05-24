@@ -35,22 +35,22 @@ export class OrbitCameraController extends GgEntity {
   public target: Point3 = Pnt3.O;
   public get radius(): number {
     return this.spherical.radius;
-  };
+  }
   public set radius(value: number) {
     this.spherical.radius = value;
-  };
+  }
   public get phi(): number {
     return this.spherical.phi;
-  };
+  }
   public set phi(value: number) {
     this.spherical.phi = Math.max(0.000001, Math.min(Math.PI - 0.000001, value));
-  };
+  }
   public get theta(): number {
     return this.spherical.theta;
-  };
+  }
   public set theta(value: number) {
     this.spherical.theta = value;
-  };
+  }
 
   constructor(protected readonly camera: Gg3dCameraEntity, options: Partial<OrbitCameraControllerOptions> = {}) {
     super();

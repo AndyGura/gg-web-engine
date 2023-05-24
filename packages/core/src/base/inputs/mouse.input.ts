@@ -1,7 +1,7 @@
 import { Input } from './input';
-import { BehaviorSubject, filter, fromEvent, NEVER, Observable, Subject, takeUntil } from 'rxjs';
+import { BehaviorSubject, filter, finalize, fromEvent, NEVER, Observable, share, Subject, takeUntil } from 'rxjs';
 import { Point2 } from '../models/points';
-import { map, pairwise, switchMap } from 'rxjs/operators';
+import { map, pairwise, switchMap, tap } from 'rxjs/operators';
 import { Pnt2 } from '../math/point2';
 
 /**
@@ -81,8 +81,18 @@ export class MouseInput extends Input<[], [unlockPointer?: boolean]> {
   /**
    An observable of the wheel scrolling.
    */
+  private _wheel$: Observable<number> | null = null;
   public get wheel$(): Observable<number> {
-    return this._wheel$.asObservable();
+    if (!this._wheel$) {
+      this._wheel$ = (fromEvent(this._element, 'wheel', { passive: false }) as Observable<WheelEvent>).pipe(
+        takeUntil(this.stopped$),
+        finalize(() => (this._wheel$ = null)),
+        tap(e => e.preventDefault()),
+        map(e => e.deltaY),
+        share(),
+      );
+    }
+    return this._wheel$;
   }
 
   public get isPointerLocked(): boolean {
@@ -93,7 +103,6 @@ export class MouseInput extends Input<[], [unlockPointer?: boolean]> {
   private _delta$: Subject<Point2> = new Subject<Point2>();
   private _position$: BehaviorSubject<Point2> = new BehaviorSubject<Point2>(Pnt2.O);
   private _multiTouchPositions$: BehaviorSubject<Point2[]> = new BehaviorSubject<Point2[]>([]);
-  private _wheel$: Subject<number> = new Subject<number>();
   private stopped$: Subject<void> = new Subject();
 
   private _state$: BehaviorSubject<MouseInputState> = new BehaviorSubject<MouseInputState>(MouseInputState.NONE);
@@ -236,12 +245,6 @@ export class MouseInput extends Input<[], [unlockPointer?: boolean]> {
       .pipe(takeUntil(this.stopped$))
       .subscribe(event => {
         event.preventDefault();
-      });
-    (fromEvent(this._element, 'wheel', { passive: false }) as Observable<WheelEvent>)
-      .pipe(takeUntil(this.stopped$))
-      .subscribe(e => {
-        e.preventDefault();
-        this._wheel$.next(e.deltaY);
       });
   }
 

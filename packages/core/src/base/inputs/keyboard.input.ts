@@ -1,6 +1,6 @@
 import { Input } from './input';
 import { BehaviorSubject, combineLatest, finalize, NEVER, Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { distinctUntilChanged, map } from 'rxjs/operators';
 
 /**
  * A main keyboard input: it does not have own key bindings, but provides an API to bind keys.
@@ -11,21 +11,43 @@ export class KeyboardInput extends Input {
   private bindings: { [code: string]: BehaviorSubject<boolean>[] } = {};
 
   /**
+   * Flag which disables handling key downs, when document has some "typeable" element focused
+   */
+  public skipKeyDownsOnExternalFocus: boolean = true;
+
+  /**
+   * Which element types should filter key downs when focused
+   */
+  public externalFocusBlacklist: { new (): HTMLElement }[] = [
+    HTMLInputElement,
+    HTMLTextAreaElement,
+    HTMLSelectElement,
+    HTMLButtonElement,
+  ];
+
+  /**
    * Creates a new instance of the `KeyboardInput` class.
    */
   constructor() {
     super();
     this.handleKeys = this.handleKeys.bind(this);
+    this.resetAllKeys = this.resetAllKeys.bind(this);
+    this.onPointerLockChange = this.onPointerLockChange.bind(this);
   }
 
   protected startInternal() {
     window.addEventListener('keydown', this.handleKeys);
     window.addEventListener('keyup', this.handleKeys);
+    window.addEventListener('blur', this.resetAllKeys);
+    document.addEventListener('pointerlockchange', this.onPointerLockChange);
   }
 
   protected stopInternal() {
     window.removeEventListener('keydown', this.handleKeys);
     window.removeEventListener('keyup', this.handleKeys);
+    window.removeEventListener('blur', this.resetAllKeys);
+    document.addEventListener('pointerlockchange', this.onPointerLockChange);
+    this.resetAllKeys();
   }
 
   /**
@@ -40,6 +62,7 @@ export class KeyboardInput extends Input {
     const subj = new BehaviorSubject<boolean>(false);
     this.bindings[code].push(subj);
     return subj.pipe(
+      distinctUntilChanged(),
       finalize(() => {
         this.bindings[code].splice(this.bindings[code].indexOf(subj), 1);
         subj.complete();
@@ -78,6 +101,7 @@ export class KeyboardInput extends Input {
         }
       }),
       map(values => values.includes(true)),
+      distinctUntilChanged(),
     );
   }
 
@@ -121,8 +145,30 @@ export class KeyboardInput extends Input {
       return;
     }
     const pressed = e.type == 'keydown';
+    if (pressed && this.skipKeyDownsOnExternalFocus && document.activeElement) {
+      for (const k of this.externalFocusBlacklist) {
+        if (document.activeElement instanceof k) {
+          return;
+        }
+      }
+    }
     for (const subj of this.bindings[e.code] || []) {
       subj.next(pressed);
+    }
+  }
+
+  private onPointerLockChange() {
+    // In chrome, if we press key, then exit pointer lock with Escape key, and then release key, the event will not be fired and key will "stuck" in down state
+    if (!document.pointerLockElement) {
+      this.resetAllKeys();
+    }
+  }
+
+  public resetAllKeys() {
+    for (const code in this.bindings) {
+      for (const subj of this.bindings[code] || []) {
+        subj.next(false);
+      }
     }
   }
 }

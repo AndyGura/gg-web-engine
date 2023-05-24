@@ -32,6 +32,14 @@ export type FreeCameraControllerOptions = {
     speed: number;
   };
   /**
+   * Flag to ignore cursor movement if pointer was not locked. By default false
+   */
+  ignoreMouseUnlessPointerLocked: boolean;
+  /**
+   * Flag to ignore keyboard events if pointer was not locked. By default false
+   */
+  ignoreKeyboardUnlessPointerLocked: boolean;
+  /**
    * Options for configuring mouse input.
    */
   mouseOptions: Partial<MouseInputOptions>;
@@ -65,6 +73,8 @@ export class FreeCameraController extends GgEntity {
       keymap: 'wasd',
       movementOptions: { speed: 0.5 },
       mouseOptions: {},
+      ignoreMouseUnlessPointerLocked: false,
+      ignoreKeyboardUnlessPointerLocked: false,
     },
   ) {
     super();
@@ -80,6 +90,7 @@ export class FreeCameraController extends GgEntity {
     if (this.camera.object3D.supportsFov) {
       keys.push('KeyZ', 'KeyC');
     }
+    keys.push('ShiftLeft');
     this.directionsInput.output$.pipe(takeUntil(this._onRemoved$)).subscribe(d => {
       controls.direction = d;
     });
@@ -95,7 +106,7 @@ export class FreeCameraController extends GgEntity {
     this.mouseInput.delta$
       .pipe(
         takeUntil(this._onRemoved$),
-        filter(() => isTouchScreen || this.mouseInput.isPointerLocked),
+        filter(() => isTouchScreen || !this.options.ignoreMouseUnlessPointerLocked || this.mouseInput.isPointerLocked),
       )
       .subscribe(delta => {
         rotationDelta = Pnt2.add(rotationDelta, delta);
@@ -103,15 +114,23 @@ export class FreeCameraController extends GgEntity {
 
     // Setup updating camera position and rotation based on input
     this.camera.tick$.pipe(takeUntil(this._onRemoved$)).subscribe(() => {
-      let translateVector = { ...Pnt3.O };
-      const [u, d, zo, zi] = controls.rest;
-      if (controls.direction.upDown !== undefined) translateVector.z = controls.direction.upDown ? -1 : 1;
-      if (controls.direction.leftRight !== undefined) translateVector.x = controls.direction.leftRight ? -1 : 1;
+      let c = controls;
+      if (this.options.ignoreKeyboardUnlessPointerLocked && !this.mouseInput.isPointerLocked) {
+        c = { direction: {}, rest: [false, false, false, false, false] };
+      }
+      let translateVector = { ...Pnt3.O } as { x: number; y: number; z: number };
+      const [u, d, zo, zi, speedBoost] = c.rest;
+      if (c.direction.upDown !== undefined) translateVector.z = c.direction.upDown ? -1 : 1;
+      if (c.direction.leftRight !== undefined) translateVector.x = c.direction.leftRight ? -1 : 1;
       if (u != d) translateVector.y = d ? -1 : 1;
       if (zo != zi) this.camera.object3D.fov += zo ? 1 : -1;
+      let speed = this.options.movementOptions.speed;
+      if (speedBoost) {
+        speed *= 2.5;
+      }
       this.camera.position = Pnt3.add(
         this.camera.position,
-        Pnt3.rot(Pnt3.scalarMult(Pnt3.norm(translateVector), this.options.movementOptions.speed), this.camera.rotation),
+        Pnt3.rot(Pnt3.scalarMult(Pnt3.norm(translateVector), speed), this.camera.rotation),
       );
       if (rotationDelta.x != 0 || rotationDelta.y != 0) {
         const spherical: MutableSpherical = Pnt3.toSpherical(Pnt3.rot({ x: 0, y: 0, z: -1 }, this.camera.rotation));

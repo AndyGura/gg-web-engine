@@ -33,6 +33,7 @@ export abstract class GgWorld<
     GgStatic.instance.selectedWorld = this;
     this.keyboardInput.start();
     if (consoleEnabled) {
+      // TODO this listener should be outside of the world
       this.keyboardInput
         .bind('Backquote')
         .pipe(filter(x => x))

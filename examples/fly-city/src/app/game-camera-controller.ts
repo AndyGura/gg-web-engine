@@ -69,6 +69,8 @@ export class GameCameraController {
         movementOptions: {
           speed: 1,
         },
+        ignoreKeyboardUnlessPointerLocked: true,
+        ignoreMouseUnlessPointerLocked: true,
         mouseOptions: {
           canvas: (this.renderer as GgRenderer).canvas!,
           pointerLock: true,
