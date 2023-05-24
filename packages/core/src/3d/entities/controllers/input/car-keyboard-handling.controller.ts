@@ -18,6 +18,7 @@ const TICKER_MAX_STEPS = 10;
 export type CarKeyboardControllerOptions = {
   keymap: DirectionKeyboardKeymap;
   gearUpDownKeys: [string, string];
+  handbrakeKey: string;
 };
 
 export class CarKeyboardHandlingController extends GgEntity {
@@ -55,7 +56,11 @@ export class CarKeyboardHandlingController extends GgEntity {
   constructor(
     protected readonly keyboard: KeyboardInput,
     public car: Gg3dRaycastVehicleEntity | null,
-    protected readonly options: CarKeyboardControllerOptions = { keymap: 'arrows', gearUpDownKeys: ['KeyA', 'KeyZ'] },
+    protected readonly options: CarKeyboardControllerOptions = {
+      keymap: 'arrows',
+      gearUpDownKeys: ['KeyA', 'KeyZ'],
+      handbrakeKey: 'Space',
+    },
   ) {
     super();
     this.directionsInput = new DirectionKeyboardInput(keyboard, options.keymap);
@@ -88,6 +93,14 @@ export class CarKeyboardHandlingController extends GgEntity {
           } else {
             this.car.gear--;
           }
+        }
+      });
+    this.keyboard
+      .bind(this.options.handbrakeKey)
+      .pipe(takeUntil(this._onRemoved$))
+      .subscribe(isKeyDown => {
+        if (this.car) {
+          this.car.handBrake = isKeyDown;
         }
       });
     this.directionsInput.output$.pipe(takeUntil(this._onRemoved$)).subscribe(d => {

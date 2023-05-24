@@ -130,4 +130,9 @@ export const mockCarProperties: () => CarProperties = () => ({
     compression: 4.4,
     restLength: 0.53,
   },
+  brake: {
+    frontAxleForce: 350,
+    rearAxleForce: 300,
+    handbrakeForce: 1500,
+  }
 });

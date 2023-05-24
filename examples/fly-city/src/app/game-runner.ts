@@ -90,6 +90,7 @@ export class GameRunner {
     this.handling = new CarKeyboardHandlingController(this.world.keyboardInput, null!, {
       keymap: 'wasd+arrows',
       gearUpDownKeys: ['CapsLock', 'ShiftLeft'],
+      handbrakeKey: 'Space',
     });
     this.handling.active = false;
     this.world.addEntity(this.handling);

@@ -41,6 +41,11 @@ export type CarProperties = {
     maxRpmIncreasePerSecond: number;
     maxRpmDecreasePerSecond: number;
   };
+  brake: {
+    frontAxleForce: number;
+    rearAxleForce: number;
+    handbrakeForce: number;
+  };
   transmission: {
     isAuto: boolean;
     reverseGearRatio: number;
@@ -57,6 +62,7 @@ export class Gg3dRaycastVehicleEntity extends Gg3dEntity {
   protected readonly wheelLocalRotation: (Point4 | null)[] = [];
   protected readonly wheelLocalTranslation: Point3[] = [];
   protected readonly frontWheelsIndices: number[] = [];
+  protected readonly rearWheelsIndices: number[] = [];
   protected readonly tractionWheelIndices: number[] = [];
 
   // https://x-engineer.org/vehicle-acceleration-maximum-speed-modeling-simulation/
@@ -158,7 +164,6 @@ export class Gg3dRaycastVehicleEntity extends Gg3dEntity {
 
   // TODO should be parameters
   private readonly _maxSteerVal = 0.35;
-  private readonly brakingForce = 300;
 
   public get maxSteerVal(): number {
     return this._maxSteerVal;
@@ -209,6 +214,15 @@ export class Gg3dRaycastVehicleEntity extends Gg3dEntity {
   protected set brake(value: number) {
     this.brake$.next(value);
   }
+  protected handBrake$: BehaviorSubject<boolean> = new BehaviorSubject(false);
+
+  public get handBrake(): boolean {
+    return this.handBrake$.getValue();
+  }
+
+  public set handBrake(value: boolean) {
+    this.handBrake$.next(value);
+  }
 
   private _gear = 0;
   private _gear$: BehaviorSubject<number> = new BehaviorSubject<number>(0);
@@ -256,6 +270,8 @@ export class Gg3dRaycastVehicleEntity extends Gg3dEntity {
     this.carProperties.wheelOptions.forEach((x, i) => {
       if (x.isFront) {
         this.frontWheelsIndices.push(i);
+      } else {
+        this.rearWheelsIndices.push(i);
       }
       if (x.isFront && this.carProperties.typeOfDrive != 'RWD') {
         this.tractionWheelIndices.push(i);
@@ -324,8 +340,8 @@ export class Gg3dRaycastVehicleEntity extends Gg3dEntity {
       this.updateEngine(delta);
       if (this.isTouchingGround) {
         // TODO 1 - R (1000 rpm) quick switch with acceleration pedal should have the same speed as without acceleration pedal
-        let force;
-        let brakeForce = this.brake;
+        let force = 0;
+        let brake = this.brake;
         const calculatedRpm = this.calculateRpmFromCarSpeed();
         if (this.gear !== 0 && calculatedRpm > this.carProperties.engine.maxRpm) {
           // engine brake, this is related to clutch, better clutch condition - bigger force
@@ -337,17 +353,23 @@ export class Gg3dRaycastVehicleEntity extends Gg3dEntity {
               : 0.5 * (this.carProperties.engine.minRpm - calculatedRpm) * (this.gear > 0 ? 1 : -1); // released, use engine brake
           // this functionality makes car stay still (parking gear) when speed is low
           const speedThreshold = 3;
-          if (Math.abs(this.getSpeed()) < speedThreshold && (this.gear == 0 || this.acceleration == 0)) {
-            brakeForce = Math.max(
-              brakeForce,
-              (0.3 * (speedThreshold - this.getSpeed()) * this.brakingForce) / speedThreshold,
-            );
+          if (Math.abs(this.getSpeed()) < speedThreshold && (this.gear == 0 || this.acceleration <= 0)) {
+            brake = Math.max(brake, (0.3 * (speedThreshold - this.getSpeed())) / speedThreshold);
             force = 0;
           }
         }
-        const forcePerWheel = force / this.tractionWheelIndices.length;
-        this.tractionWheelIndices.forEach(index => this.chassisBody.applyEngineForce(index, forcePerWheel));
-        this.wheels.forEach((w, i) => this.chassisBody.applyBrake(i, brakeForce));
+        this.tractionWheelIndices.forEach(index => this.chassisBody.applyEngineForce(index, force));
+        this.frontWheelsIndices.forEach(index =>
+          this.chassisBody.applyBrake(index, brake * this.carProperties.brake.frontAxleForce),
+        );
+        this.rearWheelsIndices.forEach(index =>
+          this.chassisBody.applyBrake(index, brake * this.carProperties.brake.rearAxleForce),
+        );
+        if (this.handBrake) {
+          this.rearWheelsIndices.forEach(index =>
+            this.chassisBody.applyBrake(index, this.carProperties.brake.handbrakeForce),
+          );
+        }
       }
     });
     if (this.carProperties.transmission.isAuto) {
@@ -461,7 +483,7 @@ export class Gg3dRaycastVehicleEntity extends Gg3dEntity {
       this.brake = 0;
     } else {
       this.acceleration = 0;
-      this.brake = -this.brakingForce * value;
+      this.brake = -value;
     }
     this.setTailLightsOn(value < 0);
   }
