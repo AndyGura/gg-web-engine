@@ -61,6 +61,7 @@ has_children: true
 - [core/base/entities/gg-positionable-entity.ts](/gg-web-engine/modules/core/base/entities/gg-positionable-entity.ts)
 - [core/base/entities/inline-controller.ts](/gg-web-engine/modules/core/base/entities/inline-controller.ts)
 - [core/base/entities/controllers/animation-mixer.ts](/gg-web-engine/modules/core/base/entities/controllers/animation-mixer.ts)
+- [core/base/entities/mixins/renderable-entity.mixin.ts](/gg-web-engine/modules/core/base/entities/mixins/renderable-entity.mixin.ts)
 - [core/base/inputs/direction.keyboard-input.ts](/gg-web-engine/modules/core/base/inputs/direction.keyboard-input.ts)
 - [core/base/inputs/input.ts](/gg-web-engine/modules/core/base/inputs/input.ts)
 - [core/base/inputs/keyboard.input.ts](/gg-web-engine/modules/core/base/inputs/keyboard.input.ts)

@@ -22,6 +22,7 @@ parent: Modules
     - [\_world (property)](#_world-property)
     - [\_name (property)](#_name-property)
     - [\_active (property)](#_active-property)
+    - [parent (property)](#parent-property)
     - [\_children (property)](#_children-property)
     - [\_onSpawned$ (property)](#_onspawned-property)
     - [\_onRemoved$ (property)](#_onremoved-property)
@@ -124,6 +125,14 @@ The flag whether entity should listen to ticks. If set to false, ticks will not 
 
 ```ts
 _active: boolean
+```
+
+### parent (property)
+
+**Signature**
+
+```ts
+parent: GgEntity | null
 ```
 
 ### \_children (property)

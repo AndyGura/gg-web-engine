@@ -1,6 +1,6 @@
 ---
 title: core/base/inputs/mouse.input.ts
-nav_order: 51
+nav_order: 52
 parent: Modules
 ---
 
@@ -47,7 +47,7 @@ static isTouchDevice(): boolean
 **Signature**
 
 ```ts
-protected async startInternal()
+protected startInternal()
 ```
 
 ### stopInternal (method)
@@ -57,7 +57,7 @@ Stop listening for mouse movement events.
 **Signature**
 
 ```ts
-protected async stopInternal(unlockPointer: boolean = true)
+protected stopInternal(unlockPointer: boolean = true)
 ```
 
 ### canvasClickListener (method)

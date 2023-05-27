@@ -29,11 +29,13 @@ parent: Modules
     - [wheelLocalRotation (property)](#wheellocalrotation-property)
     - [wheelLocalTranslation (property)](#wheellocaltranslation-property)
     - [frontWheelsIndices (property)](#frontwheelsindices-property)
+    - [rearWheelsIndices (property)](#rearwheelsindices-property)
     - [tractionWheelIndices (property)](#tractionwheelindices-property)
     - [tractionWheelRadius (property)](#tractionwheelradius-property)
     - [\_rpm$ (property)](#_rpm-property)
     - [\_acceleration$ (property)](#_acceleration-property)
     - [brake$ (property)](#brake-property)
+    - [handBrake$ (property)](#handbrake-property)
   - [SuspensionOptions (type alias)](#suspensionoptions-type-alias)
   - [WheelOptions (type alias)](#wheeloptions-type-alias)
 
@@ -56,6 +58,11 @@ export type CarProperties = {
     torques: { rpm: number; torque: number }[]
     maxRpmIncreasePerSecond: number
     maxRpmDecreasePerSecond: number
+  }
+  brake: {
+    frontAxleForce: number
+    rearAxleForce: number
+    handbrakeForce: number
   }
   transmission: {
     isAuto: boolean
@@ -213,6 +220,14 @@ readonly wheelLocalTranslation: Point3[]
 readonly frontWheelsIndices: number[]
 ```
 
+### rearWheelsIndices (property)
+
+**Signature**
+
+```ts
+readonly rearWheelsIndices: number[]
+```
+
 ### tractionWheelIndices (property)
 
 **Signature**
@@ -251,6 +266,14 @@ _acceleration$: any
 
 ```ts
 brake$: any
+```
+
+### handBrake$ (property)
+
+**Signature**
+
+```ts
+handBrake$: any
 ```
 
 ## SuspensionOptions (type alias)

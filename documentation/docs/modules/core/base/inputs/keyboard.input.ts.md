@@ -1,6 +1,6 @@
 ---
 title: core/base/inputs/keyboard.input.ts
-nav_order: 50
+nav_order: 51
 parent: Modules
 ---
 
@@ -20,6 +20,10 @@ parent: Modules
     - [emulateKeyUp (method)](#emulatekeyup-method)
     - [emulateKeyPress (method)](#emulatekeypress-method)
     - [handleKeys (method)](#handlekeys-method)
+    - [onPointerLockChange (method)](#onpointerlockchange-method)
+    - [resetAllKeys (method)](#resetallkeys-method)
+    - [skipKeyDownsOnExternalFocus (property)](#skipkeydownsonexternalfocus-property)
+    - [externalFocusBlacklist (property)](#externalfocusblacklist-property)
 
 ---
 
@@ -44,7 +48,7 @@ export declare class KeyboardInput {
 **Signature**
 
 ```ts
-protected async startInternal()
+protected startInternal()
 ```
 
 ### stopInternal (method)
@@ -52,7 +56,7 @@ protected async startInternal()
 **Signature**
 
 ```ts
-protected async stopInternal()
+protected stopInternal()
 ```
 
 ### bind (method)
@@ -112,4 +116,40 @@ emulateKeyPress(code: string): void
 
 ```ts
 private handleKeys(e: KeyboardEvent)
+```
+
+### onPointerLockChange (method)
+
+**Signature**
+
+```ts
+private onPointerLockChange()
+```
+
+### resetAllKeys (method)
+
+**Signature**
+
+```ts
+public resetAllKeys()
+```
+
+### skipKeyDownsOnExternalFocus (property)
+
+Flag which disables handling key downs, when document has some "typeable" element focused
+
+**Signature**
+
+```ts
+skipKeyDownsOnExternalFocus: boolean
+```
+
+### externalFocusBlacklist (property)
+
+Which element types should filter key downs when focused
+
+**Signature**
+
+```ts
+externalFocusBlacklist: (new () => HTMLElement)[]
 ```

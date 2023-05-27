@@ -38,6 +38,8 @@ export declare class FreeCameraController {
       keymap: 'wasd',
       movementOptions: { speed: 0.5 },
       mouseOptions: {},
+      ignoreMouseUnlessPointerLocked: false,
+      ignoreKeyboardUnlessPointerLocked: false,
     }
   )
 }
@@ -108,6 +110,14 @@ export type FreeCameraControllerOptions = {
      */
     speed: number
   }
+  /**
+   * Flag to ignore cursor movement if pointer was not locked. By default false
+   */
+  ignoreMouseUnlessPointerLocked: boolean
+  /**
+   * Flag to ignore keyboard events if pointer was not locked. By default false
+   */
+  ignoreKeyboardUnlessPointerLocked: boolean
   /**
    * Options for configuring mouse input.
    */

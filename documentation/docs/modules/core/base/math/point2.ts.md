@@ -1,6 +1,6 @@
 ---
 title: core/base/math/point2.ts
-nav_order: 61
+nav_order: 62
 parent: Modules
 ---
 
@@ -15,6 +15,7 @@ parent: Modules
     - [clone (static method)](#clone-static-method)
     - [add (static method)](#add-static-method)
     - [sub (static method)](#sub-static-method)
+    - [avg (static method)](#avg-static-method)
     - [lenSq (static method)](#lensq-static-method)
     - [len (static method)](#len-static-method)
     - [dist (static method)](#dist-static-method)
@@ -63,6 +64,16 @@ subtract point b from point a
 
 ```ts
 static sub(a: Point2, b: Point2): Point2
+```
+
+### avg (static method)
+
+average point between a and b
+
+**Signature**
+
+```ts
+static avg(a: Point2, b: Point2): Point2
 ```
 
 ### lenSq (static method)

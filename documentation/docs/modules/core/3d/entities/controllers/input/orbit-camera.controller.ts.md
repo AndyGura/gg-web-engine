@@ -18,6 +18,7 @@ parent: Modules
     - [options (property)](#options-property)
     - [mouseInput (property)](#mouseinput-property)
     - [spherical (property)](#spherical-property)
+    - [target (property)](#target-property)
   - [OrbitCameraControllerOptions (type alias)](#orbitcameracontrolleroptions-type-alias)
 
 ---
@@ -82,6 +83,14 @@ readonly mouseInput: MouseInput
 spherical: MutableSpherical
 ```
 
+### target (property)
+
+**Signature**
+
+```ts
+target: Point3
+```
+
 ## OrbitCameraControllerOptions (type alias)
 
 **Signature**
@@ -89,7 +98,6 @@ spherical: MutableSpherical
 ```ts
 export type OrbitCameraControllerOptions = {
   mouseOptions: Partial<MouseInputOptions>
-  target: Point3
   orbiting: { sensitivityX: number; sensitivityY: number } | false
   zooming: { sensitivity: number } | false
   panning: { sensitivityX: number; sensitivityY: number } | false

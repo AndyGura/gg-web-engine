@@ -1,6 +1,6 @@
 ---
 title: core/base/inputs/direction.keyboard-input.ts
-nav_order: 48
+nav_order: 49
 parent: Modules
 ---
 
@@ -40,7 +40,7 @@ Called when the input handling should start.
 **Signature**
 
 ```ts
-protected async startInternal(): Promise<void>
+protected startInternal()
 ```
 
 ## DirectionKeyboardKeymap (type alias)

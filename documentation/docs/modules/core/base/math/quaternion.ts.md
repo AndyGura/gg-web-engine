@@ -1,6 +1,6 @@
 ---
 title: core/base/math/quaternion.ts
-nav_order: 63
+nav_order: 64
 parent: Modules
 ---
 
@@ -153,7 +153,7 @@ Returns a quaternion that represents the rotation required to align an object to
 **Signature**
 
 ```ts
-static lookAt(eye: Point3, target: Point3, up: Point3): Point4
+static lookAt(eye: Point3, target: Point3, up: Point3 = Pnt3.Z): Point4
 ```
 
 ### rotAround (static method)

@@ -12,6 +12,7 @@ parent: Modules
 
 - [utils](#utils)
   - [Gg2dEntity (class)](#gg2dentity-class)
+    - [updateVisibility (method)](#updatevisibility-method)
     - [runTransformBinding (method)](#runtransformbinding-method)
     - [onSpawned (method)](#onspawned-method)
     - [onRemoved (method)](#onremoved-method)
@@ -30,6 +31,14 @@ parent: Modules
 export declare class Gg2dEntity {
   constructor(public readonly object2D: IGg2dObject | null, public readonly objectBody: IGg2dBody | null)
 }
+```
+
+### updateVisibility (method)
+
+**Signature**
+
+```ts
+public updateVisibility(): void
 ```
 
 ### runTransformBinding (method)

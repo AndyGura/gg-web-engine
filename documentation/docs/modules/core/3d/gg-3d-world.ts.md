@@ -40,12 +40,8 @@ export declare class Gg3dWorld<V, P> {
 ```ts
 addPrimitiveRigidBody(
     descr: BodyShape3DDescriptor,
-    position: Point3 = {
-      x: 0,
-      y: 0,
-      z: 0,
-    },
-    rotation: Point4 = { x: 0, y: 0, z: 0, w: 1 },
+    position: Point3 = Pnt3.O,
+    rotation: Point4 = Qtrn.O,
   ): Gg3dEntity
 ```
 

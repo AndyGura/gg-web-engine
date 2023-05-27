@@ -37,12 +37,5 @@ export declare class Gg2dWorld<V, P> {
 **Signature**
 
 ```ts
-addPrimitiveRigidBody(
-    descr: BodyShape2DDescriptor,
-    position: Point2 = {
-      x: 0,
-      y: 0,
-    },
-    rotation: number = 0,
-  ): Gg2dEntity
+addPrimitiveRigidBody(descr: BodyShape2DDescriptor, position: Point2 = Pnt2.O, rotation: number = 0): Gg2dEntity
 ```

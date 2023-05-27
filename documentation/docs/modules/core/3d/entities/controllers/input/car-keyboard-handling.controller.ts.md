@@ -35,6 +35,7 @@ parent: Modules
 export type CarKeyboardControllerOptions = {
   keymap: DirectionKeyboardKeymap
   gearUpDownKeys: [string, string]
+  handbrakeKey: string
 }
 ```
 
@@ -47,7 +48,11 @@ export declare class CarKeyboardHandlingController {
   constructor(
     protected readonly keyboard: KeyboardInput,
     public car: Gg3dRaycastVehicleEntity | null,
-    protected readonly options: CarKeyboardControllerOptions = { keymap: 'arrows', gearUpDownKeys: ['KeyA', 'KeyZ'] }
+    protected readonly options: CarKeyboardControllerOptions = {
+      keymap: 'arrows',
+      gearUpDownKeys: ['KeyA', 'KeyZ'],
+      handbrakeKey: 'Space',
+    }
   )
 }
 ```

@@ -30,7 +30,7 @@ parent: Modules
 
 ```ts
 export declare class GgPositionableEntity<D, R> {
-  protected constructor()
+  constructor()
 }
 ```
 

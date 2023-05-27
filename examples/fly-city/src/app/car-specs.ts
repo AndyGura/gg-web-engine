@@ -77,8 +77,8 @@ export const LAMBO_SPECS: Omit<CarProperties, 'wheelOptions'> = {
     "restLength": 0.53
   },
   "brake": {
-    "frontAxleForce": 300,
-    "rearAxleForce": 300,
+    "frontAxleForce": 400,
+    "rearAxleForce": 200,
     "handbrakeForce": 1500,
   }
 };
@@ -160,8 +160,8 @@ export const CAR_SPECS: Omit<CarProperties, 'wheelOptions'> = {
     "restLength": 0.53
   },
   "brake": {
-    "frontAxleForce": 300,
-    "rearAxleForce": 300,
+    "frontAxleForce": 400,
+    "rearAxleForce": 200,
     "handbrakeForce": 1500,
   }
 };
@@ -243,8 +243,8 @@ export const TRUCK_SPECS: Omit<CarProperties, 'wheelOptions'> = {
     "restLength": 0.53
   },
   "brake": {
-    "frontAxleForce": 300,
-    "rearAxleForce": 300,
+    "frontAxleForce": 400,
+    "rearAxleForce": 200,
     "handbrakeForce": 1500,
   }
 };

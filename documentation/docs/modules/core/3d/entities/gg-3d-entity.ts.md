@@ -12,6 +12,7 @@ parent: Modules
 
 - [utils](#utils)
   - [Gg3dEntity (class)](#gg3dentity-class)
+    - [updateVisibility (method)](#updatevisibility-method)
     - [runTransformBinding (method)](#runtransformbinding-method)
     - [onSpawned (method)](#onspawned-method)
     - [onRemoved (method)](#onremoved-method)
@@ -30,6 +31,14 @@ parent: Modules
 export declare class Gg3dEntity {
   constructor(public readonly object3D: IGg3dObject | null, public readonly objectBody: IGg3dBody | null = null)
 }
+```
+
+### updateVisibility (method)
+
+**Signature**
+
+```ts
+public updateVisibility(): void
 ```
 
 ### runTransformBinding (method)

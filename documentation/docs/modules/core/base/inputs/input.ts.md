@@ -1,6 +1,6 @@
 ---
 title: core/base/inputs/input.ts
-nav_order: 49
+nav_order: 50
 parent: Modules
 ---
 
@@ -40,42 +40,42 @@ export declare class Input<TStartParams, TStopParams>
 
 ### start (method)
 
-An asynchronous method that starts the input. Do not override it
+A method that starts the input. Do not override it
 
 **Signature**
 
 ```ts
-async start(...args: TStartParams): Promise<void>
+start(...args: TStartParams): void
 ```
 
 ### stop (method)
 
-An asynchronous method that stops the input. Do not override it
+A method that stops the input. Do not override it
 
 **Signature**
 
 ```ts
-async stop(...args: TStopParams): Promise<void>
+stop(...args: TStopParams): void
 ```
 
 ### startInternal (method)
 
-An abstract asynchronous method that starts the input.
+An abstract method that starts the input.
 
 **Signature**
 
 ```ts
-protected abstract startInternal(...args: TStartParams): Promise<void>;
+protected abstract startInternal(...args: TStartParams): void;
 ```
 
 ### stopInternal (method)
 
-An asynchronous method that stops the input.
+A method that stops the input.
 
 **Signature**
 
 ```ts
-protected async stopInternal(...args: TStopParams): Promise<void>
+protected stopInternal(...args: TStopParams): void
 ```
 
 ### stop$ (property)
