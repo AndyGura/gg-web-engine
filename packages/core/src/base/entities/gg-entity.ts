@@ -58,7 +58,7 @@ export abstract class GgEntity {
 
   public parent: GgEntity | null = null;
 
-  protected _children: GgEntity[] = [];
+  private _children: GgEntity[] = [];
 
   public get children(): GgEntity[] {
     return [...this._children];

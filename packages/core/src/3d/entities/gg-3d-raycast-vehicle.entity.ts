@@ -330,7 +330,7 @@ export class Gg3dRaycastVehicleEntity extends Gg3dEntity {
         this.wheels.push(new Gg3dEntity(entity));
       }
     }
-    this._children = [...(this.wheels.filter(x => !!x) as GgPositionable3dEntity[])];
+    this.addChildren(...(this.wheels.filter(x => !!x) as GgPositionable3dEntity[]));
     this.chassisBody.entity = this;
   }
 
