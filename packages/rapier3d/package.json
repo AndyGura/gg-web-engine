@@ -1,0 +1,45 @@
+{
+  "name": "@gg-web-engine/rapier3d",
+  "version": "0.0.20",
+  "description": "An attempt to create open source game engine for browser",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prettier-format": "prettier --config ../core/.prettierrc 'src/**/*.ts' --write",
+    "build": "tsc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AndyGura/gg-web-engine.git"
+  },
+  "keywords": [
+    "game-development",
+    "game-engine",
+    "game-engine-framework",
+    "gamedev"
+  ],
+  "author": "AndyGura",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/AndyGura/gg-web-engine/issues"
+  },
+  "homepage": "https://github.com/AndyGura/gg-web-engine#readme",
+  "browser": {
+    "fs": false,
+    "os": false,
+    "path": false
+  },
+  "devDependencies": {
+    "@dimforge/rapier3d": "^0.11.2",
+    "mini-signals": "^1.2.0",
+    "prettier": "^2.8.6",
+    "rxjs": "~7.8.0",
+    "typescript": "~4.7.2"
+  },
+  "peerDependencies": {
+    "@dimforge/rapier3d": "^0.11.2",
+    "mini-signals": "^1.2.0",
+    "rxjs": "~7.8.0"
+  }
+}
