@@ -3,7 +3,6 @@ import { Body3DOptions, Gg3dEntity, IGg3dBody, Pnt3, Point3, Point4, Qtrn } from
 import { Collider, ColliderDesc, Quaternion, RigidBody, RigidBodyDesc, Vector3 } from '@dimforge/rapier3d';
 
 export class Gg3dBody implements IGg3dBody {
-
   public get position(): Point3 {
     return Pnt3.clone(this.nativeBody ? this.nativeBody.translation() : this._bodyDescr.translation);
   }
@@ -34,7 +33,7 @@ export class Gg3dBody implements IGg3dBody {
   }
 
   protected _nativeBody: RigidBody | null = null;
-  protected _nativeBodyCollider: Collider | null = null;
+  protected _nativeBodyColliders: Collider[] | null = null;
 
   get nativeBody(): RigidBody | null {
     return this._nativeBody;
@@ -53,11 +52,10 @@ export class Gg3dBody implements IGg3dBody {
 
   constructor(
     protected readonly world: Gg3dPhysicsWorld,
-    protected _colliderDescr: ColliderDesc,
+    protected _colliderDescr: ColliderDesc[],
     protected _bodyDescr: RigidBodyDesc,
     protected _colliderOptions: Omit<Omit<Body3DOptions, 'dynamic'>, 'mass'>,
-  ) {
-  }
+  ) {}
 
   clone(): Gg3dBody {
     throw new Error('Not implemented');
@@ -81,9 +79,12 @@ export class Gg3dBody implements IGg3dBody {
       throw new Error('Rapier3D bodies cannot be shared between different worlds');
     }
     this._nativeBody = this.world.nativeWorld!.createRigidBody(this._bodyDescr);
-    this._nativeBodyCollider = this.world.nativeWorld!.createCollider(this._colliderDescr, this._nativeBody);
-    this._nativeBodyCollider.setFriction(this._colliderOptions.friction);
-    this._nativeBodyCollider.setRestitution(this._colliderOptions.restitution);
+    this._nativeBodyColliders = this._colliderDescr.map(c => {
+      const col = this.world.nativeWorld!.createCollider(c, this._nativeBody!);
+      col.setFriction(this._colliderOptions.friction);
+      col.setRestitution(this._colliderOptions.restitution);
+      return col;
+    });
     this.world.handleIdEntityMap.set(this._nativeBody.handle, this);
   }
 
@@ -92,11 +93,13 @@ export class Gg3dBody implements IGg3dBody {
       throw new Error('Rapier3D bodies cannot be shared between different worlds');
     }
     if (this._nativeBody) {
-      this.world.nativeWorld!.removeCollider(this._nativeBodyCollider!, false);
+      for (const col of this._nativeBodyColliders!) {
+        this.world.nativeWorld!.removeCollider(col, false);
+      }
       this.world.nativeWorld!.removeRigidBody(this._nativeBody);
       this.world.handleIdEntityMap.delete(this._nativeBody.handle);
       this._nativeBody = null;
-      this._nativeBodyCollider = null;
+      this._nativeBodyColliders = null;
     }
   }
 

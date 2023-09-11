@@ -1,14 +1,7 @@
-import {
-  Gg3dWorld, GgBody,
-  GgDebugPhysicsDrawer,
-  GgPositionable3dEntity,
-  IGg3dPhysicsWorld,
-  Point3,
-  Point4,
-} from '@gg-web-engine/core';
+import { Gg3dWorld, GgDebugPhysicsDrawer, IGg3dPhysicsWorld, Point3, Point4 } from '@gg-web-engine/core';
 import { Gg3dBodyFactory } from './gg-3d-body-factory';
 import { Gg3dBodyLoader } from './gg-3d-body-loader';
-import { EventQueue, RigidBody, Vector3, World } from '@dimforge/rapier3d';
+import { EventQueue, Vector3, World } from '@dimforge/rapier3d';
 import { Gg3dBody } from './bodies/gg-3d-body';
 
 export class Gg3dPhysicsWorld implements IGg3dPhysicsWorld {
@@ -52,7 +45,7 @@ export class Gg3dPhysicsWorld implements IGg3dPhysicsWorld {
   }
 
   get physicsDebugViewActive(): boolean {
-    throw new Error('Not implemented');
+    return false;
   }
 
   protected _nativeWorld: World | undefined;
@@ -70,7 +63,7 @@ export class Gg3dPhysicsWorld implements IGg3dPhysicsWorld {
   }
 
   simulate(delta: number): void {
-    this._nativeWorld!.timestep = this.timeScale * delta / 1000;
+    this._nativeWorld!.timestep = (this.timeScale * delta) / 1000;
     this._nativeWorld?.step(this.eventQueue);
   }
 
