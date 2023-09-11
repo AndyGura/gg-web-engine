@@ -25,21 +25,16 @@
     "url": "https://github.com/AndyGura/gg-web-engine/issues"
   },
   "homepage": "https://github.com/AndyGura/gg-web-engine#readme",
-  "browser": {
-    "fs": false,
-    "os": false,
-    "path": false
-  },
   "devDependencies": {
     "@dimforge/rapier3d": "^0.11.2",
-    "mini-signals": "^1.2.0",
+    "@gg-web-engine/core": "0.0.20",
     "prettier": "^2.8.6",
-    "rxjs": "~7.8.0",
+    "rxjs": "7.8.0",
     "typescript": "~4.7.2"
   },
   "peerDependencies": {
     "@dimforge/rapier3d": "^0.11.2",
-    "mini-signals": "^1.2.0",
-    "rxjs": "~7.8.0"
+    "@gg-web-engine/core": "0.0.20",
+    "rxjs": "7.8.0"
   }
 }
