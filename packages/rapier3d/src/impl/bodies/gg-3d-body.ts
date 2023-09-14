@@ -50,6 +50,10 @@ export class Gg3dBody implements IGg3dBody {
 
   public entity: Gg3dEntity | null = null;
 
+  public get factoryProps(): [ColliderDesc[], RigidBodyDesc, Omit<Omit<Body3DOptions, 'dynamic'>, 'mass'>] {
+    return [this._colliderDescr, this._bodyDescr, this._colliderOptions];
+  }
+
   constructor(
     protected readonly world: Gg3dPhysicsWorld,
     protected _colliderDescr: ColliderDesc[],
@@ -58,20 +62,8 @@ export class Gg3dBody implements IGg3dBody {
   ) {}
 
   clone(): Gg3dBody {
-    throw new Error('Not implemented');
-    // return this.world.factory.createRigidBodyFromShape(
-    //   this._nativeBody2.getCollisionShape(),
-    //   {
-    //     dynamic: !this._nativeBody2.isStaticObject(),
-    //     mass: 5, // FIXME how to get mass??
-    //     friction: this._nativeBody2.getFriction(),
-    //     restitution: this._nativeBody2.getRestitution(),
-    //   },
-    //   {
-    //     position: this.position,
-    //     rotation: this.rotation,
-    //   },
-    // );
+    // TODO probably need to clone factory props to not share the same reference?
+    return new Gg3dBody(this.world, ...this.factoryProps);
   }
 
   addToWorld(world: Gg3dPhysicsWorld): void {

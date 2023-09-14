@@ -1,14 +1,15 @@
 import {
+  Gg3dRaycastVehicleEntity,
   IGg3dRaycastVehicle,
-  WheelOptions,
-  SuspensionOptions,
   Point3,
   Point4,
-  Gg3dRaycastVehicleEntity,
+  SuspensionOptions,
+  WheelOptions,
 } from '@gg-web-engine/core';
 import Ammo from 'ammojs-typed';
 import { Gg3dBody } from './bodies/gg-3d-body';
 import { Gg3dPhysicsWorld } from './gg-3d-physics-world';
+
 export class Gg3dRaycastVehicle extends Gg3dBody implements IGg3dRaycastVehicle {
   public readonly nativeVehicle: Ammo.btRaycastVehicle;
   public readonly vehicleTuning: Ammo.btVehicleTuning = new this.ammo.btVehicleTuning();
@@ -17,11 +18,11 @@ export class Gg3dRaycastVehicle extends Gg3dBody implements IGg3dRaycastVehicle 
 
   public entity: Gg3dRaycastVehicleEntity | null = null;
 
-  constructor(protected readonly world: Gg3dPhysicsWorld, public chassisBody: Ammo.btRigidBody) {
-    super(world, chassisBody);
+  constructor(protected readonly world: Gg3dPhysicsWorld, _chassisBody: Gg3dBody) {
+    super(world, _chassisBody.nativeBody);
     this.nativeVehicle = new this.ammo.btRaycastVehicle(
       this.vehicleTuning,
-      this.chassisBody,
+      this.nativeBody,
       new this.ammo.btDefaultVehicleRaycaster(world.dynamicAmmoWorld!),
     );
     this.nativeVehicle.setCoordinateSystem(0, 2, 1);
@@ -37,8 +38,8 @@ export class Gg3dRaycastVehicle extends Gg3dBody implements IGg3dRaycastVehicle 
       throw new Error('Ammo raycast vehicle cannot be shared between different worlds');
     }
     // TODO parked cars can be deactivated until we start handling them. Needs explicit activation call
-    this.chassisBody.setActivationState(4); // btCollisionObject::DISABLE_DEACTIVATION
-    world.dynamicAmmoWorld?.addRigidBody(this.chassisBody);
+    this.nativeBody.setActivationState(4); // btCollisionObject::DISABLE_DEACTIVATION
+    world.dynamicAmmoWorld?.addRigidBody(this.nativeBody);
     this.world.dynamicAmmoWorld!.addAction(this.nativeVehicle);
   }
 
@@ -93,5 +94,9 @@ export class Gg3dRaycastVehicle extends Gg3dBody implements IGg3dRaycastVehicle 
     for (let i = 0; i < this.nativeVehicle.getNumWheels(); i++) {
       this.nativeVehicle.updateWheelTransform(i, true);
     }
+  }
+
+  updateVehicleSimulation(deltaMS: number) {
+    // do nothing, ammo.js updates vehicle during world simulation step
   }
 }

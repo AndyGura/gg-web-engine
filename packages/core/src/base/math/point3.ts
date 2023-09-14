@@ -22,6 +22,21 @@ export class Pnt3 {
     return { x: 0, y: 0, z: 1 };
   }
 
+  /** basis -X vector */
+  static get nX(): Point3 {
+    return { x: -1, y: 0, z: 0 };
+  }
+
+  /** basis -Y vector */
+  static get nY(): Point3 {
+    return { x: 0, y: -1, z: 0 };
+  }
+
+  /** basis -Z vector */
+  static get nZ(): Point3 {
+    return { x: 0, y: 0, z: -1 };
+  }
+
   /** clone point */
   static clone(p: Point3): Point3 {
     return { x: p.x, y: p.y, z: p.z };

@@ -60,6 +60,8 @@ export interface IGg3dRaycastVehicle extends IGg3dBody {
   getWheelTransform(wheelIndex: number): { position: Point3; rotation: Point4 };
 
   resetSuspension(): void;
+
+  updateVehicleSimulation(deltaMS: number): void;
 }
 
 export abstract class IGg3dBodyLoader {

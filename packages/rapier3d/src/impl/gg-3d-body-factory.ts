@@ -50,7 +50,7 @@ export class Gg3dBodyFactory implements IGg3dBodyFactory<Gg3dBody, Gg3dTrigger> 
     return new Gg3dTrigger(this.world, colliderDescr, this.createRigidBodyDescr({ dynamic: false }, transform));
   }
 
-  protected createColliderDescr(descriptor: Shape3DDescriptor): ColliderDesc[] {
+  public createColliderDescr(descriptor: Shape3DDescriptor): ColliderDesc[] {
     const yToZUp = Qtrn.rotAround(Qtrn.O, Pnt3.X, Math.PI / 2);
     switch (descriptor.shape) {
       case 'BOX':
