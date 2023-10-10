@@ -7,7 +7,6 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "prettier-format": "prettier --config ../core/.prettierrc 'src/**/*.ts' --write",
-    "prepublish": "rm -rf ./dist/ && tsc",
     "build": "tsc"
   },
   "repository": {
@@ -29,14 +28,14 @@
   "dependencies": {
   },
   "devDependencies": {
-    "@gg-web-engine/core": "0.0.20",
+    "rxjs": "7.8.0",
     "@types/three": "0.151.0",
     "three": "0.151.3",
     "prettier": "^2.8.6",
     "typescript": "~4.7.2"
   },
   "peerDependencies": {
-    "@gg-web-engine/core": "0.0.20",
+    "rxjs": "7.8.0",
     "three": "0.151.3"
   }
 }

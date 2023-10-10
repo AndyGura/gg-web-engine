@@ -10,6 +10,7 @@
   },
   "private": true,
   "dependencies": {
+"three": "0.151.3",
     "@angular/animations": "^14.1.0",
     "@angular/common": "^14.1.0",
     "@angular/compiler": "^14.1.0",
@@ -18,9 +19,6 @@
     "@angular/platform-browser": "^14.1.0",
     "@angular/platform-browser-dynamic": "^14.1.0",
     "@angular/router": "^14.1.0",
-    "@gg-web-engine/ammo": "0.0.20",
-    "@gg-web-engine/core": "0.0.20",
-    "@gg-web-engine/three": "0.0.20",
     "rxjs": "7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.11.4"
