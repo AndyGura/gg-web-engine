@@ -29,14 +29,14 @@
   "dependencies": {
   },
   "devDependencies": {
-    "@types/offscreencanvas": "^2019.7.0",
-    "@gg-web-engine/core": "^0.0.20",
-    "pixi.js": "^7.2.4",
+    "@types/offscreencanvas": "2019.7.0",
+    "@gg-web-engine/core": "0.0.20",
+    "pixi.js": "7.2.4",
     "prettier": "^2.8.6",
     "typescript": "~4.7.2"
   },
   "peerDependencies": {
-    "@gg-web-engine/core": "^0.0.20",
-    "pixi.js": "^7.2.4"
+    "@gg-web-engine/core": "0.0.20",
+    "pixi.js": "7.2.4"
   }
 }

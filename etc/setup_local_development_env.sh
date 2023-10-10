@@ -8,7 +8,7 @@ npm link
 popd
 
 function switch_gg_module {
-  sed -i 's/"@gg-web-engine\/core".*/"rxjs": "~7.8.0",/' ./package.json
+  sed -i 's/"@gg-web-engine\/core".*/"rxjs": "7.8.0",/' ./package.json
   sed -i '/prepublish/d' ./package.json
   npm install
   npm link @gg-web-engine/core
@@ -53,7 +53,7 @@ popd
 
 pushd examples/model-loader
 sed -i '/@gg-web-engine\//d' ./package.json
-sed -i 's/"dependencies": {/"dependencies": {\n"three": "^0.151.3",/' package.json
+sed -i 's/"dependencies": {/"dependencies": {\n"three": "0.151.3",/' package.json
 npm install
 npm link @gg-web-engine/core @gg-web-engine/three @gg-web-engine/ammo
 fix_ammo_paths
@@ -62,7 +62,7 @@ popd
 
 pushd examples/fly-city
 sed -i '/@gg-web-engine\//d' ./package.json
-sed -i 's/"dependencies": {/"dependencies": {\n"three": "^0.151.3",/' package.json
+sed -i 's/"dependencies": {/"dependencies": {\n"three": "0.151.3",/' package.json
 npm install
 npm link @gg-web-engine/core @gg-web-engine/three @gg-web-engine/ammo
 fix_ammo_paths

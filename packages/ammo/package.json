@@ -34,15 +34,15 @@
   "dependencies": {
   },
   "devDependencies": {
-    "@gg-web-engine/core": "^0.0.20",
-    "ammojs-typed": "^1.0.6",
-    "mini-signals": "^1.2.0",
+    "@gg-web-engine/core": "0.0.20",
+    "ammojs-typed": "1.0.6",
+    "mini-signals": "2.0.0",
     "prettier": "^2.8.6",
     "typescript": "~4.7.2"
   },
   "peerDependencies": {
-    "@gg-web-engine/core": "^0.0.20",
-    "ammojs-typed": "^1.0.6",
-    "mini-signals": "^1.2.0"
+    "@gg-web-engine/core": "0.0.20",
+    "ammojs-typed": "1.0.6",
+    "mini-signals": "2.0.0"
   }
 }

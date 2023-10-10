@@ -29,14 +29,14 @@
   "dependencies": {
   },
   "devDependencies": {
-    "@gg-web-engine/core": "^0.0.20",
-    "@types/three": "^0.150.1",
-    "three": "^0.151.3",
+    "@gg-web-engine/core": "0.0.20",
+    "@types/three": "0.151.0",
+    "three": "0.151.3",
     "prettier": "^2.8.6",
     "typescript": "~4.7.2"
   },
   "peerDependencies": {
-    "@gg-web-engine/core": "^0.0.20",
-    "three": "^0.151.3"
+    "@gg-web-engine/core": "0.0.20",
+    "three": "0.151.3"
   }
 }
