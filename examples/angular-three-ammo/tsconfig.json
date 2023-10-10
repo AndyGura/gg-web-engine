@@ -23,9 +23,7 @@
       "dom"
     ],
     "paths": {
-"three": ["./node_modules/@gg-web-engine/three/node_modules/three"],
-"ammo-js-typed": ["./node_modules/@gg-web-engine/ammo/node_modules/ammo-js-typed"],
-      "mini-signals": ["./node_modules/@gg-web-engine/ammo/node_modules/mini-signals/index.js"]
+      "mini-signals": ["./node_modules/mini-signals/index.js"]
     }
   },
   "angularCompilerOptions": {
