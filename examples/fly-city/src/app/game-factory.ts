@@ -159,10 +159,10 @@ export class GameFactory {
   }
 
   private generateCar(
-    chassisMesh: IGg3dObject | null, chassisBody: Gg3dBody,
-    chassisDummies: GgDummy[], wheelMesh: IGg3dObject | null, specs: Omit<CarProperties, 'wheelOptions'>,
-  ): Gg3dRaycastVehicleEntity {
-    return new Gg3dRaycastVehicleEntity(
+    chassisMesh: IDisplayObject3dComponent | null, chassisBody: AmmoRigidBodyComponent,
+    chassisDummies: GgDummy[], wheelMesh: IDisplayObject3dComponent | null, specs: Omit<CarProperties, 'wheelOptions'>,
+  ): RaycastVehicle3dEntity {
+    return new RaycastVehicle3dEntity(
       {
         wheelOptions: chassisDummies
           .filter(x => x.name.startsWith('wheel_'))
