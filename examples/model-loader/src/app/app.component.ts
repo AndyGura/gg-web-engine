@@ -1,9 +1,9 @@
 import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
-import { DirectionalLight, HemisphereLight } from 'three';
+import { DirectionalLight, HemisphereLight, PerspectiveCamera } from 'three';
 import { Camera3dAnimator, Gg3dWorld, Pnt3 } from '@gg-web-engine/core';
 import { interval } from 'rxjs';
-import { Gg3dObject, Gg3dVisualScene, GgRenderer } from '@gg-web-engine/three';
-import { Gg3dPhysicsWorld } from '@gg-web-engine/ammo';
+import { ThreeCameraComponent, ThreeDisplayObjectComponent, ThreeSceneComponent } from '@gg-web-engine/three';
+import { AmmoWorldComponent } from '@gg-web-engine/ammo';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 
 @Component({
@@ -17,15 +17,17 @@ export class AppComponent implements OnInit {
 
   async ngOnInit(): Promise<void> {
 
-    const scene: Gg3dVisualScene = new Gg3dVisualScene();
+    const scene: ThreeSceneComponent = new ThreeSceneComponent();
     scene.loader.registerGltfLoaderAddon(new GLTFLoader());
-    const physScene: Gg3dPhysicsWorld = new Gg3dPhysicsWorld();
+    const physScene: AmmoWorldComponent = new AmmoWorldComponent();
     const world: Gg3dWorld = new Gg3dWorld(scene, physScene, true);
     await world.init();
 
-    const renderer: GgRenderer = new GgRenderer(this.canvas.nativeElement);
-    world.addEntity(renderer);
-    const cameraController: Camera3dAnimator = new Camera3dAnimator(renderer.camera, (timeElapsed, _) => ({
+    const renderer = world.addRenderer(
+      new ThreeCameraComponent(new PerspectiveCamera(75, 1, 1, 10000)),
+      this.canvas.nativeElement,
+    );
+    const cameraController: Camera3dAnimator = new Camera3dAnimator(renderer, (timeElapsed, _) => ({
       position: {
         x: 10 * Math.sin(timeElapsed / 2000),
         y: 10 * Math.cos(timeElapsed / 2000),
@@ -58,7 +60,7 @@ export class AppComponent implements OnInit {
     const { entities } = await world.loader.loadGgGlb('assets/ph_scene');
     for (const item of entities) {
       if (item.object3D) {
-        (item.object3D as Gg3dObject).nativeMesh.traverse((obj) => {
+        (item.object3D as ThreeDisplayObjectComponent).nativeMesh.traverse((obj) => {
           obj.castShadow = true;
           obj.receiveShadow = true;
         });
@@ -92,7 +94,7 @@ export class AppComponent implements OnInit {
         },
       });
       const item = entities[0];
-      (item.object3D as Gg3dObject).nativeMesh.traverse((obj) => {
+      (item.object3D as ThreeDisplayObjectComponent).nativeMesh.traverse((obj) => {
         obj.castShadow = true;
         obj.receiveShadow = true;
       });

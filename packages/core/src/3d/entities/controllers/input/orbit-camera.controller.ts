@@ -1,12 +1,19 @@
-import { GgEntity, GGTickOrder } from '../../../../base/entities/gg-entity';
-import { MouseInput, MouseInputOptions, MouseInputState } from '../../../../base/inputs/mouse.input';
-import { Gg3dCameraEntity } from '../../gg-3d-camera.entity';
-import { GgWorld } from '../../../../base/gg-world';
+import {
+  IEntity,
+  TickOrder,
+  GgWorld,
+  MouseInput,
+  MouseInputOptions,
+  MouseInputState,
+  MutableSpherical,
+  Pnt3,
+  Point2,
+  Point3,
+  Qtrn,
+} from '../../../../base';
 import { filter, takeUntil } from 'rxjs';
-import { MutableSpherical, Point2, Point3 } from '../../../../base/models/points';
-import { Qtrn } from '../../../../base/math/quaternion';
-import { Pnt3 } from '../../../../base/math/point3';
 import { map } from 'rxjs/operators';
+import { Renderer3dEntity } from '../../renderer-3d.entity';
 
 export type OrbitCameraControllerOptions = {
   mouseOptions: Partial<MouseInputOptions>;
@@ -24,8 +31,8 @@ const DEFAULT_OPTIONS: OrbitCameraControllerOptions = {
   dollying: { sensitivity: 1 },
 };
 
-export class OrbitCameraController extends GgEntity {
-  public readonly tickOrder = GGTickOrder.INPUT_CONTROLLERS;
+export class OrbitCameraController extends IEntity {
+  public readonly tickOrder = TickOrder.INPUT_CONTROLLERS;
 
   protected readonly options: OrbitCameraControllerOptions;
   protected readonly mouseInput: MouseInput;
@@ -52,7 +59,7 @@ export class OrbitCameraController extends GgEntity {
     this.spherical.theta = value;
   }
 
-  constructor(protected readonly camera: Gg3dCameraEntity, options: Partial<OrbitCameraControllerOptions> = {}) {
+  constructor(protected readonly camera: Renderer3dEntity, options: Partial<OrbitCameraControllerOptions> = {}) {
     super();
     this.options = { ...DEFAULT_OPTIONS, ...options };
     this.mouseInput = new MouseInput(this.options.mouseOptions);

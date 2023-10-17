@@ -1,11 +1,7 @@
-import { AnimationFunction, AnimationMixer } from '../../../../base/entities/controllers/animation-mixer';
-import { Point3 } from '../../../../base/models/points';
-import { Pnt3 } from '../../../../base/math/point3';
-import { Qtrn } from '../../../../base/math/quaternion';
+import { AnimationFunction, AnimationMixer, lerpNumber, Pnt3, Point3, Qtrn } from '../../../../base';
 import { takeUntil } from 'rxjs';
 import { Gg3dWorld } from '../../../gg-3d-world';
-import { lerpNumber } from '../../../../base/math/numbers';
-import { Gg3dCameraEntity } from '../../gg-3d-camera.entity';
+import { Renderer3dEntity } from '../../renderer-3d.entity';
 
 export type Camera3dAnimationArgs = {
   position: Point3;
@@ -18,7 +14,7 @@ const defaultUp = Pnt3.Z;
 const defaultFov = 65;
 
 export class Camera3dAnimator extends AnimationMixer<Camera3dAnimationArgs> {
-  constructor(public entity: Gg3dCameraEntity, protected _animationFunction: AnimationFunction<Camera3dAnimationArgs>) {
+  constructor(public entity: Renderer3dEntity, protected _animationFunction: AnimationFunction<Camera3dAnimationArgs>) {
     super(_animationFunction, (a, b, t) => ({
       position: Pnt3.lerp(a.position, b.position, t),
       target: Pnt3.lerp(a.target, b.target, t),
@@ -35,6 +31,6 @@ export class Camera3dAnimator extends AnimationMixer<Camera3dAnimationArgs> {
   protected applyPositioning(value: Camera3dAnimationArgs) {
     this.entity.position = value.position;
     this.entity.rotation = Qtrn.lookAt(value.position, value.target, value.up || defaultUp);
-    this.entity.fov = value.fov || defaultFov;
+    this.entity.camera.fov = value.fov || defaultFov;
   }
 }

@@ -1,15 +1,16 @@
-import { GgWorld } from '../base/gg-world';
-import { Point3, Point4 } from '../base/models/points';
-import { IGg3dPhysicsWorld, IGg3dVisualScene } from './interfaces';
+import { GgWorld, Pnt3, Point3, Point4, Qtrn, RendererOptions } from '../base';
 import { Gg3dLoader } from './loader';
-import { Gg3dEntity } from './entities/gg-3d-entity';
+import { Entity3d } from './entities/entity-3d';
 import { BodyShape3DDescriptor } from './models/shapes';
-import { Qtrn } from '../base/math/quaternion';
-import { Pnt3 } from '../base/math/point3';
+import { IVisualScene3dComponent } from './components/rendering/i-visual-scene-3d.component';
+import { IPhysicsWorld3dComponent } from './components/physics/i-physics-world-3d';
+import { Renderer3dEntity } from './entities/renderer-3d.entity';
+import { ICameraComponent } from './components/rendering/i-camera.component';
+import { IRenderer3dComponent } from './components/rendering/i-renderer-3d.component';
 
 export class Gg3dWorld<
-  V extends IGg3dVisualScene = IGg3dVisualScene,
-  P extends IGg3dPhysicsWorld = IGg3dPhysicsWorld,
+  V extends IVisualScene3dComponent = IVisualScene3dComponent,
+  P extends IPhysicsWorld3dComponent = IPhysicsWorld3dComponent,
 > extends GgWorld<Point3, Point4, V, P> {
   public readonly loader: Gg3dLoader;
 
@@ -38,17 +39,29 @@ export class Gg3dWorld<
     }
   }
 
-  addPrimitiveRigidBody(
-    descr: BodyShape3DDescriptor,
-    position: Point3 = Pnt3.O,
-    rotation: Point4 = Qtrn.O,
-  ): Gg3dEntity {
-    const entity = new Gg3dEntity(
+  addPrimitiveRigidBody(descr: BodyShape3DDescriptor, position: Point3 = Pnt3.O, rotation: Point4 = Qtrn.O): Entity3d {
+    const entity = new Entity3d(
       this.visualScene.factory.createPrimitive(descr.shape),
       this.physicsWorld.factory.createRigidBody(descr),
     );
     entity.position = position;
     entity.rotation = rotation;
+    this.addEntity(entity);
+    return entity;
+  }
+
+  addRenderer<
+    RC extends IRenderer3dComponent<V> = IRenderer3dComponent<V>,
+    CC extends ICameraComponent<V> = ICameraComponent<V>,
+  >(
+    camera: CC,
+    canvas?: HTMLCanvasElement,
+    rendererOptions?: Partial<RendererOptions>,
+  ): Renderer3dEntity<V, IRenderer3dComponent<V>, CC> {
+    const entity = new Renderer3dEntity<V, RC, CC>(
+      this.visualScene.createRenderer(camera, canvas, rendererOptions) as RC,
+      camera,
+    );
     this.addEntity(entity);
     return entity;
   }

@@ -1,4 +1,4 @@
-import { GgEntity, GGTickOrder } from '../gg-entity';
+import { IEntity, TickOrder } from '../i-entity';
 import { BehaviorSubject, distinctUntilChanged, Observable, Subject, takeUntil } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
 import { GgWorld } from '../../gg-world';
@@ -11,8 +11,8 @@ export type AnimationFunction<T> = (elapsed: number, delta: number) => T;
  * The current value of the animation can be subscribed to using the `subscribeToValue` property.
  * The animation function can be changed with `transitAnimationFunction` or `transitFromStaticState`.
  */
-export class AnimationMixer<T> extends GgEntity {
-  public readonly tickOrder: number = GGTickOrder.ANIMATION_MIXERS;
+export class AnimationMixer<T> extends IEntity {
+  public readonly tickOrder: number = TickOrder.ANIMATION_MIXERS;
   /**
    * A subject that emits the current value of the animation on every tick.
    */

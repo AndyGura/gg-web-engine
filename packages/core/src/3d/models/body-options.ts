@@ -1,3 +1,3 @@
-import { BodyOptions } from '../../base/models/body-options';
+import { BodyOptions } from '../../base';
 
 export interface Body3DOptions extends BodyOptions {}

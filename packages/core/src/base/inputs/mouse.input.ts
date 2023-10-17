@@ -1,7 +1,7 @@
-import { Input } from './input';
+import { IInput } from './i-input';
 import { BehaviorSubject, filter, finalize, fromEvent, NEVER, Observable, share, Subject, takeUntil } from 'rxjs';
-import { Point2 } from '../models/points';
 import { map, pairwise, switchMap, tap } from 'rxjs/operators';
+import { Point2 } from '../models/points';
 import { Pnt2 } from '../math/point2';
 
 /**
@@ -48,7 +48,7 @@ export enum MouseInputState { //MouseInputState {
 /**
  * A class representing mouse input.
  */
-export class MouseInput extends Input<[], [unlockPointer?: boolean]> {
+export class MouseInput extends IInput<[], [unlockPointer?: boolean]> {
   static isTouchDevice(): boolean {
     return (
       'createTouch' in document ||

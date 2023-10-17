@@ -1,13 +1,13 @@
-import { GgWorld } from '../base/gg-world';
-import { Point2 } from '../base/models/points';
-import { IGg2dPhysicsWorld, IGg2dVisualScene } from './interfaces';
+import { GgWorld, Pnt2, Point2, RendererOptions } from '../base';
 import { BodyShape2DDescriptor } from './models/shapes';
-import { Gg2dEntity } from './entities/gg-2d-entity';
-import { Pnt2 } from '../base/math/point2';
+import { Entity2d } from './entities/entity-2d';
+import { IPhysicsWorld2dComponent } from './components/physics/i-physics-world-2d.component';
+import { IVisualScene2dComponent } from './components/rendering/i-visual-scene-2d.component';
+import { Renderer2dEntity } from './entities/renderer-2d.entity';
 
 export class Gg2dWorld<
-  V extends IGg2dVisualScene = IGg2dVisualScene,
-  P extends IGg2dPhysicsWorld = IGg2dPhysicsWorld,
+  V extends IVisualScene2dComponent = IVisualScene2dComponent,
+  P extends IPhysicsWorld2dComponent = IPhysicsWorld2dComponent,
 > extends GgWorld<Point2, number, V, P> {
   constructor(
     public readonly visualScene: V,
@@ -33,13 +33,19 @@ export class Gg2dWorld<
     }
   }
 
-  addPrimitiveRigidBody(descr: BodyShape2DDescriptor, position: Point2 = Pnt2.O, rotation: number = 0): Gg2dEntity {
-    const entity = new Gg2dEntity(
+  addPrimitiveRigidBody(descr: BodyShape2DDescriptor, position: Point2 = Pnt2.O, rotation: number = 0): Entity2d {
+    const entity = new Entity2d(
       this.visualScene.factory.createPrimitive(descr.shape),
       this.physicsWorld.factory.createRigidBody(descr),
     );
     entity.position = position;
     entity.rotation = rotation;
+    this.addEntity(entity);
+    return entity;
+  }
+
+  addRenderer(canvas?: HTMLCanvasElement, rendererOptions?: Partial<RendererOptions>): Renderer2dEntity {
+    const entity = new Renderer2dEntity(this.visualScene.createRenderer(canvas, rendererOptions));
     this.addEntity(entity);
     return entity;
   }

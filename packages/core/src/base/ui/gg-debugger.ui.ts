@@ -1,5 +1,5 @@
 import { GgStatic } from '../gg-static';
-import { createInlineTickController } from '../entities/inline-controller';
+import { createInlineTickController } from '../entities/controllers/inline-controller';
 import { fromEvent, Subject, takeUntil } from 'rxjs';
 import Stats from 'stats.js';
 

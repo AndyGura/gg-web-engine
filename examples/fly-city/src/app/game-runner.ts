@@ -1,15 +1,14 @@
 import {
   CarKeyboardHandlingController,
-  Gg3dMapGraphEntity,
-  Gg3dRaycastVehicleEntity,
-  Gg3dRenderer,
-  Gg3dTriggerEntity,
+  MapGraph3dEntity,
+  RaycastVehicle3dEntity,
+  Trigger3dEntity,
   Gg3dWorld,
   Pnt3,
-  Qtrn,
+  Qtrn, Renderer3dEntity,
 } from '@gg-web-engine/core';
-import { Gg3dVisualScene } from '@gg-web-engine/three';
-import { Gg3dPhysicsWorld } from '@gg-web-engine/ammo';
+import { ThreeSceneComponent } from '@gg-web-engine/three';
+import { AmmoWorldComponent } from '@gg-web-engine/ammo';
 import { BehaviorSubject, combineLatest, filter, Observable, pairwise } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { GameCameraController } from './game-camera-controller';
@@ -18,7 +17,7 @@ import { HttpClient } from '@angular/common/http';
 
 export type CurrentState =
   { mode: 'freecamera' }
-  | { mode: 'driving', car: Gg3dRaycastVehicleEntity, carType: 'lambo' | 'truck' | 'car' };
+  | { mode: 'driving', car: RaycastVehicle3dEntity, carType: 'lambo' | 'truck' | 'car' };
 
 export class GameRunner {
 
@@ -28,16 +27,16 @@ export class GameRunner {
 
   public readonly state$: BehaviorSubject<CurrentState> = new BehaviorSubject<CurrentState>({ mode: 'freecamera' });
 
-  get controlCar$(): Observable<Gg3dRaycastVehicleEntity | null> {
+  get controlCar$(): Observable<RaycastVehicle3dEntity | null> {
     return this.state$.pipe(map(x => x.mode === 'driving' ? x.car : null));
   }
 
   constructor(
     public readonly http: HttpClient,
-    public readonly world: Gg3dWorld<Gg3dVisualScene, Gg3dPhysicsWorld>,
-    public readonly renderer: Gg3dRenderer,
-    public readonly cityMapGraph: Gg3dMapGraphEntity,
-    public readonly mapBounds: Gg3dTriggerEntity,
+    public readonly world: Gg3dWorld<ThreeSceneComponent, AmmoWorldComponent>,
+    public readonly renderer: Renderer3dEntity,
+    public readonly cityMapGraph: MapGraph3dEntity,
+    public readonly mapBounds: Trigger3dEntity,
   ) {
     this.gameCameraController = new GameCameraController(this.world, this.renderer);
     this.state$.subscribe((state) => {
@@ -63,7 +62,7 @@ export class GameRunner {
     });
     combineLatest(this.gameCameraController.cameraIndex$, this.state$.pipe(pairwise()))
       .subscribe(([index, [oldState, newState]]) => {
-        const car: Gg3dRaycastVehicleEntity | undefined = (newState as any).car || (oldState as any).car;
+        const car: RaycastVehicle3dEntity | undefined = (newState as any).car || (oldState as any).car;
         if (car) {
           car.visible = newState.mode == 'freecamera' || index != 1; // invisible if bumper camera
         }
@@ -106,10 +105,10 @@ export class GameRunner {
     this.world.keyboardInput.bind('KeyF').pipe(filter(x => x)).subscribe(() => {
       if (this.state$.getValue().mode === 'freecamera') {
         let distance = Number.MAX_SAFE_INTEGER;
-        let car: Gg3dRaycastVehicleEntity | null = null;
+        let car: RaycastVehicle3dEntity | null = null;
         for (const entity of this.world.children) {
-          if (entity instanceof Gg3dRaycastVehicleEntity) {
-            const curDistance = Pnt3.len(Pnt3.sub(this.renderer.camera.position, entity.position));
+          if (entity instanceof RaycastVehicle3dEntity) {
+            const curDistance = Pnt3.len(Pnt3.sub(this.renderer.position, entity.position));
             if (curDistance < distance) {
               distance = curDistance;
               car = entity;

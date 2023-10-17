@@ -1,14 +1,15 @@
 import { BehaviorSubject, combineLatest, filter, interval, pipe, takeUntil } from 'rxjs';
 import { distinctUntilChanged, map, pairwise, startWith, switchMap, take, tap } from 'rxjs/operators';
-import { KeyboardInput } from '../../../../base/inputs/keyboard.input';
-import { Gg3dRaycastVehicleEntity } from '../../gg-3d-raycast-vehicle.entity';
 import {
   DirectionKeyboardInput,
   DirectionKeyboardKeymap,
   DirectionKeyboardOutput,
-} from '../../../../base/inputs/direction.keyboard-input';
-import { GgEntity, GGTickOrder } from '../../../../base/entities/gg-entity';
-import { GgWorld } from '../../../../base/gg-world';
+  IEntity,
+  TickOrder,
+  GgWorld,
+  KeyboardInput,
+} from '../../../../base';
+import { RaycastVehicle3dEntity } from '../../raycast-vehicle-3d.entity';
 
 // TODO pass as settings
 // TODO smooth y?
@@ -21,8 +22,8 @@ export type CarKeyboardControllerOptions = {
   handbrakeKey: string;
 };
 
-export class CarKeyboardHandlingController extends GgEntity {
-  public readonly tickOrder = GGTickOrder.INPUT_CONTROLLERS;
+export class CarKeyboardHandlingController extends IEntity {
+  public readonly tickOrder = TickOrder.INPUT_CONTROLLERS;
 
   protected readonly directionsInput: DirectionKeyboardInput;
   // emits values -1 - 1; -1 = full turn left; 1 = full turn right
@@ -55,7 +56,7 @@ export class CarKeyboardHandlingController extends GgEntity {
 
   constructor(
     protected readonly keyboard: KeyboardInput,
-    public car: Gg3dRaycastVehicleEntity | null,
+    public car: RaycastVehicle3dEntity | null,
     protected readonly options: CarKeyboardControllerOptions = {
       keymap: 'arrows',
       gearUpDownKeys: ['KeyA', 'KeyZ'],

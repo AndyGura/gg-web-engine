@@ -1,10 +1,9 @@
 import { Gg3dWorld } from './gg-3d-world';
 import { GgMeta } from './models/gg-meta';
-import { Gg3dEntity } from './entities/gg-3d-entity';
-import { Point3, Point4 } from '../base/models/points';
-import { Pnt3 } from '../base/math/point3';
-import { Qtrn } from '../base/math/quaternion';
-import { IGg3dBody, IGg3dObject } from './interfaces';
+import { Entity3d } from './entities/entity-3d';
+import { Pnt3, Point3, Point4, Qtrn } from '../base';
+import { IDisplayObject3dComponent } from './components/rendering/i-display-object-3d.component';
+import { IRigidBody3dComponent } from './components/physics/i-rigid-body-3d.component';
 
 export enum CachingStrategy {
   Nothing,
@@ -36,12 +35,12 @@ const defaultLoadOptions: LoadOptions = {
 };
 
 export type LoadResourcesResult = {
-  resources: { object3D: IGg3dObject | null; body: IGg3dBody | null }[];
+  resources: { object3D: IDisplayObject3dComponent | null; body: IRigidBody3dComponent | null }[];
   meta: GgMeta;
 };
 
 export type LoadResult = {
-  entities: Gg3dEntity[];
+  entities: Entity3d[];
   meta: GgMeta;
 };
 
@@ -134,7 +133,7 @@ export class Gg3dLoader {
     const loadOptions = { ...defaultLoadOptions, ...options };
     const { resources, meta } = await this.loadGgGlbResources(path, loadOptions.cachingStrategy);
     const result: LoadResultWithProps = {
-      entities: resources.map(({ object3D, body }) => new Gg3dEntity(object3D, body)),
+      entities: resources.map(({ object3D, body }) => new Entity3d(object3D, body)),
       meta,
     };
     if (loadOptions.loadProps) {
