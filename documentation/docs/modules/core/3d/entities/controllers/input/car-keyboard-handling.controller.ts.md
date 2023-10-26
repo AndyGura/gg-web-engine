@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/controllers/input/car-keyboard-handling.controller.ts
-nav_order: 21
+nav_order: 36
 parent: Modules
 ---
 
@@ -47,7 +47,7 @@ export type CarKeyboardControllerOptions = {
 export declare class CarKeyboardHandlingController {
   constructor(
     protected readonly keyboard: KeyboardInput,
-    public car: Gg3dRaycastVehicleEntity | null,
+    public car: RaycastVehicle3dEntity | null,
     protected readonly options: CarKeyboardControllerOptions = {
       keymap: 'arrows',
       gearUpDownKeys: ['KeyA', 'KeyZ'],
@@ -78,7 +78,7 @@ async onRemoved(): Promise<void>
 **Signature**
 
 ```ts
-readonly tickOrder: GGTickOrder.INPUT_CONTROLLERS
+readonly tickOrder: TickOrder.INPUT_CONTROLLERS
 ```
 
 ### directionsInput (property)

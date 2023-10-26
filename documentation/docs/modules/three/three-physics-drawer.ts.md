@@ -1,6 +1,6 @@
 ---
 title: three/three-physics-drawer.ts
-nav_order: 85
+nav_order: 104
 parent: Modules
 ---
 
@@ -16,6 +16,7 @@ parent: Modules
     - [drawLine (method)](#drawline-method)
     - [update (method)](#update-method)
     - [setXYZ (method)](#setxyz-method)
+    - [entity (property)](#entity-property)
     - [debugBufferSize (property)](#debugbuffersize-property)
     - [debugVertices (property)](#debugvertices-property)
     - [debugColors (property)](#debugcolors-property)
@@ -64,6 +65,14 @@ update()
 
 ```ts
 private setXYZ(array: Float32Array, index: number, x: number, y: number, z: number)
+```
+
+### entity (property)
+
+**Signature**
+
+```ts
+entity: any
 ```
 
 ### debugBufferSize (property)

@@ -1,6 +1,6 @@
 ---
 title: core/base/gg-static.ts
-nav_order: 47
+nav_order: 70
 parent: Modules
 ---
 
@@ -43,7 +43,7 @@ async console(input: string): Promise<string>
 **Signature**
 
 ```ts
-readonly worlds: GgWorld<any, any, GgVisualScene<any, any>, GgPhysicsWorld<any, any>>[]
+readonly worlds: GgWorld<any, any, IVisualSceneComponent<any, any>, IPhysicsWorldComponent<any, any>>[]
 ```
 
 ### selectedWorld (property)
@@ -51,5 +51,5 @@ readonly worlds: GgWorld<any, any, GgVisualScene<any, any>, GgPhysicsWorld<any, 
 **Signature**
 
 ```ts
-selectedWorld: GgWorld<any, any, GgVisualScene<any, any>, GgPhysicsWorld<any, any>> | null
+selectedWorld: GgWorld<any, any, IVisualSceneComponent<any, any>, IPhysicsWorldComponent<any, any>> | null
 ```

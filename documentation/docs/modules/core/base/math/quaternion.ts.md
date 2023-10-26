@@ -1,6 +1,6 @@
 ---
 title: core/base/math/quaternion.ts
-nav_order: 64
+nav_order: 84
 parent: Modules
 ---
 

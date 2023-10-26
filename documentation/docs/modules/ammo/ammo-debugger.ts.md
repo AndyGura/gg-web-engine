@@ -34,7 +34,10 @@ parent: Modules
 
 ```ts
 export declare class AmmoDebugger {
-  constructor(protected readonly world: Gg3dPhysicsWorld, private readonly drawer: GgDebugPhysicsDrawer<Point3, Point4>)
+  constructor(
+    protected readonly world: AmmoWorldComponent,
+    private readonly drawer: IDebugPhysicsDrawer<Point3, Point4>
+  )
 }
 ```
 

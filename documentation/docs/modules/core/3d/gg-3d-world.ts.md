@@ -1,6 +1,6 @@
 ---
 title: core/3d/gg-3d-world.ts
-nav_order: 31
+nav_order: 45
 parent: Modules
 ---
 
@@ -13,6 +13,7 @@ parent: Modules
 - [utils](#utils)
   - [Gg3dWorld (class)](#gg3dworld-class)
     - [addPrimitiveRigidBody (method)](#addprimitiverigidbody-method)
+    - [addRenderer (method)](#addrenderer-method)
     - [loader (property)](#loader-property)
 
 ---
@@ -38,11 +39,18 @@ export declare class Gg3dWorld<V, P> {
 **Signature**
 
 ```ts
-addPrimitiveRigidBody(
-    descr: BodyShape3DDescriptor,
-    position: Point3 = Pnt3.O,
-    rotation: Point4 = Qtrn.O,
-  ): Gg3dEntity
+addPrimitiveRigidBody(descr: BodyShape3DDescriptor, position: Point3 = Pnt3.O, rotation: Point4 = Qtrn.O): Entity3d
+```
+
+### addRenderer (method)
+
+**Signature**
+
+```ts
+addRenderer<
+    CC extends ICameraComponent<V> = ICameraComponent<V>,
+    RC extends IRenderer3dComponent<V, CC> = IRenderer3dComponent<V, CC>,
+  >(camera: CC, canvas?: HTMLCanvasElement, rendererOptions?: Partial<RendererOptions>): Renderer3dEntity<V, CC, RC>
 ```
 
 ### loader (property)

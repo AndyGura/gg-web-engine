@@ -1,6 +1,6 @@
 ---
 title: core/3d/factories.ts
-nav_order: 30
+nav_order: 44
 parent: Modules
 ---
 
@@ -11,36 +11,25 @@ parent: Modules
 <h2 class="text-delta">Table of contents</h2>
 
 - [utils](#utils)
-  - [IGg3dBodyFactory (interface)](#igg3dbodyfactory-interface)
-  - [IGg3dObjectFactory (class)](#igg3dobjectfactory-class)
+  - [IDisplayObject3dComponentFactory (class)](#idisplayobject3dcomponentfactory-class)
     - [createPrimitive (method)](#createprimitive-method)
     - [createBox (method)](#createbox-method)
     - [createCapsule (method)](#createcapsule-method)
     - [createCylinder (method)](#createcylinder-method)
     - [createCone (method)](#createcone-method)
     - [createSphere (method)](#createsphere-method)
+  - [IPhysicsBody3dComponentFactory (interface)](#iphysicsbody3dcomponentfactory-interface)
 
 ---
 
 # utils
 
-## IGg3dBodyFactory (interface)
+## IDisplayObject3dComponentFactory (class)
 
 **Signature**
 
 ```ts
-export interface IGg3dBodyFactory<T extends IGg3dBody = IGg3dBody, K extends IGg3dTrigger = IGg3dTrigger> {
-  createRigidBody(descriptor: BodyShape3DDescriptor, transform?: { position?: Point3; rotation?: Point4 }): T
-  createTrigger(descriptor: Shape3DDescriptor, transform?: { position?: Point3; rotation?: Point4 }): K
-}
-```
-
-## IGg3dObjectFactory (class)
-
-**Signature**
-
-```ts
-export declare class IGg3dObjectFactory<T>
+export declare class IDisplayObject3dComponentFactory<DOC>
 ```
 
 ### createPrimitive (method)
@@ -48,7 +37,7 @@ export declare class IGg3dObjectFactory<T>
 **Signature**
 
 ```ts
-abstract createPrimitive(descriptor: Shape3DDescriptor, material?: any): T;
+abstract createPrimitive(descriptor: Shape3DDescriptor, material?: any): DOC;
 ```
 
 ### createBox (method)
@@ -56,7 +45,7 @@ abstract createPrimitive(descriptor: Shape3DDescriptor, material?: any): T;
 **Signature**
 
 ```ts
-createBox(dimensions: Point3, material?: any): T
+createBox(dimensions: Point3, material?: any): DOC
 ```
 
 ### createCapsule (method)
@@ -64,7 +53,7 @@ createBox(dimensions: Point3, material?: any): T
 **Signature**
 
 ```ts
-createCapsule(radius: number, centersDistance: number, material?: any): T
+createCapsule(radius: number, centersDistance: number, material?: any): DOC
 ```
 
 ### createCylinder (method)
@@ -72,7 +61,7 @@ createCapsule(radius: number, centersDistance: number, material?: any): T
 **Signature**
 
 ```ts
-createCylinder(radius: number, height: number, material?: any): T
+createCylinder(radius: number, height: number, material?: any): DOC
 ```
 
 ### createCone (method)
@@ -80,7 +69,7 @@ createCylinder(radius: number, height: number, material?: any): T
 **Signature**
 
 ```ts
-createCone(radius: number, height: number, material?: any): T
+createCone(radius: number, height: number, material?: any): DOC
 ```
 
 ### createSphere (method)
@@ -88,5 +77,20 @@ createCone(radius: number, height: number, material?: any): T
 **Signature**
 
 ```ts
-createSphere(radius: number): T
+createSphere(radius: number): DOC
+```
+
+## IPhysicsBody3dComponentFactory (interface)
+
+**Signature**
+
+```ts
+export interface IPhysicsBody3dComponentFactory<
+  T extends IRigidBody3dComponent = IRigidBody3dComponent,
+  K extends ITrigger3dComponent = ITrigger3dComponent
+> {
+  createRigidBody(descriptor: BodyShape3DDescriptor, transform?: { position?: Point3; rotation?: Point4 }): T
+
+  createTrigger(descriptor: Shape3DDescriptor, transform?: { position?: Point3; rotation?: Point4 }): K
+}
 ```

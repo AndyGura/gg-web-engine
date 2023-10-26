@@ -5,4 +5,5 @@ has_children: true
 
 <h2 class="text-delta">Directory table of contents</h2>
 
-- [matter/impl](/gg-web-engine/modules/matter/impl)
+- [matter/components](/gg-web-engine/modules/matter/components)
+- [matter/matter-factory.ts](/gg-web-engine/modules/matter/matter-factory.ts)

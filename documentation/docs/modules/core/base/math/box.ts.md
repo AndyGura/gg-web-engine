@@ -1,6 +1,6 @@
 ---
 title: core/base/math/box.ts
-nav_order: 59
+nav_order: 79
 parent: Modules
 ---
 

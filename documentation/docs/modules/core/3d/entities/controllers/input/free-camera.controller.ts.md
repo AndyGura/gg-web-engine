@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/controllers/input/free-camera.controller.ts
-nav_order: 22
+nav_order: 37
 parent: Modules
 ---
 
@@ -33,7 +33,7 @@ A controller for a free-moving camera.
 export declare class FreeCameraController {
   constructor(
     protected readonly keyboard: KeyboardInput,
-    protected readonly camera: Gg3dCameraEntity,
+    protected readonly camera: Renderer3dEntity,
     protected readonly options: FreeCameraControllerOptions = {
       keymap: 'wasd',
       movementOptions: { speed: 0.5 },
@@ -66,7 +66,7 @@ async onRemoved(): Promise<void>
 **Signature**
 
 ```ts
-readonly tickOrder: GGTickOrder.INPUT_CONTROLLERS
+readonly tickOrder: TickOrder.INPUT_CONTROLLERS
 ```
 
 ### mouseInput (property)

@@ -1,6 +1,6 @@
 ---
 title: core/base/entities/mixins/renderable-entity.mixin.ts
-nav_order: 46
+nav_order: 69
 parent: Modules
 ---
 
@@ -15,6 +15,8 @@ parent: Modules
     - [updateVisibility (method)](#updatevisibility-method)
     - [addChildren (method)](#addchildren-method)
     - [removeChildren (method)](#removechildren-method)
+  - [RenderableEntityMixin2d (class)](#renderableentitymixin2d-class)
+  - [RenderableEntityMixin3d (class)](#renderableentitymixin3d-class)
 
 ---
 
@@ -25,7 +27,7 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare class RenderableEntityMixin
+export declare class RenderableEntityMixin<D, R, V, P>
 ```
 
 ### updateVisibility (method)
@@ -41,7 +43,7 @@ public updateVisibility(): void
 **Signature**
 
 ```ts
-addChildren(...entities: GgEntity[])
+addChildren(...entities: IEntity[])
 ```
 
 ### removeChildren (method)
@@ -49,5 +51,21 @@ addChildren(...entities: GgEntity[])
 **Signature**
 
 ```ts
-removeChildren(entities: GgEntity[], dispose: boolean = false)
+removeChildren(entities: IEntity[], dispose: boolean = false)
+```
+
+## RenderableEntityMixin2d (class)
+
+**Signature**
+
+```ts
+export declare class RenderableEntityMixin2d
+```
+
+## RenderableEntityMixin3d (class)
+
+**Signature**
+
+```ts
+export declare class RenderableEntityMixin3d
 ```

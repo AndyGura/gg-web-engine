@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/controllers/input/orbit-camera.controller.ts
-nav_order: 23
+nav_order: 38
 parent: Modules
 ---
 
@@ -31,7 +31,7 @@ parent: Modules
 
 ```ts
 export declare class OrbitCameraController {
-  constructor(protected readonly camera: Gg3dCameraEntity, options: Partial<OrbitCameraControllerOptions> = {})
+  constructor(protected readonly camera: Renderer3dEntity, options: Partial<OrbitCameraControllerOptions> = {})
 }
 ```
 
@@ -56,7 +56,7 @@ async onRemoved(): Promise<void>
 **Signature**
 
 ```ts
-readonly tickOrder: GGTickOrder.INPUT_CONTROLLERS
+readonly tickOrder: TickOrder.INPUT_CONTROLLERS
 ```
 
 ### options (property)

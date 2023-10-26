@@ -1,6 +1,6 @@
 ---
 title: core/base/math/matrix4.ts
-nav_order: 60
+nav_order: 80
 parent: Modules
 ---
 
