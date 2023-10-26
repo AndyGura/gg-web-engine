@@ -1,4 +1,13 @@
-import { Gg3dWorld, GgBox3d, IDisplayObject3dComponent, IEntity, Point3, Point4 } from '@gg-web-engine/core';
+import {
+  Gg3dWorld,
+  GgBox3d,
+  IDisplayObject3dComponent,
+  IEntity,
+  Pnt3,
+  Point3,
+  Point4,
+  Qtrn,
+} from '@gg-web-engine/core';
 import { Box3, Group, Mesh, Object3D, Scene } from 'three';
 import { ThreeSceneComponent } from './three-scene.component';
 
@@ -8,7 +17,7 @@ export class ThreeDisplayObjectComponent implements IDisplayObject3dComponent<Th
   constructor(public nativeMesh: Object3D) {}
 
   public get position(): Point3 {
-    return this.nativeMesh.position;
+    return Pnt3.clone(this.nativeMesh.position);
   }
 
   public set position(value: Point3) {
@@ -16,7 +25,7 @@ export class ThreeDisplayObjectComponent implements IDisplayObject3dComponent<Th
   }
 
   public get rotation(): Point4 {
-    return this.nativeMesh.quaternion;
+    return Qtrn.clone(this.nativeMesh.quaternion);
   }
 
   public set rotation(value: Point4) {
@@ -24,7 +33,7 @@ export class ThreeDisplayObjectComponent implements IDisplayObject3dComponent<Th
   }
 
   public get scale(): Point3 {
-    return this.nativeMesh.scale;
+    return Pnt3.clone(this.nativeMesh.scale);
   }
 
   public set scale(value: Point3) {

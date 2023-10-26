@@ -1,4 +1,4 @@
-import { Gg2dWorld, GgBox2d, IDisplayObject2dComponent, IEntity, Point2 } from '@gg-web-engine/core';
+import { Gg2dWorld, GgBox2d, IDisplayObject2dComponent, IEntity, Pnt2, Point2 } from '@gg-web-engine/core';
 import { PixiSceneComponent } from './pixi-scene.component';
 import { DisplayObject } from 'pixi.js';
 
@@ -8,7 +8,7 @@ export class PixiDisplayObjectComponent implements IDisplayObject2dComponent<Pix
   constructor(public nativeSprite: DisplayObject) {}
 
   public get position(): Point2 {
-    return this.nativeSprite.position;
+    return Pnt2.clone(this.nativeSprite.position);
   }
 
   public set position(value: Point2) {
@@ -25,7 +25,7 @@ export class PixiDisplayObjectComponent implements IDisplayObject2dComponent<Pix
   }
 
   public get scale(): Point2 {
-    return this.nativeSprite.scale;
+    return Pnt2.clone(this.nativeSprite.scale);
   }
 
   public set scale(value: Point2) {
