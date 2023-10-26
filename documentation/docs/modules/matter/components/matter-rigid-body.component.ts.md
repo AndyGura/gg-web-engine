@@ -1,6 +1,6 @@
 ---
 title: matter/components/matter-rigid-body.component.ts
-nav_order: 91
+nav_order: 93
 parent: Modules
 ---
 

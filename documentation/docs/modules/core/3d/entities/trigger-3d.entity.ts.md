@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/trigger-3d.entity.ts
-nav_order: 43
+nav_order: 45
 parent: Modules
 ---
 

@@ -1,9 +1,6 @@
-import { IEntity } from '../i-entity';
-import { IVisualSceneComponent } from '../../components/rendering/i-visual-scene.component';
-import { IPhysicsWorldComponent } from '../../components/physics/i-physics-world.component';
-import { Point2, Point3, Point4 } from '../../models/points';
-import { IPhysicsWorld3dComponent, IVisualScene3dComponent } from '../../../3d';
-import { IPhysicsWorld2dComponent, IVisualScene2dComponent } from '../../../2d';
+import { IEntity } from './i-entity';
+import { IVisualSceneComponent } from '../components/rendering/i-visual-scene.component';
+import { IPhysicsWorldComponent } from '../components/physics/i-physics-world.component';
 
 const updateRecv = (item: IEntity) => {
   if (!!(item as any).updateVisibility) {
@@ -19,7 +16,7 @@ const updateChildrenRecv = (item: IEntity) => {
   }
 };
 
-export abstract class RenderableEntityMixin<
+export abstract class IRenderableEntity<
   D = any,
   R = any,
   V extends IVisualSceneComponent<D, R> = IVisualSceneComponent<D, R>,
@@ -70,17 +67,3 @@ export abstract class RenderableEntityMixin<
     }
   }
 }
-
-export abstract class RenderableEntityMixin3d extends RenderableEntityMixin<
-  Point3,
-  Point4,
-  IVisualScene3dComponent,
-  IPhysicsWorld3dComponent
-> {}
-
-export abstract class RenderableEntityMixin2d extends RenderableEntityMixin<
-  Point2,
-  number,
-  IVisualScene2dComponent,
-  IPhysicsWorld2dComponent
-> {}

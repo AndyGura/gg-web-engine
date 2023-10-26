@@ -25,7 +25,7 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare class Entity2d {
+export declare class Entity2d<VS, PW> {
   constructor(
     public readonly object2D: IDisplayObject2dComponent | null,
     public readonly objectBody: IRigidBody2dComponent | null

@@ -1,9 +1,18 @@
-import { Pnt2, Point2, RenderableEntityMixin2d, TickOrder } from '../../base';
+import { Pnt2, Point2, TickOrder } from '../../base';
 import { IRigidBody2dComponent } from '../components/physics/i-rigid-body-2d.component';
 import { IDisplayObject2dComponent } from '../components/rendering/i-display-object-2d.component';
 import { IPositionable2d } from '../interfaces/i-positionable-2d';
+import { IRenderable2dEntity } from './i-renderable-2d.entity';
+import { IVisualScene2dComponent } from '../components/rendering/i-visual-scene-2d.component';
+import { IPhysicsWorld2dComponent } from '../components/physics/i-physics-world-2d.component';
 
-export class Entity2d extends RenderableEntityMixin2d implements IPositionable2d {
+export class Entity2d<
+    VS extends IVisualScene2dComponent = IVisualScene2dComponent,
+    PW extends IPhysicsWorld2dComponent = IPhysicsWorld2dComponent,
+  >
+  extends IRenderable2dEntity<VS, PW>
+  implements IPositionable2d
+{
   public readonly tickOrder = TickOrder.OBJECTS_BINDING;
 
   private _position = Pnt2.O;

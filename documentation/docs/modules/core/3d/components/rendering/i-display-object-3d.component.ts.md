@@ -1,6 +1,6 @@
 ---
 title: core/3d/components/rendering/i-display-object-3d.component.ts
-nav_order: 31
+nav_order: 32
 parent: Modules
 ---
 

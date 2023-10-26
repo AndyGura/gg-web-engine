@@ -1,9 +1,18 @@
-import { Pnt3, Point3, Point4, Qtrn, RenderableEntityMixin3d, TickOrder } from '../../base';
+import { Pnt3, Point3, Point4, Qtrn, TickOrder } from '../../base';
 import { IRigidBody3dComponent } from '../components/physics/i-rigid-body-3d.component';
 import { IDisplayObject3dComponent } from '../components/rendering/i-display-object-3d.component';
 import { IPositionable3d } from '../interfaces/i-positionable-3d';
+import { IRenderable3dEntity } from './i-renderable-3d.entity';
+import { IVisualScene3dComponent } from '../components/rendering/i-visual-scene-3d.component';
+import { IPhysicsWorld3dComponent } from '../components/physics/i-physics-world-3d';
 
-export class Entity3d extends RenderableEntityMixin3d implements IPositionable3d {
+export class Entity3d<
+    VS extends IVisualScene3dComponent = IVisualScene3dComponent,
+    PW extends IPhysicsWorld3dComponent = IPhysicsWorld3dComponent,
+  >
+  extends IRenderable3dEntity<VS, PW>
+  implements IPositionable3d
+{
   public readonly tickOrder = TickOrder.OBJECTS_BINDING;
 
   private _position = Pnt3.O;

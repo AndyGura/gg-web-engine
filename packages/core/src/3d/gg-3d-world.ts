@@ -39,8 +39,12 @@ export class Gg3dWorld<
     }
   }
 
-  addPrimitiveRigidBody(descr: BodyShape3DDescriptor, position: Point3 = Pnt3.O, rotation: Point4 = Qtrn.O): Entity3d {
-    const entity = new Entity3d(
+  addPrimitiveRigidBody(
+    descr: BodyShape3DDescriptor,
+    position: Point3 = Pnt3.O,
+    rotation: Point4 = Qtrn.O,
+  ): Entity3d<V, P> {
+    const entity = new Entity3d<V, P>(
       this.visualScene.factory.createPrimitive(descr.shape),
       this.physicsWorld.factory.createRigidBody(descr),
     );

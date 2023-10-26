@@ -1,6 +1,6 @@
 ---
 title: core/base/gg-world.ts
-nav_order: 71
+nav_order: 73
 parent: Modules
 ---
 
@@ -101,7 +101,11 @@ public dispose(): void
 **Signature**
 
 ```ts
-abstract addPrimitiveRigidBody(descr: any, position?: D, rotation?: R): IPositionable<D, R> & RenderableEntityMixin;
+abstract addPrimitiveRigidBody(
+    descr: any,
+    position?: D,
+    rotation?: R,
+  ): IPositionable<D, R> & IRenderableEntity<D, R, V, P>;
 ```
 
 ### addEntity (method)

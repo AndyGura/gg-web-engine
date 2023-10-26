@@ -1,6 +1,6 @@
 ---
 title: core/base/ui/gg-debugger.ui.ts
-nav_order: 90
+nav_order: 92
 parent: Modules
 ---
 

@@ -1,6 +1,6 @@
 ---
 title: core/3d/gg-3d-world.ts
-nav_order: 45
+nav_order: 47
 parent: Modules
 ---
 
@@ -39,7 +39,11 @@ export declare class Gg3dWorld<V, P> {
 **Signature**
 
 ```ts
-addPrimitiveRigidBody(descr: BodyShape3DDescriptor, position: Point3 = Pnt3.O, rotation: Point4 = Qtrn.O): Entity3d
+addPrimitiveRigidBody(
+    descr: BodyShape3DDescriptor,
+    position: Point3 = Pnt3.O,
+    rotation: Point4 = Qtrn.O,
+  ): Entity3d<V, P>
 ```
 
 ### addRenderer (method)

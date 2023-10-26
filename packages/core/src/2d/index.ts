@@ -9,6 +9,7 @@ export * from './entities/controllers/entity-2d-positioning.animator';
 export * from './entities/entity-2d';
 export * from './entities/trigger-2d.entity';
 export * from './entities/renderer-2d.entity';
+export * from './entities/i-renderable-2d.entity';
 
 export * from './interfaces/i-positionable-2d';
 

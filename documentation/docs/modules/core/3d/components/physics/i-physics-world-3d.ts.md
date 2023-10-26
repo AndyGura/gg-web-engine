@@ -1,6 +1,6 @@
 ---
 title: core/3d/components/physics/i-physics-world-3d.ts
-nav_order: 26
+nav_order: 27
 parent: Modules
 ---
 

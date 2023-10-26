@@ -1,6 +1,6 @@
 ---
 title: core/base/components/rendering/i-display-object.component.ts
-nav_order: 61
+nav_order: 63
 parent: Modules
 ---
 

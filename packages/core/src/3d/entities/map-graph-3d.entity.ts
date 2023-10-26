@@ -1,10 +1,11 @@
 import { BehaviorSubject, NEVER, Observable, startWith, Subject, switchMap } from 'rxjs';
 import { distinctUntilChanged, map, tap, throttleTime } from 'rxjs/operators';
-import { Graph, IEntity, Point3, Point4, Qtrn, RenderableEntityMixin, TickOrder } from '../../base';
+import { Graph, IEntity, Point3, Point4, Qtrn, TickOrder } from '../../base';
 import { Gg3dWorld } from '../gg-3d-world';
 import { Entity3d } from './entity-3d';
 import { LoadOptions, LoadResultWithProps } from '../loader';
 import { IPositionable3d } from '../interfaces/i-positionable-3d';
+import { IRenderable3dEntity } from './i-renderable-3d.entity';
 
 export type MapGraphNodeType = {
   path: string;
@@ -96,7 +97,7 @@ const defaultOptions: Gg3dMapGraphEntityOptions = {
   inertia: 0,
 };
 
-export class MapGraph3dEntity extends RenderableEntityMixin {
+export class MapGraph3dEntity extends IRenderable3dEntity {
   public readonly tickOrder = TickOrder.POST_RENDERING;
 
   public readonly loaderCursorEntity$: BehaviorSubject<IPositionable3d | null> =

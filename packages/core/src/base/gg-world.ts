@@ -9,8 +9,8 @@ import {
   IVisualSceneComponent,
   KeyboardInput,
   PausableClock,
-  RenderableEntityMixin,
   IPositionable,
+  IRenderableEntity,
 } from '../base';
 import { filter } from 'rxjs';
 
@@ -160,7 +160,11 @@ export abstract class GgWorld<
     this.visualScene.dispose();
   }
 
-  abstract addPrimitiveRigidBody(descr: any, position?: D, rotation?: R): IPositionable<D, R> & RenderableEntityMixin;
+  abstract addPrimitiveRigidBody(
+    descr: any,
+    position?: D,
+    rotation?: R,
+  ): IPositionable<D, R> & IRenderableEntity<D, R, V, P>;
 
   public addEntity(entity: IEntity): void {
     if (!!entity.world) {

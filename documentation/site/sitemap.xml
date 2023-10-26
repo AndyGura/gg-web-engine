@@ -146,6 +146,11 @@
          <changefreq>daily</changefreq>
     </url>
     <url>
+         <loc>https://AndyGura.github.io/gg-web-engine/modules/core/2d/entities/i-renderable-2d.entity.ts/</loc>
+         <lastmod>2023-10-26</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
          <loc>https://AndyGura.github.io/gg-web-engine/modules/core/2d/entities/renderer-2d.entity.ts/</loc>
          <lastmod>2023-10-26</lastmod>
          <changefreq>daily</changefreq>
@@ -282,6 +287,11 @@
     </url>
     <url>
          <loc>https://AndyGura.github.io/gg-web-engine/modules/core/3d/entities/entity-3d.ts/</loc>
+         <lastmod>2023-10-26</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://AndyGura.github.io/gg-web-engine/modules/core/3d/entities/i-renderable-3d.entity.ts/</loc>
          <lastmod>2023-10-26</lastmod>
          <changefreq>daily</changefreq>
     </url>
@@ -491,6 +501,11 @@
          <changefreq>daily</changefreq>
     </url>
     <url>
+         <loc>https://AndyGura.github.io/gg-web-engine/modules/core/base/entities/i-renderable.entity.ts/</loc>
+         <lastmod>2023-10-26</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
          <loc>https://AndyGura.github.io/gg-web-engine/modules/core/base/entities/i-renderer.entity.ts/</loc>
          <lastmod>2023-10-26</lastmod>
          <changefreq>daily</changefreq>
@@ -507,16 +522,6 @@
     </url>
     <url>
          <loc>https://AndyGura.github.io/gg-web-engine/modules/core/base/entities/controllers/inline-controller.ts/</loc>
-         <lastmod>2023-10-26</lastmod>
-         <changefreq>daily</changefreq>
-    </url>
-    <url>
-         <loc>https://AndyGura.github.io/gg-web-engine/modules/core/base/entities/mixins/</loc>
-         <lastmod>2023-10-26</lastmod>
-         <changefreq>daily</changefreq>
-    </url>
-    <url>
-         <loc>https://AndyGura.github.io/gg-web-engine/modules/core/base/entities/mixins/renderable-entity.mixin.ts/</loc>
          <lastmod>2023-10-26</lastmod>
          <changefreq>daily</changefreq>
     </url>

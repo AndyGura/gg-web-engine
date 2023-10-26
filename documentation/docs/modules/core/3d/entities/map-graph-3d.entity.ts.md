@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/map-graph-3d.entity.ts
-nav_order: 40
+nav_order: 42
 parent: Modules
 ---
 

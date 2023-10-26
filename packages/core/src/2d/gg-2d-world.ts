@@ -33,8 +33,8 @@ export class Gg2dWorld<
     }
   }
 
-  addPrimitiveRigidBody(descr: BodyShape2DDescriptor, position: Point2 = Pnt2.O, rotation: number = 0): Entity2d {
-    const entity = new Entity2d(
+  addPrimitiveRigidBody(descr: BodyShape2DDescriptor, position: Point2 = Pnt2.O, rotation: number = 0): Entity2d<V, P> {
+    const entity = new Entity2d<V, P>(
       this.visualScene.factory.createPrimitive(descr.shape),
       this.physicsWorld.factory.createRigidBody(descr),
     );
