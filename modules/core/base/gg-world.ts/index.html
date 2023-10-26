@@ -689,7 +689,11 @@
 </code></pre>
 <h3 id="addprimitiverigidbody-method">addPrimitiveRigidBody (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">abstract addPrimitiveRigidBody(descr: any, position?: D, rotation?: R): IPositionable&lt;D, R&gt; &amp; RenderableEntityMixin;
+<pre><code class="language-ts">abstract addPrimitiveRigidBody(
+    descr: any,
+    position?: D,
+    rotation?: R,
+  ): IPositionable&lt;D, R&gt; &amp; IRenderableEntity&lt;D, R, V, P&gt;;
 </code></pre>
 <h3 id="addentity-method">addEntity (method)</h3>
 <p><strong>Signature</strong></p>
