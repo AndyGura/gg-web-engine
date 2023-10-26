@@ -51,16 +51,15 @@ export class Gg3dWorld<
   }
 
   addRenderer<
-    RC extends IRenderer3dComponent<V> = IRenderer3dComponent<V>,
     CC extends ICameraComponent<V> = ICameraComponent<V>,
+    RC extends IRenderer3dComponent<V, CC> = IRenderer3dComponent<V, CC>,
   >(
     camera: CC,
     canvas?: HTMLCanvasElement,
     rendererOptions?: Partial<RendererOptions>,
-  ): Renderer3dEntity<V, IRenderer3dComponent<V>, CC> {
-    const entity = new Renderer3dEntity<V, RC, CC>(
+  ): Renderer3dEntity<V, CC, IRenderer3dComponent<V, CC>> {
+    const entity = new Renderer3dEntity<V, CC, RC>(
       this.visualScene.createRenderer(camera, canvas, rendererOptions) as RC,
-      camera,
     );
     this.addEntity(entity);
     return entity;

@@ -39,7 +39,13 @@ export class ThreeDisplayObjectComponent implements IDisplayObject3dComponent<Th
     this.nativeMesh.visible = value;
   }
 
-  public name: string = '';
+  public get name(): string {
+    return this.nativeMesh.name || this.nativeMesh.uuid;
+  }
+
+  public set name(value: string) {
+    this.nativeMesh.name = value;
+  }
 
   public isEmpty(): boolean {
     if (this.nativeMesh instanceof Scene || this.nativeMesh instanceof Group) {
