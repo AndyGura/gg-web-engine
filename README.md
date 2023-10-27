@@ -136,6 +136,8 @@ Try to add to your html <head>:
 
 ## Examples
 - #### [Angular three+ammo](https://stackblitz.com/edit/angular-kuunqq?file=src%2Fmain.ts)
+- #### [React three+ammo](https://stackblitz.com/edit/stackblitz-starters-ocwn9k?file=src%2FApp.tsx)
+- #### [Vanilla typescript three+ammo](https://stackblitz.com/edit/typescript-8byrue?file=index.ts)
 - #### [Angular pixi+matter](https://stackblitz.com/edit/angular-v67tt6?file=src%2Fmain.ts)
 - #### Entity Loader. [Source code](https://github.com/AndyGura/gg-web-engine/blob/main/examples/model-loader/src/app/app.component.ts)
 - #### Fly city. [Live demo](https://gg-web-demos.guraklgames.com/index.html), [Source code](https://github.com/AndyGura/gg-web-engine/blob/main/examples/fly-city/src/app/app.component.ts)
