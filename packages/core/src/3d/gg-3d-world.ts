@@ -34,7 +34,7 @@ export class Gg3dWorld<
           return JSON.stringify(this.physicsWorld.gravity);
         },
         'args: [float] or [float float float]; change 3D world gravity vector. 1 argument means ' +
-        '{x: 0, y: 0, z: -value}, 3 arguments set the whole vector. Default value is "9.82" or "0 0 -9.82"',
+          '{x: 0, y: 0, z: -value}, 3 arguments set the whole vector. Default value is "9.82" or "0 0 -9.82"',
       );
     }
   }

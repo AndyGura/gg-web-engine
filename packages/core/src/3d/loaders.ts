@@ -4,8 +4,7 @@ import { IDisplayObject3dComponent } from './components/rendering/i-display-obje
 import { IPhysicsWorld3dComponent } from './components/physics/i-physics-world-3d.component';
 
 export abstract class IPhysicsBody3dComponentLoader {
-  protected constructor(protected readonly world: IPhysicsWorld3dComponent) {
-  }
+  protected constructor(protected readonly world: IPhysicsWorld3dComponent) {}
 
   async loadFromGgGlb(glbFile: ArrayBuffer, meta: GgMeta): Promise<IRigidBody3dComponent[]> {
     return (meta?.rigidBodies || []).map(d => {
