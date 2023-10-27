@@ -84,19 +84,22 @@ Note: at this early step, the project does not give much flexibility in that reg
 1) write bootstrap script, example:
 ```typescript
 import { interval } from 'rxjs';
-import { Gg3dEntity, Gg3dWorld, Qtrn, Pnt3 } from '@gg-web-engine/core';
-import { Gg3dVisualScene, GgRenderer } from '@gg-web-engine/three';
-import { Gg3dPhysicsWorld } from '@gg-web-engine/ammo';
+import { Gg3dWorld, Pnt3, Qtrn } from '@gg-web-engine/core';
+import { ThreeCameraComponent, ThreeSceneComponent } from '@gg-web-engine/three';
+import { AmmoWorldComponent } from '@gg-web-engine/ammo';
+import { PerspectiveCamera } from 'three';
 
 // create world
-const world: Gg3dWorld = new Gg3dWorld(new Gg3dVisualScene(), new Gg3dPhysicsWorld());
+const world = new Gg3dWorld(new ThreeSceneComponent(), new AmmoWorldComponent());
 await world.init();
 
 // create viewport and renderer
-const renderer: GgRenderer = new GgRenderer(document.getElementById('gg')! as HTMLCanvasElement);
-renderer.camera.position = { x: 15, y: 15, z: 9 };
-renderer.camera.rotation = Qtrn.lookAt(renderer.camera.position, Pnt3.O);
-world.addEntity(renderer);
+const renderer = world.addRenderer(
+  new ThreeCameraComponent(new PerspectiveCamera()),
+  document.getElementById('gg')! as HTMLCanvasElement,
+);
+renderer.position = { x: 12, y: 12, z: 12 };
+renderer.rotation = Qtrn.lookAt(renderer.camera.position, Pnt3.O);
 
 // create floor (static rigid body)
 world.addPrimitiveRigidBody({
@@ -107,7 +110,7 @@ world.addPrimitiveRigidBody({
 // spawn cubes with mass 1kg twice a second
 interval(500).subscribe(() => {
   // generate cube
-  let item: Gg3dEntity = world.addPrimitiveRigidBody({
+  let item = world.addPrimitiveRigidBody({
     shape: { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } },
     body: { mass: 1 },
   });
@@ -138,7 +141,17 @@ Try to add to your html <head>:
 - #### Fly city. [Live demo](https://gg-web-demos.guraklgames.com/index.html), [Source code](https://github.com/AndyGura/gg-web-engine/blob/main/examples/fly-city/src/app/app.component.ts)
 
 ## Architecture
-Technical documentation available at [GitHub Pages](https://andygura.github.io/gg-web-engine/)
+The most important thing in the engine is [GgWorld](https://andygura.github.io/gg-web-engine/modules/core/base/gg-world.ts/).
+It encapsulates everything you need in your game runtime: ticker clock, visual scene, physics simulation world etc. 
+One browser tab can run one or many GG worlds. In order to add something to the world, caller code needs to add 
+[Entities](https://andygura.github.io/gg-web-engine/modules/core/base/entities/i-entity.ts/). Entity is anything which 
+works in the world: tick-based controller, rigid body, renderer etc. World and entity are self-sufficient in gg core 
+package, so they do not depend on selected integration library. Entity can use from 0 to many 
+[World Components](https://andygura.github.io/gg-web-engine/modules/core/base/components/i-world-component.ts/#i-world-component-overview) -
+those are fully dependent on integration library, so libraries in general case only implement components.
+
+Full technical documentation available at [GitHub Pages](https://andygura.github.io/gg-web-engine/)
+
 ### Clock
 Clock is an entity, responsible for tracking time and firing ticks. It measures time and on each tick emits two numbers:
 `elapsedTime` and `delta`, where `delta` always equals to difference between current elapsed time, and elapsed time,
@@ -166,33 +179,59 @@ flowchart LR
 World is a container of all entities of your game, manages the entire flow. Though it is possible to have multiple 
 worlds in one page, in most cases you only need one. World consists of:
 - clock
-- visual scene, e.g. "sub-world", containing everything related to rendering. This is an interface, which has to be 
-implemented by integration library
-- physics world, e.g. "sub-world", containing everything related to physics simulation. This is an interface, which has to be
-  implemented by integration library
+- visual scene, e.g. "sub-world", containing everything related to rendering. This is a [component](https://andygura.github.io/gg-web-engine/modules/core/base/components/rendering/i-visual-scene.component.ts/),
+which has to be implemented by integration library
+- physics world, e.g. "sub-world", containing everything related to physics simulation. This is a [component](https://andygura.github.io/gg-web-engine/modules/core/base/components/physics/i-physics-world.component.ts/#iphysicsworldcomponent-interface),
+which has to be implemented by integration library
 - list of all spawned world entities, sorted by tick order, and API for spawning/removing them
 - logic to propagate clock ticks to every spawned active entity
 - keyboard input
 
 There are two built-in variants of world implementation: **[Gg2dWorld](https://andygura.github.io/gg-web-engine/modules/core/2d/gg-2d-world.ts/)** and **[Gg3dWorld](https://andygura.github.io/gg-web-engine/modules/core/3d/gg-3d-world.ts/)**
 
-### [Entity](https://andygura.github.io/gg-web-engine/modules/core/base/entities/gg-entity.ts/)
+Example of hierarchy of entities of simple scene, which uses three.js + ammo.js:
+```mermaid
+flowchart TB
+  w{"[CORE]\n3D World"} --> cn0["[CORE]\nsome controller"]
+  w --> rb0["[CORE]\nrigid body entity"]
+  w --> rb1["[CORE]\n3d model"]
+  w --> rb2["[CORE]\ntrigger entity"]
+  rb0 --> c0("[THREE]\nmesh component")
+  rb0 --> c1("[AMMO]\nphysics body component")
+  rb1 --> c2("[THREE]\nmesh component")
+  rb2 --> c3("[AMMO]\nphysics body component")
+```
+
+### [Component](https://andygura.github.io/gg-web-engine/modules/core/base/components/i-component.ts/#icomponent-interface)
+Anything, which has to be implemented in integration library:
+- **[IVisualScene2dComponent](https://andygura.github.io/gg-web-engine/modules/core/2d/components/rendering/i-visual-scene-2d.component.ts/#ivisualscene2dcomponent-interface) / [IVisualScene3dComponent](https://andygura.github.io/gg-web-engine/modules/core/3d/components/rendering/i-visual-scene-3d.component.ts/#ivisualscene3dcomponent-interface)** a wrapper around visual scene or display object container
+- **[IDisplayObject2dComponent](https://andygura.github.io/gg-web-engine/modules/core/2d/components/rendering/i-display-object-2d.component.ts/#idisplayobject2dcomponent-interface) / [IDisplayObject3dComponent](https://andygura.github.io/gg-web-engine/modules/core/3d/components/rendering/i-display-object-3d.component.ts/#idisplayobject3dcomponent-interface)** a wrapper around mesh or sprite
+- **[IRenderer2dComponent](https://andygura.github.io/gg-web-engine/modules/core/2d/components/rendering/i-renderer-2d.component.ts/#irenderer2dcomponent-class) / [IRenderer3dComponent](https://andygura.github.io/gg-web-engine/modules/core/3d/components/rendering/i-renderer-3d.component.ts/#irenderer3dcomponent-class)** a wrapper around renderer
+- **[IPhysicsWorld2dComponent](https://andygura.github.io/gg-web-engine/modules/core/2d/components/physics/i-physics-world-2d.component.ts/#iphysicsworld2dcomponent-interface) / [IPhysicsWorld3dComponent](https://andygura.github.io/gg-web-engine/modules/core/3d/components/physics/i-physics-world-3d.component.ts/#iphysicsworld3dcomponent-interface)** a wrapper around physics world
+- **[IRigidBody2dComponent](https://andygura.github.io/gg-web-engine/modules/core/2d/components/physics/i-rigid-body-2d.component.ts/#irigidbody2dcomponent-interface) / [IRigidBody3dComponent](https://andygura.github.io/gg-web-engine/modules/core/3d/components/physics/i-rigid-body-3d.component.ts/#irigidbody3dcomponent-interface)** a wrapper around rigid body
+- **[ITrigger2dComponent](https://andygura.github.io/gg-web-engine/modules/core/2d/components/physics/i-trigger-2d.component.ts/#itrigger2dcomponent-interface) / [ITrigger3dComponent](https://andygura.github.io/gg-web-engine/modules/core/3d/components/physics/i-trigger-3d.component.ts/#itrigger3dcomponent-interface)** a wrapper around physics object, which only detects intersections with other physics objects
+- **[ICameraComponent](https://andygura.github.io/gg-web-engine/modules/core/3d/components/rendering/i-camera.component.ts/#icameracomponent-interface)** a wrapper around camera (3D world)
+- **[IRaycastVehicleComponent](https://andygura.github.io/gg-web-engine/modules/core/3d/components/physics/i-raycast-vehicle.component.ts/#iraycastvehiclecomponent-interface)** raycast vehicle (3D world)
+
+For instance, `@gg-web-engine/three` implements 4 components: `IVisualScene3d`, `IDisplayObject3d`, `IRenderer3d`, `ICamera`.
+
+### [Entity](https://andygura.github.io/gg-web-engine/modules/core/base/entities/i-entity.ts/)
 Basically, everything that listens ticks and can be added/removed from world. Built-in entities:
-- **[Gg2dEntity](https://andygura.github.io/gg-web-engine/modules/core/2d/entities/gg-2d-entity.ts/)**/**[Gg3dEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/gg-3d-entity.ts/)** encapsulates display object (sprite or mesh respectively) and physics body. 
+- **[Entity2d](https://andygura.github.io/gg-web-engine/modules/core/2d/entities/entity-2d.ts/#entity2d-class)** / **[Entity3d](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/entity-3d.ts/#entity3d-class)** encapsulates display object (sprite or mesh respectively) and rigid body. 
 Synchronizes position/rotation each tick
-- **[Gg2dTriggerEntity](https://andygura.github.io/gg-web-engine/modules/core/2d/entities/gg-2d-trigger.entity.ts/)**/**[Gg3dTriggerEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/gg-3d-trigger.entity.ts/)** has only physics body, but instead of participating in collisions, emits
+- **[Trigger2dEntity](https://andygura.github.io/gg-web-engine/modules/core/2d/entities/trigger-2d.entity.ts/#trigger2dentity-class)** / **[Trigger3dEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/trigger-3d.entity.ts/#trigger3dentity-class)** has only physics body, but instead of participating in collisions, emits
 events when some another positionable entity entered/left its area
-- **[InlineTickController](https://andygura.github.io/gg-web-engine/modules/core/base/entities/inline-controller.ts/)** simple controller, which can be created and added to world using one line of code
-- **[Renderer](https://andygura.github.io/gg-web-engine/modules/core/base/entities/base-gg-renderer.ts/)** controller, which renders the scene and controls canvas size (if canvas provided). Makes canvas appearing fullscreen by default
-- **[AnimationMixer](https://andygura.github.io/gg-web-engine/modules/core/base/entities/controllers/animation-mixer.ts/)** controller, which mixes animations: use-case is if you have some animation function, and you need a 
+- **[InlineTickController](https://andygura.github.io/gg-web-engine/modules/core/base/entities/controllers/inline-controller.ts/#createinlinetickcontroller)** simple controller, which can be created and added to world using one line of code
+- **[Renderer](https://andygura.github.io/gg-web-engine/modules/core/base/entities/i-renderer.entity.ts/#irendererentity-class)** controller, which renders the scene and controls canvas size (if canvas provided). Makes canvas appearing fullscreen by default
+- **[AnimationMixer](https://andygura.github.io/gg-web-engine/modules/core/base/entities/controllers/animation-mixer.ts/#animationmixer-class)** controller, which mixes animations: use-case is if you have some animation function, and you need a 
 smooth transition to another animation function
-- **[Entity2dPositioningAnimator](https://andygura.github.io/gg-web-engine/modules/core/2d/entities/controllers/entity-2d-positioning.animator.ts/)**/**[Entity3dPositioningAnimator](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/controllers/animators/entity-3d-positioning.animator.ts/)** controllers extending **AnimationMixer**, which apply 
+- **[Entity2dPositioningAnimator](https://andygura.github.io/gg-web-engine/modules/core/2d/entities/controllers/entity-2d-positioning.animator.ts/#entity2dpositioninganimator-class)** / **[Entity3dPositioningAnimator](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/controllers/animators/entity-3d-positioning.animator.ts/#entity3dpositioninganimator-class)** controllers extending **AnimationMixer**, which apply 
 position/rotation to positionable entity
-- **[Camera3dAnimator](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/controllers/animators/camera-3d.animator.ts/)** dedicated **AnimationMixer** for perspective camera: translates camera, target, up, fov etc.
-- **[FreeCameraController](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/controllers/input/free-camera.controller.ts/)** a controller, allows to control camera with WASD + mouse
-- **[CarKeyboardHandlingController](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/controllers/input/car-keyboard-handling.controller.ts/)** a controller allowing to control car with keyboard
-- **[Gg3dMapGraphEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/gg-3d-map-graph.entity.ts/)** an entity, which loads parts of big map and disposes loaded map chunks, which are far away
-- **[Gg3dRaycastVehicleEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/gg-3d-raycast-vehicle.entity.ts/)** a car
+- **[Camera3dAnimator](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/controllers/animators/camera-3d.animator.ts/#camera3danimator-class)** dedicated **AnimationMixer** for perspective camera: translates camera, target, up, fov etc.
+- **[FreeCameraController](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/controllers/input/free-camera.controller.ts/#freecameracontroller-class)** a controller, allows to control camera with WASD + mouse
+- **[CarKeyboardHandlingController](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/controllers/input/car-keyboard-handling.controller.ts/#carkeyboardhandlingcontroller-class)** a controller allowing to control car with keyboard
+- **[MapGraph3dEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/map-graph-3d.entity.ts/#mapgraph3dentity-class)** an entity, which loads parts of big map and disposes loaded map chunks, which are far away
+- **[RaycastVehicle3dEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/raycast-vehicle-3d.entity.ts/#raycastvehicle3dentity-class)** a car
 
 ### [Input](https://andygura.github.io/gg-web-engine/modules/core/base/inputs/input.ts/)
 Input is a class, responsible for handling external actions, such as mouse move, key presses, gamepad interactions etc.

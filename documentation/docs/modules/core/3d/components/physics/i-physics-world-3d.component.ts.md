@@ -1,10 +1,10 @@
 ---
-title: core/3d/components/physics/i-physics-world-3d.ts
+title: core/3d/components/physics/i-physics-world-3d.component.ts
 nav_order: 27
 parent: Modules
 ---
 
-## i-physics-world-3d overview
+## i-physics-world-3d.component overview
 
 ---
 

@@ -45,7 +45,7 @@ has_children: true
 - [core/3d/index.ts](/gg-web-engine/modules/core/3d/index.ts)
 - [core/3d/loader.ts](/gg-web-engine/modules/core/3d/loader.ts)
 - [core/3d/loaders.ts](/gg-web-engine/modules/core/3d/loaders.ts)
-- [core/3d/components/physics/i-physics-world-3d.ts](/gg-web-engine/modules/core/3d/components/physics/i-physics-world-3d.ts)
+- [core/3d/components/physics/i-physics-world-3d.component.ts](/gg-web-engine/modules/core/3d/components/physics/i-physics-world-3d.component.ts)
 - [core/3d/components/physics/i-raycast-vehicle.component.ts](/gg-web-engine/modules/core/3d/components/physics/i-raycast-vehicle.component.ts)
 - [core/3d/components/physics/i-rigid-body-3d.component.ts](/gg-web-engine/modules/core/3d/components/physics/i-rigid-body-3d.component.ts)
 - [core/3d/components/physics/i-trigger-3d.component.ts](/gg-web-engine/modules/core/3d/components/physics/i-trigger-3d.component.ts)

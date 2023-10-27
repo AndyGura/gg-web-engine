@@ -1,7 +1,7 @@
 import { AxisDirection3, Point3, Point4 } from '../../../base';
 import { IRigidBody3dComponent } from './i-rigid-body-3d.component';
 import { IDisplayObject3dComponent } from '../rendering/i-display-object-3d.component';
-import { IPhysicsWorld3dComponent } from './i-physics-world-3d';
+import { IPhysicsWorld3dComponent } from './i-physics-world-3d.component';
 
 export type SuspensionOptions = {
   stiffness: number;

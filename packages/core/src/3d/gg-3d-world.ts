@@ -3,10 +3,10 @@ import { Gg3dLoader } from './loader';
 import { Entity3d } from './entities/entity-3d';
 import { BodyShape3DDescriptor } from './models/shapes';
 import { IVisualScene3dComponent } from './components/rendering/i-visual-scene-3d.component';
-import { IPhysicsWorld3dComponent } from './components/physics/i-physics-world-3d';
 import { Renderer3dEntity } from './entities/renderer-3d.entity';
 import { ICameraComponent } from './components/rendering/i-camera.component';
 import { IRenderer3dComponent } from './components/rendering/i-renderer-3d.component';
+import { IPhysicsWorld3dComponent } from './components/physics/i-physics-world-3d.component';
 
 export class Gg3dWorld<
   V extends IVisualScene3dComponent = IVisualScene3dComponent,
@@ -34,7 +34,7 @@ export class Gg3dWorld<
           return JSON.stringify(this.physicsWorld.gravity);
         },
         'args: [float] or [float float float]; change 3D world gravity vector. 1 argument means ' +
-          '{x: 0, y: 0, z: -value}, 3 arguments set the whole vector. Default value is "9.82" or "0 0 -9.82"',
+        '{x: 0, y: 0, z: -value}, 3 arguments set the whole vector. Default value is "9.82" or "0 0 -9.82"',
       );
     }
   }

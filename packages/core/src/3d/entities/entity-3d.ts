@@ -4,7 +4,7 @@ import { IDisplayObject3dComponent } from '../components/rendering/i-display-obj
 import { IPositionable3d } from '../interfaces/i-positionable-3d';
 import { IRenderable3dEntity } from './i-renderable-3d.entity';
 import { IVisualScene3dComponent } from '../components/rendering/i-visual-scene-3d.component';
-import { IPhysicsWorld3dComponent } from '../components/physics/i-physics-world-3d';
+import { IPhysicsWorld3dComponent } from '../components/physics/i-physics-world-3d.component';
 
 export class Entity3d<
     VS extends IVisualScene3dComponent = IVisualScene3dComponent,

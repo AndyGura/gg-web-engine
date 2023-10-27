@@ -1,6 +1,6 @@
 import { IRenderableEntity, Point3, Point4 } from '../../base';
 import { IVisualScene3dComponent } from '../components/rendering/i-visual-scene-3d.component';
-import { IPhysicsWorld3dComponent } from '../components/physics/i-physics-world-3d';
+import { IPhysicsWorld3dComponent } from '../components/physics/i-physics-world-3d.component';
 
 export abstract class IRenderable3dEntity<
   VS extends IVisualScene3dComponent = IVisualScene3dComponent,
