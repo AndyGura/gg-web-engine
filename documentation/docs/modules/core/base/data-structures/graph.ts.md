@@ -1,6 +1,6 @@
 ---
 title: core/base/data-structures/graph.ts
-nav_order: 40
+nav_order: 66
 parent: Modules
 ---
 

@@ -1,17 +1,16 @@
-import { Gg3dEntity } from '../../gg-3d-entity';
-import { AnimationFunction, AnimationMixer } from '../../../../base/entities/controllers/animation-mixer';
-import { Point3, Point4 } from '../../../../base/models/points';
-import { Pnt3 } from '../../../../base/math/point3';
-import { Qtrn } from '../../../../base/math/quaternion';
+import { AnimationFunction, AnimationMixer, Pnt3, Point3, Point4, Qtrn } from '../../../../base';
 import { takeUntil } from 'rxjs';
 import { Gg3dWorld } from '../../../gg-3d-world';
+import { IPositionable3d } from '../../../interfaces/i-positionable-3d';
 
 type Positioning3d = {
   position: Point3;
   rotation: Point4;
 };
 
-export class Entity3dPositioningAnimator<T extends Gg3dEntity = Gg3dEntity> extends AnimationMixer<Positioning3d> {
+export class Entity3dPositioningAnimator<
+  T extends IPositionable3d = IPositionable3d,
+> extends AnimationMixer<Positioning3d> {
   constructor(public entity: T, protected _animationFunction: AnimationFunction<Positioning3d>) {
     super(_animationFunction, (a, b, t) => ({
       position: Pnt3.lerp(a.position, b.position, t),

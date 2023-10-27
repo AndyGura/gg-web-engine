@@ -1,6 +1,6 @@
 ---
 title: core/3d/loader.ts
-nav_order: 33
+nav_order: 50
 parent: Modules
 ---
 
@@ -110,7 +110,7 @@ export type LoadOptions = {
 
 ```ts
 export type LoadResourcesResult = {
-  resources: { object3D: IGg3dObject | null; body: IGg3dBody | null }[]
+  resources: { object3D: IDisplayObject3dComponent | null; body: IRigidBody3dComponent | null }[]
   meta: GgMeta
 }
 ```
@@ -121,7 +121,7 @@ export type LoadResourcesResult = {
 
 ```ts
 export type LoadResult = {
-  entities: Gg3dEntity[]
+  entities: Entity3d[]
   meta: GgMeta
 }
 ```

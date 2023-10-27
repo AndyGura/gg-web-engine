@@ -1,8 +1,13 @@
-import { GgDebugPhysicsDrawer, Point3, Point4 } from '@gg-web-engine/core';
-import { Gg3dObject } from './impl/gg-3d-object';
+import { IDebugPhysicsDrawer, IEntity, Point3, Point4 } from '@gg-web-engine/core';
+import { ThreeDisplayObjectComponent } from './components/three-display-object.component';
 import { BufferAttribute, BufferGeometry, LineBasicMaterial, LineSegments } from 'three';
+import { ThreeSceneComponent } from './components/three-scene.component';
 
-export class ThreePhysicsDrawer extends Gg3dObject implements GgDebugPhysicsDrawer<Point3, Point4> {
+export class ThreePhysicsDrawer
+  extends ThreeDisplayObjectComponent
+  implements IDebugPhysicsDrawer<Point3, Point4, ThreeSceneComponent>
+{
+  entity: IEntity | null = null;
   readonly debugBufferSize = 3 * 1000000;
   readonly debugVertices: Float32Array;
   readonly debugColors: Float32Array;

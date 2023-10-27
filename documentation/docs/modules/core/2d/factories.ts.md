@@ -1,6 +1,6 @@
 ---
 title: core/2d/factories.ts
-nav_order: 14
+nav_order: 21
 parent: Modules
 ---
 
@@ -11,26 +11,15 @@ parent: Modules
 <h2 class="text-delta">Table of contents</h2>
 
 - [utils](#utils)
-  - [IGg2dBodyFactory (interface)](#igg2dbodyfactory-interface)
   - [IGg2dObjectFactory (class)](#igg2dobjectfactory-class)
     - [createPrimitive (method)](#createprimitive-method)
     - [createSquare (method)](#createsquare-method)
     - [createCircle (method)](#createcircle-method)
+  - [IPhysicsBody2dComponentFactory (interface)](#iphysicsbody2dcomponentfactory-interface)
 
 ---
 
 # utils
-
-## IGg2dBodyFactory (interface)
-
-**Signature**
-
-```ts
-export interface IGg2dBodyFactory<T extends IGg2dBody = IGg2dBody, K extends IGg2dTrigger = IGg2dTrigger> {
-  createRigidBody(descriptor: BodyShape2DDescriptor, transform?: { position?: Point2; rotation?: number }): T
-  createTrigger(descriptor: Shape2DDescriptor, transform?: { position?: Point2; rotation?: number }): K
-}
-```
 
 ## IGg2dObjectFactory (class)
 
@@ -62,4 +51,19 @@ createSquare(dimensions: Point2): T
 
 ```ts
 createCircle(radius: number): T
+```
+
+## IPhysicsBody2dComponentFactory (interface)
+
+**Signature**
+
+```ts
+export interface IPhysicsBody2dComponentFactory<
+  T extends IRigidBody2dComponent = IRigidBody2dComponent,
+  K extends ITrigger2dComponent = ITrigger2dComponent
+> {
+  createRigidBody(descriptor: BodyShape2DDescriptor, transform?: { position?: Point2; rotation?: number }): T
+
+  createTrigger(descriptor: Shape2DDescriptor, transform?: { position?: Point2; rotation?: number }): K
+}
 ```

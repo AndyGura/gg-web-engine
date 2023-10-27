@@ -1,6 +1,6 @@
 ---
 title: core/base/gg-world.ts
-nav_order: 48
+nav_order: 73
 parent: Modules
 ---
 
@@ -105,7 +105,7 @@ abstract addPrimitiveRigidBody(
     descr: any,
     position?: D,
     rotation?: R,
-  ): GgPositionableEntity<D, R> & RenderableEntityMixin;
+  ): IPositionable<D, R> & IRenderableEntity<D, R, V, P>;
 ```
 
 ### addEntity (method)
@@ -113,7 +113,7 @@ abstract addPrimitiveRigidBody(
 **Signature**
 
 ```ts
-public addEntity(entity: GgEntity): void
+public addEntity(entity: IEntity): void
 ```
 
 ### removeEntity (method)
@@ -121,7 +121,7 @@ public addEntity(entity: GgEntity): void
 **Signature**
 
 ```ts
-public removeEntity(entity: GgEntity, dispose = false): void
+public removeEntity(entity: IEntity, dispose = false): void
 ```
 
 ### registerConsoleCommand (method)
@@ -169,7 +169,7 @@ readonly keyboardInput: KeyboardInput
 **Signature**
 
 ```ts
-readonly children: GgEntity[]
+readonly children: IEntity<any, any, IVisualSceneComponent<any, any>, IPhysicsWorldComponent<any, any>>[]
 ```
 
 ### tickListeners (property)
@@ -177,7 +177,7 @@ readonly children: GgEntity[]
 **Signature**
 
 ```ts
-readonly tickListeners: GgEntity[]
+readonly tickListeners: IEntity<any, any, IVisualSceneComponent<any, any>, IPhysicsWorldComponent<any, any>>[]
 ```
 
 ### commands (property)

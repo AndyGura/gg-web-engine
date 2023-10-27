@@ -5,5 +5,7 @@ has_children: true
 
 <h2 class="text-delta">Directory table of contents</h2>
 
-- [three/impl](/gg-web-engine/modules/three/impl)
+- [three/components](/gg-web-engine/modules/three/components)
+- [three/three-factory.ts](/gg-web-engine/modules/three/three-factory.ts)
+- [three/three-loader.ts](/gg-web-engine/modules/three/three-loader.ts)
 - [three/three-physics-drawer.ts](/gg-web-engine/modules/three/three-physics-drawer.ts)

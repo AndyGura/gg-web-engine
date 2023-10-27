@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/controllers/animators/camera-3d.animator.ts
-nav_order: 19
+nav_order: 35
 parent: Modules
 ---
 
@@ -39,7 +39,7 @@ export type Camera3dAnimationArgs = {
 
 ```ts
 export declare class Camera3dAnimator {
-  constructor(public entity: Gg3dCameraEntity, protected _animationFunction: AnimationFunction<Camera3dAnimationArgs>)
+  constructor(public entity: Renderer3dEntity, protected _animationFunction: AnimationFunction<Camera3dAnimationArgs>)
 }
 ```
 

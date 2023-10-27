@@ -1,4 +1,4 @@
-import { Input } from './input';
+import { IInput } from './i-input';
 import { BehaviorSubject, combineLatest, finalize, NEVER, Observable } from 'rxjs';
 import { distinctUntilChanged, map } from 'rxjs/operators';
 
@@ -7,7 +7,7 @@ import { distinctUntilChanged, map } from 'rxjs/operators';
  * It is responsible for listening key up/down events (when running!) and emit the events to subscribers.
  * Every World entity has its own dedicated instance of Keyboard input, which is running only when the world is running
  */
-export class KeyboardInput extends Input {
+export class KeyboardInput extends IInput {
   private bindings: { [code: string]: BehaviorSubject<boolean>[] } = {};
 
   /**
