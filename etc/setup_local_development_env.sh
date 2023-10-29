@@ -25,6 +25,10 @@ pushd packages/ammo
 switch_gg_module
 popd
 
+pushd packages/rapier2d
+switch_gg_module
+popd
+
 pushd packages/rapier3d
 switch_gg_module
 popd
