@@ -7,8 +7,8 @@ import {
   ViewChild,
 } from '@angular/core';
 import { Gg3dWorld } from '@gg-web-engine/core';
-import { Gg3dVisualScene } from '@gg-web-engine/three';
-import { Gg3dPhysicsWorld } from '@gg-web-engine/ammo';
+import { ThreeSceneComponent } from '@gg-web-engine/three';
+import { AmmoWorldComponent } from '@gg-web-engine/ammo';
 import { filter } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 import { GameRunner } from './game-runner';
@@ -24,7 +24,7 @@ export class AppComponent implements AfterViewInit {
 
   @ViewChild('canvas') canvas!: ElementRef<HTMLCanvasElement>;
 
-  world!: Gg3dWorld<Gg3dVisualScene, Gg3dPhysicsWorld>;
+  world!: Gg3dWorld<ThreeSceneComponent, AmmoWorldComponent>;
   runner?: GameRunner;
 
   showHelpText: boolean = true;
@@ -42,7 +42,7 @@ export class AppComponent implements AfterViewInit {
 
   private async initGame() {
     console.log('Initializing game');
-    this.world = new Gg3dWorld(new Gg3dVisualScene(), new Gg3dPhysicsWorld(), true);
+    this.world = new Gg3dWorld(new ThreeSceneComponent(), new AmmoWorldComponent(), true);
     const factory: GameFactory = new GameFactory(this.world);
     const [renderer, cityMapGraph, mapBounds] = await factory.initGame(this.canvas.nativeElement);
     await factory.spawnLambo();

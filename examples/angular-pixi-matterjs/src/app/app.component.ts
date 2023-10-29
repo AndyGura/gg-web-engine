@@ -1,8 +1,8 @@
 import { AfterViewInit, Component, ElementRef, ViewChild } from '@angular/core';
-import { Gg2dEntity, Gg2dWorld } from '@gg-web-engine/core';
+import { Entity2d, Gg2dWorld } from '@gg-web-engine/core';
 import { interval } from 'rxjs';
-import { Gg2dVisualScene, GgRenderer } from '@gg-web-engine/pixi';
-import { Gg2dPhysicsWorld } from '@gg-web-engine/matter';
+import { PixiSceneComponent } from '@gg-web-engine/pixi';
+import { MatterWorldComponent } from '@gg-web-engine/matter';
 
 @Component({
   selector: 'app-root',
@@ -15,13 +15,12 @@ export class AppComponent implements AfterViewInit {
 
   async ngAfterViewInit(): Promise<void> {
 
-    const scene: Gg2dVisualScene = new Gg2dVisualScene();
-    const physScene: Gg2dPhysicsWorld = new Gg2dPhysicsWorld();
+    const scene: PixiSceneComponent = new PixiSceneComponent();
+    const physScene: MatterWorldComponent = new MatterWorldComponent();
     const world: Gg2dWorld = new Gg2dWorld(scene, physScene);
     await world.init();
 
-    const renderer: GgRenderer = new GgRenderer(this.canvas.nativeElement);
-    world.addEntity(renderer);
+    const renderer = world.addRenderer(this.canvas.nativeElement);
 
     const floor = world.addPrimitiveRigidBody({
       shape: { shape: 'SQUARE', dimensions: { x: 800, y: 100 } },
@@ -34,7 +33,7 @@ export class AppComponent implements AfterViewInit {
     });
 
     interval(500).subscribe(() => {
-      let item: Gg2dEntity;
+      let item: Entity2d;
       if (Math.random() >= 0.5) {
         item = world.addPrimitiveRigidBody({
           shape: { shape: 'SQUARE', dimensions: { x: 25, y: 25 } },

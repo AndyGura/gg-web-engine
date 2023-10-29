@@ -1,6 +1,6 @@
 {
   "name": "@gg-web-engine/core",
-  "version": "0.0.20",
+  "version": "0.0.24",
   "description": "An attempt to create open source game engine for browser",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -27,9 +27,8 @@
   },
   "homepage": "https://github.com/AndyGura/gg-web-engine#readme",
   "dependencies": {
-    "rxjs": "~7.8.0",
-    "stats.js": "^0.17.0",
-    "ts-mixer": "^6.0.3"
+    "rxjs": "7.8.0",
+    "stats.js": "0.17.0"
   },
   "devDependencies": {
     "@types/jest": "^29.5.0",

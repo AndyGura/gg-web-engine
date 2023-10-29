@@ -27,6 +27,8 @@ cmake-build-debug/
 # Mongo Explorer plugin:
 .idea/**/mongoSettings.xml
 
+.venv
+
 ## File-based project format:
 *.iws
 

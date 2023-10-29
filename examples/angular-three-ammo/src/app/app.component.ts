@@ -1,14 +1,14 @@
 import { AfterViewInit, Component, ElementRef, ViewChild } from '@angular/core';
 import {
-  Gg3dEntity,
-  Gg3dTriggerEntity,
+  Entity3d,
+  Trigger3dEntity,
   Gg3dWorld,
-  GgPositionable3dEntity,
-  OrbitCameraController,
+  OrbitCameraController, IEntity,
 } from '@gg-web-engine/core';
 import { interval } from 'rxjs';
-import { Gg3dVisualScene, GgRenderer } from '@gg-web-engine/three';
-import { Gg3dPhysicsWorld } from '@gg-web-engine/ammo';
+import { ThreeCameraComponent, ThreeSceneComponent } from '@gg-web-engine/three';
+import { AmmoWorldComponent } from '@gg-web-engine/ammo';
+import { PerspectiveCamera } from 'three';
 
 @Component({
   selector: 'app-root',
@@ -21,16 +21,18 @@ export class AppComponent implements AfterViewInit {
 
   async ngAfterViewInit(): Promise<void> {
 
-    const scene: Gg3dVisualScene = new Gg3dVisualScene();
-    const physScene: Gg3dPhysicsWorld = new Gg3dPhysicsWorld();
+    const scene: ThreeSceneComponent = new ThreeSceneComponent();
+    const physScene: AmmoWorldComponent = new AmmoWorldComponent();
     const world: Gg3dWorld = new Gg3dWorld(scene, physScene, true);
     await world.init();
 
-    const renderer: GgRenderer = new GgRenderer(this.canvas.nativeElement);
-    renderer.camera.position = { x: 9, y: 12, z: 9 };
-    world.addEntity(renderer);
+    const renderer = world.addRenderer(
+      new ThreeCameraComponent(new PerspectiveCamera(75, 1, 1, 10000)),
+      this.canvas.nativeElement,
+    );
+    renderer.position = { x: 9, y: 12, z: 9 };
 
-    const controller = new OrbitCameraController(renderer.camera, { mouseOptions: { canvas: this.canvas.nativeElement }});
+    const controller = new OrbitCameraController(renderer, { mouseOptions: { canvas: this.canvas.nativeElement }});
     world.addEntity(controller);
 
     world.addPrimitiveRigidBody({
@@ -38,18 +40,18 @@ export class AppComponent implements AfterViewInit {
       body: { dynamic: false },
     });
 
-    const destroyTrigger = new Gg3dTriggerEntity(world.physicsWorld.factory.createTrigger({
+    const destroyTrigger = new Trigger3dEntity(world.physicsWorld.factory.createTrigger({
       shape: 'BOX',
       dimensions: { x: 1000, y: 1000, z: 1 },
     }));
     destroyTrigger.position = { x: 0, y: 0, z: -15 };
-    destroyTrigger.onEntityEntered.subscribe((entity: GgPositionable3dEntity) => {
+    destroyTrigger.onEntityEntered.subscribe((entity: IEntity) => {
       world.removeEntity(entity, true);
     });
     world.addEntity(destroyTrigger);
 
     interval(500).subscribe(() => {
-      let item: Gg3dEntity;
+      let item: Entity3d;
       if (Math.random() < 0.2) {
         item = world.addPrimitiveRigidBody({
           shape: { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } },

@@ -1,6 +1,6 @@
 import Ammo from 'ammojs-typed';
-import { GgDebugPhysicsDrawer, Point3, Point4 } from '@gg-web-engine/core';
-import { Gg3dPhysicsWorld } from './impl/gg-3d-physics-world';
+import { IDebugPhysicsDrawer, Point3, Point4 } from '@gg-web-engine/core';
+import { AmmoWorldComponent } from './components/ammo-world.component';
 
 export const DebugBufferSize = 3 * 1000000;
 
@@ -40,8 +40,8 @@ export class AmmoDebugger implements Ammo.btIDebugDraw {
   protected debugMode: AmmoDebugMode = AmmoDebugMode.DrawWireframe;
 
   constructor(
-    protected readonly world: Gg3dPhysicsWorld,
-    private readonly drawer: GgDebugPhysicsDrawer<Point3, Point4>,
+    protected readonly world: AmmoWorldComponent,
+    private readonly drawer: IDebugPhysicsDrawer<Point3, Point4>,
   ) {
     this.ammoInstance = new this.world.ammo.DebugDrawer();
     this.ammoInstance.drawLine = this.drawLine.bind(this);

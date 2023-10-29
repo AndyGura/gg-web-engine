@@ -1,28 +1,31 @@
-import { PausableClock } from './clock/pausable-clock';
-import { GgEntity, GGTickOrder } from './entities/gg-entity';
-import { GgPhysicsWorld } from './interfaces/gg-physics-world';
-import { GgVisualScene } from './interfaces/gg-visual-scene';
-import { GgStatic } from './gg-static';
-import { KeyboardInput } from './inputs/keyboard.input';
+import {
+  GgConsoleUI,
+  GgDebuggerUI,
+  IEntity,
+  GgGlobalClock,
+  GgStatic,
+  TickOrder,
+  IPhysicsWorldComponent,
+  IVisualSceneComponent,
+  KeyboardInput,
+  PausableClock,
+  IPositionable,
+  IRenderableEntity,
+} from '../base';
 import { filter } from 'rxjs';
-import { GgConsoleUI } from './ui/gg-console.ui';
-import { GgDebuggerUI } from './ui/gg-debugger.ui';
-import { GgGlobalClock } from './clock/global-clock';
-import { RenderableEntityMixin } from './entities/mixins/renderable-entity.mixin';
-import { GgPositionableEntity } from './entities/gg-positionable-entity';
 
 export abstract class GgWorld<
   D,
   R,
-  V extends GgVisualScene<D, R> = GgVisualScene<D, R>,
-  P extends GgPhysicsWorld<D, R> = GgPhysicsWorld<D, R>,
+  V extends IVisualSceneComponent<D, R> = IVisualSceneComponent<D, R>,
+  P extends IPhysicsWorldComponent<D, R> = IPhysicsWorldComponent<D, R>,
 > {
   public readonly worldClock: PausableClock = GgGlobalClock.instance.createChildClock(false);
   public readonly keyboardInput: KeyboardInput = new KeyboardInput();
 
-  readonly children: GgEntity[] = [];
+  readonly children: IEntity[] = [];
   // the same as children, but sorted by tick order
-  protected readonly tickListeners: GgEntity[] = [];
+  protected readonly tickListeners: IEntity[] = [];
 
   constructor(
     public readonly visualScene: V,
@@ -98,7 +101,7 @@ export abstract class GgWorld<
       let i = 0;
       // emit tick to all entities with tick order < GGTickOrder.PHYSICS_SIMULATION
       for (i; i < this.tickListeners.length; i++) {
-        if (this.tickListeners[i].tickOrder >= GGTickOrder.PHYSICS_SIMULATION) {
+        if (this.tickListeners[i].tickOrder >= TickOrder.PHYSICS_SIMULATION) {
           break;
         }
         if (this.tickListeners[i].active) {
@@ -161,9 +164,9 @@ export abstract class GgWorld<
     descr: any,
     position?: D,
     rotation?: R,
-  ): GgPositionableEntity<D, R> & RenderableEntityMixin;
+  ): IPositionable<D, R> & IRenderableEntity<D, R, V, P>;
 
-  public addEntity(entity: GgEntity): void {
+  public addEntity(entity: IEntity): void {
     if (!!entity.world) {
       console.warn('Trying to spawn entity, which is already spawned');
       return;
@@ -174,7 +177,7 @@ export abstract class GgWorld<
     entity.onSpawned(this);
   }
 
-  public removeEntity(entity: GgEntity, dispose = false): void {
+  public removeEntity(entity: IEntity, dispose = false): void {
     if (entity.world) {
       if (entity.world !== this) {
         throw new Error('Entity is not a part of this world');

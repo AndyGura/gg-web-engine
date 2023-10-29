@@ -1,7 +1,7 @@
 import { Component, Input, OnDestroy, OnInit } from '@angular/core';
 import { map, switchMap, takeUntil } from 'rxjs/operators';
 import { BehaviorSubject, Observable, of, Subject, timer } from 'rxjs';
-import { Gg3dRaycastVehicleEntity } from '@gg-web-engine/core';
+import { RaycastVehicle3dEntity } from '@gg-web-engine/core';
 
 @Component({
   selector: 'app-dashboard',
@@ -44,10 +44,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   destroyed$: Subject<void> = new Subject<void>();
 
   @Input()
-  set car(v: Gg3dRaycastVehicleEntity | null) {
+  set car(v: RaycastVehicle3dEntity | null) {
     this.car$.next(v);
   }
-  private car$: BehaviorSubject<Gg3dRaycastVehicleEntity | null> = new BehaviorSubject<Gg3dRaycastVehicleEntity | null>(null);
+  private car$: BehaviorSubject<RaycastVehicle3dEntity | null> = new BehaviorSubject<RaycastVehicle3dEntity | null>(null);
 
   constructor(
   ) {

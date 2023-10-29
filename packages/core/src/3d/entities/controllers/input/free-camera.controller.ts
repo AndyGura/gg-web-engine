@@ -1,18 +1,21 @@
 import { combineLatest, filter, takeUntil } from 'rxjs';
-import { MouseInput, MouseInputOptions } from '../../../../base/inputs/mouse.input';
-import { Pnt3 } from '../../../../base/math/point3';
-import { Gg3dCameraEntity } from '../../gg-3d-camera.entity';
-import { KeyboardInput } from '../../../../base/inputs/keyboard.input';
-import { Pnt2 } from '../../../../base/math/point2';
-import { MutableSpherical, Point2 } from '../../../../base/models/points';
-import { Qtrn } from '../../../../base/math/quaternion';
 import {
   DirectionKeyboardInput,
   DirectionKeyboardKeymap,
   DirectionKeyboardOutput,
-} from '../../../../base/inputs/direction.keyboard-input';
-import { GgEntity, GGTickOrder } from '../../../../base/entities/gg-entity';
-import { GgWorld } from '../../../../base/gg-world';
+  IEntity,
+  TickOrder,
+  GgWorld,
+  KeyboardInput,
+  MouseInput,
+  MouseInputOptions,
+  MutableSpherical,
+  Pnt2,
+  Pnt3,
+  Point2,
+  Qtrn,
+} from '../../../../base';
+import { Renderer3dEntity } from '../../renderer-3d.entity';
 
 /**
  * Options for configuring a FreeCameraInput controller.
@@ -48,8 +51,8 @@ export type FreeCameraControllerOptions = {
 /**
  * A controller for a free-moving camera.
  */
-export class FreeCameraController extends GgEntity {
-  public readonly tickOrder = GGTickOrder.INPUT_CONTROLLERS;
+export class FreeCameraController extends IEntity {
+  public readonly tickOrder = TickOrder.INPUT_CONTROLLERS;
 
   /**
    * The mouse input controller used for camera rotation.
@@ -68,7 +71,7 @@ export class FreeCameraController extends GgEntity {
    */
   constructor(
     protected readonly keyboard: KeyboardInput,
-    protected readonly camera: Gg3dCameraEntity,
+    protected readonly camera: Renderer3dEntity,
     protected readonly options: FreeCameraControllerOptions = {
       keymap: 'wasd',
       movementOptions: { speed: 0.5 },
@@ -87,7 +90,7 @@ export class FreeCameraController extends GgEntity {
     // Subscribe to keyboard input for movement controls
     let controls: { direction: DirectionKeyboardOutput; rest: boolean[] } = { direction: {}, rest: [] };
     const keys = ['KeyE', 'KeyQ'];
-    if (this.camera.object3D.supportsFov) {
+    if (this.camera.camera.supportsFov) {
       keys.push('KeyZ', 'KeyC');
     }
     keys.push('ShiftLeft');
@@ -123,7 +126,7 @@ export class FreeCameraController extends GgEntity {
       if (c.direction.upDown !== undefined) translateVector.z = c.direction.upDown ? -1 : 1;
       if (c.direction.leftRight !== undefined) translateVector.x = c.direction.leftRight ? -1 : 1;
       if (u != d) translateVector.y = d ? -1 : 1;
-      if (zo != zi) this.camera.object3D.fov += zo ? 1 : -1;
+      if (zo != zi) this.camera.camera.fov += zo ? 1 : -1;
       let speed = this.options.movementOptions.speed;
       if (speedBoost) {
         speed *= 2.5;

@@ -1,9 +1,9 @@
-import { CarProperties, Gg3dRaycastVehicleEntity, IGg3dRaycastVehicle } from '../../src';
+import { CarProperties, RaycastVehicle3dEntity, IRaycastVehicleComponent } from '../../src';
 import { mock3DObject } from './object.mock';
 
-export const mockRaycastVehicleEntity: () => Gg3dRaycastVehicleEntity = () => new Gg3dRaycastVehicleEntity(mockCarProperties(), mock3DObject(), mockRaycastVehicle(), mock3DObject());
+export const mockRaycastVehicleEntity: () => RaycastVehicle3dEntity = () => new RaycastVehicle3dEntity(mockCarProperties(), mock3DObject(), mockRaycastVehicle(), mock3DObject());
 
-export const mockRaycastVehicle: () => IGg3dRaycastVehicle = () => {
+export const mockRaycastVehicle: () => IRaycastVehicleComponent = () => {
   return {
     addWheel: () => {
     },
