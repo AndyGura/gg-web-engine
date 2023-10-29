@@ -1,4 +1,6 @@
 #!/bin/bash
+set -e
+set -o pipefail
 pushd "$(dirname "$0")"
 pushd ..
 pushd packages/core
@@ -18,12 +20,23 @@ function switch_gg_module {
 pushd packages/three
 switch_gg_module
 popd
+
 pushd packages/ammo
 switch_gg_module
 popd
+
+pushd packages/rapier2d
+switch_gg_module
+popd
+
+pushd packages/rapier3d
+switch_gg_module
+popd
+
 pushd packages/pixi
 switch_gg_module
 popd
+
 pushd packages/matter
 switch_gg_module
 popd

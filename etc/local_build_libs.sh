@@ -15,6 +15,14 @@ pushd packages/ammo
 npm run prettier-format
 npm run build
 popd
+pushd packages/rapier2d
+npm run prettier-format
+npm run build
+popd
+pushd packages/rapier3d
+npm run prettier-format
+npm run build
+popd
 pushd packages/pixi
 npm run prettier-format
 npm run build

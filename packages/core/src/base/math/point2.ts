@@ -16,6 +16,16 @@ export class Pnt2 {
     return { x: 0, y: 1 };
   }
 
+  /** basis -X vector */
+  static get nX(): Point2 {
+    return { x: -1, y: 0 };
+  }
+
+  /** basis -Y vector */
+  static get nY(): Point2 {
+    return { x: 0, y: -1 };
+  }
+
   /** clone point */
   static clone(p: Point2): Point2 {
     return { x: p.x, y: p.y };
