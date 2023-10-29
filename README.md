@@ -70,8 +70,10 @@ that there is currently lack of functionality which is not related to racing gam
 Note: at this early step, the project does not give much flexibility in that regard, will be changed in future
 - [**@gg-web-engine/three**](https://github.com/AndyGura/gg-web-engine/tree/main/packages/three/README.md) - 3D world rendering module [Three.js](https://github.com/mrdoob/three.js)
 - [**@gg-web-engine/ammo**](https://github.com/AndyGura/gg-web-engine/tree/main/packages/ammo/README.md) - 3D world physics simulation module [Ammo.js](https://github.com/kripken/ammo.js)
+- [**@gg-web-engine/rapier3d**](https://github.com/AndyGura/gg-web-engine/tree/main/packages/rapier3d/README.md) - 3D world physics simulation module [Rapier.js](https://github.com/dimforge/rapier.js)
 - [**@gg-web-engine/pixi**](https://github.com/AndyGura/gg-web-engine/tree/main/packages/pixi/README.md) - 2D world rendering module [Pixi.js](https://github.com/pixijs/pixijs)
 - [**@gg-web-engine/matter**](https://github.com/AndyGura/gg-web-engine/tree/main/packages/matter/README.md) - 2D world physics simulation module [Matter.js](https://github.com/liabru/matter-js)
+- [**@gg-web-engine/rapier2d**](https://github.com/AndyGura/gg-web-engine/tree/main/packages/rapier2d/README.md) - 2D world physics simulation module [Rapier.js](https://github.com/dimforge/rapier.js)
 
 ## Quickstart
 ### Installation:
