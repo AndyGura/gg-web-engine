@@ -9,7 +9,7 @@ import {
   Point4,
   Qtrn,
 } from '@gg-web-engine/core';
-import { Collider, ColliderDesc, Quaternion, RigidBody, RigidBodyDesc, Vector3 } from '@dimforge/rapier3d';
+import { Collider, ColliderDesc, Quaternion, RigidBody, RigidBodyDesc, Vector3 } from '@dimforge/rapier3d-compat';
 import { Rapier3dWorldComponent } from './rapier-3d-world.component';
 
 export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3dWorldComponent> {

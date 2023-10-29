@@ -6,7 +6,7 @@ import {
   Point2,
   Shape2DDescriptor,
 } from '@gg-web-engine/core';
-import { ActiveEvents, ColliderDesc, RigidBodyDesc } from '@dimforge/rapier2d';
+import { ActiveEvents, ColliderDesc, RigidBodyDesc } from '@dimforge/rapier2d-compat';
 import { Rapier2dRigidBodyComponent } from './components/rapier-2d-rigid-body.component';
 import { Rapier2dTriggerComponent } from './components/rapier-2d-trigger.component';
 import { Rapier2dWorldComponent } from './components/rapier-2d-world.component';

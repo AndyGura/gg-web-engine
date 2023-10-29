@@ -1,5 +1,5 @@
 import { Gg3dWorld, IDebugPhysicsDrawer, IPhysicsWorld3dComponent, Point3, Point4 } from '@gg-web-engine/core';
-import { EventQueue, Vector3, World } from '@dimforge/rapier3d';
+import { EventQueue, init, Vector3, World } from '@dimforge/rapier3d-compat';
 import { Rapier3dRigidBodyComponent } from './rapier-3d-rigid-body.component';
 import { Rapier3dFactory } from '../rapier-3d-factory';
 import { Rapier3dLoader } from '../rapier-3d-loader';
@@ -58,6 +58,7 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent {
   public readonly handleIdEntityMap: Map<number, Rapier3dRigidBodyComponent> = new Map();
 
   async init(): Promise<void> {
+    await init();
     this._nativeWorld = new World(new Vector3(this._gravity.x, this._gravity.y, this._gravity.z));
     this._factory = new Rapier3dFactory(this);
     this._loader = new Rapier3dLoader(this);

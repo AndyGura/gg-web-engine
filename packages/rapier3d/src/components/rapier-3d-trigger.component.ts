@@ -1,5 +1,5 @@
 import { Observable, Subject } from 'rxjs';
-import { ColliderDesc, RigidBodyDesc } from '@dimforge/rapier3d';
+import { ColliderDesc, RigidBodyDesc } from '@dimforge/rapier3d-compat';
 import { Rapier3dRigidBodyComponent } from './rapier-3d-rigid-body.component';
 import { Gg3dWorld, ITrigger3dComponent, IVisualScene3dComponent } from '@gg-web-engine/core';
 import { Rapier3dWorldComponent } from './rapier-3d-world.component';

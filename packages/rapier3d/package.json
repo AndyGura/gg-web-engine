@@ -1,6 +1,6 @@
 {
   "name": "@gg-web-engine/rapier3d",
-  "version": "0.0.25",
+  "version": "0.0.26",
   "description": "An attempt to create open source game engine for browser",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -29,14 +29,14 @@
   "dependencies": {
   },
   "devDependencies": {
-    "@dimforge/rapier3d": "0.0.0-c23a138-20231001",
+    "@dimforge/rapier3d-compat": "0.0.0-c23a138-20231001",
     "@gg-web-engine/core": "0.0.24",
     "prettier": "^2.8.6",
     "rxjs": "7.8.0",
     "typescript": "~4.7.2"
   },
   "peerDependencies": {
-    "@dimforge/rapier3d": "0.0.0-c23a138-20231001",
+    "@dimforge/rapier3d-compat": "0.0.0-c23a138-20231001",
     "@gg-web-engine/core": "0.0.24",
     "rxjs": "7.8.0"
   }

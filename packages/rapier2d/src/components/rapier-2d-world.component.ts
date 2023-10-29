@@ -1,5 +1,5 @@
 import { Gg2dWorld, IDebugPhysicsDrawer, IPhysicsWorld2dComponent, Pnt2, Point2 } from '@gg-web-engine/core';
-import { EventQueue, Vector2, World } from '@dimforge/rapier2d';
+import { init, EventQueue, Vector2, World } from '@dimforge/rapier2d-compat';
 import { Rapier2dRigidBodyComponent } from './rapier-2d-rigid-body.component';
 import { Rapier2dFactory } from '../rapier-2d-factory';
 
@@ -49,6 +49,7 @@ export class Rapier2dWorldComponent implements IPhysicsWorld2dComponent {
   public readonly handleIdEntityMap: Map<number, Rapier2dRigidBodyComponent> = new Map();
 
   async init(): Promise<void> {
+    await init();
     this._nativeWorld = new World(new Vector2(this._gravity.x, this._gravity.y));
     this._factory = new Rapier2dFactory(this);
   }

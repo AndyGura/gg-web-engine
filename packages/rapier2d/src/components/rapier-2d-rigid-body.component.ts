@@ -7,7 +7,7 @@ import {
   Pnt2,
   Point2,
 } from '@gg-web-engine/core';
-import { Collider, ColliderDesc, RigidBody, RigidBodyDesc, Vector2 } from '@dimforge/rapier2d';
+import { Collider, ColliderDesc, RigidBody, RigidBodyDesc, Vector2 } from '@dimforge/rapier2d-compat';
 import { Rapier2dWorldComponent } from './rapier-2d-world.component';
 
 export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2dWorldComponent> {

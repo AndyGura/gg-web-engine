@@ -8,7 +8,7 @@ import {
   Qtrn,
   Shape3DDescriptor,
 } from '@gg-web-engine/core';
-import { ActiveEvents, ColliderDesc, Quaternion, RigidBodyDesc } from '@dimforge/rapier3d';
+import { ActiveEvents, ColliderDesc, Quaternion, RigidBodyDesc } from '@dimforge/rapier3d-compat';
 import { Rapier3dRigidBodyComponent } from './components/rapier-3d-rigid-body.component';
 import { Rapier3dTriggerComponent } from './components/rapier-3d-trigger.component';
 import { Rapier3dWorldComponent } from './components/rapier-3d-world.component';

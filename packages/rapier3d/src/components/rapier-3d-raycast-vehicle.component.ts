@@ -9,7 +9,7 @@ import {
   SuspensionOptions,
   WheelOptions,
 } from '@gg-web-engine/core';
-import { DynamicRayCastVehicleController, Vector3 } from '@dimforge/rapier3d';
+import { DynamicRayCastVehicleController, Vector3 } from '@dimforge/rapier3d-compat';
 import { Rapier3dRigidBodyComponent } from './rapier-3d-rigid-body.component';
 import { Rapier3dWorldComponent } from './rapier-3d-world.component';
 
