@@ -13,7 +13,10 @@ import { DynamicRayCastVehicleController, Vector3 } from '@dimforge/rapier3d';
 import { Rapier3dRigidBodyComponent } from './rapier-3d-rigid-body.component';
 import { Rapier3dWorldComponent } from './rapier-3d-world.component';
 
-export class Rapier3dRaycastVehicleComponent extends Rapier3dRigidBodyComponent implements IRaycastVehicleComponent<Rapier3dWorldComponent> {
+export class Rapier3dRaycastVehicleComponent
+  extends Rapier3dRigidBodyComponent
+  implements IRaycastVehicleComponent<Rapier3dWorldComponent>
+{
   protected _nativeVehicle: DynamicRayCastVehicleController | null = null;
 
   public get nativeVehicle(): DynamicRayCastVehicleController | null {
