@@ -64,8 +64,7 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
     protected _colliderDescr: ColliderDesc[],
     protected _bodyDescr: RigidBodyDesc,
     protected _colliderOptions: Omit<Omit<Body3DOptions, 'dynamic'>, 'mass'>,
-  ) {
-  }
+  ) {}
 
   clone(): Rapier3dRigidBodyComponent {
     // TODO probably need to clone factory props to not share the same reference?

@@ -1,6 +1,7 @@
 import {
   Body3DOptions,
-  BodyShape3DDescriptor, IPhysicsBody3dComponentFactory,
+  BodyShape3DDescriptor,
+  IPhysicsBody3dComponentFactory,
   Pnt3,
   Point3,
   Point4,
@@ -12,7 +13,9 @@ import { Rapier3dRigidBodyComponent } from './components/rapier-3d-rigid-body.co
 import { Rapier3dTriggerComponent } from './components/rapier-3d-trigger.component';
 import { Rapier3dWorldComponent } from './components/rapier-3d-world.component';
 
-export class Rapier3dFactory implements IPhysicsBody3dComponentFactory<Rapier3dRigidBodyComponent, Rapier3dTriggerComponent> {
+export class Rapier3dFactory
+  implements IPhysicsBody3dComponentFactory<Rapier3dRigidBodyComponent, Rapier3dTriggerComponent>
+{
   constructor(protected readonly world: Rapier3dWorldComponent) {}
 
   createRigidBody(
@@ -46,7 +49,11 @@ export class Rapier3dFactory implements IPhysicsBody3dComponentFactory<Rapier3dR
       c.isSensor = true;
       c.setActiveEvents(ActiveEvents.COLLISION_EVENTS);
     });
-    return new Rapier3dTriggerComponent(this.world, colliderDescr, this.createRigidBodyDescr({ dynamic: false }, transform));
+    return new Rapier3dTriggerComponent(
+      this.world,
+      colliderDescr,
+      this.createRigidBodyDescr({ dynamic: false }, transform),
+    );
   }
 
   public createColliderDescr(descriptor: Shape3DDescriptor): ColliderDesc[] {

@@ -46,8 +46,8 @@ export class Rapier3dRaycastVehicleComponent extends Rapier3dRigidBodyComponent 
   addWheel(options: WheelOptions, suspensionOptions: SuspensionOptions): void {
     const descr: [Vector3, Vector3, Vector3, number, number] = [
       new Vector3(options.position.x, options.position.y, options.position.z - 1),
-      Pnt3.nZ,
-      options.isLeft ? Pnt3.X : Pnt3.nX,
+      { x: 0, y: 0, z: -1 }, // TODO Pnt3.nZ,
+      options.isLeft ? Pnt3.X : { x: -1, y: 0, z: 0 }, // TODO Pnt3.nX,
       suspensionOptions.restLength,
       options.tyre_radius,
     ];
