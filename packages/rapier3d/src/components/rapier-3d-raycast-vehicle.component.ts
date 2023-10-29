@@ -1,6 +1,7 @@
 import {
-  Gg3dRaycastVehicleEntity,
-  IGg3dRaycastVehicle,
+  Gg3dWorld,
+  IRaycastVehicleComponent,
+  IVisualScene3dComponent,
   Pnt3,
   Point3,
   Point4,
@@ -8,22 +9,20 @@ import {
   SuspensionOptions,
   WheelOptions,
 } from '@gg-web-engine/core';
-import { Gg3dPhysicsWorld } from './gg-3d-physics-world';
 import { DynamicRayCastVehicleController, Vector3 } from '@dimforge/rapier3d';
-import { Gg3dBody } from './bodies/gg-3d-body';
+import { Rapier3dRigidBodyComponent } from './rapier-3d-rigid-body.component';
+import { Rapier3dWorldComponent } from './rapier-3d-world.component';
 
-export class Gg3dRaycastVehicle extends Gg3dBody implements IGg3dRaycastVehicle {
+export class Rapier3dRaycastVehicleComponent extends Rapier3dRigidBodyComponent implements IRaycastVehicleComponent<Rapier3dWorldComponent> {
   protected _nativeVehicle: DynamicRayCastVehicleController | null = null;
 
   public get nativeVehicle(): DynamicRayCastVehicleController | null {
     return this._nativeVehicle;
   }
 
-  public entity: Gg3dRaycastVehicleEntity | null = null;
-
   private wheelDescr: [Vector3, Vector3, Vector3, number, number][] = [];
 
-  constructor(protected readonly world: Gg3dPhysicsWorld, private chassisBody: Gg3dBody) {
+  constructor(protected readonly world: Rapier3dWorldComponent, private chassisBody: Rapier3dRigidBodyComponent) {
     super(world, ...chassisBody.factoryProps);
   }
 
@@ -31,13 +30,13 @@ export class Gg3dRaycastVehicle extends Gg3dBody implements IGg3dRaycastVehicle 
     return (this.nativeVehicle?.currentVehicleSpeed() || 0) / 3.6;
   }
 
-  addToWorld(world: Gg3dPhysicsWorld) {
+  addToWorld(world: Gg3dWorld<IVisualScene3dComponent, Rapier3dWorldComponent>) {
     super.addToWorld(world);
     this._nativeVehicle = new DynamicRayCastVehicleController(
       this._nativeBody!,
-      world.nativeWorld!.bodies,
-      world.nativeWorld!.colliders,
-      world.nativeWorld!.queryPipeline,
+      world.physicsWorld.nativeWorld!.bodies,
+      world.physicsWorld.nativeWorld!.colliders,
+      world.physicsWorld.nativeWorld!.queryPipeline,
     );
     for (const descr of this.wheelDescr) {
       this._nativeVehicle.addWheel(...descr);

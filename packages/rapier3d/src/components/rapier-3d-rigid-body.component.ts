@@ -1,8 +1,20 @@
-import { Gg3dPhysicsWorld } from '../gg-3d-physics-world';
-import { Body3DOptions, Gg3dEntity, IGg3dBody, Pnt3, Point3, Point4, Qtrn } from '@gg-web-engine/core';
+import {
+  Body3DOptions,
+  Entity3d,
+  Gg3dWorld,
+  IRigidBody3dComponent,
+  IVisualScene3dComponent,
+  Pnt3,
+  Point3,
+  Point4,
+  Qtrn,
+} from '@gg-web-engine/core';
 import { Collider, ColliderDesc, Quaternion, RigidBody, RigidBodyDesc, Vector3 } from '@dimforge/rapier3d';
+import { Rapier3dWorldComponent } from './rapier-3d-world.component';
 
-export class Gg3dBody implements IGg3dBody {
+export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3dWorldComponent> {
+  public entity: Entity3d | null = null;
+
   public get position(): Point3 {
     return Pnt3.clone(this.nativeBody ? this.nativeBody.translation() : this._bodyDescr.translation);
   }
@@ -27,11 +39,6 @@ export class Gg3dBody implements IGg3dBody {
     }
   }
 
-  public get scale(): Point3 {
-    // hmm, is it even possible to be different?
-    return { x: 1, y: 1, z: 1 };
-  }
-
   protected _nativeBody: RigidBody | null = null;
   protected _nativeBodyColliders: Collider[] | null = null;
 
@@ -48,26 +55,25 @@ export class Gg3dBody implements IGg3dBody {
 
   public name: string = '';
 
-  public entity: Gg3dEntity | null = null;
-
   public get factoryProps(): [ColliderDesc[], RigidBodyDesc, Omit<Omit<Body3DOptions, 'dynamic'>, 'mass'>] {
     return [this._colliderDescr, this._bodyDescr, this._colliderOptions];
   }
 
   constructor(
-    protected readonly world: Gg3dPhysicsWorld,
+    protected readonly world: Rapier3dWorldComponent,
     protected _colliderDescr: ColliderDesc[],
     protected _bodyDescr: RigidBodyDesc,
     protected _colliderOptions: Omit<Omit<Body3DOptions, 'dynamic'>, 'mass'>,
-  ) {}
-
-  clone(): Gg3dBody {
-    // TODO probably need to clone factory props to not share the same reference?
-    return new Gg3dBody(this.world, ...this.factoryProps);
+  ) {
   }
 
-  addToWorld(world: Gg3dPhysicsWorld): void {
-    if (world != this.world) {
+  clone(): Rapier3dRigidBodyComponent {
+    // TODO probably need to clone factory props to not share the same reference?
+    return new Rapier3dRigidBodyComponent(this.world, ...this.factoryProps);
+  }
+
+  addToWorld(world: Gg3dWorld<IVisualScene3dComponent, Rapier3dWorldComponent>): void {
+    if (world.physicsWorld != this.world) {
       throw new Error('Rapier3D bodies cannot be shared between different worlds');
     }
     this._nativeBody = this.world.nativeWorld!.createRigidBody(this._bodyDescr);
@@ -77,11 +83,11 @@ export class Gg3dBody implements IGg3dBody {
       col.setRestitution(this._colliderOptions.restitution);
       return col;
     });
-    this.world.handleIdEntityMap.set(this._nativeBody.handle, this);
+    this.world.handleIdEntityMap.set(this._nativeBody!.handle, this);
   }
 
-  removeFromWorld(world: Gg3dPhysicsWorld): void {
-    if (world != this.world) {
+  removeFromWorld(world: Gg3dWorld<IVisualScene3dComponent, Rapier3dWorldComponent>): void {
+    if (world.physicsWorld != this.world) {
       throw new Error('Rapier3D bodies cannot be shared between different worlds');
     }
     if (this._nativeBody) {
@@ -102,7 +108,7 @@ export class Gg3dBody implements IGg3dBody {
 
   dispose(): void {
     if (this.nativeBody) {
-      this.removeFromWorld(this.world);
+      this.removeFromWorld({ physicsWorld: this.world } as Gg3dWorld<IVisualScene3dComponent, Rapier3dWorldComponent>);
     }
   }
 }

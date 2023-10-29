@@ -320,7 +320,6 @@ export class RaycastVehicle3dEntity extends Entity3d {
   onSpawned(world: Gg3dWorld) {
     super.onSpawned(world);
     this.tick$.subscribe(([_, delta]) => {
-      this.chassisBody.updateVehicleSimulation(delta);
       this.updateEngine(delta);
       if (this.isTouchingGround) {
         // TODO 1 - R (1000 rpm) quick switch with acceleration pedal should have the same speed as without acceleration pedal

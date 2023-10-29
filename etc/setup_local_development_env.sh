@@ -1,4 +1,6 @@
 #!/bin/bash
+set -e
+set -o pipefail
 pushd "$(dirname "$0")"
 pushd ..
 pushd packages/core

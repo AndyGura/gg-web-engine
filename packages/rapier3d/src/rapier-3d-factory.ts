@@ -1,20 +1,19 @@
 import {
   Body3DOptions,
-  BodyShape3DDescriptor,
-  IGg3dBodyFactory,
+  BodyShape3DDescriptor, IPhysicsBody3dComponentFactory,
   Pnt3,
   Point3,
   Point4,
   Qtrn,
   Shape3DDescriptor,
 } from '@gg-web-engine/core';
-import { Gg3dBody } from './bodies/gg-3d-body';
-import { Gg3dPhysicsWorld } from './gg-3d-physics-world';
-import { Gg3dTrigger } from './bodies/gg-3d-trigger';
 import { ActiveEvents, ColliderDesc, Quaternion, RigidBodyDesc } from '@dimforge/rapier3d';
+import { Rapier3dRigidBodyComponent } from './components/rapier-3d-rigid-body.component';
+import { Rapier3dTriggerComponent } from './components/rapier-3d-trigger.component';
+import { Rapier3dWorldComponent } from './components/rapier-3d-world.component';
 
-export class Gg3dBodyFactory implements IGg3dBodyFactory<Gg3dBody, Gg3dTrigger> {
-  constructor(protected readonly world: Gg3dPhysicsWorld) {}
+export class Rapier3dFactory implements IPhysicsBody3dComponentFactory<Rapier3dRigidBodyComponent, Rapier3dTriggerComponent> {
+  constructor(protected readonly world: Rapier3dWorldComponent) {}
 
   createRigidBody(
     descriptor: BodyShape3DDescriptor,
@@ -22,8 +21,8 @@ export class Gg3dBodyFactory implements IGg3dBodyFactory<Gg3dBody, Gg3dTrigger> 
       position?: Point3;
       rotation?: Point4;
     },
-  ): Gg3dBody {
-    return new Gg3dBody(
+  ): Rapier3dRigidBodyComponent {
+    return new Rapier3dRigidBodyComponent(
       this.world,
       this.createColliderDescr(descriptor.shape),
       this.createRigidBodyDescr(descriptor.body, transform),
@@ -41,13 +40,13 @@ export class Gg3dBodyFactory implements IGg3dBodyFactory<Gg3dBody, Gg3dTrigger> 
       position?: Point3;
       rotation?: Point4;
     },
-  ): Gg3dTrigger {
+  ): Rapier3dTriggerComponent {
     const colliderDescr = this.createColliderDescr(descriptor);
     colliderDescr.forEach(c => {
       c.isSensor = true;
       c.setActiveEvents(ActiveEvents.COLLISION_EVENTS);
     });
-    return new Gg3dTrigger(this.world, colliderDescr, this.createRigidBodyDescr({ dynamic: false }, transform));
+    return new Rapier3dTriggerComponent(this.world, colliderDescr, this.createRigidBodyDescr({ dynamic: false }, transform));
   }
 
   public createColliderDescr(descriptor: Shape3DDescriptor): ColliderDesc[] {
