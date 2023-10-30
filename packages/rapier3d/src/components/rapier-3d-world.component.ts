@@ -8,7 +8,7 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent {
   private _factory: Rapier3dFactory | null = null;
   public get factory(): Rapier3dFactory {
     if (!this._factory) {
-      throw new Error('Ammo world not initialized');
+      throw new Error('Rapier3d world not initialized');
     }
     return this._factory;
   }
@@ -16,7 +16,7 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent {
   private _loader: Rapier3dLoader | null = null;
   public get loader(): Rapier3dLoader {
     if (!this._loader) {
-      throw new Error('Ammo world not initialized');
+      throw new Error('Rapier3d world not initialized');
     }
     return this._loader;
   }
@@ -48,17 +48,27 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent {
     return false;
   }
 
-  protected _nativeWorld: World | undefined;
-  public get nativeWorld(): World | undefined {
+  protected _nativeWorld: World | null = null;
+  public get nativeWorld(): World {
+    if (!this._nativeWorld) {
+      throw new Error('Rapier3d world not initialized');
+    }
     return this._nativeWorld;
   }
 
-  public readonly eventQueue: EventQueue = new EventQueue(true);
+  private _eventQueue: EventQueue | null = null;
+  public get eventQueue(): EventQueue {
+    if (!this._eventQueue) {
+      throw new Error('Rapier3d world not initialized');
+    }
+    return this._eventQueue;
+  }
 
   public readonly handleIdEntityMap: Map<number, Rapier3dRigidBodyComponent> = new Map();
 
   async init(): Promise<void> {
     await init();
+    this._eventQueue = new EventQueue(true);
     this._nativeWorld = new World(new Vector3(this._gravity.x, this._gravity.y, this._gravity.z));
     this._factory = new Rapier3dFactory(this);
     this._loader = new Rapier3dLoader(this);

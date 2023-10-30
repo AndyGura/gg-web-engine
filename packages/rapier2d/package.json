@@ -1,6 +1,6 @@
 {
   "name": "@gg-web-engine/rapier2d",
-  "version": "0.0.26",
+  "version": "0.0.27",
   "description": "An attempt to create open source game engine for browser",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

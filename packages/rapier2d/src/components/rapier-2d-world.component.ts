@@ -7,7 +7,7 @@ export class Rapier2dWorldComponent implements IPhysicsWorld2dComponent {
   private _factory: Rapier2dFactory | null = null;
   public get factory(): Rapier2dFactory {
     if (!this._factory) {
-      throw new Error('Ammo world not initialized');
+      throw new Error('Rapier2d world not initialized');
     }
     return this._factory;
   }
@@ -39,17 +39,27 @@ export class Rapier2dWorldComponent implements IPhysicsWorld2dComponent {
     return false;
   }
 
-  protected _nativeWorld: World | undefined;
-  public get nativeWorld(): World | undefined {
+  protected _nativeWorld: World | null = null;
+  public get nativeWorld(): World {
+    if (!this._nativeWorld) {
+      throw new Error('Rapier2d world not initialized');
+    }
     return this._nativeWorld;
   }
 
-  public readonly eventQueue: EventQueue = new EventQueue(true);
+  private _eventQueue: EventQueue | null = null;
+  public get eventQueue(): EventQueue {
+    if (!this._eventQueue) {
+      throw new Error('Rapier2d world not initialized');
+    }
+    return this._eventQueue;
+  }
 
   public readonly handleIdEntityMap: Map<number, Rapier2dRigidBodyComponent> = new Map();
 
   async init(): Promise<void> {
     await init();
+    this._eventQueue = new EventQueue(true);
     this._nativeWorld = new World(new Vector2(this._gravity.x, this._gravity.y));
     this._factory = new Rapier2dFactory(this);
   }
