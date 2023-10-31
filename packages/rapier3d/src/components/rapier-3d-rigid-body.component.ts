@@ -56,7 +56,26 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
   public name: string = '';
 
   public get factoryProps(): [ColliderDesc[], RigidBodyDesc, Omit<Omit<Body3DOptions, 'dynamic'>, 'mass'>] {
-    return [this._colliderDescr, this._bodyDescr, this._colliderOptions];
+     const colliderDescr = this._colliderDescr.map(cd => {
+      const d = new ColliderDesc(cd.shape);
+      d.setTranslation(cd.translation.x, cd.translation.y, cd.translation.z);
+      d.setRotation({ ...cd.rotation });
+      d.setMassProperties(cd.mass, cd.centerOfMass, cd.principalAngularInertia, cd.angularInertiaLocalFrame);
+      d.setFriction(cd.friction);
+      d.setEnabled(cd.enabled);
+      d.setRestitution(cd.restitution);
+      // TODO more fields here?
+      return d;
+    });
+    const bd = new RigidBodyDesc(this._bodyDescr.status);
+    bd.setTranslation(this._bodyDescr.translation.x, this._bodyDescr.translation.y, this._bodyDescr.translation.z);
+    bd.setRotation({ ... this._bodyDescr.rotation });
+    // TODO more fields here?
+    return [
+      colliderDescr,
+      bd,
+      this._colliderOptions
+    ];
   }
 
   constructor(
@@ -67,7 +86,6 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
   ) {}
 
   clone(): Rapier3dRigidBodyComponent {
-    // TODO probably need to clone factory props to not share the same reference?
     return new Rapier3dRigidBodyComponent(this.world, ...this.factoryProps);
   }
 

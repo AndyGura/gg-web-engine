@@ -35,15 +35,20 @@ export class Rapier3dRaycastVehicleComponent
 
   addToWorld(world: Gg3dWorld<IVisualScene3dComponent, Rapier3dWorldComponent>) {
     super.addToWorld(world);
-    this._nativeVehicle = new DynamicRayCastVehicleController(
-      this._nativeBody!,
-      world.physicsWorld.nativeWorld!.bodies,
-      world.physicsWorld.nativeWorld!.colliders,
-      world.physicsWorld.nativeWorld!.queryPipeline,
-    );
+    this._nativeVehicle = world.physicsWorld.nativeWorld.createVehicleController(this._nativeBody!);
     for (const descr of this.wheelDescr) {
       this._nativeVehicle.addWheel(...descr);
     }
+  }
+
+  removeFromWorld(world: Gg3dWorld<IVisualScene3dComponent, Rapier3dWorldComponent>) {
+    if (world.physicsWorld != this.world) {
+      throw new Error('Rapier3D bodies cannot be shared between different worlds');
+    }
+    if (this.nativeVehicle) {
+      world.physicsWorld.nativeWorld.removeVehicleController(this.nativeVehicle);
+    }
+    super.removeFromWorld(world);
   }
 
   addWheel(options: WheelOptions, suspensionOptions: SuspensionOptions): void {
@@ -94,11 +99,6 @@ export class Rapier3dRaycastVehicleComponent
 
   resetSuspension(): void {
     // TODO
-  }
-
-  updateVehicleSimulation(deltaMS: number) {
-    if (!this.nativeVehicle) return;
-    this.nativeVehicle.updateVehicle(deltaMS / 1000);
   }
 
   dispose() {
