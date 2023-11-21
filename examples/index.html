@@ -19,10 +19,10 @@
             background-color: #333;
             color: white;
             box-sizing: border-box;
-
             display: flex;
             flex-direction: column;
             height: 100%;
+            overflow-y: auto;
         }
 
         .navPanel {
@@ -32,7 +32,6 @@
         .examplesNavPanel {
             margin: 20px 0;
             flex-grow: 1;
-            overflow-y: scroll;
         }
 
         .examplesNavPanel > label {
@@ -47,6 +46,7 @@
             outline: none;
             padding-left: 0;
             padding-right: 0;
+            overflow-y: hidden;
         }
 
         #examplesList > option {
