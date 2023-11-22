@@ -1,0 +1,1 @@
+{"curves": [], "dummies": [], "rigidBodies": [{"name": "battery.001", "position": {"x": 0.0, "y": 0.0, "z": 0.0}, "rotation": {"x": 0.0, "y": 0.0, "z": 0.17578770220279694, "w": 0.9844281077384949}, "shape": {"shape": "CYLINDER", "radius": 0.2165347784757614, "height": 1.6602040529251099}, "body": {"dynamic": true, "mass": 1.0, "restitution": 0.0, "friction": 0.5}}]}

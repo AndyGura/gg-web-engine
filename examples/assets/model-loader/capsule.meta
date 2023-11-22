@@ -1,0 +1,1 @@
+{"curves": [], "dummies": [], "rigidBodies": [{"name": "Sphere.001", "position": {"x": 0.0, "y": 0.0, "z": 0.0}, "rotation": {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0}, "shape": {"shape": "CAPSULE", "radius": 0.1322563886642456, "centersDistance": 0.3193449378013611}, "body": {"dynamic": true, "mass": 1.0, "restitution": 0.0, "friction": 0.5}}]}
