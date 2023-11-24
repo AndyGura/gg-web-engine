@@ -1,6 +1,23 @@
 {
-  "name": "typescript",
+  "name": "primitives-three-rapier3d",
   "version": "0.0.0",
-  "private": true,
-  "dependencies": {}
+  "scripts": {
+    "build": "webpack && cp ./index.html ./dist && echo \"<script src='./bundle.js'/>\" >> ./dist/index.html && rm ./dist/bundle.js.LICENSE.txt"
+  },
+  "dependencies": {
+    "@gg-web-engine/core": "0.0.24",
+    "@gg-web-engine/rapier3d": "0.0.27",
+    "@gg-web-engine/three": "0.0.24",
+    "@types/three": "^0.157.2",
+    "ammojs-typed": "1.0.6",
+    "mini-signals": "2.0.0",
+    "rxjs": "7.8.0",
+    "three": "0.151.3"
+  },
+  "devDependencies": {
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.3.2",
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.4"
+  }
 }
