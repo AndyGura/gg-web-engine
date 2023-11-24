@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    "target": "ES5",
-    "moduleResolution": "node"
+    "target": "esnext"
   }
 }
