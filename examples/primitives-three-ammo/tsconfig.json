@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "target": "ES5",
+    "moduleResolution": "node",
+    "paths": {
+      "mini-signals": ["./node_modules/mini-signals/index.js"]
+    }
+  }
+}
