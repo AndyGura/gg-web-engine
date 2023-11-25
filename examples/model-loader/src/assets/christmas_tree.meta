@@ -1,1 +1,0 @@
-{"curves": [], "dummies": [], "rigidBodies": [{"name": "Cone", "position": {"x": 0.0, "y": 0.0, "z": 0.0}, "rotation": {"x": 0.0, "y": 0.0, "z": 0.0, "w": 1.0}, "shape": {"shape": "CONE", "radius": 0.4660898745059967, "height": 1.02474045753479}, "body": {"dynamic": true, "mass": 1.0, "restitution": 0.0, "friction": 0.5}}]}
