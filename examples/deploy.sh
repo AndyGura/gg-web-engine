@@ -9,6 +9,9 @@ aws s3 sync ./assets s3://gg-web-engine-demos/assets --include "*" --exclude "*.
 examples=(
   "primitives-three-ammo"
   "primitives-three-rapier3d"
+  "primitives-pixi-matter"
+  "primitives-pixi-rapier2d"
+#  "fly-city"
 )
 for ix in ${!examples[*]}
 do

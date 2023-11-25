@@ -150,23 +150,23 @@
             url: 'https://gg-web-demos.guraklgames.com/primitives-three-rapier3d/index.html',
             sbUrl: 'https://stackblitz.com/edit/typescript-j4ldat?file=index.ts',
         },
-        // {
-        //     label: 'Primitives',
-        //     visualModule: 'pixi',
-        //     physicsModule: 'matter',
-        //     url: 'https://angular-v67tt6.stackblitz.io/',
-        //     sbUrl: 'https://stackblitz.com/edit/angular-v67tt6?file=src%2Fmain.ts',
-        // },
-        // {
-        //     label: 'Primitives',
-        //     visualModule: 'pixi',
-        //     physicsModule: 'rapier2d',
-        // },
+        {
+            label: 'Primitives',
+            visualModule: 'pixi',
+            physicsModule: 'matter',
+            url: 'https://gg-web-demos.guraklgames.com/primitives-pixi-matter/index.html',
+        },
+        {
+            label: 'Primitives',
+            visualModule: 'pixi',
+            physicsModule: 'rapier2d',
+            url: 'https://gg-web-demos.guraklgames.com/primitives-pixi-rapier2d/index.html',
+        },
         // {
         //     label: 'Fly city',
         //     visualModule: 'three',
         //     physicsModule: 'ammo',
-        //     url: 'https://gg-web-demos.guraklgames.com/index.html',
+        //     url: 'https://gg-web-demos.guraklgames.com/fly-city/index.html',
         // },
     ];
     fillSelect('renderingModule', [...new Set(examples.map(x => x.visualModule))]);
