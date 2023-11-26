@@ -7,6 +7,7 @@ examples=(
   "primitives-pixi-matter"
   "primitives-pixi-rapier2d"
   "glb-loader-three-ammo"
+  "glb-loader-three-rapier3d"
 #  "fly-city"
 )
 for ix in ${!examples[*]}
