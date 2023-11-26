@@ -1,4 +1,4 @@
-import { Entity2d, Gg2dWorld } from '@gg-web-engine/core';
+import { Entity2d, Gg2dWorld, GgDebuggerUI } from '@gg-web-engine/core';
 import { interval } from 'rxjs';
 import { PixiSceneComponent } from '@gg-web-engine/pixi';
 import { Rapier2dWorldComponent } from '@gg-web-engine/rapier2d';
@@ -7,6 +7,7 @@ const world = new Gg2dWorld(
   new PixiSceneComponent(),
   new Rapier2dWorldComponent(),
 );
+GgDebuggerUI.instance.createUI();
 world.init().then(async () => {
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
   const renderer = world.addRenderer(canvas);
