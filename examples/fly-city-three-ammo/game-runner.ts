@@ -13,6 +13,7 @@ import { BehaviorSubject, combineLatest, filter, Observable, pairwise } from 'rx
 import { map } from 'rxjs/operators';
 import { GameCameraController } from './game-camera-controller';
 import { GameAudio } from './game-audio';
+// import {SpeedometerTachometer} from "./dashboard-component";
 
 export type CurrentState =
   { mode: 'freecamera' }
@@ -48,6 +49,16 @@ export class GameRunner {
         }
       }
     });
+    // this.controlCar$.subscribe((car) => {
+    //   const dashboard = new SpeedometerTachometer(
+    //       'dashboard',
+    //       car.carProperties.engine.maxRpm,
+    //       car.carProperties.engine.maxRpm - 2000,
+    //       320
+    //   );
+    //   dashboard.setCurrentRpm(5000);
+    //   dashboard.setCurrentSpeed(100);
+    // })
     this.mapBounds.onEntityLeft.subscribe((entity) => {
       if (entity) {
         const state = this.state$.getValue();

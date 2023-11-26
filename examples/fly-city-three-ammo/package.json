@@ -1,5 +1,5 @@
 {
-  "name": "glb-loader-three-ammo",
+  "name": "fly-city-three-ammo",
   "version": "0.0.0",
   "scripts": {
     "build": "webpack && cp ./index.html ./dist && echo \"<script src='bundle.js'></script>\" >> ./dist/index.html && rm ./dist/bundle.js.LICENSE.txt"

@@ -14,8 +14,11 @@
         pointer-events: none;
     }
 
-    app-dashboard {
-        pointer-events: none;
+    #dashboard {
+      pointer-events: none;
+      position: absolute;
+      right: 2rem;
+      bottom: 2rem;
     }
 
     .app-helper {
@@ -39,6 +42,7 @@
 
 </style>
 <canvas id="gg"></canvas>
+<div id="dashboard"></div>
 <div class="screen-text app-helper" id="helper-overlay">
   <span>FLY MODE CONTROLS</span>
   <span>Click on page and move mouse to look around (ESC to exit)</span>
