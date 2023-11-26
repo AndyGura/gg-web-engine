@@ -8,7 +8,7 @@ examples=(
   "primitives-pixi-rapier2d"
   "glb-loader-three-ammo"
   "glb-loader-three-rapier3d"
-#  "fly-city"
+  "fly-city-three-ammo"
 )
 for ix in ${!examples[*]}
 do
