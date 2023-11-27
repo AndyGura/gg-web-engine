@@ -2,6 +2,7 @@ import {
   CachingStrategy,
   CarProperties,
   Gg3dWorld,
+  GgDebuggerUI,
   GgDummy,
   IDisplayObject3dComponent,
   IEntity,
@@ -34,6 +35,7 @@ export class GameFactory {
   }
 
   public async initGame(canvas: HTMLCanvasElement): Promise<[Renderer3dEntity, MapGraph3dEntity, Trigger3dEntity]> {
+    GgDebuggerUI.instance.createUI();
     this.world.visualScene.loader.registerGltfLoaderAddon(new GLTFLoader());
     await this.world.init();
     const renderer = await this.initRenderer(canvas);
@@ -67,7 +69,7 @@ export class GameFactory {
 
   private setupSkybox() {
     const envMap: CubeTexture = new CubeTextureLoader()
-      .setPath(`assets/`)
+      .setPath(`https://gg-web-demos.guraklgames.com/assets/fly-city/`)
       .load([
         'sky_nx.png', 'sky_px.png',
         'sky_py.png', 'sky_ny.png',
@@ -82,7 +84,7 @@ export class GameFactory {
     const mapGraph = MapGraph.fromMapSquareGrid(
       Array(11).fill(null).map((_, i) => (
         Array(11).fill(null).map((_, j) => ({
-          path: 'assets/city_tile',
+          path: 'https://gg-web-demos.guraklgames.com/assets/fly-city/city_tile',
           position: { x: (j - 5) * 75, y: (i - 5) * 75, z: 0 },
           loadOptions: {
             cachingStrategy: CachingStrategy.Entities,
@@ -106,8 +108,8 @@ export class GameFactory {
               { resources: [{ object3D: wheelMesh }] },
             ] = await Promise.all([
               // TODO use caching strategy "Entities" after cloned Ammo.js object mass will be fixed
-              this.world.loader.loadGgGlbResources('assets/' + dummy.car_id, CachingStrategy.Files),
-              this.world.loader.loadGgGlbResources('assets/' + (dummy.car_id.startsWith('truck') ? 'truck_wheel' : 'wheel'), CachingStrategy.Files),
+              this.world.loader.loadGgGlbResources('https://gg-web-demos.guraklgames.com/assets/fly-city/' + dummy.car_id, CachingStrategy.Files),
+              this.world.loader.loadGgGlbResources('https://gg-web-demos.guraklgames.com/assets/fly-city/' + (dummy.car_id.startsWith('truck') ? 'truck_wheel' : 'wheel'), CachingStrategy.Files),
             ]);
             if (!chassisBody) {
               console.error('Cannot spawn car without chassis body');
@@ -148,8 +150,8 @@ export class GameFactory {
       },
       { resources: [{ object3D: wheelMesh }] },
     ] = await Promise.all([
-        this.world.loader.loadGgGlbResources('assets/lambo/body'),
-        this.world.loader.loadGgGlbResources('assets/lambo/wheel'),
+        this.world.loader.loadGgGlbResources('https://gg-web-demos.guraklgames.com/assets/fly-city/lambo/body'),
+        this.world.loader.loadGgGlbResources('https://gg-web-demos.guraklgames.com/assets/fly-city/lambo/wheel'),
       ],
     );
     const lambo = this.generateCar(chassisMesh, chassisBody as AmmoRigidBodyComponent, chassisDummies, wheelMesh, LAMBO_SPECS);

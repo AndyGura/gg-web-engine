@@ -18,7 +18,8 @@
             "main": "src/main.ts",
             "assets": [],
             "styles": ["src/styles.css"],
-            "scripts": []
+            "scripts": [],
+            "tsConfig": "tsconfig.json"
           },
           "configurations": {
             "production": {
