@@ -141,8 +141,8 @@ Try to add to your html <head>:
 ### [Scene examples](https://gg-web-demos.guraklgames.com/)
 
 ### Usage in frameworks
-- #### [Angular](https://stackblitz.com/github/AndyGura/gg-web-engine/tree/new-examples/examples/angular-three-ammo?file=src%2Fmain.ts)
-- #### [React](https://stackblitz.com/edit/stackblitz-starters-ocwn9k?file=src%2FApp.tsx)
+- #### [Angular](https://stackblitz.com/github/AndyGura/gg-web-engine/examples/framework-angular-three-ammo?file=src%2Fmain.ts)
+- #### [React](https://stackblitz.com/github/AndyGura/gg-web-engine/examples/framework-react-three-rapier3d?file=src%2FApp.tsx)
 
 ## Architecture
 The most important thing in the engine is [GgWorld](https://andygura.github.io/gg-web-engine/modules/core/base/gg-world.ts/).
