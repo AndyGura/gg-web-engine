@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "ES5",
     "moduleResolution": "node",
-    "allowJs": true,
+    "sourceMap": true,
     "paths": {
       "mini-signals": ["./node_modules/mini-signals/index.js"]
     }

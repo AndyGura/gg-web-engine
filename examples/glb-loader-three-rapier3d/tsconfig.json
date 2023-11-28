@@ -2,6 +2,6 @@
   "compilerOptions": {
     "target": "ES5",
     "moduleResolution": "node",
-    "allowJs": true
+    "sourceMap": true
   }
 }
