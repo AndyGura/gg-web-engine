@@ -29,37 +29,41 @@
           margin: 1rem;
       }
 
-      .examplesNavPanel {
+      #examplesNavPanel {
+          display: flex;
+          flex-direction: column;
           margin: 1rem 0;
           flex-grow: 1;
       }
 
-      .examplesNavPanel > label {
+      #examplesNavPanel > label {
           margin: 1rem;
       }
 
-      #examplesList {
-          width: 100%;
-          background: none;
-          color: white;
-          border: none;
-          outline: none;
-          padding-left: 0;
-          padding-right: 0;
-          overflow-y: hidden;
-      }
-
-      #examplesList > option {
+      #examplesNavPanel > .example-option {
           display: flex;
           align-items: center;
+      }
+
+      #examplesNavPanel > .example-option:has(> input:checked) {
+          background: #aaaaaa;
+      }
+
+      #examplesNavPanel > .example-option > label {
+          display: block;
+          width: 100%;
           padding: 1rem;
       }
 
-      #examplesList > option:checked {
-          background-color: #aaaaaa;
+      #examplesNavPanel > .example-option:has(> input:checked) > label {
+          color: #101010;
       }
 
-      #examples {
+      #examplesNavPanel > .example-option > input {
+          display: none;
+      }
+
+      #exampleContainer {
           flex: 1;
           overflow: hidden;
           position: relative;
@@ -101,13 +105,12 @@
     <label for='physicsModule'>Physics Module:</label>
     <select id='physicsModule' onchange='updateExamplesList()'></select>
   </div>
-  <div class='examplesNavPanel'>
-    <label for='examplesList'>Examples:</label>
-    <select id='examplesList' size='2' onchange='loadExample()'></select>
+  <div id='examplesNavPanel'>
+
   </div>
 </div>
 
-<div id='examples'>
+<div id='exampleContainer'>
   <div id='iframeContainer'>
     <iframe id='exampleIframe' frameborder='0'></iframe>
     <img src='https://developer.stackblitz.com/img/open_in_stackblitz.svg' id='bottomRightButton'
@@ -192,24 +195,47 @@
   }
 
   function updateExamplesList() {
-    const examplesList = document.getElementById('examplesList');
+    const examplesList = document.getElementById('examplesNavPanel');
     examplesList.innerHTML = '';
     const ex = examples
       .filter(x => x.visualModule === document.getElementById('renderingModule').value &&
         x.physicsModule === document.getElementById('physicsModule').value);
-    ex.forEach((example) => {
-      const option = document.createElement('option');
-      option.value = JSON.stringify(example);
-      option.text = example.label;
-      examplesList.add(option);
+    ex.forEach((example, i) => {
+      const div = document.createElement('div');
+      div.className = "example-option";
+      const inp = document.createElement('input');
+      inp.type = "radio"
+      inp.id = "example" + i;
+      inp.name = "example";
+      inp.value = JSON.stringify(example);
+      inp.onchange = loadExample;
+      if (i === 0) {
+        inp.checked = true;
+      }
+      const label = document.createElement('label');
+      label.htmlFor = "example" + i;
+      label.innerHTML = example.label;
+      div.append(inp);
+      div.append(label);
+      examplesList.append(div);
     });
-    examplesList.value = JSON.stringify(ex[0]);
-    examplesList.size = Math.max(ex.length, 2);
     loadExample();
   }
 
+  function getSelectedExample() {
+    let value = '{}';
+    let radios = document.getElementsByName("example");
+    for (let radio of radios) {
+      if (radio.checked) {
+        value = radio.value;
+        break;
+      }
+    }
+    return JSON.parse(value);
+  }
+
   function loadExample() {
-    const { url, sbUrl } = JSON.parse(document.getElementById('examplesList').value);
+    const { url, sbUrl } = getSelectedExample();
     document.getElementById('exampleIframe').src = url;
     document.getElementById('bottomRightButton').style.display = (
       sbUrl ? 'block' : 'none'
@@ -217,7 +243,7 @@
   }
 
   function openStackBlitz() {
-    const { sbUrl } = JSON.parse(document.getElementById('examplesList').value);
+    const { sbUrl } = getSelectedExample();
     window.open(sbUrl);
   }
 </script>
