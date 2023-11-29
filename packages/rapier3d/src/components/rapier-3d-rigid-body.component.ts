@@ -56,7 +56,7 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
   public name: string = '';
 
   public get factoryProps(): [ColliderDesc[], RigidBodyDesc, Omit<Omit<Body3DOptions, 'dynamic'>, 'mass'>] {
-     const colliderDescr = this._colliderDescr.map(cd => {
+    const colliderDescr = this._colliderDescr.map(cd => {
       const d = new ColliderDesc(cd.shape);
       d.setTranslation(cd.translation.x, cd.translation.y, cd.translation.z);
       d.setRotation({ ...cd.rotation });
@@ -69,13 +69,9 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
     });
     const bd = new RigidBodyDesc(this._bodyDescr.status);
     bd.setTranslation(this._bodyDescr.translation.x, this._bodyDescr.translation.y, this._bodyDescr.translation.z);
-    bd.setRotation({ ... this._bodyDescr.rotation });
+    bd.setRotation({ ...this._bodyDescr.rotation });
     // TODO more fields here?
-    return [
-      colliderDescr,
-      bd,
-      this._colliderOptions
-    ];
+    return [colliderDescr, bd, this._colliderOptions];
   }
 
   constructor(
