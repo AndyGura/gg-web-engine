@@ -84,10 +84,7 @@ export abstract class GgWorld<
       this.registerConsoleCommand(
         'dr_drawphysics',
         async (...args: string[]) => {
-          const shouldDraw = ['1', 'true', '+'].includes(args[0]);
-          if (shouldDraw != this.physicsWorld.physicsDebugViewActive) {
-            this.triggerPhysicsDebugView();
-          }
+          this.physicsDebugViewActive = ['1', 'true', '+'].includes(args[0]);
           return '' + this.physicsWorld.physicsDebugViewActive;
         },
         'args: [0 or 1]; turn on/off physics debug view. Default value is 0',
@@ -213,18 +210,29 @@ export abstract class GgWorld<
     if (!this.commands[command]) {
       return 'Unrecognized command: ' + command;
     }
-    return this.commands[command].handler(...args);
+    try {
+      return await this.commands[command].handler(...args);
+    } catch (err) {
+      return `${err}`;
+    }
   }
 
-  public triggerPhysicsDebugView() {
-    if (this.physicsWorld.physicsDebugViewActive) {
-      this.physicsWorld.stopDebugger(this);
-    } else {
+  public get physicsDebugViewActive(): boolean {
+    return this.physicsWorld.physicsDebugViewActive;
+  }
+
+  public set physicsDebugViewActive(value: boolean) {
+    if (this.physicsDebugViewActive === value) {
+      return;
+    }
+    if (value) {
       const cls = this.visualScene.debugPhysicsDrawerClass;
       if (!cls) {
         throw new Error('Debug drawer is not available');
       }
       this.physicsWorld.startDebugger(this, new cls());
+    } else {
+      this.physicsWorld.stopDebugger(this);
     }
   }
 }

@@ -49,7 +49,12 @@ export class GgDebuggerUI {
     fromEvent(document.getElementById('physics_debugger_checkbox_id')! as HTMLInputElement, 'change')
       .pipe(takeUntil(this.removed$))
       .subscribe(e => {
-        GgStatic.instance.console('dr_drawphysics ' + (e.target as HTMLInputElement).checked).then();
+        try {
+          GgStatic.instance.selectedWorld!.physicsDebugViewActive = (e.target as HTMLInputElement).checked;
+        } catch (err) {
+          console.error(err);
+        }
+        (e.target as HTMLInputElement).checked = GgStatic.instance.selectedWorld!.physicsDebugViewActive;
       });
     this.ui = {
       stats,
