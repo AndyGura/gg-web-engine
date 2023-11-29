@@ -14,7 +14,7 @@
     "three": "0.151.3"
   },
   "devDependencies": {
-    "@types/three": "^0.157.2",
+    "@types/three": "0.151.0",
     "html-webpack-plugin": "^5.5.3",
     "ts-loader": "^9.5.1",
     "typescript": "^5.3.2",
