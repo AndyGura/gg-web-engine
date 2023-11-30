@@ -25,7 +25,7 @@ const App: React.FC = () => {
         new ThreeSceneComponent(),
         new Rapier3dWorldComponent()
       );
-      GgDebuggerUI.instance.createUI();
+      GgDebuggerUI.instance.showStats = true;
       await world.init();
 
       const canvas = canvasRef.current!;

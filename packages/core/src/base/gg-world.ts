@@ -1,16 +1,16 @@
 import {
   GgConsoleUI,
   GgDebuggerUI,
-  IEntity,
   GgGlobalClock,
   GgStatic,
-  TickOrder,
+  IEntity,
   IPhysicsWorldComponent,
+  IPositionable,
+  IRenderableEntity,
   IVisualSceneComponent,
   KeyboardInput,
   PausableClock,
-  IPositionable,
-  IRenderableEntity,
+  TickOrder,
 } from '../base';
 import { filter } from 'rxjs';
 
@@ -59,19 +59,20 @@ export abstract class GgWorld<
         'no args; print all available commands',
       );
       this.registerConsoleCommand(
-        'debugger',
+        'show_debugger',
         async (...args: string[]) => {
-          const shouldDraw = ['1', 'true', '+'].includes(args[0]);
-          if (shouldDraw != GgDebuggerUI.instance.isUIShown) {
-            if (GgDebuggerUI.instance.isUIShown) {
-              GgDebuggerUI.instance.destroyUI();
-            } else {
-              GgDebuggerUI.instance.createUI();
-            }
-          }
-          return '' + GgDebuggerUI.instance.isUIShown;
+          GgDebuggerUI.instance.showDebugControls = ['1', 'true', '+'].includes(args[0]);
+          return '' + GgDebuggerUI.instance.showDebugControls;
         },
         'args: [0 or 1]; turn on/off debug panel. Default value is 0',
+      );
+      this.registerConsoleCommand(
+        'show_stats',
+        async (...args: string[]) => {
+          GgDebuggerUI.instance.showStats = ['1', 'true', '+'].includes(args[0]);
+          return '' + GgDebuggerUI.instance.showStats;
+        },
+        'args: [0 or 1]; turn on/off stats. Default value is 0',
       );
       this.registerConsoleCommand(
         'ph_timescale',

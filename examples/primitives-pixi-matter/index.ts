@@ -7,7 +7,7 @@ const world = new Gg2dWorld(
   new PixiSceneComponent(),
   new MatterWorldComponent(),
 );
-GgDebuggerUI.instance.createUI();
+GgDebuggerUI.instance.showStats = true;
 world.init().then(async () => {
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
   const renderer = world.addRenderer(canvas);

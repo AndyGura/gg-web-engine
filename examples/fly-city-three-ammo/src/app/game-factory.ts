@@ -35,7 +35,7 @@ export class GameFactory {
   }
 
   public async initGame(canvas: HTMLCanvasElement): Promise<[Renderer3dEntity, MapGraph3dEntity, Trigger3dEntity]> {
-    GgDebuggerUI.instance.createUI();
+    GgDebuggerUI.instance.showStats = true;
     this.world.visualScene.loader.registerGltfLoaderAddon(new GLTFLoader());
     await this.world.init();
     const renderer = await this.initRenderer(canvas);

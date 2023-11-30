@@ -9,7 +9,7 @@ const world = new Gg3dWorld(
   new ThreeSceneComponent(),
   new AmmoWorldComponent(),
 );
-GgDebuggerUI.instance.createUI();
+GgDebuggerUI.instance.showStats = true;
 world.visualScene.loader.registerGltfLoaderAddon(new GLTFLoader());
 world.init().then(async () => {
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;

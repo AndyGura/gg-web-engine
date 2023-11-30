@@ -30,7 +30,7 @@ export class App implements OnInit, OnDestroy {
       new ThreeSceneComponent(),
       new AmmoWorldComponent(),
     );
-    GgDebuggerUI.instance.createUI();
+    GgDebuggerUI.instance.showStats = true;
     await this.world.init();
 
     const canvas = document.getElementById('gg')! as HTMLCanvasElement;
