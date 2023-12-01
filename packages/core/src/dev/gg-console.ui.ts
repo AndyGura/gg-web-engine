@@ -74,6 +74,21 @@ List of available commands: `.replace(/ /g, '&nbsp;') + `<span style="color:yell
         this.onUseNextCommand();
       }
     };
+    this.elements.input.oninput = event => {
+      let value = this.elements?.input.value || '';
+      // backspace
+      if (value.length > 0 && (event as InputEvent).data === null) {
+        value = value.substring(0, value.length - 1);
+      }
+      if (value.trim() === '') {
+        return;
+      }
+      let autocompletion = (window as any).ggstatic.availableCommands.find((c: any) => c[0].startsWith(value));
+      if (autocompletion) {
+        this.elements!.input.value = autocompletion[0];
+        this.elements!.input.setSelectionRange(value.length, this.elements!.input.value.length);
+      }
+    };
     this.stdout();
     this.setupDragging();
     setTimeout(() => this.elements!.input.focus(), 20);

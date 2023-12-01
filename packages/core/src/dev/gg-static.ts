@@ -66,16 +66,20 @@ export class GgStatic {
     return this._selectedWorld || GgWorld.documentWorlds[0] || null;
   }
 
+  public get availableCommands(): [string, { handler: (...args: string[]) => Promise<string>; doc?: string }][] {
+    let commands = this.consoleCommands.get(null) || {};
+    if (this.selectedWorld) {
+      commands = { ...(this.consoleCommands.get(this.selectedWorld) || {}), ...commands };
+    }
+    return Object.entries(commands);
+  }
+
   private constructor() {
     this.registerConsoleCommand(
       null,
       'ls_commands',
       async () => {
-        let commands = this.consoleCommands.get(null) || {};
-        if (this.selectedWorld) {
-          commands = { ...(this.consoleCommands.get(this.selectedWorld) || {}), ...commands };
-        }
-        return Object.entries(commands)
+        return this.availableCommands
           .map(
             ([key, value]) =>
               `<span style="color:yellow">${key}</span>${
