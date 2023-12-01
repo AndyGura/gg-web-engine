@@ -41,7 +41,7 @@ export abstract class IEntity<
     return this._world;
   }
 
-  protected _name: string = '0x' + (IEntity.default_name_counter++).toString(16);
+  protected _name: string = 'e0x' + (IEntity.default_name_counter++).toString(16);
 
   public get name(): string {
     return this._name;

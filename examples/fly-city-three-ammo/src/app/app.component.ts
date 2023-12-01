@@ -41,8 +41,7 @@ export class AppComponent implements AfterViewInit {
   }
 
   private async initGame() {
-    console.log('Initializing game');
-    this.world = new Gg3dWorld(new ThreeSceneComponent(), new AmmoWorldComponent(), true);
+    this.world = new Gg3dWorld(new ThreeSceneComponent(), new AmmoWorldComponent());
     const factory: GameFactory = new GameFactory(this.world);
     const [renderer, cityMapGraph, mapBounds] = await factory.initGame(this.canvas.nativeElement);
     await factory.spawnLambo();

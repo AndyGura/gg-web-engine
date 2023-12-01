@@ -1,18 +1,14 @@
 import {
-  GgConsoleUI,
-  GgDebuggerUI,
-  IEntity,
   GgGlobalClock,
-  GgStatic,
-  TickOrder,
+  IEntity,
   IPhysicsWorldComponent,
+  IPositionable,
+  IRenderableEntity,
   IVisualSceneComponent,
   KeyboardInput,
   PausableClock,
-  IPositionable,
-  IRenderableEntity,
+  TickOrder,
 } from '../base';
-import { filter } from 'rxjs';
 
 export abstract class GgWorld<
   D,
@@ -23,57 +19,41 @@ export abstract class GgWorld<
   public readonly worldClock: PausableClock = GgGlobalClock.instance.createChildClock(false);
   public readonly keyboardInput: KeyboardInput = new KeyboardInput();
 
+  private static default_name_counter = 0;
+  public name: string = 'w0x' + (GgWorld.default_name_counter++).toString(16);
+
   readonly children: IEntity[] = [];
   // the same as children, but sorted by tick order
   protected readonly tickListeners: IEntity[] = [];
 
-  constructor(
-    public readonly visualScene: V,
-    public readonly physicsWorld: P,
-    protected readonly consoleEnabled: boolean = false,
-  ) {
-    GgStatic.instance.worlds.push(this);
-    GgStatic.instance.selectedWorld = this;
-    this.keyboardInput.start();
-    if (consoleEnabled) {
-      // TODO this listener should be outside of the world
-      this.keyboardInput
-        .bind('Backquote')
-        .pipe(filter(x => x))
-        .subscribe(() => {
-          // open console UI
-          if (GgConsoleUI.instance.isUIShown) {
-            GgConsoleUI.instance.destroyUI();
-          } else {
-            GgConsoleUI.instance.createUI();
-          }
-        });
-      this.registerConsoleCommand(
-        'commandslist',
-        async () => {
-          return Object.entries(this.commands)
-            .map(([key, value]) => `${key}${value.doc ? '\t// ' + value.doc : ''}`)
-            .sort()
-            .join('\n\n');
-        },
-        'no args; print all available commands',
-      );
-      this.registerConsoleCommand(
-        'debugger',
+  private static _documentWorlds: GgWorld<any, any>[] = [];
+  static get documentWorlds(): GgWorld<any, any>[] {
+    return [...GgWorld._documentWorlds];
+  }
+
+  protected constructor(public readonly visualScene: V, public readonly physicsWorld: P) {
+    GgWorld._documentWorlds.push(this);
+    if ((window as any).ggstatic) {
+      (window as any).ggstatic.registerConsoleCommand(
+        this,
+        'show_debugger',
         async (...args: string[]) => {
-          const shouldDraw = ['1', 'true', '+'].includes(args[0]);
-          if (shouldDraw != GgDebuggerUI.instance.isUIShown) {
-            if (GgDebuggerUI.instance.isUIShown) {
-              GgDebuggerUI.instance.destroyUI();
-            } else {
-              GgDebuggerUI.instance.createUI();
-            }
-          }
-          return '' + GgDebuggerUI.instance.isUIShown;
+          (window as any).ggstatic.showDebugControls = ['1', 'true', '+'].includes(args[0]);
+          return '' + (window as any).ggstatic.showDebugControls;
         },
         'args: [0 or 1]; turn on/off debug panel. Default value is 0',
       );
-      this.registerConsoleCommand(
+      (window as any).ggstatic.registerConsoleCommand(
+        this,
+        'show_stats',
+        async (...args: string[]) => {
+          (window as any).ggstatic.showStats = ['1', 'true', '+'].includes(args[0]);
+          return '' + (window as any).ggstatic.showStats;
+        },
+        'args: [0 or 1]; turn on/off stats. Default value is 0',
+      );
+      (window as any).ggstatic.registerConsoleCommand(
+        this,
         'ph_timescale',
         async (...args: string[]) => {
           this.physicsWorld.timeScale = +args[0];
@@ -81,13 +61,11 @@ export abstract class GgWorld<
         },
         'args: [float]; change time scale of physics engine. Default value is 1.0',
       );
-      this.registerConsoleCommand(
+      (window as any).ggstatic.registerConsoleCommand(
+        this,
         'dr_drawphysics',
         async (...args: string[]) => {
-          const shouldDraw = ['1', 'true', '+'].includes(args[0]);
-          if (shouldDraw != this.physicsWorld.physicsDebugViewActive) {
-            this.triggerPhysicsDebugView();
-          }
+          this.physicsDebugViewActive = ['1', 'true', '+'].includes(args[0]);
           return '' + this.physicsWorld.physicsDebugViewActive;
         },
         'args: [0 or 1]; turn on/off physics debug view. Default value is 0',
@@ -148,6 +126,9 @@ export abstract class GgWorld<
   }
 
   public dispose(): void {
+    if ((window as any).ggstatic) {
+      (window as any).ggstatic.deregisterWorldCommands(this);
+    }
     this.worldClock.stop();
     this.keyboardInput.stop();
     for (let i = 0; i < this.children.length; i++) {
@@ -197,34 +178,22 @@ export abstract class GgWorld<
     }
   }
 
-  protected commands: { [key: string]: { handler: (...args: string[]) => Promise<string>; doc?: string } } = {};
-
-  public registerConsoleCommand(command: string, handler: (...args: string[]) => Promise<string>, doc?: string): void {
-    if (!this.consoleEnabled) {
-      throw new Error('Console not enabled for this world');
-    }
-    this.commands[command] = { handler, doc };
+  public get physicsDebugViewActive(): boolean {
+    return this.physicsWorld.physicsDebugViewActive;
   }
 
-  public async runConsoleCommand(command: string, args: string[]): Promise<string> {
-    if (!this.consoleEnabled) {
-      throw new Error('Console not enabled for this world');
+  public set physicsDebugViewActive(value: boolean) {
+    if (this.physicsDebugViewActive === value) {
+      return;
     }
-    if (!this.commands[command]) {
-      return 'Unrecognized command: ' + command;
-    }
-    return this.commands[command].handler(...args);
-  }
-
-  public triggerPhysicsDebugView() {
-    if (this.physicsWorld.physicsDebugViewActive) {
-      this.physicsWorld.stopDebugger(this);
-    } else {
+    if (value) {
       const cls = this.visualScene.debugPhysicsDrawerClass;
       if (!cls) {
         throw new Error('Debug drawer is not available');
       }
       this.physicsWorld.startDebugger(this, new cls());
+    } else {
+      this.physicsWorld.stopDebugger(this);
     }
   }
 }

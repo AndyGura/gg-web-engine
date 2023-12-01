@@ -4,7 +4,7 @@ import {
   OrbitCameraController,
   Gg3dWorld,
   Entity3d,
-  GgDebuggerUI,
+  GgStatic,
 } from '@gg-web-engine/core';
 import {
   ThreeSceneComponent,
@@ -25,8 +25,10 @@ const App: React.FC = () => {
         new ThreeSceneComponent(),
         new Rapier3dWorldComponent()
       );
-      GgDebuggerUI.instance.createUI();
       await world.init();
+
+      GgStatic.instance.showStats = true;
+      // GgStatic.instance.devConsoleEnabled = true;
 
       const canvas = canvasRef.current!;
       const renderer = world.addRenderer(

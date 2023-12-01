@@ -1,4 +1,4 @@
-import { Entity3d, Gg3dWorld, GgDebuggerUI, OrbitCameraController, Trigger3dEntity } from '@gg-web-engine/core';
+import { Entity3d, Gg3dWorld, GgStatic, OrbitCameraController, Trigger3dEntity } from '@gg-web-engine/core';
 import { interval } from 'rxjs';
 import { ThreeCameraComponent, ThreeSceneComponent } from '@gg-web-engine/three';
 import { PerspectiveCamera } from 'three';
@@ -8,8 +8,9 @@ const world = new Gg3dWorld(
   new ThreeSceneComponent(),
   new Rapier3dWorldComponent(),
 );
-GgDebuggerUI.instance.createUI();
 world.init().then(async () => {
+  GgStatic.instance.showStats = true;
+  // GgStatic.instance.devConsoleEnabled = true;
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
   const renderer = world.addRenderer(
     new ThreeCameraComponent(new PerspectiveCamera(75, 1, 1, 10000)),

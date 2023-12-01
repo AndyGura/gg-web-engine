@@ -1,17 +1,6 @@
-import { GgStatic } from '../gg-static';
-
 export class GgConsoleUI {
-  private static _instance: GgConsoleUI | null;
-  static get instance(): GgConsoleUI {
-    if (!this._instance) {
-      this._instance = new GgConsoleUI();
-    }
-    return this._instance;
-  }
-
-  private constructor() {}
-
-  private output: string = `
+  private output: string =
+    `
                   ▄████   ▄████     █     █░▓█████  ▄▄▄▄   
                  ██▒ ▀█▒ ██▒ ▀█▒   ▓█░ █ ░█░▓█   ▀ ▓█████▄ 
                 ▒██░▄▄▄░▒██░▄▄▄░   ▒█░ █ ░█ ▒███   ▒██▒ ▄██
@@ -26,8 +15,7 @@ export class GgConsoleUI {
 Welcome to GG web engine UI console. 
 Enter command in input below.
 
-List of available commands: commandslist 
-`;
+List of available commands: `.replace(/ /g, '&nbsp;') + `<span style="color:yellow">ls_commands</span>`;
 
   private commandHistory: string[] = [];
   private currentCommandIndex = 0; // for repeating command using up/down arrow keys
@@ -35,7 +23,7 @@ List of available commands: commandslist
   elements: {
     main: HTMLDivElement;
     input: HTMLInputElement;
-    output: HTMLTextAreaElement;
+    output: HTMLDivElement;
   } | null = null;
 
   public get isUIShown(): boolean {
@@ -48,28 +36,32 @@ List of available commands: commandslist
     }
     const main: HTMLDivElement = document.createElement('div');
     main.innerHTML = `
-  <div id="gg-console-header" style="padding: 10px; cursor: move; z-index: 10; background-color: #054a81; border: 1px solid white; font-size: large;">GG web engine UI console</div>
-  <textarea id="gg-console-output" disabled style="resize: none; flex-grow: 1; background: #555555; border: 1px solid white; color: white; font-family: monospace;" ></textarea>
-  <input id="gg-console-input" style="background: #555555; border: 1px solid white; color: white; font-family: monospace;"/>`;
+  <div id='gg-console-header' style='padding: 0.2rem 0.2rem 0;cursor:move;display:flex;justify-content:space-between;'>
+    <span>CONSOLE</span>
+    <a id='gg-console-close-icon' style='display:block;padding:0.3rem;margin:-0.3rem;cursor:pointer;'>X</a>
+  </div>
+  <div id='gg-console-output' style='flex-grow:1;background:#232323;color:white;font-family:monospace;overflow-y:auto;overflow-wrap:anywhere;padding:0.2rem;'></div>
+  <input id='gg-console-input' style='background:#000000;border:none;outline:none;color:white;font-family:monospace;'/>`;
     main.style.position = 'absolute';
     main.style.zIndex = '1000';
-    main.style.backgroundColor = '#222222';
-    main.style.border = '1px solid white';
+    main.style.backgroundColor = '#343434';
     main.style.width = '640px';
     main.style.height = '480px';
     main.style.display = 'flex';
     main.style.flexDirection = 'column';
     main.style.alignItems = 'stretch';
-    main.style.padding = '3px';
+    main.style.padding = '0.1rem';
     main.style.rowGap = '3px';
     main.style.fontFamily = 'monospace';
+    main.style.fontWeight = 'bold';
     main.style.color = 'white';
     document.body.append(main);
     this.elements = {
       main,
       input: document.getElementById('gg-console-input')! as HTMLInputElement,
-      output: document.getElementById('gg-console-output')! as HTMLTextAreaElement,
+      output: document.getElementById('gg-console-output')! as HTMLDivElement,
     };
+    document.getElementById('gg-console-close-icon')!.onmousedown = () => this.destroyUI();
     this.elements.input.onkeydown = event => {
       if (event?.keyCode === 13) {
         event.preventDefault();
@@ -80,6 +72,21 @@ List of available commands: commandslist
       } else if (event?.keyCode === 40) {
         event.preventDefault();
         this.onUseNextCommand();
+      }
+    };
+    this.elements.input.oninput = event => {
+      let value = this.elements?.input.value || '';
+      // backspace
+      if (value.length > 0 && (event as InputEvent).data === null) {
+        value = value.substring(0, value.length - 1);
+      }
+      if (value.trim() === '') {
+        return;
+      }
+      let autocompletion = (window as any).ggstatic.availableCommands.find((c: any) => c[0].startsWith(value));
+      if (autocompletion) {
+        this.elements!.input.value = autocompletion[0];
+        this.elements!.input.setSelectionRange(value.length, this.elements!.input.value.length);
       }
     };
     this.stdout();
@@ -118,14 +125,14 @@ List of available commands: commandslist
     const command = this.elements!.input.value;
     this.elements!.input.value = '';
     this.stdout('\n> ' + command);
-    this.stdout('\n' + (await GgStatic.instance.console(command)));
+    this.stdout('\n' + (await (window as any).ggstatic.console(command)));
     this.commandHistory.push(command);
     this.currentCommandIndex = this.commandHistory.length;
   }
 
   private stdout(s: string = ''): void {
     this.output += s;
-    this.elements!.output.value = this.output;
+    this.elements!.output.innerHTML = this.output.replace(/\n/g, '<br>');
     this.elements!.output.scrollTop = this.elements!.output.scrollHeight;
   }
 
@@ -144,6 +151,10 @@ List of available commands: commandslist
     };
 
     const elementDrag = (e: MouseEvent) => {
+      if (!this.elements) {
+        closeDragElement();
+        return;
+      }
       e.preventDefault();
       // calculate the new cursor position:
       const curX = x - e.clientX;
