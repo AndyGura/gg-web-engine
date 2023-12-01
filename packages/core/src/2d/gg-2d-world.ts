@@ -9,14 +9,11 @@ export class Gg2dWorld<
   V extends IVisualScene2dComponent = IVisualScene2dComponent,
   P extends IPhysicsWorld2dComponent = IPhysicsWorld2dComponent,
 > extends GgWorld<Point2, number, V, P> {
-  constructor(
-    public readonly visualScene: V,
-    public readonly physicsWorld: P,
-    protected readonly consoleEnabled: boolean = false,
-  ) {
-    super(visualScene, physicsWorld, consoleEnabled);
-    if (consoleEnabled) {
-      this.registerConsoleCommand(
+  constructor(public readonly visualScene: V, public readonly physicsWorld: P) {
+    super(visualScene, physicsWorld);
+    if ((window as any).ggstatic) {
+      (window as any).ggstatic.registerConsoleCommand(
+        this,
         'ph_gravity',
         async (...args: string[]) => {
           if (args.length == 1) {

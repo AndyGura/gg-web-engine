@@ -39,8 +39,4 @@ export * from './math/quaternion';
 export * from './math/numbers';
 export * from './math/matrix4';
 
-export * from './ui/gg-console.ui';
-export * from './ui/gg-debugger.ui';
-
-export * from './gg-static';
 export * from './gg-world';

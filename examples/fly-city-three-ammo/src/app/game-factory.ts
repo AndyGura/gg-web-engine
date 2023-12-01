@@ -2,8 +2,8 @@ import {
   CachingStrategy,
   CarProperties,
   Gg3dWorld,
-  GgDebuggerUI,
   GgDummy,
+  GgStatic,
   IDisplayObject3dComponent,
   IEntity,
   IPositionable3d,
@@ -35,7 +35,8 @@ export class GameFactory {
   }
 
   public async initGame(canvas: HTMLCanvasElement): Promise<[Renderer3dEntity, MapGraph3dEntity, Trigger3dEntity]> {
-    GgDebuggerUI.instance.showStats = true;
+    GgStatic.instance.showStats = true;
+    // GgStatic.instance.devConsoleEnabled = true;
     this.world.visualScene.loader.registerGltfLoaderAddon(new GLTFLoader());
     await this.world.init();
     const renderer = await this.initRenderer(canvas);

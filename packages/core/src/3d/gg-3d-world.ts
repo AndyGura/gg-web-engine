@@ -14,15 +14,12 @@ export class Gg3dWorld<
 > extends GgWorld<Point3, Point4, V, P> {
   public readonly loader: Gg3dLoader;
 
-  constructor(
-    public readonly visualScene: V,
-    public readonly physicsWorld: P,
-    protected readonly consoleEnabled: boolean = false,
-  ) {
-    super(visualScene, physicsWorld, consoleEnabled);
+  constructor(public readonly visualScene: V, public readonly physicsWorld: P) {
+    super(visualScene, physicsWorld);
     this.loader = new Gg3dLoader(this);
-    if (consoleEnabled) {
-      this.registerConsoleCommand(
+    if ((window as any).ggstatic) {
+      (window as any).ggstatic.registerConsoleCommand(
+        this,
         'ph_gravity',
         async (...args: string[]) => {
           if (args.length == 1) {

@@ -1,17 +1,8 @@
-import { GgStatic } from '../gg-static';
-import { createInlineTickController } from '../entities/controllers/inline-controller';
+import { createInlineTickController, GgWorld } from '../base';
 import { fromEvent, Subject, takeUntil } from 'rxjs';
 import Stats from 'stats.js';
 
 export class GgDebuggerUI {
-  private static _instance: GgDebuggerUI | null;
-  static get instance(): GgDebuggerUI {
-    if (!this._instance) {
-      this._instance = new GgDebuggerUI();
-    }
-    return this._instance;
-  }
-
   private ui: {
     stats: Stats | null;
     debugControlsContainer: HTMLDivElement | null;
@@ -20,18 +11,23 @@ export class GgDebuggerUI {
     debugControlsContainer: null,
   };
 
-  private constructor() {}
-
   private statsRemoved$: Subject<void> = new Subject<void>();
 
   public get showStats(): boolean {
     return !!this.ui.stats;
   }
 
-  public set showStats(value: boolean) {
+  private currentWorld: GgWorld<any, any> = null!;
+
+  public setShowStats(selectedWorld: GgWorld<any, any>, value: boolean) {
     if (value === this.showStats) {
-      return;
+      if (value && this.currentWorld !== selectedWorld) {
+        this.setShowStats(this.currentWorld, false);
+      } else {
+        return;
+      }
     }
+    this.currentWorld = selectedWorld;
     if (value) {
       const stats = new Stats();
       this.ui.stats = stats;
@@ -39,12 +35,12 @@ export class GgDebuggerUI {
       stats.dom.style.right = '0';
       stats.showPanel(0); // 0: fps, 1: ms, 2: mb
       document.body.appendChild(stats.dom);
-      createInlineTickController(GgStatic.instance.selectedWorld!, -1)
+      createInlineTickController(selectedWorld, -1)
         .pipe(takeUntil(this.statsRemoved$))
         .subscribe(() => {
           stats?.begin();
         });
-      createInlineTickController(GgStatic.instance.selectedWorld!, 10000)
+      createInlineTickController(selectedWorld, 10000)
         .pipe(takeUntil(this.statsRemoved$))
         .subscribe(() => {
           stats?.end();
@@ -63,10 +59,15 @@ export class GgDebuggerUI {
     return !!this.ui.debugControlsContainer;
   }
 
-  public set showDebugControls(value: boolean) {
+  public setShowDebugControls(selectedWorld: GgWorld<any, any>, value: boolean) {
     if (value === this.showDebugControls) {
-      return;
+      if (value && this.currentWorld !== selectedWorld) {
+        this.setShowDebugControls(this.currentWorld, false);
+      } else {
+        return;
+      }
     }
+    this.currentWorld = selectedWorld;
     if (value) {
       const debugControlsContainer: HTMLDivElement = document.createElement('div');
       this.ui.debugControlsContainer = debugControlsContainer;
@@ -76,13 +77,13 @@ export class GgDebuggerUI {
       debugControlsContainer.innerHTML = `
       <div ${debugLabelCss}>
         <input type='checkbox' name='checkbox' id='physics_debugger_checkbox_id' value='1'${
-          GgStatic.instance.selectedWorld?.physicsWorld.physicsDebugViewActive ? ' checked' : ''
+          this.currentWorld.physicsWorld.physicsDebugViewActive ? ' checked' : ''
         }>
         <label for='physics_debugger_checkbox_id' style='user-select: none;'>Show physics bodies in scene</label>
       </div>`;
       // <div ${debugLabelCss}>
       //   <input id="time_scale_slider" type="range" min="0" max="10" step="0.1" style="flex-grow:1" value="${
-      //     GgStatic.instance.selectedWorld!.physicsWorld.timeScale
+      //      this.currentWorld.physicsWorld.timeScale
       //   }"/>
       //   <label for="time_scale_slider" style="user-select: none;">Time scale</label>
       // </div>`;
@@ -91,21 +92,21 @@ export class GgDebuggerUI {
         .pipe(takeUntil(this.debugControlsRemoved$))
         .subscribe(e => {
           try {
-            GgStatic.instance.selectedWorld!.physicsDebugViewActive = (e.target as HTMLInputElement).checked;
+            this.currentWorld.physicsDebugViewActive = (e.target as HTMLInputElement).checked;
           } catch (err) {
             console.error(err);
           }
-          (e.target as HTMLInputElement).checked = GgStatic.instance.selectedWorld!.physicsDebugViewActive;
+          (e.target as HTMLInputElement).checked = this.currentWorld.physicsDebugViewActive;
         });
       // fromEvent(document.getElementById('time_scale_slider')! as HTMLInputElement, 'change')
       //   .pipe(takeUntil(this.debugControlsRemoved$))
       //   .subscribe(e => {
       //     try {
-      //       GgStatic.instance.selectedWorld!.physicsWorld.timeScale = +(e.target as HTMLInputElement).value;
+      //        this.currentWorld.physicsWorld.timeScale = +(e.target as HTMLInputElement).value;
       //     } catch (err) {
       //       console.error(err);
       //     }
-      //     (e.target as HTMLInputElement).value = '' + (GgStatic.instance.selectedWorld!.physicsWorld.timeScale || 1);
+      //     (e.target as HTMLInputElement).value = '' + ( this.currentWorld.physicsWorld.timeScale || 1);
       //   });
     } else {
       this.debugControlsRemoved$.next();

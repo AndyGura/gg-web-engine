@@ -1,4 +1,4 @@
-import { Gg3dWorld, GgDebuggerUI, OrbitCameraController } from '@gg-web-engine/core';
+import { Gg3dWorld, GgStatic, OrbitCameraController } from '@gg-web-engine/core';
 import { interval } from 'rxjs';
 import { ThreeCameraComponent, ThreeDisplayObjectComponent, ThreeSceneComponent } from '@gg-web-engine/three';
 import { DirectionalLight, HemisphereLight, PerspectiveCamera } from 'three';
@@ -9,9 +9,10 @@ const world = new Gg3dWorld(
   new ThreeSceneComponent(),
   new Rapier3dWorldComponent(),
 );
-GgDebuggerUI.instance.showStats = true;
 world.visualScene.loader.registerGltfLoaderAddon(new GLTFLoader());
 world.init().then(async () => {
+  GgStatic.instance.showStats = true;
+  // GgStatic.instance.devConsoleEnabled = true;
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
   const renderer = world.addRenderer(
     new ThreeCameraComponent(new PerspectiveCamera(75, 1, 1, 10000)),

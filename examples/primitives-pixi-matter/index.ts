@@ -1,4 +1,4 @@
-import { Entity2d, Gg2dWorld, GgDebuggerUI } from '@gg-web-engine/core';
+import { Entity2d, Gg2dWorld, GgStatic } from '@gg-web-engine/core';
 import { interval } from 'rxjs';
 import { PixiSceneComponent } from '@gg-web-engine/pixi';
 import { MatterWorldComponent } from '@gg-web-engine/matter';
@@ -7,8 +7,9 @@ const world = new Gg2dWorld(
   new PixiSceneComponent(),
   new MatterWorldComponent(),
 );
-GgDebuggerUI.instance.showStats = true;
 world.init().then(async () => {
+  GgStatic.instance.showStats = true;
+  // GgStatic.instance.devConsoleEnabled = true;
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
   const renderer = world.addRenderer(canvas);
 

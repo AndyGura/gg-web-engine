@@ -6,7 +6,7 @@ import {
   Gg3dWorld,
   OrbitCameraController,
   Entity3d,
-  GgDebuggerUI,
+  GgStatic,
 } from '@gg-web-engine/core';
 import {
   ThreeCameraComponent,
@@ -30,8 +30,9 @@ export class App implements OnInit, OnDestroy {
       new ThreeSceneComponent(),
       new AmmoWorldComponent(),
     );
-    GgDebuggerUI.instance.showStats = true;
     await this.world.init();
+    GgStatic.instance.showStats = true;
+    // GgStatic.instance.devConsoleEnabled = true;
 
     const canvas = document.getElementById('gg')! as HTMLCanvasElement;
     const renderer = this.world.addRenderer(
