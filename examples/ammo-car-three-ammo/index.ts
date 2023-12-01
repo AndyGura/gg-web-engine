@@ -2,7 +2,7 @@ import {
   CarKeyboardHandlingController,
   createInlineTickController,
   Gg3dWorld,
-  GgDebuggerUI,
+  GgStatic,
   OrbitCameraController,
   Pnt3,
   Point3,
@@ -17,22 +17,21 @@ import { AmmoRaycastVehicleComponent, AmmoWorldComponent } from '@gg-web-engine/
 const world = new Gg3dWorld(
   new ThreeSceneComponent(),
   new AmmoWorldComponent(),
-  true
 );
-GgDebuggerUI.instance.createUI();
+GgStatic.instance.showStats = true;
 world.init().then(async () => {
   // init graphics
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
   const renderer = world.addRenderer(
     new ThreeCameraComponent(new PerspectiveCamera(60, 1, 0.2, 2000)),
     canvas,
-    { background: 0xbfd1e5 }
+    { background: 0xbfd1e5 },
   );
   renderer.camera.position = { x: 4.84, y: -35.11, z: 4.39 };
   renderer.camera.rotation = Qtrn.lookAt(
     renderer.camera.position,
     { x: -0.33, y: -0.4, z: 0.85 },
-    { x: 0, y: 0, z: 1 }
+    { x: 0, y: 0, z: 1 },
   );
 
   const dirLight = new DirectionalLight(0xffffff, 1);
@@ -52,7 +51,7 @@ world.init().then(async () => {
     quat: Point4,
     dimensions: Point3,
     mass: number,
-    friction: number
+    friction: number,
   ) {
     const box = world.addPrimitiveRigidBody({
       shape: { shape: 'BOX', dimensions },
@@ -71,7 +70,7 @@ world.init().then(async () => {
     Qtrn.fromAngle(Pnt3.X, Math.PI / 18),
     { x: 8, y: 10, z: 4 },
     0,
-    1
+    1,
   );
   var size = 0.75;
   var nw = 8;
@@ -83,7 +82,7 @@ world.init().then(async () => {
         Qtrn.O,
         { x: size, y: size, z: size },
         10,
-        1
+        1,
       );
 
   const vehiclePos = { x: 0, y: -20, z: 4 };
@@ -94,23 +93,19 @@ world.init().then(async () => {
   });
   const chassisMesh = world.visualScene.factory.createBox(
     chassisDimensions,
-    materialInteractive
+    materialInteractive,
   );
-  const wheelMesh = world.visualScene.factory.createCylinder(
-    1,
-    1,
-    materialInteractive
-  );
-  wheelMesh.nativeMesh.add(
-    world.visualScene.factory.createBox(
-      { x: 1.5, y: 0.25, z: 1.75 },
-      materialInteractive
-    ).nativeMesh
-  );
+  const createWheelMesh = (radius: number, width: number) => {
+    let m = world.visualScene.factory.createCylinder(radius, width, materialInteractive);
+    m.nativeMesh.add(
+      world.visualScene.factory.createBox({ x: radius * 1.75, y: radius * 0.25, z: width * 1.5 }, materialInteractive).nativeMesh,
+    );
+    return m;
+  };
 
   var wheelAxisPositionBack = -1;
   var wheelRadiusBack = 0.4;
-  var wheelWidthBack = 0.3 * 1.75; // workaround for tyre mesh width
+  var wheelWidthBack = 0.3;
   var wheelHalfTrackBack = 1;
   var wheelAxisHeightBack = 0.3;
 
@@ -118,8 +113,10 @@ world.init().then(async () => {
   var wheelHalfTrackFront = 1;
   var wheelAxisHeightFront = 0.3;
   var wheelRadiusFront = 0.35;
-  var wheelWidthFront = 0.2 * 1.75; // workaround for tyre mesh width
+  var wheelWidthFront = 0.2;
 
+  const frontWheelMesh = createWheelMesh(wheelRadiusFront, wheelWidthFront);
+  const backWheelMesh = createWheelMesh(wheelRadiusBack, wheelWidthBack);
   const vehicle = new RaycastVehicle3dEntity(
     {
       brake: {
@@ -164,6 +161,7 @@ world.init().then(async () => {
           frictionSlip: 1000,
           maxTravel: 5,
           rollInfluence: 0.2,
+          displaySettings: { displayObject: frontWheelMesh },
         },
         {
           isFront: true,
@@ -178,6 +176,7 @@ world.init().then(async () => {
           frictionSlip: 1000,
           maxTravel: 5,
           rollInfluence: 0.2,
+          displaySettings: { displayObject: frontWheelMesh },
         },
         {
           isFront: false,
@@ -192,6 +191,7 @@ world.init().then(async () => {
           frictionSlip: 1000,
           maxTravel: 5,
           rollInfluence: 0.2,
+          displaySettings: { displayObject: backWheelMesh },
         },
         {
           isFront: false,
@@ -206,13 +206,13 @@ world.init().then(async () => {
           frictionSlip: 1000,
           maxTravel: 5,
           rollInfluence: 0.2,
+          displaySettings: { displayObject: backWheelMesh },
         },
       ],
     },
     chassisMesh,
     new AmmoRaycastVehicleComponent(world.physicsWorld, chassis.nativeBody),
-    wheelMesh,
-    'z'
+    { wheelObjectDirection: 'z' },
   );
   vehicle.gear = 1;
   vehicle.position = vehiclePos;
@@ -225,7 +225,7 @@ world.init().then(async () => {
   const carController = new CarKeyboardHandlingController(
     world.keyboardInput,
     vehicle,
-    { gearUpDownKeys: ['', ''], handbrakeKey: '', keymap: 'wasd' }
+    { gearUpDownKeys: ['', ''], handbrakeKey: '', keymap: 'wasd' },
   );
   world.addEntity(carController);
 

@@ -3,6 +3,12 @@ import { IRigidBody3dComponent } from './i-rigid-body-3d.component';
 import { IDisplayObject3dComponent } from '../rendering/i-display-object-3d.component';
 import { IPhysicsWorld3dComponent } from './i-physics-world-3d.component';
 
+export type WheelDisplayOptions = {
+  displayObject?: IDisplayObject3dComponent;
+  wheelObjectDirection?: AxisDirection3;
+  autoScaleMesh?: boolean;
+};
+
 export type SuspensionOptions = {
   stiffness: number;
   damping: number;
@@ -13,8 +19,7 @@ export type SuspensionOptions = {
 export type WheelOptions = {
   tyre_width: number;
   tyre_radius: number;
-  wheelObject?: IDisplayObject3dComponent;
-  wheelObjectDirection?: AxisDirection3;
+  displaySettings?: WheelDisplayOptions;
   isLeft: boolean;
   isFront: boolean;
   position: Point3;
@@ -41,7 +46,10 @@ export interface IRaycastVehicleComponent<PW extends IPhysicsWorld3dComponent = 
 
   isWheelTouchesGround(wheelIndex: number): boolean;
 
-  getWheelTransform(wheelIndex: number): { position: Point3; rotation: Point4 };
+  getWheelTransform(wheelIndex: number): {
+    position: Point3;
+    rotation: Point4;
+  };
 
   resetSuspension(): void;
 }

@@ -194,8 +194,7 @@ export class GameFactory {
         this.world.physicsWorld,
         chassisBody.nativeBody,
       ),
-      wheelMesh,
-      'x',
+      { displayObject: wheelMesh || undefined, wheelObjectDirection: 'x', autoScaleMesh: true },
     );
   }
 

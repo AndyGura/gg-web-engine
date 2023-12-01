@@ -33,6 +33,7 @@ export abstract class GgWorld<
 
   protected constructor(public readonly visualScene: V, public readonly physicsWorld: P) {
     GgWorld._documentWorlds.push(this);
+    this.keyboardInput.start();
     if ((window as any).ggstatic) {
       (window as any).ggstatic.registerConsoleCommand(
         this,

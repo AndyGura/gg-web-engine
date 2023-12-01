@@ -1,4 +1,4 @@
-import { AxisDirection3, Box, IEntity, Pnt3, Point3, Point4, Qtrn } from '../../base';
+import { Box, IEntity, Pnt3, Point3, Point4, Qtrn } from '../../base';
 import { Entity3d } from './entity-3d';
 import { BehaviorSubject, filter, Observable } from 'rxjs';
 import { throttleTime } from 'rxjs/operators';
@@ -7,6 +7,7 @@ import { IDisplayObject3dComponent } from '../components/rendering/i-display-obj
 import {
   IRaycastVehicleComponent,
   SuspensionOptions,
+  WheelDisplayOptions,
   WheelOptions,
 } from '../components/physics/i-raycast-vehicle.component';
 import { IRigidBody3dComponent } from '../components/physics/i-rigid-body-3d.component';
@@ -19,7 +20,10 @@ export type CarProperties = {
   engine: {
     minRpm: number;
     maxRpm: number;
-    torques: { rpm: number; torque: number }[];
+    torques: {
+      rpm: number;
+      torque: number;
+    }[];
     maxRpmIncreasePerSecond: number;
     maxRpmDecreasePerSecond: number;
   };
@@ -246,8 +250,7 @@ export class RaycastVehicle3dEntity extends Entity3d {
     public readonly carProperties: CarProperties,
     public readonly chassis3D: IDisplayObject3dComponent | null,
     public readonly chassisBody: IRaycastVehicleComponent,
-    public readonly wheelObject: IDisplayObject3dComponent | null = null,
-    public readonly wheelObjectDirection: AxisDirection3 = 'x',
+    protected readonly wheelDisplaySettings: WheelDisplayOptions = {},
   ) {
     super(chassis3D, chassisBody);
     this.carProperties.wheelOptions.forEach((x, i) => {
@@ -269,20 +272,24 @@ export class RaycastVehicle3dEntity extends Entity3d {
     this.carProperties.wheelOptions.forEach(wheelOpts => {
       this.chassisBody.addWheel(wheelOpts, this.carProperties.suspension);
     });
-    if (this.wheelObject) {
-      for (let i = 0; i < this.carProperties.wheelOptions.length; i++) {
-        const options = this.carProperties.wheelOptions[i];
-        if (!options.wheelObject && !this.wheelObject) {
-          this.wheels.push(null);
-          this.wheelLocalRotation.push(null);
-          continue;
-        }
-        const entity = options.wheelObject || this.wheelObject.clone();
-        const localTranslation = { x: options.tyre_width * (options.isLeft ? 1 : -1), y: 0, z: 0 };
+    for (let i = 0; i < this.carProperties.wheelOptions.length; i++) {
+      const options = this.carProperties.wheelOptions[i];
+      const display: WheelDisplayOptions = {
+        ...this.wheelDisplaySettings,
+        ...(options.displaySettings || {}),
+      };
+      if (!display.displayObject) {
+        this.wheels.push(null);
+        this.wheelLocalRotation.push(null);
+        continue;
+      }
+      const entity = display.displayObject.clone();
+      const localTranslation = { x: options.tyre_width * (options.isLeft ? 1 : -1), y: 0, z: 0 };
+      if (display.autoScaleMesh) {
         const boundingBox = Box.expandByPoint(entity.getBoundings(), Pnt3.O);
         const scale = { ...Pnt3.O };
+        const wheelObjectDirection = display.wheelObjectDirection || 'x';
         for (const dir of ['x', 'y', 'z'] as (keyof Point3)[]) {
-          const wheelObjectDirection = options.wheelObjectDirection || this.wheelObjectDirection;
           const isNormal = wheelObjectDirection.includes(dir);
           scale[dir] = isNormal
             ? options.tyre_width / (boundingBox.max[dir] - boundingBox.min[dir])
@@ -295,23 +302,23 @@ export class RaycastVehicle3dEntity extends Entity3d {
           }
         }
         entity.scale = scale;
-        const direction = options.wheelObjectDirection || this.wheelObjectDirection;
-        const flip = direction.includes('-') ? !options.isLeft : options.isLeft;
-        let localRotation: Point4 | null = null;
-        if (direction.includes('x')) {
-          // rotate PI around Z if opposite position (x is correct for right wheel, -x is correct for left wheel)
-          if (flip) localRotation = { x: 0, y: 0, z: 1, w: 0 };
-        } else if (direction.includes('y')) {
-          // rotate PI/2 around Z
-          localRotation = { x: 0, y: 0, z: 0.707107 * (flip ? 1 : -1), w: 0.707107 };
-        } else if (direction.includes('z')) {
-          // rotate PI/2 around Y
-          localRotation = { x: 0, y: 0.707107 * (flip ? -1 : 1), z: 0, w: 0.707107 };
-        }
-        this.wheelLocalTranslation.push(localTranslation);
-        this.wheelLocalRotation.push(localRotation);
-        this.wheels.push(new Entity3d(entity));
       }
+      const direction = display.wheelObjectDirection || 'x';
+      const flip = direction.includes('-') ? !options.isLeft : options.isLeft;
+      let localRotation: Point4 | null = null;
+      if (direction.includes('x')) {
+        // rotate PI around Z if opposite position (x is correct for right wheel, -x is correct for left wheel)
+        if (flip) localRotation = { x: 0, y: 0, z: 1, w: 0 };
+      } else if (direction.includes('y')) {
+        // rotate PI/2 around Z
+        localRotation = { x: 0, y: 0, z: 0.707107 * (flip ? 1 : -1), w: 0.707107 };
+      } else if (direction.includes('z')) {
+        // rotate PI/2 around Y
+        localRotation = { x: 0, y: 0.707107 * (flip ? -1 : 1), z: 0, w: 0.707107 };
+      }
+      this.wheelLocalTranslation.push(localTranslation);
+      this.wheelLocalRotation.push(localRotation);
+      this.wheels.push(new Entity3d(entity));
     }
     this.addChildren(...(this.wheels.filter(x => !!x) as (IEntity & IPositionable3d)[]));
     this.chassisBody.entity = this;
@@ -438,7 +445,12 @@ export class RaycastVehicle3dEntity extends Entity3d {
   }
 
   // TODO delete and let game application do all the steps
-  public resetTo(options: { position?: Point3; rotation?: Point4 } = {}) {
+  public resetTo(
+    options: {
+      position?: Point3;
+      rotation?: Point4;
+    } = {},
+  ) {
     this.chassisBody.resetMotion();
     this.chassisBody.resetSuspension();
     if (options.position) {

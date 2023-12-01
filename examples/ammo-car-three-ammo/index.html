@@ -8,10 +8,40 @@
   <body>
     <style>
       body {
-        margin: 0;
-        overflow: hidden;
+          color: #61443e;
+          font-family: Monospace;
+          font-size: 13px;
+          text-align: center;
+
+          background-color: #bfd1e5;
+          margin: 0px;
+          overflow: hidden;
+      }
+      #speedometer {
+          color: #ffffff;
+          background-color: #990000;
+          position: absolute;
+          bottom: 0px;
+          padding: 5px;
+      }
+      #info {
+          position: absolute;
+          top: 0px;
+          width: 100%;
+          padding: 5px;
+      }
+      #container {
+          position: absolute;
+      }
+
+      a {
+          color: #a06851;
       }
     </style>
-    <canvas id='gg'></canvas>
+    <div id="container">
+      <canvas id="gg"></canvas>
+    </div>
+    <div id="speedometer">0.0 km/h</div>
+    <div id="info">Ammo.js Raycast vehicle demo<br />Press W,A,S,D to move.</div>
   </body>
 </html>
