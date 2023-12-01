@@ -48,21 +48,21 @@ List of available commands: commandslist
     }
     const main: HTMLDivElement = document.createElement('div');
     main.innerHTML = `
-  <div id="gg-console-header" style="padding: 10px; cursor: move; z-index: 10; background-color: #054a81; border: 1px solid white; font-size: large;">GG web engine UI console</div>
-  <textarea id="gg-console-output" disabled style="resize: none; flex-grow: 1; background: #555555; border: 1px solid white; color: white; font-family: monospace;" ></textarea>
-  <input id="gg-console-input" style="background: #555555; border: 1px solid white; color: white; font-family: monospace;"/>`;
+  <div id="gg-console-header" style="padding: 0.2rem 0.2rem 0;cursor:move;">CONSOLE</div>
+  <textarea id="gg-console-output" disabled style="resize:none;flex-grow:1;background:#232323;color:white;font-family:monospace;" ></textarea>
+  <input id="gg-console-input" style="background:#000000;border:none;outline:none;color:white;font-family:monospace;"/>`;
     main.style.position = 'absolute';
     main.style.zIndex = '1000';
-    main.style.backgroundColor = '#222222';
-    main.style.border = '1px solid white';
+    main.style.backgroundColor = '#343434';
     main.style.width = '640px';
     main.style.height = '480px';
     main.style.display = 'flex';
     main.style.flexDirection = 'column';
     main.style.alignItems = 'stretch';
-    main.style.padding = '3px';
+    main.style.padding = '0.1rem';
     main.style.rowGap = '3px';
     main.style.fontFamily = 'monospace';
+    main.style.fontWeight = 'bold';
     main.style.color = 'white';
     document.body.append(main);
     this.elements = {
