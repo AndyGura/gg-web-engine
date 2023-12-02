@@ -46,12 +46,10 @@ export type CarProperties = {
 export class RaycastVehicle3dEntity extends Entity3d {
   protected readonly wheels: ((IEntity & IPositionable3d) | null)[] = [];
   protected readonly wheelLocalRotation: (Point4 | null)[] = [];
-  protected readonly wheelLocalTranslation: Point3[] = [];
   protected readonly frontWheelsIndices: number[] = [];
   protected readonly rearWheelsIndices: number[] = [];
   protected readonly tractionWheelIndices: number[] = [];
 
-  // https://x-engineer.org/vehicle-acceleration-maximum-speed-modeling-simulation/
   public readonly tractionWheelRadius: number;
 
   protected get dynamicTractionWheelRadius(): number {
@@ -284,7 +282,6 @@ export class RaycastVehicle3dEntity extends Entity3d {
         continue;
       }
       const entity = display.displayObject.clone();
-      const localTranslation = { x: options.tyre_width * (options.isLeft ? 1 : -1), y: 0, z: 0 };
       if (display.autoScaleMesh) {
         const boundingBox = Box.expandByPoint(entity.getBoundings(), Pnt3.O);
         const scale = { ...Pnt3.O };
@@ -294,12 +291,6 @@ export class RaycastVehicle3dEntity extends Entity3d {
           scale[dir] = isNormal
             ? options.tyre_width / (boundingBox.max[dir] - boundingBox.min[dir])
             : (options.tyre_radius * 2) / (boundingBox.max[dir] - boundingBox.min[dir]);
-          if (isNormal) {
-            localTranslation.x +=
-              (wheelObjectDirection.startsWith('-') ? boundingBox.max[dir] : boundingBox.min[dir]) *
-              scale[dir] *
-              (options.isLeft ? 1 : -1);
-          }
         }
         entity.scale = scale;
       }
@@ -316,7 +307,6 @@ export class RaycastVehicle3dEntity extends Entity3d {
         // rotate PI/2 around Y
         localRotation = { x: 0, y: 0.707107 * (flip ? -1 : 1), z: 0, w: 0.707107 };
       }
-      this.wheelLocalTranslation.push(localTranslation);
       this.wheelLocalRotation.push(localRotation);
       this.wheels.push(new Entity3d(entity));
     }
@@ -407,7 +397,6 @@ export class RaycastVehicle3dEntity extends Entity3d {
       if (this.wheelLocalRotation[i]) {
         rotation = Qtrn.combineRotations(rotation, this.wheelLocalRotation[i]!);
       }
-      position = Pnt3.add(position, Pnt3.rot(this.wheelLocalTranslation[i], carRotation));
       wheel.position = position;
       wheel.rotation = rotation;
     }

@@ -175,11 +175,7 @@ export class GameFactory {
             return {
               tyre_radius: wheel.tyre_radius || 0.3,
               tyre_width,
-              position: {
-                x: wheel.position.x + tyre_width * (isLeft ? -1 : 1),
-                y: wheel.position.y,
-                z: wheel.position.z,
-              },
+              position: wheel.position,
               isFront: wheel.name.startsWith('wheel_f'),
               isLeft,
               frictionSlip: 3,
