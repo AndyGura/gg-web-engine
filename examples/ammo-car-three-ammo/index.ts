@@ -211,7 +211,7 @@ world.init().then(async () => {
       ],
     },
     chassisMesh,
-    new AmmoRaycastVehicleComponent(world.physicsWorld, chassis.nativeBody),
+    new AmmoRaycastVehicleComponent(world.physicsWorld, chassis),
     { wheelObjectDirection: 'z' },
   );
   vehicle.gear = 1;

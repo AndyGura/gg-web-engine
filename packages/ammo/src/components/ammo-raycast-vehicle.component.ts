@@ -1,12 +1,12 @@
 import {
-  RaycastVehicle3dEntity,
+  Gg3dWorld,
   IRaycastVehicleComponent,
+  IVisualScene3dComponent,
   Point3,
   Point4,
+  RaycastVehicle3dEntity,
   SuspensionOptions,
   WheelOptions,
-  Gg3dWorld,
-  IVisualScene3dComponent,
 } from '@gg-web-engine/core';
 import Ammo from 'ammojs-typed';
 import { AmmoRigidBodyComponent } from './ammo-rigid-body.component';
@@ -23,11 +23,11 @@ export class AmmoRaycastVehicleComponent
 
   public entity: RaycastVehicle3dEntity | null = null;
 
-  constructor(protected readonly world: AmmoWorldComponent, public chassisBody: Ammo.btRigidBody) {
-    super(world, chassisBody);
+  constructor(protected readonly world: AmmoWorldComponent, public chassisBody: AmmoRigidBodyComponent) {
+    super(world, chassisBody.nativeBody);
     this.nativeVehicle = new this.ammo.btRaycastVehicle(
       this.vehicleTuning,
-      this.chassisBody,
+      this.chassisBody.nativeBody,
       new this.ammo.btDefaultVehicleRaycaster(world.dynamicAmmoWorld!),
     );
     this.nativeVehicle.setCoordinateSystem(0, 2, 1);
@@ -43,8 +43,8 @@ export class AmmoRaycastVehicleComponent
       throw new Error('Ammo raycast vehicle cannot be shared between different worlds');
     }
     // TODO parked cars can be deactivated until we start handling them. Needs explicit activation call
-    this.chassisBody.setActivationState(4); // btCollisionObject::DISABLE_DEACTIVATION
-    this.world.dynamicAmmoWorld?.addRigidBody(this.chassisBody);
+    this.chassisBody.nativeBody.setActivationState(4); // btCollisionObject::DISABLE_DEACTIVATION
+    this.world.dynamicAmmoWorld?.addRigidBody(this.chassisBody.nativeBody);
     this.world.dynamicAmmoWorld!.addAction(this.nativeVehicle);
   }
 

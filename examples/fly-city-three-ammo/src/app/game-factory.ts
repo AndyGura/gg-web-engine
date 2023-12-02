@@ -188,7 +188,7 @@ export class GameFactory {
       chassisMesh,
       new AmmoRaycastVehicleComponent(
         this.world.physicsWorld,
-        chassisBody.nativeBody,
+        chassisBody,
       ),
       { displayObject: wheelMesh || undefined, wheelObjectDirection: 'x', autoScaleMesh: true },
     );
