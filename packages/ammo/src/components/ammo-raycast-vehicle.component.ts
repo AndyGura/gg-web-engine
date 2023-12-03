@@ -50,7 +50,7 @@ export class AmmoRaycastVehicleComponent
 
   addWheel(options: WheelOptions, suspensionOptions: SuspensionOptions): void {
     const wheelInfo = this.nativeVehicle.addWheel(
-      new this.ammo.btVector3(options.position.x, options.position.y, options.position.z * 2),
+      new this.ammo.btVector3(options.position.x, options.position.y, options.position.z),
       this.wheelDirectionCS0,
       this.wheelAxleCS,
       suspensionOptions.restLength,

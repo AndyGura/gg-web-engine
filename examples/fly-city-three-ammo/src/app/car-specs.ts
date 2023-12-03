@@ -74,7 +74,7 @@ export const LAMBO_SPECS: Omit<CarProperties, 'wheelOptions'> = {
     "stiffness": 20,
     "damping": 2.3,
     "compression": 4.4,
-    "restLength": 0.53
+    "restLength": 0.2,
   },
   "brake": {
     "frontAxleForce": 400,
@@ -157,7 +157,7 @@ export const CAR_SPECS: Omit<CarProperties, 'wheelOptions'> = {
     "stiffness": 20,
     "damping": 2.3,
     "compression": 4.4,
-    "restLength": 0.53
+    "restLength": 0.2
   },
   "brake": {
     "frontAxleForce": 400,
@@ -240,7 +240,7 @@ export const TRUCK_SPECS: Omit<CarProperties, 'wheelOptions'> = {
     "stiffness": 20,
     "damping": 2.3,
     "compression": 4.4,
-    "restLength": 0.53
+    "restLength": 0.2
   },
   "brake": {
     "frontAxleForce": 400,

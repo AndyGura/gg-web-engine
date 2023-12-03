@@ -180,7 +180,7 @@ export class GameFactory {
               isLeft,
               frictionSlip: 3,
               rollInfluence: 0.2,
-              maxTravel: 0.25,
+              maxTravel: 0.5,
             };
           }),
         ...specs,
