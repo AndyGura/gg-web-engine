@@ -4,6 +4,7 @@ import { filter, map, Observable, Subject } from 'rxjs';
 import Ammo from 'ammojs-typed';
 import { AmmoBodyComponent } from './ammo-body.component';
 import { ammoId } from '../ammo-utils';
+import { AmmoRigidBodyComponent } from './ammo-rigid-body.component';
 
 export class AmmoTriggerComponent
   extends AmmoBodyComponent<Ammo.btPairCachingGhostObject>
@@ -11,15 +12,17 @@ export class AmmoTriggerComponent
 {
   public entity: IEntity | null = null;
 
-  get onEntityEntered(): Observable<AmmoBodyComponent<any>> {
+  get onEntityEntered(): Observable<AmmoRigidBodyComponent> {
     return this.onEnter$.pipe(
       map(b => AmmoBodyComponent.nativeBodyReverseMap.get(b)),
       filter(x => !!x),
-    ) as Observable<AmmoBodyComponent<any>>;
+    ) as Observable<AmmoRigidBodyComponent>;
   }
 
-  get onEntityLeft(): Observable<AmmoBodyComponent<any> | null> {
-    return this.onLeft$.pipe(map(b => AmmoBodyComponent.nativeBodyReverseMap.get(b) || null));
+  get onEntityLeft(): Observable<AmmoRigidBodyComponent | null> {
+    return this.onLeft$.pipe(
+      map(b => AmmoBodyComponent.nativeBodyReverseMap.get(b) || null),
+    ) as Observable<AmmoRigidBodyComponent>;
   }
 
   constructor(protected readonly world: AmmoWorldComponent, protected _nativeBody: Ammo.btPairCachingGhostObject) {
@@ -81,6 +84,4 @@ export class AmmoTriggerComponent
     this.onEnter$.complete();
     this.onLeft$.complete();
   }
-
-  resetMotion(): void {}
 }

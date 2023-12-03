@@ -1,19 +1,9 @@
-import {
-  Entity3d,
-  Gg3dWorld,
-  IEntity,
-  IRigidBody3dComponent,
-  IVisualScene3dComponent,
-  Point3,
-  Point4,
-} from '@gg-web-engine/core';
+import { Gg3dWorld, IEntity, IVisualScene3dComponent, Point3, Point4 } from '@gg-web-engine/core';
 import { AmmoWorldComponent } from './ammo-world.component';
 import Ammo from 'ammojs-typed';
 import { ammoId } from '../ammo-utils';
 
-export abstract class AmmoBodyComponent<T extends Ammo.btCollisionObject>
-  implements IRigidBody3dComponent<AmmoWorldComponent>
-{
+export abstract class AmmoBodyComponent<T extends Ammo.btCollisionObject> {
   protected static nativeBodyReverseMap: Map<number, AmmoBodyComponent<any>> = new Map<
     number,
     AmmoBodyComponent<any>
@@ -80,6 +70,4 @@ export abstract class AmmoBodyComponent<T extends Ammo.btCollisionObject>
     }
     AmmoBodyComponent.nativeBodyReverseMap.delete(ammoId(this.nativeBody));
   }
-
-  abstract resetMotion(): void;
 }

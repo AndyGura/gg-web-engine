@@ -50,4 +50,9 @@ export class Rapier2dTriggerComponent
       (started ? this.onEnter$ : this.onLeft$).next(otherBody);
     });
   }
+
+  clone(): Rapier2dTriggerComponent {
+    const [colliderDescr, bd] = super.factoryProps;
+    return new Rapier2dTriggerComponent(this.world, colliderDescr, bd);
+  }
 }

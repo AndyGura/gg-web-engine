@@ -39,6 +39,26 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
     }
   }
 
+  get linearVelocity(): Point3 {
+    return Pnt3.clone(this.nativeBody?.linvel() || Pnt3.O);
+  }
+
+  set linearVelocity(value: Point3) {
+    if (this.nativeBody) {
+      this.nativeBody.setLinvel(new Vector3(value.x, value.y, value.z), false);
+    }
+  }
+
+  get angularVelocity(): Point3 {
+    return Pnt3.clone(this.nativeBody?.angvel() || Pnt3.O);
+  }
+
+  set angularVelocity(value: Point3) {
+    if (this.nativeBody) {
+      this.nativeBody.setAngvel(new Vector3(value.x, value.y, value.z), false);
+    }
+  }
+
   protected _nativeBody: RigidBody | null = null;
   protected _nativeBodyColliders: Collider[] | null = null;
 
