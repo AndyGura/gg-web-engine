@@ -57,37 +57,47 @@ export class RaycastVehicle3dEntity extends Entity3d {
     return 0.98 * this.tractionWheelRadius;
   }
 
-  public get engineTorque(): number {
+  private cubicSplineInterpolation(
+    x: number,
+    x0: number,
+    x1: number,
+    y0: number,
+    y1: number,
+    m0: number,
+    m1: number,
+  ): number {
+    const h = x1 - x0;
+    return (
+      ((m0 + m1 - (2 * (y1 - y0)) / h) / h ** 2) * (x - x0) ** 3 +
+      (((3 * (y1 - y0)) / h - 2 * m0 - m1) / h) * (x - x0) ** 2 +
+      m0 * (x - x0) +
+      y0
+    );
+  }
+
+  protected get engineTorque(): number {
     const currentRPM = this.engineRpm;
-    const maxMapTorque = this.carProperties.engine.torques[this.carProperties.engine.torques.length - 1].rpm;
-    if (currentRPM >= maxMapTorque) {
-      return (
-        Math.pow(Math.max(0, 1 - (currentRPM - maxMapTorque) / (this.carProperties.engine.maxRpm - maxMapTorque)), 2) *
-        this.carProperties.engine.torques[this.carProperties.engine.torques.length - 1].torque
-      );
+    const torques = this.carProperties.engine.torques;
+
+    if (currentRPM <= torques[0].rpm) {
+      return torques[0].torque;
+    } else if (currentRPM >= torques[torques.length - 1].rpm) {
+      return torques[torques.length - 1].torque;
     }
+
     let index = 0;
-    let factor = 0;
-    for (let i = 0; i < this.carProperties.engine.torques.length; i++) {
-      if (this.carProperties.engine.torques[i].rpm < currentRPM) {
-        index = i;
-        continue;
-      }
-      factor = Math.max(
-        0,
-        (currentRPM - this.carProperties.engine.torques[index].rpm) /
-          (this.carProperties.engine.torques[index + 1].rpm - this.carProperties.engine.torques[index].rpm),
-      );
-      break;
+    while (currentRPM > torques[index + 1].rpm) {
+      index++;
     }
-    if (factor === 0) {
-      return this.carProperties.engine.torques[index].torque;
-    } else {
-      return (
-        this.carProperties.engine.torques[index].torque +
-        factor * (this.carProperties.engine.torques[index + 1].torque - this.carProperties.engine.torques[index].torque)
-      );
-    }
+    const x0 = torques[index].rpm;
+    const x1 = torques[index + 1].rpm;
+    const y0 = torques[index].torque;
+    const y1 = torques[index + 1].torque;
+
+    const m0 = index === 0 ? 0 : (y1 - torques[index - 1].torque) / (x1 - torques[index - 1].rpm);
+    const m1 = index === torques.length - 2 ? 0 : (torques[index + 2].torque - y0) / (torques[index + 2].rpm - x0);
+
+    return this.cubicSplineInterpolation(currentRPM, x0, x1, y0, y1, m0, m1);
   }
 
   public get transmissionGearRatio(): number {

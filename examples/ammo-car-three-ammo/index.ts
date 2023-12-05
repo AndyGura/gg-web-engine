@@ -19,6 +19,7 @@ const world = new Gg3dWorld(
   new AmmoWorldComponent(),
 );
 GgStatic.instance.showStats = true;
+// GgStatic.instance.devConsoleEnabled = true;
 world.init().then(async () => {
   // init graphics
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
