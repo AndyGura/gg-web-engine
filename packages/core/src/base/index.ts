@@ -39,5 +39,6 @@ export * from './math/point3';
 export * from './math/quaternion';
 export * from './math/numbers';
 export * from './math/matrix4';
+export * from './math/splines';
 
 export * from './gg-world';

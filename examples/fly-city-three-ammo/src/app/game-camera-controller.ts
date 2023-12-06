@@ -3,10 +3,10 @@ import {
   Camera3dAnimationArgs,
   Camera3dAnimator,
   FreeCameraController,
-  RaycastVehicle3dEntity,
   Gg3dWorld,
   Pnt3,
   Renderer3dEntity,
+  IPositionable3d,
 } from '@gg-web-engine/core';
 import { ThreeSceneComponent, ThreeRendererComponent } from '@gg-web-engine/three';
 import { AmmoWorldComponent } from '@gg-web-engine/ammo';
@@ -20,7 +20,7 @@ export class GameCameraController {
   public readonly carCameraController: Camera3dAnimator;
   public readonly cameraIndex$: BehaviorSubject<number> = new BehaviorSubject<number>(0);
 
-  cameraMotionFactory: [(car: RaycastVehicle3dEntity, type: 'lambo' | 'truck' | 'car') => AnimationFunction<Camera3dAnimationArgs>, number, (t: number) => number][] = [
+  cameraMotionFactory: [(car: IPositionable3d, type: 'lambo' | 'truck' | 'car') => AnimationFunction<Camera3dAnimationArgs>, number, (t: number) => number][] = [
     [farCamera, 600, (t: number) => Math.pow(t, 0.3)],
     [bumperCamera, 250, (t: number) => 0.7 * Math.pow(t, 0.3)],
     [nearCamera, 250, (t: number) => 0.7 + 0.3 * Math.pow(t, 0.3)],

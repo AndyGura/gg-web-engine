@@ -1,12 +1,12 @@
 import { CarKeyboardHandlingController, KeyboardInput } from '../../../../../src';
-import { mockRaycastVehicleEntity } from '../../../../mocks/raycast-vehicle.mock';
+import { mockGgCarEntity } from '../../../../mocks/raycast-vehicle.mock';
 
 describe(`CarKeyboardHandlingController`, () => {
   describe(`emitting values`, () => {
     it(`should emit acceleration`, async () => {
       const keyboardInput = new KeyboardInput();
       await keyboardInput.start();
-      const car = mockRaycastVehicleEntity();
+      const car = mockGgCarEntity();
       const controller = new CarKeyboardHandlingController(keyboardInput, car);
       await controller.onSpawned(null!);
       keyboardInput.emulateKeyDown('ArrowUp');
@@ -18,7 +18,7 @@ describe(`CarKeyboardHandlingController`, () => {
     it(`should not emit steering after stopped`, async () => {
       const keyboardInput = new KeyboardInput();
       await keyboardInput.start();
-      const car = mockRaycastVehicleEntity();
+      const car = mockGgCarEntity();
       const controller = new CarKeyboardHandlingController(keyboardInput, car);
       await controller.onSpawned(null!);
       keyboardInput.emulateKeyDown('ArrowLeft');

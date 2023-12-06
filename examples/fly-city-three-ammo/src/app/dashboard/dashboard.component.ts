@@ -1,7 +1,7 @@
 import { Component, Input, OnDestroy, OnInit } from '@angular/core';
 import { map, switchMap, takeUntil } from 'rxjs/operators';
 import { BehaviorSubject, Observable, of, Subject, timer } from 'rxjs';
-import { RaycastVehicle3dEntity } from '@gg-web-engine/core';
+import { GgCarEntity } from '@gg-web-engine/core';
 
 @Component({
   selector: 'app-dashboard',
@@ -44,10 +44,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   destroyed$: Subject<void> = new Subject<void>();
 
   @Input()
-  set car(v: RaycastVehicle3dEntity | null) {
+  set car(v: GgCarEntity | null) {
     this.car$.next(v);
   }
-  private car$: BehaviorSubject<RaycastVehicle3dEntity | null> = new BehaviorSubject<RaycastVehicle3dEntity | null>(null);
+  private car$: BehaviorSubject<GgCarEntity | null> = new BehaviorSubject<GgCarEntity | null>(null);
 
   constructor(
   ) {
@@ -59,7 +59,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         takeUntil(this.destroyed$),
         switchMap((car): Observable<[number, number, number, number]> => {
           return car
-            ? timer(0, 20).pipe(map(() => [car.getDisplaySpeed('kmh'), car.carProperties.engine.maxRpm, car.engineRpm, car.gear]))
+            ? timer(0, 20).pipe(map(() => [car.raycastVehicle.getSpeed() * 3.6, car.carProperties.engine.maxRpm, car.engineRpm, car.gear]))
             : of([0, 8000, 0, 0]);
         }),
       )

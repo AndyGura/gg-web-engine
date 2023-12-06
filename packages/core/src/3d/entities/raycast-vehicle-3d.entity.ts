@@ -1,8 +1,5 @@
 import { Box, IEntity, Pnt3, Point3, Point4, Qtrn } from '../../base';
 import { Entity3d } from './entity-3d';
-import { BehaviorSubject, filter, Observable } from 'rxjs';
-import { throttleTime } from 'rxjs/operators';
-import { Gg3dWorld } from '../gg-3d-world';
 import { IDisplayObject3dComponent } from '../components/rendering/i-display-object-3d.component';
 import {
   IRaycastVehicleComponent,
@@ -13,33 +10,9 @@ import {
 import { IRigidBody3dComponent } from '../components/physics/i-rigid-body-3d.component';
 import { IPositionable3d } from '../interfaces/i-positionable-3d';
 
-export type CarProperties = {
-  typeOfDrive: 'RWD' | 'FWD' | '4WD'; // FIXME 4WD car won't brake
+export type VehicleProperties = {
+  typeOfDrive: 'RWD' | 'FWD' | '4WD';
   wheelOptions: WheelOptions[];
-  mpsToRpmFactor?: number;
-  engine: {
-    minRpm: number;
-    maxRpm: number;
-    torques: {
-      rpm: number;
-      torque: number;
-    }[];
-    maxRpmIncreasePerSecond: number;
-    maxRpmDecreasePerSecond: number;
-  };
-  brake: {
-    frontAxleForce: number;
-    rearAxleForce: number;
-    handbrakeForce: number;
-  };
-  transmission: {
-    isAuto: boolean;
-    reverseGearRatio: number;
-    gearRatios: number[];
-    drivelineEfficiency: number;
-    finalDriveRatio: number; // differential
-    upShifts: number[];
-  };
   suspension: SuspensionOptions;
 };
 
@@ -50,212 +23,41 @@ export class RaycastVehicle3dEntity extends Entity3d {
   protected readonly rearWheelsIndices: number[] = [];
   protected readonly tractionWheelIndices: number[] = [];
 
-  public readonly tractionWheelRadius: number;
-
-  protected get dynamicTractionWheelRadius(): number {
-    // The dynamic wheel radius [m] is the radius of the wheel when the vehicle is in motion. It is smaller than the static wheel radius rws because the tire is slightly compressed during vehicle motion.
-    return 0.98 * this.tractionWheelRadius;
-  }
-
-  private cubicSplineInterpolation(
-    x: number,
-    x0: number,
-    x1: number,
-    y0: number,
-    y1: number,
-    m0: number,
-    m1: number,
-  ): number {
-    const h = x1 - x0;
-    return (
-      ((m0 + m1 - (2 * (y1 - y0)) / h) / h ** 2) * (x - x0) ** 3 +
-      (((3 * (y1 - y0)) / h - 2 * m0 - m1) / h) * (x - x0) ** 2 +
-      m0 * (x - x0) +
-      y0
-    );
-  }
-
-  protected get engineTorque(): number {
-    const currentRPM = this.engineRpm;
-    const torques = this.carProperties.engine.torques;
-
-    if (currentRPM <= torques[0].rpm) {
-      return torques[0].torque;
-    } else if (currentRPM >= torques[torques.length - 1].rpm) {
-      return torques[torques.length - 1].torque;
-    }
-
-    let index = 0;
-    while (currentRPM > torques[index + 1].rpm) {
-      index++;
-    }
-    const x0 = torques[index].rpm;
-    const x1 = torques[index + 1].rpm;
-    const y0 = torques[index].torque;
-    const y1 = torques[index + 1].torque;
-
-    const m0 = index === 0 ? 0 : (y1 - torques[index - 1].torque) / (x1 - torques[index - 1].rpm);
-    const m1 = index === torques.length - 2 ? 0 : (torques[index + 2].torque - y0) / (torques[index + 2].rpm - x0);
-
-    return this.cubicSplineInterpolation(currentRPM, x0, x1, y0, y1, m0, m1);
-  }
-
-  public get transmissionGearRatio(): number {
-    if (this._gear == -1) {
-      return this.carProperties.transmission.reverseGearRatio;
-    }
-    return this.carProperties.transmission.gearRatios[this._gear - 1] || 0;
-  }
-
-  protected get mpsToRpm(): number {
-    return (
-      this.carProperties.mpsToRpmFactor ||
-      (30 * this.carProperties.transmission.finalDriveRatio) / (Math.PI * this.dynamicTractionWheelRadius)
-    );
-  }
-
   // m/s
   public getSpeed(): number {
     return this.chassisBody.wheelSpeed;
   }
 
-  public calculateRpmFromCarSpeed(): number {
-    return this.getSpeed() * this.mpsToRpm * this.transmissionGearRatio;
+  public readonly tractionWheelRadius: number;
+
+  private _steeringAngle: number = 0;
+  public get steeringAngle(): number {
+    return this._steeringAngle;
   }
 
-  // TODO remove from here, end application should do this work
-
-  public getDisplaySpeed(units: 'ms' | 'kmh' | 'mph' = 'ms'): number {
-    if (units === 'ms') {
-      return this.getSpeed();
+  public set steeringAngle(value: number) {
+    if (this._steeringAngle != value) {
+      this._steeringAngle = value;
     }
-    const kmh = this.getSpeed() * 3.6;
-    if (units === 'mph') {
-      return kmh * 0.621371192;
+    this.frontWheelsIndices.forEach(index => this.chassisBody.setSteering(index, value));
+  }
+
+  public applyTractionForce(force: number) {
+    this.tractionWheelIndices.forEach(index => this.chassisBody.applyEngineForce(index, force));
+  }
+
+  public applyBrake(axle: 'front' | 'rear' | 'both', force: number) {
+    if (axle != 'rear') {
+      this.frontWheelsIndices.forEach(index => this.chassisBody.applyBrake(index, force));
     }
-    return kmh;
-  }
-
-  protected readonly _rpm$: BehaviorSubject<number> = new BehaviorSubject<number>(this.carProperties.engine.minRpm);
-
-  public get engineRpm$(): Observable<number> {
-    return this._rpm$.asObservable();
-  }
-
-  public get engineRpm(): number {
-    return this._rpm$.getValue();
-  }
-
-  protected get tractionForce(): number {
-    return (
-      (this.engineTorque *
-        this.transmissionGearRatio *
-        this.carProperties.transmission.finalDriveRatio *
-        this.carProperties.transmission.drivelineEfficiency) /
-      this.dynamicTractionWheelRadius
-    );
-  }
-
-  // TODO should be parameters
-  private readonly _maxSteerVal = 0.35;
-
-  public get maxSteerVal(): number {
-    return this._maxSteerVal;
-  }
-
-  private getMaxStableSteerVal(): number {
-    const speed = this.getSpeed() * 3.6;
-    if (speed < 40) {
-      return this.maxSteerVal;
-    }
-    const mult = Math.pow((340 - speed) / 300, 2);
-    return this.maxSteerVal * Math.max(mult, 0.06);
-  }
-
-  private _tailLightsOn: boolean = false;
-  public get tailLightsOn(): boolean {
-    return this._tailLightsOn;
-  }
-
-  protected setTailLightsOn(value: boolean) {
-    if (this._tailLightsOn != value) {
-      this._tailLightsOn = value;
-    }
-  }
-
-  // 0..1
-  protected _acceleration$: BehaviorSubject<number> = new BehaviorSubject(0);
-
-  protected get acceleration(): number {
-    return this._acceleration$.getValue();
-  }
-
-  public get acceleration$(): Observable<number> {
-    return this._acceleration$.asObservable();
-  }
-
-  protected set acceleration(value: number) {
-    this._acceleration$.next(value);
-  }
-
-  // 0..1
-  protected brake$: BehaviorSubject<number> = new BehaviorSubject(0);
-
-  protected get brake(): number {
-    return this.brake$.getValue();
-  }
-
-  protected set brake(value: number) {
-    this.brake$.next(value);
-  }
-
-  protected handBrake$: BehaviorSubject<boolean> = new BehaviorSubject(false);
-
-  public get handBrake(): boolean {
-    return this.handBrake$.getValue();
-  }
-
-  public set handBrake(value: boolean) {
-    this.handBrake$.next(value);
-  }
-
-  private _gear = 0;
-  private _gear$: BehaviorSubject<number> = new BehaviorSubject<number>(0);
-
-  get gear(): number {
-    return this._gear;
-  }
-
-  get gear$(): Observable<number> {
-    return this._gear$.asObservable();
-  }
-
-  set gear(value: number) {
-    value = Math.max(-1, Math.min(this.carProperties.transmission.gearRatios.length, value));
-    if (value === this._gear) {
-      return;
-    }
-    this._gear = value;
-    this._gear$.next(value);
-  }
-
-  // TODO remove
-  set isHonking(value: boolean) {}
-
-  private _steeringValue: number = 0;
-  public get steeringValue(): number {
-    return this._steeringValue;
-  }
-
-  protected setSteeringValue(value: number) {
-    if (this._steeringValue != value) {
-      this._steeringValue = value;
+    if (axle != 'front') {
+      this.rearWheelsIndices.forEach(index => this.chassisBody.applyBrake(index, force));
     }
   }
 
   /** car mesh and physics body direction has to be pointing: y front, z up*/
   constructor(
-    public readonly carProperties: CarProperties,
+    public readonly carProperties: VehicleProperties,
     public readonly chassis3D: IDisplayObject3dComponent | null,
     public readonly chassisBody: IRaycastVehicleComponent,
     protected readonly wheelDisplaySettings: WheelDisplayOptions = {},
@@ -324,78 +126,6 @@ export class RaycastVehicle3dEntity extends Entity3d {
     this.chassisBody.entity = this;
   }
 
-  onSpawned(world: Gg3dWorld) {
-    super.onSpawned(world);
-    this.tick$.subscribe(([_, delta]) => {
-      this.updateEngine(delta);
-      if (this.isTouchingGround) {
-        // TODO 1 - R (1000 rpm) quick switch with acceleration pedal should have the same speed as without acceleration pedal
-        let force = 0;
-        let brake = this.brake;
-        const calculatedRpm = this.calculateRpmFromCarSpeed();
-        if (this.gear !== 0 && calculatedRpm > this.carProperties.engine.maxRpm) {
-          // engine brake, this is related to clutch, better clutch condition - bigger force
-          force = this.gear > 0 ? -12000 : 12000;
-        } else {
-          force =
-            this.acceleration > 0
-              ? this.tractionForce * this.acceleration // apply torque
-              : 0.5 * (this.carProperties.engine.minRpm - calculatedRpm) * (this.gear > 0 ? 1 : -1); // released, use engine brake
-          // this functionality makes car stay still (parking gear) when speed is low
-          const speedThreshold = 3;
-          if (Math.abs(this.getSpeed()) < speedThreshold && (this.gear == 0 || this.acceleration <= 0)) {
-            brake = Math.max(brake, (0.3 * (speedThreshold - this.getSpeed())) / speedThreshold);
-            force = 0;
-          }
-        }
-        this.tractionWheelIndices.forEach(index => this.chassisBody.applyEngineForce(index, force));
-        this.frontWheelsIndices.forEach(index =>
-          this.chassisBody.applyBrake(index, brake * this.carProperties.brake.frontAxleForce),
-        );
-        this.rearWheelsIndices.forEach(index =>
-          this.chassisBody.applyBrake(index, brake * this.carProperties.brake.rearAxleForce),
-        );
-        if (this.handBrake) {
-          this.rearWheelsIndices.forEach(index =>
-            this.chassisBody.applyBrake(index, this.carProperties.brake.handbrakeForce),
-          );
-        }
-      }
-    });
-    if (this.carProperties.transmission.isAuto) {
-      this.tick$
-        .pipe(
-          throttleTime(50),
-          filter(() => this.isTouchingGround),
-        )
-        .subscribe(() => {
-          let gear = this.gear;
-          let upshifted = false;
-          if (gear > 0) {
-            let rpm = this.engineRpm;
-            while (rpm >= this.carProperties.transmission.upShifts[gear - 1]) {
-              rpm *=
-                this.carProperties.transmission.gearRatios[gear] / this.carProperties.transmission.gearRatios[gear - 1];
-              gear++;
-              upshifted = true;
-            }
-            if (!upshifted) {
-              while (gear > 1) {
-                rpm *=
-                  this.carProperties.transmission.gearRatios[gear - 2] /
-                  this.carProperties.transmission.gearRatios[gear - 1];
-                if (rpm > this.carProperties.transmission.upShifts[gear - 2]) {
-                  break;
-                }
-                gear--;
-              }
-            }
-            this.gear = gear;
-          }
-        });
-    }
-  }
-
   protected runTransformBinding(objectBody: IRigidBody3dComponent, object3D: IDisplayObject3dComponent): void {
     super.runTransformBinding(objectBody, object3D);
     const carRotation = this.rotation;
@@ -412,35 +142,11 @@ export class RaycastVehicle3dEntity extends Entity3d {
     }
   }
 
-  protected get isTouchingGround(): boolean {
+  public get isTouchingGround(): boolean {
     // is at least one traction wheel touches the ground
     return this.tractionWheelIndices
       .map(i => this.chassisBody.isWheelTouchesGround(i))
       .reduce((prev, cur) => cur || prev, false);
-  }
-
-  protected updateEngine(delta: number) {
-    delta = delta / 1000; // ms -> s
-    const acceleration = this._acceleration$.getValue();
-    let rpm = this.engineRpm;
-    // TODO here I will take perioud between gears and drift into account someday :)
-    const gripKoeff = this.gear === 0 || !this.isTouchingGround ? 0 : 1;
-    if (gripKoeff == 0) {
-      rpm +=
-        (acceleration * 2 - 1) *
-        (acceleration > 0.5
-          ? this.carProperties.engine.maxRpmIncreasePerSecond
-          : this.carProperties.engine.maxRpmDecreasePerSecond) *
-        delta;
-    } else {
-      const rpmFromSpeed = this.calculateRpmFromCarSpeed();
-      if (rpmFromSpeed > rpm) {
-        rpm = Math.min(rpmFromSpeed, rpm + this.carProperties.engine.maxRpmIncreasePerSecond * delta);
-      } else {
-        rpm = Math.max(rpmFromSpeed, rpm - this.carProperties.engine.maxRpmDecreasePerSecond * delta);
-      }
-    }
-    this._rpm$.next(Math.max(this.carProperties.engine.minRpm, Math.min(this.carProperties.engine.maxRpm, rpm)));
   }
 
   // TODO delete and let game application do all the steps
@@ -458,27 +164,6 @@ export class RaycastVehicle3dEntity extends Entity3d {
     if (options.rotation) {
       this.rotation = options.rotation;
     }
-    this._steeringValue = 0;
-    this.gear = 0;
-    this._rpm$.next(this.carProperties.engine.minRpm);
-  }
-
-  // TODO refactor: control has to be in control service, here we receive separately braking, acceleration, steering
-  public setXAxisControlValue(value: number) {
-    const steering = this.getMaxStableSteerVal() * value;
-    this.frontWheelsIndices.forEach(index => this.chassisBody.setSteering(index, -steering));
-    this.setSteeringValue(-steering);
-  }
-
-  // TODO refactor: control has to be in control service, here we receive separately braking, acceleration, steering
-  public setYAxisControlValue(value: number) {
-    if (value > 0) {
-      this.acceleration = value;
-      this.brake = 0;
-    } else {
-      this.acceleration = 0;
-      this.brake = -value;
-    }
-    this.setTailLightsOn(value < 0);
+    this.steeringAngle = 0;
   }
 }

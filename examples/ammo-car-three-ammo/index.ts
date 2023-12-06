@@ -2,13 +2,13 @@ import {
   CarKeyboardHandlingController,
   createInlineTickController,
   Gg3dWorld,
+  GgCarEntity,
   GgStatic,
   OrbitCameraController,
   Pnt3,
   Point3,
   Point4,
   Qtrn,
-  RaycastVehicle3dEntity,
 } from '@gg-web-engine/core';
 import { ThreeCameraComponent, ThreeDisplayObjectComponent, ThreeSceneComponent } from '@gg-web-engine/three';
 import { AmbientLight, DirectionalLight, Mesh, MeshPhongMaterial, PerspectiveCamera } from 'three';
@@ -99,7 +99,11 @@ world.init().then(async () => {
   const createWheelMesh = (radius: number, width: number) => {
     let m = world.visualScene.factory.createCylinder(radius, width, materialInteractive);
     m.nativeMesh.add(
-      world.visualScene.factory.createBox({ x: radius * 1.75, y: radius * 0.25, z: width * 1.5 }, materialInteractive).nativeMesh,
+      world.visualScene.factory.createBox({
+        x: radius * 1.75,
+        y: radius * 0.25,
+        z: width * 1.5,
+      }, materialInteractive).nativeMesh,
     );
     return m;
   };
@@ -118,7 +122,7 @@ world.init().then(async () => {
 
   const frontWheelMesh = createWheelMesh(wheelRadiusFront, wheelWidthFront);
   const backWheelMesh = createWheelMesh(wheelRadiusBack, wheelWidthBack);
-  const vehicle = new RaycastVehicle3dEntity(
+  const vehicle = new GgCarEntity(
     {
       brake: {
         frontAxleForce: 50,
@@ -232,7 +236,7 @@ world.init().then(async () => {
 
   const speedometer = document.getElementById('speedometer');
   createInlineTickController(world).subscribe(() => {
-    const speed = vehicle.getSpeed() * 3.6;
+    const speed = vehicle.raycastVehicle.getSpeed() * 3.6;
     speedometer.innerHTML =
       (speed < 0 ? '(R) ' : '') + Math.abs(speed).toFixed(1) + ' km/h';
   }),

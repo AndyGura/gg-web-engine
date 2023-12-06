@@ -4,12 +4,12 @@ import {
   DirectionKeyboardInput,
   DirectionKeyboardKeymap,
   DirectionKeyboardOutput,
-  IEntity,
-  TickOrder,
   GgWorld,
+  IEntity,
   KeyboardInput,
+  TickOrder,
 } from '../../../../base';
-import { RaycastVehicle3dEntity } from '../../raycast-vehicle-3d.entity';
+import { GgCarEntity } from '../../gg-car/gg-car.entity';
 
 // TODO pass as settings
 // TODO smooth y?
@@ -56,7 +56,7 @@ export class CarKeyboardHandlingController extends IEntity {
 
   constructor(
     protected readonly keyboard: KeyboardInput,
-    public car: RaycastVehicle3dEntity | null,
+    public car: GgCarEntity | null,
     protected readonly options: CarKeyboardControllerOptions = {
       keymap: 'arrows',
       gearUpDownKeys: ['KeyA', 'KeyZ'],

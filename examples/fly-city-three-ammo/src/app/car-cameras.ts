@@ -2,7 +2,7 @@ import {
   AnimationFunction,
   averageAngle,
   Camera3dAnimationArgs,
-  RaycastVehicle3dEntity,
+  IPositionable3d,
   Pnt3,
   Point3,
 } from '@gg-web-engine/core';
@@ -22,8 +22,8 @@ const elasticAngle: (inertia: number, easing?: (x: number) => number) => ((value
     };
   };
 
-const elasticCarCameraControlFunction: (car: RaycastVehicle3dEntity, vectorLength: number, vectorAngle: number, fov: number) => AnimationFunction<Camera3dAnimationArgs> =
-  (car: RaycastVehicle3dEntity, vectorLength: number, vectorAngle: number, fov: number) => {
+const elasticCarCameraControlFunction: (car: IPositionable3d, vectorLength: number, vectorAngle: number, fov: number) => AnimationFunction<Camera3dAnimationArgs> =
+  (car: IPositionable3d, vectorLength: number, vectorAngle: number, fov: number) => {
     const elasticZAngle = elasticAngle(250, x => Math.pow(x, 0.75));
     return (elapsed, delta) => {
       const objectPosition = car.position;
@@ -49,8 +49,8 @@ const elasticCarCameraControlFunction: (car: RaycastVehicle3dEntity, vectorLengt
     };
   };
 
-const lockedCameraControlFunction: (car: RaycastVehicle3dEntity, cameraPosition: Point3, targetPosition: Point3, fov: number) => AnimationFunction<Camera3dAnimationArgs> =
-  (car: RaycastVehicle3dEntity, cameraPosition: Point3, targetPosition: Point3, fov: number) => {
+const lockedCameraControlFunction: (car: IPositionable3d, cameraPosition: Point3, targetPosition: Point3, fov: number) => AnimationFunction<Camera3dAnimationArgs> =
+  (car: IPositionable3d, cameraPosition: Point3, targetPosition: Point3, fov: number) => {
     return () => {
       const objectPosition = car.position;
       const rotation = car.rotation;
@@ -65,7 +65,7 @@ const lockedCameraControlFunction: (car: RaycastVehicle3dEntity, cameraPosition:
     };
   };
 
-export const farCamera: (car: RaycastVehicle3dEntity, type: 'lambo' | 'truck' | 'car') => AnimationFunction<Camera3dAnimationArgs> = (car, type) => {
+export const farCamera: (car: IPositionable3d, type: 'lambo' | 'truck' | 'car') => AnimationFunction<Camera3dAnimationArgs> = (car, type) => {
   if (type === 'lambo') {
     return elasticCarCameraControlFunction(car, 6.5, 0.3948, 65);
   } else if (type === 'car') {
@@ -75,7 +75,7 @@ export const farCamera: (car: RaycastVehicle3dEntity, type: 'lambo' | 'truck' | 
   }
 };
 
-export const nearCamera: (car: RaycastVehicle3dEntity, type: 'lambo' | 'truck' | 'car') => AnimationFunction<Camera3dAnimationArgs> = (car, type) => {
+export const nearCamera: (car: IPositionable3d, type: 'lambo' | 'truck' | 'car') => AnimationFunction<Camera3dAnimationArgs> = (car, type) => {
   if (type === 'lambo') {
     return elasticCarCameraControlFunction(car, 4.09, 0.376, 80);
   } else if (type === 'car') {
@@ -85,7 +85,7 @@ export const nearCamera: (car: RaycastVehicle3dEntity, type: 'lambo' | 'truck' |
   }
 };
 
-export const bumperCamera: (car: RaycastVehicle3dEntity, type: 'lambo' | 'truck' | 'car') => AnimationFunction<Camera3dAnimationArgs> = (car, type) => {
+export const bumperCamera: (car: IPositionable3d, type: 'lambo' | 'truck' | 'car') => AnimationFunction<Camera3dAnimationArgs> = (car, type) => {
   if (type === 'lambo') {
     return lockedCameraControlFunction(car, { x: 0, y: 1, z: 0.7 }, { x: 0, y: 2, z: 0.7 }, 70);
   } else if (type === 'car') {

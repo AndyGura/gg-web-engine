@@ -6,6 +6,7 @@ import {
   Gg3dWorld,
   Pnt3,
   Qtrn, Renderer3dEntity,
+  GgCarEntity
 } from '@gg-web-engine/core';
 import { ThreeSceneComponent } from '@gg-web-engine/three';
 import { AmmoWorldComponent } from '@gg-web-engine/ammo';
@@ -17,7 +18,7 @@ import { HttpClient } from '@angular/common/http';
 
 export type CurrentState =
   { mode: 'freecamera' }
-  | { mode: 'driving', car: RaycastVehicle3dEntity, carType: 'lambo' | 'truck' | 'car' };
+  | { mode: 'driving', car: GgCarEntity, carType: 'lambo' | 'truck' | 'car' };
 
 export class GameRunner {
 
@@ -27,7 +28,7 @@ export class GameRunner {
 
   public readonly state$: BehaviorSubject<CurrentState> = new BehaviorSubject<CurrentState>({ mode: 'freecamera' });
 
-  get controlCar$(): Observable<RaycastVehicle3dEntity | null> {
+  get controlCar$(): Observable<GgCarEntity | null> {
     return this.state$.pipe(map(x => x.mode === 'driving' ? x.car : null));
   }
 
@@ -53,7 +54,7 @@ export class GameRunner {
     this.mapBounds.onEntityLeft.subscribe((entity) => {
       if (entity) {
         const state = this.state$.getValue();
-        if (state.mode === 'driving' && state.car === entity) {
+        if (state.mode === 'driving' && state.car.raycastVehicle === entity) {
           this.resetMyCar();
         } else {
           this.world.removeEntity(entity, true);
@@ -105,9 +106,9 @@ export class GameRunner {
     this.world.keyboardInput.bind('KeyF').pipe(filter(x => x)).subscribe(() => {
       if (this.state$.getValue().mode === 'freecamera') {
         let distance = Number.MAX_SAFE_INTEGER;
-        let car: RaycastVehicle3dEntity | null = null;
+        let car: GgCarEntity | null = null;
         for (const entity of this.world.children) {
-          if (entity instanceof RaycastVehicle3dEntity) {
+          if (entity instanceof GgCarEntity) {
             const curDistance = Pnt3.len(Pnt3.sub(this.renderer.position, entity.position));
             if (curDistance < distance) {
               distance = curDistance;

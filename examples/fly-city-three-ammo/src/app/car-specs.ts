@@ -1,6 +1,6 @@
-import { CarProperties } from '@gg-web-engine/core';
+import { GgCarProperties, VehicleProperties } from '@gg-web-engine/core';
 
-export const LAMBO_SPECS: Omit<CarProperties, 'wheelOptions'> = {
+export const LAMBO_SPECS: GgCarProperties & Omit<VehicleProperties, 'wheelOptions'> = {
   "mpsToRpmFactor": 104,
   "typeOfDrive": "FWD",
   "engine": {
@@ -83,7 +83,7 @@ export const LAMBO_SPECS: Omit<CarProperties, 'wheelOptions'> = {
   }
 };
 
-export const CAR_SPECS: Omit<CarProperties, 'wheelOptions'> = {
+export const CAR_SPECS: GgCarProperties & Omit<VehicleProperties, 'wheelOptions'> = {
   "mpsToRpmFactor": 104,
   "typeOfDrive": "FWD",
   "engine": {
@@ -166,7 +166,7 @@ export const CAR_SPECS: Omit<CarProperties, 'wheelOptions'> = {
   }
 };
 
-export const TRUCK_SPECS: Omit<CarProperties, 'wheelOptions'> = {
+export const TRUCK_SPECS: GgCarProperties & Omit<VehicleProperties, 'wheelOptions'> = {
   "mpsToRpmFactor": 104,
   "typeOfDrive": "FWD",
   "engine": {

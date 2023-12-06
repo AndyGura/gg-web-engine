@@ -1,6 +1,6 @@
 import {
   CachingStrategy,
-  CarProperties,
+  VehicleProperties,
   Gg3dWorld,
   GgDummy,
   GgStatic,
@@ -11,9 +11,8 @@ import {
   MapGraph3dEntity,
   Pnt3,
   Qtrn,
-  RaycastVehicle3dEntity,
   Renderer3dEntity,
-  Trigger3dEntity,
+  Trigger3dEntity, GgCarProperties, GgCarEntity,
 } from '@gg-web-engine/core';
 import { ThreeCameraComponent, ThreeSceneComponent } from '@gg-web-engine/three';
 import { AmmoRaycastVehicleComponent, AmmoRigidBodyComponent, AmmoWorldComponent } from '@gg-web-engine/ammo';
@@ -143,7 +142,7 @@ export class GameFactory {
     return playingArea;
   }
 
-  public async spawnLambo(): Promise<RaycastVehicle3dEntity> {
+  public async spawnLambo(): Promise<GgCarEntity> {
     const [
       {
         resources: [{ object3D: chassisMesh, body: chassisBody }],
@@ -163,9 +162,9 @@ export class GameFactory {
 
   private generateCar(
     chassisMesh: IDisplayObject3dComponent | null, chassisBody: AmmoRigidBodyComponent,
-    chassisDummies: GgDummy[], wheelMesh: IDisplayObject3dComponent | null, specs: Omit<CarProperties, 'wheelOptions'>,
-  ): RaycastVehicle3dEntity {
-    return new RaycastVehicle3dEntity(
+    chassisDummies: GgDummy[], wheelMesh: IDisplayObject3dComponent | null, specs: GgCarProperties  & Omit<VehicleProperties, 'wheelOptions'>,
+  ): GgCarEntity {
+    return new GgCarEntity(
       {
         wheelOptions: chassisDummies
           .filter(x => x.name.startsWith('wheel_'))
