@@ -6,7 +6,7 @@ describe(`Gg3dRaycastVehicleEntity`, () => {
 
   describe(`visible`, () => {
     it(`should hide wheels when car is hidden`, () => {
-      const car = new RaycastVehicle3dEntity(mockCarProperties(), mock3DObject(), mockRaycastVehicle(), { displayObject: mock3DObject() });
+      const car = new RaycastVehicle3dEntity(mockCarProperties(), mock3DObject(), mockRaycastVehicle());
       for (const wheel of (car as any).wheels) {
         expect(wheel.worldVisible).toBeTruthy();
       }

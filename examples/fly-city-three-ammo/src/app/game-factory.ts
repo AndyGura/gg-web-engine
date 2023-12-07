@@ -1,6 +1,5 @@
 import {
   CachingStrategy,
-  VehicleProperties,
   Gg3dWorld,
   GgDummy,
   GgStatic,
@@ -162,34 +161,34 @@ export class GameFactory {
 
   private generateCar(
     chassisMesh: IDisplayObject3dComponent | null, chassisBody: AmmoRigidBodyComponent,
-    chassisDummies: GgDummy[], wheelMesh: IDisplayObject3dComponent | null, specs: GgCarProperties  & Omit<VehicleProperties, 'wheelOptions'>,
+    chassisDummies: GgDummy[], wheelMesh: IDisplayObject3dComponent | null, specs: Omit<GgCarProperties, 'wheelOptions'>,
   ): GgCarEntity {
     return new GgCarEntity(
       {
         wheelOptions: chassisDummies
           .filter(x => x.name.startsWith('wheel_'))
           .map((wheel) => {
-            const tyre_width = wheel.tyre_width || 0.4;
-            const isLeft = wheel.name.endsWith('l');
             return {
-              tyre_radius: wheel.tyre_radius || 0.3,
-              tyre_width,
+              tyreRadius: wheel.tyre_radius || 0.3,
+              tyreWidth: wheel.tyre_width || 0.4,
               position: wheel.position,
               isFront: wheel.name.startsWith('wheel_f'),
-              isLeft,
-              frictionSlip: 3,
-              rollInfluence: 0.2,
-              maxTravel: 0.5,
+              isLeft: wheel.name.endsWith('l'),
             };
           }),
+        sharedWheelOptions: {
+          frictionSlip: 3,
+          rollInfluence: 0.2,
+          maxTravel: 0.5,
+          display: { displayObject: wheelMesh || undefined, wheelObjectDirection: 'x', autoScaleMesh: true },
+        },
         ...specs,
       },
       chassisMesh,
       new AmmoRaycastVehicleComponent(
         this.world.physicsWorld,
         chassisBody,
-      ),
-      { displayObject: wheelMesh || undefined, wheelObjectDirection: 'x', autoScaleMesh: true },
+      )
     );
   }
 

@@ -1,13 +1,13 @@
-import { RaycastVehicle3dEntity, VehicleProperties } from '../raycast-vehicle-3d.entity';
-import { cubicSplineInterpolation, IEntity, IRenderableEntity, Point3, Point4, TickOrder } from '../../../base';
+import { RaycastVehicle3dEntity, RVEntityProperties } from '../raycast-vehicle-3d.entity';
+import { cubicSplineInterpolation, IRenderableEntity, Point3, Point4, TickOrder } from '../../../base';
 import { IPositionable3d } from '../../interfaces/i-positionable-3d';
 import { BehaviorSubject, filter, Observable } from 'rxjs';
 import { Gg3dWorld } from '../../gg-3d-world';
 import { throttleTime } from 'rxjs/operators';
 import { IDisplayObject3dComponent } from '../../components/rendering/i-display-object-3d.component';
-import { IRaycastVehicleComponent, WheelDisplayOptions } from '../../components/physics/i-raycast-vehicle.component';
+import { IRaycastVehicleComponent } from '../../components/physics/i-raycast-vehicle.component';
 
-export type GgCarProperties = {
+export type GgCarProperties = RVEntityProperties & {
   mpsToRpmFactor?: number;
   engine: {
     minRpm: number;
@@ -205,13 +205,12 @@ export class GgCarEntity extends IRenderableEntity<Point3, Point4> implements IP
   public readonly raycastVehicle: RaycastVehicle3dEntity;
 
   constructor(
-    public readonly carProperties: GgCarProperties & VehicleProperties,
+    public readonly carProperties: GgCarProperties,
     chassis3D: IDisplayObject3dComponent | null,
     chassisBody: IRaycastVehicleComponent,
-    wheelDisplaySettings: WheelDisplayOptions = {},
   ) {
     super();
-    this.raycastVehicle = new RaycastVehicle3dEntity(carProperties, chassis3D, chassisBody, wheelDisplaySettings);
+    this.raycastVehicle = new RaycastVehicle3dEntity(carProperties, chassis3D, chassisBody);
     this.addChildren(this.raycastVehicle);
   }
 

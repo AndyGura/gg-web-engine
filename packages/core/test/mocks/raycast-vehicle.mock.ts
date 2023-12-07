@@ -1,14 +1,14 @@
 import {
-  VehicleProperties,
-  RaycastVehicle3dEntity,
-  IRaycastVehicleComponent,
   GgCarEntity,
   GgCarProperties,
+  IRaycastVehicleComponent,
+  RaycastVehicle3dEntity,
+  RVEntityProperties,
 } from '../../src';
 import { mock3DObject } from './object.mock';
 
-export const mockRaycastVehicleEntity: () => RaycastVehicle3dEntity = () => new RaycastVehicle3dEntity(mockCarProperties(), mock3DObject(), mockRaycastVehicle(), { displayObject: mock3DObject() });
-export const mockGgCarEntity: () => GgCarEntity = () => new GgCarEntity(mockCarProperties(), mock3DObject(), mockRaycastVehicle(), { displayObject: mock3DObject() });
+export const mockRaycastVehicleEntity: () => RaycastVehicle3dEntity = () => new RaycastVehicle3dEntity(mockCarProperties(), mock3DObject(), mockRaycastVehicle());
+export const mockGgCarEntity: () => GgCarEntity = () => new GgCarEntity(mockCarProperties(), mock3DObject(), mockRaycastVehicle());
 
 export const mockRaycastVehicle: () => IRaycastVehicleComponent = () => {
   return {
@@ -19,12 +19,12 @@ export const mockRaycastVehicle: () => IRaycastVehicleComponent = () => {
   } as any;
 };
 
-export const mockCarProperties: () => GgCarProperties & VehicleProperties = () => ({
+export const mockCarProperties: () => GgCarProperties & RVEntityProperties = () => ({
   mpsToRpmFactor: 104,
   wheelOptions: [
     {
-      tyre_width: 1,
-      tyre_radius: 1,
+      tyreWidth: 1,
+      tyreRadius: 1,
       isLeft: true,
       isFront: true,
       position: { x: -1, y: 1, z: 0 },
@@ -33,8 +33,8 @@ export const mockCarProperties: () => GgCarProperties & VehicleProperties = () =
       maxTravel: 0,
     },
     {
-      tyre_width: 1,
-      tyre_radius: 1,
+      tyreWidth: 1,
+      tyreRadius: 1,
       isLeft: false,
       isFront: true,
       position: { x: 1, y: 1, z: 0 },
@@ -43,8 +43,8 @@ export const mockCarProperties: () => GgCarProperties & VehicleProperties = () =
       maxTravel: 0,
     },
     {
-      tyre_width: 1,
-      tyre_radius: 1,
+      tyreWidth: 1,
+      tyreRadius: 1,
       isLeft: true,
       isFront: false,
       position: { x: -1, y: -1, z: 0 },
@@ -53,8 +53,8 @@ export const mockCarProperties: () => GgCarProperties & VehicleProperties = () =
       maxTravel: 0,
     },
     {
-      tyre_width: 1,
-      tyre_radius: 1,
+      tyreWidth: 1,
+      tyreRadius: 1,
       isLeft: false,
       isFront: false,
       position: { x: 1, y: -1, z: 0 },
@@ -63,6 +63,7 @@ export const mockCarProperties: () => GgCarProperties & VehicleProperties = () =
       maxTravel: 0,
     },
   ],
+  sharedWheelOptions: { display: { displayObject: mock3DObject() } },
   typeOfDrive: 'FWD',
   engine: {
     minRpm: 700,
@@ -141,5 +142,5 @@ export const mockCarProperties: () => GgCarProperties & VehicleProperties = () =
     frontAxleForce: 350,
     rearAxleForce: 300,
     handbrakeForce: 1500,
-  }
+  },
 });

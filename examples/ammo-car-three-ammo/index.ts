@@ -108,20 +108,6 @@ world.init().then(async () => {
     return m;
   };
 
-  var wheelAxisPositionBack = -1;
-  var wheelRadiusBack = 0.4;
-  var wheelWidthBack = 0.3;
-  var wheelHalfTrackBack = 1;
-  var wheelAxisHeightBack = 0.3;
-
-  var wheelAxisFrontPosition = 1.7;
-  var wheelHalfTrackFront = 1;
-  var wheelAxisHeightFront = 0.3;
-  var wheelRadiusFront = 0.35;
-  var wheelWidthFront = 0.2;
-
-  const frontWheelMesh = createWheelMesh(wheelRadiusFront, wheelWidthFront);
-  const backWheelMesh = createWheelMesh(wheelRadiusBack, wheelWidthBack);
   const vehicle = new GgCarEntity(
     {
       brake: {
@@ -152,72 +138,33 @@ world.init().then(async () => {
       },
       typeOfDrive: 'RWD',
       mpsToRpmFactor: 1,
-      wheelOptions: [
-        {
-          isFront: true,
-          position: {
-            x: wheelHalfTrackFront,
-            y: wheelAxisFrontPosition,
-            z: wheelAxisHeightFront,
-          },
-          tyre_radius: wheelRadiusFront,
-          tyre_width: wheelWidthFront,
-          isLeft: true,
+      wheelBase: {
+        shared: {
           frictionSlip: 1000,
-          maxTravel: 5,
           rollInfluence: 0.2,
-          displaySettings: { displayObject: frontWheelMesh },
-        },
-        {
-          isFront: true,
-          position: {
-            x: -wheelHalfTrackFront,
-            y: wheelAxisFrontPosition,
-            z: wheelAxisHeightFront,
-          },
-          tyre_radius: wheelRadiusFront,
-          tyre_width: wheelWidthFront,
-          isLeft: false,
-          frictionSlip: 1000,
           maxTravel: 5,
-          rollInfluence: 0.2,
-          displaySettings: { displayObject: frontWheelMesh },
+          display: { wheelObjectDirection: 'z' },
         },
-        {
-          isFront: false,
-          position: {
-            x: wheelHalfTrackBack,
-            y: wheelAxisPositionBack,
-            z: wheelAxisHeightBack,
-          },
-          tyre_radius: wheelRadiusBack,
-          tyre_width: wheelWidthBack,
-          isLeft: true,
-          frictionSlip: 1000,
-          maxTravel: 5,
-          rollInfluence: 0.2,
-          displaySettings: { displayObject: backWheelMesh },
+        front: {
+          halfAxleWidth: 1,
+          axlePosition: 1.7,
+          axleHeight: 0.3,
+          tyreRadius: 0.35,
+          tyreWidth: 0.2,
+          display: { displayObject: createWheelMesh(0.35, 0.2) },
         },
-        {
-          isFront: false,
-          position: {
-            x: -wheelHalfTrackBack,
-            y: wheelAxisPositionBack,
-            z: wheelAxisHeightBack,
-          },
-          tyre_radius: wheelRadiusBack,
-          tyre_width: wheelWidthBack,
-          isLeft: false,
-          frictionSlip: 1000,
-          maxTravel: 5,
-          rollInfluence: 0.2,
-          displaySettings: { displayObject: backWheelMesh },
+        rear: {
+          halfAxleWidth: 1,
+          axlePosition: -1,
+          axleHeight: 0.3,
+          tyreRadius: 0.4,
+          tyreWidth: 0.3,
+          display: { displayObject: createWheelMesh(0.4, 0.3) },
         },
-      ],
+      },
     },
     chassisMesh,
     new AmmoRaycastVehicleComponent(world.physicsWorld, chassis),
-    { wheelObjectDirection: 'z' },
   );
   vehicle.gear = 1;
   vehicle.position = vehiclePos;

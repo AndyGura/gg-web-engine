@@ -5,8 +5,8 @@ import {
   Point3,
   Point4,
   RaycastVehicle3dEntity,
-  SuspensionOptions,
   WheelOptions,
+  SuspensionOptions,
 } from '@gg-web-engine/core';
 import Ammo from 'ammojs-typed';
 import { AmmoRigidBodyComponent } from './ammo-rigid-body.component';
@@ -54,7 +54,7 @@ export class AmmoRaycastVehicleComponent
       this.wheelDirectionCS0,
       this.wheelAxleCS,
       suspensionOptions.restLength,
-      options.tyre_radius,
+      options.tyreRadius,
       this.vehicleTuning,
       options.isFront,
     );

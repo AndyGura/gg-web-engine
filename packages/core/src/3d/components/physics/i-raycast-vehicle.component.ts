@@ -1,13 +1,6 @@
-import { AxisDirection3, Point3, Point4 } from '../../../base';
+import { Point3, Point4 } from '../../../base';
 import { IRigidBody3dComponent } from './i-rigid-body-3d.component';
-import { IDisplayObject3dComponent } from '../rendering/i-display-object-3d.component';
 import { IPhysicsWorld3dComponent } from './i-physics-world-3d.component';
-
-export type WheelDisplayOptions = {
-  displayObject?: IDisplayObject3dComponent;
-  wheelObjectDirection?: AxisDirection3;
-  autoScaleMesh?: boolean;
-};
 
 export type SuspensionOptions = {
   stiffness: number;
@@ -17,11 +10,10 @@ export type SuspensionOptions = {
 };
 
 export type WheelOptions = {
-  tyre_width: number;
-  tyre_radius: number;
-  displaySettings?: WheelDisplayOptions;
   isLeft: boolean;
   isFront: boolean;
+  tyreWidth: number;
+  tyreRadius: number;
   position: Point3;
   frictionSlip: number; // friction with road
   rollInfluence: number;

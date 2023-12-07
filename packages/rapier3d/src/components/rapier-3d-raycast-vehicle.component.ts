@@ -57,7 +57,7 @@ export class Rapier3dRaycastVehicleComponent
       { x: 0, y: 0, z: -1 }, // TODO Pnt3.nZ,
       options.isLeft ? Pnt3.X : { x: -1, y: 0, z: 0 }, // TODO Pnt3.nX,
       suspensionOptions.restLength,
-      options.tyre_radius,
+      options.tyreRadius,
     ];
     this.wheelDescr.push(descr);
     if (this.nativeVehicle) {

@@ -1,19 +1,62 @@
-import { Box, IEntity, Pnt3, Point3, Point4, Qtrn } from '../../base';
+import { AxisDirection3, Box, IEntity, Pnt3, Point3, Point4, Qtrn } from '../../base';
 import { Entity3d } from './entity-3d';
 import { IDisplayObject3dComponent } from '../components/rendering/i-display-object-3d.component';
 import {
   IRaycastVehicleComponent,
-  SuspensionOptions,
-  WheelDisplayOptions,
   WheelOptions,
+  SuspensionOptions,
 } from '../components/physics/i-raycast-vehicle.component';
 import { IRigidBody3dComponent } from '../components/physics/i-rigid-body-3d.component';
 import { IPositionable3d } from '../interfaces/i-positionable-3d';
 
-export type VehicleProperties = {
+export type WheelDisplayOptions = {
+  displayObject?: IDisplayObject3dComponent;
+  wheelObjectDirection?: AxisDirection3;
+  autoScaleMesh?: boolean;
+};
+
+export type RVEntitySharedWheelOptions = {
+  tyreWidth?: number;
+  tyreRadius?: number;
+  frictionSlip?: number;
+  rollInfluence?: number;
+  maxTravel?: number;
+  display?: WheelDisplayOptions;
+};
+
+export type RVEntityAxleOptions = {
+  halfAxleWidth: number;
+  axlePosition: number;
+  axleHeight: number;
+} & RVEntitySharedWheelOptions;
+
+export type RVEntityProperties = {
   typeOfDrive: 'RWD' | 'FWD' | '4WD';
-  wheelOptions: WheelOptions[];
   suspension: SuspensionOptions;
+} & (
+  | {
+      wheelBase: {
+        shared: RVEntitySharedWheelOptions;
+        front: RVEntityAxleOptions;
+        rear: RVEntityAxleOptions;
+      };
+    }
+  | {
+      wheelOptions: (RVEntitySharedWheelOptions & {
+        isLeft: boolean;
+        isFront: boolean;
+        position: Point3;
+      })[];
+      sharedWheelOptions?: RVEntitySharedWheelOptions;
+    }
+);
+
+const wheeelDefaults = {
+  tyreWidth: 0.3,
+  tyreRadius: 0.4,
+  frictionSlip: 1000,
+  rollInfluence: 0.2,
+  maxTravel: 0.5,
 };
 
 export class RaycastVehicle3dEntity extends Entity3d {
@@ -57,37 +100,62 @@ export class RaycastVehicle3dEntity extends Entity3d {
 
   /** car mesh and physics body direction has to be pointing: y front, z up*/
   constructor(
-    public readonly carProperties: VehicleProperties,
+    public readonly carProperties: RVEntityProperties,
     public readonly chassis3D: IDisplayObject3dComponent | null,
     public readonly chassisBody: IRaycastVehicleComponent,
-    protected readonly wheelDisplaySettings: WheelDisplayOptions = {},
   ) {
     super(chassis3D, chassisBody);
-    this.carProperties.wheelOptions.forEach((x, i) => {
-      if (x.isFront) {
+    let wheelFullOptions: (WheelOptions & { display: WheelDisplayOptions })[] =
+      'wheelBase' in carProperties
+        ? [
+            carProperties.wheelBase.front,
+            carProperties.wheelBase.front,
+            carProperties.wheelBase.rear,
+            carProperties.wheelBase.rear,
+          ].map((a, i) => ({
+            ...wheeelDefaults,
+            ...(carProperties.wheelBase.shared || {}),
+            ...a,
+            isFront: i < 2,
+            isLeft: i % 2 === 0,
+            position: {
+              x: a.halfAxleWidth * (i % 2 === 0 ? 1 : -1),
+              y: a.axlePosition,
+              z: a.axleHeight,
+            },
+            display: {
+              ...(carProperties.wheelBase.shared?.display || {}),
+              ...(a.display || {}),
+            },
+          }))
+        : carProperties.wheelOptions.map((x, i) => ({
+            ...wheeelDefaults,
+            ...(carProperties.sharedWheelOptions || {}),
+            ...x,
+            display: {
+              ...(carProperties.sharedWheelOptions?.display || {}),
+              ...(x.display || {}),
+            },
+          }));
+    // TODO perform this in a parent application
+    // chassisBody.setDamping(0.02, 0.02); // TODO imitates air resistance. calculate from properties
+    wheelFullOptions.forEach((wheelOpts, i) => {
+      if (wheelOpts.isFront) {
         this.frontWheelsIndices.push(i);
       } else {
         this.rearWheelsIndices.push(i);
       }
-      if (x.isFront && this.carProperties.typeOfDrive != 'RWD') {
+      if (wheelOpts.isFront && this.carProperties.typeOfDrive != 'RWD') {
         this.tractionWheelIndices.push(i);
       }
-      if (!x.isFront && this.carProperties.typeOfDrive != 'FWD') {
+      if (!wheelOpts.isFront && this.carProperties.typeOfDrive != 'FWD') {
         this.tractionWheelIndices.push(i);
       }
-    });
-    this.tractionWheelRadius = this.carProperties.wheelOptions[this.tractionWheelIndices[0]].tyre_radius;
-    // TODO perform this in a parent application
-    // chassisBody.setDamping(0.02, 0.02); // TODO imitates air resistance. calculate from properties
-    this.carProperties.wheelOptions.forEach(wheelOpts => {
       this.chassisBody.addWheel(wheelOpts, this.carProperties.suspension);
     });
-    for (let i = 0; i < this.carProperties.wheelOptions.length; i++) {
-      const options = this.carProperties.wheelOptions[i];
-      const display: WheelDisplayOptions = {
-        ...this.wheelDisplaySettings,
-        ...(options.displaySettings || {}),
-      };
+    this.tractionWheelRadius = wheelFullOptions[this.tractionWheelIndices[0]].tyreRadius;
+    for (const options of wheelFullOptions) {
+      const display = options.display || {};
       if (!display.displayObject) {
         this.wheels.push(null);
         this.wheelLocalRotation.push(null);
@@ -101,8 +169,8 @@ export class RaycastVehicle3dEntity extends Entity3d {
         for (const dir of ['x', 'y', 'z'] as (keyof Point3)[]) {
           const isNormal = wheelObjectDirection.includes(dir);
           scale[dir] = isNormal
-            ? options.tyre_width / (boundingBox.max[dir] - boundingBox.min[dir])
-            : (options.tyre_radius * 2) / (boundingBox.max[dir] - boundingBox.min[dir]);
+            ? options.tyreWidth / (boundingBox.max[dir] - boundingBox.min[dir])
+            : (options.tyreRadius * 2) / (boundingBox.max[dir] - boundingBox.min[dir]);
         }
         entity.scale = scale;
       }
