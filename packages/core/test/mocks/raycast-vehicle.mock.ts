@@ -21,49 +21,26 @@ export const mockRaycastVehicle: () => IRaycastVehicleComponent = () => {
 
 export const mockCarProperties: () => GgCarProperties & RVEntityProperties = () => ({
   mpsToRpmFactor: 104,
-  wheelOptions: [
-    {
+  wheelBase: {
+    shared: {
       tyreWidth: 1,
       tyreRadius: 1,
-      isLeft: true,
-      isFront: true,
-      position: { x: -1, y: 1, z: 0 },
       frictionSlip: 0, // friction with road
       rollInfluence: 0,
       maxTravel: 0,
+      display: { displayObject: mock3DObject() },
     },
-    {
-      tyreWidth: 1,
-      tyreRadius: 1,
-      isLeft: false,
-      isFront: true,
-      position: { x: 1, y: 1, z: 0 },
-      frictionSlip: 0, // friction with road
-      rollInfluence: 0,
-      maxTravel: 0,
+    front: {
+      halfAxleWidth: 1,
+      axleHeight: 0,
+      axlePosition: 1,
     },
-    {
-      tyreWidth: 1,
-      tyreRadius: 1,
-      isLeft: true,
-      isFront: false,
-      position: { x: -1, y: -1, z: 0 },
-      frictionSlip: 0, // friction with road
-      rollInfluence: 0,
-      maxTravel: 0,
+    rear: {
+      halfAxleWidth: 1,
+      axleHeight: 0,
+      axlePosition: -1,
     },
-    {
-      tyreWidth: 1,
-      tyreRadius: 1,
-      isLeft: false,
-      isFront: false,
-      position: { x: 1, y: -1, z: 0 },
-      frictionSlip: 0, // friction with road
-      rollInfluence: 0,
-      maxTravel: 0,
-    },
-  ],
-  sharedWheelOptions: { display: { displayObject: mock3DObject() } },
+  },
   typeOfDrive: 'FWD',
   engine: {
     minRpm: 700,

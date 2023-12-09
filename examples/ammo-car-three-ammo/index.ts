@@ -2,13 +2,13 @@ import {
   CarKeyboardHandlingController,
   createInlineTickController,
   Gg3dWorld,
-  GgCarEntity,
   GgStatic,
   OrbitCameraController,
   Pnt3,
   Point3,
   Point4,
   Qtrn,
+  RaycastVehicle3dEntity,
 } from '@gg-web-engine/core';
 import { ThreeCameraComponent, ThreeDisplayObjectComponent, ThreeSceneComponent } from '@gg-web-engine/three';
 import { AmbientLight, DirectionalLight, Mesh, MeshPhongMaterial, PerspectiveCamera } from 'three';
@@ -108,36 +108,21 @@ world.init().then(async () => {
     return m;
   };
 
-  const vehicle = new GgCarEntity(
+  const carController = new CarKeyboardHandlingController(
+    world.keyboardInput,
+    { keymap: 'wasd', maxSteerDeltaPerSecond: .04 * 120 / .5 },
+  );
+  world.addEntity(carController);
+
+  const vehicle = new RaycastVehicle3dEntity(
     {
-      brake: {
-        frontAxleForce: 50,
-        rearAxleForce: 100,
-        handbrakeForce: 100,
-      },
-      engine: {
-        maxRpm: Number.MAX_SAFE_INTEGER,
-        maxRpmDecreasePerSecond: Number.MAX_SAFE_INTEGER,
-        maxRpmIncreasePerSecond: Number.MAX_SAFE_INTEGER,
-        minRpm: 0,
-        torques: [{ rpm: 0, torque: 2000 }],
-      },
       suspension: {
         compression: 4.4,
         damping: 2.3,
         restLength: 0.6,
         stiffness: 20,
       },
-      transmission: {
-        drivelineEfficiency: 1,
-        finalDriveRatio: 1,
-        gearRatios: [1],
-        isAuto: false,
-        reverseGearRatio: 1,
-        upShifts: [],
-      },
       typeOfDrive: 'RWD',
-      mpsToRpmFactor: 1,
       wheelBase: {
         shared: {
           frictionSlip: 1000,
@@ -166,24 +151,41 @@ world.init().then(async () => {
     chassisMesh,
     new AmmoRaycastVehicleComponent(world.physicsWorld, chassis),
   );
-  vehicle.gear = 1;
   vehicle.position = vehiclePos;
   world.addEntity(vehicle);
+
+  carController.output$.subscribe(({ leftRight, upDown }) => {
+    debugger;
+    let engineForce = 0;
+    let breakingForce = 0;
+    if (upDown > 0) {
+      if (vehicle.getSpeed() < -1) {
+        breakingForce = 100;
+      } else {
+        engineForce = 2000;
+      }
+    }
+    if (upDown < 0) {
+      if (vehicle.getSpeed() > 1) {
+        breakingForce = 100;
+      } else {
+        engineForce = -1000;
+      }
+    }
+    vehicle.steeringAngle = .5 * leftRight;
+    vehicle.applyTractionForce(engineForce);
+    vehicle.applyBrake('front', breakingForce / 2);
+    vehicle.applyBrake('rear', breakingForce);
+  });
 
   const cameraController = new OrbitCameraController(renderer, {
     mouseOptions: { canvas },
   });
   world.addEntity(cameraController);
-  const carController = new CarKeyboardHandlingController(
-    world.keyboardInput,
-    vehicle,
-    { gearUpDownKeys: ['', ''], handbrakeKey: '', keymap: 'wasd' },
-  );
-  world.addEntity(carController);
 
   const speedometer = document.getElementById('speedometer');
   createInlineTickController(world).subscribe(() => {
-    const speed = vehicle.raycastVehicle.getSpeed() * 3.6;
+    const speed = vehicle.getSpeed() * 3.6;
     speedometer.innerHTML =
       (speed < 0 ? '(R) ' : '') + Math.abs(speed).toFixed(1) + ' km/h';
   }),

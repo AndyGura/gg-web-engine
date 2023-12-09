@@ -1,5 +1,5 @@
 import {
-  CarKeyboardHandlingController,
+  GgCarKeyboardHandlingController,
   MapGraph3dEntity,
   RaycastVehicle3dEntity,
   Trigger3dEntity,
@@ -22,7 +22,7 @@ export type CurrentState =
 
 export class GameRunner {
 
-  public handling?: CarKeyboardHandlingController;
+  public handling?: GgCarKeyboardHandlingController;
   public readonly gameCameraController: GameCameraController;
   public readonly audio: GameAudio;
 
@@ -87,7 +87,7 @@ export class GameRunner {
   }
 
   public setupKeyBindings() {
-    this.handling = new CarKeyboardHandlingController(this.world.keyboardInput, null!, {
+    this.handling = new GgCarKeyboardHandlingController(this.world.keyboardInput, null!, {
       keymap: 'wasd+arrows',
       gearUpDownKeys: ['CapsLock', 'ShiftLeft'],
       handbrakeKey: 'Space',

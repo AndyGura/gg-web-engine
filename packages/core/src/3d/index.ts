@@ -17,6 +17,7 @@ export * from './entities/trigger-3d.entity';
 export * from './entities/renderer-3d.entity';
 export * from './entities/i-renderable-3d.entity';
 export * from './entities/controllers/input/car-keyboard-handling.controller';
+export * from './entities/controllers/input/gg-car-keyboard-handling.controller';
 export * from './entities/controllers/input/free-camera.controller';
 export * from './entities/controllers/input/orbit-camera.controller';
 
