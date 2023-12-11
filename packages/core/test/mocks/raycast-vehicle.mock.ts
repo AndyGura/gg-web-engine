@@ -108,6 +108,7 @@ export const mockCarProperties: () => GgCarProperties & RVEntityProperties = () 
     reverseGearRatio: -2.33,
     gearRatios: [2.92, 1.87, 1.42, 1.09, 0.81],
     upShifts: [7140, 7140, 7140, 7140, 2829625512],
+    autoHold: true,
   },
   suspension: {
     stiffness: 20,
@@ -120,4 +121,5 @@ export const mockCarProperties: () => GgCarProperties & RVEntityProperties = () 
     rearAxleForce: 300,
     handbrakeForce: 1500,
   },
+  maxSteerAngle: 0.35,
 });
