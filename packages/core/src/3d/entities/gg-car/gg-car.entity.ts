@@ -31,7 +31,9 @@ export type GgCarProperties = RVEntityProperties & {
     drivelineEfficiency: number;
     finalDriveRatio: number; // differential
     upShifts: number[];
+    autoHold: boolean;
   };
+  maxSteerAngle: number;
 };
 
 export class GgCarEntity extends IRenderableEntity<Point3, Point4> implements IPositionable3d {
@@ -116,22 +118,6 @@ export class GgCarEntity extends IRenderableEntity<Point3, Point4> implements IP
     );
   }
 
-  // TODO should be parameters
-  private readonly _maxSteerVal = 0.35;
-
-  public get maxSteerVal(): number {
-    return this._maxSteerVal;
-  }
-
-  private getMaxStableSteerVal(): number {
-    const speed = this.raycastVehicle.getSpeed() * 3.6;
-    if (speed < 40) {
-      return this.maxSteerVal;
-    }
-    const mult = Math.pow((340 - speed) / 300, 2);
-    return this.maxSteerVal * Math.max(mult, 0.06);
-  }
-
   private _tailLightsOn: boolean = false;
   public get tailLightsOn(): boolean {
     return this._tailLightsOn;
@@ -146,7 +132,7 @@ export class GgCarEntity extends IRenderableEntity<Point3, Point4> implements IP
   // 0..1
   protected _acceleration$: BehaviorSubject<number> = new BehaviorSubject(0);
 
-  protected get acceleration(): number {
+  public get acceleration(): number {
     return this._acceleration$.getValue();
   }
 
@@ -154,19 +140,25 @@ export class GgCarEntity extends IRenderableEntity<Point3, Point4> implements IP
     return this._acceleration$.asObservable();
   }
 
-  protected set acceleration(value: number) {
+  public set acceleration(value: number) {
     this._acceleration$.next(value);
   }
 
   // 0..1
-  protected brake$: BehaviorSubject<number> = new BehaviorSubject(0);
+  protected _brake$: BehaviorSubject<number> = new BehaviorSubject(0);
 
-  protected get brake(): number {
-    return this.brake$.getValue();
+  public get brake(): number {
+    return this._brake$.getValue();
   }
 
-  protected set brake(value: number) {
-    this.brake$.next(value);
+  public set brake(value: number) {
+    this._brake$.next(value);
+    this.setTailLightsOn(value > 0.2);
+  }
+
+  // -1..1
+  public set steeringFactor(value: number) {
+    this.raycastVehicle.steeringAngle = value * this.carProperties.maxSteerAngle;
   }
 
   protected handBrake$: BehaviorSubject<boolean> = new BehaviorSubject(false);
@@ -232,10 +224,15 @@ export class GgCarEntity extends IRenderableEntity<Point3, Point4> implements IP
               ? this.tractionForce * this.acceleration // apply torque
               : 0.5 * (this.carProperties.engine.minRpm - calculatedRpm) * (this.gear > 0 ? 1 : -1); // released, use engine brake
           // this functionality makes car stay still (parking gear) when speed is low
-          const speedThreshold = 3;
-          if (Math.abs(this.raycastVehicle.getSpeed()) < speedThreshold && (this.gear == 0 || this.acceleration <= 0)) {
-            brake = Math.max(brake, (0.3 * (speedThreshold - this.raycastVehicle.getSpeed())) / speedThreshold);
-            force = 0;
+          if (this.carProperties.transmission.autoHold) {
+            const speedThreshold = 3;
+            if (
+              Math.abs(this.raycastVehicle.getSpeed()) < speedThreshold &&
+              (this.gear == 0 || this.acceleration <= 0)
+            ) {
+              brake = Math.max(brake, (0.3 * (speedThreshold - this.raycastVehicle.getSpeed())) / speedThreshold);
+              force = 0;
+            }
           }
         }
         this.raycastVehicle.applyTractionForce(force);
@@ -314,23 +311,5 @@ export class GgCarEntity extends IRenderableEntity<Point3, Point4> implements IP
     this.raycastVehicle.resetTo(options);
     this.gear = 0;
     this._rpm$.next(this.carProperties.engine.minRpm);
-  }
-
-  // TODO refactor: control has to be in control service, here we receive separately braking, acceleration, steering
-  public setXAxisControlValue(value: number) {
-    const steering = this.getMaxStableSteerVal() * value;
-    this.raycastVehicle.steeringAngle = -steering;
-  }
-
-  // TODO refactor: control has to be in control service, here we receive separately braking, acceleration, steering
-  public setYAxisControlValue(value: number) {
-    if (value > 0) {
-      this.acceleration = value;
-      this.brake = 0;
-    } else {
-      this.acceleration = 0;
-      this.brake = -value;
-    }
-    this.setTailLightsOn(value < 0);
   }
 }

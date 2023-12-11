@@ -91,6 +91,8 @@ export class GameRunner {
       keymap: 'wasd+arrows',
       gearUpDownKeys: ['CapsLock', 'ShiftLeft'],
       handbrakeKey: 'Space',
+      maxSteerDeltaPerSecond: 12,
+      autoReverse: false,
     });
     this.handling.active = false;
     this.world.addEntity(this.handling);

@@ -69,6 +69,7 @@ export const LAMBO_SPECS: Omit<GgCarProperties, 'wheelOptions'> = {
     'reverseGearRatio': -2.33,
     'gearRatios': [2.92, 1.87, 1.42, 1.09, 0.81],
     'upShifts': [7140, 7140, 7140, 7140, 2829625512],
+    'autoHold': true,
   },
   'suspension': {
     'stiffness': 20,
@@ -81,6 +82,7 @@ export const LAMBO_SPECS: Omit<GgCarProperties, 'wheelOptions'> = {
     'rearAxleForce': 200,
     'handbrakeForce': 1500,
   },
+  'maxSteerAngle': 0.35,
 };
 
 export const CAR_SPECS: Omit<GgCarProperties, 'wheelOptions'> = {
@@ -152,6 +154,7 @@ export const CAR_SPECS: Omit<GgCarProperties, 'wheelOptions'> = {
     'reverseGearRatio': -2.33,
     'gearRatios': [2.92, 1.87, 1.42, 1.09, 0.81],
     'upShifts': [7140, 7140, 7140, 7140, 2829625512],
+    'autoHold': true,
   },
   'suspension': {
     'stiffness': 20,
@@ -164,6 +167,7 @@ export const CAR_SPECS: Omit<GgCarProperties, 'wheelOptions'> = {
     'rearAxleForce': 200,
     'handbrakeForce': 1500,
   },
+  'maxSteerAngle': 0.35,
 };
 
 export const TRUCK_SPECS: Omit<GgCarProperties, 'wheelOptions'> = {
@@ -235,6 +239,7 @@ export const TRUCK_SPECS: Omit<GgCarProperties, 'wheelOptions'> = {
     'reverseGearRatio': -2.33,
     'gearRatios': [2.92, 1.87, 1.42, 1.09, 0.81],
     'upShifts': [7140, 7140, 7140, 7140, 2829625512],
+    'autoHold': true,
   },
   'suspension': {
     'stiffness': 20,
@@ -247,4 +252,5 @@ export const TRUCK_SPECS: Omit<GgCarProperties, 'wheelOptions'> = {
     'rearAxleForce': 200,
     'handbrakeForce': 1500,
   },
+  'maxSteerAngle': 0.35,
 };
