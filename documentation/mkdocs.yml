@@ -35,4 +35,6 @@ nav:
     - 'core': modules/core
     - 'matter': modules/matter
     - 'pixi': modules/pixi
+    - 'rapier2d': modules/rapier2d
+    - 'rapier3d': modules/rapier3d
     - 'three': modules/three

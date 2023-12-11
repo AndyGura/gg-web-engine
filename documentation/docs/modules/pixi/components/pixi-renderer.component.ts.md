@@ -1,6 +1,6 @@
 ---
 title: pixi/components/pixi-renderer.component.ts
-nav_order: 97
+nav_order: 102
 parent: Modules
 ---
 

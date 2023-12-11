@@ -1,6 +1,6 @@
 ---
 title: three/components/three-renderer-component.ts
-nav_order: 102
+nav_order: 119
 parent: Modules
 ---
 

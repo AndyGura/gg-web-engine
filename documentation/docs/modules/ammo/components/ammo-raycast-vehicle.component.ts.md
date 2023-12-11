@@ -36,7 +36,7 @@ parent: Modules
 
 ```ts
 export declare class AmmoRaycastVehicleComponent {
-  constructor(protected readonly world: AmmoWorldComponent, public chassisBody: Ammo.btRigidBody)
+  constructor(protected readonly world: AmmoWorldComponent, public chassisBody: AmmoRigidBodyComponent)
 }
 ```
 

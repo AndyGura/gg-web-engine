@@ -11,21 +11,25 @@ parent: Modules
 <h2 class="text-delta">Table of contents</h2>
 
 - [utils](#utils)
+  - [CarHandlingOutput (type alias)](#carhandlingoutput-type-alias)
   - [CarKeyboardControllerOptions (type alias)](#carkeyboardcontrolleroptions-type-alias)
   - [CarKeyboardHandlingController (class)](#carkeyboardhandlingcontroller-class)
     - [onSpawned (method)](#onspawned-method)
     - [onRemoved (method)](#onremoved-method)
     - [tickOrder (property)](#tickorder-property)
     - [directionsInput (property)](#directionsinput-property)
-    - [x$ (property)](#x-property)
-    - [y$ (property)](#y-property)
-    - [lastX (property)](#lastx-property)
-    - [switchingGearsEnabled (property)](#switchinggearsenabled-property)
-    - [pairTickerPipe (property)](#pairtickerpipe-property)
 
 ---
 
 # utils
+
+## CarHandlingOutput (type alias)
+
+**Signature**
+
+```ts
+export type CarHandlingOutput = { upDown: number; leftRight: number }
+```
 
 ## CarKeyboardControllerOptions (type alias)
 
@@ -33,9 +37,8 @@ parent: Modules
 
 ```ts
 export type CarKeyboardControllerOptions = {
-  keymap: DirectionKeyboardKeymap
-  gearUpDownKeys: [string, string]
-  handbrakeKey: string
+  readonly keymap: DirectionKeyboardKeymap
+  readonly maxSteerDeltaPerSecond: number
 }
 ```
 
@@ -47,11 +50,9 @@ export type CarKeyboardControllerOptions = {
 export declare class CarKeyboardHandlingController {
   constructor(
     protected readonly keyboard: KeyboardInput,
-    public car: RaycastVehicle3dEntity | null,
     protected readonly options: CarKeyboardControllerOptions = {
       keymap: 'arrows',
-      gearUpDownKeys: ['KeyA', 'KeyZ'],
-      handbrakeKey: 'Space',
+      maxSteerDeltaPerSecond: 12,
     }
   )
 }
@@ -87,44 +88,4 @@ readonly tickOrder: TickOrder.INPUT_CONTROLLERS
 
 ```ts
 readonly directionsInput: DirectionKeyboardInput
-```
-
-### x$ (property)
-
-**Signature**
-
-```ts
-readonly x$: any
-```
-
-### y$ (property)
-
-**Signature**
-
-```ts
-readonly y$: any
-```
-
-### lastX (property)
-
-**Signature**
-
-```ts
-lastX: number
-```
-
-### switchingGearsEnabled (property)
-
-**Signature**
-
-```ts
-switchingGearsEnabled: boolean
-```
-
-### pairTickerPipe (property)
-
-**Signature**
-
-```ts
-pairTickerPipe: any
 ```

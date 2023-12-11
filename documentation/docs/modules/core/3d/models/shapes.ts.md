@@ -1,6 +1,6 @@
 ---
 title: core/3d/models/shapes.ts
-nav_order: 54
+nav_order: 56
 parent: Modules
 ---
 

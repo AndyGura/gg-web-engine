@@ -9,6 +9,7 @@ examples=(
   "glb-loader-three-ammo"
   "glb-loader-three-rapier3d"
   "fly-city-three-ammo"
+  "ammo-car-three-ammo"
 )
 for ix in ${!examples[*]}
 do

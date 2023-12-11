@@ -283,6 +283,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -409,6 +413,46 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../../../../rapier2d" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    rapier2d
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../../rapier3d" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    rapier3d
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../../../../three" class="md-nav__link">
         
   
@@ -470,6 +514,13 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#carhandlingoutput-type-alias" class="md-nav__link">
+    CarHandlingOutput (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#carkeyboardcontrolleroptions-type-alias" class="md-nav__link">
     CarKeyboardControllerOptions (type alias)
   </a>
@@ -512,41 +563,6 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#x-property" class="md-nav__link">
-    x$ (property)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#y-property" class="md-nav__link">
-    y$ (property)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#lastx-property" class="md-nav__link">
-    lastX (property)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#switchinggearsenabled-property" class="md-nav__link">
-    switchingGearsEnabled (property)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pairtickerpipe-property" class="md-nav__link">
-    pairTickerPipe (property)
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
@@ -581,28 +597,27 @@
 
 <ul>
 <li><a href="#utils">utils</a></li>
+<li><a href="#carhandlingoutput-type-alias">CarHandlingOutput (type alias)</a></li>
 <li><a href="#carkeyboardcontrolleroptions-type-alias">CarKeyboardControllerOptions (type alias)</a></li>
 <li><a href="#carkeyboardhandlingcontroller-class">CarKeyboardHandlingController (class)</a><ul>
 <li><a href="#onspawned-method">onSpawned (method)</a></li>
 <li><a href="#onremoved-method">onRemoved (method)</a></li>
 <li><a href="#tickorder-property">tickOrder (property)</a></li>
 <li><a href="#directionsinput-property">directionsInput (property)</a></li>
-<li><a href="#x-property">x$ (property)</a></li>
-<li><a href="#y-property">y$ (property)</a></li>
-<li><a href="#lastx-property">lastX (property)</a></li>
-<li><a href="#switchinggearsenabled-property">switchingGearsEnabled (property)</a></li>
-<li><a href="#pairtickerpipe-property">pairTickerPipe (property)</a></li>
 </ul>
 </li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
+<h2 id="carhandlingoutput-type-alias">CarHandlingOutput (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type CarHandlingOutput = { upDown: number; leftRight: number }
+</code></pre>
 <h2 id="carkeyboardcontrolleroptions-type-alias">CarKeyboardControllerOptions (type alias)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export type CarKeyboardControllerOptions = {
-  keymap: DirectionKeyboardKeymap
-  gearUpDownKeys: [string, string]
-  handbrakeKey: string
+  readonly keymap: DirectionKeyboardKeymap
+  readonly maxSteerDeltaPerSecond: number
 }
 </code></pre>
 <h2 id="carkeyboardhandlingcontroller-class">CarKeyboardHandlingController (class)</h2>
@@ -610,11 +625,9 @@
 <pre><code class="language-ts">export declare class CarKeyboardHandlingController {
   constructor(
     protected readonly keyboard: KeyboardInput,
-    public car: RaycastVehicle3dEntity | null,
     protected readonly options: CarKeyboardControllerOptions = {
       keymap: 'arrows',
-      gearUpDownKeys: ['KeyA', 'KeyZ'],
-      handbrakeKey: 'Space',
+      maxSteerDeltaPerSecond: 12,
     }
   )
 }
@@ -634,26 +647,6 @@
 <h3 id="directionsinput-property">directionsInput (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly directionsInput: DirectionKeyboardInput
-</code></pre>
-<h3 id="x-property">x$ (property)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly x$: any
-</code></pre>
-<h3 id="y-property">y$ (property)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly y$: any
-</code></pre>
-<h3 id="lastx-property">lastX (property)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">lastX: number
-</code></pre>
-<h3 id="switchinggearsenabled-property">switchingGearsEnabled (property)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">switchingGearsEnabled: boolean
-</code></pre>
-<h3 id="pairtickerpipe-property">pairTickerPipe (property)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">pairTickerPipe: any
 </code></pre>
 
 

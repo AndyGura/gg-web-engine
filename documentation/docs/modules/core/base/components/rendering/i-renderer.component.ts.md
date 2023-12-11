@@ -1,6 +1,6 @@
 ---
 title: core/base/components/rendering/i-renderer.component.ts
-nav_order: 64
+nav_order: 67
 parent: Modules
 ---
 

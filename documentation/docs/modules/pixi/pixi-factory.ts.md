@@ -1,6 +1,6 @@
 ---
 title: pixi/pixi-factory.ts
-nav_order: 99
+nav_order: 104
 parent: Modules
 ---
 

@@ -23,5 +23,7 @@ parent: Modules
 
 ```ts
 export interface IRigidBody2dComponent<PW extends IPhysicsWorld2dComponent = IPhysicsWorld2dComponent>
-  extends IRigidBodyComponent<Point2, number, PW> {}
+  extends IRigidBodyComponent<Point2, number, PW> {
+  angularVelocity: number
+}
 ```

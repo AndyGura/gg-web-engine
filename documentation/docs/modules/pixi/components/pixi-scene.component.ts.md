@@ -1,6 +1,6 @@
 ---
 title: pixi/components/pixi-scene.component.ts
-nav_order: 98
+nav_order: 103
 parent: Modules
 ---
 

@@ -47,12 +47,10 @@ export type SuspensionOptions = {
 
 ```ts
 export type WheelOptions = {
-  tyre_width: number
-  tyre_radius: number
-  wheelObject?: IDisplayObject3dComponent
-  wheelObjectDirection?: AxisDirection3
   isLeft: boolean
   isFront: boolean
+  tyreWidth: number
+  tyreRadius: number
   position: Point3
   frictionSlip: number // friction with road
   rollInfluence: number

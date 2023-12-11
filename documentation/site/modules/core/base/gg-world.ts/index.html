@@ -283,6 +283,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -394,6 +398,46 @@
   
   <span class="md-ellipsis">
     pixi
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../rapier2d" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    rapier2d
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../rapier3d" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    rapier3d
   </span>
   
 
@@ -541,27 +585,6 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#registerconsolecommand-method" class="md-nav__link">
-    registerConsoleCommand (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#runconsolecommand-method" class="md-nav__link">
-    runConsoleCommand (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#triggerphysicsdebugview-method" class="md-nav__link">
-    triggerPhysicsDebugView (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#worldclock-property" class="md-nav__link">
     worldClock (property)
   </a>
@@ -576,6 +599,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#name-property" class="md-nav__link">
+    name (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#children-property" class="md-nav__link">
     children (property)
   </a>
@@ -585,13 +615,6 @@
           <li class="md-nav__item">
   <a href="#ticklisteners-property" class="md-nav__link">
     tickListeners (property)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#commands-property" class="md-nav__link">
-    commands (property)
   </a>
   
 </li>
@@ -640,14 +663,11 @@
 <li><a href="#addprimitiverigidbody-method">addPrimitiveRigidBody (method)</a></li>
 <li><a href="#addentity-method">addEntity (method)</a></li>
 <li><a href="#removeentity-method">removeEntity (method)</a></li>
-<li><a href="#registerconsolecommand-method">registerConsoleCommand (method)</a></li>
-<li><a href="#runconsolecommand-method">runConsoleCommand (method)</a></li>
-<li><a href="#triggerphysicsdebugview-method">triggerPhysicsDebugView (method)</a></li>
 <li><a href="#worldclock-property">worldClock (property)</a></li>
 <li><a href="#keyboardinput-property">keyboardInput (property)</a></li>
+<li><a href="#name-property">name (property)</a></li>
 <li><a href="#children-property">children (property)</a></li>
 <li><a href="#ticklisteners-property">tickListeners (property)</a></li>
-<li><a href="#commands-property">commands (property)</a></li>
 </ul>
 </li>
 </ul>
@@ -656,11 +676,7 @@
 <h2 id="ggworld-class">GgWorld (class)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export declare class GgWorld&lt;D, R, V, P&gt; {
-  constructor(
-    public readonly visualScene: V,
-    public readonly physicsWorld: P,
-    protected readonly consoleEnabled: boolean = false
-  )
+  protected constructor(public readonly visualScene: V, public readonly physicsWorld: P)
 }
 </code></pre>
 <h3 id="init-method">init (method)</h3>
@@ -703,18 +719,6 @@
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public removeEntity(entity: IEntity, dispose = false): void
 </code></pre>
-<h3 id="registerconsolecommand-method">registerConsoleCommand (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">public registerConsoleCommand(command: string, handler: (...args: string[]) =&gt; Promise&lt;string&gt;, doc?: string): void
-</code></pre>
-<h3 id="runconsolecommand-method">runConsoleCommand (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">public async runConsoleCommand(command: string, args: string[]): Promise&lt;string&gt;
-</code></pre>
-<h3 id="triggerphysicsdebugview-method">triggerPhysicsDebugView (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">public triggerPhysicsDebugView()
-</code></pre>
 <h3 id="worldclock-property">worldClock (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly worldClock: PausableClock
@@ -723,6 +727,10 @@
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly keyboardInput: KeyboardInput
 </code></pre>
+<h3 id="name-property">name (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">name: string
+</code></pre>
 <h3 id="children-property">children (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly children: IEntity&lt;any, any, IVisualSceneComponent&lt;any, any&gt;, IPhysicsWorldComponent&lt;any, any&gt;&gt;[]
@@ -730,10 +738,6 @@
 <h3 id="ticklisteners-property">tickListeners (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly tickListeners: IEntity&lt;any, any, IVisualSceneComponent&lt;any, any&gt;, IPhysicsWorldComponent&lt;any, any&gt;&gt;[]
-</code></pre>
-<h3 id="commands-property">commands (property)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">commands: { [key: string]: { handler: (...args: string[]) =&gt; Promise&lt;string&gt;; doc?: string | undefined; }; }
 </code></pre>
 
 

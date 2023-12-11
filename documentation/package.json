@@ -4,7 +4,8 @@
   "description": "An attempt to create open source game engine for browser",
   "scripts": {
     "generate": "bash generate.sh",
-    "run-doc-gen": "docs-ts && docs-ts-mkdocs"
+    "run-doc-gen": "docs-ts && docs-ts-mkdocs",
+    "deploy": "mkdocs gh-deploy"
   },
   "repository": {
     "type": "git",

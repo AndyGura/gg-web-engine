@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/raycast-vehicle-3d.entity.ts
-nav_order: 43
+nav_order: 45
 parent: Modules
 ---
 
@@ -11,66 +11,78 @@ parent: Modules
 <h2 class="text-delta">Table of contents</h2>
 
 - [utils](#utils)
-  - [CarProperties (type alias)](#carproperties-type-alias)
+  - [RVEntityAxleOptions (type alias)](#rventityaxleoptions-type-alias)
+  - [RVEntityProperties (type alias)](#rventityproperties-type-alias)
+  - [RVEntitySharedWheelOptions (type alias)](#rventitysharedwheeloptions-type-alias)
   - [RaycastVehicle3dEntity (class)](#raycastvehicle3dentity-class)
     - [getSpeed (method)](#getspeed-method)
-    - [calculateRpmFromCarSpeed (method)](#calculaterpmfromcarspeed-method)
-    - [getDisplaySpeed (method)](#getdisplayspeed-method)
-    - [getMaxStableSteerVal (method)](#getmaxstablesteerval-method)
-    - [setTailLightsOn (method)](#settaillightson-method)
-    - [setSteeringValue (method)](#setsteeringvalue-method)
-    - [onSpawned (method)](#onspawned-method)
+    - [applyTractionForce (method)](#applytractionforce-method)
+    - [applyBrake (method)](#applybrake-method)
     - [runTransformBinding (method)](#runtransformbinding-method)
-    - [updateEngine (method)](#updateengine-method)
     - [resetTo (method)](#resetto-method)
-    - [setXAxisControlValue (method)](#setxaxiscontrolvalue-method)
-    - [setYAxisControlValue (method)](#setyaxiscontrolvalue-method)
     - [wheels (property)](#wheels-property)
     - [wheelLocalRotation (property)](#wheellocalrotation-property)
-    - [wheelLocalTranslation (property)](#wheellocaltranslation-property)
     - [frontWheelsIndices (property)](#frontwheelsindices-property)
     - [rearWheelsIndices (property)](#rearwheelsindices-property)
     - [tractionWheelIndices (property)](#tractionwheelindices-property)
     - [tractionWheelRadius (property)](#tractionwheelradius-property)
-    - [\_rpm$ (property)](#_rpm-property)
-    - [\_acceleration$ (property)](#_acceleration-property)
-    - [brake$ (property)](#brake-property)
-    - [handBrake$ (property)](#handbrake-property)
+  - [WheelDisplayOptions (type alias)](#wheeldisplayoptions-type-alias)
 
 ---
 
 # utils
 
-## CarProperties (type alias)
+## RVEntityAxleOptions (type alias)
 
 **Signature**
 
 ```ts
-export type CarProperties = {
-  typeOfDrive: 'RWD' | 'FWD' | '4WD' // FIXME 4WD car won't brake
-  wheelOptions: WheelOptions[]
-  mpsToRpmFactor?: number
-  engine: {
-    minRpm: number
-    maxRpm: number
-    torques: { rpm: number; torque: number }[]
-    maxRpmIncreasePerSecond: number
-    maxRpmDecreasePerSecond: number
-  }
-  brake: {
-    frontAxleForce: number
-    rearAxleForce: number
-    handbrakeForce: number
-  }
-  transmission: {
-    isAuto: boolean
-    reverseGearRatio: number
-    gearRatios: number[]
-    drivelineEfficiency: number
-    finalDriveRatio: number // differential
-    upShifts: number[]
-  }
+export type RVEntityAxleOptions = {
+  halfAxleWidth: number
+  axlePosition: number
+  axleHeight: number
+} & RVEntitySharedWheelOptions
+```
+
+## RVEntityProperties (type alias)
+
+**Signature**
+
+```ts
+export type RVEntityProperties = {
+  typeOfDrive: 'RWD' | 'FWD' | '4WD'
   suspension: SuspensionOptions
+} & (
+  | {
+      wheelBase: {
+        shared: RVEntitySharedWheelOptions
+        front: RVEntityAxleOptions
+        rear: RVEntityAxleOptions
+      }
+    }
+  | {
+      wheelOptions: (RVEntitySharedWheelOptions & {
+        isLeft: boolean
+        isFront: boolean
+        position: Point3
+      })[]
+      sharedWheelOptions?: RVEntitySharedWheelOptions
+    }
+)
+```
+
+## RVEntitySharedWheelOptions (type alias)
+
+**Signature**
+
+```ts
+export type RVEntitySharedWheelOptions = {
+  tyreWidth?: number
+  tyreRadius?: number
+  frictionSlip?: number
+  rollInfluence?: number
+  maxTravel?: number
+  display?: WheelDisplayOptions
 }
 ```
 
@@ -81,11 +93,9 @@ export type CarProperties = {
 ```ts
 export declare class RaycastVehicle3dEntity {
   constructor(
-    public readonly carProperties: CarProperties,
+    public readonly carProperties: RVEntityProperties,
     public readonly chassis3D: IDisplayObject3dComponent | null,
-    public readonly chassisBody: IRaycastVehicleComponent,
-    public readonly wheelObject: IDisplayObject3dComponent | null = null,
-    public readonly wheelObjectDirection: AxisDirection3 = 'x'
+    public readonly chassisBody: IRaycastVehicleComponent
   )
 }
 ```
@@ -98,52 +108,20 @@ export declare class RaycastVehicle3dEntity {
 public getSpeed(): number
 ```
 
-### calculateRpmFromCarSpeed (method)
+### applyTractionForce (method)
 
 **Signature**
 
 ```ts
-public calculateRpmFromCarSpeed(): number
+public applyTractionForce(force: number)
 ```
 
-### getDisplaySpeed (method)
+### applyBrake (method)
 
 **Signature**
 
 ```ts
-public getDisplaySpeed(units: 'ms' | 'kmh' | 'mph' = 'ms'): number
-```
-
-### getMaxStableSteerVal (method)
-
-**Signature**
-
-```ts
-private getMaxStableSteerVal(): number
-```
-
-### setTailLightsOn (method)
-
-**Signature**
-
-```ts
-protected setTailLightsOn(value: boolean)
-```
-
-### setSteeringValue (method)
-
-**Signature**
-
-```ts
-protected setSteeringValue(value: number)
-```
-
-### onSpawned (method)
-
-**Signature**
-
-```ts
-onSpawned(world: Gg3dWorld)
+public applyBrake(axle: 'front' | 'rear' | 'both', force: number)
 ```
 
 ### runTransformBinding (method)
@@ -154,36 +132,17 @@ onSpawned(world: Gg3dWorld)
 protected runTransformBinding(objectBody: IRigidBody3dComponent, object3D: IDisplayObject3dComponent): void
 ```
 
-### updateEngine (method)
-
-**Signature**
-
-```ts
-protected updateEngine(delta: number)
-```
-
 ### resetTo (method)
 
 **Signature**
 
 ```ts
-public resetTo(options: { position?: Point3; rotation?: Point4 } = {})
-```
-
-### setXAxisControlValue (method)
-
-**Signature**
-
-```ts
-public setXAxisControlValue(value: number)
-```
-
-### setYAxisControlValue (method)
-
-**Signature**
-
-```ts
-public setYAxisControlValue(value: number)
+public resetTo(
+    options: {
+      position?: Point3;
+      rotation?: Point4;
+    } = {},
+  )
 ```
 
 ### wheels (property)
@@ -200,14 +159,6 @@ readonly wheels: ((IEntity<any, any, IVisualSceneComponent<any, any>, IPhysicsWo
 
 ```ts
 readonly wheelLocalRotation: (Point4 | null)[]
-```
-
-### wheelLocalTranslation (property)
-
-**Signature**
-
-```ts
-readonly wheelLocalTranslation: Point3[]
 ```
 
 ### frontWheelsIndices (property)
@@ -242,34 +193,14 @@ readonly tractionWheelIndices: number[]
 readonly tractionWheelRadius: number
 ```
 
-### \_rpm$ (property)
+## WheelDisplayOptions (type alias)
 
 **Signature**
 
 ```ts
-readonly _rpm$: any
-```
-
-### \_acceleration$ (property)
-
-**Signature**
-
-```ts
-_acceleration$: any
-```
-
-### brake$ (property)
-
-**Signature**
-
-```ts
-brake$: any
-```
-
-### handBrake$ (property)
-
-**Signature**
-
-```ts
-handBrake$: any
+export type WheelDisplayOptions = {
+  displayObject?: IDisplayObject3dComponent
+  wheelObjectDirection?: AxisDirection3
+  autoScaleMesh?: boolean
+}
 ```

@@ -4,9 +4,9 @@
   "private": true,
   "dependencies": {
     "@dimforge/rapier3d-compat": "0.0.0-c23a138-20231001",
-    "@gg-web-engine/core": "0.0.24",
-    "@gg-web-engine/rapier3d": "0.0.27",
-    "@gg-web-engine/three": "0.0.24",
+    "@gg-web-engine/core": "0.0.28",
+    "@gg-web-engine/rapier3d": "0.0.28",
+    "@gg-web-engine/three": "0.0.28",
     "@types/node": "^16.18.65",
     "@types/react": "^18.2.38",
     "@types/react-dom": "^18.2.17",

@@ -25,11 +25,7 @@ parent: Modules
 
 ```ts
 export declare class Gg2dWorld<V, P> {
-  constructor(
-    public readonly visualScene: V,
-    public readonly physicsWorld: P,
-    protected readonly consoleEnabled: boolean = false
-  )
+  constructor(public readonly visualScene: V, public readonly physicsWorld: P)
 }
 ```
 

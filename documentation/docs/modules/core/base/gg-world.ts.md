@@ -1,6 +1,6 @@
 ---
 title: core/base/gg-world.ts
-nav_order: 73
+nav_order: 75
 parent: Modules
 ---
 
@@ -21,14 +21,11 @@ parent: Modules
     - [addPrimitiveRigidBody (method)](#addprimitiverigidbody-method)
     - [addEntity (method)](#addentity-method)
     - [removeEntity (method)](#removeentity-method)
-    - [registerConsoleCommand (method)](#registerconsolecommand-method)
-    - [runConsoleCommand (method)](#runconsolecommand-method)
-    - [triggerPhysicsDebugView (method)](#triggerphysicsdebugview-method)
     - [worldClock (property)](#worldclock-property)
     - [keyboardInput (property)](#keyboardinput-property)
+    - [name (property)](#name-property)
     - [children (property)](#children-property)
     - [tickListeners (property)](#ticklisteners-property)
-    - [commands (property)](#commands-property)
 
 ---
 
@@ -40,11 +37,7 @@ parent: Modules
 
 ```ts
 export declare class GgWorld<D, R, V, P> {
-  constructor(
-    public readonly visualScene: V,
-    public readonly physicsWorld: P,
-    protected readonly consoleEnabled: boolean = false
-  )
+  protected constructor(public readonly visualScene: V, public readonly physicsWorld: P)
 }
 ```
 
@@ -124,30 +117,6 @@ public addEntity(entity: IEntity): void
 public removeEntity(entity: IEntity, dispose = false): void
 ```
 
-### registerConsoleCommand (method)
-
-**Signature**
-
-```ts
-public registerConsoleCommand(command: string, handler: (...args: string[]) => Promise<string>, doc?: string): void
-```
-
-### runConsoleCommand (method)
-
-**Signature**
-
-```ts
-public async runConsoleCommand(command: string, args: string[]): Promise<string>
-```
-
-### triggerPhysicsDebugView (method)
-
-**Signature**
-
-```ts
-public triggerPhysicsDebugView()
-```
-
 ### worldClock (property)
 
 **Signature**
@@ -164,6 +133,14 @@ readonly worldClock: PausableClock
 readonly keyboardInput: KeyboardInput
 ```
 
+### name (property)
+
+**Signature**
+
+```ts
+name: string
+```
+
 ### children (property)
 
 **Signature**
@@ -178,12 +155,4 @@ readonly children: IEntity<any, any, IVisualSceneComponent<any, any>, IPhysicsWo
 
 ```ts
 readonly tickListeners: IEntity<any, any, IVisualSceneComponent<any, any>, IPhysicsWorldComponent<any, any>>[]
-```
-
-### commands (property)
-
-**Signature**
-
-```ts
-commands: { [key: string]: { handler: (...args: string[]) => Promise<string>; doc?: string | undefined; }; }
 ```

@@ -1,6 +1,6 @@
 ---
 title: three/three-loader.ts
-nav_order: 105
+nav_order: 122
 parent: Modules
 ---
 

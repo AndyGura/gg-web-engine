@@ -23,5 +23,7 @@ parent: Modules
 
 ```ts
 export interface IRigidBody3dComponent<PW extends IPhysicsWorld3dComponent = IPhysicsWorld3dComponent>
-  extends IRigidBodyComponent<Point3, Point4, PW> {}
+  extends IRigidBodyComponent<Point3, Point4, PW> {
+  angularVelocity: Point3
+}
 ```

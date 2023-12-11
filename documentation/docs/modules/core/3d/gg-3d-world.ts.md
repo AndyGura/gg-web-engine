@@ -1,6 +1,6 @@
 ---
 title: core/3d/gg-3d-world.ts
-nav_order: 47
+nav_order: 49
 parent: Modules
 ---
 
@@ -26,11 +26,7 @@ parent: Modules
 
 ```ts
 export declare class Gg3dWorld<V, P> {
-  constructor(
-    public readonly visualScene: V,
-    public readonly physicsWorld: P,
-    protected readonly consoleEnabled: boolean = false
-  )
+  constructor(public readonly visualScene: V, public readonly physicsWorld: P)
 }
 ```
 

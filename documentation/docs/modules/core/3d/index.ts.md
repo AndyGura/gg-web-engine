@@ -1,6 +1,6 @@
 ---
 title: core/3d/index.ts
-nav_order: 48
+nav_order: 50
 parent: Modules
 ---
 

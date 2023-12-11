@@ -17,7 +17,6 @@ parent: Modules
     - [addToWorld (method)](#addtoworld-method)
     - [removeFromWorld (method)](#removefromworld-method)
     - [dispose (method)](#dispose-method)
-    - [resetMotion (method)](#resetmotion-method)
     - [entity (property)](#entity-property)
     - [onEnter$ (property)](#onenter-property)
     - [onLeft$ (property)](#onleft-property)
@@ -75,14 +74,6 @@ removeFromWorld(world: Gg3dWorld<IVisualScene3dComponent, AmmoWorldComponent>): 
 
 ```ts
 dispose(): void
-```
-
-### resetMotion (method)
-
-**Signature**
-
-```ts
-resetMotion(): void
 ```
 
 ### entity (property)
