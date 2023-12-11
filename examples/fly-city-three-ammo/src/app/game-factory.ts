@@ -1,6 +1,5 @@
 import {
   CachingStrategy,
-  CarProperties,
   Gg3dWorld,
   GgDummy,
   GgStatic,
@@ -11,9 +10,8 @@ import {
   MapGraph3dEntity,
   Pnt3,
   Qtrn,
-  RaycastVehicle3dEntity,
   Renderer3dEntity,
-  Trigger3dEntity,
+  Trigger3dEntity, GgCarProperties, GgCarEntity,
 } from '@gg-web-engine/core';
 import { ThreeCameraComponent, ThreeSceneComponent } from '@gg-web-engine/three';
 import { AmmoRaycastVehicleComponent, AmmoRigidBodyComponent, AmmoWorldComponent } from '@gg-web-engine/ammo';
@@ -143,7 +141,7 @@ export class GameFactory {
     return playingArea;
   }
 
-  public async spawnLambo(): Promise<RaycastVehicle3dEntity> {
+  public async spawnLambo(): Promise<GgCarEntity> {
     const [
       {
         resources: [{ object3D: chassisMesh, body: chassisBody }],
@@ -163,39 +161,34 @@ export class GameFactory {
 
   private generateCar(
     chassisMesh: IDisplayObject3dComponent | null, chassisBody: AmmoRigidBodyComponent,
-    chassisDummies: GgDummy[], wheelMesh: IDisplayObject3dComponent | null, specs: Omit<CarProperties, 'wheelOptions'>,
-  ): RaycastVehicle3dEntity {
-    return new RaycastVehicle3dEntity(
+    chassisDummies: GgDummy[], wheelMesh: IDisplayObject3dComponent | null, specs: Omit<GgCarProperties, 'wheelOptions'>,
+  ): GgCarEntity {
+    return new GgCarEntity(
       {
         wheelOptions: chassisDummies
           .filter(x => x.name.startsWith('wheel_'))
           .map((wheel) => {
-            const tyre_width = wheel.tyre_width || 0.4;
-            const isLeft = wheel.name.endsWith('l');
             return {
-              tyre_radius: wheel.tyre_radius || 0.3,
-              tyre_width,
-              position: {
-                x: wheel.position.x + tyre_width * (isLeft ? -1 : 1),
-                y: wheel.position.y,
-                z: wheel.position.z,
-              },
+              tyreRadius: wheel.tyre_radius || 0.3,
+              tyreWidth: wheel.tyre_width || 0.4,
+              position: wheel.position,
               isFront: wheel.name.startsWith('wheel_f'),
-              isLeft,
-              frictionSlip: 3,
-              rollInfluence: 0.2,
-              maxTravel: 0.25,
+              isLeft: wheel.name.endsWith('l'),
             };
           }),
+        sharedWheelOptions: {
+          frictionSlip: 3,
+          rollInfluence: 0.2,
+          maxTravel: 0.5,
+          display: { displayObject: wheelMesh || undefined, wheelObjectDirection: 'x', autoScaleMesh: true },
+        },
         ...specs,
       },
       chassisMesh,
       new AmmoRaycastVehicleComponent(
         this.world.physicsWorld,
-        chassisBody.nativeBody,
-      ),
-      wheelMesh,
-      'x',
+        chassisBody,
+      )
     );
   }
 

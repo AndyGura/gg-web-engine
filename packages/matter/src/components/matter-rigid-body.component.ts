@@ -19,6 +19,22 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterWor
     this.nativeBody.angle = value;
   }
 
+  get linearVelocity(): Point2 {
+    return Pnt2.clone(this.nativeBody.velocity);
+  }
+
+  set linearVelocity(value: Point2) {
+    Body.setVelocity(this.nativeBody, Vector.create(value.x, value.y));
+  }
+
+  get angularVelocity(): number {
+    return this.nativeBody.angularVelocity;
+  }
+
+  set angularVelocity(value: number) {
+    Body.setAngularVelocity(this.nativeBody, value);
+  }
+
   public name: string = '';
 
   public entity: Entity2d | null = null;

@@ -37,6 +37,26 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
     }
   }
 
+  get linearVelocity(): Point2 {
+    return Pnt2.clone(this.nativeBody?.linvel() || Pnt2.O);
+  }
+
+  set linearVelocity(value: Point2) {
+    if (this.nativeBody) {
+      this.nativeBody.setLinvel(new Vector2(value.x, value.y), false);
+    }
+  }
+
+  get angularVelocity(): number {
+    return this.nativeBody?.angvel() || 0;
+  }
+
+  set angularVelocity(value: number) {
+    if (this.nativeBody) {
+      this.nativeBody.setAngvel(value, false);
+    }
+  }
+
   protected _nativeBody: RigidBody | null = null;
   protected _nativeBodyColliders: Collider[] | null = null;
 

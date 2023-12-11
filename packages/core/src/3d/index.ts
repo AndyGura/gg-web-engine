@@ -7,6 +7,7 @@ export * from './components/rendering/i-camera.component';
 export * from './components/rendering/i-renderer-3d.component';
 export * from './components/rendering/i-visual-scene-3d.component';
 
+export * from './entities/gg-car/gg-car.entity';
 export * from './entities/controllers/animators/camera-3d.animator';
 export * from './entities/controllers/animators/entity-3d-positioning.animator';
 export * from './entities/entity-3d';
@@ -16,6 +17,7 @@ export * from './entities/trigger-3d.entity';
 export * from './entities/renderer-3d.entity';
 export * from './entities/i-renderable-3d.entity';
 export * from './entities/controllers/input/car-keyboard-handling.controller';
+export * from './entities/controllers/input/gg-car-keyboard-handling.controller';
 export * from './entities/controllers/input/free-camera.controller';
 export * from './entities/controllers/input/orbit-camera.controller';
 

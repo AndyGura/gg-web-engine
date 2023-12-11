@@ -1,4 +1,4 @@
-import { RaycastVehicle3dEntity, } from '@gg-web-engine/core';
+import { GgCarEntity } from '@gg-web-engine/core';
 import { distinctUntilChanged, NEVER, Observable, of, skip, switchMap } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { Howl } from 'howler';
@@ -6,7 +6,7 @@ import { HttpClient } from '@angular/common/http';
 
 export type CurrentState =
   { mode: 'freecamera' }
-  | { mode: 'driving', car: RaycastVehicle3dEntity, carType: 'lambo' | 'truck' | 'car' };
+  | { mode: 'driving', car: GgCarEntity, carType: 'lambo' | 'truck' | 'car' };
 
 export class GameAudio {
 
@@ -90,8 +90,8 @@ export class GameAudio {
     });
 
     this.state$.pipe(
-      switchMap(state => state.mode === 'freecamera' ? NEVER : state.car.engineRpm$.pipe(map(rpm => [state.car, rpm] as [RaycastVehicle3dEntity, number]))),
-    ).subscribe(([car, rpm]: [RaycastVehicle3dEntity, number]) => {
+      switchMap(state => state.mode === 'freecamera' ? NEVER : state.car.engineRpm$.pipe(map(rpm => [state.car, rpm] as [GgCarEntity, number]))),
+    ).subscribe(([car, rpm]: [GgCarEntity, number]) => {
       const engineRpmFactor = ((rpm - 800) / car.carProperties.engine.maxRpm) - 0.5;
       this.engineOnHowl.rate(1 + engineRpmFactor);
       this.engineOffHowl.rate(1 + engineRpmFactor);

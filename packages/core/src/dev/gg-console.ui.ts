@@ -38,7 +38,7 @@ List of available commands: `.replace(/ /g, '&nbsp;') + `<span style="color:yell
     main.innerHTML = `
   <div id='gg-console-header' style='padding: 0.2rem 0.2rem 0;cursor:move;display:flex;justify-content:space-between;'>
     <span>CONSOLE</span>
-    <a id='gg-console-close-icon' style='display:block;padding:0.3rem;margin:-0.3rem;cursor:pointer;'>X</a>
+    <a id='gg-console-close-icon' style='display:block;padding:0.3rem;margin:-0.3rem;cursor:pointer;color:white;'>X</a>
   </div>
   <div id='gg-console-output' style='flex-grow:1;background:#232323;color:white;font-family:monospace;overflow-y:auto;overflow-wrap:anywhere;padding:0.2rem;'></div>
   <input id='gg-console-input' style='background:#000000;border:none;outline:none;color:white;font-family:monospace;'/>`;
@@ -52,9 +52,11 @@ List of available commands: `.replace(/ /g, '&nbsp;') + `<span style="color:yell
     main.style.alignItems = 'stretch';
     main.style.padding = '0.1rem';
     main.style.rowGap = '3px';
+    main.style.fontSize = '14px';
     main.style.fontFamily = 'monospace';
     main.style.fontWeight = 'bold';
     main.style.color = 'white';
+    main.style.textAlign = 'left';
     document.body.append(main);
     this.elements = {
       main,

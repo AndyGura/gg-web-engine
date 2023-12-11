@@ -2,6 +2,7 @@ export * from './clock/global-clock';
 export * from './clock/i-clock';
 export * from './clock/pausable-clock';
 
+export * from './components/physics/i-body.component';
 export * from './components/physics/i-rigid-body.component';
 export * from './components/physics/i-trigger.component';
 export * from './components/physics/i-physics-world.component';
@@ -38,5 +39,6 @@ export * from './math/point3';
 export * from './math/quaternion';
 export * from './math/numbers';
 export * from './math/matrix4';
+export * from './math/splines';
 
 export * from './gg-world';

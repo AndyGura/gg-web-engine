@@ -36,9 +36,12 @@ export class Rapier3dRaycastVehicleComponent
   addToWorld(world: Gg3dWorld<IVisualScene3dComponent, Rapier3dWorldComponent>) {
     super.addToWorld(world);
     this._nativeVehicle = world.physicsWorld.nativeWorld.createVehicleController(this._nativeBody!);
+    this._nativeVehicle.indexUpAxis = 2;
+    this._nativeVehicle.setIndexForwardAxis = 1;
     for (const descr of this.wheelDescr) {
       this._nativeVehicle.addWheel(...descr);
     }
+    setInterval(() => this._nativeVehicle!.updateVehicle(0.01), 10);
   }
 
   removeFromWorld(world: Gg3dWorld<IVisualScene3dComponent, Rapier3dWorldComponent>) {
@@ -53,11 +56,11 @@ export class Rapier3dRaycastVehicleComponent
 
   addWheel(options: WheelOptions, suspensionOptions: SuspensionOptions): void {
     const descr: [Vector3, Vector3, Vector3, number, number] = [
-      new Vector3(options.position.x, options.position.y, options.position.z - 1),
-      { x: 0, y: 0, z: -1 }, // TODO Pnt3.nZ,
-      options.isLeft ? Pnt3.X : { x: -1, y: 0, z: 0 }, // TODO Pnt3.nX,
+      new Vector3(options.position.x, options.position.y, options.position.z),
+      Pnt3.nZ,
+      options.isLeft ? Pnt3.X : Pnt3.nX,
       suspensionOptions.restLength,
-      options.tyre_radius,
+      options.tyreRadius,
     ];
     this.wheelDescr.push(descr);
     if (this.nativeVehicle) {
@@ -76,7 +79,8 @@ export class Rapier3dRaycastVehicleComponent
   }
 
   applyBrake(wheelIndex: number, force: number): void {
-    this.nativeVehicle?.setWheelBrake(wheelIndex, force);
+    if (!this.nativeVehicle) return;
+    this.nativeVehicle.setWheelBrake(wheelIndex, force);
   }
 
   isWheelTouchesGround(wheelIndex: number): boolean {

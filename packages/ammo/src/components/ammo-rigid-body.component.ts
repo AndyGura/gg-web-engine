@@ -1,10 +1,31 @@
 import { AmmoWorldComponent } from './ammo-world.component';
 import Ammo from 'ammojs-typed';
 import { AmmoBodyComponent } from './ammo-body.component';
-import { Entity3d, Gg3dWorld, IVisualScene3dComponent } from '@gg-web-engine/core';
+import { Entity3d, Gg3dWorld, IRigidBody3dComponent, IVisualScene3dComponent, Point3 } from '@gg-web-engine/core';
 
-export class AmmoRigidBodyComponent extends AmmoBodyComponent<Ammo.btRigidBody> {
+export class AmmoRigidBodyComponent
+  extends AmmoBodyComponent<Ammo.btRigidBody>
+  implements IRigidBody3dComponent<AmmoWorldComponent>
+{
   public entity: Entity3d | null = null;
+
+  get linearVelocity(): Point3 {
+    const v = this.nativeBody.getLinearVelocity();
+    return { x: v.x(), y: v.y(), z: v.z() };
+  }
+
+  set linearVelocity(value: Point3) {
+    this.nativeBody.setLinearVelocity(new this.ammo.btVector3(value.x, value.y, value.z));
+  }
+
+  get angularVelocity(): Point3 {
+    const v = this.nativeBody.getAngularVelocity();
+    return { x: v.x(), y: v.y(), z: v.z() };
+  }
+
+  set angularVelocity(value: Point3) {
+    this.nativeBody.setAngularVelocity(new this.ammo.btVector3(value.x, value.y, value.z));
+  }
 
   constructor(protected readonly world: AmmoWorldComponent, protected _nativeBody: Ammo.btRigidBody) {
     super(world, _nativeBody);

@@ -1,66 +1,34 @@
-import { BehaviorSubject, combineLatest, filter, interval, pipe, takeUntil } from 'rxjs';
-import { distinctUntilChanged, map, pairwise, startWith, switchMap, take, tap } from 'rxjs/operators';
+import { combineLatest, Observable, Subject, takeUntil } from 'rxjs';
 import {
   DirectionKeyboardInput,
   DirectionKeyboardKeymap,
-  DirectionKeyboardOutput,
-  IEntity,
-  TickOrder,
   GgWorld,
+  IEntity,
   KeyboardInput,
+  TickOrder,
 } from '../../../../base';
-import { RaycastVehicle3dEntity } from '../../raycast-vehicle-3d.entity';
-
-// TODO pass as settings
-// TODO smooth y?
-const TICKER_INTERVAL = 16; // TODO when refactored, reflect in CarKeyboardHandlingController test
-const TICKER_MAX_STEPS = 10;
 
 export type CarKeyboardControllerOptions = {
-  keymap: DirectionKeyboardKeymap;
-  gearUpDownKeys: [string, string];
-  handbrakeKey: string;
+  readonly keymap: DirectionKeyboardKeymap;
+  readonly maxSteerDeltaPerSecond: number;
 };
+export type CarHandlingOutput = { upDown: number; leftRight: number };
 
 export class CarKeyboardHandlingController extends IEntity {
   public readonly tickOrder = TickOrder.INPUT_CONTROLLERS;
 
   protected readonly directionsInput: DirectionKeyboardInput;
-  // emits values -1 - 1; -1 = full turn left; 1 = full turn right
-  protected readonly x$: BehaviorSubject<number> = new BehaviorSubject<number>(0);
-  // emits values -1 - 1; -1 = full brake; 1 = full acceleration
-  protected readonly y$: BehaviorSubject<number> = new BehaviorSubject<number>(0);
 
-  protected lastX: number = 0;
-
-  public switchingGearsEnabled: boolean = true;
-
-  pairTickerPipe = pipe(
-    pairwise<number>(),
-    map(([beforeValue, afterValue]) => [this.lastX, afterValue] as [number, number]),
-    switchMap(([beforeValue, afterValue]: [number, number]) =>
-      interval(TICKER_INTERVAL).pipe(
-        startWith(-1),
-        take(TICKER_MAX_STEPS),
-        map(count => count + 2),
-        map(
-          count =>
-            beforeValue * ((TICKER_MAX_STEPS - count) / TICKER_MAX_STEPS) + afterValue * (count / TICKER_MAX_STEPS),
-        ),
-        tap(x => {
-          this.lastX = x;
-        }),
-      ),
-    ),
-  );
+  private _output$: Subject<CarHandlingOutput> = new Subject<CarHandlingOutput>();
+  public get output$(): Observable<CarHandlingOutput> {
+    return this._output$.asObservable();
+  }
 
   constructor(
     protected readonly keyboard: KeyboardInput,
-    public car: RaycastVehicle3dEntity | null,
     protected readonly options: CarKeyboardControllerOptions = {
       keymap: 'arrows',
-      gearUpDownKeys: ['KeyA', 'KeyZ'],
-      handbrakeKey: 'Space',
+      maxSteerDeltaPerSecond: 12,
     },
   ) {
     super();
@@ -69,69 +37,29 @@ export class CarKeyboardHandlingController extends IEntity {
 
   async onSpawned(world: GgWorld<any, any>): Promise<void> {
     super.onSpawned(world);
-    let moveDirection: DirectionKeyboardOutput = {};
-    this.keyboard
-      .bind(this.options.gearUpDownKeys[0])
-      .pipe(
-        takeUntil(this._onRemoved$),
-        filter(x => this.switchingGearsEnabled && !!x),
-      )
-      .subscribe(() => {
-        if (this.car && (!this.car.carProperties.transmission.isAuto || this.car.gear <= 0)) {
-          this.car.gear++;
-        }
-      });
-    this.keyboard
-      .bind(this.options.gearUpDownKeys[1])
-      .pipe(
-        takeUntil(this._onRemoved$),
-        filter(x => this.switchingGearsEnabled && !!x),
-      )
-      .subscribe(() => {
-        if (this.car) {
-          if (this.car.carProperties.transmission.isAuto && this.car.gear > 1) {
-            this.car.gear = 0;
-          } else {
-            this.car.gear--;
+    let input: CarHandlingOutput = { upDown: 0, leftRight: 0 };
+    combineLatest([this.directionsInput.output$, this.tick$])
+      .pipe(takeUntil(this._onRemoved$))
+      .subscribe(([d, [_, dt]]) => {
+        const direction: CarHandlingOutput = { upDown: 0, leftRight: 0 };
+        if (d.leftRight !== undefined) direction.leftRight = d.leftRight ? 1 : -1;
+        if (d.upDown !== undefined) direction.upDown = d.upDown ? 1 : -1;
+        if (direction.leftRight != input.leftRight) {
+          let diff = Math.abs(direction.leftRight - input.leftRight);
+          let maxSteerInputDelta = (this.options.maxSteerDeltaPerSecond * dt) / 1000;
+          if (diff > maxSteerInputDelta) {
+            if (direction.leftRight < input.leftRight) {
+              direction.leftRight = input.leftRight - maxSteerInputDelta;
+            } else {
+              direction.leftRight = input.leftRight + maxSteerInputDelta;
+            }
           }
         }
+        input = direction;
       });
-    this.keyboard
-      .bind(this.options.handbrakeKey)
-      .pipe(takeUntil(this._onRemoved$))
-      .subscribe(isKeyDown => {
-        if (this.car) {
-          this.car.handBrake = isKeyDown;
-        }
-      });
-    this.directionsInput.output$.pipe(takeUntil(this._onRemoved$)).subscribe(d => {
-      moveDirection = d;
+    this.tick$.pipe(takeUntil(this._onRemoved$)).subscribe(() => {
+      this._output$.next(input);
     });
-    this.tick$
-      .pipe(
-        takeUntil(this._onRemoved$),
-        map(() => {
-          const direction = [0, 0];
-          if (moveDirection.leftRight !== undefined) direction[0] = moveDirection.leftRight ? -1 : 1;
-          if (moveDirection.upDown !== undefined) direction[1] = moveDirection.upDown ? 1 : -1;
-          return direction;
-        }),
-      )
-      .subscribe(([x, y]) => {
-        this.x$.next(x);
-        this.y$.next(y);
-      });
-    combineLatest([
-      this.x$.pipe(takeUntil(this._onRemoved$), distinctUntilChanged(), startWith(0), this.pairTickerPipe),
-      this.y$.pipe(takeUntil(this._onRemoved$), distinctUntilChanged(), startWith(0)),
-    ])
-      .pipe(takeUntil(this._onRemoved$))
-      .subscribe(([x, y]) => {
-        if (this.car) {
-          this.car.setXAxisControlValue(x);
-          this.car.setYAxisControlValue(y);
-        }
-      });
     await this.directionsInput.start();
   }
 
