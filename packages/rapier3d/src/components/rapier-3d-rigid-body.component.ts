@@ -88,6 +88,7 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
       return d;
     });
     const bd = new RigidBodyDesc(this._bodyDescr.status);
+    bd.mass = this._bodyDescr.mass;
     bd.setTranslation(this._bodyDescr.translation.x, this._bodyDescr.translation.y, this._bodyDescr.translation.z);
     bd.setRotation({ ...this._bodyDescr.rotation });
     // TODO more fields here?

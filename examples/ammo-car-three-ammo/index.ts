@@ -155,7 +155,6 @@ world.init().then(async () => {
   world.addEntity(vehicle);
 
   carController.output$.subscribe(({ leftRight, upDown }) => {
-    debugger;
     let engineForce = 0;
     let breakingForce = 0;
     if (upDown > 0) {
