@@ -8,7 +8,7 @@
       
       
       
-        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/base/ui/">
+        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/rapier2d/components/rapier-2d-rigid-body.component.ts/">
       
       
       
@@ -18,7 +18,7 @@
     
     
       
-        <title>Modules - GG-web-engine</title>
+        <title>rapier2d/components/rapier-2d-rigid-body.component.ts - GG-web-engine</title>
       
     
     
@@ -72,6 +72,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#rapier-2d-rigid-bodycomponent-overview" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -104,7 +109,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Modules
+              rapier2d/components/rapier-2d-rigid-body.component.ts
             
           </span>
         </div>
@@ -278,6 +283,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -344,7 +353,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href="../../../core" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -404,6 +413,46 @@
   
   
     <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    rapier2d
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../rapier3d" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    rapier3d
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../three" class="md-nav__link">
         
   
@@ -443,6 +492,110 @@
   
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#rapier-2d-rigid-bodycomponent-overview" class="md-nav__link">
+    rapier-2d-rigid-body.component overview
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#utils" class="md-nav__link">
+    utils
+  </a>
+  
+    <nav class="md-nav" aria-label="utils">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#rapier2drigidbodycomponent-class" class="md-nav__link">
+    Rapier2dRigidBodyComponent (class)
+  </a>
+  
+    <nav class="md-nav" aria-label="Rapier2dRigidBodyComponent (class)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#clone-method" class="md-nav__link">
+    clone (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#addtoworld-method" class="md-nav__link">
+    addToWorld (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#removefromworld-method" class="md-nav__link">
+    removeFromWorld (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#resetmotion-method" class="md-nav__link">
+    resetMotion (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dispose-method" class="md-nav__link">
+    dispose (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#entity-property" class="md-nav__link">
+    entity (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_nativebody-property" class="md-nav__link">
+    _nativeBody (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_nativebodycolliders-property" class="md-nav__link">
+    _nativeBodyColliders (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#name-property" class="md-nav__link">
+    name (property)
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -459,14 +612,74 @@
   
 
 
-  <h1>Modules</h1>
-
-<h2 class="text-delta">Directory table of contents</h2>
+<h2 id="rapier-2d-rigid-bodycomponent-overview">rapier-2d-rigid-body.component overview</h2>
+<hr />
+<h2 class="text-delta">Table of contents</h2>
 
 <ul>
-<li><a href="/gg-web-engine/modules/core/base/ui/gg-console.ui.ts">core/base/ui/gg-console.ui.ts</a></li>
-<li><a href="/gg-web-engine/modules/core/base/ui/gg-debugger.ui.ts">core/base/ui/gg-debugger.ui.ts</a></li>
+<li><a href="#utils">utils</a></li>
+<li><a href="#rapier2drigidbodycomponent-class">Rapier2dRigidBodyComponent (class)</a><ul>
+<li><a href="#clone-method">clone (method)</a></li>
+<li><a href="#addtoworld-method">addToWorld (method)</a></li>
+<li><a href="#removefromworld-method">removeFromWorld (method)</a></li>
+<li><a href="#resetmotion-method">resetMotion (method)</a></li>
+<li><a href="#dispose-method">dispose (method)</a></li>
+<li><a href="#entity-property">entity (property)</a></li>
+<li><a href="#_nativebody-property">_nativeBody (property)</a></li>
+<li><a href="#_nativebodycolliders-property">_nativeBodyColliders (property)</a></li>
+<li><a href="#name-property">name (property)</a></li>
 </ul>
+</li>
+</ul>
+<hr />
+<h1 id="utils">utils</h1>
+<h2 id="rapier2drigidbodycomponent-class">Rapier2dRigidBodyComponent (class)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export declare class Rapier2dRigidBodyComponent {
+  constructor(
+    protected readonly world: Rapier2dWorldComponent,
+    protected _colliderDescr: ColliderDesc[],
+    protected _bodyDescr: RigidBodyDesc,
+    protected _colliderOptions: Omit&lt;Omit&lt;Body2DOptions, 'dynamic'&gt;, 'mass'&gt;
+  )
+}
+</code></pre>
+<h3 id="clone-method">clone (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">clone(): Rapier2dRigidBodyComponent
+</code></pre>
+<h3 id="addtoworld-method">addToWorld (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">addToWorld(world: Gg2dWorld&lt;IVisualScene2dComponent, Rapier2dWorldComponent&gt;): void
+</code></pre>
+<h3 id="removefromworld-method">removeFromWorld (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">removeFromWorld(world: Gg2dWorld&lt;IVisualScene2dComponent, Rapier2dWorldComponent&gt;): void
+</code></pre>
+<h3 id="resetmotion-method">resetMotion (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">resetMotion(): void
+</code></pre>
+<h3 id="dispose-method">dispose (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">dispose(): void
+</code></pre>
+<h3 id="entity-property">entity (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">entity: any
+</code></pre>
+<h3 id="_nativebody-property">_nativeBody (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">_nativeBody: any
+</code></pre>
+<h3 id="_nativebodycolliders-property">_nativeBodyColliders (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">_nativeBodyColliders: any[] | null
+</code></pre>
+<h3 id="name-property">name (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">name: string
+</code></pre>
 
 
 

@@ -283,6 +283,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -409,6 +413,46 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../../../rapier2d" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    rapier2d
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../rapier3d" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    rapier3d
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../../../three" class="md-nav__link">
         
   
@@ -512,19 +556,11 @@
 <h2 id="irigidbodycomponent-interface">IRigidBodyComponent (interface)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export interface IRigidBodyComponent&lt;D, R, PW extends IPhysicsWorldComponent&lt;D, R&gt; = IPhysicsWorldComponent&lt;D, R&gt;&gt;
-  extends IWorldComponent&lt;D, R, IVisualSceneComponent&lt;D, R&gt;, PW&gt; {
-  entity: IEntity | null
-
-  position: D
-  rotation: R
-
-  name: string
+  extends IBodyComponent&lt;D, R, PW&gt; {
+  linearVelocity: D
+  angularVelocity: R | D
 
   clone(): IRigidBodyComponent&lt;D, R, PW&gt;
-
-  addToWorld(world: GgWorld&lt;D, R, IVisualSceneComponent&lt;D, R&gt;, PW&gt;): void
-
-  removeFromWorld(world: GgWorld&lt;D, R, IVisualSceneComponent&lt;D, R&gt;, PW&gt;): void
 
   /** clear velocities etc. */
   resetMotion(): void
