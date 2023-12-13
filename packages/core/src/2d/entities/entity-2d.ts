@@ -1,16 +1,13 @@
 import { Pnt2, Point2, TickOrder } from '../../base';
-import { IRigidBody2dComponent } from '../components/physics/i-rigid-body-2d.component';
-import { IDisplayObject2dComponent } from '../components/rendering/i-display-object-2d.component';
 import { IPositionable2d } from '../interfaces/i-positionable-2d';
 import { IRenderable2dEntity } from './i-renderable-2d.entity';
-import { IVisualScene2dComponent } from '../components/rendering/i-visual-scene-2d.component';
-import { IPhysicsWorld2dComponent } from '../components/physics/i-physics-world-2d.component';
+import { PhysicsTypeDocRepo2D, VisualTypeDocRepo2D } from '../gg-2d-world';
 
 export class Entity2d<
-    VS extends IVisualScene2dComponent = IVisualScene2dComponent,
-    PW extends IPhysicsWorld2dComponent = IPhysicsWorld2dComponent,
+    VTypeDoc extends VisualTypeDocRepo2D = VisualTypeDocRepo2D,
+    PTypeDoc extends PhysicsTypeDocRepo2D = PhysicsTypeDocRepo2D,
   >
-  extends IRenderable2dEntity<VS, PW>
+  extends IRenderable2dEntity<VTypeDoc, PTypeDoc>
   implements IPositionable2d
 {
   public readonly tickOrder = TickOrder.OBJECTS_BINDING;
@@ -55,7 +52,7 @@ export class Entity2d<
   /**
    * Synchronize physics body transform with entity (and object2d if defined)
    * */
-  protected runTransformBinding(objectBody: IRigidBody2dComponent, object2D: IDisplayObject2dComponent | null): void {
+  protected runTransformBinding(objectBody: PTypeDoc['rigidBody'], object2D: VTypeDoc['displayObject'] | null): void {
     const pos = objectBody.position;
     const quat = objectBody.rotation;
     if (object2D) {
@@ -67,8 +64,8 @@ export class Entity2d<
   }
 
   constructor(
-    public readonly object2D: IDisplayObject2dComponent | null,
-    public readonly objectBody: IRigidBody2dComponent | null,
+    public readonly object2D: VTypeDoc['displayObject'] | null,
+    public readonly objectBody: PTypeDoc['rigidBody'] | null,
   ) {
     super();
     if (objectBody) {

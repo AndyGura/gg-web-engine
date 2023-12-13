@@ -1,6 +1,5 @@
 import { IEntity } from './i-entity';
-import { IVisualSceneComponent } from '../components/rendering/i-visual-scene.component';
-import { IPhysicsWorldComponent } from '../components/physics/i-physics-world.component';
+import { PhysicsTypeDocRepo, VisualTypeDocRepo } from '../gg-world';
 
 const updateRecv = (item: IEntity) => {
   if (!!(item as any).updateVisibility) {
@@ -19,9 +18,9 @@ const updateChildrenRecv = (item: IEntity) => {
 export abstract class IRenderableEntity<
   D = any,
   R = any,
-  V extends IVisualSceneComponent<D, R> = IVisualSceneComponent<D, R>,
-  P extends IPhysicsWorldComponent<D, R> = IPhysicsWorldComponent<D, R>,
-> extends IEntity<D, R, V, P> {
+  TypeDoc extends VisualTypeDocRepo<D, R> = VisualTypeDocRepo<D, R>,
+  PTypeDoc extends PhysicsTypeDocRepo<D, R> = PhysicsTypeDocRepo<D, R>,
+> extends IEntity<D, R, TypeDoc, PTypeDoc> {
   private _visible: boolean = true;
 
   public get visible(): boolean {

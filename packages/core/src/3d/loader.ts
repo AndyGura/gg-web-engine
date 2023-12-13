@@ -1,9 +1,7 @@
-import { Gg3dWorld } from './gg-3d-world';
+import { Gg3dWorld, PhysicsTypeDocRepo3D, VisualTypeDocRepo3D } from './gg-3d-world';
 import { GgMeta } from './models/gg-meta';
 import { Entity3d } from './entities/entity-3d';
 import { Pnt3, Point3, Point4, Qtrn } from '../base';
-import { IDisplayObject3dComponent } from './components/rendering/i-display-object-3d.component';
-import { IRigidBody3dComponent } from './components/physics/i-rigid-body-3d.component';
 
 export enum CachingStrategy {
   Nothing,
@@ -34,17 +32,28 @@ const defaultLoadOptions: LoadOptions = {
   loadProps: true,
 };
 
-export type LoadResourcesResult = {
-  resources: { object3D: IDisplayObject3dComponent | null; body: IRigidBody3dComponent | null }[];
+export type LoadResourcesResult<
+  VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D,
+  PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D,
+> = {
+  resources: { object3D: VTypeDoc['displayObject'] | null; body: PTypeDoc['rigidBody'] | null }[];
   meta: GgMeta;
 };
 
-export type LoadResult = {
-  entities: Entity3d[];
+export type LoadResult<
+  VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D,
+  PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D,
+> = {
+  entities: Entity3d<VTypeDoc, PTypeDoc>[];
   meta: GgMeta;
 };
 
-const cloneLoadResourcesResult = (loadResult: LoadResourcesResult) => ({
+const cloneLoadResourcesResult = <
+  VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D,
+  PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D,
+>(
+  loadResult: LoadResourcesResult<VTypeDoc, PTypeDoc>,
+) => ({
   meta: loadResult.meta, // TODO deep clone it
   resources: loadResult.resources.map(({ object3D, body }) => ({
     object3D: object3D && object3D.clone(),
@@ -52,18 +61,24 @@ const cloneLoadResourcesResult = (loadResult: LoadResourcesResult) => ({
   })),
 });
 
-export type LoadResultWithProps = LoadResult & { props?: LoadResult[] };
+export type LoadResultWithProps<
+  VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D,
+  PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D,
+> = LoadResult<VTypeDoc, PTypeDoc> & { props?: LoadResult<VTypeDoc, PTypeDoc>[] };
 
-export class Gg3dLoader {
+export class Gg3dLoader<
+  VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D,
+  PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D,
+> {
   readonly filesCache: Map<string, [ArrayBuffer, GgMeta] | Promise<[ArrayBuffer, GgMeta]>> = new Map<
     string,
     [ArrayBuffer, GgMeta] | Promise<[ArrayBuffer, GgMeta]>
   >();
 
-  readonly loadResultCache: Map<string, LoadResourcesResult | Promise<LoadResourcesResult>> = new Map<
+  readonly loadResultCache: Map<
     string,
-    LoadResourcesResult | Promise<LoadResourcesResult>
-  >();
+    LoadResourcesResult<VTypeDoc, PTypeDoc> | Promise<LoadResourcesResult<VTypeDoc, PTypeDoc>>
+  > = new Map<string, LoadResourcesResult<VTypeDoc, PTypeDoc> | Promise<LoadResourcesResult<VTypeDoc, PTypeDoc>>>();
 
   constructor(protected readonly world: Gg3dWorld) {}
 
@@ -90,7 +105,7 @@ export class Gg3dLoader {
   public async loadGgGlbResources(
     path: string,
     cachingStrategy: CachingStrategy = CachingStrategy.Nothing,
-  ): Promise<LoadResourcesResult> {
+  ): Promise<LoadResourcesResult<VTypeDoc, PTypeDoc>> {
     if (cachingStrategy == CachingStrategy.Entities && this.loadResultCache.has(path)) {
       const cached = this.loadResultCache.get(path);
       const cachedResult = cached instanceof Promise ? await cached : cached;
@@ -104,7 +119,7 @@ export class Gg3dLoader {
       this.world.visualScene.loader.loadFromGgGlb(glb, meta),
       this.world.physicsWorld.loader.loadFromGgGlb(glb, meta),
     ]);
-    const result: LoadResourcesResult = { resources: [], meta };
+    const result: LoadResourcesResult<VTypeDoc, PTypeDoc> = { resources: [], meta };
     if (!object) {
       return result;
     }
@@ -129,10 +144,10 @@ export class Gg3dLoader {
   public async loadGgGlb(
     path: string,
     options: Partial<LoadOptions> = defaultLoadOptions,
-  ): Promise<LoadResultWithProps> {
+  ): Promise<LoadResultWithProps<VTypeDoc, PTypeDoc>> {
     const loadOptions = { ...defaultLoadOptions, ...options };
     const { resources, meta } = await this.loadGgGlbResources(path, loadOptions.cachingStrategy);
-    const result: LoadResultWithProps = {
+    const result: LoadResultWithProps<VTypeDoc, PTypeDoc> = {
       entities: resources.map(({ object3D, body }) => new Entity3d(object3D, body)),
       meta,
     };

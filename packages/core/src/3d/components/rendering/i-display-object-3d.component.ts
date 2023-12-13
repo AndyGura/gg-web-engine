@@ -1,5 +1,5 @@
 import { IDisplayObjectComponent, Point3, Point4 } from '../../../base';
-import { IVisualScene3dComponent } from './i-visual-scene-3d.component';
+import { VisualTypeDocRepo3D } from '../../gg-3d-world';
 
-export interface IDisplayObject3dComponent<VS extends IVisualScene3dComponent = IVisualScene3dComponent>
-  extends IDisplayObjectComponent<Point3, Point4, VS> {}
+export interface IDisplayObject3dComponent<TypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D>
+  extends IDisplayObjectComponent<Point3, Point4, TypeDoc> {}

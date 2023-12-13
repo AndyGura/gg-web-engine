@@ -1,11 +1,10 @@
 import { ITriggerComponent, Point2 } from '../../../base';
 import { Observable } from 'rxjs';
-import { IPhysicsWorld2dComponent } from './i-physics-world-2d.component';
-import { IRigidBody2dComponent } from './i-rigid-body-2d.component';
+import { PhysicsTypeDocRepo2D } from '../../gg-2d-world';
 
-export interface ITrigger2dComponent<PW extends IPhysicsWorld2dComponent = IPhysicsWorld2dComponent>
-  extends ITriggerComponent<Point2, number, PW> {
-  get onEntityEntered(): Observable<IRigidBody2dComponent>;
+export interface ITrigger2dComponent<TypeDoc extends PhysicsTypeDocRepo2D = PhysicsTypeDocRepo2D>
+  extends ITriggerComponent<Point2, number, TypeDoc> {
+  get onEntityEntered(): Observable<TypeDoc['rigidBody']>;
 
-  get onEntityLeft(): Observable<IRigidBody2dComponent | null>;
+  get onEntityLeft(): Observable<TypeDoc['rigidBody'] | null>;
 }

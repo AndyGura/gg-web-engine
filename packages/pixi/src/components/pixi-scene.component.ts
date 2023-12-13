@@ -2,8 +2,9 @@ import { IVisualScene2dComponent, RendererOptions } from '@gg-web-engine/core';
 import { Container } from 'pixi.js';
 import { PixiFactory } from '../pixi-factory';
 import { PixiRendererComponent } from './pixi-renderer.component';
+import { PixiVisualTypeDocRepo2D } from '../types';
 
-export class PixiSceneComponent implements IVisualScene2dComponent {
+export class PixiSceneComponent implements IVisualScene2dComponent<PixiVisualTypeDocRepo2D> {
   private _nativeContainer: Container | null = null;
   public get nativeContainer(): Container | null {
     return this._nativeContainer;

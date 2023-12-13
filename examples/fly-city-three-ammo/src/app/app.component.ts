@@ -7,12 +7,16 @@ import {
   ViewChild,
 } from '@angular/core';
 import { Gg3dWorld } from '@gg-web-engine/core';
-import { ThreeSceneComponent } from '@gg-web-engine/three';
-import { AmmoWorldComponent } from '@gg-web-engine/ammo';
+import { ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
+import { AmmoPhysicsTypeDocRepo, AmmoWorldComponent } from '@gg-web-engine/ammo';
 import { filter } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 import { GameRunner } from './game-runner';
 import { GameFactory } from './game-factory';
+
+export type FlyCityVTypeDoc = ThreeVisualTypeDocRepo;
+export type FlyCityPTypeDoc = AmmoPhysicsTypeDocRepo;
+export type FlyCityWorld = Gg3dWorld<FlyCityVTypeDoc, FlyCityPTypeDoc, ThreeSceneComponent, AmmoWorldComponent>;
 
 @Component({
   selector: 'app-root',
@@ -24,7 +28,7 @@ export class AppComponent implements AfterViewInit {
 
   @ViewChild('canvas') canvas!: ElementRef<HTMLCanvasElement>;
 
-  world!: Gg3dWorld<ThreeSceneComponent, AmmoWorldComponent>;
+  world!: FlyCityWorld;
   runner?: GameRunner;
 
   showHelpText: boolean = true;

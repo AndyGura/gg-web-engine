@@ -1,8 +1,17 @@
-import { Entity2d, Gg2dWorld, IRigidBody2dComponent, IVisualScene2dComponent, Pnt2, Point2 } from '@gg-web-engine/core';
-import { MatterWorldComponent } from './matter-world.component';
+import {
+  Entity2d,
+  Gg2dWorld,
+  IRigidBody2dComponent,
+  IVisualScene2dComponent,
+  Pnt2,
+  Point2,
+  VisualTypeDocRepo2D,
+} from '@gg-web-engine/core';
 import { Body, Composite, Vector } from 'matter-js';
+import { MatterPhysicsTypeDocRepo } from '../types';
+import { MatterWorldComponent } from './matter-world.component';
 
-export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterWorldComponent> {
+export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhysicsTypeDocRepo> {
   public get position(): Point2 {
     return this.nativeBody.position;
   }
@@ -46,11 +55,15 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterWor
     throw new Error('Gg2dBody.clone() not implemented for Matter.js');
   }
 
-  addToWorld(world: Gg2dWorld<IVisualScene2dComponent, MatterWorldComponent>): void {
+  addToWorld(
+    world: Gg2dWorld<VisualTypeDocRepo2D, MatterPhysicsTypeDocRepo, IVisualScene2dComponent, MatterWorldComponent>,
+  ): void {
     Composite.add(world.physicsWorld.matterWorld!, this.nativeBody);
   }
 
-  removeFromWorld(world: Gg2dWorld<IVisualScene2dComponent, MatterWorldComponent>): void {
+  removeFromWorld(
+    world: Gg2dWorld<VisualTypeDocRepo2D, MatterPhysicsTypeDocRepo, IVisualScene2dComponent, MatterWorldComponent>,
+  ): void {
     Composite.remove(world.physicsWorld.matterWorld!, this.nativeBody);
   }
 

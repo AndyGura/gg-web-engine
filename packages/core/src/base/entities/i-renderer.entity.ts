@@ -1,10 +1,9 @@
 import { IEntity, TickOrder } from './i-entity';
-import { GgWorld } from '../gg-world';
+import { GgWorld, VisualTypeDocRepo } from '../gg-world';
 import { auditTime, BehaviorSubject, fromEvent, merge, Observable, startWith, takeUntil } from 'rxjs';
 import { distinctUntilChanged, map } from 'rxjs/operators';
 import { Point2 } from '../models/points';
-import { IRendererComponent, RendererOptions } from '../components/rendering/i-renderer.component';
-import { IVisualSceneComponent } from '../components/rendering/i-visual-scene.component';
+import { RendererOptions } from '../components/rendering/i-renderer.component';
 
 /**
  * Represents a base class for a renderer entity.
@@ -13,9 +12,8 @@ import { IVisualSceneComponent } from '../components/rendering/i-visual-scene.co
 export abstract class IRendererEntity<
   D,
   R,
-  VS extends IVisualSceneComponent<D, R> = IVisualSceneComponent<D, R>,
-  RC extends IRendererComponent<D, R, VS> = IRendererComponent<D, R, VS>,
-> extends IEntity<D, R, VS> {
+  TypeDoc extends VisualTypeDocRepo<D, R> = VisualTypeDocRepo<D, R>,
+> extends IEntity<D, R, TypeDoc> {
   public readonly tickOrder = TickOrder.RENDERING;
   /** Represents the current size of the renderer. */
   protected _rendererSize$: BehaviorSubject<Point2 | null> = new BehaviorSubject<Point2 | null>(null);
@@ -43,7 +41,7 @@ export abstract class IRendererEntity<
    Initializes a new instance of the BaseGgRenderer class.
    * @param renderer
    */
-  constructor(public readonly renderer: RC) {
+  constructor(public readonly renderer: TypeDoc['renderer']) {
     super();
     this.addComponents(renderer);
     this.tick$.subscribe(() => {
@@ -51,7 +49,7 @@ export abstract class IRendererEntity<
     });
   }
 
-  onSpawned(world: GgWorld<D, R, VS, any>) {
+  onSpawned(world: GgWorld<D, R, TypeDoc>) {
     this._rendererSize$.next(null);
     if (this.rendererOptions.size == 'fullscreen' || typeof this.rendererOptions.size === 'function') {
       if (this.renderer.canvas) {

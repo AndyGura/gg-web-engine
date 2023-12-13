@@ -1,20 +1,38 @@
 import {
   GgGlobalClock,
+  IDisplayObjectComponent,
   IEntity,
   IPhysicsWorldComponent,
   IPositionable,
   IRenderableEntity,
+  IRendererComponent,
+  IRigidBodyComponent,
+  ITriggerComponent,
   IVisualSceneComponent,
   KeyboardInput,
   PausableClock,
   TickOrder,
 } from '../base';
 
+export type VisualTypeDocRepo<D, R> = {
+  factory: unknown;
+  displayObject: IDisplayObjectComponent<D, R>;
+  renderer: IRendererComponent<D, R>;
+};
+
+export type PhysicsTypeDocRepo<D, R> = {
+  factory: unknown;
+  rigidBody: IRigidBodyComponent<D, R>;
+  trigger: ITriggerComponent<D, R>;
+};
+
 export abstract class GgWorld<
   D,
   R,
-  V extends IVisualSceneComponent<D, R> = IVisualSceneComponent<D, R>,
-  P extends IPhysicsWorldComponent<D, R> = IPhysicsWorldComponent<D, R>,
+  VTypeDoc extends VisualTypeDocRepo<D, R> = VisualTypeDocRepo<D, R>,
+  PTypeDoc extends PhysicsTypeDocRepo<D, R> = PhysicsTypeDocRepo<D, R>,
+  VS extends IVisualSceneComponent<D, R, VTypeDoc> = IVisualSceneComponent<D, R, VTypeDoc>,
+  PW extends IPhysicsWorldComponent<D, R, PTypeDoc> = IPhysicsWorldComponent<D, R, PTypeDoc>,
 > {
   public readonly worldClock: PausableClock = GgGlobalClock.instance.createChildClock(false);
   public readonly keyboardInput: KeyboardInput = new KeyboardInput();
@@ -31,7 +49,7 @@ export abstract class GgWorld<
     return [...GgWorld._documentWorlds];
   }
 
-  protected constructor(public readonly visualScene: V, public readonly physicsWorld: P) {
+  protected constructor(public readonly visualScene: VS, public readonly physicsWorld: PW) {
     GgWorld._documentWorlds.push(this);
     this.keyboardInput.start();
     if ((window as any).ggstatic) {
@@ -143,10 +161,11 @@ export abstract class GgWorld<
   }
 
   abstract addPrimitiveRigidBody(
-    descr: any,
+    descr: unknown, // type defined in subclasses
     position?: D,
     rotation?: R,
-  ): IPositionable<D, R> & IRenderableEntity<D, R, V, P>;
+    material?: unknown, // type defined in subclasses
+  ): IPositionable<D, R> & IRenderableEntity<D, R, VTypeDoc>;
 
   public addEntity(entity: IEntity): void {
     if (!!entity.world) {

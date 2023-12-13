@@ -1,6 +1,6 @@
 import { Point3, Point4 } from '../../../base';
 import { IRigidBody3dComponent } from './i-rigid-body-3d.component';
-import { IPhysicsWorld3dComponent } from './i-physics-world-3d.component';
+import { PhysicsTypeDocRepo3D } from '../../gg-3d-world';
 
 export type SuspensionOptions = {
   stiffness: number;
@@ -20,8 +20,8 @@ export type WheelOptions = {
   maxTravel: number;
 };
 
-export interface IRaycastVehicleComponent<PW extends IPhysicsWorld3dComponent = IPhysicsWorld3dComponent>
-  extends IRigidBody3dComponent<PW> {
+export interface IRaycastVehicleComponent<TypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D>
+  extends IRigidBody3dComponent<TypeDoc> {
   /** Return speed in m/s, calculated by car itself (which should be shown on the speedometer) */
   get wheelSpeed(): number;
 

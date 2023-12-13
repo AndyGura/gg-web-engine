@@ -2,16 +2,17 @@ import {
   Gg3dWorld,
   IDebugPhysicsDrawer,
   IPhysicsWorld3dComponent,
-  IVisualScene3dComponent,
   Point3,
   Point4,
+  VisualTypeDocRepo3D,
 } from '@gg-web-engine/core';
 import Ammo, * as AmmoModule from 'ammojs-typed';
 import { AmmoFactory } from '../ammo-factory';
 import { AmmoLoader } from '../ammo-loader';
 import { AmmoDebugger, AmmoDebugMode } from '../ammo-debugger';
+import { AmmoPhysicsTypeDocRepo } from '../types';
 
-export class AmmoWorldComponent implements IPhysicsWorld3dComponent {
+export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsTypeDocRepo> {
   private _factory: AmmoFactory | null = null;
   public get factory(): AmmoFactory {
     if (!this._factory) {
@@ -106,7 +107,7 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent {
   }
 
   startDebugger(
-    world: Gg3dWorld<IVisualScene3dComponent, AmmoWorldComponent>,
+    world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>,
     drawer: IDebugPhysicsDrawer<Point3, Point4>,
   ): void {
     if (!this._debugger) {
@@ -118,7 +119,7 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent {
     this._debugDrawer.addToWorld(world);
   }
 
-  stopDebugger(world: Gg3dWorld<IVisualScene3dComponent, AmmoWorldComponent>): void {
+  stopDebugger(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>): void {
     if (this._debugger) {
       this.dynamicAmmoWorld?.setDebugDrawer(null!);
       this.ammo.destroy(this._debugger.ammoInstance);

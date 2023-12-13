@@ -12,10 +12,9 @@ import { ActiveEvents, ColliderDesc, Quaternion, RigidBodyDesc } from '@dimforge
 import { Rapier3dRigidBodyComponent } from './components/rapier-3d-rigid-body.component';
 import { Rapier3dTriggerComponent } from './components/rapier-3d-trigger.component';
 import { Rapier3dWorldComponent } from './components/rapier-3d-world.component';
+import { Rapier3dPhysicsTypeDocRepo } from './types';
 
-export class Rapier3dFactory
-  implements IPhysicsBody3dComponentFactory<Rapier3dRigidBodyComponent, Rapier3dTriggerComponent>
-{
+export class Rapier3dFactory implements IPhysicsBody3dComponentFactory<Rapier3dPhysicsTypeDocRepo> {
   constructor(protected readonly world: Rapier3dWorldComponent) {}
 
   createRigidBody(
@@ -54,6 +53,10 @@ export class Rapier3dFactory
       colliderDescr,
       this.createRigidBodyDescr({ dynamic: false }, transform),
     );
+  }
+
+  createRaycastVehicle(chassis: Rapier3dRigidBodyComponent): never {
+    throw new Error('Raycast vehicle bindings for rapier3D are not implemented');
   }
 
   public createColliderDescr(descriptor: Shape3DDescriptor): ColliderDesc[] {

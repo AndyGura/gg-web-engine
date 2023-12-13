@@ -1,6 +1,6 @@
-import { AnimationFunction, AnimationMixer, lerpNumber, Pnt3, Point3, Qtrn } from '../../../../base';
+import { AnimationFunction, AnimationMixer, lerpNumber, Pnt3, Point3, Point4, Qtrn } from '../../../../base';
 import { takeUntil } from 'rxjs';
-import { Gg3dWorld } from '../../../gg-3d-world';
+import { Gg3dWorld, VisualTypeDocRepo3D } from '../../../gg-3d-world';
 import { Renderer3dEntity } from '../../renderer-3d.entity';
 
 export type Camera3dAnimationArgs = {
@@ -13,8 +13,16 @@ export type Camera3dAnimationArgs = {
 const defaultUp = Pnt3.Z;
 const defaultFov = 65;
 
-export class Camera3dAnimator extends AnimationMixer<Camera3dAnimationArgs> {
-  constructor(public entity: Renderer3dEntity, protected _animationFunction: AnimationFunction<Camera3dAnimationArgs>) {
+export class Camera3dAnimator<VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D> extends AnimationMixer<
+  Camera3dAnimationArgs,
+  Point3,
+  Point4,
+  VTypeDoc
+> {
+  constructor(
+    public entity: Renderer3dEntity<VTypeDoc>,
+    protected _animationFunction: AnimationFunction<Camera3dAnimationArgs>,
+  ) {
     super(_animationFunction, (a, b, t) => ({
       position: Pnt3.lerp(a.position, b.position, t),
       target: Pnt3.lerp(a.target, b.target, t),
@@ -23,7 +31,7 @@ export class Camera3dAnimator extends AnimationMixer<Camera3dAnimationArgs> {
     }));
   }
 
-  onSpawned(world: Gg3dWorld) {
+  onSpawned(world: Gg3dWorld<VTypeDoc>) {
     super.onSpawned(world);
     this.value$.pipe(takeUntil(this._onRemoved$)).subscribe(value => this.applyPositioning(value));
   }

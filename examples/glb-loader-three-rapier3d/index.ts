@@ -1,11 +1,16 @@
 import { Gg3dWorld, GgStatic, OrbitCameraController } from '@gg-web-engine/core';
 import { interval } from 'rxjs';
-import { ThreeCameraComponent, ThreeDisplayObjectComponent, ThreeSceneComponent } from '@gg-web-engine/three';
-import { DirectionalLight, HemisphereLight, PerspectiveCamera } from 'three';
-import { Rapier3dWorldComponent } from '@gg-web-engine/rapier3d';
+import { ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
+import { AmbientLight, DirectionalLight } from 'three';
+import { Rapier3dPhysicsTypeDocRepo, Rapier3dWorldComponent } from '@gg-web-engine/rapier3d';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 
-const world = new Gg3dWorld(
+const world = new Gg3dWorld<
+  ThreeVisualTypeDocRepo,
+  Rapier3dPhysicsTypeDocRepo,
+  ThreeSceneComponent,
+  Rapier3dWorldComponent
+>(
   new ThreeSceneComponent(),
   new Rapier3dWorldComponent(),
 );
@@ -14,22 +19,13 @@ world.init().then(async () => {
   GgStatic.instance.showStats = true;
   // GgStatic.instance.devConsoleEnabled = true;
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
-  const renderer = world.addRenderer(
-    new ThreeCameraComponent(new PerspectiveCamera(75, 1, 1, 10000)),
-    canvas,
-  );
-  renderer.camera.position = { x: 9, y: 12, z: 9 };
+  const renderer = world.addRenderer(world.visualScene.factory.createPerspectiveCamera(), canvas);
+  renderer.position = { x: 9, y: 12, z: 9 };
 
-  const controller = new OrbitCameraController(renderer, {
-    mouseOptions: { canvas },
-  });
+  const controller = new OrbitCameraController(renderer, { mouseOptions: { canvas } });
   world.addEntity(controller);
 
-  const hemiLight = new HemisphereLight(0xffffff, 0xffffff, 0.6);
-  hemiLight.color.setHSL(0.6, 1, 0.6);
-  hemiLight.groundColor.setHSL(0.095, 1, 0.75);
-  hemiLight.position.set(0, 50, 0);
-  world.visualScene.nativeScene?.add(hemiLight);
+  world.visualScene.nativeScene?.add(new AmbientLight(0xffffff, 0.6));
   const dirLight = new DirectionalLight(0xffffff, 1);
   dirLight.color.setHSL(0.1, 1, 0.95);
   dirLight.position.set(50, 50, 70);
@@ -50,7 +46,7 @@ world.init().then(async () => {
   );
   for (const item of entities) {
     if (item.object3D) {
-      (item.object3D as ThreeDisplayObjectComponent).nativeMesh.traverse(
+      item.object3D.nativeMesh.traverse(
         (obj) => {
           obj.castShadow = true;
           obj.receiveShadow = true;
@@ -89,7 +85,7 @@ world.init().then(async () => {
       },
     );
     const item = entities[0];
-    (item.object3D as ThreeDisplayObjectComponent).nativeMesh.traverse(
+    item.object3D.nativeMesh.traverse(
       (obj) => {
         obj.castShadow = true;
         obj.receiveShadow = true;

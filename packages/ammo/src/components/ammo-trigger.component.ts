@@ -1,14 +1,15 @@
-import { Gg3dWorld, IEntity, ITrigger3dComponent, IVisualScene3dComponent } from '@gg-web-engine/core';
+import { Gg3dWorld, IEntity, ITrigger3dComponent, VisualTypeDocRepo3D } from '@gg-web-engine/core';
 import { AmmoWorldComponent } from './ammo-world.component';
 import { filter, map, Observable, Subject } from 'rxjs';
 import Ammo from 'ammojs-typed';
 import { AmmoBodyComponent } from './ammo-body.component';
 import { ammoId } from '../ammo-utils';
 import { AmmoRigidBodyComponent } from './ammo-rigid-body.component';
+import { AmmoPhysicsTypeDocRepo } from '../types';
 
 export class AmmoTriggerComponent
   extends AmmoBodyComponent<Ammo.btPairCachingGhostObject>
-  implements ITrigger3dComponent<AmmoWorldComponent>
+  implements ITrigger3dComponent<AmmoPhysicsTypeDocRepo>
 {
   public entity: IEntity | null = null;
 
@@ -59,7 +60,7 @@ export class AmmoTriggerComponent
     });
   }
 
-  addToWorld(world: Gg3dWorld<IVisualScene3dComponent, AmmoWorldComponent>) {
+  addToWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>) {
     if (world.physicsWorld != this.world) {
       throw new Error('Ammo triggers cannot be shared between different worlds');
     }
@@ -67,7 +68,7 @@ export class AmmoTriggerComponent
     this.overlaps.clear();
   }
 
-  removeFromWorld(world: Gg3dWorld<IVisualScene3dComponent, AmmoWorldComponent>): void {
+  removeFromWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>): void {
     if (world.physicsWorld != this.world) {
       throw new Error('Ammo triggers cannot be shared between different worlds');
     }

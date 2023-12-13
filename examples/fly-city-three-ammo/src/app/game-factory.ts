@@ -1,9 +1,9 @@
 import {
   CachingStrategy,
-  Gg3dWorld,
+  GgCarEntity,
+  GgCarProperties,
   GgDummy,
   GgStatic,
-  IDisplayObject3dComponent,
   IEntity,
   IPositionable3d,
   MapGraph,
@@ -11,28 +11,20 @@ import {
   Pnt3,
   Qtrn,
   Renderer3dEntity,
-  Trigger3dEntity, GgCarProperties, GgCarEntity,
+  Trigger3dEntity,
 } from '@gg-web-engine/core';
-import { ThreeCameraComponent, ThreeSceneComponent } from '@gg-web-engine/three';
-import { AmmoRaycastVehicleComponent, AmmoRigidBodyComponent, AmmoWorldComponent } from '@gg-web-engine/ammo';
-import {
-  CubeReflectionMapping,
-  CubeTexture,
-  CubeTextureLoader,
-  DirectionalLight,
-  PerspectiveCamera,
-  RGBAFormat,
-} from 'three';
+import { CubeReflectionMapping, CubeTexture, CubeTextureLoader, DirectionalLight, RGBAFormat } from 'three';
 import { filter, firstValueFrom } from 'rxjs';
 import { CAR_SPECS, LAMBO_SPECS, TRUCK_SPECS } from './car-specs';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { FlyCityPTypeDoc, FlyCityVTypeDoc, FlyCityWorld } from './app.component';
 
 
 export class GameFactory {
-  constructor(public readonly world: Gg3dWorld<ThreeSceneComponent, AmmoWorldComponent>) {
+  constructor(public readonly world: FlyCityWorld) {
   }
 
-  public async initGame(canvas: HTMLCanvasElement): Promise<[Renderer3dEntity, MapGraph3dEntity, Trigger3dEntity]> {
+  public async initGame(canvas: HTMLCanvasElement): Promise<[Renderer3dEntity<FlyCityVTypeDoc>, MapGraph3dEntity<FlyCityVTypeDoc, FlyCityPTypeDoc>, Trigger3dEntity<FlyCityPTypeDoc>]> {
     GgStatic.instance.showStats = true;
     // GgStatic.instance.devConsoleEnabled = true;
     this.world.visualScene.loader.registerGltfLoaderAddon(new GLTFLoader());
@@ -46,9 +38,9 @@ export class GameFactory {
     return [renderer, cityMapGraph, mapBounds];
   }
 
-  private async initRenderer(canvas: HTMLCanvasElement): Promise<Renderer3dEntity> {
+  private async initRenderer(canvas: HTMLCanvasElement): Promise<Renderer3dEntity<FlyCityVTypeDoc>> {
     const renderer = this.world.addRenderer(
-      new ThreeCameraComponent(new PerspectiveCamera(75, 1, 1, 10000)),
+      this.world.visualScene.factory.createPerspectiveCamera({ fov: 75 }),
       canvas,
       { background: 0xffffff },
     );
@@ -79,7 +71,7 @@ export class GameFactory {
     this.world.visualScene.nativeScene!.background = envMap;
   }
 
-  private setupMapGraph(renderCursor: (IEntity & IPositionable3d)): MapGraph3dEntity {
+  private setupMapGraph(renderCursor: (IEntity & IPositionable3d)): MapGraph3dEntity<FlyCityVTypeDoc, FlyCityPTypeDoc> {
     const mapGraph = MapGraph.fromMapSquareGrid(
       Array(11).fill(null).map((_, i) => (
         Array(11).fill(null).map((_, j) => ({
@@ -91,7 +83,7 @@ export class GameFactory {
         }))
       )),
     );
-    const cityMapGraph = new MapGraph3dEntity(mapGraph, { loadDepth: 3, inertia: 2 });
+    const cityMapGraph = new MapGraph3dEntity<FlyCityVTypeDoc, FlyCityPTypeDoc>(mapGraph, { loadDepth: 3, inertia: 2 });
     cityMapGraph.loaderCursorEntity$.next(renderCursor);
     cityMapGraph.chunkLoaded$.subscribe(async ([{ meta }, { position }]) => {
       // spawn cars
@@ -114,7 +106,7 @@ export class GameFactory {
               console.error('Cannot spawn car without chassis body');
               return null;
             }
-            const entity = this.generateCar(chassisMesh, chassisBody as AmmoRigidBodyComponent, chassisDummies, wheelMesh, (dummy.car_id.startsWith('truck') ? TRUCK_SPECS : CAR_SPECS));
+            const entity = this.generateCar(chassisMesh, chassisBody, chassisDummies, wheelMesh, (dummy.car_id.startsWith('truck') ? TRUCK_SPECS : CAR_SPECS));
             entity.name = dummy.car_id;
             entity.position = Pnt3.add(position, dummy.position);
             entity.rotation = dummy.rotation;
@@ -131,8 +123,8 @@ export class GameFactory {
     return cityMapGraph;
   }
 
-  public createMapBounds(): Trigger3dEntity {
-    const playingArea = new Trigger3dEntity(this.world.physicsWorld.factory.createTrigger({
+  public createMapBounds(): Trigger3dEntity<FlyCityPTypeDoc> {
+    const playingArea = new Trigger3dEntity<FlyCityPTypeDoc>(this.world.physicsWorld.factory.createTrigger({
       shape: 'BOX',
       dimensions: { x: 1000, y: 1000, z: 200 },
     }));
@@ -153,15 +145,15 @@ export class GameFactory {
         this.world.loader.loadGgGlbResources('https://gg-web-demos.guraklgames.com/assets/fly-city/lambo/wheel'),
       ],
     );
-    const lambo = this.generateCar(chassisMesh, chassisBody as AmmoRigidBodyComponent, chassisDummies, wheelMesh, LAMBO_SPECS);
+    const lambo = this.generateCar(chassisMesh, chassisBody!, chassisDummies, wheelMesh, LAMBO_SPECS);
     lambo.name = 'lambo';
     this.world.addEntity(lambo);
     return lambo;
   }
 
   private generateCar(
-    chassisMesh: IDisplayObject3dComponent | null, chassisBody: AmmoRigidBodyComponent,
-    chassisDummies: GgDummy[], wheelMesh: IDisplayObject3dComponent | null, specs: Omit<GgCarProperties, 'wheelOptions'>,
+    chassisMesh: FlyCityVTypeDoc['displayObject'] | null, chassisBody: FlyCityPTypeDoc['rigidBody'],
+    chassisDummies: GgDummy[], wheelMesh: FlyCityVTypeDoc['displayObject'] | null, specs: Omit<GgCarProperties, 'wheelOptions'>,
   ): GgCarEntity {
     return new GgCarEntity(
       {
@@ -185,10 +177,7 @@ export class GameFactory {
         ...specs,
       },
       chassisMesh,
-      new AmmoRaycastVehicleComponent(
-        this.world.physicsWorld,
-        chassisBody,
-      )
+      this.world.physicsWorld.factory.createRaycastVehicle(chassisBody),
     );
   }
 

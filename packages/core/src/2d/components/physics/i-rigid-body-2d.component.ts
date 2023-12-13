@@ -1,7 +1,7 @@
 import { IRigidBodyComponent, Point2 } from '../../../base';
-import { IPhysicsWorld2dComponent } from './i-physics-world-2d.component';
+import { PhysicsTypeDocRepo2D } from '../../gg-2d-world';
 
-export interface IRigidBody2dComponent<PW extends IPhysicsWorld2dComponent = IPhysicsWorld2dComponent>
-  extends IRigidBodyComponent<Point2, number, PW> {
+export interface IRigidBody2dComponent<TypeDoc extends PhysicsTypeDocRepo2D = PhysicsTypeDocRepo2D>
+  extends IRigidBodyComponent<Point2, number, TypeDoc> {
   angularVelocity: number;
 }

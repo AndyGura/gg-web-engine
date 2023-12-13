@@ -1,8 +1,7 @@
 import { IRenderableEntity, Point3, Point4 } from '../../base';
-import { IVisualScene3dComponent } from '../components/rendering/i-visual-scene-3d.component';
-import { IPhysicsWorld3dComponent } from '../components/physics/i-physics-world-3d.component';
+import { PhysicsTypeDocRepo3D, VisualTypeDocRepo3D } from '../gg-3d-world';
 
 export abstract class IRenderable3dEntity<
-  VS extends IVisualScene3dComponent = IVisualScene3dComponent,
-  PW extends IPhysicsWorld3dComponent = IPhysicsWorld3dComponent,
-> extends IRenderableEntity<Point3, Point4, VS, PW> {}
+  TypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D,
+  PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D,
+> extends IRenderableEntity<Point3, Point4, TypeDoc, PTypeDoc> {}

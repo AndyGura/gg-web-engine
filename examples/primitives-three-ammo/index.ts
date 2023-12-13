@@ -1,7 +1,6 @@
 import { Entity3d, Gg3dWorld, GgStatic, OrbitCameraController, Trigger3dEntity } from '@gg-web-engine/core';
 import { interval } from 'rxjs';
-import { ThreeCameraComponent, ThreeSceneComponent } from '@gg-web-engine/three';
-import { PerspectiveCamera } from 'three';
+import { ThreeSceneComponent } from '@gg-web-engine/three';
 import { AmmoWorldComponent } from '@gg-web-engine/ammo';
 
 const world = new Gg3dWorld(
@@ -10,17 +9,12 @@ const world = new Gg3dWorld(
 );
 world.init().then(async () => {
   GgStatic.instance.showStats = true;
-  GgStatic.instance.devConsoleEnabled = true;
+  // GgStatic.instance.devConsoleEnabled = true;
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
-  const renderer = world.addRenderer(
-    new ThreeCameraComponent(new PerspectiveCamera(75, 1, 1, 10000)),
-    canvas,
-  );
-  renderer.camera.position = { x: 9, y: 12, z: 9 };
+  const renderer = world.addRenderer(world.visualScene.factory.createPerspectiveCamera(), canvas);
+  renderer.position = { x: 9, y: 12, z: 9 };
 
-  const controller = new OrbitCameraController(renderer, {
-    mouseOptions: { canvas },
-  });
+  const controller = new OrbitCameraController(renderer, { mouseOptions: { canvas } });
   world.addEntity(controller);
 
   world.addPrimitiveRigidBody({
@@ -42,22 +36,23 @@ world.init().then(async () => {
 
   interval(500).subscribe(() => {
     let item: Entity3d;
-    if (Math.random() < 0.2) {
+    let r = Math.random();
+    if (r < 0.2) {
       item = world.addPrimitiveRigidBody({
         shape: { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } },
         body: { mass: 1 },
       });
-    } else if (Math.random() < 0.4) {
+    } else if (r < 0.4) {
       item = world.addPrimitiveRigidBody({
         shape: { shape: 'CAPSULE', radius: 0.5, centersDistance: 1 },
         body: { mass: 1 },
       });
-    } else if (Math.random() < 0.6) {
+    } else if (r < 0.6) {
       item = world.addPrimitiveRigidBody({
         shape: { shape: 'CYLINDER', radius: 0.5, height: 1 },
         body: { mass: 1 },
       });
-    } else if (Math.random() < 0.8) {
+    } else if (r < 0.8) {
       item = world.addPrimitiveRigidBody({
         shape: { shape: 'CONE', radius: 0.5, height: 1 },
         body: { mass: 1 },

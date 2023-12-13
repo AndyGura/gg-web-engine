@@ -1,9 +1,9 @@
 import { Point2 } from '../../models/points';
 import { Observable } from 'rxjs';
-import { IVisualSceneComponent } from './i-visual-scene.component';
 import { IWorldComponent } from '../i-world-component';
-import { GgWorld } from '../../gg-world';
+import { GgWorld, VisualTypeDocRepo } from '../../gg-world';
 import { IEntity } from '../../entities/i-entity';
+import { IVisualSceneComponent } from './i-visual-scene.component';
 
 /**
  * Represents the options that can be passed to a renderer.
@@ -29,15 +29,15 @@ const DEFAULT_RENDERER_OPTIONS: RendererOptions = {
   antialias: true,
 };
 
-export abstract class IRendererComponent<D, R, VS extends IVisualSceneComponent<D, R> = IVisualSceneComponent<D, R>>
-  implements IWorldComponent<D, R, VS>
+export abstract class IRendererComponent<D, R, VTypeDoc extends VisualTypeDocRepo<D, R> = VisualTypeDocRepo<D, R>>
+  implements IWorldComponent<D, R, VTypeDoc>
 {
   entity: IEntity | null = null;
   /** Specifies the options for the renderer. */
   public readonly rendererOptions: RendererOptions;
 
   protected constructor(
-    public readonly scene: VS,
+    public readonly scene: IVisualSceneComponent<D, R, VTypeDoc>,
     public readonly canvas?: HTMLCanvasElement,
     options: Partial<RendererOptions> = {},
   ) {
@@ -52,9 +52,9 @@ export abstract class IRendererComponent<D, R, VS extends IVisualSceneComponent<
    */
   abstract render(): void;
 
-  abstract addToWorld(world: GgWorld<D, R, VS, any>): void;
+  abstract addToWorld(world: GgWorld<D, R, VTypeDoc>): void;
 
-  abstract removeFromWorld(world: GgWorld<D, R, VS, any>): void;
+  abstract removeFromWorld(world: GgWorld<D, R, VTypeDoc>): void;
 
   /**
    * Resizes the renderer to the specified size.

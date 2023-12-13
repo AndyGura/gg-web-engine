@@ -1,11 +1,9 @@
 import { IEntity } from '../../entities/i-entity';
-import { IPhysicsWorldComponent } from './i-physics-world.component';
 import { IWorldComponent } from '../i-world-component';
-import { GgWorld } from '../../gg-world';
-import { IVisualSceneComponent } from '../rendering/i-visual-scene.component';
+import { GgWorld, PhysicsTypeDocRepo, VisualTypeDocRepo } from '../../gg-world';
 
-export interface IBodyComponent<D, R, PW extends IPhysicsWorldComponent<D, R> = IPhysicsWorldComponent<D, R>>
-  extends IWorldComponent<D, R, IVisualSceneComponent<D, R>, PW> {
+export interface IBodyComponent<D, R, TypeDoc extends PhysicsTypeDocRepo<D, R> = PhysicsTypeDocRepo<D, R>>
+  extends IWorldComponent<D, R, VisualTypeDocRepo<D, R>, TypeDoc> {
   entity: IEntity | null;
 
   position: D;
@@ -13,9 +11,9 @@ export interface IBodyComponent<D, R, PW extends IPhysicsWorldComponent<D, R> = 
 
   name: string;
 
-  clone(): IBodyComponent<D, R, PW>;
+  clone(): IBodyComponent<D, R, TypeDoc>;
 
-  addToWorld(world: GgWorld<D, R, IVisualSceneComponent<D, R>, PW>): void;
+  addToWorld(world: GgWorld<D, R, VisualTypeDocRepo<D, R>, TypeDoc>): void;
 
-  removeFromWorld(world: GgWorld<D, R, IVisualSceneComponent<D, R>, PW>): void;
+  removeFromWorld(world: GgWorld<D, R, VisualTypeDocRepo<D, R>, TypeDoc>): void;
 }

@@ -7,15 +7,17 @@ import {
   Point4,
   Qtrn,
   SuspensionOptions,
+  VisualTypeDocRepo3D,
   WheelOptions,
 } from '@gg-web-engine/core';
 import { DynamicRayCastVehicleController, Vector3 } from '@dimforge/rapier3d-compat';
 import { Rapier3dRigidBodyComponent } from './rapier-3d-rigid-body.component';
 import { Rapier3dWorldComponent } from './rapier-3d-world.component';
+import { Rapier3dPhysicsTypeDocRepo } from '../types';
 
 export class Rapier3dRaycastVehicleComponent
   extends Rapier3dRigidBodyComponent
-  implements IRaycastVehicleComponent<Rapier3dWorldComponent>
+  implements IRaycastVehicleComponent<Rapier3dPhysicsTypeDocRepo>
 {
   protected _nativeVehicle: DynamicRayCastVehicleController | null = null;
 
@@ -33,7 +35,9 @@ export class Rapier3dRaycastVehicleComponent
     return (this.nativeVehicle?.currentVehicleSpeed() || 0) / 3.6;
   }
 
-  addToWorld(world: Gg3dWorld<IVisualScene3dComponent, Rapier3dWorldComponent>) {
+  addToWorld(
+    world: Gg3dWorld<VisualTypeDocRepo3D, Rapier3dPhysicsTypeDocRepo, IVisualScene3dComponent, Rapier3dWorldComponent>,
+  ) {
     super.addToWorld(world);
     this._nativeVehicle = world.physicsWorld.nativeWorld.createVehicleController(this._nativeBody!);
     this._nativeVehicle.indexUpAxis = 2;
@@ -44,7 +48,9 @@ export class Rapier3dRaycastVehicleComponent
     setInterval(() => this._nativeVehicle!.updateVehicle(0.01), 10);
   }
 
-  removeFromWorld(world: Gg3dWorld<IVisualScene3dComponent, Rapier3dWorldComponent>) {
+  removeFromWorld(
+    world: Gg3dWorld<VisualTypeDocRepo3D, Rapier3dPhysicsTypeDocRepo, IVisualScene3dComponent, Rapier3dWorldComponent>,
+  ) {
     if (world.physicsWorld != this.world) {
       throw new Error('Rapier3D bodies cannot be shared between different worlds');
     }

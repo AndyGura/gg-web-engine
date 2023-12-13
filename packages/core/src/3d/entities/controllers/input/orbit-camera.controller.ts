@@ -1,7 +1,6 @@
 import {
-  IEntity,
-  TickOrder,
   GgWorld,
+  IEntity,
   MouseInput,
   MouseInputOptions,
   MouseInputState,
@@ -10,6 +9,7 @@ import {
   Point2,
   Point3,
   Qtrn,
+  TickOrder,
 } from '../../../../base';
 import { filter, takeUntil } from 'rxjs';
 import { map } from 'rxjs/operators';

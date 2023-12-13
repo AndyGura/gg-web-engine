@@ -1,20 +1,21 @@
 import {
   Gg3dWorld,
   IRaycastVehicleComponent,
-  IVisualScene3dComponent,
   Point3,
   Point4,
   RaycastVehicle3dEntity,
-  WheelOptions,
   SuspensionOptions,
+  VisualTypeDocRepo3D,
+  WheelOptions,
 } from '@gg-web-engine/core';
 import Ammo from 'ammojs-typed';
 import { AmmoRigidBodyComponent } from './ammo-rigid-body.component';
 import { AmmoWorldComponent } from './ammo-world.component';
+import { AmmoPhysicsTypeDocRepo } from '../types';
 
 export class AmmoRaycastVehicleComponent
   extends AmmoRigidBodyComponent
-  implements IRaycastVehicleComponent<AmmoWorldComponent>
+  implements IRaycastVehicleComponent<AmmoPhysicsTypeDocRepo>
 {
   public readonly nativeVehicle: Ammo.btRaycastVehicle;
   public readonly vehicleTuning: Ammo.btVehicleTuning = new this.ammo.btVehicleTuning();
@@ -38,7 +39,7 @@ export class AmmoRaycastVehicleComponent
     return this.nativeVehicle.getCurrentSpeedKmHour() / 3.6;
   }
 
-  addToWorld(world: Gg3dWorld<IVisualScene3dComponent, AmmoWorldComponent>) {
+  addToWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>) {
     if (world.physicsWorld != this.world) {
       throw new Error('Ammo raycast vehicle cannot be shared between different worlds');
     }

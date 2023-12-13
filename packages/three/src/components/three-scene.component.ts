@@ -5,8 +5,9 @@ import { ThreeLoader } from '../three-loader';
 import { ThreePhysicsDrawer } from '../three-physics-drawer';
 import { ThreeCameraComponent } from './three-camera.component';
 import { ThreeRendererComponent } from './three-renderer-component';
+import { ThreeVisualTypeDocRepo } from '../types';
 
-export class ThreeSceneComponent implements IVisualScene3dComponent {
+export class ThreeSceneComponent implements IVisualScene3dComponent<ThreeVisualTypeDocRepo> {
   private _nativeScene: Scene | null = null;
   public get nativeScene(): Scene | null {
     return this._nativeScene;
@@ -26,7 +27,7 @@ export class ThreeSceneComponent implements IVisualScene3dComponent {
     canvas?: HTMLCanvasElement,
     rendererOptions?: Partial<RendererOptions>,
   ): ThreeRendererComponent {
-    return new ThreeRendererComponent(this, canvas, rendererOptions, camera);
+    return new ThreeRendererComponent(this, camera, canvas, rendererOptions);
   }
 
   dispose(): void {

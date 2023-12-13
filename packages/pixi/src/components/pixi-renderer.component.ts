@@ -1,8 +1,9 @@
 import { Gg2dWorld, IRenderer2dComponent, Point2, RendererOptions } from '@gg-web-engine/core';
 import { Application, Renderer } from 'pixi.js';
 import { PixiSceneComponent } from './pixi-scene.component';
+import { PixiVisualTypeDocRepo2D } from '../types';
 
-export class PixiRendererComponent extends IRenderer2dComponent<PixiSceneComponent> {
+export class PixiRendererComponent extends IRenderer2dComponent<PixiVisualTypeDocRepo2D> {
   public readonly application: Application;
 
   constructor(
@@ -34,11 +35,11 @@ export class PixiRendererComponent extends IRenderer2dComponent<PixiSceneCompone
     this.application.renderer.resize(newSize.x, newSize.y);
   }
 
-  addToWorld(world: Gg2dWorld<PixiSceneComponent>): void {
+  addToWorld(world: Gg2dWorld<PixiVisualTypeDocRepo2D>): void {
     this.application.stage.addChild(this.scene.nativeContainer!);
   }
 
-  removeFromWorld(world: Gg2dWorld<PixiSceneComponent>): void {
+  removeFromWorld(world: Gg2dWorld<PixiVisualTypeDocRepo2D>): void {
     this.application.stage.removeChild(this.scene.nativeContainer!);
   }
 

@@ -3,14 +3,13 @@ import { IRigidBody3dComponent } from '../components/physics/i-rigid-body-3d.com
 import { IDisplayObject3dComponent } from '../components/rendering/i-display-object-3d.component';
 import { IPositionable3d } from '../interfaces/i-positionable-3d';
 import { IRenderable3dEntity } from './i-renderable-3d.entity';
-import { IVisualScene3dComponent } from '../components/rendering/i-visual-scene-3d.component';
-import { IPhysicsWorld3dComponent } from '../components/physics/i-physics-world-3d.component';
+import { PhysicsTypeDocRepo3D, VisualTypeDocRepo3D } from '../gg-3d-world';
 
 export class Entity3d<
-    VS extends IVisualScene3dComponent = IVisualScene3dComponent,
-    PW extends IPhysicsWorld3dComponent = IPhysicsWorld3dComponent,
+    VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D,
+    PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D,
   >
-  extends IRenderable3dEntity<VS, PW>
+  extends IRenderable3dEntity<VTypeDoc, PTypeDoc>
   implements IPositionable3d
 {
   public readonly tickOrder = TickOrder.OBJECTS_BINDING;
@@ -67,8 +66,8 @@ export class Entity3d<
   }
 
   constructor(
-    public readonly object3D: IDisplayObject3dComponent | null,
-    public readonly objectBody: IRigidBody3dComponent | null = null,
+    public readonly object3D: VTypeDoc['displayObject'] | null,
+    public readonly objectBody: PTypeDoc['rigidBody'] | null = null,
   ) {
     super();
     if (objectBody) {

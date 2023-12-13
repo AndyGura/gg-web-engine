@@ -1,16 +1,13 @@
 import { IVisualSceneComponent, Point3, Point4, RendererOptions } from '../../../base';
-import { IDisplayObject3dComponentFactory } from '../../factories';
-import { ICameraComponent } from './i-camera.component';
-import { IRenderer3dComponent } from './i-renderer-3d.component';
-import { IDisplayObject3dComponentLoader } from '../../loaders';
+import { VisualTypeDocRepo3D } from '../../gg-3d-world';
 
-export interface IVisualScene3dComponent extends IVisualSceneComponent<Point3, Point4> {
-  readonly factory: IDisplayObject3dComponentFactory;
-  readonly loader: IDisplayObject3dComponentLoader;
+export interface IVisualScene3dComponent<TypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D>
+  extends IVisualSceneComponent<Point3, Point4, TypeDoc> {
+  readonly loader: TypeDoc['loader'];
 
   createRenderer(
-    camera: ICameraComponent,
+    camera: TypeDoc['camera'],
     canvas?: HTMLCanvasElement,
     rendererOptions?: Partial<RendererOptions>,
-  ): IRenderer3dComponent;
+  ): TypeDoc['renderer'];
 }

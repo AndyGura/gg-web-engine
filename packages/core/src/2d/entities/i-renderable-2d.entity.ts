@@ -1,8 +1,7 @@
 import { IRenderableEntity, Point2 } from '../../base';
-import { IVisualScene2dComponent } from '../components/rendering/i-visual-scene-2d.component';
-import { IPhysicsWorld2dComponent } from '../components/physics/i-physics-world-2d.component';
+import { PhysicsTypeDocRepo2D, VisualTypeDocRepo2D } from '../gg-2d-world';
 
 export abstract class IRenderable2dEntity<
-  VS extends IVisualScene2dComponent = IVisualScene2dComponent,
-  PW extends IPhysicsWorld2dComponent = IPhysicsWorld2dComponent,
-> extends IRenderableEntity<Point2, number, VS, PW> {}
+  TypeDoc extends VisualTypeDocRepo2D = VisualTypeDocRepo2D,
+  PTypeDoc extends PhysicsTypeDocRepo2D = PhysicsTypeDocRepo2D,
+> extends IRenderableEntity<Point2, number, TypeDoc, PTypeDoc> {}

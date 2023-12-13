@@ -1,11 +1,11 @@
 import { IDebugPhysicsDrawer, IEntity, Point3, Point4 } from '@gg-web-engine/core';
 import { ThreeDisplayObjectComponent } from './components/three-display-object.component';
 import { BufferAttribute, BufferGeometry, LineBasicMaterial, LineSegments } from 'three';
-import { ThreeSceneComponent } from './components/three-scene.component';
+import { ThreeVisualTypeDocRepo } from './types';
 
 export class ThreePhysicsDrawer
   extends ThreeDisplayObjectComponent
-  implements IDebugPhysicsDrawer<Point3, Point4, ThreeSceneComponent>
+  implements IDebugPhysicsDrawer<Point3, Point4, ThreeVisualTypeDocRepo>
 {
   entity: IEntity | null = null;
   readonly debugBufferSize = 3 * 1000000;

@@ -3,16 +3,17 @@ import {
   Entity3d,
   Gg3dWorld,
   IRigidBody3dComponent,
-  IVisualScene3dComponent,
   Pnt3,
   Point3,
   Point4,
   Qtrn,
+  VisualTypeDocRepo3D,
 } from '@gg-web-engine/core';
 import { Collider, ColliderDesc, Quaternion, RigidBody, RigidBodyDesc, Vector3 } from '@dimforge/rapier3d-compat';
 import { Rapier3dWorldComponent } from './rapier-3d-world.component';
+import { Rapier3dPhysicsTypeDocRepo } from '../types';
 
-export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3dWorldComponent> {
+export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3dPhysicsTypeDocRepo> {
   public entity: Entity3d | null = null;
 
   public get position(): Point3 {
@@ -106,7 +107,7 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
     return new Rapier3dRigidBodyComponent(this.world, ...this.factoryProps);
   }
 
-  addToWorld(world: Gg3dWorld<IVisualScene3dComponent, Rapier3dWorldComponent>): void {
+  addToWorld(world: Gg3dWorld<VisualTypeDocRepo3D, Rapier3dPhysicsTypeDocRepo>): void {
     if (world.physicsWorld != this.world) {
       throw new Error('Rapier3D bodies cannot be shared between different worlds');
     }
@@ -120,7 +121,7 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
     this.world.handleIdEntityMap.set(this._nativeBody!.handle, this);
   }
 
-  removeFromWorld(world: Gg3dWorld<IVisualScene3dComponent, Rapier3dWorldComponent>): void {
+  removeFromWorld(world: Gg3dWorld<VisualTypeDocRepo3D, Rapier3dPhysicsTypeDocRepo>): void {
     if (world.physicsWorld != this.world) {
       throw new Error('Rapier3D bodies cannot be shared between different worlds');
     }
@@ -142,7 +143,10 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
 
   dispose(): void {
     if (this.nativeBody) {
-      this.removeFromWorld({ physicsWorld: this.world } as Gg3dWorld<IVisualScene3dComponent, Rapier3dWorldComponent>);
+      this.removeFromWorld({ physicsWorld: this.world } as any as Gg3dWorld<
+        VisualTypeDocRepo3D,
+        Rapier3dPhysicsTypeDocRepo
+      >);
     }
   }
 }

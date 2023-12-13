@@ -1,7 +1,8 @@
-import { Gg3dWorld, IEntity, IVisualScene3dComponent, Point3, Point4 } from '@gg-web-engine/core';
+import { Gg3dWorld, IEntity, Point3, Point4, VisualTypeDocRepo3D } from '@gg-web-engine/core';
 import { AmmoWorldComponent } from './ammo-world.component';
 import Ammo from 'ammojs-typed';
 import { ammoId } from '../ammo-utils';
+import { AmmoPhysicsTypeDocRepo } from '../types';
 
 export abstract class AmmoBodyComponent<T extends Ammo.btCollisionObject> {
   protected static nativeBodyReverseMap: Map<number, AmmoBodyComponent<any>> = new Map<
@@ -58,9 +59,9 @@ export abstract class AmmoBodyComponent<T extends Ammo.btCollisionObject> {
 
   abstract clone(): AmmoBodyComponent<T>;
 
-  abstract addToWorld(world: Gg3dWorld<IVisualScene3dComponent, AmmoWorldComponent>): void;
+  abstract addToWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>): void;
 
-  abstract removeFromWorld(world: Gg3dWorld<IVisualScene3dComponent, AmmoWorldComponent>): void;
+  abstract removeFromWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>): void;
 
   dispose(): void {
     try {

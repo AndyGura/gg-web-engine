@@ -1,8 +1,17 @@
-import { Gg2dWorld, GgBox2d, IDisplayObject2dComponent, IEntity, Pnt2, Point2 } from '@gg-web-engine/core';
+import {
+  Gg2dWorld,
+  GgBox2d,
+  IDisplayObject2dComponent,
+  IEntity,
+  PhysicsTypeDocRepo2D,
+  Pnt2,
+  Point2,
+} from '@gg-web-engine/core';
 import { PixiSceneComponent } from './pixi-scene.component';
 import { DisplayObject } from 'pixi.js';
+import { PixiVisualTypeDocRepo2D } from '../types';
 
-export class PixiDisplayObjectComponent implements IDisplayObject2dComponent<PixiSceneComponent> {
+export class PixiDisplayObjectComponent implements IDisplayObject2dComponent<PixiVisualTypeDocRepo2D> {
   entity: IEntity | null = null;
 
   constructor(public nativeSprite: DisplayObject) {}
@@ -63,11 +72,11 @@ export class PixiDisplayObjectComponent implements IDisplayObject2dComponent<Pix
     return new PixiDisplayObjectComponent(this.nativeSprite);
   }
 
-  addToWorld(world: Gg2dWorld<PixiSceneComponent>): void {
+  addToWorld(world: Gg2dWorld<PixiVisualTypeDocRepo2D, PhysicsTypeDocRepo2D, PixiSceneComponent>): void {
     world.visualScene.nativeContainer?.addChild(this.nativeSprite);
   }
 
-  removeFromWorld(world: Gg2dWorld<PixiSceneComponent>): void {
+  removeFromWorld(world: Gg2dWorld<PixiVisualTypeDocRepo2D, PhysicsTypeDocRepo2D, PixiSceneComponent>): void {
     world.visualScene.nativeContainer?.removeChild(this.nativeSprite);
   }
 

@@ -1,27 +1,48 @@
 import { Point2 } from '../base';
 import { BodyShape2DDescriptor, Shape2DDescriptor } from './models/shapes';
-import { IRigidBody2dComponent } from './components/physics/i-rigid-body-2d.component';
-import { ITrigger2dComponent } from './components/physics/i-trigger-2d.component';
-import { IDisplayObject2dComponent } from './components/rendering/i-display-object-2d.component';
+import { PhysicsTypeDocRepo2D, VisualTypeDocRepo2D } from './gg-2d-world';
 
-export abstract class IGg2dObjectFactory<T extends IDisplayObject2dComponent = IDisplayObject2dComponent> {
-  abstract createPrimitive(descriptor: Shape2DDescriptor): T;
+export type DisplayObject2dOpts<Tex> = {
+  color?: number;
+  texture?: Tex;
+};
 
-  // shortcuts
-  createSquare(dimensions: Point2): T {
-    return this.createPrimitive({ shape: 'SQUARE', dimensions });
+export abstract class IDisplayObject2dComponentFactory<TypeDoc extends VisualTypeDocRepo2D = VisualTypeDocRepo2D> {
+  abstract createPrimitive(
+    descriptor: Shape2DDescriptor,
+    material?: DisplayObject2dOpts<TypeDoc['texture']>,
+  ): TypeDoc['displayObject'];
+
+  randomColor(): number {
+    return (
+      (Math.floor(Math.random() * 256) << 16) | (Math.floor(Math.random() * 256) << 8) | Math.floor(Math.random() * 256)
+    );
   }
 
-  createCircle(radius: number): T {
-    return this.createPrimitive({ shape: 'CIRCLE', radius });
+  // shortcuts
+  createSquare(dimensions: Point2, material: DisplayObject2dOpts<TypeDoc['texture']> = {}): TypeDoc['displayObject'] {
+    return this.createPrimitive({ shape: 'SQUARE', dimensions }, material);
+  }
+
+  createCircle(radius: number, material: DisplayObject2dOpts<TypeDoc['texture']> = {}): TypeDoc['displayObject'] {
+    return this.createPrimitive({ shape: 'CIRCLE', radius }, material);
   }
 }
 
-export interface IPhysicsBody2dComponentFactory<
-  T extends IRigidBody2dComponent = IRigidBody2dComponent,
-  K extends ITrigger2dComponent = ITrigger2dComponent,
-> {
-  createRigidBody(descriptor: BodyShape2DDescriptor, transform?: { position?: Point2; rotation?: number }): T;
+export interface IPhysicsBody2dComponentFactory<TypeDoc extends PhysicsTypeDocRepo2D = PhysicsTypeDocRepo2D> {
+  createRigidBody(
+    descriptor: BodyShape2DDescriptor,
+    transform?: {
+      position?: Point2;
+      rotation?: number;
+    },
+  ): TypeDoc['rigidBody'];
 
-  createTrigger(descriptor: Shape2DDescriptor, transform?: { position?: Point2; rotation?: number }): K;
+  createTrigger(
+    descriptor: Shape2DDescriptor,
+    transform?: {
+      position?: Point2;
+      rotation?: number;
+    },
+  ): TypeDoc['trigger'];
 }

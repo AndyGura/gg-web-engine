@@ -1,10 +1,8 @@
 import { IRendererComponent, Point3, Point4 } from '../../../base';
-import { IVisualScene3dComponent } from './i-visual-scene-3d.component';
-import { ICameraComponent } from './i-camera.component';
+import { VisualTypeDocRepo3D } from '../../gg-3d-world';
 
 export abstract class IRenderer3dComponent<
-  VS extends IVisualScene3dComponent = IVisualScene3dComponent,
-  CC extends ICameraComponent = ICameraComponent,
-> extends IRendererComponent<Point3, Point4, VS> {
-  abstract camera: CC;
+  TypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D,
+> extends IRendererComponent<Point3, Point4, TypeDoc> {
+  abstract camera: TypeDoc['camera'];
 }

@@ -1,6 +1,7 @@
 import { GgMeta, IDisplayObject3dComponentLoader } from '@gg-web-engine/core';
 import { AnimationClip, Camera, Group, Light, Object3D } from 'three';
 import { ThreeDisplayObjectComponent } from './components/three-display-object.component';
+import { ThreeVisualTypeDocRepo } from './types';
 
 type GLTF = {
   animations: AnimationClip[];
@@ -19,7 +20,7 @@ type GLTF = {
   userData: any;
 };
 
-export class ThreeLoader implements IDisplayObject3dComponentLoader {
+export class ThreeLoader implements IDisplayObject3dComponentLoader<ThreeVisualTypeDocRepo> {
   private gltfLoader: {
     parseAsync(data: ArrayBuffer | string, path: string): Promise<GLTF>;
   } | null = null;

@@ -1,8 +1,9 @@
-import { IDebugPhysicsDrawer, Point2, Gg2dWorld, IPhysicsWorld2dComponent } from '@gg-web-engine/core';
+import { Gg2dWorld, IDebugPhysicsDrawer, IPhysicsWorld2dComponent, Point2 } from '@gg-web-engine/core';
 import { Engine, World } from 'matter-js';
 import { MatterFactory } from '../matter-factory';
+import { MatterPhysicsTypeDocRepo } from '../types';
 
-export class MatterWorldComponent implements IPhysicsWorld2dComponent {
+export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhysicsTypeDocRepo> {
   protected matterEngine: Engine | null = null;
 
   public get matterWorld(): World | null {
@@ -15,6 +16,7 @@ export class MatterWorldComponent implements IPhysicsWorld2dComponent {
   public get gravity(): Point2 {
     return this._gravity;
   }
+
   public set gravity(value: Point2) {
     this._gravity = value;
     if (this.matterEngine) {
@@ -27,6 +29,7 @@ export class MatterWorldComponent implements IPhysicsWorld2dComponent {
   public get timeScale(): number {
     return this._timeScale;
   }
+
   public set timeScale(value: number) {
     this._timeScale = value;
   }

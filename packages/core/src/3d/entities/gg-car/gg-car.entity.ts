@@ -1,11 +1,10 @@
 import { RaycastVehicle3dEntity, RVEntityProperties } from '../raycast-vehicle-3d.entity';
-import { cubicSplineInterpolation, IRenderableEntity, Point3, Point4, TickOrder } from '../../../base';
+import { cubicSplineInterpolation, Point3, Point4, TickOrder } from '../../../base';
 import { IPositionable3d } from '../../interfaces/i-positionable-3d';
 import { BehaviorSubject, filter, Observable } from 'rxjs';
-import { Gg3dWorld } from '../../gg-3d-world';
+import { Gg3dWorld, PhysicsTypeDocRepo3D, VisualTypeDocRepo3D } from '../../gg-3d-world';
 import { throttleTime } from 'rxjs/operators';
-import { IDisplayObject3dComponent } from '../../components/rendering/i-display-object-3d.component';
-import { IRaycastVehicleComponent } from '../../components/physics/i-raycast-vehicle.component';
+import { IRenderable3dEntity } from '../i-renderable-3d.entity';
 
 export type GgCarProperties = RVEntityProperties & {
   mpsToRpmFactor?: number;
@@ -36,7 +35,13 @@ export type GgCarProperties = RVEntityProperties & {
   maxSteerAngle: number;
 };
 
-export class GgCarEntity extends IRenderableEntity<Point3, Point4> implements IPositionable3d {
+export class GgCarEntity<
+    VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D,
+    PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D,
+  >
+  extends IRenderable3dEntity<VTypeDoc, PTypeDoc>
+  implements IPositionable3d
+{
   public readonly tickOrder = TickOrder.PHYSICS_SIMULATION - 5;
 
   get position(): Point3 {
@@ -194,19 +199,19 @@ export class GgCarEntity extends IRenderableEntity<Point3, Point4> implements IP
   // TODO remove
   set isHonking(value: boolean) {}
 
-  public readonly raycastVehicle: RaycastVehicle3dEntity;
+  public readonly raycastVehicle: RaycastVehicle3dEntity<VTypeDoc, PTypeDoc>;
 
   constructor(
     public readonly carProperties: GgCarProperties,
-    chassis3D: IDisplayObject3dComponent | null,
-    chassisBody: IRaycastVehicleComponent,
+    chassis3D: VTypeDoc['displayObject'] | null,
+    chassisBody: PTypeDoc['raycastVehicle'],
   ) {
     super();
     this.raycastVehicle = new RaycastVehicle3dEntity(carProperties, chassis3D, chassisBody);
     this.addChildren(this.raycastVehicle);
   }
 
-  onSpawned(world: Gg3dWorld) {
+  onSpawned(world: Gg3dWorld<VTypeDoc, PTypeDoc>) {
     super.onSpawned(world);
     this.tick$.subscribe(([_, delta]) => {
       this.updateEngine(delta);

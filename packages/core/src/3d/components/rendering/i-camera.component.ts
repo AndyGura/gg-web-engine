@@ -1,8 +1,8 @@
 import { IDisplayObject3dComponent } from './i-display-object-3d.component';
-import { IVisualScene3dComponent } from './i-visual-scene-3d.component';
+import { VisualTypeDocRepo3D } from '../../gg-3d-world';
 
-export interface ICameraComponent<VS extends IVisualScene3dComponent = IVisualScene3dComponent>
-  extends IDisplayObject3dComponent<VS> {
+export interface ICameraComponent<TypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D>
+  extends IDisplayObject3dComponent<TypeDoc> {
   get supportsFov(): boolean;
 
   get fov(): number;

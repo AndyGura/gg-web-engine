@@ -1,6 +1,6 @@
 import { AnimationFunction, AnimationMixer, Pnt3, Point3, Point4, Qtrn } from '../../../../base';
 import { takeUntil } from 'rxjs';
-import { Gg3dWorld } from '../../../gg-3d-world';
+import { Gg3dWorld, PhysicsTypeDocRepo3D, VisualTypeDocRepo3D } from '../../../gg-3d-world';
 import { IPositionable3d } from '../../../interfaces/i-positionable-3d';
 
 type Positioning3d = {
@@ -8,9 +8,13 @@ type Positioning3d = {
   rotation: Point4;
 };
 
-export class Entity3dPositioningAnimator<
-  T extends IPositionable3d = IPositionable3d,
-> extends AnimationMixer<Positioning3d> {
+export class Entity3dPositioningAnimator<T extends IPositionable3d = IPositionable3d> extends AnimationMixer<
+  Positioning3d,
+  Point3,
+  Point4,
+  VisualTypeDocRepo3D,
+  PhysicsTypeDocRepo3D
+> {
   constructor(public entity: T, protected _animationFunction: AnimationFunction<Positioning3d>) {
     super(_animationFunction, (a, b, t) => ({
       position: Pnt3.lerp(a.position, b.position, t),

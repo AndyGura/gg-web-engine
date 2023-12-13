@@ -67,22 +67,23 @@ export class App implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroyed$))
       .subscribe(() => {
         let item: Entity3d;
-        if (Math.random() < 0.2) {
+        let r = Math.random();
+        if (r < 0.2) {
           item = this.world.addPrimitiveRigidBody({
             shape: { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } },
             body: { mass: 1 },
           });
-        } else if (Math.random() < 0.4) {
+        } else if (r < 0.4) {
           item = this.world.addPrimitiveRigidBody({
             shape: { shape: 'CAPSULE', radius: 0.5, centersDistance: 1 },
             body: { mass: 1 },
           });
-        } else if (Math.random() < 0.6) {
+        } else if (r < 0.6) {
           item = this.world.addPrimitiveRigidBody({
             shape: { shape: 'CYLINDER', radius: 0.5, height: 1 },
             body: { mass: 1 },
           });
-        } else if (Math.random() < 0.8) {
+        } else if (r < 0.8) {
           item = this.world.addPrimitiveRigidBody({
             shape: { shape: 'CONE', radius: 0.5, height: 1 },
             body: { mass: 1 },

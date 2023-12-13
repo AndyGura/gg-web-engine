@@ -1,11 +1,12 @@
 import { AmmoWorldComponent } from './ammo-world.component';
 import Ammo from 'ammojs-typed';
 import { AmmoBodyComponent } from './ammo-body.component';
-import { Entity3d, Gg3dWorld, IRigidBody3dComponent, IVisualScene3dComponent, Point3 } from '@gg-web-engine/core';
+import { Entity3d, Gg3dWorld, IRigidBody3dComponent, Point3, VisualTypeDocRepo3D } from '@gg-web-engine/core';
+import { AmmoPhysicsTypeDocRepo } from '../types';
 
 export class AmmoRigidBodyComponent
   extends AmmoBodyComponent<Ammo.btRigidBody>
-  implements IRigidBody3dComponent<AmmoWorldComponent>
+  implements IRigidBody3dComponent<AmmoPhysicsTypeDocRepo>
 {
   public entity: Entity3d | null = null;
 
@@ -47,14 +48,14 @@ export class AmmoRigidBodyComponent
     );
   }
 
-  addToWorld(world: Gg3dWorld<IVisualScene3dComponent, AmmoWorldComponent>): void {
+  addToWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>): void {
     if (world.physicsWorld != this.world) {
       throw new Error('Ammo bodies cannot be shared between different worlds');
     }
     this.world.dynamicAmmoWorld?.addRigidBody(this.nativeBody);
   }
 
-  removeFromWorld(world: Gg3dWorld<IVisualScene3dComponent, AmmoWorldComponent>): void {
+  removeFromWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>): void {
     if (world.physicsWorld != this.world) {
       throw new Error('Ammo bodies cannot be shared between different worlds');
     }

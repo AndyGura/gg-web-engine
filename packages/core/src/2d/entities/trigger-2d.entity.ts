@@ -3,16 +3,24 @@ import { ITrigger2dComponent } from '../components/physics/i-trigger-2d.componen
 import { IEntity, Pnt2, Point2, TickOrder } from '../../base';
 import { IPositionable2d } from '../interfaces/i-positionable-2d';
 import { map } from 'rxjs/operators';
+import { PhysicsTypeDocRepo2D, VisualTypeDocRepo2D } from '../gg-2d-world';
 
-export class Trigger2dEntity extends IEntity<Point2, number> implements IPositionable2d {
+export class Trigger2dEntity<TypeDoc extends PhysicsTypeDocRepo2D = PhysicsTypeDocRepo2D>
+  extends IEntity<Point2, number, VisualTypeDocRepo2D, TypeDoc>
+  implements IPositionable2d
+{
   public readonly tickOrder = TickOrder.OBJECTS_BINDING;
 
-  get onEntityEntered(): Observable<IEntity & IPositionable2d> {
-    return this.objectBody.onEntityEntered.pipe(map(c => c.entity as IEntity & IPositionable2d));
+  get onEntityEntered(): Observable<IEntity<Point2, number, VisualTypeDocRepo2D, TypeDoc> & IPositionable2d> {
+    return this.objectBody.onEntityEntered.pipe(
+      map(c => c.entity as IEntity<Point2, number, VisualTypeDocRepo2D, TypeDoc> & IPositionable2d),
+    );
   }
 
-  get onEntityLeft(): Observable<(IEntity & IPositionable2d) | null> {
-    return this.objectBody.onEntityLeft.pipe(map(c => c?.entity as IEntity & IPositionable2d));
+  get onEntityLeft(): Observable<(IEntity<Point2, number, VisualTypeDocRepo2D, TypeDoc> & IPositionable2d) | null> {
+    return this.objectBody.onEntityLeft.pipe(
+      map(c => c?.entity as IEntity<Point2, number, VisualTypeDocRepo2D, TypeDoc> & IPositionable2d),
+    );
   }
 
   private _position = Pnt2.O;

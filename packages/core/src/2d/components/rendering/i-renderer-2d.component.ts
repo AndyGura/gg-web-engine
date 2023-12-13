@@ -1,6 +1,6 @@
 import { IRendererComponent, Point2 } from '../../../base';
-import { IVisualScene2dComponent } from './i-visual-scene-2d.component';
+import { VisualTypeDocRepo2D } from '../../gg-2d-world';
 
 export abstract class IRenderer2dComponent<
-  VS extends IVisualScene2dComponent = IVisualScene2dComponent,
-> extends IRendererComponent<Point2, number, VS> {}
+  TypeDoc extends VisualTypeDocRepo2D = VisualTypeDocRepo2D,
+> extends IRendererComponent<Point2, number, TypeDoc> {}

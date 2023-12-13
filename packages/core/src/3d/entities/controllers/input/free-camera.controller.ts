@@ -3,9 +3,8 @@ import {
   DirectionKeyboardInput,
   DirectionKeyboardKeymap,
   DirectionKeyboardOutput,
-  IEntity,
-  TickOrder,
   GgWorld,
+  IEntity,
   KeyboardInput,
   MouseInput,
   MouseInputOptions,
@@ -14,6 +13,7 @@ import {
   Pnt3,
   Point2,
   Qtrn,
+  TickOrder,
 } from '../../../../base';
 import { Renderer3dEntity } from '../../renderer-3d.entity';
 

@@ -3,8 +3,9 @@ import { EventQueue, init, Vector3, World } from '@dimforge/rapier3d-compat';
 import { Rapier3dRigidBodyComponent } from './rapier-3d-rigid-body.component';
 import { Rapier3dFactory } from '../rapier-3d-factory';
 import { Rapier3dLoader } from '../rapier-3d-loader';
+import { Rapier3dPhysicsTypeDocRepo } from '../types';
 
-export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent {
+export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3dPhysicsTypeDocRepo> {
   private _factory: Rapier3dFactory | null = null;
   public get factory(): Rapier3dFactory {
     if (!this._factory) {

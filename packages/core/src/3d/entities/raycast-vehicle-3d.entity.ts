@@ -3,11 +3,12 @@ import { Entity3d } from './entity-3d';
 import { IDisplayObject3dComponent } from '../components/rendering/i-display-object-3d.component';
 import {
   IRaycastVehicleComponent,
-  WheelOptions,
   SuspensionOptions,
+  WheelOptions,
 } from '../components/physics/i-raycast-vehicle.component';
 import { IRigidBody3dComponent } from '../components/physics/i-rigid-body-3d.component';
 import { IPositionable3d } from '../interfaces/i-positionable-3d';
+import { PhysicsTypeDocRepo3D, VisualTypeDocRepo3D } from '../gg-3d-world';
 
 export type WheelDisplayOptions = {
   displayObject?: IDisplayObject3dComponent;
@@ -59,8 +60,11 @@ const wheeelDefaults = {
   maxTravel: 0.5,
 };
 
-export class RaycastVehicle3dEntity extends Entity3d {
-  protected readonly wheels: ((IEntity & IPositionable3d) | null)[] = [];
+export class RaycastVehicle3dEntity<
+  VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D,
+  PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D,
+> extends Entity3d<VTypeDoc, PTypeDoc> {
+  protected readonly wheels: (Entity3d<VTypeDoc, PTypeDoc> | null)[] = [];
   protected readonly wheelLocalRotation: (Point4 | null)[] = [];
   protected readonly frontWheelsIndices: number[] = [];
   protected readonly rearWheelsIndices: number[] = [];

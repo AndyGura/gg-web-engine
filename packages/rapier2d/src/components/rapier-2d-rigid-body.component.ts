@@ -3,14 +3,15 @@ import {
   Entity2d,
   Gg2dWorld,
   IRigidBody2dComponent,
-  IVisualScene2dComponent,
   Pnt2,
   Point2,
+  VisualTypeDocRepo2D,
 } from '@gg-web-engine/core';
 import { Collider, ColliderDesc, RigidBody, RigidBodyDesc, Vector2 } from '@dimforge/rapier2d-compat';
 import { Rapier2dWorldComponent } from './rapier-2d-world.component';
+import { Rapier2dPhysicsTypeDocRepo } from '../types';
 
-export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2dWorldComponent> {
+export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2dPhysicsTypeDocRepo> {
   public entity: Entity2d | null = null;
 
   public get position(): Point2 {
@@ -89,7 +90,7 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
     return new Rapier2dRigidBodyComponent(this.world, ...this.factoryProps);
   }
 
-  addToWorld(world: Gg2dWorld<IVisualScene2dComponent, Rapier2dWorldComponent>): void {
+  addToWorld(world: Gg2dWorld<VisualTypeDocRepo2D, Rapier2dPhysicsTypeDocRepo>): void {
     if (world.physicsWorld != this.world) {
       throw new Error('Rapier2D bodies cannot be shared between different worlds');
     }
@@ -103,7 +104,7 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
     this.world.handleIdEntityMap.set(this._nativeBody!.handle, this);
   }
 
-  removeFromWorld(world: Gg2dWorld<IVisualScene2dComponent, Rapier2dWorldComponent>): void {
+  removeFromWorld(world: Gg2dWorld<VisualTypeDocRepo2D, Rapier2dPhysicsTypeDocRepo>): void {
     if (world.physicsWorld != this.world) {
       throw new Error('Rapier2D bodies cannot be shared between different worlds');
     }
@@ -125,7 +126,10 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
 
   dispose(): void {
     if (this.nativeBody) {
-      this.removeFromWorld({ physicsWorld: this.world } as Gg2dWorld<IVisualScene2dComponent, Rapier2dWorldComponent>);
+      this.removeFromWorld({ physicsWorld: this.world } as any as Gg2dWorld<
+        VisualTypeDocRepo2D,
+        Rapier2dPhysicsTypeDocRepo
+      >);
     }
   }
 }

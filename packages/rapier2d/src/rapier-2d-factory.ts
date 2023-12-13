@@ -10,10 +10,9 @@ import { ActiveEvents, ColliderDesc, RigidBodyDesc } from '@dimforge/rapier2d-co
 import { Rapier2dRigidBodyComponent } from './components/rapier-2d-rigid-body.component';
 import { Rapier2dTriggerComponent } from './components/rapier-2d-trigger.component';
 import { Rapier2dWorldComponent } from './components/rapier-2d-world.component';
+import { Rapier2dPhysicsTypeDocRepo } from './types';
 
-export class Rapier2dFactory
-  implements IPhysicsBody2dComponentFactory<Rapier2dRigidBodyComponent, Rapier2dTriggerComponent>
-{
+export class Rapier2dFactory implements IPhysicsBody2dComponentFactory<Rapier2dPhysicsTypeDocRepo> {
   constructor(protected readonly world: Rapier2dWorldComponent) {}
 
   createRigidBody(

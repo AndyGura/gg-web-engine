@@ -6,9 +6,10 @@ import {
   Shape2DDescriptor,
 } from '@gg-web-engine/core';
 import { MatterRigidBodyComponent } from './components/matter-rigid-body.component';
-import { Bodies, IBodyDefinition, Vector, Body } from 'matter-js';
+import { Bodies, Body, IBodyDefinition, Vector } from 'matter-js';
+import { MatterPhysicsTypeDocRepo } from './types';
 
-export class MatterFactory implements IPhysicsBody2dComponentFactory<MatterRigidBodyComponent, any> {
+export class MatterFactory implements IPhysicsBody2dComponentFactory<MatterPhysicsTypeDocRepo> {
   createRigidBody(
     descriptor: BodyShape2DDescriptor,
     transform?: {
@@ -45,7 +46,7 @@ export class MatterFactory implements IPhysicsBody2dComponentFactory<MatterRigid
       position?: Point2;
       rotation?: number;
     },
-  ): any {
+  ): never {
     throw new Error('Triggers not implemented for Matter.js');
   }
 

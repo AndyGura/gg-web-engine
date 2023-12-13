@@ -4,3 +4,4 @@ export * from './components/three-renderer-component';
 export * from './components/three-camera.component';
 export * from './three-factory';
 export * from './three-loader';
+export * from './types';

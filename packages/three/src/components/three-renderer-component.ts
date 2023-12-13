@@ -2,15 +2,16 @@ import { Gg3dWorld, IRenderer3dComponent, Point2, RendererOptions } from '@gg-we
 import { PCFSoftShadowMap, PerspectiveCamera, sRGBEncoding, WebGLRenderer } from 'three';
 import { ThreeSceneComponent } from './three-scene.component';
 import { ThreeCameraComponent } from './three-camera.component';
+import { ThreeVisualTypeDocRepo } from '../types';
 
-export class ThreeRendererComponent extends IRenderer3dComponent<ThreeSceneComponent, ThreeCameraComponent> {
+export class ThreeRendererComponent extends IRenderer3dComponent<ThreeVisualTypeDocRepo> {
   public readonly nativeRenderer: WebGLRenderer;
 
   constructor(
     public readonly scene: ThreeSceneComponent,
+    public camera: ThreeCameraComponent,
     public readonly canvas?: HTMLCanvasElement,
     rendererOptions: Partial<RendererOptions> = {},
-    public camera: ThreeCameraComponent = new ThreeCameraComponent(new PerspectiveCamera(75, 1, 1, 10000)),
   ) {
     super(scene, canvas, rendererOptions);
     this.nativeRenderer = new WebGLRenderer({
@@ -28,9 +29,9 @@ export class ThreeRendererComponent extends IRenderer3dComponent<ThreeSceneCompo
     this.nativeRenderer.setPixelRatio(this.rendererOptions.forceResolution || devicePixelRatio);
   }
 
-  addToWorld(world: Gg3dWorld<ThreeSceneComponent>) {}
+  addToWorld(world: Gg3dWorld<ThreeVisualTypeDocRepo>) {}
 
-  removeFromWorld(world: Gg3dWorld<ThreeSceneComponent>) {}
+  removeFromWorld(world: Gg3dWorld<ThreeVisualTypeDocRepo>) {}
 
   resizeRenderer(newSize: Point2): void {
     this.nativeRenderer.setSize(newSize.x, newSize.y);

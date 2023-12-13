@@ -12,8 +12,10 @@ import Ammo from 'ammojs-typed';
 import { AmmoRigidBodyComponent } from './components/ammo-rigid-body.component';
 import { AmmoTriggerComponent } from './components/ammo-trigger.component';
 import { AmmoWorldComponent } from './components/ammo-world.component';
+import { AmmoPhysicsTypeDocRepo } from './types';
+import { AmmoRaycastVehicleComponent } from './components/ammo-raycast-vehicle.component';
 
-export class AmmoFactory implements IPhysicsBody3dComponentFactory<AmmoRigidBodyComponent, AmmoTriggerComponent> {
+export class AmmoFactory implements IPhysicsBody3dComponentFactory<AmmoPhysicsTypeDocRepo> {
   constructor(protected readonly world: AmmoWorldComponent) {}
 
   createRigidBody(
@@ -34,6 +36,10 @@ export class AmmoFactory implements IPhysicsBody3dComponentFactory<AmmoRigidBody
     },
   ): AmmoTriggerComponent {
     return this.createTriggerFromShape(this.createShape(descriptor), transform);
+  }
+
+  createRaycastVehicle(chassis: AmmoRigidBodyComponent): AmmoRaycastVehicleComponent {
+    return new AmmoRaycastVehicleComponent(this.world, chassis);
   }
 
   protected createShape(descriptor: Shape3DDescriptor): Ammo.btCollisionShape {

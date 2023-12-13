@@ -5,14 +5,12 @@ import {
   GgStatic,
   OrbitCameraController,
   Pnt3,
-  Point3,
-  Point4,
   Qtrn,
   RaycastVehicle3dEntity,
 } from '@gg-web-engine/core';
-import { ThreeCameraComponent, ThreeDisplayObjectComponent, ThreeSceneComponent } from '@gg-web-engine/three';
-import { AmbientLight, DirectionalLight, Mesh, MeshPhongMaterial, PerspectiveCamera } from 'three';
-import { AmmoRaycastVehicleComponent, AmmoWorldComponent } from '@gg-web-engine/ammo';
+import { ThreeDisplayObject3dOpts, ThreeSceneComponent } from '@gg-web-engine/three';
+import { AmbientLight, DirectionalLight } from 'three';
+import { AmmoWorldComponent } from '@gg-web-engine/ammo';
 
 const world = new Gg3dWorld(
   new ThreeSceneComponent(),
@@ -24,7 +22,7 @@ world.init().then(async () => {
   // init graphics
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
   const renderer = world.addRenderer(
-    new ThreeCameraComponent(new PerspectiveCamera(60, 1, 0.2, 2000)),
+    world.visualScene.factory.createPerspectiveCamera({ fov: 60 }),
     canvas,
     { background: 0xbfd1e5 },
   );
@@ -39,52 +37,31 @@ world.init().then(async () => {
   dirLight.position.set(-10, 5, 10);
   world.visualScene.nativeScene.add(dirLight);
 
-  var ambientLight = new AmbientLight(0x404040);
+  const ambientLight = new AmbientLight(0x404040);
   world.visualScene.nativeScene.add(ambientLight);
 
-  const materialDynamic = new MeshPhongMaterial({ color: 0xfca400 });
-  const materialStatic = new MeshPhongMaterial({ color: 0x999999 });
-  const materialInteractive = new MeshPhongMaterial({ color: 0x990000 });
+  const materialDynamic: ThreeDisplayObject3dOpts = { shading: 'phong', color: 0xfca400 };
+  const materialStatic: ThreeDisplayObject3dOpts = { shading: 'phong', color: 0x999999 };
+  const materialInteractive: ThreeDisplayObject3dOpts = { shading: 'phong', color: 0x990000 };
 
   // create objects
-  function createBox(
-    pos: Point3,
-    quat: Point4,
-    dimensions: Point3,
-    mass: number,
-    friction: number,
-  ) {
-    const box = world.addPrimitiveRigidBody({
-      shape: { shape: 'BOX', dimensions },
-      body: { dynamic: mass > 0, mass, friction },
-    });
-    box.position = pos;
-    box.rotation = quat;
-    (
-      (box.object3D as ThreeDisplayObjectComponent).nativeMesh as Mesh
-    ).material = mass > 0 ? materialDynamic : materialStatic;
-  }
-
-  createBox({ x: 0, y: 0, z: -0.5 }, Qtrn.O, { x: 75, y: 75, z: 1 }, 0, 2);
-  createBox(
-    { x: 0, y: 0, z: -1.5 },
-    Qtrn.fromAngle(Pnt3.X, Math.PI / 18),
-    { x: 8, y: 10, z: 4 },
-    0,
-    1,
-  );
-  var size = 0.75;
-  var nw = 8;
-  var nh = 6;
-  for (var j = 0; j < nw; j++)
-    for (var i = 0; i < nh; i++)
-      createBox(
-        { x: size * j - (size * (nw - 1)) / 2, y: 10, z: size * i },
-        Qtrn.O,
-        { x: size, y: size, z: size },
-        10,
-        1,
-      );
+  world.addPrimitiveRigidBody({
+    shape: { shape: 'BOX', dimensions: { x: 75, y: 75, z: 1 } },
+    body: { dynamic: false, mass: 0, friction: 2 },
+  }, { x: 0, y: 0, z: -0.5 }, Qtrn.O, materialStatic);
+  world.addPrimitiveRigidBody({
+    shape: { shape: 'BOX', dimensions: { x: 8, y: 10, z: 4 } },
+    body: { dynamic: false, mass: 0, friction: 1 },
+  }, { x: 0, y: 0, z: -1.5 }, Qtrn.fromAngle(Pnt3.X, Math.PI / 18), materialStatic);
+  const size = 0.75;
+  const nw = 8;
+  const nh = 6;
+  for (let j = 0; j < nw; j++)
+    for (let i = 0; i < nh; i++)
+      world.addPrimitiveRigidBody({
+        shape: { shape: 'BOX', dimensions: { x: size, y: size, z: size } },
+        body: { dynamic: true, mass: 10, friction: 1 },
+      }, { x: size * j - (size * (nw - 1)) / 2, y: 10, z: size * i }, Qtrn.O, materialDynamic);
 
   const vehiclePos = { x: 0, y: -20, z: 4 };
   const chassisDimensions = { x: 1.8, y: 4, z: 0.6 };
@@ -149,7 +126,7 @@ world.init().then(async () => {
       },
     },
     chassisMesh,
-    new AmmoRaycastVehicleComponent(world.physicsWorld, chassis),
+    world.physicsWorld.factory.createRaycastVehicle(chassis),
   );
   vehicle.position = vehiclePos;
   world.addEntity(vehicle);
@@ -187,6 +164,7 @@ world.init().then(async () => {
     const speed = vehicle.getSpeed() * 3.6;
     speedometer.innerHTML =
       (speed < 0 ? '(R) ' : '') + Math.abs(speed).toFixed(1) + ' km/h';
-  }),
-    world.start();
+  });
+  
+  world.start();
 });

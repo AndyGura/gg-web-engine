@@ -1,7 +1,7 @@
 import { BehaviorSubject, NEVER, Observable, startWith, Subject, switchMap } from 'rxjs';
 import { distinctUntilChanged, map, tap, throttleTime } from 'rxjs/operators';
 import { Graph, IEntity, Point3, Point4, Qtrn, TickOrder } from '../../base';
-import { Gg3dWorld } from '../gg-3d-world';
+import { Gg3dWorld, PhysicsTypeDocRepo3D, VisualTypeDocRepo3D } from '../gg-3d-world';
 import { Entity3d } from './entity-3d';
 import { LoadOptions, LoadResultWithProps } from '../loader';
 import { IPositionable3d } from '../interfaces/i-positionable-3d';
@@ -97,7 +97,10 @@ const defaultOptions: Gg3dMapGraphEntityOptions = {
   inertia: 0,
 };
 
-export class MapGraph3dEntity extends IRenderable3dEntity {
+export class MapGraph3dEntity<
+  VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D,
+  PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D,
+> extends IRenderable3dEntity<VTypeDoc, PTypeDoc> {
   public readonly tickOrder = TickOrder.POST_RENDERING;
 
   public readonly loaderCursorEntity$: BehaviorSubject<IPositionable3d | null> =
@@ -116,18 +119,32 @@ export class MapGraph3dEntity extends IRenderable3dEntity {
     return this._nearestDummy$.getValue();
   }
 
-  protected _chunkLoaded$: Subject<[LoadResultWithProps, { position: Point3; rotation: Point4 }]> = new Subject<
-    [LoadResultWithProps, { position: Point3; rotation: Point4 }]
-  >();
-  public get chunkLoaded$(): Observable<[LoadResultWithProps, { position: Point3; rotation: Point4 }]> {
+  protected _chunkLoaded$: Subject<
+    [
+      LoadResultWithProps<VTypeDoc, PTypeDoc>,
+      {
+        position: Point3;
+        rotation: Point4;
+      },
+    ]
+  > = new Subject<[LoadResultWithProps<VTypeDoc, PTypeDoc>, { position: Point3; rotation: Point4 }]>();
+  public get chunkLoaded$(): Observable<
+    [
+      LoadResultWithProps<VTypeDoc, PTypeDoc>,
+      {
+        position: Point3;
+        rotation: Point4;
+      },
+    ]
+  > {
     return this._chunkLoaded$.asObservable();
   }
 
-  get world(): Gg3dWorld | null {
+  get world(): Gg3dWorld<VTypeDoc, PTypeDoc> | null {
     return this._world;
   }
 
-  protected _world: Gg3dWorld | null = null;
+  protected _world: Gg3dWorld<VTypeDoc, PTypeDoc> | null = null;
   protected readonly mapGraphNodes: MapGraph[];
 
   protected readonly options: Gg3dMapGraphEntityOptions;
@@ -138,7 +155,7 @@ export class MapGraph3dEntity extends IRenderable3dEntity {
     this.mapGraphNodes = mapGraph.nodes();
   }
 
-  onSpawned(world: Gg3dWorld) {
+  onSpawned(world: Gg3dWorld<VTypeDoc, PTypeDoc>) {
     super.onSpawned(world);
     // TODO takeUntil removed from world?
     this.loaderCursorEntity$
@@ -190,7 +207,9 @@ export class MapGraph3dEntity extends IRenderable3dEntity {
     this.loaderCursorEntity$.next(null);
   }
 
-  protected async loadChunk(node: MapGraphNodeType): Promise<[Entity3d[], LoadResultWithProps]> {
+  protected async loadChunk(
+    node: MapGraphNodeType,
+  ): Promise<[Entity3d<VTypeDoc, PTypeDoc>[], LoadResultWithProps<VTypeDoc, PTypeDoc>]> {
     const loaded = await this.world!.loader.loadGgGlb(node.path, {
       position: node.position,
       rotation: node.rotation || Qtrn.O,

@@ -1,15 +1,9 @@
 import { IRendererEntity, Point3, Point4 } from '../../base';
-import { IRenderer3dComponent } from '../components/rendering/i-renderer-3d.component';
-import { IVisualScene3dComponent } from '../components/rendering/i-visual-scene-3d.component';
-import { ICameraComponent } from '../components/rendering/i-camera.component';
 import { IPositionable3d } from '../interfaces/i-positionable-3d';
+import { VisualTypeDocRepo3D } from '../gg-3d-world';
 
-export class Renderer3dEntity<
-    VS extends IVisualScene3dComponent = IVisualScene3dComponent,
-    CC extends ICameraComponent<VS> = ICameraComponent<VS>,
-    RC extends IRenderer3dComponent<VS, CC> = IRenderer3dComponent<VS, CC>,
-  >
-  extends IRendererEntity<Point3, Point4, VS, RC>
+export class Renderer3dEntity<TypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D>
+  extends IRendererEntity<Point3, Point4, TypeDoc>
   implements IPositionable3d
 {
   public get position(): Point3 {
@@ -28,7 +22,7 @@ export class Renderer3dEntity<
     this.renderer.camera.rotation = value;
   }
 
-  public get camera(): CC {
+  public get camera(): TypeDoc['camera'] {
     return this.renderer.camera;
   }
 }

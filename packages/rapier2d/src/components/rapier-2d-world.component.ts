@@ -1,9 +1,10 @@
 import { Gg2dWorld, IDebugPhysicsDrawer, IPhysicsWorld2dComponent, Pnt2, Point2 } from '@gg-web-engine/core';
-import { init, EventQueue, Vector2, World } from '@dimforge/rapier2d-compat';
+import { EventQueue, init, Vector2, World } from '@dimforge/rapier2d-compat';
 import { Rapier2dRigidBodyComponent } from './rapier-2d-rigid-body.component';
 import { Rapier2dFactory } from '../rapier-2d-factory';
+import { Rapier2dPhysicsTypeDocRepo } from '../types';
 
-export class Rapier2dWorldComponent implements IPhysicsWorld2dComponent {
+export class Rapier2dWorldComponent implements IPhysicsWorld2dComponent<Rapier2dPhysicsTypeDocRepo> {
   private _factory: Rapier2dFactory | null = null;
   public get factory(): Rapier2dFactory {
     if (!this._factory) {

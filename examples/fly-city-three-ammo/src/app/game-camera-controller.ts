@@ -3,16 +3,14 @@ import {
   Camera3dAnimationArgs,
   Camera3dAnimator,
   FreeCameraController,
-  Gg3dWorld,
+  IPositionable3d,
   Pnt3,
   Renderer3dEntity,
-  IPositionable3d,
 } from '@gg-web-engine/core';
-import { ThreeSceneComponent, ThreeRendererComponent } from '@gg-web-engine/three';
-import { AmmoWorldComponent } from '@gg-web-engine/ammo';
 import { bumperCamera, farCamera, nearCamera } from './car-cameras';
 import { BehaviorSubject, skip } from 'rxjs';
 import { CurrentState } from './game-runner';
+import { FlyCityVTypeDoc, FlyCityWorld } from './app.component';
 
 export class GameCameraController {
 
@@ -58,8 +56,8 @@ export class GameCameraController {
 
 
   constructor(
-    public readonly world: Gg3dWorld<ThreeSceneComponent, AmmoWorldComponent>,
-    public readonly renderer: Renderer3dEntity,
+    public readonly world: FlyCityWorld,
+    public readonly renderer: Renderer3dEntity<FlyCityVTypeDoc>,
   ) {
     this.freeCameraController = new FreeCameraController(
       this.world.keyboardInput,
@@ -72,7 +70,7 @@ export class GameCameraController {
         ignoreKeyboardUnlessPointerLocked: true,
         ignoreMouseUnlessPointerLocked: true,
         mouseOptions: {
-          canvas: (this.renderer.renderer as ThreeRendererComponent).canvas!,
+          canvas: this.renderer.renderer.canvas!,
           pointerLock: true,
         },
       },

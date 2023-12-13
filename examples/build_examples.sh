@@ -11,9 +11,16 @@ examples=(
   "fly-city-three-ammo"
   "ammo-car-three-ammo"
 )
+build_example() {
+    pushd ./$1
+#    npm i
+#    sh ../../etc/switch_example_to_local_gg.sh .
+    npm run build
+#    npm run start
+    popd
+}
 for ix in ${!examples[*]}
 do
-    pushd ./${examples[$ix]}
-    npm run build
-    popd
+  build_example ${examples[$ix]}  # &
 done
+wait
