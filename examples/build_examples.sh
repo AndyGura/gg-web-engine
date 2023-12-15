@@ -12,6 +12,7 @@ examples=(
   "ammo-car-three-ammo"
   "collision-groups-three-ammo"
   "collision-groups-three-rapier3d"
+  "collision-groups-pool-three-ammo"
 )
 build_example() {
     pushd ./$1
