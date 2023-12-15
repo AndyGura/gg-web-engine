@@ -44,6 +44,8 @@ export class AmmoFactory implements IPhysicsBody3dComponentFactory<AmmoPhysicsTy
 
   protected createShape(descriptor: Shape3DDescriptor): Ammo.btCollisionShape {
     switch (descriptor.shape) {
+      case 'PLANE':
+        return new this.world.ammo.btStaticPlaneShape(new this.world.ammo.btVector3(0, 0, 1), 0);
       case 'BOX':
         return new this.world.ammo.btBoxShape(
           new this.world.ammo.btVector3(

@@ -64,6 +64,11 @@ export class Rapier3dFactory implements IPhysicsBody3dComponentFactory<Rapier3dP
   public createColliderDescr(descriptor: Shape3DDescriptor): ColliderDesc[] {
     const yToZUp = Qtrn.rotAround(Qtrn.O, Pnt3.X, Math.PI / 2);
     switch (descriptor.shape) {
+      // TODO looks like not exposed in rapier3d-compat
+      // case 'PLANE':
+      //   return [
+      //     ColliderDesc.halfspace(new Vector3(0, 0, 1)),
+      //   ];
       case 'BOX':
         return [
           ColliderDesc.cuboid(descriptor.dimensions.x / 2, descriptor.dimensions.y / 2, descriptor.dimensions.z / 2),

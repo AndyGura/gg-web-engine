@@ -2,6 +2,7 @@ import { Point3, Point4 } from '../../base';
 import { Body3DOptions } from './body-options';
 
 export type Shape3DDescriptor =
+  | { shape: 'PLANE' }
   | { shape: 'BOX'; dimensions: Point3 }
   | { shape: 'CONE' | 'CYLINDER'; radius: number; height: number }
   | { shape: 'CAPSULE'; radius: number; centersDistance: number }

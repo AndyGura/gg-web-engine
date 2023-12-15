@@ -12,6 +12,7 @@ import {
   MeshStandardMaterial,
   Object3D,
   PerspectiveCamera,
+  PlaneGeometry,
   SphereGeometry,
   Texture,
 } from 'three';
@@ -58,6 +59,9 @@ export class ThreeFactory extends IDisplayObject3dComponentFactory<ThreeVisualTy
     let mesh: Object3D | null = null;
     let threeMat = this.createMaterial(material);
     switch (descriptor.shape) {
+      case 'PLANE':
+        mesh = new Mesh(new PlaneGeometry(10000, 10000), threeMat);
+        break;
       case 'BOX':
         mesh = new Mesh(
           new BoxGeometry(descriptor.dimensions.x, descriptor.dimensions.y, descriptor.dimensions.z),

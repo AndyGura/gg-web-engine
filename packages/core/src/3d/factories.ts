@@ -29,6 +29,10 @@ export abstract class IDisplayObject3dComponentFactory<TypeDoc extends VisualTyp
   }
 
   // shortcuts
+  createPlane(material: DisplayObject3dOpts<TypeDoc['texture']> = {}): TypeDoc['displayObject'] {
+    return this.createPrimitive({ shape: 'PLANE' }, material);
+  }
+
   createBox(dimensions: Point3, material: DisplayObject3dOpts<TypeDoc['texture']> = {}): TypeDoc['displayObject'] {
     return this.createPrimitive({ shape: 'BOX', dimensions }, material);
   }
