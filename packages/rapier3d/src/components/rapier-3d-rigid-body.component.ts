@@ -1,5 +1,7 @@
 import {
+  BitMask,
   Body3DOptions,
+  CollisionGroup,
   Entity3d,
   Gg3dWorld,
   IRigidBody3dComponent,
@@ -12,6 +14,7 @@ import {
 import { Collider, ColliderDesc, Quaternion, RigidBody, RigidBodyDesc, Vector3 } from '@dimforge/rapier3d-compat';
 import { Rapier3dWorldComponent } from './rapier-3d-world.component';
 import { Rapier3dPhysicsTypeDocRepo } from '../types';
+import { InteractionGroups } from '@dimforge/rapier3d-compat/geometry/interaction_groups';
 
 export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3dPhysicsTypeDocRepo> {
   public entity: Entity3d | null = null;
@@ -101,10 +104,63 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
     protected _colliderDescr: ColliderDesc[],
     protected _bodyDescr: RigidBodyDesc,
     protected _colliderOptions: Omit<Omit<Body3DOptions, 'dynamic'>, 'mass'>,
-  ) {}
+  ) {
+    this.ownCollisionGroups = _colliderOptions?.ownCollisionGroups || 'all';
+    this.interactWithCollisionGroups = _colliderOptions?.interactWithCollisionGroups || 'all';
+  }
+
+  protected collisionGroups: InteractionGroups = BitMask.full(32);
+
+  get interactWithCollisionGroups(): CollisionGroup[] {
+    return BitMask.unpack(this.collisionGroups, 16);
+  }
+
+  set interactWithCollisionGroups(value: CollisionGroup[] | 'all') {
+    let mask;
+    if (value === 'all') {
+      mask = BitMask.full(16);
+    } else {
+      mask = BitMask.pack(value, 16);
+    }
+    mask = mask | (this.collisionGroups & (BitMask.full(16) << 16));
+    if (mask === this.collisionGroups) {
+      return;
+    }
+    this.collisionGroups = mask;
+    if (this.nativeBody) {
+      for (let i = 0; i < this.nativeBody.numColliders(); i++) {
+        this.nativeBody.collider(i).setCollisionGroups(this.collisionGroups);
+      }
+    }
+  }
+
+  get ownCollisionGroups(): CollisionGroup[] {
+    return BitMask.unpack(this.collisionGroups >> 16, 16);
+  }
+
+  set ownCollisionGroups(value: CollisionGroup[] | 'all') {
+    let mask;
+    if (value === 'all') {
+      mask = BitMask.full(16);
+    } else {
+      mask = BitMask.pack(value, 16);
+    }
+    mask = (mask << 16) | (this.collisionGroups & BitMask.full(16));
+    if (mask === this.collisionGroups) {
+      return;
+    }
+    this.collisionGroups = mask;
+    if (this.nativeBody) {
+      for (let i = 0; i < this.nativeBody.numColliders(); i++) {
+        this.nativeBody.collider(i).setCollisionGroups(this.collisionGroups);
+      }
+    }
+  }
 
   clone(): Rapier3dRigidBodyComponent {
-    return new Rapier3dRigidBodyComponent(this.world, ...this.factoryProps);
+    const comp = new Rapier3dRigidBodyComponent(this.world, ...this.factoryProps);
+    comp.collisionGroups = this.collisionGroups;
+    return comp;
   }
 
   addToWorld(world: Gg3dWorld<VisualTypeDocRepo3D, Rapier3dPhysicsTypeDocRepo>): void {
@@ -116,6 +172,7 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
       const col = this.world.nativeWorld!.createCollider(c, this._nativeBody!);
       col.setFriction(this._colliderOptions.friction);
       col.setRestitution(this._colliderOptions.restitution);
+      col.setCollisionGroups(this.collisionGroups);
       return col;
     });
     this.world.handleIdEntityMap.set(this._nativeBody!.handle, this);

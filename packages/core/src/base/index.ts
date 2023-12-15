@@ -12,6 +12,7 @@ export * from './components/rendering/i-visual-scene.component';
 export * from './components/i-component';
 export * from './components/i-world-component';
 
+export * from './data-structures/bitmask';
 export * from './data-structures/graph';
 
 export * from './entities/controllers/animation-mixer';

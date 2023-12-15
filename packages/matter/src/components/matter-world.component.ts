@@ -1,8 +1,9 @@
-import { Gg2dWorld, IDebugPhysicsDrawer, IPhysicsWorld2dComponent, Point2 } from '@gg-web-engine/core';
+import { CollisionGroup, Gg2dWorld, IDebugPhysicsDrawer, IPhysicsWorld2dComponent, Point2 } from '@gg-web-engine/core';
 import { Engine, World } from 'matter-js';
 import { MatterFactory } from '../matter-factory';
 import { MatterPhysicsTypeDocRepo } from '../types';
 
+// TODO implement bindings for collision groups. Matter.js has elegant solution for that, read body.collisionFilter
 export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhysicsTypeDocRepo> {
   protected matterEngine: Engine | null = null;
 
@@ -40,6 +41,14 @@ export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhys
 
   async init(): Promise<void> {
     this.matterEngine = Engine.create({ gravity: { ...this._gravity, scale: 0.0001 } });
+  }
+
+  registerCollisionGroup(): CollisionGroup {
+    throw new Error('Collision groups not implemented for Matter.js');
+  }
+
+  deregisterCollisionGroup(group: CollisionGroup): void {
+    throw new Error('Collision groups not implemented for Matter.js');
   }
 
   simulate(delta: number): void {

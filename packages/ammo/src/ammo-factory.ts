@@ -137,8 +137,14 @@ export class AmmoFactory implements IPhysicsBody3dComponentFactory<AmmoPhysicsTy
     if (options.restitution) {
       environmentBodyCI.set_m_restitution(options.restitution);
     }
-    const body = new this.world.ammo.btRigidBody(environmentBodyCI);
-    return new AmmoRigidBodyComponent(this.world, body);
+    const comp = new AmmoRigidBodyComponent(this.world, new this.world.ammo.btRigidBody(environmentBodyCI));
+    if (options.ownCollisionGroups && options.ownCollisionGroups !== 'all') {
+      comp.ownCollisionGroups = options.ownCollisionGroups;
+    }
+    if (options.interactWithCollisionGroups && options.interactWithCollisionGroups !== 'all') {
+      comp.interactWithCollisionGroups = options.interactWithCollisionGroups;
+    }
+    return comp;
   }
 
   public createTriggerFromShape(

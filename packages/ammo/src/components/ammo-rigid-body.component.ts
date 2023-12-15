@@ -49,17 +49,18 @@ export class AmmoRigidBodyComponent
   }
 
   addToWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>): void {
-    if (world.physicsWorld != this.world) {
-      throw new Error('Ammo bodies cannot be shared between different worlds');
-    }
-    this.world.dynamicAmmoWorld?.addRigidBody(this.nativeBody);
+    super.addToWorld(world);
+    this.world.dynamicAmmoWorld?.addRigidBody(this.nativeBody, this._ownCGsMask, this._interactWithCGsMask);
   }
 
   removeFromWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>): void {
-    if (world.physicsWorld != this.world) {
-      throw new Error('Ammo bodies cannot be shared between different worlds');
-    }
+    super.removeFromWorld(world);
     this.world.dynamicAmmoWorld?.removeRigidBody(this.nativeBody);
+  }
+
+  refreshCG(): void {
+    this.world.dynamicAmmoWorld?.removeRigidBody(this.nativeBody);
+    this.world.dynamicAmmoWorld?.addRigidBody(this.nativeBody, this._ownCGsMask, this._interactWithCGsMask);
   }
 
   resetMotion(): void {

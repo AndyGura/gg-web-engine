@@ -1,6 +1,7 @@
 import { IEntity } from '../../entities/i-entity';
 import { IWorldComponent } from '../i-world-component';
 import { GgWorld, PhysicsTypeDocRepo, VisualTypeDocRepo } from '../../gg-world';
+import { CollisionGroup } from '../../models/body-options';
 
 export interface IBodyComponent<D, R, TypeDoc extends PhysicsTypeDocRepo<D, R> = PhysicsTypeDocRepo<D, R>>
   extends IWorldComponent<D, R, VisualTypeDocRepo<D, R>, TypeDoc> {
@@ -10,6 +11,14 @@ export interface IBodyComponent<D, R, TypeDoc extends PhysicsTypeDocRepo<D, R> =
   rotation: R;
 
   name: string;
+
+  get ownCollisionGroups(): CollisionGroup[];
+
+  set ownCollisionGroups(value: CollisionGroup[] | 'all');
+
+  get interactWithCollisionGroups(): CollisionGroup[];
+
+  set interactWithCollisionGroups(value: CollisionGroup[] | 'all');
 
   clone(): IBodyComponent<D, R, TypeDoc>;
 

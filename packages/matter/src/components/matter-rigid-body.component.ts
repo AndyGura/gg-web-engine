@@ -1,4 +1,5 @@
 import {
+  CollisionGroup,
   Entity2d,
   Gg2dWorld,
   IRigidBody2dComponent,
@@ -49,6 +50,22 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
   public entity: Entity2d | null = null;
 
   constructor(public nativeBody: Body) {}
+
+  get interactWithCollisionGroups(): CollisionGroup[] {
+    throw new Error('Collision groups not implemented for Matter.js');
+  }
+
+  set interactWithCollisionGroups(value: CollisionGroup[] | 'all') {
+    throw new Error('Collision groups not implemented for Matter.js');
+  }
+
+  get ownCollisionGroups(): CollisionGroup[] {
+    throw new Error('Collision groups not implemented for Matter.js');
+  }
+
+  set ownCollisionGroups(value: CollisionGroup[] | 'all') {
+    throw new Error('Collision groups not implemented for Matter.js');
+  }
 
   clone(): MatterRigidBodyComponent {
     // TODO

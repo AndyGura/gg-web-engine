@@ -1,4 +1,5 @@
 import {
+  CollisionGroup,
   Gg3dWorld,
   IDebugPhysicsDrawer,
   IPhysicsWorld3dComponent,
@@ -104,6 +105,22 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
     if (this._debugger) {
       this._debugger.update();
     }
+  }
+
+  protected lockedCollisionGroups: number[] = [];
+
+  registerCollisionGroup(): CollisionGroup {
+    for (let i = 0; i < 16; i++) {
+      if (!this.lockedCollisionGroups.includes(i)) {
+        this.lockedCollisionGroups.push(i);
+        return i;
+      }
+    }
+    throw new Error('App tries to register 17th collision group, but ammo.js supports only 16');
+  }
+
+  deregisterCollisionGroup(group: CollisionGroup): void {
+    this.lockedCollisionGroups = this.lockedCollisionGroups.filter(x => x !== group);
   }
 
   startDebugger(

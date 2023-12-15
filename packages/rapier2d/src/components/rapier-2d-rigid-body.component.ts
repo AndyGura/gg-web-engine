@@ -1,5 +1,7 @@
 import {
+  BitMask,
   Body2DOptions,
+  CollisionGroup,
   Entity2d,
   Gg2dWorld,
   IRigidBody2dComponent,
@@ -7,7 +9,14 @@ import {
   Point2,
   VisualTypeDocRepo2D,
 } from '@gg-web-engine/core';
-import { Collider, ColliderDesc, RigidBody, RigidBodyDesc, Vector2 } from '@dimforge/rapier2d-compat';
+import {
+  Collider,
+  ColliderDesc,
+  InteractionGroups,
+  RigidBody,
+  RigidBodyDesc,
+  Vector2,
+} from '@dimforge/rapier2d-compat';
 import { Rapier2dWorldComponent } from './rapier-2d-world.component';
 import { Rapier2dPhysicsTypeDocRepo } from '../types';
 
@@ -84,6 +93,54 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
     protected _bodyDescr: RigidBodyDesc,
     protected _colliderOptions: Omit<Omit<Body2DOptions, 'dynamic'>, 'mass'>,
   ) {}
+
+  protected collisionGroups: InteractionGroups = BitMask.full(32);
+
+  get interactWithCollisionGroups(): CollisionGroup[] {
+    return BitMask.unpack(this.collisionGroups, 16);
+  }
+
+  set interactWithCollisionGroups(value: CollisionGroup[] | 'all') {
+    let mask;
+    if (value === 'all') {
+      mask = BitMask.full(16);
+    } else {
+      mask = BitMask.pack(value, 16);
+    }
+    mask = mask | (this.collisionGroups & (BitMask.full(16) << 16));
+    if (mask === this.collisionGroups) {
+      return;
+    }
+    this.collisionGroups = mask;
+    if (this.nativeBody) {
+      for (let i = 0; i < this.nativeBody.numColliders(); i++) {
+        this.nativeBody.collider(i).setCollisionGroups(this.collisionGroups);
+      }
+    }
+  }
+
+  get ownCollisionGroups(): CollisionGroup[] {
+    return BitMask.unpack(this.collisionGroups >> 16, 16);
+  }
+
+  set ownCollisionGroups(value: CollisionGroup[] | 'all') {
+    let mask;
+    if (value === 'all') {
+      mask = BitMask.full(16);
+    } else {
+      mask = BitMask.pack(value, 16);
+    }
+    mask = (mask << 16) | (this.collisionGroups & BitMask.full(16));
+    if (mask === this.collisionGroups) {
+      return;
+    }
+    this.collisionGroups = mask;
+    if (this.nativeBody) {
+      for (let i = 0; i < this.nativeBody.numColliders(); i++) {
+        this.nativeBody.collider(i).setCollisionGroups(this.collisionGroups);
+      }
+    }
+  }
 
   clone(): Rapier2dRigidBodyComponent {
     // TODO probably need to clone factory props to not share the same reference?

@@ -1,6 +1,7 @@
 import { GgWorld, PhysicsTypeDocRepo } from '../../gg-world';
 import { IDebugPhysicsDrawer } from '../../interfaces/i-debug-physics-drawer';
 import { IComponent } from '../i-component';
+import { CollisionGroup } from '../../models/body-options';
 
 export interface IPhysicsWorldComponent<D, R, TypeDoc extends PhysicsTypeDocRepo<D, R> = PhysicsTypeDocRepo<D, R>>
   extends IComponent {
@@ -18,6 +19,10 @@ export interface IPhysicsWorldComponent<D, R, TypeDoc extends PhysicsTypeDocRepo
    * @param delta delta time from last tick in milliseconds.
    */
   simulate(delta: number): void;
+
+  registerCollisionGroup(): CollisionGroup;
+
+  deregisterCollisionGroup(group: CollisionGroup): void;
 
   startDebugger(world: GgWorld<D, R>, drawer: IDebugPhysicsDrawer<D, R>): void;
 

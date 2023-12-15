@@ -1,4 +1,4 @@
-import { Gg3dWorld, IEntity, Point3, Point4, VisualTypeDocRepo3D } from '@gg-web-engine/core';
+import { BitMask, CollisionGroup, Gg3dWorld, IEntity, Point3, Point4, VisualTypeDocRepo3D } from '@gg-web-engine/core';
 import { AmmoWorldComponent } from './ammo-world.component';
 import Ammo from 'ammojs-typed';
 import { ammoId } from '../ammo-utils';
@@ -36,6 +36,10 @@ export abstract class AmmoBodyComponent<T extends Ammo.btCollisionObject> {
     this.nativeBody.setWorldTransform(transform);
   }
 
+  public name: string = '';
+
+  abstract entity: IEntity | null;
+
   get nativeBody(): T {
     return this._nativeBody;
   }
@@ -49,9 +53,49 @@ export abstract class AmmoBodyComponent<T extends Ammo.btCollisionObject> {
     AmmoBodyComponent.nativeBodyReverseMap.set(ammoId(value), this);
   }
 
-  public name: string = '';
+  protected addedToWorld: boolean = false;
+  protected _interactWithCGsMask = BitMask.full(16);
+  protected _ownCGsMask = BitMask.full(16);
 
-  abstract entity: IEntity | null;
+  get interactWithCollisionGroups(): CollisionGroup[] {
+    return BitMask.unpack(this._interactWithCGsMask, 16);
+  }
+
+  abstract refreshCG(): void;
+
+  set interactWithCollisionGroups(value: CollisionGroup[] | 'all') {
+    let mask;
+    if (value === 'all') {
+      mask = BitMask.full(16);
+    } else {
+      mask = BitMask.pack(value, 16);
+    }
+    if (this._interactWithCGsMask !== mask) {
+      this._interactWithCGsMask = mask;
+      if (this.addedToWorld) {
+        this.refreshCG();
+      }
+    }
+  }
+
+  get ownCollisionGroups(): CollisionGroup[] {
+    return BitMask.unpack(this._ownCGsMask, 16);
+  }
+
+  set ownCollisionGroups(value: CollisionGroup[] | 'all') {
+    let mask;
+    if (value === 'all') {
+      mask = BitMask.full(16);
+    } else {
+      mask = BitMask.pack(value, 16);
+    }
+    if (this._ownCGsMask !== mask) {
+      this._ownCGsMask = mask;
+      if (this.addedToWorld) {
+        this.refreshCG();
+      }
+    }
+  }
 
   protected constructor(protected readonly world: AmmoWorldComponent, protected _nativeBody: T) {
     AmmoBodyComponent.nativeBodyReverseMap.set(ammoId(this.nativeBody), this);
@@ -59,9 +103,19 @@ export abstract class AmmoBodyComponent<T extends Ammo.btCollisionObject> {
 
   abstract clone(): AmmoBodyComponent<T>;
 
-  abstract addToWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>): void;
+  addToWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>): void {
+    if (world.physicsWorld != this.world) {
+      throw new Error('Ammo bodies cannot be shared between different worlds');
+    }
+    this.addedToWorld = true;
+  }
 
-  abstract removeFromWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>): void;
+  removeFromWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>): void {
+    if (world.physicsWorld != this.world) {
+      throw new Error('Ammo bodies cannot be shared between different worlds');
+    }
+    this.addedToWorld = false;
+  }
 
   dispose(): void {
     try {

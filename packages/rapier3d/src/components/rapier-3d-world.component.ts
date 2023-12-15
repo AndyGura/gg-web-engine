@@ -1,4 +1,11 @@
-import { Gg3dWorld, IDebugPhysicsDrawer, IPhysicsWorld3dComponent, Point3, Point4 } from '@gg-web-engine/core';
+import {
+  CollisionGroup,
+  Gg3dWorld,
+  IDebugPhysicsDrawer,
+  IPhysicsWorld3dComponent,
+  Point3,
+  Point4,
+} from '@gg-web-engine/core';
 import { EventQueue, init, Vector3, World } from '@dimforge/rapier3d-compat';
 import { Rapier3dRigidBodyComponent } from './rapier-3d-rigid-body.component';
 import { Rapier3dFactory } from '../rapier-3d-factory';
@@ -78,6 +85,22 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
   simulate(delta: number): void {
     this._nativeWorld!.timestep = (this.timeScale * delta) / 1000;
     this._nativeWorld?.step(this.eventQueue);
+  }
+
+  protected lockedCollisionGroups: number[] = [];
+
+  registerCollisionGroup(): CollisionGroup {
+    for (let i = 0; i < 16; i++) {
+      if (!this.lockedCollisionGroups.includes(i)) {
+        this.lockedCollisionGroups.push(i);
+        return i;
+      }
+    }
+    throw new Error('App tries to register 17th collision group, but rapier 3D supports only 16');
+  }
+
+  deregisterCollisionGroup(group: CollisionGroup): void {
+    this.lockedCollisionGroups = this.lockedCollisionGroups.filter(x => x !== group);
   }
 
   startDebugger(world: Gg3dWorld, drawer: IDebugPhysicsDrawer<Point3, Point4>): void {

@@ -10,6 +10,8 @@ examples=(
   "glb-loader-three-rapier3d"
   "fly-city-three-ammo"
   "ammo-car-three-ammo"
+  "collision-groups-three-ammo"
+  "collision-groups-three-rapier3d"
 )
 build_example() {
     pushd ./$1
