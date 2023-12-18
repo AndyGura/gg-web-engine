@@ -16,7 +16,7 @@ export class AmmoRigidBodyComponent
   }
 
   set linearVelocity(value: Point3) {
-    this.nativeBody.setLinearVelocity(new this.ammo.btVector3(value.x, value.y, value.z));
+    this.nativeBody.setLinearVelocity(new Ammo.btVector3(value.x, value.y, value.z));
   }
 
   get angularVelocity(): Point3 {
@@ -25,7 +25,7 @@ export class AmmoRigidBodyComponent
   }
 
   set angularVelocity(value: Point3) {
-    this.nativeBody.setAngularVelocity(new this.ammo.btVector3(value.x, value.y, value.z));
+    this.nativeBody.setAngularVelocity(new Ammo.btVector3(value.x, value.y, value.z));
   }
 
   constructor(protected readonly world: AmmoWorldComponent, protected _nativeBody: Ammo.btRigidBody) {
@@ -64,11 +64,11 @@ export class AmmoRigidBodyComponent
   }
 
   resetMotion(): void {
-    const emptyVector = new this.ammo.btVector3();
+    const emptyVector = new Ammo.btVector3();
     this.nativeBody.setLinearVelocity(emptyVector);
     this.nativeBody.setAngularVelocity(emptyVector);
     this.nativeBody.clearForces();
     this.nativeBody.updateInertiaTensor();
-    this.ammo.destroy(emptyVector);
+    Ammo.destroy(emptyVector);
   }
 }

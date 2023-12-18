@@ -18,18 +18,18 @@ export class AmmoRaycastVehicleComponent
   implements IRaycastVehicleComponent<AmmoPhysicsTypeDocRepo>
 {
   public readonly nativeVehicle: Ammo.btRaycastVehicle;
-  public readonly vehicleTuning: Ammo.btVehicleTuning = new this.ammo.btVehicleTuning();
-  protected readonly wheelDirectionCS0: Ammo.btVector3 = new this.ammo.btVector3(0, 0, -1);
-  protected readonly wheelAxleCS: Ammo.btVector3 = new this.ammo.btVector3(1, 0, 0);
+  public readonly vehicleTuning: Ammo.btVehicleTuning = new Ammo.btVehicleTuning();
+  protected readonly wheelDirectionCS0: Ammo.btVector3 = new Ammo.btVector3(0, 0, -1);
+  protected readonly wheelAxleCS: Ammo.btVector3 = new Ammo.btVector3(1, 0, 0);
 
   public entity: RaycastVehicle3dEntity | null = null;
 
   constructor(protected readonly world: AmmoWorldComponent, public chassisBody: AmmoRigidBodyComponent) {
     super(world, chassisBody.nativeBody);
-    this.nativeVehicle = new this.ammo.btRaycastVehicle(
+    this.nativeVehicle = new Ammo.btRaycastVehicle(
       this.vehicleTuning,
       this.chassisBody.nativeBody,
-      new this.ammo.btDefaultVehicleRaycaster(world.dynamicAmmoWorld!),
+      new Ammo.btDefaultVehicleRaycaster(world.dynamicAmmoWorld!),
     );
     this.nativeVehicle.setCoordinateSystem(0, 2, 1);
   }
@@ -51,7 +51,7 @@ export class AmmoRaycastVehicleComponent
 
   addWheel(options: WheelOptions, suspensionOptions: SuspensionOptions): void {
     const wheelInfo = this.nativeVehicle.addWheel(
-      new this.ammo.btVector3(options.position.x, options.position.y, options.position.z),
+      new Ammo.btVector3(options.position.x, options.position.y, options.position.z),
       this.wheelDirectionCS0,
       this.wheelAxleCS,
       suspensionOptions.restLength,
@@ -84,8 +84,7 @@ export class AmmoRaycastVehicleComponent
   }
 
   getWheelTransform(wheelIndex: number): { position: Point3; rotation: Point4 } {
-    // FIXME when set to `true`, wheels are jittering, but it was not the case in old sandbox app. Check why
-    this.nativeVehicle.updateWheelTransform(wheelIndex, false);
+    this.nativeVehicle.updateWheelTransform(wheelIndex, true);
     const transform = this.nativeVehicle.getWheelTransformWS(wheelIndex);
     const origin = transform.getOrigin();
     const quaternion = transform.getRotation();

@@ -10,10 +10,6 @@ export abstract class AmmoBodyComponent<T extends Ammo.btCollisionObject> {
     AmmoBodyComponent<any>
   >();
 
-  protected get ammo(): typeof Ammo {
-    return this.world.ammo;
-  }
-
   public get position(): Point3 {
     const origin = this.nativeBody.getWorldTransform().getOrigin();
     return { x: origin.x(), y: origin.y(), z: origin.z() };
@@ -21,7 +17,7 @@ export abstract class AmmoBodyComponent<T extends Ammo.btCollisionObject> {
 
   public set position(value: Point3) {
     const transform = this.nativeBody.getWorldTransform();
-    transform.setOrigin(new this.ammo.btVector3(value.x, value.y, value.z));
+    transform.setOrigin(new Ammo.btVector3(value.x, value.y, value.z));
     this.nativeBody.setWorldTransform(transform);
   }
 
@@ -32,7 +28,7 @@ export abstract class AmmoBodyComponent<T extends Ammo.btCollisionObject> {
 
   public set rotation(value: Point4) {
     const transform = this.nativeBody.getWorldTransform();
-    transform.setRotation(new this.ammo.btQuaternion(value.x, value.y, value.z, value.w));
+    transform.setRotation(new Ammo.btQuaternion(value.x, value.y, value.z, value.w));
     this.nativeBody.setWorldTransform(transform);
   }
 
@@ -119,7 +115,7 @@ export abstract class AmmoBodyComponent<T extends Ammo.btCollisionObject> {
 
   dispose(): void {
     try {
-      this.ammo.destroy(this.nativeBody);
+      Ammo.destroy(this.nativeBody);
     } catch {
       // pass
     }

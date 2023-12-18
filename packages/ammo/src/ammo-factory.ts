@@ -45,56 +45,52 @@ export class AmmoFactory implements IPhysicsBody3dComponentFactory<AmmoPhysicsTy
   protected createShape(descriptor: Shape3DDescriptor): Ammo.btCollisionShape {
     switch (descriptor.shape) {
       case 'PLANE':
-        return new this.world.ammo.btStaticPlaneShape(new this.world.ammo.btVector3(0, 0, 1), 0);
+        return new Ammo.btStaticPlaneShape(new Ammo.btVector3(0, 0, 1), 0);
       case 'BOX':
-        return new this.world.ammo.btBoxShape(
-          new this.world.ammo.btVector3(
-            descriptor.dimensions.x / 2,
-            descriptor.dimensions.y / 2,
-            descriptor.dimensions.z / 2,
-          ),
+        return new Ammo.btBoxShape(
+          new Ammo.btVector3(descriptor.dimensions.x / 2, descriptor.dimensions.y / 2, descriptor.dimensions.z / 2),
         );
       case 'CAPSULE':
-        return new this.world.ammo.btCapsuleShapeZ(descriptor.radius, descriptor.centersDistance);
+        return new Ammo.btCapsuleShapeZ(descriptor.radius, descriptor.centersDistance);
       case 'CYLINDER':
-        return new this.world.ammo.btCylinderShapeZ(
-          new this.world.ammo.btVector3(descriptor.radius, descriptor.radius, descriptor.height / 2),
+        return new Ammo.btCylinderShapeZ(
+          new Ammo.btVector3(descriptor.radius, descriptor.radius, descriptor.height / 2),
         );
       case 'CONE':
-        return new this.world.ammo.btConeShapeZ(descriptor.radius, descriptor.height);
+        return new Ammo.btConeShapeZ(descriptor.radius, descriptor.height);
       case 'SPHERE':
-        return new this.world.ammo.btSphereShape(descriptor.radius);
+        return new Ammo.btSphereShape(descriptor.radius);
       case 'COMPOUND':
-        const compoundShape: Ammo.btCollisionShape = new this.world.ammo.btCompoundShape();
+        const compoundShape: Ammo.btCollisionShape = new Ammo.btCompoundShape();
         for (const item of descriptor.children) {
           const subShape = this.createShape(item.shape);
           if (!subShape) {
             continue;
           }
-          const subShapeTransform = new this.world.ammo.btTransform();
+          const subShapeTransform = new Ammo.btTransform();
           const pos = item.position || Pnt3.O;
           const rot = item.rotation || Qtrn.O;
-          subShapeTransform.setOrigin(new this.world.ammo.btVector3(pos.x, pos.y, pos.z));
-          subShapeTransform.setRotation(new this.world.ammo.btQuaternion(rot.x, rot.y, rot.z, rot.w));
+          subShapeTransform.setOrigin(new Ammo.btVector3(pos.x, pos.y, pos.z));
+          subShapeTransform.setRotation(new Ammo.btQuaternion(rot.x, rot.y, rot.z, rot.w));
           (compoundShape as Ammo.btCompoundShape).addChildShape(subShapeTransform, subShape);
         }
         return compoundShape;
       case 'CONVEX_HULL':
-        const shape = new this.world.ammo.btConvexHullShape();
-        const tmpVector = new this.world.ammo.btVector3();
+        const shape = new Ammo.btConvexHullShape();
+        const tmpVector = new Ammo.btVector3();
         for (const v of descriptor.vertices) {
           tmpVector.setValue(v.x, v.y, v.z);
           shape.addPoint(tmpVector);
         }
-        this.world.ammo.destroy(tmpVector);
+        Ammo.destroy(tmpVector);
         shape.recalcLocalAabb();
         return shape;
       case 'MESH':
-        const mesh = new this.world.ammo.btTriangleMesh(true, true);
+        const mesh = new Ammo.btTriangleMesh(true, true);
         const tmpVectors: [Ammo.btVector3, Ammo.btVector3, Ammo.btVector3] = [
-          new this.world.ammo.btVector3(),
-          new this.world.ammo.btVector3(),
-          new this.world.ammo.btVector3(),
+          new Ammo.btVector3(),
+          new Ammo.btVector3(),
+          new Ammo.btVector3(),
         ];
         for (const f of descriptor.faces) {
           for (let j = 0; j < 3; j++) {
@@ -107,9 +103,9 @@ export class AmmoFactory implements IPhysicsBody3dComponentFactory<AmmoPhysicsTy
           mesh.addTriangle(...tmpVectors, true);
         }
         tmpVectors.forEach(v => {
-          this.world.ammo.destroy(v);
+          Ammo.destroy(v);
         });
-        return new this.world.ammo.btBvhTriangleMeshShape(mesh, false, true);
+        return new Ammo.btBvhTriangleMeshShape(mesh, false, true);
     }
     throw new Error(`Shape "${(descriptor as any).shape}" not implemented for Ammo.js`);
   }
@@ -124,14 +120,13 @@ export class AmmoFactory implements IPhysicsBody3dComponentFactory<AmmoPhysicsTy
     }
     const pos = transform?.position || Pnt3.O;
     const rot = transform?.rotation || Qtrn.O;
-    const ammo = this.world.ammo;
-    const ammoTransform = new ammo.btTransform();
-    ammoTransform.setOrigin(new ammo.btVector3(pos.x, pos.y, pos.z));
-    ammoTransform.setRotation(new ammo.btQuaternion(rot.x, rot.y, rot.z, rot.w));
-    const motionState = new ammo.btDefaultMotionState(ammoTransform);
-    const localInertia = new ammo.btVector3(0, 0, 0);
+    const ammoTransform = new Ammo.btTransform();
+    ammoTransform.setOrigin(new Ammo.btVector3(pos.x, pos.y, pos.z));
+    ammoTransform.setRotation(new Ammo.btQuaternion(rot.x, rot.y, rot.z, rot.w));
+    const motionState = new Ammo.btDefaultMotionState(ammoTransform);
+    const localInertia = new Ammo.btVector3(0, 0, 0);
     shape.calculateLocalInertia(options.mass || 0, localInertia);
-    const environmentBodyCI = new ammo.btRigidBodyConstructionInfo(options.mass || 0, motionState, shape, localInertia);
+    const environmentBodyCI = new Ammo.btRigidBodyConstructionInfo(options.mass || 0, motionState, shape, localInertia);
     if (options.friction) {
       environmentBodyCI.set_m_friction(options.friction);
       environmentBodyCI.set_m_rollingFriction(options.friction);
@@ -139,7 +134,7 @@ export class AmmoFactory implements IPhysicsBody3dComponentFactory<AmmoPhysicsTy
     if (options.restitution) {
       environmentBodyCI.set_m_restitution(options.restitution);
     }
-    const comp = new AmmoRigidBodyComponent(this.world, new this.world.ammo.btRigidBody(environmentBodyCI));
+    const comp = new AmmoRigidBodyComponent(this.world, new Ammo.btRigidBody(environmentBodyCI));
     if (options.ownCollisionGroups && options.ownCollisionGroups !== 'all') {
       comp.ownCollisionGroups = options.ownCollisionGroups;
     }
@@ -153,22 +148,18 @@ export class AmmoFactory implements IPhysicsBody3dComponentFactory<AmmoPhysicsTy
     shape: Ammo.btCollisionShape,
     transform?: { position?: Point3; rotation?: Point4 },
   ): AmmoTriggerComponent {
-    const ghostObject = new this.world.ammo.btPairCachingGhostObject();
+    const ghostObject = new Ammo.btPairCachingGhostObject();
     ghostObject.setCollisionShape(shape);
     ghostObject.setCollisionFlags(ghostObject.getCollisionFlags() | 4); // 4 is a CF_NO_CONTACT_RESPONSE collision flag
     ghostObject
       .getWorldTransform()
       .setOrigin(
-        new this.world.ammo.btVector3(
-          transform?.position?.x || 0,
-          transform?.position?.y || 0,
-          transform?.position?.z || 0,
-        ),
+        new Ammo.btVector3(transform?.position?.x || 0, transform?.position?.y || 0, transform?.position?.z || 0),
       );
     ghostObject
       .getWorldTransform()
       .setRotation(
-        new this.world.ammo.btQuaternion(
+        new Ammo.btQuaternion(
           transform?.rotation?.x || 0,
           transform?.rotation?.y || 0,
           transform?.rotation?.z || 0,

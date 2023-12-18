@@ -58,6 +58,26 @@ export class Qtrn {
   }
 
   /**
+   * Calculates and returns the conjugate of a quaternion.
+   * The conjugate of a quaternion is obtained by changing the sign of its vector components.
+   * @param q The Point4 (quaternion) object.
+   * @returns The conjugate of the quaternion passed as argument.
+   */
+  static conjugate(q: Point4): Point4 {
+    return { x: -q.x, y: -q.y, z: -q.z, w: q.w };
+  }
+
+  /**
+   * Returns the opposite of a quaternion.
+   * It's obtained by negating all quaternion elements(x, y, z and w).
+   * @param q The Point4 (quaternion) object.
+   * @returns The opposite of the quaternion passed as argument.
+   */
+  static opposite(q: Point4): Point4 {
+    return { x: -q.x, y: -q.y, z: -q.z, w: -q.w };
+  }
+
+  /**
    * Combines an arbitrary number of quaternions by multiplying them together in order.
    * @param quaternions The quaternions to combine.
    * @returns The combined quaternion.

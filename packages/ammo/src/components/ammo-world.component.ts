@@ -7,7 +7,7 @@ import {
   Point4,
   VisualTypeDocRepo3D,
 } from '@gg-web-engine/core';
-import Ammo, * as AmmoModule from 'ammojs-typed';
+import Ammo from 'ammojs-typed';
 import { AmmoFactory } from '../ammo-factory';
 import { AmmoLoader } from '../ammo-loader';
 import { AmmoDebugger, AmmoDebugMode } from '../ammo-debugger';
@@ -51,20 +51,12 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
   public set timeScale(value: number) {
     this._timeScale = value;
   }
+
   private _debugger: AmmoDebugger | null = null;
   private _debugDrawer: IDebugPhysicsDrawer<Point3, Point4> | null = null;
 
   get physicsDebugViewActive(): boolean {
     return !!this._debugger;
-  }
-
-  private ammoInstance: typeof Ammo | undefined;
-
-  public get ammo(): typeof Ammo {
-    if (this.ammoInstance) {
-      return this.ammoInstance;
-    }
-    throw 'Physics world not initialized!';
   }
 
   public get dynamicAmmoWorld(): Ammo.btDiscreteDynamicsWorld | undefined {
@@ -80,17 +72,17 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
   protected _dynamicAmmoWorld: Ammo.btDiscreteDynamicsWorld | undefined;
 
   async init(): Promise<void> {
-    this.ammoInstance = await AmmoModule.default.bind(AmmoModule)();
-    this.collisionConfiguration = new this.ammo.btDefaultCollisionConfiguration();
-    this.dispatcher = new this.ammo.btCollisionDispatcher(this.collisionConfiguration);
-    this.broadphase = new this.ammo.btDbvtBroadphase();
-    this.ghostPairCallback = new this.ammo.btGhostPairCallback();
-    this.solver = new this.ammo.btSequentialImpulseConstraintSolver();
-    this.gravityVector = new this.ammo.btVector3(this._gravity.x, this._gravity.y, this._gravity.z);
+    await Ammo.bind(Ammo)(Ammo);
+    this.collisionConfiguration = new Ammo.btDefaultCollisionConfiguration();
+    this.dispatcher = new Ammo.btCollisionDispatcher(this.collisionConfiguration);
+    this.broadphase = new Ammo.btDbvtBroadphase() as any;
+    this.ghostPairCallback = new Ammo.btGhostPairCallback();
+    this.solver = new Ammo.btSequentialImpulseConstraintSolver();
+    this.gravityVector = new Ammo.btVector3(this._gravity.x, this._gravity.y, this._gravity.z);
 
-    this._dynamicAmmoWorld = new this.ammo.btDiscreteDynamicsWorld(
+    this._dynamicAmmoWorld = new Ammo.btDiscreteDynamicsWorld(
       this.dispatcher,
-      this.broadphase,
+      this.broadphase!,
       this.solver,
       this.collisionConfiguration,
     );
@@ -139,7 +131,7 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
   stopDebugger(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>): void {
     if (this._debugger) {
       this.dynamicAmmoWorld?.setDebugDrawer(null!);
-      this.ammo.destroy(this._debugger.ammoInstance);
+      Ammo.destroy(this._debugger.ammoInstance);
       this._debugger = null;
     }
     if (this._debugDrawer) {
@@ -150,20 +142,14 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
   }
 
   dispose(): void {
-    this.ammo.destroy(this._dynamicAmmoWorld);
-    this.ammo.destroy(this.solver);
-    this.ammo.destroy(this.broadphase);
-    this.ammo.destroy(this.dispatcher);
-    this.ammo.destroy(this.collisionConfiguration);
+    Ammo.destroy(this._dynamicAmmoWorld);
+    Ammo.destroy(this.solver);
+    Ammo.destroy(this.broadphase);
+    Ammo.destroy(this.dispatcher);
+    Ammo.destroy(this.collisionConfiguration);
     if (this._debugger) {
-      this.ammo.destroy(this._debugger.ammoInstance);
+      Ammo.destroy(this._debugger.ammoInstance);
     }
-    this._dynamicAmmoWorld =
-      this.solver =
-      this.broadphase =
-      this.dispatcher =
-      this.collisionConfiguration =
-      this.ammoInstance =
-        undefined;
+    this._dynamicAmmoWorld = this.solver = this.broadphase = this.dispatcher = this.collisionConfiguration = undefined;
   }
 }

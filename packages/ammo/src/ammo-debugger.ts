@@ -24,9 +24,9 @@ export enum AmmoDebugMode {
   MAX_DEBUG_DRAW_MODE = 0xffffffff,
 }
 
-const deserializeVector = function (ammo: typeof Ammo, vec: Ammo.btVector3): Point3 {
+const deserializeVector = function (vec: Ammo.btVector3): Point3 {
   if (!isNaN(+vec)) {
-    const heap = ammo.HEAPF32;
+    const heap = Ammo.HEAPF32;
     return {
       x: heap[+vec / 4],
       y: heap[(+vec + 4) / 4],
@@ -43,7 +43,7 @@ export class AmmoDebugger implements Ammo.btIDebugDraw {
     protected readonly world: AmmoWorldComponent,
     private readonly drawer: IDebugPhysicsDrawer<Point3, Point4>,
   ) {
-    this.ammoInstance = new this.world.ammo.DebugDrawer();
+    this.ammoInstance = new Ammo.DebugDrawer();
     this.ammoInstance.drawLine = this.drawLine.bind(this);
     this.ammoInstance.drawContactPoint = this.drawContactPoint.bind(this);
     this.ammoInstance.reportErrorWarning = this.reportErrorWarning.bind(this);
@@ -65,19 +65,11 @@ export class AmmoDebugger implements Ammo.btIDebugDraw {
     lifeTime: number,
     color: Ammo.btVector3,
   ): void {
-    this.drawer.drawContactPoint(
-      deserializeVector(this.world.ammo, pointOnB),
-      deserializeVector(this.world.ammo, normalOnB),
-      deserializeVector(this.world.ammo, color),
-    );
+    this.drawer.drawContactPoint(deserializeVector(pointOnB), deserializeVector(normalOnB), deserializeVector(color));
   }
 
   drawLine(from: Ammo.btVector3, to: Ammo.btVector3, color: Ammo.btVector3): void {
-    this.drawer.drawLine(
-      deserializeVector(this.world.ammo, from),
-      deserializeVector(this.world.ammo, to),
-      deserializeVector(this.world.ammo, color),
-    );
+    this.drawer.drawLine(deserializeVector(from), deserializeVector(to), deserializeVector(color));
   }
 
   getDebugMode(): number {

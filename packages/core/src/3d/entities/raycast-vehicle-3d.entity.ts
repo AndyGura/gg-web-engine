@@ -200,7 +200,6 @@ export class RaycastVehicle3dEntity<
 
   protected runTransformBinding(objectBody: IRigidBody3dComponent, object3D: IDisplayObject3dComponent): void {
     super.runTransformBinding(objectBody, object3D);
-    const carRotation = this.rotation;
     for (const [i, wheel] of (this.wheels || []).entries()) {
       if (!wheel) {
         continue;
