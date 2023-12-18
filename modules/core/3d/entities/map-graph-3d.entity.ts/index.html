@@ -749,13 +749,13 @@ The nodes in the graph are created in the same order as the elements in the grid
 </code></pre>
 <h2 id="mapgraph3dentity-class">MapGraph3dEntity (class)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class MapGraph3dEntity {
+<pre><code class="language-ts">export declare class MapGraph3dEntity&lt;VTypeDoc, PTypeDoc&gt; {
   constructor(public readonly mapGraph: MapGraph, options: Partial&lt;Gg3dMapGraphEntityOptions&gt; = {})
 }
 </code></pre>
 <h3 id="onspawned-method">onSpawned (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">onSpawned(world: Gg3dWorld)
+<pre><code class="language-ts">onSpawned(world: Gg3dWorld&lt;VTypeDoc, PTypeDoc&gt;)
 </code></pre>
 <h3 id="onremoved-method">onRemoved (method)</h3>
 <p><strong>Signature</strong></p>
@@ -763,7 +763,9 @@ The nodes in the graph are created in the same order as the elements in the grid
 </code></pre>
 <h3 id="loadchunk-method">loadChunk (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">protected async loadChunk(node: MapGraphNodeType): Promise&lt;[Entity3d[], LoadResultWithProps]&gt;
+<pre><code class="language-ts">protected async loadChunk(
+    node: MapGraphNodeType,
+  ): Promise&lt;[Entity3d&lt;VTypeDoc, PTypeDoc&gt;[], LoadResultWithProps&lt;VTypeDoc, PTypeDoc&gt;]&gt;
 </code></pre>
 <h3 id="disposechunk-method">disposeChunk (method)</h3>
 <p><strong>Signature</strong></p>
@@ -787,7 +789,7 @@ The nodes in the graph are created in the same order as the elements in the grid
 </code></pre>
 <h3 id="_world-property">_world (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">_world: Gg3dWorld&lt;IVisualScene3dComponent, IPhysicsWorld3dComponent&gt; | null
+<pre><code class="language-ts">_world: Gg3dWorld&lt;VTypeDoc, PTypeDoc, IVisualScene3dComponent&lt;VTypeDoc&gt;, IPhysicsWorld3dComponent&lt;PTypeDoc&gt;&gt; | null
 </code></pre>
 <h3 id="mapgraphnodes-property">mapGraphNodes (property)</h3>
 <p><strong>Signature</strong></p>

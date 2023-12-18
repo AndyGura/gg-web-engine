@@ -540,6 +540,20 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#physicstypedocrepo2d-type-alias" class="md-nav__link">
+    PhysicsTypeDocRepo2D (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#visualtypedocrepo2d-type-alias" class="md-nav__link">
+    VisualTypeDocRepo2D (type alias)
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -574,22 +588,46 @@
 <li><a href="#addrenderer-method">addRenderer (method)</a></li>
 </ul>
 </li>
+<li><a href="#physicstypedocrepo2d-type-alias">PhysicsTypeDocRepo2D (type alias)</a></li>
+<li><a href="#visualtypedocrepo2d-type-alias">VisualTypeDocRepo2D (type alias)</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
 <h2 id="gg2dworld-class">Gg2dWorld (class)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class Gg2dWorld&lt;V, P&gt; {
-  constructor(public readonly visualScene: V, public readonly physicsWorld: P)
+<pre><code class="language-ts">export declare class Gg2dWorld&lt;VTypeDoc, PTypeDoc, VS, PW&gt; {
+  constructor(public readonly visualScene: VS, public readonly physicsWorld: PW)
 }
 </code></pre>
 <h3 id="addprimitiverigidbody-method">addPrimitiveRigidBody (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">addPrimitiveRigidBody(descr: BodyShape2DDescriptor, position: Point2 = Pnt2.O, rotation: number = 0): Entity2d&lt;V, P&gt;
+<pre><code class="language-ts">addPrimitiveRigidBody(
+    descr: BodyShape2DDescriptor,
+    position: Point2 = Pnt2.O,
+    rotation: number = 0,
+    material: DisplayObject2dOpts&lt;VTypeDoc['texture']&gt; = {},
+  ): Entity2d&lt;VTypeDoc, PTypeDoc&gt;
 </code></pre>
 <h3 id="addrenderer-method">addRenderer (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">addRenderer(canvas?: HTMLCanvasElement, rendererOptions?: Partial&lt;RendererOptions&gt;): Renderer2dEntity
+<pre><code class="language-ts">addRenderer(canvas?: HTMLCanvasElement, rendererOptions?: Partial&lt;RendererOptions&gt;): Renderer2dEntity&lt;VTypeDoc&gt;
+</code></pre>
+<h2 id="physicstypedocrepo2d-type-alias">PhysicsTypeDocRepo2D (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type PhysicsTypeDocRepo2D = {
+  factory: IPhysicsBody2dComponentFactory
+  rigidBody: IRigidBody2dComponent
+  trigger: ITrigger2dComponent
+}
+</code></pre>
+<h2 id="visualtypedocrepo2d-type-alias">VisualTypeDocRepo2D (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type VisualTypeDocRepo2D = {
+  factory: IDisplayObject2dComponentFactory
+  displayObject: IDisplayObject2dComponent
+  renderer: IRenderer2dComponent
+  texture: unknown
+}
 </code></pre>
 
 

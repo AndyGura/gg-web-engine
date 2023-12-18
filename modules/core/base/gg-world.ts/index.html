@@ -624,6 +624,20 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#physicstypedocrepo-type-alias" class="md-nav__link">
+    PhysicsTypeDocRepo (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#visualtypedocrepo-type-alias" class="md-nav__link">
+    VisualTypeDocRepo (type alias)
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -670,13 +684,15 @@
 <li><a href="#ticklisteners-property">tickListeners (property)</a></li>
 </ul>
 </li>
+<li><a href="#physicstypedocrepo-type-alias">PhysicsTypeDocRepo (type alias)</a></li>
+<li><a href="#visualtypedocrepo-type-alias">VisualTypeDocRepo (type alias)</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
 <h2 id="ggworld-class">GgWorld (class)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class GgWorld&lt;D, R, V, P&gt; {
-  protected constructor(public readonly visualScene: V, public readonly physicsWorld: P)
+<pre><code class="language-ts">export declare class GgWorld&lt;D, R, VTypeDoc, PTypeDoc, VS, PW&gt; {
+  protected constructor(public readonly visualScene: VS, public readonly physicsWorld: PW)
 }
 </code></pre>
 <h3 id="init-method">init (method)</h3>
@@ -706,10 +722,11 @@
 <h3 id="addprimitiverigidbody-method">addPrimitiveRigidBody (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">abstract addPrimitiveRigidBody(
-    descr: any,
+    descr: unknown, // type defined in subclasses
     position?: D,
     rotation?: R,
-  ): IPositionable&lt;D, R&gt; &amp; IRenderableEntity&lt;D, R, V, P&gt;;
+    material?: unknown, // type defined in subclasses
+  ): IPositionable&lt;D, R&gt; &amp; IRenderableEntity&lt;D, R, VTypeDoc&gt;;
 </code></pre>
 <h3 id="addentity-method">addEntity (method)</h3>
 <p><strong>Signature</strong></p>
@@ -733,11 +750,27 @@
 </code></pre>
 <h3 id="children-property">children (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly children: IEntity&lt;any, any, IVisualSceneComponent&lt;any, any&gt;, IPhysicsWorldComponent&lt;any, any&gt;&gt;[]
+<pre><code class="language-ts">readonly children: IEntity&lt;any, any, VisualTypeDocRepo&lt;any, any&gt;, PhysicsTypeDocRepo&lt;any, any&gt;&gt;[]
 </code></pre>
 <h3 id="ticklisteners-property">tickListeners (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly tickListeners: IEntity&lt;any, any, IVisualSceneComponent&lt;any, any&gt;, IPhysicsWorldComponent&lt;any, any&gt;&gt;[]
+<pre><code class="language-ts">readonly tickListeners: IEntity&lt;any, any, VisualTypeDocRepo&lt;any, any&gt;, PhysicsTypeDocRepo&lt;any, any&gt;&gt;[]
+</code></pre>
+<h2 id="physicstypedocrepo-type-alias">PhysicsTypeDocRepo (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type PhysicsTypeDocRepo&lt;D, R&gt; = {
+  factory: unknown
+  rigidBody: IRigidBodyComponent&lt;D, R&gt;
+  trigger: ITriggerComponent&lt;D, R&gt;
+}
+</code></pre>
+<h2 id="visualtypedocrepo-type-alias">VisualTypeDocRepo (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type VisualTypeDocRepo&lt;D, R&gt; = {
+  factory: unknown
+  displayObject: IDisplayObjectComponent&lt;D, R&gt;
+  renderer: IRendererComponent&lt;D, R&gt;
+}
 </code></pre>
 
 

@@ -555,10 +555,11 @@
 <h1 id="utils">utils</h1>
 <h2 id="ivisualscenecomponent-interface">IVisualSceneComponent (interface)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export interface IVisualSceneComponent&lt;D, R&gt; extends IComponent {
-  readonly factory: any // type defined in sub-interfaces
+<pre><code class="language-ts">export interface IVisualSceneComponent&lt;D, R, TypeDoc extends VisualTypeDocRepo&lt;D, R&gt; = VisualTypeDocRepo&lt;D, R&gt;&gt;
+  extends IComponent {
+  readonly factory: TypeDoc['factory']
 
-  readonly debugPhysicsDrawerClass?: { new (): IDebugPhysicsDrawer&lt;D, R&gt; }
+  readonly debugPhysicsDrawerClass?: { new (): IDebugPhysicsDrawer&lt;D, R, TypeDoc&gt; }
 
   init(): Promise&lt;void&gt;
 }

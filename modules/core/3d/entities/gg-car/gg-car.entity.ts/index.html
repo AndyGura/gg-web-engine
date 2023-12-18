@@ -536,6 +536,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#createraycastvehicle-method" class="md-nav__link">
+    createRaycastVehicle (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#onspawned-method" class="md-nav__link">
     onSpawned (method)
   </a>
@@ -642,6 +649,7 @@
 <li><a href="#ggcarentity-class">GgCarEntity (class)</a><ul>
 <li><a href="#calculaterpmfromcarspeed-method">calculateRpmFromCarSpeed (method)</a></li>
 <li><a href="#settaillightson-method">setTailLightsOn (method)</a></li>
+<li><a href="#createraycastvehicle-method">createRaycastVehicle (method)</a></li>
 <li><a href="#onspawned-method">onSpawned (method)</a></li>
 <li><a href="#updateengine-method">updateEngine (method)</a></li>
 <li><a href="#resetto-method">resetTo (method)</a></li>
@@ -659,11 +667,11 @@
 <h1 id="utils">utils</h1>
 <h2 id="ggcarentity-class">GgCarEntity (class)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class GgCarEntity {
+<pre><code class="language-ts">export declare class GgCarEntity&lt;VTypeDoc, PTypeDoc, RVEntity&gt; {
   constructor(
     public readonly carProperties: GgCarProperties,
-    chassis3D: IDisplayObject3dComponent | null,
-    chassisBody: IRaycastVehicleComponent
+    chassis3D: VTypeDoc['displayObject'] | null,
+    chassisBody: PTypeDoc['raycastVehicle']
   )
 }
 </code></pre>
@@ -675,9 +683,17 @@
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">protected setTailLightsOn(value: boolean)
 </code></pre>
+<h3 id="createraycastvehicle-method">createRaycastVehicle (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">protected createRaycastVehicle(
+    carProperties: GgCarProperties,
+    chassis3D: VTypeDoc['displayObject'] | null,
+    chassisBody: PTypeDoc['raycastVehicle'],
+  ): RVEntity
+</code></pre>
 <h3 id="onspawned-method">onSpawned (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">onSpawned(world: Gg3dWorld)
+<pre><code class="language-ts">onSpawned(world: Gg3dWorld&lt;VTypeDoc, PTypeDoc&gt;)
 </code></pre>
 <h3 id="updateengine-method">updateEngine (method)</h3>
 <p><strong>Signature</strong></p>
@@ -714,7 +730,7 @@
 </code></pre>
 <h3 id="raycastvehicle-property">raycastVehicle (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly raycastVehicle: RaycastVehicle3dEntity
+<pre><code class="language-ts">readonly raycastVehicle: RVEntity
 </code></pre>
 <h2 id="ggcarproperties-type-alias">GgCarProperties (type alias)</h2>
 <p><strong>Signature</strong></p>

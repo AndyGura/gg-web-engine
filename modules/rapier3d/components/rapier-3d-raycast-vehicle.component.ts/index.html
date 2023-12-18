@@ -585,6 +585,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#clone-method" class="md-nav__link">
+    clone (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#dispose-method" class="md-nav__link">
     dispose (method)
   </a>
@@ -642,6 +649,7 @@
 <li><a href="#iswheeltouchesground-method">isWheelTouchesGround (method)</a></li>
 <li><a href="#getwheeltransform-method">getWheelTransform (method)</a></li>
 <li><a href="#resetsuspension-method">resetSuspension (method)</a></li>
+<li><a href="#clone-method">clone (method)</a></li>
 <li><a href="#dispose-method">dispose (method)</a></li>
 <li><a href="#_nativevehicle-property">_nativeVehicle (property)</a></li>
 </ul>
@@ -657,11 +665,15 @@
 </code></pre>
 <h3 id="addtoworld-method">addToWorld (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">addToWorld(world: Gg3dWorld&lt;IVisualScene3dComponent, Rapier3dWorldComponent&gt;)
+<pre><code class="language-ts">addToWorld(
+    world: Gg3dWorld&lt;VisualTypeDocRepo3D, Rapier3dPhysicsTypeDocRepo, IVisualScene3dComponent, Rapier3dWorldComponent&gt;,
+  )
 </code></pre>
 <h3 id="removefromworld-method">removeFromWorld (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">removeFromWorld(world: Gg3dWorld&lt;IVisualScene3dComponent, Rapier3dWorldComponent&gt;)
+<pre><code class="language-ts">removeFromWorld(
+    world: Gg3dWorld&lt;VisualTypeDocRepo3D, Rapier3dPhysicsTypeDocRepo, IVisualScene3dComponent, Rapier3dWorldComponent&gt;,
+  )
 </code></pre>
 <h3 id="addwheel-method">addWheel (method)</h3>
 <p><strong>Signature</strong></p>
@@ -690,6 +702,10 @@
 <h3 id="resetsuspension-method">resetSuspension (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">resetSuspension(): void
+</code></pre>
+<h3 id="clone-method">clone (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">clone(): Rapier3dRaycastVehicleComponent
 </code></pre>
 <h3 id="dispose-method">dispose (method)</h3>
 <p><strong>Signature</strong></p>

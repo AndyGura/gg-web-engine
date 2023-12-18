@@ -627,7 +627,7 @@ Supports smooth transition between animation function by interpolating between v
 The current value of the animation can be subscribed to using the <code>subscribeToValue</code> property.
 The animation function can be changed with <code>transitAnimationFunction</code> or <code>transitFromStaticState</code>.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class AnimationMixer&lt;T&gt; {
+<pre><code class="language-ts">export declare class AnimationMixer&lt;T, D, R, VTypeDoc, PTypeDoc&gt; {
   constructor(
     protected _animationFunction: AnimationFunction&lt;T&gt;,
     protected _lerp: (a: T, b: T, t: number) =&gt; T = (a, b, t) =&gt; b
@@ -655,7 +655,7 @@ The animation function can be changed with <code>transitAnimationFunction</code>
 </code></pre>
 <h3 id="onspawned-method">onSpawned (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">onSpawned(world: GgWorld&lt;any, any&gt;)
+<pre><code class="language-ts">onSpawned(world: GgWorld&lt;D, R, VTypeDoc, PTypeDoc&gt;)
 </code></pre>
 <h3 id="dispose-method">dispose (method)</h3>
 <p><strong>Signature</strong></p>

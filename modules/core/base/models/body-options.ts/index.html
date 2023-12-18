@@ -520,6 +520,13 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#collisiongroup-type-alias" class="md-nav__link">
+    CollisionGroup (type alias)
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -550,6 +557,7 @@
 <ul>
 <li><a href="#utils">utils</a></li>
 <li><a href="#bodyoptions-interface">BodyOptions (interface)</a></li>
+<li><a href="#collisiongroup-type-alias">CollisionGroup (type alias)</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
@@ -560,7 +568,13 @@
   mass: number
   restitution: number
   friction: number
+  ownCollisionGroups: CollisionGroup[] | 'all'
+  interactWithCollisionGroups: CollisionGroup[] | 'all'
 }
+</code></pre>
+<h2 id="collisiongroup-type-alias">CollisionGroup (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type CollisionGroup = number
 </code></pre>
 
 

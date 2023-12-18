@@ -587,10 +587,10 @@
 <h1 id="utils">utils</h1>
 <h2 id="entity3d-class">Entity3d (class)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class Entity3d&lt;VS, PW&gt; {
+<pre><code class="language-ts">export declare class Entity3d&lt;VTypeDoc, PTypeDoc&gt; {
   constructor(
-    public readonly object3D: IDisplayObject3dComponent | null,
-    public readonly objectBody: IRigidBody3dComponent | null = null
+    public readonly object3D: VTypeDoc['displayObject'] | null,
+    public readonly objectBody: PTypeDoc['rigidBody'] | null = null
   )
 }
 </code></pre>

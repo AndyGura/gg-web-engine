@@ -683,7 +683,7 @@
 <h1 id="utils">utils</h1>
 <h2 id="ientity-class">IEntity (class)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class IEntity&lt;D, R, V, P&gt;
+<pre><code class="language-ts">export declare class IEntity&lt;D, R, VTypeDoc, PTypeDoc&gt;
 </code></pre>
 <h3 id="addchildren-method">addChildren (method)</h3>
 <p><strong>Signature</strong></p>
@@ -695,15 +695,15 @@
 </code></pre>
 <h3 id="addcomponents-method">addComponents (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">public addComponents(...components: IWorldComponent&lt;D, R, V, P&gt;[])
+<pre><code class="language-ts">public addComponents(...components: IWorldComponent&lt;D, R, VTypeDoc, PTypeDoc&gt;[])
 </code></pre>
 <h3 id="removecomponents-method">removeComponents (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">public removeComponents(components: IWorldComponent&lt;D, R, V, P&gt;[], dispose: boolean = false)
+<pre><code class="language-ts">public removeComponents(components: IWorldComponent&lt;D, R, VTypeDoc, PTypeDoc&gt;[], dispose: boolean = false)
 </code></pre>
 <h3 id="onspawned-method">onSpawned (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">public onSpawned(world: GgWorld&lt;D, R, V, P&gt;)
+<pre><code class="language-ts">public onSpawned(world: GgWorld&lt;D, R, VTypeDoc, PTypeDoc&gt;)
 </code></pre>
 <h3 id="onremoved-method">onRemoved (method)</h3>
 <p><strong>Signature</strong></p>
@@ -726,7 +726,14 @@
 <h3 id="_world-property">_world (property)</h3>
 <p>a world reference, where this entity was added to</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">_world: GgWorld&lt;D, R, V, P&gt; | null
+<pre><code class="language-ts">_world: GgWorld&lt;
+  D,
+  R,
+  VTypeDoc,
+  PTypeDoc,
+  IVisualSceneComponent&lt;D, R, VTypeDoc&gt;,
+  IPhysicsWorldComponent&lt;D, R, PTypeDoc&gt;
+&gt; | null
 </code></pre>
 <h3 id="_name-property">_name (property)</h3>
 <p><strong>Signature</strong></p>
@@ -739,7 +746,7 @@
 </code></pre>
 <h3 id="parent-property">parent (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">parent: IEntity&lt;any, any, IVisualSceneComponent&lt;any, any&gt;, IPhysicsWorldComponent&lt;any, any&gt;&gt; | null
+<pre><code class="language-ts">parent: IEntity&lt;any, any, VisualTypeDocRepo&lt;any, any&gt;, PhysicsTypeDocRepo&lt;any, any&gt;&gt; | null
 </code></pre>
 <h3 id="_onspawned-property">_onSpawned$ (property)</h3>
 <p><strong>Signature</strong></p>

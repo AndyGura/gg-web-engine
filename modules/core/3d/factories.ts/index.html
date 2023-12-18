@@ -514,6 +514,13 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#displayobject3dopts-type-alias" class="md-nav__link">
+    DisplayObject3dOpts (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#idisplayobject3dcomponentfactory-class" class="md-nav__link">
     IDisplayObject3dComponentFactory (class)
   </a>
@@ -524,6 +531,27 @@
           <li class="md-nav__item">
   <a href="#createprimitive-method" class="md-nav__link">
     createPrimitive (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#createperspectivecamera-method" class="md-nav__link">
+    createPerspectiveCamera (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#randomcolor-method" class="md-nav__link">
+    randomColor (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#createplane-method" class="md-nav__link">
+    createPlane (method)
   </a>
   
 </li>
@@ -604,8 +632,12 @@
 
 <ul>
 <li><a href="#utils">utils</a></li>
+<li><a href="#displayobject3dopts-type-alias">DisplayObject3dOpts (type alias)</a></li>
 <li><a href="#idisplayobject3dcomponentfactory-class">IDisplayObject3dComponentFactory (class)</a><ul>
 <li><a href="#createprimitive-method">createPrimitive (method)</a></li>
+<li><a href="#createperspectivecamera-method">createPerspectiveCamera (method)</a></li>
+<li><a href="#randomcolor-method">randomColor (method)</a></li>
+<li><a href="#createplane-method">createPlane (method)</a></li>
 <li><a href="#createbox-method">createBox (method)</a></li>
 <li><a href="#createcapsule-method">createCapsule (method)</a></li>
 <li><a href="#createcylinder-method">createCylinder (method)</a></li>
@@ -617,43 +649,95 @@
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
+<h2 id="displayobject3dopts-type-alias">DisplayObject3dOpts (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type DisplayObject3dOpts&lt;Tex&gt; = {
+  color?: number
+  shading?: 'unlit' | 'standart' | 'phong'
+  diffuse?: Tex
+  castShadow?: boolean
+  receiveShadow?: boolean
+}
+</code></pre>
 <h2 id="idisplayobject3dcomponentfactory-class">IDisplayObject3dComponentFactory (class)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class IDisplayObject3dComponentFactory&lt;DOC&gt;
+<pre><code class="language-ts">export declare class IDisplayObject3dComponentFactory&lt;TypeDoc&gt;
 </code></pre>
 <h3 id="createprimitive-method">createPrimitive (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">abstract createPrimitive(descriptor: Shape3DDescriptor, material?: any): DOC;
+<pre><code class="language-ts">abstract createPrimitive(
+    descriptor: Shape3DDescriptor,
+    material?: DisplayObject3dOpts&lt;TypeDoc['texture']&gt;,
+  ): TypeDoc['displayObject'];
+</code></pre>
+<h3 id="createperspectivecamera-method">createPerspectiveCamera (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">abstract createPerspectiveCamera(settings: {
+    fov?: number;
+    aspectRatio?: number;
+    frustrum?: { near: number; far: number };
+  }): TypeDoc['camera'];
+</code></pre>
+<h3 id="randomcolor-method">randomColor (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">randomColor(): number
+</code></pre>
+<h3 id="createplane-method">createPlane (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">createPlane(material: DisplayObject3dOpts&lt;TypeDoc['texture']&gt; = {}): TypeDoc['displayObject']
 </code></pre>
 <h3 id="createbox-method">createBox (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">createBox(dimensions: Point3, material?: any): DOC
+<pre><code class="language-ts">createBox(dimensions: Point3, material: DisplayObject3dOpts&lt;TypeDoc['texture']&gt; = {}): TypeDoc['displayObject']
 </code></pre>
 <h3 id="createcapsule-method">createCapsule (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">createCapsule(radius: number, centersDistance: number, material?: any): DOC
+<pre><code class="language-ts">createCapsule(
+    radius: number,
+    centersDistance: number,
+    material: DisplayObject3dOpts&lt;TypeDoc['texture']&gt; = {},
+  ): TypeDoc['displayObject']
 </code></pre>
 <h3 id="createcylinder-method">createCylinder (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">createCylinder(radius: number, height: number, material?: any): DOC
+<pre><code class="language-ts">createCylinder(
+    radius: number,
+    height: number,
+    material: DisplayObject3dOpts&lt;TypeDoc['texture']&gt; = {},
+  ): TypeDoc['displayObject']
 </code></pre>
 <h3 id="createcone-method">createCone (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">createCone(radius: number, height: number, material?: any): DOC
+<pre><code class="language-ts">createCone(
+    radius: number,
+    height: number,
+    material: DisplayObject3dOpts&lt;TypeDoc['texture']&gt; = {},
+  ): TypeDoc['displayObject']
 </code></pre>
 <h3 id="createsphere-method">createSphere (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">createSphere(radius: number): DOC
+<pre><code class="language-ts">createSphere(radius: number, material: DisplayObject3dOpts&lt;TypeDoc['texture']&gt; = {}): TypeDoc['displayObject']
 </code></pre>
 <h2 id="iphysicsbody3dcomponentfactory-interface">IPhysicsBody3dComponentFactory (interface)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export interface IPhysicsBody3dComponentFactory&lt;
-  T extends IRigidBody3dComponent = IRigidBody3dComponent,
-  K extends ITrigger3dComponent = ITrigger3dComponent
-&gt; {
-  createRigidBody(descriptor: BodyShape3DDescriptor, transform?: { position?: Point3; rotation?: Point4 }): T
+<pre><code class="language-ts">export interface IPhysicsBody3dComponentFactory&lt;TypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D&gt; {
+  createRigidBody(
+    descriptor: BodyShape3DDescriptor,
+    transform?: {
+      position?: Point3
+      rotation?: Point4
+    }
+  ): TypeDoc['rigidBody']
 
-  createTrigger(descriptor: Shape3DDescriptor, transform?: { position?: Point3; rotation?: Point4 }): K
+  createTrigger(
+    descriptor: Shape3DDescriptor,
+    transform?: {
+      position?: Point3
+      rotation?: Point4
+    }
+  ): TypeDoc['trigger']
+
+  createRaycastVehicle(chassis: TypeDoc['rigidBody']): TypeDoc['raycastVehicle']
 }
 </code></pre>
 

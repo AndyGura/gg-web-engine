@@ -555,8 +555,8 @@
 <h1 id="utils">utils</h1>
 <h2 id="idebugphysicsdrawer-interface">IDebugPhysicsDrawer (interface)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export interface IDebugPhysicsDrawer&lt;D, R, VS extends IVisualSceneComponent&lt;D, R&gt; = IVisualSceneComponent&lt;D, R&gt;&gt;
-  extends IDisplayObjectComponent&lt;D, R, VS&gt; {
+<pre><code class="language-ts">export interface IDebugPhysicsDrawer&lt;D, R, TypeDoc extends VisualTypeDocRepo&lt;D, R&gt; = VisualTypeDocRepo&lt;D, R&gt;&gt;
+  extends IDisplayObjectComponent&lt;D, R, TypeDoc&gt; {
   drawContactPoint(point: D, normal: D, color?: Point3): void
 
   drawLine(from: D, to: D, color?: Point3): void

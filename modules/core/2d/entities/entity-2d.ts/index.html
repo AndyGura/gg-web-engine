@@ -587,10 +587,10 @@
 <h1 id="utils">utils</h1>
 <h2 id="entity2d-class">Entity2d (class)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class Entity2d&lt;VS, PW&gt; {
+<pre><code class="language-ts">export declare class Entity2d&lt;VTypeDoc, PTypeDoc&gt; {
   constructor(
-    public readonly object2D: IDisplayObject2dComponent | null,
-    public readonly objectBody: IRigidBody2dComponent | null
+    public readonly object2D: VTypeDoc['displayObject'] | null,
+    public readonly objectBody: PTypeDoc['rigidBody'] | null
   )
 }
 </code></pre>
@@ -601,7 +601,7 @@
 <h3 id="runtransformbinding-method">runTransformBinding (method)</h3>
 <p>Synchronize physics body transform with entity (and object2d if defined)</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">protected runTransformBinding(objectBody: IRigidBody2dComponent, object2D: IDisplayObject2dComponent | null): void
+<pre><code class="language-ts">protected runTransformBinding(objectBody: PTypeDoc['rigidBody'], object2D: VTypeDoc['displayObject'] | null): void
 </code></pre>
 <h3 id="tickorder-property">tickOrder (property)</h3>
 <p><strong>Signature</strong></p>

@@ -614,19 +614,19 @@
 <pre><code class="language-ts">export declare class ThreeRendererComponent {
   constructor(
     public readonly scene: ThreeSceneComponent,
+    public camera: ThreeCameraComponent,
     public readonly canvas?: HTMLCanvasElement,
-    rendererOptions: Partial&lt;RendererOptions&gt; = {},
-    public camera: ThreeCameraComponent = new ThreeCameraComponent(new PerspectiveCamera(75, 1, 1, 10000))
+    rendererOptions: Partial&lt;RendererOptions&gt; = {}
   )
 }
 </code></pre>
 <h3 id="addtoworld-method">addToWorld (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">addToWorld(world: Gg3dWorld&lt;ThreeSceneComponent&gt;)
+<pre><code class="language-ts">addToWorld(world: Gg3dWorld&lt;ThreeVisualTypeDocRepo&gt;)
 </code></pre>
 <h3 id="removefromworld-method">removeFromWorld (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">removeFromWorld(world: Gg3dWorld&lt;ThreeSceneComponent&gt;)
+<pre><code class="language-ts">removeFromWorld(world: Gg3dWorld&lt;ThreeVisualTypeDocRepo&gt;)
 </code></pre>
 <h3 id="resizerenderer-method">resizeRenderer (method)</h3>
 <p><strong>Signature</strong></p>

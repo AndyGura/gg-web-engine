@@ -596,13 +596,16 @@
 </code></pre>
 <h2 id="camera3danimator-class">Camera3dAnimator (class)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class Camera3dAnimator {
-  constructor(public entity: Renderer3dEntity, protected _animationFunction: AnimationFunction&lt;Camera3dAnimationArgs&gt;)
+<pre><code class="language-ts">export declare class Camera3dAnimator&lt;VTypeDoc&gt; {
+  constructor(
+    public entity: Renderer3dEntity&lt;VTypeDoc&gt;,
+    protected _animationFunction: AnimationFunction&lt;Camera3dAnimationArgs&gt;
+  )
 }
 </code></pre>
 <h3 id="onspawned-method">onSpawned (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">onSpawned(world: Gg3dWorld)
+<pre><code class="language-ts">onSpawned(world: Gg3dWorld&lt;VTypeDoc&gt;)
 </code></pre>
 <h3 id="applypositioning-method">applyPositioning (method)</h3>
 <p><strong>Signature</strong></p>

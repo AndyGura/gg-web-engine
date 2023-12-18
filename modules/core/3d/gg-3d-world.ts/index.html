@@ -547,6 +547,20 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#physicstypedocrepo3d-type-alias" class="md-nav__link">
+    PhysicsTypeDocRepo3D (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#visualtypedocrepo3d-type-alias" class="md-nav__link">
+    VisualTypeDocRepo3D (type alias)
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -582,13 +596,15 @@
 <li><a href="#loader-property">loader (property)</a></li>
 </ul>
 </li>
+<li><a href="#physicstypedocrepo3d-type-alias">PhysicsTypeDocRepo3D (type alias)</a></li>
+<li><a href="#visualtypedocrepo3d-type-alias">VisualTypeDocRepo3D (type alias)</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
 <h2 id="gg3dworld-class">Gg3dWorld (class)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class Gg3dWorld&lt;V, P&gt; {
-  constructor(public readonly visualScene: V, public readonly physicsWorld: P)
+<pre><code class="language-ts">export declare class Gg3dWorld&lt;VTypeDoc, PTypeDoc, VS, PW&gt; {
+  constructor(public readonly visualScene: VS, public readonly physicsWorld: PW)
 }
 </code></pre>
 <h3 id="addprimitiverigidbody-method">addPrimitiveRigidBody (method)</h3>
@@ -597,18 +613,41 @@
     descr: BodyShape3DDescriptor,
     position: Point3 = Pnt3.O,
     rotation: Point4 = Qtrn.O,
-  ): Entity3d&lt;V, P&gt;
+    material: DisplayObject3dOpts&lt;VTypeDoc['texture']&gt; = {},
+  ): Entity3d&lt;VTypeDoc, PTypeDoc&gt;
 </code></pre>
 <h3 id="addrenderer-method">addRenderer (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">addRenderer&lt;
-    CC extends ICameraComponent&lt;V&gt; = ICameraComponent&lt;V&gt;,
-    RC extends IRenderer3dComponent&lt;V, CC&gt; = IRenderer3dComponent&lt;V, CC&gt;,
-  &gt;(camera: CC, canvas?: HTMLCanvasElement, rendererOptions?: Partial&lt;RendererOptions&gt;): Renderer3dEntity&lt;V, CC, RC&gt;
+<pre><code class="language-ts">addRenderer(
+    camera: VTypeDoc['camera'],
+    canvas?: HTMLCanvasElement,
+    rendererOptions?: Partial&lt;RendererOptions&gt;,
+  ): Renderer3dEntity&lt;VTypeDoc&gt;
 </code></pre>
 <h3 id="loader-property">loader (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly loader: Gg3dLoader
+<pre><code class="language-ts">readonly loader: Gg3dLoader&lt;VTypeDoc, PTypeDoc&gt;
+</code></pre>
+<h2 id="physicstypedocrepo3d-type-alias">PhysicsTypeDocRepo3D (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type PhysicsTypeDocRepo3D = {
+  factory: IPhysicsBody3dComponentFactory
+  loader: IPhysicsBody3dComponentLoader
+  rigidBody: IRigidBody3dComponent
+  trigger: ITrigger3dComponent
+  raycastVehicle: IRaycastVehicleComponent
+}
+</code></pre>
+<h2 id="visualtypedocrepo3d-type-alias">VisualTypeDocRepo3D (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type VisualTypeDocRepo3D = {
+  factory: IDisplayObject3dComponentFactory
+  loader: IDisplayObject3dComponentLoader
+  displayObject: IDisplayObject3dComponent
+  renderer: IRenderer3dComponent
+  camera: ICameraComponent
+  texture: unknown
+}
 </code></pre>
 
 

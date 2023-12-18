@@ -555,8 +555,9 @@
 <h1 id="utils">utils</h1>
 <h2 id="iphysicsworldcomponent-interface">IPhysicsWorldComponent (interface)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export interface IPhysicsWorldComponent&lt;D, R&gt; extends IComponent {
-  readonly factory: any; // type defined in sub-interfaces
+<pre><code class="language-ts">export interface IPhysicsWorldComponent&lt;D, R, TypeDoc extends PhysicsTypeDocRepo&lt;D, R&gt; = PhysicsTypeDocRepo&lt;D, R&gt;&gt;
+  extends IComponent {
+  readonly factory: TypeDoc['factory'];
   gravity: D;
   timeScale: number;
 </code></pre>
