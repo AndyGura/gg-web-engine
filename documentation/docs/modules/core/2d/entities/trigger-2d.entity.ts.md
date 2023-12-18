@@ -1,6 +1,6 @@
 ---
 title: core/2d/entities/trigger-2d.entity.ts
-nav_order: 20
+nav_order: 21
 parent: Modules
 ---
 
@@ -23,7 +23,7 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare class Trigger2dEntity {
+export declare class Trigger2dEntity<TypeDoc> {
   constructor(public readonly objectBody: ITrigger2dComponent)
 }
 ```

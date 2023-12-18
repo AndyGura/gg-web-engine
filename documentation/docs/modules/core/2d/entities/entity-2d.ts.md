@@ -1,6 +1,6 @@
 ---
 title: core/2d/entities/entity-2d.ts
-nav_order: 17
+nav_order: 18
 parent: Modules
 ---
 
@@ -25,10 +25,10 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare class Entity2d<VS, PW> {
+export declare class Entity2d<VTypeDoc, PTypeDoc> {
   constructor(
-    public readonly object2D: IDisplayObject2dComponent | null,
-    public readonly objectBody: IRigidBody2dComponent | null
+    public readonly object2D: VTypeDoc['displayObject'] | null,
+    public readonly objectBody: PTypeDoc['rigidBody'] | null
   )
 }
 ```
@@ -48,7 +48,7 @@ Synchronize physics body transform with entity (and object2d if defined)
 **Signature**
 
 ```ts
-protected runTransformBinding(objectBody: IRigidBody2dComponent, object2D: IDisplayObject2dComponent | null): void
+protected runTransformBinding(objectBody: PTypeDoc['rigidBody'], object2D: VTypeDoc['displayObject'] | null): void
 ```
 
 ### tickOrder (property)

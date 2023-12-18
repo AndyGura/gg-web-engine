@@ -1,6 +1,6 @@
 ---
 title: pixi/pixi-factory.ts
-nav_order: 104
+nav_order: 107
 parent: Modules
 ---
 
@@ -11,13 +11,21 @@ parent: Modules
 <h2 class="text-delta">Table of contents</h2>
 
 - [utils](#utils)
+  - [PixiDisplayObject3dOpts (type alias)](#pixidisplayobject3dopts-type-alias)
   - [PixiFactory (class)](#pixifactory-class)
-    - [getRandomColor (method)](#getrandomcolor-method)
     - [createPrimitive (method)](#createprimitive-method)
 
 ---
 
 # utils
+
+## PixiDisplayObject3dOpts (type alias)
+
+**Signature**
+
+```ts
+export type PixiDisplayObject3dOpts = DisplayObject2dOpts<Texture>
+```
 
 ## PixiFactory (class)
 
@@ -27,18 +35,10 @@ parent: Modules
 export declare class PixiFactory
 ```
 
-### getRandomColor (method)
-
-**Signature**
-
-```ts
-getRandomColor(): number
-```
-
 ### createPrimitive (method)
 
 **Signature**
 
 ```ts
-createPrimitive(descriptor: Shape2DDescriptor, texture: Texture | null = null): PixiDisplayObjectComponent
+createPrimitive(descriptor: Shape2DDescriptor, material: PixiDisplayObject3dOpts = {}): PixiDisplayObjectComponent
 ```

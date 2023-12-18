@@ -7,3 +7,4 @@ has_children: true
 
 - [matter/components](/gg-web-engine/modules/matter/components)
 - [matter/matter-factory.ts](/gg-web-engine/modules/matter/matter-factory.ts)
+- [matter/types.ts](/gg-web-engine/modules/matter/types.ts)

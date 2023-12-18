@@ -1,6 +1,6 @@
 ---
 title: core/base/components/physics/i-physics-world.component.ts
-nav_order: 63
+nav_order: 64
 parent: Modules
 ---
 
@@ -22,8 +22,9 @@ parent: Modules
 **Signature**
 
 ```ts
-export interface IPhysicsWorldComponent<D, R> extends IComponent {
-  readonly factory: any; // type defined in sub-interfaces
+export interface IPhysicsWorldComponent<D, R, TypeDoc extends PhysicsTypeDocRepo<D, R> = PhysicsTypeDocRepo<D, R>>
+  extends IComponent {
+  readonly factory: TypeDoc['factory'];
   gravity: D;
   timeScale: number;
 ```

@@ -514,16 +514,30 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#igg2dobjectfactory-class" class="md-nav__link">
-    IGg2dObjectFactory (class)
+  <a href="#displayobject2dopts-type-alias" class="md-nav__link">
+    DisplayObject2dOpts (type alias)
   </a>
   
-    <nav class="md-nav" aria-label="IGg2dObjectFactory (class)">
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#idisplayobject2dcomponentfactory-class" class="md-nav__link">
+    IDisplayObject2dComponentFactory (class)
+  </a>
+  
+    <nav class="md-nav" aria-label="IDisplayObject2dComponentFactory (class)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
   <a href="#createprimitive-method" class="md-nav__link">
     createPrimitive (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#randomcolor-method" class="md-nav__link">
+    randomColor (method)
   </a>
   
 </li>
@@ -583,8 +597,10 @@
 
 <ul>
 <li><a href="#utils">utils</a></li>
-<li><a href="#igg2dobjectfactory-class">IGg2dObjectFactory (class)</a><ul>
+<li><a href="#displayobject2dopts-type-alias">DisplayObject2dOpts (type alias)</a></li>
+<li><a href="#idisplayobject2dcomponentfactory-class">IDisplayObject2dComponentFactory (class)</a><ul>
 <li><a href="#createprimitive-method">createPrimitive (method)</a></li>
+<li><a href="#randomcolor-method">randomColor (method)</a></li>
 <li><a href="#createsquare-method">createSquare (method)</a></li>
 <li><a href="#createcircle-method">createCircle (method)</a></li>
 </ul>
@@ -593,31 +609,54 @@
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
-<h2 id="igg2dobjectfactory-class">IGg2dObjectFactory (class)</h2>
+<h2 id="displayobject2dopts-type-alias">DisplayObject2dOpts (type alias)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class IGg2dObjectFactory&lt;T&gt;
+<pre><code class="language-ts">export type DisplayObject2dOpts&lt;Tex&gt; = {
+  color?: number
+  texture?: Tex
+}
+</code></pre>
+<h2 id="idisplayobject2dcomponentfactory-class">IDisplayObject2dComponentFactory (class)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export declare class IDisplayObject2dComponentFactory&lt;TypeDoc&gt;
 </code></pre>
 <h3 id="createprimitive-method">createPrimitive (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">abstract createPrimitive(descriptor: Shape2DDescriptor): T;
+<pre><code class="language-ts">abstract createPrimitive(
+    descriptor: Shape2DDescriptor,
+    material?: DisplayObject2dOpts&lt;TypeDoc['texture']&gt;,
+  ): TypeDoc['displayObject'];
+</code></pre>
+<h3 id="randomcolor-method">randomColor (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">randomColor(): number
 </code></pre>
 <h3 id="createsquare-method">createSquare (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">createSquare(dimensions: Point2): T
+<pre><code class="language-ts">createSquare(dimensions: Point2, material: DisplayObject2dOpts&lt;TypeDoc['texture']&gt; = {}): TypeDoc['displayObject']
 </code></pre>
 <h3 id="createcircle-method">createCircle (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">createCircle(radius: number): T
+<pre><code class="language-ts">createCircle(radius: number, material: DisplayObject2dOpts&lt;TypeDoc['texture']&gt; = {}): TypeDoc['displayObject']
 </code></pre>
 <h2 id="iphysicsbody2dcomponentfactory-interface">IPhysicsBody2dComponentFactory (interface)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export interface IPhysicsBody2dComponentFactory&lt;
-  T extends IRigidBody2dComponent = IRigidBody2dComponent,
-  K extends ITrigger2dComponent = ITrigger2dComponent
-&gt; {
-  createRigidBody(descriptor: BodyShape2DDescriptor, transform?: { position?: Point2; rotation?: number }): T
+<pre><code class="language-ts">export interface IPhysicsBody2dComponentFactory&lt;TypeDoc extends PhysicsTypeDocRepo2D = PhysicsTypeDocRepo2D&gt; {
+  createRigidBody(
+    descriptor: BodyShape2DDescriptor,
+    transform?: {
+      position?: Point2
+      rotation?: number
+    }
+  ): TypeDoc['rigidBody']
 
-  createTrigger(descriptor: Shape2DDescriptor, transform?: { position?: Point2; rotation?: number }): K
+  createTrigger(
+    descriptor: Shape2DDescriptor,
+    transform?: {
+      position?: Point2
+      rotation?: number
+    }
+  ): TypeDoc['trigger']
 }
 </code></pre>
 

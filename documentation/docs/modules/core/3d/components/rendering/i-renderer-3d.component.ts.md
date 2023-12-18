@@ -1,6 +1,6 @@
 ---
 title: core/3d/components/rendering/i-renderer-3d.component.ts
-nav_order: 33
+nav_order: 34
 parent: Modules
 ---
 
@@ -23,7 +23,7 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare class IRenderer3dComponent<VS, CC>
+export declare class IRenderer3dComponent<TypeDoc>
 ```
 
 ### camera (property)
@@ -31,5 +31,5 @@ export declare class IRenderer3dComponent<VS, CC>
 **Signature**
 
 ```ts
-camera: CC
+camera: TypeDoc['camera']
 ```

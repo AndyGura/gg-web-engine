@@ -1,6 +1,6 @@
 ---
 title: matter/components/matter-world.component.ts
-nav_order: 99
+nav_order: 101
 parent: Modules
 ---
 
@@ -13,6 +13,8 @@ parent: Modules
 - [utils](#utils)
   - [MatterWorldComponent (class)](#matterworldcomponent-class)
     - [init (method)](#init-method)
+    - [registerCollisionGroup (method)](#registercollisiongroup-method)
+    - [deregisterCollisionGroup (method)](#deregistercollisiongroup-method)
     - [simulate (method)](#simulate-method)
     - [startDebugger (method)](#startdebugger-method)
     - [stopDebugger (method)](#stopdebugger-method)
@@ -38,6 +40,22 @@ export declare class MatterWorldComponent
 
 ```ts
 async init(): Promise<void>
+```
+
+### registerCollisionGroup (method)
+
+**Signature**
+
+```ts
+registerCollisionGroup(): CollisionGroup
+```
+
+### deregisterCollisionGroup (method)
+
+**Signature**
+
+```ts
+deregisterCollisionGroup(group: CollisionGroup): void
 ```
 
 ### simulate (method)

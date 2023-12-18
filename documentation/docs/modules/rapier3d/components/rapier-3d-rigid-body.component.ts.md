@@ -1,6 +1,6 @@
 ---
 title: rapier3d/components/rapier-3d-rigid-body.component.ts
-nav_order: 111
+nav_order: 116
 parent: Modules
 ---
 
@@ -21,6 +21,7 @@ parent: Modules
     - [\_nativeBody (property)](#_nativebody-property)
     - [\_nativeBodyColliders (property)](#_nativebodycolliders-property)
     - [name (property)](#name-property)
+    - [collisionGroups (property)](#collisiongroups-property)
 
 ---
 
@@ -54,7 +55,7 @@ clone(): Rapier3dRigidBodyComponent
 **Signature**
 
 ```ts
-addToWorld(world: Gg3dWorld<IVisualScene3dComponent, Rapier3dWorldComponent>): void
+addToWorld(world: Gg3dWorld<VisualTypeDocRepo3D, Rapier3dPhysicsTypeDocRepo>): void
 ```
 
 ### removeFromWorld (method)
@@ -62,7 +63,7 @@ addToWorld(world: Gg3dWorld<IVisualScene3dComponent, Rapier3dWorldComponent>): v
 **Signature**
 
 ```ts
-removeFromWorld(world: Gg3dWorld<IVisualScene3dComponent, Rapier3dWorldComponent>): void
+removeFromWorld(world: Gg3dWorld<VisualTypeDocRepo3D, Rapier3dPhysicsTypeDocRepo>): void
 ```
 
 ### resetMotion (method)
@@ -111,4 +112,12 @@ _nativeBodyColliders: any[] | null
 
 ```ts
 name: string
+```
+
+### collisionGroups (property)
+
+**Signature**
+
+```ts
+collisionGroups: any
 ```

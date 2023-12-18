@@ -568,6 +568,7 @@
 <h2 id="shape3ddescriptor-type-alias">Shape3DDescriptor (type alias)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export type Shape3DDescriptor =
+  | { shape: 'PLANE' }
   | { shape: 'BOX'; dimensions: Point3 }
   | { shape: 'CONE' | 'CYLINDER'; radius: number; height: number }
   | { shape: 'CAPSULE'; radius: number; centersDistance: number }

@@ -1,6 +1,6 @@
 ---
 title: core/base/components/rendering/i-renderer.component.ts
-nav_order: 67
+nav_order: 68
 parent: Modules
 ---
 
@@ -30,9 +30,9 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare class IRendererComponent<D, R, VS> {
+export declare class IRendererComponent<D, R, VTypeDoc> {
   protected constructor(
-    public readonly scene: VS,
+    public readonly scene: IVisualSceneComponent<D, R, VTypeDoc>,
     public readonly canvas?: HTMLCanvasElement,
     options: Partial<RendererOptions> = {}
   )
@@ -54,7 +54,7 @@ abstract render(): void;
 **Signature**
 
 ```ts
-abstract addToWorld(world: GgWorld<D, R, VS, any>): void;
+abstract addToWorld(world: GgWorld<D, R, VTypeDoc>): void;
 ```
 
 ### removeFromWorld (method)
@@ -62,7 +62,7 @@ abstract addToWorld(world: GgWorld<D, R, VS, any>): void;
 **Signature**
 
 ```ts
-abstract removeFromWorld(world: GgWorld<D, R, VS, any>): void;
+abstract removeFromWorld(world: GgWorld<D, R, VTypeDoc>): void;
 ```
 
 ### resizeRenderer (method)
@@ -88,7 +88,7 @@ abstract dispose(): void;
 **Signature**
 
 ```ts
-entity: IEntity<any, any, IVisualSceneComponent<any, any>, IPhysicsWorldComponent<any, any>> | null
+entity: IEntity<any, any, VisualTypeDocRepo<any, any>, PhysicsTypeDocRepo<any, any>> | null
 ```
 
 ### rendererOptions (property)

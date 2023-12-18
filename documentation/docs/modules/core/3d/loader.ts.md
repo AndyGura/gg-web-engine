@@ -1,6 +1,6 @@
 ---
 title: core/3d/loader.ts
-nav_order: 52
+nav_order: 53
 parent: Modules
 ---
 
@@ -31,7 +31,7 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare class Gg3dLoader {
+export declare class Gg3dLoader<VTypeDoc, PTypeDoc> {
   constructor(protected readonly world: Gg3dWorld)
 }
 ```
@@ -52,7 +52,7 @@ public async loadGgGlbFiles(path: string, useCache: boolean = false): Promise<[A
 public async loadGgGlbResources(
     path: string,
     cachingStrategy: CachingStrategy = CachingStrategy.Nothing,
-  ): Promise<LoadResourcesResult>
+  ): Promise<LoadResourcesResult<VTypeDoc, PTypeDoc>>
 ```
 
 ### loadGgGlb (method)
@@ -63,7 +63,7 @@ public async loadGgGlbResources(
 public async loadGgGlb(
     path: string,
     options: Partial<LoadOptions> = defaultLoadOptions,
-  ): Promise<LoadResultWithProps>
+  ): Promise<LoadResultWithProps<VTypeDoc, PTypeDoc>>
 ```
 
 ### filesCache (property)
@@ -109,8 +109,11 @@ export type LoadOptions = {
 **Signature**
 
 ```ts
-export type LoadResourcesResult = {
-  resources: { object3D: IDisplayObject3dComponent | null; body: IRigidBody3dComponent | null }[]
+export type LoadResourcesResult<
+  VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D,
+  PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D
+> = {
+  resources: { object3D: VTypeDoc['displayObject'] | null; body: PTypeDoc['rigidBody'] | null }[]
   meta: GgMeta
 }
 ```
@@ -120,8 +123,11 @@ export type LoadResourcesResult = {
 **Signature**
 
 ```ts
-export type LoadResult = {
-  entities: Entity3d[]
+export type LoadResult<
+  VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D,
+  PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D
+> = {
+  entities: Entity3d<VTypeDoc, PTypeDoc>[]
   meta: GgMeta
 }
 ```
@@ -131,5 +137,8 @@ export type LoadResult = {
 **Signature**
 
 ```ts
-export type LoadResultWithProps = LoadResult & { props?: LoadResult[] }
+export type LoadResultWithProps<
+  VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D,
+  PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D
+> = LoadResult<VTypeDoc, PTypeDoc> & { props?: LoadResult<VTypeDoc, PTypeDoc>[] }
 ```

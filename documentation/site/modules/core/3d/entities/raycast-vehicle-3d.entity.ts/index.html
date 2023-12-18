@@ -725,7 +725,7 @@
 </code></pre>
 <h2 id="raycastvehicle3dentity-class">RaycastVehicle3dEntity (class)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class RaycastVehicle3dEntity {
+<pre><code class="language-ts">export declare class RaycastVehicle3dEntity&lt;VTypeDoc, PTypeDoc&gt; {
   constructor(
     public readonly carProperties: RVEntityProperties,
     public readonly chassis3D: IDisplayObject3dComponent | null,
@@ -760,7 +760,7 @@
 </code></pre>
 <h3 id="wheels-property">wheels (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly wheels: ((IEntity&lt;any, any, IVisualSceneComponent&lt;any, any&gt;, IPhysicsWorldComponent&lt;any, any&gt;&gt; &amp; IPositionable3d) | null)[]
+<pre><code class="language-ts">readonly wheels: (Entity3d&lt;VTypeDoc, PTypeDoc&gt; | null)[]
 </code></pre>
 <h3 id="wheellocalrotation-property">wheelLocalRotation (property)</h3>
 <p><strong>Signature</strong></p>

@@ -1,6 +1,6 @@
 ---
 title: core/2d/gg-2d-world.ts
-nav_order: 22
+nav_order: 23
 parent: Modules
 ---
 
@@ -14,6 +14,8 @@ parent: Modules
   - [Gg2dWorld (class)](#gg2dworld-class)
     - [addPrimitiveRigidBody (method)](#addprimitiverigidbody-method)
     - [addRenderer (method)](#addrenderer-method)
+  - [PhysicsTypeDocRepo2D (type alias)](#physicstypedocrepo2d-type-alias)
+  - [VisualTypeDocRepo2D (type alias)](#visualtypedocrepo2d-type-alias)
 
 ---
 
@@ -24,8 +26,8 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare class Gg2dWorld<V, P> {
-  constructor(public readonly visualScene: V, public readonly physicsWorld: P)
+export declare class Gg2dWorld<VTypeDoc, PTypeDoc, VS, PW> {
+  constructor(public readonly visualScene: VS, public readonly physicsWorld: PW)
 }
 ```
 
@@ -34,7 +36,12 @@ export declare class Gg2dWorld<V, P> {
 **Signature**
 
 ```ts
-addPrimitiveRigidBody(descr: BodyShape2DDescriptor, position: Point2 = Pnt2.O, rotation: number = 0): Entity2d<V, P>
+addPrimitiveRigidBody(
+    descr: BodyShape2DDescriptor,
+    position: Point2 = Pnt2.O,
+    rotation: number = 0,
+    material: DisplayObject2dOpts<VTypeDoc['texture']> = {},
+  ): Entity2d<VTypeDoc, PTypeDoc>
 ```
 
 ### addRenderer (method)
@@ -42,5 +49,30 @@ addPrimitiveRigidBody(descr: BodyShape2DDescriptor, position: Point2 = Pnt2.O, r
 **Signature**
 
 ```ts
-addRenderer(canvas?: HTMLCanvasElement, rendererOptions?: Partial<RendererOptions>): Renderer2dEntity
+addRenderer(canvas?: HTMLCanvasElement, rendererOptions?: Partial<RendererOptions>): Renderer2dEntity<VTypeDoc>
+```
+
+## PhysicsTypeDocRepo2D (type alias)
+
+**Signature**
+
+```ts
+export type PhysicsTypeDocRepo2D = {
+  factory: IPhysicsBody2dComponentFactory
+  rigidBody: IRigidBody2dComponent
+  trigger: ITrigger2dComponent
+}
+```
+
+## VisualTypeDocRepo2D (type alias)
+
+**Signature**
+
+```ts
+export type VisualTypeDocRepo2D = {
+  factory: IDisplayObject2dComponentFactory
+  displayObject: IDisplayObject2dComponent
+  renderer: IRenderer2dComponent
+  texture: unknown
+}
 ```

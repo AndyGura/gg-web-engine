@@ -1,6 +1,6 @@
 ---
 title: core/3d/models/shapes.ts
-nav_order: 56
+nav_order: 57
 parent: Modules
 ---
 
@@ -32,6 +32,7 @@ export type BodyShape3DDescriptor = { shape: Shape3DDescriptor; body: Partial<Bo
 
 ```ts
 export type Shape3DDescriptor =
+  | { shape: 'PLANE' }
   | { shape: 'BOX'; dimensions: Point3 }
   | { shape: 'CONE' | 'CYLINDER'; radius: number; height: number }
   | { shape: 'CAPSULE'; radius: number; centersDistance: number }

@@ -1,6 +1,6 @@
 ---
 title: core/3d/components/physics/i-physics-world-3d.component.ts
-nav_order: 27
+nav_order: 28
 parent: Modules
 ---
 
@@ -22,8 +22,8 @@ parent: Modules
 **Signature**
 
 ```ts
-export interface IPhysicsWorld3dComponent extends IPhysicsWorldComponent<Point3, Point4> {
-  readonly factory: IPhysicsBody3dComponentFactory
-  readonly loader: IPhysicsBody3dComponentLoader
+export interface IPhysicsWorld3dComponent<TypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D>
+  extends IPhysicsWorldComponent<Point3, Point4, TypeDoc> {
+  readonly loader: TypeDoc['loader']
 }
 ```

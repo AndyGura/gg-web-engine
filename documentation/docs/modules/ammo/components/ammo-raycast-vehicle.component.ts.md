@@ -20,6 +20,7 @@ parent: Modules
     - [isWheelTouchesGround (method)](#iswheeltouchesground-method)
     - [getWheelTransform (method)](#getwheeltransform-method)
     - [resetSuspension (method)](#resetsuspension-method)
+    - [clone (method)](#clone-method)
     - [nativeVehicle (property)](#nativevehicle-property)
     - [vehicleTuning (property)](#vehicletuning-property)
     - [wheelDirectionCS0 (property)](#wheeldirectioncs0-property)
@@ -45,7 +46,7 @@ export declare class AmmoRaycastVehicleComponent {
 **Signature**
 
 ```ts
-addToWorld(world: Gg3dWorld<IVisualScene3dComponent, AmmoWorldComponent>)
+addToWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>)
 ```
 
 ### addWheel (method)
@@ -102,6 +103,14 @@ getWheelTransform(wheelIndex: number): { position: Point3; rotation: Point4 }
 
 ```ts
 resetSuspension(): void
+```
+
+### clone (method)
+
+**Signature**
+
+```ts
+public clone(): AmmoRaycastVehicleComponent
 ```
 
 ### nativeVehicle (property)

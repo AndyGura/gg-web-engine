@@ -635,7 +635,7 @@
 <h1 id="utils">utils</h1>
 <h2 id="gg3dloader-class">Gg3dLoader (class)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class Gg3dLoader {
+<pre><code class="language-ts">export declare class Gg3dLoader&lt;VTypeDoc, PTypeDoc&gt; {
   constructor(protected readonly world: Gg3dWorld)
 }
 </code></pre>
@@ -648,14 +648,14 @@
 <pre><code class="language-ts">public async loadGgGlbResources(
     path: string,
     cachingStrategy: CachingStrategy = CachingStrategy.Nothing,
-  ): Promise&lt;LoadResourcesResult&gt;
+  ): Promise&lt;LoadResourcesResult&lt;VTypeDoc, PTypeDoc&gt;&gt;
 </code></pre>
 <h3 id="loadggglb-method">loadGgGlb (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public async loadGgGlb(
     path: string,
     options: Partial&lt;LoadOptions&gt; = defaultLoadOptions,
-  ): Promise&lt;LoadResultWithProps&gt;
+  ): Promise&lt;LoadResultWithProps&lt;VTypeDoc, PTypeDoc&gt;&gt;
 </code></pre>
 <h3 id="filescache-property">filesCache (property)</h3>
 <p><strong>Signature</strong></p>
@@ -685,21 +685,30 @@
 </code></pre>
 <h2 id="loadresourcesresult-type-alias">LoadResourcesResult (type alias)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type LoadResourcesResult = {
-  resources: { object3D: IDisplayObject3dComponent | null; body: IRigidBody3dComponent | null }[]
+<pre><code class="language-ts">export type LoadResourcesResult&lt;
+  VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D,
+  PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D
+&gt; = {
+  resources: { object3D: VTypeDoc['displayObject'] | null; body: PTypeDoc['rigidBody'] | null }[]
   meta: GgMeta
 }
 </code></pre>
 <h2 id="loadresult-type-alias">LoadResult (type alias)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type LoadResult = {
-  entities: Entity3d[]
+<pre><code class="language-ts">export type LoadResult&lt;
+  VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D,
+  PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D
+&gt; = {
+  entities: Entity3d&lt;VTypeDoc, PTypeDoc&gt;[]
   meta: GgMeta
 }
 </code></pre>
 <h2 id="loadresultwithprops-type-alias">LoadResultWithProps (type alias)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type LoadResultWithProps = LoadResult &amp; { props?: LoadResult[] }
+<pre><code class="language-ts">export type LoadResultWithProps&lt;
+  VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D,
+  PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D
+&gt; = LoadResult&lt;VTypeDoc, PTypeDoc&gt; &amp; { props?: LoadResult&lt;VTypeDoc, PTypeDoc&gt;[] }
 </code></pre>
 
 

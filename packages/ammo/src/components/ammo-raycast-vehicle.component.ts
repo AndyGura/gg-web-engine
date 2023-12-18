@@ -84,7 +84,8 @@ export class AmmoRaycastVehicleComponent
   }
 
   getWheelTransform(wheelIndex: number): { position: Point3; rotation: Point4 } {
-    this.nativeVehicle.updateWheelTransform(wheelIndex, true);
+    // when interpolated transform set to `true`, wheels are jittering relatively to car on high speeds
+    this.nativeVehicle.updateWheelTransform(wheelIndex, false);
     const transform = this.nativeVehicle.getWheelTransformWS(wheelIndex);
     const origin = transform.getOrigin();
     const quaternion = transform.getRotation();

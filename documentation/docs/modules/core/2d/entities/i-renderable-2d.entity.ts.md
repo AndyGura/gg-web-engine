@@ -1,6 +1,6 @@
 ---
 title: core/2d/entities/i-renderable-2d.entity.ts
-nav_order: 18
+nav_order: 19
 parent: Modules
 ---
 
@@ -22,5 +22,5 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare class IRenderable2dEntity<VS, PW>
+export declare class IRenderable2dEntity<TypeDoc, PTypeDoc>
 ```

@@ -536,6 +536,20 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#registercollisiongroup-method" class="md-nav__link">
+    registerCollisionGroup (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#deregistercollisiongroup-method" class="md-nav__link">
+    deregisterCollisionGroup (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#startdebugger-method" class="md-nav__link">
     startDebugger (method)
   </a>
@@ -566,6 +580,13 @@
           <li class="md-nav__item">
   <a href="#handleidentitymap-property" class="md-nav__link">
     handleIdEntityMap (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lockedcollisiongroups-property" class="md-nav__link">
+    lockedCollisionGroups (property)
   </a>
   
 </li>
@@ -607,11 +628,14 @@
 <li><a href="#rapier2dworldcomponent-class">Rapier2dWorldComponent (class)</a><ul>
 <li><a href="#init-method">init (method)</a></li>
 <li><a href="#simulate-method">simulate (method)</a></li>
+<li><a href="#registercollisiongroup-method">registerCollisionGroup (method)</a></li>
+<li><a href="#deregistercollisiongroup-method">deregisterCollisionGroup (method)</a></li>
 <li><a href="#startdebugger-method">startDebugger (method)</a></li>
 <li><a href="#stopdebugger-method">stopDebugger (method)</a></li>
 <li><a href="#dispose-method">dispose (method)</a></li>
 <li><a href="#_nativeworld-property">_nativeWorld (property)</a></li>
 <li><a href="#handleidentitymap-property">handleIdEntityMap (property)</a></li>
+<li><a href="#lockedcollisiongroups-property">lockedCollisionGroups (property)</a></li>
 </ul>
 </li>
 </ul>
@@ -628,6 +652,14 @@
 <h3 id="simulate-method">simulate (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">simulate(delta: number): void
+</code></pre>
+<h3 id="registercollisiongroup-method">registerCollisionGroup (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">registerCollisionGroup(): CollisionGroup
+</code></pre>
+<h3 id="deregistercollisiongroup-method">deregisterCollisionGroup (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">deregisterCollisionGroup(group: CollisionGroup): void
 </code></pre>
 <h3 id="startdebugger-method">startDebugger (method)</h3>
 <p><strong>Signature</strong></p>
@@ -648,6 +680,10 @@
 <h3 id="handleidentitymap-property">handleIdEntityMap (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly handleIdEntityMap: any
+</code></pre>
+<h3 id="lockedcollisiongroups-property">lockedCollisionGroups (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">lockedCollisionGroups: number[]
 </code></pre>
 
 

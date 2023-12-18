@@ -9,3 +9,4 @@ has_children: true
 - [three/three-factory.ts](/gg-web-engine/modules/three/three-factory.ts)
 - [three/three-loader.ts](/gg-web-engine/modules/three/three-loader.ts)
 - [three/three-physics-drawer.ts](/gg-web-engine/modules/three/three-physics-drawer.ts)
+- [three/types.ts](/gg-web-engine/modules/three/types.ts)

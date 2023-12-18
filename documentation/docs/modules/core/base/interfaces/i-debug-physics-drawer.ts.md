@@ -1,6 +1,6 @@
 ---
 title: core/base/interfaces/i-debug-physics-drawer.ts
-nav_order: 81
+nav_order: 83
 parent: Modules
 ---
 
@@ -22,8 +22,8 @@ parent: Modules
 **Signature**
 
 ```ts
-export interface IDebugPhysicsDrawer<D, R, VS extends IVisualSceneComponent<D, R> = IVisualSceneComponent<D, R>>
-  extends IDisplayObjectComponent<D, R, VS> {
+export interface IDebugPhysicsDrawer<D, R, TypeDoc extends VisualTypeDocRepo<D, R> = VisualTypeDocRepo<D, R>>
+  extends IDisplayObjectComponent<D, R, TypeDoc> {
   drawContactPoint(point: D, normal: D, color?: Point3): void
 
   drawLine(from: D, to: D, color?: Point3): void

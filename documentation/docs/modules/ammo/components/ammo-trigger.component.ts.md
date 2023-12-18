@@ -16,6 +16,7 @@ parent: Modules
     - [clone (method)](#clone-method)
     - [addToWorld (method)](#addtoworld-method)
     - [removeFromWorld (method)](#removefromworld-method)
+    - [refreshCG (method)](#refreshcg-method)
     - [dispose (method)](#dispose-method)
     - [entity (property)](#entity-property)
     - [onEnter$ (property)](#onenter-property)
@@ -57,7 +58,7 @@ clone(): AmmoTriggerComponent
 **Signature**
 
 ```ts
-addToWorld(world: Gg3dWorld<IVisualScene3dComponent, AmmoWorldComponent>)
+addToWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>)
 ```
 
 ### removeFromWorld (method)
@@ -65,7 +66,15 @@ addToWorld(world: Gg3dWorld<IVisualScene3dComponent, AmmoWorldComponent>)
 **Signature**
 
 ```ts
-removeFromWorld(world: Gg3dWorld<IVisualScene3dComponent, AmmoWorldComponent>): void
+removeFromWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>): void
+```
+
+### refreshCG (method)
+
+**Signature**
+
+```ts
+refreshCG(): void
 ```
 
 ### dispose (method)

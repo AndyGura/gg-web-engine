@@ -1,6 +1,6 @@
 ---
 title: core/base/math/quaternion.ts
-nav_order: 88
+nav_order: 90
 parent: Modules
 ---
 
@@ -15,6 +15,8 @@ parent: Modules
     - [clone (static method)](#clone-static-method)
     - [add (static method)](#add-static-method)
     - [mult (static method)](#mult-static-method)
+    - [conjugate (static method)](#conjugate-static-method)
+    - [opposite (static method)](#opposite-static-method)
     - [combineRotations (static method)](#combinerotations-static-method)
     - [lerp (static method)](#lerp-static-method)
     - [slerp (static method)](#slerp-static-method)
@@ -74,6 +76,28 @@ Returns the result of multiplying two Point4 objects. This can be used for combi
 
 ```ts
 static mult(a: Point4, b: Point4): Point4
+```
+
+### conjugate (static method)
+
+Calculates and returns the conjugate of a quaternion.
+The conjugate of a quaternion is obtained by changing the sign of its vector components.
+
+**Signature**
+
+```ts
+static conjugate(q: Point4): Point4
+```
+
+### opposite (static method)
+
+Returns the opposite of a quaternion.
+It's obtained by negating all quaternion elements(x, y, z and w).
+
+**Signature**
+
+```ts
+static opposite(q: Point4): Point4
 ```
 
 ### combineRotations (static method)

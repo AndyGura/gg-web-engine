@@ -1,6 +1,6 @@
 ---
 title: core/base/entities/controllers/animation-mixer.ts
-nav_order: 70
+nav_order: 72
 parent: Modules
 ---
 
@@ -42,7 +42,7 @@ The animation function can be changed with `transitAnimationFunction` or `transi
 **Signature**
 
 ```ts
-export declare class AnimationMixer<T> {
+export declare class AnimationMixer<T, D, R, VTypeDoc, PTypeDoc> {
   constructor(
     protected _animationFunction: AnimationFunction<T>,
     protected _lerp: (a: T, b: T, t: number) => T = (a, b, t) => b
@@ -84,7 +84,7 @@ transitAnimationFunction(
 **Signature**
 
 ```ts
-onSpawned(world: GgWorld<any, any>)
+onSpawned(world: GgWorld<D, R, VTypeDoc, PTypeDoc>)
 ```
 
 ### dispose (method)

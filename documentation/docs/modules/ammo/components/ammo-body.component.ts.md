@@ -12,12 +12,16 @@ parent: Modules
 
 - [utils](#utils)
   - [AmmoBodyComponent (class)](#ammobodycomponent-class)
+    - [refreshCG (method)](#refreshcg-method)
     - [clone (method)](#clone-method)
     - [addToWorld (method)](#addtoworld-method)
     - [removeFromWorld (method)](#removefromworld-method)
     - [dispose (method)](#dispose-method)
     - [name (property)](#name-property)
     - [entity (property)](#entity-property)
+    - [addedToWorld (property)](#addedtoworld-property)
+    - [\_interactWithCGsMask (property)](#_interactwithcgsmask-property)
+    - [\_ownCGsMask (property)](#_owncgsmask-property)
 
 ---
 
@@ -33,6 +37,14 @@ export declare class AmmoBodyComponent<T> {
 }
 ```
 
+### refreshCG (method)
+
+**Signature**
+
+```ts
+abstract refreshCG(): void;
+```
+
 ### clone (method)
 
 **Signature**
@@ -46,7 +58,7 @@ abstract clone(): AmmoBodyComponent<T>;
 **Signature**
 
 ```ts
-abstract addToWorld(world: Gg3dWorld<IVisualScene3dComponent, AmmoWorldComponent>): void;
+addToWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>): void
 ```
 
 ### removeFromWorld (method)
@@ -54,7 +66,7 @@ abstract addToWorld(world: Gg3dWorld<IVisualScene3dComponent, AmmoWorldComponent
 **Signature**
 
 ```ts
-abstract removeFromWorld(world: Gg3dWorld<IVisualScene3dComponent, AmmoWorldComponent>): void;
+removeFromWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>): void
 ```
 
 ### dispose (method)
@@ -79,4 +91,28 @@ name: string
 
 ```ts
 entity: any
+```
+
+### addedToWorld (property)
+
+**Signature**
+
+```ts
+addedToWorld: boolean
+```
+
+### \_interactWithCGsMask (property)
+
+**Signature**
+
+```ts
+_interactWithCGsMask: any
+```
+
+### \_ownCGsMask (property)
+
+**Signature**
+
+```ts
+_ownCGsMask: any
 ```

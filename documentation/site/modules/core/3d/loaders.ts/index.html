@@ -579,19 +579,19 @@
 <h1 id="utils">utils</h1>
 <h2 id="idisplayobject3dcomponentloader-interface">IDisplayObject3dComponentLoader (interface)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export interface IDisplayObject3dComponentLoader {
-  loadFromGgGlb(glbFile: ArrayBuffer, meta: GgMeta): Promise&lt;IDisplayObject3dComponent | null&gt;
+<pre><code class="language-ts">export interface IDisplayObject3dComponentLoader&lt;TypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D&gt; {
+  loadFromGgGlb(glbFile: ArrayBuffer, meta: GgMeta): Promise&lt;TypeDoc['displayObject'] | null&gt;
 }
 </code></pre>
 <h2 id="iphysicsbody3dcomponentloader-class">IPhysicsBody3dComponentLoader (class)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class IPhysicsBody3dComponentLoader {
+<pre><code class="language-ts">export declare class IPhysicsBody3dComponentLoader&lt;TypeDoc&gt; {
   protected constructor(protected readonly world: IPhysicsWorld3dComponent)
 }
 </code></pre>
 <h3 id="loadfromggglb-method">loadFromGgGlb (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">async loadFromGgGlb(glbFile: ArrayBuffer, meta: GgMeta): Promise&lt;IRigidBody3dComponent[]&gt;
+<pre><code class="language-ts">async loadFromGgGlb(glbFile: ArrayBuffer, meta: GgMeta): Promise&lt;TypeDoc['rigidBody'][]&gt;
 </code></pre>
 
 

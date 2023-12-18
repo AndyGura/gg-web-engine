@@ -555,9 +555,9 @@
 <h1 id="utils">utils</h1>
 <h2 id="iphysicsworld3dcomponent-interface">IPhysicsWorld3dComponent (interface)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export interface IPhysicsWorld3dComponent extends IPhysicsWorldComponent&lt;Point3, Point4&gt; {
-  readonly factory: IPhysicsBody3dComponentFactory
-  readonly loader: IPhysicsBody3dComponentLoader
+<pre><code class="language-ts">export interface IPhysicsWorld3dComponent&lt;TypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D&gt;
+  extends IPhysicsWorldComponent&lt;Point3, Point4, TypeDoc&gt; {
+  readonly loader: TypeDoc['loader']
 }
 </code></pre>
 

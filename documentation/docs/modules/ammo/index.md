@@ -10,3 +10,4 @@ has_children: true
 - [ammo/ammo-loader.ts](/gg-web-engine/modules/ammo/ammo-loader.ts)
 - [ammo/ammo-utils.ts](/gg-web-engine/modules/ammo/ammo-utils.ts)
 - [ammo/components](/gg-web-engine/modules/ammo/components)
+- [ammo/types.ts](/gg-web-engine/modules/ammo/types.ts)

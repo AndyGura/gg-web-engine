@@ -1,28 +1,19 @@
 import 'zone.js/dist/zone';
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { bootstrapApplication } from '@angular/platform-browser';
-import {
-  Trigger3dEntity,
-  Gg3dWorld,
-  OrbitCameraController,
-  Entity3d,
-  GgStatic,
-} from '@gg-web-engine/core';
-import {
-  ThreeCameraComponent,
-  ThreeSceneComponent,
-} from '@gg-web-engine/three';
-import { PerspectiveCamera } from 'three';
-import { AmmoWorldComponent } from '@gg-web-engine/ammo';
+import { Entity3d, Gg3dWorld, GgStatic, OrbitCameraController, Trigger3dEntity } from '@gg-web-engine/core';
+import { ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
+import { AmmoPhysicsTypeDocRepo, AmmoWorldComponent } from '@gg-web-engine/ammo';
 import { interval, Subject, takeUntil } from 'rxjs';
 
 @Component({
   selector: 'my-app',
   standalone: true,
-  template: `<canvas id="gg"></canvas>`,
+  template: `
+      <canvas id='gg'></canvas>`,
 })
 export class App implements OnInit, OnDestroy {
-  private world!: Gg3dWorld<ThreeSceneComponent, AmmoWorldComponent>;
+  private world!: Gg3dWorld<ThreeVisualTypeDocRepo, AmmoPhysicsTypeDocRepo, ThreeSceneComponent, AmmoWorldComponent>;
   private destroyed$: Subject<void> = new Subject<void>();
 
   async ngOnInit(): Promise<void> {
@@ -36,10 +27,10 @@ export class App implements OnInit, OnDestroy {
 
     const canvas = document.getElementById('gg')! as HTMLCanvasElement;
     const renderer = this.world.addRenderer(
-      new ThreeCameraComponent(new PerspectiveCamera(75, 1, 1, 10000)),
-      canvas
+      this.world.visualScene.factory.createPerspectiveCamera({ fov: 75 }),
+      canvas,
     );
-    renderer.camera.position = { x: 9, y: 12, z: 9 };
+    renderer.position = { x: 9, y: 12, z: 9 };
 
     const controller = new OrbitCameraController(renderer, {
       mouseOptions: { canvas },
@@ -55,7 +46,7 @@ export class App implements OnInit, OnDestroy {
       this.world.physicsWorld.factory.createTrigger({
         shape: 'BOX',
         dimensions: { x: 1000, y: 1000, z: 1 },
-      })
+      }),
     );
     destroyTrigger.position = { x: 0, y: 0, z: -15 };
     destroyTrigger.onEntityEntered.subscribe((entity: Entity3d) => {

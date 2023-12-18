@@ -1,6 +1,6 @@
 ---
 title: rapier3d/components/rapier-3d-trigger.component.ts
-nav_order: 112
+nav_order: 117
 parent: Modules
 ---
 
@@ -41,7 +41,7 @@ export declare class Rapier3dTriggerComponent {
 **Signature**
 
 ```ts
-addToWorld(world: Gg3dWorld<IVisualScene3dComponent, Rapier3dWorldComponent>): void
+addToWorld(world: Gg3dWorld<VisualTypeDocRepo3D, Rapier3dPhysicsTypeDocRepo>): void
 ```
 
 ### checkOverlaps (method)

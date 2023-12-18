@@ -1,6 +1,6 @@
 ---
 title: core/3d/components/rendering/i-camera.component.ts
-nav_order: 31
+nav_order: 32
 parent: Modules
 ---
 
@@ -22,6 +22,6 @@ parent: Modules
 **Signature**
 
 ```ts
-export interface ICameraComponent<VS extends IVisualScene3dComponent = IVisualScene3dComponent>
-  extends IDisplayObject3dComponent<VS> {
+export interface ICameraComponent<TypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D>
+  extends IDisplayObject3dComponent<TypeDoc> {
 ```

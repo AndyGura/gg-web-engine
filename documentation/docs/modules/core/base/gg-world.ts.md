@@ -1,6 +1,6 @@
 ---
 title: core/base/gg-world.ts
-nav_order: 75
+nav_order: 77
 parent: Modules
 ---
 
@@ -26,6 +26,8 @@ parent: Modules
     - [name (property)](#name-property)
     - [children (property)](#children-property)
     - [tickListeners (property)](#ticklisteners-property)
+  - [PhysicsTypeDocRepo (type alias)](#physicstypedocrepo-type-alias)
+  - [VisualTypeDocRepo (type alias)](#visualtypedocrepo-type-alias)
 
 ---
 
@@ -36,8 +38,8 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare class GgWorld<D, R, V, P> {
-  protected constructor(public readonly visualScene: V, public readonly physicsWorld: P)
+export declare class GgWorld<D, R, VTypeDoc, PTypeDoc, VS, PW> {
+  protected constructor(public readonly visualScene: VS, public readonly physicsWorld: PW)
 }
 ```
 
@@ -95,10 +97,11 @@ public dispose(): void
 
 ```ts
 abstract addPrimitiveRigidBody(
-    descr: any,
+    descr: unknown, // type defined in subclasses
     position?: D,
     rotation?: R,
-  ): IPositionable<D, R> & IRenderableEntity<D, R, V, P>;
+    material?: unknown, // type defined in subclasses
+  ): IPositionable<D, R> & IRenderableEntity<D, R, VTypeDoc>;
 ```
 
 ### addEntity (method)
@@ -146,7 +149,7 @@ name: string
 **Signature**
 
 ```ts
-readonly children: IEntity<any, any, IVisualSceneComponent<any, any>, IPhysicsWorldComponent<any, any>>[]
+readonly children: IEntity<any, any, VisualTypeDocRepo<any, any>, PhysicsTypeDocRepo<any, any>>[]
 ```
 
 ### tickListeners (property)
@@ -154,5 +157,29 @@ readonly children: IEntity<any, any, IVisualSceneComponent<any, any>, IPhysicsWo
 **Signature**
 
 ```ts
-readonly tickListeners: IEntity<any, any, IVisualSceneComponent<any, any>, IPhysicsWorldComponent<any, any>>[]
+readonly tickListeners: IEntity<any, any, VisualTypeDocRepo<any, any>, PhysicsTypeDocRepo<any, any>>[]
+```
+
+## PhysicsTypeDocRepo (type alias)
+
+**Signature**
+
+```ts
+export type PhysicsTypeDocRepo<D, R> = {
+  factory: unknown
+  rigidBody: IRigidBodyComponent<D, R>
+  trigger: ITriggerComponent<D, R>
+}
+```
+
+## VisualTypeDocRepo (type alias)
+
+**Signature**
+
+```ts
+export type VisualTypeDocRepo<D, R> = {
+  factory: unknown
+  displayObject: IDisplayObjectComponent<D, R>
+  renderer: IRendererComponent<D, R>
+}
 ```

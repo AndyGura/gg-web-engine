@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/raycast-vehicle-3d.entity.ts
-nav_order: 45
+nav_order: 46
 parent: Modules
 ---
 
@@ -91,7 +91,7 @@ export type RVEntitySharedWheelOptions = {
 **Signature**
 
 ```ts
-export declare class RaycastVehicle3dEntity {
+export declare class RaycastVehicle3dEntity<VTypeDoc, PTypeDoc> {
   constructor(
     public readonly carProperties: RVEntityProperties,
     public readonly chassis3D: IDisplayObject3dComponent | null,
@@ -150,7 +150,7 @@ public resetTo(
 **Signature**
 
 ```ts
-readonly wheels: ((IEntity<any, any, IVisualSceneComponent<any, any>, IPhysicsWorldComponent<any, any>> & IPositionable3d) | null)[]
+readonly wheels: (Entity3d<VTypeDoc, PTypeDoc> | null)[]
 ```
 
 ### wheelLocalRotation (property)

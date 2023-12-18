@@ -1,6 +1,6 @@
 ---
 title: core/3d/gg-3d-world.ts
-nav_order: 49
+nav_order: 50
 parent: Modules
 ---
 
@@ -15,6 +15,8 @@ parent: Modules
     - [addPrimitiveRigidBody (method)](#addprimitiverigidbody-method)
     - [addRenderer (method)](#addrenderer-method)
     - [loader (property)](#loader-property)
+  - [PhysicsTypeDocRepo3D (type alias)](#physicstypedocrepo3d-type-alias)
+  - [VisualTypeDocRepo3D (type alias)](#visualtypedocrepo3d-type-alias)
 
 ---
 
@@ -25,8 +27,8 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare class Gg3dWorld<V, P> {
-  constructor(public readonly visualScene: V, public readonly physicsWorld: P)
+export declare class Gg3dWorld<VTypeDoc, PTypeDoc, VS, PW> {
+  constructor(public readonly visualScene: VS, public readonly physicsWorld: PW)
 }
 ```
 
@@ -39,7 +41,8 @@ addPrimitiveRigidBody(
     descr: BodyShape3DDescriptor,
     position: Point3 = Pnt3.O,
     rotation: Point4 = Qtrn.O,
-  ): Entity3d<V, P>
+    material: DisplayObject3dOpts<VTypeDoc['texture']> = {},
+  ): Entity3d<VTypeDoc, PTypeDoc>
 ```
 
 ### addRenderer (method)
@@ -47,10 +50,11 @@ addPrimitiveRigidBody(
 **Signature**
 
 ```ts
-addRenderer<
-    CC extends ICameraComponent<V> = ICameraComponent<V>,
-    RC extends IRenderer3dComponent<V, CC> = IRenderer3dComponent<V, CC>,
-  >(camera: CC, canvas?: HTMLCanvasElement, rendererOptions?: Partial<RendererOptions>): Renderer3dEntity<V, CC, RC>
+addRenderer(
+    camera: VTypeDoc['camera'],
+    canvas?: HTMLCanvasElement,
+    rendererOptions?: Partial<RendererOptions>,
+  ): Renderer3dEntity<VTypeDoc>
 ```
 
 ### loader (property)
@@ -58,5 +62,34 @@ addRenderer<
 **Signature**
 
 ```ts
-readonly loader: Gg3dLoader
+readonly loader: Gg3dLoader<VTypeDoc, PTypeDoc>
+```
+
+## PhysicsTypeDocRepo3D (type alias)
+
+**Signature**
+
+```ts
+export type PhysicsTypeDocRepo3D = {
+  factory: IPhysicsBody3dComponentFactory
+  loader: IPhysicsBody3dComponentLoader
+  rigidBody: IRigidBody3dComponent
+  trigger: ITrigger3dComponent
+  raycastVehicle: IRaycastVehicleComponent
+}
+```
+
+## VisualTypeDocRepo3D (type alias)
+
+**Signature**
+
+```ts
+export type VisualTypeDocRepo3D = {
+  factory: IDisplayObject3dComponentFactory
+  loader: IDisplayObject3dComponentLoader
+  displayObject: IDisplayObject3dComponent
+  renderer: IRenderer3dComponent
+  camera: ICameraComponent
+  texture: unknown
+}
 ```

@@ -1,6 +1,6 @@
 ---
 title: core/2d/components/rendering/i-visual-scene-2d.component.ts
-nav_order: 15
+nav_order: 16
 parent: Modules
 ---
 
@@ -22,9 +22,8 @@ parent: Modules
 **Signature**
 
 ```ts
-export interface IVisualScene2dComponent extends IVisualSceneComponent<Point2, number> {
-  readonly factory: IGg2dObjectFactory
-
-  createRenderer(canvas?: HTMLCanvasElement, rendererOptions?: Partial<RendererOptions>): IRenderer2dComponent
+export interface IVisualScene2dComponent<TypeDoc extends VisualTypeDocRepo2D = VisualTypeDocRepo2D>
+  extends IVisualSceneComponent<Point2, number, TypeDoc> {
+  createRenderer(canvas?: HTMLCanvasElement, rendererOptions?: Partial<RendererOptions>): TypeDoc['renderer']
 }
 ```

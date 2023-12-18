@@ -543,6 +543,20 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#conjugate-static-method" class="md-nav__link">
+    conjugate (static method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#opposite-static-method" class="md-nav__link">
+    opposite (static method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#combinerotations-static-method" class="md-nav__link">
     combineRotations (static method)
   </a>
@@ -643,6 +657,8 @@
 <li><a href="#clone-static-method">clone (static method)</a></li>
 <li><a href="#add-static-method">add (static method)</a></li>
 <li><a href="#mult-static-method">mult (static method)</a></li>
+<li><a href="#conjugate-static-method">conjugate (static method)</a></li>
+<li><a href="#opposite-static-method">opposite (static method)</a></li>
 <li><a href="#combinerotations-static-method">combineRotations (static method)</a></li>
 <li><a href="#lerp-static-method">lerp (static method)</a></li>
 <li><a href="#slerp-static-method">slerp (static method)</a></li>
@@ -683,6 +699,18 @@ Euler angles (such as gimbal lock).</p>
 <p>Returns the result of multiplying two Point4 objects. This can be used for combining rotations</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">static mult(a: Point4, b: Point4): Point4
+</code></pre>
+<h3 id="conjugate-static-method">conjugate (static method)</h3>
+<p>Calculates and returns the conjugate of a quaternion.
+The conjugate of a quaternion is obtained by changing the sign of its vector components.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">static conjugate(q: Point4): Point4
+</code></pre>
+<h3 id="opposite-static-method">opposite (static method)</h3>
+<p>Returns the opposite of a quaternion.
+It's obtained by negating all quaternion elements(x, y, z and w).</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">static opposite(q: Point4): Point4
 </code></pre>
 <h3 id="combinerotations-static-method">combineRotations (static method)</h3>
 <p>Combines an arbitrary number of quaternions by multiplying them together in order.</p>

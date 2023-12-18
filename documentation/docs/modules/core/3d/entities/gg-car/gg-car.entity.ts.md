@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/gg-car/gg-car.entity.ts
-nav_order: 42
+nav_order: 43
 parent: Modules
 ---
 
@@ -14,6 +14,7 @@ parent: Modules
   - [GgCarEntity (class)](#ggcarentity-class)
     - [calculateRpmFromCarSpeed (method)](#calculaterpmfromcarspeed-method)
     - [setTailLightsOn (method)](#settaillightson-method)
+    - [createRaycastVehicle (method)](#createraycastvehicle-method)
     - [onSpawned (method)](#onspawned-method)
     - [updateEngine (method)](#updateengine-method)
     - [resetTo (method)](#resetto-method)
@@ -34,11 +35,11 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare class GgCarEntity {
+export declare class GgCarEntity<VTypeDoc, PTypeDoc, RVEntity> {
   constructor(
     public readonly carProperties: GgCarProperties,
-    chassis3D: IDisplayObject3dComponent | null,
-    chassisBody: IRaycastVehicleComponent
+    chassis3D: VTypeDoc['displayObject'] | null,
+    chassisBody: PTypeDoc['raycastVehicle']
   )
 }
 ```
@@ -59,12 +60,24 @@ public calculateRpmFromCarSpeed(): number
 protected setTailLightsOn(value: boolean)
 ```
 
+### createRaycastVehicle (method)
+
+**Signature**
+
+```ts
+protected createRaycastVehicle(
+    carProperties: GgCarProperties,
+    chassis3D: VTypeDoc['displayObject'] | null,
+    chassisBody: PTypeDoc['raycastVehicle'],
+  ): RVEntity
+```
+
 ### onSpawned (method)
 
 **Signature**
 
 ```ts
-onSpawned(world: Gg3dWorld)
+onSpawned(world: Gg3dWorld<VTypeDoc, PTypeDoc>)
 ```
 
 ### updateEngine (method)
@@ -133,7 +146,7 @@ handBrake$: any
 **Signature**
 
 ```ts
-readonly raycastVehicle: RaycastVehicle3dEntity
+readonly raycastVehicle: RVEntity
 ```
 
 ## GgCarProperties (type alias)

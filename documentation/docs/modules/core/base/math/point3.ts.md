@@ -1,6 +1,6 @@
 ---
 title: core/base/math/point3.ts
-nav_order: 87
+nav_order: 89
 parent: Modules
 ---
 

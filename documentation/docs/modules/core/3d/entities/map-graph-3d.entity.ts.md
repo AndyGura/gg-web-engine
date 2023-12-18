@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/map-graph-3d.entity.ts
-nav_order: 44
+nav_order: 45
 parent: Modules
 ---
 
@@ -100,7 +100,7 @@ nodes(): MapGraph[]
 **Signature**
 
 ```ts
-export declare class MapGraph3dEntity {
+export declare class MapGraph3dEntity<VTypeDoc, PTypeDoc> {
   constructor(public readonly mapGraph: MapGraph, options: Partial<Gg3dMapGraphEntityOptions> = {})
 }
 ```
@@ -110,7 +110,7 @@ export declare class MapGraph3dEntity {
 **Signature**
 
 ```ts
-onSpawned(world: Gg3dWorld)
+onSpawned(world: Gg3dWorld<VTypeDoc, PTypeDoc>)
 ```
 
 ### onRemoved (method)
@@ -126,7 +126,9 @@ onRemoved()
 **Signature**
 
 ```ts
-protected async loadChunk(node: MapGraphNodeType): Promise<[Entity3d[], LoadResultWithProps]>
+protected async loadChunk(
+    node: MapGraphNodeType,
+  ): Promise<[Entity3d<VTypeDoc, PTypeDoc>[], LoadResultWithProps<VTypeDoc, PTypeDoc>]>
 ```
 
 ### disposeChunk (method)
@@ -174,7 +176,7 @@ _chunkLoaded$: any
 **Signature**
 
 ```ts
-_world: Gg3dWorld<IVisualScene3dComponent, IPhysicsWorld3dComponent> | null
+_world: Gg3dWorld<VTypeDoc, PTypeDoc, IVisualScene3dComponent<VTypeDoc>, IPhysicsWorld3dComponent<PTypeDoc>> | null
 ```
 
 ### mapGraphNodes (property)

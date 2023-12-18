@@ -1,6 +1,6 @@
 ---
 title: core/2d/components/physics/i-rigid-body-2d.component.ts
-nav_order: 11
+nav_order: 12
 parent: Modules
 ---
 
@@ -22,8 +22,8 @@ parent: Modules
 **Signature**
 
 ```ts
-export interface IRigidBody2dComponent<PW extends IPhysicsWorld2dComponent = IPhysicsWorld2dComponent>
-  extends IRigidBodyComponent<Point2, number, PW> {
+export interface IRigidBody2dComponent<TypeDoc extends PhysicsTypeDocRepo2D = PhysicsTypeDocRepo2D>
+  extends IRigidBodyComponent<Point2, number, TypeDoc> {
   angularVelocity: number
 }
 ```

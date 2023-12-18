@@ -522,6 +522,13 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#refreshcg-method" class="md-nav__link">
+    refreshCG (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#clone-method" class="md-nav__link">
     clone (method)
   </a>
@@ -563,6 +570,27 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#addedtoworld-property" class="md-nav__link">
+    addedToWorld (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_interactwithcgsmask-property" class="md-nav__link">
+    _interactWithCGsMask (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_owncgsmask-property" class="md-nav__link">
+    _ownCGsMask (property)
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -598,12 +626,16 @@
 <ul>
 <li><a href="#utils">utils</a></li>
 <li><a href="#ammobodycomponent-class">AmmoBodyComponent (class)</a><ul>
+<li><a href="#refreshcg-method">refreshCG (method)</a></li>
 <li><a href="#clone-method">clone (method)</a></li>
 <li><a href="#addtoworld-method">addToWorld (method)</a></li>
 <li><a href="#removefromworld-method">removeFromWorld (method)</a></li>
 <li><a href="#dispose-method">dispose (method)</a></li>
 <li><a href="#name-property">name (property)</a></li>
 <li><a href="#entity-property">entity (property)</a></li>
+<li><a href="#addedtoworld-property">addedToWorld (property)</a></li>
+<li><a href="#_interactwithcgsmask-property">_interactWithCGsMask (property)</a></li>
+<li><a href="#_owncgsmask-property">_ownCGsMask (property)</a></li>
 </ul>
 </li>
 </ul>
@@ -615,17 +647,21 @@
   protected constructor(protected readonly world: AmmoWorldComponent, protected _nativeBody: T)
 }
 </code></pre>
+<h3 id="refreshcg-method">refreshCG (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">abstract refreshCG(): void;
+</code></pre>
 <h3 id="clone-method">clone (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">abstract clone(): AmmoBodyComponent&lt;T&gt;;
 </code></pre>
 <h3 id="addtoworld-method">addToWorld (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">abstract addToWorld(world: Gg3dWorld&lt;IVisualScene3dComponent, AmmoWorldComponent&gt;): void;
+<pre><code class="language-ts">addToWorld(world: Gg3dWorld&lt;VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo&gt;): void
 </code></pre>
 <h3 id="removefromworld-method">removeFromWorld (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">abstract removeFromWorld(world: Gg3dWorld&lt;IVisualScene3dComponent, AmmoWorldComponent&gt;): void;
+<pre><code class="language-ts">removeFromWorld(world: Gg3dWorld&lt;VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo&gt;): void
 </code></pre>
 <h3 id="dispose-method">dispose (method)</h3>
 <p><strong>Signature</strong></p>
@@ -638,6 +674,18 @@
 <h3 id="entity-property">entity (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">entity: any
+</code></pre>
+<h3 id="addedtoworld-property">addedToWorld (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">addedToWorld: boolean
+</code></pre>
+<h3 id="_interactwithcgsmask-property">_interactWithCGsMask (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">_interactWithCGsMask: any
+</code></pre>
+<h3 id="_owncgsmask-property">_ownCGsMask (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">_ownCGsMask: any
 </code></pre>
 
 

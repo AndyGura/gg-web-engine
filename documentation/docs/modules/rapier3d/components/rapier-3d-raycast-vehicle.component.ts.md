@@ -1,6 +1,6 @@
 ---
 title: rapier3d/components/rapier-3d-raycast-vehicle.component.ts
-nav_order: 110
+nav_order: 115
 parent: Modules
 ---
 
@@ -21,6 +21,7 @@ parent: Modules
     - [isWheelTouchesGround (method)](#iswheeltouchesground-method)
     - [getWheelTransform (method)](#getwheeltransform-method)
     - [resetSuspension (method)](#resetsuspension-method)
+    - [clone (method)](#clone-method)
     - [dispose (method)](#dispose-method)
     - [\_nativeVehicle (property)](#_nativevehicle-property)
 
@@ -43,7 +44,9 @@ export declare class Rapier3dRaycastVehicleComponent {
 **Signature**
 
 ```ts
-addToWorld(world: Gg3dWorld<IVisualScene3dComponent, Rapier3dWorldComponent>)
+addToWorld(
+    world: Gg3dWorld<VisualTypeDocRepo3D, Rapier3dPhysicsTypeDocRepo, IVisualScene3dComponent, Rapier3dWorldComponent>,
+  )
 ```
 
 ### removeFromWorld (method)
@@ -51,7 +54,9 @@ addToWorld(world: Gg3dWorld<IVisualScene3dComponent, Rapier3dWorldComponent>)
 **Signature**
 
 ```ts
-removeFromWorld(world: Gg3dWorld<IVisualScene3dComponent, Rapier3dWorldComponent>)
+removeFromWorld(
+    world: Gg3dWorld<VisualTypeDocRepo3D, Rapier3dPhysicsTypeDocRepo, IVisualScene3dComponent, Rapier3dWorldComponent>,
+  )
 ```
 
 ### addWheel (method)
@@ -108,6 +113,14 @@ getWheelTransform(wheelIndex: number): { position: Point3; rotation: Point4 }
 
 ```ts
 resetSuspension(): void
+```
+
+### clone (method)
+
+**Signature**
+
+```ts
+clone(): Rapier3dRaycastVehicleComponent
 ```
 
 ### dispose (method)

@@ -14,6 +14,7 @@ parent: Modules
   - [AmmoFactory (class)](#ammofactory-class)
     - [createRigidBody (method)](#createrigidbody-method)
     - [createTrigger (method)](#createtrigger-method)
+    - [createRaycastVehicle (method)](#createraycastvehicle-method)
     - [createShape (method)](#createshape-method)
     - [createRigidBodyFromShape (method)](#createrigidbodyfromshape-method)
     - [createTriggerFromShape (method)](#createtriggerfromshape-method)
@@ -58,6 +59,14 @@ createTrigger(
       rotation?: Point4;
     },
   ): AmmoTriggerComponent
+```
+
+### createRaycastVehicle (method)
+
+**Signature**
+
+```ts
+createRaycastVehicle(chassis: AmmoRigidBodyComponent): AmmoRaycastVehicleComponent
 ```
 
 ### createShape (method)

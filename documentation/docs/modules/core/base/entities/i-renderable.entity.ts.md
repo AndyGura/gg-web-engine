@@ -1,6 +1,6 @@
 ---
 title: core/base/entities/i-renderable.entity.ts
-nav_order: 73
+nav_order: 75
 parent: Modules
 ---
 
@@ -25,7 +25,7 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare class IRenderableEntity<D, R, V, P>
+export declare class IRenderableEntity<D, R, TypeDoc, PTypeDoc>
 ```
 
 ### updateVisibility (method)

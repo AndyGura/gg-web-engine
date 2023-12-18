@@ -1,6 +1,6 @@
 ---
 title: three/components/three-renderer-component.ts
-nav_order: 119
+nav_order: 125
 parent: Modules
 ---
 
@@ -31,9 +31,9 @@ parent: Modules
 export declare class ThreeRendererComponent {
   constructor(
     public readonly scene: ThreeSceneComponent,
+    public camera: ThreeCameraComponent,
     public readonly canvas?: HTMLCanvasElement,
-    rendererOptions: Partial<RendererOptions> = {},
-    public camera: ThreeCameraComponent = new ThreeCameraComponent(new PerspectiveCamera(75, 1, 1, 10000))
+    rendererOptions: Partial<RendererOptions> = {}
   )
 }
 ```
@@ -43,7 +43,7 @@ export declare class ThreeRendererComponent {
 **Signature**
 
 ```ts
-addToWorld(world: Gg3dWorld<ThreeSceneComponent>)
+addToWorld(world: Gg3dWorld<ThreeVisualTypeDocRepo>)
 ```
 
 ### removeFromWorld (method)
@@ -51,7 +51,7 @@ addToWorld(world: Gg3dWorld<ThreeSceneComponent>)
 **Signature**
 
 ```ts
-removeFromWorld(world: Gg3dWorld<ThreeSceneComponent>)
+removeFromWorld(world: Gg3dWorld<ThreeVisualTypeDocRepo>)
 ```
 
 ### resizeRenderer (method)

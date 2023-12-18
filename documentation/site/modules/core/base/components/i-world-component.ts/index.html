@@ -558,12 +558,15 @@
 <pre><code class="language-ts">export interface IWorldComponent&lt;
   D,
   R,
-  V extends IVisualSceneComponent&lt;D, R&gt; = IVisualSceneComponent&lt;D, R&gt;,
-  P extends IPhysicsWorldComponent&lt;D, R&gt; = IPhysicsWorldComponent&lt;D, R&gt;
+  VTypeDoc extends VisualTypeDocRepo&lt;D, R&gt; = VisualTypeDocRepo&lt;D, R&gt;,
+  PTypeDoc extends PhysicsTypeDocRepo&lt;D, R&gt; = PhysicsTypeDocRepo&lt;D, R&gt;
 &gt; {
   entity: IEntity | null
-  addToWorld(world: GgWorld&lt;D, R, V, P&gt;): void
-  removeFromWorld(world: GgWorld&lt;D, R, V, P&gt;, dispose?: boolean): void
+
+  addToWorld(world: GgWorld&lt;D, R, VTypeDoc, PTypeDoc&gt;): void
+
+  removeFromWorld(world: GgWorld&lt;D, R, VTypeDoc, PTypeDoc&gt;, dispose?: boolean): void
+
   dispose(): void
 }
 </code></pre>

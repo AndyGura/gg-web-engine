@@ -1,6 +1,6 @@
 ---
 title: core/3d/factories.ts
-nav_order: 48
+nav_order: 49
 parent: Modules
 ---
 
@@ -11,8 +11,12 @@ parent: Modules
 <h2 class="text-delta">Table of contents</h2>
 
 - [utils](#utils)
+  - [DisplayObject3dOpts (type alias)](#displayobject3dopts-type-alias)
   - [IDisplayObject3dComponentFactory (class)](#idisplayobject3dcomponentfactory-class)
     - [createPrimitive (method)](#createprimitive-method)
+    - [createPerspectiveCamera (method)](#createperspectivecamera-method)
+    - [randomColor (method)](#randomcolor-method)
+    - [createPlane (method)](#createplane-method)
     - [createBox (method)](#createbox-method)
     - [createCapsule (method)](#createcapsule-method)
     - [createCylinder (method)](#createcylinder-method)
@@ -24,12 +28,26 @@ parent: Modules
 
 # utils
 
+## DisplayObject3dOpts (type alias)
+
+**Signature**
+
+```ts
+export type DisplayObject3dOpts<Tex> = {
+  color?: number
+  shading?: 'unlit' | 'standart' | 'phong'
+  diffuse?: Tex
+  castShadow?: boolean
+  receiveShadow?: boolean
+}
+```
+
 ## IDisplayObject3dComponentFactory (class)
 
 **Signature**
 
 ```ts
-export declare class IDisplayObject3dComponentFactory<DOC>
+export declare class IDisplayObject3dComponentFactory<TypeDoc>
 ```
 
 ### createPrimitive (method)
@@ -37,7 +55,38 @@ export declare class IDisplayObject3dComponentFactory<DOC>
 **Signature**
 
 ```ts
-abstract createPrimitive(descriptor: Shape3DDescriptor, material?: any): DOC;
+abstract createPrimitive(
+    descriptor: Shape3DDescriptor,
+    material?: DisplayObject3dOpts<TypeDoc['texture']>,
+  ): TypeDoc['displayObject'];
+```
+
+### createPerspectiveCamera (method)
+
+**Signature**
+
+```ts
+abstract createPerspectiveCamera(settings: {
+    fov?: number;
+    aspectRatio?: number;
+    frustrum?: { near: number; far: number };
+  }): TypeDoc['camera'];
+```
+
+### randomColor (method)
+
+**Signature**
+
+```ts
+randomColor(): number
+```
+
+### createPlane (method)
+
+**Signature**
+
+```ts
+createPlane(material: DisplayObject3dOpts<TypeDoc['texture']> = {}): TypeDoc['displayObject']
 ```
 
 ### createBox (method)
@@ -45,7 +94,7 @@ abstract createPrimitive(descriptor: Shape3DDescriptor, material?: any): DOC;
 **Signature**
 
 ```ts
-createBox(dimensions: Point3, material?: any): DOC
+createBox(dimensions: Point3, material: DisplayObject3dOpts<TypeDoc['texture']> = {}): TypeDoc['displayObject']
 ```
 
 ### createCapsule (method)
@@ -53,7 +102,11 @@ createBox(dimensions: Point3, material?: any): DOC
 **Signature**
 
 ```ts
-createCapsule(radius: number, centersDistance: number, material?: any): DOC
+createCapsule(
+    radius: number,
+    centersDistance: number,
+    material: DisplayObject3dOpts<TypeDoc['texture']> = {},
+  ): TypeDoc['displayObject']
 ```
 
 ### createCylinder (method)
@@ -61,7 +114,11 @@ createCapsule(radius: number, centersDistance: number, material?: any): DOC
 **Signature**
 
 ```ts
-createCylinder(radius: number, height: number, material?: any): DOC
+createCylinder(
+    radius: number,
+    height: number,
+    material: DisplayObject3dOpts<TypeDoc['texture']> = {},
+  ): TypeDoc['displayObject']
 ```
 
 ### createCone (method)
@@ -69,7 +126,11 @@ createCylinder(radius: number, height: number, material?: any): DOC
 **Signature**
 
 ```ts
-createCone(radius: number, height: number, material?: any): DOC
+createCone(
+    radius: number,
+    height: number,
+    material: DisplayObject3dOpts<TypeDoc['texture']> = {},
+  ): TypeDoc['displayObject']
 ```
 
 ### createSphere (method)
@@ -77,7 +138,7 @@ createCone(radius: number, height: number, material?: any): DOC
 **Signature**
 
 ```ts
-createSphere(radius: number): DOC
+createSphere(radius: number, material: DisplayObject3dOpts<TypeDoc['texture']> = {}): TypeDoc['displayObject']
 ```
 
 ## IPhysicsBody3dComponentFactory (interface)
@@ -85,12 +146,23 @@ createSphere(radius: number): DOC
 **Signature**
 
 ```ts
-export interface IPhysicsBody3dComponentFactory<
-  T extends IRigidBody3dComponent = IRigidBody3dComponent,
-  K extends ITrigger3dComponent = ITrigger3dComponent
-> {
-  createRigidBody(descriptor: BodyShape3DDescriptor, transform?: { position?: Point3; rotation?: Point4 }): T
+export interface IPhysicsBody3dComponentFactory<TypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D> {
+  createRigidBody(
+    descriptor: BodyShape3DDescriptor,
+    transform?: {
+      position?: Point3
+      rotation?: Point4
+    }
+  ): TypeDoc['rigidBody']
 
-  createTrigger(descriptor: Shape3DDescriptor, transform?: { position?: Point3; rotation?: Point4 }): K
+  createTrigger(
+    descriptor: Shape3DDescriptor,
+    transform?: {
+      position?: Point3
+      rotation?: Point4
+    }
+  ): TypeDoc['trigger']
+
+  createRaycastVehicle(chassis: TypeDoc['rigidBody']): TypeDoc['raycastVehicle']
 }
 ```

@@ -555,15 +555,15 @@
 <h1 id="utils">utils</h1>
 <h2 id="ivisualscene3dcomponent-interface">IVisualScene3dComponent (interface)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export interface IVisualScene3dComponent extends IVisualSceneComponent&lt;Point3, Point4&gt; {
-  readonly factory: IDisplayObject3dComponentFactory
-  readonly loader: IDisplayObject3dComponentLoader
+<pre><code class="language-ts">export interface IVisualScene3dComponent&lt;TypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D&gt;
+  extends IVisualSceneComponent&lt;Point3, Point4, TypeDoc&gt; {
+  readonly loader: TypeDoc['loader']
 
   createRenderer(
-    camera: ICameraComponent,
+    camera: TypeDoc['camera'],
     canvas?: HTMLCanvasElement,
     rendererOptions?: Partial&lt;RendererOptions&gt;
-  ): IRenderer3dComponent
+  ): TypeDoc['renderer']
 }
 </code></pre>
 

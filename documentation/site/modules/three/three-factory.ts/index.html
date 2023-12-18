@@ -514,6 +514,13 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#threedisplayobject3dopts-type-alias" class="md-nav__link">
+    ThreeDisplayObject3dOpts (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#threefactory-class" class="md-nav__link">
     ThreeFactory (class)
   </a>
@@ -522,8 +529,8 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#getrandommaterial-method" class="md-nav__link">
-    getRandomMaterial (method)
+  <a href="#creatematerial-method" class="md-nav__link">
+    createMaterial (method)
   </a>
   
 </li>
@@ -538,6 +545,13 @@
           <li class="md-nav__item">
   <a href="#createprimitive-method" class="md-nav__link">
     createPrimitive (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#createperspectivecamera-method" class="md-nav__link">
+    createPerspectiveCamera (method)
   </a>
   
 </li>
@@ -576,22 +590,28 @@
 
 <ul>
 <li><a href="#utils">utils</a></li>
+<li><a href="#threedisplayobject3dopts-type-alias">ThreeDisplayObject3dOpts (type alias)</a></li>
 <li><a href="#threefactory-class">ThreeFactory (class)</a><ul>
-<li><a href="#getrandommaterial-method">getRandomMaterial (method)</a></li>
+<li><a href="#creatematerial-method">createMaterial (method)</a></li>
 <li><a href="#transformprimitivezup-method">transformPrimitiveZUp (method)</a></li>
 <li><a href="#createprimitive-method">createPrimitive (method)</a></li>
+<li><a href="#createperspectivecamera-method">createPerspectiveCamera (method)</a></li>
 </ul>
 </li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
+<h2 id="threedisplayobject3dopts-type-alias">ThreeDisplayObject3dOpts (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type ThreeDisplayObject3dOpts = DisplayObject3dOpts&lt;Texture&gt;
+</code></pre>
 <h2 id="threefactory-class">ThreeFactory (class)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export declare class ThreeFactory
 </code></pre>
-<h3 id="getrandommaterial-method">getRandomMaterial (method)</h3>
+<h3 id="creatematerial-method">createMaterial (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">getRandomMaterial(): Material
+<pre><code class="language-ts">createMaterial(descr: ThreeDisplayObject3dOpts): Material
 </code></pre>
 <h3 id="transformprimitivezup-method">transformPrimitiveZUp (method)</h3>
 <p><strong>Signature</strong></p>
@@ -599,10 +619,17 @@
 </code></pre>
 <h3 id="createprimitive-method">createPrimitive (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">createPrimitive(
-    descriptor: Shape3DDescriptor,
-    material: Material = this.getRandomMaterial(),
-  ): ThreeDisplayObjectComponent
+<pre><code class="language-ts">createPrimitive(descriptor: Shape3DDescriptor, material: ThreeDisplayObject3dOpts = {}): ThreeDisplayObjectComponent
+</code></pre>
+<h3 id="createperspectivecamera-method">createPerspectiveCamera (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">createPerspectiveCamera(
+    settings: {
+      fov?: number;
+      aspectRatio?: number;
+      frustrum?: { near: number; far: number };
+    } = {},
+  ): ThreeCameraComponent
 </code></pre>
 
 

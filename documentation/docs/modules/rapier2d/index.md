@@ -8,3 +8,4 @@ has_children: true
 - [rapier2d/components](/gg-web-engine/modules/rapier2d/components)
 - [rapier2d/index.ts](/gg-web-engine/modules/rapier2d/index.ts)
 - [rapier2d/rapier-2d-factory.ts](/gg-web-engine/modules/rapier2d/rapier-2d-factory.ts)
+- [rapier2d/types.ts](/gg-web-engine/modules/rapier2d/types.ts)

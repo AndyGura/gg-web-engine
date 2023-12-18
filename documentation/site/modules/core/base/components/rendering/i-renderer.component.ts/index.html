@@ -627,9 +627,9 @@
 <h1 id="utils">utils</h1>
 <h2 id="irenderercomponent-class">IRendererComponent (class)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class IRendererComponent&lt;D, R, VS&gt; {
+<pre><code class="language-ts">export declare class IRendererComponent&lt;D, R, VTypeDoc&gt; {
   protected constructor(
-    public readonly scene: VS,
+    public readonly scene: IVisualSceneComponent&lt;D, R, VTypeDoc&gt;,
     public readonly canvas?: HTMLCanvasElement,
     options: Partial&lt;RendererOptions&gt; = {}
   )
@@ -642,11 +642,11 @@
 </code></pre>
 <h3 id="addtoworld-method">addToWorld (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">abstract addToWorld(world: GgWorld&lt;D, R, VS, any&gt;): void;
+<pre><code class="language-ts">abstract addToWorld(world: GgWorld&lt;D, R, VTypeDoc&gt;): void;
 </code></pre>
 <h3 id="removefromworld-method">removeFromWorld (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">abstract removeFromWorld(world: GgWorld&lt;D, R, VS, any&gt;): void;
+<pre><code class="language-ts">abstract removeFromWorld(world: GgWorld&lt;D, R, VTypeDoc&gt;): void;
 </code></pre>
 <h3 id="resizerenderer-method">resizeRenderer (method)</h3>
 <p>Resizes the renderer to the specified size.</p>
@@ -659,7 +659,7 @@
 </code></pre>
 <h3 id="entity-property">entity (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">entity: IEntity&lt;any, any, IVisualSceneComponent&lt;any, any&gt;, IPhysicsWorldComponent&lt;any, any&gt;&gt; | null
+<pre><code class="language-ts">entity: IEntity&lt;any, any, VisualTypeDocRepo&lt;any, any&gt;, PhysicsTypeDocRepo&lt;any, any&gt;&gt; | null
 </code></pre>
 <h3 id="rendereroptions-property">rendererOptions (property)</h3>
 <p>Specifies the options for the renderer.</p>

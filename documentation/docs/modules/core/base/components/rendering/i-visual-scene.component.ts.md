@@ -1,6 +1,6 @@
 ---
 title: core/base/components/rendering/i-visual-scene.component.ts
-nav_order: 68
+nav_order: 69
 parent: Modules
 ---
 
@@ -22,10 +22,11 @@ parent: Modules
 **Signature**
 
 ```ts
-export interface IVisualSceneComponent<D, R> extends IComponent {
-  readonly factory: any // type defined in sub-interfaces
+export interface IVisualSceneComponent<D, R, TypeDoc extends VisualTypeDocRepo<D, R> = VisualTypeDocRepo<D, R>>
+  extends IComponent {
+  readonly factory: TypeDoc['factory']
 
-  readonly debugPhysicsDrawerClass?: { new (): IDebugPhysicsDrawer<D, R> }
+  readonly debugPhysicsDrawerClass?: { new (): IDebugPhysicsDrawer<D, R, TypeDoc> }
 
   init(): Promise<void>
 }

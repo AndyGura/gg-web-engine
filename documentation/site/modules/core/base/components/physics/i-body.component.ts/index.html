@@ -555,21 +555,14 @@
 <h1 id="utils">utils</h1>
 <h2 id="ibodycomponent-interface">IBodyComponent (interface)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export interface IBodyComponent&lt;D, R, PW extends IPhysicsWorldComponent&lt;D, R&gt; = IPhysicsWorldComponent&lt;D, R&gt;&gt;
-  extends IWorldComponent&lt;D, R, IVisualSceneComponent&lt;D, R&gt;, PW&gt; {
-  entity: IEntity | null
+<pre><code class="language-ts">export interface IBodyComponent&lt;D, R, TypeDoc extends PhysicsTypeDocRepo&lt;D, R&gt; = PhysicsTypeDocRepo&lt;D, R&gt;&gt;
+  extends IWorldComponent&lt;D, R, VisualTypeDocRepo&lt;D, R&gt;, TypeDoc&gt; {
+  entity: IEntity | null;
 
-  position: D
-  rotation: R
+  position: D;
+  rotation: R;
 
-  name: string
-
-  clone(): IBodyComponent&lt;D, R, PW&gt;
-
-  addToWorld(world: GgWorld&lt;D, R, IVisualSceneComponent&lt;D, R&gt;, PW&gt;): void
-
-  removeFromWorld(world: GgWorld&lt;D, R, IVisualSceneComponent&lt;D, R&gt;, PW&gt;): void
-}
+  name: string;
 </code></pre>
 
 

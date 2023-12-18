@@ -1,6 +1,6 @@
 ---
 title: core/2d/entities/renderer-2d.entity.ts
-nav_order: 19
+nav_order: 20
 parent: Modules
 ---
 
@@ -22,5 +22,5 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare class Renderer2dEntity<RC>
+export declare class Renderer2dEntity<TypeDoc>
 ```

@@ -1,6 +1,6 @@
 ---
 title: matter/components/matter-rigid-body.component.ts
-nav_order: 98
+nav_order: 100
 parent: Modules
 ---
 
@@ -47,7 +47,9 @@ clone(): MatterRigidBodyComponent
 **Signature**
 
 ```ts
-addToWorld(world: Gg2dWorld<IVisualScene2dComponent, MatterWorldComponent>): void
+addToWorld(
+    world: Gg2dWorld<VisualTypeDocRepo2D, MatterPhysicsTypeDocRepo, IVisualScene2dComponent, MatterWorldComponent>,
+  ): void
 ```
 
 ### removeFromWorld (method)
@@ -55,7 +57,9 @@ addToWorld(world: Gg2dWorld<IVisualScene2dComponent, MatterWorldComponent>): voi
 **Signature**
 
 ```ts
-removeFromWorld(world: Gg2dWorld<IVisualScene2dComponent, MatterWorldComponent>): void
+removeFromWorld(
+    world: Gg2dWorld<VisualTypeDocRepo2D, MatterPhysicsTypeDocRepo, IVisualScene2dComponent, MatterWorldComponent>,
+  ): void
 ```
 
 ### dispose (method)

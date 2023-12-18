@@ -555,9 +555,8 @@
 <h1 id="utils">utils</h1>
 <h2 id="iphysicsworld2dcomponent-interface">IPhysicsWorld2dComponent (interface)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export interface IPhysicsWorld2dComponent extends IPhysicsWorldComponent&lt;Point2, number&gt; {
-  readonly factory: IPhysicsBody2dComponentFactory
-}
+<pre><code class="language-ts">export interface IPhysicsWorld2dComponent&lt;TypeDoc extends PhysicsTypeDocRepo2D = PhysicsTypeDocRepo2D&gt;
+  extends IPhysicsWorldComponent&lt;Point2, number, TypeDoc&gt; {}
 </code></pre>
 
 

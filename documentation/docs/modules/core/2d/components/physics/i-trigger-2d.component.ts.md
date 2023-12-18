@@ -1,6 +1,6 @@
 ---
 title: core/2d/components/physics/i-trigger-2d.component.ts
-nav_order: 12
+nav_order: 13
 parent: Modules
 ---
 
@@ -22,6 +22,6 @@ parent: Modules
 **Signature**
 
 ```ts
-export interface ITrigger2dComponent<PW extends IPhysicsWorld2dComponent = IPhysicsWorld2dComponent>
-  extends ITriggerComponent<Point2, number, PW> {
+export interface ITrigger2dComponent<TypeDoc extends PhysicsTypeDocRepo2D = PhysicsTypeDocRepo2D>
+  extends ITriggerComponent<Point2, number, TypeDoc> {
 ```

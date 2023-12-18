@@ -1,6 +1,6 @@
 ---
 title: three/components/three-scene.component.ts
-nav_order: 120
+nav_order: 126
 parent: Modules
 ---
 

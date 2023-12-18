@@ -1,6 +1,6 @@
 ---
 title: matter/matter-factory.ts
-nav_order: 100
+nav_order: 102
 parent: Modules
 ---
 
@@ -53,7 +53,7 @@ createTrigger(
       position?: Point2;
       rotation?: number;
     },
-  ): any
+  ): never
 ```
 
 ### transformOptions (method)

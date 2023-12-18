@@ -1,6 +1,6 @@
 ---
 title: rapier3d/components/rapier-3d-world.component.ts
-nav_order: 113
+nav_order: 118
 parent: Modules
 ---
 
@@ -14,11 +14,14 @@ parent: Modules
   - [Rapier3dWorldComponent (class)](#rapier3dworldcomponent-class)
     - [init (method)](#init-method)
     - [simulate (method)](#simulate-method)
+    - [registerCollisionGroup (method)](#registercollisiongroup-method)
+    - [deregisterCollisionGroup (method)](#deregistercollisiongroup-method)
     - [startDebugger (method)](#startdebugger-method)
     - [stopDebugger (method)](#stopdebugger-method)
     - [dispose (method)](#dispose-method)
     - [\_nativeWorld (property)](#_nativeworld-property)
     - [handleIdEntityMap (property)](#handleidentitymap-property)
+    - [lockedCollisionGroups (property)](#lockedcollisiongroups-property)
 
 ---
 
@@ -46,6 +49,22 @@ async init(): Promise<void>
 
 ```ts
 simulate(delta: number): void
+```
+
+### registerCollisionGroup (method)
+
+**Signature**
+
+```ts
+registerCollisionGroup(): CollisionGroup
+```
+
+### deregisterCollisionGroup (method)
+
+**Signature**
+
+```ts
+deregisterCollisionGroup(group: CollisionGroup): void
 ```
 
 ### startDebugger (method)
@@ -86,4 +105,12 @@ _nativeWorld: any
 
 ```ts
 readonly handleIdEntityMap: any
+```
+
+### lockedCollisionGroups (property)
+
+**Signature**
+
+```ts
+lockedCollisionGroups: number[]
 ```

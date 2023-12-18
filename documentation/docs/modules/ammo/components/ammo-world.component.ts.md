@@ -14,10 +14,13 @@ parent: Modules
   - [AmmoWorldComponent (class)](#ammoworldcomponent-class)
     - [init (method)](#init-method)
     - [simulate (method)](#simulate-method)
+    - [registerCollisionGroup (method)](#registercollisiongroup-method)
+    - [deregisterCollisionGroup (method)](#deregistercollisiongroup-method)
     - [startDebugger (method)](#startdebugger-method)
     - [stopDebugger (method)](#stopdebugger-method)
     - [dispose (method)](#dispose-method)
     - [\_dynamicAmmoWorld (property)](#_dynamicammoworld-property)
+    - [lockedCollisionGroups (property)](#lockedcollisiongroups-property)
 
 ---
 
@@ -47,13 +50,29 @@ async init(): Promise<void>
 simulate(delta: number): void
 ```
 
+### registerCollisionGroup (method)
+
+**Signature**
+
+```ts
+registerCollisionGroup(): CollisionGroup
+```
+
+### deregisterCollisionGroup (method)
+
+**Signature**
+
+```ts
+deregisterCollisionGroup(group: CollisionGroup): void
+```
+
 ### startDebugger (method)
 
 **Signature**
 
 ```ts
 startDebugger(
-    world: Gg3dWorld<IVisualScene3dComponent, AmmoWorldComponent>,
+    world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>,
     drawer: IDebugPhysicsDrawer<Point3, Point4>,
   ): void
 ```
@@ -63,7 +82,7 @@ startDebugger(
 **Signature**
 
 ```ts
-stopDebugger(world: Gg3dWorld<IVisualScene3dComponent, AmmoWorldComponent>): void
+stopDebugger(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>): void
 ```
 
 ### dispose (method)
@@ -80,4 +99,12 @@ dispose(): void
 
 ```ts
 _dynamicAmmoWorld: any
+```
+
+### lockedCollisionGroups (property)
+
+**Signature**
+
+```ts
+lockedCollisionGroups: number[]
 ```

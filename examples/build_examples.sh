@@ -25,6 +25,6 @@ build_example() {
 }
 for ix in ${!examples[*]}
 do
-  build_example ${examples[$ix]}  # &
+  build_example ${examples[$ix]} &
 done
 wait

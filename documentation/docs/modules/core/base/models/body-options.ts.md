@@ -1,6 +1,6 @@
 ---
 title: core/base/models/body-options.ts
-nav_order: 91
+nav_order: 93
 parent: Modules
 ---
 
@@ -12,6 +12,7 @@ parent: Modules
 
 - [utils](#utils)
   - [BodyOptions (interface)](#bodyoptions-interface)
+  - [CollisionGroup (type alias)](#collisiongroup-type-alias)
 
 ---
 
@@ -27,5 +28,15 @@ export interface BodyOptions {
   mass: number
   restitution: number
   friction: number
+  ownCollisionGroups: CollisionGroup[] | 'all'
+  interactWithCollisionGroups: CollisionGroup[] | 'all'
 }
+```
+
+## CollisionGroup (type alias)
+
+**Signature**
+
+```ts
+export type CollisionGroup = number
 ```

@@ -1,6 +1,6 @@
 ---
 title: pixi/components/pixi-renderer.component.ts
-nav_order: 102
+nav_order: 105
 parent: Modules
 ---
 
@@ -50,7 +50,7 @@ resizeRenderer(newSize: Point2): void
 **Signature**
 
 ```ts
-addToWorld(world: Gg2dWorld<PixiSceneComponent>): void
+addToWorld(world: Gg2dWorld<PixiVisualTypeDocRepo2D>): void
 ```
 
 ### removeFromWorld (method)
@@ -58,7 +58,7 @@ addToWorld(world: Gg2dWorld<PixiSceneComponent>): void
 **Signature**
 
 ```ts
-removeFromWorld(world: Gg2dWorld<PixiSceneComponent>): void
+removeFromWorld(world: Gg2dWorld<PixiVisualTypeDocRepo2D>): void
 ```
 
 ### render (method)

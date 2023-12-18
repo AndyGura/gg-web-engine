@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/entity-3d.ts
-nav_order: 41
+nav_order: 42
 parent: Modules
 ---
 
@@ -25,10 +25,10 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare class Entity3d<VS, PW> {
+export declare class Entity3d<VTypeDoc, PTypeDoc> {
   constructor(
-    public readonly object3D: IDisplayObject3dComponent | null,
-    public readonly objectBody: IRigidBody3dComponent | null = null
+    public readonly object3D: VTypeDoc['displayObject'] | null,
+    public readonly objectBody: PTypeDoc['rigidBody'] | null = null
   )
 }
 ```

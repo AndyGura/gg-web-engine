@@ -1,6 +1,6 @@
 ---
 title: core/base/entities/i-entity.ts
-nav_order: 72
+nav_order: 74
 parent: Modules
 ---
 
@@ -37,7 +37,7 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare class IEntity<D, R, V, P>
+export declare class IEntity<D, R, VTypeDoc, PTypeDoc>
 ```
 
 ### addChildren (method)
@@ -61,7 +61,7 @@ public removeChildren(entities: IEntity[], dispose: boolean = false)
 **Signature**
 
 ```ts
-public addComponents(...components: IWorldComponent<D, R, V, P>[])
+public addComponents(...components: IWorldComponent<D, R, VTypeDoc, PTypeDoc>[])
 ```
 
 ### removeComponents (method)
@@ -69,7 +69,7 @@ public addComponents(...components: IWorldComponent<D, R, V, P>[])
 **Signature**
 
 ```ts
-public removeComponents(components: IWorldComponent<D, R, V, P>[], dispose: boolean = false)
+public removeComponents(components: IWorldComponent<D, R, VTypeDoc, PTypeDoc>[], dispose: boolean = false)
 ```
 
 ### onSpawned (method)
@@ -77,7 +77,7 @@ public removeComponents(components: IWorldComponent<D, R, V, P>[], dispose: bool
 **Signature**
 
 ```ts
-public onSpawned(world: GgWorld<D, R, V, P>)
+public onSpawned(world: GgWorld<D, R, VTypeDoc, PTypeDoc>)
 ```
 
 ### onRemoved (method)
@@ -123,7 +123,14 @@ a world reference, where this entity was added to
 **Signature**
 
 ```ts
-_world: GgWorld<D, R, V, P> | null
+_world: GgWorld<
+  D,
+  R,
+  VTypeDoc,
+  PTypeDoc,
+  IVisualSceneComponent<D, R, VTypeDoc>,
+  IPhysicsWorldComponent<D, R, PTypeDoc>
+> | null
 ```
 
 ### \_name (property)
@@ -149,7 +156,7 @@ _active: boolean
 **Signature**
 
 ```ts
-parent: IEntity<any, any, IVisualSceneComponent<any, any>, IPhysicsWorldComponent<any, any>> | null
+parent: IEntity<any, any, VisualTypeDocRepo<any, any>, PhysicsTypeDocRepo<any, any>> | null
 ```
 
 ### \_onSpawned$ (property)

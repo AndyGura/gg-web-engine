@@ -1,6 +1,6 @@
 ---
 title: core/base/clock/i-clock.ts
-nav_order: 58
+nav_order: 59
 parent: Modules
 ---
 

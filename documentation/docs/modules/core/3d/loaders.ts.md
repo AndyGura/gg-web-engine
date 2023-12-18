@@ -1,6 +1,6 @@
 ---
 title: core/3d/loaders.ts
-nav_order: 53
+nav_order: 54
 parent: Modules
 ---
 
@@ -24,8 +24,8 @@ parent: Modules
 **Signature**
 
 ```ts
-export interface IDisplayObject3dComponentLoader {
-  loadFromGgGlb(glbFile: ArrayBuffer, meta: GgMeta): Promise<IDisplayObject3dComponent | null>
+export interface IDisplayObject3dComponentLoader<TypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D> {
+  loadFromGgGlb(glbFile: ArrayBuffer, meta: GgMeta): Promise<TypeDoc['displayObject'] | null>
 }
 ```
 
@@ -34,7 +34,7 @@ export interface IDisplayObject3dComponentLoader {
 **Signature**
 
 ```ts
-export declare class IPhysicsBody3dComponentLoader {
+export declare class IPhysicsBody3dComponentLoader<TypeDoc> {
   protected constructor(protected readonly world: IPhysicsWorld3dComponent)
 }
 ```
@@ -44,5 +44,5 @@ export declare class IPhysicsBody3dComponentLoader {
 **Signature**
 
 ```ts
-async loadFromGgGlb(glbFile: ArrayBuffer, meta: GgMeta): Promise<IRigidBody3dComponent[]>
+async loadFromGgGlb(glbFile: ArrayBuffer, meta: GgMeta): Promise<TypeDoc['rigidBody'][]>
 ```

@@ -1,6 +1,6 @@
 ---
 title: pixi/components/pixi-display-object.component.ts
-nav_order: 101
+nav_order: 104
 parent: Modules
 ---
 
@@ -73,7 +73,7 @@ clone(): PixiDisplayObjectComponent
 **Signature**
 
 ```ts
-addToWorld(world: Gg2dWorld<PixiSceneComponent>): void
+addToWorld(world: Gg2dWorld<PixiVisualTypeDocRepo2D, PhysicsTypeDocRepo2D, PixiSceneComponent>): void
 ```
 
 ### removeFromWorld (method)
@@ -81,7 +81,7 @@ addToWorld(world: Gg2dWorld<PixiSceneComponent>): void
 **Signature**
 
 ```ts
-removeFromWorld(world: Gg2dWorld<PixiSceneComponent>): void
+removeFromWorld(world: Gg2dWorld<PixiVisualTypeDocRepo2D, PhysicsTypeDocRepo2D, PixiSceneComponent>): void
 ```
 
 ### dispose (method)

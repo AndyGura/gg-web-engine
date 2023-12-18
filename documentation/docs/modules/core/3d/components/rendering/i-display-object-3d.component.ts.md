@@ -1,6 +1,6 @@
 ---
 title: core/3d/components/rendering/i-display-object-3d.component.ts
-nav_order: 32
+nav_order: 33
 parent: Modules
 ---
 
@@ -22,6 +22,6 @@ parent: Modules
 **Signature**
 
 ```ts
-export interface IDisplayObject3dComponent<VS extends IVisualScene3dComponent = IVisualScene3dComponent>
-  extends IDisplayObjectComponent<Point3, Point4, VS> {}
+export interface IDisplayObject3dComponent<TypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D>
+  extends IDisplayObjectComponent<Point3, Point4, TypeDoc> {}
 ```

@@ -15,6 +15,7 @@ parent: Modules
     - [clone (method)](#clone-method)
     - [addToWorld (method)](#addtoworld-method)
     - [removeFromWorld (method)](#removefromworld-method)
+    - [refreshCG (method)](#refreshcg-method)
     - [resetMotion (method)](#resetmotion-method)
     - [entity (property)](#entity-property)
 
@@ -45,7 +46,7 @@ clone(): AmmoRigidBodyComponent
 **Signature**
 
 ```ts
-addToWorld(world: Gg3dWorld<IVisualScene3dComponent, AmmoWorldComponent>): void
+addToWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>): void
 ```
 
 ### removeFromWorld (method)
@@ -53,7 +54,15 @@ addToWorld(world: Gg3dWorld<IVisualScene3dComponent, AmmoWorldComponent>): void
 **Signature**
 
 ```ts
-removeFromWorld(world: Gg3dWorld<IVisualScene3dComponent, AmmoWorldComponent>): void
+removeFromWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>): void
+```
+
+### refreshCG (method)
+
+**Signature**
+
+```ts
+refreshCG(): void
 ```
 
 ### resetMotion (method)

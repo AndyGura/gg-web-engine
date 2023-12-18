@@ -1,6 +1,6 @@
 ---
 title: core/base/inputs/mouse.input.ts
-nav_order: 80
+nav_order: 82
 parent: Modules
 ---
 

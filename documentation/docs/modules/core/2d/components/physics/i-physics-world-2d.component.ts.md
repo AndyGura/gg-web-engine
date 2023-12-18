@@ -1,6 +1,6 @@
 ---
 title: core/2d/components/physics/i-physics-world-2d.component.ts
-nav_order: 10
+nav_order: 11
 parent: Modules
 ---
 
@@ -22,7 +22,6 @@ parent: Modules
 **Signature**
 
 ```ts
-export interface IPhysicsWorld2dComponent extends IPhysicsWorldComponent<Point2, number> {
-  readonly factory: IPhysicsBody2dComponentFactory
-}
+export interface IPhysicsWorld2dComponent<TypeDoc extends PhysicsTypeDocRepo2D = PhysicsTypeDocRepo2D>
+  extends IPhysicsWorldComponent<Point2, number, TypeDoc> {}
 ```

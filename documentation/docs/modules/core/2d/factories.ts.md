@@ -1,6 +1,6 @@
 ---
 title: core/2d/factories.ts
-nav_order: 21
+nav_order: 22
 parent: Modules
 ---
 
@@ -11,8 +11,10 @@ parent: Modules
 <h2 class="text-delta">Table of contents</h2>
 
 - [utils](#utils)
-  - [IGg2dObjectFactory (class)](#igg2dobjectfactory-class)
+  - [DisplayObject2dOpts (type alias)](#displayobject2dopts-type-alias)
+  - [IDisplayObject2dComponentFactory (class)](#idisplayobject2dcomponentfactory-class)
     - [createPrimitive (method)](#createprimitive-method)
+    - [randomColor (method)](#randomcolor-method)
     - [createSquare (method)](#createsquare-method)
     - [createCircle (method)](#createcircle-method)
   - [IPhysicsBody2dComponentFactory (interface)](#iphysicsbody2dcomponentfactory-interface)
@@ -21,12 +23,23 @@ parent: Modules
 
 # utils
 
-## IGg2dObjectFactory (class)
+## DisplayObject2dOpts (type alias)
 
 **Signature**
 
 ```ts
-export declare class IGg2dObjectFactory<T>
+export type DisplayObject2dOpts<Tex> = {
+  color?: number
+  texture?: Tex
+}
+```
+
+## IDisplayObject2dComponentFactory (class)
+
+**Signature**
+
+```ts
+export declare class IDisplayObject2dComponentFactory<TypeDoc>
 ```
 
 ### createPrimitive (method)
@@ -34,7 +47,18 @@ export declare class IGg2dObjectFactory<T>
 **Signature**
 
 ```ts
-abstract createPrimitive(descriptor: Shape2DDescriptor): T;
+abstract createPrimitive(
+    descriptor: Shape2DDescriptor,
+    material?: DisplayObject2dOpts<TypeDoc['texture']>,
+  ): TypeDoc['displayObject'];
+```
+
+### randomColor (method)
+
+**Signature**
+
+```ts
+randomColor(): number
 ```
 
 ### createSquare (method)
@@ -42,7 +66,7 @@ abstract createPrimitive(descriptor: Shape2DDescriptor): T;
 **Signature**
 
 ```ts
-createSquare(dimensions: Point2): T
+createSquare(dimensions: Point2, material: DisplayObject2dOpts<TypeDoc['texture']> = {}): TypeDoc['displayObject']
 ```
 
 ### createCircle (method)
@@ -50,7 +74,7 @@ createSquare(dimensions: Point2): T
 **Signature**
 
 ```ts
-createCircle(radius: number): T
+createCircle(radius: number, material: DisplayObject2dOpts<TypeDoc['texture']> = {}): TypeDoc['displayObject']
 ```
 
 ## IPhysicsBody2dComponentFactory (interface)
@@ -58,12 +82,21 @@ createCircle(radius: number): T
 **Signature**
 
 ```ts
-export interface IPhysicsBody2dComponentFactory<
-  T extends IRigidBody2dComponent = IRigidBody2dComponent,
-  K extends ITrigger2dComponent = ITrigger2dComponent
-> {
-  createRigidBody(descriptor: BodyShape2DDescriptor, transform?: { position?: Point2; rotation?: number }): T
+export interface IPhysicsBody2dComponentFactory<TypeDoc extends PhysicsTypeDocRepo2D = PhysicsTypeDocRepo2D> {
+  createRigidBody(
+    descriptor: BodyShape2DDescriptor,
+    transform?: {
+      position?: Point2
+      rotation?: number
+    }
+  ): TypeDoc['rigidBody']
 
-  createTrigger(descriptor: Shape2DDescriptor, transform?: { position?: Point2; rotation?: number }): K
+  createTrigger(
+    descriptor: Shape2DDescriptor,
+    transform?: {
+      position?: Point2
+      rotation?: number
+    }
+  ): TypeDoc['trigger']
 }
 ```

@@ -555,8 +555,8 @@
 <h1 id="utils">utils</h1>
 <h2 id="idisplayobjectcomponent-interface">IDisplayObjectComponent (interface)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export interface IDisplayObjectComponent&lt;D, R, VS extends IVisualSceneComponent&lt;D, R&gt; = IVisualSceneComponent&lt;D, R&gt;&gt;
-  extends IWorldComponent&lt;D, R, VS&gt; {
+<pre><code class="language-ts">export interface IDisplayObjectComponent&lt;D, R, TypeDoc extends VisualTypeDocRepo&lt;D, R&gt; = VisualTypeDocRepo&lt;D, R&gt;&gt;
+  extends IWorldComponent&lt;D, R, TypeDoc&gt; {
   position: D
   rotation: R
   scale: D
@@ -567,15 +567,15 @@
 
   isEmpty(): boolean
 
-  popChild(name: string): IDisplayObjectComponent&lt;D, R, VS&gt; | null
+  popChild(name: string): IDisplayObjectComponent&lt;D, R, TypeDoc&gt; | null
 
   getBoundings(): GgBox&lt;D&gt;
 
-  clone(): IDisplayObjectComponent&lt;D, R, VS&gt;
+  clone(): IDisplayObjectComponent&lt;D, R, TypeDoc&gt;
 
-  addToWorld(world: GgWorld&lt;D, R, VS&gt;): void
+  addToWorld(world: GgWorld&lt;D, R, TypeDoc&gt;): void
 
-  removeFromWorld(world: GgWorld&lt;D, R, VS&gt;): void
+  removeFromWorld(world: GgWorld&lt;D, R, TypeDoc&gt;): void
 }
 </code></pre>
 

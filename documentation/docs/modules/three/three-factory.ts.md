@@ -1,6 +1,6 @@
 ---
 title: three/three-factory.ts
-nav_order: 121
+nav_order: 127
 parent: Modules
 ---
 
@@ -11,14 +11,24 @@ parent: Modules
 <h2 class="text-delta">Table of contents</h2>
 
 - [utils](#utils)
+  - [ThreeDisplayObject3dOpts (type alias)](#threedisplayobject3dopts-type-alias)
   - [ThreeFactory (class)](#threefactory-class)
-    - [getRandomMaterial (method)](#getrandommaterial-method)
+    - [createMaterial (method)](#creatematerial-method)
     - [transformPrimitiveZUp (method)](#transformprimitivezup-method)
     - [createPrimitive (method)](#createprimitive-method)
+    - [createPerspectiveCamera (method)](#createperspectivecamera-method)
 
 ---
 
 # utils
+
+## ThreeDisplayObject3dOpts (type alias)
+
+**Signature**
+
+```ts
+export type ThreeDisplayObject3dOpts = DisplayObject3dOpts<Texture>
+```
 
 ## ThreeFactory (class)
 
@@ -28,12 +38,12 @@ parent: Modules
 export declare class ThreeFactory
 ```
 
-### getRandomMaterial (method)
+### createMaterial (method)
 
 **Signature**
 
 ```ts
-getRandomMaterial(): Material
+createMaterial(descr: ThreeDisplayObject3dOpts): Material
 ```
 
 ### transformPrimitiveZUp (method)
@@ -49,8 +59,19 @@ private transformPrimitiveZUp(object: Object3D): Group
 **Signature**
 
 ```ts
-createPrimitive(
-    descriptor: Shape3DDescriptor,
-    material: Material = this.getRandomMaterial(),
-  ): ThreeDisplayObjectComponent
+createPrimitive(descriptor: Shape3DDescriptor, material: ThreeDisplayObject3dOpts = {}): ThreeDisplayObjectComponent
+```
+
+### createPerspectiveCamera (method)
+
+**Signature**
+
+```ts
+createPerspectiveCamera(
+    settings: {
+      fov?: number;
+      aspectRatio?: number;
+      frustrum?: { near: number; far: number };
+    } = {},
+  ): ThreeCameraComponent
 ```

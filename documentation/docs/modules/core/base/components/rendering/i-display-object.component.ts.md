@@ -1,6 +1,6 @@
 ---
 title: core/base/components/rendering/i-display-object.component.ts
-nav_order: 66
+nav_order: 67
 parent: Modules
 ---
 
@@ -22,8 +22,8 @@ parent: Modules
 **Signature**
 
 ```ts
-export interface IDisplayObjectComponent<D, R, VS extends IVisualSceneComponent<D, R> = IVisualSceneComponent<D, R>>
-  extends IWorldComponent<D, R, VS> {
+export interface IDisplayObjectComponent<D, R, TypeDoc extends VisualTypeDocRepo<D, R> = VisualTypeDocRepo<D, R>>
+  extends IWorldComponent<D, R, TypeDoc> {
   position: D
   rotation: R
   scale: D
@@ -34,14 +34,14 @@ export interface IDisplayObjectComponent<D, R, VS extends IVisualSceneComponent<
 
   isEmpty(): boolean
 
-  popChild(name: string): IDisplayObjectComponent<D, R, VS> | null
+  popChild(name: string): IDisplayObjectComponent<D, R, TypeDoc> | null
 
   getBoundings(): GgBox<D>
 
-  clone(): IDisplayObjectComponent<D, R, VS>
+  clone(): IDisplayObjectComponent<D, R, TypeDoc>
 
-  addToWorld(world: GgWorld<D, R, VS>): void
+  addToWorld(world: GgWorld<D, R, TypeDoc>): void
 
-  removeFromWorld(world: GgWorld<D, R, VS>): void
+  removeFromWorld(world: GgWorld<D, R, TypeDoc>): void
 }
 ```

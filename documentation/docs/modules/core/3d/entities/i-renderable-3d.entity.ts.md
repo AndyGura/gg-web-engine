@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/i-renderable-3d.entity.ts
-nav_order: 43
+nav_order: 44
 parent: Modules
 ---
 
@@ -22,5 +22,5 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare class IRenderable3dEntity<VS, PW>
+export declare class IRenderable3dEntity<TypeDoc, PTypeDoc>
 ```
