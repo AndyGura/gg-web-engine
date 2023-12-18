@@ -100,4 +100,8 @@ export class AmmoRaycastVehicleComponent
       this.nativeVehicle.updateWheelTransform(i, true);
     }
   }
+
+  public clone(): AmmoRaycastVehicleComponent {
+    return new AmmoRaycastVehicleComponent(this.world, this.chassisBody.clone());
+  }
 }

@@ -1,10 +1,9 @@
 import { RaycastVehicle3dEntity, RVEntityProperties } from '../raycast-vehicle-3d.entity';
-import { cubicSplineInterpolation, Point3, Point4, TickOrder } from '../../../base';
-import { IPositionable3d } from '../../interfaces/i-positionable-3d';
-import { BehaviorSubject, filter, Observable } from 'rxjs';
 import { Gg3dWorld, PhysicsTypeDocRepo3D, VisualTypeDocRepo3D } from '../../gg-3d-world';
-import { throttleTime } from 'rxjs/operators';
 import { IRenderable3dEntity } from '../i-renderable-3d.entity';
+import { IPositionable3d } from '../../interfaces/i-positionable-3d';
+import { cubicSplineInterpolation, Point3, Point4, TickOrder } from '../../../base';
+import { BehaviorSubject, filter, Observable, throttleTime } from 'rxjs';
 
 export type GgCarProperties = RVEntityProperties & {
   mpsToRpmFactor?: number;
@@ -38,6 +37,7 @@ export type GgCarProperties = RVEntityProperties & {
 export class GgCarEntity<
     VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D,
     PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D,
+    RVEntity extends RaycastVehicle3dEntity<VTypeDoc, PTypeDoc> = RaycastVehicle3dEntity<VTypeDoc, PTypeDoc>,
   >
   extends IRenderable3dEntity<VTypeDoc, PTypeDoc>
   implements IPositionable3d
@@ -166,6 +166,10 @@ export class GgCarEntity<
     this.raycastVehicle.steeringAngle = value * this.carProperties.maxSteerAngle;
   }
 
+  public get steeringFactor(): number {
+    return this.raycastVehicle.steeringAngle / this.carProperties.maxSteerAngle;
+  }
+
   protected handBrake$: BehaviorSubject<boolean> = new BehaviorSubject(false);
 
   public get handBrake(): boolean {
@@ -199,7 +203,7 @@ export class GgCarEntity<
   // TODO remove
   set isHonking(value: boolean) {}
 
-  public readonly raycastVehicle: RaycastVehicle3dEntity<VTypeDoc, PTypeDoc>;
+  public readonly raycastVehicle: RVEntity;
 
   constructor(
     public readonly carProperties: GgCarProperties,
@@ -207,8 +211,16 @@ export class GgCarEntity<
     chassisBody: PTypeDoc['raycastVehicle'],
   ) {
     super();
-    this.raycastVehicle = new RaycastVehicle3dEntity(carProperties, chassis3D, chassisBody);
+    this.raycastVehicle = this.createRaycastVehicle(carProperties, chassis3D, chassisBody);
     this.addChildren(this.raycastVehicle);
+  }
+
+  protected createRaycastVehicle(
+    carProperties: GgCarProperties,
+    chassis3D: VTypeDoc['displayObject'] | null,
+    chassisBody: PTypeDoc['raycastVehicle'],
+  ): RVEntity {
+    return new RaycastVehicle3dEntity(carProperties, chassis3D, chassisBody) as RVEntity;
   }
 
   onSpawned(world: Gg3dWorld<VTypeDoc, PTypeDoc>) {
@@ -240,9 +252,14 @@ export class GgCarEntity<
             }
           }
         }
-        this.raycastVehicle.applyTractionForce(force);
-        this.raycastVehicle.applyBrake('front', brake * this.carProperties.brake.frontAxleForce);
-        this.raycastVehicle.applyBrake('rear', brake * this.carProperties.brake.rearAxleForce);
+        if (brake === 0) {
+          this.raycastVehicle.applyTractionForce(force);
+          this.raycastVehicle.applyBrake('both', 0);
+        } else {
+          this.raycastVehicle.applyTractionForce(0);
+          this.raycastVehicle.applyBrake('front', brake * this.carProperties.brake.frontAxleForce);
+          this.raycastVehicle.applyBrake('rear', brake * this.carProperties.brake.rearAxleForce);
+        }
         if (this.handBrake) {
           this.raycastVehicle.applyBrake('rear', this.carProperties.brake.handbrakeForce);
         }

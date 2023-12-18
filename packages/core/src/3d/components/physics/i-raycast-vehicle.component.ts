@@ -44,4 +44,6 @@ export interface IRaycastVehicleComponent<TypeDoc extends PhysicsTypeDocRepo3D =
   };
 
   resetSuspension(): void;
+
+  clone(): IRaycastVehicleComponent;
 }

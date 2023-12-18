@@ -111,6 +111,10 @@ export class Rapier3dRaycastVehicleComponent
     // TODO
   }
 
+  clone(): Rapier3dRaycastVehicleComponent {
+    return new Rapier3dRaycastVehicleComponent(this.world, this.chassisBody.clone());
+  }
+
   dispose() {
     this.nativeVehicle?.free();
     super.dispose();
