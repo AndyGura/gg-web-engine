@@ -1,5 +1,5 @@
 import { AmmoWorldComponent } from './ammo-world.component';
-import Ammo from 'ammojs-typed';
+import Ammo from '../ammo.js/ammo';
 import { AmmoBodyComponent } from './ammo-body.component';
 import { Entity3d, Gg3dWorld, IRigidBody3dComponent, Point3, VisualTypeDocRepo3D } from '@gg-web-engine/core';
 import { AmmoPhysicsTypeDocRepo } from '../types';

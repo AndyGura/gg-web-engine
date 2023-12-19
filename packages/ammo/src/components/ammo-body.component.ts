@@ -1,6 +1,6 @@
 import { BitMask, CollisionGroup, Gg3dWorld, IEntity, Point3, Point4, VisualTypeDocRepo3D } from '@gg-web-engine/core';
 import { AmmoWorldComponent } from './ammo-world.component';
-import Ammo from 'ammojs-typed';
+import Ammo from '../ammo.js/ammo';
 import { ammoId } from '../ammo-utils';
 import { AmmoPhysicsTypeDocRepo } from '../types';
 

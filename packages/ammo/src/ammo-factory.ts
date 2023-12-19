@@ -8,7 +8,7 @@ import {
   Qtrn,
   Shape3DDescriptor,
 } from '@gg-web-engine/core';
-import Ammo from 'ammojs-typed';
+import Ammo from './ammo.js/ammo';
 import { AmmoRigidBodyComponent } from './components/ammo-rigid-body.component';
 import { AmmoTriggerComponent } from './components/ammo-trigger.component';
 import { AmmoWorldComponent } from './components/ammo-world.component';

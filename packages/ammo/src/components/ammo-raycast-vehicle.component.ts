@@ -1,4 +1,6 @@
 import {
+  BitMask,
+  CollisionGroup,
   Gg3dWorld,
   IRaycastVehicleComponent,
   Point3,
@@ -8,7 +10,7 @@ import {
   VisualTypeDocRepo3D,
   WheelOptions,
 } from '@gg-web-engine/core';
-import Ammo from 'ammojs-typed';
+import Ammo from '../ammo.js/ammo';
 import { AmmoRigidBodyComponent } from './ammo-rigid-body.component';
 import { AmmoWorldComponent } from './ammo-world.component';
 import { AmmoPhysicsTypeDocRepo } from '../types';
@@ -23,14 +25,40 @@ export class AmmoRaycastVehicleComponent
   protected readonly wheelAxleCS: Ammo.btVector3 = new Ammo.btVector3(1, 0, 0);
 
   public entity: RaycastVehicle3dEntity | null = null;
+  protected readonly raycaster: Ammo.btDefaultVehicleRaycaster;
+
+  get interactWithCollisionGroups(): CollisionGroup[] {
+    return this.chassisBody.interactWithCollisionGroups;
+  }
+
+  set interactWithCollisionGroups(value: CollisionGroup[] | 'all') {
+    this.chassisBody.interactWithCollisionGroups = value;
+    this.raycaster.set_m_collisionFilterMask(BitMask.pack(this.chassisBody.interactWithCollisionGroups, 16));
+  }
+
+  get ownCollisionGroups(): CollisionGroup[] {
+    return this.chassisBody.ownCollisionGroups;
+  }
+
+  set ownCollisionGroups(value: CollisionGroup[] | 'all') {
+    this.chassisBody.ownCollisionGroups = value;
+    this.raycaster.set_m_collisionFilterGroup(BitMask.pack(this.chassisBody.ownCollisionGroups, 16));
+  }
+
+  refreshCG() {
+    this.chassisBody.refreshCG();
+  }
 
   constructor(protected readonly world: AmmoWorldComponent, public chassisBody: AmmoRigidBodyComponent) {
     super(world, chassisBody.nativeBody);
+    this.raycaster = new Ammo.btDefaultVehicleRaycaster(world.dynamicAmmoWorld!);
     this.nativeVehicle = new Ammo.btRaycastVehicle(
       this.vehicleTuning,
       this.chassisBody.nativeBody,
-      new Ammo.btDefaultVehicleRaycaster(world.dynamicAmmoWorld!),
+      this.raycaster,
     );
+    this.raycaster.set_m_collisionFilterGroup(BitMask.pack(this.chassisBody.ownCollisionGroups, 16));
+    this.raycaster.set_m_collisionFilterMask(BitMask.pack(this.chassisBody.interactWithCollisionGroups, 16));
     this.nativeVehicle.setCoordinateSystem(0, 2, 1);
   }
 
@@ -45,8 +73,13 @@ export class AmmoRaycastVehicleComponent
     }
     // TODO parked cars can be deactivated until we start handling them. Needs explicit activation call
     this.chassisBody.nativeBody.setActivationState(4); // btCollisionObject::DISABLE_DEACTIVATION
-    this.world.dynamicAmmoWorld?.addRigidBody(this.chassisBody.nativeBody);
+    this.chassisBody.addToWorld(world);
     this.world.dynamicAmmoWorld!.addAction(this.nativeVehicle);
+  }
+
+  removeFromWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>) {
+    this.chassisBody.removeFromWorld(world);
+    this.world.dynamicAmmoWorld!.removeAction(this.nativeVehicle);
   }
 
   addWheel(options: WheelOptions, suspensionOptions: SuspensionOptions): void {
@@ -84,11 +117,15 @@ export class AmmoRaycastVehicleComponent
   }
 
   getWheelTransform(wheelIndex: number): { position: Point3; rotation: Point4 } {
+    // Ammo.js provides wrong wheel rotation when using coordinate system `0, 2, 1`, but it is correct if set `0, 1, 2`
+    this.nativeVehicle.setCoordinateSystem(0, 1, 2);
     // when interpolated transform set to `true`, wheels are jittering relatively to car on high speeds
     this.nativeVehicle.updateWheelTransform(wheelIndex, false);
+    this.nativeVehicle.setCoordinateSystem(0, 2, 1);
     const transform = this.nativeVehicle.getWheelTransformWS(wheelIndex);
     const origin = transform.getOrigin();
     const quaternion = transform.getRotation();
+    quaternion.normalize();
     return {
       position: { x: origin.x(), y: origin.y(), z: origin.z() },
       rotation: { x: quaternion.x(), y: quaternion.y(), z: quaternion.z(), w: quaternion.w() },

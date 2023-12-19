@@ -7,7 +7,7 @@ import {
   Point4,
   VisualTypeDocRepo3D,
 } from '@gg-web-engine/core';
-import Ammo from 'ammojs-typed';
+import Ammo from '../ammo.js/ammo';
 import { AmmoFactory } from '../ammo-factory';
 import { AmmoLoader } from '../ammo-loader';
 import { AmmoDebugger, AmmoDebugMode } from '../ammo-debugger';

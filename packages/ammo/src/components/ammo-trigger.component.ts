@@ -1,7 +1,7 @@
 import { Gg3dWorld, IEntity, ITrigger3dComponent, VisualTypeDocRepo3D } from '@gg-web-engine/core';
 import { AmmoWorldComponent } from './ammo-world.component';
 import { filter, map, Observable, Subject } from 'rxjs';
-import Ammo from 'ammojs-typed';
+import Ammo from '../ammo.js/ammo';
 import { AmmoBodyComponent } from './ammo-body.component';
 import { ammoId } from '../ammo-utils';
 import { AmmoRigidBodyComponent } from './ammo-rigid-body.component';

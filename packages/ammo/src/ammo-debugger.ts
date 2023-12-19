@@ -1,4 +1,4 @@
-import Ammo from 'ammojs-typed';
+import Ammo from './ammo.js/ammo';
 import { IDebugPhysicsDrawer, Point3, Point4 } from '@gg-web-engine/core';
 import { AmmoWorldComponent } from './components/ammo-world.component';
 
