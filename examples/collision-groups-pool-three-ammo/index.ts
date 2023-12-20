@@ -9,7 +9,7 @@ import {
 } from '@gg-web-engine/core';
 import { ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
 import { AmbientLight, DirectionalLight, Material, Mesh } from 'three';
-import { AmmoPhysicsTypeDocRepo, AmmoWorldComponent, Ammo } from '@gg-web-engine/ammo';
+import { AmmoPhysicsTypeDocRepo, AmmoWorldComponent } from '@gg-web-engine/ammo';
 
 const world = new Gg3dWorld<
   ThreeVisualTypeDocRepo,
@@ -20,7 +20,6 @@ const world = new Gg3dWorld<
   new ThreeSceneComponent(),
   new AmmoWorldComponent(),
 );
-console.log(new Ammo.btVector3(0, 0, 0));
 world.init().then(async () => {
   GgStatic.instance.showStats = true;
   // GgStatic.instance.devConsoleEnabled = true;
