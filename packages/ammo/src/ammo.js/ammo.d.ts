@@ -2,6 +2,8 @@ export default Ammo;
 declare function Ammo<T>(target?: T): Promise<T & typeof Ammo>;
 declare module Ammo {
     function destroy(obj: any): void;
+    function getPointer(obj: any): number;
+    function compare(obj1: any, obj2: any): boolean;
     function _malloc(size: number): number;
     function _free(ptr: number): void;
     const HEAP8: Int8Array;

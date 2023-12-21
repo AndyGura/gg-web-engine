@@ -3,14 +3,12 @@ import { AmmoWorldComponent } from './ammo-world.component';
 import { filter, map, Observable, Subject } from 'rxjs';
 import Ammo from '../ammo.js/ammo';
 import { AmmoBodyComponent } from './ammo-body.component';
-import { ammoId } from '../ammo-utils';
 import { AmmoRigidBodyComponent } from './ammo-rigid-body.component';
 import { AmmoPhysicsTypeDocRepo } from '../types';
 
 export class AmmoTriggerComponent
   extends AmmoBodyComponent<Ammo.btPairCachingGhostObject>
-  implements ITrigger3dComponent<AmmoPhysicsTypeDocRepo>
-{
+  implements ITrigger3dComponent<AmmoPhysicsTypeDocRepo> {
   public entity: IEntity | null = null;
 
   get onEntityEntered(): Observable<AmmoRigidBodyComponent> {
@@ -42,14 +40,14 @@ export class AmmoTriggerComponent
     for (const overlap of this.overlaps.keys()) {
       if (!newOverlaps.has(overlap)) {
         this.overlaps.delete(overlap);
-        this.onLeft$.next(ammoId(overlap));
+        this.onLeft$.next(Ammo.getPointer(overlap));
       } else {
         newOverlaps.delete(overlap);
       }
     }
     for (const newOverlap of newOverlaps) {
       this.overlaps.add(newOverlap);
-      this.onEnter$.next(ammoId(newOverlap));
+      this.onEnter$.next(Ammo.getPointer(newOverlap));
     }
   }
 
@@ -69,7 +67,7 @@ export class AmmoTriggerComponent
   removeFromWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>): void {
     super.removeFromWorld(world);
     for (const body of this.overlaps) {
-      this.onLeft$.next(ammoId(body));
+      this.onLeft$.next(Ammo.getPointer(body));
     }
     this.overlaps.clear();
     this.world.dynamicAmmoWorld?.removeCollisionObject(this.nativeBody);
