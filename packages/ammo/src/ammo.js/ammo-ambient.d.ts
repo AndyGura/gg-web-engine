@@ -228,7 +228,7 @@ declare module Ammo {
         setIdentity(): void;
         op_sub(mat: btSymmetricSpatialDyad): btSymmetricSpatialDyad;
     }
-    type btCollisionObject_CollisionFlags = "btCollisionObject::CF_STATIC_OBJECT" | "btCollisionObject::CF_KINEMATIC_OBJECT" | "btCollisionObject::CF_NO_CONTACT_RESPONSE" | "btCollisionObject::CF_CUSTOM_MATERIAL_CALLBACK" | "btCollisionObject::CF_CHARACTER_OBJECT" | "btCollisionObject::CF_DISABLE_VISUALIZE_OBJECT" | "btCollisionObject::CF_DISABLE_SPU_COLLISION_PROCESSING" | "btCollisionObject::CF_HAS_CONTACT_STIFFNESS_DAMPING" | "btCollisionObject::CF_HAS_CUSTOM_DEBUG_RENDERING_COLOR";
+    type btCollisionObject_CollisionFlags = "btCollisionObject::CF_STATIC_OBJECT" | "btCollisionObject::CF_KINEMATIC_OBJECT" | "btCollisionObject::CF_NO_CONTACT_RESPONSE" | "btCollisionObject::CF_CUSTOM_MATERIAL_CALLBACK" | "btCollisionObject::CF_CHARACTER_OBJECT" | "btCollisionObject::CF_DISABLE_VISUALIZE_OBJECT" | "btCollisionObject::CF_DISABLE_SPU_COLLISION_PROCESSING";
     type btCollisionObject_CollisionObjectTypes = "btCollisionObject::CO_COLLISION_OBJECT" | "btCollisionObject::CO_RIGID_BODY" | "btCollisionObject::CO_GHOST_OBJECT" | "btCollisionObject::CO_SOFT_BODY" | "btCollisionObject::CO_HF_FLUID" | "btCollisionObject::CO_USER_TYPE" | "btCollisionObject::CO_FEATHERSTONE_LINK";
     type btCollisionObject_AnisotropicFrictionFlags = "btCollisionObject::CF_ANISOTROPIC_FRICTION_DISABLED" | "btCollisionObject::CF_ANISOTROPIC_FRICTION" | "btCollisionObject::CF_ANISOTROPIC_ROLLING_FRICTION";
     class btCollisionObject {
@@ -250,15 +250,9 @@ declare module Ammo {
         isStaticOrKinematicObject(): boolean;
         getRestitution(): number;
         getFriction(): number;
-        getRollingFriction(): number;
-        getSpinningFriction(): number;
-        getContactStiffness(): number;
-        getContactDamping(): number;
         setRestitution(rest: number): void;
         setFriction(frict: number): void;
         setRollingFriction(frict: number): void;
-        setSpinningFriction(frict: number): void;
-        setContactStiffnessAndDamping(stiffness: number, damping: number): void;
         getWorldTransform(): btTransform;
         getCollisionFlags(): number;
         setCollisionFlags(flags: number): void;
@@ -267,9 +261,7 @@ declare module Ammo {
         setCcdMotionThreshold(ccdMotionThreshold: number): void;
         setCcdSweptSphereRadius(radius: number): void;
         getUserIndex(): number;
-        getUserIndex2(): number;
         setUserIndex(index: number): void;
-        setUserIndex2(index: number): void;
         getUserPointer(): unknown;
         setUserPointer(userPointer: unknown): void;
         getBroadphaseHandle(): btBroadphaseProxy;
@@ -1350,45 +1342,6 @@ declare module Ammo {
     class btActionInterface {
         updateAction(collisionWorld: btCollisionWorld, deltaTimeStep: number): void;
     }
-    class btKinematicCharacterController extends btActionInterface {
-        constructor(ghostObject: btPairCachingGhostObject, convexShape: btConvexShape, stepHeight: number, up?: btVector3);
-        getUp(): btVector3;
-        setUp(axis: btVector3): void;
-        setWalkDirection(walkDirection: btVector3): void;
-        setVelocityForTimeInterval(velocity: btVector3, timeInterval: number): void;
-        setAngularVelocity(velocity: btVector3): void;
-        getAngularVelocity(): btVector3;
-        setLinearVelocity(velocity: btVector3): void;
-        getLinearVelocity(): btVector3;
-        setLinearDamping(d: number): void;
-        getLinearDamping(): number;
-        setAngularDamping(d: number): void;
-        getAngularDamping(): number;
-        reset(collisionWorld: btCollisionWorld): void;
-        warp(origin: btVector3): void;
-        preStep(collisionWorld: btCollisionWorld): void;
-        playerStep(collisionWorld: btCollisionWorld, dt: number): void;
-        setStepHeight(h: number): void;
-        getStepHeight(): number;
-        setFallSpeed(fallSpeed: number): void;
-        getFallSpeed(): number;
-        setJumpSpeed(jumpSpeed: number): void;
-        getJumpSpeed(): number;
-        setMaxJumpHeight(maxJumpHeight: number): void;
-        canJump(): boolean;
-        jump(v?: btVector3): void;
-        applyImpulse(v: btVector3): void;
-        setGravity(gravity: btVector3): void;
-        getGravity(): btVector3;
-        setMaxSlope(slopeRadians: number): void;
-        getMaxSlope(): number;
-        setMaxPenetrationDepth(d: number): void;
-        getMaxPenetrationDepth(): number;
-        getGhostObject(): btPairCachingGhostObject;
-        setUseGhostSweepTest(useGhostObjectSweepTest: boolean): void;
-        onGround(): boolean;
-        setUpInterpolate(value: boolean): void;
-    }
     class btRaycastVehicle extends btActionInterface {
         constructor(tuning: btVehicleTuning, chassis: btRigidBody, raycaster: btVehicleRaycaster);
         applyEngineForce(force: number, wheel: number): void;
@@ -1479,12 +1432,6 @@ declare module Ammo {
         get_m_appliedTorque(): btVector3;
         set_m_appliedTorque(m_appliedTorque: btVector3): void;
         m_appliedTorque: btVector3;
-        get_m_appliedConstraintForce(): btVector3;
-        set_m_appliedConstraintForce(m_appliedConstraintForce: btVector3): void;
-        m_appliedConstraintForce: btVector3;
-        get_m_appliedConstraintTorque(): btVector3;
-        set_m_appliedConstraintTorque(m_appliedConstraintTorque: btVector3): void;
-        m_appliedConstraintTorque: btVector3;
         get_m_collider(): btMultiBodyLinkCollider;
         set_m_collider(m_collider: btMultiBodyLinkCollider): void;
         m_collider: btMultiBodyLinkCollider;
@@ -1500,24 +1447,6 @@ declare module Ammo {
         get_m_jointType(): btMultibodyLink_eFeatherstoneJointType;
         set_m_jointType(m_jointType: btMultibodyLink_eFeatherstoneJointType): void;
         m_jointType: btMultibodyLink_eFeatherstoneJointType;
-        get_m_cachedWorldTransform(): btTransform;
-        set_m_cachedWorldTransform(m_cachedWorldTransform: btTransform): void;
-        m_cachedWorldTransform: btTransform;
-        get_m_linkName(): string;
-        set_m_linkName(m_linkName: string): void;
-        m_linkName: string;
-        get_m_jointName(): string;
-        set_m_jointName(m_jointName: string): void;
-        m_jointName: string;
-        get_m_userPtr(): unknown;
-        set_m_userPtr(m_userPtr: unknown): void;
-        m_userPtr: unknown;
-        get_m_jointDamping(): number;
-        set_m_jointDamping(m_jointDamping: number): void;
-        m_jointDamping: number;
-        get_m_jointFriction(): number;
-        set_m_jointFriction(m_jointFriction: number): void;
-        m_jointFriction: number;
         constructor();
     }
     class btMultiBodyLinkCollider extends btCollisionObject {
@@ -1533,7 +1462,6 @@ declare module Ammo {
     }
     class btMultiBody {
         constructor(n_links: number, mass: number, inertia: btVector3, fixed_base_: boolean, can_sleep_: boolean, deprecatedMultiDof?: boolean);
-        setupFixed(i: number, mass: number, inertia: btVector3, parent: number, rotParentToThis: btQuaternion, parentComToThisPivotOffset: btVector3, thisPivotToThisComOffset: btVector3, deprecatedDisableParentCollision?: boolean): void;
         setupPrismatic(i: number, mass: number, inertia: btVector3, parent: number, rot_parent_to_this: btQuaternion, joint_axis: btVector3, parentComToThisPivotOffset: btVector3, thisPivotToThisComOffset: btVector3, disableParentCollision: boolean): void;
         setupRevolute(i: number, mass: number, inertia: btVector3, parent: number, zero_rot_parent_to_this: btQuaternion, joint_axis: btVector3, parent_axis_position: btVector3, my_axis_position: btVector3, disableParentCollision?: boolean): void;
         setupSpherical(i: number, mass: number, inertia: btVector3, parent: number, rotParentToThis: btQuaternion, parentComToThisPivotOffset: btVector3, thisPivotToThisComOffset: btVector3, disableParentCollision?: boolean): void;
@@ -1557,7 +1485,6 @@ declare module Ammo {
         getBaseOmega(): btVector3;
         setBasePos(pos: btVector3): void;
         setBaseWorldTransform(tr: btTransform): void;
-        getBaseWorldTransform(): btTransform;
         setBaseVel(vel: btVector3): void;
         setWorldToBaseRot(rot: btQuaternion): void;
         setBaseOmega(omega: btVector3): void;
@@ -1571,18 +1498,12 @@ declare module Ammo {
         localDirToWorld(i: number, vec: btVector3): btVector3;
         worldPosToLocal(i: number, vec: btVector3): btVector3;
         worldDirToLocal(i: number, vec: btVector3): btVector3;
-        localFrameToWorld(i: number, local_frame: btMatrix3x3): btMatrix3x3;
         clearForcesAndTorques(): void;
-        clearConstraintForces(): void;
         clearVelocities(): void;
         addBaseForce(f: btVector3): void;
         addBaseTorque(t: btVector3): void;
         addLinkForce(i: number, f: btVector3): void;
         addLinkTorque(i: number, t: btVector3): void;
-        addBaseConstraintForce(f: btVector3): void;
-        addBaseConstraintTorque(t: btVector3): void;
-        addLinkConstraintForce(i: number, f: btVector3): void;
-        addLinkConstraintTorque(i: number, t: btVector3): void;
         addJointTorque(i: number, Q: number): void;
         addJointTorqueMultiDof(i: number, dof: number, Q: number): void;
         getBaseForce(): btVector3;
@@ -1666,21 +1587,6 @@ declare module Ammo {
         addMultiBodyConstraint(constraint: btMultiBodyConstraint): void;
         removeMultiBodyConstraint(constraint: btMultiBodyConstraint): void;
     }
-    class btMultiBodyFixedConstraint extends btMultiBodyConstraint {
-        constructor(bodyA: btMultiBody, linkA: number, bodyB: btMultiBody, linkB: number, pivotInA: btVector3, pivotInB: btVector3, frameInA: btMatrix3x3, frameInB: btMatrix3x3);
-        finalizeMultiDof(): void;
-        getIslandIdA(): number;
-        getIslandIdB(): number;
-        createConstraintRows(constraintRows: btMultiBodyConstraintArray, data: btMultiBodyJacobianData, infoGlobal: btContactSolverInfo): void;
-        getPivotInA(): btVector3;
-        setPivotInA(pivotInA: btVector3): void;
-        getPivotInB(): btVector3;
-        setPivotInB(pivotInB: btVector3): void;
-        getFrameInA(): btMatrix3x3;
-        setFrameInA(frameInA: btMatrix3x3): void;
-        getFrameInB(): btMatrix3x3;
-        setFrameInB(frameInB: btMatrix3x3): void;
-    }
     class btMultiBodyJointLimitConstraint extends btMultiBodyConstraint {
         constructor(body: btMultiBody, link: number, lower: number, upper: number);
         finalizeMultiDof(): void;
@@ -1694,11 +1600,7 @@ declare module Ammo {
         getIslandIdA(): number;
         getIslandIdB(): number;
         createConstraintRows(constraintRows: btMultiBodyConstraintArray, data: btMultiBodyJacobianData, infoGlobal: btContactSolverInfo): void;
-        setVelocityTarget(velTarget: number, kd?: number): void;
-        setPositionTarget(posTarget: number, kp?: number): void;
-        setErp(erp: number): void;
-        getErp(): number;
-        setRhsClamp(rhsClamp: number): void;
+        setVelocityTarget(velTarget: number): void;
     }
     class btMultiBodyPoint2Point extends btMultiBodyConstraint {
         constructor(body: btMultiBody, link: number, bodyB: btRigidBody, pivotInA: btVector3, pivotInB: btVector3);
@@ -1709,24 +1611,6 @@ declare module Ammo {
         createConstraintRows(constraintRows: btMultiBodyConstraintArray, data: btMultiBodyJacobianData, infoGlobal: btContactSolverInfo): void;
         getPivotInB(): btVector3;
         setPivotInB(pivotInB: btVector3): void;
-    }
-    class btMultiBodySliderConstraint extends btMultiBodyConstraint {
-        constructor(body: btMultiBody, link: number, bodyB: btRigidBody, pivotInA: btVector3, pivotInB: btVector3, frameInA: btMatrix3x3, frameInB: btMatrix3x3, jointAxis: btVector3);
-        constructor(bodyA: btMultiBody, linkA: number, bodyB: btMultiBody, linkB: number, pivotInA: btVector3, pivotInB: btVector3, frameInA: btMatrix3x3, frameInB: btMatrix3x3, jointAxis: btVector3);
-        finalizeMultiDof(): void;
-        getIslandIdA(): number;
-        getIslandIdB(): number;
-        createConstraintRows(constraintRows: btMultiBodyConstraintArray, data: btMultiBodyJacobianData, infoGlobal: btContactSolverInfo): void;
-        getPivotInA(): btVector3;
-        setPivotInA(pivotInA: btVector3): void;
-        getPivotInB(): btVector3;
-        setPivotInB(pivotInB: btVector3): void;
-        getFrameInA(): btMatrix3x3;
-        setFrameInA(frameInA: btMatrix3x3): void;
-        getFrameInB(): btMatrix3x3;
-        setFrameInB(frameInB: btMatrix3x3): void;
-        getJointAxis(): btVector3;
-        setJointAxis(jointAxis: btVector3): void;
     }
     class btMultiBodySolverConstraint {
         get_m_deltaVelAindex(): number;
