@@ -36,8 +36,8 @@ export class AmmoRigidBodyComponent
     return this.world.factory.createRigidBodyFromShape(
       this._nativeBody.getCollisionShape(),
       {
-        dynamic: !this._nativeBody.isStaticObject(),
-        mass: 5, // FIXME how to get mass??
+        dynamic: !this._nativeBody.isStaticOrKinematicObject(),
+        mass: this._nativeBody.getMass(),
         friction: this._nativeBody.getFriction(),
         restitution: this._nativeBody.getRestitution(),
       },
