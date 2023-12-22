@@ -911,6 +911,7 @@ interface btCollisionConfiguration {
 interface btDbvtBroadphase {
   void btDbvtBroadphase();
 };
+btDbvtBroadphase implements btBroadphaseInterface;
 
 interface btBroadphaseProxy {
   attribute long m_collisionFilterGroup;
@@ -1243,6 +1244,8 @@ interface btContactSolverInfo {
   attribute boolean m_splitImpulse;
   attribute long m_splitImpulsePenetrationThreshold;
   attribute long m_numIterations;
+  attribute float m_erp; //error reduction for non-contact constraints
+  attribute float m_erp2; //error reduction for contact constraints
 };
 
 interface btDynamicsWorld {
@@ -1965,7 +1968,7 @@ interface btMultiBodyGearConstraint : btMultiBodyConstraint {
 	void setRelativePositionTarget(float relPosTarget);
 	void setErp(float erp);
 };
-btMultiBodyFixedConstraint implements btMultiBodyConstraint;
+btMultiBodyGearConstraint implements btMultiBodyConstraint;
 
 interface btMultiBodyJointLimitConstraint : btMultiBodyConstraint {
 	void btMultiBodyJointLimitConstraint(btMultiBody body, long link, float lower, float upper);

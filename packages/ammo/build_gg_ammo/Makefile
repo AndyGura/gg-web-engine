@@ -21,23 +21,21 @@ fetch_bullet:
 switch_bullet:
 	cd ammo.js/bullet && git checkout $(BULLET_GIT_COMMIT)
 
-# Replace files and save diffs
 replace:
 	cp -r $(REPLACE_SRC_DIR)/* $(REPLACE_DEST_DIR)
 	cd ammo.js && git diff > ../ammo_patches.txt
 	cd ammo.js/bullet && git diff > ../../bullet_patches.txt
 
-# Build using Docker Compose
 build:
 	cd ammo.js && npm i && npm run build
 
-# Copy the built files
 copy:
 	cp -r ./ammo.js/dist/* ../src/ammo.js
 
 cleanup:
 	rm -rf ./ammo.js
 
-# Define a rule to execute all steps
-all: clean-all fetch_ammo switch_ammo fetch_bullet switch_bullet replace build copy cleanup
-change_bullet: switch_bullet replace build copy
+fetch_all: clean-all fetch_ammo switch_ammo fetch_bullet switch_bullet
+build_all: replace build copy
+
+all: fetch_all build_all cleanup

@@ -813,7 +813,7 @@ declare module Ammo {
     }
     class btCollisionConfiguration {
     }
-    class btDbvtBroadphase {
+    class btDbvtBroadphase extends btBroadphaseInterface {
         constructor();
     }
     class btBroadphaseProxy {
@@ -1163,6 +1163,12 @@ declare module Ammo {
         get_m_numIterations(): number;
         set_m_numIterations(m_numIterations: number): void;
         m_numIterations: number;
+        get_m_erp(): number;
+        set_m_erp(m_erp: number): void;
+        m_erp: number;
+        get_m_erp2(): number;
+        set_m_erp2(m_erp2: number): void;
+        m_erp2: number;
     }
     class btDynamicsWorld extends btCollisionWorld {
         addAction(action: btActionInterface): void;
