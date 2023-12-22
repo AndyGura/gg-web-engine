@@ -37,7 +37,7 @@ export class AmmoRigidBodyComponent
       this._nativeBody.getCollisionShape(),
       {
         dynamic: !this._nativeBody.isStaticOrKinematicObject(),
-        mass: this._nativeBody.getMass(),
+        mass: 5,//this._nativeBody.getMass(),
         friction: this._nativeBody.getFriction(),
         restitution: this._nativeBody.getRestitution(),
       },
