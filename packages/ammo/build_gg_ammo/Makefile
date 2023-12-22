@@ -11,10 +11,14 @@ clean-all:
 
 fetch_ammo:
 	git clone $(AMMOJS_GIT_REPO)
+
+switch_ammo:
 	cd ammo.js && git checkout $(AMMOJS_GIT_COMMIT)
 
 fetch_bullet:
 	cd ammo.js && git clone $(BULLET_GIT_REPO) bullet
+
+switch_bullet:
 	cd ammo.js/bullet && git checkout $(BULLET_GIT_COMMIT)
 
 # Replace files and save diffs
@@ -35,4 +39,5 @@ cleanup:
 	rm -rf ./ammo.js
 
 # Define a rule to execute all steps
-all: clean-all fetch_ammo fetch_bullet replace build copy cleanup
+all: clean-all fetch_ammo switch_ammo fetch_bullet switch_bullet replace build copy cleanup
+change_bullet: switch_bullet replace build copy
