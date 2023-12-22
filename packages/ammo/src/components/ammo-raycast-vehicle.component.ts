@@ -33,7 +33,7 @@ export class AmmoRaycastVehicleComponent
 
   set interactWithCollisionGroups(value: CollisionGroup[] | 'all') {
     this.chassisBody.interactWithCollisionGroups = value;
-    this.raycaster.set_m_collisionFilterMask(BitMask.pack(this.chassisBody.interactWithCollisionGroups, 16));
+    // this.raycaster.set_m_collisionFilterMask(BitMask.pack(this.chassisBody.interactWithCollisionGroups, 16));
   }
 
   get ownCollisionGroups(): CollisionGroup[] {
@@ -42,7 +42,7 @@ export class AmmoRaycastVehicleComponent
 
   set ownCollisionGroups(value: CollisionGroup[] | 'all') {
     this.chassisBody.ownCollisionGroups = value;
-    this.raycaster.set_m_collisionFilterGroup(BitMask.pack(this.chassisBody.ownCollisionGroups, 16));
+    // this.raycaster.set_m_collisionFilterGroup(BitMask.pack(this.chassisBody.ownCollisionGroups, 16));
   }
 
   refreshCG() {
@@ -57,8 +57,8 @@ export class AmmoRaycastVehicleComponent
       this.chassisBody.nativeBody,
       this.raycaster,
     );
-    this.raycaster.set_m_collisionFilterGroup(BitMask.pack(this.chassisBody.ownCollisionGroups, 16));
-    this.raycaster.set_m_collisionFilterMask(BitMask.pack(this.chassisBody.interactWithCollisionGroups, 16));
+    // this.raycaster.set_m_collisionFilterGroup(BitMask.pack(this.chassisBody.ownCollisionGroups, 16));
+    // this.raycaster.set_m_collisionFilterMask(BitMask.pack(this.chassisBody.interactWithCollisionGroups, 16));
     this.nativeVehicle.setCoordinateSystem(0, 2, 1);
   }
 

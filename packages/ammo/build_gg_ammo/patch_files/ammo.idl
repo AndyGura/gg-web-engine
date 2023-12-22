@@ -255,7 +255,6 @@ interface btSymmetricSpatialDyad {
 // Collision
 
 enum btCollisionObject_CollisionFlags {
-  "btCollisionObject::CF_DYNAMIC_OBJECT",
   "btCollisionObject::CF_STATIC_OBJECT",
   "btCollisionObject::CF_KINEMATIC_OBJECT",
   "btCollisionObject::CF_NO_CONTACT_RESPONSE",
@@ -1290,8 +1289,6 @@ interface btVehicleRaycasterResult {
 };
 
 interface btVehicleRaycaster {
-    attribute long m_collisionFilterGroup;
-    attribute long m_collisionFilterMask;
     void castRay ([Const, Ref] btVector3 from, [Const, Ref] btVector3 to, [Ref] btVehicleRaycasterResult result);
 };
 
@@ -1698,14 +1695,10 @@ interface btMultiBody {
   [Value] btVector3 getBaseOmega();
 
   void setBasePos([Const, Ref] btVector3 pos);
-  void setInterpolateBasePos([Const, Ref] btVector3 pos);
   void setBaseWorldTransform([Const, Ref] btTransform tr);
   [Value] btTransform getBaseWorldTransform();
-  void setInterpolateBaseWorldTransform([Const, Ref] btTransform tr);
-  [Value] btTransform getInterpolateBaseWorldTransform();
   void setBaseVel([Const, Ref] btVector3 vel);
   void setWorldToBaseRot([Const, Ref] btQuaternion rot);
-  void setInterpolateWorldToBaseRot([Const, Ref] btQuaternion rot);
   void setBaseOmega([Const, Ref] btVector3 omega);
 
   //
@@ -1806,10 +1799,6 @@ interface btMultiBody {
   void checkMotionAndSleepIfRequired(float timestep);
     
 	boolean hasFixedBase();
-	boolean isBaseKinematic();
-	boolean isBaseStaticOrKinematic();
-	// set the dynamic type in the base's collision flags.
-	void setBaseDynamicType(long dynamicType);
 	void setFixedBase(boolean fixedBase);
 
 	long getCompanionId();
@@ -1835,14 +1824,6 @@ interface btMultiBody {
 	boolean isUsingRK4Integration();
 	void useGlobalVelocities(boolean use);
 	boolean isUsingGlobalVelocities();
-
-	void setLinkDynamicType([Const] long i, long type);
-	boolean isLinkStaticOrKinematic([Const] long i);
-	boolean isLinkKinematic([Const] long i);
-	boolean isLinkAndAllAncestorsStaticOrKinematic([Const] long i);
-	boolean isLinkAndAllAncestorsKinematic([Const] long i);
-	void setSleepThreshold(float sleepThreshold);
-	void setSleepTimeout(float sleepTimeout);
 };
 
 interface btMultiBodyJacobianData {
@@ -2050,34 +2031,6 @@ interface btMultiBodySliderConstraint : btMultiBodyConstraint {
 };
 btMultiBodySliderConstraint implements btMultiBodyConstraint;
 
-interface btMultiBodySphericalJointLimit : btMultiBodyConstraint {
-	void btMultiBodySphericalJointLimit(btMultiBody body, long link, 
-		float swingxRange,
-		float swingyRange,
-		float twistRange,
-		float maxAppliedImpulse);
-
-	void finalizeMultiDof();
-
-	long getIslandIdA();
-	long getIslandIdB();
-
-	void createConstraintRows([Ref] btMultiBodyConstraintArray constraintRows,
-		[Ref] btMultiBodyJacobianData data,
-		[Const, Ref] btContactSolverInfo infoGlobal);
-
-  void setVelocityTarget([Const, Ref] btVector3 velTarget, optional float kd);
-  void setVelocityTargetMultiDof([Const, Ref] btVector3 velTarget, [Const, Ref] optional btVector3 kd);
-  void setPositionTarget([Const, Ref] btQuaternion posTarget, optional float kp);
-  void setPositionTargetMultiDof([Const, Ref] btQuaternion posTarget, [Const, Ref] optional btVector3 kp);
-  void setErp(float erp);
-  float getErp();
-  void setRhsClamp(float rhsClamp);
-  float getMaxAppliedImpulseMultiDof(long i);
-  void setMaxAppliedImpulseMultiDof([Const, Ref] btVector3 maxImp);
-};
-btMultiBodySphericalJointLimit implements btMultiBodyConstraint;
-
 interface btMultiBodySphericalJointMotor : btMultiBodyConstraint {
 	void btMultiBodySphericalJointMotor(btMultiBody body, long link, float maxMotorImpulse);
 
@@ -2091,16 +2044,10 @@ interface btMultiBodySphericalJointMotor : btMultiBodyConstraint {
 		[Const, Ref] btContactSolverInfo infoGlobal);
 
   void setVelocityTarget([Const, Ref] btVector3 velTarget, optional float kd);
-  void setVelocityTargetMultiDof([Const, Ref] btVector3 velTarget, [Const, Ref] optional btVector3 kd);
   void setPositionTarget([Const, Ref] btQuaternion posTarget, optional float kp);
-  void setPositionTargetMultiDof([Const, Ref] btQuaternion posTarget, [Const, Ref] optional btVector3 kp);
   void setErp(float erp);
   float getErp();
   void setRhsClamp(float rhsClamp);
-  float getMaxAppliedImpulseMultiDof(long i);
-  void setMaxAppliedImpulseMultiDof([Const, Ref] btVector3 maxImp);
-  float getDamping(long i);
-  void setDamping([Const, Ref] btVector3 damping);
 };
 btMultiBodySphericalJointMotor implements btMultiBodyConstraint;
 

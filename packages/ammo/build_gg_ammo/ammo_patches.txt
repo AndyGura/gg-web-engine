@@ -1,22 +1,134 @@
+diff --git a/ammo.h b/ammo.h
+index 177be3e..2fcf14a 100644
+--- a/ammo.h
++++ b/ammo.h
+@@ -15,7 +15,6 @@
+ #include "BulletDynamics/Featherstone/btMultiBodyJointMotor.h"
+ #include "BulletDynamics/Featherstone/btMultiBodyPoint2Point.h"
+ #include "BulletDynamics/Featherstone/btMultiBodySliderConstraint.h"
+-#include "BulletDynamics/Featherstone/btMultiBodySphericalJointLimit.h"
+ #include "BulletDynamics/Featherstone/btMultiBodySphericalJointMotor.h"
+ #include "BulletDynamics/Featherstone/btMultiBodyConstraintSolver.h"
+ #include "BulletDynamics/Featherstone/btMultiBodyDynamicsWorld.h"
+@@ -82,4 +81,4 @@ public:
+ typedef btCollisionObject::CollisionFlags btCollisionObject_CollisionFlags;
+ typedef btCollisionObject::CollisionObjectTypes btCollisionObject_CollisionObjectTypes;
+ typedef btCollisionObject::AnisotropicFrictionFlags btCollisionObject_AnisotropicFrictionFlags;
+-typedef btMultibodyLink::eFeatherstoneJointType btMultibodyLink_eFeatherstoneJointType;
+\ No newline at end of file
++typedef btMultibodyLink::eFeatherstoneJointType btMultibodyLink_eFeatherstoneJointType;
 diff --git a/ammo.idl b/ammo.idl
-index 7af1fe6..fec7202 100644
+index 7af1fe6..1fd1acc 100644
 --- a/ammo.idl
 +++ b/ammo.idl
-@@ -1290,6 +1290,8 @@ interface btVehicleRaycasterResult {
+@@ -255,7 +255,6 @@ interface btSymmetricSpatialDyad {
+ // Collision
+ 
+ enum btCollisionObject_CollisionFlags {
+-  "btCollisionObject::CF_DYNAMIC_OBJECT",
+   "btCollisionObject::CF_STATIC_OBJECT",
+   "btCollisionObject::CF_KINEMATIC_OBJECT",
+   "btCollisionObject::CF_NO_CONTACT_RESPONSE",
+@@ -1696,14 +1695,10 @@ interface btMultiBody {
+   [Value] btVector3 getBaseOmega();
+ 
+   void setBasePos([Const, Ref] btVector3 pos);
+-  void setInterpolateBasePos([Const, Ref] btVector3 pos);
+   void setBaseWorldTransform([Const, Ref] btTransform tr);
+   [Value] btTransform getBaseWorldTransform();
+-  void setInterpolateBaseWorldTransform([Const, Ref] btTransform tr);
+-  [Value] btTransform getInterpolateBaseWorldTransform();
+   void setBaseVel([Const, Ref] btVector3 vel);
+   void setWorldToBaseRot([Const, Ref] btQuaternion rot);
+-  void setInterpolateWorldToBaseRot([Const, Ref] btQuaternion rot);
+   void setBaseOmega([Const, Ref] btVector3 omega);
+ 
+   //
+@@ -1804,10 +1799,6 @@ interface btMultiBody {
+   void checkMotionAndSleepIfRequired(float timestep);
+     
+ 	boolean hasFixedBase();
+-	boolean isBaseKinematic();
+-	boolean isBaseStaticOrKinematic();
+-	// set the dynamic type in the base's collision flags.
+-	void setBaseDynamicType(long dynamicType);
+ 	void setFixedBase(boolean fixedBase);
+ 
+ 	long getCompanionId();
+@@ -1833,14 +1824,6 @@ interface btMultiBody {
+ 	boolean isUsingRK4Integration();
+ 	void useGlobalVelocities(boolean use);
+ 	boolean isUsingGlobalVelocities();
+-
+-	void setLinkDynamicType([Const] long i, long type);
+-	boolean isLinkStaticOrKinematic([Const] long i);
+-	boolean isLinkKinematic([Const] long i);
+-	boolean isLinkAndAllAncestorsStaticOrKinematic([Const] long i);
+-	boolean isLinkAndAllAncestorsKinematic([Const] long i);
+-	void setSleepThreshold(float sleepThreshold);
+-	void setSleepTimeout(float sleepTimeout);
  };
  
- interface btVehicleRaycaster {
-+    attribute long m_collisionFilterGroup;
-+    attribute long m_collisionFilterMask;
-     void castRay ([Const, Ref] btVector3 from, [Const, Ref] btVector3 to, [Ref] btVehicleRaycasterResult result);
+ interface btMultiBodyJacobianData {
+@@ -2048,34 +2031,6 @@ interface btMultiBodySliderConstraint : btMultiBodyConstraint {
  };
+ btMultiBodySliderConstraint implements btMultiBodyConstraint;
+ 
+-interface btMultiBodySphericalJointLimit : btMultiBodyConstraint {
+-	void btMultiBodySphericalJointLimit(btMultiBody body, long link, 
+-		float swingxRange,
+-		float swingyRange,
+-		float twistRange,
+-		float maxAppliedImpulse);
+-
+-	void finalizeMultiDof();
+-
+-	long getIslandIdA();
+-	long getIslandIdB();
+-
+-	void createConstraintRows([Ref] btMultiBodyConstraintArray constraintRows,
+-		[Ref] btMultiBodyJacobianData data,
+-		[Const, Ref] btContactSolverInfo infoGlobal);
+-
+-  void setVelocityTarget([Const, Ref] btVector3 velTarget, optional float kd);
+-  void setVelocityTargetMultiDof([Const, Ref] btVector3 velTarget, [Const, Ref] optional btVector3 kd);
+-  void setPositionTarget([Const, Ref] btQuaternion posTarget, optional float kp);
+-  void setPositionTargetMultiDof([Const, Ref] btQuaternion posTarget, [Const, Ref] optional btVector3 kp);
+-  void setErp(float erp);
+-  float getErp();
+-  void setRhsClamp(float rhsClamp);
+-  float getMaxAppliedImpulseMultiDof(long i);
+-  void setMaxAppliedImpulseMultiDof([Const, Ref] btVector3 maxImp);
+-};
+-btMultiBodySphericalJointLimit implements btMultiBodyConstraint;
+-
+ interface btMultiBodySphericalJointMotor : btMultiBodyConstraint {
+ 	void btMultiBodySphericalJointMotor(btMultiBody body, long link, float maxMotorImpulse);
+ 
+@@ -2089,16 +2044,10 @@ interface btMultiBodySphericalJointMotor : btMultiBodyConstraint {
+ 		[Const, Ref] btContactSolverInfo infoGlobal);
+ 
+   void setVelocityTarget([Const, Ref] btVector3 velTarget, optional float kd);
+-  void setVelocityTargetMultiDof([Const, Ref] btVector3 velTarget, [Const, Ref] optional btVector3 kd);
+   void setPositionTarget([Const, Ref] btQuaternion posTarget, optional float kp);
+-  void setPositionTargetMultiDof([Const, Ref] btQuaternion posTarget, [Const, Ref] optional btVector3 kp);
+   void setErp(float erp);
+   float getErp();
+   void setRhsClamp(float rhsClamp);
+-  float getMaxAppliedImpulseMultiDof(long i);
+-  void setMaxAppliedImpulseMultiDof([Const, Ref] btVector3 maxImp);
+-  float getDamping(long i);
+-  void setDamping([Const, Ref] btVector3 damping);
+ };
+ btMultiBodySphericalJointMotor implements btMultiBodyConstraint;
  
 diff --git a/bullet b/bullet
+index 6bb8d11..b12da62 160000
 --- a/bullet
 +++ b/bullet
 @@ -1 +1 @@
 -Subproject commit 6bb8d1123d8a55d407b19fd3357c724d0f5c9d3c
-+Subproject commit 6bb8d1123d8a55d407b19fd3357c724d0f5c9d3c-dirty
++Subproject commit b12da620abdff665d53cd953118a741758f28523
 diff --git a/package.json b/package.json
 index e23a5eb..2d12d38 100644
 --- a/package.json
