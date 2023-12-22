@@ -7,8 +7,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "prettier-format": "prettier --config ../core/.prettierrc 'src/**/*.ts' --write",
-    "prepublish": "rm -rf ./dist/ && tsc",
-    "build": "tsc"
+    "prepublish": "rm -rf ./dist/ && tsc && cp -R ./src/ammo.js ./dist",
+    "build": "rm -rf ./dist/ && tsc && cp -R ./src/ammo.js ./dist"
   },
   "repository": {
     "type": "git",
