@@ -262,6 +262,8 @@ enum btCollisionObject_CollisionFlags {
   "btCollisionObject::CF_CHARACTER_OBJECT",
   "btCollisionObject::CF_DISABLE_VISUALIZE_OBJECT",          //disable debug drawing
   "btCollisionObject::CF_DISABLE_SPU_COLLISION_PROCESSING",  //disable parallel/SPU processing
+  "btCollisionObject::CF_HAS_CONTACT_STIFFNESS_DAMPING",
+  "btCollisionObject::CF_HAS_CUSTOM_DEBUG_RENDERING_COLOR",
 };
 
 enum btCollisionObject_CollisionObjectTypes {
@@ -299,9 +301,15 @@ interface btCollisionObject {
   boolean isStaticOrKinematicObject();
   [Const] float getRestitution();
   [Const] float getFriction();
+  [Const] float getRollingFriction();
+  float getSpinningFriction();
+  float getContactStiffness();
+  float getContactDamping();
   void setRestitution(float rest);
   void setFriction(float frict);
   void setRollingFriction(float frict);
+  void setSpinningFriction(float frict);
+  void setContactStiffnessAndDamping(float stiffness, float damping);
   [Ref] btTransform getWorldTransform();
   long getCollisionFlags();
   void setCollisionFlags(long flags);
@@ -310,7 +318,9 @@ interface btCollisionObject {
   void setCcdMotionThreshold (float ccdMotionThreshold);
   void setCcdSweptSphereRadius (float radius);
   long getUserIndex();
+  long getUserIndex2();
   void setUserIndex(long index);
+  void setUserIndex2(long index);
   VoidPtr getUserPointer();
   void setUserPointer(VoidPtr userPointer);
   [Const] btBroadphaseProxy getBroadphaseHandle();
@@ -1334,6 +1344,75 @@ interface btActionInterface {
     void updateAction (btCollisionWorld collisionWorld, float deltaTimeStep);
 };
 
+interface btKinematicCharacterController {
+  void btKinematicCharacterController(btPairCachingGhostObject ghostObject, btConvexShape convexShape, float stepHeight, [Const, Ref] optional btVector3 up);
+
+  [Const, Ref] btVector3 getUp();
+  void setUp ([Const, Ref] btVector3 axis);
+  
+	/// This should probably be called setPositionIncrementPerSimulatorStep.
+	/// This is neither a direction nor a velocity, but the amount to
+	///	increment the position each simulation iteration, regardless
+	///	of dt.
+	/// This call will reset any velocity set by setVelocityForTimeInterval().
+	void setWalkDirection([Const, Ref] btVector3 walkDirection);
+
+	/// Caller provides a velocity with which the character should move for
+	///	the given time period.  After the time period, velocity is reset
+	///	to zero.
+	/// This call will reset any walk direction set by setWalkDirection().
+	/// Negative time intervals will result in no motion.
+	void setVelocityForTimeInterval([Const, Ref] btVector3 velocity,
+											float timeInterval);
+
+	void setAngularVelocity([Const, Ref] btVector3 velocity);
+	[Const, Ref] btVector3 getAngularVelocity();
+
+	void setLinearVelocity([Const, Ref] btVector3 velocity);
+	[Value] btVector3 getLinearVelocity();
+
+	void setLinearDamping(float d);
+	float getLinearDamping();
+	void setAngularDamping(float d);
+	float getAngularDamping();
+
+	void reset(btCollisionWorld collisionWorld);
+	void warp([Const, Ref] btVector3 origin);
+
+	void preStep(btCollisionWorld collisionWorld);
+	void playerStep(btCollisionWorld collisionWorld, float dt);
+
+	void setStepHeight(float h);
+	float getStepHeight();
+	void setFallSpeed(float fallSpeed);
+	float getFallSpeed();
+	void setJumpSpeed(float jumpSpeed);
+	float getJumpSpeed();
+	void setMaxJumpHeight(float maxJumpHeight);
+	boolean canJump();
+
+	void jump([Const, Ref] optional btVector3 v);
+
+	void applyImpulse([Const, Ref] btVector3 v);
+
+	void setGravity([Const, Ref] btVector3 gravity);
+	[Value] btVector3 getGravity();
+
+	/// The max slope determines the maximum angle that the controller can walk up.
+	/// The slope angle is measured in radians.
+	void setMaxSlope(float slopeRadians);
+	float getMaxSlope();
+
+	void setMaxPenetrationDepth(float d);
+	float getMaxPenetrationDepth();
+
+	btPairCachingGhostObject getGhostObject();
+	void setUseGhostSweepTest(boolean useGhostObjectSweepTest);
+	boolean onGround();
+	void setUpInterpolate(boolean value);
+};
+btKinematicCharacterController implements btActionInterface;
+
 interface btRaycastVehicle {
   void btRaycastVehicle([Const, Ref] btVehicleTuning tuning, btRigidBody chassis, btVehicleRaycaster raycaster);
   void applyEngineForce(float force, long wheel);
@@ -1451,6 +1530,9 @@ interface btMultibodyLink {
 	[Value] attribute btVector3 m_appliedForce;   // In WORLD frame
 	[Value] attribute btVector3 m_appliedTorque;  // In WORLD frame
 
+	[Value] attribute btVector3 m_appliedConstraintForce;   // In WORLD frame
+	[Value] attribute btVector3 m_appliedConstraintTorque;  // In WORLD frame
+
 	// attribute float[7] m_jointPos;
   // attribute float[7] m_jointPos_interpolate;
 
@@ -1467,6 +1549,16 @@ interface btMultibodyLink {
 	attribute btMultibodyLink_eFeatherstoneJointType m_jointType;
 
 	// attribute btMultiBodyJointFeedback m_jointFeedback;
+
+	[Value] attribute btTransform m_cachedWorldTransform;  //this cache is updated when calling btMultiBody::forwardKinematics
+
+	[Const] attribute DOMString m_linkName;   //m_linkName memory needs to be managed by the developer/user!
+	[Const] attribute DOMString m_jointName;  //m_jointName memory needs to be managed by the developer/user!
+	[Const] attribute VoidPtr m_userPtr;    //m_userPtr ptr needs to be managed by the developer/user!
+
+	attribute float m_jointDamping;      //todo: implement this internally. It is unused for now, it is set by a URDF loader. User can apply manual damping.
+	attribute float m_jointFriction;     //todo: implement this internally. It is unused for now, it is set by a URDF loader. User can apply manual friction using a velocity motor.
+
 
 	// ctor: set some sensible defaults
 	void btMultibodyLink();
@@ -1488,6 +1580,15 @@ interface btMultiBody {
               [Const, Ref] btVector3 inertia,  // inertia of base, in base frame; assumed diagonal
               boolean fixed_base_,             // whether the base is fixed (true) or can move (false)
               boolean can_sleep_, optional boolean deprecatedMultiDof);
+
+	//note: fixed link collision with parent is always disabled
+	void setupFixed(long i, //linkIndex
+					float mass,
+					[Const, Ref] btVector3 inertia,
+					long parent,
+					[Const, Ref] btQuaternion rotParentToThis,
+					[Const, Ref] btVector3 parentComToThisPivotOffset,
+					[Const, Ref] btVector3 thisPivotToThisComOffset, optional boolean deprecatedDisableParentCollision);
 
   void setupPrismatic(long i,             // 0 to num_links-1
                       float mass,
@@ -1575,6 +1676,7 @@ interface btMultiBody {
 
   void setBasePos([Const, Ref] btVector3 pos);
   void setBaseWorldTransform([Const, Ref] btTransform tr);
+  [Value] btTransform getBaseWorldTransform();
   void setBaseVel([Const, Ref] btVector3 vel);
   void setWorldToBaseRot([Const, Ref] btQuaternion rot);
   void setBaseOmega([Const, Ref] btVector3 omega);
@@ -1607,9 +1709,13 @@ interface btMultiBody {
   [Value] btVector3 worldPosToLocal(long i, [Const, Ref] btVector3 vec);
   [Value] btVector3 worldDirToLocal(long i, [Const, Ref] btVector3 vec);
 
-
+  //
+	// transform a frame in local coordinate to a frame in world coordinate
+	//
+	[Value] btMatrix3x3 localFrameToWorld(long i, [Const, Ref] btMatrix3x3 local_frame);
 
   void clearForcesAndTorques();
+	void clearConstraintForces();
 
 	void clearVelocities();
 
@@ -1619,6 +1725,10 @@ interface btMultiBody {
   void addLinkTorque(long i, [Const, Ref] btVector3 t);
 
 
+	void addBaseConstraintForce([Const, Ref] btVector3 f);
+	void addBaseConstraintTorque([Const, Ref] btVector3 t);
+	void addLinkConstraintForce(long i, [Const, Ref] btVector3 f);
+	void addLinkConstraintTorque(long i, [Const, Ref] btVector3 t);
 
 	void addJointTorque(long i, float Q);
 	void addJointTorqueMultiDof(long i, long dof, float Q);
@@ -1743,6 +1853,32 @@ interface btMultiBodyDynamicsWorld : btDiscreteDynamicsWorld {
 };
 btMultiBodyDynamicsWorld implements btDiscreteDynamicsWorld;
 
+interface btMultiBodyFixedConstraint : btMultiBodyConstraint {
+	void btMultiBodyFixedConstraint(btMultiBody bodyA, long linkA, btMultiBody bodyB, long linkB, [Const, Ref] btVector3 pivotInA, [Const, Ref] btVector3 pivotInB, [Const, Ref] btMatrix3x3 frameInA, [Const, Ref] btMatrix3x3 frameInB);
+  
+  void finalizeMultiDof();
+
+	long getIslandIdA();
+	long getIslandIdB();
+
+	void createConstraintRows([Ref] btMultiBodyConstraintArray constraintRows,
+		[Ref] btMultiBodyJacobianData data,
+		[Const, Ref] btContactSolverInfo infoGlobal);
+
+  [Const, Ref] btVector3 getPivotInA();
+  void setPivotInA([Const, Ref] btVector3 pivotInA);
+  [Const, Ref] btVector3 getPivotInB();
+  void setPivotInB([Const, Ref] btVector3 pivotInB);
+
+  [Const, Ref] btMatrix3x3 getFrameInA();
+  void setFrameInA([Const, Ref] btMatrix3x3 frameInA);
+  [Const, Ref] btMatrix3x3 getFrameInB();
+  void setFrameInB([Const, Ref] btMatrix3x3 frameInB);
+};
+btMultiBodyFixedConstraint implements btMultiBodyConstraint;
+
+btMultiBodyFixedConstraint implements btMultiBodyConstraint;
+
 interface btMultiBodyJointLimitConstraint : btMultiBodyConstraint {
 	void btMultiBodyJointLimitConstraint(btMultiBody body, long link, float lower, float upper);
 
@@ -1769,7 +1905,11 @@ interface btMultiBodyJointMotor : btMultiBodyConstraint {
 		[Ref] btMultiBodyJacobianData data,
 		[Const, Ref] btContactSolverInfo infoGlobal);
 
-  void setVelocityTarget(float velTarget);
+  void setVelocityTarget(float velTarget, optional float kd);
+  void setPositionTarget(float posTarget, optional float kp);
+  void setErp(float erp);
+  float getErp();
+  void setRhsClamp(float rhsClamp);
 };
 btMultiBodyJointMotor implements btMultiBodyConstraint;
 
@@ -1790,6 +1930,32 @@ interface btMultiBodyPoint2Point : btMultiBodyConstraint {
 	void setPivotInB([Const, Ref] btVector3 pivotInB);
 };
 btMultiBodyPoint2Point implements btMultiBodyConstraint;
+
+interface btMultiBodySliderConstraint : btMultiBodyConstraint {
+	void btMultiBodySliderConstraint(btMultiBody body, long link, btRigidBody bodyB, [Const, Ref] btVector3 pivotInA, [Const, Ref] btVector3 pivotInB, [Const, Ref] btMatrix3x3 frameInA, [Const, Ref] btMatrix3x3 frameInB, [Const, Ref] btVector3 jointAxis);
+	void btMultiBodySliderConstraint(btMultiBody bodyA, long linkA, btMultiBody bodyB, long linkB, [Const, Ref] btVector3 pivotInA, [Const, Ref] btVector3 pivotInB, [Const, Ref] btMatrix3x3 frameInA, [Const, Ref] btMatrix3x3 frameInB, [Const, Ref] btVector3 jointAxis);
+
+	void finalizeMultiDof();
+
+	long getIslandIdA();
+	long getIslandIdB();
+
+	void createConstraintRows([Ref] btMultiBodyConstraintArray constraintRows,
+		[Ref] btMultiBodyJacobianData data,
+		[Const, Ref] btContactSolverInfo infoGlobal);
+
+	[Const, Ref] btVector3 getPivotInA();
+	void setPivotInA([Const, Ref] btVector3 pivotInA);
+	[Const, Ref] btVector3 getPivotInB();
+	void setPivotInB([Const, Ref] btVector3 pivotInB);
+	[Const, Ref] btMatrix3x3 getFrameInA();
+	void setFrameInA([Const, Ref] btMatrix3x3 frameInA);
+	[Const, Ref] btMatrix3x3 getFrameInB();
+	void setFrameInB([Const, Ref] btMatrix3x3 frameInB);
+  [Const, Ref] btVector3 getJointAxis();
+  void setJointAxis([Const, Ref] btVector3 jointAxis);
+};
+btMultiBodySliderConstraint implements btMultiBodyConstraint;
 
 interface btMultiBodySolverConstraint {
 	attribute long				m_deltaVelAindex;//more generic version of m_relpos1CrossNormal/m_contactNormal1

@@ -2,7 +2,7 @@
 AMMOJS_GIT_REPO=https://github.com/i12345/ammo.js.git
 AMMOJS_GIT_COMMIT=bda89d9351f360e46c394ebe63d51f7cf5e2e1c2
 BULLET_GIT_REPO=https://github.com/bulletphysics/bullet3.git
-BULLET_GIT_COMMIT=80a21678705287952200e6ae4eaad941bccec4e0
+BULLET_GIT_COMMIT=a230c941f9ba7d5c170380cb21b5df92e5f52429
 REPLACE_SRC_DIR=./patch_files
 REPLACE_DEST_DIR=./ammo.js
 
