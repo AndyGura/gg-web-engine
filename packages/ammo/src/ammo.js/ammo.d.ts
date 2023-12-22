@@ -229,7 +229,7 @@ declare module Ammo {
         setIdentity(): void;
         op_sub(mat: btSymmetricSpatialDyad): btSymmetricSpatialDyad;
     }
-    type btCollisionObject_CollisionFlags = "btCollisionObject::CF_STATIC_OBJECT" | "btCollisionObject::CF_KINEMATIC_OBJECT" | "btCollisionObject::CF_NO_CONTACT_RESPONSE" | "btCollisionObject::CF_CUSTOM_MATERIAL_CALLBACK" | "btCollisionObject::CF_CHARACTER_OBJECT" | "btCollisionObject::CF_DISABLE_VISUALIZE_OBJECT" | "btCollisionObject::CF_DISABLE_SPU_COLLISION_PROCESSING" | "btCollisionObject::CF_HAS_CONTACT_STIFFNESS_DAMPING" | "btCollisionObject::CF_HAS_CUSTOM_DEBUG_RENDERING_COLOR" | "btCollisionObject::CF_HAS_FRICTION_ANCHOR" | "btCollisionObject::CF_HAS_COLLISION_SOUND_TRIGGER";
+    type btCollisionObject_CollisionFlags = "btCollisionObject::CF_DYNAMIC_OBJECT" | "btCollisionObject::CF_STATIC_OBJECT" | "btCollisionObject::CF_KINEMATIC_OBJECT" | "btCollisionObject::CF_NO_CONTACT_RESPONSE" | "btCollisionObject::CF_CUSTOM_MATERIAL_CALLBACK" | "btCollisionObject::CF_CHARACTER_OBJECT" | "btCollisionObject::CF_DISABLE_VISUALIZE_OBJECT" | "btCollisionObject::CF_DISABLE_SPU_COLLISION_PROCESSING" | "btCollisionObject::CF_HAS_CONTACT_STIFFNESS_DAMPING" | "btCollisionObject::CF_HAS_CUSTOM_DEBUG_RENDERING_COLOR" | "btCollisionObject::CF_HAS_FRICTION_ANCHOR" | "btCollisionObject::CF_HAS_COLLISION_SOUND_TRIGGER";
     type btCollisionObject_CollisionObjectTypes = "btCollisionObject::CO_COLLISION_OBJECT" | "btCollisionObject::CO_RIGID_BODY" | "btCollisionObject::CO_GHOST_OBJECT" | "btCollisionObject::CO_SOFT_BODY" | "btCollisionObject::CO_HF_FLUID" | "btCollisionObject::CO_USER_TYPE" | "btCollisionObject::CO_FEATHERSTONE_LINK";
     type btCollisionObject_AnisotropicFrictionFlags = "btCollisionObject::CF_ANISOTROPIC_FRICTION_DISABLED" | "btCollisionObject::CF_ANISOTROPIC_FRICTION" | "btCollisionObject::CF_ANISOTROPIC_ROLLING_FRICTION";
     class btCollisionObject {
@@ -1214,6 +1214,12 @@ declare module Ammo {
         m_distFraction: number;
     }
     class btVehicleRaycaster {
+        get_m_collisionFilterGroup(): number;
+        set_m_collisionFilterGroup(m_collisionFilterGroup: number): void;
+        m_collisionFilterGroup: number;
+        get_m_collisionFilterMask(): number;
+        set_m_collisionFilterMask(m_collisionFilterMask: number): void;
+        m_collisionFilterMask: number;
         castRay(from: btVector3, to: btVector3, result: btVehicleRaycasterResult): void;
     }
     class btDefaultVehicleRaycaster extends btVehicleRaycaster {
@@ -1590,10 +1596,14 @@ declare module Ammo {
         getInterpolateWorldToBaseRot(): btQuaternion;
         getBaseOmega(): btVector3;
         setBasePos(pos: btVector3): void;
+        setInterpolateBasePos(pos: btVector3): void;
         setBaseWorldTransform(tr: btTransform): void;
         getBaseWorldTransform(): btTransform;
+        setInterpolateBaseWorldTransform(tr: btTransform): void;
+        getInterpolateBaseWorldTransform(): btTransform;
         setBaseVel(vel: btVector3): void;
         setWorldToBaseRot(rot: btQuaternion): void;
+        setInterpolateWorldToBaseRot(rot: btQuaternion): void;
         setBaseOmega(omega: btVector3): void;
         getJointPos(i: number): number;
         getJointVel(i: number): number;
@@ -1636,6 +1646,9 @@ declare module Ammo {
         goToSleep(): void;
         checkMotionAndSleepIfRequired(timestep: number): void;
         hasFixedBase(): boolean;
+        isBaseKinematic(): boolean;
+        isBaseStaticOrKinematic(): boolean;
+        setBaseDynamicType(dynamicType: number): void;
         setFixedBase(fixedBase: boolean): void;
         getCompanionId(): number;
         setCompanionId(id: number): void;
@@ -1657,6 +1670,13 @@ declare module Ammo {
         isUsingRK4Integration(): boolean;
         useGlobalVelocities(use: boolean): void;
         isUsingGlobalVelocities(): boolean;
+        setLinkDynamicType(i: number, type: number): void;
+        isLinkStaticOrKinematic(i: number): boolean;
+        isLinkKinematic(i: number): boolean;
+        isLinkAndAllAncestorsStaticOrKinematic(i: number): boolean;
+        isLinkAndAllAncestorsKinematic(i: number): boolean;
+        setSleepThreshold(sleepThreshold: number): void;
+        setSleepTimeout(sleepTimeout: number): void;
     }
     class btMultiBodyJacobianData {
         get_m_jacobians(): btScalarArray;
@@ -1798,6 +1818,22 @@ declare module Ammo {
         getJointAxis(): btVector3;
         setJointAxis(jointAxis: btVector3): void;
     }
+    class btMultiBodySphericalJointLimit extends btMultiBodyConstraint {
+        constructor(body: btMultiBody, link: number, swingxRange: number, swingyRange: number, twistRange: number, maxAppliedImpulse: number);
+        finalizeMultiDof(): void;
+        getIslandIdA(): number;
+        getIslandIdB(): number;
+        createConstraintRows(constraintRows: btMultiBodyConstraintArray, data: btMultiBodyJacobianData, infoGlobal: btContactSolverInfo): void;
+        setVelocityTarget(velTarget: btVector3, kd?: number): void;
+        setVelocityTargetMultiDof(velTarget: btVector3, kd?: btVector3): void;
+        setPositionTarget(posTarget: btQuaternion, kp?: number): void;
+        setPositionTargetMultiDof(posTarget: btQuaternion, kp?: btVector3): void;
+        setErp(erp: number): void;
+        getErp(): number;
+        setRhsClamp(rhsClamp: number): void;
+        getMaxAppliedImpulseMultiDof(i: number): number;
+        setMaxAppliedImpulseMultiDof(maxImp: btVector3): void;
+    }
     class btMultiBodySphericalJointMotor extends btMultiBodyConstraint {
         constructor(body: btMultiBody, link: number, maxMotorImpulse: number);
         finalizeMultiDof(): void;
@@ -1805,10 +1841,16 @@ declare module Ammo {
         getIslandIdB(): number;
         createConstraintRows(constraintRows: btMultiBodyConstraintArray, data: btMultiBodyJacobianData, infoGlobal: btContactSolverInfo): void;
         setVelocityTarget(velTarget: btVector3, kd?: number): void;
+        setVelocityTargetMultiDof(velTarget: btVector3, kd?: btVector3): void;
         setPositionTarget(posTarget: btQuaternion, kp?: number): void;
+        setPositionTargetMultiDof(posTarget: btQuaternion, kp?: btVector3): void;
         setErp(erp: number): void;
         getErp(): number;
         setRhsClamp(rhsClamp: number): void;
+        getMaxAppliedImpulseMultiDof(i: number): number;
+        setMaxAppliedImpulseMultiDof(maxImp: btVector3): void;
+        getDamping(i: number): number;
+        setDamping(damping: btVector3): void;
     }
     class btMultiBodySolverConstraint {
         get_m_deltaVelAindex(): number;
