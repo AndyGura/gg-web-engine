@@ -10,10 +10,10 @@
     "@gg-web-engine/rapier3d": "0.0.30",
     "@gg-web-engine/three": "0.0.30",
     "rxjs": "7.8.0",
-    "three": "0.151.3"
+    "three": "0.160.0"
   },
   "devDependencies": {
-    "@types/three": "0.151.0",
+    "@types/three": "0.160.0",
     "html-webpack-plugin": "^5.5.3",
     "ts-loader": "^9.5.1",
     "typescript": "^5.3.2",

@@ -3,7 +3,6 @@ import { interval } from 'rxjs';
 import { ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
 import { AmbientLight, DirectionalLight } from 'three';
 import { AmmoPhysicsTypeDocRepo, AmmoWorldComponent } from '@gg-web-engine/ammo';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 
 const world = new Gg3dWorld<
   ThreeVisualTypeDocRepo,
@@ -14,7 +13,6 @@ const world = new Gg3dWorld<
   new ThreeSceneComponent(),
   new AmmoWorldComponent(),
 );
-world.visualScene.loader.registerGltfLoaderAddon(new GLTFLoader());
 world.init().then(async () => {
   GgStatic.instance.showStats = true;
   // GgStatic.instance.devConsoleEnabled = true;
