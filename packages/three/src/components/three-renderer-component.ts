@@ -1,5 +1,5 @@
 import { Gg3dWorld, IRenderer3dComponent, Point2, RendererOptions } from '@gg-web-engine/core';
-import { PCFSoftShadowMap, PerspectiveCamera, sRGBEncoding, WebGLRenderer } from 'three';
+import { PCFSoftShadowMap, PerspectiveCamera, SRGBColorSpace, WebGLRenderer } from 'three';
 import { ThreeSceneComponent } from './three-scene.component';
 import { ThreeCameraComponent } from './three-camera.component';
 import { ThreeVisualTypeDocRepo } from '../types';
@@ -20,9 +20,7 @@ export class ThreeRendererComponent extends IRenderer3dComponent<ThreeVisualType
       preserveDrawingBuffer: true,
       alpha: this.rendererOptions.transparent,
     });
-    this.nativeRenderer.useLegacyLights = false;
-    this.nativeRenderer.outputEncoding = sRGBEncoding;
-    this.nativeRenderer.toneMappingExposure = 2;
+    this.nativeRenderer.outputColorSpace = SRGBColorSpace;
     this.nativeRenderer.shadowMap.enabled = true;
     this.nativeRenderer.setClearColor(this.rendererOptions.background);
     this.nativeRenderer.shadowMap.type = PCFSoftShadowMap;
