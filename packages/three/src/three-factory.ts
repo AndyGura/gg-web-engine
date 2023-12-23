@@ -30,17 +30,17 @@ export class ThreeFactory extends IDisplayObject3dComponentFactory<ThreeVisualTy
       case 'unlit':
         return new MeshBasicMaterial({
           color,
-          map: descr.diffuse,
+          map: descr.diffuse || null,
         });
       case 'standart':
         return new MeshStandardMaterial({
           color,
-          map: descr.diffuse,
+          map: descr.diffuse || null,
         });
       case 'phong':
         return new MeshPhongMaterial({
           color,
-          map: descr.diffuse,
+          map: descr.diffuse || null,
         });
       default:
         throw new Error(`"${shading}" shading not implemented for three.js`);
