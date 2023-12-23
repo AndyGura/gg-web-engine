@@ -35,20 +35,12 @@ export interface GLTF {
     extras?: any;
   };
   parser: GLTFParser;
-  userData: any;
+  userData: Record<string, any>;
 }
 
-export class GLTFLoader extends Loader {
+export class GLTFLoader extends Loader<GLTF> {
   constructor(manager?: LoadingManager);
   dracoLoader: DRACOLoader | null;
-
-  load(
-    url: string,
-    onLoad: (gltf: GLTF) => void,
-    onProgress?: (event: ProgressEvent) => void,
-    onError?: (event: ErrorEvent) => void,
-  ): void;
-  loadAsync(url: string, onProgress?: (event: ProgressEvent) => void): Promise<GLTF>;
 
   setDRACOLoader(dracoLoader: DRACOLoader): GLTFLoader;
 
