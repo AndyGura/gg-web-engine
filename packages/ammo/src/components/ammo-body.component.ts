@@ -1,7 +1,6 @@
 import { BitMask, CollisionGroup, Gg3dWorld, IEntity, Point3, Point4, VisualTypeDocRepo3D } from '@gg-web-engine/core';
 import { AmmoWorldComponent } from './ammo-world.component';
-import Ammo from 'ammojs-typed';
-import { ammoId } from '../ammo-utils';
+import Ammo from '../ammo.js/ammo';
 import { AmmoPhysicsTypeDocRepo } from '../types';
 
 export abstract class AmmoBodyComponent<T extends Ammo.btCollisionObject> {
@@ -44,9 +43,9 @@ export abstract class AmmoBodyComponent<T extends Ammo.btCollisionObject> {
     if (value == this._nativeBody) {
       return;
     }
-    AmmoBodyComponent.nativeBodyReverseMap.delete(ammoId(this._nativeBody));
+    AmmoBodyComponent.nativeBodyReverseMap.delete(Ammo.getPointer(this._nativeBody));
     this._nativeBody = value;
-    AmmoBodyComponent.nativeBodyReverseMap.set(ammoId(value), this);
+    AmmoBodyComponent.nativeBodyReverseMap.set(Ammo.getPointer(value), this);
   }
 
   protected addedToWorld: boolean = false;
@@ -94,7 +93,7 @@ export abstract class AmmoBodyComponent<T extends Ammo.btCollisionObject> {
   }
 
   protected constructor(protected readonly world: AmmoWorldComponent, protected _nativeBody: T) {
-    AmmoBodyComponent.nativeBodyReverseMap.set(ammoId(this.nativeBody), this);
+    AmmoBodyComponent.nativeBodyReverseMap.set(Ammo.getPointer(this.nativeBody), this);
   }
 
   abstract clone(): AmmoBodyComponent<T>;
@@ -119,6 +118,6 @@ export abstract class AmmoBodyComponent<T extends Ammo.btCollisionObject> {
     } catch {
       // pass
     }
-    AmmoBodyComponent.nativeBodyReverseMap.delete(ammoId(this.nativeBody));
+    AmmoBodyComponent.nativeBodyReverseMap.delete(Ammo.getPointer(this.nativeBody));
   }
 }

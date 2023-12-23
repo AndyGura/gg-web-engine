@@ -1,0 +1,46 @@
+diff --git a/ammo.idl b/ammo.idl
+index 7af1fe6..9c2e5cf 100644
+--- a/ammo.idl
++++ b/ammo.idl
+@@ -911,6 +911,7 @@ interface btCollisionConfiguration {
+ interface btDbvtBroadphase {
+   void btDbvtBroadphase();
+ };
++btDbvtBroadphase implements btBroadphaseInterface;
+ 
+ interface btBroadphaseProxy {
+   attribute long m_collisionFilterGroup;
+@@ -1243,6 +1244,8 @@ interface btContactSolverInfo {
+   attribute boolean m_splitImpulse;
+   attribute long m_splitImpulsePenetrationThreshold;
+   attribute long m_numIterations;
++  attribute float m_erp; //error reduction for non-contact constraints
++  attribute float m_erp2; //error reduction for contact constraints
+ };
+ 
+ interface btDynamicsWorld {
+@@ -1290,6 +1293,8 @@ interface btVehicleRaycasterResult {
+ };
+ 
+ interface btVehicleRaycaster {
++    attribute long m_collisionFilterGroup;
++    attribute long m_collisionFilterMask;
+     void castRay ([Const, Ref] btVector3 from, [Const, Ref] btVector3 to, [Ref] btVehicleRaycasterResult result);
+ };
+ 
+@@ -1963,7 +1968,7 @@ interface btMultiBodyGearConstraint : btMultiBodyConstraint {
+ 	void setRelativePositionTarget(float relPosTarget);
+ 	void setErp(float erp);
+ };
+-btMultiBodyFixedConstraint implements btMultiBodyConstraint;
++btMultiBodyGearConstraint implements btMultiBodyConstraint;
+ 
+ interface btMultiBodyJointLimitConstraint : btMultiBodyConstraint {
+ 	void btMultiBodyJointLimitConstraint(btMultiBody body, long link, float lower, float upper);
+diff --git a/bullet b/bullet
+index 6bb8d11..2c204c4 160000
+--- a/bullet
++++ b/bullet
+@@ -1 +1 @@
+-Subproject commit 6bb8d1123d8a55d407b19fd3357c724d0f5c9d3c
++Subproject commit 2c204c49e56ed15ec5fcfa71d199ab6d6570b3f5-dirty

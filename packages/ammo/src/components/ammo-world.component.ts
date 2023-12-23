@@ -7,7 +7,7 @@ import {
   Point4,
   VisualTypeDocRepo3D,
 } from '@gg-web-engine/core';
-import Ammo from 'ammojs-typed';
+import Ammo from '../ammo.js/ammo';
 import { AmmoFactory } from '../ammo-factory';
 import { AmmoLoader } from '../ammo-loader';
 import { AmmoDebugger, AmmoDebugMode } from '../ammo-debugger';
@@ -75,7 +75,7 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
     await Ammo.bind(Ammo)(Ammo);
     this.collisionConfiguration = new Ammo.btDefaultCollisionConfiguration();
     this.dispatcher = new Ammo.btCollisionDispatcher(this.collisionConfiguration);
-    this.broadphase = new Ammo.btDbvtBroadphase() as any;
+    this.broadphase = new Ammo.btDbvtBroadphase();
     this.ghostPairCallback = new Ammo.btGhostPairCallback();
     this.solver = new Ammo.btSequentialImpulseConstraintSolver();
     this.gravityVector = new Ammo.btVector3(this._gravity.x, this._gravity.y, this._gravity.z);
@@ -86,6 +86,9 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
       this.solver,
       this.collisionConfiguration,
     );
+    // fix the problem when dynamic objects clip in the static/kinematic objects, moved manually.
+    // the problem is introduced in bullet here: https://github.com/bulletphysics/bullet3/commit/96c1ee42565d951347e515e40f41f71d0963d2d0
+    this._dynamicAmmoWorld.getSolverInfo().set_m_erp2(0.8);
     this._dynamicAmmoWorld.getPairCache().setInternalGhostPairCallback(this.ghostPairCallback);
     this._dynamicAmmoWorld.setGravity(this.gravityVector);
     this._factory = new AmmoFactory(this);

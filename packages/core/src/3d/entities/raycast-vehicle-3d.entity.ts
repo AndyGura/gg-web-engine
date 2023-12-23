@@ -179,17 +179,17 @@ export class RaycastVehicle3dEntity<
         entity.scale = scale;
       }
       const direction = display.wheelObjectDirection || 'x';
-      const flip = direction.includes('-') ? !options.isLeft : options.isLeft;
+      const flip = direction.includes('-') ? options.isLeft : !options.isLeft;
       let localRotation: Point4 | null = null;
       if (direction.includes('x')) {
-        // rotate PI around Z if opposite position (x is correct for right wheel, -x is correct for left wheel)
+        // rotate PI around Z if opposite position (x is correct for left wheel, -x is correct for right wheel)
         if (flip) localRotation = { x: 0, y: 0, z: 1, w: 0 };
       } else if (direction.includes('y')) {
         // rotate PI/2 around Z
         localRotation = { x: 0, y: 0, z: 0.707107 * (flip ? 1 : -1), w: 0.707107 };
       } else if (direction.includes('z')) {
         // rotate PI/2 around Y
-        localRotation = { x: 0, y: 0.707107 * (flip ? -1 : 1), z: 0, w: 0.707107 };
+        localRotation = { x: 0, y: 0.707107 * (flip ? 1 : -1), z: 0, w: 0.707107 };
       }
       this.wheelLocalRotation.push(localRotation);
       this.wheels.push(new Entity3d(entity));

@@ -1,5 +1,5 @@
 import { AmmoWorldComponent } from './ammo-world.component';
-import Ammo from 'ammojs-typed';
+import Ammo from '../ammo.js/ammo';
 import { AmmoBodyComponent } from './ammo-body.component';
 import { Entity3d, Gg3dWorld, IRigidBody3dComponent, Point3, VisualTypeDocRepo3D } from '@gg-web-engine/core';
 import { AmmoPhysicsTypeDocRepo } from '../types';
@@ -36,8 +36,8 @@ export class AmmoRigidBodyComponent
     return this.world.factory.createRigidBodyFromShape(
       this._nativeBody.getCollisionShape(),
       {
-        dynamic: !this._nativeBody.isStaticObject(),
-        mass: 5, // FIXME how to get mass??
+        dynamic: !this._nativeBody.isStaticOrKinematicObject(),
+        mass: this._nativeBody.getMass(),
         friction: this._nativeBody.getFriction(),
         restitution: this._nativeBody.getRestitution(),
       },

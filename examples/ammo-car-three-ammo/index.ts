@@ -8,11 +8,16 @@ import {
   Qtrn,
   RaycastVehicle3dEntity,
 } from '@gg-web-engine/core';
-import { ThreeDisplayObject3dOpts, ThreeSceneComponent } from '@gg-web-engine/three';
+import { ThreeDisplayObject3dOpts, ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
 import { AmbientLight, DirectionalLight } from 'three';
-import { AmmoWorldComponent } from '@gg-web-engine/ammo';
+import { AmmoPhysicsTypeDocRepo, AmmoWorldComponent } from '@gg-web-engine/ammo';
 
-const world = new Gg3dWorld(
+const world = new Gg3dWorld<
+  ThreeVisualTypeDocRepo,
+  AmmoPhysicsTypeDocRepo,
+  ThreeSceneComponent,
+  AmmoWorldComponent
+>(
   new ThreeSceneComponent(),
   new AmmoWorldComponent(),
 );
@@ -57,11 +62,13 @@ world.init().then(async () => {
   const nw = 8;
   const nh = 6;
   for (let j = 0; j < nw; j++)
-    for (let i = 0; i < nh; i++)
-      world.addPrimitiveRigidBody({
+    for (let i = 0; i < nh; i++) {
+      const item = world.addPrimitiveRigidBody({
         shape: { shape: 'BOX', dimensions: { x: size, y: size, z: size } },
         body: { dynamic: true, mass: 10, friction: 1 },
       }, { x: size * j - (size * (nw - 1)) / 2, y: 10, z: size * i }, Qtrn.O, materialDynamic);
+      item.objectBody.nativeBody.forceActivationState(2); // ISLAND_SLEEPING
+    }
 
   const vehiclePos = { x: 0, y: -20, z: 4 };
   const chassisDimensions = { x: 1.8, y: 4, z: 0.6 };
@@ -165,6 +172,6 @@ world.init().then(async () => {
     speedometer.innerHTML =
       (speed < 0 ? '(R) ' : '') + Math.abs(speed).toFixed(1) + ' km/h';
   });
-  
+
   world.start();
 });
