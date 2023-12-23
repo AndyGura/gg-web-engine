@@ -65,9 +65,8 @@ world.init().then(async () => {
     for (let i = 0; i < nh; i++) {
       const item = world.addPrimitiveRigidBody({
         shape: { shape: 'BOX', dimensions: { x: size, y: size, z: size } },
-        body: { dynamic: true, mass: 10, friction: 1 },
-      }, { x: size * j - (size * (nw - 1)) / 2, y: 10, z: size * i }, Qtrn.O, materialDynamic);
-      item.objectBody.nativeBody.forceActivationState(2); // ISLAND_SLEEPING
+        body: { dynamic: true, mass: 10 },
+      }, { x: size * j - (size * (nw - 1)) / 2, y: 10, z: size * (i + 0.5) }, Qtrn.O, materialDynamic);
     }
 
   const vehiclePos = { x: 0, y: -20, z: 4 };
