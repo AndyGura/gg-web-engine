@@ -2,7 +2,7 @@
 AMMOJS_GIT_REPO=https://github.com/i12345/ammo.js.git
 AMMOJS_GIT_COMMIT=bda89d9351f360e46c394ebe63d51f7cf5e2e1c2
 BULLET_GIT_REPO=https://github.com/bulletphysics/bullet3.git
-BULLET_GIT_COMMIT=6bb8d1123d8a55d407b19fd3357c724d0f5c9d3c
+BULLET_GIT_COMMIT=2c204c49e56ed15ec5fcfa71d199ab6d6570b3f5 # 3.25 release
 REPLACE_SRC_DIR=./patch_files
 REPLACE_DEST_DIR=./ammo.js
 
@@ -27,7 +27,7 @@ replace:
 	cd ammo.js/bullet && git diff > ../../bullet_patches.txt
 
 build:
-	cd ammo.js && npm i && npm run build
+	cd ammo.js && npm i && npm run build:clean && docker-compose build && docker-compose up && npm run build:export
 
 copy:
 	cp -r ./ammo.js/dist/* ../src/ammo.js

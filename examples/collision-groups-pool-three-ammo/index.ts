@@ -68,7 +68,7 @@ world.init().then(async () => {
         // collision groups can be set immediately when creating entity
         body: {
           dynamic: false,
-          restitution: 0.7,
+          restitution: 0.3,
           ownCollisionGroups: [collisionGroup],
           interactWithCollisionGroups: [collisionGroup],
         },
@@ -107,12 +107,12 @@ world.init().then(async () => {
 
   for (let i = 0; i < 4; i++) {
     let wall = new Entity3d(null, world.physicsWorld.factory.createRigidBody({
-      shape: { shape: 'BOX', dimensions: { x: 40, y: 40, z: 40 } },
+      shape: { shape: 'BOX', dimensions: { x: 40, y: 40, z: 400 } },
       body: {
         dynamic: false,
         ownCollisionGroups: [ballsCommonCg],
         interactWithCollisionGroups: [ballsCommonCg],
-        restitution: 1,
+        restitution: 0.3,
       },
     }));
     wall.position = Pnt3.rotAround({ x: 28, y: 0, z: 0 }, Pnt3.Z, Math.PI * i / 2);
@@ -128,12 +128,12 @@ world.init().then(async () => {
             shape: { shape: 'SPHERE', radius: 0.48 },
             body: {
               mass: 1,
-              restitution: 0.8,
+              restitution: 0.3,
               ownCollisionGroups: [collisionGroup, ballsCommonCg],
               interactWithCollisionGroups: [collisionGroup, ballsCommonCg],
             },
           },
-          { x: i, y: j, z: 0.5 * k - 0.02 },
+          { x: i, y: j, z: k },
           Qtrn.O,
           { color, shading: 'phong', castShadow: true, receiveShadow: true },
         );
