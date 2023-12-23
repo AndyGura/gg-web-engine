@@ -38,11 +38,11 @@ world.init().then(async () => {
     { x: 0, y: 0, z: 1 },
   );
 
-  const dirLight = new DirectionalLight(0xffffff, 1);
+  const dirLight = new DirectionalLight(0xffffff, 4);
   dirLight.position.set(-10, 5, 10);
   world.visualScene.nativeScene.add(dirLight);
 
-  const ambientLight = new AmbientLight(0x404040);
+  const ambientLight = new AmbientLight(0x404040, 4);
   world.visualScene.nativeScene.add(ambientLight);
 
   const materialDynamic: ThreeDisplayObject3dOpts = { shading: 'phong', color: 0xfca400 };
