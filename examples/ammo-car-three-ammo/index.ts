@@ -52,11 +52,11 @@ world.init().then(async () => {
   // create objects
   world.addPrimitiveRigidBody({
     shape: { shape: 'BOX', dimensions: { x: 75, y: 75, z: 1 } },
-    body: { dynamic: false, mass: 0, friction: 2 },
+    body: { dynamic: false, mass: 0 },
   }, { x: 0, y: 0, z: -0.5 }, Qtrn.O, materialStatic);
   world.addPrimitiveRigidBody({
     shape: { shape: 'BOX', dimensions: { x: 8, y: 10, z: 4 } },
-    body: { dynamic: false, mass: 0, friction: 1 },
+    body: { dynamic: false, mass: 0 },
   }, { x: 0, y: 0, z: -1.5 }, Qtrn.fromAngle(Pnt3.X, Math.PI / 18), materialStatic);
   const size = 0.75;
   const nw = 8;
