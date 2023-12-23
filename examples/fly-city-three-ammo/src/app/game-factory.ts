@@ -16,7 +16,6 @@ import {
 import { CubeReflectionMapping, CubeTexture, CubeTextureLoader, DirectionalLight, RGBAFormat } from 'three';
 import { filter, firstValueFrom } from 'rxjs';
 import { CAR_SPECS, LAMBO_SPECS, TRUCK_SPECS } from './car-specs';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { FlyCityPTypeDoc, FlyCityVTypeDoc, FlyCityWorld } from './app.component';
 
 
@@ -27,7 +26,6 @@ export class GameFactory {
   public async initGame(canvas: HTMLCanvasElement): Promise<[Renderer3dEntity<FlyCityVTypeDoc>, MapGraph3dEntity<FlyCityVTypeDoc, FlyCityPTypeDoc>, Trigger3dEntity<FlyCityPTypeDoc>]> {
     GgStatic.instance.showStats = true;
     // GgStatic.instance.devConsoleEnabled = true;
-    this.world.visualScene.loader.registerGltfLoaderAddon(new GLTFLoader());
     await this.world.init();
     const renderer = await this.initRenderer(canvas);
     this.addLights();
