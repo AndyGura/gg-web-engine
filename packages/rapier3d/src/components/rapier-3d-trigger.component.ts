@@ -47,7 +47,7 @@ export class Rapier3dTriggerComponent
       } else if (h2 === this.nativeBody?.handle) {
         otherBody = this.world.handleIdEntityMap.get(h1);
       }
-      if (!otherBody || !otherBody.entity) return;
+      if (!otherBody) return;
       (started ? this.onEnter$ : this.onLeft$).next(otherBody);
     });
   }

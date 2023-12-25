@@ -8,7 +8,8 @@ import { AmmoPhysicsTypeDocRepo } from '../types';
 
 export class AmmoTriggerComponent
   extends AmmoBodyComponent<Ammo.btPairCachingGhostObject>
-  implements ITrigger3dComponent<AmmoPhysicsTypeDocRepo> {
+  implements ITrigger3dComponent<AmmoPhysicsTypeDocRepo>
+{
   public entity: IEntity | null = null;
 
   get onEntityEntered(): Observable<AmmoRigidBodyComponent> {
