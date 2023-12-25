@@ -1,4 +1,4 @@
-name: App build
+name: Unit tests
 on:
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review, unlabeled]
@@ -17,6 +17,10 @@ jobs:
 
       - name: Test ammo
         working-directory: ./packages/ammo
+        run: npm i && npm run test
+
+      - name: Test rapier2d
+        working-directory: ./packages/rapier2d
         run: npm i && npm run test
 
       - name: Test rapier3d

@@ -52,11 +52,7 @@ export class AmmoRaycastVehicleComponent
   constructor(protected readonly world: AmmoWorldComponent, public chassisBody: AmmoRigidBodyComponent) {
     super(world, chassisBody.nativeBody);
     this.raycaster = new Ammo.btDefaultVehicleRaycaster(world.dynamicAmmoWorld!);
-    this.nativeVehicle = new Ammo.btRaycastVehicle(
-      this.vehicleTuning,
-      this.chassisBody.nativeBody,
-      this.raycaster,
-    );
+    this.nativeVehicle = new Ammo.btRaycastVehicle(this.vehicleTuning, this.chassisBody.nativeBody, this.raycaster);
     this.raycaster.set_m_collisionFilterGroup(BitMask.pack(this.chassisBody.ownCollisionGroups, 16));
     this.raycaster.set_m_collisionFilterMask(BitMask.pack(this.chassisBody.interactWithCollisionGroups, 16));
     this.nativeVehicle.setCoordinateSystem(0, 2, 1);

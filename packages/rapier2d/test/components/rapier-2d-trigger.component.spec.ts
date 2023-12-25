@@ -1,18 +1,18 @@
-import { Rapier3dFactory, Rapier3dWorldComponent } from '../../src';
-import { Pnt3 } from '@gg-web-engine/core';
+import { Rapier2dFactory, Rapier2dWorldComponent } from '../../src';
+import { Pnt2 } from '@gg-web-engine/core';
 
-describe(`Rapier3dTriggerComponent`, () => {
+describe(`Rapier2dTriggerComponent`, () => {
 
-  let world: Rapier3dWorldComponent;
-  let factory: Rapier3dFactory;
+  let world: Rapier2dWorldComponent;
+  let factory: Rapier2dFactory;
   beforeEach(async () => {
     if (world) {
       world.dispose();
     }
-    world = new Rapier3dWorldComponent();
-    factory = new Rapier3dFactory(world);
+    world = new Rapier2dWorldComponent();
+    factory = new Rapier2dFactory(world);
     await world.init();
-    world.gravity = Pnt3.O;
+    world.gravity = Pnt2.O;
   });
 
   afterAll(() => {
@@ -20,14 +20,14 @@ describe(`Rapier3dTriggerComponent`, () => {
   });
 
   it(`should detect object intersection`, async () => {
-    const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 10, y: 10, z: 10 } });
+    const trigger = factory.createTrigger({ shape: 'SQUARE', dimensions: { x: 10, y: 10 } });
     trigger.addToWorld({ physicsWorld: world } as any);
     const ball = factory.createRigidBody({
-      shape: { shape: 'SPHERE', radius: 1 },
+      shape: { shape: 'CIRCLE', radius: 1 },
       body: { dynamic: true, mass: 1 },
-    }, { position: { x: 0, y: 0, z: 12 } });
+    }, { position: { x: 0, y: 12 } });
     ball.addToWorld({ physicsWorld: world } as any);
-    ball.linearVelocity = { x: 0, y: 0, z: -10 };
+    ball.linearVelocity = { x: 0, y: -10 };
     let enterRegistered = false;
     let exitRegistered = false;
     trigger.onEntityEntered.subscribe(((obj) => {
@@ -48,14 +48,14 @@ describe(`Rapier3dTriggerComponent`, () => {
   });
 
   it(`should detect end of object intersection`, async () => {
-    const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 10, y: 10, z: 10 } });
+    const trigger = factory.createTrigger({ shape: 'SQUARE', dimensions: { x: 10, y: 10 } });
     trigger.addToWorld({ physicsWorld: world } as any);
     const ball = factory.createRigidBody({
-      shape: { shape: 'SPHERE', radius: 1 },
+      shape: { shape: 'CIRCLE', radius: 1 },
       body: { dynamic: true, mass: 1 },
-    }, { position: { x: 0, y: 0, z: 12 } });
+    }, { position: { x: 0, y: 12 } });
     ball.addToWorld({ physicsWorld: world } as any);
-    ball.linearVelocity = { x: 0, y: 0, z: -10 };
+    ball.linearVelocity = { x: 0, y: -10 };
     let exitRegistered = false;
     trigger.onEntityLeft.subscribe(((obj) => {
       exitRegistered = obj === ball;
@@ -69,12 +69,12 @@ describe(`Rapier3dTriggerComponent`, () => {
   });
 
   it(`should fire object intersection if spawned inside`, async () => {
-    const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 10, y: 10, z: 10 } });
+    const trigger = factory.createTrigger({ shape: 'SQUARE', dimensions: { x: 10, y: 10 } });
     trigger.addToWorld({ physicsWorld: world } as any);
     const ball = factory.createRigidBody({
-      shape: { shape: 'SPHERE', radius: 1 },
+      shape: { shape: 'CIRCLE', radius: 1 },
       body: { dynamic: true, mass: 1 },
-    }, { position: { x: 0, y: 0, z: 0 } });
+    }, { position: { x: 0, y: 0 } });
     ball.addToWorld({ physicsWorld: world } as any);
     let enterRegistered = false;
     trigger.onEntityEntered.subscribe(((obj) => {
@@ -87,12 +87,12 @@ describe(`Rapier3dTriggerComponent`, () => {
 
   // TODO implement functionality below
   // it(`should fire end of object intersection if trigger removed`, async () => {
-  //   const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 10, y: 10, z: 10 } });
+  //   const trigger = factory.createTrigger({ shape: 'SQUARE', dimensions: { x: 10, y: 10 } });
   //   trigger.addToWorld({ physicsWorld: world } as any);
   //   const ball = factory.createRigidBody({
-  //     shape: { shape: 'SPHERE', radius: 1 },
+  //     shape: { shape: 'CIRCLE', radius: 1 },
   //     body: { dynamic: true, mass: 1 },
-  //   }, { position: { x: 0, y: 0, z: 0 } });
+  //   }, { position: { x: 0, y: 0 } });
   //   ball.addToWorld({ physicsWorld: world } as any);
   //   let exitRegistered = false;
   //   trigger.onEntityLeft.subscribe(((obj) => {
@@ -105,12 +105,12 @@ describe(`Rapier3dTriggerComponent`, () => {
   // });
   //
   // it(`should fire end of object intersection if object removed`, async () => {
-  //   const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 10, y: 10, z: 10 } });
+  //   const trigger = factory.createTrigger({ shape: 'SQUARE', dimensions: { x: 10, y: 10 } });
   //   trigger.addToWorld({ physicsWorld: world } as any);
   //   const ball = factory.createRigidBody({
-  //     shape: { shape: 'SPHERE', radius: 1 },
+  //     shape: { shape: 'CIRCLE', radius: 1 },
   //     body: { dynamic: true, mass: 1 },
-  //   }, { position: { x: 0, y: 0, z: 0 } });
+  //   }, { position: { x: 0, y: 0 } });
   //   ball.addToWorld({ physicsWorld: world } as any);
   //   let exitRegistered = false;
   //   trigger.onEntityLeft.subscribe(((obj) => {
