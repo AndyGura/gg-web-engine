@@ -26,8 +26,6 @@
     "url": "https://github.com/AndyGura/gg-web-engine/issues"
   },
   "homepage": "https://github.com/AndyGura/gg-web-engine#readme",
-  "dependencies": {
-  },
   "devDependencies": {
     "@dimforge/rapier3d-compat": "0.0.0-c23a138-20231001",
     "@gg-web-engine/core": "0.0.30",
