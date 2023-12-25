@@ -15,6 +15,10 @@ jobs:
         working-directory: ./packages/core
         run: npm i && npm run test
 
+      - name: Test ammo
+        working-directory: ./packages/ammo
+        run: npm i && npm run test
+
       - name: Test rapier3d
         working-directory: ./packages/rapier3d
         run: npm i && npm run test
