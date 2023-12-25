@@ -158,6 +158,8 @@
 </div>
 
 <script>
+    const initialHash = location.hash;
+
     const fillSelect = (selectId, options) => {
         const select = document.getElementById(selectId);
         select.innerHTML = '';
@@ -252,8 +254,35 @@
         };
     });
     fillSelect('renderingModule', [...new Set(examples.map(x => x.visualModule))]);
-    updatePhysicsOptionsList();
-    updateExamplesList();
+
+    if (initialHash.length > 0) {
+        // open anchor link
+        let [label, visualModule, physicsModule] = initialHash.split('__');
+        label = decodeURIComponent(label.substring(1));
+        const selected = getSelectedExample();
+        if (label !== selected.label || visualModule !== selected.visualModule || physicsModule !== selected.physicsModule) {
+            document.getElementById('renderingModule').value = visualModule;
+            onRenderingModuleOptionChanged();
+            document.getElementById('physicsModule').value = physicsModule;
+            updateExamplesList();
+            let i = 0;
+            while (true) {
+                let radio = document.getElementById(`example${i++}`);
+                if (!radio) break;
+                if (JSON.parse(radio.value).label === label) {
+                    radio.checked = true;
+                    break;
+                }
+            }
+            loadExample();
+        } else {
+            updatePhysicsOptionsList();
+            updateExamplesList();
+        }
+    } else {
+        updatePhysicsOptionsList();
+        updateExamplesList();
+    }
 
     function onRenderingModuleOptionChanged() {
         updatePhysicsOptionsList();
@@ -301,11 +330,12 @@
     }
 
     function loadExample() {
-        const {url, sbUrl} = getSelectedExample();
+        const {label, visualModule, physicsModule, url, sbUrl} = getSelectedExample();
         document.getElementById('exampleIframe').src = url;
         document.getElementById('bottomRightButton').style.display = (
             sbUrl ? 'block' : 'none'
         );
+        location.hash = `${label}__${visualModule}__${physicsModule}`;
     }
 
     function openStackBlitz() {
