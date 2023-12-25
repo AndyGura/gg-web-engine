@@ -15,6 +15,9 @@ describe(`Graph<T>`, () => {
   const middleNode = nodesArray[75][75];
 
   describe(`walkRead`, () => {
+    it('intentionally broken test', () => {
+      expect(1).toBe(2);
+    });
     it('should return correct amount for depth 0', () => {
       const result = middleNode.walkRead(0);
       expect(result.size).toBe(1);
