@@ -901,6 +901,11 @@
          <changefreq>daily</changefreq>
     </url>
     <url>
+         <loc>https://AndyGura.github.io/gg-web-engine/modules/three/gltf-loader/BufferGeometryUtils.d.ts/</loc>
+         <lastmod>2023-12-27</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
          <loc>https://AndyGura.github.io/gg-web-engine/modules/three/gltf-loader/GLTFLoader.d.ts/</loc>
          <lastmod>2023-12-27</lastmod>
          <changefreq>daily</changefreq>
