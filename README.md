@@ -45,7 +45,7 @@ controls and many more down the road
 - The project intensively uses [rxjs](https://github.com/ReactiveX/rxjs)
 
 ## Status
-Pre-pre-alpha super-experimental release. I'll be happy to see any feature requests and bug reports in the 
+Pre-alpha experimental release. I'll be happy to see any feature requests and bug reports in the 
 [Issues](https://github.com/AndyGura/gg-web-engine/issues) and [Pull Requests](https://github.com/AndyGura/gg-web-engine/pulls) 
 are more than welcome. This project is initialized with parts of my own attempt to implement replica of old NFS game
 [The Need For Speed Web](https://tnfsw.guraklgames.com/) (far from final version), by the way it was using cannon.js 
@@ -87,9 +87,8 @@ Note: at this early step, the project does not give much flexibility in that reg
 ```typescript
 import { interval } from 'rxjs';
 import { Gg3dWorld, Pnt3, Qtrn } from '@gg-web-engine/core';
-import { ThreeCameraComponent, ThreeSceneComponent } from '@gg-web-engine/three';
+import { ThreeSceneComponent } from '@gg-web-engine/three';
 import { AmmoWorldComponent } from '@gg-web-engine/ammo';
-import { PerspectiveCamera } from 'three';
 
 // create world
 const world = new Gg3dWorld(new ThreeSceneComponent(), new AmmoWorldComponent());
@@ -97,8 +96,8 @@ await world.init();
 
 // create viewport and renderer
 const renderer = world.addRenderer(
-  new ThreeCameraComponent(new PerspectiveCamera()),
-  document.getElementById('gg')! as HTMLCanvasElement,
+  world.visualScene.factory.createPerspectiveCamera(),
+  document.getElementById('gg')! as HTMLCanvasElement
 );
 renderer.position = { x: 12, y: 12, z: 12 };
 renderer.rotation = Qtrn.lookAt(renderer.camera.position, Pnt3.O);
