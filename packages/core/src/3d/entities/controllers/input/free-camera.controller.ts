@@ -48,11 +48,22 @@ export type FreeCameraControllerOptions = {
   mouseOptions: Partial<MouseInputOptions>;
 };
 
+
+const DEFAULT_FREE_CAMERA_CONTROLLER_OPTIONS: FreeCameraControllerOptions = {
+  keymap: 'wasd',
+  movementOptions: { speed: 0.5 },
+  mouseOptions: {},
+  ignoreMouseUnlessPointerLocked: false,
+  ignoreKeyboardUnlessPointerLocked: false,
+};
+
 /**
  * A controller for a free-moving camera.
  */
 export class FreeCameraController extends IEntity {
   public readonly tickOrder = TickOrder.INPUT_CONTROLLERS;
+
+  protected readonly options: FreeCameraControllerOptions;
 
   /**
    * The mouse input controller used for camera rotation.
@@ -72,17 +83,21 @@ export class FreeCameraController extends IEntity {
   constructor(
     protected readonly keyboard: KeyboardInput,
     protected readonly camera: Renderer3dEntity,
-    protected readonly options: FreeCameraControllerOptions = {
-      keymap: 'wasd',
-      movementOptions: { speed: 0.5 },
-      mouseOptions: {},
-      ignoreMouseUnlessPointerLocked: false,
-      ignoreKeyboardUnlessPointerLocked: false,
-    },
+    options: Partial<FreeCameraControllerOptions> = {},
   ) {
     super();
+    this.options = {
+      ...DEFAULT_FREE_CAMERA_CONTROLLER_OPTIONS,
+      ...options,
+    };
+    if (options.mouseOptions) {
+      this.options.movementOptions = {
+        ...DEFAULT_FREE_CAMERA_CONTROLLER_OPTIONS.movementOptions,
+        ...options.mouseOptions,
+      };
+    }
     this.mouseInput = new MouseInput(options.mouseOptions);
-    this.directionsInput = new DirectionKeyboardInput(keyboard, options.keymap);
+    this.directionsInput = new DirectionKeyboardInput(keyboard, this.options.keymap);
   }
 
   async onSpawned(world: GgWorld<any, any>): Promise<void> {
