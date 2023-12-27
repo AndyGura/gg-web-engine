@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/entity-3d.ts
-nav_order: 42
+nav_order: 43
 parent: Modules
 ---
 

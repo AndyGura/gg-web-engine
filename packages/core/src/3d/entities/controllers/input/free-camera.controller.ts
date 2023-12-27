@@ -48,7 +48,6 @@ export type FreeCameraControllerOptions = {
   mouseOptions: Partial<MouseInputOptions>;
 };
 
-
 const DEFAULT_FREE_CAMERA_CONTROLLER_OPTIONS: FreeCameraControllerOptions = {
   keymap: 'wasd',
   movementOptions: { speed: 0.5 },

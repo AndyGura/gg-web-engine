@@ -1,6 +1,6 @@
 ---
 title: ammo/components/ammo-world.component.ts
-nav_order: 9
+nav_order: 10
 parent: Modules
 ---
 
@@ -98,7 +98,7 @@ dispose(): void
 **Signature**
 
 ```ts
-_dynamicAmmoWorld: any
+_dynamicAmmoWorld: Ammo.btDiscreteDynamicsWorld | undefined
 ```
 
 ### lockedCollisionGroups (property)

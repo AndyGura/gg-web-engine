@@ -1,6 +1,6 @@
 ---
 title: ammo/components/ammo-trigger.component.ts
-nav_order: 8
+nav_order: 9
 parent: Modules
 ---
 

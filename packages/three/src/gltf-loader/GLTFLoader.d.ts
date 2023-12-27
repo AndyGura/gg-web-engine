@@ -18,8 +18,9 @@ import {
   ImageBitmapLoader,
   Skeleton,
 } from 'three';
-import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader';
-import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader';
+
+type DRACOLoader = any;
+type KTX2Loader = any;
 
 export interface GLTF {
   animations: AnimationClip[];

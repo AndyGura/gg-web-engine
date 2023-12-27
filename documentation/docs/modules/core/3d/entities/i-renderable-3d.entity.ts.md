@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/i-renderable-3d.entity.ts
-nav_order: 44
+nav_order: 45
 parent: Modules
 ---
 

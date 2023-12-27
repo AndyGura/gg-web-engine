@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/controllers/input/free-camera.controller.ts
-nav_order: 39
+nav_order: 40
 parent: Modules
 ---
 
@@ -15,6 +15,7 @@ parent: Modules
     - [onSpawned (method)](#onspawned-method)
     - [onRemoved (method)](#onremoved-method)
     - [tickOrder (property)](#tickorder-property)
+    - [options (property)](#options-property)
     - [mouseInput (property)](#mouseinput-property)
     - [directionsInput (property)](#directionsinput-property)
   - [FreeCameraControllerOptions (type alias)](#freecameracontrolleroptions-type-alias)
@@ -34,13 +35,7 @@ export declare class FreeCameraController {
   constructor(
     protected readonly keyboard: KeyboardInput,
     protected readonly camera: Renderer3dEntity,
-    protected readonly options: FreeCameraControllerOptions = {
-      keymap: 'wasd',
-      movementOptions: { speed: 0.5 },
-      mouseOptions: {},
-      ignoreMouseUnlessPointerLocked: false,
-      ignoreKeyboardUnlessPointerLocked: false,
-    }
+    options: Partial<FreeCameraControllerOptions> = {}
   )
 }
 ```
@@ -67,6 +62,14 @@ async onRemoved(): Promise<void>
 
 ```ts
 readonly tickOrder: TickOrder.INPUT_CONTROLLERS
+```
+
+### options (property)
+
+**Signature**
+
+```ts
+readonly options: FreeCameraControllerOptions
 ```
 
 ### mouseInput (property)

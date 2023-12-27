@@ -124,7 +124,7 @@ debugMode: AmmoDebugMode
 **Signature**
 
 ```ts
-readonly ammoInstance: any
+readonly ammoInstance: Ammo.btIDebugDraw
 ```
 
 ## DebugBufferSize

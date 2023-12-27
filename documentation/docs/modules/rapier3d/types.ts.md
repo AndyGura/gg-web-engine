@@ -1,6 +1,6 @@
 ---
 title: rapier3d/types.ts
-nav_order: 122
+nav_order: 123
 parent: Modules
 ---
 

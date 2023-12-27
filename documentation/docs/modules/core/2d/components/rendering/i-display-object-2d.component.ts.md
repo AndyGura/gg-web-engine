@@ -1,6 +1,6 @@
 ---
 title: core/2d/components/rendering/i-display-object-2d.component.ts
-nav_order: 14
+nav_order: 15
 parent: Modules
 ---
 

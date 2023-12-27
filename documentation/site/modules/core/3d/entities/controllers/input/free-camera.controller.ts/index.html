@@ -543,6 +543,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#options-property" class="md-nav__link">
+    options (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#mouseinput-property" class="md-nav__link">
     mouseInput (property)
   </a>
@@ -601,6 +608,7 @@
 <li><a href="#onspawned-method">onSpawned (method)</a></li>
 <li><a href="#onremoved-method">onRemoved (method)</a></li>
 <li><a href="#tickorder-property">tickOrder (property)</a></li>
+<li><a href="#options-property">options (property)</a></li>
 <li><a href="#mouseinput-property">mouseInput (property)</a></li>
 <li><a href="#directionsinput-property">directionsInput (property)</a></li>
 </ul>
@@ -616,13 +624,7 @@
   constructor(
     protected readonly keyboard: KeyboardInput,
     protected readonly camera: Renderer3dEntity,
-    protected readonly options: FreeCameraControllerOptions = {
-      keymap: 'wasd',
-      movementOptions: { speed: 0.5 },
-      mouseOptions: {},
-      ignoreMouseUnlessPointerLocked: false,
-      ignoreKeyboardUnlessPointerLocked: false,
-    }
+    options: Partial&lt;FreeCameraControllerOptions&gt; = {}
   )
 }
 </code></pre>
@@ -637,6 +639,10 @@
 <h3 id="tickorder-property">tickOrder (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly tickOrder: TickOrder.INPUT_CONTROLLERS
+</code></pre>
+<h3 id="options-property">options (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly options: FreeCameraControllerOptions
 </code></pre>
 <h3 id="mouseinput-property">mouseInput (property)</h3>
 <p>The mouse input controller used for camera rotation.</p>
