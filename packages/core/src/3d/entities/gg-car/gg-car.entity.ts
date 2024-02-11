@@ -253,14 +253,16 @@ export class GgCarEntity<
           }
         }
         if (brake === 0) {
-          this.raycastVehicle.applyTractionForce(force);
+          this.raycastVehicle.applyTraction('front', force * this.carProperties.tractionBias);
+          this.raycastVehicle.applyTraction('rear', force * (1 - this.carProperties.tractionBias));
           this.raycastVehicle.applyBrake('both', 0);
         } else {
-          this.raycastVehicle.applyTractionForce(0);
+          this.raycastVehicle.applyTraction('both', 0);
           this.raycastVehicle.applyBrake('front', brake * this.carProperties.brake.frontAxleForce);
           this.raycastVehicle.applyBrake('rear', brake * this.carProperties.brake.rearAxleForce);
         }
         if (this.handBrake) {
+          this.raycastVehicle.applyTraction('rear', 0);
           this.raycastVehicle.applyBrake('rear', this.carProperties.brake.handbrakeForce);
         }
       }

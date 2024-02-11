@@ -1,4 +1,4 @@
-import { BehaviorSubject, NEVER, Observable, startWith, Subject, switchMap } from 'rxjs';
+import { BehaviorSubject, NEVER, Observable, startWith, Subject, switchMap, takeUntil } from 'rxjs';
 import { distinctUntilChanged, map, tap, throttleTime } from 'rxjs/operators';
 import { Graph, IEntity, Point3, Point4, Qtrn, TickOrder } from '../../base';
 import { Gg3dWorld, PhysicsTypeDocRepo3D, VisualTypeDocRepo3D } from '../gg-3d-world';
@@ -103,8 +103,9 @@ export class MapGraph3dEntity<
 > extends IRenderable3dEntity<VTypeDoc, PTypeDoc> {
   public readonly tickOrder = TickOrder.POST_RENDERING;
 
-  public readonly loaderCursorEntity$: BehaviorSubject<IPositionable3d | null> =
-    new BehaviorSubject<IPositionable3d | null>(null);
+  public readonly loaderCursorEntity$: BehaviorSubject<(IEntity & IPositionable3d) | null> = new BehaviorSubject<
+    (IEntity & IPositionable3d) | null
+  >(null);
   readonly loaded: Map<MapGraphNodeType, (IEntity & IPositionable3d)[]> = new Map();
 
   private _initialLoadComplete$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
@@ -157,13 +158,14 @@ export class MapGraph3dEntity<
 
   onSpawned(world: Gg3dWorld<VTypeDoc, PTypeDoc>) {
     super.onSpawned(world);
-    // TODO takeUntil removed from world?
     this.loaderCursorEntity$
       .pipe(
+        takeUntil(this._onRemoved$),
         switchMap(entity =>
           entity
             ? this.tick$.pipe(
                 startWith(null), // map will perform initial loading even if world not started yet. Handy to preload map
+                takeUntil(entity.onRemoved$),
                 throttleTime(1000),
                 map(() => entity.position),
               )

@@ -31,8 +31,13 @@ export type RVEntityAxleOptions = {
   axleHeight: number;
 } & RVEntitySharedWheelOptions;
 
+export enum RVEntityTractionBias {
+  FWD = 1,
+  RWD = 0,
+}
+
 export type RVEntityProperties = {
-  typeOfDrive: 'RWD' | 'FWD' | '4WD';
+  tractionBias: RVEntityTractionBias | number;
   suspension: SuspensionOptions;
 } & (
   | {
@@ -68,7 +73,6 @@ export class RaycastVehicle3dEntity<
   protected readonly wheelLocalRotation: (Point4 | null)[] = [];
   protected readonly frontWheelsIndices: number[] = [];
   protected readonly rearWheelsIndices: number[] = [];
-  protected readonly tractionWheelIndices: number[] = [];
 
   // m/s
   public getSpeed(): number {
@@ -89,8 +93,13 @@ export class RaycastVehicle3dEntity<
     this.frontWheelsIndices.forEach(index => this.chassisBody.setSteering(index, value));
   }
 
-  public applyTractionForce(force: number) {
-    this.tractionWheelIndices.forEach(index => this.chassisBody.applyEngineForce(index, force));
+  public applyTraction(axle: 'front' | 'rear' | 'both', force: number) {
+    if (axle != 'rear') {
+      this.frontWheelsIndices.forEach(index => this.chassisBody.applyEngineForce(index, force));
+    }
+    if (axle != 'front') {
+      this.rearWheelsIndices.forEach(index => this.chassisBody.applyEngineForce(index, force));
+    }
   }
 
   public applyBrake(axle: 'front' | 'rear' | 'both', force: number) {
@@ -149,15 +158,11 @@ export class RaycastVehicle3dEntity<
       } else {
         this.rearWheelsIndices.push(i);
       }
-      if (wheelOpts.isFront && this.carProperties.typeOfDrive != 'RWD') {
-        this.tractionWheelIndices.push(i);
-      }
-      if (!wheelOpts.isFront && this.carProperties.typeOfDrive != 'FWD') {
-        this.tractionWheelIndices.push(i);
-      }
       this.chassisBody.addWheel(wheelOpts, this.carProperties.suspension);
     });
-    this.tractionWheelRadius = wheelFullOptions[this.tractionWheelIndices[0]].tyreRadius;
+    this.tractionWheelRadius =
+      wheelFullOptions[this.frontWheelsIndices[0]].tyreRadius * this.carProperties.tractionBias +
+      wheelFullOptions[this.rearWheelsIndices[0]].tyreRadius * (1 - this.carProperties.tractionBias);
     for (const options of wheelFullOptions) {
       const display = options.display || {};
       if (!display.displayObject) {
@@ -215,9 +220,25 @@ export class RaycastVehicle3dEntity<
 
   public get isTouchingGround(): boolean {
     // is at least one traction wheel touches the ground
-    return this.tractionWheelIndices
-      .map(i => this.chassisBody.isWheelTouchesGround(i))
-      .reduce((prev, cur) => cur || prev, false);
+    if (this.carProperties.tractionBias != RVEntityTractionBias.RWD) {
+      if (
+        this.frontWheelsIndices
+          .map(i => this.chassisBody.isWheelTouchesGround(i))
+          .reduce((prev, cur) => cur || prev, false)
+      ) {
+        return true;
+      }
+    }
+    if (this.carProperties.tractionBias != RVEntityTractionBias.FWD) {
+      if (
+        this.rearWheelsIndices
+          .map(i => this.chassisBody.isWheelTouchesGround(i))
+          .reduce((prev, cur) => cur || prev, false)
+      ) {
+        return true;
+      }
+    }
+    return false;
   }
 
   // TODO delete and let game application do all the steps

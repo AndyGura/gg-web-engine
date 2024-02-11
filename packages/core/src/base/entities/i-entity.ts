@@ -1,5 +1,5 @@
 import { GgWorld, PhysicsTypeDocRepo, VisualTypeDocRepo } from '../gg-world';
-import { Subject } from 'rxjs';
+import { Observable, Subject } from 'rxjs';
 import { IWorldComponent } from '../components/i-world-component';
 
 /**
@@ -128,6 +128,14 @@ export abstract class IEntity<
 
   protected _onSpawned$: Subject<void> = new Subject<void>();
   protected _onRemoved$: Subject<void> = new Subject<void>();
+
+  public get onSpawned$(): Observable<void> {
+    return this._onSpawned$.asObservable();
+  }
+
+  public get onRemoved$(): Observable<void> {
+    return this._onRemoved$.asObservable();
+  }
 
   public onSpawned(world: GgWorld<D, R, VTypeDoc, PTypeDoc>) {
     this._world = world;
