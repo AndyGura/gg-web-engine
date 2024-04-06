@@ -42,6 +42,16 @@ export class Pnt3 {
     return { x: p.x, y: p.y, z: p.z };
   }
 
+  /** spread point components */
+  static spr(p: Point3): [number, number, number] {
+    return [p.x, p.y, p.z];
+  }
+
+  /** get negation of the point */
+  static neg(p: Point3): Point3 {
+    return { x: -p.x, y: -p.y, z: -p.z };
+  }
+
   /** add point b to point a */
   static add(a: Point3, b: Point3): Point3 {
     return { x: a.x + b.x, y: a.y + b.y, z: a.z + b.z };
@@ -52,9 +62,19 @@ export class Pnt3 {
     return { x: a.x - b.x, y: a.y - b.y, z: a.z - b.z };
   }
 
+  /** scale point b by point. The result is the point, where each component is a product of appropriate components of input points */
+  static scale(a: Point3, s: Point3): Point3 {
+    return { x: a.x * s.x, y: a.y * s.y, z: a.z * s.z };
+  }
+
   /** average point between a and b */
   static avg(a: Point3, b: Point3): Point3 {
     return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, z: (a.z + b.z) / 2 };
+  }
+
+  /** round point components */
+  static round(p: Point3): Point3 {
+    return { x: Math.round(p.x), y: Math.round(p.y), z: Math.round(p.z) };
   }
 
   /** calculate vector length (squared) */

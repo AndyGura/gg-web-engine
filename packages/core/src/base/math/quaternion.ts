@@ -27,6 +27,11 @@ export class Qtrn {
     return { x: q.x, y: q.y, z: q.z, w: q.w };
   }
 
+  /** spread quaternion components */
+  static spr(p: Point4): [number, number, number, number] {
+    return [p.x, p.y, p.z, p.w];
+  }
+
   /**
    * Returns the sum of two Point4 objects.
    * @param a The first Point4 object to add.
