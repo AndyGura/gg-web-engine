@@ -69,6 +69,7 @@ export class AmmoRigidBodyComponent
     this.nativeBody.setAngularVelocity(emptyVector);
     this.nativeBody.clearForces();
     this.nativeBody.updateInertiaTensor();
-    Ammo.destroy(emptyVector);
+    // probably vector should be destroyed eventually, but if we do it here, it sometimes randomly breaks body position after tick
+    // Ammo.destroy(emptyVector);
   }
 }
