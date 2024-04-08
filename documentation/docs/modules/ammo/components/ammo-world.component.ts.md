@@ -19,6 +19,7 @@ parent: Modules
     - [startDebugger (method)](#startdebugger-method)
     - [stopDebugger (method)](#stopdebugger-method)
     - [dispose (method)](#dispose-method)
+    - [afterTick$ (property)](#aftertick-property)
     - [\_dynamicAmmoWorld (property)](#_dynamicammoworld-property)
     - [lockedCollisionGroups (property)](#lockedcollisiongroups-property)
 
@@ -91,6 +92,14 @@ stopDebugger(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>): voi
 
 ```ts
 dispose(): void
+```
+
+### afterTick$ (property)
+
+**Signature**
+
+```ts
+afterTick$: any
 ```
 
 ### \_dynamicAmmoWorld (property)

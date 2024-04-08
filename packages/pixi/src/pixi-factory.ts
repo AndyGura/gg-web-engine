@@ -26,9 +26,7 @@ export class PixiFactory extends IDisplayObject2dComponentFactory<PixiVisualType
           return new PixiDisplayObjectComponent(sprite);
         }
         return new PixiDisplayObjectComponent(
-          new Graphics()
-            .circle(0, 0, descriptor.radius)
-            .fill(material.color || this.randomColor()),
+          new Graphics().circle(0, 0, descriptor.radius).fill(material.color || this.randomColor()),
         );
     }
   }

@@ -13,6 +13,7 @@ parent: Modules
 - [utils](#utils)
   - [Qtrn (class)](#qtrn-class)
     - [clone (static method)](#clone-static-method)
+    - [spr (static method)](#spr-static-method)
     - [add (static method)](#add-static-method)
     - [mult (static method)](#mult-static-method)
     - [conjugate (static method)](#conjugate-static-method)
@@ -56,6 +57,16 @@ Returns a new quaternion instance with the same values as the given quaternion o
 
 ```ts
 static clone(q: Point4): Point4
+```
+
+### spr (static method)
+
+spread quaternion components
+
+**Signature**
+
+```ts
+static spr(p: Point4): [number, number, number, number]
 ```
 
 ### add (static method)

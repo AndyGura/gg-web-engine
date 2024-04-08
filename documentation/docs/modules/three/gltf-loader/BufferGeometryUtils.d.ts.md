@@ -26,8 +26,6 @@ parent: Modules
   - [mergeVertices](#mergevertices)
   - [toCreasedNormals](#tocreasednormals)
   - [toTrianglesDrawMode](#totrianglesdrawmode)
-  - [~~mergeBufferAttributes~~](#mergebufferattributes)
-  - [~~mergeBufferGeometries~~](#mergebuffergeometries)
 
 ---
 
@@ -142,20 +140,4 @@ export declare function toCreasedNormals(geometry: BufferGeometry, creaseAngle?:
 
 ```ts
 export declare function toTrianglesDrawMode(geometry: BufferGeometry, drawMode: TrianglesDrawModes): BufferGeometry
-```
-
-## ~~mergeBufferAttributes~~
-
-**Signature**
-
-```ts
-export declare function mergeBufferAttributes(attributes: BufferAttribute[]): BufferAttribute
-```
-
-## ~~mergeBufferGeometries~~
-
-**Signature**
-
-```ts
-export declare function mergeBufferGeometries(geometries: BufferGeometry[], useGroups?: boolean): BufferGeometry
 ```

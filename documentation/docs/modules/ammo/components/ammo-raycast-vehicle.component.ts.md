@@ -23,6 +23,7 @@ parent: Modules
     - [getWheelTransform (method)](#getwheeltransform-method)
     - [resetSuspension (method)](#resetsuspension-method)
     - [clone (method)](#clone-method)
+    - [resetMotion (method)](#resetmotion-method)
     - [nativeVehicle (property)](#nativevehicle-property)
     - [vehicleTuning (property)](#vehicletuning-property)
     - [wheelDirectionCS0 (property)](#wheeldirectioncs0-property)
@@ -130,6 +131,14 @@ resetSuspension(): void
 
 ```ts
 public clone(): AmmoRaycastVehicleComponent
+```
+
+### resetMotion (method)
+
+**Signature**
+
+```ts
+resetMotion()
 ```
 
 ### nativeVehicle (property)

@@ -7,6 +7,7 @@ import {
   Pnt3,
   Qtrn,
   RaycastVehicle3dEntity,
+  RVEntityTractionBias,
 } from '@gg-web-engine/core';
 import { ThreeDisplayObject3dOpts, ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
 import { AmbientLight, DirectionalLight } from 'three';
@@ -105,7 +106,7 @@ world.init().then(async () => {
         restLength: 0.6,
         stiffness: 20,
       },
-      typeOfDrive: 'RWD',
+      tractionBias: RVEntityTractionBias.RWD,
       wheelBase: {
         shared: {
           frictionSlip: 1000,
@@ -155,7 +156,7 @@ world.init().then(async () => {
       }
     }
     vehicle.steeringAngle = .5 * leftRight;
-    vehicle.applyTractionForce(engineForce);
+    vehicle.applyTraction('rear', engineForce);
     vehicle.applyBrake('front', breakingForce / 2);
     vehicle.applyBrake('rear', breakingForce);
   });

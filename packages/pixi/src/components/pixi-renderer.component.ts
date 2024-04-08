@@ -16,27 +16,29 @@ export class PixiRendererComponent extends IRenderer2dComponent<PixiVisualTypeDo
   ) {
     super(scene, canvas, options);
     this.application = new Application();
-    this.application.init({
-      canvas,
-      backgroundAlpha: this.rendererOptions.transparent ? 0 : 1,
-      autoDensity: this.rendererOptions.forceResolution === undefined,
-      resolution: this.rendererOptions.forceResolution || devicePixelRatio,
-      width: 0,
-      height: 0,
-      antialias: this.rendererOptions.antialias,
-      backgroundColor: this.rendererOptions.background,
-      // preventing ticks
-      autoStart: false,
-      sharedTicker: false,
-    }).then(() => {
-      // GG uses own ticker, disable pixi ticker for this renderer
-      this.application.ticker.stop();
-      this.application.ticker.destroy();
-      (this.application as any)._ticker = null!;
-      this.initialized = true;
-      this.onInitialized$.next();
-      this.onInitialized$.complete();
-    });
+    this.application
+      .init({
+        canvas,
+        backgroundAlpha: this.rendererOptions.transparent ? 0 : 1,
+        autoDensity: this.rendererOptions.forceResolution === undefined,
+        resolution: this.rendererOptions.forceResolution || devicePixelRatio,
+        width: 0,
+        height: 0,
+        antialias: this.rendererOptions.antialias,
+        backgroundColor: this.rendererOptions.background,
+        // preventing ticks
+        autoStart: false,
+        sharedTicker: false,
+      })
+      .then(() => {
+        // GG uses own ticker, disable pixi ticker for this renderer
+        this.application.ticker.stop();
+        this.application.ticker.destroy();
+        (this.application as any)._ticker = null!;
+        this.initialized = true;
+        this.onInitialized$.next();
+        this.onInitialized$.complete();
+      });
   }
 
   resizeRenderer(newSize: Point2): void {

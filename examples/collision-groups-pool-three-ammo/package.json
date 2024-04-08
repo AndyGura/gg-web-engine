@@ -6,15 +6,15 @@
     "start": "webpack serve --config ./webpack.dev.config.js"
   },
   "dependencies": {
-    "@gg-web-engine/ammo": "0.0.37",
-    "@gg-web-engine/core": "0.0.37",
-    "@gg-web-engine/three": "0.0.37",
+    "@gg-web-engine/ammo": "0.0.38",
+    "@gg-web-engine/core": "0.0.38",
+    "@gg-web-engine/three": "0.0.38",
     "mini-signals": "^2.0.0",
-    "rxjs": "7.8.0",
-    "three": "0.160.0"
+    "rxjs": "7.8.1",
+    "three": "0.163.0"
   },
   "devDependencies": {
-    "@types/three": "0.160.0",
+    "@types/three": "0.163.0",
     "html-webpack-plugin": "^5.5.3",
     "ts-loader": "^9.5.1",
     "typescript": "^5.3.2",

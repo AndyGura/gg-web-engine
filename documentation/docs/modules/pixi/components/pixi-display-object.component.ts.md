@@ -32,7 +32,7 @@ parent: Modules
 
 ```ts
 export declare class PixiDisplayObjectComponent {
-  constructor(public nativeSprite: DisplayObject)
+  constructor(public nativeSprite: Container)
 }
 ```
 

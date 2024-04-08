@@ -16,7 +16,7 @@ parent: Modules
   - [RVEntitySharedWheelOptions (type alias)](#rventitysharedwheeloptions-type-alias)
   - [RaycastVehicle3dEntity (class)](#raycastvehicle3dentity-class)
     - [getSpeed (method)](#getspeed-method)
-    - [applyTractionForce (method)](#applytractionforce-method)
+    - [applyTraction (method)](#applytraction-method)
     - [applyBrake (method)](#applybrake-method)
     - [runTransformBinding (method)](#runtransformbinding-method)
     - [resetTo (method)](#resetto-method)
@@ -24,7 +24,6 @@ parent: Modules
     - [wheelLocalRotation (property)](#wheellocalrotation-property)
     - [frontWheelsIndices (property)](#frontwheelsindices-property)
     - [rearWheelsIndices (property)](#rearwheelsindices-property)
-    - [tractionWheelIndices (property)](#tractionwheelindices-property)
     - [tractionWheelRadius (property)](#tractionwheelradius-property)
   - [WheelDisplayOptions (type alias)](#wheeldisplayoptions-type-alias)
 
@@ -50,7 +49,7 @@ export type RVEntityAxleOptions = {
 
 ```ts
 export type RVEntityProperties = {
-  typeOfDrive: 'RWD' | 'FWD' | '4WD'
+  tractionBias: RVEntityTractionBias | number
   suspension: SuspensionOptions
 } & (
   | {
@@ -95,7 +94,7 @@ export declare class RaycastVehicle3dEntity<VTypeDoc, PTypeDoc> {
   constructor(
     public readonly carProperties: RVEntityProperties,
     public readonly chassis3D: IDisplayObject3dComponent | null,
-    public readonly chassisBody: IRaycastVehicleComponent
+    public readonly vehicleComponent: IRaycastVehicleComponent
   )
 }
 ```
@@ -108,12 +107,12 @@ export declare class RaycastVehicle3dEntity<VTypeDoc, PTypeDoc> {
 public getSpeed(): number
 ```
 
-### applyTractionForce (method)
+### applyTraction (method)
 
 **Signature**
 
 ```ts
-public applyTractionForce(force: number)
+public applyTraction(axle: 'front' | 'rear' | 'both', force: number)
 ```
 
 ### applyBrake (method)
@@ -175,14 +174,6 @@ readonly frontWheelsIndices: number[]
 
 ```ts
 readonly rearWheelsIndices: number[]
-```
-
-### tractionWheelIndices (property)
-
-**Signature**
-
-```ts
-readonly tractionWheelIndices: number[]
 ```
 
 ### tractionWheelRadius (property)
