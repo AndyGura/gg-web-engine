@@ -1,5 +1,5 @@
 import { Gg2dWorld, IRenderer2dComponent, Point2, RendererOptions } from '@gg-web-engine/core';
-import { Application, Renderer } from 'pixi.js';
+import { Application } from 'pixi.js';
 import { PixiSceneComponent } from './pixi-scene.component';
 import { PixiVisualTypeDocRepo2D } from '../types';
 
@@ -48,10 +48,6 @@ export class PixiRendererComponent extends IRenderer2dComponent<PixiVisualTypeDo
   }
 
   dispose(): void {
-    // cleanup everything including view (canvas). Canvas cannot be reused later anyway after "soft" destroy of PIXI app
-    if (this.application.renderer instanceof Renderer) {
-      this.application.renderer.gl.getExtension('WEBGL_lose_context')?.loseContext();
-    }
     this.application.destroy(true, true);
   }
 }
