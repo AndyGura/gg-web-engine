@@ -1006,6 +1006,7 @@
 <h2 id="gltfloaderplugin-interface">GLTFLoaderPlugin (interface)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export interface GLTFLoaderPlugin {
+  readonly name: string
   beforeRoot?: (() =&gt; Promise&lt;void&gt; | null) | undefined
   afterRoot?: ((result: GLTF) =&gt; Promise&lt;void&gt; | null) | undefined
   loadNode?: ((nodeIndex: number) =&gt; Promise&lt;Object3D&gt; | null) | undefined
