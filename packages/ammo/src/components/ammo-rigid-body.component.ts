@@ -2,6 +2,7 @@ import { AmmoWorldComponent } from './ammo-world.component';
 import Ammo from '../ammo.js/ammo';
 import { AmmoBodyComponent } from './ammo-body.component';
 import { Entity3d, Gg3dWorld, IRigidBody3dComponent, Point3, VisualTypeDocRepo3D } from '@gg-web-engine/core';
+import { first } from 'rxjs';
 import { AmmoPhysicsTypeDocRepo } from '../types';
 
 export class AmmoRigidBodyComponent
@@ -65,11 +66,32 @@ export class AmmoRigidBodyComponent
 
   resetMotion(): void {
     const emptyVector = new Ammo.btVector3();
-    this.nativeBody.setLinearVelocity(emptyVector);
-    this.nativeBody.setAngularVelocity(emptyVector);
-    this.nativeBody.clearForces();
-    this.nativeBody.updateInertiaTensor();
-    // probably vector should be destroyed eventually, but if we do it here, it sometimes randomly breaks body position after tick
-    // Ammo.destroy(emptyVector);
+    if (!this.addedToWorld) {
+      this.nativeBody.clearForces();
+      this.nativeBody.setLinearVelocity(emptyVector);
+      this.nativeBody.setAngularVelocity(emptyVector);
+    } else {
+      // when resetting object motion state in ammo.js while it's added to the simulation,
+      // on the next tick it randomly gets broken (linear velocity vector has NaN components and then position too)
+      // By removing and adding the object to the world it happens less often
+      const ammoWorld = this.world;
+      this.removeFromWorld({ physicsWorld: ammoWorld } as any);
+      const position = this.position;
+      const rotation = this.rotation;
+      this.nativeBody.clearForces();
+      this.nativeBody.setLinearVelocity(emptyVector);
+      this.nativeBody.setAngularVelocity(emptyVector);
+      this.world.afterTick$.pipe(first()).subscribe(() => {
+        this.addToWorld({ physicsWorld: ammoWorld } as any);
+        const newLinVel = this.linearVelocity;
+        if (isNaN(newLinVel.x) || isNaN(newLinVel.y) || isNaN(newLinVel.z)) {
+          console.warn('resetMotion caused ammo body to have broken velocity. Fixing');
+          this.position = position;
+          this.rotation = rotation;
+          this.resetMotion();
+        }
+      });
+    }
+    Ammo.destroy(emptyVector);
   }
 }

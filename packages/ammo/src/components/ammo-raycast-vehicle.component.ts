@@ -67,6 +67,7 @@ export class AmmoRaycastVehicleComponent
     if (world.physicsWorld != this.world) {
       throw new Error('Ammo raycast vehicle cannot be shared between different worlds');
     }
+    this.addedToWorld = true;
     // TODO parked cars can be deactivated until we start handling them. Needs explicit activation call
     this.chassisBody.nativeBody.setActivationState(4); // btCollisionObject::DISABLE_DEACTIVATION
     this.chassisBody.addToWorld(world);
@@ -74,6 +75,7 @@ export class AmmoRaycastVehicleComponent
   }
 
   removeFromWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>) {
+    this.addedToWorld = false;
     this.chassisBody.removeFromWorld(world);
     this.world.dynamicAmmoWorld!.removeAction(this.nativeVehicle);
   }
@@ -137,5 +139,10 @@ export class AmmoRaycastVehicleComponent
 
   public clone(): AmmoRaycastVehicleComponent {
     return new AmmoRaycastVehicleComponent(this.world, this.chassisBody.clone());
+  }
+
+  resetMotion() {
+    this.resetSuspension();
+    super.resetMotion();
   }
 }

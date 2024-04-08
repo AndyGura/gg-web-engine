@@ -7,6 +7,7 @@ import {
   Point4,
   VisualTypeDocRepo3D,
 } from '@gg-web-engine/core';
+import { Subject } from 'rxjs';
 import Ammo from '../ammo.js/ammo';
 import { AmmoFactory } from '../ammo-factory';
 import { AmmoLoader } from '../ammo-loader';
@@ -21,6 +22,8 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
     }
     return this._factory;
   }
+
+  public afterTick$: Subject<void> = new Subject<void>();
 
   private _loader: AmmoLoader | null = null;
   public get loader(): AmmoLoader {
@@ -97,6 +100,7 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
 
   simulate(delta: number): void {
     this._dynamicAmmoWorld?.stepSimulation((this._timeScale * delta) / 1000, 100, this._timeScale * 0.01);
+    this.afterTick$.next();
     if (this._debugger) {
       this._debugger.update();
     }
@@ -145,6 +149,7 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
   }
 
   dispose(): void {
+    this.afterTick$.complete();
     Ammo.destroy(this._dynamicAmmoWorld);
     Ammo.destroy(this.solver);
     Ammo.destroy(this.broadphase);

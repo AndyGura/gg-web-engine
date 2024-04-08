@@ -76,7 +76,7 @@ export class RaycastVehicle3dEntity<
 
   // m/s
   public getSpeed(): number {
-    return this.chassisBody.wheelSpeed;
+    return this.vehicleComponent.wheelSpeed;
   }
 
   public readonly tractionWheelRadius: number;
@@ -90,24 +90,24 @@ export class RaycastVehicle3dEntity<
     if (this._steeringAngle != value) {
       this._steeringAngle = value;
     }
-    this.frontWheelsIndices.forEach(index => this.chassisBody.setSteering(index, value));
+    this.frontWheelsIndices.forEach(index => this.vehicleComponent.setSteering(index, value));
   }
 
   public applyTraction(axle: 'front' | 'rear' | 'both', force: number) {
     if (axle != 'rear') {
-      this.frontWheelsIndices.forEach(index => this.chassisBody.applyEngineForce(index, force));
+      this.frontWheelsIndices.forEach(index => this.vehicleComponent.applyEngineForce(index, force));
     }
     if (axle != 'front') {
-      this.rearWheelsIndices.forEach(index => this.chassisBody.applyEngineForce(index, force));
+      this.rearWheelsIndices.forEach(index => this.vehicleComponent.applyEngineForce(index, force));
     }
   }
 
   public applyBrake(axle: 'front' | 'rear' | 'both', force: number) {
     if (axle != 'rear') {
-      this.frontWheelsIndices.forEach(index => this.chassisBody.applyBrake(index, force));
+      this.frontWheelsIndices.forEach(index => this.vehicleComponent.applyBrake(index, force));
     }
     if (axle != 'front') {
-      this.rearWheelsIndices.forEach(index => this.chassisBody.applyBrake(index, force));
+      this.rearWheelsIndices.forEach(index => this.vehicleComponent.applyBrake(index, force));
     }
   }
 
@@ -115,9 +115,9 @@ export class RaycastVehicle3dEntity<
   constructor(
     public readonly carProperties: RVEntityProperties,
     public readonly chassis3D: IDisplayObject3dComponent | null,
-    public readonly chassisBody: IRaycastVehicleComponent,
+    public readonly vehicleComponent: IRaycastVehicleComponent,
   ) {
-    super(chassis3D, chassisBody);
+    super(chassis3D, vehicleComponent);
     let wheelFullOptions: (WheelOptions & { display: WheelDisplayOptions })[] =
       'wheelBase' in carProperties
         ? [
@@ -158,7 +158,7 @@ export class RaycastVehicle3dEntity<
       } else {
         this.rearWheelsIndices.push(i);
       }
-      this.chassisBody.addWheel(wheelOpts, this.carProperties.suspension);
+      this.vehicleComponent.addWheel(wheelOpts, this.carProperties.suspension);
     });
     this.tractionWheelRadius =
       wheelFullOptions[this.frontWheelsIndices[0]].tyreRadius * this.carProperties.tractionBias +
@@ -200,7 +200,7 @@ export class RaycastVehicle3dEntity<
       this.wheels.push(new Entity3d(entity));
     }
     this.addChildren(...(this.wheels.filter(x => !!x) as (IEntity & IPositionable3d)[]));
-    this.chassisBody.entity = this;
+    this.vehicleComponent.entity = this;
   }
 
   protected runTransformBinding(objectBody: IRigidBody3dComponent, object3D: IDisplayObject3dComponent): void {
@@ -209,7 +209,7 @@ export class RaycastVehicle3dEntity<
       if (!wheel) {
         continue;
       }
-      let { position, rotation } = this.chassisBody.getWheelTransform(i);
+      let { position, rotation } = this.vehicleComponent.getWheelTransform(i);
       if (this.wheelLocalRotation[i]) {
         rotation = Qtrn.combineRotations(rotation, this.wheelLocalRotation[i]!);
       }
@@ -223,7 +223,7 @@ export class RaycastVehicle3dEntity<
     if (this.carProperties.tractionBias != RVEntityTractionBias.RWD) {
       if (
         this.frontWheelsIndices
-          .map(i => this.chassisBody.isWheelTouchesGround(i))
+          .map(i => this.vehicleComponent.isWheelTouchesGround(i))
           .reduce((prev, cur) => cur || prev, false)
       ) {
         return true;
@@ -232,7 +232,7 @@ export class RaycastVehicle3dEntity<
     if (this.carProperties.tractionBias != RVEntityTractionBias.FWD) {
       if (
         this.rearWheelsIndices
-          .map(i => this.chassisBody.isWheelTouchesGround(i))
+          .map(i => this.vehicleComponent.isWheelTouchesGround(i))
           .reduce((prev, cur) => cur || prev, false)
       ) {
         return true;
@@ -248,8 +248,6 @@ export class RaycastVehicle3dEntity<
       rotation?: Point4;
     } = {},
   ) {
-    this.chassisBody.resetMotion();
-    this.chassisBody.resetSuspension();
     if (options.position) {
       this.position = options.position;
     }
@@ -257,5 +255,6 @@ export class RaycastVehicle3dEntity<
       this.rotation = options.rotation;
     }
     this.steeringAngle = 0;
+    this.vehicleComponent.resetMotion();
   }
 }
