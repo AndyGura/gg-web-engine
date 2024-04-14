@@ -25,14 +25,38 @@ export class PausableClock implements IClock {
     return this.startedAt === -1;
   }
 
-  public get elapsedTime(): number {
-    if (this.isPaused) {
-      return this.pausedAt - this.startedAt;
+  public get timeScale(): number {
+    return this._timeScale;
+  }
+
+  public set timeScale(value: number) {
+    if (value === this._timeScale && !(this.pausedByTimescale && value !== 0)) return;
+    if (value === 0) {
+      if (!this.isPaused) {
+        this.pause();
+        this.pausedByTimescale = true;
+      }
+      return;
     }
+    if (this.isPaused && this.pausedByTimescale) {
+      this.resume();
+      this.pausedByTimescale = false;
+    }
+    if (!this.isStopped) {
+      const cur = this.isPaused ? this.pausedAt : this.parentClock.elapsedTime;
+      this.startedAt = cur - ((cur - this.startedAt) * this.timeScale) / value;
+    }
+    this._timeScale = value;
+  }
+
+  public get elapsedTime(): number {
     if (this.isStopped) {
       return this.lastStopElapsed;
     }
-    return this.parentClock.elapsedTime - this.startedAt;
+    if (this.isPaused) {
+      return this._timeScale * (this.pausedAt - this.startedAt);
+    }
+    return this._timeScale * (this.parentClock.elapsedTime - this.startedAt);
   }
 
   // state
@@ -40,6 +64,8 @@ export class PausableClock implements IClock {
   private oldRelativeTime: number = 0; // "elapsed", emitted on last tick
   private pausedAt: number = -1;
   private lastStopElapsed: number = 0;
+  private _timeScale: number = 1;
+  private pausedByTimescale: boolean = false;
 
   constructor(autoStart: boolean = false, protected readonly parentClock: IClock = GgGlobalClock.instance) {
     if (autoStart) {
@@ -69,6 +95,7 @@ export class PausableClock implements IClock {
   pause() {
     this.stopListeningTicks();
     this.pausedAt = this.parentClock.elapsedTime;
+    this.pausedByTimescale = false;
   }
 
   resume() {

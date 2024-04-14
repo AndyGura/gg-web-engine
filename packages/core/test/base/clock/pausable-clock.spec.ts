@@ -115,4 +115,173 @@ describe('PausableClock', () => {
       expect(c.elapsedTime).toBe(1500);
     });
   });
+
+  describe('time scale', () => {
+    it('should scale time', () => {
+      const c = new PausableClock(true);
+      c.timeScale = 2;
+      jest.advanceTimersByTime(1500);
+      expect(c.elapsedTime).toBe(3000);
+    });
+
+    it('should never change elapsed time during time scale', () => {
+      const c = new PausableClock(true);
+      jest.advanceTimersByTime(5000);
+      expect(c.elapsedTime).toBe(5000);
+
+      const runAssertions = (n: number) => {
+        expect(c.elapsedTime).toBe(n);
+        c.timeScale = 2;
+        expect(c.elapsedTime).toBe(n);
+        c.timeScale = 0;
+        expect(c.elapsedTime).toBe(n);
+        c.timeScale = 5;
+        expect(c.elapsedTime).toBe(n);
+        c.timeScale = -2;
+        expect(c.elapsedTime).toBe(n);
+        c.timeScale = 0;
+        expect(c.elapsedTime).toBe(n);
+        c.timeScale = 1;
+        expect(c.elapsedTime).toBe(n);
+      };
+
+      // running clock changes
+      runAssertions(5000);
+      // paused clock changes
+      c.pause();
+      runAssertions(5000);
+      jest.advanceTimersByTime(1000);
+      runAssertions(5000);
+      // resumed clock changes
+      c.resume();
+      runAssertions(5000);
+      jest.advanceTimersByTime(1000);
+      runAssertions(6000);
+      // stopped clock changes
+      c.stop();
+      runAssertions(6000);
+    });
+
+    it('should scale time after clock was paused beforehand', () => {
+      const c = new PausableClock(true);
+      jest.advanceTimersByTime(500);
+      c.pause();
+      jest.advanceTimersByTime(500);
+      c.resume();
+
+      expect(c.elapsedTime).toBe(500);
+      c.timeScale = 2;
+      jest.advanceTimersByTime(1500);
+      expect(c.elapsedTime).toBe(3500);
+    });
+
+    it('should handle pause/resume correctly with scaled time', () => {
+      const c = new PausableClock(true);
+      c.timeScale = 3;
+
+      jest.advanceTimersByTime(1000);
+      expect(c.elapsedTime).toBe(3000);
+
+      c.pause();
+      jest.advanceTimersByTime(1000);
+      expect(c.elapsedTime).toBe(3000);
+
+      c.resume();
+      expect(c.elapsedTime).toBe(3000);
+      jest.advanceTimersByTime(1000);
+      expect(c.elapsedTime).toBe(6000);
+
+      c.pause();
+      jest.advanceTimersByTime(1000);
+      expect(c.elapsedTime).toBe(6000);
+
+      c.resume();
+      expect(c.elapsedTime).toBe(6000);
+      jest.advanceTimersByTime(1000);
+      expect(c.elapsedTime).toBe(9000);
+    });
+
+    it('should scale time at the time timeScale was updated', () => {
+      const c = new PausableClock(true);
+      jest.advanceTimersByTime(1500);
+      expect(c.elapsedTime).toBe(1500);
+      c.timeScale = 2;
+      jest.advanceTimersByTime(1500);
+      expect(c.elapsedTime).toBe(4500);
+    });
+
+    it('should not update past time', () => {
+      const c = new PausableClock(true);
+      jest.advanceTimersByTime(1500);
+      expect(c.elapsedTime).toBe(1500);
+      c.timeScale = 2;
+      expect(c.elapsedTime).toBe(1500);
+    });
+
+    it('should work with pause feature', () => {
+      const c = new PausableClock(true);
+      jest.advanceTimersByTime(1500);
+      expect(c.elapsedTime).toBe(1500);
+      c.pause();
+      c.timeScale = 2;
+      jest.advanceTimersByTime(500);
+      expect(c.elapsedTime).toBe(1500);
+      c.resume();
+      jest.advanceTimersByTime(500);
+      expect(c.elapsedTime).toBe(2500);
+    });
+
+    it('should not update last stopped time', () => {
+      const c = new PausableClock(true);
+      jest.advanceTimersByTime(1500);
+      expect(c.elapsedTime).toBe(1500);
+      c.stop();
+      c.timeScale = 2;
+      expect(c.elapsedTime).toBe(1500);
+    });
+
+    it('should be able to set negative time scale', () => {
+      const c = new PausableClock(true);
+
+      jest.advanceTimersByTime(1500);
+      expect(c.elapsedTime).toBe(1500);
+      c.timeScale = -0.5;
+      expect(c.elapsedTime).toBe(1500);
+
+      jest.advanceTimersByTime(1000);
+      expect(c.elapsedTime).toBe(1000);
+      c.timeScale = 1;
+      expect(c.elapsedTime).toBe(1000);
+
+      jest.advanceTimersByTime(500);
+      expect(c.elapsedTime).toBe(1500);
+    });
+
+    it('time scale 0 should pause clock', () => {
+      const c = new PausableClock(true);
+      jest.advanceTimersByTime(1500);
+      expect(c.elapsedTime).toBe(1500);
+      c.timeScale = 0;
+      expect(c.isPaused).toBeTruthy();
+    });
+
+    it('should unpause clock after changing time scale from 0', () => {
+      const c = new PausableClock(true);
+
+      jest.advanceTimersByTime(1500);
+      c.timeScale = 0;
+
+      jest.advanceTimersByTime(1500);
+      expect(c.elapsedTime).toBe(1500);
+      c.timeScale = 1;
+      expect(c.isPaused).toBeFalsy();
+      expect(c.elapsedTime).toBe(1500);
+
+      jest.advanceTimersByTime(1500);
+      expect(c.elapsedTime).toBe(3000);
+    });
+  });
+
+  // TODO add hierarchy tests, including timeScale
+
 });
