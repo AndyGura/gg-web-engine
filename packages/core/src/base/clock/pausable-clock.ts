@@ -21,9 +21,16 @@ export class PausableClock implements IClock {
     return this.pausedAt !== -1;
   }
 
+  public get isStopped(): boolean {
+    return this.startedAt === -1;
+  }
+
   public get elapsedTime(): number {
     if (this.isPaused) {
       return this.pausedAt - this.startedAt;
+    }
+    if (this.isStopped) {
+      return this.lastStopElapsed;
     }
     return this.parentClock.elapsedTime - this.startedAt;
   }
@@ -32,6 +39,7 @@ export class PausableClock implements IClock {
   private startedAt: number = -1;
   private oldRelativeTime: number = 0; // "elapsed", emitted on last tick
   private pausedAt: number = -1;
+  private lastStopElapsed: number = 0;
 
   constructor(autoStart: boolean = false, protected readonly parentClock: IClock = GgGlobalClock.instance) {
     if (autoStart) {
@@ -54,6 +62,7 @@ export class PausableClock implements IClock {
 
   stop() {
     this.stopListeningTicks();
+    this.lastStopElapsed = this.elapsedTime;
     this.startedAt = this.pausedAt = -1;
   }
 
