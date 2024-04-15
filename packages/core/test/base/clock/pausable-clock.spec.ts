@@ -282,6 +282,45 @@ describe('PausableClock', () => {
     });
   });
 
-  // TODO add hierarchy tests, including timeScale
+  describe('clocks hierarchy', () => {
+    it('should propagate ticks from parent clock', () => {
+      const parent = new PausableClock(true, gClockMock);
+      const child = new PausableClock(true, parent);
+      let tickData = null;
+      child.tick$.subscribe((x) => {
+        tickData = x;
+      });
+      gClockMock._tick$.next([0, 0]);
+      expect(tickData).toEqual([0, 0]);
+    });
+
+    it('should not propagate ticks from paused parent clock', () => {
+      const parent = new PausableClock(true, gClockMock);
+      parent.pause();
+      const child = new PausableClock(true, parent);
+      let tickData = null;
+      child.tick$.subscribe((x) => {
+        tickData = x;
+      });
+      gClockMock._tick$.next([0, 0]);
+      expect(tickData).toEqual(null);
+      expect(child.isPaused).toBe(false);
+    });
+
+    it('timescale should affect children', () => {
+      const parent = new PausableClock(true, gClockMock);
+      jest.advanceTimersByTime(1500);
+      expect(parent.elapsedTime).toBe(1500);
+      const child = new PausableClock(true, parent);
+      jest.advanceTimersByTime(1500);
+      expect(parent.elapsedTime).toBe(3000);
+      expect(child.elapsedTime).toBe(1500);
+
+      parent.timeScale = 2;
+      jest.advanceTimersByTime(1000);
+      expect(parent.elapsedTime).toBe(5000);
+      expect(child.elapsedTime).toBe(3500);
+    });
+  });
 
 });
