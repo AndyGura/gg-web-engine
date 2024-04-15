@@ -7,7 +7,6 @@ export interface IPhysicsWorldComponent<D, R, TypeDoc extends PhysicsTypeDocRepo
   extends IComponent {
   readonly factory: TypeDoc['factory'];
   gravity: D;
-  timeScale: number;
 
   get physicsDebugViewActive(): boolean;
 

@@ -15,14 +15,18 @@ jobs:
         working-directory: ./packages/core
         run: npm i && npm run test
 
+      - name: Switch libraries to use local core package
+        working-directory: ./etc
+        run: bash switch_libs_to_local_core.sh
+
       - name: Test ammo
         working-directory: ./packages/ammo
-        run: npm i && npm run test
+        run: npm run build && npm run test
 
       - name: Test rapier2d
         working-directory: ./packages/rapier2d
-        run: npm i && npm run test
+        run: npm run build && npm run test
 
       - name: Test rapier3d
         working-directory: ./packages/rapier3d
-        run: npm i && npm run test
+        run: npm run build && npm run test

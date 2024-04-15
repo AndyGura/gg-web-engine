@@ -26,15 +26,6 @@ export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhys
     }
   }
 
-  private _timeScale: number = 1;
-  public get timeScale(): number {
-    return this._timeScale;
-  }
-
-  public set timeScale(value: number) {
-    this._timeScale = value;
-  }
-
   public get physicsDebugViewActive(): boolean {
     return false;
   }
@@ -52,7 +43,7 @@ export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhys
   }
 
   simulate(delta: number): void {
-    Engine.update(this.matterEngine!, this._timeScale * delta);
+    Engine.update(this.matterEngine!, delta);
   }
 
   startDebugger(world: Gg2dWorld, drawer: IDebugPhysicsDrawer<Point2, number>): void {

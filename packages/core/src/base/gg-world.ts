@@ -75,8 +75,8 @@ export abstract class GgWorld<
         this,
         'ph_timescale',
         async (...args: string[]) => {
-          this.physicsWorld.timeScale = +args[0];
-          return JSON.stringify(this.physicsWorld.timeScale);
+          this.worldClock.timeScale = +args[0];
+          return JSON.stringify(this.worldClock.timeScale);
         },
         'args: [float]; change time scale of physics engine. Default value is 1.0',
       );
