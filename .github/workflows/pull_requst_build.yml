@@ -17,7 +17,7 @@ jobs:
 
       - name: Switch libraries to use local core package
         working-directory: ./etc
-        run: sh switch_libs_to_local_core.sh
+        run: bash switch_libs_to_local_core.sh
 
       - name: Test ammo
         working-directory: ./packages/ammo
