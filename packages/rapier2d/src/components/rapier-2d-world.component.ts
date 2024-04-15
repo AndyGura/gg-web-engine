@@ -34,15 +34,6 @@ export class Rapier2dWorldComponent implements IPhysicsWorld2dComponent<Rapier2d
     }
   }
 
-  private _timeScale: number = 1;
-  public get timeScale(): number {
-    return this._timeScale;
-  }
-
-  public set timeScale(value: number) {
-    this._timeScale = value;
-  }
-
   get physicsDebugViewActive(): boolean {
     return false;
   }
@@ -73,7 +64,7 @@ export class Rapier2dWorldComponent implements IPhysicsWorld2dComponent<Rapier2d
   }
 
   simulate(delta: number): void {
-    this._nativeWorld!.timestep = (this.timeScale * delta) / 1000;
+    this._nativeWorld!.timestep = delta / 1000;
     this._nativeWorld?.step(this.eventQueue);
   }
 

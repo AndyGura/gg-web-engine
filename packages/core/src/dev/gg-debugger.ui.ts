@@ -83,7 +83,7 @@ export class GgDebuggerUI {
       </div>`;
       // <div ${debugLabelCss}>
       //   <input id="time_scale_slider" type="range" min="0" max="10" step="0.1" style="flex-grow:1" value="${
-      //      this.currentWorld.physicsWorld.timeScale
+      //      this.currentWorld.worldClock.timeScale
       //   }"/>
       //   <label for="time_scale_slider" style="user-select: none;">Time scale</label>
       // </div>`;
@@ -102,11 +102,11 @@ export class GgDebuggerUI {
       //   .pipe(takeUntil(this.debugControlsRemoved$))
       //   .subscribe(e => {
       //     try {
-      //        this.currentWorld.physicsWorld.timeScale = +(e.target as HTMLInputElement).value;
+      //        this.currentWorld.worldClock.timeScale = +(e.target as HTMLInputElement).value;
       //     } catch (err) {
       //       console.error(err);
       //     }
-      //     (e.target as HTMLInputElement).value = '' + ( this.currentWorld.physicsWorld.timeScale || 1);
+      //     (e.target as HTMLInputElement).value = '' + ( this.currentWorld.worldClock.timeScale || 1);
       //   });
     } else {
       this.debugControlsRemoved$.next();

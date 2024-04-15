@@ -46,15 +46,6 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
     }
   }
 
-  private _timeScale: number = 1;
-  public get timeScale(): number {
-    return this._timeScale;
-  }
-
-  public set timeScale(value: number) {
-    this._timeScale = value;
-  }
-
   private _debugger: AmmoDebugger | null = null;
   private _debugDrawer: IDebugPhysicsDrawer<Point3, Point4> | null = null;
 
@@ -99,7 +90,7 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
   }
 
   simulate(delta: number): void {
-    this._dynamicAmmoWorld?.stepSimulation((this._timeScale * delta) / 1000, 100, this._timeScale * 0.01);
+    this._dynamicAmmoWorld?.stepSimulation(delta / 1000, 100, 0.01);
     this.afterTick$.next();
     if (this._debugger) {
       this._debugger.update();
