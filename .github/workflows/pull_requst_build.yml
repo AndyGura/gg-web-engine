@@ -15,6 +15,10 @@ jobs:
         working-directory: ./packages/core
         run: npm i && npm run test
 
+      - name: Switch libraries to use local core package
+        working-directory: ./etc
+        run: sh switch_libs_to_local_core.sh
+
       - name: Test ammo
         working-directory: ./packages/ammo
         run: npm i && npm run test
