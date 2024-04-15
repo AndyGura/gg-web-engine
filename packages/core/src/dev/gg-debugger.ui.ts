@@ -80,13 +80,13 @@ export class GgDebuggerUI {
           this.currentWorld.physicsWorld.physicsDebugViewActive ? ' checked' : ''
         }>
         <label for='physics_debugger_checkbox_id' style='user-select: none;'>Show physics bodies in scene</label>
+      </div>
+      <div ${debugLabelCss}>
+        <input id="time_scale_slider" type="range" min="0" max="5" step="0.01" style="flex-grow:1" value="${
+          this.currentWorld.worldClock.timeScale
+        }"/>
+        <label for="time_scale_slider" style="user-select: none;">Time scale</label>
       </div>`;
-      // <div ${debugLabelCss}>
-      //   <input id="time_scale_slider" type="range" min="0" max="10" step="0.1" style="flex-grow:1" value="${
-      //      this.currentWorld.worldClock.timeScale
-      //   }"/>
-      //   <label for="time_scale_slider" style="user-select: none;">Time scale</label>
-      // </div>`;
       document.body.appendChild(debugControlsContainer);
       fromEvent(document.getElementById('physics_debugger_checkbox_id')! as HTMLInputElement, 'change')
         .pipe(takeUntil(this.debugControlsRemoved$))
@@ -98,16 +98,16 @@ export class GgDebuggerUI {
           }
           (e.target as HTMLInputElement).checked = this.currentWorld.physicsDebugViewActive;
         });
-      // fromEvent(document.getElementById('time_scale_slider')! as HTMLInputElement, 'change')
-      //   .pipe(takeUntil(this.debugControlsRemoved$))
-      //   .subscribe(e => {
-      //     try {
-      //        this.currentWorld.worldClock.timeScale = +(e.target as HTMLInputElement).value;
-      //     } catch (err) {
-      //       console.error(err);
-      //     }
-      //     (e.target as HTMLInputElement).value = '' + ( this.currentWorld.worldClock.timeScale || 1);
-      //   });
+      fromEvent(document.getElementById('time_scale_slider')! as HTMLInputElement, 'change')
+        .pipe(takeUntil(this.debugControlsRemoved$))
+        .subscribe(e => {
+          try {
+            this.currentWorld.worldClock.timeScale = +(e.target as HTMLInputElement).value;
+          } catch (err) {
+            console.error(err);
+          }
+          (e.target as HTMLInputElement).value = '' + (this.currentWorld.worldClock.timeScale || 1);
+        });
     } else {
       this.debugControlsRemoved$.next();
       document.body.removeChild(this.ui.debugControlsContainer!);

@@ -160,7 +160,7 @@ export class PausableClock implements IClock {
     }
     this.tickSub = this.parentClock.tick$
       .pipe(
-        map(([parentElapsed, _]) => [this.oldRelativeTime, parentElapsed - this.startedAt] as [number, number]),
+        map(([_, d]) => [this.oldRelativeTime, this.oldRelativeTime + d * this.timeScale] as [number, number]),
         tap(([_, cur]) => (this.oldRelativeTime = cur)),
       )
       .subscribe(this._tick$);

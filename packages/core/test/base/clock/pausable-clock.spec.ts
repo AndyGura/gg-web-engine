@@ -210,6 +210,24 @@ describe('PausableClock', () => {
       expect(c.elapsedTime).toBe(4500);
     });
 
+    it('should affect tick delta', () => {
+      const c = new PausableClock(true, gClockMock);
+      jest.advanceTimersByTime(100);
+      const ticks: [number, number][] = [];
+      c.tick$.subscribe((x) => ticks.push(x));
+
+      gClockMock._tick$.next([150, 200]);
+      c.timeScale = 2;
+      gClockMock._tick$.next([200, 250]);
+      gClockMock._tick$.next([250, 350]);
+
+      expect(ticks).toEqual([
+        [50, 50],
+        [150, 100],
+        [350, 200],
+      ]);
+    });
+
     it('should not update past time', () => {
       const c = new PausableClock(true);
       jest.advanceTimersByTime(1500);
