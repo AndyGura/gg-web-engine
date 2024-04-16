@@ -52,14 +52,14 @@ export abstract class IEntity<
   /**
    * The flag whether entity should listen to ticks. If set to false, ticks will not be propagated to this entity
    * */
-  protected _active: boolean = true;
+  protected _selfActive: boolean = true;
 
   public get active(): boolean {
-    return this._active;
+    return this._selfActive && (!this.parent || this.parent.active);
   }
 
   public set active(value: boolean) {
-    this._active = value;
+    this._selfActive = value;
   }
 
   public parent: IEntity | null = null;
