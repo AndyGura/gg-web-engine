@@ -164,6 +164,7 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
       return col;
     });
     this.world.handleIdEntityMap.set(this._nativeBody!.handle, this);
+    this.world.added$.next(this);
   }
 
   removeFromWorld(world: Gg2dWorld<VisualTypeDocRepo2D, Rapier2dPhysicsTypeDocRepo>): void {
@@ -179,6 +180,7 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
       this._nativeBody = null;
       this._nativeBodyColliders = null;
     }
+    this.world.removed$.next(this);
   }
 
   resetMotion(): void {

@@ -81,12 +81,14 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
     world: Gg2dWorld<VisualTypeDocRepo2D, MatterPhysicsTypeDocRepo, IVisualScene2dComponent, MatterWorldComponent>,
   ): void {
     Composite.add(world.physicsWorld.matterWorld!, this.nativeBody);
+    world.physicsWorld.added$.next(this);
   }
 
   removeFromWorld(
     world: Gg2dWorld<VisualTypeDocRepo2D, MatterPhysicsTypeDocRepo, IVisualScene2dComponent, MatterWorldComponent>,
   ): void {
     Composite.remove(world.physicsWorld.matterWorld!, this.nativeBody);
+    world.physicsWorld.removed$.next(this);
   }
 
   dispose(): void {}

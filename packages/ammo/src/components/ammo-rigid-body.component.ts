@@ -61,13 +61,13 @@ export class AmmoRigidBodyComponent
   }
 
   addToWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>): void {
-    super.addToWorld(world);
     this.world.dynamicAmmoWorld?.addRigidBody(this.nativeBody, this._ownCGsMask, this._interactWithCGsMask);
+    super.addToWorld(world);
   }
 
   removeFromWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>): void {
-    super.removeFromWorld(world);
     this.world.dynamicAmmoWorld?.removeRigidBody(this.nativeBody);
+    super.removeFromWorld(world);
   }
 
   refreshCG(): void {

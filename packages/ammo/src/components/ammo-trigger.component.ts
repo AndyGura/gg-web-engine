@@ -70,12 +70,12 @@ export class AmmoTriggerComponent
   }
 
   removeFromWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>): void {
-    super.removeFromWorld(world);
     for (const body of this.overlaps) {
       this.onLeft$.next(Ammo.getPointer(body));
     }
     this.overlaps.clear();
     this.world.dynamicAmmoWorld?.removeCollisionObject(this.nativeBody);
+    super.removeFromWorld(world);
   }
 
   refreshCG(): void {

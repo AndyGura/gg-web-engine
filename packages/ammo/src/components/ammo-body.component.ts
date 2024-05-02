@@ -103,6 +103,7 @@ export abstract class AmmoBodyComponent<T extends Ammo.btCollisionObject> {
       throw new Error('Ammo bodies cannot be shared between different worlds');
     }
     this.addedToWorld = true;
+    this.world.added$.next(this as any);
   }
 
   removeFromWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>): void {
@@ -110,6 +111,7 @@ export abstract class AmmoBodyComponent<T extends Ammo.btCollisionObject> {
       throw new Error('Ammo bodies cannot be shared between different worlds');
     }
     this.addedToWorld = false;
+    this.world.removed$.next(this as any);
   }
 
   dispose(): void {

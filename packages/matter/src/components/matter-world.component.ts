@@ -1,7 +1,9 @@
-import { CollisionGroup, IPhysicsWorld2dComponent, Point2 } from '@gg-web-engine/core';
+import { CollisionGroup, IBodyComponent, IPhysicsWorld2dComponent, Point2 } from '@gg-web-engine/core';
 import { Engine, World } from 'matter-js';
 import { MatterFactory } from '../matter-factory';
 import { MatterPhysicsTypeDocRepo } from '../types';
+import { Subject } from 'rxjs';
+import { MatterRigidBodyComponent } from './matter-rigid-body.component';
 
 // TODO implement bindings for collision groups. Matter.js has elegant solution for that, read body.collisionFilter
 export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhysicsTypeDocRepo> {
@@ -12,6 +14,12 @@ export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhys
   }
 
   public readonly factory: MatterFactory = new MatterFactory();
+
+  public readonly added$: Subject<MatterRigidBodyComponent | IBodyComponent<Point2, number, MatterPhysicsTypeDocRepo>> =
+    new Subject();
+  public readonly removed$: Subject<
+    MatterRigidBodyComponent | IBodyComponent<Point2, number, MatterPhysicsTypeDocRepo>
+  > = new Subject();
 
   private _gravity: Point2 = { x: 0, y: 9.82 };
   public get gravity(): Point2 {

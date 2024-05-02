@@ -1,9 +1,11 @@
-import { CollisionGroup, IPhysicsWorld3dComponent, Point3 } from '@gg-web-engine/core';
+import { CollisionGroup, IBodyComponent, IPhysicsWorld3dComponent, Point2, Point3, Point4 } from '@gg-web-engine/core';
 import { EventQueue, init, Vector3, World } from '@dimforge/rapier3d-compat';
 import { Rapier3dRigidBodyComponent } from './rapier-3d-rigid-body.component';
 import { Rapier3dFactory } from '../rapier-3d-factory';
 import { Rapier3dLoader } from '../rapier-3d-loader';
 import { Rapier3dPhysicsTypeDocRepo } from '../types';
+import { Subject } from 'rxjs';
+import { Rapier3dTriggerComponent } from './rapier-3d-trigger.component';
 
 export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3dPhysicsTypeDocRepo> {
   private _factory: Rapier3dFactory | null = null;
@@ -21,6 +23,13 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
     }
     return this._loader;
   }
+
+  public readonly added$: Subject<
+    Rapier3dRigidBodyComponent | IBodyComponent<Point3, Point4, Rapier3dPhysicsTypeDocRepo>
+  > = new Subject();
+  public readonly removed$: Subject<
+    Rapier3dRigidBodyComponent | IBodyComponent<Point3, Point4, Rapier3dPhysicsTypeDocRepo>
+  > = new Subject();
 
   private _gravity: Point3 = { x: 0, y: 0, z: -9.82 };
   public get gravity(): Point3 {

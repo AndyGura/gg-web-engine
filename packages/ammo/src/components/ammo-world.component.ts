@@ -1,9 +1,11 @@
-import { CollisionGroup, IPhysicsWorld3dComponent, Point3 } from '@gg-web-engine/core';
+import { CollisionGroup, IBodyComponent, IPhysicsWorld3dComponent, Point3, Point4 } from '@gg-web-engine/core';
 import { Subject } from 'rxjs';
 import Ammo from '../ammo.js/ammo';
 import { AmmoFactory } from '../ammo-factory';
 import { AmmoLoader } from '../ammo-loader';
 import { AmmoPhysicsTypeDocRepo } from '../types';
+import { AmmoRigidBodyComponent } from './ammo-rigid-body.component';
+import { AmmoTriggerComponent } from './ammo-trigger.component';
 
 export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsTypeDocRepo> {
   private _factory: AmmoFactory | null = null;
@@ -14,7 +16,13 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
     return this._factory;
   }
 
-  public afterTick$: Subject<void> = new Subject<void>();
+  public readonly afterTick$: Subject<void> = new Subject<void>();
+  public readonly added$: Subject<
+    AmmoRigidBodyComponent | AmmoTriggerComponent | IBodyComponent<Point3, Point4, AmmoPhysicsTypeDocRepo>
+  > = new Subject();
+  public readonly removed$: Subject<
+    AmmoRigidBodyComponent | AmmoTriggerComponent | IBodyComponent<Point3, Point4, AmmoPhysicsTypeDocRepo>
+  > = new Subject();
 
   private _loader: AmmoLoader | null = null;
   public get loader(): AmmoLoader {

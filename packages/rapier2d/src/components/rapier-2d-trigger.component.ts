@@ -37,6 +37,7 @@ export class Rapier2dTriggerComponent
       this.world.nativeWorld!.createCollider(c, this._nativeBody!),
     );
     this.world.handleIdEntityMap.set(this._nativeBody!.handle, this);
+    this.world.added$.next(this);
   }
 
   checkOverlaps(): void {

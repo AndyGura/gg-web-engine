@@ -72,12 +72,14 @@ export class AmmoRaycastVehicleComponent
     this.chassisBody.nativeBody.setActivationState(4); // btCollisionObject::DISABLE_DEACTIVATION
     this.chassisBody.addToWorld(world);
     this.world.dynamicAmmoWorld!.addAction(this.nativeVehicle);
+    this.world.added$.next(this);
   }
 
   removeFromWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>) {
     this.addedToWorld = false;
     this.chassisBody.removeFromWorld(world);
     this.world.dynamicAmmoWorld!.removeAction(this.nativeVehicle);
+    this.world.removed$.next(this);
   }
 
   addWheel(options: WheelOptions, suspensionOptions: SuspensionOptions): void {
