@@ -1,11 +1,4 @@
-import {
-  CollisionGroup,
-  Gg2dWorld,
-  IDebugPhysicsDrawer,
-  IPhysicsWorld2dComponent,
-  Pnt2,
-  Point2,
-} from '@gg-web-engine/core';
+import { CollisionGroup, IPhysicsWorld2dComponent, Pnt2, Point2 } from '@gg-web-engine/core';
 import { EventQueue, init, Vector2, World } from '@dimforge/rapier2d-compat';
 import { Rapier2dRigidBodyComponent } from './rapier-2d-rigid-body.component';
 import { Rapier2dFactory } from '../rapier-2d-factory';
@@ -32,10 +25,6 @@ export class Rapier2dWorldComponent implements IPhysicsWorld2dComponent<Rapier2d
       this.nativeWorld.gravity.x = this._gravity.x;
       this.nativeWorld.gravity.y = this._gravity.y;
     }
-  }
-
-  get physicsDebugViewActive(): boolean {
-    return false;
   }
 
   protected _nativeWorld: World | null = null;
@@ -82,16 +71,6 @@ export class Rapier2dWorldComponent implements IPhysicsWorld2dComponent<Rapier2d
 
   deregisterCollisionGroup(group: CollisionGroup): void {
     this.lockedCollisionGroups = this.lockedCollisionGroups.filter(x => x !== group);
-  }
-
-  startDebugger(world: Gg2dWorld, drawer: IDebugPhysicsDrawer<Point2, number>): void {
-    // TODO
-    throw new Error('rapier-2d DebugDrawer not implemented');
-  }
-
-  stopDebugger(): void {
-    // TODO
-    throw new Error('rapier-2d DebugDrawer not implemented');
   }
 
   dispose(): void {

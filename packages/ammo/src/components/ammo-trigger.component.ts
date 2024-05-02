@@ -1,4 +1,4 @@
-import { Gg3dWorld, IEntity, ITrigger3dComponent, VisualTypeDocRepo3D } from '@gg-web-engine/core';
+import { DebugBody3DSettings, Gg3dWorld, IEntity, ITrigger3dComponent, VisualTypeDocRepo3D } from '@gg-web-engine/core';
 import { AmmoWorldComponent } from './ammo-world.component';
 import { filter, map, Observable, Subject } from 'rxjs';
 import Ammo from '../ammo.js/ammo';
@@ -11,6 +11,10 @@ export class AmmoTriggerComponent
   implements ITrigger3dComponent<AmmoPhysicsTypeDocRepo>
 {
   public entity: IEntity | null = null;
+
+  get debugBodySettings(): DebugBody3DSettings {
+    return null!;
+  }
 
   get onEntityEntered(): Observable<AmmoRigidBodyComponent> {
     return this.onEnter$.pipe(

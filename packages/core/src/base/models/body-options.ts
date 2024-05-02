@@ -8,3 +8,8 @@ export interface BodyOptions {
   ownCollisionGroups: CollisionGroup[] | 'all';
   interactWithCollisionGroups: CollisionGroup[] | 'all';
 }
+
+export type DebugBodySettings = {
+  shape: any;
+  color: number;
+};

@@ -77,7 +77,7 @@ export class GgDebuggerUI {
       debugControlsContainer.innerHTML = `
       <div ${debugLabelCss}>
         <input type='checkbox' name='checkbox' id='physics_debugger_checkbox_id' value='1'${
-          this.currentWorld.physicsWorld.physicsDebugViewActive ? ' checked' : ''
+          this.currentWorld.physicsDebugViewActive ? ' checked' : ''
         }>
         <label for='physics_debugger_checkbox_id' style='user-select: none;'>Show physics bodies in scene</label>
       </div>

@@ -1,11 +1,4 @@
-import {
-  CollisionGroup,
-  Gg3dWorld,
-  IDebugPhysicsDrawer,
-  IPhysicsWorld3dComponent,
-  Point3,
-  Point4,
-} from '@gg-web-engine/core';
+import { CollisionGroup, IPhysicsWorld3dComponent, Point3 } from '@gg-web-engine/core';
 import { EventQueue, init, Vector3, World } from '@dimforge/rapier3d-compat';
 import { Rapier3dRigidBodyComponent } from './rapier-3d-rigid-body.component';
 import { Rapier3dFactory } from '../rapier-3d-factory';
@@ -41,10 +34,6 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
       this.nativeWorld.gravity.y = value.y;
       this.nativeWorld.gravity.z = value.z;
     }
-  }
-
-  get physicsDebugViewActive(): boolean {
-    return false;
   }
 
   protected _nativeWorld: World | null = null;
@@ -92,16 +81,6 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
 
   deregisterCollisionGroup(group: CollisionGroup): void {
     this.lockedCollisionGroups = this.lockedCollisionGroups.filter(x => x !== group);
-  }
-
-  startDebugger(world: Gg3dWorld, drawer: IDebugPhysicsDrawer<Point3, Point4>): void {
-    // TODO
-    throw new Error('rapier-3d DebugDrawer not implemented');
-  }
-
-  stopDebugger(): void {
-    // TODO
-    throw new Error('rapier-3d DebugDrawer not implemented');
   }
 
   dispose(): void {

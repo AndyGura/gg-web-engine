@@ -1,5 +1,6 @@
 import {
   CollisionGroup,
+  DebugBody2DSettings,
   Entity2d,
   Gg2dWorld,
   IRigidBody2dComponent,
@@ -48,6 +49,10 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
   public name: string = '';
 
   public entity: Entity2d | null = null;
+
+  get debugBodySettings(): DebugBody2DSettings {
+    return null!;
+  }
 
   constructor(public nativeBody: Body) {}
 

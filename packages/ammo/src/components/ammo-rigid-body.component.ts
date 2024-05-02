@@ -1,7 +1,14 @@
 import { AmmoWorldComponent } from './ammo-world.component';
 import Ammo from '../ammo.js/ammo';
 import { AmmoBodyComponent } from './ammo-body.component';
-import { Entity3d, Gg3dWorld, IRigidBody3dComponent, Point3, VisualTypeDocRepo3D } from '@gg-web-engine/core';
+import {
+  DebugBody3DSettings,
+  Entity3d,
+  Gg3dWorld,
+  IRigidBody3dComponent,
+  Point3,
+  VisualTypeDocRepo3D,
+} from '@gg-web-engine/core';
 import { first } from 'rxjs';
 import { AmmoPhysicsTypeDocRepo } from '../types';
 
@@ -27,6 +34,10 @@ export class AmmoRigidBodyComponent
 
   set angularVelocity(value: Point3) {
     this.nativeBody.setAngularVelocity(new Ammo.btVector3(value.x, value.y, value.z));
+  }
+
+  get debugBodySettings(): DebugBody3DSettings {
+    return null!;
   }
 
   constructor(protected readonly world: AmmoWorldComponent, protected _nativeBody: Ammo.btRigidBody) {

@@ -2,6 +2,7 @@ import {
   BitMask,
   Body3DOptions,
   CollisionGroup,
+  DebugBody3DSettings,
   Entity3d,
   Gg3dWorld,
   IRigidBody3dComponent,
@@ -61,6 +62,10 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
     if (this.nativeBody) {
       this.nativeBody.setAngvel(new Vector3(value.x, value.y, value.z), false);
     }
+  }
+
+  get debugBodySettings(): DebugBody3DSettings {
+    return null!;
   }
 
   protected _nativeBody: RigidBody | null = null;

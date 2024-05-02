@@ -85,7 +85,7 @@ export abstract class GgWorld<
         'dr_drawphysics',
         async (...args: string[]) => {
           this.physicsDebugViewActive = ['1', 'true', '+'].includes(args[0]);
-          return '' + this.physicsWorld.physicsDebugViewActive;
+          return '' + this.physicsDebugViewActive;
         },
         'args: [0 or 1]; turn on/off physics debug view. Default value is 0',
       );
@@ -105,7 +105,7 @@ export abstract class GgWorld<
           this.tickListeners[i].tick$.next([elapsed, delta]);
         }
       }
-      // run phycics simulation
+      // run physics simulation
       this.physicsWorld.simulate(delta);
       // emit tick to all remained entities
       for (i; i < this.tickListeners.length; i++) {
@@ -198,22 +198,16 @@ export abstract class GgWorld<
     }
   }
 
+  private _physicsDebugViewActive: boolean = false;
   public get physicsDebugViewActive(): boolean {
-    return this.physicsWorld.physicsDebugViewActive;
+    return this._physicsDebugViewActive;
   }
 
   public set physicsDebugViewActive(value: boolean) {
     if (this.physicsDebugViewActive === value) {
       return;
     }
-    if (value) {
-      const cls = this.visualScene.debugPhysicsDrawerClass;
-      if (!cls) {
-        throw new Error('Debug drawer is not available');
-      }
-      this.physicsWorld.startDebugger(this, new cls());
-    } else {
-      this.physicsWorld.stopDebugger(this);
-    }
+    this._physicsDebugViewActive = value;
+    // TODO
   }
 }

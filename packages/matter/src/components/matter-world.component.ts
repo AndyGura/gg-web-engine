@@ -1,4 +1,4 @@
-import { CollisionGroup, Gg2dWorld, IDebugPhysicsDrawer, IPhysicsWorld2dComponent, Point2 } from '@gg-web-engine/core';
+import { CollisionGroup, IPhysicsWorld2dComponent, Point2 } from '@gg-web-engine/core';
 import { Engine, World } from 'matter-js';
 import { MatterFactory } from '../matter-factory';
 import { MatterPhysicsTypeDocRepo } from '../types';
@@ -26,10 +26,6 @@ export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhys
     }
   }
 
-  public get physicsDebugViewActive(): boolean {
-    return false;
-  }
-
   async init(): Promise<void> {
     this.matterEngine = Engine.create({ gravity: { ...this._gravity, scale: 0.0001 } });
   }
@@ -44,16 +40,6 @@ export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhys
 
   simulate(delta: number): void {
     Engine.update(this.matterEngine!, delta);
-  }
-
-  startDebugger(world: Gg2dWorld, drawer: IDebugPhysicsDrawer<Point2, number>): void {
-    // TODO
-    throw new Error('Matter.js DebugDrawer not implemented');
-  }
-
-  stopDebugger(): void {
-    // TODO
-    throw new Error('Matter.js DebugDrawer not implemented');
   }
 
   dispose(): void {

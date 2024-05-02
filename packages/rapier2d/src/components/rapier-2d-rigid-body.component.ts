@@ -2,6 +2,7 @@ import {
   BitMask,
   Body2DOptions,
   CollisionGroup,
+  DebugBody2DSettings,
   Entity2d,
   Gg2dWorld,
   IRigidBody2dComponent,
@@ -85,6 +86,10 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
 
   public get factoryProps(): [ColliderDesc[], RigidBodyDesc, Omit<Omit<Body2DOptions, 'dynamic'>, 'mass'>] {
     return [this._colliderDescr, this._bodyDescr, this._colliderOptions];
+  }
+
+  get debugBodySettings(): DebugBody2DSettings {
+    return null!;
   }
 
   constructor(

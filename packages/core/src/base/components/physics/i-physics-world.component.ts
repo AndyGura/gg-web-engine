@@ -1,5 +1,4 @@
-import { GgWorld, PhysicsTypeDocRepo } from '../../gg-world';
-import { IDebugPhysicsDrawer } from '../../interfaces/i-debug-physics-drawer';
+import { PhysicsTypeDocRepo } from '../../gg-world';
 import { IComponent } from '../i-component';
 import { CollisionGroup } from '../../models/body-options';
 
@@ -7,8 +6,6 @@ export interface IPhysicsWorldComponent<D, R, TypeDoc extends PhysicsTypeDocRepo
   extends IComponent {
   readonly factory: TypeDoc['factory'];
   gravity: D;
-
-  get physicsDebugViewActive(): boolean;
 
   init(): Promise<void>;
 
@@ -22,8 +19,4 @@ export interface IPhysicsWorldComponent<D, R, TypeDoc extends PhysicsTypeDocRepo
   registerCollisionGroup(): CollisionGroup;
 
   deregisterCollisionGroup(group: CollisionGroup): void;
-
-  startDebugger(world: GgWorld<D, R>, drawer: IDebugPhysicsDrawer<D, R>): void;
-
-  stopDebugger(world: GgWorld<D, R>): void;
 }
