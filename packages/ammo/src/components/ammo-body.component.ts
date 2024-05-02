@@ -1,4 +1,13 @@
-import { BitMask, CollisionGroup, Gg3dWorld, IEntity, Point3, Point4, VisualTypeDocRepo3D } from '@gg-web-engine/core';
+import {
+  BitMask,
+  CollisionGroup,
+  Gg3dWorld,
+  IEntity,
+  Point3,
+  Point4,
+  Shape3DDescriptor,
+  VisualTypeDocRepo3D,
+} from '@gg-web-engine/core';
 import { AmmoWorldComponent } from './ammo-world.component';
 import Ammo from '../ammo.js/ammo';
 import { AmmoPhysicsTypeDocRepo } from '../types';
@@ -92,7 +101,11 @@ export abstract class AmmoBodyComponent<T extends Ammo.btCollisionObject> {
     }
   }
 
-  protected constructor(protected readonly world: AmmoWorldComponent, protected _nativeBody: T) {
+  protected constructor(
+    protected readonly world: AmmoWorldComponent,
+    protected _nativeBody: T,
+    public readonly shape: Shape3DDescriptor,
+  ) {
     AmmoBodyComponent.nativeBodyReverseMap.set(Ammo.getPointer(this.nativeBody), this);
   }
 

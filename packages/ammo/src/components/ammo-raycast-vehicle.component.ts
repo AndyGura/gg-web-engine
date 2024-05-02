@@ -50,7 +50,7 @@ export class AmmoRaycastVehicleComponent
   }
 
   constructor(protected readonly world: AmmoWorldComponent, public chassisBody: AmmoRigidBodyComponent) {
-    super(world, chassisBody.nativeBody);
+    super(world, chassisBody.nativeBody, chassisBody.shape);
     this.raycaster = new Ammo.btDefaultVehicleRaycaster(world.dynamicAmmoWorld!);
     this.nativeVehicle = new Ammo.btRaycastVehicle(this.vehicleTuning, this.chassisBody.nativeBody, this.raycaster);
     this.raycaster.set_m_collisionFilterGroup(BitMask.pack(this.chassisBody.ownCollisionGroups, 16));

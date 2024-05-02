@@ -7,6 +7,7 @@ import {
   Gg3dWorld,
   IRigidBody3dComponent,
   Point3,
+  Shape3DDescriptor,
   VisualTypeDocRepo3D,
 } from '@gg-web-engine/core';
 import { first } from 'rxjs';
@@ -37,16 +38,21 @@ export class AmmoRigidBodyComponent
   }
 
   get debugBodySettings(): DebugBody3DSettings {
-    return null!;
+    return { shape: this.shape, color: 0xff0000 };
   }
 
-  constructor(protected readonly world: AmmoWorldComponent, protected _nativeBody: Ammo.btRigidBody) {
-    super(world, _nativeBody);
+  constructor(
+    protected readonly world: AmmoWorldComponent,
+    protected _nativeBody: Ammo.btRigidBody,
+    public readonly shape: Shape3DDescriptor,
+  ) {
+    super(world, _nativeBody, shape);
   }
 
   clone(): AmmoRigidBodyComponent {
     return this.world.factory.createRigidBodyFromShape(
       this._nativeBody.getCollisionShape(),
+      this.shape,
       {
         dynamic: !this._nativeBody.isStaticOrKinematicObject(),
         mass: this._nativeBody.getMass(),

@@ -8,6 +8,7 @@ import {
   IRigidBody2dComponent,
   Pnt2,
   Point2,
+  Shape2DDescriptor,
   VisualTypeDocRepo2D,
 } from '@gg-web-engine/core';
 import {
@@ -84,17 +85,23 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
 
   public name: string = '';
 
-  public get factoryProps(): [ColliderDesc[], RigidBodyDesc, Omit<Omit<Body2DOptions, 'dynamic'>, 'mass'>] {
-    return [this._colliderDescr, this._bodyDescr, this._colliderOptions];
+  public get factoryProps(): [
+    ColliderDesc[],
+    Shape2DDescriptor,
+    RigidBodyDesc,
+    Omit<Omit<Body2DOptions, 'dynamic'>, 'mass'>,
+  ] {
+    return [this._colliderDescr, this.shape, this._bodyDescr, this._colliderOptions];
   }
 
   get debugBodySettings(): DebugBody2DSettings {
-    return null!;
+    return { shape: this.shape, color: 0xff0000 };
   }
 
   constructor(
     protected readonly world: Rapier2dWorldComponent,
     protected _colliderDescr: ColliderDesc[],
+    public readonly shape: Shape2DDescriptor,
     protected _bodyDescr: RigidBodyDesc,
     protected _colliderOptions: Omit<Omit<Body2DOptions, 'dynamic'>, 'mass'>,
   ) {}

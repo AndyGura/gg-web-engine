@@ -1,4 +1,11 @@
-import { DebugBody3DSettings, Gg3dWorld, IEntity, ITrigger3dComponent, VisualTypeDocRepo3D } from '@gg-web-engine/core';
+import {
+  DebugBody3DSettings,
+  Gg3dWorld,
+  IEntity,
+  ITrigger3dComponent,
+  Shape3DDescriptor,
+  VisualTypeDocRepo3D,
+} from '@gg-web-engine/core';
 import { AmmoWorldComponent } from './ammo-world.component';
 import { filter, map, Observable, Subject } from 'rxjs';
 import Ammo from '../ammo.js/ammo';
@@ -13,7 +20,7 @@ export class AmmoTriggerComponent
   public entity: IEntity | null = null;
 
   get debugBodySettings(): DebugBody3DSettings {
-    return null!;
+    return { shape: this.shape, color: 0xffff00 };
   }
 
   get onEntityEntered(): Observable<AmmoRigidBodyComponent> {
@@ -29,8 +36,12 @@ export class AmmoTriggerComponent
     ) as Observable<AmmoRigidBodyComponent>;
   }
 
-  constructor(protected readonly world: AmmoWorldComponent, protected _nativeBody: Ammo.btPairCachingGhostObject) {
-    super(world, _nativeBody);
+  constructor(
+    protected readonly world: AmmoWorldComponent,
+    protected _nativeBody: Ammo.btPairCachingGhostObject,
+    public readonly shape: Shape3DDescriptor,
+  ) {
+    super(world, _nativeBody, shape);
   }
 
   protected readonly onEnter$: Subject<number> = new Subject<number>();
@@ -57,7 +68,7 @@ export class AmmoTriggerComponent
   }
 
   clone(): AmmoTriggerComponent {
-    return this.world.factory.createTriggerFromShape(this._nativeBody.getCollisionShape(), {
+    return this.world.factory.createTriggerFromShape(this._nativeBody.getCollisionShape(), this.shape, {
       position: this.position,
       rotation: this.rotation,
     });

@@ -7,6 +7,7 @@ import {
   IVisualScene2dComponent,
   Pnt2,
   Point2,
+  Shape2DDescriptor,
   VisualTypeDocRepo2D,
 } from '@gg-web-engine/core';
 import { Body, Composite, Vector } from 'matter-js';
@@ -51,10 +52,10 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
   public entity: Entity2d | null = null;
 
   get debugBodySettings(): DebugBody2DSettings {
-    return null!;
+    return { shape: this.shape, color: 0xff0000 };
   }
 
-  constructor(public nativeBody: Body) {}
+  constructor(public nativeBody: Body, public readonly shape: Shape2DDescriptor) {}
 
   get interactWithCollisionGroups(): CollisionGroup[] {
     throw new Error('Collision groups not implemented for Matter.js');

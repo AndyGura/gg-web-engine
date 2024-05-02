@@ -37,7 +37,7 @@ export class MatterFactory implements IPhysicsBody2dComponentFactory<MatterPhysi
     }
     nativeBody.position = Vector.create(transform?.position?.x || 0, transform?.position?.y || 0);
     nativeBody.angle = transform?.rotation || 0;
-    return new MatterRigidBodyComponent(nativeBody);
+    return new MatterRigidBodyComponent(nativeBody, descriptor.shape);
   }
 
   createTrigger(

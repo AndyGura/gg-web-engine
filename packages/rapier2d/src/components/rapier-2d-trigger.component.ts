@@ -1,7 +1,13 @@
 import { Observable, Subject } from 'rxjs';
 import { ColliderDesc, RigidBodyDesc } from '@dimforge/rapier2d-compat';
 import { Rapier2dRigidBodyComponent } from './rapier-2d-rigid-body.component';
-import { Gg2dWorld, ITrigger2dComponent, VisualTypeDocRepo2D } from '@gg-web-engine/core';
+import {
+  DebugBody2DSettings,
+  Gg2dWorld,
+  ITrigger2dComponent,
+  Shape2DDescriptor,
+  VisualTypeDocRepo2D,
+} from '@gg-web-engine/core';
 import { Rapier2dWorldComponent } from './rapier-2d-world.component';
 import { Rapier2dPhysicsTypeDocRepo } from '../types';
 
@@ -20,12 +26,17 @@ export class Rapier2dTriggerComponent
   protected readonly onEnter$: Subject<Rapier2dRigidBodyComponent> = new Subject<Rapier2dRigidBodyComponent>();
   protected readonly onLeft$: Subject<Rapier2dRigidBodyComponent> = new Subject<Rapier2dRigidBodyComponent>();
 
+  get debugBodySettings(): DebugBody2DSettings {
+    return { shape: this.shape, color: 0xffff00 };
+  }
+
   constructor(
     protected readonly world: Rapier2dWorldComponent,
     protected _colliderDescr: ColliderDesc[],
+    public readonly shape: Shape2DDescriptor,
     protected _bodyDescr: RigidBodyDesc,
   ) {
-    super(world, _colliderDescr, _bodyDescr, null!);
+    super(world, _colliderDescr, shape, _bodyDescr, null!);
   }
 
   addToWorld(world: Gg2dWorld<VisualTypeDocRepo2D, Rapier2dPhysicsTypeDocRepo>): void {
@@ -54,7 +65,7 @@ export class Rapier2dTriggerComponent
   }
 
   clone(): Rapier2dTriggerComponent {
-    const [colliderDescr, bd] = super.factoryProps;
-    return new Rapier2dTriggerComponent(this.world, colliderDescr, bd);
+    const [colliderDescr, sd, bd] = super.factoryProps;
+    return new Rapier2dTriggerComponent(this.world, colliderDescr, sd, bd);
   }
 }
