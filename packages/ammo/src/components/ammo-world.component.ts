@@ -1,4 +1,4 @@
-import { CollisionGroup, IBodyComponent, IPhysicsWorld3dComponent, Point3, Point4 } from '@gg-web-engine/core';
+import { CollisionGroup, IPhysicsWorld3dComponent, Point3 } from '@gg-web-engine/core';
 import { Subject } from 'rxjs';
 import Ammo from '../ammo.js/ammo';
 import { AmmoFactory } from '../ammo-factory';
@@ -17,12 +17,9 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
   }
 
   public readonly afterTick$: Subject<void> = new Subject<void>();
-  public readonly added$: Subject<
-    AmmoRigidBodyComponent | AmmoTriggerComponent | IBodyComponent<Point3, Point4, AmmoPhysicsTypeDocRepo>
-  > = new Subject();
-  public readonly removed$: Subject<
-    AmmoRigidBodyComponent | AmmoTriggerComponent | IBodyComponent<Point3, Point4, AmmoPhysicsTypeDocRepo>
-  > = new Subject();
+  public readonly added$: Subject<AmmoRigidBodyComponent | AmmoTriggerComponent> = new Subject();
+  public readonly removed$: Subject<AmmoRigidBodyComponent | AmmoTriggerComponent> = new Subject();
+  public readonly children: (AmmoRigidBodyComponent | AmmoTriggerComponent)[] = [];
 
   private _loader: AmmoLoader | null = null;
   public get loader(): AmmoLoader {
@@ -56,6 +53,11 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
   private solver: Ammo.btSequentialImpulseConstraintSolver | undefined;
   private gravityVector: Ammo.btVector3 | undefined;
   protected _dynamicAmmoWorld: Ammo.btDiscreteDynamicsWorld | undefined;
+
+  constructor() {
+    this.added$.subscribe(c => this.children.push(c));
+    this.removed$.subscribe(c => this.children.splice(this.children.indexOf(c), 1));
+  }
 
   async init(): Promise<void> {
     await Ammo.bind(Ammo)(Ammo);

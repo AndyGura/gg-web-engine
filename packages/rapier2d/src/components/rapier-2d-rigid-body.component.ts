@@ -95,7 +95,11 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
   }
 
   get debugBodySettings(): DebugBody2DSettings {
-    return { shape: this.shape, color: 0xff0000 };
+    if (this._bodyDescr.mass > 0) {
+      return { shape: this.shape, type: 'RIGID_DYNAMIC', sleeping: !!this._nativeBody?.isSleeping() };
+    } else {
+      return { shape: this.shape, type: 'RIGID_STATIC' };
+    }
   }
 
   constructor(

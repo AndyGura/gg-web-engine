@@ -2,15 +2,15 @@ import { PhysicsTypeDocRepo } from '../../gg-world';
 import { IComponent } from '../i-component';
 import { CollisionGroup } from '../../models/body-options';
 import { Subject } from 'rxjs';
-import { IBodyComponent } from './i-body.component';
 
 export interface IPhysicsWorldComponent<D, R, TypeDoc extends PhysicsTypeDocRepo<D, R> = PhysicsTypeDocRepo<D, R>>
   extends IComponent {
   readonly factory: TypeDoc['factory'];
   gravity: D;
 
-  readonly added$: Subject<IBodyComponent<D, R, TypeDoc>>;
-  readonly removed$: Subject<IBodyComponent<D, R, TypeDoc>>;
+  readonly added$: Subject<TypeDoc['rigidBody'] | TypeDoc['trigger'] | any>;
+  readonly removed$: Subject<TypeDoc['rigidBody'] | TypeDoc['trigger'] | any>;
+  readonly children: (TypeDoc['rigidBody'] | TypeDoc['trigger'] | any)[];
 
   init(): Promise<void>;
 

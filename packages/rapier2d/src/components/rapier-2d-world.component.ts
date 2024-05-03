@@ -1,4 +1,4 @@
-import { CollisionGroup, IBodyComponent, IPhysicsWorld2dComponent, Pnt2, Point2 } from '@gg-web-engine/core';
+import { CollisionGroup, IPhysicsWorld2dComponent, Pnt2, Point2 } from '@gg-web-engine/core';
 import { EventQueue, init, Vector2, World } from '@dimforge/rapier2d-compat';
 import { Rapier2dRigidBodyComponent } from './rapier-2d-rigid-body.component';
 import { Rapier2dFactory } from '../rapier-2d-factory';
@@ -14,12 +14,9 @@ export class Rapier2dWorldComponent implements IPhysicsWorld2dComponent<Rapier2d
     return this._factory;
   }
 
-  public readonly added$: Subject<
-    Rapier2dRigidBodyComponent | IBodyComponent<Point2, number, Rapier2dPhysicsTypeDocRepo>
-  > = new Subject();
-  public readonly removed$: Subject<
-    Rapier2dRigidBodyComponent | IBodyComponent<Point2, number, Rapier2dPhysicsTypeDocRepo>
-  > = new Subject();
+  public readonly added$: Subject<Rapier2dRigidBodyComponent> = new Subject();
+  public readonly removed$: Subject<Rapier2dRigidBodyComponent> = new Subject();
+  public readonly children: Rapier2dRigidBodyComponent[] = [];
 
   private readonly unitScale: number = 100; // TODO abstractize somehow, hardcoded now
   private _gravity: Point2 = Pnt2.scalarMult({ x: 0, y: 9.82 }, this.unitScale);
@@ -52,6 +49,11 @@ export class Rapier2dWorldComponent implements IPhysicsWorld2dComponent<Rapier2d
   }
 
   public readonly handleIdEntityMap: Map<number, Rapier2dRigidBodyComponent> = new Map();
+
+  constructor() {
+    this.added$.subscribe(c => this.children.push(c));
+    this.removed$.subscribe(c => this.children.splice(this.children.indexOf(c), 1));
+  }
 
   async init(): Promise<void> {
     await init();

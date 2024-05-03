@@ -9,7 +9,12 @@ export interface BodyOptions {
   interactWithCollisionGroups: CollisionGroup[] | 'all';
 }
 
-export type DebugBodySettings = {
-  shape: any;
-  color: number;
-};
+export type DebugBodySettings = { shape: any } & (
+  | {
+      type: 'RIGID_STATIC' | 'TRIGGER';
+    }
+  | {
+      type: 'RIGID_DYNAMIC';
+      sleeping: boolean;
+    }
+);

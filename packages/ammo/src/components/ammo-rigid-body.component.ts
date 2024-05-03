@@ -38,7 +38,11 @@ export class AmmoRigidBodyComponent
   }
 
   get debugBodySettings(): DebugBody3DSettings {
-    return { shape: this.shape, color: 0xff0000 };
+    if (this._nativeBody.isStaticOrKinematicObject()) {
+      return { shape: this.shape, type: 'RIGID_STATIC' };
+    } else {
+      return { shape: this.shape, type: 'RIGID_DYNAMIC', sleeping: !this._nativeBody.isActive() };
+    }
   }
 
   constructor(

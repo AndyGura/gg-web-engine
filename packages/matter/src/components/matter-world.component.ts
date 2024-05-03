@@ -1,4 +1,4 @@
-import { CollisionGroup, IBodyComponent, IPhysicsWorld2dComponent, Point2 } from '@gg-web-engine/core';
+import { CollisionGroup, IPhysicsWorld2dComponent, Point2 } from '@gg-web-engine/core';
 import { Engine, World } from 'matter-js';
 import { MatterFactory } from '../matter-factory';
 import { MatterPhysicsTypeDocRepo } from '../types';
@@ -15,11 +15,9 @@ export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhys
 
   public readonly factory: MatterFactory = new MatterFactory();
 
-  public readonly added$: Subject<MatterRigidBodyComponent | IBodyComponent<Point2, number, MatterPhysicsTypeDocRepo>> =
-    new Subject();
-  public readonly removed$: Subject<
-    MatterRigidBodyComponent | IBodyComponent<Point2, number, MatterPhysicsTypeDocRepo>
-  > = new Subject();
+  public readonly added$: Subject<MatterRigidBodyComponent> = new Subject();
+  public readonly removed$: Subject<MatterRigidBodyComponent> = new Subject();
+  public readonly children: MatterRigidBodyComponent[] = [];
 
   private _gravity: Point2 = { x: 0, y: 9.82 };
   public get gravity(): Point2 {
@@ -32,6 +30,11 @@ export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhys
       this.matterEngine.gravity.x = this._gravity.x;
       this.matterEngine.gravity.y = this._gravity.y;
     }
+  }
+
+  constructor() {
+    this.added$.subscribe(c => this.children.push(c));
+    this.removed$.subscribe(c => this.children.splice(this.children.indexOf(c), 1));
   }
 
   async init(): Promise<void> {

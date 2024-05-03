@@ -66,7 +66,11 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
   }
 
   get debugBodySettings(): DebugBody3DSettings {
-    return { shape: this.shape, color: 0xff0000 };
+    if (this._bodyDescr.mass > 0) {
+      return { shape: this.shape, type: 'RIGID_DYNAMIC', sleeping: !!this._nativeBody?.isSleeping() };
+    } else {
+      return { shape: this.shape, type: 'RIGID_STATIC' };
+    }
   }
 
   protected _nativeBody: RigidBody | null = null;

@@ -27,7 +27,7 @@ export class Rapier2dTriggerComponent
   protected readonly onLeft$: Subject<Rapier2dRigidBodyComponent> = new Subject<Rapier2dRigidBodyComponent>();
 
   get debugBodySettings(): DebugBody2DSettings {
-    return { shape: this.shape, color: 0xffff00 };
+    return { shape: this.shape, type: 'TRIGGER' };
   }
 
   constructor(

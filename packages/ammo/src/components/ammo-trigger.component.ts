@@ -20,7 +20,7 @@ export class AmmoTriggerComponent
   public entity: IEntity | null = null;
 
   get debugBodySettings(): DebugBody3DSettings {
-    return { shape: this.shape, color: 0xffff00 };
+    return { shape: this.shape, type: 'TRIGGER' };
   }
 
   get onEntityEntered(): Observable<AmmoRigidBodyComponent> {

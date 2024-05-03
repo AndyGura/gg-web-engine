@@ -1,10 +1,10 @@
-import { BodyShape3DDescriptor, Shape3DDescriptor } from './models/shapes';
+import { BodyShape3DDescriptor, Shape3DDescriptor, Shape3DMeshDescriptor } from './models/shapes';
 import { Point3, Point4 } from '../base';
 import { PhysicsTypeDocRepo3D, VisualTypeDocRepo3D } from './gg-3d-world';
 
 export type DisplayObject3dOpts<Tex> = {
   color?: number;
-  shading?: 'unlit' | 'standart' | 'phong';
+  shading?: 'unlit' | 'standart' | 'phong' | 'wireframe';
   diffuse?: Tex;
   castShadow?: boolean;
   receiveShadow?: boolean;
@@ -12,7 +12,7 @@ export type DisplayObject3dOpts<Tex> = {
 
 export abstract class IDisplayObject3dComponentFactory<TypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D> {
   abstract createPrimitive(
-    descriptor: Shape3DDescriptor,
+    descriptor: Shape3DMeshDescriptor,
     material?: DisplayObject3dOpts<TypeDoc['texture']>,
   ): TypeDoc['displayObject'];
 
