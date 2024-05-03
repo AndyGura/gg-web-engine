@@ -1,5 +1,5 @@
 import { IVisualScene3dComponent, RendererOptions } from '@gg-web-engine/core';
-import { Color, Fog, MeshBasicMaterial, Scene } from 'three';
+import { Scene } from 'three';
 import { ThreeFactory } from '../three-factory';
 import { ThreeLoader } from '../three-loader';
 import { ThreeCameraComponent } from './three-camera.component';
@@ -29,24 +29,5 @@ export class ThreeSceneComponent implements IVisualScene3dComponent<ThreeVisualT
 
   dispose(): void {
     this._nativeScene = new Scene();
-  }
-
-  private _renderWireframe: boolean = false;
-  get renderWireframe(): boolean {
-    return this._renderWireframe;
-  }
-
-  set renderWireframe(value: boolean) {
-    this._renderWireframe = value;
-    if (value) {
-      const mat = new MeshBasicMaterial();
-      mat.wireframe = true;
-      mat.color = new Color(0xff, 0, 0);
-      mat.wireframeLinewidth = 1;
-      this.nativeScene!.overrideMaterial = mat;
-      this.nativeScene!.fog = new Fog(0x000000, 100, 1000);
-    } else {
-      this.nativeScene!.overrideMaterial = null;
-    }
   }
 }
