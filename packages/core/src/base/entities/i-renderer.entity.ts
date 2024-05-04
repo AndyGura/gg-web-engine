@@ -37,6 +37,14 @@ export abstract class IRendererEntity<
     return this.renderer.rendererOptions;
   }
 
+  get physicsDebugViewActive(): boolean {
+    return this.renderer.physicsDebugViewActive;
+  }
+
+  set physicsDebugViewActive(value: boolean) {
+    this.renderer.physicsDebugViewActive = value;
+  }
+
   /**
    Initializes a new instance of the BaseGgRenderer class.
    * @param renderer
