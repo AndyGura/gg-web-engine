@@ -10,7 +10,7 @@ import {
   Qtrn,
   Shape3DMeshDescriptor,
 } from '@gg-web-engine/core';
-import { ThreeRendererComponent } from './three-renderer-component';
+import { ThreeRendererComponent } from './three-renderer.component';
 import { ThreeVisualTypeDocRepo } from '../types';
 import { BufferGeometry, Camera, LineSegments, Mesh, MeshBasicMaterial, Scene, Vector3, WebGLRenderer } from 'three';
 import { tabulateArray } from '../utils/tabulate-array';

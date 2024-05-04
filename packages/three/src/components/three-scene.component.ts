@@ -3,7 +3,7 @@ import { Scene } from 'three';
 import { ThreeFactory } from '../three-factory';
 import { ThreeLoader } from '../three-loader';
 import { ThreeCameraComponent } from './three-camera.component';
-import { ThreeRendererComponent } from './three-renderer-component';
+import { ThreeRendererComponent } from './three-renderer.component';
 import { ThreeVisualTypeDocRepo } from '../types';
 
 export class ThreeSceneComponent implements IVisualScene3dComponent<ThreeVisualTypeDocRepo> {

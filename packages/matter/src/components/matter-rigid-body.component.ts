@@ -52,7 +52,7 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
   public entity: Entity2d | null = null;
 
   get debugBodySettings(): DebugBody2DSettings {
-    if (this.nativeBody.mass > 0) {
+    if (isFinite(this.nativeBody.mass)) {
       return { shape: this.shape, type: 'RIGID_DYNAMIC', sleeping: this.nativeBody.isSleeping };
     } else {
       return { shape: this.shape, type: 'RIGID_STATIC' };
@@ -60,7 +60,6 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
   }
 
   constructor(public nativeBody: Body, public readonly shape: Shape2DDescriptor) {}
-
   get interactWithCollisionGroups(): CollisionGroup[] {
     throw new Error('Collision groups not implemented for Matter.js');
   }
