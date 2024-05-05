@@ -8,8 +8,11 @@ export interface IPhysicsWorldComponent<D, R, TypeDoc extends PhysicsTypeDocRepo
   readonly factory: TypeDoc['factory'];
   gravity: D;
 
+  /** event emitter, emits newly added physics components */
   readonly added$: Subject<TypeDoc['rigidBody'] | TypeDoc['trigger'] | any>;
+  /** event emitter, emits just removed physics components */
   readonly removed$: Subject<TypeDoc['rigidBody'] | TypeDoc['trigger'] | any>;
+  /** list of currently added to world physics components */
   readonly children: (TypeDoc['rigidBody'] | TypeDoc['trigger'] | any)[];
 
   init(): Promise<void>;

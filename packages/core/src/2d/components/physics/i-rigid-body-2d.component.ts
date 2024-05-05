@@ -6,5 +6,6 @@ export interface IRigidBody2dComponent<TypeDoc extends PhysicsTypeDocRepo2D = Ph
   extends IRigidBodyComponent<Point2, number, TypeDoc> {
   angularVelocity: number;
 
+  /** body info for physics debugger view */
   readonly debugBodySettings: DebugBody2DSettings;
 }

@@ -5,6 +5,7 @@ import { DebugBody3DSettings } from '../../models/body-options';
 
 export interface ITrigger3dComponent<TypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D>
   extends ITriggerComponent<Point3, Point4, TypeDoc> {
+  /** body info for physics debugger view */
   readonly debugBodySettings: DebugBody3DSettings;
 
   get onEntityEntered(): Observable<TypeDoc['rigidBody']>;
