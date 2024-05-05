@@ -36,6 +36,11 @@ export abstract class IRendererComponent<D, R, VTypeDoc extends VisualTypeDocRep
   /** Specifies the options for the renderer. */
   public readonly rendererOptions: RendererOptions;
 
+  /** get flag whether renderer shows physics debugger view */
+  abstract get physicsDebugViewActive(): boolean;
+  /** turns on/off physics debugger view for this renderer */
+  abstract set physicsDebugViewActive(value: boolean);
+
   protected constructor(
     public readonly scene: IVisualSceneComponent<D, R, VTypeDoc>,
     public readonly canvas?: HTMLCanvasElement,

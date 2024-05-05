@@ -1,14 +1,19 @@
-import { GgWorld, PhysicsTypeDocRepo } from '../../gg-world';
-import { IDebugPhysicsDrawer } from '../../interfaces/i-debug-physics-drawer';
+import { PhysicsTypeDocRepo } from '../../gg-world';
 import { IComponent } from '../i-component';
 import { CollisionGroup } from '../../models/body-options';
+import { Subject } from 'rxjs';
 
 export interface IPhysicsWorldComponent<D, R, TypeDoc extends PhysicsTypeDocRepo<D, R> = PhysicsTypeDocRepo<D, R>>
   extends IComponent {
   readonly factory: TypeDoc['factory'];
   gravity: D;
 
-  get physicsDebugViewActive(): boolean;
+  /** event emitter, emits newly added physics components */
+  readonly added$: Subject<TypeDoc['rigidBody'] | TypeDoc['trigger'] | any>;
+  /** event emitter, emits just removed physics components */
+  readonly removed$: Subject<TypeDoc['rigidBody'] | TypeDoc['trigger'] | any>;
+  /** list of currently added to world physics components */
+  readonly children: (TypeDoc['rigidBody'] | TypeDoc['trigger'] | any)[];
 
   init(): Promise<void>;
 
@@ -22,8 +27,4 @@ export interface IPhysicsWorldComponent<D, R, TypeDoc extends PhysicsTypeDocRepo
   registerCollisionGroup(): CollisionGroup;
 
   deregisterCollisionGroup(group: CollisionGroup): void;
-
-  startDebugger(world: GgWorld<D, R>, drawer: IDebugPhysicsDrawer<D, R>): void;
-
-  stopDebugger(world: GgWorld<D, R>): void;
 }

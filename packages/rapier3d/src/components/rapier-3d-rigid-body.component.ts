@@ -2,6 +2,7 @@ import {
   BitMask,
   Body3DOptions,
   CollisionGroup,
+  DebugBody3DSettings,
   Entity3d,
   Gg3dWorld,
   IRigidBody3dComponent,
@@ -9,6 +10,7 @@ import {
   Point3,
   Point4,
   Qtrn,
+  Shape3DDescriptor,
   VisualTypeDocRepo3D,
 } from '@gg-web-engine/core';
 import { Collider, ColliderDesc, Quaternion, RigidBody, RigidBodyDesc, Vector3 } from '@dimforge/rapier3d-compat';
@@ -63,6 +65,14 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
     }
   }
 
+  get debugBodySettings(): DebugBody3DSettings {
+    if (this._bodyDescr.mass > 0) {
+      return { shape: this.shape, type: 'RIGID_DYNAMIC', sleeping: !!this._nativeBody?.isSleeping() };
+    } else {
+      return { shape: this.shape, type: 'RIGID_STATIC' };
+    }
+  }
+
   protected _nativeBody: RigidBody | null = null;
   protected _nativeBodyColliders: Collider[] | null = null;
 
@@ -79,7 +89,12 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
 
   public name: string = '';
 
-  public get factoryProps(): [ColliderDesc[], RigidBodyDesc, Omit<Omit<Body3DOptions, 'dynamic'>, 'mass'>] {
+  public get factoryProps(): [
+    ColliderDesc[],
+    Shape3DDescriptor,
+    RigidBodyDesc,
+    Omit<Omit<Body3DOptions, 'dynamic'>, 'mass'>,
+  ] {
     const colliderDescr = this._colliderDescr.map(cd => {
       const d = new ColliderDesc(cd.shape);
       d.setTranslation(cd.translation.x, cd.translation.y, cd.translation.z);
@@ -96,12 +111,13 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
     bd.setTranslation(this._bodyDescr.translation.x, this._bodyDescr.translation.y, this._bodyDescr.translation.z);
     bd.setRotation({ ...this._bodyDescr.rotation });
     // TODO more fields here?
-    return [colliderDescr, bd, this._colliderOptions];
+    return [colliderDescr, this.shape, bd, this._colliderOptions];
   }
 
   constructor(
     protected readonly world: Rapier3dWorldComponent,
     protected _colliderDescr: ColliderDesc[],
+    public readonly shape: Shape3DDescriptor,
     protected _bodyDescr: RigidBodyDesc,
     protected _colliderOptions: Omit<Omit<Body3DOptions, 'dynamic'>, 'mass'>,
   ) {
@@ -176,6 +192,7 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
       return col;
     });
     this.world.handleIdEntityMap.set(this._nativeBody!.handle, this);
+    this.world.added$.next(this);
   }
 
   removeFromWorld(world: Gg3dWorld<VisualTypeDocRepo3D, Rapier3dPhysicsTypeDocRepo>): void {
@@ -191,6 +208,7 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
       this._nativeBody = null;
       this._nativeBodyColliders = null;
     }
+    this.world.removed$.next(this);
   }
 
   resetMotion(): void {

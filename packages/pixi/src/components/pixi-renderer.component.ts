@@ -1,13 +1,40 @@
-import { Gg2dWorld, IRenderer2dComponent, Point2, RendererOptions } from '@gg-web-engine/core';
+import { Gg2dWorld, IRenderer2dComponent, PhysicsTypeDocRepo2D, Point2, RendererOptions } from '@gg-web-engine/core';
 import { Application } from 'pixi.js';
 import { PixiSceneComponent } from './pixi-scene.component';
 import { PixiVisualTypeDocRepo2D } from '../types';
 import { first, Subject } from 'rxjs';
+import { PixiPhysicsDebugView } from './pixi-physics-debug-view';
 
 export class PixiRendererComponent extends IRenderer2dComponent<PixiVisualTypeDocRepo2D> {
   public readonly application: Application;
   private initialized: boolean = false;
   private onInitialized$: Subject<void> = new Subject();
+  protected world: Gg2dWorld<PixiVisualTypeDocRepo2D, PhysicsTypeDocRepo2D, PixiSceneComponent> | null = null;
+
+  private debugView: PixiPhysicsDebugView | null = null;
+  private _physicsDebugViewActive: boolean = false;
+  public get physicsDebugViewActive(): boolean {
+    return this._physicsDebugViewActive;
+  }
+
+  public set physicsDebugViewActive(value: boolean) {
+    if (this._physicsDebugViewActive == value) {
+      return;
+    }
+    this._physicsDebugViewActive = value;
+    if (this.world) {
+      if (value) {
+        this.debugView = new PixiPhysicsDebugView(this.world);
+        this.application.stage.addChildAt(
+          this.debugView.debugContainer,
+          this.application.stage.getChildIndex(this.scene.nativeContainer!) + 1,
+        );
+      } else {
+        this.debugView!.dispose();
+        this.debugView = null;
+      }
+    }
+  }
 
   constructor(
     public readonly scene: PixiSceneComponent,
@@ -49,16 +76,29 @@ export class PixiRendererComponent extends IRenderer2dComponent<PixiVisualTypeDo
     }
   }
 
-  addToWorld(world: Gg2dWorld<PixiVisualTypeDocRepo2D>): void {
+  addToWorld(world: Gg2dWorld<PixiVisualTypeDocRepo2D, PhysicsTypeDocRepo2D, PixiSceneComponent>): void {
+    this.world = world;
     this.application.stage.addChild(this.scene.nativeContainer!);
+    if (this.physicsDebugViewActive) {
+      this.debugView = new PixiPhysicsDebugView(world);
+      this.application.stage.addChild(this.debugView.debugContainer);
+    }
   }
 
-  removeFromWorld(world: Gg2dWorld<PixiVisualTypeDocRepo2D>): void {
+  removeFromWorld(world: Gg2dWorld<PixiVisualTypeDocRepo2D, PhysicsTypeDocRepo2D, PixiSceneComponent>): void {
+    if (this.physicsDebugViewActive) {
+      this.debugView!.dispose();
+      this.debugView = null;
+    }
     this.application.stage.removeChild(this.scene.nativeContainer!);
+    this.world = null;
   }
 
   render(): void {
     if (this.initialized) {
+      if (this.debugView) {
+        this.debugView.sync();
+      }
       this.application.render();
     } else {
       this.onInitialized$.pipe(first()).subscribe(() => this.render());

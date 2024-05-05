@@ -1,11 +1,13 @@
 import {
   CollisionGroup,
+  DebugBody2DSettings,
   Entity2d,
   Gg2dWorld,
   IRigidBody2dComponent,
   IVisualScene2dComponent,
   Pnt2,
   Point2,
+  Shape2DDescriptor,
   VisualTypeDocRepo2D,
 } from '@gg-web-engine/core';
 import { Body, Composite, Vector } from 'matter-js';
@@ -49,8 +51,15 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
 
   public entity: Entity2d | null = null;
 
-  constructor(public nativeBody: Body) {}
+  get debugBodySettings(): DebugBody2DSettings {
+    if (isFinite(this.nativeBody.mass)) {
+      return { shape: this.shape, type: 'RIGID_DYNAMIC', sleeping: this.nativeBody.isSleeping };
+    } else {
+      return { shape: this.shape, type: 'RIGID_STATIC' };
+    }
+  }
 
+  constructor(public nativeBody: Body, public readonly shape: Shape2DDescriptor) {}
   get interactWithCollisionGroups(): CollisionGroup[] {
     throw new Error('Collision groups not implemented for Matter.js');
   }
@@ -76,12 +85,14 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
     world: Gg2dWorld<VisualTypeDocRepo2D, MatterPhysicsTypeDocRepo, IVisualScene2dComponent, MatterWorldComponent>,
   ): void {
     Composite.add(world.physicsWorld.matterWorld!, this.nativeBody);
+    world.physicsWorld.added$.next(this);
   }
 
   removeFromWorld(
     world: Gg2dWorld<VisualTypeDocRepo2D, MatterPhysicsTypeDocRepo, IVisualScene2dComponent, MatterWorldComponent>,
   ): void {
     Composite.remove(world.physicsWorld.matterWorld!, this.nativeBody);
+    world.physicsWorld.removed$.next(this);
   }
 
   dispose(): void {}

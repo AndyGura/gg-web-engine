@@ -1,7 +1,9 @@
-import { CollisionGroup, Gg2dWorld, IDebugPhysicsDrawer, IPhysicsWorld2dComponent, Point2 } from '@gg-web-engine/core';
+import { CollisionGroup, IPhysicsWorld2dComponent, Point2 } from '@gg-web-engine/core';
 import { Engine, World } from 'matter-js';
 import { MatterFactory } from '../matter-factory';
 import { MatterPhysicsTypeDocRepo } from '../types';
+import { Subject } from 'rxjs';
+import { MatterRigidBodyComponent } from './matter-rigid-body.component';
 
 // TODO implement bindings for collision groups. Matter.js has elegant solution for that, read body.collisionFilter
 export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhysicsTypeDocRepo> {
@@ -12,6 +14,10 @@ export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhys
   }
 
   public readonly factory: MatterFactory = new MatterFactory();
+
+  public readonly added$: Subject<MatterRigidBodyComponent> = new Subject();
+  public readonly removed$: Subject<MatterRigidBodyComponent> = new Subject();
+  public readonly children: MatterRigidBodyComponent[] = [];
 
   private _gravity: Point2 = { x: 0, y: 9.82 };
   public get gravity(): Point2 {
@@ -26,8 +32,9 @@ export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhys
     }
   }
 
-  public get physicsDebugViewActive(): boolean {
-    return false;
+  constructor() {
+    this.added$.subscribe(c => this.children.push(c));
+    this.removed$.subscribe(c => this.children.splice(this.children.indexOf(c), 1));
   }
 
   async init(): Promise<void> {
@@ -44,16 +51,6 @@ export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhys
 
   simulate(delta: number): void {
     Engine.update(this.matterEngine!, delta);
-  }
-
-  startDebugger(world: Gg2dWorld, drawer: IDebugPhysicsDrawer<Point2, number>): void {
-    // TODO
-    throw new Error('Matter.js DebugDrawer not implemented');
-  }
-
-  stopDebugger(): void {
-    // TODO
-    throw new Error('Matter.js DebugDrawer not implemented');
   }
 
   dispose(): void {

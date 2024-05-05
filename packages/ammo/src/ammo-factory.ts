@@ -25,7 +25,12 @@ export class AmmoFactory implements IPhysicsBody3dComponentFactory<AmmoPhysicsTy
       rotation?: Point4;
     },
   ): AmmoRigidBodyComponent {
-    return this.createRigidBodyFromShape(this.createShape(descriptor.shape), descriptor.body, transform);
+    return this.createRigidBodyFromShape(
+      this.createShape(descriptor.shape),
+      descriptor.shape,
+      descriptor.body,
+      transform,
+    );
   }
 
   createTrigger(
@@ -35,7 +40,7 @@ export class AmmoFactory implements IPhysicsBody3dComponentFactory<AmmoPhysicsTy
       rotation?: Point4;
     },
   ): AmmoTriggerComponent {
-    return this.createTriggerFromShape(this.createShape(descriptor), transform);
+    return this.createTriggerFromShape(this.createShape(descriptor), descriptor, transform);
   }
 
   createRaycastVehicle(chassis: AmmoRigidBodyComponent): AmmoRaycastVehicleComponent {
@@ -111,7 +116,8 @@ export class AmmoFactory implements IPhysicsBody3dComponentFactory<AmmoPhysicsTy
   }
 
   public createRigidBodyFromShape(
-    shape: Ammo.btCollisionShape,
+    nativeShape: Ammo.btCollisionShape,
+    shapeDescr: Shape3DDescriptor,
     options: Partial<Body3DOptions>,
     transform?: { position?: Point3; rotation?: Point4 },
   ): AmmoRigidBodyComponent {
@@ -125,8 +131,13 @@ export class AmmoFactory implements IPhysicsBody3dComponentFactory<AmmoPhysicsTy
     ammoTransform.setRotation(new Ammo.btQuaternion(rot.x, rot.y, rot.z, rot.w));
     const motionState = new Ammo.btDefaultMotionState(ammoTransform);
     const localInertia = new Ammo.btVector3(0, 0, 0);
-    shape.calculateLocalInertia(options.mass || 0, localInertia);
-    const environmentBodyCI = new Ammo.btRigidBodyConstructionInfo(options.mass || 0, motionState, shape, localInertia);
+    nativeShape.calculateLocalInertia(options.mass || 0, localInertia);
+    const environmentBodyCI = new Ammo.btRigidBodyConstructionInfo(
+      options.mass || 0,
+      motionState,
+      nativeShape,
+      localInertia,
+    );
     if (options.friction) {
       environmentBodyCI.set_m_friction(options.friction);
       environmentBodyCI.set_m_rollingFriction(options.friction);
@@ -134,7 +145,7 @@ export class AmmoFactory implements IPhysicsBody3dComponentFactory<AmmoPhysicsTy
     if (options.restitution) {
       environmentBodyCI.set_m_restitution(options.restitution);
     }
-    const comp = new AmmoRigidBodyComponent(this.world, new Ammo.btRigidBody(environmentBodyCI));
+    const comp = new AmmoRigidBodyComponent(this.world, new Ammo.btRigidBody(environmentBodyCI), shapeDescr);
     if (options.ownCollisionGroups && options.ownCollisionGroups !== 'all') {
       comp.ownCollisionGroups = options.ownCollisionGroups;
     }
@@ -145,11 +156,12 @@ export class AmmoFactory implements IPhysicsBody3dComponentFactory<AmmoPhysicsTy
   }
 
   public createTriggerFromShape(
-    shape: Ammo.btCollisionShape,
+    nativeShape: Ammo.btCollisionShape,
+    shapeDescr: Shape3DDescriptor,
     transform?: { position?: Point3; rotation?: Point4 },
   ): AmmoTriggerComponent {
     const ghostObject = new Ammo.btPairCachingGhostObject();
-    ghostObject.setCollisionShape(shape);
+    ghostObject.setCollisionShape(nativeShape);
     ghostObject.setCollisionFlags(ghostObject.getCollisionFlags() | 4); // 4 is a CF_NO_CONTACT_RESPONSE collision flag
     ghostObject
       .getWorldTransform()
@@ -166,6 +178,6 @@ export class AmmoFactory implements IPhysicsBody3dComponentFactory<AmmoPhysicsTy
           transform?.rotation?.w || 1,
         ),
       );
-    return new AmmoTriggerComponent(this.world, ghostObject);
+    return new AmmoTriggerComponent(this.world, ghostObject, shapeDescr);
   }
 }

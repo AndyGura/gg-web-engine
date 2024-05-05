@@ -2,11 +2,13 @@ import {
   BitMask,
   Body2DOptions,
   CollisionGroup,
+  DebugBody2DSettings,
   Entity2d,
   Gg2dWorld,
   IRigidBody2dComponent,
   Pnt2,
   Point2,
+  Shape2DDescriptor,
   VisualTypeDocRepo2D,
 } from '@gg-web-engine/core';
 import {
@@ -83,13 +85,27 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
 
   public name: string = '';
 
-  public get factoryProps(): [ColliderDesc[], RigidBodyDesc, Omit<Omit<Body2DOptions, 'dynamic'>, 'mass'>] {
-    return [this._colliderDescr, this._bodyDescr, this._colliderOptions];
+  public get factoryProps(): [
+    ColliderDesc[],
+    Shape2DDescriptor,
+    RigidBodyDesc,
+    Omit<Omit<Body2DOptions, 'dynamic'>, 'mass'>,
+  ] {
+    return [this._colliderDescr, this.shape, this._bodyDescr, this._colliderOptions];
+  }
+
+  get debugBodySettings(): DebugBody2DSettings {
+    if (this._bodyDescr.mass > 0) {
+      return { shape: this.shape, type: 'RIGID_DYNAMIC', sleeping: !!this._nativeBody?.isSleeping() };
+    } else {
+      return { shape: this.shape, type: 'RIGID_STATIC' };
+    }
   }
 
   constructor(
     protected readonly world: Rapier2dWorldComponent,
     protected _colliderDescr: ColliderDesc[],
+    public readonly shape: Shape2DDescriptor,
     protected _bodyDescr: RigidBodyDesc,
     protected _colliderOptions: Omit<Omit<Body2DOptions, 'dynamic'>, 'mass'>,
   ) {}
@@ -159,6 +175,7 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
       return col;
     });
     this.world.handleIdEntityMap.set(this._nativeBody!.handle, this);
+    this.world.added$.next(this);
   }
 
   removeFromWorld(world: Gg2dWorld<VisualTypeDocRepo2D, Rapier2dPhysicsTypeDocRepo>): void {
@@ -174,6 +191,7 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
       this._nativeBody = null;
       this._nativeBodyColliders = null;
     }
+    this.world.removed$.next(this);
   }
 
   resetMotion(): void {

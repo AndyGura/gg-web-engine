@@ -6,6 +6,7 @@ import {
   IPositionable,
   IRenderableEntity,
   IRendererComponent,
+  IRendererEntity,
   IRigidBodyComponent,
   ITriggerComponent,
   IVisualSceneComponent,
@@ -84,8 +85,13 @@ export abstract class GgWorld<
         this,
         'dr_drawphysics',
         async (...args: string[]) => {
-          this.physicsDebugViewActive = ['1', 'true', '+'].includes(args[0]);
-          return '' + this.physicsWorld.physicsDebugViewActive;
+          const value = ['1', 'true', '+'].includes(args[0]);
+          const renderer = this.children.find(x => x instanceof IRendererEntity);
+          if (renderer) {
+            (renderer as IRendererEntity<unknown, unknown>).physicsDebugViewActive = value;
+            return '' + value;
+          }
+          return 'false';
         },
         'args: [0 or 1]; turn on/off physics debug view. Default value is 0',
       );
@@ -105,7 +111,7 @@ export abstract class GgWorld<
           this.tickListeners[i].tick$.next([elapsed, delta]);
         }
       }
-      // run phycics simulation
+      // run physics simulation
       this.physicsWorld.simulate(delta);
       // emit tick to all remained entities
       for (i; i < this.tickListeners.length; i++) {
@@ -195,25 +201,6 @@ export abstract class GgWorld<
     }
     if (dispose) {
       entity.dispose();
-    }
-  }
-
-  public get physicsDebugViewActive(): boolean {
-    return this.physicsWorld.physicsDebugViewActive;
-  }
-
-  public set physicsDebugViewActive(value: boolean) {
-    if (this.physicsDebugViewActive === value) {
-      return;
-    }
-    if (value) {
-      const cls = this.visualScene.debugPhysicsDrawerClass;
-      if (!cls) {
-        throw new Error('Debug drawer is not available');
-      }
-      this.physicsWorld.startDebugger(this, new cls());
-    } else {
-      this.physicsWorld.stopDebugger(this);
     }
   }
 }

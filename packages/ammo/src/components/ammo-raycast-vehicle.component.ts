@@ -50,7 +50,7 @@ export class AmmoRaycastVehicleComponent
   }
 
   constructor(protected readonly world: AmmoWorldComponent, public chassisBody: AmmoRigidBodyComponent) {
-    super(world, chassisBody.nativeBody);
+    super(world, chassisBody.nativeBody, chassisBody.shape);
     this.raycaster = new Ammo.btDefaultVehicleRaycaster(world.dynamicAmmoWorld!);
     this.nativeVehicle = new Ammo.btRaycastVehicle(this.vehicleTuning, this.chassisBody.nativeBody, this.raycaster);
     this.raycaster.set_m_collisionFilterGroup(BitMask.pack(this.chassisBody.ownCollisionGroups, 16));
@@ -72,12 +72,14 @@ export class AmmoRaycastVehicleComponent
     this.chassisBody.nativeBody.setActivationState(4); // btCollisionObject::DISABLE_DEACTIVATION
     this.chassisBody.addToWorld(world);
     this.world.dynamicAmmoWorld!.addAction(this.nativeVehicle);
+    this.world.added$.next(this);
   }
 
   removeFromWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>) {
     this.addedToWorld = false;
     this.chassisBody.removeFromWorld(world);
     this.world.dynamicAmmoWorld!.removeAction(this.nativeVehicle);
+    this.world.removed$.next(this);
   }
 
   addWheel(options: WheelOptions, suspensionOptions: SuspensionOptions): void {

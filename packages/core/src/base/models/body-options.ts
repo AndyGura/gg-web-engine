@@ -8,3 +8,13 @@ export interface BodyOptions {
   ownCollisionGroups: CollisionGroup[] | 'all';
   interactWithCollisionGroups: CollisionGroup[] | 'all';
 }
+
+export type DebugBodySettings = { shape: any } & (
+  | {
+      type: 'RIGID_STATIC' | 'TRIGGER';
+    }
+  | {
+      type: 'RIGID_DYNAMIC';
+      sleeping: boolean;
+    }
+);

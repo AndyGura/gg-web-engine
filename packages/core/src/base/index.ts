@@ -26,7 +26,6 @@ export * from './inputs/i-input';
 export * from './inputs/keyboard.input';
 export * from './inputs/mouse.input';
 
-export * from './interfaces/i-debug-physics-drawer';
 export * from './interfaces/i-positionable';
 
 export * from './models/axis-directions';

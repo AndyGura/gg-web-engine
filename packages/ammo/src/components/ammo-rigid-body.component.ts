@@ -1,7 +1,15 @@
 import { AmmoWorldComponent } from './ammo-world.component';
 import Ammo from '../ammo.js/ammo';
 import { AmmoBodyComponent } from './ammo-body.component';
-import { Entity3d, Gg3dWorld, IRigidBody3dComponent, Point3, VisualTypeDocRepo3D } from '@gg-web-engine/core';
+import {
+  DebugBody3DSettings,
+  Entity3d,
+  Gg3dWorld,
+  IRigidBody3dComponent,
+  Point3,
+  Shape3DDescriptor,
+  VisualTypeDocRepo3D,
+} from '@gg-web-engine/core';
 import { first } from 'rxjs';
 import { AmmoPhysicsTypeDocRepo } from '../types';
 
@@ -29,13 +37,26 @@ export class AmmoRigidBodyComponent
     this.nativeBody.setAngularVelocity(new Ammo.btVector3(value.x, value.y, value.z));
   }
 
-  constructor(protected readonly world: AmmoWorldComponent, protected _nativeBody: Ammo.btRigidBody) {
-    super(world, _nativeBody);
+  get debugBodySettings(): DebugBody3DSettings {
+    if (this._nativeBody.isStaticOrKinematicObject()) {
+      return { shape: this.shape, type: 'RIGID_STATIC' };
+    } else {
+      return { shape: this.shape, type: 'RIGID_DYNAMIC', sleeping: !this._nativeBody.isActive() };
+    }
+  }
+
+  constructor(
+    protected readonly world: AmmoWorldComponent,
+    protected _nativeBody: Ammo.btRigidBody,
+    public readonly shape: Shape3DDescriptor,
+  ) {
+    super(world, _nativeBody, shape);
   }
 
   clone(): AmmoRigidBodyComponent {
     return this.world.factory.createRigidBodyFromShape(
       this._nativeBody.getCollisionShape(),
+      this.shape,
       {
         dynamic: !this._nativeBody.isStaticOrKinematicObject(),
         mass: this._nativeBody.getMass(),
@@ -50,13 +71,13 @@ export class AmmoRigidBodyComponent
   }
 
   addToWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>): void {
-    super.addToWorld(world);
     this.world.dynamicAmmoWorld?.addRigidBody(this.nativeBody, this._ownCGsMask, this._interactWithCGsMask);
+    super.addToWorld(world);
   }
 
   removeFromWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>): void {
-    super.removeFromWorld(world);
     this.world.dynamicAmmoWorld?.removeRigidBody(this.nativeBody);
+    super.removeFromWorld(world);
   }
 
   refreshCG(): void {

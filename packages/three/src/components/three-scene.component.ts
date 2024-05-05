@@ -2,9 +2,8 @@ import { IVisualScene3dComponent, RendererOptions } from '@gg-web-engine/core';
 import { Scene } from 'three';
 import { ThreeFactory } from '../three-factory';
 import { ThreeLoader } from '../three-loader';
-import { ThreePhysicsDrawer } from '../three-physics-drawer';
 import { ThreeCameraComponent } from './three-camera.component';
-import { ThreeRendererComponent } from './three-renderer-component';
+import { ThreeRendererComponent } from './three-renderer.component';
 import { ThreeVisualTypeDocRepo } from '../types';
 
 export class ThreeSceneComponent implements IVisualScene3dComponent<ThreeVisualTypeDocRepo> {
@@ -15,8 +14,6 @@ export class ThreeSceneComponent implements IVisualScene3dComponent<ThreeVisualT
 
   public readonly factory: ThreeFactory = new ThreeFactory();
   public readonly loader: ThreeLoader = new ThreeLoader();
-
-  public readonly debugPhysicsDrawerClass = ThreePhysicsDrawer;
 
   async init(): Promise<void> {
     this._nativeScene = new Scene();

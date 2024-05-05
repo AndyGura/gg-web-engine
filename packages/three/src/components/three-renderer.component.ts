@@ -1,11 +1,34 @@
-import { Gg3dWorld, IRenderer3dComponent, Point2, RendererOptions } from '@gg-web-engine/core';
+import { Gg3dWorld, IRenderer3dComponent, PhysicsTypeDocRepo3D, Point2, RendererOptions } from '@gg-web-engine/core';
 import { PCFSoftShadowMap, PerspectiveCamera, SRGBColorSpace, WebGLRenderer } from 'three';
 import { ThreeSceneComponent } from './three-scene.component';
 import { ThreeCameraComponent } from './three-camera.component';
 import { ThreeVisualTypeDocRepo } from '../types';
+import { ThreePhysicsDebugView } from './three-physics-debug-view';
 
 export class ThreeRendererComponent extends IRenderer3dComponent<ThreeVisualTypeDocRepo> {
   public readonly nativeRenderer: WebGLRenderer;
+  protected world: Gg3dWorld<ThreeVisualTypeDocRepo, PhysicsTypeDocRepo3D, ThreeSceneComponent> | null = null;
+
+  private debugView: ThreePhysicsDebugView | null = null;
+  private _physicsDebugViewActive: boolean = false;
+  public get physicsDebugViewActive(): boolean {
+    return this._physicsDebugViewActive;
+  }
+
+  public set physicsDebugViewActive(value: boolean) {
+    if (this._physicsDebugViewActive == value) {
+      return;
+    }
+    this._physicsDebugViewActive = value;
+    if (this.world) {
+      if (value) {
+        this.debugView = ThreePhysicsDebugView.startDebugView(this.world, this);
+      } else {
+        ThreePhysicsDebugView.stopDebugView(this.debugView!, this);
+        this.debugView = null;
+      }
+    }
+  }
 
   constructor(
     public readonly scene: ThreeSceneComponent,
@@ -27,9 +50,20 @@ export class ThreeRendererComponent extends IRenderer3dComponent<ThreeVisualType
     this.nativeRenderer.setPixelRatio(this.rendererOptions.forceResolution || devicePixelRatio);
   }
 
-  addToWorld(world: Gg3dWorld<ThreeVisualTypeDocRepo>) {}
+  addToWorld(world: Gg3dWorld<ThreeVisualTypeDocRepo, PhysicsTypeDocRepo3D, ThreeSceneComponent>) {
+    this.world = world;
+    if (this.physicsDebugViewActive) {
+      this.debugView = ThreePhysicsDebugView.startDebugView(this.world, this);
+    }
+  }
 
-  removeFromWorld(world: Gg3dWorld<ThreeVisualTypeDocRepo>) {}
+  removeFromWorld(world: Gg3dWorld<ThreeVisualTypeDocRepo, PhysicsTypeDocRepo3D, ThreeSceneComponent>) {
+    if (this.physicsDebugViewActive) {
+      ThreePhysicsDebugView.stopDebugView(this.debugView!, this);
+      this.debugView = null;
+    }
+    this.world = null;
+  }
 
   resizeRenderer(newSize: Point2): void {
     this.nativeRenderer.setSize(newSize.x, newSize.y);
@@ -44,6 +78,9 @@ export class ThreeRendererComponent extends IRenderer3dComponent<ThreeVisualType
 
   render(): void {
     this.nativeRenderer.render(this.scene.nativeScene!, this.camera.nativeCamera);
+    if (this.physicsDebugViewActive) {
+      this.debugView!.render(this.nativeRenderer, this.camera.nativeCamera);
+    }
   }
 
   dispose(): void {
