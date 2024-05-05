@@ -1,4 +1,4 @@
-import { createInlineTickController, GgWorld } from '../base';
+import { createInlineTickController, GgWorld, IRendererEntity } from '../base';
 import { fromEvent, Subject, takeUntil } from 'rxjs';
 import Stats from 'stats.js';
 
@@ -76,9 +76,13 @@ export class GgDebuggerUI {
         'position:fixed;top:48px;right:0;opacity:0.9;z-index:9999;background-color:#333;color:white;display:flex;flex-direction:column';
       debugControlsContainer.innerHTML = `
       <div ${debugLabelCss}>
-        <input type='checkbox' name='checkbox' id='physics_debugger_checkbox_id' value='1'${
-          this.currentWorld.physicsDebugViewActive ? ' checked' : ''
-        }>
+        <input type='checkbox' name='checkbox' id='physics_debugger_checkbox_id' value='1'${(() => {
+          const renderer = this.currentWorld.children.find(x => x instanceof IRendererEntity);
+          if (renderer) {
+            return (renderer as IRendererEntity<unknown, unknown>).physicsDebugViewActive ? ' checked' : '';
+          }
+          return '';
+        })()}>
         <label for='physics_debugger_checkbox_id' style='user-select: none;'>Show physics bodies in scene</label>
       </div>
       <div ${debugLabelCss}>
@@ -91,12 +95,18 @@ export class GgDebuggerUI {
       fromEvent(document.getElementById('physics_debugger_checkbox_id')! as HTMLInputElement, 'change')
         .pipe(takeUntil(this.debugControlsRemoved$))
         .subscribe(e => {
+          const renderer = this.currentWorld.children.find(x => x instanceof IRendererEntity);
           try {
-            this.currentWorld.physicsDebugViewActive = (e.target as HTMLInputElement).checked;
+            (renderer as IRendererEntity<unknown, unknown>).physicsDebugViewActive = (
+              e.target as HTMLInputElement
+            ).checked;
+            (e.target as HTMLInputElement).checked = (
+              renderer as IRendererEntity<unknown, unknown>
+            ).physicsDebugViewActive;
           } catch (err) {
             console.error(err);
+            (e.target as HTMLInputElement).checked = false;
           }
-          (e.target as HTMLInputElement).checked = this.currentWorld.physicsDebugViewActive;
         });
       fromEvent(document.getElementById('time_scale_slider')! as HTMLInputElement, 'change')
         .pipe(takeUntil(this.debugControlsRemoved$))
