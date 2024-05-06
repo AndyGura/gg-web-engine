@@ -45,7 +45,7 @@ controls and many more down the road
 - The project intensively uses [rxjs](https://github.com/ReactiveX/rxjs)
 
 ## Status
-Pre-alpha experimental release. I'll be happy to see any feature requests and bug reports in the 
+Experimental release. I'll be happy to see any feature requests and bug reports in the 
 [Issues](https://github.com/AndyGura/gg-web-engine/issues) and [Pull Requests](https://github.com/AndyGura/gg-web-engine/pulls) 
 are more than welcome. This project is initialized with parts of my own attempt to implement replica of old NFS game
 [The Need For Speed Web](https://tnfsw.guraklgames.com/) (far from final version), by the way it was using cannon.js 
@@ -60,11 +60,11 @@ that there is currently lack of functionality which is not related to racing gam
 - Controllers interface, allowing to add some functions as part of tick
 - rigid bodies
 - trigger zones
+- physics debugger view
+- UI developer console
 - free-fly camera controller (3D world only)
 - raycast car entity (3D world only) and dedicated keyboard controller for it
 - map graph, allowing to load only nearest part of map, using graph of map areas (3D world only)
-- UI dev console (enable console for world in your code and press ` at runtime)
-- physics debugger renderer (3D world only)
 
 ## Integrations
 Note: at this early step, the project does not give much flexibility in that regard, will be changed in future
