@@ -93,10 +93,12 @@ export class ThreePhysicsDebugView {
 
   public render(nativeRenderer: WebGLRenderer, nativeCamera: Camera) {
     for (const [c, m] of this.syncMap.entries()) {
-      m.position.set(...Pnt3.spr(c.position));
-      m.quaternion.set(...Qtrn.spr(c.rotation));
+      const debugSettings: DebugBody3DSettings = c.debugBodySettings;
+      if (!debugSettings.ignoreTransform) {
+        m.position.set(...Pnt3.spr(c.position));
+        m.quaternion.set(...Qtrn.spr(c.rotation));
+      }
       if (m.material) {
-        const debugSettings: DebugBody3DSettings = c.debugBodySettings;
         let color = 0xffffff;
         switch (debugSettings.type) {
           case 'RIGID_DYNAMIC':

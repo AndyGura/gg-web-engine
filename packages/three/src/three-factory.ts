@@ -7,6 +7,7 @@ import {
 } from '@gg-web-engine/core';
 import {
   BoxGeometry,
+  BufferGeometry,
   CapsuleGeometry,
   ConeGeometry,
   CylinderGeometry,
@@ -21,6 +22,7 @@ import {
   PlaneGeometry,
   SphereGeometry,
   Texture,
+  Vector3,
 } from 'three';
 import { ThreeDisplayObjectComponent } from './components/three-display-object.component';
 import { ThreeVisualTypeDocRepo } from './types';
@@ -141,6 +143,17 @@ export class ThreeFactory extends IDisplayObject3dComponentFactory<ThreeVisualTy
           }
           mesh.add(submesh);
         }
+        break;
+      case 'MESH':
+        const geometry = new BufferGeometry();
+        geometry.setFromPoints(descriptor.vertices.map(x => new Vector3(...Pnt3.spr(x))));
+        geometry.setIndex(
+          descriptor.faces.reduce((p, c) => {
+            p.push(...c);
+            return p;
+          }, [] as number[]),
+        );
+        mesh = new Mesh(geometry, threeMat);
         break;
     }
     if (!mesh) {

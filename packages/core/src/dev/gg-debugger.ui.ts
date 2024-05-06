@@ -1,6 +1,27 @@
 import { createInlineTickController, GgWorld, IRendererEntity } from '../base';
-import { fromEvent, Subject, takeUntil } from 'rxjs';
+import { animationFrameScheduler, fromEvent, of, Subject, takeUntil } from 'rxjs';
 import Stats from 'stats.js';
+import { repeat } from 'rxjs/operators';
+
+type RuntimeDataSnapshot = {
+  readonly timeScale: number;
+  readonly renderers: {
+    readonly name: string;
+    readonly entity: IRendererEntity<unknown, unknown>;
+    readonly physicsDebugViewActive: boolean;
+  }[];
+};
+
+const snapshotEqual = (a: RuntimeDataSnapshot, b: RuntimeDataSnapshot): boolean => {
+  if (a.timeScale !== b.timeScale) return false;
+  if (a.renderers.length !== b.renderers.length) return false;
+  for (let i = 0; i < a.renderers.length; i++) {
+    if (a.renderers[i].name !== b.renderers[i].name) return false;
+    if (a.renderers[i].entity !== b.renderers[i].entity) return false;
+    if (a.renderers[i].physicsDebugViewActive !== b.renderers[i].physicsDebugViewActive) return false;
+  }
+  return true;
+};
 
 export class GgDebuggerUI {
   private ui: {
@@ -54,6 +75,7 @@ export class GgDebuggerUI {
   }
 
   private debugControlsRemoved$: Subject<void> = new Subject<void>();
+  private viewUpdated$: Subject<void> = new Subject<void>();
 
   public get showDebugControls(): boolean {
     return !!this.ui.debugControlsContainer;
@@ -70,58 +92,86 @@ export class GgDebuggerUI {
     this.currentWorld = selectedWorld;
     if (value) {
       const debugControlsContainer: HTMLDivElement = document.createElement('div');
+      document.body.appendChild(debugControlsContainer);
       this.ui.debugControlsContainer = debugControlsContainer;
-      const debugLabelCss = "style='display:flex;align-items:center;margin:0.25rem;'";
       debugControlsContainer.style.cssText =
         'position:fixed;top:48px;right:0;opacity:0.9;z-index:9999;background-color:#333;color:white;display:flex;flex-direction:column';
-      debugControlsContainer.innerHTML = `
-      <div ${debugLabelCss}>
-        <input type='checkbox' name='checkbox' id='physics_debugger_checkbox_id' value='1'${(() => {
-          const renderer = this.currentWorld.children.find(x => x instanceof IRendererEntity);
-          if (renderer) {
-            return (renderer as IRendererEntity<unknown, unknown>).physicsDebugViewActive ? ' checked' : '';
+      this.snapshot = this.makeSnapshot();
+      this.renderControls(debugControlsContainer);
+      of(undefined, animationFrameScheduler)
+        .pipe(repeat(), takeUntil(this.debugControlsRemoved$))
+        .subscribe(() => {
+          const newSnapshot = this.makeSnapshot();
+          if (!snapshotEqual(this.snapshot, newSnapshot)) {
+            this.snapshot = newSnapshot;
+            this.renderControls(debugControlsContainer);
           }
-          return '';
-        })()}>
-        <label for='physics_debugger_checkbox_id' style='user-select: none;'>Show physics bodies in scene</label>
-      </div>
-      <div ${debugLabelCss}>
-        <input id="time_scale_slider" type="range" min="0" max="5" step="0.01" style="flex-grow:1" value="${
-          this.currentWorld.worldClock.timeScale
-        }"/>
-        <label for="time_scale_slider" style="user-select: none;">Time scale</label>
-      </div>`;
-      document.body.appendChild(debugControlsContainer);
-      fromEvent(document.getElementById('physics_debugger_checkbox_id')! as HTMLInputElement, 'change')
-        .pipe(takeUntil(this.debugControlsRemoved$))
-        .subscribe(e => {
-          const renderer = this.currentWorld.children.find(x => x instanceof IRendererEntity);
-          try {
-            (renderer as IRendererEntity<unknown, unknown>).physicsDebugViewActive = (
-              e.target as HTMLInputElement
-            ).checked;
-            (e.target as HTMLInputElement).checked = (
-              renderer as IRendererEntity<unknown, unknown>
-            ).physicsDebugViewActive;
-          } catch (err) {
-            console.error(err);
-            (e.target as HTMLInputElement).checked = false;
-          }
-        });
-      fromEvent(document.getElementById('time_scale_slider')! as HTMLInputElement, 'change')
-        .pipe(takeUntil(this.debugControlsRemoved$))
-        .subscribe(e => {
-          try {
-            this.currentWorld.worldClock.timeScale = +(e.target as HTMLInputElement).value;
-          } catch (err) {
-            console.error(err);
-          }
-          (e.target as HTMLInputElement).value = '' + (this.currentWorld.worldClock.timeScale || 1);
         });
     } else {
       this.debugControlsRemoved$.next();
       document.body.removeChild(this.ui.debugControlsContainer!);
       this.ui.debugControlsContainer = null;
     }
+  }
+
+  private snapshot: RuntimeDataSnapshot = {
+    timeScale: 1,
+    renderers: [],
+  };
+
+  private makeSnapshot(): RuntimeDataSnapshot {
+    return {
+      timeScale: this.currentWorld.worldClock.timeScale,
+      renderers: this.currentWorld.children
+        .filter(x => x instanceof IRendererEntity)
+        .map(r => ({
+          name: r.name,
+          entity: r as IRendererEntity<unknown, unknown>,
+          physicsDebugViewActive: (r as IRendererEntity<unknown, unknown>).physicsDebugViewActive,
+        })),
+    };
+  }
+
+  private renderControls(debugControlsContainer: HTMLDivElement) {
+    const debugLabelCss = "style='display:flex;align-items:center;margin:0.25rem;'";
+    let html: string = '';
+    for (const { entity, physicsDebugViewActive } of this.snapshot.renderers) {
+      html += `
+      <div ${debugLabelCss}>
+        <input type='checkbox' name='checkbox' id='physics_debugger_checkbox_id_${entity.name}' value='1'${
+        physicsDebugViewActive ? ' checked' : ''
+      }>
+        <label for='physics_debugger_checkbox_id_${entity.name}' style='user-select: none;'>Physics debugger${
+        this.snapshot.renderers.length > 1 ? ' (' + entity.name + ')' : ''
+      }</label>
+      </div>`;
+    }
+    html += `
+      <div ${debugLabelCss}>
+        <input id='time_scale_slider' type='range' min='0' max='5' step='0.01' style='flex-grow:1' value='${this.snapshot.timeScale}'/>
+        <label for='time_scale_slider' style='user-select: none;'>Time scale</label>
+      </div>`;
+    debugControlsContainer.innerHTML = html;
+    this.viewUpdated$.next();
+    for (const { entity } of this.snapshot.renderers) {
+      fromEvent(document.getElementById('physics_debugger_checkbox_id_' + entity.name)! as HTMLInputElement, 'change')
+        .pipe(takeUntil(this.debugControlsRemoved$), takeUntil(this.viewUpdated$))
+        .subscribe(e => {
+          try {
+            entity.physicsDebugViewActive = (e.target as HTMLInputElement).checked;
+          } catch (err) {
+            console.error(err);
+          }
+        });
+    }
+    fromEvent(document.getElementById('time_scale_slider')! as HTMLInputElement, 'change')
+      .pipe(takeUntil(this.debugControlsRemoved$), takeUntil(this.viewUpdated$))
+      .subscribe(e => {
+        try {
+          this.currentWorld.worldClock.timeScale = +(e.target as HTMLInputElement).value;
+        } catch (err) {
+          console.error(err);
+        }
+      });
   }
 }

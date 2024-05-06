@@ -83,17 +83,35 @@ export abstract class GgWorld<
       );
       (window as any).ggstatic.registerConsoleCommand(
         this,
+        'ls_renderers',
+        async () => {
+          return this.children
+            .filter(e => e instanceof IRendererEntity)
+            .map(r => r.name)
+            .join('\n');
+        },
+        'no args; print all renderers in selected world',
+      );
+      (window as any).ggstatic.registerConsoleCommand(
+        this,
         'dr_drawphysics',
         async (...args: string[]) => {
           const value = ['1', 'true', '+'].includes(args[0]);
-          const renderer = this.children.find(x => x instanceof IRendererEntity);
+          const rendererName = args[1];
+          let renderer: IEntity;
+          if (rendererName) {
+            renderer = this.children.find(x => x instanceof IRendererEntity && x.name === rendererName)!;
+          } else {
+            renderer = this.children.find(x => x instanceof IRendererEntity)!;
+          }
           if (renderer) {
             (renderer as IRendererEntity<unknown, unknown>).physicsDebugViewActive = value;
             return '' + value;
           }
           return 'false';
         },
-        'args: [0 or 1]; turn on/off physics debug view. Default value is 0',
+        'args: [0 or 1] or [0 or 1, string]; turn on/off physics debug view. Second argument expects renderer ' +
+          'name, if not provided first renderer will be picked. Look up for renderer names using command "ls_renderers"',
       );
     }
   }

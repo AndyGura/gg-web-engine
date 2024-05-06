@@ -50,9 +50,11 @@ export class PixiPhysicsDebugView {
 
   public sync() {
     for (const [c, m] of this.syncMap.entries()) {
-      m.graphics.position.set(...Pnt2.spr(c.position));
-      m.graphics.rotation = c.rotation;
       const debugSettings: DebugBody2DSettings = c.debugBodySettings;
+      if (!debugSettings.ignoreTransform) {
+        m.graphics.position.set(...Pnt2.spr(c.position));
+        m.graphics.rotation = c.rotation;
+      }
       let color = 0xffffff;
       switch (debugSettings.type) {
         case 'RIGID_DYNAMIC':

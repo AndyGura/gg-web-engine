@@ -3,12 +3,11 @@ import { GgConsoleUI } from './gg-console.ui';
 import { GgDebuggerUI } from './gg-debugger.ui';
 
 export class GgStatic {
-  private static _instance: GgStatic;
   public static get instance(): GgStatic {
-    if (!GgStatic._instance) {
-      GgStatic._instance = new GgStatic();
+    if (!(window as any).ggstatic) {
+      (window as any).ggstatic = new GgStatic();
     }
-    return GgStatic._instance;
+    return (window as any).ggstatic as GgStatic;
   }
 
   private readonly debuggerUI: GgDebuggerUI = new GgDebuggerUI();
@@ -168,5 +167,3 @@ export class GgStatic {
     }
   }
 }
-
-(window as any).ggstatic = GgStatic.instance;

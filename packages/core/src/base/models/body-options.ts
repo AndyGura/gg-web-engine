@@ -9,7 +9,7 @@ export interface BodyOptions {
   interactWithCollisionGroups: CollisionGroup[] | 'all';
 }
 
-export type DebugBodySettings = { shape: any } & (
+export type DebugBodySettings = { shape: any; ignoreTransform?: boolean } & (
   | {
       type: 'RIGID_STATIC' | 'TRIGGER';
     }
