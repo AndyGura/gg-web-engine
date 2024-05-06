@@ -644,7 +644,11 @@
 <h2 id="ammobodycomponent-class">AmmoBodyComponent (class)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export declare class AmmoBodyComponent&lt;T&gt; {
-  protected constructor(protected readonly world: AmmoWorldComponent, protected _nativeBody: T)
+  protected constructor(
+    protected readonly world: AmmoWorldComponent,
+    protected _nativeBody: T,
+    public readonly shape: Shape3DDescriptor
+  )
 }
 </code></pre>
 <h3 id="refreshcg-method">refreshCG (method)</h3>

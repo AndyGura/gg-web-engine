@@ -1,6 +1,6 @@
 ---
 title: three/gltf-loader/BufferGeometryUtils.d.ts
-nav_order: 128
+nav_order: 129
 parent: Modules
 ---
 

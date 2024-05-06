@@ -558,6 +558,13 @@
 <pre><code class="language-ts">export interface IPhysicsWorld3dComponent&lt;TypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D&gt;
   extends IPhysicsWorldComponent&lt;Point3, Point4, TypeDoc&gt; {
   readonly loader: TypeDoc['loader']
+
+  /** event emitter, emits newly added physics components */
+  readonly added$: Subject&lt;TypeDoc['trigger'] | TypeDoc['rigidBody'] | TypeDoc['raycastVehicle'] | any&gt;
+  /** event emitter, emits just removed physics components */
+  readonly removed$: Subject&lt;TypeDoc['trigger'] | TypeDoc['rigidBody'] | TypeDoc['raycastVehicle'] | any&gt;
+  /** list of currently added to world physics components */
+  readonly children: (TypeDoc['trigger'] | TypeDoc['rigidBody'] | TypeDoc['raycastVehicle'] | any)[]
 }
 </code></pre>
 

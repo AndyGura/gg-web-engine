@@ -527,6 +527,13 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#shape3dmeshdescriptor-type-alias" class="md-nav__link">
+    Shape3DMeshDescriptor (type alias)
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -558,6 +565,7 @@
 <li><a href="#utils">utils</a></li>
 <li><a href="#bodyshape3ddescriptor-type-alias">BodyShape3DDescriptor (type alias)</a></li>
 <li><a href="#shape3ddescriptor-type-alias">Shape3DDescriptor (type alias)</a></li>
+<li><a href="#shape3dmeshdescriptor-type-alias">Shape3DMeshDescriptor (type alias)</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
@@ -574,6 +582,18 @@
   | { shape: 'CAPSULE'; radius: number; centersDistance: number }
   | { shape: 'SPHERE'; radius: number }
   | { shape: 'COMPOUND'; children: { position?: Point3; rotation?: Point4; shape: Shape3DDescriptor }[] }
+  | { shape: 'CONVEX_HULL'; vertices: Point3[] }
+  | { shape: 'MESH'; vertices: Point3[]; faces: [number, number, number][] }
+</code></pre>
+<h2 id="shape3dmeshdescriptor-type-alias">Shape3DMeshDescriptor (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type Shape3DMeshDescriptor =
+  | { shape: 'PLANE'; dimensions?: Point2; segments?: Point2 }
+  | { shape: 'BOX'; dimensions: Point3; segments?: Point3 }
+  | { shape: 'CONE' | 'CYLINDER'; radius: number; height: number; radialSegments?: number; heightSegments?: number }
+  | { shape: 'CAPSULE'; radius: number; centersDistance: number; capSegments?: number; radialSegments?: number }
+  | { shape: 'SPHERE'; radius: number; widthSegments?: number; heightSegments?: number }
+  | { shape: 'COMPOUND'; children: { position?: Point3; rotation?: Point4; shape: Shape3DMeshDescriptor }[] }
   | { shape: 'CONVEX_HULL'; vertices: Point3[] }
   | { shape: 'MESH'; vertices: Point3[]; faces: [number, number, number][] }
 </code></pre>

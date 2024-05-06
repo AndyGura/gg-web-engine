@@ -1,6 +1,6 @@
 ---
 title: core/base/models/points.ts
-nav_order: 96
+nav_order: 94
 parent: Modules
 ---
 

@@ -36,6 +36,7 @@ export declare class Rapier3dRigidBodyComponent {
   constructor(
     protected readonly world: Rapier3dWorldComponent,
     protected _colliderDescr: ColliderDesc[],
+    public readonly shape: Shape3DDescriptor,
     protected _bodyDescr: RigidBodyDesc,
     protected _colliderOptions: Omit<Omit<Body3DOptions, 'dynamic'>, 'mass'>
   )

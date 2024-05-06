@@ -1,6 +1,6 @@
 ---
 title: core/3d/interfaces/i-positionable-3d.ts
-nav_order: 53
+nav_order: 52
 parent: Modules
 ---
 

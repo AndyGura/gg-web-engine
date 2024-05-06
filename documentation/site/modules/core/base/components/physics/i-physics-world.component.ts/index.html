@@ -557,9 +557,29 @@
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export interface IPhysicsWorldComponent&lt;D, R, TypeDoc extends PhysicsTypeDocRepo&lt;D, R&gt; = PhysicsTypeDocRepo&lt;D, R&gt;&gt;
   extends IComponent {
-  readonly factory: TypeDoc['factory'];
-  gravity: D;
-  timeScale: number;
+  readonly factory: TypeDoc['factory']
+  gravity: D
+
+  /** event emitter, emits newly added physics components */
+  readonly added$: Subject&lt;TypeDoc['rigidBody'] | TypeDoc['trigger'] | any&gt;
+  /** event emitter, emits just removed physics components */
+  readonly removed$: Subject&lt;TypeDoc['rigidBody'] | TypeDoc['trigger'] | any&gt;
+  /** list of currently added to world physics components */
+  readonly children: (TypeDoc['rigidBody'] | TypeDoc['trigger'] | any)[]
+
+  init(): Promise&lt;void&gt;
+
+  /**
+   * Runs simulation of the physics world.
+   *
+   * @param delta delta time from last tick in milliseconds.
+   */
+  simulate(delta: number): void
+
+  registerCollisionGroup(): CollisionGroup
+
+  deregisterCollisionGroup(group: CollisionGroup): void
+}
 </code></pre>
 
 

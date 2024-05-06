@@ -1,6 +1,6 @@
 ---
 title: core/base/models/body-options.ts
-nav_order: 94
+nav_order: 92
 parent: Modules
 ---
 
@@ -13,6 +13,7 @@ parent: Modules
 - [utils](#utils)
   - [BodyOptions (interface)](#bodyoptions-interface)
   - [CollisionGroup (type alias)](#collisiongroup-type-alias)
+  - [DebugBodySettings (type alias)](#debugbodysettings-type-alias)
 
 ---
 
@@ -39,4 +40,20 @@ export interface BodyOptions {
 
 ```ts
 export type CollisionGroup = number
+```
+
+## DebugBodySettings (type alias)
+
+**Signature**
+
+```ts
+export type DebugBodySettings = { shape: any; ignoreTransform?: boolean } & (
+  | {
+      type: 'RIGID_STATIC' | 'TRIGGER'
+    }
+  | {
+      type: 'RIGID_DYNAMIC'
+      sleeping: boolean
+    }
+)
 ```

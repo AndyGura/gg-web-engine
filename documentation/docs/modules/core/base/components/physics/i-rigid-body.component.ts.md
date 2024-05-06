@@ -1,6 +1,6 @@
 ---
 title: core/base/components/physics/i-rigid-body.component.ts
-nav_order: 66
+nav_order: 65
 parent: Modules
 ---
 

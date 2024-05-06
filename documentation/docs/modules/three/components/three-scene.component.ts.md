@@ -1,6 +1,6 @@
 ---
 title: three/components/three-scene.component.ts
-nav_order: 127
+nav_order: 128
 parent: Modules
 ---
 
@@ -17,7 +17,6 @@ parent: Modules
     - [dispose (method)](#dispose-method)
     - [factory (property)](#factory-property)
     - [loader (property)](#loader-property)
-    - [debugPhysicsDrawerClass (property)](#debugphysicsdrawerclass-property)
 
 ---
 
@@ -73,12 +72,4 @@ readonly factory: ThreeFactory
 
 ```ts
 readonly loader: ThreeLoader
-```
-
-### debugPhysicsDrawerClass (property)
-
-**Signature**
-
-```ts
-readonly debugPhysicsDrawerClass: typeof ThreePhysicsDrawer
 ```

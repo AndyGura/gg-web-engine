@@ -644,7 +644,11 @@
 <h2 id="ammotriggercomponent-class">AmmoTriggerComponent (class)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export declare class AmmoTriggerComponent {
-  constructor(protected readonly world: AmmoWorldComponent, protected _nativeBody: Ammo.btPairCachingGhostObject)
+  constructor(
+    protected readonly world: AmmoWorldComponent,
+    protected _nativeBody: Ammo.btPairCachingGhostObject,
+    public readonly shape: Shape3DDescriptor
+  )
 }
 </code></pre>
 <h3 id="checkoverlaps-method">checkOverlaps (method)</h3>

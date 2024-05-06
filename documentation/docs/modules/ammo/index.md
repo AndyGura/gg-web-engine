@@ -5,7 +5,6 @@ has_children: true
 
 <h2 class="text-delta">Directory table of contents</h2>
 
-- [ammo/ammo-debugger.ts](/gg-web-engine/modules/ammo/ammo-debugger.ts)
 - [ammo/ammo-factory.ts](/gg-web-engine/modules/ammo/ammo-factory.ts)
 - [ammo/ammo-loader.ts](/gg-web-engine/modules/ammo/ammo-loader.ts)
 - [ammo/ammo.js](/gg-web-engine/modules/ammo/ammo.js)

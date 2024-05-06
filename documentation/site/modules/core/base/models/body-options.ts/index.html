@@ -527,6 +527,13 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#debugbodysettings-type-alias" class="md-nav__link">
+    DebugBodySettings (type alias)
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -558,6 +565,7 @@
 <li><a href="#utils">utils</a></li>
 <li><a href="#bodyoptions-interface">BodyOptions (interface)</a></li>
 <li><a href="#collisiongroup-type-alias">CollisionGroup (type alias)</a></li>
+<li><a href="#debugbodysettings-type-alias">DebugBodySettings (type alias)</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
@@ -575,6 +583,18 @@
 <h2 id="collisiongroup-type-alias">CollisionGroup (type alias)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export type CollisionGroup = number
+</code></pre>
+<h2 id="debugbodysettings-type-alias">DebugBodySettings (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type DebugBodySettings = { shape: any; ignoreTransform?: boolean } &amp; (
+  | {
+      type: 'RIGID_STATIC' | 'TRIGGER'
+    }
+  | {
+      type: 'RIGID_DYNAMIC'
+      sleeping: boolean
+    }
+)
 </code></pre>
 
 

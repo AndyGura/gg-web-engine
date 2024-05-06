@@ -653,7 +653,7 @@
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export type DisplayObject3dOpts&lt;Tex&gt; = {
   color?: number
-  shading?: 'unlit' | 'standart' | 'phong'
+  shading?: 'unlit' | 'standart' | 'phong' | 'wireframe'
   diffuse?: Tex
   castShadow?: boolean
   receiveShadow?: boolean
@@ -666,7 +666,7 @@
 <h3 id="createprimitive-method">createPrimitive (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">abstract createPrimitive(
-    descriptor: Shape3DDescriptor,
+    descriptor: Shape3DMeshDescriptor,
     material?: DisplayObject3dOpts&lt;TypeDoc['texture']&gt;,
   ): TypeDoc['displayObject'];
 </code></pre>

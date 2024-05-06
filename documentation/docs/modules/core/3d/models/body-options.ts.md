@@ -1,6 +1,6 @@
 ---
 title: core/3d/models/body-options.ts
-nav_order: 56
+nav_order: 55
 parent: Modules
 ---
 
@@ -12,6 +12,7 @@ parent: Modules
 
 - [utils](#utils)
   - [Body3DOptions (interface)](#body3doptions-interface)
+  - [DebugBody3DSettings (type alias)](#debugbody3dsettings-type-alias)
 
 ---
 
@@ -23,4 +24,12 @@ parent: Modules
 
 ```ts
 export interface Body3DOptions extends BodyOptions {}
+```
+
+## DebugBody3DSettings (type alias)
+
+**Signature**
+
+```ts
+export type DebugBody3DSettings = DebugBodySettings & { shape: Shape3DDescriptor }
 ```

@@ -1,6 +1,6 @@
 ---
 title: core/dev/gg-debugger.ui.ts
-nav_order: 98
+nav_order: 96
 parent: Modules
 ---
 
@@ -14,6 +14,8 @@ parent: Modules
   - [GgDebuggerUI (class)](#ggdebuggerui-class)
     - [setShowStats (method)](#setshowstats-method)
     - [setShowDebugControls (method)](#setshowdebugcontrols-method)
+    - [makeSnapshot (method)](#makesnapshot-method)
+    - [renderControls (method)](#rendercontrols-method)
 
 ---
 
@@ -41,4 +43,20 @@ public setShowStats(selectedWorld: GgWorld<any, any>, value: boolean)
 
 ```ts
 public setShowDebugControls(selectedWorld: GgWorld<any, any>, value: boolean)
+```
+
+### makeSnapshot (method)
+
+**Signature**
+
+```ts
+private makeSnapshot(): RuntimeDataSnapshot
+```
+
+### renderControls (method)
+
+**Signature**
+
+```ts
+private renderControls(debugControlsContainer: HTMLDivElement)
 ```

@@ -557,6 +557,8 @@
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export interface ITrigger3dComponent&lt;TypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D&gt;
   extends ITriggerComponent&lt;Point3, Point4, TypeDoc&gt; {
+  /** body info for physics debugger view */
+  readonly debugBodySettings: DebugBody3DSettings;
 </code></pre>
 
 

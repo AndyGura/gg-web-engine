@@ -646,7 +646,8 @@
 <h3 id="createrigidbodyfromshape-method">createRigidBodyFromShape (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public createRigidBodyFromShape(
-    shape: Ammo.btCollisionShape,
+    nativeShape: Ammo.btCollisionShape,
+    shapeDescr: Shape3DDescriptor,
     options: Partial&lt;Body3DOptions&gt;,
     transform?: { position?: Point3; rotation?: Point4 },
   ): AmmoRigidBodyComponent
@@ -654,7 +655,8 @@
 <h3 id="createtriggerfromshape-method">createTriggerFromShape (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public createTriggerFromShape(
-    shape: Ammo.btCollisionShape,
+    nativeShape: Ammo.btCollisionShape,
+    shapeDescr: Shape3DDescriptor,
     transform?: { position?: Point3; rotation?: Point4 },
   ): AmmoTriggerComponent
 </code></pre>

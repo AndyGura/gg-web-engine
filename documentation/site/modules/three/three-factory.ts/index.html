@@ -615,11 +615,14 @@
 </code></pre>
 <h3 id="transformprimitivezup-method">transformPrimitiveZUp (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">private transformPrimitiveZUp(object: Object3D): Group
+<pre><code class="language-ts">private transformPrimitiveZUp(object: Mesh): void
 </code></pre>
 <h3 id="createprimitive-method">createPrimitive (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">createPrimitive(descriptor: Shape3DDescriptor, material: ThreeDisplayObject3dOpts = {}): ThreeDisplayObjectComponent
+<pre><code class="language-ts">createPrimitive(
+    descriptor: Shape3DMeshDescriptor,
+    material: ThreeDisplayObject3dOpts = {},
+  ): ThreeDisplayObjectComponent
 </code></pre>
 <h3 id="createperspectivecamera-method">createPerspectiveCamera (method)</h3>
 <p><strong>Signature</strong></p>

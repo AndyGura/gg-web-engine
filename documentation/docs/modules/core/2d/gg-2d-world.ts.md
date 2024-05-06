@@ -1,6 +1,6 @@
 ---
 title: core/2d/gg-2d-world.ts
-nav_order: 24
+nav_order: 23
 parent: Modules
 ---
 
