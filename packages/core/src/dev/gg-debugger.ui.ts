@@ -5,11 +5,22 @@ import { repeat } from 'rxjs/operators';
 
 type RuntimeDataSnapshot = {
   readonly timeScale: number;
-  readonly physicsDebugViewActive: boolean;
+  readonly renderers: {
+    readonly name: string;
+    readonly entity: IRendererEntity<unknown, unknown>;
+    readonly physicsDebugViewActive: boolean;
+  }[];
 };
 
 const snapshotEqual = (a: RuntimeDataSnapshot, b: RuntimeDataSnapshot): boolean => {
-  return a.timeScale === b.timeScale && a.physicsDebugViewActive === b.physicsDebugViewActive;
+  if (a.timeScale !== b.timeScale) return false;
+  if (a.renderers.length !== b.renderers.length) return false;
+  for (let i = 0; i < a.renderers.length; i++) {
+    if (a.renderers[i].name !== b.renderers[i].name) return false;
+    if (a.renderers[i].entity !== b.renderers[i].entity) return false;
+    if (a.renderers[i].physicsDebugViewActive !== b.renderers[i].physicsDebugViewActive) return false;
+  }
+  return true;
 };
 
 export class GgDebuggerUI {
@@ -105,49 +116,54 @@ export class GgDebuggerUI {
 
   private snapshot: RuntimeDataSnapshot = {
     timeScale: 1,
-    physicsDebugViewActive: false,
+    renderers: [],
   };
 
   private makeSnapshot(): RuntimeDataSnapshot {
-    let physicsDebugViewActive = false;
-    const renderer = this.currentWorld.children.find(x => x instanceof IRendererEntity);
-    if (renderer) {
-      physicsDebugViewActive = (renderer as IRendererEntity<unknown, unknown>).physicsDebugViewActive;
-    }
     return {
-      physicsDebugViewActive,
       timeScale: this.currentWorld.worldClock.timeScale,
+      renderers: this.currentWorld.children
+        .filter(x => x instanceof IRendererEntity)
+        .map(r => ({
+          name: r.name,
+          entity: r as IRendererEntity<unknown, unknown>,
+          physicsDebugViewActive: (r as IRendererEntity<unknown, unknown>).physicsDebugViewActive,
+        })),
     };
   }
 
   private renderControls(debugControlsContainer: HTMLDivElement) {
     const debugLabelCss = "style='display:flex;align-items:center;margin:0.25rem;'";
-    debugControlsContainer.innerHTML = `
+    let html: string = '';
+    for (const { entity, physicsDebugViewActive } of this.snapshot.renderers) {
+      html += `
       <div ${debugLabelCss}>
-        <input type='checkbox' name='checkbox' id='physics_debugger_checkbox_id' value='1'${
-          this.snapshot.physicsDebugViewActive ? ' checked' : ''
-        }>
-        <label for='physics_debugger_checkbox_id' style='user-select: none;'>Show physics bodies in scene</label>
-      </div>
+        <input type='checkbox' name='checkbox' id='physics_debugger_checkbox_id_${entity.name}' value='1'${
+        physicsDebugViewActive ? ' checked' : ''
+      }>
+        <label for='physics_debugger_checkbox_id_${entity.name}' style='user-select: none;'>Physics debugger${
+        this.snapshot.renderers.length > 1 ? ' (' + entity.name + ')' : ''
+      }</label>
+      </div>`;
+    }
+    html += `
       <div ${debugLabelCss}>
-        <input id='time_scale_slider' type='range' min='0' max='5' step='0.01' style='flex-grow:1' value='${
-          this.snapshot.timeScale
-        }'/>
+        <input id='time_scale_slider' type='range' min='0' max='5' step='0.01' style='flex-grow:1' value='${this.snapshot.timeScale}'/>
         <label for='time_scale_slider' style='user-select: none;'>Time scale</label>
       </div>`;
+    debugControlsContainer.innerHTML = html;
     this.viewUpdated$.next();
-    fromEvent(document.getElementById('physics_debugger_checkbox_id')! as HTMLInputElement, 'change')
-      .pipe(takeUntil(this.debugControlsRemoved$), takeUntil(this.viewUpdated$))
-      .subscribe(e => {
-        const renderer = this.currentWorld.children.find(x => x instanceof IRendererEntity);
-        try {
-          (renderer as IRendererEntity<unknown, unknown>).physicsDebugViewActive = (
-            e.target as HTMLInputElement
-          ).checked;
-        } catch (err) {
-          console.error(err);
-        }
-      });
+    for (const { entity } of this.snapshot.renderers) {
+      fromEvent(document.getElementById('physics_debugger_checkbox_id_' + entity.name)! as HTMLInputElement, 'change')
+        .pipe(takeUntil(this.debugControlsRemoved$), takeUntil(this.viewUpdated$))
+        .subscribe(e => {
+          try {
+            entity.physicsDebugViewActive = (e.target as HTMLInputElement).checked;
+          } catch (err) {
+            console.error(err);
+          }
+        });
+    }
     fromEvent(document.getElementById('time_scale_slider')! as HTMLInputElement, 'change')
       .pipe(takeUntil(this.debugControlsRemoved$), takeUntil(this.viewUpdated$))
       .subscribe(e => {
