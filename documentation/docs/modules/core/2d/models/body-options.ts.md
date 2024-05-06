@@ -1,6 +1,6 @@
 ---
 title: core/2d/models/body-options.ts
-nav_order: 27
+nav_order: 26
 parent: Modules
 ---
 
@@ -12,6 +12,7 @@ parent: Modules
 
 - [utils](#utils)
   - [Body2DOptions (interface)](#body2doptions-interface)
+  - [DebugBody2DSettings (type alias)](#debugbody2dsettings-type-alias)
 
 ---
 
@@ -23,4 +24,12 @@ parent: Modules
 
 ```ts
 export interface Body2DOptions extends BodyOptions {}
+```
+
+## DebugBody2DSettings (type alias)
+
+**Signature**
+
+```ts
+export type DebugBody2DSettings = DebugBodySettings & { shape: Shape2DDescriptor }
 ```

@@ -1,6 +1,6 @@
 ---
 title: ammo/ammo-factory.ts
-nav_order: 2
+nav_order: 1
 parent: Modules
 ---
 
@@ -83,7 +83,8 @@ protected createShape(descriptor: Shape3DDescriptor): Ammo.btCollisionShape
 
 ```ts
 public createRigidBodyFromShape(
-    shape: Ammo.btCollisionShape,
+    nativeShape: Ammo.btCollisionShape,
+    shapeDescr: Shape3DDescriptor,
     options: Partial<Body3DOptions>,
     transform?: { position?: Point3; rotation?: Point4 },
   ): AmmoRigidBodyComponent
@@ -95,7 +96,8 @@ public createRigidBodyFromShape(
 
 ```ts
 public createTriggerFromShape(
-    shape: Ammo.btCollisionShape,
+    nativeShape: Ammo.btCollisionShape,
+    shapeDescr: Shape3DDescriptor,
     transform?: { position?: Point3; rotation?: Point4 },
   ): AmmoTriggerComponent
 ```

@@ -1,6 +1,6 @@
 ---
 title: core/base/clock/pausable-clock.ts
-nav_order: 61
+nav_order: 60
 parent: Modules
 ---
 
@@ -26,7 +26,7 @@ parent: Modules
 
 ## PausableClock (class)
 
-A class, providing ability to track time, fire ticks, provide time elapsed + tick delta with ability to suspend/resume it.
+A class providing the ability to track time, fire ticks, provide time elapsed, and tick delta with the ability to suspend/resume it.
 
 **Signature**
 
@@ -38,6 +38,8 @@ export declare class PausableClock {
 
 ### createChildClock (method)
 
+Creates a child clock.
+
 **Signature**
 
 ```ts
@@ -45,6 +47,8 @@ createChildClock(autoStart: boolean): PausableClock
 ```
 
 ### start (method)
+
+Starts the clock.
 
 **Signature**
 
@@ -54,6 +58,8 @@ start()
 
 ### stop (method)
 
+Stops the clock.
+
 **Signature**
 
 ```ts
@@ -61,6 +67,8 @@ stop()
 ```
 
 ### pause (method)
+
+Pauses the clock.
 
 **Signature**
 
@@ -70,6 +78,8 @@ pause()
 
 ### resume (method)
 
+Resumes the clock.
+
 **Signature**
 
 ```ts
@@ -78,6 +88,8 @@ resume()
 
 ### startListeningTicks (method)
 
+Starts listening for ticks from the parent clock.
+
 **Signature**
 
 ```ts
@@ -85,6 +97,8 @@ protected startListeningTicks()
 ```
 
 ### stopListeningTicks (method)
+
+Stops listening for ticks from the parent clock.
 
 **Signature**
 

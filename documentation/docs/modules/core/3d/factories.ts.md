@@ -1,6 +1,6 @@
 ---
 title: core/3d/factories.ts
-nav_order: 50
+nav_order: 49
 parent: Modules
 ---
 
@@ -35,7 +35,7 @@ parent: Modules
 ```ts
 export type DisplayObject3dOpts<Tex> = {
   color?: number
-  shading?: 'unlit' | 'standart' | 'phong'
+  shading?: 'unlit' | 'standart' | 'phong' | 'wireframe'
   diffuse?: Tex
   castShadow?: boolean
   receiveShadow?: boolean
@@ -56,7 +56,7 @@ export declare class IDisplayObject3dComponentFactory<TypeDoc>
 
 ```ts
 abstract createPrimitive(
-    descriptor: Shape3DDescriptor,
+    descriptor: Shape3DMeshDescriptor,
     material?: DisplayObject3dOpts<TypeDoc['texture']>,
   ): TypeDoc['displayObject'];
 ```

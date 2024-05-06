@@ -31,6 +31,7 @@ export declare class Rapier3dTriggerComponent {
   constructor(
     protected readonly world: Rapier3dWorldComponent,
     protected _colliderDescr: ColliderDesc[],
+    public readonly shape: Shape3DDescriptor,
     protected _bodyDescr: RigidBodyDesc
   )
 }

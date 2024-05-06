@@ -1,10 +1,10 @@
 ---
-title: three/components/three-renderer-component.ts
-nav_order: 126
+title: three/components/three-renderer.component.ts
+nav_order: 127
 parent: Modules
 ---
 
-## three-renderer-component overview
+## three-renderer.component overview
 
 ---
 
@@ -18,6 +18,7 @@ parent: Modules
     - [render (method)](#render-method)
     - [dispose (method)](#dispose-method)
     - [nativeRenderer (property)](#nativerenderer-property)
+    - [world (property)](#world-property)
 
 ---
 
@@ -43,7 +44,7 @@ export declare class ThreeRendererComponent {
 **Signature**
 
 ```ts
-addToWorld(world: Gg3dWorld<ThreeVisualTypeDocRepo>)
+addToWorld(world: Gg3dWorld<ThreeVisualTypeDocRepo, PhysicsTypeDocRepo3D, ThreeSceneComponent>)
 ```
 
 ### removeFromWorld (method)
@@ -51,7 +52,7 @@ addToWorld(world: Gg3dWorld<ThreeVisualTypeDocRepo>)
 **Signature**
 
 ```ts
-removeFromWorld(world: Gg3dWorld<ThreeVisualTypeDocRepo>)
+removeFromWorld(world: Gg3dWorld<ThreeVisualTypeDocRepo, PhysicsTypeDocRepo3D, ThreeSceneComponent>)
 ```
 
 ### resizeRenderer (method)
@@ -84,4 +85,12 @@ dispose(): void
 
 ```ts
 readonly nativeRenderer: any
+```
+
+### world (property)
+
+**Signature**
+
+```ts
+world: any
 ```

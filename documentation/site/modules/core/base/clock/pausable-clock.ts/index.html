@@ -618,37 +618,44 @@
 <hr />
 <h1 id="utils">utils</h1>
 <h2 id="pausableclock-class">PausableClock (class)</h2>
-<p>A class, providing ability to track time, fire ticks, provide time elapsed + tick delta with ability to suspend/resume it.</p>
+<p>A class providing the ability to track time, fire ticks, provide time elapsed, and tick delta with the ability to suspend/resume it.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export declare class PausableClock {
   constructor(autoStart: boolean = false, protected readonly parentClock: IClock = GgGlobalClock.instance)
 }
 </code></pre>
 <h3 id="createchildclock-method">createChildClock (method)</h3>
+<p>Creates a child clock.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">createChildClock(autoStart: boolean): PausableClock
 </code></pre>
 <h3 id="start-method">start (method)</h3>
+<p>Starts the clock.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">start()
 </code></pre>
 <h3 id="stop-method">stop (method)</h3>
+<p>Stops the clock.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">stop()
 </code></pre>
 <h3 id="pause-method">pause (method)</h3>
+<p>Pauses the clock.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">pause()
 </code></pre>
 <h3 id="resume-method">resume (method)</h3>
+<p>Resumes the clock.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">resume()
 </code></pre>
 <h3 id="startlisteningticks-method">startListeningTicks (method)</h3>
+<p>Starts listening for ticks from the parent clock.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">protected startListeningTicks()
 </code></pre>
 <h3 id="stoplisteningticks-method">stopListeningTicks (method)</h3>
+<p>Stops listening for ticks from the parent clock.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">protected stopListeningTicks()
 </code></pre>

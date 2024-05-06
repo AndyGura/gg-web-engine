@@ -1,6 +1,6 @@
 ---
 title: ammo/components/ammo-body.component.ts
-nav_order: 6
+nav_order: 5
 parent: Modules
 ---
 
@@ -33,7 +33,11 @@ parent: Modules
 
 ```ts
 export declare class AmmoBodyComponent<T> {
-  protected constructor(protected readonly world: AmmoWorldComponent, protected _nativeBody: T)
+  protected constructor(
+    protected readonly world: AmmoWorldComponent,
+    protected _nativeBody: T,
+    public readonly shape: Shape3DDescriptor
+  )
 }
 ```
 

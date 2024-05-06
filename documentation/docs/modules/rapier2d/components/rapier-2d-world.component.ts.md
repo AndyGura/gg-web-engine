@@ -16,9 +16,10 @@ parent: Modules
     - [simulate (method)](#simulate-method)
     - [registerCollisionGroup (method)](#registercollisiongroup-method)
     - [deregisterCollisionGroup (method)](#deregistercollisiongroup-method)
-    - [startDebugger (method)](#startdebugger-method)
-    - [stopDebugger (method)](#stopdebugger-method)
     - [dispose (method)](#dispose-method)
+    - [added$ (property)](#added-property)
+    - [removed$ (property)](#removed-property)
+    - [children (property)](#children-property)
     - [\_nativeWorld (property)](#_nativeworld-property)
     - [handleIdEntityMap (property)](#handleidentitymap-property)
     - [lockedCollisionGroups (property)](#lockedcollisiongroups-property)
@@ -32,7 +33,9 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare class Rapier2dWorldComponent
+export declare class Rapier2dWorldComponent {
+  constructor()
+}
 ```
 
 ### init (method)
@@ -67,28 +70,36 @@ registerCollisionGroup(): CollisionGroup
 deregisterCollisionGroup(group: CollisionGroup): void
 ```
 
-### startDebugger (method)
-
-**Signature**
-
-```ts
-startDebugger(world: Gg2dWorld, drawer: IDebugPhysicsDrawer<Point2, number>): void
-```
-
-### stopDebugger (method)
-
-**Signature**
-
-```ts
-stopDebugger(): void
-```
-
 ### dispose (method)
 
 **Signature**
 
 ```ts
 dispose(): void
+```
+
+### added$ (property)
+
+**Signature**
+
+```ts
+readonly added$: any
+```
+
+### removed$ (property)
+
+**Signature**
+
+```ts
+readonly removed$: any
+```
+
+### children (property)
+
+**Signature**
+
+```ts
+readonly children: Rapier2dRigidBodyComponent[]
 ```
 
 ### \_nativeWorld (property)

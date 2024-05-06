@@ -1,6 +1,6 @@
 ---
 title: ammo/components/ammo-world.component.ts
-nav_order: 10
+nav_order: 9
 parent: Modules
 ---
 
@@ -16,10 +16,11 @@ parent: Modules
     - [simulate (method)](#simulate-method)
     - [registerCollisionGroup (method)](#registercollisiongroup-method)
     - [deregisterCollisionGroup (method)](#deregistercollisiongroup-method)
-    - [startDebugger (method)](#startdebugger-method)
-    - [stopDebugger (method)](#stopdebugger-method)
     - [dispose (method)](#dispose-method)
     - [afterTick$ (property)](#aftertick-property)
+    - [added$ (property)](#added-property)
+    - [removed$ (property)](#removed-property)
+    - [children (property)](#children-property)
     - [\_dynamicAmmoWorld (property)](#_dynamicammoworld-property)
     - [lockedCollisionGroups (property)](#lockedcollisiongroups-property)
 
@@ -32,7 +33,9 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare class AmmoWorldComponent
+export declare class AmmoWorldComponent {
+  constructor()
+}
 ```
 
 ### init (method)
@@ -67,25 +70,6 @@ registerCollisionGroup(): CollisionGroup
 deregisterCollisionGroup(group: CollisionGroup): void
 ```
 
-### startDebugger (method)
-
-**Signature**
-
-```ts
-startDebugger(
-    world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>,
-    drawer: IDebugPhysicsDrawer<Point3, Point4>,
-  ): void
-```
-
-### stopDebugger (method)
-
-**Signature**
-
-```ts
-stopDebugger(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>): void
-```
-
 ### dispose (method)
 
 **Signature**
@@ -99,7 +83,31 @@ dispose(): void
 **Signature**
 
 ```ts
-afterTick$: any
+readonly afterTick$: any
+```
+
+### added$ (property)
+
+**Signature**
+
+```ts
+readonly added$: any
+```
+
+### removed$ (property)
+
+**Signature**
+
+```ts
+readonly removed$: any
+```
+
+### children (property)
+
+**Signature**
+
+```ts
+readonly children: (AmmoRigidBodyComponent | AmmoTriggerComponent)[]
 ```
 
 ### \_dynamicAmmoWorld (property)

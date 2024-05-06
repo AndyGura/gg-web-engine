@@ -1,6 +1,6 @@
 ---
 title: ammo/components/ammo-rigid-body.component.ts
-nav_order: 8
+nav_order: 7
 parent: Modules
 ---
 
@@ -29,7 +29,11 @@ parent: Modules
 
 ```ts
 export declare class AmmoRigidBodyComponent {
-  constructor(protected readonly world: AmmoWorldComponent, protected _nativeBody: Ammo.btRigidBody)
+  constructor(
+    protected readonly world: AmmoWorldComponent,
+    protected _nativeBody: Ammo.btRigidBody,
+    public readonly shape: Shape3DDescriptor
+  )
 }
 ```
 

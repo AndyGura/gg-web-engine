@@ -1,6 +1,6 @@
 ---
 title: ammo/components/ammo-trigger.component.ts
-nav_order: 9
+nav_order: 8
 parent: Modules
 ---
 
@@ -33,7 +33,11 @@ parent: Modules
 
 ```ts
 export declare class AmmoTriggerComponent {
-  constructor(protected readonly world: AmmoWorldComponent, protected _nativeBody: Ammo.btPairCachingGhostObject)
+  constructor(
+    protected readonly world: AmmoWorldComponent,
+    protected _nativeBody: Ammo.btPairCachingGhostObject,
+    public readonly shape: Shape3DDescriptor
+  )
 }
 ```
 

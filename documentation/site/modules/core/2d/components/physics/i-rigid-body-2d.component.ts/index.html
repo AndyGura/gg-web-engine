@@ -558,6 +558,9 @@
 <pre><code class="language-ts">export interface IRigidBody2dComponent&lt;TypeDoc extends PhysicsTypeDocRepo2D = PhysicsTypeDocRepo2D&gt;
   extends IRigidBodyComponent&lt;Point2, number, TypeDoc&gt; {
   angularVelocity: number
+
+  /** body info for physics debugger view */
+  readonly debugBodySettings: DebugBody2DSettings
 }
 </code></pre>
 

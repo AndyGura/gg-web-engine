@@ -1,6 +1,6 @@
 ---
 title: core/base/models/geometry-nodes.ts
-nav_order: 95
+nav_order: 93
 parent: Modules
 ---
 
