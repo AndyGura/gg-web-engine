@@ -65,28 +65,34 @@ List of available commands: `.replace(/ /g, '&nbsp;') + `<span style="color:yell
     };
     document.getElementById('gg-console-close-icon')!.onmousedown = () => this.destroyUI();
     this.elements.input.onkeydown = event => {
-      if (event?.keyCode === 13) {
+      if (event?.code === 'Enter') {
         event.preventDefault();
         this.onInput().then();
-      } else if (event?.keyCode === 38) {
+      } else if (event?.code === 'ArrowUp') {
         event.preventDefault();
         this.onUsePreviousCommand();
-      } else if (event?.keyCode === 40) {
+      } else if (event?.code === 'ArrowDown') {
         event.preventDefault();
         this.onUseNextCommand();
+      } else if (event?.code === 'Backspace') {
+        let input = this.elements?.input;
+        if (input) {
+          let value = input.value || '';
+          // backspace pressed while input had completion selected.
+          // Native logic will remove selected text (completion part), we remove one additional character
+          if ((input.selectionStart || value.length) < value.length && input.selectionEnd == value.length) {
+            this.elements!.input.value = value.substring(0, input.selectionStart || value.length - 1);
+          }
+        }
       }
     };
     this.elements.input.oninput = event => {
       let value = this.elements?.input.value || '';
-      // backspace
-      if (value.length > 0 && (event as InputEvent).data === null) {
-        value = value.substring(0, value.length - 1);
-      }
       if (value.trim() === '') {
         return;
       }
       let autocompletion = (window as any).ggstatic.availableCommands.find((c: any) => c[0].startsWith(value));
-      if (autocompletion) {
+      if (autocompletion && autocompletion[0].length > value.length) {
         this.elements!.input.value = autocompletion[0];
         this.elements!.input.setSelectionRange(value.length, this.elements!.input.value.length);
       }
