@@ -8,7 +8,7 @@
       
       
       
-        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/three/components/three-renderer-component.ts/">
+        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/pixi/components/pixi-physics-debug-view.ts/">
       
       
       
@@ -18,7 +18,7 @@
     
     
       
-        <title>three/components/three-renderer-component.ts - GG-web-engine</title>
+        <title>pixi/components/pixi-physics-debug-view.ts - GG-web-engine</title>
       
     
     
@@ -73,7 +73,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#three-renderer-component-overview" class="md-skip">
+        <a href="#pixi-physics-debug-view-overview" class="md-skip">
           Skip to content
         </a>
       
@@ -109,7 +109,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              three/components/three-renderer-component.ts
+              pixi/components/pixi-physics-debug-view.ts
             
           </span>
         </div>
@@ -393,7 +393,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../pixi" class="md-nav__link">
+      <a href="../.." class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -453,7 +453,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href="../../../three" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -499,8 +499,8 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#three-renderer-component-overview" class="md-nav__link">
-    three-renderer-component overview
+  <a href="#pixi-physics-debug-view-overview" class="md-nav__link">
+    pixi-physics-debug-view overview
   </a>
   
 </li>
@@ -514,37 +514,30 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#threerenderercomponent-class" class="md-nav__link">
-    ThreeRendererComponent (class)
+  <a href="#pixiphysicsdebugview-class" class="md-nav__link">
+    PixiPhysicsDebugView (class)
   </a>
   
-    <nav class="md-nav" aria-label="ThreeRendererComponent (class)">
+    <nav class="md-nav" aria-label="PixiPhysicsDebugView (class)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#addtoworld-method" class="md-nav__link">
-    addToWorld (method)
+  <a href="#graphicsdraw-method" class="md-nav__link">
+    graphicsDraw (method)
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#removefromworld-method" class="md-nav__link">
-    removeFromWorld (method)
+  <a href="#sync-method" class="md-nav__link">
+    sync (method)
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#resizerenderer-method" class="md-nav__link">
-    resizeRenderer (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#render-method" class="md-nav__link">
-    render (method)
+  <a href="#linesegmentpointsforshape-method" class="md-nav__link">
+    lineSegmentPointsForShape (method)
   </a>
   
 </li>
@@ -557,8 +550,8 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#nativerenderer-property" class="md-nav__link">
-    nativeRenderer (property)
+  <a href="#debugcontainer-property" class="md-nav__link">
+    debugContainer (property)
   </a>
   
 </li>
@@ -591,58 +584,48 @@
   
 
 
-<h2 id="three-renderer-component-overview">three-renderer-component overview</h2>
+<h2 id="pixi-physics-debug-view-overview">pixi-physics-debug-view overview</h2>
 <hr />
 <h2 class="text-delta">Table of contents</h2>
 
 <ul>
 <li><a href="#utils">utils</a></li>
-<li><a href="#threerenderercomponent-class">ThreeRendererComponent (class)</a><ul>
-<li><a href="#addtoworld-method">addToWorld (method)</a></li>
-<li><a href="#removefromworld-method">removeFromWorld (method)</a></li>
-<li><a href="#resizerenderer-method">resizeRenderer (method)</a></li>
-<li><a href="#render-method">render (method)</a></li>
+<li><a href="#pixiphysicsdebugview-class">PixiPhysicsDebugView (class)</a><ul>
+<li><a href="#graphicsdraw-method">graphicsDraw (method)</a></li>
+<li><a href="#sync-method">sync (method)</a></li>
+<li><a href="#linesegmentpointsforshape-method">lineSegmentPointsForShape (method)</a></li>
 <li><a href="#dispose-method">dispose (method)</a></li>
-<li><a href="#nativerenderer-property">nativeRenderer (property)</a></li>
+<li><a href="#debugcontainer-property">debugContainer (property)</a></li>
 </ul>
 </li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
-<h2 id="threerenderercomponent-class">ThreeRendererComponent (class)</h2>
+<h2 id="pixiphysicsdebugview-class">PixiPhysicsDebugView (class)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class ThreeRendererComponent {
-  constructor(
-    public readonly scene: ThreeSceneComponent,
-    public camera: ThreeCameraComponent,
-    public readonly canvas?: HTMLCanvasElement,
-    rendererOptions: Partial&lt;RendererOptions&gt; = {}
-  )
+<pre><code class="language-ts">export declare class PixiPhysicsDebugView {
+  constructor(private readonly world: Gg2dWorld&lt;PixiVisualTypeDocRepo2D&gt;)
 }
 </code></pre>
-<h3 id="addtoworld-method">addToWorld (method)</h3>
+<h3 id="graphicsdraw-method">graphicsDraw (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">addToWorld(world: Gg3dWorld&lt;ThreeVisualTypeDocRepo&gt;)
+<pre><code class="language-ts">private graphicsDraw(graphics: Graphics, color: number, vertices: Point2[])
 </code></pre>
-<h3 id="removefromworld-method">removeFromWorld (method)</h3>
+<h3 id="sync-method">sync (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">removeFromWorld(world: Gg3dWorld&lt;ThreeVisualTypeDocRepo&gt;)
+<pre><code class="language-ts">public sync()
 </code></pre>
-<h3 id="resizerenderer-method">resizeRenderer (method)</h3>
+<h3 id="linesegmentpointsforshape-method">lineSegmentPointsForShape (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">resizeRenderer(newSize: Point2): void
-</code></pre>
-<h3 id="render-method">render (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">render(): void
+<pre><code class="language-ts">private lineSegmentPointsForShape(shape: Shape2DDescriptor): Point2[]
 </code></pre>
 <h3 id="dispose-method">dispose (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">dispose(): void
+<pre><code class="language-ts">public dispose()
 </code></pre>
-<h3 id="nativerenderer-property">nativeRenderer (property)</h3>
+<h3 id="debugcontainer-property">debugContainer (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly nativeRenderer: any
+<pre><code class="language-ts">readonly debugContainer: any
 </code></pre>
 
 

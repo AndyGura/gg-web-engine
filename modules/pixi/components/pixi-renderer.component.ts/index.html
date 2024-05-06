@@ -563,6 +563,13 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#world-property" class="md-nav__link">
+    world (property)
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -604,6 +611,7 @@
 <li><a href="#render-method">render (method)</a></li>
 <li><a href="#dispose-method">dispose (method)</a></li>
 <li><a href="#application-property">application (property)</a></li>
+<li><a href="#world-property">world (property)</a></li>
 </ul>
 </li>
 </ul>
@@ -625,11 +633,11 @@
 </code></pre>
 <h3 id="addtoworld-method">addToWorld (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">addToWorld(world: Gg2dWorld&lt;PixiVisualTypeDocRepo2D&gt;): void
+<pre><code class="language-ts">addToWorld(world: Gg2dWorld&lt;PixiVisualTypeDocRepo2D, PhysicsTypeDocRepo2D, PixiSceneComponent&gt;): void
 </code></pre>
 <h3 id="removefromworld-method">removeFromWorld (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">removeFromWorld(world: Gg2dWorld&lt;PixiVisualTypeDocRepo2D&gt;): void
+<pre><code class="language-ts">removeFromWorld(world: Gg2dWorld&lt;PixiVisualTypeDocRepo2D, PhysicsTypeDocRepo2D, PixiSceneComponent&gt;): void
 </code></pre>
 <h3 id="render-method">render (method)</h3>
 <p><strong>Signature</strong></p>
@@ -642,6 +650,10 @@
 <h3 id="application-property">application (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly application: any
+</code></pre>
+<h3 id="world-property">world (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">world: any
 </code></pre>
 
 

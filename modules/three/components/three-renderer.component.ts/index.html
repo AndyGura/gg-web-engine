@@ -8,7 +8,7 @@
       
       
       
-        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/dev/gg-debugger.ui.ts/">
+        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/three/components/three-renderer.component.ts/">
       
       
       
@@ -18,7 +18,7 @@
     
     
       
-        <title>core/dev/gg-debugger.ui.ts - GG-web-engine</title>
+        <title>three/components/three-renderer.component.ts - GG-web-engine</title>
       
     
     
@@ -73,7 +73,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#gg-debuggerui-overview" class="md-skip">
+        <a href="#three-renderercomponent-overview" class="md-skip">
           Skip to content
         </a>
       
@@ -109,7 +109,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              core/dev/gg-debugger.ui.ts
+              three/components/three-renderer.component.ts
             
           </span>
         </div>
@@ -353,7 +353,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href="../../../core" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -453,7 +453,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../three" class="md-nav__link">
+      <a href="../.." class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -499,8 +499,8 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#gg-debuggerui-overview" class="md-nav__link">
-    gg-debugger.ui overview
+  <a href="#three-renderercomponent-overview" class="md-nav__link">
+    three-renderer.component overview
   </a>
   
 </li>
@@ -514,37 +514,58 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#ggdebuggerui-class" class="md-nav__link">
-    GgDebuggerUI (class)
+  <a href="#threerenderercomponent-class" class="md-nav__link">
+    ThreeRendererComponent (class)
   </a>
   
-    <nav class="md-nav" aria-label="GgDebuggerUI (class)">
+    <nav class="md-nav" aria-label="ThreeRendererComponent (class)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#setshowstats-method" class="md-nav__link">
-    setShowStats (method)
+  <a href="#addtoworld-method" class="md-nav__link">
+    addToWorld (method)
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#setshowdebugcontrols-method" class="md-nav__link">
-    setShowDebugControls (method)
+  <a href="#removefromworld-method" class="md-nav__link">
+    removeFromWorld (method)
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#makesnapshot-method" class="md-nav__link">
-    makeSnapshot (method)
+  <a href="#resizerenderer-method" class="md-nav__link">
+    resizeRenderer (method)
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#rendercontrols-method" class="md-nav__link">
-    renderControls (method)
+  <a href="#render-method" class="md-nav__link">
+    render (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dispose-method" class="md-nav__link">
+    dispose (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nativerenderer-property" class="md-nav__link">
+    nativeRenderer (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#world-property" class="md-nav__link">
+    world (property)
   </a>
   
 </li>
@@ -577,41 +598,63 @@
   
 
 
-<h2 id="gg-debuggerui-overview">gg-debugger.ui overview</h2>
+<h2 id="three-renderercomponent-overview">three-renderer.component overview</h2>
 <hr />
 <h2 class="text-delta">Table of contents</h2>
 
 <ul>
 <li><a href="#utils">utils</a></li>
-<li><a href="#ggdebuggerui-class">GgDebuggerUI (class)</a><ul>
-<li><a href="#setshowstats-method">setShowStats (method)</a></li>
-<li><a href="#setshowdebugcontrols-method">setShowDebugControls (method)</a></li>
-<li><a href="#makesnapshot-method">makeSnapshot (method)</a></li>
-<li><a href="#rendercontrols-method">renderControls (method)</a></li>
+<li><a href="#threerenderercomponent-class">ThreeRendererComponent (class)</a><ul>
+<li><a href="#addtoworld-method">addToWorld (method)</a></li>
+<li><a href="#removefromworld-method">removeFromWorld (method)</a></li>
+<li><a href="#resizerenderer-method">resizeRenderer (method)</a></li>
+<li><a href="#render-method">render (method)</a></li>
+<li><a href="#dispose-method">dispose (method)</a></li>
+<li><a href="#nativerenderer-property">nativeRenderer (property)</a></li>
+<li><a href="#world-property">world (property)</a></li>
 </ul>
 </li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
-<h2 id="ggdebuggerui-class">GgDebuggerUI (class)</h2>
+<h2 id="threerenderercomponent-class">ThreeRendererComponent (class)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class GgDebuggerUI
+<pre><code class="language-ts">export declare class ThreeRendererComponent {
+  constructor(
+    public readonly scene: ThreeSceneComponent,
+    public camera: ThreeCameraComponent,
+    public readonly canvas?: HTMLCanvasElement,
+    rendererOptions: Partial&lt;RendererOptions&gt; = {}
+  )
+}
 </code></pre>
-<h3 id="setshowstats-method">setShowStats (method)</h3>
+<h3 id="addtoworld-method">addToWorld (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">public setShowStats(selectedWorld: GgWorld&lt;any, any&gt;, value: boolean)
+<pre><code class="language-ts">addToWorld(world: Gg3dWorld&lt;ThreeVisualTypeDocRepo, PhysicsTypeDocRepo3D, ThreeSceneComponent&gt;)
 </code></pre>
-<h3 id="setshowdebugcontrols-method">setShowDebugControls (method)</h3>
+<h3 id="removefromworld-method">removeFromWorld (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">public setShowDebugControls(selectedWorld: GgWorld&lt;any, any&gt;, value: boolean)
+<pre><code class="language-ts">removeFromWorld(world: Gg3dWorld&lt;ThreeVisualTypeDocRepo, PhysicsTypeDocRepo3D, ThreeSceneComponent&gt;)
 </code></pre>
-<h3 id="makesnapshot-method">makeSnapshot (method)</h3>
+<h3 id="resizerenderer-method">resizeRenderer (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">private makeSnapshot(): RuntimeDataSnapshot
+<pre><code class="language-ts">resizeRenderer(newSize: Point2): void
 </code></pre>
-<h3 id="rendercontrols-method">renderControls (method)</h3>
+<h3 id="render-method">render (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">private renderControls(debugControlsContainer: HTMLDivElement)
+<pre><code class="language-ts">render(): void
+</code></pre>
+<h3 id="dispose-method">dispose (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">dispose(): void
+</code></pre>
+<h3 id="nativerenderer-property">nativeRenderer (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly nativeRenderer: any
+</code></pre>
+<h3 id="world-property">world (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">world: any
 </code></pre>
 
 

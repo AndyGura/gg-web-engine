@@ -8,7 +8,7 @@
       
       
       
-        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/dev/gg-debugger.ui.ts/">
+        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/three/components/three-physics-debug-view.ts/">
       
       
       
@@ -18,7 +18,7 @@
     
     
       
-        <title>core/dev/gg-debugger.ui.ts - GG-web-engine</title>
+        <title>three/components/three-physics-debug-view.ts - GG-web-engine</title>
       
     
     
@@ -73,7 +73,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#gg-debuggerui-overview" class="md-skip">
+        <a href="#three-physics-debug-view-overview" class="md-skip">
           Skip to content
         </a>
       
@@ -109,7 +109,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              core/dev/gg-debugger.ui.ts
+              three/components/three-physics-debug-view.ts
             
           </span>
         </div>
@@ -353,7 +353,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href="../../../core" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -453,7 +453,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../three" class="md-nav__link">
+      <a href="../.." class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -499,8 +499,8 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#gg-debuggerui-overview" class="md-nav__link">
-    gg-debugger.ui overview
+  <a href="#three-physics-debug-view-overview" class="md-nav__link">
+    three-physics-debug-view overview
   </a>
   
 </li>
@@ -514,37 +514,44 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#ggdebuggerui-class" class="md-nav__link">
-    GgDebuggerUI (class)
+  <a href="#threephysicsdebugview-class" class="md-nav__link">
+    ThreePhysicsDebugView (class)
   </a>
   
-    <nav class="md-nav" aria-label="GgDebuggerUI (class)">
+    <nav class="md-nav" aria-label="ThreePhysicsDebugView (class)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#setshowstats-method" class="md-nav__link">
-    setShowStats (method)
+  <a href="#startdebugview-static-method" class="md-nav__link">
+    startDebugView (static method)
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#setshowdebugcontrols-method" class="md-nav__link">
-    setShowDebugControls (method)
+  <a href="#stopdebugview-static-method" class="md-nav__link">
+    stopDebugView (static method)
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#makesnapshot-method" class="md-nav__link">
-    makeSnapshot (method)
+  <a href="#render-method" class="md-nav__link">
+    render (method)
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#rendercontrols-method" class="md-nav__link">
-    renderControls (method)
+  <a href="#linesegmentpointsforshape-method" class="md-nav__link">
+    lineSegmentPointsForShape (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dispose-method" class="md-nav__link">
+    dispose (method)
   </a>
   
 </li>
@@ -577,41 +584,51 @@
   
 
 
-<h2 id="gg-debuggerui-overview">gg-debugger.ui overview</h2>
+<h2 id="three-physics-debug-view-overview">three-physics-debug-view overview</h2>
 <hr />
 <h2 class="text-delta">Table of contents</h2>
 
 <ul>
 <li><a href="#utils">utils</a></li>
-<li><a href="#ggdebuggerui-class">GgDebuggerUI (class)</a><ul>
-<li><a href="#setshowstats-method">setShowStats (method)</a></li>
-<li><a href="#setshowdebugcontrols-method">setShowDebugControls (method)</a></li>
-<li><a href="#makesnapshot-method">makeSnapshot (method)</a></li>
-<li><a href="#rendercontrols-method">renderControls (method)</a></li>
+<li><a href="#threephysicsdebugview-class">ThreePhysicsDebugView (class)</a><ul>
+<li><a href="#startdebugview-static-method">startDebugView (static method)</a></li>
+<li><a href="#stopdebugview-static-method">stopDebugView (static method)</a></li>
+<li><a href="#render-method">render (method)</a></li>
+<li><a href="#linesegmentpointsforshape-method">lineSegmentPointsForShape (method)</a></li>
+<li><a href="#dispose-method">dispose (method)</a></li>
 </ul>
 </li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
-<h2 id="ggdebuggerui-class">GgDebuggerUI (class)</h2>
+<h2 id="threephysicsdebugview-class">ThreePhysicsDebugView (class)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class GgDebuggerUI
+<pre><code class="language-ts">export declare class ThreePhysicsDebugView {
+  private constructor(private readonly world: Gg3dWorld&lt;ThreeVisualTypeDocRepo&gt;)
+}
 </code></pre>
-<h3 id="setshowstats-method">setShowStats (method)</h3>
+<h3 id="startdebugview-static-method">startDebugView (static method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">public setShowStats(selectedWorld: GgWorld&lt;any, any&gt;, value: boolean)
+<pre><code class="language-ts">public static startDebugView(
+    world: Gg3dWorld&lt;ThreeVisualTypeDocRepo&gt;,
+    renderer: ThreeRendererComponent,
+  ): ThreePhysicsDebugView
 </code></pre>
-<h3 id="setshowdebugcontrols-method">setShowDebugControls (method)</h3>
+<h3 id="stopdebugview-static-method">stopDebugView (static method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">public setShowDebugControls(selectedWorld: GgWorld&lt;any, any&gt;, value: boolean)
+<pre><code class="language-ts">public static stopDebugView(debugView: ThreePhysicsDebugView, renderer: ThreeRendererComponent)
 </code></pre>
-<h3 id="makesnapshot-method">makeSnapshot (method)</h3>
+<h3 id="render-method">render (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">private makeSnapshot(): RuntimeDataSnapshot
+<pre><code class="language-ts">public render(nativeRenderer: WebGLRenderer, nativeCamera: Camera)
 </code></pre>
-<h3 id="rendercontrols-method">renderControls (method)</h3>
+<h3 id="linesegmentpointsforshape-method">lineSegmentPointsForShape (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">private renderControls(debugControlsContainer: HTMLDivElement)
+<pre><code class="language-ts">private lineSegmentPointsForShape(shape: Shape3DMeshDescriptor): Vector3[] | null
+</code></pre>
+<h3 id="dispose-method">dispose (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private dispose()
 </code></pre>
 
 
