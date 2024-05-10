@@ -1,4 +1,4 @@
-import { Observable, Subject, Subscription } from 'rxjs';
+import { filter, Observable, Subject, Subscription } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
 import { GgGlobalClock } from './global-clock';
 import { IClock } from './i-clock';
@@ -14,7 +14,16 @@ export class PausableClock implements IClock {
    * Observable stream of ticks, emitting an array containing the current time and the tick delta.
    */
   public get tick$(): Observable<[number, number]> {
-    return this._tick$.pipe(map(([oldTime, newTime]) => [newTime, newTime - oldTime]));
+    return this._tick$.pipe(
+      map<[number, number], [number, number]>(([oldTime, newTime]) => [newTime, newTime - oldTime]),
+      filter<[number, number]>(
+        ([elapsed]) =>
+          !this.tickRateLimit ||
+          Math.floor((this.lastNotThrottledTickElapsed * this.tickRateLimit) / 1000) <
+            Math.floor((elapsed * this.tickRateLimit) / 1000),
+      ),
+      tap(([elapsed]) => (this.lastNotThrottledTickElapsed = elapsed)),
+    );
   }
 
   /**
@@ -81,6 +90,11 @@ export class PausableClock implements IClock {
     return this._timeScale * (this.parentClock.elapsedTime - this.startedAt);
   }
 
+  /**
+   * Tick rate limiter. If set to 0 - tick rate is unlimited, 15 means "allow at most 15 ticks per second"
+   */
+  public tickRateLimit: number = 0;
+
   // State variables
   private startedAt: number = -1;
   private oldRelativeTime: number = 0; // "elapsed", emitted on last tick
@@ -88,6 +102,7 @@ export class PausableClock implements IClock {
   private lastStopElapsed: number = 0;
   private _timeScale: number = 1;
   private pausedByTimescale: boolean = false;
+  private lastNotThrottledTickElapsed: number = 0;
 
   /**
    * Constructs a new PausableClock instance.
