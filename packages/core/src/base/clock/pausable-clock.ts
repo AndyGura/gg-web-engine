@@ -8,22 +8,14 @@ import { IClock } from './i-clock';
  */
 export class PausableClock implements IClock {
   private tickSub: Subscription | null = null;
+  private readonly _internalTick$: Subject<[number, number]> = new Subject<[number, number]>();
   private readonly _tick$: Subject<[number, number]> = new Subject<[number, number]>();
 
   /**
    * Observable stream of ticks, emitting an array containing the current time and the tick delta.
    */
   public get tick$(): Observable<[number, number]> {
-    return this._tick$.pipe(
-      map<[number, number], [number, number]>(([oldTime, newTime]) => [newTime, newTime - oldTime]),
-      filter<[number, number]>(
-        ([elapsed]) =>
-          !this.tickRateLimit ||
-          Math.floor((this.lastNotThrottledTickElapsed * this.tickRateLimit) / 1000) <
-            Math.floor((elapsed * this.tickRateLimit) / 1000),
-      ),
-      tap(([elapsed]) => (this.lastNotThrottledTickElapsed = elapsed)),
-    );
+    return this._tick$.asObservable();
   }
 
   /**
@@ -102,7 +94,7 @@ export class PausableClock implements IClock {
   private lastStopElapsed: number = 0;
   private _timeScale: number = 1;
   private pausedByTimescale: boolean = false;
-  private lastNotThrottledTickElapsed: number = 0;
+  private lastFiredTickElapsed: number = 0;
 
   /**
    * Constructs a new PausableClock instance.
@@ -113,6 +105,18 @@ export class PausableClock implements IClock {
     if (autoStart) {
       this.start();
     }
+    this._internalTick$
+      .pipe(
+        map<[number, number], [number, number]>(([_, newTime]) => [newTime, newTime - this.lastFiredTickElapsed]),
+        filter<[number, number]>(
+          ([elapsed]) =>
+            !this.tickRateLimit ||
+            Math.floor((this.lastFiredTickElapsed * this.tickRateLimit) / 1000) <
+              Math.floor((elapsed * this.tickRateLimit) / 1000),
+        ),
+        tap(([elapsed]) => (this.lastFiredTickElapsed = elapsed)),
+      )
+      .subscribe(this._tick$);
   }
 
   /**
@@ -178,7 +182,7 @@ export class PausableClock implements IClock {
         map(([_, d]) => [this.oldRelativeTime, this.oldRelativeTime + d * this.timeScale] as [number, number]),
         tap(([_, cur]) => (this.oldRelativeTime = cur)),
       )
-      .subscribe(this._tick$);
+      .subscribe(this._internalTick$);
   }
 
   /**

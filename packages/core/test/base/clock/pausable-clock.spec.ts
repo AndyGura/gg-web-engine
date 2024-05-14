@@ -116,6 +116,39 @@ describe('PausableClock', () => {
     });
   });
 
+  describe('tick rate limit', () => {
+    it('should throttle ticks', () => {
+      const intermediateClock = new PausableClock(true, gClockMock);
+      intermediateClock.tickRateLimit = 10;
+      const c1 = new PausableClock(true, intermediateClock);
+      const c2 = new PausableClock(true, intermediateClock);
+      let caughtTicks1: [number, number][] = [];
+      let caughtTicks2: [number, number][] = [];
+      c1.tick$.subscribe((x) => {
+        caughtTicks1.push(x);
+      });
+      c2.tick$.subscribe((x) => {
+        caughtTicks2.push(x);
+      });
+      gClockMock._tick$.next([0, 25]);
+      gClockMock._tick$.next([25, 50]);
+      gClockMock._tick$.next([50, 75]);
+      gClockMock._tick$.next([75, 100]);
+      gClockMock._tick$.next([100, 125]);
+      gClockMock._tick$.next([125, 150]);
+      gClockMock._tick$.next([150, 175]);
+      gClockMock._tick$.next([175, 200]);
+      gClockMock._tick$.next([200, 225]);
+      jest.advanceTimersByTime(225);
+      expect(caughtTicks1).toHaveLength(2);
+      expect(caughtTicks1).toEqual([[100, 100], [200, 100]]);
+      expect(c1.elapsedTime).toEqual(225);
+      expect(caughtTicks2).toHaveLength(2);
+      expect(caughtTicks2).toEqual([[100, 100], [200, 100]]);
+      expect(c2.elapsedTime).toEqual(225);
+    });
+  });
+
   describe('time scale', () => {
     it('should scale time', () => {
       const c = new PausableClock(true);
