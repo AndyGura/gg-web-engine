@@ -16,7 +16,7 @@ type RuntimeDataSnapshot = {
 
 type PerformanceStatsSnapshot = {
   readonly totalTime: number;
-  readonly entries: [string, number][]
+  readonly entries: [string, number][];
 } | null;
 
 const snapshotEqual = (a: RuntimeDataSnapshot, b: RuntimeDataSnapshot): boolean => {
@@ -252,11 +252,11 @@ export class GgDebuggerUI {
       html += `
           <div ${this.css}>
             <label for='stat_progress' style='user-select:none;width:3rem;text-align:left;'>${this.performanceStatsSnapshot.totalTime.toFixed(
-        2,
-      )}ms</label>
+              2,
+            )}ms</label>
             <progress id="stat_progress" max="16" style='width:14rem;margin:4px;' value="${
-        this.performanceStatsSnapshot.totalTime
-      }"></progress>
+              this.performanceStatsSnapshot.totalTime
+            }"></progress>
             <label for='stat_progress' style='user-select:none;text-align:right;'>Total frame time</label>
           </div>`;
       for (const [i, [name, value]] of this.performanceStatsSnapshot.entries.entries()) {
