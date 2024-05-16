@@ -14,6 +14,7 @@ import {
   PausableClock,
   TickOrder,
 } from '../base';
+import { Subject } from 'rxjs';
 
 export type VisualTypeDocRepo<D, R> = {
   factory: unknown;
@@ -35,20 +36,25 @@ export abstract class GgWorld<
   VS extends IVisualSceneComponent<D, R, VTypeDoc> = IVisualSceneComponent<D, R, VTypeDoc>,
   PW extends IPhysicsWorldComponent<D, R, PTypeDoc> = IPhysicsWorldComponent<D, R, PTypeDoc>,
 > {
+  private static default_name_counter = 0;
+  private static _documentWorlds: GgWorld<any, any>[] = [];
+  static get documentWorlds(): GgWorld<any, any>[] {
+    return [...GgWorld._documentWorlds];
+  }
+
   public readonly worldClock: PausableClock = GgGlobalClock.instance.createChildClock(false);
   public readonly keyboardInput: KeyboardInput = new KeyboardInput();
 
-  private static default_name_counter = 0;
   public name: string = 'w0x' + (GgWorld.default_name_counter++).toString(16);
 
   readonly children: IEntity[] = [];
   // the same as children, but sorted by tick order
   protected readonly tickListeners: IEntity[] = [];
 
-  private static _documentWorlds: GgWorld<any, any>[] = [];
-  static get documentWorlds(): GgWorld<any, any>[] {
-    return [...GgWorld._documentWorlds];
-  }
+  // events
+  public readonly tickStarted$: Subject<void> = new Subject<void>();
+  public readonly tickForwardTo$: Subject<IEntity | 'PHYSICS_WORLD'> = new Subject<IEntity | 'PHYSICS_WORLD'>();
+  public readonly tickForwardedTo$: Subject<IEntity | 'PHYSICS_WORLD'> = new Subject<IEntity | 'PHYSICS_WORLD'>();
 
   protected constructor(public readonly visualScene: VS, public readonly physicsWorld: PW) {
     GgWorld._documentWorlds.push(this);
@@ -119,6 +125,7 @@ export abstract class GgWorld<
   public async init() {
     await Promise.all([this.physicsWorld.init(), this.visualScene.init()]);
     this.worldClock.tick$.subscribe(([elapsed, delta]) => {
+      this.tickStarted$.next();
       let i = 0;
       // emit tick to all entities with tick order < GGTickOrder.PHYSICS_SIMULATION
       for (i; i < this.tickListeners.length; i++) {
@@ -126,15 +133,21 @@ export abstract class GgWorld<
           break;
         }
         if (this.tickListeners[i].active) {
+          this.tickForwardTo$.next(this.tickListeners[i]);
           this.tickListeners[i].tick$.next([elapsed, delta]);
+          this.tickForwardedTo$.next(this.tickListeners[i]);
         }
       }
       // run physics simulation
+      this.tickForwardTo$.next('PHYSICS_WORLD');
       this.physicsWorld.simulate(delta);
+      this.tickForwardedTo$.next('PHYSICS_WORLD');
       // emit tick to all remained entities
       for (i; i < this.tickListeners.length; i++) {
         if (this.tickListeners[i].active) {
+          this.tickForwardTo$.next(this.tickListeners[i]);
           this.tickListeners[i].tick$.next([elapsed, delta]);
+          this.tickForwardedTo$.next(this.tickListeners[i]);
         }
       }
     });
@@ -174,6 +187,9 @@ export abstract class GgWorld<
     }
     this.worldClock.stop();
     this.keyboardInput.stop();
+    this.tickStarted$.complete();
+    this.tickForwardTo$.complete();
+    this.tickForwardedTo$.complete();
     for (let i = 0; i < this.children.length; i++) {
       this.children[i].onRemoved();
       this.children[i].dispose();
