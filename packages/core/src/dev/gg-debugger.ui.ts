@@ -2,6 +2,7 @@ import { createInlineTickController, GgWorld, IRendererEntity } from '../base';
 import { animationFrameScheduler, fromEvent, of, Subject, takeUntil } from 'rxjs';
 import Stats from 'stats.js';
 import { repeat } from 'rxjs/operators';
+import { PerformanceMeterEntity } from './performance-meter.entity';
 
 type RuntimeDataSnapshot = {
   readonly timeScale: number;
@@ -10,15 +11,34 @@ type RuntimeDataSnapshot = {
     readonly entity: IRendererEntity<unknown, unknown>;
     readonly physicsDebugViewActive: boolean;
   }[];
+  readonly performanceStatsEnabled: boolean;
 };
+
+type PerformanceStatsSnapshot = {
+  readonly totalTime: number;
+  readonly entries: [string, number][];
+} | null;
 
 const snapshotEqual = (a: RuntimeDataSnapshot, b: RuntimeDataSnapshot): boolean => {
   if (a.timeScale !== b.timeScale) return false;
+  if (a.performanceStatsEnabled !== b.performanceStatsEnabled) return false;
   if (a.renderers.length !== b.renderers.length) return false;
   for (let i = 0; i < a.renderers.length; i++) {
     if (a.renderers[i].name !== b.renderers[i].name) return false;
     if (a.renderers[i].entity !== b.renderers[i].entity) return false;
     if (a.renderers[i].physicsDebugViewActive !== b.renderers[i].physicsDebugViewActive) return false;
+  }
+  return true;
+};
+const performanceStatsSnapshotEqual = (a: PerformanceStatsSnapshot, b: PerformanceStatsSnapshot): boolean => {
+  if (!!a !== !!b) return false;
+  if (a && b) {
+    if (a.totalTime !== b.totalTime) return false;
+    if (a.entries.length !== b.entries.length) return false;
+    for (let i = 0; i < a.entries.length; i++) {
+      if (a.entries[i][0] !== b.entries[i][0]) return false;
+      if (a.entries[i][1] !== b.entries[i][1]) return false;
+    }
   }
   return true;
 };
@@ -56,12 +76,12 @@ export class GgDebuggerUI {
       stats.dom.style.right = '0';
       stats.showPanel(0); // 0: fps, 1: ms, 2: mb
       document.body.appendChild(stats.dom);
-      createInlineTickController(selectedWorld, -1)
+      createInlineTickController(selectedWorld, -1, 'fps_meter_init')
         .pipe(takeUntil(this.statsRemoved$))
         .subscribe(() => {
           stats?.begin();
         });
-      createInlineTickController(selectedWorld, 10000)
+      createInlineTickController(selectedWorld, 10000, 'fps_meter')
         .pipe(takeUntil(this.statsRemoved$))
         .subscribe(() => {
           stats?.end();
@@ -97,7 +117,9 @@ export class GgDebuggerUI {
       debugControlsContainer.style.cssText =
         'position:fixed;top:48px;right:0;opacity:0.9;z-index:9999;background-color:#333;color:white;display:flex;flex-direction:column';
       this.snapshot = this.makeSnapshot();
+      this.performanceStatsSnapshot = this.makePerformanceStatsSnapshot();
       this.renderControls(debugControlsContainer);
+      this.renderPerformanceStats();
       of(undefined, animationFrameScheduler)
         .pipe(repeat(), takeUntil(this.debugControlsRemoved$))
         .subscribe(() => {
@@ -105,6 +127,11 @@ export class GgDebuggerUI {
           if (!snapshotEqual(this.snapshot, newSnapshot)) {
             this.snapshot = newSnapshot;
             this.renderControls(debugControlsContainer);
+          }
+          const newPerformanceStats = this.makePerformanceStatsSnapshot();
+          if (!performanceStatsSnapshotEqual(this.performanceStatsSnapshot, newPerformanceStats)) {
+            this.performanceStatsSnapshot = newPerformanceStats;
+            this.renderPerformanceStats();
           }
         });
     } else {
@@ -117,27 +144,48 @@ export class GgDebuggerUI {
   private snapshot: RuntimeDataSnapshot = {
     timeScale: 1,
     renderers: [],
+    performanceStatsEnabled: false,
   };
 
+  private performanceStatsSnapshot: PerformanceStatsSnapshot = null;
+
   private makeSnapshot(): RuntimeDataSnapshot {
+    const renderers: IRendererEntity<unknown, unknown>[] = [];
+    let performanceMeter: PerformanceMeterEntity | null = null;
+    for (const e of this.currentWorld.children) {
+      if (e instanceof IRendererEntity) {
+        renderers.push(e);
+      } else if (e instanceof PerformanceMeterEntity) {
+        performanceMeter = e;
+      }
+    }
     return {
       timeScale: this.currentWorld.worldClock.timeScale,
-      renderers: this.currentWorld.children
-        .filter(x => x instanceof IRendererEntity)
-        .map(r => ({
-          name: r.name,
-          entity: r as IRendererEntity<unknown, unknown>,
-          physicsDebugViewActive: (r as IRendererEntity<unknown, unknown>).physicsDebugViewActive,
-        })),
+      renderers: renderers.map(r => ({
+        name: r.name,
+        entity: r as IRendererEntity<unknown, unknown>,
+        physicsDebugViewActive: (r as IRendererEntity<unknown, unknown>).physicsDebugViewActive,
+      })),
+      performanceStatsEnabled: !!performanceMeter,
     };
   }
 
+  private makePerformanceStatsSnapshot(): PerformanceStatsSnapshot {
+    if (!this.snapshot.performanceStatsEnabled) return null;
+    let performanceMeter = this.currentWorld.children.find(e => e instanceof PerformanceMeterEntity);
+    if (performanceMeter) {
+      return (performanceMeter as PerformanceMeterEntity).report;
+    }
+    return null;
+  }
+
+  css = "style='display:flex;align-items:center;margin:0.25rem;'";
+
   private renderControls(debugControlsContainer: HTMLDivElement) {
-    const debugLabelCss = "style='display:flex;align-items:center;margin:0.25rem;'";
     let html: string = '';
     for (const { entity, physicsDebugViewActive } of this.snapshot.renderers) {
       html += `
-      <div ${debugLabelCss}>
+      <div ${this.css}>
         <input type='checkbox' name='checkbox' id='physics_debugger_checkbox_id_${entity.name}' value='1'${
         physicsDebugViewActive ? ' checked' : ''
       }>
@@ -147,11 +195,20 @@ export class GgDebuggerUI {
       </div>`;
     }
     html += `
-      <div ${debugLabelCss}>
+      <div ${this.css}>
         <input id='time_scale_slider' type='range' min='0' max='5' step='0.01' style='flex-grow:1' value='${this.snapshot.timeScale}'/>
         <label for='time_scale_slider' style='user-select: none;'>Time scale</label>
       </div>`;
+    html += `
+      <div ${this.css}>
+        <input type='checkbox' name='checkbox' id='perf_stats_checkbox_id' value='1'${
+          this.snapshot.performanceStatsEnabled ? ' checked' : ''
+        }>
+        <label for='perf_stats_checkbox_id' style='user-select: none;'>Entities performance distribution</label>
+      </div>
+      <div style='display: contents' id='perf_stats_container'></div>`;
     debugControlsContainer.innerHTML = html;
+    debugControlsContainer.style.minWidth = '25rem';
     this.viewUpdated$.next();
     for (const { entity } of this.snapshot.renderers) {
       fromEvent(document.getElementById('physics_debugger_checkbox_id_' + entity.name)! as HTMLInputElement, 'change')
@@ -173,5 +230,49 @@ export class GgDebuggerUI {
           console.error(err);
         }
       });
+    fromEvent(document.getElementById('perf_stats_checkbox_id')! as HTMLInputElement, 'change')
+      .pipe(takeUntil(this.debugControlsRemoved$), takeUntil(this.viewUpdated$))
+      .subscribe(e => {
+        const entity = this.currentWorld.children.find(x => x instanceof PerformanceMeterEntity);
+        if ((e.target as HTMLInputElement).checked == !entity) {
+          if (entity) {
+            this.currentWorld.removeEntity(entity);
+          } else {
+            this.currentWorld.addEntity(new PerformanceMeterEntity());
+          }
+        }
+      });
+  }
+
+  private renderPerformanceStats() {
+    const em = document.getElementById('perf_stats_container');
+    if (!em) return;
+    let html = '';
+    if (this.performanceStatsSnapshot) {
+      html += `
+          <div ${this.css}>
+            <label for='stat_progress' style='user-select:none;width:3rem;text-align:left;'>${this.performanceStatsSnapshot.totalTime.toFixed(
+              2,
+            )}ms</label>
+            <progress id="stat_progress" max="16" style='width:14rem;margin:4px;' value="${
+              this.performanceStatsSnapshot.totalTime
+            }"></progress>
+            <label for='stat_progress' style='user-select:none;text-align:right;'>Total frame time</label>
+          </div>`;
+      for (const [i, [name, value]] of this.performanceStatsSnapshot.entries.entries()) {
+        html += `
+          <div ${this.css}>
+            <label for='stat_progress_${i}' style='user-select:none;width:3rem;text-align:left;'>${(
+          (value * 100) /
+          this.performanceStatsSnapshot.totalTime
+        ).toFixed(2)}%</label>
+            <progress id="stat_progress_${i}" style='width:14rem;margin:4px;' max="${
+          this.performanceStatsSnapshot.totalTime
+        }" value="${value}">${value}%</progress>
+            <label for='stat_progress_${i}' style='user-select:none;text-align:right;'>${name}</label>
+          </div>`;
+      }
+    }
+    em.innerHTML = html;
   }
 }

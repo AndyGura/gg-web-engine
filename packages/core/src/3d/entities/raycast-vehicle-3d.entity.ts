@@ -74,6 +74,20 @@ export class RaycastVehicle3dEntity<
   protected readonly frontWheelsIndices: number[] = [];
   protected readonly rearWheelsIndices: number[] = [];
 
+  get name(): string {
+    return super.name;
+  }
+
+  set name(value: string) {
+    const oldName = super.name;
+    super.name = value;
+    for (const w of this.wheels || []) {
+      if (w) {
+        w.name = w.name.replace(oldName, value);
+      }
+    }
+  }
+
   // m/s
   public getSpeed(): number {
     return this.vehicleComponent.wheelSpeed;
@@ -197,7 +211,9 @@ export class RaycastVehicle3dEntity<
         localRotation = { x: 0, y: 0.707107 * (flip ? 1 : -1), z: 0, w: 0.707107 };
       }
       this.wheelLocalRotation.push(localRotation);
-      this.wheels.push(new Entity3d(entity));
+      const wheelEntity = new Entity3d<VTypeDoc, PTypeDoc>(entity);
+      wheelEntity.name = this.name + '__wheel_' + (options.isFront ? 'f' : 'r') + (options.isLeft ? 'l' : 'r');
+      this.wheels.push(wheelEntity);
     }
     this.addChildren(...(this.wheels.filter(x => !!x) as (IEntity & IPositionable3d)[]));
     this.vehicleComponent.entity = this;

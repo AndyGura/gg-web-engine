@@ -81,7 +81,7 @@ export class GgStatic {
         return this.availableCommands
           .map(
             ([key, value]) =>
-              `<span style="color:yellow">${key}</span>${
+              `<span style='color:yellow'>${key}</span>${
                 value.doc ? '\t<span style="color:#aaa">// ' + value.doc + '</span>' : ''
               }`,
           )
@@ -95,7 +95,7 @@ export class GgStatic {
       'ls_worlds',
       async () => {
         return GgWorld.documentWorlds
-          .map(w => (w === this.selectedWorld ? `<span style="color:green;">* ${w.name}</span>` : `  ${w.name}`))
+          .map(w => (w === this.selectedWorld ? `<span style='color:lightgreen;'>* ${w.name}</span>` : `  ${w.name}`))
           .join('\n');
       },
       'no args; print all available worlds',
@@ -113,6 +113,24 @@ export class GgStatic {
         return this.selectedWorld?.name || 'null';
       },
       'args: [string]; select world by name',
+    );
+    this.registerConsoleCommand(
+      null,
+      'show_debugger',
+      async (...args: string[]) => {
+        this.showDebugControls = ['1', 'true', '+'].includes(args[0]);
+        return '' + this.showDebugControls;
+      },
+      'args: [0 or 1]; turn on/off debug panel. Default value is 0',
+    );
+    this.registerConsoleCommand(
+      null,
+      'show_stats',
+      async (...args: string[]) => {
+        this.showStats = ['1', 'true', '+'].includes(args[0]);
+        return '' + this.showStats;
+      },
+      'args: [0 or 1]; turn on/off stats. Default value is 0',
     );
   }
 
@@ -157,13 +175,13 @@ export class GgStatic {
     if (!action) {
       action = (this.consoleCommands.get(this.selectedWorld) || {})[command];
       if (!action) {
-        return `<span style="color:red">Unrecognized command: ${command}</span>`;
+        return `<span style='color:red'>Unrecognized command: ${command}</span>`;
       }
     }
     try {
       return await action.handler(...args);
     } catch (err) {
-      return `<span style="color:red">${err}</span>`;
+      return `<span style='color:red'>${err}</span>`;
     }
   }
 }

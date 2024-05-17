@@ -14,6 +14,8 @@ import {
   PausableClock,
   TickOrder,
 } from '../base';
+import { Subject, take, lastValueFrom } from 'rxjs';
+import { PerformanceMeterEntity } from '../dev';
 
 export type VisualTypeDocRepo<D, R> = {
   factory: unknown;
@@ -35,43 +37,30 @@ export abstract class GgWorld<
   VS extends IVisualSceneComponent<D, R, VTypeDoc> = IVisualSceneComponent<D, R, VTypeDoc>,
   PW extends IPhysicsWorldComponent<D, R, PTypeDoc> = IPhysicsWorldComponent<D, R, PTypeDoc>,
 > {
+  private static default_name_counter = 0;
+  private static _documentWorlds: GgWorld<any, any>[] = [];
+  static get documentWorlds(): GgWorld<any, any>[] {
+    return [...GgWorld._documentWorlds];
+  }
+
   public readonly worldClock: PausableClock = GgGlobalClock.instance.createChildClock(false);
   public readonly keyboardInput: KeyboardInput = new KeyboardInput();
 
-  private static default_name_counter = 0;
   public name: string = 'w0x' + (GgWorld.default_name_counter++).toString(16);
 
   readonly children: IEntity[] = [];
   // the same as children, but sorted by tick order
   protected readonly tickListeners: IEntity[] = [];
 
-  private static _documentWorlds: GgWorld<any, any>[] = [];
-  static get documentWorlds(): GgWorld<any, any>[] {
-    return [...GgWorld._documentWorlds];
-  }
+  // events
+  public readonly tickStarted$: Subject<void> = new Subject<void>();
+  public readonly tickForwardTo$: Subject<IEntity | 'PHYSICS_WORLD'> = new Subject<IEntity | 'PHYSICS_WORLD'>();
+  public readonly tickForwardedTo$: Subject<IEntity | 'PHYSICS_WORLD'> = new Subject<IEntity | 'PHYSICS_WORLD'>();
 
   protected constructor(public readonly visualScene: VS, public readonly physicsWorld: PW) {
     GgWorld._documentWorlds.push(this);
     this.keyboardInput.start();
     if ((window as any).ggstatic) {
-      (window as any).ggstatic.registerConsoleCommand(
-        this,
-        'show_debugger',
-        async (...args: string[]) => {
-          (window as any).ggstatic.showDebugControls = ['1', 'true', '+'].includes(args[0]);
-          return '' + (window as any).ggstatic.showDebugControls;
-        },
-        'args: [0 or 1]; turn on/off debug panel. Default value is 0',
-      );
-      (window as any).ggstatic.registerConsoleCommand(
-        this,
-        'show_stats',
-        async (...args: string[]) => {
-          (window as any).ggstatic.showStats = ['1', 'true', '+'].includes(args[0]);
-          return '' + (window as any).ggstatic.showStats;
-        },
-        'args: [0 or 1]; turn on/off stats. Default value is 0',
-      );
       (window as any).ggstatic.registerConsoleCommand(
         this,
         'ph_timescale',
@@ -113,12 +102,48 @@ export abstract class GgWorld<
         'args: [0 or 1] or [0 or 1, string]; turn on/off physics debug view. Second argument expects renderer ' +
           'name, if not provided first renderer will be picked. Look up for renderer names using command "ls_renderers"',
       );
+      (window as any).ggstatic.registerConsoleCommand(
+        this,
+        'performance_report',
+        async (...args: string[]) => {
+          let samples = +args[0];
+          if (!samples || isNaN(samples)) {
+            samples = 20;
+          }
+          const meter = new PerformanceMeterEntity(samples, 100);
+          this.addEntity(meter);
+          await lastValueFrom(this.worldClock.tick$.pipe(take(samples)));
+          const report = meter.report;
+          this.removeEntity(meter);
+          let result = `Performance report (${samples} samples)\n`;
+          let color = 'lightgreen';
+          if (report.totalTime > 12) {
+            color = report.totalTime < 16 ? 'yellow' : 'red';
+          }
+          result += `<span style='color:lightgray;'>Frame time:</span>`;
+          for (let i = 0; i < 40; i++) {
+            result += '&nbsp;';
+          }
+          result += `<span style='color:${color};'>${report.totalTime.toFixed(3)} ms</span>\n`;
+          for (const [name, value] of report.entries) {
+            result += `<span style='color:lightgray;'>${name}:</span>`;
+            for (let i = 0; i < 50 - name.length; i++) {
+              result += '&nbsp;';
+            }
+            result += `${value.toFixed(3)} ms (${((value * 100) / report.totalTime).toFixed(2)}%)\n`;
+          }
+          return result;
+        },
+        'args: [int] or []; measure how much time was spent per entity in world. Argument is samples amount, ' +
+          '20 by default, one sample per frame',
+      );
     }
   }
 
   public async init() {
     await Promise.all([this.physicsWorld.init(), this.visualScene.init()]);
     this.worldClock.tick$.subscribe(([elapsed, delta]) => {
+      this.tickStarted$.next();
       let i = 0;
       // emit tick to all entities with tick order < GGTickOrder.PHYSICS_SIMULATION
       for (i; i < this.tickListeners.length; i++) {
@@ -126,15 +151,21 @@ export abstract class GgWorld<
           break;
         }
         if (this.tickListeners[i].active) {
+          this.tickForwardTo$.next(this.tickListeners[i]);
           this.tickListeners[i].tick$.next([elapsed, delta]);
+          this.tickForwardedTo$.next(this.tickListeners[i]);
         }
       }
       // run physics simulation
+      this.tickForwardTo$.next('PHYSICS_WORLD');
       this.physicsWorld.simulate(delta);
+      this.tickForwardedTo$.next('PHYSICS_WORLD');
       // emit tick to all remained entities
       for (i; i < this.tickListeners.length; i++) {
         if (this.tickListeners[i].active) {
+          this.tickForwardTo$.next(this.tickListeners[i]);
           this.tickListeners[i].tick$.next([elapsed, delta]);
+          this.tickForwardedTo$.next(this.tickListeners[i]);
         }
       }
     });
@@ -174,6 +205,9 @@ export abstract class GgWorld<
     }
     this.worldClock.stop();
     this.keyboardInput.stop();
+    this.tickStarted$.complete();
+    this.tickForwardTo$.complete();
+    this.tickForwardedTo$.complete();
     for (let i = 0; i < this.children.length; i++) {
       this.children[i].onRemoved();
       this.children[i].dispose();
