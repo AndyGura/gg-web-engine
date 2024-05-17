@@ -143,7 +143,7 @@ export abstract class GgWorld<
           renderItems.unshift(`Performance report (${samples} samples)`);
           return renderItems.join('\n');
         },
-        'args: [int, string] or [string, int] or [string] or [int] or []; measure how much time was spent per ' +
+        'args: [int, avg|peak]; [avg|peak, int]; [avg|peak]; [int] or []; measure how much time was spent per ' +
           'entity in world. Arguments are samples amount (20 by default) and "peak" or "avg" choice, both arguments are ' +
           'optional. "avg" report sorts entities by average time consumed, "peak" records highest value for each entity',
       );
