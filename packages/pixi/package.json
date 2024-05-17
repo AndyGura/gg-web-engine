@@ -31,12 +31,12 @@
   "devDependencies": {
     "@types/offscreencanvas": "2019.7.3",
     "@gg-web-engine/core": "0.0.39",
-    "pixi.js": "8.0.5",
+    "pixi.js": "8.1.4",
     "prettier": "^2.8.6",
     "typescript": "~4.7.2"
   },
   "peerDependencies": {
     "@gg-web-engine/core": "0.0.39",
-    "pixi.js": "8.0.5"
+    "pixi.js": "8.1.4"
   }
 }

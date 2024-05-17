@@ -31,13 +31,13 @@
   },
   "devDependencies": {
     "@gg-web-engine/core": "0.0.39",
-    "@types/three": "0.163.0",
-    "three": "0.163.0",
+    "@types/three": "0.164.0",
+    "three": "0.164.1",
     "prettier": "^2.8.6",
     "typescript": "~4.7.2"
   },
   "peerDependencies": {
     "@gg-web-engine/core": "0.0.39",
-    "three": "0.163.0"
+    "three": "0.164.1"
   }
 }
