@@ -9,13 +9,18 @@ export class PerformanceMeterEntity extends IEntity {
     IEntity,
     [number, number, number][]
   >();
-  private _report: { totalTime: number; entries: [string, number][] } = { totalTime: 0, entries: [] };
 
-  public get report(): { totalTime: number; entries: [string, number][] } {
-    return this._report;
+  private _avgReport: { totalTime: number; entries: [string, number][] } = { totalTime: 0, entries: [] };
+  public get avgReport(): { totalTime: number; entries: [string, number][] } {
+    return this._avgReport;
   }
 
-  constructor(private readonly maxSamples = 30, private readonly maxRows = 15) {
+  private _peakReport: { totalTime: number; entries: [string, number][] } = { totalTime: 0, entries: [] };
+  public get peakReport(): { totalTime: number; entries: [string, number][] } {
+    return this._peakReport;
+  }
+
+  constructor(private readonly maxSamples = 60, private readonly maxRows = 15) {
     super();
   }
 
@@ -48,46 +53,73 @@ export class PerformanceMeterEntity extends IEntity {
           this.collectedData.delete(k);
         }
       }
-      // build samples
-      let totalTimeAvg = 0;
-      let report = Array.from(this.collectedData.entries())
-        .map(([e, samples]) => {
-          let label = '';
-          if (e instanceof IEntity) {
-            label = e.name;
-            if (e.name === '') {
-              label = e.constructor.name;
-            }
-          } else if (e === 'PHYSICS_WORLD') {
-            label = 'Physics simulation';
+
+      // helper functions
+      const label = (e: IEntity | string) => {
+        if (e instanceof IEntity) {
+          if (e.name === '') {
+            return e.constructor.name;
           } else {
-            label = e;
+            return e.name;
           }
+        } else if (e === 'PHYSICS_WORLD') {
+          return 'Physics simulation';
+        } else {
+          return e;
+        }
+      };
+      const truncateReport = (report: [string, number][]) => {
+        let restSum = 0;
+        let restAmount = 0;
+        for (restAmount; restAmount < report.length - 2; restAmount++) {
+          if (this.maxRows > report.length - restAmount + 1) {
+            restAmount--;
+            break;
+          }
+          restSum += report[report.length - restAmount - 1][1];
+        }
+        if (restAmount > 1) {
+          report = report.slice(0, report.length - restAmount);
+          report.push([`Rest (${restAmount})`, restSum]);
+        }
+        return report;
+      };
+
+      // build avg report
+      let totalTimeAvg = 0;
+      let avgReport = Array.from(this.collectedData.entries())
+        .map(([e, samples]) => {
           const timeSpentAvg = samples.reduce((prev, [_, start, finish]) => prev + finish - start, 0) / this.maxSamples;
           totalTimeAvg += timeSpentAvg;
-          return [label, timeSpentAvg] as [string, number];
+          return [label(e), timeSpentAvg] as [string, number];
         })
         .sort((a, b) => b[1] - a[1]);
-      let restSum = 0;
-      let restAmount = 0;
-      for (restAmount; restAmount < report.length - 2; restAmount++) {
-        if (this.maxRows > report.length - restAmount + 1) {
-          restAmount--;
-          break;
-        }
-        restSum += report[report.length - restAmount - 1][1];
-      }
-      if (restAmount > 1) {
-        report = report.slice(0, report.length - restAmount);
-        report.push([`Rest (${restAmount})`, restSum]);
-      }
-      this._report = { totalTime: totalTimeAvg, entries: report };
+      avgReport = truncateReport(avgReport);
+      this._avgReport = { totalTime: totalTimeAvg, entries: avgReport };
+
+      // build peak report
+      let totalTimePeaks: Map<number, number> = new Map();
+      let peakReport = Array.from(this.collectedData.entries())
+        .map(([e, samples]) => {
+          let peakTime = 0;
+          for (const [sample, start, finish] of samples) {
+            const time = finish - start;
+            peakTime = Math.max(peakTime, time);
+            totalTimePeaks.set(sample, time + (totalTimePeaks.get(sample) || 0));
+          }
+          return [label(e), peakTime] as [string, number];
+        })
+        .sort((a, b) => b[1] - a[1]);
+      peakReport = truncateReport(peakReport);
+      let totalPeak = Array.from(totalTimePeaks.values()).reduce((prev, cur) => Math.max(prev, cur), 0);
+      this._peakReport = { totalTime: totalPeak, entries: peakReport };
     });
   }
 
   onRemoved() {
     super.onRemoved();
     this.collectedData = new Map<IEntity | 'PHYSICS_WORLD', [number, number, number][]>();
-    this._report = { totalTime: 0, entries: [] };
+    this._avgReport = { totalTime: 0, entries: [] };
+    this._peakReport = { totalTime: 0, entries: [] };
   }
 }

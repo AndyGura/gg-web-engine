@@ -1,5 +1,5 @@
 import { IVisualScene3dComponent, RendererOptions } from '@gg-web-engine/core';
-import { Scene } from 'three';
+import { Scene, WebGLRendererParameters } from 'three';
 import { ThreeFactory } from '../three-factory';
 import { ThreeLoader } from '../three-loader';
 import { ThreeCameraComponent } from './three-camera.component';
@@ -22,7 +22,7 @@ export class ThreeSceneComponent implements IVisualScene3dComponent<ThreeVisualT
   createRenderer(
     camera: ThreeCameraComponent,
     canvas?: HTMLCanvasElement,
-    rendererOptions?: Partial<RendererOptions>,
+    rendererOptions?: Partial<RendererOptions & WebGLRendererParameters>,
   ): ThreeRendererComponent {
     return new ThreeRendererComponent(this, camera, canvas, rendererOptions);
   }

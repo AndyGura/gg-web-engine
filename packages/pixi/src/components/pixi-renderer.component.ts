@@ -1,5 +1,5 @@
 import { Gg2dWorld, IRenderer2dComponent, PhysicsTypeDocRepo2D, Point2, RendererOptions } from '@gg-web-engine/core';
-import { Application } from 'pixi.js';
+import { Application, ApplicationOptions } from 'pixi.js';
 import { PixiSceneComponent } from './pixi-scene.component';
 import { PixiVisualTypeDocRepo2D } from '../types';
 import { first, Subject } from 'rxjs';
@@ -39,7 +39,7 @@ export class PixiRendererComponent extends IRenderer2dComponent<PixiVisualTypeDo
   constructor(
     public readonly scene: PixiSceneComponent,
     public readonly canvas?: HTMLCanvasElement,
-    options: Partial<RendererOptions> = {},
+    options: Partial<RendererOptions & ApplicationOptions> = {},
   ) {
     super(scene, canvas, options);
     this.application = new Application();
@@ -51,11 +51,11 @@ export class PixiRendererComponent extends IRenderer2dComponent<PixiVisualTypeDo
         resolution: this.rendererOptions.forceResolution || devicePixelRatio,
         width: 0,
         height: 0,
-        antialias: this.rendererOptions.antialias,
         backgroundColor: this.rendererOptions.background,
         // preventing ticks
         autoStart: false,
         sharedTicker: false,
+        ...this.rendererOptions,
       })
       .then(() => {
         // GG uses own ticker, disable pixi ticker for this renderer

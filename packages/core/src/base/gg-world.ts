@@ -14,13 +14,14 @@ import {
   PausableClock,
   TickOrder,
 } from '../base';
-import { Subject, take, lastValueFrom } from 'rxjs';
+import { lastValueFrom, Subject, take } from 'rxjs';
 import { PerformanceMeterEntity } from '../dev';
 
 export type VisualTypeDocRepo<D, R> = {
   factory: unknown;
   displayObject: IDisplayObjectComponent<D, R>;
   renderer: IRendererComponent<D, R>;
+  rendererExtraOpts: {};
 };
 
 export type PhysicsTypeDocRepo<D, R> = {
@@ -106,42 +107,58 @@ export abstract class GgWorld<
         this,
         'performance_report',
         async (...args: string[]) => {
-          let samples = +args[0];
-          if (!samples || isNaN(samples)) {
-            samples = 20;
+          let mode: 'avg' | 'peak' = 'avg';
+          let samples = 20;
+          for (let i = 0; i < 2; i++) {
+            if (['avg', 'peak'].includes(args[i])) {
+              mode = args[i] as any;
+            } else if (!isNaN(+args[i])) {
+              samples = +args[i];
+            }
           }
-          const meter = new PerformanceMeterEntity(samples, 100);
+          const meter = new PerformanceMeterEntity(samples, 250);
           this.addEntity(meter);
           await lastValueFrom(this.worldClock.tick$.pipe(take(samples)));
-          const report = meter.report;
+          const report = mode === 'avg' ? meter.avgReport : meter.peakReport;
           this.removeEntity(meter);
-          let result = `Performance report (${samples} samples)\n`;
-          let color = 'lightgreen';
+
+          const renderItems: string[] = report.entries.map(
+            ([name, value]) =>
+              `<span style='color:lightgray;'>${name}:</span>` +
+              new Array(Math.max(0, 26 - name.length)).join('&nbsp;') +
+              `${value.toFixed(2)} ms` +
+              (mode === 'avg' ? ` (${((value * 100) / report.totalTime).toFixed(2)}%)` : ''),
+          );
+          let totalColor = 'lightgreen';
           if (report.totalTime > 12) {
-            color = report.totalTime < 16 ? 'yellow' : 'red';
+            totalColor = report.totalTime < 16 ? 'yellow' : 'red';
           }
-          result += `<span style='color:lightgray;'>Frame time:</span>`;
-          for (let i = 0; i < 40; i++) {
-            result += '&nbsp;';
-          }
-          result += `<span style='color:${color};'>${report.totalTime.toFixed(3)} ms</span>\n`;
-          for (const [name, value] of report.entries) {
-            result += `<span style='color:lightgray;'>${name}:</span>`;
-            for (let i = 0; i < 50 - name.length; i++) {
-              result += '&nbsp;';
-            }
-            result += `${value.toFixed(3)} ms (${((value * 100) / report.totalTime).toFixed(2)}%)\n`;
-          }
-          return result;
+          const title = `${mode === 'avg' ? 'Average' : 'Peak'} Frame time`;
+          renderItems.unshift(
+            title +
+              ':' +
+              new Array(Math.max(0, 26 - title.length)).join('&nbsp;') +
+              `<span style='color:${totalColor};'>${report.totalTime.toFixed(2)} ms</span>`,
+          );
+          renderItems.unshift(`Performance report (${samples} samples)`);
+          return renderItems.join('\n');
         },
-        'args: [int] or []; measure how much time was spent per entity in world. Argument is samples amount, ' +
-          '20 by default, one sample per frame',
+        'args: [int, string] or [string, int] or [string] or [int] or []; measure how much time was spent per ' +
+          'entity in world. Arguments are samples amount (20 by default) and "peak" or "avg" choice, both arguments are ' +
+          'optional. "avg" report sorts entities by average time consumed, "peak" records highest value for each entity',
       );
     }
   }
 
   public async init() {
     await Promise.all([this.physicsWorld.init(), this.visualScene.init()]);
+    const forwardTick = (listener: IEntity, elapsed: number, delta: number) => {
+      if (listener.active) {
+        this.tickForwardTo$.next(listener);
+        listener.tick$.next([elapsed, delta]);
+        this.tickForwardedTo$.next(listener);
+      }
+    };
     this.worldClock.tick$.subscribe(([elapsed, delta]) => {
       this.tickStarted$.next();
       let i = 0;
@@ -150,11 +167,7 @@ export abstract class GgWorld<
         if (this.tickListeners[i].tickOrder >= TickOrder.PHYSICS_SIMULATION) {
           break;
         }
-        if (this.tickListeners[i].active) {
-          this.tickForwardTo$.next(this.tickListeners[i]);
-          this.tickListeners[i].tick$.next([elapsed, delta]);
-          this.tickForwardedTo$.next(this.tickListeners[i]);
-        }
+        forwardTick(this.tickListeners[i], elapsed, delta);
       }
       // run physics simulation
       this.tickForwardTo$.next('PHYSICS_WORLD');
@@ -162,11 +175,7 @@ export abstract class GgWorld<
       this.tickForwardedTo$.next('PHYSICS_WORLD');
       // emit tick to all remained entities
       for (i; i < this.tickListeners.length; i++) {
-        if (this.tickListeners[i].active) {
-          this.tickForwardTo$.next(this.tickListeners[i]);
-          this.tickListeners[i].tick$.next([elapsed, delta]);
-          this.tickForwardedTo$.next(this.tickListeners[i]);
-        }
+        forwardTick(this.tickListeners[i], elapsed, delta);
       }
     });
   }

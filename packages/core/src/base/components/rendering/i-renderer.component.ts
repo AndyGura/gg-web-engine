@@ -34,7 +34,7 @@ export abstract class IRendererComponent<D, R, VTypeDoc extends VisualTypeDocRep
 {
   entity: IEntity | null = null;
   /** Specifies the options for the renderer. */
-  public readonly rendererOptions: RendererOptions;
+  public readonly rendererOptions: RendererOptions & Partial<VTypeDoc['rendererExtraOpts']>;
 
   /** get flag whether renderer shows physics debugger view */
   abstract get physicsDebugViewActive(): boolean;
@@ -44,7 +44,7 @@ export abstract class IRendererComponent<D, R, VTypeDoc extends VisualTypeDocRep
   protected constructor(
     public readonly scene: IVisualSceneComponent<D, R, VTypeDoc>,
     public readonly canvas?: HTMLCanvasElement,
-    options: Partial<RendererOptions> = {},
+    options: Partial<RendererOptions & VTypeDoc['rendererExtraOpts']> = {},
   ) {
     this.rendererOptions = {
       ...DEFAULT_RENDERER_OPTIONS,

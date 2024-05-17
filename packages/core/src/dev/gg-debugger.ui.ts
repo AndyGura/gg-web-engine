@@ -147,6 +147,7 @@ export class GgDebuggerUI {
     performanceStatsEnabled: false,
   };
 
+  perfStatsMode: 'AVG' | 'PEAK' = 'AVG';
   private performanceStatsSnapshot: PerformanceStatsSnapshot = null;
 
   private makeSnapshot(): RuntimeDataSnapshot {
@@ -174,7 +175,11 @@ export class GgDebuggerUI {
     if (!this.snapshot.performanceStatsEnabled) return null;
     let performanceMeter = this.currentWorld.children.find(e => e instanceof PerformanceMeterEntity);
     if (performanceMeter) {
-      return (performanceMeter as PerformanceMeterEntity).report;
+      if (this.perfStatsMode === 'AVG') {
+        return (performanceMeter as PerformanceMeterEntity).avgReport;
+      } else if (this.perfStatsMode === 'PEAK') {
+        return (performanceMeter as PerformanceMeterEntity).peakReport;
+      }
     }
     return null;
   }
@@ -199,13 +204,25 @@ export class GgDebuggerUI {
         <input id='time_scale_slider' type='range' min='0' max='5' step='0.01' style='flex-grow:1' value='${this.snapshot.timeScale}'/>
         <label for='time_scale_slider' style='user-select: none;'>Time scale</label>
       </div>`;
-    html += `
+    html +=
+      `
       <div ${this.css}>
         <input type='checkbox' name='checkbox' id='perf_stats_checkbox_id' value='1'${
           this.snapshot.performanceStatsEnabled ? ' checked' : ''
         }>
         <label for='perf_stats_checkbox_id' style='user-select: none;'>Entities performance distribution</label>
       </div>
+    ` +
+      (this.snapshot.performanceStatsEnabled
+        ? `<div ${this.css}>
+          <label for='per_mode'>Mode:</label>
+          <select id='per_mode'>
+            <option value='AVG' ${this.perfStatsMode === 'AVG' ? 'selected' : ''}>Average</option>
+            <option value='PEAK' ${this.perfStatsMode === 'PEAK' ? 'selected' : ''}>Peak</option>
+          </select>
+        </div>`
+        : '') +
+      `
       <div style='display: contents' id='perf_stats_container'></div>`;
     debugControlsContainer.innerHTML = html;
     debugControlsContainer.style.minWidth = '25rem';
@@ -242,34 +259,38 @@ export class GgDebuggerUI {
           }
         }
       });
+    if (this.snapshot.performanceStatsEnabled) {
+      fromEvent(document.getElementById('per_mode')! as HTMLSelectElement, 'change')
+        .pipe(takeUntil(this.debugControlsRemoved$), takeUntil(this.viewUpdated$))
+        .subscribe(e => {
+          this.perfStatsMode = (e.target as HTMLSelectElement).value as 'AVG' | 'PEAK';
+        });
+    }
   }
 
   private renderPerformanceStats() {
+    const pCss = "style='display:flex;align-items:center;margin:0.25rem;max-width:25rem'";
     const em = document.getElementById('perf_stats_container');
     if (!em) return;
     let html = '';
     if (this.performanceStatsSnapshot) {
+      const total = this.performanceStatsSnapshot.totalTime;
+      const labelCss = `style='user-select:none;width:3.5rem;text-align:left;flex-shrink:0;'`;
+      const progressCss = `style='width:11.5rem;margin:4px;flex-shrink:0;'`;
+      const spanCss = `style='user-select:none;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;width:calc(9.5rem - 8px);'`;
       html += `
-          <div ${this.css}>
-            <label for='stat_progress' style='user-select:none;width:3rem;text-align:left;'>${this.performanceStatsSnapshot.totalTime.toFixed(
-              2,
-            )}ms</label>
-            <progress id="stat_progress" max="16" style='width:14rem;margin:4px;' value="${
-              this.performanceStatsSnapshot.totalTime
-            }"></progress>
-            <label for='stat_progress' style='user-select:none;text-align:right;'>Total frame time</label>
+          <div ${pCss}>
+            <label for='stat_progress' ${labelCss}>${total.toFixed(2)}ms</label>
+            <progress id="stat_progress" ${progressCss} max="16" value="${total}"></progress>
+            <span ${spanCss}>Total frame time</span>
           </div>`;
       for (const [i, [name, value]] of this.performanceStatsSnapshot.entries.entries()) {
+        const strVal = this.perfStatsMode == 'AVG' ? ((value * 100) / total).toFixed(2) + '%' : value.toFixed(2) + 'ms';
         html += `
-          <div ${this.css}>
-            <label for='stat_progress_${i}' style='user-select:none;width:3rem;text-align:left;'>${(
-          (value * 100) /
-          this.performanceStatsSnapshot.totalTime
-        ).toFixed(2)}%</label>
-            <progress id="stat_progress_${i}" style='width:14rem;margin:4px;' max="${
-          this.performanceStatsSnapshot.totalTime
-        }" value="${value}">${value}%</progress>
-            <label for='stat_progress_${i}' style='user-select:none;text-align:right;'>${name}</label>
+          <div ${pCss}>
+            <label for='stat_progress_${i}' ${labelCss}>${strVal}</label>
+            <progress id='stat_progress_${i}' ${progressCss} max='${total}' value='${value}'></progress>
+            <span ${spanCss}>${name}</span>
           </div>`;
       }
     }
