@@ -1,5 +1,4 @@
 import { Gg3dWorld, GgStatic, OrbitCameraController } from '@gg-web-engine/core';
-import { interval } from 'rxjs';
 import { ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
 import { AmbientLight, DirectionalLight } from 'three';
 import { Rapier3dPhysicsTypeDocRepo, Rapier3dWorldComponent } from '@gg-web-engine/rapier3d';
@@ -54,7 +53,9 @@ world.init().then(async () => {
     world.addEntity(item);
   }
 
-  interval(500).subscribe(async () => {
+  const spawnTimer = world.createClock(true);
+  spawnTimer.tickRateLimit = 2;
+  spawnTimer.tick$.subscribe(async () => {
     const itemTypeRand = Math.random();
     let glbId = '';
     if (itemTypeRand < 1 / 7) {

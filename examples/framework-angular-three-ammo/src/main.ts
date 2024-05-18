@@ -4,7 +4,7 @@ import { bootstrapApplication } from '@angular/platform-browser';
 import { Entity3d, Gg3dWorld, GgStatic, OrbitCameraController, Trigger3dEntity } from '@gg-web-engine/core';
 import { ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
 import { AmmoPhysicsTypeDocRepo, AmmoWorldComponent } from '@gg-web-engine/ammo';
-import { interval, Subject, takeUntil } from 'rxjs';
+import { Subject } from 'rxjs';
 
 @Component({
   selector: 'my-app',
@@ -54,8 +54,9 @@ export class App implements OnInit, OnDestroy {
     });
     this.world.addEntity(destroyTrigger);
 
-    interval(500)
-      .pipe(takeUntil(this.destroyed$))
+    const spawnTimer = world.createClock(true);
+    spawnTimer.tickRateLimit = 2;
+    spawnTimer.tick$
       .subscribe(() => {
         let item: Entity3d;
         let r = Math.random();

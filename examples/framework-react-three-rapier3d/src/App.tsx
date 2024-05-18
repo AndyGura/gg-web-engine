@@ -10,7 +10,7 @@ import {
   ThreeSceneComponent,
   ThreeCameraComponent,
 } from '@gg-web-engine/three';
-import { interval, Subject } from 'rxjs';
+import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { Rapier3dWorldComponent } from '@gg-web-engine/rapier3d';
 import { PerspectiveCamera } from 'three';
@@ -63,8 +63,9 @@ const App: React.FC = () => {
       });
       world.addEntity(destroyTrigger);
 
-      interval(500)
-        .pipe(takeUntil(destroyed$.current))
+      const spawnTimer = world.createClock(true);
+      spawnTimer.tickRateLimit = 2;
+      spawnTimer.tick$
         .subscribe(() => {
           let item: Entity3d;
           const random = Math.random();

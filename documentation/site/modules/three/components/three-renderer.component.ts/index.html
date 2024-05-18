@@ -624,7 +624,7 @@
     public readonly scene: ThreeSceneComponent,
     public camera: ThreeCameraComponent,
     public readonly canvas?: HTMLCanvasElement,
-    rendererOptions: Partial&lt;RendererOptions&gt; = {}
+    rendererOptions: Partial&lt;RendererOptions &amp; WebGLRendererParameters&gt; = {}
   )
 }
 </code></pre>

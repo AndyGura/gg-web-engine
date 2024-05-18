@@ -19,6 +19,7 @@ parent: Modules
     - [resume (method)](#resume-method)
     - [startListeningTicks (method)](#startlisteningticks-method)
     - [stopListeningTicks (method)](#stoplisteningticks-method)
+    - [tickRateLimit (property)](#tickratelimit-property)
 
 ---
 
@@ -104,4 +105,14 @@ Stops listening for ticks from the parent clock.
 
 ```ts
 protected stopListeningTicks()
+```
+
+### tickRateLimit (property)
+
+Tick rate limiter. If set to 0 - tick rate is unlimited, 15 means "allow at most 15 ticks per second"
+
+**Signature**
+
+```ts
+tickRateLimit: number
 ```

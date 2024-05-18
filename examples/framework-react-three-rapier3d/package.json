@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@dimforge/rapier3d-compat": "0.0.0-98015b1-20240128",
-    "@gg-web-engine/core": "0.0.38",
-    "@gg-web-engine/rapier3d": "0.0.38",
-    "@gg-web-engine/three": "0.0.38",
+    "@dimforge/rapier3d-compat": "0.0.0-a86610f-20240508",
+    "@gg-web-engine/core": "0.0.40",
+    "@gg-web-engine/rapier3d": "0.0.40",
+    "@gg-web-engine/three": "0.0.40",
     "@types/node": "^16.18.65",
     "@types/react": "^18.2.38",
     "@types/react-dom": "^18.2.17",
@@ -14,7 +14,7 @@
     "react-dom": "^18.2.0",
     "react-scripts": "5.0.1",
     "rxjs": "7.8.1",
-    "three": "0.163.0",
+    "three": "0.164.1",
     "typescript": "^3.2.1 || ^4",
     "web-vitals": "^2.1.4"
   },
@@ -42,6 +42,6 @@
     ]
   },
   "devDependencies": {
-    "@types/three": "^0.158.3"
+    "@types/three": "0.164.0"
   }
 }

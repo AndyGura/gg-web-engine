@@ -631,7 +631,7 @@
   protected constructor(
     public readonly scene: IVisualSceneComponent&lt;D, R, VTypeDoc&gt;,
     public readonly canvas?: HTMLCanvasElement,
-    options: Partial&lt;RendererOptions&gt; = {}
+    options: Partial&lt;RendererOptions &amp; VTypeDoc['rendererExtraOpts']&gt; = {}
   )
 }
 </code></pre>
@@ -664,7 +664,7 @@
 <h3 id="rendereroptions-property">rendererOptions (property)</h3>
 <p>Specifies the options for the renderer.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly rendererOptions: RendererOptions
+<pre><code class="language-ts">readonly rendererOptions: RendererOptions &amp; Partial&lt;VTypeDoc[&quot;rendererExtraOpts&quot;]&gt;
 </code></pre>
 <h2 id="rendereroptions-type-alias">RendererOptions (type alias)</h2>
 <p>Represents the options that can be passed to a renderer.</p>

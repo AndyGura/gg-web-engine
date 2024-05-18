@@ -73,6 +73,7 @@ export type VisualTypeDocRepo2D = {
   factory: IDisplayObject2dComponentFactory
   displayObject: IDisplayObject2dComponent
   renderer: IRenderer2dComponent
+  rendererExtraOpts: {}
   texture: unknown
 }
 ```

@@ -603,7 +603,10 @@
 </code></pre>
 <h3 id="createrenderer-method">createRenderer (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">createRenderer(canvas?: HTMLCanvasElement, rendererOptions?: Partial&lt;RendererOptions&gt;): PixiRendererComponent
+<pre><code class="language-ts">createRenderer(
+    canvas?: HTMLCanvasElement,
+    rendererOptions?: Partial&lt;RendererOptions &amp; ApplicationOptions&gt;,
+  ): PixiRendererComponent
 </code></pre>
 <h3 id="dispose-method">dispose (method)</h3>
 <p><strong>Signature</strong></p>

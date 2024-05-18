@@ -24,6 +24,7 @@ parent: Modules
 ```ts
 export declare function createInlineTickController(
   world: GgWorld<any, any>,
-  tickOrder: number = TickOrder.CONTROLLERS
+  tickOrder: number = TickOrder.CONTROLLERS,
+  name?: string
 ): Observable<[number, number]>
 ```

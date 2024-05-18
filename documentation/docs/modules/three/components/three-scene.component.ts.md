@@ -1,6 +1,6 @@
 ---
 title: three/components/three-scene.component.ts
-nav_order: 128
+nav_order: 129
 parent: Modules
 ---
 
@@ -46,7 +46,7 @@ async init(): Promise<void>
 createRenderer(
     camera: ThreeCameraComponent,
     canvas?: HTMLCanvasElement,
-    rendererOptions?: Partial<RendererOptions>,
+    rendererOptions?: Partial<RendererOptions & WebGLRendererParameters>,
   ): ThreeRendererComponent
 ```
 

@@ -1,5 +1,4 @@
 import { Entity3d, Gg3dWorld, GgStatic, OrbitCameraController, Trigger3dEntity } from '@gg-web-engine/core';
-import { interval } from 'rxjs';
 import { ThreeSceneComponent } from '@gg-web-engine/three';
 import { AmmoWorldComponent } from '@gg-web-engine/ammo';
 
@@ -34,7 +33,9 @@ world.init().then(async () => {
   });
   world.addEntity(destroyTrigger);
 
-  interval(500).subscribe(() => {
+  const spawnTimer = world.createClock(true);
+  spawnTimer.tickRateLimit = 2;
+  spawnTimer.tick$.subscribe(() => {
     let item: Entity3d;
     let r = Math.random();
     if (r < 0.2) {

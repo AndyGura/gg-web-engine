@@ -26,6 +26,9 @@ parent: Modules
     - [name (property)](#name-property)
     - [children (property)](#children-property)
     - [tickListeners (property)](#ticklisteners-property)
+    - [tickStarted$ (property)](#tickstarted-property)
+    - [tickForwardTo$ (property)](#tickforwardto-property)
+    - [tickForwardedTo$ (property)](#tickforwardedto-property)
   - [PhysicsTypeDocRepo (type alias)](#physicstypedocrepo-type-alias)
   - [VisualTypeDocRepo (type alias)](#visualtypedocrepo-type-alias)
 
@@ -160,6 +163,30 @@ readonly children: IEntity<any, any, VisualTypeDocRepo<any, any>, PhysicsTypeDoc
 readonly tickListeners: IEntity<any, any, VisualTypeDocRepo<any, any>, PhysicsTypeDocRepo<any, any>>[]
 ```
 
+### tickStarted$ (property)
+
+**Signature**
+
+```ts
+readonly tickStarted$: any
+```
+
+### tickForwardTo$ (property)
+
+**Signature**
+
+```ts
+readonly tickForwardTo$: any
+```
+
+### tickForwardedTo$ (property)
+
+**Signature**
+
+```ts
+readonly tickForwardedTo$: any
+```
+
 ## PhysicsTypeDocRepo (type alias)
 
 **Signature**
@@ -181,5 +208,6 @@ export type VisualTypeDocRepo<D, R> = {
   factory: unknown
   displayObject: IDisplayObjectComponent<D, R>
   renderer: IRendererComponent<D, R>
+  rendererExtraOpts: {}
 }
 ```

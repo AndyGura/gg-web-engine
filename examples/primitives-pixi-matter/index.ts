@@ -1,5 +1,4 @@
 import { Entity2d, Gg2dWorld, GgStatic } from '@gg-web-engine/core';
-import { interval } from 'rxjs';
 import { PixiSceneComponent } from '@gg-web-engine/pixi';
 import { MatterWorldComponent } from '@gg-web-engine/matter';
 
@@ -23,7 +22,9 @@ world.init().then(async () => {
     }
   });
 
-  interval(500).subscribe(() => {
+  const spawnTimer = world.createClock(true);
+  spawnTimer.tickRateLimit = 2;
+  spawnTimer.tick$.subscribe(() => {
     let item: Entity2d;
     if (Math.random() >= 0.5) {
       item = world.addPrimitiveRigidBody({

@@ -34,7 +34,7 @@ export declare class IRendererComponent<D, R, VTypeDoc> {
   protected constructor(
     public readonly scene: IVisualSceneComponent<D, R, VTypeDoc>,
     public readonly canvas?: HTMLCanvasElement,
-    options: Partial<RendererOptions> = {}
+    options: Partial<RendererOptions & VTypeDoc['rendererExtraOpts']> = {}
   )
 }
 ```
@@ -98,7 +98,7 @@ Specifies the options for the renderer.
 **Signature**
 
 ```ts
-readonly rendererOptions: RendererOptions
+readonly rendererOptions: RendererOptions & Partial<VTypeDoc["rendererExtraOpts"]>
 ```
 
 ## RendererOptions (type alias)

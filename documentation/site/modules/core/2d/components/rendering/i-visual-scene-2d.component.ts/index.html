@@ -557,7 +557,10 @@
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export interface IVisualScene2dComponent&lt;TypeDoc extends VisualTypeDocRepo2D = VisualTypeDocRepo2D&gt;
   extends IVisualSceneComponent&lt;Point2, number, TypeDoc&gt; {
-  createRenderer(canvas?: HTMLCanvasElement, rendererOptions?: Partial&lt;RendererOptions&gt;): TypeDoc['renderer']
+  createRenderer(
+    canvas?: HTMLCanvasElement,
+    rendererOptions?: Partial&lt;RendererOptions &amp; TypeDoc['rendererExtraOpts']&gt;
+  ): TypeDoc['renderer']
 }
 </code></pre>
 

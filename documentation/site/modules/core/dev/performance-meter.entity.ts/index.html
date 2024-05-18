@@ -8,7 +8,7 @@
       
       
       
-        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/three/components/three-scene.component.ts/">
+        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/dev/performance-meter.entity.ts/">
       
       
       
@@ -18,7 +18,7 @@
     
     
       
-        <title>three/components/three-scene.component.ts - GG-web-engine</title>
+        <title>core/dev/performance-meter.entity.ts - GG-web-engine</title>
       
     
     
@@ -73,7 +73,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#three-scenecomponent-overview" class="md-skip">
+        <a href="#performance-meterentity-overview" class="md-skip">
           Skip to content
         </a>
       
@@ -109,7 +109,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              three/components/three-scene.component.ts
+              core/dev/performance-meter.entity.ts
             
           </span>
         </div>
@@ -353,7 +353,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../core" class="md-nav__link">
+      <a href="../.." class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -453,7 +453,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href="../../../three" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -499,8 +499,8 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#three-scenecomponent-overview" class="md-nav__link">
-    three-scene.component overview
+  <a href="#performance-meterentity-overview" class="md-nav__link">
+    performance-meter.entity overview
   </a>
   
 </li>
@@ -514,44 +514,30 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#threescenecomponent-class" class="md-nav__link">
-    ThreeSceneComponent (class)
+  <a href="#performancemeterentity-class" class="md-nav__link">
+    PerformanceMeterEntity (class)
   </a>
   
-    <nav class="md-nav" aria-label="ThreeSceneComponent (class)">
+    <nav class="md-nav" aria-label="PerformanceMeterEntity (class)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#init-method" class="md-nav__link">
-    init (method)
+  <a href="#onspawned-method" class="md-nav__link">
+    onSpawned (method)
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#createrenderer-method" class="md-nav__link">
-    createRenderer (method)
+  <a href="#onremoved-method" class="md-nav__link">
+    onRemoved (method)
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#dispose-method" class="md-nav__link">
-    dispose (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#factory-property" class="md-nav__link">
-    factory (property)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#loader-property" class="md-nav__link">
-    loader (property)
+  <a href="#tickorder-property" class="md-nav__link">
+    tickOrder (property)
   </a>
   
 </li>
@@ -584,50 +570,38 @@
   
 
 
-<h2 id="three-scenecomponent-overview">three-scene.component overview</h2>
+<h2 id="performance-meterentity-overview">performance-meter.entity overview</h2>
 <hr />
 <h2 class="text-delta">Table of contents</h2>
 
 <ul>
 <li><a href="#utils">utils</a></li>
-<li><a href="#threescenecomponent-class">ThreeSceneComponent (class)</a><ul>
-<li><a href="#init-method">init (method)</a></li>
-<li><a href="#createrenderer-method">createRenderer (method)</a></li>
-<li><a href="#dispose-method">dispose (method)</a></li>
-<li><a href="#factory-property">factory (property)</a></li>
-<li><a href="#loader-property">loader (property)</a></li>
+<li><a href="#performancemeterentity-class">PerformanceMeterEntity (class)</a><ul>
+<li><a href="#onspawned-method">onSpawned (method)</a></li>
+<li><a href="#onremoved-method">onRemoved (method)</a></li>
+<li><a href="#tickorder-property">tickOrder (property)</a></li>
 </ul>
 </li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
-<h2 id="threescenecomponent-class">ThreeSceneComponent (class)</h2>
+<h2 id="performancemeterentity-class">PerformanceMeterEntity (class)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class ThreeSceneComponent
+<pre><code class="language-ts">export declare class PerformanceMeterEntity {
+  constructor(private readonly maxSamples = 60, private readonly maxRows = 15)
+}
 </code></pre>
-<h3 id="init-method">init (method)</h3>
+<h3 id="onspawned-method">onSpawned (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">async init(): Promise&lt;void&gt;
+<pre><code class="language-ts">onSpawned(world: GgWorld&lt;unknown, unknown&gt;)
 </code></pre>
-<h3 id="createrenderer-method">createRenderer (method)</h3>
+<h3 id="onremoved-method">onRemoved (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">createRenderer(
-    camera: ThreeCameraComponent,
-    canvas?: HTMLCanvasElement,
-    rendererOptions?: Partial&lt;RendererOptions &amp; WebGLRendererParameters&gt;,
-  ): ThreeRendererComponent
+<pre><code class="language-ts">onRemoved()
 </code></pre>
-<h3 id="dispose-method">dispose (method)</h3>
+<h3 id="tickorder-property">tickOrder (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">dispose(): void
-</code></pre>
-<h3 id="factory-property">factory (property)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly factory: ThreeFactory
-</code></pre>
-<h3 id="loader-property">loader (property)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly loader: ThreeLoader
+<pre><code class="language-ts">readonly tickOrder: number
 </code></pre>
 
 

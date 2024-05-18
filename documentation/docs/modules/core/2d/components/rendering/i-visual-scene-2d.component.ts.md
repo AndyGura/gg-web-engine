@@ -24,6 +24,9 @@ parent: Modules
 ```ts
 export interface IVisualScene2dComponent<TypeDoc extends VisualTypeDocRepo2D = VisualTypeDocRepo2D>
   extends IVisualSceneComponent<Point2, number, TypeDoc> {
-  createRenderer(canvas?: HTMLCanvasElement, rendererOptions?: Partial<RendererOptions>): TypeDoc['renderer']
+  createRenderer(
+    canvas?: HTMLCanvasElement,
+    rendererOptions?: Partial<RendererOptions & TypeDoc['rendererExtraOpts']>
+  ): TypeDoc['renderer']
 }
 ```

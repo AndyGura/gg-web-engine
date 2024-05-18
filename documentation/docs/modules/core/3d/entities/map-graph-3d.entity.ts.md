@@ -26,9 +26,9 @@ parent: Modules
     - [loaderCursorEntity$ (property)](#loadercursorentity-property)
     - [loaded (property)](#loaded-property)
     - [\_chunkLoaded$ (property)](#_chunkloaded-property)
-    - [\_world (property)](#_world-property)
     - [mapGraphNodes (property)](#mapgraphnodes-property)
     - [options (property)](#options-property)
+    - [loadClock (property)](#loadclock-property)
   - [MapGraphNodeType (type alias)](#mapgraphnodetype-type-alias)
 
 ---
@@ -171,14 +171,6 @@ readonly loaded: any
 _chunkLoaded$: any
 ```
 
-### \_world (property)
-
-**Signature**
-
-```ts
-_world: Gg3dWorld<VTypeDoc, PTypeDoc, IVisualScene3dComponent<VTypeDoc>, IPhysicsWorld3dComponent<PTypeDoc>> | null
-```
-
 ### mapGraphNodes (property)
 
 **Signature**
@@ -193,6 +185,14 @@ readonly mapGraphNodes: MapGraph[]
 
 ```ts
 readonly options: Gg3dMapGraphEntityOptions
+```
+
+### loadClock (property)
+
+**Signature**
+
+```ts
+loadClock: PausableClock | null
 ```
 
 ## MapGraphNodeType (type alias)

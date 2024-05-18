@@ -12,6 +12,7 @@ parent: Modules
 
 - [utils](#utils)
   - [IRenderable2dEntity (class)](#irenderable2dentity-class)
+    - [\_world (property)](#_world-property)
 
 ---
 
@@ -23,4 +24,12 @@ parent: Modules
 
 ```ts
 export declare class IRenderable2dEntity<TypeDoc, PTypeDoc>
+```
+
+### \_world (property)
+
+**Signature**
+
+```ts
+_world: Gg2dWorld<TypeDoc, PTypeDoc, IVisualScene2dComponent<TypeDoc>, IPhysicsWorld2dComponent<PTypeDoc>> | null
 ```

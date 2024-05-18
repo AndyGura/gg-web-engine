@@ -1,6 +1,6 @@
 ---
 title: three/components/three-renderer.component.ts
-nav_order: 127
+nav_order: 128
 parent: Modules
 ---
 
@@ -34,7 +34,7 @@ export declare class ThreeRendererComponent {
     public readonly scene: ThreeSceneComponent,
     public camera: ThreeCameraComponent,
     public readonly canvas?: HTMLCanvasElement,
-    rendererOptions: Partial<RendererOptions> = {}
+    rendererOptions: Partial<RendererOptions & WebGLRendererParameters> = {}
   )
 }
 ```

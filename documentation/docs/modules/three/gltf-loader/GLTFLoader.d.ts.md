@@ -1,6 +1,6 @@
 ---
 title: three/gltf-loader/GLTFLoader.d.ts
-nav_order: 130
+nav_order: 131
 parent: Modules
 ---
 

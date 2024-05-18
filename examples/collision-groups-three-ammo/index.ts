@@ -1,5 +1,4 @@
 import { Entity3d, Gg3dWorld, GgStatic, OrbitCameraController, Qtrn, Trigger3dEntity } from '@gg-web-engine/core';
-import { interval } from 'rxjs';
 import { ThreeSceneComponent } from '@gg-web-engine/three';
 import { AmbientLight, DirectionalLight } from 'three';
 import { AmmoWorldComponent } from '@gg-web-engine/ammo';
@@ -75,7 +74,9 @@ world.init().then(async () => {
   });
   world.addEntity(destroyTrigger);
 
-  interval(200).subscribe(() => {
+  const spawnTimer = world.createClock(true);
+  spawnTimer.tickRateLimit = 5;
+  spawnTimer.tick$.subscribe(() => {
     const [color, collisionGroup] = cgs[Math.floor(Math.random() * cgs.length)];
     let item: Entity3d = world.addPrimitiveRigidBody(
       {

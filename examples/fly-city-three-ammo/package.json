@@ -16,9 +16,9 @@
     "@angular/platform-browser": "^14.1.0",
     "@angular/platform-browser-dynamic": "^14.1.0",
     "@angular/router": "^14.1.0",
-    "@gg-web-engine/ammo": "0.0.39",
-    "@gg-web-engine/core": "0.0.39",
-    "@gg-web-engine/three": "0.0.39",
+    "@gg-web-engine/ammo": "0.0.40",
+    "@gg-web-engine/core": "0.0.40",
+    "@gg-web-engine/three": "0.0.40",
     "howler": "^2.2.3",
     "rxjs": "7.8.1",
     "tslib": "^2.3.0",
@@ -29,7 +29,7 @@
     "@angular/cli": "~14.1.2",
     "@angular/compiler-cli": "^14.1.0",
     "@types/howler": "^2.2.7",
-    "@types/three": "0.163.0",
+    "@types/three": "0.164.0",
     "typescript": "~4.7.2"
   },
   "browser": {

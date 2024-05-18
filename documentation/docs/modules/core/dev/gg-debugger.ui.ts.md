@@ -15,7 +15,11 @@ parent: Modules
     - [setShowStats (method)](#setshowstats-method)
     - [setShowDebugControls (method)](#setshowdebugcontrols-method)
     - [makeSnapshot (method)](#makesnapshot-method)
+    - [makePerformanceStatsSnapshot (method)](#makeperformancestatssnapshot-method)
     - [renderControls (method)](#rendercontrols-method)
+    - [renderPerformanceStats (method)](#renderperformancestats-method)
+    - [perfStatsMode (property)](#perfstatsmode-property)
+    - [css (property)](#css-property)
 
 ---
 
@@ -53,10 +57,42 @@ public setShowDebugControls(selectedWorld: GgWorld<any, any>, value: boolean)
 private makeSnapshot(): RuntimeDataSnapshot
 ```
 
+### makePerformanceStatsSnapshot (method)
+
+**Signature**
+
+```ts
+private makePerformanceStatsSnapshot(): PerformanceStatsSnapshot
+```
+
 ### renderControls (method)
 
 **Signature**
 
 ```ts
 private renderControls(debugControlsContainer: HTMLDivElement)
+```
+
+### renderPerformanceStats (method)
+
+**Signature**
+
+```ts
+private renderPerformanceStats()
+```
+
+### perfStatsMode (property)
+
+**Signature**
+
+```ts
+perfStatsMode: 'AVG' | 'PEAK'
+```
+
+### css (property)
+
+**Signature**
+
+```ts
+css: string
 ```

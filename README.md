@@ -85,7 +85,6 @@ Note: at this early step, the project does not give much flexibility in that reg
 1) remove default margin from page via CSS: ```body { margin: 0; }```
 1) write bootstrap script, example:
 ```typescript
-import { interval } from 'rxjs';
 import { Gg3dWorld, Pnt3, Qtrn } from '@gg-web-engine/core';
 import { ThreeSceneComponent } from '@gg-web-engine/three';
 import { AmmoWorldComponent } from '@gg-web-engine/ammo';
@@ -109,7 +108,9 @@ world.addPrimitiveRigidBody({
 });
 
 // spawn cubes with mass 1kg twice a second
-interval(500).subscribe(() => {
+const spawnTimer = world.createClock(true);
+spawnTimer.tickRateLimit = 2;
+spawnTimer.tick$.subscribe(() => {
   // generate cube
   let item = world.addPrimitiveRigidBody({
     shape: { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } },

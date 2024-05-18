@@ -89,6 +89,7 @@ export type VisualTypeDocRepo3D = {
   loader: IDisplayObject3dComponentLoader
   displayObject: IDisplayObject3dComponent
   renderer: IRenderer3dComponent
+  rendererExtraOpts: {}
   camera: ICameraComponent
   texture: unknown
 }
