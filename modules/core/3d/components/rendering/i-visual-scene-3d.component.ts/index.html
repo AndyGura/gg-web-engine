@@ -562,7 +562,7 @@
   createRenderer(
     camera: TypeDoc['camera'],
     canvas?: HTMLCanvasElement,
-    rendererOptions?: Partial&lt;RendererOptions&gt;
+    rendererOptions?: Partial&lt;RendererOptions &amp; TypeDoc['rendererExtraOpts']&gt;
   ): TypeDoc['renderer']
 }
 </code></pre>

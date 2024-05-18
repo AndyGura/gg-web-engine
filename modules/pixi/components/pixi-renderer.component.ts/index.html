@@ -623,7 +623,7 @@
   constructor(
     public readonly scene: PixiSceneComponent,
     public readonly canvas?: HTMLCanvasElement,
-    options: Partial&lt;RendererOptions&gt; = {}
+    options: Partial&lt;RendererOptions &amp; ApplicationOptions&gt; = {}
   )
 }
 </code></pre>

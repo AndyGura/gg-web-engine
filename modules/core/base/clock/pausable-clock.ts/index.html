@@ -570,6 +570,13 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#tickratelimit-property" class="md-nav__link">
+    tickRateLimit (property)
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -612,6 +619,7 @@
 <li><a href="#resume-method">resume (method)</a></li>
 <li><a href="#startlisteningticks-method">startListeningTicks (method)</a></li>
 <li><a href="#stoplisteningticks-method">stopListeningTicks (method)</a></li>
+<li><a href="#tickratelimit-property">tickRateLimit (property)</a></li>
 </ul>
 </li>
 </ul>
@@ -658,6 +666,11 @@
 <p>Stops listening for ticks from the parent clock.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">protected stopListeningTicks()
+</code></pre>
+<h3 id="tickratelimit-property">tickRateLimit (property)</h3>
+<p>Tick rate limiter. If set to 0 - tick rate is unlimited, 15 means "allow at most 15 ticks per second"</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">tickRateLimit: number
 </code></pre>
 
 

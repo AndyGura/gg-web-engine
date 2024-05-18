@@ -619,6 +619,27 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#tickstarted-property" class="md-nav__link">
+    tickStarted$ (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tickforwardto-property" class="md-nav__link">
+    tickForwardTo$ (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tickforwardedto-property" class="md-nav__link">
+    tickForwardedTo$ (property)
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -682,6 +703,9 @@
 <li><a href="#name-property">name (property)</a></li>
 <li><a href="#children-property">children (property)</a></li>
 <li><a href="#ticklisteners-property">tickListeners (property)</a></li>
+<li><a href="#tickstarted-property">tickStarted$ (property)</a></li>
+<li><a href="#tickforwardto-property">tickForwardTo$ (property)</a></li>
+<li><a href="#tickforwardedto-property">tickForwardedTo$ (property)</a></li>
 </ul>
 </li>
 <li><a href="#physicstypedocrepo-type-alias">PhysicsTypeDocRepo (type alias)</a></li>
@@ -756,6 +780,18 @@
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly tickListeners: IEntity&lt;any, any, VisualTypeDocRepo&lt;any, any&gt;, PhysicsTypeDocRepo&lt;any, any&gt;&gt;[]
 </code></pre>
+<h3 id="tickstarted-property">tickStarted$ (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly tickStarted$: any
+</code></pre>
+<h3 id="tickforwardto-property">tickForwardTo$ (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly tickForwardTo$: any
+</code></pre>
+<h3 id="tickforwardedto-property">tickForwardedTo$ (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly tickForwardedTo$: any
+</code></pre>
 <h2 id="physicstypedocrepo-type-alias">PhysicsTypeDocRepo (type alias)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export type PhysicsTypeDocRepo&lt;D, R&gt; = {
@@ -770,6 +806,7 @@
   factory: unknown
   displayObject: IDisplayObjectComponent&lt;D, R&gt;
   renderer: IRendererComponent&lt;D, R&gt;
+  rendererExtraOpts: {}
 }
 </code></pre>
 
