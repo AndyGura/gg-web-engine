@@ -227,11 +227,15 @@ export class MouseInput extends IInput<[], [unlockPointer?: boolean]> {
       .pipe(takeUntil(this.stopped$))
       .subscribe((event: PointerEvent) => {
         if (pointers.length === 0) {
-          if (this.options.canvas) {
-            this.options.canvas.setPointerCapture(event.pointerId);
+          try {
+            if (this.options.canvas) {
+              this.options.canvas.setPointerCapture(event.pointerId);
+            }
+            this._element.addEventListener('pointerup', onPointerUp as any);
+            this._element.addEventListener('pointercancel', onPointerUp as any);
+          } catch (err) {
+            console.error(err);
           }
-          this._element.addEventListener('pointerup', onPointerUp as any);
-          this._element.addEventListener('pointercancel', onPointerUp as any);
         }
         pointers.push(event);
         if (event.pointerType === 'touch') {

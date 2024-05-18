@@ -1,6 +1,6 @@
 import { BehaviorSubject, NEVER, Observable, startWith, Subject, switchMap, takeUntil } from 'rxjs';
-import { distinctUntilChanged, map, tap, throttleTime } from 'rxjs/operators';
-import { Graph, IEntity, Point3, Point4, Qtrn, TickOrder } from '../../base';
+import { distinctUntilChanged, map, tap } from 'rxjs/operators';
+import { Graph, IEntity, PausableClock, Point3, Point4, Qtrn, TickOrder } from '../../base';
 import { Gg3dWorld, PhysicsTypeDocRepo3D, VisualTypeDocRepo3D } from '../gg-3d-world';
 import { Entity3d } from './entity-3d';
 import { LoadOptions, LoadResultWithProps } from '../loader';
@@ -141,14 +141,11 @@ export class MapGraph3dEntity<
     return this._chunkLoaded$.asObservable();
   }
 
-  get world(): Gg3dWorld<VTypeDoc, PTypeDoc> | null {
-    return this._world;
-  }
-
-  protected _world: Gg3dWorld<VTypeDoc, PTypeDoc> | null = null;
   protected readonly mapGraphNodes: MapGraph[];
 
   protected readonly options: Gg3dMapGraphEntityOptions;
+
+  protected loadClock: PausableClock | null = null;
 
   constructor(public readonly mapGraph: MapGraph, options: Partial<Gg3dMapGraphEntityOptions> = {}) {
     super();
@@ -158,15 +155,16 @@ export class MapGraph3dEntity<
 
   onSpawned(world: Gg3dWorld<VTypeDoc, PTypeDoc>) {
     super.onSpawned(world);
+    this.loadClock = world.createClock(true);
+    this.loadClock.tickRateLimit = 1;
     this.loaderCursorEntity$
       .pipe(
         takeUntil(this._onRemoved$),
         switchMap(entity =>
           entity
-            ? this.tick$.pipe(
+            ? this.loadClock!.tick$.pipe(
                 startWith(null), // map will perform initial loading even if world not started yet. Handy to preload map
                 takeUntil(entity.onRemoved$),
-                throttleTime(1000),
                 map(() => entity.position),
               )
             : NEVER,
@@ -206,6 +204,10 @@ export class MapGraph3dEntity<
 
   onRemoved() {
     super.onRemoved();
+    if (this.loadClock) {
+      this.loadClock.stop();
+      this.loadClock = null;
+    }
     this.loaderCursorEntity$.next(null);
   }
 
