@@ -21,27 +21,27 @@ upgrade() {
     popd
 }
 
-#pushd ./packages/core
-#sed -i 's/"version": "[0-9.]*",/"version": "'$1'",/' package.json
-#rm -rf node_modules/ package-lock.json dist/ && npm i && npm run prettier-format && npm run build
-#read -p "Press any key to publish core... " -n1 -s
-#npm publish
-#echo Waiting 30s before continuation
-#sleep 30s
-#popd
-#
-#for ix in ${!libs[*]}
-#do
-#  upgrade ${libs[$ix]} $1 &
-#done
-#wait
-#read -p "Press any key to publish libraries... " -n1 -s
-#for ix in ${!libs[*]}
-#do
-#  pushd ./packages/${libs[$ix]}
-#  npm publish
-#  popd
-#done
+pushd ./packages/core
+sed -i 's/"version": "[0-9.]*",/"version": "'$1'",/' package.json
+rm -rf node_modules/ package-lock.json dist/ && npm i && npm run prettier-format && npm run build
+read -p "Press any key to publish core... " -n1 -s
+npm publish
+echo Waiting 30s before continuation
+sleep 30s
+popd
+
+for ix in ${!libs[*]}
+do
+  upgrade ${libs[$ix]} $1 &
+done
+wait
+read -p "Press any key to publish libraries... " -n1 -s
+for ix in ${!libs[*]}
+do
+  pushd ./packages/${libs[$ix]}
+  npm publish
+  popd
+done
 
 pushd documentation
 source .venv/bin/activate
