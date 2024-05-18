@@ -81,7 +81,7 @@ export class Gg3dWorld<
   addRenderer(
     camera: VTypeDoc['camera'],
     canvas?: HTMLCanvasElement,
-    rendererOptions?: Partial<RendererOptions>,
+    rendererOptions?: Partial<RendererOptions & VTypeDoc['rendererExtraOpts']>,
   ): Renderer3dEntity<VTypeDoc> {
     const entity = new Renderer3dEntity(this.visualScene.createRenderer(camera, canvas, rendererOptions));
     this.addEntity(entity);

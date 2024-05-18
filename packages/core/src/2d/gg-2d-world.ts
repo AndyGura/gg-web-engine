@@ -67,7 +67,10 @@ export class Gg2dWorld<
     return entity;
   }
 
-  addRenderer(canvas?: HTMLCanvasElement, rendererOptions?: Partial<RendererOptions>): Renderer2dEntity<VTypeDoc> {
+  addRenderer(
+    canvas?: HTMLCanvasElement,
+    rendererOptions?: Partial<RendererOptions & VTypeDoc['rendererExtraOpts']>,
+  ): Renderer2dEntity<VTypeDoc> {
     const entity = new Renderer2dEntity(this.visualScene.createRenderer(canvas, rendererOptions));
     this.addEntity(entity);
     return entity;
