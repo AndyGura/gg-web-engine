@@ -39,11 +39,9 @@ export class ThreeRendererComponent extends IRenderer3dComponent<ThreeVisualType
     super(scene, canvas, rendererOptions);
     this.nativeRenderer = new WebGLRenderer({
       canvas,
-      preserveDrawingBuffer: true,
       alpha: this.rendererOptions.transparent,
       ...this.rendererOptions,
     });
-    this.nativeRenderer.outputColorSpace = SRGBColorSpace;
     this.nativeRenderer.shadowMap.enabled = true;
     this.nativeRenderer.setClearColor(this.rendererOptions.background);
     this.nativeRenderer.shadowMap.type = PCFSoftShadowMap;

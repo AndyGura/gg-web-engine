@@ -42,8 +42,7 @@ export class GameFactory {
       canvas,
       {
         background: 0xffffff,
-        preserveDrawingBuffer: false
-      } as any, // FIXME remove "as any" after upgrading gg-web-engine
+      },
     );
     renderer.camera.position = { x: 0, y: -15, z: 10 };
     renderer.camera.rotation = Qtrn.lookAt(renderer.camera.position, Pnt3.O);
