@@ -57,6 +57,7 @@ export abstract class GgWorld<
   public readonly tickStarted$: Subject<void> = new Subject<void>();
   public readonly tickForwardTo$: Subject<IEntity | 'PHYSICS_WORLD'> = new Subject<IEntity | 'PHYSICS_WORLD'>();
   public readonly tickForwardedTo$: Subject<IEntity | 'PHYSICS_WORLD'> = new Subject<IEntity | 'PHYSICS_WORLD'>();
+  public readonly paused$: Subject<boolean> = new Subject<boolean>();
 
   protected constructor(public readonly visualScene: VS, public readonly physicsWorld: PW) {
     GgWorld._documentWorlds.push(this);
@@ -148,6 +149,7 @@ export abstract class GgWorld<
           'optional. "avg" report sorts entities by average time consumed, "peak" records highest value for each entity',
       );
     }
+    this.worldClock.paused$.subscribe(this.paused$);
   }
 
   public async init() {

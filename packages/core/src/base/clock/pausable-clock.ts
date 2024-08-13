@@ -87,6 +87,9 @@ export class PausableClock implements IClock {
    */
   public tickRateLimit: number = 0;
 
+  // events
+  public readonly paused$: Subject<boolean> = new Subject<boolean>();
+
   // State variables
   private startedAt: number = -1;
   private oldRelativeTime: number = 0; // "elapsed", emitted on last tick
@@ -156,6 +159,7 @@ export class PausableClock implements IClock {
     this.stopListeningTicks();
     this.pausedAt = this.parentClock.elapsedTime;
     this.pausedByTimescale = false;
+    this.paused$.next(true);
   }
 
   /**
@@ -168,6 +172,7 @@ export class PausableClock implements IClock {
     this.startedAt += this.parentClock.elapsedTime - this.pausedAt;
     this.pausedAt = -1;
     this.startListeningTicks();
+    this.paused$.next(false);
   }
 
   /**
