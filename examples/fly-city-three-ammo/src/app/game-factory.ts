@@ -1,5 +1,5 @@
 import {
-  CachingStrategy,
+  CachingStrategy, createInlineTickController,
   GgCarEntity,
   GgCarProperties,
   GgDummy,
@@ -17,6 +17,7 @@ import { CubeReflectionMapping, CubeTexture, CubeTextureLoader, DirectionalLight
 import { filter, firstValueFrom } from 'rxjs';
 import { CAR_SPECS, LAMBO_SPECS, TRUCK_SPECS } from './car-specs';
 import { FlyCityPTypeDoc, FlyCityVTypeDoc, FlyCityWorld } from './app.component';
+import { takeUntil } from 'rxjs/operators';
 
 
 export class GameFactory {
@@ -84,7 +85,12 @@ export class GameFactory {
       )),
     );
     const cityMapGraph = new MapGraph3dEntity<FlyCityVTypeDoc, FlyCityPTypeDoc>(mapGraph, { loadDepth: 3, inertia: 2 });
-    cityMapGraph.loaderCursorEntity$.next(renderCursor);
+    createInlineTickController(this.world).pipe(
+      takeUntil(cityMapGraph.onRemoved$),
+      takeUntil(renderCursor.onRemoved$),
+    ).subscribe(() => {
+      cityMapGraph.loaderCursor$.next(renderCursor.position);
+    });
     cityMapGraph.chunkLoaded$.subscribe(async ([{ meta }, { position }]) => {
       // spawn cars
       const cars =
