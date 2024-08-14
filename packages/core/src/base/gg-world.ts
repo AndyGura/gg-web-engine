@@ -59,7 +59,10 @@ export abstract class GgWorld<
   public readonly tickForwardedTo$: Subject<IEntity | 'PHYSICS_WORLD'> = new Subject<IEntity | 'PHYSICS_WORLD'>();
   public readonly paused$: Subject<boolean> = new Subject<boolean>();
 
-  protected constructor(public readonly visualScene: VS, public readonly physicsWorld: PW) {
+  protected constructor(
+    public readonly visualScene: VS,
+    public readonly physicsWorld: PW,
+  ) {
     GgWorld._documentWorlds.push(this);
     this.keyboardInput.start();
     if ((window as any).ggstatic) {

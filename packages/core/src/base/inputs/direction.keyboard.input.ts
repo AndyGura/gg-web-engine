@@ -36,7 +36,10 @@ export class DirectionKeyboardInput extends IInput {
    * @param keyboard The `KeyboardInput` instance to use for input handling. You should probably use one from the World instance
    * @param keymap The `DirectionKeyboardKeymap` defining which keys to listen for.
    */
-  constructor(protected readonly keyboard: KeyboardInput, protected readonly keymap: DirectionKeyboardKeymap) {
+  constructor(
+    protected readonly keyboard: KeyboardInput,
+    protected readonly keymap: DirectionKeyboardKeymap,
+  ) {
     super();
   }
 

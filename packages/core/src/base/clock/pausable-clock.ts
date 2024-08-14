@@ -104,7 +104,10 @@ export class PausableClock implements IClock {
    * @param autoStart Indicates whether the clock should start automatically upon creation.
    * @param parentClock The parent clock to synchronize with. Defaults to GgGlobalClock instance.
    */
-  constructor(autoStart: boolean = false, protected readonly parentClock: IClock = GgGlobalClock.instance) {
+  constructor(
+    autoStart: boolean = false,
+    protected readonly parentClock: IClock = GgGlobalClock.instance,
+  ) {
     if (autoStart) {
       this.start();
     }

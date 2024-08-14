@@ -20,7 +20,10 @@ export class PerformanceMeterEntity extends IEntity {
     return this._peakReport;
   }
 
-  constructor(private readonly maxSamples = 60, private readonly maxRows = 15) {
+  constructor(
+    private readonly maxSamples = 60,
+    private readonly maxRows = 15,
+  ) {
     super();
   }
 

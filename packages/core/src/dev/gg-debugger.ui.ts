@@ -192,11 +192,11 @@ export class GgDebuggerUI {
       html += `
       <div ${this.css}>
         <input type='checkbox' name='checkbox' id='physics_debugger_checkbox_id_${entity.name}' value='1'${
-        physicsDebugViewActive ? ' checked' : ''
-      }>
+          physicsDebugViewActive ? ' checked' : ''
+        }>
         <label for='physics_debugger_checkbox_id_${entity.name}' style='user-select: none;'>Physics debugger${
-        this.snapshot.renderers.length > 1 ? ' (' + entity.name + ')' : ''
-      }</label>
+          this.snapshot.renderers.length > 1 ? ' (' + entity.name + ')' : ''
+        }</label>
       </div>`;
     }
     html += `

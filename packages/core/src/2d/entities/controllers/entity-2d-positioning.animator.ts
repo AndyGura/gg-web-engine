@@ -15,7 +15,10 @@ export class Entity2dPositioningAnimator<T extends Entity2d = Entity2d> extends 
   VisualTypeDocRepo2D,
   PhysicsTypeDocRepo2D
 > {
-  constructor(public entity: T, protected _animationFunction: AnimationFunction<Positioning2d>) {
+  constructor(
+    public entity: T,
+    protected _animationFunction: AnimationFunction<Positioning2d>,
+  ) {
     super(_animationFunction, (a, b, t) => ({
       position: Pnt2.lerp(a.position, b.position, t),
       rotation: lerpNumber(a.rotation, b.rotation, t),

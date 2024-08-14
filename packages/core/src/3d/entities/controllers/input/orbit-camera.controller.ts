@@ -59,7 +59,10 @@ export class OrbitCameraController extends IEntity {
     this.spherical.theta = value;
   }
 
-  constructor(protected readonly camera: Renderer3dEntity, options: Partial<OrbitCameraControllerOptions> = {}) {
+  constructor(
+    protected readonly camera: Renderer3dEntity,
+    options: Partial<OrbitCameraControllerOptions> = {},
+  ) {
     super();
     this.options = { ...DEFAULT_OPTIONS, ...options };
     this.mouseInput = new MouseInput(this.options.mouseOptions);
