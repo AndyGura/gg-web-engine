@@ -1,5 +1,5 @@
 import { Gg3dWorld, IRenderer3dComponent, PhysicsTypeDocRepo3D, Point2, RendererOptions } from '@gg-web-engine/core';
-import { PCFSoftShadowMap, PerspectiveCamera, SRGBColorSpace, WebGLRenderer, WebGLRendererParameters } from 'three';
+import { PCFSoftShadowMap, PerspectiveCamera, WebGLRenderer, WebGLRendererParameters } from 'three';
 import { ThreeSceneComponent } from './three-scene.component';
 import { ThreeCameraComponent } from './three-camera.component';
 import { ThreeVisualTypeDocRepo } from '../types';
@@ -9,7 +9,7 @@ export class ThreeRendererComponent extends IRenderer3dComponent<ThreeVisualType
   public readonly nativeRenderer: WebGLRenderer;
   protected world: Gg3dWorld<ThreeVisualTypeDocRepo, PhysicsTypeDocRepo3D, ThreeSceneComponent> | null = null;
 
-  private debugView: ThreePhysicsDebugView | null = null;
+  protected debugView: ThreePhysicsDebugView | null = null;
   private _physicsDebugViewActive: boolean = false;
   public get physicsDebugViewActive(): boolean {
     return this._physicsDebugViewActive;
