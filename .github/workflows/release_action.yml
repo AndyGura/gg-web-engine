@@ -52,9 +52,21 @@ jobs:
           export NODE_AUTH_TOKEN=${{ secrets.NPM_KEY }}
           ./etc/publish_new_version.sh ${{ env.version }}
 
+      - name: Update docs
+        run: |
+          npm i
+          npm run generate
+        working-directory: ./documentation
+
       - name: Update version in git
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
           commit_message: '${{ env.version }} release'
           push_options: --force
           tagging_message: ${{ env.version }}
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./documentation/site

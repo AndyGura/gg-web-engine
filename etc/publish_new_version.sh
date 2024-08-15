@@ -42,13 +42,7 @@ do
   popd
 done
 
-pushd documentation
-sh generate.sh
-mkdocs gh-deploy
-popd
-
-echo NPM packages published, documentation published
-echo re-linking examples...
+echo NPM packages published, re-linking examples...
 examples=(
   "primitives-three-ammo"
   "primitives-three-rapier3d"
