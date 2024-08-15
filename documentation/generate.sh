@@ -1,7 +1,7 @@
-#!/bin/bash
+#!/bin/sh
 rm -rf docs site
-packages=("core" "ammo" "three" "pixi" "matter" "rapier2d" "rapier3d")
-for str in ${packages[@]}; do
+packages="core ammo three pixi matter rapier2d rapier3d"
+for str in $packages; do
   mkdir -p src/$str
   cp -R ../packages/$str/src/* src/$str
 done
