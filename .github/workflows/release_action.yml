@@ -38,6 +38,12 @@ jobs:
           install-cmd: pip install -r ./documentation/requirements.txt
           venv-directory: ./documentation/.venv
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          registry-url: 'https://registry.npmjs.org'
+
       - name: Publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_KEY }}
