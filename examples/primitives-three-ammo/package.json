@@ -9,15 +9,15 @@
     "@gg-web-engine/ammo": "0.0.40",
     "@gg-web-engine/core": "0.0.40",
     "@gg-web-engine/three": "0.0.40",
-    "mini-signals": "^2.0.0",
+    "mini-signals": "2.0.0",
     "rxjs": "7.8.1",
-    "three": "0.164.1"
+    "three": "0.167.1"
   },
   "devDependencies": {
-    "@types/three": "0.164.0",
+    "@types/three": "0.167.1",
     "html-webpack-plugin": "^5.5.3",
     "ts-loader": "^9.5.1",
-    "typescript": "^5.3.2",
+    "typescript": "~5.5.4",
     "webpack": "^5.89.0",
     "webpack-cli": "^5.1.4",
     "webpack-dev-server": "^4.15.1"
