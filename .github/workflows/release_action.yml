@@ -2,8 +2,8 @@ name: Release new version
 
 on:
   push:
-    tags:
-      - *
+    branches:
+      - main
 
 jobs:
   report_tag_to_notion:
@@ -11,14 +11,24 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
-      - name: Extract version
-        id: extract_info
+      - name: Get commit message
+        id: get_commit_message
         run: |
-          TAG_NAME=${GITHUB_REF#refs/tags/}
-          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
-          echo version to publish: $TAG_NAME
+          COMMIT_MESSAGE=$(git log -1 --pretty=format:"%s")
+          echo "commit_message=$COMMIT_MESSAGE" >> $GITHUB_ENV
+
+      - name: Extract version string
+        id: extract_version
+        run: |
+          if [[ "$commit_message" =~ ^\[pre-release\]\ \[([0-9]+\.[0-9]+\.[0-9]+)\] ]]; then
+            VERSION="${BASH_REMATCH[1]}"
+            echo "version=$VERSION" >> $GITHUB_ENV
+          else
+            echo "Commit message does not match the pre-release pattern, exiting..."
+            exit 0
+          fi
 
       - name: Setup python
         uses: getsentry/action-setup-venv@v2.1.0
@@ -32,4 +42,11 @@ jobs:
       - name: Publish
         run: |
           chmod +x ./etc/publish_new_version.sh
-          ./etc/publish_new_version.sh $TAG_NAME
+          ./etc/publish_new_version.sh ${{ env.version }}
+
+      - name: update version in git
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: '${{ env.version }} release'
+          push_options: --force
+          tagging_message: ${{ env.version }}
