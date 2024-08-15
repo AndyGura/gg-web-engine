@@ -39,6 +39,8 @@ jobs:
           venv-directory: ./documentation/.venv
 
       - name: Publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_KEY }}
         run: |
           chmod +x ./etc/publish_new_version.sh
           ./etc/publish_new_version.sh ${{ env.version }}
