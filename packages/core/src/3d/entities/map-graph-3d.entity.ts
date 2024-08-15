@@ -160,7 +160,10 @@ export class MapGraph3dEntity<
     }
   }
 
-  constructor(public readonly mapGraph: MapGraph, options: Partial<Gg3dMapGraphEntityOptions> = {}) {
+  constructor(
+    public readonly mapGraph: MapGraph,
+    options: Partial<Gg3dMapGraphEntityOptions> = {},
+  ) {
     super();
     this.options = { ...defaultOptions, ...options };
     this.mapGraphNodes = mapGraph.nodes();

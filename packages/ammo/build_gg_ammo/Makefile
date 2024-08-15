@@ -1,6 +1,6 @@
 # Define variables
-AMMOJS_GIT_REPO=https://github.com/i12345/ammo.js.git
-AMMOJS_GIT_COMMIT=98d8fb3e8d5b3f3b581e7c5fe8856edb91b578d8
+AMMOJS_GIT_REPO=https://github.com/AndyGura/ammo.js.git
+AMMOJS_GIT_COMMIT=c3d7c801e49c0f41273874e643da4794e1915bf8
 BULLET_GIT_REPO=https://github.com/bulletphysics/bullet3.git
 BULLET_GIT_COMMIT=2c204c49e56ed15ec5fcfa71d199ab6d6570b3f5 # 3.25 release
 REPLACE_SRC_DIR=./patch_files

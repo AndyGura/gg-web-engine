@@ -30,7 +30,10 @@ export class Gg2dWorld<
   VS extends IVisualScene2dComponent<VTypeDoc> = IVisualScene2dComponent<VTypeDoc>,
   PW extends IPhysicsWorld2dComponent<PTypeDoc> = IPhysicsWorld2dComponent<PTypeDoc>,
 > extends GgWorld<Point2, number, VTypeDoc, PTypeDoc, VS, PW> {
-  constructor(public readonly visualScene: VS, public readonly physicsWorld: PW) {
+  constructor(
+    public readonly visualScene: VS,
+    public readonly physicsWorld: PW,
+  ) {
     super(visualScene, physicsWorld);
     if ((window as any).ggstatic) {
       (window as any).ggstatic.registerConsoleCommand(

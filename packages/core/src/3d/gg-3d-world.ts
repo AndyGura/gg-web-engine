@@ -40,7 +40,10 @@ export class Gg3dWorld<
 > extends GgWorld<Point3, Point4, VTypeDoc, PTypeDoc, VS, PW> {
   public readonly loader: Gg3dLoader<VTypeDoc, PTypeDoc>;
 
-  constructor(public readonly visualScene: VS, public readonly physicsWorld: PW) {
+  constructor(
+    public readonly visualScene: VS,
+    public readonly physicsWorld: PW,
+  ) {
     super(visualScene, physicsWorld);
     this.loader = new Gg3dLoader(this);
     if ((window as any).ggstatic) {

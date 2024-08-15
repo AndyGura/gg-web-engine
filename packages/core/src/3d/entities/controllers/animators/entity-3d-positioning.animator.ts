@@ -15,7 +15,10 @@ export class Entity3dPositioningAnimator<T extends IPositionable3d = IPositionab
   VisualTypeDocRepo3D,
   PhysicsTypeDocRepo3D
 > {
-  constructor(public entity: T, protected _animationFunction: AnimationFunction<Positioning3d>) {
+  constructor(
+    public entity: T,
+    protected _animationFunction: AnimationFunction<Positioning3d>,
+  ) {
     super(_animationFunction, (a, b, t) => ({
       position: Pnt3.lerp(a.position, b.position, t),
       rotation: Qtrn.slerp(a.rotation, b.rotation, t),

@@ -27,7 +27,10 @@ export class Rapier3dRaycastVehicleComponent
 
   private wheelDescr: [Vector3, Vector3, Vector3, number, number][] = [];
 
-  constructor(protected readonly world: Rapier3dWorldComponent, private chassisBody: Rapier3dRigidBodyComponent) {
+  constructor(
+    protected readonly world: Rapier3dWorldComponent,
+    private chassisBody: Rapier3dRigidBodyComponent,
+  ) {
     super(world, ...chassisBody.factoryProps);
   }
 

@@ -49,7 +49,10 @@ export class AmmoRaycastVehicleComponent
     this.chassisBody.refreshCG();
   }
 
-  constructor(protected readonly world: AmmoWorldComponent, public chassisBody: AmmoRigidBodyComponent) {
+  constructor(
+    protected readonly world: AmmoWorldComponent,
+    public chassisBody: AmmoRigidBodyComponent,
+  ) {
     super(world, chassisBody.nativeBody, chassisBody.shape);
     this.raycaster = new Ammo.btDefaultVehicleRaycaster(world.dynamicAmmoWorld!);
     this.nativeVehicle = new Ammo.btRaycastVehicle(this.vehicleTuning, this.chassisBody.nativeBody, this.raycaster);
