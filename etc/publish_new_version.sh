@@ -43,7 +43,6 @@ do
 done
 
 pushd documentation
-source .venv/bin/activate
 sh generate.sh
 mkdocs gh-deploy
 popd
