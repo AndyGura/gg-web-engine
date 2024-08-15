@@ -1,0 +1,35 @@
+name: Release new version
+
+on:
+  push:
+    tags:
+      - *
+
+jobs:
+  report_tag_to_notion:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Extract version
+        id: extract_info
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
+          echo version to publish: $TAG_NAME
+
+      - name: Setup python
+        uses: getsentry/action-setup-venv@v2.1.0
+        id: venv
+        working-directory: .documentation/
+        with:
+          python-version: 3.10.7
+          cache-dependency-path: requirements.txt
+          install-cmd: pip install -r requirements.txt
+
+      - name: Publish
+        run: |
+          chmod +x ./etc/publish_new_version.sh
+          ./etc/publish_new_version.sh $TAG_NAME

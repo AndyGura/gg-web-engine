@@ -24,7 +24,6 @@ upgrade() {
 pushd ./packages/core
 sed -i 's/"version": "[0-9.]*",/"version": "'$1'",/' package.json
 rm -rf node_modules/ package-lock.json dist/ && npm i && npm run prettier-format && npm run build
-read -p "Press any key to publish core... " -n1 -s
 npm publish
 echo Waiting 30s before continuation
 sleep 30s
@@ -35,7 +34,7 @@ do
   upgrade ${libs[$ix]} $1 &
 done
 wait
-read -p "Press any key to publish libraries... " -n1 -s
+
 for ix in ${!libs[*]}
 do
   pushd ./packages/${libs[$ix]}
@@ -83,7 +82,5 @@ wait
 
 echo "Reminder: "
 echo "1) double-check readme code example"
-echo "2) recheck that ALL examples work"
-echo "3) deploy examples"
-echo "4) create release on github"
-echo "5) check stackblitz of all examples"
+echo "2) deploy examples"
+echo "3) check stackblitz of all examples"
