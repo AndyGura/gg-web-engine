@@ -43,6 +43,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_KEY }}
         run: |
           chmod +x ./etc/publish_new_version.sh
+          export NODE_AUTH_TOKEN=${{ secrets.NPM_KEY }}
           ./etc/publish_new_version.sh ${{ env.version }}
 
       - name: Update version in git
