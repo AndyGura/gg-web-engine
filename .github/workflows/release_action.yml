@@ -29,6 +29,7 @@ jobs:
             echo "Commit message does not match the pre-release pattern, exiting..."
             exit 0
           fi
+        continue-on-error: true
 
       - name: Setup python
         uses: getsentry/action-setup-venv@v2.1.0
