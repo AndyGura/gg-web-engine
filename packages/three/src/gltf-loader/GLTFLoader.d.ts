@@ -20,7 +20,6 @@ import {
   TextureLoader,
 } from 'three';
 
-type MeshoptDecoder = any;
 type DRACOLoader = any;
 type KTX2Loader = any;
 
@@ -44,13 +43,13 @@ export interface GLTF {
 export class GLTFLoader extends Loader<GLTF> {
   dracoLoader: DRACOLoader | null;
   ktx2Loader: KTX2Loader | null;
-  meshoptDecoder: typeof MeshoptDecoder | null;
+  meshoptDecoder: any | null;
 
   constructor(manager?: LoadingManager);
 
   setDRACOLoader(dracoLoader: DRACOLoader): this;
   setKTX2Loader(ktx2Loader: KTX2Loader | null): this;
-  setMeshoptDecoder(meshoptDecoder: typeof MeshoptDecoder | null): this;
+  setMeshoptDecoder(meshoptDecoder: any | null): this;
 
   register(callback: (parser: GLTFParser) => GLTFLoaderPlugin): this;
   unregister(callback: (parser: GLTFParser) => GLTFLoaderPlugin): this;
