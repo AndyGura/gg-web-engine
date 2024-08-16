@@ -29,11 +29,18 @@ echo Waiting 30s before continuation
 sleep 30s
 popd
 
+pids=()
 for ix in ${!libs[*]}
 do
   upgrade ${libs[$ix]} $1 &
+  pids+=($!)
 done
-wait
+for pid in "${pids[@]}"; do
+  if ! wait $pid; then
+    echo "Error: A background process failed."
+    exit 1
+  fi
+done
 
 for ix in ${!libs[*]}
 do
