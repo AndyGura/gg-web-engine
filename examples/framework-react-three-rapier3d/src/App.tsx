@@ -11,7 +11,6 @@ import {
   ThreeCameraComponent,
 } from '@gg-web-engine/three';
 import { Subject } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
 import { Rapier3dWorldComponent } from '@gg-web-engine/rapier3d';
 import { PerspectiveCamera } from 'three';
 

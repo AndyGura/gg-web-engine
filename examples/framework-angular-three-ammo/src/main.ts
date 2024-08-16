@@ -54,7 +54,7 @@ export class App implements OnInit, OnDestroy {
     });
     this.world.addEntity(destroyTrigger);
 
-    const spawnTimer = world.createClock(true);
+    const spawnTimer = this.world.createClock(true);
     spawnTimer.tickRateLimit = 2;
     spawnTimer.tick$
       .subscribe(() => {
