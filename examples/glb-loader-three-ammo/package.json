@@ -6,9 +6,9 @@
     "start": "webpack serve --config ./webpack.dev.config.js"
   },
   "dependencies": {
-    "@gg-web-engine/ammo": "0.0.47",
-    "@gg-web-engine/core": "0.0.47",
-    "@gg-web-engine/three": "0.0.47",
+    "@gg-web-engine/ammo": "0.0.48",
+    "@gg-web-engine/core": "0.0.48",
+    "@gg-web-engine/three": "0.0.48",
     "mini-signals": "2.0.0",
     "rxjs": "7.8.1",
     "three": "0.167.1"

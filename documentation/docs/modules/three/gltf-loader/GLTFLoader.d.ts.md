@@ -60,7 +60,6 @@ parent: Modules
   - [GLTFReference (interface)](#gltfreference-interface)
   - [GLTFReferenceType (type alias)](#gltfreferencetype-type-alias)
   - [KTX2Loader (type alias)](#ktx2loader-type-alias)
-  - [MeshoptDecoder (type alias)](#meshoptdecoder-type-alias)
 
 ---
 
@@ -128,7 +127,7 @@ setKTX2Loader(ktx2Loader: KTX2Loader | null): this;
 **Signature**
 
 ```ts
-setMeshoptDecoder(meshoptDecoder: typeof MeshoptDecoder | null): this;
+setMeshoptDecoder(meshoptDecoder: any | null): this;
 ```
 
 ### register (method)
@@ -503,12 +502,4 @@ export type GLTFReferenceType = 'materials' | 'nodes' | 'textures' | 'meshes'
 
 ```ts
 type KTX2Loader = any
-```
-
-## MeshoptDecoder (type alias)
-
-**Signature**
-
-```ts
-type MeshoptDecoder = any
 ```
