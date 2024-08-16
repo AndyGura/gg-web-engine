@@ -25,13 +25,15 @@ jobs:
           if [[ "$commit_message" =~ ^\[pre-release\]\ \[([0-9]+\.[0-9]+\.[0-9]+)\] ]]; then
             VERSION="${BASH_REMATCH[1]}"
             echo "version=$VERSION" >> $GITHUB_ENV
+            echo "::set-output name=matched::true"
           else
             echo "Commit message does not match the pre-release pattern, exiting..."
+            echo "::set-output name=matched::false"
             exit 0
           fi
-        continue-on-error: true
 
       - name: Setup python
+        if: steps.extract_version.outputs.matched == 'true'
         uses: getsentry/action-setup-venv@v2.1.0
         with:
           python-version: 3.10.7
@@ -40,12 +42,14 @@ jobs:
           venv-dir: ./documentation/.venv
 
       - name: Set up Node.js
+        if: steps.extract_version.outputs.matched == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '20.x'
           registry-url: 'https://registry.npmjs.org'
 
       - name: Publish
+        if: steps.extract_version.outputs.matched == 'true'
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_KEY }}
         run: |
@@ -54,18 +58,21 @@ jobs:
           ./etc/publish_new_version.sh ${{ env.version }}
 
       - name: Update docs
+        if: steps.extract_version.outputs.matched == 'true'
         run: |
           npm i
           npm run generate
         working-directory: ./documentation
 
       - name: Update version in git
+        if: steps.extract_version.outputs.matched == 'true'
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
           commit_message: '${{ env.version }} release'
           tagging_message: ${{ env.version }}
 
       - name: Deploy to GitHub Pages
+        if: steps.extract_version.outputs.matched == 'true'
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
