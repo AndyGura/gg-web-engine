@@ -8,7 +8,7 @@
       
       
       
-        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/base/gg-world.ts/">
+        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/three/components/three-composer-renderer.component.ts/">
       
       
       
@@ -18,7 +18,7 @@
     
     
       
-        <title>core/base/gg-world.ts - GG-web-engine</title>
+        <title>three/components/three-composer-renderer.component.ts - GG-web-engine</title>
       
     
     
@@ -73,7 +73,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#gg-world-overview" class="md-skip">
+        <a href="#three-composer-renderercomponent-overview" class="md-skip">
           Skip to content
         </a>
       
@@ -109,7 +109,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              core/base/gg-world.ts
+              three/components/three-composer-renderer.component.ts
             
           </span>
         </div>
@@ -353,7 +353,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href="../../../core" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -453,7 +453,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../three" class="md-nav__link">
+      <a href="../.." class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -499,8 +499,8 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#gg-world-overview" class="md-nav__link">
-    gg-world overview
+  <a href="#three-composer-renderercomponent-overview" class="md-nav__link">
+    three-composer-renderer.component overview
   </a>
   
 </li>
@@ -514,44 +514,30 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#ggworld-class" class="md-nav__link">
-    GgWorld (class)
+  <a href="#threecomposerrenderercomponent-class" class="md-nav__link">
+    ThreeComposerRendererComponent (class)
   </a>
   
-    <nav class="md-nav" aria-label="GgWorld (class)">
+    <nav class="md-nav" aria-label="ThreeComposerRendererComponent (class)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#init-method" class="md-nav__link">
-    init (method)
+  <a href="#addtoworld-method" class="md-nav__link">
+    addToWorld (method)
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#start-method" class="md-nav__link">
-    start (method)
+  <a href="#resizerenderer-method" class="md-nav__link">
+    resizeRenderer (method)
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#pauseworld-method" class="md-nav__link">
-    pauseWorld (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#resumeworld-method" class="md-nav__link">
-    resumeWorld (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#createclock-method" class="md-nav__link">
-    createClock (method)
+  <a href="#render-method" class="md-nav__link">
+    render (method)
   </a>
   
 </li>
@@ -564,105 +550,14 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#addprimitiverigidbody-method" class="md-nav__link">
-    addPrimitiveRigidBody (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#addentity-method" class="md-nav__link">
-    addEntity (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#removeentity-method" class="md-nav__link">
-    removeEntity (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#worldclock-property" class="md-nav__link">
-    worldClock (property)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#keyboardinput-property" class="md-nav__link">
-    keyboardInput (property)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#name-property" class="md-nav__link">
-    name (property)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#children-property" class="md-nav__link">
-    children (property)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#ticklisteners-property" class="md-nav__link">
-    tickListeners (property)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#tickstarted-property" class="md-nav__link">
-    tickStarted$ (property)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#tickforwardto-property" class="md-nav__link">
-    tickForwardTo$ (property)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#tickforwardedto-property" class="md-nav__link">
-    tickForwardedTo$ (property)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#paused-property" class="md-nav__link">
-    paused$ (property)
+  <a href="#nativecomposer-property" class="md-nav__link">
+    nativeComposer (property)
   </a>
   
 </li>
         
       </ul>
     </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#physicstypedocrepo-type-alias" class="md-nav__link">
-    PhysicsTypeDocRepo (type alias)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#visualtypedocrepo-type-alias" class="md-nav__link">
-    VisualTypeDocRepo (type alias)
-  </a>
   
 </li>
         
@@ -689,137 +584,53 @@
   
 
 
-<h2 id="gg-world-overview">gg-world overview</h2>
+<h2 id="three-composer-renderercomponent-overview">three-composer-renderer.component overview</h2>
 <hr />
 <h2 class="text-delta">Table of contents</h2>
 
 <ul>
 <li><a href="#utils">utils</a></li>
-<li><a href="#ggworld-class">GgWorld (class)</a><ul>
-<li><a href="#init-method">init (method)</a></li>
-<li><a href="#start-method">start (method)</a></li>
-<li><a href="#pauseworld-method">pauseWorld (method)</a></li>
-<li><a href="#resumeworld-method">resumeWorld (method)</a></li>
-<li><a href="#createclock-method">createClock (method)</a></li>
+<li><a href="#threecomposerrenderercomponent-class">ThreeComposerRendererComponent (class)</a><ul>
+<li><a href="#addtoworld-method">addToWorld (method)</a></li>
+<li><a href="#resizerenderer-method">resizeRenderer (method)</a></li>
+<li><a href="#render-method">render (method)</a></li>
 <li><a href="#dispose-method">dispose (method)</a></li>
-<li><a href="#addprimitiverigidbody-method">addPrimitiveRigidBody (method)</a></li>
-<li><a href="#addentity-method">addEntity (method)</a></li>
-<li><a href="#removeentity-method">removeEntity (method)</a></li>
-<li><a href="#worldclock-property">worldClock (property)</a></li>
-<li><a href="#keyboardinput-property">keyboardInput (property)</a></li>
-<li><a href="#name-property">name (property)</a></li>
-<li><a href="#children-property">children (property)</a></li>
-<li><a href="#ticklisteners-property">tickListeners (property)</a></li>
-<li><a href="#tickstarted-property">tickStarted$ (property)</a></li>
-<li><a href="#tickforwardto-property">tickForwardTo$ (property)</a></li>
-<li><a href="#tickforwardedto-property">tickForwardedTo$ (property)</a></li>
-<li><a href="#paused-property">paused$ (property)</a></li>
+<li><a href="#nativecomposer-property">nativeComposer (property)</a></li>
 </ul>
 </li>
-<li><a href="#physicstypedocrepo-type-alias">PhysicsTypeDocRepo (type alias)</a></li>
-<li><a href="#visualtypedocrepo-type-alias">VisualTypeDocRepo (type alias)</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
-<h2 id="ggworld-class">GgWorld (class)</h2>
+<h2 id="threecomposerrenderercomponent-class">ThreeComposerRendererComponent (class)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class GgWorld&lt;D, R, VTypeDoc, PTypeDoc, VS, PW&gt; {
-  protected constructor(public readonly visualScene: VS, public readonly physicsWorld: PW)
+<pre><code class="language-ts">export declare class ThreeComposerRendererComponent {
+  constructor(
+    scene: ThreeSceneComponent,
+    camera: ThreeCameraComponent,
+    canvas?: HTMLCanvasElement,
+    rendererOptions: Partial&lt;RendererOptions &amp; WebGLRendererParameters&gt; = {}
+  )
 }
 </code></pre>
-<h3 id="init-method">init (method)</h3>
+<h3 id="addtoworld-method">addToWorld (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">public async init()
+<pre><code class="language-ts">addToWorld(world: Gg3dWorld&lt;ThreeVisualTypeDocRepo, PhysicsTypeDocRepo3D, ThreeSceneComponent&gt;)
 </code></pre>
-<h3 id="start-method">start (method)</h3>
+<h3 id="resizerenderer-method">resizeRenderer (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">public start()
+<pre><code class="language-ts">resizeRenderer(newSize: Point2): void
 </code></pre>
-<h3 id="pauseworld-method">pauseWorld (method)</h3>
+<h3 id="render-method">render (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">public pauseWorld()
-</code></pre>
-<h3 id="resumeworld-method">resumeWorld (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">public resumeWorld()
-</code></pre>
-<h3 id="createclock-method">createClock (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">public createClock(autoStart: boolean): PausableClock
+<pre><code class="language-ts">render(): void
 </code></pre>
 <h3 id="dispose-method">dispose (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">public dispose(): void
+<pre><code class="language-ts">dispose(): void
 </code></pre>
-<h3 id="addprimitiverigidbody-method">addPrimitiveRigidBody (method)</h3>
+<h3 id="nativecomposer-property">nativeComposer (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">abstract addPrimitiveRigidBody(
-    descr: unknown, // type defined in subclasses
-    position?: D,
-    rotation?: R,
-    material?: unknown, // type defined in subclasses
-  ): IPositionable&lt;D, R&gt; &amp; IRenderableEntity&lt;D, R, VTypeDoc&gt;;
-</code></pre>
-<h3 id="addentity-method">addEntity (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">public addEntity(entity: IEntity): void
-</code></pre>
-<h3 id="removeentity-method">removeEntity (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">public removeEntity(entity: IEntity, dispose = false): void
-</code></pre>
-<h3 id="worldclock-property">worldClock (property)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly worldClock: PausableClock
-</code></pre>
-<h3 id="keyboardinput-property">keyboardInput (property)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly keyboardInput: KeyboardInput
-</code></pre>
-<h3 id="name-property">name (property)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">name: string
-</code></pre>
-<h3 id="children-property">children (property)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly children: IEntity&lt;any, any, VisualTypeDocRepo&lt;any, any&gt;, PhysicsTypeDocRepo&lt;any, any&gt;&gt;[]
-</code></pre>
-<h3 id="ticklisteners-property">tickListeners (property)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly tickListeners: IEntity&lt;any, any, VisualTypeDocRepo&lt;any, any&gt;, PhysicsTypeDocRepo&lt;any, any&gt;&gt;[]
-</code></pre>
-<h3 id="tickstarted-property">tickStarted$ (property)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly tickStarted$: any
-</code></pre>
-<h3 id="tickforwardto-property">tickForwardTo$ (property)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly tickForwardTo$: any
-</code></pre>
-<h3 id="tickforwardedto-property">tickForwardedTo$ (property)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly tickForwardedTo$: any
-</code></pre>
-<h3 id="paused-property">paused$ (property)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly paused$: any
-</code></pre>
-<h2 id="physicstypedocrepo-type-alias">PhysicsTypeDocRepo (type alias)</h2>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type PhysicsTypeDocRepo&lt;D, R&gt; = {
-  factory: unknown
-  rigidBody: IRigidBodyComponent&lt;D, R&gt;
-  trigger: ITriggerComponent&lt;D, R&gt;
-}
-</code></pre>
-<h2 id="visualtypedocrepo-type-alias">VisualTypeDocRepo (type alias)</h2>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type VisualTypeDocRepo&lt;D, R&gt; = {
-  factory: unknown
-  displayObject: IDisplayObjectComponent&lt;D, R&gt;
-  renderer: IRendererComponent&lt;D, R&gt;
-  rendererExtraOpts: {}
-}
+<pre><code class="language-ts">readonly nativeComposer: any
 </code></pre>
 
 

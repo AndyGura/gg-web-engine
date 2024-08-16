@@ -23,7 +23,7 @@ parent: Modules
     - [loadChunk (method)](#loadchunk-method)
     - [disposeChunk (method)](#disposechunk-method)
     - [tickOrder (property)](#tickorder-property)
-    - [loaderCursorEntity$ (property)](#loadercursorentity-property)
+    - [loaderCursor$ (property)](#loadercursor-property)
     - [loaded (property)](#loaded-property)
     - [\_chunkLoaded$ (property)](#_chunkloaded-property)
     - [mapGraphNodes (property)](#mapgraphnodes-property)
@@ -45,6 +45,8 @@ export type Gg3dMapGraphEntityOptions = {
   loadDepth: number
   // additional depth, means unload delay. Nodes with this depth won't load, but if already loaded, will not be destroyed
   inertia: number
+  // max amount of nodes that can be loaded on single tick. Use this to avoid framerate drop when loading multiple heavy nodes at once
+  maxNodesLoadingPerTick: number
 }
 ```
 
@@ -147,12 +149,12 @@ protected disposeChunk(node: MapGraphNodeType)
 readonly tickOrder: TickOrder.POST_RENDERING
 ```
 
-### loaderCursorEntity$ (property)
+### loaderCursor$ (property)
 
 **Signature**
 
 ```ts
-readonly loaderCursorEntity$: any
+readonly loaderCursor$: any
 ```
 
 ### loaded (property)

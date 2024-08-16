@@ -621,7 +621,7 @@
 <pre><code class="language-ts">addRenderer(
     camera: VTypeDoc['camera'],
     canvas?: HTMLCanvasElement,
-    rendererOptions?: Partial&lt;RendererOptions&gt;,
+    rendererOptions?: Partial&lt;RendererOptions &amp; VTypeDoc['rendererExtraOpts']&gt;,
   ): Renderer3dEntity&lt;VTypeDoc&gt;
 </code></pre>
 <h3 id="loader-property">loader (property)</h3>

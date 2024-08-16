@@ -1,6 +1,6 @@
 ---
 title: three/components/three-renderer.component.ts
-nav_order: 128
+nav_order: 129
 parent: Modules
 ---
 
@@ -19,6 +19,7 @@ parent: Modules
     - [dispose (method)](#dispose-method)
     - [nativeRenderer (property)](#nativerenderer-property)
     - [world (property)](#world-property)
+    - [debugView (property)](#debugview-property)
 
 ---
 
@@ -93,4 +94,12 @@ readonly nativeRenderer: any
 
 ```ts
 world: any
+```
+
+### debugView (property)
+
+**Signature**
+
+```ts
+debugView: ThreePhysicsDebugView | null
 ```

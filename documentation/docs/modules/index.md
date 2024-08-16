@@ -144,6 +144,7 @@ has_children: true
 - [three/three-loader.ts](/gg-web-engine/modules/three/three-loader.ts)
 - [three/types.ts](/gg-web-engine/modules/three/types.ts)
 - [three/components/three-camera.component.ts](/gg-web-engine/modules/three/components/three-camera.component.ts)
+- [three/components/three-composer-renderer.component.ts](/gg-web-engine/modules/three/components/three-composer-renderer.component.ts)
 - [three/components/three-display-object.component.ts](/gg-web-engine/modules/three/components/three-display-object.component.ts)
 - [three/components/three-physics-debug-view.ts](/gg-web-engine/modules/three/components/three-physics-debug-view.ts)
 - [three/components/three-renderer.component.ts](/gg-web-engine/modules/three/components/three-renderer.component.ts)

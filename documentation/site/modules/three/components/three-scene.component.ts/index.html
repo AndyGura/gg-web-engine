@@ -536,6 +536,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#createcomposerrenderer-method" class="md-nav__link">
+    createComposerRenderer (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#dispose-method" class="md-nav__link">
     dispose (method)
   </a>
@@ -593,6 +600,7 @@
 <li><a href="#threescenecomponent-class">ThreeSceneComponent (class)</a><ul>
 <li><a href="#init-method">init (method)</a></li>
 <li><a href="#createrenderer-method">createRenderer (method)</a></li>
+<li><a href="#createcomposerrenderer-method">createComposerRenderer (method)</a></li>
 <li><a href="#dispose-method">dispose (method)</a></li>
 <li><a href="#factory-property">factory (property)</a></li>
 <li><a href="#loader-property">loader (property)</a></li>
@@ -616,6 +624,14 @@
     canvas?: HTMLCanvasElement,
     rendererOptions?: Partial&lt;RendererOptions &amp; WebGLRendererParameters&gt;,
   ): ThreeRendererComponent
+</code></pre>
+<h3 id="createcomposerrenderer-method">createComposerRenderer (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">createComposerRenderer(
+    camera: ThreeCameraComponent,
+    canvas?: HTMLCanvasElement,
+    rendererOptions?: Partial&lt;RendererOptions &amp; WebGLRendererParameters&gt;,
+  ): ThreeComposerRendererComponent
 </code></pre>
 <h3 id="dispose-method">dispose (method)</h3>
 <p><strong>Signature</strong></p>

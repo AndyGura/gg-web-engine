@@ -605,8 +605,8 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#loadercursorentity-property" class="md-nav__link">
-    loaderCursorEntity$ (property)
+  <a href="#loadercursor-property" class="md-nav__link">
+    loaderCursor$ (property)
   </a>
   
 </li>
@@ -701,7 +701,7 @@
 <li><a href="#loadchunk-method">loadChunk (method)</a></li>
 <li><a href="#disposechunk-method">disposeChunk (method)</a></li>
 <li><a href="#tickorder-property">tickOrder (property)</a></li>
-<li><a href="#loadercursorentity-property">loaderCursorEntity$ (property)</a></li>
+<li><a href="#loadercursor-property">loaderCursor$ (property)</a></li>
 <li><a href="#loaded-property">loaded (property)</a></li>
 <li><a href="#_chunkloaded-property">_chunkLoaded$ (property)</a></li>
 <li><a href="#mapgraphnodes-property">mapGraphNodes (property)</a></li>
@@ -720,6 +720,8 @@
   loadDepth: number
   // additional depth, means unload delay. Nodes with this depth won't load, but if already loaded, will not be destroyed
   inertia: number
+  // max amount of nodes that can be loaded on single tick. Use this to avoid framerate drop when loading multiple heavy nodes at once
+  maxNodesLoadingPerTick: number
 }
 </code></pre>
 <h2 id="mapgraph-class">MapGraph (class)</h2>
@@ -775,9 +777,9 @@ The nodes in the graph are created in the same order as the elements in the grid
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly tickOrder: TickOrder.POST_RENDERING
 </code></pre>
-<h3 id="loadercursorentity-property">loaderCursorEntity$ (property)</h3>
+<h3 id="loadercursor-property">loaderCursor$ (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly loaderCursorEntity$: any
+<pre><code class="language-ts">readonly loaderCursor$: any
 </code></pre>
 <h3 id="loaded-property">loaded (property)</h3>
 <p><strong>Signature</strong></p>

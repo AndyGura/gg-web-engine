@@ -1,6 +1,6 @@
 ---
 title: three/components/three-scene.component.ts
-nav_order: 129
+nav_order: 130
 parent: Modules
 ---
 
@@ -14,6 +14,7 @@ parent: Modules
   - [ThreeSceneComponent (class)](#threescenecomponent-class)
     - [init (method)](#init-method)
     - [createRenderer (method)](#createrenderer-method)
+    - [createComposerRenderer (method)](#createcomposerrenderer-method)
     - [dispose (method)](#dispose-method)
     - [factory (property)](#factory-property)
     - [loader (property)](#loader-property)
@@ -48,6 +49,18 @@ createRenderer(
     canvas?: HTMLCanvasElement,
     rendererOptions?: Partial<RendererOptions & WebGLRendererParameters>,
   ): ThreeRendererComponent
+```
+
+### createComposerRenderer (method)
+
+**Signature**
+
+```ts
+createComposerRenderer(
+    camera: ThreeCameraComponent,
+    canvas?: HTMLCanvasElement,
+    rendererOptions?: Partial<RendererOptions & WebGLRendererParameters>,
+  ): ThreeComposerRendererComponent
 ```
 
 ### dispose (method)

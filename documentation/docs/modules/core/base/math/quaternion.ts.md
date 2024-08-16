@@ -23,6 +23,7 @@ parent: Modules
     - [slerp (static method)](#slerp-static-method)
     - [fromAngle (static method)](#fromangle-static-method)
     - [fromMatrix4 (static method)](#frommatrix4-static-method)
+    - [fromMatrix3 (static method)](#frommatrix3-static-method)
     - [fromEuler (static method)](#fromeuler-static-method)
     - [toEuler (static method)](#toeuler-static-method)
     - [lookAt (static method)](#lookat-static-method)
@@ -159,6 +160,16 @@ Converts a 4x4 matrix representing a rotation into a quaternion
 
 ```ts
 static fromMatrix4(m: number[]): Point4
+```
+
+### fromMatrix3 (static method)
+
+Converts a 3x3 rotation matrix into a quaternion
+
+**Signature**
+
+```ts
+static fromMatrix3(m: number[][]): Point4
 ```
 
 ### fromEuler (static method)

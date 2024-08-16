@@ -20,6 +20,7 @@ parent: Modules
     - [startListeningTicks (method)](#startlisteningticks-method)
     - [stopListeningTicks (method)](#stoplisteningticks-method)
     - [tickRateLimit (property)](#tickratelimit-property)
+    - [paused$ (property)](#paused-property)
 
 ---
 
@@ -115,4 +116,12 @@ Tick rate limiter. If set to 0 - tick rate is unlimited, 15 means "allow at most
 
 ```ts
 tickRateLimit: number
+```
+
+### paused$ (property)
+
+**Signature**
+
+```ts
+readonly paused$: any
 ```

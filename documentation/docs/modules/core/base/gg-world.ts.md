@@ -29,6 +29,7 @@ parent: Modules
     - [tickStarted$ (property)](#tickstarted-property)
     - [tickForwardTo$ (property)](#tickforwardto-property)
     - [tickForwardedTo$ (property)](#tickforwardedto-property)
+    - [paused$ (property)](#paused-property)
   - [PhysicsTypeDocRepo (type alias)](#physicstypedocrepo-type-alias)
   - [VisualTypeDocRepo (type alias)](#visualtypedocrepo-type-alias)
 
@@ -185,6 +186,14 @@ readonly tickForwardTo$: any
 
 ```ts
 readonly tickForwardedTo$: any
+```
+
+### paused$ (property)
+
+**Signature**
+
+```ts
+readonly paused$: any
 ```
 
 ## PhysicsTypeDocRepo (type alias)

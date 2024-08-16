@@ -53,7 +53,7 @@ addPrimitiveRigidBody(
 addRenderer(
     camera: VTypeDoc['camera'],
     canvas?: HTMLCanvasElement,
-    rendererOptions?: Partial<RendererOptions>,
+    rendererOptions?: Partial<RendererOptions & VTypeDoc['rendererExtraOpts']>,
   ): Renderer3dEntity<VTypeDoc>
 ```
 

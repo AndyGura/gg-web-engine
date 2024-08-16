@@ -49,7 +49,10 @@ addPrimitiveRigidBody(
 **Signature**
 
 ```ts
-addRenderer(canvas?: HTMLCanvasElement, rendererOptions?: Partial<RendererOptions>): Renderer2dEntity<VTypeDoc>
+addRenderer(
+    canvas?: HTMLCanvasElement,
+    rendererOptions?: Partial<RendererOptions & VTypeDoc['rendererExtraOpts']>,
+  ): Renderer2dEntity<VTypeDoc>
 ```
 
 ## PhysicsTypeDocRepo2D (type alias)
