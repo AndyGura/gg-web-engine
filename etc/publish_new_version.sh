@@ -42,6 +42,9 @@ do
   popd
 done
 
+echo Waiting 30s before continuation
+sleep 30s
+
 echo NPM packages published, re-linking examples...
 examples=(
   "primitives-three-ammo"
