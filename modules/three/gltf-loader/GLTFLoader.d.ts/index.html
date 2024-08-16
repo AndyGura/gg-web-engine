@@ -543,20 +543,6 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#register-method" class="md-nav__link">
-    register (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#unregister-method" class="md-nav__link">
-    unregister (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#setktx2loader-method" class="md-nav__link">
     setKTX2Loader (method)
   </a>
@@ -566,6 +552,20 @@
           <li class="md-nav__item">
   <a href="#setmeshoptdecoder-method" class="md-nav__link">
     setMeshoptDecoder (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#register-method" class="md-nav__link">
+    register (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unregister-method" class="md-nav__link">
+    unregister (method)
   </a>
   
 </li>
@@ -587,6 +587,20 @@
           <li class="md-nav__item">
   <a href="#dracoloader-property" class="md-nav__link">
     dracoLoader (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ktx2loader-property" class="md-nav__link">
+    ktx2Loader (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#meshoptdecoder-property" class="md-nav__link">
+    meshoptDecoder (property)
   </a>
   
 </li>
@@ -854,6 +868,13 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#meshoptdecoder-type-alias" class="md-nav__link">
+    MeshoptDecoder (type alias)
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -887,13 +908,15 @@
 <li><a href="#gltf-interface">GLTF (interface)</a></li>
 <li><a href="#gltfloader-class">GLTFLoader (class)</a><ul>
 <li><a href="#setdracoloader-method">setDRACOLoader (method)</a></li>
-<li><a href="#register-method">register (method)</a></li>
-<li><a href="#unregister-method">unregister (method)</a></li>
 <li><a href="#setktx2loader-method">setKTX2Loader (method)</a></li>
 <li><a href="#setmeshoptdecoder-method">setMeshoptDecoder (method)</a></li>
+<li><a href="#register-method">register (method)</a></li>
+<li><a href="#unregister-method">unregister (method)</a></li>
 <li><a href="#parse-method">parse (method)</a></li>
 <li><a href="#parseasync-method">parseAsync (method)</a></li>
 <li><a href="#dracoloader-property">dracoLoader (property)</a></li>
+<li><a href="#ktx2loader-property">ktx2Loader (property)</a></li>
+<li><a href="#meshoptdecoder-property">meshoptDecoder (property)</a></li>
 </ul>
 </li>
 <li><a href="#gltfloaderplugin-interface">GLTFLoaderPlugin (interface)</a></li>
@@ -934,6 +957,7 @@
 <li><a href="#gltfreference-interface">GLTFReference (interface)</a></li>
 <li><a href="#gltfreferencetype-type-alias">GLTFReferenceType (type alias)</a></li>
 <li><a href="#ktx2loader-type-alias">KTX2Loader (type alias)</a></li>
+<li><a href="#meshoptdecoder-type-alias">MeshoptDecoder (type alias)</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
@@ -968,23 +992,23 @@
 </code></pre>
 <h3 id="setdracoloader-method">setDRACOLoader (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">setDRACOLoader(dracoLoader: DRACOLoader): GLTFLoader;
-</code></pre>
-<h3 id="register-method">register (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">register(callback: (parser: GLTFParser) =&gt; GLTFLoaderPlugin): GLTFLoader;
-</code></pre>
-<h3 id="unregister-method">unregister (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">unregister(callback: (parser: GLTFParser) =&gt; GLTFLoaderPlugin): GLTFLoader;
+<pre><code class="language-ts">setDRACOLoader(dracoLoader: DRACOLoader): this;
 </code></pre>
 <h3 id="setktx2loader-method">setKTX2Loader (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">setKTX2Loader(ktx2Loader: KTX2Loader): GLTFLoader;
+<pre><code class="language-ts">setKTX2Loader(ktx2Loader: KTX2Loader | null): this;
 </code></pre>
 <h3 id="setmeshoptdecoder-method">setMeshoptDecoder (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">setMeshoptDecoder(meshoptDecoder: /* MeshoptDecoder */ any): GLTFLoader;
+<pre><code class="language-ts">setMeshoptDecoder(meshoptDecoder: typeof MeshoptDecoder | null): this;
+</code></pre>
+<h3 id="register-method">register (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">register(callback: (parser: GLTFParser) =&gt; GLTFLoaderPlugin): this;
+</code></pre>
+<h3 id="unregister-method">unregister (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">unregister(callback: (parser: GLTFParser) =&gt; GLTFLoaderPlugin): this;
 </code></pre>
 <h3 id="parse-method">parse (method)</h3>
 <p><strong>Signature</strong></p>
@@ -1002,6 +1026,14 @@
 <h3 id="dracoloader-property">dracoLoader (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">dracoLoader: any
+</code></pre>
+<h3 id="ktx2loader-property">ktx2Loader (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">ktx2Loader: any
+</code></pre>
+<h3 id="meshoptdecoder-property">meshoptDecoder (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">meshoptDecoder: any
 </code></pre>
 <h2 id="gltfloaderplugin-interface">GLTFLoaderPlugin (interface)</h2>
 <p><strong>Signature</strong></p>
@@ -1103,8 +1135,9 @@
 <pre><code class="language-ts">assignTexture: (
   materialParams: { [key: string]: any },
   mapName: string,
-  mapDef: { index: number; texCoord?: number | undefined; extensions?: any }
-) =&gt; Promise&lt;void&gt;
+  mapDef: { index: number; texCoord?: number | undefined; extensions?: any },
+  colorSpace?: ColorSpace | undefined
+) =&gt; Promise&lt;Texture | null&gt;
 </code></pre>
 <h3 id="assignfinalmaterial-property">assignFinalMaterial (property)</h3>
 <p><strong>Signature</strong></p>
@@ -1170,6 +1203,10 @@
 <h2 id="ktx2loader-type-alias">KTX2Loader (type alias)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">type KTX2Loader = any
+</code></pre>
+<h2 id="meshoptdecoder-type-alias">MeshoptDecoder (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">type MeshoptDecoder = any
 </code></pre>
 
 

@@ -610,7 +610,10 @@
 </code></pre>
 <h3 id="addrenderer-method">addRenderer (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">addRenderer(canvas?: HTMLCanvasElement, rendererOptions?: Partial&lt;RendererOptions&gt;): Renderer2dEntity&lt;VTypeDoc&gt;
+<pre><code class="language-ts">addRenderer(
+    canvas?: HTMLCanvasElement,
+    rendererOptions?: Partial&lt;RendererOptions &amp; VTypeDoc['rendererExtraOpts']&gt;,
+  ): Renderer2dEntity&lt;VTypeDoc&gt;
 </code></pre>
 <h2 id="physicstypedocrepo2d-type-alias">PhysicsTypeDocRepo2D (type alias)</h2>
 <p><strong>Signature</strong></p>

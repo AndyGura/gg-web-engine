@@ -599,6 +599,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#frommatrix3-static-method" class="md-nav__link">
+    fromMatrix3 (static method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#fromeuler-static-method" class="md-nav__link">
     fromEuler (static method)
   </a>
@@ -672,6 +679,7 @@
 <li><a href="#slerp-static-method">slerp (static method)</a></li>
 <li><a href="#fromangle-static-method">fromAngle (static method)</a></li>
 <li><a href="#frommatrix4-static-method">fromMatrix4 (static method)</a></li>
+<li><a href="#frommatrix3-static-method">fromMatrix3 (static method)</a></li>
 <li><a href="#fromeuler-static-method">fromEuler (static method)</a></li>
 <li><a href="#toeuler-static-method">toEuler (static method)</a></li>
 <li><a href="#lookat-static-method">lookAt (static method)</a></li>
@@ -749,6 +757,11 @@ It's obtained by negating all quaternion elements(x, y, z and w).</p>
 <p>Converts a 4x4 matrix representing a rotation into a quaternion</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">static fromMatrix4(m: number[]): Point4
+</code></pre>
+<h3 id="frommatrix3-static-method">fromMatrix3 (static method)</h3>
+<p>Converts a 3x3 rotation matrix into a quaternion</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">static fromMatrix3(m: number[][]): Point4
 </code></pre>
 <h3 id="fromeuler-static-method">fromEuler (static method)</h3>
 <p>Creates a quaternion from euler</p>
