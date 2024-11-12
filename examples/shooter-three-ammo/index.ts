@@ -51,20 +51,16 @@ world.init().then(async () => {
   groundTexture.wrapS = brickTexture.wrapS = RepeatWrapping;
   groundTexture.wrapT = brickTexture.wrapT = RepeatWrapping;
   groundTexture.repeat.set(5, 5);
-  let item = world.addPrimitiveRigidBody(
+  world.addPrimitiveRigidBody(
     {
       shape: { shape: 'BOX', dimensions: { x: 100, y: 100, z: 1 } },
       body: { dynamic: false, mass: 0 },
     },
     { x: 0, y: 0, z: -0.5 },
     Qtrn.O,
-    { shading: 'phong', castShadow: true, receiveShadow: true, diffuse: groundTexture, color: 0xffffff }, // TODO remove color and fix setting color in the engine
+    { shading: 'phong', castShadow: true, receiveShadow: true, diffuse: groundTexture },
   );
   // TODO shape.setMargin(0.05);
-  // TODO check why it is required
-  (item.object3D.nativeMesh as Mesh).material = new MeshPhongMaterial({ color: 0xffffff, map: groundTexture });
-  item.object3D.nativeMesh.castShadow = true;
-  item.object3D.nativeMesh.receiveShadow = true;
 
   let material = [
     new MeshPhongMaterial({ color: 0xB7B7B7, map: brickTexture }),
@@ -84,12 +80,10 @@ world.init().then(async () => {
         const item = world.addPrimitiveRigidBody({
           shape: { shape: 'BOX', dimensions: { x: 3, y: 1.5, z: 1.5 } },
           body: { dynamic: true, mass: brickMass },
-        }, { x: x + offsetX, y, z: z + 0.75 }, Qtrn.O);
+        }, { x: x + offsetX, y, z: z + 0.75 }, Qtrn.O, { castShadow: true, receiveShadow: true });
         // TODO shape.setMargin(0.05);
         const materialIndex = Math.floor(Math.random() * material.length);
         (item.object3D.nativeMesh as Mesh).material = material[materialIndex];
-        item.object3D.nativeMesh.castShadow = true;
-        item.object3D.nativeMesh.receiveShadow = true;
       }
     }
   };
@@ -103,13 +97,11 @@ world.init().then(async () => {
         const item = world.addPrimitiveRigidBody({
           shape: { shape: 'BOX', dimensions: { x: 3, y: 1.5, z: 1.5 } },
           body: { dynamic: true, mass: brickMass },
-        }, { x, y: y + offsetY, z: z + 0.75 }, Qtrn.O);
+        }, { x, y: y + offsetY, z: z + 0.75 }, Qtrn.O, { castShadow: true, receiveShadow: true });
         // TODO shape.setMargin(0.05);
         item.rotation = quat;
         const materialIndex = Math.floor(Math.random() * material.length);
         (item.object3D.nativeMesh as Mesh).material = material[materialIndex];
-        item.object3D.nativeMesh.castShadow = true;
-        item.object3D.nativeMesh.receiveShadow = true;
       }
     }
   };
@@ -143,11 +135,11 @@ world.init().then(async () => {
           body: { mass: 10 }, shape: { shape: 'SPHERE', radius: 1.2 },
         },
         renderer.position,
+        Qtrn.O,
+        { castShadow: true, receiveShadow: true },
       );
       // TODO shape.setMargin(0.05);
       (ball.object3D.nativeMesh as Mesh).material = ballMaterial;
-      ball.object3D.nativeMesh.castShadow = true;
-      ball.object3D.nativeMesh.receiveShadow = true;
 
       ball.objectBody.linearVelocity = Pnt3.rot(Pnt3.scalarMult(Pnt3.nZ, 80), renderer.rotation);
     }
