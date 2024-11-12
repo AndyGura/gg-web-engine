@@ -1,10 +1,10 @@
-import { map, Observable, OperatorFunction, scan, switchMap } from 'rxjs';
+import { filter, map, Observable, OperatorFunction, scan, switchMap } from 'rxjs';
 
 export default function ggElastic<T>(
-  tick$: Observable<[number, number]>,                     // [elapsed, delta]
-  elasticity: number,                                      // Elasticity parameter
-  mix: (a: T, b: T, factor: number) => T,                  // Mixing function
-  equals: (a: T, b: T) => boolean                          // Equality check function
+  tick$: Observable<[number, number]>, // [elapsed, delta]
+  elasticity: number, // Elasticity parameter
+  mix: (a: T, b: T, factor: number) => T, // Mixing function
+  equals: (a: T, b: T) => boolean, // Equality check function
 ): OperatorFunction<T, T> {
   return (source$: Observable<T>): Observable<T> => {
     return source$.pipe(
@@ -12,22 +12,22 @@ export default function ggElastic<T>(
       scan(
         (acc, newValue) => ({
           targetValue: newValue,
-          currentValue: acc.currentValue ?? newValue,      // Initialize to the first value on startup
-          hasReachedTarget: false                          // Reset reach status on new target
+          currentValue: acc.currentValue ?? newValue, // Initialize to the first value on startup
+          hasReachedTarget: false, // Reset reach status on new target
         }),
-        { targetValue: null as T | null, currentValue: null as T | null, hasReachedTarget: false }
+        { targetValue: null as T | null, currentValue: null as T | null, hasReachedTarget: false },
       ),
       // Switch to using tick$ for timing, emitting interpolated values with each tick
-      switchMap((state) =>
+      switchMap(state =>
         tick$.pipe(
           map(([_, delta]) => {
             if (state.targetValue === null || state.currentValue === null) {
-              return state.currentValue as T;              // If we have no values, output nothing
+              return state.currentValue as T; // If we have no values, output nothing
             }
 
-            // Skip processing if we’ve reached the target
+            // Skip processing if we’ve reached the target and stop emitting
             if (state.hasReachedTarget) {
-              return state.targetValue;
+              return undefined as unknown as T; // Stop emitting by returning `undefined`
             }
 
             // Adjust factor based on elasticity and delta time
@@ -41,14 +41,18 @@ export default function ggElastic<T>(
 
             // Check if the interpolated value is "close enough" to the target
             if (equals(newInterpolatedValue, state.targetValue)) {
-              state.hasReachedTarget = true;               // Mark as reached
-              return state.targetValue;                    // Emit exact target value
+              state.hasReachedTarget = true; // Mark as reached
+              return state.targetValue; // Emit exact target value
             }
 
             return newInterpolatedValue;
-          })
-        )
-      )
+          }),
+        ),
+      ),
+      // Filter out `undefined` emissions (to stop emitting when settled)
+      map(value => (value !== undefined ? value : null)),
+      // Remove `null` values (after stopping)
+      filter(value => value !== null),
     );
   };
 }

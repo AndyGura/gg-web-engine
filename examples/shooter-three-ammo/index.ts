@@ -119,6 +119,7 @@ world.init().then(async () => {
       keymap: 'wasd',
       mouseOptions: { canvas, pointerLock: true },
       cameraLinearSpeed: 50,
+      cameraMovementElasticity: 100,
       cameraRotationMultiplier: 0.8,
       ignoreMouseUnlessPointerLocked: true,
       ignoreKeyboardUnlessPointerLocked: true,
