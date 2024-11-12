@@ -23,7 +23,7 @@ world.init().then(async () => {
     { background: 0xBFD1E5 },
   );
   renderer.camera.position = { x: 40, y: 40, z: 25 };
-  renderer.camera.rotation = Qtrn.lookAt(renderer.camera.position, Pnt3.O, Pnt3.Z);
+  renderer.camera.rotation = Qtrn.lookAt(renderer.camera.position, { x: 0, y: 0, z: 10 }, Pnt3.Z);
 
   const dirLight = new DirectionalLight(0xffffff, 2.5);
   dirLight.castShadow = true;
@@ -51,15 +51,6 @@ world.init().then(async () => {
   groundTexture.wrapS = brickTexture.wrapS = RepeatWrapping;
   groundTexture.wrapT = brickTexture.wrapT = RepeatWrapping;
   groundTexture.repeat.set(5, 5);
-  world.addPrimitiveRigidBody(
-    {
-      shape: { shape: 'BOX', dimensions: { x: 100, y: 100, z: 1 }, collisionMargin: 0.05 },
-      body: { dynamic: false, mass: 0 },
-    },
-    { x: 0, y: 0, z: -0.5 },
-    Qtrn.O,
-    { shading: 'phong', castShadow: true, receiveShadow: true, diffuse: groundTexture },
-  );
 
   let material = [
     new MeshPhongMaterial({ color: 0xB7B7B7, map: brickTexture }),
@@ -102,10 +93,20 @@ world.init().then(async () => {
       }
     }
   };
-  createWall_X_axis(-9, 9, -9, 15, false);
-  createWall_X_axis(-9, 9, 9, 15, true);
-  createWall_Y_axis(-8.25, 8.25, -9.75, 15, true);
-  createWall_Y_axis(-8.25, 8.25, 11.25, 15, false);
+  createWall_X_axis(-8.25, 8.25, -9.75, 15, true);
+  createWall_X_axis(-8.25, 8.25, 11.25, 15, false);
+  createWall_Y_axis(-9, 9, -9, 15, false);
+  createWall_Y_axis(-9, 9, 9, 15, true);
+
+  world.addPrimitiveRigidBody(
+    {
+      shape: { shape: 'BOX', dimensions: { x: 100, y: 100, z: 1 }, collisionMargin: 0.05 },
+      body: { dynamic: false, mass: 0 },
+    },
+    { x: 0, y: 0, z: -0.5 },
+    Qtrn.O,
+    { shading: 'phong', castShadow: true, receiveShadow: true, diffuse: groundTexture },
+  );
 
   const cameraController = new FreeCameraController(
     world.keyboardInput,

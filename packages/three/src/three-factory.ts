@@ -32,27 +32,32 @@ export type ThreeDisplayObject3dOpts = DisplayObject3dOpts<Texture>;
 
 export class ThreeFactory extends IDisplayObject3dComponentFactory<ThreeVisualTypeDocRepo> {
   createMaterial(descr: ThreeDisplayObject3dOpts): Material {
-    let color = descr.color || (descr.diffuse ? 0xffffff : super.randomColor());
+    let color: {} | { color: number } = {};
+    if (descr.color) {
+      color = { color: descr.color };
+    } else if (!descr.diffuse) {
+      color = { color: super.randomColor() };
+    }
     let shading = descr.shading || 'unlit';
     switch (shading) {
       case 'unlit':
         return new MeshBasicMaterial({
-          color,
+          ...color,
           map: descr.diffuse || null,
         });
       case 'standart':
         return new MeshStandardMaterial({
-          color,
+          ...color,
           map: descr.diffuse || null,
         });
       case 'phong':
         return new MeshPhongMaterial({
-          color,
+          ...color,
           map: descr.diffuse || null,
         });
       case 'wireframe':
         return new MeshBasicMaterial({
-          color,
+          ...color,
           wireframe: true,
         });
       default:
