@@ -12,10 +12,13 @@ import {
   Pnt2,
   Pnt3,
   Point2,
+  Point3,
   Qtrn,
   TickOrder,
 } from '../../../../base';
 import { Renderer3dEntity } from '../../renderer-3d.entity';
+import { map } from 'rxjs/operators';
+import ggElastic from '../../../../base/pipes/gg-elastic.pipe';
 
 /**
  * Options for configuring a FreeCameraInput controller.
@@ -107,19 +110,42 @@ export class FreeCameraController extends IEntity {
   async onSpawned(world: GgWorld<any, any>): Promise<void> {
     await super.onSpawned(world);
     // Subscribe to keyboard input for movement controls
-    let controls: { direction: DirectionKeyboardOutput; rest: boolean[] } = { direction: {}, rest: [] };
     const keys = ['KeyE', 'KeyQ'];
     if (this.camera.camera.supportsFov) {
       keys.push('KeyZ', 'KeyC');
     }
     keys.push('ShiftLeft');
-    this.directionsInput.output$.pipe(takeUntil(this._onRemoved$)).subscribe(d => {
-      controls.direction = d;
-    });
-    combineLatest(keys.map(c => this.keyboard.bind(c)))
-      .pipe(takeUntil(this._onRemoved$))
-      .subscribe((d: boolean[]) => {
-        controls.rest = d;
+
+    let translateVector: Point3 = Pnt3.O;
+    let cameraFovInc: number = 0;
+    combineLatest([this.directionsInput.output$, ...keys.map(c => this.keyboard.bind(c))])
+      .pipe(
+        takeUntil(this._onRemoved$),
+        map(([direction, ...rest]) => {
+          let c: { direction: DirectionKeyboardOutput; rest: boolean[] } = { direction: {}, rest: [] };
+          if (!this.options.ignoreKeyboardUnlessPointerLocked || this.mouseInput.isPointerLocked) {
+            c = { direction, rest };
+          }
+          let translate = { ...Pnt3.O } as { x: number; y: number; z: number };
+          const [u, d, zo, zi, speedBoost] = c.rest;
+          if (c.direction.upDown !== undefined) translate.z = c.direction.upDown ? -1 : 1;
+          if (c.direction.leftRight !== undefined) translate.x = c.direction.leftRight ? -1 : 1;
+          if (u != d) translate.y = d ? -1 : 1;
+          let cameraFovInc = 0;
+          if (zo != zi) cameraFovInc = zo ? 1 : -1;
+          translate = Pnt3.norm(translate);
+          if (speedBoost) {
+            translate = Pnt3.scalarMult(translate, this.options.cameraBoostMultiplier);
+          }
+          console.log('######', JSON.stringify(translate));
+          return [translate, cameraFovInc] as [Point3, number];
+        }),
+        ggElastic(this.camera.tick$, 1000, ([at, _], [bt, bf], f) => ([Pnt3.lerp(at, bt, f), bf] as [Point3, number])),
+      )
+      .subscribe(([t, f]) => {
+        console.log('$$$$$', JSON.stringify(t));
+        translateVector = t;
+        cameraFovInc = f;
       });
 
     // Subscribe to mouse input for camera rotation
@@ -136,23 +162,10 @@ export class FreeCameraController extends IEntity {
 
     // Setup updating camera position and rotation based on input
     this.camera.tick$.pipe(takeUntil(this._onRemoved$)).subscribe(([_, delta]) => {
-      let c = controls;
-      if (this.options.ignoreKeyboardUnlessPointerLocked && !this.mouseInput.isPointerLocked) {
-        c = { direction: {}, rest: [false, false, false, false, false] };
-      }
-      let translateVector = { ...Pnt3.O } as { x: number; y: number; z: number };
-      const [u, d, zo, zi, speedBoost] = c.rest;
-      if (c.direction.upDown !== undefined) translateVector.z = c.direction.upDown ? -1 : 1;
-      if (c.direction.leftRight !== undefined) translateVector.x = c.direction.leftRight ? -1 : 1;
-      if (u != d) translateVector.y = d ? -1 : 1;
-      if (zo != zi) this.camera.camera.fov += zo ? 1 : -1;
-      let speed = this.options.cameraLinearSpeed;
-      if (speedBoost) {
-        speed *= this.options.cameraBoostMultiplier;
-      }
+      this.camera.camera.fov += cameraFovInc;
       this.camera.position = Pnt3.add(
         this.camera.position,
-        Pnt3.rot(Pnt3.scalarMult(Pnt3.norm(translateVector), (speed * delta) / 1000), this.camera.rotation),
+        Pnt3.rot(Pnt3.scalarMult(translateVector, (this.options.cameraLinearSpeed * delta) / 1000), this.camera.rotation),
       );
       if (rotationDelta.x != 0 || rotationDelta.y != 0) {
         const spherical: MutableSpherical = Pnt3.toSpherical(Pnt3.rot({ x: 0, y: 0, z: -1 }, this.camera.rotation));
