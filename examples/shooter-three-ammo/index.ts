@@ -1,4 +1,4 @@
-import { FreeCameraController, Gg3dWorld, GgStatic, MouseInput, Pnt3, Qtrn } from '@gg-web-engine/core';
+import { FreeCameraController, Gg3dWorld, GgStatic, Pnt3, Qtrn } from '@gg-web-engine/core';
 import { ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
 import { AmbientLight, DirectionalLight, Mesh, MeshPhongMaterial, RepeatWrapping, TextureLoader } from 'three';
 import { AmmoPhysicsTypeDocRepo, AmmoWorldComponent } from '@gg-web-engine/ammo';
@@ -116,7 +116,8 @@ world.init().then(async () => {
     {
       keymap: 'wasd',
       mouseOptions: { canvas, pointerLock: true },
-      movementOptions: { speed: 3000 },
+      cameraLinearSpeed: 50,
+      cameraRotationMultiplier: 0.8,
       ignoreMouseUnlessPointerLocked: true,
       ignoreKeyboardUnlessPointerLocked: true,
     });
@@ -145,25 +146,17 @@ world.init().then(async () => {
     }
   }, false);
 
-  world.paused$.subscribe((p) => {
-    if (p) {
-      document.getElementById('blocker').style.display = 'block';
-      document.getElementById('message').style.display = 'none';
-    } else {
-      document.getElementById('blocker').style.display = 'none';
-      document.getElementById('message').style.display = 'block';
-    }
-  });
-
   world.start();
 
-  // TODO camera controller should export pointer locked
-  setInterval(() => {
-    const p = !((cameraController as any).mouseInput as MouseInput).isPointerLocked;
-    if (p) {
-      world.pauseWorld();
-    } else {
+  cameraController.mouseInput.isPointerLocked$.subscribe((l) => {
+    if (l) {
       world.resumeWorld();
+      document.getElementById('blocker').style.display = 'none';
+      document.getElementById('message').style.display = 'block';
+    } else {
+      document.getElementById('blocker').style.display = 'block';
+      document.getElementById('message').style.display = 'none';
+      world.pauseWorld();
     }
-  }, 50);
+  });
 });

@@ -22,24 +22,27 @@ import { Renderer3dEntity } from '../../renderer-3d.entity';
  */
 export type FreeCameraControllerOptions = {
   /**
-   * A keymap for controlling camera movement, where each key corresponds to a movement direction.
+   * A keymap for controlling camera movement, where each key corresponds to a movement direction. 'wasd' by default
    */
   keymap: DirectionKeyboardKeymap;
   /**
-   * Options for configuring camera movement.
+   * The speed of camera movement in meters per second. 20 by default
    */
-  movementOptions: {
-    /**
-     * The speed of camera movement.
-     */
-    speed: number;
-  };
+  cameraLinearSpeed: number;
   /**
-   * Flag to ignore cursor movement if pointer was not locked. By default false
+   * A linear speed multiplier when user holds shift key. 2.5 by default
+   */
+  cameraBoostMultiplier: number;
+  /**
+   * The speed of camera rotation in radians per 1000px mouse movement. 1 by default
+   */
+  cameraRotationMultiplier: number;
+  /**
+   * Flag to ignore cursor movement if pointer was not locked. false by default
    */
   ignoreMouseUnlessPointerLocked: boolean;
   /**
-   * Flag to ignore keyboard events if pointer was not locked. By default false
+   * Flag to ignore keyboard events if pointer was not locked. false by default
    */
   ignoreKeyboardUnlessPointerLocked: boolean;
   /**
@@ -50,7 +53,9 @@ export type FreeCameraControllerOptions = {
 
 const DEFAULT_FREE_CAMERA_CONTROLLER_OPTIONS: FreeCameraControllerOptions = {
   keymap: 'wasd',
-  movementOptions: { speed: 0.5 },
+  cameraLinearSpeed: 20,
+  cameraBoostMultiplier: 2.5,
+  cameraRotationMultiplier: 1,
   mouseOptions: {},
   ignoreMouseUnlessPointerLocked: false,
   ignoreKeyboardUnlessPointerLocked: false,
@@ -67,11 +72,11 @@ export class FreeCameraController extends IEntity {
   /**
    * The mouse input controller used for camera rotation.
    */
-  protected readonly mouseInput: MouseInput;
+  public readonly mouseInput: MouseInput;
   /**
    * The keyboard input controller used for camera movement.
    */
-  protected readonly directionsInput: DirectionKeyboardInput;
+  public readonly directionsInput: DirectionKeyboardInput;
 
   /**
    * Creates a new FreeCameraInput instance.
@@ -90,12 +95,12 @@ export class FreeCameraController extends IEntity {
       ...options,
     };
     if (options.mouseOptions) {
-      this.options.movementOptions = {
-        ...DEFAULT_FREE_CAMERA_CONTROLLER_OPTIONS.movementOptions,
+      this.options.mouseOptions = {
+        ...DEFAULT_FREE_CAMERA_CONTROLLER_OPTIONS.mouseOptions,
         ...options.mouseOptions,
       };
     }
-    this.mouseInput = new MouseInput(options.mouseOptions);
+    this.mouseInput = new MouseInput(this.options.mouseOptions);
     this.directionsInput = new DirectionKeyboardInput(keyboard, this.options.keymap);
   }
 
@@ -130,7 +135,7 @@ export class FreeCameraController extends IEntity {
       });
 
     // Setup updating camera position and rotation based on input
-    this.camera.tick$.pipe(takeUntil(this._onRemoved$)).subscribe(() => {
+    this.camera.tick$.pipe(takeUntil(this._onRemoved$)).subscribe(([_, delta]) => {
       let c = controls;
       if (this.options.ignoreKeyboardUnlessPointerLocked && !this.mouseInput.isPointerLocked) {
         c = { direction: {}, rest: [false, false, false, false, false] };
@@ -141,18 +146,18 @@ export class FreeCameraController extends IEntity {
       if (c.direction.leftRight !== undefined) translateVector.x = c.direction.leftRight ? -1 : 1;
       if (u != d) translateVector.y = d ? -1 : 1;
       if (zo != zi) this.camera.camera.fov += zo ? 1 : -1;
-      let speed = this.options.movementOptions.speed;
+      let speed = this.options.cameraLinearSpeed;
       if (speedBoost) {
-        speed *= 2.5;
+        speed *= this.options.cameraBoostMultiplier;
       }
       this.camera.position = Pnt3.add(
         this.camera.position,
-        Pnt3.rot(Pnt3.scalarMult(Pnt3.norm(translateVector), speed), this.camera.rotation),
+        Pnt3.rot(Pnt3.scalarMult(Pnt3.norm(translateVector), (speed * delta) / 1000), this.camera.rotation),
       );
       if (rotationDelta.x != 0 || rotationDelta.y != 0) {
         const spherical: MutableSpherical = Pnt3.toSpherical(Pnt3.rot({ x: 0, y: 0, z: -1 }, this.camera.rotation));
-        spherical.theta -= rotationDelta.x / 300;
-        spherical.phi += rotationDelta.y / 300;
+        spherical.theta -= (rotationDelta.x * this.options.cameraRotationMultiplier) / 1000;
+        spherical.phi += (rotationDelta.y * this.options.cameraRotationMultiplier) / 1000;
         spherical.phi = Math.max(0.000001, Math.min(Math.PI - 0.000001, spherical.phi));
         this.camera.rotation = Qtrn.lookAt(
           this.camera.position,
@@ -163,8 +168,8 @@ export class FreeCameraController extends IEntity {
     });
 
     // start input
-    await this.mouseInput.start();
-    await this.directionsInput.start();
+    this.mouseInput.start();
+    this.directionsInput.start();
   }
 
   async onRemoved(): Promise<void> {

@@ -64,9 +64,7 @@ export class GameCameraController {
       renderer,
       {
         keymap: 'wasd+arrows',
-        movementOptions: {
-          speed: 1,
-        },
+        cameraLinearSpeed: 40,
         ignoreKeyboardUnlessPointerLocked: true,
         ignoreMouseUnlessPointerLocked: true,
         mouseOptions: {

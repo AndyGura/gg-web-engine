@@ -16,16 +16,31 @@ import { map } from 'rxjs/operators';
 import { Renderer3dEntity } from '../../renderer-3d.entity';
 
 export type OrbitCameraControllerOptions = {
+  /**
+   * Options for configuring mouse input.
+   */
   mouseOptions: Partial<MouseInputOptions>;
+  /**
+   * Orbiting options. false disables orbiting, sensitivity fields are the speed in radians per 1000px mouse movement. 1 by default
+   */
   orbiting: { sensitivityX: number; sensitivityY: number } | false;
+  /**
+   * Zooming options. false disables zooming. Enabled by default
+   */
   zooming: { sensitivity: number } | false;
+  /**
+   * Panning options. false disables panning. Enabled by default
+   */
   panning: { sensitivityX: number; sensitivityY: number } | false;
+  /**
+   * Dollying options. false disables dollying. Enabled by default
+   */
   dollying: { sensitivity: number } | false;
 };
 
 const DEFAULT_OPTIONS: OrbitCameraControllerOptions = {
   mouseOptions: {},
-  orbiting: { sensitivityX: 1, sensitivityY: 1 }, // sensitivity units: rotation degree per 5 pixels movement
+  orbiting: { sensitivityX: 1, sensitivityY: 1 },
   zooming: { sensitivity: 1 },
   panning: { sensitivityX: 1, sensitivityY: 1 },
   dollying: { sensitivity: 1 },
@@ -35,7 +50,7 @@ export class OrbitCameraController extends IEntity {
   public readonly tickOrder = TickOrder.INPUT_CONTROLLERS;
 
   protected readonly options: OrbitCameraControllerOptions;
-  protected readonly mouseInput: MouseInput;
+  public readonly mouseInput: MouseInput;
 
   protected spherical: MutableSpherical = { phi: 0, radius: 10, theta: 0 };
 
@@ -78,8 +93,8 @@ export class OrbitCameraController extends IEntity {
           filter(() => this.mouseInput.state == MouseInputState.DRAG),
         )
         .subscribe(delta => {
-          this.spherical.theta -= (delta.x * (this.options.orbiting as any).sensitivityX * Math.PI) / 900;
-          this.spherical.phi -= (delta.y * (this.options.orbiting as any).sensitivityY * Math.PI) / 900;
+          this.spherical.theta -= (delta.x * (this.options.orbiting as any).sensitivityX) / 1000;
+          this.spherical.phi -= (delta.y * (this.options.orbiting as any).sensitivityY) / 1000;
           this.spherical.phi = Math.max(0.000001, Math.min(Math.PI - 0.000001, this.spherical.phi));
         });
     }
