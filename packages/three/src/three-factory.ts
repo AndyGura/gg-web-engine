@@ -32,7 +32,7 @@ export type ThreeDisplayObject3dOpts = DisplayObject3dOpts<Texture>;
 
 export class ThreeFactory extends IDisplayObject3dComponentFactory<ThreeVisualTypeDocRepo> {
   createMaterial(descr: ThreeDisplayObject3dOpts): Material {
-    let color = descr.color || super.randomColor();
+    let color = descr.color || (descr.diffuse ? 0xffffff : super.randomColor());
     let shading = descr.shading || 'unlit';
     switch (shading) {
       case 'unlit':
