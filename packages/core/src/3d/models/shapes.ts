@@ -1,7 +1,7 @@
 import { Point2, Point3, Point4 } from '../../base';
 import { Body3DOptions } from './body-options';
 
-export type Shape3DDescriptor =
+export type Shape3DDescriptor = { collisionMargin?: number } & (
   | { shape: 'PLANE' }
   | { shape: 'BOX'; dimensions: Point3 }
   | { shape: 'CONE' | 'CYLINDER'; radius: number; height: number }
@@ -9,7 +9,8 @@ export type Shape3DDescriptor =
   | { shape: 'SPHERE'; radius: number }
   | { shape: 'COMPOUND'; children: { position?: Point3; rotation?: Point4; shape: Shape3DDescriptor }[] }
   | { shape: 'CONVEX_HULL'; vertices: Point3[] }
-  | { shape: 'MESH'; vertices: Point3[]; faces: [number, number, number][] };
+  | { shape: 'MESH'; vertices: Point3[]; faces: [number, number, number][] }
+);
 
 export type Shape3DMeshDescriptor =
   | { shape: 'PLANE'; dimensions?: Point2; segments?: Point2 }

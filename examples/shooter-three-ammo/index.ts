@@ -53,14 +53,13 @@ world.init().then(async () => {
   groundTexture.repeat.set(5, 5);
   world.addPrimitiveRigidBody(
     {
-      shape: { shape: 'BOX', dimensions: { x: 100, y: 100, z: 1 } },
+      shape: { shape: 'BOX', dimensions: { x: 100, y: 100, z: 1 }, collisionMargin: 0.05 },
       body: { dynamic: false, mass: 0 },
     },
     { x: 0, y: 0, z: -0.5 },
     Qtrn.O,
     { shading: 'phong', castShadow: true, receiveShadow: true, diffuse: groundTexture },
   );
-  // TODO shape.setMargin(0.05);
 
   let material = [
     new MeshPhongMaterial({ color: 0xB7B7B7, map: brickTexture }),
@@ -78,10 +77,9 @@ world.init().then(async () => {
       shift = !shift;
       for (let x = startX; x <= endX; x += 3) {
         const item = world.addPrimitiveRigidBody({
-          shape: { shape: 'BOX', dimensions: { x: 3, y: 1.5, z: 1.5 } },
+          shape: { shape: 'BOX', dimensions: { x: 3, y: 1.5, z: 1.5 }, collisionMargin: 0.05 },
           body: { dynamic: true, mass: brickMass },
         }, { x: x + offsetX, y, z: z + 0.75 }, Qtrn.O, { castShadow: true, receiveShadow: true });
-        // TODO shape.setMargin(0.05);
         const materialIndex = Math.floor(Math.random() * material.length);
         (item.object3D.nativeMesh as Mesh).material = material[materialIndex];
       }
@@ -95,10 +93,9 @@ world.init().then(async () => {
       shift = !shift;
       for (let y = startY; y <= endY; y += 3) {
         const item = world.addPrimitiveRigidBody({
-          shape: { shape: 'BOX', dimensions: { x: 3, y: 1.5, z: 1.5 } },
+          shape: { shape: 'BOX', dimensions: { x: 3, y: 1.5, z: 1.5 }, collisionMargin: 0.05 },
           body: { dynamic: true, mass: brickMass },
         }, { x, y: y + offsetY, z: z + 0.75 }, Qtrn.O, { castShadow: true, receiveShadow: true });
-        // TODO shape.setMargin(0.05);
         item.rotation = quat;
         const materialIndex = Math.floor(Math.random() * material.length);
         (item.object3D.nativeMesh as Mesh).material = material[materialIndex];
@@ -133,13 +130,12 @@ world.init().then(async () => {
     else {
       let ball = world.addPrimitiveRigidBody(
         {
-          body: { mass: 10 }, shape: { shape: 'SPHERE', radius: 1.2 },
+          body: { mass: 10 }, shape: { shape: 'SPHERE', radius: 1.2, collisionMargin: 0.05 },
         },
         renderer.position,
         Qtrn.O,
         { castShadow: true, receiveShadow: true },
       );
-      // TODO shape.setMargin(0.05);
       (ball.object3D.nativeMesh as Mesh).material = ballMaterial;
 
       ball.objectBody.linearVelocity = Pnt3.rot(Pnt3.scalarMult(Pnt3.nZ, 80), renderer.rotation);

@@ -48,25 +48,32 @@ export class AmmoFactory implements IPhysicsBody3dComponentFactory<AmmoPhysicsTy
   }
 
   protected createShape(descriptor: Shape3DDescriptor): Ammo.btCollisionShape {
+    let shape!: Ammo.btCollisionShape;
     switch (descriptor.shape) {
       case 'PLANE':
-        return new Ammo.btStaticPlaneShape(new Ammo.btVector3(0, 0, 1), 0);
+        shape = new Ammo.btStaticPlaneShape(new Ammo.btVector3(0, 0, 1), 0);
+        break;
       case 'BOX':
-        return new Ammo.btBoxShape(
+        shape = new Ammo.btBoxShape(
           new Ammo.btVector3(descriptor.dimensions.x / 2, descriptor.dimensions.y / 2, descriptor.dimensions.z / 2),
         );
+        break;
       case 'CAPSULE':
-        return new Ammo.btCapsuleShapeZ(descriptor.radius, descriptor.centersDistance);
+        shape = new Ammo.btCapsuleShapeZ(descriptor.radius, descriptor.centersDistance);
+        break;
       case 'CYLINDER':
-        return new Ammo.btCylinderShapeZ(
+        shape = new Ammo.btCylinderShapeZ(
           new Ammo.btVector3(descriptor.radius, descriptor.radius, descriptor.height / 2),
         );
+        break;
       case 'CONE':
-        return new Ammo.btConeShapeZ(descriptor.radius, descriptor.height);
+        shape = new Ammo.btConeShapeZ(descriptor.radius, descriptor.height);
+        break;
       case 'SPHERE':
-        return new Ammo.btSphereShape(descriptor.radius);
+        shape = new Ammo.btSphereShape(descriptor.radius);
+        break;
       case 'COMPOUND':
-        const compoundShape: Ammo.btCollisionShape = new Ammo.btCompoundShape();
+        let cs: Ammo.btCompoundShape = new Ammo.btCompoundShape();
         for (const item of descriptor.children) {
           const subShape = this.createShape(item.shape);
           if (!subShape) {
@@ -77,19 +84,21 @@ export class AmmoFactory implements IPhysicsBody3dComponentFactory<AmmoPhysicsTy
           const rot = item.rotation || Qtrn.O;
           subShapeTransform.setOrigin(new Ammo.btVector3(pos.x, pos.y, pos.z));
           subShapeTransform.setRotation(new Ammo.btQuaternion(rot.x, rot.y, rot.z, rot.w));
-          (compoundShape as Ammo.btCompoundShape).addChildShape(subShapeTransform, subShape);
+          cs.addChildShape(subShapeTransform, subShape);
         }
-        return compoundShape;
+        shape = cs;
+        break;
       case 'CONVEX_HULL':
-        const shape = new Ammo.btConvexHullShape();
+        const s = new Ammo.btConvexHullShape();
         const tmpVector = new Ammo.btVector3();
         for (const v of descriptor.vertices) {
           tmpVector.setValue(v.x, v.y, v.z);
-          shape.addPoint(tmpVector);
+          s.addPoint(tmpVector);
         }
         Ammo.destroy(tmpVector);
-        shape.recalcLocalAabb();
-        return shape;
+        s.recalcLocalAabb();
+        shape = s;
+        break;
       case 'MESH':
         const mesh = new Ammo.btTriangleMesh(true, true);
         const tmpVectors: [Ammo.btVector3, Ammo.btVector3, Ammo.btVector3] = [
@@ -110,9 +119,15 @@ export class AmmoFactory implements IPhysicsBody3dComponentFactory<AmmoPhysicsTy
         tmpVectors.forEach(v => {
           Ammo.destroy(v);
         });
-        return new Ammo.btBvhTriangleMeshShape(mesh, false, true);
+        shape = new Ammo.btBvhTriangleMeshShape(mesh, false, true);
+        break;
+      default:
+        throw new Error(`Shape "${(descriptor as any).shape}" not implemented for Ammo.js`);
     }
-    throw new Error(`Shape "${(descriptor as any).shape}" not implemented for Ammo.js`);
+    if (descriptor.collisionMargin) {
+      shape.setMargin(descriptor.collisionMargin);
+    }
+    return shape;
   }
 
   public createRigidBodyFromShape(
