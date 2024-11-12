@@ -19,6 +19,7 @@ examples=(
   "collision-groups-three-rapier3d"
   "collision-groups-pool-three-ammo"
   "collision-groups-pool-three-rapier3d"
+  "shooter-three-ammo"
 )
 for ix in ${!examples[*]}
 do
