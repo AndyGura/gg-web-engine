@@ -42,6 +42,9 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
     }
   }
 
+  public maxSubSteps?: number = 100;
+  public fixedTimeStep?: number = 0.01;
+
   public get dynamicAmmoWorld(): Ammo.btDiscreteDynamicsWorld | undefined {
     return this._dynamicAmmoWorld;
   }
@@ -84,7 +87,7 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
   }
 
   simulate(delta: number): void {
-    this._dynamicAmmoWorld?.stepSimulation(delta / 1000, 100, 0.01);
+    this._dynamicAmmoWorld?.stepSimulation(delta / 1000, this.maxSubSteps || undefined, this.fixedTimeStep || undefined);
     this.afterTick$.next();
   }
 
