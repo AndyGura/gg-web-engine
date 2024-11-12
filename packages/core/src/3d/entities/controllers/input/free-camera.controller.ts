@@ -140,7 +140,12 @@ export class FreeCameraController extends IEntity {
           console.log('######', JSON.stringify(translate));
           return [translate, cameraFovInc] as [Point3, number];
         }),
-        ggElastic(this.camera.tick$, 1000, ([at, _], [bt, bf], f) => ([Pnt3.lerp(at, bt, f), bf] as [Point3, number])),
+        ggElastic(
+          this.camera.tick$,
+          500,
+          ([at, _], [bt, bf], f) => ([Pnt3.lerp(at, bt, f), bf] as [Point3, number]),
+          ([at, af], [bt, bf]) => af == bf && Pnt3.dist(at, bt) < 0.001,
+        ),
       )
       .subscribe(([t, f]) => {
         console.log('$$$$$', JSON.stringify(t));

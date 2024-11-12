@@ -1,49 +1,54 @@
 import { map, Observable, OperatorFunction, scan, switchMap } from 'rxjs';
 
 export default function ggElastic<T>(
-  tick$: Observable<[number, number]>,  // [elapsed, delta]
-  elasticity: number,                   // Elasticity parameter
-  mix: (a: T, b: T, factor: number) => T, // Mixing function
+  tick$: Observable<[number, number]>,                     // [elapsed, delta]
+  elasticity: number,                                      // Elasticity parameter
+  mix: (a: T, b: T, factor: number) => T,                  // Mixing function
+  equals: (a: T, b: T) => boolean                          // Equality check function
 ): OperatorFunction<T, T> {
   return (source$: Observable<T>): Observable<T> => {
     return source$.pipe(
-      // When a new value arrives, set it as the target and reset the progress
+      // Track the target value
       scan(
         (acc, newValue) => ({
-          lastValue: acc.currentValue ?? newValue,
-          currentValue: newValue,
-          progress: 0,
+          targetValue: newValue,
+          currentValue: acc.currentValue ?? newValue,      // Initialize to the first value on startup
+          hasReachedTarget: false                          // Reset reach status on new target
         }),
-        { lastValue: null as T | null, currentValue: null as T | null, progress: 0 },
+        { targetValue: null as T | null, currentValue: null as T | null, hasReachedTarget: false }
       ),
       // Switch to using tick$ for timing, emitting interpolated values with each tick
       switchMap((state) =>
         tick$.pipe(
-          // Update progress on each tick
-          scan(
-            (acc, [_, delta]) => {
-              // Increase progress based on delta and elasticity
-              const newProgress = Math.min(acc.progress + delta / elasticity, 1);
+          map(([_, delta]) => {
+            if (state.targetValue === null || state.currentValue === null) {
+              return state.currentValue as T;              // If we have no values, output nothing
+            }
 
-              // Calculate interpolated value between lastValue and currentValue
-              const interpolatedValue = mix(acc.lastValue as T, state.currentValue as T, newProgress);
+            // Skip processing if we’ve reached the target
+            if (state.hasReachedTarget) {
+              return state.targetValue;
+            }
 
-              // If progress reaches 1, we set lastValue to currentValue for stability
-              const isTransitionComplete = newProgress >= 1;
+            // Adjust factor based on elasticity and delta time
+            const factor = 1 - Math.exp(-delta / elasticity);
 
-              return {
-                lastValue: isTransitionComplete ? state.currentValue : acc.lastValue,
-                currentValue: state.currentValue,
-                progress: isTransitionComplete ? 1 : newProgress,
-                outputValue: isTransitionComplete ? state.currentValue : interpolatedValue,
-              };
-            },
-            { lastValue: state.lastValue, currentValue: state.currentValue, progress: 0, outputValue: state.lastValue },
-          ),
-          // Output only the interpolated value
-          map(({ outputValue }) => outputValue),
-        ),
-      ),
-    ) as any;
+            // Blend halfway towards the target on each tick
+            const newInterpolatedValue = mix(state.currentValue, state.targetValue, factor);
+
+            // Update the currentValue to the new interpolated position
+            state.currentValue = newInterpolatedValue;
+
+            // Check if the interpolated value is "close enough" to the target
+            if (equals(newInterpolatedValue, state.targetValue)) {
+              state.hasReachedTarget = true;               // Mark as reached
+              return state.targetValue;                    // Emit exact target value
+            }
+
+            return newInterpolatedValue;
+          })
+        )
+      )
+    );
   };
 }
