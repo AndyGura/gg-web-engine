@@ -3,6 +3,7 @@ import {
   BufferAttribute,
   BufferGeometry,
   Camera,
+  ColorSpace,
   FileLoader,
   Group,
   ImageBitmapLoader,
@@ -111,7 +112,7 @@ export class GLTFParser {
       texCoord?: number | undefined;
       extensions?: any;
     },
-    colorSpace?: string | undefined,
+    colorSpace?: ColorSpace | undefined,
   ) => Promise<Texture | null>;
   assignFinalMaterial: (object: Mesh) => void;
   getMaterialType: () => typeof MeshStandardMaterial;
