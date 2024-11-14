@@ -87,7 +87,11 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
   }
 
   simulate(delta: number): void {
-    this._dynamicAmmoWorld?.stepSimulation(delta / 1000, this.maxSubSteps || undefined, this.fixedTimeStep || undefined);
+    this._dynamicAmmoWorld?.stepSimulation(
+      delta / 1000,
+      this.maxSubSteps || undefined,
+      this.fixedTimeStep || undefined,
+    );
     this.afterTick$.next();
   }
 
