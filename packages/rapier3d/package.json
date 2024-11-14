@@ -1,6 +1,6 @@
 {
   "name": "@gg-web-engine/rapier3d",
-  "version": "0.0.48",
+  "version": "0.0.49",
   "description": "An attempt to create open source game engine for browser",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -28,7 +28,7 @@
   "homepage": "https://github.com/AndyGura/gg-web-engine#readme",
   "devDependencies": {
     "@dimforge/rapier3d-compat": "0.0.0-50223ff-20240729",
-    "@gg-web-engine/core": "0.0.48",
+    "@gg-web-engine/core": "0.0.49",
     "@types/jest": "^29.5.12",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
@@ -39,7 +39,7 @@
   },
   "peerDependencies": {
     "@dimforge/rapier3d-compat": "0.0.0-50223ff-20240729",
-    "@gg-web-engine/core": "0.0.48",
+    "@gg-web-engine/core": "0.0.49",
     "rxjs": "7.8.1"
   },
   "jest": {

@@ -21,6 +21,8 @@ parent: Modules
     - [added$ (property)](#added-property)
     - [removed$ (property)](#removed-property)
     - [children (property)](#children-property)
+    - [maxSubSteps (property)](#maxsubsteps-property)
+    - [fixedTimeStep (property)](#fixedtimestep-property)
     - [\_dynamicAmmoWorld (property)](#_dynamicammoworld-property)
     - [lockedCollisionGroups (property)](#lockedcollisiongroups-property)
 
@@ -108,6 +110,22 @@ readonly removed$: any
 
 ```ts
 readonly children: (AmmoRigidBodyComponent | AmmoTriggerComponent)[]
+```
+
+### maxSubSteps (property)
+
+**Signature**
+
+```ts
+maxSubSteps: number | undefined
+```
+
+### fixedTimeStep (property)
+
+**Signature**
+
+```ts
+fixedTimeStep: number | undefined
 ```
 
 ### \_dynamicAmmoWorld (property)

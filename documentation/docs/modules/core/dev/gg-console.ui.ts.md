@@ -1,6 +1,6 @@
 ---
 title: core/dev/gg-console.ui.ts
-nav_order: 95
+nav_order: 96
 parent: Modules
 ---
 

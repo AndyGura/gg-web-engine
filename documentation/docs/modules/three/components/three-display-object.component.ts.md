@@ -1,6 +1,6 @@
 ---
 title: three/components/three-display-object.component.ts
-nav_order: 127
+nav_order: 128
 parent: Modules
 ---
 

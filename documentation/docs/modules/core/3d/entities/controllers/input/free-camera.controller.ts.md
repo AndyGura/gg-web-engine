@@ -101,24 +101,35 @@ Options for configuring a FreeCameraInput controller.
 ```ts
 export type FreeCameraControllerOptions = {
   /**
-   * A keymap for controlling camera movement, where each key corresponds to a movement direction.
+   * A keymap for controlling camera movement, where each key corresponds to a movement direction. 'wasd' by default
    */
   keymap: DirectionKeyboardKeymap
   /**
-   * Options for configuring camera movement.
+   * The speed of camera movement in meters per second. 20 by default
    */
-  movementOptions: {
-    /**
-     * The speed of camera movement.
-     */
-    speed: number
-  }
+  cameraLinearSpeed: number
   /**
-   * Flag to ignore cursor movement if pointer was not locked. By default false
+   * An elasticity factor for camera movement. 0 by default (no elastic motion)
+   */
+  cameraMovementElasticity: number
+  /**
+   * A linear speed multiplier when user holds shift key. 2.5 by default
+   */
+  cameraBoostMultiplier: number
+  /**
+   * The speed of camera rotation in radians per 1000px mouse movement. 1 by default
+   */
+  cameraRotationSensitivity: number
+  /**
+   * An elasticity factor for camera rotation. 0 by default (no elastic motion)
+   */
+  cameraRotationElasticity: number
+  /**
+   * Flag to ignore cursor movement if pointer was not locked. false by default
    */
   ignoreMouseUnlessPointerLocked: boolean
   /**
-   * Flag to ignore keyboard events if pointer was not locked. By default false
+   * Flag to ignore keyboard events if pointer was not locked. false by default
    */
   ignoreKeyboardUnlessPointerLocked: boolean
   /**

@@ -32,7 +32,7 @@ export type BodyShape3DDescriptor = { shape: Shape3DDescriptor; body: Partial<Bo
 **Signature**
 
 ```ts
-export type Shape3DDescriptor =
+export type Shape3DDescriptor = { collisionMargin?: number } & (
   | { shape: 'PLANE' }
   | { shape: 'BOX'; dimensions: Point3 }
   | { shape: 'CONE' | 'CYLINDER'; radius: number; height: number }
@@ -41,6 +41,7 @@ export type Shape3DDescriptor =
   | { shape: 'COMPOUND'; children: { position?: Point3; rotation?: Point4; shape: Shape3DDescriptor }[] }
   | { shape: 'CONVEX_HULL'; vertices: Point3[] }
   | { shape: 'MESH'; vertices: Point3[]; faces: [number, number, number][] }
+)
 ```
 
 ## Shape3DMeshDescriptor (type alias)

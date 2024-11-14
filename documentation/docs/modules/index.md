@@ -110,6 +110,7 @@ has_children: true
 - [core/base/models/body-options.ts](/gg-web-engine/modules/core/base/models/body-options.ts)
 - [core/base/models/geometry-nodes.ts](/gg-web-engine/modules/core/base/models/geometry-nodes.ts)
 - [core/base/models/points.ts](/gg-web-engine/modules/core/base/models/points.ts)
+- [core/base/pipes/gg-elastic.pipe.ts](/gg-web-engine/modules/core/base/pipes/gg-elastic.pipe.ts)
 - [core/dev/gg-console.ui.ts](/gg-web-engine/modules/core/dev/gg-console.ui.ts)
 - [core/dev/gg-debugger.ui.ts](/gg-web-engine/modules/core/dev/gg-debugger.ui.ts)
 - [core/dev/gg-static.ts](/gg-web-engine/modules/core/dev/gg-static.ts)

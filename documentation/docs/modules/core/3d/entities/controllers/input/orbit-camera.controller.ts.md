@@ -97,10 +97,29 @@ target: Point3
 
 ```ts
 export type OrbitCameraControllerOptions = {
+  /**
+   * Options for configuring mouse input.
+   */
   mouseOptions: Partial<MouseInputOptions>
+  /**
+   * Orbiting options. false disables orbiting, sensitivity fields are the speed in radians per 1000px mouse movement. 1 by default
+   */
   orbiting: { sensitivityX: number; sensitivityY: number } | false
+  /**
+   * An elasticity factor for orbiting. 0 by default (no elastic motion)
+   */
+  orbitingElasticity: number
+  /**
+   * Zooming options. false disables zooming. Enabled by default
+   */
   zooming: { sensitivity: number } | false
+  /**
+   * Panning options. false disables panning. Enabled by default
+   */
   panning: { sensitivityX: number; sensitivityY: number } | false
+  /**
+   * Dollying options. false disables dollying. Enabled by default
+   */
   dollying: { sensitivity: number } | false
 }
 ```

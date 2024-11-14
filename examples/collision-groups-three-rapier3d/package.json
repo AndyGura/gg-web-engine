@@ -6,9 +6,9 @@
     "start": "webpack serve --config ./webpack.dev.config.js"
   },
   "dependencies": {
-    "@gg-web-engine/core": "0.0.48",
-    "@gg-web-engine/rapier3d": "0.0.48",
-    "@gg-web-engine/three": "0.0.48",
+    "@gg-web-engine/core": "0.0.49",
+    "@gg-web-engine/rapier3d": "0.0.49",
+    "@gg-web-engine/three": "0.0.49",
     "rxjs": "7.8.1",
     "three": "0.167.1"
   },
