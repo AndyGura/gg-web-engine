@@ -20,6 +20,8 @@ const world = new Gg3dWorld<
   new ThreeSceneComponent(),
   new AmmoWorldComponent(),
 );
+world.physicsWorld.maxSubSteps = 25;
+
 world.init().then(async () => {
   GgStatic.instance.showStats = true;
   // GgStatic.instance.devConsoleEnabled = true;

@@ -45,7 +45,7 @@ export function ggElastic<T>(
               return state.targetValue; // Emit exact target value
             }
 
-            return newInterpolatedValue;
+            return newInterpolatedValue as any;
           }),
         ),
       ),
