@@ -1,6 +1,6 @@
 import { filter, map, Observable, OperatorFunction, scan, switchMap } from 'rxjs';
 
-export default function ggElastic<T>(
+export function ggElastic<T>(
   tick$: Observable<[number, number]>, // [elapsed, delta]
   elasticity: number, // Elasticity parameter
   mix: (a: T, b: T, factor: number) => T, // Mixing function

@@ -1,17 +1,20 @@
 import {
+  ggElastic,
   GgWorld,
   IEntity,
   MouseInput,
   MouseInputOptions,
   MouseInputState,
   MutableSpherical,
+  Pnt2,
   Pnt3,
   Point2,
   Point3,
   Qtrn,
+  Spherical,
   TickOrder,
 } from '../../../../base';
-import { filter, takeUntil } from 'rxjs';
+import { BehaviorSubject, filter, takeUntil } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { Renderer3dEntity } from '../../renderer-3d.entity';
 
@@ -24,6 +27,10 @@ export type OrbitCameraControllerOptions = {
    * Orbiting options. false disables orbiting, sensitivity fields are the speed in radians per 1000px mouse movement. 1 by default
    */
   orbiting: { sensitivityX: number; sensitivityY: number } | false;
+  /**
+   * An elasticity factor for orbiting. 0 by default (no elastic motion)
+   */
+  orbitingElasticity: number;
   /**
    * Zooming options. false disables zooming. Enabled by default
    */
@@ -41,6 +48,7 @@ export type OrbitCameraControllerOptions = {
 const DEFAULT_OPTIONS: OrbitCameraControllerOptions = {
   mouseOptions: {},
   orbiting: { sensitivityX: 1, sensitivityY: 1 },
+  orbitingElasticity: 0,
   zooming: { sensitivity: 1 },
   panning: { sensitivityX: 1, sensitivityY: 1 },
   dollying: { sensitivity: 1 },
@@ -87,16 +95,42 @@ export class OrbitCameraController extends IEntity {
     await super.onSpawned(world);
     this.spherical = Pnt3.toSpherical(Pnt3.sub(this.camera.position, this.target));
     if (this.options.orbiting) {
-      this.mouseInput.delta$
-        .pipe(
+      let mouseDelta$ = this.mouseInput.delta$.pipe(
+        takeUntil(this._onRemoved$),
+        filter(() => this.mouseInput.state == MouseInputState.DRAG),
+      );
+      if (this.options.orbitingElasticity > 0) {
+        const s$: BehaviorSubject<Spherical> = new BehaviorSubject(this.spherical);
+        mouseDelta$.subscribe(delta => {
+          const s = s$.getValue();
+          s$.next({
+            phi: Math.max(
+              0.000001,
+              Math.min(Math.PI - 0.000001, s.phi - (delta.y * (this.options.orbiting as any).sensitivityY) / 1000),
+            ),
+            theta: s.theta - (delta.x * (this.options.orbiting as any).sensitivityX) / 1000,
+            radius: 1,
+          });
+        });
+        s$.pipe(
           takeUntil(this._onRemoved$),
-          filter(() => this.mouseInput.state == MouseInputState.DRAG),
-        )
-        .subscribe(delta => {
+          ggElastic(
+            this.tick$,
+            this.options.orbitingElasticity,
+            (a, b, f) => ({ phi: a.phi + f * (b.phi - a.phi), theta: a.theta + f * (b.theta - a.theta), radius: 1 }),
+            (a, b) => Pnt2.dist({ x: a.phi, y: a.theta }, { x: b.phi, y: b.theta }) < 0.0001,
+          ),
+        ).subscribe(s => {
+          this.spherical.theta = s.theta;
+          this.spherical.phi = s.phi;
+        });
+      } else {
+        mouseDelta$.subscribe(delta => {
           this.spherical.theta -= (delta.x * (this.options.orbiting as any).sensitivityX) / 1000;
           this.spherical.phi -= (delta.y * (this.options.orbiting as any).sensitivityY) / 1000;
           this.spherical.phi = Math.max(0.000001, Math.min(Math.PI - 0.000001, this.spherical.phi));
         });
+      }
     }
     if (this.options.zooming) {
       this.mouseInput.wheel$.pipe(takeUntil(this._onRemoved$)).subscribe(delta => {
