@@ -17,7 +17,7 @@ export type CarHandlingOutput = { upDown: number; leftRight: number };
 export class CarKeyboardHandlingController extends IEntity {
   public readonly tickOrder = TickOrder.INPUT_CONTROLLERS;
 
-  protected readonly directionsInput: DirectionKeyboardInput;
+  public readonly directionsInput: DirectionKeyboardInput;
 
   private _output$: Subject<CarHandlingOutput> = new Subject<CarHandlingOutput>();
   public get output$(): Observable<CarHandlingOutput> {

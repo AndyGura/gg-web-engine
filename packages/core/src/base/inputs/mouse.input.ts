@@ -99,6 +99,10 @@ export class MouseInput extends IInput<[], [unlockPointer?: boolean]> {
     return !!document.pointerLockElement;
   }
 
+  public get isPointerLocked$(): Observable<boolean> {
+    return fromEvent(document, 'pointerlockchange').pipe(map(() => this.isPointerLocked));
+  }
+
   private readonly options: MouseInputOptions;
   private _delta$: Subject<Point2> = new Subject<Point2>();
   private _position$: BehaviorSubject<Point2> = new BehaviorSubject<Point2>(Pnt2.O);

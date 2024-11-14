@@ -1,8 +1,9 @@
-import { combineLatest, filter, takeUntil } from 'rxjs';
+import { BehaviorSubject, combineLatest, filter, takeUntil } from 'rxjs';
 import {
   DirectionKeyboardInput,
   DirectionKeyboardKeymap,
   DirectionKeyboardOutput,
+  ggElastic,
   GgWorld,
   IEntity,
   KeyboardInput,
@@ -11,35 +12,48 @@ import {
   MutableSpherical,
   Pnt2,
   Pnt3,
-  Point2,
+  Point3,
   Qtrn,
+  Spherical,
   TickOrder,
 } from '../../../../base';
 import { Renderer3dEntity } from '../../renderer-3d.entity';
+import { map } from 'rxjs/operators';
 
 /**
  * Options for configuring a FreeCameraInput controller.
  */
 export type FreeCameraControllerOptions = {
   /**
-   * A keymap for controlling camera movement, where each key corresponds to a movement direction.
+   * A keymap for controlling camera movement, where each key corresponds to a movement direction. 'wasd' by default
    */
   keymap: DirectionKeyboardKeymap;
   /**
-   * Options for configuring camera movement.
+   * The speed of camera movement in meters per second. 20 by default
    */
-  movementOptions: {
-    /**
-     * The speed of camera movement.
-     */
-    speed: number;
-  };
+  cameraLinearSpeed: number;
   /**
-   * Flag to ignore cursor movement if pointer was not locked. By default false
+   * An elasticity factor for camera movement. 0 by default (no elastic motion)
+   */
+  cameraMovementElasticity: number;
+  /**
+   * A linear speed multiplier when user holds shift key. 2.5 by default
+   */
+  cameraBoostMultiplier: number;
+  /**
+   * The speed of camera rotation in radians per 1000px mouse movement. 1 by default
+   */
+  cameraRotationSensitivity: number;
+  /**
+   * An elasticity factor for camera rotation. 0 by default (no elastic motion)
+   */
+  cameraRotationElasticity: number;
+  /**
+   * Flag to ignore cursor movement if pointer was not locked. false by default
    */
   ignoreMouseUnlessPointerLocked: boolean;
   /**
-   * Flag to ignore keyboard events if pointer was not locked. By default false
+   * Flag to ignore keyboard events if pointer was not locked. false by default
    */
   ignoreKeyboardUnlessPointerLocked: boolean;
   /**
@@ -50,7 +64,11 @@ export type FreeCameraControllerOptions = {
 
 const DEFAULT_FREE_CAMERA_CONTROLLER_OPTIONS: FreeCameraControllerOptions = {
   keymap: 'wasd',
-  movementOptions: { speed: 0.5 },
+  cameraLinearSpeed: 20,
+  cameraMovementElasticity: 0,
+  cameraBoostMultiplier: 2.5,
+  cameraRotationSensitivity: 1,
+  cameraRotationElasticity: 0,
   mouseOptions: {},
   ignoreMouseUnlessPointerLocked: false,
   ignoreKeyboardUnlessPointerLocked: false,
@@ -67,11 +85,11 @@ export class FreeCameraController extends IEntity {
   /**
    * The mouse input controller used for camera rotation.
    */
-  protected readonly mouseInput: MouseInput;
+  public readonly mouseInput: MouseInput;
   /**
    * The keyboard input controller used for camera movement.
    */
-  protected readonly directionsInput: DirectionKeyboardInput;
+  public readonly directionsInput: DirectionKeyboardInput;
 
   /**
    * Creates a new FreeCameraInput instance.
@@ -90,81 +108,122 @@ export class FreeCameraController extends IEntity {
       ...options,
     };
     if (options.mouseOptions) {
-      this.options.movementOptions = {
-        ...DEFAULT_FREE_CAMERA_CONTROLLER_OPTIONS.movementOptions,
+      this.options.mouseOptions = {
+        ...DEFAULT_FREE_CAMERA_CONTROLLER_OPTIONS.mouseOptions,
         ...options.mouseOptions,
       };
     }
-    this.mouseInput = new MouseInput(options.mouseOptions);
+    this.mouseInput = new MouseInput(this.options.mouseOptions);
     this.directionsInput = new DirectionKeyboardInput(keyboard, this.options.keymap);
   }
 
   async onSpawned(world: GgWorld<any, any>): Promise<void> {
     await super.onSpawned(world);
     // Subscribe to keyboard input for movement controls
-    let controls: { direction: DirectionKeyboardOutput; rest: boolean[] } = { direction: {}, rest: [] };
     const keys = ['KeyE', 'KeyQ'];
     if (this.camera.camera.supportsFov) {
       keys.push('KeyZ', 'KeyC');
     }
     keys.push('ShiftLeft');
-    this.directionsInput.output$.pipe(takeUntil(this._onRemoved$)).subscribe(d => {
-      controls.direction = d;
+
+    let controlsObs = combineLatest([this.directionsInput.output$, ...keys.map(c => this.keyboard.bind(c))]).pipe(
+      takeUntil(this._onRemoved$),
+      map(([direction, ...rest]) => {
+        let c: { direction: DirectionKeyboardOutput; rest: boolean[] } = { direction: {}, rest: [] };
+        if (!this.options.ignoreKeyboardUnlessPointerLocked || this.mouseInput.isPointerLocked) {
+          c = { direction, rest };
+        }
+        let translate = { ...Pnt3.O } as { x: number; y: number; z: number };
+        const [u, d, zo, zi, speedBoost] = c.rest;
+        if (c.direction.upDown !== undefined) translate.z = c.direction.upDown ? -1 : 1;
+        if (c.direction.leftRight !== undefined) translate.x = c.direction.leftRight ? -1 : 1;
+        if (u != d) translate.y = d ? -1 : 1;
+        let cameraFovInc = 0;
+        if (zo != zi) cameraFovInc = zo ? 1 : -1;
+        translate = Pnt3.norm(translate);
+        if (speedBoost) {
+          translate = Pnt3.scalarMult(translate, this.options.cameraBoostMultiplier);
+        }
+        return [translate, cameraFovInc] as [Point3, number];
+      }),
+    );
+    if (this.options.cameraMovementElasticity > 0) {
+      controlsObs = controlsObs.pipe(
+        ggElastic(
+          this.camera.tick$,
+          this.options.cameraMovementElasticity,
+          ([at, _], [bt, bf], f) => [Pnt3.lerp(at, bt, f), bf] as [Point3, number],
+          ([at, af], [bt, bf]) => af == bf && Pnt3.dist(at, bt) < 0.001,
+        ),
+      );
+    }
+
+    let translateVector: Point3 = Pnt3.O;
+    let cameraFovInc: number = 0;
+    controlsObs.subscribe(([t, f]) => {
+      translateVector = t;
+      cameraFovInc = f;
     });
-    combineLatest(keys.map(c => this.keyboard.bind(c)))
-      .pipe(takeUntil(this._onRemoved$))
-      .subscribe((d: boolean[]) => {
-        controls.rest = d;
-      });
 
     // Subscribe to mouse input for camera rotation
-    let rotationDelta: Point2 = Pnt2.O;
+    const spherical: MutableSpherical = Pnt3.toSpherical(Pnt3.rot({ x: 0, y: 0, z: -1 }, this.camera.rotation));
     let isTouchScreen = MouseInput.isTouchDevice();
-    this.mouseInput.delta$
-      .pipe(
-        takeUntil(this._onRemoved$),
-        filter(() => isTouchScreen || !this.options.ignoreMouseUnlessPointerLocked || this.mouseInput.isPointerLocked),
-      )
-      .subscribe(delta => {
-        rotationDelta = Pnt2.add(rotationDelta, delta);
+    let mouseDelta$ = this.mouseInput.delta$.pipe(
+      takeUntil(this._onRemoved$),
+      filter(() => isTouchScreen || !this.options.ignoreMouseUnlessPointerLocked || this.mouseInput.isPointerLocked),
+    );
+    if (this.options.cameraRotationElasticity > 0) {
+      const s$: BehaviorSubject<Spherical> = new BehaviorSubject(spherical);
+      mouseDelta$.subscribe(delta => {
+        const s = s$.getValue();
+        s$.next({
+          phi: Math.max(
+            0.000001,
+            Math.min(Math.PI - 0.000001, s.phi + (delta.y * this.options.cameraRotationSensitivity) / 1000),
+          ),
+          theta: s.theta - (delta.x * this.options.cameraRotationSensitivity) / 1000,
+          radius: 1,
+        });
       });
+      s$.pipe(
+        takeUntil(this._onRemoved$),
+        ggElastic(
+          this.tick$,
+          this.options.cameraRotationElasticity,
+          (a, b, f) => ({ phi: a.phi + f * (b.phi - a.phi), theta: a.theta + f * (b.theta - a.theta), radius: 1 }),
+          (a, b) => Pnt2.dist({ x: a.phi, y: a.theta }, { x: b.phi, y: b.theta }) < 0.0001,
+        ),
+      ).subscribe(s => {
+        spherical.theta = s.theta;
+        spherical.phi = s.phi;
+      });
+    } else {
+      mouseDelta$.subscribe(delta => {
+        spherical.theta -= (delta.x * this.options.cameraRotationSensitivity) / 1000;
+        spherical.phi += (delta.y * this.options.cameraRotationSensitivity) / 1000;
+        spherical.phi = Math.max(0.000001, Math.min(Math.PI - 0.000001, spherical.phi));
+      });
+    }
 
     // Setup updating camera position and rotation based on input
-    this.camera.tick$.pipe(takeUntil(this._onRemoved$)).subscribe(() => {
-      let c = controls;
-      if (this.options.ignoreKeyboardUnlessPointerLocked && !this.mouseInput.isPointerLocked) {
-        c = { direction: {}, rest: [false, false, false, false, false] };
-      }
-      let translateVector = { ...Pnt3.O } as { x: number; y: number; z: number };
-      const [u, d, zo, zi, speedBoost] = c.rest;
-      if (c.direction.upDown !== undefined) translateVector.z = c.direction.upDown ? -1 : 1;
-      if (c.direction.leftRight !== undefined) translateVector.x = c.direction.leftRight ? -1 : 1;
-      if (u != d) translateVector.y = d ? -1 : 1;
-      if (zo != zi) this.camera.camera.fov += zo ? 1 : -1;
-      let speed = this.options.movementOptions.speed;
-      if (speedBoost) {
-        speed *= 2.5;
-      }
+    this.camera.tick$.pipe(takeUntil(this._onRemoved$)).subscribe(([_, delta]) => {
+      this.camera.camera.fov += cameraFovInc;
       this.camera.position = Pnt3.add(
         this.camera.position,
-        Pnt3.rot(Pnt3.scalarMult(Pnt3.norm(translateVector), speed), this.camera.rotation),
+        Pnt3.rot(
+          Pnt3.scalarMult(translateVector, (this.options.cameraLinearSpeed * delta) / 1000),
+          this.camera.rotation,
+        ),
       );
-      if (rotationDelta.x != 0 || rotationDelta.y != 0) {
-        const spherical: MutableSpherical = Pnt3.toSpherical(Pnt3.rot({ x: 0, y: 0, z: -1 }, this.camera.rotation));
-        spherical.theta -= rotationDelta.x / 300;
-        spherical.phi += rotationDelta.y / 300;
-        spherical.phi = Math.max(0.000001, Math.min(Math.PI - 0.000001, spherical.phi));
-        this.camera.rotation = Qtrn.lookAt(
-          this.camera.position,
-          Pnt3.add(this.camera.position, Pnt3.fromSpherical(spherical)),
-        );
-        rotationDelta = Pnt2.O;
-      }
+      this.camera.rotation = Qtrn.lookAt(
+        this.camera.position,
+        Pnt3.add(this.camera.position, Pnt3.fromSpherical(spherical)),
+      );
     });
 
     // start input
-    await this.mouseInput.start();
-    await this.directionsInput.start();
+    this.mouseInput.start();
+    this.directionsInput.start();
   }
 
   async onRemoved(): Promise<void> {

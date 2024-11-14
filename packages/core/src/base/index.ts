@@ -41,4 +41,6 @@ export * from './math/numbers';
 export * from './math/matrix4';
 export * from './math/splines';
 
+export * from './pipes/gg-elastic.pipe';
+
 export * from './gg-world';

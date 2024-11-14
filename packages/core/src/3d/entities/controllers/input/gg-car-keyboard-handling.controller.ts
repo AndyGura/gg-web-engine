@@ -12,7 +12,7 @@ export type GgCarKeyboardControllerOptions = CarKeyboardControllerOptions & {
 export class GgCarKeyboardHandlingController extends IEntity {
   public readonly tickOrder = TickOrder.INPUT_CONTROLLERS;
 
-  protected readonly carHandlingInput: CarKeyboardHandlingController;
+  public readonly carHandlingInput: CarKeyboardHandlingController;
   public switchingGearsEnabled: boolean = true;
 
   constructor(
