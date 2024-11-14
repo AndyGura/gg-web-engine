@@ -575,7 +575,7 @@
 </code></pre>
 <h2 id="shape3ddescriptor-type-alias">Shape3DDescriptor (type alias)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type Shape3DDescriptor =
+<pre><code class="language-ts">export type Shape3DDescriptor = { collisionMargin?: number } &amp; (
   | { shape: 'PLANE' }
   | { shape: 'BOX'; dimensions: Point3 }
   | { shape: 'CONE' | 'CYLINDER'; radius: number; height: number }
@@ -584,6 +584,7 @@
   | { shape: 'COMPOUND'; children: { position?: Point3; rotation?: Point4; shape: Shape3DDescriptor }[] }
   | { shape: 'CONVEX_HULL'; vertices: Point3[] }
   | { shape: 'MESH'; vertices: Point3[]; faces: [number, number, number][] }
+)
 </code></pre>
 <h2 id="shape3dmeshdescriptor-type-alias">Shape3DMeshDescriptor (type alias)</h2>
 <p><strong>Signature</strong></p>
