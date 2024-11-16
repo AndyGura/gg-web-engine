@@ -42,6 +42,9 @@ export class Entity2d<
     this._rotation = value;
   }
 
+  public readonly object2D: VTypeDoc['displayObject'] | null = null;
+  public readonly objectBody: PTypeDoc['rigidBody'] | null = null;
+
   public updateVisibility(): void {
     if (this.object2D) {
       this.object2D.visible = this.worldVisible;
@@ -63,25 +66,27 @@ export class Entity2d<
     this._rotation = quat;
   }
 
-  constructor(
-    public readonly object2D: VTypeDoc['displayObject'] | null,
-    public readonly objectBody: PTypeDoc['rigidBody'] | null,
-  ) {
+  constructor(options: { object2D?: VTypeDoc['displayObject']; objectBody?: PTypeDoc['rigidBody'] }) {
     super();
-    if (objectBody) {
-      this.tick$.subscribe(() => {
-        this.runTransformBinding(objectBody, object2D);
-      });
-      this.runTransformBinding(objectBody, object2D);
-      this.name = objectBody.name;
-    } else if (object2D) {
-      this._position = object2D.position;
-      this._rotation = object2D.rotation;
-      this.name = object2D.name;
-    } else {
-      throw new Error('Cannot create entity without an object2D and a body');
+    if (options.objectBody) {
+      this.objectBody = options.objectBody;
+      this.name = this.objectBody.name;
+      this.addComponents(this.objectBody);
     }
-    objectBody && this.addComponents(objectBody);
-    object2D && this.addComponents(object2D);
+    if (options.object2D) {
+      this.object2D = options.object2D;
+      if (!options.objectBody) {
+        this._position = this.object2D.position;
+        this._rotation = this.object2D.rotation;
+        this.name = this.object2D.name;
+      }
+      this.addComponents(this.object2D);
+    }
+    if (this.object2D && this.objectBody) {
+      this.tick$.subscribe(() => {
+        this.runTransformBinding(this.objectBody!, this.object2D);
+      });
+      this.runTransformBinding(this.objectBody, this.object2D);
+    }
   }
 }

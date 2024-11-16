@@ -60,10 +60,10 @@ export class Gg2dWorld<
     rotation: number = 0,
     material: DisplayObject2dOpts<VTypeDoc['texture']> = {},
   ): Entity2d<VTypeDoc, PTypeDoc> {
-    const entity = new Entity2d<VTypeDoc, PTypeDoc>(
-      this.visualScene.factory.createPrimitive(descr.shape, material),
-      this.physicsWorld.factory.createRigidBody(descr),
-    );
+    const entity = new Entity2d<VTypeDoc, PTypeDoc>({
+      object2D: this.visualScene.factory.createPrimitive(descr.shape, material),
+      objectBody: this.physicsWorld.factory.createRigidBody(descr),
+    });
     entity.position = position;
     entity.rotation = rotation;
     this.addEntity(entity);

@@ -148,7 +148,7 @@ export class Gg3dLoader<
     const loadOptions = { ...defaultLoadOptions, ...options };
     const { resources, meta } = await this.loadGgGlbResources(path, loadOptions.cachingStrategy);
     const result: LoadResultWithProps<VTypeDoc, PTypeDoc> = {
-      entities: resources.map(({ object3D, body }) => new Entity3d(object3D, body)),
+      entities: resources.map(x => new Entity3d(x)),
       meta,
     };
     if (loadOptions.loadProps) {

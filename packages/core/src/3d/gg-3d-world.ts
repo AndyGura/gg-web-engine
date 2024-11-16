@@ -71,10 +71,10 @@ export class Gg3dWorld<
     rotation: Point4 = Qtrn.O,
     material: DisplayObject3dOpts<VTypeDoc['texture']> = {},
   ): Entity3d<VTypeDoc, PTypeDoc> {
-    const entity = new Entity3d<VTypeDoc, PTypeDoc>(
-      this.visualScene.factory.createPrimitive(descr.shape, material),
-      this.physicsWorld.factory.createRigidBody(descr),
-    );
+    const entity = new Entity3d<VTypeDoc, PTypeDoc>({
+      object3D: this.visualScene.factory.createPrimitive(descr.shape, material),
+      objectBody: this.physicsWorld.factory.createRigidBody(descr),
+    });
     entity.position = position;
     entity.rotation = rotation;
     this.addEntity(entity);
