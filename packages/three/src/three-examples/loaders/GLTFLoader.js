@@ -65,7 +65,7 @@ import {
 	SRGBColorSpace,
 	InstancedBufferAttribute
 } from 'three';
-import { toTrianglesDrawMode } from './BufferGeometryUtils';
+import { toTrianglesDrawMode } from '../utils/BufferGeometryUtils.js';
 
 class GLTFLoader extends Loader {
 
@@ -544,8 +544,8 @@ class GLTFLightsExtension {
 			const nodeDef = nodeDefs[ nodeIndex ];
 
 			if ( nodeDef.extensions
-				&& nodeDef.extensions[ this.name ]
-				&& nodeDef.extensions[ this.name ].light !== undefined ) {
+					&& nodeDef.extensions[ this.name ]
+					&& nodeDef.extensions[ this.name ].light !== undefined ) {
 
 				parser._addNodeRef( this.cache, nodeDef.extensions[ this.name ].light );
 
@@ -1723,9 +1723,9 @@ class GLTFMeshGpuInstancing {
 		for ( const primitive of meshDef.primitives ) {
 
 			if ( primitive.mode !== WEBGL_CONSTANTS.TRIANGLES &&
-				primitive.mode !== WEBGL_CONSTANTS.TRIANGLE_STRIP &&
-				primitive.mode !== WEBGL_CONSTANTS.TRIANGLE_FAN &&
-				primitive.mode !== undefined ) {
+				 primitive.mode !== WEBGL_CONSTANTS.TRIANGLE_STRIP &&
+				 primitive.mode !== WEBGL_CONSTANTS.TRIANGLE_FAN &&
+				 primitive.mode !== undefined ) {
 
 				return null;
 
@@ -1810,8 +1810,8 @@ class GLTFMeshGpuInstancing {
 						instancedMesh.instanceColor = new InstancedBufferAttribute( attr.array, attr.itemSize, attr.normalized );
 
 					} else if ( attributeName !== 'TRANSLATION' &&
-						attributeName !== 'ROTATION' &&
-						attributeName !== 'SCALE' ) {
+						 attributeName !== 'ROTATION' &&
+						 attributeName !== 'SCALE' ) {
 
 						mesh.geometry.setAttribute( attributeName, attributes[ attributeName ] );
 
@@ -2252,7 +2252,7 @@ const PATH_PROPERTIES = {
 
 const INTERPOLATION = {
 	CUBICSPLINE: undefined, // We use a custom interpolant (GLTFCubicSplineInterpolation) for CUBICSPLINE tracks. Each
-	// keyframe track will be initialized with a default interpolation type, then modified.
+		                        // keyframe track will be initialized with a default interpolation type, then modified.
 	LINEAR: InterpolateLinear,
 	STEP: InterpolateDiscrete
 };
@@ -2466,8 +2466,8 @@ function createPrimitiveKey( primitiveDef ) {
 	if ( dracoExtension ) {
 
 		geometryKey = 'draco:' + dracoExtension.bufferView
-			+ ':' + dracoExtension.indices
-			+ ':' + createAttributesKey( dracoExtension.attributes );
+				+ ':' + dracoExtension.indices
+				+ ':' + createAttributesKey( dracoExtension.attributes );
 
 	} else {
 
@@ -3790,9 +3790,9 @@ class GLTFParser {
 				const material = materials[ i ];
 
 				if ( primitive.mode === WEBGL_CONSTANTS.TRIANGLES ||
-					primitive.mode === WEBGL_CONSTANTS.TRIANGLE_STRIP ||
-					primitive.mode === WEBGL_CONSTANTS.TRIANGLE_FAN ||
-					primitive.mode === undefined ) {
+						primitive.mode === WEBGL_CONSTANTS.TRIANGLE_STRIP ||
+						primitive.mode === WEBGL_CONSTANTS.TRIANGLE_FAN ||
+						primitive.mode === undefined ) {
 
 					// .isSkinnedMesh isn't in glTF spec. See ._markDefs()
 					mesh = meshDef.isSkinnedMesh === true
