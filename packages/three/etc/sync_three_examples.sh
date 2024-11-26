@@ -8,7 +8,7 @@ update_files() {
   find "$TARGET" -type f | while IFS= read -r target_file; do
     relative_path="${target_file#$TARGET/}"
     source_file="$source_dir/$relative_path"
-    if [[ -f "$source_file" && "$source_file" -nt "$target_file" ]]; then
+    if [[ -f "$source_file" ]]; then
       cp "$source_file" "$target_file"
     fi
   done
