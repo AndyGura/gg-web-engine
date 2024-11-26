@@ -3,9 +3,9 @@ import { WebGLRendererParameters } from 'three';
 import { ThreeSceneComponent } from './three-scene.component';
 import { ThreeCameraComponent } from './three-camera.component';
 import { ThreeVisualTypeDocRepo } from '../types';
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer';
+import { EffectComposer } from 'three-examples/postprocessing/EffectComposer';
 import { ThreeRendererComponent } from './three-renderer.component';
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass';
+import { RenderPass } from 'three-examples/postprocessing/RenderPass';
 
 export class ThreeComposerRendererComponent extends ThreeRendererComponent {
   public readonly nativeComposer: EffectComposer;

@@ -7,9 +7,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "prettier-format": "prettier --config ../core/.prettierrc 'src/**/*.ts' --write",
-    "prepublish": "rm -rf ./dist/ && tsc && cp -R ./src/gltf-loader ./dist",
-    "sync-gltf-loader": "cp ./node_modules/three/examples/jsm/loaders/GLTFLoader.js ./src/gltf-loader && cp ./node_modules/@types/three/examples/jsm/loaders/GLTFLoader.d.ts ./src/gltf-loader && cp ./node_modules/three/examples/jsm/utils/BufferGeometryUtils.js ./src/gltf-loader && cp ./node_modules/@types/three/examples/jsm/utils/BufferGeometryUtils.d.ts ./src/gltf-loader",
-    "build": "tsc && cp -R ./src/gltf-loader ./dist"
+    "prepublish": "rm -rf ./dist/ && tsc && cp -R ./src/three-examples ./dist",
+    "build": "tsc && cp -R ./src/three-examples ./dist"
   },
   "repository": {
     "type": "git",
