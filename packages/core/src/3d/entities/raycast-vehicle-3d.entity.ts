@@ -131,7 +131,7 @@ export class RaycastVehicle3dEntity<
     public readonly chassis3D: IDisplayObject3dComponent | null,
     public readonly vehicleComponent: IRaycastVehicleComponent,
   ) {
-    super(chassis3D, vehicleComponent);
+    super({ object3D: chassis3D, objectBody: vehicleComponent });
     let wheelFullOptions: (WheelOptions & { display: WheelDisplayOptions })[] =
       'wheelBase' in carProperties
         ? [
@@ -184,9 +184,9 @@ export class RaycastVehicle3dEntity<
         this.wheelLocalRotation.push(null);
         continue;
       }
-      const entity = display.displayObject.clone();
+      const displayObj = display.displayObject.clone();
       if (display.autoScaleMesh) {
-        const boundingBox = Box.expandByPoint(entity.getBoundings(), Pnt3.O);
+        const boundingBox = Box.expandByPoint(displayObj.getBoundings(), Pnt3.O);
         const scale = { ...Pnt3.O };
         const wheelObjectDirection = display.wheelObjectDirection || 'x';
         for (const dir of ['x', 'y', 'z'] as (keyof Point3)[]) {
@@ -195,7 +195,7 @@ export class RaycastVehicle3dEntity<
             ? options.tyreWidth / (boundingBox.max[dir] - boundingBox.min[dir])
             : (options.tyreRadius * 2) / (boundingBox.max[dir] - boundingBox.min[dir]);
         }
-        entity.scale = scale;
+        displayObj.scale = scale;
       }
       const direction = display.wheelObjectDirection || 'x';
       const flip = direction.includes('-') ? options.isLeft : !options.isLeft;
@@ -211,7 +211,7 @@ export class RaycastVehicle3dEntity<
         localRotation = { x: 0, y: 0.707107 * (flip ? 1 : -1), z: 0, w: 0.707107 };
       }
       this.wheelLocalRotation.push(localRotation);
-      const wheelEntity = new Entity3d<VTypeDoc, PTypeDoc>(entity);
+      const wheelEntity = new Entity3d<VTypeDoc, PTypeDoc>({ object3D: displayObj });
       wheelEntity.name = this.name + '__wheel_' + (options.isFront ? 'f' : 'r') + (options.isLeft ? 'l' : 'r');
       this.wheels.push(wheelEntity);
     }
