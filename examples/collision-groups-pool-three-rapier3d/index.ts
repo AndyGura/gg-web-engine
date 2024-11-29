@@ -106,15 +106,17 @@ world.init().then(async () => {
   }
 
   for (let i = 0; i < 4; i++) {
-    let wall = new Entity3d(null, world.physicsWorld.factory.createRigidBody({
-      shape: { shape: 'BOX', dimensions: { x: 40, y: 40, z: 400 } },
-      body: {
-        dynamic: false,
-        ownCollisionGroups: [ballsCommonCg],
-        interactWithCollisionGroups: [ballsCommonCg],
-        restitution: 0.3,
-      },
-    }));
+    let wall = new Entity3d({
+      objectBody: world.physicsWorld.factory.createRigidBody({
+        shape: { shape: 'BOX', dimensions: { x: 40, y: 40, z: 400 } },
+        body: {
+          dynamic: false,
+          ownCollisionGroups: [ballsCommonCg],
+          interactWithCollisionGroups: [ballsCommonCg],
+          restitution: 0.3,
+        },
+      }),
+    });
     wall.position = Pnt3.rotAround({ x: 28, y: 0, z: 0 }, Pnt3.Z, Math.PI * i / 2);
     world.addEntity(wall);
   }
