@@ -84,7 +84,7 @@ export class Entity3d<
       }
       this.addComponents(this.object3D);
     }
-    if (this.object3D && this.objectBody) {
+    if (this.objectBody) {
       this.tick$.subscribe(() => {
         this.runTransformBinding(this.objectBody!, this.object3D);
       });

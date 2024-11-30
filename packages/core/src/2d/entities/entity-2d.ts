@@ -82,7 +82,7 @@ export class Entity2d<
       }
       this.addComponents(this.object2D);
     }
-    if (this.object2D && this.objectBody) {
+    if (this.objectBody) {
       this.tick$.subscribe(() => {
         this.runTransformBinding(this.objectBody!, this.object2D);
       });
