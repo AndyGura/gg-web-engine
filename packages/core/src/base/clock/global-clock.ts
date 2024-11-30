@@ -1,8 +1,8 @@
-import { animationFrameScheduler, Observable, of, Subject } from 'rxjs';
-import { map, repeat, tap } from 'rxjs/operators';
+import { Observable, Subject } from 'rxjs';
 import { PausableClock } from './pausable-clock';
 import { IClock } from './i-clock';
 
+const now = typeof performance === 'undefined' ? () => Date.now() : () => performance.now();
 /**
  * A singleton class, providing ability to track time, fire ticks, provide time elapsed + tick delta.
  * Starts as soon as accessed and counts time from 01/01/1970
@@ -19,11 +19,11 @@ export class GgGlobalClock implements IClock {
   private readonly _tick$: Subject<[number, number]> = new Subject<[number, number]>();
 
   public get tick$(): Observable<[number, number]> {
-    return this._tick$.pipe(map(([oldTime, newTime]) => [newTime, newTime - oldTime]));
+    return this._tick$.asObservable();
   }
 
   public get elapsedTime(): number {
-    return (typeof performance === 'undefined' ? Date : performance).now();
+    return now();
   }
 
   createChildClock(autoStart: boolean): PausableClock {
@@ -32,12 +32,13 @@ export class GgGlobalClock implements IClock {
 
   private constructor() {
     let oldRelativeTime = this.elapsedTime;
-    of(undefined, animationFrameScheduler)
-      .pipe(repeat())
-      .pipe(
-        map(() => [oldRelativeTime, this.elapsedTime] as [number, number]),
-        tap(([_, cur]) => (oldRelativeTime = cur)),
-      )
-      .subscribe(this._tick$);
+    const tick = () => {
+      requestAnimationFrame(tick);
+      const prev = oldRelativeTime;
+      const cur = this.elapsedTime;
+      oldRelativeTime = cur;
+      this._tick$.next([prev, cur - prev]);
+    };
+    requestAnimationFrame(tick);
   }
 }
