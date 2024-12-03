@@ -35,23 +35,6 @@ export class Gg2dWorld<
     public readonly physicsWorld: PW,
   ) {
     super(visualScene, physicsWorld);
-    if ((window as any).ggstatic) {
-      (window as any).ggstatic.registerConsoleCommand(
-        this,
-        'ph_gravity',
-        async (...args: string[]) => {
-          if (args.length == 1) {
-            args = ['0', args[0]]; // mean Y axis
-          }
-          if (args.length > 0) {
-            this.physicsWorld.gravity = { x: +args[0], y: +args[1] };
-          }
-          return JSON.stringify(this.physicsWorld.gravity);
-        },
-        'args: [float] or [float float]; change 2D world gravity vector. 1 argument means ' +
-          '{x: 0, y: value}, 2 arguments set the whole vector. Default value is "9.82" or "0 9.82"',
-      );
-    }
   }
 
   addPrimitiveRigidBody(
@@ -77,5 +60,31 @@ export class Gg2dWorld<
     const entity = new Renderer2dEntity(this.visualScene.createRenderer(canvas, rendererOptions));
     this.addEntity(entity);
     return entity;
+  }
+
+  protected registerConsoleCommands(ggstatic: {
+    registerConsoleCommand: (
+      world: GgWorld<any, any> | null,
+      command: string,
+      handler: (...args: string[]) => Promise<string>,
+      doc?: string,
+    ) => void;
+  }) {
+    super.registerConsoleCommands(ggstatic);
+    ggstatic.registerConsoleCommand(
+      this,
+      'ph_gravity',
+      async (...args: string[]) => {
+        if (args.length == 1) {
+          args = ['0', args[0]]; // mean Y axis
+        }
+        if (args.length > 0) {
+          this.physicsWorld.gravity = { x: +args[0], y: +args[1] };
+        }
+        return JSON.stringify(this.physicsWorld.gravity);
+      },
+      'args: [float] or [float float]; change 2D world gravity vector. 1 argument means ' +
+        '{x: 0, y: value}, 2 arguments set the whole vector. Default value is "9.82" or "0 9.82"',
+    );
   }
 }

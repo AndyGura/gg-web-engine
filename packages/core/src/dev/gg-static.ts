@@ -1,11 +1,12 @@
 import { GgWorld } from '../base';
 import { GgConsoleUI } from './gg-console.ui';
 import { GgDebuggerUI } from './gg-debugger.ui';
+import { BehaviorSubject, combineLatest, NEVER, switchMap, take, takeWhile } from 'rxjs';
 
 export class GgStatic {
   public static get instance(): GgStatic {
     if (!(window as any).ggstatic) {
-      (window as any).ggstatic = new GgStatic();
+      return new GgStatic();
     }
     return (window as any).ggstatic as GgStatic;
   }
@@ -19,7 +20,7 @@ export class GgStatic {
   }
 
   consoleKeyPressEventListener = (event: KeyboardEvent) => {
-    if (event.code === 'Backquote') {
+    if (['Backquote', 'IntlBackslash'].includes(event.code)) {
       event.preventDefault();
       if (this.consoleUI.isUIShown) {
         this.consoleUI.destroyUI();
@@ -44,25 +45,51 @@ export class GgStatic {
     }
   }
 
+  private showStats$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
+
   public get showStats(): boolean {
-    return this.debuggerUI.showStats;
+    return this.showStats$.getValue();
   }
 
   public set showStats(value: boolean) {
-    this.debuggerUI.setShowStats(this.selectedWorld!, value);
+    if (value === this.showStats) return;
+    this.showStats$.next(value);
   }
 
+  private showDebugControls$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
+
   public get showDebugControls(): boolean {
-    return this.debuggerUI.showDebugControls;
+    return this.showDebugControls$.getValue();
   }
 
   public set showDebugControls(value: boolean) {
-    this.debuggerUI.setShowDebugControls(this.selectedWorld!, value);
+    if (value === this.showDebugControls) return;
+    this.showDebugControls$.next(value);
   }
 
-  private _selectedWorld: GgWorld<any, any> | null = null;
+  private _selectedWorld$: BehaviorSubject<GgWorld<any, any> | null> = new BehaviorSubject<GgWorld<any, any> | null>(
+    null,
+  );
+
   public get selectedWorld(): GgWorld<any, any> | null {
-    return this._selectedWorld || GgWorld.documentWorlds[0] || null;
+    return this._selectedWorld$.getValue();
+  }
+
+  private set selectedWorld(w: GgWorld<any, any> | null) {
+    this._selectedWorld$.next(w);
+  }
+
+  private autoAssignSelectedWorld() {
+    if (GgWorld.documentWorlds.length > 0) {
+      this.selectedWorld = GgWorld.documentWorlds[0];
+    } else {
+      GgWorld.worldCreated$
+        .pipe(
+          takeWhile(() => !this.selectedWorld),
+          take(1),
+        )
+        .subscribe(w => (this.selectedWorld = w));
+    }
   }
 
   public get availableCommands(): [string, { handler: (...args: string[]) => Promise<string>; doc?: string }][] {
@@ -106,7 +133,7 @@ export class GgStatic {
       async (...args: string[]) => {
         for (const w of GgWorld.documentWorlds) {
           if (w.name === args[0]) {
-            this._selectedWorld = w;
+            this.selectedWorld = w;
             break;
           }
         }
@@ -132,6 +159,20 @@ export class GgStatic {
       },
       'args: [0 or 1]; turn on/off stats. Default value is 0',
     );
+    (window as any).ggstatic = this;
+    this.autoAssignSelectedWorld();
+    this._selectedWorld$.pipe(switchMap(w => (w ? w.disposed$ : NEVER))).subscribe(() => {
+      this.selectedWorld = null;
+      this.autoAssignSelectedWorld();
+    });
+    window.dispatchEvent(new Event('ggstatic_added'));
+
+    combineLatest([this._selectedWorld$, this.showDebugControls$]).subscribe(([world, showControls]) => {
+      this.debuggerUI.setShowDebugControls(world, !!world && showControls);
+    });
+    combineLatest([this._selectedWorld$, this.showStats$]).subscribe(([world, showStats]) => {
+      this.debuggerUI.setShowStats(world, !!world && showStats);
+    });
   }
 
   protected consoleCommands: Map<

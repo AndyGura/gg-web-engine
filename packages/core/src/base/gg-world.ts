@@ -40,6 +40,8 @@ export abstract class GgWorld<
 > {
   private static default_name_counter = 0;
   private static _documentWorlds: GgWorld<any, any>[] = [];
+  static readonly worldCreated$: Subject<GgWorld<any, any>> = new Subject();
+
   static get documentWorlds(): GgWorld<any, any>[] {
     return [...GgWorld._documentWorlds];
   }
@@ -58,101 +60,22 @@ export abstract class GgWorld<
   public readonly tickForwardTo$: Subject<IEntity | 'PHYSICS_WORLD'> = new Subject<IEntity | 'PHYSICS_WORLD'>();
   public readonly tickForwardedTo$: Subject<IEntity | 'PHYSICS_WORLD'> = new Subject<IEntity | 'PHYSICS_WORLD'>();
   public readonly paused$: Subject<boolean> = new Subject<boolean>();
+  public readonly disposed$: Subject<void> = new Subject<void>();
 
   protected constructor(
     public readonly visualScene: VS,
     public readonly physicsWorld: PW,
   ) {
-    GgWorld._documentWorlds.push(this);
     this.keyboardInput.start();
     if ((window as any).ggstatic) {
-      (window as any).ggstatic.registerConsoleCommand(
-        this,
-        'ph_timescale',
-        async (...args: string[]) => {
-          this.worldClock.timeScale = +args[0];
-          return JSON.stringify(this.worldClock.timeScale);
-        },
-        'args: [float]; change time scale of physics engine. Default value is 1.0',
-      );
-      (window as any).ggstatic.registerConsoleCommand(
-        this,
-        'ls_renderers',
-        async () => {
-          return this.children
-            .filter(e => e instanceof IRendererEntity)
-            .map(r => r.name)
-            .join('\n');
-        },
-        'no args; print all renderers in selected world',
-      );
-      (window as any).ggstatic.registerConsoleCommand(
-        this,
-        'dr_drawphysics',
-        async (...args: string[]) => {
-          const value = ['1', 'true', '+'].includes(args[0]);
-          const rendererName = args[1];
-          let renderer: IEntity;
-          if (rendererName) {
-            renderer = this.children.find(x => x instanceof IRendererEntity && x.name === rendererName)!;
-          } else {
-            renderer = this.children.find(x => x instanceof IRendererEntity)!;
-          }
-          if (renderer) {
-            (renderer as IRendererEntity<unknown, unknown>).physicsDebugViewActive = value;
-            return '' + value;
-          }
-          return 'false';
-        },
-        'args: [0 or 1] or [0 or 1, string]; turn on/off physics debug view. Second argument expects renderer ' +
-          'name, if not provided first renderer will be picked. Look up for renderer names using command "ls_renderers"',
-      );
-      (window as any).ggstatic.registerConsoleCommand(
-        this,
-        'performance_report',
-        async (...args: string[]) => {
-          let mode: 'avg' | 'peak' = 'avg';
-          let samples = 20;
-          for (let i = 0; i < 2; i++) {
-            if (['avg', 'peak'].includes(args[i])) {
-              mode = args[i] as any;
-            } else if (!isNaN(+args[i])) {
-              samples = +args[i];
-            }
-          }
-          const meter = new PerformanceMeterEntity(samples, 250);
-          this.addEntity(meter);
-          await lastValueFrom(this.worldClock.tick$.pipe(take(samples)));
-          const report = mode === 'avg' ? meter.avgReport : meter.peakReport;
-          this.removeEntity(meter);
-
-          const renderItems: string[] = report.entries.map(
-            ([name, value]) =>
-              `<span style='color:lightgray;'>${name}:</span>` +
-              new Array(Math.max(0, 26 - name.length)).join('&nbsp;') +
-              `${value.toFixed(2)} ms` +
-              (mode === 'avg' ? ` (${((value * 100) / report.totalTime).toFixed(2)}%)` : ''),
-          );
-          let totalColor = 'lightgreen';
-          if (report.totalTime > 12) {
-            totalColor = report.totalTime < 16 ? 'yellow' : 'red';
-          }
-          const title = `${mode === 'avg' ? 'Average' : 'Peak'} Frame time`;
-          renderItems.unshift(
-            title +
-              ':' +
-              new Array(Math.max(0, 26 - title.length)).join('&nbsp;') +
-              `<span style='color:${totalColor};'>${report.totalTime.toFixed(2)} ms</span>`,
-          );
-          renderItems.unshift(`Performance report (${samples} samples)`);
-          return renderItems.join('\n');
-        },
-        'args: [int, avg|peak]; [avg|peak, int]; [avg|peak]; [int] or []; measure how much time was spent per ' +
-          'entity in world. Arguments are samples amount (20 by default) and "peak" or "avg" choice, both arguments are ' +
-          'optional. "avg" report sorts entities by average time consumed, "peak" records highest value for each entity',
-      );
+      this.registerConsoleCommands((window as any).ggstatic);
+    } else {
+      this.onGgStaticInitialized = this.onGgStaticInitialized.bind(this);
+      window.addEventListener('ggstatic_added', this.onGgStaticInitialized);
     }
     this.worldClock.paused$.subscribe(this.paused$);
+    GgWorld._documentWorlds.push(this);
+    GgWorld.worldCreated$.next(this);
   }
 
   public async init() {
@@ -216,6 +139,8 @@ export abstract class GgWorld<
   public dispose(): void {
     if ((window as any).ggstatic) {
       (window as any).ggstatic.deregisterWorldCommands(this);
+    } else {
+      window.removeEventListener('ggstatic_added', this.onGgStaticInitialized);
     }
     this.worldClock.stop();
     this.keyboardInput.stop();
@@ -230,6 +155,9 @@ export abstract class GgWorld<
     this.tickListeners.splice(0, this.tickListeners.length);
     this.physicsWorld.dispose();
     this.visualScene.dispose();
+    GgWorld._documentWorlds.splice(GgWorld._documentWorlds.indexOf(this), 1);
+    this.disposed$.next();
+    this.disposed$.complete();
   }
 
   abstract addPrimitiveRigidBody(
@@ -268,5 +196,105 @@ export abstract class GgWorld<
     if (dispose) {
       entity.dispose();
     }
+  }
+
+  private onGgStaticInitialized() {
+    window.removeEventListener('ggstatic_added', this.onGgStaticInitialized);
+    this.registerConsoleCommands((window as any).ggstatic);
+  }
+
+  protected registerConsoleCommands(ggstatic: {
+    registerConsoleCommand: (
+      world: GgWorld<any, any> | null,
+      command: string,
+      handler: (...args: string[]) => Promise<string>,
+      doc?: string,
+    ) => void;
+  }) {
+    ggstatic.registerConsoleCommand(
+      this,
+      'ph_timescale',
+      async (...args: string[]) => {
+        this.worldClock.timeScale = +args[0];
+        return JSON.stringify(this.worldClock.timeScale);
+      },
+      'args: [float]; change time scale of physics engine. Default value is 1.0',
+    );
+    ggstatic.registerConsoleCommand(
+      this,
+      'ls_renderers',
+      async () => {
+        return this.children
+          .filter(e => e instanceof IRendererEntity)
+          .map(r => r.name)
+          .join('\n');
+      },
+      'no args; print all renderers in selected world',
+    );
+    ggstatic.registerConsoleCommand(
+      this,
+      'dr_drawphysics',
+      async (...args: string[]) => {
+        const value = ['1', 'true', '+'].includes(args[0]);
+        const rendererName = args[1];
+        let renderer: IEntity;
+        if (rendererName) {
+          renderer = this.children.find(x => x instanceof IRendererEntity && x.name === rendererName)!;
+        } else {
+          renderer = this.children.find(x => x instanceof IRendererEntity)!;
+        }
+        if (renderer) {
+          (renderer as IRendererEntity<unknown, unknown>).physicsDebugViewActive = value;
+          return '' + value;
+        }
+        return 'false';
+      },
+      'args: [0 or 1] or [0 or 1, string]; turn on/off physics debug view. Second argument expects renderer ' +
+        'name, if not provided first renderer will be picked. Look up for renderer names using command "ls_renderers"',
+    );
+    ggstatic.registerConsoleCommand(
+      this,
+      'performance_report',
+      async (...args: string[]) => {
+        let mode: 'avg' | 'peak' = 'avg';
+        let samples = 20;
+        for (let i = 0; i < 2; i++) {
+          if (['avg', 'peak'].includes(args[i])) {
+            mode = args[i] as any;
+          } else if (!isNaN(+args[i])) {
+            samples = +args[i];
+          }
+        }
+        const meter = new PerformanceMeterEntity(samples, 250);
+        this.addEntity(meter);
+        await lastValueFrom(this.worldClock.tick$.pipe(take(samples)));
+        const report = mode === 'avg' ? meter.avgReport : meter.peakReport;
+        this.removeEntity(meter);
+
+        const renderItems: string[] = report.entries.map(
+          ([name, value]) =>
+            `<span style='color:lightgray;'>${name}:</span>` +
+            new Array(Math.max(0, 26 - name.length)).join('&nbsp;') +
+            `${value.toFixed(2)} ms` +
+            (mode === 'avg' ? ` (${((value * 100) / report.totalTime).toFixed(2)}%)` : ''),
+        );
+        let totalColor = 'lightgreen';
+        if (report.totalTime > 12) {
+          totalColor = report.totalTime < 16 ? 'yellow' : 'red';
+        }
+        const title = `${mode === 'avg' ? 'Average' : 'Peak'} Frame time`;
+        renderItems.unshift(
+          title +
+            ':' +
+            new Array(Math.max(0, 26 - title.length)).join('&nbsp;') +
+            `<span style='color:${totalColor};'>${report.totalTime.toFixed(2)} ms</span>`,
+        );
+        renderItems.unshift(`Performance report (${samples} samples)`);
+        return renderItems.join('\n');
+      },
+      'args: [int, avg|peak]; [avg|peak, int]; [avg|peak]; [int] or []; measure how much time was spent per ' +
+        'entity in world. Arguments are samples amount (20 by default) and "peak" or "avg" choice, both arguments are ' +
+        'optional. "avg" report sorts entities by average time consumed, "peak" records highest value for each entity',
+    );
   }
 }

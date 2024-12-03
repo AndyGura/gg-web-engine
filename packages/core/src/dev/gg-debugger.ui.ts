@@ -58,9 +58,9 @@ export class GgDebuggerUI {
     return !!this.ui.stats;
   }
 
-  private currentWorld: GgWorld<any, any> = null!;
+  private currentWorld: GgWorld<any, any> | null = null;
 
-  public setShowStats(selectedWorld: GgWorld<any, any>, value: boolean) {
+  public setShowStats(selectedWorld: GgWorld<any, any> | null, value: boolean) {
     if (value === this.showStats) {
       if (value && this.currentWorld !== selectedWorld) {
         this.setShowStats(this.currentWorld, false);
@@ -69,7 +69,7 @@ export class GgDebuggerUI {
       }
     }
     this.currentWorld = selectedWorld;
-    if (value) {
+    if (selectedWorld && value) {
       const stats = new Stats();
       this.ui.stats = stats;
       stats.dom.style.left = 'unset';
@@ -101,7 +101,7 @@ export class GgDebuggerUI {
     return !!this.ui.debugControlsContainer;
   }
 
-  public setShowDebugControls(selectedWorld: GgWorld<any, any>, value: boolean) {
+  public setShowDebugControls(selectedWorld: GgWorld<any, any> | null, value: boolean) {
     if (value === this.showDebugControls) {
       if (value && this.currentWorld !== selectedWorld) {
         this.setShowDebugControls(this.currentWorld, false);
@@ -153,7 +153,7 @@ export class GgDebuggerUI {
   private makeSnapshot(): RuntimeDataSnapshot {
     const renderers: IRendererEntity<unknown, unknown>[] = [];
     let performanceMeter: PerformanceMeterEntity | null = null;
-    for (const e of this.currentWorld.children) {
+    for (const e of this.currentWorld?.children || []) {
       if (e instanceof IRendererEntity) {
         renderers.push(e);
       } else if (e instanceof PerformanceMeterEntity) {
@@ -161,7 +161,7 @@ export class GgDebuggerUI {
       }
     }
     return {
-      timeScale: this.currentWorld.worldClock.timeScale,
+      timeScale: this.currentWorld?.worldClock.timeScale || NaN,
       renderers: renderers.map(r => ({
         name: r.name,
         entity: r as IRendererEntity<unknown, unknown>,
@@ -173,7 +173,7 @@ export class GgDebuggerUI {
 
   private makePerformanceStatsSnapshot(): PerformanceStatsSnapshot {
     if (!this.snapshot.performanceStatsEnabled) return null;
-    let performanceMeter = this.currentWorld.children.find(e => e instanceof PerformanceMeterEntity);
+    let performanceMeter = (this.currentWorld?.children || []).find(e => e instanceof PerformanceMeterEntity);
     if (performanceMeter) {
       if (this.perfStatsMode === 'AVG') {
         return (performanceMeter as PerformanceMeterEntity).avgReport;
@@ -242,7 +242,7 @@ export class GgDebuggerUI {
       .pipe(takeUntil(this.debugControlsRemoved$), takeUntil(this.viewUpdated$))
       .subscribe(e => {
         try {
-          this.currentWorld.worldClock.timeScale = +(e.target as HTMLInputElement).value;
+          this.currentWorld!.worldClock.timeScale = +(e.target as HTMLInputElement).value;
         } catch (err) {
           console.error(err);
         }
@@ -250,11 +250,11 @@ export class GgDebuggerUI {
     fromEvent(document.getElementById('perf_stats_checkbox_id')! as HTMLInputElement, 'change')
       .pipe(takeUntil(this.debugControlsRemoved$), takeUntil(this.viewUpdated$))
       .subscribe(e => {
-        const entity = this.currentWorld.children.find(x => x instanceof PerformanceMeterEntity);
+        const entity = (this.currentWorld?.children || []).find(x => x instanceof PerformanceMeterEntity);
         if ((e.target as HTMLInputElement).checked == !entity) {
           if (entity) {
-            this.currentWorld.removeEntity(entity);
-          } else {
+            this.currentWorld!.removeEntity(entity);
+          } else if (this.currentWorld) {
             this.currentWorld.addEntity(new PerformanceMeterEntity());
           }
         }
@@ -281,7 +281,7 @@ export class GgDebuggerUI {
       html += `
           <div ${pCss}>
             <label for='stat_progress' ${labelCss}>${total.toFixed(2)}ms</label>
-            <progress id="stat_progress" ${progressCss} max="16" value="${total}"></progress>
+            <progress id='stat_progress' ${progressCss} max='16' value='${total}'></progress>
             <span ${spanCss}>Total frame time</span>
           </div>`;
       for (const [i, [name, value]] of this.performanceStatsSnapshot.entries.entries()) {
