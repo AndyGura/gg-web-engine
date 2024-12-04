@@ -1,3 +1,5 @@
+import { VERSION } from '../version';
+
 export class GgConsoleUI {
   private output: string =
     `
@@ -11,6 +13,7 @@ export class GgConsoleUI {
                 ░ ░   ░ ░ ░   ░      ░   ░     ░    ░    ░ 
                       ░       ░        ░       ░  ░ ░      
                                                          ░ 
+                             Version: ${VERSION}
              >>> https://github.com/AndyGura/gg-web-engine <<<
 Welcome to GG web engine UI console. 
 Enter command in input below.

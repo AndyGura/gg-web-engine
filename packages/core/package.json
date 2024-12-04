@@ -7,8 +7,9 @@
   "scripts": {
     "test": "jest",
     "prettier-format": "prettier --config .prettierrc 'src/**/*.ts' --write",
-    "prepublish": "rm -rf ./dist/ && tsc",
-    "build": "tsc"
+    "prepublish": "rm -rf ./dist/ && npm run build",
+    "update-version": "VERSION=$(grep '\"version\":' package.json | sed -E 's/.*\"version\": *\"([^\"]+)\".*/\\1/') && echo \"export const VERSION = '$VERSION';\" > src/version.ts",
+    "build": "npm run update-version && tsc"
   },
   "repository": {
     "type": "git",
