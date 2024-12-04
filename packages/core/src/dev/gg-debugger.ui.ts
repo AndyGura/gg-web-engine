@@ -191,7 +191,7 @@ export class GgDebuggerUI {
     for (const { entity, physicsDebugViewActive } of this.snapshot.renderers) {
       html += `
       <div ${this.css}>
-        <input type='checkbox' name='checkbox' id='physics_debugger_checkbox_id_${entity.name}' value='1'${
+        <input type='checkbox' name='checkbox' id='physics_debugger_checkbox_id_${entity.name}' onkeydown='event.preventDefault()' value='1'${
           physicsDebugViewActive ? ' checked' : ''
         }>
         <label for='physics_debugger_checkbox_id_${entity.name}' style='user-select: none;'>Physics debugger${
@@ -201,13 +201,13 @@ export class GgDebuggerUI {
     }
     html += `
       <div ${this.css}>
-        <input id='time_scale_slider' type='range' min='0' max='5' step='0.01' style='flex-grow:1' value='${this.snapshot.timeScale}'/>
+        <input id='time_scale_slider' type='range' min='0' max='5' step='0.01' onkeydown='event.preventDefault()' style='flex-grow:1' value='${this.snapshot.timeScale}'/>
         <label for='time_scale_slider' style='user-select: none;'>Time scale</label>
       </div>`;
     html +=
       `
       <div ${this.css}>
-        <input type='checkbox' name='checkbox' id='perf_stats_checkbox_id' value='1'${
+        <input type='checkbox' name='checkbox' id='perf_stats_checkbox_id' onkeydown='event.preventDefault()' value='1'${
           this.snapshot.performanceStatsEnabled ? ' checked' : ''
         }>
         <label for='perf_stats_checkbox_id' style='user-select: none;'>Entities performance distribution</label>

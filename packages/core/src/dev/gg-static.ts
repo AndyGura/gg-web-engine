@@ -45,6 +45,15 @@ export class GgStatic {
     }
   }
 
+  public toggleDevConsole(value: boolean) {
+    if (value === this.consoleUI.isUIShown) return;
+    if (this.consoleUI.isUIShown) {
+      this.consoleUI.destroyUI();
+    } else {
+      this.consoleUI.createUI();
+    }
+  }
+
   private showStats$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
 
   public get showStats(): boolean {
