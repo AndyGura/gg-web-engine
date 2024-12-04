@@ -72,6 +72,7 @@ do
   build_example ${examples[$ix]} $1 &
 done
 wait
+sed -i "s/\(const sbBranchSuffix = '\)[^']*\(';\)/\1$1\2/" ./examples/index.html
 
 echo "Reminder: "
 echo "1) double-check readme code example"
