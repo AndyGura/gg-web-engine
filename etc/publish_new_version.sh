@@ -53,21 +53,10 @@ echo Waiting 30s before continuation
 sleep 30s
 
 echo NPM packages published, re-linking examples...
-examples=(
-  "primitives-three-ammo"
-  "primitives-three-rapier3d"
-  "primitives-pixi-matter"
-  "primitives-pixi-rapier2d"
-  "glb-loader-three-ammo"
-  "glb-loader-three-rapier3d"
-  "fly-city-three-ammo"
-  "ammo-car-three-ammo"
-  "collision-groups-three-ammo"
-  "collision-groups-three-rapier3d"
-  "collision-groups-pool-three-ammo"
-  "collision-groups-pool-three-rapier3d"
-  "shooter-three-ammo"
-)
+examples=()
+while read line; do
+  examples+=("$line")
+done < ../examples/examples-list.txt
 build_example() {
     pushd ./examples/$1
     sed -i 's/"@gg-web-engine\/core": "[0-9.]*",/"@gg-web-engine\/core": "'$2'",/' package.json
