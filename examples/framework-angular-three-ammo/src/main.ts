@@ -1,4 +1,3 @@
-import 'zone.js/dist/zone';
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { bootstrapApplication } from '@angular/platform-browser';
 import { Entity3d, Gg3dWorld, GgStatic, OrbitCameraController, Trigger3dEntity } from '@gg-web-engine/core';
@@ -49,7 +48,7 @@ export class App implements OnInit, OnDestroy {
       }),
     );
     destroyTrigger.position = { x: 0, y: 0, z: -15 };
-    destroyTrigger.onEntityEntered.subscribe((entity: Entity3d) => {
+    destroyTrigger.onEntityEntered.subscribe(entity => {
       this.world.removeEntity(entity, true);
     });
     this.world.addEntity(destroyTrigger);
