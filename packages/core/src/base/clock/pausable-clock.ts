@@ -1,4 +1,4 @@
-import { filter, Observable, Subject, Subscription } from 'rxjs';
+import { filter, Subject, Subscription } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
 import { GgGlobalClock } from './global-clock';
 import { IClock } from './i-clock';
@@ -6,17 +6,9 @@ import { IClock } from './i-clock';
 /**
  * A class providing the ability to track time, fire ticks, provide time elapsed, and tick delta with the ability to suspend/resume it.
  */
-export class PausableClock implements IClock {
+export class PausableClock extends IClock {
   private tickSub: Subscription | null = null;
   private readonly _internalTick$: Subject<[number, number]> = new Subject<[number, number]>();
-  private readonly _tick$: Subject<[number, number]> = new Subject<[number, number]>();
-
-  /**
-   * Observable stream of ticks, emitting an array containing the current time and the tick delta.
-   */
-  public get tick$(): Observable<[number, number]> {
-    return this._tick$.asObservable();
-  }
 
   /**
    * Checks if the clock is currently running.
@@ -108,6 +100,7 @@ export class PausableClock implements IClock {
     autoStart: boolean = false,
     protected readonly parentClock: IClock = GgGlobalClock.instance,
   ) {
+    super(parentClock);
     if (autoStart) {
       this.start();
     }
@@ -123,15 +116,6 @@ export class PausableClock implements IClock {
         tap(([elapsed]) => (this.lastFiredTickElapsed = elapsed)),
       )
       .subscribe(this._tick$);
-  }
-
-  /**
-   * Creates a child clock.
-   * @param autoStart Indicates whether the child clock should start automatically.
-   * @returns A new instance of PausableClock.
-   */
-  createChildClock(autoStart: boolean): PausableClock {
-    return new PausableClock(autoStart, this);
   }
 
   /**
