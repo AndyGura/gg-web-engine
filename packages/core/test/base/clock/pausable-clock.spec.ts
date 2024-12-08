@@ -334,6 +334,13 @@ describe('PausableClock', () => {
   });
 
   describe('clocks hierarchy', () => {
+    it('should list children', () => {
+      const parent = new PausableClock(true, gClockMock);
+      const child = new PausableClock(true, parent);
+      expect(parent.children).toHaveLength(1);
+      expect(parent.children[0]).toBe(child);
+    });
+
     it('should propagate ticks from parent clock', () => {
       const parent = new PausableClock(true, gClockMock);
       const child = new PausableClock(true, parent);
