@@ -32,6 +32,8 @@ export abstract class IClock {
     if (clock.parent !== this) {
       throw new Error('Incorrect child clock');
     }
-    this._children.push(clock);
+    if (!this._children.includes(clock)) {
+      this._children.push(clock);
+    }
   }
 }
