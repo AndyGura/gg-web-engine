@@ -20,7 +20,7 @@ export class GgStatic {
   }
 
   consoleKeyPressEventListener = (event: KeyboardEvent) => {
-    if (['Backquote', 'IntlBackslash'].includes(event.code)) {
+    if (event.code === 'Backquote') {
       event.preventDefault();
       if (this.consoleUI.isUIShown) {
         this.consoleUI.destroyUI();
