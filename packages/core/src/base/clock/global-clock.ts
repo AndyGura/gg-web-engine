@@ -31,4 +31,8 @@ export class GgGlobalClock extends IClock {
     };
     requestAnimationFrame(tick);
   }
+
+  dispose() {
+    throw new Error('Cannot dispose global clock');
+  }
 }

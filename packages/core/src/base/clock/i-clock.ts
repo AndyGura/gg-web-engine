@@ -12,19 +12,15 @@ export abstract class IClock {
 
   abstract get elapsedTime(): number;
 
-  public get parent(): IClock | null {
-    return this.parentClock;
-  }
-
   protected _children: IClock[] = [];
 
   public get children(): IClock[] {
     return [...this._children];
   }
 
-  protected constructor(protected readonly parentClock: IClock | null) {
-    if (parentClock) {
-      parentClock.addChild(this);
+  protected constructor(public readonly parent: IClock | null) {
+    if (parent) {
+      parent.addChild(this);
     }
   }
 
@@ -35,5 +31,22 @@ export abstract class IClock {
     if (!this._children.includes(clock)) {
       this._children.push(clock);
     }
+  }
+
+  public removeChild(clock: IClock) {
+    if (clock.parent !== this) {
+      throw new Error('Incorrect child clock');
+    }
+    this._children = this._children.filter(c => c !== clock);
+  }
+
+  public dispose() {
+    if (this.parent) {
+      this.parent.removeChild(this);
+    }
+    for (const c of this._children) {
+      c.dispose();
+    }
+    this._tick$.complete();
   }
 }

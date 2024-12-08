@@ -184,4 +184,10 @@ export class PausableClock extends IClock {
     this.tickSub?.unsubscribe();
     this.tickSub = null;
   }
+
+  dispose() {
+    this.stopListeningTicks();
+    this._internalTick$.complete();
+    super.dispose();
+  }
 }
