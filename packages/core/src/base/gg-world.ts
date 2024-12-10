@@ -1,5 +1,4 @@
 import {
-  GgGlobalClock,
   IDisplayObjectComponent,
   IEntity,
   IPhysicsWorldComponent,
@@ -46,7 +45,7 @@ export abstract class GgWorld<
     return [...GgWorld._documentWorlds];
   }
 
-  public readonly worldClock: PausableClock = GgGlobalClock.instance.createChildClock(false);
+  public readonly worldClock: PausableClock = new PausableClock(false);
   public readonly keyboardInput: KeyboardInput = new KeyboardInput();
 
   public name: string = 'w0x' + (GgWorld.default_name_counter++).toString(16);
@@ -133,7 +132,7 @@ export abstract class GgWorld<
   }
 
   public createClock(autoStart: boolean): PausableClock {
-    return this.worldClock.createChildClock(autoStart);
+    return new PausableClock(autoStart, this.worldClock);
   }
 
   public dispose(): void {

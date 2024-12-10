@@ -4,7 +4,7 @@ import { map } from 'rxjs/operators';
 
 describe('PausableClock', () => {
 
-  class GlobalClockMock implements IClock {
+  class GlobalClockMock extends IClock {
     public readonly _tick$: Subject<[number, number]> = new Subject<[number, number]>();
 
     public get tick$(): Observable<[number, number]> {
@@ -15,8 +15,8 @@ describe('PausableClock', () => {
       return (typeof performance === 'undefined' ? Date : performance).now();
     }
 
-    createChildClock(autoStart: boolean): PausableClock {
-      return new PausableClock(autoStart, this);
+    constructor() {
+      super(null);
     }
   }
 
@@ -334,6 +334,13 @@ describe('PausableClock', () => {
   });
 
   describe('clocks hierarchy', () => {
+    it('should list children', () => {
+      const parent = new PausableClock(true, gClockMock);
+      const child = new PausableClock(true, parent);
+      expect(parent.children).toHaveLength(1);
+      expect(parent.children[0]).toBe(child);
+    });
+
     it('should propagate ticks from parent clock', () => {
       const parent = new PausableClock(true, gClockMock);
       const child = new PausableClock(true, parent);
