@@ -19,14 +19,14 @@ import { CAR_SPECS, LAMBO_SPECS, TRUCK_SPECS } from './car-specs';
 import { FlyCityPTypeDoc, FlyCityVTypeDoc, FlyCityWorld } from './app.component';
 import { takeUntil } from 'rxjs/operators';
 
+GgStatic.instance.showStats = true;
+GgStatic.instance.devConsoleEnabled = true;
 
 export class GameFactory {
   constructor(public readonly world: FlyCityWorld) {
   }
 
   public async initGame(canvas: HTMLCanvasElement): Promise<[Renderer3dEntity<FlyCityVTypeDoc>, MapGraph3dEntity<FlyCityVTypeDoc, FlyCityPTypeDoc>, Trigger3dEntity<FlyCityPTypeDoc>]> {
-    GgStatic.instance.showStats = true;
-    // GgStatic.instance.devConsoleEnabled = true;
     await this.world.init();
     const renderer = await this.initRenderer(canvas);
     this.addLights();

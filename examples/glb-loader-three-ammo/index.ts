@@ -3,6 +3,9 @@ import { ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/thre
 import { AmbientLight, DirectionalLight } from 'three';
 import { AmmoPhysicsTypeDocRepo, AmmoWorldComponent } from '@gg-web-engine/ammo';
 
+GgStatic.instance.showStats = true;
+GgStatic.instance.devConsoleEnabled = true;
+
 const world = new Gg3dWorld<
   ThreeVisualTypeDocRepo,
   AmmoPhysicsTypeDocRepo,
@@ -13,8 +16,6 @@ const world = new Gg3dWorld<
   new AmmoWorldComponent(),
 );
 world.init().then(async () => {
-  GgStatic.instance.showStats = true;
-  // GgStatic.instance.devConsoleEnabled = true;
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
   const renderer = world.addRenderer(world.visualScene.factory.createPerspectiveCamera(), canvas);
   renderer.position = { x: 9, y: 12, z: 9 };

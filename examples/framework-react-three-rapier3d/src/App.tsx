@@ -1,13 +1,10 @@
-import { useRef, useEffect } from 'react';
-import {
-  Trigger3dEntity,
-  OrbitCameraController,
-  Gg3dWorld,
-  Entity3d,
-  GgStatic,
-} from '@gg-web-engine/core';
+import { useEffect, useRef } from 'react';
+import { Entity3d, Gg3dWorld, GgStatic, OrbitCameraController, Trigger3dEntity } from '@gg-web-engine/core';
 import { ThreeSceneComponent } from '@gg-web-engine/three';
 import { Rapier3dWorldComponent } from '@gg-web-engine/rapier3d';
+
+GgStatic.instance.showStats = true;
+GgStatic.instance.devConsoleEnabled = true;
 
 const isNewWorld = !GgStatic.instance.selectedWorld;
 const world =
@@ -16,22 +13,19 @@ const world =
 if (isNewWorld) {
   world.init().then(() => {
     world.start();
-    GgStatic.instance.showStats = true;
-    GgStatic.instance.devConsoleEnabled = true;
   });
 }
 
 function App() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const spawnTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     const initializeWorld = async () => {
       while (!world.isRunning) {
         await new Promise((r) => setTimeout(r, 50));
       }
-      if (spawnTimerRef.current) {
-        clearInterval(spawnTimerRef.current);
+      for (const c of world.worldClock.children) {
+        c.dispose();
       }
       for (const e of world.children) {
         if (!e.name.startsWith('fps_meter')) {
@@ -40,7 +34,7 @@ function App() {
       }
       const renderer = world.addRenderer(
         world.visualScene.factory.createPerspectiveCamera({}),
-        canvasRef.current!
+        canvasRef.current!,
       );
       renderer.position = { x: 9, y: 12, z: 9 };
 
@@ -58,7 +52,7 @@ function App() {
         world.physicsWorld.factory.createTrigger({
           shape: 'BOX',
           dimensions: { x: 1000, y: 1000, z: 1 },
-        })
+        }),
       );
       destroyTrigger.position = { x: 0, y: 0, z: -5 };
       destroyTrigger.onEntityEntered.subscribe((entity) => {
@@ -70,7 +64,9 @@ function App() {
       });
       world.addEntity(destroyTrigger);
 
-      spawnTimerRef.current = window.setInterval(() => {
+      const spawnTimer = world.createClock(true);
+      spawnTimer.tickRateLimit = 2;
+      spawnTimer.tick$.subscribe(() => {
         let item: Entity3d;
         const random = Math.random();
         if (random < 0.2) {
@@ -104,22 +100,14 @@ function App() {
           y: Math.random() * 5 - 2.5,
           z: 10,
         };
-      }, 500);
+      });
     };
-
-    initializeWorld();
-
-    // Cleanup on unmount or dependency change
-    return () => {
-      if (spawnTimerRef.current) {
-        clearInterval(spawnTimerRef.current);
-      }
-    };
+    initializeWorld().then();
   }, []);
 
   return (
     <>
-      <canvas ref={canvasRef} id="gg"></canvas>
+      <canvas ref={canvasRef} id='gg'></canvas>
     </>
   );
 }

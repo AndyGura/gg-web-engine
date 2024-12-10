@@ -2,13 +2,14 @@ import { Entity2d, Gg2dWorld, GgStatic } from '@gg-web-engine/core';
 import { PixiSceneComponent } from '@gg-web-engine/pixi';
 import { MatterWorldComponent } from '@gg-web-engine/matter';
 
+GgStatic.instance.showStats = true;
+GgStatic.instance.devConsoleEnabled = true;
+
 const world = new Gg2dWorld(
   new PixiSceneComponent(),
   new MatterWorldComponent(),
 );
 world.init().then(async () => {
-  GgStatic.instance.showStats = true;
-  // GgStatic.instance.devConsoleEnabled = true;
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
   const renderer = world.addRenderer(canvas);
 
