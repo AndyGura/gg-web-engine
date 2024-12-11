@@ -5,6 +5,9 @@ import { ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/thre
 import { AmmoPhysicsTypeDocRepo, AmmoWorldComponent } from '@gg-web-engine/ammo';
 import { Subject } from 'rxjs';
 
+GgStatic.instance.showStats = true;
+GgStatic.instance.devConsoleEnabled = true;
+
 @Component({
   selector: 'my-app',
   standalone: true,
@@ -21,8 +24,6 @@ export class App implements OnInit, OnDestroy {
       new AmmoWorldComponent(),
     );
     await this.world.init();
-    GgStatic.instance.showStats = true;
-    // GgStatic.instance.devConsoleEnabled = true;
 
     const canvas = document.getElementById('gg')! as HTMLCanvasElement;
     const renderer = this.world.addRenderer(

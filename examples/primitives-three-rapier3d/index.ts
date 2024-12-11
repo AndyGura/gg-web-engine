@@ -2,13 +2,14 @@ import { Entity3d, Gg3dWorld, GgStatic, OrbitCameraController, Trigger3dEntity }
 import { ThreeSceneComponent } from '@gg-web-engine/three';
 import { Rapier3dWorldComponent } from '@gg-web-engine/rapier3d';
 
+GgStatic.instance.showStats = true;
+GgStatic.instance.devConsoleEnabled = true;
+
 const world = new Gg3dWorld(
   new ThreeSceneComponent(),
   new Rapier3dWorldComponent(),
 );
 world.init().then(async () => {
-  GgStatic.instance.showStats = true;
-  // GgStatic.instance.devConsoleEnabled = true;
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
   const renderer = world.addRenderer(world.visualScene.factory.createPerspectiveCamera(), canvas);
   renderer.position = { x: 9, y: 12, z: 9 };

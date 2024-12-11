@@ -13,6 +13,9 @@ import { ThreeDisplayObject3dOpts, ThreeSceneComponent, ThreeVisualTypeDocRepo }
 import { AmbientLight, DirectionalLight } from 'three';
 import { AmmoPhysicsTypeDocRepo, AmmoWorldComponent } from '@gg-web-engine/ammo';
 
+GgStatic.instance.showStats = true;
+GgStatic.instance.devConsoleEnabled = true;
+
 const world = new Gg3dWorld<
   ThreeVisualTypeDocRepo,
   AmmoPhysicsTypeDocRepo,
@@ -22,8 +25,6 @@ const world = new Gg3dWorld<
   new ThreeSceneComponent(),
   new AmmoWorldComponent(),
 );
-GgStatic.instance.showStats = true;
-// GgStatic.instance.devConsoleEnabled = true;
 world.init().then(async () => {
   // init graphics
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;

@@ -3,6 +3,9 @@ import { ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/thre
 import { AmbientLight, DirectionalLight, Mesh, MeshPhongMaterial, RepeatWrapping, TextureLoader } from 'three';
 import { AmmoPhysicsTypeDocRepo, AmmoWorldComponent } from '@gg-web-engine/ammo';
 
+GgStatic.instance.showStats = true;
+GgStatic.instance.devConsoleEnabled = true;
+
 const world = new Gg3dWorld<
   ThreeVisualTypeDocRepo,
   AmmoPhysicsTypeDocRepo,
@@ -14,9 +17,6 @@ const world = new Gg3dWorld<
 );
 world.physicsWorld.maxSubSteps = 10;
 world.physicsWorld.fixedTimeStep = null;
-
-GgStatic.instance.showStats = true;
-// GgStatic.instance.devConsoleEnabled = true;
 
 world.init().then(async () => {
   // init graphics

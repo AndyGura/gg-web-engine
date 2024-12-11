@@ -1,7 +1,18 @@
-import { GgWorld } from '../base';
+import { GgWorld, KeyboardInput } from '../base';
 import { GgConsoleUI } from './gg-console.ui';
 import { GgDebuggerUI } from './gg-debugger.ui';
-import { BehaviorSubject, combineLatest, NEVER, switchMap, take, takeWhile } from 'rxjs';
+import {
+  BehaviorSubject,
+  combineLatest,
+  filter,
+  fromEvent,
+  NEVER,
+  Subject,
+  switchMap,
+  take,
+  takeUntil,
+  takeWhile,
+} from 'rxjs';
 
 export class GgStatic {
   public static get instance(): GgStatic {
@@ -104,7 +115,7 @@ export class GgStatic {
   public get availableCommands(): [string, { handler: (...args: string[]) => Promise<string>; doc?: string }][] {
     let commands = this.consoleCommands.get(null) || {};
     if (this.selectedWorld) {
-      commands = { ...(this.consoleCommands.get(this.selectedWorld) || {}), ...commands };
+      commands = { ...commands, ...(this.consoleCommands.get(this.selectedWorld) || {}) };
     }
     return Object.entries(commands);
   }
@@ -112,7 +123,7 @@ export class GgStatic {
   private constructor() {
     this.registerConsoleCommand(
       null,
-      'ls_commands',
+      'commands',
       async () => {
         return this.availableCommands
           .map(
@@ -121,24 +132,37 @@ export class GgStatic {
                 value.doc ? '\t<span style="color:#aaa">// ' + value.doc + '</span>' : ''
               }`,
           )
-          .sort()
           .join('\n\n');
       },
-      'no args; print all available commands',
+      'no args; Print all available commands. List includes global commands and commands, ' +
+        'specific to currently selected world. Run "world" to check which world is currently ' +
+        'selected and "world {world_name}" to select desired world',
     );
     this.registerConsoleCommand(
       null,
-      'ls_worlds',
+      'help',
+      async (keyword: string) => {
+        const command: { doc?: string } | undefined = this.availableCommands.find(([key]) => key === keyword)?.[1];
+        if (!command) {
+          throw new Error(`Unrecognized command: ${keyword}`);
+        }
+        return `<span style='color:#aaa'>${command.doc || 'No doc string given'}</span>`;
+      },
+      'args: [ string ]; Print doc string of provided command',
+    );
+    this.registerConsoleCommand(
+      null,
+      'worlds',
       async () => {
         return GgWorld.documentWorlds
           .map(w => (w === this.selectedWorld ? `<span style='color:lightgreen;'>* ${w.name}</span>` : `  ${w.name}`))
           .join('\n');
       },
-      'no args; print all available worlds',
+      'no args; Print all currently available worlds',
     );
     this.registerConsoleCommand(
       null,
-      'select_world',
+      'world',
       async (...args: string[]) => {
         for (const w of GgWorld.documentWorlds) {
           if (w.name === args[0]) {
@@ -148,25 +172,65 @@ export class GgStatic {
         }
         return this.selectedWorld?.name || 'null';
       },
-      'args: [string]; select world by name',
+      'args: [ string? ]; Get name of selected world or select world by name. Use ' +
+        '"worlds" to get list of currently available worlds',
     );
     this.registerConsoleCommand(
       null,
-      'show_debugger',
+      'stats_panel',
       async (...args: string[]) => {
-        this.showDebugControls = ['1', 'true', '+'].includes(args[0]);
-        return '' + this.showDebugControls;
+        this.showStats = args[0] === undefined ? !this.showStats : args[0] === '1';
+        return this.showStats ? '1' : '0';
       },
-      'args: [0 or 1]; turn on/off debug panel. Default value is 0',
+      'args: [ 0|1? ]; Turn on/off stats panel, skip argument to toggle value',
     );
     this.registerConsoleCommand(
       null,
-      'show_stats',
+      'debug_panel',
       async (...args: string[]) => {
-        this.showStats = ['1', 'true', '+'].includes(args[0]);
-        return '' + this.showStats;
+        this.showDebugControls = args[0] === undefined ? !this.showDebugControls : args[0] === '1';
+        return this.showDebugControls ? '1' : '0';
       },
-      'args: [0 or 1]; turn on/off stats. Default value is 0',
+      'args: [ 0|1? ]; Turn on/off debug panel, skip argument to toggle value',
+    );
+    let unbindKey$: Subject<string> = new Subject<string>();
+    this.registerConsoleCommand(
+      null,
+      'bind_key',
+      async (keyCode: string, command: string, ...args: string[]) => {
+        fromEvent(window, 'keydown')
+          .pipe(
+            takeUntil(unbindKey$.pipe(filter(x => x === keyCode))),
+            filter(e => {
+              if ((e as KeyboardEvent).code !== keyCode) {
+                return false;
+              }
+              if (document.activeElement) {
+                for (const k of KeyboardInput.externalFocusBlacklist) {
+                  if (document.activeElement instanceof k) {
+                    return false;
+                  }
+                }
+              }
+              return true;
+            }),
+          )
+          .subscribe(() => {
+            this.runConsoleCommand(command, args);
+          });
+        return 'Ok';
+      },
+      'args: [ string, ...string ]; Bind a keyboard key by code to console command. Check key codes' +
+        ' <a target="_blank" rel="noopener noreferrer" href="https://www.toptal.com/developers/keycode">here</a>. Use "unbind_key" command to unbind it',
+    );
+    this.registerConsoleCommand(
+      null,
+      'unbind_key',
+      async (...args: string[]) => {
+        unbindKey$.next(args[0]);
+        return 'Ok';
+      },
+      'args: [ string ]; Unbind a keyboard key from console command',
     );
     (window as any).ggstatic = this;
     this.autoAssignSelectedWorld();

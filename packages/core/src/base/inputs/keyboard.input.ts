@@ -18,7 +18,7 @@ export class KeyboardInput extends IInput {
   /**
    * Which element types should filter key downs when focused
    */
-  public externalFocusBlacklist: { new (): HTMLElement }[] = [
+  public static externalFocusBlacklist: { new (): HTMLElement }[] = [
     HTMLInputElement,
     HTMLTextAreaElement,
     HTMLSelectElement,
@@ -146,7 +146,7 @@ export class KeyboardInput extends IInput {
     }
     const pressed = e.type == 'keydown';
     if (pressed && this.skipKeyDownsOnExternalFocus && document.activeElement) {
-      for (const k of this.externalFocusBlacklist) {
+      for (const k of KeyboardInput.externalFocusBlacklist) {
         if (document.activeElement instanceof k) {
           return;
         }

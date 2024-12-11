@@ -18,7 +18,7 @@ export class GgConsoleUI {
 Welcome to GG web engine UI console. 
 Enter command in input below.
 
-List of available commands: `.replace(/ /g, '&nbsp;') + `<span style="color:yellow">ls_commands</span>`;
+List of available commands: `.replace(/ /g, '&nbsp;') + `<span style='color:yellow'>commands</span>`;
 
   private commandHistory: string[] = [];
   private currentCommandIndex = 0; // for repeating command using up/down arrow keys
@@ -94,9 +94,14 @@ List of available commands: `.replace(/ /g, '&nbsp;') + `<span style="color:yell
       if (value.trim() === '') {
         return;
       }
-      let autocompletion = (window as any).ggstatic.availableCommands.find((c: any) => c[0].startsWith(value));
-      if (autocompletion && autocompletion[0].length > value.length) {
-        this.elements!.input.value = autocompletion[0];
+      let autocompletion: string | null = null;
+      for (let [command] of (window as any).ggstatic.availableCommands) {
+        if (command.startsWith(value) && (!autocompletion || autocompletion.length > command.length)) {
+          autocompletion = command;
+        }
+      }
+      if (autocompletion && autocompletion.length > value.length) {
+        this.elements!.input.value = autocompletion;
         this.elements!.input.setSelectionRange(value.length, this.elements!.input.value.length);
       }
     };
@@ -134,6 +139,9 @@ List of available commands: `.replace(/ /g, '&nbsp;') + `<span style="color:yell
 
   async onInput() {
     const command = this.elements!.input.value;
+    if (command.length === 0) {
+      return;
+    }
     this.elements!.input.value = '';
     this.stdout('\n> ' + command);
     this.stdout('\n' + (await (window as any).ggstatic.console(command)));

@@ -212,56 +212,78 @@ export abstract class GgWorld<
   }) {
     ggstatic.registerConsoleCommand(
       this,
-      'ph_timescale',
+      'timescale',
       async (...args: string[]) => {
-        this.worldClock.timeScale = +args[0];
-        return JSON.stringify(this.worldClock.timeScale);
+        if (!isNaN(+args[0])) {
+          this.worldClock.timeScale = +args[0];
+        }
+        return this.worldClock.timeScale.toString();
       },
-      'args: [float]; change time scale of physics engine. Default value is 1.0',
+      'args: [ float? ]; Get current time scale of selected world clock or set it.' +
+        ' Default value is 1.0 (no time scale applied)',
     );
     ggstatic.registerConsoleCommand(
       this,
-      'ls_renderers',
+      'fps_limit',
+      async (...args: string[]) => {
+        if (!isNaN(+args[0])) {
+          this.worldClock.tickRateLimit = +args[0];
+        }
+        return this.worldClock.tickRateLimit.toString();
+      },
+      'args: [ int? ]; Get current tick rate limit of selected world clock or set it. 0 means no limit applied',
+    );
+    ggstatic.registerConsoleCommand(
+      this,
+      'renderers',
       async () => {
         return this.children
           .filter(e => e instanceof IRendererEntity)
           .map(r => r.name)
           .join('\n');
       },
-      'no args; print all renderers in selected world',
+      'no args; Print all renderers in selected world',
     );
     ggstatic.registerConsoleCommand(
       this,
-      'dr_drawphysics',
+      'debug_view',
       async (...args: string[]) => {
-        const value = ['1', 'true', '+'].includes(args[0]);
-        const rendererName = args[1];
-        let renderer: IEntity;
-        if (rendererName) {
-          renderer = this.children.find(x => x instanceof IRendererEntity && x.name === rendererName)!;
-        } else {
-          renderer = this.children.find(x => x instanceof IRendererEntity)!;
+        let value: boolean | 'toggle' = 'toggle';
+        let rendererName: string | undefined = undefined;
+        for (let arg of args) {
+          if (['1', '0'].includes(arg)) {
+            value = arg === '1';
+          } else {
+            rendererName = arg;
+          }
         }
+        let renderer: IRendererEntity<unknown, unknown> | null = this.children.find(
+          x => x instanceof IRendererEntity && (!rendererName || x.name === rendererName),
+        ) as any;
         if (renderer) {
-          (renderer as IRendererEntity<unknown, unknown>).physicsDebugViewActive = value;
-          return '' + value;
+          renderer.physicsDebugViewActive = value === 'toggle' ? !renderer.physicsDebugViewActive : value;
+          return renderer.physicsDebugViewActive ? '1' : '0';
+        } else if (rendererName) {
+          throw new Error(`Renderer with name "${rendererName}" not found`);
+        } else {
+          throw new Error(`No renderer found`);
         }
-        return 'false';
       },
-      'args: [0 or 1] or [0 or 1, string]; turn on/off physics debug view. Second argument expects renderer ' +
-        'name, if not provided first renderer will be picked. Look up for renderer names using command "ls_renderers"',
+      'args: [ 0|1?, string? ]; Turn on/off physics debug view, skip first argument to toggle value.' +
+        ' Second argument expects renderer name, if not provided first renderer will be picked.' +
+        ' Use "renderers" to get list of renderers in the world',
     );
     ggstatic.registerConsoleCommand(
       this,
-      'performance_report',
+      'performance',
       async (...args: string[]) => {
         let mode: 'avg' | 'peak' = 'avg';
         let samples = 20;
-        for (let i = 0; i < 2; i++) {
-          if (['avg', 'peak'].includes(args[i])) {
-            mode = args[i] as any;
-          } else if (!isNaN(+args[i])) {
-            samples = +args[i];
+        for (let arg of args) {
+          if (['avg', 'peak'].includes(arg)) {
+            mode = arg as any;
+          } else if (!isNaN(+arg)) {
+            samples = +arg;
           }
         }
         const meter = new PerformanceMeterEntity(samples, 250);
@@ -291,7 +313,7 @@ export abstract class GgWorld<
         renderItems.unshift(`Performance report (${samples} samples)`);
         return renderItems.join('\n');
       },
-      'args: [int, avg|peak]; [avg|peak, int]; [avg|peak]; [int] or []; measure how much time was spent per ' +
+      'args: [ int?, avg|peak? ]; Measure how much time was spent per ' +
         'entity in world. Arguments are samples amount (20 by default) and "peak" or "avg" choice, both arguments are ' +
         'optional. "avg" report sorts entities by average time consumed, "peak" records highest value for each entity',
     );

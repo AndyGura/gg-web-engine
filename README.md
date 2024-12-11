@@ -276,8 +276,39 @@ is on very early stage. The script to make glb+meta from blender file is here:
 [build_blender_scene.py](packages/core/blender_exporter/build_blender_scene.py)
 
 ### Console
-Engine provides a simple console, which can be used at runtime (if enabled in world) by pressing \`. Your game can 
-provide custom console commands using `world.registerConsoleCommand` function
+Engine provides a simple console, which can be used at runtime (if enabled in world) by pressing \`. Your game can
+provide custom console commands using `GgStatic.instance.registerConsoleCommand` function.
+
+#### Default global console commands
+| Command       | Arguments           | Description                                                                                                                                                                                                             |
+|---------------|---------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `commands`    | -                   | Print all available commands. List includes global commands and commands, specific to currently selected world. Run "world" to check which world is currently selected and "world {world_name}" to select desired world |
+| `help`        | `string`            | Print doc string of provided command                                                                                                                                                                                    |
+| `worlds`      | -                   | Print all currently available worlds                                                                                                                                                                                    |
+| `world`       | `string?`           | Get name of selected world or select world by name. Use "worlds" to get list of currently available worlds                                                                                                              |
+| `stats_panel` | `0\|1?`             | Turn on/off stats panel, skip argument to toggle value                                                                                                                                                                  |
+| `debug_panel` | `0\|1?`             | Turn on/off debug panel, skip argument to toggle value                                                                                                                                                                  |
+| `bind_key`    | `string, ...string` | Bind a keyboard key by code to console command. Check key codes [here](https://www.toptal.com/developers/keycode). Use "unbind_key" command to unbind it                                                                |
+| `unbind_key`  | `string`            | Unbind a keyboard key from console command                                                                                                                                                                              |
+
+#### Default world-specific console commands
+| Command       | Arguments          | Description                                                                                                                                                                                                                                                   |
+|---------------|--------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `timescale`   | `float?`           | Get current time scale of selected world clock or set it. Default value is 1.0 (no time scale applied)                                                                                                                                                        |
+| `fps_limit`   | `int?`             | Get current tick rate limit of selected world clock or set it. 0 means no limit applied                                                                                                                                                                       |
+| `renderers`   | -                  | Print all renderers in selected world                                                                                                                                                                                                                         |
+| `debug_view`  | `0\|1?, string?`   | Turn on/off physics debug view, skip first argument to toggle value. Second argument expects renderer name, if not provided first renderer will be picked. Use "renderers" to get list of renderers in the world                                              |
+| `performance` | `int?, avg\|peak?` | Measure how much time was spent per entity in world. Arguments are samples amount (20 by default) and "peak" or "avg" choice, both arguments are optional. "avg" report sorts entities by average time consumed, "peak" records highest value for each entity |
+
+#### Default 2D world-specific console commands
+| Command   | Arguments        | Description                                                                                                                                         |
+|-----------|------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
+| `gravity` | `?float, ?float` | Get or set 2D world gravity vector. 1 argument sets vector {x: 0, y: value}, 2 arguments sets the whole vector. Default value is "9.82" or "0 9.82" |
+
+#### Default 3D world-specific console commands
+| Command   | Arguments                | Description                                                                                                                                                  |
+|-----------|--------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `gravity` | `?float, ?float, ?float` | Get or set 3D world gravity vector. 1 argument sets vector {x: 0, y: 0, z: -value}, 3 arguments set the whole vector. Default value is "9.82" or "0 0 -9.82" |
 
 ## Support
 You can support project by:

@@ -73,18 +73,22 @@ export class Gg2dWorld<
     super.registerConsoleCommands(ggstatic);
     ggstatic.registerConsoleCommand(
       this,
-      'ph_gravity',
+      'gravity',
       async (...args: string[]) => {
         if (args.length == 1) {
           args = ['0', args[0]]; // mean Y axis
         }
         if (args.length > 0) {
+          if (isNaN(+args[0]) || isNaN(+args[1])) {
+            throw new Error('Wrong arguments');
+          }
           this.physicsWorld.gravity = { x: +args[0], y: +args[1] };
         }
         return JSON.stringify(this.physicsWorld.gravity);
       },
-      'args: [float] or [float float]; change 2D world gravity vector. 1 argument means ' +
-        '{x: 0, y: value}, 2 arguments set the whole vector. Default value is "9.82" or "0 9.82"',
+      'args: [ ?float, ?float ]; Get or set 2D world gravity vector. 1 argument sets' +
+        ' vector {x: 0, y: value}, 2 arguments sets the whole vector.' +
+        ' Default value is "9.82" or "0 9.82"',
     );
   }
 }

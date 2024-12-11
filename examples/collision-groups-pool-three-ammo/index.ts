@@ -11,6 +11,9 @@ import { ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/thre
 import { AmbientLight, DirectionalLight, Material, Mesh } from 'three';
 import { AmmoPhysicsTypeDocRepo, AmmoWorldComponent } from '@gg-web-engine/ammo';
 
+GgStatic.instance.showStats = true;
+GgStatic.instance.devConsoleEnabled = true;
+
 const world = new Gg3dWorld<
   ThreeVisualTypeDocRepo,
   AmmoPhysicsTypeDocRepo,
@@ -23,8 +26,6 @@ const world = new Gg3dWorld<
 world.physicsWorld.maxSubSteps = 25;
 
 world.init().then(async () => {
-  GgStatic.instance.showStats = true;
-  // GgStatic.instance.devConsoleEnabled = true;
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
   const renderer = world.addRenderer(
     world.visualScene.factory.createPerspectiveCamera(),
