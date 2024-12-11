@@ -235,7 +235,7 @@ export class MouseInput extends IInput<[], [unlockPointer?: boolean]> {
             if (this.options.canvas) {
               this.options.canvas.setPointerCapture(event.pointerId);
             }
-            // use window instead of ths._element to handle case when mouse was released over other element
+            // use window instead of this._element to handle case when mouse was released over other element
             window.addEventListener('pointerup', onPointerUp as any);
             this._element.addEventListener('pointercancel', onPointerUp as any);
           } catch (err) {
