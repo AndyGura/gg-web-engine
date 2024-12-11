@@ -1,4 +1,4 @@
-import { BehaviorSubject, combineLatest, filter, takeUntil } from 'rxjs';
+import { BehaviorSubject, combineLatest, filter, Subject, takeUntil } from 'rxjs';
 import {
   DirectionKeyboardInput,
   DirectionKeyboardKeymap,
@@ -91,6 +91,21 @@ export class FreeCameraController extends IEntity {
    */
   public readonly directionsInput: DirectionKeyboardInput;
 
+  protected spherical: MutableSpherical = { phi: 0, radius: 1, theta: 0 };
+
+  get active(): boolean {
+    return super.active;
+  }
+
+  set active(value: boolean) {
+    if (!super.active && value) {
+      this.reset();
+    }
+    super.active = value;
+  }
+
+  protected resetMotion$: Subject<void> = new Subject<void>();
+
   /**
    * Creates a new FreeCameraInput instance.
    * @param keyboard The keyboard input controller to use for camera movement.
@@ -117,8 +132,14 @@ export class FreeCameraController extends IEntity {
     this.directionsInput = new DirectionKeyboardInput(keyboard, this.options.keymap);
   }
 
+  public reset(): void {
+    this.spherical = Pnt3.toSpherical(Pnt3.rot({ x: 0, y: 0, z: -1 }, this.camera.rotation));
+    this.resetMotion$.next();
+  }
+
   async onSpawned(world: GgWorld<any, any>): Promise<void> {
     await super.onSpawned(world);
+    this.spherical = Pnt3.toSpherical(Pnt3.rot({ x: 0, y: 0, z: -1 }, this.camera.rotation));
     // Subscribe to keyboard input for movement controls
     const keys = ['KeyE', 'KeyQ'];
     if (this.camera.camera.supportsFov) {
@@ -166,14 +187,17 @@ export class FreeCameraController extends IEntity {
     });
 
     // Subscribe to mouse input for camera rotation
-    const spherical: MutableSpherical = Pnt3.toSpherical(Pnt3.rot({ x: 0, y: 0, z: -1 }, this.camera.rotation));
     let isTouchScreen = MouseInput.isTouchDevice();
     let mouseDelta$ = this.mouseInput.delta$.pipe(
       takeUntil(this._onRemoved$),
-      filter(() => isTouchScreen || !this.options.ignoreMouseUnlessPointerLocked || this.mouseInput.isPointerLocked),
+      filter(
+        () =>
+          this.active &&
+          (isTouchScreen || !this.options.ignoreMouseUnlessPointerLocked || this.mouseInput.isPointerLocked),
+      ),
     );
     if (this.options.cameraRotationElasticity > 0) {
-      const s$: BehaviorSubject<Spherical> = new BehaviorSubject(spherical);
+      const s$: BehaviorSubject<Spherical> = new BehaviorSubject(this.spherical);
       mouseDelta$.subscribe(delta => {
         const s = s$.getValue();
         s$.next({
@@ -185,41 +209,54 @@ export class FreeCameraController extends IEntity {
           radius: 1,
         });
       });
-      s$.pipe(
-        takeUntil(this._onRemoved$),
-        ggElastic(
-          this.tick$,
-          this.options.cameraRotationElasticity,
-          (a, b, f) => ({ phi: a.phi + f * (b.phi - a.phi), theta: a.theta + f * (b.theta - a.theta), radius: 1 }),
-          (a, b) => Pnt2.dist({ x: a.phi, y: a.theta }, { x: b.phi, y: b.theta }) < 0.0001,
-        ),
-      ).subscribe(s => {
-        spherical.theta = s.theta;
-        spherical.phi = s.phi;
+      const startElasticMotion = () => {
+        s$.pipe(
+          takeUntil(this._onRemoved$),
+          ggElastic(
+            this.tick$,
+            this.options.cameraRotationElasticity,
+            (a, b, f) => ({ phi: a.phi + f * (b.phi - a.phi), theta: a.theta + f * (b.theta - a.theta), radius: 1 }),
+            (a, b) => Pnt2.dist({ x: a.phi, y: a.theta }, { x: b.phi, y: b.theta }) < 0.0001,
+          ),
+          takeUntil(this.resetMotion$),
+        ).subscribe(s => {
+          this.spherical.theta = s.theta;
+          this.spherical.phi = s.phi;
+        });
+      };
+      this.resetMotion$.pipe(takeUntil(this._onRemoved$)).subscribe(() => {
+        s$.next(this.spherical);
+        startElasticMotion();
       });
+      startElasticMotion();
     } else {
       mouseDelta$.subscribe(delta => {
-        spherical.theta -= (delta.x * this.options.cameraRotationSensitivity) / 1000;
-        spherical.phi += (delta.y * this.options.cameraRotationSensitivity) / 1000;
-        spherical.phi = Math.max(0.000001, Math.min(Math.PI - 0.000001, spherical.phi));
+        this.spherical.theta -= (delta.x * this.options.cameraRotationSensitivity) / 1000;
+        this.spherical.phi += (delta.y * this.options.cameraRotationSensitivity) / 1000;
+        this.spherical.phi = Math.max(0.000001, Math.min(Math.PI - 0.000001, this.spherical.phi));
       });
     }
 
     // Setup updating camera position and rotation based on input
-    this.camera.tick$.pipe(takeUntil(this._onRemoved$)).subscribe(([_, delta]) => {
-      this.camera.camera.fov += cameraFovInc;
-      this.camera.position = Pnt3.add(
-        this.camera.position,
-        Pnt3.rot(
-          Pnt3.scalarMult(translateVector, (this.options.cameraLinearSpeed * delta) / 1000),
-          this.camera.rotation,
-        ),
-      );
-      this.camera.rotation = Qtrn.lookAt(
-        this.camera.position,
-        Pnt3.add(this.camera.position, Pnt3.fromSpherical(spherical)),
-      );
-    });
+    this.camera.tick$
+      .pipe(
+        takeUntil(this._onRemoved$),
+        filter(() => this.active),
+      )
+      .subscribe(([_, delta]) => {
+        this.camera.camera.fov += cameraFovInc;
+        this.camera.position = Pnt3.add(
+          this.camera.position,
+          Pnt3.rot(
+            Pnt3.scalarMult(translateVector, (this.options.cameraLinearSpeed * delta) / 1000),
+            this.camera.rotation,
+          ),
+        );
+        this.camera.rotation = Qtrn.lookAt(
+          this.camera.position,
+          Pnt3.add(this.camera.position, Pnt3.fromSpherical(this.spherical)),
+        );
+      });
 
     // start input
     this.mouseInput.start();
