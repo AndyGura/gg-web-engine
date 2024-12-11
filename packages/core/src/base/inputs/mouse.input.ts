@@ -221,7 +221,7 @@ export class MouseInput extends IInput<[], [unlockPointer?: boolean]> {
         if (this.options.canvas) {
           this.options.canvas.releasePointerCapture(event.pointerId);
         }
-        this._element.removeEventListener('pointerup', onPointerUp as any);
+        window.removeEventListener('pointerup', onPointerUp as any);
         this._element.removeEventListener('pointercancel', onPointerUp as any);
       }
       this._state$.next(pointerLengthsStateMap[Math.min(pointers.length, 2)]);
@@ -235,7 +235,8 @@ export class MouseInput extends IInput<[], [unlockPointer?: boolean]> {
             if (this.options.canvas) {
               this.options.canvas.setPointerCapture(event.pointerId);
             }
-            this._element.addEventListener('pointerup', onPointerUp as any);
+            // use window instead of this._element to handle case when mouse was released over other element
+            window.addEventListener('pointerup', onPointerUp as any);
             this._element.addEventListener('pointercancel', onPointerUp as any);
           } catch (err) {
             console.error(err);

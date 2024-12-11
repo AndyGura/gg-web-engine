@@ -14,7 +14,7 @@ import {
   Spherical,
   TickOrder,
 } from '../../../../base';
-import { BehaviorSubject, filter, takeUntil } from 'rxjs';
+import { BehaviorSubject, filter, Subject, takeUntil } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { Renderer3dEntity } from '../../renderer-3d.entity';
 
@@ -63,24 +63,43 @@ export class OrbitCameraController extends IEntity {
   protected spherical: MutableSpherical = { phi: 0, radius: 10, theta: 0 };
 
   public target: Point3 = Pnt3.O;
+
+  get active(): boolean {
+    return super.active;
+  }
+
+  set active(value: boolean) {
+    if (!super.active && value) {
+      this.reset();
+    }
+    super.active = value;
+  }
+
   public get radius(): number {
     return this.spherical.radius;
   }
+
   public set radius(value: number) {
     this.spherical.radius = value;
   }
+
   public get phi(): number {
     return this.spherical.phi;
   }
+
   public set phi(value: number) {
     this.spherical.phi = Math.max(0.000001, Math.min(Math.PI - 0.000001, value));
   }
+
   public get theta(): number {
     return this.spherical.theta;
   }
+
   public set theta(value: number) {
     this.spherical.theta = value;
   }
+
+  protected resetMotion$: Subject<void> = new Subject<void>();
 
   constructor(
     protected readonly camera: Renderer3dEntity,
@@ -91,13 +110,20 @@ export class OrbitCameraController extends IEntity {
     this.mouseInput = new MouseInput(this.options.mouseOptions);
   }
 
+  public reset(): void {
+    let targetDistance = Pnt3.dist(this.target, this.camera.position);
+    this.target = Pnt3.add(this.camera.position, Pnt3.rot({ x: 0, y: 0, z: -targetDistance }, this.camera.rotation));
+    this.spherical = Pnt3.toSpherical(Pnt3.sub(this.camera.position, this.target));
+    this.resetMotion$.next();
+  }
+
   async onSpawned(world: GgWorld<any, any>): Promise<void> {
     await super.onSpawned(world);
     this.spherical = Pnt3.toSpherical(Pnt3.sub(this.camera.position, this.target));
     if (this.options.orbiting) {
       let mouseDelta$ = this.mouseInput.delta$.pipe(
         takeUntil(this._onRemoved$),
-        filter(() => this.mouseInput.state == MouseInputState.DRAG),
+        filter(() => this.active && this.mouseInput.state == MouseInputState.DRAG),
       );
       if (this.options.orbitingElasticity > 0) {
         const s$: BehaviorSubject<Spherical> = new BehaviorSubject(this.spherical);
@@ -112,18 +138,26 @@ export class OrbitCameraController extends IEntity {
             radius: 1,
           });
         });
-        s$.pipe(
-          takeUntil(this._onRemoved$),
-          ggElastic(
-            this.tick$,
-            this.options.orbitingElasticity,
-            (a, b, f) => ({ phi: a.phi + f * (b.phi - a.phi), theta: a.theta + f * (b.theta - a.theta), radius: 1 }),
-            (a, b) => Pnt2.dist({ x: a.phi, y: a.theta }, { x: b.phi, y: b.theta }) < 0.0001,
-          ),
-        ).subscribe(s => {
-          this.spherical.theta = s.theta;
-          this.spherical.phi = s.phi;
+        const startElasticMotion = () => {
+          s$.pipe(
+            takeUntil(this._onRemoved$),
+            ggElastic(
+              this.tick$,
+              this.options.orbitingElasticity,
+              (a, b, f) => ({ phi: a.phi + f * (b.phi - a.phi), theta: a.theta + f * (b.theta - a.theta), radius: 1 }),
+              (a, b) => Pnt2.dist({ x: a.phi, y: a.theta }, { x: b.phi, y: b.theta }) < 0.0001,
+            ),
+            takeUntil(this.resetMotion$),
+          ).subscribe(s => {
+            this.spherical.theta = s.theta;
+            this.spherical.phi = s.phi;
+          });
+        };
+        this.resetMotion$.pipe(takeUntil(this._onRemoved$)).subscribe(() => {
+          s$.next(this.spherical);
+          startElasticMotion();
         });
+        startElasticMotion();
       } else {
         mouseDelta$.subscribe(delta => {
           this.spherical.theta -= (delta.x * (this.options.orbiting as any).sensitivityX) / 1000;
@@ -200,6 +234,7 @@ export class OrbitCameraController extends IEntity {
     this.camera.tick$
       .pipe(
         takeUntil(this._onRemoved$),
+        filter(() => this.active),
         map(() => this.spherical),
       )
       .subscribe(spherical => {
