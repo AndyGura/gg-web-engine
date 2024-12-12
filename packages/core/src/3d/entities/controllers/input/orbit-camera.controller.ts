@@ -60,7 +60,7 @@ export class OrbitCameraController extends IEntity {
   protected readonly options: OrbitCameraControllerOptions;
   public readonly mouseInput: MouseInput;
 
-  protected spherical: MutableSpherical = { phi: 0, radius: 10, theta: 0 };
+  protected _spherical: MutableSpherical = { phi: 0, radius: 10, theta: 0 };
 
   public target: Point3 = Pnt3.O;
 
@@ -75,28 +75,15 @@ export class OrbitCameraController extends IEntity {
     super.active = value;
   }
 
-  public get radius(): number {
-    return this.spherical.radius;
+  public get spherical(): Spherical {
+    return this._spherical;
   }
 
-  public set radius(value: number) {
-    this.spherical.radius = value;
-  }
-
-  public get phi(): number {
-    return this.spherical.phi;
-  }
-
-  public set phi(value: number) {
-    this.spherical.phi = Math.max(0.000001, Math.min(Math.PI - 0.000001, value));
-  }
-
-  public get theta(): number {
-    return this.spherical.theta;
-  }
-
-  public set theta(value: number) {
-    this.spherical.theta = value;
+  public set spherical(value: Spherical) {
+    this._spherical.phi = Math.max(0.000001, Math.min(Math.PI - 0.000001, value.phi));
+    this._spherical.theta = value.theta;
+    this._spherical.radius = value.radius;
+    this.resetMotion$.next();
   }
 
   protected resetMotion$: Subject<void> = new Subject<void>();
@@ -113,20 +100,20 @@ export class OrbitCameraController extends IEntity {
   public reset(): void {
     let targetDistance = Pnt3.dist(this.target, this.camera.position);
     this.target = Pnt3.add(this.camera.position, Pnt3.rot({ x: 0, y: 0, z: -targetDistance }, this.camera.rotation));
-    this.spherical = Pnt3.toSpherical(Pnt3.sub(this.camera.position, this.target));
+    this._spherical = Pnt3.toSpherical(Pnt3.sub(this.camera.position, this.target));
     this.resetMotion$.next();
   }
 
   async onSpawned(world: GgWorld<any, any>): Promise<void> {
     await super.onSpawned(world);
-    this.spherical = Pnt3.toSpherical(Pnt3.sub(this.camera.position, this.target));
+    this._spherical = Pnt3.toSpherical(Pnt3.sub(this.camera.position, this.target));
     if (this.options.orbiting) {
       let mouseDelta$ = this.mouseInput.delta$.pipe(
         takeUntil(this._onRemoved$),
         filter(() => this.active && this.mouseInput.state == MouseInputState.DRAG),
       );
       if (this.options.orbitingElasticity > 0) {
-        const s$: BehaviorSubject<Spherical> = new BehaviorSubject(this.spherical);
+        const s$: BehaviorSubject<Spherical> = new BehaviorSubject(this._spherical);
         mouseDelta$.subscribe(delta => {
           const s = s$.getValue();
           s$.next({
@@ -149,38 +136,38 @@ export class OrbitCameraController extends IEntity {
             ),
             takeUntil(this.resetMotion$),
           ).subscribe(s => {
-            this.spherical.theta = s.theta;
-            this.spherical.phi = s.phi;
+            this._spherical.theta = s.theta;
+            this._spherical.phi = s.phi;
           });
         };
         this.resetMotion$.pipe(takeUntil(this._onRemoved$)).subscribe(() => {
-          s$.next(this.spherical);
+          s$.next(this._spherical);
           startElasticMotion();
         });
         startElasticMotion();
       } else {
         mouseDelta$.subscribe(delta => {
-          this.spherical.theta -= (delta.x * (this.options.orbiting as any).sensitivityX) / 1000;
-          this.spherical.phi -= (delta.y * (this.options.orbiting as any).sensitivityY) / 1000;
-          this.spherical.phi = Math.max(0.000001, Math.min(Math.PI - 0.000001, this.spherical.phi));
+          this._spherical.theta -= (delta.x * (this.options.orbiting as any).sensitivityX) / 1000;
+          this._spherical.phi -= (delta.y * (this.options.orbiting as any).sensitivityY) / 1000;
+          this._spherical.phi = Math.max(0.000001, Math.min(Math.PI - 0.000001, this._spherical.phi));
         });
       }
     }
     if (this.options.zooming) {
       this.mouseInput.wheel$.pipe(takeUntil(this._onRemoved$)).subscribe(delta => {
         if (delta != 0) {
-          this.spherical.radius *= Math.pow(0.95, (this.options.zooming as any).sensitivity * (delta > 0 ? -1 : 1));
+          this._spherical.radius *= Math.pow(0.95, (this.options.zooming as any).sensitivity * (delta > 0 ? -1 : 1));
         }
       });
     }
 
     const performPan = (delta: Point2) => {
-      const targetCameraVector = Pnt3.fromSpherical(this.spherical);
+      const targetCameraVector = Pnt3.fromSpherical(this._spherical);
       const viewUp = Pnt3.rotAround(
         targetCameraVector,
         {
-          x: -Math.sin(this.spherical.theta),
-          y: Math.cos(this.spherical.theta),
+          x: -Math.sin(this._spherical.theta),
+          y: Math.cos(this._spherical.theta),
           z: 0,
         },
         Math.PI / 2,
@@ -211,14 +198,14 @@ export class OrbitCameraController extends IEntity {
           filter(() => this.mouseInput.state == MouseInputState.DRAG_MIDDLE_BUTTON),
         )
         .subscribe(delta => {
-          this.spherical.radius *= Math.pow(0.95, (-(this.options.dollying as any).sensitivity * delta.y) / 10);
+          this._spherical.radius *= Math.pow(0.95, (-(this.options.dollying as any).sensitivity * delta.y) / 10);
         });
     }
     if (MouseInput.isTouchDevice() && (this.options.dollying || this.options.panning)) {
       this.mouseInput.twoTouchGestureDelta$.pipe(takeUntil(this._onRemoved$)).subscribe(delta => {
         // dolly on fingers pitch
         if (this.options.dollying) {
-          this.spherical.radius *= Math.pow(
+          this._spherical.radius *= Math.pow(
             0.95,
             ((this.options.dollying as any).sensitivity * delta.distanceDelta) / 10,
           );
@@ -235,7 +222,7 @@ export class OrbitCameraController extends IEntity {
       .pipe(
         takeUntil(this._onRemoved$),
         filter(() => this.active),
-        map(() => this.spherical),
+        map(() => this._spherical),
       )
       .subscribe(spherical => {
         this.camera.position = Pnt3.add(this.target, Pnt3.fromSpherical(spherical));

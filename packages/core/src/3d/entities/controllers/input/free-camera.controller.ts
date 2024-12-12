@@ -91,7 +91,7 @@ export class FreeCameraController extends IEntity {
    */
   public readonly directionsInput: DirectionKeyboardInput;
 
-  protected spherical: MutableSpherical = { phi: 0, radius: 1, theta: 0 };
+  protected _spherical: MutableSpherical = { phi: 0, radius: 1, theta: 0 };
 
   get active(): boolean {
     return super.active;
@@ -102,6 +102,16 @@ export class FreeCameraController extends IEntity {
       this.reset();
     }
     super.active = value;
+  }
+
+  public get spherical(): Spherical {
+    return this._spherical;
+  }
+
+  public set spherical(value: Spherical) {
+    this._spherical.phi = Math.max(0.000001, Math.min(Math.PI - 0.000001, value.phi));
+    this._spherical.theta = value.theta;
+    this.resetMotion$.next();
   }
 
   protected resetMotion$: Subject<void> = new Subject<void>();
@@ -133,13 +143,13 @@ export class FreeCameraController extends IEntity {
   }
 
   public reset(): void {
-    this.spherical = Pnt3.toSpherical(Pnt3.rot({ x: 0, y: 0, z: -1 }, this.camera.rotation));
+    this._spherical = Pnt3.toSpherical(Pnt3.rot({ x: 0, y: 0, z: -1 }, this.camera.rotation));
     this.resetMotion$.next();
   }
 
   async onSpawned(world: GgWorld<any, any>): Promise<void> {
     await super.onSpawned(world);
-    this.spherical = Pnt3.toSpherical(Pnt3.rot({ x: 0, y: 0, z: -1 }, this.camera.rotation));
+    this._spherical = Pnt3.toSpherical(Pnt3.rot({ x: 0, y: 0, z: -1 }, this.camera.rotation));
     // Subscribe to keyboard input for movement controls
     const keys = ['KeyE', 'KeyQ'];
     if (this.camera.camera.supportsFov) {
@@ -197,7 +207,7 @@ export class FreeCameraController extends IEntity {
       ),
     );
     if (this.options.cameraRotationElasticity > 0) {
-      const s$: BehaviorSubject<Spherical> = new BehaviorSubject(this.spherical);
+      const s$: BehaviorSubject<Spherical> = new BehaviorSubject(this._spherical);
       mouseDelta$.subscribe(delta => {
         const s = s$.getValue();
         s$.next({
@@ -220,20 +230,20 @@ export class FreeCameraController extends IEntity {
           ),
           takeUntil(this.resetMotion$),
         ).subscribe(s => {
-          this.spherical.theta = s.theta;
-          this.spherical.phi = s.phi;
+          this._spherical.theta = s.theta;
+          this._spherical.phi = s.phi;
         });
       };
       this.resetMotion$.pipe(takeUntil(this._onRemoved$)).subscribe(() => {
-        s$.next(this.spherical);
+        s$.next(this._spherical);
         startElasticMotion();
       });
       startElasticMotion();
     } else {
       mouseDelta$.subscribe(delta => {
-        this.spherical.theta -= (delta.x * this.options.cameraRotationSensitivity) / 1000;
-        this.spherical.phi += (delta.y * this.options.cameraRotationSensitivity) / 1000;
-        this.spherical.phi = Math.max(0.000001, Math.min(Math.PI - 0.000001, this.spherical.phi));
+        this._spherical.theta -= (delta.x * this.options.cameraRotationSensitivity) / 1000;
+        this._spherical.phi += (delta.y * this.options.cameraRotationSensitivity) / 1000;
+        this._spherical.phi = Math.max(0.000001, Math.min(Math.PI - 0.000001, this._spherical.phi));
       });
     }
 
@@ -254,7 +264,7 @@ export class FreeCameraController extends IEntity {
         );
         this.camera.rotation = Qtrn.lookAt(
           this.camera.position,
-          Pnt3.add(this.camera.position, Pnt3.fromSpherical(this.spherical)),
+          Pnt3.add(this.camera.position, Pnt3.fromSpherical(this._spherical)),
         );
       });
 
