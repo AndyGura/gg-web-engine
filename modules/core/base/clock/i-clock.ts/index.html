@@ -514,9 +514,50 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#iclock-interface" class="md-nav__link">
-    IClock (interface)
+  <a href="#iclock-class" class="md-nav__link">
+    IClock (class)
   </a>
+  
+    <nav class="md-nav" aria-label="IClock (class)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#addchild-method" class="md-nav__link">
+    addChild (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#removechild-method" class="md-nav__link">
+    removeChild (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dispose-method" class="md-nav__link">
+    dispose (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_tick-property" class="md-nav__link">
+    _tick$ (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_children-property" class="md-nav__link">
+    _children (property)
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
         
@@ -549,13 +590,42 @@
 
 <ul>
 <li><a href="#utils">utils</a></li>
-<li><a href="#iclock-interface">IClock (interface)</a></li>
+<li><a href="#iclock-class">IClock (class)</a><ul>
+<li><a href="#addchild-method">addChild (method)</a></li>
+<li><a href="#removechild-method">removeChild (method)</a></li>
+<li><a href="#dispose-method">dispose (method)</a></li>
+<li><a href="#_tick-property">_tick$ (property)</a></li>
+<li><a href="#_children-property">_children (property)</a></li>
+</ul>
+</li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
-<h2 id="iclock-interface">IClock (interface)</h2>
+<h2 id="iclock-class">IClock (class)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export interface IClock {
+<pre><code class="language-ts">export declare class IClock {
+  protected constructor(public readonly parent: IClock | null)
+}
+</code></pre>
+<h3 id="addchild-method">addChild (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public addChild(clock: IClock)
+</code></pre>
+<h3 id="removechild-method">removeChild (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public removeChild(clock: IClock)
+</code></pre>
+<h3 id="dispose-method">dispose (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public dispose()
+</code></pre>
+<h3 id="_tick-property">_tick$ (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly _tick$: any
+</code></pre>
+<h3 id="_children-property">_children (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">_children: IClock[]
 </code></pre>
 
 

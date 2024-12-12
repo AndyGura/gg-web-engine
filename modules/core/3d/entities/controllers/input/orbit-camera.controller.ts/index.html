@@ -522,6 +522,13 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#reset-method" class="md-nav__link">
+    reset (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#onspawned-method" class="md-nav__link">
     onSpawned (method)
   </a>
@@ -557,8 +564,8 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#spherical-property" class="md-nav__link">
-    spherical (property)
+  <a href="#_spherical-property" class="md-nav__link">
+    _spherical (property)
   </a>
   
 </li>
@@ -566,6 +573,13 @@
           <li class="md-nav__item">
   <a href="#target-property" class="md-nav__link">
     target (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#resetmotion-property" class="md-nav__link">
+    resetMotion$ (property)
   </a>
   
 </li>
@@ -612,13 +626,15 @@
 <ul>
 <li><a href="#utils">utils</a></li>
 <li><a href="#orbitcameracontroller-class">OrbitCameraController (class)</a><ul>
+<li><a href="#reset-method">reset (method)</a></li>
 <li><a href="#onspawned-method">onSpawned (method)</a></li>
 <li><a href="#onremoved-method">onRemoved (method)</a></li>
 <li><a href="#tickorder-property">tickOrder (property)</a></li>
 <li><a href="#options-property">options (property)</a></li>
 <li><a href="#mouseinput-property">mouseInput (property)</a></li>
-<li><a href="#spherical-property">spherical (property)</a></li>
+<li><a href="#_spherical-property">_spherical (property)</a></li>
 <li><a href="#target-property">target (property)</a></li>
+<li><a href="#resetmotion-property">resetMotion$ (property)</a></li>
 </ul>
 </li>
 <li><a href="#orbitcameracontrolleroptions-type-alias">OrbitCameraControllerOptions (type alias)</a></li>
@@ -630,6 +646,10 @@
 <pre><code class="language-ts">export declare class OrbitCameraController {
   constructor(protected readonly camera: Renderer3dEntity, options: Partial&lt;OrbitCameraControllerOptions&gt; = {})
 }
+</code></pre>
+<h3 id="reset-method">reset (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public reset(): void
 </code></pre>
 <h3 id="onspawned-method">onSpawned (method)</h3>
 <p><strong>Signature</strong></p>
@@ -651,13 +671,17 @@
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly mouseInput: MouseInput
 </code></pre>
-<h3 id="spherical-property">spherical (property)</h3>
+<h3 id="_spherical-property">_spherical (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">spherical: MutableSpherical
+<pre><code class="language-ts">_spherical: MutableSpherical
 </code></pre>
 <h3 id="target-property">target (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">target: Point3
+</code></pre>
+<h3 id="resetmotion-property">resetMotion$ (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">resetMotion$: any
 </code></pre>
 <h2 id="orbitcameracontrolleroptions-type-alias">OrbitCameraControllerOptions (type alias)</h2>
 <p><strong>Signature</strong></p>
