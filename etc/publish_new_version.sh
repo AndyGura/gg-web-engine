@@ -56,7 +56,7 @@ echo NPM packages published, re-linking examples...
 examples=()
 while read line; do
   examples+=("$line")
-done < ../examples/examples-list.txt
+done < ./examples/examples-list.txt
 build_example() {
     pushd ./examples/$1
     sed -i 's/"@gg-web-engine\/core": "[0-9.]*",/"@gg-web-engine\/core": "'$2'",/' package.json
