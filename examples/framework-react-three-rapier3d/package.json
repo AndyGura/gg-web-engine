@@ -11,14 +11,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@gg-web-engine/core": "0.0.56",
+    "@gg-web-engine/rapier3d": "0.0.56",
+    "@gg-web-engine/three": "0.0.56",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.16.0",
-    "@gg-web-engine/core": "0.0.48",
-    "@gg-web-engine/rapier3d": "0.0.48",
-    "@gg-web-engine/three": "0.0.48",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
