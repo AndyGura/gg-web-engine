@@ -83,10 +83,10 @@ done
 
 echo NPM packages published, re-linking examples...
 examples=()
-while read line; do
+while IFS= read -r line || [ -n "$line" ]; do
   examples+=("$line")
 done < ./examples/examples-list.txt
-build_example() {
+upgrade_example() {
     pushd ./examples/$1
     sed -i 's/"@gg-web-engine\/core": "[0-9.]*",/"@gg-web-engine\/core": "'$2'",/' package.json
     for ix in ${!libs[*]}
@@ -98,7 +98,7 @@ build_example() {
 }
 for ix in ${!examples[*]}
 do
-  build_example ${examples[$ix]} $1 &
+  upgrade_example ${examples[$ix]} $1 &
 done
 wait
 sed -i "s/\(const sbBranchSuffix = '\)[^']*\(';\)/\1$1\2/" ./examples/index.html

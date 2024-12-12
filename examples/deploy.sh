@@ -7,7 +7,7 @@ aws s3 cp index.html s3://gg-web-engine-demos/index.html
 aws s3 sync ./assets s3://gg-web-engine-demos/assets --include "*" --exclude "*.blend" --cache-control max-age
 
 examples=()
-while read line; do
+while IFS= read -r line || [ -n "$line" ]; do
   examples+=("$line")
 done < ./examples-list.txt
 for ix in ${!examples[*]}

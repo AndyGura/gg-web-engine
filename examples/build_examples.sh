@@ -2,7 +2,7 @@
 set -e
 
 examples=()
-while read line; do
+while IFS= read -r line || [ -n "$line" ]; do
   examples+=("$line")
 done < ./examples-list.txt
 build_example() {
