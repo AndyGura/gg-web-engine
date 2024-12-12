@@ -14,6 +14,7 @@ parent: Modules
   - [Gg3dWorld (class)](#gg3dworld-class)
     - [addPrimitiveRigidBody (method)](#addprimitiverigidbody-method)
     - [addRenderer (method)](#addrenderer-method)
+    - [registerConsoleCommands (method)](#registerconsolecommands-method)
     - [loader (property)](#loader-property)
   - [PhysicsTypeDocRepo3D (type alias)](#physicstypedocrepo3d-type-alias)
   - [VisualTypeDocRepo3D (type alias)](#visualtypedocrepo3d-type-alias)
@@ -55,6 +56,21 @@ addRenderer(
     canvas?: HTMLCanvasElement,
     rendererOptions?: Partial<RendererOptions & VTypeDoc['rendererExtraOpts']>,
   ): Renderer3dEntity<VTypeDoc>
+```
+
+### registerConsoleCommands (method)
+
+**Signature**
+
+```ts
+protected registerConsoleCommands(ggstatic: {
+    registerConsoleCommand: (
+      world: GgWorld<any, any> | null,
+      command: string,
+      handler: (...args: string[]) => Promise<string>,
+      doc?: string,
+    ) => void;
+  })
 ```
 
 ### loader (property)

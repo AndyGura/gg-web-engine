@@ -522,13 +522,6 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#createchildclock-method" class="md-nav__link">
-    createChildClock (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#start-method" class="md-nav__link">
     start (method)
   </a>
@@ -566,6 +559,13 @@
           <li class="md-nav__item">
   <a href="#stoplisteningticks-method" class="md-nav__link">
     stopListeningTicks (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dispose-method" class="md-nav__link">
+    dispose (method)
   </a>
   
 </li>
@@ -619,13 +619,13 @@
 <ul>
 <li><a href="#utils">utils</a></li>
 <li><a href="#pausableclock-class">PausableClock (class)</a><ul>
-<li><a href="#createchildclock-method">createChildClock (method)</a></li>
 <li><a href="#start-method">start (method)</a></li>
 <li><a href="#stop-method">stop (method)</a></li>
 <li><a href="#pause-method">pause (method)</a></li>
 <li><a href="#resume-method">resume (method)</a></li>
 <li><a href="#startlisteningticks-method">startListeningTicks (method)</a></li>
 <li><a href="#stoplisteningticks-method">stopListeningTicks (method)</a></li>
+<li><a href="#dispose-method">dispose (method)</a></li>
 <li><a href="#tickratelimit-property">tickRateLimit (property)</a></li>
 <li><a href="#paused-property">paused$ (property)</a></li>
 </ul>
@@ -639,11 +639,6 @@
 <pre><code class="language-ts">export declare class PausableClock {
   constructor(autoStart: boolean = false, protected readonly parentClock: IClock = GgGlobalClock.instance)
 }
-</code></pre>
-<h3 id="createchildclock-method">createChildClock (method)</h3>
-<p>Creates a child clock.</p>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">createChildClock(autoStart: boolean): PausableClock
 </code></pre>
 <h3 id="start-method">start (method)</h3>
 <p>Starts the clock.</p>
@@ -674,6 +669,10 @@
 <p>Stops listening for ticks from the parent clock.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">protected stopListeningTicks()
+</code></pre>
+<h3 id="dispose-method">dispose (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">dispose()
 </code></pre>
 <h3 id="tickratelimit-property">tickRateLimit (property)</h3>
 <p>Tick rate limiter. If set to 0 - tick rate is unlimited, 15 means "allow at most 15 ticks per second"</p>

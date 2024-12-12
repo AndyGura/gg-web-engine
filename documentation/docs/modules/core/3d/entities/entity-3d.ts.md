@@ -15,6 +15,8 @@ parent: Modules
     - [updateVisibility (method)](#updatevisibility-method)
     - [runTransformBinding (method)](#runtransformbinding-method)
     - [tickOrder (property)](#tickorder-property)
+    - [object3D (property)](#object3d-property)
+    - [objectBody (property)](#objectbody-property)
 
 ---
 
@@ -26,10 +28,7 @@ parent: Modules
 
 ```ts
 export declare class Entity3d<VTypeDoc, PTypeDoc> {
-  constructor(
-    public readonly object3D: VTypeDoc['displayObject'] | null,
-    public readonly objectBody: PTypeDoc['rigidBody'] | null = null
-  )
+  constructor(options: { object3D?: VTypeDoc['displayObject'] | null; objectBody?: PTypeDoc['rigidBody'] | null })
 }
 ```
 
@@ -57,4 +56,20 @@ protected runTransformBinding(objectBody: IRigidBody3dComponent, object3D: IDisp
 
 ```ts
 readonly tickOrder: TickOrder.OBJECTS_BINDING
+```
+
+### object3D (property)
+
+**Signature**
+
+```ts
+readonly object3D: VTypeDoc["displayObject"] | null
+```
+
+### objectBody (property)
+
+**Signature**
+
+```ts
+readonly objectBody: PTypeDoc["rigidBody"] | null
 ```

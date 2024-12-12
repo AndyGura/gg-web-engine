@@ -12,12 +12,15 @@ parent: Modules
 
 - [utils](#utils)
   - [FreeCameraController (class)](#freecameracontroller-class)
+    - [reset (method)](#reset-method)
     - [onSpawned (method)](#onspawned-method)
     - [onRemoved (method)](#onremoved-method)
     - [tickOrder (property)](#tickorder-property)
     - [options (property)](#options-property)
     - [mouseInput (property)](#mouseinput-property)
     - [directionsInput (property)](#directionsinput-property)
+    - [\_spherical (property)](#_spherical-property)
+    - [resetMotion$ (property)](#resetmotion-property)
   - [FreeCameraControllerOptions (type alias)](#freecameracontrolleroptions-type-alias)
 
 ---
@@ -38,6 +41,14 @@ export declare class FreeCameraController {
     options: Partial<FreeCameraControllerOptions> = {}
   )
 }
+```
+
+### reset (method)
+
+**Signature**
+
+```ts
+public reset(): void
 ```
 
 ### onSpawned (method)
@@ -90,6 +101,22 @@ The keyboard input controller used for camera movement.
 
 ```ts
 readonly directionsInput: DirectionKeyboardInput
+```
+
+### \_spherical (property)
+
+**Signature**
+
+```ts
+_spherical: MutableSpherical
+```
+
+### resetMotion$ (property)
+
+**Signature**
+
+```ts
+resetMotion$: any
 ```
 
 ## FreeCameraControllerOptions (type alias)

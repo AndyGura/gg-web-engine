@@ -12,13 +12,15 @@ parent: Modules
 
 - [utils](#utils)
   - [OrbitCameraController (class)](#orbitcameracontroller-class)
+    - [reset (method)](#reset-method)
     - [onSpawned (method)](#onspawned-method)
     - [onRemoved (method)](#onremoved-method)
     - [tickOrder (property)](#tickorder-property)
     - [options (property)](#options-property)
     - [mouseInput (property)](#mouseinput-property)
-    - [spherical (property)](#spherical-property)
+    - [\_spherical (property)](#_spherical-property)
     - [target (property)](#target-property)
+    - [resetMotion$ (property)](#resetmotion-property)
   - [OrbitCameraControllerOptions (type alias)](#orbitcameracontrolleroptions-type-alias)
 
 ---
@@ -33,6 +35,14 @@ parent: Modules
 export declare class OrbitCameraController {
   constructor(protected readonly camera: Renderer3dEntity, options: Partial<OrbitCameraControllerOptions> = {})
 }
+```
+
+### reset (method)
+
+**Signature**
+
+```ts
+public reset(): void
 ```
 
 ### onSpawned (method)
@@ -75,12 +85,12 @@ readonly options: OrbitCameraControllerOptions
 readonly mouseInput: MouseInput
 ```
 
-### spherical (property)
+### \_spherical (property)
 
 **Signature**
 
 ```ts
-spherical: MutableSpherical
+_spherical: MutableSpherical
 ```
 
 ### target (property)
@@ -89,6 +99,14 @@ spherical: MutableSpherical
 
 ```ts
 target: Point3
+```
+
+### resetMotion$ (property)
+
+**Signature**
+
+```ts
+resetMotion$: any
 ```
 
 ## OrbitCameraControllerOptions (type alias)

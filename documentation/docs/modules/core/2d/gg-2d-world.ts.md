@@ -14,6 +14,7 @@ parent: Modules
   - [Gg2dWorld (class)](#gg2dworld-class)
     - [addPrimitiveRigidBody (method)](#addprimitiverigidbody-method)
     - [addRenderer (method)](#addrenderer-method)
+    - [registerConsoleCommands (method)](#registerconsolecommands-method)
   - [PhysicsTypeDocRepo2D (type alias)](#physicstypedocrepo2d-type-alias)
   - [VisualTypeDocRepo2D (type alias)](#visualtypedocrepo2d-type-alias)
 
@@ -53,6 +54,21 @@ addRenderer(
     canvas?: HTMLCanvasElement,
     rendererOptions?: Partial<RendererOptions & VTypeDoc['rendererExtraOpts']>,
   ): Renderer2dEntity<VTypeDoc>
+```
+
+### registerConsoleCommands (method)
+
+**Signature**
+
+```ts
+protected registerConsoleCommands(ggstatic: {
+    registerConsoleCommand: (
+      world: GgWorld<any, any> | null,
+      command: string,
+      handler: (...args: string[]) => Promise<string>,
+      doc?: string,
+    ) => void;
+  })
 ```
 
 ## PhysicsTypeDocRepo2D (type alias)

@@ -542,6 +542,20 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#object3d-property" class="md-nav__link">
+    object3D (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#objectbody-property" class="md-nav__link">
+    objectBody (property)
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -580,6 +594,8 @@
 <li><a href="#updatevisibility-method">updateVisibility (method)</a></li>
 <li><a href="#runtransformbinding-method">runTransformBinding (method)</a></li>
 <li><a href="#tickorder-property">tickOrder (property)</a></li>
+<li><a href="#object3d-property">object3D (property)</a></li>
+<li><a href="#objectbody-property">objectBody (property)</a></li>
 </ul>
 </li>
 </ul>
@@ -588,10 +604,7 @@
 <h2 id="entity3d-class">Entity3d (class)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export declare class Entity3d&lt;VTypeDoc, PTypeDoc&gt; {
-  constructor(
-    public readonly object3D: VTypeDoc['displayObject'] | null,
-    public readonly objectBody: PTypeDoc['rigidBody'] | null = null
-  )
+  constructor(options: { object3D?: VTypeDoc['displayObject'] | null; objectBody?: PTypeDoc['rigidBody'] | null })
 }
 </code></pre>
 <h3 id="updatevisibility-method">updateVisibility (method)</h3>
@@ -606,6 +619,14 @@
 <h3 id="tickorder-property">tickOrder (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly tickOrder: TickOrder.OBJECTS_BINDING
+</code></pre>
+<h3 id="object3d-property">object3D (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly object3D: VTypeDoc[&quot;displayObject&quot;] | null
+</code></pre>
+<h3 id="objectbody-property">objectBody (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly objectBody: PTypeDoc[&quot;rigidBody&quot;] | null
 </code></pre>
 
 

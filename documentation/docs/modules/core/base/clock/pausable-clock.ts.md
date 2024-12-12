@@ -12,13 +12,13 @@ parent: Modules
 
 - [utils](#utils)
   - [PausableClock (class)](#pausableclock-class)
-    - [createChildClock (method)](#createchildclock-method)
     - [start (method)](#start-method)
     - [stop (method)](#stop-method)
     - [pause (method)](#pause-method)
     - [resume (method)](#resume-method)
     - [startListeningTicks (method)](#startlisteningticks-method)
     - [stopListeningTicks (method)](#stoplisteningticks-method)
+    - [dispose (method)](#dispose-method)
     - [tickRateLimit (property)](#tickratelimit-property)
     - [paused$ (property)](#paused-property)
 
@@ -36,16 +36,6 @@ A class providing the ability to track time, fire ticks, provide time elapsed, a
 export declare class PausableClock {
   constructor(autoStart: boolean = false, protected readonly parentClock: IClock = GgGlobalClock.instance)
 }
-```
-
-### createChildClock (method)
-
-Creates a child clock.
-
-**Signature**
-
-```ts
-createChildClock(autoStart: boolean): PausableClock
 ```
 
 ### start (method)
@@ -106,6 +96,14 @@ Stops listening for ticks from the parent clock.
 
 ```ts
 protected stopListeningTicks()
+```
+
+### dispose (method)
+
+**Signature**
+
+```ts
+dispose()
 ```
 
 ### tickRateLimit (property)

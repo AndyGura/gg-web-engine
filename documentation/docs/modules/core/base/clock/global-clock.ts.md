@@ -12,7 +12,7 @@ parent: Modules
 
 - [utils](#utils)
   - [GgGlobalClock (class)](#ggglobalclock-class)
-    - [createChildClock (method)](#createchildclock-method)
+    - [dispose (method)](#dispose-method)
 
 ---
 
@@ -31,10 +31,10 @@ export declare class GgGlobalClock {
 }
 ```
 
-### createChildClock (method)
+### dispose (method)
 
 **Signature**
 
 ```ts
-createChildClock(autoStart: boolean): PausableClock
+dispose()
 ```

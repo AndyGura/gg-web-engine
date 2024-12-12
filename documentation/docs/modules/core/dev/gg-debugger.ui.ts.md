@@ -38,7 +38,7 @@ export declare class GgDebuggerUI
 **Signature**
 
 ```ts
-public setShowStats(selectedWorld: GgWorld<any, any>, value: boolean)
+public setShowStats(selectedWorld: GgWorld<any, any> | null, value: boolean)
 ```
 
 ### setShowDebugControls (method)
@@ -46,7 +46,7 @@ public setShowStats(selectedWorld: GgWorld<any, any>, value: boolean)
 **Signature**
 
 ```ts
-public setShowDebugControls(selectedWorld: GgWorld<any, any>, value: boolean)
+public setShowDebugControls(selectedWorld: GgWorld<any, any> | null, value: boolean)
 ```
 
 ### makeSnapshot (method)

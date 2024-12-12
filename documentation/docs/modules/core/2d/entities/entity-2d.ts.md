@@ -15,6 +15,8 @@ parent: Modules
     - [updateVisibility (method)](#updatevisibility-method)
     - [runTransformBinding (method)](#runtransformbinding-method)
     - [tickOrder (property)](#tickorder-property)
+    - [object2D (property)](#object2d-property)
+    - [objectBody (property)](#objectbody-property)
 
 ---
 
@@ -26,10 +28,7 @@ parent: Modules
 
 ```ts
 export declare class Entity2d<VTypeDoc, PTypeDoc> {
-  constructor(
-    public readonly object2D: VTypeDoc['displayObject'] | null,
-    public readonly objectBody: PTypeDoc['rigidBody'] | null
-  )
+  constructor(options: { object2D?: VTypeDoc['displayObject']; objectBody?: PTypeDoc['rigidBody'] })
 }
 ```
 
@@ -57,4 +56,20 @@ protected runTransformBinding(objectBody: PTypeDoc['rigidBody'], object2D: VType
 
 ```ts
 readonly tickOrder: TickOrder.OBJECTS_BINDING
+```
+
+### object2D (property)
+
+**Signature**
+
+```ts
+readonly object2D: VTypeDoc["displayObject"] | null
+```
+
+### objectBody (property)
+
+**Signature**
+
+```ts
+readonly objectBody: PTypeDoc["rigidBody"] | null
 ```

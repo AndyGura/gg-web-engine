@@ -12,6 +12,8 @@ parent: Modules
 
 - [utils](#utils)
   - [GgStatic (class)](#ggstatic-class)
+    - [toggleDevConsole (method)](#toggledevconsole-method)
+    - [autoAssignSelectedWorld (method)](#autoassignselectedworld-method)
     - [registerConsoleCommand (method)](#registerconsolecommand-method)
     - [deregisterWorldCommands (method)](#deregisterworldcommands-method)
     - [console (method)](#console-method)
@@ -31,6 +33,22 @@ parent: Modules
 export declare class GgStatic {
   private constructor()
 }
+```
+
+### toggleDevConsole (method)
+
+**Signature**
+
+```ts
+public toggleDevConsole(value: boolean)
+```
+
+### autoAssignSelectedWorld (method)
+
+**Signature**
+
+```ts
+private autoAssignSelectedWorld()
 ```
 
 ### registerConsoleCommand (method)

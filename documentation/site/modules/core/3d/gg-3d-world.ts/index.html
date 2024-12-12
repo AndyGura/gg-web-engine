@@ -536,6 +536,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#registerconsolecommands-method" class="md-nav__link">
+    registerConsoleCommands (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#loader-property" class="md-nav__link">
     loader (property)
   </a>
@@ -593,6 +600,7 @@
 <li><a href="#gg3dworld-class">Gg3dWorld (class)</a><ul>
 <li><a href="#addprimitiverigidbody-method">addPrimitiveRigidBody (method)</a></li>
 <li><a href="#addrenderer-method">addRenderer (method)</a></li>
+<li><a href="#registerconsolecommands-method">registerConsoleCommands (method)</a></li>
 <li><a href="#loader-property">loader (property)</a></li>
 </ul>
 </li>
@@ -623,6 +631,17 @@
     canvas?: HTMLCanvasElement,
     rendererOptions?: Partial&lt;RendererOptions &amp; VTypeDoc['rendererExtraOpts']&gt;,
   ): Renderer3dEntity&lt;VTypeDoc&gt;
+</code></pre>
+<h3 id="registerconsolecommands-method">registerConsoleCommands (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">protected registerConsoleCommands(ggstatic: {
+    registerConsoleCommand: (
+      world: GgWorld&lt;any, any&gt; | null,
+      command: string,
+      handler: (...args: string[]) =&gt; Promise&lt;string&gt;,
+      doc?: string,
+    ) =&gt; void;
+  })
 </code></pre>
 <h3 id="loader-property">loader (property)</h3>
 <p><strong>Signature</strong></p>

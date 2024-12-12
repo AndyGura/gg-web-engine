@@ -1,6 +1,6 @@
 ---
 title: rapier3d/components/rapier-3d-world.component.ts
-nav_order: 121
+nav_order: 122
 parent: Modules
 ---
 

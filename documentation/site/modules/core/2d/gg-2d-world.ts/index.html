@@ -535,6 +535,13 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#registerconsolecommands-method" class="md-nav__link">
+    registerConsoleCommands (method)
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -586,6 +593,7 @@
 <li><a href="#gg2dworld-class">Gg2dWorld (class)</a><ul>
 <li><a href="#addprimitiverigidbody-method">addPrimitiveRigidBody (method)</a></li>
 <li><a href="#addrenderer-method">addRenderer (method)</a></li>
+<li><a href="#registerconsolecommands-method">registerConsoleCommands (method)</a></li>
 </ul>
 </li>
 <li><a href="#physicstypedocrepo2d-type-alias">PhysicsTypeDocRepo2D (type alias)</a></li>
@@ -614,6 +622,17 @@
     canvas?: HTMLCanvasElement,
     rendererOptions?: Partial&lt;RendererOptions &amp; VTypeDoc['rendererExtraOpts']&gt;,
   ): Renderer2dEntity&lt;VTypeDoc&gt;
+</code></pre>
+<h3 id="registerconsolecommands-method">registerConsoleCommands (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">protected registerConsoleCommands(ggstatic: {
+    registerConsoleCommand: (
+      world: GgWorld&lt;any, any&gt; | null,
+      command: string,
+      handler: (...args: string[]) =&gt; Promise&lt;string&gt;,
+      doc?: string,
+    ) =&gt; void;
+  })
 </code></pre>
 <h2 id="physicstypedocrepo2d-type-alias">PhysicsTypeDocRepo2D (type alias)</h2>
 <p><strong>Signature</strong></p>
