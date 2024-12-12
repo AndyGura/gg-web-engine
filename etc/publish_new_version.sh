@@ -31,12 +31,14 @@ wait_package_publish() {
         current_version=$(npm view "$package_name" version)
         end_time=$(date +%s)
         elapsed_time=$((end_time - start_time))
+        if [ "$current_version" = "$desired_version" ]; then
+            return
+        else
+          echo "$current_version != $desired_version"
+        fi
         if [ $elapsed_time -ge $timeout_seconds ]; then
             echo "NPM package was not fully published after 2 minutes"
             exit 1
-        fi
-        if [ "$current_version" = "$desired_version" ]; then
-            return
         fi
         sleep 10
     done
