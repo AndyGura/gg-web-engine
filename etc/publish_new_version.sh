@@ -27,9 +27,8 @@ wait_package_publish() {
     local timeout_seconds=300
     echo Waiting $package_name@$desired_version to be available before continuation
     start_time=$(date +%s)
-    sleep 30
     while true; do
-        current_version=$(npm view "$package_name" version)
+        current_version=$(npm view "$package_name" version --force)
         end_time=$(date +%s)
         elapsed_time=$((end_time - start_time))
         if [ "$current_version" = "$desired_version" ]; then
@@ -49,6 +48,9 @@ pushd ./packages/core
 sed -i 's/"version": "[0-9.]*",/"version": "'$1'",/' package.json
 rm -rf node_modules/ package-lock.json dist/ && npm i && npm run prettier-format && npm run build
 npm publish
+
+echo sleeping 30s...
+sleep 30
 wait_package_publish "@gg-web-engine/core" $1
 popd
 
@@ -72,6 +74,8 @@ do
   popd
 done
 
+echo sleeping 30s...
+sleep 30
 for ix in ${!libs[*]}
 do
   wait_package_publish "@gg-web-engine/${libs[$ix]}" $1
