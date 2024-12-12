@@ -5,6 +5,7 @@ for str in $packages; do
   mkdir -p src/$str
   cp -R ../packages/$str/src/* src/$str
 done
+find src -name "three-examples" -type d -exec rm -rf {} \;
 
 npm run run-doc-gen
 rm -rf src
