@@ -21,12 +21,32 @@ upgrade() {
     popd
 }
 
+wait_package_publish() {
+    local package_name="$1"
+    local desired_version="$2"
+    local timeout_seconds=120
+    echo Waiting $package_name@$desired_version to be available before continuation
+    start_time=$(date +%s)
+    while true; do
+        current_version=$(npm view "$package_name" version)
+        end_time=$(date +%s)
+        elapsed_time=$((end_time - start_time))
+        if [ $elapsed_time -ge $timeout_seconds ]; then
+            echo "NPM package was not fully published after 2 minutes"
+            exit 1
+        fi
+        if [ "$current_version" = "$desired_version" ]; then
+            return
+        fi
+        sleep 10
+    done
+}
+
 pushd ./packages/core
 sed -i 's/"version": "[0-9.]*",/"version": "'$1'",/' package.json
 rm -rf node_modules/ package-lock.json dist/ && npm i && npm run prettier-format && npm run build
 npm publish
-echo Waiting 30s before continuation
-sleep 30s
+wait_package_publish "@gg-web-engine/core" $1
 popd
 
 pids=()
@@ -49,8 +69,10 @@ do
   popd
 done
 
-echo Waiting 30s before continuation
-sleep 30s
+for ix in ${!libs[*]}
+do
+  wait_package_publish "@gg-web-engine/${libs[$ix]}" $1
+done
 
 echo NPM packages published, re-linking examples...
 examples=()
