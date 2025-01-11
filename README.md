@@ -5,18 +5,18 @@
 </p>
 
 <p align="center">
-  <a href="#about">About</a> •
-  <a href="#key_features">Key Features</a> •
-  <a href="#vision">Vision</a> •
-  <a href="#current_status">Current Status</a> •
-  <a href="#integrations">Integrations</a> •
-  <a href="#quickstart">Quickstart</a> •
-  <a href="#examples">Examples</a> •
-  <a href="#documentation">Documentation</a> •
-  <a href="#architecture">Architecture</a> •
-  <a href="#faq">FAQ</a> •
-  <a href="#support">Support</a> •
-  <a href="#license">License</a>
+  <a href="#-about">About</a> •
+  <a href="#-key-features">Key Features</a> •
+  <a href="#-vision">Vision</a> •
+  <a href="#-current-status">Current Status</a> •
+  <a href="#-integrations">Integrations</a> •
+  <a href="#-quickstart">Quickstart</a> •
+  <a href="#-examples">Examples</a> •
+  <a href="#-documentation">Documentation</a> •
+  <a href="#-architecture">Architecture</a> •
+  <a href="#-faq">FAQ</a> •
+  <a href="#-support">Support</a> •
+  <a href="#-license">License</a>
 </p>
 
 ---
