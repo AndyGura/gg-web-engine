@@ -310,7 +310,7 @@ provide custom console commands using `GgStatic.instance.registerConsoleCommand`
 
 ## ❓ FAQ
 ### Why is the viewport not centered or blurry on mobile/retina displays?
-Add the following meta tag to your <head>:
+Add the following meta tag to your `<head>`:
 ```html
 <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1, maximum-scale=1">
 ```
