@@ -11,7 +11,7 @@
   <a href="#-current-status">Current Status</a> •
   <a href="#-integrations">Integrations</a> •
   <a href="#-quickstart">Quickstart</a> •
-  <a href="#-examples">Examples</a> •
+  <a href="#%EF%B8%8F-examples">Examples</a> •
   <a href="#-documentation">Documentation</a> •
   <a href="#-architecture">Architecture</a> •
   <a href="#-faq">FAQ</a> •
