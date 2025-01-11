@@ -78,7 +78,7 @@ While the current focus is on racing game features and 3D worlds, future updates
 ```bash
 npm install --save @gg-web-engine/core
 ```
-1) Install integration modules. For example, to use Three.js and Ammo.js:
+2) Install integration modules. For example, to use Three.js and Ammo.js:
 ```bash
 npm install --save @gg-web-engine/three @gg-web-engine/ammo
 ```
