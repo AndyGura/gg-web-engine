@@ -1,84 +1,87 @@
+<h1 align="center">🚀 GG-Web-Engine</h1>
+<h3 align="center">A modular, open-source game engine for the web. Build stunning 2D/3D games and simulations with ease.</h3>
 <p align="center">
-  <img src="documentation/assets/logo.png" style="height: 400px; width:400px;" alt=''/>
+  <img src="documentation/assets/logo.png" style="height: 360px; width:360px;" alt=''/>
 </p>
-<h2 align="center">An attempt to create open source abstract game engine for browser</h2>
 
 <p align="center">
   <a href="#about">About</a> •
+  <a href="#key_features">Key Features</a> •
   <a href="#vision">Vision</a> •
-  <a href="#status">Status</a> •
-  <a href="#features">Features</a> •
+  <a href="#current_status">Current Status</a> •
   <a href="#integrations">Integrations</a> •
   <a href="#quickstart">Quickstart</a> •
-  <a href="#faq">FAQ</a> •
   <a href="#examples">Examples</a> •
+  <a href="#documentation">Documentation</a> •
   <a href="#architecture">Architecture</a> •
+  <a href="#faq">FAQ</a> •
   <a href="#support">Support</a> •
   <a href="#license">License</a>
 </p>
 
 ---
 
-## About
-This project strives to be an open-source framework, providing ready-to-use tool set for making web applications, 
-related to 2D/3D graphics and physics simulation (mostly games), quickly and easily. There are plenty of cool libraries 
-for in-browser games, such as [three.js](https://github.com/mrdoob/three.js) for rendering using WebGL, 
-[ammo.js](https://github.com/kripken/ammo.js) for WebAssembly physics and many more: **gg-web-engine** is not going to 
-compete with any of them and re-invent the bicycle, but rather work on top of such libraries: the developer, using 
-**gg-web-engine**, will have full control on those libraries, besides the built-in **gg-web-engine** functionality. 
-The core of the engine **DO NOT** rely on any specific library and the end product can be quickly switched from one 
-stack of physics/rendering libraries to anothers or even have self-implemented own solutions by implementing simple 
-bindings to **gg-web-engine** core.
+## 🎨 About
+GG-Web-Engine is an open-source framework designed to accelerate the development of web-based 2D/3D applications,
+including games and simulations. Instead of reinventing the wheel, it integrates seamlessly with powerful libraries
+like Three.js for rendering and Ammo.js for physics, giving developers complete control over these tools.
 
-## Vision
-- The project is not going to provide low-level solutions for rendering, physics, sounds etc. but have the integration 
-with other libraries for that
-- The project is going to work with both 2D and 3D worlds
-- The project provides ready-to-use common functionality: canvas, game world, rendering loop, physics ticks, key/mouse 
-controls and many more down the road
-- The project provides common entities: rigid primitive, cameras, raycast vehicle and many more down the road
-- The project provides own way of serialization objects: has a built-in blender exporter which will export geometry
-  and rigid body properties to files, seamlessly supported by the engine (**3D world only** for now)
-- The project does not restrict developer from working with integrated libraries directly
-- The project is written on [TypeScript](https://github.com/microsoft/TypeScript)
-- The project is module-based ES6 code
-- The project intensively uses [rxjs](https://github.com/ReactiveX/rxjs)
+Built with flexibility in mind, the engine is designed to work with various tech stacks and allows swapping libraries or
+creating custom solutions with minimal effort.
 
-## Status
-Experimental release. I'll be happy to see any feature requests and bug reports in the 
-[Issues](https://github.com/AndyGura/gg-web-engine/issues) and [Pull Requests](https://github.com/AndyGura/gg-web-engine/pulls) 
-are more than welcome. This project is initialized with parts of my own attempt to implement replica of old NFS game
-[The Need For Speed Web](https://tnfsw.guraklgames.com/) (far from final version), by the way it was using cannon.js 
-and then migrated to ammo.js with minimum changes to the architecture, which in fact inspired me to start this project: 
-there was a lot to learn and realize that game development for browsers deserves more than available. Right now the 
-engine is still focused on that NFS project and all the functionality is written specifically for it, so one can notice 
-that there is currently lack of functionality which is not related to racing games.
+## 🌟 Key Features
+- Multi-library Integration: Supports rendering and physics libraries like Three.js, Ammo.js, Pixi.js, Matter.js, and more.
+- 2D & 3D Support: Build both 2D and 3D worlds effortlessly.
+- Ready-to-use Tools: Includes core functionalities like rendering loops, physics ticks, input handling, and more.
+- Serialization & Export: Built-in Blender exporter for 3D geometry and physics properties.
+- Entity System: Modular design with reusable entities for rendering, physics, cameras, vehicles, and more.
+- Extensible Architecture: Easily integrate or replace components with custom implementations.
+- Modern Tech Stack: Written in TypeScript with RxJS for reactive programming.
 
-## Features
-- Automatically working physics/rendering ticks
-- Automatic physics body/visual mesh position/rotation binding
-- Controllers interface, allowing to add some functions as part of tick
-- rigid bodies
-- trigger zones
-- physics debugger view
-- UI developer console
-- free-fly camera controller (3D world only)
-- raycast car entity (3D world only) and dedicated keyboard controller for it
-- map graph, allowing to load only nearest part of map, using graph of map areas (3D world only)
+## 🔭 Vision
+- Provide seamless integrations for existing rendering, physics, and sound libraries.
+- Deliver a robust foundation for both 2D and 3D game worlds.
+- Empower developers with tools like developer console, cameras, and debug utilities.
+- Maintain modularity to ensure maximum flexibility for developers.
+- Stay library-agnostic, enabling developers to switch or customize libraries with ease.
 
-## Integrations
-Note: at this early step, the project does not give much flexibility in that regard, will be changed in future
-- [**@gg-web-engine/three**](https://github.com/AndyGura/gg-web-engine/tree/main/packages/three/README.md) - 3D world rendering module [Three.js](https://github.com/mrdoob/three.js)
-- [**@gg-web-engine/ammo**](https://github.com/AndyGura/gg-web-engine/tree/main/packages/ammo/README.md) - 3D world physics simulation module [Ammo.js](https://github.com/kripken/ammo.js)
-- [**@gg-web-engine/rapier3d**](https://github.com/AndyGura/gg-web-engine/tree/main/packages/rapier3d/README.md) - 3D world physics simulation module [Rapier.js](https://github.com/dimforge/rapier.js)
-- [**@gg-web-engine/pixi**](https://github.com/AndyGura/gg-web-engine/tree/main/packages/pixi/README.md) - 2D world rendering module [Pixi.js](https://github.com/pixijs/pixijs)
-- [**@gg-web-engine/matter**](https://github.com/AndyGura/gg-web-engine/tree/main/packages/matter/README.md) - 2D world physics simulation module [Matter.js](https://github.com/liabru/matter-js)
-- [**@gg-web-engine/rapier2d**](https://github.com/AndyGura/gg-web-engine/tree/main/packages/rapier2d/README.md) - 2D world physics simulation module [Rapier.js](https://github.com/dimforge/rapier.js)
+## 🚧 Current Status
+### **<span style="color:red">Experimental Release**</span>
 
-## Quickstart
-### Installation:
-1) `npm install --save @gg-web-engine/core`
-1) install and setup integration modules, example below uses [**@gg-web-engine/three**](https://github.com/AndyGura/gg-web-engine/tree/main/packages/three/README.md) and [**@gg-web-engine/ammo**](https://github.com/AndyGura/gg-web-engine/tree/main/packages/ammo/README.md) integrations
+This engine began as part of a project to recreate an old NFS game
+[The Need For Speed Web](https://tnfsw.guraklgames.com/). Its modular architecture was inspired by the challenges of
+switching from Cannon.js to Ammo.js and, eventually, to custom reverse-engineered physics engine with minimal changes.
+
+While the current focus is on racing game features and 3D worlds, future updates will expand the engine's versatility. Contributions, feature requests, and bug reports are warmly welcomed!
+
+## ✨ Features at a Glance
+- Physics/Rendering Synchronization: Automates position/rotation updates.
+- Customizable Controllers: Add functionality with reusable tick-based controllers.
+- Entities: Predefined entities like rigid bodies, triggers, raycast vehicles, and more.
+- Developer Console: Built-in UI console for debugging and tweaking settings.
+- Map Graph Loading: Load map areas dynamically based on proximity (3D worlds).
+- Free-Fly Camera: Explore 3D worlds effortlessly.
+
+## 🔌 Integrations
+> Note: Current integrations are in early stages and will become more flexible in future releases.
+
+- [**@gg-web-engine/three**](https://github.com/AndyGura/gg-web-engine/tree/main/packages/three/README.md) - 3D rendering ([Three.js](https://github.com/mrdoob/three.js))
+- [**@gg-web-engine/ammo**](https://github.com/AndyGura/gg-web-engine/tree/main/packages/ammo/README.md) - 3D physics ([Ammo.js](https://github.com/kripken/ammo.js))
+- [**@gg-web-engine/rapier3d**](https://github.com/AndyGura/gg-web-engine/tree/main/packages/rapier3d/README.md) - 3D physics ([Rapier.js](https://github.com/dimforge/rapier.js))
+- [**@gg-web-engine/pixi**](https://github.com/AndyGura/gg-web-engine/tree/main/packages/pixi/README.md) - 2D rendering ([Pixi.js](https://github.com/pixijs/pixijs))
+- [**@gg-web-engine/matter**](https://github.com/AndyGura/gg-web-engine/tree/main/packages/matter/README.md) - 2D physics ([Matter.js](https://github.com/liabru/matter-js))
+- [**@gg-web-engine/rapier2d**](https://github.com/AndyGura/gg-web-engine/tree/main/packages/rapier2d/README.md) - 2D physics ([Rapier.js](https://github.com/dimforge/rapier.js))
+
+## ⚡ Quickstart
+### Installation
+1) Install the core package:
+```bash
+npm install --save @gg-web-engine/core
+```
+1) Install integration modules. For example, to use Three.js and Ammo.js:
+```bash
+npm install --save @gg-web-engine/three @gg-web-engine/ammo
+```
 
 ### Usage:
 1) add somewhere in dom tree: ```<canvas id="gg"></canvas>```
@@ -130,27 +133,22 @@ And run it:
   <img src="documentation/assets/example.gif" alt=''/>
 </p>
 
-## FAQ
-#### Viewport looks not centered / bad rendering resolution on mobile / retina display
-Try to add to your html <head>:
-```<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1, maximum-scale=1">```
+## 🛠️ Examples
+### [Interactive Demos](https://gg-web-demos.guraklgames.com/)
+### Framework Usage
+- #### Angular: [Example Project](https://stackblitz.com/github/AndyGura/gg-web-engine/tree/main/examples/framework-angular-three-ammo?file=src%2Fmain.ts)
+- #### React: [Example Project](https://stackblitz.com/github/AndyGura/gg-web-engine/tree/main/examples/framework-react-three-rapier3d?file=src%2FApp.tsx)
 
+## 📚 Documentation
+Explore the complete technical documentation: [GitHub Pages](https://andygura.github.io/gg-web-engine/).
 
-## Examples
-
-### [Scene examples](https://gg-web-demos.guraklgames.com/)
-
-### Usage in frameworks
-- #### [Angular](https://stackblitz.com/github/AndyGura/gg-web-engine/tree/main/examples/framework-angular-three-ammo?file=src%2Fmain.ts)
-- #### [React](https://stackblitz.com/github/AndyGura/gg-web-engine/tree/main/examples/framework-react-three-rapier3d?file=src%2FApp.tsx)
-
-## Architecture
+## 🌌 Architecture
 The most important thing in the engine is [GgWorld](https://andygura.github.io/gg-web-engine/modules/core/base/gg-world.ts/).
-It encapsulates everything you need in your game runtime: ticker clock, visual scene, physics simulation world etc. 
-One browser tab can run one or many GG worlds. In order to add something to the world, caller code needs to add 
-[Entities](https://andygura.github.io/gg-web-engine/modules/core/base/entities/i-entity.ts/). Entity is anything which 
-works in the world: tick-based controller, rigid body, renderer etc. World and entity are self-sufficient in gg core 
-package, so they do not depend on selected integration library. Entity can use from 0 to many 
+It encapsulates everything you need in your game runtime: ticker clock, visual scene, physics simulation world etc.
+One browser tab can run one or many GG worlds. In order to add something to the world, caller code needs to add
+[Entities](https://andygura.github.io/gg-web-engine/modules/core/base/entities/i-entity.ts/). Entity is anything which
+works in the world: tick-based controller, rigid body, renderer etc. World and entity are self-sufficient in gg core
+package, so they do not depend on selected integration library. Entity can use from 0 to many
 [World Components](https://andygura.github.io/gg-web-engine/modules/core/base/components/i-world-component.ts/#i-world-component-overview) -
 those are fully dependent on integration library, so libraries in general case only implement components.
 
@@ -163,9 +161,9 @@ fired on the previous tick. All clock instances have hierarchy: pausing clock wi
 clocks, which is nice to use for in-game timers: all timers will be paused when world clock is paused. There are two
 built-in implementations of clock:
 #### [GgGlobalClock](https://andygura.github.io/gg-web-engine/modules/core/base/clock/global-clock.ts/)
-Singleton, starts emitting ticks as soon as accessed. For scheduling ticks, it uses `animationFrameScheduler` from rxjs,
-which uses `requestAnimationFrame` API. The elapsed time for each tick is a timestamp, e.g. total amount of
-milliseconds, passed from 01.01.1970 00:00:00.000 UTC. The instance of this clock is always the root clock in clocks hierarchy
+Singleton, starts emitting ticks as soon as accessed. For scheduling ticks, it uses `requestAnimationFrame` API.
+The elapsed time for each tick is a timestamp, e.g. total amount of milliseconds, passed from
+01.01.1970 00:00:00.000 UTC. The instance of this clock is always the root clock in clocks hierarchy
 #### [PausableClock](https://andygura.github.io/gg-web-engine/modules/core/base/clock/pausable-clock.ts/)
 The class for all remaining clocks: it measures time elapsed when was started. Has the ability to be paused/resumed,
 and elapsed time will not be affected by pause: it will proceed from the same state it was paused. Every world has its
@@ -180,13 +178,13 @@ flowchart LR
 ```
 
 ### [World](https://andygura.github.io/gg-web-engine/modules/core/base/gg-world.ts/)
-World is a container of all entities of your game, manages the entire flow. Though it is possible to have multiple 
+World is a container of all entities of your game, manages the entire flow. Though it is possible to have multiple
 worlds in one page, in most cases you only need one. World consists of:
 - clock
-- visual scene, e.g. "sub-world", containing everything related to rendering. This is a [component](https://andygura.github.io/gg-web-engine/modules/core/base/components/rendering/i-visual-scene.component.ts/),
-which has to be implemented by integration library
-- physics world, e.g. "sub-world", containing everything related to physics simulation. This is a [component](https://andygura.github.io/gg-web-engine/modules/core/base/components/physics/i-physics-world.component.ts/#iphysicsworldcomponent-interface),
-which has to be implemented by integration library
+- visual scene, containing everything related to rendering. This is a [component](https://andygura.github.io/gg-web-engine/modules/core/base/components/rendering/i-visual-scene.component.ts/),
+  which has to be implemented by integration library
+- physics world, containing everything related to physics simulation. This is a [component](https://andygura.github.io/gg-web-engine/modules/core/base/components/physics/i-physics-world.component.ts/#iphysicsworldcomponent-interface),
+  which has to be implemented by integration library
 - list of all spawned world entities, sorted by tick order, and API for spawning/removing them
 - logic to propagate clock ticks to every spawned active entity
 - keyboard input
@@ -221,16 +219,16 @@ For instance, `@gg-web-engine/three` implements 4 components: `IVisualScene3d`, 
 
 ### [Entity](https://andygura.github.io/gg-web-engine/modules/core/base/entities/i-entity.ts/)
 Basically, everything that listens ticks and can be added/removed from world. Built-in entities:
-- **[Entity2d](https://andygura.github.io/gg-web-engine/modules/core/2d/entities/entity-2d.ts/#entity2d-class)** / **[Entity3d](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/entity-3d.ts/#entity3d-class)** encapsulates display object (sprite or mesh respectively) and rigid body. 
-Synchronizes position/rotation each tick
+- **[Entity2d](https://andygura.github.io/gg-web-engine/modules/core/2d/entities/entity-2d.ts/#entity2d-class)** / **[Entity3d](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/entity-3d.ts/#entity3d-class)** encapsulates display object (sprite or mesh respectively) and rigid body.
+  Synchronizes position/rotation each tick
 - **[Trigger2dEntity](https://andygura.github.io/gg-web-engine/modules/core/2d/entities/trigger-2d.entity.ts/#trigger2dentity-class)** / **[Trigger3dEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/trigger-3d.entity.ts/#trigger3dentity-class)** has only physics body, but instead of participating in collisions, emits
-events when some another positionable entity entered/left its area
+  events when some another positionable entity entered/left its area
 - **[InlineTickController](https://andygura.github.io/gg-web-engine/modules/core/base/entities/controllers/inline-controller.ts/#createinlinetickcontroller)** simple controller, which can be created and added to world using one line of code
 - **[Renderer](https://andygura.github.io/gg-web-engine/modules/core/base/entities/i-renderer.entity.ts/#irendererentity-class)** controller, which renders the scene and controls canvas size (if canvas provided). Makes canvas appearing fullscreen by default
-- **[AnimationMixer](https://andygura.github.io/gg-web-engine/modules/core/base/entities/controllers/animation-mixer.ts/#animationmixer-class)** controller, which mixes animations: use-case is if you have some animation function, and you need a 
-smooth transition to another animation function
-- **[Entity2dPositioningAnimator](https://andygura.github.io/gg-web-engine/modules/core/2d/entities/controllers/entity-2d-positioning.animator.ts/#entity2dpositioninganimator-class)** / **[Entity3dPositioningAnimator](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/controllers/animators/entity-3d-positioning.animator.ts/#entity3dpositioninganimator-class)** controllers extending **AnimationMixer**, which apply 
-position/rotation to positionable entity
+- **[AnimationMixer](https://andygura.github.io/gg-web-engine/modules/core/base/entities/controllers/animation-mixer.ts/#animationmixer-class)** controller, which mixes animations: use-case is if you have some animation function, and you need a
+  smooth transition to another animation function
+- **[Entity2dPositioningAnimator](https://andygura.github.io/gg-web-engine/modules/core/2d/entities/controllers/entity-2d-positioning.animator.ts/#entity2dpositioninganimator-class)** / **[Entity3dPositioningAnimator](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/controllers/animators/entity-3d-positioning.animator.ts/#entity3dpositioninganimator-class)** controllers extending **AnimationMixer**, which apply
+  position/rotation to positionable entity
 - **[Camera3dAnimator](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/controllers/animators/camera-3d.animator.ts/#camera3danimator-class)** dedicated **AnimationMixer** for perspective camera: translates camera, target, up, fov etc.
 - **[FreeCameraController](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/controllers/input/free-camera.controller.ts/#freecameracontroller-class)** a controller, allows to control camera with WASD + mouse
 - **[CarKeyboardHandlingController](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/controllers/input/car-keyboard-handling.controller.ts/#carkeyboardhandlingcontroller-class)** a controller allowing to control car with keyboard
@@ -264,19 +262,19 @@ flowchart LR
 ```
 
 ### Factory
-There is simple factory, allowing to easily create rigid bodies. See 
-[2D](https://andygura.github.io/gg-web-engine/modules/core/2d/factories.ts/) and 
+There is simple factory, allowing to easily create rigid bodies. See
+[2D](https://andygura.github.io/gg-web-engine/modules/core/2d/factories.ts/) and
 [3D](https://andygura.github.io/gg-web-engine/modules/core/3d/factories.ts/) factories
 
 ### Loader
-Currently, there is only one loader available, and only for 3D world. It uses own format of serializing blender scene: 
-**.glb**+**.meta** files, where glb is a binary GLTF file, containing mesh+materials, and meta is a json file, 
-containing evverything from blend file, not included in glb, such as empty objects; rigid bodies; splines. Right now it 
-is on very early stage. The script to make glb+meta from blender file is here: 
+Currently, there is only one loader available, and only for 3D world. It uses own format of serializing blender scene:
+**.glb**+**.meta** files, where glb is a binary GLTF file, containing mesh+materials, and meta is a json file,
+containing evverything from blend file, not included in glb, such as empty objects; rigid bodies; splines. Right now it
+is on very early stage. The script to make glb+meta from blender file is here:
 [build_blender_scene.py](packages/core/blender_exporter/build_blender_scene.py)
 
 ### Console
-Engine provides a simple console, which can be used at runtime (if enabled in world) by pressing \`. Your game can
+Engine provides a simple console, which can be used at runtime (if enabled) by pressing \`. Your game can
 provide custom console commands using `GgStatic.instance.registerConsoleCommand` function.
 
 #### Default global console commands
@@ -310,11 +308,21 @@ provide custom console commands using `GgStatic.instance.registerConsoleCommand`
 |-----------|--------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `gravity` | `?float, ?float, ?float` | Get or set 3D world gravity vector. 1 argument sets vector {x: 0, y: 0, z: -value}, 3 arguments set the whole vector. Default value is "9.82" or "0 0 -9.82" |
 
-## Support
+## ❓ FAQ
+### Why is the viewport not centered or blurry on mobile/retina displays?
+Add the following meta tag to your <head>:
+```html
+<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1, maximum-scale=1">
+```
+
+## 🤝 Support
+Feel free to dive into the code, contribute, or just have fun creating with GG-Web-Engine. Together, let’s shape the
+future of browser-based game development! 🎮
+
 You can support project by:
-- giving any feedback, bug report, feature request to [Issues](https://github.com/AndyGura/gg-web-engine/issues) 
+- giving any feedback, bug report, feature request to [Issues](https://github.com/AndyGura/gg-web-engine/issues)
 - fork & submit a [Pull Request](https://github.com/AndyGura/gg-web-engine/pulls)
 - [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/andygura)
 
-## License
+## 📜 License
 [Apache License](LICENSE)
