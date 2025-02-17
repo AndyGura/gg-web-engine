@@ -61,13 +61,13 @@ export abstract class AmmoBodyComponent<T extends Ammo.btCollisionObject> {
   protected _interactWithCGsMask = BitMask.full(16);
   protected _ownCGsMask = BitMask.full(16);
 
-  get interactWithCollisionGroups(): CollisionGroup[] {
+  get interactWithCollisionGroups(): ReadonlyArray<CollisionGroup> {
     return BitMask.unpack(this._interactWithCGsMask, 16);
   }
 
   abstract refreshCG(): void;
 
-  set interactWithCollisionGroups(value: CollisionGroup[] | 'all') {
+  set interactWithCollisionGroups(value: ReadonlyArray<CollisionGroup> | 'all') {
     let mask;
     if (value === 'all') {
       mask = BitMask.full(16);
@@ -82,11 +82,11 @@ export abstract class AmmoBodyComponent<T extends Ammo.btCollisionObject> {
     }
   }
 
-  get ownCollisionGroups(): CollisionGroup[] {
+  get ownCollisionGroups(): ReadonlyArray<CollisionGroup> {
     return BitMask.unpack(this._ownCGsMask, 16);
   }
 
-  set ownCollisionGroups(value: CollisionGroup[] | 'all') {
+  set ownCollisionGroups(value: ReadonlyArray<CollisionGroup> | 'all') {
     let mask;
     if (value === 'all') {
       mask = BitMask.full(16);

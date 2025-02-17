@@ -1,6 +1,7 @@
 /**
  * BitMask class provides static methods to manipulate bits in a number.
- */ /**
+ */
+/**
  * BitMask class provides static methods to manipulate bits in a number.
  */
 export class BitMask {
@@ -26,7 +27,7 @@ export class BitMask {
    * @param bits - The maximum bit index that can be used
    * @throws Will throw an Error if a bit index in `value` is larger than `bits`
    */
-  static pack(value: number[], bits: number) {
+  static pack(value: number[] | ReadonlyArray<number>, bits: number) {
     let ret = 0;
     for (const g of value) {
       if (g >= bits) {

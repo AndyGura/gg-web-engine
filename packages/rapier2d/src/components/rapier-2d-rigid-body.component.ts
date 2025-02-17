@@ -115,11 +115,11 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
 
   protected collisionGroups: InteractionGroups = BitMask.full(32);
 
-  get interactWithCollisionGroups(): CollisionGroup[] {
+  get interactWithCollisionGroups(): ReadonlyArray<CollisionGroup> {
     return BitMask.unpack(this.collisionGroups, 16);
   }
 
-  set interactWithCollisionGroups(value: CollisionGroup[] | 'all') {
+  set interactWithCollisionGroups(value: ReadonlyArray<CollisionGroup> | 'all') {
     let mask;
     if (value === 'all') {
       mask = BitMask.full(16);
@@ -138,11 +138,11 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
     }
   }
 
-  get ownCollisionGroups(): CollisionGroup[] {
+  get ownCollisionGroups(): ReadonlyArray<CollisionGroup> {
     return BitMask.unpack(this.collisionGroups >> 16, 16);
   }
 
-  set ownCollisionGroups(value: CollisionGroup[] | 'all') {
+  set ownCollisionGroups(value: ReadonlyArray<CollisionGroup> | 'all') {
     let mask;
     if (value === 'all') {
       mask = BitMask.full(16);
