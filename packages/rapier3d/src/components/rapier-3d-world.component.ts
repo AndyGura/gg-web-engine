@@ -41,6 +41,8 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
     }
   }
 
+  readonly mainCollisionGroup: CollisionGroup = 0;
+
   protected _nativeWorld: World | null = null;
   public get nativeWorld(): World {
     if (!this._nativeWorld) {
@@ -80,7 +82,7 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
   protected lockedCollisionGroups: number[] = [];
 
   registerCollisionGroup(): CollisionGroup {
-    for (let i = 0; i < 16; i++) {
+    for (let i = 1; i < 16; i++) {
       if (!this.lockedCollisionGroups.includes(i)) {
         this.lockedCollisionGroups.push(i);
         return i;

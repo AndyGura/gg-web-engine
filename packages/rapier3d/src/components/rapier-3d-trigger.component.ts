@@ -36,7 +36,10 @@ export class Rapier3dTriggerComponent
     public readonly shape: Shape3DDescriptor,
     protected _bodyDescr: RigidBodyDesc,
   ) {
-    super(world, _colliderDescr, shape, _bodyDescr, null!);
+    super(world, _colliderDescr, shape, _bodyDescr, {
+      ownCollisionGroups: [world.mainCollisionGroup],
+      interactWithCollisionGroups: [world.mainCollisionGroup],
+    } as any);
   }
 
   addToWorld(world: Gg3dWorld<VisualTypeDocRepo3D, Rapier3dPhysicsTypeDocRepo>): void {
@@ -66,6 +69,9 @@ export class Rapier3dTriggerComponent
 
   clone(): Rapier3dTriggerComponent {
     const [colliderDescr, sd, bd] = super.factoryProps;
-    return new Rapier3dTriggerComponent(this.world, colliderDescr, sd, bd);
+    let component = new Rapier3dTriggerComponent(this.world, colliderDescr, sd, bd);
+    component.ownCollisionGroups = this.ownCollisionGroups;
+    component.interactWithCollisionGroups = this.interactWithCollisionGroups;
+    return component;
   }
 }

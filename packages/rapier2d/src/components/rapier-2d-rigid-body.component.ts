@@ -108,7 +108,10 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
     public readonly shape: Shape2DDescriptor,
     protected _bodyDescr: RigidBodyDesc,
     protected _colliderOptions: Omit<Omit<Body2DOptions, 'dynamic'>, 'mass'>,
-  ) {}
+  ) {
+    this.ownCollisionGroups = _colliderOptions?.ownCollisionGroups || 'all';
+    this.interactWithCollisionGroups = _colliderOptions?.interactWithCollisionGroups || 'all';
+  }
 
   protected collisionGroups: InteractionGroups = BitMask.full(32);
 

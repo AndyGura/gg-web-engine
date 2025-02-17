@@ -107,6 +107,7 @@ export abstract class AmmoBodyComponent<T extends Ammo.btCollisionObject> {
     public readonly shape: Shape3DDescriptor,
   ) {
     AmmoBodyComponent.nativeBodyReverseMap.set(Ammo.getPointer(this.nativeBody), this);
+    this.ownCollisionGroups = this.interactWithCollisionGroups = [world.mainCollisionGroup];
   }
 
   abstract clone(): AmmoBodyComponent<T>;
