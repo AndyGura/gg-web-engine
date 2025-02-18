@@ -66,8 +66,10 @@ export class ThreePhysicsDebugView {
         color: debugSettings.color,
       })!.nativeMesh! as Mesh;
     }
-    m.position.set(...Pnt3.spr(c.position));
-    m.quaternion.set(...Qtrn.spr(c.rotation));
+    if (!debugSettings.ignoreTransform) {
+      m.position.set(...Pnt3.spr(c.position));
+      m.quaternion.set(...Qtrn.spr(c.rotation));
+    }
     this.syncMap.set(c, [m, debugSettings.revision]);
     this.debugScene?.add(m);
   }

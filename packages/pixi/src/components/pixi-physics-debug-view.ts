@@ -18,8 +18,10 @@ export class PixiPhysicsDebugView {
       graphics.moveTo(...Pnt2.spr(vertices[i])).lineTo(...Pnt2.spr(vertices[i + 1]));
     }
     graphics.stroke({ width: 1, color });
-    graphics.position.set(...Pnt2.spr(c.position));
-    graphics.rotation = c.rotation;
+    if (!debugSettings.ignoreTransform) {
+      graphics.position.set(...Pnt2.spr(c.position));
+      graphics.rotation = c.rotation;
+    }
     this.syncMap.set(c, [graphics, debugSettings.revision]);
     this.debugContainer.addChild(graphics);
   }
