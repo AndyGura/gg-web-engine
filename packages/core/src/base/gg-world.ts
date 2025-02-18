@@ -54,6 +54,10 @@ export abstract class GgWorld<
   // the same as children, but sorted by tick order
   protected readonly tickListeners: IEntity[] = [];
 
+  public get renderers(): IRendererEntity<D, R>[] {
+    return this.tickListeners.filter(e => e instanceof IRendererEntity) as IRendererEntity<D, R>[];
+  }
+
   // events
   public readonly tickStarted$: Subject<void> = new Subject<void>();
   public readonly tickForwardTo$: Subject<IEntity | 'PHYSICS_WORLD'> = new Subject<IEntity | 'PHYSICS_WORLD'>();
@@ -237,10 +241,7 @@ export abstract class GgWorld<
       this,
       'renderers',
       async () => {
-        return this.children
-          .filter(e => e instanceof IRendererEntity)
-          .map(r => r.name)
-          .join('\n');
+        return this.renderers.map(r => r.name).join('\n');
       },
       'no args; Print all renderers in selected world',
     );
@@ -257,9 +258,7 @@ export abstract class GgWorld<
             rendererName = arg;
           }
         }
-        let renderer: IRendererEntity<unknown, unknown> | null = this.children.find(
-          x => x instanceof IRendererEntity && (!rendererName || x.name === rendererName),
-        ) as any;
+        let renderer = rendererName ? this.renderers.find(x => x.name === rendererName) : this.renderers[0];
         if (renderer) {
           renderer.physicsDebugViewActive = value === 'toggle' ? !renderer.physicsDebugViewActive : value;
           return renderer.physicsDebugViewActive ? '1' : '0';

@@ -1,6 +1,15 @@
-import { BodyOptions, DebugBodySettings } from '../../base';
+import { BodyOptions, DebugBodySettings, DebugBodyType } from '../../base';
 import { Shape2DDescriptor } from './shapes';
 
 export interface Body2DOptions extends BodyOptions {}
 
-export type DebugBody2DSettings = DebugBodySettings & { shape: Shape2DDescriptor };
+export class DebugBody2DSettings extends DebugBodySettings<Shape2DDescriptor> {
+  constructor(
+    type: DebugBodyType,
+    shape: Shape2DDescriptor,
+    ignoreTransform: boolean = false,
+    color: number | undefined = undefined,
+  ) {
+    super(type, shape, ignoreTransform, color);
+  }
+}
