@@ -151,15 +151,8 @@ export class GgDebuggerUI {
   private performanceStatsSnapshot: PerformanceStatsSnapshot = null;
 
   private makeSnapshot(): RuntimeDataSnapshot {
-    const renderers: IRendererEntity<unknown, unknown>[] = [];
-    let performanceMeter: PerformanceMeterEntity | null = null;
-    for (const e of this.currentWorld?.children || []) {
-      if (e instanceof IRendererEntity) {
-        renderers.push(e);
-      } else if (e instanceof PerformanceMeterEntity) {
-        performanceMeter = e;
-      }
-    }
+    const renderers: IRendererEntity<unknown, unknown>[] = this.currentWorld?.renderers || [];
+    let performanceMeter = (this.currentWorld?.children || []).find(e => e instanceof PerformanceMeterEntity);
     return {
       timeScale: this.currentWorld?.worldClock.timeScale || NaN,
       renderers: renderers.map(r => ({

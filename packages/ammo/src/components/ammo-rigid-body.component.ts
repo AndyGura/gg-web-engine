@@ -37,13 +37,12 @@ export class AmmoRigidBodyComponent
     this.nativeBody.setAngularVelocity(new Ammo.btVector3(value.x, value.y, value.z));
   }
 
-  get debugBodySettings(): DebugBody3DSettings {
-    if (this._nativeBody.isStaticOrKinematicObject()) {
-      return { shape: this.shape, type: 'RIGID_STATIC' };
-    } else {
-      return { shape: this.shape, type: 'RIGID_DYNAMIC', sleeping: !this._nativeBody.isActive() };
-    }
-  }
+  readonly debugBodySettings: DebugBody3DSettings = new DebugBody3DSettings(
+    this._nativeBody.isStaticOrKinematicObject()
+      ? { type: 'RIGID_STATIC' }
+      : { type: 'RIGID_DYNAMIC', sleeping: () => !this._nativeBody.isActive() },
+    this.shape,
+  );
 
   constructor(
     protected readonly world: AmmoWorldComponent,

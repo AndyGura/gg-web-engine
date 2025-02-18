@@ -21,7 +21,7 @@ export interface IBodyComponent<D, R, TypeDoc extends PhysicsTypeDocRepo<D, R> =
   set interactWithCollisionGroups(value: ReadonlyArray<CollisionGroup> | 'all');
 
   /** body info for physics debugger view */
-  readonly debugBodySettings: DebugBodySettings;
+  readonly debugBodySettings: DebugBodySettings<any>;
 
   clone(): IBodyComponent<D, R, TypeDoc>;
 

@@ -2,8 +2,6 @@ import {
   DebugBody3DSettings,
   Gg3dWorld,
   IBodyComponent,
-  IRigidBody3dComponent,
-  ITrigger3dComponent,
   Pnt3,
   Point3,
   Point4,
@@ -12,7 +10,7 @@ import {
 } from '@gg-web-engine/core';
 import { ThreeRendererComponent } from './three-renderer.component';
 import { ThreeVisualTypeDocRepo } from '../types';
-import { BufferGeometry, Camera, LineSegments, Mesh, MeshBasicMaterial, Scene, Vector3, WebGLRenderer } from 'three';
+import { BufferGeometry, Camera, LineSegments, Mesh, Scene, Vector3, WebGLRenderer } from 'three';
 import { tabulateArray } from '../utils/tabulate-array';
 import { Subscription } from 'rxjs';
 
@@ -54,33 +52,39 @@ export class ThreePhysicsDebugView {
     }
   }
 
+  initShape(c: IBodyComponent<Point3, Point4>) {
+    const debugSettings: DebugBody3DSettings = c.debugBodySettings;
+    const shape: Shape3DMeshDescriptor = debugSettings.shape;
+    let vertices = this.lineSegmentPointsForShape(shape);
+    let m: Mesh;
+    if (vertices) {
+      m = new LineSegments(new BufferGeometry().setFromPoints(vertices)) as any;
+      (m.material as any).color.set(debugSettings.color);
+    } else {
+      m = this.world?.visualScene.factory.createPrimitive(debugSettings.shape, {
+        shading: 'wireframe',
+        color: debugSettings.color,
+      })!.nativeMesh! as Mesh;
+    }
+    if (!debugSettings.ignoreTransform) {
+      m.position.set(...Pnt3.spr(c.position));
+      m.quaternion.set(...Qtrn.spr(c.rotation));
+    }
+    this.syncMap.set(c, [m, debugSettings.revision]);
+    this.debugScene?.add(m);
+  }
+
   private constructor(private readonly world: Gg3dWorld<ThreeVisualTypeDocRepo>) {
     this.debugScene = new Scene();
-    const initShape = (c: ITrigger3dComponent | IRigidBody3dComponent) => {
-      const debugSettings: DebugBody3DSettings = c.debugBodySettings;
-      const shape: Shape3DMeshDescriptor = debugSettings.shape;
-      let vertices = this.lineSegmentPointsForShape(shape);
-      let m: Mesh;
-      if (vertices) {
-        m = new LineSegments(new BufferGeometry().setFromPoints(vertices)) as any;
-      } else {
-        m = this.world?.visualScene.factory.createPrimitive(debugSettings.shape, {
-          shading: 'wireframe',
-          color: 0,
-        })!.nativeMesh! as Mesh;
-      }
-      this.syncMap.set(c, m);
-      this.debugScene?.add(m);
-    };
     for (const c of this.world!.physicsWorld.children) {
-      initShape(c);
+      this.initShape(c);
     }
-    this.aSub = this.world!.physicsWorld.added$.subscribe(c => initShape(c));
+    this.aSub = this.world!.physicsWorld.added$.subscribe(c => this.initShape(c));
     this.rSub = this.world!.physicsWorld.removed$.subscribe(c => {
-      const m = this.syncMap.get(c);
-      if (m) {
+      const item = this.syncMap.get(c);
+      if (item) {
         this.syncMap.delete(c);
-        this.debugScene?.remove(m);
+        this.debugScene?.remove(item[0]);
       }
     });
   }
@@ -92,27 +96,14 @@ export class ThreePhysicsDebugView {
   }
 
   public render(nativeRenderer: WebGLRenderer, nativeCamera: Camera) {
-    for (const [c, m] of this.syncMap.entries()) {
+    for (const [c, [m, rev]] of this.syncMap.entries()) {
       const debugSettings: DebugBody3DSettings = c.debugBodySettings;
-      if (!debugSettings.ignoreTransform) {
+      if (rev !== debugSettings.revision) {
+        this.debugScene?.remove(m);
+        this.initShape(c);
+      } else if (!debugSettings.ignoreTransform) {
         m.position.set(...Pnt3.spr(c.position));
         m.quaternion.set(...Qtrn.spr(c.rotation));
-      }
-      if (m.material) {
-        let color = 0xffffff;
-        switch (debugSettings.type) {
-          case 'RIGID_DYNAMIC':
-            color = debugSettings.sleeping ? 0x0000ff : 0xff0000;
-            break;
-          case 'RIGID_STATIC':
-            color = 0x00ff00;
-            break;
-          case 'TRIGGER':
-            color = 0xffff00;
-            break;
-        }
-        (m.material as MeshBasicMaterial).color.set(color);
-        (m.material as MeshBasicMaterial).needsUpdate = true;
       }
     }
     const autoClearColor = nativeRenderer.autoClearColor;
@@ -127,7 +118,7 @@ export class ThreePhysicsDebugView {
 
   private aSub: Subscription | null = null;
   private rSub: Subscription | null = null;
-  private syncMap: Map<IBodyComponent<Point3, Point4>, Mesh> = new Map();
+  private syncMap: Map<IBodyComponent<Point3, Point4>, [Mesh, number]> = new Map();
 
   private lineSegmentPointsForShape(shape: Shape3DMeshDescriptor): Vector3[] | null {
     if (shape.shape === 'BOX') {

@@ -51,13 +51,12 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
 
   public entity: Entity2d | null = null;
 
-  get debugBodySettings(): DebugBody2DSettings {
-    if (isFinite(this.nativeBody.mass)) {
-      return { shape: this.shape, type: 'RIGID_DYNAMIC', sleeping: this.nativeBody.isSleeping };
-    } else {
-      return { shape: this.shape, type: 'RIGID_STATIC' };
-    }
-  }
+  readonly debugBodySettings: DebugBody2DSettings = new DebugBody2DSettings(
+    isFinite(this.nativeBody.mass)
+      ? { type: 'RIGID_DYNAMIC', sleeping: () => this.nativeBody.isSleeping }
+      : { type: 'RIGID_STATIC' },
+    this.shape,
+  );
 
   constructor(
     public nativeBody: Body,

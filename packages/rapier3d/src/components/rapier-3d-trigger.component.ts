@@ -1,4 +1,4 @@
-import { Observable, Subject } from 'rxjs';
+import { map, merge, Observable, Subject } from 'rxjs';
 import { ColliderDesc, RigidBodyDesc } from '@dimforge/rapier3d-compat';
 import { Rapier3dRigidBodyComponent } from './rapier-3d-rigid-body.component';
 import {
@@ -26,9 +26,12 @@ export class Rapier3dTriggerComponent
   protected readonly onEnter$: Subject<Rapier3dRigidBodyComponent> = new Subject<Rapier3dRigidBodyComponent>();
   protected readonly onLeft$: Subject<Rapier3dRigidBodyComponent> = new Subject<Rapier3dRigidBodyComponent>();
 
-  get debugBodySettings(): DebugBody3DSettings {
-    return { shape: this.shape, type: 'TRIGGER' };
-  }
+  readonly debugBodySettings: DebugBody3DSettings = new DebugBody3DSettings(
+    { type: 'TRIGGER', activated: () => this.intersectionsAmount > 0 },
+    this.shape,
+  );
+
+  protected intersectionsAmount = 0;
 
   constructor(
     protected readonly world: Rapier3dWorldComponent,
@@ -37,12 +40,20 @@ export class Rapier3dTriggerComponent
     protected _bodyDescr: RigidBodyDesc,
   ) {
     super(world, _colliderDescr, shape, _bodyDescr, null!);
+    merge(this.onEnter$.pipe(map(() => true)), this.onLeft$.pipe(map(() => false))).subscribe(enter => {
+      if (enter) {
+        this.intersectionsAmount++;
+      } else {
+        this.intersectionsAmount--;
+      }
+    });
   }
 
   addToWorld(world: Gg3dWorld<VisualTypeDocRepo3D, Rapier3dPhysicsTypeDocRepo>): void {
     if (world.physicsWorld != this.world) {
       throw new Error('Rapier3D bodies cannot be shared between different worlds');
     }
+    this.intersectionsAmount = 0;
     this._nativeBody = this.world.nativeWorld!.createRigidBody(this._bodyDescr);
     this._nativeBodyColliders = this._colliderDescr.map(c =>
       this.world.nativeWorld!.createCollider(c, this._nativeBody!),

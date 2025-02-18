@@ -65,13 +65,12 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
     }
   }
 
-  get debugBodySettings(): DebugBody3DSettings {
-    if (this._bodyDescr.mass > 0) {
-      return { shape: this.shape, type: 'RIGID_DYNAMIC', sleeping: !!this._nativeBody?.isSleeping() };
-    } else {
-      return { shape: this.shape, type: 'RIGID_STATIC' };
-    }
-  }
+  readonly debugBodySettings: DebugBody3DSettings = new DebugBody3DSettings(
+    this._bodyDescr.mass > 0
+      ? { type: 'RIGID_DYNAMIC', sleeping: () => !!this._nativeBody?.isSleeping() }
+      : { type: 'RIGID_STATIC' },
+    this.shape,
+  );
 
   protected _nativeBody: RigidBody | null = null;
   protected _nativeBodyColliders: Collider[] | null = null;

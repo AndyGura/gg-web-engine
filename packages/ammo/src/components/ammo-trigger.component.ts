@@ -19,9 +19,10 @@ export class AmmoTriggerComponent
 {
   public entity: IEntity | null = null;
 
-  get debugBodySettings(): DebugBody3DSettings {
-    return { shape: this.shape, type: 'TRIGGER' };
-  }
+  readonly debugBodySettings: DebugBody3DSettings = new DebugBody3DSettings(
+    { type: 'TRIGGER', activated: () => this.overlaps.size > 0 },
+    this.shape,
+  );
 
   get onEntityEntered(): Observable<AmmoRigidBodyComponent> {
     return this.onEnter$.pipe(

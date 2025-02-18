@@ -94,13 +94,12 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
     return [this._colliderDescr, this.shape, this._bodyDescr, this._colliderOptions];
   }
 
-  get debugBodySettings(): DebugBody2DSettings {
-    if (this._bodyDescr.mass > 0) {
-      return { shape: this.shape, type: 'RIGID_DYNAMIC', sleeping: !!this._nativeBody?.isSleeping() };
-    } else {
-      return { shape: this.shape, type: 'RIGID_STATIC' };
-    }
-  }
+  readonly debugBodySettings: DebugBody2DSettings = new DebugBody2DSettings(
+    this._bodyDescr.mass > 0
+      ? { type: 'RIGID_DYNAMIC', sleeping: () => !!this._nativeBody?.isSleeping() }
+      : { type: 'RIGID_STATIC' },
+    this.shape,
+  );
 
   constructor(
     protected readonly world: Rapier2dWorldComponent,
