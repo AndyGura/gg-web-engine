@@ -36,10 +36,7 @@ export class Rapier2dTriggerComponent
     public readonly shape: Shape2DDescriptor,
     protected _bodyDescr: RigidBodyDesc,
   ) {
-    super(world, _colliderDescr, shape, _bodyDescr, {
-      ownCollisionGroups: [world.mainCollisionGroup],
-      interactWithCollisionGroups: [world.mainCollisionGroup],
-    } as any);
+    super(world, _colliderDescr, shape, _bodyDescr, null!);
   }
 
   addToWorld(world: Gg2dWorld<VisualTypeDocRepo2D, Rapier2dPhysicsTypeDocRepo>): void {
