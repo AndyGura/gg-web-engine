@@ -42,6 +42,8 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
     }
   }
 
+  readonly mainCollisionGroup: CollisionGroup = 0;
+
   public maxSubSteps?: number = 100;
   public fixedTimeStep?: number = 0.01;
 
@@ -98,7 +100,7 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
   protected lockedCollisionGroups: number[] = [];
 
   registerCollisionGroup(): CollisionGroup {
-    for (let i = 0; i < 16; i++) {
+    for (let i = 1; i < 16; i++) {
       if (!this.lockedCollisionGroups.includes(i)) {
         this.lockedCollisionGroups.push(i);
         return i;

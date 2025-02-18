@@ -54,7 +54,6 @@ world.init().then(async () => {
   const ambient = new AmbientLight(0xffffff, 0.3);
   world.visualScene.nativeScene!.add(ambient);
 
-  const ballsCommonCg = world.physicsWorld.registerCollisionGroup();
   const cgs = [
     0xff0000,
     0x00ff00,
@@ -114,8 +113,6 @@ world.init().then(async () => {
         shape: { shape: 'BOX', dimensions: { x: 40, y: 40, z: 400 } },
         body: {
           dynamic: false,
-          ownCollisionGroups: [ballsCommonCg],
-          interactWithCollisionGroups: [ballsCommonCg],
           restitution: 0.3,
         },
       }),
@@ -134,8 +131,8 @@ world.init().then(async () => {
             body: {
               mass: 1,
               restitution: 0.3,
-              ownCollisionGroups: [collisionGroup, ballsCommonCg],
-              interactWithCollisionGroups: [collisionGroup, ballsCommonCg],
+              ownCollisionGroups: [collisionGroup, world.physicsWorld.mainCollisionGroup],
+              interactWithCollisionGroups: [collisionGroup, world.physicsWorld.mainCollisionGroup],
             },
           },
           { x: i, y: j, z: k },

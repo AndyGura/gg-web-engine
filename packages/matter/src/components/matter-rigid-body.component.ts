@@ -63,19 +63,20 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
     public nativeBody: Body,
     public readonly shape: Shape2DDescriptor,
   ) {}
-  get interactWithCollisionGroups(): CollisionGroup[] {
+
+  get interactWithCollisionGroups(): ReadonlyArray<CollisionGroup> {
     throw new Error('Collision groups not implemented for Matter.js');
   }
 
-  set interactWithCollisionGroups(value: CollisionGroup[] | 'all') {
+  set interactWithCollisionGroups(value: ReadonlyArray<CollisionGroup> | 'all') {
     throw new Error('Collision groups not implemented for Matter.js');
   }
 
-  get ownCollisionGroups(): CollisionGroup[] {
+  get ownCollisionGroups(): ReadonlyArray<CollisionGroup> {
     throw new Error('Collision groups not implemented for Matter.js');
   }
 
-  set ownCollisionGroups(value: CollisionGroup[] | 'all') {
+  set ownCollisionGroups(value: ReadonlyArray<CollisionGroup> | 'all') {
     throw new Error('Collision groups not implemented for Matter.js');
   }
 

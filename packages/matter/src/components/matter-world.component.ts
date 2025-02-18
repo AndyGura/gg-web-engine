@@ -32,6 +32,8 @@ export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhys
     }
   }
 
+  readonly mainCollisionGroup: CollisionGroup = 0;
+
   constructor() {
     this.added$.subscribe(c => this.children.push(c));
     this.removed$.subscribe(c => this.children.splice(this.children.indexOf(c), 1));

@@ -12,13 +12,13 @@ export interface IBodyComponent<D, R, TypeDoc extends PhysicsTypeDocRepo<D, R> =
 
   name: string;
 
-  get ownCollisionGroups(): CollisionGroup[];
+  get ownCollisionGroups(): ReadonlyArray<CollisionGroup>;
 
-  set ownCollisionGroups(value: CollisionGroup[] | 'all');
+  set ownCollisionGroups(value: ReadonlyArray<CollisionGroup> | 'all');
 
-  get interactWithCollisionGroups(): CollisionGroup[];
+  get interactWithCollisionGroups(): ReadonlyArray<CollisionGroup>;
 
-  set interactWithCollisionGroups(value: CollisionGroup[] | 'all');
+  set interactWithCollisionGroups(value: ReadonlyArray<CollisionGroup> | 'all');
 
   /** body info for physics debugger view */
   readonly debugBodySettings: DebugBodySettings;

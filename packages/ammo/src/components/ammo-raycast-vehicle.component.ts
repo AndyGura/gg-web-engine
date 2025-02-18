@@ -27,22 +27,26 @@ export class AmmoRaycastVehicleComponent
   public entity: RaycastVehicle3dEntity | null = null;
   protected readonly raycaster: Ammo.btDefaultVehicleRaycaster;
 
-  get interactWithCollisionGroups(): CollisionGroup[] {
+  get interactWithCollisionGroups(): ReadonlyArray<CollisionGroup> {
     return this.chassisBody.interactWithCollisionGroups;
   }
 
-  set interactWithCollisionGroups(value: CollisionGroup[] | 'all') {
-    this.chassisBody.interactWithCollisionGroups = value;
-    this.raycaster.set_m_collisionFilterMask(BitMask.pack(this.chassisBody.interactWithCollisionGroups, 16));
+  set interactWithCollisionGroups(value: ReadonlyArray<CollisionGroup> | 'all') {
+    if (this.chassisBody) {
+      this.chassisBody.interactWithCollisionGroups = value;
+      this.raycaster.set_m_collisionFilterMask(BitMask.pack(this.chassisBody.interactWithCollisionGroups, 16));
+    }
   }
 
-  get ownCollisionGroups(): CollisionGroup[] {
+  get ownCollisionGroups(): ReadonlyArray<CollisionGroup> {
     return this.chassisBody.ownCollisionGroups;
   }
 
-  set ownCollisionGroups(value: CollisionGroup[] | 'all') {
-    this.chassisBody.ownCollisionGroups = value;
-    this.raycaster.set_m_collisionFilterGroup(BitMask.pack(this.chassisBody.ownCollisionGroups, 16));
+  set ownCollisionGroups(value: ReadonlyArray<CollisionGroup> | 'all') {
+    if (this.chassisBody) {
+      this.chassisBody.ownCollisionGroups = value;
+      this.raycaster.set_m_collisionFilterGroup(BitMask.pack(this.chassisBody.ownCollisionGroups, 16));
+    }
   }
 
   refreshCG() {

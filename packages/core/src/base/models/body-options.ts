@@ -5,8 +5,8 @@ export interface BodyOptions {
   mass: number;
   restitution: number;
   friction: number;
-  ownCollisionGroups: CollisionGroup[] | 'all';
-  interactWithCollisionGroups: CollisionGroup[] | 'all';
+  ownCollisionGroups: ReadonlyArray<CollisionGroup> | 'all';
+  interactWithCollisionGroups: ReadonlyArray<CollisionGroup> | 'all';
 }
 
 export type DebugBodySettings = { shape: any; ignoreTransform?: boolean } & (

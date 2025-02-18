@@ -32,8 +32,8 @@ export class Rapier3dFactory implements IPhysicsBody3dComponentFactory<Rapier3dP
       {
         friction: 0.5,
         restitution: 0.1,
-        ownCollisionGroups: 'all',
-        interactWithCollisionGroups: 'all',
+        ownCollisionGroups: [this.world.mainCollisionGroup],
+        interactWithCollisionGroups: [this.world.mainCollisionGroup],
         ...descriptor.body,
       },
     );

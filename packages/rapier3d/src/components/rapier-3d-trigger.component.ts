@@ -66,6 +66,9 @@ export class Rapier3dTriggerComponent
 
   clone(): Rapier3dTriggerComponent {
     const [colliderDescr, sd, bd] = super.factoryProps;
-    return new Rapier3dTriggerComponent(this.world, colliderDescr, sd, bd);
+    let component = new Rapier3dTriggerComponent(this.world, colliderDescr, sd, bd);
+    component.ownCollisionGroups = this.ownCollisionGroups;
+    component.interactWithCollisionGroups = this.interactWithCollisionGroups;
+    return component;
   }
 }
