@@ -12,13 +12,15 @@ export class SurfaceFollowingEntity<PTypeDoc extends PhysicsTypeDocRepo3D = Phys
 > {
   readonly tickOrder = TickOrder.PHYSICS_SIMULATION - 1;
 
+  readonly debugBodySettings: SurfaceFollowingEntityDebugSettings = new SurfaceFollowingEntityDebugSettings();
+
   constructor(public followFunc: SurfaceFollowFunc) {
     super();
   }
 
   private colliders: Map<
     PTypeDoc['rigidBody'],
-    [CollisionGroup, PTypeDoc['rigidBody'], { lastDebugStartPos?: Point3 }] | null
+    [CollisionGroup, PTypeDoc['rigidBody'], { lastDebugStartPos?: Point3; lastDebugSettingsRev?: number }] | null
   > = new Map<PTypeDoc['rigidBody'], [CollisionGroup, PTypeDoc['rigidBody'], { lastDebugStartPos?: Point3 }] | null>();
 
   private setupCollider(collider: PTypeDoc['rigidBody']) {
@@ -74,8 +76,47 @@ export class SurfaceFollowingEntity<PTypeDoc extends PhysicsTypeDocRepo3D = Phys
     });
     this.tick$.pipe(takeUntil(this.onRemoved$)).subscribe(() => {
       this.positionPlanes();
+      this.updateDebugView();
     });
     this.positionPlanes();
+    this.updateDebugView();
+  }
+
+  private updateDebugView() {
+    const updateDebugView = !!this.world!.renderers.find(r => r.physicsDebugViewActive);
+    if (updateDebugView) {
+      for (const [collider, item] of this.colliders.entries()) {
+        let [_, plane, debugCache] = item!;
+        const { position, normal } = this.followFunc(collider.position);
+        let xThreshold = this.debugBodySettings.hexMeshStepDistance;
+        let yThreshold = this.debugBodySettings.hexMeshStepDistance * Math.sqrt(3);
+        let zThreshold = this.debugBodySettings.hexMeshStepDistance * 2;
+        let hexMeshStartPosition = {
+          x: Math.round(position.x / xThreshold) * xThreshold,
+          y: Math.round(position.y / yThreshold) * yThreshold,
+          z: Math.round(position.z / zThreshold) * zThreshold,
+        };
+        if (
+          debugCache.lastDebugSettingsRev != this.debugBodySettings.revision ||
+          !debugCache.lastDebugStartPos ||
+          Pnt3.dist(debugCache.lastDebugStartPos, hexMeshStartPosition) > 1
+        ) {
+          let { vertices, faces } = buildHexMeshAlongSurface(
+            hexMeshStartPosition,
+            this.followFunc,
+            this.debugBodySettings.hexMeshDepth,
+            this.debugBodySettings.hexMeshStepDistance,
+          );
+          plane.debugBodySettings.shape = {
+            shape: 'MESH',
+            vertices,
+            faces,
+          };
+          debugCache.lastDebugStartPos = hexMeshStartPosition;
+          debugCache.lastDebugSettingsRev = this.debugBodySettings.revision;
+        }
+      }
+    }
   }
 
   onRemoved() {
@@ -92,44 +133,47 @@ export class SurfaceFollowingEntity<PTypeDoc extends PhysicsTypeDocRepo3D = Phys
     super.onRemoved();
   }
 
-  readonly debugMeshStepDistance = 4;
-
   protected positionPlanes() {
     if (!this.world) {
       return;
     }
-    const updateDebugView = !!this.world.renderers.find(r => r.physicsDebugViewActive);
     for (const [collider, item] of this.colliders.entries()) {
-      let [_, plane, debugCache] = item!;
+      let [_, plane] = item!;
       const { position, normal } = this.followFunc(collider.position);
       plane.position = position;
       plane.rotation = Qtrn.lookAt(normal, Pnt3.O);
-      if (updateDebugView) {
-        let xThreshold = this.debugMeshStepDistance;
-        let yThreshold = this.debugMeshStepDistance * Math.sqrt(3);
-        let zThreshold = this.debugMeshStepDistance * 2;
-        let hexMeshStartPosition = {
-          x: Math.round(position.x / xThreshold) * xThreshold,
-          y: Math.round(position.y / yThreshold) * yThreshold,
-          z: Math.round(position.z / zThreshold) * zThreshold,
-        };
-        if (!debugCache.lastDebugStartPos || Pnt3.dist(debugCache.lastDebugStartPos, hexMeshStartPosition) > 1) {
-          let { vertices, faces } = buildHexMeshAlongSurface(
-            hexMeshStartPosition,
-            this.followFunc,
-            6,
-            this.debugMeshStepDistance,
-          );
-          plane.debugBodySettings.shape = {
-            shape: 'MESH',
-            vertices,
-            faces,
-          };
-          debugCache.lastDebugStartPos = hexMeshStartPosition;
-        }
-      }
     }
   }
+}
+
+export class SurfaceFollowingEntityDebugSettings {
+  private _revision: number = 0;
+  public get revision(): number {
+    return this._revision;
+  }
+
+  get hexMeshStepDistance(): number {
+    return this._hexMeshStepDistance;
+  }
+
+  set hexMeshStepDistance(value: number) {
+    this._hexMeshStepDistance = value;
+    this._revision++;
+  }
+
+  get hexMeshDepth(): number {
+    return this._hexMeshDepth;
+  }
+
+  set hexMeshDepth(value: number) {
+    this._hexMeshDepth = value;
+    this._revision++;
+  }
+
+  constructor(
+    private _hexMeshStepDistance: number = 4,
+    private _hexMeshDepth: number = 6,
+  ) {}
 }
 
 const buildHexMeshAlongSurface = (
