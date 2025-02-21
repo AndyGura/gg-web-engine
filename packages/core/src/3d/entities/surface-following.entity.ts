@@ -3,20 +3,38 @@ import { BodyOptions, CollisionGroup, IEntity, Pnt2, Pnt3, Point3, Point4, Qtrn,
 import { Gg3dWorld, PhysicsTypeDocRepo3D, VisualTypeDocRepo3D } from '../gg-3d-world';
 import { Shape3DDescriptor } from '../models/shapes';
 
+/**
+ * Represents a function that calculates the surface position and normal
+ * for a given point in 3D space.
+ */
 export type SurfaceFollowFunc = (p: Point3) => { position: Point3; normal: Point3 };
 
+/**
+ * Represents an entity that follows a surface dynamically by adjusting
+ * its position and orientation based on a given surface function.
+ *
+ * @template PTypeDoc - The physics type document repository.
+ */
 export class SurfaceFollowingEntity<PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D> extends IEntity<
   Point3,
   Point4,
   VisualTypeDocRepo3D,
   PTypeDoc
 > {
+  /**
+   * Determines the execution order for physics simulation.
+   */
   readonly tickOrder = TickOrder.PHYSICS_SIMULATION - 1;
 
+  /**
+   * Debugging settings for the surface-following entity.
+   */
   readonly debugBodySettings: SurfaceFollowingEntityDebugSettings = new SurfaceFollowingEntityDebugSettings();
 
   constructor(
+    /** Function that determines surface position and normal. */
     public followFunc: SurfaceFollowFunc,
+    /** Optional body configuration. */
     protected bodyOptions: Partial<
       Omit<BodyOptions, 'dynamic' | 'mass' | 'ownCollisionGroups' | 'interactWithCollisionGroups'>
     > = {},
@@ -24,11 +42,19 @@ export class SurfaceFollowingEntity<PTypeDoc extends PhysicsTypeDocRepo3D = Phys
     super();
   }
 
+  /**
+   * Stores colliders and their associated metadata.
+   */
   private colliders: Map<
     PTypeDoc['rigidBody'],
     [CollisionGroup, PTypeDoc['rigidBody'], { lastDebugStartPos?: Point3; lastDebugSettingsRev?: number }] | null
   > = new Map<PTypeDoc['rigidBody'], [CollisionGroup, PTypeDoc['rigidBody'], { lastDebugStartPos?: Point3 }] | null>();
 
+  /**
+   * Sets up a collider by assigning it a collision group and a dynamic plane.
+   *
+   * @param collider - The physics rigid body to configure.
+   */
   private setupCollider(collider: PTypeDoc['rigidBody']) {
     if (!this.world) {
       throw new Error('Cannot setup collider if not added to the world');
@@ -54,6 +80,12 @@ export class SurfaceFollowingEntity<PTypeDoc extends PhysicsTypeDocRepo3D = Phys
     this.colliders.set(collider, [cg, plane, {}]);
   }
 
+  /**
+   * Adds a collider to the entity, registering it immediately if the entity
+   * is already in a world.
+   *
+   * @param collider - The physics rigid body to add.
+   */
   addCollider(collider: PTypeDoc['rigidBody']) {
     if (this.world) {
       this.setupCollider(collider);
@@ -62,6 +94,11 @@ export class SurfaceFollowingEntity<PTypeDoc extends PhysicsTypeDocRepo3D = Phys
     }
   }
 
+  /**
+   * Removes a collider and deregisters its associated collision group.
+   *
+   * @param collider - The physics rigid body to remove.
+   */
   removeCollider(collider: PTypeDoc['rigidBody']) {
     if (!this.colliders.has(collider)) {
       return;
@@ -70,13 +107,18 @@ export class SurfaceFollowingEntity<PTypeDoc extends PhysicsTypeDocRepo3D = Phys
     if (item) {
       const [cg, plane] = item;
       this.removeComponents([plane], true);
-      collider.ownCollisionGroups = collider.ownCollisionGroups.filter(g => g != cg);
-      collider.interactWithCollisionGroups = collider.interactWithCollisionGroups.filter(g => g != cg);
+      collider.ownCollisionGroups = collider.ownCollisionGroups.filter(g => g !== cg);
+      collider.interactWithCollisionGroups = collider.interactWithCollisionGroups.filter(g => g !== cg);
       this.world!.physicsWorld.deregisterCollisionGroup(cg);
     }
     this.colliders.delete(collider);
   }
 
+  /**
+   * Called when the entity is added to a world.
+   *
+   * @param world - The game world instance.
+   */
   onSpawned(world: Gg3dWorld<VisualTypeDocRepo3D, PTypeDoc>) {
     super.onSpawned(world);
     for (const [collider] of this.colliders.entries()) {
@@ -97,6 +139,9 @@ export class SurfaceFollowingEntity<PTypeDoc extends PhysicsTypeDocRepo3D = Phys
 
   private customGlobalDebugDummyBody: PTypeDoc['rigidBody'] | null = null;
 
+  /**
+   * Updates debug visualization if active.
+   */
   private updateDebugView() {
     const updateDebugView = !!this.world!.renderers.find(r => r.physicsDebugViewActive);
     if (updateDebugView) {
@@ -168,13 +213,16 @@ export class SurfaceFollowingEntity<PTypeDoc extends PhysicsTypeDocRepo3D = Phys
     }
   }
 
+  /**
+   * Called when the entity is removed from the world.
+   */
   onRemoved() {
     for (const [collider, item] of this.colliders) {
       if (item) {
         const [cg, plane] = item;
         this.removeComponents([plane], true);
-        collider.ownCollisionGroups = collider.ownCollisionGroups.filter(g => g != cg);
-        collider.interactWithCollisionGroups = collider.interactWithCollisionGroups.filter(g => g != cg);
+        collider.ownCollisionGroups = collider.ownCollisionGroups.filter(g => g !== cg);
+        collider.interactWithCollisionGroups = collider.interactWithCollisionGroups.filter(g => g !== cg);
         this.world!.physicsWorld.deregisterCollisionGroup(cg);
       }
     }
@@ -182,6 +230,9 @@ export class SurfaceFollowingEntity<PTypeDoc extends PhysicsTypeDocRepo3D = Phys
     super.onRemoved();
   }
 
+  /**
+   * Positions planes based on the surface-follow function.
+   */
   protected positionPlanes() {
     if (!this.world) {
       return;
@@ -195,6 +246,10 @@ export class SurfaceFollowingEntity<PTypeDoc extends PhysicsTypeDocRepo3D = Phys
   }
 }
 
+/**
+ * Stores debug settings for a SurfaceFollowingEntity, allowing customization
+ * of the debug mesh.
+ */
 export class SurfaceFollowingEntityDebugSettings {
   private _revision: number = 0;
   public get revision(): number {
