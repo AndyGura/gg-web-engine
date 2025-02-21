@@ -235,6 +235,7 @@ Basically, everything that listens ticks and can be added/removed from world. Bu
 - **[MapGraph3dEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/map-graph-3d.entity.ts/#mapgraph3dentity-class)** an entity, which loads parts of big map and disposes loaded map chunks, which are far away
 - **[RaycastVehicle3dEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/raycast-vehicle-3d.entity.ts/#raycastvehicle3dentity-class)** a general entity with raycast vehicle. Encapsulates positioning binding for chassis and wheels meshes, provides simplified interface for applying engine or brake forces
 - **[GgCarEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/gg-car/gg-car.entity.ts/#ggCarentity-class)** a more sophisticated 4-wheel car which simulates engine with torque table, gear box etc.
+- **[SurfaceFollowingEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/surface-following.entity.ts/#surfacefollowingentity-class)** An entity which simulates smooth surface collider, declared parametrically
 
 ### [Input](https://andygura.github.io/gg-web-engine/modules/core/base/inputs/input.ts/)
 Input is a class, responsible for handling external actions, such as mouse move, key presses, gamepad interactions etc.

@@ -98,6 +98,11 @@ export class Pnt2 {
     };
   }
 
+  /** dot multiplication */
+  static dot(a: Point2, b: Point2): number {
+    return a.x * b.x + a.y * b.y;
+  }
+
   /** linear interpolation */
   static lerp(a: Point2, b: Point2, t: number): Point2 {
     return {
@@ -108,9 +113,8 @@ export class Pnt2 {
 
   /** angle between vectors in radians */
   static angle(a: Point2, b: Point2): number {
-    const dotProduct = a.x * b.x + a.y * b.y;
-    const magnitudeProduct = Math.sqrt(a.x ** 2 + a.y ** 2) * Math.sqrt(b.x ** 2 + b.y ** 2);
-    return Math.acos(dotProduct / magnitudeProduct);
+    const magnitudeProduct = Pnt2.len(a) * Pnt2.len(b);
+    return Math.acos(Pnt2.dot(a, b) / magnitudeProduct);
   }
 
   /** rotate point around zero by provided angle */

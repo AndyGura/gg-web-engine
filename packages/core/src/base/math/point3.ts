@@ -129,6 +129,11 @@ export class Pnt3 {
     };
   }
 
+  /** dot multiplication */
+  static dot(a: Point3, b: Point3): number {
+    return a.x * b.x + a.y * b.y + a.z * b.z;
+  }
+
   /** linear interpolation */
   static lerp(a: Point3, b: Point3, t: number): Point3 {
     return {
@@ -140,9 +145,8 @@ export class Pnt3 {
 
   /** angle between vectors in radians */
   static angle(a: Point3, b: Point3): number {
-    const dotProduct = a.x * b.x + a.y * b.y + a.z * b.z;
-    const magnitudeProduct = Math.sqrt(a.x ** 2 + a.y ** 2 + a.z ** 2) * Math.sqrt(b.x ** 2 + b.y ** 2 + b.z ** 2);
-    return Math.acos(dotProduct / magnitudeProduct);
+    const magnitudeProduct = Pnt3.len(a) * Pnt3.len(b);
+    return Math.acos(Pnt3.dot(a, b) / magnitudeProduct);
   }
 
   /** rotate point a with quaternion q */
