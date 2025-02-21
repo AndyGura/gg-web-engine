@@ -19,6 +19,7 @@ parent: Modules
     - [refreshCG (method)](#refreshcg-method)
     - [dispose (method)](#dispose-method)
     - [entity (property)](#entity-property)
+    - [debugBodySettings (property)](#debugbodysettings-property)
     - [onEnter$ (property)](#onenter-property)
     - [onLeft$ (property)](#onleft-property)
     - [overlaps (property)](#overlaps-property)
@@ -95,6 +96,14 @@ dispose(): void
 
 ```ts
 entity: any
+```
+
+### debugBodySettings (property)
+
+**Signature**
+
+```ts
+readonly debugBodySettings: any
 ```
 
 ### onEnter$ (property)

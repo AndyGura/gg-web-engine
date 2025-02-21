@@ -1,6 +1,6 @@
 ---
 title: pixi/components/pixi-physics-debug-view.ts
-nav_order: 107
+nav_order: 108
 parent: Modules
 ---
 
@@ -12,7 +12,7 @@ parent: Modules
 
 - [utils](#utils)
   - [PixiPhysicsDebugView (class)](#pixiphysicsdebugview-class)
-    - [graphicsDraw (method)](#graphicsdraw-method)
+    - [initShape (method)](#initshape-method)
     - [sync (method)](#sync-method)
     - [lineSegmentPointsForShape (method)](#linesegmentpointsforshape-method)
     - [dispose (method)](#dispose-method)
@@ -32,12 +32,12 @@ export declare class PixiPhysicsDebugView {
 }
 ```
 
-### graphicsDraw (method)
+### initShape (method)
 
 **Signature**
 
 ```ts
-private graphicsDraw(graphics: Graphics, color: number, vertices: Point2[])
+initShape(c: IBodyComponent<Point2, number>)
 ```
 
 ### sync (method)

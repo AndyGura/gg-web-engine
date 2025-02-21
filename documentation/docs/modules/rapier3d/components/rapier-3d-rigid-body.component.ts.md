@@ -1,6 +1,6 @@
 ---
 title: rapier3d/components/rapier-3d-rigid-body.component.ts
-nav_order: 120
+nav_order: 121
 parent: Modules
 ---
 
@@ -18,6 +18,7 @@ parent: Modules
     - [resetMotion (method)](#resetmotion-method)
     - [dispose (method)](#dispose-method)
     - [entity (property)](#entity-property)
+    - [debugBodySettings (property)](#debugbodysettings-property)
     - [\_nativeBody (property)](#_nativebody-property)
     - [\_nativeBodyColliders (property)](#_nativebodycolliders-property)
     - [name (property)](#name-property)
@@ -89,6 +90,14 @@ dispose(): void
 
 ```ts
 entity: any
+```
+
+### debugBodySettings (property)
+
+**Signature**
+
+```ts
+readonly debugBodySettings: any
 ```
 
 ### \_nativeBody (property)

@@ -12,7 +12,7 @@ parent: Modules
 
 - [utils](#utils)
   - [Body2DOptions (interface)](#body2doptions-interface)
-  - [DebugBody2DSettings (type alias)](#debugbody2dsettings-type-alias)
+  - [DebugBody2DSettings (class)](#debugbody2dsettings-class)
 
 ---
 
@@ -26,10 +26,17 @@ parent: Modules
 export interface Body2DOptions extends BodyOptions {}
 ```
 
-## DebugBody2DSettings (type alias)
+## DebugBody2DSettings (class)
 
 **Signature**
 
 ```ts
-export type DebugBody2DSettings = DebugBodySettings & { shape: Shape2DDescriptor }
+export declare class DebugBody2DSettings {
+  constructor(
+    type: DebugBodyType,
+    shape: Shape2DDescriptor,
+    ignoreTransform: boolean = false,
+    color: number | undefined = undefined
+  )
+}
 ```

@@ -1,6 +1,6 @@
 ---
 title: matter/components/matter-world.component.ts
-nav_order: 103
+nav_order: 104
 parent: Modules
 ---
 
@@ -22,6 +22,7 @@ parent: Modules
     - [added$ (property)](#added-property)
     - [removed$ (property)](#removed-property)
     - [children (property)](#children-property)
+    - [mainCollisionGroup (property)](#maincollisiongroup-property)
 
 ---
 
@@ -115,4 +116,12 @@ readonly removed$: any
 
 ```ts
 readonly children: MatterRigidBodyComponent[]
+```
+
+### mainCollisionGroup (property)
+
+**Signature**
+
+```ts
+readonly mainCollisionGroup: any
 ```

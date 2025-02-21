@@ -1,6 +1,6 @@
 ---
 title: core/base/models/body-options.ts
-nav_order: 92
+nav_order: 93
 parent: Modules
 ---
 
@@ -13,7 +13,8 @@ parent: Modules
 - [utils](#utils)
   - [BodyOptions (interface)](#bodyoptions-interface)
   - [CollisionGroup (type alias)](#collisiongroup-type-alias)
-  - [DebugBodySettings (type alias)](#debugbodysettings-type-alias)
+  - [DebugBodySettings (class)](#debugbodysettings-class)
+  - [DebugBodyType (type alias)](#debugbodytype-type-alias)
 
 ---
 
@@ -29,8 +30,8 @@ export interface BodyOptions {
   mass: number
   restitution: number
   friction: number
-  ownCollisionGroups: CollisionGroup[] | 'all'
-  interactWithCollisionGroups: CollisionGroup[] | 'all'
+  ownCollisionGroups: ReadonlyArray<CollisionGroup> | 'all'
+  interactWithCollisionGroups: ReadonlyArray<CollisionGroup> | 'all'
 }
 ```
 
@@ -42,18 +43,28 @@ export interface BodyOptions {
 export type CollisionGroup = number
 ```
 
-## DebugBodySettings (type alias)
+## DebugBodySettings (class)
 
 **Signature**
 
 ```ts
-export type DebugBodySettings = { shape: any; ignoreTransform?: boolean } & (
-  | {
-      type: 'RIGID_STATIC' | 'TRIGGER'
-    }
-  | {
-      type: 'RIGID_DYNAMIC'
-      sleeping: boolean
-    }
-)
+export declare class DebugBodySettings<S> {
+  protected constructor(
+    private _type: DebugBodyType,
+    private _shape: S,
+    private _ignoreTransform: boolean = false,
+    private _color: number | undefined = undefined
+  )
+}
+```
+
+## DebugBodyType (type alias)
+
+**Signature**
+
+```ts
+export type DebugBodyType =
+  | { type: 'RIGID_STATIC' }
+  | { type: 'TRIGGER'; activated: () => boolean }
+  | { type: 'RIGID_DYNAMIC'; sleeping: () => boolean }
 ```

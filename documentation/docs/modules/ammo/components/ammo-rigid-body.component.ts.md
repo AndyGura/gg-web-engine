@@ -18,6 +18,7 @@ parent: Modules
     - [refreshCG (method)](#refreshcg-method)
     - [resetMotion (method)](#resetmotion-method)
     - [entity (property)](#entity-property)
+    - [debugBodySettings (property)](#debugbodysettings-property)
 
 ---
 
@@ -83,4 +84,12 @@ resetMotion(): void
 
 ```ts
 entity: any
+```
+
+### debugBodySettings (property)
+
+**Signature**
+
+```ts
+readonly debugBodySettings: any
 ```

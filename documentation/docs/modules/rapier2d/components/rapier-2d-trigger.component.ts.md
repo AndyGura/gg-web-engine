@@ -1,6 +1,6 @@
 ---
 title: rapier2d/components/rapier-2d-trigger.component.ts
-nav_order: 114
+nav_order: 115
 parent: Modules
 ---
 
@@ -17,6 +17,8 @@ parent: Modules
     - [clone (method)](#clone-method)
     - [onEnter$ (property)](#onenter-property)
     - [onLeft$ (property)](#onleft-property)
+    - [debugBodySettings (property)](#debugbodysettings-property)
+    - [intersectionsAmount (property)](#intersectionsamount-property)
 
 ---
 
@@ -75,4 +77,20 @@ readonly onEnter$: any
 
 ```ts
 readonly onLeft$: any
+```
+
+### debugBodySettings (property)
+
+**Signature**
+
+```ts
+readonly debugBodySettings: any
+```
+
+### intersectionsAmount (property)
+
+**Signature**
+
+```ts
+intersectionsAmount: number
 ```

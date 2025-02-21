@@ -1,6 +1,6 @@
 ---
 title: core/version.ts
-nav_order: 101
+nav_order: 102
 parent: Modules
 ---
 
@@ -22,5 +22,5 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare const VERSION: '0.0.56'
+export declare const VERSION: '0.0.57'
 ```

@@ -12,4 +12,5 @@ has_children: true
 - [core/3d/entities/map-graph-3d.entity.ts](/gg-web-engine/modules/core/3d/entities/map-graph-3d.entity.ts)
 - [core/3d/entities/raycast-vehicle-3d.entity.ts](/gg-web-engine/modules/core/3d/entities/raycast-vehicle-3d.entity.ts)
 - [core/3d/entities/renderer-3d.entity.ts](/gg-web-engine/modules/core/3d/entities/renderer-3d.entity.ts)
+- [core/3d/entities/surface-following.entity.ts](/gg-web-engine/modules/core/3d/entities/surface-following.entity.ts)
 - [core/3d/entities/trigger-3d.entity.ts](/gg-web-engine/modules/core/3d/entities/trigger-3d.entity.ts)

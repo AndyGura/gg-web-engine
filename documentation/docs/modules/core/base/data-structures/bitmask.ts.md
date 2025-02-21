@@ -1,6 +1,6 @@
 ---
 title: core/base/data-structures/bitmask.ts
-nav_order: 70
+nav_order: 71
 parent: Modules
 ---
 
@@ -60,7 +60,7 @@ Packs an array of bit indices into a single number
 **Signature**
 
 ```ts
-static pack(value: number[], bits: number)
+static pack(value: number[] | ReadonlyArray<number>, bits: number)
 ```
 
 ### unpack (static method)

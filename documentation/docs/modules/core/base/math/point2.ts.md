@@ -1,6 +1,6 @@
 ---
 title: core/base/math/point2.ts
-nav_order: 87
+nav_order: 88
 parent: Modules
 ---
 
@@ -25,6 +25,7 @@ parent: Modules
     - [dist (static method)](#dist-static-method)
     - [norm (static method)](#norm-static-method)
     - [scalarMult (static method)](#scalarmult-static-method)
+    - [dot (static method)](#dot-static-method)
     - [lerp (static method)](#lerp-static-method)
     - [angle (static method)](#angle-static-method)
     - [rot (static method)](#rot-static-method)
@@ -170,6 +171,16 @@ scalar multiplication
 
 ```ts
 static scalarMult(p: Point2, m: number): Point2
+```
+
+### dot (static method)
+
+dot multiplication
+
+**Signature**
+
+```ts
+static dot(a: Point2, b: Point2): number
 ```
 
 ### lerp (static method)

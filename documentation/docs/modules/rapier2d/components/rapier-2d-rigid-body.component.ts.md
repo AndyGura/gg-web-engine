@@ -1,6 +1,6 @@
 ---
 title: rapier2d/components/rapier-2d-rigid-body.component.ts
-nav_order: 113
+nav_order: 114
 parent: Modules
 ---
 
@@ -21,6 +21,7 @@ parent: Modules
     - [\_nativeBody (property)](#_nativebody-property)
     - [\_nativeBodyColliders (property)](#_nativebodycolliders-property)
     - [name (property)](#name-property)
+    - [debugBodySettings (property)](#debugbodysettings-property)
     - [collisionGroups (property)](#collisiongroups-property)
 
 ---
@@ -113,6 +114,14 @@ _nativeBodyColliders: any[] | null
 
 ```ts
 name: string
+```
+
+### debugBodySettings (property)
+
+**Signature**
+
+```ts
+readonly debugBodySettings: any
 ```
 
 ### collisionGroups (property)

@@ -1,6 +1,6 @@
 ---
 title: rapier2d/components/rapier-2d-world.component.ts
-nav_order: 115
+nav_order: 116
 parent: Modules
 ---
 
@@ -20,6 +20,7 @@ parent: Modules
     - [added$ (property)](#added-property)
     - [removed$ (property)](#removed-property)
     - [children (property)](#children-property)
+    - [mainCollisionGroup (property)](#maincollisiongroup-property)
     - [\_nativeWorld (property)](#_nativeworld-property)
     - [handleIdEntityMap (property)](#handleidentitymap-property)
     - [lockedCollisionGroups (property)](#lockedcollisiongroups-property)
@@ -100,6 +101,14 @@ readonly removed$: any
 
 ```ts
 readonly children: Rapier2dRigidBodyComponent[]
+```
+
+### mainCollisionGroup (property)
+
+**Signature**
+
+```ts
+readonly mainCollisionGroup: any
 ```
 
 ### \_nativeWorld (property)

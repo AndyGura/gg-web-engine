@@ -1,6 +1,6 @@
 ---
 title: three/components/three-physics-debug-view.ts
-nav_order: 130
+nav_order: 131
 parent: Modules
 ---
 
@@ -14,6 +14,7 @@ parent: Modules
   - [ThreePhysicsDebugView (class)](#threephysicsdebugview-class)
     - [startDebugView (static method)](#startdebugview-static-method)
     - [stopDebugView (static method)](#stopdebugview-static-method)
+    - [initShape (method)](#initshape-method)
     - [render (method)](#render-method)
     - [lineSegmentPointsForShape (method)](#linesegmentpointsforshape-method)
     - [dispose (method)](#dispose-method)
@@ -49,6 +50,14 @@ public static startDebugView(
 
 ```ts
 public static stopDebugView(debugView: ThreePhysicsDebugView, renderer: ThreeRendererComponent)
+```
+
+### initShape (method)
+
+**Signature**
+
+```ts
+initShape(c: IBodyComponent<Point3, Point4>)
 ```
 
 ### render (method)
