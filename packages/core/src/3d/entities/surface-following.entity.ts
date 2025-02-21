@@ -1,6 +1,7 @@
 import { takeUntil } from 'rxjs';
-import { CollisionGroup, IEntity, Pnt2, Pnt3, Point3, Point4, Qtrn, TickOrder } from '../../base';
+import { BodyOptions, CollisionGroup, IEntity, Pnt2, Pnt3, Point3, Point4, Qtrn, TickOrder } from '../../base';
 import { Gg3dWorld, PhysicsTypeDocRepo3D, VisualTypeDocRepo3D } from '../gg-3d-world';
+import { Shape3DDescriptor } from '../models/shapes';
 
 export type SurfaceFollowFunc = (p: Point3) => { position: Point3; normal: Point3 };
 
@@ -14,7 +15,12 @@ export class SurfaceFollowingEntity<PTypeDoc extends PhysicsTypeDocRepo3D = Phys
 
   readonly debugBodySettings: SurfaceFollowingEntityDebugSettings = new SurfaceFollowingEntityDebugSettings();
 
-  constructor(public followFunc: SurfaceFollowFunc) {
+  constructor(
+    public followFunc: SurfaceFollowFunc,
+    protected bodyOptions: Partial<
+      Omit<BodyOptions, 'dynamic' | 'mass' | 'ownCollisionGroups' | 'interactWithCollisionGroups'>
+    > = {},
+  ) {
     super();
   }
 
@@ -32,11 +38,18 @@ export class SurfaceFollowingEntity<PTypeDoc extends PhysicsTypeDocRepo3D = Phys
     collider.interactWithCollisionGroups = [...collider.ownCollisionGroups, cg];
     let plane = this.world.physicsWorld.factory.createRigidBody({
       shape: { shape: 'PLANE' },
-      body: { dynamic: false },
+      body: {
+        ...this.bodyOptions,
+        dynamic: false,
+        ownCollisionGroups: [cg],
+        interactWithCollisionGroups: [cg],
+      },
     })!;
-    plane.ownCollisionGroups = [cg];
-    plane.interactWithCollisionGroups = [cg];
-    plane.debugBodySettings.ignoreTransform = true;
+    if (this.debugBodySettings.customGlobalShape) {
+      plane.debugBodySettings.shape = { shape: 'SPHERE', radius: 0.25 };
+    } else {
+      plane.debugBodySettings.ignoreTransform = true;
+    }
     this.addComponents(plane);
     this.colliders.set(collider, [cg, plane, {}]);
   }
@@ -82,38 +95,74 @@ export class SurfaceFollowingEntity<PTypeDoc extends PhysicsTypeDocRepo3D = Phys
     this.updateDebugView();
   }
 
+  private customGlobalDebugDummyBody: PTypeDoc['rigidBody'] | null = null;
+
   private updateDebugView() {
     const updateDebugView = !!this.world!.renderers.find(r => r.physicsDebugViewActive);
     if (updateDebugView) {
-      for (const [collider, item] of this.colliders.entries()) {
-        let [_, plane, debugCache] = item!;
-        const { position, normal } = this.followFunc(collider.position);
-        let xThreshold = this.debugBodySettings.hexMeshStepDistance;
-        let yThreshold = this.debugBodySettings.hexMeshStepDistance * Math.sqrt(3);
-        let zThreshold = this.debugBodySettings.hexMeshStepDistance * 2;
-        let hexMeshStartPosition = {
-          x: Math.round(position.x / xThreshold) * xThreshold,
-          y: Math.round(position.y / yThreshold) * yThreshold,
-          z: Math.round(position.z / zThreshold) * zThreshold,
-        };
-        if (
-          debugCache.lastDebugSettingsRev != this.debugBodySettings.revision ||
-          !debugCache.lastDebugStartPos ||
-          Pnt3.dist(debugCache.lastDebugStartPos, hexMeshStartPosition) > 1
-        ) {
-          let { vertices, faces } = buildHexMeshAlongSurface(
-            hexMeshStartPosition,
-            this.followFunc,
-            this.debugBodySettings.hexMeshDepth,
-            this.debugBodySettings.hexMeshStepDistance,
-          );
-          plane.debugBodySettings.shape = {
-            shape: 'MESH',
-            vertices,
-            faces,
+      if (this.debugBodySettings.customGlobalShape) {
+        if (!this.customGlobalDebugDummyBody) {
+          this.customGlobalDebugDummyBody = this.world!.physicsWorld.factory.createRigidBody({
+            shape: { shape: 'BOX', dimensions: Pnt3.O },
+            body: { dynamic: false },
+          });
+          this.customGlobalDebugDummyBody.ownCollisionGroups = [];
+          this.customGlobalDebugDummyBody.interactWithCollisionGroups = [];
+          this.customGlobalDebugDummyBody.debugBodySettings.type = { type: 'RIGID_STATIC' };
+          this.customGlobalDebugDummyBody.debugBodySettings.shape = this.debugBodySettings.customGlobalShape;
+          this.addComponents(this.customGlobalDebugDummyBody);
+          for (const item of this.colliders.values()) {
+            if (item) {
+              let [_, plane] = item;
+              plane.debugBodySettings.shape = { shape: 'SPHERE', radius: 0.25 };
+              plane.debugBodySettings.ignoreTransform = false;
+            }
+          }
+        } else {
+          this.customGlobalDebugDummyBody.debugBodySettings.shape = this.debugBodySettings.customGlobalShape;
+        }
+      } else {
+        if (this.customGlobalDebugDummyBody) {
+          this.removeComponents([this.customGlobalDebugDummyBody], true);
+          this.customGlobalDebugDummyBody = null;
+          // reset caches
+          for (const item of this.colliders.values()) {
+            if (item) {
+              item[2] = {};
+            }
+          }
+        }
+        for (const [collider, item] of this.colliders.entries()) {
+          let [_, plane, debugCache] = item!;
+          const { position, normal } = this.followFunc(collider.position);
+          let xThreshold = this.debugBodySettings.hexMeshStepDistance;
+          let yThreshold = this.debugBodySettings.hexMeshStepDistance * Math.sqrt(3);
+          let zThreshold = this.debugBodySettings.hexMeshStepDistance * 2;
+          let hexMeshStartPosition = {
+            x: Math.round(position.x / xThreshold) * xThreshold,
+            y: Math.round(position.y / yThreshold) * yThreshold,
+            z: Math.round(position.z / zThreshold) * zThreshold,
           };
-          debugCache.lastDebugStartPos = hexMeshStartPosition;
-          debugCache.lastDebugSettingsRev = this.debugBodySettings.revision;
+          if (
+            debugCache.lastDebugSettingsRev != this.debugBodySettings.revision ||
+            !debugCache.lastDebugStartPos ||
+            Pnt3.dist(debugCache.lastDebugStartPos, hexMeshStartPosition) > 1
+          ) {
+            let { vertices, faces } = buildHexMeshAlongSurface(
+              hexMeshStartPosition,
+              this.followFunc,
+              this.debugBodySettings.hexMeshDepth,
+              this.debugBodySettings.hexMeshStepDistance,
+            );
+            plane.debugBodySettings.shape = {
+              shape: 'MESH',
+              vertices,
+              faces,
+            };
+            plane.debugBodySettings.ignoreTransform = true;
+            debugCache.lastDebugStartPos = hexMeshStartPosition;
+            debugCache.lastDebugSettingsRev = this.debugBodySettings.revision;
+          }
         }
       }
     }
@@ -170,9 +219,19 @@ export class SurfaceFollowingEntityDebugSettings {
     this._revision++;
   }
 
+  get customGlobalShape(): Shape3DDescriptor | null {
+    return this._customGlobalShape;
+  }
+
+  set customGlobalShape(value: Shape3DDescriptor | null) {
+    this._customGlobalShape = value;
+    this._revision++;
+  }
+
   constructor(
     private _hexMeshStepDistance: number = 4,
     private _hexMeshDepth: number = 6,
+    private _customGlobalShape: Shape3DDescriptor | null = null,
   ) {}
 }
 
@@ -213,7 +272,6 @@ const buildHexMeshAlongSurface = (
       for (let j = 0; j < 6; j++) {
         let point = surfaceFunc(traverse(startPoint, (j * Math.PI) / 3));
         newLoop.push({ ...point, vertexIndex: j + 1 });
-        vertices.push(point.position);
         faces.push([0, j + 1, j < 5 ? j + 2 : 1]);
       }
     } else {
@@ -224,22 +282,19 @@ const buildHexMeshAlongSurface = (
         if (j % (lastLoop.length / 6) == 0) {
           // hex corner vertex, add new vertex in this loop. Each next loop has +6 vertices
           let pointF = surfaceFunc(traverse(startPoint, angle));
-          let vi = vertices.length;
-          vertices.push(pointF.position);
+          let vi = vertices.length + newLoop.length;
           newLoop.push({ ...pointF, vertexIndex: vi });
-          faces.push([startPoint.vertexIndex, j > 1 ? vi - 1 : vi + lastLoop.length + 5, vi]);
+          faces.push([startPoint.vertexIndex, j > 0 ? vi - 1 : vi + lastLoop.length + 5, vi]);
         }
         let pointR = surfaceFunc(Pnt3.avg(traverse(startPoint, angle + Math.PI / 3), traverse(rightNeighbour, angle)));
-        let vi = vertices.length;
-        vertices.push(pointR.position);
+        let vi = vertices.length + newLoop.length;
         newLoop.push({ ...pointR, vertexIndex: vi });
         faces.push([startPoint.vertexIndex, vi - 1, vi]);
         faces.push([rightNeighbour.vertexIndex, startPoint.vertexIndex, vi]);
       }
     }
+    vertices.push(...newLoop.map(({ position }) => position));
     lastLoop = newLoop;
-    // TODO remove
-    vertices.push(...lastLoop.map(({ position }) => position));
   }
   return { vertices, faces };
 };
