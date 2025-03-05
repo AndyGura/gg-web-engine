@@ -146,7 +146,10 @@ export class Pnt3 {
   /** angle between vectors in radians */
   static angle(a: Point3, b: Point3): number {
     const magnitudeProduct = Pnt3.len(a) * Pnt3.len(b);
-    return Math.acos(Pnt3.dot(a, b) / magnitudeProduct);
+    let cos = Pnt3.dot(a, b) / magnitudeProduct;
+    // this can happen due to precision error
+    cos = Math.min(1, Math.max(cos, -1));
+    return Math.acos(cos);
   }
 
   /** rotate point a with quaternion q */
