@@ -1,4 +1,5 @@
-import { Point2 } from '../models/points';
+import { Point2, Polar } from '../models/points';
+import { lerpAngle } from './numbers';
 
 export class Pnt2 {
   /** empty vector */
@@ -111,6 +112,16 @@ export class Pnt2 {
     };
   }
 
+  /** linear interpolation (spherical/polar) */
+  static slerp(a: Point2, b: Point2, t: number): Point2 {
+    const as = Pnt2.toPolar(a);
+    const bs = Pnt2.toPolar(b);
+    return Pnt2.fromPolar({
+      radius: as.radius + t * (bs.radius - as.radius),
+      phi: lerpAngle(as.phi, bs.phi, t),
+    });
+  }
+
   /** angle between vectors in radians */
   static angle(a: Point2, b: Point2): number {
     const magnitudeProduct = Pnt2.len(a) * Pnt2.len(b);
@@ -135,6 +146,33 @@ export class Pnt2 {
     return {
       x: p0.x * cos - p0.y * sin + pivot.x,
       y: p0.x * sin + p0.y * cos + pivot.y,
+    };
+  }
+
+  /**
+   * Converts a cartesian 2D point to a polar coordinate system,
+   * phi == 0 is faced towards X axis direction
+   * @param p - The cartesian 2D point.
+   * @returns The polar coordinates as an object with radius and phi properties.
+   */
+  static toPolar(p: Point2): Polar {
+    const radius = Math.sqrt(p.x * p.x + p.y * p.y);
+    return {
+      radius,
+      phi: radius == 0 ? 0 : Math.atan2(p.y, p.x),
+    };
+  }
+
+  /**
+   * Converts a polar coordinate system to a cartesian 2D point. Used polar coordinates,
+   * where phi == 0 is faced towards X axis direction
+   * @param p - The polar coordinate system.
+   * @returns The cartesian 2D point as an object with x and y properties.
+   */
+  static fromPolar(p: Polar): Point2 {
+    return {
+      x: p.radius * Math.cos(p.phi),
+      y: p.radius * Math.sin(p.phi),
     };
   }
 }

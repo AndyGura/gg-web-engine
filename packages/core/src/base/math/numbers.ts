@@ -1,4 +1,11 @@
-export const averageAngle = (angleA: number, angleB: number, factor: number = 0.5) => {
+export const averageAngle = (angleA: number, angleB: number) => {
+  while (Math.abs(angleA - angleB) > Math.PI) {
+    angleB += Math.PI * (angleA > angleB ? 2 : -2);
+  }
+  return (angleA + angleB) / 2;
+};
+
+export const lerpAngle = (angleA: number, angleB: number, factor: number) => {
   while (Math.abs(angleA - angleB) > Math.PI) {
     angleB += Math.PI * (angleA > angleB ? 2 : -2);
   }

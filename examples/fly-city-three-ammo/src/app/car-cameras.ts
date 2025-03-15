@@ -1,6 +1,6 @@
 import {
   AnimationFunction,
-  averageAngle,
+  lerpAngle,
   Camera3dAnimationArgs,
   IPositionable3d,
   Pnt3,
@@ -14,7 +14,7 @@ const elasticAngle: (inertia: number, easing?: (x: number) => number) => ((value
       if (latestValue !== null) {
         let newFactor = easing(deltaMs / inertia);
         if (newFactor < 1) {
-          value = averageAngle(latestValue, value, newFactor);
+          value = lerpAngle(latestValue, value, newFactor);
         }
       }
       latestValue = value;

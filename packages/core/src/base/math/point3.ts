@@ -1,5 +1,6 @@
 import { Point3, Point4, Spherical } from '../models/points';
 import { Qtrn } from './quaternion';
+import { lerpAngle } from './numbers';
 
 export class Pnt3 {
   /** empty vector */
@@ -141,6 +142,17 @@ export class Pnt3 {
       y: a.y + t * (b.y - a.y),
       z: a.z + t * (b.z - a.z),
     };
+  }
+
+  /** linear interpolation (spherical) */
+  static slerp(a: Point3, b: Point3, t: number): Point3 {
+    const as = Pnt3.toSpherical(a);
+    const bs = Pnt3.toSpherical(b);
+    return Pnt3.fromSpherical({
+      radius: as.radius + t * (bs.radius - as.radius),
+      phi: lerpAngle(as.phi, bs.phi, t),
+      theta: lerpAngle(as.theta, bs.theta, t),
+    });
   }
 
   /** angle between vectors in radians */
