@@ -24,15 +24,23 @@ export type PhysicsTypeDocRepo2D = {
   trigger: ITrigger2dComponent;
 };
 
+export type Gg2dWorldTypeDocRepo = {
+  vTypeDoc: VisualTypeDocRepo2D;
+  pTypeDoc: PhysicsTypeDocRepo2D;
+};
+
+export type Gg2dWorldSceneTypeRepo<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTypeDocRepo> = {
+  visualScene: IVisualScene2dComponent<TypeDoc['vTypeDoc']>;
+  physicsWorld: IPhysicsWorld2dComponent<TypeDoc['pTypeDoc']>;
+};
+
 export class Gg2dWorld<
-  VTypeDoc extends VisualTypeDocRepo2D = VisualTypeDocRepo2D,
-  PTypeDoc extends PhysicsTypeDocRepo2D = PhysicsTypeDocRepo2D,
-  VS extends IVisualScene2dComponent<VTypeDoc> = IVisualScene2dComponent<VTypeDoc>,
-  PW extends IPhysicsWorld2dComponent<PTypeDoc> = IPhysicsWorld2dComponent<PTypeDoc>,
-> extends GgWorld<Point2, number, VTypeDoc, PTypeDoc, VS, PW> {
+  TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTypeDocRepo,
+  SceneTypeDoc extends Gg2dWorldSceneTypeRepo<TypeDoc> = Gg2dWorldSceneTypeRepo<TypeDoc>,
+> extends GgWorld<Point2, number, TypeDoc, SceneTypeDoc> {
   constructor(
-    public readonly visualScene: VS,
-    public readonly physicsWorld: PW,
+    public readonly visualScene: SceneTypeDoc['visualScene'],
+    public readonly physicsWorld: SceneTypeDoc['physicsWorld'],
   ) {
     super(visualScene, physicsWorld);
   }
@@ -41,9 +49,9 @@ export class Gg2dWorld<
     descr: BodyShape2DDescriptor,
     position: Point2 = Pnt2.O,
     rotation: number = 0,
-    material: DisplayObject2dOpts<VTypeDoc['texture']> = {},
-  ): Entity2d<VTypeDoc, PTypeDoc> {
-    const entity = new Entity2d<VTypeDoc, PTypeDoc>({
+    material: DisplayObject2dOpts<TypeDoc['vTypeDoc']['texture']> = {},
+  ): Entity2d<TypeDoc> {
+    const entity = new Entity2d<TypeDoc>({
       object2D: this.visualScene.factory.createPrimitive(descr.shape, material),
       objectBody: this.physicsWorld.factory.createRigidBody(descr),
     });
@@ -55,8 +63,8 @@ export class Gg2dWorld<
 
   addRenderer(
     canvas?: HTMLCanvasElement,
-    rendererOptions?: Partial<RendererOptions & VTypeDoc['rendererExtraOpts']>,
-  ): Renderer2dEntity<VTypeDoc> {
+    rendererOptions?: Partial<RendererOptions & TypeDoc['vTypeDoc']['rendererExtraOpts']>,
+  ): Renderer2dEntity<TypeDoc['vTypeDoc']> {
     const entity = new Renderer2dEntity(this.visualScene.createRenderer(canvas, rendererOptions));
     this.addEntity(entity);
     return entity;

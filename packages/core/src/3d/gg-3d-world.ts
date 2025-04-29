@@ -32,17 +32,25 @@ export type PhysicsTypeDocRepo3D = {
   raycastVehicle: IRaycastVehicleComponent;
 };
 
+export type Gg3dWorldTypeDocRepo = {
+  vTypeDoc: VisualTypeDocRepo3D;
+  pTypeDoc: PhysicsTypeDocRepo3D;
+};
+
+export type Gg3dWorldSceneTypeRepo<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo> = {
+  visualScene: IVisualScene3dComponent<TypeDoc['vTypeDoc']>;
+  physicsWorld: IPhysicsWorld3dComponent<TypeDoc['pTypeDoc']>;
+};
+
 export class Gg3dWorld<
-  VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D,
-  PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D,
-  VS extends IVisualScene3dComponent<VTypeDoc> = IVisualScene3dComponent<VTypeDoc>,
-  PW extends IPhysicsWorld3dComponent<PTypeDoc> = IPhysicsWorld3dComponent<PTypeDoc>,
-> extends GgWorld<Point3, Point4, VTypeDoc, PTypeDoc, VS, PW> {
-  public readonly loader: Gg3dLoader<VTypeDoc, PTypeDoc>;
+  TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo,
+  SceneTypeDoc extends Gg3dWorldSceneTypeRepo<TypeDoc> = Gg3dWorldSceneTypeRepo<TypeDoc>,
+> extends GgWorld<Point3, Point4, TypeDoc, SceneTypeDoc> {
+  public readonly loader: Gg3dLoader<TypeDoc>;
 
   constructor(
-    public readonly visualScene: VS,
-    public readonly physicsWorld: PW,
+    public readonly visualScene: SceneTypeDoc['visualScene'],
+    public readonly physicsWorld: SceneTypeDoc['physicsWorld'],
   ) {
     super(visualScene, physicsWorld);
     this.loader = new Gg3dLoader(this);
@@ -52,9 +60,9 @@ export class Gg3dWorld<
     descr: BodyShape3DDescriptor,
     position: Point3 = Pnt3.O,
     rotation: Point4 = Qtrn.O,
-    material: DisplayObject3dOpts<VTypeDoc['texture']> = {},
-  ): Entity3d<VTypeDoc, PTypeDoc> {
-    const entity = new Entity3d<VTypeDoc, PTypeDoc>({
+    material: DisplayObject3dOpts<TypeDoc['vTypeDoc']['texture']> = {},
+  ): Entity3d<TypeDoc> {
+    const entity = new Entity3d<TypeDoc>({
       object3D: this.visualScene.factory.createPrimitive(descr.shape, material),
       objectBody: this.physicsWorld.factory.createRigidBody(descr),
     });
@@ -65,10 +73,10 @@ export class Gg3dWorld<
   }
 
   addRenderer(
-    camera: VTypeDoc['camera'],
+    camera: TypeDoc['vTypeDoc']['camera'],
     canvas?: HTMLCanvasElement,
-    rendererOptions?: Partial<RendererOptions & VTypeDoc['rendererExtraOpts']>,
-  ): Renderer3dEntity<VTypeDoc> {
+    rendererOptions?: Partial<RendererOptions & TypeDoc['vTypeDoc']['rendererExtraOpts']>,
+  ): Renderer3dEntity<TypeDoc['vTypeDoc']> {
     const entity = new Renderer3dEntity(this.visualScene.createRenderer(camera, canvas, rendererOptions));
     this.addEntity(entity);
     return entity;

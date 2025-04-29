@@ -20,8 +20,8 @@ export type WheelOptions = {
   maxTravel: number;
 };
 
-export interface IRaycastVehicleComponent<TypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D>
-  extends IRigidBody3dComponent<TypeDoc> {
+export interface IRaycastVehicleComponent<PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D>
+  extends IRigidBody3dComponent<PTypeDoc> {
   /** Return speed in m/s, calculated by car itself (which should be shown on the speedometer) */
   get wheelSpeed(): number;
 

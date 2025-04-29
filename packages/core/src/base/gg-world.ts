@@ -29,13 +29,21 @@ export type PhysicsTypeDocRepo<D, R> = {
   trigger: ITriggerComponent<D, R>;
 };
 
+export type GgWorldTypeDocRepo<D, R> = {
+  vTypeDoc: VisualTypeDocRepo<D, R>;
+  pTypeDoc: PhysicsTypeDocRepo<D, R>;
+};
+
+export type GgWorldSceneTypeRepo<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R> = GgWorldTypeDocRepo<D, R>> = {
+  visualScene: IVisualSceneComponent<D, R, TypeDoc['vTypeDoc']>;
+  physicsWorld: IPhysicsWorldComponent<D, R, TypeDoc['pTypeDoc']>;
+};
+
 export abstract class GgWorld<
   D,
   R,
-  VTypeDoc extends VisualTypeDocRepo<D, R> = VisualTypeDocRepo<D, R>,
-  PTypeDoc extends PhysicsTypeDocRepo<D, R> = PhysicsTypeDocRepo<D, R>,
-  VS extends IVisualSceneComponent<D, R, VTypeDoc> = IVisualSceneComponent<D, R, VTypeDoc>,
-  PW extends IPhysicsWorldComponent<D, R, PTypeDoc> = IPhysicsWorldComponent<D, R, PTypeDoc>,
+  TypeDoc extends GgWorldTypeDocRepo<D, R> = GgWorldTypeDocRepo<D, R>,
+  SceneTypeDoc extends GgWorldSceneTypeRepo<D, R, TypeDoc> = GgWorldSceneTypeRepo<D, R, TypeDoc>,
 > {
   private static default_name_counter = 0;
   private static _documentWorlds: GgWorld<any, any>[] = [];
@@ -66,8 +74,8 @@ export abstract class GgWorld<
   public readonly disposed$: Subject<void> = new Subject<void>();
 
   protected constructor(
-    public readonly visualScene: VS,
-    public readonly physicsWorld: PW,
+    public readonly visualScene: SceneTypeDoc['visualScene'],
+    public readonly physicsWorld: SceneTypeDoc['physicsWorld'],
   ) {
     this.keyboardInput.start();
     if ((window as any).ggstatic) {
@@ -168,7 +176,7 @@ export abstract class GgWorld<
     position?: D,
     rotation?: R,
     material?: unknown, // type defined in subclasses
-  ): IPositionable<D, R> & IRenderableEntity<D, R, VTypeDoc>;
+  ): IPositionable<D, R> & IRenderableEntity<D, R, TypeDoc>;
 
   public addEntity(entity: IEntity): void {
     if (!!entity.world) {

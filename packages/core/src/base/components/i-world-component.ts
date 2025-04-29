@@ -1,17 +1,12 @@
 import { IEntity } from '../entities/i-entity';
-import { GgWorld, PhysicsTypeDocRepo, VisualTypeDocRepo } from '../gg-world';
+import { GgWorld, GgWorldTypeDocRepo } from '../gg-world';
+import { IComponent } from './i-component';
 
-export interface IWorldComponent<
-  D,
-  R,
-  VTypeDoc extends VisualTypeDocRepo<D, R> = VisualTypeDocRepo<D, R>,
-  PTypeDoc extends PhysicsTypeDocRepo<D, R> = PhysicsTypeDocRepo<D, R>,
-> {
+export interface IWorldComponent<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R> = GgWorldTypeDocRepo<D, R>>
+  extends IComponent {
   entity: IEntity | null;
 
-  addToWorld(world: GgWorld<D, R, VTypeDoc, PTypeDoc>): void;
+  addToWorld(world: GgWorld<D, R, TypeDoc>): void;
 
-  removeFromWorld(world: GgWorld<D, R, VTypeDoc, PTypeDoc>, dispose?: boolean): void;
-
-  dispose(): void;
+  removeFromWorld(world: GgWorld<D, R, TypeDoc>, dispose?: boolean): void;
 }

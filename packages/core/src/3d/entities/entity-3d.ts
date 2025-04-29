@@ -3,13 +3,10 @@ import { IRigidBody3dComponent } from '../components/physics/i-rigid-body-3d.com
 import { IDisplayObject3dComponent } from '../components/rendering/i-display-object-3d.component';
 import { IPositionable3d } from '../interfaces/i-positionable-3d';
 import { IRenderable3dEntity } from './i-renderable-3d.entity';
-import { PhysicsTypeDocRepo3D, VisualTypeDocRepo3D } from '../gg-3d-world';
+import { Gg3dWorldTypeDocRepo } from '../gg-3d-world';
 
-export class Entity3d<
-    VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D,
-    PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D,
-  >
-  extends IRenderable3dEntity<VTypeDoc, PTypeDoc>
+export class Entity3d<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo>
+  extends IRenderable3dEntity<TypeDoc>
   implements IPositionable3d
 {
   public readonly tickOrder = TickOrder.OBJECTS_BINDING;
@@ -44,8 +41,8 @@ export class Entity3d<
     this._rotation = value;
   }
 
-  public readonly object3D: VTypeDoc['displayObject'] | null = null;
-  public readonly objectBody: PTypeDoc['rigidBody'] | null = null;
+  public readonly object3D: TypeDoc['vTypeDoc']['displayObject'] | null = null;
+  public readonly objectBody: TypeDoc['pTypeDoc']['rigidBody'] | null = null;
 
   public updateVisibility(): void {
     if (this.object3D) {
@@ -68,7 +65,10 @@ export class Entity3d<
     this._rotation = quat;
   }
 
-  constructor(options: { object3D?: VTypeDoc['displayObject'] | null; objectBody?: PTypeDoc['rigidBody'] | null }) {
+  constructor(options: {
+    object3D?: TypeDoc['vTypeDoc']['displayObject'] | null;
+    objectBody?: TypeDoc['pTypeDoc']['rigidBody'] | null;
+  }) {
     super();
     if (options.objectBody) {
       this.objectBody = options.objectBody;

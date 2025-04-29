@@ -1,7 +1,7 @@
 import { IEntity, TickOrder } from '../i-entity';
 import { BehaviorSubject, distinctUntilChanged, Observable, Subject, takeUntil } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
-import { GgWorld, PhysicsTypeDocRepo, VisualTypeDocRepo } from '../../gg-world';
+import { GgWorld, GgWorldTypeDocRepo } from '../../gg-world';
 
 export type AnimationFunction<T> = (elapsed: number, delta: number) => T;
 
@@ -17,9 +17,8 @@ export class AnimationMixer<
   // pass-through types, if needed by subclasses
   D = any,
   R = any,
-  VTypeDoc extends VisualTypeDocRepo<D, R> = VisualTypeDocRepo<D, R>,
-  PTypeDoc extends PhysicsTypeDocRepo<D, R> = PhysicsTypeDocRepo<D, R>,
-> extends IEntity<D, R, VTypeDoc, PTypeDoc> {
+  TypeDoc extends GgWorldTypeDocRepo<D, R> = GgWorldTypeDocRepo<D, R>,
+> extends IEntity<D, R, TypeDoc> {
   public readonly tickOrder: number = TickOrder.ANIMATION_MIXERS;
   /**
    * A subject that emits the current value of the animation on every tick.
@@ -156,7 +155,7 @@ export class AnimationMixer<
     };
   }
 
-  onSpawned(world: GgWorld<D, R, VTypeDoc, PTypeDoc>) {
+  onSpawned(world: GgWorld<D, R, TypeDoc>) {
     super.onSpawned(world);
     this.tick$
       .pipe(

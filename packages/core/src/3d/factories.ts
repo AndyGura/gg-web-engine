@@ -10,17 +10,17 @@ export type DisplayObject3dOpts<Tex> = {
   receiveShadow?: boolean;
 };
 
-export abstract class IDisplayObject3dComponentFactory<TypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D> {
+export abstract class IDisplayObject3dComponentFactory<VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D> {
   abstract createPrimitive(
     descriptor: Shape3DMeshDescriptor,
-    material?: DisplayObject3dOpts<TypeDoc['texture']>,
-  ): TypeDoc['displayObject'];
+    material?: DisplayObject3dOpts<VTypeDoc['texture']>,
+  ): VTypeDoc['displayObject'];
 
   abstract createPerspectiveCamera(settings: {
     fov?: number;
     aspectRatio?: number;
     frustrum?: { near: number; far: number };
-  }): TypeDoc['camera'];
+  }): VTypeDoc['camera'];
 
   randomColor(): number {
     return (
@@ -29,51 +29,51 @@ export abstract class IDisplayObject3dComponentFactory<TypeDoc extends VisualTyp
   }
 
   // shortcuts
-  createPlane(material: DisplayObject3dOpts<TypeDoc['texture']> = {}): TypeDoc['displayObject'] {
+  createPlane(material: DisplayObject3dOpts<VTypeDoc['texture']> = {}): VTypeDoc['displayObject'] {
     return this.createPrimitive({ shape: 'PLANE' }, material);
   }
 
-  createBox(dimensions: Point3, material: DisplayObject3dOpts<TypeDoc['texture']> = {}): TypeDoc['displayObject'] {
+  createBox(dimensions: Point3, material: DisplayObject3dOpts<VTypeDoc['texture']> = {}): VTypeDoc['displayObject'] {
     return this.createPrimitive({ shape: 'BOX', dimensions }, material);
   }
 
   createCapsule(
     radius: number,
     centersDistance: number,
-    material: DisplayObject3dOpts<TypeDoc['texture']> = {},
-  ): TypeDoc['displayObject'] {
+    material: DisplayObject3dOpts<VTypeDoc['texture']> = {},
+  ): VTypeDoc['displayObject'] {
     return this.createPrimitive({ shape: 'CAPSULE', radius, centersDistance }, material);
   }
 
   createCylinder(
     radius: number,
     height: number,
-    material: DisplayObject3dOpts<TypeDoc['texture']> = {},
-  ): TypeDoc['displayObject'] {
+    material: DisplayObject3dOpts<VTypeDoc['texture']> = {},
+  ): VTypeDoc['displayObject'] {
     return this.createPrimitive({ shape: 'CYLINDER', radius, height }, material);
   }
 
   createCone(
     radius: number,
     height: number,
-    material: DisplayObject3dOpts<TypeDoc['texture']> = {},
-  ): TypeDoc['displayObject'] {
+    material: DisplayObject3dOpts<VTypeDoc['texture']> = {},
+  ): VTypeDoc['displayObject'] {
     return this.createPrimitive({ shape: 'CONE', radius, height }, material);
   }
 
-  createSphere(radius: number, material: DisplayObject3dOpts<TypeDoc['texture']> = {}): TypeDoc['displayObject'] {
+  createSphere(radius: number, material: DisplayObject3dOpts<VTypeDoc['texture']> = {}): VTypeDoc['displayObject'] {
     return this.createPrimitive({ shape: 'SPHERE', radius }, material);
   }
 }
 
-export interface IPhysicsBody3dComponentFactory<TypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D> {
+export interface IPhysicsBody3dComponentFactory<PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D> {
   createRigidBody(
     descriptor: BodyShape3DDescriptor,
     transform?: {
       position?: Point3;
       rotation?: Point4;
     },
-  ): TypeDoc['rigidBody'];
+  ): PTypeDoc['rigidBody'];
 
   createTrigger(
     descriptor: Shape3DDescriptor,
@@ -81,7 +81,7 @@ export interface IPhysicsBody3dComponentFactory<TypeDoc extends PhysicsTypeDocRe
       position?: Point3;
       rotation?: Point4;
     },
-  ): TypeDoc['trigger'];
+  ): PTypeDoc['trigger'];
 
-  createRaycastVehicle(chassis: TypeDoc['rigidBody']): TypeDoc['raycastVehicle'];
+  createRaycastVehicle(chassis: PTypeDoc['rigidBody']): PTypeDoc['raycastVehicle'];
 }
