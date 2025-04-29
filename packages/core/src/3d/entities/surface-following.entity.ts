@@ -58,10 +58,11 @@ export class SurfaceFollowingEntity<PTypeDoc extends PhysicsTypeDocRepo3D = Phys
     if (!this.world) {
       throw new Error('Cannot setup collider if not added to the world');
     }
-    let cg = this.world.physicsWorld.registerCollisionGroup();
+
+    let cg = this.world.physicsWorld!.registerCollisionGroup();
     collider.ownCollisionGroups = [...collider.ownCollisionGroups, cg];
     collider.interactWithCollisionGroups = [...collider.ownCollisionGroups, cg];
-    let plane = this.world.physicsWorld.factory.createRigidBody({
+    let plane = this.world.physicsWorld!.factory.createRigidBody({
       shape: { shape: 'PLANE' },
       body: {
         ...this.bodyOptions,
@@ -108,7 +109,7 @@ export class SurfaceFollowingEntity<PTypeDoc extends PhysicsTypeDocRepo3D = Phys
       this.removeComponents([plane], true);
       collider.ownCollisionGroups = collider.ownCollisionGroups.filter(g => g !== cg);
       collider.interactWithCollisionGroups = collider.interactWithCollisionGroups.filter(g => g !== cg);
-      this.world!.physicsWorld.deregisterCollisionGroup(cg);
+      this.world!.physicsWorld!.deregisterCollisionGroup(cg);
     }
     this.colliders.delete(collider);
   }
@@ -119,6 +120,9 @@ export class SurfaceFollowingEntity<PTypeDoc extends PhysicsTypeDocRepo3D = Phys
    * @param world - The game world instance.
    */
   onSpawned(world: Gg3dWorld<Gg3dWorldTypeDocRepo & { pTypeDoc: PTypeDoc }>) {
+    if (!world.physicsWorld) {
+      throw new Error('Cannot add surface following entity to the world without physics');
+    }
     super.onSpawned(world);
     for (const [collider] of this.colliders.entries()) {
       this.setupCollider(collider);
@@ -146,7 +150,7 @@ export class SurfaceFollowingEntity<PTypeDoc extends PhysicsTypeDocRepo3D = Phys
     if (updateDebugView) {
       if (this.debugBodySettings.customGlobalShape) {
         if (!this.customGlobalDebugDummyBody) {
-          this.customGlobalDebugDummyBody = this.world!.physicsWorld.factory.createRigidBody({
+          this.customGlobalDebugDummyBody = this.world!.physicsWorld!.factory.createRigidBody({
             shape: { shape: 'BOX', dimensions: Pnt3.O },
             body: { dynamic: false },
           });
@@ -222,7 +226,7 @@ export class SurfaceFollowingEntity<PTypeDoc extends PhysicsTypeDocRepo3D = Phys
         this.removeComponents([plane], true);
         collider.ownCollisionGroups = collider.ownCollisionGroups.filter(g => g !== cg);
         collider.interactWithCollisionGroups = collider.interactWithCollisionGroups.filter(g => g !== cg);
-        this.world!.physicsWorld.deregisterCollisionGroup(cg);
+        this.world!.physicsWorld!.deregisterCollisionGroup(cg);
       }
     }
     this.colliders.clear();

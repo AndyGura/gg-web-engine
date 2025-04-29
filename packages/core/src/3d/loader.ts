@@ -103,19 +103,19 @@ export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocR
       throw new Error('GLB not found');
     }
     const [object, bodies] = await Promise.all([
-      this.world.visualScene.loader.loadFromGgGlb(glb, meta),
-      this.world.physicsWorld.loader.loadFromGgGlb(glb, meta),
+      this.world.visualScene?.loader.loadFromGgGlb(glb, meta),
+      this.world.physicsWorld?.loader.loadFromGgGlb(glb, meta),
     ]);
     const result: LoadResourcesResult<TypeDoc> = { resources: [], meta };
     if (!object) {
       return result;
     }
-    if (bodies.length == 0) {
+    if (bodies?.length == 0) {
       result.resources.push({ object3D: object, body: null });
-    } else if (bodies.length == 1) {
+    } else if (bodies?.length == 1) {
       result.resources.push({ object3D: object, body: bodies[0] });
     } else {
-      for (const body of bodies) {
+      for (const body of bodies || []) {
         result.resources.push({ object3D: object.popChild(body.name), body });
       }
       if (!object.isEmpty()) {

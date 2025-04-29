@@ -38,8 +38,8 @@ export type Gg3dWorldTypeDocRepo = {
 };
 
 export type Gg3dWorldSceneTypeRepo<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo> = {
-  visualScene: IVisualScene3dComponent<TypeDoc['vTypeDoc']>;
-  physicsWorld: IPhysicsWorld3dComponent<TypeDoc['pTypeDoc']>;
+  visualScene: IVisualScene3dComponent<TypeDoc['vTypeDoc']> | null;
+  physicsWorld: IPhysicsWorld3dComponent<TypeDoc['pTypeDoc']> | null;
 };
 
 export class Gg3dWorld<
@@ -48,11 +48,8 @@ export class Gg3dWorld<
 > extends GgWorld<Point3, Point4, TypeDoc, SceneTypeDoc> {
   public readonly loader: Gg3dLoader<TypeDoc>;
 
-  constructor(
-    public readonly visualScene: SceneTypeDoc['visualScene'],
-    public readonly physicsWorld: SceneTypeDoc['physicsWorld'],
-  ) {
-    super(visualScene, physicsWorld);
+  constructor(args: { visualScene?: SceneTypeDoc['visualScene']; physicsWorld?: SceneTypeDoc['physicsWorld'] }) {
+    super(args);
     this.loader = new Gg3dLoader(this);
   }
 
@@ -63,8 +60,8 @@ export class Gg3dWorld<
     material: DisplayObject3dOpts<TypeDoc['vTypeDoc']['texture']> = {},
   ): Entity3d<TypeDoc> {
     const entity = new Entity3d<TypeDoc>({
-      object3D: this.visualScene.factory.createPrimitive(descr.shape, material),
-      objectBody: this.physicsWorld.factory.createRigidBody(descr),
+      object3D: this.visualScene?.factory.createPrimitive(descr.shape, material),
+      objectBody: this.physicsWorld?.factory.createRigidBody(descr),
     });
     entity.position = position;
     entity.rotation = rotation;
@@ -77,6 +74,9 @@ export class Gg3dWorld<
     canvas?: HTMLCanvasElement,
     rendererOptions?: Partial<RendererOptions & TypeDoc['vTypeDoc']['rendererExtraOpts']>,
   ): Renderer3dEntity<TypeDoc['vTypeDoc']> {
+    if (!this.visualScene) {
+      throw new Error('Cannot add renderer to the world without visual scene');
+    }
     const entity = new Renderer3dEntity(this.visualScene.createRenderer(camera, canvas, rendererOptions));
     this.addEntity(entity);
     return entity;
@@ -91,24 +91,26 @@ export class Gg3dWorld<
     ) => void;
   }) {
     super.registerConsoleCommands(ggstatic);
-    ggstatic.registerConsoleCommand(
-      this,
-      'gravity',
-      async (...args: string[]) => {
-        if (args.length == 1) {
-          args = ['0', '0', '' + -+args[0]]; // mean -Z axis
-        }
-        if (args.length > 0) {
-          if (isNaN(+args[0]) || isNaN(+args[1]) || isNaN(+args[2])) {
-            throw new Error('Wrong arguments');
+    if (this.physicsWorld) {
+      ggstatic.registerConsoleCommand(
+        this,
+        'gravity',
+        async (...args: string[]) => {
+          if (args.length == 1) {
+            args = ['0', '0', '' + -+args[0]]; // mean -Z axis
           }
-          this.physicsWorld.gravity = { x: +args[0], y: +args[1], z: +args[2] };
-        }
-        return JSON.stringify(this.physicsWorld.gravity);
-      },
-      'args: [ ?float, ?float, ?float ]; Get or set 3D world gravity vector. 1 argument sets ' +
-        'vector {x: 0, y: 0, z: -value}, 3 arguments set the whole vector.' +
-        ' Default value is "9.82" or "0 0 -9.82"',
-    );
+          if (args.length > 0) {
+            if (isNaN(+args[0]) || isNaN(+args[1]) || isNaN(+args[2])) {
+              throw new Error('Wrong arguments');
+            }
+            this.physicsWorld!.gravity = { x: +args[0], y: +args[1], z: +args[2] };
+          }
+          return JSON.stringify(this.physicsWorld!.gravity);
+        },
+        'args: [ ?float, ?float, ?float ]; Get or set 3D world gravity vector. 1 argument sets ' +
+          'vector {x: 0, y: 0, z: -value}, 3 arguments set the whole vector.' +
+          ' Default value is "9.82" or "0 0 -9.82"',
+      );
+    }
   }
 }

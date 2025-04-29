@@ -30,19 +30,16 @@ export type Gg2dWorldTypeDocRepo = {
 };
 
 export type Gg2dWorldSceneTypeRepo<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTypeDocRepo> = {
-  visualScene: IVisualScene2dComponent<TypeDoc['vTypeDoc']>;
-  physicsWorld: IPhysicsWorld2dComponent<TypeDoc['pTypeDoc']>;
+  visualScene: IVisualScene2dComponent<TypeDoc['vTypeDoc']> | null;
+  physicsWorld: IPhysicsWorld2dComponent<TypeDoc['pTypeDoc']> | null;
 };
 
 export class Gg2dWorld<
   TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTypeDocRepo,
   SceneTypeDoc extends Gg2dWorldSceneTypeRepo<TypeDoc> = Gg2dWorldSceneTypeRepo<TypeDoc>,
 > extends GgWorld<Point2, number, TypeDoc, SceneTypeDoc> {
-  constructor(
-    public readonly visualScene: SceneTypeDoc['visualScene'],
-    public readonly physicsWorld: SceneTypeDoc['physicsWorld'],
-  ) {
-    super(visualScene, physicsWorld);
+  constructor(args: { visualScene?: SceneTypeDoc['visualScene']; physicsWorld?: SceneTypeDoc['physicsWorld'] }) {
+    super(args);
   }
 
   addPrimitiveRigidBody(
@@ -52,8 +49,8 @@ export class Gg2dWorld<
     material: DisplayObject2dOpts<TypeDoc['vTypeDoc']['texture']> = {},
   ): Entity2d<TypeDoc> {
     const entity = new Entity2d<TypeDoc>({
-      object2D: this.visualScene.factory.createPrimitive(descr.shape, material),
-      objectBody: this.physicsWorld.factory.createRigidBody(descr),
+      object2D: this.visualScene?.factory.createPrimitive(descr.shape, material),
+      objectBody: this.physicsWorld?.factory.createRigidBody(descr),
     });
     entity.position = position;
     entity.rotation = rotation;
@@ -65,6 +62,9 @@ export class Gg2dWorld<
     canvas?: HTMLCanvasElement,
     rendererOptions?: Partial<RendererOptions & TypeDoc['vTypeDoc']['rendererExtraOpts']>,
   ): Renderer2dEntity<TypeDoc['vTypeDoc']> {
+    if (!this.visualScene) {
+      throw new Error('Cannot add renderer to the world without visual scene');
+    }
     const entity = new Renderer2dEntity(this.visualScene.createRenderer(canvas, rendererOptions));
     this.addEntity(entity);
     return entity;
@@ -79,24 +79,26 @@ export class Gg2dWorld<
     ) => void;
   }) {
     super.registerConsoleCommands(ggstatic);
-    ggstatic.registerConsoleCommand(
-      this,
-      'gravity',
-      async (...args: string[]) => {
-        if (args.length == 1) {
-          args = ['0', args[0]]; // mean Y axis
-        }
-        if (args.length > 0) {
-          if (isNaN(+args[0]) || isNaN(+args[1])) {
-            throw new Error('Wrong arguments');
+    if (this.physicsWorld) {
+      ggstatic.registerConsoleCommand(
+        this,
+        'gravity',
+        async (...args: string[]) => {
+          if (args.length == 1) {
+            args = ['0', args[0]]; // mean Y axis
           }
-          this.physicsWorld.gravity = { x: +args[0], y: +args[1] };
-        }
-        return JSON.stringify(this.physicsWorld.gravity);
-      },
-      'args: [ ?float, ?float ]; Get or set 2D world gravity vector. 1 argument sets' +
-        ' vector {x: 0, y: value}, 2 arguments sets the whole vector.' +
-        ' Default value is "9.82" or "0 9.82"',
-    );
+          if (args.length > 0) {
+            if (isNaN(+args[0]) || isNaN(+args[1])) {
+              throw new Error('Wrong arguments');
+            }
+            this.physicsWorld!.gravity = { x: +args[0], y: +args[1] };
+          }
+          return JSON.stringify(this.physicsWorld!.gravity);
+        },
+        'args: [ ?float, ?float ]; Get or set 2D world gravity vector. 1 argument sets' +
+          ' vector {x: 0, y: value}, 2 arguments sets the whole vector.' +
+          ' Default value is "9.82" or "0 9.82"',
+      );
+    }
   }
 }
