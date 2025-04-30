@@ -1,6 +1,6 @@
 ---
 title: pixi/components/pixi-renderer.component.ts
-nav_order: 105
+nav_order: 109
 parent: Modules
 ---
 
@@ -18,6 +18,7 @@ parent: Modules
     - [render (method)](#render-method)
     - [dispose (method)](#dispose-method)
     - [application (property)](#application-property)
+    - [world (property)](#world-property)
 
 ---
 
@@ -32,7 +33,7 @@ export declare class PixiRendererComponent {
   constructor(
     public readonly scene: PixiSceneComponent,
     public readonly canvas?: HTMLCanvasElement,
-    options: Partial<RendererOptions> = {}
+    options: Partial<RendererOptions & ApplicationOptions> = {}
   )
 }
 ```
@@ -50,7 +51,7 @@ resizeRenderer(newSize: Point2): void
 **Signature**
 
 ```ts
-addToWorld(world: Gg2dWorld<PixiVisualTypeDocRepo2D>): void
+addToWorld(world: Gg2dWorld<PixiVisualTypeDocRepo2D, PhysicsTypeDocRepo2D, PixiSceneComponent>): void
 ```
 
 ### removeFromWorld (method)
@@ -58,7 +59,7 @@ addToWorld(world: Gg2dWorld<PixiVisualTypeDocRepo2D>): void
 **Signature**
 
 ```ts
-removeFromWorld(world: Gg2dWorld<PixiVisualTypeDocRepo2D>): void
+removeFromWorld(world: Gg2dWorld<PixiVisualTypeDocRepo2D, PhysicsTypeDocRepo2D, PixiSceneComponent>): void
 ```
 
 ### render (method)
@@ -83,4 +84,12 @@ dispose(): void
 
 ```ts
 readonly application: any
+```
+
+### world (property)
+
+**Signature**
+
+```ts
+world: any
 ```

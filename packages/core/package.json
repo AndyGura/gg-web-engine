@@ -1,14 +1,15 @@
 {
   "name": "@gg-web-engine/core",
-  "version": "0.0.30",
+  "version": "0.0.57",
   "description": "An attempt to create open source game engine for browser",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "test": "jest",
     "prettier-format": "prettier --config .prettierrc 'src/**/*.ts' --write",
-    "prepublish": "rm -rf ./dist/ && tsc",
-    "build": "tsc"
+    "prepublish": "rm -rf ./dist/ && npm run build",
+    "update-version": "VERSION=$(grep '\"version\":' package.json | sed -E 's/.*\"version\": *\"([^\"]+)\".*/\\1/') && echo \"export const VERSION = '$VERSION';\" > src/version.ts",
+    "build": "npm run update-version && tsc"
   },
   "repository": {
     "type": "git",
@@ -27,17 +28,17 @@
   },
   "homepage": "https://github.com/AndyGura/gg-web-engine#readme",
   "dependencies": {
-    "rxjs": "7.8.0",
+    "rxjs": "7.8.1",
     "stats.js": "0.17.0"
   },
   "devDependencies": {
-    "@types/jest": "^29.5.0",
-    "@types/stats.js": "^0.17.0",
-    "jest": "^29.5.0",
-    "jest-environment-jsdom": "^29.5.0",
-    "prettier": "^2.8.6",
-    "ts-jest": "^29.0.5",
-    "typescript": "~4.7.2"
+    "@types/jest": "^29.5.12",
+    "@types/stats.js": "^0.17.3",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "prettier": "^3.3.3",
+    "ts-jest": "^29.2.4",
+    "typescript": "~5.5.4"
   },
   "jest": {
     "moduleFileExtensions": [

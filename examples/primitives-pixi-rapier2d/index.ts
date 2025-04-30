@@ -1,15 +1,15 @@
 import { Entity2d, Gg2dWorld, GgStatic } from '@gg-web-engine/core';
-import { interval } from 'rxjs';
 import { PixiSceneComponent } from '@gg-web-engine/pixi';
 import { Rapier2dWorldComponent } from '@gg-web-engine/rapier2d';
 
-const world = new Gg2dWorld(
-  new PixiSceneComponent(),
-  new Rapier2dWorldComponent(),
-);
+GgStatic.instance.showStats = true;
+GgStatic.instance.devConsoleEnabled = true;
+
+const world = new Gg2dWorld({
+  visualScene: new PixiSceneComponent(),
+  physicsWorld: new Rapier2dWorldComponent(),
+});
 world.init().then(async () => {
-  GgStatic.instance.showStats = true;
-  // GgStatic.instance.devConsoleEnabled = true;
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
   const renderer = world.addRenderer(canvas);
 
@@ -23,7 +23,9 @@ world.init().then(async () => {
     }
   });
 
-  interval(500).subscribe(() => {
+  const spawnTimer = world.createClock(true);
+  spawnTimer.tickRateLimit = 2;
+  spawnTimer.tick$.subscribe(() => {
     let item: Entity2d;
     if (Math.random() >= 0.5) {
       item = world.addPrimitiveRigidBody({

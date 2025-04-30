@@ -6,23 +6,22 @@ import {
   OrbitCameraController,
   Pnt3,
   Qtrn,
+  TypedGg3dWorld,
 } from '@gg-web-engine/core';
-import { ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
+import { ThreeGgWorld, ThreeSceneComponent } from '@gg-web-engine/three';
 import { AmbientLight, DirectionalLight, Material, Mesh } from 'three';
-import { AmmoPhysicsTypeDocRepo, AmmoWorldComponent } from '@gg-web-engine/ammo';
+import { AmmoGgWorld, AmmoWorldComponent } from '@gg-web-engine/ammo';
 
-const world = new Gg3dWorld<
-  ThreeVisualTypeDocRepo,
-  AmmoPhysicsTypeDocRepo,
-  ThreeSceneComponent,
-  AmmoWorldComponent
->(
-  new ThreeSceneComponent(),
-  new AmmoWorldComponent(),
-);
+GgStatic.instance.showStats = true;
+GgStatic.instance.devConsoleEnabled = true;
+
+const world: TypedGg3dWorld<ThreeGgWorld, AmmoGgWorld> = new Gg3dWorld({
+  visualScene: new ThreeSceneComponent(),
+  physicsWorld: new AmmoWorldComponent(),
+});
+world.physicsWorld.maxSubSteps = 25;
+
 world.init().then(async () => {
-  GgStatic.instance.showStats = true;
-  // GgStatic.instance.devConsoleEnabled = true;
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
   const renderer = world.addRenderer(
     world.visualScene.factory.createPerspectiveCamera(),
@@ -51,7 +50,6 @@ world.init().then(async () => {
   const ambient = new AmbientLight(0xffffff, 0.3);
   world.visualScene.nativeScene!.add(ambient);
 
-  const ballsCommonCg = world.physicsWorld.registerCollisionGroup();
   const cgs = [
     0xff0000,
     0x00ff00,
@@ -106,15 +104,15 @@ world.init().then(async () => {
   }
 
   for (let i = 0; i < 4; i++) {
-    let wall = new Entity3d(null, world.physicsWorld.factory.createRigidBody({
-      shape: { shape: 'BOX', dimensions: { x: 40, y: 40, z: 400 } },
-      body: {
-        dynamic: false,
-        ownCollisionGroups: [ballsCommonCg],
-        interactWithCollisionGroups: [ballsCommonCg],
-        restitution: 0.3,
-      },
-    }));
+    let wall = new Entity3d({
+      objectBody: world.physicsWorld.factory.createRigidBody({
+        shape: { shape: 'BOX', dimensions: { x: 40, y: 40, z: 400 } },
+        body: {
+          dynamic: false,
+          restitution: 0.3,
+        },
+      }),
+    });
     wall.position = Pnt3.rotAround({ x: 28, y: 0, z: 0 }, Pnt3.Z, Math.PI * i / 2);
     world.addEntity(wall);
   }
@@ -129,8 +127,8 @@ world.init().then(async () => {
             body: {
               mass: 1,
               restitution: 0.3,
-              ownCollisionGroups: [collisionGroup, ballsCommonCg],
-              interactWithCollisionGroups: [collisionGroup, ballsCommonCg],
+              ownCollisionGroups: [collisionGroup, world.physicsWorld.mainCollisionGroup],
+              interactWithCollisionGroups: [collisionGroup, world.physicsWorld.mainCollisionGroup],
             },
           },
           { x: i, y: j, z: k },

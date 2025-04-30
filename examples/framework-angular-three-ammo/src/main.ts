@@ -1,10 +1,12 @@
-import 'zone.js/dist/zone';
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { bootstrapApplication } from '@angular/platform-browser';
 import { Entity3d, Gg3dWorld, GgStatic, OrbitCameraController, Trigger3dEntity } from '@gg-web-engine/core';
 import { ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
 import { AmmoPhysicsTypeDocRepo, AmmoWorldComponent } from '@gg-web-engine/ammo';
-import { interval, Subject, takeUntil } from 'rxjs';
+import { Subject } from 'rxjs';
+
+GgStatic.instance.showStats = true;
+GgStatic.instance.devConsoleEnabled = true;
 
 @Component({
   selector: 'my-app',
@@ -22,8 +24,6 @@ export class App implements OnInit, OnDestroy {
       new AmmoWorldComponent(),
     );
     await this.world.init();
-    GgStatic.instance.showStats = true;
-    // GgStatic.instance.devConsoleEnabled = true;
 
     const canvas = document.getElementById('gg')! as HTMLCanvasElement;
     const renderer = this.world.addRenderer(
@@ -49,13 +49,14 @@ export class App implements OnInit, OnDestroy {
       }),
     );
     destroyTrigger.position = { x: 0, y: 0, z: -15 };
-    destroyTrigger.onEntityEntered.subscribe((entity: Entity3d) => {
+    destroyTrigger.onEntityEntered.subscribe(entity => {
       this.world.removeEntity(entity, true);
     });
     this.world.addEntity(destroyTrigger);
 
-    interval(500)
-      .pipe(takeUntil(this.destroyed$))
+    const spawnTimer = this.world.createClock(true);
+    spawnTimer.tickRateLimit = 2;
+    spawnTimer.tick$
       .subscribe(() => {
         let item: Entity3d;
         let r = Math.random();

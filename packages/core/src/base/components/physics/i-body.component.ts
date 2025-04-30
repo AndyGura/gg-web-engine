@@ -1,10 +1,10 @@
 import { IEntity } from '../../entities/i-entity';
 import { IWorldComponent } from '../i-world-component';
-import { GgWorld, PhysicsTypeDocRepo, VisualTypeDocRepo } from '../../gg-world';
-import { CollisionGroup } from '../../models/body-options';
+import { GgWorld, GgWorldTypeDocPPatch, PhysicsTypeDocRepo } from '../../gg-world';
+import { CollisionGroup, DebugBodySettings } from '../../models/body-options';
 
-export interface IBodyComponent<D, R, TypeDoc extends PhysicsTypeDocRepo<D, R> = PhysicsTypeDocRepo<D, R>>
-  extends IWorldComponent<D, R, VisualTypeDocRepo<D, R>, TypeDoc> {
+export interface IBodyComponent<D, R, PTypeDoc extends PhysicsTypeDocRepo<D, R> = PhysicsTypeDocRepo<D, R>>
+  extends IWorldComponent<D, R, GgWorldTypeDocPPatch<D, R, PTypeDoc>> {
   entity: IEntity | null;
 
   position: D;
@@ -12,17 +12,20 @@ export interface IBodyComponent<D, R, TypeDoc extends PhysicsTypeDocRepo<D, R> =
 
   name: string;
 
-  get ownCollisionGroups(): CollisionGroup[];
+  get ownCollisionGroups(): ReadonlyArray<CollisionGroup>;
 
-  set ownCollisionGroups(value: CollisionGroup[] | 'all');
+  set ownCollisionGroups(value: ReadonlyArray<CollisionGroup> | 'all');
 
-  get interactWithCollisionGroups(): CollisionGroup[];
+  get interactWithCollisionGroups(): ReadonlyArray<CollisionGroup>;
 
-  set interactWithCollisionGroups(value: CollisionGroup[] | 'all');
+  set interactWithCollisionGroups(value: ReadonlyArray<CollisionGroup> | 'all');
 
-  clone(): IBodyComponent<D, R, TypeDoc>;
+  /** body info for physics debugger view */
+  readonly debugBodySettings: DebugBodySettings<any>;
 
-  addToWorld(world: GgWorld<D, R, VisualTypeDocRepo<D, R>, TypeDoc>): void;
+  clone(): IBodyComponent<D, R, PTypeDoc>;
 
-  removeFromWorld(world: GgWorld<D, R, VisualTypeDocRepo<D, R>, TypeDoc>): void;
+  addToWorld(world: GgWorld<D, R, GgWorldTypeDocPPatch<D, R, PTypeDoc>>): void;
+
+  removeFromWorld(world: GgWorld<D, R, GgWorldTypeDocPPatch<D, R, PTypeDoc>>): void;
 }

@@ -1,6 +1,6 @@
 ---
 title: rapier3d/components/rapier-3d-world.component.ts
-nav_order: 118
+nav_order: 123
 parent: Modules
 ---
 
@@ -16,9 +16,11 @@ parent: Modules
     - [simulate (method)](#simulate-method)
     - [registerCollisionGroup (method)](#registercollisiongroup-method)
     - [deregisterCollisionGroup (method)](#deregistercollisiongroup-method)
-    - [startDebugger (method)](#startdebugger-method)
-    - [stopDebugger (method)](#stopdebugger-method)
     - [dispose (method)](#dispose-method)
+    - [added$ (property)](#added-property)
+    - [removed$ (property)](#removed-property)
+    - [children (property)](#children-property)
+    - [mainCollisionGroup (property)](#maincollisiongroup-property)
     - [\_nativeWorld (property)](#_nativeworld-property)
     - [handleIdEntityMap (property)](#handleidentitymap-property)
     - [lockedCollisionGroups (property)](#lockedcollisiongroups-property)
@@ -32,7 +34,9 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare class Rapier3dWorldComponent
+export declare class Rapier3dWorldComponent {
+  constructor()
+}
 ```
 
 ### init (method)
@@ -67,28 +71,44 @@ registerCollisionGroup(): CollisionGroup
 deregisterCollisionGroup(group: CollisionGroup): void
 ```
 
-### startDebugger (method)
-
-**Signature**
-
-```ts
-startDebugger(world: Gg3dWorld, drawer: IDebugPhysicsDrawer<Point3, Point4>): void
-```
-
-### stopDebugger (method)
-
-**Signature**
-
-```ts
-stopDebugger(): void
-```
-
 ### dispose (method)
 
 **Signature**
 
 ```ts
 dispose(): void
+```
+
+### added$ (property)
+
+**Signature**
+
+```ts
+readonly added$: any
+```
+
+### removed$ (property)
+
+**Signature**
+
+```ts
+readonly removed$: any
+```
+
+### children (property)
+
+**Signature**
+
+```ts
+readonly children: Rapier3dRigidBodyComponent[]
+```
+
+### mainCollisionGroup (property)
+
+**Signature**
+
+```ts
+readonly mainCollisionGroup: any
 ```
 
 ### \_nativeWorld (property)

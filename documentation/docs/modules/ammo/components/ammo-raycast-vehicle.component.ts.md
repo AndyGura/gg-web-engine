@@ -12,7 +12,9 @@ parent: Modules
 
 - [utils](#utils)
   - [AmmoRaycastVehicleComponent (class)](#ammoraycastvehiclecomponent-class)
+    - [refreshCG (method)](#refreshcg-method)
     - [addToWorld (method)](#addtoworld-method)
+    - [removeFromWorld (method)](#removefromworld-method)
     - [addWheel (method)](#addwheel-method)
     - [setSteering (method)](#setsteering-method)
     - [applyEngineForce (method)](#applyengineforce-method)
@@ -21,11 +23,13 @@ parent: Modules
     - [getWheelTransform (method)](#getwheeltransform-method)
     - [resetSuspension (method)](#resetsuspension-method)
     - [clone (method)](#clone-method)
+    - [resetMotion (method)](#resetmotion-method)
     - [nativeVehicle (property)](#nativevehicle-property)
     - [vehicleTuning (property)](#vehicletuning-property)
     - [wheelDirectionCS0 (property)](#wheeldirectioncs0-property)
     - [wheelAxleCS (property)](#wheelaxlecs-property)
     - [entity (property)](#entity-property)
+    - [raycaster (property)](#raycaster-property)
 
 ---
 
@@ -41,12 +45,28 @@ export declare class AmmoRaycastVehicleComponent {
 }
 ```
 
+### refreshCG (method)
+
+**Signature**
+
+```ts
+refreshCG()
+```
+
 ### addToWorld (method)
 
 **Signature**
 
 ```ts
 addToWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>)
+```
+
+### removeFromWorld (method)
+
+**Signature**
+
+```ts
+removeFromWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>)
 ```
 
 ### addWheel (method)
@@ -113,12 +133,20 @@ resetSuspension(): void
 public clone(): AmmoRaycastVehicleComponent
 ```
 
+### resetMotion (method)
+
+**Signature**
+
+```ts
+resetMotion()
+```
+
 ### nativeVehicle (property)
 
 **Signature**
 
 ```ts
-readonly nativeVehicle: any
+readonly nativeVehicle: Ammo.btRaycastVehicle
 ```
 
 ### vehicleTuning (property)
@@ -126,7 +154,7 @@ readonly nativeVehicle: any
 **Signature**
 
 ```ts
-readonly vehicleTuning: any
+readonly vehicleTuning: Ammo.btVehicleTuning
 ```
 
 ### wheelDirectionCS0 (property)
@@ -134,7 +162,7 @@ readonly vehicleTuning: any
 **Signature**
 
 ```ts
-readonly wheelDirectionCS0: any
+readonly wheelDirectionCS0: Ammo.btVector3
 ```
 
 ### wheelAxleCS (property)
@@ -142,7 +170,7 @@ readonly wheelDirectionCS0: any
 **Signature**
 
 ```ts
-readonly wheelAxleCS: any
+readonly wheelAxleCS: Ammo.btVector3
 ```
 
 ### entity (property)
@@ -151,4 +179,12 @@ readonly wheelAxleCS: any
 
 ```ts
 entity: any
+```
+
+### raycaster (property)
+
+**Signature**
+
+```ts
+readonly raycaster: Ammo.btDefaultVehicleRaycaster
 ```

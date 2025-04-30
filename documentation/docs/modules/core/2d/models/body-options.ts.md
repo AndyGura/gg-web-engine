@@ -12,6 +12,7 @@ parent: Modules
 
 - [utils](#utils)
   - [Body2DOptions (interface)](#body2doptions-interface)
+  - [DebugBody2DSettings (class)](#debugbody2dsettings-class)
 
 ---
 
@@ -23,4 +24,19 @@ parent: Modules
 
 ```ts
 export interface Body2DOptions extends BodyOptions {}
+```
+
+## DebugBody2DSettings (class)
+
+**Signature**
+
+```ts
+export declare class DebugBody2DSettings {
+  constructor(
+    type: DebugBodyType,
+    shape: Shape2DDescriptor,
+    ignoreTransform: boolean = false,
+    color: number | undefined = undefined
+  )
+}
 ```

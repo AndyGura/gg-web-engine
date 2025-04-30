@@ -27,6 +27,11 @@ export class Qtrn {
     return { x: q.x, y: q.y, z: q.z, w: q.w };
   }
 
+  /** spread quaternion components */
+  static spr(p: Point4): [number, number, number, number] {
+    return [p.x, p.y, p.z, p.w];
+  }
+
   /**
    * Returns the sum of two Point4 objects.
    * @param a The first Point4 object to add.
@@ -197,6 +202,42 @@ export class Qtrn {
         w: (m21 - m12) / s,
       };
     }
+  }
+
+  /**
+   * Converts a 3x3 rotation matrix into a quaternion
+   * @param m the matrix representing the rotation
+   * @returns a quaternion representing the rotation
+   */
+  static fromMatrix3(m: number[][]): Point4 {
+    const trace = m[0][0] + m[1][1] + m[2][2];
+    let w, x, y, z;
+    if (trace > 0) {
+      const s = 0.5 / Math.sqrt(trace + 1);
+      w = 0.25 / s;
+      x = (m[2][1] - m[1][2]) * s;
+      y = (m[0][2] - m[2][0]) * s;
+      z = (m[1][0] - m[0][1]) * s;
+    } else if (m[0][0] > m[1][1] && m[0][0] > m[2][2]) {
+      const s = 2 * Math.sqrt(1 + m[0][0] - m[1][1] - m[2][2]);
+      w = (m[2][1] - m[1][2]) / s;
+      x = 0.25 * s;
+      y = (m[0][1] + m[1][0]) / s;
+      z = (m[0][2] + m[2][0]) / s;
+    } else if (m[1][1] > m[2][2]) {
+      const s = 2 * Math.sqrt(1 + m[1][1] - m[0][0] - m[2][2]);
+      w = (m[0][2] - m[2][0]) / s;
+      x = (m[0][1] + m[1][0]) / s;
+      y = 0.25 * s;
+      z = (m[1][2] + m[2][1]) / s;
+    } else {
+      const s = 2 * Math.sqrt(1 + m[2][2] - m[0][0] - m[1][1]);
+      w = (m[1][0] - m[0][1]) / s;
+      x = (m[0][2] + m[2][0]) / s;
+      y = (m[1][2] + m[2][1]) / s;
+      z = 0.25 * s;
+    }
+    return { w, x, y, z };
   }
 
   /**

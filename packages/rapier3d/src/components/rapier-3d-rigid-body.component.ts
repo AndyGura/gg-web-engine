@@ -2,18 +2,18 @@ import {
   BitMask,
   Body3DOptions,
   CollisionGroup,
+  DebugBody3DSettings,
   Entity3d,
-  Gg3dWorld,
   IRigidBody3dComponent,
   Pnt3,
   Point3,
   Point4,
   Qtrn,
-  VisualTypeDocRepo3D,
+  Shape3DDescriptor,
 } from '@gg-web-engine/core';
 import { Collider, ColliderDesc, Quaternion, RigidBody, RigidBodyDesc, Vector3 } from '@dimforge/rapier3d-compat';
 import { Rapier3dWorldComponent } from './rapier-3d-world.component';
-import { Rapier3dPhysicsTypeDocRepo } from '../types';
+import { Rapier3dGgWorld, Rapier3dPhysicsTypeDocRepo } from '../types';
 import { InteractionGroups } from '@dimforge/rapier3d-compat/geometry/interaction_groups';
 
 export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3dPhysicsTypeDocRepo> {
@@ -63,6 +63,13 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
     }
   }
 
+  readonly debugBodySettings: DebugBody3DSettings = new DebugBody3DSettings(
+    this._bodyDescr.mass > 0
+      ? { type: 'RIGID_DYNAMIC', sleeping: () => !!this._nativeBody?.isSleeping() }
+      : { type: 'RIGID_STATIC' },
+    this.shape,
+  );
+
   protected _nativeBody: RigidBody | null = null;
   protected _nativeBodyColliders: Collider[] | null = null;
 
@@ -79,7 +86,12 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
 
   public name: string = '';
 
-  public get factoryProps(): [ColliderDesc[], RigidBodyDesc, Omit<Omit<Body3DOptions, 'dynamic'>, 'mass'>] {
+  public get factoryProps(): [
+    ColliderDesc[],
+    Shape3DDescriptor,
+    RigidBodyDesc,
+    Omit<Omit<Body3DOptions, 'dynamic'>, 'mass'>,
+  ] {
     const colliderDescr = this._colliderDescr.map(cd => {
       const d = new ColliderDesc(cd.shape);
       d.setTranslation(cd.translation.x, cd.translation.y, cd.translation.z);
@@ -96,26 +108,27 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
     bd.setTranslation(this._bodyDescr.translation.x, this._bodyDescr.translation.y, this._bodyDescr.translation.z);
     bd.setRotation({ ...this._bodyDescr.rotation });
     // TODO more fields here?
-    return [colliderDescr, bd, this._colliderOptions];
+    return [colliderDescr, this.shape, bd, this._colliderOptions];
   }
 
   constructor(
     protected readonly world: Rapier3dWorldComponent,
     protected _colliderDescr: ColliderDesc[],
+    public readonly shape: Shape3DDescriptor,
     protected _bodyDescr: RigidBodyDesc,
     protected _colliderOptions: Omit<Omit<Body3DOptions, 'dynamic'>, 'mass'>,
   ) {
-    this.ownCollisionGroups = _colliderOptions?.ownCollisionGroups || 'all';
-    this.interactWithCollisionGroups = _colliderOptions?.interactWithCollisionGroups || 'all';
+    this.ownCollisionGroups = _colliderOptions?.ownCollisionGroups || [world.mainCollisionGroup];
+    this.interactWithCollisionGroups = _colliderOptions?.interactWithCollisionGroups || [world.mainCollisionGroup];
   }
 
   protected collisionGroups: InteractionGroups = BitMask.full(32);
 
-  get interactWithCollisionGroups(): CollisionGroup[] {
+  get interactWithCollisionGroups(): ReadonlyArray<CollisionGroup> {
     return BitMask.unpack(this.collisionGroups, 16);
   }
 
-  set interactWithCollisionGroups(value: CollisionGroup[] | 'all') {
+  set interactWithCollisionGroups(value: ReadonlyArray<CollisionGroup> | 'all') {
     let mask;
     if (value === 'all') {
       mask = BitMask.full(16);
@@ -134,11 +147,11 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
     }
   }
 
-  get ownCollisionGroups(): CollisionGroup[] {
+  get ownCollisionGroups(): ReadonlyArray<CollisionGroup> {
     return BitMask.unpack(this.collisionGroups >> 16, 16);
   }
 
-  set ownCollisionGroups(value: CollisionGroup[] | 'all') {
+  set ownCollisionGroups(value: ReadonlyArray<CollisionGroup> | 'all') {
     let mask;
     if (value === 'all') {
       mask = BitMask.full(16);
@@ -163,7 +176,7 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
     return comp;
   }
 
-  addToWorld(world: Gg3dWorld<VisualTypeDocRepo3D, Rapier3dPhysicsTypeDocRepo>): void {
+  addToWorld(world: Rapier3dGgWorld): void {
     if (world.physicsWorld != this.world) {
       throw new Error('Rapier3D bodies cannot be shared between different worlds');
     }
@@ -176,9 +189,10 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
       return col;
     });
     this.world.handleIdEntityMap.set(this._nativeBody!.handle, this);
+    this.world.added$.next(this);
   }
 
-  removeFromWorld(world: Gg3dWorld<VisualTypeDocRepo3D, Rapier3dPhysicsTypeDocRepo>): void {
+  removeFromWorld(world: Rapier3dGgWorld): void {
     if (world.physicsWorld != this.world) {
       throw new Error('Rapier3D bodies cannot be shared between different worlds');
     }
@@ -191,6 +205,7 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
       this._nativeBody = null;
       this._nativeBodyColliders = null;
     }
+    this.world.removed$.next(this);
   }
 
   resetMotion(): void {
@@ -200,10 +215,7 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
 
   dispose(): void {
     if (this.nativeBody) {
-      this.removeFromWorld({ physicsWorld: this.world } as any as Gg3dWorld<
-        VisualTypeDocRepo3D,
-        Rapier3dPhysicsTypeDocRepo
-      >);
+      this.removeFromWorld({ physicsWorld: this.world } as any as Rapier3dGgWorld);
     }
   }
 }

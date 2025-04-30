@@ -1,20 +1,11 @@
-import {
-  Gg2dWorld,
-  GgBox2d,
-  IDisplayObject2dComponent,
-  IEntity,
-  PhysicsTypeDocRepo2D,
-  Pnt2,
-  Point2,
-} from '@gg-web-engine/core';
-import { PixiSceneComponent } from './pixi-scene.component';
-import { DisplayObject } from 'pixi.js';
-import { PixiVisualTypeDocRepo2D } from '../types';
+import { GgBox2d, IDisplayObject2dComponent, IEntity, Pnt2, Point2 } from '@gg-web-engine/core';
+import { PixiGgWorld, PixiVisualTypeDocRepo2D } from '../types';
+import { Container } from 'pixi.js';
 
 export class PixiDisplayObjectComponent implements IDisplayObject2dComponent<PixiVisualTypeDocRepo2D> {
   entity: IEntity | null = null;
 
-  constructor(public nativeSprite: DisplayObject) {}
+  constructor(public nativeSprite: Container) {}
 
   public get position(): Point2 {
     return Pnt2.clone(this.nativeSprite.position);
@@ -61,10 +52,10 @@ export class PixiDisplayObjectComponent implements IDisplayObject2dComponent<Pix
   }
 
   getBoundings(): GgBox2d {
-    const bounds = this.nativeSprite._bounds;
+    const bounds = this.nativeSprite.boundsArea;
     return {
-      min: { x: bounds.minX, y: bounds.minY },
-      max: { x: bounds.maxX, y: bounds.maxY },
+      min: { x: bounds.x, y: bounds.y },
+      max: { x: bounds.x + bounds.width, y: bounds.y + bounds.height },
     };
   }
 
@@ -72,11 +63,11 @@ export class PixiDisplayObjectComponent implements IDisplayObject2dComponent<Pix
     return new PixiDisplayObjectComponent(this.nativeSprite);
   }
 
-  addToWorld(world: Gg2dWorld<PixiVisualTypeDocRepo2D, PhysicsTypeDocRepo2D, PixiSceneComponent>): void {
+  addToWorld(world: PixiGgWorld): void {
     world.visualScene.nativeContainer?.addChild(this.nativeSprite);
   }
 
-  removeFromWorld(world: Gg2dWorld<PixiVisualTypeDocRepo2D, PhysicsTypeDocRepo2D, PixiSceneComponent>): void {
+  removeFromWorld(world: PixiGgWorld): void {
     world.visualScene.nativeContainer?.removeChild(this.nativeSprite);
   }
 

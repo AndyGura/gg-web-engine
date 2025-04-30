@@ -24,4 +24,6 @@ parent: Modules
 ```ts
 export interface ITrigger2dComponent<TypeDoc extends PhysicsTypeDocRepo2D = PhysicsTypeDocRepo2D>
   extends ITriggerComponent<Point2, number, TypeDoc> {
+  /** body info for physics debugger view */
+  readonly debugBodySettings: DebugBody2DSettings;
 ```

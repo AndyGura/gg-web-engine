@@ -13,6 +13,7 @@ parent: Modules
 - [utils](#utils)
   - [Qtrn (class)](#qtrn-class)
     - [clone (static method)](#clone-static-method)
+    - [spr (static method)](#spr-static-method)
     - [add (static method)](#add-static-method)
     - [mult (static method)](#mult-static-method)
     - [conjugate (static method)](#conjugate-static-method)
@@ -22,6 +23,7 @@ parent: Modules
     - [slerp (static method)](#slerp-static-method)
     - [fromAngle (static method)](#fromangle-static-method)
     - [fromMatrix4 (static method)](#frommatrix4-static-method)
+    - [fromMatrix3 (static method)](#frommatrix3-static-method)
     - [fromEuler (static method)](#fromeuler-static-method)
     - [toEuler (static method)](#toeuler-static-method)
     - [lookAt (static method)](#lookat-static-method)
@@ -56,6 +58,16 @@ Returns a new quaternion instance with the same values as the given quaternion o
 
 ```ts
 static clone(q: Point4): Point4
+```
+
+### spr (static method)
+
+spread quaternion components
+
+**Signature**
+
+```ts
+static spr(p: Point4): [number, number, number, number]
 ```
 
 ### add (static method)
@@ -148,6 +160,16 @@ Converts a 4x4 matrix representing a rotation into a quaternion
 
 ```ts
 static fromMatrix4(m: number[]): Point4
+```
+
+### fromMatrix3 (static method)
+
+Converts a 3x3 rotation matrix into a quaternion
+
+**Signature**
+
+```ts
+static fromMatrix3(m: number[][]): Point4
 ```
 
 ### fromEuler (static method)

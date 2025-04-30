@@ -4,6 +4,7 @@ import {
   IRaycastVehicleComponent,
   RaycastVehicle3dEntity,
   RVEntityProperties,
+  RVEntityTractionBias,
 } from '../../src';
 import { mock3DObject } from './object.mock';
 
@@ -41,7 +42,7 @@ export const mockCarProperties: () => GgCarProperties & RVEntityProperties = () 
       axlePosition: -1,
     },
   },
-  typeOfDrive: 'FWD',
+  tractionBias: RVEntityTractionBias.FWD,
   engine: {
     minRpm: 700,
     maxRpm: 7240,

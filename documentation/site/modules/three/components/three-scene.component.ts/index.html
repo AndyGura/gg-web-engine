@@ -536,6 +536,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#createcomposerrenderer-method" class="md-nav__link">
+    createComposerRenderer (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#dispose-method" class="md-nav__link">
     dispose (method)
   </a>
@@ -552,13 +559,6 @@
           <li class="md-nav__item">
   <a href="#loader-property" class="md-nav__link">
     loader (property)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#debugphysicsdrawerclass-property" class="md-nav__link">
-    debugPhysicsDrawerClass (property)
   </a>
   
 </li>
@@ -600,10 +600,10 @@
 <li><a href="#threescenecomponent-class">ThreeSceneComponent (class)</a><ul>
 <li><a href="#init-method">init (method)</a></li>
 <li><a href="#createrenderer-method">createRenderer (method)</a></li>
+<li><a href="#createcomposerrenderer-method">createComposerRenderer (method)</a></li>
 <li><a href="#dispose-method">dispose (method)</a></li>
 <li><a href="#factory-property">factory (property)</a></li>
 <li><a href="#loader-property">loader (property)</a></li>
-<li><a href="#debugphysicsdrawerclass-property">debugPhysicsDrawerClass (property)</a></li>
 </ul>
 </li>
 </ul>
@@ -622,8 +622,16 @@
 <pre><code class="language-ts">createRenderer(
     camera: ThreeCameraComponent,
     canvas?: HTMLCanvasElement,
-    rendererOptions?: Partial&lt;RendererOptions&gt;,
+    rendererOptions?: Partial&lt;RendererOptions &amp; WebGLRendererParameters&gt;,
   ): ThreeRendererComponent
+</code></pre>
+<h3 id="createcomposerrenderer-method">createComposerRenderer (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">createComposerRenderer(
+    camera: ThreeCameraComponent,
+    canvas?: HTMLCanvasElement,
+    rendererOptions?: Partial&lt;RendererOptions &amp; WebGLRendererParameters&gt;,
+  ): ThreeComposerRendererComponent
 </code></pre>
 <h3 id="dispose-method">dispose (method)</h3>
 <p><strong>Signature</strong></p>
@@ -636,10 +644,6 @@
 <h3 id="loader-property">loader (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly loader: ThreeLoader
-</code></pre>
-<h3 id="debugphysicsdrawerclass-property">debugPhysicsDrawerClass (property)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly debugPhysicsDrawerClass: typeof ThreePhysicsDrawer
 </code></pre>
 
 

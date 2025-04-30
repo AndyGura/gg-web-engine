@@ -99,6 +99,10 @@ export class MouseInput extends IInput<[], [unlockPointer?: boolean]> {
     return !!document.pointerLockElement;
   }
 
+  public get isPointerLocked$(): Observable<boolean> {
+    return fromEvent(document, 'pointerlockchange').pipe(map(() => this.isPointerLocked));
+  }
+
   private readonly options: MouseInputOptions;
   private _delta$: Subject<Point2> = new Subject<Point2>();
   private _position$: BehaviorSubject<Point2> = new BehaviorSubject<Point2>(Pnt2.O);
@@ -217,7 +221,7 @@ export class MouseInput extends IInput<[], [unlockPointer?: boolean]> {
         if (this.options.canvas) {
           this.options.canvas.releasePointerCapture(event.pointerId);
         }
-        this._element.removeEventListener('pointerup', onPointerUp as any);
+        window.removeEventListener('pointerup', onPointerUp as any);
         this._element.removeEventListener('pointercancel', onPointerUp as any);
       }
       this._state$.next(pointerLengthsStateMap[Math.min(pointers.length, 2)]);
@@ -227,11 +231,16 @@ export class MouseInput extends IInput<[], [unlockPointer?: boolean]> {
       .pipe(takeUntil(this.stopped$))
       .subscribe((event: PointerEvent) => {
         if (pointers.length === 0) {
-          if (this.options.canvas) {
-            this.options.canvas.setPointerCapture(event.pointerId);
+          try {
+            if (this.options.canvas) {
+              this.options.canvas.setPointerCapture(event.pointerId);
+            }
+            // use window instead of this._element to handle case when mouse was released over other element
+            window.addEventListener('pointerup', onPointerUp as any);
+            this._element.addEventListener('pointercancel', onPointerUp as any);
+          } catch (err) {
+            console.error(err);
           }
-          this._element.addEventListener('pointerup', onPointerUp as any);
-          this._element.addEventListener('pointercancel', onPointerUp as any);
         }
         pointers.push(event);
         if (event.pointerType === 'touch') {

@@ -1,6 +1,6 @@
 ---
 title: core/base/entities/controllers/inline-controller.ts
-nav_order: 73
+nav_order: 74
 parent: Modules
 ---
 
@@ -24,6 +24,7 @@ parent: Modules
 ```ts
 export declare function createInlineTickController(
   world: GgWorld<any, any>,
-  tickOrder: number = TickOrder.CONTROLLERS
+  tickOrder: number = TickOrder.CONTROLLERS,
+  name?: string
 ): Observable<[number, number]>
 ```

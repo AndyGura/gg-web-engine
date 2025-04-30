@@ -10,7 +10,7 @@ import {
 import { bumperCamera, farCamera, nearCamera } from './car-cameras';
 import { BehaviorSubject, skip } from 'rxjs';
 import { CurrentState } from './game-runner';
-import { FlyCityVTypeDoc, FlyCityWorld } from './app.component';
+import { FlyCityTypeDoc, FlyCityWorld } from './app.component';
 
 export class GameCameraController {
 
@@ -57,16 +57,16 @@ export class GameCameraController {
 
   constructor(
     public readonly world: FlyCityWorld,
-    public readonly renderer: Renderer3dEntity<FlyCityVTypeDoc>,
+    public readonly renderer: Renderer3dEntity<FlyCityTypeDoc['vTypeDoc']>,
   ) {
     this.freeCameraController = new FreeCameraController(
       this.world.keyboardInput,
       renderer,
       {
         keymap: 'wasd+arrows',
-        movementOptions: {
-          speed: 1,
-        },
+        cameraLinearSpeed: 40,
+        cameraMovementElasticity: 100,
+        cameraRotationElasticity: 50,
         ignoreKeyboardUnlessPointerLocked: true,
         ignoreMouseUnlessPointerLocked: true,
         mouseOptions: {

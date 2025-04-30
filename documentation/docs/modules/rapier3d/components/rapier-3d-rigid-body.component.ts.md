@@ -1,6 +1,6 @@
 ---
 title: rapier3d/components/rapier-3d-rigid-body.component.ts
-nav_order: 116
+nav_order: 121
 parent: Modules
 ---
 
@@ -18,6 +18,7 @@ parent: Modules
     - [resetMotion (method)](#resetmotion-method)
     - [dispose (method)](#dispose-method)
     - [entity (property)](#entity-property)
+    - [debugBodySettings (property)](#debugbodysettings-property)
     - [\_nativeBody (property)](#_nativebody-property)
     - [\_nativeBodyColliders (property)](#_nativebodycolliders-property)
     - [name (property)](#name-property)
@@ -36,6 +37,7 @@ export declare class Rapier3dRigidBodyComponent {
   constructor(
     protected readonly world: Rapier3dWorldComponent,
     protected _colliderDescr: ColliderDesc[],
+    public readonly shape: Shape3DDescriptor,
     protected _bodyDescr: RigidBodyDesc,
     protected _colliderOptions: Omit<Omit<Body3DOptions, 'dynamic'>, 'mass'>
   )
@@ -88,6 +90,14 @@ dispose(): void
 
 ```ts
 entity: any
+```
+
+### debugBodySettings (property)
+
+**Signature**
+
+```ts
+readonly debugBodySettings: any
 ```
 
 ### \_nativeBody (property)

@@ -1,8 +1,8 @@
-import { GgCarProperties } from '@gg-web-engine/core';
+import { GgCarProperties, RVEntityTractionBias } from '@gg-web-engine/core';
 
 export const LAMBO_SPECS: Omit<GgCarProperties, 'wheelOptions'> = {
   'mpsToRpmFactor': 104,
-  'typeOfDrive': 'FWD',
+  'tractionBias': 0.4,
   'engine': {
     'minRpm': 700,
     'maxRpm': 7240,
@@ -87,7 +87,7 @@ export const LAMBO_SPECS: Omit<GgCarProperties, 'wheelOptions'> = {
 
 export const CAR_SPECS: Omit<GgCarProperties, 'wheelOptions'> = {
   'mpsToRpmFactor': 104,
-  'typeOfDrive': 'FWD',
+  'tractionBias': RVEntityTractionBias.RWD,
   'engine': {
     'minRpm': 700,
     'maxRpm': 7240,
@@ -172,7 +172,7 @@ export const CAR_SPECS: Omit<GgCarProperties, 'wheelOptions'> = {
 
 export const TRUCK_SPECS: Omit<GgCarProperties, 'wheelOptions'> = {
   'mpsToRpmFactor': 104,
-  'typeOfDrive': 'FWD',
+  'tractionBias': RVEntityTractionBias.FWD,
   'engine': {
     'minRpm': 700,
     'maxRpm': 7240,

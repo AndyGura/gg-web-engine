@@ -1,6 +1,6 @@
 ---
 title: matter/components/matter-rigid-body.component.ts
-nav_order: 100
+nav_order: 103
 parent: Modules
 ---
 
@@ -19,6 +19,7 @@ parent: Modules
     - [resetMotion (method)](#resetmotion-method)
     - [name (property)](#name-property)
     - [entity (property)](#entity-property)
+    - [debugBodySettings (property)](#debugbodysettings-property)
 
 ---
 
@@ -30,7 +31,7 @@ parent: Modules
 
 ```ts
 export declare class MatterRigidBodyComponent {
-  constructor(public nativeBody: Body)
+  constructor(public nativeBody: Body, public readonly shape: Shape2DDescriptor)
 }
 ```
 
@@ -92,4 +93,12 @@ name: string
 
 ```ts
 entity: any
+```
+
+### debugBodySettings (property)
+
+**Signature**
+
+```ts
+readonly debugBodySettings: any
 ```

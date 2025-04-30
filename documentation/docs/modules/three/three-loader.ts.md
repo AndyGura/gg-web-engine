@@ -1,6 +1,6 @@
 ---
 title: three/three-loader.ts
-nav_order: 128
+nav_order: 135
 parent: Modules
 ---
 
@@ -12,7 +12,6 @@ parent: Modules
 
 - [utils](#utils)
   - [ThreeLoader (class)](#threeloader-class)
-    - [registerGltfLoaderAddon (method)](#registergltfloaderaddon-method)
     - [loadFromGgGlb (method)](#loadfromggglb-method)
 
 ---
@@ -25,14 +24,6 @@ parent: Modules
 
 ```ts
 export declare class ThreeLoader
-```
-
-### registerGltfLoaderAddon (method)
-
-**Signature**
-
-```ts
-public registerGltfLoaderAddon(gltf: any): void
 ```
 
 ### loadFromGgGlb (method)

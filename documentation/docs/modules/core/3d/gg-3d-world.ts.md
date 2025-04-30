@@ -1,6 +1,6 @@
 ---
 title: core/3d/gg-3d-world.ts
-nav_order: 50
+nav_order: 51
 parent: Modules
 ---
 
@@ -14,6 +14,7 @@ parent: Modules
   - [Gg3dWorld (class)](#gg3dworld-class)
     - [addPrimitiveRigidBody (method)](#addprimitiverigidbody-method)
     - [addRenderer (method)](#addrenderer-method)
+    - [registerConsoleCommands (method)](#registerconsolecommands-method)
     - [loader (property)](#loader-property)
   - [PhysicsTypeDocRepo3D (type alias)](#physicstypedocrepo3d-type-alias)
   - [VisualTypeDocRepo3D (type alias)](#visualtypedocrepo3d-type-alias)
@@ -53,8 +54,23 @@ addPrimitiveRigidBody(
 addRenderer(
     camera: VTypeDoc['camera'],
     canvas?: HTMLCanvasElement,
-    rendererOptions?: Partial<RendererOptions>,
+    rendererOptions?: Partial<RendererOptions & VTypeDoc['rendererExtraOpts']>,
   ): Renderer3dEntity<VTypeDoc>
+```
+
+### registerConsoleCommands (method)
+
+**Signature**
+
+```ts
+protected registerConsoleCommands(ggstatic: {
+    registerConsoleCommand: (
+      world: GgWorld<any, any> | null,
+      command: string,
+      handler: (...args: string[]) => Promise<string>,
+      doc?: string,
+    ) => void;
+  })
 ```
 
 ### loader (property)
@@ -89,6 +105,7 @@ export type VisualTypeDocRepo3D = {
   loader: IDisplayObject3dComponentLoader
   displayObject: IDisplayObject3dComponent
   renderer: IRenderer3dComponent
+  rendererExtraOpts: {}
   camera: ICameraComponent
   texture: unknown
 }

@@ -570,6 +570,13 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#debugbodysettings-property" class="md-nav__link">
+    debugBodySettings (property)
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -612,6 +619,7 @@
 <li><a href="#resetmotion-method">resetMotion (method)</a></li>
 <li><a href="#name-property">name (property)</a></li>
 <li><a href="#entity-property">entity (property)</a></li>
+<li><a href="#debugbodysettings-property">debugBodySettings (property)</a></li>
 </ul>
 </li>
 </ul>
@@ -620,7 +628,7 @@
 <h2 id="matterrigidbodycomponent-class">MatterRigidBodyComponent (class)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export declare class MatterRigidBodyComponent {
-  constructor(public nativeBody: Body)
+  constructor(public nativeBody: Body, public readonly shape: Shape2DDescriptor)
 }
 </code></pre>
 <h3 id="clone-method">clone (method)</h3>
@@ -654,6 +662,10 @@
 <h3 id="entity-property">entity (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">entity: any
+</code></pre>
+<h3 id="debugbodysettings-property">debugBodySettings (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly debugBodySettings: any
 </code></pre>
 
 

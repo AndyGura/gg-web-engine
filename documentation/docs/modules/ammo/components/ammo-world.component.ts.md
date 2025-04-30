@@ -16,9 +16,14 @@ parent: Modules
     - [simulate (method)](#simulate-method)
     - [registerCollisionGroup (method)](#registercollisiongroup-method)
     - [deregisterCollisionGroup (method)](#deregistercollisiongroup-method)
-    - [startDebugger (method)](#startdebugger-method)
-    - [stopDebugger (method)](#stopdebugger-method)
     - [dispose (method)](#dispose-method)
+    - [afterTick$ (property)](#aftertick-property)
+    - [added$ (property)](#added-property)
+    - [removed$ (property)](#removed-property)
+    - [children (property)](#children-property)
+    - [mainCollisionGroup (property)](#maincollisiongroup-property)
+    - [maxSubSteps (property)](#maxsubsteps-property)
+    - [fixedTimeStep (property)](#fixedtimestep-property)
     - [\_dynamicAmmoWorld (property)](#_dynamicammoworld-property)
     - [lockedCollisionGroups (property)](#lockedcollisiongroups-property)
 
@@ -31,7 +36,9 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare class AmmoWorldComponent
+export declare class AmmoWorldComponent {
+  constructor()
+}
 ```
 
 ### init (method)
@@ -66,25 +73,6 @@ registerCollisionGroup(): CollisionGroup
 deregisterCollisionGroup(group: CollisionGroup): void
 ```
 
-### startDebugger (method)
-
-**Signature**
-
-```ts
-startDebugger(
-    world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>,
-    drawer: IDebugPhysicsDrawer<Point3, Point4>,
-  ): void
-```
-
-### stopDebugger (method)
-
-**Signature**
-
-```ts
-stopDebugger(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>): void
-```
-
 ### dispose (method)
 
 **Signature**
@@ -93,12 +81,68 @@ stopDebugger(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>): voi
 dispose(): void
 ```
 
+### afterTick$ (property)
+
+**Signature**
+
+```ts
+readonly afterTick$: any
+```
+
+### added$ (property)
+
+**Signature**
+
+```ts
+readonly added$: any
+```
+
+### removed$ (property)
+
+**Signature**
+
+```ts
+readonly removed$: any
+```
+
+### children (property)
+
+**Signature**
+
+```ts
+readonly children: (AmmoRigidBodyComponent | AmmoTriggerComponent)[]
+```
+
+### mainCollisionGroup (property)
+
+**Signature**
+
+```ts
+readonly mainCollisionGroup: any
+```
+
+### maxSubSteps (property)
+
+**Signature**
+
+```ts
+maxSubSteps: number | undefined
+```
+
+### fixedTimeStep (property)
+
+**Signature**
+
+```ts
+fixedTimeStep: number | undefined
+```
+
 ### \_dynamicAmmoWorld (property)
 
 **Signature**
 
 ```ts
-_dynamicAmmoWorld: any
+_dynamicAmmoWorld: Ammo.btDiscreteDynamicsWorld | undefined
 ```
 
 ### lockedCollisionGroups (property)

@@ -1,6 +1,6 @@
 ---
 title: three/three-factory.ts
-nav_order: 127
+nav_order: 134
 parent: Modules
 ---
 
@@ -51,7 +51,7 @@ createMaterial(descr: ThreeDisplayObject3dOpts): Material
 **Signature**
 
 ```ts
-private transformPrimitiveZUp(object: Object3D): Group
+private transformPrimitiveZUp(object: Mesh): void
 ```
 
 ### createPrimitive (method)
@@ -59,7 +59,10 @@ private transformPrimitiveZUp(object: Object3D): Group
 **Signature**
 
 ```ts
-createPrimitive(descriptor: Shape3DDescriptor, material: ThreeDisplayObject3dOpts = {}): ThreeDisplayObjectComponent
+createPrimitive(
+    descriptor: Shape3DMeshDescriptor,
+    material: ThreeDisplayObject3dOpts = {},
+  ): ThreeDisplayObjectComponent
 ```
 
 ### createPerspectiveCamera (method)

@@ -1,3 +1,5 @@
+import { VERSION } from '../version';
+
 export class GgConsoleUI {
   private output: string =
     `
@@ -11,11 +13,12 @@ export class GgConsoleUI {
                 ░ ░   ░ ░ ░   ░      ░   ░     ░    ░    ░ 
                       ░       ░        ░       ░  ░ ░      
                                                          ░ 
+                             Version: ${VERSION}
              >>> https://github.com/AndyGura/gg-web-engine <<<
 Welcome to GG web engine UI console. 
 Enter command in input below.
 
-List of available commands: `.replace(/ /g, '&nbsp;') + `<span style="color:yellow">ls_commands</span>`;
+List of available commands: `.replace(/ /g, '&nbsp;') + `<span style='color:yellow'>commands</span>`;
 
   private commandHistory: string[] = [];
   private currentCommandIndex = 0; // for repeating command using up/down arrow keys
@@ -65,29 +68,40 @@ List of available commands: `.replace(/ /g, '&nbsp;') + `<span style="color:yell
     };
     document.getElementById('gg-console-close-icon')!.onmousedown = () => this.destroyUI();
     this.elements.input.onkeydown = event => {
-      if (event?.keyCode === 13) {
+      if (event?.code === 'Enter') {
         event.preventDefault();
         this.onInput().then();
-      } else if (event?.keyCode === 38) {
+      } else if (event?.code === 'ArrowUp') {
         event.preventDefault();
         this.onUsePreviousCommand();
-      } else if (event?.keyCode === 40) {
+      } else if (event?.code === 'ArrowDown') {
         event.preventDefault();
         this.onUseNextCommand();
+      } else if (event?.code === 'Backspace') {
+        let input = this.elements?.input;
+        if (input) {
+          let value = input.value || '';
+          // backspace pressed while input had completion selected.
+          // Native logic will remove selected text (completion part), we remove one additional character
+          if ((input.selectionStart || value.length) < value.length && input.selectionEnd == value.length) {
+            this.elements!.input.value = value.substring(0, input.selectionStart || value.length - 1);
+          }
+        }
       }
     };
     this.elements.input.oninput = event => {
       let value = this.elements?.input.value || '';
-      // backspace
-      if (value.length > 0 && (event as InputEvent).data === null) {
-        value = value.substring(0, value.length - 1);
-      }
       if (value.trim() === '') {
         return;
       }
-      let autocompletion = (window as any).ggstatic.availableCommands.find((c: any) => c[0].startsWith(value));
-      if (autocompletion) {
-        this.elements!.input.value = autocompletion[0];
+      let autocompletion: string | null = null;
+      for (let [command] of (window as any).ggstatic.availableCommands) {
+        if (command.startsWith(value) && (!autocompletion || autocompletion.length > command.length)) {
+          autocompletion = command;
+        }
+      }
+      if (autocompletion && autocompletion.length > value.length) {
+        this.elements!.input.value = autocompletion;
         this.elements!.input.setSelectionRange(value.length, this.elements!.input.value.length);
       }
     };
@@ -125,6 +139,9 @@ List of available commands: `.replace(/ /g, '&nbsp;') + `<span style="color:yell
 
   async onInput() {
     const command = this.elements!.input.value;
+    if (command.length === 0) {
+      return;
+    }
     this.elements!.input.value = '';
     this.stdout('\n> ' + command);
     this.stdout('\n' + (await (window as any).ggstatic.console(command)));

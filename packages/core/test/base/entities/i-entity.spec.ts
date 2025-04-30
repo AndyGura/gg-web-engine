@@ -23,6 +23,21 @@ describe('IEntity', () => {
     expect(ggEntity.active).toBe(true);
   });
 
+  it('should propagate active state', () => {
+    const child = new GgEntityMock();
+    ggEntity.addChildren(child);
+    expect(ggEntity.active).toBe(true);
+    expect(child.active).toBe(true);
+    ggEntity.active = false;
+    expect(child.active).toBe(false);
+    ggEntity.active = true;
+    expect(child.active).toBe(true);
+    child.active = false;
+    ggEntity.active = false;
+    ggEntity.active = true;
+    expect(child.active).toBe(false);
+  });
+
   it('should set and get the entity name', () => {
     const newName = 'NewEntity';
     ggEntity.name = newName;

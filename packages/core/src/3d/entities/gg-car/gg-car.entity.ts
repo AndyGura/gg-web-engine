@@ -1,5 +1,5 @@
 import { RaycastVehicle3dEntity, RVEntityProperties } from '../raycast-vehicle-3d.entity';
-import { Gg3dWorld, PhysicsTypeDocRepo3D, VisualTypeDocRepo3D } from '../../gg-3d-world';
+import { Gg3dWorld, Gg3dWorldTypeDocRepo } from '../../gg-3d-world';
 import { IRenderable3dEntity } from '../i-renderable-3d.entity';
 import { IPositionable3d } from '../../interfaces/i-positionable-3d';
 import { cubicSplineInterpolation, Point3, Point4, TickOrder } from '../../../base';
@@ -35,11 +35,10 @@ export type GgCarProperties = RVEntityProperties & {
 };
 
 export class GgCarEntity<
-    VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D,
-    PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D,
-    RVEntity extends RaycastVehicle3dEntity<VTypeDoc, PTypeDoc> = RaycastVehicle3dEntity<VTypeDoc, PTypeDoc>,
+    TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo,
+    RVEntity extends RaycastVehicle3dEntity<TypeDoc> = RaycastVehicle3dEntity<TypeDoc>,
   >
-  extends IRenderable3dEntity<VTypeDoc, PTypeDoc>
+  extends IRenderable3dEntity<TypeDoc>
   implements IPositionable3d
 {
   public readonly tickOrder = TickOrder.PHYSICS_SIMULATION - 5;
@@ -207,8 +206,8 @@ export class GgCarEntity<
 
   constructor(
     public readonly carProperties: GgCarProperties,
-    chassis3D: VTypeDoc['displayObject'] | null,
-    chassisBody: PTypeDoc['raycastVehicle'],
+    chassis3D: TypeDoc['vTypeDoc']['displayObject'] | null,
+    chassisBody: TypeDoc['pTypeDoc']['raycastVehicle'],
   ) {
     super();
     this.raycastVehicle = this.createRaycastVehicle(carProperties, chassis3D, chassisBody);
@@ -217,13 +216,13 @@ export class GgCarEntity<
 
   protected createRaycastVehicle(
     carProperties: GgCarProperties,
-    chassis3D: VTypeDoc['displayObject'] | null,
-    chassisBody: PTypeDoc['raycastVehicle'],
+    chassis3D: TypeDoc['vTypeDoc']['displayObject'] | null,
+    chassisBody: TypeDoc['pTypeDoc']['raycastVehicle'],
   ): RVEntity {
     return new RaycastVehicle3dEntity(carProperties, chassis3D, chassisBody) as RVEntity;
   }
 
-  onSpawned(world: Gg3dWorld<VTypeDoc, PTypeDoc>) {
+  onSpawned(world: Gg3dWorld<TypeDoc>) {
     super.onSpawned(world);
     this.tick$.subscribe(([_, delta]) => {
       this.updateEngine(delta);
@@ -253,14 +252,16 @@ export class GgCarEntity<
           }
         }
         if (brake === 0) {
-          this.raycastVehicle.applyTractionForce(force);
+          this.raycastVehicle.applyTraction('front', force * this.carProperties.tractionBias);
+          this.raycastVehicle.applyTraction('rear', force * (1 - this.carProperties.tractionBias));
           this.raycastVehicle.applyBrake('both', 0);
         } else {
-          this.raycastVehicle.applyTractionForce(0);
+          this.raycastVehicle.applyTraction('both', 0);
           this.raycastVehicle.applyBrake('front', brake * this.carProperties.brake.frontAxleForce);
           this.raycastVehicle.applyBrake('rear', brake * this.carProperties.brake.rearAxleForce);
         }
         if (this.handBrake) {
+          this.raycastVehicle.applyTraction('rear', 0);
           this.raycastVehicle.applyBrake('rear', this.carProperties.brake.handbrakeForce);
         }
       }

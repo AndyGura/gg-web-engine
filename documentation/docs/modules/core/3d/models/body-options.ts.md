@@ -1,6 +1,6 @@
 ---
 title: core/3d/models/body-options.ts
-nav_order: 55
+nav_order: 56
 parent: Modules
 ---
 
@@ -12,6 +12,7 @@ parent: Modules
 
 - [utils](#utils)
   - [Body3DOptions (interface)](#body3doptions-interface)
+  - [DebugBody3DSettings (class)](#debugbody3dsettings-class)
 
 ---
 
@@ -23,4 +24,19 @@ parent: Modules
 
 ```ts
 export interface Body3DOptions extends BodyOptions {}
+```
+
+## DebugBody3DSettings (class)
+
+**Signature**
+
+```ts
+export declare class DebugBody3DSettings {
+  constructor(
+    type: DebugBodyType,
+    shape: Shape3DDescriptor,
+    ignoreTransform: boolean = false,
+    color: number | undefined = undefined
+  )
+}
 ```

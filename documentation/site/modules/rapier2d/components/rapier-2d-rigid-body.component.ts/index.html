@@ -585,6 +585,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#debugbodysettings-property" class="md-nav__link">
+    debugBodySettings (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#collisiongroups-property" class="md-nav__link">
     collisionGroups (property)
   </a>
@@ -635,6 +642,7 @@
 <li><a href="#_nativebody-property">_nativeBody (property)</a></li>
 <li><a href="#_nativebodycolliders-property">_nativeBodyColliders (property)</a></li>
 <li><a href="#name-property">name (property)</a></li>
+<li><a href="#debugbodysettings-property">debugBodySettings (property)</a></li>
 <li><a href="#collisiongroups-property">collisionGroups (property)</a></li>
 </ul>
 </li>
@@ -647,6 +655,7 @@
   constructor(
     protected readonly world: Rapier2dWorldComponent,
     protected _colliderDescr: ColliderDesc[],
+    public readonly shape: Shape2DDescriptor,
     protected _bodyDescr: RigidBodyDesc,
     protected _colliderOptions: Omit&lt;Omit&lt;Body2DOptions, 'dynamic'&gt;, 'mass'&gt;
   )
@@ -687,6 +696,10 @@
 <h3 id="name-property">name (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">name: string
+</code></pre>
+<h3 id="debugbodysettings-property">debugBodySettings (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly debugBodySettings: any
 </code></pre>
 <h3 id="collisiongroups-property">collisionGroups (property)</h3>
 <p><strong>Signature</strong></p>

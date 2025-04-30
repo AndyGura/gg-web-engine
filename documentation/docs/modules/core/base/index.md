@@ -15,3 +15,4 @@ has_children: true
 - [core/base/interfaces](/gg-web-engine/modules/core/base/interfaces)
 - [core/base/math](/gg-web-engine/modules/core/base/math)
 - [core/base/models](/gg-web-engine/modules/core/base/models)
+- [core/base/pipes](/gg-web-engine/modules/core/base/pipes)

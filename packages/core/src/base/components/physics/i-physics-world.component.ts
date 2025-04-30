@@ -1,30 +1,72 @@
-import { GgWorld, PhysicsTypeDocRepo } from '../../gg-world';
-import { IDebugPhysicsDrawer } from '../../interfaces/i-debug-physics-drawer';
+import { PhysicsTypeDocRepo } from '../../gg-world';
 import { IComponent } from '../i-component';
 import { CollisionGroup } from '../../models/body-options';
+import { Subject } from 'rxjs';
 
-export interface IPhysicsWorldComponent<D, R, TypeDoc extends PhysicsTypeDocRepo<D, R> = PhysicsTypeDocRepo<D, R>>
+/**
+ * Interface representing a physics world component.
+ *
+ * @template D - Data type used for representing physics properties.
+ * @template R - Type representing the physics engine's rigid body.
+ * @template TypeDoc - Physics typings repository.
+ */
+export interface IPhysicsWorldComponent<D, R, PTypeDoc extends PhysicsTypeDocRepo<D, R> = PhysicsTypeDocRepo<D, R>>
   extends IComponent {
-  readonly factory: TypeDoc['factory'];
+  /**
+   * Factory function for creating physics-related objects.
+   */
+  readonly factory: PTypeDoc['factory'];
+
+  /**
+   * The gravity vector affecting the physics world.
+   */
   gravity: D;
-  timeScale: number;
 
-  get physicsDebugViewActive(): boolean;
+  /**
+   * Event emitter that emits newly added physics components.
+   */
+  readonly added$: Subject<PTypeDoc['rigidBody'] | PTypeDoc['trigger'] | any>;
 
+  /**
+   * Event emitter that emits just removed physics components.
+   */
+  readonly removed$: Subject<PTypeDoc['rigidBody'] | PTypeDoc['trigger'] | any>;
+
+  /**
+   * List of currently added physics components in the world.
+   */
+  readonly children: (PTypeDoc['rigidBody'] | PTypeDoc['trigger'] | any)[];
+
+  /**
+   * The main collision group. All physics bodies have this collision group set by default.
+   */
+  readonly mainCollisionGroup: CollisionGroup;
+
+  /**
+   * Initializes the physics world component.
+   *
+   * @returns A promise that resolves when initialization is complete.
+   */
   init(): Promise<void>;
 
   /**
-   * Runs simulation of the physics world.
+   * Runs the simulation of the physics world for the given time step.
    *
-   * @param delta delta time from last tick in milliseconds.
+   * @param delta - The time step in milliseconds since the last update.
    */
   simulate(delta: number): void;
 
+  /**
+   * Registers and returns a new collision group.
+   *
+   * @returns A newly registered collision group.
+   */
   registerCollisionGroup(): CollisionGroup;
 
+  /**
+   * Deregisters a previously registered collision group.
+   *
+   * @param group - The collision group to be removed.
+   */
   deregisterCollisionGroup(group: CollisionGroup): void;
-
-  startDebugger(world: GgWorld<D, R>, drawer: IDebugPhysicsDrawer<D, R>): void;
-
-  stopDebugger(world: GgWorld<D, R>): void;
 }

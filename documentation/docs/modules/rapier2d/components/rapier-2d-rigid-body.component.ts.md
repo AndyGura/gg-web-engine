@@ -1,6 +1,6 @@
 ---
 title: rapier2d/components/rapier-2d-rigid-body.component.ts
-nav_order: 109
+nav_order: 114
 parent: Modules
 ---
 
@@ -21,6 +21,7 @@ parent: Modules
     - [\_nativeBody (property)](#_nativebody-property)
     - [\_nativeBodyColliders (property)](#_nativebodycolliders-property)
     - [name (property)](#name-property)
+    - [debugBodySettings (property)](#debugbodysettings-property)
     - [collisionGroups (property)](#collisiongroups-property)
 
 ---
@@ -36,6 +37,7 @@ export declare class Rapier2dRigidBodyComponent {
   constructor(
     protected readonly world: Rapier2dWorldComponent,
     protected _colliderDescr: ColliderDesc[],
+    public readonly shape: Shape2DDescriptor,
     protected _bodyDescr: RigidBodyDesc,
     protected _colliderOptions: Omit<Omit<Body2DOptions, 'dynamic'>, 'mass'>
   )
@@ -112,6 +114,14 @@ _nativeBodyColliders: any[] | null
 
 ```ts
 name: string
+```
+
+### debugBodySettings (property)
+
+**Signature**
+
+```ts
+readonly debugBodySettings: any
 ```
 
 ### collisionGroups (property)

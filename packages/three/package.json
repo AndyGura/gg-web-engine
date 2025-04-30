@@ -1,15 +1,15 @@
 {
   "name": "@gg-web-engine/three",
-  "version": "0.0.30",
+  "version": "0.0.57",
   "description": "An attempt to create open source game engine for browser",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "prettier-format": "prettier --config ../core/.prettierrc 'src/**/*.ts' --write",
-    "prepublish": "rm -rf ./dist/ && tsc && cp -R ./src/gltf-loader ./dist",
-    "sync-gltf-loader": "cp ./node_modules/three/examples/jsm/loaders/GLTFLoader.js ./src/gltf-loader && cp ./node_modules/@types/three/examples/jsm/loaders/GLTFLoader.d.ts ./src/gltf-loader",
-    "build": "tsc && cp -R ./src/gltf-loader ./dist"
+    "prepublish": "rm -rf ./dist/ && tsc && cp -R ./src/three-examples ./dist",
+    "sync-three-examples": "sh ./etc/sync_three_examples.sh && npm run prettier-format",
+    "build": "tsc && cp -R ./src/three-examples ./dist"
   },
   "repository": {
     "type": "git",
@@ -30,14 +30,14 @@
   "dependencies": {
   },
   "devDependencies": {
-    "@gg-web-engine/core": "0.0.30",
-    "@types/three": "0.160.0",
-    "three": "0.160.0",
-    "prettier": "^2.8.6",
-    "typescript": "~4.7.2"
+    "@gg-web-engine/core": "0.0.57",
+    "@types/three": "0.167.1",
+    "three": "0.167.1",
+    "prettier": "^3.3.3",
+    "typescript": "~5.5.4"
   },
   "peerDependencies": {
-    "@gg-web-engine/core": "0.0.30",
-    "three": "0.160.0"
+    "@gg-web-engine/core": "0.0.57",
+    "three": "0.167.1"
   }
 }

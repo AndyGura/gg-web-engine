@@ -520,6 +520,13 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#debugbody3dsettings-class" class="md-nav__link">
+    DebugBody3DSettings (class)
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -550,12 +557,24 @@
 <ul>
 <li><a href="#utils">utils</a></li>
 <li><a href="#body3doptions-interface">Body3DOptions (interface)</a></li>
+<li><a href="#debugbody3dsettings-class">DebugBody3DSettings (class)</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
 <h2 id="body3doptions-interface">Body3DOptions (interface)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export interface Body3DOptions extends BodyOptions {}
+</code></pre>
+<h2 id="debugbody3dsettings-class">DebugBody3DSettings (class)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export declare class DebugBody3DSettings {
+  constructor(
+    type: DebugBodyType,
+    shape: Shape3DDescriptor,
+    ignoreTransform: boolean = false,
+    color: number | undefined = undefined
+  )
+}
 </code></pre>
 
 

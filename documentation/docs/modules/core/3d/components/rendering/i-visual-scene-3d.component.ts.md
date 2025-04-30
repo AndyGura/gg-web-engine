@@ -29,7 +29,7 @@ export interface IVisualScene3dComponent<TypeDoc extends VisualTypeDocRepo3D = V
   createRenderer(
     camera: TypeDoc['camera'],
     canvas?: HTMLCanvasElement,
-    rendererOptions?: Partial<RendererOptions>
+    rendererOptions?: Partial<RendererOptions & TypeDoc['rendererExtraOpts']>
   ): TypeDoc['renderer']
 }
 ```

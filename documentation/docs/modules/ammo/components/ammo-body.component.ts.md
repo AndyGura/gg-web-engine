@@ -33,7 +33,11 @@ parent: Modules
 
 ```ts
 export declare class AmmoBodyComponent<T> {
-  protected constructor(protected readonly world: AmmoWorldComponent, protected _nativeBody: T)
+  protected constructor(
+    protected readonly world: AmmoWorldComponent,
+    protected _nativeBody: T,
+    public readonly shape: Shape3DDescriptor
+  )
 }
 ```
 

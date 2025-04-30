@@ -1,5 +1,5 @@
 import { IEntity, TickOrder } from './i-entity';
-import { GgWorld, VisualTypeDocRepo } from '../gg-world';
+import { GgWorld, GgWorldTypeDocVPatch, VisualTypeDocRepo } from '../gg-world';
 import { auditTime, BehaviorSubject, fromEvent, merge, Observable, startWith, takeUntil } from 'rxjs';
 import { distinctUntilChanged, map } from 'rxjs/operators';
 import { Point2 } from '../models/points';
@@ -12,8 +12,8 @@ import { RendererOptions } from '../components/rendering/i-renderer.component';
 export abstract class IRendererEntity<
   D,
   R,
-  TypeDoc extends VisualTypeDocRepo<D, R> = VisualTypeDocRepo<D, R>,
-> extends IEntity<D, R, TypeDoc> {
+  VTypeDoc extends VisualTypeDocRepo<D, R> = VisualTypeDocRepo<D, R>,
+> extends IEntity<D, R, GgWorldTypeDocVPatch<D, R, VTypeDoc>> {
   public readonly tickOrder = TickOrder.RENDERING;
   /** Represents the current size of the renderer. */
   protected _rendererSize$: BehaviorSubject<Point2 | null> = new BehaviorSubject<Point2 | null>(null);
@@ -37,11 +37,21 @@ export abstract class IRendererEntity<
     return this.renderer.rendererOptions;
   }
 
+  /** get flag whether renderer shows physics debugger view */
+  get physicsDebugViewActive(): boolean {
+    return this.renderer.physicsDebugViewActive;
+  }
+
+  /** turns on/off physics debugger view for this renderer */
+  set physicsDebugViewActive(value: boolean) {
+    this.renderer.physicsDebugViewActive = value;
+  }
+
   /**
    Initializes a new instance of the BaseGgRenderer class.
    * @param renderer
    */
-  constructor(public readonly renderer: TypeDoc['renderer']) {
+  constructor(public readonly renderer: VTypeDoc['renderer']) {
     super();
     this.addComponents(renderer);
     this.tick$.subscribe(() => {
@@ -49,7 +59,7 @@ export abstract class IRendererEntity<
     });
   }
 
-  onSpawned(world: GgWorld<D, R, TypeDoc>) {
+  onSpawned(world: GgWorld<D, R, GgWorldTypeDocVPatch<D, R, VTypeDoc>>) {
     this._rendererSize$.next(null);
     if (this.rendererOptions.size == 'fullscreen' || typeof this.rendererOptions.size === 'function') {
       if (this.renderer.canvas) {

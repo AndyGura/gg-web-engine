@@ -522,6 +522,13 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#reset-method" class="md-nav__link">
+    reset (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#onspawned-method" class="md-nav__link">
     onSpawned (method)
   </a>
@@ -543,6 +550,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#options-property" class="md-nav__link">
+    options (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#mouseinput-property" class="md-nav__link">
     mouseInput (property)
   </a>
@@ -552,6 +566,20 @@
           <li class="md-nav__item">
   <a href="#directionsinput-property" class="md-nav__link">
     directionsInput (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_spherical-property" class="md-nav__link">
+    _spherical (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#resetmotion-property" class="md-nav__link">
+    resetMotion$ (property)
   </a>
   
 </li>
@@ -598,11 +626,15 @@
 <ul>
 <li><a href="#utils">utils</a></li>
 <li><a href="#freecameracontroller-class">FreeCameraController (class)</a><ul>
+<li><a href="#reset-method">reset (method)</a></li>
 <li><a href="#onspawned-method">onSpawned (method)</a></li>
 <li><a href="#onremoved-method">onRemoved (method)</a></li>
 <li><a href="#tickorder-property">tickOrder (property)</a></li>
+<li><a href="#options-property">options (property)</a></li>
 <li><a href="#mouseinput-property">mouseInput (property)</a></li>
 <li><a href="#directionsinput-property">directionsInput (property)</a></li>
+<li><a href="#_spherical-property">_spherical (property)</a></li>
+<li><a href="#resetmotion-property">resetMotion$ (property)</a></li>
 </ul>
 </li>
 <li><a href="#freecameracontrolleroptions-type-alias">FreeCameraControllerOptions (type alias)</a></li>
@@ -616,15 +648,13 @@
   constructor(
     protected readonly keyboard: KeyboardInput,
     protected readonly camera: Renderer3dEntity,
-    protected readonly options: FreeCameraControllerOptions = {
-      keymap: 'wasd',
-      movementOptions: { speed: 0.5 },
-      mouseOptions: {},
-      ignoreMouseUnlessPointerLocked: false,
-      ignoreKeyboardUnlessPointerLocked: false,
-    }
+    options: Partial&lt;FreeCameraControllerOptions&gt; = {}
   )
 }
+</code></pre>
+<h3 id="reset-method">reset (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public reset(): void
 </code></pre>
 <h3 id="onspawned-method">onSpawned (method)</h3>
 <p><strong>Signature</strong></p>
@@ -638,6 +668,10 @@
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly tickOrder: TickOrder.INPUT_CONTROLLERS
 </code></pre>
+<h3 id="options-property">options (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly options: FreeCameraControllerOptions
+</code></pre>
 <h3 id="mouseinput-property">mouseInput (property)</h3>
 <p>The mouse input controller used for camera rotation.</p>
 <p><strong>Signature</strong></p>
@@ -648,29 +682,48 @@
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly directionsInput: DirectionKeyboardInput
 </code></pre>
+<h3 id="_spherical-property">_spherical (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">_spherical: MutableSpherical
+</code></pre>
+<h3 id="resetmotion-property">resetMotion$ (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">resetMotion$: any
+</code></pre>
 <h2 id="freecameracontrolleroptions-type-alias">FreeCameraControllerOptions (type alias)</h2>
 <p>Options for configuring a FreeCameraInput controller.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export type FreeCameraControllerOptions = {
   /**
-   * A keymap for controlling camera movement, where each key corresponds to a movement direction.
+   * A keymap for controlling camera movement, where each key corresponds to a movement direction. 'wasd' by default
    */
   keymap: DirectionKeyboardKeymap
   /**
-   * Options for configuring camera movement.
+   * The speed of camera movement in meters per second. 20 by default
    */
-  movementOptions: {
-    /**
-     * The speed of camera movement.
-     */
-    speed: number
-  }
+  cameraLinearSpeed: number
   /**
-   * Flag to ignore cursor movement if pointer was not locked. By default false
+   * An elasticity factor for camera movement. 0 by default (no elastic motion)
+   */
+  cameraMovementElasticity: number
+  /**
+   * A linear speed multiplier when user holds shift key. 2.5 by default
+   */
+  cameraBoostMultiplier: number
+  /**
+   * The speed of camera rotation in radians per 1000px mouse movement. 1 by default
+   */
+  cameraRotationSensitivity: number
+  /**
+   * An elasticity factor for camera rotation. 0 by default (no elastic motion)
+   */
+  cameraRotationElasticity: number
+  /**
+   * Flag to ignore cursor movement if pointer was not locked. false by default
    */
   ignoreMouseUnlessPointerLocked: boolean
   /**
-   * Flag to ignore keyboard events if pointer was not locked. By default false
+   * Flag to ignore keyboard events if pointer was not locked. false by default
    */
   ignoreKeyboardUnlessPointerLocked: boolean
   /**

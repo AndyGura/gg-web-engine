@@ -19,6 +19,7 @@ export type VisualTypeDocRepo3D = {
   loader: IDisplayObject3dComponentLoader;
   displayObject: IDisplayObject3dComponent;
   renderer: IRenderer3dComponent;
+  rendererExtraOpts: {};
   camera: ICameraComponent;
   texture: unknown;
 };
@@ -31,46 +32,75 @@ export type PhysicsTypeDocRepo3D = {
   raycastVehicle: IRaycastVehicleComponent;
 };
 
-export class Gg3dWorld<
-  VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D,
-  PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D,
-  VS extends IVisualScene3dComponent<VTypeDoc> = IVisualScene3dComponent<VTypeDoc>,
-  PW extends IPhysicsWorld3dComponent<PTypeDoc> = IPhysicsWorld3dComponent<PTypeDoc>,
-> extends GgWorld<Point3, Point4, VTypeDoc, PTypeDoc, VS, PW> {
-  public readonly loader: Gg3dLoader<VTypeDoc, PTypeDoc>;
+export type Gg3dWorldTypeDocRepo = {
+  vTypeDoc: VisualTypeDocRepo3D;
+  pTypeDoc: PhysicsTypeDocRepo3D;
+};
+// utility types to create world type doc by defining either vTypeDoc or pTypeDoc only
+export type Gg3dWorldTypeDocVPatch<VTypeDoc extends VisualTypeDocRepo3D> = Omit<Gg3dWorldTypeDocRepo, 'vTypeDoc'> & {
+  vTypeDoc: VTypeDoc;
+};
+export type Gg3dWorldTypeDocPPatch<PTypeDoc extends PhysicsTypeDocRepo3D> = Omit<Gg3dWorldTypeDocRepo, 'pTypeDoc'> & {
+  pTypeDoc: PTypeDoc;
+};
 
-  constructor(public readonly visualScene: VS, public readonly physicsWorld: PW) {
-    super(visualScene, physicsWorld);
-    this.loader = new Gg3dLoader(this);
-    if ((window as any).ggstatic) {
-      (window as any).ggstatic.registerConsoleCommand(
-        this,
-        'ph_gravity',
-        async (...args: string[]) => {
-          if (args.length == 1) {
-            args = ['0', '0', '' + -+args[0]]; // mean -Z axis
-          }
-          if (args.length > 0) {
-            this.physicsWorld.gravity = { x: +args[0], y: +args[1], z: +args[2] };
-          }
-          return JSON.stringify(this.physicsWorld.gravity);
+export type Gg3dWorldSceneTypeRepo<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo> = {
+  visualScene: IVisualScene3dComponent<TypeDoc['vTypeDoc']> | null;
+  physicsWorld: IPhysicsWorld3dComponent<TypeDoc['pTypeDoc']> | null;
+};
+// utility types to create world scene type doc by defining either visualScene or physicsWorld type only
+export type Gg3dWorldSceneTypeDocVPatch<
+  VTypeDoc extends VisualTypeDocRepo3D,
+  VS extends IVisualScene3dComponent<VTypeDoc> | null,
+> = Omit<Gg3dWorldSceneTypeRepo, 'visualScene'> & { visualScene: VS };
+export type Gg3dWorldSceneTypeDocPPatch<
+  PTypeDoc extends PhysicsTypeDocRepo3D,
+  PW extends IPhysicsWorld3dComponent<PTypeDoc> | null,
+> = Omit<Gg3dWorldSceneTypeRepo, 'physicsWorld'> & { physicsWorld: PW };
+
+// A helper type to build a full type for the world according to installed modules
+// Each module provides its type, like "ThreeGgWorld" or "Rapier3dGgWorld"
+// Caller code can define type like this: world: TypedGg3dWorld<ThreeGgWorld, AmmoGgWorld>
+// Important: visual library world comes first, then physics library
+export type TypedGg3dWorld<VW extends Gg3dWorld<any> | null, PW extends Gg3dWorld<any> | null> = VW extends Gg3dWorld<
+  infer VTD,
+  infer VSTD
+> | null
+  ? PW extends Gg3dWorld<infer PTD, infer PSTD> | null
+    ? Gg3dWorld<
+        {
+          vTypeDoc: VTD['vTypeDoc'];
+          pTypeDoc: PTD['pTypeDoc'];
         },
-        'args: [float] or [float float float]; change 3D world gravity vector. 1 argument means ' +
-          '{x: 0, y: 0, z: -value}, 3 arguments set the whole vector. Default value is "9.82" or "0 0 -9.82"',
-      );
-    }
+        {
+          visualScene: VSTD['visualScene'];
+          physicsWorld: PSTD['physicsWorld'];
+        }
+      >
+    : never
+  : never;
+
+export class Gg3dWorld<
+  TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo,
+  SceneTypeDoc extends Gg3dWorldSceneTypeRepo<TypeDoc> = Gg3dWorldSceneTypeRepo<TypeDoc>,
+> extends GgWorld<Point3, Point4, TypeDoc, SceneTypeDoc> {
+  public readonly loader: Gg3dLoader<TypeDoc>;
+
+  constructor(args: { visualScene?: SceneTypeDoc['visualScene']; physicsWorld?: SceneTypeDoc['physicsWorld'] }) {
+    super(args);
+    this.loader = new Gg3dLoader(this);
   }
 
   addPrimitiveRigidBody(
     descr: BodyShape3DDescriptor,
     position: Point3 = Pnt3.O,
     rotation: Point4 = Qtrn.O,
-    material: DisplayObject3dOpts<VTypeDoc['texture']> = {},
-  ): Entity3d<VTypeDoc, PTypeDoc> {
-    const entity = new Entity3d<VTypeDoc, PTypeDoc>(
-      this.visualScene.factory.createPrimitive(descr.shape, material),
-      this.physicsWorld.factory.createRigidBody(descr),
-    );
+    material: DisplayObject3dOpts<TypeDoc['vTypeDoc']['texture']> = {},
+  ): Entity3d<TypeDoc> {
+    const entity = new Entity3d<TypeDoc>({
+      object3D: this.visualScene?.factory.createPrimitive(descr.shape, material),
+      objectBody: this.physicsWorld?.factory.createRigidBody(descr),
+    });
     entity.position = position;
     entity.rotation = rotation;
     this.addEntity(entity);
@@ -78,12 +108,47 @@ export class Gg3dWorld<
   }
 
   addRenderer(
-    camera: VTypeDoc['camera'],
+    camera: TypeDoc['vTypeDoc']['camera'],
     canvas?: HTMLCanvasElement,
-    rendererOptions?: Partial<RendererOptions>,
-  ): Renderer3dEntity<VTypeDoc> {
+    rendererOptions?: Partial<RendererOptions & TypeDoc['vTypeDoc']['rendererExtraOpts']>,
+  ): Renderer3dEntity<TypeDoc['vTypeDoc']> {
+    if (!this.visualScene) {
+      throw new Error('Cannot add renderer to the world without visual scene');
+    }
     const entity = new Renderer3dEntity(this.visualScene.createRenderer(camera, canvas, rendererOptions));
     this.addEntity(entity);
     return entity;
+  }
+
+  protected registerConsoleCommands(ggstatic: {
+    registerConsoleCommand: (
+      world: GgWorld<any, any> | null,
+      command: string,
+      handler: (...args: string[]) => Promise<string>,
+      doc?: string,
+    ) => void;
+  }) {
+    super.registerConsoleCommands(ggstatic);
+    if (this.physicsWorld) {
+      ggstatic.registerConsoleCommand(
+        this,
+        'gravity',
+        async (...args: string[]) => {
+          if (args.length == 1) {
+            args = ['0', '0', '' + -+args[0]]; // mean -Z axis
+          }
+          if (args.length > 0) {
+            if (isNaN(+args[0]) || isNaN(+args[1]) || isNaN(+args[2])) {
+              throw new Error('Wrong arguments');
+            }
+            this.physicsWorld!.gravity = { x: +args[0], y: +args[1], z: +args[2] };
+          }
+          return JSON.stringify(this.physicsWorld!.gravity);
+        },
+        'args: [ ?float, ?float, ?float ]; Get or set 3D world gravity vector. 1 argument sets ' +
+          'vector {x: 0, y: 0, z: -value}, 3 arguments set the whole vector.' +
+          ' Default value is "9.82" or "0 0 -9.82"',
+      );
+    }
   }
 }

@@ -567,7 +567,10 @@
 </code></pre>
 <h2 id="shape2ddescriptor-type-alias">Shape2DDescriptor (type alias)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type Shape2DDescriptor = { shape: 'SQUARE'; dimensions: Point2 } | { shape: 'CIRCLE'; radius: number }
+<pre><code class="language-ts">export type Shape2DDescriptor = { collisionMargin?: number } &amp; (
+  | { shape: 'SQUARE'; dimensions: Point2 }
+  | { shape: 'CIRCLE'; radius: number }
+)
 </code></pre>
 
 

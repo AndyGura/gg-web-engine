@@ -8,7 +8,7 @@ import {
 } from '../components/physics/i-raycast-vehicle.component';
 import { IRigidBody3dComponent } from '../components/physics/i-rigid-body-3d.component';
 import { IPositionable3d } from '../interfaces/i-positionable-3d';
-import { PhysicsTypeDocRepo3D, VisualTypeDocRepo3D } from '../gg-3d-world';
+import { Gg3dWorldTypeDocRepo } from '../gg-3d-world';
 
 export type WheelDisplayOptions = {
   displayObject?: IDisplayObject3dComponent;
@@ -31,8 +31,13 @@ export type RVEntityAxleOptions = {
   axleHeight: number;
 } & RVEntitySharedWheelOptions;
 
+export enum RVEntityTractionBias {
+  FWD = 1,
+  RWD = 0,
+}
+
 export type RVEntityProperties = {
-  typeOfDrive: 'RWD' | 'FWD' | '4WD';
+  tractionBias: RVEntityTractionBias | number;
   suspension: SuspensionOptions;
 } & (
   | {
@@ -61,18 +66,30 @@ const wheeelDefaults = {
 };
 
 export class RaycastVehicle3dEntity<
-  VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D,
-  PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D,
-> extends Entity3d<VTypeDoc, PTypeDoc> {
-  protected readonly wheels: (Entity3d<VTypeDoc, PTypeDoc> | null)[] = [];
+  TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo,
+> extends Entity3d<TypeDoc> {
+  protected readonly wheels: (Entity3d<TypeDoc> | null)[] = [];
   protected readonly wheelLocalRotation: (Point4 | null)[] = [];
   protected readonly frontWheelsIndices: number[] = [];
   protected readonly rearWheelsIndices: number[] = [];
-  protected readonly tractionWheelIndices: number[] = [];
+
+  get name(): string {
+    return super.name;
+  }
+
+  set name(value: string) {
+    const oldName = super.name;
+    super.name = value;
+    for (const w of this.wheels || []) {
+      if (w) {
+        w.name = w.name.replace(oldName, value);
+      }
+    }
+  }
 
   // m/s
   public getSpeed(): number {
-    return this.chassisBody.wheelSpeed;
+    return this.vehicleComponent.wheelSpeed;
   }
 
   public readonly tractionWheelRadius: number;
@@ -86,19 +103,24 @@ export class RaycastVehicle3dEntity<
     if (this._steeringAngle != value) {
       this._steeringAngle = value;
     }
-    this.frontWheelsIndices.forEach(index => this.chassisBody.setSteering(index, value));
+    this.frontWheelsIndices.forEach(index => this.vehicleComponent.setSteering(index, value));
   }
 
-  public applyTractionForce(force: number) {
-    this.tractionWheelIndices.forEach(index => this.chassisBody.applyEngineForce(index, force));
+  public applyTraction(axle: 'front' | 'rear' | 'both', force: number) {
+    if (axle != 'rear') {
+      this.frontWheelsIndices.forEach(index => this.vehicleComponent.applyEngineForce(index, force));
+    }
+    if (axle != 'front') {
+      this.rearWheelsIndices.forEach(index => this.vehicleComponent.applyEngineForce(index, force));
+    }
   }
 
   public applyBrake(axle: 'front' | 'rear' | 'both', force: number) {
     if (axle != 'rear') {
-      this.frontWheelsIndices.forEach(index => this.chassisBody.applyBrake(index, force));
+      this.frontWheelsIndices.forEach(index => this.vehicleComponent.applyBrake(index, force));
     }
     if (axle != 'front') {
-      this.rearWheelsIndices.forEach(index => this.chassisBody.applyBrake(index, force));
+      this.rearWheelsIndices.forEach(index => this.vehicleComponent.applyBrake(index, force));
     }
   }
 
@@ -106,9 +128,9 @@ export class RaycastVehicle3dEntity<
   constructor(
     public readonly carProperties: RVEntityProperties,
     public readonly chassis3D: IDisplayObject3dComponent | null,
-    public readonly chassisBody: IRaycastVehicleComponent,
+    public readonly vehicleComponent: IRaycastVehicleComponent,
   ) {
-    super(chassis3D, chassisBody);
+    super({ object3D: chassis3D, objectBody: vehicleComponent });
     let wheelFullOptions: (WheelOptions & { display: WheelDisplayOptions })[] =
       'wheelBase' in carProperties
         ? [
@@ -149,15 +171,11 @@ export class RaycastVehicle3dEntity<
       } else {
         this.rearWheelsIndices.push(i);
       }
-      if (wheelOpts.isFront && this.carProperties.typeOfDrive != 'RWD') {
-        this.tractionWheelIndices.push(i);
-      }
-      if (!wheelOpts.isFront && this.carProperties.typeOfDrive != 'FWD') {
-        this.tractionWheelIndices.push(i);
-      }
-      this.chassisBody.addWheel(wheelOpts, this.carProperties.suspension);
+      this.vehicleComponent.addWheel(wheelOpts, this.carProperties.suspension);
     });
-    this.tractionWheelRadius = wheelFullOptions[this.tractionWheelIndices[0]].tyreRadius;
+    this.tractionWheelRadius =
+      wheelFullOptions[this.frontWheelsIndices[0]].tyreRadius * this.carProperties.tractionBias +
+      wheelFullOptions[this.rearWheelsIndices[0]].tyreRadius * (1 - this.carProperties.tractionBias);
     for (const options of wheelFullOptions) {
       const display = options.display || {};
       if (!display.displayObject) {
@@ -165,9 +183,9 @@ export class RaycastVehicle3dEntity<
         this.wheelLocalRotation.push(null);
         continue;
       }
-      const entity = display.displayObject.clone();
+      const displayObj = display.displayObject.clone();
       if (display.autoScaleMesh) {
-        const boundingBox = Box.expandByPoint(entity.getBoundings(), Pnt3.O);
+        const boundingBox = Box.expandByPoint(displayObj.getBoundings(), Pnt3.O);
         const scale = { ...Pnt3.O };
         const wheelObjectDirection = display.wheelObjectDirection || 'x';
         for (const dir of ['x', 'y', 'z'] as (keyof Point3)[]) {
@@ -176,7 +194,7 @@ export class RaycastVehicle3dEntity<
             ? options.tyreWidth / (boundingBox.max[dir] - boundingBox.min[dir])
             : (options.tyreRadius * 2) / (boundingBox.max[dir] - boundingBox.min[dir]);
         }
-        entity.scale = scale;
+        displayObj.scale = scale;
       }
       const direction = display.wheelObjectDirection || 'x';
       const flip = direction.includes('-') ? options.isLeft : !options.isLeft;
@@ -192,10 +210,12 @@ export class RaycastVehicle3dEntity<
         localRotation = { x: 0, y: 0.707107 * (flip ? 1 : -1), z: 0, w: 0.707107 };
       }
       this.wheelLocalRotation.push(localRotation);
-      this.wheels.push(new Entity3d(entity));
+      const wheelEntity = new Entity3d<TypeDoc>({ object3D: displayObj });
+      wheelEntity.name = this.name + '__wheel_' + (options.isFront ? 'f' : 'r') + (options.isLeft ? 'l' : 'r');
+      this.wheels.push(wheelEntity);
     }
     this.addChildren(...(this.wheels.filter(x => !!x) as (IEntity & IPositionable3d)[]));
-    this.chassisBody.entity = this;
+    this.vehicleComponent.entity = this;
   }
 
   protected runTransformBinding(objectBody: IRigidBody3dComponent, object3D: IDisplayObject3dComponent): void {
@@ -204,7 +224,7 @@ export class RaycastVehicle3dEntity<
       if (!wheel) {
         continue;
       }
-      let { position, rotation } = this.chassisBody.getWheelTransform(i);
+      let { position, rotation } = this.vehicleComponent.getWheelTransform(i);
       if (this.wheelLocalRotation[i]) {
         rotation = Qtrn.combineRotations(rotation, this.wheelLocalRotation[i]!);
       }
@@ -215,9 +235,25 @@ export class RaycastVehicle3dEntity<
 
   public get isTouchingGround(): boolean {
     // is at least one traction wheel touches the ground
-    return this.tractionWheelIndices
-      .map(i => this.chassisBody.isWheelTouchesGround(i))
-      .reduce((prev, cur) => cur || prev, false);
+    if (this.carProperties.tractionBias != RVEntityTractionBias.RWD) {
+      if (
+        this.frontWheelsIndices
+          .map(i => this.vehicleComponent.isWheelTouchesGround(i))
+          .reduce((prev, cur) => cur || prev, false)
+      ) {
+        return true;
+      }
+    }
+    if (this.carProperties.tractionBias != RVEntityTractionBias.FWD) {
+      if (
+        this.rearWheelsIndices
+          .map(i => this.vehicleComponent.isWheelTouchesGround(i))
+          .reduce((prev, cur) => cur || prev, false)
+      ) {
+        return true;
+      }
+    }
+    return false;
   }
 
   // TODO delete and let game application do all the steps
@@ -227,8 +263,6 @@ export class RaycastVehicle3dEntity<
       rotation?: Point4;
     } = {},
   ) {
-    this.chassisBody.resetMotion();
-    this.chassisBody.resetSuspension();
     if (options.position) {
       this.position = options.position;
     }
@@ -236,5 +270,6 @@ export class RaycastVehicle3dEntity<
       this.rotation = options.rotation;
     }
     this.steeringAngle = 0;
+    this.vehicleComponent.resetMotion();
   }
 }

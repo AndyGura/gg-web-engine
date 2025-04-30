@@ -23,12 +23,12 @@ parent: Modules
     - [loadChunk (method)](#loadchunk-method)
     - [disposeChunk (method)](#disposechunk-method)
     - [tickOrder (property)](#tickorder-property)
-    - [loaderCursorEntity$ (property)](#loadercursorentity-property)
+    - [loaderCursor$ (property)](#loadercursor-property)
     - [loaded (property)](#loaded-property)
     - [\_chunkLoaded$ (property)](#_chunkloaded-property)
-    - [\_world (property)](#_world-property)
     - [mapGraphNodes (property)](#mapgraphnodes-property)
     - [options (property)](#options-property)
+    - [loadClock (property)](#loadclock-property)
   - [MapGraphNodeType (type alias)](#mapgraphnodetype-type-alias)
 
 ---
@@ -45,6 +45,8 @@ export type Gg3dMapGraphEntityOptions = {
   loadDepth: number
   // additional depth, means unload delay. Nodes with this depth won't load, but if already loaded, will not be destroyed
   inertia: number
+  // max amount of nodes that can be loaded on single tick. Use this to avoid framerate drop when loading multiple heavy nodes at once
+  maxNodesLoadingPerTick: number
 }
 ```
 
@@ -147,12 +149,12 @@ protected disposeChunk(node: MapGraphNodeType)
 readonly tickOrder: TickOrder.POST_RENDERING
 ```
 
-### loaderCursorEntity$ (property)
+### loaderCursor$ (property)
 
 **Signature**
 
 ```ts
-readonly loaderCursorEntity$: any
+readonly loaderCursor$: any
 ```
 
 ### loaded (property)
@@ -171,14 +173,6 @@ readonly loaded: any
 _chunkLoaded$: any
 ```
 
-### \_world (property)
-
-**Signature**
-
-```ts
-_world: Gg3dWorld<VTypeDoc, PTypeDoc, IVisualScene3dComponent<VTypeDoc>, IPhysicsWorld3dComponent<PTypeDoc>> | null
-```
-
 ### mapGraphNodes (property)
 
 **Signature**
@@ -193,6 +187,14 @@ readonly mapGraphNodes: MapGraph[]
 
 ```ts
 readonly options: Gg3dMapGraphEntityOptions
+```
+
+### loadClock (property)
+
+**Signature**
+
+```ts
+loadClock: PausableClock | null
 ```
 
 ## MapGraphNodeType (type alias)

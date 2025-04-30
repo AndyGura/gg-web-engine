@@ -1,19 +1,17 @@
 import {
   BitMask,
   CollisionGroup,
-  Gg3dWorld,
   IRaycastVehicleComponent,
   Point3,
   Point4,
   RaycastVehicle3dEntity,
   SuspensionOptions,
-  VisualTypeDocRepo3D,
   WheelOptions,
 } from '@gg-web-engine/core';
 import Ammo from '../ammo.js/ammo';
 import { AmmoRigidBodyComponent } from './ammo-rigid-body.component';
 import { AmmoWorldComponent } from './ammo-world.component';
-import { AmmoPhysicsTypeDocRepo } from '../types';
+import { AmmoGgWorld, AmmoPhysicsTypeDocRepo } from '../types';
 
 export class AmmoRaycastVehicleComponent
   extends AmmoRigidBodyComponent
@@ -27,30 +25,37 @@ export class AmmoRaycastVehicleComponent
   public entity: RaycastVehicle3dEntity | null = null;
   protected readonly raycaster: Ammo.btDefaultVehicleRaycaster;
 
-  get interactWithCollisionGroups(): CollisionGroup[] {
+  get interactWithCollisionGroups(): ReadonlyArray<CollisionGroup> {
     return this.chassisBody.interactWithCollisionGroups;
   }
 
-  set interactWithCollisionGroups(value: CollisionGroup[] | 'all') {
-    this.chassisBody.interactWithCollisionGroups = value;
-    this.raycaster.set_m_collisionFilterMask(BitMask.pack(this.chassisBody.interactWithCollisionGroups, 16));
+  set interactWithCollisionGroups(value: ReadonlyArray<CollisionGroup> | 'all') {
+    if (this.chassisBody) {
+      this.chassisBody.interactWithCollisionGroups = value;
+      this.raycaster.set_m_collisionFilterMask(BitMask.pack(this.chassisBody.interactWithCollisionGroups, 16));
+    }
   }
 
-  get ownCollisionGroups(): CollisionGroup[] {
+  get ownCollisionGroups(): ReadonlyArray<CollisionGroup> {
     return this.chassisBody.ownCollisionGroups;
   }
 
-  set ownCollisionGroups(value: CollisionGroup[] | 'all') {
-    this.chassisBody.ownCollisionGroups = value;
-    this.raycaster.set_m_collisionFilterGroup(BitMask.pack(this.chassisBody.ownCollisionGroups, 16));
+  set ownCollisionGroups(value: ReadonlyArray<CollisionGroup> | 'all') {
+    if (this.chassisBody) {
+      this.chassisBody.ownCollisionGroups = value;
+      this.raycaster.set_m_collisionFilterGroup(BitMask.pack(this.chassisBody.ownCollisionGroups, 16));
+    }
   }
 
   refreshCG() {
     this.chassisBody.refreshCG();
   }
 
-  constructor(protected readonly world: AmmoWorldComponent, public chassisBody: AmmoRigidBodyComponent) {
-    super(world, chassisBody.nativeBody);
+  constructor(
+    protected readonly world: AmmoWorldComponent,
+    public chassisBody: AmmoRigidBodyComponent,
+  ) {
+    super(world, chassisBody.nativeBody, chassisBody.shape);
     this.raycaster = new Ammo.btDefaultVehicleRaycaster(world.dynamicAmmoWorld!);
     this.nativeVehicle = new Ammo.btRaycastVehicle(this.vehicleTuning, this.chassisBody.nativeBody, this.raycaster);
     this.raycaster.set_m_collisionFilterGroup(BitMask.pack(this.chassisBody.ownCollisionGroups, 16));
@@ -63,19 +68,23 @@ export class AmmoRaycastVehicleComponent
     return this.nativeVehicle.getCurrentSpeedKmHour() / 3.6;
   }
 
-  addToWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>) {
+  addToWorld(world: AmmoGgWorld) {
     if (world.physicsWorld != this.world) {
       throw new Error('Ammo raycast vehicle cannot be shared between different worlds');
     }
+    this.addedToWorld = true;
     // TODO parked cars can be deactivated until we start handling them. Needs explicit activation call
     this.chassisBody.nativeBody.setActivationState(4); // btCollisionObject::DISABLE_DEACTIVATION
     this.chassisBody.addToWorld(world);
     this.world.dynamicAmmoWorld!.addAction(this.nativeVehicle);
+    this.world.added$.next(this);
   }
 
-  removeFromWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>) {
+  removeFromWorld(world: AmmoGgWorld) {
+    this.addedToWorld = false;
     this.chassisBody.removeFromWorld(world);
     this.world.dynamicAmmoWorld!.removeAction(this.nativeVehicle);
+    this.world.removed$.next(this);
   }
 
   addWheel(options: WheelOptions, suspensionOptions: SuspensionOptions): void {
@@ -137,5 +146,10 @@ export class AmmoRaycastVehicleComponent
 
   public clone(): AmmoRaycastVehicleComponent {
     return new AmmoRaycastVehicleComponent(this.world, this.chassisBody.clone());
+  }
+
+  resetMotion() {
+    this.resetSuspension();
+    super.resetMotion();
   }
 }

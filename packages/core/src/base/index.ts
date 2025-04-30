@@ -26,7 +26,6 @@ export * from './inputs/i-input';
 export * from './inputs/keyboard.input';
 export * from './inputs/mouse.input';
 
-export * from './interfaces/i-debug-physics-drawer';
 export * from './interfaces/i-positionable';
 
 export * from './models/axis-directions';
@@ -41,5 +40,7 @@ export * from './math/quaternion';
 export * from './math/numbers';
 export * from './math/matrix4';
 export * from './math/splines';
+
+export * from './pipes/gg-elastic.pipe';
 
 export * from './gg-world';

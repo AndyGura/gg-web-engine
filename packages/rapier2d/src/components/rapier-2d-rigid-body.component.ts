@@ -2,12 +2,12 @@ import {
   BitMask,
   Body2DOptions,
   CollisionGroup,
+  DebugBody2DSettings,
   Entity2d,
-  Gg2dWorld,
   IRigidBody2dComponent,
   Pnt2,
   Point2,
-  VisualTypeDocRepo2D,
+  Shape2DDescriptor,
 } from '@gg-web-engine/core';
 import {
   Collider,
@@ -18,7 +18,7 @@ import {
   Vector2,
 } from '@dimforge/rapier2d-compat';
 import { Rapier2dWorldComponent } from './rapier-2d-world.component';
-import { Rapier2dPhysicsTypeDocRepo } from '../types';
+import { Rapier2dGgWorld, Rapier2dPhysicsTypeDocRepo } from '../types';
 
 export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2dPhysicsTypeDocRepo> {
   public entity: Entity2d | null = null;
@@ -83,24 +83,40 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
 
   public name: string = '';
 
-  public get factoryProps(): [ColliderDesc[], RigidBodyDesc, Omit<Omit<Body2DOptions, 'dynamic'>, 'mass'>] {
-    return [this._colliderDescr, this._bodyDescr, this._colliderOptions];
+  public get factoryProps(): [
+    ColliderDesc[],
+    Shape2DDescriptor,
+    RigidBodyDesc,
+    Omit<Omit<Body2DOptions, 'dynamic'>, 'mass'>,
+  ] {
+    return [this._colliderDescr, this.shape, this._bodyDescr, this._colliderOptions];
   }
+
+  readonly debugBodySettings: DebugBody2DSettings = new DebugBody2DSettings(
+    this._bodyDescr.mass > 0
+      ? { type: 'RIGID_DYNAMIC', sleeping: () => !!this._nativeBody?.isSleeping() }
+      : { type: 'RIGID_STATIC' },
+    this.shape,
+  );
 
   constructor(
     protected readonly world: Rapier2dWorldComponent,
     protected _colliderDescr: ColliderDesc[],
+    public readonly shape: Shape2DDescriptor,
     protected _bodyDescr: RigidBodyDesc,
     protected _colliderOptions: Omit<Omit<Body2DOptions, 'dynamic'>, 'mass'>,
-  ) {}
+  ) {
+    this.ownCollisionGroups = _colliderOptions?.ownCollisionGroups || [world.mainCollisionGroup];
+    this.interactWithCollisionGroups = _colliderOptions?.interactWithCollisionGroups || [world.mainCollisionGroup];
+  }
 
   protected collisionGroups: InteractionGroups = BitMask.full(32);
 
-  get interactWithCollisionGroups(): CollisionGroup[] {
+  get interactWithCollisionGroups(): ReadonlyArray<CollisionGroup> {
     return BitMask.unpack(this.collisionGroups, 16);
   }
 
-  set interactWithCollisionGroups(value: CollisionGroup[] | 'all') {
+  set interactWithCollisionGroups(value: ReadonlyArray<CollisionGroup> | 'all') {
     let mask;
     if (value === 'all') {
       mask = BitMask.full(16);
@@ -119,11 +135,11 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
     }
   }
 
-  get ownCollisionGroups(): CollisionGroup[] {
+  get ownCollisionGroups(): ReadonlyArray<CollisionGroup> {
     return BitMask.unpack(this.collisionGroups >> 16, 16);
   }
 
-  set ownCollisionGroups(value: CollisionGroup[] | 'all') {
+  set ownCollisionGroups(value: ReadonlyArray<CollisionGroup> | 'all') {
     let mask;
     if (value === 'all') {
       mask = BitMask.full(16);
@@ -147,7 +163,7 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
     return new Rapier2dRigidBodyComponent(this.world, ...this.factoryProps);
   }
 
-  addToWorld(world: Gg2dWorld<VisualTypeDocRepo2D, Rapier2dPhysicsTypeDocRepo>): void {
+  addToWorld(world: Rapier2dGgWorld): void {
     if (world.physicsWorld != this.world) {
       throw new Error('Rapier2D bodies cannot be shared between different worlds');
     }
@@ -159,9 +175,10 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
       return col;
     });
     this.world.handleIdEntityMap.set(this._nativeBody!.handle, this);
+    this.world.added$.next(this);
   }
 
-  removeFromWorld(world: Gg2dWorld<VisualTypeDocRepo2D, Rapier2dPhysicsTypeDocRepo>): void {
+  removeFromWorld(world: Rapier2dGgWorld): void {
     if (world.physicsWorld != this.world) {
       throw new Error('Rapier2D bodies cannot be shared between different worlds');
     }
@@ -174,6 +191,7 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
       this._nativeBody = null;
       this._nativeBodyColliders = null;
     }
+    this.world.removed$.next(this);
   }
 
   resetMotion(): void {
@@ -183,10 +201,7 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
 
   dispose(): void {
     if (this.nativeBody) {
-      this.removeFromWorld({ physicsWorld: this.world } as any as Gg2dWorld<
-        VisualTypeDocRepo2D,
-        Rapier2dPhysicsTypeDocRepo
-      >);
+      this.removeFromWorld({ physicsWorld: this.world } as any as Rapier2dGgWorld);
     }
   }
 }

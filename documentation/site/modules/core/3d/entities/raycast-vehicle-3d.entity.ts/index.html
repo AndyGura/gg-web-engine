@@ -550,8 +550,8 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#applytractionforce-method" class="md-nav__link">
-    applyTractionForce (method)
+  <a href="#applytraction-method" class="md-nav__link">
+    applyTraction (method)
   </a>
   
 </li>
@@ -601,13 +601,6 @@
           <li class="md-nav__item">
   <a href="#rearwheelsindices-property" class="md-nav__link">
     rearWheelsIndices (property)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#tractionwheelindices-property" class="md-nav__link">
-    tractionWheelIndices (property)
   </a>
   
 </li>
@@ -665,7 +658,7 @@
 <li><a href="#rventitysharedwheeloptions-type-alias">RVEntitySharedWheelOptions (type alias)</a></li>
 <li><a href="#raycastvehicle3dentity-class">RaycastVehicle3dEntity (class)</a><ul>
 <li><a href="#getspeed-method">getSpeed (method)</a></li>
-<li><a href="#applytractionforce-method">applyTractionForce (method)</a></li>
+<li><a href="#applytraction-method">applyTraction (method)</a></li>
 <li><a href="#applybrake-method">applyBrake (method)</a></li>
 <li><a href="#runtransformbinding-method">runTransformBinding (method)</a></li>
 <li><a href="#resetto-method">resetTo (method)</a></li>
@@ -673,7 +666,6 @@
 <li><a href="#wheellocalrotation-property">wheelLocalRotation (property)</a></li>
 <li><a href="#frontwheelsindices-property">frontWheelsIndices (property)</a></li>
 <li><a href="#rearwheelsindices-property">rearWheelsIndices (property)</a></li>
-<li><a href="#tractionwheelindices-property">tractionWheelIndices (property)</a></li>
 <li><a href="#tractionwheelradius-property">tractionWheelRadius (property)</a></li>
 </ul>
 </li>
@@ -692,7 +684,7 @@
 <h2 id="rventityproperties-type-alias">RVEntityProperties (type alias)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export type RVEntityProperties = {
-  typeOfDrive: 'RWD' | 'FWD' | '4WD'
+  tractionBias: RVEntityTractionBias | number
   suspension: SuspensionOptions
 } &amp; (
   | {
@@ -729,7 +721,7 @@
   constructor(
     public readonly carProperties: RVEntityProperties,
     public readonly chassis3D: IDisplayObject3dComponent | null,
-    public readonly chassisBody: IRaycastVehicleComponent
+    public readonly vehicleComponent: IRaycastVehicleComponent
   )
 }
 </code></pre>
@@ -737,9 +729,9 @@
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public getSpeed(): number
 </code></pre>
-<h3 id="applytractionforce-method">applyTractionForce (method)</h3>
+<h3 id="applytraction-method">applyTraction (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">public applyTractionForce(force: number)
+<pre><code class="language-ts">public applyTraction(axle: 'front' | 'rear' | 'both', force: number)
 </code></pre>
 <h3 id="applybrake-method">applyBrake (method)</h3>
 <p><strong>Signature</strong></p>
@@ -773,10 +765,6 @@
 <h3 id="rearwheelsindices-property">rearWheelsIndices (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly rearWheelsIndices: number[]
-</code></pre>
-<h3 id="tractionwheelindices-property">tractionWheelIndices (property)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly tractionWheelIndices: number[]
 </code></pre>
 <h3 id="tractionwheelradius-property">tractionWheelRadius (property)</h3>
 <p><strong>Signature</strong></p>

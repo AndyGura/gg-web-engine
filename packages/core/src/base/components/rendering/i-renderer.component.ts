@@ -1,7 +1,7 @@
 import { Point2 } from '../../models/points';
 import { Observable } from 'rxjs';
 import { IWorldComponent } from '../i-world-component';
-import { GgWorld, VisualTypeDocRepo } from '../../gg-world';
+import { GgWorld, GgWorldTypeDocVPatch, VisualTypeDocRepo } from '../../gg-world';
 import { IEntity } from '../../entities/i-entity';
 import { IVisualSceneComponent } from './i-visual-scene.component';
 
@@ -30,16 +30,21 @@ const DEFAULT_RENDERER_OPTIONS: RendererOptions = {
 };
 
 export abstract class IRendererComponent<D, R, VTypeDoc extends VisualTypeDocRepo<D, R> = VisualTypeDocRepo<D, R>>
-  implements IWorldComponent<D, R, VTypeDoc>
+  implements IWorldComponent<D, R, GgWorldTypeDocVPatch<D, R, VTypeDoc>>
 {
   entity: IEntity | null = null;
   /** Specifies the options for the renderer. */
-  public readonly rendererOptions: RendererOptions;
+  public readonly rendererOptions: RendererOptions & Partial<VTypeDoc['rendererExtraOpts']>;
+
+  /** get flag whether renderer shows physics debugger view */
+  abstract get physicsDebugViewActive(): boolean;
+  /** turns on/off physics debugger view for this renderer */
+  abstract set physicsDebugViewActive(value: boolean);
 
   protected constructor(
     public readonly scene: IVisualSceneComponent<D, R, VTypeDoc>,
     public readonly canvas?: HTMLCanvasElement,
-    options: Partial<RendererOptions> = {},
+    options: Partial<RendererOptions & VTypeDoc['rendererExtraOpts']> = {},
   ) {
     this.rendererOptions = {
       ...DEFAULT_RENDERER_OPTIONS,
@@ -52,9 +57,9 @@ export abstract class IRendererComponent<D, R, VTypeDoc extends VisualTypeDocRep
    */
   abstract render(): void;
 
-  abstract addToWorld(world: GgWorld<D, R, VTypeDoc>): void;
+  abstract addToWorld(world: GgWorld<D, R, GgWorldTypeDocVPatch<D, R, VTypeDoc>>): void;
 
-  abstract removeFromWorld(world: GgWorld<D, R, VTypeDoc>): void;
+  abstract removeFromWorld(world: GgWorld<D, R, GgWorldTypeDocVPatch<D, R, VTypeDoc>>): void;
 
   /**
    * Resizes the renderer to the specified size.

@@ -6,20 +6,10 @@ aws s3 cp index.html s3://gg-web-engine-demos/index.html
 # example assets
 aws s3 sync ./assets s3://gg-web-engine-demos/assets --include "*" --exclude "*.blend" --cache-control max-age
 
-examples=(
-  "primitives-three-ammo"
-  "primitives-three-rapier3d"
-  "primitives-pixi-matter"
-  "primitives-pixi-rapier2d"
-  "glb-loader-three-ammo"
-  "glb-loader-three-rapier3d"
-  "fly-city-three-ammo"
-  "ammo-car-three-ammo"
-  "collision-groups-three-ammo"
-  "collision-groups-three-rapier3d"
-  "collision-groups-pool-three-ammo"
-  "collision-groups-pool-three-rapier3d"
-)
+examples=()
+while IFS= read -r line || [ -n "$line" ]; do
+  examples+=("$line")
+done < ./examples-list.txt
 for ix in ${!examples[*]}
 do
     pushd ./${examples[$ix]}/dist

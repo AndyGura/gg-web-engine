@@ -20,6 +20,7 @@ export * from './entities/controllers/input/car-keyboard-handling.controller';
 export * from './entities/controllers/input/gg-car-keyboard-handling.controller';
 export * from './entities/controllers/input/free-camera.controller';
 export * from './entities/controllers/input/orbit-camera.controller';
+export * from './entities/surface-following.entity';
 
 export * from './interfaces/i-positionable-3d';
 

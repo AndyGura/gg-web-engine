@@ -1,6 +1,6 @@
 ---
 title: core/base/entities/i-entity.ts
-nav_order: 74
+nav_order: 75
 parent: Modules
 ---
 
@@ -23,7 +23,7 @@ parent: Modules
     - [tickOrder (property)](#tickorder-property)
     - [\_world (property)](#_world-property)
     - [\_name (property)](#_name-property)
-    - [\_active (property)](#_active-property)
+    - [\_selfActive (property)](#_selfactive-property)
     - [parent (property)](#parent-property)
     - [\_onSpawned$ (property)](#_onspawned-property)
     - [\_onRemoved$ (property)](#_onremoved-property)
@@ -141,14 +141,14 @@ _world: GgWorld<
 _name: string
 ```
 
-### \_active (property)
+### \_selfActive (property)
 
 The flag whether entity should listen to ticks. If set to false, ticks will not be propagated to this entity
 
 **Signature**
 
 ```ts
-_active: boolean
+_selfActive: boolean
 ```
 
 ### parent (property)

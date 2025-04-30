@@ -1,16 +1,10 @@
-import {
-  CollisionGroup,
-  Gg3dWorld,
-  IDebugPhysicsDrawer,
-  IPhysicsWorld3dComponent,
-  Point3,
-  Point4,
-} from '@gg-web-engine/core';
+import { CollisionGroup, IPhysicsWorld3dComponent, Point3 } from '@gg-web-engine/core';
 import { EventQueue, init, Vector3, World } from '@dimforge/rapier3d-compat';
 import { Rapier3dRigidBodyComponent } from './rapier-3d-rigid-body.component';
 import { Rapier3dFactory } from '../rapier-3d-factory';
 import { Rapier3dLoader } from '../rapier-3d-loader';
 import { Rapier3dPhysicsTypeDocRepo } from '../types';
+import { Subject } from 'rxjs';
 
 export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3dPhysicsTypeDocRepo> {
   private _factory: Rapier3dFactory | null = null;
@@ -29,6 +23,10 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
     return this._loader;
   }
 
+  public readonly added$: Subject<Rapier3dRigidBodyComponent> = new Subject();
+  public readonly removed$: Subject<Rapier3dRigidBodyComponent> = new Subject();
+  public readonly children: Rapier3dRigidBodyComponent[] = [];
+
   private _gravity: Point3 = { x: 0, y: 0, z: -9.82 };
   public get gravity(): Point3 {
     return this._gravity;
@@ -43,18 +41,7 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
     }
   }
 
-  private _timeScale: number = 1;
-  public get timeScale(): number {
-    return this._timeScale;
-  }
-
-  public set timeScale(value: number) {
-    this._timeScale = value;
-  }
-
-  get physicsDebugViewActive(): boolean {
-    return false;
-  }
+  readonly mainCollisionGroup: CollisionGroup = 0;
 
   protected _nativeWorld: World | null = null;
   public get nativeWorld(): World {
@@ -74,6 +61,11 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
 
   public readonly handleIdEntityMap: Map<number, Rapier3dRigidBodyComponent> = new Map();
 
+  constructor() {
+    this.added$.subscribe(c => this.children.push(c));
+    this.removed$.subscribe(c => this.children.splice(this.children.indexOf(c), 1));
+  }
+
   async init(): Promise<void> {
     await init();
     this._eventQueue = new EventQueue(true);
@@ -83,14 +75,14 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
   }
 
   simulate(delta: number): void {
-    this._nativeWorld!.timestep = (this.timeScale * delta) / 1000;
+    this._nativeWorld!.timestep = delta / 1000;
     this._nativeWorld?.step(this.eventQueue);
   }
 
   protected lockedCollisionGroups: number[] = [];
 
   registerCollisionGroup(): CollisionGroup {
-    for (let i = 0; i < 16; i++) {
+    for (let i = 1; i < 16; i++) {
       if (!this.lockedCollisionGroups.includes(i)) {
         this.lockedCollisionGroups.push(i);
         return i;
@@ -101,16 +93,6 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
 
   deregisterCollisionGroup(group: CollisionGroup): void {
     this.lockedCollisionGroups = this.lockedCollisionGroups.filter(x => x !== group);
-  }
-
-  startDebugger(world: Gg3dWorld, drawer: IDebugPhysicsDrawer<Point3, Point4>): void {
-    // TODO
-    throw new Error('rapier-3d DebugDrawer not implemented');
-  }
-
-  stopDebugger(): void {
-    // TODO
-    throw new Error('rapier-3d DebugDrawer not implemented');
   }
 
   dispose(): void {

@@ -237,20 +237,22 @@
             physicsModule: 'ammo',
         },
         {
+            label: 'Shooter',
+            visualModule: 'three',
+            physicsModule: 'ammo',
+        },
+        {
             label: 'Fly city',
             visualModule: 'three',
             physicsModule: 'ammo',
         },
     ].map((ex) => {
         const name = `${ex.label.toLowerCase().replace(/\s/g, '-')}-${ex.visualModule}-${ex.physicsModule}`;
-        // const sbBranchSuffix = 'tree/new-examples/';
-        // const sbBranchSuffix = 'tree/main/';
-        const sbBranchSuffix = 'tree/0.0.30/';
-        // const sbBranchSuffix = 'tree/f603afc9df4a3b1a7272084858c7fcf4c9f1668e/';
+        const sbBranchSuffix = '0.0.57';
         return {
             ...ex,
             url: `https://gg-web-demos.guraklgames.com/${name}/index.html`,
-            sbUrl: `https://stackblitz.com/github/AndyGura/gg-web-engine/${sbBranchSuffix}examples/${name}`,
+            sbUrl: `https://stackblitz.com/github/AndyGura/gg-web-engine/tree/${sbBranchSuffix}/examples/${name}`,
         };
     });
     fillSelect('renderingModule', [...new Set(examples.map(x => x.visualModule))]);

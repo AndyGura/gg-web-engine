@@ -13,7 +13,7 @@ import { map } from 'rxjs/operators';
 import { GameCameraController } from './game-camera-controller';
 import { GameAudio } from './game-audio';
 import { HttpClient } from '@angular/common/http';
-import { FlyCityPTypeDoc, FlyCityVTypeDoc, FlyCityWorld } from './app.component';
+import { FlyCityTypeDoc, FlyCityWorld } from './app.component';
 
 export type CurrentState =
   { mode: 'freecamera' }
@@ -34,9 +34,9 @@ export class GameRunner {
   constructor(
     public readonly http: HttpClient,
     public readonly world: FlyCityWorld,
-    public readonly renderer: Renderer3dEntity<FlyCityVTypeDoc>,
-    public readonly cityMapGraph: MapGraph3dEntity<FlyCityVTypeDoc, FlyCityPTypeDoc>,
-    public readonly mapBounds: Trigger3dEntity<FlyCityPTypeDoc>,
+    public readonly renderer: Renderer3dEntity<FlyCityTypeDoc['vTypeDoc']>,
+    public readonly cityMapGraph: MapGraph3dEntity<FlyCityTypeDoc>,
+    public readonly mapBounds: Trigger3dEntity<FlyCityTypeDoc['pTypeDoc']>,
   ) {
     this.gameCameraController = new GameCameraController(this.world, this.renderer);
     this.state$.subscribe((state) => {

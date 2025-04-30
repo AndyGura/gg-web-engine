@@ -1,6 +1,6 @@
 ---
 title: matter/components/matter-world.component.ts
-nav_order: 101
+nav_order: 104
 parent: Modules
 ---
 
@@ -16,11 +16,13 @@ parent: Modules
     - [registerCollisionGroup (method)](#registercollisiongroup-method)
     - [deregisterCollisionGroup (method)](#deregistercollisiongroup-method)
     - [simulate (method)](#simulate-method)
-    - [startDebugger (method)](#startdebugger-method)
-    - [stopDebugger (method)](#stopdebugger-method)
     - [dispose (method)](#dispose-method)
     - [matterEngine (property)](#matterengine-property)
     - [factory (property)](#factory-property)
+    - [added$ (property)](#added-property)
+    - [removed$ (property)](#removed-property)
+    - [children (property)](#children-property)
+    - [mainCollisionGroup (property)](#maincollisiongroup-property)
 
 ---
 
@@ -31,7 +33,9 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare class MatterWorldComponent
+export declare class MatterWorldComponent {
+  constructor()
+}
 ```
 
 ### init (method)
@@ -66,22 +70,6 @@ deregisterCollisionGroup(group: CollisionGroup): void
 simulate(delta: number): void
 ```
 
-### startDebugger (method)
-
-**Signature**
-
-```ts
-startDebugger(world: Gg2dWorld, drawer: IDebugPhysicsDrawer<Point2, number>): void
-```
-
-### stopDebugger (method)
-
-**Signature**
-
-```ts
-stopDebugger(): void
-```
-
 ### dispose (method)
 
 **Signature**
@@ -104,4 +92,36 @@ matterEngine: any
 
 ```ts
 readonly factory: MatterFactory
+```
+
+### added$ (property)
+
+**Signature**
+
+```ts
+readonly added$: any
+```
+
+### removed$ (property)
+
+**Signature**
+
+```ts
+readonly removed$: any
+```
+
+### children (property)
+
+**Signature**
+
+```ts
+readonly children: MatterRigidBodyComponent[]
+```
+
+### mainCollisionGroup (property)
+
+**Signature**
+
+```ts
+readonly mainCollisionGroup: any
 ```

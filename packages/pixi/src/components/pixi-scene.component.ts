@@ -1,5 +1,5 @@
 import { IVisualScene2dComponent, RendererOptions } from '@gg-web-engine/core';
-import { Container } from 'pixi.js';
+import { Container, ApplicationOptions } from 'pixi.js';
 import { PixiFactory } from '../pixi-factory';
 import { PixiRendererComponent } from './pixi-renderer.component';
 import { PixiVisualTypeDocRepo2D } from '../types';
@@ -16,7 +16,10 @@ export class PixiSceneComponent implements IVisualScene2dComponent<PixiVisualTyp
     this._nativeContainer = new Container();
   }
 
-  createRenderer(canvas?: HTMLCanvasElement, rendererOptions?: Partial<RendererOptions>): PixiRendererComponent {
+  createRenderer(
+    canvas?: HTMLCanvasElement,
+    rendererOptions?: Partial<RendererOptions & ApplicationOptions>,
+  ): PixiRendererComponent {
     return new PixiRendererComponent(this, canvas, rendererOptions);
   }
 

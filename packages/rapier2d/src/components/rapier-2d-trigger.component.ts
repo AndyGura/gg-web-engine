@@ -1,9 +1,9 @@
-import { Observable, Subject } from 'rxjs';
+import { map, merge, Observable, Subject } from 'rxjs';
 import { ColliderDesc, RigidBodyDesc } from '@dimforge/rapier2d-compat';
 import { Rapier2dRigidBodyComponent } from './rapier-2d-rigid-body.component';
-import { Gg2dWorld, ITrigger2dComponent, VisualTypeDocRepo2D } from '@gg-web-engine/core';
+import { DebugBody2DSettings, ITrigger2dComponent, Shape2DDescriptor } from '@gg-web-engine/core';
 import { Rapier2dWorldComponent } from './rapier-2d-world.component';
-import { Rapier2dPhysicsTypeDocRepo } from '../types';
+import { Rapier2dGgWorld, Rapier2dPhysicsTypeDocRepo } from '../types';
 
 export class Rapier2dTriggerComponent
   extends Rapier2dRigidBodyComponent
@@ -20,23 +20,40 @@ export class Rapier2dTriggerComponent
   protected readonly onEnter$: Subject<Rapier2dRigidBodyComponent> = new Subject<Rapier2dRigidBodyComponent>();
   protected readonly onLeft$: Subject<Rapier2dRigidBodyComponent> = new Subject<Rapier2dRigidBodyComponent>();
 
+  readonly debugBodySettings: DebugBody2DSettings = new DebugBody2DSettings(
+    { type: 'TRIGGER', activated: () => this.intersectionsAmount > 0 },
+    this.shape,
+  );
+
+  protected intersectionsAmount = 0;
+
   constructor(
     protected readonly world: Rapier2dWorldComponent,
     protected _colliderDescr: ColliderDesc[],
+    public readonly shape: Shape2DDescriptor,
     protected _bodyDescr: RigidBodyDesc,
   ) {
-    super(world, _colliderDescr, _bodyDescr, null!);
+    super(world, _colliderDescr, shape, _bodyDescr, null!);
+    merge(this.onEnter$.pipe(map(() => true)), this.onLeft$.pipe(map(() => false))).subscribe(enter => {
+      if (enter) {
+        this.intersectionsAmount++;
+      } else {
+        this.intersectionsAmount--;
+      }
+    });
   }
 
-  addToWorld(world: Gg2dWorld<VisualTypeDocRepo2D, Rapier2dPhysicsTypeDocRepo>): void {
+  addToWorld(world: Rapier2dGgWorld): void {
     if (world.physicsWorld != this.world) {
       throw new Error('Rapier2D bodies cannot be shared between different worlds');
     }
+    this.intersectionsAmount = 0;
     this._nativeBody = this.world.nativeWorld!.createRigidBody(this._bodyDescr);
     this._nativeBodyColliders = this._colliderDescr.map(c =>
       this.world.nativeWorld!.createCollider(c, this._nativeBody!),
     );
     this.world.handleIdEntityMap.set(this._nativeBody!.handle, this);
+    this.world.added$.next(this);
   }
 
   checkOverlaps(): void {
@@ -53,7 +70,10 @@ export class Rapier2dTriggerComponent
   }
 
   clone(): Rapier2dTriggerComponent {
-    const [colliderDescr, bd] = super.factoryProps;
-    return new Rapier2dTriggerComponent(this.world, colliderDescr, bd);
+    const [colliderDescr, sd, bd] = super.factoryProps;
+    const component = new Rapier2dTriggerComponent(this.world, colliderDescr, sd, bd);
+    component.ownCollisionGroups = this.ownCollisionGroups;
+    component.interactWithCollisionGroups = this.interactWithCollisionGroups;
+    return component;
   }
 }

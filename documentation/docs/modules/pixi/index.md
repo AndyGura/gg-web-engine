@@ -8,3 +8,4 @@ has_children: true
 - [pixi/components](/gg-web-engine/modules/pixi/components)
 - [pixi/pixi-factory.ts](/gg-web-engine/modules/pixi/pixi-factory.ts)
 - [pixi/types.ts](/gg-web-engine/modules/pixi/types.ts)
+- [pixi/utils](/gg-web-engine/modules/pixi/utils)

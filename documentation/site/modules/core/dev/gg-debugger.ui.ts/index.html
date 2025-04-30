@@ -535,6 +535,48 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#makesnapshot-method" class="md-nav__link">
+    makeSnapshot (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#makeperformancestatssnapshot-method" class="md-nav__link">
+    makePerformanceStatsSnapshot (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rendercontrols-method" class="md-nav__link">
+    renderControls (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#renderperformancestats-method" class="md-nav__link">
+    renderPerformanceStats (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#perfstatsmode-property" class="md-nav__link">
+    perfStatsMode (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#css-property" class="md-nav__link">
+    css (property)
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -572,6 +614,12 @@
 <li><a href="#ggdebuggerui-class">GgDebuggerUI (class)</a><ul>
 <li><a href="#setshowstats-method">setShowStats (method)</a></li>
 <li><a href="#setshowdebugcontrols-method">setShowDebugControls (method)</a></li>
+<li><a href="#makesnapshot-method">makeSnapshot (method)</a></li>
+<li><a href="#makeperformancestatssnapshot-method">makePerformanceStatsSnapshot (method)</a></li>
+<li><a href="#rendercontrols-method">renderControls (method)</a></li>
+<li><a href="#renderperformancestats-method">renderPerformanceStats (method)</a></li>
+<li><a href="#perfstatsmode-property">perfStatsMode (property)</a></li>
+<li><a href="#css-property">css (property)</a></li>
 </ul>
 </li>
 </ul>
@@ -583,11 +631,35 @@
 </code></pre>
 <h3 id="setshowstats-method">setShowStats (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">public setShowStats(selectedWorld: GgWorld&lt;any, any&gt;, value: boolean)
+<pre><code class="language-ts">public setShowStats(selectedWorld: GgWorld&lt;any, any&gt; | null, value: boolean)
 </code></pre>
 <h3 id="setshowdebugcontrols-method">setShowDebugControls (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">public setShowDebugControls(selectedWorld: GgWorld&lt;any, any&gt;, value: boolean)
+<pre><code class="language-ts">public setShowDebugControls(selectedWorld: GgWorld&lt;any, any&gt; | null, value: boolean)
+</code></pre>
+<h3 id="makesnapshot-method">makeSnapshot (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private makeSnapshot(): RuntimeDataSnapshot
+</code></pre>
+<h3 id="makeperformancestatssnapshot-method">makePerformanceStatsSnapshot (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private makePerformanceStatsSnapshot(): PerformanceStatsSnapshot
+</code></pre>
+<h3 id="rendercontrols-method">renderControls (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private renderControls(debugControlsContainer: HTMLDivElement)
+</code></pre>
+<h3 id="renderperformancestats-method">renderPerformanceStats (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private renderPerformanceStats()
+</code></pre>
+<h3 id="perfstatsmode-property">perfStatsMode (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">perfStatsMode: 'AVG' | 'PEAK'
+</code></pre>
+<h3 id="css-property">css (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">css: string
 </code></pre>
 
 

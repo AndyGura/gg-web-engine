@@ -1,6 +1,6 @@
 ---
 title: pixi/components/pixi-display-object.component.ts
-nav_order: 104
+nav_order: 107
 parent: Modules
 ---
 
@@ -32,7 +32,7 @@ parent: Modules
 
 ```ts
 export declare class PixiDisplayObjectComponent {
-  constructor(public nativeSprite: DisplayObject)
+  constructor(public nativeSprite: Container)
 }
 ```
 

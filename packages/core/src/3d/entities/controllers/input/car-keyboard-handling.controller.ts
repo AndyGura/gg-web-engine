@@ -1,4 +1,4 @@
-import { combineLatest, Observable, Subject, takeUntil } from 'rxjs';
+import { combineLatest, filter, Observable, Subject, takeUntil } from 'rxjs';
 import {
   DirectionKeyboardInput,
   DirectionKeyboardKeymap,
@@ -17,7 +17,7 @@ export type CarHandlingOutput = { upDown: number; leftRight: number };
 export class CarKeyboardHandlingController extends IEntity {
   public readonly tickOrder = TickOrder.INPUT_CONTROLLERS;
 
-  protected readonly directionsInput: DirectionKeyboardInput;
+  public readonly directionsInput: DirectionKeyboardInput;
 
   private _output$: Subject<CarHandlingOutput> = new Subject<CarHandlingOutput>();
   public get output$(): Observable<CarHandlingOutput> {
@@ -39,7 +39,10 @@ export class CarKeyboardHandlingController extends IEntity {
     super.onSpawned(world);
     let input: CarHandlingOutput = { upDown: 0, leftRight: 0 };
     combineLatest([this.directionsInput.output$, this.tick$])
-      .pipe(takeUntil(this._onRemoved$))
+      .pipe(
+        filter(() => this.active),
+        takeUntil(this._onRemoved$),
+      )
       .subscribe(([d, [_, dt]]) => {
         const direction: CarHandlingOutput = { upDown: 0, leftRight: 0 };
         if (d.leftRight !== undefined) direction.leftRight = d.leftRight ? 1 : -1;

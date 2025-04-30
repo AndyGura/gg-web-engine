@@ -13,15 +13,20 @@ parent: Modules
 - [utils](#utils)
   - [Pnt3 (class)](#pnt3-class)
     - [clone (static method)](#clone-static-method)
+    - [spr (static method)](#spr-static-method)
+    - [neg (static method)](#neg-static-method)
     - [add (static method)](#add-static-method)
     - [sub (static method)](#sub-static-method)
+    - [scale (static method)](#scale-static-method)
     - [avg (static method)](#avg-static-method)
+    - [round (static method)](#round-static-method)
     - [lenSq (static method)](#lensq-static-method)
     - [len (static method)](#len-static-method)
     - [dist (static method)](#dist-static-method)
     - [cross (static method)](#cross-static-method)
     - [norm (static method)](#norm-static-method)
     - [scalarMult (static method)](#scalarmult-static-method)
+    - [dot (static method)](#dot-static-method)
     - [lerp (static method)](#lerp-static-method)
     - [angle (static method)](#angle-static-method)
     - [rot (static method)](#rot-static-method)
@@ -51,6 +56,26 @@ clone point
 static clone(p: Point3): Point3
 ```
 
+### spr (static method)
+
+spread point components
+
+**Signature**
+
+```ts
+static spr(p: Point3): [number, number, number]
+```
+
+### neg (static method)
+
+get negation of the point
+
+**Signature**
+
+```ts
+static neg(p: Point3): Point3
+```
+
 ### add (static method)
 
 add point b to point a
@@ -71,6 +96,16 @@ subtract point b from point a
 static sub(a: Point3, b: Point3): Point3
 ```
 
+### scale (static method)
+
+scale point b by point. The result is the point, where each component is a product of appropriate components of input points
+
+**Signature**
+
+```ts
+static scale(a: Point3, s: Point3): Point3
+```
+
 ### avg (static method)
 
 average point between a and b
@@ -79,6 +114,16 @@ average point between a and b
 
 ```ts
 static avg(a: Point3, b: Point3): Point3
+```
+
+### round (static method)
+
+round point components
+
+**Signature**
+
+```ts
+static round(p: Point3): Point3
 ```
 
 ### lenSq (static method)
@@ -139,6 +184,16 @@ scalar multiplication
 
 ```ts
 static scalarMult(p: Point3, m: number): Point3
+```
+
+### dot (static method)
+
+dot multiplication
+
+**Signature**
+
+```ts
+static dot(a: Point3, b: Point3): number
 ```
 
 ### lerp (static method)

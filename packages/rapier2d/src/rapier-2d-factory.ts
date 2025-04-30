@@ -25,12 +25,13 @@ export class Rapier2dFactory implements IPhysicsBody2dComponentFactory<Rapier2dP
     return new Rapier2dRigidBodyComponent(
       this.world,
       this.createColliderDescr(descriptor.shape),
+      descriptor.shape,
       this.createRigidBodyDescr(descriptor.body, transform),
       {
         friction: 0.5,
         restitution: 0.1,
-        ownCollisionGroups: 'all',
-        interactWithCollisionGroups: 'all',
+        ownCollisionGroups: [this.world.mainCollisionGroup],
+        interactWithCollisionGroups: [this.world.mainCollisionGroup],
         ...descriptor.body,
       },
     );
@@ -51,6 +52,7 @@ export class Rapier2dFactory implements IPhysicsBody2dComponentFactory<Rapier2dP
     return new Rapier2dTriggerComponent(
       this.world,
       colliderDescr,
+      descriptor,
       this.createRigidBodyDescr({ dynamic: false }, transform),
     );
   }

@@ -1,6 +1,6 @@
 ---
 title: pixi/components/pixi-scene.component.ts
-nav_order: 106
+nav_order: 110
 parent: Modules
 ---
 
@@ -42,7 +42,10 @@ async init(): Promise<void>
 **Signature**
 
 ```ts
-createRenderer(canvas?: HTMLCanvasElement, rendererOptions?: Partial<RendererOptions>): PixiRendererComponent
+createRenderer(
+    canvas?: HTMLCanvasElement,
+    rendererOptions?: Partial<RendererOptions & ApplicationOptions>,
+  ): PixiRendererComponent
 ```
 
 ### dispose (method)

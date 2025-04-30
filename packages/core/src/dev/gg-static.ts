@@ -1,14 +1,25 @@
-import { GgWorld } from '../base';
+import { GgWorld, KeyboardInput } from '../base';
 import { GgConsoleUI } from './gg-console.ui';
 import { GgDebuggerUI } from './gg-debugger.ui';
+import {
+  BehaviorSubject,
+  combineLatest,
+  filter,
+  fromEvent,
+  NEVER,
+  Subject,
+  switchMap,
+  take,
+  takeUntil,
+  takeWhile,
+} from 'rxjs';
 
 export class GgStatic {
-  private static _instance: GgStatic;
   public static get instance(): GgStatic {
-    if (!GgStatic._instance) {
-      GgStatic._instance = new GgStatic();
+    if (!(window as any).ggstatic) {
+      return new GgStatic();
     }
-    return GgStatic._instance;
+    return (window as any).ggstatic as GgStatic;
   }
 
   private readonly debuggerUI: GgDebuggerUI = new GgDebuggerUI();
@@ -45,31 +56,66 @@ export class GgStatic {
     }
   }
 
+  public toggleDevConsole(value: boolean) {
+    if (value === this.consoleUI.isUIShown) return;
+    if (this.consoleUI.isUIShown) {
+      this.consoleUI.destroyUI();
+    } else {
+      this.consoleUI.createUI();
+    }
+  }
+
+  private showStats$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
+
   public get showStats(): boolean {
-    return this.debuggerUI.showStats;
+    return this.showStats$.getValue();
   }
 
   public set showStats(value: boolean) {
-    this.debuggerUI.setShowStats(this.selectedWorld!, value);
+    if (value === this.showStats) return;
+    this.showStats$.next(value);
   }
 
+  private showDebugControls$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
+
   public get showDebugControls(): boolean {
-    return this.debuggerUI.showDebugControls;
+    return this.showDebugControls$.getValue();
   }
 
   public set showDebugControls(value: boolean) {
-    this.debuggerUI.setShowDebugControls(this.selectedWorld!, value);
+    if (value === this.showDebugControls) return;
+    this.showDebugControls$.next(value);
   }
 
-  private _selectedWorld: GgWorld<any, any> | null = null;
+  private _selectedWorld$: BehaviorSubject<GgWorld<any, any> | null> = new BehaviorSubject<GgWorld<any, any> | null>(
+    null,
+  );
+
   public get selectedWorld(): GgWorld<any, any> | null {
-    return this._selectedWorld || GgWorld.documentWorlds[0] || null;
+    return this._selectedWorld$.getValue();
+  }
+
+  private set selectedWorld(w: GgWorld<any, any> | null) {
+    this._selectedWorld$.next(w);
+  }
+
+  private autoAssignSelectedWorld() {
+    if (GgWorld.documentWorlds.length > 0) {
+      this.selectedWorld = GgWorld.documentWorlds[0];
+    } else {
+      GgWorld.worldCreated$
+        .pipe(
+          takeWhile(() => !this.selectedWorld),
+          take(1),
+        )
+        .subscribe(w => (this.selectedWorld = w));
+    }
   }
 
   public get availableCommands(): [string, { handler: (...args: string[]) => Promise<string>; doc?: string }][] {
     let commands = this.consoleCommands.get(null) || {};
     if (this.selectedWorld) {
-      commands = { ...(this.consoleCommands.get(this.selectedWorld) || {}), ...commands };
+      commands = { ...commands, ...(this.consoleCommands.get(this.selectedWorld) || {}) };
     }
     return Object.entries(commands);
   }
@@ -77,44 +123,129 @@ export class GgStatic {
   private constructor() {
     this.registerConsoleCommand(
       null,
-      'ls_commands',
+      'commands',
       async () => {
         return this.availableCommands
           .map(
             ([key, value]) =>
-              `<span style="color:yellow">${key}</span>${
+              `<span style='color:yellow'>${key}</span>${
                 value.doc ? '\t<span style="color:#aaa">// ' + value.doc + '</span>' : ''
               }`,
           )
-          .sort()
           .join('\n\n');
       },
-      'no args; print all available commands',
+      'no args; Print all available commands. List includes global commands and commands, ' +
+        'specific to currently selected world. Run "world" to check which world is currently ' +
+        'selected and "world {world_name}" to select desired world',
     );
     this.registerConsoleCommand(
       null,
-      'ls_worlds',
+      'help',
+      async (keyword: string) => {
+        const command: { doc?: string } | undefined = this.availableCommands.find(([key]) => key === keyword)?.[1];
+        if (!command) {
+          throw new Error(`Unrecognized command: ${keyword}`);
+        }
+        return `<span style='color:#aaa'>${command.doc || 'No doc string given'}</span>`;
+      },
+      'args: [ string ]; Print doc string of provided command',
+    );
+    this.registerConsoleCommand(
+      null,
+      'worlds',
       async () => {
         return GgWorld.documentWorlds
-          .map(w => (w === this.selectedWorld ? `<span style="color:green;">* ${w.name}</span>` : `  ${w.name}`))
+          .map(w => (w === this.selectedWorld ? `<span style='color:lightgreen;'>* ${w.name}</span>` : `  ${w.name}`))
           .join('\n');
       },
-      'no args; print all available worlds',
+      'no args; Print all currently available worlds',
     );
     this.registerConsoleCommand(
       null,
-      'select_world',
+      'world',
       async (...args: string[]) => {
         for (const w of GgWorld.documentWorlds) {
           if (w.name === args[0]) {
-            this._selectedWorld = w;
+            this.selectedWorld = w;
             break;
           }
         }
         return this.selectedWorld?.name || 'null';
       },
-      'args: [string]; select world by name',
+      'args: [ string? ]; Get name of selected world or select world by name. Use ' +
+        '"worlds" to get list of currently available worlds',
     );
+    this.registerConsoleCommand(
+      null,
+      'stats_panel',
+      async (...args: string[]) => {
+        this.showStats = args[0] === undefined ? !this.showStats : args[0] === '1';
+        return this.showStats ? '1' : '0';
+      },
+      'args: [ 0|1? ]; Turn on/off stats panel, skip argument to toggle value',
+    );
+    this.registerConsoleCommand(
+      null,
+      'debug_panel',
+      async (...args: string[]) => {
+        this.showDebugControls = args[0] === undefined ? !this.showDebugControls : args[0] === '1';
+        return this.showDebugControls ? '1' : '0';
+      },
+      'args: [ 0|1? ]; Turn on/off debug panel, skip argument to toggle value',
+    );
+    let unbindKey$: Subject<string> = new Subject<string>();
+    this.registerConsoleCommand(
+      null,
+      'bind_key',
+      async (keyCode: string, command: string, ...args: string[]) => {
+        fromEvent(window, 'keydown')
+          .pipe(
+            takeUntil(unbindKey$.pipe(filter(x => x === keyCode))),
+            filter(e => {
+              if ((e as KeyboardEvent).code !== keyCode) {
+                return false;
+              }
+              if (document.activeElement) {
+                for (const k of KeyboardInput.externalFocusBlacklist) {
+                  if (document.activeElement instanceof k) {
+                    return false;
+                  }
+                }
+              }
+              return true;
+            }),
+          )
+          .subscribe(() => {
+            this.runConsoleCommand(command, args);
+          });
+        return 'Ok';
+      },
+      'args: [ string, ...string ]; Bind a keyboard key by code to console command. Check key codes' +
+        ' <a target="_blank" rel="noopener noreferrer" href="https://www.toptal.com/developers/keycode">here</a>. Use "unbind_key" command to unbind it',
+    );
+    this.registerConsoleCommand(
+      null,
+      'unbind_key',
+      async (...args: string[]) => {
+        unbindKey$.next(args[0]);
+        return 'Ok';
+      },
+      'args: [ string ]; Unbind a keyboard key from console command',
+    );
+    (window as any).ggstatic = this;
+    this.autoAssignSelectedWorld();
+    this._selectedWorld$.pipe(switchMap(w => (w ? w.disposed$ : NEVER))).subscribe(() => {
+      this.selectedWorld = null;
+      this.autoAssignSelectedWorld();
+    });
+    window.dispatchEvent(new Event('ggstatic_added'));
+
+    combineLatest([this._selectedWorld$, this.showDebugControls$]).subscribe(([world, showControls]) => {
+      this.debuggerUI.setShowDebugControls(world, !!world && showControls);
+    });
+    combineLatest([this._selectedWorld$, this.showStats$]).subscribe(([world, showStats]) => {
+      this.debuggerUI.setShowStats(world, !!world && showStats);
+    });
   }
 
   protected consoleCommands: Map<
@@ -158,15 +289,13 @@ export class GgStatic {
     if (!action) {
       action = (this.consoleCommands.get(this.selectedWorld) || {})[command];
       if (!action) {
-        return `<span style="color:red">Unrecognized command: ${command}</span>`;
+        return `<span style='color:red'>Unrecognized command: ${command}</span>`;
       }
     }
     try {
       return await action.handler(...args);
     } catch (err) {
-      return `<span style="color:red">${err}</span>`;
+      return `<span style='color:red'>${err}</span>`;
     }
   }
 }
-
-(window as any).ggstatic = GgStatic.instance;

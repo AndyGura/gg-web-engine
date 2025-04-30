@@ -1,21 +1,16 @@
-import { Gg3dWorld, GgStatic, OrbitCameraController } from '@gg-web-engine/core';
-import { interval } from 'rxjs';
-import { ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
+import { Gg3dWorld, GgStatic, OrbitCameraController, TypedGg3dWorld } from '@gg-web-engine/core';
+import { ThreeGgWorld, ThreeSceneComponent } from '@gg-web-engine/three';
 import { AmbientLight, DirectionalLight } from 'three';
-import { Rapier3dPhysicsTypeDocRepo, Rapier3dWorldComponent } from '@gg-web-engine/rapier3d';
+import { Rapier3dGgWorld, Rapier3dWorldComponent } from '@gg-web-engine/rapier3d';
 
-const world = new Gg3dWorld<
-  ThreeVisualTypeDocRepo,
-  Rapier3dPhysicsTypeDocRepo,
-  ThreeSceneComponent,
-  Rapier3dWorldComponent
->(
-  new ThreeSceneComponent(),
-  new Rapier3dWorldComponent(),
-);
+GgStatic.instance.showStats = true;
+GgStatic.instance.devConsoleEnabled = true;
+
+const world: TypedGg3dWorld<ThreeGgWorld, Rapier3dGgWorld> = new Gg3dWorld({
+  visualScene: new ThreeSceneComponent(),
+  physicsWorld: new Rapier3dWorldComponent(),
+});
 world.init().then(async () => {
-  GgStatic.instance.showStats = true;
-  // GgStatic.instance.devConsoleEnabled = true;
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
   const renderer = world.addRenderer(world.visualScene.factory.createPerspectiveCamera(), canvas);
   renderer.position = { x: 9, y: 12, z: 9 };
@@ -54,7 +49,9 @@ world.init().then(async () => {
     world.addEntity(item);
   }
 
-  interval(500).subscribe(async () => {
+  const spawnTimer = world.createClock(true);
+  spawnTimer.tickRateLimit = 2;
+  spawnTimer.tick$.subscribe(async () => {
     const itemTypeRand = Math.random();
     let glbId = '';
     if (itemTypeRand < 1 / 7) {

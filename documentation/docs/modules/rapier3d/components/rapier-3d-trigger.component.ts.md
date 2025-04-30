@@ -1,6 +1,6 @@
 ---
 title: rapier3d/components/rapier-3d-trigger.component.ts
-nav_order: 117
+nav_order: 122
 parent: Modules
 ---
 
@@ -17,6 +17,8 @@ parent: Modules
     - [clone (method)](#clone-method)
     - [onEnter$ (property)](#onenter-property)
     - [onLeft$ (property)](#onleft-property)
+    - [debugBodySettings (property)](#debugbodysettings-property)
+    - [intersectionsAmount (property)](#intersectionsamount-property)
 
 ---
 
@@ -31,6 +33,7 @@ export declare class Rapier3dTriggerComponent {
   constructor(
     protected readonly world: Rapier3dWorldComponent,
     protected _colliderDescr: ColliderDesc[],
+    public readonly shape: Shape3DDescriptor,
     protected _bodyDescr: RigidBodyDesc
   )
 }
@@ -74,4 +77,20 @@ readonly onEnter$: any
 
 ```ts
 readonly onLeft$: any
+```
+
+### debugBodySettings (property)
+
+**Signature**
+
+```ts
+readonly debugBodySettings: any
+```
+
+### intersectionsAmount (property)
+
+**Signature**
+
+```ts
+intersectionsAmount: number
 ```

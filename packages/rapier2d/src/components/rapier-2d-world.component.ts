@@ -1,15 +1,9 @@
-import {
-  CollisionGroup,
-  Gg2dWorld,
-  IDebugPhysicsDrawer,
-  IPhysicsWorld2dComponent,
-  Pnt2,
-  Point2,
-} from '@gg-web-engine/core';
+import { CollisionGroup, IPhysicsWorld2dComponent, Pnt2, Point2 } from '@gg-web-engine/core';
 import { EventQueue, init, Vector2, World } from '@dimforge/rapier2d-compat';
 import { Rapier2dRigidBodyComponent } from './rapier-2d-rigid-body.component';
 import { Rapier2dFactory } from '../rapier-2d-factory';
 import { Rapier2dPhysicsTypeDocRepo } from '../types';
+import { Subject } from 'rxjs';
 
 export class Rapier2dWorldComponent implements IPhysicsWorld2dComponent<Rapier2dPhysicsTypeDocRepo> {
   private _factory: Rapier2dFactory | null = null;
@@ -19,6 +13,10 @@ export class Rapier2dWorldComponent implements IPhysicsWorld2dComponent<Rapier2d
     }
     return this._factory;
   }
+
+  public readonly added$: Subject<Rapier2dRigidBodyComponent> = new Subject();
+  public readonly removed$: Subject<Rapier2dRigidBodyComponent> = new Subject();
+  public readonly children: Rapier2dRigidBodyComponent[] = [];
 
   private readonly unitScale: number = 100; // TODO abstractize somehow, hardcoded now
   private _gravity: Point2 = Pnt2.scalarMult({ x: 0, y: 9.82 }, this.unitScale);
@@ -34,18 +32,7 @@ export class Rapier2dWorldComponent implements IPhysicsWorld2dComponent<Rapier2d
     }
   }
 
-  private _timeScale: number = 1;
-  public get timeScale(): number {
-    return this._timeScale;
-  }
-
-  public set timeScale(value: number) {
-    this._timeScale = value;
-  }
-
-  get physicsDebugViewActive(): boolean {
-    return false;
-  }
+  readonly mainCollisionGroup: CollisionGroup = 0;
 
   protected _nativeWorld: World | null = null;
   public get nativeWorld(): World {
@@ -65,6 +52,11 @@ export class Rapier2dWorldComponent implements IPhysicsWorld2dComponent<Rapier2d
 
   public readonly handleIdEntityMap: Map<number, Rapier2dRigidBodyComponent> = new Map();
 
+  constructor() {
+    this.added$.subscribe(c => this.children.push(c));
+    this.removed$.subscribe(c => this.children.splice(this.children.indexOf(c), 1));
+  }
+
   async init(): Promise<void> {
     await init();
     this._eventQueue = new EventQueue(true);
@@ -73,14 +65,14 @@ export class Rapier2dWorldComponent implements IPhysicsWorld2dComponent<Rapier2d
   }
 
   simulate(delta: number): void {
-    this._nativeWorld!.timestep = (this.timeScale * delta) / 1000;
+    this._nativeWorld!.timestep = delta / 1000;
     this._nativeWorld?.step(this.eventQueue);
   }
 
   protected lockedCollisionGroups: number[] = [];
 
   registerCollisionGroup(): CollisionGroup {
-    for (let i = 0; i < 16; i++) {
+    for (let i = 1; i < 16; i++) {
       if (!this.lockedCollisionGroups.includes(i)) {
         this.lockedCollisionGroups.push(i);
         return i;
@@ -91,16 +83,6 @@ export class Rapier2dWorldComponent implements IPhysicsWorld2dComponent<Rapier2d
 
   deregisterCollisionGroup(group: CollisionGroup): void {
     this.lockedCollisionGroups = this.lockedCollisionGroups.filter(x => x !== group);
-  }
-
-  startDebugger(world: Gg2dWorld, drawer: IDebugPhysicsDrawer<Point2, number>): void {
-    // TODO
-    throw new Error('rapier-2d DebugDrawer not implemented');
-  }
-
-  stopDebugger(): void {
-    // TODO
-    throw new Error('rapier-2d DebugDrawer not implemented');
   }
 
   dispose(): void {

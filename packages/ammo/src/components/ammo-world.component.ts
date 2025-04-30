@@ -1,17 +1,11 @@
-import {
-  CollisionGroup,
-  Gg3dWorld,
-  IDebugPhysicsDrawer,
-  IPhysicsWorld3dComponent,
-  Point3,
-  Point4,
-  VisualTypeDocRepo3D,
-} from '@gg-web-engine/core';
+import { CollisionGroup, IPhysicsWorld3dComponent, Point3 } from '@gg-web-engine/core';
+import { Subject } from 'rxjs';
 import Ammo from '../ammo.js/ammo';
 import { AmmoFactory } from '../ammo-factory';
 import { AmmoLoader } from '../ammo-loader';
-import { AmmoDebugger, AmmoDebugMode } from '../ammo-debugger';
 import { AmmoPhysicsTypeDocRepo } from '../types';
+import { AmmoRigidBodyComponent } from './ammo-rigid-body.component';
+import { AmmoTriggerComponent } from './ammo-trigger.component';
 
 export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsTypeDocRepo> {
   private _factory: AmmoFactory | null = null;
@@ -21,6 +15,11 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
     }
     return this._factory;
   }
+
+  public readonly afterTick$: Subject<void> = new Subject<void>();
+  public readonly added$: Subject<AmmoRigidBodyComponent | AmmoTriggerComponent> = new Subject();
+  public readonly removed$: Subject<AmmoRigidBodyComponent | AmmoTriggerComponent> = new Subject();
+  public readonly children: (AmmoRigidBodyComponent | AmmoTriggerComponent)[] = [];
 
   private _loader: AmmoLoader | null = null;
   public get loader(): AmmoLoader {
@@ -43,21 +42,10 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
     }
   }
 
-  private _timeScale: number = 1;
-  public get timeScale(): number {
-    return this._timeScale;
-  }
+  readonly mainCollisionGroup: CollisionGroup = 0;
 
-  public set timeScale(value: number) {
-    this._timeScale = value;
-  }
-
-  private _debugger: AmmoDebugger | null = null;
-  private _debugDrawer: IDebugPhysicsDrawer<Point3, Point4> | null = null;
-
-  get physicsDebugViewActive(): boolean {
-    return !!this._debugger;
-  }
+  public maxSubSteps?: number = 100;
+  public fixedTimeStep?: number = 0.01;
 
   public get dynamicAmmoWorld(): Ammo.btDiscreteDynamicsWorld | undefined {
     return this._dynamicAmmoWorld;
@@ -70,6 +58,11 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
   private solver: Ammo.btSequentialImpulseConstraintSolver | undefined;
   private gravityVector: Ammo.btVector3 | undefined;
   protected _dynamicAmmoWorld: Ammo.btDiscreteDynamicsWorld | undefined;
+
+  constructor() {
+    this.added$.subscribe(c => this.children.push(c));
+    this.removed$.subscribe(c => this.children.splice(this.children.indexOf(c), 1));
+  }
 
   async init(): Promise<void> {
     await Ammo.bind(Ammo)(Ammo);
@@ -96,16 +89,18 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
   }
 
   simulate(delta: number): void {
-    this._dynamicAmmoWorld?.stepSimulation((this._timeScale * delta) / 1000, 100, this._timeScale * 0.01);
-    if (this._debugger) {
-      this._debugger.update();
-    }
+    this._dynamicAmmoWorld?.stepSimulation(
+      delta / 1000,
+      this.maxSubSteps || undefined,
+      this.fixedTimeStep || undefined,
+    );
+    this.afterTick$.next();
   }
 
   protected lockedCollisionGroups: number[] = [];
 
   registerCollisionGroup(): CollisionGroup {
-    for (let i = 0; i < 16; i++) {
+    for (let i = 1; i < 16; i++) {
       if (!this.lockedCollisionGroups.includes(i)) {
         this.lockedCollisionGroups.push(i);
         return i;
@@ -118,41 +113,13 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
     this.lockedCollisionGroups = this.lockedCollisionGroups.filter(x => x !== group);
   }
 
-  startDebugger(
-    world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>,
-    drawer: IDebugPhysicsDrawer<Point3, Point4>,
-  ): void {
-    if (!this._debugger) {
-      this._debugger = new AmmoDebugger(this, drawer);
-      this.dynamicAmmoWorld?.setDebugDrawer(this._debugger.ammoInstance);
-    }
-    this._debugger!.setDebugMode(AmmoDebugMode.DrawWireframe);
-    this._debugDrawer = drawer;
-    this._debugDrawer.addToWorld(world);
-  }
-
-  stopDebugger(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>): void {
-    if (this._debugger) {
-      this.dynamicAmmoWorld?.setDebugDrawer(null!);
-      Ammo.destroy(this._debugger.ammoInstance);
-      this._debugger = null;
-    }
-    if (this._debugDrawer) {
-      this._debugDrawer!.removeFromWorld(world);
-      this._debugDrawer!.dispose();
-      this._debugDrawer = null;
-    }
-  }
-
   dispose(): void {
+    this.afterTick$.complete();
     Ammo.destroy(this._dynamicAmmoWorld);
     Ammo.destroy(this.solver);
     Ammo.destroy(this.broadphase);
     Ammo.destroy(this.dispatcher);
     Ammo.destroy(this.collisionConfiguration);
-    if (this._debugger) {
-      Ammo.destroy(this._debugger.ammoInstance);
-    }
     this._dynamicAmmoWorld = this.solver = this.broadphase = this.dispatcher = this.collisionConfiguration = undefined;
   }
 }

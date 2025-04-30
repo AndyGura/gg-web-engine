@@ -1,17 +1,17 @@
-import { GgWorld } from '../../src/base/gg-world';
-import { Entity2d } from '../../src';
+import { Entity2d, GgWorld } from '../../src';
 
 export class MockWorld extends GgWorld<any, any> {
   constructor() {
-    super(
-      {
+    super({
+      visualScene: {
         dispose: () => {
         },
       } as any,
-      {
+      physicsWorld: {
         dispose: () => {
         },
-      } as any);
+      } as any,
+    });
   }
 
   addPrimitiveRigidBody(descr: any, position: any, rotation: any): Entity2d {

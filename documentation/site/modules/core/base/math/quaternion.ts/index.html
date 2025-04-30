@@ -529,6 +529,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#spr-static-method" class="md-nav__link">
+    spr (static method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#add-static-method" class="md-nav__link">
     add (static method)
   </a>
@@ -587,6 +594,13 @@
           <li class="md-nav__item">
   <a href="#frommatrix4-static-method" class="md-nav__link">
     fromMatrix4 (static method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#frommatrix3-static-method" class="md-nav__link">
+    fromMatrix3 (static method)
   </a>
   
 </li>
@@ -655,6 +669,7 @@
 <li><a href="#utils">utils</a></li>
 <li><a href="#qtrn-class">Qtrn (class)</a><ul>
 <li><a href="#clone-static-method">clone (static method)</a></li>
+<li><a href="#spr-static-method">spr (static method)</a></li>
 <li><a href="#add-static-method">add (static method)</a></li>
 <li><a href="#mult-static-method">mult (static method)</a></li>
 <li><a href="#conjugate-static-method">conjugate (static method)</a></li>
@@ -664,6 +679,7 @@
 <li><a href="#slerp-static-method">slerp (static method)</a></li>
 <li><a href="#fromangle-static-method">fromAngle (static method)</a></li>
 <li><a href="#frommatrix4-static-method">fromMatrix4 (static method)</a></li>
+<li><a href="#frommatrix3-static-method">fromMatrix3 (static method)</a></li>
 <li><a href="#fromeuler-static-method">fromEuler (static method)</a></li>
 <li><a href="#toeuler-static-method">toEuler (static method)</a></li>
 <li><a href="#lookat-static-method">lookAt (static method)</a></li>
@@ -689,6 +705,11 @@ Euler angles (such as gimbal lock).</p>
 <p>Returns a new quaternion instance with the same values as the given quaternion object.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">static clone(q: Point4): Point4
+</code></pre>
+<h3 id="spr-static-method">spr (static method)</h3>
+<p>spread quaternion components</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">static spr(p: Point4): [number, number, number, number]
 </code></pre>
 <h3 id="add-static-method">add (static method)</h3>
 <p>Returns the sum of two Point4 objects.</p>
@@ -736,6 +757,11 @@ It's obtained by negating all quaternion elements(x, y, z and w).</p>
 <p>Converts a 4x4 matrix representing a rotation into a quaternion</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">static fromMatrix4(m: number[]): Point4
+</code></pre>
+<h3 id="frommatrix3-static-method">fromMatrix3 (static method)</h3>
+<p>Converts a 3x3 rotation matrix into a quaternion</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">static fromMatrix3(m: number[][]): Point4
 </code></pre>
 <h3 id="fromeuler-static-method">fromEuler (static method)</h3>
 <p>Creates a quaternion from euler</p>

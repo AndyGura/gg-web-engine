@@ -18,6 +18,7 @@ parent: Modules
     - [refreshCG (method)](#refreshcg-method)
     - [resetMotion (method)](#resetmotion-method)
     - [entity (property)](#entity-property)
+    - [debugBodySettings (property)](#debugbodysettings-property)
 
 ---
 
@@ -29,7 +30,11 @@ parent: Modules
 
 ```ts
 export declare class AmmoRigidBodyComponent {
-  constructor(protected readonly world: AmmoWorldComponent, protected _nativeBody: Ammo.btRigidBody)
+  constructor(
+    protected readonly world: AmmoWorldComponent,
+    protected _nativeBody: Ammo.btRigidBody,
+    public readonly shape: Shape3DDescriptor
+  )
 }
 ```
 
@@ -79,4 +84,12 @@ resetMotion(): void
 
 ```ts
 entity: any
+```
+
+### debugBodySettings (property)
+
+**Signature**
+
+```ts
+readonly debugBodySettings: any
 ```

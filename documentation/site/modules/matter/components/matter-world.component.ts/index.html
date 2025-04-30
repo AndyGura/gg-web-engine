@@ -550,20 +550,6 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#startdebugger-method" class="md-nav__link">
-    startDebugger (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#stopdebugger-method" class="md-nav__link">
-    stopDebugger (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#dispose-method" class="md-nav__link">
     dispose (method)
   </a>
@@ -580,6 +566,34 @@
           <li class="md-nav__item">
   <a href="#factory-property" class="md-nav__link">
     factory (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#added-property" class="md-nav__link">
+    added$ (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#removed-property" class="md-nav__link">
+    removed$ (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#children-property" class="md-nav__link">
+    children (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#maincollisiongroup-property" class="md-nav__link">
+    mainCollisionGroup (property)
   </a>
   
 </li>
@@ -623,11 +637,13 @@
 <li><a href="#registercollisiongroup-method">registerCollisionGroup (method)</a></li>
 <li><a href="#deregistercollisiongroup-method">deregisterCollisionGroup (method)</a></li>
 <li><a href="#simulate-method">simulate (method)</a></li>
-<li><a href="#startdebugger-method">startDebugger (method)</a></li>
-<li><a href="#stopdebugger-method">stopDebugger (method)</a></li>
 <li><a href="#dispose-method">dispose (method)</a></li>
 <li><a href="#matterengine-property">matterEngine (property)</a></li>
 <li><a href="#factory-property">factory (property)</a></li>
+<li><a href="#added-property">added$ (property)</a></li>
+<li><a href="#removed-property">removed$ (property)</a></li>
+<li><a href="#children-property">children (property)</a></li>
+<li><a href="#maincollisiongroup-property">mainCollisionGroup (property)</a></li>
 </ul>
 </li>
 </ul>
@@ -635,7 +651,9 @@
 <h1 id="utils">utils</h1>
 <h2 id="matterworldcomponent-class">MatterWorldComponent (class)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class MatterWorldComponent
+<pre><code class="language-ts">export declare class MatterWorldComponent {
+  constructor()
+}
 </code></pre>
 <h3 id="init-method">init (method)</h3>
 <p><strong>Signature</strong></p>
@@ -653,14 +671,6 @@
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">simulate(delta: number): void
 </code></pre>
-<h3 id="startdebugger-method">startDebugger (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">startDebugger(world: Gg2dWorld, drawer: IDebugPhysicsDrawer&lt;Point2, number&gt;): void
-</code></pre>
-<h3 id="stopdebugger-method">stopDebugger (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">stopDebugger(): void
-</code></pre>
 <h3 id="dispose-method">dispose (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">dispose(): void
@@ -672,6 +682,22 @@
 <h3 id="factory-property">factory (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly factory: MatterFactory
+</code></pre>
+<h3 id="added-property">added$ (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly added$: any
+</code></pre>
+<h3 id="removed-property">removed$ (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly removed$: any
+</code></pre>
+<h3 id="children-property">children (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly children: MatterRigidBodyComponent[]
+</code></pre>
+<h3 id="maincollisiongroup-property">mainCollisionGroup (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly mainCollisionGroup: any
 </code></pre>
 
 

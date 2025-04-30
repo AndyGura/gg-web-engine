@@ -6,23 +6,20 @@ import {
   OrbitCameraController,
   Pnt3,
   Qtrn,
+  TypedGg3dWorld,
 } from '@gg-web-engine/core';
-import { ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
+import { ThreeGgWorld, ThreeSceneComponent } from '@gg-web-engine/three';
 import { AmbientLight, DirectionalLight, Material, Mesh } from 'three';
-import { Rapier3dPhysicsTypeDocRepo, Rapier3dWorldComponent } from '@gg-web-engine/rapier3d';
+import { Rapier3dGgWorld, Rapier3dWorldComponent } from '@gg-web-engine/rapier3d';
 
-const world = new Gg3dWorld<
-  ThreeVisualTypeDocRepo,
-  Rapier3dPhysicsTypeDocRepo,
-  ThreeSceneComponent,
-  Rapier3dWorldComponent
->(
-  new ThreeSceneComponent(),
-  new Rapier3dWorldComponent(),
-);
+GgStatic.instance.showStats = true;
+GgStatic.instance.devConsoleEnabled = true;
+
+const world: TypedGg3dWorld<ThreeGgWorld, Rapier3dGgWorld> = new Gg3dWorld({
+  visualScene: new ThreeSceneComponent(),
+  physicsWorld: new Rapier3dWorldComponent(),
+});
 world.init().then(async () => {
-  GgStatic.instance.showStats = true;
-  // GgStatic.instance.devConsoleEnabled = true;
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
   const renderer = world.addRenderer(
     world.visualScene.factory.createPerspectiveCamera(),
@@ -51,7 +48,6 @@ world.init().then(async () => {
   const ambient = new AmbientLight(0xffffff, 0.3);
   world.visualScene.nativeScene!.add(ambient);
 
-  const ballsCommonCg = world.physicsWorld.registerCollisionGroup();
   const cgs = [
     0xff0000,
     0x00ff00,
@@ -60,11 +56,11 @@ world.init().then(async () => {
     0xff00ff,
   ].map(c => ([c, world.physicsWorld.registerCollisionGroup()]));
 
-  const maxFloorTranslationPerTick = 0.5;
+  const maxFloorTranslationPerTick = 0.1;
   for (let i = 0; i <= cgs.length; i++) {
     const [color, collisionGroup] = i < cgs.length ? cgs[i] : [0x00ffff, 15];
     const floor = world.addPrimitiveRigidBody({
-        shape: { shape: 'BOX', dimensions: { x: 16, y: 16, z: 0.5 } },
+        shape: { shape: 'BOX', dimensions: { x: 16, y: 16, z: 1 } },
         // collision groups can be set immediately when creating entity
         body: {
           dynamic: false,
@@ -106,22 +102,22 @@ world.init().then(async () => {
   }
 
   for (let i = 0; i < 4; i++) {
-    let wall = new Entity3d(null, world.physicsWorld.factory.createRigidBody({
-      shape: { shape: 'BOX', dimensions: { x: 40, y: 40, z: 400 } },
-      body: {
-        dynamic: false,
-        ownCollisionGroups: [ballsCommonCg],
-        interactWithCollisionGroups: [ballsCommonCg],
-        restitution: 0.3,
-      },
-    }));
+    let wall = new Entity3d({
+      objectBody: world.physicsWorld.factory.createRigidBody({
+        shape: { shape: 'BOX', dimensions: { x: 40, y: 40, z: 400 } },
+        body: {
+          dynamic: false,
+          restitution: 0.3,
+        },
+      }),
+    });
     wall.position = Pnt3.rotAround({ x: 28, y: 0, z: 0 }, Pnt3.Z, Math.PI * i / 2);
     world.addEntity(wall);
   }
 
   for (let i = -7; i <= 7; i++) {
     for (let j = -7; j <= 7; j++) {
-      for (let k = 1; k <= 2; k++) {
+      for (let k = 4; k <= 5; k++) {
         const [color, collisionGroup] = cgs[Math.floor(Math.random() * cgs.length)];
         let item = world.addPrimitiveRigidBody(
           {
@@ -129,8 +125,8 @@ world.init().then(async () => {
             body: {
               mass: 1,
               restitution: 0.3,
-              ownCollisionGroups: [collisionGroup, ballsCommonCg],
-              interactWithCollisionGroups: [collisionGroup, ballsCommonCg],
+              ownCollisionGroups: [collisionGroup, world.physicsWorld.mainCollisionGroup],
+              interactWithCollisionGroups: [collisionGroup, world.physicsWorld.mainCollisionGroup],
             },
           },
           { x: i, y: j, z: k },

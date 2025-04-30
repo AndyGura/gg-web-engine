@@ -3,13 +3,10 @@ import { IRigidBody3dComponent } from '../components/physics/i-rigid-body-3d.com
 import { IDisplayObject3dComponent } from '../components/rendering/i-display-object-3d.component';
 import { IPositionable3d } from '../interfaces/i-positionable-3d';
 import { IRenderable3dEntity } from './i-renderable-3d.entity';
-import { PhysicsTypeDocRepo3D, VisualTypeDocRepo3D } from '../gg-3d-world';
+import { Gg3dWorldTypeDocRepo } from '../gg-3d-world';
 
-export class Entity3d<
-    VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D,
-    PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D,
-  >
-  extends IRenderable3dEntity<VTypeDoc, PTypeDoc>
+export class Entity3d<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo>
+  extends IRenderable3dEntity<TypeDoc>
   implements IPositionable3d
 {
   public readonly tickOrder = TickOrder.OBJECTS_BINDING;
@@ -44,6 +41,9 @@ export class Entity3d<
     this._rotation = value;
   }
 
+  public readonly object3D: TypeDoc['vTypeDoc']['displayObject'] | null = null;
+  public readonly objectBody: TypeDoc['pTypeDoc']['rigidBody'] | null = null;
+
   public updateVisibility(): void {
     if (this.object3D) {
       this.object3D.visible = this.worldVisible;
@@ -65,25 +65,30 @@ export class Entity3d<
     this._rotation = quat;
   }
 
-  constructor(
-    public readonly object3D: VTypeDoc['displayObject'] | null,
-    public readonly objectBody: PTypeDoc['rigidBody'] | null = null,
-  ) {
+  constructor(options: {
+    object3D?: TypeDoc['vTypeDoc']['displayObject'] | null;
+    objectBody?: TypeDoc['pTypeDoc']['rigidBody'] | null;
+  }) {
     super();
-    if (objectBody) {
-      this.tick$.subscribe(() => {
-        this.runTransformBinding(objectBody, object3D);
-      });
-      this.runTransformBinding(objectBody, object3D);
-      this.name = objectBody.name;
-    } else if (object3D) {
-      this._position = object3D.position;
-      this._rotation = object3D.rotation;
-      this.name = object3D.name;
-    } else {
-      throw new Error('Cannot create entity without a mesh and a body');
+    if (options.objectBody) {
+      this.objectBody = options.objectBody;
+      this.name = this.objectBody.name;
+      this.addComponents(this.objectBody);
     }
-    objectBody && this.addComponents(objectBody);
-    object3D && this.addComponents(object3D);
+    if (options.object3D) {
+      this.object3D = options.object3D;
+      if (!options.objectBody) {
+        this._position = this.object3D.position;
+        this._rotation = this.object3D.rotation;
+        this.name = this.object3D.name;
+      }
+      this.addComponents(this.object3D);
+    }
+    if (this.objectBody) {
+      this.tick$.subscribe(() => {
+        this.runTransformBinding(this.objectBody!, this.object3D);
+      });
+      this.runTransformBinding(this.objectBody, this.object3D);
+    }
   }
 }

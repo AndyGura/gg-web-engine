@@ -13,16 +13,23 @@ parent: Modules
 - [utils](#utils)
   - [Pnt2 (class)](#pnt2-class)
     - [clone (static method)](#clone-static-method)
+    - [spr (static method)](#spr-static-method)
+    - [neg (static method)](#neg-static-method)
     - [add (static method)](#add-static-method)
     - [sub (static method)](#sub-static-method)
+    - [scale (static method)](#scale-static-method)
     - [avg (static method)](#avg-static-method)
+    - [round (static method)](#round-static-method)
     - [lenSq (static method)](#lensq-static-method)
     - [len (static method)](#len-static-method)
     - [dist (static method)](#dist-static-method)
     - [norm (static method)](#norm-static-method)
     - [scalarMult (static method)](#scalarmult-static-method)
+    - [dot (static method)](#dot-static-method)
     - [lerp (static method)](#lerp-static-method)
     - [angle (static method)](#angle-static-method)
+    - [rot (static method)](#rot-static-method)
+    - [rotAround (static method)](#rotaround-static-method)
 
 ---
 
@@ -46,6 +53,26 @@ clone point
 static clone(p: Point2): Point2
 ```
 
+### spr (static method)
+
+spread point components
+
+**Signature**
+
+```ts
+static spr(p: Point2): [number, number]
+```
+
+### neg (static method)
+
+get negation of the point
+
+**Signature**
+
+```ts
+static neg(p: Point2): Point2
+```
+
 ### add (static method)
 
 add point b to point a
@@ -66,6 +93,16 @@ subtract point b from point a
 static sub(a: Point2, b: Point2): Point2
 ```
 
+### scale (static method)
+
+scale point b by point. The result is the point, where each component is a product of appropriate components of input points
+
+**Signature**
+
+```ts
+static scale(a: Point2, s: Point2): Point2
+```
+
 ### avg (static method)
 
 average point between a and b
@@ -74,6 +111,16 @@ average point between a and b
 
 ```ts
 static avg(a: Point2, b: Point2): Point2
+```
+
+### round (static method)
+
+round point components
+
+**Signature**
+
+```ts
+static round(p: Point2): Point2
 ```
 
 ### lenSq (static method)
@@ -126,6 +173,16 @@ scalar multiplication
 static scalarMult(p: Point2, m: number): Point2
 ```
 
+### dot (static method)
+
+dot multiplication
+
+**Signature**
+
+```ts
+static dot(a: Point2, b: Point2): number
+```
+
 ### lerp (static method)
 
 linear interpolation
@@ -144,4 +201,24 @@ angle between vectors in radians
 
 ```ts
 static angle(a: Point2, b: Point2): number
+```
+
+### rot (static method)
+
+rotate point around zero by provided angle
+
+**Signature**
+
+```ts
+static rot(p: Point2, angle: number): Point2
+```
+
+### rotAround (static method)
+
+rotate point around pivot by provided angle
+
+**Signature**
+
+```ts
+static rotAround(p: Point2, pivot: Point2, angle: number): Point2
 ```

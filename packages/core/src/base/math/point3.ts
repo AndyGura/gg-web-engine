@@ -1,5 +1,6 @@
 import { Point3, Point4, Spherical } from '../models/points';
 import { Qtrn } from './quaternion';
+import { lerpAngle } from './numbers';
 
 export class Pnt3 {
   /** empty vector */
@@ -42,6 +43,16 @@ export class Pnt3 {
     return { x: p.x, y: p.y, z: p.z };
   }
 
+  /** spread point components */
+  static spr(p: Point3): [number, number, number] {
+    return [p.x, p.y, p.z];
+  }
+
+  /** get negation of the point */
+  static neg(p: Point3): Point3 {
+    return { x: -p.x, y: -p.y, z: -p.z };
+  }
+
   /** add point b to point a */
   static add(a: Point3, b: Point3): Point3 {
     return { x: a.x + b.x, y: a.y + b.y, z: a.z + b.z };
@@ -52,9 +63,19 @@ export class Pnt3 {
     return { x: a.x - b.x, y: a.y - b.y, z: a.z - b.z };
   }
 
+  /** scale point b by point. The result is the point, where each component is a product of appropriate components of input points */
+  static scale(a: Point3, s: Point3): Point3 {
+    return { x: a.x * s.x, y: a.y * s.y, z: a.z * s.z };
+  }
+
   /** average point between a and b */
   static avg(a: Point3, b: Point3): Point3 {
     return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, z: (a.z + b.z) / 2 };
+  }
+
+  /** round point components */
+  static round(p: Point3): Point3 {
+    return { x: Math.round(p.x), y: Math.round(p.y), z: Math.round(p.z) };
   }
 
   /** calculate vector length (squared) */
@@ -109,6 +130,11 @@ export class Pnt3 {
     };
   }
 
+  /** dot multiplication */
+  static dot(a: Point3, b: Point3): number {
+    return a.x * b.x + a.y * b.y + a.z * b.z;
+  }
+
   /** linear interpolation */
   static lerp(a: Point3, b: Point3, t: number): Point3 {
     return {
@@ -118,11 +144,24 @@ export class Pnt3 {
     };
   }
 
+  /** linear interpolation (spherical) */
+  static slerp(a: Point3, b: Point3, t: number): Point3 {
+    const as = Pnt3.toSpherical(a);
+    const bs = Pnt3.toSpherical(b);
+    return Pnt3.fromSpherical({
+      radius: as.radius + t * (bs.radius - as.radius),
+      phi: lerpAngle(as.phi, bs.phi, t),
+      theta: lerpAngle(as.theta, bs.theta, t),
+    });
+  }
+
   /** angle between vectors in radians */
   static angle(a: Point3, b: Point3): number {
-    const dotProduct = a.x * b.x + a.y * b.y + a.z * b.z;
-    const magnitudeProduct = Math.sqrt(a.x ** 2 + a.y ** 2 + a.z ** 2) * Math.sqrt(b.x ** 2 + b.y ** 2 + b.z ** 2);
-    return Math.acos(dotProduct / magnitudeProduct);
+    const magnitudeProduct = Pnt3.len(a) * Pnt3.len(b);
+    let cos = Pnt3.dot(a, b) / magnitudeProduct;
+    // this can happen due to precision error
+    cos = Math.min(1, Math.max(cos, -1));
+    return Math.acos(cos);
   }
 
   /** rotate point a with quaternion q */

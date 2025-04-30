@@ -1,6 +1,6 @@
 import { AnimationFunction, AnimationMixer, lerpNumber, Pnt3, Point3, Point4, Qtrn } from '../../../../base';
 import { takeUntil } from 'rxjs';
-import { Gg3dWorld, VisualTypeDocRepo3D } from '../../../gg-3d-world';
+import { Gg3dWorld, Gg3dWorldTypeDocVPatch, VisualTypeDocRepo3D } from '../../../gg-3d-world';
 import { Renderer3dEntity } from '../../renderer-3d.entity';
 
 export type Camera3dAnimationArgs = {
@@ -17,7 +17,7 @@ export class Camera3dAnimator<VTypeDoc extends VisualTypeDocRepo3D = VisualTypeD
   Camera3dAnimationArgs,
   Point3,
   Point4,
-  VTypeDoc
+  Gg3dWorldTypeDocVPatch<VTypeDoc>
 > {
   constructor(
     public entity: Renderer3dEntity<VTypeDoc>,
@@ -31,7 +31,7 @@ export class Camera3dAnimator<VTypeDoc extends VisualTypeDocRepo3D = VisualTypeD
     }));
   }
 
-  onSpawned(world: Gg3dWorld<VTypeDoc>) {
+  onSpawned(world: Gg3dWorld<Gg3dWorldTypeDocVPatch<VTypeDoc>>) {
     super.onSpawned(world);
     this.value$.pipe(takeUntil(this._onRemoved$)).subscribe(value => this.applyPositioning(value));
   }

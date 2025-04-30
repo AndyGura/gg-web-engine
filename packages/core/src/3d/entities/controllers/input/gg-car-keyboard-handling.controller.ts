@@ -12,7 +12,7 @@ export type GgCarKeyboardControllerOptions = CarKeyboardControllerOptions & {
 export class GgCarKeyboardHandlingController extends IEntity {
   public readonly tickOrder = TickOrder.INPUT_CONTROLLERS;
 
-  protected readonly carHandlingInput: CarKeyboardHandlingController;
+  public readonly carHandlingInput: CarKeyboardHandlingController;
   public switchingGearsEnabled: boolean = true;
 
   constructor(
@@ -63,7 +63,7 @@ export class GgCarKeyboardHandlingController extends IEntity {
       .bind(this.options.gearUpDownKeys[0])
       .pipe(
         takeUntil(this._onRemoved$),
-        filter(x => this.switchingGearsEnabled && !!x),
+        filter(x => this.active && this.switchingGearsEnabled && !!x),
       )
       .subscribe(() => {
         if (this.car && (!this.car.carProperties.transmission.isAuto || this.car.gear <= 0)) {
@@ -74,7 +74,7 @@ export class GgCarKeyboardHandlingController extends IEntity {
       .bind(this.options.gearUpDownKeys[1])
       .pipe(
         takeUntil(this._onRemoved$),
-        filter(x => this.switchingGearsEnabled && !!x),
+        filter(x => this.active && this.switchingGearsEnabled && !!x),
       )
       .subscribe(() => {
         if (this.car) {
@@ -87,7 +87,10 @@ export class GgCarKeyboardHandlingController extends IEntity {
       });
     this.keyboard
       .bind(this.options.handbrakeKey)
-      .pipe(takeUntil(this._onRemoved$))
+      .pipe(
+        takeUntil(this._onRemoved$),
+        filter(() => this.active),
+      )
       .subscribe(isKeyDown => {
         if (this.car) {
           this.car.handBrake = isKeyDown;

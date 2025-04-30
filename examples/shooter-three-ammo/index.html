@@ -1,0 +1,88 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset='utf-8'>
+  <title>GG example</title>
+  <meta name='viewport' content='width=device-width,initial-scale=1'>
+</head>
+<body>
+<style>
+    body {
+        color: #000;
+        font-family: Monospace;
+        text-align: center;
+        background-color: #bfd1e5;
+        margin: 0px;
+        overflow: hidden;
+        font-size: 150%
+    }
+
+    #message {
+        position: absolute;
+        width: 100%;
+        top: 0;
+        padding-top: 1em;
+        color: #777;
+        font-size: 80%
+    }
+
+    #blocker {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.65);
+        padding-top: 10em;
+        color: #FFF;
+        text-shadow: 1px 1px 20px #000;
+        pointer-events: none;
+    }
+
+    [hidden] {
+        display: none
+    }
+
+    div.info {
+        color: #BBB;
+        font-size: 80%
+    }
+
+    a {
+        color: #b7bd6f;
+        cursor: pointer;
+        pointer-events: all;
+    }
+    #container {
+        position: absolute;
+    }
+</style>
+<div id='container'>
+  <canvas id='gg'></canvas>
+</div>
+<div id='message' hidden>
+  Mouse and W, A, S, D = move<br />
+  CLICK = shoot balls<br />
+  Press ESC to pause
+</div>
+<div id='blocker'>
+  <span style='font-size:250%'>Click to play</span>
+  <br /><br />
+  Mouse and W, A, S, D = move<br />
+  CLICK = shoot balls<br />
+  Press ESC to pause
+  <br /><br /><br /><br />
+  <div class='info'>
+    <a href='http://static.componenthouse.com/webgl-shooter/main.html' target='_new'>Original demo</a>
+    <br /><br />
+    Author of the original demo: <a href='https://www.linkedin.com/in/hugovteixeira' target='_new'>Hugo Teixeira</a>
+    | <a href='https://componenthouse.com/2016/11/08/having-fun-with-typescript-threejs-and-ammo-js/' target='_new'>Read
+    Full Article</a>
+    | <a href='https://github.com/hvidal/WebGL-Shooter' target='_new'>Source Code</a>
+    <br /><br />
+    Ported to <a href='https://github.com/AndyGura/gg-web-engine' target='_new'>GG web engine</a>
+    by <a href='https://github.com/AndyGura' target='_new'>Andy Gura</a>
+    | <a href='https://github.com/AndyGura/gg-web-engine/tree/main/examples/shooter-three-ammo' target='_new'>Source
+    Code</a>
+  </div>
+</div>
+</body>
+</html>

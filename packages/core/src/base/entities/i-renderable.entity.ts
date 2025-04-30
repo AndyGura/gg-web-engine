@@ -1,5 +1,5 @@
 import { IEntity } from './i-entity';
-import { PhysicsTypeDocRepo, VisualTypeDocRepo } from '../gg-world';
+import { GgWorldTypeDocRepo } from '../gg-world';
 
 const updateRecv = (item: IEntity) => {
   if (!!(item as any).updateVisibility) {
@@ -18,9 +18,8 @@ const updateChildrenRecv = (item: IEntity) => {
 export abstract class IRenderableEntity<
   D = any,
   R = any,
-  TypeDoc extends VisualTypeDocRepo<D, R> = VisualTypeDocRepo<D, R>,
-  PTypeDoc extends PhysicsTypeDocRepo<D, R> = PhysicsTypeDocRepo<D, R>,
-> extends IEntity<D, R, TypeDoc, PTypeDoc> {
+  TypeDoc extends GgWorldTypeDocRepo<D, R> = GgWorldTypeDocRepo<D, R>,
+> extends IEntity<D, R, TypeDoc> {
   private _visible: boolean = true;
 
   public get visible(): boolean {

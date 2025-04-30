@@ -1,6 +1,6 @@
 import { AnimationFunction, AnimationMixer, lerpNumber, Pnt2, Point2 } from '../../../base';
 import { takeUntil } from 'rxjs';
-import { Gg2dWorld, PhysicsTypeDocRepo2D, VisualTypeDocRepo2D } from '../../gg-2d-world';
+import { Gg2dWorld, Gg2dWorldTypeDocRepo } from '../../gg-2d-world';
 import { Entity2d } from '../entity-2d';
 
 type Positioning2d = {
@@ -12,10 +12,12 @@ export class Entity2dPositioningAnimator<T extends Entity2d = Entity2d> extends 
   Positioning2d,
   Point2,
   number,
-  VisualTypeDocRepo2D,
-  PhysicsTypeDocRepo2D
+  Gg2dWorldTypeDocRepo
 > {
-  constructor(public entity: T, protected _animationFunction: AnimationFunction<Positioning2d>) {
+  constructor(
+    public entity: T,
+    protected _animationFunction: AnimationFunction<Positioning2d>,
+  ) {
     super(_animationFunction, (a, b, t) => ({
       position: Pnt2.lerp(a.position, b.position, t),
       rotation: lerpNumber(a.rotation, b.rotation, t),

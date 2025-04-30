@@ -7,22 +7,20 @@ import {
   Pnt3,
   Qtrn,
   RaycastVehicle3dEntity,
+  RVEntityTractionBias,
+  TypedGg3dWorld,
 } from '@gg-web-engine/core';
-import { ThreeDisplayObject3dOpts, ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
+import { ThreeDisplayObject3dOpts, ThreeGgWorld, ThreeSceneComponent } from '@gg-web-engine/three';
 import { AmbientLight, DirectionalLight } from 'three';
-import { AmmoPhysicsTypeDocRepo, AmmoWorldComponent } from '@gg-web-engine/ammo';
+import { AmmoGgWorld, AmmoWorldComponent } from '@gg-web-engine/ammo';
 
-const world = new Gg3dWorld<
-  ThreeVisualTypeDocRepo,
-  AmmoPhysicsTypeDocRepo,
-  ThreeSceneComponent,
-  AmmoWorldComponent
->(
-  new ThreeSceneComponent(),
-  new AmmoWorldComponent(),
-);
 GgStatic.instance.showStats = true;
-// GgStatic.instance.devConsoleEnabled = true;
+GgStatic.instance.devConsoleEnabled = true;
+
+const world: TypedGg3dWorld<ThreeGgWorld, AmmoGgWorld> = new Gg3dWorld({
+  visualScene: new ThreeSceneComponent(),
+  physicsWorld: new AmmoWorldComponent(),
+});
 world.init().then(async () => {
   // init graphics
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
@@ -105,7 +103,7 @@ world.init().then(async () => {
         restLength: 0.6,
         stiffness: 20,
       },
-      typeOfDrive: 'RWD',
+      tractionBias: RVEntityTractionBias.RWD,
       wheelBase: {
         shared: {
           frictionSlip: 1000,
@@ -155,7 +153,7 @@ world.init().then(async () => {
       }
     }
     vehicle.steeringAngle = .5 * leftRight;
-    vehicle.applyTractionForce(engineForce);
+    vehicle.applyTraction('rear', engineForce);
     vehicle.applyBrake('front', breakingForce / 2);
     vehicle.applyBrake('rear', breakingForce);
   });

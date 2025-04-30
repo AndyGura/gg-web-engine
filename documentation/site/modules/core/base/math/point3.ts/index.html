@@ -529,6 +529,20 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#spr-static-method" class="md-nav__link">
+    spr (static method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#neg-static-method" class="md-nav__link">
+    neg (static method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#add-static-method" class="md-nav__link">
     add (static method)
   </a>
@@ -543,8 +557,22 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#scale-static-method" class="md-nav__link">
+    scale (static method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#avg-static-method" class="md-nav__link">
     avg (static method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#round-static-method" class="md-nav__link">
+    round (static method)
   </a>
   
 </li>
@@ -587,6 +615,13 @@
           <li class="md-nav__item">
   <a href="#scalarmult-static-method" class="md-nav__link">
     scalarMult (static method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dot-static-method" class="md-nav__link">
+    dot (static method)
   </a>
   
 </li>
@@ -669,15 +704,20 @@
 <li><a href="#utils">utils</a></li>
 <li><a href="#pnt3-class">Pnt3 (class)</a><ul>
 <li><a href="#clone-static-method">clone (static method)</a></li>
+<li><a href="#spr-static-method">spr (static method)</a></li>
+<li><a href="#neg-static-method">neg (static method)</a></li>
 <li><a href="#add-static-method">add (static method)</a></li>
 <li><a href="#sub-static-method">sub (static method)</a></li>
+<li><a href="#scale-static-method">scale (static method)</a></li>
 <li><a href="#avg-static-method">avg (static method)</a></li>
+<li><a href="#round-static-method">round (static method)</a></li>
 <li><a href="#lensq-static-method">lenSq (static method)</a></li>
 <li><a href="#len-static-method">len (static method)</a></li>
 <li><a href="#dist-static-method">dist (static method)</a></li>
 <li><a href="#cross-static-method">cross (static method)</a></li>
 <li><a href="#norm-static-method">norm (static method)</a></li>
 <li><a href="#scalarmult-static-method">scalarMult (static method)</a></li>
+<li><a href="#dot-static-method">dot (static method)</a></li>
 <li><a href="#lerp-static-method">lerp (static method)</a></li>
 <li><a href="#angle-static-method">angle (static method)</a></li>
 <li><a href="#rot-static-method">rot (static method)</a></li>
@@ -698,6 +738,16 @@
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">static clone(p: Point3): Point3
 </code></pre>
+<h3 id="spr-static-method">spr (static method)</h3>
+<p>spread point components</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">static spr(p: Point3): [number, number, number]
+</code></pre>
+<h3 id="neg-static-method">neg (static method)</h3>
+<p>get negation of the point</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">static neg(p: Point3): Point3
+</code></pre>
 <h3 id="add-static-method">add (static method)</h3>
 <p>add point b to point a</p>
 <p><strong>Signature</strong></p>
@@ -708,10 +758,20 @@
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">static sub(a: Point3, b: Point3): Point3
 </code></pre>
+<h3 id="scale-static-method">scale (static method)</h3>
+<p>scale point b by point. The result is the point, where each component is a product of appropriate components of input points</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">static scale(a: Point3, s: Point3): Point3
+</code></pre>
 <h3 id="avg-static-method">avg (static method)</h3>
 <p>average point between a and b</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">static avg(a: Point3, b: Point3): Point3
+</code></pre>
+<h3 id="round-static-method">round (static method)</h3>
+<p>round point components</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">static round(p: Point3): Point3
 </code></pre>
 <h3 id="lensq-static-method">lenSq (static method)</h3>
 <p>calculate vector length (squared)</p>
@@ -742,6 +802,11 @@
 <p>scalar multiplication</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">static scalarMult(p: Point3, m: number): Point3
+</code></pre>
+<h3 id="dot-static-method">dot (static method)</h3>
+<p>dot multiplication</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">static dot(a: Point3, b: Point3): number
 </code></pre>
 <h3 id="lerp-static-method">lerp (static method)</h3>
 <p>linear interpolation</p>

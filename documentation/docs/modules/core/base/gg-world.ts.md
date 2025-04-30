@@ -1,6 +1,6 @@
 ---
 title: core/base/gg-world.ts
-nav_order: 77
+nav_order: 78
 parent: Modules
 ---
 
@@ -21,11 +21,18 @@ parent: Modules
     - [addPrimitiveRigidBody (method)](#addprimitiverigidbody-method)
     - [addEntity (method)](#addentity-method)
     - [removeEntity (method)](#removeentity-method)
+    - [onGgStaticInitialized (method)](#onggstaticinitialized-method)
+    - [registerConsoleCommands (method)](#registerconsolecommands-method)
     - [worldClock (property)](#worldclock-property)
     - [keyboardInput (property)](#keyboardinput-property)
     - [name (property)](#name-property)
     - [children (property)](#children-property)
     - [tickListeners (property)](#ticklisteners-property)
+    - [tickStarted$ (property)](#tickstarted-property)
+    - [tickForwardTo$ (property)](#tickforwardto-property)
+    - [tickForwardedTo$ (property)](#tickforwardedto-property)
+    - [paused$ (property)](#paused-property)
+    - [disposed$ (property)](#disposed-property)
   - [PhysicsTypeDocRepo (type alias)](#physicstypedocrepo-type-alias)
   - [VisualTypeDocRepo (type alias)](#visualtypedocrepo-type-alias)
 
@@ -120,6 +127,29 @@ public addEntity(entity: IEntity): void
 public removeEntity(entity: IEntity, dispose = false): void
 ```
 
+### onGgStaticInitialized (method)
+
+**Signature**
+
+```ts
+private onGgStaticInitialized()
+```
+
+### registerConsoleCommands (method)
+
+**Signature**
+
+```ts
+protected registerConsoleCommands(ggstatic: {
+    registerConsoleCommand: (
+      world: GgWorld<any, any> | null,
+      command: string,
+      handler: (...args: string[]) => Promise<string>,
+      doc?: string,
+    ) => void;
+  })
+```
+
 ### worldClock (property)
 
 **Signature**
@@ -160,6 +190,46 @@ readonly children: IEntity<any, any, VisualTypeDocRepo<any, any>, PhysicsTypeDoc
 readonly tickListeners: IEntity<any, any, VisualTypeDocRepo<any, any>, PhysicsTypeDocRepo<any, any>>[]
 ```
 
+### tickStarted$ (property)
+
+**Signature**
+
+```ts
+readonly tickStarted$: any
+```
+
+### tickForwardTo$ (property)
+
+**Signature**
+
+```ts
+readonly tickForwardTo$: any
+```
+
+### tickForwardedTo$ (property)
+
+**Signature**
+
+```ts
+readonly tickForwardedTo$: any
+```
+
+### paused$ (property)
+
+**Signature**
+
+```ts
+readonly paused$: any
+```
+
+### disposed$ (property)
+
+**Signature**
+
+```ts
+readonly disposed$: any
+```
+
 ## PhysicsTypeDocRepo (type alias)
 
 **Signature**
@@ -181,5 +251,6 @@ export type VisualTypeDocRepo<D, R> = {
   factory: unknown
   displayObject: IDisplayObjectComponent<D, R>
   renderer: IRendererComponent<D, R>
+  rendererExtraOpts: {}
 }
 ```

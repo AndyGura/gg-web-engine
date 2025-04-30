@@ -527,6 +527,20 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#debugbodysettings-class" class="md-nav__link">
+    DebugBodySettings (class)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#debugbodytype-type-alias" class="md-nav__link">
+    DebugBodyType (type alias)
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -558,6 +572,8 @@
 <li><a href="#utils">utils</a></li>
 <li><a href="#bodyoptions-interface">BodyOptions (interface)</a></li>
 <li><a href="#collisiongroup-type-alias">CollisionGroup (type alias)</a></li>
+<li><a href="#debugbodysettings-class">DebugBodySettings (class)</a></li>
+<li><a href="#debugbodytype-type-alias">DebugBodyType (type alias)</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
@@ -568,13 +584,31 @@
   mass: number
   restitution: number
   friction: number
-  ownCollisionGroups: CollisionGroup[] | 'all'
-  interactWithCollisionGroups: CollisionGroup[] | 'all'
+  ownCollisionGroups: ReadonlyArray&lt;CollisionGroup&gt; | 'all'
+  interactWithCollisionGroups: ReadonlyArray&lt;CollisionGroup&gt; | 'all'
 }
 </code></pre>
 <h2 id="collisiongroup-type-alias">CollisionGroup (type alias)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export type CollisionGroup = number
+</code></pre>
+<h2 id="debugbodysettings-class">DebugBodySettings (class)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export declare class DebugBodySettings&lt;S&gt; {
+  protected constructor(
+    private _type: DebugBodyType,
+    private _shape: S,
+    private _ignoreTransform: boolean = false,
+    private _color: number | undefined = undefined
+  )
+}
+</code></pre>
+<h2 id="debugbodytype-type-alias">DebugBodyType (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type DebugBodyType =
+  | { type: 'RIGID_STATIC' }
+  | { type: 'TRIGGER'; activated: () =&gt; boolean }
+  | { type: 'RIGID_DYNAMIC'; sleeping: () =&gt; boolean }
 </code></pre>
 
 

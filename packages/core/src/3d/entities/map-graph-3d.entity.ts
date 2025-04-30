@@ -1,7 +1,7 @@
-import { BehaviorSubject, NEVER, Observable, startWith, Subject, switchMap } from 'rxjs';
-import { distinctUntilChanged, map, tap, throttleTime } from 'rxjs/operators';
-import { Graph, IEntity, Point3, Point4, Qtrn, TickOrder } from '../../base';
-import { Gg3dWorld, PhysicsTypeDocRepo3D, VisualTypeDocRepo3D } from '../gg-3d-world';
+import { BehaviorSubject, Observable, startWith, Subject, takeUntil } from 'rxjs';
+import { distinctUntilChanged, map, tap } from 'rxjs/operators';
+import { Graph, IEntity, PausableClock, Pnt3, Point3, Point4, Qtrn, TickOrder } from '../../base';
+import { Gg3dWorld, Gg3dWorldTypeDocRepo } from '../gg-3d-world';
 import { Entity3d } from './entity-3d';
 import { LoadOptions, LoadResultWithProps } from '../loader';
 import { IPositionable3d } from '../interfaces/i-positionable-3d';
@@ -90,21 +90,22 @@ export type Gg3dMapGraphEntityOptions = {
   loadDepth: number;
   // additional depth, means unload delay. Nodes with this depth won't load, but if already loaded, will not be destroyed
   inertia: number;
+  // max amount of nodes that can be loaded on single tick. Use this to avoid framerate drop when loading multiple heavy nodes at once
+  maxNodesLoadingPerTick: number;
 };
 
 const defaultOptions: Gg3dMapGraphEntityOptions = {
   loadDepth: 5,
   inertia: 0,
+  maxNodesLoadingPerTick: 1,
 };
 
 export class MapGraph3dEntity<
-  VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D,
-  PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D,
-> extends IRenderable3dEntity<VTypeDoc, PTypeDoc> {
+  TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo,
+> extends IRenderable3dEntity<TypeDoc> {
   public readonly tickOrder = TickOrder.POST_RENDERING;
 
-  public readonly loaderCursorEntity$: BehaviorSubject<IPositionable3d | null> =
-    new BehaviorSubject<IPositionable3d | null>(null);
+  public readonly loaderCursor$: BehaviorSubject<Point3> = new BehaviorSubject<Point3>(Pnt3.O);
   readonly loaded: Map<MapGraphNodeType, (IEntity & IPositionable3d)[]> = new Map();
 
   private _initialLoadComplete$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
@@ -121,16 +122,16 @@ export class MapGraph3dEntity<
 
   protected _chunkLoaded$: Subject<
     [
-      LoadResultWithProps<VTypeDoc, PTypeDoc>,
+      LoadResultWithProps<TypeDoc>,
       {
         position: Point3;
         rotation: Point4;
       },
     ]
-  > = new Subject<[LoadResultWithProps<VTypeDoc, PTypeDoc>, { position: Point3; rotation: Point4 }]>();
+  > = new Subject<[LoadResultWithProps<TypeDoc>, { position: Point3; rotation: Point4 }]>();
   public get chunkLoaded$(): Observable<
     [
-      LoadResultWithProps<VTypeDoc, PTypeDoc>,
+      LoadResultWithProps<TypeDoc>,
       {
         position: Point3;
         rotation: Point4;
@@ -140,76 +141,117 @@ export class MapGraph3dEntity<
     return this._chunkLoaded$.asObservable();
   }
 
-  get world(): Gg3dWorld<VTypeDoc, PTypeDoc> | null {
-    return this._world;
-  }
-
-  protected _world: Gg3dWorld<VTypeDoc, PTypeDoc> | null = null;
   protected readonly mapGraphNodes: MapGraph[];
 
   protected readonly options: Gg3dMapGraphEntityOptions;
 
-  constructor(public readonly mapGraph: MapGraph, options: Partial<Gg3dMapGraphEntityOptions> = {}) {
+  protected loadClock: PausableClock | null = null;
+
+  private _loadRateLimit: number = 1;
+  get loadRateLimit(): number {
+    return this._loadRateLimit;
+  }
+
+  set loadRateLimit(value: number) {
+    this._loadRateLimit = value;
+    if (this.loadClock) {
+      this.loadClock.tickRateLimit = value;
+    }
+  }
+
+  constructor(
+    public readonly mapGraph: MapGraph,
+    options: Partial<Gg3dMapGraphEntityOptions> = {},
+  ) {
     super();
     this.options = { ...defaultOptions, ...options };
     this.mapGraphNodes = mapGraph.nodes();
   }
 
-  onSpawned(world: Gg3dWorld<VTypeDoc, PTypeDoc>) {
+  onSpawned(world: Gg3dWorld<TypeDoc>) {
     super.onSpawned(world);
-    // TODO takeUntil removed from world?
-    this.loaderCursorEntity$
-      .pipe(
-        switchMap(entity =>
-          entity
-            ? this.tick$.pipe(
-                startWith(null), // map will perform initial loading even if world not started yet. Handy to preload map
-                throttleTime(1000),
-                map(() => entity.position),
-              )
-            : NEVER,
-        ),
-        map(pos => this.mapGraph.getNearestDummy(this.mapGraphNodes, pos)),
-        tap(node => this._nearestDummy$.next(node)),
-        distinctUntilChanged(),
-      )
-      .subscribe(currentChunk => {
-        let haveToBeLoaded: Set<MapGraphNodeType> = new Set();
-        let canBeLoaded: Set<MapGraphNodeType>;
-        if (this.options.inertia > 0) {
-          canBeLoaded = new Set();
-          const nodes = currentChunk.walkReadPreserveDepth(this.options.loadDepth + this.options.inertia);
-          for (let distance = 0; distance < nodes.length; distance++) {
-            nodes[distance].forEach(node => canBeLoaded.add(node.data));
-            if (distance <= this.options.loadDepth) {
-              nodes[distance].forEach(node => haveToBeLoaded.add(node.data));
-            }
+    this.loadClock = world.createClock(true);
+    this.loadClock.tickRateLimit = this._loadRateLimit;
+
+    let loadList: MapGraphNodeType[] = [];
+    let unloadList: MapGraphNodeType[] = [];
+
+    this.loadClock!.tick$.pipe(
+      startWith(null), // map will perform initial loading even if world not started yet. Handy to preload map
+      takeUntil(this._onRemoved$),
+      map(() => this.mapGraph.getNearestDummy(this.mapGraphNodes, this.loaderCursor$.getValue())),
+      distinctUntilChanged(),
+      tap(node => this._nearestDummy$.next(node)),
+    ).subscribe(currentChunk => {
+      let haveToBeLoaded: Set<MapGraphNodeType> = new Set();
+      let canBeLoaded: Set<MapGraphNodeType>;
+      if (this.options.inertia > 0) {
+        canBeLoaded = new Set();
+        const nodes = currentChunk.walkReadPreserveDepth(this.options.loadDepth + this.options.inertia);
+        for (let distance = 0; distance < nodes.length; distance++) {
+          nodes[distance].forEach(node => canBeLoaded.add(node.data));
+          if (distance <= this.options.loadDepth) {
+            nodes[distance].forEach(node => haveToBeLoaded.add(node.data));
+          }
+        }
+      } else {
+        currentChunk.walkRead(this.options.loadDepth).forEach(node => haveToBeLoaded.add(node.data));
+        canBeLoaded = haveToBeLoaded;
+      }
+      for (const loadedNode of this.loaded.keys()) {
+        if (!canBeLoaded.has(loadedNode)) {
+          if (!unloadList.includes(loadedNode)) {
+            unloadList.push(loadedNode);
           }
         } else {
-          currentChunk.walkRead(this.options.loadDepth).forEach(node => haveToBeLoaded.add(node.data));
-          canBeLoaded = haveToBeLoaded;
+          haveToBeLoaded.delete(loadedNode);
         }
-        for (const loadedNode of this.loaded.keys()) {
-          if (!canBeLoaded.has(loadedNode)) {
-            this.disposeChunk(loadedNode);
+      }
+      for (let n of Array.from(haveToBeLoaded.keys())) {
+        if (!loadList.includes(n)) {
+          loadList.push(n);
+        }
+      }
+    });
+    this.tick$
+      .pipe(
+        startWith(null), // map will perform initial loading even if world not started yet. Handy to preload map
+        takeUntil(this._onRemoved$),
+      )
+      .subscribe(() => {
+        if (unloadList.length) {
+          for (const n of unloadList) {
+            this.disposeChunk(n);
+          }
+          unloadList = [];
+        }
+        if (loadList.length) {
+          if (this._initialLoadComplete$.value && loadList.length > this.options.maxNodesLoadingPerTick) {
+            let loadNow = loadList.slice(0, this.options.maxNodesLoadingPerTick);
+            loadList = loadList.slice(this.options.maxNodesLoadingPerTick);
+            Promise.all(loadNow.map(n => this.loadChunk(n))).then();
           } else {
-            haveToBeLoaded.delete(loadedNode);
+            Promise.all(loadList.map(n => this.loadChunk(n))).then(() => {
+              if (!this._initialLoadComplete$.value) {
+                this._initialLoadComplete$.next(true);
+              }
+            });
+            loadList = [];
           }
         }
-        Promise.all(Array.from(haveToBeLoaded.keys()).map(n => this.loadChunk(n))).then(() =>
-          this._initialLoadComplete$.next(true),
-        );
       });
   }
 
   onRemoved() {
     super.onRemoved();
-    this.loaderCursorEntity$.next(null);
+    if (this.loadClock) {
+      this.loadClock.stop();
+      this.loadClock = null;
+    }
+    this.loaderCursor$.next(Pnt3.O);
   }
 
-  protected async loadChunk(
-    node: MapGraphNodeType,
-  ): Promise<[Entity3d<VTypeDoc, PTypeDoc>[], LoadResultWithProps<VTypeDoc, PTypeDoc>]> {
+  protected async loadChunk(node: MapGraphNodeType): Promise<[Entity3d<TypeDoc>[], LoadResultWithProps<TypeDoc>]> {
     const loaded = await this.world!.loader.loadGgGlb(node.path, {
       position: node.position,
       rotation: node.rotation || Qtrn.O,

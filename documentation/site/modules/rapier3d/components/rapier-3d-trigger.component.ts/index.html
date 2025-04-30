@@ -556,6 +556,20 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#debugbodysettings-property" class="md-nav__link">
+    debugBodySettings (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#intersectionsamount-property" class="md-nav__link">
+    intersectionsAmount (property)
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -596,6 +610,8 @@
 <li><a href="#clone-method">clone (method)</a></li>
 <li><a href="#onenter-property">onEnter$ (property)</a></li>
 <li><a href="#onleft-property">onLeft$ (property)</a></li>
+<li><a href="#debugbodysettings-property">debugBodySettings (property)</a></li>
+<li><a href="#intersectionsamount-property">intersectionsAmount (property)</a></li>
 </ul>
 </li>
 </ul>
@@ -607,6 +623,7 @@
   constructor(
     protected readonly world: Rapier3dWorldComponent,
     protected _colliderDescr: ColliderDesc[],
+    public readonly shape: Shape3DDescriptor,
     protected _bodyDescr: RigidBodyDesc
   )
 }
@@ -630,6 +647,14 @@
 <h3 id="onleft-property">onLeft$ (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly onLeft$: any
+</code></pre>
+<h3 id="debugbodysettings-property">debugBodySettings (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly debugBodySettings: any
+</code></pre>
+<h3 id="intersectionsamount-property">intersectionsAmount (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">intersectionsAmount: number
 </code></pre>
 
 

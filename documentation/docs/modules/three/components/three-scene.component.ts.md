@@ -1,6 +1,6 @@
 ---
 title: three/components/three-scene.component.ts
-nav_order: 126
+nav_order: 133
 parent: Modules
 ---
 
@@ -14,10 +14,10 @@ parent: Modules
   - [ThreeSceneComponent (class)](#threescenecomponent-class)
     - [init (method)](#init-method)
     - [createRenderer (method)](#createrenderer-method)
+    - [createComposerRenderer (method)](#createcomposerrenderer-method)
     - [dispose (method)](#dispose-method)
     - [factory (property)](#factory-property)
     - [loader (property)](#loader-property)
-    - [debugPhysicsDrawerClass (property)](#debugphysicsdrawerclass-property)
 
 ---
 
@@ -47,8 +47,20 @@ async init(): Promise<void>
 createRenderer(
     camera: ThreeCameraComponent,
     canvas?: HTMLCanvasElement,
-    rendererOptions?: Partial<RendererOptions>,
+    rendererOptions?: Partial<RendererOptions & WebGLRendererParameters>,
   ): ThreeRendererComponent
+```
+
+### createComposerRenderer (method)
+
+**Signature**
+
+```ts
+createComposerRenderer(
+    camera: ThreeCameraComponent,
+    canvas?: HTMLCanvasElement,
+    rendererOptions?: Partial<RendererOptions & WebGLRendererParameters>,
+  ): ThreeComposerRendererComponent
 ```
 
 ### dispose (method)
@@ -73,12 +85,4 @@ readonly factory: ThreeFactory
 
 ```ts
 readonly loader: ThreeLoader
-```
-
-### debugPhysicsDrawerClass (property)
-
-**Signature**
-
-```ts
-readonly debugPhysicsDrawerClass: typeof ThreePhysicsDrawer
 ```

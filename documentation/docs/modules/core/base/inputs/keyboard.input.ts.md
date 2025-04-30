@@ -1,6 +1,6 @@
 ---
 title: core/base/inputs/keyboard.input.ts
-nav_order: 81
+nav_order: 82
 parent: Modules
 ---
 
@@ -23,7 +23,6 @@ parent: Modules
     - [onPointerLockChange (method)](#onpointerlockchange-method)
     - [resetAllKeys (method)](#resetallkeys-method)
     - [skipKeyDownsOnExternalFocus (property)](#skipkeydownsonexternalfocus-property)
-    - [externalFocusBlacklist (property)](#externalfocusblacklist-property)
 
 ---
 
@@ -142,14 +141,4 @@ Flag which disables handling key downs, when document has some "typeable" elemen
 
 ```ts
 skipKeyDownsOnExternalFocus: boolean
-```
-
-### externalFocusBlacklist (property)
-
-Which element types should filter key downs when focused
-
-**Signature**
-
-```ts
-externalFocusBlacklist: (new () => HTMLElement)[]
 ```

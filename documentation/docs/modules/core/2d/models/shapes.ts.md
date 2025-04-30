@@ -31,5 +31,8 @@ export type BodyShape2DDescriptor = { shape: Shape2DDescriptor; body: Partial<Bo
 **Signature**
 
 ```ts
-export type Shape2DDescriptor = { shape: 'SQUARE'; dimensions: Point2 } | { shape: 'CIRCLE'; radius: number }
+export type Shape2DDescriptor = { collisionMargin?: number } & (
+  | { shape: 'SQUARE'; dimensions: Point2 }
+  | { shape: 'CIRCLE'; radius: number }
+)
 ```

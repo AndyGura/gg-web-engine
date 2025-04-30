@@ -1,15 +1,15 @@
 import { Entity3d, Gg3dWorld, GgStatic, OrbitCameraController, Trigger3dEntity } from '@gg-web-engine/core';
-import { interval } from 'rxjs';
 import { ThreeSceneComponent } from '@gg-web-engine/three';
 import { Rapier3dWorldComponent } from '@gg-web-engine/rapier3d';
 
-const world = new Gg3dWorld(
-  new ThreeSceneComponent(),
-  new Rapier3dWorldComponent(),
-);
+GgStatic.instance.showStats = true;
+GgStatic.instance.devConsoleEnabled = true;
+
+const world = new Gg3dWorld({
+  visualScene: new ThreeSceneComponent(),
+  physicsWorld: new Rapier3dWorldComponent(),
+});
 world.init().then(async () => {
-  GgStatic.instance.showStats = true;
-  // GgStatic.instance.devConsoleEnabled = true;
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
   const renderer = world.addRenderer(world.visualScene.factory.createPerspectiveCamera(), canvas);
   renderer.position = { x: 9, y: 12, z: 9 };
@@ -34,7 +34,9 @@ world.init().then(async () => {
   });
   world.addEntity(destroyTrigger);
 
-  interval(500).subscribe(() => {
+  const spawnTimer = world.createClock(true);
+  spawnTimer.tickRateLimit = 2;
+  spawnTimer.tick$.subscribe(() => {
     let item: Entity3d;
     let r = Math.random();
     if (r < 0.2) {

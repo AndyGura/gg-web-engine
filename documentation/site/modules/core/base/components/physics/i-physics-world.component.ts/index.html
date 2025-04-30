@@ -554,12 +554,68 @@
 <hr />
 <h1 id="utils">utils</h1>
 <h2 id="iphysicsworldcomponent-interface">IPhysicsWorldComponent (interface)</h2>
+<p>Interface representing a physics world component.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export interface IPhysicsWorldComponent&lt;D, R, TypeDoc extends PhysicsTypeDocRepo&lt;D, R&gt; = PhysicsTypeDocRepo&lt;D, R&gt;&gt;
   extends IComponent {
-  readonly factory: TypeDoc['factory'];
-  gravity: D;
-  timeScale: number;
+  /**
+   * Factory function for creating physics-related objects.
+   */
+  readonly factory: TypeDoc['factory']
+
+  /**
+   * The gravity vector affecting the physics world.
+   */
+  gravity: D
+
+  /**
+   * Event emitter that emits newly added physics components.
+   */
+  readonly added$: Subject&lt;TypeDoc['rigidBody'] | TypeDoc['trigger'] | any&gt;
+
+  /**
+   * Event emitter that emits just removed physics components.
+   */
+  readonly removed$: Subject&lt;TypeDoc['rigidBody'] | TypeDoc['trigger'] | any&gt;
+
+  /**
+   * List of currently added physics components in the world.
+   */
+  readonly children: (TypeDoc['rigidBody'] | TypeDoc['trigger'] | any)[]
+
+  /**
+   * The main collision group. All physics bodies have this collision group set by default.
+   */
+  readonly mainCollisionGroup: CollisionGroup
+
+  /**
+   * Initializes the physics world component.
+   *
+   * @returns A promise that resolves when initialization is complete.
+   */
+  init(): Promise&lt;void&gt;
+
+  /**
+   * Runs the simulation of the physics world for the given time step.
+   *
+   * @param delta - The time step in milliseconds since the last update.
+   */
+  simulate(delta: number): void
+
+  /**
+   * Registers and returns a new collision group.
+   *
+   * @returns A newly registered collision group.
+   */
+  registerCollisionGroup(): CollisionGroup
+
+  /**
+   * Deregisters a previously registered collision group.
+   *
+   * @param group - The collision group to be removed.
+   */
+  deregisterCollisionGroup(group: CollisionGroup): void
+}
 </code></pre>
 
 

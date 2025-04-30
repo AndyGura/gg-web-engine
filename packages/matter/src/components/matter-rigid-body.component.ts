@@ -1,16 +1,14 @@
 import {
   CollisionGroup,
+  DebugBody2DSettings,
   Entity2d,
-  Gg2dWorld,
   IRigidBody2dComponent,
-  IVisualScene2dComponent,
   Pnt2,
   Point2,
-  VisualTypeDocRepo2D,
+  Shape2DDescriptor,
 } from '@gg-web-engine/core';
 import { Body, Composite, Vector } from 'matter-js';
-import { MatterPhysicsTypeDocRepo } from '../types';
-import { MatterWorldComponent } from './matter-world.component';
+import { MatterGgWorld, MatterPhysicsTypeDocRepo } from '../types';
 
 export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhysicsTypeDocRepo> {
   public get position(): Point2 {
@@ -49,21 +47,31 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
 
   public entity: Entity2d | null = null;
 
-  constructor(public nativeBody: Body) {}
+  readonly debugBodySettings: DebugBody2DSettings = new DebugBody2DSettings(
+    isFinite(this.nativeBody.mass)
+      ? { type: 'RIGID_DYNAMIC', sleeping: () => this.nativeBody.isSleeping }
+      : { type: 'RIGID_STATIC' },
+    this.shape,
+  );
 
-  get interactWithCollisionGroups(): CollisionGroup[] {
+  constructor(
+    public nativeBody: Body,
+    public readonly shape: Shape2DDescriptor,
+  ) {}
+
+  get interactWithCollisionGroups(): ReadonlyArray<CollisionGroup> {
     throw new Error('Collision groups not implemented for Matter.js');
   }
 
-  set interactWithCollisionGroups(value: CollisionGroup[] | 'all') {
+  set interactWithCollisionGroups(value: ReadonlyArray<CollisionGroup> | 'all') {
     throw new Error('Collision groups not implemented for Matter.js');
   }
 
-  get ownCollisionGroups(): CollisionGroup[] {
+  get ownCollisionGroups(): ReadonlyArray<CollisionGroup> {
     throw new Error('Collision groups not implemented for Matter.js');
   }
 
-  set ownCollisionGroups(value: CollisionGroup[] | 'all') {
+  set ownCollisionGroups(value: ReadonlyArray<CollisionGroup> | 'all') {
     throw new Error('Collision groups not implemented for Matter.js');
   }
 
@@ -72,16 +80,14 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
     throw new Error('Gg2dBody.clone() not implemented for Matter.js');
   }
 
-  addToWorld(
-    world: Gg2dWorld<VisualTypeDocRepo2D, MatterPhysicsTypeDocRepo, IVisualScene2dComponent, MatterWorldComponent>,
-  ): void {
+  addToWorld(world: MatterGgWorld): void {
     Composite.add(world.physicsWorld.matterWorld!, this.nativeBody);
+    world.physicsWorld.added$.next(this);
   }
 
-  removeFromWorld(
-    world: Gg2dWorld<VisualTypeDocRepo2D, MatterPhysicsTypeDocRepo, IVisualScene2dComponent, MatterWorldComponent>,
-  ): void {
+  removeFromWorld(world: MatterGgWorld): void {
     Composite.remove(world.physicsWorld.matterWorld!, this.nativeBody);
+    world.physicsWorld.removed$.next(this);
   }
 
   dispose(): void {}

@@ -1,0 +1,79 @@
+name: Release new version
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release-action:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get commit message
+        id: get_commit_message
+        run: |
+          COMMIT_MESSAGE=$(git log -1 --pretty=format:"%s")
+          echo "commit_message=$COMMIT_MESSAGE" >> $GITHUB_ENV
+
+      - name: Extract version string
+        id: extract_version
+        run: |
+          if [[ "$commit_message" =~ ^\[pre-release\]\ \[([0-9]+\.[0-9]+\.[0-9]+)\] ]]; then
+            VERSION="${BASH_REMATCH[1]}"
+            echo "version=$VERSION" >> $GITHUB_ENV
+            echo "PRE_RELEASE=true" >> $GITHUB_ENV
+          else
+            echo "Commit message does not match the pre-release pattern, exiting..."
+            echo "PRE_RELEASE=false" >> $GITHUB_ENV
+            exit 0
+          fi
+
+      - name: Setup python
+        if: env.PRE_RELEASE == 'true'
+        uses: getsentry/action-setup-venv@v2.1.1
+        with:
+          python-version: 3.10.7
+          cache-dependency-path: ./documentation/requirements.txt
+          install-cmd: pip install -r ./documentation/requirements.txt
+          venv-dir: ./documentation/.venv
+
+      - name: Set up Node.js
+        if: env.PRE_RELEASE == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Publish
+        if: env.PRE_RELEASE == 'true'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_KEY }}
+        run: |
+          chmod +x ./etc/publish_new_version.sh
+          export NODE_AUTH_TOKEN=${{ secrets.NPM_KEY }}
+          ./etc/publish_new_version.sh ${{ env.version }}
+
+      - name: Update docs
+        if: env.PRE_RELEASE == 'true'
+        run: |
+          npm i
+          npm run generate
+        working-directory: ./documentation
+
+      - name: Update version in git
+        if: env.PRE_RELEASE == 'true'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: '${{ env.version }} release'
+          tagging_message: ${{ env.version }}
+
+      - name: Deploy to GitHub Pages
+        if: env.PRE_RELEASE == 'true'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./documentation/site
