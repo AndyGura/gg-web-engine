@@ -1,15 +1,15 @@
 import { Entity3d, Gg3dWorld, GgStatic, OrbitCameraController, Qtrn, Trigger3dEntity } from '@gg-web-engine/core';
-import { ThreeSceneComponent } from '@gg-web-engine/three';
+import { ThreeSceneComponent, ThreeGgWorld } from '@gg-web-engine/three';
 import { AmbientLight, DirectionalLight } from 'three';
 import { AmmoWorldComponent } from '@gg-web-engine/ammo';
 
 GgStatic.instance.showStats = true;
 GgStatic.instance.devConsoleEnabled = true;
 
-const world = new Gg3dWorld(
-  new ThreeSceneComponent(),
-  new AmmoWorldComponent(),
-);
+const world: ThreeGgWorld = new Gg3dWorld({
+  visualScene: new ThreeSceneComponent(),
+  physicsWorld: new AmmoWorldComponent(),
+});
 world.init().then(async () => {
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
   const renderer = world.addRenderer(

@@ -1,4 +1,4 @@
-import { GgWorld, PhysicsTypeDocRepo, VisualTypeDocRepo } from '../gg-world';
+import { GgWorld, GgWorldTypeDocRepo } from '../gg-world';
 import { Observable, Subject } from 'rxjs';
 import { IWorldComponent } from '../components/i-world-component';
 
@@ -15,12 +15,7 @@ export enum TickOrder {
   POST_RENDERING = 1200,
 }
 
-export abstract class IEntity<
-  D = any,
-  R = any,
-  VTypeDoc extends VisualTypeDocRepo<D, R> = VisualTypeDocRepo<D, R>,
-  PTypeDoc extends PhysicsTypeDocRepo<D, R> = PhysicsTypeDocRepo<D, R>,
-> {
+export abstract class IEntity<D = any, R = any, TypeDoc extends GgWorldTypeDocRepo<D, R> = GgWorldTypeDocRepo<D, R>> {
   private static default_name_counter = 0;
   /**
    * will receive [elapsed time, delta] of each world clock tick
@@ -34,8 +29,8 @@ export abstract class IEntity<
   /**
    * a world reference, where this entity was added to
    */
-  protected _world: GgWorld<D, R, VTypeDoc, PTypeDoc> | null = null;
-  get world(): GgWorld<D, R, VTypeDoc, PTypeDoc> | null {
+  protected _world: GgWorld<D, R, TypeDoc> | null = null;
+  get world(): GgWorld<D, R, TypeDoc> | null {
     return this._world;
   }
 
@@ -95,13 +90,13 @@ export abstract class IEntity<
     }
   }
 
-  private _components: IWorldComponent<D, R, VTypeDoc, PTypeDoc>[] = [];
+  private _components: IWorldComponent<D, R, TypeDoc>[] = [];
 
-  public get components(): IWorldComponent<D, R, VTypeDoc, PTypeDoc>[] {
+  public get components(): IWorldComponent<D, R, TypeDoc>[] {
     return [...this._components];
   }
 
-  public addComponents(...components: IWorldComponent<D, R, VTypeDoc, PTypeDoc>[]) {
+  public addComponents(...components: IWorldComponent<D, R, TypeDoc>[]) {
     for (const item of components) {
       if (item.entity) {
         item.entity.removeComponents([item]);
@@ -116,7 +111,7 @@ export abstract class IEntity<
     }
   }
 
-  public removeComponents(components: IWorldComponent<D, R, VTypeDoc, PTypeDoc>[], dispose: boolean = false) {
+  public removeComponents(components: IWorldComponent<D, R, TypeDoc>[], dispose: boolean = false) {
     this._components = this._components.filter(c => !components.includes(c));
     for (const item of components) {
       item.entity = null;
@@ -137,7 +132,7 @@ export abstract class IEntity<
     return this._onRemoved$.asObservable();
   }
 
-  public onSpawned(world: GgWorld<D, R, VTypeDoc, PTypeDoc>) {
+  public onSpawned(world: GgWorld<D, R, TypeDoc>) {
     this._world = world;
     for (const c of this._components) {
       c.addToWorld(world);

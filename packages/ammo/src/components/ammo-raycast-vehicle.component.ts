@@ -1,19 +1,17 @@
 import {
   BitMask,
   CollisionGroup,
-  Gg3dWorld,
   IRaycastVehicleComponent,
   Point3,
   Point4,
   RaycastVehicle3dEntity,
   SuspensionOptions,
-  VisualTypeDocRepo3D,
   WheelOptions,
 } from '@gg-web-engine/core';
 import Ammo from '../ammo.js/ammo';
 import { AmmoRigidBodyComponent } from './ammo-rigid-body.component';
 import { AmmoWorldComponent } from './ammo-world.component';
-import { AmmoPhysicsTypeDocRepo } from '../types';
+import { AmmoGgWorld, AmmoPhysicsTypeDocRepo } from '../types';
 
 export class AmmoRaycastVehicleComponent
   extends AmmoRigidBodyComponent
@@ -70,7 +68,7 @@ export class AmmoRaycastVehicleComponent
     return this.nativeVehicle.getCurrentSpeedKmHour() / 3.6;
   }
 
-  addToWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>) {
+  addToWorld(world: AmmoGgWorld) {
     if (world.physicsWorld != this.world) {
       throw new Error('Ammo raycast vehicle cannot be shared between different worlds');
     }
@@ -82,7 +80,7 @@ export class AmmoRaycastVehicleComponent
     this.world.added$.next(this);
   }
 
-  removeFromWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>) {
+  removeFromWorld(world: AmmoGgWorld) {
     this.addedToWorld = false;
     this.chassisBody.removeFromWorld(world);
     this.world.dynamicAmmoWorld!.removeAction(this.nativeVehicle);

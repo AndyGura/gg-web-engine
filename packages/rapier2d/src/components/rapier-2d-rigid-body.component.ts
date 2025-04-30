@@ -4,12 +4,10 @@ import {
   CollisionGroup,
   DebugBody2DSettings,
   Entity2d,
-  Gg2dWorld,
   IRigidBody2dComponent,
   Pnt2,
   Point2,
   Shape2DDescriptor,
-  VisualTypeDocRepo2D,
 } from '@gg-web-engine/core';
 import {
   Collider,
@@ -20,7 +18,7 @@ import {
   Vector2,
 } from '@dimforge/rapier2d-compat';
 import { Rapier2dWorldComponent } from './rapier-2d-world.component';
-import { Rapier2dPhysicsTypeDocRepo } from '../types';
+import { Rapier2dGgWorld, Rapier2dPhysicsTypeDocRepo } from '../types';
 
 export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2dPhysicsTypeDocRepo> {
   public entity: Entity2d | null = null;
@@ -165,7 +163,7 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
     return new Rapier2dRigidBodyComponent(this.world, ...this.factoryProps);
   }
 
-  addToWorld(world: Gg2dWorld<VisualTypeDocRepo2D, Rapier2dPhysicsTypeDocRepo>): void {
+  addToWorld(world: Rapier2dGgWorld): void {
     if (world.physicsWorld != this.world) {
       throw new Error('Rapier2D bodies cannot be shared between different worlds');
     }
@@ -180,7 +178,7 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
     this.world.added$.next(this);
   }
 
-  removeFromWorld(world: Gg2dWorld<VisualTypeDocRepo2D, Rapier2dPhysicsTypeDocRepo>): void {
+  removeFromWorld(world: Rapier2dGgWorld): void {
     if (world.physicsWorld != this.world) {
       throw new Error('Rapier2D bodies cannot be shared between different worlds');
     }
@@ -203,10 +201,7 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
 
   dispose(): void {
     if (this.nativeBody) {
-      this.removeFromWorld({ physicsWorld: this.world } as any as Gg2dWorld<
-        VisualTypeDocRepo2D,
-        Rapier2dPhysicsTypeDocRepo
-      >);
+      this.removeFromWorld({ physicsWorld: this.world } as any as Rapier2dGgWorld);
     }
   }
 }

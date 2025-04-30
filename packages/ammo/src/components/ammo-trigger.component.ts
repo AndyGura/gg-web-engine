@@ -1,17 +1,10 @@
-import {
-  DebugBody3DSettings,
-  Gg3dWorld,
-  IEntity,
-  ITrigger3dComponent,
-  Shape3DDescriptor,
-  VisualTypeDocRepo3D,
-} from '@gg-web-engine/core';
+import { DebugBody3DSettings, IEntity, ITrigger3dComponent, Shape3DDescriptor } from '@gg-web-engine/core';
 import { AmmoWorldComponent } from './ammo-world.component';
 import { filter, map, Observable, Subject } from 'rxjs';
 import Ammo from '../ammo.js/ammo';
 import { AmmoBodyComponent } from './ammo-body.component';
 import { AmmoRigidBodyComponent } from './ammo-rigid-body.component';
-import { AmmoPhysicsTypeDocRepo } from '../types';
+import { AmmoGgWorld, AmmoPhysicsTypeDocRepo } from '../types';
 
 export class AmmoTriggerComponent
   extends AmmoBodyComponent<Ammo.btPairCachingGhostObject>
@@ -75,13 +68,13 @@ export class AmmoTriggerComponent
     });
   }
 
-  addToWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>) {
+  addToWorld(world: AmmoGgWorld) {
     super.addToWorld(world);
     this.world.dynamicAmmoWorld?.addCollisionObject(this.nativeBody, this._ownCGsMask, this._interactWithCGsMask);
     this.overlaps.clear();
   }
 
-  removeFromWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>): void {
+  removeFromWorld(world: AmmoGgWorld): void {
     for (const body of this.overlaps) {
       this.onLeft$.next(Ammo.getPointer(body));
     }

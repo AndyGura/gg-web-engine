@@ -6,23 +6,19 @@ import {
   OrbitCameraController,
   Pnt3,
   Qtrn,
+  TypedGg3dWorld,
 } from '@gg-web-engine/core';
-import { ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
+import { ThreeGgWorld, ThreeSceneComponent } from '@gg-web-engine/three';
 import { AmbientLight, DirectionalLight, Material, Mesh } from 'three';
-import { AmmoPhysicsTypeDocRepo, AmmoWorldComponent } from '@gg-web-engine/ammo';
+import { AmmoGgWorld, AmmoWorldComponent } from '@gg-web-engine/ammo';
 
 GgStatic.instance.showStats = true;
 GgStatic.instance.devConsoleEnabled = true;
 
-const world = new Gg3dWorld<
-  ThreeVisualTypeDocRepo,
-  AmmoPhysicsTypeDocRepo,
-  ThreeSceneComponent,
-  AmmoWorldComponent
->(
-  new ThreeSceneComponent(),
-  new AmmoWorldComponent(),
-);
+const world: TypedGg3dWorld<ThreeGgWorld, AmmoGgWorld> = new Gg3dWorld({
+  visualScene: new ThreeSceneComponent(),
+  physicsWorld: new AmmoWorldComponent(),
+});
 world.physicsWorld.maxSubSteps = 25;
 
 world.init().then(async () => {

@@ -1,7 +1,7 @@
-import { Gg2dWorld, IRenderer2dComponent, PhysicsTypeDocRepo2D, Point2, RendererOptions } from '@gg-web-engine/core';
+import { IRenderer2dComponent, Point2, RendererOptions } from '@gg-web-engine/core';
 import { Application, ApplicationOptions } from 'pixi.js';
 import { PixiSceneComponent } from './pixi-scene.component';
-import { PixiVisualTypeDocRepo2D } from '../types';
+import { PixiGgWorld, PixiVisualTypeDocRepo2D } from '../types';
 import { first, Subject } from 'rxjs';
 import { PixiPhysicsDebugView } from './pixi-physics-debug-view';
 
@@ -9,7 +9,7 @@ export class PixiRendererComponent extends IRenderer2dComponent<PixiVisualTypeDo
   public readonly application: Application;
   private initialized: boolean = false;
   private onInitialized$: Subject<void> = new Subject();
-  protected world: Gg2dWorld<PixiVisualTypeDocRepo2D, PhysicsTypeDocRepo2D, PixiSceneComponent> | null = null;
+  protected world: PixiGgWorld | null = null;
 
   private debugView: PixiPhysicsDebugView | null = null;
   private _physicsDebugViewActive: boolean = false;
@@ -76,7 +76,7 @@ export class PixiRendererComponent extends IRenderer2dComponent<PixiVisualTypeDo
     }
   }
 
-  addToWorld(world: Gg2dWorld<PixiVisualTypeDocRepo2D, PhysicsTypeDocRepo2D, PixiSceneComponent>): void {
+  addToWorld(world: PixiGgWorld): void {
     this.world = world;
     this.application.stage.addChild(this.scene.nativeContainer!);
     if (this.physicsDebugViewActive) {
@@ -85,7 +85,7 @@ export class PixiRendererComponent extends IRenderer2dComponent<PixiVisualTypeDo
     }
   }
 
-  removeFromWorld(world: Gg2dWorld<PixiVisualTypeDocRepo2D, PhysicsTypeDocRepo2D, PixiSceneComponent>): void {
+  removeFromWorld(world: PixiGgWorld): void {
     if (this.physicsDebugViewActive) {
       this.debugView!.dispose();
       this.debugView = null;

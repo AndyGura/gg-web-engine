@@ -8,7 +8,7 @@ import {
 } from '../components/physics/i-raycast-vehicle.component';
 import { IRigidBody3dComponent } from '../components/physics/i-rigid-body-3d.component';
 import { IPositionable3d } from '../interfaces/i-positionable-3d';
-import { PhysicsTypeDocRepo3D, VisualTypeDocRepo3D } from '../gg-3d-world';
+import { Gg3dWorldTypeDocRepo } from '../gg-3d-world';
 
 export type WheelDisplayOptions = {
   displayObject?: IDisplayObject3dComponent;
@@ -66,10 +66,9 @@ const wheeelDefaults = {
 };
 
 export class RaycastVehicle3dEntity<
-  VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D,
-  PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D,
-> extends Entity3d<VTypeDoc, PTypeDoc> {
-  protected readonly wheels: (Entity3d<VTypeDoc, PTypeDoc> | null)[] = [];
+  TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo,
+> extends Entity3d<TypeDoc> {
+  protected readonly wheels: (Entity3d<TypeDoc> | null)[] = [];
   protected readonly wheelLocalRotation: (Point4 | null)[] = [];
   protected readonly frontWheelsIndices: number[] = [];
   protected readonly rearWheelsIndices: number[] = [];
@@ -211,7 +210,7 @@ export class RaycastVehicle3dEntity<
         localRotation = { x: 0, y: 0.707107 * (flip ? 1 : -1), z: 0, w: 0.707107 };
       }
       this.wheelLocalRotation.push(localRotation);
-      const wheelEntity = new Entity3d<VTypeDoc, PTypeDoc>({ object3D: displayObj });
+      const wheelEntity = new Entity3d<TypeDoc>({ object3D: displayObj });
       wheelEntity.name = this.name + '__wheel_' + (options.isFront ? 'f' : 'r') + (options.isLeft ? 'l' : 'r');
       this.wheels.push(wheelEntity);
     }

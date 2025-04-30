@@ -3,13 +3,13 @@ import { IRigidBodyComponent } from './i-rigid-body.component';
 import { IBodyComponent } from './i-body.component';
 import { PhysicsTypeDocRepo } from '../../gg-world';
 
-export interface ITriggerComponent<D, R, TypDoc extends PhysicsTypeDocRepo<D, R> = PhysicsTypeDocRepo<D, R>>
-  extends IBodyComponent<D, R, TypDoc> {
-  get onEntityEntered(): Observable<IRigidBodyComponent<D, R, TypDoc>>;
+export interface ITriggerComponent<D, R, PTypeDoc extends PhysicsTypeDocRepo<D, R> = PhysicsTypeDocRepo<D, R>>
+  extends IBodyComponent<D, R, PTypeDoc> {
+  get onEntityEntered(): Observable<IRigidBodyComponent<D, R, PTypeDoc>>;
 
-  get onEntityLeft(): Observable<IRigidBodyComponent<D, R, TypDoc> | null>;
+  get onEntityLeft(): Observable<IRigidBodyComponent<D, R, PTypeDoc> | null>;
 
-  clone(): ITriggerComponent<D, R, TypDoc>;
+  clone(): ITriggerComponent<D, R, PTypeDoc>;
 
   checkOverlaps(): void;
 }

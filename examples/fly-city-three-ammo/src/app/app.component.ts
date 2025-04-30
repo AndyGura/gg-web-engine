@@ -6,17 +6,19 @@ import {
   ElementRef,
   ViewChild,
 } from '@angular/core';
-import { Gg3dWorld } from '@gg-web-engine/core';
-import { ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
-import { AmmoPhysicsTypeDocRepo, AmmoWorldComponent } from '@gg-web-engine/ammo';
+import { Gg3dWorld, TypedGg3dWorld } from '@gg-web-engine/core';
+import { ThreeGgWorld, ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
+import { AmmoGgWorld, AmmoPhysicsTypeDocRepo, AmmoWorldComponent } from '@gg-web-engine/ammo';
 import { filter } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 import { GameRunner } from './game-runner';
 import { GameFactory } from './game-factory';
 
-export type FlyCityVTypeDoc = ThreeVisualTypeDocRepo;
-export type FlyCityPTypeDoc = AmmoPhysicsTypeDocRepo;
-export type FlyCityWorld = Gg3dWorld<FlyCityVTypeDoc, FlyCityPTypeDoc, ThreeSceneComponent, AmmoWorldComponent>;
+export type FlyCityTypeDoc = {
+  vTypeDoc: ThreeVisualTypeDocRepo,
+  pTypeDoc: AmmoPhysicsTypeDocRepo,
+};
+export type FlyCityWorld = TypedGg3dWorld<ThreeGgWorld, AmmoGgWorld>;
 
 @Component({
   selector: 'app-root',
@@ -45,7 +47,10 @@ export class AppComponent implements AfterViewInit {
   }
 
   private async initGame() {
-    this.world = new Gg3dWorld(new ThreeSceneComponent(), new AmmoWorldComponent());
+    this.world = new Gg3dWorld({
+      visualScene: new ThreeSceneComponent(),
+      physicsWorld: new AmmoWorldComponent(),
+    });
     const factory: GameFactory = new GameFactory(this.world);
     const [renderer, cityMapGraph, mapBounds] = await factory.initGame(this.canvas.nativeElement);
     await factory.spawnLambo();

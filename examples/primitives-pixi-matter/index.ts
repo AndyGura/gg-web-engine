@@ -5,10 +5,10 @@ import { MatterWorldComponent } from '@gg-web-engine/matter';
 GgStatic.instance.showStats = true;
 GgStatic.instance.devConsoleEnabled = true;
 
-const world = new Gg2dWorld(
-  new PixiSceneComponent(),
-  new MatterWorldComponent(),
-);
+const world = new Gg2dWorld({
+  visualScene: new PixiSceneComponent(),
+  physicsWorld: new MatterWorldComponent(),
+});
 world.init().then(async () => {
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
   const renderer = world.addRenderer(canvas);

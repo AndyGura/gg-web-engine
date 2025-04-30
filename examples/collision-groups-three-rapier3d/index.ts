@@ -1,15 +1,15 @@
 import { Entity3d, Gg3dWorld, GgStatic, OrbitCameraController, Qtrn, Trigger3dEntity } from '@gg-web-engine/core';
-import { ThreeSceneComponent } from '@gg-web-engine/three';
+import { ThreeGgWorld, ThreeSceneComponent } from '@gg-web-engine/three';
 import { AmbientLight, DirectionalLight } from 'three';
 import { Rapier3dWorldComponent } from '@gg-web-engine/rapier3d';
 
 GgStatic.instance.showStats = true;
 GgStatic.instance.devConsoleEnabled = true;
 
-const world = new Gg3dWorld(
-  new ThreeSceneComponent(),
-  new Rapier3dWorldComponent(),
-);
+const world: ThreeGgWorld = new Gg3dWorld({
+  visualScene: new ThreeSceneComponent(),
+  physicsWorld: new Rapier3dWorldComponent(),
+});
 world.init().then(async () => {
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
   const renderer = world.addRenderer(
@@ -50,17 +50,17 @@ world.init().then(async () => {
   for (let i = 0; i < cgs.length; i++) {
     const [color, collisionGroup] = cgs[i];
     world.addPrimitiveRigidBody({
-      shape: { shape: 'BOX', dimensions: { x: 7, y: 7, z: 0.5 } },
-      // collision groups can be set immediately when creating entity
-      body: { dynamic: false, ownCollisionGroups: [collisionGroup], interactWithCollisionGroups: [collisionGroup] },
-    },
+        shape: { shape: 'BOX', dimensions: { x: 7, y: 7, z: 0.5 } },
+        // collision groups can be set immediately when creating entity
+        body: { dynamic: false, ownCollisionGroups: [collisionGroup], interactWithCollisionGroups: [collisionGroup] },
+      },
       { x: 0, y: 0, z: -(i + 1 - cgs.length / 2) * 5 },
       Qtrn.fromEuler({ x: Math.PI / 4, y: 0, z: 2 * i * Math.PI / cgs.length }), {
-      color,
-      shading: 'phong',
-      castShadow: true,
-      receiveShadow: true,
-    });
+        color,
+        shading: 'phong',
+        castShadow: true,
+        receiveShadow: true,
+      });
   }
 
   const destroyTrigger = new Trigger3dEntity(

@@ -15,6 +15,7 @@ import {
 } from '../base';
 import { lastValueFrom, Subject, take } from 'rxjs';
 import { PerformanceMeterEntity } from '../dev';
+import { IVisualScene2dComponent, VisualTypeDocRepo2D } from '../2d';
 
 export type VisualTypeDocRepo<D, R> = {
   factory: unknown;
@@ -29,13 +30,47 @@ export type PhysicsTypeDocRepo<D, R> = {
   trigger: ITriggerComponent<D, R>;
 };
 
+export type GgWorldTypeDocRepo<D, R> = {
+  vTypeDoc: VisualTypeDocRepo<D, R>;
+  pTypeDoc: PhysicsTypeDocRepo<D, R>;
+};
+// utility types to create world type doc by defining either vTypeDoc or pTypeDoc only
+export type GgWorldTypeDocVPatch<D, R, VTypeDoc extends VisualTypeDocRepo<D, R>> = Omit<
+  GgWorldTypeDocRepo<D, R>,
+  'vTypeDoc'
+> & {
+  vTypeDoc: VTypeDoc;
+};
+export type GgWorldTypeDocPPatch<D, R, PTypeDoc extends PhysicsTypeDocRepo<D, R>> = Omit<
+  GgWorldTypeDocRepo<D, R>,
+  'pTypeDoc'
+> & {
+  pTypeDoc: PTypeDoc;
+};
+
+export type GgWorldSceneTypeRepo<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R> = GgWorldTypeDocRepo<D, R>> = {
+  visualScene: IVisualSceneComponent<D, R, TypeDoc['vTypeDoc']> | null;
+  physicsWorld: IPhysicsWorldComponent<D, R, TypeDoc['pTypeDoc']> | null;
+};
+// utility types to create world scene type doc by defining either visualScene or physicsWorld type only
+export type GgWorldSceneTypeDocVPatch<
+  D,
+  R,
+  VTypeDoc extends VisualTypeDocRepo2D,
+  VS extends IVisualScene2dComponent<VTypeDoc> | null,
+> = Omit<GgWorldSceneTypeRepo<D, R>, 'visualScene'> & { visualScene: VS };
+export type GgWorldSceneTypeDocPPatch<
+  D,
+  R,
+  PTypeDoc extends PhysicsTypeDocRepo<D, R>,
+  PW extends IPhysicsWorldComponent<D, R, PTypeDoc> | null,
+> = Omit<GgWorldSceneTypeRepo<D, R>, 'physicsWorld'> & { physicsWorld: PW };
+
 export abstract class GgWorld<
   D,
   R,
-  VTypeDoc extends VisualTypeDocRepo<D, R> = VisualTypeDocRepo<D, R>,
-  PTypeDoc extends PhysicsTypeDocRepo<D, R> = PhysicsTypeDocRepo<D, R>,
-  VS extends IVisualSceneComponent<D, R, VTypeDoc> = IVisualSceneComponent<D, R, VTypeDoc>,
-  PW extends IPhysicsWorldComponent<D, R, PTypeDoc> = IPhysicsWorldComponent<D, R, PTypeDoc>,
+  TypeDoc extends GgWorldTypeDocRepo<D, R> = GgWorldTypeDocRepo<D, R>,
+  SceneTypeDoc extends GgWorldSceneTypeRepo<D, R, TypeDoc> = GgWorldSceneTypeRepo<D, R, TypeDoc>,
 > {
   private static default_name_counter = 0;
   private static _documentWorlds: GgWorld<any, any>[] = [];
@@ -44,6 +79,9 @@ export abstract class GgWorld<
   static get documentWorlds(): GgWorld<any, any>[] {
     return [...GgWorld._documentWorlds];
   }
+
+  public readonly visualScene: SceneTypeDoc['visualScene'];
+  public readonly physicsWorld: SceneTypeDoc['physicsWorld'];
 
   public readonly worldClock: PausableClock = new PausableClock(false);
   public readonly keyboardInput: KeyboardInput = new KeyboardInput();
@@ -65,10 +103,12 @@ export abstract class GgWorld<
   public readonly paused$: Subject<boolean> = new Subject<boolean>();
   public readonly disposed$: Subject<void> = new Subject<void>();
 
-  protected constructor(
-    public readonly visualScene: VS,
-    public readonly physicsWorld: PW,
-  ) {
+  protected constructor(args: {
+    visualScene?: SceneTypeDoc['visualScene'];
+    physicsWorld?: SceneTypeDoc['physicsWorld'];
+  }) {
+    this.visualScene = args.visualScene || null;
+    this.physicsWorld = args.physicsWorld || null;
     this.keyboardInput.start();
     if ((window as any).ggstatic) {
       this.registerConsoleCommands((window as any).ggstatic);
@@ -82,7 +122,14 @@ export abstract class GgWorld<
   }
 
   public async init() {
-    await Promise.all([this.physicsWorld.init(), this.visualScene.init()]);
+    const initPromises = [];
+    if (this.visualScene) {
+      initPromises.push(this.visualScene.init());
+    }
+    if (this.physicsWorld) {
+      initPromises.push(this.physicsWorld.init());
+    }
+    await Promise.all(initPromises);
     const forwardTick = (listener: IEntity, elapsed: number, delta: number) => {
       if (listener.active) {
         this.tickForwardTo$.next(listener);
@@ -101,9 +148,11 @@ export abstract class GgWorld<
         forwardTick(this.tickListeners[i], elapsed, delta);
       }
       // run physics simulation
-      this.tickForwardTo$.next('PHYSICS_WORLD');
-      this.physicsWorld.simulate(delta);
-      this.tickForwardedTo$.next('PHYSICS_WORLD');
+      if (this.physicsWorld) {
+        this.tickForwardTo$.next('PHYSICS_WORLD');
+        this.physicsWorld.simulate(delta);
+        this.tickForwardedTo$.next('PHYSICS_WORLD');
+      }
       // emit tick to all remained entities
       for (i; i < this.tickListeners.length; i++) {
         forwardTick(this.tickListeners[i], elapsed, delta);
@@ -156,8 +205,12 @@ export abstract class GgWorld<
     }
     this.children.splice(0, this.children.length);
     this.tickListeners.splice(0, this.tickListeners.length);
-    this.physicsWorld.dispose();
-    this.visualScene.dispose();
+    if (this.physicsWorld) {
+      this.physicsWorld.dispose();
+    }
+    if (this.visualScene) {
+      this.visualScene.dispose();
+    }
     GgWorld._documentWorlds.splice(GgWorld._documentWorlds.indexOf(this), 1);
     this.disposed$.next();
     this.disposed$.complete();
@@ -168,7 +221,7 @@ export abstract class GgWorld<
     position?: D,
     rotation?: R,
     material?: unknown, // type defined in subclasses
-  ): IPositionable<D, R> & IRenderableEntity<D, R, VTypeDoc>;
+  ): IPositionable<D, R> & IRenderableEntity<D, R, TypeDoc>;
 
   public addEntity(entity: IEntity): void {
     if (!!entity.world) {

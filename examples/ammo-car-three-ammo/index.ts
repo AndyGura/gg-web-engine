@@ -8,23 +8,19 @@ import {
   Qtrn,
   RaycastVehicle3dEntity,
   RVEntityTractionBias,
+  TypedGg3dWorld,
 } from '@gg-web-engine/core';
-import { ThreeDisplayObject3dOpts, ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
+import { ThreeDisplayObject3dOpts, ThreeGgWorld, ThreeSceneComponent } from '@gg-web-engine/three';
 import { AmbientLight, DirectionalLight } from 'three';
-import { AmmoPhysicsTypeDocRepo, AmmoWorldComponent } from '@gg-web-engine/ammo';
+import { AmmoGgWorld, AmmoWorldComponent } from '@gg-web-engine/ammo';
 
 GgStatic.instance.showStats = true;
 GgStatic.instance.devConsoleEnabled = true;
 
-const world = new Gg3dWorld<
-  ThreeVisualTypeDocRepo,
-  AmmoPhysicsTypeDocRepo,
-  ThreeSceneComponent,
-  AmmoWorldComponent
->(
-  new ThreeSceneComponent(),
-  new AmmoWorldComponent(),
-);
+const world: TypedGg3dWorld<ThreeGgWorld, AmmoGgWorld> = new Gg3dWorld({
+  visualScene: new ThreeSceneComponent(),
+  physicsWorld: new AmmoWorldComponent(),
+});
 world.init().then(async () => {
   // init graphics
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;

@@ -1,7 +1,7 @@
 import { BehaviorSubject, Observable, startWith, Subject, takeUntil } from 'rxjs';
 import { distinctUntilChanged, map, tap } from 'rxjs/operators';
 import { Graph, IEntity, PausableClock, Pnt3, Point3, Point4, Qtrn, TickOrder } from '../../base';
-import { Gg3dWorld, PhysicsTypeDocRepo3D, VisualTypeDocRepo3D } from '../gg-3d-world';
+import { Gg3dWorld, Gg3dWorldTypeDocRepo } from '../gg-3d-world';
 import { Entity3d } from './entity-3d';
 import { LoadOptions, LoadResultWithProps } from '../loader';
 import { IPositionable3d } from '../interfaces/i-positionable-3d';
@@ -101,9 +101,8 @@ const defaultOptions: Gg3dMapGraphEntityOptions = {
 };
 
 export class MapGraph3dEntity<
-  VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D,
-  PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D,
-> extends IRenderable3dEntity<VTypeDoc, PTypeDoc> {
+  TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo,
+> extends IRenderable3dEntity<TypeDoc> {
   public readonly tickOrder = TickOrder.POST_RENDERING;
 
   public readonly loaderCursor$: BehaviorSubject<Point3> = new BehaviorSubject<Point3>(Pnt3.O);
@@ -123,16 +122,16 @@ export class MapGraph3dEntity<
 
   protected _chunkLoaded$: Subject<
     [
-      LoadResultWithProps<VTypeDoc, PTypeDoc>,
+      LoadResultWithProps<TypeDoc>,
       {
         position: Point3;
         rotation: Point4;
       },
     ]
-  > = new Subject<[LoadResultWithProps<VTypeDoc, PTypeDoc>, { position: Point3; rotation: Point4 }]>();
+  > = new Subject<[LoadResultWithProps<TypeDoc>, { position: Point3; rotation: Point4 }]>();
   public get chunkLoaded$(): Observable<
     [
-      LoadResultWithProps<VTypeDoc, PTypeDoc>,
+      LoadResultWithProps<TypeDoc>,
       {
         position: Point3;
         rotation: Point4;
@@ -169,7 +168,7 @@ export class MapGraph3dEntity<
     this.mapGraphNodes = mapGraph.nodes();
   }
 
-  onSpawned(world: Gg3dWorld<VTypeDoc, PTypeDoc>) {
+  onSpawned(world: Gg3dWorld<TypeDoc>) {
     super.onSpawned(world);
     this.loadClock = world.createClock(true);
     this.loadClock.tickRateLimit = this._loadRateLimit;
@@ -252,9 +251,7 @@ export class MapGraph3dEntity<
     this.loaderCursor$.next(Pnt3.O);
   }
 
-  protected async loadChunk(
-    node: MapGraphNodeType,
-  ): Promise<[Entity3d<VTypeDoc, PTypeDoc>[], LoadResultWithProps<VTypeDoc, PTypeDoc>]> {
+  protected async loadChunk(node: MapGraphNodeType): Promise<[Entity3d<TypeDoc>[], LoadResultWithProps<TypeDoc>]> {
     const loaded = await this.world!.loader.loadGgGlb(node.path, {
       position: node.position,
       rotation: node.rotation || Qtrn.O,

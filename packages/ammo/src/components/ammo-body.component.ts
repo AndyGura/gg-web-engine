@@ -1,16 +1,7 @@
-import {
-  BitMask,
-  CollisionGroup,
-  Gg3dWorld,
-  IEntity,
-  Point3,
-  Point4,
-  Shape3DDescriptor,
-  VisualTypeDocRepo3D,
-} from '@gg-web-engine/core';
+import { BitMask, CollisionGroup, IEntity, Point3, Point4, Shape3DDescriptor } from '@gg-web-engine/core';
 import { AmmoWorldComponent } from './ammo-world.component';
 import Ammo from '../ammo.js/ammo';
-import { AmmoPhysicsTypeDocRepo } from '../types';
+import { AmmoGgWorld } from '../types';
 
 export abstract class AmmoBodyComponent<T extends Ammo.btCollisionObject> {
   protected static nativeBodyReverseMap: Map<number, AmmoBodyComponent<any>> = new Map<
@@ -112,7 +103,7 @@ export abstract class AmmoBodyComponent<T extends Ammo.btCollisionObject> {
 
   abstract clone(): AmmoBodyComponent<T>;
 
-  addToWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>): void {
+  addToWorld(world: AmmoGgWorld): void {
     if (world.physicsWorld != this.world) {
       throw new Error('Ammo bodies cannot be shared between different worlds');
     }
@@ -120,7 +111,7 @@ export abstract class AmmoBodyComponent<T extends Ammo.btCollisionObject> {
     this.world.added$.next(this as any);
   }
 
-  removeFromWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>): void {
+  removeFromWorld(world: AmmoGgWorld): void {
     if (world.physicsWorld != this.world) {
       throw new Error('Ammo bodies cannot be shared between different worlds');
     }
