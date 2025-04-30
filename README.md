@@ -93,7 +93,10 @@ import { ThreeSceneComponent } from '@gg-web-engine/three';
 import { AmmoWorldComponent } from '@gg-web-engine/ammo';
 
 // create world
-const world = new Gg3dWorld(new ThreeSceneComponent(), new AmmoWorldComponent());
+const world = new Gg3dWorld({
+  visualScene: new ThreeSceneComponent(),
+  physicsWorld: new AmmoWorldComponent(),
+});
 await world.init();
 
 // create viewport and renderer
@@ -310,7 +313,57 @@ provide custom console commands using `GgStatic.instance.registerConsoleCommand`
 | `gravity` | `?float, ?float, ?float` | Get or set 3D world gravity vector. 1 argument sets vector {x: 0, y: 0, z: -value}, 3 arguments set the whole vector. Default value is "9.82" or "0 0 -9.82" |
 
 ## ❓ FAQ
+### How to access integration module native objects?
+
+All the component implementations have a reference to the native object. By convention field names are:
+- `nativeScene` for 3D visual world scene
+- `nativeContainer` for 2D visual world container
+- `nativeMesh` for 3D display object
+- `nativeSprite` for 2D display object
+- `nativeWorld` for 2D/3D physics world
+- `nativeBody` for 2D/3D physics bodies
+
+For instance, `ThreeSceneComponent` has public field `nativeScene: THREE.Scene`
+
+### How to make TypeScript happy?
+
+Everything is strictly typed inside the engine and works abstractly regardless of plugged in integration module.
+However, it's not always possible for typescript to infer types which rely on the integration module that you're using.
+For example:
+
+```typescript
+const world = new Gg3dWorld({
+  visualScene: new ThreeSceneComponent(),
+  physicsWorld: new AmmoWorldComponent(),
+});
+const box = world.addPrimitiveRigidBody(...);
+// this is ok
+box.object3D.scale = { x: 2, y: 2, z: 2 };
+// this gives typescript error
+box.object3D.nativeMesh.material = myThreeMaterial;
+```
+
+Solution:
+```typescript
+const world : TypedGg3dWorld<ThreeGgWorld, AmmoGgWorld> = new Gg3dWorld({
+  visualScene: new ThreeSceneComponent(),
+  physicsWorld: new AmmoWorldComponent(),
+});
+const box = world.addPrimitiveRigidBody(...);
+// now this works
+box.object3D.nativeMesh.material = myThreeMaterial;
+// and this works as well
+box.objectBody.nativeBody.applyTorque(...);
+```
+
+All the integration modules provide `[ModuleName]GgWorld` type, where typescript knows which implementation is used.
+You can define `const world: ThreeGgWorld = new Gg3dWorld(...)` and TS would infer all types for visual features according
+to three-js integration module and use abstract types for physics features.
+
+Type `TypedGg3dWorld` "welds" two separate world types together: first generic must have types for visual world, second for physics world.
+
 ### Why is the viewport not centered or blurry on mobile/retina displays?
+
 Add the following meta tag to your `<head>`:
 ```html
 <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1, maximum-scale=1">
