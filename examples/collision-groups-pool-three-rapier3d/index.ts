@@ -6,23 +6,19 @@ import {
   OrbitCameraController,
   Pnt3,
   Qtrn,
+  TypedGg3dWorld,
 } from '@gg-web-engine/core';
-import { ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
+import { ThreeGgWorld, ThreeSceneComponent } from '@gg-web-engine/three';
 import { AmbientLight, DirectionalLight, Material, Mesh } from 'three';
-import { Rapier3dPhysicsTypeDocRepo, Rapier3dWorldComponent } from '@gg-web-engine/rapier3d';
+import { Rapier3dGgWorld, Rapier3dWorldComponent } from '@gg-web-engine/rapier3d';
 
 GgStatic.instance.showStats = true;
 GgStatic.instance.devConsoleEnabled = true;
 
-const world = new Gg3dWorld<
-  ThreeVisualTypeDocRepo,
-  Rapier3dPhysicsTypeDocRepo,
-  ThreeSceneComponent,
-  Rapier3dWorldComponent
->(
-  new ThreeSceneComponent(),
-  new Rapier3dWorldComponent(),
-);
+const world: TypedGg3dWorld<ThreeGgWorld, Rapier3dGgWorld> = new Gg3dWorld({
+  visualScene: new ThreeSceneComponent(),
+  physicsWorld: new Rapier3dWorldComponent(),
+});
 world.init().then(async () => {
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
   const renderer = world.addRenderer(
@@ -60,11 +56,11 @@ world.init().then(async () => {
     0xff00ff,
   ].map(c => ([c, world.physicsWorld.registerCollisionGroup()]));
 
-  const maxFloorTranslationPerTick = 0.5;
+  const maxFloorTranslationPerTick = 0.1;
   for (let i = 0; i <= cgs.length; i++) {
     const [color, collisionGroup] = i < cgs.length ? cgs[i] : [0x00ffff, 15];
     const floor = world.addPrimitiveRigidBody({
-        shape: { shape: 'BOX', dimensions: { x: 16, y: 16, z: 0.5 } },
+        shape: { shape: 'BOX', dimensions: { x: 16, y: 16, z: 1 } },
         // collision groups can be set immediately when creating entity
         body: {
           dynamic: false,
@@ -121,7 +117,7 @@ world.init().then(async () => {
 
   for (let i = -7; i <= 7; i++) {
     for (let j = -7; j <= 7; j++) {
-      for (let k = 1; k <= 2; k++) {
+      for (let k = 4; k <= 5; k++) {
         const [color, collisionGroup] = cgs[Math.floor(Math.random() * cgs.length)];
         let item = world.addPrimitiveRigidBody(
           {

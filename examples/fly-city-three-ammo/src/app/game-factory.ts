@@ -1,5 +1,6 @@
 import {
-  CachingStrategy, createInlineTickController,
+  CachingStrategy,
+  createInlineTickController,
   GgCarEntity,
   GgCarProperties,
   GgDummy,
@@ -16,7 +17,7 @@ import {
 import { CubeReflectionMapping, CubeTexture, CubeTextureLoader, DirectionalLight, RGBAFormat } from 'three';
 import { filter, firstValueFrom } from 'rxjs';
 import { CAR_SPECS, LAMBO_SPECS, TRUCK_SPECS } from './car-specs';
-import { FlyCityPTypeDoc, FlyCityVTypeDoc, FlyCityWorld } from './app.component';
+import { FlyCityTypeDoc, FlyCityWorld } from './app.component';
 import { takeUntil } from 'rxjs/operators';
 
 GgStatic.instance.showStats = true;
@@ -26,7 +27,7 @@ export class GameFactory {
   constructor(public readonly world: FlyCityWorld) {
   }
 
-  public async initGame(canvas: HTMLCanvasElement): Promise<[Renderer3dEntity<FlyCityVTypeDoc>, MapGraph3dEntity<FlyCityVTypeDoc, FlyCityPTypeDoc>, Trigger3dEntity<FlyCityPTypeDoc>]> {
+  public async initGame(canvas: HTMLCanvasElement): Promise<[Renderer3dEntity<FlyCityTypeDoc['vTypeDoc']>, MapGraph3dEntity<FlyCityTypeDoc>, Trigger3dEntity<FlyCityTypeDoc['pTypeDoc']>]> {
     await this.world.init();
     const renderer = await this.initRenderer(canvas);
     this.addLights();
@@ -37,7 +38,7 @@ export class GameFactory {
     return [renderer, cityMapGraph, mapBounds];
   }
 
-  private async initRenderer(canvas: HTMLCanvasElement): Promise<Renderer3dEntity<FlyCityVTypeDoc>> {
+  private async initRenderer(canvas: HTMLCanvasElement): Promise<Renderer3dEntity<FlyCityTypeDoc['vTypeDoc']>> {
     const renderer = this.world.addRenderer(
       this.world.visualScene.factory.createPerspectiveCamera({ fov: 75 }),
       canvas,
@@ -72,7 +73,7 @@ export class GameFactory {
     this.world.visualScene.nativeScene!.background = envMap;
   }
 
-  private setupMapGraph(renderCursor: (IEntity & IPositionable3d)): MapGraph3dEntity<FlyCityVTypeDoc, FlyCityPTypeDoc> {
+  private setupMapGraph(renderCursor: (IEntity & IPositionable3d)): MapGraph3dEntity<FlyCityTypeDoc> {
     const mapGraph = MapGraph.fromMapSquareGrid(
       Array(11).fill(null).map((_, i) => (
         Array(11).fill(null).map((_, j) => ({
@@ -84,7 +85,7 @@ export class GameFactory {
         }))
       )),
     );
-    const cityMapGraph = new MapGraph3dEntity<FlyCityVTypeDoc, FlyCityPTypeDoc>(mapGraph, { loadDepth: 3, inertia: 2 });
+    const cityMapGraph = new MapGraph3dEntity<FlyCityTypeDoc>(mapGraph, { loadDepth: 3, inertia: 2 });
     createInlineTickController(this.world).pipe(
       takeUntil(cityMapGraph.onRemoved$),
       takeUntil(renderCursor.onRemoved$),
@@ -129,8 +130,8 @@ export class GameFactory {
     return cityMapGraph;
   }
 
-  public createMapBounds(): Trigger3dEntity<FlyCityPTypeDoc> {
-    const playingArea = new Trigger3dEntity<FlyCityPTypeDoc>(this.world.physicsWorld.factory.createTrigger({
+  public createMapBounds(): Trigger3dEntity<FlyCityTypeDoc['pTypeDoc']> {
+    const playingArea = new Trigger3dEntity<FlyCityTypeDoc['pTypeDoc']>(this.world.physicsWorld.factory.createTrigger({
       shape: 'BOX',
       dimensions: { x: 1000, y: 1000, z: 200 },
     }));
@@ -158,8 +159,8 @@ export class GameFactory {
   }
 
   private generateCar(
-    chassisMesh: FlyCityVTypeDoc['displayObject'] | null, chassisBody: FlyCityPTypeDoc['rigidBody'],
-    chassisDummies: GgDummy[], wheelMesh: FlyCityVTypeDoc['displayObject'] | null, specs: Omit<GgCarProperties, 'wheelOptions'>,
+    chassisMesh: FlyCityTypeDoc['vTypeDoc']['displayObject'] | null, chassisBody: FlyCityTypeDoc['pTypeDoc']['rigidBody'],
+    chassisDummies: GgDummy[], wheelMesh: FlyCityTypeDoc['vTypeDoc']['displayObject'] | null, specs: Omit<GgCarProperties, 'wheelOptions'>,
   ): GgCarEntity {
     return new GgCarEntity(
       {

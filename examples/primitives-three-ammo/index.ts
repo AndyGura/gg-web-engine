@@ -5,10 +5,10 @@ import { AmmoWorldComponent } from '@gg-web-engine/ammo';
 GgStatic.instance.showStats = true;
 GgStatic.instance.devConsoleEnabled = true;
 
-const world = new Gg3dWorld(
-  new ThreeSceneComponent(),
-  new AmmoWorldComponent(),
-);
+const world = new Gg3dWorld({
+  visualScene: new ThreeSceneComponent(),
+  physicsWorld: new AmmoWorldComponent(),
+});
 world.init().then(async () => {
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
   const renderer = world.addRenderer(world.visualScene.factory.createPerspectiveCamera(), canvas);

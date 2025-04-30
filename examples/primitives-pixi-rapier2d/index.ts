@@ -5,10 +5,10 @@ import { Rapier2dWorldComponent } from '@gg-web-engine/rapier2d';
 GgStatic.instance.showStats = true;
 GgStatic.instance.devConsoleEnabled = true;
 
-const world = new Gg2dWorld(
-  new PixiSceneComponent(),
-  new Rapier2dWorldComponent(),
-);
+const world = new Gg2dWorld({
+  visualScene: new PixiSceneComponent(),
+  physicsWorld: new Rapier2dWorldComponent(),
+});
 world.init().then(async () => {
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
   const renderer = world.addRenderer(canvas);
