@@ -1,17 +1,6 @@
-import {
-  Gg3dWorld,
-  GgBox3d,
-  IDisplayObject3dComponent,
-  IEntity,
-  PhysicsTypeDocRepo3D,
-  Pnt3,
-  Point3,
-  Point4,
-  Qtrn,
-} from '@gg-web-engine/core';
+import { GgBox3d, IDisplayObject3dComponent, IEntity, Pnt3, Point3, Point4, Qtrn } from '@gg-web-engine/core';
 import { Box3, Group, Mesh, Object3D, Scene } from 'three';
-import { ThreeSceneComponent } from './three-scene.component';
-import { ThreeVisualTypeDocRepo } from '../types';
+import { ThreeGgWorld, ThreeVisualTypeDocRepo } from '../types';
 
 export class ThreeDisplayObjectComponent implements IDisplayObject3dComponent<ThreeVisualTypeDocRepo> {
   entity: IEntity | null = null;
@@ -82,11 +71,11 @@ export class ThreeDisplayObjectComponent implements IDisplayObject3dComponent<Th
     return new ThreeDisplayObjectComponent(this.nativeMesh.clone());
   }
 
-  addToWorld(world: Gg3dWorld<ThreeVisualTypeDocRepo, PhysicsTypeDocRepo3D, ThreeSceneComponent>): void {
+  addToWorld(world: ThreeGgWorld): void {
     world.visualScene.nativeScene?.add(this.nativeMesh);
   }
 
-  removeFromWorld(world: Gg3dWorld<ThreeVisualTypeDocRepo, PhysicsTypeDocRepo3D, ThreeSceneComponent>): void {
+  removeFromWorld(world: ThreeGgWorld): void {
     world.visualScene.nativeScene?.remove(this.nativeMesh);
   }
 

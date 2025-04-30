@@ -1,15 +1,9 @@
 import { map, merge, Observable, Subject } from 'rxjs';
 import { ColliderDesc, RigidBodyDesc } from '@dimforge/rapier2d-compat';
 import { Rapier2dRigidBodyComponent } from './rapier-2d-rigid-body.component';
-import {
-  DebugBody2DSettings,
-  Gg2dWorld,
-  ITrigger2dComponent,
-  Shape2DDescriptor,
-  VisualTypeDocRepo2D,
-} from '@gg-web-engine/core';
+import { DebugBody2DSettings, ITrigger2dComponent, Shape2DDescriptor } from '@gg-web-engine/core';
 import { Rapier2dWorldComponent } from './rapier-2d-world.component';
-import { Rapier2dPhysicsTypeDocRepo } from '../types';
+import { Rapier2dGgWorld, Rapier2dPhysicsTypeDocRepo } from '../types';
 
 export class Rapier2dTriggerComponent
   extends Rapier2dRigidBodyComponent
@@ -49,7 +43,7 @@ export class Rapier2dTriggerComponent
     });
   }
 
-  addToWorld(world: Gg2dWorld<VisualTypeDocRepo2D, Rapier2dPhysicsTypeDocRepo>): void {
+  addToWorld(world: Rapier2dGgWorld): void {
     if (world.physicsWorld != this.world) {
       throw new Error('Rapier2D bodies cannot be shared between different worlds');
     }

@@ -1,7 +1,7 @@
 import { Point2 } from '../../models/points';
 import { Observable } from 'rxjs';
 import { IWorldComponent } from '../i-world-component';
-import { GgWorld, GgWorldTypeDocRepo, VisualTypeDocRepo } from '../../gg-world';
+import { GgWorld, GgWorldTypeDocVPatch, VisualTypeDocRepo } from '../../gg-world';
 import { IEntity } from '../../entities/i-entity';
 import { IVisualSceneComponent } from './i-visual-scene.component';
 
@@ -30,7 +30,7 @@ const DEFAULT_RENDERER_OPTIONS: RendererOptions = {
 };
 
 export abstract class IRendererComponent<D, R, VTypeDoc extends VisualTypeDocRepo<D, R> = VisualTypeDocRepo<D, R>>
-  implements IWorldComponent<D, R, GgWorldTypeDocRepo<D, R> & { vTypeDoc: VTypeDoc }>
+  implements IWorldComponent<D, R, GgWorldTypeDocVPatch<D, R, VTypeDoc>>
 {
   entity: IEntity | null = null;
   /** Specifies the options for the renderer. */
@@ -57,9 +57,9 @@ export abstract class IRendererComponent<D, R, VTypeDoc extends VisualTypeDocRep
    */
   abstract render(): void;
 
-  abstract addToWorld(world: GgWorld<D, R, GgWorldTypeDocRepo<D, R> & { vTypeDoc: VTypeDoc }>): void;
+  abstract addToWorld(world: GgWorld<D, R, GgWorldTypeDocVPatch<D, R, VTypeDoc>>): void;
 
-  abstract removeFromWorld(world: GgWorld<D, R, GgWorldTypeDocRepo<D, R> & { vTypeDoc: VTypeDoc }>): void;
+  abstract removeFromWorld(world: GgWorld<D, R, GgWorldTypeDocVPatch<D, R, VTypeDoc>>): void;
 
   /**
    * Resizes the renderer to the specified size.

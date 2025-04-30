@@ -1,5 +1,5 @@
 import { IEntity, TickOrder } from './i-entity';
-import { GgWorld, GgWorldTypeDocRepo, VisualTypeDocRepo } from '../gg-world';
+import { GgWorld, GgWorldTypeDocVPatch, VisualTypeDocRepo } from '../gg-world';
 import { auditTime, BehaviorSubject, fromEvent, merge, Observable, startWith, takeUntil } from 'rxjs';
 import { distinctUntilChanged, map } from 'rxjs/operators';
 import { Point2 } from '../models/points';
@@ -13,7 +13,7 @@ export abstract class IRendererEntity<
   D,
   R,
   VTypeDoc extends VisualTypeDocRepo<D, R> = VisualTypeDocRepo<D, R>,
-> extends IEntity<D, R, GgWorldTypeDocRepo<D, R> & { vTypeDoc: VTypeDoc }> {
+> extends IEntity<D, R, GgWorldTypeDocVPatch<D, R, VTypeDoc>> {
   public readonly tickOrder = TickOrder.RENDERING;
   /** Represents the current size of the renderer. */
   protected _rendererSize$: BehaviorSubject<Point2 | null> = new BehaviorSubject<Point2 | null>(null);
@@ -59,7 +59,7 @@ export abstract class IRendererEntity<
     });
   }
 
-  onSpawned(world: GgWorld<D, R, GgWorldTypeDocRepo<D, R> & { vTypeDoc: VTypeDoc }>) {
+  onSpawned(world: GgWorld<D, R, GgWorldTypeDocVPatch<D, R, VTypeDoc>>) {
     this._rendererSize$.next(null);
     if (this.rendererOptions.size == 'fullscreen' || typeof this.rendererOptions.size === 'function') {
       if (this.renderer.canvas) {

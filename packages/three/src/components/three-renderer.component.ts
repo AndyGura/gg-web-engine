@@ -1,13 +1,13 @@
-import { Gg3dWorld, IRenderer3dComponent, PhysicsTypeDocRepo3D, Point2, RendererOptions } from '@gg-web-engine/core';
+import { IRenderer3dComponent, Point2, RendererOptions } from '@gg-web-engine/core';
 import { PCFSoftShadowMap, PerspectiveCamera, WebGLRenderer, WebGLRendererParameters } from 'three';
 import { ThreeSceneComponent } from './three-scene.component';
 import { ThreeCameraComponent } from './three-camera.component';
-import { ThreeVisualTypeDocRepo } from '../types';
+import { ThreeGgWorld, ThreeVisualTypeDocRepo } from '../types';
 import { ThreePhysicsDebugView } from './three-physics-debug-view';
 
 export class ThreeRendererComponent extends IRenderer3dComponent<ThreeVisualTypeDocRepo> {
   public readonly nativeRenderer: WebGLRenderer;
-  protected world: Gg3dWorld<ThreeVisualTypeDocRepo, PhysicsTypeDocRepo3D, ThreeSceneComponent> | null = null;
+  protected world: ThreeGgWorld | null = null;
 
   protected debugView: ThreePhysicsDebugView | null = null;
   private _physicsDebugViewActive: boolean = false;
@@ -48,14 +48,14 @@ export class ThreeRendererComponent extends IRenderer3dComponent<ThreeVisualType
     this.nativeRenderer.setPixelRatio(this.rendererOptions.forceResolution || devicePixelRatio);
   }
 
-  addToWorld(world: Gg3dWorld<ThreeVisualTypeDocRepo, PhysicsTypeDocRepo3D, ThreeSceneComponent>) {
+  addToWorld(world: ThreeGgWorld) {
     this.world = world;
     if (this.physicsDebugViewActive) {
       this.debugView = ThreePhysicsDebugView.startDebugView(this.world, this);
     }
   }
 
-  removeFromWorld(world: Gg3dWorld<ThreeVisualTypeDocRepo, PhysicsTypeDocRepo3D, ThreeSceneComponent>) {
+  removeFromWorld(world: ThreeGgWorld) {
     if (this.physicsDebugViewActive) {
       ThreePhysicsDebugView.stopDebugView(this.debugView!, this);
       this.debugView = null;

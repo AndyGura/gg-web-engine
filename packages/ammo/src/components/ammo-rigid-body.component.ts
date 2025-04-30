@@ -1,17 +1,9 @@
 import { AmmoWorldComponent } from './ammo-world.component';
 import Ammo from '../ammo.js/ammo';
 import { AmmoBodyComponent } from './ammo-body.component';
-import {
-  DebugBody3DSettings,
-  Entity3d,
-  Gg3dWorld,
-  IRigidBody3dComponent,
-  Point3,
-  Shape3DDescriptor,
-  VisualTypeDocRepo3D,
-} from '@gg-web-engine/core';
+import { DebugBody3DSettings, Entity3d, IRigidBody3dComponent, Point3, Shape3DDescriptor } from '@gg-web-engine/core';
 import { first } from 'rxjs';
-import { AmmoPhysicsTypeDocRepo } from '../types';
+import { AmmoGgWorld, AmmoPhysicsTypeDocRepo } from '../types';
 
 export class AmmoRigidBodyComponent
   extends AmmoBodyComponent<Ammo.btRigidBody>
@@ -69,12 +61,12 @@ export class AmmoRigidBodyComponent
     );
   }
 
-  addToWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>): void {
+  addToWorld(world: AmmoGgWorld): void {
     this.world.dynamicAmmoWorld?.addRigidBody(this.nativeBody, this._ownCGsMask, this._interactWithCGsMask);
     super.addToWorld(world);
   }
 
-  removeFromWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>): void {
+  removeFromWorld(world: AmmoGgWorld): void {
     this.world.dynamicAmmoWorld?.removeRigidBody(this.nativeBody);
     super.removeFromWorld(world);
   }

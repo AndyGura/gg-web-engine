@@ -1,8 +1,8 @@
-import { GgBox, GgWorld, GgWorldTypeDocRepo, VisualTypeDocRepo } from '../../../base';
+import { GgBox, GgWorld, GgWorldTypeDocVPatch, VisualTypeDocRepo } from '../../../base';
 import { IWorldComponent } from '../i-world-component';
 
 export interface IDisplayObjectComponent<D, R, VTypeDoc extends VisualTypeDocRepo<D, R> = VisualTypeDocRepo<D, R>>
-  extends IWorldComponent<D, R, GgWorldTypeDocRepo<D, R> & { vTypeDoc: VTypeDoc }> {
+  extends IWorldComponent<D, R, GgWorldTypeDocVPatch<D, R, VTypeDoc>> {
   position: D;
   rotation: R;
   scale: D;
@@ -19,7 +19,7 @@ export interface IDisplayObjectComponent<D, R, VTypeDoc extends VisualTypeDocRep
 
   clone(): IDisplayObjectComponent<D, R, VTypeDoc>;
 
-  addToWorld(world: GgWorld<D, R, GgWorldTypeDocRepo<D, R> & { vTypeDoc: VTypeDoc }>): void;
+  addToWorld(world: GgWorld<D, R, GgWorldTypeDocVPatch<D, R, VTypeDoc>>): void;
 
-  removeFromWorld(world: GgWorld<D, R, GgWorldTypeDocRepo<D, R> & { vTypeDoc: VTypeDoc }>): void;
+  removeFromWorld(world: GgWorld<D, R, GgWorldTypeDocVPatch<D, R, VTypeDoc>>): void;
 }

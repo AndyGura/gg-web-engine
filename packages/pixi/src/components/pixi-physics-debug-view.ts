@@ -1,6 +1,6 @@
-import { DebugBody2DSettings, Gg2dWorld, IBodyComponent, Pnt2, Point2, Shape2DDescriptor } from '@gg-web-engine/core';
+import { DebugBody2DSettings, IBodyComponent, Pnt2, Point2, Shape2DDescriptor } from '@gg-web-engine/core';
 import { Subscription } from 'rxjs';
-import { PixiVisualTypeDocRepo2D } from '../types';
+import { PixiGgWorld } from '../types';
 import { Container, Graphics } from 'pixi.js';
 import { tabulateArray } from '../utils/tabulate-array';
 
@@ -26,7 +26,10 @@ export class PixiPhysicsDebugView {
     this.debugContainer.addChild(graphics);
   }
 
-  constructor(private readonly world: Gg2dWorld<PixiVisualTypeDocRepo2D>) {
+  constructor(private readonly world: PixiGgWorld) {
+    if (!this.world!.physicsWorld) {
+      throw new Error('Cannot create pixi physics debug view for the world without physics');
+    }
     this.debugContainer = new Container();
     for (const c of this.world!.physicsWorld.children) {
       this.initShape(c);

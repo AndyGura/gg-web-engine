@@ -1,6 +1,5 @@
 import {
   DebugBody3DSettings,
-  Gg3dWorld,
   IBodyComponent,
   Pnt3,
   Point3,
@@ -9,24 +8,21 @@ import {
   Shape3DMeshDescriptor,
 } from '@gg-web-engine/core';
 import { ThreeRendererComponent } from './three-renderer.component';
-import { ThreeVisualTypeDocRepo } from '../types';
+import { ThreeGgWorld } from '../types';
 import { BufferGeometry, Camera, LineSegments, Mesh, Scene, Vector3, WebGLRenderer } from 'three';
 import { tabulateArray } from '../utils/tabulate-array';
 import { Subscription } from 'rxjs';
 
 export class ThreePhysicsDebugView {
   private static activeDebugViews: Map<
-    Gg3dWorld<ThreeVisualTypeDocRepo>,
+    ThreeGgWorld,
     {
       view: ThreePhysicsDebugView;
       renderers: ThreeRendererComponent[];
     }
   > = new Map();
 
-  public static startDebugView(
-    world: Gg3dWorld<ThreeVisualTypeDocRepo>,
-    renderer: ThreeRendererComponent,
-  ): ThreePhysicsDebugView {
+  public static startDebugView(world: ThreeGgWorld, renderer: ThreeRendererComponent): ThreePhysicsDebugView {
     let activeDescr = this.activeDebugViews.get(world);
     if (!activeDescr) {
       activeDescr = {
@@ -74,7 +70,10 @@ export class ThreePhysicsDebugView {
     this.debugScene?.add(m);
   }
 
-  private constructor(private readonly world: Gg3dWorld<ThreeVisualTypeDocRepo>) {
+  private constructor(private readonly world: ThreeGgWorld) {
+    if (!this.world!.physicsWorld) {
+      throw new Error('Cannot create three physics debug view for the world without physics');
+    }
     this.debugScene = new Scene();
     for (const c of this.world!.physicsWorld.children) {
       this.initShape(c);

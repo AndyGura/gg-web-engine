@@ -36,11 +36,49 @@ export type Gg3dWorldTypeDocRepo = {
   vTypeDoc: VisualTypeDocRepo3D;
   pTypeDoc: PhysicsTypeDocRepo3D;
 };
+// utility types to create world type doc by defining either vTypeDoc or pTypeDoc only
+export type Gg3dWorldTypeDocVPatch<VTypeDoc extends VisualTypeDocRepo3D> = Omit<Gg3dWorldTypeDocRepo, 'vTypeDoc'> & {
+  vTypeDoc: VTypeDoc;
+};
+export type Gg3dWorldTypeDocPPatch<PTypeDoc extends PhysicsTypeDocRepo3D> = Omit<Gg3dWorldTypeDocRepo, 'pTypeDoc'> & {
+  pTypeDoc: PTypeDoc;
+};
 
 export type Gg3dWorldSceneTypeRepo<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo> = {
   visualScene: IVisualScene3dComponent<TypeDoc['vTypeDoc']> | null;
   physicsWorld: IPhysicsWorld3dComponent<TypeDoc['pTypeDoc']> | null;
 };
+// utility types to create world scene type doc by defining either visualScene or physicsWorld type only
+export type Gg3dWorldSceneTypeDocVPatch<
+  VTypeDoc extends VisualTypeDocRepo3D,
+  VS extends IVisualScene3dComponent<VTypeDoc> | null,
+> = Omit<Gg3dWorldSceneTypeRepo, 'visualScene'> & { visualScene: VS };
+export type Gg3dWorldSceneTypeDocPPatch<
+  PTypeDoc extends PhysicsTypeDocRepo3D,
+  PW extends IPhysicsWorld3dComponent<PTypeDoc> | null,
+> = Omit<Gg3dWorldSceneTypeRepo, 'physicsWorld'> & { physicsWorld: PW };
+
+// A helper type to build a full type for the world according to installed modules
+// Each module provides its type, like "ThreeGgWorld" or "Rapier3dGgWorld"
+// Caller code can define type like this: world: TypedGg3dWorld<ThreeGgWorld, AmmoGgWorld>
+// Important: visual library world comes first, then physics library
+export type TypedGg3dWorld<VW extends Gg3dWorld<any> | null, PW extends Gg3dWorld<any> | null> = VW extends Gg3dWorld<
+  infer VTD,
+  infer VSTD
+> | null
+  ? PW extends Gg3dWorld<infer PTD, infer PSTD> | null
+    ? Gg3dWorld<
+        {
+          vTypeDoc: VTD['vTypeDoc'];
+          pTypeDoc: PTD['pTypeDoc'];
+        },
+        {
+          visualScene: VSTD['visualScene'];
+          physicsWorld: PSTD['physicsWorld'];
+        }
+      >
+    : never
+  : never;
 
 export class Gg3dWorld<
   TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo,

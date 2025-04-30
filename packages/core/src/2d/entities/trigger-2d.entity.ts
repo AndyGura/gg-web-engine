@@ -3,10 +3,10 @@ import { ITrigger2dComponent } from '../components/physics/i-trigger-2d.componen
 import { IEntity, Pnt2, Point2, TickOrder } from '../../base';
 import { IPositionable2d } from '../interfaces/i-positionable-2d';
 import { map } from 'rxjs/operators';
-import { Gg2dWorldTypeDocRepo, PhysicsTypeDocRepo2D } from '../gg-2d-world';
+import { Gg2dWorldTypeDocPPatch, Gg2dWorldTypeDocRepo, PhysicsTypeDocRepo2D } from '../gg-2d-world';
 
 export class Trigger2dEntity<PTypeDoc extends PhysicsTypeDocRepo2D = PhysicsTypeDocRepo2D>
-  extends IEntity<Point2, number, Gg2dWorldTypeDocRepo & { pTypeDoc: PTypeDoc }>
+  extends IEntity<Point2, number, Gg2dWorldTypeDocPPatch<PTypeDoc>>
   implements IPositionable2d
 {
   public readonly tickOrder = TickOrder.OBJECTS_BINDING;
@@ -22,7 +22,7 @@ export class Trigger2dEntity<PTypeDoc extends PhysicsTypeDocRepo2D = PhysicsType
       IPositionable2d
   > {
     return this.objectBody.onEntityEntered.pipe(
-      map(c => c.entity as IEntity<Point2, number, Gg2dWorldTypeDocRepo & { pTypeDoc: PTypeDoc }> & IPositionable2d),
+      map(c => c.entity as IEntity<Point2, number, Gg2dWorldTypeDocPPatch<PTypeDoc>> & IPositionable2d),
     );
   }
 
@@ -38,7 +38,7 @@ export class Trigger2dEntity<PTypeDoc extends PhysicsTypeDocRepo2D = PhysicsType
     | null
   > {
     return this.objectBody.onEntityLeft.pipe(
-      map(c => c?.entity as IEntity<Point2, number, Gg2dWorldTypeDocRepo & { pTypeDoc: PTypeDoc }> & IPositionable2d),
+      map(c => c?.entity as IEntity<Point2, number, Gg2dWorldTypeDocPPatch<PTypeDoc>> & IPositionable2d),
     );
   }
 

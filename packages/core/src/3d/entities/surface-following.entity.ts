@@ -1,6 +1,6 @@
 import { takeUntil } from 'rxjs';
 import { BodyOptions, CollisionGroup, IEntity, Pnt2, Pnt3, Point3, Point4, Qtrn, TickOrder } from '../../base';
-import { Gg3dWorld, Gg3dWorldTypeDocRepo, PhysicsTypeDocRepo3D } from '../gg-3d-world';
+import { Gg3dWorld, Gg3dWorldTypeDocPPatch, PhysicsTypeDocRepo3D } from '../gg-3d-world';
 import { Shape3DDescriptor } from '../models/shapes';
 
 /**
@@ -18,7 +18,7 @@ export type SurfaceFollowFunc = (p: Point3) => { position: Point3; normal: Point
 export class SurfaceFollowingEntity<PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D> extends IEntity<
   Point3,
   Point4,
-  Gg3dWorldTypeDocRepo & { pTypeDoc: PTypeDoc }
+  Gg3dWorldTypeDocPPatch<PTypeDoc>
 > {
   /**
    * Determines the execution order for physics simulation.
@@ -119,7 +119,7 @@ export class SurfaceFollowingEntity<PTypeDoc extends PhysicsTypeDocRepo3D = Phys
    *
    * @param world - The game world instance.
    */
-  onSpawned(world: Gg3dWorld<Gg3dWorldTypeDocRepo & { pTypeDoc: PTypeDoc }>) {
+  onSpawned(world: Gg3dWorld<Gg3dWorldTypeDocPPatch<PTypeDoc>>) {
     if (!world.physicsWorld) {
       throw new Error('Cannot add surface following entity to the world without physics');
     }

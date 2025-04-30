@@ -15,6 +15,7 @@ import {
 } from '../base';
 import { lastValueFrom, Subject, take } from 'rxjs';
 import { PerformanceMeterEntity } from '../dev';
+import { IVisualScene2dComponent, VisualTypeDocRepo2D } from '../2d';
 
 export type VisualTypeDocRepo<D, R> = {
   factory: unknown;
@@ -33,11 +34,37 @@ export type GgWorldTypeDocRepo<D, R> = {
   vTypeDoc: VisualTypeDocRepo<D, R>;
   pTypeDoc: PhysicsTypeDocRepo<D, R>;
 };
+// utility types to create world type doc by defining either vTypeDoc or pTypeDoc only
+export type GgWorldTypeDocVPatch<D, R, VTypeDoc extends VisualTypeDocRepo<D, R>> = Omit<
+  GgWorldTypeDocRepo<D, R>,
+  'vTypeDoc'
+> & {
+  vTypeDoc: VTypeDoc;
+};
+export type GgWorldTypeDocPPatch<D, R, PTypeDoc extends PhysicsTypeDocRepo<D, R>> = Omit<
+  GgWorldTypeDocRepo<D, R>,
+  'pTypeDoc'
+> & {
+  pTypeDoc: PTypeDoc;
+};
 
 export type GgWorldSceneTypeRepo<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R> = GgWorldTypeDocRepo<D, R>> = {
   visualScene: IVisualSceneComponent<D, R, TypeDoc['vTypeDoc']> | null;
   physicsWorld: IPhysicsWorldComponent<D, R, TypeDoc['pTypeDoc']> | null;
 };
+// utility types to create world scene type doc by defining either visualScene or physicsWorld type only
+export type GgWorldSceneTypeDocVPatch<
+  D,
+  R,
+  VTypeDoc extends VisualTypeDocRepo2D,
+  VS extends IVisualScene2dComponent<VTypeDoc> | null,
+> = Omit<GgWorldSceneTypeRepo<D, R>, 'visualScene'> & { visualScene: VS };
+export type GgWorldSceneTypeDocPPatch<
+  D,
+  R,
+  PTypeDoc extends PhysicsTypeDocRepo<D, R>,
+  PW extends IPhysicsWorldComponent<D, R, PTypeDoc> | null,
+> = Omit<GgWorldSceneTypeRepo<D, R>, 'physicsWorld'> & { physicsWorld: PW };
 
 export abstract class GgWorld<
   D,

@@ -2,17 +2,13 @@ import {
   CollisionGroup,
   DebugBody2DSettings,
   Entity2d,
-  Gg2dWorld,
   IRigidBody2dComponent,
-  IVisualScene2dComponent,
   Pnt2,
   Point2,
   Shape2DDescriptor,
-  VisualTypeDocRepo2D,
 } from '@gg-web-engine/core';
 import { Body, Composite, Vector } from 'matter-js';
-import { MatterPhysicsTypeDocRepo } from '../types';
-import { MatterWorldComponent } from './matter-world.component';
+import { MatterGgWorld, MatterPhysicsTypeDocRepo } from '../types';
 
 export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhysicsTypeDocRepo> {
   public get position(): Point2 {
@@ -84,16 +80,12 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
     throw new Error('Gg2dBody.clone() not implemented for Matter.js');
   }
 
-  addToWorld(
-    world: Gg2dWorld<VisualTypeDocRepo2D, MatterPhysicsTypeDocRepo, IVisualScene2dComponent, MatterWorldComponent>,
-  ): void {
+  addToWorld(world: MatterGgWorld): void {
     Composite.add(world.physicsWorld.matterWorld!, this.nativeBody);
     world.physicsWorld.added$.next(this);
   }
 
-  removeFromWorld(
-    world: Gg2dWorld<VisualTypeDocRepo2D, MatterPhysicsTypeDocRepo, IVisualScene2dComponent, MatterWorldComponent>,
-  ): void {
+  removeFromWorld(world: MatterGgWorld): void {
     Composite.remove(world.physicsWorld.matterWorld!, this.nativeBody);
     world.physicsWorld.removed$.next(this);
   }

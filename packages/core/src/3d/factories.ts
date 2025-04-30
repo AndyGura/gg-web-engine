@@ -16,7 +16,7 @@ export abstract class IDisplayObject3dComponentFactory<VTypeDoc extends VisualTy
     material?: DisplayObject3dOpts<VTypeDoc['texture']>,
   ): VTypeDoc['displayObject'];
 
-  abstract createPerspectiveCamera(settings: {
+  abstract createPerspectiveCamera(settings?: {
     fov?: number;
     aspectRatio?: number;
     frustrum?: { near: number; far: number };

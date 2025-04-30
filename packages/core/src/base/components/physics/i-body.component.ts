@@ -1,10 +1,10 @@
 import { IEntity } from '../../entities/i-entity';
 import { IWorldComponent } from '../i-world-component';
-import { GgWorld, GgWorldTypeDocRepo, PhysicsTypeDocRepo } from '../../gg-world';
+import { GgWorld, GgWorldTypeDocPPatch, PhysicsTypeDocRepo } from '../../gg-world';
 import { CollisionGroup, DebugBodySettings } from '../../models/body-options';
 
 export interface IBodyComponent<D, R, PTypeDoc extends PhysicsTypeDocRepo<D, R> = PhysicsTypeDocRepo<D, R>>
-  extends IWorldComponent<D, R, GgWorldTypeDocRepo<D, R> & { pTypeDoc: PTypeDoc }> {
+  extends IWorldComponent<D, R, GgWorldTypeDocPPatch<D, R, PTypeDoc>> {
   entity: IEntity | null;
 
   position: D;
@@ -25,7 +25,7 @@ export interface IBodyComponent<D, R, PTypeDoc extends PhysicsTypeDocRepo<D, R> 
 
   clone(): IBodyComponent<D, R, PTypeDoc>;
 
-  addToWorld(world: GgWorld<D, R, GgWorldTypeDocRepo<D, R> & { pTypeDoc: PTypeDoc }>): void;
+  addToWorld(world: GgWorld<D, R, GgWorldTypeDocPPatch<D, R, PTypeDoc>>): void;
 
-  removeFromWorld(world: GgWorld<D, R, GgWorldTypeDocRepo<D, R> & { pTypeDoc: PTypeDoc }>): void;
+  removeFromWorld(world: GgWorld<D, R, GgWorldTypeDocPPatch<D, R, PTypeDoc>>): void;
 }
