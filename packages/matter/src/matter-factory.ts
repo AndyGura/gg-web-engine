@@ -6,10 +6,14 @@ import {
   Shape2DDescriptor,
 } from '@gg-web-engine/core';
 import { MatterRigidBodyComponent } from './components/matter-rigid-body.component';
+import { MatterTriggerComponent } from './components/matter-trigger.component';
+import { MatterWorldComponent } from './components/matter-world.component';
 import { Bodies, Body, IBodyDefinition, Vector } from 'matter-js';
 import { MatterPhysicsTypeDocRepo } from './types';
 
 export class MatterFactory implements IPhysicsBody2dComponentFactory<MatterPhysicsTypeDocRepo> {
+  constructor(protected readonly world: MatterWorldComponent) {}
+
   createRigidBody(
     descriptor: BodyShape2DDescriptor,
     transform?: {
@@ -46,8 +50,28 @@ export class MatterFactory implements IPhysicsBody2dComponentFactory<MatterPhysi
       position?: Point2;
       rotation?: number;
     },
-  ): never {
-    throw new Error('Triggers not implemented for Matter.js');
+  ): MatterTriggerComponent {
+    let nativeBody: Body | null = null;
+    switch (descriptor.shape) {
+      case 'SQUARE':
+        nativeBody = Bodies.rectangle(0, 0, descriptor.dimensions.x, descriptor.dimensions.y, { isSensor: true });
+        break;
+      case 'CIRCLE':
+        nativeBody = Bodies.circle(0, 0, descriptor.radius, { isSensor: true });
+        break;
+    }
+    if (!nativeBody) {
+      throw new Error(`Shape "${descriptor.shape}" not implemented for Matter.js`);
+    }
+    nativeBody.position.x = transform?.position?.x || 0;
+    nativeBody.position.y = transform?.position?.y || 0;
+    nativeBody.angle = transform?.rotation || 0;
+
+    if (!this.world) {
+      throw new Error('MatterFactory: World not set. Make sure the factory is created by MatterWorldComponent.');
+    }
+
+    return new MatterTriggerComponent(nativeBody, descriptor, this.world);
   }
 
   private transformOptions(options: Partial<Body2DOptions>): IBodyDefinition {

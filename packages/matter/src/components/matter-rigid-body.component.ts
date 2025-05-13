@@ -1,4 +1,5 @@
 import {
+  BitMask,
   CollisionGroup,
   DebugBody2DSettings,
   Entity2d,
@@ -9,6 +10,9 @@ import {
 } from '@gg-web-engine/core';
 import { Body, Composite, Vector } from 'matter-js';
 import { MatterGgWorld, MatterPhysicsTypeDocRepo } from '../types';
+
+// FIXME why this needs to be introduced? investigate units in matter.js
+const MATTER_VELOCITY_SCALE = 0.0166667;
 
 export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhysicsTypeDocRepo> {
   public get position(): Point2 {
@@ -28,11 +32,11 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
   }
 
   get linearVelocity(): Point2 {
-    return Pnt2.clone(this.nativeBody.velocity);
+    return Pnt2.scalarMult(this.nativeBody.velocity, 1 / MATTER_VELOCITY_SCALE);
   }
 
   set linearVelocity(value: Point2) {
-    Body.setVelocity(this.nativeBody, Vector.create(value.x, value.y));
+    Body.setVelocity(this.nativeBody, Vector.create(value.x * MATTER_VELOCITY_SCALE, value.y * MATTER_VELOCITY_SCALE));
   }
 
   get angularVelocity(): number {
@@ -54,30 +58,69 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
     this.shape,
   );
 
+  protected _interactWithCGsMask = BitMask.full(16);
+  protected _ownCGsMask = BitMask.full(16);
+
   constructor(
     public nativeBody: Body,
     public readonly shape: Shape2DDescriptor,
-  ) {}
+  ) {
+    this.updateCollisionFilter();
+  }
 
   get interactWithCollisionGroups(): ReadonlyArray<CollisionGroup> {
-    throw new Error('Collision groups not implemented for Matter.js');
+    return BitMask.unpack(this._interactWithCGsMask, 16);
   }
 
   set interactWithCollisionGroups(value: ReadonlyArray<CollisionGroup> | 'all') {
-    throw new Error('Collision groups not implemented for Matter.js');
+    let mask;
+    if (value === 'all') {
+      mask = BitMask.full(16);
+    } else {
+      mask = BitMask.pack(value, 16);
+    }
+    if (this._interactWithCGsMask !== mask) {
+      this._interactWithCGsMask = mask;
+      this.updateCollisionFilter();
+    }
   }
 
   get ownCollisionGroups(): ReadonlyArray<CollisionGroup> {
-    throw new Error('Collision groups not implemented for Matter.js');
+    return BitMask.unpack(this._ownCGsMask, 16);
   }
 
   set ownCollisionGroups(value: ReadonlyArray<CollisionGroup> | 'all') {
-    throw new Error('Collision groups not implemented for Matter.js');
+    let mask;
+    if (value === 'all') {
+      mask = BitMask.full(16);
+    } else {
+      mask = BitMask.pack(value, 16);
+    }
+    if (this._ownCGsMask !== mask) {
+      this._ownCGsMask = mask;
+      this.updateCollisionFilter();
+    }
+  }
+
+  protected updateCollisionFilter(): void {
+    this.nativeBody.collisionFilter = {
+      ...this.nativeBody.collisionFilter,
+      category: this._ownCGsMask,
+      mask: this._interactWithCGsMask,
+    };
   }
 
   clone(): MatterRigidBodyComponent {
-    // TODO
-    throw new Error('Gg2dBody.clone() not implemented for Matter.js');
+    const clonedBody = Body.create({
+      ...this.nativeBody,
+      collisionFilter: {
+        ...this.nativeBody.collisionFilter,
+      },
+    });
+    const component = new MatterRigidBodyComponent(clonedBody, this.shape);
+    component.ownCollisionGroups = this.ownCollisionGroups;
+    component.interactWithCollisionGroups = this.interactWithCollisionGroups;
+    return component;
   }
 
   addToWorld(world: MatterGgWorld): void {
