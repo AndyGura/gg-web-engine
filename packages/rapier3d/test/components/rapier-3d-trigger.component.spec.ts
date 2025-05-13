@@ -1,5 +1,5 @@
-import { Rapier3dFactory, Rapier3dWorldComponent } from '../../src';
 import { Pnt3 } from '@gg-web-engine/core';
+import { Rapier3dFactory, Rapier3dWorldComponent } from '../../src';
 
 describe(`Rapier3dTriggerComponent`, () => {
 
@@ -85,40 +85,38 @@ describe(`Rapier3dTriggerComponent`, () => {
     expect(enterRegistered).toBe(true);
   });
 
-  // TODO implement functionality below
-  // it(`should fire end of object intersection if trigger removed`, async () => {
-  //   const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 10, y: 10, z: 10 } });
-  //   trigger.addToWorld({ physicsWorld: world } as any);
-  //   const ball = factory.createRigidBody({
-  //     shape: { shape: 'SPHERE', radius: 1 },
-  //     body: { dynamic: true, mass: 1 },
-  //   }, { position: { x: 0, y: 0, z: 0 } });
-  //   ball.addToWorld({ physicsWorld: world } as any);
-  //   let exitRegistered = false;
-  //   trigger.onEntityLeft.subscribe(((obj) => {
-  //     exitRegistered = obj === ball;
-  //   }));
-  //   world.simulate(1000);
-  //   trigger.checkOverlaps();
-  //   trigger.removeFromWorld({ physicsWorld: world } as any);
-  //   expect(exitRegistered).toBe(true);
-  // });
-  //
-  // it(`should fire end of object intersection if object removed`, async () => {
-  //   const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 10, y: 10, z: 10 } });
-  //   trigger.addToWorld({ physicsWorld: world } as any);
-  //   const ball = factory.createRigidBody({
-  //     shape: { shape: 'SPHERE', radius: 1 },
-  //     body: { dynamic: true, mass: 1 },
-  //   }, { position: { x: 0, y: 0, z: 0 } });
-  //   ball.addToWorld({ physicsWorld: world } as any);
-  //   let exitRegistered = false;
-  //   trigger.onEntityLeft.subscribe(((obj) => {
-  //     exitRegistered = obj === ball;
-  //   }));
-  //   world.simulate(1000);
-  //   trigger.checkOverlaps();
-  //   ball.removeFromWorld({ physicsWorld: world } as any);
-  //   expect(exitRegistered).toBe(true);
-  // });
+  it.skip(`should fire end of object intersection if trigger removed`, async () => {
+    const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 10, y: 10, z: 10 } });
+    trigger.addToWorld({ physicsWorld: world } as any);
+    const ball = factory.createRigidBody({
+      shape: { shape: 'SPHERE', radius: 1 },
+      body: { dynamic: true, mass: 1 },
+    }, { position: { x: 0, y: 0, z: 0 } });
+    ball.addToWorld({ physicsWorld: world } as any);
+    let exitRegistered = false;
+    trigger.onEntityLeft.subscribe(((obj) => {
+      exitRegistered = obj === ball;
+    }));
+    trigger.checkOverlaps();
+    trigger.removeFromWorld({ physicsWorld: world } as any);
+    expect(exitRegistered).toBe(true);
+  });
+
+  it.skip(`should fire end of object intersection if object removed`, async () => {
+    const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 10, y: 10, z: 10 } });
+    trigger.addToWorld({ physicsWorld: world } as any);
+    const ball = factory.createRigidBody({
+      shape: { shape: 'SPHERE', radius: 1 },
+      body: { dynamic: true, mass: 1 },
+    }, { position: { x: 0, y: 0, z: 0 } });
+    ball.addToWorld({ physicsWorld: world } as any);
+    let exitRegistered = false;
+    trigger.onEntityLeft.subscribe(((obj) => {
+      exitRegistered = obj === ball;
+    }));
+    trigger.checkOverlaps();
+    ball.removeFromWorld({ physicsWorld: world } as any);
+    trigger.checkOverlaps();
+    expect(exitRegistered).toBe(true);
+  });
 });
