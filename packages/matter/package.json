@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
     "prettier-format": "prettier --config ../core/.prettierrc 'src/**/*.ts' --write",
     "prepublish": "rm -rf ./dist/ && tsc",
     "build": "tsc"
@@ -31,14 +31,40 @@
   "devDependencies": {
     "@types/matter-js": "0.19.7",
     "@gg-web-engine/core": "0.0.57",
+    "@types/jest": "^29.5.12",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
     "matter-js": "0.20.0",
     "prettier": "^3.3.3",
     "rxjs": "7.8.1",
+    "ts-jest": "^29.2.4",
     "typescript": "~5.5.4"
   },
   "peerDependencies": {
     "@gg-web-engine/core": "0.0.57",
     "matter-js": "0.20.0",
     "rxjs": "7.8.1"
+  },
+  "jest": {
+    "rootDir": ".",
+    "testRegex": "\\.spec\\.ts$",
+    "transform": {
+      "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "moduleNameMapper": {
+      "@gg-web-engine/core": "<rootDir>/../core/src/index.ts"
+    },
+    "preset": "ts-jest/presets/default",
+    "collectCoverageFrom": [
+      "**/*.ts",
+      "!**/*.module.ts"
+    ],
+    "coveragePathIgnorePatterns": [
+      "<rootDir>/node_modules/",
+      "<rootDir>/dist/",
+      "<rootDir>/test/"
+    ],
+    "coverageDirectory": "./coverage",
+    "testEnvironment": "jsdom"
   }
 }
