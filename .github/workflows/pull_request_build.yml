@@ -23,9 +23,9 @@ jobs:
         working-directory: ./packages/ammo
         run: npm run build && npm run test
 
-      - name: Build matter
+      - name: Test matter
         working-directory: ./packages/matter
-        run: npm run build
+        run: npm run build && npm run test
 
       - name: Build pixi
         working-directory: ./packages/pixi

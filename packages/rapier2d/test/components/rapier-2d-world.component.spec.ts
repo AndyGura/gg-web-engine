@@ -1,16 +1,14 @@
 import { Point2, RaycastOptions } from '@gg-web-engine/core';
-import { Rapier2dFactory, Rapier2dWorldComponent } from '../../src';
+import { Rapier2dWorldComponent } from '../../src';
 
 describe('Rapier2dWorldComponent', () => {
   let world: Rapier2dWorldComponent;
-  let factory: Rapier2dFactory;
 
   beforeEach(async () => {
     if (world) {
       world.dispose();
     }
     world = new Rapier2dWorldComponent();
-    factory = new Rapier2dFactory(world);
     await world.init();
     world.gravity = { x: 0, y: 0 }; // Set gravity to zero for predictable physics
   });
@@ -24,11 +22,79 @@ describe('Rapier2dWorldComponent', () => {
     world.dispose();
   });
 
-  describe('Raycast', () => {
+  describe('Rigid bodies', () => {
+
+    it('should simulate inertial motion of rigid body', () => {
+
+      const circle = world.factory.createRigidBody({
+        shape: { shape: 'CIRCLE', radius: 1 },
+        body: { dynamic: true, mass: 5 },
+      }, { position: { x: -5, y: 0 } });
+      circle.addToWorld({ physicsWorld: world } as any);
+      circle.linearVelocity = { x: 1, y: 0 };
+
+      // simulate for 6 seconds
+      for (let i = 0; i < 100; i++) {
+        world.simulate(60);
+      }
+      expect(circle.position.x).toBeCloseTo(1);
+    });
+
+    it('should simulate collision of two rigid bodies', () => {
+
+      const circle0 = world.factory.createRigidBody({
+        shape: { shape: 'CIRCLE', radius: 1 },
+        body: { dynamic: true, mass: 5 },
+      }, { position: { x: -5, y: 0 } });
+      circle0.addToWorld({ physicsWorld: world } as any);
+      circle0.linearVelocity = { x: 1, y: 0 };
+
+      const circle1 = world.factory.createRigidBody({
+        shape: { shape: 'CIRCLE', radius: 1 },
+        body: { dynamic: true, mass: 5 },
+      }, { position: { x: 5, y: 0 } });
+      circle1.addToWorld({ physicsWorld: world } as any);
+      circle1.linearVelocity = { x: -1, y: 0 };
+
+      // simulate for 6 seconds
+      for (let i = 0; i < 100; i++) {
+        world.simulate(60);
+      }
+      expect(circle0.position.x).toBeLessThan(0);
+      expect(circle1.position.x).toBeGreaterThan(0);
+    });
+
+    it('should not simulate collision of two rigid bodies with different collision groups', () => {
+      const cg0 = world.registerCollisionGroup();
+      const circle0 = world.factory.createRigidBody({
+        shape: { shape: 'CIRCLE', radius: 1 },
+        body: { dynamic: true, mass: 5 },
+      }, { position: { x: -5, y: 0 } });
+      circle0.addToWorld({ physicsWorld: world } as any);
+      circle0.linearVelocity = { x: 1, y: 0 };
+      circle0.ownCollisionGroups = circle0.interactWithCollisionGroups = [cg0];
+
+      const cg1 = world.registerCollisionGroup();
+      const circle1 = world.factory.createRigidBody({
+        shape: { shape: 'CIRCLE', radius: 1 },
+        body: { dynamic: true, mass: 5 },
+      }, { position: { x: 5, y: 0 } });
+      circle1.addToWorld({ physicsWorld: world } as any);
+      circle1.linearVelocity = { x: -1, y: 0 };
+      circle1.ownCollisionGroups = circle1.interactWithCollisionGroups = [cg1];
+
+      // simulate for 6 seconds
+      for (let i = 0; i < 100; i++) {
+        world.simulate(60);
+      }
+      expect(circle0.position.x).toBeCloseTo(1);
+      expect(circle1.position.x).toBeCloseTo(-1);
+    });
+  });describe('Raycast', () => {
 
     it('should return no hit when ray does not intersect any object', () => {
       // Create a box far away from the ray
-      const box = factory.createRigidBody({
+      const box = world.factory.createRigidBody({
         shape: { shape: 'SQUARE', dimensions: { x: 1, y: 1 } },
         body: { dynamic: false, mass: 0 },
       }, { position: { x: 10, y: 10 } });
@@ -52,7 +118,7 @@ describe('Rapier2dWorldComponent', () => {
 
     it('should detect hit when ray intersects an object', () => {
       // Create a box in the path of the ray
-      const box = factory.createRigidBody({
+      const box = world.factory.createRigidBody({
         shape: { shape: 'SQUARE', dimensions: { x: 2, y: 2 } },
         body: { dynamic: false, mass: 0 },
       }, { position: { x: 0, y: -5 } });
@@ -90,7 +156,7 @@ describe('Rapier2dWorldComponent', () => {
       const group2 = world.registerCollisionGroup();
 
       // Create a box that only belongs to group1
-      const box1 = factory.createRigidBody({
+      const box1 = world.factory.createRigidBody({
         shape: { shape: 'SQUARE', dimensions: { x: 2, y: 2 } },
         body: {
           dynamic: false,
@@ -133,7 +199,7 @@ describe('Rapier2dWorldComponent', () => {
 
     it('should calculate hit distance correctly', () => {
       // Create a box at a known distance
-      const box = factory.createRigidBody({
+      const box = world.factory.createRigidBody({
         shape: { shape: 'SQUARE', dimensions: { x: 2, y: 2 } },
         body: { dynamic: false, mass: 0 },
       }, { position: { x: 0, y: -5 } });
@@ -165,7 +231,7 @@ describe('Rapier2dWorldComponent', () => {
       const group2 = world.registerCollisionGroup();
 
       // Create a box that belongs to group1
-      const box = factory.createRigidBody({
+      const box = world.factory.createRigidBody({
         shape: { shape: 'SQUARE', dimensions: { x: 2, y: 2 } },
         body: {
           dynamic: false,
@@ -197,13 +263,13 @@ describe('Rapier2dWorldComponent', () => {
 
     it('should return correct hit body', () => {
       // Create two boxes at different positions
-      const box1 = factory.createRigidBody({
+      const box1 = world.factory.createRigidBody({
         shape: { shape: 'SQUARE', dimensions: { x: 1, y: 1 } },
         body: { dynamic: false, mass: 0 },
       }, { position: { x: 0, y: -3 } });
       box1.addToWorld({ physicsWorld: world } as any);
 
-      const box2 = factory.createRigidBody({
+      const box2 = world.factory.createRigidBody({
         shape: { shape: 'SQUARE', dimensions: { x: 1, y: 1 } },
         body: { dynamic: false, mass: 0 },
       }, { position: { x: 0, y: -7 } });
@@ -228,7 +294,7 @@ describe('Rapier2dWorldComponent', () => {
 
     it('should handle edge case with ray starting inside an object', () => {
       // Create a box
-      const box = factory.createRigidBody({
+      const box = world.factory.createRigidBody({
         shape: { shape: 'SQUARE', dimensions: { x: 4, y: 4 } },
         body: { dynamic: false, mass: 0 },
       }, { position: { x: 0, y: 0 } });

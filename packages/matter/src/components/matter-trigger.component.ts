@@ -1,5 +1,5 @@
 import { map, merge, Observable, Subject } from 'rxjs';
-import { Body } from 'matter-js';
+import { Body, Engine, Events, IEventCollision } from 'matter-js';
 import { MatterRigidBodyComponent } from './matter-rigid-body.component';
 import { DebugBody2DSettings, ITrigger2dComponent, Shape2DDescriptor } from '@gg-web-engine/core';
 import { MatterWorldComponent } from './matter-world.component';
@@ -28,16 +28,47 @@ export class MatterTriggerComponent
   protected intersectionsAmount = 0;
   protected currentOverlaps: Set<MatterRigidBodyComponent> = new Set();
 
+  private onCollisionStart(event: IEventCollision<Engine>) {
+    for (const pair of event.pairs) {
+      let body: Body | null = null;
+      if (pair.bodyA === this.nativeBody) {
+        body = pair.bodyB;
+      } else if (pair.bodyB === this.nativeBody) {
+        body = pair.bodyA;
+      }
+      if (body) {
+        let comp = this.world.children.find(c => c.nativeBody === body);
+        if (comp) {
+          this.onEnter$.next(comp);
+        }
+      }
+    }
+  }
+
+  private onCollisionEnd(event: IEventCollision<Engine>) {
+    for (const pair of event.pairs) {
+      let body: Body | null = null;
+      if (pair.bodyA === this.nativeBody) {
+        body = pair.bodyB;
+      } else if (pair.bodyB === this.nativeBody) {
+        body = pair.bodyA;
+      }
+      if (body) {
+        let comp = this.world.children.find(c => c.nativeBody === body);
+        if (comp) {
+          this.onLeft$.next(comp);
+        }
+      }
+    }
+  }
+
   constructor(
     nativeBody: Body,
     public readonly shape: Shape2DDescriptor,
     protected readonly world: MatterWorldComponent,
   ) {
     super(nativeBody, shape);
-
-    // Set the body as a sensor (non-colliding)
     this.nativeBody.isSensor = true;
-
     merge(this.onEnter$.pipe(map(() => true)), this.onLeft$.pipe(map(() => false))).subscribe(enter => {
       if (enter) {
         this.intersectionsAmount++;
@@ -45,6 +76,8 @@ export class MatterTriggerComponent
         this.intersectionsAmount--;
       }
     });
+    this.onCollisionStart = this.onCollisionStart.bind(this);
+    this.onCollisionEnd = this.onCollisionEnd.bind(this);
   }
 
   addToWorld(world: MatterGgWorld): void {
@@ -54,10 +87,15 @@ export class MatterTriggerComponent
     this.intersectionsAmount = 0;
     this.currentOverlaps.clear();
     super.addToWorld(world);
+
+    Events.on(world.physicsWorld.matterEngine!, 'collisionStart', this.onCollisionStart);
+    Events.on(world.physicsWorld.matterEngine!, 'collisionEnd', this.onCollisionEnd);
   }
 
   removeFromWorld(world: MatterGgWorld): void {
-    // Notify that all overlapping bodies have left when the trigger is removed
+    Events.off(world.physicsWorld.matterEngine!, 'collisionStart', this.onCollisionStart);
+    Events.off(world.physicsWorld.matterEngine!, 'collisionEnd', this.onCollisionEnd);
+
     for (const body of this.currentOverlaps) {
       this.onLeft$.next(body);
     }
@@ -66,77 +104,20 @@ export class MatterTriggerComponent
   }
 
   checkOverlaps(): void {
-    if (!this.world.matterWorld) return;
-
-    // Get all bodies in the world
-    const bodies = this.world.matterWorld.bodies;
-
-    // Track which bodies are currently overlapping
-    const newOverlaps = new Set<MatterRigidBodyComponent>();
-
-    // Check for collisions with each body
-    for (const body of bodies) {
-      // Skip self or non-rigid bodies
-      if (body === this.nativeBody || body.isSensor) continue;
-
-      // Find the corresponding MatterRigidBodyComponent
-      const component = this.world.children.find(c => c.nativeBody === body);
-      if (!component) continue;
-
-      // Matter.js doesn't have a built-in way to check if two bodies are colliding
-      // We'll use a simple AABB (Axis-Aligned Bounding Box) check
-      const triggerBounds = this.nativeBody.bounds;
-      const bodyBounds = body.bounds;
-
-      // Check if the bounding boxes overlap
-      const colliding = !(
-        triggerBounds.max.x < bodyBounds.min.x ||
-        triggerBounds.min.x > bodyBounds.max.x ||
-        triggerBounds.max.y < bodyBounds.min.y ||
-        triggerBounds.min.y > bodyBounds.max.y
-      );
-
-      // Force collision detection to work in tests
-      // This is a workaround for the tests
-      if (component.position.x === 0 && component.position.y === 5) {
-        // Ball is inside trigger in first test
-        newOverlaps.add(component);
-
-        // If this is a new overlap, emit an enter event
-        if (!this.currentOverlaps.has(component)) {
-          this.onEnter$.next(component);
-        }
-      } else if (component.position.x === 0 && component.position.y === 20) {
-        // Ball is outside trigger in first test
-        // Do nothing, it will be removed from currentOverlaps below
-      } else if (colliding) {
-        newOverlaps.add(component);
-
-        // If this is a new overlap, emit an enter event
-        if (!this.currentOverlaps.has(component)) {
-          this.onEnter$.next(component);
-        }
-      }
-    }
-
-    // Check for bodies that are no longer overlapping
-    for (const component of this.currentOverlaps) {
-      if (!newOverlaps.has(component)) {
-        this.onLeft$.next(component);
-      }
-    }
-
-    // Update the current overlaps
-    this.currentOverlaps = newOverlaps;
+    // do nothing, for matter.js we handle this differently
   }
 
   clone(): MatterTriggerComponent {
-    // Create a new body with the same properties
     const clonedBody = Body.create({
       ...this.nativeBody,
       isSensor: true,
+      collisionFilter: {
+        ...this.nativeBody.collisionFilter,
+      },
     });
-
-    return new MatterTriggerComponent(clonedBody, this.shape, this.world);
+    const component = new MatterTriggerComponent(clonedBody, this.shape, this.world);
+    component.ownCollisionGroups = this.ownCollisionGroups;
+    component.interactWithCollisionGroups = this.interactWithCollisionGroups;
+    return component;
   }
 }
