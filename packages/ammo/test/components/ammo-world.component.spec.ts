@@ -1,5 +1,5 @@
 import { Point3, RaycastOptions } from '@gg-web-engine/core';
-import { AmmoFactory, AmmoWorldComponent } from '../../src';
+import { AmmoWorldComponent } from '../../src';
 
 describe('AmmoWorldComponent', () => {
   let world: AmmoWorldComponent;
@@ -97,6 +97,8 @@ describe('AmmoWorldComponent', () => {
       }, { position: { x: 10, y: 10, z: 10 } });
       box.addToWorld({ physicsWorld: world } as any);
 
+      world.simulate(1);
+
       // Cast a ray that doesn't hit anything
       const raycastOptions: RaycastOptions<Point3> = {
         from: { x: 0, y: 0, z: 0 },
@@ -118,6 +120,8 @@ describe('AmmoWorldComponent', () => {
       }, { position: { x: 0, y: 0, z: -5 } });
       box.addToWorld({ physicsWorld: world } as any);
 
+      world.simulate(1);
+
       // Cast a ray that hits the box
       const raycastOptions: RaycastOptions<Point3> = {
         from: { x: 0, y: 0, z: 0 },
@@ -126,6 +130,7 @@ describe('AmmoWorldComponent', () => {
 
       const result = world.raycast(raycastOptions);
       expect(result.hasHit).toBe(true);
+      expect(result.hitBody).toBe(box);
       expect(result.hitPoint).toBeDefined();
       expect(result.hitNormal).toBeDefined();
       expect(result.hitDistance).toBeDefined();
@@ -154,11 +159,13 @@ describe('AmmoWorldComponent', () => {
       }, { position: { x: 0, y: 0, z: -5 } });
       box1.addToWorld({ physicsWorld: world } as any);
 
+      world.simulate(1);
+
       // Ray that only checks against group2 should not hit
       const rayOptions1: RaycastOptions<Point3> = {
         from: { x: 0, y: 0, z: 0 },
         to: { x: 0, y: 0, z: -10 },
-        collisionFilterGroup: group2,
+        collisionFilterGroups: [group2],
         collisionFilterMask: [group2],
       };
 
@@ -169,12 +176,13 @@ describe('AmmoWorldComponent', () => {
       const rayOptions2: RaycastOptions<Point3> = {
         from: { x: 0, y: 0, z: 0 },
         to: { x: 0, y: 0, z: -10 },
-        collisionFilterGroup: group1,
+        collisionFilterGroups: [group1],
         collisionFilterMask: [group1],
       };
 
       const result2 = world.raycast(rayOptions2);
       expect(result2.hasHit).toBe(true);
+      expect(result2.hitBody).toBe(box1);
     });
 
     it('should calculate hit distance correctly', () => {
@@ -184,6 +192,8 @@ describe('AmmoWorldComponent', () => {
         body: { dynamic: false, mass: 0 },
       }, { position: { x: 0, y: 0, z: -5 } });
       box.addToWorld({ physicsWorld: world } as any);
+
+      world.simulate(1);
 
       // Cast a ray from origin to z = -10
       const raycastOptions: RaycastOptions<Point3> = {
@@ -216,11 +226,13 @@ describe('AmmoWorldComponent', () => {
       }, { position: { x: 0, y: 0, z: -5 } });
       box.addToWorld({ physicsWorld: world } as any);
 
+      world.simulate(1);
+
       // Ray that checks against both groups should hit
       const rayOptions: RaycastOptions<Point3> = {
         from: { x: 0, y: 0, z: 0 },
         to: { x: 0, y: 0, z: -10 },
-        collisionFilterGroup: [group1, group2],
+        collisionFilterGroups: [group1, group2],
         collisionFilterMask: [group1, group2],
       };
 
@@ -242,6 +254,8 @@ describe('AmmoWorldComponent', () => {
       }, { position: { x: 0, y: 0, z: -7 } });
       box2.addToWorld({ physicsWorld: world } as any);
 
+      world.simulate(1);
+
       // Cast a ray that should hit box1 first
       const raycastOptions: RaycastOptions<Point3> = {
         from: { x: 0, y: 0, z: 0 },
@@ -250,10 +264,7 @@ describe('AmmoWorldComponent', () => {
 
       const result = world.raycast(raycastOptions);
       expect(result.hasHit).toBe(true);
-      expect(result.hitBody).toBeDefined();
-
-      // The hit body should be the first box's native body
-      // We can't directly compare objects, but we can check the position
+      expect(result.hitBody).toBe(box1);
       expect(result.hitPoint!.z).toBeCloseTo(-2.5, 0.1); // box1 edge is at z = -2.5
     });
 
@@ -264,6 +275,8 @@ describe('AmmoWorldComponent', () => {
         body: { dynamic: false, mass: 0 },
       }, { position: { x: 0, y: 0, z: 0 } });
       box.addToWorld({ physicsWorld: world } as any);
+
+      world.simulate(1);
 
       // Cast a ray from inside the box
       const raycastOptions: RaycastOptions<Point3> = {
@@ -279,5 +292,5 @@ describe('AmmoWorldComponent', () => {
       // We just verify the method doesn't crash and returns a valid result
       expect(result).toBeDefined();
     });
-  }); 
+  });
 });

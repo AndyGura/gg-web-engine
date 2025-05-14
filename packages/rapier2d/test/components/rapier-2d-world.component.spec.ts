@@ -13,11 +13,6 @@ describe('Rapier2dWorldComponent', () => {
     world.gravity = { x: 0, y: 0 }; // Set gravity to zero for predictable physics
   });
 
-  // Helper function to run a physics step
-  const runPhysicsStep = () => {
-    world.simulate(16); // Simulate a small time step (16ms)
-  };
-
   afterAll(() => {
     world.dispose();
   });
@@ -90,18 +85,19 @@ describe('Rapier2dWorldComponent', () => {
       expect(circle0.position.x).toBeCloseTo(1);
       expect(circle1.position.x).toBeCloseTo(-1);
     });
-  });describe('Raycast', () => {
+  });
+
+  describe('Raycast', () => {
 
     it('should return no hit when ray does not intersect any object', () => {
-      // Create a box far away from the ray
-      const box = world.factory.createRigidBody({
+      // Create a square far away from the ray
+      const square = world.factory.createRigidBody({
         shape: { shape: 'SQUARE', dimensions: { x: 1, y: 1 } },
         body: { dynamic: false, mass: 0 },
       }, { position: { x: 10, y: 10 } });
-      box.addToWorld({ physicsWorld: world } as any);
+      square.addToWorld({ physicsWorld: world } as any);
 
-      // Run a physics step to ensure the body is properly positioned
-      runPhysicsStep();
+      world.simulate(1);
 
       // Cast a ray that doesn't hit anything
       const raycastOptions: RaycastOptions<Point2> = {
@@ -117,17 +113,16 @@ describe('Rapier2dWorldComponent', () => {
     });
 
     it('should detect hit when ray intersects an object', () => {
-      // Create a box in the path of the ray
-      const box = world.factory.createRigidBody({
+      // Create a square in the path of the ray
+      const square = world.factory.createRigidBody({
         shape: { shape: 'SQUARE', dimensions: { x: 2, y: 2 } },
         body: { dynamic: false, mass: 0 },
       }, { position: { x: 0, y: -5 } });
-      box.addToWorld({ physicsWorld: world } as any);
+      square.addToWorld({ physicsWorld: world } as any);
 
-      // Run a physics step to ensure the body is properly positioned
-      runPhysicsStep();
+      world.simulate(1);
 
-      // Cast a ray that hits the box
+      // Cast a ray that hits the square
       const raycastOptions: RaycastOptions<Point2> = {
         from: { x: 0, y: 0 },
         to: { x: 0, y: -10 },
@@ -135,6 +130,7 @@ describe('Rapier2dWorldComponent', () => {
 
       const result = world.raycast(raycastOptions);
       expect(result.hasHit).toBe(true);
+      expect(result.hitBody).toBe(square);
       expect(result.hitPoint).toBeDefined();
       expect(result.hitNormal).toBeDefined();
       expect(result.hitDistance).toBeDefined();
@@ -147,16 +143,12 @@ describe('Rapier2dWorldComponent', () => {
     });
 
     it('should respect collision filtering', () => {
-      // This test is a special case that verifies the behavior of the raycast method
-      // when collision filtering is used. The implementation has a special case for
-      // collisionFilterGroup === 4 that returns no hit.
-
       // Register collision groups
       const group1 = world.registerCollisionGroup();
       const group2 = world.registerCollisionGroup();
 
-      // Create a box that only belongs to group1
-      const box1 = world.factory.createRigidBody({
+      // Create a square that only belongs to group1
+      const square1 = world.factory.createRigidBody({
         shape: { shape: 'SQUARE', dimensions: { x: 2, y: 2 } },
         body: {
           dynamic: false,
@@ -165,16 +157,15 @@ describe('Rapier2dWorldComponent', () => {
           interactWithCollisionGroups: [group1, group2],
         },
       }, { position: { x: 0, y: -5 } });
-      box1.addToWorld({ physicsWorld: world } as any);
+      square1.addToWorld({ physicsWorld: world } as any);
 
-      // Run a physics step to ensure the body is properly positioned
-      runPhysicsStep();
+      world.simulate(1);
 
       // Ray that only checks against group2 should not hit
       const rayOptions1: RaycastOptions<Point2> = {
         from: { x: 0, y: 0 },
         to: { x: 0, y: -10 },
-        collisionFilterGroup: group2,
+        collisionFilterGroups: [group2],
         collisionFilterMask: [group2],
       };
 
@@ -182,31 +173,27 @@ describe('Rapier2dWorldComponent', () => {
       expect(result1.hasHit).toBe(false);
 
       // Ray that checks against group1 should hit
-      // Note: In the current implementation, collision filtering is not fully implemented
-      // and the test is adjusted to match the actual behavior
       const rayOptions2: RaycastOptions<Point2> = {
         from: { x: 0, y: 0 },
         to: { x: 0, y: -10 },
-        collisionFilterGroup: group1,
+        collisionFilterGroups: [group1],
         collisionFilterMask: [group1],
       };
 
       const result2 = world.raycast(rayOptions2);
-      // For now, we're just checking that the method doesn't crash
-      // In a future implementation, this should be expect(result2.hasHit).toBe(true);
-      expect(result2).toBeDefined();
+      expect(result2.hasHit).toBe(true);
+      expect(result2.hitBody).toBe(square1);
     });
 
     it('should calculate hit distance correctly', () => {
-      // Create a box at a known distance
-      const box = world.factory.createRigidBody({
+      // Create a square at a known distance
+      const square = world.factory.createRigidBody({
         shape: { shape: 'SQUARE', dimensions: { x: 2, y: 2 } },
         body: { dynamic: false, mass: 0 },
       }, { position: { x: 0, y: -5 } });
-      box.addToWorld({ physicsWorld: world } as any);
+      square.addToWorld({ physicsWorld: world } as any);
 
-      // Run a physics step to ensure the body is properly positioned
-      runPhysicsStep();
+      world.simulate(1);
 
       // Cast a ray from origin to y = -10
       const raycastOptions: RaycastOptions<Point2> = {
@@ -218,20 +205,17 @@ describe('Rapier2dWorldComponent', () => {
       expect(result.hasHit).toBe(true);
 
       // The hit distance should be approximately 4 units
-      // (from origin to the edge of the box at y = -4)
+      // (from origin to the edge of the square at y = -4)
       expect(result.hitDistance).toBeCloseTo(4, 0.1);
     });
 
     it('should handle array of collision groups correctly', () => {
-      // This test is a special case that verifies the behavior of the raycast method
-      // when an array of collision groups is used.
-
       // Register collision groups
       const group1 = world.registerCollisionGroup();
       const group2 = world.registerCollisionGroup();
 
-      // Create a box that belongs to group1
-      const box = world.factory.createRigidBody({
+      // Create a square that belongs to group1
+      const square = world.factory.createRigidBody({
         shape: { shape: 'SQUARE', dimensions: { x: 2, y: 2 } },
         body: {
           dynamic: false,
@@ -240,45 +224,39 @@ describe('Rapier2dWorldComponent', () => {
           interactWithCollisionGroups: [group1, group2],
         },
       }, { position: { x: 0, y: -5 } });
-      box.addToWorld({ physicsWorld: world } as any);
+      square.addToWorld({ physicsWorld: world } as any);
 
-      // Run a physics step to ensure the body is properly positioned
-      runPhysicsStep();
+      world.simulate(1);
 
       // Ray that checks against both groups should hit
       const rayOptions: RaycastOptions<Point2> = {
         from: { x: 0, y: 0 },
         to: { x: 0, y: -10 },
-        collisionFilterGroup: [group1, group2],
+        collisionFilterGroups: [group1, group2],
         collisionFilterMask: [group1, group2],
       };
 
       const result = world.raycast(rayOptions);
-      // Note: In the current implementation, collision filtering with arrays is not fully implemented
-      // and the test is adjusted to match the actual behavior
-      // For now, we're just checking that the method doesn't crash
-      // In a future implementation, this should be expect(result.hasHit).toBe(true);
-      expect(result).toBeDefined();
+      expect(result.hasHit).toBe(true);
     });
 
     it('should return correct hit body', () => {
-      // Create two boxes at different positions
-      const box1 = world.factory.createRigidBody({
+      // Create two squares at different positions
+      const square1 = world.factory.createRigidBody({
         shape: { shape: 'SQUARE', dimensions: { x: 1, y: 1 } },
         body: { dynamic: false, mass: 0 },
       }, { position: { x: 0, y: -3 } });
-      box1.addToWorld({ physicsWorld: world } as any);
+      square1.addToWorld({ physicsWorld: world } as any);
 
-      const box2 = world.factory.createRigidBody({
+      const square2 = world.factory.createRigidBody({
         shape: { shape: 'SQUARE', dimensions: { x: 1, y: 1 } },
         body: { dynamic: false, mass: 0 },
       }, { position: { x: 0, y: -7 } });
-      box2.addToWorld({ physicsWorld: world } as any);
+      square2.addToWorld({ physicsWorld: world } as any);
 
-      // Run a physics step to ensure the bodies are properly positioned
-      runPhysicsStep();
+      world.simulate(1);
 
-      // Cast a ray that should hit box1 first
+      // Cast a ray that should hit square1 first
       const raycastOptions: RaycastOptions<Point2> = {
         from: { x: 0, y: 0 },
         to: { x: 0, y: -10 },
@@ -286,26 +264,23 @@ describe('Rapier2dWorldComponent', () => {
 
       const result = world.raycast(raycastOptions);
       expect(result.hasHit).toBe(true);
-      expect(result.hitBody).toBeDefined();
-
-      // The hit point should be at the edge of the first box
-      expect(result.hitPoint!.y).toBeCloseTo(-2.5, 0.1); // box1 edge is at y = -2.5
+      expect(result.hitBody).toBe(square1);
+      expect(result.hitPoint!.y).toBeCloseTo(-2.5, 0.1); // square1 edge is at y = -2.5
     });
 
     it('should handle edge case with ray starting inside an object', () => {
-      // Create a box
-      const box = world.factory.createRigidBody({
+      // Create a square
+      const square = world.factory.createRigidBody({
         shape: { shape: 'SQUARE', dimensions: { x: 4, y: 4 } },
         body: { dynamic: false, mass: 0 },
       }, { position: { x: 0, y: 0 } });
-      box.addToWorld({ physicsWorld: world } as any);
+      square.addToWorld({ physicsWorld: world } as any);
 
-      // Run a physics step to ensure the body is properly positioned
-      runPhysicsStep();
+      world.simulate(1);
 
-      // Cast a ray from inside the box
+      // Cast a ray from inside the square
       const raycastOptions: RaycastOptions<Point2> = {
-        from: { x: 0, y: 0 }, // Center of the box
+        from: { x: 0, y: 0 }, // Center of the square
         to: { x: 0, y: -10 },
       };
 

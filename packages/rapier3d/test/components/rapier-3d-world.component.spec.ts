@@ -13,11 +13,6 @@ describe('Rapier3dWorldComponent', () => {
     world.gravity = { x: 0, y: 0, z: 0 }; // Set gravity to zero for predictable physics
   });
 
-  // Helper function to run a physics step
-  const runPhysicsStep = () => {
-    world.simulate(16); // Simulate a small time step (16ms)
-  };
-
   afterAll(() => {
     world.dispose();
   });
@@ -102,8 +97,7 @@ describe('Rapier3dWorldComponent', () => {
       }, { position: { x: 10, y: 10, z: 10 } });
       box.addToWorld({ physicsWorld: world } as any);
 
-      // Run a physics step to ensure the body is properly positioned
-      runPhysicsStep();
+      world.simulate(1);
 
       // Cast a ray that doesn't hit anything
       const raycastOptions: RaycastOptions<Point3> = {
@@ -126,8 +120,7 @@ describe('Rapier3dWorldComponent', () => {
       }, { position: { x: 0, y: 0, z: -5 } });
       box.addToWorld({ physicsWorld: world } as any);
 
-      // Run a physics step to ensure the body is properly positioned
-      runPhysicsStep();
+      world.simulate(1);
 
       // Cast a ray that hits the box
       const raycastOptions: RaycastOptions<Point3> = {
@@ -137,6 +130,7 @@ describe('Rapier3dWorldComponent', () => {
 
       const result = world.raycast(raycastOptions);
       expect(result.hasHit).toBe(true);
+      expect(result.hitBody).toBe(box);
       expect(result.hitPoint).toBeDefined();
       expect(result.hitNormal).toBeDefined();
       expect(result.hitDistance).toBeDefined();
@@ -165,14 +159,13 @@ describe('Rapier3dWorldComponent', () => {
       }, { position: { x: 0, y: 0, z: -5 } });
       box1.addToWorld({ physicsWorld: world } as any);
 
-      // Run a physics step to ensure the body is properly positioned
-      runPhysicsStep();
+      world.simulate(1);
 
       // Ray that only checks against group2 should not hit
       const rayOptions1: RaycastOptions<Point3> = {
         from: { x: 0, y: 0, z: 0 },
         to: { x: 0, y: 0, z: -10 },
-        collisionFilterGroup: group2,
+        collisionFilterGroups: [group2],
         collisionFilterMask: [group2],
       };
 
@@ -183,12 +176,13 @@ describe('Rapier3dWorldComponent', () => {
       const rayOptions2: RaycastOptions<Point3> = {
         from: { x: 0, y: 0, z: 0 },
         to: { x: 0, y: 0, z: -10 },
-        collisionFilterGroup: group1,
+        collisionFilterGroups: [group1],
         collisionFilterMask: [group1],
       };
 
       const result2 = world.raycast(rayOptions2);
       expect(result2.hasHit).toBe(true);
+      expect(result2.hitBody).toBe(box1);
     });
 
     it('should calculate hit distance correctly', () => {
@@ -199,8 +193,7 @@ describe('Rapier3dWorldComponent', () => {
       }, { position: { x: 0, y: 0, z: -5 } });
       box.addToWorld({ physicsWorld: world } as any);
 
-      // Run a physics step to ensure the body is properly positioned
-      runPhysicsStep();
+      world.simulate(1);
 
       // Cast a ray from origin to z = -10
       const raycastOptions: RaycastOptions<Point3> = {
@@ -233,14 +226,13 @@ describe('Rapier3dWorldComponent', () => {
       }, { position: { x: 0, y: 0, z: -5 } });
       box.addToWorld({ physicsWorld: world } as any);
 
-      // Run a physics step to ensure the body is properly positioned
-      runPhysicsStep();
+      world.simulate(1);
 
       // Ray that checks against both groups should hit
       const rayOptions: RaycastOptions<Point3> = {
         from: { x: 0, y: 0, z: 0 },
         to: { x: 0, y: 0, z: -10 },
-        collisionFilterGroup: [group1, group2],
+        collisionFilterGroups: [group1, group2],
         collisionFilterMask: [group1, group2],
       };
 
@@ -262,8 +254,7 @@ describe('Rapier3dWorldComponent', () => {
       }, { position: { x: 0, y: 0, z: -7 } });
       box2.addToWorld({ physicsWorld: world } as any);
 
-      // Run a physics step to ensure the bodies are properly positioned
-      runPhysicsStep();
+      world.simulate(1);
 
       // Cast a ray that should hit box1 first
       const raycastOptions: RaycastOptions<Point3> = {
@@ -273,10 +264,7 @@ describe('Rapier3dWorldComponent', () => {
 
       const result = world.raycast(raycastOptions);
       expect(result.hasHit).toBe(true);
-      expect(result.hitBody).toBeDefined();
-
-      // The hit body should be the first box's native body
-      // We can't directly compare objects, but we can check the position
+      expect(result.hitBody).toBe(box1);
       expect(result.hitPoint!.z).toBeCloseTo(-2.5, 0.1); // box1 edge is at z = -2.5
     });
 
@@ -288,8 +276,7 @@ describe('Rapier3dWorldComponent', () => {
       }, { position: { x: 0, y: 0, z: 0 } });
       box.addToWorld({ physicsWorld: world } as any);
 
-      // Run a physics step to ensure the body is properly positioned
-      runPhysicsStep();
+      world.simulate(1);
 
       // Cast a ray from inside the box
       const raycastOptions: RaycastOptions<Point3> = {

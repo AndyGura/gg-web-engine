@@ -50,12 +50,12 @@ export interface RaycastOptions<D> {
   to: D;
 
   /**
-   * Optional collision filter group for the ray.
+   * Optional collision filter groups for the ray.
    */
-  collisionFilterGroup?: CollisionGroup | CollisionGroup[];
+  collisionFilterGroups?: CollisionGroup[];
 
   /**
    * Optional collision filter mask for the ray.
    */
-  collisionFilterMask?: CollisionGroup | CollisionGroup[];
+  collisionFilterMask?: CollisionGroup[];
 }

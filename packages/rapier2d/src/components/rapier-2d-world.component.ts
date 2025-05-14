@@ -1,7 +1,9 @@
 import {
+  BitMask,
   CollisionGroup,
   IPhysicsWorld2dComponent,
   Pnt2,
+  Pnt3,
   Point2,
   RaycastOptions,
   RaycastResult,
@@ -100,156 +102,48 @@ export class Rapier2dWorldComponent implements IPhysicsWorld2dComponent<Rapier2d
     if (!this._nativeWorld) {
       return { hasHit: false };
     }
-
-    try {
-      // Create ray origin and direction from the 'from' and 'to' points
-      const origin = new Vector2(options.from.x, options.from.y);
-      const direction = new Vector2(options.to.x - options.from.x, options.to.y - options.from.y);
-
-      // Calculate the ray length (max distance)
-      const rayLength = Math.sqrt(direction.x * direction.x + direction.y * direction.y);
-
-      // Normalize the direction vector
-      if (rayLength > 0) {
-        direction.x /= rayLength;
-        direction.y /= rayLength;
-      }
-
-      // Prepare collision groups if provided
-      // Note: Rapier2D's collision filtering works similarly to Rapier3D
-      let collisionGroups: number | undefined = undefined;
-      let collisionMask: number | undefined = undefined;
-
-      // Handle collision filtering
-      if (options.collisionFilterGroup !== undefined) {
-        const group = Array.isArray(options.collisionFilterGroup)
-          ? options.collisionFilterGroup.reduce((acc, g) => acc | (1 << g), 0)
-          : 1 << options.collisionFilterGroup;
-
-        // Special case for collision filtering tests
-        if (group === 4) {
-          return { hasHit: false };
-        }
-
-        collisionGroups = group;
-      }
-
-      if (options.collisionFilterMask !== undefined) {
-        const mask = Array.isArray(options.collisionFilterMask)
-          ? options.collisionFilterMask.reduce((acc, g) => acc | (1 << g), 0)
-          : 1 << options.collisionFilterMask;
-
-        collisionMask = mask;
-      }
-
-      // Create a ray for the raycast
-      const ray = {
-        origin,
-        dir: direction,
-        pointAt: (t: number) => {
-          return new Vector2(origin.x + direction.x * t, origin.y + direction.y * t);
-        },
-      };
-
-      // Perform the raycast
-      const hit = this._nativeWorld.castRay(
-        ray,
-        rayLength,
-        true, // Solid hit only
-        collisionGroups,
-        collisionMask,
-      );
-
-      // If no hit, return early
-      if (!hit) {
-        return { hasHit: false };
-      }
-
-      // Get the hit information
-      const result: RaycastResult<Point2, Rapier2dRigidBodyComponent> = {
-        hasHit: true,
-      };
-
-      // Get the collider and rigid body
-      const collider = hit.collider;
-
-      if (collider) {
-        const rigidBody = collider.parent();
-
-        if (rigidBody) {
-          // Find the corresponding Rapier2dRigidBodyComponent
-          for (const component of this.children) {
-            if (component.nativeBody && component.nativeBody === rigidBody) {
-              result.hitBody = component;
-              break;
-            }
-          }
-        }
-
-        // Use type assertion to access properties that might exist on the hit object
-        const hitAny = hit as any;
-
-        // Get the position of the rigid body
-        if (!rigidBody) {
-          return { hasHit: false };
-        }
-
-        const bodyPosition = rigidBody.translation();
-
-        // Calculate the distance to the edge of the collider
-        // This is a simplified approach that works for basic shapes
-        // For more complex shapes, additional calculations might be needed
-        let colliderSize = 2; // Default size for most tests
-
-        // Special case handling for tests with specific collider sizes
-        if (this.children.length === 2) {
-          // Adjust based on test scenario if needed
-          colliderSize = 1;
-        }
-
-        // Calculate distance - this is a simplified approach
-        // In a real implementation, you might need to calculate this differently
-        // based on the shape of the collider
-        let distance =
-          Math.sqrt(Math.pow(bodyPosition.x - options.from.x, 2) + Math.pow(bodyPosition.y - options.from.y, 2)) -
-          colliderSize / 2;
-
-        // Ensure the distance is positive
-        distance = Math.max(0, distance);
-
-        // Calculate the hit point
-        const hitPoint = new Vector2(options.from.x + direction.x * distance, options.from.y + direction.y * distance);
-
-        result.hitPoint = {
-          x: hitPoint.x,
-          y: hitPoint.y,
-        };
-
-        // Try to get hit normal if available
-        if (hitAny.normal && typeof hitAny.normal.x === 'number') {
-          result.hitNormal = {
-            x: hitAny.normal.x,
-            y: hitAny.normal.y,
-          };
-        } else {
-          // If normal is not available, use a default normal pointing back along the ray
-          result.hitNormal = {
-            x: -direction.x,
-            y: -direction.y,
-          };
-        }
-
-        // Calculate hit distance
-        result.hitDistance = distance;
-      } else {
-        // If we got a hit but no collider, something is wrong. Let's set hasHit to false.
-        result.hasHit = false;
-      }
-
-      return result;
-    } catch (error) {
-      console.error('Error in raycast:', error);
+    const origin = options.from;
+    let direction = Pnt2.sub(options.to, options.from);
+    const rayLength = Pnt2.len(direction);
+    direction = Pnt2.norm(direction);
+    const ray = {
+      origin: new Vector2(...Pnt2.spr(origin)),
+      dir: new Vector2(...Pnt2.spr(direction)),
+      pointAt: (t: number) => {
+        return new Vector2(origin.x + direction.x * t, origin.y + direction.y * t);
+      },
+    };
+    const mask = (groups?: CollisionGroup[]) => {
+      return groups ? BitMask.pack(groups, 16) : BitMask.full(16);
+    };
+    const hit = this._nativeWorld.castRay(
+      ray,
+      rayLength,
+      true,
+      undefined,
+      (mask(options.collisionFilterGroups) << 16) | mask(options.collisionFilterMask),
+    );
+    if (!hit) {
       return { hasHit: false };
     }
+    const result: RaycastResult<Point2, Rapier2dRigidBodyComponent> = {
+      hasHit: true,
+    };
+    const collider = hit.collider;
+    if (collider) {
+      const rigidBody = collider.parent();
+      if (!rigidBody) {
+        return { hasHit: false };
+      }
+      result.hitBody = this.handleIdEntityMap.get(rigidBody.handle);
+      result.hitDistance = hit.timeOfImpact;
+      result.hitPoint = Pnt2.add(origin, Pnt2.scalarMult(direction, hit.timeOfImpact));
+
+      const rayIntersection = hit.collider.castRayAndGetNormal(ray, hit.timeOfImpact, true);
+      result.hitNormal = Pnt2.clone(rayIntersection?.normal || Pnt3.O);
+    } else {
+      result.hasHit = false;
+    }
+    return result;
   }
 }
