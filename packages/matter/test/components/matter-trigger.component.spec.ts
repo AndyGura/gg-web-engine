@@ -19,6 +19,10 @@ describe(`MatterTriggerComponent`, () => {
     world.dispose();
   });
 
+  // FIXME matter.js logic is kinda not intuitive. Spawning objects on some coordinates seems to cause collisions with
+  // all the objects that intersect the line between (0, 0) and desired position, sensors are flying away to the
+  // infinity just by setting it's position and other wonderful miracles. Investigate why these tests fail and try to fix.
+  // Note: this test is identical to rapier2d trigger test, and it is expected
   it.skip(`should detect object intersection`, async () => {
     const trigger = factory.createTrigger({ shape: 'SQUARE', dimensions: { x: 10, y: 10 } });
     trigger.addToWorld({ physicsWorld: world } as any);

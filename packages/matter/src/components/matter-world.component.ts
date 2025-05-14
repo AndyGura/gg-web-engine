@@ -10,7 +10,11 @@ import { MatterTriggerComponent } from './matter-trigger.component';
 const MATTER_WORLD_SCALE = 0.0001;
 
 export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhysicsTypeDocRepo> {
-  protected matterEngine: Engine | null = null;
+  protected matterEngine_: Engine | null = null;
+
+  public get matterEngine(): Engine | null {
+    return this.matterEngine_;
+  }
 
   public get matterWorld(): World | null {
     return this.matterEngine && this.matterEngine.world;
@@ -44,7 +48,7 @@ export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhys
   }
 
   async init(): Promise<void> {
-    this.matterEngine = Engine.create({
+    this.matterEngine_ = Engine.create({
       gravity: { ...this._gravity, scale: MATTER_WORLD_SCALE },
     });
   }

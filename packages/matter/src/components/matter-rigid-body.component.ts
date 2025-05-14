@@ -16,7 +16,7 @@ const MATTER_VELOCITY_SCALE = 0.0166667;
 
 export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhysicsTypeDocRepo> {
   public get position(): Point2 {
-    return this.nativeBody.position;
+    return Pnt2.clone(this.nativeBody.position);
   }
 
   public set position(value: Point2) {
