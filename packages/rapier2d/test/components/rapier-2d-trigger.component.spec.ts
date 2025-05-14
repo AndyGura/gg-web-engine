@@ -85,7 +85,7 @@ describe(`Rapier2dTriggerComponent`, () => {
     expect(enterRegistered).toBe(true);
   });
 
-  it.skip(`should fire end of object intersection if trigger removed`, async () => {
+  it(`should fire end of object intersection if trigger removed`, async () => {
     const trigger = factory.createTrigger({ shape: 'SQUARE', dimensions: { x: 10, y: 10 } });
     trigger.addToWorld({ physicsWorld: world } as any);
     const circle = factory.createRigidBody({
@@ -97,12 +97,13 @@ describe(`Rapier2dTriggerComponent`, () => {
     trigger.onEntityLeft.subscribe(((obj) => {
       exitRegistered = obj === circle;
     }));
+    world.simulate(1);
     trigger.checkOverlaps();
     trigger.removeFromWorld({ physicsWorld: world } as any);
     expect(exitRegistered).toBe(true);
   });
 
-  it.skip(`should fire end of object intersection if object removed`, async () => {
+  it(`should fire end of object intersection if object removed`, async () => {
     const trigger = factory.createTrigger({ shape: 'SQUARE', dimensions: { x: 10, y: 10 } });
     trigger.addToWorld({ physicsWorld: world } as any);
     const circle = factory.createRigidBody({
@@ -114,8 +115,10 @@ describe(`Rapier2dTriggerComponent`, () => {
     trigger.onEntityLeft.subscribe(((obj) => {
       exitRegistered = obj === circle;
     }));
+    world.simulate(1);
     trigger.checkOverlaps();
     circle.removeFromWorld({ physicsWorld: world } as any);
+    world.simulate(1);
     trigger.checkOverlaps();
     expect(exitRegistered).toBe(true);
   });

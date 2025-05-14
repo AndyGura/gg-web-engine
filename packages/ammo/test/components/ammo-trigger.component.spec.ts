@@ -97,6 +97,7 @@ describe(`AmmoTriggerComponent`, () => {
     trigger.onEntityLeft.subscribe(((obj) => {
       exitRegistered = obj === ball;
     }));
+    world.simulate(1);
     trigger.checkOverlaps();
     trigger.removeFromWorld({ physicsWorld: world } as any);
     expect(exitRegistered).toBe(true);
@@ -114,8 +115,10 @@ describe(`AmmoTriggerComponent`, () => {
     trigger.onEntityLeft.subscribe(((obj) => {
       exitRegistered = obj === ball;
     }));
+    world.simulate(1);
     trigger.checkOverlaps();
     ball.removeFromWorld({ physicsWorld: world } as any);
+    world.simulate(1);
     trigger.checkOverlaps();
     expect(exitRegistered).toBe(true);
   });

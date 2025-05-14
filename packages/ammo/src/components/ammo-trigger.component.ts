@@ -38,9 +38,9 @@ export class AmmoTriggerComponent
     super(world, _nativeBody, shape);
   }
 
+  protected readonly overlaps: Set<Ammo.btCollisionObject> = new Set<Ammo.btCollisionObject>();
   protected readonly onEnter$: Subject<number> = new Subject<number>();
   protected readonly onLeft$: Subject<number> = new Subject<number>();
-  protected readonly overlaps: Set<Ammo.btCollisionObject> = new Set<Ammo.btCollisionObject>();
 
   checkOverlaps(): void {
     const numOverlappingObjects = this.nativeBody.getNumOverlappingObjects();
