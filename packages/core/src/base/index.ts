@@ -32,6 +32,7 @@ export * from './models/axis-directions';
 export * from './models/body-options';
 export * from './models/geometry-nodes';
 export * from './models/points';
+export * from './models/raycasting';
 
 export * from './math/box';
 export * from './math/point2';

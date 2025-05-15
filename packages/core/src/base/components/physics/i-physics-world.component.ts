@@ -2,6 +2,7 @@ import { PhysicsTypeDocRepo } from '../../gg-world';
 import { IComponent } from '../i-component';
 import { CollisionGroup } from '../../models/body-options';
 import { Subject } from 'rxjs';
+import { RaycastOptions, RaycastResult } from '../../models/raycasting';
 
 /**
  * Interface representing a physics world component.
@@ -69,4 +70,12 @@ export interface IPhysicsWorldComponent<D, R, PTypeDoc extends PhysicsTypeDocRep
    * @param group - The collision group to be removed.
    */
   deregisterCollisionGroup(group: CollisionGroup): void;
+
+  /**
+   * Performs a raycast in the physics world.
+   *
+   * @param options - The options for the raycast.
+   * @returns The result of the raycast.
+   */
+  raycast(options: RaycastOptions<D>): RaycastResult<D, PTypeDoc['rigidBody'] | PTypeDoc['trigger']>;
 }

@@ -1,4 +1,4 @@
-import { CollisionGroup, IPhysicsWorld2dComponent, Point2 } from '@gg-web-engine/core';
+import { CollisionGroup, IPhysicsWorld2dComponent, Point2, RaycastOptions, RaycastResult } from '@gg-web-engine/core';
 import { Engine, World } from 'matter-js';
 import { MatterFactory } from '../matter-factory';
 import { MatterPhysicsTypeDocRepo } from '../types';
@@ -74,6 +74,10 @@ export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhys
   simulate(delta: number): void {
     Engine.update(this.matterEngine!, delta, this.lastDelta > 0 ? delta / this.lastDelta : 1);
     this.lastDelta = delta;
+  }
+
+  raycast(options: RaycastOptions<Point2>): RaycastResult<Point2, MatterRigidBodyComponent> {
+    throw new Error('Ray casting is not implemented for Matter.js');
   }
 
   dispose(): void {
