@@ -2,7 +2,7 @@ import { PhysicsTypeDocRepo } from '../../gg-world';
 import { IComponent } from '../i-component';
 import { CollisionGroup } from '../../models/body-options';
 import { Subject } from 'rxjs';
-import { RaycastOptions, RaycastResult } from '../../models/raycast-result';
+import { RaycastOptions, RaycastResult } from '../../models/raycasting';
 
 /**
  * Interface representing a physics world component.
