@@ -103,10 +103,6 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
     this.lockedCollisionGroups = this.lockedCollisionGroups.filter(x => x !== group);
   }
 
-  dispose(): void {
-    this._nativeWorld?.free();
-  }
-
   raycast(options: RaycastOptions<Point3>): RaycastResult<Point3, Rapier3dRigidBodyComponent> {
     if (!this._nativeWorld) {
       return { hasHit: false };
@@ -154,5 +150,9 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
       result.hasHit = false;
     }
     return result;
+  }
+
+  dispose(): void {
+    this._nativeWorld?.free();
   }
 }

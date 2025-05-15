@@ -121,16 +121,6 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
     this.lockedCollisionGroups = this.lockedCollisionGroups.filter(x => x !== group);
   }
 
-  dispose(): void {
-    this.afterTick$.complete();
-    Ammo.destroy(this._dynamicAmmoWorld);
-    Ammo.destroy(this.solver);
-    Ammo.destroy(this.broadphase);
-    Ammo.destroy(this.dispatcher);
-    Ammo.destroy(this.collisionConfiguration);
-    this._dynamicAmmoWorld = this.solver = this.broadphase = this.dispatcher = this.collisionConfiguration = undefined;
-  }
-
   raycast(options: RaycastOptions<Point3>): RaycastResult<Point3, AmmoRigidBodyComponent | AmmoTriggerComponent> {
     if (!this._dynamicAmmoWorld) {
       return { hasHit: false };
@@ -177,5 +167,15 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
     Ammo.destroy(rayCallback);
 
     return result;
+  }
+
+  dispose(): void {
+    this.afterTick$.complete();
+    Ammo.destroy(this._dynamicAmmoWorld);
+    Ammo.destroy(this.solver);
+    Ammo.destroy(this.broadphase);
+    Ammo.destroy(this.dispatcher);
+    Ammo.destroy(this.collisionConfiguration);
+    this._dynamicAmmoWorld = this.solver = this.broadphase = this.dispatcher = this.collisionConfiguration = undefined;
   }
 }

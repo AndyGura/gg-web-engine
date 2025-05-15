@@ -76,11 +76,11 @@ export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhys
     this.lastDelta = delta;
   }
 
-  dispose(): void {
-    Engine.clear(this.matterEngine!);
-  }
-
   raycast(options: RaycastOptions<Point2>): RaycastResult<Point2, MatterRigidBodyComponent> {
     throw new Error('Ray casting is not implemented for Matter.js');
+  }
+
+  dispose(): void {
+    Engine.clear(this.matterEngine!);
   }
 }
