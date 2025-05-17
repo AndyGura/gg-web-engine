@@ -22,5 +22,5 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare class IRenderer2dComponent<TypeDoc>
+export declare class IRenderer2dComponent<VTypeDoc>
 ```

@@ -22,8 +22,8 @@ parent: Modules
 **Signature**
 
 ```ts
-export interface ITrigger3dComponent<TypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D>
-  extends ITriggerComponent<Point3, Point4, TypeDoc> {
+export interface ITrigger3dComponent<PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D>
+  extends ITriggerComponent<Point3, Point4, PTypeDoc> {
   /** body info for physics debugger view */
   readonly debugBodySettings: DebugBody3DSettings;
 ```

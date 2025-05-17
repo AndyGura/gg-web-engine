@@ -42,7 +42,7 @@ The animation function can be changed with `transitAnimationFunction` or `transi
 **Signature**
 
 ```ts
-export declare class AnimationMixer<T, D, R, VTypeDoc, PTypeDoc> {
+export declare class AnimationMixer<T, D, R, TypeDoc> {
   constructor(
     protected _animationFunction: AnimationFunction<T>,
     protected _lerp: (a: T, b: T, t: number) => T = (a, b, t) => b
@@ -84,7 +84,7 @@ transitAnimationFunction(
 **Signature**
 
 ```ts
-onSpawned(world: GgWorld<D, R, VTypeDoc, PTypeDoc>)
+onSpawned(world: GgWorld<D, R, TypeDoc>)
 ```
 
 ### dispose (method)

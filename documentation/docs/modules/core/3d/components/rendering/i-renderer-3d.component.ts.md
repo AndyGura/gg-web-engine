@@ -23,7 +23,7 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare class IRenderer3dComponent<TypeDoc>
+export declare class IRenderer3dComponent<VTypeDoc>
 ```
 
 ### camera (property)
@@ -31,5 +31,5 @@ export declare class IRenderer3dComponent<TypeDoc>
 **Signature**
 
 ```ts
-camera: TypeDoc['camera']
+camera: VTypeDoc['camera']
 ```

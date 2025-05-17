@@ -514,6 +514,13 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#matterggworld-type-alias" class="md-nav__link">
+    MatterGgWorld (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#matterphysicstypedocrepo-type-alias" class="md-nav__link">
     MatterPhysicsTypeDocRepo (type alias)
   </a>
@@ -549,16 +556,24 @@
 
 <ul>
 <li><a href="#utils">utils</a></li>
+<li><a href="#matterggworld-type-alias">MatterGgWorld (type alias)</a></li>
 <li><a href="#matterphysicstypedocrepo-type-alias">MatterPhysicsTypeDocRepo (type alias)</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
+<h2 id="matterggworld-type-alias">MatterGgWorld (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type MatterGgWorld = Gg2dWorld&lt;
+  Gg2dWorldTypeDocPPatch&lt;MatterPhysicsTypeDocRepo&gt;,
+  Gg2dWorldSceneTypeDocPPatch&lt;MatterPhysicsTypeDocRepo, MatterWorldComponent&gt;
+&gt;
+</code></pre>
 <h2 id="matterphysicstypedocrepo-type-alias">MatterPhysicsTypeDocRepo (type alias)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export type MatterPhysicsTypeDocRepo = {
   factory: MatterFactory
   rigidBody: MatterRigidBodyComponent
-  trigger: never
+  trigger: MatterTriggerComponent
 }
 </code></pre>
 

@@ -22,11 +22,11 @@ parent: Modules
 **Signature**
 
 ```ts
-export interface IVisualScene2dComponent<TypeDoc extends VisualTypeDocRepo2D = VisualTypeDocRepo2D>
-  extends IVisualSceneComponent<Point2, number, TypeDoc> {
+export interface IVisualScene2dComponent<VTypeDoc extends VisualTypeDocRepo2D = VisualTypeDocRepo2D>
+  extends IVisualSceneComponent<Point2, number, VTypeDoc> {
   createRenderer(
     canvas?: HTMLCanvasElement,
-    rendererOptions?: Partial<RendererOptions & TypeDoc['rendererExtraOpts']>
-  ): TypeDoc['renderer']
+    rendererOptions?: Partial<RendererOptions & VTypeDoc['rendererExtraOpts']>
+  ): VTypeDoc['renderer']
 }
 ```

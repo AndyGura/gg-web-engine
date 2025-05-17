@@ -1,6 +1,6 @@
 ---
 title: matter/components/matter-rigid-body.component.ts
-nav_order: 103
+nav_order: 104
 parent: Modules
 ---
 
@@ -12,6 +12,7 @@ parent: Modules
 
 - [utils](#utils)
   - [MatterRigidBodyComponent (class)](#matterrigidbodycomponent-class)
+    - [updateCollisionFilter (method)](#updatecollisionfilter-method)
     - [clone (method)](#clone-method)
     - [addToWorld (method)](#addtoworld-method)
     - [removeFromWorld (method)](#removefromworld-method)
@@ -20,6 +21,8 @@ parent: Modules
     - [name (property)](#name-property)
     - [entity (property)](#entity-property)
     - [debugBodySettings (property)](#debugbodysettings-property)
+    - [\_interactWithCGsMask (property)](#_interactwithcgsmask-property)
+    - [\_ownCGsMask (property)](#_owncgsmask-property)
 
 ---
 
@@ -35,6 +38,14 @@ export declare class MatterRigidBodyComponent {
 }
 ```
 
+### updateCollisionFilter (method)
+
+**Signature**
+
+```ts
+protected updateCollisionFilter(): void
+```
+
 ### clone (method)
 
 **Signature**
@@ -48,9 +59,7 @@ clone(): MatterRigidBodyComponent
 **Signature**
 
 ```ts
-addToWorld(
-    world: Gg2dWorld<VisualTypeDocRepo2D, MatterPhysicsTypeDocRepo, IVisualScene2dComponent, MatterWorldComponent>,
-  ): void
+addToWorld(world: MatterGgWorld): void
 ```
 
 ### removeFromWorld (method)
@@ -58,9 +67,7 @@ addToWorld(
 **Signature**
 
 ```ts
-removeFromWorld(
-    world: Gg2dWorld<VisualTypeDocRepo2D, MatterPhysicsTypeDocRepo, IVisualScene2dComponent, MatterWorldComponent>,
-  ): void
+removeFromWorld(world: MatterGgWorld): void
 ```
 
 ### dispose (method)
@@ -101,4 +108,20 @@ entity: any
 
 ```ts
 readonly debugBodySettings: any
+```
+
+### \_interactWithCGsMask (property)
+
+**Signature**
+
+```ts
+_interactWithCGsMask: any
+```
+
+### \_ownCGsMask (property)
+
+**Signature**
+
+```ts
+_ownCGsMask: any
 ```

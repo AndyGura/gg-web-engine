@@ -1,6 +1,6 @@
 ---
 title: rapier3d/components/rapier-3d-rigid-body.component.ts
-nav_order: 121
+nav_order: 123
 parent: Modules
 ---
 
@@ -57,7 +57,7 @@ clone(): Rapier3dRigidBodyComponent
 **Signature**
 
 ```ts
-addToWorld(world: Gg3dWorld<VisualTypeDocRepo3D, Rapier3dPhysicsTypeDocRepo>): void
+addToWorld(world: Rapier3dGgWorld): void
 ```
 
 ### removeFromWorld (method)
@@ -65,7 +65,7 @@ addToWorld(world: Gg3dWorld<VisualTypeDocRepo3D, Rapier3dPhysicsTypeDocRepo>): v
 **Signature**
 
 ```ts
-removeFromWorld(world: Gg3dWorld<VisualTypeDocRepo3D, Rapier3dPhysicsTypeDocRepo>): void
+removeFromWorld(world: Rapier3dGgWorld): void
 ```
 
 ### resetMotion (method)

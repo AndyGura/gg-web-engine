@@ -514,6 +514,13 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#rapier3dggworld-type-alias" class="md-nav__link">
+    Rapier3dGgWorld (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#rapier3dphysicstypedocrepo-type-alias" class="md-nav__link">
     Rapier3dPhysicsTypeDocRepo (type alias)
   </a>
@@ -549,10 +556,18 @@
 
 <ul>
 <li><a href="#utils">utils</a></li>
+<li><a href="#rapier3dggworld-type-alias">Rapier3dGgWorld (type alias)</a></li>
 <li><a href="#rapier3dphysicstypedocrepo-type-alias">Rapier3dPhysicsTypeDocRepo (type alias)</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
+<h2 id="rapier3dggworld-type-alias">Rapier3dGgWorld (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type Rapier3dGgWorld = Gg3dWorld&lt;
+  Gg3dWorldTypeDocPPatch&lt;Rapier3dPhysicsTypeDocRepo&gt;,
+  Gg3dWorldSceneTypeDocPPatch&lt;Rapier3dPhysicsTypeDocRepo, Rapier3dWorldComponent&gt;
+&gt;
+</code></pre>
 <h2 id="rapier3dphysicstypedocrepo-type-alias">Rapier3dPhysicsTypeDocRepo (type alias)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export type Rapier3dPhysicsTypeDocRepo = {

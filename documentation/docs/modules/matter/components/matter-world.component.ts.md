@@ -1,6 +1,6 @@
 ---
 title: matter/components/matter-world.component.ts
-nav_order: 104
+nav_order: 106
 parent: Modules
 ---
 
@@ -16,13 +16,15 @@ parent: Modules
     - [registerCollisionGroup (method)](#registercollisiongroup-method)
     - [deregisterCollisionGroup (method)](#deregistercollisiongroup-method)
     - [simulate (method)](#simulate-method)
+    - [raycast (method)](#raycast-method)
     - [dispose (method)](#dispose-method)
-    - [matterEngine (property)](#matterengine-property)
+    - [matterEngine\_ (property)](#matterengine_-property)
     - [factory (property)](#factory-property)
     - [added$ (property)](#added-property)
     - [removed$ (property)](#removed-property)
     - [children (property)](#children-property)
     - [mainCollisionGroup (property)](#maincollisiongroup-property)
+    - [lockedCollisionGroups (property)](#lockedcollisiongroups-property)
 
 ---
 
@@ -70,6 +72,14 @@ deregisterCollisionGroup(group: CollisionGroup): void
 simulate(delta: number): void
 ```
 
+### raycast (method)
+
+**Signature**
+
+```ts
+raycast(options: RaycastOptions<Point2>): RaycastResult<Point2, MatterRigidBodyComponent>
+```
+
 ### dispose (method)
 
 **Signature**
@@ -78,12 +88,12 @@ simulate(delta: number): void
 dispose(): void
 ```
 
-### matterEngine (property)
+### matterEngine\_ (property)
 
 **Signature**
 
 ```ts
-matterEngine: any
+matterEngine_: any
 ```
 
 ### factory (property)
@@ -115,7 +125,7 @@ readonly removed$: any
 **Signature**
 
 ```ts
-readonly children: MatterRigidBodyComponent[]
+readonly children: (MatterRigidBodyComponent | MatterTriggerComponent)[]
 ```
 
 ### mainCollisionGroup (property)
@@ -124,4 +134,12 @@ readonly children: MatterRigidBodyComponent[]
 
 ```ts
 readonly mainCollisionGroup: any
+```
+
+### lockedCollisionGroups (property)
+
+**Signature**
+
+```ts
+lockedCollisionGroups: number[]
 ```

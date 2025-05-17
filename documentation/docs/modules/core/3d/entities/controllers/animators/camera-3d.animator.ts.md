@@ -51,7 +51,7 @@ export declare class Camera3dAnimator<VTypeDoc> {
 **Signature**
 
 ```ts
-onSpawned(world: Gg3dWorld<VTypeDoc>)
+onSpawned(world: Gg3dWorld<Gg3dWorldTypeDocVPatch<VTypeDoc>>)
 ```
 
 ### applyPositioning (method)

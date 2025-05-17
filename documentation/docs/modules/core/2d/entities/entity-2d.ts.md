@@ -27,8 +27,11 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare class Entity2d<VTypeDoc, PTypeDoc> {
-  constructor(options: { object2D?: VTypeDoc['displayObject']; objectBody?: PTypeDoc['rigidBody'] })
+export declare class Entity2d<TypeDoc> {
+  constructor(options: {
+    object2D?: TypeDoc['vTypeDoc']['displayObject']
+    objectBody?: TypeDoc['pTypeDoc']['rigidBody']
+  })
 }
 ```
 
@@ -47,7 +50,10 @@ Synchronize physics body transform with entity (and object2d if defined)
 **Signature**
 
 ```ts
-protected runTransformBinding(objectBody: PTypeDoc['rigidBody'], object2D: VTypeDoc['displayObject'] | null): void
+protected runTransformBinding(
+    objectBody: TypeDoc['pTypeDoc']['rigidBody'],
+    object2D: TypeDoc['vTypeDoc']['displayObject'] | null,
+  ): void
 ```
 
 ### tickOrder (property)
@@ -63,7 +69,7 @@ readonly tickOrder: TickOrder.OBJECTS_BINDING
 **Signature**
 
 ```ts
-readonly object2D: VTypeDoc["displayObject"] | null
+readonly object2D: TypeDoc["vTypeDoc"]["displayObject"] | null
 ```
 
 ### objectBody (property)
@@ -71,5 +77,5 @@ readonly object2D: VTypeDoc["displayObject"] | null
 **Signature**
 
 ```ts
-readonly objectBody: PTypeDoc["rigidBody"] | null
+readonly objectBody: TypeDoc["pTypeDoc"]["rigidBody"] | null
 ```

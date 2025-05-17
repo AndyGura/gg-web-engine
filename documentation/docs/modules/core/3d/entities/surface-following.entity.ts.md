@@ -97,7 +97,7 @@ Called when the entity is added to a world.
 **Signature**
 
 ```ts
-onSpawned(world: Gg3dWorld<VisualTypeDocRepo3D, PTypeDoc>)
+onSpawned(world: Gg3dWorld<Gg3dWorldTypeDocPPatch<PTypeDoc>>)
 ```
 
 ### updateDebugView (method)

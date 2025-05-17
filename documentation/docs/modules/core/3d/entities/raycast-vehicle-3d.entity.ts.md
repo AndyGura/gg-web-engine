@@ -90,7 +90,7 @@ export type RVEntitySharedWheelOptions = {
 **Signature**
 
 ```ts
-export declare class RaycastVehicle3dEntity<VTypeDoc, PTypeDoc> {
+export declare class RaycastVehicle3dEntity<TypeDoc> {
   constructor(
     public readonly carProperties: RVEntityProperties,
     public readonly chassis3D: IDisplayObject3dComponent | null,
@@ -149,7 +149,7 @@ public resetTo(
 **Signature**
 
 ```ts
-readonly wheels: (Entity3d<VTypeDoc, PTypeDoc> | null)[]
+readonly wheels: (Entity3d<TypeDoc> | null)[]
 ```
 
 ### wheelLocalRotation (property)
@@ -157,7 +157,7 @@ readonly wheels: (Entity3d<VTypeDoc, PTypeDoc> | null)[]
 **Signature**
 
 ```ts
-readonly wheelLocalRotation: (Point4 | null)[]
+readonly wheelLocalRotation: (Readonly<MutablePoint4> | null)[]
 ```
 
 ### frontWheelsIndices (property)

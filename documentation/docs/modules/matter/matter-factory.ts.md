@@ -1,6 +1,6 @@
 ---
 title: matter/matter-factory.ts
-nav_order: 105
+nav_order: 107
 parent: Modules
 ---
 
@@ -25,7 +25,9 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare class MatterFactory
+export declare class MatterFactory {
+  constructor(protected readonly world: MatterWorldComponent)
+}
 ```
 
 ### createRigidBody (method)
@@ -53,7 +55,7 @@ createTrigger(
       position?: Point2;
       rotation?: number;
     },
-  ): never
+  ): MatterTriggerComponent
 ```
 
 ### transformOptions (method)

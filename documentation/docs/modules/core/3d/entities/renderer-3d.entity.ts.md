@@ -22,5 +22,5 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare class Renderer3dEntity<TypeDoc>
+export declare class Renderer3dEntity<VTypeDoc>
 ```

@@ -514,6 +514,13 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#threeggworld-type-alias" class="md-nav__link">
+    ThreeGgWorld (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#threevisualtypedocrepo-type-alias" class="md-nav__link">
     ThreeVisualTypeDocRepo (type alias)
   </a>
@@ -549,10 +556,18 @@
 
 <ul>
 <li><a href="#utils">utils</a></li>
+<li><a href="#threeggworld-type-alias">ThreeGgWorld (type alias)</a></li>
 <li><a href="#threevisualtypedocrepo-type-alias">ThreeVisualTypeDocRepo (type alias)</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
+<h2 id="threeggworld-type-alias">ThreeGgWorld (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type ThreeGgWorld = Gg3dWorld&lt;
+  Gg3dWorldTypeDocVPatch&lt;ThreeVisualTypeDocRepo&gt;,
+  Gg3dWorldSceneTypeDocVPatch&lt;ThreeVisualTypeDocRepo, ThreeSceneComponent&gt;
+&gt;
+</code></pre>
 <h2 id="threevisualtypedocrepo-type-alias">ThreeVisualTypeDocRepo (type alias)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export type ThreeVisualTypeDocRepo = {

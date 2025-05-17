@@ -555,8 +555,8 @@
 <h1 id="utils">utils</h1>
 <h2 id="irigidbody3dcomponent-interface">IRigidBody3dComponent (interface)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export interface IRigidBody3dComponent&lt;TypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D&gt;
-  extends IRigidBodyComponent&lt;Point3, Point4, TypeDoc&gt; {
+<pre><code class="language-ts">export interface IRigidBody3dComponent&lt;PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D&gt;
+  extends IRigidBodyComponent&lt;Point3, Point4, PTypeDoc&gt; {
   angularVelocity: Point3
 
   /** body info for physics debugger view */

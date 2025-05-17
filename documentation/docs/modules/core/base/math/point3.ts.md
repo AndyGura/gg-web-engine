@@ -28,6 +28,7 @@ parent: Modules
     - [scalarMult (static method)](#scalarmult-static-method)
     - [dot (static method)](#dot-static-method)
     - [lerp (static method)](#lerp-static-method)
+    - [slerp (static method)](#slerp-static-method)
     - [angle (static method)](#angle-static-method)
     - [rot (static method)](#rot-static-method)
     - [rotAround (static method)](#rotaround-static-method)
@@ -204,6 +205,16 @@ linear interpolation
 
 ```ts
 static lerp(a: Point3, b: Point3, t: number): Point3
+```
+
+### slerp (static method)
+
+linear interpolation (spherical)
+
+**Signature**
+
+```ts
+static slerp(a: Point3, b: Point3, t: number): Point3
 ```
 
 ### angle (static method)

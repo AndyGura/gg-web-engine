@@ -22,6 +22,6 @@ parent: Modules
 **Signature**
 
 ```ts
-export interface IPhysicsWorld2dComponent<TypeDoc extends PhysicsTypeDocRepo2D = PhysicsTypeDocRepo2D>
-  extends IPhysicsWorldComponent<Point2, number, TypeDoc> {}
+export interface IPhysicsWorld2dComponent<PTypeDoc extends PhysicsTypeDocRepo2D = PhysicsTypeDocRepo2D>
+  extends IPhysicsWorldComponent<Point2, number, PTypeDoc> {}
 ```

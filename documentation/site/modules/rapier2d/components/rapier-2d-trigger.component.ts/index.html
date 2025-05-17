@@ -529,6 +529,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#removefromworld-method" class="md-nav__link">
+    removeFromWorld (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#checkoverlaps-method" class="md-nav__link">
     checkOverlaps (method)
   </a>
@@ -543,15 +550,8 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#onenter-property" class="md-nav__link">
-    onEnter$ (property)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#onleft-property" class="md-nav__link">
-    onLeft$ (property)
+  <a href="#dispose-method" class="md-nav__link">
+    dispose (method)
   </a>
   
 </li>
@@ -564,8 +564,22 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#intersectionsamount-property" class="md-nav__link">
-    intersectionsAmount (property)
+  <a href="#overlaps-property" class="md-nav__link">
+    overlaps (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#onenter-property" class="md-nav__link">
+    onEnter$ (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#onleft-property" class="md-nav__link">
+    onLeft$ (property)
   </a>
   
 </li>
@@ -606,12 +620,14 @@
 <li><a href="#utils">utils</a></li>
 <li><a href="#rapier2dtriggercomponent-class">Rapier2dTriggerComponent (class)</a><ul>
 <li><a href="#addtoworld-method">addToWorld (method)</a></li>
+<li><a href="#removefromworld-method">removeFromWorld (method)</a></li>
 <li><a href="#checkoverlaps-method">checkOverlaps (method)</a></li>
 <li><a href="#clone-method">clone (method)</a></li>
+<li><a href="#dispose-method">dispose (method)</a></li>
+<li><a href="#debugbodysettings-property">debugBodySettings (property)</a></li>
+<li><a href="#overlaps-property">overlaps (property)</a></li>
 <li><a href="#onenter-property">onEnter$ (property)</a></li>
 <li><a href="#onleft-property">onLeft$ (property)</a></li>
-<li><a href="#debugbodysettings-property">debugBodySettings (property)</a></li>
-<li><a href="#intersectionsamount-property">intersectionsAmount (property)</a></li>
 </ul>
 </li>
 </ul>
@@ -630,7 +646,11 @@
 </code></pre>
 <h3 id="addtoworld-method">addToWorld (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">addToWorld(world: Gg2dWorld&lt;VisualTypeDocRepo2D, Rapier2dPhysicsTypeDocRepo&gt;): void
+<pre><code class="language-ts">addToWorld(world: Rapier2dGgWorld): void
+</code></pre>
+<h3 id="removefromworld-method">removeFromWorld (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">removeFromWorld(world: Rapier2dGgWorld)
 </code></pre>
 <h3 id="checkoverlaps-method">checkOverlaps (method)</h3>
 <p><strong>Signature</strong></p>
@@ -640,6 +660,18 @@
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">clone(): Rapier2dTriggerComponent
 </code></pre>
+<h3 id="dispose-method">dispose (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">dispose()
+</code></pre>
+<h3 id="debugbodysettings-property">debugBodySettings (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly debugBodySettings: any
+</code></pre>
+<h3 id="overlaps-property">overlaps (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly overlaps: any
+</code></pre>
 <h3 id="onenter-property">onEnter$ (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly onEnter$: any
@@ -647,14 +679,6 @@
 <h3 id="onleft-property">onLeft$ (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly onLeft$: any
-</code></pre>
-<h3 id="debugbodysettings-property">debugBodySettings (property)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly debugBodySettings: any
-</code></pre>
-<h3 id="intersectionsamount-property">intersectionsAmount (property)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">intersectionsAmount: number
 </code></pre>
 
 

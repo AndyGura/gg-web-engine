@@ -27,9 +27,12 @@ parent: Modules
     - [scalarMult (static method)](#scalarmult-static-method)
     - [dot (static method)](#dot-static-method)
     - [lerp (static method)](#lerp-static-method)
+    - [slerp (static method)](#slerp-static-method)
     - [angle (static method)](#angle-static-method)
     - [rot (static method)](#rot-static-method)
     - [rotAround (static method)](#rotaround-static-method)
+    - [toPolar (static method)](#topolar-static-method)
+    - [fromPolar (static method)](#frompolar-static-method)
 
 ---
 
@@ -193,6 +196,16 @@ linear interpolation
 static lerp(a: Point2, b: Point2, t: number): Point2
 ```
 
+### slerp (static method)
+
+linear interpolation (spherical/polar)
+
+**Signature**
+
+```ts
+static slerp(a: Point2, b: Point2, t: number): Point2
+```
+
 ### angle (static method)
 
 angle between vectors in radians
@@ -221,4 +234,26 @@ rotate point around pivot by provided angle
 
 ```ts
 static rotAround(p: Point2, pivot: Point2, angle: number): Point2
+```
+
+### toPolar (static method)
+
+Converts a cartesian 2D point to a polar coordinate system,
+phi == 0 is faced towards X axis direction
+
+**Signature**
+
+```ts
+static toPolar(p: Point2): Polar
+```
+
+### fromPolar (static method)
+
+Converts a polar coordinate system to a cartesian 2D point. Used polar coordinates,
+where phi == 0 is faced towards X axis direction
+
+**Signature**
+
+```ts
+static fromPolar(p: Polar): Point2
 ```

@@ -667,11 +667,11 @@
 <h1 id="utils">utils</h1>
 <h2 id="ggcarentity-class">GgCarEntity (class)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class GgCarEntity&lt;VTypeDoc, PTypeDoc, RVEntity&gt; {
+<pre><code class="language-ts">export declare class GgCarEntity&lt;TypeDoc, RVEntity&gt; {
   constructor(
     public readonly carProperties: GgCarProperties,
-    chassis3D: VTypeDoc['displayObject'] | null,
-    chassisBody: PTypeDoc['raycastVehicle']
+    chassis3D: TypeDoc['vTypeDoc']['displayObject'] | null,
+    chassisBody: TypeDoc['pTypeDoc']['raycastVehicle']
   )
 }
 </code></pre>
@@ -687,13 +687,13 @@
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">protected createRaycastVehicle(
     carProperties: GgCarProperties,
-    chassis3D: VTypeDoc['displayObject'] | null,
-    chassisBody: PTypeDoc['raycastVehicle'],
+    chassis3D: TypeDoc['vTypeDoc']['displayObject'] | null,
+    chassisBody: TypeDoc['pTypeDoc']['raycastVehicle'],
   ): RVEntity
 </code></pre>
 <h3 id="onspawned-method">onSpawned (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">onSpawned(world: Gg3dWorld&lt;VTypeDoc, PTypeDoc&gt;)
+<pre><code class="language-ts">onSpawned(world: Gg3dWorld&lt;TypeDoc&gt;)
 </code></pre>
 <h3 id="updateengine-method">updateEngine (method)</h3>
 <p><strong>Signature</strong></p>

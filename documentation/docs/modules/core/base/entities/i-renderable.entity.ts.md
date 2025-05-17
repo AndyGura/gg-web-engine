@@ -25,7 +25,7 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare class IRenderableEntity<D, R, TypeDoc, PTypeDoc>
+export declare class IRenderableEntity<D, R, TypeDoc>
 ```
 
 ### updateVisibility (method)

@@ -1,6 +1,6 @@
 ---
 title: three/components/three-physics-debug-view.ts
-nav_order: 131
+nav_order: 133
 parent: Modules
 ---
 
@@ -29,7 +29,7 @@ parent: Modules
 
 ```ts
 export declare class ThreePhysicsDebugView {
-  private constructor(private readonly world: Gg3dWorld<ThreeVisualTypeDocRepo>)
+  private constructor(private readonly world: ThreeGgWorld)
 }
 ```
 
@@ -38,10 +38,7 @@ export declare class ThreePhysicsDebugView {
 **Signature**
 
 ```ts
-public static startDebugView(
-    world: Gg3dWorld<ThreeVisualTypeDocRepo>,
-    renderer: ThreeRendererComponent,
-  ): ThreePhysicsDebugView
+public static startDebugView(world: ThreeGgWorld, renderer: ThreeRendererComponent): ThreePhysicsDebugView
 ```
 
 ### stopDebugView (static method)

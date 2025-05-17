@@ -16,6 +16,7 @@ parent: Modules
     - [simulate (method)](#simulate-method)
     - [registerCollisionGroup (method)](#registercollisiongroup-method)
     - [deregisterCollisionGroup (method)](#deregistercollisiongroup-method)
+    - [raycast (method)](#raycast-method)
     - [dispose (method)](#dispose-method)
     - [afterTick$ (property)](#aftertick-property)
     - [added$ (property)](#added-property)
@@ -71,6 +72,14 @@ registerCollisionGroup(): CollisionGroup
 
 ```ts
 deregisterCollisionGroup(group: CollisionGroup): void
+```
+
+### raycast (method)
+
+**Signature**
+
+```ts
+raycast(options: RaycastOptions<Point3>): RaycastResult<Point3, AmmoRigidBodyComponent | AmmoTriggerComponent>
 ```
 
 ### dispose (method)

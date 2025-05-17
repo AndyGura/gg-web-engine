@@ -22,8 +22,8 @@ parent: Modules
 **Signature**
 
 ```ts
-export interface IBodyComponent<D, R, TypeDoc extends PhysicsTypeDocRepo<D, R> = PhysicsTypeDocRepo<D, R>>
-  extends IWorldComponent<D, R, VisualTypeDocRepo<D, R>, TypeDoc> {
+export interface IBodyComponent<D, R, PTypeDoc extends PhysicsTypeDocRepo<D, R> = PhysicsTypeDocRepo<D, R>>
+  extends IWorldComponent<D, R, GgWorldTypeDocPPatch<D, R, PTypeDoc>> {
   entity: IEntity | null;
 
   position: D;

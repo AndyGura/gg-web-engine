@@ -24,8 +24,8 @@ parent: Modules
 **Signature**
 
 ```ts
-export interface IRaycastVehicleComponent<TypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D>
-  extends IRigidBody3dComponent<TypeDoc> {
+export interface IRaycastVehicleComponent<PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D>
+  extends IRigidBody3dComponent<PTypeDoc> {
 ```
 
 ## SuspensionOptions (type alias)

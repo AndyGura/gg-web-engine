@@ -22,6 +22,6 @@ parent: Modules
 **Signature**
 
 ```ts
-export interface IDisplayObject2dComponent<TypeDoc extends VisualTypeDocRepo2D = VisualTypeDocRepo2D>
-  extends IDisplayObjectComponent<Point2, number, TypeDoc> {}
+export interface IDisplayObject2dComponent<VTypeDoc extends VisualTypeDocRepo2D = VisualTypeDocRepo2D>
+  extends IDisplayObjectComponent<Point2, number, VTypeDoc> {}
 ```

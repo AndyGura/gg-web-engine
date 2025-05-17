@@ -555,8 +555,8 @@
 <h1 id="utils">utils</h1>
 <h2 id="itrigger3dcomponent-interface">ITrigger3dComponent (interface)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export interface ITrigger3dComponent&lt;TypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D&gt;
-  extends ITriggerComponent&lt;Point3, Point4, TypeDoc&gt; {
+<pre><code class="language-ts">export interface ITrigger3dComponent&lt;PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D&gt;
+  extends ITriggerComponent&lt;Point3, Point4, PTypeDoc&gt; {
   /** body info for physics debugger view */
   readonly debugBodySettings: DebugBody3DSettings;
 </code></pre>

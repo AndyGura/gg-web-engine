@@ -35,11 +35,11 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare class GgCarEntity<VTypeDoc, PTypeDoc, RVEntity> {
+export declare class GgCarEntity<TypeDoc, RVEntity> {
   constructor(
     public readonly carProperties: GgCarProperties,
-    chassis3D: VTypeDoc['displayObject'] | null,
-    chassisBody: PTypeDoc['raycastVehicle']
+    chassis3D: TypeDoc['vTypeDoc']['displayObject'] | null,
+    chassisBody: TypeDoc['pTypeDoc']['raycastVehicle']
   )
 }
 ```
@@ -67,8 +67,8 @@ protected setTailLightsOn(value: boolean)
 ```ts
 protected createRaycastVehicle(
     carProperties: GgCarProperties,
-    chassis3D: VTypeDoc['displayObject'] | null,
-    chassisBody: PTypeDoc['raycastVehicle'],
+    chassis3D: TypeDoc['vTypeDoc']['displayObject'] | null,
+    chassisBody: TypeDoc['pTypeDoc']['raycastVehicle'],
   ): RVEntity
 ```
 
@@ -77,7 +77,7 @@ protected createRaycastVehicle(
 **Signature**
 
 ```ts
-onSpawned(world: Gg3dWorld<VTypeDoc, PTypeDoc>)
+onSpawned(world: Gg3dWorld<TypeDoc>)
 ```
 
 ### updateEngine (method)

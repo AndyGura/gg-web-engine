@@ -23,7 +23,7 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare class IRenderable3dEntity<TypeDoc, PTypeDoc>
+export declare class IRenderable3dEntity<TypeDoc>
 ```
 
 ### \_world (property)
@@ -31,5 +31,5 @@ export declare class IRenderable3dEntity<TypeDoc, PTypeDoc>
 **Signature**
 
 ```ts
-_world: Gg3dWorld<TypeDoc, PTypeDoc, IVisualScene3dComponent<TypeDoc>, IPhysicsWorld3dComponent<PTypeDoc>> | null
+_world: Gg3dWorld<TypeDoc, Gg3dWorldSceneTypeRepo<TypeDoc>> | null
 ```

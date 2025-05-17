@@ -1,6 +1,6 @@
 ---
 title: pixi/components/pixi-physics-debug-view.ts
-nav_order: 108
+nav_order: 110
 parent: Modules
 ---
 
@@ -28,7 +28,7 @@ parent: Modules
 
 ```ts
 export declare class PixiPhysicsDebugView {
-  constructor(private readonly world: Gg2dWorld<PixiVisualTypeDocRepo2D>)
+  constructor(private readonly world: PixiGgWorld)
 }
 ```
 

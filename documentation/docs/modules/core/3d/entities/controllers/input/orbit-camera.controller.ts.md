@@ -98,7 +98,7 @@ _spherical: MutableSpherical
 **Signature**
 
 ```ts
-target: Point3
+target: Readonly<MutablePoint3>
 ```
 
 ### resetMotion$ (property)

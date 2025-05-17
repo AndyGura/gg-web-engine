@@ -1,6 +1,6 @@
 ---
 title: rapier3d/types.ts
-nav_order: 127
+nav_order: 129
 parent: Modules
 ---
 
@@ -11,11 +11,23 @@ parent: Modules
 <h2 class="text-delta">Table of contents</h2>
 
 - [utils](#utils)
+  - [Rapier3dGgWorld (type alias)](#rapier3dggworld-type-alias)
   - [Rapier3dPhysicsTypeDocRepo (type alias)](#rapier3dphysicstypedocrepo-type-alias)
 
 ---
 
 # utils
+
+## Rapier3dGgWorld (type alias)
+
+**Signature**
+
+```ts
+export type Rapier3dGgWorld = Gg3dWorld<
+  Gg3dWorldTypeDocPPatch<Rapier3dPhysicsTypeDocRepo>,
+  Gg3dWorldSceneTypeDocPPatch<Rapier3dPhysicsTypeDocRepo, Rapier3dWorldComponent>
+>
+```
 
 ## Rapier3dPhysicsTypeDocRepo (type alias)
 

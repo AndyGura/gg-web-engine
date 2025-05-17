@@ -23,7 +23,7 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare class Trigger2dEntity<TypeDoc> {
+export declare class Trigger2dEntity<PTypeDoc> {
   constructor(public readonly objectBody: ITrigger2dComponent)
 }
 ```

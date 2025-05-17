@@ -23,6 +23,8 @@ parent: Modules
     - [removeEntity (method)](#removeentity-method)
     - [onGgStaticInitialized (method)](#onggstaticinitialized-method)
     - [registerConsoleCommands (method)](#registerconsolecommands-method)
+    - [visualScene (property)](#visualscene-property)
+    - [physicsWorld (property)](#physicsworld-property)
     - [worldClock (property)](#worldclock-property)
     - [keyboardInput (property)](#keyboardinput-property)
     - [name (property)](#name-property)
@@ -33,6 +35,12 @@ parent: Modules
     - [tickForwardedTo$ (property)](#tickforwardedto-property)
     - [paused$ (property)](#paused-property)
     - [disposed$ (property)](#disposed-property)
+  - [GgWorldSceneTypeDocPPatch (type alias)](#ggworldscenetypedocppatch-type-alias)
+  - [GgWorldSceneTypeDocVPatch (type alias)](#ggworldscenetypedocvpatch-type-alias)
+  - [GgWorldSceneTypeRepo (type alias)](#ggworldscenetyperepo-type-alias)
+  - [GgWorldTypeDocPPatch (type alias)](#ggworldtypedocppatch-type-alias)
+  - [GgWorldTypeDocRepo (type alias)](#ggworldtypedocrepo-type-alias)
+  - [GgWorldTypeDocVPatch (type alias)](#ggworldtypedocvpatch-type-alias)
   - [PhysicsTypeDocRepo (type alias)](#physicstypedocrepo-type-alias)
   - [VisualTypeDocRepo (type alias)](#visualtypedocrepo-type-alias)
 
@@ -45,8 +53,11 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare class GgWorld<D, R, VTypeDoc, PTypeDoc, VS, PW> {
-  protected constructor(public readonly visualScene: VS, public readonly physicsWorld: PW)
+export declare class GgWorld<D, R, TypeDoc, SceneTypeDoc> {
+  protected constructor(args: {
+    visualScene?: SceneTypeDoc['visualScene']
+    physicsWorld?: SceneTypeDoc['physicsWorld']
+  })
 }
 ```
 
@@ -108,7 +119,7 @@ abstract addPrimitiveRigidBody(
     position?: D,
     rotation?: R,
     material?: unknown, // type defined in subclasses
-  ): IPositionable<D, R> & IRenderableEntity<D, R, VTypeDoc>;
+  ): IPositionable<D, R> & IRenderableEntity<D, R, TypeDoc>;
 ```
 
 ### addEntity (method)
@@ -150,6 +161,22 @@ protected registerConsoleCommands(ggstatic: {
   })
 ```
 
+### visualScene (property)
+
+**Signature**
+
+```ts
+readonly visualScene: SceneTypeDoc["visualScene"]
+```
+
+### physicsWorld (property)
+
+**Signature**
+
+```ts
+readonly physicsWorld: SceneTypeDoc["physicsWorld"]
+```
+
 ### worldClock (property)
 
 **Signature**
@@ -179,7 +206,7 @@ name: string
 **Signature**
 
 ```ts
-readonly children: IEntity<any, any, VisualTypeDocRepo<any, any>, PhysicsTypeDocRepo<any, any>>[]
+readonly children: IEntity<any, any, GgWorldTypeDocRepo<any, any>>[]
 ```
 
 ### tickListeners (property)
@@ -187,7 +214,7 @@ readonly children: IEntity<any, any, VisualTypeDocRepo<any, any>, PhysicsTypeDoc
 **Signature**
 
 ```ts
-readonly tickListeners: IEntity<any, any, VisualTypeDocRepo<any, any>, PhysicsTypeDocRepo<any, any>>[]
+readonly tickListeners: IEntity<any, any, GgWorldTypeDocRepo<any, any>>[]
 ```
 
 ### tickStarted$ (property)
@@ -228,6 +255,80 @@ readonly paused$: any
 
 ```ts
 readonly disposed$: any
+```
+
+## GgWorldSceneTypeDocPPatch (type alias)
+
+**Signature**
+
+```ts
+export type GgWorldSceneTypeDocPPatch<
+  D,
+  R,
+  PTypeDoc extends PhysicsTypeDocRepo<D, R>,
+  PW extends IPhysicsWorldComponent<D, R, PTypeDoc> | null
+> = Omit<GgWorldSceneTypeRepo<D, R>, 'physicsWorld'> & { physicsWorld: PW }
+```
+
+## GgWorldSceneTypeDocVPatch (type alias)
+
+**Signature**
+
+```ts
+export type GgWorldSceneTypeDocVPatch<
+  D,
+  R,
+  VTypeDoc extends VisualTypeDocRepo2D,
+  VS extends IVisualScene2dComponent<VTypeDoc> | null
+> = Omit<GgWorldSceneTypeRepo<D, R>, 'visualScene'> & { visualScene: VS }
+```
+
+## GgWorldSceneTypeRepo (type alias)
+
+**Signature**
+
+```ts
+export type GgWorldSceneTypeRepo<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R> = GgWorldTypeDocRepo<D, R>> = {
+  visualScene: IVisualSceneComponent<D, R, TypeDoc['vTypeDoc']> | null
+  physicsWorld: IPhysicsWorldComponent<D, R, TypeDoc['pTypeDoc']> | null
+}
+```
+
+## GgWorldTypeDocPPatch (type alias)
+
+**Signature**
+
+```ts
+export type GgWorldTypeDocPPatch<D, R, PTypeDoc extends PhysicsTypeDocRepo<D, R>> = Omit<
+  GgWorldTypeDocRepo<D, R>,
+  'pTypeDoc'
+> & {
+  pTypeDoc: PTypeDoc
+}
+```
+
+## GgWorldTypeDocRepo (type alias)
+
+**Signature**
+
+```ts
+export type GgWorldTypeDocRepo<D, R> = {
+  vTypeDoc: VisualTypeDocRepo<D, R>
+  pTypeDoc: PhysicsTypeDocRepo<D, R>
+}
+```
+
+## GgWorldTypeDocVPatch (type alias)
+
+**Signature**
+
+```ts
+export type GgWorldTypeDocVPatch<D, R, VTypeDoc extends VisualTypeDocRepo<D, R>> = Omit<
+  GgWorldTypeDocRepo<D, R>,
+  'vTypeDoc'
+> & {
+  vTypeDoc: VTypeDoc
+}
 ```
 
 ## PhysicsTypeDocRepo (type alias)

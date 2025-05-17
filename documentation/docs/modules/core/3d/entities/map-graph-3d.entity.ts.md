@@ -102,7 +102,7 @@ nodes(): MapGraph[]
 **Signature**
 
 ```ts
-export declare class MapGraph3dEntity<VTypeDoc, PTypeDoc> {
+export declare class MapGraph3dEntity<TypeDoc> {
   constructor(public readonly mapGraph: MapGraph, options: Partial<Gg3dMapGraphEntityOptions> = {})
 }
 ```
@@ -112,7 +112,7 @@ export declare class MapGraph3dEntity<VTypeDoc, PTypeDoc> {
 **Signature**
 
 ```ts
-onSpawned(world: Gg3dWorld<VTypeDoc, PTypeDoc>)
+onSpawned(world: Gg3dWorld<TypeDoc>)
 ```
 
 ### onRemoved (method)
@@ -128,9 +128,7 @@ onRemoved()
 **Signature**
 
 ```ts
-protected async loadChunk(
-    node: MapGraphNodeType,
-  ): Promise<[Entity3d<VTypeDoc, PTypeDoc>[], LoadResultWithProps<VTypeDoc, PTypeDoc>]>
+protected async loadChunk(node: MapGraphNodeType): Promise<[Entity3d<TypeDoc>[], LoadResultWithProps<TypeDoc>]>
 ```
 
 ### disposeChunk (method)

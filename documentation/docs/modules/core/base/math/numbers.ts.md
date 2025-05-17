@@ -12,6 +12,7 @@ parent: Modules
 
 - [utils](#utils)
   - [averageAngle](#averageangle)
+  - [lerpAngle](#lerpangle)
   - [lerpNumber](#lerpnumber)
 
 ---
@@ -23,7 +24,15 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare const averageAngle: (angleA: number, angleB: number, factor?: number) => number
+export declare const averageAngle: (angleA: number, angleB: number) => number
+```
+
+## lerpAngle
+
+**Signature**
+
+```ts
+export declare const lerpAngle: (angleA: number, angleB: number, factor: number) => number
 ```
 
 ## lerpNumber

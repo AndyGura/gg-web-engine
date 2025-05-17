@@ -548,8 +548,57 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#gg2dworldscenetypedocppatch-type-alias" class="md-nav__link">
+    Gg2dWorldSceneTypeDocPPatch (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gg2dworldscenetypedocvpatch-type-alias" class="md-nav__link">
+    Gg2dWorldSceneTypeDocVPatch (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gg2dworldscenetyperepo-type-alias" class="md-nav__link">
+    Gg2dWorldSceneTypeRepo (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gg2dworldtypedocppatch-type-alias" class="md-nav__link">
+    Gg2dWorldTypeDocPPatch (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gg2dworldtypedocrepo-type-alias" class="md-nav__link">
+    Gg2dWorldTypeDocRepo (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gg2dworldtypedocvpatch-type-alias" class="md-nav__link">
+    Gg2dWorldTypeDocVPatch (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#physicstypedocrepo2d-type-alias" class="md-nav__link">
     PhysicsTypeDocRepo2D (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#typedgg2dworld-type-alias" class="md-nav__link">
+    TypedGg2dWorld (type alias)
   </a>
   
 </li>
@@ -596,15 +645,22 @@
 <li><a href="#registerconsolecommands-method">registerConsoleCommands (method)</a></li>
 </ul>
 </li>
+<li><a href="#gg2dworldscenetypedocppatch-type-alias">Gg2dWorldSceneTypeDocPPatch (type alias)</a></li>
+<li><a href="#gg2dworldscenetypedocvpatch-type-alias">Gg2dWorldSceneTypeDocVPatch (type alias)</a></li>
+<li><a href="#gg2dworldscenetyperepo-type-alias">Gg2dWorldSceneTypeRepo (type alias)</a></li>
+<li><a href="#gg2dworldtypedocppatch-type-alias">Gg2dWorldTypeDocPPatch (type alias)</a></li>
+<li><a href="#gg2dworldtypedocrepo-type-alias">Gg2dWorldTypeDocRepo (type alias)</a></li>
+<li><a href="#gg2dworldtypedocvpatch-type-alias">Gg2dWorldTypeDocVPatch (type alias)</a></li>
 <li><a href="#physicstypedocrepo2d-type-alias">PhysicsTypeDocRepo2D (type alias)</a></li>
+<li><a href="#typedgg2dworld-type-alias">TypedGg2dWorld (type alias)</a></li>
 <li><a href="#visualtypedocrepo2d-type-alias">VisualTypeDocRepo2D (type alias)</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
 <h2 id="gg2dworld-class">Gg2dWorld (class)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class Gg2dWorld&lt;VTypeDoc, PTypeDoc, VS, PW&gt; {
-  constructor(public readonly visualScene: VS, public readonly physicsWorld: PW)
+<pre><code class="language-ts">export declare class Gg2dWorld&lt;TypeDoc, SceneTypeDoc&gt; {
+  constructor(args: { visualScene?: SceneTypeDoc['visualScene']; physicsWorld?: SceneTypeDoc['physicsWorld'] })
 }
 </code></pre>
 <h3 id="addprimitiverigidbody-method">addPrimitiveRigidBody (method)</h3>
@@ -613,15 +669,15 @@
     descr: BodyShape2DDescriptor,
     position: Point2 = Pnt2.O,
     rotation: number = 0,
-    material: DisplayObject2dOpts&lt;VTypeDoc['texture']&gt; = {},
-  ): Entity2d&lt;VTypeDoc, PTypeDoc&gt;
+    material: DisplayObject2dOpts&lt;TypeDoc['vTypeDoc']['texture']&gt; = {},
+  ): Entity2d&lt;TypeDoc&gt;
 </code></pre>
 <h3 id="addrenderer-method">addRenderer (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">addRenderer(
     canvas?: HTMLCanvasElement,
-    rendererOptions?: Partial&lt;RendererOptions &amp; VTypeDoc['rendererExtraOpts']&gt;,
-  ): Renderer2dEntity&lt;VTypeDoc&gt;
+    rendererOptions?: Partial&lt;RendererOptions &amp; TypeDoc['vTypeDoc']['rendererExtraOpts']&gt;,
+  ): Renderer2dEntity&lt;TypeDoc['vTypeDoc']&gt;
 </code></pre>
 <h3 id="registerconsolecommands-method">registerConsoleCommands (method)</h3>
 <p><strong>Signature</strong></p>
@@ -634,6 +690,46 @@
     ) =&gt; void;
   })
 </code></pre>
+<h2 id="gg2dworldscenetypedocppatch-type-alias">Gg2dWorldSceneTypeDocPPatch (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type Gg2dWorldSceneTypeDocPPatch&lt;
+  PTypeDoc extends PhysicsTypeDocRepo2D,
+  PW extends IPhysicsWorld2dComponent&lt;PTypeDoc&gt; | null
+&gt; = Omit&lt;Gg2dWorldSceneTypeRepo, 'physicsWorld'&gt; &amp; { physicsWorld: PW }
+</code></pre>
+<h2 id="gg2dworldscenetypedocvpatch-type-alias">Gg2dWorldSceneTypeDocVPatch (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type Gg2dWorldSceneTypeDocVPatch&lt;
+  VTypeDoc extends VisualTypeDocRepo2D,
+  VS extends IVisualScene2dComponent&lt;VTypeDoc&gt; | null
+&gt; = Omit&lt;Gg2dWorldSceneTypeRepo, 'visualScene'&gt; &amp; { visualScene: VS }
+</code></pre>
+<h2 id="gg2dworldscenetyperepo-type-alias">Gg2dWorldSceneTypeRepo (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type Gg2dWorldSceneTypeRepo&lt;TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTypeDocRepo&gt; = {
+  visualScene: IVisualScene2dComponent&lt;TypeDoc['vTypeDoc']&gt; | null
+  physicsWorld: IPhysicsWorld2dComponent&lt;TypeDoc['pTypeDoc']&gt; | null
+}
+</code></pre>
+<h2 id="gg2dworldtypedocppatch-type-alias">Gg2dWorldTypeDocPPatch (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type Gg2dWorldTypeDocPPatch&lt;PTypeDoc extends PhysicsTypeDocRepo2D&gt; = Omit&lt;Gg2dWorldTypeDocRepo, 'pTypeDoc'&gt; &amp; {
+  pTypeDoc: PTypeDoc
+}
+</code></pre>
+<h2 id="gg2dworldtypedocrepo-type-alias">Gg2dWorldTypeDocRepo (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type Gg2dWorldTypeDocRepo = {
+  vTypeDoc: VisualTypeDocRepo2D
+  pTypeDoc: PhysicsTypeDocRepo2D
+}
+</code></pre>
+<h2 id="gg2dworldtypedocvpatch-type-alias">Gg2dWorldTypeDocVPatch (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type Gg2dWorldTypeDocVPatch&lt;VTypeDoc extends VisualTypeDocRepo2D&gt; = Omit&lt;Gg2dWorldTypeDocRepo, 'vTypeDoc'&gt; &amp; {
+  vTypeDoc: VTypeDoc
+}
+</code></pre>
 <h2 id="physicstypedocrepo2d-type-alias">PhysicsTypeDocRepo2D (type alias)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export type PhysicsTypeDocRepo2D = {
@@ -641,6 +737,26 @@
   rigidBody: IRigidBody2dComponent
   trigger: ITrigger2dComponent
 }
+</code></pre>
+<h2 id="typedgg2dworld-type-alias">TypedGg2dWorld (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type TypedGg2dWorld&lt;VW extends Gg2dWorld&lt;any&gt; | null, PW extends Gg2dWorld&lt;any&gt; | null&gt; = VW extends Gg2dWorld&lt;
+  infer VTD,
+  infer VSTD
+&gt; | null
+  ? PW extends Gg2dWorld&lt;infer PTD, infer PSTD&gt; | null
+    ? Gg2dWorld&lt;
+        {
+          vTypeDoc: VTD['vTypeDoc']
+          pTypeDoc: PTD['pTypeDoc']
+        },
+        {
+          visualScene: VSTD['visualScene']
+          physicsWorld: PSTD['physicsWorld']
+        }
+      &gt;
+    : never
+  : never
 </code></pre>
 <h2 id="visualtypedocrepo2d-type-alias">VisualTypeDocRepo2D (type alias)</h2>
 <p><strong>Signature</strong></p>

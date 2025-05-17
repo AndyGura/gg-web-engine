@@ -596,13 +596,13 @@
 <h2 id="irendererentity-class">IRendererEntity (class)</h2>
 <p>Represents a base class for a renderer entity.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class IRendererEntity&lt;D, R, TypeDoc&gt; {
-  constructor(public readonly renderer: TypeDoc['renderer'])
+<pre><code class="language-ts">export declare class IRendererEntity&lt;D, R, VTypeDoc&gt; {
+  constructor(public readonly renderer: VTypeDoc['renderer'])
 }
 </code></pre>
 <h3 id="onspawned-method">onSpawned (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">onSpawned(world: GgWorld&lt;D, R, TypeDoc&gt;)
+<pre><code class="language-ts">onSpawned(world: GgWorld&lt;D, R, GgWorldTypeDocVPatch&lt;D, R, VTypeDoc&gt;&gt;)
 </code></pre>
 <h3 id="dispose-method">dispose (method)</h3>
 <p><strong>Signature</strong></p>

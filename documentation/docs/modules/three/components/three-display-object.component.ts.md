@@ -1,6 +1,6 @@
 ---
 title: three/components/three-display-object.component.ts
-nav_order: 130
+nav_order: 132
 parent: Modules
 ---
 
@@ -73,7 +73,7 @@ clone(): ThreeDisplayObjectComponent
 **Signature**
 
 ```ts
-addToWorld(world: Gg3dWorld<ThreeVisualTypeDocRepo, PhysicsTypeDocRepo3D, ThreeSceneComponent>): void
+addToWorld(world: ThreeGgWorld): void
 ```
 
 ### removeFromWorld (method)
@@ -81,7 +81,7 @@ addToWorld(world: Gg3dWorld<ThreeVisualTypeDocRepo, PhysicsTypeDocRepo3D, ThreeS
 **Signature**
 
 ```ts
-removeFromWorld(world: Gg3dWorld<ThreeVisualTypeDocRepo, PhysicsTypeDocRepo3D, ThreeSceneComponent>): void
+removeFromWorld(world: ThreeGgWorld): void
 ```
 
 ### dispose (method)

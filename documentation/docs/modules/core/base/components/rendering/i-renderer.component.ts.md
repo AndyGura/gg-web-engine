@@ -54,7 +54,7 @@ abstract render(): void;
 **Signature**
 
 ```ts
-abstract addToWorld(world: GgWorld<D, R, VTypeDoc>): void;
+abstract addToWorld(world: GgWorld<D, R, GgWorldTypeDocVPatch<D, R, VTypeDoc>>): void;
 ```
 
 ### removeFromWorld (method)
@@ -62,7 +62,7 @@ abstract addToWorld(world: GgWorld<D, R, VTypeDoc>): void;
 **Signature**
 
 ```ts
-abstract removeFromWorld(world: GgWorld<D, R, VTypeDoc>): void;
+abstract removeFromWorld(world: GgWorld<D, R, GgWorldTypeDocVPatch<D, R, VTypeDoc>>): void;
 ```
 
 ### resizeRenderer (method)
@@ -88,7 +88,7 @@ abstract dispose(): void;
 **Signature**
 
 ```ts
-entity: IEntity<any, any, VisualTypeDocRepo<any, any>, PhysicsTypeDocRepo<any, any>> | null
+entity: IEntity<any, any, GgWorldTypeDocRepo<any, any>> | null
 ```
 
 ### rendererOptions (property)

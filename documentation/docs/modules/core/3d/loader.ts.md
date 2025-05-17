@@ -31,7 +31,7 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare class Gg3dLoader<VTypeDoc, PTypeDoc> {
+export declare class Gg3dLoader<TypeDoc> {
   constructor(protected readonly world: Gg3dWorld)
 }
 ```
@@ -52,7 +52,7 @@ public async loadGgGlbFiles(path: string, useCache: boolean = false): Promise<[A
 public async loadGgGlbResources(
     path: string,
     cachingStrategy: CachingStrategy = CachingStrategy.Nothing,
-  ): Promise<LoadResourcesResult<VTypeDoc, PTypeDoc>>
+  ): Promise<LoadResourcesResult<TypeDoc>>
 ```
 
 ### loadGgGlb (method)
@@ -63,7 +63,7 @@ public async loadGgGlbResources(
 public async loadGgGlb(
     path: string,
     options: Partial<LoadOptions> = defaultLoadOptions,
-  ): Promise<LoadResultWithProps<VTypeDoc, PTypeDoc>>
+  ): Promise<LoadResultWithProps<TypeDoc>>
 ```
 
 ### filesCache (property)
@@ -109,11 +109,8 @@ export type LoadOptions = {
 **Signature**
 
 ```ts
-export type LoadResourcesResult<
-  VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D,
-  PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D
-> = {
-  resources: { object3D: VTypeDoc['displayObject'] | null; body: PTypeDoc['rigidBody'] | null }[]
+export type LoadResourcesResult<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo> = {
+  resources: { object3D: TypeDoc['vTypeDoc']['displayObject'] | null; body: TypeDoc['pTypeDoc']['rigidBody'] | null }[]
   meta: GgMeta
 }
 ```
@@ -123,11 +120,8 @@ export type LoadResourcesResult<
 **Signature**
 
 ```ts
-export type LoadResult<
-  VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D,
-  PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D
-> = {
-  entities: Entity3d<VTypeDoc, PTypeDoc>[]
+export type LoadResult<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo> = {
+  entities: Entity3d<TypeDoc>[]
   meta: GgMeta
 }
 ```
@@ -137,8 +131,7 @@ export type LoadResult<
 **Signature**
 
 ```ts
-export type LoadResultWithProps<
-  VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D,
-  PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D
-> = LoadResult<VTypeDoc, PTypeDoc> & { props?: LoadResult<VTypeDoc, PTypeDoc>[] }
+export type LoadResultWithProps<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo> = LoadResult<TypeDoc> & {
+  props?: LoadResult<TypeDoc>[]
+}
 ```

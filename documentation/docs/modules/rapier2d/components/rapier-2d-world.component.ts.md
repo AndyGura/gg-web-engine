@@ -1,6 +1,6 @@
 ---
 title: rapier2d/components/rapier-2d-world.component.ts
-nav_order: 116
+nav_order: 118
 parent: Modules
 ---
 
@@ -16,6 +16,7 @@ parent: Modules
     - [simulate (method)](#simulate-method)
     - [registerCollisionGroup (method)](#registercollisiongroup-method)
     - [deregisterCollisionGroup (method)](#deregistercollisiongroup-method)
+    - [raycast (method)](#raycast-method)
     - [dispose (method)](#dispose-method)
     - [added$ (property)](#added-property)
     - [removed$ (property)](#removed-property)
@@ -69,6 +70,14 @@ registerCollisionGroup(): CollisionGroup
 
 ```ts
 deregisterCollisionGroup(group: CollisionGroup): void
+```
+
+### raycast (method)
+
+**Signature**
+
+```ts
+raycast(options: RaycastOptions<Point2>): RaycastResult<Point2, Rapier2dRigidBodyComponent>
 ```
 
 ### dispose (method)

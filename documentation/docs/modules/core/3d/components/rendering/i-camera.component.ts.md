@@ -22,6 +22,6 @@ parent: Modules
 **Signature**
 
 ```ts
-export interface ICameraComponent<TypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D>
-  extends IDisplayObject3dComponent<TypeDoc> {
+export interface ICameraComponent<VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D>
+  extends IDisplayObject3dComponent<VTypeDoc> {
 ```

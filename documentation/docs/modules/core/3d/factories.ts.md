@@ -47,7 +47,7 @@ export type DisplayObject3dOpts<Tex> = {
 **Signature**
 
 ```ts
-export declare class IDisplayObject3dComponentFactory<TypeDoc>
+export declare class IDisplayObject3dComponentFactory<VTypeDoc>
 ```
 
 ### createPrimitive (method)
@@ -57,8 +57,8 @@ export declare class IDisplayObject3dComponentFactory<TypeDoc>
 ```ts
 abstract createPrimitive(
     descriptor: Shape3DMeshDescriptor,
-    material?: DisplayObject3dOpts<TypeDoc['texture']>,
-  ): TypeDoc['displayObject'];
+    material?: DisplayObject3dOpts<VTypeDoc['texture']>,
+  ): VTypeDoc['displayObject'];
 ```
 
 ### createPerspectiveCamera (method)
@@ -66,11 +66,11 @@ abstract createPrimitive(
 **Signature**
 
 ```ts
-abstract createPerspectiveCamera(settings: {
+abstract createPerspectiveCamera(settings?: {
     fov?: number;
     aspectRatio?: number;
     frustrum?: { near: number; far: number };
-  }): TypeDoc['camera'];
+  }): VTypeDoc['camera'];
 ```
 
 ### randomColor (method)
@@ -86,7 +86,7 @@ randomColor(): number
 **Signature**
 
 ```ts
-createPlane(material: DisplayObject3dOpts<TypeDoc['texture']> = {}): TypeDoc['displayObject']
+createPlane(material: DisplayObject3dOpts<VTypeDoc['texture']> = {}): VTypeDoc['displayObject']
 ```
 
 ### createBox (method)
@@ -94,7 +94,7 @@ createPlane(material: DisplayObject3dOpts<TypeDoc['texture']> = {}): TypeDoc['di
 **Signature**
 
 ```ts
-createBox(dimensions: Point3, material: DisplayObject3dOpts<TypeDoc['texture']> = {}): TypeDoc['displayObject']
+createBox(dimensions: Point3, material: DisplayObject3dOpts<VTypeDoc['texture']> = {}): VTypeDoc['displayObject']
 ```
 
 ### createCapsule (method)
@@ -105,8 +105,8 @@ createBox(dimensions: Point3, material: DisplayObject3dOpts<TypeDoc['texture']> 
 createCapsule(
     radius: number,
     centersDistance: number,
-    material: DisplayObject3dOpts<TypeDoc['texture']> = {},
-  ): TypeDoc['displayObject']
+    material: DisplayObject3dOpts<VTypeDoc['texture']> = {},
+  ): VTypeDoc['displayObject']
 ```
 
 ### createCylinder (method)
@@ -117,8 +117,8 @@ createCapsule(
 createCylinder(
     radius: number,
     height: number,
-    material: DisplayObject3dOpts<TypeDoc['texture']> = {},
-  ): TypeDoc['displayObject']
+    material: DisplayObject3dOpts<VTypeDoc['texture']> = {},
+  ): VTypeDoc['displayObject']
 ```
 
 ### createCone (method)
@@ -129,8 +129,8 @@ createCylinder(
 createCone(
     radius: number,
     height: number,
-    material: DisplayObject3dOpts<TypeDoc['texture']> = {},
-  ): TypeDoc['displayObject']
+    material: DisplayObject3dOpts<VTypeDoc['texture']> = {},
+  ): VTypeDoc['displayObject']
 ```
 
 ### createSphere (method)
@@ -138,7 +138,7 @@ createCone(
 **Signature**
 
 ```ts
-createSphere(radius: number, material: DisplayObject3dOpts<TypeDoc['texture']> = {}): TypeDoc['displayObject']
+createSphere(radius: number, material: DisplayObject3dOpts<VTypeDoc['texture']> = {}): VTypeDoc['displayObject']
 ```
 
 ## IPhysicsBody3dComponentFactory (interface)
@@ -146,14 +146,14 @@ createSphere(radius: number, material: DisplayObject3dOpts<TypeDoc['texture']> =
 **Signature**
 
 ```ts
-export interface IPhysicsBody3dComponentFactory<TypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D> {
+export interface IPhysicsBody3dComponentFactory<PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D> {
   createRigidBody(
     descriptor: BodyShape3DDescriptor,
     transform?: {
       position?: Point3
       rotation?: Point4
     }
-  ): TypeDoc['rigidBody']
+  ): PTypeDoc['rigidBody']
 
   createTrigger(
     descriptor: Shape3DDescriptor,
@@ -161,8 +161,8 @@ export interface IPhysicsBody3dComponentFactory<TypeDoc extends PhysicsTypeDocRe
       position?: Point3
       rotation?: Point4
     }
-  ): TypeDoc['trigger']
+  ): PTypeDoc['trigger']
 
-  createRaycastVehicle(chassis: TypeDoc['rigidBody']): TypeDoc['raycastVehicle']
+  createRaycastVehicle(chassis: PTypeDoc['rigidBody']): PTypeDoc['raycastVehicle']
 }
 ```

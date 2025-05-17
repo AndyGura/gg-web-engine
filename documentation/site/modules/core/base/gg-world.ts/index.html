@@ -599,6 +599,20 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#visualscene-property" class="md-nav__link">
+    visualScene (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#physicsworld-property" class="md-nav__link">
+    physicsWorld (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#worldclock-property" class="md-nav__link">
     worldClock (property)
   </a>
@@ -674,6 +688,48 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#ggworldscenetypedocppatch-type-alias" class="md-nav__link">
+    GgWorldSceneTypeDocPPatch (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ggworldscenetypedocvpatch-type-alias" class="md-nav__link">
+    GgWorldSceneTypeDocVPatch (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ggworldscenetyperepo-type-alias" class="md-nav__link">
+    GgWorldSceneTypeRepo (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ggworldtypedocppatch-type-alias" class="md-nav__link">
+    GgWorldTypeDocPPatch (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ggworldtypedocrepo-type-alias" class="md-nav__link">
+    GgWorldTypeDocRepo (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ggworldtypedocvpatch-type-alias" class="md-nav__link">
+    GgWorldTypeDocVPatch (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#physicstypedocrepo-type-alias" class="md-nav__link">
     PhysicsTypeDocRepo (type alias)
   </a>
@@ -728,6 +784,8 @@
 <li><a href="#removeentity-method">removeEntity (method)</a></li>
 <li><a href="#onggstaticinitialized-method">onGgStaticInitialized (method)</a></li>
 <li><a href="#registerconsolecommands-method">registerConsoleCommands (method)</a></li>
+<li><a href="#visualscene-property">visualScene (property)</a></li>
+<li><a href="#physicsworld-property">physicsWorld (property)</a></li>
 <li><a href="#worldclock-property">worldClock (property)</a></li>
 <li><a href="#keyboardinput-property">keyboardInput (property)</a></li>
 <li><a href="#name-property">name (property)</a></li>
@@ -740,6 +798,12 @@
 <li><a href="#disposed-property">disposed$ (property)</a></li>
 </ul>
 </li>
+<li><a href="#ggworldscenetypedocppatch-type-alias">GgWorldSceneTypeDocPPatch (type alias)</a></li>
+<li><a href="#ggworldscenetypedocvpatch-type-alias">GgWorldSceneTypeDocVPatch (type alias)</a></li>
+<li><a href="#ggworldscenetyperepo-type-alias">GgWorldSceneTypeRepo (type alias)</a></li>
+<li><a href="#ggworldtypedocppatch-type-alias">GgWorldTypeDocPPatch (type alias)</a></li>
+<li><a href="#ggworldtypedocrepo-type-alias">GgWorldTypeDocRepo (type alias)</a></li>
+<li><a href="#ggworldtypedocvpatch-type-alias">GgWorldTypeDocVPatch (type alias)</a></li>
 <li><a href="#physicstypedocrepo-type-alias">PhysicsTypeDocRepo (type alias)</a></li>
 <li><a href="#visualtypedocrepo-type-alias">VisualTypeDocRepo (type alias)</a></li>
 </ul>
@@ -747,8 +811,11 @@
 <h1 id="utils">utils</h1>
 <h2 id="ggworld-class">GgWorld (class)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class GgWorld&lt;D, R, VTypeDoc, PTypeDoc, VS, PW&gt; {
-  protected constructor(public readonly visualScene: VS, public readonly physicsWorld: PW)
+<pre><code class="language-ts">export declare class GgWorld&lt;D, R, TypeDoc, SceneTypeDoc&gt; {
+  protected constructor(args: {
+    visualScene?: SceneTypeDoc['visualScene']
+    physicsWorld?: SceneTypeDoc['physicsWorld']
+  })
 }
 </code></pre>
 <h3 id="init-method">init (method)</h3>
@@ -782,7 +849,7 @@
     position?: D,
     rotation?: R,
     material?: unknown, // type defined in subclasses
-  ): IPositionable&lt;D, R&gt; &amp; IRenderableEntity&lt;D, R, VTypeDoc&gt;;
+  ): IPositionable&lt;D, R&gt; &amp; IRenderableEntity&lt;D, R, TypeDoc&gt;;
 </code></pre>
 <h3 id="addentity-method">addEntity (method)</h3>
 <p><strong>Signature</strong></p>
@@ -807,6 +874,14 @@
     ) =&gt; void;
   })
 </code></pre>
+<h3 id="visualscene-property">visualScene (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly visualScene: SceneTypeDoc[&quot;visualScene&quot;]
+</code></pre>
+<h3 id="physicsworld-property">physicsWorld (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly physicsWorld: SceneTypeDoc[&quot;physicsWorld&quot;]
+</code></pre>
 <h3 id="worldclock-property">worldClock (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly worldClock: PausableClock
@@ -821,11 +896,11 @@
 </code></pre>
 <h3 id="children-property">children (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly children: IEntity&lt;any, any, VisualTypeDocRepo&lt;any, any&gt;, PhysicsTypeDocRepo&lt;any, any&gt;&gt;[]
+<pre><code class="language-ts">readonly children: IEntity&lt;any, any, GgWorldTypeDocRepo&lt;any, any&gt;&gt;[]
 </code></pre>
 <h3 id="ticklisteners-property">tickListeners (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly tickListeners: IEntity&lt;any, any, VisualTypeDocRepo&lt;any, any&gt;, PhysicsTypeDocRepo&lt;any, any&gt;&gt;[]
+<pre><code class="language-ts">readonly tickListeners: IEntity&lt;any, any, GgWorldTypeDocRepo&lt;any, any&gt;&gt;[]
 </code></pre>
 <h3 id="tickstarted-property">tickStarted$ (property)</h3>
 <p><strong>Signature</strong></p>
@@ -846,6 +921,56 @@
 <h3 id="disposed-property">disposed$ (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly disposed$: any
+</code></pre>
+<h2 id="ggworldscenetypedocppatch-type-alias">GgWorldSceneTypeDocPPatch (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type GgWorldSceneTypeDocPPatch&lt;
+  D,
+  R,
+  PTypeDoc extends PhysicsTypeDocRepo&lt;D, R&gt;,
+  PW extends IPhysicsWorldComponent&lt;D, R, PTypeDoc&gt; | null
+&gt; = Omit&lt;GgWorldSceneTypeRepo&lt;D, R&gt;, 'physicsWorld'&gt; &amp; { physicsWorld: PW }
+</code></pre>
+<h2 id="ggworldscenetypedocvpatch-type-alias">GgWorldSceneTypeDocVPatch (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type GgWorldSceneTypeDocVPatch&lt;
+  D,
+  R,
+  VTypeDoc extends VisualTypeDocRepo2D,
+  VS extends IVisualScene2dComponent&lt;VTypeDoc&gt; | null
+&gt; = Omit&lt;GgWorldSceneTypeRepo&lt;D, R&gt;, 'visualScene'&gt; &amp; { visualScene: VS }
+</code></pre>
+<h2 id="ggworldscenetyperepo-type-alias">GgWorldSceneTypeRepo (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type GgWorldSceneTypeRepo&lt;D, R, TypeDoc extends GgWorldTypeDocRepo&lt;D, R&gt; = GgWorldTypeDocRepo&lt;D, R&gt;&gt; = {
+  visualScene: IVisualSceneComponent&lt;D, R, TypeDoc['vTypeDoc']&gt; | null
+  physicsWorld: IPhysicsWorldComponent&lt;D, R, TypeDoc['pTypeDoc']&gt; | null
+}
+</code></pre>
+<h2 id="ggworldtypedocppatch-type-alias">GgWorldTypeDocPPatch (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type GgWorldTypeDocPPatch&lt;D, R, PTypeDoc extends PhysicsTypeDocRepo&lt;D, R&gt;&gt; = Omit&lt;
+  GgWorldTypeDocRepo&lt;D, R&gt;,
+  'pTypeDoc'
+&gt; &amp; {
+  pTypeDoc: PTypeDoc
+}
+</code></pre>
+<h2 id="ggworldtypedocrepo-type-alias">GgWorldTypeDocRepo (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type GgWorldTypeDocRepo&lt;D, R&gt; = {
+  vTypeDoc: VisualTypeDocRepo&lt;D, R&gt;
+  pTypeDoc: PhysicsTypeDocRepo&lt;D, R&gt;
+}
+</code></pre>
+<h2 id="ggworldtypedocvpatch-type-alias">GgWorldTypeDocVPatch (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type GgWorldTypeDocVPatch&lt;D, R, VTypeDoc extends VisualTypeDocRepo&lt;D, R&gt;&gt; = Omit&lt;
+  GgWorldTypeDocRepo&lt;D, R&gt;,
+  'vTypeDoc'
+&gt; &amp; {
+  vTypeDoc: VTypeDoc
+}
 </code></pre>
 <h2 id="physicstypedocrepo-type-alias">PhysicsTypeDocRepo (type alias)</h2>
 <p><strong>Signature</strong></p>

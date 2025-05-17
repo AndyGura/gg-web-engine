@@ -1,6 +1,6 @@
 ---
 title: three/components/three-composer-renderer.component.ts
-nav_order: 129
+nav_order: 131
 parent: Modules
 ---
 
@@ -42,7 +42,7 @@ export declare class ThreeComposerRendererComponent {
 **Signature**
 
 ```ts
-addToWorld(world: Gg3dWorld<ThreeVisualTypeDocRepo, PhysicsTypeDocRepo3D, ThreeSceneComponent>)
+addToWorld(world: ThreeGgWorld)
 ```
 
 ### resizeRenderer (method)

@@ -1,6 +1,6 @@
 ---
 title: rapier3d/components/rapier-3d-raycast-vehicle.component.ts
-nav_order: 120
+nav_order: 122
 parent: Modules
 ---
 
@@ -44,9 +44,7 @@ export declare class Rapier3dRaycastVehicleComponent {
 **Signature**
 
 ```ts
-addToWorld(
-    world: Gg3dWorld<VisualTypeDocRepo3D, Rapier3dPhysicsTypeDocRepo, IVisualScene3dComponent, Rapier3dWorldComponent>,
-  )
+addToWorld(world: Rapier3dGgWorld)
 ```
 
 ### removeFromWorld (method)
@@ -54,9 +52,7 @@ addToWorld(
 **Signature**
 
 ```ts
-removeFromWorld(
-    world: Gg3dWorld<VisualTypeDocRepo3D, Rapier3dPhysicsTypeDocRepo, IVisualScene3dComponent, Rapier3dWorldComponent>,
-  )
+removeFromWorld(world: Rapier3dGgWorld)
 ```
 
 ### addWheel (method)

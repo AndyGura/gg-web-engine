@@ -1,6 +1,6 @@
 ---
 title: rapier3d/components/rapier-3d-trigger.component.ts
-nav_order: 122
+nav_order: 124
 parent: Modules
 ---
 
@@ -13,12 +13,14 @@ parent: Modules
 - [utils](#utils)
   - [Rapier3dTriggerComponent (class)](#rapier3dtriggercomponent-class)
     - [addToWorld (method)](#addtoworld-method)
+    - [removeFromWorld (method)](#removefromworld-method)
     - [checkOverlaps (method)](#checkoverlaps-method)
     - [clone (method)](#clone-method)
+    - [dispose (method)](#dispose-method)
+    - [debugBodySettings (property)](#debugbodysettings-property)
+    - [overlaps (property)](#overlaps-property)
     - [onEnter$ (property)](#onenter-property)
     - [onLeft$ (property)](#onleft-property)
-    - [debugBodySettings (property)](#debugbodysettings-property)
-    - [intersectionsAmount (property)](#intersectionsamount-property)
 
 ---
 
@@ -44,7 +46,15 @@ export declare class Rapier3dTriggerComponent {
 **Signature**
 
 ```ts
-addToWorld(world: Gg3dWorld<VisualTypeDocRepo3D, Rapier3dPhysicsTypeDocRepo>): void
+addToWorld(world: Rapier3dGgWorld): void
+```
+
+### removeFromWorld (method)
+
+**Signature**
+
+```ts
+removeFromWorld(world: Rapier3dGgWorld)
 ```
 
 ### checkOverlaps (method)
@@ -63,6 +73,30 @@ checkOverlaps(): void
 clone(): Rapier3dTriggerComponent
 ```
 
+### dispose (method)
+
+**Signature**
+
+```ts
+dispose()
+```
+
+### debugBodySettings (property)
+
+**Signature**
+
+```ts
+readonly debugBodySettings: any
+```
+
+### overlaps (property)
+
+**Signature**
+
+```ts
+readonly overlaps: any
+```
+
 ### onEnter$ (property)
 
 **Signature**
@@ -77,20 +111,4 @@ readonly onEnter$: any
 
 ```ts
 readonly onLeft$: any
-```
-
-### debugBodySettings (property)
-
-**Signature**
-
-```ts
-readonly debugBodySettings: any
-```
-
-### intersectionsAmount (property)
-
-**Signature**
-
-```ts
-intersectionsAmount: number
 ```
