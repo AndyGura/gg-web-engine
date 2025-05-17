@@ -555,8 +555,8 @@
 <h1 id="utils">utils</h1>
 <h2 id="ibodycomponent-interface">IBodyComponent (interface)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export interface IBodyComponent&lt;D, R, TypeDoc extends PhysicsTypeDocRepo&lt;D, R&gt; = PhysicsTypeDocRepo&lt;D, R&gt;&gt;
-  extends IWorldComponent&lt;D, R, VisualTypeDocRepo&lt;D, R&gt;, TypeDoc&gt; {
+<pre><code class="language-ts">export interface IBodyComponent&lt;D, R, PTypeDoc extends PhysicsTypeDocRepo&lt;D, R&gt; = PhysicsTypeDocRepo&lt;D, R&gt;&gt;
+  extends IWorldComponent&lt;D, R, GgWorldTypeDocPPatch&lt;D, R, PTypeDoc&gt;&gt; {
   entity: IEntity | null;
 
   position: D;

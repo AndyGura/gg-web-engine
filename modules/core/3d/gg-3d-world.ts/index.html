@@ -555,8 +555,57 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#gg3dworldscenetypedocppatch-type-alias" class="md-nav__link">
+    Gg3dWorldSceneTypeDocPPatch (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gg3dworldscenetypedocvpatch-type-alias" class="md-nav__link">
+    Gg3dWorldSceneTypeDocVPatch (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gg3dworldscenetyperepo-type-alias" class="md-nav__link">
+    Gg3dWorldSceneTypeRepo (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gg3dworldtypedocppatch-type-alias" class="md-nav__link">
+    Gg3dWorldTypeDocPPatch (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gg3dworldtypedocrepo-type-alias" class="md-nav__link">
+    Gg3dWorldTypeDocRepo (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gg3dworldtypedocvpatch-type-alias" class="md-nav__link">
+    Gg3dWorldTypeDocVPatch (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#physicstypedocrepo3d-type-alias" class="md-nav__link">
     PhysicsTypeDocRepo3D (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#typedgg3dworld-type-alias" class="md-nav__link">
+    TypedGg3dWorld (type alias)
   </a>
   
 </li>
@@ -604,15 +653,22 @@
 <li><a href="#loader-property">loader (property)</a></li>
 </ul>
 </li>
+<li><a href="#gg3dworldscenetypedocppatch-type-alias">Gg3dWorldSceneTypeDocPPatch (type alias)</a></li>
+<li><a href="#gg3dworldscenetypedocvpatch-type-alias">Gg3dWorldSceneTypeDocVPatch (type alias)</a></li>
+<li><a href="#gg3dworldscenetyperepo-type-alias">Gg3dWorldSceneTypeRepo (type alias)</a></li>
+<li><a href="#gg3dworldtypedocppatch-type-alias">Gg3dWorldTypeDocPPatch (type alias)</a></li>
+<li><a href="#gg3dworldtypedocrepo-type-alias">Gg3dWorldTypeDocRepo (type alias)</a></li>
+<li><a href="#gg3dworldtypedocvpatch-type-alias">Gg3dWorldTypeDocVPatch (type alias)</a></li>
 <li><a href="#physicstypedocrepo3d-type-alias">PhysicsTypeDocRepo3D (type alias)</a></li>
+<li><a href="#typedgg3dworld-type-alias">TypedGg3dWorld (type alias)</a></li>
 <li><a href="#visualtypedocrepo3d-type-alias">VisualTypeDocRepo3D (type alias)</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
 <h2 id="gg3dworld-class">Gg3dWorld (class)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class Gg3dWorld&lt;VTypeDoc, PTypeDoc, VS, PW&gt; {
-  constructor(public readonly visualScene: VS, public readonly physicsWorld: PW)
+<pre><code class="language-ts">export declare class Gg3dWorld&lt;TypeDoc, SceneTypeDoc&gt; {
+  constructor(args: { visualScene?: SceneTypeDoc['visualScene']; physicsWorld?: SceneTypeDoc['physicsWorld'] })
 }
 </code></pre>
 <h3 id="addprimitiverigidbody-method">addPrimitiveRigidBody (method)</h3>
@@ -621,16 +677,16 @@
     descr: BodyShape3DDescriptor,
     position: Point3 = Pnt3.O,
     rotation: Point4 = Qtrn.O,
-    material: DisplayObject3dOpts&lt;VTypeDoc['texture']&gt; = {},
-  ): Entity3d&lt;VTypeDoc, PTypeDoc&gt;
+    material: DisplayObject3dOpts&lt;TypeDoc['vTypeDoc']['texture']&gt; = {},
+  ): Entity3d&lt;TypeDoc&gt;
 </code></pre>
 <h3 id="addrenderer-method">addRenderer (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">addRenderer(
-    camera: VTypeDoc['camera'],
+    camera: TypeDoc['vTypeDoc']['camera'],
     canvas?: HTMLCanvasElement,
-    rendererOptions?: Partial&lt;RendererOptions &amp; VTypeDoc['rendererExtraOpts']&gt;,
-  ): Renderer3dEntity&lt;VTypeDoc&gt;
+    rendererOptions?: Partial&lt;RendererOptions &amp; TypeDoc['vTypeDoc']['rendererExtraOpts']&gt;,
+  ): Renderer3dEntity&lt;TypeDoc['vTypeDoc']&gt;
 </code></pre>
 <h3 id="registerconsolecommands-method">registerConsoleCommands (method)</h3>
 <p><strong>Signature</strong></p>
@@ -645,7 +701,47 @@
 </code></pre>
 <h3 id="loader-property">loader (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly loader: Gg3dLoader&lt;VTypeDoc, PTypeDoc&gt;
+<pre><code class="language-ts">readonly loader: Gg3dLoader&lt;TypeDoc&gt;
+</code></pre>
+<h2 id="gg3dworldscenetypedocppatch-type-alias">Gg3dWorldSceneTypeDocPPatch (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type Gg3dWorldSceneTypeDocPPatch&lt;
+  PTypeDoc extends PhysicsTypeDocRepo3D,
+  PW extends IPhysicsWorld3dComponent&lt;PTypeDoc&gt; | null
+&gt; = Omit&lt;Gg3dWorldSceneTypeRepo, 'physicsWorld'&gt; &amp; { physicsWorld: PW }
+</code></pre>
+<h2 id="gg3dworldscenetypedocvpatch-type-alias">Gg3dWorldSceneTypeDocVPatch (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type Gg3dWorldSceneTypeDocVPatch&lt;
+  VTypeDoc extends VisualTypeDocRepo3D,
+  VS extends IVisualScene3dComponent&lt;VTypeDoc&gt; | null
+&gt; = Omit&lt;Gg3dWorldSceneTypeRepo, 'visualScene'&gt; &amp; { visualScene: VS }
+</code></pre>
+<h2 id="gg3dworldscenetyperepo-type-alias">Gg3dWorldSceneTypeRepo (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type Gg3dWorldSceneTypeRepo&lt;TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo&gt; = {
+  visualScene: IVisualScene3dComponent&lt;TypeDoc['vTypeDoc']&gt; | null
+  physicsWorld: IPhysicsWorld3dComponent&lt;TypeDoc['pTypeDoc']&gt; | null
+}
+</code></pre>
+<h2 id="gg3dworldtypedocppatch-type-alias">Gg3dWorldTypeDocPPatch (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type Gg3dWorldTypeDocPPatch&lt;PTypeDoc extends PhysicsTypeDocRepo3D&gt; = Omit&lt;Gg3dWorldTypeDocRepo, 'pTypeDoc'&gt; &amp; {
+  pTypeDoc: PTypeDoc
+}
+</code></pre>
+<h2 id="gg3dworldtypedocrepo-type-alias">Gg3dWorldTypeDocRepo (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type Gg3dWorldTypeDocRepo = {
+  vTypeDoc: VisualTypeDocRepo3D
+  pTypeDoc: PhysicsTypeDocRepo3D
+}
+</code></pre>
+<h2 id="gg3dworldtypedocvpatch-type-alias">Gg3dWorldTypeDocVPatch (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type Gg3dWorldTypeDocVPatch&lt;VTypeDoc extends VisualTypeDocRepo3D&gt; = Omit&lt;Gg3dWorldTypeDocRepo, 'vTypeDoc'&gt; &amp; {
+  vTypeDoc: VTypeDoc
+}
 </code></pre>
 <h2 id="physicstypedocrepo3d-type-alias">PhysicsTypeDocRepo3D (type alias)</h2>
 <p><strong>Signature</strong></p>
@@ -656,6 +752,26 @@
   trigger: ITrigger3dComponent
   raycastVehicle: IRaycastVehicleComponent
 }
+</code></pre>
+<h2 id="typedgg3dworld-type-alias">TypedGg3dWorld (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type TypedGg3dWorld&lt;VW extends Gg3dWorld&lt;any&gt; | null, PW extends Gg3dWorld&lt;any&gt; | null&gt; = VW extends Gg3dWorld&lt;
+  infer VTD,
+  infer VSTD
+&gt; | null
+  ? PW extends Gg3dWorld&lt;infer PTD, infer PSTD&gt; | null
+    ? Gg3dWorld&lt;
+        {
+          vTypeDoc: VTD['vTypeDoc']
+          pTypeDoc: PTD['pTypeDoc']
+        },
+        {
+          visualScene: VSTD['visualScene']
+          physicsWorld: PSTD['physicsWorld']
+        }
+      &gt;
+    : never
+  : never
 </code></pre>
 <h2 id="visualtypedocrepo3d-type-alias">VisualTypeDocRepo3D (type alias)</h2>
 <p><strong>Signature</strong></p>

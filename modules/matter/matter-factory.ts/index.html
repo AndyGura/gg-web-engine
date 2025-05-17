@@ -587,7 +587,9 @@
 <h1 id="utils">utils</h1>
 <h2 id="matterfactory-class">MatterFactory (class)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class MatterFactory
+<pre><code class="language-ts">export declare class MatterFactory {
+  constructor(protected readonly world: MatterWorldComponent)
+}
 </code></pre>
 <h3 id="createrigidbody-method">createRigidBody (method)</h3>
 <p><strong>Signature</strong></p>
@@ -607,7 +609,7 @@
       position?: Point2;
       rotation?: number;
     },
-  ): never
+  ): MatterTriggerComponent
 </code></pre>
 <h3 id="transformoptions-method">transformOptions (method)</h3>
 <p><strong>Signature</strong></p>

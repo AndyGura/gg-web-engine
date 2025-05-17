@@ -556,12 +556,12 @@
 <h2 id="iphysicsworldcomponent-interface">IPhysicsWorldComponent (interface)</h2>
 <p>Interface representing a physics world component.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export interface IPhysicsWorldComponent&lt;D, R, TypeDoc extends PhysicsTypeDocRepo&lt;D, R&gt; = PhysicsTypeDocRepo&lt;D, R&gt;&gt;
+<pre><code class="language-ts">export interface IPhysicsWorldComponent&lt;D, R, PTypeDoc extends PhysicsTypeDocRepo&lt;D, R&gt; = PhysicsTypeDocRepo&lt;D, R&gt;&gt;
   extends IComponent {
   /**
    * Factory function for creating physics-related objects.
    */
-  readonly factory: TypeDoc['factory']
+  readonly factory: PTypeDoc['factory']
 
   /**
    * The gravity vector affecting the physics world.
@@ -571,17 +571,17 @@
   /**
    * Event emitter that emits newly added physics components.
    */
-  readonly added$: Subject&lt;TypeDoc['rigidBody'] | TypeDoc['trigger'] | any&gt;
+  readonly added$: Subject&lt;PTypeDoc['rigidBody'] | PTypeDoc['trigger'] | any&gt;
 
   /**
    * Event emitter that emits just removed physics components.
    */
-  readonly removed$: Subject&lt;TypeDoc['rigidBody'] | TypeDoc['trigger'] | any&gt;
+  readonly removed$: Subject&lt;PTypeDoc['rigidBody'] | PTypeDoc['trigger'] | any&gt;
 
   /**
    * List of currently added physics components in the world.
    */
-  readonly children: (TypeDoc['rigidBody'] | TypeDoc['trigger'] | any)[]
+  readonly children: (PTypeDoc['rigidBody'] | PTypeDoc['trigger'] | any)[]
 
   /**
    * The main collision group. All physics bodies have this collision group set by default.
@@ -615,6 +615,14 @@
    * @param group - The collision group to be removed.
    */
   deregisterCollisionGroup(group: CollisionGroup): void
+
+  /**
+   * Performs a raycast in the physics world.
+   *
+   * @param options - The options for the raycast.
+   * @returns The result of the raycast.
+   */
+  raycast(options: RaycastOptions&lt;D&gt;): RaycastResult&lt;D, PTypeDoc['rigidBody'] | PTypeDoc['trigger']&gt;
 }
 </code></pre>
 

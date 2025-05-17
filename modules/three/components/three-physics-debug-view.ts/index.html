@@ -612,15 +612,12 @@
 <h2 id="threephysicsdebugview-class">ThreePhysicsDebugView (class)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export declare class ThreePhysicsDebugView {
-  private constructor(private readonly world: Gg3dWorld&lt;ThreeVisualTypeDocRepo&gt;)
+  private constructor(private readonly world: ThreeGgWorld)
 }
 </code></pre>
 <h3 id="startdebugview-static-method">startDebugView (static method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">public static startDebugView(
-    world: Gg3dWorld&lt;ThreeVisualTypeDocRepo&gt;,
-    renderer: ThreeRendererComponent,
-  ): ThreePhysicsDebugView
+<pre><code class="language-ts">public static startDebugView(world: ThreeGgWorld, renderer: ThreeRendererComponent): ThreePhysicsDebugView
 </code></pre>
 <h3 id="stopdebugview-static-method">stopDebugView (static method)</h3>
 <p><strong>Signature</strong></p>

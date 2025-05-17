@@ -555,12 +555,12 @@
 <h1 id="utils">utils</h1>
 <h2 id="ivisualscene2dcomponent-interface">IVisualScene2dComponent (interface)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export interface IVisualScene2dComponent&lt;TypeDoc extends VisualTypeDocRepo2D = VisualTypeDocRepo2D&gt;
-  extends IVisualSceneComponent&lt;Point2, number, TypeDoc&gt; {
+<pre><code class="language-ts">export interface IVisualScene2dComponent&lt;VTypeDoc extends VisualTypeDocRepo2D = VisualTypeDocRepo2D&gt;
+  extends IVisualSceneComponent&lt;Point2, number, VTypeDoc&gt; {
   createRenderer(
     canvas?: HTMLCanvasElement,
-    rendererOptions?: Partial&lt;RendererOptions &amp; TypeDoc['rendererExtraOpts']&gt;
-  ): TypeDoc['renderer']
+    rendererOptions?: Partial&lt;RendererOptions &amp; VTypeDoc['rendererExtraOpts']&gt;
+  ): VTypeDoc['renderer']
 }
 </code></pre>
 

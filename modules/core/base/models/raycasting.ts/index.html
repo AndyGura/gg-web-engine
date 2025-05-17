@@ -8,24 +8,24 @@
       
       
       
-        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/base/components/rendering/i-renderer.component.ts/">
+        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/base/models/raycasting.ts/">
       
       
       
       
-      <link rel="icon" href="../../../../../../assets/images/favicon.png">
+      <link rel="icon" href="../../../../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.4.6">
     
     
       
-        <title>core/base/components/rendering/i-renderer.component.ts - GG-web-engine</title>
+        <title>core/base/models/raycasting.ts - GG-web-engine</title>
       
     
     
-      <link rel="stylesheet" href="../../../../../../assets/stylesheets/main.35e1ed30.min.css">
+      <link rel="stylesheet" href="../../../../../assets/stylesheets/main.35e1ed30.min.css">
       
         
-        <link rel="stylesheet" href="../../../../../../assets/stylesheets/palette.356b1318.min.css">
+        <link rel="stylesheet" href="../../../../../assets/stylesheets/palette.356b1318.min.css">
       
       
 
@@ -44,7 +44,7 @@
       
     
     
-    <script>__md_scope=new URL("../../../../../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../../../../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -73,7 +73,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#i-renderercomponent-overview" class="md-skip">
+        <a href="#raycasting-overview" class="md-skip">
           Skip to content
         </a>
       
@@ -89,7 +89,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../../../../.." title="GG-web-engine" class="md-header__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+    <a href="../../../../.." title="GG-web-engine" class="md-header__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
@@ -109,7 +109,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              core/base/components/rendering/i-renderer.component.ts
+              core/base/models/raycasting.ts
             
           </span>
         </div>
@@ -219,7 +219,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../../../../.." title="GG-web-engine" class="md-nav__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+    <a href="../../../../.." title="GG-web-engine" class="md-nav__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
@@ -248,7 +248,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../.." class="md-nav__link">
+      <a href="../../../../.." class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -301,7 +301,7 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../../" class="md-nav__link ">
+            <a href="../../../../" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -333,7 +333,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../ammo" class="md-nav__link">
+      <a href="../../../../ammo" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -353,7 +353,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../.." class="md-nav__link">
+      <a href="../../.." class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -373,7 +373,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../matter" class="md-nav__link">
+      <a href="../../../../matter" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -393,7 +393,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../pixi" class="md-nav__link">
+      <a href="../../../../pixi" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -413,7 +413,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../rapier2d" class="md-nav__link">
+      <a href="../../../../rapier2d" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -433,7 +433,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../rapier3d" class="md-nav__link">
+      <a href="../../../../rapier3d" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -453,7 +453,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../../three" class="md-nav__link">
+      <a href="../../../../three" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -499,8 +499,8 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#i-renderercomponent-overview" class="md-nav__link">
-    i-renderer.component overview
+  <a href="#raycasting-overview" class="md-nav__link">
+    raycasting overview
   </a>
   
 </li>
@@ -514,70 +514,15 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#irenderercomponent-class" class="md-nav__link">
-    IRendererComponent (class)
-  </a>
-  
-    <nav class="md-nav" aria-label="IRendererComponent (class)">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#render-method" class="md-nav__link">
-    render (method)
+  <a href="#raycastoptions-interface" class="md-nav__link">
+    RaycastOptions (interface)
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#addtoworld-method" class="md-nav__link">
-    addToWorld (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#removefromworld-method" class="md-nav__link">
-    removeFromWorld (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#resizerenderer-method" class="md-nav__link">
-    resizeRenderer (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#dispose-method" class="md-nav__link">
-    dispose (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#entity-property" class="md-nav__link">
-    entity (property)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#rendereroptions-property" class="md-nav__link">
-    rendererOptions (property)
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#rendereroptions-type-alias" class="md-nav__link">
-    RendererOptions (type alias)
+  <a href="#raycastresult-interface" class="md-nav__link">
+    RaycastResult (interface)
   </a>
   
 </li>
@@ -605,76 +550,70 @@
   
 
 
-<h2 id="i-renderercomponent-overview">i-renderer.component overview</h2>
+<h2 id="raycasting-overview">raycasting overview</h2>
 <hr />
 <h2 class="text-delta">Table of contents</h2>
 
 <ul>
 <li><a href="#utils">utils</a></li>
-<li><a href="#irenderercomponent-class">IRendererComponent (class)</a><ul>
-<li><a href="#render-method">render (method)</a></li>
-<li><a href="#addtoworld-method">addToWorld (method)</a></li>
-<li><a href="#removefromworld-method">removeFromWorld (method)</a></li>
-<li><a href="#resizerenderer-method">resizeRenderer (method)</a></li>
-<li><a href="#dispose-method">dispose (method)</a></li>
-<li><a href="#entity-property">entity (property)</a></li>
-<li><a href="#rendereroptions-property">rendererOptions (property)</a></li>
-</ul>
-</li>
-<li><a href="#rendereroptions-type-alias">RendererOptions (type alias)</a></li>
+<li><a href="#raycastoptions-interface">RaycastOptions (interface)</a></li>
+<li><a href="#raycastresult-interface">RaycastResult (interface)</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
-<h2 id="irenderercomponent-class">IRendererComponent (class)</h2>
+<h2 id="raycastoptions-interface">RaycastOptions (interface)</h2>
+<p>Interface representing options for a raycast operation.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class IRendererComponent&lt;D, R, VTypeDoc&gt; {
-  protected constructor(
-    public readonly scene: IVisualSceneComponent&lt;D, R, VTypeDoc&gt;,
-    public readonly canvas?: HTMLCanvasElement,
-    options: Partial&lt;RendererOptions &amp; VTypeDoc['rendererExtraOpts']&gt; = {}
-  )
+<pre><code class="language-ts">export interface RaycastOptions&lt;D&gt; {
+  /**
+   * The starting point of the ray.
+   */
+  from: D
+
+  /**
+   * The end point of the ray.
+   */
+  to: D
+
+  /**
+   * Optional collision filter groups for the ray.
+   */
+  collisionFilterGroups?: CollisionGroup[]
+
+  /**
+   * Optional collision filter mask for the ray.
+   */
+  collisionFilterMask?: CollisionGroup[]
 }
 </code></pre>
-<h3 id="render-method">render (method)</h3>
-<p>Renders the scene.</p>
+<h2 id="raycastresult-interface">RaycastResult (interface)</h2>
+<p>Interface representing the result of a raycast operation.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">abstract render(): void;
-</code></pre>
-<h3 id="addtoworld-method">addToWorld (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">abstract addToWorld(world: GgWorld&lt;D, R, GgWorldTypeDocVPatch&lt;D, R, VTypeDoc&gt;&gt;): void;
-</code></pre>
-<h3 id="removefromworld-method">removeFromWorld (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">abstract removeFromWorld(world: GgWorld&lt;D, R, GgWorldTypeDocVPatch&lt;D, R, VTypeDoc&gt;&gt;): void;
-</code></pre>
-<h3 id="resizerenderer-method">resizeRenderer (method)</h3>
-<p>Resizes the renderer to the specified size.</p>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">abstract resizeRenderer(newSize: Point2): void;
-</code></pre>
-<h3 id="dispose-method">dispose (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">abstract dispose(): void;
-</code></pre>
-<h3 id="entity-property">entity (property)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">entity: IEntity&lt;any, any, GgWorldTypeDocRepo&lt;any, any&gt;&gt; | null
-</code></pre>
-<h3 id="rendereroptions-property">rendererOptions (property)</h3>
-<p>Specifies the options for the renderer.</p>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly rendererOptions: RendererOptions &amp; Partial&lt;VTypeDoc[&quot;rendererExtraOpts&quot;]&gt;
-</code></pre>
-<h2 id="rendereroptions-type-alias">RendererOptions (type alias)</h2>
-<p>Represents the options that can be passed to a renderer.</p>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type RendererOptions = {
-  transparent: boolean
-  background: number
-  size: Point2 | 'fullscreen' | ((pageSize: Point2) =&gt; Point2) | Observable&lt;Point2&gt;
-  forceResolution?: number
-  antialias: boolean
+<pre><code class="language-ts">export interface RaycastResult&lt;D, B&gt; {
+  /**
+   * Whether the ray hit something.
+   */
+  hasHit: boolean
+
+  /**
+   * The hit body, if any.
+   */
+  hitBody?: B
+
+  /**
+   * The hit point in world space, if any.
+   */
+  hitPoint?: D
+
+  /**
+   * The hit normal in world space, if any.
+   */
+  hitNormal?: D
+
+  /**
+   * The distance from the ray origin to the hit point, if any.
+   */
+  hitDistance?: number
 }
 </code></pre>
 
@@ -715,10 +654,10 @@
     </div>
     
     
-    <script id="__config" type="application/json">{"base": "../../../../../..", "features": ["navigation.indexes", "navigation.instant", "navigation.tracking"], "search": "../../../../../../assets/javascripts/workers/search.f886a092.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    <script id="__config" type="application/json">{"base": "../../../../..", "features": ["navigation.indexes", "navigation.instant", "navigation.tracking"], "search": "../../../../../assets/javascripts/workers/search.f886a092.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
-      <script src="../../../../../../assets/javascripts/bundle.aecac24b.min.js"></script>
+      <script src="../../../../../assets/javascripts/bundle.aecac24b.min.js"></script>
       
     
   </body>

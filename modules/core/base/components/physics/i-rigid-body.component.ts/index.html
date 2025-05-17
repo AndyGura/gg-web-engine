@@ -555,12 +555,12 @@
 <h1 id="utils">utils</h1>
 <h2 id="irigidbodycomponent-interface">IRigidBodyComponent (interface)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export interface IRigidBodyComponent&lt;D, R, TypeDoc extends PhysicsTypeDocRepo&lt;D, R&gt; = PhysicsTypeDocRepo&lt;D, R&gt;&gt;
-  extends IBodyComponent&lt;D, R, TypeDoc&gt; {
+<pre><code class="language-ts">export interface IRigidBodyComponent&lt;D, R, PTypeDoc extends PhysicsTypeDocRepo&lt;D, R&gt; = PhysicsTypeDocRepo&lt;D, R&gt;&gt;
+  extends IBodyComponent&lt;D, R, PTypeDoc&gt; {
   linearVelocity: D
   angularVelocity: R | D
 
-  clone(): IRigidBodyComponent&lt;D, R, TypeDoc&gt;
+  clone(): IRigidBodyComponent&lt;D, R, PTypeDoc&gt;
 
   /** clear velocities etc. */
   resetMotion(): void
