@@ -22,6 +22,7 @@ export type VisualTypeDocRepo<D, R> = {
   displayObject: IDisplayObjectComponent<D, R>;
   renderer: IRendererComponent<D, R>;
   rendererExtraOpts: {};
+  camera: IPositionable<D, R>;
 };
 
 export type PhysicsTypeDocRepo<D, R> = {

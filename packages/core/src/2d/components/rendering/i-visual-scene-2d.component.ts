@@ -1,10 +1,5 @@
-import { IVisualSceneComponent, Point2, RendererOptions } from '../../../base';
+import { IVisualSceneComponent, Point2 } from '../../../base';
 import { VisualTypeDocRepo2D } from '../../gg-2d-world';
 
 export interface IVisualScene2dComponent<VTypeDoc extends VisualTypeDocRepo2D = VisualTypeDocRepo2D>
-  extends IVisualSceneComponent<Point2, number, VTypeDoc> {
-  createRenderer(
-    canvas?: HTMLCanvasElement,
-    rendererOptions?: Partial<RendererOptions & VTypeDoc['rendererExtraOpts']>,
-  ): VTypeDoc['renderer'];
-}
+  extends IVisualSceneComponent<Point2, number, VTypeDoc> {}

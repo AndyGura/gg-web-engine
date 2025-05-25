@@ -7,6 +7,7 @@ import { Renderer2dEntity } from './entities/renderer-2d.entity';
 import { DisplayObject2dOpts, IDisplayObject2dComponentFactory, IPhysicsBody2dComponentFactory } from './factories';
 import { IRenderer2dComponent } from './components/rendering/i-renderer-2d.component';
 import { IDisplayObject2dComponent } from './components/rendering/i-display-object-2d.component';
+import { ICamera2dComponent } from './components/rendering/i-camera-2d.component';
 import { ITrigger2dComponent } from './components/physics/i-trigger-2d.component';
 import { IRigidBody2dComponent } from './components/physics/i-rigid-body-2d.component';
 
@@ -15,6 +16,7 @@ export type VisualTypeDocRepo2D = {
   displayObject: IDisplayObject2dComponent;
   renderer: IRenderer2dComponent;
   rendererExtraOpts: {};
+  camera: ICamera2dComponent;
   texture: unknown;
 };
 
@@ -97,13 +99,14 @@ export class Gg2dWorld<
   }
 
   addRenderer(
+    camera: TypeDoc['vTypeDoc']['camera'],
     canvas?: HTMLCanvasElement,
     rendererOptions?: Partial<RendererOptions & TypeDoc['vTypeDoc']['rendererExtraOpts']>,
   ): Renderer2dEntity<TypeDoc['vTypeDoc']> {
     if (!this.visualScene) {
       throw new Error('Cannot add renderer to the world without visual scene');
     }
-    const entity = new Renderer2dEntity(this.visualScene.createRenderer(canvas, rendererOptions));
+    const entity = new Renderer2dEntity(this.visualScene.createRenderer(camera, canvas, rendererOptions));
     this.addEntity(entity);
     return entity;
   }

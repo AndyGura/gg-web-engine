@@ -33,6 +33,9 @@ export abstract class IRendererComponent<D, R, VTypeDoc extends VisualTypeDocRep
   implements IWorldComponent<D, R, GgWorldTypeDocVPatch<D, R, VTypeDoc>>
 {
   entity: IEntity | null = null;
+
+  abstract camera: VTypeDoc['camera'];
+
   /** Specifies the options for the renderer. */
   public readonly rendererOptions: RendererOptions & Partial<VTypeDoc['rendererExtraOpts']>;
 
