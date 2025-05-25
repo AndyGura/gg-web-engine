@@ -4,7 +4,7 @@ import { Entity3d } from './entities/entity-3d';
 import { BodyShape3DDescriptor } from './models/shapes';
 import { IVisualScene3dComponent } from './components/rendering/i-visual-scene-3d.component';
 import { Renderer3dEntity } from './entities/renderer-3d.entity';
-import { ICameraComponent } from './components/rendering/i-camera.component';
+import { ICamera3dComponent } from './components/rendering/i-camera-3d.component';
 import { IRenderer3dComponent } from './components/rendering/i-renderer-3d.component';
 import { IPhysicsWorld3dComponent } from './components/physics/i-physics-world-3d.component';
 import { DisplayObject3dOpts, IDisplayObject3dComponentFactory, IPhysicsBody3dComponentFactory } from './factories';
@@ -20,7 +20,7 @@ export type VisualTypeDocRepo3D = {
   displayObject: IDisplayObject3dComponent;
   renderer: IRenderer3dComponent;
   rendererExtraOpts: {};
-  camera: ICameraComponent;
+  camera: ICamera3dComponent;
   texture: unknown;
 };
 

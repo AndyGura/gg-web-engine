@@ -3,7 +3,7 @@ export * from './components/physics/i-rigid-body-3d.component';
 export * from './components/physics/i-trigger-3d.component';
 export * from './components/physics/i-physics-world-3d.component';
 export * from './components/rendering/i-display-object-3d.component';
-export * from './components/rendering/i-camera.component';
+export * from './components/rendering/i-camera-3d.component';
 export * from './components/rendering/i-renderer-3d.component';
 export * from './components/rendering/i-visual-scene-3d.component';
 
