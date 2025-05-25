@@ -67,6 +67,12 @@ export type GgWorldSceneTypeDocPPatch<
   PW extends IPhysicsWorldComponent<D, R, PTypeDoc> | null,
 > = Omit<GgWorldSceneTypeRepo<D, R>, 'physicsWorld'> & { physicsWorld: PW };
 
+// utility types to get type docs from world, can be used when defining custom entities
+export type TypeDocOf<W extends GgWorld<any, any>> =
+  W extends GgWorld<infer D, infer R, infer TypeDoc> ? TypeDoc : never;
+export type SceneTypeDocOf<W extends GgWorld<any, any>> =
+  W extends GgWorld<infer D, infer R, infer TypeDoc, infer SceneTypeDoc> ? SceneTypeDoc : never;
+
 export abstract class GgWorld<
   D,
   R,

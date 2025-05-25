@@ -15,7 +15,7 @@ export type PixiVisualTypeDocRepo2D = {
   texture: Texture;
 };
 
-export type PixiGgWorld = Gg2dWorld<
-  Gg2dWorldTypeDocVPatch<PixiVisualTypeDocRepo2D>,
-  Gg2dWorldSceneTypeDocVPatch<PixiVisualTypeDocRepo2D, PixiSceneComponent>
->;
+export type PixiTypeDoc = Gg2dWorldTypeDocVPatch<PixiVisualTypeDocRepo2D>;
+export type PixiSceneTypeDoc = Gg2dWorldSceneTypeDocVPatch<PixiVisualTypeDocRepo2D, PixiSceneComponent>;
+
+export type PixiGgWorld = Gg2dWorld<PixiTypeDoc, PixiSceneTypeDoc>;

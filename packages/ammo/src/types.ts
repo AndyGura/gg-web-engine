@@ -14,7 +14,7 @@ export type AmmoPhysicsTypeDocRepo = {
   raycastVehicle: AmmoRaycastVehicleComponent;
 };
 
-export type AmmoGgWorld = Gg3dWorld<
-  Gg3dWorldTypeDocPPatch<AmmoPhysicsTypeDocRepo>,
-  Gg3dWorldSceneTypeDocPPatch<AmmoPhysicsTypeDocRepo, AmmoWorldComponent>
->;
+export type AmmoTypeDoc = Gg3dWorldTypeDocPPatch<AmmoPhysicsTypeDocRepo>;
+export type AmmoSceneTypeDoc = Gg3dWorldSceneTypeDocPPatch<AmmoPhysicsTypeDocRepo, AmmoWorldComponent>;
+
+export type AmmoGgWorld = Gg3dWorld<AmmoTypeDoc, AmmoSceneTypeDoc>;

@@ -10,7 +10,7 @@ export type MatterPhysicsTypeDocRepo = {
   trigger: MatterTriggerComponent;
 };
 
-export type MatterGgWorld = Gg2dWorld<
-  Gg2dWorldTypeDocPPatch<MatterPhysicsTypeDocRepo>,
-  Gg2dWorldSceneTypeDocPPatch<MatterPhysicsTypeDocRepo, MatterWorldComponent>
->;
+export type MatterTypeDoc = Gg2dWorldTypeDocPPatch<MatterPhysicsTypeDocRepo>;
+export type MatterSceneTypeDoc = Gg2dWorldSceneTypeDocPPatch<MatterPhysicsTypeDocRepo, MatterWorldComponent>;
+
+export type MatterGgWorld = Gg2dWorld<MatterTypeDoc, MatterSceneTypeDoc>;
