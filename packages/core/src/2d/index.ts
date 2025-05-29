@@ -19,3 +19,4 @@ export * from './models/shapes';
 
 export * from './factories';
 export * from './gg-2d-world';
+export * from './loader';

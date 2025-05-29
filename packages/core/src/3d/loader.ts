@@ -67,7 +67,7 @@ export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocR
     LoadResourcesResult<TypeDoc> | Promise<LoadResourcesResult<TypeDoc>>
   >();
 
-  constructor(protected readonly world: Gg3dWorld) {}
+  constructor(protected readonly world: Gg3dWorld<TypeDoc>) {}
 
   public async loadGgGlbFiles(path: string, useCache: boolean = false): Promise<[ArrayBuffer, GgMeta]> {
     if (useCache && this.filesCache.has(path)) {

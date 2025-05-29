@@ -1,4 +1,5 @@
 import { GgWorld, Pnt2, Point2, RendererOptions } from '../base';
+import { Gg2dLoader } from './loader';
 import { BodyShape2DDescriptor } from './models/shapes';
 import { Entity2d } from './entities/entity-2d';
 import { IPhysicsWorld2dComponent } from './components/physics/i-physics-world-2d.component';
@@ -78,8 +79,11 @@ export class Gg2dWorld<
   TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTypeDocRepo,
   SceneTypeDoc extends Gg2dWorldSceneTypeRepo<TypeDoc> = Gg2dWorldSceneTypeRepo<TypeDoc>,
 > extends GgWorld<Point2, number, TypeDoc, SceneTypeDoc> {
+  public readonly loader: Gg2dLoader<TypeDoc>;
+
   constructor(args: { visualScene?: SceneTypeDoc['visualScene']; physicsWorld?: SceneTypeDoc['physicsWorld'] }) {
     super(args);
+    this.loader = new Gg2dLoader(this);
   }
 
   addPrimitiveRigidBody(
