@@ -114,3 +114,12 @@ interface-level change).
 Skim `docs/tasks.md` and `milestones.md` — they're a maintained backlog of known architectural gaps
 (non-null assertions to remove, rotation-composition FIXME in the 3D loader, DI/event-bus work,
 etc.) and may already describe the exact task, its rationale, and acceptance criteria.
+
+## Keep this skill current
+
+This file is read by future agents working on `packages/core`, not by end users of the engine. If
+you hit a pitfall it doesn't mention — a build/test step that failed in a non-obvious way, a
+generic/type-inference dead end, an interface change that broke more adapters than expected — or
+something written here turns out to be wrong or incomplete and you had to dig out the real
+answer, add a short note (what went wrong, why, the fix) before finishing the task. Prefer
+folding it into the relevant existing section over appending an unstructured log at the bottom.

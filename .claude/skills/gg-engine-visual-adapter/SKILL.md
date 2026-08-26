@@ -126,3 +126,12 @@ real GPU context), mirror the jest + `jest-environment-jsdom` setup from `packag
 5. Use `bash etc/switch_libs_to_local_core.sh` and `bash etc/switch_example_to_local_gg.sh
    <example-dir>` to develop end-to-end against local (unpublished) core/adapter builds via
    `npm link` rather than publishing throwaway versions.
+
+## Keep this skill current
+
+This file is read by future agents building/maintaining rendering adapters, not by end users of
+the engine. If a library-specific quirk bites you (a native API that doesn't map cleanly onto a
+core interface, a build/link step that failed in a non-obvious way, a shape or option this file
+implied was easy but wasn't), or something written here turns out wrong or incomplete once you've
+actually implemented it, add a short note (what went wrong, why, the fix) before finishing —
+folded into the relevant section rather than left as a loose log entry.

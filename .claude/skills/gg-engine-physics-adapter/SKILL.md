@@ -160,3 +160,12 @@ engines run fine in that environment.
    `packages/<lib>/README.md`.
 5. Use `bash etc/switch_libs_to_local_core.sh` to develop against a local (unpublished)
    `@gg-web-engine/core` via `npm link`.
+
+## Keep this skill current
+
+This file is read by future agents building/maintaining physics adapters, not by end users of the
+engine. If a native engine's API fights the mapping described here (a shape/body-option that
+doesn't translate the way expected, a collision-group limit, an async-init or disposal quirk that
+caused leaks or flaky tests), or something written here turns out wrong or incomplete once you've
+actually implemented it, add a short note (what went wrong, why, the fix) before finishing —
+folded into the relevant section rather than left as a loose log entry.

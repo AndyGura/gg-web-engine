@@ -57,6 +57,23 @@ investigation this session already did. Concretely:
   short, high-stakes, strictly-ordered script run, not something that benefits from parallel
   agents, and it publishes to npm and GitHub Pages.
 
+## Keep the repo-development skills current
+
+`gg-engine-core-development`, `gg-engine-visual-adapter`, `gg-engine-physics-adapter`,
+`gg-engine-examples`, and `gg-engine-release` document *how to work on this repo*. Whenever work
+under one of them hits a pitfall it doesn't mention, or something it says turns out to be
+wrong/incomplete and you had to find the real fix, update that skill's `SKILL.md` with the lesson
+before finishing the task — a short note on what went wrong, why, and the fix, folded into the
+relevant section rather than dumped as an unstructured log. This applies whether you're doing the
+work directly or reviewing a subagent's — if a subagent you spawned hits and solves one of these,
+have it (or do it yourself) fold the lesson into the skill file as part of finishing, since the
+next agent to touch that package starts from the skill file alone and won't have this
+conversation's context.
+
+This does **not** apply to `gg-engine-app-development`: lessons learned while building an
+end-application on top of the engine belong in that app's own codebase/docs, not in this engine
+repo's skill set.
+
 ## Non-obvious repo facts worth knowing before diving in
 
 - No workspace tool (no lerna/pnpm-workspace) — every package under `packages/` and `examples/` is

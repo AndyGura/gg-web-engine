@@ -59,3 +59,11 @@ excluded** from releases until you add it to:
 - Don't publish an adapter package independently of core, or at a different version number — every
   adapter's `peerDependencies`/`devDependencies` pin an exact `@gg-web-engine/core` version, and
   apps are expected to install matching versions across all `@gg-web-engine/*` packages.
+
+## Keep this skill current
+
+This file is read by future agents cutting releases, not by end users of the engine. If the
+pipeline behaves differently than described here (a new failure mode in `publish_new_version.sh`,
+an npm propagation delay longer than the script accounts for, a manual follow-up this file
+doesn't list), add a short note (what went wrong, why, the fix) before finishing — folded into the
+relevant section rather than left as a loose log entry.

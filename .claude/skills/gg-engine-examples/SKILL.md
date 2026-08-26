@@ -69,3 +69,11 @@ Examples are read as documentation — keep `index.ts`/`src/` short, comment the
 (why a controller is attached, what a collision group demonstrates), and prefer the same
 bootstrap shape used in the root `README.md` quickstart so readers can map one to the other. See
 `gg-engine-app-development` for the API surface to draw on.
+
+## Keep this skill current
+
+This file is read by future agents adding examples to this repo, not by end users of the engine.
+If the registration steps here turn out incomplete (a build/CI/StackBlitz step this file doesn't
+mention), or the local-linking workflow needed an extra fix to actually work, add a short note
+(what went wrong, why, the fix) before finishing — folded into the relevant section rather than
+left as a loose log entry.

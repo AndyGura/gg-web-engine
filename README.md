@@ -136,6 +136,27 @@ And run it:
   <img src="documentation/assets/example.gif" alt=''/>
 </p>
 
+### 🤖 Building your app with an AI coding agent
+This repo ships a [Claude Code](https://claude.com/claude-code) skill,
+[`gg-engine-app-development`](.claude/skills/gg-engine-app-development/SKILL.md), that teaches an
+agent the engine's mental model (worlds, entities, visual/physics components), the bootstrap
+pattern above, available shapes/controllers/loaders, and common pitfalls — so it writes correct
+GG-Web-Engine code instead of guessing from the README alone.
+
+Install it into your own app's repo with [`npx skills`](https://www.skills.sh/):
+```bash
+npx skills add AndyGura/gg-web-engine --skill gg-engine-app-development -y
+```
+Then just ask your agent to build your scene/game — Claude Code picks the skill up automatically
+once it's under `.claude/skills/`. The other skills in this repo
+([`gg-engine-core-development`](.claude/skills/gg-engine-core-development/SKILL.md),
+[`gg-engine-visual-adapter`](.claude/skills/gg-engine-visual-adapter/SKILL.md),
+[`gg-engine-physics-adapter`](.claude/skills/gg-engine-physics-adapter/SKILL.md),
+[`gg-engine-examples`](.claude/skills/gg-engine-examples/SKILL.md),
+[`gg-engine-release`](.claude/skills/gg-engine-release/SKILL.md)) are for developing the engine
+itself, not for building an app on top of it — see [`CLAUDE.md`](CLAUDE.md) if you're contributing
+to GG-Web-Engine rather than consuming it.
+
 ## 🛠️ Examples
 ### [Interactive Demos](https://gg-web-demos.guraklgames.com/)
 ### Framework Usage
