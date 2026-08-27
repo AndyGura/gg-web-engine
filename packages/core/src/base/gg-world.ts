@@ -231,7 +231,13 @@ export abstract class GgWorld<
   ): IPositionable<D, R> & IRenderableEntity<D, R, TypeDoc>;
 
   public addEntity(entity: IEntity): void {
-    if (!!entity.world) {
+    if (entity.world === this) {
+      // Already a member of this world - e.g. reparented (via addChildren) after having been
+      // added directly, as level-loaded entities are. Not an error: just a no-op, since
+      // addChildren already updated the parent/children bookkeeping before calling back in here.
+      return;
+    }
+    if (entity.world) {
       console.warn('Trying to spawn entity, which is already spawned');
       return;
     }
@@ -259,6 +265,23 @@ export abstract class GgWorld<
     if (dispose) {
       entity.dispose();
     }
+  }
+
+  /**
+   * Find an entity anywhere in the world by name. `children` is a flat list of every entity ever
+   * added via `addEntity` (nested entities included - `addChildren`/`onSpawned` cascade into it
+   * too), so this is a plain linear scan, not a tree walk; to search inside one particular
+   * entity's own subtree instead, use `IEntity.getChildEntityByName`.
+   * @param name - The entity's `name`
+   * @returns The first entity found with that name (insertion order), if more than one shares it
+   * @throws if no entity in the world has that name
+   */
+  public getEntityByName<T extends IEntity = IEntity>(name: string): T {
+    const found = this.children.find(e => e.name === name);
+    if (!found) {
+      throw new Error(`No entity named "${name}" found in the world`);
+    }
+    return found as T;
   }
 
   private onGgStaticInitialized() {

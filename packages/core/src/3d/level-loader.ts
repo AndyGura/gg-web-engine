@@ -1,10 +1,12 @@
-import { LevelLoader } from '../base/level-loader';
+import { LevelLoader, standaloneEntity } from '../base/level-loader';
 import { Gg3dWorld, Gg3dWorldTypeDocRepo } from './gg-3d-world';
 import { Point3, Point4 } from '../base';
 import { DisplayObject3dOpts } from './factories';
 import { Body3DOptions } from './models/body-options';
 import { Shape3DDescriptor } from './models/shapes';
 import { Entity3d } from './entities/entity-3d';
+import { Trigger3dEntity } from './entities/trigger-3d.entity';
+import { Camera3dEntity } from './entities/camera-3d.entity';
 
 const defaultBodyOptions: Body3DOptions = {
   dynamic: true,
@@ -224,40 +226,60 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
   }
 
   /**
-   * Create a trigger entity
+   * Create a trigger entity: a `Trigger3dEntity` wrapping the raw physics trigger component, so
+   * the app can subscribe to `onEntityEntered`/`onEntityLeft` without any extra wiring - see the
+   * base `LevelLoader` docs for how it's parented for level-lifecycle cleanup.
    * @param world - The world instance
    * @param settings - The trigger settings
-   * @returns The created trigger
+   * @returns The created trigger entity
    */
   private createTrigger(
     world: Gg3dWorld<TypeDoc>,
     settings: Trigger3DSettings,
-  ): TypeDoc['pTypeDoc']['trigger'] | undefined {
+  ): Trigger3dEntity<TypeDoc['pTypeDoc']> | undefined {
     const { position, rotation, dimensions } = settings;
     const shape: Shape3DDescriptor = { shape: 'BOX', dimensions };
-    return world.physicsWorld?.factory.createTrigger(shape, { position, rotation });
+    const trigger = world.physicsWorld?.factory.createTrigger(shape, { position, rotation });
+    if (!trigger) {
+      return undefined;
+    }
+    const entity = new Trigger3dEntity<TypeDoc['pTypeDoc']>(trigger);
+    if (position) {
+      entity.position = position;
+    }
+    if (rotation) {
+      entity.rotation = rotation;
+    }
+    return entity;
   }
 
   /**
-   * Create a camera entity
+   * Create a camera entity: a `Camera3dEntity` wrapping the raw camera component, not attached to
+   * any renderer/canvas (a level JSON has no notion of one - `world.addRenderer(entity.camera,
+   * canvas)` once the app has a canvas). Marked via `standaloneEntity` rather than left for
+   * `loadLevel` to parent under the level's group entity: apps commonly create/own their camera
+   * independently of any particular level, so removing a level must never take an in-use camera
+   * down with it.
    * @param world - The world instance
    * @param settings - The camera settings
-   * @returns The created camera
+   * @returns The created camera entity
    */
   private createCamera(
     world: Gg3dWorld<TypeDoc>,
     settings: Camera3DSettings,
-  ): TypeDoc['vTypeDoc']['camera'] | undefined {
+  ): Camera3dEntity<TypeDoc['vTypeDoc']> | undefined {
     const { position, rotation, fov, aspectRatio, frustrum } = settings;
     const camera = world.visualScene?.factory.createPerspectiveCamera({ fov, aspectRatio, frustrum });
-    if (camera) {
-      if (position) {
-        camera.position = position;
-      }
-      if (rotation) {
-        camera.rotation = rotation;
-      }
+    if (!camera) {
+      return undefined;
     }
-    return camera;
+    const entity = new Camera3dEntity<TypeDoc['vTypeDoc']>(camera);
+    if (position) {
+      entity.position = position;
+    }
+    if (rotation) {
+      entity.rotation = rotation;
+    }
+    return standaloneEntity(entity);
   }
 }

@@ -1,4 +1,4 @@
-import { Gg3dLevelLoader, Gg3dWorld, LevelJson } from '../../src';
+import { Camera3dEntity, Gg3dLevelLoader, Gg3dWorld, IEntity, LevelJson, TickOrder, Trigger3dEntity } from '../../src';
 import { mock3DBody } from '../mocks/body.mock';
 import { mock3DObject } from '../mocks/object.mock';
 
@@ -10,6 +10,11 @@ const defaultBody = {
   ownCollisionGroups: 'all',
   interactWithCollisionGroups: 'all',
 };
+
+// A trivial concrete IEntity for tests that need a generator to return a real entity
+class TestEntity extends IEntity {
+  public readonly tickOrder = TickOrder.OBJECTS_BINDING;
+}
 
 describe('Gg3dLevelLoader', () => {
   let world: Gg3dWorld;
@@ -28,7 +33,9 @@ describe('Gg3dLevelLoader', () => {
           createTrigger: jest.fn().mockReturnValue(mock3DBody()),
         },
       },
-      addPrimitiveRigidBody: jest.fn().mockReturnValue({ entity: true }),
+      addPrimitiveRigidBody: jest.fn().mockImplementation(() => new TestEntity()),
+      addEntity: jest.fn(),
+      removeEntity: jest.fn(),
     } as unknown as Gg3dWorld;
 
     // Create a level loader with the mock world
@@ -36,7 +43,7 @@ describe('Gg3dLevelLoader', () => {
   });
 
   describe('loadLevel', () => {
-    it('should load a level with box primitives', () => {
+    it('should load a level with box primitives', async () => {
       // Create a level JSON with a box primitive
       const levelJson: LevelJson = {
         entities: [
@@ -57,7 +64,7 @@ describe('Gg3dLevelLoader', () => {
       };
 
       // Load the level
-      levelLoader.loadLevel(levelJson);
+      const level = await levelLoader.loadLevel(levelJson);
 
       // Verify that the entity was created via the world's primitive helper, and reachable by name
       expect(world.addPrimitiveRigidBody).toHaveBeenCalledWith(
@@ -66,25 +73,25 @@ describe('Gg3dLevelLoader', () => {
         { x: 0, y: 0, z: 0, w: 1 },
         { color: 0xff0000 },
       );
-      expect(levelLoader.getEntityByName('TestBox')).toEqual({ entity: true });
+      expect(level.getChildEntityByName('TestBox')).toBeInstanceOf(TestEntity);
     });
 
-    it('should throw when dimensions are missing for a Box primitive', () => {
+    it('should throw when dimensions are missing for a Box primitive', async () => {
       const levelJson: LevelJson = { entities: [{ class: 'Primitive', shape: 'BOX' }] };
-      expect(() => levelLoader.loadLevel(levelJson)).toThrow('Dimensions are required for BOX primitive');
+      await expect(levelLoader.loadLevel(levelJson)).rejects.toThrow('Dimensions are required for BOX primitive');
     });
 
-    it('should throw for an unknown primitive shape', () => {
+    it('should throw for an unknown primitive shape', async () => {
       const levelJson: LevelJson = { entities: [{ class: 'Primitive', shape: 'Torus' }] };
-      expect(() => levelLoader.loadLevel(levelJson)).toThrow('Unknown primitive shape "Torus"');
+      await expect(levelLoader.loadLevel(levelJson)).rejects.toThrow('Unknown primitive shape "Torus"');
     });
 
-    it('should load a level with sphere primitives', () => {
+    it('should load a level with sphere primitives', async () => {
       const levelJson: LevelJson = {
         entities: [{ class: 'Primitive', shape: 'SPHERE', config: { radius: 0.5 } }],
       };
 
-      levelLoader.loadLevel(levelJson);
+      await levelLoader.loadLevel(levelJson);
 
       expect(world.addPrimitiveRigidBody).toHaveBeenCalledWith(
         { shape: { shape: 'SPHERE', radius: 0.5 }, body: defaultBody },
@@ -94,10 +101,10 @@ describe('Gg3dLevelLoader', () => {
       );
     });
 
-    it('should load a level with plane primitives', () => {
+    it('should load a level with plane primitives', async () => {
       const levelJson: LevelJson = { entities: [{ class: 'Primitive', shape: 'PLANE' }] };
 
-      levelLoader.loadLevel(levelJson);
+      await levelLoader.loadLevel(levelJson);
 
       expect(world.addPrimitiveRigidBody).toHaveBeenCalledWith(
         { shape: { shape: 'PLANE' }, body: defaultBody },
@@ -107,12 +114,12 @@ describe('Gg3dLevelLoader', () => {
       );
     });
 
-    it('should load a level with capsule primitives', () => {
+    it('should load a level with capsule primitives', async () => {
       const levelJson: LevelJson = {
         entities: [{ class: 'Primitive', shape: 'CAPSULE', config: { radius: 0.5, centersDistance: 1 } }],
       };
 
-      levelLoader.loadLevel(levelJson);
+      await levelLoader.loadLevel(levelJson);
 
       expect(world.addPrimitiveRigidBody).toHaveBeenCalledWith(
         { shape: { shape: 'CAPSULE', radius: 0.5, centersDistance: 1 }, body: defaultBody },
@@ -122,12 +129,12 @@ describe('Gg3dLevelLoader', () => {
       );
     });
 
-    it('should load a level with cylinder primitives', () => {
+    it('should load a level with cylinder primitives', async () => {
       const levelJson: LevelJson = {
         entities: [{ class: 'Primitive', shape: 'CYLINDER', config: { radius: 0.5, height: 2 } }],
       };
 
-      levelLoader.loadLevel(levelJson);
+      await levelLoader.loadLevel(levelJson);
 
       expect(world.addPrimitiveRigidBody).toHaveBeenCalledWith(
         { shape: { shape: 'CYLINDER', radius: 0.5, height: 2 }, body: defaultBody },
@@ -137,12 +144,12 @@ describe('Gg3dLevelLoader', () => {
       );
     });
 
-    it('should load a level with cone primitives', () => {
+    it('should load a level with cone primitives', async () => {
       const levelJson: LevelJson = {
         entities: [{ class: 'Primitive', shape: 'CONE', config: { radius: 0.5, height: 2 } }],
       };
 
-      levelLoader.loadLevel(levelJson);
+      await levelLoader.loadLevel(levelJson);
 
       expect(world.addPrimitiveRigidBody).toHaveBeenCalledWith(
         { shape: { shape: 'CONE', radius: 0.5, height: 2 }, body: defaultBody },
@@ -152,7 +159,7 @@ describe('Gg3dLevelLoader', () => {
       );
     });
 
-    it('should load a level with triggers', () => {
+    it('should load a level with triggers, wrapped ready-to-use in a Trigger3dEntity', async () => {
       // Create a level JSON with a trigger
       const levelJson: LevelJson = {
         entities: [
@@ -169,17 +176,21 @@ describe('Gg3dLevelLoader', () => {
       };
 
       // Load the level
-      levelLoader.loadLevel(levelJson);
+      const level = await levelLoader.loadLevel(levelJson);
 
-      // Verify that the trigger was created, and reachable by name
+      // Verify that the trigger was created, and reachable by name as a positioned entity (not
+      // just the raw physics trigger component)
       expect(world.physicsWorld?.factory.createTrigger).toHaveBeenCalledWith(
         { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } },
         { position: { x: 1, y: 2, z: 3 }, rotation: { x: 0, y: 0, z: 0, w: 1 } },
       );
-      expect(levelLoader.getEntityByName('TestTrigger')).toBeDefined();
+      const trigger = level.getChildEntityByName<Trigger3dEntity>('TestTrigger');
+      expect(trigger).toBeInstanceOf(Trigger3dEntity);
+      expect(trigger.position).toEqual({ x: 1, y: 2, z: 3 });
+      expect(trigger.rotation).toEqual({ x: 0, y: 0, z: 0, w: 1 });
     });
 
-    it('should load a level with cameras', () => {
+    it('should load a level with cameras, wrapped in a Camera3dEntity added directly to the world', async () => {
       // Create a level JSON with a camera
       const levelJson: LevelJson = {
         entities: [
@@ -198,24 +209,32 @@ describe('Gg3dLevelLoader', () => {
       };
 
       // Load the level
-      levelLoader.loadLevel(levelJson);
+      const level = await levelLoader.loadLevel(levelJson);
 
-      // Verify that the camera was created, and reachable by name
+      // Verify that the camera was created
       expect(world.visualScene?.factory.createPerspectiveCamera).toHaveBeenCalledWith({
         fov: 75,
         aspectRatio: 16 / 9,
         frustrum: { near: 0.1, far: 1000 },
       });
-      const camera = levelLoader.getEntityByName('TestCamera');
-      expect(camera.position).toEqual({ x: 1, y: 2, z: 3 });
-      expect(camera.rotation).toEqual({ x: 0, y: 0, z: 0, w: 1 });
+
+      // The camera entity was added directly to the world (not parented under the level's group
+      // entity - a Camera is not an the level's responsibility to tear down)
+      const cameraEntity = (world.addEntity as jest.Mock).mock.calls
+        .map(([entity]) => entity)
+        .find(entity => entity instanceof Camera3dEntity) as Camera3dEntity;
+      expect(cameraEntity).toBeInstanceOf(Camera3dEntity);
+      expect(cameraEntity.name).toBe('TestCamera');
+      expect(cameraEntity.position).toEqual({ x: 1, y: 2, z: 3 });
+      expect(cameraEntity.rotation).toEqual({ x: 0, y: 0, z: 0, w: 1 });
+      expect(level.children).not.toContain(cameraEntity);
     });
   });
 
   describe('registerClass', () => {
-    it('should register a custom entity generator', () => {
-      // Create a mock generator function
-      const mockGenerator = jest.fn().mockReturnValue({ custom: true });
+    it('should register a custom entity generator', async () => {
+      // Create a mock generator function returning a real entity
+      const mockGenerator = jest.fn().mockImplementation(() => new TestEntity());
 
       // Register the generator
       levelLoader.registerClass('CustomEntity', mockGenerator);
@@ -235,7 +254,7 @@ describe('Gg3dLevelLoader', () => {
       };
 
       // Load the level
-      levelLoader.loadLevel(levelJson);
+      const level = await levelLoader.loadLevel(levelJson);
 
       // Verify that the custom generator was called with the correct arguments, and reachable by name
       expect(mockGenerator).toHaveBeenCalledWith(world, {
@@ -243,10 +262,10 @@ describe('Gg3dLevelLoader', () => {
         name: 'TestCustomEntity',
         customProperty: 'value',
       });
-      expect(levelLoader.getEntityByName('TestCustomEntity')).toEqual({ custom: true });
+      expect(level.getChildEntityByName('TestCustomEntity')).toBeInstanceOf(TestEntity);
     });
 
-    it('should handle missing generators gracefully', () => {
+    it('should handle missing generators gracefully', async () => {
       // Create a level JSON with an unknown entity type
       const levelJson: LevelJson = {
         entities: [
@@ -266,11 +285,11 @@ describe('Gg3dLevelLoader', () => {
       console.warn = jest.fn();
 
       // Load the level
-      levelLoader.loadLevel(levelJson);
+      const level = await levelLoader.loadLevel(levelJson);
 
       // Verify that no entity was created and a warning was logged
-      expect(() => levelLoader.getEntityByName('TestUnknownEntity')).toThrow(
-        'No loaded entity named "TestUnknownEntity"',
+      expect(() => level.getChildEntityByName('TestUnknownEntity')).toThrow(
+        'No child entity named "TestUnknownEntity"',
       );
       expect(console.warn).toHaveBeenCalledWith('No generator registered for class alias "UnknownEntity"');
 

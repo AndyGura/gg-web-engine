@@ -1,8 +1,7 @@
 import { Gg3dWorld, Gg3dWorldTypeDocRepo } from './gg-3d-world';
 import { GgMeta } from './models/gg-meta';
 import { Entity3d } from './entities/entity-3d';
-import { Pnt3, Point3, Point4, Qtrn } from '../base';
-import { EntityGenerator, LevelJson } from '../base/level-loader';
+import { GroupEntity, Pnt3, Point3, Point4, Qtrn } from '../base';
 import { Gg3dLevelLoader } from './level-loader';
 
 export enum CachingStrategy {
@@ -58,7 +57,65 @@ export type LoadResultWithProps<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorld
   props?: LoadResult<TypeDoc>[];
 };
 
-export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo> {
+/**
+ * Flatten a `LoadResultWithProps` (and its recursively-nested `props`) into one flat list of every
+ * `Entity3d` it produced, for the built-in `"Glb"` level entity class to parent under a single
+ * `GroupEntity`.
+ */
+function flattenGlbEntities<TypeDoc extends Gg3dWorldTypeDocRepo>(
+  result: LoadResultWithProps<TypeDoc>,
+): Entity3d<TypeDoc>[] {
+  return [...result.entities, ...(result.props ?? []).flatMap(prop => flattenGlbEntities(prop))];
+}
+
+/**
+ * Settings for the built-in `"Glb"` level entity class (3D only): loads a GG GLB+meta pair via
+ * `Gg3dLoader.loadGgGlb` and returns every entity it produces (the model itself, plus any nested
+ * props/scenes) grouped under one `GroupEntity`.
+ */
+export interface Glb3DSettings {
+  /**
+   * Path (URL or path prefix, without extension) to the `.glb`/`.meta` pair - passed straight
+   * through to `loadGgGlb`
+   */
+  path: string;
+
+  /**
+   * Position of the loaded model
+   */
+  position?: Point3;
+
+  /**
+   * Rotation of the loaded model
+   */
+  rotation?: Point4;
+
+  /**
+   * Caching strategy, see `CachingStrategy`. Defaults to `CachingStrategy.Nothing`, same as
+   * `loadGgGlb` itself.
+   */
+  cachingStrategy?: CachingStrategy;
+
+  /**
+   * Whether to also load dummies flagged as props/scenes. Defaults to `true`, same as `loadGgGlb`.
+   */
+  loadProps?: boolean;
+
+  /**
+   * Path where to find prop scenes, if different from `path`'s own directory
+   */
+  propsPath?: string;
+}
+
+/**
+ * Full 3D loader exposed as `Gg3dWorld.loader`: GLB+meta asset loading (`loadGgGlb` and friends)
+ * layered on top of `Gg3dLevelLoader`, so `registerClass`/`loadLevel`/`loadLevelFromUrl`/
+ * `getEntityByName` are all available directly on `world.loader`. Also registers a `"Glb"` level
+ * entity class (see `Glb3DSettings`) so a level JSON can place a GLB model declaratively, the same
+ * way it places primitives/triggers/cameras.
+ * @template TypeDoc - The type document repository
+ */
+export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo> extends Gg3dLevelLoader<TypeDoc> {
   readonly filesCache: Map<string, [ArrayBuffer, GgMeta] | Promise<[ArrayBuffer, GgMeta]>> = new Map<
     string,
     [ArrayBuffer, GgMeta] | Promise<[ArrayBuffer, GgMeta]>
@@ -69,27 +126,24 @@ export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocR
     LoadResourcesResult<TypeDoc> | Promise<LoadResourcesResult<TypeDoc>>
   >();
 
-  /**
-   * Level loader for loading levels from JSON
-   */
-  public readonly levelLoader: Gg3dLevelLoader<TypeDoc>;
-
-  constructor(protected readonly world: Gg3dWorld<TypeDoc>) {
-    this.levelLoader = new Gg3dLevelLoader<TypeDoc>(world);
-  }
-
-  /**
-   * Register a generator function for a level JSON class alias, so `loadLevel`/`loadLevelFromUrl`
-   * can dispatch entities of that `class` to it - see `Gg3dLevelLoader`'s built-in classes for
-   * examples
-   * @param classAlias - The class alias
-   * @param generator - The generator function
-   */
-  public registerClass<Settings, W = any>(
-    classAlias: string,
-    generator: EntityGenerator<Point3, Point4, TypeDoc, Settings, W>,
-  ): void {
-    this.levelLoader.registerClass(classAlias, generator);
+  constructor(world: Gg3dWorld<TypeDoc>) {
+    super(world);
+    this.registerClass('Glb', async (w: Gg3dWorld<TypeDoc>, settings: Glb3DSettings) => {
+      if (!settings.path) {
+        throw new Error('Path is required for Glb class');
+      }
+      const { path, position, rotation, cachingStrategy, loadProps, propsPath } = settings;
+      const result = await this.loadGgGlb(path, {
+        ...(position !== undefined ? { position } : {}),
+        ...(rotation !== undefined ? { rotation } : {}),
+        ...(cachingStrategy !== undefined ? { cachingStrategy } : {}),
+        ...(loadProps !== undefined ? { loadProps } : {}),
+        ...(propsPath !== undefined ? { propsPath } : {}),
+      });
+      const group = new GroupEntity<Point3, Point4, TypeDoc>();
+      group.addChildren(...flattenGlbEntities(result));
+      return group;
+    });
   }
 
   public async loadGgGlbFiles(path: string, useCache: boolean = false): Promise<[ArrayBuffer, GgMeta]> {
@@ -185,31 +239,5 @@ export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocR
       e.rotation = Qtrn.mult(Qtrn.clone(e.rotation), loadOptions.rotation);
     });
     return result;
-  }
-
-  /**
-   * Load a level from an already-parsed JSON document
-   * @param levelJson - The level JSON
-   */
-  public loadLevel(levelJson: LevelJson): void {
-    this.levelLoader.loadLevel(levelJson);
-  }
-
-  /**
-   * Fetch a level JSON document hosted at `url` and load it
-   * @param url - URL (or path) of the level JSON document
-   */
-  public loadLevelFromUrl(url: string): Promise<void> {
-    return this.levelLoader.loadLevelFromUrl(url);
-  }
-
-  /**
-   * Look up a previously-loaded, named entity/object by the `name` its `EntityJson` was given
-   * @param name - The entity's `name` in the level JSON
-   * @returns The entity/object its generator returned
-   * @throws if no loaded entity has that name
-   */
-  public getEntityByName<T = any>(name: string): T {
-    return this.levelLoader.getEntityByName<T>(name);
   }
 }

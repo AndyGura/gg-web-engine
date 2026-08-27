@@ -5,6 +5,7 @@ import { DisplayObject2dOpts } from './factories';
 import { Body2DOptions } from './models/body-options';
 import { Shape2DDescriptor } from './models/shapes';
 import { Entity2d } from './entities/entity-2d';
+import { Trigger2dEntity } from './entities/trigger-2d.entity';
 
 const defaultBodyOptions: Body2DOptions = {
   dynamic: true,
@@ -155,17 +156,30 @@ export class Gg2dLevelLoader<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTyp
   }
 
   /**
-   * Create a trigger entity
+   * Create a trigger entity: a `Trigger2dEntity` wrapping the raw physics trigger component, so
+   * the app can subscribe to `onEntityEntered`/`onEntityLeft` without any extra wiring - see the
+   * base `LevelLoader` docs for how it's parented for level-lifecycle cleanup.
    * @param world - The world instance
    * @param settings - The trigger settings
-   * @returns The created trigger
+   * @returns The created trigger entity
    */
   private createTrigger(
     world: Gg2dWorld<TypeDoc>,
     settings: TriggerSettings,
-  ): TypeDoc['pTypeDoc']['trigger'] | undefined {
+  ): Trigger2dEntity<TypeDoc['pTypeDoc']> | undefined {
     const { position, rotation, dimensions } = settings;
     const shape: Shape2DDescriptor = { shape: 'SQUARE', dimensions };
-    return world.physicsWorld?.factory.createTrigger(shape, { position, rotation });
+    const trigger = world.physicsWorld?.factory.createTrigger(shape, { position, rotation });
+    if (!trigger) {
+      return undefined;
+    }
+    const entity = new Trigger2dEntity<TypeDoc['pTypeDoc']>(trigger);
+    if (position !== undefined) {
+      entity.position = position;
+    }
+    if (rotation !== undefined) {
+      entity.rotation = rotation;
+    }
+    return entity;
   }
 }

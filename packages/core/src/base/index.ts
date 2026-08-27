@@ -17,6 +17,7 @@ export * from './data-structures/graph';
 
 export * from './entities/controllers/animation-mixer';
 export * from './entities/controllers/inline-controller';
+export * from './entities/group.entity';
 export * from './entities/i-entity';
 export * from './entities/i-renderer.entity';
 export * from './entities/i-renderable.entity';

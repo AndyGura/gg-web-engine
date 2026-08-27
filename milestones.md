@@ -24,6 +24,21 @@ silently drift apart.
 - "Later / Under Consideration" at the bottom holds ideas intentionally kept out of the milestone
   structure — they don't have acceptance criteria because nobody has committed to building them yet.
 
+## Updating this document
+When a deliverable's status changes, edit its existing bullet in place - add the implementation
+detail, flip the mark to ✅/🚧, keep going. **Never append a new bullet for work that lands on top
+of an already-listed deliverable**, even the same day; that's how a milestone quietly turns into an
+unreadable pile of near-duplicate entries. If several bullets under one milestone all turn out to
+describe the same piece of work (e.g. a feature that shipped in stages), condense them into one
+bullet rather than leaving them stacked.
+
+**Do not add a new deliverable, bullet, or milestone on your own initiative** - not a new Status
+line for work nobody scoped here, not a new Objective, not a new `## M<n>` section, not an entry
+under "Later / Under Consideration". This document records what the maintainer has decided is in
+scope; deciding that is not an agent's call to make while doing unrelated work. Only add one when
+the user explicitly asks you to (e.g. "add a milestone for X", "track this in the roadmap") - and
+even then, check first whether it actually belongs inside an existing bullet instead.
+
 ---
 
 ## M0 — Project Hygiene & Release Process
@@ -88,21 +103,38 @@ Objectives
 Status
 - ✅ Unified level-loader contracts across base/2D/3D (2026-08-27): a shared `LevelLoader<D, R,
   TypeDoc>` base class in `base/level-loader.ts`, with `Gg2dLevelLoader`/`Gg3dLevelLoader`
-  subclasses registering default generators for primitives/triggers/camera. Wired consistently as
-  `.levelLoader` on the existing `Gg2dLoader`/`Gg3dLoader`, with both `loadLevel()` (in-memory
-  JSON) and `loadLevelFromUrl()` (fetches a hosted `.json` file) on all three. Covered by unit
-  tests and two runnable examples (`level-json-three-rapier3d`, `level-json-pixi-rapier2d`).
-- ✅ All primitive shapes collapsed onto one `"Primitive"` entity class + `shape` field (2026-08-27),
-  e.g. `{ "class": "Primitive", "shape": "BOX" }` instead of `{ "class": "BOX" }`, with `shape`
-  reusing the same ALL-CAPS values as `Shape2DDescriptor`/`Shape3DDescriptor` (no translation table
-  needed) — keeps the class namespace reserved for actual entity kinds
-  (`Primitive`/`Trigger`/`Camera`/app-defined) rather than growing one class per shape. Apps
-  register their own entity classes the same `registerClass(alias, (world, settings) => any)` way
-  the built-ins are registered internally — demonstrated end-to-end by a `ShapeSpawner` custom
-  class in both level-json examples. `loadLevel`/`loadLevelFromUrl` don't return the created
-  entities anymore (positional destructuring off an opaque array was unreadable); named entities
-  are looked back up afterwards via `getEntityByName(name)` on the loader/`world.loader`. Documented
-  for consumers in the new `gg-engine-level-json` skill.
+  subclasses registering default generators for primitives/triggers/camera, both `loadLevel()`
+  (in-memory JSON) and `loadLevelFromUrl()` (fetches a hosted `.json` file) on all three. Covered by
+  unit tests and two runnable examples (`level-json-three-rapier3d`, `level-json-pixi-rapier2d`).
+- ✅ Level loader API hardening (2026-08-27): `Gg2dLoader`/`Gg3dLoader` (`world.loader`) now extend
+  `Gg2dLevelLoader`/`Gg3dLevelLoader` directly instead of holding one as a nested `.levelLoader`
+  property. All primitive shapes collapsed onto one `"Primitive"` class + `shape` field (e.g.
+  `{ "class": "Primitive", "shape": "BOX" }`), reusing `Shape2DDescriptor`/`Shape3DDescriptor`'s own
+  ALL-CAPS values, so the class namespace stays reserved for actual entity kinds
+  (`Primitive`/`Trigger`/`Camera`/`Glb`/app-defined); apps register their own the same way via
+  `registerClass(alias, (world, settings) => any)`, demonstrated by a `ShapeSpawner` custom class in
+  both level-json examples. `Gg3dLoader` also registers a `"Glb"` class (`Glb3DSettings`) wrapping
+  `loadGgGlb` so a level JSON can place a GLB model (and its nested props, flattened) declaratively.
+  `loadLevel`/`loadLevelFromUrl` resolve to a `GroupEntity` (`base/entities/group.entity.ts`), already
+  added to the world, with every `IEntity` a generator produces parented under it via `addChildren` -
+  `world.removeEntity(level, true)` cascades removal/disposal to the whole level in one call, and a
+  generator throwing partway through tears down whatever had accumulated before rethrowing rather
+  than leaking it. `GgWorld.getEntityByName` (flat scan over `world.children`, which holds every
+  spawned entity regardless of nesting) and `IEntity.getChildEntityByName` (recursive subtree search
+  - `level.getChildEntityByName(name)` is the normal way to fetch something a level produced) replace
+  the loader's old internal name map. `"Trigger"` resolves to a ready-to-use `Trigger2dEntity`/
+  `Trigger3dEntity`, parented under the level; `"Camera"` (3D) resolves to a `Camera3dEntity`
+  (`.camera` for the raw component `addRenderer` wants), marked via `standaloneEntity()` (exported
+  from `base/level-loader.ts`) so it's added to the world but deliberately left out of the level's
+  tree - an app-owned camera reused across several loaded/swapped levels is never torn down as a
+  side effect; look it up with `world.getEntityByName`, not `level.getChildEntityByName`. Fixed a
+  latent `GgWorld.addEntity` bug this exposed: reparenting an entity already self-added to the world
+  (as `addPrimitiveRigidBody` does) used to log a spurious "already spawned" warning and no-op
+  instead of updating parent/children bookkeeping - `loadLevel` relies on the fix to safely parent
+  primitives under the level. Covered by unit tests (`test/base/level-loader.spec.ts`,
+  `test/base/gg-world.spec.ts`, `test/base/entities/i-entity.spec.ts`, `test/{2d,3d}/level-loader.spec.ts`,
+  `test/3d/loader.spec.ts`) and the two runnable examples (`level-json-three-rapier3d`,
+  `level-json-pixi-rapier2d`); documented for consumers in the `gg-engine-level-json` skill.
 - Document the Level JSON shape as a machine-checkable JSON Schema (`docs/specs/level-json.schema.json`)
   with CI validation of example levels — not started. `examples/level-json/README.md` documents
   the shape informally today, which is enough for humans but not enforced anywhere.

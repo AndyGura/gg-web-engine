@@ -1,5 +1,10 @@
-import { Gg2dLevelLoader, Gg2dWorld, LevelJson } from '../../src';
+import { Gg2dLevelLoader, Gg2dWorld, IEntity, LevelJson, TickOrder, Trigger2dEntity } from '../../src';
 import { mock2DBody } from '../mocks/body.mock';
+
+// A trivial concrete IEntity for tests that need a generator to return a real entity
+class TestEntity extends IEntity {
+  public readonly tickOrder = TickOrder.OBJECTS_BINDING;
+}
 
 describe('Gg2dLevelLoader', () => {
   let world: Gg2dWorld;
@@ -16,7 +21,9 @@ describe('Gg2dLevelLoader', () => {
           createTrigger: jest.fn().mockReturnValue(mock2DBody()),
         },
       },
-      addPrimitiveRigidBody: jest.fn().mockReturnValue({ entity: true }),
+      addPrimitiveRigidBody: jest.fn().mockImplementation(() => new TestEntity()),
+      addEntity: jest.fn(),
+      removeEntity: jest.fn(),
     } as unknown as Gg2dWorld;
 
     // Create a level loader with the mock world
@@ -24,7 +31,7 @@ describe('Gg2dLevelLoader', () => {
   });
 
   describe('loadLevel', () => {
-    it('should load a level with square primitives', () => {
+    it('should load a level with square primitives', async () => {
       // Create a level JSON with a square primitive
       const levelJson: LevelJson = {
         entities: [
@@ -45,7 +52,7 @@ describe('Gg2dLevelLoader', () => {
       };
 
       // Load the level
-      levelLoader.loadLevel(levelJson);
+      const level = await levelLoader.loadLevel(levelJson);
 
       // Verify that the entity was created via the world's primitive helper, and reachable by name
       expect(world.addPrimitiveRigidBody).toHaveBeenCalledWith(
@@ -64,26 +71,26 @@ describe('Gg2dLevelLoader', () => {
         0.5,
         { color: 0xff0000 },
       );
-      expect(levelLoader.getEntityByName('TestSquare')).toEqual({ entity: true });
+      expect(level.getChildEntityByName('TestSquare')).toBeInstanceOf(TestEntity);
     });
 
-    it('should throw when dimensions are missing for a Square primitive', () => {
+    it('should throw when dimensions are missing for a Square primitive', async () => {
       const levelJson: LevelJson = {
         entities: [{ class: 'Primitive', shape: 'SQUARE', position: { x: 0, y: 0 } }],
       };
 
-      expect(() => levelLoader.loadLevel(levelJson)).toThrow('Dimensions are required for SQUARE primitive');
+      await expect(levelLoader.loadLevel(levelJson)).rejects.toThrow('Dimensions are required for SQUARE primitive');
     });
 
-    it('should throw for an unknown primitive shape', () => {
+    it('should throw for an unknown primitive shape', async () => {
       const levelJson: LevelJson = {
         entities: [{ class: 'Primitive', shape: 'Triangle' }],
       };
 
-      expect(() => levelLoader.loadLevel(levelJson)).toThrow('Unknown primitive shape "Triangle"');
+      await expect(levelLoader.loadLevel(levelJson)).rejects.toThrow('Unknown primitive shape "Triangle"');
     });
 
-    it('should load a level with circle primitives', () => {
+    it('should load a level with circle primitives', async () => {
       // Create a level JSON with a circle primitive
       const levelJson: LevelJson = {
         entities: [
@@ -104,7 +111,7 @@ describe('Gg2dLevelLoader', () => {
       };
 
       // Load the level
-      levelLoader.loadLevel(levelJson);
+      await levelLoader.loadLevel(levelJson);
 
       // Verify that the entity was created via the world's primitive helper
       expect(world.addPrimitiveRigidBody).toHaveBeenCalledWith(
@@ -125,7 +132,7 @@ describe('Gg2dLevelLoader', () => {
       );
     });
 
-    it('should override default body options with the ones provided', () => {
+    it('should override default body options with the ones provided', async () => {
       const levelJson: LevelJson = {
         entities: [
           {
@@ -136,7 +143,7 @@ describe('Gg2dLevelLoader', () => {
         ],
       };
 
-      levelLoader.loadLevel(levelJson);
+      await levelLoader.loadLevel(levelJson);
 
       expect(world.addPrimitiveRigidBody).toHaveBeenCalledWith(
         {
@@ -156,7 +163,7 @@ describe('Gg2dLevelLoader', () => {
       );
     });
 
-    it('should load a level with triggers', () => {
+    it('should load a level with triggers, wrapped ready-to-use in a Trigger2dEntity', async () => {
       // Create a level JSON with a trigger
       const levelJson: LevelJson = {
         entities: [
@@ -173,21 +180,25 @@ describe('Gg2dLevelLoader', () => {
       };
 
       // Load the level
-      levelLoader.loadLevel(levelJson);
+      const level = await levelLoader.loadLevel(levelJson);
 
-      // Verify that the trigger was created, and reachable by name
+      // Verify that the trigger was created, and reachable by name as a positioned entity (not
+      // just the raw physics trigger component)
       expect(world.physicsWorld?.factory.createTrigger).toHaveBeenCalledWith(
         { shape: 'SQUARE', dimensions: { x: 50, y: 50 } },
         { position: { x: 100, y: 200 }, rotation: 0.5 },
       );
-      expect(levelLoader.getEntityByName('TestTrigger')).toBeDefined();
+      const trigger = level.getChildEntityByName<Trigger2dEntity>('TestTrigger');
+      expect(trigger).toBeInstanceOf(Trigger2dEntity);
+      expect(trigger.position).toEqual({ x: 100, y: 200 });
+      expect(trigger.rotation).toBe(0.5);
     });
   });
 
   describe('registerClass', () => {
-    it('should register a custom entity generator', () => {
-      // Create a mock generator function
-      const mockGenerator = jest.fn().mockReturnValue({ custom: true });
+    it('should register a custom entity generator', async () => {
+      // Create a mock generator function returning a real entity
+      const mockGenerator = jest.fn().mockImplementation(() => new TestEntity());
 
       // Register the generator
       levelLoader.registerClass('CustomEntity', mockGenerator);
@@ -207,7 +218,7 @@ describe('Gg2dLevelLoader', () => {
       };
 
       // Load the level
-      levelLoader.loadLevel(levelJson);
+      const level = await levelLoader.loadLevel(levelJson);
 
       // Verify that the custom generator was called with the correct arguments, and reachable by name
       expect(mockGenerator).toHaveBeenCalledWith(world, {
@@ -215,10 +226,10 @@ describe('Gg2dLevelLoader', () => {
         name: 'TestCustomEntity',
         customProperty: 'value',
       });
-      expect(levelLoader.getEntityByName('TestCustomEntity')).toEqual({ custom: true });
+      expect(level.getChildEntityByName('TestCustomEntity')).toBeInstanceOf(TestEntity);
     });
 
-    it('should handle missing generators gracefully', () => {
+    it('should handle missing generators gracefully', async () => {
       // Create a level JSON with an unknown entity type
       const levelJson: LevelJson = {
         entities: [
@@ -238,11 +249,11 @@ describe('Gg2dLevelLoader', () => {
       console.warn = jest.fn();
 
       // Load the level
-      levelLoader.loadLevel(levelJson);
+      const level = await levelLoader.loadLevel(levelJson);
 
       // Verify that no entity was created and a warning was logged
-      expect(() => levelLoader.getEntityByName('TestUnknownEntity')).toThrow(
-        'No loaded entity named "TestUnknownEntity"',
+      expect(() => level.getChildEntityByName('TestUnknownEntity')).toThrow(
+        'No child entity named "TestUnknownEntity"',
       );
       expect(console.warn).toHaveBeenCalledWith('No generator registered for class alias "UnknownEntity"');
 

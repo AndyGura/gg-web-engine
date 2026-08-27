@@ -1,8 +1,42 @@
 import { GgWorld, GgWorldTypeDocRepo } from './gg-world';
+import { GroupEntity } from './entities/group.entity';
+import { IEntity } from './entities/i-entity';
+
+/**
+ * Entities a generator has opted out of the level's lifecycle via {@link standaloneEntity} - see
+ * that function's docs. A plain module-level `WeakSet` (not per-`LevelLoader`-instance state):
+ * "standalone" is a property of the entity value itself, and entries vanish on their own once the
+ * entity is garbage-collected.
+ */
+const standaloneEntities = new WeakSet<IEntity>();
+
+/**
+ * Mark an entity a generator is about to return as standalone: `LevelLoader.loadLevel` will still
+ * add it to the world (if it isn't already) and still set its `.name` if the level JSON gave it
+ * one, but will **not** parent it under the level's group entity - so it survives
+ * `world.removeEntity(level, true)` untouched. Use this for something an app is expected to own
+ * independently of any one level, e.g. a shared camera loaded once but still around after the
+ * level that declared it gets swapped out - see the built-in `"Camera"` 3D class for the reference
+ * case:
+ * ```typescript
+ * const entity = new Camera3dEntity(camera);
+ * return standaloneEntity(entity);
+ * ```
+ * Don't reach for this by default - most level content (primitives, triggers, custom entities)
+ * should be torn down with the level, which is what happens without calling this at all.
+ * @param entity - The entity to mark
+ * @returns `entity`, unchanged, for chaining into a `return`
+ */
+export function standaloneEntity<T extends IEntity>(entity: T): T {
+  standaloneEntities.add(entity);
+  return entity;
+}
 
 /**
  * A function that turns per-entity JSON settings into a spawned entity (or other world object,
  * e.g. a trigger or camera). Registered against a class alias via {@link LevelLoader.registerClass}.
+ * May be `async`/return a `Promise` (e.g. the built-in `"Glb"` 3D class, which fetches a model) -
+ * {@link LevelLoader.loadLevel} awaits every generator before moving to the next entity.
  * @template D - The position type
  * @template R - The rotation type
  * @template TypeDoc - The type document repository
@@ -62,8 +96,10 @@ export interface EntityJson {
   rotation?: any;
 
   /**
-   * Name of the entity. If set, the loaded entity can be looked back up afterwards via
-   * {@link LevelLoader.getEntityByName}.
+   * Name of the entity. If the generator's result is an `IEntity`, `loadLevel` sets its `.name` to
+   * this (overriding whatever default the generator gave it), so it can be found afterwards with
+   * `GgWorld.getEntityByName`/`IEntity.getChildEntityByName`. Ignored for generators that return
+   * something other than an `IEntity` - there's nowhere to look such a result back up by name.
    */
   name?: string;
 
@@ -76,9 +112,17 @@ export interface EntityJson {
 /**
  * Base class for level loaders: parses a {@link LevelJson} document into world entities by
  * dispatching each `EntityJson.class` to a generator function registered with {@link registerClass}.
- * Loading doesn't hand back the created entities directly - named ones are looked up afterwards
- * via {@link getEntityByName}, so callers don't have to positionally destructure the level's
- * `entities` array.
+ *
+ * Every `IEntity` a generator produces is parented under one {@link GroupEntity} per `loadLevel`/
+ * `loadLevelFromUrl` call (added to the world immediately, and handed back once loading
+ * completes) - so a whole level can be torn down in one shot with `world.removeEntity(level, true)`,
+ * which cascades removal/disposal to every child, and any named entity can be found afterwards
+ * with `level.getChildEntityByName(name)`. The one exception is an entity a generator marks with
+ * {@link standaloneEntity} (the built-in `"Camera"` 3D class does this): it's still added to the
+ * world, but deliberately left unparented, so it survives level removal - look such an entity up
+ * with `GgWorld.getEntityByName` instead, since it was never made a child of `level`. Generators
+ * that return something other than an `IEntity` aren't tracked anywhere by `loadLevel` at all -
+ * there's nothing to parent or look up by name.
  * @template D - The position type
  * @template R - The rotation type
  * @template TypeDoc - The type document repository
@@ -88,12 +132,6 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
    * Map of class aliases to generator functions
    */
   protected generators: Map<string, EntityGenerator<D, R, TypeDoc, any, any>> = new Map();
-
-  /**
-   * Map of entity name to the entity/object its generator returned, for every loaded entity whose
-   * JSON had a `name`. Populated by `loadLevel`/`loadLevelFromUrl`, read by `getEntityByName`.
-   */
-  protected entitiesByName: Map<string, any> = new Map();
 
   /**
    * Constructor
@@ -114,57 +152,79 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
   }
 
   /**
-   * Look up a previously-loaded, named entity/object by the `name` its `EntityJson` was given.
-   * @param name - The entity's `name` in the level JSON
-   * @returns The entity/object its generator returned
-   * @throws if no loaded entity has that name
-   */
-  public getEntityByName<T = any>(name: string): T {
-    if (!this.entitiesByName.has(name)) {
-      throw new Error(`No loaded entity named "${name}"`);
-    }
-    return this.entitiesByName.get(name) as T;
-  }
-
-  /**
-   * Load a level from an already-parsed JSON document
+   * Load a level from an already-parsed JSON document. Every `IEntity` the level's entities
+   * produce is parented under - and, on failure, torn down along with - the returned
+   * {@link GroupEntity}, already added to the world (see the class docs above for the one
+   * exception: an entity a generator marked with {@link standaloneEntity}).
    * @param levelJson - The level JSON
+   * @param levelName - Optional name for the returned group entity (e.g. so a debugger/console
+   * listing entities by name shows something more meaningful than the default auto-generated one)
+   * @returns The level's root group entity
    */
-  public loadLevel(levelJson: LevelJson): void {
-    for (const entityJson of levelJson.entities) {
-      const { class: classAlias, shape, position, rotation, name, config } = entityJson;
-      const generator = this.generators.get(classAlias);
-      if (!generator) {
-        console.warn(`No generator registered for class alias "${classAlias}"`);
-        continue;
-      }
-
-      const settings = {
-        ...(config ?? {}),
-        ...(shape !== undefined ? { shape } : {}),
-        ...(position !== undefined ? { position } : {}),
-        ...(rotation !== undefined ? { rotation } : {}),
-        ...(name !== undefined ? { name } : {}),
-      };
-
-      const entity = generator(this.world, settings);
-      if (entity && name !== undefined) {
-        this.entitiesByName.set(name, entity);
-      }
+  public async loadLevel(levelJson: LevelJson, levelName?: string): Promise<GroupEntity<D, R, TypeDoc>> {
+    const level = new GroupEntity<D, R, TypeDoc>();
+    if (levelName !== undefined) {
+      level.name = levelName;
     }
+    this.world.addEntity(level);
+
+    try {
+      for (const entityJson of levelJson.entities) {
+        const { class: classAlias, shape, position, rotation, name, config } = entityJson;
+        const generator = this.generators.get(classAlias);
+        if (!generator) {
+          console.warn(`No generator registered for class alias "${classAlias}"`);
+          continue;
+        }
+
+        const settings = {
+          ...(config ?? {}),
+          ...(shape !== undefined ? { shape } : {}),
+          ...(position !== undefined ? { position } : {}),
+          ...(rotation !== undefined ? { rotation } : {}),
+          ...(name !== undefined ? { name } : {}),
+        };
+
+        const entity = await generator(this.world, settings);
+        if (!entity || !(entity instanceof IEntity)) {
+          continue;
+        }
+        if (name !== undefined) {
+          entity.name = name;
+        }
+        if (standaloneEntities.has(entity)) {
+          // Opted out via standaloneEntity() - still make sure it's in the world, but don't parent
+          // it under the level (addChildren, safe to call even if it's already spawned elsewhere).
+          if (!entity.world) {
+            this.world.addEntity(entity);
+          }
+        } else {
+          level.addChildren(entity);
+        }
+      }
+    } catch (e) {
+      // Don't leave a partially-loaded level (and its already-spawned entities) behind if a
+      // generator throws partway through - the caller never gets `level` back to clean it up itself.
+      this.world.removeEntity(level, true);
+      throw e;
+    }
+
+    return level;
   }
 
   /**
    * Fetch a level JSON document hosted at `url` and load it, so a whole level/scene can be
    * shipped and consumed as a single static JSON file.
    * @param url - URL (or path) of the level JSON document
+   * @param levelName - Optional name for the returned group entity, see {@link loadLevel}
+   * @returns The level's root group entity
    */
-  public async loadLevelFromUrl(url: string): Promise<void> {
+  public async loadLevelFromUrl(url: string, levelName?: string): Promise<GroupEntity<D, R, TypeDoc>> {
     const response = await fetch(url);
     if (!response.ok) {
       throw new Error(`Failed to load level JSON from "${url}": ${response.status} ${response.statusText}`);
     }
     const levelJson: LevelJson = await response.json();
-    this.loadLevel(levelJson);
+    return this.loadLevel(levelJson, levelName);
   }
 }

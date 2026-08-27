@@ -77,6 +77,14 @@ belong in that app's own codebase/docs, not in this engine repo's skill set. `gg
 itself should still be kept current for lessons about the loader mechanism/built-in classes
 themselves — see that file's own "Keep this skill current" section.
 
+Whenever you edit any skill file (not just these five) to reflect a change you just made, describe
+the resulting API/behavior as it stands now — don't narrate the change itself ("X used to return Y,
+now it returns Z", "there is no longer a `.foo` property"). A skill file is read fresh by an agent
+who never knew the old shape, so that framing is pure noise to them, not context. Overwrite the
+stale paragraph outright instead of appending a delta next to it. Save the actual history for
+`milestones.md`'s changelog-style status entries, where a "what changed and why" narrative is the
+point.
+
 ## Non-obvious repo facts worth knowing before diving in
 
 - No workspace tool (no lerna/pnpm-workspace) — every package under `packages/` and `examples/` is

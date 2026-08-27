@@ -90,6 +90,36 @@ export abstract class IEntity<D = any, R = any, TypeDoc extends GgWorldTypeDocRe
     }
   }
 
+  /**
+   * Find a descendant entity by name, searching this entity's own children and their children
+   * recursively (depth-first) - not the whole world, just this entity's subtree. Useful e.g. to
+   * pull a specific entity back out of a `GroupEntity` a `LevelLoader` handed back:
+   * `level.getChildEntityByName('KillFloor')`.
+   * @param name - The descendant entity's `name`
+   * @returns The matching descendant
+   * @throws if no descendant has that name
+   */
+  public getChildEntityByName<T extends IEntity = IEntity>(name: string): T {
+    const found = this.findChildEntityByName(name);
+    if (!found) {
+      throw new Error(`No child entity named "${name}" found under "${this.name}"`);
+    }
+    return found as T;
+  }
+
+  private findChildEntityByName(name: string): IEntity | undefined {
+    for (const child of this._children) {
+      if (child.name === name) {
+        return child;
+      }
+      const found = child.findChildEntityByName(name);
+      if (found) {
+        return found;
+      }
+    }
+    return undefined;
+  }
+
   private _components: IWorldComponent<D, R, TypeDoc>[] = [];
 
   public get components(): IWorldComponent<D, R, TypeDoc>[] {

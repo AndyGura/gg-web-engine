@@ -1,4 +1,5 @@
 import {
+  Camera3dEntity,
   Entity3d,
   Gg3dWorld,
   GgStatic,
@@ -7,7 +8,7 @@ import {
   Trigger3dEntity,
   TypedGg3dWorld,
 } from '@gg-web-engine/core';
-import { ThreeGgWorld, ThreeSceneComponent } from '@gg-web-engine/three';
+import { ThreeGgWorld, ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
 import { Rapier3dGgWorld, Rapier3dWorldComponent } from '@gg-web-engine/rapier3d';
 import { AmbientLight, DirectionalLight } from 'three';
 
@@ -102,23 +103,27 @@ world.init().then(async () => {
     new ShapeSpawner(w, settings),
   );
 
-  // Load the level, then look up the entities the app needs to wire up further by the `name`
-  // they were given in level3d.json (floor/box/sphere/etc. are purely decorative and don't need
-  // to be looked up at all).
-  await world.loader.loadLevelFromUrl(LEVEL_URL);
+  // Load the level. `loadLevelFromUrl` resolves to a group entity holding every entity the level
+  // produced as a child - `world.removeEntity(level, true)` would tear the whole thing back down
+  // in one call, e.g. to swap in a different level later (not needed in this example). Named
+  // entities the level produced can be looked up by the `name` they were given in level3d.json
+  // (floor/box/sphere/etc. are purely decorative and don't need to be looked up at all): entities
+  // parented under the level - most of them - via `level.getChildEntityByName`; a `Camera`, which
+  // deliberately isn't parented under the level (see below), via `world.getEntityByName` instead.
+  const level = await world.loader.loadLevelFromUrl(LEVEL_URL);
 
-  // `Camera` entities from a level are a plain camera component (a level JSON has no notion of a
-  // canvas), so it still needs to be attached to a renderer explicitly, same as any other camera.
-  const camera = world.loader.getEntityByName('MainCamera');
-  const renderer = world.addRenderer(camera, canvas);
+  // `Camera` entities from a level are a plain camera component wrapped in an unparented
+  // `Camera3dEntity` - not attached to any renderer/canvas (a level JSON has no notion of one),
+  // and deliberately not part of the level's group entity, so an app-owned camera survives level
+  // swaps untouched. Attach it to a renderer explicitly, same as any other camera.
+  const cameraEntity = world.getEntityByName<Camera3dEntity<ThreeVisualTypeDocRepo>>('MainCamera');
+  const renderer = world.addRenderer(cameraEntity.camera, canvas);
   const controller = new OrbitCameraController(renderer, { mouseOptions: { canvas } });
   world.addEntity(controller);
 
-  // Same for `Trigger` entities - the level loader hands back the raw physics trigger component,
-  // so wiring it into the world (and into game logic) is left to the app, same as if it had been
-  // created directly via `world.physicsWorld.factory.createTrigger(...)`.
-  const killZone = new Trigger3dEntity(world.loader.getEntityByName('KillFloor'));
-  world.addEntity(killZone);
+  // `Trigger` entities, unlike `Camera`, come back ready-to-use - already a `Trigger3dEntity`
+  // parented under the level's group entity (so already part of the world) - just subscribe to it.
+  const killZone = level.getChildEntityByName<Trigger3dEntity>('KillFloor');
   killZone.onEntityEntered.subscribe((entity: Entity3d) => {
     world.removeEntity(entity, true);
   });
