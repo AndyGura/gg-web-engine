@@ -190,7 +190,7 @@ describe('Gg3dLevelLoader', () => {
       expect(trigger.rotation).toEqual({ x: 0, y: 0, z: 0, w: 1 });
     });
 
-    it('should load a level with cameras, wrapped in a Camera3dEntity added directly to the world', async () => {
+    it('should load a level with cameras, wrapped ready-to-use in a Camera3dEntity parented under the level', async () => {
       // Create a level JSON with a camera
       const levelJson: LevelJson = {
         entities: [
@@ -218,16 +218,12 @@ describe('Gg3dLevelLoader', () => {
         frustrum: { near: 0.1, far: 1000 },
       });
 
-      // The camera entity was added directly to the world (not parented under the level's group
-      // entity - a Camera is not an the level's responsibility to tear down)
-      const cameraEntity = (world.addEntity as jest.Mock).mock.calls
-        .map(([entity]) => entity)
-        .find(entity => entity instanceof Camera3dEntity) as Camera3dEntity;
+      // The camera entity is parented under the level's group entity, so it's torn down along
+      // with the rest of the level.
+      const cameraEntity = level.getChildEntityByName<Camera3dEntity>('TestCamera');
       expect(cameraEntity).toBeInstanceOf(Camera3dEntity);
-      expect(cameraEntity.name).toBe('TestCamera');
       expect(cameraEntity.position).toEqual({ x: 1, y: 2, z: 3 });
       expect(cameraEntity.rotation).toEqual({ x: 0, y: 0, z: 0, w: 1 });
-      expect(level.children).not.toContain(cameraEntity);
     });
   });
 

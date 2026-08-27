@@ -124,10 +124,13 @@ Status
   - `level.getChildEntityByName(name)` is the normal way to fetch something a level produced) replace
   the loader's old internal name map. `"Trigger"` resolves to a ready-to-use `Trigger2dEntity`/
   `Trigger3dEntity`, parented under the level; `"Camera"` (3D) resolves to a `Camera3dEntity`
-  (`.camera` for the raw component `addRenderer` wants), marked via `standaloneEntity()` (exported
-  from `base/level-loader.ts`) so it's added to the world but deliberately left out of the level's
-  tree - an app-owned camera reused across several loaded/swapped levels is never torn down as a
-  side effect; look it up with `world.getEntityByName`, not `level.getChildEntityByName`. Fixed a
+  (`.camera` for the raw component `addRenderer` wants), parented under the level exactly like
+  every other built-in class - no exceptions to the parenting rule. (An earlier version of this
+  loader had a `standaloneEntity()` escape hatch that left `"Camera"` deliberately unparented so an
+  app-owned camera could survive a level swap untouched; removed 2026-08-27 in favor of a flat
+  rule - an app that wants a camera to outlive a level swap now puts it in its own
+  never-unloaded level, or constructs it directly, rather than relying on loader-level
+  unparenting; see `gg-engine-level-json`'s `"Camera"` section.) Fixed a
   latent `GgWorld.addEntity` bug this exposed: reparenting an entity already self-added to the world
   (as `addPrimitiveRigidBody` does) used to log a spurious "already spawned" warning and no-op
   instead of updating parent/children bookkeeping - `loadLevel` relies on the fix to safely parent

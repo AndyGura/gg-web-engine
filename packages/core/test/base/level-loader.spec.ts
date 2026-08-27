@@ -1,4 +1,4 @@
-import { GgWorld, GroupEntity, IEntity, LevelJson, LevelLoader, Point2, standaloneEntity, TickOrder } from '../../src';
+import { GgWorld, GroupEntity, IEntity, LevelJson, LevelLoader, Point2, TickOrder } from '../../src';
 import { MockWorld } from '../mocks/world.mock';
 
 // Create a concrete implementation of LevelLoader for testing
@@ -266,23 +266,6 @@ describe('LevelLoader', () => {
       expect(warnSpy).not.toHaveBeenCalled();
 
       warnSpy.mockRestore();
-    });
-
-    it('should add a standaloneEntity()-marked result to the world, but leave it unparented (e.g. an app-shared camera)', async () => {
-      levelLoader.registerClass('SelfManaged', () => standaloneEntity(new TestEntity()));
-
-      const level = await levelLoader.loadLevel({
-        entities: [{ class: 'SelfManaged', name: 'Managed' }],
-      });
-      const entity = world.getEntityByName('Managed');
-
-      expect(entity.world).toBe(world);
-      expect(entity.parent).toBeNull();
-      expect(level.children).not.toContain(entity);
-
-      // Removing the level must not take the standalone entity down with it
-      world.removeEntity(level, true);
-      expect(entity.world).toBe(world);
     });
 
     it('should tear down the group entity if a generator throws partway through', async () => {

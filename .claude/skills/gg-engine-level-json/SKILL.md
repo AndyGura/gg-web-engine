@@ -73,15 +73,15 @@ world.removeEntity(level, true);
 representing the whole loaded level: a plain, do-nothing `IEntity`, already added to the world by
 the time you get it back. Every `IEntity` a generator produces is parented under it
 (`GroupEntity.addChildren`), so `world.removeEntity(level, true)` cascades removal + disposal down
-through every child in one call - that's the whole story for "how do I unload a level."
-
-The one exception is an entity a generator marks with `standaloneEntity()` (exported from
-`base/level-loader.ts`): it's still added to the world, but deliberately left unparented, so it
-survives `world.removeEntity(level, true)`. The built-in `"Camera"` 3D class does this - see its
-section below for why. Results that aren't an `IEntity` at all (e.g. a `ShapeSpawner` that's a
-plain class instance, not an entity) aren't parented or tracked anywhere by `loadLevel`; if an app
-wants such a class's cleanup tied to level lifecycle, make it an `IEntity` instead and let
-`loadLevel` pick it up automatically.
+through every child in one call - that's the whole story for "how do I unload a level." Multiple
+levels can be loaded at once (each `loadLevel` call gets its own `GroupEntity`), so content that
+should outlive any one level swap - a camera, persistent UI/lighting, global game state - belongs
+in its own level (or created directly with plain engine calls, no level JSON at all) that the app
+loads once and never passes to `world.removeEntity`, kept separate from the level(s) it loads and
+unloads freely; see the `"Camera"` section below for the reference case. Results that aren't an
+`IEntity` at all (e.g. a `ShapeSpawner` that's a plain class instance, not an entity) aren't
+parented or tracked anywhere by `loadLevel`; if an app wants such a class's cleanup tied to level
+lifecycle, make it an `IEntity` instead and let `loadLevel` pick it up automatically.
 
 If a generator throws partway through a `loadLevel` call, the already-in-progress group (and
 everything added to it so far) is torn down (`world.removeEntity(level, true)`) before the error is
@@ -100,11 +100,12 @@ entity back after loading:
 
 - `level.getChildEntityByName(name)` (`IEntity.getChildEntityByName`, any entity has this) searches
   `level`'s own descendant subtree recursively. This is the normal way to fetch something the level
-  produced, since basically everything ends up parented under `level` (see above).
+  produced, since every `IEntity` a generator returns ends up parented under `level`.
 - `world.getEntityByName(name)` (`GgWorld.getEntityByName`) searches every entity in the world - a
   flat scan, not a tree walk, since `world.children` already contains every spawned entity
-  regardless of parenting. Use this for a `standaloneEntity()`-marked result (e.g. `"Camera"`),
-  since it was never made a child of `level`.
+  regardless of parenting. Prefer `level.getChildEntityByName` for anything a level just produced;
+  reach for this instead once you've reparented an entity out from under its level (see "Loading a
+  level, and tearing it back down" above) or for an entity the app created outside any level.
 
 Both throw (`No child entity named "..." found under "..."` / `No entity named "..." found in the
 world`) rather than returning `undefined`, so a typo fails loudly. Both search live state, not a
@@ -145,20 +146,30 @@ const killZone = level.getChildEntityByName<Trigger3dEntity>('KillZone');
 killZone.onEntityEntered.subscribe(entity => world.removeEntity(entity, true));
 ```
 
-### `"Camera"` (3D only) - a `Camera3dEntity`, deliberately unparented
+### `"Camera"` (3D only) - a `Camera3dEntity`, ready to use
 
 `config: { fov?, aspectRatio?, frustrum?: { near, far } }`. Returns a `Camera3dEntity` (`.camera`
 holds the raw camera component - pass that to `Gg3dWorld.addRenderer`, since a level JSON has no
-notion of a canvas). Unlike `Trigger`, it's marked `standaloneEntity()` rather than parented under
-the level's group entity: apps commonly own a camera independently of any one level (create it
-once, then load/swap several levels against it), so a camera must not get torn down as a side
-effect of `world.removeEntity(level, true)`. Look it up with `world.getEntityByName`, not
-`level.getChildEntityByName` (it isn't `level`'s child):
+notion of a canvas), already parented under the level's group entity - look it up with
+`level.getChildEntityByName`:
 
 ```typescript
-const cameraEntity = world.getEntityByName<Camera3dEntity<ThreeVisualTypeDocRepo>>('MainCamera');
+const cameraEntity = level.getChildEntityByName<Camera3dEntity<ThreeVisualTypeDocRepo>>('MainCamera');
 world.addRenderer(cameraEntity.camera, canvas);
 ```
+
+A camera loaded this way is torn down along with whichever level declared it, since it's an
+ordinary child of that level's group entity. Two supported ways to give a camera a lifetime
+independent of any one swappable level:
+
+- Skip the level JSON for it entirely - construct the camera directly with
+  `world.visualScene.factory.createPerspectiveCamera(...)` wrapped in a `Camera3dEntity`, same as
+  `createCamera` does internally, and add it to the world once at startup.
+- Put it in its own "system" level - a `loadLevel`/`loadLevelFromUrl` call the app makes once at
+  startup and never passes to `world.removeEntity` - alongside other session-wide content
+  (lighting, persistent UI, global triggers). Since multiple levels can be loaded side by side,
+  gameplay levels can then be freely loaded/unloaded against `world.loader.loadLevel(...)` /
+  `world.removeEntity(gameplayLevel, true)` without ever touching the system level or its camera.
 
 ### `"Glb"` (3D only) - a GG GLB+meta model, loaded and added to the world
 
@@ -242,9 +253,9 @@ runtime without a rebuild, or import/inline it and hand the parsed object to `lo
 ## Tests
 
 Core `LevelLoader` behavior (dispatch, `shape`/`position`/`rotation`/`name` merging, group-entity
-parenting/teardown, `standaloneEntity()`) is covered by `packages/core/test/base/level-loader.spec.ts`
-against a real `MockWorld` (so `world.addEntity`/`removeEntity` behave for real, not as jest mocks -
-needed to exercise spawn/parent/dispose cascades meaningfully). `GgWorld.getEntityByName` and
+parenting/teardown) is covered by `packages/core/test/base/level-loader.spec.ts` against a real
+`MockWorld` (so `world.addEntity`/`removeEntity` behave for real, not as jest mocks - needed to
+exercise spawn/parent/dispose cascades meaningfully). `GgWorld.getEntityByName` and
 `IEntity.getChildEntityByName` themselves have their own direct coverage in
 `packages/core/test/base/gg-world.spec.ts` and `packages/core/test/base/entities/i-entity.spec.ts`.
 `packages/core/test/{2d,3d}/level-loader.spec.ts` cover the built-in

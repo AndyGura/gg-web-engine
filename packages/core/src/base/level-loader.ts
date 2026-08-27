@@ -3,36 +3,6 @@ import { GroupEntity } from './entities/group.entity';
 import { IEntity } from './entities/i-entity';
 
 /**
- * Entities a generator has opted out of the level's lifecycle via {@link standaloneEntity} - see
- * that function's docs. A plain module-level `WeakSet` (not per-`LevelLoader`-instance state):
- * "standalone" is a property of the entity value itself, and entries vanish on their own once the
- * entity is garbage-collected.
- */
-const standaloneEntities = new WeakSet<IEntity>();
-
-/**
- * Mark an entity a generator is about to return as standalone: `LevelLoader.loadLevel` will still
- * add it to the world (if it isn't already) and still set its `.name` if the level JSON gave it
- * one, but will **not** parent it under the level's group entity - so it survives
- * `world.removeEntity(level, true)` untouched. Use this for something an app is expected to own
- * independently of any one level, e.g. a shared camera loaded once but still around after the
- * level that declared it gets swapped out - see the built-in `"Camera"` 3D class for the reference
- * case:
- * ```typescript
- * const entity = new Camera3dEntity(camera);
- * return standaloneEntity(entity);
- * ```
- * Don't reach for this by default - most level content (primitives, triggers, custom entities)
- * should be torn down with the level, which is what happens without calling this at all.
- * @param entity - The entity to mark
- * @returns `entity`, unchanged, for chaining into a `return`
- */
-export function standaloneEntity<T extends IEntity>(entity: T): T {
-  standaloneEntities.add(entity);
-  return entity;
-}
-
-/**
  * A function that turns per-entity JSON settings into a spawned entity (or other world object,
  * e.g. a trigger or camera). Registered against a class alias via {@link LevelLoader.registerClass}.
  * May be `async`/return a `Promise` (e.g. the built-in `"Glb"` 3D class, which fetches a model) -
@@ -117,12 +87,9 @@ export interface EntityJson {
  * `loadLevelFromUrl` call (added to the world immediately, and handed back once loading
  * completes) - so a whole level can be torn down in one shot with `world.removeEntity(level, true)`,
  * which cascades removal/disposal to every child, and any named entity can be found afterwards
- * with `level.getChildEntityByName(name)`. The one exception is an entity a generator marks with
- * {@link standaloneEntity} (the built-in `"Camera"` 3D class does this): it's still added to the
- * world, but deliberately left unparented, so it survives level removal - look such an entity up
- * with `GgWorld.getEntityByName` instead, since it was never made a child of `level`. Generators
- * that return something other than an `IEntity` aren't tracked anywhere by `loadLevel` at all -
- * there's nothing to parent or look up by name.
+ * with `level.getChildEntityByName(name)`. Generators that return something other than an
+ * `IEntity` aren't tracked anywhere by `loadLevel` at all - there's nothing to parent or look up
+ * by name.
  * @template D - The position type
  * @template R - The rotation type
  * @template TypeDoc - The type document repository
@@ -154,8 +121,7 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
   /**
    * Load a level from an already-parsed JSON document. Every `IEntity` the level's entities
    * produce is parented under - and, on failure, torn down along with - the returned
-   * {@link GroupEntity}, already added to the world (see the class docs above for the one
-   * exception: an entity a generator marked with {@link standaloneEntity}).
+   * {@link GroupEntity}, already added to the world.
    * @param levelJson - The level JSON
    * @param levelName - Optional name for the returned group entity (e.g. so a debugger/console
    * listing entities by name shows something more meaningful than the default auto-generated one)
@@ -192,15 +158,9 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
         if (name !== undefined) {
           entity.name = name;
         }
-        if (standaloneEntities.has(entity)) {
-          // Opted out via standaloneEntity() - still make sure it's in the world, but don't parent
-          // it under the level (addChildren, safe to call even if it's already spawned elsewhere).
-          if (!entity.world) {
-            this.world.addEntity(entity);
-          }
-        } else {
-          level.addChildren(entity);
-        }
+        // addChildren reparents the entity under level regardless of whether a generator already
+        // self-added it to the world (e.g. addPrimitiveRigidBody does) - safe either way.
+        level.addChildren(entity);
       }
     } catch (e) {
       // Don't leave a partially-loaded level (and its already-spawned entities) behind if a

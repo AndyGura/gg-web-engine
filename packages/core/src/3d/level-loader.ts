@@ -1,4 +1,4 @@
-import { LevelLoader, standaloneEntity } from '../base/level-loader';
+import { LevelLoader } from '../base/level-loader';
 import { Gg3dWorld, Gg3dWorldTypeDocRepo } from './gg-3d-world';
 import { Point3, Point4 } from '../base';
 import { DisplayObject3dOpts } from './factories';
@@ -256,10 +256,9 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
   /**
    * Create a camera entity: a `Camera3dEntity` wrapping the raw camera component, not attached to
    * any renderer/canvas (a level JSON has no notion of one - `world.addRenderer(entity.camera,
-   * canvas)` once the app has a canvas). Marked via `standaloneEntity` rather than left for
-   * `loadLevel` to parent under the level's group entity: apps commonly create/own their camera
-   * independently of any particular level, so removing a level must never take an in-use camera
-   * down with it.
+   * canvas)` once the app has a canvas). Parented under the level's group entity, so it's torn
+   * down along with the rest of the level - put a camera meant to outlive a level swap in a
+   * separate, never-unloaded level instead (see `gg-engine-level-json`'s "Camera" section).
    * @param world - The world instance
    * @param settings - The camera settings
    * @returns The created camera entity
@@ -280,6 +279,6 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
     if (rotation) {
       entity.rotation = rotation;
     }
-    return standaloneEntity(entity);
+    return entity;
   }
 }

@@ -108,22 +108,19 @@ world.init().then(async () => {
   // as a child - `world.removeEntity(levelGroup, true)` would tear the whole thing back down in one
   // call, e.g. to swap in a different level later (not needed in this example). Named entities the
   // level produced can be looked up by the `name` they were given in level.json (floor/box/sphere/
-  // etc. are purely decorative and don't need to be looked up at all): entities parented under the
-  // level - most of them - via `levelGroup.getChildEntityByName`; a `Camera`, which deliberately
-  // isn't parented under the level (see below), via `world.getEntityByName` instead.
+  // etc. are purely decorative and don't need to be looked up at all) via `levelGroup.getChildEntityByName`.
   const levelGroup = await world.loader.loadLevel(level);
 
-  // `Camera` entities from a level are a plain camera component wrapped in an unparented
-  // `Camera3dEntity` - not attached to any renderer/canvas (a level JSON has no notion of one),
-  // and deliberately not part of the level's group entity, so an app-owned camera survives level
-  // swaps untouched. Attach it to a renderer explicitly, same as any other camera.
-  const cameraEntity = world.getEntityByName<Camera3dEntity<ThreeVisualTypeDocRepo>>('MainCamera');
+  // `Camera` entities from a level are a plain camera component wrapped in a `Camera3dEntity` -
+  // not attached to any renderer/canvas (a level JSON has no notion of one), already parented
+  // under the level's group entity. Attach it to a renderer explicitly.
+  const cameraEntity = levelGroup.getChildEntityByName<Camera3dEntity<ThreeVisualTypeDocRepo>>('MainCamera');
   const renderer = world.addRenderer(cameraEntity.camera, canvas);
   const controller = new OrbitCameraController(renderer, { mouseOptions: { canvas } });
   world.addEntity(controller);
 
-  // `Trigger` entities, unlike `Camera`, come back ready-to-use - already a `Trigger3dEntity`
-  // parented under the level's group entity (so already part of the world) - just subscribe to it.
+  // `Trigger` entities come back ready-to-use - already a `Trigger3dEntity` parented under the
+  // level's group entity (so already part of the world) - just subscribe to it.
   const killZone = levelGroup.getChildEntityByName<Trigger3dEntity>('KillFloor');
   killZone.onEntityEntered.subscribe((entity: Entity3d) => {
     world.removeEntity(entity, true);
