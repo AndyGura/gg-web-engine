@@ -1,6 +1,9 @@
+import { Observable, Subscription } from 'rxjs';
 import { GgWorld, GgWorldTypeDocRepo } from './gg-world';
 import { GroupEntity } from './entities/group.entity';
-import { IEntity } from './entities/i-entity';
+import { IEntity, TickOrder } from './entities/i-entity';
+import { Blueprint, BlueprintJson, BlueprintNodeFactory } from './blueprint/blueprint';
+import { RemoveEntityBlueprintNode } from './blueprint/nodes/remove-entity.node';
 
 /**
  * A function that turns per-entity JSON settings into a spawned `IEntity` (e.g. a primitive body,
@@ -32,6 +35,13 @@ export interface LevelJson {
    * Entities in the level
    */
   entities: EntityJson[];
+
+  /**
+   * Blueprint graphs available to this level's entities, keyed by name - referenced from an
+   * `EntityJson.events` entry to run a blueprint whenever the named observable on that entity
+   * fires. See {@link BlueprintJson} and the `gg-engine-level-json` skill's "Blueprints" section.
+   */
+  blueprints?: Record<string, BlueprintJson>;
 }
 
 /**
@@ -79,7 +89,33 @@ export interface EntityJson {
    * Configuration for the entity, passed to its generator alongside position/rotation/name
    */
   config?: any;
+
+  /**
+   * Maps an observable property name on this entity's generated `IEntity` (e.g. `Trigger3dEntity`'s
+   * `"onEntityEntered"`) to what should run whenever that observable fires - see
+   * {@link EntityEventBinding}. `loadLevel` subscribes to the observable and triggers a fresh
+   * `Blueprint` instance (via its `"in"` entry point) with whatever value it emits, each time it
+   * fires - see `LevelLoader.loadLevel` and the `gg-engine-level-json` skill's "Blueprints"
+   * section. Silently ignored (with a console warning) if the binding can't be resolved to a
+   * blueprint, or the named property isn't an `Observable`.
+   */
+  events?: Record<string, EntityEventBinding>;
 }
+
+/**
+ * What an `EntityJson.events` entry runs. Either:
+ * - a plain `string` - first tried as a key into the level's top-level `blueprints` map (a named,
+ *   possibly multi-node graph); if not found there, tried as a blueprint node type alias
+ *   registered via `registerBlueprintNode` (e.g. the built-in `"RemoveEntity"`) instead, with no
+ *   settings - shorthand for the single-node form below with `settings` omitted.
+ * - `{ type, settings? }` - a single built-in/registered blueprint node used directly as the
+ *   handler, with inline `settings`, no `blueprints` entry needed at all - e.g.
+ *   `{ "type": "RemoveEntity", "settings": { "dispose": true } }`. Only node types registered with
+ *   a default input pin (every built-in one is - see `registerBlueprintNode`) support this form;
+ *   others require a full graph declared in `blueprints` instead, addressing the desired input pin
+ *   explicitly via `inputs`.
+ */
+export type EntityEventBinding = string | { type: string; settings?: Record<string, any> };
 
 /**
  * Base class for level loaders: parses a {@link LevelJson} document into world entities by
@@ -103,10 +139,27 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
   protected generators: Map<string, EntityGenerator<D, R, TypeDoc, any, any>> = new Map();
 
   /**
+   * Map of blueprint node type aliases to node factory functions - see {@link registerBlueprintNode}.
+   */
+  protected blueprintNodes: Map<string, BlueprintNodeFactory<D, R, TypeDoc>> = new Map();
+
+  /**
+   * Map of blueprint node type aliases to their default input pin name, for node types registered
+   * with one - see {@link registerBlueprintNode}.
+   */
+  protected blueprintNodeDefaultInputs: Map<string, string> = new Map();
+
+  /**
    * Constructor
    * @param world - The world instance
    */
-  constructor(protected readonly world: GgWorld<D, R, TypeDoc>) {}
+  constructor(protected readonly world: GgWorld<D, R, TypeDoc>) {
+    this.registerBlueprintNode(
+      'RemoveEntity',
+      (w, settings) => new RemoveEntityBlueprintNode<D, R, TypeDoc>(w, settings),
+      'entity',
+    );
+  }
 
   /**
    * Register a generator function for a class alias
@@ -118,6 +171,34 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
     generator: EntityGenerator<D, R, TypeDoc, Settings, W>,
   ): void {
     this.generators.set(classAlias, generator);
+  }
+
+  /**
+   * Register a {@link BlueprintNode} factory for a node type alias, so a `BlueprintJson`'s
+   * `nodes` can reference it by `type` (e.g. the built-in `"RemoveEntity"`, registered by every
+   * `LevelLoader` out of the box). Same pattern as {@link registerClass}, one level down (node
+   * types within a blueprint graph, rather than entity classes within a level).
+   * @param typeAlias - The node type alias
+   * @param factory - Builds a node instance from its baked-in settings
+   * @param defaultInputPin - This node type's sole "trigger me" input pin name, if it has one
+   * canonical one (e.g. `"RemoveEntity"`'s `"entity"`). Enables the node type to be used directly
+   * as an `EntityJson.events` binding (`{ "eventName": "TypeAlias" }` or
+   * `{ "eventName": { "type": "TypeAlias", "settings": {...} } }`) without declaring a full
+   * `BlueprintJson` graph in `blueprints` - see {@link EntityEventBinding}. Omit for a node type
+   * with zero or multiple input pins, or one with no single obviously-correct default; it remains
+   * usable from a full graph either way.
+   */
+  public registerBlueprintNode(
+    typeAlias: string,
+    factory: BlueprintNodeFactory<D, R, TypeDoc>,
+    defaultInputPin?: string,
+  ): void {
+    this.blueprintNodes.set(typeAlias, factory);
+    if (defaultInputPin !== undefined) {
+      this.blueprintNodeDefaultInputs.set(typeAlias, defaultInputPin);
+    } else {
+      this.blueprintNodeDefaultInputs.delete(typeAlias);
+    }
   }
 
   /**
@@ -138,7 +219,7 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
 
     try {
       for (const entityJson of levelJson.entities) {
-        const { class: classAlias, shape, position, rotation, name, config } = entityJson;
+        const { class: classAlias, shape, position, rotation, name, config, events } = entityJson;
         const generator = this.generators.get(classAlias);
         if (!generator) {
           console.warn(`No generator registered for class alias "${classAlias}"`);
@@ -164,6 +245,15 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
         // addChildren reparents the entity under level regardless of whether a generator already
         // self-added it to the world (e.g. addPrimitiveRigidBody does) - safe either way.
         level.addChildren(entity);
+
+        if (events) {
+          for (const [eventName, eventBinding] of Object.entries(events)) {
+            const bindingEntity = this.bindEvent(entity, eventName, eventBinding, levelJson.blueprints);
+            if (bindingEntity) {
+              level.addChildren(bindingEntity);
+            }
+          }
+        }
       }
     } catch (e) {
       // Don't leave a partially-loaded level (and its already-spawned entities) behind if a
@@ -173,6 +263,106 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
     }
 
     return level;
+  }
+
+  /**
+   * Resolve `eventBinding` (see {@link EntityEventBinding}) to a `BlueprintJson`, instantiate a
+   * fresh `Blueprint` from it, and subscribe it to `entity[eventName]` so every value that
+   * observable emits triggers the blueprint's `"in"` entry point. Wrapped in a
+   * `BlueprintBindingEntity` so the subscription (and the blueprint's own node state) is torn down
+   * automatically once that entity is disposed - the caller parents the returned entity under the
+   * level's group for that reason.
+   * @param entity - The entity carrying the observable property
+   * @param eventName - Name of the observable property on `entity`
+   * @param eventBinding - What to run - a `blueprints` name, a bare node type alias, or `{ type,
+   * settings? }`
+   * @param blueprints - The level's top-level blueprint map, if any
+   * @returns The binding entity to parent under the level, or `undefined` if `eventBinding`
+   * couldn't be resolved or the named property isn't an `Observable` (both logged via
+   * `console.warn`)
+   */
+  private bindEvent(
+    entity: IEntity<D, R, TypeDoc>,
+    eventName: string,
+    eventBinding: EntityEventBinding,
+    blueprints: Record<string, BlueprintJson> | undefined,
+  ): BlueprintBindingEntity<D, R, TypeDoc> | undefined {
+    const blueprintJson = this.resolveEventBlueprint(eventName, eventBinding, blueprints);
+    if (!blueprintJson) {
+      return undefined;
+    }
+    const observable = (entity as any)[eventName];
+    if (!observable || typeof observable.subscribe !== 'function') {
+      console.warn(`Entity has no observable property "${eventName}" to bind a blueprint to`);
+      return undefined;
+    }
+    const blueprint = new Blueprint<D, R, TypeDoc>(this.world, blueprintJson, this.blueprintNodes);
+    return new BlueprintBindingEntity<D, R, TypeDoc>(blueprint, observable as Observable<unknown>);
+  }
+
+  /**
+   * Turn an `EntityEventBinding` into a `BlueprintJson` to run. An object form (`{ type,
+   * settings? }`) always builds a single-node inline graph via {@link inlineNodeBlueprint}. A
+   * string form is tried first as a key into `blueprints` (a named, possibly multi-node graph),
+   * then - if not found there - as a bare node type alias, same as the object form with no
+   * settings.
+   * @param eventName - Name of the observable property being bound, for warning messages
+   * @param eventBinding - The binding to resolve
+   * @param blueprints - The level's top-level blueprint map, if any
+   * @returns The resolved graph, or `undefined` (logged via `console.warn`) if it couldn't be
+   */
+  private resolveEventBlueprint(
+    eventName: string,
+    eventBinding: EntityEventBinding,
+    blueprints: Record<string, BlueprintJson> | undefined,
+  ): BlueprintJson | undefined {
+    if (typeof eventBinding === 'object') {
+      return this.inlineNodeBlueprint(eventName, eventBinding.type, eventBinding.settings);
+    }
+    const named = blueprints?.[eventBinding];
+    if (named) {
+      return named;
+    }
+    if (this.blueprintNodes.has(eventBinding)) {
+      return this.inlineNodeBlueprint(eventName, eventBinding, undefined);
+    }
+    console.warn(
+      `No blueprint or blueprint node type named "${eventBinding}" found for event "${eventName}" - skipping`,
+    );
+    return undefined;
+  }
+
+  /**
+   * Build a single-node `BlueprintJson` wrapping one blueprint node type, wired so the node's
+   * registered default input pin (see {@link registerBlueprintNode}) is reachable as `"in"` - what
+   * powers the `EntityEventBinding` shorthand that skips declaring a `blueprints` entry entirely.
+   * @param eventName - Name of the observable property being bound, for warning messages
+   * @param nodeType - The blueprint node type alias
+   * @param settings - Settings to bake into the node, if any
+   * @returns The single-node graph, or `undefined` (logged via `console.warn`) if `nodeType` isn't
+   * registered, or was registered without a default input pin
+   */
+  private inlineNodeBlueprint(
+    eventName: string,
+    nodeType: string,
+    settings: Record<string, any> | undefined,
+  ): BlueprintJson | undefined {
+    if (!this.blueprintNodes.has(nodeType)) {
+      console.warn(`No blueprint node type registered for "${nodeType}" (event "${eventName}") - skipping`);
+      return undefined;
+    }
+    const inputPin = this.blueprintNodeDefaultInputs.get(nodeType);
+    if (!inputPin) {
+      console.warn(
+        `Blueprint node type "${nodeType}" has no default input pin registered - event "${eventName}" must ` +
+          `reference a full graph declared in "blueprints" instead, addressing the desired pin explicitly`,
+      );
+      return undefined;
+    }
+    return {
+      nodes: [{ id: 'n1', type: nodeType, settings }],
+      inputs: { in: { node: 'n1', pin: inputPin } },
+    };
   }
 
   /**
@@ -189,5 +379,34 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
     }
     const levelJson: LevelJson = await response.json();
     return this.loadLevel(levelJson, levelName);
+  }
+}
+
+/**
+ * Plain do-nothing `IEntity` that owns one event-to-blueprint binding created by
+ * `LevelLoader.bindEvent`: subscribes to the bound observable on construction, and unsubscribes
+ * plus disposes the `Blueprint` on `dispose()`. Parented under the level's group entity like any
+ * other level-produced entity, so `world.removeEntity(level, true)` tears the binding down along
+ * with the rest of the level - there is nothing else app code needs to do to clean it up.
+ * @template D - The position type
+ * @template R - The rotation type
+ * @template TypeDoc - The type document repository
+ */
+class BlueprintBindingEntity<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>> extends IEntity<D, R, TypeDoc> {
+  public readonly tickOrder = TickOrder.CONTROLLERS;
+  private readonly subscription: Subscription;
+
+  constructor(
+    private readonly blueprint: Blueprint<D, R, TypeDoc>,
+    observable: Observable<unknown>,
+  ) {
+    super();
+    this.subscription = observable.subscribe(value => this.blueprint.trigger('in', value));
+  }
+
+  public override dispose(): void {
+    this.subscription.unsubscribe();
+    this.blueprint.dispose();
+    super.dispose();
   }
 }

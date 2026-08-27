@@ -1,6 +1,6 @@
 ---
 name: gg-engine-level-json
-description: Author or load a level/scene as a JSON document with gg-web-engine's LevelLoader (entities array, built-in "Primitive"/"Trigger"/"Camera"/"Glb" classes, app-defined entity classes via registerClass, name lookup via GgWorld.getEntityByName/IEntity.getChildEntityByName, level removal via the returned group entity). Use when the task is to write a level JSON file, add a new built-in level entity class in packages/core, or register a custom entity class an app's level JSON can reference.
+description: Author or load a level/scene as a JSON document with gg-web-engine's LevelLoader (entities array, built-in "Primitive"/"Trigger"/"Camera"/"Glb" classes, app-defined entity classes via registerClass, blueprint graphs wired to entity events via registerBlueprintNode, name lookup via GgWorld.getEntityByName/IEntity.getChildEntityByName, level removal via the returned group entity). Use when the task is to write a level JSON file, add a new built-in level entity class in packages/core, wire an entity's event straight to behavior via a blueprint, or register a custom entity class/blueprint node an app's level JSON can reference.
 ---
 
 # Building level JSONs
@@ -190,6 +190,140 @@ children of one `GroupEntity` (distinct from the level's own root group), which 
 `level.getChildEntityByName` on the `"Glb"` entity's own `name` hands back. That group *is* parented
 under the level's root, so it's still torn down along with the rest of the level.
 
+## Blueprints - wiring entity events to behavior declaratively
+
+A blueprint is a small node graph, serializable as a `BlueprintJson`, that runs behavior in
+response to an entity's observable firing - the engine's analogue of an Unreal Blueprint event
+graph (no visual editor yet, just the JSON graph and its runtime). It replaces code like:
+
+```typescript
+const killZone = level.getChildEntityByName<Trigger3dEntity>('KillZone');
+killZone.onEntityEntered.subscribe(entity => world.removeEntity(entity, true));
+```
+
+with a declarative binding entirely inside the level JSON. For a single built-in/registered node
+used with its default settings, a bare node type alias as the event's value is all that's needed -
+no `blueprints` entry at all:
+
+```json
+{
+  "class": "Trigger",
+  "name": "KillZone",
+  "config": { "dimensions": { "x": 10, "y": 1, "z": 10 } },
+  "events": { "onEntityEntered": "RemoveEntity" }
+}
+```
+
+Need non-default settings on that one node (e.g. `RemoveEntity`'s `dispose` flag)? Use the
+`{ type, settings }` object form instead of the bare string - still no `blueprints` entry:
+
+```json
+"events": { "onEntityEntered": { "type": "RemoveEntity", "settings": { "dispose": true } } }
+```
+
+`EntityJson.events` is `Record<eventPropertyName, EntityEventBinding>`, where an
+`EntityEventBinding` is either form above. For each entry, `loadLevel` reads that observable
+property off the just-created entity (e.g. `Trigger3dEntity.onEntityEntered`), resolves the binding
+to a `BlueprintJson` (see below), builds a fresh `Blueprint` instance from it, and subscribes so
+every value the observable emits triggers that blueprint's `"in"` entry point with that value as
+the payload. The binding itself is a plain `IEntity` parented under the level's group (same pattern
+as `ShapeSpawner` below), so `world.removeEntity(level, true)` unsubscribes it and disposes the
+blueprint along with the rest of the level - nothing else to clean up by hand.
+
+A **string** binding is tried, in order: (1) as a key into the level's own top-level `blueprints`
+map (a named, possibly multi-node graph - see below); (2) if not found there, as a bare node type
+alias registered via `registerBlueprintNode`, with no settings - shorthand for the object form with
+`settings` omitted. A **`{ type, settings? }`** binding always goes straight to the object form,
+skipping the `blueprints` map entirely. Either shorthand form only works for a node type registered
+with a *default input pin* (see `registerBlueprintNode` below - every built-in node type has one);
+for anything else (multiple nodes, links between them, a node with several input pins, or a node
+type with no default pin registered) declare a full graph in `blueprints` and reference it by name
+instead. A binding that can't be resolved (unknown blueprint name *and* unknown node type alias, a
+`{ type }` naming a node with no default input pin, or a non-observable event property name) is a
+`console.warn` and that one binding is skipped, not a thrown error.
+
+Each binding gets its own `Blueprint` instance (and therefore its own node instances), even when
+several entities' `events` reference the same blueprint name or node type - so per-node state a
+future node might hold (e.g. a delay timer) is never accidentally shared between unrelated
+bindings.
+
+### Full graphs: `LevelJson.blueprints`
+
+For anything beyond a single default-settings-shaped node - multiple nodes, `links` between them,
+or targeting a specific pin on a multi-pin node - declare a named graph in the level's top-level
+`blueprints` map (`Record<blueprintName, BlueprintJson>`) and reference it by name from `events`:
+
+```json
+{
+  "entities": [
+    { "class": "Trigger", "name": "KillZone", "config": {...}, "events": { "onEntityEntered": "RemoveOnEnter" } }
+  ],
+  "blueprints": {
+    "RemoveOnEnter": {
+      "nodes": [{ "id": "n1", "type": "RemoveEntity", "settings": { "dispose": true } }],
+      "inputs": { "in": { "node": "n1", "pin": "entity" } }
+    }
+  }
+}
+```
+
+`BlueprintJson` has `nodes` (`{ id, type, settings? }[]` - `type` is a node type alias registered
+via `world.loader.registerBlueprintNode`, the same registry pattern as `registerClass` one level
+down), optional `links` (`{ from: { node, pin }, to: { node, pin } }[]` wiring one node's output pin
+to another's input pin), and `inputs`/`outputs` (`Record<name, { node, pin }>`) exposing named
+entry/exit points at the graph's own boundary. **Every entity-event binding always triggers the
+entry declared under the fixed name `"in"`** - a `BlueprintJson` meant to be used from
+`EntityJson.events` must declare `inputs: { in: { node: ..., pin: ... } }`. `outputs` has no
+consumer yet (reserved for a future blueprint nested inside a larger graph) but is parsed and usable
+via `Blueprint.output(name)` today. A named `blueprints` entry shadows a same-named node type alias
+for the string-binding lookup order described above - e.g. a level can declare its own
+`"blueprints": { "RemoveEntity": {...} }` graph and every event bound to the bare string
+`"RemoveEntity"` runs that graph instead of the built-in node type directly.
+
+### Built-in blueprint node: `"RemoveEntity"`
+
+Registered by every `LevelLoader` out of the box (`RemoveEntityBlueprintNode` in
+`packages/core/src/base/blueprint/nodes/remove-entity.node.ts`), with `"entity"` registered as its
+default input pin (see below) - which is what makes both shorthand `events` forms above work for it
+with no `blueprints` entry. One input pin, `"entity"` - a data pin that also acts as this node's
+trigger, since it's meant to sit directly behind an `EntityJson.events` binding whose observable
+emits the entity to act on (e.g. `onEntityEntered`/`onEntityLeft`). No output pins.
+`settings.dispose` (boolean, default `false`) controls whether the removal also disposes the
+entity, exactly like the `dispose` argument of `GgWorld.removeEntity` - it's a static setting baked
+into the node's JSON, not a wired pin.
+
+### Registering an app-defined blueprint node
+
+Same shape as `registerClass` for entity classes, one level down - extend `BlueprintNode`, declare
+`inputs`/`outputs` (each `{ name, kind: 'exec' | 'data' }` - `kind` is descriptive only right now,
+every input pin runs `trigger()` uniformly regardless of kind), implement `trigger(inputName,
+value)`, and call `this.emit(outputName, value?)` from inside `trigger` to fire an output pin
+(observable via `node.output(outputName)`, which is what a `BlueprintLinkJson` subscribes to):
+
+```typescript
+class LogNode extends BlueprintNode {
+  public readonly inputs = [{ name: 'in', kind: 'data' as const }];
+  public readonly outputs = [{ name: 'out', kind: 'exec' as const }];
+
+  public trigger(inputName: string, value?: unknown): void {
+    if (inputName !== 'in') return;
+    console.log(this.settings.label ?? 'blueprint:', value);
+    this.emit('out');
+  }
+}
+
+world.loader.registerBlueprintNode('Log', (w, settings) => new LogNode(w, settings), 'in');
+```
+
+Register before loading any level JSON whose `blueprints`/`events` reference the new `type` - a
+`nodes` entry with an unregistered `type` is a `console.warn` and that node (and anything wired
+to/from it) is skipped, same failure-is-a-warning posture as an unregistered entity `class`. The
+third `registerBlueprintNode` argument (`'in'` above) names the node type's *default input pin* -
+pass it whenever the node has one obviously-correct single input pin, to make the type usable
+directly from `EntityJson.events` (bare string or `{ type, settings? }`) without a `blueprints`
+entry; omit it for a node with zero, multiple, or no obviously-default input pins - it remains
+usable from a full graph either way, just not the `events` shorthand.
+
 ## App-defined entity classes
 
 Register a generator - a `(world, settings) => IEntity` function or arrow wrapping a class
@@ -276,7 +410,13 @@ of the box, no loader config needed. See `gg-engine-examples` for how to add/wir
 Core `LevelLoader` behavior (dispatch, `shape`/`position`/`rotation`/`name` merging, group-entity
 parenting/teardown) is covered by `packages/core/test/base/level-loader.spec.ts` against a real
 `MockWorld` (so `world.addEntity`/`removeEntity` behave for real, not as jest mocks - needed to
-exercise spawn/parent/dispose cascades meaningfully). `GgWorld.getEntityByName` and
+exercise spawn/parent/dispose cascades meaningfully) - including its `blueprint event bindings`
+describe block, covering `events`/`blueprints` wiring, the missing-blueprint-name and
+non-observable-property warning paths, and that a binding is torn down when its level is removed.
+`Blueprint` graph wiring itself (node construction, links, `inputs`/`outputs`, `dispose`) has its
+own coverage against a hand-rolled node type in
+`packages/core/test/base/blueprint/blueprint.spec.ts`; `RemoveEntityBlueprintNode` has its own in
+`packages/core/test/base/blueprint/remove-entity.node.spec.ts`. `GgWorld.getEntityByName` and
 `IEntity.getChildEntityByName` themselves have their own direct coverage in
 `packages/core/test/base/gg-world.spec.ts` and `packages/core/test/base/entities/i-entity.spec.ts`.
 `packages/core/test/{2d,3d}/level-loader.spec.ts` cover the built-in

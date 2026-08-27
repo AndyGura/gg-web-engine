@@ -1,12 +1,4 @@
-import {
-  Camera3dEntity,
-  Entity3d,
-  Gg3dWorld,
-  GgStatic,
-  LevelJson,
-  OrbitCameraController,
-  Trigger3dEntity,
-} from '@gg-web-engine/core';
+import { Camera3dEntity, Gg3dWorld, GgStatic, LevelJson, OrbitCameraController } from '@gg-web-engine/core';
 import { ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
 import { AmmoWorldComponent } from '@gg-web-engine/ammo';
 import { ShapeSpawner, ShapeSpawnerSettings } from './shape-spawner';
@@ -32,6 +24,9 @@ const level: LevelJson = {
       config: {
         dimensions: { x: 1000, y: 1000, z: 1 },
       },
+      // Bind the trigger's onEntityEntered event straight to the built-in "RemoveEntity"
+      // blueprint node - no manual subscription needed, see gg-engine-level-json.
+      events: { onEntityEntered: { type: 'RemoveEntity', settings: { dispose: true } } },
     },
     {
       class: 'Camera',
@@ -66,12 +61,6 @@ world.init().then(async () => {
   const renderer = world.addRenderer(cameraEntity.camera, canvas);
   const controller = new OrbitCameraController(renderer, { mouseOptions: { canvas } });
   world.addEntity(controller);
-
-
-  const killZone = levelGroup.getChildEntityByName<Trigger3dEntity>('KillFloor');
-  killZone.onEntityEntered.subscribe((entity: Entity3d) => {
-    world.removeEntity(entity, true);
-  });
 
   world.start();
 });

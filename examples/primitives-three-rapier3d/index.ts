@@ -1,12 +1,4 @@
-import {
-  Camera3dEntity,
-  Entity3d,
-  Gg3dWorld,
-  GgStatic,
-  LevelJson,
-  OrbitCameraController,
-  Trigger3dEntity,
-} from '@gg-web-engine/core';
+import { Camera3dEntity, Gg3dWorld, GgStatic, LevelJson, OrbitCameraController } from '@gg-web-engine/core';
 import { ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
 import { Rapier3dWorldComponent } from '@gg-web-engine/rapier3d';
 import { ShapeSpawner, ShapeSpawnerSettings } from './shape-spawner';
@@ -32,6 +24,9 @@ const level: LevelJson = {
       config: {
         dimensions: { x: 1000, y: 1000, z: 1 },
       },
+      // Bind the trigger's onEntityEntered event straight to the built-in "RemoveEntity"
+      // blueprint node - no manual subscription needed, see gg-engine-level-json.
+      events: { onEntityEntered: { type: 'RemoveEntity', settings: { dispose: true } } },
     },
     {
       class: 'Camera',
@@ -63,8 +58,9 @@ world.init().then(async () => {
   );
 
   // Load the level. `loadLevel` resolves to a group entity holding every entity the level produced
-  // as a child; named entities it produced (the camera and the trigger below) can be looked up by
-  // the `name` they were given in `level` via `levelGroup.getChildEntityByName`.
+  // as a child; named entities it produced (the camera below) can be looked up by the `name` they
+  // were given in `level` via `levelGroup.getChildEntityByName`. The kill-floor trigger needs no
+  // such lookup - its "events" binding above wires it straight to the "RemoveEntity" blueprint node.
   const levelGroup = await world.loader.loadLevel(level);
 
   // `Camera` entities from a level are a plain camera component wrapped in a `Camera3dEntity` -
@@ -74,12 +70,6 @@ world.init().then(async () => {
   const renderer = world.addRenderer(cameraEntity.camera, canvas);
   const controller = new OrbitCameraController(renderer, { mouseOptions: { canvas } });
   world.addEntity(controller);
-
-
-  const killZone = levelGroup.getChildEntityByName<Trigger3dEntity>('KillFloor');
-  killZone.onEntityEntered.subscribe((entity: Entity3d) => {
-    world.removeEntity(entity, true);
-  });
 
   world.start();
 });

@@ -1,4 +1,14 @@
-import { GgWorld, GroupEntity, IEntity, LevelJson, LevelLoader, Point2, TickOrder } from '../../src';
+import { Subject } from 'rxjs';
+import {
+  GgWorld,
+  GroupEntity,
+  IEntity,
+  LevelJson,
+  LevelLoader,
+  Point2,
+  RemoveEntityBlueprintNode,
+  TickOrder,
+} from '../../src';
 import { MockWorld } from '../mocks/world.mock';
 
 // Create a concrete implementation of LevelLoader for testing
@@ -7,6 +17,12 @@ class TestLevelLoader extends LevelLoader<Point2, number, any> {}
 // A trivial concrete IEntity for tests that need a generator to return a real entity
 class TestEntity extends IEntity {
   public readonly tickOrder = TickOrder.OBJECTS_BINDING;
+}
+
+// An IEntity exposing an observable property, to exercise level JSON "events" -> blueprint binding
+class ObservableEntity extends IEntity {
+  public readonly tickOrder = TickOrder.OBJECTS_BINDING;
+  public readonly onSomething: Subject<unknown> = new Subject();
 }
 
 describe('LevelLoader', () => {
@@ -338,6 +354,211 @@ describe('LevelLoader', () => {
       await expect(levelLoader.loadLevelFromUrl('https://example.com/missing.json')).rejects.toThrow(
         'Failed to load level JSON from "https://example.com/missing.json": 404 Not Found',
       );
+    });
+  });
+
+  describe('blueprint event bindings', () => {
+    it('registers the built-in "RemoveEntity" blueprint node out of the box', async () => {
+      levelLoader.registerClass('Observable', () => new ObservableEntity());
+      const target = new TestEntity();
+      world.addEntity(target);
+
+      const level = await levelLoader.loadLevel({
+        entities: [{ class: 'Observable', name: 'Source', events: { onSomething: 'RemoveOnEvent' } }],
+        blueprints: {
+          RemoveOnEvent: {
+            nodes: [{ id: 'n1', type: 'RemoveEntity', settings: { dispose: true } }],
+            inputs: { in: { node: 'n1', pin: 'entity' } },
+          },
+        },
+      });
+      const source = level.getChildEntityByName<ObservableEntity>('Source');
+
+      source.onSomething.next(target);
+
+      expect(target.world).toBeNull();
+    });
+
+    it('only binds entities that declare an "events" map, leaving others untouched', async () => {
+      levelLoader.registerClass('Observable', () => new ObservableEntity());
+      levelLoader.registerClass('Observable2', () => new ObservableEntity());
+
+      const level = await levelLoader.loadLevel({
+        entities: [
+          { class: 'Observable', name: 'Source', events: { onSomething: 'RemoveOnEvent' } },
+          { class: 'Observable2', name: 'Source2' },
+        ],
+        blueprints: {
+          RemoveOnEvent: {
+            nodes: [{ id: 'n1', type: 'RemoveEntity' }],
+            inputs: { in: { node: 'n1', pin: 'entity' } },
+          },
+        },
+      });
+      const source = level.getChildEntityByName<ObservableEntity>('Source');
+      const victim = new TestEntity();
+      world.addEntity(victim);
+
+      source.onSomething.next(victim);
+
+      expect(victim.world).toBeNull();
+    });
+
+    it('warns and skips when the referenced blueprint name is not found', async () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      levelLoader.registerClass('Observable', () => new ObservableEntity());
+
+      await levelLoader.loadLevel({
+        entities: [{ class: 'Observable', name: 'Source', events: { onSomething: 'DoesNotExist' } }],
+      });
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        'No blueprint or blueprint node type named "DoesNotExist" found for event "onSomething" - skipping',
+      );
+
+      warnSpy.mockRestore();
+    });
+
+    it('warns and skips when the named event property is not observable', async () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      levelLoader.registerClass('Plain', () => new TestEntity());
+
+      await levelLoader.loadLevel({
+        entities: [{ class: 'Plain', name: 'Source', events: { notAnObservable: 'RemoveOnEvent' } }],
+        blueprints: {
+          RemoveOnEvent: {
+            nodes: [{ id: 'n1', type: 'RemoveEntity' }],
+            inputs: { in: { node: 'n1', pin: 'entity' } },
+          },
+        },
+      });
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        'Entity has no observable property "notAnObservable" to bind a blueprint to',
+      );
+
+      warnSpy.mockRestore();
+    });
+
+    it('tears the binding down (unsubscribing) when the level is removed', async () => {
+      levelLoader.registerClass('Observable', () => new ObservableEntity());
+
+      const level = await levelLoader.loadLevel({
+        entities: [{ class: 'Observable', name: 'Source', events: { onSomething: 'RemoveOnEvent' } }],
+        blueprints: {
+          RemoveOnEvent: {
+            nodes: [{ id: 'n1', type: 'RemoveEntity' }],
+            inputs: { in: { node: 'n1', pin: 'entity' } },
+          },
+        },
+      });
+      const source = level.getChildEntityByName<ObservableEntity>('Source');
+
+      world.removeEntity(level, true);
+
+      const victim = new TestEntity();
+      world.addEntity(victim);
+      source.onSomething.next(victim);
+
+      // the binding's subscription was torn down along with the level, so the blueprint never ran
+      expect(victim.world).toBe(world);
+    });
+
+    describe('shorthand node-type bindings (no "blueprints" entry needed)', () => {
+      it('runs a bare node type alias directly, with default settings', async () => {
+        levelLoader.registerClass('Observable', () => new ObservableEntity());
+        const target = new TestEntity();
+        world.addEntity(target);
+
+        const level = await levelLoader.loadLevel({
+          entities: [{ class: 'Observable', name: 'Source', events: { onSomething: 'RemoveEntity' } }],
+        });
+        const source = level.getChildEntityByName<ObservableEntity>('Source');
+        const disposeSpy = jest.spyOn(target, 'dispose');
+
+        source.onSomething.next(target);
+
+        expect(target.world).toBeNull();
+        // no explicit "dispose" setting was given, so the node's default (false) applies
+        expect(disposeSpy).not.toHaveBeenCalled();
+      });
+
+      it('runs a { type, settings } binding directly, applying the inline settings', async () => {
+        levelLoader.registerClass('Observable', () => new ObservableEntity());
+        const target = new TestEntity();
+        world.addEntity(target);
+
+        const level = await levelLoader.loadLevel({
+          entities: [
+            {
+              class: 'Observable',
+              name: 'Source',
+              events: { onSomething: { type: 'RemoveEntity', settings: { dispose: true } } },
+            },
+          ],
+        });
+        const source = level.getChildEntityByName<ObservableEntity>('Source');
+        const disposeSpy = jest.spyOn(target, 'dispose');
+
+        source.onSomething.next(target);
+
+        expect(disposeSpy).toHaveBeenCalled();
+      });
+
+      it('prefers a named "blueprints" graph over a same-named node type when both exist', async () => {
+        levelLoader.registerClass('Observable', () => new ObservableEntity());
+        const target = new TestEntity();
+        world.addEntity(target);
+
+        // A custom "RemoveEntity"-named graph shadows the built-in node type of the same name
+        const level = await levelLoader.loadLevel({
+          entities: [{ class: 'Observable', name: 'Source', events: { onSomething: 'RemoveEntity' } }],
+          blueprints: {
+            RemoveEntity: {
+              nodes: [{ id: 'n1', type: 'RemoveEntity', settings: { dispose: true } }],
+              inputs: { in: { node: 'n1', pin: 'entity' } },
+            },
+          },
+        });
+        const source = level.getChildEntityByName<ObservableEntity>('Source');
+        const disposeSpy = jest.spyOn(target, 'dispose');
+
+        source.onSomething.next(target);
+
+        expect(disposeSpy).toHaveBeenCalled();
+      });
+
+      it('warns and skips a { type } binding whose node type has no default input pin registered', async () => {
+        const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+        levelLoader.registerClass('Observable', () => new ObservableEntity());
+        levelLoader.registerBlueprintNode('NoDefaultPin', (w, settings) => new RemoveEntityBlueprintNode(w, settings));
+
+        await levelLoader.loadLevel({
+          entities: [{ class: 'Observable', name: 'Source', events: { onSomething: { type: 'NoDefaultPin' } } }],
+        });
+
+        expect(warnSpy).toHaveBeenCalledWith(
+          'Blueprint node type "NoDefaultPin" has no default input pin registered - event "onSomething" must ' +
+            'reference a full graph declared in "blueprints" instead, addressing the desired pin explicitly',
+        );
+
+        warnSpy.mockRestore();
+      });
+
+      it('warns and skips a { type } binding whose node type is not registered at all', async () => {
+        const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+        levelLoader.registerClass('Observable', () => new ObservableEntity());
+
+        await levelLoader.loadLevel({
+          entities: [{ class: 'Observable', name: 'Source', events: { onSomething: { type: 'Unregistered' } } }],
+        });
+
+        expect(warnSpy).toHaveBeenCalledWith(
+          'No blueprint node type registered for "Unregistered" (event "onSomething") - skipping',
+        );
+
+        warnSpy.mockRestore();
+      });
     });
   });
 });
