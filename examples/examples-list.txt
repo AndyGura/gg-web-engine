@@ -11,5 +11,3 @@ collision-groups-three-rapier3d
 collision-groups-pool-three-ammo
 collision-groups-pool-three-rapier3d
 shooter-three-ammo
-level-json-three-rapier3d
-level-json-pixi-rapier2d

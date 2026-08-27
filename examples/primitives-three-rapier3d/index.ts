@@ -1,9 +1,53 @@
-import { Entity3d, Gg3dWorld, GgStatic, OrbitCameraController, Trigger3dEntity } from '@gg-web-engine/core';
-import { ThreeSceneComponent } from '@gg-web-engine/three';
+import {
+  Camera3dEntity,
+  Entity3d,
+  Gg3dWorld,
+  GgStatic,
+  LevelJson,
+  OrbitCameraController,
+  Trigger3dEntity,
+} from '@gg-web-engine/core';
+import { ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
 import { Rapier3dWorldComponent } from '@gg-web-engine/rapier3d';
+import { ShapeSpawner, ShapeSpawnerSettings } from './shape-spawner';
 
 GgStatic.instance.showStats = true;
 GgStatic.instance.devConsoleEnabled = true;
+
+const level: LevelJson = {
+  entities: [
+    {
+      class: 'Primitive',
+      shape: 'BOX',
+      name: 'Floor',
+      config: {
+        dimensions: { x: 7, y: 7, z: 1 },
+        body: { dynamic: false },
+      },
+    },
+    {
+      class: 'Trigger',
+      name: 'KillFloor',
+      position: { x: 0, y: 0, z: -15 },
+      config: {
+        dimensions: { x: 1000, y: 1000, z: 1 },
+      },
+    },
+    {
+      class: 'Camera',
+      name: 'MainCamera',
+      position: { x: 9, y: 12, z: 9 },
+    },
+    {
+      class: 'ShapeSpawner',
+      name: 'Spawner',
+      config: {
+        intervalSeconds: 0.5,
+        area: { min: { x: -2.5, y: -2.5, z: 10 }, max: { x: 2.5, y: 2.5, z: 10 } },
+      },
+    },
+  ],
+};
 
 const world = new Gg3dWorld({
   visualScene: new ThreeSceneComponent(),
@@ -11,65 +55,31 @@ const world = new Gg3dWorld({
 });
 world.init().then(async () => {
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
-  const renderer = world.addRenderer(world.visualScene.factory.createPerspectiveCamera(), canvas);
-  renderer.position = { x: 9, y: 12, z: 9 };
 
+  // Register the app-defined "ShapeSpawner" class before loading the level, so the loader can
+  // dispatch its entry in `level` to it.
+  world.loader.registerClass('ShapeSpawner', (w: Gg3dWorld, settings: ShapeSpawnerSettings) =>
+    new ShapeSpawner(w, settings),
+  );
+
+  // Load the level. `loadLevel` resolves to a group entity holding every entity the level produced
+  // as a child; named entities it produced (the camera and the trigger below) can be looked up by
+  // the `name` they were given in `level` via `levelGroup.getChildEntityByName`.
+  const levelGroup = await world.loader.loadLevel(level);
+
+  // `Camera` entities from a level are a plain camera component wrapped in a `Camera3dEntity` -
+  // not attached to any renderer/canvas (a level JSON has no notion of one), already parented
+  // under the level's group entity. Attach it to a renderer explicitly.
+  const cameraEntity = levelGroup.getChildEntityByName<Camera3dEntity<ThreeVisualTypeDocRepo>>('MainCamera');
+  const renderer = world.addRenderer(cameraEntity.camera, canvas);
   const controller = new OrbitCameraController(renderer, { mouseOptions: { canvas } });
   world.addEntity(controller);
 
-  world.addPrimitiveRigidBody({
-    shape: { shape: 'BOX', dimensions: { x: 7, y: 7, z: 1 } },
-    body: { dynamic: false },
-  });
 
-  const destroyTrigger = new Trigger3dEntity(
-    world.physicsWorld.factory.createTrigger({
-      shape: 'BOX',
-      dimensions: { x: 1000, y: 1000, z: 1 },
-    }),
-  );
-  destroyTrigger.position = { x: 0, y: 0, z: -15 };
-  destroyTrigger.onEntityEntered.subscribe((entity: Entity3d) => {
+  const killZone = levelGroup.getChildEntityByName<Trigger3dEntity>('KillFloor');
+  killZone.onEntityEntered.subscribe((entity: Entity3d) => {
     world.removeEntity(entity, true);
   });
-  world.addEntity(destroyTrigger);
 
-  const spawnTimer = world.createClock(true);
-  spawnTimer.tickRateLimit = 2;
-  spawnTimer.tick$.subscribe(() => {
-    let item: Entity3d;
-    let r = Math.random();
-    if (r < 0.2) {
-      item = world.addPrimitiveRigidBody({
-        shape: { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } },
-        body: { mass: 1 },
-      });
-    } else if (r < 0.4) {
-      item = world.addPrimitiveRigidBody({
-        shape: { shape: 'CAPSULE', radius: 0.5, centersDistance: 1 },
-        body: { mass: 1 },
-      });
-    } else if (r < 0.6) {
-      item = world.addPrimitiveRigidBody({
-        shape: { shape: 'CYLINDER', radius: 0.5, height: 1 },
-        body: { mass: 1 },
-      });
-    } else if (r < 0.8) {
-      item = world.addPrimitiveRigidBody({
-        shape: { shape: 'CONE', radius: 0.5, height: 1 },
-        body: { mass: 1 },
-      });
-    } else {
-      item = world.addPrimitiveRigidBody({
-        shape: { shape: 'SPHERE', radius: 0.5 },
-        body: { mass: 1 },
-      });
-    }
-    item.position = {
-      x: Math.random() * 5 - 2.5,
-      y: Math.random() * 5 - 2.5,
-      z: 10,
-    };
-  });
   world.start();
 });

@@ -1,9 +1,0 @@
-{
-  "compilerOptions": {
-    "target": "ES5",
-    "moduleResolution": "node",
-    "sourceMap": true,
-    "resolveJsonModule": true,
-    "esModuleInterop": true
-  }
-}
