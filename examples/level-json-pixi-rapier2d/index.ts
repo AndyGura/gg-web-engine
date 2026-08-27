@@ -1,15 +1,16 @@
 import { Entity2d, Gg2dWorld, GgStatic, Point2 } from '@gg-web-engine/core';
 import { PixiCameraComponent, PixiSceneComponent } from '@gg-web-engine/pixi';
 import { Rapier2dWorldComponent } from '@gg-web-engine/rapier2d';
+import level from './level.json';
 
 GgStatic.instance.showStats = true;
 GgStatic.instance.devConsoleEnabled = true;
 
 // The whole static part of this scene - the floor, a few decorative primitives, and a
-// shape-spawning gadget - is hosted as a single JSON file and loaded by URL, instead of being
-// built up with engine calls like the "primitives" example does. See
-// ../assets/level-json/level2d.json
-const LEVEL_URL = 'https://gg-web-demos.guraklgames.com/assets/level-json/level2d.json';
+// shape-spawning gadget - is hosted as a single JSON file living right next to this file
+// (./level.json) and loaded in-memory, instead of being built up with engine calls like the
+// "primitives" example does. Kept as a plain source file (not a shared/hosted asset) on purpose:
+// open this example in StackBlitz, edit level.json, and rerun to see the change.
 
 /**
  * Settings for the app-defined "ShapeSpawner" level entity below.
@@ -76,7 +77,7 @@ world.init().then(async () => {
   );
 
   // Load the level (floor + a handful of static decorative primitives + the spawner)
-  await world.loader.loadLevelFromUrl(LEVEL_URL);
+  await world.loader.loadLevel(level);
 
   world.start();
 });

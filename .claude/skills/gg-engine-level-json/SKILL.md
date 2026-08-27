@@ -223,13 +223,21 @@ that class registered first, or that entity silently disappears.
 
 ## Where level JSON files live
 
-`examples/assets/level-json/*.json` are the existing reference files (`level2d.json`,
-`level3d.json`), consumed by `examples/level-json-pixi-rapier2d` and `examples/level-json-three-rapier3d`
-via `world.loader.loadLevelFromUrl(...)` against a hosted copy - see `gg-engine-examples` for how
-to add/wire a new example. There's no required location for an app's own level JSON files; host
-them wherever `fetch(url)` in `loadLevelFromUrl` can reach them (static assets, CDN, same-origin
-path), or hand an already-parsed object to `loadLevel` directly if it isn't loaded over the
-network.
+`examples/level-json-pixi-rapier2d/level.json` and `examples/level-json-three-rapier3d/level.json`
+are the reference files, kept as a plain source file inside each example's own directory (not
+under the shared `examples/assets/`) and imported directly - `import level from './level.json'`,
+then `world.loader.loadLevel(level)` - rather than fetched by URL. This is deliberate: these
+examples are meant to be opened on StackBlitz, where a visitor can edit `level.json` right in the
+IDE pane and rerun to see the change; a shared/hosted asset fetched by URL wouldn't reflect a local
+edit at all. `tsconfig.json` needs `"resolveJsonModule": true` (and `"esModuleInterop": true`) for
+the JSON import to type-check under `ts-loader`; webpack bundles a JSON import out of the box, no
+loader config needed. See `gg-engine-examples` for how to add/wire a new example.
+
+There's no required location for an app's own level JSON files in general - this is just the
+convention for these two reference examples. Host a level JSON wherever `fetch(url)` in
+`loadLevelFromUrl` can reach it (static assets, CDN, same-origin path) if it should be swappable at
+runtime without a rebuild, or import/inline it and hand the parsed object to `loadLevel` directly
+(as these examples now do) when it's fine to ship baked into the bundle.
 
 ## Tests
 

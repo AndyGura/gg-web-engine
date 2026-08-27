@@ -11,15 +11,16 @@ import {
 import { ThreeGgWorld, ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
 import { Rapier3dGgWorld, Rapier3dWorldComponent } from '@gg-web-engine/rapier3d';
 import { AmbientLight, DirectionalLight } from 'three';
+import level from './level.json';
 
 GgStatic.instance.showStats = true;
 GgStatic.instance.devConsoleEnabled = true;
 
 // The whole static part of this scene - floor, decorative primitives, a kill-zone trigger, the
-// camera, and a shape-spawning gadget - is hosted as a single JSON file and loaded by URL, instead
-// of being built up with engine calls like the "primitives" example does. See
-// ../assets/level-json/level3d.json
-const LEVEL_URL = 'https://gg-web-demos.guraklgames.com/assets/level-json/level3d.json';
+// camera, and a shape-spawning gadget - is hosted as a single JSON file living right next to this
+// file (./level.json) and loaded in-memory, instead of being built up with engine calls like the
+// "primitives" example does. Kept as a plain source file (not a shared/hosted asset) on purpose:
+// open this example in StackBlitz, edit level.json, and rerun to see the change.
 
 /**
  * Settings for the app-defined "ShapeSpawner" level entity below.
@@ -103,14 +104,14 @@ world.init().then(async () => {
     new ShapeSpawner(w, settings),
   );
 
-  // Load the level. `loadLevelFromUrl` resolves to a group entity holding every entity the level
-  // produced as a child - `world.removeEntity(level, true)` would tear the whole thing back down
-  // in one call, e.g. to swap in a different level later (not needed in this example). Named
-  // entities the level produced can be looked up by the `name` they were given in level3d.json
-  // (floor/box/sphere/etc. are purely decorative and don't need to be looked up at all): entities
-  // parented under the level - most of them - via `level.getChildEntityByName`; a `Camera`, which
-  // deliberately isn't parented under the level (see below), via `world.getEntityByName` instead.
-  const level = await world.loader.loadLevelFromUrl(LEVEL_URL);
+  // Load the level. `loadLevel` resolves to a group entity holding every entity the level produced
+  // as a child - `world.removeEntity(levelGroup, true)` would tear the whole thing back down in one
+  // call, e.g. to swap in a different level later (not needed in this example). Named entities the
+  // level produced can be looked up by the `name` they were given in level.json (floor/box/sphere/
+  // etc. are purely decorative and don't need to be looked up at all): entities parented under the
+  // level - most of them - via `levelGroup.getChildEntityByName`; a `Camera`, which deliberately
+  // isn't parented under the level (see below), via `world.getEntityByName` instead.
+  const levelGroup = await world.loader.loadLevel(level);
 
   // `Camera` entities from a level are a plain camera component wrapped in an unparented
   // `Camera3dEntity` - not attached to any renderer/canvas (a level JSON has no notion of one),
@@ -123,7 +124,7 @@ world.init().then(async () => {
 
   // `Trigger` entities, unlike `Camera`, come back ready-to-use - already a `Trigger3dEntity`
   // parented under the level's group entity (so already part of the world) - just subscribe to it.
-  const killZone = level.getChildEntityByName<Trigger3dEntity>('KillFloor');
+  const killZone = levelGroup.getChildEntityByName<Trigger3dEntity>('KillFloor');
   killZone.onEntityEntered.subscribe((entity: Entity3d) => {
     world.removeEntity(entity, true);
   });
