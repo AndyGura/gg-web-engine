@@ -2,6 +2,8 @@ import { Gg3dWorld, Gg3dWorldTypeDocRepo } from './gg-3d-world';
 import { GgMeta } from './models/gg-meta';
 import { Entity3d } from './entities/entity-3d';
 import { Pnt3, Point3, Point4, Qtrn } from '../base';
+import { LevelJson } from '../base/level-loader';
+import { Gg3dLevelLoader } from './level-loader';
 
 export enum CachingStrategy {
   Nothing,
@@ -67,7 +69,14 @@ export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocR
     LoadResourcesResult<TypeDoc> | Promise<LoadResourcesResult<TypeDoc>>
   >();
 
-  constructor(protected readonly world: Gg3dWorld<TypeDoc>) {}
+  /**
+   * Level loader for loading levels from JSON
+   */
+  public readonly levelLoader: Gg3dLevelLoader<TypeDoc>;
+
+  constructor(protected readonly world: Gg3dWorld<TypeDoc>) {
+    this.levelLoader = new Gg3dLevelLoader<TypeDoc>(world);
+  }
 
   public async loadGgGlbFiles(path: string, useCache: boolean = false): Promise<[ArrayBuffer, GgMeta]> {
     if (useCache && this.filesCache.has(path)) {
@@ -162,5 +171,23 @@ export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocR
       e.rotation = Qtrn.mult(Qtrn.clone(e.rotation), loadOptions.rotation);
     });
     return result;
+  }
+
+  /**
+   * Load a level from an already-parsed JSON document
+   * @param levelJson - The level JSON
+   * @returns The created entities
+   */
+  public loadLevel(levelJson: LevelJson): any[] {
+    return this.levelLoader.loadLevel(levelJson);
+  }
+
+  /**
+   * Fetch a level JSON document hosted at `url` and load it
+   * @param url - URL (or path) of the level JSON document
+   * @returns The created entities
+   */
+  public loadLevelFromUrl(url: string): Promise<any[]> {
+    return this.levelLoader.loadLevelFromUrl(url);
   }
 }

@@ -1,0 +1,54 @@
+{
+  "entities": [
+    {
+      "class": "Square",
+      "name": "Floor",
+      "position": { "x": 0, "y": 300 },
+      "config": {
+        "dimensions": { "x": 800, "y": 100 },
+        "material": { "color": 8947848 },
+        "body": { "dynamic": false }
+      }
+    },
+    {
+      "class": "Square",
+      "name": "Block1",
+      "position": { "x": -300, "y": 220 },
+      "config": {
+        "dimensions": { "x": 60, "y": 60 },
+        "material": { "color": 4498536 },
+        "body": { "dynamic": false }
+      }
+    },
+    {
+      "class": "Circle",
+      "name": "Ball1",
+      "position": { "x": -150, "y": 220 },
+      "config": {
+        "radius": 30,
+        "material": { "color": 16729156 },
+        "body": { "dynamic": false }
+      }
+    },
+    {
+      "class": "Square",
+      "name": "Block2",
+      "position": { "x": 150, "y": 220 },
+      "config": {
+        "dimensions": { "x": 60, "y": 60 },
+        "material": { "color": 3381606 },
+        "body": { "dynamic": false }
+      }
+    },
+    {
+      "class": "Circle",
+      "name": "Ball2",
+      "position": { "x": 300, "y": 220 },
+      "config": {
+        "radius": 30,
+        "material": { "color": 16755200 },
+        "body": { "dynamic": false }
+      }
+    }
+  ]
+}

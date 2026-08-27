@@ -45,3 +45,4 @@ export * from './math/splines';
 export * from './pipes/gg-elastic.pipe';
 
 export * from './gg-world';
+export * from './level-loader';

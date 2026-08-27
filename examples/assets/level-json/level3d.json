@@ -1,0 +1,83 @@
+{
+  "entities": [
+    {
+      "class": "Box",
+      "name": "Floor",
+      "position": { "x": 0, "y": 0, "z": 0 },
+      "config": {
+        "dimensions": { "x": 7, "y": 7, "z": 1 },
+        "material": { "color": 8947848, "shading": "standart" },
+        "body": { "dynamic": false }
+      }
+    },
+    {
+      "class": "Box",
+      "name": "Box1",
+      "position": { "x": -2, "y": 2, "z": 1 },
+      "config": {
+        "dimensions": { "x": 1, "y": 1, "z": 1 },
+        "material": { "color": 16729156, "shading": "standart" },
+        "body": { "dynamic": false }
+      }
+    },
+    {
+      "class": "Sphere",
+      "name": "Sphere1",
+      "position": { "x": 0, "y": 2, "z": 1 },
+      "config": {
+        "radius": 0.5,
+        "material": { "color": 4498536, "shading": "standart" },
+        "body": { "dynamic": false }
+      }
+    },
+    {
+      "class": "Capsule",
+      "name": "Capsule1",
+      "position": { "x": 2, "y": 2, "z": 1 },
+      "config": {
+        "radius": 0.4,
+        "centersDistance": 0.6,
+        "material": { "color": 3381606, "shading": "standart" },
+        "body": { "dynamic": false }
+      }
+    },
+    {
+      "class": "Cylinder",
+      "name": "Cylinder1",
+      "position": { "x": -2, "y": -2, "z": 1 },
+      "config": {
+        "radius": 0.5,
+        "height": 1,
+        "material": { "color": 16755200, "shading": "standart" },
+        "body": { "dynamic": false }
+      }
+    },
+    {
+      "class": "Cone",
+      "name": "Cone1",
+      "position": { "x": 2, "y": -2, "z": 1 },
+      "config": {
+        "radius": 0.5,
+        "height": 1,
+        "material": { "color": 10494192, "shading": "standart" },
+        "body": { "dynamic": false }
+      }
+    },
+    {
+      "class": "Trigger",
+      "name": "KillFloor",
+      "position": { "x": 0, "y": 0, "z": -15 },
+      "config": {
+        "dimensions": { "x": 1000, "y": 1000, "z": 1 }
+      }
+    },
+    {
+      "class": "Camera",
+      "name": "MainCamera",
+      "position": { "x": 9, "y": 12, "z": 9 },
+      "config": {
+        "fov": 75
+      }
+    }
+  ]
+}

@@ -104,9 +104,9 @@ and linked locally via scripts in `etc/`:
 bash etc/switch_libs_to_local_core.sh   # npm-links your local core build into all adapter packages
 ```
 
-This is exactly what CI (`.github/workflows/tests.yml`) runs before building/testing every
-adapter, so any core interface change should be validated the same way locally: run the script,
-then `npm run build && npm test` inside each affected `packages/<adapter>` (or all of them, for an
+This is exactly what CI (`.github/workflows/pull_request_build.yml`) runs before building/testing
+every adapter, so any core interface change should be validated the same way locally: run the
+script, then `npm run build && npm test` inside each affected `packages/<adapter>` (or all of them, for an
 interface-level change).
 
 ## Before starting non-trivial work

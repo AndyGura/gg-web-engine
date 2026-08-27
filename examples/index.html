@@ -246,6 +246,16 @@
             visualModule: 'three',
             physicsModule: 'ammo',
         },
+        {
+            label: 'Level json',
+            visualModule: 'three',
+            physicsModule: 'rapier3d',
+        },
+        {
+            label: 'Level json',
+            visualModule: 'pixi',
+            physicsModule: 'rapier2d',
+        },
     ].map((ex) => {
         const name = `${ex.label.toLowerCase().replace(/\s/g, '-')}-${ex.visualModule}-${ex.physicsModule}`;
         const sbBranchSuffix = '0.0.58';

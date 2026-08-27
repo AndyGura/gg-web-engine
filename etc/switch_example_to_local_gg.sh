@@ -3,15 +3,18 @@ set -e
 set -o pipefail
 
 function fix_ammo_paths {
-  sed -i 's/\/mini-signals/\/@gg-web-engine\/ammo\/node_modules\/mini-signals/' tsconfig.json
+  sed -i.bak 's/\/mini-signals/\/@gg-web-engine\/ammo\/node_modules\/mini-signals/' tsconfig.json
+  rm -f tsconfig.json.bak
 }
 
 function fix_three_paths {
-  sed -i 's/"paths": {/"paths": {\n"three": [".\/node_modules\/@gg-web-engine\/three\/node_modules\/three"],/' tsconfig.json
+  sed -i.bak 's/"paths": {/"paths": {\n"three": [".\/node_modules\/@gg-web-engine\/three\/node_modules\/three"],/' tsconfig.json
+  rm -f tsconfig.json.bak
 }
 
 function fix_pixi_paths {
-  sed -i 's/"paths": {/"paths": {\n"pixi.js": [".\/node_modules\/@gg-web-engine\/pixi\/node_modules\/pixi.js"],/' tsconfig.json
+  sed -i.bak 's/"paths": {/"paths": {\n"pixi.js": [".\/node_modules\/@gg-web-engine\/pixi\/node_modules\/pixi.js"],/' tsconfig.json
+  rm -f tsconfig.json.bak
 }
 
 pushd $1
@@ -38,7 +41,8 @@ do
 done
 
 # perform patch
-sed -i '/@gg-web-engine\//d' ./package.json
+sed -i.bak '/@gg-web-engine\//d' ./package.json
+rm -f ./package.json.bak
 npm install
 npm link $link_libs
 if [ $has_ammo == true ]

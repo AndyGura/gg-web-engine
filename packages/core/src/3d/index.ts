@@ -32,3 +32,4 @@ export * from './loaders';
 export * from './factories';
 export * from './gg-3d-world';
 export * from './loader';
+export * from './level-loader';
