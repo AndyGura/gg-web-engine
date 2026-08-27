@@ -183,7 +183,9 @@ describe('LevelLoader', () => {
       await expect(levelLoader.loadLevel(levelJson)).resolves.not.toThrow();
     });
 
-    it('should handle null entity returned from generator', async () => {
+    it('should warn and skip a generator that returns null', async () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
       // Create a mock generator function that returns null
       const mockGenerator = jest.fn().mockReturnValue(null);
 
@@ -207,8 +209,11 @@ describe('LevelLoader', () => {
       // Load the level
       await levelLoader.loadLevel(levelJson);
 
-      // Verify that no entity was registered under that name
+      // Verify that no entity was registered under that name, and a warning was logged
       expect(() => world.getEntityByName('NullEntity1')).toThrow('No entity named "NullEntity1" found in the world');
+      expect(warnSpy).toHaveBeenCalledWith('Generator for class alias "NullEntity" did not return an IEntity - skipping');
+
+      warnSpy.mockRestore();
     });
 
     it('should return a group entity, already added to the world, wrapping the level', async () => {
@@ -229,7 +234,9 @@ describe('LevelLoader', () => {
       expect(world.getEntityByName('MyLevel')).toBe(level);
     });
 
-    it('should parent IEntity results under the group entity; non-entity results are untracked', async () => {
+    it('should parent IEntity results under the group entity; non-entity results are warned about and untracked', async () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
       levelLoader.registerClass('RealEntity', () => new TestEntity());
       levelLoader.registerClass('PlainObject', () => ({ plain: true }));
 
@@ -243,6 +250,9 @@ describe('LevelLoader', () => {
       expect(level.children).toEqual([level.getChildEntityByName('Real')]);
       expect(() => level.getChildEntityByName('Plain')).toThrow('No child entity named "Plain"');
       expect(() => world.getEntityByName('Plain')).toThrow('No entity named "Plain" found in the world');
+      expect(warnSpy).toHaveBeenCalledWith('Generator for class alias "PlainObject" did not return an IEntity - skipping');
+
+      warnSpy.mockRestore();
     });
 
     it('should reparent an entity that already self-added to the world (e.g. via addPrimitiveRigidBody) without warning or double-adding it', async () => {

@@ -3,10 +3,12 @@ import { GroupEntity } from './entities/group.entity';
 import { IEntity } from './entities/i-entity';
 
 /**
- * A function that turns per-entity JSON settings into a spawned entity (or other world object,
- * e.g. a trigger or camera). Registered against a class alias via {@link LevelLoader.registerClass}.
+ * A function that turns per-entity JSON settings into a spawned `IEntity` (e.g. a primitive body,
+ * a trigger, a camera). Registered against a class alias via {@link LevelLoader.registerClass}.
  * May be `async`/return a `Promise` (e.g. the built-in `"Glb"` 3D class, which fetches a model) -
- * {@link LevelLoader.loadLevel} awaits every generator before moving to the next entity.
+ * {@link LevelLoader.loadLevel} awaits every generator before moving to the next entity. A
+ * generator that returns anything other than an `IEntity` (including `null`/`undefined`) has its
+ * result discarded - see {@link LevelLoader.loadLevel}.
  * @template D - The position type
  * @template R - The rotation type
  * @template TypeDoc - The type document repository
@@ -66,10 +68,10 @@ export interface EntityJson {
   rotation?: any;
 
   /**
-   * Name of the entity. If the generator's result is an `IEntity`, `loadLevel` sets its `.name` to
-   * this (overriding whatever default the generator gave it), so it can be found afterwards with
-   * `GgWorld.getEntityByName`/`IEntity.getChildEntityByName`. Ignored for generators that return
-   * something other than an `IEntity` - there's nowhere to look such a result back up by name.
+   * Name of the entity. `loadLevel` sets the generator's returned `IEntity`'s `.name` to this
+   * (overriding whatever default the generator gave it), so it can be found afterwards with
+   * `GgWorld.getEntityByName`/`IEntity.getChildEntityByName`. Moot if the generator doesn't return
+   * an `IEntity` - that result is discarded (with a console warning) before naming is applied.
    */
   name?: string;
 
@@ -83,13 +85,13 @@ export interface EntityJson {
  * Base class for level loaders: parses a {@link LevelJson} document into world entities by
  * dispatching each `EntityJson.class` to a generator function registered with {@link registerClass}.
  *
- * Every `IEntity` a generator produces is parented under one {@link GroupEntity} per `loadLevel`/
- * `loadLevelFromUrl` call (added to the world immediately, and handed back once loading
- * completes) - so a whole level can be torn down in one shot with `world.removeEntity(level, true)`,
- * which cascades removal/disposal to every child, and any named entity can be found afterwards
- * with `level.getChildEntityByName(name)`. Generators that return something other than an
- * `IEntity` aren't tracked anywhere by `loadLevel` at all - there's nothing to parent or look up
- * by name.
+ * A generator is required to return an `IEntity`. Every `IEntity` a generator produces is parented
+ * under one {@link GroupEntity} per `loadLevel`/`loadLevelFromUrl` call (added to the world
+ * immediately, and handed back once loading completes) - so a whole level can be torn down in one
+ * shot with `world.removeEntity(level, true)`, which cascades removal/disposal to every child, and
+ * any named entity can be found afterwards with `level.getChildEntityByName(name)`. If a generator
+ * returns anything other than an `IEntity` (including `null`/`undefined`), `loadLevel` logs a
+ * `console.warn` and skips that entity - it's never parented, named, or tracked.
  * @template D - The position type
  * @template R - The rotation type
  * @template TypeDoc - The type document repository
@@ -152,7 +154,8 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
         };
 
         const entity = await generator(this.world, settings);
-        if (!entity || !(entity instanceof IEntity)) {
+        if (!(entity instanceof IEntity)) {
+          console.warn(`Generator for class alias "${classAlias}" did not return an IEntity - skipping`);
           continue;
         }
         if (name !== undefined) {

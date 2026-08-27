@@ -3,14 +3,18 @@ import {
   Entity3d,
   Gg3dWorld,
   GgStatic,
+  IEntity,
   OrbitCameraController,
+  PausableClock,
   Point3,
+  TickOrder,
   Trigger3dEntity,
   TypedGg3dWorld,
 } from '@gg-web-engine/core';
 import { ThreeGgWorld, ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
 import { Rapier3dGgWorld, Rapier3dWorldComponent } from '@gg-web-engine/rapier3d';
 import { AmbientLight, DirectionalLight } from 'three';
+import { Subscription } from 'rxjs';
 import level from './level.json';
 
 GgStatic.instance.showStats = true;
@@ -42,15 +46,22 @@ interface ShapeSpawnerSettings {
  * timer imperatively; here that behavior is packaged as a class and registered against the
  * "ShapeSpawner" class alias below, so the level JSON can place one declaratively (see the
  * "ShapeSpawner" entry in level3d.json) instead of every app that wants it re-writing the timer
- * loop. Any class/function shape works as a generator - the level loader only requires
- * `(world, settings) => any`.
+ * loop. The level loader requires a generator to return an `IEntity` - extending it (rather than
+ * being a plain class) is what ties this spawner's own lifecycle to the level's: tearing the level
+ * down (`world.removeEntity(levelGroup, true)`) disposes this entity too, which stops its spawn
+ * clock via the `dispose` override below instead of leaking a still-running timer.
  */
-class ShapeSpawner {
+class ShapeSpawner extends IEntity {
+  public readonly tickOrder = TickOrder.CONTROLLERS;
+  private readonly clock: PausableClock;
+  private readonly spawnSub: Subscription;
+
   constructor(world: Gg3dWorld, settings: ShapeSpawnerSettings) {
+    super();
     const { min, max } = settings.area;
-    const clock = world.createClock(true);
-    clock.tickRateLimit = 1 / (settings.interval ?? 0.5);
-    clock.tick$.subscribe(() => {
+    this.clock = world.createClock(true);
+    this.clock.tickRateLimit = 1 / (settings.interval ?? 0.5);
+    this.spawnSub = this.clock.tick$.subscribe(() => {
       let item: Entity3d;
       const r = Math.random();
       if (r < 0.2) {
@@ -82,6 +93,12 @@ class ShapeSpawner {
         z: min.z + Math.random() * (max.z - min.z),
       };
     });
+  }
+
+  public override dispose(): void {
+    this.spawnSub.unsubscribe();
+    this.clock.stop();
+    super.dispose();
   }
 }
 

@@ -50,9 +50,8 @@ Per entity:
   (see next section).
 - `position`/`rotation` (optional) - `Point2`/`number` for a 2D level, `Point3`/`Point4`
   (quaternion) for a 3D level. Omit either to leave it at the generator's default.
-- `name` (optional) - if the generator's result is an `IEntity`, its `.name` is set to this
-  (overriding whatever default it had), so it can be found afterwards - see "Finding entities by
-  name" below. Ignored for a generator that returns something other than an `IEntity`.
+- `name` (optional) - the generator's returned entity's `.name` is set to this (overriding whatever
+  default it had), so it can be found afterwards - see "Finding entities by name" below.
 - `config` (optional) - class-specific settings (e.g. `dimensions`, `radius`, `material`, `body`
   for `"Primitive"`). Spread directly into the settings object the generator receives.
 
@@ -71,17 +70,20 @@ world.removeEntity(level, true);
 
 `loadLevel`/`loadLevelFromUrl` resolve to a `GroupEntity` (`packages/core/src/base/entities/group.entity.ts`)
 representing the whole loaded level: a plain, do-nothing `IEntity`, already added to the world by
-the time you get it back. Every `IEntity` a generator produces is parented under it
-(`GroupEntity.addChildren`), so `world.removeEntity(level, true)` cascades removal + disposal down
-through every child in one call - that's the whole story for "how do I unload a level." Multiple
-levels can be loaded at once (each `loadLevel` call gets its own `GroupEntity`), so content that
-should outlive any one level swap - a camera, persistent UI/lighting, global game state - belongs
-in its own level (or created directly with plain engine calls, no level JSON at all) that the app
-loads once and never passes to `world.removeEntity`, kept separate from the level(s) it loads and
-unloads freely; see the `"Camera"` section below for the reference case. Results that aren't an
-`IEntity` at all (e.g. a `ShapeSpawner` that's a plain class instance, not an entity) aren't
-parented or tracked anywhere by `loadLevel`; if an app wants such a class's cleanup tied to level
-lifecycle, make it an `IEntity` instead and let `loadLevel` pick it up automatically.
+the time you get it back. A generator is required to return an `IEntity`; `loadLevel` parents each
+one under this group (`GroupEntity.addChildren`), so `world.removeEntity(level, true)` cascades
+removal + disposal down through every child in one call - that's the whole story for "how do I
+unload a level." Multiple levels can be loaded at once (each `loadLevel` call gets its own
+`GroupEntity`), so content that should outlive any one level swap - a camera, persistent UI/lighting,
+global game state - belongs in its own level (or created directly with plain engine calls, no level
+JSON at all) that the app loads once and never passes to `world.removeEntity`, kept separate from
+the level(s) it loads and unloads freely; see the `"Camera"` section below for the reference case.
+If a generator returns anything other than an `IEntity` (including `null`/`undefined`), `loadLevel`
+logs a `console.warn` and skips that entity entirely - it's never parented, named, or tracked. A
+class whose behavior isn't naturally entity-shaped (e.g. a spawner that just hooks a clock
+subscription) still needs to extend `IEntity` to be usable as a generator's result - see the
+`ShapeSpawner` example below, which ties its own cleanup to level teardown via an `IEntity.dispose`
+override.
 
 If a generator throws partway through a `loadLevel` call, the already-in-progress group (and
 everything added to it so far) is torn down (`world.removeEntity(level, true)`) before the error is
@@ -190,9 +192,15 @@ under the level's root, so it's still torn down along with the rest of the level
 
 ## App-defined entity classes
 
-Register a generator - any `(world, settings) => any` function or arrow wrapping a class
+Register a generator - a `(world, settings) => IEntity` function or arrow wrapping a class
 constructor - against a new class alias via `registerClass`, **before** loading the level JSON that
-references it:
+references it. The generator **must** return an `IEntity`; anything else (including a `Promise`
+that resolves to something else, `null`, or `undefined`) makes `loadLevel` log a `console.warn` and
+skip that entity - see "Loading a level, and tearing it back down" above.
+
+For a class whose own behavior isn't naturally entity-shaped - e.g. a spawner that just hooks a
+clock subscription, with nothing to render or physically simulate itself - extend `IEntity` anyway
+purely to satisfy the contract, and use `dispose()` to tear down whatever the constructor set up:
 
 ```typescript
 interface ShapeSpawnerSettings {
@@ -200,13 +208,24 @@ interface ShapeSpawnerSettings {
   area: { min: Point3; max: Point3 };
 }
 
-class ShapeSpawner {
+class ShapeSpawner extends IEntity {
+  public readonly tickOrder = TickOrder.CONTROLLERS;
+  private readonly clock: PausableClock;
+  private readonly spawnSub: Subscription;
+
   constructor(world: Gg3dWorld, settings: ShapeSpawnerSettings) {
-    const clock = world.createClock(true);
-    clock.tickRateLimit = 1 / (settings.interval ?? 0.5);
-    clock.tick$.subscribe(() => {
+    super();
+    this.clock = world.createClock(true);
+    this.clock.tickRateLimit = 1 / (settings.interval ?? 0.5);
+    this.spawnSub = this.clock.tick$.subscribe(() => {
       /* spawn something inside settings.area, e.g. via world.addPrimitiveRigidBody(...) */
     });
+  }
+
+  public override dispose(): void {
+    this.spawnSub.unsubscribe();
+    this.clock.stop();
+    super.dispose();
   }
 }
 
@@ -217,16 +236,16 @@ await world.loader.loadLevelFromUrl(LEVEL_URL); // JSON has an entity with "clas
 ```
 
 There's nothing engine-specific about `ShapeSpawner` here - it's ordinary app code, registered the
-same way the built-in `"Primitive"`/`"Trigger"`/`"Camera"`/`"Glb"` classes are internally. Nothing
-requires the generator to construct an `Entity2d`/`Entity3d` or call `world.addEntity` - return
-whatever the app needs to hold onto (or nothing, if the constructor/side effect is enough, e.g. a
-spawner that hooks its own clock). Give it a `name` in the JSON too if the app needs to fetch it
-back later, and make the return value an `IEntity` if either its lifecycle should be tied to the
-level's (see "Loading a level, and tearing it back down" above) or you want it findable via
-`level.getChildEntityByName`/`world.getEntityByName` (see "Finding entities by name" above) - a
-non-`IEntity` result can't be looked up by name at all. See `examples/level-json-three-rapier3d`
-(3D) and `examples/level-json-pixi-rapier2d` (2D) for a complete `ShapeSpawner` built this way,
-replacing what would otherwise be a hand-rolled spawn timer in `index.ts`.
+same way the built-in `"Primitive"`/`"Trigger"`/`"Camera"`/`"Glb"` classes are internally.
+Extending `IEntity` is what makes it eligible to be parented under the level's group (so
+`world.removeEntity(level, true)` disposes it - and, via the `dispose` override, stops its clock -
+along with the rest of the level) and findable via `level.getChildEntityByName`/
+`world.getEntityByName` (see "Finding entities by name" above) if given a `name` in the JSON.
+`tickOrder` just needs any valid value since this class doesn't use its own `tick$` (it drives
+itself off a separate `PausableClock` running at its own `interval`, not the per-frame tick every
+`IEntity` gets for free) - `TickOrder.CONTROLLERS` is as good a choice as any here. See
+`examples/level-json-three-rapier3d` (3D) and `examples/level-json-pixi-rapier2d` (2D) for the
+complete version, replacing what would otherwise be a hand-rolled spawn timer in `index.ts`.
 
 A `class` with no registered generator logs `console.warn('No generator registered for class alias
 "..."')` and is skipped rather than throwing - so a level JSON referencing an app class must have
