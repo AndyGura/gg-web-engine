@@ -16,9 +16,22 @@ const defaultBodyOptions: Body2DOptions = {
 };
 
 /**
+ * Shape names accepted by the built-in `"Primitive"` entity class in a 2D level JSON, via the
+ * sibling `shape` field on the entity (e.g. `{ class: "Primitive", shape: "SQUARE" }`) - the same
+ * `Shape2DDescriptor['shape']` values used at the engine API level, so no translation is needed
+ * between a level JSON and `Gg2dWorld.addPrimitiveRigidBody`.
+ */
+export type Primitive2DShapeName = Shape2DDescriptor['shape'];
+
+/**
  * Settings shared by every primitive entity (Square, Circle, ...)
  */
 export interface PrimitiveSettings {
+  /**
+   * Which primitive shape to construct
+   */
+  shape: Primitive2DShapeName;
+
   /**
    * Position of the primitive
    */
@@ -71,8 +84,8 @@ export interface TriggerSettings {
 }
 
 /**
- * 2D level loader: registers generators for the built-in primitive/trigger entity classes and
- * dispatches `LevelJson` entities to them (or to custom generators registered via `registerGenerator`).
+ * 2D level loader: registers the built-in primitive/trigger entity classes and dispatches
+ * `LevelJson` entities to them (or to custom classes registered via `registerClass`).
  * @template TypeDoc - The type document repository
  */
 export class Gg2dLevelLoader<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTypeDocRepo> extends LevelLoader<
@@ -82,28 +95,42 @@ export class Gg2dLevelLoader<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTyp
 > {
   constructor(protected readonly world: Gg2dWorld<TypeDoc>) {
     super(world);
-    this.registerDefaultGenerators();
+    this.registerDefaultClasses();
   }
 
   /**
-   * Register default generators for primitives and triggers
+   * Register the built-in classes for primitives and triggers
    */
-  private registerDefaultGenerators(): void {
-    this.registerGenerator('Square', (world: Gg2dWorld<TypeDoc>, settings: PrimitiveSettings) => {
-      if (!settings.dimensions) {
-        throw new Error('Dimensions are required for Square primitive');
-      }
-      return this.createPrimitive(world, { shape: 'SQUARE', dimensions: settings.dimensions }, settings);
-    });
+  private registerDefaultClasses(): void {
+    this.registerClass('Primitive', (world: Gg2dWorld<TypeDoc>, settings: PrimitiveSettings) =>
+      this.createPrimitive(world, this.buildShapeDescriptor(settings), settings),
+    );
 
-    this.registerGenerator('Circle', (world: Gg2dWorld<TypeDoc>, settings: PrimitiveSettings) => {
-      if (settings.radius === undefined) {
-        throw new Error('Radius is required for Circle primitive');
-      }
-      return this.createPrimitive(world, { shape: 'CIRCLE', radius: settings.radius }, settings);
-    });
+    this.registerClass('Trigger', this.createTrigger.bind(this));
+  }
 
-    this.registerGenerator('Trigger', this.createTrigger.bind(this));
+  /**
+   * Turn a `PrimitiveSettings` (`shape` plus shape-specific fields) into the `Shape2DDescriptor`
+   * consumed by `Gg2dWorld.addPrimitiveRigidBody`.
+   * @param settings - The primitive settings, as parsed from a `"Primitive"` entity's `shape` +
+   * `config`
+   * @returns The shape descriptor
+   */
+  private buildShapeDescriptor(settings: PrimitiveSettings): Shape2DDescriptor {
+    switch (settings.shape) {
+      case 'SQUARE':
+        if (!settings.dimensions) {
+          throw new Error('Dimensions are required for SQUARE primitive');
+        }
+        return { shape: 'SQUARE', dimensions: settings.dimensions };
+      case 'CIRCLE':
+        if (settings.radius === undefined) {
+          throw new Error('Radius is required for CIRCLE primitive');
+        }
+        return { shape: 'CIRCLE', radius: settings.radius };
+      default:
+        throw new Error(`Unknown primitive shape "${settings.shape}"`);
+    }
   }
 
   /**

@@ -2,7 +2,7 @@ import { Gg3dWorld, Gg3dWorldTypeDocRepo } from './gg-3d-world';
 import { GgMeta } from './models/gg-meta';
 import { Entity3d } from './entities/entity-3d';
 import { Pnt3, Point3, Point4, Qtrn } from '../base';
-import { LevelJson } from '../base/level-loader';
+import { EntityGenerator, LevelJson } from '../base/level-loader';
 import { Gg3dLevelLoader } from './level-loader';
 
 export enum CachingStrategy {
@@ -76,6 +76,20 @@ export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocR
 
   constructor(protected readonly world: Gg3dWorld<TypeDoc>) {
     this.levelLoader = new Gg3dLevelLoader<TypeDoc>(world);
+  }
+
+  /**
+   * Register a generator function for a level JSON class alias, so `loadLevel`/`loadLevelFromUrl`
+   * can dispatch entities of that `class` to it - see `Gg3dLevelLoader`'s built-in classes for
+   * examples
+   * @param classAlias - The class alias
+   * @param generator - The generator function
+   */
+  public registerClass<Settings, W = any>(
+    classAlias: string,
+    generator: EntityGenerator<Point3, Point4, TypeDoc, Settings, W>,
+  ): void {
+    this.levelLoader.registerClass(classAlias, generator);
   }
 
   public async loadGgGlbFiles(path: string, useCache: boolean = false): Promise<[ArrayBuffer, GgMeta]> {
@@ -176,18 +190,26 @@ export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocR
   /**
    * Load a level from an already-parsed JSON document
    * @param levelJson - The level JSON
-   * @returns The created entities
    */
-  public loadLevel(levelJson: LevelJson): any[] {
-    return this.levelLoader.loadLevel(levelJson);
+  public loadLevel(levelJson: LevelJson): void {
+    this.levelLoader.loadLevel(levelJson);
   }
 
   /**
    * Fetch a level JSON document hosted at `url` and load it
    * @param url - URL (or path) of the level JSON document
-   * @returns The created entities
    */
-  public loadLevelFromUrl(url: string): Promise<any[]> {
+  public loadLevelFromUrl(url: string): Promise<void> {
     return this.levelLoader.loadLevelFromUrl(url);
+  }
+
+  /**
+   * Look up a previously-loaded, named entity/object by the `name` its `EntityJson` was given
+   * @param name - The entity's `name` in the level JSON
+   * @returns The entity/object its generator returned
+   * @throws if no loaded entity has that name
+   */
+  public getEntityByName<T = any>(name: string): T {
+    return this.levelLoader.getEntityByName<T>(name);
   }
 }

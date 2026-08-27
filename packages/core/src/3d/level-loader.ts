@@ -16,9 +16,22 @@ const defaultBodyOptions: Body3DOptions = {
 };
 
 /**
+ * Shape names accepted by the built-in `"Primitive"` entity class in a 3D level JSON, via the
+ * sibling `shape` field on the entity (e.g. `{ class: "Primitive", shape: "BOX" }`) - the same
+ * `Shape3DDescriptor['shape']` values used at the engine API level, so no translation is needed
+ * between a level JSON and `Gg3dWorld.addPrimitiveRigidBody`.
+ */
+export type Primitive3DShapeName = Shape3DDescriptor['shape'];
+
+/**
  * Settings shared by every primitive entity (Box, Sphere, Plane, Capsule, Cylinder, Cone)
  */
 export interface Primitive3DSettings {
+  /**
+   * Which primitive shape to construct
+   */
+  shape: Primitive3DShapeName;
+
   /**
    * Position of the primitive
    */
@@ -111,8 +124,8 @@ export interface Camera3DSettings {
 }
 
 /**
- * 3D level loader: registers generators for the built-in primitive/trigger/camera entity classes
- * and dispatches `LevelJson` entities to them (or to custom generators registered via `registerGenerator`).
+ * 3D level loader: registers the built-in primitive/trigger/camera entity classes and dispatches
+ * `LevelJson` entities to them (or to custom classes registered via `registerClass`).
  * @template TypeDoc - The type document repository
  */
 export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo> extends LevelLoader<
@@ -122,71 +135,69 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
 > {
   constructor(protected readonly world: Gg3dWorld<TypeDoc>) {
     super(world);
-    this.registerDefaultGenerators();
+    this.registerDefaultClasses();
   }
 
   /**
-   * Register default generators for primitives, triggers, and cameras
+   * Register the built-in classes for primitives, triggers, and cameras
    */
-  private registerDefaultGenerators(): void {
-    this.registerGenerator('Box', (world: Gg3dWorld<TypeDoc>, settings: Primitive3DSettings) => {
-      if (!settings.dimensions) {
-        throw new Error('Dimensions are required for Box primitive');
-      }
-      return this.createPrimitive(world, { shape: 'BOX', dimensions: settings.dimensions }, settings);
-    });
-
-    this.registerGenerator('Sphere', (world: Gg3dWorld<TypeDoc>, settings: Primitive3DSettings) => {
-      if (settings.radius === undefined) {
-        throw new Error('Radius is required for Sphere primitive');
-      }
-      return this.createPrimitive(world, { shape: 'SPHERE', radius: settings.radius }, settings);
-    });
-
-    this.registerGenerator('Plane', (world: Gg3dWorld<TypeDoc>, settings: Primitive3DSettings) =>
-      this.createPrimitive(world, { shape: 'PLANE' }, settings),
+  private registerDefaultClasses(): void {
+    this.registerClass('Primitive', (world: Gg3dWorld<TypeDoc>, settings: Primitive3DSettings) =>
+      this.createPrimitive(world, this.buildShapeDescriptor(settings), settings),
     );
 
-    this.registerGenerator('Capsule', (world: Gg3dWorld<TypeDoc>, settings: Primitive3DSettings) => {
-      if (settings.radius === undefined) {
-        throw new Error('Radius is required for Capsule primitive');
-      }
-      if (settings.centersDistance === undefined) {
-        throw new Error('Centers distance is required for Capsule primitive');
-      }
-      return this.createPrimitive(
-        world,
-        { shape: 'CAPSULE', radius: settings.radius, centersDistance: settings.centersDistance },
-        settings,
-      );
-    });
+    this.registerClass('Trigger', this.createTrigger.bind(this));
+    this.registerClass('Camera', this.createCamera.bind(this));
+  }
 
-    this.registerGenerator('Cylinder', (world: Gg3dWorld<TypeDoc>, settings: Primitive3DSettings) => {
-      if (settings.radius === undefined) {
-        throw new Error('Radius is required for Cylinder primitive');
-      }
-      if (settings.height === undefined) {
-        throw new Error('Height is required for Cylinder primitive');
-      }
-      return this.createPrimitive(
-        world,
-        { shape: 'CYLINDER', radius: settings.radius, height: settings.height },
-        settings,
-      );
-    });
-
-    this.registerGenerator('Cone', (world: Gg3dWorld<TypeDoc>, settings: Primitive3DSettings) => {
-      if (settings.radius === undefined) {
-        throw new Error('Radius is required for Cone primitive');
-      }
-      if (settings.height === undefined) {
-        throw new Error('Height is required for Cone primitive');
-      }
-      return this.createPrimitive(world, { shape: 'CONE', radius: settings.radius, height: settings.height }, settings);
-    });
-
-    this.registerGenerator('Trigger', this.createTrigger.bind(this));
-    this.registerGenerator('Camera', this.createCamera.bind(this));
+  /**
+   * Turn a `Primitive3DSettings` (`shape` plus shape-specific fields) into the `Shape3DDescriptor`
+   * consumed by `Gg3dWorld.addPrimitiveRigidBody`.
+   * @param settings - The primitive settings, as parsed from a `"Primitive"` entity's `shape` +
+   * `config`
+   * @returns The shape descriptor
+   */
+  private buildShapeDescriptor(settings: Primitive3DSettings): Shape3DDescriptor {
+    switch (settings.shape) {
+      case 'BOX':
+        if (!settings.dimensions) {
+          throw new Error('Dimensions are required for BOX primitive');
+        }
+        return { shape: 'BOX', dimensions: settings.dimensions };
+      case 'SPHERE':
+        if (settings.radius === undefined) {
+          throw new Error('Radius is required for SPHERE primitive');
+        }
+        return { shape: 'SPHERE', radius: settings.radius };
+      case 'PLANE':
+        return { shape: 'PLANE' };
+      case 'CAPSULE':
+        if (settings.radius === undefined) {
+          throw new Error('Radius is required for CAPSULE primitive');
+        }
+        if (settings.centersDistance === undefined) {
+          throw new Error('Centers distance is required for CAPSULE primitive');
+        }
+        return { shape: 'CAPSULE', radius: settings.radius, centersDistance: settings.centersDistance };
+      case 'CYLINDER':
+        if (settings.radius === undefined) {
+          throw new Error('Radius is required for CYLINDER primitive');
+        }
+        if (settings.height === undefined) {
+          throw new Error('Height is required for CYLINDER primitive');
+        }
+        return { shape: 'CYLINDER', radius: settings.radius, height: settings.height };
+      case 'CONE':
+        if (settings.radius === undefined) {
+          throw new Error('Radius is required for CONE primitive');
+        }
+        if (settings.height === undefined) {
+          throw new Error('Height is required for CONE primitive');
+        }
+        return { shape: 'CONE', radius: settings.radius, height: settings.height };
+      default:
+        throw new Error(`Unknown primitive shape "${settings.shape}"`);
+    }
   }
 
   /**

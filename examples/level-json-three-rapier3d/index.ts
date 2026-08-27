@@ -3,6 +3,7 @@ import {
   Gg3dWorld,
   GgStatic,
   OrbitCameraController,
+  Point3,
   Trigger3dEntity,
   TypedGg3dWorld,
 } from '@gg-web-engine/core';
@@ -13,10 +14,74 @@ import { AmbientLight, DirectionalLight } from 'three';
 GgStatic.instance.showStats = true;
 GgStatic.instance.devConsoleEnabled = true;
 
-// The whole static part of this scene - floor, decorative primitives, a kill-zone trigger and
-// the camera - is hosted as a single JSON file and loaded by URL, instead of being built up with
-// engine calls like the "primitives" example does. See ../assets/level-json/level3d.json
+// The whole static part of this scene - floor, decorative primitives, a kill-zone trigger, the
+// camera, and a shape-spawning gadget - is hosted as a single JSON file and loaded by URL, instead
+// of being built up with engine calls like the "primitives" example does. See
+// ../assets/level-json/level3d.json
 const LEVEL_URL = 'https://gg-web-demos.guraklgames.com/assets/level-json/level3d.json';
+
+/**
+ * Settings for the app-defined "ShapeSpawner" level entity below.
+ */
+interface ShapeSpawnerSettings {
+  /**
+   * Seconds between spawns
+   */
+  interval?: number;
+
+  /**
+   * Random-spawn-position bounding box
+   */
+  area: { min: Point3; max: Point3 };
+}
+
+/**
+ * An app-defined level entity class: the "primitives" example spawns random falling shapes on a
+ * timer imperatively; here that behavior is packaged as a class and registered against the
+ * "ShapeSpawner" class alias below, so the level JSON can place one declaratively (see the
+ * "ShapeSpawner" entry in level3d.json) instead of every app that wants it re-writing the timer
+ * loop. Any class/function shape works as a generator - the level loader only requires
+ * `(world, settings) => any`.
+ */
+class ShapeSpawner {
+  constructor(world: Gg3dWorld, settings: ShapeSpawnerSettings) {
+    const { min, max } = settings.area;
+    const clock = world.createClock(true);
+    clock.tickRateLimit = 1 / (settings.interval ?? 0.5);
+    clock.tick$.subscribe(() => {
+      let item: Entity3d;
+      const r = Math.random();
+      if (r < 0.2) {
+        item = world.addPrimitiveRigidBody({
+          shape: { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } },
+          body: { mass: 1 },
+        });
+      } else if (r < 0.4) {
+        item = world.addPrimitiveRigidBody({
+          shape: { shape: 'CAPSULE', radius: 0.5, centersDistance: 1 },
+          body: { mass: 1 },
+        });
+      } else if (r < 0.6) {
+        item = world.addPrimitiveRigidBody({
+          shape: { shape: 'CYLINDER', radius: 0.5, height: 1 },
+          body: { mass: 1 },
+        });
+      } else if (r < 0.8) {
+        item = world.addPrimitiveRigidBody({
+          shape: { shape: 'CONE', radius: 0.5, height: 1 },
+          body: { mass: 1 },
+        });
+      } else {
+        item = world.addPrimitiveRigidBody({ shape: { shape: 'SPHERE', radius: 0.5 }, body: { mass: 1 } });
+      }
+      item.position = {
+        x: min.x + Math.random() * (max.x - min.x),
+        y: min.y + Math.random() * (max.y - min.y),
+        z: min.z + Math.random() * (max.z - min.z),
+      };
+    });
+  }
+}
 
 const world: TypedGg3dWorld<ThreeGgWorld, Rapier3dGgWorld> = new Gg3dWorld({
   visualScene: new ThreeSceneComponent(),
@@ -31,12 +96,20 @@ world.init().then(async () => {
   dirLight.lookAt(0, 0, 0);
   world.visualScene.nativeScene?.add(dirLight);
 
-  // Load the level. Entities come back in the same order as `entities` in the JSON document -
-  // here that's [floor, box, sphere, capsule, cylinder, cone, kill-zone trigger, camera].
-  const [, , , , , , killZoneTrigger, camera] = await world.loader.loadLevelFromUrl(LEVEL_URL);
+  // Register the app-defined "ShapeSpawner" class before loading the level, so the loader can
+  // dispatch its entry in level3d.json to it.
+  world.loader.registerClass('ShapeSpawner', (w: Gg3dWorld, settings: ShapeSpawnerSettings) =>
+    new ShapeSpawner(w, settings),
+  );
+
+  // Load the level, then look up the entities the app needs to wire up further by the `name`
+  // they were given in level3d.json (floor/box/sphere/etc. are purely decorative and don't need
+  // to be looked up at all).
+  await world.loader.loadLevelFromUrl(LEVEL_URL);
 
   // `Camera` entities from a level are a plain camera component (a level JSON has no notion of a
   // canvas), so it still needs to be attached to a renderer explicitly, same as any other camera.
+  const camera = world.loader.getEntityByName('MainCamera');
   const renderer = world.addRenderer(camera, canvas);
   const controller = new OrbitCameraController(renderer, { mouseOptions: { canvas } });
   world.addEntity(controller);
@@ -44,50 +117,11 @@ world.init().then(async () => {
   // Same for `Trigger` entities - the level loader hands back the raw physics trigger component,
   // so wiring it into the world (and into game logic) is left to the app, same as if it had been
   // created directly via `world.physicsWorld.factory.createTrigger(...)`.
-  const killZone = new Trigger3dEntity(killZoneTrigger);
+  const killZone = new Trigger3dEntity(world.loader.getEntityByName('KillFloor'));
   world.addEntity(killZone);
   killZone.onEntityEntered.subscribe((entity: Entity3d) => {
     world.removeEntity(entity, true);
   });
 
-  // Beyond the level content, the world still behaves like any other `Gg3dWorld` - e.g. this
-  // spawns new primitives imperatively, the same way the "primitives" example does.
-  const spawnTimer = world.createClock(true);
-  spawnTimer.tickRateLimit = 2;
-  spawnTimer.tick$.subscribe(() => {
-    let item: Entity3d;
-    const r = Math.random();
-    if (r < 0.2) {
-      item = world.addPrimitiveRigidBody({
-        shape: { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } },
-        body: { mass: 1 },
-      });
-    } else if (r < 0.4) {
-      item = world.addPrimitiveRigidBody({
-        shape: { shape: 'CAPSULE', radius: 0.5, centersDistance: 1 },
-        body: { mass: 1 },
-      });
-    } else if (r < 0.6) {
-      item = world.addPrimitiveRigidBody({
-        shape: { shape: 'CYLINDER', radius: 0.5, height: 1 },
-        body: { mass: 1 },
-      });
-    } else if (r < 0.8) {
-      item = world.addPrimitiveRigidBody({
-        shape: { shape: 'CONE', radius: 0.5, height: 1 },
-        body: { mass: 1 },
-      });
-    } else {
-      item = world.addPrimitiveRigidBody({
-        shape: { shape: 'SPHERE', radius: 0.5 },
-        body: { mass: 1 },
-      });
-    }
-    item.position = {
-      x: Math.random() * 5 - 2.5,
-      y: Math.random() * 5 - 2.5,
-      z: 10,
-    };
-  });
   world.start();
 });

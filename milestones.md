@@ -92,6 +92,17 @@ Status
   `.levelLoader` on the existing `Gg2dLoader`/`Gg3dLoader`, with both `loadLevel()` (in-memory
   JSON) and `loadLevelFromUrl()` (fetches a hosted `.json` file) on all three. Covered by unit
   tests and two runnable examples (`level-json-three-rapier3d`, `level-json-pixi-rapier2d`).
+- ✅ All primitive shapes collapsed onto one `"Primitive"` entity class + `shape` field (2026-08-27),
+  e.g. `{ "class": "Primitive", "shape": "BOX" }` instead of `{ "class": "BOX" }`, with `shape`
+  reusing the same ALL-CAPS values as `Shape2DDescriptor`/`Shape3DDescriptor` (no translation table
+  needed) — keeps the class namespace reserved for actual entity kinds
+  (`Primitive`/`Trigger`/`Camera`/app-defined) rather than growing one class per shape. Apps
+  register their own entity classes the same `registerClass(alias, (world, settings) => any)` way
+  the built-ins are registered internally — demonstrated end-to-end by a `ShapeSpawner` custom
+  class in both level-json examples. `loadLevel`/`loadLevelFromUrl` don't return the created
+  entities anymore (positional destructuring off an opaque array was unreadable); named entities
+  are looked back up afterwards via `getEntityByName(name)` on the loader/`world.loader`. Documented
+  for consumers in the new `gg-engine-level-json` skill.
 - Document the Level JSON shape as a machine-checkable JSON Schema (`docs/specs/level-json.schema.json`)
   with CI validation of example levels — not started. `examples/level-json/README.md` documents
   the shape informally today, which is enough for humans but not enforced anywhere.

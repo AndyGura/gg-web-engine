@@ -1,7 +1,8 @@
 {
   "entities": [
     {
-      "class": "Box",
+      "class": "Primitive",
+      "shape": "BOX",
       "name": "Floor",
       "position": { "x": 0, "y": 0, "z": 0 },
       "config": {
@@ -11,7 +12,8 @@
       }
     },
     {
-      "class": "Box",
+      "class": "Primitive",
+      "shape": "BOX",
       "name": "Box1",
       "position": { "x": -2, "y": 2, "z": 1 },
       "config": {
@@ -21,7 +23,8 @@
       }
     },
     {
-      "class": "Sphere",
+      "class": "Primitive",
+      "shape": "SPHERE",
       "name": "Sphere1",
       "position": { "x": 0, "y": 2, "z": 1 },
       "config": {
@@ -31,7 +34,8 @@
       }
     },
     {
-      "class": "Capsule",
+      "class": "Primitive",
+      "shape": "CAPSULE",
       "name": "Capsule1",
       "position": { "x": 2, "y": 2, "z": 1 },
       "config": {
@@ -42,7 +46,8 @@
       }
     },
     {
-      "class": "Cylinder",
+      "class": "Primitive",
+      "shape": "CYLINDER",
       "name": "Cylinder1",
       "position": { "x": -2, "y": -2, "z": 1 },
       "config": {
@@ -53,7 +58,8 @@
       }
     },
     {
-      "class": "Cone",
+      "class": "Primitive",
+      "shape": "CONE",
       "name": "Cone1",
       "position": { "x": 2, "y": -2, "z": 1 },
       "config": {
@@ -77,6 +83,14 @@
       "position": { "x": 9, "y": 12, "z": 9 },
       "config": {
         "fov": 75
+      }
+    },
+    {
+      "class": "ShapeSpawner",
+      "name": "Spawner",
+      "config": {
+        "interval": 0.5,
+        "area": { "min": { "x": -2.5, "y": -2.5, "z": 10 }, "max": { "x": 2.5, "y": 2.5, "z": 10 } }
       }
     }
   ]

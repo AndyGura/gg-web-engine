@@ -16,13 +16,13 @@ describe('LevelLoader', () => {
     levelLoader = new TestLevelLoader(world);
   });
 
-  describe('registerGenerator', () => {
+  describe('registerClass', () => {
     it('should register a generator function', () => {
       // Create a mock generator function
       const mockGenerator = jest.fn().mockReturnValue({ test: true });
 
       // Register the generator
-      levelLoader.registerGenerator('TestEntity', mockGenerator);
+      levelLoader.registerClass('TestEntity', mockGenerator);
 
       // Create a level JSON with the test entity
       const levelJson: LevelJson = {
@@ -39,16 +39,48 @@ describe('LevelLoader', () => {
       };
 
       // Load the level
-      const entities = levelLoader.loadLevel(levelJson);
+      levelLoader.loadLevel(levelJson);
 
-      // Verify that the generator was called with the correct arguments
-      expect(entities.length).toBe(1);
+      // Verify that the generator was called with the correct arguments, and its result is
+      // reachable by the entity's name
       expect(mockGenerator).toHaveBeenCalledWith(world, {
         position: { x: 1, y: 2 },
         name: 'TestEntity1',
         testProperty: 'value',
       });
-      expect(entities[0]).toEqual({ test: true });
+      expect(levelLoader.getEntityByName('TestEntity1')).toEqual({ test: true });
+    });
+
+    it('should merge shape into the settings passed to the generator', () => {
+      // Create a mock generator function
+      const mockGenerator = jest.fn().mockReturnValue({ test: true });
+
+      // Register the generator
+      levelLoader.registerClass('Primitive', mockGenerator);
+
+      // Create a level JSON with a "Primitive" entity carrying a shape
+      const levelJson: LevelJson = {
+        entities: [
+          {
+            class: 'Primitive',
+            shape: 'SQUARE',
+            position: { x: 1, y: 2 },
+            config: {
+              dimensions: { x: 10, y: 10 },
+            },
+          },
+        ],
+      };
+
+      // Load the level
+      levelLoader.loadLevel(levelJson);
+
+      // Verify that shape was folded into the settings alongside position/config
+      expect(mockGenerator).toHaveBeenCalledWith(world, {
+        shape: 'SQUARE',
+        position: { x: 1, y: 2 },
+        dimensions: { x: 10, y: 10 },
+      });
     });
 
     it('should handle missing generators gracefully', () => {
@@ -71,10 +103,12 @@ describe('LevelLoader', () => {
       console.warn = jest.fn();
 
       // Load the level
-      const entities = levelLoader.loadLevel(levelJson);
+      levelLoader.loadLevel(levelJson);
 
-      // Verify that no entities were created and a warning was logged
-      expect(entities.length).toBe(0);
+      // Verify that no entity was created and a warning was logged
+      expect(() => levelLoader.getEntityByName('UnknownEntity1')).toThrow(
+        'No loaded entity named "UnknownEntity1"',
+      );
       expect(console.warn).toHaveBeenCalledWith('No generator registered for class alias "UnknownEntity"');
 
       // Restore console.warn
@@ -89,8 +123,8 @@ describe('LevelLoader', () => {
       const mockGenerator2 = jest.fn().mockReturnValue({ id: 2 });
 
       // Register the generators
-      levelLoader.registerGenerator('Entity1', mockGenerator1);
-      levelLoader.registerGenerator('Entity2', mockGenerator2);
+      levelLoader.registerClass('Entity1', mockGenerator1);
+      levelLoader.registerClass('Entity2', mockGenerator2);
 
       // Create a level JSON with multiple entities
       const levelJson: LevelJson = {
@@ -115,10 +149,9 @@ describe('LevelLoader', () => {
       };
 
       // Load the level
-      const entities = levelLoader.loadLevel(levelJson);
+      levelLoader.loadLevel(levelJson);
 
-      // Verify that both entities were created
-      expect(entities.length).toBe(2);
+      // Verify that both entities were created and are reachable by name
       expect(mockGenerator1).toHaveBeenCalledWith(world, {
         position: { x: 1, y: 2 },
         name: 'Entity1',
@@ -129,8 +162,8 @@ describe('LevelLoader', () => {
         name: 'Entity2',
         property2: 'value2',
       });
-      expect(entities[0]).toEqual({ id: 1 });
-      expect(entities[1]).toEqual({ id: 2 });
+      expect(levelLoader.getEntityByName('Entity1')).toEqual({ id: 1 });
+      expect(levelLoader.getEntityByName('Entity2')).toEqual({ id: 2 });
     });
 
     it('should handle empty entity list', () => {
@@ -139,11 +172,8 @@ describe('LevelLoader', () => {
         entities: [],
       };
 
-      // Load the level
-      const entities = levelLoader.loadLevel(levelJson);
-
-      // Verify that no entities were created
-      expect(entities.length).toBe(0);
+      // Load the level - should not throw
+      expect(() => levelLoader.loadLevel(levelJson)).not.toThrow();
     });
 
     it('should handle null entity returned from generator', () => {
@@ -151,7 +181,7 @@ describe('LevelLoader', () => {
       const mockGenerator = jest.fn().mockReturnValue(null);
 
       // Register the generator
-      levelLoader.registerGenerator('NullEntity', mockGenerator);
+      levelLoader.registerClass('NullEntity', mockGenerator);
 
       // Create a level JSON with the null entity
       const levelJson: LevelJson = {
@@ -168,10 +198,16 @@ describe('LevelLoader', () => {
       };
 
       // Load the level
-      const entities = levelLoader.loadLevel(levelJson);
+      levelLoader.loadLevel(levelJson);
 
-      // Verify that no entities were created
-      expect(entities.length).toBe(0);
+      // Verify that no entity was registered under that name
+      expect(() => levelLoader.getEntityByName('NullEntity1')).toThrow('No loaded entity named "NullEntity1"');
+    });
+  });
+
+  describe('getEntityByName', () => {
+    it('should throw for a name that was never loaded', () => {
+      expect(() => levelLoader.getEntityByName('Nope')).toThrow('No loaded entity named "Nope"');
     });
   });
 
@@ -184,7 +220,9 @@ describe('LevelLoader', () => {
 
     it('should fetch a level JSON document and load it', async () => {
       const levelJson: LevelJson = {
-        entities: [{ class: 'TestEntity', position: { x: 1, y: 2 }, config: { testProperty: 'value' } }],
+        entities: [
+          { class: 'TestEntity', position: { x: 1, y: 2 }, name: 'TestEntity1', config: { testProperty: 'value' } },
+        ],
       };
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
@@ -192,13 +230,12 @@ describe('LevelLoader', () => {
       }) as any;
 
       const mockGenerator = jest.fn().mockReturnValue({ test: true });
-      levelLoader.registerGenerator('TestEntity', mockGenerator);
+      levelLoader.registerClass('TestEntity', mockGenerator);
 
-      const entities = await levelLoader.loadLevelFromUrl('https://example.com/level.json');
+      await levelLoader.loadLevelFromUrl('https://example.com/level.json');
 
       expect(global.fetch).toHaveBeenCalledWith('https://example.com/level.json');
-      expect(entities.length).toBe(1);
-      expect(entities[0]).toEqual({ test: true });
+      expect(levelLoader.getEntityByName('TestEntity1')).toEqual({ test: true });
     });
 
     it('should throw if the response is not ok', async () => {
