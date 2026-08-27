@@ -105,7 +105,8 @@ Status
   TypeDoc>` base class in `base/level-loader.ts`, with `Gg2dLevelLoader`/`Gg3dLevelLoader`
   subclasses registering default generators for primitives/triggers/camera, both `loadLevel()`
   (in-memory JSON) and `loadLevelFromUrl()` (fetches a hosted `.json` file) on all three. Covered by
-  unit tests and two runnable examples (`level-json-three-rapier3d`, `level-json-pixi-rapier2d`).
+  unit tests and the four `primitives-*` examples, each of which builds its scene from a hardcoded
+  `LevelJson` object rather than manual entity-construction calls.
 - ✅ Level loader API hardening (2026-08-27): `Gg2dLoader`/`Gg3dLoader` (`world.loader`) now extend
   `Gg2dLevelLoader`/`Gg3dLevelLoader` directly instead of holding one as a nested `.levelLoader`
   property. All primitive shapes collapsed onto one `"Primitive"` class + `shape` field (e.g.
@@ -113,7 +114,7 @@ Status
   ALL-CAPS values, so the class namespace stays reserved for actual entity kinds
   (`Primitive`/`Trigger`/`Camera`/`Glb`/app-defined); apps register their own the same way via
   `registerClass(alias, (world, settings) => any)`, demonstrated by a `ShapeSpawner` custom class in
-  both level-json examples. `Gg3dLoader` also registers a `"Glb"` class (`Glb3DSettings`) wrapping
+  the `primitives-*` examples. `Gg3dLoader` also registers a `"Glb"` class (`Glb3DSettings`) wrapping
   `loadGgGlb` so a level JSON can place a GLB model (and its nested props, flattened) declaratively.
   `loadLevel`/`loadLevelFromUrl` resolve to a `GroupEntity` (`base/entities/group.entity.ts`), already
   added to the world, with every `IEntity` a generator produces parented under it via `addChildren` -
@@ -136,11 +137,11 @@ Status
   instead of updating parent/children bookkeeping - `loadLevel` relies on the fix to safely parent
   primitives under the level. Covered by unit tests (`test/base/level-loader.spec.ts`,
   `test/base/gg-world.spec.ts`, `test/base/entities/i-entity.spec.ts`, `test/{2d,3d}/level-loader.spec.ts`,
-  `test/3d/loader.spec.ts`) and the two runnable examples (`level-json-three-rapier3d`,
-  `level-json-pixi-rapier2d`); documented for consumers in the `gg-engine-level-json` skill.
+  `test/3d/loader.spec.ts`) and the four `primitives-*` examples; documented for consumers in the
+  `gg-engine-level-json` skill.
 - Document the Level JSON shape as a machine-checkable JSON Schema (`docs/specs/level-json.schema.json`)
-  with CI validation of example levels — not started. `examples/level-json/README.md` documents
-  the shape informally today, which is enough for humans but not enforced anywhere.
+  with CI validation of example levels — not started. The `gg-engine-level-json` skill documents the
+  shape informally today, which is enough for humans but not enforced anywhere.
 - Fix the rotation-composition FIXME in the GLB loader (`// FIXME this rotation is wrong` in
   `packages/core/src/3d/loader.ts`) — not started, still present. This is the one open item here
   with a real correctness risk (wrong prop/scene composition under rotation), so it should jump
@@ -229,9 +230,10 @@ Objectives
 - Make the engine learnable from the repo alone.
 
 Status
-- ✅ Broad example coverage across feature areas and library combinations: primitives (4 combos),
-  GLB loader (2), collision groups (4), collision-groups pool (2), a car-physics demo, a shooter
-  demo, a city-flythrough demo, and level-json (2, added 2026-08-27) — this grows with each
+- ✅ Broad example coverage across feature areas and library combinations: primitives (4 combos,
+  each built from a hardcoded `LevelJson` object via `world.loader.loadLevel()` rather than manual
+  entity construction, added 2026-08-27), GLB loader (2), collision groups (4), collision-groups
+  pool (2), a car-physics demo, a shooter demo, and a city-flythrough demo — this grows with each
   feature and is in reasonable shape.
 - ✅ Framework integration samples: Angular (`framework-angular-three-ammo`) and React
   (`framework-react-three-rapier3d`) exist; Vue/Svelte do not.

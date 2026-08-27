@@ -232,7 +232,7 @@ class ShapeSpawner extends IEntity {
 world.loader.registerClass('ShapeSpawner', (w: Gg3dWorld, settings: ShapeSpawnerSettings) =>
   new ShapeSpawner(w, settings),
 );
-await world.loader.loadLevelFromUrl(LEVEL_URL); // JSON has an entity with "class": "ShapeSpawner"
+await world.loader.loadLevel(level); // level has an entity with "class": "ShapeSpawner"
 ```
 
 There's nothing engine-specific about `ShapeSpawner` here - it's ordinary app code, registered the
@@ -243,31 +243,33 @@ along with the rest of the level) and findable via `level.getChildEntityByName`/
 `world.getEntityByName` (see "Finding entities by name" above) if given a `name` in the JSON.
 `tickOrder` just needs any valid value since this class doesn't use its own `tick$` (it drives
 itself off a separate `PausableClock` running at its own `interval`, not the per-frame tick every
-`IEntity` gets for free) - `TickOrder.CONTROLLERS` is as good a choice as any here. See
-`examples/level-json-three-rapier3d` (3D) and `examples/level-json-pixi-rapier2d` (2D) for the
-complete version, replacing what would otherwise be a hand-rolled spawn timer in `index.ts`.
+`IEntity` gets for free) - `TickOrder.CONTROLLERS` is as good a choice as any here. All four
+`examples/primitives-*` demos register and use a `ShapeSpawner` this way, kept in a sibling
+`shape-spawner.ts` file (exporting `ShapeSpawner`/`ShapeSpawnerSettings`) and imported into
+`index.ts`, replacing what would otherwise be a hand-rolled spawn timer. `examples/primitives-pixi-matter`
+(and its `primitives-pixi-rapier2d` twin) is the simplest complete reference - just a static floor
+plus the spawner, no `"Trigger"`/`"Camera"` entities; `examples/primitives-three-ammo` (and its
+`primitives-three-rapier3d` twin) is the same idea plus a `"Trigger"` kill-floor and a `"Camera"`.
 
 A `class` with no registered generator logs `console.warn('No generator registered for class alias
 "..."')` and is skipped rather than throwing - so a level JSON referencing an app class must have
 that class registered first, or that entity silently disappears.
 
-## Where level JSON files live
+## Where level JSON content lives
 
-`examples/level-json-pixi-rapier2d/level.json` and `examples/level-json-three-rapier3d/level.json`
-are the reference files, kept as a plain source file inside each example's own directory (not
-under the shared `examples/assets/`) and imported directly - `import level from './level.json'`,
-then `world.loader.loadLevel(level)` - rather than fetched by URL. This is deliberate: these
-examples are meant to be opened on StackBlitz, where a visitor can edit `level.json` right in the
-IDE pane and rerun to see the change; a shared/hosted asset fetched by URL wouldn't reflect a local
-edit at all. `tsconfig.json` needs `"resolveJsonModule": true` (and `"esModuleInterop": true`) for
-the JSON import to type-check under `ts-loader`; webpack bundles a JSON import out of the box, no
-loader config needed. See `gg-engine-examples` for how to add/wire a new example.
+The `examples/primitives-*` demos all declare their level as a hardcoded `const level: LevelJson =
+{...}` object directly in `index.ts` and pass it straight to `world.loader.loadLevel(level)` - no
+separate `.json` file, no `fetch`. This is the right default for a level that's small and doesn't
+need to change without a rebuild: it type-checks against `LevelJson` like any other TS object, and
+there's no `resolveJsonModule`/loader wiring to think about.
 
-There's no required location for an app's own level JSON files in general - this is just the
-convention for these two reference examples. Host a level JSON wherever `fetch(url)` in
-`loadLevelFromUrl` can reach it (static assets, CDN, same-origin path) if it should be swappable at
-runtime without a rebuild, or import/inline it and hand the parsed object to `loadLevel` directly
-(as these examples now do) when it's fine to ship baked into the bundle.
+There's no required location or format for an app's own level content in general - reach for a
+separate hosted/static `.json` file plus `loadLevelFromUrl(url)` instead when a level should be
+swappable at runtime without a rebuild (CDN-hosted content, user-authored levels, a StackBlitz demo
+where a visitor edits the JSON in the IDE pane and reruns). A file-based level still type-checks as
+`LevelJson` if imported directly (`import level from './level.json'`, `"resolveJsonModule": true` +
+`"esModuleInterop": true` in `tsconfig.json`) rather than fetched; webpack bundles a JSON import out
+of the box, no loader config needed. See `gg-engine-examples` for how to add/wire a new example.
 
 ## Tests
 

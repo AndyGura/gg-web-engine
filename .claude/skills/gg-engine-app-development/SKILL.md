@@ -91,8 +91,8 @@ rotation instead of quaternions.
   for app-registered custom classes. Loading resolves to a group entity holding everything the level
   produced, so `world.removeEntity(level, true)` tears the whole level back down in one call, and
   `level.getChildEntityByName(name)`/`world.getEntityByName(name)` find a named entity afterwards —
-  see the dedicated `gg-engine-level-json` skill, and `examples/level-json-three-rapier3d` /
-  `examples/level-json-pixi-rapier2d` for complete demos.
+  see the dedicated `gg-engine-level-json` skill, and the `examples/primitives-*` examples for
+  complete demos (all four build their scene from a hardcoded `LevelJson` object).
 - **Raycasting**: `world.physicsWorld.raycast({ from, to, collisionFilterGroups?, collisionFilterMask? })`.
 - **Collision groups**: `world.physicsWorld.registerCollisionGroup()` /
   `deregisterCollisionGroup(group)`; every body has `mainCollisionGroup` set by default. See the
