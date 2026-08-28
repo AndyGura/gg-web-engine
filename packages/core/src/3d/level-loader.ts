@@ -1,12 +1,19 @@
 import { LevelLoader } from '../base/level-loader';
 import { Gg3dWorld, Gg3dWorldTypeDocRepo } from './gg-3d-world';
-import { Point3, Point4 } from '../base';
+import { AxisDirection3, Point3, Point4 } from '../base';
 import { DisplayObject3dOpts } from './factories';
 import { Body3DOptions } from './models/body-options';
 import { Shape3DDescriptor } from './models/shapes';
 import { Entity3d } from './entities/entity-3d';
 import { Trigger3dEntity } from './entities/trigger-3d.entity';
 import { Camera3dEntity } from './entities/camera-3d.entity';
+import { GgCarEntity, GgCarProperties } from './entities/gg-car/gg-car.entity';
+import {
+  RVEntityAxleOptions,
+  RVEntitySharedWheelOptions,
+  WheelDisplayOptions,
+} from './entities/raycast-vehicle-3d.entity';
+import { Gg3dMapGraphEntityOptions, MapGraph, MapGraph3dEntity, MapGraphNodeType } from './entities/map-graph-3d.entity';
 
 const defaultBodyOptions: Body3DOptions = {
   dynamic: true,
@@ -16,6 +23,17 @@ const defaultBodyOptions: Body3DOptions = {
   ownCollisionGroups: 'all',
   interactWithCollisionGroups: 'all',
 };
+
+const defaultCarChassisBodyOptions: Body3DOptions = {
+  ...defaultBodyOptions,
+  mass: 800,
+};
+
+/** Fallback tyre size used only to size a `"GgCar"` wheel's auto-generated cylinder mesh when
+ * neither the wheel nor its shared wheel settings specify one - independent of the physics
+ * wheel's own default (`RaycastVehicle3dEntity`'s internal `wheeelDefaults`) applied when a
+ * wheel's `tyreRadius`/`tyreWidth` is left unset entirely. */
+const defaultWheelDisplaySize = { tyreRadius: 0.4, tyreWidth: 0.3 };
 
 /**
  * Shape names accepted by the built-in `"Primitive"` entity class in a 3D level JSON, via the
@@ -126,8 +144,136 @@ export interface Camera3DSettings {
 }
 
 /**
- * 3D level loader: registers the built-in primitive/trigger/camera entity classes and dispatches
- * `LevelJson` entities to them (or to custom classes registered via `registerClass`).
+ * Settings for a `"GgCar"` wheel's optional visual mesh. A level JSON has no way to reference an
+ * existing display object component (unlike programmatic `RVEntityProperties`, whose
+ * `WheelDisplayOptions.displayObject` takes one directly) - instead, supplying `display` at all
+ * makes the `"GgCar"` generator build one itself via `visualScene.factory.createCylinder`, sized
+ * to that wheel's own (or its axle/shared settings') `tyreRadius`/`tyreWidth`. Omit `display`
+ * entirely (on both the wheel and whatever it inherits from) to leave that wheel invisible
+ * (physics-only), same as omitting `WheelDisplayOptions.displayObject` does programmatically.
+ */
+export interface GgCarWheelDisplaySettings {
+  material?: DisplayObject3dOpts<any>;
+  wheelObjectDirection?: AxisDirection3;
+}
+
+/**
+ * JSON-friendly counterpart of `RVEntitySharedWheelOptions`: identical except `display` is a
+ * {@link GgCarWheelDisplaySettings} descriptor instead of a ready-made `WheelDisplayOptions`.
+ */
+export type GgCarSharedWheelSettings = Omit<RVEntitySharedWheelOptions, 'display'> & {
+  display?: GgCarWheelDisplaySettings;
+};
+
+/**
+ * JSON-friendly counterpart of `RVEntityAxleOptions`, for the `"GgCar"` class's `wheelBase.front`/
+ * `wheelBase.rear`.
+ */
+export type GgCarAxleSettings = Pick<RVEntityAxleOptions, 'halfAxleWidth' | 'axlePosition' | 'axleHeight'> &
+  GgCarSharedWheelSettings;
+
+/**
+ * JSON-friendly counterpart of one `RVEntityProperties['wheelOptions']` element, for the
+ * `"GgCar"` class's `wheelOptions` array.
+ */
+export type GgCarWheelSettings = GgCarSharedWheelSettings & {
+  isLeft: boolean;
+  isFront: boolean;
+  position: Point3;
+};
+
+/**
+ * Fields of `GgCarProperties` that don't vary between its `wheelBase`/`wheelOptions` shapes -
+ * carried over into {@link GgCar3DSettings} as-is (already plain JSON-serializable data).
+ */
+export interface GgCar3DCommonSettings {
+  suspension: GgCarProperties['suspension'];
+  tractionBias: GgCarProperties['tractionBias'];
+  mpsToRpmFactor?: GgCarProperties['mpsToRpmFactor'];
+  engine: GgCarProperties['engine'];
+  brake: GgCarProperties['brake'];
+  transmission: GgCarProperties['transmission'];
+  maxSteerAngle: GgCarProperties['maxSteerAngle'];
+}
+
+/**
+ * Settings for the built-in `"GgCar"` entity class (3D only): builds a box-shaped chassis rigid
+ * body (+ optional matching display box) and a full `GgCarEntity` on top of it - the procedural
+ * counterpart of the GLB-driven car construction apps do by hand (see `examples/fly-city-three-ammo`'s
+ * `GameFactory.generateCar`), for a car whose chassis/wheels are plain primitives rather than
+ * loaded meshes.
+ */
+export type GgCar3DSettings = GgCar3DCommonSettings & {
+  position?: Point3;
+  rotation?: Point4;
+
+  /**
+   * The chassis's box collider/mesh. `body` is merged over a default dynamic body (same shape as
+   * `Primitive3DSettings.body`, but with `mass: 800` instead of `1`, since a `mass: 1` chassis is
+   * unrealistically light for a car).
+   */
+  chassis: {
+    dimensions: Point3;
+    material?: DisplayObject3dOpts<any>;
+    body?: Partial<Body3DOptions>;
+  };
+} & (
+    | {
+        wheelBase: {
+          shared?: GgCarSharedWheelSettings;
+          front: GgCarAxleSettings;
+          rear: GgCarAxleSettings;
+        };
+        wheelOptions?: undefined;
+        sharedWheelOptions?: undefined;
+      }
+    | {
+        wheelOptions: GgCarWheelSettings[];
+        sharedWheelOptions?: GgCarSharedWheelSettings;
+        wheelBase?: undefined;
+      }
+  );
+
+/**
+ * JSON-friendly counterpart of `MapGraphNodeType`: identical except `loadOptions` may be omitted
+ * (defaulting to `{}`) rather than required, since most nodes need none of it.
+ */
+export type MapGraphNodeJson = Omit<MapGraphNodeType, 'loadOptions'> & {
+  loadOptions?: MapGraphNodeType['loadOptions'];
+};
+
+/**
+ * Settings for the built-in `"MapGraph"` entity class (3D only): builds a `MapGraph` from plain
+ * node data and wraps it in a ready-to-use `MapGraph3dEntity`. `graph` mirrors the two
+ * `MapGraph` factory methods - a flat (optionally closed-loop) path via `nodes`, or a rectangular
+ * `grid` - since both already take plain-data node arrays. The resulting entity doesn't implement
+ * `IPositionable3d` (each node carries its own absolute `position`/`rotation`), so there's no
+ * `position`/`rotation` field here - and its `loaderCursor$` still needs to be driven at runtime
+ * from whatever entity's position should determine which nodes are loaded (see
+ * `gg-engine-level-json` skill's "MapGraph" section).
+ */
+export interface MapGraph3DSettings {
+  graph:
+    | { type?: 'array'; nodes: MapGraphNodeJson[]; closed?: boolean }
+    | { type: 'grid'; grid: MapGraphNodeJson[][] };
+
+  /** Depth in the graph to load - see `Gg3dMapGraphEntityOptions.loadDepth` (default `5`) */
+  loadDepth?: number;
+
+  /** Extra unload-delay depth - see `Gg3dMapGraphEntityOptions.inertia` (default `0`) */
+  inertia?: number;
+
+  /** Max nodes loaded per tick - see `Gg3dMapGraphEntityOptions.maxNodesLoadingPerTick` (default `1`) */
+  maxNodesLoadingPerTick?: number;
+
+  /** Ticks/second of the internal load-scheduling clock - see `MapGraph3dEntity.loadRateLimit` (default `1`) */
+  loadRateLimit?: number;
+}
+
+/**
+ * 3D level loader: registers the built-in primitive/trigger/camera/car/map-graph entity classes
+ * and dispatches `LevelJson` entities to them (or to custom classes registered via
+ * `registerClass`).
  * @template TypeDoc - The type document repository
  */
 export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo> extends LevelLoader<
@@ -150,6 +296,8 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
 
     this.registerClass('Trigger', this.createTrigger.bind(this));
     this.registerClass('Camera', this.createCamera.bind(this));
+    this.registerClass('GgCar', this.createGgCar.bind(this));
+    this.registerClass('MapGraph', this.createMapGraph.bind(this));
   }
 
   /**
@@ -278,6 +426,137 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
     }
     if (rotation) {
       entity.rotation = rotation;
+    }
+    return entity;
+  }
+
+  /**
+   * Build a `WheelDisplayOptions` for one `"GgCar"` wheel/axle from its (already shared-merged)
+   * settings, via `visualScene.factory.createCylinder`. Returns `undefined` (no visual wheel,
+   * physics-only) if `display` wasn't specified at all, or there's no visual scene to build one
+   * against.
+   * @param world - The world instance
+   * @param wheelSettings - The wheel's own settings, already merged over whatever it inherits
+   * from `wheelBase.shared`/`sharedWheelOptions`
+   * @returns The resolved display options, or `undefined`
+   */
+  private resolveWheelDisplay(
+    world: Gg3dWorld<TypeDoc>,
+    wheelSettings: GgCarSharedWheelSettings,
+  ): WheelDisplayOptions | undefined {
+    if (!wheelSettings.display || !world.visualScene) {
+      return undefined;
+    }
+    const { tyreRadius = defaultWheelDisplaySize.tyreRadius, tyreWidth = defaultWheelDisplaySize.tyreWidth } =
+      wheelSettings;
+    return {
+      displayObject: world.visualScene.factory.createCylinder(tyreRadius, tyreWidth, wheelSettings.display.material ?? {}),
+      wheelObjectDirection: wheelSettings.display.wheelObjectDirection ?? 'x',
+    };
+  }
+
+  /**
+   * Create a `"GgCar"` entity: a box chassis rigid body (+ optional matching display box) wrapped
+   * in a full `GgCarEntity`, with each wheel's optional visual mesh built from its settings (see
+   * {@link resolveWheelDisplay}) rather than referencing an existing display object component,
+   * which a level JSON has no way to do.
+   * @param world - The world instance
+   * @param settings - The car settings
+   * @returns The created car entity
+   */
+  private createGgCar(world: Gg3dWorld<TypeDoc>, settings: GgCar3DSettings): GgCarEntity<TypeDoc> | undefined {
+    if (!world.physicsWorld) {
+      return undefined;
+    }
+    const { position, rotation, chassis, wheelBase, wheelOptions, sharedWheelOptions, ...rest } = settings;
+    if (!chassis?.dimensions) {
+      throw new Error('Chassis dimensions are required for GgCar class');
+    }
+    if (!wheelBase && !wheelOptions) {
+      throw new Error('Either "wheelBase" or "wheelOptions" is required for GgCar class');
+    }
+
+    const chassisBody = world.physicsWorld.factory.createRigidBody({
+      shape: { shape: 'BOX', dimensions: chassis.dimensions },
+      body: { ...defaultCarChassisBodyOptions, ...chassis.body },
+    });
+    const chassis3D = world.visualScene?.factory.createBox(chassis.dimensions, chassis.material ?? {}) ?? null;
+
+    const carProperties: GgCarProperties = wheelBase
+      ? {
+          ...rest,
+          wheelBase: {
+            shared: { ...wheelBase.shared, display: undefined },
+            front: {
+              ...wheelBase.front,
+              display: this.resolveWheelDisplay(world, { ...wheelBase.shared, ...wheelBase.front }),
+            },
+            rear: {
+              ...wheelBase.rear,
+              display: this.resolveWheelDisplay(world, { ...wheelBase.shared, ...wheelBase.rear }),
+            },
+          },
+        }
+      : {
+          ...rest,
+          wheelOptions: wheelOptions!.map(wheel => ({
+            ...wheel,
+            display: this.resolveWheelDisplay(world, { ...sharedWheelOptions, ...wheel }),
+          })),
+          sharedWheelOptions: sharedWheelOptions && { ...sharedWheelOptions, display: undefined },
+        };
+
+    const entity = new GgCarEntity<TypeDoc>(
+      carProperties,
+      chassis3D,
+      world.physicsWorld.factory.createRaycastVehicle(chassisBody),
+    );
+    if (position) {
+      entity.position = position;
+    }
+    if (rotation) {
+      entity.rotation = rotation;
+    }
+    return entity;
+  }
+
+  /**
+   * Create a `"MapGraph"` entity: a `MapGraph` built from plain node data (a flat/looped path or
+   * a rectangular grid, see {@link MapGraph3DSettings}), wrapped in a ready-to-use
+   * `MapGraph3dEntity`. The app still has to drive `loaderCursor$` itself once the level is
+   * loaded - see `gg-engine-level-json`'s "MapGraph" section.
+   * @param world - The world instance
+   * @param settings - The map graph settings
+   * @returns The created map graph entity
+   */
+  private createMapGraph(world: Gg3dWorld<TypeDoc>, settings: MapGraph3DSettings): MapGraph3dEntity<TypeDoc> {
+    const { graph, loadDepth, inertia, maxNodesLoadingPerTick, loadRateLimit } = settings;
+    if (!graph) {
+      throw new Error('"graph" is required for MapGraph class');
+    }
+    const normalizeNode = (node: MapGraphNodeJson): MapGraphNodeType => ({ ...node, loadOptions: node.loadOptions ?? {} });
+
+    let mapGraph: MapGraph;
+    if (graph.type === 'grid') {
+      if (!graph.grid?.length) {
+        throw new Error('"graph.grid" must be a non-empty grid for MapGraph class');
+      }
+      mapGraph = MapGraph.fromMapSquareGrid(graph.grid.map(row => row.map(normalizeNode)));
+    } else {
+      if (!graph.nodes?.length) {
+        throw new Error('"graph.nodes" must be a non-empty array for MapGraph class');
+      }
+      mapGraph = MapGraph.fromMapArray(graph.nodes.map(normalizeNode), graph.closed ?? false);
+    }
+
+    const options: Partial<Gg3dMapGraphEntityOptions> = {
+      ...(loadDepth !== undefined ? { loadDepth } : {}),
+      ...(inertia !== undefined ? { inertia } : {}),
+      ...(maxNodesLoadingPerTick !== undefined ? { maxNodesLoadingPerTick } : {}),
+    };
+    const entity = new MapGraph3dEntity<TypeDoc>(mapGraph, options);
+    if (loadRateLimit !== undefined) {
+      entity.loadRateLimit = loadRateLimit;
     }
     return entity;
   }

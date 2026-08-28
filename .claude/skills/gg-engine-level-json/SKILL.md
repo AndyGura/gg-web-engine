@@ -1,13 +1,14 @@
 ---
 name: gg-engine-level-json
-description: Author or load a level/scene as a JSON document with gg-web-engine's LevelLoader (entities array, built-in "Primitive"/"Trigger"/"Camera"/"Glb" classes, app-defined entity classes via registerClass, blueprint graphs wired to entity events via registerBlueprintNode, name lookup via GgWorld.getEntityByName/IEntity.getChildEntityByName, level removal via the returned group entity). Use when the task is to write a level JSON file, add a new built-in level entity class in packages/core, wire an entity's event straight to behavior via a blueprint, or register a custom entity class/blueprint node an app's level JSON can reference.
+description: Author or load a level/scene as a JSON document with gg-web-engine's LevelLoader (entities array, built-in "Primitive"/"Trigger"/"Camera"/"Glb"/"GgCar"/"MapGraph" classes, app-defined entity classes via registerClass, blueprint graphs wired to entity events via registerBlueprintNode, name lookup via GgWorld.getEntityByName/IEntity.getChildEntityByName, level removal via the returned group entity). Use when the task is to write a level JSON file, add a new built-in level entity class in packages/core, wire an entity's event straight to behavior via a blueprint, or register a custom entity class/blueprint node an app's level JSON can reference.
 ---
 
 # Building level JSONs
 
 A level JSON is a single static document describing the static (or semi-static) content of a
-scene - primitives, triggers, cameras, GLB models, and anything else an app registers a class for -
-so it can be shipped and consumed as one file instead of built up with imperative engine calls. The
+scene - primitives, triggers, cameras, GLB models, cars, streaming map graphs, and anything else an
+app registers a class for - so it can be shipped and consumed as one file instead of built up with
+imperative engine calls. The
 mechanism is implemented in `packages/core/src/base/level-loader.ts` (dimension-agnostic
 `LevelLoader`) plus `packages/core/src/2d/level-loader.ts` / `packages/core/src/3d/level-loader.ts`
 (`Gg2dLevelLoader` / `Gg3dLevelLoader`, which register the built-in classes and are themselves base
@@ -190,6 +191,112 @@ children of one `GroupEntity` (distinct from the level's own root group), which 
 `level.getChildEntityByName` on the `"Glb"` entity's own `name` hands back. That group *is* parented
 under the level's root, so it's still torn down along with the rest of the level.
 
+### `"GgCar"` (3D only) - a procedural `GgCarEntity`, ready to use
+
+```json
+{
+  "class": "GgCar",
+  "name": "PlayerCar",
+  "position": { "x": 0, "y": 0, "z": 1 },
+  "config": {
+    "chassis": { "dimensions": { "x": 1.8, "y": 4, "z": 0.6 }, "material": { "color": 8947848 }, "body": { "mass": 900 } },
+    "wheelBase": {
+      "shared": { "frictionSlip": 1000, "rollInfluence": 0.2, "display": { "wheelObjectDirection": "z" } },
+      "front": { "halfAxleWidth": 1, "axlePosition": 1.7, "axleHeight": 0.3, "tyreRadius": 0.35, "tyreWidth": 0.2 },
+      "rear": { "halfAxleWidth": 1, "axlePosition": -1, "axleHeight": 0.3, "tyreRadius": 0.4, "tyreWidth": 0.3 }
+    },
+    "suspension": { "stiffness": 20, "damping": 2.3, "compression": 4.4, "restLength": 0.53 },
+    "tractionBias": 0,
+    "engine": { "minRpm": 700, "maxRpm": 7000, "torques": [{ "rpm": 1000, "torque": 270 }, { "rpm": 7000, "torque": 430 }], "maxRpmIncreasePerSecond": 8000, "maxRpmDecreasePerSecond": 8000 },
+    "brake": { "frontAxleForce": 350, "rearAxleForce": 300, "handbrakeForce": 1500 },
+    "transmission": { "isAuto": false, "drivelineEfficiency": 0.85, "finalDriveRatio": 3.21, "reverseGearRatio": -2.33, "gearRatios": [2.92, 1.87, 1.42, 1.09, 0.81], "upShifts": [7140, 7140, 7140, 7140, 7140], "autoHold": false },
+    "maxSteerAngle": 0.35
+  }
+}
+```
+
+This is the procedural counterpart of the GLB-driven car construction an app does by hand when a
+car's chassis/wheels come from modeled meshes (see `examples/fly-city-three-ammo`'s
+`GameFactory.generateCar`/`RaycastVehicle3dEntity` for that path) - `"GgCar"` builds a box chassis
+and cylinder wheel meshes procedurally instead, which is enough for a physics playground or a
+placeholder vehicle without any asset pipeline.
+
+`config` (`GgCar3DSettings`) always needs `chassis.dimensions` plus every field of `GgCarProperties`
+that isn't wheel-shaped - `suspension`, `tractionBias`, `engine`, `brake`, `transmission`,
+`maxSteerAngle`, and optionally `mpsToRpmFactor` - passed through as plain data exactly as
+`GgCarEntity`'s constructor expects them. For wheels, supply exactly one of:
+
+- `wheelBase: { shared?, front, rear }` - a symmetric 4-wheel car, `front`/`rear` each
+  `{ halfAxleWidth, axlePosition, axleHeight, ...sharedWheelFields }`, inheriting anything they
+  don't set from `shared`.
+- `wheelOptions: [{ isFront, isLeft, position, ...sharedWheelFields }, ...]` plus optional
+  top-level `sharedWheelOptions` - an arbitrary wheel layout (e.g. more than 4 wheels), one entry
+  per wheel.
+
+Missing `chassis.dimensions`, or specifying neither `wheelBase` nor `wheelOptions`, throws.
+
+A wheel's visual mesh can't be declared by referencing an existing display object component (a
+level JSON has no way to name one) - instead, giving a wheel (or whatever it inherits from) a
+`display: { material?, wheelObjectDirection? }` block makes the generator build a cylinder mesh
+itself via `visualScene.factory.createCylinder`, sized to that wheel's own (or inherited)
+`tyreRadius`/`tyreWidth` (falling back to `0.4`/`0.3` if neither is set anywhere). Omit `display`
+entirely (on both the wheel and whatever it inherits from) to leave that wheel invisible
+(physics-only) - same as leaving `WheelDisplayOptions.displayObject` unset programmatically.
+`display` inheritance from `shared`/`sharedWheelOptions` is a plain shallow merge (a wheel's own
+`display` fully replaces, rather than merges into, an inherited one) - repeat fields on the wheel
+itself to keep some and override others.
+
+Steering/throttle/braking still have to be driven by app code once the level is loaded, same as any
+other entity a level JSON can't wire up on its own - look the car up with
+`level.getChildEntityByName<GgCarEntity>('PlayerCar')` and drive it directly (`car.acceleration`,
+`car.steeringFactor`, `car.brake`, `car.handBrake`) or via a `GgCarKeyboardHandlingController`
+attached with `car.addController(...)`.
+
+### `"MapGraph"` (3D only) - a ready-to-use `MapGraph3dEntity`
+
+```json
+{
+  "class": "MapGraph",
+  "name": "CityMap",
+  "config": {
+    "graph": {
+      "nodes": [
+        { "path": "assets/tiles/a", "position": { "x": 0, "y": 0, "z": 0 } },
+        { "path": "assets/tiles/b", "position": { "x": 75, "y": 0, "z": 0 } }
+      ],
+      "closed": false
+    },
+    "loadDepth": 3,
+    "inertia": 1,
+    "maxNodesLoadingPerTick": 1,
+    "loadRateLimit": 1
+  }
+}
+```
+
+`config` (`MapGraph3DSettings`) builds a `MapGraph` from plain node data via the same two shapes
+`MapGraph`'s own factory methods take, since both are already plain-data-in: a flat (optionally
+`closed`-into-a-loop) path via `graph: { nodes: [...], closed? }` (`nodes`/`grid` entries are
+`MapGraphNodeType` - `path`, `position`, optional `rotation`, optional `loadOptions` defaulting to
+`{}`), or a rectangular grid via `graph: { type: "grid", grid: [[...], [...]] }`. `loadDepth`/
+`inertia`/`maxNodesLoadingPerTick` map straight onto `Gg3dMapGraphEntityOptions` (see
+`MapGraph3dEntity`'s own doc comments for what each controls); `loadRateLimit` sets
+`MapGraph3dEntity.loadRateLimit` after construction. Missing `graph`, an empty `graph.nodes`, or an
+empty `graph.grid` throws.
+
+The returned `MapGraph3dEntity` doesn't implement `IPositionable3d` (every node already carries its
+own absolute `position`/`rotation`), so there's no `position`/`rotation` field on the `"MapGraph"`
+entity itself, and it starts out never loading anything - `loaderCursor$` still has to be driven at
+runtime from whatever entity's position should determine which nodes are in range, same as
+`examples/fly-city-three-ammo`'s `GameFactory.setupMapGraph` does against a render cursor:
+
+```typescript
+const mapGraph = level.getChildEntityByName<MapGraph3dEntity>('CityMap');
+createInlineTickController(world).subscribe(() => {
+  mapGraph.loaderCursor$.next(playerEntity.position);
+});
+```
+
 ## Blueprints - wiring entity events to behavior declaratively
 
 A blueprint is a small node graph, serializable as a `BlueprintJson`, that runs behavior in
@@ -370,7 +477,8 @@ await world.loader.loadLevel(level); // level has an entity with "class": "Shape
 ```
 
 There's nothing engine-specific about `ShapeSpawner` here - it's ordinary app code, registered the
-same way the built-in `"Primitive"`/`"Trigger"`/`"Camera"`/`"Glb"` classes are internally.
+same way the built-in `"Primitive"`/`"Trigger"`/`"Camera"`/`"Glb"`/`"GgCar"`/`"MapGraph"` classes
+are internally.
 Extending `IEntity` is what makes it eligible to be parented under the level's group (so
 `world.removeEntity(level, true)` disposes it - and, via the `dispose` override, stops its clock -
 along with the rest of the level) and findable via `level.getChildEntityByName`/
@@ -420,13 +528,17 @@ own coverage against a hand-rolled node type in
 `IEntity.getChildEntityByName` themselves have their own direct coverage in
 `packages/core/test/base/gg-world.spec.ts` and `packages/core/test/base/entities/i-entity.spec.ts`.
 `packages/core/test/{2d,3d}/level-loader.spec.ts` cover the built-in
-`"Primitive"`/`"Trigger"`/`"Camera"` classes against hand-rolled mock worlds (there,
-`addEntity`/`removeEntity` are plain `jest.fn()` stubs - fine since those tests only care about
-generator dispatch, not full spawn semantics). `packages/core/test/3d/loader.spec.ts` covers
-`Gg3dLoader` - the `"Glb"` class, and that `registerClass`/`loadLevel`/`loadLevelFromUrl` are
-available directly on it - stubbing `loadGgGlb` itself rather than the whole fetch/parse pipeline
-(which has no tests of its own - see `gg-engine-app-development`). Follow their existing structure
-for new built-in-class test cases - one `it` per shape/error case is the established pattern.
+`"Primitive"`/`"Trigger"`/`"Camera"`/`"GgCar"`/`"MapGraph"` classes against hand-rolled mock worlds
+(there, `addEntity`/`removeEntity` are plain `jest.fn()` stubs - fine since those tests only care
+about generator dispatch, not full spawn semantics); the `"GgCar"` cases stub
+`physicsWorld.factory.createRigidBody`/`createRaycastVehicle` and
+`visualScene.factory.createBox`/`createCylinder`, reusing `mockRaycastVehicle` from
+`packages/core/test/mocks/raycast-vehicle.mock.ts` for the vehicle component the generator wraps.
+`packages/core/test/3d/loader.spec.ts` covers `Gg3dLoader` - the `"Glb"` class, and that
+`registerClass`/`loadLevel`/`loadLevelFromUrl` are available directly on it - stubbing `loadGgGlb`
+itself rather than the whole fetch/parse pipeline (which has no tests of its own - see
+`gg-engine-app-development`). Follow their existing structure for new built-in-class test cases -
+one `it` per shape/error case is the established pattern.
 
 ## Keep this skill current
 

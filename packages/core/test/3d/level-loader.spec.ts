@@ -1,6 +1,18 @@
-import { Camera3dEntity, Gg3dLevelLoader, Gg3dWorld, IEntity, LevelJson, TickOrder, Trigger3dEntity } from '../../src';
+import {
+  Camera3dEntity,
+  Gg3dLevelLoader,
+  Gg3dWorld,
+  GgCarEntity,
+  IEntity,
+  LevelJson,
+  MapGraph3dEntity,
+  RVEntityTractionBias,
+  TickOrder,
+  Trigger3dEntity,
+} from '../../src';
 import { mock3DBody } from '../mocks/body.mock';
 import { mock3DObject } from '../mocks/object.mock';
+import { mockRaycastVehicle } from '../mocks/raycast-vehicle.mock';
 
 const defaultBody = {
   dynamic: true,
@@ -26,11 +38,15 @@ describe('Gg3dLevelLoader', () => {
       visualScene: {
         factory: {
           createPerspectiveCamera: jest.fn().mockReturnValue(mock3DObject()),
+          createBox: jest.fn().mockReturnValue(mock3DObject()),
+          createCylinder: jest.fn().mockReturnValue(mock3DObject()),
         },
       },
       physicsWorld: {
         factory: {
           createTrigger: jest.fn().mockReturnValue(mock3DBody()),
+          createRigidBody: jest.fn().mockReturnValue(mock3DBody()),
+          createRaycastVehicle: jest.fn().mockReturnValue(mockRaycastVehicle()),
         },
       },
       addPrimitiveRigidBody: jest.fn().mockImplementation(() => new TestEntity()),
@@ -224,6 +240,226 @@ describe('Gg3dLevelLoader', () => {
       expect(cameraEntity).toBeInstanceOf(Camera3dEntity);
       expect(cameraEntity.position).toEqual({ x: 1, y: 2, z: 3 });
       expect(cameraEntity.rotation).toEqual({ x: 0, y: 0, z: 0, w: 1 });
+    });
+
+    // Common car fields shared by both wheelBase- and wheelOptions-based GgCar tests
+    const carCommonConfig = {
+      suspension: { stiffness: 20, damping: 2.3, compression: 4.4, restLength: 0.53 },
+      tractionBias: RVEntityTractionBias.RWD,
+      engine: {
+        minRpm: 700,
+        maxRpm: 7000,
+        torques: [{ rpm: 1000, torque: 270 }, { rpm: 7000, torque: 430 }],
+        maxRpmIncreasePerSecond: 8000,
+        maxRpmDecreasePerSecond: 8000,
+      },
+      brake: { frontAxleForce: 350, rearAxleForce: 300, handbrakeForce: 1500 },
+      transmission: {
+        isAuto: false,
+        drivelineEfficiency: 0.85,
+        finalDriveRatio: 3.21,
+        reverseGearRatio: -2.33,
+        gearRatios: [2.92, 1.87, 1.42, 1.09, 0.81],
+        upShifts: [7140, 7140, 7140, 7140, 7140],
+        autoHold: false,
+      },
+      maxSteerAngle: 0.35,
+    };
+
+    it('should load a level with a GgCar built from a wheelBase', async () => {
+      const levelJson: LevelJson = {
+        entities: [
+          {
+            class: 'GgCar',
+            position: { x: 1, y: 2, z: 3 },
+            rotation: { x: 0, y: 0, z: 0, w: 1 },
+            name: 'TestCar',
+            config: {
+              ...carCommonConfig,
+              chassis: { dimensions: { x: 1.8, y: 4, z: 0.6 }, material: { color: 0x990000 }, body: { mass: 900 } },
+              wheelBase: {
+                shared: { frictionSlip: 1000, rollInfluence: 0.2, display: { wheelObjectDirection: 'z' } },
+                front: { halfAxleWidth: 1, axlePosition: 1.7, axleHeight: 0.3, tyreRadius: 0.35, tyreWidth: 0.2 },
+                rear: {
+                  halfAxleWidth: 1,
+                  axlePosition: -1,
+                  axleHeight: 0.3,
+                  tyreRadius: 0.4,
+                  tyreWidth: 0.3,
+                  display: { material: { color: 0x111111 } },
+                },
+              },
+            },
+          },
+        ],
+      };
+
+      const level = await levelLoader.loadLevel(levelJson);
+
+      // Chassis rigid body created from the box shape, body options merged over the (heavier
+      // than a default primitive's) car chassis defaults
+      expect(world.physicsWorld?.factory.createRigidBody).toHaveBeenCalledWith({
+        shape: { shape: 'BOX', dimensions: { x: 1.8, y: 4, z: 0.6 } },
+        body: { ...defaultBody, mass: 900 },
+      });
+      // Chassis display box created to match
+      expect(world.visualScene?.factory.createBox).toHaveBeenCalledWith(
+        { x: 1.8, y: 4, z: 0.6 },
+        { color: 0x990000 },
+      );
+      // The raycast vehicle wraps the chassis body that was just created
+      expect(world.physicsWorld?.factory.createRaycastVehicle).toHaveBeenCalledWith(
+        (world.physicsWorld?.factory.createRigidBody as jest.Mock).mock.results[0].value,
+      );
+      // Both wheels get a display - the front inherits "display" from "shared" (only overriding
+      // its own tyre size/material), the rear overrides it with its own material
+      expect(world.visualScene?.factory.createCylinder).toHaveBeenCalledTimes(2);
+      expect(world.visualScene?.factory.createCylinder).toHaveBeenCalledWith(0.35, 0.2, {});
+      expect(world.visualScene?.factory.createCylinder).toHaveBeenCalledWith(0.4, 0.3, { color: 0x111111 });
+
+      const car = level.getChildEntityByName<GgCarEntity>('TestCar');
+      expect(car).toBeInstanceOf(GgCarEntity);
+      expect(car.position).toEqual({ x: 1, y: 2, z: 3 });
+      expect(car.rotation).toEqual({ x: 0, y: 0, z: 0, w: 1 });
+      expect(car.carProperties.maxSteerAngle).toBe(0.35);
+    });
+
+    it('should load a level with a GgCar built from wheelOptions', async () => {
+      const levelJson: LevelJson = {
+        entities: [
+          {
+            class: 'GgCar',
+            name: 'TestCar2',
+            config: {
+              ...carCommonConfig,
+              chassis: { dimensions: { x: 1.6, y: 3.6, z: 0.5 } },
+              sharedWheelOptions: { tyreRadius: 0.3, tyreWidth: 0.25, display: { wheelObjectDirection: 'x' } },
+              wheelOptions: [
+                { isFront: true, isLeft: true, position: { x: 0.8, y: 1.5, z: 0.3 } },
+                { isFront: true, isLeft: false, position: { x: -0.8, y: 1.5, z: 0.3 } },
+                { isFront: false, isLeft: true, position: { x: 0.8, y: -1.5, z: 0.3 } },
+                { isFront: false, isLeft: false, position: { x: -0.8, y: -1.5, z: 0.3 } },
+              ],
+            },
+          },
+        ],
+      };
+
+      const level = await levelLoader.loadLevel(levelJson);
+
+      // Every wheel inherits its display from sharedWheelOptions
+      expect(world.visualScene?.factory.createCylinder).toHaveBeenCalledTimes(4);
+      expect(world.visualScene?.factory.createCylinder).toHaveBeenCalledWith(0.3, 0.25, {});
+
+      const car = level.getChildEntityByName<GgCarEntity>('TestCar2');
+      expect(car).toBeInstanceOf(GgCarEntity);
+    });
+
+    it('should throw when GgCar chassis dimensions are missing', async () => {
+      const levelJson: LevelJson = {
+        entities: [{ class: 'GgCar', config: { ...carCommonConfig, chassis: {}, wheelOptions: [] } }],
+      };
+      await expect(levelLoader.loadLevel(levelJson)).rejects.toThrow('Chassis dimensions are required for GgCar class');
+    });
+
+    it('should throw when GgCar has neither wheelBase nor wheelOptions', async () => {
+      const levelJson: LevelJson = {
+        entities: [
+          { class: 'GgCar', config: { ...carCommonConfig, chassis: { dimensions: { x: 1, y: 1, z: 1 } } } },
+        ],
+      };
+      await expect(levelLoader.loadLevel(levelJson)).rejects.toThrow(
+        'Either "wheelBase" or "wheelOptions" is required for GgCar class',
+      );
+    });
+
+    it('should load a level with a MapGraph built from a flat node array', async () => {
+      const levelJson: LevelJson = {
+        entities: [
+          {
+            class: 'MapGraph',
+            name: 'TestMapGraph',
+            config: {
+              graph: {
+                nodes: [
+                  { path: 'tiles/a', position: { x: 0, y: 0, z: 0 } },
+                  { path: 'tiles/b', position: { x: 10, y: 0, z: 0 } },
+                  { path: 'tiles/c', position: { x: 20, y: 0, z: 0 } },
+                ],
+              },
+              loadDepth: 2,
+              inertia: 1,
+              maxNodesLoadingPerTick: 3,
+              loadRateLimit: 5,
+            },
+          },
+        ],
+      };
+
+      const level = await levelLoader.loadLevel(levelJson);
+
+      const mapGraph = level.getChildEntityByName<MapGraph3dEntity>('TestMapGraph');
+      expect(mapGraph).toBeInstanceOf(MapGraph3dEntity);
+      expect(mapGraph.mapGraph.nodes()).toHaveLength(3);
+      expect(mapGraph.mapGraph.data).toEqual({
+        path: 'tiles/a',
+        position: { x: 0, y: 0, z: 0 },
+        loadOptions: {},
+      });
+      expect(mapGraph.loadRateLimit).toBe(5);
+    });
+
+    it('should load a level with a MapGraph built from a square grid', async () => {
+      const levelJson: LevelJson = {
+        entities: [
+          {
+            class: 'MapGraph',
+            name: 'TestGridMapGraph',
+            config: {
+              graph: {
+                type: 'grid',
+                grid: [
+                  [
+                    { path: 'tiles/00', position: { x: 0, y: 0, z: 0 } },
+                    { path: 'tiles/01', position: { x: 10, y: 0, z: 0 } },
+                  ],
+                  [
+                    { path: 'tiles/10', position: { x: 0, y: 10, z: 0 } },
+                    { path: 'tiles/11', position: { x: 10, y: 10, z: 0 } },
+                  ],
+                ],
+              },
+            },
+          },
+        ],
+      };
+
+      const level = await levelLoader.loadLevel(levelJson);
+
+      const mapGraph = level.getChildEntityByName<MapGraph3dEntity>('TestGridMapGraph');
+      expect(mapGraph).toBeInstanceOf(MapGraph3dEntity);
+      expect(mapGraph.mapGraph.nodes()).toHaveLength(4);
+    });
+
+    it('should throw when MapGraph "graph" is missing', async () => {
+      const levelJson: LevelJson = { entities: [{ class: 'MapGraph', config: {} }] };
+      await expect(levelLoader.loadLevel(levelJson)).rejects.toThrow('"graph" is required for MapGraph class');
+    });
+
+    it('should throw when MapGraph array graph has no nodes', async () => {
+      const levelJson: LevelJson = { entities: [{ class: 'MapGraph', config: { graph: { nodes: [] } } }] };
+      await expect(levelLoader.loadLevel(levelJson)).rejects.toThrow(
+        '"graph.nodes" must be a non-empty array for MapGraph class',
+      );
+    });
+
+    it('should throw when MapGraph grid graph is empty', async () => {
+      const levelJson: LevelJson = {
+        entities: [{ class: 'MapGraph', config: { graph: { type: 'grid', grid: [] } } }],
+      };
+      await expect(levelLoader.loadLevel(levelJson)).rejects.toThrow(
+        '"graph.grid" must be a non-empty grid for MapGraph class',
+      );
     });
   });
 
