@@ -83,10 +83,17 @@ rotation instead of quaternions.
 - **Ready-made controllers** (attach to entities via `entity.addController(...)`):
   `FreeCameraController`, `OrbitCameraController`, `CarKeyboardHandlingController` /
   `GgCarKeyboardHandlingController` in `packages/core/src/3d/entities/controllers/input/`.
-- **Level loading (3D)**: GLB + level-JSON + `.gg` meta sidecar, driven by `packages/core/src/3d/loader.ts`
+- **GLB scene loading (3D)**: GLB + `.gg` meta sidecar, driven by `packages/core/src/3d/loader.ts`
   and the adapter's own `<lib>-loader.ts` (e.g. `ThreeLoader`). Levels are authored via the Blender
-  exporter in `packages/core/blender_exporter`. See `examples/level-json` and the
-  `examples/glb-loader-*` examples.
+  exporter in `packages/core/blender_exporter`. See the `examples/glb-loader-*` examples.
+- **Level JSON loading (2D & 3D)**: `world.loader` turns a JSON document of entities into world
+  content, with built-in `"Primitive"`/`"Trigger"`/`"Camera"`/`"Glb"`/`"GgCar"`/`"MapGraph"` (the
+  last four 3D only) classes and support for app-registered custom classes. Loading resolves to a
+  group entity holding everything the level
+  produced, so `world.removeEntity(level, true)` tears the whole level back down in one call, and
+  `level.getChildEntityByName(name)`/`world.getEntityByName(name)` find a named entity afterwards —
+  see the dedicated `gg-engine-level-json` skill, and the `examples/primitives-*` examples for
+  complete demos (all four build their scene from a hardcoded `LevelJson` object).
 - **Raycasting**: `world.physicsWorld.raycast({ from, to, collisionFilterGroups?, collisionFilterMask? })`.
 - **Collision groups**: `world.physicsWorld.registerCollisionGroup()` /
   `deregisterCollisionGroup(group)`; every body has `mainCollisionGroup` set by default. See the

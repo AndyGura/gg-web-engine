@@ -17,6 +17,7 @@ the task before writing code:
 | Skill | Use for |
 |---|---|
 | [`gg-engine-app-development`](.claude/skills/gg-engine-app-development/SKILL.md) | Writing app/game code that *consumes* published `@gg-web-engine/*` packages. |
+| [`gg-engine-level-json`](.claude/skills/gg-engine-level-json/SKILL.md) | Authoring a level/scene JSON file, or registering an app-defined entity class the loader can dispatch to. |
 | [`gg-engine-core-development`](.claude/skills/gg-engine-core-development/SKILL.md) | Changing `packages/core` — the dimension-agnostic and 2D/3D interfaces every adapter implements. |
 | [`gg-engine-visual-adapter`](.claude/skills/gg-engine-visual-adapter/SKILL.md) | Creating/modifying a rendering backend package (`packages/three`, `packages/pixi`, or a new one). |
 | [`gg-engine-physics-adapter`](.claude/skills/gg-engine-physics-adapter/SKILL.md) | Creating/modifying a physics backend package (`packages/ammo`, `packages/rapier2d`, `packages/rapier3d`, `packages/matter`, or a new one). |
@@ -71,9 +72,19 @@ have it (or do it yourself) fold the lesson into the skill file as part of finis
 next agent to touch that package starts from the skill file alone and won't have this
 conversation's context.
 
-This does **not** apply to `gg-engine-app-development`: lessons learned while building an
-end-application on top of the engine belong in that app's own codebase/docs, not in this engine
-repo's skill set.
+This does **not** apply to `gg-engine-app-development` or `gg-engine-level-json`: lessons learned
+while building an end-application (or authoring its level JSON content) on top of the engine
+belong in that app's own codebase/docs, not in this engine repo's skill set. `gg-engine-level-json`
+itself should still be kept current for lessons about the loader mechanism/built-in classes
+themselves — see that file's own "Keep this skill current" section.
+
+Whenever you edit any skill file (not just these five) to reflect a change you just made, describe
+the resulting API/behavior as it stands now — don't narrate the change itself ("X used to return Y,
+now it returns Z", "there is no longer a `.foo` property"). A skill file is read fresh by an agent
+who never knew the old shape, so that framing is pure noise to them, not context. Overwrite the
+stale paragraph outright instead of appending a delta next to it. Save the actual history for
+`milestones.md`'s changelog-style status entries, where a "what changed and why" narrative is the
+point.
 
 ## Non-obvious repo facts worth knowing before diving in
 

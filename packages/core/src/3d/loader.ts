@@ -1,7 +1,8 @@
 import { Gg3dWorld, Gg3dWorldTypeDocRepo } from './gg-3d-world';
 import { GgMeta } from './models/gg-meta';
 import { Entity3d } from './entities/entity-3d';
-import { Pnt3, Point3, Point4, Qtrn } from '../base';
+import { GroupEntity, Pnt3, Point3, Point4, Qtrn } from '../base';
+import { Gg3dLevelLoader } from './level-loader';
 
 export enum CachingStrategy {
   Nothing,
@@ -56,7 +57,65 @@ export type LoadResultWithProps<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorld
   props?: LoadResult<TypeDoc>[];
 };
 
-export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo> {
+/**
+ * Flatten a `LoadResultWithProps` (and its recursively-nested `props`) into one flat list of every
+ * `Entity3d` it produced, for the built-in `"Glb"` level entity class to parent under a single
+ * `GroupEntity`.
+ */
+function flattenGlbEntities<TypeDoc extends Gg3dWorldTypeDocRepo>(
+  result: LoadResultWithProps<TypeDoc>,
+): Entity3d<TypeDoc>[] {
+  return [...result.entities, ...(result.props ?? []).flatMap(prop => flattenGlbEntities(prop))];
+}
+
+/**
+ * Settings for the built-in `"Glb"` level entity class (3D only): loads a GG GLB+meta pair via
+ * `Gg3dLoader.loadGgGlb` and returns every entity it produces (the model itself, plus any nested
+ * props/scenes) grouped under one `GroupEntity`.
+ */
+export interface Glb3DSettings {
+  /**
+   * Path (URL or path prefix, without extension) to the `.glb`/`.meta` pair - passed straight
+   * through to `loadGgGlb`
+   */
+  path: string;
+
+  /**
+   * Position of the loaded model
+   */
+  position?: Point3;
+
+  /**
+   * Rotation of the loaded model
+   */
+  rotation?: Point4;
+
+  /**
+   * Caching strategy, see `CachingStrategy`. Defaults to `CachingStrategy.Nothing`, same as
+   * `loadGgGlb` itself.
+   */
+  cachingStrategy?: CachingStrategy;
+
+  /**
+   * Whether to also load dummies flagged as props/scenes. Defaults to `true`, same as `loadGgGlb`.
+   */
+  loadProps?: boolean;
+
+  /**
+   * Path where to find prop scenes, if different from `path`'s own directory
+   */
+  propsPath?: string;
+}
+
+/**
+ * Full 3D loader exposed as `Gg3dWorld.loader`: GLB+meta asset loading (`loadGgGlb` and friends)
+ * layered on top of `Gg3dLevelLoader`, so `registerClass`/`loadLevel`/`loadLevelFromUrl`/
+ * `getEntityByName` are all available directly on `world.loader`. Also registers a `"Glb"` level
+ * entity class (see `Glb3DSettings`) so a level JSON can place a GLB model declaratively, the same
+ * way it places primitives/triggers/cameras.
+ * @template TypeDoc - The type document repository
+ */
+export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo> extends Gg3dLevelLoader<TypeDoc> {
   readonly filesCache: Map<string, [ArrayBuffer, GgMeta] | Promise<[ArrayBuffer, GgMeta]>> = new Map<
     string,
     [ArrayBuffer, GgMeta] | Promise<[ArrayBuffer, GgMeta]>
@@ -67,7 +126,25 @@ export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocR
     LoadResourcesResult<TypeDoc> | Promise<LoadResourcesResult<TypeDoc>>
   >();
 
-  constructor(protected readonly world: Gg3dWorld) {}
+  constructor(world: Gg3dWorld<TypeDoc>) {
+    super(world);
+    this.registerClass('Glb', async (w: Gg3dWorld<TypeDoc>, settings: Glb3DSettings) => {
+      if (!settings.path) {
+        throw new Error('Path is required for Glb class');
+      }
+      const { path, position, rotation, cachingStrategy, loadProps, propsPath } = settings;
+      const result = await this.loadGgGlb(path, {
+        ...(position !== undefined ? { position } : {}),
+        ...(rotation !== undefined ? { rotation } : {}),
+        ...(cachingStrategy !== undefined ? { cachingStrategy } : {}),
+        ...(loadProps !== undefined ? { loadProps } : {}),
+        ...(propsPath !== undefined ? { propsPath } : {}),
+      });
+      const group = new GroupEntity<Point3, Point4, TypeDoc>();
+      group.addChildren(...flattenGlbEntities(result));
+      return group;
+    });
+  }
 
   public async loadGgGlbFiles(path: string, useCache: boolean = false): Promise<[ArrayBuffer, GgMeta]> {
     if (useCache && this.filesCache.has(path)) {

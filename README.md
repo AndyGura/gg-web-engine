@@ -8,6 +8,7 @@
   <a href="#-about">About</a> •
   <a href="#-key-features">Key Features</a> •
   <a href="#-vision">Vision</a> •
+  <a href="#-milestones-roadmap">Milestones</a> •
   <a href="#-current-status">Current Status</a> •
   <a href="#-integrations">Integrations</a> •
   <a href="#-quickstart">Quickstart</a> •
@@ -44,6 +45,9 @@ creating custom solutions with minimal effort.
 - Empower developers with tools like developer console, cameras, and debug utilities.
 - Maintain modularity to ensure maximum flexibility for developers.
 - Stay library-agnostic, enabling developers to switch or customize libraries with ease.
+
+## 🧭 Milestones (Roadmap)
+The public roadmap, with per-item status against the current codebase, is available in [milestones.md](./milestones.md). It's a living proposal, not a contract, and will evolve with community feedback.
 
 ## 🚧 Current Status
 ### **<span style="color:red">Experimental Release**</span>
