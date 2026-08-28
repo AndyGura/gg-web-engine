@@ -102,11 +102,18 @@ vendor helper sources, see below) as a template:
   rather than the npm package's main export), add a `sync_<lib>_examples.sh` under `etc/` modeled
   on `packages/three/etc/sync_three_examples.sh`, and copy that folder into `dist/` on build like
   three's `build`/`prepublish` scripts do.
+- `tsconfig.json`: copy an existing adapter's (e.g. `packages/pixi/tsconfig.json`) rather than
+  writing one from scratch — it must set `baseUrl`/`outDir`/`rootDir` all to `./src/`/`./dist/` and
+  `tsBuildInfoFile: "./dist/tsconfig.tsbuildinfo"` explicitly (composite-project build orchestration
+  is on repo-wide via `tsconfig.base.json`; leaving these to their defaults silently nests emitted
+  output under a stray `dist/src/`, or drops `dist/index.js` entirely — see
+  `gg-engine-core-development`'s local dev section for why), and `"references": [{ "path":
+  "../core" }]` so root `npm run build:watch` (`tsc -b --watch`) picks up your package.
 
 ## Testing
 
 Rendering adapters currently have little/no automated testing in this repo — `three` and `pixi`
-are only `npm run build`-checked in CI (`.github/workflows/tests.yml`), relying on the
+are only `npm run build`-checked in CI (`.github/workflows/pull_request_build.yml`), relying on the
 `examples/primitives-three-*` / `examples/primitives-pixi-*` example apps for manual smoke
 testing. If you do add unit tests (encouraged for factory/shape-mapping logic that doesn't need a
 real GPU context), mirror the jest + `jest-environment-jsdom` setup from `packages/matter` or
@@ -114,18 +121,21 @@ real GPU context), mirror the jest + `jest-environment-jsdom` setup from `packag
 
 ## Wiring a new adapter into the repo
 
-1. Add a `build` (and `test`, if present) step to `.github/workflows/tests.yml`, following the
-   existing per-package steps.
-2. Add the package name to the `libs` array in `etc/switch_libs_to_local_core.sh` (so CI/local dev
-   can link your package against a local core build) and in `etc/publish_new_version.sh` (so
-   releases include it) — see `gg-engine-release`.
+1. Add a `build` (and `test`, if present) step to `.github/workflows/pull_request_build.yml`,
+   following the existing per-package steps.
+2. Add `{ "path": "../<lib>" }` to the root `tsconfig.json`'s `references` array (so `npm run
+   build:watch` picks it up) and the package name to the `libs` array in
+   `etc/publish_new_version.sh` (so releases include it) — see `gg-engine-release`. You do **not**
+   need to register it anywhere for local dev linking: `packages/*` is an npm workspace, so a new
+   directory under `packages/` joins it automatically on the next `npm install`.
 3. Add at least one example under `examples/` combining your new visual package with an existing
    physics package (or vice versa) — see `gg-engine-examples`.
 4. Add the package to the "Integrations" list in the root `README.md` and give it its own
    `packages/<lib>/README.md`.
-5. Use `bash etc/switch_libs_to_local_core.sh` and `bash etc/switch_example_to_local_gg.sh
-   <example-dir>` to develop end-to-end against local (unpublished) core/adapter builds via
-   `npm link` rather than publishing throwaway versions.
+5. Use `npm install` at the repo root and `bash etc/switch_example_to_local_gg.sh <example-dir>`
+   (plus `npm run build:watch` at the repo root for the live-reload loop) to develop end-to-end
+   against local (unpublished) core/adapter builds rather than publishing throwaway versions — see
+   `gg-engine-core-development`'s local dev workflow section.
 
 ## Keep this skill current
 

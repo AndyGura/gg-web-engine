@@ -49,10 +49,11 @@ investigation this session already did. Concretely:
   package against the new interface — don't have multiple agents edit `packages/core` concurrently.
 - Independent adapter packages (e.g. adding both a new visual and a new physics backend) are safe
   to parallelize across separate subagents, each loading the skill matching its own package.
-- After any adapter-touching change, remind the agent (or do it yourself) to run
-  `bash etc/switch_libs_to_local_core.sh` so the package under test links against the local core
-  build rather than the last published npm version — this is what CI does too, and skipping it
-  hides breakage that only shows up against unreleased core changes.
+- After any adapter-touching change, remind the agent (or do it yourself) to run `npm install` at
+  the repo root so the package under test links against the local core build rather than the last
+  published npm version — this is what CI does too, and skipping it hides breakage that only shows
+  up against unreleased core changes. See `gg-engine-core-development` for the full local-dev
+  workflow (workspace + `tsc -b --watch`).
 - Use the `gg-engine-release` skill yourself (don't delegate a release to a subagent) — it's a
   short, high-stakes, strictly-ordered script run, not something that benefits from parallel
   agents, and it publishes to npm and GitHub Pages.
@@ -76,9 +77,15 @@ repo's skill set.
 
 ## Non-obvious repo facts worth knowing before diving in
 
-- No workspace tool (no lerna/pnpm-workspace) — every package under `packages/` and `examples/` is
-  built and versioned independently; local cross-package development goes through `npm link` via
-  `etc/switch_libs_to_local_core.sh` and `etc/switch_example_to_local_gg.sh`.
+- Every package under `packages/` and `examples/` is versioned and published independently (see
+  `gg-engine-release`) — there's no lockstep-versioned monorepo tool (no lerna/pnpm). Locally,
+  though, `packages/*` (not `examples/*`) *is* an npm workspace (root `package.json`) purely for
+  dev-time resolution: `npm install` at the repo root symlinks every adapter's
+  `@gg-web-engine/core` dependency to the local `packages/core` instead of fetching it from npm.
+  Examples stay outside the workspace on purpose (they need to remain standalone-cloneable for
+  StackBlitz) and use `etc/switch_example_to_local_gg.sh` instead. See
+  `gg-engine-core-development` for the full local-dev workflow, including the `tsc -b --watch`
+  loop that rebuilds core and every adapter incrementally as you edit.
 - All `@gg-web-engine/*` packages are released together at one version number (see
   `gg-engine-release`); adapters pin exact versions of both `@gg-web-engine/core` and their
   underlying third-party library.

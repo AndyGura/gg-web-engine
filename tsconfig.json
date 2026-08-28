@@ -1,0 +1,16 @@
+{
+  // Solution file for `tsc -b` — lists every composite project so a single incremental watcher
+  // (`npm run build:watch` at repo root) can rebuild core and every adapter in dependency order
+  // as you edit. Not used for actual compilation (see tsconfig.base.json for compiler options);
+  // add new packages here so they join the watch graph — see the gg-engine-*-adapter skills.
+  "files": [],
+  "references": [
+    { "path": "packages/core" },
+    { "path": "packages/three" },
+    { "path": "packages/ammo" },
+    { "path": "packages/rapier2d" },
+    { "path": "packages/rapier3d" },
+    { "path": "packages/pixi" },
+    { "path": "packages/matter" }
+  ]
+}

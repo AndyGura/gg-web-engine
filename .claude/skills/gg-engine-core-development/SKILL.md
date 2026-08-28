@@ -95,19 +95,77 @@ paths, with shared fakes in `test/mocks/` (`body.mock.ts`, `object.mock.ts`, `wo
 `raycast-vehicle.mock.ts`). New core logic should get a `.spec.ts` there, not in an adapter
 package, unless it's genuinely adapter-specific behavior.
 
-## Testing a core change against the adapters
+## Local dev workflow: core + adapter + example, all in watch mode
 
-This repo has no workspace tool (no lerna/pnpm-workspace) — packages are independently versioned
-and linked locally via scripts in `etc/`:
+`packages/*` (not `examples/*`) is an npm workspace, defined by the root `package.json`. That's
+the whole mechanism: `npm install` at the repo root symlinks every adapter's
+`@gg-web-engine/core` (and inter-adapter, if any) dependency straight to the local `packages/*`
+directories — no version bump, no publish, no manual `npm link` bookkeeping. `packages/*/tsconfig.json`
+additionally declare TypeScript project `references` to `../core`, and the root `tsconfig.json` is
+a "solution" file referencing every package, so a single `tsc -b` (TypeScript's project-reference
+build orchestrator) rebuilds core and every adapter incrementally, in the correct dependency order,
+from one process.
+
+Put together, this gives you one long-running command that keeps every package's `dist/` current
+as you edit `.ts` anywhere in `packages/`:
 
 ```bash
-bash etc/switch_libs_to_local_core.sh   # npm-links your local core build into all adapter packages
+npm install       # one-time bootstrap: links the packages/* workspace (root package.json)
+npm run build     # one-time full build (includes the non-TS asset copies — see caveats below)
+npm run build:watch  # `tsc -b --watch` at repo root — leave this running
 ```
 
-This is exactly what CI (`.github/workflows/tests.yml`) runs before building/testing every
-adapter, so any core interface change should be validated the same way locally: run the script,
-then `npm run build && npm test` inside each affected `packages/<adapter>` (or all of them, for an
-interface-level change).
+To also see the change live in a specific example's dev server, link that example once and start
+it (see `gg-engine-examples`):
+
+```bash
+bash etc/switch_example_to_local_gg.sh examples/<example-dir>
+cd examples/<example-dir> && npm start   # webpack-dev-server, also watches for changes
+```
+
+With both of those running, **editing `packages/core/src` (or any adapter's `src`) is reflected in
+the browser with no other step**: `tsc -b --watch` notices the source change and re-emits that
+package's `dist/` (and, transitively, any adapter whose public types changed); webpack's own
+watcher notices the adapter's `dist/*.js` changed on disk (it's resolved through a plain symlink,
+so this is indistinguishable to webpack from a normal file edit) and rebuilds/reloads the bundle.
+This was verified end-to-end while writing this section: an edit to `packages/core/src/index.ts`
+propagated through `tsc -b --watch` into `packages/core/dist`, was picked up by a `webpack --watch`
+build of an example with no manual rebuild, and landed in the emitted bundle.
+
+Caveats:
+
+- `tsc -b --watch` only rebuilds what `tsc` itself emits. Two packages have a non-TS asset copy
+  step in their own `build` script (`ammo`'s `ammo.js` WASM glue, `three`'s vendored
+  `three-examples`) that `tsc -b` doesn't run. Do one full `npm run build` (root script) first so
+  those assets exist, then rely on `build:watch` for iterating on `.ts` changes; re-run `npm run
+  build` for that package if you touch those vendored assets.
+- `npm run build` (the per-package `build` script, or the root `npm run build`) and `tsc -b` are
+  two different incremental caches; running one doesn't make the other skip work, and mixing them
+  (e.g. `rm -rf dist` then `tsc -b` alone) will skip the asset-copy step above. This is expected,
+  not a bug — treat `npm run build` as "full, correct build" and `tsc -b --watch` as "fast
+  iteration on top of a build that already ran once."
+- This is exactly what CI (`.github/workflows/pull_request_build.yml`) does too (`npm install` at
+  the root, then build/test each adapter), so any core interface change should be validated the
+  same way locally: run `npm install` at the repo root, then `npm run build && npm test` inside
+  each affected `packages/<adapter>` (or all of them, for an interface-level change).
+- `switch_example_to_local_gg.sh` always resets the example's `package.json`/`tsconfig.json` to
+  their committed state before patching (so re-running it is safe); undo it with
+  `etc/restore_example_from_local_gg.sh examples/<example-dir>` to go back to the published
+  `@gg-web-engine/*` versions.
+- If you ever add a new `packages/<name>/tsconfig.json` (new adapter package) or otherwise touch
+  the composite-project setup: every package's tsconfig explicitly sets `rootDir` and
+  `tsBuildInfoFile` (both under `./dist/`) alongside `outDir`/`baseUrl`, and this is load-bearing,
+  not decoration. With `composite: true` (set once, in `tsconfig.base.json`) but `rootDir`/
+  `tsBuildInfoFile` left to their defaults, both `tsc -b` and even a plain per-package `tsc`
+  non-deterministically emitted output nested under a stray `dist/src/` (or, for packages whose
+  `include` pattern already starts with `src/`, dropped the top-level `dist/index.js` entirely —
+  breaking `main`/`types` resolution for consumers) and left an orphaned `tsconfig.tsbuildinfo` at
+  the package root instead of inside `dist/`, which then made subsequent builds silently believe
+  stale/deleted output was still up to date. Don't remove these two options without re-verifying
+  `dist/` layout with a full `rm -rf packages/*/dist && npm run build` afterward — a broken adapter
+  package.json (`main: dist/index.js` pointing at a file that doesn't exist) reads as a total build
+  failure only when something outside this repo actually imports the package; jest doesn't catch
+  it because `moduleNameMapper` bypasses `dist/` for `@gg-web-engine/core` entirely.
 
 ## Before starting non-trivial work
 
