@@ -1,6 +1,6 @@
 ---
 title: core/base/gg-world.ts
-nav_order: 78
+nav_order: 87
 parent: Modules
 ---
 
@@ -21,6 +21,7 @@ parent: Modules
     - [addPrimitiveRigidBody (method)](#addprimitiverigidbody-method)
     - [addEntity (method)](#addentity-method)
     - [removeEntity (method)](#removeentity-method)
+    - [getEntityByName (method)](#getentitybyname-method)
     - [onGgStaticInitialized (method)](#onggstaticinitialized-method)
     - [registerConsoleCommands (method)](#registerconsolecommands-method)
     - [visualScene (property)](#visualscene-property)
@@ -42,6 +43,8 @@ parent: Modules
   - [GgWorldTypeDocRepo (type alias)](#ggworldtypedocrepo-type-alias)
   - [GgWorldTypeDocVPatch (type alias)](#ggworldtypedocvpatch-type-alias)
   - [PhysicsTypeDocRepo (type alias)](#physicstypedocrepo-type-alias)
+  - [SceneTypeDocOf (type alias)](#scenetypedocof-type-alias)
+  - [TypeDocOf (type alias)](#typedocof-type-alias)
   - [VisualTypeDocRepo (type alias)](#visualtypedocrepo-type-alias)
 
 ---
@@ -136,6 +139,19 @@ public addEntity(entity: IEntity): void
 
 ```ts
 public removeEntity(entity: IEntity, dispose = false): void
+```
+
+### getEntityByName (method)
+
+Find an entity anywhere in the world by name. `children` is a flat list of every entity ever
+added via `addEntity` (nested entities included - `addChildren`/`onSpawned` cascade into it
+too), so this is a plain linear scan, not a tree walk; to search inside one particular
+entity's own subtree instead, use `IEntity.getChildEntityByName`.
+
+**Signature**
+
+```ts
+public getEntityByName<T extends IEntity = IEntity>(name: string): T
 ```
 
 ### onGgStaticInitialized (method)
@@ -343,6 +359,31 @@ export type PhysicsTypeDocRepo<D, R> = {
 }
 ```
 
+## SceneTypeDocOf (type alias)
+
+**Signature**
+
+```ts
+export type SceneTypeDocOf<W extends GgWorld<any, any>> = W extends GgWorld<
+  infer D,
+  infer R,
+  infer TypeDoc,
+  infer SceneTypeDoc
+>
+  ? SceneTypeDoc
+  : never
+```
+
+## TypeDocOf (type alias)
+
+**Signature**
+
+```ts
+export type TypeDocOf<W extends GgWorld<any, any>> = W extends GgWorld<infer D, infer R, infer TypeDoc>
+  ? TypeDoc
+  : never
+```
+
 ## VisualTypeDocRepo (type alias)
 
 **Signature**
@@ -353,5 +394,6 @@ export type VisualTypeDocRepo<D, R> = {
   displayObject: IDisplayObjectComponent<D, R>
   renderer: IRendererComponent<D, R>
   rendererExtraOpts: {}
+  camera: IPositionable<D, R>
 }
 ```

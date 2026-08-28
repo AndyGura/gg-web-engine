@@ -1,6 +1,6 @@
 ---
 title: pixi/components/pixi-scene.component.ts
-nav_order: 112
+nav_order: 123
 parent: Modules
 ---
 
@@ -26,7 +26,9 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare class PixiSceneComponent
+export declare class PixiSceneComponent {
+  constructor()
+}
 ```
 
 ### init (method)
@@ -43,6 +45,7 @@ async init(): Promise<void>
 
 ```ts
 createRenderer(
+    camera: PixiCameraComponent,
     canvas?: HTMLCanvasElement,
     rendererOptions?: Partial<RendererOptions & ApplicationOptions>,
   ): PixiRendererComponent

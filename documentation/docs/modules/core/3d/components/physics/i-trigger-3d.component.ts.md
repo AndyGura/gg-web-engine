@@ -1,6 +1,6 @@
 ---
 title: core/3d/components/physics/i-trigger-3d.component.ts
-nav_order: 31
+nav_order: 34
 parent: Modules
 ---
 
@@ -22,8 +22,9 @@ parent: Modules
 **Signature**
 
 ```ts
-export interface ITrigger3dComponent<PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D>
-  extends ITriggerComponent<Point3, Point4, PTypeDoc> {
+export interface ITrigger3dComponent<
+  PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D,
+> extends ITriggerComponent<Point3, Point4, PTypeDoc> {
   /** body info for physics debugger view */
   readonly debugBodySettings: DebugBody3DSettings;
 ```

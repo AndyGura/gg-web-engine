@@ -731,9 +731,7 @@ declare module Ammo {
     get_primitive_triangle(prim_index: number, triangle: btPrimitiveTriangle): void;
   }
   type eGIMPACT_SHAPE_TYPE =
-    | 'CONST_GIMPACT_COMPOUND_SHAPE'
-    | 'CONST_GIMPACT_TRIMESH_SHAPE_PART'
-    | 'CONST_GIMPACT_TRIMESH_SHAPE';
+    'CONST_GIMPACT_COMPOUND_SHAPE' | 'CONST_GIMPACT_TRIMESH_SHAPE_PART' | 'CONST_GIMPACT_TRIMESH_SHAPE';
   class btTetrahedronShapeEx {
     constructor();
     setVertices(v0: btVector3, v1: btVector3, v2: btVector3, v3: btVector3): void;
@@ -1112,10 +1110,7 @@ declare module Ammo {
     | 'FIXED_CONSTRAINT_TYPE'
     | 'MAX_CONSTRAINT_TYPE';
   type btConstraintParams =
-    | 'BT_CONSTRAINT_ERP'
-    | 'BT_CONSTRAINT_STOP_ERP'
-    | 'BT_CONSTRAINT_CFM'
-    | 'BT_CONSTRAINT_STOP_CFM';
+    'BT_CONSTRAINT_ERP' | 'BT_CONSTRAINT_STOP_ERP' | 'BT_CONSTRAINT_CFM' | 'BT_CONSTRAINT_STOP_CFM';
   class btPoint2PointConstraint extends btTypedConstraint {
     constructor(rbA: btRigidBody, rbB: btRigidBody, pivotInA: btVector3, pivotInB: btVector3);
     constructor(rbA: btRigidBody, pivotInA: btVector3);

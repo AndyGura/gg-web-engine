@@ -1,6 +1,6 @@
 ---
 title: pixi/components/pixi-renderer.component.ts
-nav_order: 111
+nav_order: 122
 parent: Modules
 ---
 
@@ -32,6 +32,7 @@ parent: Modules
 export declare class PixiRendererComponent {
   constructor(
     public readonly scene: PixiSceneComponent,
+    public camera: PixiCameraComponent,
     public readonly canvas?: HTMLCanvasElement,
     options: Partial<RendererOptions & ApplicationOptions> = {}
   )

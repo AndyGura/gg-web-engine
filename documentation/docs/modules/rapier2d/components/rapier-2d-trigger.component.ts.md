@@ -1,6 +1,6 @@
 ---
 title: rapier2d/components/rapier-2d-trigger.component.ts
-nav_order: 117
+nav_order: 128
 parent: Modules
 ---
 

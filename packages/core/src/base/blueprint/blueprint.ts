@@ -134,14 +134,10 @@ export class Blueprint<D = any, R = any, TypeDoc extends GgWorldTypeDocRepo<D, R
       const source = this.nodes.get(link.from.node);
       const target = this.nodes.get(link.to.node);
       if (!source || !target) {
-        console.warn(
-          `Blueprint link references an unknown node ("${link.from.node}" -> "${link.to.node}") - skipping`,
-        );
+        console.warn(`Blueprint link references an unknown node ("${link.from.node}" -> "${link.to.node}") - skipping`);
         continue;
       }
-      this.linkSubscriptions.push(
-        source.output(link.from.pin).subscribe(value => target.trigger(link.to.pin, value)),
-      );
+      this.linkSubscriptions.push(source.output(link.from.pin).subscribe(value => target.trigger(link.to.pin, value)));
     }
   }
 

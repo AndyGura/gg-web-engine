@@ -29,9 +29,11 @@ const DEFAULT_RENDERER_OPTIONS: RendererOptions = {
   antialias: true,
 };
 
-export abstract class IRendererComponent<D, R, VTypeDoc extends VisualTypeDocRepo<D, R> = VisualTypeDocRepo<D, R>>
-  implements IWorldComponent<D, R, GgWorldTypeDocVPatch<D, R, VTypeDoc>>
-{
+export abstract class IRendererComponent<
+  D,
+  R,
+  VTypeDoc extends VisualTypeDocRepo<D, R> = VisualTypeDocRepo<D, R>,
+> implements IWorldComponent<D, R, GgWorldTypeDocVPatch<D, R, VTypeDoc>> {
   entity: IEntity | null = null;
 
   abstract camera: VTypeDoc['camera'];

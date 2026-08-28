@@ -1,6 +1,6 @@
 ---
 title: core/base/components/physics/i-body.component.ts
-nav_order: 64
+nav_order: 72
 parent: Modules
 ---
 
@@ -22,8 +22,11 @@ parent: Modules
 **Signature**
 
 ```ts
-export interface IBodyComponent<D, R, PTypeDoc extends PhysicsTypeDocRepo<D, R> = PhysicsTypeDocRepo<D, R>>
-  extends IWorldComponent<D, R, GgWorldTypeDocPPatch<D, R, PTypeDoc>> {
+export interface IBodyComponent<
+  D,
+  R,
+  PTypeDoc extends PhysicsTypeDocRepo<D, R> = PhysicsTypeDocRepo<D, R>,
+> extends IWorldComponent<D, R, GgWorldTypeDocPPatch<D, R, PTypeDoc>> {
   entity: IEntity | null;
 
   position: D;

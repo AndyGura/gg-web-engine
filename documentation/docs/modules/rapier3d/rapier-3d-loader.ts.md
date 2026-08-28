@@ -1,6 +1,6 @@
 ---
 title: rapier3d/rapier-3d-loader.ts
-nav_order: 128
+nav_order: 139
 parent: Modules
 ---
 

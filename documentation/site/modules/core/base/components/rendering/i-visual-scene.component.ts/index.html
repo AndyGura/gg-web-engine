@@ -560,6 +560,12 @@
   readonly factory: VTypeDoc['factory']
 
   init(): Promise&lt;void&gt;
+
+  createRenderer(
+    camera: VTypeDoc['camera'],
+    canvas?: HTMLCanvasElement,
+    rendererOptions?: Partial&lt;RendererOptions &amp; VTypeDoc['rendererExtraOpts']&gt;
+  ): VTypeDoc['renderer']
 }
 </code></pre>
 

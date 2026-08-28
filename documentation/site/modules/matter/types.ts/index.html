@@ -527,6 +527,20 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#matterscenetypedoc-type-alias" class="md-nav__link">
+    MatterSceneTypeDoc (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mattertypedoc-type-alias" class="md-nav__link">
+    MatterTypeDoc (type alias)
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -558,15 +572,14 @@
 <li><a href="#utils">utils</a></li>
 <li><a href="#matterggworld-type-alias">MatterGgWorld (type alias)</a></li>
 <li><a href="#matterphysicstypedocrepo-type-alias">MatterPhysicsTypeDocRepo (type alias)</a></li>
+<li><a href="#matterscenetypedoc-type-alias">MatterSceneTypeDoc (type alias)</a></li>
+<li><a href="#mattertypedoc-type-alias">MatterTypeDoc (type alias)</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
 <h2 id="matterggworld-type-alias">MatterGgWorld (type alias)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type MatterGgWorld = Gg2dWorld&lt;
-  Gg2dWorldTypeDocPPatch&lt;MatterPhysicsTypeDocRepo&gt;,
-  Gg2dWorldSceneTypeDocPPatch&lt;MatterPhysicsTypeDocRepo, MatterWorldComponent&gt;
-&gt;
+<pre><code class="language-ts">export type MatterGgWorld = Gg2dWorld&lt;MatterTypeDoc, MatterSceneTypeDoc&gt;
 </code></pre>
 <h2 id="matterphysicstypedocrepo-type-alias">MatterPhysicsTypeDocRepo (type alias)</h2>
 <p><strong>Signature</strong></p>
@@ -575,6 +588,14 @@
   rigidBody: MatterRigidBodyComponent
   trigger: MatterTriggerComponent
 }
+</code></pre>
+<h2 id="matterscenetypedoc-type-alias">MatterSceneTypeDoc (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type MatterSceneTypeDoc = Gg2dWorldSceneTypeDocPPatch&lt;MatterPhysicsTypeDocRepo, MatterWorldComponent&gt;
+</code></pre>
+<h2 id="mattertypedoc-type-alias">MatterTypeDoc (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type MatterTypeDoc = Gg2dWorldTypeDocPPatch&lt;MatterPhysicsTypeDocRepo&gt;
 </code></pre>
 
 

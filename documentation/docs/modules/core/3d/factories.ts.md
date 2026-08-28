@@ -1,6 +1,6 @@
 ---
 title: core/3d/factories.ts
-nav_order: 50
+nav_order: 54
 parent: Modules
 ---
 

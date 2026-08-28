@@ -1,6 +1,6 @@
 ---
 title: core/base/components/physics/i-trigger.component.ts
-nav_order: 67
+nav_order: 75
 parent: Modules
 ---
 
@@ -22,6 +22,9 @@ parent: Modules
 **Signature**
 
 ```ts
-export interface ITriggerComponent<D, R, PTypeDoc extends PhysicsTypeDocRepo<D, R> = PhysicsTypeDocRepo<D, R>>
-  extends IBodyComponent<D, R, PTypeDoc> {
+export interface ITriggerComponent<
+  D,
+  R,
+  PTypeDoc extends PhysicsTypeDocRepo<D, R> = PhysicsTypeDocRepo<D, R>,
+> extends IBodyComponent<D, R, PTypeDoc> {
 ```

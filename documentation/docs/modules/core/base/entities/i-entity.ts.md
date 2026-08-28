@@ -1,6 +1,6 @@
 ---
 title: core/base/entities/i-entity.ts
-nav_order: 75
+nav_order: 84
 parent: Modules
 ---
 
@@ -14,6 +14,8 @@ parent: Modules
   - [IEntity (class)](#ientity-class)
     - [addChildren (method)](#addchildren-method)
     - [removeChildren (method)](#removechildren-method)
+    - [getChildEntityByName (method)](#getchildentitybyname-method)
+    - [findChildEntityByName (method)](#findchildentitybyname-method)
     - [addComponents (method)](#addcomponents-method)
     - [removeComponents (method)](#removecomponents-method)
     - [onSpawned (method)](#onspawned-method)
@@ -54,6 +56,27 @@ public addChildren(...entities: IEntity[])
 
 ```ts
 public removeChildren(entities: IEntity[], dispose: boolean = false)
+```
+
+### getChildEntityByName (method)
+
+Find a descendant entity by name, searching this entity's own children and their children
+recursively (depth-first) - not the whole world, just this entity's subtree. Useful e.g. to
+pull a specific entity back out of a `GroupEntity` a `LevelLoader` handed back:
+`level.getChildEntityByName('KillFloor')`.
+
+**Signature**
+
+```ts
+public getChildEntityByName<T extends IEntity = IEntity>(name: string): T
+```
+
+### findChildEntityByName (method)
+
+**Signature**
+
+```ts
+private findChildEntityByName(name: string): IEntity | undefined
 ```
 
 ### addComponents (method)

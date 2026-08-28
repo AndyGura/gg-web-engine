@@ -145,8 +145,7 @@ export interface GLTFLoaderPlugin {
   loadTexture?: ((textureIndex: number) => Promise<Texture> | null) | undefined;
   getMaterialType?: ((materialIndex: number) => typeof Material | null) | undefined;
   extendMaterialParams?:
-    | ((materialIndex: number, materialParams: { [key: string]: any }) => Promise<any> | null)
-    | undefined;
+    ((materialIndex: number, materialParams: { [key: string]: any }) => Promise<any> | null) | undefined;
   createNodeMesh?: ((nodeIndex: number) => Promise<Group | Mesh | SkinnedMesh> | null) | undefined;
   createNodeAttachment?: ((nodeIndex: number) => Promise<Object3D> | null) | undefined;
 }

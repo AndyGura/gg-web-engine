@@ -1,6 +1,6 @@
 ---
 title: core/base/components/i-world-component.ts
-nav_order: 63
+nav_order: 71
 parent: Modules
 ---
 

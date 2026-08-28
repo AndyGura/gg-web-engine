@@ -2,8 +2,7 @@ import { Point2 } from '../../base';
 import { Body2DOptions } from './body-options';
 
 export type Shape2DDescriptor = { collisionMargin?: number } & (
-  | { shape: 'SQUARE'; dimensions: Point2 }
-  | { shape: 'CIRCLE'; radius: number }
+  { shape: 'SQUARE'; dimensions: Point2 } | { shape: 'CIRCLE'; radius: number }
 );
 // TODO add more shapes
 

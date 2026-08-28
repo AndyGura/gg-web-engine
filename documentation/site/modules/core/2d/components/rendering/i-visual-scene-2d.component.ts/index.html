@@ -556,12 +556,7 @@
 <h2 id="ivisualscene2dcomponent-interface">IVisualScene2dComponent (interface)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export interface IVisualScene2dComponent&lt;VTypeDoc extends VisualTypeDocRepo2D = VisualTypeDocRepo2D&gt;
-  extends IVisualSceneComponent&lt;Point2, number, VTypeDoc&gt; {
-  createRenderer(
-    canvas?: HTMLCanvasElement,
-    rendererOptions?: Partial&lt;RendererOptions &amp; VTypeDoc['rendererExtraOpts']&gt;
-  ): VTypeDoc['renderer']
-}
+  extends IVisualSceneComponent&lt;Point2, number, VTypeDoc&gt; {}
 </code></pre>
 
 

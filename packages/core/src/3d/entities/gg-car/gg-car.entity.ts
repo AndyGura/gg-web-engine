@@ -35,9 +35,9 @@ export type GgCarProperties = RVEntityProperties & {
 };
 
 export class GgCarEntity<
-    TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo,
-    RVEntity extends RaycastVehicle3dEntity<TypeDoc> = RaycastVehicle3dEntity<TypeDoc>,
-  >
+  TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo,
+  RVEntity extends RaycastVehicle3dEntity<TypeDoc> = RaycastVehicle3dEntity<TypeDoc>,
+>
   extends IRenderable3dEntity<TypeDoc>
   implements IPositionable3d
 {

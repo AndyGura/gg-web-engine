@@ -1,6 +1,6 @@
 ---
 title: core/3d/components/physics/i-raycast-vehicle.component.ts
-nav_order: 29
+nav_order: 32
 parent: Modules
 ---
 
@@ -24,8 +24,9 @@ parent: Modules
 **Signature**
 
 ```ts
-export interface IRaycastVehicleComponent<PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D>
-  extends IRigidBody3dComponent<PTypeDoc> {
+export interface IRaycastVehicleComponent<
+  PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D,
+> extends IRigidBody3dComponent<PTypeDoc> {
 ```
 
 ## SuspensionOptions (type alias)

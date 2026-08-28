@@ -1,6 +1,6 @@
 ---
 title: core/3d/gg-3d-world.ts
-nav_order: 51
+nav_order: 55
 parent: Modules
 ---
 
@@ -201,7 +201,7 @@ export type VisualTypeDocRepo3D = {
   displayObject: IDisplayObject3dComponent
   renderer: IRenderer3dComponent
   rendererExtraOpts: {}
-  camera: ICameraComponent
+  camera: ICamera3dComponent
   texture: unknown
 }
 ```

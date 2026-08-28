@@ -542,6 +542,13 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#loader-property" class="md-nav__link">
+    loader (property)
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -643,6 +650,7 @@
 <li><a href="#addprimitiverigidbody-method">addPrimitiveRigidBody (method)</a></li>
 <li><a href="#addrenderer-method">addRenderer (method)</a></li>
 <li><a href="#registerconsolecommands-method">registerConsoleCommands (method)</a></li>
+<li><a href="#loader-property">loader (property)</a></li>
 </ul>
 </li>
 <li><a href="#gg2dworldscenetypedocppatch-type-alias">Gg2dWorldSceneTypeDocPPatch (type alias)</a></li>
@@ -675,6 +683,7 @@
 <h3 id="addrenderer-method">addRenderer (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">addRenderer(
+    camera: TypeDoc['vTypeDoc']['camera'],
     canvas?: HTMLCanvasElement,
     rendererOptions?: Partial&lt;RendererOptions &amp; TypeDoc['vTypeDoc']['rendererExtraOpts']&gt;,
   ): Renderer2dEntity&lt;TypeDoc['vTypeDoc']&gt;
@@ -689,6 +698,10 @@
       doc?: string,
     ) =&gt; void;
   })
+</code></pre>
+<h3 id="loader-property">loader (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly loader: Gg2dLoader&lt;TypeDoc&gt;
 </code></pre>
 <h2 id="gg2dworldscenetypedocppatch-type-alias">Gg2dWorldSceneTypeDocPPatch (type alias)</h2>
 <p><strong>Signature</strong></p>
@@ -765,6 +778,7 @@
   displayObject: IDisplayObject2dComponent
   renderer: IRenderer2dComponent
   rendererExtraOpts: {}
+  camera: ICamera2dComponent
   texture: unknown
 }
 </code></pre>

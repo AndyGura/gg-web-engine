@@ -1,6 +1,6 @@
 ---
 title: three/types.ts
-nav_order: 138
+nav_order: 149
 parent: Modules
 ---
 
@@ -12,6 +12,8 @@ parent: Modules
 
 - [utils](#utils)
   - [ThreeGgWorld (type alias)](#threeggworld-type-alias)
+  - [ThreeSceneTypeDoc (type alias)](#threescenetypedoc-type-alias)
+  - [ThreeTypeDoc (type alias)](#threetypedoc-type-alias)
   - [ThreeVisualTypeDocRepo (type alias)](#threevisualtypedocrepo-type-alias)
 
 ---
@@ -23,10 +25,23 @@ parent: Modules
 **Signature**
 
 ```ts
-export type ThreeGgWorld = Gg3dWorld<
-  Gg3dWorldTypeDocVPatch<ThreeVisualTypeDocRepo>,
-  Gg3dWorldSceneTypeDocVPatch<ThreeVisualTypeDocRepo, ThreeSceneComponent>
->
+export type ThreeGgWorld = Gg3dWorld<ThreeTypeDoc, ThreeSceneTypeDoc>
+```
+
+## ThreeSceneTypeDoc (type alias)
+
+**Signature**
+
+```ts
+export type ThreeSceneTypeDoc = Gg3dWorldSceneTypeDocVPatch<ThreeVisualTypeDocRepo, ThreeSceneComponent>
+```
+
+## ThreeTypeDoc (type alias)
+
+**Signature**
+
+```ts
+export type ThreeTypeDoc = Gg3dWorldTypeDocVPatch<ThreeVisualTypeDocRepo>
 ```
 
 ## ThreeVisualTypeDocRepo (type alias)

@@ -13,7 +13,12 @@ import {
   RVEntitySharedWheelOptions,
   WheelDisplayOptions,
 } from './entities/raycast-vehicle-3d.entity';
-import { Gg3dMapGraphEntityOptions, MapGraph, MapGraph3dEntity, MapGraphNodeType } from './entities/map-graph-3d.entity';
+import {
+  Gg3dMapGraphEntityOptions,
+  MapGraph,
+  MapGraph3dEntity,
+  MapGraphNodeType,
+} from './entities/map-graph-3d.entity';
 
 const defaultBodyOptions: Body3DOptions = {
   dynamic: true,
@@ -253,9 +258,7 @@ export type MapGraphNodeJson = Omit<MapGraphNodeType, 'loadOptions'> & {
  * `gg-engine-level-json` skill's "MapGraph" section).
  */
 export interface MapGraph3DSettings {
-  graph:
-    | { type?: 'array'; nodes: MapGraphNodeJson[]; closed?: boolean }
-    | { type: 'grid'; grid: MapGraphNodeJson[][] };
+  graph: { type?: 'array'; nodes: MapGraphNodeJson[]; closed?: boolean } | { type: 'grid'; grid: MapGraphNodeJson[][] };
 
   /** Depth in the graph to load - see `Gg3dMapGraphEntityOptions.loadDepth` (default `5`) */
   loadDepth?: number;
@@ -450,7 +453,11 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
     const { tyreRadius = defaultWheelDisplaySize.tyreRadius, tyreWidth = defaultWheelDisplaySize.tyreWidth } =
       wheelSettings;
     return {
-      displayObject: world.visualScene.factory.createCylinder(tyreRadius, tyreWidth, wheelSettings.display.material ?? {}),
+      displayObject: world.visualScene.factory.createCylinder(
+        tyreRadius,
+        tyreWidth,
+        wheelSettings.display.material ?? {},
+      ),
       wheelObjectDirection: wheelSettings.display.wheelObjectDirection ?? 'x',
     };
   }
@@ -534,7 +541,10 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
     if (!graph) {
       throw new Error('"graph" is required for MapGraph class');
     }
-    const normalizeNode = (node: MapGraphNodeJson): MapGraphNodeType => ({ ...node, loadOptions: node.loadOptions ?? {} });
+    const normalizeNode = (node: MapGraphNodeJson): MapGraphNodeType => ({
+      ...node,
+      loadOptions: node.loadOptions ?? {},
+    });
 
     let mapGraph: MapGraph;
     if (graph.type === 'grid') {

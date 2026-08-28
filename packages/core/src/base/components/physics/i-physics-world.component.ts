@@ -11,8 +11,11 @@ import { RaycastOptions, RaycastResult } from '../../models/raycasting';
  * @template R - Type representing the physics engine's rigid body.
  * @template TypeDoc - Physics typings repository.
  */
-export interface IPhysicsWorldComponent<D, R, PTypeDoc extends PhysicsTypeDocRepo<D, R> = PhysicsTypeDocRepo<D, R>>
-  extends IComponent {
+export interface IPhysicsWorldComponent<
+  D,
+  R,
+  PTypeDoc extends PhysicsTypeDocRepo<D, R> = PhysicsTypeDocRepo<D, R>,
+> extends IComponent {
   /**
    * Factory function for creating physics-related objects.
    */

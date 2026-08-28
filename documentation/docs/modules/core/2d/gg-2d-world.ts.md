@@ -1,6 +1,6 @@
 ---
 title: core/2d/gg-2d-world.ts
-nav_order: 23
+nav_order: 24
 parent: Modules
 ---
 
@@ -15,6 +15,7 @@ parent: Modules
     - [addPrimitiveRigidBody (method)](#addprimitiverigidbody-method)
     - [addRenderer (method)](#addrenderer-method)
     - [registerConsoleCommands (method)](#registerconsolecommands-method)
+    - [loader (property)](#loader-property)
   - [Gg2dWorldSceneTypeDocPPatch (type alias)](#gg2dworldscenetypedocppatch-type-alias)
   - [Gg2dWorldSceneTypeDocVPatch (type alias)](#gg2dworldscenetypedocvpatch-type-alias)
   - [Gg2dWorldSceneTypeRepo (type alias)](#gg2dworldscenetyperepo-type-alias)
@@ -58,6 +59,7 @@ addPrimitiveRigidBody(
 
 ```ts
 addRenderer(
+    camera: TypeDoc['vTypeDoc']['camera'],
     canvas?: HTMLCanvasElement,
     rendererOptions?: Partial<RendererOptions & TypeDoc['vTypeDoc']['rendererExtraOpts']>,
   ): Renderer2dEntity<TypeDoc['vTypeDoc']>
@@ -76,6 +78,14 @@ protected registerConsoleCommands(ggstatic: {
       doc?: string,
     ) => void;
   })
+```
+
+### loader (property)
+
+**Signature**
+
+```ts
+readonly loader: Gg2dLoader<TypeDoc>
 ```
 
 ## Gg2dWorldSceneTypeDocPPatch (type alias)
@@ -188,6 +198,7 @@ export type VisualTypeDocRepo2D = {
   displayObject: IDisplayObject2dComponent
   renderer: IRenderer2dComponent
   rendererExtraOpts: {}
+  camera: ICamera2dComponent
   texture: unknown
 }
 ```

@@ -558,12 +558,6 @@
 <pre><code class="language-ts">export interface IVisualScene3dComponent&lt;VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D&gt;
   extends IVisualSceneComponent&lt;Point3, Point4, VTypeDoc&gt; {
   readonly loader: VTypeDoc['loader']
-
-  createRenderer(
-    camera: VTypeDoc['camera'],
-    canvas?: HTMLCanvasElement,
-    rendererOptions?: Partial&lt;RendererOptions &amp; VTypeDoc['rendererExtraOpts']&gt;
-  ): VTypeDoc['renderer']
 }
 </code></pre>
 

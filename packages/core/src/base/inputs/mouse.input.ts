@@ -22,7 +22,8 @@ const DEFAULT_MOUSE_INPUT_OPTIONS: MouseInputOptions = {
 /**
  Represents the state of the mouse/touch input on the screen.
  */
-export enum MouseInputState { //MouseInputState {
+export enum MouseInputState {
+  //MouseInputState {
   /**
    No mouse or touch input is detected. Mouse move can still be emitted
    */

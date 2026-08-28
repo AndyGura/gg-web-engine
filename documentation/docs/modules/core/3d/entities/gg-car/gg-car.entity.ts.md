@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/gg-car/gg-car.entity.ts
-nav_order: 43
+nav_order: 47
 parent: Modules
 ---
 
