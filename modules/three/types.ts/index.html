@@ -521,6 +521,20 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#threescenetypedoc-type-alias" class="md-nav__link">
+    ThreeSceneTypeDoc (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#threetypedoc-type-alias" class="md-nav__link">
+    ThreeTypeDoc (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#threevisualtypedocrepo-type-alias" class="md-nav__link">
     ThreeVisualTypeDocRepo (type alias)
   </a>
@@ -557,16 +571,23 @@
 <ul>
 <li><a href="#utils">utils</a></li>
 <li><a href="#threeggworld-type-alias">ThreeGgWorld (type alias)</a></li>
+<li><a href="#threescenetypedoc-type-alias">ThreeSceneTypeDoc (type alias)</a></li>
+<li><a href="#threetypedoc-type-alias">ThreeTypeDoc (type alias)</a></li>
 <li><a href="#threevisualtypedocrepo-type-alias">ThreeVisualTypeDocRepo (type alias)</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
 <h2 id="threeggworld-type-alias">ThreeGgWorld (type alias)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type ThreeGgWorld = Gg3dWorld&lt;
-  Gg3dWorldTypeDocVPatch&lt;ThreeVisualTypeDocRepo&gt;,
-  Gg3dWorldSceneTypeDocVPatch&lt;ThreeVisualTypeDocRepo, ThreeSceneComponent&gt;
-&gt;
+<pre><code class="language-ts">export type ThreeGgWorld = Gg3dWorld&lt;ThreeTypeDoc, ThreeSceneTypeDoc&gt;
+</code></pre>
+<h2 id="threescenetypedoc-type-alias">ThreeSceneTypeDoc (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type ThreeSceneTypeDoc = Gg3dWorldSceneTypeDocVPatch&lt;ThreeVisualTypeDocRepo, ThreeSceneComponent&gt;
+</code></pre>
+<h2 id="threetypedoc-type-alias">ThreeTypeDoc (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type ThreeTypeDoc = Gg3dWorldTypeDocVPatch&lt;ThreeVisualTypeDocRepo&gt;
 </code></pre>
 <h2 id="threevisualtypedocrepo-type-alias">ThreeVisualTypeDocRepo (type alias)</h2>
 <p><strong>Signature</strong></p>

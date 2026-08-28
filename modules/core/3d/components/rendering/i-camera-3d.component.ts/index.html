@@ -8,7 +8,7 @@
       
       
       
-        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/3d/components/physics/i-trigger-3d.component.ts/">
+        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/3d/components/rendering/i-camera-3d.component.ts/">
       
       
       
@@ -18,7 +18,7 @@
     
     
       
-        <title>core/3d/components/physics/i-trigger-3d.component.ts - GG-web-engine</title>
+        <title>core/3d/components/rendering/i-camera-3d.component.ts - GG-web-engine</title>
       
     
     
@@ -73,7 +73,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#i-trigger-3dcomponent-overview" class="md-skip">
+        <a href="#i-camera-3dcomponent-overview" class="md-skip">
           Skip to content
         </a>
       
@@ -109,7 +109,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              core/3d/components/physics/i-trigger-3d.component.ts
+              core/3d/components/rendering/i-camera-3d.component.ts
             
           </span>
         </div>
@@ -499,8 +499,8 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#i-trigger-3dcomponent-overview" class="md-nav__link">
-    i-trigger-3d.component overview
+  <a href="#i-camera-3dcomponent-overview" class="md-nav__link">
+    i-camera-3d.component overview
   </a>
   
 </li>
@@ -514,8 +514,8 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#itrigger3dcomponent-interface" class="md-nav__link">
-    ITrigger3dComponent (interface)
+  <a href="#icamera3dcomponent-interface" class="md-nav__link">
+    ICamera3dComponent (interface)
   </a>
   
 </li>
@@ -543,23 +543,21 @@
   
 
 
-<h2 id="i-trigger-3dcomponent-overview">i-trigger-3d.component overview</h2>
+<h2 id="i-camera-3dcomponent-overview">i-camera-3d.component overview</h2>
 <hr />
 <h2 class="text-delta">Table of contents</h2>
 
 <ul>
 <li><a href="#utils">utils</a></li>
-<li><a href="#itrigger3dcomponent-interface">ITrigger3dComponent (interface)</a></li>
+<li><a href="#icamera3dcomponent-interface">ICamera3dComponent (interface)</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
-<h2 id="itrigger3dcomponent-interface">ITrigger3dComponent (interface)</h2>
+<h2 id="icamera3dcomponent-interface">ICamera3dComponent (interface)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export interface ITrigger3dComponent&lt;
-  PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D,
-&gt; extends ITriggerComponent&lt;Point3, Point4, PTypeDoc&gt; {
-  /** body info for physics debugger view */
-  readonly debugBodySettings: DebugBody3DSettings;
+<pre><code class="language-ts">export interface ICamera3dComponent&lt;
+  VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D,
+&gt; extends IDisplayObject3dComponent&lt;VTypeDoc&gt; {
 </code></pre>
 
 

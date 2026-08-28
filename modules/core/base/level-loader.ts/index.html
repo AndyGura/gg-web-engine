@@ -8,7 +8,7 @@
       
       
       
-        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/2d/gg-2d-world.ts/">
+        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/base/level-loader.ts/">
       
       
       
@@ -18,7 +18,7 @@
     
     
       
-        <title>core/2d/gg-2d-world.ts - GG-web-engine</title>
+        <title>core/base/level-loader.ts - GG-web-engine</title>
       
     
     
@@ -73,7 +73,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#gg-2d-world-overview" class="md-skip">
+        <a href="#level-loader-overview" class="md-skip">
           Skip to content
         </a>
       
@@ -109,7 +109,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              core/2d/gg-2d-world.ts
+              core/base/level-loader.ts
             
           </span>
         </div>
@@ -499,8 +499,8 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#gg-2d-world-overview" class="md-nav__link">
-    gg-2d-world overview
+  <a href="#level-loader-overview" class="md-nav__link">
+    level-loader overview
   </a>
   
 </li>
@@ -514,106 +514,113 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#gg2dworld-class" class="md-nav__link">
-    Gg2dWorld (class)
+  <a href="#entityeventbinding-type-alias" class="md-nav__link">
+    EntityEventBinding (type alias)
   </a>
   
-    <nav class="md-nav" aria-label="Gg2dWorld (class)">
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#entitygenerator-type-alias" class="md-nav__link">
+    EntityGenerator (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#entityjson-interface" class="md-nav__link">
+    EntityJson (interface)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#leveljson-interface" class="md-nav__link">
+    LevelJson (interface)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#levelloader-class" class="md-nav__link">
+    LevelLoader (class)
+  </a>
+  
+    <nav class="md-nav" aria-label="LevelLoader (class)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#addprimitiverigidbody-method" class="md-nav__link">
-    addPrimitiveRigidBody (method)
+  <a href="#registerclass-method" class="md-nav__link">
+    registerClass (method)
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#addrenderer-method" class="md-nav__link">
-    addRenderer (method)
+  <a href="#registerblueprintnode-method" class="md-nav__link">
+    registerBlueprintNode (method)
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#registerconsolecommands-method" class="md-nav__link">
-    registerConsoleCommands (method)
+  <a href="#loadlevel-method" class="md-nav__link">
+    loadLevel (method)
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#loader-property" class="md-nav__link">
-    loader (property)
+  <a href="#bindevent-method" class="md-nav__link">
+    bindEvent (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#resolveeventblueprint-method" class="md-nav__link">
+    resolveEventBlueprint (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inlinenodeblueprint-method" class="md-nav__link">
+    inlineNodeBlueprint (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#loadlevelfromurl-method" class="md-nav__link">
+    loadLevelFromUrl (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#generators-property" class="md-nav__link">
+    generators (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#blueprintnodes-property" class="md-nav__link">
+    blueprintNodes (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#blueprintnodedefaultinputs-property" class="md-nav__link">
+    blueprintNodeDefaultInputs (property)
   </a>
   
 </li>
         
       </ul>
     </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#gg2dworldscenetypedocppatch-type-alias" class="md-nav__link">
-    Gg2dWorldSceneTypeDocPPatch (type alias)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#gg2dworldscenetypedocvpatch-type-alias" class="md-nav__link">
-    Gg2dWorldSceneTypeDocVPatch (type alias)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#gg2dworldscenetyperepo-type-alias" class="md-nav__link">
-    Gg2dWorldSceneTypeRepo (type alias)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#gg2dworldtypedocppatch-type-alias" class="md-nav__link">
-    Gg2dWorldTypeDocPPatch (type alias)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#gg2dworldtypedocrepo-type-alias" class="md-nav__link">
-    Gg2dWorldTypeDocRepo (type alias)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#gg2dworldtypedocvpatch-type-alias" class="md-nav__link">
-    Gg2dWorldTypeDocVPatch (type alias)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#physicstypedocrepo2d-type-alias" class="md-nav__link">
-    PhysicsTypeDocRepo2D (type alias)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#typedgg2dworld-type-alias" class="md-nav__link">
-    TypedGg2dWorld (type alias)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#visualtypedocrepo2d-type-alias" class="md-nav__link">
-    VisualTypeDocRepo2D (type alias)
-  </a>
   
 </li>
         
@@ -640,147 +647,243 @@
   
 
 
-<h2 id="gg-2d-world-overview">gg-2d-world overview</h2>
+<h2 id="level-loader-overview">level-loader overview</h2>
 <hr />
 <h2 class="text-delta">Table of contents</h2>
 
 <ul>
 <li><a href="#utils">utils</a></li>
-<li><a href="#gg2dworld-class">Gg2dWorld (class)</a><ul>
-<li><a href="#addprimitiverigidbody-method">addPrimitiveRigidBody (method)</a></li>
-<li><a href="#addrenderer-method">addRenderer (method)</a></li>
-<li><a href="#registerconsolecommands-method">registerConsoleCommands (method)</a></li>
-<li><a href="#loader-property">loader (property)</a></li>
+<li><a href="#entityeventbinding-type-alias">EntityEventBinding (type alias)</a></li>
+<li><a href="#entitygenerator-type-alias">EntityGenerator (type alias)</a></li>
+<li><a href="#entityjson-interface">EntityJson (interface)</a></li>
+<li><a href="#leveljson-interface">LevelJson (interface)</a></li>
+<li><a href="#levelloader-class">LevelLoader (class)</a><ul>
+<li><a href="#registerclass-method">registerClass (method)</a></li>
+<li><a href="#registerblueprintnode-method">registerBlueprintNode (method)</a></li>
+<li><a href="#loadlevel-method">loadLevel (method)</a></li>
+<li><a href="#bindevent-method">bindEvent (method)</a></li>
+<li><a href="#resolveeventblueprint-method">resolveEventBlueprint (method)</a></li>
+<li><a href="#inlinenodeblueprint-method">inlineNodeBlueprint (method)</a></li>
+<li><a href="#loadlevelfromurl-method">loadLevelFromUrl (method)</a></li>
+<li><a href="#generators-property">generators (property)</a></li>
+<li><a href="#blueprintnodes-property">blueprintNodes (property)</a></li>
+<li><a href="#blueprintnodedefaultinputs-property">blueprintNodeDefaultInputs (property)</a></li>
 </ul>
 </li>
-<li><a href="#gg2dworldscenetypedocppatch-type-alias">Gg2dWorldSceneTypeDocPPatch (type alias)</a></li>
-<li><a href="#gg2dworldscenetypedocvpatch-type-alias">Gg2dWorldSceneTypeDocVPatch (type alias)</a></li>
-<li><a href="#gg2dworldscenetyperepo-type-alias">Gg2dWorldSceneTypeRepo (type alias)</a></li>
-<li><a href="#gg2dworldtypedocppatch-type-alias">Gg2dWorldTypeDocPPatch (type alias)</a></li>
-<li><a href="#gg2dworldtypedocrepo-type-alias">Gg2dWorldTypeDocRepo (type alias)</a></li>
-<li><a href="#gg2dworldtypedocvpatch-type-alias">Gg2dWorldTypeDocVPatch (type alias)</a></li>
-<li><a href="#physicstypedocrepo2d-type-alias">PhysicsTypeDocRepo2D (type alias)</a></li>
-<li><a href="#typedgg2dworld-type-alias">TypedGg2dWorld (type alias)</a></li>
-<li><a href="#visualtypedocrepo2d-type-alias">VisualTypeDocRepo2D (type alias)</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
-<h2 id="gg2dworld-class">Gg2dWorld (class)</h2>
+<h2 id="entityeventbinding-type-alias">EntityEventBinding (type alias)</h2>
+<p>What an <code>EntityJson.events</code> entry runs. Either:</p>
+<ul>
+<li>a plain <code>string</code> - first tried as a key into the level's top-level <code>blueprints</code> map (a named,
+  possibly multi-node graph); if not found there, tried as a blueprint node type alias
+  registered via <code>registerBlueprintNode</code> (e.g. the built-in <code>"RemoveEntity"</code>) instead, with no
+  settings - shorthand for the single-node form below with <code>settings</code> omitted.</li>
+<li><code>{ type, settings? }</code> - a single built-in/registered blueprint node used directly as the
+  handler, with inline <code>settings</code>, no <code>blueprints</code> entry needed at all - e.g.
+  <code>{ "type": "RemoveEntity", "settings": { "dispose": true } }</code>. Only node types registered with
+  a default input pin (every built-in one is - see <code>registerBlueprintNode</code>) support this form;
+  others require a full graph declared in <code>blueprints</code> instead, addressing the desired input pin
+  explicitly via <code>inputs</code>.</li>
+</ul>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class Gg2dWorld&lt;TypeDoc, SceneTypeDoc&gt; {
-  constructor(args: { visualScene?: SceneTypeDoc['visualScene']; physicsWorld?: SceneTypeDoc['physicsWorld'] })
+<pre><code class="language-ts">export type EntityEventBinding = string | { type: string; settings?: Record&lt;string, any&gt; }
+</code></pre>
+<h2 id="entitygenerator-type-alias">EntityGenerator (type alias)</h2>
+<p>A function that turns per-entity JSON settings into a spawned <code>IEntity</code> (e.g. a primitive body,
+a trigger, a camera). Registered against a class alias via {@link LevelLoader.registerClass}.
+May be <code>async</code>/return a <code>Promise</code> (e.g. the built-in <code>"Glb"</code> 3D class, which fetches a model) -
+{@link LevelLoader.loadLevel} awaits every generator before moving to the next entity. A
+generator that returns anything other than an <code>IEntity</code> (including <code>null</code>/<code>undefined</code>) has its
+result discarded - see {@link LevelLoader.loadLevel}.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type EntityGenerator&lt;
+  D,
+  R,
+  TypeDoc extends GgWorldTypeDocRepo&lt;D, R&gt;,
+  Settings = any,
+  W = GgWorld&lt;D, R, TypeDoc&gt;
+&gt; = (world: W, settings: Settings) =&gt; any
+</code></pre>
+<h2 id="entityjson-interface">EntityJson (interface)</h2>
+<p>JSON description of a single entity in a level. <code>position</code>/<code>rotation</code> are left untyped here
+since their shape depends on the dimensionality (<code>Point2</code>/<code>number</code> for 2D, <code>Point3</code>/<code>Point4</code>
+for 3D) of whichever <code>LevelLoader</code> subclass parses this JSON.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export interface EntityJson {
+  /**
+   * Class alias for the entity, matching a class registered via `registerClass`. Built-in
+   * primitive shapes (box/sphere/square/circle/...) all share the single `&quot;Primitive&quot;` alias and
+   * are distinguished by `shape` instead of by a per-shape class - e.g. `{ class: &quot;Primitive&quot;,
+   * shape: &quot;BOX&quot; }` rather than `{ class: &quot;BOX&quot; }`. Apps register their own aliases (e.g.
+   * `&quot;ShapeSpawner&quot;`) the same way the dimensionality-specific `LevelLoader` subclasses register
+   * their built-ins, via `registerClass`.
+   */
+  class: string
+
+  /**
+   * Shape identifier for the built-in `&quot;Primitive&quot;` entity class (e.g. `&quot;Box&quot;`, `&quot;Circle&quot;`) - see
+   * the dimensionality-specific `LevelLoader` subclass (`Gg2dLevelLoader`/`Gg3dLevelLoader`) for
+   * the supported values. Ignored for any other `class`.
+   */
+  shape?: string
+
+  /**
+   * Position of the entity
+   */
+  position?: any
+
+  /**
+   * Rotation of the entity
+   */
+  rotation?: any
+
+  /**
+   * Name of the entity. `loadLevel` sets the generator's returned `IEntity`'s `.name` to this
+   * (overriding whatever default the generator gave it), so it can be found afterwards with
+   * `GgWorld.getEntityByName`/`IEntity.getChildEntityByName`. Moot if the generator doesn't return
+   * an `IEntity` - that result is discarded (with a console warning) before naming is applied.
+   */
+  name?: string
+
+  /**
+   * Configuration for the entity, passed to its generator alongside position/rotation/name
+   */
+  config?: any
+
+  /**
+   * Maps an observable property name on this entity's generated `IEntity` (e.g. `Trigger3dEntity`'s
+   * `&quot;onEntityEntered&quot;`) to what should run whenever that observable fires - see
+   * {@link EntityEventBinding}. `loadLevel` subscribes to the observable and triggers a fresh
+   * `Blueprint` instance (via its `&quot;in&quot;` entry point) with whatever value it emits, each time it
+   * fires - see `LevelLoader.loadLevel` and the `gg-engine-level-json` skill's &quot;Blueprints&quot;
+   * section. Silently ignored (with a console warning) if the binding can't be resolved to a
+   * blueprint, or the named property isn't an `Observable`.
+   */
+  events?: Record&lt;string, EntityEventBinding&gt;
 }
 </code></pre>
-<h3 id="addprimitiverigidbody-method">addPrimitiveRigidBody (method)</h3>
+<h2 id="leveljson-interface">LevelJson (interface)</h2>
+<p>A level/scene, serializable as a single JSON document (e.g. to be hosted as a static file and
+loaded via {@link LevelLoader.loadLevelFromUrl}).</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">addPrimitiveRigidBody(
-    descr: BodyShape2DDescriptor,
-    position: Point2 = Pnt2.O,
-    rotation: number = 0,
-    material: DisplayObject2dOpts&lt;TypeDoc['vTypeDoc']['texture']&gt; = {},
-  ): Entity2d&lt;TypeDoc&gt;
-</code></pre>
-<h3 id="addrenderer-method">addRenderer (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">addRenderer(
-    camera: TypeDoc['vTypeDoc']['camera'],
-    canvas?: HTMLCanvasElement,
-    rendererOptions?: Partial&lt;RendererOptions &amp; TypeDoc['vTypeDoc']['rendererExtraOpts']&gt;,
-  ): Renderer2dEntity&lt;TypeDoc['vTypeDoc']&gt;
-</code></pre>
-<h3 id="registerconsolecommands-method">registerConsoleCommands (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">protected registerConsoleCommands(ggstatic: {
-    registerConsoleCommand: (
-      world: GgWorld&lt;any, any&gt; | null,
-      command: string,
-      handler: (...args: string[]) =&gt; Promise&lt;string&gt;,
-      doc?: string,
-    ) =&gt; void;
-  })
-</code></pre>
-<h3 id="loader-property">loader (property)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly loader: Gg2dLoader&lt;TypeDoc&gt;
-</code></pre>
-<h2 id="gg2dworldscenetypedocppatch-type-alias">Gg2dWorldSceneTypeDocPPatch (type alias)</h2>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type Gg2dWorldSceneTypeDocPPatch&lt;
-  PTypeDoc extends PhysicsTypeDocRepo2D,
-  PW extends IPhysicsWorld2dComponent&lt;PTypeDoc&gt; | null
-&gt; = Omit&lt;Gg2dWorldSceneTypeRepo, 'physicsWorld'&gt; &amp; { physicsWorld: PW }
-</code></pre>
-<h2 id="gg2dworldscenetypedocvpatch-type-alias">Gg2dWorldSceneTypeDocVPatch (type alias)</h2>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type Gg2dWorldSceneTypeDocVPatch&lt;
-  VTypeDoc extends VisualTypeDocRepo2D,
-  VS extends IVisualScene2dComponent&lt;VTypeDoc&gt; | null
-&gt; = Omit&lt;Gg2dWorldSceneTypeRepo, 'visualScene'&gt; &amp; { visualScene: VS }
-</code></pre>
-<h2 id="gg2dworldscenetyperepo-type-alias">Gg2dWorldSceneTypeRepo (type alias)</h2>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type Gg2dWorldSceneTypeRepo&lt;TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTypeDocRepo&gt; = {
-  visualScene: IVisualScene2dComponent&lt;TypeDoc['vTypeDoc']&gt; | null
-  physicsWorld: IPhysicsWorld2dComponent&lt;TypeDoc['pTypeDoc']&gt; | null
+<pre><code class="language-ts">export interface LevelJson {
+  /**
+   * Entities in the level
+   */
+  entities: EntityJson[]
+
+  /**
+   * Blueprint graphs available to this level's entities, keyed by name - referenced from an
+   * `EntityJson.events` entry to run a blueprint whenever the named observable on that entity
+   * fires. See {@link BlueprintJson} and the `gg-engine-level-json` skill's &quot;Blueprints&quot; section.
+   */
+  blueprints?: Record&lt;string, BlueprintJson&gt;
 }
 </code></pre>
-<h2 id="gg2dworldtypedocppatch-type-alias">Gg2dWorldTypeDocPPatch (type alias)</h2>
+<h2 id="levelloader-class">LevelLoader (class)</h2>
+<p>Base class for level loaders: parses a {@link LevelJson} document into world entities by
+dispatching each <code>EntityJson.class</code> to a generator function registered with {@link registerClass}.</p>
+<p>A generator is required to return an <code>IEntity</code>. Every <code>IEntity</code> a generator produces is parented
+under one {@link GroupEntity} per <code>loadLevel</code>/<code>loadLevelFromUrl</code> call (added to the world
+immediately, and handed back once loading completes) - so a whole level can be torn down in one
+shot with <code>world.removeEntity(level, true)</code>, which cascades removal/disposal to every child, and
+any named entity can be found afterwards with <code>level.getChildEntityByName(name)</code>. If a generator
+returns anything other than an <code>IEntity</code> (including <code>null</code>/<code>undefined</code>), <code>loadLevel</code> logs a
+<code>console.warn</code> and skips that entity - it's never parented, named, or tracked.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type Gg2dWorldTypeDocPPatch&lt;PTypeDoc extends PhysicsTypeDocRepo2D&gt; = Omit&lt;Gg2dWorldTypeDocRepo, 'pTypeDoc'&gt; &amp; {
-  pTypeDoc: PTypeDoc
+<pre><code class="language-ts">export declare class LevelLoader&lt;D, R, TypeDoc&gt; {
+  constructor(protected readonly world: GgWorld&lt;D, R, TypeDoc&gt;)
 }
 </code></pre>
-<h2 id="gg2dworldtypedocrepo-type-alias">Gg2dWorldTypeDocRepo (type alias)</h2>
+<h3 id="registerclass-method">registerClass (method)</h3>
+<p>Register a generator function for a class alias</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type Gg2dWorldTypeDocRepo = {
-  vTypeDoc: VisualTypeDocRepo2D
-  pTypeDoc: PhysicsTypeDocRepo2D
-}
+<pre><code class="language-ts">public registerClass&lt;Settings, W = any&gt;(
+    classAlias: string,
+    generator: EntityGenerator&lt;D, R, TypeDoc, Settings, W&gt;,
+  ): void
 </code></pre>
-<h2 id="gg2dworldtypedocvpatch-type-alias">Gg2dWorldTypeDocVPatch (type alias)</h2>
+<h3 id="registerblueprintnode-method">registerBlueprintNode (method)</h3>
+<p>Register a {@link BlueprintNode} factory for a node type alias, so a <code>BlueprintJson</code>'s
+<code>nodes</code> can reference it by <code>type</code> (e.g. the built-in <code>"RemoveEntity"</code>, registered by every
+<code>LevelLoader</code> out of the box). Same pattern as {@link registerClass}, one level down (node
+types within a blueprint graph, rather than entity classes within a level).</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type Gg2dWorldTypeDocVPatch&lt;VTypeDoc extends VisualTypeDocRepo2D&gt; = Omit&lt;Gg2dWorldTypeDocRepo, 'vTypeDoc'&gt; &amp; {
-  vTypeDoc: VTypeDoc
-}
+<pre><code class="language-ts">public registerBlueprintNode(
+    typeAlias: string,
+    factory: BlueprintNodeFactory&lt;D, R, TypeDoc&gt;,
+    defaultInputPin?: string,
+  ): void
 </code></pre>
-<h2 id="physicstypedocrepo2d-type-alias">PhysicsTypeDocRepo2D (type alias)</h2>
+<h3 id="loadlevel-method">loadLevel (method)</h3>
+<p>Load a level from an already-parsed JSON document. Every <code>IEntity</code> the level's entities
+produce is parented under - and, on failure, torn down along with - the returned
+{@link GroupEntity}, already added to the world.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type PhysicsTypeDocRepo2D = {
-  factory: IPhysicsBody2dComponentFactory
-  rigidBody: IRigidBody2dComponent
-  trigger: ITrigger2dComponent
-}
+<pre><code class="language-ts">public async loadLevel(levelJson: LevelJson, levelName?: string): Promise&lt;GroupEntity&lt;D, R, TypeDoc&gt;&gt;
 </code></pre>
-<h2 id="typedgg2dworld-type-alias">TypedGg2dWorld (type alias)</h2>
+<h3 id="bindevent-method">bindEvent (method)</h3>
+<p>Resolve <code>eventBinding</code> (see {@link EntityEventBinding}) to a <code>BlueprintJson</code>, instantiate a
+fresh <code>Blueprint</code> from it, and subscribe it to <code>entity[eventName]</code> so every value that
+observable emits triggers the blueprint's <code>"in"</code> entry point. Wrapped in a
+<code>BlueprintBindingEntity</code> so the subscription (and the blueprint's own node state) is torn down
+automatically once that entity is disposed - the caller parents the returned entity under the
+level's group for that reason.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type TypedGg2dWorld&lt;VW extends Gg2dWorld&lt;any&gt; | null, PW extends Gg2dWorld&lt;any&gt; | null&gt; = VW extends Gg2dWorld&lt;
-  infer VTD,
-  infer VSTD
-&gt; | null
-  ? PW extends Gg2dWorld&lt;infer PTD, infer PSTD&gt; | null
-    ? Gg2dWorld&lt;
-        {
-          vTypeDoc: VTD['vTypeDoc']
-          pTypeDoc: PTD['pTypeDoc']
-        },
-        {
-          visualScene: VSTD['visualScene']
-          physicsWorld: PSTD['physicsWorld']
-        }
-      &gt;
-    : never
-  : never
+<pre><code class="language-ts">private bindEvent(
+    entity: IEntity&lt;D, R, TypeDoc&gt;,
+    eventName: string,
+    eventBinding: EntityEventBinding,
+    blueprints: Record&lt;string, BlueprintJson&gt; | undefined,
+  ): BlueprintBindingEntity&lt;D, R, TypeDoc&gt; | undefined
 </code></pre>
-<h2 id="visualtypedocrepo2d-type-alias">VisualTypeDocRepo2D (type alias)</h2>
+<h3 id="resolveeventblueprint-method">resolveEventBlueprint (method)</h3>
+<p>Turn an <code>EntityEventBinding</code> into a <code>BlueprintJson</code> to run. An object form (<code>{ type,
+settings? }</code>) always builds a single-node inline graph via {@link inlineNodeBlueprint}. A
+string form is tried first as a key into <code>blueprints</code> (a named, possibly multi-node graph),
+then - if not found there - as a bare node type alias, same as the object form with no
+settings.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type VisualTypeDocRepo2D = {
-  factory: IDisplayObject2dComponentFactory
-  displayObject: IDisplayObject2dComponent
-  renderer: IRenderer2dComponent
-  rendererExtraOpts: {}
-  camera: ICamera2dComponent
-  texture: unknown
-}
+<pre><code class="language-ts">private resolveEventBlueprint(
+    eventName: string,
+    eventBinding: EntityEventBinding,
+    blueprints: Record&lt;string, BlueprintJson&gt; | undefined,
+  ): BlueprintJson | undefined
+</code></pre>
+<h3 id="inlinenodeblueprint-method">inlineNodeBlueprint (method)</h3>
+<p>Build a single-node <code>BlueprintJson</code> wrapping one blueprint node type, wired so the node's
+registered default input pin (see {@link registerBlueprintNode}) is reachable as <code>"in"</code> - what
+powers the <code>EntityEventBinding</code> shorthand that skips declaring a <code>blueprints</code> entry entirely.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private inlineNodeBlueprint(
+    eventName: string,
+    nodeType: string,
+    settings: Record&lt;string, any&gt; | undefined,
+  ): BlueprintJson | undefined
+</code></pre>
+<h3 id="loadlevelfromurl-method">loadLevelFromUrl (method)</h3>
+<p>Fetch a level JSON document hosted at <code>url</code> and load it, so a whole level/scene can be
+shipped and consumed as a single static JSON file.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public async loadLevelFromUrl(url: string, levelName?: string): Promise&lt;GroupEntity&lt;D, R, TypeDoc&gt;&gt;
+</code></pre>
+<h3 id="generators-property">generators (property)</h3>
+<p>Map of class aliases to generator functions</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">generators: any
+</code></pre>
+<h3 id="blueprintnodes-property">blueprintNodes (property)</h3>
+<p>Map of blueprint node type aliases to node factory functions - see {@link registerBlueprintNode}.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">blueprintNodes: any
+</code></pre>
+<h3 id="blueprintnodedefaultinputs-property">blueprintNodeDefaultInputs (property)</h3>
+<p>Map of blueprint node type aliases to their default input pin name, for node types registered
+with one - see {@link registerBlueprintNode}.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">blueprintNodeDefaultInputs: any
 </code></pre>
 
 

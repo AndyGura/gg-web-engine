@@ -8,7 +8,7 @@
       
       
       
-        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/3d/components/physics/i-trigger-3d.component.ts/">
+        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/base/blueprint/nodes/remove-entity.node.ts/">
       
       
       
@@ -18,7 +18,7 @@
     
     
       
-        <title>core/3d/components/physics/i-trigger-3d.component.ts - GG-web-engine</title>
+        <title>core/base/blueprint/nodes/remove-entity.node.ts - GG-web-engine</title>
       
     
     
@@ -73,7 +73,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#i-trigger-3dcomponent-overview" class="md-skip">
+        <a href="#remove-entitynode-overview" class="md-skip">
           Skip to content
         </a>
       
@@ -109,7 +109,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              core/3d/components/physics/i-trigger-3d.component.ts
+              core/base/blueprint/nodes/remove-entity.node.ts
             
           </span>
         </div>
@@ -499,8 +499,8 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#i-trigger-3dcomponent-overview" class="md-nav__link">
-    i-trigger-3d.component overview
+  <a href="#remove-entitynode-overview" class="md-nav__link">
+    remove-entity.node overview
   </a>
   
 </li>
@@ -514,8 +514,42 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#itrigger3dcomponent-interface" class="md-nav__link">
-    ITrigger3dComponent (interface)
+  <a href="#removeentityblueprintnode-class" class="md-nav__link">
+    RemoveEntityBlueprintNode (class)
+  </a>
+  
+    <nav class="md-nav" aria-label="RemoveEntityBlueprintNode (class)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#trigger-method" class="md-nav__link">
+    trigger (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#inputs-property" class="md-nav__link">
+    inputs (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#outputs-property" class="md-nav__link">
+    outputs (property)
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#removeentitynodesettings-interface" class="md-nav__link">
+    RemoveEntityNodeSettings (interface)
   </a>
   
 </li>
@@ -543,23 +577,55 @@
   
 
 
-<h2 id="i-trigger-3dcomponent-overview">i-trigger-3d.component overview</h2>
+<h2 id="remove-entitynode-overview">remove-entity.node overview</h2>
 <hr />
 <h2 class="text-delta">Table of contents</h2>
 
 <ul>
 <li><a href="#utils">utils</a></li>
-<li><a href="#itrigger3dcomponent-interface">ITrigger3dComponent (interface)</a></li>
+<li><a href="#removeentityblueprintnode-class">RemoveEntityBlueprintNode (class)</a><ul>
+<li><a href="#trigger-method">trigger (method)</a></li>
+<li><a href="#inputs-property">inputs (property)</a></li>
+<li><a href="#outputs-property">outputs (property)</a></li>
+</ul>
+</li>
+<li><a href="#removeentitynodesettings-interface">RemoveEntityNodeSettings (interface)</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
-<h2 id="itrigger3dcomponent-interface">ITrigger3dComponent (interface)</h2>
+<h2 id="removeentityblueprintnode-class">RemoveEntityBlueprintNode (class)</h2>
+<p>Built-in blueprint node: removes an entity from the world - the blueprint analogue of calling
+<code>world.removeEntity(entity, dispose)</code> directly. Has one input pin, <code>"entity"</code> (a data pin that
+also acts as this node's trigger - feeding it a value runs the node, same as an Unreal event
+node's payload pin doubling as its exec pulse) and no output pins. Whether the removal also
+disposes the entity is controlled by the static <code>dispose</code> setting, not a pin - see
+{@link RemoveEntityNodeSettings}.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export interface ITrigger3dComponent&lt;
-  PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D,
-&gt; extends ITriggerComponent&lt;Point3, Point4, PTypeDoc&gt; {
-  /** body info for physics debugger view */
-  readonly debugBodySettings: DebugBody3DSettings;
+<pre><code class="language-ts">export declare class RemoveEntityBlueprintNode&lt;D, R, TypeDoc&gt;
+</code></pre>
+<h3 id="trigger-method">trigger (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public trigger(inputName: string, value?: unknown): void
+</code></pre>
+<h3 id="inputs-property">inputs (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly inputs: readonly BlueprintPinDefinition[]
+</code></pre>
+<h3 id="outputs-property">outputs (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly outputs: readonly BlueprintPinDefinition[]
+</code></pre>
+<h2 id="removeentitynodesettings-interface">RemoveEntityNodeSettings (interface)</h2>
+<p>Settings for the built-in <code>"RemoveEntity"</code> blueprint node - baked in from its
+{@link BlueprintNodeJson.settings}, not wired at runtime.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export interface RemoveEntityNodeSettings {
+  /**
+   * Whether to dispose the entity (release its components/children) as well as remove it from
+   * the world, same as the `dispose` argument of `GgWorld.removeEntity`. Defaults to `false`.
+   */
+  dispose?: boolean
+}
 </code></pre>
 
 

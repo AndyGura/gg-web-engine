@@ -536,6 +536,20 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#getchildentitybyname-method" class="md-nav__link">
+    getChildEntityByName (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#findchildentitybyname-method" class="md-nav__link">
+    findChildEntityByName (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#addcomponents-method" class="md-nav__link">
     addComponents (method)
   </a>
@@ -663,6 +677,8 @@
 <li><a href="#ientity-class">IEntity (class)</a><ul>
 <li><a href="#addchildren-method">addChildren (method)</a></li>
 <li><a href="#removechildren-method">removeChildren (method)</a></li>
+<li><a href="#getchildentitybyname-method">getChildEntityByName (method)</a></li>
+<li><a href="#findchildentitybyname-method">findChildEntityByName (method)</a></li>
 <li><a href="#addcomponents-method">addComponents (method)</a></li>
 <li><a href="#removecomponents-method">removeComponents (method)</a></li>
 <li><a href="#onspawned-method">onSpawned (method)</a></li>
@@ -692,6 +708,18 @@
 <h3 id="removechildren-method">removeChildren (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public removeChildren(entities: IEntity[], dispose: boolean = false)
+</code></pre>
+<h3 id="getchildentitybyname-method">getChildEntityByName (method)</h3>
+<p>Find a descendant entity by name, searching this entity's own children and their children
+recursively (depth-first) - not the whole world, just this entity's subtree. Useful e.g. to
+pull a specific entity back out of a <code>GroupEntity</code> a <code>LevelLoader</code> handed back:
+<code>level.getChildEntityByName('KillFloor')</code>.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public getChildEntityByName&lt;T extends IEntity = IEntity&gt;(name: string): T
+</code></pre>
+<h3 id="findchildentitybyname-method">findChildEntityByName (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private findChildEntityByName(name: string): IEntity | undefined
 </code></pre>
 <h3 id="addcomponents-method">addComponents (method)</h3>
 <p><strong>Signature</strong></p>

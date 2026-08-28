@@ -555,8 +555,11 @@
 <h1 id="utils">utils</h1>
 <h2 id="itriggercomponent-interface">ITriggerComponent (interface)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export interface ITriggerComponent&lt;D, R, PTypeDoc extends PhysicsTypeDocRepo&lt;D, R&gt; = PhysicsTypeDocRepo&lt;D, R&gt;&gt;
-  extends IBodyComponent&lt;D, R, PTypeDoc&gt; {
+<pre><code class="language-ts">export interface ITriggerComponent&lt;
+  D,
+  R,
+  PTypeDoc extends PhysicsTypeDocRepo&lt;D, R&gt; = PhysicsTypeDocRepo&lt;D, R&gt;,
+&gt; extends IBodyComponent&lt;D, R, PTypeDoc&gt; {
 </code></pre>
 
 

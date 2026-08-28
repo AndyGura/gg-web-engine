@@ -585,6 +585,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#getentitybyname-method" class="md-nav__link">
+    getEntityByName (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#onggstaticinitialized-method" class="md-nav__link">
     onGgStaticInitialized (method)
   </a>
@@ -737,6 +744,20 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#scenetypedocof-type-alias" class="md-nav__link">
+    SceneTypeDocOf (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#typedocof-type-alias" class="md-nav__link">
+    TypeDocOf (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#visualtypedocrepo-type-alias" class="md-nav__link">
     VisualTypeDocRepo (type alias)
   </a>
@@ -782,6 +803,7 @@
 <li><a href="#addprimitiverigidbody-method">addPrimitiveRigidBody (method)</a></li>
 <li><a href="#addentity-method">addEntity (method)</a></li>
 <li><a href="#removeentity-method">removeEntity (method)</a></li>
+<li><a href="#getentitybyname-method">getEntityByName (method)</a></li>
 <li><a href="#onggstaticinitialized-method">onGgStaticInitialized (method)</a></li>
 <li><a href="#registerconsolecommands-method">registerConsoleCommands (method)</a></li>
 <li><a href="#visualscene-property">visualScene (property)</a></li>
@@ -805,6 +827,8 @@
 <li><a href="#ggworldtypedocrepo-type-alias">GgWorldTypeDocRepo (type alias)</a></li>
 <li><a href="#ggworldtypedocvpatch-type-alias">GgWorldTypeDocVPatch (type alias)</a></li>
 <li><a href="#physicstypedocrepo-type-alias">PhysicsTypeDocRepo (type alias)</a></li>
+<li><a href="#scenetypedocof-type-alias">SceneTypeDocOf (type alias)</a></li>
+<li><a href="#typedocof-type-alias">TypeDocOf (type alias)</a></li>
 <li><a href="#visualtypedocrepo-type-alias">VisualTypeDocRepo (type alias)</a></li>
 </ul>
 <hr />
@@ -858,6 +882,14 @@
 <h3 id="removeentity-method">removeEntity (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public removeEntity(entity: IEntity, dispose = false): void
+</code></pre>
+<h3 id="getentitybyname-method">getEntityByName (method)</h3>
+<p>Find an entity anywhere in the world by name. <code>children</code> is a flat list of every entity ever
+added via <code>addEntity</code> (nested entities included - <code>addChildren</code>/<code>onSpawned</code> cascade into it
+too), so this is a plain linear scan, not a tree walk; to search inside one particular
+entity's own subtree instead, use <code>IEntity.getChildEntityByName</code>.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public getEntityByName&lt;T extends IEntity = IEntity&gt;(name: string): T
 </code></pre>
 <h3 id="onggstaticinitialized-method">onGgStaticInitialized (method)</h3>
 <p><strong>Signature</strong></p>
@@ -980,6 +1012,23 @@
   trigger: ITriggerComponent&lt;D, R&gt;
 }
 </code></pre>
+<h2 id="scenetypedocof-type-alias">SceneTypeDocOf (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type SceneTypeDocOf&lt;W extends GgWorld&lt;any, any&gt;&gt; = W extends GgWorld&lt;
+  infer D,
+  infer R,
+  infer TypeDoc,
+  infer SceneTypeDoc
+&gt;
+  ? SceneTypeDoc
+  : never
+</code></pre>
+<h2 id="typedocof-type-alias">TypeDocOf (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type TypeDocOf&lt;W extends GgWorld&lt;any, any&gt;&gt; = W extends GgWorld&lt;infer D, infer R, infer TypeDoc&gt;
+  ? TypeDoc
+  : never
+</code></pre>
 <h2 id="visualtypedocrepo-type-alias">VisualTypeDocRepo (type alias)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export type VisualTypeDocRepo&lt;D, R&gt; = {
@@ -987,6 +1036,7 @@
   displayObject: IDisplayObjectComponent&lt;D, R&gt;
   renderer: IRendererComponent&lt;D, R&gt;
   rendererExtraOpts: {}
+  camera: IPositionable&lt;D, R&gt;
 }
 </code></pre>
 

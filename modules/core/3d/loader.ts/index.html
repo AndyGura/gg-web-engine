@@ -562,6 +562,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#glb3dsettings-interface" class="md-nav__link">
+    Glb3DSettings (interface)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#loadoptions-type-alias" class="md-nav__link">
     LoadOptions (type alias)
   </a>
@@ -626,6 +633,7 @@
 <li><a href="#loadresultcache-property">loadResultCache (property)</a></li>
 </ul>
 </li>
+<li><a href="#glb3dsettings-interface">Glb3DSettings (interface)</a></li>
 <li><a href="#loadoptions-type-alias">LoadOptions (type alias)</a></li>
 <li><a href="#loadresourcesresult-type-alias">LoadResourcesResult (type alias)</a></li>
 <li><a href="#loadresult-type-alias">LoadResult (type alias)</a></li>
@@ -634,9 +642,14 @@
 <hr />
 <h1 id="utils">utils</h1>
 <h2 id="gg3dloader-class">Gg3dLoader (class)</h2>
+<p>Full 3D loader exposed as <code>Gg3dWorld.loader</code>: GLB+meta asset loading (<code>loadGgGlb</code> and friends)
+layered on top of <code>Gg3dLevelLoader</code>, so <code>registerClass</code>/<code>loadLevel</code>/<code>loadLevelFromUrl</code>/
+<code>getEntityByName</code> are all available directly on <code>world.loader</code>. Also registers a <code>"Glb"</code> level
+entity class (see <code>Glb3DSettings</code>) so a level JSON can place a GLB model declaratively, the same
+way it places primitives/triggers/cameras.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export declare class Gg3dLoader&lt;TypeDoc&gt; {
-  constructor(protected readonly world: Gg3dWorld)
+  constructor(world: Gg3dWorld&lt;TypeDoc&gt;)
 }
 </code></pre>
 <h3 id="loadggglbfiles-method">loadGgGlbFiles (method)</h3>
@@ -664,6 +677,45 @@
 <h3 id="loadresultcache-property">loadResultCache (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly loadResultCache: any
+</code></pre>
+<h2 id="glb3dsettings-interface">Glb3DSettings (interface)</h2>
+<p>Settings for the built-in <code>"Glb"</code> level entity class (3D only): loads a GG GLB+meta pair via
+<code>Gg3dLoader.loadGgGlb</code> and returns every entity it produces (the model itself, plus any nested
+props/scenes) grouped under one <code>GroupEntity</code>.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export interface Glb3DSettings {
+  /**
+   * Path (URL or path prefix, without extension) to the `.glb`/`.meta` pair - passed straight
+   * through to `loadGgGlb`
+   */
+  path: string
+
+  /**
+   * Position of the loaded model
+   */
+  position?: Point3
+
+  /**
+   * Rotation of the loaded model
+   */
+  rotation?: Point4
+
+  /**
+   * Caching strategy, see `CachingStrategy`. Defaults to `CachingStrategy.Nothing`, same as
+   * `loadGgGlb` itself.
+   */
+  cachingStrategy?: CachingStrategy
+
+  /**
+   * Whether to also load dummies flagged as props/scenes. Defaults to `true`, same as `loadGgGlb`.
+   */
+  loadProps?: boolean
+
+  /**
+   * Path where to find prop scenes, if different from `path`'s own directory
+   */
+  propsPath?: string
+}
 </code></pre>
 <h2 id="loadoptions-type-alias">LoadOptions (type alias)</h2>
 <p><strong>Signature</strong></p>

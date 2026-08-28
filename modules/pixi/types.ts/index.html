@@ -521,6 +521,20 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#pixiscenetypedoc-type-alias" class="md-nav__link">
+    PixiSceneTypeDoc (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pixitypedoc-type-alias" class="md-nav__link">
+    PixiTypeDoc (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#pixivisualtypedocrepo2d-type-alias" class="md-nav__link">
     PixiVisualTypeDocRepo2D (type alias)
   </a>
@@ -557,22 +571,30 @@
 <ul>
 <li><a href="#utils">utils</a></li>
 <li><a href="#pixiggworld-type-alias">PixiGgWorld (type alias)</a></li>
+<li><a href="#pixiscenetypedoc-type-alias">PixiSceneTypeDoc (type alias)</a></li>
+<li><a href="#pixitypedoc-type-alias">PixiTypeDoc (type alias)</a></li>
 <li><a href="#pixivisualtypedocrepo2d-type-alias">PixiVisualTypeDocRepo2D (type alias)</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
 <h2 id="pixiggworld-type-alias">PixiGgWorld (type alias)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type PixiGgWorld = Gg2dWorld&lt;
-  Gg2dWorldTypeDocVPatch&lt;PixiVisualTypeDocRepo2D&gt;,
-  Gg2dWorldSceneTypeDocVPatch&lt;PixiVisualTypeDocRepo2D, PixiSceneComponent&gt;
-&gt;
+<pre><code class="language-ts">export type PixiGgWorld = Gg2dWorld&lt;PixiTypeDoc, PixiSceneTypeDoc&gt;
+</code></pre>
+<h2 id="pixiscenetypedoc-type-alias">PixiSceneTypeDoc (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type PixiSceneTypeDoc = Gg2dWorldSceneTypeDocVPatch&lt;PixiVisualTypeDocRepo2D, PixiSceneComponent&gt;
+</code></pre>
+<h2 id="pixitypedoc-type-alias">PixiTypeDoc (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type PixiTypeDoc = Gg2dWorldTypeDocVPatch&lt;PixiVisualTypeDocRepo2D&gt;
 </code></pre>
 <h2 id="pixivisualtypedocrepo2d-type-alias">PixiVisualTypeDocRepo2D (type alias)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export type PixiVisualTypeDocRepo2D = {
   factory: PixiFactory
   displayObject: PixiDisplayObjectComponent
+  camera: PixiCameraComponent
   renderer: PixiRendererComponent
   rendererExtraOpts: ApplicationOptions
   texture: Texture
