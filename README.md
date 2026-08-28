@@ -161,6 +161,34 @@ once it's under `.claude/skills/`. The other skills in this repo
 itself, not for building an app on top of it — see [`CLAUDE.md`](CLAUDE.md) if you're contributing
 to GG-Web-Engine rather than consuming it.
 
+### 🧑‍💻 Local development
+
+Contributing to the engine itself (not just consuming it)? `packages/*` is an npm workspace, so a
+single install wires every adapter package to the local `packages/core` build instead of the
+version published on npm:
+
+```bash
+npm install          # one-time: links the packages/* workspace
+npm run build         # one-time: full build of every package (incl. non-TS asset copies)
+npm run build:watch   # tsc -b --watch — leave running, rebuilds core + adapters on every save
+```
+
+To see those changes live in one of the example apps under `examples/` (they stay outside the
+workspace on purpose, so they remain standalone-cloneable), link that example once and start its
+dev server:
+
+```bash
+bash etc/switch_example_to_local_gg.sh examples/<example-dir>
+cd examples/<example-dir> && npm start   # webpack-dev-server, also watches for changes
+```
+
+With `build:watch` and the example's dev server both running, editing anything under
+`packages/*/src` shows up in the browser with no other step — no re-linking, no rebuild command to
+remember. Undo the example link with `bash etc/restore_example_from_local_gg.sh
+examples/<example-dir>` when you're done. Full details, caveats, and the core/adapter/example
+workflow end-to-end are documented in the
+[`gg-engine-core-development`](.claude/skills/gg-engine-core-development/SKILL.md) skill.
+
 ## 🛠️ Examples
 ### [Interactive Demos](https://gg-web-demos.guraklgames.com/)
 ### Framework Usage

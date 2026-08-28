@@ -132,6 +132,13 @@ Copy `packages/rapier2d/package.json` or `packages/matter/package.json` as a tem
 - Scripts: `"build": "tsc"` (or `"rm -rf ./dist/ && tsc"` if the lib ships non-JS assets to copy,
   as `ammo` does with its `ammo.js` WASM glue), `"test": "jest"`, `"prepublish"` cleaning `dist/`
   first.
+- `tsconfig.json`: copy an existing adapter's (e.g. `packages/rapier2d/tsconfig.json`) rather than
+  writing one from scratch — it must set `baseUrl`/`outDir`/`rootDir` all to `./src/`/`./dist/` and
+  `tsBuildInfoFile: "./dist/tsconfig.tsbuildinfo"` explicitly (composite-project build orchestration
+  is on repo-wide via `tsconfig.base.json`; leaving these to their defaults silently nests emitted
+  output under a stray `dist/src/`, or drops `dist/index.js` entirely — see
+  `gg-engine-core-development`'s local dev section for why), and `"references": [{ "path":
+  "../core" }]` so root `npm run build:watch` (`tsc -b --watch`) picks up your package.
 
 ## Testing — write real tests, not mocks, against the native engine
 
@@ -149,17 +156,22 @@ engines run fine in that environment.
 
 ## Wiring a new adapter into the repo
 
-1. Add a `build`/`test` step to `.github/workflows/tests.yml` (note CI runs
-   `etc/switch_libs_to_local_core.sh` first, so PR changes to core are exercised by every adapter's
-   real test suite, not a pinned npm version of core).
-2. Add the package name to the `libs` array in `etc/switch_libs_to_local_core.sh` and
-   `etc/publish_new_version.sh` — see `gg-engine-release`.
+1. Add a `build`/`test` step to `.github/workflows/pull_request_build.yml` (note CI runs a plain
+   `npm install` at the repo root first, which — since `packages/*` is an npm workspace — is enough
+   to link every adapter against the local core; PR changes to core are exercised by every
+   adapter's real test suite, not a pinned npm version of core).
+2. Add `{ "path": "../<lib>" }` to the root `tsconfig.json`'s `references` array (so `npm run
+   build:watch` picks it up) and the package name to the `libs` array in
+   `etc/publish_new_version.sh` (so releases include it) — see `gg-engine-release`. You do **not**
+   need to register it anywhere for local dev linking: a new directory under `packages/` joins the
+   workspace automatically on the next `npm install`.
 3. Add at least one example under `examples/` (see `gg-engine-examples`), ideally reusing an
    existing visual package so the example isolates your new physics backend.
 4. Add the package to the root `README.md` "Integrations" list and give it its own
    `packages/<lib>/README.md`.
-5. Use `bash etc/switch_libs_to_local_core.sh` to develop against a local (unpublished)
-   `@gg-web-engine/core` via `npm link`.
+5. Use `npm install` at the repo root to develop against a local (unpublished)
+   `@gg-web-engine/core`, plus `npm run build:watch` for the live-reload loop — see
+   `gg-engine-core-development`'s local dev workflow section.
 
 ## Keep this skill current
 

@@ -49,10 +49,13 @@ bash etc/switch_example_to_local_gg.sh examples/<your-example-dir>
 ```
 
 This strips the `@gg-web-engine/*` lines from the example's `package.json`, `npm link`s the local
-package builds in instead, and patches `tsconfig.json` path mappings for libraries whose types
-live under a linked package's own `node_modules` (three/pixi/ammo — see the `fix_*_paths`
-functions in the script). Run `etc/switch_libs_to_local_core.sh` first if the local adapter
-packages themselves need to pick up local core changes.
+`packages/*` builds in by path instead, and patches `tsconfig.json` path mappings for libraries
+whose types live under a linked package's own `node_modules` (three/pixi/ammo — see the
+`fix_*_paths` functions in the script). It's idempotent (safe to re-run) and reversible — undo it
+with `bash etc/restore_example_from_local_gg.sh examples/<your-example-dir>`. Run `npm install` at
+the repo root first if the local adapter packages themselves need to pick up local core changes;
+for the full "edit core, see it live in this example" watch-mode loop (`tsc -b
+--watch` + `npm start`), see `gg-engine-core-development`'s local dev workflow section.
 
 ## Running
 
