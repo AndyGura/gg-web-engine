@@ -12,7 +12,7 @@ versioning.
 ## Trigger
 
 A push to `main` whose latest commit message matches `^\[pre-release\] \[X\.Y\.Z\]` runs
-`.github/workflows/release.yml`. Any other commit message on `main` makes the job exit early
+`.github/workflows/release_action.yml`. Any other commit message on `main` makes the job exit early
 (`PRE_RELEASE=false`) — it's a no-op, not a failure. So "cutting a release" in practice means
 landing a commit on `main` with that exact message prefix and the target version.
 
@@ -24,7 +24,11 @@ landing a commit on `main` with that exact message prefix and the target version
    minutes) before touching dependents.
 3. In parallel, for every package in its `libs` array (`three`, `ammo`, `rapier2d`, `rapier3d`,
    `pixi`, `matter`): bumps its own version **and** its `@gg-web-engine/core` dependency version,
-   clean-installs, formats, builds.
+   clean-installs, formats, builds. Every `npm i` in this script passes `--workspaces=false` — even
+   though `packages/*` is an npm workspace for local dev (see `gg-engine-core-development`), the
+   release build must install the just-published real `@gg-web-engine/core` from the registry as a
+   sanity check, not silently resolve it back to the local workspace symlink, and the parallel
+   per-package installs would otherwise race on one shared root lockfile.
 4. Publishes each of those packages to npm, then polls npm again until every one is live.
 5. Bumps `@gg-web-engine/*` dependency versions in every example listed in
    `examples/examples-list.txt` and reinstalls them, in parallel.
@@ -41,9 +45,13 @@ A new adapter package (see `gg-engine-visual-adapter` / `gg-engine-physics-adapt
 excluded** from releases until you add it to:
 
 - the `libs` array in `etc/publish_new_version.sh`
-- the `libs` array in `etc/switch_libs_to_local_core.sh` (so CI/local dev link it against local
-  core too)
-- the per-package build/test step list in `.github/workflows/tests.yml`
+- the per-package build/test step list in `.github/workflows/pull_request_build.yml`
+- the root `tsconfig.json`'s `references` array (so `npm run build:watch` picks it up locally —
+  not required for releases themselves, but easy to forget at the same time)
+
+It does **not** need registering anywhere for local dev linking: `packages/*` is an npm workspace,
+so a new package directory is picked up by the next `npm install` automatically (see
+`gg-engine-core-development`).
 
 ## Manual follow-ups (the script prints these — don't skip them)
 

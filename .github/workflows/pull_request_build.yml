@@ -11,19 +11,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Test core
+      # Installs and links the packages/* npm workspace in one shot: every adapter resolves
+      # @gg-web-engine/core to the local packages/core build below instead of the version pinned
+      # in its package.json, so PR changes to core are exercised by every adapter's real test
+      # suite. See gg-engine-core-development.
+      - name: Install workspace dependencies
+        run: npm install
+
+      - name: Build and test core
         working-directory: ./packages/core
-        run: npm i && npm run test
+        run: npm run build && npm run test
 
-      - name: Switch libraries to use local core package
-        working-directory: ./etc
-        run: bash switch_libs_to_local_core.sh
-
-      - name: Test ammo
+      - name: Build and test ammo
         working-directory: ./packages/ammo
         run: npm run build && npm run test
 
-      - name: Test matter
+      - name: Build and test matter
         working-directory: ./packages/matter
         run: npm run build && npm run test
 
@@ -31,11 +34,11 @@ jobs:
         working-directory: ./packages/pixi
         run: npm run build
 
-      - name: Test rapier2d
+      - name: Build and test rapier2d
         working-directory: ./packages/rapier2d
         run: npm run build && npm run test
 
-      - name: Test rapier3d
+      - name: Build and test rapier3d
         working-directory: ./packages/rapier3d
         run: npm run build && npm run test
 
