@@ -30,6 +30,24 @@ whatever `packages/core/package.json`'s current `version` is — examples are no
 version ranges. Copy the `browser` field (`{"fs": false, "os": false, "path": false}`) when the
 physics lib is Ammo (needed to stub Node built-ins the WASM glue references).
 
+## tsconfig `target`
+
+Set `compilerOptions.target` in the example's `tsconfig.json` to `ES2020` (the value already used
+by most examples) or higher — never `ES5` and never leave it unset (`tsc`'s default is lower
+still). `packages/core` and every adapter are published compiled at `target: es2016`
+(`tsconfig.base.json` at the repo root), which keeps real ES2015+ `class` syntax (native classes
+aren't downleveled at that target, only newer syntax like async/await is). If an example compiles
+*its own* code at `ES5`, `tsc`/`ts-loader` downlevels any `class ... extends <ImportedBaseClass>`
+in the example (e.g. a custom entity extending `IEntity`, or `Gg3dWorld` itself if subclassed) into
+the ES5 `__extends` helper, which calls the parent via `Base.call(this, ...)` instead of `new`.
+Calling a real ES2015+ class without `new` throws `TypeError: Class constructor X cannot be invoked
+without 'new'` at runtime — in a webpack production bundle this surfaces minified as `Class
+constructor E cannot be invoked without 'new' at new I`, with no build-time error, since both
+`tsc` and webpack compile/bundle successfully; it only fails when the bundle actually runs in a
+browser. This bit essentially every plain-webpack example at once (they'd all copied an `ES5`
+`tsconfig.json` from an older template) — if a fresh example's bundle throws this in the browser,
+check its `tsconfig.json` target before looking anywhere else.
+
 ## Register the example
 
 1. Add the directory name (no `examples/` prefix) as a new line in `examples/examples-list.txt` —
@@ -72,6 +90,17 @@ Examples are read as documentation — keep `index.ts`/`src/` short, comment the
 (why a controller is attached, what a collision group demonstrates), and prefer the same
 bootstrap shape used in the root `README.md` quickstart so readers can map one to the other. See
 `gg-engine-app-development` for the API surface to draw on.
+
+Give `world` an explicit type annotation from the visual adapter package (e.g. `const world:
+ThreeGgWorld = new Gg3dWorld({...})`, imported from `@gg-web-engine/three`; pixi equivalents follow
+the same naming) whenever the demo reaches through `world.visualScene` for adapter-specific members
+like `nativeScene`. `Gg3dWorld`'s generic inference from the constructor argument alone does not
+carry the concrete visual scene type through — `world.visualScene` infers as the base
+`IVisualScene3dComponent` interface, which doesn't declare adapter-specific members, so any access
+like `world.visualScene.nativeScene` fails with `TS2339: Property 'nativeScene' does not exist on
+type 'IVisualScene3dComponent<...>'` regardless of which physics adapter is paired with it. The
+explicit annotation sidesteps the inference entirely and is the pattern already used by examples
+like `collision-groups-three-ammo`.
 
 ## Keep this skill current
 

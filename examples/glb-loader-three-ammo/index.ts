@@ -8,7 +8,7 @@ import {
   LevelJson,
   OrbitCameraController,
 } from '@gg-web-engine/core';
-import { ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
+import { ThreeGgWorld, ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
 import { AmbientLight, DirectionalLight } from 'three';
 import { AmmoWorldComponent } from '@gg-web-engine/ammo';
 import { GlbSpawner, GlbSpawnerSettings } from './glb-spawner';
@@ -42,7 +42,7 @@ const level: LevelJson = {
   ],
 };
 
-const world = new Gg3dWorld({
+const world: ThreeGgWorld = new Gg3dWorld({
   visualScene: new ThreeSceneComponent(),
   physicsWorld: new AmmoWorldComponent(),
 });
