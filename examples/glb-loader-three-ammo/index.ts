@@ -1,22 +1,53 @@
-import { Gg3dWorld, GgStatic, OrbitCameraController, TypedGg3dWorld } from '@gg-web-engine/core';
-import { ThreeGgWorld, ThreeSceneComponent } from '@gg-web-engine/three';
+import {
+  Camera3dEntity,
+  Entity3d,
+  Gg3dWorld,
+  Gg3dWorldTypeDocVPatch,
+  GgStatic,
+  GroupEntity,
+  LevelJson,
+  OrbitCameraController,
+} from '@gg-web-engine/core';
+import { ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
 import { AmbientLight, DirectionalLight } from 'three';
-import { AmmoGgWorld, AmmoWorldComponent } from '@gg-web-engine/ammo';
+import { AmmoWorldComponent } from '@gg-web-engine/ammo';
+import { GlbSpawner, GlbSpawnerSettings } from './glb-spawner';
 
 GgStatic.instance.showStats = true;
 GgStatic.instance.devConsoleEnabled = true;
 
-const world: TypedGg3dWorld<ThreeGgWorld, AmmoGgWorld> = new Gg3dWorld({
+const level: LevelJson = {
+  entities: [
+    {
+      class: 'Camera',
+      name: 'MainCamera',
+      position: { x: 9, y: 12, z: 9 },
+    },
+    {
+      class: 'Glb',
+      name: 'PhScene',
+      config: { path: 'https://gg-web-demos.guraklgames.com/assets/model-loader/ph_scene' },
+    },
+    {
+      class: 'GlbSpawner',
+      name: 'Spawner',
+      config: {
+        intervalSeconds: 0.5,
+        lifetimeSeconds: 30,
+        baseUrl: 'https://gg-web-demos.guraklgames.com/assets/model-loader',
+        glbIds: ['ball', 'dice', 'christmas_tree', 'battery', 'capsule', 'convex_hull', 'compound'],
+        area: { min: { x: -2.5, y: -2.5, z: 10 }, max: { x: 2.5, y: 2.5, z: 10 } },
+      },
+    },
+  ],
+};
+
+const world = new Gg3dWorld({
   visualScene: new ThreeSceneComponent(),
   physicsWorld: new AmmoWorldComponent(),
 });
 world.init().then(async () => {
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
-  const renderer = world.addRenderer(world.visualScene.factory.createPerspectiveCamera(), canvas);
-  renderer.position = { x: 9, y: 12, z: 9 };
-
-  const controller = new OrbitCameraController(renderer, { mouseOptions: { canvas } });
-  world.addEntity(controller);
 
   world.visualScene.nativeScene?.add(new AmbientLight(0xffffff, 0.6));
   const dirLight = new DirectionalLight(0xffffff, 1);
@@ -34,63 +65,28 @@ world.init().then(async () => {
   dirLight.shadow.camera.far = 3500;
   world.visualScene.nativeScene?.add(dirLight);
 
-  const { entities } = await world.loader.loadGgGlb(
-    'https://gg-web-demos.guraklgames.com/assets/model-loader/ph_scene',
+  world.loader.registerClass(
+    'GlbSpawner',
+    (w: Gg3dWorld<Gg3dWorldTypeDocVPatch<ThreeVisualTypeDocRepo>>, settings: GlbSpawnerSettings) =>
+      new GlbSpawner(w, settings),
   );
-  for (const item of entities) {
-    if (item.object3D) {
-      item.object3D.nativeMesh.traverse(
-        (obj) => {
-          obj.castShadow = true;
-          obj.receiveShadow = true;
-        },
-      );
-    }
-    world.addEntity(item);
-  }
 
-  const spawnTimer = world.createClock(true);
-  spawnTimer.tickRateLimit = 2;
-  spawnTimer.tick$.subscribe(async () => {
-    const itemTypeRand = Math.random();
-    let glbId = '';
-    if (itemTypeRand < 1 / 7) {
-      glbId = 'ball';
-    } else if (itemTypeRand < 2 / 7) {
-      glbId = 'dice';
-    } else if (itemTypeRand < 3 / 7) {
-      glbId = 'christmas_tree';
-    } else if (itemTypeRand < 4 / 7) {
-      glbId = 'battery';
-    } else if (itemTypeRand < 5 / 7) {
-      glbId = 'capsule';
-    } else if (itemTypeRand < 6 / 7) {
-      glbId = 'convex_hull';
-    } else {
-      glbId = 'compound';
-    }
-    const { entities } = await world.loader.loadGgGlb(
-      'https://gg-web-demos.guraklgames.com/assets/model-loader/' + glbId,
-      {
-        position: {
-          x: Math.random() * 5 - 2.5,
-          y: Math.random() * 5 - 2.5,
-          z: 10,
-        },
-      },
-    );
-    const item = entities[0];
-    item.object3D.nativeMesh.traverse(
+  const levelGroup = await world.loader.loadLevel(level);
+
+  const cameraEntity = levelGroup.getChildEntityByName<Camera3dEntity<ThreeVisualTypeDocRepo>>('MainCamera');
+  const renderer = world.addRenderer(cameraEntity.camera, canvas);
+  const controller = new OrbitCameraController(renderer, { mouseOptions: { canvas } });
+  world.addEntity(controller);
+
+  const phScene = levelGroup.getChildEntityByName<GroupEntity>('PhScene');
+  for (const item of phScene.children as Entity3d<Gg3dWorldTypeDocVPatch<ThreeVisualTypeDocRepo>>[]) {
+    item.object3D?.nativeMesh.traverse(
       (obj) => {
         obj.castShadow = true;
         obj.receiveShadow = true;
       },
     );
-    world.addEntity(item);
-    setTimeout(() => {
-      world.removeEntity(item, true);
-    }, 30000);
-  });
+  }
 
   world.start();
 });
