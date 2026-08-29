@@ -1,0 +1,72 @@
+name: Release Blender add-on
+
+# Deliberately independent of release_action.yml (the npm packages' pipeline):
+# the add-on has its own version (blender-addon/gg_web_engine_exporter/blender_manifest.toml)
+# and releases far less often than core/adapters, so it gets its own tag pattern
+# instead of running on every push to main.
+on:
+  push:
+    tags:
+      - 'blender-addon-v*.*.*'
+  workflow_dispatch: {}
+
+env:
+  # Builder Blender version - any 4.2+ can build/validate the manifest regardless
+  # of the manifest's own blender_version_min. Bump if download.blender.org drops
+  # this release.
+  BUILDER_BLENDER_VERSION: 4.2.1
+
+jobs:
+  release-blender-addon:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Blender (builder only, headless)
+        run: |
+          curl -fsSL -o /tmp/blender.tar.xz \
+            "https://download.blender.org/release/Blender${BUILDER_BLENDER_VERSION%.*}/blender-${BUILDER_BLENDER_VERSION}-linux-x64.tar.xz"
+          mkdir -p /opt/blender
+          tar -xf /tmp/blender.tar.xz -C /opt/blender --strip-components=1
+          echo "/opt/blender" >> "$GITHUB_PATH"
+
+      - name: Build extension zip
+        working-directory: ./blender-addon
+        run: |
+          chmod +x ./tools/package.sh
+          ./tools/package.sh
+
+      - name: Read add-on version
+        id: manifest
+        working-directory: ./blender-addon
+        run: |
+          VERSION=$(grep -m1 '^version' gg_web_engine_exporter/blender_manifest.toml | sed -E 's/version = "(.*)"/\1/')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub Release with the zip asset
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: blender-addon-v${{ steps.manifest.outputs.version }}
+          name: GG Web Engine Exporter (Blender add-on) ${{ steps.manifest.outputs.version }}
+          files: blender-addon/dist/*.zip
+
+      - name: Fetch current self-hosted repo index (if any)
+        run: |
+          mkdir -p /tmp/blender-extensions-repo
+          curl -fsSL -o /tmp/blender-extensions-repo/index.json \
+            "https://andygura.github.io/gg-web-engine/blender-extensions/index.json" || true
+
+      - name: Regenerate self-hosted extensions repository index
+        run: |
+          cp blender-addon/dist/*.zip /tmp/blender-extensions-repo/
+          blender --command extension server-generate --repo-dir=/tmp/blender-extensions-repo
+
+      - name: Deploy repository index to GitHub Pages (blender-extensions/ subfolder only)
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: /tmp/blender-extensions-repo
+          destination_dir: blender-extensions
+          keep_files: true

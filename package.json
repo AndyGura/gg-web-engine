@@ -3,7 +3,8 @@
   "private": true,
   "description": "Monorepo root for @gg-web-engine/* packages — not published. See CLAUDE.md and the gg-engine-* skills for how packages/* and examples/* relate.",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "e2e/*/app"
   ],
   "scripts": {
     "build": "npm run build -w packages/core && npm run prettier-format --workspaces --if-present && npm run build --workspaces --if-present",

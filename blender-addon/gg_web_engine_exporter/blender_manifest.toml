@@ -1,0 +1,27 @@
+schema_version = "1.0.0"
+
+id = "gg_web_engine_exporter"
+name = "GG Web Engine Exporter"
+version = "1.0.0"
+tagline = "Export scenes to the .glb + .meta format used by @gg-web-engine/core"
+maintainer = "AndyGura"
+type = "add-on"
+
+website = "https://github.com/AndyGura/gg-web-engine"
+
+tags = ["Import-Export"]
+
+blender_version_min = "4.2.0"
+
+license = [
+    "SPDX:Apache-2.0",
+]
+
+[permissions]
+files = "Writes the exported .glb and .meta files to the path you choose in the export dialog"
+
+[build]
+paths_exclude_pattern = [
+    "__pycache__/",
+    "/.git/",
+]

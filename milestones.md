@@ -151,6 +151,26 @@ Status
   yet (arguably doesn't need any — level JSON files are small compared to GLB+textures).
 - Export/serialize selected runtime state back to JSON (savegames) — not started; the level loader
   is currently load-only, no inverse "world → JSON" path.
+- ✅ Blender scene authoring tooling (2026-08-29): scenes are exported to the GLB+meta format via a
+  proper installable Blender add-on (`blender-addon/`, `blender-addon/README.md`) rather than the
+  former loose `build_blender_scene.py` CLI script that shipped inside the `@gg-web-engine/core` npm
+  tarball. Adds a `File > Export > GG Web Engine (.glb + .meta)` operator, a headless/CI entry point
+  (`blender-addon/scripts/export_cli.py`) sharing the same export logic (no more per-project copies
+  of the script), a `formatVersion` field in `.meta` checked on load (`GgMeta.formatVersion` /
+  `GG_META_SUPPORTED_FORMAT_VERSION` in `packages/core/src/3d/loader.ts`), and both a manual
+  (GitHub Release zip) and self-hosted-repository (Blender 4.2+ Extensions Platform, auto-update)
+  install path, built by an independent `blender-addon-v*` tagged release workflow. Covered
+  end-to-end by `e2e/blender-export/` (a headless-Blender-built fixture scene loaded back through a
+  real `@gg-web-engine/three` + `@gg-web-engine/rapier3d` app, asserting the three.js scene graph,
+  the `.meta` sidecar, and the constructed physics bodies), run by
+  `.github/workflows/blender_export_e2e.yml` on changes touching the add-on/loader/adapters.
+- Second export mode: exporting a Blender scene directly to a **level JSON** document (see
+  `gg-engine-level-json`) instead of a GLB+meta sidecar, so the same scene could load either as a
+  single GLB prop/model or expand into first-class level entities — not started. The add-on's
+  `exporter.py` already separates scene-walking (dummies/curves/rigid bodies) from glTF-writing, and
+  its export operator's format choice is an enum with one entry today, specifically so this can be
+  added later as one more format rather than a rework — see `blender-addon/README.md`'s "Planned"
+  section.
 
 ---
 
