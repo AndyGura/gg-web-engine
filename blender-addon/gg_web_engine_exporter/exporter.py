@@ -25,6 +25,7 @@ walk and shape/curve/dummy parsing to build level-JSON entities rather than a
 `.meta` sidecar, so avoid folding scene-walking logic into the glTF-specific half.
 """
 import json
+import os
 
 import bpy
 from rna_prop_ui import rna_idprop_value_to_python
@@ -171,6 +172,10 @@ def export_glb_meta(filepath, export_materials=True, copyright=""):
     responsible for opening the right `.blend` first (the interactive operator
     doesn't need to - it already has one open; the headless CLI does).
     """
+    out_dir = os.path.dirname(filepath)
+    if out_dir:
+        os.makedirs(out_dir, exist_ok=True)
+
     metadata = collect_scene_metadata()
 
     for obj in bpy.context.scene.objects:
