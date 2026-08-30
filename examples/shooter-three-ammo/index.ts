@@ -11,7 +11,7 @@ const world: TypedGg3dWorld<ThreeGgWorld, AmmoGgWorld> = new Gg3dWorld({
   physicsWorld: new AmmoWorldComponent(),
 });
 world.physicsWorld.maxSubSteps = 10;
-world.physicsWorld.fixedTimeStep = null;
+world.physicsWorld.fixedTimeStep = undefined;
 
 world.init().then(async () => {
   // init graphics
@@ -36,10 +36,10 @@ world.init().then(async () => {
   dirLight.shadow.camera.far = 500;
   dirLight.shadow.mapSize.x = 4096;
   dirLight.shadow.mapSize.y = 4096;
-  world.visualScene.nativeScene.add(dirLight);
+  world.visualScene.nativeScene!.add(dirLight);
 
   const ambientLight = new AmbientLight(0x606060);
-  world.visualScene.nativeScene.add(ambientLight);
+  world.visualScene.nativeScene!.add(ambientLight);
 
   const textureLoader = new TextureLoader();
   // create objects
@@ -71,7 +71,7 @@ world.init().then(async () => {
           body: { dynamic: true, mass: brickMass },
         }, { x: x + offsetX, y, z: z + 0.75 }, Qtrn.O, { castShadow: true, receiveShadow: true });
         const materialIndex = Math.floor(Math.random() * material.length);
-        (item.object3D.nativeMesh as Mesh).material = material[materialIndex];
+        (item.object3D!.nativeMesh as Mesh).material = material[materialIndex];
       }
     }
   };
@@ -88,7 +88,7 @@ world.init().then(async () => {
         }, { x, y: y + offsetY, z: z + 0.75 }, Qtrn.O, { castShadow: true, receiveShadow: true });
         item.rotation = quat;
         const materialIndex = Math.floor(Math.random() * material.length);
-        (item.object3D.nativeMesh as Mesh).material = material[materialIndex];
+        (item.object3D!.nativeMesh as Mesh).material = material[materialIndex];
       }
     }
   };
@@ -137,9 +137,9 @@ world.init().then(async () => {
         Qtrn.O,
         { castShadow: true, receiveShadow: true },
       );
-      (ball.object3D.nativeMesh as Mesh).material = ballMaterial;
+      (ball.object3D!.nativeMesh as Mesh).material = ballMaterial;
 
-      ball.objectBody.linearVelocity = Pnt3.rot(Pnt3.scalarMult(Pnt3.nZ, 80), renderer.rotation);
+      ball.objectBody!.linearVelocity = Pnt3.rot(Pnt3.scalarMult(Pnt3.nZ, 80), renderer.rotation);
     }
   }, false);
 
@@ -148,11 +148,11 @@ world.init().then(async () => {
   cameraController.mouseInput.isPointerLocked$.subscribe((l) => {
     if (l) {
       world.resumeWorld();
-      document.getElementById('blocker').style.display = 'none';
-      document.getElementById('message').style.display = 'block';
+      document.getElementById('blocker')!.style.display = 'none';
+      document.getElementById('message')!.style.display = 'block';
     } else {
-      document.getElementById('blocker').style.display = 'block';
-      document.getElementById('message').style.display = 'none';
+      document.getElementById('blocker')!.style.display = 'block';
+      document.getElementById('message')!.style.display = 'none';
       world.pauseWorld();
     }
   });
