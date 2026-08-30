@@ -143,11 +143,13 @@ build of an example with no manual rebuild, and landed in the emitted bundle.
 
 Caveats:
 
-- `tsc -b --watch` only rebuilds what `tsc` itself emits. Two packages have a non-TS asset copy
-  step in their own `build` script (`ammo`'s `ammo.js` WASM glue, `three`'s vendored
-  `three-examples`) that `tsc -b` doesn't run. Do one full `npm run build` (root script) first so
-  those assets exist, then rely on `build:watch` for iterating on `.ts` changes; re-run `npm run
-  build` for that package if you touch those vendored assets.
+- `tsc -b --watch` only rebuilds what `tsc` itself emits. `ammo` has a non-TS asset copy step in
+  its own `build` script (copying the prebuilt `ammo.js` WASM glue into `dist/`) that `tsc -b`
+  doesn't run. Do one full `npm run build` (root script) first so those assets exist, then rely on
+  `build:watch` for iterating on `.ts` changes; re-run `npm run build` for that package if you
+  touch those vendored assets. `three` has no such step — it imports the `three` library's own
+  `examples/jsm`/`addons` subpaths directly rather than vendoring a copy (see
+  `gg-engine-visual-adapter`), so a plain `tsc -b` rebuilds it completely.
 - `npm run build` (the per-package `build` script, or the root `npm run build`) and `tsc -b` are
   two different incremental caches; running one doesn't make the other skip work, and mixing them
   (e.g. `rm -rf dist` then `tsc -b` alone) will skip the asset-copy step above. This is expected,
