@@ -102,6 +102,75 @@ type 'IVisualScene3dComponent<...>'` regardless of which physics adapter is pair
 explicit annotation sidesteps the inference entirely and is the pattern already used by examples
 like `collision-groups-three-ammo`.
 
+## TypeScript 6 pitfalls in examples specifically (hit upgrading every example off TS 5.x)
+
+Examples don't `extend` the root `tsconfig.base.json` (they're standalone/StackBlitz-clonable), so
+they don't inherit any of that file's TS6 fixes — each example's own `tsconfig.json` needs these
+independently:
+
+- `"ignoreDeprecations": "6.0"` — TypeScript 6 hard-errors (`TS5107`) on `"moduleResolution": "node"`
+  (every example uses this), not just warns. Same escape hatch `tsconfig.base.json` already uses.
+  Switching to `"moduleResolution": "bundler"` is not a safe alternative for an ammo-based example:
+  it breaks resolving `@gg-web-engine/ammo`'s extensionless `./ammo.js/ammo` relative import in its
+  shipped `.d.ts`.
+- **TypeScript 6 defaults the whole `strict` family (`strictNullChecks`, `noImplicitAny`,
+  `strictFunctionTypes`, ...) to `true` when a tsconfig doesn't set `"strict"` or the individual
+  flags at all** — a genuine default-value change, not new-syntax deprecation, and easy to
+  mis-diagnose since nothing else changed. Verified directly: identical code type-checks clean
+  under TS 5.5.4 with a bare tsconfig and fails under TS 6.0.3 with the same bare tsconfig; adding
+  `"strict": false` explicitly restores the old behavior. No example's tsconfig opted into strict
+  mode before, so this silently turns on `TS18047` ("possibly null") on every access to a nullable
+  core member (`Entity3d.object3D`/`.objectBody`, `Gg3dWorld.physicsWorld`, etc.) and can trip
+  `strictFunctionTypes` on a callback explicitly annotated with a bare class type (e.g.
+  `(entity: Entity3d) => ...`) instead of a properly-parametrized one (`Entity3d<ThreeTypeDoc>`) or
+  left to infer. Fix each real site with a `!` non-null assertion (matching the idiom already used
+  in adapter source, e.g. `nativeScene!`) or a proper type annotation — don't paper over it with
+  `"strict": false"`.
+- `"skipLibCheck": true` if the example depends on `@gg-web-engine/ammo` — its vendored
+  `dist/ammo.js/ammo.d.ts` declares `declare module Ammo { ... }`, which TypeScript 6 hard-errors on
+  (`TS1540`, wants `namespace` instead) rather than merely warning as TS 5.x did. The real fix
+  belongs in `packages/ammo`'s vendored build output; `skipLibCheck` is the correct app-side
+  stopgap for a third-party (including vendored-third-party) declaration file you don't own.
+
+## Dependency-version-skew pitfalls when examples and `packages/*` are upgraded in the same pass
+
+Examples install `@gg-web-engine/*` from the **published npm registry**, not from local
+`packages/*` sources (unless linked via `switch_example_to_local_gg.sh`). If `packages/*`'s own
+`package.json` dependency versions are bumped locally but not yet republished (mid-upgrade, before
+a release), the *published* `@gg-web-engine/*` tarball's `peerDependencies`/`dependencies` still
+point at the old versions, which causes two distinct problems in any example that also bumps the
+same shared library:
+
+- **`npm install` fails with `ERESOLVE`** the moment the example pins a peer'd library (e.g. `three`,
+  `rxjs`, `mini-signals`, a rapier compat package) to a version the published adapter's
+  `peerDependencies` doesn't allow. Fix: `npm install --legacy-peer-deps`. This is a temporary,
+  repo-wide condition that resolves itself once the packages are actually republished at a version
+  whose metadata matches — not something to "fix" by pinning the example back to an old version.
+- **A second, nested physical copy of the shared library gets installed even with
+  `--legacy-peer-deps`**, if the published adapter package declares it as a real (non-peer)
+  `dependency` with an exact version — `@gg-web-engine/core@0.0.59` does this for `rxjs` (pinned
+  exactly at `7.8.1`). npm can't dedupe an exact-pin mismatch, so it nests a second `rxjs` copy
+  under `node_modules/@gg-web-engine/core/node_modules/rxjs`. Because classes like `rxjs`'s
+  `Subject`/`Subscription` have private fields, TypeScript treats the two copies as **nominally
+  incompatible types** — this cascades into large numbers of misleading, seemingly-unrelated errors
+  (e.g. `TypedGg3dWorld<...>` silently collapsing to `never`, producing `TS2339: Property 'X' does
+  not exist on type 'never'` everywhere `world` is used, with no error at the `world` declaration
+  itself). Diagnose by checking for more than one installed copy
+  (`find node_modules -maxdepth 4 -name rxjs -type d`). Fix: add an `"overrides"` block to the
+  example's own `package.json` pinning the shared library to one version (e.g.
+  `"overrides": { "rxjs": "7.8.2" }`), which forces npm to collapse the whole tree onto a single
+  copy. This becomes redundant (but harmless) once the adapter packages are actually republished
+  with matching versions.
+
+## `ng update` gotcha for Angular examples
+
+`ng update`'s failure-rollback discards **all** uncommitted progress since the last git commit, not
+just the failed step — if you're stepping through several major versions in sequence (e.g. 19 → 20
+→ 21 → 22, generally safer than jumping straight to the latest major), commit (or otherwise
+snapshot) after each successful step, or a later step's failure silently wipes everything already
+done. This bit a real upgrade: an unrelated transient `npm` install error on one step reverted two
+already-successful prior major-version bumps back to the original pre-upgrade state.
+
 ## Keep this skill current
 
 This file is read by future agents adding examples to this repo, not by end users of the engine.
