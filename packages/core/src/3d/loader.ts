@@ -1,5 +1,5 @@
 import { Gg3dWorld, Gg3dWorldTypeDocRepo } from './gg-3d-world';
-import { GgMeta } from './models/gg-meta';
+import { GG_META_SUPPORTED_FORMAT_VERSION, GgMeta } from './models/gg-meta';
 import { Entity3d } from './entities/entity-3d';
 import { GroupEntity, Pnt3, Point3, Point4, Qtrn } from '../base';
 import { Gg3dLevelLoader } from './level-loader';
@@ -154,7 +154,17 @@ export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocR
       fetch(`${path}.glb`).then(r => r.arrayBuffer()),
       fetch(`${path}.meta`)
         .then(r => r.text())
-        .then(r => JSON.parse(r)),
+        .then(r => JSON.parse(r))
+        .then((meta: GgMeta) => {
+          if (meta.formatVersion !== undefined && meta.formatVersion > GG_META_SUPPORTED_FORMAT_VERSION) {
+            console.warn(
+              `${path}.meta declares formatVersion ${meta.formatVersion}, but this build of ` +
+                `@gg-web-engine/core only understands up to ${GG_META_SUPPORTED_FORMAT_VERSION}. ` +
+                `Update @gg-web-engine/core, or re-export with an older version of the GG Web Engine Exporter add-on.`,
+            );
+          }
+          return meta;
+        }),
     ]);
     if (useCache) {
       this.filesCache.set(path, loadPromise);

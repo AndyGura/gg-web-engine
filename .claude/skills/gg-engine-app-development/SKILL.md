@@ -84,8 +84,9 @@ rotation instead of quaternions.
   `FreeCameraController`, `OrbitCameraController`, `CarKeyboardHandlingController` /
   `GgCarKeyboardHandlingController` in `packages/core/src/3d/entities/controllers/input/`.
 - **GLB scene loading (3D)**: GLB + `.gg` meta sidecar, driven by `packages/core/src/3d/loader.ts`
-  and the adapter's own `<lib>-loader.ts` (e.g. `ThreeLoader`). Levels are authored via the Blender
-  exporter in `packages/core/blender_exporter`. See the `examples/glb-loader-*` examples.
+  and the adapter's own `<lib>-loader.ts` (e.g. `ThreeLoader`). Levels are authored in Blender and
+  exported with the `GG Web Engine Exporter` add-on in `blender-addon/` (see `blender-addon/README.md`
+  for install/usage). See the `examples/glb-loader-*` examples.
 - **Level JSON loading (2D & 3D)**: `world.loader` turns a JSON document of entities into world
   content, with built-in `"Primitive"`/`"Trigger"`/`"Camera"`/`"Glb"`/`"GgCar"`/`"MapGraph"` (the
   last four 3D only) classes and support for app-registered custom classes. Loading resolves to a

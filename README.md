@@ -327,8 +327,9 @@ There is simple factory, allowing to easily create rigid bodies. See
 Currently, there is only one loader available, and only for 3D world. It uses own format of serializing blender scene:
 **.glb**+**.meta** files, where glb is a binary GLTF file, containing mesh+materials, and meta is a json file,
 containing evverything from blend file, not included in glb, such as empty objects; rigid bodies; splines. Right now it
-is on very early stage. The script to make glb+meta from blender file is here:
-[build_blender_scene.py](packages/core/blender_exporter/build_blender_scene.py)
+is on very early stage. Scenes are authored in Blender and exported with the
+[GG Web Engine Exporter](blender-addon/README.md) add-on (`File > Export > GG Web Engine (.glb + .meta)`,
+plus a headless/CI entry point) - see that doc for install and usage.
 
 ### Console
 Engine provides a simple console, which can be used at runtime (if enabled) by pressing \`. Your game can

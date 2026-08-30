@@ -77,3 +77,56 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./documentation/site
+          # Preserve blender-extensions/ (published by the steps below, in the same job)
+          # instead of wiping it out.
+          keep_files: true
+
+      # The Blender add-on (blender-addon/) rides along on every engine release rather than
+      # needing its own separate tag - it keeps its own version number in
+      # blender_manifest.toml (bump that yourself when blender-addon/ actually changes; this
+      # step doesn't bump it for you), but publishing runs unconditionally here. Re-publishing
+      # an unchanged version is a harmless no-op for users already on it - Blender's Get
+      # Extensions UI just won't show a new update. See blender-addon/README.md.
+      - name: Install Blender (builder only, headless)
+        if: env.PRE_RELEASE == 'true'
+        run: |
+          BUILDER_BLENDER_VERSION=4.2.1
+          curl -fsSL -o /tmp/blender.tar.xz \
+            "https://download.blender.org/release/Blender${BUILDER_BLENDER_VERSION%.*}/blender-${BUILDER_BLENDER_VERSION}-linux-x64.tar.xz"
+          mkdir -p /opt/blender
+          tar -xf /tmp/blender.tar.xz -C /opt/blender --strip-components=1
+          echo "/opt/blender" >> "$GITHUB_PATH"
+
+      - name: Build Blender add-on extension zip
+        if: env.PRE_RELEASE == 'true'
+        working-directory: ./blender-addon
+        run: |
+          chmod +x ./tools/package.sh
+          ./tools/package.sh
+
+      - name: Fetch existing self-hosted Blender extensions repo contents (if any)
+        if: env.PRE_RELEASE == 'true'
+        run: |
+          mkdir -p /tmp/blender-extensions-repo
+          git clone --depth 1 --branch gh-pages "https://github.com/${{ github.repository }}.git" /tmp/gh-pages-checkout 2>/dev/null || true
+          if [ -d /tmp/gh-pages-checkout/blender-extensions ]; then
+            # Copy over every previously published zip (not just the old index.json, which
+            # server-generate below rebuilds from scratch anyway) so past versions stay
+            # installable/rollback-able instead of getting silently dropped on every release.
+            cp -r /tmp/gh-pages-checkout/blender-extensions/. /tmp/blender-extensions-repo/
+          fi
+
+      - name: Regenerate self-hosted Blender extensions repository index
+        if: env.PRE_RELEASE == 'true'
+        run: |
+          cp blender-addon/dist/*.zip /tmp/blender-extensions-repo/
+          blender --command extension server-generate --repo-dir=/tmp/blender-extensions-repo
+
+      - name: Deploy Blender add-on to GitHub Pages (blender-extensions/ subfolder only)
+        if: env.PRE_RELEASE == 'true'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: /tmp/blender-extensions-repo
+          destination_dir: blender-extensions
+          keep_files: true

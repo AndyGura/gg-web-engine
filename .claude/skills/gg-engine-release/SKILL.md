@@ -67,6 +67,13 @@ so a new package directory is picked up by the next `npm install` automatically 
 - Don't publish an adapter package independently of core, or at a different version number — every
   adapter's `peerDependencies`/`devDependencies` pin an exact `@gg-web-engine/core` version, and
   apps are expected to install matching versions across all `@gg-web-engine/*` packages.
+- The Blender add-on in `blender-addon/` rides along on every engine release — this same pipeline
+  (`release_action.yml`) builds and publishes it too, no separate tag needed. It does keep its own
+  version number in `blender_manifest.toml`, though: bump that (and `bl_info["version"]`) yourself
+  when `blender-addon/` actually changes, since a core/adapter version bump doesn't imply the add-on
+  changed. Publishing an unchanged add-on version alongside a core/adapter release is a harmless
+  no-op (Blender's Get Extensions UI just won't show an update). See `blender-addon/README.md`'s
+  "Packaging / releasing" section.
 
 ## Keep this skill current
 

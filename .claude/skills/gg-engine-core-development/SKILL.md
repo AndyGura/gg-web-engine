@@ -26,6 +26,15 @@ Each of `base/2d/3d` mirrors the same sub-structure: `components/{physics,render
 `entities/`, `interfaces/`, `models/`. When adding a concept to 3D, check whether it belongs in
 `base/` instead (dimension-agnostic) before duplicating it into both `2d/` and `3d/`.
 
+The Blender-side authoring tool that produces the `.glb`+`.meta` pair `src/3d/loader.ts`'s
+`Gg3dLoader.loadGgGlb` reads is **not** part of this package — it lives at the repo-root
+`blender-addon/` as a standalone, independently-versioned Blender add-on (see
+`blender-addon/README.md`), not shipped inside the `@gg-web-engine/core` npm tarball. If a change
+here touches the `.meta` JSON shape (e.g. `GgMeta`, `packages/core/src/3d/models/gg-meta.ts` or
+whatever the loader currently expects), bump `GG_META_FORMAT_VERSION` in
+`blender-addon/gg_web_engine_exporter/exporter.py` and update `blender-addon/README.md`'s
+object-convention table to match — the two sides aren't type-checked against each other.
+
 ## The TypeDocRepo generic pattern — read this before touching interfaces
 
 Core interfaces don't hardcode adapter types. Instead each dimension defines a "type doc

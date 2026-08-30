@@ -1,0 +1,57 @@
+name: Blender export E2E
+
+# Separate from pull_request_build.yml because this needs a real Blender install (a few hundred
+# MB, ~1-2 minutes) - only run it when something that could plausibly break it changes, not on
+# every PR. See e2e/blender-export/README.md.
+on:
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review, unlabeled]
+    paths:
+      - 'blender-addon/**'
+      - 'e2e/blender-export/**'
+      - 'packages/core/src/3d/**'
+      - 'packages/three/**'
+      - 'packages/rapier3d/**'
+  workflow_dispatch: {}
+
+env:
+  # Any recent Blender works as the runner (the fixture doesn't use version-specific features) -
+  # bump if download.blender.org drops this release. Kept in sync with the builder version
+  # release_action.yml uses to package the add-on, by convention, not by any hard requirement
+  # that they match.
+  BLENDER_VERSION: 4.2.1
+
+jobs:
+  e2e:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Blender (headless)
+        run: |
+          curl -fsSL -o /tmp/blender.tar.xz \
+            "https://download.blender.org/release/Blender${BLENDER_VERSION%.*}/blender-${BLENDER_VERSION}-linux-x64.tar.xz"
+          mkdir -p /opt/blender
+          tar -xf /tmp/blender.tar.xz -C /opt/blender --strip-components=1
+          echo "/opt/blender" >> "$GITHUB_PATH"
+
+      # Links every adapter's (and this e2e app's) @gg-web-engine/* dependency to the local
+      # packages/* sources - see gg-engine-core-development.
+      - name: Install workspace dependencies
+        run: npm install
+
+      - name: Build core, three, rapier3d
+        run: |
+          npm run build -w packages/core
+          npm run build -w packages/three
+          npm run build -w packages/rapier3d
+
+      - name: Export fixture from Blender
+        working-directory: ./e2e/blender-export
+        run: npm run export-fixture
+
+      - name: Run the e2e test
+        working-directory: ./e2e/blender-export
+        run: npm test
