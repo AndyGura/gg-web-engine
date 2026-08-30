@@ -30,15 +30,15 @@
   },
   "devDependencies": {
     "@gg-web-engine/core": "0.0.59",
-    "@types/three": "0.167.1",
-    "three": "0.167.1",
+    "@types/three": "0.185.4",
+    "three": "0.185.1",
     "prettier": "^3.9.6",
-    "rxjs": "7.8.1",
-    "typescript": "~5.5.4"
+    "rxjs": "7.8.2",
+    "typescript": "~6.0.3"
   },
   "peerDependencies": {
     "@gg-web-engine/core": "0.0.59",
-    "three": "0.167.1",
-    "rxjs": "7.8.1"
+    "three": "0.185.1",
+    "rxjs": "7.8.2"
   }
 }

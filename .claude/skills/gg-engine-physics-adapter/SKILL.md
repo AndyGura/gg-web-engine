@@ -190,6 +190,40 @@ engines run fine in that environment.
    `@gg-web-engine/core`, plus `npm run build:watch` for the live-reload loop — see
    `gg-engine-core-development`'s local dev workflow section.
 
+## Jest 30 / WASM-backed adapter pitfalls (hit upgrading `rapier2d`/`rapier3d` off a 2024 prerelease build)
+
+- **jsdom + `jest-environment-jsdom` 30 no longer exposes `TextEncoder`/`TextDecoder` as globals
+  inside the jsdom sandbox.** `@dimforge/rapier{2,3}d-compat`'s wasm-bindgen-generated glue calls
+  `new TextDecoder(...)` at module top level (unconditionally, at import time), so merely importing
+  anything from the adapter package inside a jsdom test throws `ReferenceError: TextDecoder is not
+  defined` before any test body runs. Fix: add a `test/jest-polyfills.ts` (or
+  `test/jest.polyfills.ts`) that copies `TextEncoder`/`TextDecoder` from Node's `util` module onto
+  `globalThis`, and wire it in via `"setupFiles": ["<rootDir>/test/jest-polyfills.ts"]` in the
+  package's `jest` config block — it must run before anything requires the WASM glue. Any
+  wasm-bindgen-based native library (not just rapier) is liable to hit this the same way.
+- **Never drive a rapier `EventQueue`/trigger-overlap test with one giant `world.simulate(bigMs)`
+  step.** `world.step()` computes collision/intersection events from body positions as of the
+  *start* of that step and integrates positions at the very end, so a single huge timestep produces
+  a visible one-step detection lag for anything that both enters and needs to be observed within
+  that same call — this became visible upgrading `@dimforge/rapier{2,3}d-compat` from a mid-2024
+  prerelease build to the `0.20.0` stable release (verified empirically against the real WASM
+  engine; not a bug in `Rapier{2,3}dTriggerComponent`). Relatedly, `EventQueue` constructed with
+  `autoDrain: true` clears any undrained events right before the *next* `step()` call, so
+  `checkOverlaps()`/`drainCollisionEvents` must be called after **every** `simulate()`, not once
+  after a batch of steps, or interior events are silently lost — this is a correctness requirement
+  for any real consumer of this API (a per-frame game loop already does this naturally), not just a
+  test artifact. Write trigger tests as small (e.g. 10ms) simulate-then-check steps in a loop rather
+  than jumping to a checkpoint with one large timestep.
+- **A shared "native body options" object passed to multiple factory functions must be typed as the
+  narrowest/most-derived type among all the call sites it's passed to.** Hit bumping
+  `@types/matter-js` 0.19.7 → 0.20.2: `Matter.Bodies.circle` still types its options as the base
+  `IBodyDefinition`, but `Matter.Bodies.rectangle` narrowed to `IChamferableBodyDefinition extends
+  IBodyDefinition` (which drops `null` from `chamfer`'s type). `MatterFactory.transformOptions()`
+  builds one options object shared across both calls — typing it as the base interface no longer
+  satisfies the narrower one under TS 6's stricter structural checking, even though the object
+  literal never actually sets the property causing the mismatch. Type the shared object as the most
+  derived/narrow type instead of the common base.
+
 ## Keep this skill current
 
 This file is read by future agents building/maintaining physics adapters, not by end users of the

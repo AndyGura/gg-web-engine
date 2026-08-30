@@ -4,7 +4,8 @@
     "baseUrl": "./src/",
     "outDir": "./dist/",
     "rootDir": "./src/",
-    "tsBuildInfoFile": "./dist/tsconfig.tsbuildinfo"
+    "tsBuildInfoFile": "./dist/tsconfig.tsbuildinfo",
+    "types": ["jest", "node"]
   },
   "include": ["src/*.ts", "src/**/*.ts"],
   "references": [{ "path": "../core" }]

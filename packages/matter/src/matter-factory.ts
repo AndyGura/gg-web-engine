@@ -8,7 +8,7 @@ import {
 import { MatterRigidBodyComponent } from './components/matter-rigid-body.component';
 import { MatterTriggerComponent } from './components/matter-trigger.component';
 import { MatterWorldComponent } from './components/matter-world.component';
-import { Bodies, Body, IBodyDefinition, Vector } from 'matter-js';
+import { Bodies, Body, IChamferableBodyDefinition, Vector } from 'matter-js';
 import { MatterPhysicsTypeDocRepo } from './types';
 
 export class MatterFactory implements IPhysicsBody2dComponentFactory<MatterPhysicsTypeDocRepo> {
@@ -74,8 +74,8 @@ export class MatterFactory implements IPhysicsBody2dComponentFactory<MatterPhysi
     return new MatterTriggerComponent(nativeBody, descriptor, this.world);
   }
 
-  private transformOptions(options: Partial<Body2DOptions>): IBodyDefinition {
-    const res: IBodyDefinition = {
+  private transformOptions(options: Partial<Body2DOptions>): IChamferableBodyDefinition {
+    const res: IChamferableBodyDefinition = {
       isStatic: options.dynamic !== undefined ? !options.dynamic : !options.mass,
       mass: options.mass,
       restitution: options.restitution,
