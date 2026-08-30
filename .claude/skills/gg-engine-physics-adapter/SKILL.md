@@ -150,6 +150,23 @@ against the real native engine headlessly. Mirror `packages/rapier2d/test/compon
 - `<lib>-world.component.spec.ts` — init, simulate, gravity get/set, collision group
   register/deregister/exhaustion.
 - `<lib>-trigger.component.spec.ts` — trigger creation and enter/exit event emission.
+- For a 3D adapter that implements `IRaycastVehicleComponent`, also add
+  `<lib>-raycast-vehicle.component.spec.ts` (see `packages/ammo/test/components/`): a basic
+  vehicle-settles-on-a-floor sanity test, plus a collision-group regression test that spawns two
+  vehicles with different collision groups over two stacked floors sharing those same two groups
+  and simulates gravity — each vehicle must fall through the floor with the *other* group and come
+  to rest only on the one sharing its own group. This exercises a failure mode that's easy to get
+  wrong and easy to miss otherwise: collision-group filtering applied to the rigid body's own
+  broadphase collision (which most engines give you for free) is not the same as collision-group
+  filtering applied to the vehicle's own wheel/suspension raycasts (which the underlying engine may
+  not filter at all unless the adapter explicitly threads the vehicle's groups into the raycast
+  call, as `AmmoRaycastVehicleComponent` does via its own patched Bullet build - see
+  `packages/ammo/build_gg_ammo/README.md`). A test that only drops a single vehicle onto a single
+  matching-group floor cannot catch a raycast that silently ignores collision groups.
+- A shape/body-option factory test (`<lib>-factory.spec.ts` or similar) that creates a rigid body
+  and a trigger for every `Shape(2D|3D)Descriptor` variant the adapter implements is worth adding
+  too — it catches a shape mapping that throws or silently no-ops without needing a physically
+  meaningful scenario for each one (see `packages/ammo/test/ammo-factory.spec.ts`).
 
 Use `jest` + `jest-environment-jsdom` (see any adapter's `package.json` devDependencies) — WASM
 engines run fine in that environment.
@@ -172,6 +189,60 @@ engines run fine in that environment.
 5. Use `npm install` at the repo root to develop against a local (unpublished)
    `@gg-web-engine/core`, plus `npm run build:watch` for the live-reload loop — see
    `gg-engine-core-development`'s local dev workflow section.
+
+## Don't import a WASM-bindgen native library's internal file paths
+
+`packages/rapier3d/src/components/rapier-3d-rigid-body.component.ts` imported `InteractionGroups`
+via `@dimforge/rapier3d-compat/geometry/interaction_groups` (a deep subpath into the package's
+internal file layout) instead of the package's own root export. This happened to keep resolving
+under `moduleResolution: "node"` (classic resolution ignores a package's `exports` map and does a
+raw filesystem lookup) for a while after the `0.0.0-...` prerelease → `0.20.0` upgrade, because a
+stale copy of the old package layout lingered in `node_modules` across several `npm install` runs
+— `npx tsc -b` only started failing with `TS2307: Cannot find module` once a fully fresh install
+actually replaced it, well after the adapter's own build/test pass had already been signed off as
+green. `0.20.0`'s package.json `exports` map only declares the root `"."` entry point; the deep
+path doesn't exist at that location any more (everything moved under `dist/geometry/...`), but the
+type is re-exported from the package root regardless (`export * from "./geometry"` in the
+compat package's own root barrel). Fix: `import { InteractionGroups } from
+'@dimforge/rapier3d-compat'` (merge into whatever other symbols are already imported from the
+package root) — never import a native/WASM-bindgen dependency's internal subpaths; only import
+what its own root barrel/exports map actually re-exports, and re-check this specifically after any
+version bump of such a dependency, since a lucky stale-`node_modules` resolution can hide the
+breakage for a while.
+
+## Jest 30 / WASM-backed adapter pitfalls (hit upgrading `rapier2d`/`rapier3d` off a 2024 prerelease build)
+
+- **jsdom + `jest-environment-jsdom` 30 no longer exposes `TextEncoder`/`TextDecoder` as globals
+  inside the jsdom sandbox.** `@dimforge/rapier{2,3}d-compat`'s wasm-bindgen-generated glue calls
+  `new TextDecoder(...)` at module top level (unconditionally, at import time), so merely importing
+  anything from the adapter package inside a jsdom test throws `ReferenceError: TextDecoder is not
+  defined` before any test body runs. Fix: add a `test/jest-polyfills.ts` (or
+  `test/jest.polyfills.ts`) that copies `TextEncoder`/`TextDecoder` from Node's `util` module onto
+  `globalThis`, and wire it in via `"setupFiles": ["<rootDir>/test/jest-polyfills.ts"]` in the
+  package's `jest` config block — it must run before anything requires the WASM glue. Any
+  wasm-bindgen-based native library (not just rapier) is liable to hit this the same way.
+- **Never drive a rapier `EventQueue`/trigger-overlap test with one giant `world.simulate(bigMs)`
+  step.** `world.step()` computes collision/intersection events from body positions as of the
+  *start* of that step and integrates positions at the very end, so a single huge timestep produces
+  a visible one-step detection lag for anything that both enters and needs to be observed within
+  that same call — this became visible upgrading `@dimforge/rapier{2,3}d-compat` from a mid-2024
+  prerelease build to the `0.20.0` stable release (verified empirically against the real WASM
+  engine; not a bug in `Rapier{2,3}dTriggerComponent`). Relatedly, `EventQueue` constructed with
+  `autoDrain: true` clears any undrained events right before the *next* `step()` call, so
+  `checkOverlaps()`/`drainCollisionEvents` must be called after **every** `simulate()`, not once
+  after a batch of steps, or interior events are silently lost — this is a correctness requirement
+  for any real consumer of this API (a per-frame game loop already does this naturally), not just a
+  test artifact. Write trigger tests as small (e.g. 10ms) simulate-then-check steps in a loop rather
+  than jumping to a checkpoint with one large timestep.
+- **A shared "native body options" object passed to multiple factory functions must be typed as the
+  narrowest/most-derived type among all the call sites it's passed to.** Hit bumping
+  `@types/matter-js` 0.19.7 → 0.20.2: `Matter.Bodies.circle` still types its options as the base
+  `IBodyDefinition`, but `Matter.Bodies.rectangle` narrowed to `IChamferableBodyDefinition extends
+  IBodyDefinition` (which drops `null` from `chamfer`'s type). `MatterFactory.transformOptions()`
+  builds one options object shared across both calls — typing it as the base interface no longer
+  satisfies the narrower one under TS 6's stricter structural checking, even though the object
+  literal never actually sets the property causing the mismatch. Type the shared object as the most
+  derived/narrow type instead of the common base.
 
 ## Keep this skill current
 

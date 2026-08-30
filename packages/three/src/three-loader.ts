@@ -2,7 +2,7 @@ import { GgMeta, IDisplayObject3dComponentLoader } from '@gg-web-engine/core';
 import { Light, Object3D } from 'three';
 import { ThreeDisplayObjectComponent } from './components/three-display-object.component';
 import { ThreeVisualTypeDocRepo } from './types';
-import { GLTFLoader } from './three-examples/loaders/GLTFLoader';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 export class ThreeLoader implements IDisplayObject3dComponentLoader<ThreeVisualTypeDocRepo> {
   private gltfLoader: GLTFLoader = new GLTFLoader();

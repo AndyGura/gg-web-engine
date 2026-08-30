@@ -1,15 +1,15 @@
 import { useEffect, useRef } from 'react';
-import { Entity3d, Gg3dWorld, GgStatic, OrbitCameraController, Trigger3dEntity } from '@gg-web-engine/core';
-import { ThreeSceneComponent } from '@gg-web-engine/three';
-import { Rapier3dWorldComponent } from '@gg-web-engine/rapier3d';
+import { Entity3d, Gg3dWorld, GgStatic, OrbitCameraController, Trigger3dEntity, TypedGg3dWorld } from '@gg-web-engine/core';
+import { ThreeGgWorld, ThreeSceneComponent } from '@gg-web-engine/three';
+import { Rapier3dGgWorld, Rapier3dWorldComponent } from '@gg-web-engine/rapier3d';
 
 GgStatic.instance.showStats = true;
 GgStatic.instance.devConsoleEnabled = true;
 
 const isNewWorld = !GgStatic.instance.selectedWorld;
 const world =
-  (GgStatic.instance.selectedWorld as Gg3dWorld) ||
-  new Gg3dWorld(new ThreeSceneComponent(), new Rapier3dWorldComponent());
+  (GgStatic.instance.selectedWorld as TypedGg3dWorld<ThreeGgWorld, Rapier3dGgWorld>) ||
+  new Gg3dWorld({ visualScene: new ThreeSceneComponent(), physicsWorld: new Rapier3dWorldComponent() });
 if (isNewWorld) {
   world.init().then(() => {
     world.start();

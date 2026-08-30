@@ -13,7 +13,7 @@ describe('BitMask', () => {
     });
 
     it('should throw an error when a bit index is larger than allowed', () => {
-      expect(() => BitMask.pack([0, 1, 6], 5)).toThrowError(new Error('Too big bit index'));
+      expect(() => BitMask.pack([0, 1, 6], 5)).toThrow(new Error('Too big bit index'));
     });
   });
 

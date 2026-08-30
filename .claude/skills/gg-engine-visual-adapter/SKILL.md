@@ -109,6 +109,18 @@ vendor helper sources, see below) as a template:
   output under a stray `dist/src/`, or drops `dist/index.js` entirely — see
   `gg-engine-core-development`'s local dev section for why), and `"references": [{ "path":
   "../core" }]` so root `npm run build:watch` (`tsc -b --watch`) picks up your package.
+- If the underlying library ships helper modules under an `examples`/`addons` subpath rather than
+  its main entry point (as `three` does for `GLTFLoader`, the postprocessing passes, `CopyShader`,
+  and `BufferGeometryUtils`), check that library's own `package.json` `"exports"` map before
+  reaching for anything more involved: `three` (and `@types/three`) already declare
+  `"./examples/jsm/*"` and `"./addons/*"`, so `packages/three` imports those modules directly, e.g.
+  `import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'`, and re-exports them the
+  same way from `index.ts` — no vendoring, copying, or sync script needed. Only fall back to
+  vendoring a copy under `src/` if the target library's `exports` map genuinely omits the subpath
+  you need (blocking the import under Node/webpack's strict ESM resolution even though the file
+  exists on disk) — and if you do, keep the copy byte-for-byte and re-verify on every version bump
+  that the upstream package still doesn't export it, since a later library release may fix this out
+  from under you the way `three` already has.
 
 ## Testing
 

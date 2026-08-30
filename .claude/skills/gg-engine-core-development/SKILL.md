@@ -104,6 +104,42 @@ paths, with shared fakes in `test/mocks/` (`body.mock.ts`, `object.mock.ts`, `wo
 `raycast-vehicle.mock.ts`). New core logic should get a `.spec.ts` there, not in an adapter
 package, unless it's genuinely adapter-specific behavior.
 
+### TypeScript 6 / Jest 30 pitfalls (hit upgrading off TS 5.5 / Jest 29)
+
+- **`typescript` is pinned below major 7.** TS 7 is the native (Go-ported) compiler; `ts-jest`
+  declares `peerDependencies.typescript: ">=4.3 <7"` and does not support it yet. Every package's
+  jest-based tests would fail to even transform if bumped to 7 — stay on the latest TS 6.x release
+  until `ts-jest` adds TS 7 support.
+- **`tsconfig.base.json` needs `"ignoreDeprecations": "6.0"`.** TS 6 turns `moduleResolution: "node"`
+  (classic/node10), bare `baseUrl` (without `paths`), and `esModuleInterop: false` into hard errors
+  by default — this repo still relies on all three. `ignoreDeprecations` silences them for now; TS 7
+  drops the option entirely and removes these features outright, so migrating off them (to
+  `moduleResolution: "bundler"`, dropping `baseUrl`, enabling `esModuleInterop`) is required before
+  the engine can move past TS 6 — that migration touches emitted-module resolution semantics for
+  every published adapter and hasn't been done yet.
+- **`tsconfig.base.json` needs an explicit `"lib"` array (`["ES2020", "DOM"]` currently).** With no
+  `lib` set, TS infers a lib list purely from `target` (`es2016` → `ES2016,DOM`), and TS 6 got
+  stricter about enforcing that inferred list than TS 5 was — `Object.entries`/`Object.values`
+  (ES2017) and `Array.prototype.flatMap` (ES2019), used in `src/`, stopped type-checking. Setting
+  `lib` explicitly only affects which global declarations type-check; it doesn't change emitted
+  syntax (`target` still controls that).
+- **A package's `tsconfig.json` needs an explicit `"types"` array if its tests use ambient globals.**
+  With no `"types"` compilerOption, TS is supposed to auto-include every `@types/*` package found by
+  walking up `typeRoots` from the tsconfig's directory — under TS 5 this silently picked up the
+  workspace root's hoisted `node_modules/@types/jest` (and `@types/node`, for test code using
+  Node's `global`) with no declaration anywhere in this package. Under TS 6 that walk no longer
+  reaches far enough in this nested-workspace layout (`packages/core` has no local
+  `node_modules`), so `describe`/`it`/`expect`/`global` all stopped resolving in `test/**/*.spec.ts`
+  with `error TS2593: Cannot find name 'describe'` (etc.), even though `npm run build` (which
+  excludes `test/`) kept compiling clean. Fix: add `"types": ["jest", "node"]` to the *package's own*
+  `tsconfig.json` (not the shared base — packages without jest tests, `pixi`/`three`, don't need
+  it), and add `@types/node` as an explicit `devDependency` instead of relying on it being hoisted
+  in by some other package. Every adapter with a jest suite (`ammo`, `matter`, `rapier2d`,
+  `rapier3d`, plus `core`) needs this same pair of changes.
+- **Jest 30 dropped the `toThrowError` matcher alias** (`@types/jest` 30 no longer types it) — it's
+  `toThrow` now, same signature. A grep for `toThrowError` across `test/` after bumping `jest`/
+  `@types/jest` past 29 catches every call site at once.
+
 ## Local dev workflow: core + adapter + example, all in watch mode
 
 `packages/*` (not `examples/*`) is an npm workspace, defined by the root `package.json`. That's
@@ -143,11 +179,13 @@ build of an example with no manual rebuild, and landed in the emitted bundle.
 
 Caveats:
 
-- `tsc -b --watch` only rebuilds what `tsc` itself emits. Two packages have a non-TS asset copy
-  step in their own `build` script (`ammo`'s `ammo.js` WASM glue, `three`'s vendored
-  `three-examples`) that `tsc -b` doesn't run. Do one full `npm run build` (root script) first so
-  those assets exist, then rely on `build:watch` for iterating on `.ts` changes; re-run `npm run
-  build` for that package if you touch those vendored assets.
+- `tsc -b --watch` only rebuilds what `tsc` itself emits. `ammo` has a non-TS asset copy step in
+  its own `build` script (copying the prebuilt `ammo.js` WASM glue into `dist/`) that `tsc -b`
+  doesn't run. Do one full `npm run build` (root script) first so those assets exist, then rely on
+  `build:watch` for iterating on `.ts` changes; re-run `npm run build` for that package if you
+  touch those vendored assets. `three` has no such step — it imports the `three` library's own
+  `examples/jsm`/`addons` subpaths directly rather than vendoring a copy (see
+  `gg-engine-visual-adapter`), so a plain `tsc -b` rebuilds it completely.
 - `npm run build` (the per-package `build` script, or the root `npm run build`) and `tsc -b` are
   two different incremental caches; running one doesn't make the other skip work, and mixing them
   (e.g. `rm -rf dist` then `tsc -b` alone) will skip the asset-copy step above. This is expected,

@@ -1,5 +1,5 @@
 import { Entity3d, Gg3dWorld, GgStatic, OrbitCameraController, Qtrn, Trigger3dEntity } from '@gg-web-engine/core';
-import { ThreeSceneComponent, ThreeGgWorld } from '@gg-web-engine/three';
+import { ThreeSceneComponent, ThreeGgWorld, ThreeTypeDoc } from '@gg-web-engine/three';
 import { AmbientLight, DirectionalLight } from 'three';
 import { AmmoWorldComponent } from '@gg-web-engine/ammo';
 
@@ -45,7 +45,7 @@ world.init().then(async () => {
     0x0000ff,
     0xffff00,
     0xff00ff,
-  ].map(c => ([c, world.physicsWorld.registerCollisionGroup()]));
+  ].map(c => ([c, world.physicsWorld!.registerCollisionGroup()]));
 
   for (let i = 0; i < cgs.length; i++) {
     const [color, collisionGroup] = cgs[i];
@@ -64,13 +64,13 @@ world.init().then(async () => {
   }
 
   const destroyTrigger = new Trigger3dEntity(
-    world.physicsWorld.factory.createTrigger({
+    world.physicsWorld!.factory.createTrigger({
       shape: 'BOX',
       dimensions: { x: 1000, y: 1000, z: 1 },
     }),
   );
   destroyTrigger.position = { x: 0, y: 0, z: -50 };
-  destroyTrigger.onEntityEntered.subscribe((entity: Entity3d) => {
+  destroyTrigger.onEntityEntered.subscribe((entity) => {
     world.removeEntity(entity, true);
   });
   world.addEntity(destroyTrigger);
@@ -79,7 +79,7 @@ world.init().then(async () => {
   spawnTimer.tickRateLimit = 5;
   spawnTimer.tick$.subscribe(() => {
     const [color, collisionGroup] = cgs[Math.floor(Math.random() * cgs.length)];
-    let item: Entity3d = world.addPrimitiveRigidBody(
+    let item: Entity3d<ThreeTypeDoc> = world.addPrimitiveRigidBody(
       {
         shape: { shape: 'SPHERE', radius: 1 },
         body: { mass: 1, restitution: 1.5 },
@@ -88,9 +88,9 @@ world.init().then(async () => {
       Qtrn.O,
       { color, shading: 'phong', castShadow: true, receiveShadow: true },
     );
-    item.objectBody.linearVelocity = { x: 0, y: 0, z: -20 };
+    item.objectBody!.linearVelocity = { x: 0, y: 0, z: -20 };
     // also collision groups can be set later
-    item.objectBody.ownCollisionGroups = item.objectBody.interactWithCollisionGroups = [collisionGroup];
+    item.objectBody!.ownCollisionGroups = item.objectBody!.interactWithCollisionGroups = [collisionGroup];
   });
   world.start();
 });

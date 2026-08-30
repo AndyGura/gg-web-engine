@@ -38,6 +38,7 @@ world.init().then(async () => {
   const renderer = world.addRenderer(new PixiCameraComponent(), canvas);
 
   renderer.rendererSize$.subscribe(newSize => {
+    if (!newSize) return;
     renderer.camera.zoom = Math.min(newSize.x / 850, newSize.y / 800, 1);
   });
 

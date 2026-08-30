@@ -20,7 +20,8 @@
     "@gg-web-engine/core": "0.0.59",
     "@gg-web-engine/three": "0.0.59",
     "howler": "^2.2.3",
-    "rxjs": "7.8.1",
+    "rxjs": "7.8.2",
+    "three": "0.185.1",
     "tslib": "^2.3.0",
     "zone.js": "~0.11.4"
   },
@@ -31,6 +32,10 @@
     "@types/howler": "^2.2.7",
     "@types/three": "0.167.1",
     "typescript": "~4.7.2"
+  },
+  "overrides": {
+    "rxjs": "7.8.2",
+    "three": "0.185.1"
   },
   "browser": {
     "fs": false,

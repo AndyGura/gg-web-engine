@@ -12,6 +12,6 @@
     "clean": "tsc -b --clean"
   },
   "devDependencies": {
-    "typescript": "~5.5.4"
+    "typescript": "~6.0.3"
   }
 }

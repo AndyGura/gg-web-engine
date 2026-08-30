@@ -4,7 +4,8 @@
     "baseUrl": "./src/",
     "outDir": "./dist/",
     "rootDir": "./src/",
-    "tsBuildInfoFile": "./dist/tsconfig.tsbuildinfo"
+    "tsBuildInfoFile": "./dist/tsconfig.tsbuildinfo",
+    "types": ["jest", "node"]                            /* TS6 no longer auto-includes every @types/* package found by walking up typeRoots when "types" is unset (TS5 did) — declare what test code under test/ actually needs (jest globals, Node's `global`) explicitly rather than relying on the old implicit-hoisting behavior. */
   },
   "include": ["*.ts", "**/*.ts"],
   "exclude": ["**/*.spec.ts", "node_modules", "dist/**/*", "test/**/*"]

@@ -4,13 +4,15 @@
     /* Projects */
     "incremental": true,                                  /* Save .tsbuildinfo files to allow for incremental compilation of projects. */
     "composite": true,                                    /* Enable constraints that allow a TypeScript project to be used with project references — required for `tsc -b` at the repo root (see gg-engine-core-development). */
+    "ignoreDeprecations": "6.0",                          /* Silences TS6's deprecation errors for node10 moduleResolution / bare baseUrl / esModuleInterop=false, which this project still relies on. TS7 (the native compiler) drops this escape hatch entirely, so migrating moduleResolution off "node" and esModuleInterop off `false` is required before the engine can move past TypeScript 6.x — see gg-engine-core-development. */
     // "tsBuildInfoFile": "./.tsbuildinfo",              /* Specify the path to .tsbuildinfo incremental compilation file. */
     // "disableSourceOfProjectReferenceRedirect": true,  /* Disable preferring source files instead of declaration files when referencing composite projects. */
     // "disableSolutionSearching": true,                 /* Opt a project out of multi-project reference checking when editing. */
     // "disableReferencedProjectLoad": true,             /* Reduce the number of projects loaded automatically by TypeScript. */
 
     /* Language and Environment */
-    "target": "es2016",                                  /* Set the JavaScript language version for emitted JavaScript and include compatible library declarations. */
+    "target": "es2016",                                  /* Set the JavaScript language version for emitted JavaScript. */
+    "lib": ["ES2020", "DOM"],                             /* Explicit lib list (rather than the ES2016-target-implied default) so newer-but-widely-supported globals (Object.entries/values, Array.flatMap, etc.) type-check; doesn't affect emitted syntax, which `target` still controls. */
     "module": "es6",                                /* Specify what module code is generated. */
     "declaration": true,                                /* Generate .d.ts files from TypeScript and JavaScript files in your project. */
     "moduleResolution": "node",

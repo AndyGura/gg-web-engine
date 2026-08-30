@@ -43,6 +43,15 @@ describe(`Rapier2dTriggerComponent`, () => {
 
     world.simulate(500);
     trigger.checkOverlaps();
+    // rapier2d-compat 0.20 runs narrow-phase (and therefore collision-event generation) against
+    // the body positions as of the *start* of a step, i.e. the result of the previous step's
+    // integration - so a transition only shows up in the event queue one `simulate()` call after
+    // the geometry actually starts overlapping. One extra step is needed here to observe it.
+    expect(enterRegistered).toBe(false);
+    expect(exitRegistered).toBe(false);
+
+    world.simulate(500);
+    trigger.checkOverlaps();
     expect(enterRegistered).toBe(true);
     expect(exitRegistered).toBe(false);
   });
@@ -62,6 +71,12 @@ describe(`Rapier2dTriggerComponent`, () => {
     }));
     world.simulate(1000);
     trigger.checkOverlaps();
+    expect(exitRegistered).toBe(false);
+    world.simulate(1000);
+    trigger.checkOverlaps();
+    // see the comment in the previous test: this step's drain only reports the *enter* event
+    // (computed from the position after the first step); the exit doesn't show up until the
+    // narrow-phase catches up with the position produced by this step's integration.
     expect(exitRegistered).toBe(false);
     world.simulate(1000);
     trigger.checkOverlaps();
