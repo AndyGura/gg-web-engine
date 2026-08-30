@@ -26,5 +26,8 @@
     "fs": false,
     "os": false,
     "path": false
+  },
+  "overrides": {
+    "rxjs": "7.8.2"
   }
 }
