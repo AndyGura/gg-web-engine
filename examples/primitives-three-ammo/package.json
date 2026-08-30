@@ -9,18 +9,18 @@
     "@gg-web-engine/ammo": "0.0.59",
     "@gg-web-engine/core": "0.0.59",
     "@gg-web-engine/three": "0.0.59",
-    "mini-signals": "2.0.0",
-    "rxjs": "7.8.1",
-    "three": "0.167.1"
+    "mini-signals": "3.0.0",
+    "rxjs": "7.8.2",
+    "three": "0.185.1"
   },
   "devDependencies": {
-    "@types/three": "0.167.1",
-    "html-webpack-plugin": "^5.5.3",
-    "ts-loader": "^9.5.1",
-    "typescript": "~5.5.4",
-    "webpack": "^5.89.0",
-    "webpack-cli": "^5.1.4",
-    "webpack-dev-server": "^4.15.1"
+    "@types/three": "0.185.4",
+    "html-webpack-plugin": "^5.6.8",
+    "ts-loader": "^9.6.2",
+    "typescript": "~6.0.3",
+    "webpack": "^5.110.2",
+    "webpack-cli": "^7.2.3",
+    "webpack-dev-server": "^6.0.0"
   },
   "browser": {
     "fs": false,
