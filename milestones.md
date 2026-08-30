@@ -157,9 +157,11 @@ Status
   tarball. Adds a `File > Export > GG Web Engine (.glb + .meta)` operator, a headless/CI entry point
   (`blender-addon/scripts/export_cli.py`) sharing the same export logic (no more per-project copies
   of the script), a `formatVersion` field in `.meta` checked on load (`GgMeta.formatVersion` /
-  `GG_META_SUPPORTED_FORMAT_VERSION` in `packages/core/src/3d/loader.ts`), and both a manual
-  (GitHub Release zip) and self-hosted-repository (Blender 4.2+ Extensions Platform, auto-update)
-  install path, built by an independent `blender-addon-v*` tagged release workflow. Covered
+  `GG_META_SUPPORTED_FORMAT_VERSION` in `packages/core/src/3d/loader.ts`), and installed via a
+  self-hosted repository (Blender 4.2+ Extensions Platform, one-time repository URL then
+  install/auto-update from Blender's own UI - no separate GitHub Release/zip download), built and
+  published as part of every engine release (`release_action.yml`, no separate tag) rather than a
+  standalone workflow. Covered
   end-to-end by `e2e/blender-export/` (a headless-Blender-built fixture scene loaded back through a
   real `@gg-web-engine/three` + `@gg-web-engine/rapier3d` app, asserting the three.js scene graph,
   the `.meta` sidecar, and the constructed physics bodies), run by

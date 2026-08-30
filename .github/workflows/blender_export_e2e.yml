@@ -16,8 +16,9 @@ on:
 
 env:
   # Any recent Blender works as the runner (the fixture doesn't use version-specific features) -
-  # bump if download.blender.org drops this release. Kept in sync with blender_addon_release.yml's
-  # BUILDER_BLENDER_VERSION by convention, not by any hard requirement that they match.
+  # bump if download.blender.org drops this release. Kept in sync with the builder version
+  # release_action.yml uses to package the add-on, by convention, not by any hard requirement
+  # that they match.
   BLENDER_VERSION: 4.2.1
 
 jobs:
