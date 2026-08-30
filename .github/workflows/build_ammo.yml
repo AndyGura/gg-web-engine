@@ -1,0 +1,68 @@
+name: Rebuild self-built ammo.js
+
+# packages/ammo vendors a self-built ammo.js binary (see packages/ammo/build_gg_ammo/README.md)
+# committed under packages/ammo/src/ammo.js/ - it isn't rebuilt from source by the normal
+# `npm run build`/release pipeline, only by manually running `make all` in build_gg_ammo/ with
+# Docker. This workflow gives that process a CI home instead of requiring a local Docker install:
+# - on pull_request, when the build recipe itself changes, it rebuilds and runs the ammo test
+#   suite against the fresh binary as a safety net (this is exactly how the emsdk:latest ->
+#   emscripten's removal of -s EXTRA_EXPORTED_RUNTIME_METHODS and emcc's C++-link default change
+#   were caught - an unpinned base image drifted after this build was last run).
+# - on workflow_dispatch, it does the same and then commits the refreshed
+#   packages/ammo/src/ammo.js/* + build_gg_ammo/*_patches.txt back to the triggering branch, so
+#   refreshing the binary no longer requires anyone to run Docker locally.
+#
+# Deliberately NOT wired into release_action.yml: the Bullet/ammo.js commit pins in
+# build_gg_ammo/Makefile are deliberate, reviewed choices, and the full fetch+compile+export here
+# takes several minutes and depends on Docker Hub/GitHub being reachable - rerunning it
+# unconditionally on every release would slow every publish and add a new failure mode to the
+# critical path for a binary that changes rarely. Bump the pins and run this workflow (or `make
+# all` locally) as its own reviewed step instead, before cutting a release that should include it.
+on:
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review, unlabeled]
+    paths:
+      - 'packages/ammo/build_gg_ammo/**'
+  workflow_dispatch: {}
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Ubuntu runner images ship the `docker compose` v2 plugin; the Makefile calls the
+      # hyphenated `docker-compose` CLI (same as local dev) for consistency with
+      # build_gg_ammo/README.md's instructions, so shim it in if the compat binary isn't present.
+      - name: Ensure docker-compose CLI is available
+        run: |
+          if ! command -v docker-compose >/dev/null; then
+            printf '#!/bin/sh\nexec docker compose "$@"\n' | sudo tee /usr/local/bin/docker-compose >/dev/null
+            sudo chmod +x /usr/local/bin/docker-compose
+          fi
+          docker-compose version
+
+      - name: Build ammo.js (fetch, patch, compile, export)
+        working-directory: ./packages/ammo/build_gg_ammo
+        run: make all
+
+      # Installs and links the packages/* npm workspace - see gg-engine-core-development.
+      - name: Install workspace dependencies
+        run: npm install
+
+      - name: Build and test core
+        working-directory: ./packages/core
+        run: npm run build && npm run test
+
+      - name: Build and test ammo against the freshly-built binary
+        working-directory: ./packages/ammo
+        run: npm run build && npm run test
+
+      - name: Commit refreshed ammo.js binary and patch diffs
+        if: github.event_name == 'workflow_dispatch'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: 'rebuild self-built ammo.js'
+          file_pattern: 'packages/ammo/src/ammo.js/* packages/ammo/build_gg_ammo/*_patches.txt'

@@ -17,6 +17,56 @@ describe('AmmoWorldComponent', () => {
     world.dispose();
   });
 
+  describe('Gravity', () => {
+    it('should default to earth-like downward gravity on a fresh world', async () => {
+      const freshWorld = new AmmoWorldComponent();
+      await freshWorld.init();
+      expect(freshWorld.gravity).toEqual({ x: 0, y: 0, z: -9.82 });
+      freshWorld.dispose();
+    });
+
+    it('should read back a value written to it and apply it to the simulation', () => {
+      world.gravity = { x: 1, y: -2, z: 3 };
+      expect(world.gravity).toEqual({ x: 1, y: -2, z: 3 });
+
+      const ball = world.factory.createRigidBody({
+        shape: { shape: 'SPHERE', radius: 1 },
+        body: { dynamic: true, mass: 1 },
+      }, { position: { x: 0, y: 0, z: 0 } });
+      ball.addToWorld({ physicsWorld: world } as any);
+
+      for (let i = 0; i < 20; i++) {
+        world.simulate(60);
+      }
+      // ball should have drifted along every gravity axis in the sign of that axis' gravity
+      expect(ball.position.x).toBeGreaterThan(0);
+      expect(ball.position.y).toBeLessThan(0);
+      expect(ball.position.z).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Collision groups', () => {
+    it('should register groups starting from 1 (0 is the reserved main collision group)', () => {
+      expect(world.mainCollisionGroup).toBe(0);
+      expect(world.registerCollisionGroup()).toBe(1);
+      expect(world.registerCollisionGroup()).toBe(2);
+    });
+
+    it('should let a deregistered group id be reused', () => {
+      const group = world.registerCollisionGroup();
+      world.deregisterCollisionGroup(group);
+      expect(world.registerCollisionGroup()).toBe(group);
+    });
+
+    it('should throw once all 16 collision groups (0-15) are exhausted', () => {
+      // group 0 is implicitly reserved as the main collision group, so 15 more can be registered
+      for (let i = 0; i < 15; i++) {
+        world.registerCollisionGroup();
+      }
+      expect(() => world.registerCollisionGroup()).toThrow();
+    });
+  });
+
   describe('Rigid bodies', () => {
 
     it('should simulate inertial motion of rigid body', () => {

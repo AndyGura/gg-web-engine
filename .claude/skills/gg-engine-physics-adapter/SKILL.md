@@ -150,6 +150,23 @@ against the real native engine headlessly. Mirror `packages/rapier2d/test/compon
 - `<lib>-world.component.spec.ts` — init, simulate, gravity get/set, collision group
   register/deregister/exhaustion.
 - `<lib>-trigger.component.spec.ts` — trigger creation and enter/exit event emission.
+- For a 3D adapter that implements `IRaycastVehicleComponent`, also add
+  `<lib>-raycast-vehicle.component.spec.ts` (see `packages/ammo/test/components/`): a basic
+  vehicle-settles-on-a-floor sanity test, plus a collision-group regression test that spawns two
+  vehicles with different collision groups over two stacked floors sharing those same two groups
+  and simulates gravity — each vehicle must fall through the floor with the *other* group and come
+  to rest only on the one sharing its own group. This exercises a failure mode that's easy to get
+  wrong and easy to miss otherwise: collision-group filtering applied to the rigid body's own
+  broadphase collision (which most engines give you for free) is not the same as collision-group
+  filtering applied to the vehicle's own wheel/suspension raycasts (which the underlying engine may
+  not filter at all unless the adapter explicitly threads the vehicle's groups into the raycast
+  call, as `AmmoRaycastVehicleComponent` does via its own patched Bullet build - see
+  `packages/ammo/build_gg_ammo/README.md`). A test that only drops a single vehicle onto a single
+  matching-group floor cannot catch a raycast that silently ignores collision groups.
+- A shape/body-option factory test (`<lib>-factory.spec.ts` or similar) that creates a rigid body
+  and a trigger for every `Shape(2D|3D)Descriptor` variant the adapter implements is worth adding
+  too — it catches a shape mapping that throws or silently no-ops without needing a physically
+  meaningful scenario for each one (see `packages/ammo/test/ammo-factory.spec.ts`).
 
 Use `jest` + `jest-environment-jsdom` (see any adapter's `package.json` devDependencies) — WASM
 engines run fine in that environment.
