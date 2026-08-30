@@ -190,6 +190,26 @@ engines run fine in that environment.
    `@gg-web-engine/core`, plus `npm run build:watch` for the live-reload loop — see
    `gg-engine-core-development`'s local dev workflow section.
 
+## Don't import a WASM-bindgen native library's internal file paths
+
+`packages/rapier3d/src/components/rapier-3d-rigid-body.component.ts` imported `InteractionGroups`
+via `@dimforge/rapier3d-compat/geometry/interaction_groups` (a deep subpath into the package's
+internal file layout) instead of the package's own root export. This happened to keep resolving
+under `moduleResolution: "node"` (classic resolution ignores a package's `exports` map and does a
+raw filesystem lookup) for a while after the `0.0.0-...` prerelease → `0.20.0` upgrade, because a
+stale copy of the old package layout lingered in `node_modules` across several `npm install` runs
+— `npx tsc -b` only started failing with `TS2307: Cannot find module` once a fully fresh install
+actually replaced it, well after the adapter's own build/test pass had already been signed off as
+green. `0.20.0`'s package.json `exports` map only declares the root `"."` entry point; the deep
+path doesn't exist at that location any more (everything moved under `dist/geometry/...`), but the
+type is re-exported from the package root regardless (`export * from "./geometry"` in the
+compat package's own root barrel). Fix: `import { InteractionGroups } from
+'@dimforge/rapier3d-compat'` (merge into whatever other symbols are already imported from the
+package root) — never import a native/WASM-bindgen dependency's internal subpaths; only import
+what its own root barrel/exports map actually re-exports, and re-check this specifically after any
+version bump of such a dependency, since a lucky stale-`node_modules` resolution can hide the
+breakage for a while.
+
 ## Jest 30 / WASM-backed adapter pitfalls (hit upgrading `rapier2d`/`rapier3d` off a 2024 prerelease build)
 
 - **jsdom + `jest-environment-jsdom` 30 no longer exposes `TextEncoder`/`TextDecoder` as globals
