@@ -123,3 +123,24 @@ after changing `exporter.py` or the `.meta` shape - see that directory's own REA
   UI simply won't show a new update. This has not yet run for a real release - verify the first one
   manually (check that the repository URL above resolves and lists the expected version) before
   relying on it.
+
+### Testing the packaging/repository flow without cutting a release
+
+Since publishing rides along on the engine's release pipeline (no separate tag/manual CI trigger -
+see above), test the add-on's packaging and self-hosted-repository mechanics locally instead of
+releasing just to check they still work:
+
+```bash
+cd blender-addon
+./tools/package.sh                          # builds+validates dist/gg_web_engine_exporter-X.Y.Z.zip
+
+mkdir -p /tmp/local-repo
+cp dist/*.zip /tmp/local-repo/
+blender --command extension server-generate --repo-dir=/tmp/local-repo   # writes index.json
+```
+
+Then in Blender, add `/tmp/local-repo` as a repository the same way the "Installing" section above
+describes, except using `file:///tmp/local-repo/index.json` as the URL instead of the GitHub Pages
+one. This exercises the exact same install/update flow a real user gets - the only thing it doesn't
+cover is the GitHub Pages deploy step itself (`peaceiris/actions-gh-pages`), which is generic and
+low-risk enough not to need a local rehearsal.
