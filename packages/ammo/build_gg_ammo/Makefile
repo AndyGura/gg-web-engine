@@ -31,6 +31,13 @@ build:
 
 copy:
 	cp -r ./ammo.js/dist/* ../src/ammo.js
+	# emsdk 6.0.8's Node-detection shell code uses the "node:fs" scheme specifier; webpack 5
+	# treats "node:"-prefixed requires as an unhandled URI scheme (UnhandledSchemeError) even
+	# though this require is dead code in a browser bundle (gated behind a Node-only branch) and
+	# resolve.fallback:{fs:false} - already set in every example's webpack config - has no effect
+	# on scheme-prefixed requests. Strip the prefix back to the bare specifier every consumer's
+	# tooling already handles.
+	sed -i.bak 's/require("node:fs")/require("fs")/g' ../src/ammo.js/ammo.js ../src/ammo.js/ammo.wasm.js && rm -f ../src/ammo.js/*.bak
 
 cleanup:
 	rm -rf ./ammo.js

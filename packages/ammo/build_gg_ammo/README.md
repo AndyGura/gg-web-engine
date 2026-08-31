@@ -31,7 +31,18 @@ merges `EXTRA_EXPORTED_RUNTIME_METHODS` into `EXPORTED_RUNTIME_METHODS` and link
 against a current Emscripten (removed `EXTRA_EXPORTED_RUNTIME_METHODS` outright, and `emcc` no
 longer defaults to C++ linkage the way it used to, so linking Bullet's C++ objects with plain
 `emcc` fails with "undefined symbol: operator new"). If a future emsdk bump breaks the build again,
-expect it to show up as one of these two symptoms first.
+expect it to show up as one of these symptoms first.
+
+A third symptom, since the `emsdk:6.0.8` bump: newer Emscripten's Node-detection shell code emits
+`require("node:fs")` (the `node:`-prefixed scheme specifier) instead of bare `require("fs")` in the
+generated `ammo.js`/`ammo.wasm.js`. That require is dead code in a browser bundle (it's gated
+behind a runtime check for a Node environment), but webpack 5 treats `node:`-prefixed requires as
+an unhandled URI scheme (`UnhandledSchemeError: Reading from "node:fs" is not handled by plugins`)
+at bundle time regardless, and every consumer's `resolve.fallback: { fs: false }` - which already
+handles the bare `require("fs")` case - has no effect on scheme-prefixed requests. The `copy`
+Makefile target sed-strips the `node:` prefix back to the bare specifier automatically, so this
+shouldn't resurface after a rebuild unless a future emsdk version starts prefixing other core
+modules (`node:path`, etc.) the same way - if so, add them to that same `sed` invocation.
 
 All changed file diffs in ammo.js and bullet can be found [here](./ammo_patches.txt) and [here](./bullet_patches.txt) appropriately
 
