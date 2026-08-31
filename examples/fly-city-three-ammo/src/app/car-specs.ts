@@ -82,7 +82,10 @@ export const LAMBO_SPECS: Omit<GgCarProperties, 'wheelOptions'> = {
     'rearAxleForce': 200,
     'handbrakeForce': 1500,
   },
-  'maxSteerAngle': 0.35,
+  'maxSteerAngle': [
+    { atSpeedMs: 5, angleRad: 0.35 },
+    { atSpeedMs: 30, angleRad: 0.1 },
+  ],
 };
 
 export const CAR_SPECS: Omit<GgCarProperties, 'wheelOptions'> = {
@@ -167,7 +170,11 @@ export const CAR_SPECS: Omit<GgCarProperties, 'wheelOptions'> = {
     'rearAxleForce': 200,
     'handbrakeForce': 1500,
   },
-  'maxSteerAngle': 0.35,
+  // See LAMBO_SPECS above for why this is a speed taper rather than a flat angle.
+  'maxSteerAngle': [
+    { atSpeedMs: 5, angleRad: 0.35 },
+    { atSpeedMs: 30, angleRad: 0.1 },
+  ],
 };
 
 export const TRUCK_SPECS: Omit<GgCarProperties, 'wheelOptions'> = {
@@ -252,5 +259,10 @@ export const TRUCK_SPECS: Omit<GgCarProperties, 'wheelOptions'> = {
     'rearAxleForce': 200,
     'handbrakeForce': 1500,
   },
-  'maxSteerAngle': 0.35,
+  // Truck: heavier and less nimble, so a slightly smaller base angle than the cars above, tapered
+  // the same way - see LAMBO_SPECS for why.
+  'maxSteerAngle': [
+    { atSpeedMs: 5, angleRad: 0.25 },
+    { atSpeedMs: 30, angleRad: 0.08 },
+  ],
 };

@@ -31,7 +31,22 @@ export type GgCarProperties = RVEntityProperties & {
     upShifts: number[];
     autoHold: boolean;
   };
-  maxSteerAngle: number;
+  /**
+   * Max steering lock, in radians, applied at `steeringFactor` of ±1.
+   *
+   * - A plain `number` applies that angle at every speed (the original, unconditional behavior).
+   * - An array of `{ atSpeedMs, angleRad }` breakpoints (speed in m/s, angle in radians) instead
+   *   scales the max angle down as the car speeds up - full lock-to-lock steering at parking-lot
+   *   speed will otherwise demand more lateral slip than a raycast vehicle's simplified friction
+   *   model (`frictionSlip * wheelLoad`) can supply, causing the car to snap/spin rather than
+   *   understeer. Breakpoints must be sorted ascending by `atSpeedMs`; the effective angle is
+   *   linearly interpolated between the two straddling the current `|getSpeed()|`, clamped to the
+   *   first entry's `angleRad` below the lowest speed and the last entry's `angleRad` at/above the
+   *   highest. A validated shape for this: full angle below 5 m/s, linearly tapering to 30% of
+   *   that by 30 m/s, flat beyond - e.g.
+   *   `[{ atSpeedMs: 5, angleRad: 0.2 }, { atSpeedMs: 30, angleRad: 0.06 }]`.
+   */
+  maxSteerAngle: number | { atSpeedMs: number; angleRad: number }[];
 };
 
 export class GgCarEntity<
@@ -160,13 +175,41 @@ export class GgCarEntity<
     this.setTailLightsOn(value > 0.2);
   }
 
+  /**
+   * Resolves the current effective max steering angle (radians) from `carProperties.maxSteerAngle`,
+   * scaling down with speed when that's given as a breakpoint array - see its TSDoc.
+   */
+  protected getMaxSteerAngle(): number {
+    const maxSteerAngle = this.carProperties.maxSteerAngle;
+    if (typeof maxSteerAngle === 'number') {
+      return maxSteerAngle;
+    }
+
+    const speed = Math.abs(this.raycastVehicle.getSpeed());
+    const breakpoints = maxSteerAngle;
+    if (speed <= breakpoints[0].atSpeedMs) {
+      return breakpoints[0].angleRad;
+    }
+    if (speed >= breakpoints[breakpoints.length - 1].atSpeedMs) {
+      return breakpoints[breakpoints.length - 1].angleRad;
+    }
+
+    let index = 0;
+    while (speed > breakpoints[index + 1].atSpeedMs) {
+      index++;
+    }
+    const { atSpeedMs: x0, angleRad: y0 } = breakpoints[index];
+    const { atSpeedMs: x1, angleRad: y1 } = breakpoints[index + 1];
+    return y0 + ((y1 - y0) * (speed - x0)) / (x1 - x0);
+  }
+
   // -1..1
   public set steeringFactor(value: number) {
-    this.raycastVehicle.steeringAngle = value * this.carProperties.maxSteerAngle;
+    this.raycastVehicle.steeringAngle = value * this.getMaxSteerAngle();
   }
 
   public get steeringFactor(): number {
-    return this.raycastVehicle.steeringAngle / this.carProperties.maxSteerAngle;
+    return this.raycastVehicle.steeringAngle / this.getMaxSteerAngle();
   }
 
   protected handBrake$: BehaviorSubject<boolean> = new BehaviorSubject(false);
