@@ -11,6 +11,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.x'
+
       # Installs and links the packages/* npm workspace in one shot: every adapter resolves
       # @gg-web-engine/core to the local packages/core build below instead of the version pinned
       # in its package.json, so PR changes to core are exercised by every adapter's real test

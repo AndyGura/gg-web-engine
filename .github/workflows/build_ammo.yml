@@ -33,6 +33,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.x'
+
       # Ubuntu runner images ship the `docker compose` v2 plugin; the Makefile calls the
       # hyphenated `docker-compose` CLI (same as local dev) for consistency with
       # build_gg_ammo/README.md's instructions, so shim it in if the compat binary isn't present.
