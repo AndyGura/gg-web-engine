@@ -7,9 +7,9 @@
   },
   "dependencies": {
     "@dimforge/rapier2d-compat": "0.20.0",
-    "@gg-web-engine/core": "0.0.61",
-    "@gg-web-engine/pixi": "0.0.61",
-    "@gg-web-engine/rapier2d": "0.0.61",
+    "@gg-web-engine/core": "0.0.62",
+    "@gg-web-engine/pixi": "0.0.62",
+    "@gg-web-engine/rapier2d": "0.0.62",
     "pixi.js": "8.20.1",
     "rxjs": "7.8.2"
   },

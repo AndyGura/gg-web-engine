@@ -1,6 +1,6 @@
 {
   "name": "@gg-web-engine/matter",
-  "version": "0.0.61",
+  "version": "0.0.62",
   "description": "An attempt to create open source game engine for browser",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -30,7 +30,7 @@
   },
   "devDependencies": {
     "@types/matter-js": "0.20.2",
-    "@gg-web-engine/core": "0.0.61",
+    "@gg-web-engine/core": "0.0.62",
     "@types/jest": "^30.0.0",
     "@types/node": "^26.4.0",
     "jest": "^30.5.0",
@@ -42,7 +42,7 @@
     "typescript": "~6.0.3"
   },
   "peerDependencies": {
-    "@gg-web-engine/core": "0.0.61",
+    "@gg-web-engine/core": "0.0.62",
     "matter-js": "0.20.0",
     "rxjs": "7.8.2"
   },
