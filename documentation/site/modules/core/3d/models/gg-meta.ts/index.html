@@ -514,6 +514,13 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#gg_meta_supported_format_version" class="md-nav__link">
+    GG_META_SUPPORTED_FORMAT_VERSION
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#ggcurve-type-alias" class="md-nav__link">
     GgCurve (type alias)
   </a>
@@ -570,6 +577,7 @@
 
 <ul>
 <li><a href="#utils">utils</a></li>
+<li><a href="#gg_meta_supported_format_version">GG_META_SUPPORTED_FORMAT_VERSION</a></li>
 <li><a href="#ggcurve-type-alias">GgCurve (type alias)</a></li>
 <li><a href="#ggdummy-type-alias">GgDummy (type alias)</a></li>
 <li><a href="#ggmeta-type-alias">GgMeta (type alias)</a></li>
@@ -577,6 +585,11 @@
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
+<h2 id="gg_meta_supported_format_version">GG_META_SUPPORTED_FORMAT_VERSION</h2>
+<p>Highest <code>.meta</code> <code>formatVersion</code> this loader understands - see <code>GgMeta.formatVersion</code>.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export declare const GG_META_SUPPORTED_FORMAT_VERSION: 1
+</code></pre>
 <h2 id="ggcurve-type-alias">GgCurve (type alias)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export type GgCurve = { name: string; cyclic: boolean; points: Point3[] } &amp; any
@@ -588,6 +601,14 @@
 <h2 id="ggmeta-type-alias">GgMeta (type alias)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export type GgMeta = {
+  /**
+   * Written by the Blender exporter (`GG_META_FORMAT_VERSION` in
+   * `blender-addon/gg_web_engine_exporter/exporter.py`) since it started declaring one. Absent on
+   * `.meta` files exported before that, which is fine - the shape hasn't actually changed yet, so
+   * there is nothing to migrate; this only matters once a future export starts writing a `.meta`
+   * this loader's current version doesn't understand.
+   */
+  formatVersion?: number
   dummies: GgDummy[]
   curves: GgCurve[]
   rigidBodies: GgRigidBody[]

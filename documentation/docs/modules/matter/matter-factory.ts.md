@@ -63,5 +63,5 @@ createTrigger(
 **Signature**
 
 ```ts
-private transformOptions(options: Partial<Body2DOptions>): IBodyDefinition
+private transformOptions(options: Partial<Body2DOptions>): IChamferableBodyDefinition
 ```

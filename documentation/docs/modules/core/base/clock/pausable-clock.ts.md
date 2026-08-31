@@ -15,6 +15,7 @@ parent: Modules
     - [start (method)](#start-method)
     - [stop (method)](#stop-method)
     - [pause (method)](#pause-method)
+    - [step (method)](#step-method)
     - [resume (method)](#resume-method)
     - [startListeningTicks (method)](#startlisteningticks-method)
     - [stopListeningTicks (method)](#stoplisteningticks-method)
@@ -66,6 +67,22 @@ Pauses the clock.
 
 ```ts
 pause()
+```
+
+### step (method)
+
+Fires exactly one tick with the given delta while the clock is paused, without resuming it -
+useful for frame-by-frame debugging. `elapsedTime` (and everything derived from it - child
+clocks, animations, anything reading `this.elapsedTime`) advances by exactly `delta`, same as
+it would over `delta` worth of normal ticking, and stays at that new instant once `step`
+returns (the clock is still paused, it just moved its frozen instant forward). A manual step
+is never throttled by `tickRateLimit`, and resuming afterwards continues seamlessly from the
+stepped-to instant rather than losing or double-counting the stepped time.
+
+**Signature**
+
+```ts
+step(delta: number)
 ```
 
 ### resume (method)

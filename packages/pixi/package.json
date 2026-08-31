@@ -1,6 +1,6 @@
 {
   "name": "@gg-web-engine/pixi",
-  "version": "0.0.59",
+  "version": "0.0.60",
   "description": "An attempt to create open source game engine for browser",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -30,14 +30,14 @@
   },
   "devDependencies": {
     "@types/offscreencanvas": "2019.7.3",
-    "@gg-web-engine/core": "0.0.59",
+    "@gg-web-engine/core": "0.0.60",
     "pixi.js": "8.20.1",
     "prettier": "^3.9.6",
     "rxjs": "7.8.2",
     "typescript": "~6.0.3"
   },
   "peerDependencies": {
-    "@gg-web-engine/core": "0.0.59",
+    "@gg-web-engine/core": "0.0.60",
     "pixi.js": "8.20.1",
     "rxjs": "7.8.2"
   }
