@@ -129,6 +129,97 @@ export class Gg3dWorld<
     ) => void;
   }) {
     super.registerConsoleCommands(ggstatic);
+    ggstatic.registerConsoleCommand(
+      this,
+      'set_position',
+      async (...args: string[]) => {
+        const [name, x, y, z] = args;
+        if (!name) {
+          throw new Error('usage: set_position <name> <x> <y> <z>');
+        }
+        const entity = this.getEntityByName(name);
+        if (!('position' in entity)) {
+          throw new Error(`Entity "${name}" (${entity.constructor.name}) has no position`);
+        }
+        if ([x, y, z].some(v => v === undefined || isNaN(+v))) {
+          throw new Error('usage: set_position <name> <x> <y> <z>');
+        }
+        (entity as unknown as Entity3d<TypeDoc>).position = { x: +x, y: +y, z: +z };
+        return JSON.stringify((entity as unknown as Entity3d<TypeDoc>).position);
+      },
+      'args: [ string, float, float, float ]; Teleport a named entity to world-space coordinates. ' +
+        'Use "entities"/"entity <name>" to find entity names and their current position',
+    );
+    ggstatic.registerConsoleCommand(
+      this,
+      'set_rotation',
+      async (...args: string[]) => {
+        const [name, ...rest] = args;
+        if (!name) {
+          throw new Error('usage: set_rotation <name> <x> <y> <z> [w]');
+        }
+        const entity = this.getEntityByName(name);
+        if (!('rotation' in entity)) {
+          throw new Error(`Entity "${name}" (${entity.constructor.name}) has no rotation`);
+        }
+        const nums = rest.map(Number);
+        if (nums.length !== 3 && nums.length !== 4) {
+          throw new Error(
+            'usage: set_rotation <name> <x> <y> <z> (euler, radians) OR set_rotation <name> <x> <y> <z> <w> (quaternion)',
+          );
+        }
+        if (nums.some(Number.isNaN)) {
+          throw new Error('Wrong arguments');
+        }
+        const rotation: Point4 =
+          nums.length === 4
+            ? { x: nums[0], y: nums[1], z: nums[2], w: nums[3] }
+            : Qtrn.fromEuler({ x: nums[0], y: nums[1], z: nums[2] });
+        (entity as unknown as Entity3d<TypeDoc>).rotation = rotation;
+        return JSON.stringify((entity as unknown as Entity3d<TypeDoc>).rotation);
+      },
+      'args: [ string, float, float, float, float? ]; Rotate a named entity. 3 numbers are euler ' +
+        'angles in radians, 4 numbers are a raw quaternion (x y z w)',
+    );
+    ggstatic.registerConsoleCommand(
+      this,
+      'spawn',
+      async (...args: string[]) => {
+        const [shapeArg, x, y, z, dynamicArg] = args;
+        if ([x, y, z].some(v => v === undefined || isNaN(+v))) {
+          throw new Error('usage: spawn <BOX|SPHERE|CYLINDER|CONE|CAPSULE|PLANE> <x> <y> <z> [dynamic=0|1]');
+        }
+        const dynamic = dynamicArg === undefined ? true : dynamicArg === '1';
+        let shape: BodyShape3DDescriptor['shape'];
+        switch ((shapeArg || '').toUpperCase()) {
+          case 'BOX':
+            shape = { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } };
+            break;
+          case 'SPHERE':
+            shape = { shape: 'SPHERE', radius: 0.5 };
+            break;
+          case 'CYLINDER':
+            shape = { shape: 'CYLINDER', radius: 0.5, height: 1 };
+            break;
+          case 'CONE':
+            shape = { shape: 'CONE', radius: 0.5, height: 1 };
+            break;
+          case 'CAPSULE':
+            shape = { shape: 'CAPSULE', radius: 0.5, centersDistance: 1 };
+            break;
+          case 'PLANE':
+            shape = { shape: 'PLANE' };
+            break;
+          default:
+            throw new Error(`Unknown shape "${shapeArg}". Use BOX|SPHERE|CYLINDER|CONE|CAPSULE|PLANE`);
+        }
+        const entity = this.addPrimitiveRigidBody({ shape, body: { dynamic } }, { x: +x, y: +y, z: +z });
+        return `spawned "${entity.name}" (${shape.shape}) at ${JSON.stringify(entity.position)}`;
+      },
+      'args: [ BOX|SPHERE|CYLINDER|CONE|CAPSULE|PLANE, float, float, float, 0|1? ]; Spawn a ' +
+        'default-sized primitive rigid body at world-space coordinates, for probing physics. ' +
+        'dynamic (last arg) defaults to 1 (falls under gravity); pass 0 for a static prop',
+    );
     if (this.physicsWorld) {
       ggstatic.registerConsoleCommand(
         this,

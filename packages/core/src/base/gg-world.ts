@@ -322,6 +322,24 @@ export abstract class GgWorld<
     );
     ggstatic.registerConsoleCommand(
       this,
+      'step',
+      async (...args: string[]) => {
+        if (!this.worldClock.isPaused) {
+          throw new Error('World must be paused first (run "timescale 0") before it can be stepped');
+        }
+        const ms = args[0] === undefined ? 1000 / 120 : +args[0];
+        if (isNaN(ms) || ms <= 0) {
+          throw new Error('usage: step [ms]; ms must be a positive number');
+        }
+        this.worldClock.step(ms);
+        return `stepped ${ms} ms`;
+      },
+      'args: [ float? ]; Advance a paused world clock by exactly one tick of the given duration ' +
+        'in milliseconds (default 8, i.e. 1000/120). Only works while the world is paused via ' +
+        '"timescale 0"; rejects otherwise',
+    );
+    ggstatic.registerConsoleCommand(
+      this,
       'renderers',
       async () => {
         return this.renderers.map(r => r.name).join('\n');
@@ -398,6 +416,71 @@ export abstract class GgWorld<
       'args: [ int?, avg|peak? ]; Measure how much time was spent per ' +
         'entity in world. Arguments are samples amount (20 by default) and "peak" or "avg" choice, both arguments are ' +
         'optional. "avg" report sorts entities by average time consumed, "peak" records highest value for each entity',
+    );
+    ggstatic.registerConsoleCommand(
+      this,
+      'entities',
+      async (...args: string[]) => {
+        const filter = args[0]?.toLowerCase();
+        const list = this.children.filter(e => !filter || e.name.toLowerCase().includes(filter));
+        if (list.length === 0) {
+          return '<span style="color:#aaa">(no entities)</span>';
+        }
+        return list
+          .map(
+            e => `<span style='color:yellow'>${e.name}</span>\t<span style='color:#aaa'>${e.constructor.name}</span>`,
+          )
+          .join('\n');
+      },
+      'args: [ string? ]; List all entities in this world (name and class), optionally filtered by ' +
+        'a case-insensitive substring of the name. Use "entity <name>" to inspect one of them',
+    );
+    ggstatic.registerConsoleCommand(
+      this,
+      'entity',
+      async (...args: string[]) => {
+        const name = args[0];
+        if (!name) {
+          throw new Error('usage: entity <name>; use "entities" to list available names');
+        }
+        const entity = this.getEntityByName(name);
+        const lines: string[] = [
+          `class: ${entity.constructor.name}`,
+          `active: ${entity.active}`,
+          `parent: ${entity.parent ? entity.parent.name : '(none)'}`,
+        ];
+        if ('visible' in entity) {
+          lines.push(`visible: ${(entity as any).visible}`);
+        }
+        if ('position' in entity) {
+          lines.push(`position: ${JSON.stringify((entity as any).position)}`);
+        }
+        if ('rotation' in entity) {
+          lines.push(`rotation: ${JSON.stringify((entity as any).rotation)}`);
+        }
+        lines.push(
+          `children: ${entity.children.length === 0 ? '(none)' : entity.children.map(c => c.name).join(', ')}`,
+        );
+        return lines.join('\n');
+      },
+      'args: [ string ]; Print class, position/rotation (if any) and children of one entity. Use ' +
+        '"entities" to list available names, "set_position"/"set_rotation" to move it',
+    );
+    ggstatic.registerConsoleCommand(
+      this,
+      'remove',
+      async (...args: string[]) => {
+        const name = args[0];
+        if (!name) {
+          throw new Error('usage: remove <name> [dispose=0|1]');
+        }
+        const entity = this.getEntityByName(name);
+        const dispose = args[1] === undefined ? true : args[1] === '1';
+        this.removeEntity(entity, dispose);
+        return `removed "${name}"`;
+      },
+      'args: [ string, 0|1? ]; Remove the named entity from this world, disposing it by default. ' +
+        'Pass 0 as second arg to detach without disposing (e.g. before re-adding it elsewhere)',
     );
   }
 }
