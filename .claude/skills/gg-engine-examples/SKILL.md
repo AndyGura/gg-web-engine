@@ -171,6 +171,25 @@ snapshot) after each successful step, or a later step's failure silently wipes e
 done. This bit a real upgrade: an unrelated transient `npm` install error on one step reverted two
 already-successful prior major-version bumps back to the original pre-upgrade state.
 
+Stepping through every major from a much older baseline (e.g. Angular 14 → 22) also needs the
+`use-application-builder` migration partway through (`ng update @angular/cli --name
+use-application-builder`) once the target is Angular 17+, since the old webpack-based
+`@angular-devkit/build-angular:browser` builder doesn't exist past a certain major; run it right
+after the step that lands the last major it still supports, then keep stepping. Switching to the
+new esbuild `@angular/build:application` builder can turn a previously-cosmetic
+`anyComponentStyle` budget warning (e.g. inlined Google Fonts CSS) into a hard build-failing error
+under the same `angular.json` budget numbers, because the new builder measures inlined font CSS
+under that budget type too (reported as `css-inline-fonts:...`), where the old builder didn't. Just
+raise the budget to fit the actual current size — it's a real, static asset, not something to
+shrink.
+
+Also double check `@types/three` (or any other `@types/*` for a peer'd runtime library) actually
+matches the real library version pinned in the same `package.json` — a stale `@types/three` behind
+an already-bumped `three` is a common way for one example to get missed in an otherwise
+repo-wide dependency pass, and it fails as a confusing `TS2307: Cannot find module 'three/webgpu'`
+deep inside `@types/three/examples/jsm/loaders/KTX2Loader.d.ts` rather than an obvious
+version-mismatch error.
+
 ## Keep this skill current
 
 This file is read by future agents adding examples to this repo, not by end users of the engine.

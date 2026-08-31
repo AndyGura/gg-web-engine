@@ -8,14 +8,14 @@
   },
   "private": true,
   "dependencies": {
-    "@angular/animations": "^14.1.0",
-    "@angular/common": "^14.1.0",
-    "@angular/compiler": "^14.1.0",
-    "@angular/core": "^14.1.0",
-    "@angular/forms": "^14.1.0",
-    "@angular/platform-browser": "^14.1.0",
-    "@angular/platform-browser-dynamic": "^14.1.0",
-    "@angular/router": "^14.1.0",
+    "@angular/animations": "^22.1.4",
+    "@angular/common": "^22.1.4",
+    "@angular/compiler": "^22.1.4",
+    "@angular/core": "^22.1.4",
+    "@angular/forms": "^22.1.4",
+    "@angular/platform-browser": "^22.1.4",
+    "@angular/platform-browser-dynamic": "^22.1.4",
+    "@angular/router": "^22.1.4",
     "@gg-web-engine/ammo": "0.0.62",
     "@gg-web-engine/core": "0.0.62",
     "@gg-web-engine/three": "0.0.62",
@@ -23,15 +23,15 @@
     "rxjs": "7.8.2",
     "three": "0.185.1",
     "tslib": "^2.3.0",
-    "zone.js": "~0.11.4"
+    "zone.js": "~0.16.2"
   },
   "devDependencies": {
-    "@angular-devkit/build-angular": "^14.1.2",
-    "@angular/cli": "~14.1.2",
-    "@angular/compiler-cli": "^14.1.0",
+    "@angular/build": "^22.1.6",
+    "@angular/cli": "~22.1.6",
+    "@angular/compiler-cli": "^22.1.4",
     "@types/howler": "^2.2.7",
-    "@types/three": "0.167.1",
-    "typescript": "~4.7.2"
+    "@types/three": "0.185.4",
+    "typescript": "~6.0.3"
   },
   "overrides": {
     "rxjs": "7.8.2",

@@ -1,6 +1,11 @@
 <canvas #canvas></canvas>
-<app-dashboard *ngIf="!!(runner?.controlCar$ | async)" [car]="(runner?.controlCar$ | async)"></app-dashboard>
-<div class="screen-text app-helper" *ngIf="showHelpText">
+@if (!!($safeNavigationMigration(runner?.controlCar$) | async)) {
+  <app-dashboard
+    [car]="$safeNavigationMigration(runner?.controlCar$) | async"
+  ></app-dashboard>
+}
+@if (showHelpText) {
+  <div class="screen-text app-helper">
     <span>FLY MODE CONTROLS</span>
     <span>Click on page and move mouse to look around (ESC to exit)</span>
     <span>WASD/Arrow keys to fly</span>
@@ -19,7 +24,8 @@
     <span>X to toggle this text</span>
     <span>P to toggle pause</span>
     <span>L to reload level</span>
-</div>
-<div class="screen-text paused-text" *ngIf="paused">
-    PAUSED
-</div>
+  </div>
+}
+@if (paused) {
+  <div class="screen-text paused-text">PAUSED</div>
+}
