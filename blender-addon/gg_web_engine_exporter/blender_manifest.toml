@@ -3,7 +3,7 @@ schema_version = "1.0.0"
 id = "gg_web_engine_exporter"
 name = "GG Web Engine Exporter"
 version = "1.0.0"
-tagline = "Export scenes to the .glb + .meta format used by @gg-web-engine/core"
+tagline = "Export scenes to .glb + .meta format for gg-web-engine"
 maintainer = "AndyGura"
 type = "add-on"
 
@@ -18,7 +18,7 @@ license = [
 ]
 
 [permissions]
-files = "Writes the exported .glb and .meta files to the path you choose in the export dialog"
+files = "Writes exported .glb and .meta files to your chosen path"
 
 [build]
 paths_exclude_pattern = [

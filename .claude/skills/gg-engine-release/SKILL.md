@@ -74,6 +74,11 @@ so a new package directory is picked up by the next `npm install` automatically 
   changed. Publishing an unchanged add-on version alongside a core/adapter release is a harmless
   no-op (Blender's Get Extensions UI just won't show an update). See `blender-addon/README.md`'s
   "Packaging / releasing" section.
+- `blender_manifest.toml`'s `tagline` and every `[permissions]` value (e.g. `files`) are capped at
+  64 characters by Blender's extension schema — `blender --command extension build`, which the
+  "Build Blender add-on extension zip" release step runs, fails the whole job with a `FATAL_ERROR`
+  per offending key if either is longer, even though nothing else in the release (npm publish,
+  docs deploy) depends on it. When editing either field, count characters and stay at or under 64.
 
 ## Keep this skill current
 
