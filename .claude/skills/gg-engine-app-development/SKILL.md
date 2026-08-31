@@ -72,6 +72,102 @@ world.start(); // starts the tick clock (visual RAF loop + physics simulate())
 The 2D equivalent (`Gg2dWorld`) uses `Shape2DDescriptor` (`SQUARE`/`CIRCLE`) and `Point2`/`number`
 rotation instead of quaternions.
 
+## Typing the world down to the integration-library level
+
+`Gg3dWorld`/`Gg2dWorld` are generic over a `TypeDoc` (which concrete component classes fill each
+role — display object, renderer, camera, rigid body, trigger, factory, etc.) and a `SceneTypeDoc`
+(the concrete `visualScene`/`physicsWorld` instance types). Left at their bare/default generics,
+`world.visualScene`/`world.physicsWorld` and everything derived from them (`.factory`, entities'
+`.objectDisplay`/`.objectBody`) type as the dimension-agnostic *interfaces* (`IRenderer3dComponent`,
+`IRigidBody3dComponent`, ...) — enough to compile against, but not the real adapter classes, so
+backend-specific members (e.g. an Ammo-only tuning field, a Rapier-only collider handle) aren't
+visible and you'd need casts to reach them.
+
+Each adapter package exports one ready-made type alias for exactly this purpose — `Gg3dWorld`/
+`Gg2dWorld` pre-filled with that adapter's own concrete types on the half it implements, the other
+half left generic:
+
+| Package | World alias | Dim |
+|---|---|---|
+| `@gg-web-engine/three` | `ThreeGgWorld` | 3D visual |
+| `@gg-web-engine/pixi` | `PixiGgWorld` | 2D visual |
+| `@gg-web-engine/ammo` | `AmmoGgWorld` | 3D physics |
+| `@gg-web-engine/rapier3d` | `Rapier3dGgWorld` | 3D physics |
+| `@gg-web-engine/rapier2d` | `Rapier2dGgWorld` | 2D physics |
+| `@gg-web-engine/matter` | `MatterGgWorld` | 2D physics |
+
+Combine one visual alias and one physics alias of matching dimensionality with core's
+`TypedGg3dWorld<VW, PW>` / `TypedGg2dWorld<VW, PW>` to get a world type fully resolved on **both**
+sides — **visual world first, physics world second**:
+
+```typescript
+import { Gg3dWorld, TypedGg3dWorld } from '@gg-web-engine/core';
+import { ThreeGgWorld, ThreeSceneComponent } from '@gg-web-engine/three';
+import { AmmoGgWorld, AmmoWorldComponent } from '@gg-web-engine/ammo';
+
+const world: TypedGg3dWorld<ThreeGgWorld, AmmoGgWorld> = new Gg3dWorld({
+  visualScene: new ThreeSceneComponent(),
+  physicsWorld: new AmmoWorldComponent(),
+});
+```
+
+With this, `world.visualScene` is a `ThreeSceneComponent`, `world.physicsWorld` is an
+`AmmoWorldComponent`, `world.visualScene.factory.createPrimitive(...)` returns a
+`ThreeDisplayObjectComponent`, entities' physics bodies are `AmmoRigidBodyComponent`, and so on —
+full autocomplete/type-checking all the way down, no casts needed. If you only ever need one half
+(rendering-only or physics-only world), pass the literal `null` for the other type argument, e.g.
+`TypedGg3dWorld<ThreeGgWorld, null>` for a world constructed with no `physicsWorld`.
+
+A single adapter's alias (just `ThreeGgWorld`, just `AmmoGgWorld`, ...) is the *correct* type,
+not a shortcut to avoid, whenever the code is meant to stay agnostic on the other half — a
+physics-agnostic visual entity/helper that only touches `world.visualScene`, an entity written to
+work with any physics backend, a function parameter typed `world: AmmoGgWorld` so it accepts an
+Ammo world under Three, other, or no renderer at all. That's exactly what leaving the other type
+argument at its generic-interface default is for.
+
+The pitfall is narrower: don't reach for a single-adapter alias to type a `world` variable/
+parameter whose concrete instance genuinely has both halves and whose code *does* use both
+concretely (e.g. reads an Ammo-specific field off `world.physicsWorld` while also holding a
+`ThreeSceneComponent`-specific reference) — that compiles (the unfilled half is still the generic
+interface, so a concrete `AmmoWorldComponent` satisfies it structurally) but silently downgrades
+the unfilled side back to the generic interface, forcing casts you didn't need. Use
+`TypedGg3dWorld`/`TypedGg2dWorld` there instead.
+
+For a larger app, extract a named `TypeDoc` alias once and reuse it everywhere a generic is needed
+— entity classes, renderer/trigger helper types, function signatures — rather than repeating
+`TypedGg3dWorld<...>` or spelling out the interfaces by hand:
+
+```typescript
+import { Gg3dWorldTypeDocRepo, TypedGg3dWorld } from '@gg-web-engine/core';
+import { ThreeGgWorld, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
+import { AmmoGgWorld, AmmoPhysicsTypeDocRepo } from '@gg-web-engine/ammo';
+
+export type AppTypeDoc = { vTypeDoc: ThreeVisualTypeDocRepo; pTypeDoc: AmmoPhysicsTypeDocRepo };
+export type AppWorld = TypedGg3dWorld<ThreeGgWorld, AmmoGgWorld>;
+```
+
+`AppTypeDoc` is what every other generic in the engine keys off of — pass it (or a `['vTypeDoc']`/
+`['pTypeDoc']` slice of it) wherever a class expects a `TypeDoc`:
+
+- `Entity3d<AppTypeDoc>` / `Entity2d<AppTypeDoc>` — both halves, e.g. an app entity subclass
+  (`class Car extends Entity3d<AppTypeDoc> { ... }`) or a variable holding one
+  (`world.addPrimitiveRigidBody(...)` already infers this from `world`, so you rarely annotate it
+  explicitly).
+- `Renderer3dEntity<AppTypeDoc['vTypeDoc']>` / `Renderer2dEntity<AppTypeDoc['vTypeDoc']>` — visual
+  side only (what `world.addRenderer(...)` returns).
+- `Trigger3dEntity<AppTypeDoc['pTypeDoc']>` / `Trigger2dEntity<AppTypeDoc['pTypeDoc']>` — physics
+  side only.
+- `RaycastVehicle3dEntity<AppTypeDoc>`, `MapGraph3dEntity<AppTypeDoc, ...>`, `GgCarEntity<AppTypeDoc>`
+  — 3D-only built-ins that need both halves, same as `Entity3d`.
+- `TypeDocOf<W>` / `SceneTypeDocOf<W>` (from core) recover `AppTypeDoc`/the scene type from an
+  already-typed world value `W` if you only have `world`'s type in scope and don't want a second
+  hand-written alias to drift out of sync with it.
+
+Use the extracted-alias form for any app that passes the world/entities across multiple files or
+classes (constructor parameters, helper functions, entity subclasses in their own modules). For a
+small single-file app, inlining `TypedGg3dWorld<ThreeGgWorld, Rapier3dGgWorld>` directly at the
+`world` declaration is enough — no need to name a separate `AppTypeDoc`/`AppWorld` alias.
+
 ## Where to find capabilities
 
 - **Available 3D shapes**: `Shape3DDescriptor` in `packages/core/src/3d/models/shapes.ts` —
@@ -86,32 +182,29 @@ rotation instead of quaternions.
 - **GLB scene loading (3D)**: GLB + `.gg` meta sidecar, driven by `packages/core/src/3d/loader.ts`
   and the adapter's own `<lib>-loader.ts` (e.g. `ThreeLoader`). Levels are authored in Blender and
   exported with the `GG Web Engine Exporter` add-on in `blender-addon/` (see `blender-addon/README.md`
-  for install/usage). See the `examples/glb-loader-*` examples.
+  for install/usage).
 - **Level JSON loading (2D & 3D)**: `world.loader` turns a JSON document of entities into world
   content, with built-in `"Primitive"`/`"Trigger"`/`"Camera"`/`"Glb"`/`"GgCar"`/`"MapGraph"` (the
   last four 3D only) classes and support for app-registered custom classes. Loading resolves to a
   group entity holding everything the level
   produced, so `world.removeEntity(level, true)` tears the whole level back down in one call, and
   `level.getChildEntityByName(name)`/`world.getEntityByName(name)` find a named entity afterwards —
-  see the dedicated `gg-engine-level-json` skill, and the `examples/primitives-*` examples for
-  complete demos (all four build their scene from a hardcoded `LevelJson` object).
+  see the dedicated `gg-engine-level-json` skill for full authoring details.
 - **Raycasting**: `world.physicsWorld.raycast({ from, to, collisionFilterGroups?, collisionFilterMask? })`.
 - **Collision groups**: `world.physicsWorld.registerCollisionGroup()` /
-  `deregisterCollisionGroup(group)`; every body has `mainCollisionGroup` set by default. See the
-  `examples/collision-groups-*` examples for group/mask usage.
+  `deregisterCollisionGroup(group)`; every body has `mainCollisionGroup` set by default.
 - **Dev tools**: `packages/core/src/dev/` — `gg-console.ui.ts` (in-page command console),
   `gg-debugger.ui.ts` (physics wireframe overlay toggle), `performance-meter.entity.ts`. See
   "Debugging with the dev console" below — it's the preferred way for an agent to inspect/mutate a
   *running* game instance instead of poking internals through devtools.
 - **Vehicles**: `RaycastVehicle3dEntity` / `GgCarEntity` in `packages/core/src/3d/entities/` for
-  raycast-based car physics; see `examples/ammo-car-three-ammo` and `examples/shooter-three-ammo`.
+  raycast-based car physics.
 
 ## Framework integration
 
-For Angular/React/Vue/vanilla wiring patterns, don't reinvent — copy the structure of
-`examples/framework-angular-three-ammo` or `examples/framework-react-three-rapier3d`. Typical
-approach: create the `GgWorld` in a lifecycle hook (`ngOnInit`/`useEffect`) once a canvas ref
-exists, call `world.dispose()` on teardown.
+For Angular/React/Vue/vanilla wiring, the pattern is the same regardless of framework: create the
+`GgWorld` in a lifecycle hook (`ngOnInit`/`useEffect`) once a canvas ref exists, and call
+`world.dispose()` on teardown.
 
 ## Debugging with the dev console
 
@@ -261,6 +354,11 @@ on any named entity, including the player.
   "not initialized" errors by design — see e.g. `AmmoWorldComponent.factory` getter).
 - Passing a canvas element that isn't attached to the DOM yet when calling `addRenderer`.
 - Mixing 2D and 3D packages, or mismatched `@gg-web-engine/*` versions across packages.
+- Typing `world` as a single adapter's world alias (e.g. `ThreeGgWorld`) when the code actually
+  uses *both* halves concretely — compiles, but silently erases the untyped half back to the
+  generic interface. (A single-adapter alias is correct, not a mistake, when the code is meant to
+  stay agnostic on the other half — see "Typing the world..." above.) Use `TypedGg3dWorld`/
+  `TypedGg2dWorld` when both concrete sides are actually needed.
 - Not disposing entities/world (`world.removeEntity(entity, true)`, `world.dispose()`) — native
   physics engines (Ammo/Rapier WASM) leak memory if handles aren't explicitly destroyed.
 - Assuming feature parity across physics/render backends — the engines are facades over quite
@@ -272,5 +370,3 @@ on any named entity, including the player.
 
 - Root `README.md` — quickstart, feature overview, integrations list.
 - `https://andygura.github.io/gg-web-engine/` — generated API docs (TSDoc/docs-ts).
-- `examples/` — one working project per renderer+physics combination; the fastest way to see a
-  feature used correctly is to grep the examples for it.
