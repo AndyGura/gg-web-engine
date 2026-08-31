@@ -543,6 +543,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#step-method" class="md-nav__link">
+    step (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#resume-method" class="md-nav__link">
     resume (method)
   </a>
@@ -622,6 +629,7 @@
 <li><a href="#start-method">start (method)</a></li>
 <li><a href="#stop-method">stop (method)</a></li>
 <li><a href="#pause-method">pause (method)</a></li>
+<li><a href="#step-method">step (method)</a></li>
 <li><a href="#resume-method">resume (method)</a></li>
 <li><a href="#startlisteningticks-method">startListeningTicks (method)</a></li>
 <li><a href="#stoplisteningticks-method">stopListeningTicks (method)</a></li>
@@ -654,6 +662,17 @@
 <p>Pauses the clock.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">pause()
+</code></pre>
+<h3 id="step-method">step (method)</h3>
+<p>Fires exactly one tick with the given delta while the clock is paused, without resuming it -
+useful for frame-by-frame debugging. <code>elapsedTime</code> (and everything derived from it - child
+clocks, animations, anything reading <code>this.elapsedTime</code>) advances by exactly <code>delta</code>, same as
+it would over <code>delta</code> worth of normal ticking, and stays at that new instant once <code>step</code>
+returns (the clock is still paused, it just moved its frozen instant forward). A manual step
+is never throttled by <code>tickRateLimit</code>, and resuming afterwards continues seamlessly from the
+stepped-to instant rather than losing or double-counting the stepped time.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">step(delta: number)
 </code></pre>
 <h3 id="resume-method">resume (method)</h3>
 <p>Resumes the clock.</p>
