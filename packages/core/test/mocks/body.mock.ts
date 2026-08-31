@@ -5,9 +5,13 @@ export const mock2DBody = () => {
     position: { x: 0, y: 0 },
     rotation: 0,
     name: '',
+    addToWorld() {
+    },
+    removeFromWorld() {
+    },
     dispose() {
     },
-  } as IRigidBody2dComponent;
+  } as unknown as IRigidBody2dComponent;
 };
 
 export const mock3DBody = () => {
@@ -15,7 +19,11 @@ export const mock3DBody = () => {
     position: { x: 0, y: 0, z: 0 },
     rotation: { x: 0, y: 0, z: 0, w: 1 },
     name: '',
+    addToWorld() {
+    },
+    removeFromWorld() {
+    },
     dispose() {
     },
-  } as IRigidBody3dComponent;
+  } as unknown as IRigidBody3dComponent;
 };

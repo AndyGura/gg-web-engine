@@ -24,8 +24,10 @@
     "rootDir": ".",
     "testRegex": "\\.e2e\\.spec\\.ts$",
     "transform": {
+      "node_modules/three/.+\\.js$": ["ts-jest", { "isolatedModules": true }],
       "^.+\\.(t|j)s$": "ts-jest"
     },
+    "transformIgnorePatterns": ["node_modules/(?!(three)/)"],
     "moduleNameMapper": {
       "@gg-web-engine/core": "<rootDir>/../../../packages/core/src/index.ts",
       "@gg-web-engine/three": "<rootDir>/../../../packages/three/src/index.ts",

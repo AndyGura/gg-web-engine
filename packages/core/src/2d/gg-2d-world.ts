@@ -124,6 +124,74 @@ export class Gg2dWorld<
     ) => void;
   }) {
     super.registerConsoleCommands(ggstatic);
+    ggstatic.registerConsoleCommand(
+      this,
+      'set_position',
+      async (...args: string[]) => {
+        const [name, x, y] = args;
+        if (!name) {
+          throw new Error('usage: set_position <name> <x> <y>');
+        }
+        const entity = this.getEntityByName(name);
+        if (!('position' in entity)) {
+          throw new Error(`Entity "${name}" (${entity.constructor.name}) has no position`);
+        }
+        if ([x, y].some(v => v === undefined || isNaN(+v))) {
+          throw new Error('usage: set_position <name> <x> <y>');
+        }
+        (entity as unknown as Entity2d<TypeDoc>).position = { x: +x, y: +y };
+        return JSON.stringify((entity as unknown as Entity2d<TypeDoc>).position);
+      },
+      'args: [ string, float, float ]; Teleport a named entity to world-space coordinates. Use ' +
+        '"entities"/"entity <name>" to find entity names and their current position',
+    );
+    ggstatic.registerConsoleCommand(
+      this,
+      'set_rotation',
+      async (...args: string[]) => {
+        const [name, angle] = args;
+        if (!name) {
+          throw new Error('usage: set_rotation <name> <angleRadians>');
+        }
+        const entity = this.getEntityByName(name);
+        if (!('rotation' in entity)) {
+          throw new Error(`Entity "${name}" (${entity.constructor.name}) has no rotation`);
+        }
+        if (angle === undefined || isNaN(+angle)) {
+          throw new Error('usage: set_rotation <name> <angleRadians>');
+        }
+        (entity as unknown as Entity2d<TypeDoc>).rotation = +angle;
+        return JSON.stringify((entity as unknown as Entity2d<TypeDoc>).rotation);
+      },
+      'args: [ string, float ]; Rotate a named entity to the given angle, in radians',
+    );
+    ggstatic.registerConsoleCommand(
+      this,
+      'spawn',
+      async (...args: string[]) => {
+        const [shapeArg, x, y, dynamicArg] = args;
+        if ([x, y].some(v => v === undefined || isNaN(+v))) {
+          throw new Error('usage: spawn <SQUARE|CIRCLE> <x> <y> [dynamic=0|1]');
+        }
+        const dynamic = dynamicArg === undefined ? true : dynamicArg === '1';
+        let shape: BodyShape2DDescriptor['shape'];
+        switch ((shapeArg || '').toUpperCase()) {
+          case 'SQUARE':
+            shape = { shape: 'SQUARE', dimensions: { x: 1, y: 1 } };
+            break;
+          case 'CIRCLE':
+            shape = { shape: 'CIRCLE', radius: 0.5 };
+            break;
+          default:
+            throw new Error(`Unknown shape "${shapeArg}". Use SQUARE|CIRCLE`);
+        }
+        const entity = this.addPrimitiveRigidBody({ shape, body: { dynamic } }, { x: +x, y: +y });
+        return `spawned "${entity.name}" (${shape.shape}) at ${JSON.stringify(entity.position)}`;
+      },
+      'args: [ SQUARE|CIRCLE, float, float, 0|1? ]; Spawn a default-sized primitive rigid body at ' +
+        'world-space coordinates, for probing physics. dynamic (last arg) defaults to 1 (falls ' +
+        'under gravity); pass 0 for a static prop',
+    );
     if (this.physicsWorld) {
       ggstatic.registerConsoleCommand(
         this,
