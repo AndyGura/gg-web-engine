@@ -536,6 +536,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#getmaxsteerangle-method" class="md-nav__link">
+    getMaxSteerAngle (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#createraycastvehicle-method" class="md-nav__link">
     createRaycastVehicle (method)
   </a>
@@ -649,6 +656,7 @@
 <li><a href="#ggcarentity-class">GgCarEntity (class)</a><ul>
 <li><a href="#calculaterpmfromcarspeed-method">calculateRpmFromCarSpeed (method)</a></li>
 <li><a href="#settaillightson-method">setTailLightsOn (method)</a></li>
+<li><a href="#getmaxsteerangle-method">getMaxSteerAngle (method)</a></li>
 <li><a href="#createraycastvehicle-method">createRaycastVehicle (method)</a></li>
 <li><a href="#onspawned-method">onSpawned (method)</a></li>
 <li><a href="#updateengine-method">updateEngine (method)</a></li>
@@ -682,6 +690,12 @@
 <h3 id="settaillightson-method">setTailLightsOn (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">protected setTailLightsOn(value: boolean)
+</code></pre>
+<h3 id="getmaxsteerangle-method">getMaxSteerAngle (method)</h3>
+<p>Resolves the current effective max steering angle (radians) from <code>carProperties.maxSteerAngle</code>,
+scaling down with speed when that's given as a breakpoint array - see its TSDoc.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">protected getMaxSteerAngle(): number
 </code></pre>
 <h3 id="createraycastvehicle-method">createRaycastVehicle (method)</h3>
 <p><strong>Signature</strong></p>
@@ -760,7 +774,22 @@
     upShifts: number[]
     autoHold: boolean
   }
-  maxSteerAngle: number
+  /**
+   * Max steering lock, in radians, applied at `steeringFactor` of ±1.
+   *
+   * - A plain `number` applies that angle at every speed (the original, unconditional behavior).
+   * - An array of `{ atSpeedMs, angleRad }` breakpoints (speed in m/s, angle in radians) instead
+   *   scales the max angle down as the car speeds up - full lock-to-lock steering at parking-lot
+   *   speed will otherwise demand more lateral slip than a raycast vehicle's simplified friction
+   *   model (`frictionSlip * wheelLoad`) can supply, causing the car to snap/spin rather than
+   *   understeer. Breakpoints must be sorted ascending by `atSpeedMs`; the effective angle is
+   *   linearly interpolated between the two straddling the current `|getSpeed()|`, clamped to the
+   *   first entry's `angleRad` below the lowest speed and the last entry's `angleRad` at/above the
+   *   highest. A validated shape for this: full angle below 5 m/s, linearly tapering to 30% of
+   *   that by 30 m/s, flat beyond - e.g.
+   *   `[{ atSpeedMs: 5, angleRad: 0.2 }, { atSpeedMs: 30, angleRad: 0.06 }]`.
+   */
+  maxSteerAngle: number | { atSpeedMs: number; angleRad: number }[]
 }
 </code></pre>
 

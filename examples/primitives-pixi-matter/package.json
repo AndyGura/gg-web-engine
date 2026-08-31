@@ -6,9 +6,9 @@
     "start": "webpack serve --config ./webpack.dev.config.js"
   },
   "dependencies": {
-    "@gg-web-engine/core": "0.0.62",
-    "@gg-web-engine/matter": "0.0.62",
-    "@gg-web-engine/pixi": "0.0.62",
+    "@gg-web-engine/core": "0.0.63",
+    "@gg-web-engine/matter": "0.0.63",
+    "@gg-web-engine/pixi": "0.0.63",
     "matter-js": "0.20.0",
     "pixi.js": "8.20.1",
     "rxjs": "7.8.2"

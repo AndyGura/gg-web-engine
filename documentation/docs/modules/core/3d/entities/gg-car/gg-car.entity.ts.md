@@ -14,6 +14,7 @@ parent: Modules
   - [GgCarEntity (class)](#ggcarentity-class)
     - [calculateRpmFromCarSpeed (method)](#calculaterpmfromcarspeed-method)
     - [setTailLightsOn (method)](#settaillightson-method)
+    - [getMaxSteerAngle (method)](#getmaxsteerangle-method)
     - [createRaycastVehicle (method)](#createraycastvehicle-method)
     - [onSpawned (method)](#onspawned-method)
     - [updateEngine (method)](#updateengine-method)
@@ -58,6 +59,17 @@ public calculateRpmFromCarSpeed(): number
 
 ```ts
 protected setTailLightsOn(value: boolean)
+```
+
+### getMaxSteerAngle (method)
+
+Resolves the current effective max steering angle (radians) from `carProperties.maxSteerAngle`,
+scaling down with speed when that's given as a breakpoint array - see its TSDoc.
+
+**Signature**
+
+```ts
+protected getMaxSteerAngle(): number
 ```
 
 ### createRaycastVehicle (method)
@@ -180,6 +192,21 @@ export type GgCarProperties = RVEntityProperties & {
     upShifts: number[]
     autoHold: boolean
   }
-  maxSteerAngle: number
+  /**
+   * Max steering lock, in radians, applied at `steeringFactor` of ±1.
+   *
+   * - A plain `number` applies that angle at every speed (the original, unconditional behavior).
+   * - An array of `{ atSpeedMs, angleRad }` breakpoints (speed in m/s, angle in radians) instead
+   *   scales the max angle down as the car speeds up - full lock-to-lock steering at parking-lot
+   *   speed will otherwise demand more lateral slip than a raycast vehicle's simplified friction
+   *   model (`frictionSlip * wheelLoad`) can supply, causing the car to snap/spin rather than
+   *   understeer. Breakpoints must be sorted ascending by `atSpeedMs`; the effective angle is
+   *   linearly interpolated between the two straddling the current `|getSpeed()|`, clamped to the
+   *   first entry's `angleRad` below the lowest speed and the last entry's `angleRad` at/above the
+   *   highest. A validated shape for this: full angle below 5 m/s, linearly tapering to 30% of
+   *   that by 30 m/s, flat beyond - e.g.
+   *   `[{ atSpeedMs: 5, angleRad: 0.2 }, { atSpeedMs: 30, angleRad: 0.06 }]`.
+   */
+  maxSteerAngle: number | { atSpeedMs: number; angleRad: number }[]
 }
 ```
