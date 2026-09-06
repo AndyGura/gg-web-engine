@@ -88,6 +88,18 @@ point.
 
 ## Non-obvious repo facts worth knowing before diving in
 
+- **Every 3D world in this engine is Z-up, always** — `{x, y}` is the ground plane, `+Z` is up. This
+  is true across core, every adapter (three, ammo, rapier3d), and every example; there is no
+  per-app/per-world configuration to change it. Concretely: `packages/three/src/three-factory.ts`
+  and adapters' factories internally re-orient any Y-up-native primitive (three.js's own
+  `CapsuleGeometry`/`CylinderGeometry`/`ConeGeometry`, Bullet/Rapier default conventions) so the
+  engine-level shape/body APIs are Z-up-consistent; you should never need to compensate for Y-up
+  yourself when calling them. When writing a raw `Point3`/`{x,y,z}` literal that's meant to be a
+  world axis or up-vector (not an arbitrary position), prefer the named constants in `Pnt3` (`Pnt3.X`
+  = `{x:1,y:0,z:0}`, `Pnt3.Y`, `Pnt3.Z` = "up", and `Pnt3.nX`/`Pnt3.nY`/`Pnt3.nZ` for their negatives)
+  over spelling the components out — it documents intent and avoids sign/axis mistakes. 2D worlds
+  (`packages/pixi`, `packages/matter`, `packages/rapier2d`) are the ordinary `{x, y}` screen/ground
+  plane and aren't affected by this (no Z axis at all).
 - Every package under `packages/` and `examples/` is versioned and published independently (see
   `gg-engine-release`) — there's no lockstep-versioned monorepo tool (no lerna/pnpm). Locally,
   though, `packages/*` (not `examples/*`) *is* an npm workspace (root `package.json`) purely for

@@ -28,8 +28,19 @@ export type CharacterController3dEntityOptions = CharacterController3dOptions & 
   crouchMode: 'hold' | 'toggle';
   /** Takeoff vertical speed applied by `jump()`, in m/s. Default 5. */
   jumpSpeed: number;
-  /** Downward acceleration integrated while airborne, in m/s². Default 9.82. */
-  gravity: number;
+  /**
+   * Downward acceleration integrated while airborne, in m/s², **overriding** the world's own
+   * `physicsWorld.gravity` for this character. Leave `undefined` (the default) to instead track
+   * `physicsWorld.gravity`'s own component along `up` every tick - so the world's gravity vector
+   * (including live changes via the `gravity` dev-console command) affects this character exactly
+   * like it would a dynamic rigid body, direction and magnitude alike. This character's underlying
+   * `characterController` is always a kinematic mover unaffected by the physics engine's own
+   * gravity integration (see `ICharacterController3dComponent`'s doc), which is why this entity
+   * must read and apply gravity itself rather than relying on the backend to do it - only set this
+   * to a number when a character deliberately needs a gravity scale different from the rest of the
+   * world (e.g. floatier low-gravity player).
+   */
+  gravity: number | undefined;
   /** Horizontal move-speed multiplier applied while airborne (0..1). Default 0.3. */
   airControlFactor: number;
 };
@@ -50,7 +61,7 @@ const DEFAULT_OPTIONS: Required<
   crouchSpeedMultiplier: 0.5,
   crouchMode: 'hold',
   jumpSpeed: 5,
-  gravity: 9.82,
+  gravity: undefined,
   airControlFactor: 0.3,
 };
 
@@ -61,10 +72,19 @@ const DEFAULT_OPTIONS: Required<
  * the backend-specific component). Reusable for the player (see `PlayerCharacterController`, which
  * adds keyboard/mouse input and a camera on top of this) or for an NPC driven by AI logic instead.
  *
- * `moveDirection` is local-space (rotated by `this.rotation` internally), using the same
- * "local -Z is forward, local +X is right" convention `FreeCameraController` uses for its own
- * movement vector - a `PlayerCharacterController` (or any other driver) maps input to it using
- * the identical construction.
+ * `moveDirection` is local-space (rotated by `this.rotation` internally): local +Y is "forward" at
+ * zero yaw, local +X is "right" at zero yaw, local Z is unused (always ignored - vertical motion is
+ * handled separately, see below) - the same right=X/forward=Y/up=Z axis paradigm
+ * `RaycastVehicle3dEntity`/`GgCarEntity` use (see e.g. `AmmoRaycastVehicleComponent`'s
+ * `setCoordinateSystem(0, 2, 1)`), **not** the camera/`FreeCameraController` convention (local -Z
+ * forward, local Y up) - that convention matches a camera's rest orientation (forward down local
+ * -Z), whereas this entity's rest/identity orientation stands with its capsule's long axis along
+ * local Z (`up`), so `this.rotation` must only ever be a plain rotation around `up` (e.g.
+ * `Qtrn.fromAngle(up, yaw)`) for the capsule to stay upright - never a camera-style look-at basis
+ * change. A driver (e.g. `PlayerCharacterController`) must map input to `moveDirection` and compute
+ * `this.rotation` using this same convention (note `Pnt3.toSpherical`/`fromSpherical`'s own `theta`
+ * is measured from +X, not +Y - converting a look-direction angle into this entity's yaw needs a
+ * -90° offset, see `PlayerCharacterController.updateCamera`'s comment for the derivation).
  */
 export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo>
   extends IRenderable3dEntity<TypeDoc>
@@ -74,7 +94,7 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
 
   public readonly options: Required<CharacterController3dEntityOptions>;
 
-  /** Local-space desired move direction (XZ plane, "-Z forward / +X right"); set by an input driver. */
+  /** Local-space desired move direction (XY plane, "+Y forward / +X right", Z unused); set by an input driver - see this class's doc. */
   public moveDirection: Point3 = Pnt3.O;
   /** Whether to move at `walkSpeed * runSpeedMultiplier`. Ignored while `isCrouching`. */
   public isRunning: boolean = false;
@@ -190,24 +210,57 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
     this.tick$.subscribe(([_, delta]) => this.updateMovement(delta));
   }
 
-  /** Triggers a jump (sets vertical takeoff speed) only while grounded; a no-op mid-air. */
+  /**
+   * This character's current gravitational acceleration along `up` (positive = accelerating
+   * upward), signed so `_verticalVelocity += gravityAlongUp * dt` is always the right update
+   * regardless of the world's gravity direction. Uses `options.gravity` (interpreted as a downward
+   * magnitude) when explicitly set; otherwise derives it live from `physicsWorld.gravity`'s own
+   * component along `up`, so the world's gravity vector - including a live change via the `gravity`
+   * dev-console command - affects this character the same tick it changes. See `gravity`'s own doc
+   * on `CharacterController3dEntityOptions` for why a kinematic character controller needs this at
+   * all rather than getting gravity from the physics engine for free.
+   */
+  private get gravityAlongUp(): number {
+    if (this.options.gravity !== undefined) {
+      return -this.options.gravity;
+    }
+    const worldGravity = this.world?.physicsWorld?.gravity ?? Pnt3.O;
+    return Pnt3.dot(worldGravity, this.characterController.up);
+  }
+
+  /** Triggers a jump (a takeoff velocity away from the ground, opposing gravity) only while grounded; a no-op mid-air. */
   public jump(): void {
     if (this.isGrounded) {
-      this._verticalVelocity = this.options.jumpSpeed;
+      // launch opposite whichever way gravity currently pulls (normally "up"), so this still does
+      // the right thing under an inverted/overridden gravity vector; with no gravity at all
+      // (exactly 0), default to "up" like the ordinary case, rather than flipping on the `0`/`-0`
+      // sign edge case
+      const direction = this.gravityAlongUp > 0 ? -1 : 1;
+      this._verticalVelocity = direction * this.options.jumpSpeed;
     }
   }
 
   private updateMovement(deltaMs: number): void {
     const dt = deltaMs / 1000;
-    const grounded = this.isGrounded;
     const up = this.characterController.up;
+    const gravityAlongUp = this.gravityAlongUp;
+    // Being `isGrounded` only actually holds the character in place while gravity still presses it
+    // into the surface underfoot (the ordinary case, `gravityAlongUp <= 0` against a floor below -
+    // note a floor's own outward normal is always within `maxSlopeClimbAngleRad` of `up` whenever
+    // grounded, by definition of "grounded"). If gravity is overridden/changed (e.g. live, via the
+    // `gravity` dev-console command) to instead pull *away* from that surface, the ground can no
+    // longer hold the character there - treat this exactly like being airborne (free to accelerate
+    // away) rather than getting stuck floating in place against a floor gravity no longer presses it
+    // into, which is what naively gating on the raw `isGrounded` flag alone would do.
+    const restingOnGround = this.isGrounded && gravityAlongUp <= 0;
 
-    // clamp settling/falling velocity on landing, but never clobber a just-triggered jump
-    if (grounded && this._verticalVelocity < 0) {
+    // clamp settling/falling velocity on landing (i.e. velocity still pushing into the ground), but
+    // never clobber a just-triggered jump (velocity pulling away from the ground)
+    if (restingOnGround && gravityAlongUp !== 0 && Math.sign(this._verticalVelocity) === Math.sign(gravityAlongUp)) {
       this._verticalVelocity = 0;
     }
-    if (!grounded) {
-      this._verticalVelocity -= this.options.gravity * dt;
+    if (!restingOnGround) {
+      this._verticalVelocity += gravityAlongUp * dt;
     }
 
     let speed = this.options.walkSpeed;
@@ -216,11 +269,11 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
     } else if (this.isRunning) {
       speed *= this.options.runSpeedMultiplier;
     }
-    if (!grounded) {
+    if (!restingOnGround) {
       speed *= this.options.airControlFactor;
     }
 
-    const localHoriz = Pnt3.norm({ x: this.moveDirection.x, y: 0, z: this.moveDirection.z });
+    const localHoriz = Pnt3.norm({ x: this.moveDirection.x, y: this.moveDirection.y, z: 0 });
     const worldHoriz = Pnt3.rot(Pnt3.scalarMult(localHoriz, speed), this.rotation);
     const desiredTranslation = Pnt3.add(
       Pnt3.scalarMult(worldHoriz, dt),

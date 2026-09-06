@@ -231,6 +231,49 @@ above the theoretical resting bottom (`max(skin * 4, 0.02)`, not just `skin`) �
 the sweep's own allowed penetration in the worst case — before sweeping down through
 `snapToGroundDistance`.
 
+**Pitfall: an unconditional ground-snap fallback silently cancels every jump.** If `move()` falls
+back to an extra downward ray/sweep whenever the main vertical sweep didn't already confirm grounded
+(e.g. because the vertical component this tick was zero, or too small to register a floor hit), that
+fallback must skip entirely whenever the desired vertical component is **upward** (jumping/rising) —
+otherwise it pulls the character straight back down to the floor it just launched from, since a jump's
+first tick or two moves it only a few centimeters up, well within any reasonable snap distance. Found
+exactly this way: `jump()` visibly set the right internal state and the very first `move()` afterward
+even integrated gravity correctly, but the character's height never changed frame to frame at all —
+the snap fallback was undoing the small rise every single tick before it could accumulate. Fix: gate
+the fallback on `dot(desiredVertical, up) <= 0` (falling or stationary), never when moving away from
+the ground.
+
+**Pitfall (more severe, found after the above): `convexSweepTest` has no built-in "don't hit me"
+concept, and a character sweeping its own shape self-collides.** Unlike `btKinematicCharacterController`
+(which excludes its own ghost object from its internal sweeps by identity, via a callback subclass
+`needsCollision` override that JS can't replicate against the embind-exposed `ClosestConvexResultCallback`),
+a hand-rolled `collisionWorld.convexSweepTest(shape, from, to, callback, ...)` happily reports the
+character's **own** collider as the closest hit — a resting capsule always geometrically overlaps its
+own ghost object's collider, by definition, at the sweep's `from` transform. Symptom was severe and
+easy to misdiagnose as something else entirely: ordinary WASD movement on a completely flat, empty
+floor (no walls, no other bodies at all) was capped to a small, *direction-dependent* fraction of the
+intended speed (e.g. one strafe direction covering roughly half the expected distance while the exact
+opposite direction was unaffected) — the self-hit's reported fraction/normal are essentially
+floating-point noise from the exact geometry of the self-overlap, so different sweep directions "lose"
+by different, inconsistent amounts. Do not try to fix this by filtering the hit normal (e.g.
+"discard hits whose normal looks floor-like/walkable") — that was tried first and made things worse in
+a different way: it also discards genuine ledge/step-corner hits whose blended normal (from sweeping
+into a box's edge, not a clean face) happens to fall within the walkable-slope threshold, silently
+letting the character glide through a real step instead of climbing it. The actual fix: exclude the
+character's own collision object from the collision world for the duration of each sweep call —
+`collisionWorld.removeCollisionObject(this.nativeBody)`, run `convexSweepTest`, then
+`collisionWorld.addCollisionObject(this.nativeBody, ownMask, interactMask)` in a `finally` block. This
+is the one case where filtering by collision group/mask isn't a viable alternative either: a
+character's own group is generally not exclusive to it (it commonly shares the default/main group with
+ordinary static geometry like the floor itself), so masking the query to exclude "my own group" would
+also hide real obstacles that happen to share it, not just self. When implementing a from-scratch sweep-
+based mover (here or for any future adapter that ends up needing the same approach because its engine's
+native character controller turns out unusable — see the note on `btKinematicCharacterController`
+itself further up), write an end-to-end test that drives continuous movement in **all four
+horizontal directions** (not just one) over a plain floor with nothing else in the scene, asserting each
+covers the same, undiminished distance — a single-direction test is exactly the kind of test that keeps
+this bug hidden (it happened to still look correct in the direction that was tested first).
+
 ## Factory — shape and body-options mapping
 
 `IPhysicsBody(2d|3d)ComponentFactory.createRigidBody(descriptor, transform?)` and `createTrigger

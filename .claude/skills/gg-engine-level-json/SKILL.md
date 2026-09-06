@@ -196,8 +196,27 @@ plus every gameplay field `CharacterController3dEntity` itself takes (`walkSpeed
 `runSpeedMultiplier`, `crouchSpeedMultiplier`, `crouchCentersDistance`, `crouchMode`, `jumpSpeed`,
 `gravity`, `airControlFactor`) and the underlying mover's tuning (`offset`, `maxStepHeight`,
 `minStepWidth`, `maxSlopeClimbAngleRad`, `snapToGroundDistance`) - see that class's own doc for
-defaults. `display` (optional, `DisplayObject3dOpts`) builds a matching capsule mesh via
-`visualScene.factory.createCapsule`; omit it for a physics-only, invisible character.
+defaults. Leave `gravity` out entirely to have the character follow `physicsWorld.gravity` live
+(including a runtime change via the `gravity` dev-console command); only set it to give this
+character a gravity scale different from the rest of the world. `display` (optional,
+`DisplayObject3dOpts`) builds a matching capsule mesh via `visualScene.factory.createCapsule`; omit
+it for a physics-only, invisible character.
+
+**Pitfall for anyone touching `createPlayer` (or writing a similar built-in class generator)**: never
+destructure an optional settings field and then pass it through by name into an object literal
+unconditionally - `{ maxSlopeClimbAngleRad, ... }` includes the key `maxSlopeClimbAngleRad:
+undefined` when the level JSON didn't set it, which is not the same as omitting the key. Every
+adapter component (and `CharacterController3dEntity` itself) merges its own hardcoded defaults via
+`{ ...DEFAULT_OPTIONS, ...options }` - a *present* `undefined`-valued key in `options` overwrites the
+default with `undefined` instead of falling back to it, since the key exists either way. This was a
+real, shipped bug here: an unset `maxSlopeClimbAngleRad` silently became `undefined`, and
+`angle <= undefined` is always `false` in JS, so the character's ground-walkability check failed
+unconditionally and it could never register as grounded at all (breaking jump, which gates on
+`isGrounded`, and leaving stale gravity velocity to integrate forever since the "just landed, reset
+velocity" clamp never fired either). The fix is to only spread in a field when it's actually defined,
+e.g. `...(maxSlopeClimbAngleRad !== undefined && { maxSlopeClimbAngleRad })` per field, or build the
+options object by filtering out `undefined` values before passing it on - never list an
+optional-with-a-downstream-default field in a plain object literal by name.
 
 Unlike `"GgCar"`, this only builds the physics+visual capsule - **not** the keyboard/mouse/camera
 wiring (`PlayerCharacterController`), since that inherently needs a live canvas/`KeyboardInput`/

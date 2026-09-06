@@ -488,8 +488,22 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
     if (!world.physicsWorld) {
       return undefined;
     }
+    // `offset`/`maxStepHeight`/etc. above are `undefined` whenever the level JSON didn't set them -
+    // they must be left out of the objects below entirely (not passed through as explicit
+    // `undefined` values) so each adapter's own `{...DEFAULT_OPTIONS, ...options}` merge (and
+    // `CharacterController3dEntity`'s own `{...DEFAULT_OPTIONS, ...options}`) actually falls back to
+    // its default for that field, rather than a present-but-`undefined` key overwriting the default
+    // with `undefined` (a real bug found here: an unset `maxSlopeClimbAngleRad` silently disabled all
+    // ground detection, since `angle <= undefined` is always `false`).
+    const tunableOptions = {
+      ...(offset !== undefined && { offset }),
+      ...(maxStepHeight !== undefined && { maxStepHeight }),
+      ...(minStepWidth !== undefined && { minStepWidth }),
+      ...(maxSlopeClimbAngleRad !== undefined && { maxSlopeClimbAngleRad }),
+      ...(snapToGroundDistance !== undefined && { snapToGroundDistance }),
+    };
     const characterController = world.physicsWorld.factory.createCharacterController(
-      { radius, centersDistance, offset, maxStepHeight, minStepWidth, maxSlopeClimbAngleRad, snapToGroundDistance },
+      { radius, centersDistance, ...tunableOptions },
       { position, rotation },
     );
     const object3D = world.visualScene
@@ -499,11 +513,7 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
       {
         radius,
         centersDistance,
-        offset,
-        maxStepHeight,
-        minStepWidth,
-        maxSlopeClimbAngleRad,
-        snapToGroundDistance,
+        ...tunableOptions,
         ...gameplay,
       },
       object3D,

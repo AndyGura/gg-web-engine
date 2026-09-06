@@ -2,12 +2,14 @@
 
 Demonstrates `CharacterController3dEntity` + `PlayerCharacterController` from `@gg-web-engine/core`
 (rendered with `@gg-web-engine/three`, physics via `@gg-web-engine/rapier3d`): a capsule-bodied,
-physics-driven player character that walks/runs/crouches/jumps around a loaded GLB scene, with
+physics-driven player character that walks/runs/crouches/jumps around a small hand-built room, with
 mouse-look and a first-/third-person camera.
 
-The level JSON spawns a `"Camera"`, a `"Glb"` (the `ph_scene` playground/walkable environment also
-used by `glb-loader-three-rapier3d`), and a `"Player"` entity. After the level loads, `index.ts`
-looks up the spawned `CharacterController3dEntity` by name and wraps it with a
+The level JSON builds a self-contained room out of six `"Primitive"` boxes (floor, ceiling, four
+walls) plus a handful of obstacles purpose-built to exercise the controller: a box/sphere/cylinder
+cluster to walk around, a low barrier to jump over, and an overhead beam whose gap only a crouched
+capsule fits under - alongside a `"Camera"` and a `"Player"` entity. After the level loads,
+`index.ts` looks up the spawned `CharacterController3dEntity` by name and wraps it with a
 `PlayerCharacterController` to add keyboard/mouse input and camera control - the level JSON only
 builds the physics+visual capsule, not that input wiring (see the `gg-engine-level-json` skill's
 `"Player"` section for why).

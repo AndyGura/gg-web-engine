@@ -176,6 +176,13 @@ export class AmmoCharacterControllerComponent
       pos = this.moveHorizontalWithStepAndSlide(pos, horizontal, up, skin);
     }
 
+    // Moving strictly upward (a jump/rising through the air) must never be pulled back down by the
+    // ground-snap fallback below - it exists to hug the ground while falling/standing still, not to
+    // cancel out a deliberate upward move. Bug found empirically: without this guard, every jump
+    // was immediately undone the very next tick, since `desiredTranslation`'s small per-tick rise
+    // is well within `snapToGroundDistance` of the floor the character just left.
+    const movingUp = Pnt3.dot(vertical, up) > 1e-9;
+
     let grounded = false;
     let groundNormal: Point3 | null = null;
     if (Pnt3.len(vertical) > 1e-9) {
@@ -188,7 +195,7 @@ export class AmmoCharacterControllerComponent
       }
     }
 
-    if (!grounded && this.resolvedOptions.snapToGroundDistance > 0) {
+    if (!grounded && !movingUp && this.resolvedOptions.snapToGroundDistance > 0) {
       const snapped = this.trySnapToGround(pos, up, skin);
       if (snapped) {
         pos = snapped.position;
@@ -284,9 +291,26 @@ export class AmmoCharacterControllerComponent
     return { position: Pnt3.add(newBottom, Pnt3.scalarMult(up, halfHeight)), normal: result.hitNormal };
   }
 
-  /** A single `convexSweepTest` of this character's capsule from `from` to `to`, filtered by this
+  /**
+   * A single `convexSweepTest` of this character's capsule from `from` to `to`, filtered by this
    * component's own collision groups - see this class's doc for why this replaces
-   * `btKinematicCharacterController` entirely. */
+   * `btKinematicCharacterController` entirely.
+   *
+   * Bug found empirically: `convexSweepTest` has no built-in "don't hit me" concept the way
+   * `btKinematicCharacterController`'s own internal callback does (it excludes its ghost object by
+   * identity, which the embind-exposed `ClosestConvexResultCallback` here has no hook to replicate
+   * from JS) - so a sweep of this exact capsule shape, starting essentially at the ghost object's
+   * own current position, was matching **the character's own collider** as the closest hit (fraction
+   * ≈ 0, a plausible-looking but bogus surface normal), on every call, regardless of direction or
+   * whether anything else was even present in the scene. This capped ordinary walking to a small,
+   * direction-dependent fraction of the intended speed (a resting capsule always overlaps its own
+   * ghost object's collider by definition, and floating-point noise in exactly how much made some
+   * directions look worse than others). Fixed by pulling the ghost object out of the collision world
+   * for the duration of the sweep - cheap (a handful of sweeps per tick, not per physics step) and
+   * fully correct, unlike trying to filter by collision group/mask (this character's own group
+   * generally isn't exclusive to it - e.g. it shares the default group with ordinary static
+   * geometry - so masking it out would also hide real obstacles, not just self).
+   */
   private sweep(from: Point3, to: Point3, allowedPenetration: number): SweepResult {
     const collisionWorld = this.world.dynamicAmmoWorld!;
     const rot = this.rotation;
@@ -306,13 +330,18 @@ export class AmmoCharacterControllerComponent
     callback.set_m_collisionFilterGroup(this._ownCGsMask);
     callback.set_m_collisionFilterMask(this._interactWithCGsMask);
 
-    collisionWorld.convexSweepTest(
-      this.nativeShape as unknown as Ammo.btConvexShape,
-      fromT,
-      toT,
-      callback,
-      allowedPenetration,
-    );
+    collisionWorld.removeCollisionObject(this.nativeBody);
+    try {
+      collisionWorld.convexSweepTest(
+        this.nativeShape as unknown as Ammo.btConvexShape,
+        fromT,
+        toT,
+        callback,
+        allowedPenetration,
+      );
+    } finally {
+      collisionWorld.addCollisionObject(this.nativeBody, this._ownCGsMask, this._interactWithCGsMask);
+    }
 
     const hasHit = callback.hasHit();
     let hitNormal: Point3 | undefined;

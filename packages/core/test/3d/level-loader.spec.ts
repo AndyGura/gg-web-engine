@@ -272,6 +272,26 @@ describe('Gg3dLevelLoader', () => {
       expect(player.options.walkSpeed).toBe(5);
     });
 
+    it('never forwards `offset`/`maxStepHeight`/`minStepWidth`/`maxSlopeClimbAngleRad`/`snapToGroundDistance` as explicit `undefined` when a Player config omits them (regression: an explicit-`undefined` key overwrote each adapter/entity default instead of falling back to it - e.g. an unset `maxSlopeClimbAngleRad` silently disabled all ground detection)', async () => {
+      const levelJson: LevelJson = {
+        entities: [
+          { class: 'Player', position: { x: 0, y: 0, z: 0 }, name: 'TestPlayer', config: { radius: 0.4, centersDistance: 1.2 } },
+        ],
+      };
+
+      const level = await levelLoader.loadLevel(levelJson);
+
+      const [physicsOptions] = (world.physicsWorld?.factory.createCharacterController as jest.Mock).mock.calls[0];
+      for (const key of ['offset', 'maxStepHeight', 'minStepWidth', 'maxSlopeClimbAngleRad', 'snapToGroundDistance']) {
+        expect(physicsOptions).not.toHaveProperty(key);
+      }
+
+      const player = level.getChildEntityByName<CharacterController3dEntity>('TestPlayer');
+      // the entity itself must have fallen back to CharacterController3dEntity's own defaults too
+      expect(player.options.maxSlopeClimbAngleRad).toBeCloseTo((50 * Math.PI) / 180);
+      expect(player.options.snapToGroundDistance).toBeCloseTo(0.3);
+    });
+
     // Common car fields shared by both wheelBase- and wheelOptions-based GgCar tests
     const carCommonConfig = {
       suspension: { stiffness: 20, damping: 2.3, compression: 4.4, restLength: 0.53 },

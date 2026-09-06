@@ -31,7 +31,7 @@ describe('CharacterController3dEntity', () => {
       const entity = new CharacterController3dEntity({ radius: 0.4, centersDistance: 1, walkSpeed: 4 }, null, cc);
       entity.onSpawned({} as any);
       const moveSpy = jest.spyOn(cc, 'move');
-      entity.moveDirection = { x: 1, y: 0, z: 0 }; // local right, identity rotation
+      entity.moveDirection = { x: 1, y: 0, z: 0 }; // local right (+X), identity rotation
       entity.tick$.next([1000, 1000]); // 1 second
       expectCloseVector(moveSpy.mock.calls[0][0], { x: 4, y: 0, z: 0 });
     });
@@ -42,7 +42,7 @@ describe('CharacterController3dEntity', () => {
       entity.rotation = Qtrn.fromAngle(Pnt3.Z, Math.PI / 2); // yaw 90° around the up axis
       entity.onSpawned({} as any);
       const moveSpy = jest.spyOn(cc, 'move');
-      entity.moveDirection = { x: 1, y: 0, z: 0 }; // local right - horizontal, not on the rotation axis
+      entity.moveDirection = { x: 1, y: 0, z: 0 }; // local right (+X) - horizontal, not on the rotation axis
       entity.tick$.next([1000, 1000]);
       const applied = moveSpy.mock.calls[0][0];
       expect(applied.z).toBeCloseTo(0); // stays horizontal
@@ -93,6 +93,56 @@ describe('CharacterController3dEntity', () => {
       expect(moveSpy.mock.calls[0][0].z).toBeCloseTo(0);
       entity.tick$.next([2000, 1000]); // now airborne (from previous move's result) - gravity applies
       expect(moveSpy.mock.calls[1][0].z).toBeCloseTo(-10);
+    });
+
+    it('follows physicsWorld.gravity when no `gravity` option is set, instead of a fixed downward pull', () => {
+      const cc = mockCharacterController(0.4, 1, {
+        resolveMove: d => ({ appliedTranslation: d, isGrounded: false }),
+      });
+      // no `gravity` option here - must be derived live from the world every tick
+      const entity = new CharacterController3dEntity({ radius: 0.4, centersDistance: 1 }, null, cc);
+      entity.onSpawned({ physicsWorld: { gravity: { x: 0, y: 0, z: -20 } } } as any);
+      const moveSpy = jest.spyOn(cc, 'move');
+      entity.tick$.next([1000, 1000]); // starts grounded (stale) so gravity not applied yet this tick
+      expect(moveSpy.mock.calls[0][0].z).toBeCloseTo(0);
+      entity.tick$.next([2000, 1000]); // now airborne - gravity applies, matching the world's -20, not a hardcoded 9.82
+      expect(moveSpy.mock.calls[1][0].z).toBeCloseTo(-20);
+    });
+
+    it('falls upward, not downward, when physicsWorld.gravity itself points along +up (regression: used to always fall -Z regardless of the world gravity vector)', () => {
+      const cc = mockCharacterController(0.4, 1, {
+        resolveMove: d => ({ appliedTranslation: d, isGrounded: false }),
+      });
+      const entity = new CharacterController3dEntity({ radius: 0.4, centersDistance: 1 }, null, cc);
+      entity.onSpawned({ physicsWorld: { gravity: { x: 0, y: 0, z: 9.82 } } } as any);
+      const moveSpy = jest.spyOn(cc, 'move');
+      entity.tick$.next([1000, 1000]);
+      entity.tick$.next([2000, 1000]); // now airborne - should accelerate along +Z, following the world
+      expect(moveSpy.mock.calls[1][0].z).toBeGreaterThan(0);
+    });
+
+    it('keeps integrating gravity even while nominally grounded, if gravity flips to pull away from the surface underfoot (regression: got stuck floating in place against the floor instead of falling away from it)', () => {
+      // this mock stays reported `isGrounded: true` no matter what - simulating a character resting
+      // on a floor whose contact never breaks on its own (matching the real adapters: a sweep would
+      // only reports newly-ungrounded once actually moved off the surface)
+      const cc = mockCharacterController();
+      const entity = new CharacterController3dEntity({ radius: 0.4, centersDistance: 1 }, null, cc);
+      entity.onSpawned({ physicsWorld: { gravity: { x: 0, y: 0, z: 9.82 } } } as any);
+      const moveSpy = jest.spyOn(cc, 'move');
+      entity.tick$.next([1000, 1000]);
+      expect(moveSpy.mock.calls[0][0].z).toBeGreaterThan(0); // must start accelerating away immediately, not stay parked at 0
+    });
+
+    it('an explicit `gravity` option still overrides physicsWorld.gravity', () => {
+      const cc = mockCharacterController(0.4, 1, {
+        resolveMove: d => ({ appliedTranslation: d, isGrounded: false }),
+      });
+      const entity = new CharacterController3dEntity({ radius: 0.4, centersDistance: 1, gravity: 5 }, null, cc);
+      entity.onSpawned({ physicsWorld: { gravity: { x: 0, y: 0, z: -999 } } } as any);
+      const moveSpy = jest.spyOn(cc, 'move');
+      entity.tick$.next([1000, 1000]);
+      entity.tick$.next([2000, 1000]);
+      expect(moveSpy.mock.calls[1][0].z).toBeCloseTo(-5);
     });
   });
 

@@ -125,7 +125,7 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
   }
 
   public reset(): void {
-    this._spherical = Pnt3.toSpherical(Pnt3.rot({ x: 0, y: 0, z: -1 }, this.camera.rotation));
+    this._spherical = Pnt3.toSpherical(Pnt3.rot(Pnt3.nZ, this.camera.rotation));
   }
 
   constructor(
@@ -154,9 +154,16 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
     this.reset();
 
     this.directionsInput.output$.pipe(takeUntil(this._onRemoved$)).subscribe(({ upDown, leftRight }) => {
+      // Local axes here follow `CharacterController3dEntity.moveDirection`'s own convention (see
+      // its doc): local +Y is "forward at zero yaw", local +X is "right at zero yaw" - the same
+      // right=X/forward=Y/up=Z axis paradigm `RaycastVehicle3dEntity`/`GgCarEntity` use (see e.g.
+      // `AmmoRaycastVehicleComponent`'s `setCoordinateSystem(0, 2, 1)`), NOT the camera/
+      // `FreeCameraController` convention (local -Z forward, local Y up), which does not apply here
+      // since the character's identity/rest orientation stands with its long axis along `up` (Z),
+      // not along local Y like a camera's.
       const local: MutablePoint3 = { x: 0, y: 0, z: 0 };
+      if (upDown !== undefined) local.y = upDown ? 1 : -1;
       if (leftRight !== undefined) local.x = leftRight ? -1 : 1;
-      if (upDown !== undefined) local.z = upDown ? -1 : 1;
       if (this.character) {
         this.character.moveDirection = local;
       }
@@ -236,10 +243,23 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
   private updateCamera(): void {
     const lookDir = Pnt3.fromSpherical(this._spherical);
     const up = this.character?.characterController.up ?? Pnt3.Z;
-    const yawDir = Pnt3.fromSpherical({ theta: this._spherical.theta, phi: Math.PI / 2, radius: 1 });
 
     if (this.character) {
-      this.character.rotation = Qtrn.lookAt(Pnt3.O, yawDir, up);
+      // Pure rotation around `up` by the current yaw angle - NOT `Qtrn.lookAt`. `lookAt` builds a
+      // camera-style basis (local -Z forward, local Y up) and is correct for `this.camera` below,
+      // but the character's capsule mesh/shape has its long axis along local Z at rest (identity
+      // rotation) - applying a camera-style basis to it would tip the capsule onto its side (its
+      // local Z, the long axis, would end up pointing along whatever direction the lookAt basis's
+      // local Z maps to, which is horizontal). A plain axis-angle rotation around `up` leaves `up`
+      // itself fixed, so the capsule always stays upright regardless of yaw - see
+      // `CharacterController3dEntity.moveDirection`'s doc for the matching local-axis convention.
+      //
+      // `theta` is measured from `Pnt3.fromSpherical`'s own convention (`theta == 0` faces world
+      // +X), but this character's local "forward" is +Y, not +X (see `moveDirection`'s doc) - so
+      // the yaw angle applied here is offset by -90° from `theta` itself: rotating local +Y by
+      // `theta - PI/2` around `up` lands exactly on `fromSpherical(theta)`, i.e. the same direction
+      // `lookDir`/the camera itself is facing (horizontally).
+      this.character.rotation = Qtrn.fromAngle(up, this._spherical.theta - Math.PI / 2);
     }
 
     if (!this.character) {

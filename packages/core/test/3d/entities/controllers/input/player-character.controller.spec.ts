@@ -1,4 +1,4 @@
-import { KeyboardInput, Pnt3, PlayerCharacterController } from '../../../../../src';
+import { KeyboardInput, Pnt3, PlayerCharacterController, Qtrn } from '../../../../../src';
 
 const fakeCharacter = (overrides: Partial<any> = {}) =>
   ({
@@ -32,11 +32,11 @@ describe('PlayerCharacterController', () => {
   };
 
   describe('movement mapping', () => {
-    it('maps WASD to a local moveDirection ("-Z forward / +X right")', async () => {
+    it('maps WASD to a local moveDirection ("+Y forward / +X right", matching the vehicle axis paradigm)', async () => {
       const { keyboard, controller, character } = setup(fakeCharacter(), { keymap: 'wasd' });
       await controller.onSpawned({} as any);
       keyboard.emulateKeyDown('KeyW');
-      expect(character.moveDirection).toEqual({ x: 0, y: 0, z: -1 });
+      expect(character.moveDirection).toEqual({ x: 0, y: 1, z: 0 });
       keyboard.emulateKeyUp('KeyW');
       keyboard.emulateKeyDown('KeyD');
       expect(character.moveDirection).toEqual({ x: 1, y: 0, z: 0 });
@@ -46,7 +46,7 @@ describe('PlayerCharacterController', () => {
       const { keyboard, controller, character } = setup(fakeCharacter(), { keymap: 'wasd+arrows' });
       await controller.onSpawned({} as any);
       keyboard.emulateKeyDown('ArrowUp');
-      expect(character.moveDirection).toEqual({ x: 0, y: 0, z: -1 });
+      expect(character.moveDirection).toEqual({ x: 0, y: 1, z: 0 });
     });
   });
 
@@ -143,12 +143,40 @@ describe('PlayerCharacterController', () => {
       expect(camera.position).toEqual({ x: 1, y: 2, z: 3.5 });
     });
 
-    it('sets character yaw to the current look direction regardless of view mode', async () => {
+    it('keeps the capsule upright: character.rotation must be a pure rotation around `up`', async () => {
+      // Regression test: character.rotation must never tip the capsule over (a `Qtrn.lookAt`-style
+      // camera basis would, since the capsule's rest orientation has its long axis along `up`, not
+      // along a camera's local Y - see `CharacterController3dEntity`'s own doc). Rotating `up`
+      // itself by the character's rotation must always yield `up` unchanged, for any yaw.
       const character = fakeCharacter();
-      const { controller } = setup(character, { viewMode: 'first-person' });
+      const { controller } = setup(character, { viewMode: 'third-person' });
       await controller.onSpawned({} as any);
       controller.tick$.next([0, 16]);
-      expect(character.rotation).toBeDefined();
+      const up = character.characterController.up;
+      const rotatedUp = Pnt3.rot(up, character.rotation);
+      expect(rotatedUp.x).toBeCloseTo(up.x);
+      expect(rotatedUp.y).toBeCloseTo(up.y);
+      expect(rotatedUp.z).toBeCloseTo(up.z);
+    });
+
+    it('rotates the character so local forward (+Y) matches the camera look direction', async () => {
+      // Regression test for the theta -> yaw conversion's -90° offset (see
+      // `updateCamera`'s comment): `Pnt3.toSpherical`/`fromSpherical` measure `theta` from world
+      // +X, but this character's local forward is +Y (matching the vehicle axis paradigm), not +X.
+      const character = fakeCharacter();
+      const camera = fakeCamera();
+      camera.rotation = Qtrn.lookAt(Pnt3.O, { x: 1, y: 1, z: 0 });
+      const keyboard = new KeyboardInput();
+      keyboard.start();
+      const controller = new PlayerCharacterController(keyboard, character, camera);
+      await controller.onSpawned({} as any);
+      controller.tick$.next([0, 16]);
+
+      const forward = Pnt3.rot({ x: 0, y: 1, z: 0 }, character.rotation);
+      const expected = Pnt3.norm({ x: 1, y: 1, z: 0 });
+      expect(forward.x).toBeCloseTo(expected.x);
+      expect(forward.y).toBeCloseTo(expected.y);
+      expect(forward.z).toBeCloseTo(0);
     });
   });
 });

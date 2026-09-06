@@ -89,6 +89,22 @@ did run a bare `npm install` afterwards by mistake, just re-run
 `bash etc/switch_example_to_local_gg.sh examples/<your-example-dir>` (idempotent) to relink before
 building again.
 
+**The script's very first step is `git checkout -- package.json tsconfig.json`** (that's what makes
+re-running it idempotent instead of compounding patches) — so if you've just hand-edited either file
+(e.g. adding a missing `@gg-web-engine/*` dependency line before it's been committed) and then run
+this script, your edit is silently discarded before the script even reads the file, and the
+`@gg-web-engine/` lines it greps for `libs=(...)`/`npm link`s come from the **committed** version, not
+your working tree. Symptom: the script exits 0 with no error, but `node_modules/@gg-web-engine/`
+ends up empty and nothing got linked — easy to misread as the script being broken. Either commit the
+package.json/tsconfig.json fix first, or skip the script and run its `npm link
+$(cd ../../packages/<lib> && pwd) ...` step by hand against your uncommitted file. This also means:
+**never commit an example while it's in its "switched" (locally-linked) state** — a commit made after
+running this script captures `package.json` with its `@gg-web-engine/*` lines already stripped
+(and, for an Ammo-backed example, `tsconfig.json`'s `paths` already rewritten to point into a linked
+package's own `node_modules`), so every future `git checkout`/clone of that commit starts from a
+broken, non-standalone package.json — run `restore_example_from_local_gg.sh` (or `git checkout` the
+two files back) before committing.
+
 ## Running
 
 ```bash
