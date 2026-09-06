@@ -1,6 +1,7 @@
 import {
   Body3DOptions,
   BodyShape3DDescriptor,
+  CharacterController3dOptions,
   IPhysicsBody3dComponentFactory,
   Pnt3,
   Point3,
@@ -14,6 +15,7 @@ import { AmmoTriggerComponent } from './components/ammo-trigger.component';
 import { AmmoWorldComponent } from './components/ammo-world.component';
 import { AmmoPhysicsTypeDocRepo } from './types';
 import { AmmoRaycastVehicleComponent } from './components/ammo-raycast-vehicle.component';
+import { AmmoCharacterControllerComponent } from './components/ammo-character-controller.component';
 
 export class AmmoFactory implements IPhysicsBody3dComponentFactory<AmmoPhysicsTypeDocRepo> {
   constructor(protected readonly world: AmmoWorldComponent) {}
@@ -45,6 +47,16 @@ export class AmmoFactory implements IPhysicsBody3dComponentFactory<AmmoPhysicsTy
 
   createRaycastVehicle(chassis: AmmoRigidBodyComponent): AmmoRaycastVehicleComponent {
     return new AmmoRaycastVehicleComponent(this.world, chassis);
+  }
+
+  createCharacterController(
+    options: CharacterController3dOptions,
+    transform?: {
+      position?: Point3;
+      rotation?: Point4;
+    },
+  ): AmmoCharacterControllerComponent {
+    return new AmmoCharacterControllerComponent(this.world, options, transform);
   }
 
   protected createShape(descriptor: Shape3DDescriptor): Ammo.btCollisionShape {

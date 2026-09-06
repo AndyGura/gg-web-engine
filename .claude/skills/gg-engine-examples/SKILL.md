@@ -75,6 +75,20 @@ the repo root first if the local adapter packages themselves need to pick up loc
 for the full "edit core, see it live in this example" watch-mode loop (`tsc -b
 --watch` + `npm start`), see `gg-engine-core-development`'s local dev workflow section.
 
+**Do not run a bare `npm install` inside the example directory after this script** (with at least
+npm v11) — `npm link <path>` only creates the `node_modules/@gg-web-engine/*` symlinks, it does not
+add a `file:`-style entry back into `package.json` or `package-lock.json` (verified: neither file
+gains any `@gg-web-engine` line after linking). Since the script already stripped the
+`@gg-web-engine/*` lines from `package.json` earlier in the same run, the linked packages are
+untracked as far as npm's dependency resolution is concerned, and a subsequent plain `npm install`
+prunes them straight back out as extraneous — `node_modules/@gg-web-engine/` ends up empty again
+and the next build fails to resolve those imports. The script's own internal `npm install` (which
+runs *before* it links) already installs every other dependency, so no further `npm install` is
+needed at all — go straight to `npm run build`/`npm start` after the script finishes. If something
+did run a bare `npm install` afterwards by mistake, just re-run
+`bash etc/switch_example_to_local_gg.sh examples/<your-example-dir>` (idempotent) to relink before
+building again.
+
 ## Running
 
 ```bash

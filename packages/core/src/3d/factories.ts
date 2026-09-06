@@ -1,6 +1,7 @@
 import { BodyShape3DDescriptor, Shape3DDescriptor, Shape3DMeshDescriptor } from './models/shapes';
 import { Point3, Point4 } from '../base';
 import { PhysicsTypeDocRepo3D, VisualTypeDocRepo3D } from './gg-3d-world';
+import { CharacterController3dOptions } from './models/character-controller-options';
 
 export type DisplayObject3dOpts<Tex> = {
   color?: number;
@@ -84,4 +85,12 @@ export interface IPhysicsBody3dComponentFactory<PTypeDoc extends PhysicsTypeDocR
   ): PTypeDoc['trigger'];
 
   createRaycastVehicle(chassis: PTypeDoc['rigidBody']): PTypeDoc['raycastVehicle'];
+
+  createCharacterController(
+    options: CharacterController3dOptions,
+    transform?: {
+      position?: Point3;
+      rotation?: Point4;
+    },
+  ): PTypeDoc['characterController'];
 }

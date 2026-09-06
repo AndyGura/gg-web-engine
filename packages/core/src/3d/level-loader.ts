@@ -7,6 +7,10 @@ import { Shape3DDescriptor } from './models/shapes';
 import { Entity3d } from './entities/entity-3d';
 import { Trigger3dEntity } from './entities/trigger-3d.entity';
 import { Camera3dEntity } from './entities/camera-3d.entity';
+import {
+  CharacterController3dEntity,
+  CharacterController3dEntityOptions,
+} from './entities/character-controller-3d.entity';
 import { GgCarEntity, GgCarProperties } from './entities/gg-car/gg-car.entity';
 import {
   RVEntityAxleOptions,
@@ -147,6 +151,27 @@ export interface Camera3DSettings {
    */
   frustrum?: { near: number; far: number };
 }
+
+/**
+ * Settings for the built-in `"Player"` entity class: a capsule-bodied `CharacterController3dEntity`
+ * (see that class's own doc for the gameplay fields below). Only the physics/visual capsule is
+ * built here - the input/camera wiring (`PlayerCharacterController`) needs a live canvas/
+ * `KeyboardInput`/renderer the app supplies, so it's left to the app's own code, the same way a
+ * `"Camera"` entity is just a positioned `Camera3dEntity` while `FreeCameraController`/
+ * `OrbitCameraController` wiring happens outside the level JSON too.
+ */
+export type Player3DSettings = Partial<Omit<CharacterController3dEntityOptions, 'radius' | 'centersDistance'>> & {
+  /** Spawn position of the character (capsule center). */
+  position?: Point3;
+  /** Spawn rotation of the character. */
+  rotation?: Point4;
+  /** Capsule radius. Default 0.4. */
+  radius?: number;
+  /** Standing capsule centersDistance. Default 1.0. */
+  centersDistance?: number;
+  /** Material options for the auto-generated capsule mesh; omit for a physics-only, invisible player. */
+  display?: DisplayObject3dOpts<any>;
+};
 
 /**
  * Settings for a `"GgCar"` wheel's optional visual mesh. A level JSON has no way to reference an
@@ -299,6 +324,7 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
 
     this.registerClass('Trigger', this.createTrigger.bind(this));
     this.registerClass('Camera', this.createCamera.bind(this));
+    this.registerClass('Player', this.createPlayer.bind(this));
     this.registerClass('GgCar', this.createGgCar.bind(this));
     this.registerClass('MapGraph', this.createMapGraph.bind(this));
   }
@@ -424,6 +450,65 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
       return undefined;
     }
     const entity = new Camera3dEntity<TypeDoc['vTypeDoc']>(camera);
+    if (position) {
+      entity.position = position;
+    }
+    if (rotation) {
+      entity.rotation = rotation;
+    }
+    return entity;
+  }
+
+  /**
+   * Create a `"Player"` entity: a capsule-shaped `CharacterController3dEntity`, with a matching
+   * auto-generated capsule mesh when `display` is given and there's a visual scene (physics-only/
+   * invisible otherwise). See `Player3DSettings`'s doc for why this doesn't also build a
+   * `PlayerCharacterController`.
+   * @param world - The world instance
+   * @param settings - The player settings
+   * @returns The created character entity
+   */
+  private createPlayer(
+    world: Gg3dWorld<TypeDoc>,
+    settings: Player3DSettings,
+  ): CharacterController3dEntity<TypeDoc> | undefined {
+    const {
+      position,
+      rotation,
+      radius = 0.4,
+      centersDistance = 1.0,
+      offset,
+      maxStepHeight,
+      minStepWidth,
+      maxSlopeClimbAngleRad,
+      snapToGroundDistance,
+      display,
+      ...gameplay
+    } = settings;
+    if (!world.physicsWorld) {
+      return undefined;
+    }
+    const characterController = world.physicsWorld.factory.createCharacterController(
+      { radius, centersDistance, offset, maxStepHeight, minStepWidth, maxSlopeClimbAngleRad, snapToGroundDistance },
+      { position, rotation },
+    );
+    const object3D = world.visualScene
+      ? world.visualScene.factory.createCapsule(radius, centersDistance, display)
+      : null;
+    const entity = new CharacterController3dEntity<TypeDoc>(
+      {
+        radius,
+        centersDistance,
+        offset,
+        maxStepHeight,
+        minStepWidth,
+        maxSlopeClimbAngleRad,
+        snapToGroundDistance,
+        ...gameplay,
+      },
+      object3D,
+      characterController,
+    );
     if (position) {
       entity.position = position;
     }

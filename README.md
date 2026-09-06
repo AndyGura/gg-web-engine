@@ -292,6 +292,8 @@ Basically, everything that listens ticks and can be added/removed from world. Bu
 - **[RaycastVehicle3dEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/raycast-vehicle-3d.entity.ts/#raycastvehicle3dentity-class)** a general entity with raycast vehicle. Encapsulates positioning binding for chassis and wheels meshes, provides simplified interface for applying engine or brake forces
 - **[GgCarEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/gg-car/gg-car.entity.ts/#ggCarentity-class)** a more sophisticated 4-wheel car which simulates engine with torque table, gear box etc.
 - **[SurfaceFollowingEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/surface-following.entity.ts/#surfacefollowingentity-class)** An entity which simulates smooth surface collider, declared parametrically
+- **[CharacterController3dEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/character-controller-3d.entity.ts/#charactercontroller3dentity-class)** a capsule-bodied, physics-driven character (walk/run/crouch/jump/gravity), backend-agnostic on top of any adapter implementing `ICharacterController3dComponent`
+- **[PlayerCharacterController](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/controllers/input/player-character.controller.ts/#playercharactercontroller-class)** WASD/arrows/both movement, sprint/crouch/jump keys and mouse-look for a **CharacterController3dEntity**, with first- and third-person camera modes (the latter with camera-collision avoidance)
 
 ### [Input](https://andygura.github.io/gg-web-engine/modules/core/base/inputs/input.ts/)
 Input is a class, responsible for handling external actions, such as mouse move, key presses, gamepad interactions etc.
@@ -362,9 +364,11 @@ provide custom console commands using `GgStatic.instance.registerConsoleCommand`
 | `gravity` | `?float, ?float` | Get or set 2D world gravity vector. 1 argument sets vector {x: 0, y: value}, 2 arguments sets the whole vector. Default value is "9.82" or "0 9.82" |
 
 #### Default 3D world-specific console commands
-| Command   | Arguments                | Description                                                                                                                                                  |
-|-----------|--------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `gravity` | `?float, ?float, ?float` | Get or set 3D world gravity vector. 1 argument sets vector {x: 0, y: 0, z: -value}, 3 arguments set the whole vector. Default value is "9.82" or "0 0 -9.82" |
+| Command        | Arguments                              | Description                                                                                                                                                  |
+|----------------|-----------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `gravity`      | `?float, ?float, ?float`                | Get or set 3D world gravity vector. 1 argument sets vector {x: 0, y: 0, z: -value}, 3 arguments set the whole vector. Default value is "9.82" or "0 0 -9.82" |
+| `spawn_player` | `float, float, float`                   | Spawn a default player character (capsule body, WASD/arrows movement, mouse-look) at world-space coordinates, controlling the first renderer's camera        |
+| `player_mode`  | `string, first-person\|third-person`    | Switch a named `PlayerCharacterController` entity (as returned by `spawn_player`) between first- and third-person view                                       |
 
 ## ❓ FAQ
 ### How to access integration module native objects?

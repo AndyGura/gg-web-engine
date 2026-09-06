@@ -1,6 +1,6 @@
 ---
 name: gg-engine-level-json
-description: Author or load a level/scene as a JSON document with gg-web-engine's LevelLoader (entities array, built-in "Primitive"/"Trigger"/"Camera"/"Glb"/"GgCar"/"MapGraph" classes, app-defined entity classes via registerClass, blueprint graphs wired to entity events via registerBlueprintNode, name lookup via GgWorld.getEntityByName/IEntity.getChildEntityByName, level removal via the returned group entity). Use when the task is to write a level JSON file, add a new built-in level entity class in packages/core, wire an entity's event straight to behavior via a blueprint, or register a custom entity class/blueprint node an app's level JSON can reference.
+description: Author or load a level/scene as a JSON document with gg-web-engine's LevelLoader (entities array, built-in "Primitive"/"Trigger"/"Camera"/"Player"/"Glb"/"GgCar"/"MapGraph" classes, app-defined entity classes via registerClass, blueprint graphs wired to entity events via registerBlueprintNode, name lookup via GgWorld.getEntityByName/IEntity.getChildEntityByName, level removal via the returned group entity). Use when the task is to write a level JSON file, add a new built-in level entity class in packages/core, wire an entity's event straight to behavior via a blueprint, or register a custom entity class/blueprint node an app's level JSON can reference.
 ---
 
 # Building level JSONs
@@ -173,6 +173,44 @@ independent of any one swappable level:
   (lighting, persistent UI, global triggers). Since multiple levels can be loaded side by side,
   gameplay levels can then be freely loaded/unloaded against `world.loader.loadLevel(...)` /
   `world.removeEntity(gameplayLevel, true)` without ever touching the system level or its camera.
+
+### `"Player"` (3D only) - a capsule-bodied `CharacterController3dEntity`, ready to use
+
+```json
+{
+  "class": "Player",
+  "name": "Player",
+  "position": { "x": 0, "y": 0, "z": 2 },
+  "config": {
+    "radius": 0.4,
+    "centersDistance": 1.0,
+    "walkSpeed": 4,
+    "jumpSpeed": 5,
+    "display": { "color": 3381606 }
+  }
+}
+```
+
+`config` (`Player3DSettings`): `radius`/`centersDistance` (capsule dimensions, default `0.4`/`1.0`),
+plus every gameplay field `CharacterController3dEntity` itself takes (`walkSpeed`,
+`runSpeedMultiplier`, `crouchSpeedMultiplier`, `crouchCentersDistance`, `crouchMode`, `jumpSpeed`,
+`gravity`, `airControlFactor`) and the underlying mover's tuning (`offset`, `maxStepHeight`,
+`minStepWidth`, `maxSlopeClimbAngleRad`, `snapToGroundDistance`) - see that class's own doc for
+defaults. `display` (optional, `DisplayObject3dOpts`) builds a matching capsule mesh via
+`visualScene.factory.createCapsule`; omit it for a physics-only, invisible character.
+
+Unlike `"GgCar"`, this only builds the physics+visual capsule - **not** the keyboard/mouse/camera
+wiring (`PlayerCharacterController`), since that inherently needs a live canvas/`KeyboardInput`/
+renderer the level JSON has no notion of, the same reason `"Camera"` above only builds a positioned
+`Camera3dEntity` while `FreeCameraController`/`OrbitCameraController` wiring happens in app code.
+Look the character up once the level is loaded and wrap it yourself:
+
+```typescript
+const player = level.getChildEntityByName<CharacterController3dEntity>('Player');
+const renderer = world.addRenderer(cameraEntity.camera, canvas);
+const controller = new PlayerCharacterController(world.keyboardInput, player, renderer, { mouseOptions: { canvas } });
+world.addEntity(controller);
+```
 
 ### `"Glb"` (3D only) - a GG GLB+meta model, loaded and added to the world
 
@@ -477,8 +515,8 @@ await world.loader.loadLevel(level); // level has an entity with "class": "Shape
 ```
 
 There's nothing engine-specific about `ShapeSpawner` here - it's ordinary app code, registered the
-same way the built-in `"Primitive"`/`"Trigger"`/`"Camera"`/`"Glb"`/`"GgCar"`/`"MapGraph"` classes
-are internally.
+same way the built-in `"Primitive"`/`"Trigger"`/`"Camera"`/`"Player"`/`"Glb"`/`"GgCar"`/`"MapGraph"`
+classes are internally.
 Extending `IEntity` is what makes it eligible to be parented under the level's group (so
 `world.removeEntity(level, true)` disposes it - and, via the `dispose` override, stops its clock -
 along with the rest of the level) and findable via `level.getChildEntityByName`/
@@ -528,12 +566,15 @@ own coverage against a hand-rolled node type in
 `IEntity.getChildEntityByName` themselves have their own direct coverage in
 `packages/core/test/base/gg-world.spec.ts` and `packages/core/test/base/entities/i-entity.spec.ts`.
 `packages/core/test/{2d,3d}/level-loader.spec.ts` cover the built-in
-`"Primitive"`/`"Trigger"`/`"Camera"`/`"GgCar"`/`"MapGraph"` classes against hand-rolled mock worlds
-(there, `addEntity`/`removeEntity` are plain `jest.fn()` stubs - fine since those tests only care
-about generator dispatch, not full spawn semantics); the `"GgCar"` cases stub
+`"Primitive"`/`"Trigger"`/`"Camera"`/`"Player"`/`"GgCar"`/`"MapGraph"` classes against hand-rolled
+mock worlds (there, `addEntity`/`removeEntity` are plain `jest.fn()` stubs - fine since those tests
+only care about generator dispatch, not full spawn semantics); the `"GgCar"` cases stub
 `physicsWorld.factory.createRigidBody`/`createRaycastVehicle` and
 `visualScene.factory.createBox`/`createCylinder`, reusing `mockRaycastVehicle` from
-`packages/core/test/mocks/raycast-vehicle.mock.ts` for the vehicle component the generator wraps.
+`packages/core/test/mocks/raycast-vehicle.mock.ts` for the vehicle component the generator wraps;
+the `"Player"` case similarly stubs `physicsWorld.factory.createCharacterController` and
+`visualScene.factory.createCapsule`, reusing `mockCharacterController` from
+`packages/core/test/mocks/character-controller.mock.ts`.
 `packages/core/test/3d/loader.spec.ts` covers `Gg3dLoader` - the `"Glb"` class, and that
 `registerClass`/`loadLevel`/`loadLevelFromUrl` are available directly on it - stubbing `loadGgGlb`
 itself rather than the whole fetch/parse pipeline (which has no tests of its own - see

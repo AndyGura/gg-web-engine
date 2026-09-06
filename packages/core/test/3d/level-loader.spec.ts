@@ -1,5 +1,6 @@
 import {
   Camera3dEntity,
+  CharacterController3dEntity,
   Gg3dLevelLoader,
   Gg3dWorld,
   GgCarEntity,
@@ -13,6 +14,7 @@ import {
 import { mock3DBody } from '../mocks/body.mock';
 import { mock3DObject } from '../mocks/object.mock';
 import { mockRaycastVehicle } from '../mocks/raycast-vehicle.mock';
+import { mockCharacterController } from '../mocks/character-controller.mock';
 
 const defaultBody = {
   dynamic: true,
@@ -40,6 +42,7 @@ describe('Gg3dLevelLoader', () => {
           createPerspectiveCamera: jest.fn().mockReturnValue(mock3DObject()),
           createBox: jest.fn().mockReturnValue(mock3DObject()),
           createCylinder: jest.fn().mockReturnValue(mock3DObject()),
+          createCapsule: jest.fn().mockReturnValue(mock3DObject()),
         },
       },
       physicsWorld: {
@@ -47,6 +50,7 @@ describe('Gg3dLevelLoader', () => {
           createTrigger: jest.fn().mockReturnValue(mock3DBody()),
           createRigidBody: jest.fn().mockReturnValue(mock3DBody()),
           createRaycastVehicle: jest.fn().mockReturnValue(mockRaycastVehicle()),
+          createCharacterController: jest.fn().mockReturnValue(mockCharacterController()),
         },
       },
       addPrimitiveRigidBody: jest.fn().mockImplementation(() => new TestEntity()),
@@ -240,6 +244,32 @@ describe('Gg3dLevelLoader', () => {
       expect(cameraEntity).toBeInstanceOf(Camera3dEntity);
       expect(cameraEntity.position).toEqual({ x: 1, y: 2, z: 3 });
       expect(cameraEntity.rotation).toEqual({ x: 0, y: 0, z: 0, w: 1 });
+    });
+
+    it('should load a level with a Player, wrapped ready-to-use in a CharacterController3dEntity parented under the level', async () => {
+      const levelJson: LevelJson = {
+        entities: [
+          {
+            class: 'Player',
+            position: { x: 1, y: 2, z: 3 },
+            name: 'TestPlayer',
+            config: { radius: 0.4, centersDistance: 1.2, walkSpeed: 5 },
+          },
+        ],
+      };
+
+      const level = await levelLoader.loadLevel(levelJson);
+
+      expect(world.physicsWorld?.factory.createCharacterController).toHaveBeenCalledWith(
+        expect.objectContaining({ radius: 0.4, centersDistance: 1.2 }),
+        { position: { x: 1, y: 2, z: 3 }, rotation: undefined },
+      );
+      expect(world.visualScene?.factory.createCapsule).toHaveBeenCalledWith(0.4, 1.2, undefined);
+
+      const player = level.getChildEntityByName<CharacterController3dEntity>('TestPlayer');
+      expect(player).toBeInstanceOf(CharacterController3dEntity);
+      expect(player.position).toEqual({ x: 1, y: 2, z: 3 });
+      expect(player.options.walkSpeed).toBe(5);
     });
 
     // Common car fields shared by both wheelBase- and wheelOptions-based GgCar tests

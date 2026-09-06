@@ -1,6 +1,7 @@
 import { AmmoRigidBodyComponent } from './components/ammo-rigid-body.component';
 import { AmmoTriggerComponent } from './components/ammo-trigger.component';
 import { AmmoRaycastVehicleComponent } from './components/ammo-raycast-vehicle.component';
+import { AmmoCharacterControllerComponent } from './components/ammo-character-controller.component';
 import { AmmoFactory } from './ammo-factory';
 import { AmmoLoader } from './ammo-loader';
 import { Gg3dWorld, Gg3dWorldSceneTypeDocPPatch, Gg3dWorldTypeDocPPatch } from '@gg-web-engine/core';
@@ -12,6 +13,7 @@ export type AmmoPhysicsTypeDocRepo = {
   rigidBody: AmmoRigidBodyComponent;
   trigger: AmmoTriggerComponent;
   raycastVehicle: AmmoRaycastVehicleComponent;
+  characterController: AmmoCharacterControllerComponent;
 };
 
 export type AmmoTypeDoc = Gg3dWorldTypeDocPPatch<AmmoPhysicsTypeDocRepo>;

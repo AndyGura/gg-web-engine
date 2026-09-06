@@ -31,6 +31,7 @@ packages/<lib>/
       <lib>-rigid-body.component.ts     # implements IRigidBody(2d|3d)Component
       <lib>-trigger.component.ts        # implements ITrigger(2d|3d)Component
       <lib>-raycast-vehicle.component.ts  # 3D only: implements IRaycastVehicleComponent
+      <lib>-character-controller.component.ts  # 3D only: implements ICharacterController3dComponent
 ```
 
 ## The TypeDocRepo you must define
@@ -42,6 +43,7 @@ export type <Lib>PhysicsTypeDocRepo = {
   trigger: <Lib>TriggerComponent;
   // 3D only:
   raycastVehicle?: <Lib>RaycastVehicleComponent;
+  characterController?: <Lib>CharacterControllerComponent;
 };
 ```
 
@@ -92,6 +94,142 @@ native engine's collision-event mechanism into an RxJS-based interface matching
 `ITriggerComponent`, enabling the native "collision events" flag on the collider at creation time
 (see `Rapier2dFactory.createTrigger` calling `colliderDescr.setActiveEvents(ActiveEvents.
 COLLISION_EVENTS)`).
+
+## Character controller component (3D only)
+
+`ICharacterController3dComponent` (`packages/core/src/3d/components/physics/i-character-controller-3d.component.ts`)
+is a capsule-shaped kinematic "move and collide" primitive, parallel to `IRaycastVehicleComponent`.
+Its defining constraint: **`move(desiredTranslation)` must be fully synchronous** — `position`,
+`rotation`, `isGrounded` and `groundNormal` must already reflect the result by the time `move()`
+returns, with no dependency on a later `IPhysicsWorld3dComponent.simulate()` call. All gravity/jump/
+speed integration lives once, backend-agnostically, in core's `CharacterController3dEntity`, which
+calls `move()` once per tick with the full desired displacement already computed (including any
+vertical/jump/gravity component) — the adapter component must not apply any gravity of its own.
+
+For a WASM/native engine whose usual character-controller pattern is "stage a kinematic move, then
+resolve it as part of the next `world.step()`" (Rapier, and likely others), reconcile that with the
+synchronous contract like this (see `Rapier3dCharacterControllerComponent`):
+
+- Build the character from an actual kinematic rigid body (`RigidBodyDesc.kinematicPositionBased()`
+  or equivalent) with the shape collider attached — reuse the adapter's existing `CAPSULE` mapping
+  from `createColliderDescr` rather than duplicating it.
+- Inside `move()`, run the engine's own sweep/collision-resolution call (Rapier:
+  `KinematicCharacterController.computeColliderMovement` → `computedMovement()`/
+  `computedGrounded()`), then apply the resulting position with an **immediate** transform setter
+  (Rapier: `RigidBody.setTranslation(next, true)`, not `setNextKinematicTranslation` alone — the
+  "next kinematic" family of setters only takes effect once a subsequent `world.step()` integrates
+  it, which would violate the synchronous contract). Call both if the engine offers it: the
+  immediate setter for correctness right now, and the "next kinematic" one too so dynamic bodies the
+  character pushes still get a reasonable velocity estimate whenever the next real `world.step()`
+  does run — this is a nice-to-have, not load-bearing.
+- After moving the body directly (in `move()`, and in any `position`/`rotation` setter), explicitly
+  propagate that change to the collider/broad-phase state the engine's sweep query reads, without
+  running a full simulation step. Check the exact API name at the pinned version — see the pitfall
+  below for Rapier specifically, since it has changed across releases and easy-to-find example code
+  may reference a newer/older name than what's actually pinned.
+- Ground normal: most engines' character controllers don't expose a single "the ground normal" —
+  only a list of per-obstacle collisions from the last sweep, each with its own contact normal.
+  Best-effort approach: scan those collisions for one whose normal points roughly along `up` (i.e. a
+  floor, not a wall) and use that; fall back to plain `up` if grounded with no such collision on
+  record (e.g. snapped to ground without an explicit sweep hit that tick), or `null` if not grounded.
+  Document this as a known limitation rather than chasing exactness.
+- `up`/`maxStepHeight`+`minStepWidth`/`maxSlopeClimbAngleRad`/`snapToGroundDistance` map directly onto
+  whatever setup calls the native controller exposes (Rapier: `setUp`, `enableAutostep(maxHeight,
+  minWidth, includeDynamicBodies)`, `setMaxSlopeClimbAngle`, `enableSnapToGround(distance)` — skip
+  the autostep/snap-to-ground calls entirely when the corresponding option is `0`/falsy rather than
+  passing a zero value through, since "enabled with distance 0" and "disabled" are not obviously the
+  same thing to every engine).
+- Rotation: verify (don't assume) whether the native engine's sweep test is orientation-sensitive for
+  this shape. A capsule aligned with `up` has an identical collision footprint at any yaw, so setting
+  the body's own rotation is purely so a debug view / anything reading the native transform directly
+  stays in sync with a caller-driven yaw (e.g. camera-driven) — it should have zero effect on
+  `move()`'s sweep results. Confirm this holds for the specific engine rather than taking it on faith.
+- `children`/`added$`/`removed$` on the world component: this new component is a different class from
+  the existing `rigidBody`, so keeping "children stays in sync" (see the World component section
+  above) requires widening those three members' element type to a union including the new component
+  class — safe to do (see the circular-import note two sections up: rigid body ↔ world component
+  already import each other by class for the same reason). Registering the character's native handle
+  in the raycast reverse-map (so `world.raycast()` can resolve a hit back to it) is optional scope —
+  reasonable to skip and document as a limitation, since it would otherwise force widening that map's
+  and `raycast()`'s return-type generics for a corner case outside the interface's actual contract.
+
+### Pitfall: a freshly-created collider is invisible to sweeps/raycasts until the world steps once
+
+Hit implementing `Rapier3dCharacterControllerComponent`: calling `move()` immediately after creating
+both the character and its floor/wall geometry (no `world.step()`/`simulate()` ever having run)
+always returned the full, uncollided desired translation — the sweep silently found nothing to hit.
+This is not specific to character controllers: the exact same thing happens to
+`Rapier3dWorldComponent.raycast()` against a same-tick-created collider (confirmed empirically; it's
+why the existing raycast tests in `rapier-3d-world.component.spec.ts` all call `world.simulate(1)`
+before raycasting). In this pinned `@dimforge/rapier3d-compat` build, a collider's AABB only actually
+enters the broad-phase as part of running `World.step()` at least once — there is no
+`QueryPipeline`/`updateSceneQueries()`-style "just rebuild the query structure" call exposed on this
+version (older Rapier releases and some example code floating around *do* have a separate
+`QueryPipeline` object with an `update()`/`updateSceneQueries()` method — that API does not exist on
+the version actually pinned here; check `node_modules/@dimforge/rapier3d-compat/dist/pipeline/
+world.d.ts` directly rather than trusting an example project's `node_modules`, which may have
+resolved a different/newer build under the same version string). The fix used for keeping `move()`
+itself synchronous (re-propagating collider transforms after directly setting a kinematic body's
+translation) is `World.propagateModifiedBodyPositionsToColliders()` — but that call only re-syncs a
+collider's position from its already-registered parent body; it does not newly register a collider
+that has never been through a `step()` at all. Practical implication: a level's static geometry (or
+the character itself) needs at least one `physicsWorld.simulate()` call — even `simulate(0)`, a
+zero-length timestep works fine and moves nothing — sometime after being added and before the first
+`move()`/`raycast()` that depends on seeing it; a normal per-frame game loop already satisfies this
+after its first tick, so this only bites synthetic same-tick test setups (see the test file for how
+to structure a `settleWorld()` no-simulate()-in-between-moves helper around it) or a character
+spawned and moved on the very first frame before physics has ever ticked once. The exact same
+one-time-registration quirk exists in this package's pinned Ammo.js build too (every existing
+`AmmoRaycastVehicleComponent`/`world.raycast()` test already calls `world.simulate(1)` once after
+`addToWorld()` for the same reason) — the `settleWorld()` pattern applies equally there.
+
+### Pitfall (Ammo only): `btKinematicCharacterController` produced zero collision response in this build
+
+Implementing `AmmoCharacterControllerComponent`, the "obvious" approach — a `btPairCachingGhostObject`
++ capsule shape driven by Bullet's own `btKinematicCharacterController` via `setWalkDirection()` then
+directly calling `preStep(collisionWorld)`/`playerStep(collisionWorld, dt)` (never `world.addAction`/
+`stepSimulation`, to keep `move()` synchronous — same reasoning as the Rapier section above) —
+compiled and ran, but produced **no collision response at all**, for both vertical (falling through a
+static floor) and horizontal (walking straight through a wall) motion, verified empirically with a
+minimal standalone repro against this package's actual pinned Ammo.js WASM build. `controller.
+onGround()` also reported stale/incorrect state throughout (`true` immediately at construction, in
+mid-air, before any `preStep` ever ran). The ghost object's own `getNumOverlappingObjects()` stayed
+at `0` before and after `preStep` in every case, suggesting the class's internals depend on its
+`btGhostObject` overlapping-pairs cache (populated by broadphase pair maintenance, which nothing here
+ever triggers, matching the "no `world.addAction`" design) even though its main step logic is
+documented/believed to use `btCollisionWorld::convexSweepTest` — a **direct** `convexSweepTest` call
+against the identical shape/world/transforms, by contrast, correctly detected the same floor/wall
+every time. Root cause not fully isolated (plausibly that dependency, or a build-specific issue with
+this class in the vendored WASM binary) — not worth chasing further given a working alternative
+exists.
+
+**Fix used**: drop `btKinematicCharacterController` entirely and implement the mover directly as a
+sequence of `btCollisionWorld.convexSweepTest` calls (`AmmoCharacterControllerComponent`'s `sweep()`
+helper — construct `btTransform` from/to, a `ClosestConvexResultCallback` with the character's own
+`_ownCGsMask`/`_interactWithCGsMask` copied onto `set_m_collisionFilterGroup`/`set_m_collisionFilterMask`,
+read `hasHit()`/`get_m_closestHitFraction()`/`get_m_hitNormalWorld()`, destroy all three Ammo objects
+after). Movement is split into a horizontal sweep (with one step-up-and-retry pass for ledges up to
+`maxStepHeight`, and one slide bounce along the hit plane's tangent when blocked) and a vertical sweep
+(gravity/jump, also used to detect ground), plus a fallback downward raycast (via the existing
+`IPhysicsWorld3dComponent.raycast()`, which already works reliably) approximating `snapToGroundDistance`
+for a stationary/near-ground character with no explicit vertical input that tick. The ghost object is
+still created and added to the collision world — it's just a transform/collision-object identity now,
+not driven by the removed class. A `btPairCachingGhostObject` is not actually required for this
+approach (a plain `btGhostObject` would do), but there's no reason to change it once a
+`btPairCachingGhostObject` is already in hand.
+
+**Pitfall inside that fix**: `convexSweepTest`'s `allowedCcdPenetration` parameter (passed as this
+component's `offset`/skin value) lets the capsule end up resting *already slightly inside* whatever it
+swept into — by exactly that amount (e.g. a resting `z` of `0.89` instead of the geometrically exact
+`0.9` for a `0.01` offset). A ground-snap raycast whose `from` point is derived from that
+already-slightly-penetrating position (even nudged up by only the same skin amount) starts *inside*
+the floor's collision shape — and a ray that begins inside a shape does not register an entry hit
+against it, so the snap silently always missed (character correctly fell/settled once via the main
+vertical sweep, then immediately read back `isGrounded: false` on the very next horizontal-only move,
+since nothing re-derives groundedness from a stale sweep result). Fix: start the snap ray comfortably
+above the theoretical resting bottom (`max(skin * 4, 0.02)`, not just `skin`) — enough margin to clear
+the sweep's own allowed penetration in the worst case — before sweeping down through
+`snapToGroundDistance`.
 
 ## Factory — shape and body-options mapping
 
@@ -167,6 +305,17 @@ against the real native engine headlessly. Mirror `packages/rapier2d/test/compon
   and a trigger for every `Shape(2D|3D)Descriptor` variant the adapter implements is worth adding
   too — it catches a shape mapping that throws or silently no-ops without needing a physically
   meaningful scenario for each one (see `packages/ammo/test/ammo-factory.spec.ts`).
+- For a 3D adapter that implements `ICharacterController3dComponent`, also add
+  `<lib>-character-controller.component.spec.ts` (see
+  `packages/rapier3d/test/components/rapier-3d-character-controller.component.spec.ts`): settling
+  onto a flat floor with a correct grounded state/ground normal, sliding to a stop against a wall
+  instead of passing through it, stepping up a ledge shorter than `maxStepHeight`, and — the most
+  important one, since it's a regression test for the interface's core contract — asserting
+  `position`/`isGrounded` are already fully resolved right after a `move()` call with **no**
+  `world.simulate()` call anywhere near it. Remember the broad-phase-registration pitfall above:
+  call `world.simulate(0)` once after creating geometry/the character and before the first `move()`
+  in each test (representing "the world was already running"), but never in between/after `move()`
+  calls, or the synchronous-contract regression test stops actually testing anything.
 
 Use `jest` + `jest-environment-jsdom` (see any adapter's `package.json` devDependencies) — WASM
 engines run fine in that environment.
