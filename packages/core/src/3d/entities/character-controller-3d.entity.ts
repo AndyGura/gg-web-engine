@@ -26,19 +26,22 @@ export type CharacterController3dEntityOptions = CharacterController3dOptions & 
    * Default `'hold'`.
    */
   crouchMode: 'hold' | 'toggle';
-  /** Takeoff vertical speed applied by `jump()`, in m/s. Default 5. */
+  /** Takeoff vertical speed applied by `jump()`, in m/s, launched along `up` opposing gravity. Default 5. */
   jumpSpeed: number;
   /**
-   * Downward acceleration integrated while airborne, in m/s², **overriding** the world's own
-   * `physicsWorld.gravity` for this character. Leave `undefined` (the default) to instead track
-   * `physicsWorld.gravity`'s own component along `up` every tick - so the world's gravity vector
-   * (including live changes via the `gravity` dev-console command) affects this character exactly
-   * like it would a dynamic rigid body, direction and magnitude alike. This character's underlying
-   * `characterController` is always a kinematic mover unaffected by the physics engine's own
-   * gravity integration (see `ICharacterController3dComponent`'s doc), which is why this entity
-   * must read and apply gravity itself rather than relying on the backend to do it - only set this
-   * to a number when a character deliberately needs a gravity scale different from the rest of the
-   * world (e.g. floatier low-gravity player).
+   * Downward acceleration integrated while airborne, in m/s², straight along `up` (no horizontal
+   * component), **overriding** the world's own `physicsWorld.gravity` for this character. Leave
+   * `undefined` (the default) to instead track `physicsWorld.gravity` live every tick, full vector
+   * - direction, magnitude, *and* any horizontal component - exactly like it would affect a dynamic
+   * rigid body (including live changes via the `gravity` dev-console command). A tilted/non-vertical
+   * `physicsWorld.gravity` therefore drags this character sideways while airborne or sliding down a
+   * too-steep surface, not just downward - see `CharacterController3dEntity`'s class doc. This
+   * character's underlying `characterController` is always a kinematic mover unaffected by the
+   * physics engine's own gravity integration (see `ICharacterController3dComponent`'s doc), which is
+   * why this entity must read and apply gravity itself rather than relying on the backend to do it -
+   * only set this to a number when a character deliberately needs a gravity scale different from the
+   * rest of the world (e.g. floatier low-gravity player); a numeric override is always straight down
+   * along `up`, with no horizontal drag.
    */
   gravity: number | undefined;
   /** Horizontal move-speed multiplier applied while airborne (0..1). Default 0.3. */
@@ -72,9 +75,16 @@ const DEFAULT_OPTIONS: Required<
  * the backend-specific component). Reusable for the player (see `PlayerCharacterController`, which
  * adds keyboard/mouse input and a camera on top of this) or for an NPC driven by AI logic instead.
  *
+ * Gravity is integrated as a full 3D vector (`gravityVector`/`_fallVelocity`), not just its
+ * component along `up`: a tilted `physicsWorld.gravity` drags the character sideways while airborne,
+ * and standing on a surface steeper than `maxSlopeClimbAngleRad` (re-checked here every tick via
+ * `isWalkableGround`, regardless of what an adapter's own `isGrounded` reports) is treated as not
+ * stably grounded, so the character slides/falls down it under gravity instead of clinging to it -
+ * see `updateMovement`'s doc for the exact resting-vs-falling rule.
+ *
  * `moveDirection` is local-space (rotated by `this.rotation` internally): local +Y is "forward" at
  * zero yaw, local +X is "right" at zero yaw, local Z is unused (always ignored - vertical motion is
- * handled separately, see below) - the same right=X/forward=Y/up=Z axis paradigm
+ * handled separately, see above) - the same right=X/forward=Y/up=Z axis paradigm
  * `RaycastVehicle3dEntity`/`GgCarEntity` use (see e.g. `AmmoRaycastVehicleComponent`'s
  * `setCoordinateSystem(0, 2, 1)`), **not** the camera/`FreeCameraController` convention (local -Z
  * forward, local Y up) - that convention matches a camera's rest orientation (forward down local
@@ -101,7 +111,14 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
 
   private _isCrouching: boolean = false;
   private _wantsToStand: boolean = false;
-  private _verticalVelocity: number = 0;
+  /** Full 3D velocity accumulated from gravity (and jump takeoff) while not stably resting on a
+   * walkable surface - see `updateMovement`'s doc for why this is a full vector, not just a scalar
+   * along `up`. */
+  private _fallVelocity: Point3 = Pnt3.O;
+  /** Set by `jump()`, consumed and cleared by the very next `updateMovement` tick - lets that tick
+   * tell a genuine same-frame jump apart from an ordinary landing, without relying on fragile sign
+   * comparisons against a possibly-zero `gravityAlongUp` (see `updateMovement`). */
+  private _justJumped: boolean = false;
 
   public get isCrouching(): boolean {
     return this._isCrouching;
@@ -211,57 +228,95 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
   }
 
   /**
-   * This character's current gravitational acceleration along `up` (positive = accelerating
-   * upward), signed so `_verticalVelocity += gravityAlongUp * dt` is always the right update
-   * regardless of the world's gravity direction. Uses `options.gravity` (interpreted as a downward
-   * magnitude) when explicitly set; otherwise derives it live from `physicsWorld.gravity`'s own
-   * component along `up`, so the world's gravity vector - including a live change via the `gravity`
-   * dev-console command - affects this character the same tick it changes. See `gravity`'s own doc
-   * on `CharacterController3dEntityOptions` for why a kinematic character controller needs this at
-   * all rather than getting gravity from the physics engine for free.
+   * This character's current gravitational acceleration as a full 3D vector - **not** just its
+   * component along `up`. Uses `options.gravity` (interpreted as a downward magnitude straight
+   * along `up`, no horizontal component) when explicitly set; otherwise tracks
+   * `physicsWorld.gravity` live, direction and magnitude alike - including any horizontal
+   * component, so a tilted/non-vertical world gravity vector actually drags the character sideways
+   * instead of only affecting its fall speed (a kinematic character controller gets no gravity from
+   * the physics engine for free - see `gravity`'s own doc on `CharacterController3dEntityOptions`
+   * for why this entity must read and integrate it itself).
+   */
+  private get gravityVector(): Point3 {
+    if (this.options.gravity !== undefined) {
+      return Pnt3.scalarMult(this.characterController.up, -this.options.gravity);
+    }
+    return this.world?.physicsWorld?.gravity ?? Pnt3.O;
+  }
+
+  /**
+   * `gravityVector`'s own component along `up` (positive = accelerating upward) - the part of
+   * gravity that presses the character into/away from the ground it's standing on, and the part
+   * `jump()` launches directly against. See `gravityVector`'s doc for the horizontal component this
+   * deliberately excludes.
    */
   private get gravityAlongUp(): number {
-    if (this.options.gravity !== undefined) {
-      return -this.options.gravity;
-    }
-    const worldGravity = this.world?.physicsWorld?.gravity ?? Pnt3.O;
-    return Pnt3.dot(worldGravity, this.characterController.up);
+    return Pnt3.dot(this.gravityVector, this.characterController.up);
+  }
+
+  /**
+   * Whether the current `groundNormal` is shallow enough to walk on, per `maxSlopeClimbAngleRad`.
+   * `false` while airborne (`groundNormal` is `null` then). This is re-checked here at the entity
+   * level - on top of whatever slope handling an adapter's own `move()` already does internally -
+   * so a character resting against a normal steeper than the configured limit (e.g. balanced right
+   * at the silhouette edge of a curved surface like a sphere or cylinder, where the contact normal
+   * can be far steeper than the surface looks from a distance) is never treated as stably grounded
+   * regardless of adapter, and instead slides per `updateMovement`'s gravity integration below.
+   */
+  private get isWalkableGround(): boolean {
+    const normal = this.groundNormal;
+    return normal !== null && Pnt3.angle(normal, this.characterController.up) <= this.options.maxSlopeClimbAngleRad;
   }
 
   /** Triggers a jump (a takeoff velocity away from the ground, opposing gravity) only while grounded; a no-op mid-air. */
   public jump(): void {
     if (this.isGrounded) {
+      const up = this.characterController.up;
       // launch opposite whichever way gravity currently pulls (normally "up"), so this still does
       // the right thing under an inverted/overridden gravity vector; with no gravity at all
       // (exactly 0), default to "up" like the ordinary case, rather than flipping on the `0`/`-0`
       // sign edge case
       const direction = this.gravityAlongUp > 0 ? -1 : 1;
-      this._verticalVelocity = direction * this.options.jumpSpeed;
+      // replace only the along-`up` component of the current fall velocity, preserving any
+      // horizontal drift accumulated from a tangential gravity pull (e.g. sliding off a steep
+      // slope) - a jump shouldn't cancel sideways momentum, just add vertical takeoff speed
+      const currentAlongUp = Pnt3.dot(this._fallVelocity, up);
+      this._fallVelocity = Pnt3.add(
+        this._fallVelocity,
+        Pnt3.scalarMult(up, direction * this.options.jumpSpeed - currentAlongUp),
+      );
+      this._justJumped = true;
     }
   }
 
   private updateMovement(deltaMs: number): void {
     const dt = deltaMs / 1000;
     const up = this.characterController.up;
-    const gravityAlongUp = this.gravityAlongUp;
-    // Being `isGrounded` only actually holds the character in place while gravity still presses it
-    // into the surface underfoot (the ordinary case, `gravityAlongUp <= 0` against a floor below -
-    // note a floor's own outward normal is always within `maxSlopeClimbAngleRad` of `up` whenever
-    // grounded, by definition of "grounded"). If gravity is overridden/changed (e.g. live, via the
-    // `gravity` dev-console command) to instead pull *away* from that surface, the ground can no
-    // longer hold the character there - treat this exactly like being airborne (free to accelerate
-    // away) rather than getting stuck floating in place against a floor gravity no longer presses it
-    // into, which is what naively gating on the raw `isGrounded` flag alone would do.
-    const restingOnGround = this.isGrounded && gravityAlongUp <= 0;
+    const gravityVector = this.gravityVector;
+    const gravityAlongUp = Pnt3.dot(gravityVector, up);
+    // Being `isGrounded` only actually holds the character in place while (a) gravity still presses
+    // it into the surface underfoot (`gravityAlongUp <= 0` against a floor below - if gravity is
+    // overridden/changed live, e.g. via the `gravity` dev-console command, to instead pull *away*
+    // from that surface, the ground can no longer hold the character there), and (b) the surface is
+    // shallow enough to stand on (`isWalkableGround` - see its doc for why this is re-checked here
+    // rather than trusted from the adapter alone). Anything else is treated like being airborne:
+    // free to accelerate away/downhill, rather than getting stuck floating or clinging to a surface
+    // too steep to actually stand on, which naively gating on the raw `isGrounded` flag alone would
+    // do.
+    const restingOnGround = this.isGrounded && this.isWalkableGround && gravityAlongUp <= 0;
 
-    // clamp settling/falling velocity on landing (i.e. velocity still pushing into the ground), but
-    // never clobber a just-triggered jump (velocity pulling away from the ground)
-    if (restingOnGround && gravityAlongUp !== 0 && Math.sign(this._verticalVelocity) === Math.sign(gravityAlongUp)) {
-      this._verticalVelocity = 0;
+    if (restingOnGround && !this._justJumped) {
+      // fully arrest fall velocity - both the settling/landing speed along `up` and any horizontal
+      // drift accumulated from gravity's tangential pull while airborne or sliding - once resting
+      // stably; contact + friction with a walkable surface cancels both. A same-tick jump (tracked
+      // via `_justJumped` rather than a sign comparison, which breaks when `gravityAlongUp` is
+      // exactly `0`) is exempted so it isn't immediately clobbered before the character has had a
+      // chance to actually leave the ground.
+      this._fallVelocity = Pnt3.O;
+    } else if (!restingOnGround) {
+      this._fallVelocity = Pnt3.add(this._fallVelocity, Pnt3.scalarMult(gravityVector, dt));
     }
-    if (!restingOnGround) {
-      this._verticalVelocity += gravityAlongUp * dt;
-    }
+    this._justJumped = false;
 
     let speed = this.options.walkSpeed;
     if (this._isCrouching) {
@@ -275,10 +330,7 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
 
     const localHoriz = Pnt3.norm({ x: this.moveDirection.x, y: this.moveDirection.y, z: 0 });
     const worldHoriz = Pnt3.rot(Pnt3.scalarMult(localHoriz, speed), this.rotation);
-    const desiredTranslation = Pnt3.add(
-      Pnt3.scalarMult(worldHoriz, dt),
-      Pnt3.scalarMult(up, this._verticalVelocity * dt),
-    );
+    const desiredTranslation = Pnt3.add(Pnt3.scalarMult(worldHoriz, dt), Pnt3.scalarMult(this._fallVelocity, dt));
 
     this.characterController.move(desiredTranslation);
 

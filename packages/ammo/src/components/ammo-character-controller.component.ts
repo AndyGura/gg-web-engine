@@ -28,6 +28,15 @@ const DEFAULT_OPTIONS: Required<
   interactWithCollisionGroups: 'all',
 };
 
+// `Ammo.wrapPointer(ptr, Class)` turns a raw numeric handle - what embind actually hands a
+// `ConcreteContactResultCallback::addSingleResult` override, despite the ambient types describing
+// typed object parameters - back into a usable wrapped instance of `Class`. Present at runtime in
+// this package's pinned Ammo.js build (verified empirically), just not declared in
+// `ammo-ambient.d.ts`.
+type AmmoWithWrapPointer = typeof Ammo & {
+  wrapPointer<T>(ptr: number, type: { new (...args: never[]): T }): T;
+};
+
 /** btCollisionObject::CF_CHARACTER_OBJECT - not exposed as a numeric constant by the Ammo.js
  * embind bindings (only as an opaque preprocessor-define string type), so it's inlined here as the
  * literal Bullet uses internally, same as `AmmoTriggerComponent`/`AmmoFactory` do for
@@ -170,7 +179,9 @@ export class AmmoCharacterControllerComponent
     const vertical = Pnt3.scalarMult(up, Pnt3.dot(desiredTranslation, up));
     const horizontal = Pnt3.sub(desiredTranslation, vertical);
 
-    let pos = this.position;
+    // must run before any sweep this tick - see `recoverFromPenetration`'s doc for why a sweep
+    // starting from an already-(even slightly)-penetrating pose is silently unreliable
+    let pos = this.recoverFromPenetration(this.position);
 
     if (Pnt3.len(horizontal) > 1e-9) {
       pos = this.moveHorizontalWithStepAndSlide(pos, horizontal, up, skin);
@@ -189,9 +200,23 @@ export class AmmoCharacterControllerComponent
       const movingDown = Pnt3.dot(vertical, up) < 0;
       const result = this.sweep(pos, Pnt3.add(pos, vertical), skin);
       pos = Pnt3.add(pos, Pnt3.scalarMult(vertical, result.fraction));
-      if (result.hasHit && movingDown && this.isWalkableNormal(result.hitNormal!, up)) {
+      if (result.hasHit && movingDown && result.hitNormal && this.isWalkableNormal(result.hitNormal, up)) {
         grounded = true;
-        groundNormal = result.hitNormal!;
+        groundNormal = result.hitNormal;
+      } else if (result.hasHit && result.fraction < 0.999 && result.hitNormal) {
+        // blocked by a surface too steep to stand on (e.g. falling/pressing straight down onto a
+        // slope beyond maxSlopeClimbAngleRad) - slide the remaining distance along its tangent
+        // instead of just stopping dead pressed against it, so the entity's own gravity integration
+        // (which keeps accelerating here since this never reports `grounded`, see
+        // `CharacterController3dEntity.isWalkableGround`) actually carries the character down the
+        // slope over subsequent ticks rather than leaving it stuck jittering in place against it.
+        const remaining = Pnt3.scalarMult(vertical, 1 - result.fraction);
+        const n = result.hitNormal;
+        const slideVec = Pnt3.sub(remaining, Pnt3.scalarMult(n, Pnt3.dot(remaining, n)));
+        if (Pnt3.len(slideVec) > 1e-9) {
+          const slideResult = this.sweep(pos, Pnt3.add(pos, slideVec), skin);
+          pos = Pnt3.add(pos, Pnt3.scalarMult(slideVec, slideResult.fraction));
+        }
       }
     }
 
@@ -225,13 +250,26 @@ export class AmmoCharacterControllerComponent
 
     let raised = 0;
     if (blocked && this.resolvedOptions.maxStepHeight > 0) {
-      const upSweep = this.sweep(pos, Pnt3.add(pos, Pnt3.scalarMult(up, this.resolvedOptions.maxStepHeight)), skin);
-      const raisedPos = Pnt3.add(pos, Pnt3.scalarMult(up, this.resolvedOptions.maxStepHeight * upSweep.fraction));
+      const maxStep = this.resolvedOptions.maxStepHeight;
+      const upSweep = this.sweep(pos, Pnt3.add(pos, Pnt3.scalarMult(up, maxStep)), skin);
+      const raisedAmount = maxStep * upSweep.fraction;
+      const raisedPos = Pnt3.add(pos, Pnt3.scalarMult(up, raisedAmount));
       const retry = this.sweep(raisedPos, Pnt3.add(raisedPos, horizontal), skin);
-      if (retry.fraction > result.fraction + 1e-6) {
-        // stepping up actually cleared more horizontal distance than staying flat - use it
-        raised = Pnt3.dist(pos, raisedPos);
-        pos = Pnt3.add(raisedPos, Pnt3.scalarMult(horizontal, retry.fraction));
+      const wouldClearMore = retry.fraction > result.fraction + 1e-6;
+      // Only accept the step if it *both* clears more horizontal distance at the raised height
+      // *and* actually settles back onto a walkable surface there - otherwise this is a curved or
+      // vertical obstacle (e.g. a cylinder) giving a spuriously larger sweep fraction a hair higher
+      // up with nothing to actually stand on, not a real stair/ledge. Without this check the mover
+      // would accept the "step" anyway and repeat it every tick while pressed against such an
+      // obstacle, incrementally "climbing" its smooth side (regression, found by walking around a
+      // vertical cylinder).
+      const steppedPos = wouldClearMore ? Pnt3.add(raisedPos, Pnt3.scalarMult(horizontal, retry.fraction)) : null;
+      const landing =
+        steppedPos && this.sweep(steppedPos, Pnt3.sub(steppedPos, Pnt3.scalarMult(up, raisedAmount + skin)), skin);
+      const lands = !!landing?.hasHit && !!landing.hitNormal && this.isWalkableNormal(landing.hitNormal, up);
+      if (steppedPos && lands) {
+        raised = raisedAmount;
+        pos = steppedPos;
         result = retry;
       } else {
         pos = Pnt3.add(pos, Pnt3.scalarMult(horizontal, result.fraction));
@@ -289,6 +327,80 @@ export class AmmoCharacterControllerComponent
 
     const newBottom = Pnt3.add(result.hitPoint, Pnt3.scalarMult(up, skin));
     return { position: Pnt3.add(newBottom, Pnt3.scalarMult(up, halfHeight)), normal: result.hitNormal };
+  }
+
+  /**
+   * Pushes the character out of any body it currently overlaps, iterating a few times since
+   * resolving one contact can reveal/deepen another. Must run before any sweep this tick.
+   *
+   * **Why this is needed**: `convexSweepTest` (used throughout this class - see this method's
+   * sibling `sweep()`) is a conservative-advancement cast that can only compute a time-of-impact
+   * when it *starts* outside the target - a well-documented Bullet/GJK limitation. Once this
+   * character's shape ends up even slightly embedded in another body, every subsequent
+   * `convexSweepTest` against that body silently reports no hit at all, from any position, in any
+   * direction - not a jitter or a one-tick glitch, a permanent blind spot to that specific body -
+   * so the character walks straight through it, undetected, forever after. This is exactly how a
+   * character could walk clean through a low overhead beam: approaching it slowed the character
+   * down correctly (a legitimate, not-yet-penetrating sweep hit each tick), but the moment it got
+   * close enough to end up a hair inside the beam - e.g. from `allowedPenetration`/`skin` tolerance
+   * on a settle, or simply the discrete per-tick step distance overshooting the exact contact point
+   * - the very next `move()` found nothing there at all (regression, found by walking under such a
+   * beam in the example scene). Bullet's own `btKinematicCharacterController` (not used here - see
+   * the class doc) avoids this with its own internal `recoverFromPenetration` step before every
+   * sweep; this is that same step, built on the one discrete-overlap query Ammo's embind bindings
+   * expose for it - `btCollisionWorld.contactTest`.
+   */
+  private recoverFromPenetration(pos: Point3): Point3 {
+    const collisionWorld = this.world.dynamicAmmoWorld!;
+    const skin = this.resolvedOptions.offset;
+    const selfPtr = Ammo.getPointer(this.nativeBody);
+    let corrected = pos;
+
+    for (let i = 0; i < 4; i++) {
+      this.position = corrected;
+
+      let worstDistance = -skin;
+      let worstPush: Point3 | null = null;
+      const callback = new Ammo.ConcreteContactResultCallback();
+      (callback as unknown as { addSingleResult: (...args: number[]) => number }).addSingleResult = (
+        cpPtr: number,
+        colObj0WrapPtr: number,
+      ) => {
+        const cp = (Ammo as unknown as AmmoWithWrapPointer).wrapPointer(cpPtr, Ammo.btManifoldPoint);
+        const distance = cp.getDistance();
+        if (distance >= worstDistance) {
+          return 0;
+        }
+        // `m_normalWorldOnB` always points from collision object B towards collision object A -
+        // which of the pair is "us" depends on Bullet's own internal ordering of the two bodies,
+        // not call order, so orient the push-out direction based on which side we actually are
+        const wrap0 = (Ammo as unknown as AmmoWithWrapPointer).wrapPointer(
+          colObj0WrapPtr,
+          Ammo.btCollisionObjectWrapper,
+        );
+        const weAreObjectA = Ammo.getPointer(wrap0.getCollisionObject()) === selfPtr;
+        const n = cp.get_m_normalWorldOnB();
+        const normal: Point3 = { x: n.x(), y: n.y(), z: n.z() };
+        worstDistance = distance;
+        worstPush = weAreObjectA ? normal : Pnt3.scalarMult(normal, -1);
+        return 0;
+      };
+
+      collisionWorld.removeCollisionObject(this.nativeBody);
+      try {
+        collisionWorld.contactTest(this.nativeBody, callback);
+      } finally {
+        collisionWorld.addCollisionObject(this.nativeBody, this._ownCGsMask, this._interactWithCGsMask);
+        Ammo.destroy(callback);
+      }
+
+      if (!worstPush) {
+        break;
+      }
+      corrected = Pnt3.add(corrected, Pnt3.scalarMult(worstPush, -worstDistance + skin));
+    }
+
+    return corrected;
   }
 
   /**

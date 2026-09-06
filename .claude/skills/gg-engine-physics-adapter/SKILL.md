@@ -132,7 +132,14 @@ synchronous contract like this (see `Rapier3dCharacterControllerComponent`):
   Best-effort approach: scan those collisions for one whose normal points roughly along `up` (i.e. a
   floor, not a wall) and use that; fall back to plain `up` if grounded with no such collision on
   record (e.g. snapped to ground without an explicit sweep hit that tick), or `null` if not grounded.
-  Document this as a known limitation rather than chasing exactness.
+  Document this as a known limitation rather than chasing exactness. Precision here matters more than
+  it might look: `CharacterController3dEntity` re-derives its own "is this actually stable footing"
+  decision from `groundNormal` every tick (comparing its angle against `maxSlopeClimbAngleRad` itself,
+  regardless of what this component's own `isGrounded` says) and integrates gravity as a **full 3D
+  vector** rather than just its component along `up` - so reporting `isGrounded: true` with a
+  `groundNormal` steeper than the configured limit doesn't get a character stuck floating in place,
+  but it does mean an adapter that reports a wrong-but-walkable-looking normal there will make the
+  entity treat a too-steep surface as stable footing instead of sliding off it.
 - `up`/`maxStepHeight`+`minStepWidth`/`maxSlopeClimbAngleRad`/`snapToGroundDistance` map directly onto
   whatever setup calls the native controller exposes (Rapier: `setUp`, `enableAutostep(maxHeight,
   minWidth, includeDynamicBodies)`, `setMaxSlopeClimbAngle`, `enableSnapToGround(distance)` — skip
@@ -273,6 +280,85 @@ itself further up), write an end-to-end test that drives continuous movement in 
 horizontal directions** (not just one) over a plain floor with nothing else in the scene, asserting each
 covers the same, undiminished distance — a single-direction test is exactly the kind of test that keeps
 this bug hidden (it happened to still look correct in the direction that was tested first).
+
+**Pitfall (most severe of all: silent, permanent tunneling through geometry, not just a jitter):
+`convexSweepTest` finds nothing once this character's shape is even slightly embedded in a body,
+forever after.** `convexSweepTest` is a conservative-advancement/GJK-based cast, which can only
+compute a time-of-impact when it *starts* outside the target - a well-documented Bullet limitation,
+not a bug specific to this package. The moment this character's shape ends up penetrating another
+body by even a hair - from ordinary `allowedCcdPenetration`/skin tolerance on a settle, or a
+per-tick step distance simply overshooting the exact contact point - **every subsequent
+`convexSweepTest` against that specific body silently returns no hit at all, from any position, in
+any direction, permanently** (not a one-tick glitch: this is a standing blind spot to that body
+until the character moves away and back). Symptom that made this hard to trace: walking toward a
+low overhead beam correctly slowed the character down tick over tick as it approached (a legitimate,
+not-yet-penetrating sweep hit each time) - then, the instant it got close enough to end up a hair
+inside the beam, the very next `move()` found nothing there at all and the character sailed straight
+through, at full speed, with zero further resistance. A test that only checks "is progress blocked
+while approaching" (e.g. `is slowed/stopped when walking directly into a wall` in this package's own
+suite) cannot catch this - it only shows up as a **failure to still be blocked after having already
+made contact**; write the regression test as "walk *through* the obstacle's full footprint" and
+assert final position never got picked up.
+
+**Fix**: run a `recoverFromPenetration` step at the very top of `move()`, before any sweep, using
+Bullet's discrete `btCollisionWorld.contactTest(collisionObject, resultCallback)` (a same-instant
+overlap query, unaffected by the sweep's start-outside limitation since it isn't a cast at all) to
+find the deepest current penetration and push the character back out along its normal before
+proceeding - the same "recover from penetration" step `btKinematicCharacterController` runs
+internally (and the reason this class needs its own copy, having dropped that class - see above).
+Two more embind quirks specific to wiring this up in Ammo.js, found empirically, neither documented
+in `ammo-ambient.d.ts`:
+- `ConcreteContactResultCallback`/`RayResultCallback`-style "JS-overridable" classes require the
+  override to be an **own property of the instance**, not a prototype method - `class X extends
+  Ammo.ConcreteContactResultCallback { addSingleResult() {...} }` fails at the very first call with
+  `"a JSImplementation must implement all functions, you forgot
+  ConcreteContactResultCallback::addSingleResult"`, even though the method is right there, because
+  the generated glue checks `instance.hasOwnProperty('addSingleResult')` and an ES6 class method
+  lives on the prototype, not the instance. Fix: `const cb = new
+  Ammo.ConcreteContactResultCallback(); cb.addSingleResult = function(...) {...};` (plain assignment
+  after construction, not a subclass).
+- Every object parameter a callback like this receives (`cp: btManifoldPoint`,
+  `colObj0Wrap/colObj1Wrap: btCollisionObjectWrapper`) arrives as a **raw numeric handle**, not a
+  wrapped instance, despite what the ambient types say - call the undeclared-but-present
+  `Ammo.wrapPointer(ptr, Ammo.ClassName)` on each one before using any of its methods, or every
+  method call throws `TypeError: ... is not a function`.
+- `m_normalWorldOnB` always points from collision object B towards object A - which of the pair is
+  "this character" depends on Bullet's own internal ordering of the two bodies for that pair, not
+  call order, so compare `Ammo.getPointer(wrap0.getCollisionObject())` against
+  `Ammo.getPointer(this.nativeBody)` to orient the push-out direction correctly instead of assuming
+  a fixed side.
+- Wrap the `contactTest` call in the same remove-self/`try`/re-add-self-in-`finally` pattern as
+  `sweep()` above, for the same self-collision reason.
+
+**Pitfall: a step-up assist that only checks "did this clear more horizontal distance" will
+incrementally climb any smooth, tall, non-walkable obstacle it's pressed against.** A step-up-and-
+retry pass (see the fix above) accepts stepping up whenever the retried horizontal sweep at the
+raised height clears strictly more distance than staying flat. That comparison alone is not enough:
+sweeping a capsule's rounded profile against a curved or perfectly vertical surface (a cylinder, a
+sphere) can yield a *slightly* larger clearance fraction a few centimeters higher up for reasons
+that have nothing to do with there being a step there - pure curvature/contact-point drift. Accepting
+the step on that basis alone means every tick spent walking along such a surface nudges the character
+up by a small fraction of `maxStepHeight`, compounding into visibly "climbing" a wall that is, by
+construction, unclimbable (found by walking the character along a tall vertical cylinder in the
+example scene - it slowly walked right up the side). Fix: after tentatively raising and re-sweeping
+horizontally, also sweep straight back down by the raised amount from the new position and require
+that settle-down actually lands on a normal within `maxSlopeClimbAngleRad` of `up` (reuse the same
+`isWalkableNormal` helper used for grounding) before committing to the step at all; otherwise fall
+back to the ordinary flat-sweep-and-slide result as if no step had been attempted.
+
+**Pitfall: a vertical-only sweep with no slide-along-tangent leaves a character stuck jittering
+against a too-steep slope instead of sliding down it.** The horizontal movement leg already slides
+the remaining blocked distance along the hit surface's tangent when obstructed (see the self-
+collision pitfall above); the vertical leg (gravity/jump/falling) originally did not - it just
+stopped dead at whatever fraction the sweep allowed. Combined with `CharacterController3dEntity`
+correctly refusing to treat a too-steep contact as "resting" (see its `isWalkableGround`, which keeps
+integrating gravity in that case instead of zeroing it), the two together should make a character
+slide off a steep slope under gravity - but without a slide step on the vertical leg too, the
+character just gets re-blocked at (almost) the same point every tick, never actually going anywhere.
+Fix: mirror the horizontal leg's slide logic on the vertical leg too - whenever the vertical sweep
+hits something that isn't a walkable floor, project the remaining vertical distance onto the plane
+perpendicular to the hit normal and sweep that as a second pass, same as an obstacle-blocked
+horizontal move already does.
 
 ## Factory — shape and body-options mapping
 

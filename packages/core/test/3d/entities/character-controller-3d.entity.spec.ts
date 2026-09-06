@@ -144,6 +144,45 @@ describe('CharacterController3dEntity', () => {
       entity.tick$.next([2000, 1000]);
       expect(moveSpy.mock.calls[1][0].z).toBeCloseTo(-5);
     });
+
+    it('drags the character along a horizontal gravity component too, not just its component along `up` (regression: only the Z component of a tilted gravity vector was ever applied)', () => {
+      const cc = mockCharacterController(0.4, 1, {
+        resolveMove: d => ({ appliedTranslation: d, isGrounded: false }),
+      });
+      const entity = new CharacterController3dEntity({ radius: 0.4, centersDistance: 1 }, null, cc);
+      entity.onSpawned({ physicsWorld: { gravity: { x: 6, y: 0, z: -20 } } } as any);
+      const moveSpy = jest.spyOn(cc, 'move');
+      entity.tick$.next([1000, 1000]);
+      entity.tick$.next([2000, 1000]); // now airborne - both components of gravity must integrate
+      expect(moveSpy.mock.calls[1][0].z).toBeCloseTo(-20);
+      expect(moveSpy.mock.calls[1][0].x).toBeCloseTo(6);
+    });
+
+    it('slides down (keeps integrating gravity) instead of resting, when grounded against a surface steeper than maxSlopeClimbAngleRad', () => {
+      // reports grounded with a near-horizontal ground normal - far steeper than the default
+      // ~50deg limit - simulating a character balanced at the silhouette edge of a curved surface
+      const cc = mockCharacterController(0.4, 1, {
+        resolveMove: d => ({ appliedTranslation: d, isGrounded: true, groundNormal: { x: 1, y: 0, z: 0.05 } }),
+      });
+      const entity = new CharacterController3dEntity({ radius: 0.4, centersDistance: 1 }, null, cc);
+      entity.onSpawned({ physicsWorld: { gravity: { x: 0, y: 0, z: -10 } } } as any);
+      const moveSpy = jest.spyOn(cc, 'move');
+      entity.tick$.next([1000, 1000]);
+      entity.tick$.next([2000, 1000]); // still "isGrounded", but the surface is unwalkably steep
+      expect(moveSpy.mock.calls[1][0].z).toBeLessThan(0);
+    });
+
+    it('does not slide while grounded on an ordinary walkable surface, even one tilted within maxSlopeClimbAngleRad', () => {
+      const cc = mockCharacterController(0.4, 1, {
+        resolveMove: d => ({ appliedTranslation: d, isGrounded: true, groundNormal: Pnt3.Z }),
+      });
+      const entity = new CharacterController3dEntity({ radius: 0.4, centersDistance: 1 }, null, cc);
+      entity.onSpawned({ physicsWorld: { gravity: { x: 0, y: 0, z: -10 } } } as any);
+      const moveSpy = jest.spyOn(cc, 'move');
+      entity.tick$.next([1000, 1000]);
+      entity.tick$.next([2000, 1000]);
+      expect(moveSpy.mock.calls[1][0].z).toBeCloseTo(0);
+    });
   });
 
   describe('jump', () => {
