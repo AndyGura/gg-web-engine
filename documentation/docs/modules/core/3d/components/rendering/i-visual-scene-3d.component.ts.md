@@ -1,6 +1,6 @@
 ---
 title: core/3d/components/rendering/i-visual-scene-3d.component.ts
-nav_order: 35
+nav_order: 38
 parent: Modules
 ---
 
@@ -22,14 +22,8 @@ parent: Modules
 **Signature**
 
 ```ts
-export interface IVisualScene3dComponent<TypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D>
-  extends IVisualSceneComponent<Point3, Point4, TypeDoc> {
-  readonly loader: TypeDoc['loader']
-
-  createRenderer(
-    camera: TypeDoc['camera'],
-    canvas?: HTMLCanvasElement,
-    rendererOptions?: Partial<RendererOptions & TypeDoc['rendererExtraOpts']>
-  ): TypeDoc['renderer']
+export interface IVisualScene3dComponent<VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D>
+  extends IVisualSceneComponent<Point3, Point4, VTypeDoc> {
+  readonly loader: VTypeDoc['loader']
 }
 ```

@@ -8,6 +8,7 @@
   <a href="#-about">About</a> •
   <a href="#-key-features">Key Features</a> •
   <a href="#-vision">Vision</a> •
+  <a href="#-milestones-roadmap">Milestones</a> •
   <a href="#-current-status">Current Status</a> •
   <a href="#-integrations">Integrations</a> •
   <a href="#-quickstart">Quickstart</a> •
@@ -44,6 +45,9 @@ creating custom solutions with minimal effort.
 - Empower developers with tools like developer console, cameras, and debug utilities.
 - Maintain modularity to ensure maximum flexibility for developers.
 - Stay library-agnostic, enabling developers to switch or customize libraries with ease.
+
+## 🧭 Milestones (Roadmap)
+The public roadmap, with per-item status against the current codebase, is available in [milestones.md](./milestones.md). It's a living proposal, not a contract, and will evolve with community feedback.
 
 ## 🚧 Current Status
 ### **<span style="color:red">Experimental Release**</span>
@@ -135,6 +139,55 @@ And run it:
 <p align="center">
   <img src="documentation/assets/example.gif" alt=''/>
 </p>
+
+### 🤖 Building your app with an AI coding agent
+This repo ships a [Claude Code](https://claude.com/claude-code) skill,
+[`gg-engine-app-development`](.claude/skills/gg-engine-app-development/SKILL.md), that teaches an
+agent the engine's mental model (worlds, entities, visual/physics components), the bootstrap
+pattern above, available shapes/controllers/loaders, and common pitfalls — so it writes correct
+GG-Web-Engine code instead of guessing from the README alone.
+
+Install it into your own app's repo with [`npx skills`](https://www.skills.sh/):
+```bash
+npx skills add AndyGura/gg-web-engine --skill gg-engine-app-development -y
+```
+Then just ask your agent to build your scene/game — Claude Code picks the skill up automatically
+once it's under `.claude/skills/`. The other skills in this repo
+([`gg-engine-core-development`](.claude/skills/gg-engine-core-development/SKILL.md),
+[`gg-engine-visual-adapter`](.claude/skills/gg-engine-visual-adapter/SKILL.md),
+[`gg-engine-physics-adapter`](.claude/skills/gg-engine-physics-adapter/SKILL.md),
+[`gg-engine-examples`](.claude/skills/gg-engine-examples/SKILL.md),
+[`gg-engine-release`](.claude/skills/gg-engine-release/SKILL.md)) are for developing the engine
+itself, not for building an app on top of it — see [`CLAUDE.md`](CLAUDE.md) if you're contributing
+to GG-Web-Engine rather than consuming it.
+
+### 🧑‍💻 Local development
+
+Contributing to the engine itself (not just consuming it)? `packages/*` is an npm workspace, so a
+single install wires every adapter package to the local `packages/core` build instead of the
+version published on npm:
+
+```bash
+npm install          # one-time: links the packages/* workspace
+npm run build         # one-time: full build of every package (incl. non-TS asset copies)
+npm run build:watch   # tsc -b --watch — leave running, rebuilds core + adapters on every save
+```
+
+To see those changes live in one of the example apps under `examples/` (they stay outside the
+workspace on purpose, so they remain standalone-cloneable), link that example once and start its
+dev server:
+
+```bash
+bash etc/switch_example_to_local_gg.sh examples/<example-dir>
+cd examples/<example-dir> && npm start   # webpack-dev-server, also watches for changes
+```
+
+With `build:watch` and the example's dev server both running, editing anything under
+`packages/*/src` shows up in the browser with no other step — no re-linking, no rebuild command to
+remember. Undo the example link with `bash etc/restore_example_from_local_gg.sh
+examples/<example-dir>` when you're done. Full details, caveats, and the core/adapter/example
+workflow end-to-end are documented in the
+[`gg-engine-core-development`](.claude/skills/gg-engine-core-development/SKILL.md) skill.
 
 ## 🛠️ Examples
 ### [Interactive Demos](https://gg-web-demos.guraklgames.com/)
@@ -274,8 +327,9 @@ There is simple factory, allowing to easily create rigid bodies. See
 Currently, there is only one loader available, and only for 3D world. It uses own format of serializing blender scene:
 **.glb**+**.meta** files, where glb is a binary GLTF file, containing mesh+materials, and meta is a json file,
 containing evverything from blend file, not included in glb, such as empty objects; rigid bodies; splines. Right now it
-is on very early stage. The script to make glb+meta from blender file is here:
-[build_blender_scene.py](packages/core/blender_exporter/build_blender_scene.py)
+is on very early stage. Scenes are authored in Blender and exported with the
+[GG Web Engine Exporter](blender-addon/README.md) add-on (`File > Export > GG Web Engine (.glb + .meta)`,
+plus a headless/CI entry point) - see that doc for install and usage.
 
 ### Console
 Engine provides a simple console, which can be used at runtime (if enabled) by pressing \`. Your game can

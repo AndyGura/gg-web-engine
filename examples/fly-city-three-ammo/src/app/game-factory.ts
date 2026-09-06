@@ -176,7 +176,7 @@ export class GameFactory {
             };
           }),
         sharedWheelOptions: {
-          frictionSlip: 3,
+          frictionSlip: 10,
           rollInfluence: 0.2,
           maxTravel: 0.5,
           display: { displayObject: wheelMesh || undefined, wheelObjectDirection: 'x', autoScaleMesh: true },

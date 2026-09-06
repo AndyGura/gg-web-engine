@@ -1,6 +1,6 @@
 ---
 title: core/base/entities/i-renderer.entity.ts
-nav_order: 77
+nav_order: 86
 parent: Modules
 ---
 
@@ -28,8 +28,8 @@ Represents a base class for a renderer entity.
 **Signature**
 
 ```ts
-export declare class IRendererEntity<D, R, TypeDoc> {
-  constructor(public readonly renderer: TypeDoc['renderer'])
+export declare class IRendererEntity<D, R, VTypeDoc> {
+  constructor(public readonly renderer: VTypeDoc['renderer'])
 }
 ```
 
@@ -38,7 +38,7 @@ export declare class IRendererEntity<D, R, TypeDoc> {
 **Signature**
 
 ```ts
-onSpawned(world: GgWorld<D, R, TypeDoc>)
+onSpawned(world: GgWorld<D, R, GgWorldTypeDocVPatch<D, R, VTypeDoc>>)
 ```
 
 ### dispose (method)

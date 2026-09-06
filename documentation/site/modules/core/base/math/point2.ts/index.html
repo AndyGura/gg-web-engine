@@ -627,6 +627,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#slerp-static-method" class="md-nav__link">
+    slerp (static method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#angle-static-method" class="md-nav__link">
     angle (static method)
   </a>
@@ -643,6 +650,20 @@
           <li class="md-nav__item">
   <a href="#rotaround-static-method" class="md-nav__link">
     rotAround (static method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#topolar-static-method" class="md-nav__link">
+    toPolar (static method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#frompolar-static-method" class="md-nav__link">
+    fromPolar (static method)
   </a>
   
 </li>
@@ -697,9 +718,12 @@
 <li><a href="#scalarmult-static-method">scalarMult (static method)</a></li>
 <li><a href="#dot-static-method">dot (static method)</a></li>
 <li><a href="#lerp-static-method">lerp (static method)</a></li>
+<li><a href="#slerp-static-method">slerp (static method)</a></li>
 <li><a href="#angle-static-method">angle (static method)</a></li>
 <li><a href="#rot-static-method">rot (static method)</a></li>
 <li><a href="#rotaround-static-method">rotAround (static method)</a></li>
+<li><a href="#topolar-static-method">toPolar (static method)</a></li>
+<li><a href="#frompolar-static-method">fromPolar (static method)</a></li>
 </ul>
 </li>
 </ul>
@@ -784,6 +808,11 @@
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">static lerp(a: Point2, b: Point2, t: number): Point2
 </code></pre>
+<h3 id="slerp-static-method">slerp (static method)</h3>
+<p>linear interpolation (spherical/polar)</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">static slerp(a: Point2, b: Point2, t: number): Point2
+</code></pre>
 <h3 id="angle-static-method">angle (static method)</h3>
 <p>angle between vectors in radians</p>
 <p><strong>Signature</strong></p>
@@ -798,6 +827,18 @@
 <p>rotate point around pivot by provided angle</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">static rotAround(p: Point2, pivot: Point2, angle: number): Point2
+</code></pre>
+<h3 id="topolar-static-method">toPolar (static method)</h3>
+<p>Converts a cartesian 2D point to a polar coordinate system,
+phi == 0 is faced towards X axis direction</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">static toPolar(p: Point2): Polar
+</code></pre>
+<h3 id="frompolar-static-method">fromPolar (static method)</h3>
+<p>Converts a polar coordinate system to a cartesian 2D point. Used polar coordinates,
+where phi == 0 is faced towards X axis direction</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">static fromPolar(p: Polar): Point2
 </code></pre>
 
 

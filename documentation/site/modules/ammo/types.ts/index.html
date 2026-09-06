@@ -514,8 +514,29 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#ammoggworld-type-alias" class="md-nav__link">
+    AmmoGgWorld (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#ammophysicstypedocrepo-type-alias" class="md-nav__link">
     AmmoPhysicsTypeDocRepo (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ammoscenetypedoc-type-alias" class="md-nav__link">
+    AmmoSceneTypeDoc (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ammotypedoc-type-alias" class="md-nav__link">
+    AmmoTypeDoc (type alias)
   </a>
   
 </li>
@@ -549,10 +570,17 @@
 
 <ul>
 <li><a href="#utils">utils</a></li>
+<li><a href="#ammoggworld-type-alias">AmmoGgWorld (type alias)</a></li>
 <li><a href="#ammophysicstypedocrepo-type-alias">AmmoPhysicsTypeDocRepo (type alias)</a></li>
+<li><a href="#ammoscenetypedoc-type-alias">AmmoSceneTypeDoc (type alias)</a></li>
+<li><a href="#ammotypedoc-type-alias">AmmoTypeDoc (type alias)</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
+<h2 id="ammoggworld-type-alias">AmmoGgWorld (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type AmmoGgWorld = Gg3dWorld&lt;AmmoTypeDoc, AmmoSceneTypeDoc&gt;
+</code></pre>
 <h2 id="ammophysicstypedocrepo-type-alias">AmmoPhysicsTypeDocRepo (type alias)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export type AmmoPhysicsTypeDocRepo = {
@@ -562,6 +590,14 @@
   trigger: AmmoTriggerComponent
   raycastVehicle: AmmoRaycastVehicleComponent
 }
+</code></pre>
+<h2 id="ammoscenetypedoc-type-alias">AmmoSceneTypeDoc (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type AmmoSceneTypeDoc = Gg3dWorldSceneTypeDocPPatch&lt;AmmoPhysicsTypeDocRepo, AmmoWorldComponent&gt;
+</code></pre>
+<h2 id="ammotypedoc-type-alias">AmmoTypeDoc (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type AmmoTypeDoc = Gg3dWorldTypeDocPPatch&lt;AmmoPhysicsTypeDocRepo&gt;
 </code></pre>
 
 

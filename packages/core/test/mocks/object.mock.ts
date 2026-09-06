@@ -8,9 +8,13 @@ export const mock2DObject = (): IDisplayObject2dComponent => {
     scale: { x: 1, y: 1 },
     name: '',
     visible: true,
+    addToWorld() {
+    },
+    removeFromWorld() {
+    },
     clone: () => mock2DObject(),
     getBoundings: () => ({ min: Pnt2.O, max: { x: 10, y: 10 } }),
-  } as IDisplayObject2dComponent;
+  } as unknown as IDisplayObject2dComponent;
 };
 
 
@@ -21,7 +25,11 @@ export const mock3DObject = (): IDisplayObject3dComponent => {
     scale: { x: 1, y: 1, z: 1 },
     name: '',
     visible: true,
+    addToWorld() {
+    },
+    removeFromWorld() {
+    },
     clone: () => mock3DObject(),
     getBoundings: () => ({ min: Pnt3.O, max: { x: 10, y: 10, z: 10 } }),
-  } as IDisplayObject3dComponent;
+  } as unknown as IDisplayObject3dComponent;
 };

@@ -3,8 +3,11 @@ import { IWorldComponent } from '../i-world-component';
 import { GgWorld, GgWorldTypeDocPPatch, PhysicsTypeDocRepo } from '../../gg-world';
 import { CollisionGroup, DebugBodySettings } from '../../models/body-options';
 
-export interface IBodyComponent<D, R, PTypeDoc extends PhysicsTypeDocRepo<D, R> = PhysicsTypeDocRepo<D, R>>
-  extends IWorldComponent<D, R, GgWorldTypeDocPPatch<D, R, PTypeDoc>> {
+export interface IBodyComponent<
+  D,
+  R,
+  PTypeDoc extends PhysicsTypeDocRepo<D, R> = PhysicsTypeDocRepo<D, R>,
+> extends IWorldComponent<D, R, GgWorldTypeDocPPatch<D, R, PTypeDoc>> {
   entity: IEntity | null;
 
   position: D;

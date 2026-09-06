@@ -1,6 +1,6 @@
 ---
 title: core/base/components/rendering/i-visual-scene.component.ts
-nav_order: 70
+nav_order: 78
 parent: Modules
 ---
 
@@ -22,10 +22,16 @@ parent: Modules
 **Signature**
 
 ```ts
-export interface IVisualSceneComponent<D, R, TypeDoc extends VisualTypeDocRepo<D, R> = VisualTypeDocRepo<D, R>>
+export interface IVisualSceneComponent<D, R, VTypeDoc extends VisualTypeDocRepo<D, R> = VisualTypeDocRepo<D, R>>
   extends IComponent {
-  readonly factory: TypeDoc['factory']
+  readonly factory: VTypeDoc['factory']
 
   init(): Promise<void>
+
+  createRenderer(
+    camera: VTypeDoc['camera'],
+    canvas?: HTMLCanvasElement,
+    rendererOptions?: Partial<RendererOptions & VTypeDoc['rendererExtraOpts']>
+  ): VTypeDoc['renderer']
 }
 ```

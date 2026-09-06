@@ -333,6 +333,70 @@ describe('PausableClock', () => {
     });
   });
 
+  describe('manual step', () => {
+    it('should throw if clock is not paused', () => {
+      const c = new PausableClock(true);
+      expect(() => c.step(8)).toThrow();
+    });
+
+    it('should fire exactly one tick with the given delta, reporting the post-step elapsed time', () => {
+      const c = new PausableClock(true);
+      jest.advanceTimersByTime(1500);
+      c.pause();
+      const ticks: [number, number][] = [];
+      c.tick$.subscribe(x => ticks.push(x));
+      c.step(8);
+      expect(ticks).toEqual([[1508, 8]]);
+    });
+
+    it('should advance elapsed time by delta while staying paused', () => {
+      const c = new PausableClock(true);
+      jest.advanceTimersByTime(1500);
+      c.pause();
+      c.step(8);
+      expect(c.elapsedTime).toBe(1508);
+      c.step(8);
+      expect(c.elapsedTime).toBe(1516);
+      expect(c.isPaused).toBeTruthy();
+      expect(c.isRunning).toBeFalsy();
+    });
+
+    it('should advance elapsed time by exactly delta regardless of timeScale', () => {
+      const c = new PausableClock(true);
+      c.timeScale = 2;
+      jest.advanceTimersByTime(1500); // elapsedTime is now 3000, scaled by 2
+      c.pause();
+      c.step(8);
+      expect(c.elapsedTime).toBe(3008);
+    });
+
+    it('should not be throttled by tickRateLimit', () => {
+      const c = new PausableClock(true);
+      c.tickRateLimit = 1; // at most 1 tick per second
+      jest.advanceTimersByTime(1500);
+      c.pause();
+      const ticks: [number, number][] = [];
+      c.tick$.subscribe(x => ticks.push(x));
+      c.step(8);
+      c.step(8);
+      c.step(8);
+      expect(ticks).toHaveLength(3);
+    });
+
+    it('should carry stepped time forward seamlessly once resumed', () => {
+      const c = new PausableClock(true);
+      jest.advanceTimersByTime(1500);
+      c.pause();
+      c.step(8);
+      c.step(8);
+      expect(c.elapsedTime).toBe(1516);
+      c.resume();
+      expect(c.elapsedTime).toBe(1516);
+      jest.advanceTimersByTime(500);
+      expect(c.elapsedTime).toBe(2016);
+    });
+  });
+
   describe('clocks hierarchy', () => {
     it('should list children', () => {
       const parent = new PausableClock(true, gClockMock);

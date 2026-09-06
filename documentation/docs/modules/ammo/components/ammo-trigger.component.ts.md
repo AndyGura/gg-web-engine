@@ -20,9 +20,9 @@ parent: Modules
     - [dispose (method)](#dispose-method)
     - [entity (property)](#entity-property)
     - [debugBodySettings (property)](#debugbodysettings-property)
+    - [overlaps (property)](#overlaps-property)
     - [onEnter$ (property)](#onenter-property)
     - [onLeft$ (property)](#onleft-property)
-    - [overlaps (property)](#overlaps-property)
 
 ---
 
@@ -63,7 +63,7 @@ clone(): AmmoTriggerComponent
 **Signature**
 
 ```ts
-addToWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>)
+addToWorld(world: AmmoGgWorld)
 ```
 
 ### removeFromWorld (method)
@@ -71,7 +71,7 @@ addToWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>)
 **Signature**
 
 ```ts
-removeFromWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>): void
+removeFromWorld(world: AmmoGgWorld): void
 ```
 
 ### refreshCG (method)
@@ -106,6 +106,14 @@ entity: any
 readonly debugBodySettings: any
 ```
 
+### overlaps (property)
+
+**Signature**
+
+```ts
+readonly overlaps: any
+```
+
 ### onEnter$ (property)
 
 **Signature**
@@ -120,12 +128,4 @@ readonly onEnter$: any
 
 ```ts
 readonly onLeft$: any
-```
-
-### overlaps (property)
-
-**Signature**
-
-```ts
-readonly overlaps: any
 ```

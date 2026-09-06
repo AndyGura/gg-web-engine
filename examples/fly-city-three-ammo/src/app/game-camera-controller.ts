@@ -15,7 +15,7 @@ import { FlyCityTypeDoc, FlyCityWorld } from './app.component';
 export class GameCameraController {
 
   public readonly freeCameraController: FreeCameraController;
-  public readonly carCameraController: Camera3dAnimator;
+  public readonly carCameraController: Camera3dAnimator<FlyCityTypeDoc['vTypeDoc']>;
   public readonly cameraIndex$: BehaviorSubject<number> = new BehaviorSubject<number>(0);
 
   cameraMotionFactory: [(car: IPositionable3d, type: 'lambo' | 'truck' | 'car') => AnimationFunction<Camera3dAnimationArgs>, number, (t: number) => number][] = [

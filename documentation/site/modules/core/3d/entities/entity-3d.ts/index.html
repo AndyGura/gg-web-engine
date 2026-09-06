@@ -603,8 +603,11 @@
 <h1 id="utils">utils</h1>
 <h2 id="entity3d-class">Entity3d (class)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class Entity3d&lt;VTypeDoc, PTypeDoc&gt; {
-  constructor(options: { object3D?: VTypeDoc['displayObject'] | null; objectBody?: PTypeDoc['rigidBody'] | null })
+<pre><code class="language-ts">export declare class Entity3d&lt;TypeDoc&gt; {
+  constructor(options: {
+    object3D?: TypeDoc['vTypeDoc']['displayObject'] | null
+    objectBody?: TypeDoc['pTypeDoc']['rigidBody'] | null
+  })
 }
 </code></pre>
 <h3 id="updatevisibility-method">updateVisibility (method)</h3>
@@ -622,11 +625,11 @@
 </code></pre>
 <h3 id="object3d-property">object3D (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly object3D: VTypeDoc[&quot;displayObject&quot;] | null
+<pre><code class="language-ts">readonly object3D: TypeDoc[&quot;vTypeDoc&quot;][&quot;displayObject&quot;] | null
 </code></pre>
 <h3 id="objectbody-property">objectBody (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly objectBody: PTypeDoc[&quot;rigidBody&quot;] | null
+<pre><code class="language-ts">readonly objectBody: TypeDoc[&quot;pTypeDoc&quot;][&quot;rigidBody&quot;] | null
 </code></pre>
 
 

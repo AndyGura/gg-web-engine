@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/renderer-3d.entity.ts
-nav_order: 47
+nav_order: 51
 parent: Modules
 ---
 
@@ -22,5 +22,5 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare class Renderer3dEntity<TypeDoc>
+export declare class Renderer3dEntity<VTypeDoc>
 ```

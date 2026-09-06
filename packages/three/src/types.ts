@@ -17,7 +17,7 @@ export type ThreeVisualTypeDocRepo = {
   texture: Texture;
 };
 
-export type ThreeGgWorld = Gg3dWorld<
-  Gg3dWorldTypeDocVPatch<ThreeVisualTypeDocRepo>,
-  Gg3dWorldSceneTypeDocVPatch<ThreeVisualTypeDocRepo, ThreeSceneComponent>
->;
+export type ThreeTypeDoc = Gg3dWorldTypeDocVPatch<ThreeVisualTypeDocRepo>;
+export type ThreeSceneTypeDoc = Gg3dWorldSceneTypeDocVPatch<ThreeVisualTypeDocRepo, ThreeSceneComponent>;
+
+export type ThreeGgWorld = Gg3dWorld<ThreeTypeDoc, ThreeSceneTypeDoc>;

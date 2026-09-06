@@ -1,6 +1,6 @@
 ---
 title: core/base/gg-world.ts
-nav_order: 78
+nav_order: 87
 parent: Modules
 ---
 
@@ -21,8 +21,11 @@ parent: Modules
     - [addPrimitiveRigidBody (method)](#addprimitiverigidbody-method)
     - [addEntity (method)](#addentity-method)
     - [removeEntity (method)](#removeentity-method)
+    - [getEntityByName (method)](#getentitybyname-method)
     - [onGgStaticInitialized (method)](#onggstaticinitialized-method)
     - [registerConsoleCommands (method)](#registerconsolecommands-method)
+    - [visualScene (property)](#visualscene-property)
+    - [physicsWorld (property)](#physicsworld-property)
     - [worldClock (property)](#worldclock-property)
     - [keyboardInput (property)](#keyboardinput-property)
     - [name (property)](#name-property)
@@ -33,7 +36,15 @@ parent: Modules
     - [tickForwardedTo$ (property)](#tickforwardedto-property)
     - [paused$ (property)](#paused-property)
     - [disposed$ (property)](#disposed-property)
+  - [GgWorldSceneTypeDocPPatch (type alias)](#ggworldscenetypedocppatch-type-alias)
+  - [GgWorldSceneTypeDocVPatch (type alias)](#ggworldscenetypedocvpatch-type-alias)
+  - [GgWorldSceneTypeRepo (type alias)](#ggworldscenetyperepo-type-alias)
+  - [GgWorldTypeDocPPatch (type alias)](#ggworldtypedocppatch-type-alias)
+  - [GgWorldTypeDocRepo (type alias)](#ggworldtypedocrepo-type-alias)
+  - [GgWorldTypeDocVPatch (type alias)](#ggworldtypedocvpatch-type-alias)
   - [PhysicsTypeDocRepo (type alias)](#physicstypedocrepo-type-alias)
+  - [SceneTypeDocOf (type alias)](#scenetypedocof-type-alias)
+  - [TypeDocOf (type alias)](#typedocof-type-alias)
   - [VisualTypeDocRepo (type alias)](#visualtypedocrepo-type-alias)
 
 ---
@@ -45,8 +56,11 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare class GgWorld<D, R, VTypeDoc, PTypeDoc, VS, PW> {
-  protected constructor(public readonly visualScene: VS, public readonly physicsWorld: PW)
+export declare class GgWorld<D, R, TypeDoc, SceneTypeDoc> {
+  protected constructor(args: {
+    visualScene?: SceneTypeDoc['visualScene']
+    physicsWorld?: SceneTypeDoc['physicsWorld']
+  })
 }
 ```
 
@@ -108,7 +122,7 @@ abstract addPrimitiveRigidBody(
     position?: D,
     rotation?: R,
     material?: unknown, // type defined in subclasses
-  ): IPositionable<D, R> & IRenderableEntity<D, R, VTypeDoc>;
+  ): IPositionable<D, R> & IRenderableEntity<D, R, TypeDoc>;
 ```
 
 ### addEntity (method)
@@ -125,6 +139,19 @@ public addEntity(entity: IEntity): void
 
 ```ts
 public removeEntity(entity: IEntity, dispose = false): void
+```
+
+### getEntityByName (method)
+
+Find an entity anywhere in the world by name. `children` is a flat list of every entity ever
+added via `addEntity` (nested entities included - `addChildren`/`onSpawned` cascade into it
+too), so this is a plain linear scan, not a tree walk; to search inside one particular
+entity's own subtree instead, use `IEntity.getChildEntityByName`.
+
+**Signature**
+
+```ts
+public getEntityByName<T extends IEntity = IEntity>(name: string): T
 ```
 
 ### onGgStaticInitialized (method)
@@ -148,6 +175,22 @@ protected registerConsoleCommands(ggstatic: {
       doc?: string,
     ) => void;
   })
+```
+
+### visualScene (property)
+
+**Signature**
+
+```ts
+readonly visualScene: SceneTypeDoc["visualScene"]
+```
+
+### physicsWorld (property)
+
+**Signature**
+
+```ts
+readonly physicsWorld: SceneTypeDoc["physicsWorld"]
 ```
 
 ### worldClock (property)
@@ -179,7 +222,7 @@ name: string
 **Signature**
 
 ```ts
-readonly children: IEntity<any, any, VisualTypeDocRepo<any, any>, PhysicsTypeDocRepo<any, any>>[]
+readonly children: IEntity<any, any, GgWorldTypeDocRepo<any, any>>[]
 ```
 
 ### tickListeners (property)
@@ -187,7 +230,7 @@ readonly children: IEntity<any, any, VisualTypeDocRepo<any, any>, PhysicsTypeDoc
 **Signature**
 
 ```ts
-readonly tickListeners: IEntity<any, any, VisualTypeDocRepo<any, any>, PhysicsTypeDocRepo<any, any>>[]
+readonly tickListeners: IEntity<any, any, GgWorldTypeDocRepo<any, any>>[]
 ```
 
 ### tickStarted$ (property)
@@ -230,6 +273,80 @@ readonly paused$: any
 readonly disposed$: any
 ```
 
+## GgWorldSceneTypeDocPPatch (type alias)
+
+**Signature**
+
+```ts
+export type GgWorldSceneTypeDocPPatch<
+  D,
+  R,
+  PTypeDoc extends PhysicsTypeDocRepo<D, R>,
+  PW extends IPhysicsWorldComponent<D, R, PTypeDoc> | null
+> = Omit<GgWorldSceneTypeRepo<D, R>, 'physicsWorld'> & { physicsWorld: PW }
+```
+
+## GgWorldSceneTypeDocVPatch (type alias)
+
+**Signature**
+
+```ts
+export type GgWorldSceneTypeDocVPatch<
+  D,
+  R,
+  VTypeDoc extends VisualTypeDocRepo2D,
+  VS extends IVisualScene2dComponent<VTypeDoc> | null
+> = Omit<GgWorldSceneTypeRepo<D, R>, 'visualScene'> & { visualScene: VS }
+```
+
+## GgWorldSceneTypeRepo (type alias)
+
+**Signature**
+
+```ts
+export type GgWorldSceneTypeRepo<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R> = GgWorldTypeDocRepo<D, R>> = {
+  visualScene: IVisualSceneComponent<D, R, TypeDoc['vTypeDoc']> | null
+  physicsWorld: IPhysicsWorldComponent<D, R, TypeDoc['pTypeDoc']> | null
+}
+```
+
+## GgWorldTypeDocPPatch (type alias)
+
+**Signature**
+
+```ts
+export type GgWorldTypeDocPPatch<D, R, PTypeDoc extends PhysicsTypeDocRepo<D, R>> = Omit<
+  GgWorldTypeDocRepo<D, R>,
+  'pTypeDoc'
+> & {
+  pTypeDoc: PTypeDoc
+}
+```
+
+## GgWorldTypeDocRepo (type alias)
+
+**Signature**
+
+```ts
+export type GgWorldTypeDocRepo<D, R> = {
+  vTypeDoc: VisualTypeDocRepo<D, R>
+  pTypeDoc: PhysicsTypeDocRepo<D, R>
+}
+```
+
+## GgWorldTypeDocVPatch (type alias)
+
+**Signature**
+
+```ts
+export type GgWorldTypeDocVPatch<D, R, VTypeDoc extends VisualTypeDocRepo<D, R>> = Omit<
+  GgWorldTypeDocRepo<D, R>,
+  'vTypeDoc'
+> & {
+  vTypeDoc: VTypeDoc
+}
+```
+
 ## PhysicsTypeDocRepo (type alias)
 
 **Signature**
@@ -242,6 +359,31 @@ export type PhysicsTypeDocRepo<D, R> = {
 }
 ```
 
+## SceneTypeDocOf (type alias)
+
+**Signature**
+
+```ts
+export type SceneTypeDocOf<W extends GgWorld<any, any>> = W extends GgWorld<
+  infer D,
+  infer R,
+  infer TypeDoc,
+  infer SceneTypeDoc
+>
+  ? SceneTypeDoc
+  : never
+```
+
+## TypeDocOf (type alias)
+
+**Signature**
+
+```ts
+export type TypeDocOf<W extends GgWorld<any, any>> = W extends GgWorld<infer D, infer R, infer TypeDoc>
+  ? TypeDoc
+  : never
+```
+
 ## VisualTypeDocRepo (type alias)
 
 **Signature**
@@ -252,5 +394,6 @@ export type VisualTypeDocRepo<D, R> = {
   displayObject: IDisplayObjectComponent<D, R>
   renderer: IRendererComponent<D, R>
   rendererExtraOpts: {}
+  camera: IPositionable<D, R>
 }
 ```

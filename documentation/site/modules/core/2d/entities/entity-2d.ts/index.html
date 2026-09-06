@@ -603,8 +603,11 @@
 <h1 id="utils">utils</h1>
 <h2 id="entity2d-class">Entity2d (class)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class Entity2d&lt;VTypeDoc, PTypeDoc&gt; {
-  constructor(options: { object2D?: VTypeDoc['displayObject']; objectBody?: PTypeDoc['rigidBody'] })
+<pre><code class="language-ts">export declare class Entity2d&lt;TypeDoc&gt; {
+  constructor(options: {
+    object2D?: TypeDoc['vTypeDoc']['displayObject']
+    objectBody?: TypeDoc['pTypeDoc']['rigidBody']
+  })
 }
 </code></pre>
 <h3 id="updatevisibility-method">updateVisibility (method)</h3>
@@ -614,7 +617,10 @@
 <h3 id="runtransformbinding-method">runTransformBinding (method)</h3>
 <p>Synchronize physics body transform with entity (and object2d if defined)</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">protected runTransformBinding(objectBody: PTypeDoc['rigidBody'], object2D: VTypeDoc['displayObject'] | null): void
+<pre><code class="language-ts">protected runTransformBinding(
+    objectBody: TypeDoc['pTypeDoc']['rigidBody'],
+    object2D: TypeDoc['vTypeDoc']['displayObject'] | null,
+  ): void
 </code></pre>
 <h3 id="tickorder-property">tickOrder (property)</h3>
 <p><strong>Signature</strong></p>
@@ -622,11 +628,11 @@
 </code></pre>
 <h3 id="object2d-property">object2D (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly object2D: VTypeDoc[&quot;displayObject&quot;] | null
+<pre><code class="language-ts">readonly object2D: TypeDoc[&quot;vTypeDoc&quot;][&quot;displayObject&quot;] | null
 </code></pre>
 <h3 id="objectbody-property">objectBody (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly objectBody: PTypeDoc[&quot;rigidBody&quot;] | null
+<pre><code class="language-ts">readonly objectBody: TypeDoc[&quot;pTypeDoc&quot;][&quot;rigidBody&quot;] | null
 </code></pre>
 
 

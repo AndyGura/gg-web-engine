@@ -1,6 +1,6 @@
 ---
 title: core/2d/entities/i-renderable-2d.entity.ts
-nav_order: 19
+nav_order: 20
 parent: Modules
 ---
 
@@ -23,7 +23,7 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare class IRenderable2dEntity<TypeDoc, PTypeDoc>
+export declare class IRenderable2dEntity<TypeDoc>
 ```
 
 ### \_world (property)
@@ -31,5 +31,5 @@ export declare class IRenderable2dEntity<TypeDoc, PTypeDoc>
 **Signature**
 
 ```ts
-_world: Gg2dWorld<TypeDoc, PTypeDoc, IVisualScene2dComponent<TypeDoc>, IPhysicsWorld2dComponent<PTypeDoc>> | null
+_world: Gg2dWorld<TypeDoc, Gg2dWorldSceneTypeRepo<TypeDoc>> | null
 ```

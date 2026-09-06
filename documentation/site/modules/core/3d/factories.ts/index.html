@@ -661,22 +661,22 @@
 </code></pre>
 <h2 id="idisplayobject3dcomponentfactory-class">IDisplayObject3dComponentFactory (class)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class IDisplayObject3dComponentFactory&lt;TypeDoc&gt;
+<pre><code class="language-ts">export declare class IDisplayObject3dComponentFactory&lt;VTypeDoc&gt;
 </code></pre>
 <h3 id="createprimitive-method">createPrimitive (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">abstract createPrimitive(
     descriptor: Shape3DMeshDescriptor,
-    material?: DisplayObject3dOpts&lt;TypeDoc['texture']&gt;,
-  ): TypeDoc['displayObject'];
+    material?: DisplayObject3dOpts&lt;VTypeDoc['texture']&gt;,
+  ): VTypeDoc['displayObject'];
 </code></pre>
 <h3 id="createperspectivecamera-method">createPerspectiveCamera (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">abstract createPerspectiveCamera(settings: {
+<pre><code class="language-ts">abstract createPerspectiveCamera(settings?: {
     fov?: number;
     aspectRatio?: number;
     frustrum?: { near: number; far: number };
-  }): TypeDoc['camera'];
+  }): VTypeDoc['camera'];
 </code></pre>
 <h3 id="randomcolor-method">randomColor (method)</h3>
 <p><strong>Signature</strong></p>
@@ -684,50 +684,50 @@
 </code></pre>
 <h3 id="createplane-method">createPlane (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">createPlane(material: DisplayObject3dOpts&lt;TypeDoc['texture']&gt; = {}): TypeDoc['displayObject']
+<pre><code class="language-ts">createPlane(material: DisplayObject3dOpts&lt;VTypeDoc['texture']&gt; = {}): VTypeDoc['displayObject']
 </code></pre>
 <h3 id="createbox-method">createBox (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">createBox(dimensions: Point3, material: DisplayObject3dOpts&lt;TypeDoc['texture']&gt; = {}): TypeDoc['displayObject']
+<pre><code class="language-ts">createBox(dimensions: Point3, material: DisplayObject3dOpts&lt;VTypeDoc['texture']&gt; = {}): VTypeDoc['displayObject']
 </code></pre>
 <h3 id="createcapsule-method">createCapsule (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">createCapsule(
     radius: number,
     centersDistance: number,
-    material: DisplayObject3dOpts&lt;TypeDoc['texture']&gt; = {},
-  ): TypeDoc['displayObject']
+    material: DisplayObject3dOpts&lt;VTypeDoc['texture']&gt; = {},
+  ): VTypeDoc['displayObject']
 </code></pre>
 <h3 id="createcylinder-method">createCylinder (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">createCylinder(
     radius: number,
     height: number,
-    material: DisplayObject3dOpts&lt;TypeDoc['texture']&gt; = {},
-  ): TypeDoc['displayObject']
+    material: DisplayObject3dOpts&lt;VTypeDoc['texture']&gt; = {},
+  ): VTypeDoc['displayObject']
 </code></pre>
 <h3 id="createcone-method">createCone (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">createCone(
     radius: number,
     height: number,
-    material: DisplayObject3dOpts&lt;TypeDoc['texture']&gt; = {},
-  ): TypeDoc['displayObject']
+    material: DisplayObject3dOpts&lt;VTypeDoc['texture']&gt; = {},
+  ): VTypeDoc['displayObject']
 </code></pre>
 <h3 id="createsphere-method">createSphere (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">createSphere(radius: number, material: DisplayObject3dOpts&lt;TypeDoc['texture']&gt; = {}): TypeDoc['displayObject']
+<pre><code class="language-ts">createSphere(radius: number, material: DisplayObject3dOpts&lt;VTypeDoc['texture']&gt; = {}): VTypeDoc['displayObject']
 </code></pre>
 <h2 id="iphysicsbody3dcomponentfactory-interface">IPhysicsBody3dComponentFactory (interface)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export interface IPhysicsBody3dComponentFactory&lt;TypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D&gt; {
+<pre><code class="language-ts">export interface IPhysicsBody3dComponentFactory&lt;PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D&gt; {
   createRigidBody(
     descriptor: BodyShape3DDescriptor,
     transform?: {
       position?: Point3
       rotation?: Point4
     }
-  ): TypeDoc['rigidBody']
+  ): PTypeDoc['rigidBody']
 
   createTrigger(
     descriptor: Shape3DDescriptor,
@@ -735,9 +735,9 @@
       position?: Point3
       rotation?: Point4
     }
-  ): TypeDoc['trigger']
+  ): PTypeDoc['trigger']
 
-  createRaycastVehicle(chassis: TypeDoc['rigidBody']): TypeDoc['raycastVehicle']
+  createRaycastVehicle(chassis: PTypeDoc['rigidBody']): PTypeDoc['raycastVehicle']
 }
 </code></pre>
 

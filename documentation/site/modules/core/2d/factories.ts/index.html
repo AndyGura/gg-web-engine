@@ -618,14 +618,14 @@
 </code></pre>
 <h2 id="idisplayobject2dcomponentfactory-class">IDisplayObject2dComponentFactory (class)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class IDisplayObject2dComponentFactory&lt;TypeDoc&gt;
+<pre><code class="language-ts">export declare class IDisplayObject2dComponentFactory&lt;VTypeDoc&gt;
 </code></pre>
 <h3 id="createprimitive-method">createPrimitive (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">abstract createPrimitive(
     descriptor: Shape2DDescriptor,
-    material?: DisplayObject2dOpts&lt;TypeDoc['texture']&gt;,
-  ): TypeDoc['displayObject'];
+    material?: DisplayObject2dOpts&lt;VTypeDoc['texture']&gt;,
+  ): VTypeDoc['displayObject'];
 </code></pre>
 <h3 id="randomcolor-method">randomColor (method)</h3>
 <p><strong>Signature</strong></p>
@@ -633,22 +633,22 @@
 </code></pre>
 <h3 id="createsquare-method">createSquare (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">createSquare(dimensions: Point2, material: DisplayObject2dOpts&lt;TypeDoc['texture']&gt; = {}): TypeDoc['displayObject']
+<pre><code class="language-ts">createSquare(dimensions: Point2, material: DisplayObject2dOpts&lt;VTypeDoc['texture']&gt; = {}): VTypeDoc['displayObject']
 </code></pre>
 <h3 id="createcircle-method">createCircle (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">createCircle(radius: number, material: DisplayObject2dOpts&lt;TypeDoc['texture']&gt; = {}): TypeDoc['displayObject']
+<pre><code class="language-ts">createCircle(radius: number, material: DisplayObject2dOpts&lt;VTypeDoc['texture']&gt; = {}): VTypeDoc['displayObject']
 </code></pre>
 <h2 id="iphysicsbody2dcomponentfactory-interface">IPhysicsBody2dComponentFactory (interface)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export interface IPhysicsBody2dComponentFactory&lt;TypeDoc extends PhysicsTypeDocRepo2D = PhysicsTypeDocRepo2D&gt; {
+<pre><code class="language-ts">export interface IPhysicsBody2dComponentFactory&lt;PTypeDoc extends PhysicsTypeDocRepo2D = PhysicsTypeDocRepo2D&gt; {
   createRigidBody(
     descriptor: BodyShape2DDescriptor,
     transform?: {
       position?: Point2
       rotation?: number
     }
-  ): TypeDoc['rigidBody']
+  ): PTypeDoc['rigidBody']
 
   createTrigger(
     descriptor: Shape2DDescriptor,
@@ -656,7 +656,7 @@
       position?: Point2
       rotation?: number
     }
-  ): TypeDoc['trigger']
+  ): PTypeDoc['trigger']
 }
 </code></pre>
 

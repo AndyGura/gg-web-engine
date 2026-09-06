@@ -150,6 +150,31 @@ export class PausableClock extends IClock {
   }
 
   /**
+   * Fires exactly one tick with the given delta while the clock is paused, without resuming it -
+   * useful for frame-by-frame debugging. `elapsedTime` (and everything derived from it - child
+   * clocks, animations, anything reading `this.elapsedTime`) advances by exactly `delta`, same as
+   * it would over `delta` worth of normal ticking, and stays at that new instant once `step`
+   * returns (the clock is still paused, it just moved its frozen instant forward). A manual step
+   * is never throttled by `tickRateLimit`, and resuming afterwards continues seamlessly from the
+   * stepped-to instant rather than losing or double-counting the stepped time.
+   * @param delta - tick delta to report to subscribers, in milliseconds
+   * @throws if the clock isn't currently paused
+   */
+  step(delta: number) {
+    if (!this.isPaused) {
+      throw new Error('Clock must be paused to step it manually');
+    }
+    // advance the frozen instant so `elapsedTime` (= timeScale * (pausedAt - startedAt)) grows by
+    // exactly `delta`, matching what `delta` means for every other tick consumer
+    this.pausedAt += this._timeScale !== 0 ? delta / this._timeScale : delta;
+    // keep the internal relative-time bookkeeping in step, so the first real tick after resume
+    // reports a normal-sized delta instead of one that swallows the whole stepped duration
+    this.oldRelativeTime += delta;
+    this.lastFiredTickElapsed = this.oldRelativeTime;
+    this._tick$.next([this.elapsedTime, delta]);
+  }
+
+  /**
    * Resumes the clock.
    */
   resume() {

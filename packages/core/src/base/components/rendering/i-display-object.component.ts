@@ -1,8 +1,11 @@
 import { GgBox, GgWorld, GgWorldTypeDocVPatch, VisualTypeDocRepo } from '../../../base';
 import { IWorldComponent } from '../i-world-component';
 
-export interface IDisplayObjectComponent<D, R, VTypeDoc extends VisualTypeDocRepo<D, R> = VisualTypeDocRepo<D, R>>
-  extends IWorldComponent<D, R, GgWorldTypeDocVPatch<D, R, VTypeDoc>> {
+export interface IDisplayObjectComponent<
+  D,
+  R,
+  VTypeDoc extends VisualTypeDocRepo<D, R> = VisualTypeDocRepo<D, R>,
+> extends IWorldComponent<D, R, GgWorldTypeDocVPatch<D, R, VTypeDoc>> {
   position: D;
   rotation: R;
   scale: D;

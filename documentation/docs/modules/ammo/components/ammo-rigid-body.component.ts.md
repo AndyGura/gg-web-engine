@@ -51,7 +51,7 @@ clone(): AmmoRigidBodyComponent
 **Signature**
 
 ```ts
-addToWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>): void
+addToWorld(world: AmmoGgWorld): void
 ```
 
 ### removeFromWorld (method)
@@ -59,7 +59,7 @@ addToWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>): void
 **Signature**
 
 ```ts
-removeFromWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>): void
+removeFromWorld(world: AmmoGgWorld): void
 ```
 
 ### refreshCG (method)

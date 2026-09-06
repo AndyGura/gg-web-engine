@@ -42,7 +42,7 @@ describe(`AnimationMixer<T>`, () => {
       const mixer = new NumberMixer(() => 3);
       const prom = firstValueFrom(mixer.value$.pipe(timeout(500)));
       mixer.tick$.next([0, 1]);
-      await expect(prom).rejects.toThrowError('Timeout has occurred');
+      await expect(prom).rejects.toThrow('Timeout has occurred');
     });
     it(`should not do anything after removed from world`, async () => {
       const mixer = new NumberMixer(() => 3);
@@ -50,7 +50,7 @@ describe(`AnimationMixer<T>`, () => {
       mixer.onSpawned(null!);
       mixer.onRemoved();
       mixer.tick$.next([0, 1]);
-      await expect(prom).rejects.toThrowError('Timeout has occurred');
+      await expect(prom).rejects.toThrow('Timeout has occurred');
     });
   });
 

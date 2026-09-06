@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/gg-car/gg-car.entity.ts
-nav_order: 43
+nav_order: 47
 parent: Modules
 ---
 
@@ -14,6 +14,7 @@ parent: Modules
   - [GgCarEntity (class)](#ggcarentity-class)
     - [calculateRpmFromCarSpeed (method)](#calculaterpmfromcarspeed-method)
     - [setTailLightsOn (method)](#settaillightson-method)
+    - [getMaxSteerAngle (method)](#getmaxsteerangle-method)
     - [createRaycastVehicle (method)](#createraycastvehicle-method)
     - [onSpawned (method)](#onspawned-method)
     - [updateEngine (method)](#updateengine-method)
@@ -35,11 +36,11 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare class GgCarEntity<VTypeDoc, PTypeDoc, RVEntity> {
+export declare class GgCarEntity<TypeDoc, RVEntity> {
   constructor(
     public readonly carProperties: GgCarProperties,
-    chassis3D: VTypeDoc['displayObject'] | null,
-    chassisBody: PTypeDoc['raycastVehicle']
+    chassis3D: TypeDoc['vTypeDoc']['displayObject'] | null,
+    chassisBody: TypeDoc['pTypeDoc']['raycastVehicle']
   )
 }
 ```
@@ -60,6 +61,17 @@ public calculateRpmFromCarSpeed(): number
 protected setTailLightsOn(value: boolean)
 ```
 
+### getMaxSteerAngle (method)
+
+Resolves the current effective max steering angle (radians) from `carProperties.maxSteerAngle`,
+scaling down with speed when that's given as a breakpoint array - see its TSDoc.
+
+**Signature**
+
+```ts
+protected getMaxSteerAngle(): number
+```
+
 ### createRaycastVehicle (method)
 
 **Signature**
@@ -67,8 +79,8 @@ protected setTailLightsOn(value: boolean)
 ```ts
 protected createRaycastVehicle(
     carProperties: GgCarProperties,
-    chassis3D: VTypeDoc['displayObject'] | null,
-    chassisBody: PTypeDoc['raycastVehicle'],
+    chassis3D: TypeDoc['vTypeDoc']['displayObject'] | null,
+    chassisBody: TypeDoc['pTypeDoc']['raycastVehicle'],
   ): RVEntity
 ```
 
@@ -77,7 +89,7 @@ protected createRaycastVehicle(
 **Signature**
 
 ```ts
-onSpawned(world: Gg3dWorld<VTypeDoc, PTypeDoc>)
+onSpawned(world: Gg3dWorld<TypeDoc>)
 ```
 
 ### updateEngine (method)
@@ -180,6 +192,21 @@ export type GgCarProperties = RVEntityProperties & {
     upShifts: number[]
     autoHold: boolean
   }
-  maxSteerAngle: number
+  /**
+   * Max steering lock, in radians, applied at `steeringFactor` of ±1.
+   *
+   * - A plain `number` applies that angle at every speed (the original, unconditional behavior).
+   * - An array of `{ atSpeedMs, angleRad }` breakpoints (speed in m/s, angle in radians) instead
+   *   scales the max angle down as the car speeds up - full lock-to-lock steering at parking-lot
+   *   speed will otherwise demand more lateral slip than a raycast vehicle's simplified friction
+   *   model (`frictionSlip * wheelLoad`) can supply, causing the car to snap/spin rather than
+   *   understeer. Breakpoints must be sorted ascending by `atSpeedMs`; the effective angle is
+   *   linearly interpolated between the two straddling the current `|getSpeed()|`, clamped to the
+   *   first entry's `angleRad` below the lowest speed and the last entry's `angleRad` at/above the
+   *   highest. A validated shape for this: full angle below 5 m/s, linearly tapering to 30% of
+   *   that by 30 m/s, flat beyond - e.g.
+   *   `[{ atSpeedMs: 5, angleRad: 0.2 }, { atSpeedMs: 30, angleRad: 0.06 }]`.
+   */
+  maxSteerAngle: number | { atSpeedMs: number; angleRad: number }[]
 }
 ```

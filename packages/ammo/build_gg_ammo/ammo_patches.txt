@@ -1,3 +1,59 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 0512013..39cf63c 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -35,15 +35,13 @@ set(ALLOW_MEMORY_GROWTH 0 CACHE STRING "Allow Memory Growth")
+ 
+ set(EMCC_ARGS
+   --extern-pre-js ${AMMO_FRONT_MATTER_FILE}
+-  --llvm-lto 1
+   --post-js glue.js
+   --post-js ${AMMO_ONLOAD_FILE}
+   -O3
+   -s ALLOW_MEMORY_GROWTH=${ALLOW_MEMORY_GROWTH}
+   -s ALLOW_TABLE_GROWTH=1
+   -s EXPORTED_FUNCTIONS=["_malloc","_free"]
+-  -s EXPORTED_RUNTIME_METHODS=["UTF8ToString"]
+-  -s EXTRA_EXPORTED_RUNTIME_METHODS=["addFunction"]
++  -s EXPORTED_RUNTIME_METHODS=["UTF8ToString","addFunction"]
+   -s EXPORT_NAME="Ammo"
+   -s MODULARIZE=1
+   -s NO_EXIT_RUNTIME=1
+@@ -103,7 +101,10 @@ add_custom_target(ammo-bindings ALL DEPENDS glue.js glue.o)
+ #######################################
+ add_custom_command(
+   OUTPUT ammo.js
+-  COMMAND emcc glue.o ${BULLET_LIBS} ${EMCC_JS_ARGS} -o ammo.js
++  # em++ (not emcc): the final link pulls in libBulletCollision/Dynamics/etc, which are C++ and
++  # need operator new/delete resolved from libc++ - modern emscripten's emcc no longer defaults
++  # to C++ linkage the way it used to, and fails with "undefined symbol: operator new" otherwise.
++  COMMAND em++ glue.o ${BULLET_LIBS} ${EMCC_JS_ARGS} -o ammo.js
+   DEPENDS ammo-bindings ${AMMO_FRONT_MATTER_FILE} ${AMMO_ONLOAD_FILE} ${BULLET_TARGETS}
+   COMMENT "Building ammo javascript"
+   VERBATIM)
+@@ -113,7 +114,7 @@ add_custom_target(ammo-javascript ALL DEPENDS ammo.js)
+ #######################################
+ add_custom_command(
+   OUTPUT ammo.wasm.js ammo.wasm.wasm
+-  COMMAND emcc glue.o ${BULLET_LIBS} ${EMCC_WASM_ARGS} -o ammo.wasm.js
++  COMMAND em++ glue.o ${BULLET_LIBS} ${EMCC_WASM_ARGS} -o ammo.wasm.js
+   DEPENDS ammo-bindings ${AMMO_FRONT_MATTER_FILE} ${AMMO_ONLOAD_FILE} ${BULLET_TARGETS}
+   COMMENT "Building ammo webassembly"
+   VERBATIM)
+diff --git a/Dockerfile b/Dockerfile
+index e7f427c..a582408 100644
+--- a/Dockerfile
++++ b/Dockerfile
+@@ -1,4 +1,8 @@
+-FROM emscripten/emsdk
++# Pinned (not :latest): an unpinned emsdk silently drifts to whatever Emscripten ships that day,
++# which has broken this build before (removed -s EXTRA_EXPORTED_RUNTIME_METHODS, changed emcc's
++# default C/C++ linkage - see CMakeLists.txt). Bump deliberately, and re-run the full build to
++# confirm CMakeLists.txt's EMCC_ARGS/em++ usage still matches whatever version you bump to.
++FROM emscripten/emsdk:6.0.8
+ ENV PYTHONUNBUFFERED 1
+ RUN apt-get update \
+     && apt-get install -y --no-install-recommends \
 diff --git a/ammo.idl b/ammo.idl
 index 1f6b880..9c2e5cf 100644
 --- a/ammo.idl

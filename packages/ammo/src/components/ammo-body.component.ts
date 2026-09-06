@@ -4,10 +4,7 @@ import Ammo from '../ammo.js/ammo';
 import { AmmoGgWorld } from '../types';
 
 export abstract class AmmoBodyComponent<T extends Ammo.btCollisionObject> {
-  protected static nativeBodyReverseMap: Map<number, AmmoBodyComponent<any>> = new Map<
-    number,
-    AmmoBodyComponent<any>
-  >();
+  public static nativeBodyReverseMap: Map<number, AmmoBodyComponent<any>> = new Map<number, AmmoBodyComponent<any>>();
 
   public get position(): Point3 {
     const origin = this.nativeBody.getWorldTransform().getOrigin();

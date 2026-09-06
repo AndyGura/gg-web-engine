@@ -83,6 +83,34 @@ describe('IEntity', () => {
     expect(parentA['_children']).not.toContain(child);
   });
 
+  it('should find a direct child by name', () => {
+    const child = new GgEntityMock();
+    child.name = 'Child';
+    ggEntity.addChildren(child);
+
+    expect(ggEntity.getChildEntityByName('Child')).toBe(child);
+  });
+
+  it('should find a grandchild by name, searching recursively', () => {
+    const child = new GgEntityMock();
+    const grandchild = new GgEntityMock();
+    grandchild.name = 'Grandchild';
+    child.addChildren(grandchild);
+    ggEntity.addChildren(child);
+
+    expect(ggEntity.getChildEntityByName('Grandchild')).toBe(grandchild);
+  });
+
+  it('should throw when no descendant has the given name', () => {
+    ggEntity.name = 'Root';
+    expect(() => ggEntity.getChildEntityByName('Nope')).toThrow('No child entity named "Nope" found under "Root"');
+  });
+
+  it('should not find itself via getChildEntityByName, only descendants', () => {
+    ggEntity.name = 'Self';
+    expect(() => ggEntity.getChildEntityByName('Self')).toThrow('No child entity named "Self" found under "Self"');
+  });
+
   it('should trigger onSpawned event', () => {
     const onSpawnedSpy = jest.spyOn(ggEntity['_onSpawned$'], 'next');
 

@@ -1,0 +1,9 @@
+{
+  "name": "gg-web-engine-e2e-blender-export-fixture",
+  "private": true,
+  "description": "Wrapper scripts for the Blender-export end-to-end test - see README.md.",
+  "scripts": {
+    "export-fixture": "blender --background --python fixture/build_scene.py -- fixture/dist/scene",
+    "test": "npm --prefix app test"
+  }
+}

@@ -1,6 +1,6 @@
 ---
 title: pixi/components/pixi-renderer.component.ts
-nav_order: 109
+nav_order: 122
 parent: Modules
 ---
 
@@ -32,6 +32,7 @@ parent: Modules
 export declare class PixiRendererComponent {
   constructor(
     public readonly scene: PixiSceneComponent,
+    public camera: PixiCameraComponent,
     public readonly canvas?: HTMLCanvasElement,
     options: Partial<RendererOptions & ApplicationOptions> = {}
   )
@@ -51,7 +52,7 @@ resizeRenderer(newSize: Point2): void
 **Signature**
 
 ```ts
-addToWorld(world: Gg2dWorld<PixiVisualTypeDocRepo2D, PhysicsTypeDocRepo2D, PixiSceneComponent>): void
+addToWorld(world: PixiGgWorld): void
 ```
 
 ### removeFromWorld (method)
@@ -59,7 +60,7 @@ addToWorld(world: Gg2dWorld<PixiVisualTypeDocRepo2D, PhysicsTypeDocRepo2D, PixiS
 **Signature**
 
 ```ts
-removeFromWorld(world: Gg2dWorld<PixiVisualTypeDocRepo2D, PhysicsTypeDocRepo2D, PixiSceneComponent>): void
+removeFromWorld(world: PixiGgWorld): void
 ```
 
 ### render (method)

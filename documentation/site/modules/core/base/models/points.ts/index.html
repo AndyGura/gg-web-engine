@@ -514,6 +514,34 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#mutablepoint2-type-alias" class="md-nav__link">
+    MutablePoint2 (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mutablepoint3-type-alias" class="md-nav__link">
+    MutablePoint3 (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mutablepoint4-type-alias" class="md-nav__link">
+    MutablePoint4 (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mutablepolar-type-alias" class="md-nav__link">
+    MutablePolar (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#mutablespherical-type-alias" class="md-nav__link">
     MutableSpherical (type alias)
   </a>
@@ -537,6 +565,13 @@
           <li class="md-nav__item">
   <a href="#point4-type-alias" class="md-nav__link">
     Point4 (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#polar-type-alias" class="md-nav__link">
+    Polar (type alias)
   </a>
   
 </li>
@@ -577,33 +612,58 @@
 
 <ul>
 <li><a href="#utils">utils</a></li>
+<li><a href="#mutablepoint2-type-alias">MutablePoint2 (type alias)</a></li>
+<li><a href="#mutablepoint3-type-alias">MutablePoint3 (type alias)</a></li>
+<li><a href="#mutablepoint4-type-alias">MutablePoint4 (type alias)</a></li>
+<li><a href="#mutablepolar-type-alias">MutablePolar (type alias)</a></li>
 <li><a href="#mutablespherical-type-alias">MutableSpherical (type alias)</a></li>
 <li><a href="#point2-type-alias">Point2 (type alias)</a></li>
 <li><a href="#point3-type-alias">Point3 (type alias)</a></li>
 <li><a href="#point4-type-alias">Point4 (type alias)</a></li>
+<li><a href="#polar-type-alias">Polar (type alias)</a></li>
 <li><a href="#spherical-type-alias">Spherical (type alias)</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
+<h2 id="mutablepoint2-type-alias">MutablePoint2 (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type MutablePoint2 = { x: number; y: number }
+</code></pre>
+<h2 id="mutablepoint3-type-alias">MutablePoint3 (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type MutablePoint3 = { x: number; y: number; z: number }
+</code></pre>
+<h2 id="mutablepoint4-type-alias">MutablePoint4 (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type MutablePoint4 = { x: number; y: number; z: number; w: number }
+</code></pre>
+<h2 id="mutablepolar-type-alias">MutablePolar (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type MutablePolar = { radius: number; phi: number }
+</code></pre>
 <h2 id="mutablespherical-type-alias">MutableSpherical (type alias)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export type MutableSpherical = { radius: number; phi: number; theta: number }
 </code></pre>
 <h2 id="point2-type-alias">Point2 (type alias)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type Point2 = { readonly x: number; readonly y: number }
+<pre><code class="language-ts">export type Point2 = Readonly&lt;MutablePoint2&gt;
 </code></pre>
 <h2 id="point3-type-alias">Point3 (type alias)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type Point3 = { readonly x: number; readonly y: number; readonly z: number }
+<pre><code class="language-ts">export type Point3 = Readonly&lt;MutablePoint3&gt;
 </code></pre>
 <h2 id="point4-type-alias">Point4 (type alias)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type Point4 = { readonly x: number; readonly y: number; readonly z: number; readonly w: number }
+<pre><code class="language-ts">export type Point4 = Readonly&lt;MutablePoint4&gt;
+</code></pre>
+<h2 id="polar-type-alias">Polar (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type Polar = Readonly&lt;MutablePolar&gt;
 </code></pre>
 <h2 id="spherical-type-alias">Spherical (type alias)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type Spherical = { readonly radius: number; readonly phi: number; readonly theta: number }
+<pre><code class="language-ts">export type Spherical = Readonly&lt;MutableSpherical&gt;
 </code></pre>
 
 

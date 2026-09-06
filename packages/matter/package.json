@@ -1,11 +1,11 @@
 {
   "name": "@gg-web-engine/matter",
-  "version": "0.0.57",
+  "version": "0.0.63",
   "description": "An attempt to create open source game engine for browser",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
     "prettier-format": "prettier --config ../core/.prettierrc 'src/**/*.ts' --write",
     "prepublish": "rm -rf ./dist/ && tsc",
     "build": "tsc"
@@ -29,16 +29,43 @@
   "dependencies": {
   },
   "devDependencies": {
-    "@types/matter-js": "0.19.7",
-    "@gg-web-engine/core": "0.0.57",
+    "@types/matter-js": "0.20.2",
+    "@gg-web-engine/core": "0.0.63",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^26.4.0",
+    "jest": "^30.5.0",
+    "jest-environment-jsdom": "^30.5.0",
     "matter-js": "0.20.0",
-    "prettier": "^3.3.3",
-    "rxjs": "7.8.1",
-    "typescript": "~5.5.4"
+    "prettier": "^3.9.6",
+    "rxjs": "7.8.2",
+    "ts-jest": "^29.4.12",
+    "typescript": "~6.0.3"
   },
   "peerDependencies": {
-    "@gg-web-engine/core": "0.0.57",
+    "@gg-web-engine/core": "0.0.63",
     "matter-js": "0.20.0",
-    "rxjs": "7.8.1"
+    "rxjs": "7.8.2"
+  },
+  "jest": {
+    "rootDir": ".",
+    "testRegex": "\\.spec\\.ts$",
+    "transform": {
+      "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "moduleNameMapper": {
+      "@gg-web-engine/core": "<rootDir>/../core/src/index.ts"
+    },
+    "preset": "ts-jest/presets/default",
+    "collectCoverageFrom": [
+      "**/*.ts",
+      "!**/*.module.ts"
+    ],
+    "coveragePathIgnorePatterns": [
+      "<rootDir>/node_modules/",
+      "<rootDir>/dist/",
+      "<rootDir>/test/"
+    ],
+    "coverageDirectory": "./coverage",
+    "testEnvironment": "jsdom"
   }
 }

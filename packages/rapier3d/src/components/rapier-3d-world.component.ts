@@ -1,4 +1,12 @@
-import { CollisionGroup, IPhysicsWorld3dComponent, Point3 } from '@gg-web-engine/core';
+import {
+  BitMask,
+  CollisionGroup,
+  IPhysicsWorld3dComponent,
+  Pnt3,
+  Point3,
+  RaycastOptions,
+  RaycastResult,
+} from '@gg-web-engine/core';
 import { EventQueue, init, Vector3, World } from '@dimforge/rapier3d-compat';
 import { Rapier3dRigidBodyComponent } from './rapier-3d-rigid-body.component';
 import { Rapier3dFactory } from '../rapier-3d-factory';
@@ -93,6 +101,55 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
 
   deregisterCollisionGroup(group: CollisionGroup): void {
     this.lockedCollisionGroups = this.lockedCollisionGroups.filter(x => x !== group);
+  }
+
+  raycast(options: RaycastOptions<Point3>): RaycastResult<Point3, Rapier3dRigidBodyComponent> {
+    if (!this._nativeWorld) {
+      return { hasHit: false };
+    }
+    const origin = options.from;
+    let direction = Pnt3.sub(options.to, options.from);
+    const rayLength = Pnt3.len(direction);
+    direction = Pnt3.norm(direction);
+    const ray = {
+      origin: new Vector3(...Pnt3.spr(origin)),
+      dir: new Vector3(...Pnt3.spr(direction)),
+      pointAt: (t: number) => {
+        return new Vector3(origin.x + direction.x * t, origin.y + direction.y * t, origin.z + direction.z * t);
+      },
+    };
+    const mask = (groups?: CollisionGroup[]) => {
+      return groups ? BitMask.pack(groups, 16) : BitMask.full(16);
+    };
+    const hit = this._nativeWorld.castRay(
+      ray,
+      rayLength,
+      true,
+      undefined,
+      (mask(options.collisionFilterGroups) << 16) | mask(options.collisionFilterMask),
+    );
+    if (!hit) {
+      return { hasHit: false };
+    }
+    const result: RaycastResult<Point3, Rapier3dRigidBodyComponent> = {
+      hasHit: true,
+    };
+    const collider = hit.collider;
+    if (collider) {
+      const rigidBody = collider.parent();
+      if (!rigidBody) {
+        return { hasHit: false };
+      }
+      result.hitBody = this.handleIdEntityMap.get(rigidBody.handle);
+      result.hitDistance = hit.timeOfImpact;
+      result.hitPoint = Pnt3.add(origin, Pnt3.scalarMult(direction, hit.timeOfImpact));
+
+      const rayIntersection = hit.collider.castRayAndGetNormal(ray, hit.timeOfImpact, true);
+      result.hitNormal = Pnt3.clone(rayIntersection?.normal || Pnt3.O);
+    } else {
+      result.hasHit = false;
+    }
+    return result;
   }
 
   dispose(): void {

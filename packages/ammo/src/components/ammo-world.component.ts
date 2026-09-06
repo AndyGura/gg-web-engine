@@ -1,4 +1,11 @@
-import { CollisionGroup, IPhysicsWorld3dComponent, Point3 } from '@gg-web-engine/core';
+import {
+  BitMask,
+  CollisionGroup,
+  IPhysicsWorld3dComponent,
+  Point3,
+  RaycastOptions,
+  RaycastResult,
+} from '@gg-web-engine/core';
 import { Subject } from 'rxjs';
 import Ammo from '../ammo.js/ammo';
 import { AmmoFactory } from '../ammo-factory';
@@ -6,6 +13,7 @@ import { AmmoLoader } from '../ammo-loader';
 import { AmmoPhysicsTypeDocRepo } from '../types';
 import { AmmoRigidBodyComponent } from './ammo-rigid-body.component';
 import { AmmoTriggerComponent } from './ammo-trigger.component';
+import { AmmoBodyComponent } from './ammo-body.component';
 
 export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsTypeDocRepo> {
   private _factory: AmmoFactory | null = null;
@@ -111,6 +119,54 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
 
   deregisterCollisionGroup(group: CollisionGroup): void {
     this.lockedCollisionGroups = this.lockedCollisionGroups.filter(x => x !== group);
+  }
+
+  raycast(options: RaycastOptions<Point3>): RaycastResult<Point3, AmmoRigidBodyComponent | AmmoTriggerComponent> {
+    if (!this._dynamicAmmoWorld) {
+      return { hasHit: false };
+    }
+    const from = new Ammo.btVector3(options.from.x, options.from.y, options.from.z);
+    const to = new Ammo.btVector3(options.to.x, options.to.y, options.to.z);
+
+    const rayCallback = new Ammo.ClosestRayResultCallback(from, to);
+
+    if (options.collisionFilterGroups) {
+      rayCallback.set_m_collisionFilterGroup(BitMask.pack(options.collisionFilterGroups, 16));
+    }
+    if (options.collisionFilterMask !== undefined) {
+      rayCallback.set_m_collisionFilterMask(BitMask.pack(options.collisionFilterMask, 16));
+    }
+    this._dynamicAmmoWorld.rayTest(from, to, rayCallback);
+
+    const hasHit = rayCallback.hasHit();
+
+    const result: RaycastResult<Point3, any> = { hasHit };
+
+    if (hasHit) {
+      result.hitBody = AmmoBodyComponent.nativeBodyReverseMap.get(Ammo.getPointer(rayCallback.get_m_collisionObject()));
+      const hitPointAmmo = rayCallback.get_m_hitPointWorld();
+      result.hitPoint = {
+        x: hitPointAmmo.x(),
+        y: hitPointAmmo.y(),
+        z: hitPointAmmo.z(),
+      };
+      const hitNormalAmmo = rayCallback.get_m_hitNormalWorld();
+      result.hitNormal = {
+        x: hitNormalAmmo.x(),
+        y: hitNormalAmmo.y(),
+        z: hitNormalAmmo.z(),
+      };
+      const dx = result.hitPoint.x - options.from.x;
+      const dy = result.hitPoint.y - options.from.y;
+      const dz = result.hitPoint.z - options.from.z;
+      result.hitDistance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    }
+
+    Ammo.destroy(from);
+    Ammo.destroy(to);
+    Ammo.destroy(rayCallback);
+
+    return result;
   }
 
   dispose(): void {

@@ -1,6 +1,6 @@
 ---
 title: core/3d/components/physics/i-rigid-body-3d.component.ts
-nav_order: 30
+nav_order: 33
 parent: Modules
 ---
 
@@ -22,8 +22,8 @@ parent: Modules
 **Signature**
 
 ```ts
-export interface IRigidBody3dComponent<TypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D>
-  extends IRigidBodyComponent<Point3, Point4, TypeDoc> {
+export interface IRigidBody3dComponent<PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D>
+  extends IRigidBodyComponent<Point3, Point4, PTypeDoc> {
   angularVelocity: Point3
 
   /** body info for physics debugger view */

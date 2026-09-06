@@ -1,6 +1,6 @@
 ---
 title: core/base/clock/global-clock.ts
-nav_order: 59
+nav_order: 67
 parent: Modules
 ---
 

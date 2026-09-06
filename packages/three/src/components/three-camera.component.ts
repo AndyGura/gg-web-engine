@@ -1,11 +1,11 @@
-import { ICameraComponent } from '@gg-web-engine/core';
+import { ICamera3dComponent } from '@gg-web-engine/core';
 import { Camera, PerspectiveCamera } from 'three';
 import { ThreeDisplayObjectComponent } from './three-display-object.component';
 import { ThreeVisualTypeDocRepo } from '../types';
 
 export class ThreeCameraComponent
   extends ThreeDisplayObjectComponent
-  implements ICameraComponent<ThreeVisualTypeDocRepo>
+  implements ICamera3dComponent<ThreeVisualTypeDocRepo>
 {
   get supportsFov(): boolean {
     return this.nativeCamera instanceof PerspectiveCamera || this.nativeCamera.type == 'PerspectiveCamera';

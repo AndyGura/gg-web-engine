@@ -11,10 +11,17 @@ import {
   Qtrn,
   Shape3DDescriptor,
 } from '@gg-web-engine/core';
-import { Collider, ColliderDesc, Quaternion, RigidBody, RigidBodyDesc, Vector3 } from '@dimforge/rapier3d-compat';
+import {
+  Collider,
+  ColliderDesc,
+  InteractionGroups,
+  Quaternion,
+  RigidBody,
+  RigidBodyDesc,
+  Vector3,
+} from '@dimforge/rapier3d-compat';
 import { Rapier3dWorldComponent } from './rapier-3d-world.component';
 import { Rapier3dGgWorld, Rapier3dPhysicsTypeDocRepo } from '../types';
-import { InteractionGroups } from '@dimforge/rapier3d-compat/geometry/interaction_groups';
 
 export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3dPhysicsTypeDocRepo> {
   public entity: Entity3d | null = null;

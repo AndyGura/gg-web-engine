@@ -77,8 +77,8 @@ world.init().then(async () => {
         shading: 'phong',
         receiveShadow: true,
       });
-    ((floor.object3D.nativeMesh as Mesh).material as Material).opacity = 0.4;
-    ((floor.object3D.nativeMesh as Mesh).material as Material).transparent = true;
+    ((floor.object3D!.nativeMesh as Mesh).material as Material).opacity = 0.4;
+    ((floor.object3D!.nativeMesh as Mesh).material as Material).transparent = true;
     const slider: HTMLInputElement | undefined = document.getElementById('slider' + i) as any;
     if (slider) {
       createInlineTickController(world).subscribe(() => {
@@ -95,7 +95,7 @@ world.init().then(async () => {
       floor.position = { x: 0, y: 0, z: -11 };
       const checkboxes = ['rcb', 'gcb', 'bcb', 'ycb', 'pcb'].map(id => document.getElementById(id) as HTMLInputElement);
       createInlineTickController(world).subscribe(() => {
-        floor.objectBody.ownCollisionGroups = floor.objectBody.interactWithCollisionGroups = checkboxes
+        floor.objectBody!.ownCollisionGroups = floor.objectBody!.interactWithCollisionGroups = checkboxes
           .map((cb, index) => ({ checked: cb.checked, index }))
           .filter(({ checked }) => checked)
           .map(({ index }) => cgs[index][1]);
@@ -135,8 +135,8 @@ world.init().then(async () => {
           Qtrn.O,
           { color, shading: 'phong', castShadow: true, receiveShadow: true },
         );
-        item.objectBody.nativeBody.setActivationState(4); // btCollisionObject::DISABLE_DEACTIVATION
-        item.objectBody.linearVelocity = { x: 2 * Math.random() - 1, y: 2 * Math.random() - 1, z: 0 };
+        item.objectBody!.nativeBody.setActivationState(4); // btCollisionObject::DISABLE_DEACTIVATION
+        item.objectBody!.linearVelocity = { x: 2 * Math.random() - 1, y: 2 * Math.random() - 1, z: 0 };
       }
     }
   }

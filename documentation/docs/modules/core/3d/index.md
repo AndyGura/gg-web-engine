@@ -11,6 +11,7 @@ has_children: true
 - [core/3d/gg-3d-world.ts](/gg-web-engine/modules/core/3d/gg-3d-world.ts)
 - [core/3d/index.ts](/gg-web-engine/modules/core/3d/index.ts)
 - [core/3d/interfaces](/gg-web-engine/modules/core/3d/interfaces)
+- [core/3d/level-loader.ts](/gg-web-engine/modules/core/3d/level-loader.ts)
 - [core/3d/loader.ts](/gg-web-engine/modules/core/3d/loader.ts)
 - [core/3d/loaders.ts](/gg-web-engine/modules/core/3d/loaders.ts)
 - [core/3d/models](/gg-web-engine/modules/core/3d/models)

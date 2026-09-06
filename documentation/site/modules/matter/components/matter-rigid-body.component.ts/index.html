@@ -522,6 +522,13 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#updatecollisionfilter-method" class="md-nav__link">
+    updateCollisionFilter (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#clone-method" class="md-nav__link">
     clone (method)
   </a>
@@ -577,6 +584,20 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#_interactwithcgsmask-property" class="md-nav__link">
+    _interactWithCGsMask (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_owncgsmask-property" class="md-nav__link">
+    _ownCGsMask (property)
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -612,6 +633,7 @@
 <ul>
 <li><a href="#utils">utils</a></li>
 <li><a href="#matterrigidbodycomponent-class">MatterRigidBodyComponent (class)</a><ul>
+<li><a href="#updatecollisionfilter-method">updateCollisionFilter (method)</a></li>
 <li><a href="#clone-method">clone (method)</a></li>
 <li><a href="#addtoworld-method">addToWorld (method)</a></li>
 <li><a href="#removefromworld-method">removeFromWorld (method)</a></li>
@@ -620,6 +642,8 @@
 <li><a href="#name-property">name (property)</a></li>
 <li><a href="#entity-property">entity (property)</a></li>
 <li><a href="#debugbodysettings-property">debugBodySettings (property)</a></li>
+<li><a href="#_interactwithcgsmask-property">_interactWithCGsMask (property)</a></li>
+<li><a href="#_owncgsmask-property">_ownCGsMask (property)</a></li>
 </ul>
 </li>
 </ul>
@@ -631,21 +655,21 @@
   constructor(public nativeBody: Body, public readonly shape: Shape2DDescriptor)
 }
 </code></pre>
+<h3 id="updatecollisionfilter-method">updateCollisionFilter (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">protected updateCollisionFilter(): void
+</code></pre>
 <h3 id="clone-method">clone (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">clone(): MatterRigidBodyComponent
 </code></pre>
 <h3 id="addtoworld-method">addToWorld (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">addToWorld(
-    world: Gg2dWorld&lt;VisualTypeDocRepo2D, MatterPhysicsTypeDocRepo, IVisualScene2dComponent, MatterWorldComponent&gt;,
-  ): void
+<pre><code class="language-ts">addToWorld(world: MatterGgWorld): void
 </code></pre>
 <h3 id="removefromworld-method">removeFromWorld (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">removeFromWorld(
-    world: Gg2dWorld&lt;VisualTypeDocRepo2D, MatterPhysicsTypeDocRepo, IVisualScene2dComponent, MatterWorldComponent&gt;,
-  ): void
+<pre><code class="language-ts">removeFromWorld(world: MatterGgWorld): void
 </code></pre>
 <h3 id="dispose-method">dispose (method)</h3>
 <p><strong>Signature</strong></p>
@@ -666,6 +690,14 @@
 <h3 id="debugbodysettings-property">debugBodySettings (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly debugBodySettings: any
+</code></pre>
+<h3 id="_interactwithcgsmask-property">_interactWithCGsMask (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">_interactWithCGsMask: any
+</code></pre>
+<h3 id="_owncgsmask-property">_ownCGsMask (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">_ownCGsMask: any
 </code></pre>
 
 

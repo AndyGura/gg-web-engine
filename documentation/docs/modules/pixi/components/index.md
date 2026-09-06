@@ -5,6 +5,7 @@ has_children: true
 
 <h2 class="text-delta">Directory table of contents</h2>
 
+- [pixi/components/pixi-camera.component.ts](/gg-web-engine/modules/pixi/components/pixi-camera.component.ts)
 - [pixi/components/pixi-display-object.component.ts](/gg-web-engine/modules/pixi/components/pixi-display-object.component.ts)
 - [pixi/components/pixi-physics-debug-view.ts](/gg-web-engine/modules/pixi/components/pixi-physics-debug-view.ts)
 - [pixi/components/pixi-renderer.component.ts](/gg-web-engine/modules/pixi/components/pixi-renderer.component.ts)

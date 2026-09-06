@@ -1,3 +1,4 @@
+export * from './components/pixi-camera.component';
 export * from './components/pixi-display-object.component';
 export * from './components/pixi-renderer.component';
 export * from './components/pixi-scene.component';

@@ -13,7 +13,7 @@ export type Rapier3dPhysicsTypeDocRepo = {
   raycastVehicle: never; //Rapier3dRaycastVehicleComponent;
 };
 
-export type Rapier3dGgWorld = Gg3dWorld<
-  Gg3dWorldTypeDocPPatch<Rapier3dPhysicsTypeDocRepo>,
-  Gg3dWorldSceneTypeDocPPatch<Rapier3dPhysicsTypeDocRepo, Rapier3dWorldComponent>
->;
+export type Rapier3dTypeDoc = Gg3dWorldTypeDocPPatch<Rapier3dPhysicsTypeDocRepo>;
+export type Rapier3dSceneTypeDoc = Gg3dWorldSceneTypeDocPPatch<Rapier3dPhysicsTypeDocRepo, Rapier3dWorldComponent>;
+
+export type Rapier3dGgWorld = Gg3dWorld<Rapier3dTypeDoc, Rapier3dSceneTypeDoc>;

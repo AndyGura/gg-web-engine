@@ -1,6 +1,6 @@
 ---
 title: core/base/math/numbers.ts
-nav_order: 87
+nav_order: 97
 parent: Modules
 ---
 
@@ -12,6 +12,7 @@ parent: Modules
 
 - [utils](#utils)
   - [averageAngle](#averageangle)
+  - [lerpAngle](#lerpangle)
   - [lerpNumber](#lerpnumber)
 
 ---
@@ -23,7 +24,15 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare const averageAngle: (angleA: number, angleB: number, factor?: number) => number
+export declare const averageAngle: (angleA: number, angleB: number) => number
+```
+
+## lerpAngle
+
+**Signature**
+
+```ts
+export declare const lerpAngle: (angleA: number, angleB: number, factor: number) => number
 ```
 
 ## lerpNumber

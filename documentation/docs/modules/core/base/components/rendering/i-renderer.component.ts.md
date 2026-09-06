@@ -1,6 +1,6 @@
 ---
 title: core/base/components/rendering/i-renderer.component.ts
-nav_order: 69
+nav_order: 77
 parent: Modules
 ---
 
@@ -18,6 +18,7 @@ parent: Modules
     - [resizeRenderer (method)](#resizerenderer-method)
     - [dispose (method)](#dispose-method)
     - [entity (property)](#entity-property)
+    - [camera (property)](#camera-property)
     - [rendererOptions (property)](#rendereroptions-property)
   - [RendererOptions (type alias)](#rendereroptions-type-alias)
 
@@ -54,7 +55,7 @@ abstract render(): void;
 **Signature**
 
 ```ts
-abstract addToWorld(world: GgWorld<D, R, VTypeDoc>): void;
+abstract addToWorld(world: GgWorld<D, R, GgWorldTypeDocVPatch<D, R, VTypeDoc>>): void;
 ```
 
 ### removeFromWorld (method)
@@ -62,7 +63,7 @@ abstract addToWorld(world: GgWorld<D, R, VTypeDoc>): void;
 **Signature**
 
 ```ts
-abstract removeFromWorld(world: GgWorld<D, R, VTypeDoc>): void;
+abstract removeFromWorld(world: GgWorld<D, R, GgWorldTypeDocVPatch<D, R, VTypeDoc>>): void;
 ```
 
 ### resizeRenderer (method)
@@ -88,7 +89,15 @@ abstract dispose(): void;
 **Signature**
 
 ```ts
-entity: IEntity<any, any, VisualTypeDocRepo<any, any>, PhysicsTypeDocRepo<any, any>> | null
+entity: IEntity<any, any, GgWorldTypeDocRepo<any, any>> | null
+```
+
+### camera (property)
+
+**Signature**
+
+```ts
+camera: VTypeDoc['camera']
 ```
 
 ### rendererOptions (property)

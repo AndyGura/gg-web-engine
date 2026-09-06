@@ -4,16 +4,16 @@ import { auditTime, BehaviorSubject, fromEvent, merge, Observable, startWith, ta
 import { distinctUntilChanged, map } from 'rxjs/operators';
 import { Point2 } from '../models/points';
 import { RendererOptions } from '../components/rendering/i-renderer.component';
+import { IPositionable } from '../interfaces/i-positionable';
 
 /**
  * Represents a base class for a renderer entity.
  * @class
  */
-export abstract class IRendererEntity<
-  D,
-  R,
-  VTypeDoc extends VisualTypeDocRepo<D, R> = VisualTypeDocRepo<D, R>,
-> extends IEntity<D, R, GgWorldTypeDocVPatch<D, R, VTypeDoc>> {
+export abstract class IRendererEntity<D, R, VTypeDoc extends VisualTypeDocRepo<D, R> = VisualTypeDocRepo<D, R>>
+  extends IEntity<D, R, GgWorldTypeDocVPatch<D, R, VTypeDoc>>
+  implements IPositionable<D, R>
+{
   public readonly tickOrder = TickOrder.RENDERING;
   /** Represents the current size of the renderer. */
   protected _rendererSize$: BehaviorSubject<Point2 | null> = new BehaviorSubject<Point2 | null>(null);
@@ -35,6 +35,26 @@ export abstract class IRendererEntity<
 
   public get rendererOptions(): RendererOptions {
     return this.renderer.rendererOptions;
+  }
+
+  public get camera(): VTypeDoc['camera'] {
+    return this.renderer.camera;
+  }
+
+  public get position(): D {
+    return this.camera.position;
+  }
+
+  set position(value: D) {
+    this.renderer.camera.position = value;
+  }
+
+  public get rotation(): R {
+    return this.renderer.camera.rotation;
+  }
+
+  set rotation(value: R) {
+    this.renderer.camera.rotation = value;
   }
 
   /** get flag whether renderer shows physics debugger view */

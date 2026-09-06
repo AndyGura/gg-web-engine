@@ -1,31 +1,47 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
-import { bootstrapApplication } from '@angular/platform-browser';
-import { Entity3d, Gg3dWorld, GgStatic, OrbitCameraController, Trigger3dEntity } from '@gg-web-engine/core';
-import { ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
-import { AmmoPhysicsTypeDocRepo, AmmoWorldComponent } from '@gg-web-engine/ammo';
-import { Subject } from 'rxjs';
+import {
+  Component,
+  OnDestroy,
+  OnInit,
+  provideZoneChangeDetection,
+  ChangeDetectionStrategy,
+} from "@angular/core";
+import { bootstrapApplication } from "@angular/platform-browser";
+import {
+  Entity3d,
+  Gg3dWorld,
+  GgStatic,
+  OrbitCameraController,
+  Trigger3dEntity,
+} from "@gg-web-engine/core";
+import {
+  ThreeGgWorld,
+  ThreeSceneComponent,
+  ThreeTypeDoc,
+} from "@gg-web-engine/three";
+import { AmmoWorldComponent } from "@gg-web-engine/ammo";
+import { Subject } from "rxjs";
 
 GgStatic.instance.showStats = true;
 GgStatic.instance.devConsoleEnabled = true;
 
 @Component({
-  selector: 'my-app',
+  selector: "my-app",
   standalone: true,
-  template: `
-      <canvas id='gg'></canvas>`,
+  changeDetection: ChangeDetectionStrategy.Eager,
+  template: ` <canvas id="gg"></canvas>`,
 })
 export class App implements OnInit, OnDestroy {
-  private world!: Gg3dWorld<ThreeVisualTypeDocRepo, AmmoPhysicsTypeDocRepo, ThreeSceneComponent, AmmoWorldComponent>;
+  private world!: ThreeGgWorld;
   private destroyed$: Subject<void> = new Subject<void>();
 
   async ngOnInit(): Promise<void> {
-    this.world = new Gg3dWorld(
-      new ThreeSceneComponent(),
-      new AmmoWorldComponent(),
-    );
+    this.world = new Gg3dWorld({
+      visualScene: new ThreeSceneComponent(),
+      physicsWorld: new AmmoWorldComponent(),
+    });
     await this.world.init();
 
-    const canvas = document.getElementById('gg')! as HTMLCanvasElement;
+    const canvas = document.getElementById("gg")! as HTMLCanvasElement;
     const renderer = this.world.addRenderer(
       this.world.visualScene.factory.createPerspectiveCamera({ fov: 75 }),
       canvas,
@@ -38,60 +54,59 @@ export class App implements OnInit, OnDestroy {
     this.world.addEntity(controller);
 
     this.world.addPrimitiveRigidBody({
-      shape: { shape: 'BOX', dimensions: { x: 7, y: 7, z: 1 } },
+      shape: { shape: "BOX", dimensions: { x: 7, y: 7, z: 1 } },
       body: { dynamic: false },
     });
 
     const destroyTrigger = new Trigger3dEntity(
-      this.world.physicsWorld.factory.createTrigger({
-        shape: 'BOX',
+      this.world.physicsWorld!.factory.createTrigger({
+        shape: "BOX",
         dimensions: { x: 1000, y: 1000, z: 1 },
       }),
     );
     destroyTrigger.position = { x: 0, y: 0, z: -15 };
-    destroyTrigger.onEntityEntered.subscribe(entity => {
+    destroyTrigger.onEntityEntered.subscribe((entity) => {
       this.world.removeEntity(entity, true);
     });
     this.world.addEntity(destroyTrigger);
 
     const spawnTimer = this.world.createClock(true);
     spawnTimer.tickRateLimit = 2;
-    spawnTimer.tick$
-      .subscribe(() => {
-        let item: Entity3d;
-        let r = Math.random();
-        if (r < 0.2) {
-          item = this.world.addPrimitiveRigidBody({
-            shape: { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } },
-            body: { mass: 1 },
-          });
-        } else if (r < 0.4) {
-          item = this.world.addPrimitiveRigidBody({
-            shape: { shape: 'CAPSULE', radius: 0.5, centersDistance: 1 },
-            body: { mass: 1 },
-          });
-        } else if (r < 0.6) {
-          item = this.world.addPrimitiveRigidBody({
-            shape: { shape: 'CYLINDER', radius: 0.5, height: 1 },
-            body: { mass: 1 },
-          });
-        } else if (r < 0.8) {
-          item = this.world.addPrimitiveRigidBody({
-            shape: { shape: 'CONE', radius: 0.5, height: 1 },
-            body: { mass: 1 },
-          });
-        } else {
-          item = this.world.addPrimitiveRigidBody({
-            shape: { shape: 'SPHERE', radius: 0.5 },
-            body: { mass: 1 },
-          });
-        }
-        item.position = {
-          x: Math.random() * 5 - 2.5,
-          y: Math.random() * 5 - 2.5,
-          z: 10,
-        };
-      });
+    spawnTimer.tick$.subscribe(() => {
+      let item: Entity3d<ThreeTypeDoc>;
+      let r = Math.random();
+      if (r < 0.2) {
+        item = this.world.addPrimitiveRigidBody({
+          shape: { shape: "BOX", dimensions: { x: 1, y: 1, z: 1 } },
+          body: { mass: 1 },
+        });
+      } else if (r < 0.4) {
+        item = this.world.addPrimitiveRigidBody({
+          shape: { shape: "CAPSULE", radius: 0.5, centersDistance: 1 },
+          body: { mass: 1 },
+        });
+      } else if (r < 0.6) {
+        item = this.world.addPrimitiveRigidBody({
+          shape: { shape: "CYLINDER", radius: 0.5, height: 1 },
+          body: { mass: 1 },
+        });
+      } else if (r < 0.8) {
+        item = this.world.addPrimitiveRigidBody({
+          shape: { shape: "CONE", radius: 0.5, height: 1 },
+          body: { mass: 1 },
+        });
+      } else {
+        item = this.world.addPrimitiveRigidBody({
+          shape: { shape: "SPHERE", radius: 0.5 },
+          body: { mass: 1 },
+        });
+      }
+      item.position = {
+        x: Math.random() * 5 - 2.5,
+        y: Math.random() * 5 - 2.5,
+        z: 10,
+      };
+    });
 
     this.world.start();
   }
@@ -103,4 +118,4 @@ export class App implements OnInit, OnDestroy {
   }
 }
 
-bootstrapApplication(App);
+bootstrapApplication(App, { providers: [provideZoneChangeDetection()] });

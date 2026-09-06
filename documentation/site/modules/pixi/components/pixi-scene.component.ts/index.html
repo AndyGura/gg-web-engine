@@ -595,7 +595,9 @@
 <h1 id="utils">utils</h1>
 <h2 id="pixiscenecomponent-class">PixiSceneComponent (class)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class PixiSceneComponent
+<pre><code class="language-ts">export declare class PixiSceneComponent {
+  constructor()
+}
 </code></pre>
 <h3 id="init-method">init (method)</h3>
 <p><strong>Signature</strong></p>
@@ -604,6 +606,7 @@
 <h3 id="createrenderer-method">createRenderer (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">createRenderer(
+    camera: PixiCameraComponent,
     canvas?: HTMLCanvasElement,
     rendererOptions?: Partial&lt;RendererOptions &amp; ApplicationOptions&gt;,
   ): PixiRendererComponent

@@ -4,6 +4,13 @@ set -o pipefail
 pushd "$(dirname "$0")"
 pushd ..
 
+# Portable in-place sed: BSD sed (macOS, for anyone running this by hand) requires an explicit
+# backup-suffix argument to -i; GNU sed (the release_action.yml runner) doesn't accept the split
+# -i .bak form — `-i.bak` + cleanup works identically on both.
+sedi() {
+  sed -i.bak "$1" "$2" && rm -f "$2.bak"
+}
+
 libs=(
   "three"
   "ammo"
@@ -15,9 +22,13 @@ libs=(
 
 upgrade() {
     pushd ./packages/$1
-    sed -i 's/"version": "[0-9.]*",/"version": "'$2'",/' package.json
-    sed -i 's/"@gg-web-engine\/core": "[0-9.]*",/"@gg-web-engine\/core": "'$2'",/' package.json
-    rm -rf node_modules/ package-lock.json dist/ && npm i && npm run prettier-format && npm run build
+    sedi 's/"version": "[0-9.]*",/"version": "'$2'",/' package.json
+    sedi 's/"@gg-web-engine\/core": "[0-9.]*",/"@gg-web-engine\/core": "'$2'",/' package.json
+    # --workspaces=false: install as a standalone project against the just-published registry
+    # version of @gg-web-engine/core (this is the sanity check that the published tarball actually
+    # works), not the local packages/core via the packages/* workspace. It also keeps these
+    # parallel installs from racing on the shared root package-lock.json/node_modules.
+    rm -rf node_modules/ package-lock.json dist/ && npm i --workspaces=false && npm run prettier-format && npm run build
     popd
 }
 
@@ -45,8 +56,10 @@ wait_package_publish() {
 }
 
 pushd ./packages/core
-sed -i 's/"version": "[0-9.]*",/"version": "'$1'",/' package.json
-rm -rf node_modules/ package-lock.json dist/ && npm i && npm run prettier-format && npm run build
+sedi 's/"version": "[0-9.]*",/"version": "'$1'",/' package.json
+# --workspaces=false: see the comment in upgrade() above — keep this a standalone install/build,
+# not resolved through the packages/* workspace.
+rm -rf node_modules/ package-lock.json dist/ && npm i --workspaces=false && npm run prettier-format && npm run build
 npm publish
 
 echo sleeping 30s...
@@ -88,10 +101,10 @@ while IFS= read -r line || [ -n "$line" ]; do
 done < ./examples/examples-list.txt
 upgrade_example() {
     pushd ./examples/$1
-    sed -i 's/"@gg-web-engine\/core": "[0-9.]*",/"@gg-web-engine\/core": "'$2'",/' package.json
+    sedi 's/"@gg-web-engine\/core": "[0-9.]*",/"@gg-web-engine\/core": "'$2'",/' package.json
     for ix in ${!libs[*]}
     do
-      sed -i 's/"@gg-web-engine\/'${libs[$ix]}'": "[0-9.]*",/"@gg-web-engine\/'${libs[$ix]}'": "'$2'",/' package.json
+      sedi 's/"@gg-web-engine\/'${libs[$ix]}'": "[0-9.]*",/"@gg-web-engine\/'${libs[$ix]}'": "'$2'",/' package.json
     done
     rm -rf node_modules/ package-lock.json dist/ && npm i
     popd
@@ -101,7 +114,7 @@ do
   upgrade_example ${examples[$ix]} $1 &
 done
 wait
-sed -i "s/\(const sbBranchSuffix = '\)[^']*\(';\)/\1$1\2/" ./examples/index.html
+sedi "s/\(const sbBranchSuffix = '\)[^']*\(';\)/\1$1\2/" ./examples/index.html
 
 echo "Reminder: "
 echo "1) double-check readme code example"

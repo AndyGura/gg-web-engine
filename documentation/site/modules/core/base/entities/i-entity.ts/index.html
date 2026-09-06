@@ -536,6 +536,20 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#getchildentitybyname-method" class="md-nav__link">
+    getChildEntityByName (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#findchildentitybyname-method" class="md-nav__link">
+    findChildEntityByName (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#addcomponents-method" class="md-nav__link">
     addComponents (method)
   </a>
@@ -663,6 +677,8 @@
 <li><a href="#ientity-class">IEntity (class)</a><ul>
 <li><a href="#addchildren-method">addChildren (method)</a></li>
 <li><a href="#removechildren-method">removeChildren (method)</a></li>
+<li><a href="#getchildentitybyname-method">getChildEntityByName (method)</a></li>
+<li><a href="#findchildentitybyname-method">findChildEntityByName (method)</a></li>
 <li><a href="#addcomponents-method">addComponents (method)</a></li>
 <li><a href="#removecomponents-method">removeComponents (method)</a></li>
 <li><a href="#onspawned-method">onSpawned (method)</a></li>
@@ -683,7 +699,7 @@
 <h1 id="utils">utils</h1>
 <h2 id="ientity-class">IEntity (class)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class IEntity&lt;D, R, VTypeDoc, PTypeDoc&gt;
+<pre><code class="language-ts">export declare class IEntity&lt;D, R, TypeDoc&gt;
 </code></pre>
 <h3 id="addchildren-method">addChildren (method)</h3>
 <p><strong>Signature</strong></p>
@@ -693,17 +709,29 @@
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public removeChildren(entities: IEntity[], dispose: boolean = false)
 </code></pre>
+<h3 id="getchildentitybyname-method">getChildEntityByName (method)</h3>
+<p>Find a descendant entity by name, searching this entity's own children and their children
+recursively (depth-first) - not the whole world, just this entity's subtree. Useful e.g. to
+pull a specific entity back out of a <code>GroupEntity</code> a <code>LevelLoader</code> handed back:
+<code>level.getChildEntityByName('KillFloor')</code>.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public getChildEntityByName&lt;T extends IEntity = IEntity&gt;(name: string): T
+</code></pre>
+<h3 id="findchildentitybyname-method">findChildEntityByName (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private findChildEntityByName(name: string): IEntity | undefined
+</code></pre>
 <h3 id="addcomponents-method">addComponents (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">public addComponents(...components: IWorldComponent&lt;D, R, VTypeDoc, PTypeDoc&gt;[])
+<pre><code class="language-ts">public addComponents(...components: IWorldComponent&lt;D, R, TypeDoc&gt;[])
 </code></pre>
 <h3 id="removecomponents-method">removeComponents (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">public removeComponents(components: IWorldComponent&lt;D, R, VTypeDoc, PTypeDoc&gt;[], dispose: boolean = false)
+<pre><code class="language-ts">public removeComponents(components: IWorldComponent&lt;D, R, TypeDoc&gt;[], dispose: boolean = false)
 </code></pre>
 <h3 id="onspawned-method">onSpawned (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">public onSpawned(world: GgWorld&lt;D, R, VTypeDoc, PTypeDoc&gt;)
+<pre><code class="language-ts">public onSpawned(world: GgWorld&lt;D, R, TypeDoc&gt;)
 </code></pre>
 <h3 id="onremoved-method">onRemoved (method)</h3>
 <p><strong>Signature</strong></p>
@@ -726,14 +754,7 @@
 <h3 id="_world-property">_world (property)</h3>
 <p>a world reference, where this entity was added to</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">_world: GgWorld&lt;
-  D,
-  R,
-  VTypeDoc,
-  PTypeDoc,
-  IVisualSceneComponent&lt;D, R, VTypeDoc&gt;,
-  IPhysicsWorldComponent&lt;D, R, PTypeDoc&gt;
-&gt; | null
+<pre><code class="language-ts">_world: GgWorld&lt;D, R, TypeDoc, GgWorldSceneTypeRepo&lt;D, R, TypeDoc&gt;&gt; | null
 </code></pre>
 <h3 id="_name-property">_name (property)</h3>
 <p><strong>Signature</strong></p>
@@ -746,7 +767,7 @@
 </code></pre>
 <h3 id="parent-property">parent (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">parent: IEntity&lt;any, any, VisualTypeDocRepo&lt;any, any&gt;, PhysicsTypeDocRepo&lt;any, any&gt;&gt; | null
+<pre><code class="language-ts">parent: IEntity&lt;any, any, GgWorldTypeDocRepo&lt;any, any&gt;&gt; | null
 </code></pre>
 <h3 id="_onspawned-property">_onSpawned$ (property)</h3>
 <p><strong>Signature</strong></p>

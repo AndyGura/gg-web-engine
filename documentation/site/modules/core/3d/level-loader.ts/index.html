@@ -1,0 +1,1082 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/3d/level-loader.ts/">
+      
+      
+      
+      
+      <link rel="icon" href="../../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.4.6">
+    
+    
+      
+        <title>core/3d/level-loader.ts - GG-web-engine</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../../assets/stylesheets/main.35e1ed30.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../../assets/stylesheets/palette.356b1318.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&"object"==typeof palette.color)for(var key of Object.keys(palette.color))document.body.setAttribute("data-md-color-"+key,palette.color[key])</script>
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#level-loader-overview" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../../.." title="GG-web-engine" class="md-header__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            GG-web-engine
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              core/3d/level-loader.ts
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12c0-2.42-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/AndyGura/gg-web-engine" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.4.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../../.." title="GG-web-engine" class="md-nav__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    GG-web-engine
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/AndyGura/gg-web-engine" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.4.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Modules
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Modules
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../ammo" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ammo
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    core
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../matter" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    matter
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../pixi" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    pixi
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../rapier2d" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    rapier2d
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../rapier3d" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    rapier3d
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../three" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    three
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#level-loader-overview" class="md-nav__link">
+    level-loader overview
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#utils" class="md-nav__link">
+    utils
+  </a>
+  
+    <nav class="md-nav" aria-label="utils">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#camera3dsettings-interface" class="md-nav__link">
+    Camera3DSettings (interface)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gg3dlevelloader-class" class="md-nav__link">
+    Gg3dLevelLoader (class)
+  </a>
+  
+    <nav class="md-nav" aria-label="Gg3dLevelLoader (class)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#registerdefaultclasses-method" class="md-nav__link">
+    registerDefaultClasses (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#buildshapedescriptor-method" class="md-nav__link">
+    buildShapeDescriptor (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#createprimitive-method" class="md-nav__link">
+    createPrimitive (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#createtrigger-method" class="md-nav__link">
+    createTrigger (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#createcamera-method" class="md-nav__link">
+    createCamera (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#resolvewheeldisplay-method" class="md-nav__link">
+    resolveWheelDisplay (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#createggcar-method" class="md-nav__link">
+    createGgCar (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#createmapgraph-method" class="md-nav__link">
+    createMapGraph (method)
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ggcar3dcommonsettings-interface" class="md-nav__link">
+    GgCar3DCommonSettings (interface)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ggcar3dsettings-type-alias" class="md-nav__link">
+    GgCar3DSettings (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ggcaraxlesettings-type-alias" class="md-nav__link">
+    GgCarAxleSettings (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ggcarsharedwheelsettings-type-alias" class="md-nav__link">
+    GgCarSharedWheelSettings (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ggcarwheeldisplaysettings-interface" class="md-nav__link">
+    GgCarWheelDisplaySettings (interface)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ggcarwheelsettings-type-alias" class="md-nav__link">
+    GgCarWheelSettings (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mapgraph3dsettings-interface" class="md-nav__link">
+    MapGraph3DSettings (interface)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#mapgraphnodejson-type-alias" class="md-nav__link">
+    MapGraphNodeJson (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#primitive3dsettings-interface" class="md-nav__link">
+    Primitive3DSettings (interface)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#primitive3dshapename-type-alias" class="md-nav__link">
+    Primitive3DShapeName (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#trigger3dsettings-interface" class="md-nav__link">
+    Trigger3DSettings (interface)
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+  
+
+
+<h2 id="level-loader-overview">level-loader overview</h2>
+<hr />
+<h2 class="text-delta">Table of contents</h2>
+
+<ul>
+<li><a href="#utils">utils</a></li>
+<li><a href="#camera3dsettings-interface">Camera3DSettings (interface)</a></li>
+<li><a href="#gg3dlevelloader-class">Gg3dLevelLoader (class)</a><ul>
+<li><a href="#registerdefaultclasses-method">registerDefaultClasses (method)</a></li>
+<li><a href="#buildshapedescriptor-method">buildShapeDescriptor (method)</a></li>
+<li><a href="#createprimitive-method">createPrimitive (method)</a></li>
+<li><a href="#createtrigger-method">createTrigger (method)</a></li>
+<li><a href="#createcamera-method">createCamera (method)</a></li>
+<li><a href="#resolvewheeldisplay-method">resolveWheelDisplay (method)</a></li>
+<li><a href="#createggcar-method">createGgCar (method)</a></li>
+<li><a href="#createmapgraph-method">createMapGraph (method)</a></li>
+</ul>
+</li>
+<li><a href="#ggcar3dcommonsettings-interface">GgCar3DCommonSettings (interface)</a></li>
+<li><a href="#ggcar3dsettings-type-alias">GgCar3DSettings (type alias)</a></li>
+<li><a href="#ggcaraxlesettings-type-alias">GgCarAxleSettings (type alias)</a></li>
+<li><a href="#ggcarsharedwheelsettings-type-alias">GgCarSharedWheelSettings (type alias)</a></li>
+<li><a href="#ggcarwheeldisplaysettings-interface">GgCarWheelDisplaySettings (interface)</a></li>
+<li><a href="#ggcarwheelsettings-type-alias">GgCarWheelSettings (type alias)</a></li>
+<li><a href="#mapgraph3dsettings-interface">MapGraph3DSettings (interface)</a></li>
+<li><a href="#mapgraphnodejson-type-alias">MapGraphNodeJson (type alias)</a></li>
+<li><a href="#primitive3dsettings-interface">Primitive3DSettings (interface)</a></li>
+<li><a href="#primitive3dshapename-type-alias">Primitive3DShapeName (type alias)</a></li>
+<li><a href="#trigger3dsettings-interface">Trigger3DSettings (interface)</a></li>
+</ul>
+<hr />
+<h1 id="utils">utils</h1>
+<h2 id="camera3dsettings-interface">Camera3DSettings (interface)</h2>
+<p>Settings for a camera entity</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export interface Camera3DSettings {
+  /**
+   * Position of the camera
+   */
+  position?: Point3
+
+  /**
+   * Rotation of the camera
+   */
+  rotation?: Point4
+
+  /**
+   * Field of view in degrees
+   */
+  fov?: number
+
+  /**
+   * Aspect ratio (width / height)
+   */
+  aspectRatio?: number
+
+  /**
+   * Near and far frustum planes
+   */
+  frustrum?: { near: number; far: number }
+}
+</code></pre>
+<h2 id="gg3dlevelloader-class">Gg3dLevelLoader (class)</h2>
+<p>3D level loader: registers the built-in primitive/trigger/camera/car/map-graph entity classes
+and dispatches <code>LevelJson</code> entities to them (or to custom classes registered via
+<code>registerClass</code>).</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export declare class Gg3dLevelLoader&lt;TypeDoc&gt; {
+  constructor(protected readonly world: Gg3dWorld&lt;TypeDoc&gt;)
+}
+</code></pre>
+<h3 id="registerdefaultclasses-method">registerDefaultClasses (method)</h3>
+<p>Register the built-in classes for primitives, triggers, and cameras</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private registerDefaultClasses(): void
+</code></pre>
+<h3 id="buildshapedescriptor-method">buildShapeDescriptor (method)</h3>
+<p>Turn a <code>Primitive3DSettings</code> (<code>shape</code> plus shape-specific fields) into the <code>Shape3DDescriptor</code>
+consumed by <code>Gg3dWorld.addPrimitiveRigidBody</code>.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private buildShapeDescriptor(settings: Primitive3DSettings): Shape3DDescriptor
+</code></pre>
+<h3 id="createprimitive-method">createPrimitive (method)</h3>
+<p>Create a primitive entity (both display object and physics body) from a shape descriptor.
+<code>Shape3DDescriptor</code> (no mesh-only segment options) is used for both the visual and the
+physics representation, same as <code>Gg3dWorld.addPrimitiveRigidBody</code>'s own shortcut methods.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private createPrimitive(
+    world: Gg3dWorld&lt;TypeDoc&gt;,
+    shape: Shape3DDescriptor,
+    settings: Primitive3DSettings,
+  ): Entity3d&lt;TypeDoc&gt;
+</code></pre>
+<h3 id="createtrigger-method">createTrigger (method)</h3>
+<p>Create a trigger entity: a <code>Trigger3dEntity</code> wrapping the raw physics trigger component, so
+the app can subscribe to <code>onEntityEntered</code>/<code>onEntityLeft</code> without any extra wiring - see the
+base <code>LevelLoader</code> docs for how it's parented for level-lifecycle cleanup.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private createTrigger(
+    world: Gg3dWorld&lt;TypeDoc&gt;,
+    settings: Trigger3DSettings,
+  ): Trigger3dEntity&lt;TypeDoc['pTypeDoc']&gt; | undefined
+</code></pre>
+<h3 id="createcamera-method">createCamera (method)</h3>
+<p>Create a camera entity: a <code>Camera3dEntity</code> wrapping the raw camera component, not attached to
+any renderer/canvas (a level JSON has no notion of one - <code>world.addRenderer(entity.camera,
+canvas)</code> once the app has a canvas). Parented under the level's group entity, so it's torn
+down along with the rest of the level - put a camera meant to outlive a level swap in a
+separate, never-unloaded level instead (see <code>gg-engine-level-json</code>'s "Camera" section).</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private createCamera(
+    world: Gg3dWorld&lt;TypeDoc&gt;,
+    settings: Camera3DSettings,
+  ): Camera3dEntity&lt;TypeDoc['vTypeDoc']&gt; | undefined
+</code></pre>
+<h3 id="resolvewheeldisplay-method">resolveWheelDisplay (method)</h3>
+<p>Build a <code>WheelDisplayOptions</code> for one <code>"GgCar"</code> wheel/axle from its (already shared-merged)
+settings, via <code>visualScene.factory.createCylinder</code>. Returns <code>undefined</code> (no visual wheel,
+physics-only) if <code>display</code> wasn't specified at all, or there's no visual scene to build one
+against.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private resolveWheelDisplay(
+    world: Gg3dWorld&lt;TypeDoc&gt;,
+    wheelSettings: GgCarSharedWheelSettings,
+  ): WheelDisplayOptions | undefined
+</code></pre>
+<h3 id="createggcar-method">createGgCar (method)</h3>
+<p>Create a <code>"GgCar"</code> entity: a box chassis rigid body (+ optional matching display box) wrapped
+in a full <code>GgCarEntity</code>, with each wheel's optional visual mesh built from its settings (see
+{@link resolveWheelDisplay}) rather than referencing an existing display object component,
+which a level JSON has no way to do.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private createGgCar(world: Gg3dWorld&lt;TypeDoc&gt;, settings: GgCar3DSettings): GgCarEntity&lt;TypeDoc&gt; | undefined
+</code></pre>
+<h3 id="createmapgraph-method">createMapGraph (method)</h3>
+<p>Create a <code>"MapGraph"</code> entity: a <code>MapGraph</code> built from plain node data (a flat/looped path or
+a rectangular grid, see {@link MapGraph3DSettings}), wrapped in a ready-to-use
+<code>MapGraph3dEntity</code>. The app still has to drive <code>loaderCursor$</code> itself once the level is
+loaded - see <code>gg-engine-level-json</code>'s "MapGraph" section.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private createMapGraph(world: Gg3dWorld&lt;TypeDoc&gt;, settings: MapGraph3DSettings): MapGraph3dEntity&lt;TypeDoc&gt;
+</code></pre>
+<h2 id="ggcar3dcommonsettings-interface">GgCar3DCommonSettings (interface)</h2>
+<p>Fields of <code>GgCarProperties</code> that don't vary between its <code>wheelBase</code>/<code>wheelOptions</code> shapes -
+carried over into {@link GgCar3DSettings} as-is (already plain JSON-serializable data).</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export interface GgCar3DCommonSettings {
+  suspension: GgCarProperties['suspension']
+  tractionBias: GgCarProperties['tractionBias']
+  mpsToRpmFactor?: GgCarProperties['mpsToRpmFactor']
+  engine: GgCarProperties['engine']
+  brake: GgCarProperties['brake']
+  transmission: GgCarProperties['transmission']
+  maxSteerAngle: GgCarProperties['maxSteerAngle']
+}
+</code></pre>
+<h2 id="ggcar3dsettings-type-alias">GgCar3DSettings (type alias)</h2>
+<p>Settings for the built-in <code>"GgCar"</code> entity class (3D only): builds a box-shaped chassis rigid
+body (+ optional matching display box) and a full <code>GgCarEntity</code> on top of it - the procedural
+counterpart of the GLB-driven car construction apps do by hand (see <code>examples/fly-city-three-ammo</code>'s
+<code>GameFactory.generateCar</code>), for a car whose chassis/wheels are plain primitives rather than
+loaded meshes.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type GgCar3DSettings = GgCar3DCommonSettings &amp; {
+  position?: Point3
+  rotation?: Point4
+
+  /**
+   * The chassis's box collider/mesh. `body` is merged over a default dynamic body (same shape as
+   * `Primitive3DSettings.body`, but with `mass: 800` instead of `1`, since a `mass: 1` chassis is
+   * unrealistically light for a car).
+   */
+  chassis: {
+    dimensions: Point3
+    material?: DisplayObject3dOpts&lt;any&gt;
+    body?: Partial&lt;Body3DOptions&gt;
+  }
+} &amp; (
+    | {
+        wheelBase: {
+          shared?: GgCarSharedWheelSettings
+          front: GgCarAxleSettings
+          rear: GgCarAxleSettings
+        }
+        wheelOptions?: undefined
+        sharedWheelOptions?: undefined
+      }
+    | {
+        wheelOptions: GgCarWheelSettings[]
+        sharedWheelOptions?: GgCarSharedWheelSettings
+        wheelBase?: undefined
+      }
+  )
+</code></pre>
+<h2 id="ggcaraxlesettings-type-alias">GgCarAxleSettings (type alias)</h2>
+<p>JSON-friendly counterpart of <code>RVEntityAxleOptions</code>, for the <code>"GgCar"</code> class's <code>wheelBase.front</code>/
+<code>wheelBase.rear</code>.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type GgCarAxleSettings = Pick&lt;RVEntityAxleOptions, 'halfAxleWidth' | 'axlePosition' | 'axleHeight'&gt; &amp;
+  GgCarSharedWheelSettings
+</code></pre>
+<h2 id="ggcarsharedwheelsettings-type-alias">GgCarSharedWheelSettings (type alias)</h2>
+<p>JSON-friendly counterpart of <code>RVEntitySharedWheelOptions</code>: identical except <code>display</code> is a
+{@link GgCarWheelDisplaySettings} descriptor instead of a ready-made <code>WheelDisplayOptions</code>.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type GgCarSharedWheelSettings = Omit&lt;RVEntitySharedWheelOptions, 'display'&gt; &amp; {
+  display?: GgCarWheelDisplaySettings
+}
+</code></pre>
+<h2 id="ggcarwheeldisplaysettings-interface">GgCarWheelDisplaySettings (interface)</h2>
+<p>Settings for a <code>"GgCar"</code> wheel's optional visual mesh. A level JSON has no way to reference an
+existing display object component (unlike programmatic <code>RVEntityProperties</code>, whose
+<code>WheelDisplayOptions.displayObject</code> takes one directly) - instead, supplying <code>display</code> at all
+makes the <code>"GgCar"</code> generator build one itself via <code>visualScene.factory.createCylinder</code>, sized
+to that wheel's own (or its axle/shared settings') <code>tyreRadius</code>/<code>tyreWidth</code>. Omit <code>display</code>
+entirely (on both the wheel and whatever it inherits from) to leave that wheel invisible
+(physics-only), same as omitting <code>WheelDisplayOptions.displayObject</code> does programmatically.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export interface GgCarWheelDisplaySettings {
+  material?: DisplayObject3dOpts&lt;any&gt;
+  wheelObjectDirection?: AxisDirection3
+}
+</code></pre>
+<h2 id="ggcarwheelsettings-type-alias">GgCarWheelSettings (type alias)</h2>
+<p>JSON-friendly counterpart of one <code>RVEntityProperties['wheelOptions']</code> element, for the
+<code>"GgCar"</code> class's <code>wheelOptions</code> array.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type GgCarWheelSettings = GgCarSharedWheelSettings &amp; {
+  isLeft: boolean
+  isFront: boolean
+  position: Point3
+}
+</code></pre>
+<h2 id="mapgraph3dsettings-interface">MapGraph3DSettings (interface)</h2>
+<p>Settings for the built-in <code>"MapGraph"</code> entity class (3D only): builds a <code>MapGraph</code> from plain
+node data and wraps it in a ready-to-use <code>MapGraph3dEntity</code>. <code>graph</code> mirrors the two
+<code>MapGraph</code> factory methods - a flat (optionally closed-loop) path via <code>nodes</code>, or a rectangular
+<code>grid</code> - since both already take plain-data node arrays. The resulting entity doesn't implement
+<code>IPositionable3d</code> (each node carries its own absolute <code>position</code>/<code>rotation</code>), so there's no
+<code>position</code>/<code>rotation</code> field here - and its <code>loaderCursor$</code> still needs to be driven at runtime
+from whatever entity's position should determine which nodes are loaded (see
+<code>gg-engine-level-json</code> skill's "MapGraph" section).</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export interface MapGraph3DSettings {
+  graph: { type?: 'array'; nodes: MapGraphNodeJson[]; closed?: boolean } | { type: 'grid'; grid: MapGraphNodeJson[][] }
+
+  /** Depth in the graph to load - see `Gg3dMapGraphEntityOptions.loadDepth` (default `5`) */
+  loadDepth?: number
+
+  /** Extra unload-delay depth - see `Gg3dMapGraphEntityOptions.inertia` (default `0`) */
+  inertia?: number
+
+  /** Max nodes loaded per tick - see `Gg3dMapGraphEntityOptions.maxNodesLoadingPerTick` (default `1`) */
+  maxNodesLoadingPerTick?: number
+
+  /** Ticks/second of the internal load-scheduling clock - see `MapGraph3dEntity.loadRateLimit` (default `1`) */
+  loadRateLimit?: number
+}
+</code></pre>
+<h2 id="mapgraphnodejson-type-alias">MapGraphNodeJson (type alias)</h2>
+<p>JSON-friendly counterpart of <code>MapGraphNodeType</code>: identical except <code>loadOptions</code> may be omitted
+(defaulting to <code>{}</code>) rather than required, since most nodes need none of it.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type MapGraphNodeJson = Omit&lt;MapGraphNodeType, 'loadOptions'&gt; &amp; {
+  loadOptions?: MapGraphNodeType['loadOptions']
+}
+</code></pre>
+<h2 id="primitive3dsettings-interface">Primitive3DSettings (interface)</h2>
+<p>Settings shared by every primitive entity (Box, Sphere, Plane, Capsule, Cylinder, Cone)</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export interface Primitive3DSettings {
+  /**
+   * Which primitive shape to construct
+   */
+  shape: Primitive3DShapeName
+
+  /**
+   * Position of the primitive
+   */
+  position?: Point3
+
+  /**
+   * Rotation of the primitive
+   */
+  rotation?: Point4
+
+  /**
+   * Dimensions of the primitive (for Box)
+   */
+  dimensions?: Point3
+
+  /**
+   * Radius of the primitive (for Sphere, Capsule, Cylinder, Cone)
+   */
+  radius?: number
+
+  /**
+   * Height of the primitive (for Cylinder, Cone)
+   */
+  height?: number
+
+  /**
+   * Centers distance of the primitive (for Capsule)
+   */
+  centersDistance?: number
+
+  /**
+   * Material options for the primitive
+   */
+  material?: DisplayObject3dOpts&lt;any&gt;
+
+  /**
+   * Physics body options, merged over sensible defaults
+   */
+  body?: Partial&lt;Body3DOptions&gt;
+}
+</code></pre>
+<h2 id="primitive3dshapename-type-alias">Primitive3DShapeName (type alias)</h2>
+<p>Shape names accepted by the built-in <code>"Primitive"</code> entity class in a 3D level JSON, via the
+sibling <code>shape</code> field on the entity (e.g. <code>{ class: "Primitive", shape: "BOX" }</code>) - the same
+<code>Shape3DDescriptor['shape']</code> values used at the engine API level, so no translation is needed
+between a level JSON and <code>Gg3dWorld.addPrimitiveRigidBody</code>.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type Primitive3DShapeName = Shape3DDescriptor['shape']
+</code></pre>
+<h2 id="trigger3dsettings-interface">Trigger3DSettings (interface)</h2>
+<p>Settings for a trigger entity</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export interface Trigger3DSettings {
+  /**
+   * Position of the trigger
+   */
+  position?: Point3
+
+  /**
+   * Rotation of the trigger
+   */
+  rotation?: Point4
+
+  /**
+   * Dimensions of the trigger
+   */
+  dimensions: Point3
+}
+</code></pre>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../../../..", "features": ["navigation.indexes", "navigation.instant", "navigation.tracking"], "search": "../../../../assets/javascripts/workers/search.f886a092.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../../../assets/javascripts/bundle.aecac24b.min.js"></script>
+      
+    
+  </body>
+</html>

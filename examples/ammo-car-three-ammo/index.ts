@@ -38,10 +38,10 @@ world.init().then(async () => {
 
   const dirLight = new DirectionalLight(0xffffff, 4);
   dirLight.position.set(-10, 5, 10);
-  world.visualScene.nativeScene.add(dirLight);
+  world.visualScene.nativeScene!.add(dirLight);
 
   const ambientLight = new AmbientLight(0x404040, 4);
-  world.visualScene.nativeScene.add(ambientLight);
+  world.visualScene.nativeScene!.add(ambientLight);
 
   const materialDynamic: ThreeDisplayObject3dOpts = { shading: 'phong', color: 0xfca400 };
   const materialStatic: ThreeDisplayObject3dOpts = { shading: 'phong', color: 0x999999 };
@@ -163,7 +163,7 @@ world.init().then(async () => {
   });
   world.addEntity(cameraController);
 
-  const speedometer = document.getElementById('speedometer');
+  const speedometer = document.getElementById('speedometer')!;
   createInlineTickController(world).subscribe(() => {
     const speed = vehicle.getSpeed() * 3.6;
     speedometer.innerHTML =

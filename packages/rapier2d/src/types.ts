@@ -10,7 +10,7 @@ export type Rapier2dPhysicsTypeDocRepo = {
   trigger: Rapier2dTriggerComponent;
 };
 
-export type Rapier2dGgWorld = Gg2dWorld<
-  Gg2dWorldTypeDocPPatch<Rapier2dPhysicsTypeDocRepo>,
-  Gg2dWorldSceneTypeDocPPatch<Rapier2dPhysicsTypeDocRepo, Rapier2dWorldComponent>
->;
+export type Rapier2dTypeDoc = Gg2dWorldTypeDocPPatch<Rapier2dPhysicsTypeDocRepo>;
+export type Rapier2dSceneTypeDoc = Gg2dWorldSceneTypeDocPPatch<Rapier2dPhysicsTypeDocRepo, Rapier2dWorldComponent>;
+
+export type Rapier2dGgWorld = Gg2dWorld<Rapier2dTypeDoc, Rapier2dSceneTypeDoc>;

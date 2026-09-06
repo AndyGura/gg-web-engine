@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/controllers/animators/camera-3d.animator.ts
-nav_order: 36
+nav_order: 40
 parent: Modules
 ---
 
@@ -51,7 +51,7 @@ export declare class Camera3dAnimator<VTypeDoc> {
 **Signature**
 
 ```ts
-onSpawned(world: Gg3dWorld<VTypeDoc>)
+onSpawned(world: Gg3dWorld<Gg3dWorldTypeDocVPatch<VTypeDoc>>)
 ```
 
 ### applyPositioning (method)

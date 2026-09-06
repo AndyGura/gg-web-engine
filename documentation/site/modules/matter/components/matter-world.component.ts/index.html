@@ -550,6 +550,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#raycast-method" class="md-nav__link">
+    raycast (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#dispose-method" class="md-nav__link">
     dispose (method)
   </a>
@@ -557,8 +564,8 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#matterengine-property" class="md-nav__link">
-    matterEngine (property)
+  <a href="#matterengine_-property" class="md-nav__link">
+    matterEngine_ (property)
   </a>
   
 </li>
@@ -594,6 +601,13 @@
           <li class="md-nav__item">
   <a href="#maincollisiongroup-property" class="md-nav__link">
     mainCollisionGroup (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#lockedcollisiongroups-property" class="md-nav__link">
+    lockedCollisionGroups (property)
   </a>
   
 </li>
@@ -637,13 +651,15 @@
 <li><a href="#registercollisiongroup-method">registerCollisionGroup (method)</a></li>
 <li><a href="#deregistercollisiongroup-method">deregisterCollisionGroup (method)</a></li>
 <li><a href="#simulate-method">simulate (method)</a></li>
+<li><a href="#raycast-method">raycast (method)</a></li>
 <li><a href="#dispose-method">dispose (method)</a></li>
-<li><a href="#matterengine-property">matterEngine (property)</a></li>
+<li><a href="#matterengine_-property">matterEngine_ (property)</a></li>
 <li><a href="#factory-property">factory (property)</a></li>
 <li><a href="#added-property">added$ (property)</a></li>
 <li><a href="#removed-property">removed$ (property)</a></li>
 <li><a href="#children-property">children (property)</a></li>
 <li><a href="#maincollisiongroup-property">mainCollisionGroup (property)</a></li>
+<li><a href="#lockedcollisiongroups-property">lockedCollisionGroups (property)</a></li>
 </ul>
 </li>
 </ul>
@@ -671,13 +687,17 @@
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">simulate(delta: number): void
 </code></pre>
+<h3 id="raycast-method">raycast (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">raycast(options: RaycastOptions&lt;Point2&gt;): RaycastResult&lt;Point2, MatterRigidBodyComponent&gt;
+</code></pre>
 <h3 id="dispose-method">dispose (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">dispose(): void
 </code></pre>
-<h3 id="matterengine-property">matterEngine (property)</h3>
+<h3 id="matterengine_-property">matterEngine_ (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">matterEngine: any
+<pre><code class="language-ts">matterEngine_: any
 </code></pre>
 <h3 id="factory-property">factory (property)</h3>
 <p><strong>Signature</strong></p>
@@ -693,11 +713,15 @@
 </code></pre>
 <h3 id="children-property">children (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly children: MatterRigidBodyComponent[]
+<pre><code class="language-ts">readonly children: (MatterRigidBodyComponent | MatterTriggerComponent)[]
 </code></pre>
 <h3 id="maincollisiongroup-property">mainCollisionGroup (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly mainCollisionGroup: any
+</code></pre>
+<h3 id="lockedcollisiongroups-property">lockedCollisionGroups (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">lockedCollisionGroups: number[]
 </code></pre>
 
 

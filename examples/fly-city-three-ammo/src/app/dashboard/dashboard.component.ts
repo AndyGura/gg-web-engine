@@ -1,16 +1,23 @@
-import { Component, Input, OnDestroy, OnInit } from '@angular/core';
-import { map, switchMap, takeUntil } from 'rxjs/operators';
-import { BehaviorSubject, Observable, of, Subject, timer } from 'rxjs';
-import { GgCarEntity } from '@gg-web-engine/core';
+import {
+  Component,
+  Input,
+  OnDestroy,
+  OnInit,
+  ChangeDetectionStrategy,
+} from "@angular/core";
+import { map, switchMap, takeUntil } from "rxjs/operators";
+import { BehaviorSubject, Observable, of, Subject, timer } from "rxjs";
+import { GgCarEntity } from "@gg-web-engine/core";
 
 @Component({
-  selector: 'app-dashboard',
-  templateUrl: './dashboard.component.html',
-  styleUrls: ['./dashboard.component.scss']
+  selector: "app-dashboard",
+  templateUrl: "./dashboard.component.html",
+  styleUrls: ["./dashboard.component.scss"],
+  changeDetection: ChangeDetectionStrategy.Eager,
+  standalone: false,
 })
 // https://codepen.io/Chmood/pen/MaBZdM?editors=0100
 export class DashboardComponent implements OnInit, OnDestroy {
-
   Math = Math;
 
   // margin for dials
@@ -27,18 +34,22 @@ export class DashboardComponent implements OnInit, OnDestroy {
   tachometerSteps: number[] = Array(this.tachometerStepsCount + 1)
     .fill(1)
     .map((x, i) => i);
-  tachometerAngleStep: number = (this.angleMax - this.angleMin) / this.tachometerStepsCount;
+  tachometerAngleStep: number =
+    (this.angleMax - this.angleMin) / this.tachometerStepsCount;
   // speedometer
   maxSpeed: number = 320;
   speedometerStep: number = 20;
-  speedometerStepsCount: number = Math.round(this.maxSpeed / this.speedometerStep);
+  speedometerStepsCount: number = Math.round(
+    this.maxSpeed / this.speedometerStep,
+  );
   speedometerSteps: number[] = Array(this.speedometerStepsCount + 1)
     .fill(1)
     .map((x, i) => i);
-  speedometerAngleStep: number = (this.angleMax - this.angleMin) / this.speedometerStepsCount;
+  speedometerAngleStep: number =
+    (this.angleMax - this.angleMin) / this.speedometerStepsCount;
 
   $currentRpm: BehaviorSubject<number> = new BehaviorSubject<number>(0);
-  $currentGear: BehaviorSubject<string> = new BehaviorSubject<string>('N');
+  $currentGear: BehaviorSubject<string> = new BehaviorSubject<string>("N");
   $currentSpeed: BehaviorSubject<number> = new BehaviorSubject<number>(0);
 
   destroyed$: Subject<void> = new Subject<void>();
@@ -47,11 +58,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   set car(v: GgCarEntity | null) {
     this.car$.next(v);
   }
-  private car$: BehaviorSubject<GgCarEntity | null> = new BehaviorSubject<GgCarEntity | null>(null);
+  private car$: BehaviorSubject<GgCarEntity | null> =
+    new BehaviorSubject<GgCarEntity | null>(null);
 
-  constructor(
-  ) {
-  }
+  constructor() {}
 
   ngOnInit() {
     this.car$
@@ -59,13 +69,22 @@ export class DashboardComponent implements OnInit, OnDestroy {
         takeUntil(this.destroyed$),
         switchMap((car): Observable<[number, number, number, number]> => {
           return car
-            ? timer(0, 20).pipe(map(() => [car.raycastVehicle.getSpeed() * 3.6, car.carProperties.engine.maxRpm, car.engineRpm, car.gear]))
+            ? timer(0, 20).pipe(
+                map(() => [
+                  car.raycastVehicle.getSpeed() * 3.6,
+                  car.carProperties.engine.maxRpm,
+                  car.engineRpm,
+                  car.gear,
+                ]),
+              )
             : of([0, 8000, 0, 0]);
         }),
       )
       .subscribe(([speed, maxRpm, engineRpm, gear]) => {
         this.$currentRpm.next(engineRpm);
-        this.$currentGear.next(gear > 0 ? gear.toString() : (gear < 0 ? 'R' : 'N'));
+        this.$currentGear.next(
+          gear > 0 ? gear.toString() : gear < 0 ? "R" : "N",
+        );
         this.$currentSpeed.next(Math.abs(speed));
         this.maxRpm = maxRpm;
       });
@@ -76,15 +95,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.destroyed$.complete();
   }
 
-
   getAngleForRpm(rpm: number | null): number {
-    return ((rpm || 0) / this.maxRpm) * (this.angleMax - this.angleMin) + this.angleMin;
+    return (
+      ((rpm || 0) / this.maxRpm) * (this.angleMax - this.angleMin) +
+      this.angleMin
+    );
   }
 
   getAngleForSpeed(speed: number | null): number {
-    return ((speed || 0) / this.maxSpeed) * (this.angleMax - this.angleMin) + this.angleMin;
+    return (
+      ((speed || 0) / this.maxSpeed) * (this.angleMax - this.angleMin) +
+      this.angleMin
+    );
   }
-
 }
-
-

@@ -1,6 +1,6 @@
 ---
 title: core/3d/loader.ts
-nav_order: 54
+nav_order: 59
 parent: Modules
 ---
 
@@ -17,6 +17,7 @@ parent: Modules
     - [loadGgGlb (method)](#loadggglb-method)
     - [filesCache (property)](#filescache-property)
     - [loadResultCache (property)](#loadresultcache-property)
+  - [Glb3DSettings (interface)](#glb3dsettings-interface)
   - [LoadOptions (type alias)](#loadoptions-type-alias)
   - [LoadResourcesResult (type alias)](#loadresourcesresult-type-alias)
   - [LoadResult (type alias)](#loadresult-type-alias)
@@ -28,11 +29,17 @@ parent: Modules
 
 ## Gg3dLoader (class)
 
+Full 3D loader exposed as `Gg3dWorld.loader`: GLB+meta asset loading (`loadGgGlb` and friends)
+layered on top of `Gg3dLevelLoader`, so `registerClass`/`loadLevel`/`loadLevelFromUrl`/
+`getEntityByName` are all available directly on `world.loader`. Also registers a `"Glb"` level
+entity class (see `Glb3DSettings`) so a level JSON can place a GLB model declaratively, the same
+way it places primitives/triggers/cameras.
+
 **Signature**
 
 ```ts
-export declare class Gg3dLoader<VTypeDoc, PTypeDoc> {
-  constructor(protected readonly world: Gg3dWorld)
+export declare class Gg3dLoader<TypeDoc> {
+  constructor(world: Gg3dWorld<TypeDoc>)
 }
 ```
 
@@ -52,7 +59,7 @@ public async loadGgGlbFiles(path: string, useCache: boolean = false): Promise<[A
 public async loadGgGlbResources(
     path: string,
     cachingStrategy: CachingStrategy = CachingStrategy.Nothing,
-  ): Promise<LoadResourcesResult<VTypeDoc, PTypeDoc>>
+  ): Promise<LoadResourcesResult<TypeDoc>>
 ```
 
 ### loadGgGlb (method)
@@ -63,7 +70,7 @@ public async loadGgGlbResources(
 public async loadGgGlb(
     path: string,
     options: Partial<LoadOptions> = defaultLoadOptions,
-  ): Promise<LoadResultWithProps<VTypeDoc, PTypeDoc>>
+  ): Promise<LoadResultWithProps<TypeDoc>>
 ```
 
 ### filesCache (property)
@@ -80,6 +87,50 @@ readonly filesCache: any
 
 ```ts
 readonly loadResultCache: any
+```
+
+## Glb3DSettings (interface)
+
+Settings for the built-in `"Glb"` level entity class (3D only): loads a GG GLB+meta pair via
+`Gg3dLoader.loadGgGlb` and returns every entity it produces (the model itself, plus any nested
+props/scenes) grouped under one `GroupEntity`.
+
+**Signature**
+
+```ts
+export interface Glb3DSettings {
+  /**
+   * Path (URL or path prefix, without extension) to the `.glb`/`.meta` pair - passed straight
+   * through to `loadGgGlb`
+   */
+  path: string
+
+  /**
+   * Position of the loaded model
+   */
+  position?: Point3
+
+  /**
+   * Rotation of the loaded model
+   */
+  rotation?: Point4
+
+  /**
+   * Caching strategy, see `CachingStrategy`. Defaults to `CachingStrategy.Nothing`, same as
+   * `loadGgGlb` itself.
+   */
+  cachingStrategy?: CachingStrategy
+
+  /**
+   * Whether to also load dummies flagged as props/scenes. Defaults to `true`, same as `loadGgGlb`.
+   */
+  loadProps?: boolean
+
+  /**
+   * Path where to find prop scenes, if different from `path`'s own directory
+   */
+  propsPath?: string
+}
 ```
 
 ## LoadOptions (type alias)
@@ -109,11 +160,8 @@ export type LoadOptions = {
 **Signature**
 
 ```ts
-export type LoadResourcesResult<
-  VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D,
-  PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D
-> = {
-  resources: { object3D: VTypeDoc['displayObject'] | null; body: PTypeDoc['rigidBody'] | null }[]
+export type LoadResourcesResult<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo> = {
+  resources: { object3D: TypeDoc['vTypeDoc']['displayObject'] | null; body: TypeDoc['pTypeDoc']['rigidBody'] | null }[]
   meta: GgMeta
 }
 ```
@@ -123,11 +171,8 @@ export type LoadResourcesResult<
 **Signature**
 
 ```ts
-export type LoadResult<
-  VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D,
-  PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D
-> = {
-  entities: Entity3d<VTypeDoc, PTypeDoc>[]
+export type LoadResult<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo> = {
+  entities: Entity3d<TypeDoc>[]
   meta: GgMeta
 }
 ```
@@ -137,8 +182,7 @@ export type LoadResult<
 **Signature**
 
 ```ts
-export type LoadResultWithProps<
-  VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D,
-  PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D
-> = LoadResult<VTypeDoc, PTypeDoc> & { props?: LoadResult<VTypeDoc, PTypeDoc>[] }
+export type LoadResultWithProps<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo> = LoadResult<TypeDoc> & {
+  props?: LoadResult<TypeDoc>[]
+}
 ```

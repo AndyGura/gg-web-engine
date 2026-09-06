@@ -1,6 +1,6 @@
 ---
 title: core/2d/models/shapes.ts
-nav_order: 27
+nav_order: 30
 parent: Modules
 ---
 

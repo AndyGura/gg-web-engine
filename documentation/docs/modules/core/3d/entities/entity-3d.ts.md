@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/entity-3d.ts
-nav_order: 42
+nav_order: 46
 parent: Modules
 ---
 
@@ -27,8 +27,11 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare class Entity3d<VTypeDoc, PTypeDoc> {
-  constructor(options: { object3D?: VTypeDoc['displayObject'] | null; objectBody?: PTypeDoc['rigidBody'] | null })
+export declare class Entity3d<TypeDoc> {
+  constructor(options: {
+    object3D?: TypeDoc['vTypeDoc']['displayObject'] | null
+    objectBody?: TypeDoc['pTypeDoc']['rigidBody'] | null
+  })
 }
 ```
 
@@ -63,7 +66,7 @@ readonly tickOrder: TickOrder.OBJECTS_BINDING
 **Signature**
 
 ```ts
-readonly object3D: VTypeDoc["displayObject"] | null
+readonly object3D: TypeDoc["vTypeDoc"]["displayObject"] | null
 ```
 
 ### objectBody (property)
@@ -71,5 +74,5 @@ readonly object3D: VTypeDoc["displayObject"] | null
 **Signature**
 
 ```ts
-readonly objectBody: PTypeDoc["rigidBody"] | null
+readonly objectBody: TypeDoc["pTypeDoc"]["rigidBody"] | null
 ```

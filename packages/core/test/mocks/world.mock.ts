@@ -4,10 +4,16 @@ export class MockWorld extends GgWorld<any, any> {
   constructor() {
     super({
       visualScene: {
+        init: async () => {
+        },
         dispose: () => {
         },
       } as any,
       physicsWorld: {
+        init: async () => {
+        },
+        simulate: () => {
+        },
         dispose: () => {
         },
       } as any,

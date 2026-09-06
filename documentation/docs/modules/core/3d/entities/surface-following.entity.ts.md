@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/surface-following.entity.ts
-nav_order: 48
+nav_order: 52
 parent: Modules
 ---
 
@@ -97,7 +97,7 @@ Called when the entity is added to a world.
 **Signature**
 
 ```ts
-onSpawned(world: Gg3dWorld<VisualTypeDocRepo3D, PTypeDoc>)
+onSpawned(world: Gg3dWorld<Gg3dWorldTypeDocPPatch<PTypeDoc>>)
 ```
 
 ### updateDebugView (method)

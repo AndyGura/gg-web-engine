@@ -1,6 +1,6 @@
 ---
 title: core/2d/components/rendering/i-display-object-2d.component.ts
-nav_order: 14
+nav_order: 15
 parent: Modules
 ---
 
@@ -22,6 +22,6 @@ parent: Modules
 **Signature**
 
 ```ts
-export interface IDisplayObject2dComponent<TypeDoc extends VisualTypeDocRepo2D = VisualTypeDocRepo2D>
-  extends IDisplayObjectComponent<Point2, number, TypeDoc> {}
+export interface IDisplayObject2dComponent<VTypeDoc extends VisualTypeDocRepo2D = VisualTypeDocRepo2D>
+  extends IDisplayObjectComponent<Point2, number, VTypeDoc> {}
 ```

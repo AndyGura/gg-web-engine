@@ -514,8 +514,29 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#rapier2dggworld-type-alias" class="md-nav__link">
+    Rapier2dGgWorld (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#rapier2dphysicstypedocrepo-type-alias" class="md-nav__link">
     Rapier2dPhysicsTypeDocRepo (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rapier2dscenetypedoc-type-alias" class="md-nav__link">
+    Rapier2dSceneTypeDoc (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rapier2dtypedoc-type-alias" class="md-nav__link">
+    Rapier2dTypeDoc (type alias)
   </a>
   
 </li>
@@ -549,10 +570,17 @@
 
 <ul>
 <li><a href="#utils">utils</a></li>
+<li><a href="#rapier2dggworld-type-alias">Rapier2dGgWorld (type alias)</a></li>
 <li><a href="#rapier2dphysicstypedocrepo-type-alias">Rapier2dPhysicsTypeDocRepo (type alias)</a></li>
+<li><a href="#rapier2dscenetypedoc-type-alias">Rapier2dSceneTypeDoc (type alias)</a></li>
+<li><a href="#rapier2dtypedoc-type-alias">Rapier2dTypeDoc (type alias)</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
+<h2 id="rapier2dggworld-type-alias">Rapier2dGgWorld (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type Rapier2dGgWorld = Gg2dWorld&lt;Rapier2dTypeDoc, Rapier2dSceneTypeDoc&gt;
+</code></pre>
 <h2 id="rapier2dphysicstypedocrepo-type-alias">Rapier2dPhysicsTypeDocRepo (type alias)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export type Rapier2dPhysicsTypeDocRepo = {
@@ -560,6 +588,14 @@
   rigidBody: Rapier2dRigidBodyComponent
   trigger: Rapier2dTriggerComponent
 }
+</code></pre>
+<h2 id="rapier2dscenetypedoc-type-alias">Rapier2dSceneTypeDoc (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type Rapier2dSceneTypeDoc = Gg2dWorldSceneTypeDocPPatch&lt;Rapier2dPhysicsTypeDocRepo, Rapier2dWorldComponent&gt;
+</code></pre>
+<h2 id="rapier2dtypedoc-type-alias">Rapier2dTypeDoc (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type Rapier2dTypeDoc = Gg2dWorldTypeDocPPatch&lt;Rapier2dPhysicsTypeDocRepo&gt;
 </code></pre>
 
 

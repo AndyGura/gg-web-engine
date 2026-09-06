@@ -1,0 +1,346 @@
+import { Point3, RaycastOptions } from '@gg-web-engine/core';
+import { AmmoWorldComponent } from '../../src';
+
+describe('AmmoWorldComponent', () => {
+  let world: AmmoWorldComponent;
+
+  beforeEach(async () => {
+    if (world) {
+      world.dispose();
+    }
+    world = new AmmoWorldComponent();
+    await world.init();
+    world.gravity = { x: 0, y: 0, z: 0 }; // Set gravity to zero for predictable physics
+  });
+
+  afterAll(() => {
+    world.dispose();
+  });
+
+  describe('Gravity', () => {
+    it('should default to earth-like downward gravity on a fresh world', async () => {
+      const freshWorld = new AmmoWorldComponent();
+      await freshWorld.init();
+      expect(freshWorld.gravity).toEqual({ x: 0, y: 0, z: -9.82 });
+      freshWorld.dispose();
+    });
+
+    it('should read back a value written to it and apply it to the simulation', () => {
+      world.gravity = { x: 1, y: -2, z: 3 };
+      expect(world.gravity).toEqual({ x: 1, y: -2, z: 3 });
+
+      const ball = world.factory.createRigidBody({
+        shape: { shape: 'SPHERE', radius: 1 },
+        body: { dynamic: true, mass: 1 },
+      }, { position: { x: 0, y: 0, z: 0 } });
+      ball.addToWorld({ physicsWorld: world } as any);
+
+      for (let i = 0; i < 20; i++) {
+        world.simulate(60);
+      }
+      // ball should have drifted along every gravity axis in the sign of that axis' gravity
+      expect(ball.position.x).toBeGreaterThan(0);
+      expect(ball.position.y).toBeLessThan(0);
+      expect(ball.position.z).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Collision groups', () => {
+    it('should register groups starting from 1 (0 is the reserved main collision group)', () => {
+      expect(world.mainCollisionGroup).toBe(0);
+      expect(world.registerCollisionGroup()).toBe(1);
+      expect(world.registerCollisionGroup()).toBe(2);
+    });
+
+    it('should let a deregistered group id be reused', () => {
+      const group = world.registerCollisionGroup();
+      world.deregisterCollisionGroup(group);
+      expect(world.registerCollisionGroup()).toBe(group);
+    });
+
+    it('should throw once all 16 collision groups (0-15) are exhausted', () => {
+      // group 0 is implicitly reserved as the main collision group, so 15 more can be registered
+      for (let i = 0; i < 15; i++) {
+        world.registerCollisionGroup();
+      }
+      expect(() => world.registerCollisionGroup()).toThrow();
+    });
+  });
+
+  describe('Rigid bodies', () => {
+
+    it('should simulate inertial motion of rigid body', () => {
+
+      const ball = world.factory.createRigidBody({
+        shape: { shape: 'SPHERE', radius: 1 },
+        body: { dynamic: true, mass: 5 },
+      }, { position: { x: -5, y: 0, z: 0 } });
+      ball.addToWorld({ physicsWorld: world } as any);
+      ball.linearVelocity = { x: 1, y: 0, z: 0 };
+
+      // simulate for 6 seconds
+      for (let i = 0; i < 100; i++) {
+        world.simulate(60);
+      }
+      expect(ball.position.x).toBeCloseTo(1);
+    });
+
+    it('should simulate collision of two rigid bodies', () => {
+
+      const ball0 = world.factory.createRigidBody({
+        shape: { shape: 'SPHERE', radius: 1 },
+        body: { dynamic: true, mass: 5 },
+      }, { position: { x: -5, y: 0, z: 0 } });
+      ball0.addToWorld({ physicsWorld: world } as any);
+      ball0.linearVelocity = { x: 1, y: 0, z: 0 };
+
+      const ball1 = world.factory.createRigidBody({
+        shape: { shape: 'SPHERE', radius: 1 },
+        body: { dynamic: true, mass: 5 },
+      }, { position: { x: 5, y: 0, z: 0 } });
+      ball1.addToWorld({ physicsWorld: world } as any);
+      ball1.linearVelocity = { x: -1, y: 0, z: 0 };
+
+      // simulate for 6 seconds
+      for (let i = 0; i < 100; i++) {
+        world.simulate(60);
+      }
+      expect(ball0.position.x).toBeLessThan(0);
+      expect(ball1.position.x).toBeGreaterThan(0);
+    });
+
+    it('should not simulate collision of two rigid bodies with different collision groups', () => {
+      const cg0 = world.registerCollisionGroup();
+      const ball0 = world.factory.createRigidBody({
+        shape: { shape: 'SPHERE', radius: 1 },
+        body: { dynamic: true, mass: 5 },
+      }, { position: { x: -5, y: 0, z: 0 } });
+      ball0.addToWorld({ physicsWorld: world } as any);
+      ball0.linearVelocity = { x: 1, y: 0, z: 0 };
+      ball0.ownCollisionGroups = ball0.interactWithCollisionGroups = [cg0];
+
+      const cg1 = world.registerCollisionGroup();
+      const ball1 = world.factory.createRigidBody({
+        shape: { shape: 'SPHERE', radius: 1 },
+        body: { dynamic: true, mass: 5 },
+      }, { position: { x: 5, y: 0, z: 0 } });
+      ball1.addToWorld({ physicsWorld: world } as any);
+      ball1.linearVelocity = { x: -1, y: 0, z: 0 };
+      ball1.ownCollisionGroups = ball1.interactWithCollisionGroups = [cg1];
+
+      // simulate for 6 seconds
+      for (let i = 0; i < 100; i++) {
+        world.simulate(60);
+      }
+      expect(ball0.position.x).toBeCloseTo(1);
+      expect(ball1.position.x).toBeCloseTo(-1);
+    });
+  });
+
+  describe('Raycast', () => {
+
+    it('should return no hit when ray does not intersect any object', () => {
+      // Create a box far away from the ray
+      const box = world.factory.createRigidBody({
+        shape: { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } },
+        body: { dynamic: false, mass: 0 },
+      }, { position: { x: 10, y: 10, z: 10 } });
+      box.addToWorld({ physicsWorld: world } as any);
+
+      world.simulate(1);
+
+      // Cast a ray that doesn't hit anything
+      const raycastOptions: RaycastOptions<Point3> = {
+        from: { x: 0, y: 0, z: 0 },
+        to: { x: 0, y: 0, z: -10 },
+      };
+
+      const result = world.raycast(raycastOptions);
+      expect(result.hasHit).toBe(false);
+      expect(result.hitPoint).toBeUndefined();
+      expect(result.hitNormal).toBeUndefined();
+      expect(result.hitDistance).toBeUndefined();
+    });
+
+    it('should detect hit when ray intersects an object', () => {
+      // Create a box in the path of the ray
+      const box = world.factory.createRigidBody({
+        shape: { shape: 'BOX', dimensions: { x: 2, y: 2, z: 2 } },
+        body: { dynamic: false, mass: 0 },
+      }, { position: { x: 0, y: 0, z: -5 } });
+      box.addToWorld({ physicsWorld: world } as any);
+
+      world.simulate(1);
+
+      // Cast a ray that hits the box
+      const raycastOptions: RaycastOptions<Point3> = {
+        from: { x: 0, y: 0, z: 0 },
+        to: { x: 0, y: 0, z: -10 },
+      };
+
+      const result = world.raycast(raycastOptions);
+      expect(result.hasHit).toBe(true);
+      expect(result.hitBody).toBe(box);
+      expect(result.hitPoint).toBeDefined();
+      expect(result.hitNormal).toBeDefined();
+      expect(result.hitDistance).toBeDefined();
+
+      // The hit should be at approximately z = -4 (box at z = -5 with size 2)
+      expect(result.hitPoint!.z).toBeCloseTo(-4, 0.1);
+
+      // The normal should point up (towards the ray origin)
+      expect(result.hitNormal!.z).toBeGreaterThan(0);
+    });
+
+    it('should respect collision filtering', () => {
+      // Register collision groups
+      const group1 = world.registerCollisionGroup();
+      const group2 = world.registerCollisionGroup();
+
+      // Create a box that only belongs to group1
+      const box1 = world.factory.createRigidBody({
+        shape: { shape: 'BOX', dimensions: { x: 2, y: 2, z: 2 } },
+        body: {
+          dynamic: false,
+          mass: 0,
+          ownCollisionGroups: [group1],
+          interactWithCollisionGroups: [group1, group2],
+        },
+      }, { position: { x: 0, y: 0, z: -5 } });
+      box1.addToWorld({ physicsWorld: world } as any);
+
+      world.simulate(1);
+
+      // Ray that only checks against group2 should not hit
+      const rayOptions1: RaycastOptions<Point3> = {
+        from: { x: 0, y: 0, z: 0 },
+        to: { x: 0, y: 0, z: -10 },
+        collisionFilterGroups: [group2],
+        collisionFilterMask: [group2],
+      };
+
+      const result1 = world.raycast(rayOptions1);
+      expect(result1.hasHit).toBe(false);
+
+      // Ray that checks against group1 should hit
+      const rayOptions2: RaycastOptions<Point3> = {
+        from: { x: 0, y: 0, z: 0 },
+        to: { x: 0, y: 0, z: -10 },
+        collisionFilterGroups: [group1],
+        collisionFilterMask: [group1],
+      };
+
+      const result2 = world.raycast(rayOptions2);
+      expect(result2.hasHit).toBe(true);
+      expect(result2.hitBody).toBe(box1);
+    });
+
+    it('should calculate hit distance correctly', () => {
+      // Create a box at a known distance
+      const box = world.factory.createRigidBody({
+        shape: { shape: 'BOX', dimensions: { x: 2, y: 2, z: 2 } },
+        body: { dynamic: false, mass: 0 },
+      }, { position: { x: 0, y: 0, z: -5 } });
+      box.addToWorld({ physicsWorld: world } as any);
+
+      world.simulate(1);
+
+      // Cast a ray from origin to z = -10
+      const raycastOptions: RaycastOptions<Point3> = {
+        from: { x: 0, y: 0, z: 0 },
+        to: { x: 0, y: 0, z: -10 },
+      };
+
+      const result = world.raycast(raycastOptions);
+      expect(result.hasHit).toBe(true);
+
+      // The hit distance should be approximately 4 units
+      // (from origin to the edge of the box at z = -4)
+      expect(result.hitDistance).toBeCloseTo(4, 0.1);
+    });
+
+    it('should handle array of collision groups correctly', () => {
+      // Register collision groups
+      const group1 = world.registerCollisionGroup();
+      const group2 = world.registerCollisionGroup();
+
+      // Create a box that belongs to group1
+      const box = world.factory.createRigidBody({
+        shape: { shape: 'BOX', dimensions: { x: 2, y: 2, z: 2 } },
+        body: {
+          dynamic: false,
+          mass: 0,
+          ownCollisionGroups: [group1],
+          interactWithCollisionGroups: [group1, group2],
+        },
+      }, { position: { x: 0, y: 0, z: -5 } });
+      box.addToWorld({ physicsWorld: world } as any);
+
+      world.simulate(1);
+
+      // Ray that checks against both groups should hit
+      const rayOptions: RaycastOptions<Point3> = {
+        from: { x: 0, y: 0, z: 0 },
+        to: { x: 0, y: 0, z: -10 },
+        collisionFilterGroups: [group1, group2],
+        collisionFilterMask: [group1, group2],
+      };
+
+      const result = world.raycast(rayOptions);
+      expect(result.hasHit).toBe(true);
+    });
+
+    it('should return correct hit body', () => {
+      // Create two boxes at different positions
+      const box1 = world.factory.createRigidBody({
+        shape: { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } },
+        body: { dynamic: false, mass: 0 },
+      }, { position: { x: 0, y: 0, z: -3 } });
+      box1.addToWorld({ physicsWorld: world } as any);
+
+      const box2 = world.factory.createRigidBody({
+        shape: { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } },
+        body: { dynamic: false, mass: 0 },
+      }, { position: { x: 0, y: 0, z: -7 } });
+      box2.addToWorld({ physicsWorld: world } as any);
+
+      world.simulate(1);
+
+      // Cast a ray that should hit box1 first
+      const raycastOptions: RaycastOptions<Point3> = {
+        from: { x: 0, y: 0, z: 0 },
+        to: { x: 0, y: 0, z: -10 },
+      };
+
+      const result = world.raycast(raycastOptions);
+      expect(result.hasHit).toBe(true);
+      expect(result.hitBody).toBe(box1);
+      expect(result.hitPoint!.z).toBeCloseTo(-2.5, 0.1); // box1 edge is at z = -2.5
+    });
+
+    it('should handle edge case with ray starting inside an object', () => {
+      // Create a box
+      const box = world.factory.createRigidBody({
+        shape: { shape: 'BOX', dimensions: { x: 4, y: 4, z: 4 } },
+        body: { dynamic: false, mass: 0 },
+      }, { position: { x: 0, y: 0, z: 0 } });
+      box.addToWorld({ physicsWorld: world } as any);
+
+      world.simulate(1);
+
+      // Cast a ray from inside the box
+      const raycastOptions: RaycastOptions<Point3> = {
+        from: { x: 0, y: 0, z: 0 }, // Center of the box
+        to: { x: 0, y: 0, z: -10 },
+      };
+
+      const result = world.raycast(raycastOptions);
+
+      // Behavior may vary depending on physics engine implementation
+      // Some engines might not detect hits when starting inside an object
+      // Others might detect the exit point
+      // We just verify the method doesn't crash and returns a valid result
+      expect(result).toBeDefined();
+    });
+  });
+});

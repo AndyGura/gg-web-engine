@@ -172,6 +172,7 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
       const col = this.world.nativeWorld!.createCollider(c, this._nativeBody!);
       col.setFriction(this._colliderOptions.friction);
       col.setRestitution(this._colliderOptions.restitution);
+      col.setCollisionGroups(this.collisionGroups);
       return col;
     });
     this.world.handleIdEntityMap.set(this._nativeBody!.handle, this);

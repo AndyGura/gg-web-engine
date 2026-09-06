@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/controllers/input/orbit-camera.controller.ts
-nav_order: 41
+nav_order: 45
 parent: Modules
 ---
 
@@ -98,7 +98,7 @@ _spherical: MutableSpherical
 **Signature**
 
 ```ts
-target: Point3
+target: Readonly<MutablePoint3>
 ```
 
 ### resetMotion$ (property)

@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/trigger-3d.entity.ts
-nav_order: 49
+nav_order: 53
 parent: Modules
 ---
 
@@ -23,7 +23,7 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare class Trigger3dEntity<TypeDoc> {
+export declare class Trigger3dEntity<PTypeDoc> {
   constructor(public readonly objectBody: ITrigger3dComponent)
 }
 ```

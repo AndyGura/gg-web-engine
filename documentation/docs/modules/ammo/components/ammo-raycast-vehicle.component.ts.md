@@ -58,7 +58,7 @@ refreshCG()
 **Signature**
 
 ```ts
-addToWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>)
+addToWorld(world: AmmoGgWorld)
 ```
 
 ### removeFromWorld (method)
@@ -66,7 +66,7 @@ addToWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>)
 **Signature**
 
 ```ts
-removeFromWorld(world: Gg3dWorld<VisualTypeDocRepo3D, AmmoPhysicsTypeDocRepo>)
+removeFromWorld(world: AmmoGgWorld)
 ```
 
 ### addWheel (method)

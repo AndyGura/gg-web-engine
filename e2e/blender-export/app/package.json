@@ -1,0 +1,40 @@
+{
+  "name": "gg-web-engine-e2e-blender-export",
+  "private": true,
+  "version": "1.0.0",
+  "description": "E2E: Blender scene -> GG Web Engine Exporter add-on -> Gg3dLoader (three.js + rapier3d) -> assert the resulting scene. See ../README.md.",
+  "scripts": {
+    "test": "jest"
+  },
+  "devDependencies": {
+    "@gg-web-engine/core": "*",
+    "@gg-web-engine/three": "*",
+    "@gg-web-engine/rapier3d": "*",
+    "@dimforge/rapier3d-compat": "0.20.0",
+    "three": "0.185.1",
+    "@types/three": "0.185.4",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^26.4.0",
+    "jest": "^30.5.0",
+    "jest-environment-jsdom": "^30.5.0",
+    "ts-jest": "^29.4.12",
+    "typescript": "~6.0.3"
+  },
+  "jest": {
+    "rootDir": ".",
+    "testRegex": "\\.e2e\\.spec\\.ts$",
+    "transform": {
+      "node_modules/three/.+\\.js$": ["ts-jest", { "isolatedModules": true }],
+      "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "transformIgnorePatterns": ["node_modules/(?!(three)/)"],
+    "moduleNameMapper": {
+      "@gg-web-engine/core": "<rootDir>/../../../packages/core/src/index.ts",
+      "@gg-web-engine/three": "<rootDir>/../../../packages/three/src/index.ts",
+      "@gg-web-engine/rapier3d": "<rootDir>/../../../packages/rapier3d/src/index.ts"
+    },
+    "setupFiles": ["<rootDir>/test/jest.setup.ts"],
+    "testEnvironment": "jsdom",
+    "testTimeout": 30000
+  }
+}

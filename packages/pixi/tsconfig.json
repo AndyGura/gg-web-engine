@@ -3,7 +3,10 @@
   "compilerOptions": {
     "baseUrl": "./src/",
     "outDir": "./dist/",
+    "rootDir": "./src/",
+    "tsBuildInfoFile": "./dist/tsconfig.tsbuildinfo",
     "allowSyntheticDefaultImports": true,
   },
-  "include": ["*.ts", "**/*.ts"]
+  "include": ["*.ts", "**/*.ts"],
+  "references": [{ "path": "../core" }]
 }

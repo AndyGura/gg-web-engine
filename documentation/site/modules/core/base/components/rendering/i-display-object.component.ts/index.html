@@ -555,8 +555,8 @@
 <h1 id="utils">utils</h1>
 <h2 id="idisplayobjectcomponent-interface">IDisplayObjectComponent (interface)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export interface IDisplayObjectComponent&lt;D, R, TypeDoc extends VisualTypeDocRepo&lt;D, R&gt; = VisualTypeDocRepo&lt;D, R&gt;&gt;
-  extends IWorldComponent&lt;D, R, TypeDoc&gt; {
+<pre><code class="language-ts">export interface IDisplayObjectComponent&lt;D, R, VTypeDoc extends VisualTypeDocRepo&lt;D, R&gt; = VisualTypeDocRepo&lt;D, R&gt;&gt;
+  extends IWorldComponent&lt;D, R, GgWorldTypeDocVPatch&lt;D, R, VTypeDoc&gt;&gt; {
   position: D
   rotation: R
   scale: D
@@ -567,15 +567,15 @@
 
   isEmpty(): boolean
 
-  popChild(name: string): IDisplayObjectComponent&lt;D, R, TypeDoc&gt; | null
+  popChild(name: string): IDisplayObjectComponent&lt;D, R, VTypeDoc&gt; | null
 
   getBoundings(): GgBox&lt;D&gt;
 
-  clone(): IDisplayObjectComponent&lt;D, R, TypeDoc&gt;
+  clone(): IDisplayObjectComponent&lt;D, R, VTypeDoc&gt;
 
-  addToWorld(world: GgWorld&lt;D, R, TypeDoc&gt;): void
+  addToWorld(world: GgWorld&lt;D, R, GgWorldTypeDocVPatch&lt;D, R, VTypeDoc&gt;&gt;): void
 
-  removeFromWorld(world: GgWorld&lt;D, R, TypeDoc&gt;): void
+  removeFromWorld(world: GgWorld&lt;D, R, GgWorldTypeDocVPatch&lt;D, R, VTypeDoc&gt;&gt;): void
 }
 </code></pre>
 

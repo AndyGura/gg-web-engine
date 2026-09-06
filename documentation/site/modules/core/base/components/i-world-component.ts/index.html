@@ -555,19 +555,13 @@
 <h1 id="utils">utils</h1>
 <h2 id="iworldcomponent-interface">IWorldComponent (interface)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export interface IWorldComponent&lt;
-  D,
-  R,
-  VTypeDoc extends VisualTypeDocRepo&lt;D, R&gt; = VisualTypeDocRepo&lt;D, R&gt;,
-  PTypeDoc extends PhysicsTypeDocRepo&lt;D, R&gt; = PhysicsTypeDocRepo&lt;D, R&gt;
-&gt; {
+<pre><code class="language-ts">export interface IWorldComponent&lt;D, R, TypeDoc extends GgWorldTypeDocRepo&lt;D, R&gt; = GgWorldTypeDocRepo&lt;D, R&gt;&gt;
+  extends IComponent {
   entity: IEntity | null
 
-  addToWorld(world: GgWorld&lt;D, R, VTypeDoc, PTypeDoc&gt;): void
+  addToWorld(world: GgWorld&lt;D, R, TypeDoc&gt;): void
 
-  removeFromWorld(world: GgWorld&lt;D, R, VTypeDoc, PTypeDoc&gt;, dispose?: boolean): void
-
-  dispose(): void
+  removeFromWorld(world: GgWorld&lt;D, R, TypeDoc&gt;, dispose?: boolean): void
 }
 </code></pre>
 
