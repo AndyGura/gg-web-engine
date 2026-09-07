@@ -77,6 +77,24 @@ export type <Lib>PhysicsTypeDocRepo = {
   resolve the native hit handle back to your `rigidBody`/`trigger` component via a reverse map
   (native pointer/handle → component instance), and populate `hitPoint`/`hitNormal`/`hitDistance`.
   Return `{ hasHit: false }` cleanly if the world isn't initialized or nothing was hit.
+  `RaycastOptions` only ever supports **group/mask filtering** (`collisionFilterGroups`/
+  `collisionFilterMask`, both `CollisionGroup[]` - plain numeric bit-indices, no `'all'` sentinel
+  the way `IBodyComponent`'s own group setters have one) - there is no identity-based "exclude this
+  exact body" parameter anywhere in the interface, even on engines whose native raycast API does
+  support one (confirmed for Rapier: `castRay` accepts `filterExcludeCollider`/
+  `filterExcludeRigidBody`, but the wrapper here only ever threads the group bitmask through). Left
+  unfiltered, a raycast hits *everything* registered in the world, including the very body that
+  issued it if that body happens to sit on/near the ray's own path - this bit a caller two ways
+  already, not just adapter code: `AmmoCharacterControllerComponent`'s own internal sweep self-hits
+  (see the pitfall further down) and, at the app level, `PlayerCharacterController`'s third-person
+  camera raycast starting from a point on the player's own capsule centerline and immediately
+  self-hitting at ~0 distance (collapsing the camera onto the character - regression, found live in
+  the rapier3d example). The general-purpose fix used at the app level (no interface change) was
+  geometric, not group-based: nudge the ray's start point outward past the character's own radius
+  along its direction first, then add that offset back onto the reported hit distance - the same
+  "start just outside my own shape" trick `CharacterController3dEntity.tryStandUp`'s self-raycast
+  already used. Keep this in mind before adding any new raycast call that might originate on or near
+  a body already in the world.
 - `dispose()` — explicitly destroy every native handle (solver, broadphase, dispatcher, collision
   configuration, the world itself). WASM-backed engines (Ammo, Rapier) do **not** garbage-collect
   native memory automatically — leaving this out leaks.

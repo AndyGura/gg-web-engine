@@ -54,6 +54,15 @@ export type PlayerCharacterControllerOptions = {
   cameraCollision: boolean;
   /** Gap kept between the camera and an obstruction it was pulled in against. Default 0.2. */
   cameraCollisionMargin: number;
+  /**
+   * Flag to ignore cursor movement if pointer was not locked. `false` by default. Set this to
+   * `true` (matching `mouseOptions: { pointerLock: true }`, the default) to stop stray mouse
+   * movement over the page from spinning the view before the canvas has actually been clicked to
+   * lock the pointer. Always ignored on a touch device (touch has no pointer-lock concept, and
+   * `mouseInput.isPointerLocked` never becomes `true` there), mirroring
+   * `FreeCameraControllerOptions`'s identically-named option.
+   */
+  ignoreMouseUnlessPointerLocked: boolean;
   /** Options for the underlying `MouseInput` (e.g. `canvas` for pointer lock). `pointerLock: true` by default. */
   mouseOptions: Partial<MouseInputOptions>;
 };
@@ -73,6 +82,7 @@ const DEFAULT_OPTIONS: PlayerCharacterControllerOptions = {
   maxPitch: Math.PI * 0.49,
   cameraCollision: true,
   cameraCollisionMargin: 0.2,
+  ignoreMouseUnlessPointerLocked: false,
   mouseOptions: { pointerLock: true },
 };
 
@@ -212,16 +222,22 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
         .subscribe(() => this.toggleViewMode());
     }
 
-    this.mouseInput.delta$.pipe(takeUntil(this._onRemoved$)).subscribe(delta => {
-      this._spherical.theta -= (delta.x * this.options.mouseSensitivity) / 1000;
-      const pitchToPhi = (pitch: number) => Math.PI / 2 - pitch;
-      const phiMin = pitchToPhi(this.options.maxPitch);
-      const phiMax = pitchToPhi(this.options.minPitch);
-      this._spherical.phi = Math.max(
-        phiMin,
-        Math.min(phiMax, this._spherical.phi + (delta.y * this.options.mouseSensitivity) / 1000),
-      );
-    });
+    const isTouchScreen = MouseInput.isTouchDevice();
+    this.mouseInput.delta$
+      .pipe(
+        takeUntil(this._onRemoved$),
+        filter(() => isTouchScreen || !this.options.ignoreMouseUnlessPointerLocked || this.mouseInput.isPointerLocked),
+      )
+      .subscribe(delta => {
+        this._spherical.theta -= (delta.x * this.options.mouseSensitivity) / 1000;
+        const pitchToPhi = (pitch: number) => Math.PI / 2 - pitch;
+        const phiMin = pitchToPhi(this.options.maxPitch);
+        const phiMax = pitchToPhi(this.options.minPitch);
+        this._spherical.phi = Math.max(
+          phiMin,
+          Math.min(phiMax, this._spherical.phi + (delta.y * this.options.mouseSensitivity) / 1000),
+        );
+      });
 
     this.tick$
       .pipe(
@@ -273,10 +289,27 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
       const target = Pnt3.add(this.character.position, Pnt3.scalarMult(up, this.options.thirdPersonHeight));
       let distance = this.options.thirdPersonDistance;
       if (this.options.cameraCollision && this.character.world?.physicsWorld) {
+        // `target` sits on the character's own capsule centerline - raycasting from it straight out
+        // (`RaycastOptions` has no per-call "exclude this body" hook, and the character's collision
+        // group is not, by default, distinct from ordinary level geometry's) immediately reports a
+        // self-hit at ~0 distance, collapsing the third-person camera onto `target` every tick -
+        // indistinguishable from first-person (regression, found live in the rapier3d example: `V`
+        // correctly flipped `viewMode` to `'third-person'`, but the camera stayed glued to the
+        // character's own head position instead of pulling back). Nudge the ray's start point
+        // outward past the capsule's own radius along the same look direction first - the capsule's
+        // horizontal cross-section is exactly `radius` wide at any height within its cylindrical
+        // midsection, and close enough above/below it - then add that offset back onto the measured
+        // hit distance so it's still relative to `target`, not the nudged start point.
+        const skin = 0.05;
+        const startOffset = Math.min(
+          this.character.characterController.radius + skin,
+          this.options.thirdPersonDistance * 0.9,
+        );
+        const rayStart = Pnt3.sub(target, Pnt3.scalarMult(lookDir, startOffset));
         const desired = Pnt3.sub(target, Pnt3.scalarMult(lookDir, distance));
-        const result = this.character.world.physicsWorld.raycast({ from: target, to: desired });
+        const result = this.character.world.physicsWorld.raycast({ from: rayStart, to: desired });
         if (result.hasHit && result.hitDistance !== undefined) {
-          distance = Math.max(0, result.hitDistance - this.options.cameraCollisionMargin);
+          distance = Math.max(0, startOffset + result.hitDistance - this.options.cameraCollisionMargin);
         }
       }
       this.camera.position = Pnt3.sub(target, Pnt3.scalarMult(lookDir, distance));

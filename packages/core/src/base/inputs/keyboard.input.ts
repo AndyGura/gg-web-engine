@@ -152,7 +152,12 @@ export class KeyboardInput extends IInput {
         }
       }
     }
-    for (const subj of this.bindings[e.code] || []) {
+    const subs = this.bindings[e.code];
+    if (!subs || subs.length === 0) {
+      return;
+    }
+    e.preventDefault();
+    for (const subj of subs) {
       subj.next(pressed);
     }
   }

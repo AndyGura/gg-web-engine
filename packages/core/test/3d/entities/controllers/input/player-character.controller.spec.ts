@@ -178,5 +178,84 @@ describe('PlayerCharacterController', () => {
       expect(forward.y).toBeCloseTo(expected.y);
       expect(forward.z).toBeCloseTo(0);
     });
+
+    it("offsets the third-person collision raycast's start point outside the capsule, instead of starting from the character's own head position (regression: `target` sits on the capsule centerline, so an unfiltered raycast from there immediately self-hit at ~0 distance, collapsing third-person onto the same position as first-person)", async () => {
+      const raycast = jest.fn().mockReturnValue({ hasHit: false });
+      const character = fakeCharacter({
+        position: { x: 0, y: 0, z: 1 },
+        characterController: { up: Pnt3.Z, radius: 0.4 },
+        world: { physicsWorld: { raycast } },
+      });
+      const { controller } = setup(character, { viewMode: 'third-person', thirdPersonHeight: 0.6 });
+      await controller.onSpawned({} as any);
+      controller.tick$.next([0, 16]);
+
+      expect(raycast).toHaveBeenCalledTimes(1);
+      const { from } = raycast.mock.calls[0][0];
+      const target = { x: 0, y: 0, z: 1.6 }; // character.position + up * thirdPersonHeight
+      // pushed out by radius (0.4) + a small skin margin, not left sitting at `target` itself
+      expect(Pnt3.dist(from, target)).toBeCloseTo(0.45, 5);
+    });
+
+    it('adds the raycast start-point offset back onto a reported hit distance, so an obstruction still pulls the camera in by the right amount relative to the look target', async () => {
+      const raycast = jest.fn().mockReturnValue({ hasHit: true, hitDistance: 1.0 });
+      const character = fakeCharacter({
+        position: Pnt3.O,
+        characterController: { up: Pnt3.Z, radius: 0.4 },
+        world: { physicsWorld: { raycast } },
+      });
+      const camera = fakeCamera();
+      camera.rotation = Qtrn.lookAt(Pnt3.O, { x: 1, y: 0, z: 0 }); // looking along +X
+      const keyboard = new KeyboardInput();
+      keyboard.start();
+      const controller = new PlayerCharacterController(keyboard, character, camera, {
+        viewMode: 'third-person',
+        thirdPersonHeight: 0,
+        thirdPersonDistance: 4,
+        cameraCollisionMargin: 0.2,
+      });
+      await controller.onSpawned({} as any);
+      controller.tick$.next([0, 16]);
+
+      // startOffset (radius 0.4 + 0.05 skin) + reported hitDistance (1.0) - margin (0.2) = 1.25,
+      // behind the target (at the origin) along -lookDir (-X)
+      expect(camera.position.x).toBeCloseTo(-1.25, 1);
+      expect(camera.position.y).toBeCloseTo(0, 5);
+      expect(camera.position.z).toBeCloseTo(0, 5);
+    });
+  });
+
+  describe('ignoreMouseUnlessPointerLocked', () => {
+    // MouseInput's `delta$` is a private Subject wrapped behind a getter with no public "emit"
+    // method - reach into it directly the same way a real mouse-move event would feed it.
+    const emitMouseDelta = (mouseInput: any, delta: { x: number; y: number }) => mouseInput._delta$.next(delta);
+
+    it('still reacts to mouse movement while the pointer is not locked, by default (false)', async () => {
+      const character = fakeCharacter();
+      const { controller } = setup(character, { viewMode: 'first-person' });
+      await controller.onSpawned({} as any);
+      controller.tick$.next([0, 16]); // establish a steady-state baseline rotation first
+      const before = { ...character.rotation };
+
+      expect(controller.mouseInput.isPointerLocked).toBe(false); // jsdom: no pointerLockElement
+      emitMouseDelta(controller.mouseInput, { x: 100, y: 0 });
+      controller.tick$.next([16, 16]);
+
+      expect(character.rotation).not.toEqual(before);
+    });
+
+    it('ignores mouse movement while the pointer is not locked, when set to true', async () => {
+      const character = fakeCharacter();
+      const { controller } = setup(character, { viewMode: 'first-person', ignoreMouseUnlessPointerLocked: true });
+      await controller.onSpawned({} as any);
+      controller.tick$.next([0, 16]);
+      const before = { ...character.rotation };
+
+      expect(controller.mouseInput.isPointerLocked).toBe(false);
+      emitMouseDelta(controller.mouseInput, { x: 100, y: 0 });
+      controller.tick$.next([16, 16]);
+
+      expect(character.rotation).toEqual(before);
+    });
   });
 });

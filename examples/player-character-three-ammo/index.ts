@@ -23,7 +23,16 @@ const WALL_HEIGHT = 4;
 
 const level: LevelJson = {
   entities: [
-    { class: 'Camera', name: 'MainCamera', position: { x: 0, y: -8, z: 4 } },
+    // the default near plane (1) clips geometry the player can get much closer than that to - the
+    // first-person camera sits right at the ~0.4-radius capsule, and the third-person camera's own
+    // collision pull-in (cameraCollisionMargin, default 0.2) can land it well inside a default near
+    // plane too - so this close-quarters scene needs a much smaller near plane than the default.
+    {
+      class: 'Camera',
+      name: 'MainCamera',
+      position: { x: 0, y: -8, z: 4 },
+      config: { frustrum: { near: 0.05, far: 1000 } },
+    },
 
     // room shell (6 boxes: floor, ceiling, 4 walls)
     {
@@ -186,6 +195,8 @@ world.init().then(async () => {
   const player = levelGroup.getChildEntityByName<CharacterController3dEntity>('Player');
   const controller = new PlayerCharacterController(world.keyboardInput, player, renderer, {
     mouseOptions: { canvas },
+    // stray mouse movement over the page shouldn't spin the view before the canvas is even clicked
+    ignoreMouseUnlessPointerLocked: true,
   });
   world.addEntity(controller);
 

@@ -135,6 +135,24 @@ describe('Rapier3dCharacterControllerComponent', () => {
     expect(character.position.z).toBeCloseTo(stepZ + HALF_HEIGHT, 1); // stepped up onto the ledge
   });
 
+  it('a small upward move (a jump takeoff tick) actually rises instead of being snapped back to the floor, even though it stays well within the default snapToGroundDistance of 0.3', () => {
+    addFloor(0, 20, 0);
+    const character = factory.createCharacterController(CHAR_OPTIONS, {
+      position: { x: 0, y: 0, z: HALF_HEIGHT + 0.5 },
+    });
+    character.addToWorld({ physicsWorld: world } as any);
+    settleWorld();
+    character.move({ x: 0, y: 0, z: -1 });
+    expect(character.isGrounded).toBe(true);
+    const groundedZ = character.position.z;
+
+    // one tick's worth of a typical jumpSpeed (5 m/s) at 60fps - well under the 0.3 snapToGroundDistance
+    character.move({ x: 0, y: 0, z: 0.083 });
+
+    expect(character.position.z).toBeCloseTo(groundedZ + 0.083, 2);
+    expect(character.isGrounded).toBe(false);
+  });
+
   it("move()'s effects must be visible immediately, without an extra world.step() in between", () => {
     addFloor(0, 20, 0);
     addWall(1);
