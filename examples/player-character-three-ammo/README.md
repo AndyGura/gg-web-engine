@@ -25,9 +25,3 @@ builds the physics+visual capsule, not that input wiring (see the `gg-engine-lev
 
 Press the backtick key (`` ` ``) to open the built-in dev console - `spawn` / `spawn <SHAPE> <x> <y>
 <z>` drops physics props into the scene so you can test the player's collision against them.
-
-## Note on engine version
-
-This example is linked against the local, unpublished `packages/core`/`packages/ammo`/
-`packages/three` build (via `etc/switch_example_to_local_gg.sh`) because the character-controller
-feature it demonstrates hasn't been published to npm yet.
