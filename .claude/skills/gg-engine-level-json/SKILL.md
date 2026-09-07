@@ -195,8 +195,10 @@ independent of any one swappable level:
 plus every gameplay field `CharacterController3dEntity` itself takes (`walkSpeed`,
 `runSpeedMultiplier`, `crouchSpeedMultiplier`, `crouchCentersDistance`, `crouchMode`, `jumpSpeed`,
 `gravity`, `airControlFactor`) and the underlying mover's tuning (`offset`, `maxStepHeight`,
-`minStepWidth`, `maxSlopeClimbAngleRad`, `snapToGroundDistance`) - see that class's own doc for
-defaults. Leave `gravity` out entirely to have the character follow `physicsWorld.gravity` live
+`minStepWidth`, `maxSlopeClimbAngleRad`, `snapToGroundDistance`, `pushMass`) - see that class's own
+doc for defaults. `pushMass` (default 80) only sizes how hard the character shoves a dynamic body it
+walks into - not every backend implements pushing (currently only `packages/ammo`'s), so on one that
+doesn't it's accepted but has no effect. Leave `gravity` out entirely to have the character follow `physicsWorld.gravity` live
 (including a runtime change via the `gravity` dev-console command); only set it to give this
 character a gravity scale different from the rest of the world. `display` (optional,
 `DisplayObject3dOpts`) builds a matching capsule mesh via `visualScene.factory.createCapsule`; omit

@@ -378,6 +378,96 @@ hits something that isn't a walkable floor, project the remaining vertical dista
 perpendicular to the hit normal and sweep that as a second pass, same as an obstacle-blocked
 horizontal move already does.
 
+**Pitfall (Ammo only): a ghost-object character controller's native Bullet contact response "pushes"
+dynamic bodies, but is mass-blind and never spins them - it must be disabled, not built on.** A
+kinematic character built as a `btPairCachingGhostObject` (see the note above on why
+`btKinematicCharacterController` itself is unusable here) is never added via `addRigidBody`, so it's
+never actually integrated by the constraint solver - but `performDiscreteCollisionDetection` still
+generates manifolds between it and any dynamic body it overlaps during `stepSimulation`, and the
+solver still processes those manifolds: `btRigidBody::upcast()` on a non-rigid-body collision object
+returns null, so the solver falls back to treating that side of the manifold as a fixed/immovable
+body. The resulting correction lands entirely on the dynamic body, but since it's driven by the
+manifold's penetration depth and Bullet's own Baumgarte/split-impulse recovery-speed cap - not by any
+real momentum transfer from the "immovable" side - it comes out at *roughly the same magnitude
+regardless of the dynamic body's own mass*, and carries no friction/tangential component (so it never
+spins a pushed sphere). Confirmed empirically (`player-character-three-ammo`, added while building
+`pushDynamicBody`): a light and a heavy dynamic box both got shoved at effectively the same ~0.8 m/s
+by an identical walk-into, even with a hand-rolled, explicitly mass-aware push additionally disabled -
+i.e. this native response was the actual (mass-blind, non-rotating) source of "pushing" the whole
+time, silently drowning out anything a mass-aware push tries to add on top. Fix: set
+`CF_NO_CONTACT_RESPONSE` (4) alongside `CF_CHARACTER_OBJECT` (16) on the ghost object's collision
+flags at construction (`ghostObject.setCollisionFlags(CF_CHARACTER_OBJECT | CF_NO_CONTACT_RESPONSE)`)
+so Bullet's own dynamics never generates a response for it at all, then implement pushing entirely by
+hand as its own step: reuse the hit info an existing horizontal sweep already produces (extend the
+sweep helper's result type with the hit `Ammo.getPointer()`, look it up in
+`AmmoBodyComponent.nativeBodyReverseMap` to recover the wrapping component), model the contact as a
+simple inelastic collision against a virtual character mass (`bodySpeedAlongPush = characterSpeed *
+pushMass / (pushMass + bodyMass)`, only ever *adding* velocity along the push direction, never
+subtracting) - set linear velocity only, no shape-specific handling needed. Computing `characterSpeed`
+itself needs real `desiredTranslation / dt`, not the raw per-tick translation distance alone (which is
+off by a factor of the tick's own timestep) - `ICharacterController3dComponent.move()` takes an
+optional trailing `dt` argument for exactly this, which `CharacterController3dEntity` always passes
+(its own tick delta); a backend that doesn't push dynamic bodies is free to ignore the parameter
+entirely.
+
+**Related pitfall (Ammo only, easy to misdiagnose as "friction can't induce rotation" - it can): a
+pushed sphere given pure linear velocity looked like it would never start rolling on its own, but the
+real cause was `m_rollingFriction` being set equal to sliding friction, not any inability to generate
+spin from sliding contact.** First measured while chasing the pitfall above: giving a resting sphere
+pure linear velocity and letting it slide across a static floor for dozens of ticks decelerated it as
+expected, but its angular velocity never left exactly zero the whole time - which looks exactly like
+"this Bullet build's contact solver just doesn't generate the friction torque that would spin a
+sliding sphere up into rolling." The actual cause was `AmmoFactory.createRigidBodyFromShape` calling
+`environmentBodyCI.set_m_rollingFriction(options.friction)` - reusing the *sliding*-friction value
+(0.5 by default, via `defaultBodyOptions`) as *rolling* friction too, a physically distinct and
+normally much smaller quantity (real-world rolling-resistance coefficients run roughly two orders of
+magnitude below typical sliding-friction ones; Bullet's own construction-info default is `0`, i.e. no
+rolling resistance at all). At `rollingFriction: 0.5`, the same manifold's rolling-friction constraint
+damped any spin the sliding-friction contact *did* generate back out within the same solver step it
+was generated in, before anything outside the solver ever read a nonzero value - so it wasn't that the
+inducing torque was missing, it was being cancelled in the same step it appeared. Confirmed by
+isolating the two: reverting sliding friction back to its old value while leaving `rollingFriction` at
+a small fixed default (decoupled from `options.friction` entirely) was enough on its own to restore
+natural slide-to-roll spin-up - no sliding-friction change needed. This means a project that first
+"fixes" the symptom by manually setting a pushed sphere's angular velocity to the
+rolling-without-slipping value (`ω = (speed / radius) · (up × pushDirection)`, the `ω` that makes the
+contact point's velocity `v_com + ω × (-radius·up)` exactly zero) is treating the wrong layer - once
+`m_rollingFriction` is fixed at the factory level, that per-push workaround becomes redundant (rolling
+now emerges from ordinary floor contact, the same way it would for any other shape/interaction, not
+just a character's push) and should be removed rather than layered on top; a workaround like this is
+also easy to get backwards on the *sign* of `ω` (an earlier version of it used `direction × up`, which
+Bullet's own naturally-induced spin - the actual ground truth once compared - showed to be exactly
+opposite: `up × direction`), one more reason to prefer removing it over trying to keep it "correct"
+once it's no longer needed for anything. Picking the actual *magnitude* for that small rolling-friction
+default matters too, not just getting it away from `options.friction` - too small (an initial `0.02`)
+undershoots badly, giving a pushed sphere 8+ *simulated* seconds to coast to a stop (bounces off
+several walls in a room-sized space first, reading as "never stops" even though it technically does
+eventually); this repo settled on `0.05` after measuring stop time across a spread of values by giving
+a resting sphere realistic rolling-without-slipping velocity and counting simulated ticks to rest.
+
+**Related pitfall (Ammo only): fixing `m_rollingFriction` above still leaves a sphere spinning about
+the contact-normal axis (a "top" spin, not a "rolling" spin) undamped *forever*, not just slowly -
+`m_rollingFriction` and sliding friction only ever touch spin about axes *tangent* to the contact
+normal.** A sphere's contact point velocity is `ω × r_contact` (`r_contact` pointing from center to
+the single contact point, i.e. straight down for a sphere on flat ground) - this is exactly zero
+whenever `ω` is parallel to `r_contact`, i.e. spin purely about the vertical/contact-normal axis, no
+matter how fast that spin is. Neither sliding friction nor `m_rollingFriction` (which only opposes the
+kind of spin that couples to translation via the rolling condition) generates any torque against that
+axis, since there's no relative sliding at the contact point to oppose. Confirmed empirically: a sphere
+given *only* vertical-axis angular velocity (zero linear velocity, zero other-axis spin) held that
+exact spin speed, completely undiminished, for 12+ simulated seconds with the `m_rollingFriction` fix
+above already in place - not a slow decay, no decay at all. A straight-on push (character running
+directly behind a body) only ever imparts rolling-axis spin, which is why this can go unnoticed for a
+while, but any off-center/glancing contact (brushing something at an angle, a wall bounce that isn't
+perfectly square) puts some spin on the vertical axis too, which would otherwise persist literally
+forever once everything else has settled. Bullet models resistance to *this* axis as a third, separate
+quantity, `m_spinningFriction` - unlike `m_rollingFriction`, `btRigidBodyConstructionInfo` has no field
+for it at all, so it can't be set via the construction-info object during body construction; it's only
+ever settable on the already-constructed `btRigidBody` itself, via `nativeBody.setSpinningFriction(x)`
+(`AmmoFactory.createRigidBodyFromShape` calls this right after `new Ammo.btRigidBody(...)`, before
+wrapping it in `AmmoRigidBodyComponent`). Reuses the same `0.05` magnitude as `m_rollingFriction` -
+both are "resistance to spin" quantities of the same physical character, just about different axes.
+
 ## Factory — shape and body-options mapping
 
 `IPhysicsBody(2d|3d)ComponentFactory.createRigidBody(descriptor, transform?)` and `createTrigger

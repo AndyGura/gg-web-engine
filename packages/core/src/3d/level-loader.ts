@@ -482,6 +482,7 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
       minStepWidth,
       maxSlopeClimbAngleRad,
       snapToGroundDistance,
+      pushMass,
       display,
       ...gameplay
     } = settings;
@@ -501,6 +502,7 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
       ...(minStepWidth !== undefined && { minStepWidth }),
       ...(maxSlopeClimbAngleRad !== undefined && { maxSlopeClimbAngleRad }),
       ...(snapToGroundDistance !== undefined && { snapToGroundDistance }),
+      ...(pushMass !== undefined && { pushMass }),
     };
     const characterController = world.physicsWorld.factory.createCharacterController(
       { radius, centersDistance, ...tunableOptions },

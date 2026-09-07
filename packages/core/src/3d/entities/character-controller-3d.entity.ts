@@ -59,6 +59,7 @@ const DEFAULT_OPTIONS: Required<
   up: Pnt3.Z,
   ownCollisionGroups: 'all',
   interactWithCollisionGroups: 'all',
+  pushMass: 80,
   walkSpeed: 4,
   runSpeedMultiplier: 1.8,
   crouchSpeedMultiplier: 0.5,
@@ -332,7 +333,7 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
     const worldHoriz = Pnt3.rot(Pnt3.scalarMult(localHoriz, speed), this.rotation);
     const desiredTranslation = Pnt3.add(Pnt3.scalarMult(worldHoriz, dt), Pnt3.scalarMult(this._fallVelocity, dt));
 
-    this.characterController.move(desiredTranslation);
+    this.characterController.move(desiredTranslation, dt);
 
     if (this._wantsToStand) {
       this.tryStandUp();

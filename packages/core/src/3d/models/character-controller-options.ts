@@ -44,4 +44,16 @@ export type CharacterController3dOptions = {
   ownCollisionGroups?: ReadonlyArray<CollisionGroup> | 'all';
   /** Collision groups this character collides against. Default: `'all'`. */
   interactWithCollisionGroups?: ReadonlyArray<CollisionGroup> | 'all';
+  /**
+   * Effective mass (kg-equivalent), used only to size the push this character imparts to a dynamic
+   * body it walks into - the character's own motion always stays fully kinematic (never affected by
+   * this value, or by anything it pushes). On contact, a body's velocity along the push direction is
+   * driven towards `pushSpeed * pushMass / (pushMass + bodyMass)` - i.e. a body much lighter than
+   * this mass gets shoved at close to the character's own speed, one much heavier barely moves,
+   * mirroring the momentum a real body of this mass moving at that speed would transfer. `0`
+   * disables pushing - a dynamic body is then just swept-and-slid past like static geometry. Default
+   * 80 (roughly human mass). Not every backend implements pushing (see the adapter's own docs);
+   * where unimplemented, this option is ignored.
+   */
+  pushMass?: number;
 };

@@ -167,12 +167,59 @@ export class AmmoFactory implements IPhysicsBody3dComponentFactory<AmmoPhysicsTy
     );
     if (options.friction) {
       environmentBodyCI.set_m_friction(options.friction);
-      environmentBodyCI.set_m_rollingFriction(options.friction);
     }
+    // Rolling friction (resistance to *spinning*, e.g. what eventually settles a rolling ball) is a
+    // physically distinct quantity from sliding friction (resistance to *translating* across a
+    // surface) and needs its own, much smaller, independent default - reusing `options.friction`
+    // here (a real, shipped bug: this used to read `set_m_rollingFriction(options.friction)`) made
+    // every dynamic body's rolling friction match its sliding friction, and at a typical
+    // `options.friction` of 0.5 (`defaultBodyOptions`, see `Gg3dLevelLoader`) that was high enough to
+    // kill a rolling sphere's spin within a handful of ticks - not just too fast a *decay*, either:
+    // the same manifold's rolling-friction constraint was damping out the spin-inducing torque within
+    // the very same solver step sliding friction generated it, so a sphere given pure linear velocity
+    // and left to slide on a static floor looked like it could never pick up any spin from friction at
+    // all (confirmed empirically both ways: reverting only this line reproduced "friction never spins
+    // the ball up"; a small nonzero value on its own, no other change, restored natural spin-up).
+    //
+    // The right *magnitude* for that small value took two rounds to find, both confirmed empirically
+    // by giving a resting sphere realistic rolling-without-slipping linear+angular velocity and
+    // measuring how many simulated seconds it took to coast to a stop on a static floor: `0.02`
+    // (tried first) undershot badly - 8+ simulated seconds to settle, effectively "never stops" for a
+    // room this size, since it bounces off several walls first. `0.05` settles the same push in
+    // 2-3.5s - long enough to feel like real rolling momentum, short enough to actually come to rest
+    // during a normal play session. (Sanity-checked across a spread of values 0.02-0.2: below ~0.03 is
+    // "never stops", above ~0.5 - the old, reused-from-`options.friction` value - is "stops almost
+    // instantly"; several points in between logged similar 2-3.5s settle times, so this isn't a sharp
+    // knife-edge to keep re-tuning by hand if scenarios change slightly.)
+    environmentBodyCI.set_m_rollingFriction(0.05);
     if (options.restitution) {
       environmentBodyCI.set_m_restitution(options.restitution);
     }
-    const comp = new AmmoRigidBodyComponent(this.world, new Ammo.btRigidBody(environmentBodyCI), shapeDescr);
+    const nativeBody = new Ammo.btRigidBody(environmentBodyCI);
+    // `m_rollingFriction` above only damps spin about an axis *tangent* to the contact normal (the
+    // axis that couples to translation via the rolling condition, v = ω × r) - that's the only axis
+    // a straight-line push through this character's `pushDynamicBody` can ever put spin on, which is
+    // why rolling friction alone looked sufficient at first. But it does nothing at all for spin
+    // *about* the contact normal - a sphere spinning in place like a top, with zero linear velocity,
+    // has zero relative sliding at its single contact point regardless of how fast that spin is (the
+    // contact point's own velocity is `ω × r_contact`, which vanishes whenever `ω` is parallel to
+    // `r_contact`, i.e. spin purely about the surface normal) - so neither sliding friction nor
+    // `m_rollingFriction` is doing anything to it. Bullet models this as a separate quantity,
+    // `m_spinningFriction` (unlike rolling friction, `btRigidBodyConstructionInfo` has no field for
+    // it - only settable on the constructed body itself, hence doing it here rather than above).
+    // Confirmed empirically this is a real, distinct gap, not just a theoretical corner case: a
+    // sphere given *only* vertical-axis angular velocity (no linear velocity, no other-axis spin) sat
+    // there spinning at its initial speed, completely undiminished, for 12+ simulated seconds with
+    // only the `m_rollingFriction` fix above in place - i.e. it doesn't just decay slowly, it doesn't
+    // decay *at all*. A push straight into a ball normally only imparts rolling-axis spin, but any
+    // off-center/glancing contact (brushing it at an angle, a wall bounce that isn't perfectly
+    // square-on) puts some of that spin on the vertical axis instead, which would otherwise persist
+    // forever once the rolling-axis component (and the linear motion it's coupled to) has settled.
+    // Reuses the same magnitude as `m_rollingFriction` - both are "resistance to spin" quantities of
+    // the same physical character, just about different axes, so there's no reason to expect a very
+    // different right order-of-magnitude for one versus the other.
+    nativeBody.setSpinningFriction(0.05);
+    const comp = new AmmoRigidBodyComponent(this.world, nativeBody, shapeDescr);
     if (options.ownCollisionGroups && options.ownCollisionGroups !== 'all') {
       comp.ownCollisionGroups = options.ownCollisionGroups;
     }

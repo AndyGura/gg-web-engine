@@ -34,8 +34,15 @@ export interface ICharacterController3dComponent<
    * obstacles, automatically stepping over ledges up to `maxStepHeight`, and snapping to the
    * ground per `snapToGroundDistance` - see `CharacterController3dOptions`. Fully resolves
    * `position`/`rotation`/`isGrounded`/`groundNormal` before returning (see interface doc).
+   *
+   * `dt`, when given, is the real time (seconds) `desiredTranslation` was computed to cover -
+   * `CharacterController3dEntity` always passes it (its own tick delta). It exists purely so an
+   * implementation that pushes dynamic bodies (see `CharacterController3dOptions.pushMass`) can
+   * recover the character's actual speed (`desiredTranslation` magnitude / `dt`) rather than
+   * working from a per-tick distance alone; a mover that doesn't implement pushing is free to
+   * ignore it entirely.
    */
-  move(desiredTranslation: Point3): void;
+  move(desiredTranslation: Point3, dt?: number): void;
 
   clone(): ICharacterController3dComponent<PTypeDoc>;
 }

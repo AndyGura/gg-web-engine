@@ -27,20 +27,39 @@ const level: LevelJson = {
     // first-person camera sits right at the ~0.4-radius capsule, and the third-person camera's own
     // collision pull-in (cameraCollisionMargin, default 0.2) can land it well inside a default near
     // plane too - so this close-quarters scene needs a much smaller near plane than the default.
+    // A "Camera" entity's rotation defaults to identity if left unset, which - like any freshly
+    // constructed three.js camera - looks down its own local -Z axis; since this world is Z-up
+    // (see CLAUDE.md), that's straight down at the floor, not at the room. `rotation` here is a
+    // 90° rotation about world +X, which turns that default "-Z forward" into "+Y forward" instead
+    // - the room's own forward axis (the player spawns facing +Y too, see the "Player" entity
+    // below) - so the very first frame already looks at the scene instead of the floor.
     {
       class: 'Camera',
       name: 'MainCamera',
       position: { x: 0, y: -8, z: 4 },
+      rotation: { x: 0.7071067811865476, y: 0, z: 0, w: 0.7071067811865476 },
       config: { frustrum: { near: 0.05, far: 1000 } },
     },
 
     // room shell (6 boxes: floor, ceiling, 4 walls)
+    // Floor friction bumped from the default 0.5 to 1.5 - at the default, a shoved CrateHeavy
+    // (mass 50) coasted ~3.8m before friction actually stopped it (measured directly: push it,
+    // then step the world in isolation until its velocity settles to ~0), which reads as "way too
+    // easy to move" for something that heavy in a room this size. At 1.5 the same push settles it
+    // in ~1.2m - still visibly slides, but noticeably resists being shoved around - while CrateLight
+    // (mass 0.2) barely notices the difference (still travels several meters), since combined
+    // sliding friction (~√(floor·body)) only grows sublinearly and a light box's own momentum is
+    // small either way.
     {
       class: 'Primitive',
       shape: 'BOX',
       name: 'Floor',
       position: { x: 0, y: 0, z: -0.5 },
-      config: { dimensions: { x: ROOM_SIZE, y: ROOM_SIZE, z: 1 }, material: { color: 0x808080 }, body: { dynamic: false } },
+      config: {
+        dimensions: { x: ROOM_SIZE, y: ROOM_SIZE, z: 1 },
+        material: { color: 0x808080 },
+        body: { dynamic: false, friction: 1.5 },
+      },
     },
     {
       class: 'Primitive',
@@ -117,7 +136,7 @@ const level: LevelJson = {
       config: { radius: 0.8, height: 2, material: { color: 0x2a9d8f }, body: { dynamic: false } },
     },
 
-    // a low barrier to jump over (default jumpSpeed of 5 clears this comfortably)
+    // a low barrier to jump over (jumpSpeed of 4 below still clears this comfortably)
     {
       class: 'Primitive',
       shape: 'BOX',
@@ -136,6 +155,52 @@ const level: LevelJson = {
       config: { dimensions: { x: 4, y: 1.0, z: 1.0 }, material: { color: 0x8338ec }, body: { dynamic: false } },
     },
 
+    // dynamic props to push around - same box shape/size and starting height so mass is the only
+    // variable, laid out in a row within easy reach of the player's spawn point. "Primitive"'s
+    // default body is already dynamic (mass: 1) - only `body.mass` is overridden per box. Walking
+    // into one shoves it via `AmmoCharacterControllerComponent`'s `pushDynamicBody` (see
+    // `CharacterController3dOptions.pushMass`, default 80 - roughly human mass): a light box gets
+    // flung at close to the player's own speed, a heavy one barely budges, and either way it's
+    // proportional to the actual mass difference, not just "on or off".
+    {
+      class: 'Primitive',
+      shape: 'BOX',
+      name: 'CrateLight',
+      position: { x: -3, y: -5, z: 0.4 },
+      config: { dimensions: { x: 0.8, y: 0.8, z: 0.8 }, material: { color: 0x90e0ef }, body: { mass: 0.2 } },
+    },
+    {
+      class: 'Primitive',
+      shape: 'BOX',
+      name: 'CrateMedium',
+      position: { x: -3, y: -3, z: 0.4 },
+      config: { dimensions: { x: 0.8, y: 0.8, z: 0.8 }, material: { color: 0x00b4d8 }, body: { mass: 5 } },
+    },
+    {
+      class: 'Primitive',
+      shape: 'BOX',
+      name: 'CrateHeavy',
+      position: { x: -3, y: -1, z: 0.4 },
+      config: { dimensions: { x: 0.8, y: 0.8, z: 0.8 }, material: { color: 0x0077b6 }, body: { mass: 50 } },
+    },
+
+    // a couple of dynamic spheres too - rolling adds a second interaction shape to push around
+    // alongside the crates' sliding/tipping
+    {
+      class: 'Primitive',
+      shape: 'SPHERE',
+      name: 'BallLight',
+      position: { x: -5, y: -5, z: 0.4 },
+      config: { radius: 0.4, material: { color: 0xffb703 }, body: { mass: 0.3 } },
+    },
+    {
+      class: 'Primitive',
+      shape: 'SPHERE',
+      name: 'BallHeavy',
+      position: { x: -5, y: -3, z: 0.5 },
+      config: { radius: 0.5, material: { color: 0xfb8500 }, body: { mass: 20 } },
+    },
+
     {
       class: 'Player',
       name: 'Player',
@@ -145,7 +210,7 @@ const level: LevelJson = {
         centersDistance: 1.0,
         walkSpeed: 4,
         runSpeedMultiplier: 1.8,
-        jumpSpeed: 5,
+        jumpSpeed: 4,
         display: { color: 0x3388ff },
       },
     },

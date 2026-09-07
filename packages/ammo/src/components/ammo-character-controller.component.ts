@@ -10,6 +10,7 @@ import {
 } from '@gg-web-engine/core';
 import Ammo from '../ammo.js/ammo';
 import { AmmoBodyComponent } from './ammo-body.component';
+import { AmmoRigidBodyComponent } from './ammo-rigid-body.component';
 import { AmmoWorldComponent } from './ammo-world.component';
 import { AmmoGgWorld, AmmoPhysicsTypeDocRepo } from '../types';
 
@@ -26,6 +27,7 @@ const DEFAULT_OPTIONS: Required<
   snapToGroundDistance: 0.3,
   up: Pnt3.Z,
   interactWithCollisionGroups: 'all',
+  pushMass: 80,
 };
 
 // `Ammo.wrapPointer(ptr, Class)` turns a raw numeric handle - what embind actually hands a
@@ -43,11 +45,39 @@ type AmmoWithWrapPointer = typeof Ammo & {
  * `CF_NO_CONTACT_RESPONSE` (4) elsewhere in this package. */
 const CF_CHARACTER_OBJECT = 16;
 
+/** btCollisionObject::CF_NO_CONTACT_RESPONSE - see `CF_CHARACTER_OBJECT`'s doc above for why this
+ * is inlined rather than read off the Ammo.js embind bindings. Combined with `CF_CHARACTER_OBJECT`
+ * on this character's ghost object (see the constructor) so Bullet's own discrete dynamics world
+ * never generates its own collision response for it.
+ *
+ * **Why this is needed**: without it, `btDiscreteDynamicsWorld`'s constraint solver still
+ * processes every manifold `performDiscreteCollisionDetection` finds between this ghost object and
+ * a dynamic rigid body during `stepSimulation` - even though the ghost is never added via
+ * `addRigidBody` and thus never itself gets integrated by the solver. `btRigidBody::upcast()` on a
+ * non-rigid-body collision object returns null, so the solver falls back to treating that side of
+ * the manifold as a fixed/immovable body for contact-resolution purposes. The resulting correction
+ * lands entirely on the dynamic body, but - since it's driven by the manifold's penetration depth
+ * and Bullet's own (Baumgarte/split-impulse) recovery-speed cap, not by any real momentum transfer
+ * from the "immovable" side - it comes out at roughly the same magnitude regardless of that body's
+ * own mass, and carries no friction/tangential component (so it never spins a body it pushes).
+ * Confirmed empirically: with `CF_NO_CONTACT_RESPONSE` NOT set, a light and a heavy dynamic box
+ * both got shoved at effectively the same ~0.8 m/s by an identical walk-into, even with this
+ * class's own `pushDynamicBody` (see below) entirely disabled (`pushMass: 0`) - i.e. this native
+ * response, not `pushDynamicBody`, was the actual (mass-blind, non-rotating) source of "pushing"
+ * before this flag was added. Setting it makes the ghost a pure sensor as far as Bullet's own
+ * dynamics are concerned (matching what `move()`'s hand-rolled `convexSweepTest`-based mover
+ * already assumed - see this class's own doc), leaving `pushDynamicBody` as the sole source of any
+ * push a dynamic body feels, so it can actually be mass-aware. */
+const CF_NO_CONTACT_RESPONSE = 4;
+
 type SweepResult = {
   hasHit: boolean;
   /** 0..1 fraction of the requested delta that was actually clear to move through. */
   fraction: number;
   hitNormal?: Point3;
+  /** `Ammo.getPointer()` of the hit collision object, if any - used to push a dynamic body hit
+   * during horizontal movement (see `pushDynamicBody`). */
+  hitObjectPtr?: number;
 };
 
 /**
@@ -136,7 +166,7 @@ export class AmmoCharacterControllerComponent
 
     const ghostObject = new Ammo.btPairCachingGhostObject();
     ghostObject.setCollisionShape(nativeShape);
-    ghostObject.setCollisionFlags(CF_CHARACTER_OBJECT);
+    ghostObject.setCollisionFlags(CF_CHARACTER_OBJECT | CF_NO_CONTACT_RESPONSE);
     const pos = transform?.position || Pnt3.O;
     const rot = transform?.rotation || Qtrn.O;
     const initialTransform = ghostObject.getWorldTransform();
@@ -167,7 +197,7 @@ export class AmmoCharacterControllerComponent
    * extra downward ray (mirroring `snapToGroundDistance`) when the vertical sweep alone didn't find
    * ground this tick (e.g. standing still, or walking off a slope with no explicit vertical input).
    */
-  move(desiredTranslation: Point3): void {
+  move(desiredTranslation: Point3, dt?: number): void {
     const collisionWorld = this.world.dynamicAmmoWorld;
     if (!collisionWorld) {
       // not part of an initialized world (or not yet added) - nothing to sweep against
@@ -184,7 +214,7 @@ export class AmmoCharacterControllerComponent
     let pos = this.recoverFromPenetration(this.position);
 
     if (Pnt3.len(horizontal) > 1e-9) {
-      pos = this.moveHorizontalWithStepAndSlide(pos, horizontal, up, skin);
+      pos = this.moveHorizontalWithStepAndSlide(pos, horizontal, up, skin, dt);
     }
 
     // Moving strictly upward (a jump/rising through the air) must never be pulled back down by the
@@ -243,10 +273,27 @@ export class AmmoCharacterControllerComponent
    * horizontally, settle back down" pass (for small ledges/stairs), otherwise slides once along the
    * remaining blocked distance, projected onto the obstacle's surface plane.
    */
-  private moveHorizontalWithStepAndSlide(start: Point3, horizontal: Point3, up: Point3, skin: number): Point3 {
+  private moveHorizontalWithStepAndSlide(
+    start: Point3,
+    horizontal: Point3,
+    up: Point3,
+    skin: number,
+    dt: number | undefined,
+  ): Point3 {
     let pos = start;
     let result = this.sweep(pos, Pnt3.add(pos, horizontal), skin);
     const blocked = result.hasHit && result.fraction < 0.999;
+
+    // Push whatever this first, unobstructed-path sweep found - deliberately based on the full
+    // attempted `horizontal` delta (converted to a speed via `dt` - see `pushDynamicBody`'s doc),
+    // not scaled by `result.fraction`, since how hard the character pushes depends on how fast it's
+    // trying to move, not on how much of that motion the obstacle actually let through. Runs
+    // regardless of whether a step-up assist below ends up clearing this same obstacle - the
+    // character still bumped into it this tick either way.
+    if (result.hasHit && result.hitObjectPtr !== undefined) {
+      const speed = dt && dt > 1e-9 ? Pnt3.len(horizontal) / dt : Pnt3.len(horizontal);
+      this.pushDynamicBody(result.hitObjectPtr, Pnt3.norm(horizontal), speed);
+    }
 
     let raised = 0;
     if (blocked && this.resolvedOptions.maxStepHeight > 0) {
@@ -457,9 +504,11 @@ export class AmmoCharacterControllerComponent
 
     const hasHit = callback.hasHit();
     let hitNormal: Point3 | undefined;
+    let hitObjectPtr: number | undefined;
     if (hasHit) {
       const n = callback.get_m_hitNormalWorld();
       hitNormal = { x: n.x(), y: n.y(), z: n.z() };
+      hitObjectPtr = Ammo.getPointer(callback.get_m_hitCollisionObject());
     }
     const fraction = hasHit ? callback.get_m_closestHitFraction() : 1;
 
@@ -467,7 +516,65 @@ export class AmmoCharacterControllerComponent
     Ammo.destroy(toT);
     Ammo.destroy(callback);
 
-    return { hasHit, fraction, hitNormal };
+    return { hasHit, fraction, hitNormal, hitObjectPtr };
+  }
+
+  /**
+   * Shoves a dynamic body the character bumped into this tick - kinematic character movement here
+   * is a direct sweep-and-slide against the collision world (see this class's doc), not a real
+   * rigid body integrated by the constraint solver, so nothing pushes a dynamic body out of the
+   * way for free the way one rigid body pushes another; this is that push, added explicitly.
+   *
+   * Models the contact as a simple inelastic collision against a virtual body of mass
+   * `resolvedOptions.pushMass` moving at `characterSpeed` (recovered by the caller from this tick's
+   * horizontal displacement and `dt` - real m/s, not a raw per-tick distance): the hit body's
+   * velocity along the push direction is driven towards `characterSpeed * pushMass / (pushMass +
+   * bodyMass)`, so a body much lighter than `pushMass` ends up shoved at close to the character's
+   * own speed and a much heavier one barely moves - both proportional to the actual mass
+   * difference, unlike Bullet's own ghost-vs-rigid-body contact response (this character is a
+   * `btPairCachingGhostObject`, which `btRigidBody::upcast` can't resolve back to a rigid body -
+   * the constraint solver would otherwise treat it as an immovable fixed body, so the *positional*
+   * penetration-recovery correction it generates lands entirely on the other body regardless of
+   * that body's own mass; `CF_NO_CONTACT_RESPONSE` on this character's ghost object, see this
+   * class's own doc, suppresses that native response so this method is the sole source of any push
+   * a dynamic body feels). Only sets linear velocity, never touches angular - a pushed sphere still
+   * visibly rolls (rather than just sliding), but that now comes entirely from its own subsequent
+   * floor-friction contacts converting slide into roll, same as it would for any other sliding
+   * object; no per-shape special-casing needed here (see `AmmoFactory.createRigidBodyFromShape`'s
+   * `m_rollingFriction` note for why that conversion didn't use to happen at all).
+   *
+   * Only ever *adds* forward velocity along the push direction (never removes any) - a body already
+   * outrunning the character in that direction (e.g. one that was already flung away by an earlier,
+   * harder push) is left alone rather than being slowed back down to `characterSpeed`'s pace.
+   */
+  private pushDynamicBody(hitObjectPtr: number, direction: Point3, characterSpeed: number): void {
+    const pushMass = this.resolvedOptions.pushMass;
+    if (pushMass <= 0 || characterSpeed <= 1e-9) {
+      return;
+    }
+    const comp = AmmoBodyComponent.nativeBodyReverseMap.get(hitObjectPtr);
+    if (!(comp instanceof AmmoRigidBodyComponent)) {
+      return;
+    }
+    const body = comp.nativeBody;
+    const invMass = body.getInvMass();
+    if (invMass <= 0) {
+      // static or kinematic - nothing to push
+      return;
+    }
+    const bodyMass = 1 / invMass;
+    const pushSpeed = characterSpeed * (pushMass / (pushMass + bodyMass));
+
+    const v = body.getLinearVelocity();
+    const currentAlong = v.x() * direction.x + v.y() * direction.y + v.z() * direction.z;
+    if (pushSpeed <= currentAlong) {
+      return;
+    }
+    const delta = pushSpeed - currentAlong;
+    body.activate(true);
+    body.setLinearVelocity(
+      new Ammo.btVector3(v.x() + direction.x * delta, v.y() + direction.y * delta, v.z() + direction.z * delta),
+    );
   }
 
   refreshCG(): void {
