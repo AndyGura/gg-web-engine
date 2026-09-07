@@ -13,34 +13,28 @@ import { Rapier3dWorldComponent } from '@gg-web-engine/rapier3d';
 GgStatic.instance.showStats = true;
 GgStatic.instance.devConsoleEnabled = true;
 
-// A self-contained room (floor + ceiling + 4 walls = 6 boxes) plus a few obstacles to exercise the
-// player controller's core interactions: walking around solid shapes, jumping over a low barrier,
-// and crouching under an overhead beam. Room spans x/y in [-10, 10]; the engine is Z-up throughout
-// (see CLAUDE.md's "Non-obvious repo facts" - +Z is always up), and the player's local "forward" is
-// +Y, matching the same axis paradigm RaycastVehicle3dEntity/GgCarEntity use.
 const ROOM_SIZE = 20;
 const WALL_HEIGHT = 4;
 
 const level: LevelJson = {
   entities: [
-    // the default near plane (1) clips geometry the player can get much closer than that to - the
-    // first-person camera sits right at the ~0.4-radius capsule, and the third-person camera's own
-    // collision pull-in (cameraCollisionMargin, default 0.2) can land it well inside a default near
-    // plane too - so this close-quarters scene needs a much smaller near plane than the default.
     {
       class: 'Camera',
       name: 'MainCamera',
       position: { x: 0, y: -8, z: 4 },
+      rotation: { x: 0.7071067811865476, y: 0, z: 0, w: 0.7071067811865476 },
       config: { frustrum: { near: 0.05, far: 1000 } },
     },
-
-    // room shell (6 boxes: floor, ceiling, 4 walls)
     {
       class: 'Primitive',
       shape: 'BOX',
       name: 'Floor',
       position: { x: 0, y: 0, z: -0.5 },
-      config: { dimensions: { x: ROOM_SIZE, y: ROOM_SIZE, z: 1 }, material: { color: 0x808080 }, body: { dynamic: false } },
+      config: {
+        dimensions: { x: ROOM_SIZE, y: ROOM_SIZE, z: 1 },
+        material: { color: 0x808080 },
+        body: { dynamic: false, friction: 1.5 },
+      },
     },
     {
       class: 'Primitive',
@@ -93,8 +87,6 @@ const level: LevelJson = {
         body: { dynamic: false },
       },
     },
-
-    // a few solid shapes to walk around
     {
       class: 'Primitive',
       shape: 'BOX',
@@ -116,8 +108,6 @@ const level: LevelJson = {
       position: { x: 6, y: 4, z: 1 },
       config: { radius: 0.8, height: 2, material: { color: 0x2a9d8f }, body: { dynamic: false } },
     },
-
-    // a low barrier to jump over (default jumpSpeed of 5 clears this comfortably)
     {
       class: 'Primitive',
       shape: 'BOX',
@@ -125,15 +115,47 @@ const level: LevelJson = {
       position: { x: 0, y: -3, z: 0.3 },
       config: { dimensions: { x: 4, y: 0.6, z: 0.6 }, material: { color: 0xf4a261 }, body: { dynamic: false } },
     },
-
-    // an overhead beam - its underside (z=1.6) clears a crouched capsule (~1.4 tall) but blocks a
-    // standing one (~1.8 tall), forcing a crouch to pass under it
     {
       class: 'Primitive',
       shape: 'BOX',
       name: 'CrouchBeam',
       position: { x: 0, y: 3, z: 2.1 },
       config: { dimensions: { x: 4, y: 1.0, z: 1.0 }, material: { color: 0x8338ec }, body: { dynamic: false } },
+    },
+    {
+      class: 'Primitive',
+      shape: 'BOX',
+      name: 'CrateLight',
+      position: { x: -3, y: -5, z: 0.4 },
+      config: { dimensions: { x: 0.8, y: 0.8, z: 0.8 }, material: { color: 0x90e0ef }, body: { mass: 0.2 } },
+    },
+    {
+      class: 'Primitive',
+      shape: 'BOX',
+      name: 'CrateMedium',
+      position: { x: -3, y: -3, z: 0.4 },
+      config: { dimensions: { x: 0.8, y: 0.8, z: 0.8 }, material: { color: 0x00b4d8 }, body: { mass: 5 } },
+    },
+    {
+      class: 'Primitive',
+      shape: 'BOX',
+      name: 'CrateHeavy',
+      position: { x: -3, y: -1, z: 0.4 },
+      config: { dimensions: { x: 0.8, y: 0.8, z: 0.8 }, material: { color: 0x0077b6 }, body: { mass: 50 } },
+    },
+    {
+      class: 'Primitive',
+      shape: 'SPHERE',
+      name: 'BallLight',
+      position: { x: -5, y: -5, z: 0.4 },
+      config: { radius: 0.4, material: { color: 0xffb703 }, body: { mass: 0.3 } },
+    },
+    {
+      class: 'Primitive',
+      shape: 'SPHERE',
+      name: 'BallHeavy',
+      position: { x: -5, y: -3, z: 0.5 },
+      config: { radius: 0.5, material: { color: 0xfb8500 }, body: { mass: 20 } },
     },
 
     {
@@ -145,8 +167,8 @@ const level: LevelJson = {
         centersDistance: 1.0,
         walkSpeed: 4,
         runSpeedMultiplier: 1.8,
-        jumpSpeed: 5,
-        display: { color: 0x3a86ff },
+        jumpSpeed: 4,
+        display: { color: 0x3388ff },
       },
     },
   ],
@@ -177,8 +199,6 @@ world.init().then(async () => {
 
   const levelGroup = await world.loader.loadLevel(level);
 
-  // every "Primitive"/"Player" entity built above is an Entity3d wrapping a three.js mesh - enable
-  // shadows on all of them (the "Camera" entity has no mesh, so it's skipped by the `object3D` check)
   for (const item of levelGroup.children as { object3D?: { nativeMesh: Mesh } }[]) {
     item.object3D?.nativeMesh.traverse(obj => {
       obj.castShadow = true;
@@ -189,16 +209,12 @@ world.init().then(async () => {
   const cameraEntity = levelGroup.getChildEntityByName<Camera3dEntity<ThreeVisualTypeDocRepo>>('MainCamera');
   const renderer = world.addRenderer(cameraEntity.camera, canvas);
 
-  // "Player" only builds the physics+visual capsule (see gg-engine-level-json skill) - the actual
-  // keyboard/mouse input and first-/third-person camera wiring is built here, the same way
-  // OrbitCameraController is wired around a "Camera" entity in glb-loader-three-rapier3d.
   const player = levelGroup.getChildEntityByName<CharacterController3dEntity>('Player');
-  const playerController = new PlayerCharacterController(world.keyboardInput, player, renderer, {
+  const controller = new PlayerCharacterController(world.keyboardInput, player, renderer, {
     mouseOptions: { canvas },
-    // stray mouse movement over the page shouldn't spin the view before the canvas is even clicked
     ignoreMouseUnlessPointerLocked: true,
   });
-  world.addEntity(playerController);
+  world.addEntity(controller);
 
   world.start();
 });

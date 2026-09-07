@@ -208,6 +208,92 @@ one-time-registration quirk exists in this package's pinned Ammo.js build too (e
 `AmmoRaycastVehicleComponent`/`world.raycast()` test already calls `world.simulate(1)` once after
 `addToWorld()` for the same reason) — the `settleWorld()` pattern applies equally there.
 
+### Pitfall (Rapier only): *two separate* native features silently cancel a jump - fixing only snap-to-ground isn't enough
+
+Rapier's `KinematicCharacterController` has its own built-in `enableSnapToGround(distance)` (used to
+follow slopes/stairs down without briefly going airborne each step - see the option-mapping bullet
+above), left enabled unconditionally at construction. It applies inside `computeColliderMovement`
+itself, with no notion of "this tick's movement is a deliberate jump takeoff, don't snap it back
+down" - a jump's own per-tick rise (`jumpSpeed * dt`) starts out far smaller than the default `0.3`
+snap distance, so every jump was silently cancelled the moment it started (visible as: `jump()`
+correctly sets internal takeoff velocity, `move()` even receives a `desiredTranslation` with the
+right upward component, but the character's height never actually changes tick to tick) - this is
+the exact same failure mode documented below for Ammo's own hand-rolled ground-snap fallback, just
+triggered by a *native* engine feature instead of adapter-written code, so it's easy to overlook
+that the same guard is still needed. Fix: mirror the Ammo adapter's `movingUp` check - at the top of
+`move()`, before calling `computeColliderMovement`, check whether `desiredTranslation` has a positive
+component along `up`; if so call `disableSnapToGround()` for this call, otherwise
+`enableSnapToGround(snapToGroundDistance)` (skip entirely if that option is `0`).
+
+**This alone looked like the whole fix (an open-field jump - nothing to collide with horizontally -
+worked perfectly with just this change) but wasn't**: `enableAutostep(maxStepHeight, minStepWidth,
+...)`, also left enabled unconditionally, needs the identical guard for a related but distinct
+reason, and only misbehaves under a second, easy-to-miss condition - jumping *while simultaneously
+blocked horizontally* by something taller than `maxStepHeight` (running at a tall obstacle and
+jumping right as you reach it, not jumping in open space, and not jumping stationary somewhere with
+nothing in front of you either). Symptom with only the snap-to-ground fix in place: a jump attempted
+in the open arced perfectly, but the *identical* jump attempted pressed up against such an obstacle
+turned into a small up-then-snap-back-down "flick" - the rise stopping right around `maxStepHeight`
+itself (a very recognizable number once you know to look for it) before reverting to standing height,
+even though snap-to-ground was already correctly disabled that whole time. Autostep's own "raise up
+to `maxStepHeight`, retry the blocked horizontal move, keep the raise only if that retry actually
+clears" evaluation runs as part of the very same `computeColliderMovement` call that's also carrying
+the jump's vertical component - when the retry still doesn't clear (the obstacle is taller than the
+autostep raise), whatever it does to "give back" the failed step attempt isn't scoped to only the
+horizontal axis, so it cancels the deliberate vertical rise sharing that same call too. There's no
+real reason to want auto-step-climbing active while already deliberately jumping regardless, so
+disable it under the exact same `movingUp` condition as snap-to-ground (both toggle together, one
+`if`/`else`). Toggling both every call this way is cheap and keeps normal stair-climbing/downhill-
+snap behavior intact for every tick that isn't actively rising.
+
+The practical lesson for testing a fix like this: **a jump that works perfectly in open space is not
+sufficient evidence the fix is complete** - specifically test jumping while pressed against/blocked by
+a tall obstacle too (this repo's own `player-character-three-ammo`/`-rapier3d` demo scene ships a
+`JumpBarrier` purpose-built for exactly this), since that's the condition that exposes a second native
+feature interacting with the same code path that an open-field test can't reach at all. Also test the
+*realistic* version of that scenario (running at the obstacle from a normal approach distance and
+timing the jump to clear it, matching how a player actually plays) rather than only the exaggerated
+"standing already pressed flush against it" version - the latter is useful for finding the bug (it
+reproduces most reliably) but can also surface a narrower, expected-ish artifact of its own
+unrealistic starting condition (e.g. the character's own capsule silhouette brushing the obstacle's
+top corner while rising, if it's rising from a position already overlapping/touching the obstacle) that
+isn't the actual bug and isn't what a real player would ever trigger - don't chase that part further
+once the realistic approach-and-clear scenario is confirmed working end-to-end.
+
+### Pitfall (Rapier only): the native dynamic-body-push feature is unusable on a kinematic character body - it explodes, not just mis-scales
+
+Rapier's `KinematicCharacterController` has a built-in, seemingly ideal equivalent of `pushMass`:
+`setApplyImpulsesToDynamicBodies(true)` + `setCharacterMass(mass)`, computing a momentum-aware
+impulse against dynamic bodies hit during `computeColliderMovement` - no hand-rolled push logic
+needed, unlike Ammo's ghost-based mover (which has no native equivalent at all - see
+`pushDynamicBody` further down). It looks like the obvious, correct way to implement `pushMass`
+support for this adapter. **Do not use it as-is on a `kinematicPositionBased()` character body**:
+confirmed empirically, enabling it here doesn't just get the mass scaling backwards (a *heavier* box
+ending up moving *further* than a lighter one at otherwise identical settings) - it genuinely
+explodes. A pushed box's position jumped by 5+ meters in a single 16ms tick and kept climbing
+indefinitely, tick after tick, never settling - not a one-off spike, a runaway. Root cause not fully
+isolated from JS (plausibly `setCharacterMass`'s override interacting badly with this body's own
+`mass()`, which a kinematic body reports as `0`, somewhere inside Rapier's impulse resolution - this
+package's pinned `@dimforge/rapier3d-compat` build doesn't expose enough of that internal state to
+debug further); ruled out as an ordering/setup mistake on this side by testing several variations
+(toggling the character's own collider between sensor/non-sensor made no measurable difference to
+either the explosion or the mis-scaling, so it isn't a "native kinematic-vs-dynamic collision
+response double-counting with the impulse feature" issue either, or at least not solely that).
+**Fix used**: don't call either method at all; implement `pushMass` by hand instead, mirroring
+`AmmoCharacterControllerComponent.pushDynamicBody`'s formula and contract exactly (same inelastic-
+collision-against-a-virtual-mass model, same `pushMass <= 0` "disable pushing" convention, only ever
+*adding* velocity along the push direction). The one native piece still worth keeping:
+`computeColliderMovement` already populates `numComputedCollisions()`/`computedCollision(i)` on every
+`move()` call regardless of whether the impulse feature is enabled, so the hand-rolled version needs
+no extra sweep/query of its own to find out what got hit - see `Rapier3dCharacterControllerComponent
+.pushDynamicBodies` for the full implementation. This residual gap is worth knowing about for anyone
+tempted to revisit it later: even with the hand-rolled push in place, a mid-mass box occasionally
+reads a *bit* faster than the plain formula predicts and visibly tips up onto an edge/corner instead
+of staying flat (the light and heavy ends of the mass range track the formula closely) - a secondary,
+non-explosive effect, most likely genuine box-tipping physics from the push contact point not being
+centered, not a repeat of the impulse-feature bug; not chased further since it doesn't reach anywhere
+near the older bug's severity and the core "pushing works, mass roughly matters" behavior holds.
+
 ### Pitfall (Ammo only): `btKinematicCharacterController` produced zero collision response in this build
 
 Implementing `AmmoCharacterControllerComponent`, the "obvious" approach — a `btPairCachingGhostObject`

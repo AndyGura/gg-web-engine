@@ -26,11 +26,9 @@ const DEFAULT_CHARACTER_CONTROLLER_OPTIONS: Required<Omit<CharacterController3dO
     up: Pnt3.Z,
     ownCollisionGroups: 'all',
     interactWithCollisionGroups: 'all',
-    // Not honored yet - `Rapier3dCharacterControllerComponent` doesn't push dynamic bodies it walks
-    // into (see `CharacterController3dOptions.pushMass`'s doc: an unimplemented-here option is just
-    // ignored). Rapier's own `KinematicCharacterController` has a built-in, momentum-aware
-    // equivalent (`setApplyImpulsesToDynamicBodies(true)` + `setCharacterMass(pushMass)`) that a
-    // future pass could wire this option into, mirroring the ammo adapter's hand-rolled version.
+    // `Rapier3dCharacterControllerComponent.addToWorld` wires this straight into Rapier's own
+    // `KinematicCharacterController.setCharacterMass` + `setApplyImpulsesToDynamicBodies(true)` -
+    // unlike the ammo adapter, no hand-rolled push logic needed, Rapier already computes it.
     pushMass: 80,
   };
 

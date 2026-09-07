@@ -185,13 +185,48 @@ export class Rapier3dCharacterControllerComponent implements ICharacterControlle
     this.world.nativeWorld.propagateModifiedBodyPositionsToColliders();
   }
 
-  move(desiredTranslation: Point3): void {
+  move(desiredTranslation: Point3, dt?: number): void {
     if (!this._nativeBody || !this._nativeCollider || !this._nativeController) {
       throw new Error('Cannot move a character controller which is not added to the world');
     }
     // make sure collider positions reflect any obstacle moved (by anything) since the last
     // world.step()/propagate call, so the upcoming sweep test is accurate
     this.syncColliderTransform();
+
+    // Rapier's own snap-to-ground, left enabled unconditionally, would otherwise undo a jump
+    // takeoff the very next tick: `computeColliderMovement` treats a character within
+    // `snapToGroundDistance` of the floor it just left as still grounded and pulls it right back
+    // down onto it, and a jump's own per-tick rise (`jumpSpeed * dt`) starts out far smaller than
+    // the default 0.3 snap distance - so every jump was silently cancelled before it ever left the
+    // ground. This is the exact same failure mode `AmmoCharacterControllerComponent`'s own
+    // hand-rolled mover hit and fixed (see that class's `move()` doc's `movingUp` guard); toggling
+    // snap-to-ground off for ticks that are actively rising, back on otherwise, mirrors it here.
+    //
+    // Autostep needs the identical guard, for a related but distinct reason: it only misbehaves
+    // while jumping *and* simultaneously blocked horizontally by something taller than
+    // `maxStepHeight` (e.g. running at a barrier and jumping right as you reach it, rather than
+    // jumping in open space) - confirmed empirically, a jump that looked perfect in the open turned
+    // into a small up-then-snap-back-down "flick" the instant the same jump was attempted pressed
+    // up against such an obstacle, the rise stopping right around `maxStepHeight` itself before
+    // reverting to standing height. Autostep's own "raise up to maxStepHeight, retry the blocked
+    // horizontal move, keep the raise only if that retry actually clears" evaluation runs as part of
+    // the very same `computeColliderMovement` call handling the jump's vertical component - when the
+    // retry still doesn't clear (barrier taller than the raise), whatever it does to "give back" the
+    // failed step attempt isn't scoped to just the horizontal axis, so it cancels the deliberate
+    // vertical rise sharing that same call too. There's no real reason to want auto-step-climbing
+    // active while already deliberately jumping, so disable it under the same condition.
+    const movingUp = Pnt3.dot(desiredTranslation, this._up) > 1e-9;
+    if (movingUp) {
+      this._nativeController.disableSnapToGround();
+      this._nativeController.disableAutostep();
+    } else {
+      if (this.options.snapToGroundDistance > 0) {
+        this._nativeController.enableSnapToGround(this.options.snapToGroundDistance);
+      }
+      if (this.options.maxStepHeight > 0) {
+        this._nativeController.enableAutostep(this.options.maxStepHeight, this.options.minStepWidth, true);
+      }
+    }
 
     const desired = new Vector3(desiredTranslation.x, desiredTranslation.y, desiredTranslation.z);
     this._nativeController.computeColliderMovement(this._nativeCollider, desired);
@@ -205,6 +240,60 @@ export class Rapier3dCharacterControllerComponent implements ICharacterControlle
 
     this._isGrounded = this._nativeController.computedGrounded();
     this._groundNormal = this.computeGroundNormal();
+
+    this.pushDynamicBodies(desiredTranslation, dt);
+  }
+
+  /**
+   * Shoves any dynamic body this tick's sweep bumped into - see `addToWorld`'s doc for why this is
+   * hand-rolled rather than Rapier's own `setApplyImpulsesToDynamicBodies`. Mirrors
+   * `AmmoCharacterControllerComponent.pushDynamicBody` exactly: models the contact as a simple
+   * inelastic collision against a virtual body of mass `options.pushMass` moving at `characterSpeed`
+   * (this tick's *horizontal* displacement - vertical/jump motion never pushes anything sideways -
+   * converted to a real m/s via `dt`, not a raw per-tick distance), driving the hit body's velocity
+   * along the push direction towards `characterSpeed * pushMass / (pushMass + bodyMass)` and only
+   * ever adding forward velocity, never removing any (so a body already outrunning the character in
+   * that direction is left alone). `computedCollision()` already has everything needed - populated
+   * by the `computeColliderMovement` call above regardless of this method's own logic, so no extra
+   * sweep/query is needed to reach it.
+   */
+  private pushDynamicBodies(desiredTranslation: Point3, dt: number | undefined): void {
+    const pushMass = this.options.pushMass;
+    if (pushMass <= 0 || !this._nativeController) {
+      return;
+    }
+    const vertical = Pnt3.scalarMult(this._up, Pnt3.dot(desiredTranslation, this._up));
+    const horizontal = Pnt3.sub(desiredTranslation, vertical);
+    const horizLen = Pnt3.len(horizontal);
+    if (horizLen <= 1e-9) {
+      return;
+    }
+    const direction = Pnt3.scalarMult(horizontal, 1 / horizLen);
+    const characterSpeed = dt && dt > 1e-9 ? horizLen / dt : horizLen;
+
+    const count = this._nativeController.numComputedCollisions();
+    for (let i = 0; i < count; i++) {
+      const collision = this._nativeController.computedCollision(i);
+      const body = collision?.collider?.parent();
+      if (!body || !body.isDynamic()) {
+        continue;
+      }
+      const bodyMass = body.mass();
+      if (bodyMass <= 0) {
+        continue;
+      }
+      const pushSpeed = characterSpeed * (pushMass / (pushMass + bodyMass));
+      const v = body.linvel();
+      const currentAlong = v.x * direction.x + v.y * direction.y + v.z * direction.z;
+      if (pushSpeed <= currentAlong) {
+        continue;
+      }
+      const delta = pushSpeed - currentAlong;
+      body.setLinvel(
+        { x: v.x + direction.x * delta, y: v.y + direction.y * delta, z: v.z + direction.z * delta },
+        true,
+      );
+    }
   }
 
   /**
@@ -261,6 +350,23 @@ export class Rapier3dCharacterControllerComponent implements ICharacterControlle
     if (this.options.snapToGroundDistance > 0) {
       this._nativeController.enableSnapToGround(this.options.snapToGroundDistance);
     }
+    // Rapier's own `KinematicCharacterController` has a built-in equivalent of `pushMass`
+    // (`setApplyImpulsesToDynamicBodies(true)` + `setCharacterMass(...)`) that looked like the
+    // obvious way to implement pushing here - no hand-rolled logic needed, unlike
+    // `AmmoCharacterControllerComponent` (whose ghost-based mover has no native equivalent at all).
+    // It was tried first, but is deliberately **not** used: confirmed empirically, enabling it on
+    // this kinematic-position-based character body doesn't just get the push physics wrong (mass
+    // ordering inverted - a *heavier* box ended up moving further than a lighter one at otherwise
+    // identical settings) but genuinely explodes - a pushed box's position jumped by 5+ meters in a
+    // single 16ms tick and kept climbing indefinitely tick after tick, not settling. Root cause not
+    // fully identified (plausibly `characterMass`'s override interacting badly with this body's own
+    // `mass()`, which a kinematic body reports as `0`, somewhere in Rapier's impulse resolution -
+    // not something this package's pinned `@dimforge/rapier3d-compat` build exposes enough to debug
+    // further from JS). `pushDynamicBodies` below is a hand-rolled equivalent instead, mirroring
+    // `AmmoCharacterControllerComponent.pushDynamicBody`'s own formula and contract exactly (down to
+    // the same `pushMass <= 0` "disable pushing" convention) - built on `computedCollision()`, which
+    // `computeColliderMovement` already populates every `move()` call regardless of this native
+    // feature being enabled, so no extra query is needed to reach it.
 
     this.world.added$.next(this);
   }
