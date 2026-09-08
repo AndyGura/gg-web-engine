@@ -49,7 +49,12 @@ export interface ICharacterController3dComponent<
    * implementation that pushes dynamic bodies (see `CharacterController3dOptions.pushMass`) can
    * recover the character's actual speed (`desiredTranslation` magnitude / `dt`) rather than
    * working from a per-tick distance alone; a mover that doesn't implement pushing is free to
-   * ignore it entirely.
+   * ignore it entirely. A mover that *does* push dynamic bodies must not treat a missing `dt` as
+   * license to use `desiredTranslation`'s raw per-tick magnitude as if it were already a speed -
+   * that understates push force by roughly a factor of `dt` (a 16ms tick's displacement is ~60x
+   * smaller than the equivalent m/s figure), silently, not just imprecisely. Skip the push for that
+   * tick instead (a one-time warning is reasonable) whenever `dt` isn't available to compute a real
+   * speed from.
    *
    * Calling this before the component has been added to a world (see `addToWorld`) must be a
    * silent no-op rather than throwing, so backend-agnostic caller code behaves identically

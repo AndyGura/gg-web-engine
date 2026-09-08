@@ -78,6 +78,11 @@ export class Rapier3dCharacterControllerComponent implements ICharacterControlle
     return this._groundNormal;
   }
 
+  // Module-wide (not per-instance) so a scene with several characters all being driven without
+  // `dt` still only logs once, not once per character per tick - see `pushDynamicBodies`'s
+  // missing-`dt` handling below.
+  private static warnedMissingDtForPush = false;
+
   protected _nativeBody: RigidBody | null = null;
   protected _nativeCollider: Collider | null = null;
   protected _nativeController: KinematicCharacterController | null = null;
@@ -270,8 +275,25 @@ export class Rapier3dCharacterControllerComponent implements ICharacterControlle
     if (horizLen <= 1e-9) {
       return;
     }
+    // `dt` is required to recover a real m/s speed from `horizLen` (see
+    // `ICharacterController3dComponent.move()`'s doc). Falling back to the raw per-tick
+    // displacement as if it were already a speed would understate push force by roughly a factor of
+    // `dt` - silently wrong, not just imprecise - so skip the push for this tick instead when `dt`
+    // isn't available, same as `AmmoCharacterControllerComponent.pushDynamicBody`.
+    if (!dt || dt <= 1e-9) {
+      if (!Rapier3dCharacterControllerComponent.warnedMissingDtForPush) {
+        Rapier3dCharacterControllerComponent.warnedMissingDtForPush = true;
+        console.warn(
+          '[Rapier3dCharacterControllerComponent] move() was called without `dt` while `pushMass` > ' +
+            '0 - skipping this dynamic-body push rather than approximating character speed from raw ' +
+            'per-tick displacement (which would understate push force by roughly 1/dt). Pass the ' +
+            'real tick delta (seconds) as the third argument to move() to enable pushing dynamic bodies.',
+        );
+      }
+      return;
+    }
     const direction = Pnt3.scalarMult(horizontal, 1 / horizLen);
-    const characterSpeed = dt && dt > 1e-9 ? horizLen / dt : horizLen;
+    const characterSpeed = horizLen / dt;
 
     const count = this._nativeController.numComputedCollisions();
     for (let i = 0; i < count; i++) {

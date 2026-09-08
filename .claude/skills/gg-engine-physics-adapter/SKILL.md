@@ -560,7 +560,17 @@ itself needs real `desiredTranslation / dt`, not the raw per-tick translation di
 off by a factor of the tick's own timestep) - `ICharacterController3dComponent.move()` takes an
 optional trailing `dt` argument for exactly this, which `CharacterController3dEntity` always passes
 (its own tick delta); a backend that doesn't push dynamic bodies is free to ignore the parameter
-entirely.
+entirely. A backend that *does* push dynamic bodies, however, must not fall back to treating the raw
+per-tick distance as if it were already a speed when a caller omits `dt` (found live in both
+`AmmoCharacterControllerComponent` and `Rapier3dCharacterControllerComponent`, which had copy-pasted
+the identical fallback: `dt && dt > 1e-9 ? len / dt : len`) - `CharacterController3dEntity` always
+passes `dt`, so this only bites a caller going through `ICharacterController3dComponent` directly
+without it, but when it does, it silently understates push force by roughly a factor of `dt` (a 16ms
+tick's displacement is ~60x smaller than the equivalent m/s figure) rather than erroring or visibly
+misbehaving, which is exactly the kind of wrong-but-plausible-looking physics that goes unnoticed.
+Fix: skip the push for that tick entirely when `dt` is missing/non-positive, guarded by a one-time
+`console.warn` (module-level flag, not per-instance, so a scene with several such characters logs
+once total) rather than per-tick spam.
 
 **Related pitfall (Ammo only, easy to misdiagnose as "friction can't induce rotation" - it can): a
 pushed sphere given pure linear velocity looked like it would never start rolling on its own, but the

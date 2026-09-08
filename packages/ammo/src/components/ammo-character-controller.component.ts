@@ -127,6 +127,11 @@ export class AmmoCharacterControllerComponent
   private _isGrounded: boolean = false;
   private _groundNormal: Point3 | null = null;
 
+  // Module-wide (not per-instance) so a scene with several characters all being driven without
+  // `dt` still only logs once, not once per character per tick - see `move()`'s missing-`dt`
+  // handling below.
+  private static warnedMissingDtForPush = false;
+
   public get up(): Point3 {
     return this._up;
   }
@@ -290,9 +295,30 @@ export class AmmoCharacterControllerComponent
     // trying to move, not on how much of that motion the obstacle actually let through. Runs
     // regardless of whether a step-up assist below ends up clearing this same obstacle - the
     // character still bumped into it this tick either way.
+    //
+    // `dt` is required to recover a real m/s speed from `horizontal` (see
+    // `ICharacterController3dComponent.move()`'s doc: it exists specifically so a mover that pushes
+    // dynamic bodies can do this). `CharacterController3dEntity` always passes it, but the interface
+    // itself leaves it optional for callers that don't need pushing. Falling back to the raw
+    // per-tick displacement as if it were already a speed used to understate push force by roughly a
+    // factor of `dt` (a 16ms tick's displacement is ~60x smaller than the equivalent m/s figure) -
+    // silently wrong, not just imprecise. Since this component *does* implement pushing, it isn't
+    // free to ignore `dt` the way a non-pushing mover is; skip the push outright when it's missing
+    // rather than guess, with a one-time warning so a caller relying on pushMass without dt finds out
+    // instead of silently getting near-zero push force.
     if (result.hasHit && result.hitObjectPtr !== undefined) {
-      const speed = dt && dt > 1e-9 ? Pnt3.len(horizontal) / dt : Pnt3.len(horizontal);
-      this.pushDynamicBody(result.hitObjectPtr, Pnt3.norm(horizontal), speed);
+      if (dt && dt > 1e-9) {
+        const speed = Pnt3.len(horizontal) / dt;
+        this.pushDynamicBody(result.hitObjectPtr, Pnt3.norm(horizontal), speed);
+      } else if (this.resolvedOptions.pushMass > 0 && !AmmoCharacterControllerComponent.warnedMissingDtForPush) {
+        AmmoCharacterControllerComponent.warnedMissingDtForPush = true;
+        console.warn(
+          '[AmmoCharacterControllerComponent] move() was called without `dt` while `pushMass` > 0 - ' +
+            'skipping this dynamic-body push rather than approximating character speed from raw ' +
+            'per-tick displacement (which would understate push force by roughly 1/dt). Pass the ' +
+            'real tick delta (seconds) as the third argument to move() to enable pushing dynamic bodies.',
+        );
+      }
     }
 
     let raised = 0;
