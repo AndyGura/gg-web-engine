@@ -15,7 +15,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { CachingStrategy, Entity3d, Gg3dWorld, GgMeta, TypedGg3dWorld } from '@gg-web-engine/core';
 import { ThreeGgWorld, ThreeSceneComponent } from '@gg-web-engine/three';
-import { Rapier3dGgWorld, Rapier3dWorldComponent } from '@gg-web-engine/rapier3d';
+import { Rapier3dGgWorld, Rapier3dRigidBodyComponent, Rapier3dWorldComponent } from '@gg-web-engine/rapier3d';
 import { Light, Mesh, Object3D } from 'three';
 import { StaticFixtureServer } from './static-fixture-server';
 
@@ -147,7 +147,10 @@ describe('rapier3d physics world', () => {
   });
 
   it('constructs bodies with the right shape kinds', () => {
-    const shapes = world.physicsWorld!.children.map(b => b.shape.shape).sort();
+    const shapes = world.physicsWorld!.children
+      .filter((b): b is Rapier3dRigidBodyComponent => b instanceof Rapier3dRigidBodyComponent)
+      .map(b => b.shape.shape)
+      .sort();
     expect(shapes).toEqual(['BOX', 'COMPOUND', 'SPHERE']);
   });
 });
