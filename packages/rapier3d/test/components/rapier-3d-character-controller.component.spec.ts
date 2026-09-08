@@ -87,6 +87,42 @@ describe('Rapier3dCharacterControllerComponent', () => {
     expect(character.groundNormal!.z).toBeGreaterThan(0.9);
   });
 
+  it('reports the real (steep) contact normal when resting against the flank of a sphere, not a flattened `up`', () => {
+    // A sphere resting on the floor, center at (0,0,1) - the character is placed a hair above the
+    // point on its flank at x=1.2 (well off the apex) and nudged down by a small amount, landing on
+    // a contact whose true outward normal is steep (~59° off `up`, past any reasonable
+    // `maxSlopeClimbAngleRad`), not flat. A large single downward move (like the flat-floor test
+    // above uses) would just slide the capsule all the way down and off the sphere onto the floor
+    // instead of stopping on the flank - not representative of the real symptom, which is a small
+    // per-tick settle move (as `CharacterController3dEntity`'s gravity integration does) landing in
+    // continued contact with the steep surface.
+    addFloor(0, 20, 0);
+    const sphere = factory.createRigidBody(
+      { shape: { shape: 'SPHERE', radius: 1 }, body: { dynamic: false, mass: 0 } },
+      { position: { x: 0, y: 0, z: 1 } },
+    );
+    sphere.addToWorld({ physicsWorld: world } as any);
+    // touching distance between capsule (radius 0.4) and sphere (radius 1) centers is 1.4; at
+    // dx=1.2, dz = sqrt(1.4^2 - 1.2^2) ~= 0.721, so the capsule center touches at z ~= 1.721
+    const character = factory.createCharacterController(CHAR_OPTIONS, { position: { x: 1.2, y: 0, z: 1.73 } });
+    character.addToWorld({ physicsWorld: world } as any);
+    settleWorld();
+
+    character.move({ x: 0, y: 0, z: -0.05 });
+
+    expect(character.isGrounded).toBe(true);
+    expect(character.groundNormal).not.toBeNull();
+    // the true contact normal here (capsule radius 0.4 against a unit sphere, touching along the
+    // line between their centers, combined radius 1.4) has a `z` around ~0.5 - well below both a
+    // flat-floor normal's z (~1) and the ~0.64 that a 50° maxSlopeClimbAngleRad would allow. An
+    // earlier version of computeGroundNormal() discarded any candidate normal with
+    // `dot(normal, up) <= 0.1` and fell back to the plain `up` vector instead - which would have
+    // reported `groundNormal.z` close to 1 here, exactly the bug this guards against (see
+    // gg-engine-physics-adapter-rapier's "computeGroundNormal" pitfall).
+    expect(character.groundNormal!.z).toBeGreaterThan(0.1);
+    expect(character.groundNormal!.z).toBeLessThan(0.6);
+  });
+
   it('should slide to a stop against a wall instead of passing through it', () => {
     addFloor(0, 20, 0);
     addWall(2);

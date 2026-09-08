@@ -88,7 +88,13 @@ const DEFAULT_OPTIONS: Required<
  * and standing on a surface steeper than `maxSlopeClimbAngleRad` (re-checked here every tick via
  * `isWalkableGround`, regardless of what an adapter's own `isGrounded` reports) is treated as not
  * stably grounded, so the character slides/falls down it under gravity instead of clinging to it -
- * see `updateMovement`'s doc for the exact resting-vs-falling rule.
+ * see `updateMovement`'s doc for the exact resting-vs-falling rule. Getting blocked from above while
+ * ascending (e.g. jumping into a ceiling) is handled the same way as landing: `updateMovement`
+ * compares the actual post-`move()` displacement against the desired one along `up` and, if capped,
+ * immediately cancels `_fallVelocity`'s upward component - otherwise it would keep decelerating on
+ * gravity's own time schedule regardless of the character's actual (blocked) position, making the
+ * character look glued to the ceiling for as long as an unobstructed jump's rise phase would have
+ * taken.
  *
  * Horizontal movement is direct/instantaneous while resting on the ground (no momentum - snappy,
  * input-follows-exactly control), but becomes velocity-based the instant the character leaves the
@@ -143,9 +149,22 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
    * so `_airHorizontalVelocity` is seeded exactly once per takeoff rather than ramping up from zero
    * under `airControlFactor` (see `updateMovement`'s doc). */
   private _wasResting: boolean = true;
-  /** Set by `jump()`, consumed and cleared by the very next `updateMovement` tick - lets that tick
-   * tell a genuine same-frame jump apart from an ordinary landing, without relying on fragile sign
-   * comparisons against a possibly-zero `gravityAlongUp` (see `updateMovement`). */
+  /** Set by `jump()`; tells a genuine jump apart from an ordinary landing, without relying on
+   * fragile sign comparisons against a possibly-zero `gravityAlongUp` (see `updateMovement`).
+   * Consumed/cleared the first `updateMovement` tick that observes `!restingOnGround` (the adapter
+   * genuinely agrees the character has left the ground) - **not** unconditionally after exactly one
+   * tick. A single-tick exemption is not always enough: some adapters' native grounded flag (e.g.
+   * Rapier's `computedGrounded()`) keeps reporting grounded for a few ticks after takeoff when the
+   * per-tick rise is small (high frame rate / small `dt`), independent of the actual sweep result -
+   * trusting it immediately would zero the jump's own velocity before the character ever climbs far
+   * enough to clear that native threshold, snapping it straight back down via the adapter's own
+   * ground-snapping the very next tick (see `gg-engine-physics-adapter-rapier`'s "two separate
+   * native features silently cancel a jump" pitfall for the concrete mechanism). Staying exempt
+   * every tick where `restingOnGround` is still (incorrectly) true keeps `_fallVelocity` untouched
+   * (neither zeroed nor decayed - see the `grounded`/`restingOnGround` branches below) rather than
+   * cancelling the takeoff, so the character keeps rising tick after tick until the adapter's own
+   * flag catches up with reality - this self-resolves in one extra tick at typical frame rates and
+   * only a handful at very high ones, without needing a fixed tick count or time-based timeout. */
   private _justJumped: boolean = false;
 
   public get isCrouching(): boolean {
@@ -156,7 +175,10 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
    * Crouching down always succeeds immediately. Standing back up first raycasts straight up for
    * the extra height needed and only actually stands once that space is clear - if blocked, the
    * request is remembered (`_wantsToStand`) and retried every tick until it succeeds, so the
-   * character never pops through a ceiling.
+   * character never pops through a ceiling. The check itself only ever runs while grounded (see
+   * `tryStandUp`'s own doc for why an airborne position isn't safe to check at all) - releasing
+   * crouch mid-air (e.g. having jumped while already crouched) just defers the first attempt to the
+   * moment of landing, same as being blocked defers every retry after that.
    */
   public set isCrouching(value: boolean) {
     if (value) {
@@ -167,7 +189,9 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
       }
     } else {
       this._wantsToStand = true;
-      this.tryStandUp();
+      if (this.isGrounded) {
+        this.tryStandUp();
+      }
     }
   }
 
@@ -341,11 +365,12 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
     // too steep to actually stand on, which naively gating on the raw `isGrounded` flag alone would
     // do.
     const restingOnGround = this.isGrounded && this.isWalkableGround && gravityAlongUp <= 0;
-    // A same-tick jump is exempted from counting as "grounded" here (tracked via `_justJumped`
-    // rather than a sign comparison against `gravityAlongUp`, which breaks when it's exactly `0`),
-    // even though `restingOnGround` itself is still true this tick (the adapter's `isGrounded` is a
-    // tick stale, reflecting last tick's `move()` result, not this tick's takeoff) - so the takeoff
-    // tick is treated as airborne for both fall-velocity and horizontal-momentum purposes below.
+    // A jump takeoff is exempted from counting as "grounded" here (tracked via `_justJumped` rather
+    // than a sign comparison against `gravityAlongUp`, which breaks when it's exactly `0`), even
+    // though `restingOnGround` itself may still read true this tick (and for a few ticks after,
+    // rather than just the takeoff one - see `_justJumped`'s own doc for why the exemption isn't
+    // dropped until `restingOnGround` genuinely reads false) - so every such tick is treated as
+    // airborne for both fall-velocity and horizontal-momentum purposes below.
     const grounded = restingOnGround && !this._justJumped;
 
     if (grounded) {
@@ -355,8 +380,13 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
       this._fallVelocity = Pnt3.O;
     } else if (!restingOnGround) {
       this._fallVelocity = Pnt3.add(this._fallVelocity, Pnt3.scalarMult(gravityVector, dt));
+      // The adapter itself now agrees the character has actually left the ground - the exemption
+      // has served its purpose (see `_justJumped`'s doc); ordinary landing detection resumes from
+      // the next tick. Deliberately *not* cleared while `restingOnGround` is still true (even though
+      // `grounded` is false here too, via `!this._justJumped`), since that's exactly the stale-flag
+      // window the exemption exists to bridge.
+      this._justJumped = false;
     }
-    this._justJumped = false;
 
     let speed = this.options.walkSpeed;
     if (this._isCrouching) {
@@ -402,6 +432,7 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
       Pnt3.scalarMult(this._fallVelocity, dt),
     );
 
+    const previousPosition = this._position;
     this.characterController.move(desiredTranslation, dt);
 
     // Sync the cached position/rotation from this tick's `move()` result *before* tryStandUp()/
@@ -415,7 +446,37 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
       this.object3D.rotation = this._rotation;
     }
 
-    if (this._wantsToStand) {
+    // Detect being blocked from above (e.g. jumping into a ceiling) while airborne and ascending.
+    // `move()` resolves the collision by capping the actual displacement, but
+    // `ICharacterController3dComponent` has no "here's what you hit" signal back to this entity
+    // (see its doc) - only the resulting position. Without this check, `_fallVelocity`'s upward
+    // component keeps decelerating purely on gravity's own time schedule every tick regardless of
+    // whether the character actually moved, exactly as it would in free flight - so a jump
+    // interrupted by a ceiling would visibly stick to it for as long as an unobstructed jump's rise
+    // phase takes to peak, then fall for as long as an unobstructed jump's fall phase takes,
+    // instead of immediately falling back once blocked. Comparing actual vs desired displacement
+    // along `up` catches the block and cancels the upward component of `_fallVelocity` right away,
+    // like an inelastic collision against the ceiling - gravity then takes over from zero speed
+    // instead of coasting down an imaginary, uninterrupted arc.
+    if (!grounded) {
+      const fallAlongUp = Pnt3.dot(this._fallVelocity, up);
+      const desiredUp = Pnt3.dot(desiredTranslation, up);
+      if (fallAlongUp > 0 && desiredUp > 0) {
+        const actualUp = Pnt3.dot(Pnt3.sub(this._position, previousPosition), up);
+        const tolerance = Math.max(this.options.offset, 1e-4);
+        if (actualUp < desiredUp - tolerance) {
+          this._fallVelocity = Pnt3.sub(this._fallVelocity, Pnt3.scalarMult(up, fallAlongUp));
+        }
+      }
+    }
+
+    // Only ever attempt the headroom check while actually resting on something (see `tryStandUp`'s
+    // own doc for why airborne is unsafe to check at all, not just unnecessary) - it retries again
+    // automatically the moment `isGrounded` goes back to `true` (landing, or never having left),
+    // per `_wantsToStand`'s own "retried every tick until it succeeds" contract, so a jump taken
+    // while crouched and blocked from standing simply defers the retry until it lands rather than
+    // ever skipping it outright.
+    if (this._wantsToStand && this.isGrounded) {
       this.tryStandUp();
     }
   }
@@ -425,6 +486,27 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
    * would need. The ray starts a hair above that top point along `up` - the capsule's own outward
    * surface normal at that exact point - so it originates just outside the character's own shape
    * and can never register a self-hit, with no collision-group bookkeeping required.
+   *
+   * Only ever called while `isGrounded` (see the `updateMovement` call site) - **not** merely as an
+   * optimization. A thin ray probe like this one needs *some* endpoint to start from a point known
+   * to be outside every other body, and the only such point this class can derive without a real
+   * shape-overlap query (which `IPhysicsWorld3dComponent` doesn't expose) is "just outside my own
+   * capsule" - which only actually holds when the capsule is at rest. While actively rising through
+   * a jump, the capsule's own top can end up, on some single tick, closer to a low ceiling than that
+   * same tiny margin - not yet blocked by `move()`'s own sweep (which stops it correctly the very
+   * next tick), but *already* close enough that this ray's start point lands inside the ceiling
+   * anyway, and a ray beginning inside a shape never registers an entry hit against it (the same
+   * false-negative failure mode as `AmmoCharacterControllerComponent`'s embedded-landing-position
+   * pitfall - see `gg-engine-physics-adapter-ammo` - except this version needs no collision at all,
+   * just a close enough natural approach on a single tick, so it isn't fixed by keeping landing
+   * positions clean). Regression, found jumping while crouched under a ceiling too low to stand
+   * under: on the one tick the rising capsule's top passed within this margin of the ceiling but
+   * hadn't yet been blocked by it, the headroom check read "clear" and stood the character up,
+   * permanently (nothing re-checks once `_isCrouching` is already `false`), clipping the now-tall
+   * capsule into the ceiling for the rest of the jump. Swapping the ray's own two endpoints doesn't
+   * generally fix this either - a sufficiently thick ceiling can just as easily embed *that* end
+   * instead (confirmed empirically) - so the fix is to never run this check against a position that
+   * might still be mid-flight in the first place.
    */
   private tryStandUp(): void {
     if (!this._isCrouching || !this.world?.physicsWorld) {

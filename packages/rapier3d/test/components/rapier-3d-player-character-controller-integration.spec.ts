@@ -131,3 +131,51 @@ describe('PlayerCharacterController + Rapier3dCharacterControllerComponent - end
     expect(actualDistance).toBeLessThan(expectedDistance * 1.2);
   });
 });
+
+describe('CharacterController3dEntity + Rapier3dCharacterControllerComponent - slope rejection', () => {
+  it('slides off a too-steep sphere flank under gravity instead of staying stuck with no input', async () => {
+    // No PlayerCharacterController/keyboard involved here - this is purely gravity vs.
+    // `isWalkableGround`, driven with real (nonzero) gravity, unlike this file's other tests.
+    const world = new Rapier3dWorldComponent();
+    await world.init();
+    world.gravity = { x: 0, y: 0, z: -9.82 };
+    const floor = world.factory.createRigidBody(
+      { shape: { shape: 'BOX', dimensions: { x: 100, y: 100, z: 1 } }, body: { dynamic: false, mass: 0 } },
+      { position: { x: 0, y: 0, z: -0.5 } },
+    );
+    floor.addToWorld({ physicsWorld: world } as any);
+    const sphere = world.factory.createRigidBody(
+      { shape: { shape: 'SPHERE', radius: 1 }, body: { dynamic: false, mass: 0 } },
+      { position: { x: 0, y: 0, z: 1 } },
+    );
+    sphere.addToWorld({ physicsWorld: world } as any);
+
+    // touching position at dx=1.2 from sphere center: dz=sqrt(1.4^2-1.2^2)~=0.721 -> z~=1.721, a
+    // contact whose true outward normal is ~59° off `up` - past the default ~50°
+    // `maxSlopeClimbAngleRad`, so the character should slide straight off it, not stand there.
+    const characterController = world.factory.createCharacterController(
+      { radius: 0.4, centersDistance: 1.0 },
+      { position: { x: 1.2, y: 0, z: 1.73 } },
+    );
+    const character = new CharacterController3dEntity(
+      { radius: 0.4, centersDistance: 1.0, walkSpeed: 4, jumpSpeed: 4 },
+      null,
+      characterController,
+    );
+    character.onSpawned({ physicsWorld: world } as any);
+    world.simulate(1);
+
+    const dtMs = 16;
+    for (let i = 0; i < 200; i++) {
+      character.tick$.next([i * dtMs, dtMs]);
+      world.simulate(dtMs);
+    }
+
+    // must not remain perched on the sphere flank (z would stay well above the floor's resting
+    // height, ~0.91, if stuck) - regression test for computeGroundNormal() falling back to a flat
+    // `up` normal on the many idle ticks that find zero fresh collisions while still (correctly)
+    // grounded via snap - see gg-engine-physics-adapter-rapier's "computeGroundNormal" pitfall.
+    expect(character.position.z).toBeLessThan(1.2);
+    expect(character.isGrounded).toBe(true);
+  });
+});

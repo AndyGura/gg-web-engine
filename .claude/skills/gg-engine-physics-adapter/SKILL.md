@@ -95,6 +95,24 @@ export type <Lib>PhysicsTypeDocRepo = {
   "start just outside my own shape" trick `CharacterController3dEntity.tryStandUp`'s self-raycast
   already used. Keep this in mind before adding any new raycast call that might originate on or near
   a body already in the world.
+
+  That same "start just outside my own shape" trick has its own sharp edge, found via `tryStandUp`
+  itself: the small margin it adds only stays *outside* every other body too as long as the position
+  it's measured from is settled/at rest. A thin ray probe checked every tick against a position that's
+  still actively moving (e.g. a character rising through a jump) can, on the one tick its natural,
+  entirely legitimate approach happens to land within that same tiny margin of a nearby obstacle -
+  *before* `move()`'s own sweep has even engaged to block it - have its start point already inside
+  that obstacle, and a ray beginning inside a shape never registers an entry hit against it. This
+  produced a real, live bug: jumping while crouched under a ceiling too low to stand under stood the
+  character up mid-jump and clipped it into the ceiling, on backends whose per-tick movement happened
+  to land in that exact window. Swapping which end of the ray is the "safe" one doesn't generally fix
+  this either - a sufficiently thick obstacle can just as easily embed the *other* end instead (a
+  ceiling several times thicker than the probe's own range will contain both candidate endpoints at
+  once for a wide band of positions, not just right at contact). The fix that actually held: never run
+  a check like this against a position that might still be mid-flight - `tryStandUp` is now only
+  attempted while `isGrounded`, retrying automatically once grounded again rather than against an
+  airborne, actively-changing position. Worth remembering for any future self-raycast check driven off
+  a kinematic character's live position while it's mid-`move()`, not just this one.
 - `dispose()` — explicitly destroy every native handle (solver, broadphase, dispatcher, collision
   configuration, the world itself). WASM-backed engines (Ammo, Rapier) do **not** garbage-collect
   native memory automatically — leaving this out leaks.

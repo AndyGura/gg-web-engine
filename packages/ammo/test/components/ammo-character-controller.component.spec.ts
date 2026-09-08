@@ -229,6 +229,50 @@ describe('AmmoCharacterControllerComponent', () => {
     expect(character.position.x).toBeLessThan(1.0);
   });
 
+  it('does not leave the resting position embedded in a ceiling hit while ascending, so a headroom raycast right above it still detects the ceiling (regression: jumping while crouched under a ceiling too low to stand under let a follow-up stand-up check see the character as clear, since the blocked landing position ended up a hair inside the ceiling itself)', () => {
+    const floor = createFloor(factory, 0);
+    floor.addToWorld({ physicsWorld: world } as any);
+
+    // crouched capsule (radius 0.4, crouchCentersDistance 0.5) has half-height 0.65 above its
+    // center; resting on the floor its top sits at z=1.3. A standing capsule (centersDistance 1.0)
+    // would need heightDiff=0.5 of clearance above that to stand - this ceiling only leaves 0.05,
+    // enough to crouch under but nowhere near enough to stand under.
+    const ceiling = factory.createRigidBody(
+      { shape: { shape: 'BOX', dimensions: { x: 4, y: 4, z: 1 } }, body: { dynamic: false, mass: 0 } },
+      { position: { x: 0, y: 0, z: 1.85 } }, // underside at 1.85 - 0.5 = 1.35
+    );
+    ceiling.addToWorld({ physicsWorld: world } as any);
+
+    const character = factory.createCharacterController(
+      { radius: 0.4, centersDistance: 0.5 },
+      { position: { x: 0, y: 0, z: 0.65 } },
+    );
+    character.addToWorld({ physicsWorld: world } as any);
+    settleWorld();
+
+    // settle onto the floor first (already within crouching room, well clear of the ceiling)
+    for (let i = 0; i < 5; i++) {
+      character.move({ x: 0, y: 0, z: -0.5 });
+    }
+    expect(character.position.z).toBeCloseTo(0.65, 1);
+
+    // a single upward "jump" move, far larger than the 0.05 headroom actually available - must get
+    // blocked by the ceiling well before covering the full desired distance
+    character.move({ x: 0, y: 0, z: 0.5 });
+    expect(character.position.z).toBeLessThan(0.75);
+
+    // the same headroom raycast `CharacterController3dEntity.tryStandUp` performs: from a hair
+    // above the capsule's current top, straight up by the extra height standing would need
+    const currentTop = character.position.z + (character.radius + 0.5 / 2);
+    const skin = Math.max(0.01 * 2, 0.02);
+    const heightDiff = 1.0 - 0.5;
+    const result = world.raycast({
+      from: { x: 0, y: 0, z: currentTop + skin },
+      to: { x: 0, y: 0, z: currentTop + heightDiff },
+    });
+    expect(result.hasHit).toBe(true);
+  });
+
   it('slides sideways instead of getting stuck when pressed straight down onto a surface steeper than maxSlopeClimbAngleRad (regression: was never grounded, but also never actually slid off - stayed jittering in place against the slope)', () => {
     // an 80deg-tilted ramp (default maxSlopeClimbAngleRad is 50deg) - its surface normal tilts
     // mostly towards +X, well past the walkable limit

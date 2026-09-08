@@ -95,6 +95,49 @@ above the theoretical resting bottom (`max(skin * 4, 0.02)`, not just `skin`) - 
 the sweep's own allowed penetration in the worst case - before sweeping down through
 `snapToGroundDistance`.
 
+**The same embedded-landing quirk also affects a core-level query that runs *after* `move()`, not just
+this component's own ground-snap ray - worth backing the landing position off proactively rather than
+trusting every future caller to add its own margin, even though (see the note at the end of this entry)
+it turned out not to be the whole story.** The ground-snap fix above only patched the one ray inside
+this file that happened to trip over `allowedCcdPenetration`'s embedding first; `position` itself was
+still left embedded after any blocked vertical sweep, ceiling or floor alike. That looked, at first, like
+the cause of a second, unrelated symptom: `CharacterController3dEntity.tryStandUp` (core, shared across
+every backend) casts a headroom ray starting only `max(offset * 2, 0.02)` above the character's *current*
+top to decide whether standing up from a crouch is clear, and jumping while crouched under a ceiling too
+low to stand under was standing the character up mid-jump and clipping it into the ceiling. `move()` now
+backs the landing position off by a shared `contactClearance` getter (`max(offset * 4, 0.02)` - the same
+formula the ground-snap ray above already used, now factored out) whenever the vertical sweep is blocked
+by something that *isn't* walkable ground underfoot (a ceiling while ascending, or a too-steep slope
+pressed straight into) - deliberately **not** applied to the ordinary floor-landing branch, to avoid
+perturbing that branch's established, tightly-tested embedded-by-`skin` resting precision. This is a
+real fix worth keeping (it does make every consumer of `position` - not just `tryStandUp` - see a
+non-embedded landing spot after a blocked vertical sweep), but **it did not fix the reported bug on its
+own** - see the note below and `gg-engine-physics-adapter`'s "pitfall inside `tryStandUp`" style entry in
+`character-controller-3d.entity.ts` for the actual root cause and fix, which landed in core instead.
+Confirmed via a real end-to-end repro (`ammo-player-character-controller-integration.spec.ts`'s "crouch +
+ceiling + jump" test - drives the real `CharacterController3dEntity` + `PlayerCharacterController` +
+`AmmoWorldComponent` together, no mocks) that the character still stood up and clipped into the ceiling
+with only this fix in place: the failure tick wasn't even touching the ceiling yet (still ~1.5cm below
+it) - `move()`'s own sweep hadn't engaged at all, so there was no embedded landing position for this fix
+to correct. The character's own natural, entirely legitimate per-tick rise had simply landed within
+`tryStandUp`'s own ray margin of the ceiling for one tick, which is a category of bug this component's
+`position` can't fix by itself no matter how clean it's kept - see core's fix (gate `tryStandUp` on
+`isGrounded`) for why. Lesson for next time a core-level raycast/query fed by this component's `position`
+behaves differently on Rapier than on Ammo: checking whether the Ammo-side position is quietly embedded
+is a reasonable first hypothesis, but confirm it with a real end-to-end regression test before declaring
+victory - a component-level test that only checks the position/raycast machinery in isolation (as the
+first version of this fix's own test did) can pass while the actual reported symptom, driven through the
+real entity, still reproduces.
+
+Once core's actual fix (gate `tryStandUp` on `isGrounded`) was in place, this Ammo-side backoff was
+re-checked for redundancy by reverting it alone and re-running the same end-to-end test: the character
+correctly never stood up (core's gate alone is enough for *that*), but the resting `position` after the
+blocked sweep was still measurably embedded in the ceiling for one tick. So this fix earns its keep for a
+real, independently-confirmed reason - keeping every consumer of `position` honest, not just
+`tryStandUp` - even though it wasn't the fix for the headline symptom. Worth re-running a check like this
+(temporarily revert one candidate fix, keep the other, re-run the regression test) whenever two fixes for
+the same bug report land in the same session, rather than assuming both are still pulling weight.
+
 **Pitfall: an unconditional ground-snap fallback silently cancels every jump.** If `move()` falls back
 to an extra downward ray/sweep whenever the main vertical sweep didn't already confirm grounded (e.g.
 because the vertical component this tick was zero, or too small to register a floor hit), that

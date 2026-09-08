@@ -219,6 +219,30 @@ describe('CharacterController3dEntity', () => {
       expect(moveSpy.mock.calls[0][0].z).toBeCloseTo(0.5); // 5 m/s * 0.1s
     });
 
+    it('cancels upward velocity immediately on hitting a ceiling, instead of coasting through the rest of an unobstructed jump arc before falling (regression: a jump interrupted by a ceiling looked glued to it for as long as a free jump\'s whole rise phase, since _fallVelocity kept decelerating on gravity\'s own time schedule regardless of the character\'s actual, blocked position)', () => {
+      // simulates a ceiling: any upward desired translation is fully blocked (z capped at 0),
+      // horizontal movement still applies, never reports grounded
+      const cc = mockCharacterController(0.4, 1, {
+        resolveMove: d => ({
+          appliedTranslation: { x: d.x, y: d.y, z: d.z > 0 ? 0 : d.z },
+          isGrounded: false,
+          groundNormal: null,
+        }),
+      });
+      const entity = new CharacterController3dEntity(
+        { radius: 0.4, centersDistance: 1, jumpSpeed: 5, gravity: 10 },
+        null,
+        cc,
+      );
+      entity.onSpawned({} as any);
+      entity.jump(); // grounded (mock's initial isGrounded), takes off
+      const moveSpy = jest.spyOn(cc, 'move');
+      entity.tick$.next([1000, 100]); // 0.1s: rises, then immediately hits the ceiling, fully blocked
+      expect(moveSpy.mock.calls[0][0].z).toBeCloseTo(0.5); // desired takeoff translation, same as the ungated test above
+      entity.tick$.next([2000, 100]); // next tick: with the upward velocity cancelled, gravity alone should now pull down
+      expect(moveSpy.mock.calls[1][0].z).toBeLessThan(0); // falling already, not still coasting upward
+    });
+
     it('is a no-op mid-air', () => {
       const cc = mockCharacterController(0.4, 1, { resolveMove: d => ({ appliedTranslation: d, isGrounded: false }) });
       const entity = new CharacterController3dEntity(

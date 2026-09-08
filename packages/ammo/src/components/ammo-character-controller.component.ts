@@ -232,25 +232,43 @@ export class AmmoCharacterControllerComponent
     let grounded = false;
     let groundNormal: Point3 | null = null;
     if (Pnt3.len(vertical) > 1e-9) {
+      const verticalDir = Pnt3.norm(vertical);
       const movingDown = Pnt3.dot(vertical, up) < 0;
       const result = this.sweep(pos, Pnt3.add(pos, vertical), skin);
-      pos = Pnt3.add(pos, Pnt3.scalarMult(vertical, result.fraction));
+      const travelled = Pnt3.len(vertical) * result.fraction;
+      pos = Pnt3.add(pos, Pnt3.scalarMult(verticalDir, travelled));
+
       if (result.hasHit && movingDown && result.hitNormal && this.isWalkableNormal(result.hitNormal, up)) {
         grounded = true;
         groundNormal = result.hitNormal;
-      } else if (result.hasHit && result.fraction < 0.999 && result.hitNormal) {
-        // blocked by a surface too steep to stand on (e.g. falling/pressing straight down onto a
-        // slope beyond maxSlopeClimbAngleRad) - slide the remaining distance along its tangent
-        // instead of just stopping dead pressed against it, so the entity's own gravity integration
-        // (which keeps accelerating here since this never reports `grounded`, see
-        // `CharacterController3dEntity.isWalkableGround`) actually carries the character down the
-        // slope over subsequent ticks rather than leaving it stuck jittering in place against it.
-        const remaining = Pnt3.scalarMult(vertical, 1 - result.fraction);
-        const n = result.hitNormal;
-        const slideVec = Pnt3.sub(remaining, Pnt3.scalarMult(n, Pnt3.dot(remaining, n)));
-        if (Pnt3.len(slideVec) > 1e-9) {
-          const slideResult = this.sweep(pos, Pnt3.add(pos, slideVec), skin);
-          pos = Pnt3.add(pos, Pnt3.scalarMult(slideVec, slideResult.fraction));
+      } else if (result.hasHit) {
+        // Blocked by something that isn't walkable ground underfoot - most commonly a ceiling while
+        // ascending (jumping), or a too-steep slope pressed straight into. Back off by a comfortable
+        // margin (not just the sweep's own `allowedCcdPenetration`/`skin`) so the landing position
+        // never ends up embedded - see `backOffFromObstacle`'s doc. Deliberately *not* applied to
+        // the ordinary floor-landing branch above (kept at its established, tightly-tested
+        // embedded-by-`skin` precision): floor embedding was never the source of the bug this guards
+        // against, and that branch's resting height is relied on elsewhere.
+        pos = this.backOffFromObstacle(pos, verticalDir, travelled, this.contactClearance);
+
+        if (result.fraction < 0.999 && result.hitNormal) {
+          // slide the remaining distance along the hit surface's tangent instead of just stopping
+          // dead pressed against it, so the entity's own gravity integration (which keeps
+          // accelerating here since this never reports `grounded`, see
+          // `CharacterController3dEntity.isWalkableGround`) actually carries the character down a
+          // too-steep slope over subsequent ticks rather than leaving it stuck jittering in place.
+          const remaining = Pnt3.scalarMult(vertical, 1 - result.fraction);
+          const n = result.hitNormal;
+          const slideVec = Pnt3.sub(remaining, Pnt3.scalarMult(n, Pnt3.dot(remaining, n)));
+          if (Pnt3.len(slideVec) > 1e-9) {
+            const slideDir = Pnt3.norm(slideVec);
+            const slideResult = this.sweep(pos, Pnt3.add(pos, slideVec), skin);
+            const slideTravelled = Pnt3.len(slideVec) * slideResult.fraction;
+            pos = Pnt3.add(pos, Pnt3.scalarMult(slideDir, slideTravelled));
+            if (slideResult.hasHit) {
+              pos = this.backOffFromObstacle(pos, slideDir, slideTravelled, this.contactClearance);
+            }
+          }
         }
       }
     }
@@ -271,6 +289,45 @@ export class AmmoCharacterControllerComponent
 
   private isWalkableNormal(normal: Point3, up: Point3): boolean {
     return Pnt3.angle(normal, up) <= this.resolvedOptions.maxSlopeClimbAngleRad;
+  }
+
+  /**
+   * A comfortable real-world clearance to leave between the capsule and whatever a sweep/ray just
+   * stopped it against - shared by `trySnapToGround`'s ray-start margin and `backOffFromObstacle`.
+   * Deliberately larger than `resolvedOptions.offset`/`skin` itself (`convexSweepTest`'s
+   * `allowedCcdPenetration`, which is how much penetration the *sweep* tolerates, not how much real
+   * gap anything downstream can rely on): `CharacterController3dEntity.tryStandUp`'s headroom
+   * raycast (core, shared across every backend) starts its own ray `max(offset * 2, 0.02)` above the
+   * character's current top, so leaving only `skin`-sized clearance here (as small as `offset`
+   * itself) isn't always enough to keep that ray's start point outside the obstacle too - see
+   * `backOffFromObstacle`'s doc for the concrete failure this caused.
+   */
+  private get contactClearance(): number {
+    return Math.max(this.resolvedOptions.offset * 4, 0.02);
+  }
+
+  /**
+   * `convexSweepTest`'s `allowedCcdPenetration` (passed as `skin` to every `sweep()` call in this
+   * class) lets a blocked sweep's returned `fraction` land the capsule up to that amount *inside*
+   * whatever it hit, by design (see `sweep()`'s own doc). Most callers of `position` never notice
+   * this - a resting height a hair lower than geometrically exact is invisible - but
+   * `CharacterController3dEntity.tryStandUp`'s headroom raycast (core, shared across every backend)
+   * starts its ray only a hair above the character's *current* top, trusting that point to be
+   * outside every body but the character's own. A landing position left embedded in a ceiling after
+   * a blocked *upward* sweep breaks that assumption: the "hair above" point ends up inside the
+   * ceiling too, so the ray never registers an entry hit against it and the headroom check wrongly
+   * reports "clear" - regression, found jumping while crouched under a ceiling too low to stand
+   * under: the character reset to standing height and visibly clipped into it. Backing the landing
+   * position off by `contactClearance` (comfortably more than the sweep's own `allowedCcdPenetration`
+   * itself, not just enough to cancel it out) right here, at the source, keeps every consumer of
+   * `position` (not just that one call site) from ever seeing an embedded result, rather than
+   * patching each caller individually.
+   */
+  private backOffFromObstacle(pos: Point3, dir: Point3, travelled: number, amount: number): Point3 {
+    if (travelled <= 0) {
+      return pos;
+    }
+    return Pnt3.sub(pos, Pnt3.scalarMult(dir, Math.min(travelled, amount)));
   }
 
   /**
@@ -383,9 +440,9 @@ export class AmmoCharacterControllerComponent
     // capsule come to rest already slightly *inside* a surface by up to that amount - a resting
     // character's actual bottom point can therefore be a hair below the floor's true surface. A ray
     // starting there (or only `skin` above it) would begin already inside the floor and never
-    // register an entry hit, so start comfortably above that worst case instead.
-    const startMargin = Math.max(skin * 4, 0.02);
-    const from = Pnt3.add(bottom, Pnt3.scalarMult(up, startMargin));
+    // register an entry hit, so start comfortably above that worst case instead - see
+    // `contactClearance`'s own doc for why this reuses that same margin rather than a local one.
+    const from = Pnt3.add(bottom, Pnt3.scalarMult(up, this.contactClearance));
     const to = Pnt3.sub(bottom, Pnt3.scalarMult(up, this.resolvedOptions.snapToGroundDistance));
 
     const result = this.world.raycast({

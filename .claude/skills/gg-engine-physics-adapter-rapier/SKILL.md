@@ -108,6 +108,100 @@ while rising, if it's rising from a position already overlapping/touching the ob
 actual bug and isn't what a real player would ever trigger - don't chase that part further once the
 realistic approach-and-clear scenario is confirmed working end-to-end.
 
+## Pitfall: `computedGrounded()` can stay stuck `true` for several ticks after a jump takeoff at high frame rate, re-cancelling the jump even with the `movingUp` guard above already in place
+
+Even with the snap-to-ground/autostep guard above correctly disabling both for every tick that's
+moving up, a jump could still fail intermittently depending on frame rate alone - working fine at a
+typical/capped frame rate (e.g. 60fps, `dt` ~16ms) but reliably flinching up a few centimeters and
+snapping straight back down at a high, uncapped frame rate (100+ fps, `dt` ~8ms or less), on the exact
+same jump/gravity/obstacle setup. Root cause is in `KinematicCharacterController.computedGrounded()`
+itself, not in this adapter's own toggling: empirically (confirmed by direct `move()` calls with no
+entity-level logic involved at all, sweeping a character straight up by a fixed distance with zero
+obstacles and zero recorded collisions), `computedGrounded()` keeps reporting `true` for any per-call
+upward movement smaller than roughly 5-6x the character's own `offset` value (the default `offset`
+~0.01 giving a threshold around 0.05-0.06m in this pinned `@dimforge/rapier3d-compat` build) -
+apparently some internal ground-detection margin proportional to `offset`, independent of
+`snapToGroundEnabled()`/`autostepEnabled()` and unrelated to `numComputedCollisions()` (which stays
+`0` throughout). At a high frame rate, a jump's first-tick rise (`jumpSpeed * dt`) is small enough to
+land inside that dead zone, so `computedGrounded()` still reads `true` right after a takeoff tick that
+otherwise moved the character exactly as far as requested. At a low-enough frame rate the same
+first-tick rise already clears that dead zone in one tick, so this never surfaces there - this is why
+the bug is invisible in the package's own `dtMs=16` integration tests and only shows up against real,
+uncapped browser frame rates.
+
+This compounds through `CharacterController3dEntity` (core, not this package) into the exact same
+"flinch up, snap back down" symptom as the guard above: that entity's own `_justJumped` exemption used
+to clear itself unconditionally one tick after `jump()`, regardless of what the adapter's `isGrounded`
+said by then. With `computedGrounded()` stuck `true` past that one tick, the *second* post-jump tick's
+`restingOnGround` read `true` again, zeroed `_fallVelocity` outright, and produced a `desiredTranslation`
+with no vertical component that tick - which flips this adapter's own `movingUp` check back to `false`
+and *re-enables* snap-to-ground, snapping the (still only centimeters up) character straight back onto
+the floor. Both native toggles were already correctly guarded; the entity above them was still trusting
+a native flag one tick too early. Fixed at the core level (not here) - `_justJumped` now stays set across
+every tick where `restingOnGround` is still (incorrectly) `true`, not just the takeoff tick, and is only
+cleared the first tick `restingOnGround` genuinely reads `false`; see
+`CharacterController3dEntity._justJumped`'s own doc in `packages/core` for the full reasoning. Nothing
+to fix in this package for that specific bug, but worth knowing about since it's easy to mistake for a
+regression in the `movingUp` guard above when it resurfaces - the tell is that it's frame-rate-dependent
+(reproduces at high/uncapped fps, not at a fixed low one) rather than obstacle-dependent like the
+autostep pitfall above. When testing a character-controller jump fix in this package, drive at least one
+test at a small `dt` (~8ms, i.e. ~120fps) in addition to the usual 16ms - a fix that only holds at 16ms
+can still hide this class of bug entirely.
+
+## Pitfall: `computeGroundNormal()` reporting a flattened `up` instead of the real (steep) contact normal defeats `isWalkableGround` - a character can get permanently stuck balanced on a curved obstacle
+
+Symptom: run/jump onto the flank of a static sphere (or any other curved obstacle) high enough up that
+the actual contact point is well past `maxSlopeClimbAngleRad`'s slope limit, then release every input
+key - the character should slide back down under gravity (core's `CharacterController3dEntity` already
+refuses to treat a too-steep contact as "resting", see its `isWalkableGround`, and keeps integrating
+gravity in that case instead of zeroing it), but instead it stays stuck exactly where it landed,
+sometimes visibly balanced on a sliver/single point of the obstacle, indefinitely - even with zero
+input and gravity nonzero. This is `packages/rapier3d`'s own equivalent of
+`gg-engine-physics-adapter-ammo`'s "a character can get stuck jittering against a too-steep slope"
+pitfall, but the root cause here is different: it's not a missing slide-along-tangent step (Rapier's
+own `computeColliderMovement` already slides along the contact tangent as part of its built-in
+algorithm), it's `Rapier3dCharacterControllerComponent.computeGroundNormal()` misreporting the contact
+normal itself, feeding core's `isWalkableGround` a lie.
+
+Root cause, two layers deep:
+
+1. `computeGroundNormal()` used to discard any `computedCollision()` candidate whose `dot(normal, up)`
+   didn't clear a loose `0.1` threshold (meant to separate "floor-like" from "wall-like" hits sharing
+   the same collision list), falling back to the plain `up` vector when nothing cleared it. For a
+   contact steep enough to fail *that* threshold too (not just `maxSlopeClimbAngleRad`), this silently
+   reported perfectly-flat ground instead of the real, very steep normal that was already sitting right
+   there in the collision list. Fix: never discard a candidate for being steep - collect every
+   `computedCollision()` normal and return whichever one is *closest* to `up` (however far from it that
+   still is); let `CharacterController3dEntity.isWalkableGround` alone decide walkability from the real
+   value, that's its job, not this adapter's.
+2. Even with that fixed, the dominant real-world trigger turned out to be a *different* path to the same
+   flat-`up` fallback: `numComputedCollisions()` is `0` on the vast majority of ticks a character spends
+   resting on any surface, curved or flat - `computeColliderMovement` only populates that list when the
+   *desired* movement this call was actually blocked by something, and a character standing still
+   (`desiredTranslation` exactly `{0,0,0}`, e.g. every idle tick right after the player releases every
+   key) has nothing for the sweep to hit; it stays grounded purely via Rapier's own snap-to-ground
+   catching it call after call, with no fresh collision entry ever produced again. The very first idle
+   tick after any landing - including the landing that *did* just populate the true steep normal -
+   already falls into this path and re-triggers the bug immediately. Confirmed empirically (a direct,
+   entity-free `move()` sequence: one real settling move onto a sphere's flank correctly reports the
+   steep normal, the very next `move({x:0,y:0,z:0})` no-op tick reports flat `up` again, with old code).
+   Fix: on a `0`-collision grounded call, reuse whichever normal `this._groundNormal` already held
+   *before* this call instead of guessing - `move()` only overwrites the field with this method's
+   return value *after* calling it, so reading `this._groundNormal` inside `computeGroundNormal()`
+   still sees the previous call's real result. This need not be a separate cache field: the field
+   naturally clears to `null` the instant the character goes airborne (the method's very first check),
+   so a later landing on a *different* surface never reuses a stale value from an unrelated one. Only
+   fall back to plain `up` when there is truly no prior normal to reuse either (the very first grounded
+   call ever, landing exactly via snap with nothing recorded yet).
+
+Layer 2 is the one worth remembering if this resurfaces: a fix that only addresses "pick the best
+available normal, don't apply the loose threshold" (layer 1 alone) still fails, because the character
+gets re-stuck on literally the next idle tick regardless - test with a scenario that includes several
+ticks of **zero player input after landing** (not just the landing tick itself), matching how a real
+player actually triggers this (run onto the obstacle, then let go of every key), not only a single
+settling `move()` call - a test that only checks the immediate landing tick's normal can pass while the
+underlying bug (which manifests one tick later, every time) is still very much present.
+
 ## Pitfall: the native dynamic-body-push feature is unusable on a kinematic character body - it explodes, not just mis-scales
 
 Rapier's `KinematicCharacterController` has a built-in, seemingly ideal equivalent of `pushMass`:

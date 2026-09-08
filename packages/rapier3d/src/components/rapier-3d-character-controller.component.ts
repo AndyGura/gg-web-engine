@@ -323,23 +323,60 @@ export class Rapier3dCharacterControllerComponent implements ICharacterControlle
   /**
    * Rapier's character controller doesn't expose a single "ground normal" directly - only a list of
    * per-obstacle collisions (`computedCollision`) from the last `computeColliderMovement` call, each
-   * with its own contact normal. Best-effort approach: scan those collisions for one whose normal
-   * points roughly the same way as `up` (i.e. a floor-like surface, not a wall) and use that; fall
-   * back to the plain `up` vector if grounded but no such collision was recorded (e.g. snapped to
-   * ground without an explicit sweep collision that tick), or `null` if not grounded at all.
+   * with its own contact normal. Best-effort approach: scan those collisions and return whichever
+   * normal points *most* nearly along `up` (i.e. the most floor-like of the bunch, however steep it
+   * actually is) - this deliberately does **not** discard a candidate merely for being steep (e.g.
+   * balanced on the flank of a sphere/cylinder, far past `maxSlopeClimbAngleRad`): that judgment
+   * belongs entirely to `CharacterController3dEntity.isWalkableGround` at the core level, which
+   * needs the *real* contact normal to make it, not a value already pre-filtered down here. An
+   * earlier version discarded any candidate with `dot(normal, up) <= 0.1` and fell back to the plain
+   * `up` vector when nothing cleared that bar - which silently reported perfectly-flat ground for a
+   * character resting against a normal steep enough to fail that same threshold, defeating
+   * `isWalkableGround` entirely (confirmed empirically: a character run-and-jumped onto the flank of
+   * a static sphere, landing on a contact whose true outward normal was ~70° off `up` - well past the
+   * default ~50° `maxSlopeClimbAngleRad` - permanently reported `groundNormal: {0,0,1}` instead, so
+   * the core entity kept treating it as resting on flat ground and it never slid off, visibly stuck
+   * balanced on a sliver of the sphere even with every input released).
+   *
+   * `numComputedCollisions()` itself is frequently `0` on a call that is still genuinely grounded -
+   * `computeColliderMovement` doesn't record an entry for a character caught by snap-to-ground alone
+   * (no obstacle actually blocked the *desired* movement that call), which in practice is most idle
+   * ticks: a character standing still (`desiredTranslation` exactly `{0,0,0}`, e.g. player released
+   * every key) has nothing for the sweep to hit, so it settles into being grounded via snap alone,
+   * over and over, tick after tick, without ever producing a fresh collision entry again. Guessing
+   * flat `up` on every such tick is exactly the bug above, just via a different, far more common
+   * path than "no collision was ever recorded" suggests - it's not a rare edge case, it's what happens
+   * the very first idle tick after any landing (including this one, right after the collision that
+   * *did* populate the true steep normal above). Fix: on a `0`-collision grounded call, reuse
+   * whichever normal this same field already held **before** this call (the character's own contact
+   * geometry hasn't changed just because this particular call didn't happen to re-sweep it) rather
+   * than guessing - `move()` only overwrites `this._groundNormal` with this method's return value
+   * *after* calling it, so reading the field here still sees the previous call's result. Only when
+   * there is no prior normal to reuse either (the very first grounded call ever, landing exactly via
+   * snap with nothing recorded yet) does this fall back to the plain `up` vector. Returns `null` if
+   * not grounded at all - `_groundNormal` naturally clears itself the moment the character goes
+   * airborne, so a later landing never reuses a stale value from a previous, unrelated surface.
    */
   private computeGroundNormal(): Point3 | null {
     if (!this._isGrounded || !this._nativeController) {
       return null;
     }
     const count = this._nativeController.numComputedCollisions();
+    let best: Point3 | null = null;
+    let bestDot = -Infinity;
     for (let i = 0; i < count; i++) {
       const collision = this._nativeController.computedCollision(i);
-      if (collision?.normal1 && Pnt3.dot(Pnt3.clone(collision.normal1), this._up) > 0.1) {
-        return Pnt3.clone(collision.normal1);
+      if (!collision?.normal1) {
+        continue;
+      }
+      const normal = Pnt3.clone(collision.normal1);
+      const dot = Pnt3.dot(normal, this._up);
+      if (dot > bestDot) {
+        bestDot = dot;
+        best = normal;
       }
     }
-    return Pnt3.clone(this._up);
+    return best ?? this._groundNormal ?? Pnt3.clone(this._up);
   }
 
   clone(): Rapier3dCharacterControllerComponent {
