@@ -92,7 +92,7 @@ export class MatterTriggerComponent
     Events.on(world.physicsWorld.matterEngine!, 'collisionEnd', this.onCollisionEnd);
   }
 
-  removeFromWorld(world: MatterGgWorld): void {
+  removeFromWorld(world: MatterGgWorld, dispose?: boolean): void {
     Events.off(world.physicsWorld.matterEngine!, 'collisionStart', this.onCollisionStart);
     Events.off(world.physicsWorld.matterEngine!, 'collisionEnd', this.onCollisionEnd);
 
@@ -100,7 +100,15 @@ export class MatterTriggerComponent
       this.onLeft$.next(body);
     }
     this.currentOverlaps.clear();
-    super.removeFromWorld(world);
+    super.removeFromWorld(world, dispose);
+  }
+
+  /** Completes `onEnter$`/`onLeft$` - `MatterRigidBodyComponent.dispose()` is a no-op (see its own
+   * doc), so this is the only place these two subjects ever get completed. */
+  dispose(): void {
+    this.onEnter$.complete();
+    this.onLeft$.complete();
+    super.dispose();
   }
 
   checkOverlaps(): void {

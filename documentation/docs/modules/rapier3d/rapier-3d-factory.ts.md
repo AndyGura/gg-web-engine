@@ -1,6 +1,6 @@
 ---
 title: rapier3d/rapier-3d-factory.ts
-nav_order: 138
+nav_order: 144
 parent: Modules
 ---
 
@@ -15,6 +15,7 @@ parent: Modules
     - [createRigidBody (method)](#createrigidbody-method)
     - [createTrigger (method)](#createtrigger-method)
     - [createRaycastVehicle (method)](#createraycastvehicle-method)
+    - [createCharacterController (method)](#createcharactercontroller-method)
     - [createColliderDescr (method)](#createcolliderdescr-method)
     - [createRigidBodyDescr (method)](#createrigidbodydescr-method)
 
@@ -66,6 +67,20 @@ createTrigger(
 
 ```ts
 createRaycastVehicle(chassis: Rapier3dRigidBodyComponent): never
+```
+
+### createCharacterController (method)
+
+**Signature**
+
+```ts
+createCharacterController(
+    options: CharacterController3dOptions,
+    transform?: {
+      position?: Point3;
+      rotation?: Point4;
+    },
+  ): Rapier3dCharacterControllerComponent
 ```
 
 ### createColliderDescr (method)

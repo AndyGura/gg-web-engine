@@ -8,9 +8,15 @@ export interface IPhysicsWorld3dComponent<
   readonly loader: PTypeDoc['loader'];
 
   /** event emitter, emits newly added physics components */
-  readonly added$: Subject<PTypeDoc['trigger'] | PTypeDoc['rigidBody'] | PTypeDoc['raycastVehicle'] | any>;
+  readonly added$: Subject<
+    PTypeDoc['trigger'] | PTypeDoc['rigidBody'] | PTypeDoc['raycastVehicle'] | PTypeDoc['characterController'] | any
+  >;
   /** event emitter, emits just removed physics components */
-  readonly removed$: Subject<PTypeDoc['trigger'] | PTypeDoc['rigidBody'] | PTypeDoc['raycastVehicle'] | any>;
+  readonly removed$: Subject<
+    PTypeDoc['trigger'] | PTypeDoc['rigidBody'] | PTypeDoc['raycastVehicle'] | PTypeDoc['characterController'] | any
+  >;
   /** list of currently added to world physics components */
-  readonly children: (PTypeDoc['trigger'] | PTypeDoc['rigidBody'] | PTypeDoc['raycastVehicle'] | any)[];
+  readonly children: (
+    PTypeDoc['trigger'] | PTypeDoc['rigidBody'] | PTypeDoc['raycastVehicle'] | PTypeDoc['characterController'] | any
+  )[];
 }

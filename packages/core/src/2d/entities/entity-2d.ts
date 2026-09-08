@@ -73,7 +73,9 @@ export class Entity2d<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTypeDocRep
     super();
     if (options.objectBody) {
       this.objectBody = options.objectBody;
-      this.name = this.objectBody.name;
+      if (this.objectBody.name) {
+        this.name = this.objectBody.name;
+      }
       this.addComponents(this.objectBody);
     }
     if (options.object2D) {
@@ -81,7 +83,9 @@ export class Entity2d<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTypeDocRep
       if (!options.objectBody) {
         this._position = this.object2D.position;
         this._rotation = this.object2D.rotation;
-        this.name = this.object2D.name;
+        if (this.object2D.name) {
+          this.name = this.object2D.name;
+        }
       }
       this.addComponents(this.object2D);
     }

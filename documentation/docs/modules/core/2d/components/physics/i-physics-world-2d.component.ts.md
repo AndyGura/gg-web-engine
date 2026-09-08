@@ -1,6 +1,6 @@
 ---
 title: core/2d/components/physics/i-physics-world-2d.component.ts
-nav_order: 11
+nav_order: 12
 parent: Modules
 ---
 

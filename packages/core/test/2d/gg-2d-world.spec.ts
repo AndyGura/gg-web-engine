@@ -52,7 +52,7 @@ describe('Gg2dWorld', () => {
     describe('set_position', () => {
       it('requires a name', async () => {
         const commands = collectConsoleCommands(world);
-        await expect(commands.get('set_position')!()).rejects.toThrow('usage: set_position <name> <x> <y>');
+        await expect(commands.get('set_position')!()).rejects.toThrow('usage: set_position NAME X Y');
       });
 
       it('teleports a named positionable entity', async () => {
@@ -97,7 +97,7 @@ describe('Gg2dWorld', () => {
 
       it('requires a name', async () => {
         const commands = collectConsoleCommands(world);
-        await expect(commands.get('set_rotation')!()).rejects.toThrow('usage: set_rotation <name> <angleRadians>');
+        await expect(commands.get('set_rotation')!()).rejects.toThrow('usage: set_rotation NAME ANGLE_RADIANS');
       });
 
       it('rejects a non-numeric angle', async () => {
@@ -124,7 +124,7 @@ describe('Gg2dWorld', () => {
         const commands = collectConsoleCommands(world);
         const result = await commands.get('spawn')!('SQUARE', '1', '2');
 
-        expect(result).toMatch(/^spawned ".*" \(SQUARE\) at \{"x":1,"y":2\}$/);
+        expect(result).toMatch(/^spawned ".+" \(SQUARE\) at \{"x":1,"y":2\}$/);
         expect(visualScene.factory.createPrimitive).toHaveBeenCalledWith(
           { shape: 'SQUARE', dimensions: { x: 1, y: 1 } },
           {},

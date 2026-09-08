@@ -564,6 +564,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#createplayer-method" class="md-nav__link">
+    createPlayer (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#resolvewheeldisplay-method" class="md-nav__link">
     resolveWheelDisplay (method)
   </a>
@@ -646,6 +653,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#player3dsettings-type-alias" class="md-nav__link">
+    Player3DSettings (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#primitive3dsettings-interface" class="md-nav__link">
     Primitive3DSettings (interface)
   </a>
@@ -702,6 +716,7 @@
 <li><a href="#createprimitive-method">createPrimitive (method)</a></li>
 <li><a href="#createtrigger-method">createTrigger (method)</a></li>
 <li><a href="#createcamera-method">createCamera (method)</a></li>
+<li><a href="#createplayer-method">createPlayer (method)</a></li>
 <li><a href="#resolvewheeldisplay-method">resolveWheelDisplay (method)</a></li>
 <li><a href="#createggcar-method">createGgCar (method)</a></li>
 <li><a href="#createmapgraph-method">createMapGraph (method)</a></li>
@@ -715,6 +730,7 @@
 <li><a href="#ggcarwheelsettings-type-alias">GgCarWheelSettings (type alias)</a></li>
 <li><a href="#mapgraph3dsettings-interface">MapGraph3DSettings (interface)</a></li>
 <li><a href="#mapgraphnodejson-type-alias">MapGraphNodeJson (type alias)</a></li>
+<li><a href="#player3dsettings-type-alias">Player3DSettings (type alias)</a></li>
 <li><a href="#primitive3dsettings-interface">Primitive3DSettings (interface)</a></li>
 <li><a href="#primitive3dshapename-type-alias">Primitive3DShapeName (type alias)</a></li>
 <li><a href="#trigger3dsettings-interface">Trigger3DSettings (interface)</a></li>
@@ -803,6 +819,17 @@ separate, never-unloaded level instead (see <code>gg-engine-level-json</code>'s 
     world: Gg3dWorld&lt;TypeDoc&gt;,
     settings: Camera3DSettings,
   ): Camera3dEntity&lt;TypeDoc['vTypeDoc']&gt; | undefined
+</code></pre>
+<h3 id="createplayer-method">createPlayer (method)</h3>
+<p>Create a <code>"Player"</code> entity: a capsule-shaped <code>CharacterController3dEntity</code>, with a matching
+auto-generated capsule mesh when <code>display</code> is given and there's a visual scene (physics-only/
+invisible otherwise). See <code>Player3DSettings</code>'s doc for why this doesn't also build a
+<code>PlayerCharacterController</code>.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private createPlayer(
+    world: Gg3dWorld&lt;TypeDoc&gt;,
+    settings: Player3DSettings,
+  ): CharacterController3dEntity&lt;TypeDoc&gt; | undefined
 </code></pre>
 <h3 id="resolvewheeldisplay-method">resolveWheelDisplay (method)</h3>
 <p>Build a <code>WheelDisplayOptions</code> for one <code>"GgCar"</code> wheel/axle from its (already shared-merged)
@@ -954,6 +981,27 @@ from whatever entity's position should determine which nodes are loaded (see
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export type MapGraphNodeJson = Omit&lt;MapGraphNodeType, 'loadOptions'&gt; &amp; {
   loadOptions?: MapGraphNodeType['loadOptions']
+}
+</code></pre>
+<h2 id="player3dsettings-type-alias">Player3DSettings (type alias)</h2>
+<p>Settings for the built-in <code>"Player"</code> entity class: a capsule-bodied <code>CharacterController3dEntity</code>
+(see that class's own doc for the gameplay fields below). Only the physics/visual capsule is
+built here - the input/camera wiring (<code>PlayerCharacterController</code>) needs a live canvas/
+<code>KeyboardInput</code>/renderer the app supplies, so it's left to the app's own code, the same way a
+<code>"Camera"</code> entity is just a positioned <code>Camera3dEntity</code> while <code>FreeCameraController</code>/
+<code>OrbitCameraController</code> wiring happens outside the level JSON too.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type Player3DSettings = Partial&lt;Omit&lt;CharacterController3dEntityOptions, 'radius' | 'centersDistance'&gt;&gt; &amp; {
+  /** Spawn position of the character (capsule center). */
+  position?: Point3
+  /** Spawn rotation of the character. */
+  rotation?: Point4
+  /** Capsule radius. Default 0.4. */
+  radius?: number
+  /** Standing capsule centersDistance. Default 1.0. */
+  centersDistance?: number
+  /** Material options for the auto-generated capsule mesh; omit for a physics-only, invisible player. */
+  display?: DisplayObject3dOpts&lt;any&gt;
 }
 </code></pre>
 <h2 id="primitive3dsettings-interface">Primitive3DSettings (interface)</h2>

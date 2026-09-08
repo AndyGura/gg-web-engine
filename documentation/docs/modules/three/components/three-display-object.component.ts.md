@@ -1,6 +1,6 @@
 ---
 title: three/components/three-display-object.component.ts
-nav_order: 143
+nav_order: 149
 parent: Modules
 ---
 
@@ -81,7 +81,7 @@ addToWorld(world: ThreeGgWorld): void
 **Signature**
 
 ```ts
-removeFromWorld(world: ThreeGgWorld): void
+removeFromWorld(world: ThreeGgWorld, dispose?: boolean): void
 ```
 
 ### dispose (method)

@@ -1,6 +1,6 @@
 ---
 title: core/3d/components/rendering/i-visual-scene-3d.component.ts
-nav_order: 38
+nav_order: 40
 parent: Modules
 ---
 

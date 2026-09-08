@@ -75,8 +75,11 @@ export class ThreeDisplayObjectComponent implements IDisplayObject3dComponent<Th
     world.visualScene.nativeScene?.add(this.nativeMesh);
   }
 
-  removeFromWorld(world: ThreeGgWorld): void {
+  removeFromWorld(world: ThreeGgWorld, dispose?: boolean): void {
     world.visualScene.nativeScene?.remove(this.nativeMesh);
+    if (dispose) {
+      this.dispose();
+    }
   }
 
   dispose(): void {

@@ -66,9 +66,9 @@ export class AmmoRigidBodyComponent
     super.addToWorld(world);
   }
 
-  removeFromWorld(world: AmmoGgWorld): void {
+  removeFromWorld(world: AmmoGgWorld, dispose?: boolean): void {
     this.world.dynamicAmmoWorld?.removeRigidBody(this.nativeBody);
-    super.removeFromWorld(world);
+    super.removeFromWorld(world, dispose);
   }
 
   refreshCG(): void {

@@ -560,11 +560,21 @@
   readonly loader: PTypeDoc['loader']
 
   /** event emitter, emits newly added physics components */
-  readonly added$: Subject&lt;PTypeDoc['trigger'] | PTypeDoc['rigidBody'] | PTypeDoc['raycastVehicle'] | any&gt;
+  readonly added$: Subject&lt;
+    PTypeDoc['trigger'] | PTypeDoc['rigidBody'] | PTypeDoc['raycastVehicle'] | PTypeDoc['characterController'] | any
+  &gt;
   /** event emitter, emits just removed physics components */
-  readonly removed$: Subject&lt;PTypeDoc['trigger'] | PTypeDoc['rigidBody'] | PTypeDoc['raycastVehicle'] | any&gt;
+  readonly removed$: Subject&lt;
+    PTypeDoc['trigger'] | PTypeDoc['rigidBody'] | PTypeDoc['raycastVehicle'] | PTypeDoc['characterController'] | any
+  &gt;
   /** list of currently added to world physics components */
-  readonly children: (PTypeDoc['trigger'] | PTypeDoc['rigidBody'] | PTypeDoc['raycastVehicle'] | any)[]
+  readonly children: (
+    | PTypeDoc['trigger']
+    | PTypeDoc['rigidBody']
+    | PTypeDoc['raycastVehicle']
+    | PTypeDoc['characterController']
+    | any
+  )[]
 }
 </code></pre>
 

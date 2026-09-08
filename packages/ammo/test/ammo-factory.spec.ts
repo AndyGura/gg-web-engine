@@ -85,4 +85,32 @@ describe('AmmoFactory', () => {
       body: { dynamic: false, mass: 0 },
     })).toThrow(/not implemented for Ammo\.js/);
   });
+
+  describe('createCharacterController', () => {
+    it('should create a working character controller that falls and settles on a floor', () => {
+      const floor = factory.createRigidBody(
+        { shape: { shape: 'BOX', dimensions: { x: 50, y: 50, z: 1 } }, body: { dynamic: false, mass: 0 } },
+        { position: { x: 0, y: 0, z: -0.5 } },
+      );
+      floor.addToWorld({ physicsWorld: world } as any);
+
+      const character = factory.createCharacterController(
+        { radius: 0.4, centersDistance: 1.0 },
+        { position: { x: 1, y: 2, z: 5 } },
+      );
+      character.addToWorld({ physicsWorld: world } as any);
+
+      expect(character.position).toEqual({ x: 1, y: 2, z: 5 });
+      expect(character.radius).toBe(0.4);
+      expect(character.centersDistance).toBe(1.0);
+
+      character.move({ x: 0, y: 0, z: -10 });
+
+      expect(character.isGrounded).toBe(true);
+      expect(character.position.x).toBeCloseTo(1);
+      expect(character.position.y).toBeCloseTo(2);
+      expect(character.position.z).toBeGreaterThan(0.85);
+      expect(character.position.z).toBeLessThan(0.95);
+    });
+  });
 });

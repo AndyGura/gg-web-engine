@@ -1,6 +1,6 @@
 ---
 title: core/2d/components/physics/i-rigid-body-2d.component.ts
-nav_order: 12
+nav_order: 13
 parent: Modules
 ---
 

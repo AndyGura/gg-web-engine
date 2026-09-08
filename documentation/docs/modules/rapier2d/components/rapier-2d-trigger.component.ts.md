@@ -1,6 +1,6 @@
 ---
 title: rapier2d/components/rapier-2d-trigger.component.ts
-nav_order: 128
+nav_order: 133
 parent: Modules
 ---
 
@@ -54,7 +54,7 @@ addToWorld(world: Rapier2dGgWorld): void
 **Signature**
 
 ```ts
-removeFromWorld(world: Rapier2dGgWorld)
+removeFromWorld(world: Rapier2dGgWorld, dispose?: boolean)
 ```
 
 ### checkOverlaps (method)

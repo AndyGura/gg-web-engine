@@ -9,10 +9,15 @@ import {
 } from '@gg-web-engine/core';
 import { EventQueue, init, Vector3, World } from '@dimforge/rapier3d-compat';
 import { Rapier3dRigidBodyComponent } from './rapier-3d-rigid-body.component';
+import { Rapier3dCharacterControllerComponent } from './rapier-3d-character-controller.component';
 import { Rapier3dFactory } from '../rapier-3d-factory';
 import { Rapier3dLoader } from '../rapier-3d-loader';
 import { Rapier3dPhysicsTypeDocRepo } from '../types';
 import { Subject } from 'rxjs';
+
+// bodies that get pushed into `children`/`added$`/`removed$` - see Rapier3dWorldComponent's ctor.
+// `handleIdEntityMap` deliberately stays narrower (see Rapier3dCharacterControllerComponent's doc).
+type Rapier3dWorldChild = Rapier3dRigidBodyComponent | Rapier3dCharacterControllerComponent;
 
 export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3dPhysicsTypeDocRepo> {
   private _factory: Rapier3dFactory | null = null;
@@ -31,9 +36,9 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
     return this._loader;
   }
 
-  public readonly added$: Subject<Rapier3dRigidBodyComponent> = new Subject();
-  public readonly removed$: Subject<Rapier3dRigidBodyComponent> = new Subject();
-  public readonly children: Rapier3dRigidBodyComponent[] = [];
+  public readonly added$: Subject<Rapier3dWorldChild> = new Subject();
+  public readonly removed$: Subject<Rapier3dWorldChild> = new Subject();
+  public readonly children: Rapier3dWorldChild[] = [];
 
   private _gravity: Point3 = { x: 0, y: 0, z: -9.82 };
   public get gravity(): Point3 {

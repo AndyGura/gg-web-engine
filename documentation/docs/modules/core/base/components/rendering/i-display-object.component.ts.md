@@ -1,6 +1,6 @@
 ---
 title: core/base/components/rendering/i-display-object.component.ts
-nav_order: 76
+nav_order: 81
 parent: Modules
 ---
 
@@ -42,6 +42,6 @@ export interface IDisplayObjectComponent<D, R, VTypeDoc extends VisualTypeDocRep
 
   addToWorld(world: GgWorld<D, R, GgWorldTypeDocVPatch<D, R, VTypeDoc>>): void
 
-  removeFromWorld(world: GgWorld<D, R, GgWorldTypeDocVPatch<D, R, VTypeDoc>>): void
+  removeFromWorld(world: GgWorld<D, R, GgWorldTypeDocVPatch<D, R, VTypeDoc>>, dispose?: boolean): void
 }
 ```

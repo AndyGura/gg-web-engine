@@ -75,6 +75,36 @@ the repo root first if the local adapter packages themselves need to pick up loc
 for the full "edit core, see it live in this example" watch-mode loop (`tsc -b
 --watch` + `npm start`), see `gg-engine-core-development`'s local dev workflow section.
 
+**Do not run a bare `npm install` inside the example directory after this script** (with at least
+npm v11) — `npm link <path>` only creates the `node_modules/@gg-web-engine/*` symlinks, it does not
+add a `file:`-style entry back into `package.json` or `package-lock.json` (verified: neither file
+gains any `@gg-web-engine` line after linking). Since the script already stripped the
+`@gg-web-engine/*` lines from `package.json` earlier in the same run, the linked packages are
+untracked as far as npm's dependency resolution is concerned, and a subsequent plain `npm install`
+prunes them straight back out as extraneous — `node_modules/@gg-web-engine/` ends up empty again
+and the next build fails to resolve those imports. The script's own internal `npm install` (which
+runs *before* it links) already installs every other dependency, so no further `npm install` is
+needed at all — go straight to `npm run build`/`npm start` after the script finishes. If something
+did run a bare `npm install` afterwards by mistake, just re-run
+`bash etc/switch_example_to_local_gg.sh examples/<your-example-dir>` (idempotent) to relink before
+building again.
+
+**The script's very first step is `git checkout -- package.json tsconfig.json`** (that's what makes
+re-running it idempotent instead of compounding patches) — so if you've just hand-edited either file
+(e.g. adding a missing `@gg-web-engine/*` dependency line before it's been committed) and then run
+this script, your edit is silently discarded before the script even reads the file, and the
+`@gg-web-engine/` lines it greps for `libs=(...)`/`npm link`s come from the **committed** version, not
+your working tree. Symptom: the script exits 0 with no error, but `node_modules/@gg-web-engine/`
+ends up empty and nothing got linked — easy to misread as the script being broken. Either commit the
+package.json/tsconfig.json fix first, or skip the script and run its `npm link
+$(cd ../../packages/<lib> && pwd) ...` step by hand against your uncommitted file. This also means:
+**never commit an example while it's in its "switched" (locally-linked) state** — a commit made after
+running this script captures `package.json` with its `@gg-web-engine/*` lines already stripped
+(and, for an Ammo-backed example, `tsconfig.json`'s `paths` already rewritten to point into a linked
+package's own `node_modules`), so every future `git checkout`/clone of that commit starts from a
+broken, non-standalone package.json — run `restore_example_from_local_gg.sh` (or `git checkout` the
+two files back) before committing.
+
 ## Running
 
 ```bash
@@ -83,6 +113,52 @@ npm install
 npm run start   # webpack-dev-server, for plain webpack examples
 npm run build   # produces dist/bundle.js for static hosting
 ```
+
+## Live-debugging an example through browser automation
+
+When chasing a reported gameplay bug (movement/physics behaving wrong, not a build error), driving
+the actual running example through Chrome automation and inspecting live state beats guessing from
+source alone - but a background automation tab throttles `requestAnimationFrame` down to near zero
+FPS (confirmed empirically: a tab left running for real wall-clock seconds while backgrounded can
+report `0 FPS` and never fire a single real tick), which breaks two things at once if not worked
+around:
+
+- Any `await new Promise(r => setTimeout(...))`-based wait for "let a few real frames pass" in an
+  injected script can hang until the tool call itself times out, since the frames it's waiting on
+  never actually fire.
+- If the world *was* left running via its normal `requestAnimationFrame`-driven loop for a while
+  before you intervene, the first real tick that eventually does fire can report a huge one-frame
+  `delta` (real elapsed wall-clock time, not a sane ~16ms) - enough to send a physics-driven entity
+  flying or falling through geometry entirely in that single tick, which looks exactly like a real
+  physics bug but is purely a test-harness artifact.
+
+Sidestep both by never depending on real `requestAnimationFrame` ticks for the scripted part of a
+session at all: add `world.worldClock.pause();` on the very next line after `world.start();` in the
+example's `index.ts` (temporarily - revert before finishing), so the world is already paused by the
+time the page has rendered its first frame, and drive it entirely with manual, fixed-size steps
+instead - `world.worldClock.step(16)` in a loop - from an injected script. This gives fully
+deterministic, real-code-path ticks (the actual entity/component logic, not a re-implementation of
+it) with no dependency on wall-clock timing or tab visibility at all. Expose whatever
+entities/world reference the injected script needs via a temporary `(window as any).__gg = {
+world, ... };` line, and remove both temporary lines before finishing - see `git diff` on the
+example's `index.ts` to confirm nothing but the intended fix remains.
+
+**Real keyboard events do not reach a backgrounded automation tab at all** - confirmed empirically:
+dispatching a key press through the browser tool's OS-level key-press action produced *zero*
+`keydown` events even on a raw `window.addEventListener('keydown', ..., true)` listener added purely
+to check, for multiple different keys, while the same tab's mouse clicks did register. This isn't
+specific to this engine's `KeyboardInput` - no JS in the page saw the event at all. So a bug reported
+as "a key doesn't do anything" cannot be confirmed *or* ruled out this way; don't spend time
+concluding "reproduced" or "not reproduced" for a keyboard-only symptom from a real dispatched key
+press in this environment. What *does* work for exercising keyboard-driven behavior under automation
+is calling the input primitive's own emulate/test hooks directly from an injected script (e.g.
+`world.keyboardInput.emulateKeyDown('Space')`/`emulateKeyUp(...)`, mirroring what the engine's own
+integration tests do) - this proves the app logic downstream of a key press is correct, but tells you
+nothing about whether the real DOM event actually reaches that code in an actual browser (focus
+state, `preventDefault`/blacklisted-focused-element filtering, etc.) - treat a bug that only
+reproduces for a real user, not through either the emulate-hook path or a direct call into the
+gameplay API, as a real-browser-event-plumbing issue to reason through from source rather than one
+you can confirm live from this tool.
 
 ## Writing the demo itself
 

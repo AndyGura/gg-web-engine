@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/controllers/input/orbit-camera.controller.ts
-nav_order: 45
+nav_order: 48
 parent: Modules
 ---
 

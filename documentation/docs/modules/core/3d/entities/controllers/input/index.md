@@ -9,3 +9,4 @@ has_children: true
 - [core/3d/entities/controllers/input/free-camera.controller.ts](/gg-web-engine/modules/core/3d/entities/controllers/input/free-camera.controller.ts)
 - [core/3d/entities/controllers/input/gg-car-keyboard-handling.controller.ts](/gg-web-engine/modules/core/3d/entities/controllers/input/gg-car-keyboard-handling.controller.ts)
 - [core/3d/entities/controllers/input/orbit-camera.controller.ts](/gg-web-engine/modules/core/3d/entities/controllers/input/orbit-camera.controller.ts)
+- [core/3d/entities/controllers/input/player-character.controller.ts](/gg-web-engine/modules/core/3d/entities/controllers/input/player-character.controller.ts)

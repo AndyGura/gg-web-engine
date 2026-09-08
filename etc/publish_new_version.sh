@@ -35,7 +35,7 @@ upgrade() {
 wait_package_publish() {
     local package_name="$1"
     local desired_version="$2"
-    local timeout_seconds=300
+    local timeout_seconds=900
     echo Waiting $package_name@$desired_version to be available before continuation
     start_time=$(date +%s)
     while true; do
@@ -48,7 +48,7 @@ wait_package_publish() {
           echo "$current_version != $desired_version"
         fi
         if [ $elapsed_time -ge $timeout_seconds ]; then
-            echo "NPM package was not fully published after 5 minutes"
+            echo "NPM package was not fully published after 15 minutes"
             exit 1
         fi
         sleep 30

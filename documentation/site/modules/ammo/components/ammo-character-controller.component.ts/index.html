@@ -1,0 +1,949 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/ammo/components/ammo-character-controller.component.ts/">
+      
+      
+      
+      
+      <link rel="icon" href="../../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.4.6">
+    
+    
+      
+        <title>ammo/components/ammo-character-controller.component.ts - GG-web-engine</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../../assets/stylesheets/main.35e1ed30.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../../assets/stylesheets/palette.356b1318.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&"object"==typeof palette.color)for(var key of Object.keys(palette.color))document.body.setAttribute("data-md-color-"+key,palette.color[key])</script>
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#ammo-character-controllercomponent-overview" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../../.." title="GG-web-engine" class="md-header__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            GG-web-engine
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              ammo/components/ammo-character-controller.component.ts
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12c0-2.42-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/AndyGura/gg-web-engine" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.4.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../../.." title="GG-web-engine" class="md-nav__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    GG-web-engine
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/AndyGura/gg-web-engine" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.4.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Modules
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Modules
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ammo
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../core" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    core
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../matter" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    matter
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../pixi" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    pixi
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../rapier2d" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    rapier2d
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../rapier3d" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    rapier3d
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../three" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    three
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#ammo-character-controllercomponent-overview" class="md-nav__link">
+    ammo-character-controller.component overview
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#utils" class="md-nav__link">
+    utils
+  </a>
+  
+    <nav class="md-nav" aria-label="utils">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ammocharactercontrollercomponent-class" class="md-nav__link">
+    AmmoCharacterControllerComponent (class)
+  </a>
+  
+    <nav class="md-nav" aria-label="AmmoCharacterControllerComponent (class)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#move-method" class="md-nav__link">
+    move (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#iswalkablenormal-method" class="md-nav__link">
+    isWalkableNormal (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#backofffromobstacle-method" class="md-nav__link">
+    backOffFromObstacle (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#movehorizontalwithstepandslide-method" class="md-nav__link">
+    moveHorizontalWithStepAndSlide (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#trysnaptoground-method" class="md-nav__link">
+    trySnapToGround (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#recoverfrompenetration-method" class="md-nav__link">
+    recoverFromPenetration (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sweep-method" class="md-nav__link">
+    sweep (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pushdynamicbody-method" class="md-nav__link">
+    pushDynamicBody (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#refreshcg-method" class="md-nav__link">
+    refreshCG (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#addtoworld-method" class="md-nav__link">
+    addToWorld (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#removefromworld-method" class="md-nav__link">
+    removeFromWorld (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dispose-method" class="md-nav__link">
+    dispose (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clone-method" class="md-nav__link">
+    clone (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#entity-property" class="md-nav__link">
+    entity (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#radius-property" class="md-nav__link">
+    radius (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#centersdistance-property" class="md-nav__link">
+    centersDistance (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#debugbodysettings-property" class="md-nav__link">
+    debugBodySettings (property)
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+  
+
+
+<h2 id="ammo-character-controllercomponent-overview">ammo-character-controller.component overview</h2>
+<hr />
+<h2 class="text-delta">Table of contents</h2>
+
+<ul>
+<li><a href="#utils">utils</a></li>
+<li><a href="#ammocharactercontrollercomponent-class">AmmoCharacterControllerComponent (class)</a><ul>
+<li><a href="#move-method">move (method)</a></li>
+<li><a href="#iswalkablenormal-method">isWalkableNormal (method)</a></li>
+<li><a href="#backofffromobstacle-method">backOffFromObstacle (method)</a></li>
+<li><a href="#movehorizontalwithstepandslide-method">moveHorizontalWithStepAndSlide (method)</a></li>
+<li><a href="#trysnaptoground-method">trySnapToGround (method)</a></li>
+<li><a href="#recoverfrompenetration-method">recoverFromPenetration (method)</a></li>
+<li><a href="#sweep-method">sweep (method)</a></li>
+<li><a href="#pushdynamicbody-method">pushDynamicBody (method)</a></li>
+<li><a href="#refreshcg-method">refreshCG (method)</a></li>
+<li><a href="#addtoworld-method">addToWorld (method)</a></li>
+<li><a href="#removefromworld-method">removeFromWorld (method)</a></li>
+<li><a href="#dispose-method">dispose (method)</a></li>
+<li><a href="#clone-method">clone (method)</a></li>
+<li><a href="#entity-property">entity (property)</a></li>
+<li><a href="#radius-property">radius (property)</a></li>
+<li><a href="#centersdistance-property">centersDistance (property)</a></li>
+<li><a href="#debugbodysettings-property">debugBodySettings (property)</a></li>
+</ul>
+</li>
+</ul>
+<hr />
+<h1 id="utils">utils</h1>
+<h2 id="ammocharactercontrollercomponent-class">AmmoCharacterControllerComponent (class)</h2>
+<p>A capsule-shaped kinematic character controller implemented as a direct sweep-and-slide mover
+against Bullet's collision world (<code>btCollisionWorld.convexSweepTest</code>), rather than via Bullet's
+own <code>btKinematicCharacterController</code>.</p>
+<p><strong>Why not <code>btKinematicCharacterController</code></strong>: it was the first approach tried here, but its
+<code>setWalkDirection</code>/<code>preStep</code>/<code>playerStep</code> sequence - driven directly (never via <code>world.addAction</code>/
+<code>stepSimulation</code>, to keep <code>move()</code> synchronous per this interface's contract) - never produced any
+collision response at all in this package's pinned Ammo.js WASM build, for either horizontal or
+vertical displacement (verified empirically: a capsule dropped straight through a static floor
+and a wall alike, with <code>onGround()</code> reporting stale/incorrect state throughout). A parallel direct
+<code>btCollisionWorld.convexSweepTest</code> call against the exact same shape/world/transforms, by
+contrast, correctly detected both - confirming the collision world/broadphase/shape setup is
+fine, and the bug is specific to <code>btKinematicCharacterController</code>'s own internal sweep in this
+build (root cause not fully identified; plausibly a stale/never-populated
+<code>btGhostObject</code>/overlapping-pairs cache that its internals depend on, since that cache stayed at
+0 pairs throughout, or a build-specific miscompilation of that class - <code>convexSweepTest</code> itself
+needs no such cache, doing a fresh broadphase query per call). Building movement directly on
+<code>convexSweepTest</code> sidesteps the class entirely and is fully understood/controlled by this file.
+A <code>btPairCachingGhostObject</code> is still used as the character's collision-object identity (added to
+the collision world so other queries/debug views can see it, and so <code>AmmoBodyComponent</code>'s
+position/rotation get/set work off its transform like any other body) - it just isn't driven by
+<code>btKinematicCharacterController</code> any more.</p>
+<p>Divergences from the interface's own options, documented here since Ammo/Bullet has no direct
+equivalent for them:</p>
+<ul>
+<li><code>minStepWidth</code> is not honored - this mover's step-up assist always attempts a step (up to
+  <code>maxStepHeight</code>) with no separate "is there enough room on top" width check.</li>
+<li><code>groundNormal</code> is the sweep-hit normal when grounded via the main vertical sweep, or <code>up</code> when
+  grounded via the extra ground-snap ray; <code>null</code> while airborne.</li>
+</ul>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export declare class AmmoCharacterControllerComponent {
+  constructor(
+    world: AmmoWorldComponent,
+    options: CharacterController3dOptions,
+    transform?: { position?: Point3; rotation?: Point4 }
+  )
+}
+</code></pre>
+<h3 id="move-method">move (method)</h3>
+<p>Moves the character by exactly <code>desiredTranslation</code>, resolved fully synchronously via a
+sequence of <code>convexSweepTest</code> calls against the current collision world - see this class's doc
+for why <code>btKinematicCharacterController</code> isn't used. Splits the desired displacement into a
+horizontal part (swept with a single step-up assist and a single slide-along-the-surface bounce)
+and a vertical part (swept straight, used to detect the ground), then falls back to a short
+extra downward ray (mirroring <code>snapToGroundDistance</code>) when the vertical sweep alone didn't find
+ground this tick (e.g. standing still, or walking off a slope with no explicit vertical input).</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">move(desiredTranslation: Point3, dt?: number): void
+</code></pre>
+<h3 id="iswalkablenormal-method">isWalkableNormal (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private isWalkableNormal(normal: Point3, up: Point3): boolean
+</code></pre>
+<h3 id="backofffromobstacle-method">backOffFromObstacle (method)</h3>
+<p><code>convexSweepTest</code>'s <code>allowedCcdPenetration</code> (passed as <code>skin</code> to every <code>sweep()</code> call in this
+class) lets a blocked sweep's returned <code>fraction</code> land the capsule up to that amount <em>inside</em>
+whatever it hit, by design (see <code>sweep()</code>'s own doc). Most callers of <code>position</code> never notice
+this - a resting height a hair lower than geometrically exact is invisible - but
+<code>CharacterController3dEntity.tryStandUp</code>'s headroom raycast (core, shared across every backend)
+starts its ray only a hair above the character's <em>current</em> top, trusting that point to be
+outside every body but the character's own. A landing position left embedded in a ceiling after
+a blocked <em>upward</em> sweep breaks that assumption: the "hair above" point ends up inside the
+ceiling too, so the ray never registers an entry hit against it and the headroom check wrongly
+reports "clear" - regression, found jumping while crouched under a ceiling too low to stand
+under: the character reset to standing height and visibly clipped into it. Backing the landing
+position off by <code>contactClearance</code> (comfortably more than the sweep's own <code>allowedCcdPenetration</code>
+itself, not just enough to cancel it out) right here, at the source, keeps every consumer of
+<code>position</code> (not just that one call site) from ever seeing an embedded result, rather than
+patching each caller individually.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private backOffFromObstacle(pos: Point3, dir: Point3, travelled: number, amount: number): Point3
+</code></pre>
+<h3 id="movehorizontalwithstepandslide-method">moveHorizontalWithStepAndSlide (method)</h3>
+<p>Sweeps the horizontal delta; if blocked, attempts a single "step up by maxStepHeight, retry
+horizontally, settle back down" pass (for small ledges/stairs), otherwise slides once along the
+remaining blocked distance, projected onto the obstacle's surface plane.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private moveHorizontalWithStepAndSlide(
+    start: Point3,
+    horizontal: Point3,
+    up: Point3,
+    skin: number,
+    dt: number | undefined,
+  ): Point3
+</code></pre>
+<h3 id="trysnaptoground-method">trySnapToGround (method)</h3>
+<p>One extra downward ray beyond the main vertical sweep above - lets a still/near-ground
+character (zero or near-zero vertical input this tick) register as grounded, and approximates
+<code>snapToGroundDistance</code> for following a slope/staircase down without briefly going airborne each
+step. The ray starts a hair below the capsule's actual bottom point (past its own outward
+surface) so it can never register a hit against the character's own shape.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private trySnapToGround(pos: Point3, up: Point3, skin: number): { position: Point3; normal: Point3 } | null
+</code></pre>
+<h3 id="recoverfrompenetration-method">recoverFromPenetration (method)</h3>
+<p>Pushes the character out of any body it currently overlaps, iterating a few times since
+resolving one contact can reveal/deepen another. Must run before any sweep this tick.</p>
+<p><strong>Why this is needed</strong>: <code>convexSweepTest</code> (used throughout this class - see this method's
+sibling <code>sweep()</code>) is a conservative-advancement cast that can only compute a time-of-impact
+when it <em>starts</em> outside the target - a well-documented Bullet/GJK limitation. Once this
+character's shape ends up even slightly embedded in another body, every subsequent
+<code>convexSweepTest</code> against that body silently reports no hit at all, from any position, in any
+direction - not a jitter or a one-tick glitch, a permanent blind spot to that specific body -
+so the character walks straight through it, undetected, forever after. This is exactly how a
+character could walk clean through a low overhead beam: approaching it slowed the character
+down correctly (a legitimate, not-yet-penetrating sweep hit each tick), but the moment it got
+close enough to end up a hair inside the beam - e.g. from <code>allowedPenetration</code>/<code>skin</code> tolerance
+on a settle, or simply the discrete per-tick step distance overshooting the exact contact point</p>
+<ul>
+<li>the very next <code>move()</code> found nothing there at all (regression, found by walking under such a
+  beam in the example scene). Bullet's own <code>btKinematicCharacterController</code> (not used here - see
+  the class doc) avoids this with its own internal <code>recoverFromPenetration</code> step before every
+  sweep; this is that same step, built on the one discrete-overlap query Ammo's embind bindings
+  expose for it - <code>btCollisionWorld.contactTest</code>.</li>
+</ul>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private recoverFromPenetration(pos: Point3): Point3
+</code></pre>
+<h3 id="sweep-method">sweep (method)</h3>
+<p>A single <code>convexSweepTest</code> of this character's capsule from <code>from</code> to <code>to</code>, filtered by this
+component's own collision groups - see this class's doc for why this replaces
+<code>btKinematicCharacterController</code> entirely.</p>
+<p>Bug found empirically: <code>convexSweepTest</code> has no built-in "don't hit me" concept the way
+<code>btKinematicCharacterController</code>'s own internal callback does (it excludes its ghost object by
+identity, which the embind-exposed <code>ClosestConvexResultCallback</code> here has no hook to replicate
+from JS) - so a sweep of this exact capsule shape, starting essentially at the ghost object's
+own current position, was matching <strong>the character's own collider</strong> as the closest hit (fraction
+≈ 0, a plausible-looking but bogus surface normal), on every call, regardless of direction or
+whether anything else was even present in the scene. This capped ordinary walking to a small,
+direction-dependent fraction of the intended speed (a resting capsule always overlaps its own
+ghost object's collider by definition, and floating-point noise in exactly how much made some
+directions look worse than others). Fixed by pulling the ghost object out of the collision world
+for the duration of the sweep - cheap (a handful of sweeps per tick, not per physics step) and
+fully correct, unlike trying to filter by collision group/mask (this character's own group
+generally isn't exclusive to it - e.g. it shares the default group with ordinary static
+geometry - so masking it out would also hide real obstacles, not just self).</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private sweep(from: Point3, to: Point3, allowedPenetration: number): SweepResult
+</code></pre>
+<h3 id="pushdynamicbody-method">pushDynamicBody (method)</h3>
+<p>Shoves a dynamic body the character bumped into this tick - kinematic character movement here
+is a direct sweep-and-slide against the collision world (see this class's doc), not a real
+rigid body integrated by the constraint solver, so nothing pushes a dynamic body out of the
+way for free the way one rigid body pushes another; this is that push, added explicitly.</p>
+<p>Models the contact as a simple inelastic collision against a virtual body of mass
+<code>resolvedOptions.pushMass</code> moving at <code>characterSpeed</code> (recovered by the caller from this tick's
+horizontal displacement and <code>dt</code> - real m/s, not a raw per-tick distance): the hit body's
+velocity along the push direction is driven towards <code>characterSpeed * pushMass / (pushMass +
+bodyMass)</code>, so a body much lighter than <code>pushMass</code> ends up shoved at close to the character's
+own speed and a much heavier one barely moves - both proportional to the actual mass
+difference, unlike Bullet's own ghost-vs-rigid-body contact response (this character is a
+<code>btPairCachingGhostObject</code>, which <code>btRigidBody::upcast</code> can't resolve back to a rigid body -
+the constraint solver would otherwise treat it as an immovable fixed body, so the <em>positional</em>
+penetration-recovery correction it generates lands entirely on the other body regardless of
+that body's own mass; <code>CF_NO_CONTACT_RESPONSE</code> on this character's ghost object, see this
+class's own doc, suppresses that native response so this method is the sole source of any push
+a dynamic body feels). Only sets linear velocity, never touches angular - a pushed sphere still
+visibly rolls (rather than just sliding), but that now comes entirely from its own subsequent
+floor-friction contacts converting slide into roll, same as it would for any other sliding
+object; no per-shape special-casing needed here (see <code>AmmoFactory.createRigidBodyFromShape</code>'s
+<code>m_rollingFriction</code> note for why that conversion didn't use to happen at all).</p>
+<p>Only ever <em>adds</em> forward velocity along the push direction (never removes any) - a body already
+outrunning the character in that direction (e.g. one that was already flung away by an earlier,
+harder push) is left alone rather than being slowed back down to <code>characterSpeed</code>'s pace.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private pushDynamicBody(hitObjectPtr: number, direction: Point3, characterSpeed: number): void
+</code></pre>
+<h3 id="refreshcg-method">refreshCG (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">refreshCG(): void
+</code></pre>
+<h3 id="addtoworld-method">addToWorld (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">addToWorld(world: AmmoGgWorld): void
+</code></pre>
+<h3 id="removefromworld-method">removeFromWorld (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">removeFromWorld(world: AmmoGgWorld, dispose?: boolean): void
+</code></pre>
+<h3 id="dispose-method">dispose (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">dispose(): void
+</code></pre>
+<h3 id="clone-method">clone (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">clone(): AmmoCharacterControllerComponent
+</code></pre>
+<h3 id="entity-property">entity (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">entity: any
+</code></pre>
+<h3 id="radius-property">radius (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly radius: number
+</code></pre>
+<h3 id="centersdistance-property">centersDistance (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly centersDistance: number
+</code></pre>
+<h3 id="debugbodysettings-property">debugBodySettings (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly debugBodySettings: any
+</code></pre>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../../../..", "features": ["navigation.indexes", "navigation.instant", "navigation.tracking"], "search": "../../../../assets/javascripts/workers/search.f886a092.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../../../assets/javascripts/bundle.aecac24b.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,6 +1,6 @@
 ---
 title: rapier3d/components/rapier-3d-world.component.ts
-nav_order: 136
+nav_order: 142
 parent: Modules
 ---
 
@@ -109,7 +109,7 @@ readonly removed$: any
 **Signature**
 
 ```ts
-readonly children: Rapier3dRigidBodyComponent[]
+readonly children: Rapier3dWorldChild[]
 ```
 
 ### mainCollisionGroup (property)

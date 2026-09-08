@@ -15,6 +15,7 @@ parent: Modules
     - [createRigidBody (method)](#createrigidbody-method)
     - [createTrigger (method)](#createtrigger-method)
     - [createRaycastVehicle (method)](#createraycastvehicle-method)
+    - [createCharacterController (method)](#createcharactercontroller-method)
     - [createShape (method)](#createshape-method)
     - [createRigidBodyFromShape (method)](#createrigidbodyfromshape-method)
     - [createTriggerFromShape (method)](#createtriggerfromshape-method)
@@ -67,6 +68,20 @@ createTrigger(
 
 ```ts
 createRaycastVehicle(chassis: AmmoRigidBodyComponent): AmmoRaycastVehicleComponent
+```
+
+### createCharacterController (method)
+
+**Signature**
+
+```ts
+createCharacterController(
+    options: CharacterController3dOptions,
+    transform?: {
+      position?: Point3;
+      rotation?: Point4;
+    },
+  ): AmmoCharacterControllerComponent
 ```
 
 ### createShape (method)

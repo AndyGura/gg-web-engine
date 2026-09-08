@@ -12,7 +12,10 @@ import { IDisplayObject3dComponent } from './components/rendering/i-display-obje
 import { IRaycastVehicleComponent } from './components/physics/i-raycast-vehicle.component';
 import { IRigidBody3dComponent } from './components/physics/i-rigid-body-3d.component';
 import { ITrigger3dComponent } from './components/physics/i-trigger-3d.component';
+import { ICharacterController3dComponent } from './components/physics/i-character-controller-3d.component';
 import { IDisplayObject3dComponentLoader, IPhysicsBody3dComponentLoader } from './loaders';
+import { CharacterController3dEntity } from './entities/character-controller-3d.entity';
+import { PlayerCharacterController } from './entities/controllers/input/player-character.controller';
 
 export type VisualTypeDocRepo3D = {
   factory: IDisplayObject3dComponentFactory;
@@ -30,6 +33,7 @@ export type PhysicsTypeDocRepo3D = {
   rigidBody: IRigidBody3dComponent;
   trigger: ITrigger3dComponent;
   raycastVehicle: IRaycastVehicleComponent;
+  characterController: ICharacterController3dComponent;
 };
 
 export type Gg3dWorldTypeDocRepo = {
@@ -135,20 +139,20 @@ export class Gg3dWorld<
       async (...args: string[]) => {
         const [name, x, y, z] = args;
         if (!name) {
-          throw new Error('usage: set_position <name> <x> <y> <z>');
+          throw new Error('usage: set_position NAME X Y Z');
         }
         const entity = this.getEntityByName(name);
         if (!('position' in entity)) {
           throw new Error(`Entity "${name}" (${entity.constructor.name}) has no position`);
         }
         if ([x, y, z].some(v => v === undefined || isNaN(+v))) {
-          throw new Error('usage: set_position <name> <x> <y> <z>');
+          throw new Error('usage: set_position NAME X Y Z');
         }
         (entity as unknown as Entity3d<TypeDoc>).position = { x: +x, y: +y, z: +z };
         return JSON.stringify((entity as unknown as Entity3d<TypeDoc>).position);
       },
       'args: [ string, float, float, float ]; Teleport a named entity to world-space coordinates. ' +
-        'Use "entities"/"entity <name>" to find entity names and their current position',
+        'Use "entities"/"entity NAME" to find entity names and their current position',
     );
     ggstatic.registerConsoleCommand(
       this,
@@ -156,7 +160,7 @@ export class Gg3dWorld<
       async (...args: string[]) => {
         const [name, ...rest] = args;
         if (!name) {
-          throw new Error('usage: set_rotation <name> <x> <y> <z> [w]');
+          throw new Error('usage: set_rotation NAME X Y Z [W]');
         }
         const entity = this.getEntityByName(name);
         if (!('rotation' in entity)) {
@@ -164,9 +168,7 @@ export class Gg3dWorld<
         }
         const nums = rest.map(Number);
         if (nums.length !== 3 && nums.length !== 4) {
-          throw new Error(
-            'usage: set_rotation <name> <x> <y> <z> (euler, radians) OR set_rotation <name> <x> <y> <z> <w> (quaternion)',
-          );
+          throw new Error('usage: set_rotation NAME X Y Z (euler, radians) OR set_rotation NAME X Y Z W (quaternion)');
         }
         if (nums.some(Number.isNaN)) {
           throw new Error('Wrong arguments');
@@ -187,7 +189,7 @@ export class Gg3dWorld<
       async (...args: string[]) => {
         const [shapeArg, x, y, z, dynamicArg] = args;
         if ([x, y, z].some(v => v === undefined || isNaN(+v))) {
-          throw new Error('usage: spawn <BOX|SPHERE|CYLINDER|CONE|CAPSULE|PLANE> <x> <y> <z> [dynamic=0|1]');
+          throw new Error('usage: spawn BOX|SPHERE|CYLINDER|CONE|CAPSULE|PLANE X Y Z [dynamic=0|1]');
         }
         const dynamic = dynamicArg === undefined ? true : dynamicArg === '1';
         let shape: BodyShape3DDescriptor['shape'];
@@ -239,6 +241,54 @@ export class Gg3dWorld<
         'args: [ ?float, ?float, ?float ]; Get or set 3D world gravity vector. 1 argument sets ' +
           'vector {x: 0, y: 0, z: -value}, 3 arguments set the whole vector.' +
           ' Default value is "9.82" or "0 0 -9.82"',
+      );
+      ggstatic.registerConsoleCommand(
+        this,
+        'player_spawn',
+        async (...args: string[]) => {
+          const [x, y, z] = args;
+          if ([x, y, z].some(v => v === undefined || isNaN(+v))) {
+            throw new Error('usage: player_spawn X Y Z');
+          }
+          const renderer = this.renderers[0] as Renderer3dEntity<TypeDoc['vTypeDoc']> | undefined;
+          if (!renderer) {
+            throw new Error('Cannot spawn a player without a renderer - call addRenderer first');
+          }
+          const characterController = this.physicsWorld!.factory.createCharacterController(
+            { radius: 0.4, centersDistance: 1.0 },
+            { position: { x: +x, y: +y, z: +z } },
+          );
+          const character = new CharacterController3dEntity<TypeDoc>(
+            { radius: 0.4, centersDistance: 1.0 },
+            this.visualScene?.factory.createCapsule(0.4, 1.0) ?? null,
+            characterController,
+          );
+          this.addEntity(character);
+          const controller = new PlayerCharacterController<TypeDoc>(this.keyboardInput, character, renderer);
+          this.addEntity(controller);
+          return `spawned "${character.name}" at ${JSON.stringify(character.position)}, controlled by "${controller.name}"`;
+        },
+        'usage: player_spawn X Y Z; Spawn a default player character (capsule body, WASD/' +
+          'arrows movement, mouse-look) at world-space position X Y Z (Z-up, so Z is height off ' +
+          "the ground) and control the first renderer's camera with it. Prints the spawned " +
+          'controller entity\'s name (the "controlled by" part of the output) - pass that name to ' +
+          '"player_mode" to switch it between first/third person',
+      );
+      ggstatic.registerConsoleCommand(
+        this,
+        'player_mode',
+        async (...args: string[]) => {
+          const [name, mode] = args;
+          if (!name || (mode !== 'first-person' && mode !== 'third-person')) {
+            throw new Error('usage: player_mode NAME first-person|third-person');
+          }
+          const controller = this.getEntityByName<PlayerCharacterController<TypeDoc>>(name);
+          controller.viewMode = mode;
+          return controller.viewMode;
+        },
+        'usage: player_mode NAME first-person|third-person; Switch the PlayerCharacterController ' +
+          'entity named NAME - the controller name printed by "player_spawn" (the "controlled ' +
+          'by" part of its output) - between first- and third-person view',
       );
     }
   }

@@ -70,7 +70,7 @@ addToWorld(world: AmmoGgWorld): void
 **Signature**
 
 ```ts
-removeFromWorld(world: AmmoGgWorld): void
+removeFromWorld(world: AmmoGgWorld, dispose: boolean = false): void
 ```
 
 ### dispose (method)

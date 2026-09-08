@@ -30,5 +30,5 @@ export interface IBodyComponent<
 
   addToWorld(world: GgWorld<D, R, GgWorldTypeDocPPatch<D, R, PTypeDoc>>): void;
 
-  removeFromWorld(world: GgWorld<D, R, GgWorldTypeDocPPatch<D, R, PTypeDoc>>): void;
+  removeFromWorld(world: GgWorld<D, R, GgWorldTypeDocPPatch<D, R, PTypeDoc>>, dispose?: boolean): void;
 }

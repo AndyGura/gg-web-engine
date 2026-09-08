@@ -80,11 +80,23 @@ export class AmmoRaycastVehicleComponent
     this.world.added$.next(this);
   }
 
-  removeFromWorld(world: AmmoGgWorld) {
+  removeFromWorld(world: AmmoGgWorld, dispose?: boolean) {
     this.addedToWorld = false;
     this.chassisBody.removeFromWorld(world);
     this.world.dynamicAmmoWorld!.removeAction(this.nativeVehicle);
     this.world.removed$.next(this);
+    if (dispose) {
+      this.dispose();
+    }
+  }
+
+  dispose(): void {
+    Ammo.destroy(this.nativeVehicle);
+    Ammo.destroy(this.vehicleTuning);
+    Ammo.destroy(this.raycaster);
+    Ammo.destroy(this.wheelDirectionCS0);
+    Ammo.destroy(this.wheelAxleCS);
+    super.dispose();
   }
 
   addWheel(options: WheelOptions, suspensionOptions: SuspensionOptions): void {

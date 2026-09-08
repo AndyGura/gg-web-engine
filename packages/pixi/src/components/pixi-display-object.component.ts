@@ -67,8 +67,11 @@ export class PixiDisplayObjectComponent implements IDisplayObject2dComponent<Pix
     world.visualScene.nativeContainer?.addChild(this.nativeSprite);
   }
 
-  removeFromWorld(world: PixiGgWorld): void {
+  removeFromWorld(world: PixiGgWorld, dispose?: boolean): void {
     world.visualScene.nativeContainer?.removeChild(this.nativeSprite);
+    if (dispose) {
+      this.dispose();
+    }
   }
 
   dispose(): void {

@@ -9,7 +9,8 @@
   "scripts": {
     "build": "npm run build -w packages/core && npm run prettier-format --workspaces --if-present && npm run build --workspaces --if-present",
     "build:watch": "tsc -b --watch",
-    "clean": "tsc -b --clean"
+    "clean": "tsc -b --clean",
+    "test": "npm run test --workspace=packages --if-present"
   },
   "devDependencies": {
     "typescript": "~6.0.3"

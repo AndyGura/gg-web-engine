@@ -1,6 +1,6 @@
 ---
 title: core/base/components/physics/i-trigger.component.ts
-nav_order: 75
+nav_order: 80
 parent: Modules
 ---
 

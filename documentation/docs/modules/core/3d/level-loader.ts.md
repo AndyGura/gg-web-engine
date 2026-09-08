@@ -1,6 +1,6 @@
 ---
 title: core/3d/level-loader.ts
-nav_order: 58
+nav_order: 62
 parent: Modules
 ---
 
@@ -18,6 +18,7 @@ parent: Modules
     - [createPrimitive (method)](#createprimitive-method)
     - [createTrigger (method)](#createtrigger-method)
     - [createCamera (method)](#createcamera-method)
+    - [createPlayer (method)](#createplayer-method)
     - [resolveWheelDisplay (method)](#resolvewheeldisplay-method)
     - [createGgCar (method)](#createggcar-method)
     - [createMapGraph (method)](#createmapgraph-method)
@@ -29,6 +30,7 @@ parent: Modules
   - [GgCarWheelSettings (type alias)](#ggcarwheelsettings-type-alias)
   - [MapGraph3DSettings (interface)](#mapgraph3dsettings-interface)
   - [MapGraphNodeJson (type alias)](#mapgraphnodejson-type-alias)
+  - [Player3DSettings (type alias)](#player3dsettings-type-alias)
   - [Primitive3DSettings (interface)](#primitive3dsettings-interface)
   - [Primitive3DShapeName (type alias)](#primitive3dshapename-type-alias)
   - [Trigger3DSettings (interface)](#trigger3dsettings-interface)
@@ -153,6 +155,22 @@ private createCamera(
     world: Gg3dWorld<TypeDoc>,
     settings: Camera3DSettings,
   ): Camera3dEntity<TypeDoc['vTypeDoc']> | undefined
+```
+
+### createPlayer (method)
+
+Create a `"Player"` entity: a capsule-shaped `CharacterController3dEntity`, with a matching
+auto-generated capsule mesh when `display` is given and there's a visual scene (physics-only/
+invisible otherwise). See `Player3DSettings`'s doc for why this doesn't also build a
+`PlayerCharacterController`.
+
+**Signature**
+
+```ts
+private createPlayer(
+    world: Gg3dWorld<TypeDoc>,
+    settings: Player3DSettings,
+  ): CharacterController3dEntity<TypeDoc> | undefined
 ```
 
 ### resolveWheelDisplay (method)
@@ -359,6 +377,32 @@ JSON-friendly counterpart of `MapGraphNodeType`: identical except `loadOptions` 
 ```ts
 export type MapGraphNodeJson = Omit<MapGraphNodeType, 'loadOptions'> & {
   loadOptions?: MapGraphNodeType['loadOptions']
+}
+```
+
+## Player3DSettings (type alias)
+
+Settings for the built-in `"Player"` entity class: a capsule-bodied `CharacterController3dEntity`
+(see that class's own doc for the gameplay fields below). Only the physics/visual capsule is
+built here - the input/camera wiring (`PlayerCharacterController`) needs a live canvas/
+`KeyboardInput`/renderer the app supplies, so it's left to the app's own code, the same way a
+`"Camera"` entity is just a positioned `Camera3dEntity` while `FreeCameraController`/
+`OrbitCameraController` wiring happens outside the level JSON too.
+
+**Signature**
+
+```ts
+export type Player3DSettings = Partial<Omit<CharacterController3dEntityOptions, 'radius' | 'centersDistance'>> & {
+  /** Spawn position of the character (capsule center). */
+  position?: Point3
+  /** Spawn rotation of the character. */
+  rotation?: Point4
+  /** Capsule radius. Default 0.4. */
+  radius?: number
+  /** Standing capsule centersDistance. Default 1.0. */
+  centersDistance?: number
+  /** Material options for the auto-generated capsule mesh; omit for a physics-only, invisible player. */
+  display?: DisplayObject3dOpts<any>
 }
 ```
 

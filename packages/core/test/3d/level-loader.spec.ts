@@ -1,11 +1,13 @@
 import {
   Camera3dEntity,
+  CharacterController3dEntity,
   Gg3dLevelLoader,
   Gg3dWorld,
   GgCarEntity,
   IEntity,
   LevelJson,
   MapGraph3dEntity,
+  Pnt3,
   RVEntityTractionBias,
   TickOrder,
   Trigger3dEntity,
@@ -13,6 +15,7 @@ import {
 import { mock3DBody } from '../mocks/body.mock';
 import { mock3DObject } from '../mocks/object.mock';
 import { mockRaycastVehicle } from '../mocks/raycast-vehicle.mock';
+import { mockCharacterController } from '../mocks/character-controller.mock';
 
 const defaultBody = {
   dynamic: true,
@@ -40,6 +43,7 @@ describe('Gg3dLevelLoader', () => {
           createPerspectiveCamera: jest.fn().mockReturnValue(mock3DObject()),
           createBox: jest.fn().mockReturnValue(mock3DObject()),
           createCylinder: jest.fn().mockReturnValue(mock3DObject()),
+          createCapsule: jest.fn().mockReturnValue(mock3DObject()),
         },
       },
       physicsWorld: {
@@ -47,6 +51,7 @@ describe('Gg3dLevelLoader', () => {
           createTrigger: jest.fn().mockReturnValue(mock3DBody()),
           createRigidBody: jest.fn().mockReturnValue(mock3DBody()),
           createRaycastVehicle: jest.fn().mockReturnValue(mockRaycastVehicle()),
+          createCharacterController: jest.fn().mockReturnValue(mockCharacterController()),
         },
       },
       addPrimitiveRigidBody: jest.fn().mockImplementation(() => new TestEntity()),
@@ -240,6 +245,87 @@ describe('Gg3dLevelLoader', () => {
       expect(cameraEntity).toBeInstanceOf(Camera3dEntity);
       expect(cameraEntity.position).toEqual({ x: 1, y: 2, z: 3 });
       expect(cameraEntity.rotation).toEqual({ x: 0, y: 0, z: 0, w: 1 });
+    });
+
+    it('should load a level with a Player, wrapped ready-to-use in a CharacterController3dEntity parented under the level', async () => {
+      const levelJson: LevelJson = {
+        entities: [
+          {
+            class: 'Player',
+            position: { x: 1, y: 2, z: 3 },
+            name: 'TestPlayer',
+            config: { radius: 0.4, centersDistance: 1.2, walkSpeed: 5 },
+          },
+        ],
+      };
+
+      const level = await levelLoader.loadLevel(levelJson);
+
+      expect(world.physicsWorld?.factory.createCharacterController).toHaveBeenCalledWith(
+        expect.objectContaining({ radius: 0.4, centersDistance: 1.2 }),
+        { position: { x: 1, y: 2, z: 3 }, rotation: undefined },
+      );
+      expect(world.visualScene?.factory.createCapsule).toHaveBeenCalledWith(0.4, 1.2, undefined);
+
+      const player = level.getChildEntityByName<CharacterController3dEntity>('TestPlayer');
+      expect(player).toBeInstanceOf(CharacterController3dEntity);
+      expect(player.position).toEqual({ x: 1, y: 2, z: 3 });
+      expect(player.options.walkSpeed).toBe(5);
+    });
+
+    it('never forwards `offset`/`maxStepHeight`/`minStepWidth`/`maxSlopeClimbAngleRad`/`snapToGroundDistance` as explicit `undefined` when a Player config omits them (regression: an explicit-`undefined` key overwrote each adapter/entity default instead of falling back to it - e.g. an unset `maxSlopeClimbAngleRad` silently disabled all ground detection)', async () => {
+      const levelJson: LevelJson = {
+        entities: [
+          { class: 'Player', position: { x: 0, y: 0, z: 0 }, name: 'TestPlayer', config: { radius: 0.4, centersDistance: 1.2 } },
+        ],
+      };
+
+      const level = await levelLoader.loadLevel(levelJson);
+
+      const [physicsOptions] = (world.physicsWorld?.factory.createCharacterController as jest.Mock).mock.calls[0];
+      for (const key of ['offset', 'maxStepHeight', 'minStepWidth', 'maxSlopeClimbAngleRad', 'snapToGroundDistance']) {
+        expect(physicsOptions).not.toHaveProperty(key);
+      }
+
+      const player = level.getChildEntityByName<CharacterController3dEntity>('TestPlayer');
+      // the entity itself must have fallen back to CharacterController3dEntity's own defaults too
+      expect(player.options.maxSlopeClimbAngleRad).toBeCloseTo((50 * Math.PI) / 180);
+      expect(player.options.snapToGroundDistance).toBeCloseTo(0.3);
+    });
+
+    it("forwards a Player config's `up`/`ownCollisionGroups`/`interactWithCollisionGroups` to `factory.createCharacterController` as well as to the entity (regression: these fell into the loader's `...gameplay` bucket and only ever reached `CharacterController3dEntity`'s cosmetic options, never the physics factory call)", async () => {
+      const levelJson: LevelJson = {
+        entities: [
+          {
+            class: 'Player',
+            position: { x: 0, y: 0, z: 0 },
+            name: 'TestPlayer',
+            config: {
+              radius: 0.4,
+              centersDistance: 1.2,
+              up: Pnt3.Y,
+              ownCollisionGroups: [2],
+              interactWithCollisionGroups: [3],
+            },
+          },
+        ],
+      };
+
+      const level = await levelLoader.loadLevel(levelJson);
+
+      expect(world.physicsWorld?.factory.createCharacterController).toHaveBeenCalledWith(
+        expect.objectContaining({
+          up: Pnt3.Y,
+          ownCollisionGroups: [2],
+          interactWithCollisionGroups: [3],
+        }),
+        { position: { x: 0, y: 0, z: 0 }, rotation: undefined },
+      );
+
+      const player = level.getChildEntityByName<CharacterController3dEntity>('TestPlayer');
+      expect(player.options.up).toEqual(Pnt3.Y);
+      expect(player.options.ownCollisionGroups).toEqual([2]);
+      expect(player.options.interactWithCollisionGroups).toEqual([3]);
     });
 
     // Common car fields shared by both wheelBase- and wheelOptions-based GgCar tests

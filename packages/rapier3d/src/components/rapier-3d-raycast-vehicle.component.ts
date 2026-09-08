@@ -46,14 +46,17 @@ export class Rapier3dRaycastVehicleComponent
     setInterval(() => this._nativeVehicle!.updateVehicle(0.01), 10);
   }
 
-  removeFromWorld(world: Rapier3dGgWorld) {
+  removeFromWorld(world: Rapier3dGgWorld, dispose?: boolean) {
     if (world.physicsWorld != this.world) {
       throw new Error('Rapier3D bodies cannot be shared between different worlds');
     }
     if (this.nativeVehicle) {
       world.physicsWorld.nativeWorld.removeVehicleController(this.nativeVehicle);
     }
-    super.removeFromWorld(world);
+    super.removeFromWorld(world, dispose);
+    if (dispose) {
+      this.dispose();
+    }
   }
 
   addWheel(options: WheelOptions, suspensionOptions: SuspensionOptions): void {

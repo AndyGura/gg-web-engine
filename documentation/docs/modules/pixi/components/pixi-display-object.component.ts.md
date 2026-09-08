@@ -1,6 +1,6 @@
 ---
 title: pixi/components/pixi-display-object.component.ts
-nav_order: 120
+nav_order: 125
 parent: Modules
 ---
 
@@ -81,7 +81,7 @@ addToWorld(world: PixiGgWorld): void
 **Signature**
 
 ```ts
-removeFromWorld(world: PixiGgWorld): void
+removeFromWorld(world: PixiGgWorld, dispose?: boolean): void
 ```
 
 ### dispose (method)
