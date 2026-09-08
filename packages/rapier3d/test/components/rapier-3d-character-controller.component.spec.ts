@@ -180,4 +180,35 @@ describe('Rapier3dCharacterControllerComponent', () => {
     expect(clone.position).toEqual(character.position);
     expect(clone.nativeBody).toBeNull();
   });
+
+  it('should clone from the CURRENT position/rotation, not the construction-time spawn point', () => {
+    const character = factory.createCharacterController(CHAR_OPTIONS, { position: { x: 0, y: 0, z: 5 } });
+    character.addToWorld({ physicsWorld: world } as any);
+    settleWorld();
+    // move the character away from its construction-time position via the position setter, the
+    // same code path that leaves `_bodyDescr` stale once `_nativeBody` exists
+    character.position = { x: 10, y: 20, z: 30 };
+
+    const clone = character.clone();
+
+    expect(clone.position).toEqual(character.position);
+    expect(clone.position).not.toEqual({ x: 0, y: 0, z: 5 });
+  });
+
+  it('move() before addToWorld() should be a silent no-op, not throw', () => {
+    const character = factory.createCharacterController(CHAR_OPTIONS, { position: { x: 0, y: 0, z: 5 } });
+    expect(() => character.move({ x: 1, y: 0, z: 0 })).not.toThrow();
+    expect(character.position).toEqual({ x: 0, y: 0, z: 5 });
+  });
+
+  it('should normalize a non-unit-length up vector, matching the Ammo adapter', () => {
+    const character = factory.createCharacterController(
+      { ...CHAR_OPTIONS, up: { x: 0, y: 0, z: 2 } },
+      { position: { x: 0, y: 0, z: 5 } },
+    );
+    expect(character.up).toEqual({ x: 0, y: 0, z: 1 });
+
+    character.up = { x: 0, y: 0, z: 3 };
+    expect(character.up).toEqual({ x: 0, y: 0, z: 1 });
+  });
 });

@@ -50,6 +50,10 @@ export interface ICharacterController3dComponent<
    * recover the character's actual speed (`desiredTranslation` magnitude / `dt`) rather than
    * working from a per-tick distance alone; a mover that doesn't implement pushing is free to
    * ignore it entirely.
+   *
+   * Calling this before the component has been added to a world (see `addToWorld`) must be a
+   * silent no-op rather than throwing, so backend-agnostic caller code behaves identically
+   * regardless of which adapter is plugged in.
    */
   move(desiredTranslation: Point3, dt?: number): void;
 

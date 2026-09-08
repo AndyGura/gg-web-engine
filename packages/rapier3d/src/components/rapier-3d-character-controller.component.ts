@@ -62,8 +62,8 @@ export class Rapier3dCharacterControllerComponent implements ICharacterControlle
   }
 
   public set up(value: Point3) {
-    this._up = value;
-    this._nativeController?.setUp(new Vector3(value.x, value.y, value.z));
+    this._up = Pnt3.norm(value);
+    this._nativeController?.setUp(new Vector3(this._up.x, this._up.y, this._up.z));
   }
 
   private _isGrounded: boolean = false;
@@ -163,7 +163,7 @@ export class Rapier3dCharacterControllerComponent implements ICharacterControlle
   ) {
     this.radius = options.radius;
     this.centersDistance = options.centersDistance;
-    this._up = options.up;
+    this._up = Pnt3.norm(options.up);
     this.debugBodySettings = new DebugBody3DSettings(
       { type: 'RIGID_DYNAMIC', sleeping: () => false },
       { shape: 'CAPSULE', radius: this.radius, centersDistance: this.centersDistance },
@@ -187,7 +187,9 @@ export class Rapier3dCharacterControllerComponent implements ICharacterControlle
 
   move(desiredTranslation: Point3, dt?: number): void {
     if (!this._nativeBody || !this._nativeCollider || !this._nativeController) {
-      throw new Error('Cannot move a character controller which is not added to the world');
+      // not yet added to the world - nothing to sweep against (matches
+      // `AmmoCharacterControllerComponent.move`'s no-op contract, see `ICharacterController3dComponent`)
+      return;
     }
     // make sure collider positions reflect any obstacle moved (by anything) since the last
     // world.step()/propagate call, so the upcoming sweep test is accurate
@@ -319,9 +321,15 @@ export class Rapier3dCharacterControllerComponent implements ICharacterControlle
   }
 
   clone(): Rapier3dCharacterControllerComponent {
+    // read the CURRENT position/rotation, not `_bodyDescr`'s construction-time values - once
+    // `_nativeBody` exists, the `position`/`rotation` setters write straight to it and never touch
+    // `_bodyDescr` again (see those setters above), so `_bodyDescr` alone would be stale for any
+    // controller that has moved since being added to the world.
+    const pos = this.position;
+    const rot = this.rotation;
     const bd = RigidBodyDesc.kinematicPositionBased();
-    bd.setTranslation(this._bodyDescr.translation.x, this._bodyDescr.translation.y, this._bodyDescr.translation.z);
-    bd.setRotation({ ...this._bodyDescr.rotation });
+    bd.setTranslation(pos.x, pos.y, pos.z);
+    bd.setRotation(new Quaternion(rot.x, rot.y, rot.z, rot.w));
     const comp = new Rapier3dCharacterControllerComponent(this.world, this.options, bd);
     comp.collisionGroups = this.collisionGroups;
     return comp;
