@@ -367,8 +367,8 @@ provide custom console commands using `GgStatic.instance.registerConsoleCommand`
 | Command        | Arguments                              | Description                                                                                                                                                  |
 |----------------|-----------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `gravity`      | `?float, ?float, ?float`                | Get or set 3D world gravity vector. 1 argument sets vector {x: 0, y: 0, z: -value}, 3 arguments set the whole vector. Default value is "9.82" or "0 0 -9.82" |
-| `spawn_player` | `float, float, float`                   | Spawn a default player character (capsule body, WASD/arrows movement, mouse-look) at world-space coordinates, controlling the first renderer's camera        |
-| `player_mode`  | `string, first-person\|third-person`    | Switch a named `PlayerCharacterController` entity (as returned by `spawn_player`) between first- and third-person view                                       |
+| `player_spawn` | `float, float, float`                   | Spawn a default player character (capsule body, WASD/arrows movement, mouse-look) at world-space coordinates, controlling the first renderer's camera        |
+| `player_mode`  | `string, first-person\|third-person`    | Switch a named `PlayerCharacterController` entity (as returned by `player_spawn`) between first- and third-person view                                       |
 
 ## ❓ FAQ
 ### How to access integration module native objects?

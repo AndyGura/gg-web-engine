@@ -19,7 +19,7 @@ export const mockCharacterController = (
 ): ICharacterController3dComponent => {
   return {
     entity: null,
-    name: 'mock-character-controller',
+    name: '',
     radius,
     centersDistance,
     up: Pnt3.Z,

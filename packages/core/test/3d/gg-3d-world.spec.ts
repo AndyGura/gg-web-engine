@@ -83,7 +83,7 @@ describe('Gg3dWorld', () => {
     describe('set_position', () => {
       it('requires a name', async () => {
         const commands = collectConsoleCommands(world);
-        await expect(commands.get('set_position')!()).rejects.toThrow('usage: set_position <name> <x> <y> <z>');
+        await expect(commands.get('set_position')!()).rejects.toThrow('usage: set_position NAME X Y Z');
       });
 
       it('teleports a named positionable entity', async () => {
@@ -162,7 +162,7 @@ describe('Gg3dWorld', () => {
         const commands = collectConsoleCommands(world);
         const result = await commands.get('spawn')!('BOX', '1', '2', '3');
 
-        expect(result).toMatch(/^spawned ".*" \(BOX\) at \{"x":1,"y":2,"z":3\}$/);
+        expect(result).toMatch(/^spawned ".+" \(BOX\) at \{"x":1,"y":2,"z":3\}$/);
         expect(visualScene.factory.createPrimitive).toHaveBeenCalledWith(
           { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } },
           {},
@@ -201,23 +201,23 @@ describe('Gg3dWorld', () => {
       });
     });
 
-    describe('spawn_player', () => {
+    describe('player_spawn', () => {
       it('rejects when there is no renderer yet', async () => {
         const commands = collectConsoleCommands(world);
-        await expect(commands.get('spawn_player')!('0', '0', '0')).rejects.toThrow('renderer');
+        await expect(commands.get('player_spawn')!('0', '0', '0')).rejects.toThrow('renderer');
       });
 
       it('spawns a character controller and a PlayerCharacterController wired to the first renderer', async () => {
         world.addEntity(mockRenderer3dEntity());
         const commands = collectConsoleCommands(world);
 
-        const result = await commands.get('spawn_player')!('1', '2', '3');
+        const result = await commands.get('player_spawn')!('1', '2', '3');
 
         expect(physicsWorld.factory.createCharacterController).toHaveBeenCalledWith(
           expect.objectContaining({ radius: 0.4, centersDistance: 1.0 }),
           { position: { x: 1, y: 2, z: 3 } },
         );
-        expect(result).toMatch(/^spawned ".*" at \{"x":1,"y":2,"z":3\}, controlled by ".*"$/);
+        expect(result).toMatch(/^spawned ".+" at \{"x":1,"y":2,"z":3\}, controlled by ".+"$/);
         const controllerName = result.match(/controlled by "(.*)"$/)![1];
         expect(world.getEntityByName<PlayerCharacterController>(controllerName)).toBeInstanceOf(
           PlayerCharacterController,
@@ -227,7 +227,7 @@ describe('Gg3dWorld', () => {
       it('rejects missing/non-numeric coordinates', async () => {
         world.addEntity(mockRenderer3dEntity());
         const commands = collectConsoleCommands(world);
-        await expect(commands.get('spawn_player')!('1', '2')).rejects.toThrow('usage: spawn_player');
+        await expect(commands.get('player_spawn')!('1', '2')).rejects.toThrow('usage: player_spawn');
       });
     });
 
@@ -235,7 +235,7 @@ describe('Gg3dWorld', () => {
       it('switches a named PlayerCharacterController between view modes', async () => {
         world.addEntity(mockRenderer3dEntity());
         const commands = collectConsoleCommands(world);
-        const spawnResult = await commands.get('spawn_player')!('0', '0', '0');
+        const spawnResult = await commands.get('player_spawn')!('0', '0', '0');
         const controllerName = spawnResult.match(/controlled by "(.*)"$/)![1];
 
         const result = await commands.get('player_mode')!(controllerName, 'third-person');

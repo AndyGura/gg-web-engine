@@ -248,11 +248,11 @@ or the panel visible — they work as soon as `window.ggstatic` exists.
 
 ### Built-in commands
 
-Global (always available): `commands` (list all available commands), `help <name>` (print a
+Global (always available): `commands` (list all available commands), `help NAME` (print a
 command's doc string), `worlds` (list worlds), `world [name]` (get/select the active world —
 world-scoped commands only run while their world is selected; `GgWorld.documentWorlds` lists all
 worlds and the first one created is auto-selected), `stats_panel [0|1]`, `debug_panel [0|1]`,
-`bind_key <code> <command> [args...]` / `unbind_key <code>` (bind a command to a keyboard key —
+`bind_key CODE COMMAND [args...]` / `unbind_key CODE` (bind a command to a keyboard key —
 handy for a cheat-code hotkey).
 
 Per-world, registered by the base `GgWorld` (so identical for `Gg2dWorld`/`Gg3dWorld`):
@@ -262,10 +262,10 @@ entity commands that need no game-rules knowledge**:
 
 - `entities [nameFilter?]` — list every entity's name and class in the selected world (`children`
   is already a flat list, nested entities included), optionally filtered by a substring.
-- `entity <name>` — dump one entity's class, active/visible flags, position/rotation (if it has
+- `entity NAME` — dump one entity's class, active/visible flags, position/rotation (if it has
   any — printed generically via duck-typing, so this works for both 2D and 3D entities), parent,
   and children names.
-- `remove <name> [dispose=0|1]` — `world.removeEntity`, dispose defaults to on.
+- `remove NAME [dispose=0|1]` — `world.removeEntity`, dispose defaults to on.
 - `step [ms]` — advance the world clock by exactly one manual tick of `ms` milliseconds (default
   `8`, i.e. `1000/120`), for frame-by-frame physics debugging. Only works while the world is
   paused (`timescale 0`) — it rejects otherwise, since stepping and letting the clock run freely
@@ -279,15 +279,25 @@ argument *shape* differs by dimension (mirroring how `addPrimitiveRigidBody` and
 rotation args already differ) — same command names, different parsing:
 
 - `gravity` — 3D takes a `z` scalar or a full `x y z` vector; 2D takes a `y` scalar or `x y`.
-- `set_position <name> <x> <y> [z]` — teleport any named entity that has a `.position` (3D takes
-  `x y z`, 2D takes `x y`). This is the generic "teleport" command — it works on *any* named
+- `set_position NAME X Y [Z]` — teleport any named entity that has a `.position` (3D takes
+  `X Y Z`, 2D takes `X Y`). This is the generic "teleport" command — it works on *any* named
   entity, not just a "player", since it goes through the same `Entity3d`/`Entity2d` position
   setter gameplay code uses, keeping physics and rendering in sync.
-- `set_rotation <name> ...` — 3D accepts either 3 numbers (Euler angles, radians, converted via
+- `set_rotation NAME ...` — 3D accepts either 3 numbers (Euler angles, radians, converted via
   `Qtrn.fromEuler`) or 4 (a raw quaternion `x y z w`); 2D takes a single angle in radians.
-- `spawn <shape> <x> <y> [z] [dynamic=0|1]` — drop a default-sized primitive rigid body at a point
+- `spawn SHAPE X Y [Z] [dynamic=0|1]` — drop a default-sized primitive rigid body at a point
   for probing physics/collisions without touching game code. 3D shapes: `BOX|SPHERE|CYLINDER|
   CONE|CAPSULE|PLANE`; 2D shapes: `SQUARE|CIRCLE`. `dynamic` defaults to `1` (falls under gravity).
+
+3D worlds also register two commands for a default controllable character, gated on a physics
+world and at least one renderer already being present:
+
+- `player_spawn X Y Z` — spawn a default player character (capsule body, WASD/arrows movement,
+  mouse-look) at world-space position `X Y Z` (Z-up, so `Z` is height off the ground), controlling
+  the first renderer's camera. Prints the spawned controller entity's name (the "controlled by"
+  part of the output) — that name is what `player_mode` below needs.
+- `player_mode NAME first-person|third-person` — switch the named `PlayerCharacterController`
+  entity (`NAME` from `player_spawn`'s output) between first- and third-person view.
 
 Pausing is already covered by `timescale 0` (and the underlying `world.pauseWorld()`/
 `resumeWorld()` methods) — there's no separate `pause`/`resume` command. `timescale 0` + `step`
@@ -308,7 +318,9 @@ session needs, per "Registering your own commands" below.
   input; the resolved string is what gets printed/returned. Throw to report an error (rendered in
   red by the UI).
 - `doc`: shown by `commands`/`help` — write one; it's the only way a later session (human or
-  agent) discovers the command's argument shape without reading source.
+  agent) discovers the command's argument shape without reading source. Both `doc` and the
+  message of any thrown `Error` are pasted straight into the console panel's `innerHTML` (see
+  "Common pitfalls" below for why that rules out `<...>`-style placeholders).
 
 ```typescript
 GgStatic.instance.registerConsoleCommand(
@@ -317,7 +329,7 @@ GgStatic.instance.registerConsoleCommand(
   async (...args: string[]) => {
     const player = world.getEntityByName('player') as PlayerEntity; // this game's own entity class
     const [itemId, countArg] = args;
-    if (!itemId) throw new Error('usage: give_item <itemId> [count=1]');
+    if (!itemId) throw new Error('usage: give_item ITEM_ID [count=1]');
     player.inventory.add(itemId, countArg === undefined ? 1 : +countArg);
     return `gave ${countArg ?? 1}x ${itemId}`;
   },
@@ -365,6 +377,24 @@ on any named entity, including the player.
   different libraries; check the specific adapter's source under `packages/<adapter>/src` when a
   capability seems missing, and consult `docs/tasks.md`/`milestones.md` for known parity gaps
   before assuming a bug.
+- Writing `<...>`-style argument placeholders (`<name>`, `<x>`) into a console command's `doc`
+  string or thrown `Error` message. The console panel renders both via raw `innerHTML`
+  (`gg-console.ui.ts`), so `<name>` parses as an (unknown, self-closing) HTML tag and its text is
+  silently swallowed — the user sees `usage: give_item` with nothing after it, not
+  `usage: give_item <itemId>`. Every built-in command's `doc`/usage text uses bracket-free
+  placeholders instead (`NAME`, `X`, `Y`, `Z`, `ITEM_ID`, `ANGLE_RADIANS`, or a bare
+  `first-person|third-person` choice list) — follow that convention for your own commands, and
+  reserve real `<...>` only where you deliberately want actual HTML (e.g. `bind_key`'s doc string
+  links to a key-code reference with a real `<a href=...>` tag).
+- Naming a new console command as a suffix extension of an existing one's prefix, e.g. adding
+  `spawn_player` alongside the existing `spawn` (both worlds register `spawn`). Tab-autocomplete
+  (`gg-console.ui.ts`) resolves a partial input to the *shortest* registered command that starts
+  with it, so typing `spawn` and hitting Tab (or having it auto-complete as you type) locks onto
+  `spawn`, not `spawn_player`, even if `spawn_player` was the intended target. Prefer a name that
+  doesn't share a common prefix with an unrelated existing command — this is why the built-in
+  player-spawning command is `player_spawn`, not `spawn_player` (it now shares the harmless
+  `player_` prefix with `player_mode` instead, where either full command is short enough that
+  autocomplete resolving to the wrong one isn't a practical problem).
 
 ## Reference material
 

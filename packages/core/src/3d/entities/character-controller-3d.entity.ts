@@ -44,7 +44,14 @@ export type CharacterController3dEntityOptions = CharacterController3dOptions & 
    * along `up`, with no horizontal drag.
    */
   gravity: number | undefined;
-  /** Horizontal move-speed multiplier applied while airborne (0..1). Default 0.3. */
+  /**
+   * How fast horizontal movement can be *steered* while airborne, as a fraction of the current
+   * walk/run speed applied per second of acceleration (0..1) - **not** a flat multiplier on speed
+   * itself. The horizontal velocity in effect at the moment of leaving the ground (walk or run) is
+   * carried through the whole jump/fall arc unchanged as long as `moveDirection`/`isRunning` don't
+   * change; this only caps how quickly that carried velocity can be redirected towards a *new*
+   * desired direction/speed once airborne (see `updateMovement`'s doc). Default 0.3.
+   */
   airControlFactor: number;
 };
 
@@ -83,6 +90,15 @@ const DEFAULT_OPTIONS: Required<
  * stably grounded, so the character slides/falls down it under gravity instead of clinging to it -
  * see `updateMovement`'s doc for the exact resting-vs-falling rule.
  *
+ * Horizontal movement is direct/instantaneous while resting on the ground (no momentum - snappy,
+ * input-follows-exactly control), but becomes velocity-based the instant the character leaves the
+ * ground: whatever horizontal ground speed was in effect at takeoff (walk or run) is captured into
+ * `_airHorizontalVelocity` and persists through the whole arc unless the input driver changes
+ * `moveDirection`/`isRunning`, in which case `airControlFactor` caps how fast the resulting steering
+ * can redirect it (see `updateMovement`'s doc) - so a running jump travels exactly as far
+ * horizontally as the run speed implies, instead of the speed silently collapsing to a fraction of
+ * it the instant the character leaves the ground.
+ *
  * `moveDirection` is local-space (rotated by `this.rotation` internally): local +Y is "forward" at
  * zero yaw, local +X is "right" at zero yaw, local Z is unused (always ignored - vertical motion is
  * handled separately, see above) - the same right=X/forward=Y/up=Z axis paradigm
@@ -116,6 +132,17 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
    * walkable surface - see `updateMovement`'s doc for why this is a full vector, not just a scalar
    * along `up`. */
   private _fallVelocity: Point3 = Pnt3.O;
+  /** Horizontal velocity carried while airborne - seeded from the ground speed in effect at the
+   * moment of leaving the ground (jumping or walking off an edge) so that speed persists through
+   * the whole arc, then only ever adjusted by limited air-control steering - see `updateMovement`'s
+   * doc for why this is tracked separately from `_fallVelocity` (which integrates gravity, not
+   * player input). Always `Pnt3.O` while resting on the ground, where movement is direct instead. */
+  private _airHorizontalVelocity: Point3 = Pnt3.O;
+  /** Whether the previous `updateMovement` tick was stably resting on the ground - used to detect
+   * the exact tick horizontal movement transitions from direct ground control to airborne momentum,
+   * so `_airHorizontalVelocity` is seeded exactly once per takeoff rather than ramping up from zero
+   * under `airControlFactor` (see `updateMovement`'s doc). */
+  private _wasResting: boolean = true;
   /** Set by `jump()`, consumed and cleared by the very next `updateMovement` tick - lets that tick
    * tell a genuine same-frame jump apart from an ordinary landing, without relying on fragile sign
    * comparisons against a possibly-zero `gravityAlongUp` (see `updateMovement`). */
@@ -214,7 +241,9 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
     };
     this.object3D = object3D;
     this.characterController = characterController;
-    this.name = characterController.name;
+    if (characterController.name) {
+      this.name = characterController.name;
+    }
     this.addComponents(characterController);
     if (object3D) {
       this.addComponents(object3D);
@@ -312,14 +341,17 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
     // too steep to actually stand on, which naively gating on the raw `isGrounded` flag alone would
     // do.
     const restingOnGround = this.isGrounded && this.isWalkableGround && gravityAlongUp <= 0;
+    // A same-tick jump is exempted from counting as "grounded" here (tracked via `_justJumped`
+    // rather than a sign comparison against `gravityAlongUp`, which breaks when it's exactly `0`),
+    // even though `restingOnGround` itself is still true this tick (the adapter's `isGrounded` is a
+    // tick stale, reflecting last tick's `move()` result, not this tick's takeoff) - so the takeoff
+    // tick is treated as airborne for both fall-velocity and horizontal-momentum purposes below.
+    const grounded = restingOnGround && !this._justJumped;
 
-    if (restingOnGround && !this._justJumped) {
+    if (grounded) {
       // fully arrest fall velocity - both the settling/landing speed along `up` and any horizontal
       // drift accumulated from gravity's tangential pull while airborne or sliding - once resting
-      // stably; contact + friction with a walkable surface cancels both. A same-tick jump (tracked
-      // via `_justJumped` rather than a sign comparison, which breaks when `gravityAlongUp` is
-      // exactly `0`) is exempted so it isn't immediately clobbered before the character has had a
-      // chance to actually leave the ground.
+      // stably; contact + friction with a walkable surface cancels both.
       this._fallVelocity = Pnt3.O;
     } else if (!restingOnGround) {
       this._fallVelocity = Pnt3.add(this._fallVelocity, Pnt3.scalarMult(gravityVector, dt));
@@ -332,13 +364,43 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
     } else if (this.isRunning) {
       speed *= this.options.runSpeedMultiplier;
     }
-    if (!restingOnGround) {
-      speed *= this.options.airControlFactor;
-    }
 
     const localHoriz = Pnt3.norm({ x: this.moveDirection.x, y: this.moveDirection.y, z: 0 });
-    const worldHoriz = Pnt3.rot(Pnt3.scalarMult(localHoriz, speed), this.rotation);
-    const desiredTranslation = Pnt3.add(Pnt3.scalarMult(worldHoriz, dt), Pnt3.scalarMult(this._fallVelocity, dt));
+    const desiredHoriz = Pnt3.rot(Pnt3.scalarMult(localHoriz, speed), this.rotation);
+
+    let horizontalVelocity: Point3;
+    if (grounded) {
+      // Direct control: no momentum needed, movement follows input/speed exactly, every tick.
+      this._airHorizontalVelocity = Pnt3.O;
+      horizontalVelocity = desiredHoriz;
+    } else if (this._wasResting) {
+      // The exact tick of leaving the ground (jumping or walking off an edge): seed the carried
+      // velocity with whatever ground speed (walk or run) was in effect *this* tick, so a running
+      // takeoff keeps its running speed for the whole arc, rather than starting the flight at zero
+      // and re-approaching it at the deliberately slow `airControlFactor` rate below.
+      this._airHorizontalVelocity = desiredHoriz;
+      horizontalVelocity = desiredHoriz;
+    } else {
+      // Continuing airborne: steer the *existing* carried velocity towards the current desired
+      // direction/speed at a capped acceleration (`airControlFactor` fraction of that speed, per
+      // second) instead of overriding it outright - holding the same input preserves momentum
+      // exactly (delta is ~0, so the cap never engages), while changing input (releasing run,
+      // turning) redirects it gradually rather than snapping.
+      const delta = Pnt3.sub(desiredHoriz, this._airHorizontalVelocity);
+      const deltaLen = Pnt3.len(delta);
+      const maxDelta = this.options.airControlFactor * speed * dt;
+      this._airHorizontalVelocity =
+        deltaLen <= maxDelta
+          ? desiredHoriz
+          : Pnt3.add(this._airHorizontalVelocity, Pnt3.scalarMult(delta, maxDelta / deltaLen));
+      horizontalVelocity = this._airHorizontalVelocity;
+    }
+    this._wasResting = grounded;
+
+    const desiredTranslation = Pnt3.add(
+      Pnt3.scalarMult(horizontalVelocity, dt),
+      Pnt3.scalarMult(this._fallVelocity, dt),
+    );
 
     this.characterController.move(desiredTranslation, dt);
 

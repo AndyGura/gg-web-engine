@@ -35,6 +35,50 @@ whatever the loader currently expects), bump `GG_META_FORMAT_VERSION` in
 `blender-addon/gg_web_engine_exporter/exporter.py` and update `blender-addon/README.md`'s
 object-convention table to match — the two sides aren't type-checked against each other.
 
+## Adding a built-in dev-console command
+
+Built-in commands live in each world class's `registerConsoleCommands` override
+(`base/gg-world.ts`, `2d/gg-2d-world.ts`, `3d/gg-3d-world.ts`) plus the global ones in
+`dev/gg-static.ts`, all via `ggstatic.registerConsoleCommand(world, name, handler, doc?)`. Two
+non-obvious constraints apply to both the `doc` string and any message passed to `throw new
+Error(...)` inside the handler:
+
+- **Never use `<...>`-style placeholders** (`<name>`, `<x>`). `dev/gg-console.ui.ts` renders
+  command output — including a caught handler error — by assigning straight into
+  `output.innerHTML`. `<name>` parses as an (unknown, self-closing) HTML tag, and the browser
+  silently drops its "content" instead of showing the literal text, so `usage: foo <name>` renders
+  to the user as just `usage: foo` with nothing after it — the exact bug that motivated this note.
+  Every existing built-in command instead spells placeholders as bracket-free words —
+  `NAME`, `X`, `Y`, `Z`, `ANGLE_RADIANS` — or a bare `first-person|third-person`-style choice list.
+  Reserve real `<...>` for a `doc` string that deliberately wants actual markup, e.g. `bind_key`'s
+  doc links to a key-code reference with a genuine `<a href=...>` tag.
+- **Don't pick a command name that is a prefix-extension of another command's name** (e.g. don't
+  add `spawn_player` next to the existing `spawn`). `gg-console.ui.ts`'s tab-autocomplete resolves
+  a partial input to the *shortest* registered command that starts with what's typed, so typing the
+  shorter command's full name locks autocomplete onto it and never reaches the longer one. This is
+  why the default-player commands are named `player_spawn`/`player_mode` rather than
+  `spawn_player` — they share the harmless `player_` prefix with each other instead of colliding
+  with the unrelated `spawn` command.
+
+## Entity naming: only adopt a non-empty native name
+
+`Entity3d`/`Entity2d`'s constructor (and `CharacterController3dEntity`'s) copies `name` from
+whichever native component was passed in (`objectBody.name`, `object3D.name`/`object2D.name`,
+`characterController.name`), but **only when that native name is non-empty** — an empty string is
+left alone so `IEntity`'s own auto-generated fallback (`'e0x' + counter`, set unconditionally by
+the `IEntity` base constructor) survives. This matters because every existing physics/rendering
+adapter's native component defaults `name` to `''` unless the caller explicitly named it (e.g. via
+Blender-authored level content, where object names come from the `.glb`) — assigning
+unconditionally, as this code used to, clobbers the entity's only identifier with an empty string
+for every ad hoc, console-spawned, or otherwise unnamed entity. This is what silently broke the
+`player_spawn`/`player_mode` console commands: the spawned `CharacterController3dEntity` printed
+as `spawned "" at ...`, and `player_mode ""` then failed to resolve. When adding a new entity class
+that similarly seeds its `name` from a native component, guard the assignment with an `if (native
+name truthy)` check the same way, and add a body/mock with the adapter-realistic empty default
+(see `test/mocks/body.mock.ts`, `test/mocks/character-controller.mock.ts`) to any test asserting on
+spawned-entity names — a test mock that defaults to a non-empty placeholder name (as
+`mockCharacterController` used to) hides exactly this bug.
+
 ## The TypeDocRepo generic pattern — read this before touching interfaces
 
 Core interfaces don't hardcode adapter types. Instead each dimension defines a "type doc

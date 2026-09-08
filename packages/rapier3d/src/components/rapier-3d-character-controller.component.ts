@@ -50,7 +50,7 @@ import { Rapier3dGgWorld, Rapier3dPhysicsTypeDocRepo } from '../types';
  */
 export class Rapier3dCharacterControllerComponent implements ICharacterController3dComponent<Rapier3dPhysicsTypeDocRepo> {
   public entity: Entity3d | null = null;
-  public name: string = 'character-controller';
+  public name: string = '';
 
   public readonly radius: number;
   public readonly centersDistance: number;

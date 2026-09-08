@@ -65,7 +65,7 @@ describe('CharacterController3dEntity', () => {
       expectCloseVector(moveSpy.mock.calls[0][0], { x: 8, y: 0, z: 0 });
     });
 
-    it('applies airControlFactor to horizontal speed while airborne', () => {
+    it('carries the ground launch speed through the whole jump/fall arc, instead of throttling it once airborne (regression: used to collapse to walkSpeed * airControlFactor on every airborne tick, discarding a running takeoff\'s speed almost entirely)', () => {
       const cc = mockCharacterController(0.4, 1, {
         resolveMove: d => ({ appliedTranslation: d, isGrounded: false }),
       });
@@ -76,10 +76,33 @@ describe('CharacterController3dEntity', () => {
       );
       entity.onSpawned({} as any);
       entity.moveDirection = { x: 1, y: 0, z: 0 };
-      entity.tick$.next([1000, 1000]); // becomes airborne after this tick
       const moveSpy = jest.spyOn(cc, 'move');
-      entity.tick$.next([2000, 1000]);
-      expect(moveSpy.mock.calls[0][0].x).toBeCloseTo(1); // 4 * 0.25
+      entity.tick$.next([1000, 1000]); // takeoff tick: full ground speed, not yet throttled
+      expect(moveSpy.mock.calls[0][0].x).toBeCloseTo(4);
+      entity.tick$.next([2000, 1000]); // now airborne (from previous move's result) - same input, so momentum persists unchanged
+      expect(moveSpy.mock.calls[1][0].x).toBeCloseTo(4);
+    });
+
+    it('limits how fast airControlFactor can redirect airborne velocity towards new input, rather than snapping to it', () => {
+      const cc = mockCharacterController(0.4, 1, {
+        resolveMove: d => ({ appliedTranslation: d, isGrounded: false }),
+      });
+      const entity = new CharacterController3dEntity(
+        { radius: 0.4, centersDistance: 1, walkSpeed: 4, airControlFactor: 0.25, gravity: 0 },
+        null,
+        cc,
+      );
+      entity.onSpawned({} as any);
+      entity.moveDirection = { x: 1, y: 0, z: 0 };
+      entity.tick$.next([1000, 1000]); // still grounded this tick (mock's initial isGrounded), direct control
+      entity.tick$.next([2000, 1000]); // now airborne (from previous move's result): seeds carried velocity to {4, 0, 0}
+      entity.moveDirection = { x: 0, y: 1, z: 0 }; // steer towards a new (perpendicular) direction while airborne
+      const moveSpy = jest.spyOn(cc, 'move');
+      entity.tick$.next([3000, 1000]); // 1s tick: max steering delta = airControlFactor * speed * dt = 0.25 * 4 * 1 = 1
+      const applied = moveSpy.mock.calls[0][0];
+      // nudged from {4,0,0} towards {0,4,0} by exactly 1 unit of velocity, not snapped to the new direction
+      expect(applied.x).toBeCloseTo(4 - 1 / Math.SQRT2);
+      expect(applied.y).toBeCloseTo(1 / Math.SQRT2);
     });
 
     it('integrates gravity into vertical velocity while airborne', () => {

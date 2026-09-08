@@ -143,6 +143,20 @@ genuine box-tipping physics from the push contact point not being centered, not 
 impulse-feature bug; not chased further since it doesn't reach anywhere near the older bug's severity
 and the core "pushing works, mass roughly matters" behavior holds.
 
+## `Rapier3dCharacterControllerComponent.name` defaults to `''`, like every other adapter's body
+
+Every native body component across every adapter (`AmmoBodyComponent`, the Rapier rigid-body
+components, `MatterRigidBodyComponent`, etc.) defaults its `name` field to `''`, since core's
+`Entity3d`/`Entity2d`/`CharacterController3dEntity` only adopt a native component's `name` when
+it's non-empty, otherwise keeping the entity's own auto-generated fallback name (see
+`gg-engine-core-development`'s "Entity naming" section). `Rapier3dCharacterControllerComponent`
+used to default to the literal string `'character-controller'` instead - harmless with a single
+character, but every additional player character spawned in the same world (e.g. via the
+`player_spawn` console command, or multiplayer) got the exact same non-unique name, breaking
+`getEntityByName` lookups for all but the first. Now defaults to `''` like every other adapter's
+body component; don't reintroduce a non-empty static default here or in a future adapter's
+character-controller component.
+
 ## Don't import a WASM-bindgen native library's internal file paths
 
 `packages/rapier3d/src/components/rapier-3d-rigid-body.component.ts` imported `InteractionGroups` via

@@ -130,20 +130,20 @@ export class Gg2dWorld<
       async (...args: string[]) => {
         const [name, x, y] = args;
         if (!name) {
-          throw new Error('usage: set_position <name> <x> <y>');
+          throw new Error('usage: set_position NAME X Y');
         }
         const entity = this.getEntityByName(name);
         if (!('position' in entity)) {
           throw new Error(`Entity "${name}" (${entity.constructor.name}) has no position`);
         }
         if ([x, y].some(v => v === undefined || isNaN(+v))) {
-          throw new Error('usage: set_position <name> <x> <y>');
+          throw new Error('usage: set_position NAME X Y');
         }
         (entity as unknown as Entity2d<TypeDoc>).position = { x: +x, y: +y };
         return JSON.stringify((entity as unknown as Entity2d<TypeDoc>).position);
       },
       'args: [ string, float, float ]; Teleport a named entity to world-space coordinates. Use ' +
-        '"entities"/"entity <name>" to find entity names and their current position',
+        '"entities"/"entity NAME" to find entity names and their current position',
     );
     ggstatic.registerConsoleCommand(
       this,
@@ -151,14 +151,14 @@ export class Gg2dWorld<
       async (...args: string[]) => {
         const [name, angle] = args;
         if (!name) {
-          throw new Error('usage: set_rotation <name> <angleRadians>');
+          throw new Error('usage: set_rotation NAME ANGLE_RADIANS');
         }
         const entity = this.getEntityByName(name);
         if (!('rotation' in entity)) {
           throw new Error(`Entity "${name}" (${entity.constructor.name}) has no rotation`);
         }
         if (angle === undefined || isNaN(+angle)) {
-          throw new Error('usage: set_rotation <name> <angleRadians>');
+          throw new Error('usage: set_rotation NAME ANGLE_RADIANS');
         }
         (entity as unknown as Entity2d<TypeDoc>).rotation = +angle;
         return JSON.stringify((entity as unknown as Entity2d<TypeDoc>).rotation);
@@ -171,7 +171,7 @@ export class Gg2dWorld<
       async (...args: string[]) => {
         const [shapeArg, x, y, dynamicArg] = args;
         if ([x, y].some(v => v === undefined || isNaN(+v))) {
-          throw new Error('usage: spawn <SQUARE|CIRCLE> <x> <y> [dynamic=0|1]');
+          throw new Error('usage: spawn SQUARE|CIRCLE X Y [dynamic=0|1]');
         }
         const dynamic = dynamicArg === undefined ? true : dynamicArg === '1';
         let shape: BodyShape2DDescriptor['shape'];
