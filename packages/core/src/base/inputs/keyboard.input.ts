@@ -156,7 +156,17 @@ export class KeyboardInput extends IInput {
     if (!subs || subs.length === 0) {
       return;
     }
-    e.preventDefault();
+    // Suppress the browser's own default action for a bound key (e.g. Space scrolling the page or
+    // activating a focused button, or arrow keys scrolling) - but never when a modifier that
+    // signals a browser/OS-level shortcut is held (Alt+ArrowLeft/Right is back/forward navigation,
+    // Ctrl/Meta combos are things like closing a tab or switching windows), and never for Tab,
+    // since that's the browser's own focus-movement key and swallowing it would break keyboard
+    // accessibility even if an app binds it for gameplay. Without these exclusions, any app that
+    // binds e.g. ArrowLeft for movement would also block Alt+ArrowLeft back-navigation for the
+    // whole page whenever that key happens to be held down.
+    if (e.code !== 'Tab' && !e.altKey && !e.ctrlKey && !e.metaKey) {
+      e.preventDefault();
+    }
     for (const subj of subs) {
       subj.next(pressed);
     }

@@ -483,19 +483,26 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
       maxSlopeClimbAngleRad,
       snapToGroundDistance,
       pushMass,
+      up,
+      ownCollisionGroups,
+      interactWithCollisionGroups,
       display,
       ...gameplay
     } = settings;
     if (!world.physicsWorld) {
       return undefined;
     }
-    // `offset`/`maxStepHeight`/etc. above are `undefined` whenever the level JSON didn't set them -
-    // they must be left out of the objects below entirely (not passed through as explicit
-    // `undefined` values) so each adapter's own `{...DEFAULT_OPTIONS, ...options}` merge (and
-    // `CharacterController3dEntity`'s own `{...DEFAULT_OPTIONS, ...options}`) actually falls back to
-    // its default for that field, rather than a present-but-`undefined` key overwriting the default
-    // with `undefined` (a real bug found here: an unset `maxSlopeClimbAngleRad` silently disabled all
-    // ground detection, since `angle <= undefined` is always `false`).
+    // `offset`/`maxStepHeight`/`up`/`ownCollisionGroups`/`interactWithCollisionGroups`/etc. above are
+    // `undefined` whenever the level JSON didn't set them - they must be left out of the objects
+    // below entirely (not passed through as explicit `undefined` values) so each adapter's own
+    // `{...DEFAULT_OPTIONS, ...options}` merge (and `CharacterController3dEntity`'s own
+    // `{...DEFAULT_OPTIONS, ...options}`) actually falls back to its default for that field, rather
+    // than a present-but-`undefined` key overwriting the default with `undefined` (a real bug found
+    // here: an unset `maxSlopeClimbAngleRad` silently disabled all ground detection, since
+    // `angle <= undefined` is always `false`). `up`/`ownCollisionGroups`/`interactWithCollisionGroups`
+    // must be included in `tunableOptions` (not left to fall into `...gameplay` below) so they reach
+    // `factory.createCharacterController` and actually configure the physics component, not just
+    // `CharacterController3dEntity`'s cosmetic options object.
     const tunableOptions = {
       ...(offset !== undefined && { offset }),
       ...(maxStepHeight !== undefined && { maxStepHeight }),
@@ -503,6 +510,9 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
       ...(maxSlopeClimbAngleRad !== undefined && { maxSlopeClimbAngleRad }),
       ...(snapToGroundDistance !== undefined && { snapToGroundDistance }),
       ...(pushMass !== undefined && { pushMass }),
+      ...(up !== undefined && { up }),
+      ...(ownCollisionGroups !== undefined && { ownCollisionGroups }),
+      ...(interactWithCollisionGroups !== undefined && { interactWithCollisionGroups }),
     };
     const characterController = world.physicsWorld.factory.createCharacterController(
       { radius, centersDistance, ...tunableOptions },

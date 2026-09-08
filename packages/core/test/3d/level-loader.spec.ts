@@ -7,6 +7,7 @@ import {
   IEntity,
   LevelJson,
   MapGraph3dEntity,
+  Pnt3,
   RVEntityTractionBias,
   TickOrder,
   Trigger3dEntity,
@@ -290,6 +291,41 @@ describe('Gg3dLevelLoader', () => {
       // the entity itself must have fallen back to CharacterController3dEntity's own defaults too
       expect(player.options.maxSlopeClimbAngleRad).toBeCloseTo((50 * Math.PI) / 180);
       expect(player.options.snapToGroundDistance).toBeCloseTo(0.3);
+    });
+
+    it("forwards a Player config's `up`/`ownCollisionGroups`/`interactWithCollisionGroups` to `factory.createCharacterController` as well as to the entity (regression: these fell into the loader's `...gameplay` bucket and only ever reached `CharacterController3dEntity`'s cosmetic options, never the physics factory call)", async () => {
+      const levelJson: LevelJson = {
+        entities: [
+          {
+            class: 'Player',
+            position: { x: 0, y: 0, z: 0 },
+            name: 'TestPlayer',
+            config: {
+              radius: 0.4,
+              centersDistance: 1.2,
+              up: Pnt3.Y,
+              ownCollisionGroups: [2],
+              interactWithCollisionGroups: [3],
+            },
+          },
+        ],
+      };
+
+      const level = await levelLoader.loadLevel(levelJson);
+
+      expect(world.physicsWorld?.factory.createCharacterController).toHaveBeenCalledWith(
+        expect.objectContaining({
+          up: Pnt3.Y,
+          ownCollisionGroups: [2],
+          interactWithCollisionGroups: [3],
+        }),
+        { position: { x: 0, y: 0, z: 0 }, rotation: undefined },
+      );
+
+      const player = level.getChildEntityByName<CharacterController3dEntity>('TestPlayer');
+      expect(player.options.up).toEqual(Pnt3.Y);
+      expect(player.options.ownCollisionGroups).toEqual([2]);
+      expect(player.options.interactWithCollisionGroups).toEqual([3]);
     });
 
     // Common car fields shared by both wheelBase- and wheelOptions-based GgCar tests

@@ -11,8 +11,13 @@ describe('KeyboardInput', () => {
     keyboard.stop();
   });
 
-  const dispatch = (type: 'keydown' | 'keyup', code: string, target: EventTarget = window) => {
-    const event = new KeyboardEvent(type, { code, bubbles: true, cancelable: true });
+  const dispatch = (
+    type: 'keydown' | 'keyup',
+    code: string,
+    target: EventTarget = window,
+    init: KeyboardEventInit = {},
+  ) => {
+    const event = new KeyboardEvent(type, { code, bubbles: true, cancelable: true, ...init });
     target.dispatchEvent(event);
     return event;
   };
@@ -55,6 +60,35 @@ describe('KeyboardInput', () => {
     keyboard.bind('Space').subscribe(); // bind something, but not the key we're about to press
 
     const event = dispatch('keydown', 'KeyQ');
+
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it('does not preventDefault() a bound key when a modifier is held (e.g. Alt+ArrowLeft back-navigation, Ctrl/Meta shortcuts), even though the binding still fires', () => {
+    keyboard.start();
+    const values: boolean[] = [];
+    keyboard.bind('ArrowLeft').subscribe(v => values.push(v));
+
+    const altEvent = dispatch('keydown', 'ArrowLeft', window, { altKey: true });
+    expect(altEvent.defaultPrevented).toBe(false);
+
+    const ctrlEvent = dispatch('keydown', 'ArrowLeft', window, { ctrlKey: true });
+    expect(ctrlEvent.defaultPrevented).toBe(false);
+
+    const metaEvent = dispatch('keydown', 'ArrowLeft', window, { metaKey: true });
+    expect(metaEvent.defaultPrevented).toBe(false);
+
+    // the binding itself still sees every keydown - distinctUntilChanged just collapses the
+    // repeated `true`s since the key never went back up between dispatches; only the
+    // default-action suppression is what's skipped for the modifier-held presses
+    expect(values).toEqual([false, true]);
+  });
+
+  it('never preventDefault()s Tab even when bound, since that would break the browser\'s own focus movement', () => {
+    keyboard.start();
+    keyboard.bind('Tab').subscribe();
+
+    const event = dispatch('keydown', 'Tab');
 
     expect(event.defaultPrevented).toBe(false);
   });
