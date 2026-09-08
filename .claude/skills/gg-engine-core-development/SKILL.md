@@ -88,9 +88,10 @@ Changing any of these is a breaking change for every adapter package — grep
 native vector can satisfy them structurally. `Pnt2`/`Pnt3`/`Qtrn` (in `base/math/`) are static
 helper namespaces (add, lerp, `O` origin constant, `lookAt`, etc.) operating on those plain shapes
 — prefer extending these over introducing class-based vector types, to keep the structural-typing
-story intact for adapters. `Pnt3` also exposes named axis constants (`X`/`Y`/`Z`/`nX`/`nY`/`nZ`) —
-use those instead of spelling out a unit-vector literal when the value represents a world axis or
-up-vector, not an arbitrary position.
+story intact for adapters. Both `Pnt2` and `Pnt3` expose named axis constants — `Pnt2.X`/`Pnt2.Y`/
+`Pnt2.nX`/`Pnt2.nY` for 2D, `Pnt3.X`/`Pnt3.Y`/`Pnt3.Z`/`Pnt3.nX`/`Pnt3.nY`/`Pnt3.nZ` for 3D (plus
+each namespace's own `O` origin) — use those instead of spelling out a unit-vector literal when the
+value represents a world axis or up-vector, not an arbitrary position.
 
 **Every 3D world is Z-up, always** — see `CLAUDE.md`'s "Non-obvious repo facts" section for the
 full statement; `Pnt3.Z` is "up" everywhere in this engine's 3D code (core, every adapter, every

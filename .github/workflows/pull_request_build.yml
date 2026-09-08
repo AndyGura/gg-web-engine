@@ -23,30 +23,8 @@ jobs:
       - name: Install workspace dependencies
         run: npm install
 
-      - name: Build and test core
-        working-directory: ./packages/core
-        run: npm run build && npm run test
-
-      - name: Build and test ammo
-        working-directory: ./packages/ammo
-        run: npm run build && npm run test
-
-      - name: Build and test matter
-        working-directory: ./packages/matter
-        run: npm run build && npm run test
-
-      - name: Build pixi
-        working-directory: ./packages/pixi
+      - name: Build all packages
         run: npm run build
 
-      - name: Build and test rapier2d
-        working-directory: ./packages/rapier2d
-        run: npm run build && npm run test
-
-      - name: Build and test rapier3d
-        working-directory: ./packages/rapier3d
-        run: npm run build && npm run test
-
-      - name: Build three
-        working-directory: ./packages/three
-        run: npm run build
+      - name: Test all packages
+        run: npm run test

@@ -85,6 +85,16 @@ Every adapter component class then `implements I<Thing>Component<<Lib>VisualType
   wireframes/bounds for the physics world's `children`, toggled via the dev console/debugger UI in
   `packages/core/src/dev/`.
 
+## The `removeFromWorld(dispose)` contract
+
+Every component class here also implements the same base `IWorldComponent` a physics adapter's
+components do (see `gg-engine-physics-adapter`'s section on this contract for the full statement):
+`removeFromWorld(world, dispose?)` must free the component's own native/GPU resources when `dispose`
+is `true`, not merely stop tracking it. `pixi`/`three` components already had a correct `dispose()`
+(Pixi: `Application.destroy(...)` / `Container.destroy()`; Three: `geometry.dispose()`/
+`material.dispose()` per mesh, `WebGLRenderer.dispose()`) - the only fix needed here was wiring
+`removeFromWorld(world, dispose)` to actually call it, the same pattern physics adapters use.
+
 ## package.json conventions
 
 Copy `packages/pixi/package.json` (simplest case) or `packages/three/package.json` (if you also

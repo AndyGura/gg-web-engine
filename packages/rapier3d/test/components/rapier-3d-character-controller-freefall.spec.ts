@@ -5,17 +5,21 @@ describe('Rapier3dCharacterControllerComponent - free fall sanity', () => {
   it('falls under gravity in empty space (no floor at all) at a physically plausible rate', async () => {
     const world = new Rapier3dWorldComponent();
     await world.init();
-    // the native world's own gravity must stay zero - CharacterController3dEntity integrates
-    // gravity itself and feeds the adapter the full displacement each tick (see
-    // ICharacterController3dComponent's doc)
-    world.gravity = { x: 0, y: 0, z: 0 };
+    // Leave `world.gravity` at its default (-9.82 along z) and the entity's own `gravity` option
+    // unset (undefined) - this is the normal/default wiring (see `gravity`'s doc on
+    // `CharacterController3dEntityOptions`): `CharacterController3dEntity` reads
+    // `physicsWorld.gravity` live every tick and integrates it itself, since a kinematic character
+    // controller is never affected by the native engine's own gravity integration (that only
+    // applies to dynamic rigid bodies - see `ICharacterController3dComponent`'s doc), regardless of
+    // what `world.gravity` is set to. This test is what actually proves the character obeys world
+    // gravity by default, not just that an explicit numeric override falls correctly.
 
     const startZ = 1000; // high up, nothing below at all - pure free fall, no ground anywhere
     const characterController = world.factory.createCharacterController(
       { radius: 0.4, centersDistance: 1.0 },
       { position: { x: 0, y: 0, z: startZ } },
     );
-    const entity = new CharacterController3dEntity({ radius: 0.4, centersDistance: 1.0, gravity: 9.82 }, null, characterController);
+    const entity = new CharacterController3dEntity({ radius: 0.4, centersDistance: 1.0 }, null, characterController);
     entity.onSpawned({ physicsWorld: world } as any);
 
     const dtMs = 16;
