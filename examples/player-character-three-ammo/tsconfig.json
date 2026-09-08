@@ -6,8 +6,7 @@
     "sourceMap": true,
     "skipLibCheck": true,
     "paths": {
-"three": ["./node_modules/@gg-web-engine/three/node_modules/three"],
-      "mini-signals": ["./node_modules/@gg-web-engine/ammo/node_modules/mini-signals/index.js"]
+      "mini-signals": ["./node_modules/mini-signals/index.js"]
     }
   }
 }
