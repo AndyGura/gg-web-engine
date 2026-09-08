@@ -128,11 +128,18 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
     world.physicsWorld.added$.next(this);
   }
 
-  removeFromWorld(world: MatterGgWorld): void {
+  removeFromWorld(world: MatterGgWorld, dispose: boolean = false): void {
     Composite.remove(world.physicsWorld.matterWorld!, this.nativeBody);
     world.physicsWorld.removed$.next(this);
+    if (dispose) {
+      this.dispose();
+    }
   }
 
+  // matter.js bodies are plain JS objects with no native/WASM handle - ordinary GC reclaims them
+  // once `Composite.remove` above drops the engine's own reference, so there's nothing to free here
+  // at this level. `MatterTriggerComponent` overrides this to complete its own RxJS subjects, which
+  // *do* need an explicit dispose.
   dispose(): void {}
 
   resetMotion(): void {

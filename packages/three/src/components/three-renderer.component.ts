@@ -55,12 +55,15 @@ export class ThreeRendererComponent extends IRenderer3dComponent<ThreeVisualType
     }
   }
 
-  removeFromWorld(world: ThreeGgWorld) {
+  removeFromWorld(world: ThreeGgWorld, dispose?: boolean) {
     if (this.physicsDebugViewActive) {
       ThreePhysicsDebugView.stopDebugView(this.debugView!, this);
       this.debugView = null;
     }
     this.world = null;
+    if (dispose) {
+      this.dispose();
+    }
   }
 
   resizeRenderer(newSize: Point2): void {

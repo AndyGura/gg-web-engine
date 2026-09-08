@@ -371,7 +371,7 @@ export class Rapier3dCharacterControllerComponent implements ICharacterControlle
     this.world.added$.next(this);
   }
 
-  removeFromWorld(world: Rapier3dGgWorld): void {
+  removeFromWorld(world: Rapier3dGgWorld, dispose?: boolean): void {
     if (world.physicsWorld != this.world) {
       throw new Error('Rapier3D bodies cannot be shared between different worlds');
     }
@@ -392,7 +392,7 @@ export class Rapier3dCharacterControllerComponent implements ICharacterControlle
 
   dispose(): void {
     if (this._nativeBody) {
-      this.removeFromWorld({ physicsWorld: this.world } as any as Rapier3dGgWorld);
+      this.removeFromWorld({ physicsWorld: this.world } as any as Rapier3dGgWorld, true);
     }
   }
 }

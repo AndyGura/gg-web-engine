@@ -587,9 +587,18 @@ export class AmmoCharacterControllerComponent
     this.world.dynamicAmmoWorld?.addCollisionObject(this.nativeBody, this._ownCGsMask, this._interactWithCGsMask);
   }
 
-  removeFromWorld(world: AmmoGgWorld): void {
+  removeFromWorld(world: AmmoGgWorld, dispose?: boolean): void {
     this.world.dynamicAmmoWorld?.removeCollisionObject(this.nativeBody);
-    super.removeFromWorld(world);
+    super.removeFromWorld(world, dispose);
+  }
+
+  dispose(): void {
+    super.dispose();
+    try {
+      Ammo.destroy(this.nativeShape);
+    } catch {
+      // pass - mirrors the same defensive try/catch AmmoBodyComponent.dispose() uses for the body
+    }
   }
 
   clone(): AmmoCharacterControllerComponent {

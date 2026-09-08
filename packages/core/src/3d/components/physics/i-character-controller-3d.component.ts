@@ -14,6 +14,15 @@ import { PhysicsTypeDocRepo3D } from '../../gg-3d-world';
  * `CharacterController3dEntity` integrate gravity/jumping itself and get identical behavior
  * regardless of which physics backend is plugged in, instead of relying on (and diverging on) each
  * native engine's own character-controller gravity/impulse model.
+ *
+ * `removeFromWorld(world, dispose)` (inherited from `IBodyComponent`/`IWorldComponent` - see their
+ * doc for the general contract) matters especially here: `CharacterController3dEntity` swaps this
+ * component out wholesale on every crouch/stand transition (`recreateCapsule`), calling
+ * `removeFromWorld(world, true)` on the discarded capsule and then dropping its only reference to
+ * it. An implementation whose `removeFromWorld` ignores `dispose` and only detaches from the
+ * world's own bookkeeping - without also freeing the native capsule shape/ghost object/collider -
+ * leaks one such native object per crouch/stand transition, since nothing else will ever call
+ * `dispose()` on that discarded instance afterwards.
  */
 export interface ICharacterController3dComponent<
   PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D,

@@ -108,12 +108,15 @@ export abstract class AmmoBodyComponent<T extends Ammo.btCollisionObject> {
     this.world.added$.next(this as any);
   }
 
-  removeFromWorld(world: AmmoGgWorld): void {
+  removeFromWorld(world: AmmoGgWorld, dispose: boolean = false): void {
     if (world.physicsWorld != this.world) {
       throw new Error('Ammo bodies cannot be shared between different worlds');
     }
     this.addedToWorld = false;
     this.world.removed$.next(this as any);
+    if (dispose) {
+      this.dispose();
+    }
   }
 
   dispose(): void {

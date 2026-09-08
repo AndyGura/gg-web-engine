@@ -64,7 +64,7 @@ export abstract class IRendererComponent<
 
   abstract addToWorld(world: GgWorld<D, R, GgWorldTypeDocVPatch<D, R, VTypeDoc>>): void;
 
-  abstract removeFromWorld(world: GgWorld<D, R, GgWorldTypeDocVPatch<D, R, VTypeDoc>>): void;
+  abstract removeFromWorld(world: GgWorld<D, R, GgWorldTypeDocVPatch<D, R, VTypeDoc>>, dispose?: boolean): void;
 
   /**
    * Resizes the renderer to the specified size.

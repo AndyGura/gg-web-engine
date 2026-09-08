@@ -269,9 +269,16 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
     return normal !== null && Pnt3.angle(normal, this.characterController.up) <= this.options.maxSlopeClimbAngleRad;
   }
 
-  /** Triggers a jump (a takeoff velocity away from the ground, opposing gravity) only while grounded; a no-op mid-air. */
+  /**
+   * Triggers a jump (a takeoff velocity away from the ground, opposing gravity) only while stably
+   * grounded - the same `isGrounded && isWalkableGround` condition `updateMovement` uses to decide
+   * resting-vs-falling (see its doc), not just the adapter's raw `isGrounded` alone. Otherwise a
+   * character balanced on a too-steep surface (`isGrounded === true` but sliding, per
+   * `isWalkableGround`) could jump off it as if it were stable footing. A no-op mid-air, and a
+   * no-op while grounded on an unwalkably steep surface.
+   */
   public jump(): void {
-    if (this.isGrounded) {
+    if (this.isGrounded && this.isWalkableGround) {
       const up = this.characterController.up;
       // launch opposite whichever way gravity currently pulls (normally "up"), so this still does
       // the right thing under an inverted/overridden gravity vector; with no gravity at all
@@ -335,15 +342,19 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
 
     this.characterController.move(desiredTranslation, dt);
 
-    if (this._wantsToStand) {
-      this.tryStandUp();
-    }
-
+    // Sync the cached position/rotation from this tick's `move()` result *before* tryStandUp()/
+    // recreateCapsule() below - both read `this.position`/`this.rotation` (the cached getters, not
+    // the characterController directly) to place a raycast origin / the replacement capsule, and
+    // must see this tick's fresh result rather than last tick's stale cache.
     this._position = this.characterController.position;
     this._rotation = this.characterController.rotation;
     if (this.object3D) {
       this.object3D.position = this._position;
       this.object3D.rotation = this._rotation;
+    }
+
+    if (this._wantsToStand) {
+      this.tryStandUp();
     }
   }
 
@@ -412,6 +423,15 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
       { position: newPosition, rotation: this.rotation },
     );
 
+    // `dispose: true` here is load-bearing, not decoration: `old` is dropped entirely right after
+    // this call (no other reference survives), so freeing its native capsule shape/ghost object can
+    // only happen inside this `removeFromWorld(world, true)` call - see
+    // `ICharacterController3dComponent`'s doc (and `IWorldComponent.removeFromWorld`'s, which states
+    // the general contract) for what an adapter's override must do with `dispose`. TODO: at least
+    // one adapter (Ammo, `AmmoCharacterControllerComponent.removeFromWorld`) currently ignores this
+    // flag and leaks the old capsule/ghost object on every crouch/stand transition - fix pending,
+    // tracked per-adapter (see `gg-engine-physics-adapter`'s "The `removeFromWorld(dispose)`
+    // contract" section).
     this.removeComponents([old], true);
     this.characterController = created;
     this.addComponents(created);

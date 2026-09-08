@@ -179,7 +179,13 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
     this.world.added$.next(this);
   }
 
-  removeFromWorld(world: Rapier2dGgWorld): void {
+  // `dispose` is accepted for interface conformance but doesn't change behavior below: this method
+  // already unconditionally frees the native rigid body/colliders regardless of the flag, by
+  // design - `addToWorld` always recreates them fresh from the stored `_bodyDescr`/`_colliderDescr`
+  // descriptors, so eagerly freeing on every removal (rather than only when `dispose: true`) is both
+  // safe and cheap to undo, unlike e.g. Ammo's native handles (see `gg-engine-physics-adapter`'s
+  // dispose-contract section for that contrast).
+  removeFromWorld(world: Rapier2dGgWorld, dispose?: boolean): void {
     if (world.physicsWorld != this.world) {
       throw new Error('Rapier2D bodies cannot be shared between different worlds');
     }
@@ -202,7 +208,7 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
 
   dispose(): void {
     if (this.nativeBody) {
-      this.removeFromWorld({ physicsWorld: this.world } as any as Rapier2dGgWorld);
+      this.removeFromWorld({ physicsWorld: this.world } as any as Rapier2dGgWorld, true);
     }
   }
 }

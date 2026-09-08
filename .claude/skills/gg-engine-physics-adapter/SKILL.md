@@ -178,6 +178,72 @@ synchronous contract like this (see `Rapier3dCharacterControllerComponent`):
   reasonable to skip and document as a limitation, since it would otherwise force widening that map's
   and `raycast()`'s return-type generics for a corner case outside the interface's actual contract.
 
+### The `removeFromWorld(dispose)` contract
+
+`IWorldComponent.removeFromWorld(world, dispose?)` (`packages/core/src/base/components/i-world-component.ts`,
+inherited by every component interface including `ICharacterController3dComponent` via
+`IBodyComponent`) documents that `dispose: true` requires the implementation to free any
+native/backend resource the component owns (shape, body/ghost-object handle, GPU buffer, ...) as
+part of that same call, not merely stop tracking it in `world`. This is exactly what
+`CharacterController3dEntity.recreateCapsule` relies on: every crouch/stand transition creates a
+brand-new character-controller component at a different `centersDistance` and swaps it in via
+`this.removeComponents([old], true)`, dropping its only reference to `old` immediately afterward -
+nothing else will ever call `dispose()` on that discarded instance, so if `removeFromWorld` doesn't
+honor `dispose` there, the native object leaks on every single crouch/stand transition.
+
+Every `removeFromWorld` override in every adapter (`ammo`, `matter`, `pixi`, `three`, `rapier2d`,
+`rapier3d`) now accepts and honors this parameter - the general pattern, used consistently across
+all of them: accept `dispose?: boolean`, thread it through to `super.removeFromWorld(world,
+dispose)` when the component subclasses another `IWorldComponent`, and at the point where this
+component's own native handles are known (usually the base of a class hierarchy, e.g.
+`AmmoBodyComponent`/`MatterRigidBodyComponent`/`PixiDisplayObjectComponent`) call `this.dispose()`
+when `dispose` is `true`. Concretely, by library family:
+
+- **Ammo** (WASM/Bullet, manual `Ammo.destroy(...)` per allocation): the leak this section
+  originally documented was real - `AmmoCharacterControllerComponent.removeFromWorld` only called
+  `removeCollisionObject` and never freed the ghost object or its capsule shape. Fixed by having
+  `AmmoBodyComponent.removeFromWorld` call `this.dispose()` when `dispose` is `true` (every Ammo
+  body/trigger/character-controller subclass already had a working `dispose()` for its own native
+  body - it just was never wired to `removeFromWorld`), and by giving
+  `AmmoCharacterControllerComponent` its own `dispose()` override that additionally frees
+  `nativeShape` (the capsule shape `AmmoBodyComponent.dispose()` alone can't reach, since Bullet
+  shapes aren't owned by the collision object referencing them).
+  `AmmoRaycastVehicleComponent` had the same class of gap independently:
+  `nativeVehicle`/`vehicleTuning`/`raycaster`/`wheelDirectionCS0`/`wheelAxleCS` had no `dispose()`
+  at all and were never freed on removal, `dispose` or not - fixed the same way. Its `nativeBody` is
+  shared with the `chassisBody` passed into its constructor (same native handle, not a copy); only
+  the vehicle's own `removeFromWorld`/`dispose()` frees it - never pass `dispose: true` down into
+  `chassisBody.removeFromWorld` too, or the shared handle gets double-freed.
+- **Rapier** (`rapier2d`/`rapier3d`, WASM but reference-counted per-call, not manually tracked):
+  every rigid-body/trigger/character-controller `removeFromWorld` already unconditionally freed its
+  native handles regardless of any flag - `addToWorld` always recreates them fresh from stored
+  descriptors, so eager freeing on every removal is both safe and cheap to undo, unlike Ammo's
+  handles. These now accept `dispose?: boolean` for interface conformance (and each `dispose()`
+  passes `true` through to `removeFromWorld` for self-documentation), but the parameter doesn't
+  change behavior. The one genuine bug found here: `Rapier3dRaycastVehicleComponent`'s native
+  vehicle controller needs an explicit `.free()` beyond `removeVehicleController`, which - like the
+  Ammo raycast vehicle - was never reachable from an ordinary `removeFromWorld` before; fixed by
+  calling `this.dispose()` from `removeFromWorld` when `dispose` is `true`.
+- **Matter** (pure JS, GC-managed - `matter-js` has no native/WASM handles at all): `removeFromWorld`
+  now threads `dispose` through and calls `this.dispose()`, but `MatterRigidBodyComponent.dispose()`
+  is intentionally a no-op (nothing to free). `MatterTriggerComponent` is the one real fix: it now
+  overrides `dispose()` to complete its `onEnter$`/`onLeft$` RxJS subjects, which previously never
+  happened on either path.
+- **Pixi/Three** (rendering, not physics, but implement the same `IWorldComponent` base): both
+  already had a correct `dispose()` (Pixi: `Application.destroy(...)` / `Container.destroy()`;
+  Three: `geometry.dispose()`/`material.dispose()` per mesh, `WebGLRenderer.dispose()`) - the fix
+  was purely wiring `removeFromWorld(world, dispose)` to call it, identical to the Ammo pattern.
+
+**A leak that was consciously left alone**: `AmmoRigidBodyComponent`/`AmmoTriggerComponent` never
+capture or free their collision shape (`this._nativeBody.getCollisionShape()`) anywhere, including
+in `dispose()` - only the character controller's capsule (which owns a private, never-shared shape)
+was fixed here, since that was the concretely reported leak. Ammo/Bullet shapes are shareable
+across multiple bodies by design, and this package's factory (`ammo-factory.ts`) doesn't currently
+track whether a given native shape is exclusively owned by the one body that created it or reused
+elsewhere - freeing it unconditionally in `dispose()` risks a use-after-free for a shared shape.
+Fixing this properly needs that ownership question answered first; treat it as a known, separate,
+unresolved gap rather than assuming `dispose()` on an ordinary Ammo rigid body/trigger is fully leak-free.
+
 ### Pitfall: a freshly-created collider is invisible to sweeps/raycasts until the world steps once
 
 Hit implementing `Rapier3dCharacterControllerComponent`: calling `move()` immediately after creating
