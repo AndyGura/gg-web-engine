@@ -5,7 +5,6 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "prettier-format": "prettier --config ../core/.prettierrc 'src/**/*.ts' --write",
     "prepublish": "rm -rf ./dist/ && tsc",
     "build": "tsc"

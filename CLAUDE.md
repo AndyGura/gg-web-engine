@@ -20,13 +20,19 @@ the task before writing code:
 | [`gg-engine-level-json`](.claude/skills/gg-engine-level-json/SKILL.md) | Authoring a level/scene JSON file, or registering an app-defined entity class the loader can dispatch to. |
 | [`gg-engine-core-development`](.claude/skills/gg-engine-core-development/SKILL.md) | Changing `packages/core` — the dimension-agnostic and 2D/3D interfaces every adapter implements. |
 | [`gg-engine-visual-adapter`](.claude/skills/gg-engine-visual-adapter/SKILL.md) | Creating/modifying a rendering backend package (`packages/three`, `packages/pixi`, or a new one). |
-| [`gg-engine-physics-adapter`](.claude/skills/gg-engine-physics-adapter/SKILL.md) | Creating/modifying a physics backend package (`packages/ammo`, `packages/rapier2d`, `packages/rapier3d`, `packages/matter`, or a new one). |
+| [`gg-engine-physics-adapter`](.claude/skills/gg-engine-physics-adapter/SKILL.md) | Creating a **new** physics backend package from scratch, or the general contract any physics adapter must satisfy. |
+| [`gg-engine-physics-adapter-ammo`](.claude/skills/gg-engine-physics-adapter-ammo/SKILL.md) | Fixing/extending the already-implemented `packages/ammo` adapter specifically — known Bullet/embind pitfalls. |
+| [`gg-engine-physics-adapter-rapier`](.claude/skills/gg-engine-physics-adapter-rapier/SKILL.md) | Fixing/extending `packages/rapier2d`/`packages/rapier3d` specifically — known `@dimforge/rapier-compat` pitfalls. |
+| [`gg-engine-physics-adapter-matter`](.claude/skills/gg-engine-physics-adapter-matter/SKILL.md) | Fixing/extending `packages/matter` specifically — known `matter-js` pitfalls. |
 | [`gg-engine-examples`](.claude/skills/gg-engine-examples/SKILL.md) | Adding/updating a demo under `examples/`. |
 | [`gg-engine-release`](.claude/skills/gg-engine-release/SKILL.md) | Cutting a coordinated multi-package release. |
 
 A task can span more than one skill (e.g. "add a Jolt physics backend and a demo" needs
 `gg-engine-physics-adapter` then `gg-engine-examples`) — load each in sequence as you reach that
-part of the work.
+part of the work. The three `gg-engine-physics-adapter-*` skills hold implementation history for the
+four already-shipped physics adapters (already-solved native-engine quirks, build/typing gotchas) and
+are only relevant once you're touching one of those specific packages — building a brand-new adapter
+never needs them, only the general `gg-engine-physics-adapter` skill.
 
 ## Delegating this work to subagents
 
@@ -62,15 +68,19 @@ investigation this session already did. Concretely:
 ## Keep the repo-development skills current
 
 `gg-engine-core-development`, `gg-engine-visual-adapter`, `gg-engine-physics-adapter`,
-`gg-engine-examples`, and `gg-engine-release` document *how to work on this repo*. Whenever work
-under one of them hits a pitfall it doesn't mention, or something it says turns out to be
-wrong/incomplete and you had to find the real fix, update that skill's `SKILL.md` with the lesson
-before finishing the task — a short note on what went wrong, why, and the fix, folded into the
-relevant section rather than dumped as an unstructured log. This applies whether you're doing the
-work directly or reviewing a subagent's — if a subagent you spawned hits and solves one of these,
-have it (or do it yourself) fold the lesson into the skill file as part of finishing, since the
-next agent to touch that package starts from the skill file alone and won't have this
-conversation's context.
+`gg-engine-physics-adapter-ammo`, `gg-engine-physics-adapter-rapier`,
+`gg-engine-physics-adapter-matter`, `gg-engine-examples`, and `gg-engine-release` document *how to
+work on this repo*. Whenever work under one of them hits a pitfall it doesn't mention, or something
+it says turns out to be wrong/incomplete and you had to find the real fix, update that skill's
+`SKILL.md` with the lesson before finishing the task — a short note on what went wrong, why, and the
+fix, folded into the relevant section rather than dumped as an unstructured log. This applies whether
+you're doing the work directly or reviewing a subagent's — if a subagent you spawned hits and solves
+one of these, have it (or do it yourself) fold the lesson into the skill file as part of finishing,
+since the next agent to touch that package starts from the skill file alone and won't have this
+conversation's context. A lesson specific to one already-implemented physics adapter (`ammo`/
+`rapier2d`/`rapier3d`/`matter`) belongs in that library's own `gg-engine-physics-adapter-*` skill, not
+in the general `gg-engine-physics-adapter` file — see that file's own "Keep this skill current"
+section for the split.
 
 This does **not** apply to `gg-engine-app-development` or `gg-engine-level-json`: lessons learned
 while building an end-application (or authoring its level JSON content) on top of the engine
@@ -88,6 +98,19 @@ point.
 
 ## Non-obvious repo facts worth knowing before diving in
 
+- **Every 3D world in this engine is Z-up, always** — `{x, y}` is the ground plane, `+Z` is up. This
+  is true across core, every adapter (three, ammo, rapier3d), and every example; there is no
+  per-app/per-world configuration to change it. Concretely: `packages/three/src/three-factory.ts`
+  and adapters' factories internally re-orient any Y-up-native primitive (three.js's own
+  `CapsuleGeometry`/`CylinderGeometry`/`ConeGeometry`, Bullet/Rapier default conventions) so the
+  engine-level shape/body APIs are Z-up-consistent; you should never need to compensate for Y-up
+  yourself when calling them. When writing a raw `Point3`/`{x,y,z}` literal that's meant to be a
+  world axis or up-vector (not an arbitrary position), prefer the named constants in `Pnt3` (`Pnt3.X`
+  = `{x:1,y:0,z:0}`, `Pnt3.Y`, `Pnt3.Z` = "up", and `Pnt3.nX`/`Pnt3.nY`/`Pnt3.nZ` for their negatives)
+  over spelling the components out — it documents intent and avoids sign/axis mistakes. 2D worlds
+  (`packages/pixi`, `packages/matter`, `packages/rapier2d`) are the ordinary `{x, y}` screen/ground
+  plane and aren't affected by this (no Z axis at all) — `Pnt2` still has its own 2D analogs
+  (`Pnt2.X`/`Pnt2.Y`/`Pnt2.nX`/`Pnt2.nY`) for the same reason, there's just no `Z`/`nZ`.
 - Every package under `packages/` and `examples/` is versioned and published independently (see
   `gg-engine-release`) — there's no lockstep-versioned monorepo tool (no lerna/pnpm). Locally,
   though, `packages/*` (not `examples/*`) *is* an npm workspace (root `package.json`) purely for

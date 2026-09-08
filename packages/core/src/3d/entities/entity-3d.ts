@@ -72,7 +72,9 @@ export class Entity3d<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRep
     super();
     if (options.objectBody) {
       this.objectBody = options.objectBody;
-      this.name = this.objectBody.name;
+      if (this.objectBody.name) {
+        this.name = this.objectBody.name;
+      }
       this.addComponents(this.objectBody);
     }
     if (options.object3D) {
@@ -80,7 +82,9 @@ export class Entity3d<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRep
       if (!options.objectBody) {
         this._position = this.object3D.position;
         this._rotation = this.object3D.rotation;
-        this.name = this.object3D.name;
+        if (this.object3D.name) {
+          this.name = this.object3D.name;
+        }
       }
       this.addComponents(this.object3D);
     }

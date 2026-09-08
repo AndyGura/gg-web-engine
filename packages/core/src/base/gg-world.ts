@@ -433,7 +433,7 @@ export abstract class GgWorld<
           .join('\n');
       },
       'args: [ string? ]; List all entities in this world (name and class), optionally filtered by ' +
-        'a case-insensitive substring of the name. Use "entity <name>" to inspect one of them',
+        'a case-insensitive substring of the name. Use "entity NAME" to inspect one of them',
     );
     ggstatic.registerConsoleCommand(
       this,
@@ -441,7 +441,7 @@ export abstract class GgWorld<
       async (...args: string[]) => {
         const name = args[0];
         if (!name) {
-          throw new Error('usage: entity <name>; use "entities" to list available names');
+          throw new Error('usage: entity NAME; use "entities" to list available names');
         }
         const entity = this.getEntityByName(name);
         const lines: string[] = [
@@ -472,7 +472,7 @@ export abstract class GgWorld<
       async (...args: string[]) => {
         const name = args[0];
         if (!name) {
-          throw new Error('usage: remove <name> [dispose=0|1]');
+          throw new Error('usage: remove NAME [dispose=0|1]');
         }
         const entity = this.getEntityByName(name);
         const dispose = args[1] === undefined ? true : args[1] === '1';

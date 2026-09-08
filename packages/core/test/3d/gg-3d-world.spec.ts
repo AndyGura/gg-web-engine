@@ -1,24 +1,55 @@
-import { Entity3d, Gg3dWorld, IEntity, Qtrn, TickOrder } from '../../src';
+import { Entity3d, Gg3dWorld, IEntity, PlayerCharacterController, Qtrn, Renderer3dEntity, TickOrder } from '../../src';
 import { mock3DBody } from '../mocks/body.mock';
 import { mock3DObject } from '../mocks/object.mock';
+import { mockCharacterController } from '../mocks/character-controller.mock';
 import { collectConsoleCommands } from '../mocks/console-commands.mock';
 
 class GgEntityMock extends IEntity {
   readonly tickOrder: TickOrder = TickOrder.OBJECTS_BINDING;
 }
 
+const mockRenderer3dEntity = (): Renderer3dEntity => {
+  return new Renderer3dEntity({
+    camera: { position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0, w: 1 } },
+    rendererOptions: { size: { x: 100, y: 100 } },
+    canvas: null,
+    physicsDebugViewActive: false,
+    render() {},
+    resizeRenderer() {},
+    addToWorld() {},
+    removeFromWorld() {},
+    dispose() {},
+  } as any);
+};
+
 describe('Gg3dWorld', () => {
-  let visualScene: { factory: { createPrimitive: jest.Mock }; dispose: () => void };
-  let physicsWorld: { factory: { createRigidBody: jest.Mock }; gravity: any; dispose: () => void };
+  let visualScene: {
+    factory: { createPrimitive: jest.Mock; createCapsule: jest.Mock };
+    dispose: () => void;
+  };
+  let physicsWorld: {
+    factory: { createRigidBody: jest.Mock; createCharacterController: jest.Mock };
+    gravity: any;
+    dispose: () => void;
+  };
   let world: Gg3dWorld;
 
   beforeEach(() => {
     visualScene = {
-      factory: { createPrimitive: jest.fn(() => mock3DObject()) },
+      factory: { createPrimitive: jest.fn(() => mock3DObject()), createCapsule: jest.fn(() => mock3DObject()) },
       dispose: () => {},
     };
     physicsWorld = {
-      factory: { createRigidBody: jest.fn(() => mock3DBody()) },
+      factory: {
+        createRigidBody: jest.fn(() => mock3DBody()),
+        createCharacterController: jest.fn((options: any, transform: any) => {
+          const created = mockCharacterController(options.radius, options.centersDistance);
+          if (transform?.position) {
+            created.position = transform.position;
+          }
+          return created;
+        }),
+      },
       gravity: { x: 0, y: 0, z: -9.82 },
       dispose: () => {},
     };
@@ -52,7 +83,7 @@ describe('Gg3dWorld', () => {
     describe('set_position', () => {
       it('requires a name', async () => {
         const commands = collectConsoleCommands(world);
-        await expect(commands.get('set_position')!()).rejects.toThrow('usage: set_position <name> <x> <y> <z>');
+        await expect(commands.get('set_position')!()).rejects.toThrow('usage: set_position NAME X Y Z');
       });
 
       it('teleports a named positionable entity', async () => {
@@ -131,7 +162,7 @@ describe('Gg3dWorld', () => {
         const commands = collectConsoleCommands(world);
         const result = await commands.get('spawn')!('BOX', '1', '2', '3');
 
-        expect(result).toMatch(/^spawned ".*" \(BOX\) at \{"x":1,"y":2,"z":3\}$/);
+        expect(result).toMatch(/^spawned ".+" \(BOX\) at \{"x":1,"y":2,"z":3\}$/);
         expect(visualScene.factory.createPrimitive).toHaveBeenCalledWith(
           { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } },
           {},
@@ -167,6 +198,55 @@ describe('Gg3dWorld', () => {
       it('rejects missing/non-numeric coordinates', async () => {
         const commands = collectConsoleCommands(world);
         await expect(commands.get('spawn')!('BOX', '1', '2')).rejects.toThrow('usage: spawn');
+      });
+    });
+
+    describe('player_spawn', () => {
+      it('rejects when there is no renderer yet', async () => {
+        const commands = collectConsoleCommands(world);
+        await expect(commands.get('player_spawn')!('0', '0', '0')).rejects.toThrow('renderer');
+      });
+
+      it('spawns a character controller and a PlayerCharacterController wired to the first renderer', async () => {
+        world.addEntity(mockRenderer3dEntity());
+        const commands = collectConsoleCommands(world);
+
+        const result = await commands.get('player_spawn')!('1', '2', '3');
+
+        expect(physicsWorld.factory.createCharacterController).toHaveBeenCalledWith(
+          expect.objectContaining({ radius: 0.4, centersDistance: 1.0 }),
+          { position: { x: 1, y: 2, z: 3 } },
+        );
+        expect(result).toMatch(/^spawned ".+" at \{"x":1,"y":2,"z":3\}, controlled by ".+"$/);
+        const controllerName = result.match(/controlled by "(.*)"$/)![1];
+        expect(world.getEntityByName<PlayerCharacterController>(controllerName)).toBeInstanceOf(
+          PlayerCharacterController,
+        );
+      });
+
+      it('rejects missing/non-numeric coordinates', async () => {
+        world.addEntity(mockRenderer3dEntity());
+        const commands = collectConsoleCommands(world);
+        await expect(commands.get('player_spawn')!('1', '2')).rejects.toThrow('usage: player_spawn');
+      });
+    });
+
+    describe('player_mode', () => {
+      it('switches a named PlayerCharacterController between view modes', async () => {
+        world.addEntity(mockRenderer3dEntity());
+        const commands = collectConsoleCommands(world);
+        const spawnResult = await commands.get('player_spawn')!('0', '0', '0');
+        const controllerName = spawnResult.match(/controlled by "(.*)"$/)![1];
+
+        const result = await commands.get('player_mode')!(controllerName, 'third-person');
+
+        expect(result).toBe('third-person');
+        expect(world.getEntityByName<PlayerCharacterController>(controllerName).viewMode).toBe('third-person');
+      });
+
+      it('rejects an invalid mode', async () => {
+        const commands = collectConsoleCommands(world);
+        await expect(commands.get('player_mode')!('whoever', 'sideways')).rejects.toThrow('usage: player_mode');
       });
     });
   });

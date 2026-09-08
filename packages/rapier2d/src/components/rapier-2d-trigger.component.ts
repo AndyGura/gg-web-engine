@@ -48,12 +48,12 @@ export class Rapier2dTriggerComponent
     this.world.added$.next(this);
   }
 
-  removeFromWorld(world: Rapier2dGgWorld) {
+  removeFromWorld(world: Rapier2dGgWorld, dispose?: boolean) {
     for (const body of this.overlaps) {
       this.onLeft$.next(body);
     }
     this.overlaps.clear();
-    super.removeFromWorld(world);
+    super.removeFromWorld(world, dispose);
   }
 
   checkOverlaps(): void {

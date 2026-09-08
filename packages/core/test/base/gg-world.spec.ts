@@ -312,7 +312,7 @@ describe('GgWorld', () => {
     describe('entity', () => {
       it('requires a name argument', async () => {
         const commands = collectConsoleCommands(world);
-        await expect(commands.get('entity')!()).rejects.toThrow('usage: entity <name>');
+        await expect(commands.get('entity')!()).rejects.toThrow('usage: entity NAME');
       });
 
       it('rejects an unknown name', async () => {
@@ -354,7 +354,7 @@ describe('GgWorld', () => {
     describe('remove', () => {
       it('requires a name argument', async () => {
         const commands = collectConsoleCommands(world);
-        await expect(commands.get('remove')!()).rejects.toThrow('usage: remove <name>');
+        await expect(commands.get('remove')!()).rejects.toThrow('usage: remove NAME');
       });
 
       it('removes and disposes by default', async () => {

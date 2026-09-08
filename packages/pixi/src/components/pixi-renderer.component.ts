@@ -87,13 +87,16 @@ export class PixiRendererComponent extends IRenderer2dComponent<PixiVisualTypeDo
     }
   }
 
-  removeFromWorld(world: PixiGgWorld): void {
+  removeFromWorld(world: PixiGgWorld, dispose?: boolean): void {
     if (this.physicsDebugViewActive) {
       this.debugView!.dispose();
       this.debugView = null;
     }
     this.application.stage.removeChild(this.scene.nativeContainer!);
     this.world = null;
+    if (dispose) {
+      this.dispose();
+    }
   }
 
   render(): void {
