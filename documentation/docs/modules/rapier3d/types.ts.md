@@ -1,6 +1,6 @@
 ---
 title: rapier3d/types.ts
-nav_order: 140
+nav_order: 146
 parent: Modules
 ---
 
@@ -39,6 +39,7 @@ export type Rapier3dPhysicsTypeDocRepo = {
   rigidBody: Rapier3dRigidBodyComponent
   trigger: Rapier3dTriggerComponent
   raycastVehicle: never //Rapier3dRaycastVehicleComponent;
+  characterController: Rapier3dCharacterControllerComponent
 }
 ```
 

@@ -1,6 +1,6 @@
 ---
 title: matter/components/matter-trigger.component.ts
-nav_order: 115
+nav_order: 120
 parent: Modules
 ---
 
@@ -16,6 +16,7 @@ parent: Modules
     - [onCollisionEnd (method)](#oncollisionend-method)
     - [addToWorld (method)](#addtoworld-method)
     - [removeFromWorld (method)](#removefromworld-method)
+    - [dispose (method)](#dispose-method)
     - [checkOverlaps (method)](#checkoverlaps-method)
     - [clone (method)](#clone-method)
     - [onEnter$ (property)](#onenter-property)
@@ -71,7 +72,18 @@ addToWorld(world: MatterGgWorld): void
 **Signature**
 
 ```ts
-removeFromWorld(world: MatterGgWorld): void
+removeFromWorld(world: MatterGgWorld, dispose?: boolean): void
+```
+
+### dispose (method)
+
+Completes `onEnter$`/`onLeft$` - `MatterRigidBodyComponent.dispose()` is a no-op (see its own
+doc), so this is the only place these two subjects ever get completed.
+
+**Signature**
+
+```ts
+dispose(): void
 ```
 
 ### checkOverlaps (method)

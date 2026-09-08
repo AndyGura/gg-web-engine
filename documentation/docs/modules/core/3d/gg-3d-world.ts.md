@@ -1,6 +1,6 @@
 ---
 title: core/3d/gg-3d-world.ts
-nav_order: 55
+nav_order: 59
 parent: Modules
 ---
 
@@ -163,6 +163,7 @@ export type PhysicsTypeDocRepo3D = {
   rigidBody: IRigidBody3dComponent
   trigger: ITrigger3dComponent
   raycastVehicle: IRaycastVehicleComponent
+  characterController: ICharacterController3dComponent
 }
 ```
 

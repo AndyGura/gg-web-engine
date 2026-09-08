@@ -1,6 +1,6 @@
 ---
 title: ammo/components/ammo-rigid-body.component.ts
-nav_order: 7
+nav_order: 8
 parent: Modules
 ---
 
@@ -59,7 +59,7 @@ addToWorld(world: AmmoGgWorld): void
 **Signature**
 
 ```ts
-removeFromWorld(world: AmmoGgWorld): void
+removeFromWorld(world: AmmoGgWorld, dispose?: boolean): void
 ```
 
 ### refreshCG (method)

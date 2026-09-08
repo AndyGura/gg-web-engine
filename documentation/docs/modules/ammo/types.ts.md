@@ -1,6 +1,6 @@
 ---
 title: ammo/types.ts
-nav_order: 10
+nav_order: 11
 parent: Modules
 ---
 
@@ -39,6 +39,7 @@ export type AmmoPhysicsTypeDocRepo = {
   rigidBody: AmmoRigidBodyComponent
   trigger: AmmoTriggerComponent
   raycastVehicle: AmmoRaycastVehicleComponent
+  characterController: AmmoCharacterControllerComponent
 }
 ```
 

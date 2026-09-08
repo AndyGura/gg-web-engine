@@ -1,6 +1,6 @@
 ---
 title: core/base/inputs/i-input.ts
-nav_order: 90
+nav_order: 95
 parent: Modules
 ---
 

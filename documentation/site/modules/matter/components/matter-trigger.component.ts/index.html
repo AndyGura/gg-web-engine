@@ -550,6 +550,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#dispose-method" class="md-nav__link">
+    dispose (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#checkoverlaps-method" class="md-nav__link">
     checkOverlaps (method)
   </a>
@@ -637,6 +644,7 @@
 <li><a href="#oncollisionend-method">onCollisionEnd (method)</a></li>
 <li><a href="#addtoworld-method">addToWorld (method)</a></li>
 <li><a href="#removefromworld-method">removeFromWorld (method)</a></li>
+<li><a href="#dispose-method">dispose (method)</a></li>
 <li><a href="#checkoverlaps-method">checkOverlaps (method)</a></li>
 <li><a href="#clone-method">clone (method)</a></li>
 <li><a href="#onenter-property">onEnter$ (property)</a></li>
@@ -673,7 +681,13 @@
 </code></pre>
 <h3 id="removefromworld-method">removeFromWorld (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">removeFromWorld(world: MatterGgWorld): void
+<pre><code class="language-ts">removeFromWorld(world: MatterGgWorld, dispose?: boolean): void
+</code></pre>
+<h3 id="dispose-method">dispose (method)</h3>
+<p>Completes <code>onEnter$</code>/<code>onLeft$</code> - <code>MatterRigidBodyComponent.dispose()</code> is a no-op (see its own
+doc), so this is the only place these two subjects ever get completed.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">dispose(): void
 </code></pre>
 <h3 id="checkoverlaps-method">checkOverlaps (method)</h3>
 <p><strong>Signature</strong></p>

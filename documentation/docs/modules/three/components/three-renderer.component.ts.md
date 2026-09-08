@@ -1,6 +1,6 @@
 ---
 title: three/components/three-renderer.component.ts
-nav_order: 145
+nav_order: 151
 parent: Modules
 ---
 
@@ -53,7 +53,7 @@ addToWorld(world: ThreeGgWorld)
 **Signature**
 
 ```ts
-removeFromWorld(world: ThreeGgWorld)
+removeFromWorld(world: ThreeGgWorld, dispose?: boolean)
 ```
 
 ### resizeRenderer (method)

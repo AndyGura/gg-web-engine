@@ -1,6 +1,6 @@
 ---
 title: rapier3d/components/rapier-3d-rigid-body.component.ts
-nav_order: 134
+nav_order: 140
 parent: Modules
 ---
 
@@ -65,7 +65,7 @@ addToWorld(world: Rapier3dGgWorld): void
 **Signature**
 
 ```ts
-removeFromWorld(world: Rapier3dGgWorld): void
+removeFromWorld(world: Rapier3dGgWorld, dispose?: boolean): void
 ```
 
 ### resetMotion (method)

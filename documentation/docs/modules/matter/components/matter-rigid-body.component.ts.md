@@ -1,6 +1,6 @@
 ---
 title: matter/components/matter-rigid-body.component.ts
-nav_order: 114
+nav_order: 119
 parent: Modules
 ---
 
@@ -67,7 +67,7 @@ addToWorld(world: MatterGgWorld): void
 **Signature**
 
 ```ts
-removeFromWorld(world: MatterGgWorld): void
+removeFromWorld(world: MatterGgWorld, dispose: boolean = false): void
 ```
 
 ### dispose (method)

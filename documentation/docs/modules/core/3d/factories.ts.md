@@ -1,6 +1,6 @@
 ---
 title: core/3d/factories.ts
-nav_order: 54
+nav_order: 58
 parent: Modules
 ---
 
@@ -164,5 +164,13 @@ export interface IPhysicsBody3dComponentFactory<PTypeDoc extends PhysicsTypeDocR
   ): PTypeDoc['trigger']
 
   createRaycastVehicle(chassis: PTypeDoc['rigidBody']): PTypeDoc['raycastVehicle']
+
+  createCharacterController(
+    options: CharacterController3dOptions,
+    transform?: {
+      position?: Point3
+      rotation?: Point4
+    }
+  ): PTypeDoc['characterController']
 }
 ```

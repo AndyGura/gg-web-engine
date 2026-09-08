@@ -1,0 +1,897 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/rapier3d/components/rapier-3d-character-controller.component.ts/">
+      
+      
+      
+      
+      <link rel="icon" href="../../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.4.6">
+    
+    
+      
+        <title>rapier3d/components/rapier-3d-character-controller.component.ts - GG-web-engine</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../../assets/stylesheets/main.35e1ed30.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../../assets/stylesheets/palette.356b1318.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&"object"==typeof palette.color)for(var key of Object.keys(palette.color))document.body.setAttribute("data-md-color-"+key,palette.color[key])</script>
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#rapier-3d-character-controllercomponent-overview" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../../.." title="GG-web-engine" class="md-header__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            GG-web-engine
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              rapier3d/components/rapier-3d-character-controller.component.ts
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12c0-2.42-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/AndyGura/gg-web-engine" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.4.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../../.." title="GG-web-engine" class="md-nav__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    GG-web-engine
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/AndyGura/gg-web-engine" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.4.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Modules
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Modules
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../ammo" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ammo
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../core" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    core
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../matter" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    matter
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../pixi" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    pixi
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../rapier2d" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    rapier2d
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    rapier3d
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../three" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    three
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#rapier-3d-character-controllercomponent-overview" class="md-nav__link">
+    rapier-3d-character-controller.component overview
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#utils" class="md-nav__link">
+    utils
+  </a>
+  
+    <nav class="md-nav" aria-label="utils">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#rapier3dcharactercontrollercomponent-class" class="md-nav__link">
+    Rapier3dCharacterControllerComponent (class)
+  </a>
+  
+    <nav class="md-nav" aria-label="Rapier3dCharacterControllerComponent (class)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#synccollidertransform-method" class="md-nav__link">
+    syncColliderTransform (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#move-method" class="md-nav__link">
+    move (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pushdynamicbodies-method" class="md-nav__link">
+    pushDynamicBodies (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#computegroundnormal-method" class="md-nav__link">
+    computeGroundNormal (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clone-method" class="md-nav__link">
+    clone (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#addtoworld-method" class="md-nav__link">
+    addToWorld (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#removefromworld-method" class="md-nav__link">
+    removeFromWorld (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dispose-method" class="md-nav__link">
+    dispose (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#entity-property" class="md-nav__link">
+    entity (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#name-property" class="md-nav__link">
+    name (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#radius-property" class="md-nav__link">
+    radius (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#centersdistance-property" class="md-nav__link">
+    centersDistance (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_nativebody-property" class="md-nav__link">
+    _nativeBody (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_nativecollider-property" class="md-nav__link">
+    _nativeCollider (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_nativecontroller-property" class="md-nav__link">
+    _nativeController (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#debugbodysettings-property" class="md-nav__link">
+    debugBodySettings (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#collisiongroups-property" class="md-nav__link">
+    collisionGroups (property)
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+  
+
+
+<h2 id="rapier-3d-character-controllercomponent-overview">rapier-3d-character-controller.component overview</h2>
+<hr />
+<h2 class="text-delta">Table of contents</h2>
+
+<ul>
+<li><a href="#utils">utils</a></li>
+<li><a href="#rapier3dcharactercontrollercomponent-class">Rapier3dCharacterControllerComponent (class)</a><ul>
+<li><a href="#synccollidertransform-method">syncColliderTransform (method)</a></li>
+<li><a href="#move-method">move (method)</a></li>
+<li><a href="#pushdynamicbodies-method">pushDynamicBodies (method)</a></li>
+<li><a href="#computegroundnormal-method">computeGroundNormal (method)</a></li>
+<li><a href="#clone-method">clone (method)</a></li>
+<li><a href="#addtoworld-method">addToWorld (method)</a></li>
+<li><a href="#removefromworld-method">removeFromWorld (method)</a></li>
+<li><a href="#dispose-method">dispose (method)</a></li>
+<li><a href="#entity-property">entity (property)</a></li>
+<li><a href="#name-property">name (property)</a></li>
+<li><a href="#radius-property">radius (property)</a></li>
+<li><a href="#centersdistance-property">centersDistance (property)</a></li>
+<li><a href="#_nativebody-property">_nativeBody (property)</a></li>
+<li><a href="#_nativecollider-property">_nativeCollider (property)</a></li>
+<li><a href="#_nativecontroller-property">_nativeController (property)</a></li>
+<li><a href="#debugbodysettings-property">debugBodySettings (property)</a></li>
+<li><a href="#collisiongroups-property">collisionGroups (property)</a></li>
+</ul>
+</li>
+</ul>
+<hr />
+<h1 id="utils">utils</h1>
+<h2 id="rapier3dcharactercontrollercomponent-class">Rapier3dCharacterControllerComponent (class)</h2>
+<p>A capsule-shaped kinematic character controller backed by Rapier's own <code>KinematicCharacterController</code>
+(<code>world.createCharacterController</code>). <code>move()</code> is made fully synchronous (see
+<code>ICharacterController3dComponent</code>'s doc for why this matters) by never relying on
+<code>setNextKinematicTranslation</code> + a later <code>world.step()</code> to actually reposition the body - the plain
+(non-"next") <code>RigidBody.setTranslation</code>/<code>setRotation</code> is used instead, immediately followed by
+<code>World.propagateModifiedBodyPositionsToColliders</code> so the capsule's new position is visible to
+Rapier's collider state (and thus to the <em>next</em> <code>move()</code> call, or to any raycast) without needing a
+simulation step in between. <code>setNextKinematicTranslation</code>/<code>setNextKinematicRotation</code> are
+additionally set to the same target so that dynamic bodies pushed by the character still get a
+reasonable velocity estimate on whatever <code>world.step()</code> happens to run afterwards - this is a
+nice-to-have, not load-bearing for the synchronous contract.</p>
+<p>Note: a collider only enters Rapier's broad-phase as part of a <code>World.step()</code> - a level's static
+geometry (or this character itself) created and never stepped even once is invisible to <code>move()</code>'s
+sweep test, exactly as it would be to <code>world.raycast()</code>. This is a pre-existing engine property, not
+specific to this component; a normal per-frame game loop that calls <code>physicsWorld.simulate()</code>
+every tick already satisfies it after the first tick.</p>
+<p>Note: unlike <code>Rapier3dRigidBodyComponent</code>/<code>Rapier3dTriggerComponent</code>, this component's native body
+handle is <em>not</em> registered in <code>Rapier3dWorldComponent.handleIdEntityMap</code> - <code>world.raycast()</code> cannot
+currently resolve a hit against a character controller back to this component (it will simply be
+absent from <code>RaycastResult.hitBody</code>). Wiring that up would require widening the reverse-map's and
+<code>raycast()</code>'s return-type generics repo-wide for a corner case outside this interface's contract;
+left as a documented limitation rather than done speculatively.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export declare class Rapier3dCharacterControllerComponent {
+  constructor(
+    protected readonly world: Rapier3dWorldComponent,
+    protected readonly options: Required&lt;CharacterController3dOptions&gt;,
+    protected _bodyDescr: RigidBodyDesc
+  )
+}
+</code></pre>
+<h3 id="synccollidertransform-method">syncColliderTransform (method)</h3>
+<p>Makes any position/rotation change applied directly to <code>_nativeBody</code> (outside of <code>move()</code>, e.g.
+via the <code>position</code>/<code>rotation</code> setters) immediately visible to Rapier's collider state, without
+requiring a <code>world.step()</code> - see the class doc for why this matters. The pinned
+<code>@dimforge/rapier3d-compat</code> build only exposes <code>propagateModifiedBodyPositionsToColliders()</code> for
+this (no separate <code>QueryPipeline</code>/<code>updateSceneQueries</code> object to rebuild - the character
+controller queries <code>World</code>'s live <code>broadPhase</code>/<code>narrowPhase</code> directly), so that's the only call
+needed here.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private syncColliderTransform(): void
+</code></pre>
+<h3 id="move-method">move (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">move(desiredTranslation: Point3, dt?: number): void
+</code></pre>
+<h3 id="pushdynamicbodies-method">pushDynamicBodies (method)</h3>
+<p>Shoves any dynamic body this tick's sweep bumped into - see <code>addToWorld</code>'s doc for why this is
+hand-rolled rather than Rapier's own <code>setApplyImpulsesToDynamicBodies</code>. Mirrors
+<code>AmmoCharacterControllerComponent.pushDynamicBody</code> exactly: models the contact as a simple
+inelastic collision against a virtual body of mass <code>options.pushMass</code> moving at <code>characterSpeed</code>
+(this tick's <em>horizontal</em> displacement - vertical/jump motion never pushes anything sideways -
+converted to a real m/s via <code>dt</code>, not a raw per-tick distance), driving the hit body's velocity
+along the push direction towards <code>characterSpeed * pushMass / (pushMass + bodyMass)</code> and only
+ever adding forward velocity, never removing any (so a body already outrunning the character in
+that direction is left alone). <code>computedCollision()</code> already has everything needed - populated
+by the <code>computeColliderMovement</code> call above regardless of this method's own logic, so no extra
+sweep/query is needed to reach it.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private pushDynamicBodies(desiredTranslation: Point3, dt: number | undefined): void
+</code></pre>
+<h3 id="computegroundnormal-method">computeGroundNormal (method)</h3>
+<p>Rapier's character controller doesn't expose a single "ground normal" directly - only a list of
+per-obstacle collisions (<code>computedCollision</code>) from the last <code>computeColliderMovement</code> call, each
+with its own contact normal. Best-effort approach: scan those collisions and return whichever
+normal points <em>most</em> nearly along <code>up</code> (i.e. the most floor-like of the bunch, however steep it
+actually is) - this deliberately does <strong>not</strong> discard a candidate merely for being steep (e.g.
+balanced on the flank of a sphere/cylinder, far past <code>maxSlopeClimbAngleRad</code>): that judgment
+belongs entirely to <code>CharacterController3dEntity.isWalkableGround</code> at the core level, which
+needs the <em>real</em> contact normal to make it, not a value already pre-filtered down here. An
+earlier version discarded any candidate with <code>dot(normal, up) &lt;= 0.1</code> and fell back to the plain
+<code>up</code> vector when nothing cleared that bar - which silently reported perfectly-flat ground for a
+character resting against a normal steep enough to fail that same threshold, defeating
+<code>isWalkableGround</code> entirely (confirmed empirically: a character run-and-jumped onto the flank of
+a static sphere, landing on a contact whose true outward normal was ~70° off <code>up</code> - well past the
+default ~50° <code>maxSlopeClimbAngleRad</code> - permanently reported <code>groundNormal: {0,0,1}</code> instead, so
+the core entity kept treating it as resting on flat ground and it never slid off, visibly stuck
+balanced on a sliver of the sphere even with every input released).</p>
+<p><code>numComputedCollisions()</code> itself is frequently <code>0</code> on a call that is still genuinely grounded -
+<code>computeColliderMovement</code> doesn't record an entry for a character caught by snap-to-ground alone
+(no obstacle actually blocked the <em>desired</em> movement that call), which in practice is most idle
+ticks: a character standing still (<code>desiredTranslation</code> exactly <code>{0,0,0}</code>, e.g. player released
+every key) has nothing for the sweep to hit, so it settles into being grounded via snap alone,
+over and over, tick after tick, without ever producing a fresh collision entry again. Guessing
+flat <code>up</code> on every such tick is exactly the bug above, just via a different, far more common
+path than "no collision was ever recorded" suggests - it's not a rare edge case, it's what happens
+the very first idle tick after any landing (including this one, right after the collision that
+<em>did</em> populate the true steep normal above). Fix: on a <code>0</code>-collision grounded call, reuse
+whichever normal this same field already held <strong>before</strong> this call (the character's own contact
+geometry hasn't changed just because this particular call didn't happen to re-sweep it) rather
+than guessing - <code>move()</code> only overwrites <code>this._groundNormal</code> with this method's return value
+<em>after</em> calling it, so reading the field here still sees the previous call's result. Only when
+there is no prior normal to reuse either (the very first grounded call ever, landing exactly via
+snap with nothing recorded yet) does this fall back to the plain <code>up</code> vector. Returns <code>null</code> if
+not grounded at all - <code>_groundNormal</code> naturally clears itself the moment the character goes
+airborne, so a later landing never reuses a stale value from a previous, unrelated surface.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private computeGroundNormal(): Point3 | null
+</code></pre>
+<h3 id="clone-method">clone (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">clone(): Rapier3dCharacterControllerComponent
+</code></pre>
+<h3 id="addtoworld-method">addToWorld (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">addToWorld(world: Rapier3dGgWorld): void
+</code></pre>
+<h3 id="removefromworld-method">removeFromWorld (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">removeFromWorld(world: Rapier3dGgWorld, dispose?: boolean): void
+</code></pre>
+<h3 id="dispose-method">dispose (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">dispose(): void
+</code></pre>
+<h3 id="entity-property">entity (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">entity: any
+</code></pre>
+<h3 id="name-property">name (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">name: string
+</code></pre>
+<h3 id="radius-property">radius (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly radius: number
+</code></pre>
+<h3 id="centersdistance-property">centersDistance (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly centersDistance: number
+</code></pre>
+<h3 id="_nativebody-property">_nativeBody (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">_nativeBody: any
+</code></pre>
+<h3 id="_nativecollider-property">_nativeCollider (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">_nativeCollider: any
+</code></pre>
+<h3 id="_nativecontroller-property">_nativeController (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">_nativeController: any
+</code></pre>
+<h3 id="debugbodysettings-property">debugBodySettings (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly debugBodySettings: any
+</code></pre>
+<h3 id="collisiongroups-property">collisionGroups (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">collisionGroups: any
+</code></pre>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../../../..", "features": ["navigation.indexes", "navigation.instant", "navigation.tracking"], "search": "../../../../assets/javascripts/workers/search.f886a092.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../../../assets/javascripts/bundle.aecac24b.min.js"></script>
+      
+    
+  </body>
+</html>

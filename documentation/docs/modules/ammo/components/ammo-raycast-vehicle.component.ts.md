@@ -1,6 +1,6 @@
 ---
 title: ammo/components/ammo-raycast-vehicle.component.ts
-nav_order: 6
+nav_order: 7
 parent: Modules
 ---
 
@@ -15,6 +15,7 @@ parent: Modules
     - [refreshCG (method)](#refreshcg-method)
     - [addToWorld (method)](#addtoworld-method)
     - [removeFromWorld (method)](#removefromworld-method)
+    - [dispose (method)](#dispose-method)
     - [addWheel (method)](#addwheel-method)
     - [setSteering (method)](#setsteering-method)
     - [applyEngineForce (method)](#applyengineforce-method)
@@ -66,7 +67,15 @@ addToWorld(world: AmmoGgWorld)
 **Signature**
 
 ```ts
-removeFromWorld(world: AmmoGgWorld)
+removeFromWorld(world: AmmoGgWorld, dispose?: boolean)
+```
+
+### dispose (method)
+
+**Signature**
+
+```ts
+dispose(): void
 ```
 
 ### addWheel (method)

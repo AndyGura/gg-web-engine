@@ -1,6 +1,6 @@
 ---
 title: core/2d/components/physics/i-trigger-2d.component.ts
-nav_order: 13
+nav_order: 14
 parent: Modules
 ---
 

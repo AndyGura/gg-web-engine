@@ -1,6 +1,6 @@
 ---
 title: pixi/components/pixi-renderer.component.ts
-nav_order: 122
+nav_order: 127
 parent: Modules
 ---
 
@@ -60,7 +60,7 @@ addToWorld(world: PixiGgWorld): void
 **Signature**
 
 ```ts
-removeFromWorld(world: PixiGgWorld): void
+removeFromWorld(world: PixiGgWorld, dispose?: boolean): void
 ```
 
 ### render (method)

@@ -1,6 +1,6 @@
 ---
 title: rapier3d/components/rapier-3d-raycast-vehicle.component.ts
-nav_order: 133
+nav_order: 139
 parent: Modules
 ---
 
@@ -52,7 +52,7 @@ addToWorld(world: Rapier3dGgWorld)
 **Signature**
 
 ```ts
-removeFromWorld(world: Rapier3dGgWorld)
+removeFromWorld(world: Rapier3dGgWorld, dispose?: boolean)
 ```
 
 ### addWheel (method)

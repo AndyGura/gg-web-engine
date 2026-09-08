@@ -1,6 +1,6 @@
 ---
 title: core/base/clock/pausable-clock.ts
-nav_order: 69
+nav_order: 74
 parent: Modules
 ---
 
