@@ -8,24 +8,24 @@
       
       
       
-        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/3d/gg-3d-world.ts/">
+        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/3d/components/physics/i-character-controller-3d.component.ts/">
       
       
       
       
-      <link rel="icon" href="../../../../assets/images/favicon.png">
+      <link rel="icon" href="../../../../../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.4.6">
     
     
       
-        <title>core/3d/gg-3d-world.ts - GG-web-engine</title>
+        <title>core/3d/components/physics/i-character-controller-3d.component.ts - GG-web-engine</title>
       
     
     
-      <link rel="stylesheet" href="../../../../assets/stylesheets/main.35e1ed30.min.css">
+      <link rel="stylesheet" href="../../../../../../assets/stylesheets/main.35e1ed30.min.css">
       
         
-        <link rel="stylesheet" href="../../../../assets/stylesheets/palette.356b1318.min.css">
+        <link rel="stylesheet" href="../../../../../../assets/stylesheets/palette.356b1318.min.css">
       
       
 
@@ -44,7 +44,7 @@
       
     
     
-    <script>__md_scope=new URL("../../../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../../../../../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -73,7 +73,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#gg-3d-world-overview" class="md-skip">
+        <a href="#i-character-controller-3dcomponent-overview" class="md-skip">
           Skip to content
         </a>
       
@@ -89,7 +89,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../../.." title="GG-web-engine" class="md-header__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+    <a href="../../../../../.." title="GG-web-engine" class="md-header__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
@@ -109,7 +109,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              core/3d/gg-3d-world.ts
+              core/3d/components/physics/i-character-controller-3d.component.ts
             
           </span>
         </div>
@@ -219,7 +219,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../../.." title="GG-web-engine" class="md-nav__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+    <a href="../../../../../.." title="GG-web-engine" class="md-nav__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
@@ -248,7 +248,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../.." class="md-nav__link">
+      <a href="../../../../../.." class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -301,7 +301,7 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../" class="md-nav__link ">
+            <a href="../../../../../" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -333,7 +333,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../ammo" class="md-nav__link">
+      <a href="../../../../../ammo" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -353,7 +353,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href="../../../.." class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -373,7 +373,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../matter" class="md-nav__link">
+      <a href="../../../../../matter" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -393,7 +393,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../pixi" class="md-nav__link">
+      <a href="../../../../../pixi" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -413,7 +413,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../rapier2d" class="md-nav__link">
+      <a href="../../../../../rapier2d" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -433,7 +433,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../rapier3d" class="md-nav__link">
+      <a href="../../../../../rapier3d" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -453,7 +453,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../three" class="md-nav__link">
+      <a href="../../../../../three" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -499,8 +499,8 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#gg-3d-world-overview" class="md-nav__link">
-    gg-3d-world overview
+  <a href="#i-character-controller-3dcomponent-overview" class="md-nav__link">
+    i-character-controller-3d.component overview
   </a>
   
 </li>
@@ -514,105 +514,8 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#gg3dworld-class" class="md-nav__link">
-    Gg3dWorld (class)
-  </a>
-  
-    <nav class="md-nav" aria-label="Gg3dWorld (class)">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#addprimitiverigidbody-method" class="md-nav__link">
-    addPrimitiveRigidBody (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#addrenderer-method" class="md-nav__link">
-    addRenderer (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#registerconsolecommands-method" class="md-nav__link">
-    registerConsoleCommands (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#loader-property" class="md-nav__link">
-    loader (property)
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#gg3dworldscenetypedocppatch-type-alias" class="md-nav__link">
-    Gg3dWorldSceneTypeDocPPatch (type alias)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#gg3dworldscenetypedocvpatch-type-alias" class="md-nav__link">
-    Gg3dWorldSceneTypeDocVPatch (type alias)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#gg3dworldscenetyperepo-type-alias" class="md-nav__link">
-    Gg3dWorldSceneTypeRepo (type alias)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#gg3dworldtypedocppatch-type-alias" class="md-nav__link">
-    Gg3dWorldTypeDocPPatch (type alias)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#gg3dworldtypedocrepo-type-alias" class="md-nav__link">
-    Gg3dWorldTypeDocRepo (type alias)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#gg3dworldtypedocvpatch-type-alias" class="md-nav__link">
-    Gg3dWorldTypeDocVPatch (type alias)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#physicstypedocrepo3d-type-alias" class="md-nav__link">
-    PhysicsTypeDocRepo3D (type alias)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#typedgg3dworld-type-alias" class="md-nav__link">
-    TypedGg3dWorld (type alias)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#visualtypedocrepo3d-type-alias" class="md-nav__link">
-    VisualTypeDocRepo3D (type alias)
+  <a href="#icharactercontroller3dcomponent-interface" class="md-nav__link">
+    ICharacterController3dComponent (interface)
   </a>
   
 </li>
@@ -640,150 +543,75 @@
   
 
 
-<h2 id="gg-3d-world-overview">gg-3d-world overview</h2>
+<h2 id="i-character-controller-3dcomponent-overview">i-character-controller-3d.component overview</h2>
 <hr />
 <h2 class="text-delta">Table of contents</h2>
 
 <ul>
 <li><a href="#utils">utils</a></li>
-<li><a href="#gg3dworld-class">Gg3dWorld (class)</a><ul>
-<li><a href="#addprimitiverigidbody-method">addPrimitiveRigidBody (method)</a></li>
-<li><a href="#addrenderer-method">addRenderer (method)</a></li>
-<li><a href="#registerconsolecommands-method">registerConsoleCommands (method)</a></li>
-<li><a href="#loader-property">loader (property)</a></li>
-</ul>
-</li>
-<li><a href="#gg3dworldscenetypedocppatch-type-alias">Gg3dWorldSceneTypeDocPPatch (type alias)</a></li>
-<li><a href="#gg3dworldscenetypedocvpatch-type-alias">Gg3dWorldSceneTypeDocVPatch (type alias)</a></li>
-<li><a href="#gg3dworldscenetyperepo-type-alias">Gg3dWorldSceneTypeRepo (type alias)</a></li>
-<li><a href="#gg3dworldtypedocppatch-type-alias">Gg3dWorldTypeDocPPatch (type alias)</a></li>
-<li><a href="#gg3dworldtypedocrepo-type-alias">Gg3dWorldTypeDocRepo (type alias)</a></li>
-<li><a href="#gg3dworldtypedocvpatch-type-alias">Gg3dWorldTypeDocVPatch (type alias)</a></li>
-<li><a href="#physicstypedocrepo3d-type-alias">PhysicsTypeDocRepo3D (type alias)</a></li>
-<li><a href="#typedgg3dworld-type-alias">TypedGg3dWorld (type alias)</a></li>
-<li><a href="#visualtypedocrepo3d-type-alias">VisualTypeDocRepo3D (type alias)</a></li>
+<li><a href="#icharactercontroller3dcomponent-interface">ICharacterController3dComponent (interface)</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
-<h2 id="gg3dworld-class">Gg3dWorld (class)</h2>
+<h2 id="icharactercontroller3dcomponent-interface">ICharacterController3dComponent (interface)</h2>
+<p>A capsule-shaped kinematic character controller: a thin, physics-engine-specific "move and
+collide" primitive, parallel to <code>IRaycastVehicleComponent</code>. Unlike a raycast vehicle it does
+<strong>not</strong> own any gameplay logic (gravity, jumping, walk/run speed) - that lives once, backend-
+agnostically, in <code>CharacterController3dEntity</code>, which is the class apps/other core code should
+normally use instead of this interface directly.</p>
+<p>Implementations must make <code>move()</code> fully synchronous: by the time it returns, <code>position</code>,
+<code>rotation</code>, <code>isGrounded</code> and <code>groundNormal</code> must already reflect the result of that call, with
+no dependency on a subsequent <code>IPhysicsWorld3dComponent.simulate()</code> call. This is what lets
+<code>CharacterController3dEntity</code> integrate gravity/jumping itself and get identical behavior
+regardless of which physics backend is plugged in, instead of relying on (and diverging on) each
+native engine's own character-controller gravity/impulse model.</p>
+<p><code>removeFromWorld(world, dispose)</code> (inherited from <code>IBodyComponent</code>/<code>IWorldComponent</code> - see their
+doc for the general contract) matters especially here: <code>CharacterController3dEntity</code> swaps this
+component out wholesale on every crouch/stand transition (<code>recreateCapsule</code>), calling
+<code>removeFromWorld(world, true)</code> on the discarded capsule and then dropping its only reference to
+it. An implementation whose <code>removeFromWorld</code> ignores <code>dispose</code> and only detaches from the
+world's own bookkeeping - without also freeing the native capsule shape/ghost object/collider -
+leaks one such native object per crouch/stand transition, since nothing else will ever call
+<code>dispose()</code> on that discarded instance afterwards.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class Gg3dWorld&lt;TypeDoc, SceneTypeDoc&gt; {
-  constructor(args: { visualScene?: SceneTypeDoc['visualScene']; physicsWorld?: SceneTypeDoc['physicsWorld'] })
-}
-</code></pre>
-<h3 id="addprimitiverigidbody-method">addPrimitiveRigidBody (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">addPrimitiveRigidBody(
-    descr: BodyShape3DDescriptor,
-    position: Point3 = Pnt3.O,
-    rotation: Point4 = Qtrn.O,
-    material: DisplayObject3dOpts&lt;TypeDoc['vTypeDoc']['texture']&gt; = {},
-  ): Entity3d&lt;TypeDoc&gt;
-</code></pre>
-<h3 id="addrenderer-method">addRenderer (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">addRenderer(
-    camera: TypeDoc['vTypeDoc']['camera'],
-    canvas?: HTMLCanvasElement,
-    rendererOptions?: Partial&lt;RendererOptions &amp; TypeDoc['vTypeDoc']['rendererExtraOpts']&gt;,
-  ): Renderer3dEntity&lt;TypeDoc['vTypeDoc']&gt;
-</code></pre>
-<h3 id="registerconsolecommands-method">registerConsoleCommands (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">protected registerConsoleCommands(ggstatic: {
-    registerConsoleCommand: (
-      world: GgWorld&lt;any, any&gt; | null,
-      command: string,
-      handler: (...args: string[]) =&gt; Promise&lt;string&gt;,
-      doc?: string,
-    ) =&gt; void;
-  })
-</code></pre>
-<h3 id="loader-property">loader (property)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly loader: Gg3dLoader&lt;TypeDoc&gt;
-</code></pre>
-<h2 id="gg3dworldscenetypedocppatch-type-alias">Gg3dWorldSceneTypeDocPPatch (type alias)</h2>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type Gg3dWorldSceneTypeDocPPatch&lt;
-  PTypeDoc extends PhysicsTypeDocRepo3D,
-  PW extends IPhysicsWorld3dComponent&lt;PTypeDoc&gt; | null
-&gt; = Omit&lt;Gg3dWorldSceneTypeRepo, 'physicsWorld'&gt; &amp; { physicsWorld: PW }
-</code></pre>
-<h2 id="gg3dworldscenetypedocvpatch-type-alias">Gg3dWorldSceneTypeDocVPatch (type alias)</h2>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type Gg3dWorldSceneTypeDocVPatch&lt;
-  VTypeDoc extends VisualTypeDocRepo3D,
-  VS extends IVisualScene3dComponent&lt;VTypeDoc&gt; | null
-&gt; = Omit&lt;Gg3dWorldSceneTypeRepo, 'visualScene'&gt; &amp; { visualScene: VS }
-</code></pre>
-<h2 id="gg3dworldscenetyperepo-type-alias">Gg3dWorldSceneTypeRepo (type alias)</h2>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type Gg3dWorldSceneTypeRepo&lt;TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo&gt; = {
-  visualScene: IVisualScene3dComponent&lt;TypeDoc['vTypeDoc']&gt; | null
-  physicsWorld: IPhysicsWorld3dComponent&lt;TypeDoc['pTypeDoc']&gt; | null
-}
-</code></pre>
-<h2 id="gg3dworldtypedocppatch-type-alias">Gg3dWorldTypeDocPPatch (type alias)</h2>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type Gg3dWorldTypeDocPPatch&lt;PTypeDoc extends PhysicsTypeDocRepo3D&gt; = Omit&lt;Gg3dWorldTypeDocRepo, 'pTypeDoc'&gt; &amp; {
-  pTypeDoc: PTypeDoc
-}
-</code></pre>
-<h2 id="gg3dworldtypedocrepo-type-alias">Gg3dWorldTypeDocRepo (type alias)</h2>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type Gg3dWorldTypeDocRepo = {
-  vTypeDoc: VisualTypeDocRepo3D
-  pTypeDoc: PhysicsTypeDocRepo3D
-}
-</code></pre>
-<h2 id="gg3dworldtypedocvpatch-type-alias">Gg3dWorldTypeDocVPatch (type alias)</h2>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type Gg3dWorldTypeDocVPatch&lt;VTypeDoc extends VisualTypeDocRepo3D&gt; = Omit&lt;Gg3dWorldTypeDocRepo, 'vTypeDoc'&gt; &amp; {
-  vTypeDoc: VTypeDoc
-}
-</code></pre>
-<h2 id="physicstypedocrepo3d-type-alias">PhysicsTypeDocRepo3D (type alias)</h2>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type PhysicsTypeDocRepo3D = {
-  factory: IPhysicsBody3dComponentFactory
-  loader: IPhysicsBody3dComponentLoader
-  rigidBody: IRigidBody3dComponent
-  trigger: ITrigger3dComponent
-  raycastVehicle: IRaycastVehicleComponent
-  characterController: ICharacterController3dComponent
-}
-</code></pre>
-<h2 id="typedgg3dworld-type-alias">TypedGg3dWorld (type alias)</h2>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type TypedGg3dWorld&lt;VW extends Gg3dWorld&lt;any&gt; | null, PW extends Gg3dWorld&lt;any&gt; | null&gt; = VW extends Gg3dWorld&lt;
-  infer VTD,
-  infer VSTD
-&gt; | null
-  ? PW extends Gg3dWorld&lt;infer PTD, infer PSTD&gt; | null
-    ? Gg3dWorld&lt;
-        {
-          vTypeDoc: VTD['vTypeDoc']
-          pTypeDoc: PTD['pTypeDoc']
-        },
-        {
-          visualScene: VSTD['visualScene']
-          physicsWorld: PSTD['physicsWorld']
-        }
-      &gt;
-    : never
-  : never
-</code></pre>
-<h2 id="visualtypedocrepo3d-type-alias">VisualTypeDocRepo3D (type alias)</h2>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type VisualTypeDocRepo3D = {
-  factory: IDisplayObject3dComponentFactory
-  loader: IDisplayObject3dComponentLoader
-  displayObject: IDisplayObject3dComponent
-  renderer: IRenderer3dComponent
-  rendererExtraOpts: {}
-  camera: ICamera3dComponent
-  texture: unknown
+<pre><code class="language-ts">export interface ICharacterController3dComponent&lt;PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D&gt;
+  extends IBodyComponent&lt;Point3, Point4, PTypeDoc&gt; {
+  /** Capsule radius, as given at creation time. */
+  readonly radius: number
+  /** Distance between the two capsule hemisphere centers, as given at creation time. */
+  readonly centersDistance: number
+  /** World &quot;up&quot; direction used to tell the floor from walls/ceilings. */
+  up: Point3
+  /** Whether the capsule is currently resting on the ground (as of the last `move()` call). */
+  readonly isGrounded: boolean
+  /** The ground's surface normal, if `isGrounded`; `null` otherwise. */
+  readonly groundNormal: Point3 | null
+
+  /**
+   * Attempts to move the character by exactly this desired displacement, sliding along
+   * obstacles, automatically stepping over ledges up to `maxStepHeight`, and snapping to the
+   * ground per `snapToGroundDistance` - see `CharacterController3dOptions`. Fully resolves
+   * `position`/`rotation`/`isGrounded`/`groundNormal` before returning (see interface doc).
+   *
+   * `dt`, when given, is the real time (seconds) `desiredTranslation` was computed to cover -
+   * `CharacterController3dEntity` always passes it (its own tick delta). It exists purely so an
+   * implementation that pushes dynamic bodies (see `CharacterController3dOptions.pushMass`) can
+   * recover the character's actual speed (`desiredTranslation` magnitude / `dt`) rather than
+   * working from a per-tick distance alone; a mover that doesn't implement pushing is free to
+   * ignore it entirely. A mover that *does* push dynamic bodies must not treat a missing `dt` as
+   * license to use `desiredTranslation`'s raw per-tick magnitude as if it were already a speed -
+   * that understates push force by roughly a factor of `dt` (a 16ms tick's displacement is ~60x
+   * smaller than the equivalent m/s figure), silently, not just imprecisely. Skip the push for that
+   * tick instead (a one-time warning is reasonable) whenever `dt` isn't available to compute a real
+   * speed from.
+   *
+   * Calling this before the component has been added to a world (see `addToWorld`) must be a
+   * silent no-op rather than throwing, so backend-agnostic caller code behaves identically
+   * regardless of which adapter is plugged in.
+   */
+  move(desiredTranslation: Point3, dt?: number): void
+
+  clone(): ICharacterController3dComponent&lt;PTypeDoc&gt;
 }
 </code></pre>
 
@@ -824,10 +652,10 @@
     </div>
     
     
-    <script id="__config" type="application/json">{"base": "../../../..", "features": ["navigation.indexes", "navigation.instant", "navigation.tracking"], "search": "../../../../assets/javascripts/workers/search.f886a092.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    <script id="__config" type="application/json">{"base": "../../../../../..", "features": ["navigation.indexes", "navigation.instant", "navigation.tracking"], "search": "../../../../../../assets/javascripts/workers/search.f886a092.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
-      <script src="../../../../assets/javascripts/bundle.aecac24b.min.js"></script>
+      <script src="../../../../../../assets/javascripts/bundle.aecac24b.min.js"></script>
       
     
   </body>

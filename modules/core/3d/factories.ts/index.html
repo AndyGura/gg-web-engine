@@ -738,6 +738,14 @@
   ): PTypeDoc['trigger']
 
   createRaycastVehicle(chassis: PTypeDoc['rigidBody']): PTypeDoc['raycastVehicle']
+
+  createCharacterController(
+    options: CharacterController3dOptions,
+    transform?: {
+      position?: Point3
+      rotation?: Point4
+    }
+  ): PTypeDoc['characterController']
 }
 </code></pre>
 

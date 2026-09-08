@@ -8,7 +8,7 @@
       
       
       
-        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/3d/gg-3d-world.ts/">
+        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/rapier3d/components/rapier-3d-character-controller.component.ts/">
       
       
       
@@ -18,7 +18,7 @@
     
     
       
-        <title>core/3d/gg-3d-world.ts - GG-web-engine</title>
+        <title>rapier3d/components/rapier-3d-character-controller.component.ts - GG-web-engine</title>
       
     
     
@@ -73,7 +73,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#gg-3d-world-overview" class="md-skip">
+        <a href="#rapier-3d-character-controllercomponent-overview" class="md-skip">
           Skip to content
         </a>
       
@@ -109,7 +109,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              core/3d/gg-3d-world.ts
+              rapier3d/components/rapier-3d-character-controller.component.ts
             
           </span>
         </div>
@@ -353,7 +353,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href="../../../core" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -433,7 +433,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../rapier3d" class="md-nav__link">
+      <a href="../.." class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -499,8 +499,8 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#gg-3d-world-overview" class="md-nav__link">
-    gg-3d-world overview
+  <a href="#rapier-3d-character-controllercomponent-overview" class="md-nav__link">
+    rapier-3d-character-controller.component overview
   </a>
   
 </li>
@@ -514,106 +514,134 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#gg3dworld-class" class="md-nav__link">
-    Gg3dWorld (class)
+  <a href="#rapier3dcharactercontrollercomponent-class" class="md-nav__link">
+    Rapier3dCharacterControllerComponent (class)
   </a>
   
-    <nav class="md-nav" aria-label="Gg3dWorld (class)">
+    <nav class="md-nav" aria-label="Rapier3dCharacterControllerComponent (class)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#addprimitiverigidbody-method" class="md-nav__link">
-    addPrimitiveRigidBody (method)
+  <a href="#synccollidertransform-method" class="md-nav__link">
+    syncColliderTransform (method)
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#addrenderer-method" class="md-nav__link">
-    addRenderer (method)
+  <a href="#move-method" class="md-nav__link">
+    move (method)
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#registerconsolecommands-method" class="md-nav__link">
-    registerConsoleCommands (method)
+  <a href="#pushdynamicbodies-method" class="md-nav__link">
+    pushDynamicBodies (method)
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#loader-property" class="md-nav__link">
-    loader (property)
+  <a href="#computegroundnormal-method" class="md-nav__link">
+    computeGroundNormal (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clone-method" class="md-nav__link">
+    clone (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#addtoworld-method" class="md-nav__link">
+    addToWorld (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#removefromworld-method" class="md-nav__link">
+    removeFromWorld (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dispose-method" class="md-nav__link">
+    dispose (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#entity-property" class="md-nav__link">
+    entity (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#name-property" class="md-nav__link">
+    name (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#radius-property" class="md-nav__link">
+    radius (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#centersdistance-property" class="md-nav__link">
+    centersDistance (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_nativebody-property" class="md-nav__link">
+    _nativeBody (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_nativecollider-property" class="md-nav__link">
+    _nativeCollider (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_nativecontroller-property" class="md-nav__link">
+    _nativeController (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#debugbodysettings-property" class="md-nav__link">
+    debugBodySettings (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#collisiongroups-property" class="md-nav__link">
+    collisionGroups (property)
   </a>
   
 </li>
         
       </ul>
     </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#gg3dworldscenetypedocppatch-type-alias" class="md-nav__link">
-    Gg3dWorldSceneTypeDocPPatch (type alias)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#gg3dworldscenetypedocvpatch-type-alias" class="md-nav__link">
-    Gg3dWorldSceneTypeDocVPatch (type alias)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#gg3dworldscenetyperepo-type-alias" class="md-nav__link">
-    Gg3dWorldSceneTypeRepo (type alias)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#gg3dworldtypedocppatch-type-alias" class="md-nav__link">
-    Gg3dWorldTypeDocPPatch (type alias)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#gg3dworldtypedocrepo-type-alias" class="md-nav__link">
-    Gg3dWorldTypeDocRepo (type alias)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#gg3dworldtypedocvpatch-type-alias" class="md-nav__link">
-    Gg3dWorldTypeDocVPatch (type alias)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#physicstypedocrepo3d-type-alias" class="md-nav__link">
-    PhysicsTypeDocRepo3D (type alias)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#typedgg3dworld-type-alias" class="md-nav__link">
-    TypedGg3dWorld (type alias)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#visualtypedocrepo3d-type-alias" class="md-nav__link">
-    VisualTypeDocRepo3D (type alias)
-  </a>
   
 </li>
         
@@ -640,151 +668,186 @@
   
 
 
-<h2 id="gg-3d-world-overview">gg-3d-world overview</h2>
+<h2 id="rapier-3d-character-controllercomponent-overview">rapier-3d-character-controller.component overview</h2>
 <hr />
 <h2 class="text-delta">Table of contents</h2>
 
 <ul>
 <li><a href="#utils">utils</a></li>
-<li><a href="#gg3dworld-class">Gg3dWorld (class)</a><ul>
-<li><a href="#addprimitiverigidbody-method">addPrimitiveRigidBody (method)</a></li>
-<li><a href="#addrenderer-method">addRenderer (method)</a></li>
-<li><a href="#registerconsolecommands-method">registerConsoleCommands (method)</a></li>
-<li><a href="#loader-property">loader (property)</a></li>
+<li><a href="#rapier3dcharactercontrollercomponent-class">Rapier3dCharacterControllerComponent (class)</a><ul>
+<li><a href="#synccollidertransform-method">syncColliderTransform (method)</a></li>
+<li><a href="#move-method">move (method)</a></li>
+<li><a href="#pushdynamicbodies-method">pushDynamicBodies (method)</a></li>
+<li><a href="#computegroundnormal-method">computeGroundNormal (method)</a></li>
+<li><a href="#clone-method">clone (method)</a></li>
+<li><a href="#addtoworld-method">addToWorld (method)</a></li>
+<li><a href="#removefromworld-method">removeFromWorld (method)</a></li>
+<li><a href="#dispose-method">dispose (method)</a></li>
+<li><a href="#entity-property">entity (property)</a></li>
+<li><a href="#name-property">name (property)</a></li>
+<li><a href="#radius-property">radius (property)</a></li>
+<li><a href="#centersdistance-property">centersDistance (property)</a></li>
+<li><a href="#_nativebody-property">_nativeBody (property)</a></li>
+<li><a href="#_nativecollider-property">_nativeCollider (property)</a></li>
+<li><a href="#_nativecontroller-property">_nativeController (property)</a></li>
+<li><a href="#debugbodysettings-property">debugBodySettings (property)</a></li>
+<li><a href="#collisiongroups-property">collisionGroups (property)</a></li>
 </ul>
 </li>
-<li><a href="#gg3dworldscenetypedocppatch-type-alias">Gg3dWorldSceneTypeDocPPatch (type alias)</a></li>
-<li><a href="#gg3dworldscenetypedocvpatch-type-alias">Gg3dWorldSceneTypeDocVPatch (type alias)</a></li>
-<li><a href="#gg3dworldscenetyperepo-type-alias">Gg3dWorldSceneTypeRepo (type alias)</a></li>
-<li><a href="#gg3dworldtypedocppatch-type-alias">Gg3dWorldTypeDocPPatch (type alias)</a></li>
-<li><a href="#gg3dworldtypedocrepo-type-alias">Gg3dWorldTypeDocRepo (type alias)</a></li>
-<li><a href="#gg3dworldtypedocvpatch-type-alias">Gg3dWorldTypeDocVPatch (type alias)</a></li>
-<li><a href="#physicstypedocrepo3d-type-alias">PhysicsTypeDocRepo3D (type alias)</a></li>
-<li><a href="#typedgg3dworld-type-alias">TypedGg3dWorld (type alias)</a></li>
-<li><a href="#visualtypedocrepo3d-type-alias">VisualTypeDocRepo3D (type alias)</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
-<h2 id="gg3dworld-class">Gg3dWorld (class)</h2>
+<h2 id="rapier3dcharactercontrollercomponent-class">Rapier3dCharacterControllerComponent (class)</h2>
+<p>A capsule-shaped kinematic character controller backed by Rapier's own <code>KinematicCharacterController</code>
+(<code>world.createCharacterController</code>). <code>move()</code> is made fully synchronous (see
+<code>ICharacterController3dComponent</code>'s doc for why this matters) by never relying on
+<code>setNextKinematicTranslation</code> + a later <code>world.step()</code> to actually reposition the body - the plain
+(non-"next") <code>RigidBody.setTranslation</code>/<code>setRotation</code> is used instead, immediately followed by
+<code>World.propagateModifiedBodyPositionsToColliders</code> so the capsule's new position is visible to
+Rapier's collider state (and thus to the <em>next</em> <code>move()</code> call, or to any raycast) without needing a
+simulation step in between. <code>setNextKinematicTranslation</code>/<code>setNextKinematicRotation</code> are
+additionally set to the same target so that dynamic bodies pushed by the character still get a
+reasonable velocity estimate on whatever <code>world.step()</code> happens to run afterwards - this is a
+nice-to-have, not load-bearing for the synchronous contract.</p>
+<p>Note: a collider only enters Rapier's broad-phase as part of a <code>World.step()</code> - a level's static
+geometry (or this character itself) created and never stepped even once is invisible to <code>move()</code>'s
+sweep test, exactly as it would be to <code>world.raycast()</code>. This is a pre-existing engine property, not
+specific to this component; a normal per-frame game loop that calls <code>physicsWorld.simulate()</code>
+every tick already satisfies it after the first tick.</p>
+<p>Note: unlike <code>Rapier3dRigidBodyComponent</code>/<code>Rapier3dTriggerComponent</code>, this component's native body
+handle is <em>not</em> registered in <code>Rapier3dWorldComponent.handleIdEntityMap</code> - <code>world.raycast()</code> cannot
+currently resolve a hit against a character controller back to this component (it will simply be
+absent from <code>RaycastResult.hitBody</code>). Wiring that up would require widening the reverse-map's and
+<code>raycast()</code>'s return-type generics repo-wide for a corner case outside this interface's contract;
+left as a documented limitation rather than done speculatively.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class Gg3dWorld&lt;TypeDoc, SceneTypeDoc&gt; {
-  constructor(args: { visualScene?: SceneTypeDoc['visualScene']; physicsWorld?: SceneTypeDoc['physicsWorld'] })
+<pre><code class="language-ts">export declare class Rapier3dCharacterControllerComponent {
+  constructor(
+    protected readonly world: Rapier3dWorldComponent,
+    protected readonly options: Required&lt;CharacterController3dOptions&gt;,
+    protected _bodyDescr: RigidBodyDesc
+  )
 }
 </code></pre>
-<h3 id="addprimitiverigidbody-method">addPrimitiveRigidBody (method)</h3>
+<h3 id="synccollidertransform-method">syncColliderTransform (method)</h3>
+<p>Makes any position/rotation change applied directly to <code>_nativeBody</code> (outside of <code>move()</code>, e.g.
+via the <code>position</code>/<code>rotation</code> setters) immediately visible to Rapier's collider state, without
+requiring a <code>world.step()</code> - see the class doc for why this matters. The pinned
+<code>@dimforge/rapier3d-compat</code> build only exposes <code>propagateModifiedBodyPositionsToColliders()</code> for
+this (no separate <code>QueryPipeline</code>/<code>updateSceneQueries</code> object to rebuild - the character
+controller queries <code>World</code>'s live <code>broadPhase</code>/<code>narrowPhase</code> directly), so that's the only call
+needed here.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">addPrimitiveRigidBody(
-    descr: BodyShape3DDescriptor,
-    position: Point3 = Pnt3.O,
-    rotation: Point4 = Qtrn.O,
-    material: DisplayObject3dOpts&lt;TypeDoc['vTypeDoc']['texture']&gt; = {},
-  ): Entity3d&lt;TypeDoc&gt;
+<pre><code class="language-ts">private syncColliderTransform(): void
 </code></pre>
-<h3 id="addrenderer-method">addRenderer (method)</h3>
+<h3 id="move-method">move (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">addRenderer(
-    camera: TypeDoc['vTypeDoc']['camera'],
-    canvas?: HTMLCanvasElement,
-    rendererOptions?: Partial&lt;RendererOptions &amp; TypeDoc['vTypeDoc']['rendererExtraOpts']&gt;,
-  ): Renderer3dEntity&lt;TypeDoc['vTypeDoc']&gt;
+<pre><code class="language-ts">move(desiredTranslation: Point3, dt?: number): void
 </code></pre>
-<h3 id="registerconsolecommands-method">registerConsoleCommands (method)</h3>
+<h3 id="pushdynamicbodies-method">pushDynamicBodies (method)</h3>
+<p>Shoves any dynamic body this tick's sweep bumped into - see <code>addToWorld</code>'s doc for why this is
+hand-rolled rather than Rapier's own <code>setApplyImpulsesToDynamicBodies</code>. Mirrors
+<code>AmmoCharacterControllerComponent.pushDynamicBody</code> exactly: models the contact as a simple
+inelastic collision against a virtual body of mass <code>options.pushMass</code> moving at <code>characterSpeed</code>
+(this tick's <em>horizontal</em> displacement - vertical/jump motion never pushes anything sideways -
+converted to a real m/s via <code>dt</code>, not a raw per-tick distance), driving the hit body's velocity
+along the push direction towards <code>characterSpeed * pushMass / (pushMass + bodyMass)</code> and only
+ever adding forward velocity, never removing any (so a body already outrunning the character in
+that direction is left alone). <code>computedCollision()</code> already has everything needed - populated
+by the <code>computeColliderMovement</code> call above regardless of this method's own logic, so no extra
+sweep/query is needed to reach it.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">protected registerConsoleCommands(ggstatic: {
-    registerConsoleCommand: (
-      world: GgWorld&lt;any, any&gt; | null,
-      command: string,
-      handler: (...args: string[]) =&gt; Promise&lt;string&gt;,
-      doc?: string,
-    ) =&gt; void;
-  })
+<pre><code class="language-ts">private pushDynamicBodies(desiredTranslation: Point3, dt: number | undefined): void
 </code></pre>
-<h3 id="loader-property">loader (property)</h3>
+<h3 id="computegroundnormal-method">computeGroundNormal (method)</h3>
+<p>Rapier's character controller doesn't expose a single "ground normal" directly - only a list of
+per-obstacle collisions (<code>computedCollision</code>) from the last <code>computeColliderMovement</code> call, each
+with its own contact normal. Best-effort approach: scan those collisions and return whichever
+normal points <em>most</em> nearly along <code>up</code> (i.e. the most floor-like of the bunch, however steep it
+actually is) - this deliberately does <strong>not</strong> discard a candidate merely for being steep (e.g.
+balanced on the flank of a sphere/cylinder, far past <code>maxSlopeClimbAngleRad</code>): that judgment
+belongs entirely to <code>CharacterController3dEntity.isWalkableGround</code> at the core level, which
+needs the <em>real</em> contact normal to make it, not a value already pre-filtered down here. An
+earlier version discarded any candidate with <code>dot(normal, up) &lt;= 0.1</code> and fell back to the plain
+<code>up</code> vector when nothing cleared that bar - which silently reported perfectly-flat ground for a
+character resting against a normal steep enough to fail that same threshold, defeating
+<code>isWalkableGround</code> entirely (confirmed empirically: a character run-and-jumped onto the flank of
+a static sphere, landing on a contact whose true outward normal was ~70° off <code>up</code> - well past the
+default ~50° <code>maxSlopeClimbAngleRad</code> - permanently reported <code>groundNormal: {0,0,1}</code> instead, so
+the core entity kept treating it as resting on flat ground and it never slid off, visibly stuck
+balanced on a sliver of the sphere even with every input released).</p>
+<p><code>numComputedCollisions()</code> itself is frequently <code>0</code> on a call that is still genuinely grounded -
+<code>computeColliderMovement</code> doesn't record an entry for a character caught by snap-to-ground alone
+(no obstacle actually blocked the <em>desired</em> movement that call), which in practice is most idle
+ticks: a character standing still (<code>desiredTranslation</code> exactly <code>{0,0,0}</code>, e.g. player released
+every key) has nothing for the sweep to hit, so it settles into being grounded via snap alone,
+over and over, tick after tick, without ever producing a fresh collision entry again. Guessing
+flat <code>up</code> on every such tick is exactly the bug above, just via a different, far more common
+path than "no collision was ever recorded" suggests - it's not a rare edge case, it's what happens
+the very first idle tick after any landing (including this one, right after the collision that
+<em>did</em> populate the true steep normal above). Fix: on a <code>0</code>-collision grounded call, reuse
+whichever normal this same field already held <strong>before</strong> this call (the character's own contact
+geometry hasn't changed just because this particular call didn't happen to re-sweep it) rather
+than guessing - <code>move()</code> only overwrites <code>this._groundNormal</code> with this method's return value
+<em>after</em> calling it, so reading the field here still sees the previous call's result. Only when
+there is no prior normal to reuse either (the very first grounded call ever, landing exactly via
+snap with nothing recorded yet) does this fall back to the plain <code>up</code> vector. Returns <code>null</code> if
+not grounded at all - <code>_groundNormal</code> naturally clears itself the moment the character goes
+airborne, so a later landing never reuses a stale value from a previous, unrelated surface.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly loader: Gg3dLoader&lt;TypeDoc&gt;
+<pre><code class="language-ts">private computeGroundNormal(): Point3 | null
 </code></pre>
-<h2 id="gg3dworldscenetypedocppatch-type-alias">Gg3dWorldSceneTypeDocPPatch (type alias)</h2>
+<h3 id="clone-method">clone (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type Gg3dWorldSceneTypeDocPPatch&lt;
-  PTypeDoc extends PhysicsTypeDocRepo3D,
-  PW extends IPhysicsWorld3dComponent&lt;PTypeDoc&gt; | null
-&gt; = Omit&lt;Gg3dWorldSceneTypeRepo, 'physicsWorld'&gt; &amp; { physicsWorld: PW }
+<pre><code class="language-ts">clone(): Rapier3dCharacterControllerComponent
 </code></pre>
-<h2 id="gg3dworldscenetypedocvpatch-type-alias">Gg3dWorldSceneTypeDocVPatch (type alias)</h2>
+<h3 id="addtoworld-method">addToWorld (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type Gg3dWorldSceneTypeDocVPatch&lt;
-  VTypeDoc extends VisualTypeDocRepo3D,
-  VS extends IVisualScene3dComponent&lt;VTypeDoc&gt; | null
-&gt; = Omit&lt;Gg3dWorldSceneTypeRepo, 'visualScene'&gt; &amp; { visualScene: VS }
+<pre><code class="language-ts">addToWorld(world: Rapier3dGgWorld): void
 </code></pre>
-<h2 id="gg3dworldscenetyperepo-type-alias">Gg3dWorldSceneTypeRepo (type alias)</h2>
+<h3 id="removefromworld-method">removeFromWorld (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type Gg3dWorldSceneTypeRepo&lt;TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo&gt; = {
-  visualScene: IVisualScene3dComponent&lt;TypeDoc['vTypeDoc']&gt; | null
-  physicsWorld: IPhysicsWorld3dComponent&lt;TypeDoc['pTypeDoc']&gt; | null
-}
+<pre><code class="language-ts">removeFromWorld(world: Rapier3dGgWorld, dispose?: boolean): void
 </code></pre>
-<h2 id="gg3dworldtypedocppatch-type-alias">Gg3dWorldTypeDocPPatch (type alias)</h2>
+<h3 id="dispose-method">dispose (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type Gg3dWorldTypeDocPPatch&lt;PTypeDoc extends PhysicsTypeDocRepo3D&gt; = Omit&lt;Gg3dWorldTypeDocRepo, 'pTypeDoc'&gt; &amp; {
-  pTypeDoc: PTypeDoc
-}
+<pre><code class="language-ts">dispose(): void
 </code></pre>
-<h2 id="gg3dworldtypedocrepo-type-alias">Gg3dWorldTypeDocRepo (type alias)</h2>
+<h3 id="entity-property">entity (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type Gg3dWorldTypeDocRepo = {
-  vTypeDoc: VisualTypeDocRepo3D
-  pTypeDoc: PhysicsTypeDocRepo3D
-}
+<pre><code class="language-ts">entity: any
 </code></pre>
-<h2 id="gg3dworldtypedocvpatch-type-alias">Gg3dWorldTypeDocVPatch (type alias)</h2>
+<h3 id="name-property">name (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type Gg3dWorldTypeDocVPatch&lt;VTypeDoc extends VisualTypeDocRepo3D&gt; = Omit&lt;Gg3dWorldTypeDocRepo, 'vTypeDoc'&gt; &amp; {
-  vTypeDoc: VTypeDoc
-}
+<pre><code class="language-ts">name: string
 </code></pre>
-<h2 id="physicstypedocrepo3d-type-alias">PhysicsTypeDocRepo3D (type alias)</h2>
+<h3 id="radius-property">radius (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type PhysicsTypeDocRepo3D = {
-  factory: IPhysicsBody3dComponentFactory
-  loader: IPhysicsBody3dComponentLoader
-  rigidBody: IRigidBody3dComponent
-  trigger: ITrigger3dComponent
-  raycastVehicle: IRaycastVehicleComponent
-  characterController: ICharacterController3dComponent
-}
+<pre><code class="language-ts">readonly radius: number
 </code></pre>
-<h2 id="typedgg3dworld-type-alias">TypedGg3dWorld (type alias)</h2>
+<h3 id="centersdistance-property">centersDistance (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type TypedGg3dWorld&lt;VW extends Gg3dWorld&lt;any&gt; | null, PW extends Gg3dWorld&lt;any&gt; | null&gt; = VW extends Gg3dWorld&lt;
-  infer VTD,
-  infer VSTD
-&gt; | null
-  ? PW extends Gg3dWorld&lt;infer PTD, infer PSTD&gt; | null
-    ? Gg3dWorld&lt;
-        {
-          vTypeDoc: VTD['vTypeDoc']
-          pTypeDoc: PTD['pTypeDoc']
-        },
-        {
-          visualScene: VSTD['visualScene']
-          physicsWorld: PSTD['physicsWorld']
-        }
-      &gt;
-    : never
-  : never
+<pre><code class="language-ts">readonly centersDistance: number
 </code></pre>
-<h2 id="visualtypedocrepo3d-type-alias">VisualTypeDocRepo3D (type alias)</h2>
+<h3 id="_nativebody-property">_nativeBody (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type VisualTypeDocRepo3D = {
-  factory: IDisplayObject3dComponentFactory
-  loader: IDisplayObject3dComponentLoader
-  displayObject: IDisplayObject3dComponent
-  renderer: IRenderer3dComponent
-  rendererExtraOpts: {}
-  camera: ICamera3dComponent
-  texture: unknown
-}
+<pre><code class="language-ts">_nativeBody: any
+</code></pre>
+<h3 id="_nativecollider-property">_nativeCollider (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">_nativeCollider: any
+</code></pre>
+<h3 id="_nativecontroller-property">_nativeController (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">_nativeController: any
+</code></pre>
+<h3 id="debugbodysettings-property">debugBodySettings (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly debugBodySettings: any
+</code></pre>
+<h3 id="collisiongroups-property">collisionGroups (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">collisionGroups: any
 </code></pre>
 
 
