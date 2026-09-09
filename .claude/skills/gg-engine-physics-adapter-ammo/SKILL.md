@@ -63,6 +63,82 @@ for Rapier also exists in this package's pinned Ammo.js build: every existing
 `addToWorld()` for exactly this reason. The `settleWorld()` no-simulate-in-between-moves test pattern
 described there applies equally here.
 
+## `world.raycast()` missing a hit when `from` starts inside (or has passed through) the target
+
+Bullet's `rayTest` can only compute an entry point when the ray *starts outside* its target - once
+`options.from` lands inside a convex shape (or has flown all the way through it and out the other
+side), it finds nothing for that shape at all, from any distance further along the same direction,
+not just while still inside it. `Rapier3dWorldComponent.raycast` doesn't have this gap (it calls
+`castRay` with `solid: true`, Rapier's own explicit "report a hit at zero distance on whatever
+contains the ray's origin" mode), so the exact same query behaves differently depending on which
+physics adapter a world is built with - purely an adapter-parity bug, invisible from `packages/core`
+alone.
+
+Found from a real, reproducible gameplay report, not from reading Bullet's source first: a
+Portal-style demo's `ObjectGrabController.tryGrab()` (core, shared across every adapter)
+deliberately starts its pick-up ray a fixed distance in front of the holder's camera to dodge a
+self-hit on the holder's own capsule - fine for a target further away than that offset, but that
+same fixed offset lands *inside* a small grabbable prop sitting closer than it, which this gap then
+makes silently ungrabbable - reproduced on Ammo specifically (Rapier handled the identical query
+fine) only once the player stood close enough to the prop, matching the report exactly ("works fine
+until I step back a bit").
+
+**Fix**: `AmmoWorldComponent.raycast` now falls back to a discrete point-overlap probe
+(`btCollisionWorld.contactTest`, the same discrete-overlap primitive
+`AmmoCharacterControllerComponent.recoverFromPenetration` already uses for an unrelated reason)
+whenever the plain `rayTest` found nothing - construct a throwaway zero-size `btGhostObject` (a
+bare `btCollisionObject` has no public constructor in this build, "no constructor in IDL";
+`btGhostObject` is a plain collision object with a real one, and nothing about it being a ghost
+type matters since it's never added to the world) at `options.from`, run `contactTest`, and report
+whatever it overlaps as a hit at distance 0 - mirroring Rapier's `solid` result shape exactly.
+
+**A real filtering limitation, verified empirically rather than assumed**: `options
+.collisionFilterGroups`/`collisionFilterMask` can only ever *narrow* what this fallback reports,
+never widen it past whatever Bullet's own default pair filtering already lets through.
+`ContactResultCallback`'s internal `needsCollision` check runs against a candidate's *real*
+broadphase proxy and the callback's own `m_collisionFilterGroup`/`m_collisionFilterMask` fields
+(fixed at Bullet's stock `DefaultFilter`/`AllFilter` values) - but `ConcreteContactResultCallback`
+has no exposed setter for either field in this Ammo.js build (`set_m_collisionFilterGroup`/
+`set_m_collisionFilterMask` are simply `undefined` on a constructed instance, unlike the same two
+setters on `ClosestRayResultCallback`, which do exist and are what the plain `rayTest` above already
+uses). Registering the probe itself in the broadphase with explicit group/mask bits via
+`addCollisionObject` doesn't help either (tried and measured no effect - only the *candidate's* own
+proxy is ever consulted). Net effect: a candidate whose `interactWithCollisionGroups` excludes this
+world's default/main group (`mainCollisionGroup`, always group `0`) never reaches this fallback's
+JS callback at all, no matter what `options` asks for - an unusual configuration in practice (most
+bodies keep interacting with the default group even after adding custom ones), and not one the
+reported bug hits (`tryGrab()` passes no filter at all, against a body left at the engine-wide
+default `ownCollisionGroups`/`interactWithCollisionGroups: 'all'`). The fallback's own JS-side
+group/mask check (reading each candidate's public `ownCollisionGroups`/`interactWithCollisionGroups`
+getters) still meaningfully narrows *down* from whatever Bullet's fixed default let through - it
+just can't rescue a candidate Bullet's own default already excluded upstream.
+
+**A second, more severe regression this fix created and had to be paired with a fix for**:
+`AmmoCharacterControllerComponent.trySnapToGround`'s ground-snap ray deliberately starts its `from`
+point a hair inside this character's own capsule (moving "up" from the capsule's own lowest point
+moves towards its center, not away from it) - previously a safe trick, since a ray starting inside
+its own shape simply found nothing via plain `rayTest` and self-hits were never a concern. Once the
+solid-ray fallback above started reporting a hit for exactly that "starts inside a shape" case, this
+ray began self-hitting the character's own capsule on every tick instead of finding no ground -
+confirmed by a full test-suite run after landing the fallback: a "free fall in empty space, no floor
+at all" character-controller regression test failed with the character's fall arrested almost
+immediately, because it was being reported as standing on itself. Fixed by wrapping
+`trySnapToGround`'s `this.world.raycast(...)` call with the exact same temporary self-detach
+`sweep()` already uses for its own `convexSweepTest` call (`collisionWorld.removeCollisionObject
+(this.nativeBody)` / `detachIgnoredBodies()` before, `addCollisionObject`/`reattachIgnoredBodies`
+after, in a `try`/`finally`) - `trySnapToGround` is the *only* internal caller of `world.raycast()`
+in this package, so no other call site needed the same treatment, but the lesson generalizes: any
+future internal raycast call in this package that relies on "my `from` point happens to be inside my
+own shape, so it can't self-hit" needs the same explicit self-exclusion now, not just an assumption
+about `rayTest`'s own limitation.
+
+Regression coverage: `packages/ammo/test/components/ammo-world.component.spec.ts`'s `Raycast`
+describe block has the solid-ray-hit-at-distance-0 case, the filter-narrowing case (candidate kept
+in the default/main group alongside a custom one), and a close-range reproduction of the exact
+`ObjectGrabController`-shaped query against a small prop resting on a pedestal;
+`ammo-character-controller-freefall.spec.ts`'s existing "falls under gravity in empty space" test is
+what caught the `trySnapToGround` regression.
+
 ## Pitfall: `btKinematicCharacterController` produced zero collision response in this build
 
 Implementing `AmmoCharacterControllerComponent`, the "obvious" approach - a `btPairCachingGhostObject`

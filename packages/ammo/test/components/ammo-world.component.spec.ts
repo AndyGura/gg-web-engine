@@ -29,10 +29,13 @@ describe('AmmoWorldComponent', () => {
       world.gravity = { x: 1, y: -2, z: 3 };
       expect(world.gravity).toEqual({ x: 1, y: -2, z: 3 });
 
-      const ball = world.factory.createRigidBody({
-        shape: { shape: 'SPHERE', radius: 1 },
-        body: { dynamic: true, mass: 1 },
-      }, { position: { x: 0, y: 0, z: 0 } });
+      const ball = world.factory.createRigidBody(
+        {
+          shape: { shape: 'SPHERE', radius: 1 },
+          body: { dynamic: true, mass: 1 },
+        },
+        { position: { x: 0, y: 0, z: 0 } },
+      );
       ball.addToWorld({ physicsWorld: world } as any);
 
       for (let i = 0; i < 20; i++) {
@@ -68,13 +71,14 @@ describe('AmmoWorldComponent', () => {
   });
 
   describe('Rigid bodies', () => {
-
     it('should simulate inertial motion of rigid body', () => {
-
-      const ball = world.factory.createRigidBody({
-        shape: { shape: 'SPHERE', radius: 1 },
-        body: { dynamic: true, mass: 5 },
-      }, { position: { x: -5, y: 0, z: 0 } });
+      const ball = world.factory.createRigidBody(
+        {
+          shape: { shape: 'SPHERE', radius: 1 },
+          body: { dynamic: true, mass: 5 },
+        },
+        { position: { x: -5, y: 0, z: 0 } },
+      );
       ball.addToWorld({ physicsWorld: world } as any);
       ball.linearVelocity = { x: 1, y: 0, z: 0 };
 
@@ -86,18 +90,23 @@ describe('AmmoWorldComponent', () => {
     });
 
     it('should simulate collision of two rigid bodies', () => {
-
-      const ball0 = world.factory.createRigidBody({
-        shape: { shape: 'SPHERE', radius: 1 },
-        body: { dynamic: true, mass: 5 },
-      }, { position: { x: -5, y: 0, z: 0 } });
+      const ball0 = world.factory.createRigidBody(
+        {
+          shape: { shape: 'SPHERE', radius: 1 },
+          body: { dynamic: true, mass: 5 },
+        },
+        { position: { x: -5, y: 0, z: 0 } },
+      );
       ball0.addToWorld({ physicsWorld: world } as any);
       ball0.linearVelocity = { x: 1, y: 0, z: 0 };
 
-      const ball1 = world.factory.createRigidBody({
-        shape: { shape: 'SPHERE', radius: 1 },
-        body: { dynamic: true, mass: 5 },
-      }, { position: { x: 5, y: 0, z: 0 } });
+      const ball1 = world.factory.createRigidBody(
+        {
+          shape: { shape: 'SPHERE', radius: 1 },
+          body: { dynamic: true, mass: 5 },
+        },
+        { position: { x: 5, y: 0, z: 0 } },
+      );
       ball1.addToWorld({ physicsWorld: world } as any);
       ball1.linearVelocity = { x: -1, y: 0, z: 0 };
 
@@ -111,19 +120,25 @@ describe('AmmoWorldComponent', () => {
 
     it('should not simulate collision of two rigid bodies with different collision groups', () => {
       const cg0 = world.registerCollisionGroup();
-      const ball0 = world.factory.createRigidBody({
-        shape: { shape: 'SPHERE', radius: 1 },
-        body: { dynamic: true, mass: 5 },
-      }, { position: { x: -5, y: 0, z: 0 } });
+      const ball0 = world.factory.createRigidBody(
+        {
+          shape: { shape: 'SPHERE', radius: 1 },
+          body: { dynamic: true, mass: 5 },
+        },
+        { position: { x: -5, y: 0, z: 0 } },
+      );
       ball0.addToWorld({ physicsWorld: world } as any);
       ball0.linearVelocity = { x: 1, y: 0, z: 0 };
       ball0.ownCollisionGroups = ball0.interactWithCollisionGroups = [cg0];
 
       const cg1 = world.registerCollisionGroup();
-      const ball1 = world.factory.createRigidBody({
-        shape: { shape: 'SPHERE', radius: 1 },
-        body: { dynamic: true, mass: 5 },
-      }, { position: { x: 5, y: 0, z: 0 } });
+      const ball1 = world.factory.createRigidBody(
+        {
+          shape: { shape: 'SPHERE', radius: 1 },
+          body: { dynamic: true, mass: 5 },
+        },
+        { position: { x: 5, y: 0, z: 0 } },
+      );
       ball1.addToWorld({ physicsWorld: world } as any);
       ball1.linearVelocity = { x: -1, y: 0, z: 0 };
       ball1.ownCollisionGroups = ball1.interactWithCollisionGroups = [cg1];
@@ -140,7 +155,7 @@ describe('AmmoWorldComponent', () => {
   describe('Sleeping bodies', () => {
     it(
       'wakes a sleeping body when position/rotation/velocity is set programmatically ' +
-        '(regression: a sleeping body\'s island is skipped entirely by stepSimulation, so a ' +
+        "(regression: a sleeping body's island is skipped entirely by stepSimulation, so a " +
         'transform/velocity write that never woke it up was silently never simulated)',
       () => {
         const ball = world.factory.createRigidBody(
@@ -166,13 +181,15 @@ describe('AmmoWorldComponent', () => {
   });
 
   describe('Raycast', () => {
-
     it('should return no hit when ray does not intersect any object', () => {
       // Create a box far away from the ray
-      const box = world.factory.createRigidBody({
-        shape: { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } },
-        body: { dynamic: false, mass: 0 },
-      }, { position: { x: 10, y: 10, z: 10 } });
+      const box = world.factory.createRigidBody(
+        {
+          shape: { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } },
+          body: { dynamic: false, mass: 0 },
+        },
+        { position: { x: 10, y: 10, z: 10 } },
+      );
       box.addToWorld({ physicsWorld: world } as any);
 
       world.simulate(1);
@@ -192,10 +209,13 @@ describe('AmmoWorldComponent', () => {
 
     it('should detect hit when ray intersects an object', () => {
       // Create a box in the path of the ray
-      const box = world.factory.createRigidBody({
-        shape: { shape: 'BOX', dimensions: { x: 2, y: 2, z: 2 } },
-        body: { dynamic: false, mass: 0 },
-      }, { position: { x: 0, y: 0, z: -5 } });
+      const box = world.factory.createRigidBody(
+        {
+          shape: { shape: 'BOX', dimensions: { x: 2, y: 2, z: 2 } },
+          body: { dynamic: false, mass: 0 },
+        },
+        { position: { x: 0, y: 0, z: -5 } },
+      );
       box.addToWorld({ physicsWorld: world } as any);
 
       world.simulate(1);
@@ -226,15 +246,18 @@ describe('AmmoWorldComponent', () => {
       const group2 = world.registerCollisionGroup();
 
       // Create a box that only belongs to group1
-      const box1 = world.factory.createRigidBody({
-        shape: { shape: 'BOX', dimensions: { x: 2, y: 2, z: 2 } },
-        body: {
-          dynamic: false,
-          mass: 0,
-          ownCollisionGroups: [group1],
-          interactWithCollisionGroups: [group1, group2],
+      const box1 = world.factory.createRigidBody(
+        {
+          shape: { shape: 'BOX', dimensions: { x: 2, y: 2, z: 2 } },
+          body: {
+            dynamic: false,
+            mass: 0,
+            ownCollisionGroups: [group1],
+            interactWithCollisionGroups: [group1, group2],
+          },
         },
-      }, { position: { x: 0, y: 0, z: -5 } });
+        { position: { x: 0, y: 0, z: -5 } },
+      );
       box1.addToWorld({ physicsWorld: world } as any);
 
       world.simulate(1);
@@ -265,10 +288,13 @@ describe('AmmoWorldComponent', () => {
 
     it('should calculate hit distance correctly', () => {
       // Create a box at a known distance
-      const box = world.factory.createRigidBody({
-        shape: { shape: 'BOX', dimensions: { x: 2, y: 2, z: 2 } },
-        body: { dynamic: false, mass: 0 },
-      }, { position: { x: 0, y: 0, z: -5 } });
+      const box = world.factory.createRigidBody(
+        {
+          shape: { shape: 'BOX', dimensions: { x: 2, y: 2, z: 2 } },
+          body: { dynamic: false, mass: 0 },
+        },
+        { position: { x: 0, y: 0, z: -5 } },
+      );
       box.addToWorld({ physicsWorld: world } as any);
 
       world.simulate(1);
@@ -293,15 +319,18 @@ describe('AmmoWorldComponent', () => {
       const group2 = world.registerCollisionGroup();
 
       // Create a box that belongs to group1
-      const box = world.factory.createRigidBody({
-        shape: { shape: 'BOX', dimensions: { x: 2, y: 2, z: 2 } },
-        body: {
-          dynamic: false,
-          mass: 0,
-          ownCollisionGroups: [group1],
-          interactWithCollisionGroups: [group1, group2],
+      const box = world.factory.createRigidBody(
+        {
+          shape: { shape: 'BOX', dimensions: { x: 2, y: 2, z: 2 } },
+          body: {
+            dynamic: false,
+            mass: 0,
+            ownCollisionGroups: [group1],
+            interactWithCollisionGroups: [group1, group2],
+          },
         },
-      }, { position: { x: 0, y: 0, z: -5 } });
+        { position: { x: 0, y: 0, z: -5 } },
+      );
       box.addToWorld({ physicsWorld: world } as any);
 
       world.simulate(1);
@@ -320,16 +349,22 @@ describe('AmmoWorldComponent', () => {
 
     it('should return correct hit body', () => {
       // Create two boxes at different positions
-      const box1 = world.factory.createRigidBody({
-        shape: { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } },
-        body: { dynamic: false, mass: 0 },
-      }, { position: { x: 0, y: 0, z: -3 } });
+      const box1 = world.factory.createRigidBody(
+        {
+          shape: { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } },
+          body: { dynamic: false, mass: 0 },
+        },
+        { position: { x: 0, y: 0, z: -3 } },
+      );
       box1.addToWorld({ physicsWorld: world } as any);
 
-      const box2 = world.factory.createRigidBody({
-        shape: { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } },
-        body: { dynamic: false, mass: 0 },
-      }, { position: { x: 0, y: 0, z: -7 } });
+      const box2 = world.factory.createRigidBody(
+        {
+          shape: { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } },
+          body: { dynamic: false, mass: 0 },
+        },
+        { position: { x: 0, y: 0, z: -7 } },
+      );
       box2.addToWorld({ physicsWorld: world } as any);
 
       world.simulate(1);
@@ -346,12 +381,19 @@ describe('AmmoWorldComponent', () => {
       expect(result.hitPoint!.z).toBeCloseTo(-2.5, 0.1); // box1 edge is at z = -2.5
     });
 
-    it('should handle edge case with ray starting inside an object', () => {
-      // Create a box
-      const box = world.factory.createRigidBody({
-        shape: { shape: 'BOX', dimensions: { x: 4, y: 4, z: 4 } },
-        body: { dynamic: false, mass: 0 },
-      }, { position: { x: 0, y: 0, z: 0 } });
+    it("should report a hit at distance 0 on whatever contains the ray origin, mirroring Rapier's solid-ray default", () => {
+      // Plain `rayTest` can't compute an entry point for a ray that starts inside its target at
+      // all (a well-documented Bullet/GJK limitation - see `AmmoWorldComponent.solidRayFallback`'s
+      // own doc) - `raycast()` falls back to a discrete point-overlap probe for exactly this case,
+      // so the *result* still matches what `Rapier3dWorldComponent.raycast`'s own `solid: true`
+      // `castRay` call reports for the identical query.
+      const box = world.factory.createRigidBody(
+        {
+          shape: { shape: 'BOX', dimensions: { x: 4, y: 4, z: 4 } },
+          body: { dynamic: false, mass: 0 },
+        },
+        { position: { x: 0, y: 0, z: 0 } },
+      );
       box.addToWorld({ physicsWorld: world } as any);
 
       world.simulate(1);
@@ -364,11 +406,91 @@ describe('AmmoWorldComponent', () => {
 
       const result = world.raycast(raycastOptions);
 
-      // Behavior may vary depending on physics engine implementation
-      // Some engines might not detect hits when starting inside an object
-      // Others might detect the exit point
-      // We just verify the method doesn't crash and returns a valid result
-      expect(result).toBeDefined();
+      expect(result.hasHit).toBe(true);
+      expect(result.hitBody).toBe(box);
+      expect(result.hitPoint).toEqual({ x: 0, y: 0, z: 0 });
+      expect(result.hitDistance).toBe(0);
+    });
+
+    it("should narrow a solid-ray hit by collisionFilterGroups/collisionFilterMask, on top of whatever Bullet's own coarse default pair filtering already let through", () => {
+      // The candidate still interacts with the world's default/main group (`world.mainCollisionGroup`,
+      // always `0`) alongside its own custom `group1` - required for it to reach this fallback's own
+      // JS callback at all, see `solidRayFallback`'s own doc for why a candidate that excludes the
+      // default group entirely can't be narrowed (or found) this way regardless of what's requested.
+      const group1 = world.registerCollisionGroup();
+      const group2 = world.registerCollisionGroup();
+      const box = world.factory.createRigidBody(
+        {
+          shape: { shape: 'BOX', dimensions: { x: 4, y: 4, z: 4 } },
+          body: {
+            dynamic: false,
+            mass: 0,
+            ownCollisionGroups: [world.mainCollisionGroup, group1],
+            interactWithCollisionGroups: [world.mainCollisionGroup, group1],
+          },
+        },
+        { position: { x: 0, y: 0, z: 0 } },
+      );
+      box.addToWorld({ physicsWorld: world } as any);
+
+      world.simulate(1);
+
+      // Requesting an unrelated group the candidate doesn't own at all is correctly excluded.
+      const filteredOut = world.raycast({
+        from: { x: 0, y: 0, z: 0 },
+        to: { x: 0, y: 0, z: -10 },
+        collisionFilterGroups: [group2],
+        collisionFilterMask: [group2],
+      });
+      expect(filteredOut.hasHit).toBe(false);
+
+      // Requesting the group it does own still finds it.
+      const filteredIn = world.raycast({
+        from: { x: 0, y: 0, z: 0 },
+        to: { x: 0, y: 0, z: -10 },
+        collisionFilterGroups: [group1],
+        collisionFilterMask: [group1],
+      });
+      expect(filteredIn.hasHit).toBe(true);
+      expect(filteredIn.hitBody).toBe(box);
+    });
+
+    it('should still grab a small target sitting closer than the ray origin overshoots to (regression: ObjectGrabController-style pick-up close range)', () => {
+      // Reproduces the exact reported bug: `ObjectGrabController.tryGrab()` starts its pick-up ray
+      // a fixed distance in front of the camera to dodge a self-hit on the holder's own capsule -
+      // close enough to a small grabbable prop, that fixed offset lands *inside* the prop itself,
+      // which the plain `rayTest` above can't detect at all (see the two tests above) - only the
+      // solid-ray fallback makes this still work.
+      const pedestal = world.factory.createRigidBody(
+        {
+          shape: { shape: 'CYLINDER', radius: 0.5, height: 0.9 },
+          body: { dynamic: false, mass: 0 },
+        },
+        { position: { x: 0, y: 0, z: 0.45 } },
+      );
+      pedestal.addToWorld({ physicsWorld: world } as any);
+
+      const prop = world.factory.createRigidBody(
+        {
+          shape: { shape: 'BOX', dimensions: { x: 0.41, y: 0.23, z: 0.49 } },
+          body: { dynamic: true, mass: 3 },
+        },
+        { position: { x: 0, y: 0, z: 1.145 } },
+      );
+      prop.addToWorld({ physicsWorld: world } as any);
+
+      world.simulate(1);
+
+      // player capsule radius 0.4 + centersDistance/2 0.5 + holderExclusionMargin 0.3 = 1.2m ahead
+      const holderClearance = 1.2;
+      const playerDistance = 1.1; // was ungrabbable before the fix - see this test's own doc
+      const result = world.raycast({
+        from: { x: 0, y: -playerDistance + holderClearance, z: 1.145 },
+        to: { x: 0, y: 3 - playerDistance, z: 1.145 },
+      });
+
+      expect(result.hasHit).toBe(true);
+      expect(result.hitBody).toBe(prop);
     });
   });
 });

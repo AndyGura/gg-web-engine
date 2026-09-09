@@ -461,7 +461,8 @@ export class AmmoCharacterControllerComponent
    * character (zero or near-zero vertical input this tick) register as grounded, and approximates
    * `snapToGroundDistance` for following a slope/staircase down without briefly going airborne each
    * step. The ray starts a hair below the capsule's actual bottom point (past its own outward
-   * surface) so it can never register a hit against the character's own shape.
+   * surface), which by itself is *inside* this character's own capsule - see the temporary
+   * self-detach below for why that no longer safely rules out a self-hit on its own.
    */
   private trySnapToGround(pos: Point3, up: Point3, skin: number): { position: Point3; normal: Point3 } | null {
     const halfHeight = this.radius + this.centersDistance / 2;
@@ -475,12 +476,31 @@ export class AmmoCharacterControllerComponent
     const from = Pnt3.add(bottom, Pnt3.scalarMult(up, this.contactClearance));
     const to = Pnt3.sub(bottom, Pnt3.scalarMult(up, this.resolvedOptions.snapToGroundDistance));
 
-    const result = this.world.raycast({
-      from,
-      to,
-      collisionFilterGroups: [...this.ownCollisionGroups],
-      collisionFilterMask: [...this.interactWithCollisionGroups],
-    });
+    // `from` sits just above the capsule's own lowest point, which is *inside* this character's
+    // own shape, not outside it - moving "up" from the bottom tip of a rounded capsule cap moves
+    // towards its own center. That used to harmlessly guarantee no self-hit, since Bullet's plain
+    // `rayTest` can't find a hit for a ray starting inside its target at all - but
+    // `AmmoWorldComponent.raycast`'s own doc on `solidRayFallback` now fills in exactly that gap
+    // (to fix an unrelated bug: a raycast starting inside a *different*, small target should still
+    // hit it), which would otherwise make this ray immediately "hit" the character's own capsule
+    // every tick instead of finding no ground under it. Temporarily pull this character's own body
+    // out of the collision world for the query, same self-exclusion `sweep()` above already needs
+    // for its own `convexSweepTest` call, so it's never a candidate either way.
+    const collisionWorld = this.world.dynamicAmmoWorld!;
+    collisionWorld.removeCollisionObject(this.nativeBody);
+    const reattach = this.detachIgnoredBodies();
+    let result;
+    try {
+      result = this.world.raycast({
+        from,
+        to,
+        collisionFilterGroups: [...this.ownCollisionGroups],
+        collisionFilterMask: [...this.interactWithCollisionGroups],
+      });
+    } finally {
+      collisionWorld.addCollisionObject(this.nativeBody, this._ownCGsMask, this._interactWithCGsMask);
+      this.reattachIgnoredBodies(reattach);
+    }
     if (!result.hasHit || !result.hitPoint || !result.hitNormal || !this.isWalkableNormal(result.hitNormal, up)) {
       return null;
     }
