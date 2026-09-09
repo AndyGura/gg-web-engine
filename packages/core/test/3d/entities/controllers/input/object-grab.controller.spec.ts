@@ -52,8 +52,8 @@ describe('ObjectGrabController', () => {
       expect(controller.heldObject).toBe(entity);
       expect(entity.isHeld).toBe(true);
       const { from, to } = raycast.mock.calls[0][0];
-      expect(from).toEqual(Pnt3.O);
-      // identity rotation -> forward is -Z, maxGrabDistance defaults to 3
+      // identity rotation -> forward is -Z; from is nudged past the holder's capsule (0.3 + 0.5 + 0.3 margin = 1.1)
+      expect(from.z).toBeCloseTo(-1.1);
       expect(to.z).toBeCloseTo(-3);
     });
 

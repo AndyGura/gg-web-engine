@@ -14,3 +14,4 @@ shooter-three-ammo
 player-character-three-ammo
 player-character-three-rapier3d
 portal-room-three-ammo
+portal-room-three-rapier3d

@@ -193,6 +193,12 @@ export class ObjectGrabController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWor
    * A no-op (returns `target` unchanged) when `holder` is `null` - see this class's own doc for that
    * case.
    */
+  /** Radius of a sphere around `holder` guaranteed to clear its capsule in any direction. Assumes `holder` is set. */
+  private holderClearance(): number {
+    const character = this.holder!.characterController;
+    return character.radius + character.centersDistance / 2 + this.options.holderExclusionMargin;
+  }
+
   private clampAwayFromHolder(target: Point3): Point3 {
     if (!this.holder) {
       return target;
@@ -202,7 +208,7 @@ export class ObjectGrabController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWor
     const holderPos = this.holder.position;
     const toTarget = Pnt3.sub(target, holderPos);
     const alongUp = Pnt3.dot(toTarget, up);
-    const keepOutHalfHeight = character.radius + character.centersDistance / 2 + this.options.holderExclusionMargin;
+    const keepOutHalfHeight = this.holderClearance();
     if (Math.abs(alongUp) > keepOutHalfHeight) {
       return target;
     }
@@ -238,8 +244,12 @@ export class ObjectGrabController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWor
     if (this._heldObject || !this.world?.physicsWorld) {
       return;
     }
-    const from = this.camera.position;
-    const to = Pnt3.add(from, Pnt3.scalarMult(this.cameraForward, this.options.maxGrabDistance));
+    // Start past holder's own capsule - a first-person camera sits inside it, so a raycast from
+    // the camera itself can self-hit the holder on some adapters (e.g. Rapier's solid-ray default).
+    const from = this.holder
+      ? Pnt3.add(this.camera.position, Pnt3.scalarMult(this.cameraForward, this.holderClearance()))
+      : this.camera.position;
+    const to = Pnt3.add(this.camera.position, Pnt3.scalarMult(this.cameraForward, this.options.maxGrabDistance));
     const result = this.world.physicsWorld.raycast({ from, to });
     const entity = result.hasHit ? result.hitBody?.entity : null;
     if (entity instanceof Grabbable3dEntity) {

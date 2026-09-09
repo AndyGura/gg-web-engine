@@ -237,10 +237,11 @@ export class MouseInput extends IInput<[], [unlockPointer?: boolean]> {
       .pipe(takeUntil(this.stopped$))
       .subscribe((event: PointerEvent) => {
         if (pointers.length === 0) {
-          // Can throw (e.g. a pointer-locked mouse) - own try/catch so a failure here can't skip
-          // registering the pointerup/pointercancel listeners below, which would leave state$
-          // stuck forever on this button's drag state.
-          if (this.options.canvas) {
+          // Pointless (and throws) for a locked pointer - it has no screen position to stray
+          // outside the canvas with in the first place. Own try/catch regardless, so a failure
+          // here can't skip registering the pointerup/pointercancel listeners below, which would
+          // leave state$ stuck forever on this button's drag state.
+          if (this.options.canvas && !this.isPointerLocked) {
             try {
               this.options.canvas.setPointerCapture(event.pointerId);
             } catch (err) {
