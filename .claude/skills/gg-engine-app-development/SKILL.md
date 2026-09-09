@@ -192,7 +192,17 @@ small single-file app, inlining `TypedGg3dWorld<ThreeGgWorld, Rapier3dGgWorld>` 
   see the dedicated `gg-engine-level-json` skill for full authoring details.
 - **Raycasting**: `world.physicsWorld.raycast({ from, to, collisionFilterGroups?, collisionFilterMask? })`.
 - **Collision groups**: `world.physicsWorld.registerCollisionGroup()` /
-  `deregisterCollisionGroup(group)`; every body has `mainCollisionGroup` set by default.
+  `deregisterCollisionGroup(group)`; every body has `mainCollisionGroup` set by default (both
+  `ownCollisionGroups` and `interactWithCollisionGroups` start as `[mainCollisionGroup]`, not
+  `'all'`, unless the body's creation options say otherwise). Filtering is **bidirectional** - two
+  bodies only collide if *each* one's own `ownCollisionGroups` appears in the *other*'s
+  `interactWithCollisionGroups` - so giving one body (e.g. a player character) a new dedicated group
+  for excluding it from something specific (a carried prop's collision mask - see
+  `ObjectGrabController`'s `holderCollisionGroups` doc) must **add** that group to whatever the body
+  already had, not replace it: dropping `mainCollisionGroup` from a character's own groups makes it
+  stop colliding with every other body still relying on the default `[mainCollisionGroup]` mask -
+  ordinary level geometry included, which reads as the character falling straight through its own
+  floor (a real regression this repo hit).
 - **Dev tools**: `packages/core/src/dev/` — `gg-console.ui.ts` (in-page command console),
   `gg-debugger.ui.ts` (physics wireframe overlay toggle), `performance-meter.entity.ts`. See
   "Debugging with the dev console" below — it's the preferred way for an agent to inspect/mutate a

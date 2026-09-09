@@ -30,6 +30,21 @@ with the `chassisBody` passed into its constructor (same native handle, not a co
 vehicle's own `removeFromWorld`/`dispose()` frees it - never pass `dispose: true` down into
 `chassisBody.removeFromWorld` too, or the shared handle gets double-freed.
 
+## Sleeping bodies silently ignored programmatic transform/velocity writes
+
+See `gg-engine-physics-adapter`'s general contract note on this (the cross-adapter version of the
+bug, with the regression-test recipe) - the Ammo-specific fact worth recording here is exactly which
+calls needed it and why it was easy to miss: `AmmoBodyComponent.position`/`.rotation` (`setWorldTransform`)
+and `AmmoRigidBodyComponent.linearVelocity`/`.angularVelocity` (`setLinearVelocity`/`setAngularVelocity`)
+all wrote straight into a sleeping `btRigidBody`'s state with zero indication anything was wrong - no
+exception, no warning, `getLinearVelocity()` even read back the value that was just set. The only
+observable symptom was the body's `position` never actually changing tick over tick despite
+`simulate()` running normally for everything else in the world. Fix: call `this.nativeBody.activate(true)`
+at the end of all four setters. `activate(true)` (forced activation) is unconditionally safe to call
+even on a static/kinematic body - Bullet's own implementation already no-ops for `CF_STATIC_OBJECT`
+internally, so there's no need to guard the call with `isStaticOrKinematicObject()` first.
+
+
 **A leak that was consciously left alone**: `AmmoRigidBodyComponent`/`AmmoTriggerComponent` never
 capture or free their collision shape (`this._nativeBody.getCollisionShape()`) anywhere, including in
 `dispose()` - only the character controller's capsule (which owns a private, never-shared shape) was

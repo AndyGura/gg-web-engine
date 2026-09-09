@@ -18,6 +18,7 @@ export class AmmoRigidBodyComponent
 
   set linearVelocity(value: Point3) {
     this.nativeBody.setLinearVelocity(new Ammo.btVector3(value.x, value.y, value.z));
+    this.nativeBody.activate(true);
   }
 
   get angularVelocity(): Point3 {
@@ -27,6 +28,7 @@ export class AmmoRigidBodyComponent
 
   set angularVelocity(value: Point3) {
     this.nativeBody.setAngularVelocity(new Ammo.btVector3(value.x, value.y, value.z));
+    this.nativeBody.activate(true);
   }
 
   readonly debugBodySettings: DebugBody3DSettings = new DebugBody3DSettings(

@@ -13,3 +13,4 @@ collision-groups-pool-three-rapier3d
 shooter-three-ammo
 player-character-three-ammo
 player-character-three-rapier3d
+portal-room-three-ammo

@@ -32,7 +32,7 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
 
   public set position(value: Point3) {
     if (this.nativeBody) {
-      this.nativeBody.setTranslation(new Vector3(value.x, value.y, value.z), false);
+      this.nativeBody.setTranslation(new Vector3(value.x, value.y, value.z), true);
     } else {
       this._bodyDescr.setTranslation(value.x, value.y, value.z);
     }
@@ -44,7 +44,7 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
 
   public set rotation(value: Point4) {
     if (this.nativeBody) {
-      this.nativeBody.setRotation(new Quaternion(value.x, value.y, value.z, value.w), false);
+      this.nativeBody.setRotation(new Quaternion(value.x, value.y, value.z, value.w), true);
     } else {
       this._bodyDescr.setRotation(new Quaternion(value.x, value.y, value.z, value.w));
     }
@@ -56,7 +56,8 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
 
   set linearVelocity(value: Point3) {
     if (this.nativeBody) {
-      this.nativeBody.setLinvel(new Vector3(value.x, value.y, value.z), false);
+      // see `position`'s setter above for why `true` (wake up) is required
+      this.nativeBody.setLinvel(new Vector3(value.x, value.y, value.z), true);
     }
   }
 
@@ -66,7 +67,8 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
 
   set angularVelocity(value: Point3) {
     if (this.nativeBody) {
-      this.nativeBody.setAngvel(new Vector3(value.x, value.y, value.z), false);
+      // see `position`'s setter above for why `true` (wake up) is required
+      this.nativeBody.setAngvel(new Vector3(value.x, value.y, value.z), true);
     }
   }
 

@@ -125,6 +125,30 @@ Both must implement `IPositionable(2d|3d)` (position/rotation proxied to the nat
 worth factoring into a common base component — see `AmmoBodyComponent` shared by
 `AmmoRigidBodyComponent` and `AmmoTriggerComponent`.
 
+**A dynamic body's `position`/`rotation`/`linearVelocity`/`angularVelocity` setters must wake a
+sleeping body.** Every native engine deactivates ("sleeps") a dynamic body that's been at rest for a
+while, as a performance optimization - and every native engine's own simulation step skips a sleeping
+body's island entirely regardless of what raw transform/velocity values sit in its memory, so a
+setter that writes the new value straight through without also forcing reactivation has that write
+silently never take effect until something else (e.g. a collision) wakes the body up first. Confirmed
+in both `packages/ammo` (`nativeBody.activate(true)`, missing entirely - Bullet's
+`setLinearVelocity`/`setWorldTransform` etc. don't imply activation on their own) and
+`packages/rapier3d` (`setLinvel`/`setTranslation`/etc. take an explicit trailing `wakeUp: boolean`
+argument, which this adapter had wired to `false`) - found live via `Grabbable3dEntity` (core): a
+prop resting on a pedestal long enough to fall asleep completely ignored every per-tick
+`updateHold()` velocity write and stayed frozen in place, even though the component's own
+`linearVelocity` getter correctly read back whatever was just set - until something else physically
+bumped it awake first, after which it worked normally. Any new adapter's rigid-body setters must
+force-wake the native body on every write, not just at creation; write a regression test that lets a
+body actually fall asleep (simulate at rest, with gravity zeroed, until the native "is
+active"/"is sleeping" query flips) before asserting a subsequent `linearVelocity`/`position` write
+actually moves it - a test that never lets the body sleep in the first place cannot catch this.
+Checked empirically and found *not* to apply to `packages/matter`: `matter-js`'s `Engine.create()`
+defaults `enableSleeping` to `false` and this adapter never overrides it, so a body never actually
+enters a sleeping state at all under the current setup, regardless of how long it rests - nothing to
+fix there unless a future change enables sleeping (see `gg-engine-physics-adapter-matter` for the
+one-line pointer).
+
 **Triggers** are sensor colliders with no collision response that emit enter/exit events; wire the
 native engine's collision-event mechanism into an RxJS-based interface matching
 `ITriggerComponent`, enabling the native "collision events" flag on the collider at creation time

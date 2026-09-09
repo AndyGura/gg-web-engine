@@ -137,6 +137,34 @@ describe('AmmoWorldComponent', () => {
     });
   });
 
+  describe('Sleeping bodies', () => {
+    it(
+      'wakes a sleeping body when position/rotation/velocity is set programmatically ' +
+        '(regression: a sleeping body\'s island is skipped entirely by stepSimulation, so a ' +
+        'transform/velocity write that never woke it up was silently never simulated)',
+      () => {
+        const ball = world.factory.createRigidBody(
+          { shape: { shape: 'SPHERE', radius: 1 }, body: { dynamic: true, mass: 5 } },
+          { position: { x: 0, y: 0, z: 0 } },
+        );
+        ball.addToWorld({ physicsWorld: world } as any);
+
+        // let it fall asleep: zero gravity (see beforeEach) and zero velocity means nothing ever
+        // disturbs it, so Bullet's own deactivation timer runs out on its own.
+        for (let i = 0; i < 200; i++) {
+          world.simulate(60);
+        }
+        expect((ball as any).nativeBody.isActive()).toBe(false);
+
+        ball.linearVelocity = { x: 1, y: 0, z: 0 };
+        for (let i = 0; i < 60; i++) {
+          world.simulate(60);
+        }
+        expect(ball.position.x).toBeGreaterThan(0.5);
+      },
+    );
+  });
+
   describe('Raycast', () => {
 
     it('should return no hit when ray does not intersect any object', () => {

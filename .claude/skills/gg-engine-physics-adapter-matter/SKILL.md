@@ -30,6 +30,19 @@ of the common base. Re-check this specifically after any future `@types/matter-j
 package widening or narrowing one call's options independently of the others is exactly the kind of
 change that only shows up as a compile error, not a runtime one.
 
+## Sleeping-body writes: checked, not currently a problem here
+
+`gg-engine-physics-adapter`'s general contract note describes a cross-adapter bug where a sleeping
+body silently ignores a programmatic `position`/`rotation`/velocity write (confirmed and fixed in
+`packages/ammo` and both `packages/rapier2d`/`rapier3d`). Checked empirically here too (a body left
+at rest with zero gravity for 12 simulated seconds, then given a velocity write): it never actually
+went to sleep in the first place, because `MatterWorldComponent`'s `Engine.create({...})` never sets
+`enableSleeping` and `matter-js` itself defaults that to `false`. Nothing to fix currently - but if a
+future change ever turns `enableSleeping: true` on for this adapter (e.g. for the CPU-cost benefit at
+scale), re-run this exact check before assuming `Body.setPosition`/`setVelocity`/`setAngularVelocity`
+still work uniformly regardless of sleep state, and wake the body explicitly if not (matter-js
+exposes `Sleeping.set(body, false)` for this).
+
 ## Keep this skill current
 
 This file is read by future agents fixing/extending `packages/matter` specifically, not by end users of

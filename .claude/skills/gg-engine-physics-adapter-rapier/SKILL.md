@@ -27,6 +27,24 @@ bug found here: `Rapier3dRaycastVehicleComponent`'s native vehicle controller ne
 reachable from an ordinary `removeFromWorld` before; fixed by calling `this.dispose()` from
 `removeFromWorld` when `dispose` is `true`.
 
+## Sleeping bodies silently ignored programmatic transform/velocity writes (3D; 2D shares the same native API and is worth checking too)
+
+See `gg-engine-physics-adapter`'s general contract note on this (the cross-adapter version of the
+bug, with the regression-test recipe). The Rapier-specific fact worth recording here: this package's
+own rigid-body setters were the direct cause, not an oversight elsewhere - Rapier's `RigidBody.setTranslation`/
+`setRotation`/`setLinvel`/`setAngvel` all take an explicit trailing `wakeUp: boolean` argument (the
+native API makes the choice visible, unlike Bullet's - see `gg-engine-physics-adapter-ammo`), and
+`Rapier3dRigidBodyComponent`'s four setters all passed `false`. A sleeping body's island is skipped
+entirely by Rapier's own `step()` regardless of what its translation/velocity is set to, so this
+silently no-opped every write to a body that happened to be asleep at the time - found live via
+`Grabbable3dEntity` (core): a prop resting on a pedestal long enough to sleep completely ignored
+every per-tick `updateHold()` velocity write and stayed frozen, even though the component's own
+getters read back whatever was just (uselessly) set. Fix: pass `true` in all four setters.
+`resetMotion()`'s own direct `setAngvel`/`setLinvel(..., false)` calls were deliberately left as
+`false` - it's clearing a body's motion right before/after a teleport, not asking it to move, so
+there's no obvious need to force a wake there; revisit only if a similar frozen-body symptom is ever
+reported for a body going through `resetMotion` specifically.
+
 ## Pitfall: a freshly-created collider is invisible to sweeps/raycasts until the world steps once
 
 Hit implementing `Rapier3dCharacterControllerComponent`: calling `move()` immediately after creating

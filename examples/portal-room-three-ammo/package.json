@@ -1,0 +1,33 @@
+{
+  "name": "portal-room-three-ammo",
+  "version": "0.0.0",
+  "scripts": {
+    "build": "webpack && rm ./dist/bundle.js.LICENSE.txt",
+    "start": "webpack serve --config ./webpack.dev.config.js"
+  },
+  "dependencies": {
+    "@gg-web-engine/core": "0.0.65",
+    "@gg-web-engine/ammo": "0.0.65",
+    "@gg-web-engine/three": "0.0.65",
+    "mini-signals": "3.0.0",
+    "rxjs": "7.8.2",
+    "three": "0.185.1"
+  },
+  "devDependencies": {
+    "@types/three": "0.185.4",
+    "html-webpack-plugin": "^5.6.8",
+    "ts-loader": "^9.6.2",
+    "typescript": "~6.0.3",
+    "webpack": "^5.110.2",
+    "webpack-cli": "^7.2.3",
+    "webpack-dev-server": "^6.0.0"
+  },
+  "browser": {
+    "fs": false,
+    "os": false,
+    "path": false
+  },
+  "overrides": {
+    "rxjs": "7.8.2"
+  }
+}

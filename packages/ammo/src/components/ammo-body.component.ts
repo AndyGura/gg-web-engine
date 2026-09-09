@@ -15,6 +15,7 @@ export abstract class AmmoBodyComponent<T extends Ammo.btCollisionObject> {
     const transform = this.nativeBody.getWorldTransform();
     transform.setOrigin(new Ammo.btVector3(value.x, value.y, value.z));
     this.nativeBody.setWorldTransform(transform);
+    this.nativeBody.activate(true);
   }
 
   public get rotation(): Point4 {
@@ -26,6 +27,7 @@ export abstract class AmmoBodyComponent<T extends Ammo.btCollisionObject> {
     const transform = this.nativeBody.getWorldTransform();
     transform.setRotation(new Ammo.btQuaternion(value.x, value.y, value.z, value.w));
     this.nativeBody.setWorldTransform(transform);
+    this.nativeBody.activate(true);
   }
 
   public name: string = '';

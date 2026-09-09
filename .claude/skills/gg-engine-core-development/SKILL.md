@@ -79,6 +79,38 @@ name truthy)` check the same way, and add a body/mock with the adapter-realistic
 spawned-entity names — a test mock that defaults to a non-empty placeholder name (as
 `mockCharacterController` used to) hides exactly this bug.
 
+## `tickOrder`: driving a dynamic rigid body before physics `simulate()` runs
+
+`GgWorld`'s tick loop (`base/gg-world.ts`) fires every listener's `tick$` in ascending `tickOrder`
+order, but splits that single loop around one fixed point: `IPhysicsWorldComponent.simulate(delta)`
+runs exactly once per frame, right where an entity's `tickOrder` crosses `TickOrder.PHYSICS_SIMULATION`
+(200). Anything with a **lower** `tickOrder` ticks *before* `simulate()` this frame; anything
+**higher** ticks *after* it, once already-integrated. This matters for any entity/controller that
+needs to set a dynamic rigid body's `linearVelocity`/`angularVelocity` and have the physics engine
+actually integrate that value this same frame (as opposed to reading the body's position/rotation
+back out, which only makes sense *after* `simulate()`) — it must use a `tickOrder` below 200, e.g.
+`TickOrder.PHYSICS_SIMULATION - 5` (the convention `CharacterController3dEntity` and
+`ObjectGrabController`/`Grabbable3dEntity` both use), not the default `TickOrder.OBJECTS_BINDING`
+(400) that `Entity3d` itself ticks at to sync a mesh *from* a body's post-`simulate()` transform.
+A single entity subclass can't do both (it only has one `tick$`, firing once at its own declared
+`tickOrder`) — this is why `Grabbable3dEntity` (extends `Entity3d`, keeps its inherited
+post-physics `OBJECTS_BINDING` tick for the mesh sync every other dynamic prop gets) does **not**
+drive its own hold-spring from `tick$`; that logic lives in a separate `updateHold()` method that
+`ObjectGrabController` (its own entity, `tickOrder = PHYSICS_SIMULATION - 5`) calls once per frame.
+Splitting "pre-physics logic" and "post-physics sync" across a controller entity + a driven entity
+this way, rather than cramming both into one entity's single tick, is the established pattern here
+for anything that needs to act on both sides of `simulate()` — see `PlayerCharacterController`
+(camera, post-physics) driving `CharacterController3dEntity` (movement) for the read-only-camera
+version of the same split, and `ObjectGrabController` driving `Grabbable3dEntity` for the
+velocity-setting version.
+
+A held/driven dynamic body should also be moved via velocity (`linearVelocity`), not by teleporting
+`position` directly, if it needs to keep colliding with the world realistically while driven —
+`Grabbable3dEntity`'s own doc comment explains why (teleporting risks tunnelling through geometry
+then exploding back out from deep penetration on release); this was verified empirically against a
+real Ammo world (a sphere driven by `updateHold()` into a static wall stopped exactly at the wall's
+surface plus the sphere's own radius, rather than passing through it).
+
 ## The TypeDocRepo generic pattern — read this before touching interfaces
 
 Core interfaces don't hardcode adapter types. Instead each dimension defines a "type doc
