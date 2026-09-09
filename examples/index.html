@@ -261,6 +261,11 @@
             visualModule: 'three',
             physicsModule: 'ammo',
         },
+        {
+            label: 'Portal room',
+            visualModule: 'three',
+            physicsModule: 'rapier3d',
+        },
     ].map((ex) => {
         const name = `${ex.label.toLowerCase().replace(/\s/g, '-')}-${ex.visualModule}-${ex.physicsModule}`;
         const sbBranchSuffix = '0.0.65';

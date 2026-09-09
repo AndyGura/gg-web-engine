@@ -487,6 +487,71 @@ this is a core-level fix, not an Ammo-specific one, but worth knowing when debug
 transition that appears to silently drop a held-object exclusion: without it, every capsule swap (e.g.
 `recreateCapsule`) would reset to an empty set and re-enable collision with whatever was being ignored.
 
+## `AmmoWorldComponent.simulate()`'s fixed-substep accumulator drifting against the render loop
+
+`stepSimulation(timeStep, maxSubSteps, fixedTimeStep)` with a non-zero `maxSubSteps` puts Bullet into
+its own built-in fixed-timestep-with-accumulator mode: it keeps a running `m_localTime` counter,
+adds each call's `timeStep` to it, then consumes as many whole `fixedTimeStep`-sized chunks as fit,
+carrying the leftover fraction into the *next* call. `AmmoWorldComponent.simulate(delta)` used to hand
+`fixedTimeStep`/`maxSubSteps` straight through as those two arguments - which means the amount of
+physics time actually simulated in a given call is `floor(accumulated / fixedTimeStep) *
+fixedTimeStep`, not `delta` itself. At a real, variable render `delta` (~16.7ms at 60fps, essentially
+never an exact multiple of the default `fixedTimeStep: 0.01`), that accumulator alternates between
+consuming 10ms and 20ms of simulated time call to call while the true elapsed time stayed ~16.7ms
+both times - confirmed by isolating the arithmetic outside Ammo entirely: a realistic jittery ~60fps
+delta stream fed through the old accumulator formula showed simulated-time error alternating roughly
+±3-7ms in sign every other call, versus exactly `0` every call once fixed (see the fix below).
+
+Nothing else in this engine's tick loop goes through that same accumulator -
+`CharacterController3dEntity.move(desiredTranslation, dt)` (core, every adapter) applies the real,
+un-quantized per-tick `dt` directly, and `AmmoBodyComponent.position` reads
+`nativeBody.getWorldTransform()` straight off the rigid body with no render-time interpolation of its
+own. So a camera driven off the character controller advances by the exact real `delta` every tick,
+while a dynamic body's reported position advances by the accumulator's quantized, drifting amount -
+the mismatch alternates sign frame to frame and scales with the body's own speed (bigger speed ->
+bigger position error for the same few-millisecond timestep mismatch). Real, reported, reproduced
+symptom: grab a `Grabbable3dEntity`, walk sideways while looking forward - the held object visibly
+flickers back and forth along the strafe axis instead of settling into a smooth, linearly-closing
+offset from the camera; the same mechanism produces a fixed camera flickering relative to a moving
+raycast vehicle, or a chase camera's target flickering relative to its own spinning chassis.
+`Rapier3dWorldComponent.simulate` has no equivalent bug at all (confirmed reproducible on Ammo,
+never on Rapier3d) - it just sets its own `timestep` to `delta` and steps once, so simulated time
+always exactly equals real elapsed time, with no accumulator to drift.
+
+**Fix**: don't hand `fixedTimeStep`/`maxSubSteps` to Bullet's own accumulator at all - compute the
+substep count/size in JS instead, every call: `n = max(1, ceil(dt / fixedTimeStep))` (clamped by
+`maxSubSteps`, which is now purely a hard ceiling protecting against one huge catch-up call - e.g. a
+backgrounded tab - grinding through an enormous number of substeps), then call `stepSimulation(dt, n,
+dt / n)`. `n` equal-sized substeps of `dt / n` always sum to exactly `dt`, so nothing is ever left for
+Bullet's accumulator to carry into the next call - for any `delta` that already divides evenly by
+`fixedTimeStep` (every synthetic test in this package's own suite uses one) this reproduces the old
+accumulator's result exactly bit for bit; for a real, non-round render `delta` it's what actually
+removes the drift.
+
+**A first attempt at fixing this - `stepSimulation(dt, 0)`, Bullet's own single-step "variable
+timestep" mode, mirroring `Rapier3dWorldComponent.simulate` literally - also removed the drift, but
+was a real regression, not just a hypothetical stability concern, confirmed by running this package's
+own test suite against it: `ammo-raycast-vehicle.component.spec.ts`'s vehicle stopped settling
+correctly on its suspension, and `ammo-trigger.component.spec.ts`'s exit-detection test stopped firing,
+from nothing more extreme than those tests' own existing `world.simulate(60)`-per-frame loops - not a
+huge one-off catch-up delta.** Substep chunking turned out to be load-bearing for ordinary per-tick
+solver accuracy (suspension springs, narrow-phase overlap updates), not just a tunneling safeguard for
+rare large deltas, so a fix that removes all substepping to fix the accumulator drift trades one real
+bug for another. The `n = ceil(dt / fixedTimeStep)` scheme above keeps every substep bounded by
+`fixedTimeStep` unconditionally (not just above some delta threshold) while still eliminating the
+cross-call drift, which is why it - not plain variable-timestep mode - is the fix that shipped.
+`examples/shooter-three-ammo`/`examples/collision-groups-pool-three-ammo`, which both raise
+`maxSubSteps` explicitly for their own fast-shape/many-body stability needs, are unaffected by this
+change: their override still just clamps `n` the same way it clamped Bullet's own substep count before.
+
+Regression coverage: this package's full existing suite (particularly the two round-`delta`-driven
+tests above, which pin the new scheme to reproduce the old accumulator's result exactly for exact
+multiples of `fixedTimeStep`) is what caught the plain-variable-timestep regression and confirms the
+shipped fix doesn't reintroduce it - no dedicated jitter regression test was added, since the drift
+itself only manifests as an accumulating position disagreement against a separate, non-quantized
+camera/controller across many non-round-delta ticks, not as a single-call assertion this package's
+existing per-component test style is set up to express.
+
 ## Keep this skill current
 
 This file is read by future agents fixing/extending `packages/ammo` specifically, not by end users of

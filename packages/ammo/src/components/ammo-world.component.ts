@@ -52,7 +52,57 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
 
   readonly mainCollisionGroup: CollisionGroup = 0;
 
+  /**
+   * Hard ceiling on how many substeps `simulate()` will ever run for one call, regardless of how
+   * large `delta` is - protects against a single huge catch-up call (a dropped/backgrounded tab)
+   * grinding substep-by-substep through an enormous amount of simulated time. Below this cap,
+   * `simulate()` always runs however many substeps keep each one no longer than `fixedTimeStep` -
+   * see that field's own doc for why a *dynamically computed* substep count/size, not Bullet's own
+   * built-in accumulator, is what actually gets used. `0`/`undefined` (default `100`) means no cap
+   * at all - the cap only ever trades simulation *accuracy* (larger-than-`fixedTimeStep` substeps)
+   * for guaranteeing `delta` is always fully consumed in one call, never deferred.
+   */
   public maxSubSteps?: number = 100;
+  /**
+   * The largest a single internal substep is allowed to be, in seconds - smaller keeps the solver
+   * (suspension springs, fast/thin shapes, etc.) accurate and stable, at the cost of more substeps
+   * per call. Default `0.01` (10ms).
+   *
+   * **Not passed straight through to `stepSimulation` as its own `fixedTimeStep` argument** - that
+   * argument drives Bullet's built-in *accumulator* (`m_localTime`), which carries whatever doesn't
+   * divide evenly into `fixedTimeStep` over into the *next* call. That accumulator is invisible and
+   * harmless for a body at rest, but for anything moving it means the amount of physics time
+   * actually simulated in a given `simulate()` call silently drifts above and below that call's own
+   * `delta` from tick to tick, depending on the accumulator's leftover phase - since nothing else in
+   * this engine's tick loop goes through that same accumulator (a camera driven directly off
+   * `CharacterController3dEntity.move()`'s own un-quantized per-tick `dt`, for one), that drift shows
+   * up as the camera and a physics-driven body disagreeing by a small, sign-flipping amount every
+   * other frame - real, reported, reproduced symptom: back-and-forth position jitter on a
+   * `Grabbable3dEntity` held in front of a moving/turning camera (worse the faster the camera
+   * moves - the drift is a fixed few milliseconds' worth of position error, so it scales with
+   * speed), and the same mechanism behind a fixed camera flickering relative to a moving raycast
+   * vehicle, or a chase camera's target flickering relative to its spinning chassis. `Rapier3dWorldComponent.simulate`
+   * never has this problem in the first place - it just sets its own `timestep` to `delta` and steps
+   * once, so simulated time always exactly equals real elapsed time.
+   *
+   * Fixed here without giving up bounded substep size at all: `simulate()` computes its own substep
+   * count `n = ceil(delta / fixedTimeStep)` (clamped by `maxSubSteps`) and calls `stepSimulation`
+   * with substeps of exactly `delta / n` each - always summing to exactly `delta`, every call, with
+   * nothing ever carried over. For any `delta` that already divides evenly by `fixedTimeStep` (every
+   * existing synthetic test in this package uses one) this reproduces Bullet's own accumulator
+   * result exactly; for a real variable render `delta` (never an exact multiple of `0.01`) it's what
+   * actually removes the drift, while every substep is still no larger than `fixedTimeStep` (unless
+   * `maxSubSteps` itself has to trade accuracy for guaranteeing `delta` is fully consumed - see its
+   * own doc). A first attempt at this fix (`maxSubSteps: 0`, Bullet's own single-step "variable
+   * timestep" mode, mirroring `Rapier3dWorldComponent.simulate` literally) removed the drift too,
+   * but at the cost of *all* substepping, not just the accumulator - confirmed as a real regression,
+   * not a hypothetical one, by this package's own test suite: a raycast vehicle's suspension
+   * (`ammo-raycast-vehicle.component.spec.ts`) stopped settling correctly and a trigger's exit event
+   * (`ammo-trigger.component.spec.ts`) stopped firing, from nothing more exotic than the existing
+   * tests' own ordinary `world.simulate(60)`-per-frame loops - well short of a huge catch-up frame.
+   * Substep chunking earns its keep for solver accuracy on every call, not just huge ones, so it's
+   * kept unconditionally rather than only above some `delta` threshold.
+   */
   public fixedTimeStep?: number = 0.01;
 
   public get dynamicAmmoWorld(): Ammo.btDiscreteDynamicsWorld | undefined {
@@ -97,11 +147,21 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
   }
 
   simulate(delta: number): void {
-    this._dynamicAmmoWorld?.stepSimulation(
-      delta / 1000,
-      this.maxSubSteps || undefined,
-      this.fixedTimeStep || undefined,
-    );
+    const dt = delta / 1000;
+    // Compute our own substep count/size rather than handing `fixedTimeStep`/`maxSubSteps` straight
+    // to Bullet's own accumulator-based `stepSimulation` - see `fixedTimeStep`'s own doc for why:
+    // in short, an evenly-sized split of *this exact* `dt` never leaves anything for Bullet's
+    // accumulator to carry into the next call, which is what eliminates the render/physics timestep
+    // drift that caused visible jitter without giving up bounded substep size.
+    const maxStep = this.fixedTimeStep && this.fixedTimeStep > 0 ? this.fixedTimeStep : 1 / 60;
+    let subSteps = Math.max(1, Math.ceil(dt / maxStep));
+    if (this.maxSubSteps) {
+      subSteps = Math.min(subSteps, this.maxSubSteps);
+    }
+    // `dt > 0 ? ... : maxStep`: never hand Bullet a literal `0` for `fixedTimeStep` on a zero-length
+    // `dt` call - `m_localTime (0) >= fixedTimeStep` false-ing out safely to "no substeps run" needs
+    // a positive divisor, not `0/0`.
+    this._dynamicAmmoWorld?.stepSimulation(dt, subSteps, dt > 0 ? dt / subSteps : maxStep);
     this.afterTick$.next();
   }
 
