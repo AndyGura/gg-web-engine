@@ -220,6 +220,43 @@ synchronous contract like this (see `Rapier3dCharacterControllerComponent`):
   in the raycast reverse-map (so `world.raycast()` can resolve a hit back to it) is optional scope —
   reasonable to skip and document as a limitation, since it would otherwise force widening that map's
   and `raycast()`'s return-type generics for a corner case outside the interface's actual contract.
+- **`ignoredBodies: Set<PTypeDoc['rigidBody']>`** — a mutable set of rigid bodies this character's own
+  `move()` must treat as genuinely absent from the world (not merely non-colliding) for the duration
+  of its own sweeps/overlap-recovery, consulted fresh every call since membership changes between
+  ticks (e.g. `ObjectGrabController` adding/removing a currently-held `Grabbable3dEntity`'s
+  `objectBody` on grab/release). This exists because `ownCollisionGroups`/`interactWithCollisionGroups`
+  **cannot** express "exclude just this one pair" when both sides must keep colliding with some
+  shared group for ordinary world collision (almost always true) — see
+  `gg-engine-core-development`'s "Collision groups can't express..." note for the full argument, and
+  this interface member's own doc for the concrete bug (a held prop blocking/launching its own
+  holder) that motivated it. Two very different implementation strategies work, prefer whichever your
+  engine actually supports:
+  - A native per-query exclusion predicate/collider-list, if the engine's own sweep call takes one
+    (Rapier's `KinematicCharacterController.computeColliderMovement(collider, delta, filterFlags?,
+    filterGroups?, filterPredicate?)` does — build a `Set` of native body handles from `ignoredBodies`
+    once per `move()` call and return `false` from the predicate for a collider whose `.parent()`
+    handle is in it; compare by handle, not object identity, since a wrapper's `.parent()` isn't
+    guaranteed to return the same JS instance across calls).
+  - If the engine's sweep query has no such native hook, temporarily remove each ignored body from
+    the collision world's broadphase for the duration of every query that could see it, then restore
+    it immediately after — the exact same trick a hand-rolled mover already needs anyway to exclude
+    the character's *own* shape from its own sweep (see `AmmoCharacterControllerComponent.sweep`'s
+    doc). Every one of the mover's own collision queries needs this, not just the main movement sweep
+    — a hand-rolled mover's own overlap-recovery/penetration-correction step, if it has one (see
+    `gg-engine-physics-adapter-ammo`'s `recoverFromPenetration` for a concrete example), must ignore
+    these bodies too, or excluding a body from movement sweeps alone still leaves the
+    character's own recovery step reacting to it overlapping and shoving the character around based
+    on that overlap - exactly the bug this feature exists to prevent, just relocated to a different
+    method. Give the rigid-body component itself a small pair of public methods for this
+    (`detachFromBroadphaseTemporarily()` returning whether it actually did anything /
+    `reattachToBroadphase()`) rather than reaching into its internals from the character controller
+    class - the two are typically siblings under a shared base class with the group/mask bitmasks as
+    `protected` fields, not visible to each other directly.
+  - Whichever strategy: a component-swap operation that creates a *replacement* character-controller
+    instance for the same logical character (e.g. a stand/crouch capsule-resize implemented as
+    "create new, dispose old" rather than resizing in place) must copy `ignoredBodies`' contents into
+    the replacement itself - it doesn't happen automatically, and dropping it silently re-enables
+    collision with whatever was being held/ignored the instant such a swap occurs.
 
 ### The `removeFromWorld(dispose)` contract
 

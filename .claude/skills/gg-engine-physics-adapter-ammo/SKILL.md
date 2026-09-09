@@ -370,6 +370,32 @@ settable on the already-constructed `btRigidBody` itself, via `nativeBody.setSpi
 wrapping it in `AmmoRigidBodyComponent`). Reuses the same `0.05` magnitude as `m_rollingFriction` - both
 are "resistance to spin" quantities of the same physical character, just about different axes.
 
+## `ignoredBodies`: excluding a specific body from this character's own sweeps *and* penetration recovery
+
+`AmmoCharacterControllerComponent.ignoredBodies` (a `Set<AmmoRigidBodyComponent>`) is implemented by
+temporarily removing each currently-ignored body from `dynamicAmmoWorld` via
+`AmmoRigidBodyComponent.detachFromBroadphaseTemporarily()`/`reattachToBroadphase()` - two small public
+methods on that class using its own `addRigidBody`/`removeRigidBody` pair (not
+`addCollisionObject`/`removeCollisionObject`, which is for ghost objects like the character's own
+shape, not full rigid bodies) - right alongside the character's own self-exclusion in **both**
+`sweep()` and `recoverFromPenetration()`, via a shared `detachIgnoredBodies()`/
+`reattachIgnoredBodies()` helper pair. Both call sites matter equally: excluding a body from `sweep()`
+alone stops it from blocking *movement*, but `recoverFromPenetration()` runs independently (at the top
+of every `move()`, regardless of whether that tick's sweep would have hit anything) and reacts to
+*any* overlap by shoving the character out - so a body excluded only from `sweep()` still gets treated
+as a solid obstacle the instant it overlaps the character (e.g. a currently-held prop the holder walked
+into before the hold spring moved it away), reintroducing the exact "held prop blocks/launches its own
+holder" bug `ignoredBodies` exists to fix, just via the other code path. `detachFromBroadphaseTemporarily()`
+returns `false` (no-op) for a body that isn't currently `addedToWorld`, so `reattachIgnoredBodies()` is
+only ever called with the subset that was actually detached - reattaching a body that was never removed
+would double-add it to the broadphase.
+
+`CharacterController3dEntity.recreateCapsule()` (core, shared across every adapter) copies the old
+capsule's `ignoredBodies` into the freshly-created replacement itself before discarding the old one -
+this is a core-level fix, not an Ammo-specific one, but worth knowing when debugging a crouch/stand
+transition that appears to silently drop a held-object exclusion: without it, every capsule swap (e.g.
+`recreateCapsule`) would reset to an empty set and re-enable collision with whatever was being ignored.
+
 ## Keep this skill current
 
 This file is read by future agents fixing/extending `packages/ammo` specifically, not by end users of

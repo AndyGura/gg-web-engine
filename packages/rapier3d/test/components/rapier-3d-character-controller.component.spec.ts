@@ -144,6 +144,46 @@ describe('Rapier3dCharacterControllerComponent', () => {
     expect(character.isGrounded).toBe(true);
   });
 
+  it(
+    'walks straight through a body added to ignoredBodies instead of sliding to a stop against it ' +
+      "(regression: collision groups alone can't express excluding just one specific body while both " +
+      'it and the character still need to collide with the rest of the world - see ' +
+      '`ICharacterController3dComponent.ignoredBodies`\'s doc)',
+    () => {
+      addFloor(0, 20, 0);
+      const wall = addWall(2);
+      const character = factory.createCharacterController(CHAR_OPTIONS, {
+        position: { x: 0, y: 0, z: HALF_HEIGHT + 0.5 },
+      });
+      character.addToWorld({ physicsWorld: world } as any);
+      character.ignoredBodies.add(wall);
+      settleWorld();
+      character.move({ x: 0, y: 0, z: -1 });
+
+      character.move({ x: 5, y: 0, z: 0 });
+
+      // unlike the baseline test above, nothing stopped it short of the wall's x=2 near face
+      expect(character.position.x).toBeCloseTo(5);
+    },
+  );
+
+  it('removing a body from ignoredBodies makes it block the character again', () => {
+    addFloor(0, 20, 0);
+    const wall = addWall(2);
+    const character = factory.createCharacterController(CHAR_OPTIONS, {
+      position: { x: 0, y: 0, z: HALF_HEIGHT + 0.5 },
+    });
+    character.addToWorld({ physicsWorld: world } as any);
+    character.ignoredBodies.add(wall);
+    character.ignoredBodies.delete(wall);
+    settleWorld();
+    character.move({ x: 0, y: 0, z: -1 });
+
+    character.move({ x: 5, y: 0, z: 0 });
+
+    expect(character.position.x).toBeLessThan(1.6);
+  });
+
   it('should step up a ledge shorter than maxStepHeight without getting stuck', () => {
     const maxStepHeight = 0.3;
     const stepZ = 0.2; // below maxStepHeight

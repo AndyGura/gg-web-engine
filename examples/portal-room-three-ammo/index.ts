@@ -252,26 +252,12 @@ world.init().then(async () => {
   });
   world.addEntity(playerController);
 
-  // A dedicated collision group for the player, just for excluding it from a held prop below -
-  // the character controller defaults to `ownCollisionGroups: 'all'` (every registered group, not
-  // "the player's own"), so passing that straight through would leave a held prop colliding with
-  // nothing at all (walls included) instead of just not jittering against the player - see
-  // `ObjectGrabController`'s `holderCollisionGroups` doc. Keeping `mainCollisionGroup` alongside
-  // it is load-bearing, not decoration: every static primitive in this level (floor/walls/pedestal)
-  // was created with the default `interactWithCollisionGroups: [mainCollisionGroup]` (not `'all'`),
-  // so a player whose *own* group no longer includes `mainCollisionGroup` at all stops colliding
-  // with them entirely - Bullet's group filtering is bidirectional (each side's own group must be
-  // included in the other side's mask), and a single-bit "narrower" own-group looks like a sane
-  // idea right up until it silently drops the ground out from under the player (regression, found
-  // live - the capsule clipped straight through the floor into the void).
-  const playerCollisionGroup = world.physicsWorld!.registerCollisionGroup();
-  player.characterController.ownCollisionGroups = [world.physicsWorld!.mainCollisionGroup, playerCollisionGroup];
-
-  // Reuses the player controller's own `keyboard`/`mouseInput`/`camera` rather than constructing
-  // new input instances - see `ObjectGrabController`'s doc.
-  const grabController = new ObjectGrabController(world.keyboardInput, playerController.mouseInput, renderer, {
-    holderCollisionGroups: [playerCollisionGroup],
-  });
+  // Reuses the player controller's own `keyboard`/`mouseInput`/`camera` rather than constructing new
+  // input instances - see `ObjectGrabController`'s doc. `player` is passed as the holder so the radio
+  // is genuinely excluded from the player's own collision while held (via
+  // `player.characterController.ignoredBodies`, wired up automatically - no collision-group setup
+  // needed here) and the hold point stays clamped away from the player's own capsule.
+  const grabController = new ObjectGrabController(world.keyboardInput, playerController.mouseInput, renderer, player);
   world.addEntity(grabController);
 
   // A nice thematic touch matching the prop's name: play its paired sfx while it's being carried.

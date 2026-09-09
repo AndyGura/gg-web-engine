@@ -103,23 +103,24 @@ export class Grabbable3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldT
   }
 
   /**
-   * Starts carrying this object: temporarily removes `ignoreCollisionGroups` (typically the
-   * holder's own collision group(s), so a prop held right in front of the player doesn't jitter
-   * against the player's own body) from `objectBody.interactWithCollisionGroups`, restored by
-   * `release()`/`throw()`, and zeroes the object's current velocity so `updateHold()`'s spring
-   * starts clean instead of fighting whatever motion it had the instant before being grabbed.
-   * A no-op if already held.
+   * Starts carrying this object: temporarily removes `ignoreCollisionGroups` from
+   * `objectBody.interactWithCollisionGroups` (restored by `release()`/`throw()`), and zeroes the
+   * object's current velocity so `updateHold()`'s spring starts clean instead of fighting whatever
+   * motion it had the instant before being grabbed. A no-op if already held.
    *
-   * `ignoreCollisionGroups` should be a small, dedicated set (typically one group registered just
-   * for the holder) - passing every group the holder's own `ownCollisionGroups` happens to report
-   * (e.g. a character controller left at its default `ownCollisionGroups: 'all'`, which reports
-   * *every* registered group, not just "this character's own") filters all of them out of
+   * `ignoreCollisionGroups` is a generic, low-level knob - whatever groups it names are simply
+   * removed from this object's own mask for as long as it's held, for any reason an app might want
+   * that. It is **not** how to stop this object from colliding with whoever is holding it: excluding
+   * a specific holder this way only works if the object and the holder don't otherwise share a group
+   * both need for ordinary world collision, which in practice they almost always do (both usually
+   * need to keep colliding with the level's static geometry) - see
+   * `ICharacterController3dComponent.ignoredBodies`'s doc for the actual mechanism that handles that
+   * case (already wired up automatically by `ObjectGrabController` when constructed with a `holder`).
+   * Passing every group the intended holder's own `ownCollisionGroups` happens to report (e.g. a
+   * character controller left at its default `ownCollisionGroups: 'all'`, which reports *every*
+   * registered group, not just "this character's own") filters all of them out of
    * `interactWithCollisionGroups`, leaving this object colliding with nothing at all - not just the
-   * holder - for as long as it's held. See `ObjectGrabController`'s `holderCollisionGroups` doc for
-   * the flip side of this same footgun: giving the holder that dedicated group is only safe if it's
-   * *added* to whatever groups the holder already had, not substituted for them - a holder left with
-   * only a group that isn't in ordinary level geometry's own `interactWithCollisionGroups` (usually
-   * just `mainCollisionGroup`) stops colliding with that geometry entirely, not just with this object.
+   * intended target - for as long as it's held.
    */
   grab(ignoreCollisionGroups: ReadonlyArray<CollisionGroup> = []): void {
     if (this._isHeld || !this.objectBody) {
@@ -169,6 +170,20 @@ export class Grabbable3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldT
    * per `grabOptions.angularDamping`. Force-`release()`s instead if `targetPosition` is currently
    * farther than `grabOptions.maxHoldDistance` from the object - see that option's doc.
    *
+   * **Never slows the object down below whatever speed it already has towards `targetPosition`** -
+   * only ever raises its speed in that direction up to the spring's own value, never lowers it (the
+   * spring's *perpendicular* component is still applied as normal, correcting sideways drift).
+   * Mirrors `AmmoCharacterControllerComponent.pushDynamicBody`'s own "only ever adds, never removes"
+   * rule: a body already moving *towards* the hold point faster than the spring would carry it - e.g.
+   * bumped or shoved there by something else entirely (another dynamic body, not the holder - the
+   * holder's own movement never contests a held object's position in the first place, see
+   * `ObjectGrabController`'s `ignoredBodies` doc) - is left alone instead of having that speed
+   * immediately overwritten with the spring's own, smaller one purely because the object happens to
+   * already be close to `targetPosition`. It keeps that speed (redirected exactly at
+   * `targetPosition`, not left along whatever direction it was originally pushed in) until it either
+   * arrives or drifts past the target, at which point ordinary spring behavior resumes from the other
+   * side.
+   *
    * Must be called once per tick, **before** `IPhysicsWorld3dComponent.simulate()` runs that same
    * tick - i.e. from a driver with `tickOrder < TickOrder.PHYSICS_SIMULATION` (e.g.
    * `ObjectGrabController`, or your own equivalent) - for the velocity set here to actually be
@@ -189,9 +204,19 @@ export class Grabbable3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldT
       return;
     }
     let desiredVelocity = Pnt3.scalarMult(toTarget, this.grabOptions.followStrength);
-    const speed = Pnt3.len(desiredVelocity);
+    let speed = Pnt3.len(desiredVelocity);
     if (speed > this.grabOptions.maxFollowSpeed) {
       desiredVelocity = Pnt3.scalarMult(desiredVelocity, this.grabOptions.maxFollowSpeed / speed);
+      speed = this.grabOptions.maxFollowSpeed;
+    }
+    if (speed > 1e-6) {
+      // See this method's own doc for why: don't let the spring undo a push/bump that's already
+      // carrying the object towards the target faster than the spring itself would.
+      const towardsTarget = Pnt3.scalarMult(desiredVelocity, 1 / speed);
+      const currentSpeedTowardsTarget = Pnt3.dot(this.objectBody.linearVelocity, towardsTarget);
+      if (currentSpeedTowardsTarget > speed) {
+        desiredVelocity = Pnt3.scalarMult(towardsTarget, currentSpeedTowardsTarget);
+      }
     }
     const gravity = this.world?.physicsWorld?.gravity ?? Pnt3.O;
     // Counter this frame's worth of gravity integration up front - see class doc on why this is

@@ -127,6 +127,10 @@ export class AmmoCharacterControllerComponent
   private _isGrounded: boolean = false;
   private _groundNormal: Point3 | null = null;
 
+  /** See `ICharacterController3dComponent.ignoredBodies`'s doc. Consulted fresh by `sweep()` and
+   * `recoverFromPenetration()` every call - see `withIgnoredBodiesDetached`. */
+  public readonly ignoredBodies: Set<AmmoRigidBodyComponent> = new Set();
+
   // Module-wide (not per-instance) so a scene with several characters all being driven without
   // `dt` still only logs once, not once per character per tick - see `move()`'s missing-`dt`
   // handling below.
@@ -285,6 +289,32 @@ export class AmmoCharacterControllerComponent
     this.position = pos;
     this._isGrounded = grounded;
     this._groundNormal = groundNormal;
+  }
+
+  /**
+   * Removes every currently-added body in `ignoredBodies` from the collision world's broadphase,
+   * mirroring the self-exclusion trick `sweep()`/`recoverFromPenetration()` already use for this
+   * character's own ghost object - see `ICharacterController3dComponent.ignoredBodies`'s doc for why
+   * this, not collision groups, is the actual mechanism. Returns the subset that was genuinely
+   * detached (i.e. was in the world to begin with) - pass this straight to `reattachIgnoredBodies`
+   * once the query is done; a body that was never added is left alone rather than incorrectly added
+   * to the world by the matching reattach call.
+   */
+  private detachIgnoredBodies(): AmmoRigidBodyComponent[] {
+    const detached: AmmoRigidBodyComponent[] = [];
+    for (const body of this.ignoredBodies) {
+      if (body.detachFromBroadphaseTemporarily()) {
+        detached.push(body);
+      }
+    }
+    return detached;
+  }
+
+  /** Undoes `detachIgnoredBodies()` for exactly the bodies it returned. */
+  private reattachIgnoredBodies(detached: AmmoRigidBodyComponent[]): void {
+    for (const body of detached) {
+      body.reattachToBroadphase();
+    }
   }
 
   private isWalkableNormal(normal: Point3, up: Point3): boolean {
@@ -517,10 +547,12 @@ export class AmmoCharacterControllerComponent
       };
 
       collisionWorld.removeCollisionObject(this.nativeBody);
+      const reattach = this.detachIgnoredBodies();
       try {
         collisionWorld.contactTest(this.nativeBody, callback);
       } finally {
         collisionWorld.addCollisionObject(this.nativeBody, this._ownCGsMask, this._interactWithCGsMask);
+        this.reattachIgnoredBodies(reattach);
         Ammo.destroy(callback);
       }
 
@@ -573,6 +605,7 @@ export class AmmoCharacterControllerComponent
     callback.set_m_collisionFilterMask(this._interactWithCGsMask);
 
     collisionWorld.removeCollisionObject(this.nativeBody);
+    const reattach = this.detachIgnoredBodies();
     try {
       collisionWorld.convexSweepTest(
         this.nativeShape as unknown as Ammo.btConvexShape,
@@ -583,6 +616,7 @@ export class AmmoCharacterControllerComponent
       );
     } finally {
       collisionWorld.addCollisionObject(this.nativeBody, this._ownCGsMask, this._interactWithCGsMask);
+      this.reattachIgnoredBodies(reattach);
     }
 
     const hasHit = callback.hasHit();

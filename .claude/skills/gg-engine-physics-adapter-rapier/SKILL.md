@@ -315,6 +315,27 @@ Applies to both packages (each has its own `jest` config/`node_modules`):
   loop already does this naturally), not just a test artifact. Write trigger tests as small (e.g. 10ms)
   simulate-then-check steps in a loop rather than jumping to a checkpoint with one large timestep.
 
+## `ignoredBodies` (3D): Rapier's own `filterPredicate` does this natively, no broadphase-detach trick needed
+
+`Rapier3dCharacterControllerComponent.ignoredBodies` (a `Set<Rapier3dRigidBodyComponent>`) is
+implemented via `KinematicCharacterController.computeColliderMovement`'s own optional 5th argument,
+`filterPredicate?: (collider: Collider) => boolean` - return `false` to exclude a candidate collider
+from that one call, no persistent state or collision-group changes needed. This is meaningfully
+simpler than `AmmoCharacterControllerComponent`'s equivalent (see `gg-engine-physics-adapter-ammo`'s
+own note), which has to fake the same effect by temporarily pulling ignored bodies out of the
+collision world's broadphase, since this pinned Ammo.js embind build exposes no such native predicate
+hook on `convexSweepTest`/`contactTest`. Build the exclusion set fresh each `move()` call from
+`RigidBody.handle` (a plain numeric id) rather than comparing `Collider`/`RigidBody` object identity -
+`collider.parent()` isn't guaranteed to return the same wrapper instance across calls on this pinned
+`@dimforge/rapier3d-compat` build, only the same underlying native body. Skip building a predicate at
+all (pass `undefined`, not an always-`true` closure) when `ignoredBodies` is empty, the common case -
+keeps the ordinary per-tick cost at zero for a character that never interacts with this feature.
+Because `computedCollision()` (used by this component's own `pushDynamicBodies`) is populated by the
+very same `computeColliderMovement` call, an excluded body simply never appears there either - no
+separate filtering needed on the push side, unlike a hand-rolled mover where movement-sweep exclusion
+and penetration-recovery exclusion are two separate code paths that both need it (again, see the Ammo
+note).
+
 ## Keep this skill current
 
 This file is read by future agents fixing/extending `packages/rapier2d` or `packages/rapier3d`

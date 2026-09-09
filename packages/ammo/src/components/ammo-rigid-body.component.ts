@@ -78,6 +78,34 @@ export class AmmoRigidBodyComponent
     this.world.dynamicAmmoWorld?.addRigidBody(this.nativeBody, this._ownCGsMask, this._interactWithCGsMask);
   }
 
+  /**
+   * Temporarily detaches this body from the world's broadphase - deliberately **not** the same as
+   * `removeFromWorld`/`addToWorld` (no `world.removed$`/`added$` notification is emitted, and
+   * `addedToWorld` stays `true` throughout): for a caller doing a short, synchronous,
+   * self-contained collision query that needs this specific body genuinely invisible to detection,
+   * not just non-colliding, without those bookkeeping side effects. Restore with
+   * `reattachToBroadphase()` before returning control to anything else. See
+   * `AmmoCharacterControllerComponent.ignoredBodies` for the concrete use (a currently-held
+   * `Grabbable3dEntity` excluded from its holder's own sweeps/overlap recovery - see
+   * `ICharacterController3dComponent.ignoredBodies`'s doc for why collision groups can't do this).
+   *
+   * Returns whether this body was actually detached (`false`, a no-op, if it wasn't in this world's
+   * broadphase to begin with) - callers should only call `reattachToBroadphase()` for a body this
+   * returned `true` for, mirroring `removeCollisionObject`/`addCollisionObject`'s own pairing.
+   */
+  detachFromBroadphaseTemporarily(): boolean {
+    if (!this.addedToWorld) {
+      return false;
+    }
+    this.world.dynamicAmmoWorld?.removeRigidBody(this.nativeBody);
+    return true;
+  }
+
+  /** Undoes `detachFromBroadphaseTemporarily()` - see its own doc. */
+  reattachToBroadphase(): void {
+    this.world.dynamicAmmoWorld?.addRigidBody(this.nativeBody, this._ownCGsMask, this._interactWithCGsMask);
+  }
+
   resetMotion(): void {
     const emptyVector = new Ammo.btVector3();
     if (!this.addedToWorld) {

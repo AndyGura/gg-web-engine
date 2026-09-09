@@ -94,6 +94,39 @@ describe('Grabbable3dEntity', () => {
       expect(Pnt3.len(objectBody.linearVelocity)).toBeCloseTo(5);
     });
 
+    it(
+      'does not slow the object below a current speed towards the target that already exceeds the ' +
+        "spring's own (regression: a holder's character controller shoving a held prop out of its " +
+        'own way got silently discarded the same tick, since it ran before updateHold and this method ' +
+        'used to unconditionally overwrite whatever velocity was already set)',
+      () => {
+        const { entity, objectBody } = setup({ followStrength: 1, maxFollowSpeed: 1000, maxHoldDistance: 1000 });
+        entity.grab();
+        // Simulate an external push (e.g. `AmmoCharacterControllerComponent.pushDynamicBody`) having
+        // already set a fast velocity towards the target this same tick, before updateHold() runs.
+        objectBody.linearVelocity = { x: 5, y: 0, z: 0 };
+        entity.updateHold({ x: 1, y: 0, z: 0 }, 0); // spring alone would only ask for speed 1
+        expect(objectBody.linearVelocity.x).toBeCloseTo(5);
+      },
+    );
+
+    it('still corrects sideways drift while preserving a faster forward speed towards the target', () => {
+      const { entity, objectBody } = setup({ followStrength: 1, maxFollowSpeed: 1000, maxHoldDistance: 1000 });
+      entity.grab();
+      objectBody.linearVelocity = { x: 5, y: 3, z: 0 }; // 5 towards the target, 3 sideways drift
+      entity.updateHold({ x: 1, y: 0, z: 0 }, 0);
+      expect(objectBody.linearVelocity.x).toBeCloseTo(5);
+      expect(objectBody.linearVelocity.y).toBeCloseTo(0);
+    });
+
+    it('reels the object back in normally when its current velocity points away from the target', () => {
+      const { entity, objectBody } = setup({ followStrength: 1, maxFollowSpeed: 1000, maxHoldDistance: 1000 });
+      entity.grab();
+      objectBody.linearVelocity = { x: -5, y: 0, z: 0 }; // moving away from the target
+      entity.updateHold({ x: 1, y: 0, z: 0 }, 0);
+      expect(objectBody.linearVelocity.x).toBeCloseTo(1);
+    });
+
     it('force-releases when the target is farther than maxHoldDistance', () => {
       const { entity, objectBody } = setup({ maxHoldDistance: 2 });
       entity.grab();

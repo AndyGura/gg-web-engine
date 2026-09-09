@@ -29,6 +29,7 @@ export const mockCharacterController = (
     groundNormal: Pnt3.Z,
     ownCollisionGroups: 'all',
     interactWithCollisionGroups: 'all',
+    ignoredBodies: new Set(),
     debugBodySettings: {},
     move(this: any, desiredTranslation: Point3) {
       const resolve =

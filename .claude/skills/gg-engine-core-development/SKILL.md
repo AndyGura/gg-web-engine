@@ -111,6 +111,77 @@ then exploding back out from deep penetration on release); this was verified emp
 real Ammo world (a sphere driven by `updateHold()` into a static wall stopped exactly at the wall's
 surface plus the sphere's own radius, rather than passing through it).
 
+**Two entities at the same `tickOrder` writing to the same body's velocity this tick: last
+subscriber wins, and that order is insertion order, not something to rely on.** `addEntity()` pushes
+onto `tickListeners` and re-sorts by `tickOrder` (`Array.prototype.sort` is spec-stable), so ties
+fire in whatever order the entities were `addEntity()`'d in - the first-added entity's `tick$` fires
+first among same-`tickOrder` peers, every frame. A driver that unconditionally *overwrites* a
+dynamic body's `linearVelocity` each tick (rather than reading-then-combining) silently discards
+whatever an earlier same-tick write already set, with no error or warning - and which write "wins"
+then depends on app-level `addEntity()` ordering that has nothing to do with either driver's own
+code. Found via `Grabbable3dEntity`/`ObjectGrabController`: a currently-held prop is excluded from
+its own holder's collision entirely now (see `ICharacterController3dComponent.ignoredBodies`), so the
+holder's own `pushDynamicBody`-style shove no longer applies to it at all - but *other* dynamic bodies
+(not the holder) can still legitimately bump a held prop while `Grabbable3dEntity.updateHold()`'s
+spring is also writing its velocity the same tick, and this same hazard applies to them: an earlier
+same-tick push landing on the object, then getting silently overwritten by the spring's own (much
+smaller, since the object is usually already close to its hold point) velocity before `simulate()`
+ever integrates the push. `updateHold()`'s fix generalizes beyond just this one scenario: it never
+*reduces* a component of the object's velocity that's already pointed towards the hold point faster
+than the spring itself would carry it (`max(current speed towards target, spring's own speed)` along
+the spring's direction, rather than always replacing outright - see that method's doc). Any future
+controller that sets a shared dynamic body's velocity outright each tick should consider the same
+"never fights a faster push already headed the right way" pattern rather than assuming it's the only
+writer that tick.
+
+## Collision groups can't express "these two specific bodies don't collide"
+
+`ownCollisionGroups`/`interactWithCollisionGroups` filtering is bidirectional AND logic: a pair
+collides only if *each* side's own group appears in the *other* side's mask (see the `tickOrder`
+section above's sibling note on this in the bidirectional-filtering context). This flat bitmask
+model has a real limitation worth knowing before reaching for it to solve "exclude collision
+between exactly these two bodies, but leave both still colliding with everything else": if both
+bodies must independently keep colliding with some shared third group (almost always true — e.g.
+both need to keep colliding with the level's `mainCollisionGroup` static geometry), that shared bit
+alone satisfies the AND-check for the *pair* you wanted excluded too, no matter what other bits get
+added or removed from either side. Removing a "the other body's own dedicated group" bit from one
+side's mask only helps when that bit was the *only* thing making the pair collide in the first
+place — it does nothing if a broader shared group (typically `mainCollisionGroup`) is also present
+on both sides, which is the normal/default setup for any two bodies that both need to collide with
+ordinary level geometry. There is no way to route around this with cleverer bit assignment; it's a
+property of AND-based two-sided filtering, not a configuration mistake to fix by rearranging groups.
+
+Found via `Grabbable3dEntity`/`ObjectGrabController`: `holderCollisionGroups` was meant to stop a
+carried prop from colliding with its holder by removing the holder's dedicated group from the
+prop's `interactWithCollisionGroups`, but both the holder and the prop keep `mainCollisionGroup` in
+their own group/mask (needed to keep colliding with the level), so the pair kept colliding
+regardless of that setting — confirmed empirically two ways: holding a prop and deliberately
+wedging it under the holder's own capsule (looking down to place it at your own feet) launched the
+holder into the sky once the object's velocity spring and the character controller's own
+overlap-correction fed back into each other through the holder's camera; and separately, sprinting
+into a prop resting on the ground directly ahead (an entirely ordinary way to carry something) got
+the holder stuck against its own held object, since the holder's own movement genuinely still
+collided with it. Group/mask filtering was never going to fix either, no matter how it was
+rearranged — the actual fix is `ICharacterController3dComponent.ignoredBodies`, a real per-pair
+exclusion checked directly by each adapter's own sweep/overlap-recovery query rather than via
+broadphase bits at all (`ObjectGrabController.tryGrab()`/`throwHeld()`/`dropHeld()` add/remove the
+held object's body from `holder.characterController.ignoredBodies`) — see
+`gg-engine-physics-adapter`'s own section on this member for the two adapter-side implementation
+strategies (a native exclusion predicate where the engine's sweep call supports one, e.g. Rapier's
+`computeColliderMovement filterPredicate`; otherwise temporarily pulling the ignored body out of the
+collision world's broadphase for the duration of each query, e.g. Ammo — checked: this pinned
+Ammo.js embind build exposes no native per-pair mechanism like Bullet's own
+`btCollisionObject::setIgnoreCollisionCheck` at all, absent from both the generated bindings and the
+compiled `.wasm`'s own symbols). `holderCollisionGroups` itself was removed from
+`ObjectGrabControllerOptions` once `ignoredBodies` shipped — it never actually worked (per the
+argument above) and there was no scenario where keeping a permanently-inert option around was better
+than deleting it. `Grabbable3dEntity.grab()` still takes its own `ignoreCollisionGroups` parameter
+directly (a generic "exclude these groups while held" knob with no built-in notion of "the holder"),
+and `ObjectGrabController.clampAwayFromHolder()` (keeping the hold point geometrically outside a
+cylinder around the holder's capsule) still exists alongside `ignoredBodies` too, but purely as a
+cosmetic finishing touch (stops a prop from visibly poking into the holder's own model at the instant
+it's picked up) — see that class's own doc for the current division of labor between the two.
+
 ## The TypeDocRepo generic pattern — read this before touching interfaces
 
 Core interfaces don't hardcode adapter types. Instead each dimension defines a "type doc
@@ -154,7 +225,7 @@ Changing any of these is a breaking change for every adapter package — grep
 - `IPhysicsWorldComponent` / `IVisualSceneComponent` (+ 2D/3D specializations)
 - `IRigidBodyComponent`, `ITriggerComponent`, `IBodyComponent` (+ 2D/3D)
 - `IDisplayObjectComponent`, `IRendererComponent`, `ICameraComponent` (+ 2D/3D)
-- `IRaycastVehicleComponent` (3D only)
+- `IRaycastVehicleComponent`, `ICharacterController3dComponent` (3D only)
 - `IEntity`, `IRenderableEntity`, `IRendererEntity`
 - The factory abstracts in `2d/factories.ts` / `3d/factories.ts`
 

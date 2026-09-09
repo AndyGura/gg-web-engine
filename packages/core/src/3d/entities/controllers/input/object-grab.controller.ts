@@ -1,16 +1,8 @@
 import { filter, pairwise, startWith, takeUntil } from 'rxjs';
-import {
-  CollisionGroup,
-  IEntity,
-  KeyboardInput,
-  MouseInput,
-  MouseInputState,
-  Pnt3,
-  Point3,
-  TickOrder,
-} from '../../../../base';
+import { IEntity, KeyboardInput, MouseInput, MouseInputState, Pnt3, Point3, TickOrder } from '../../../../base';
 import { Renderer3dEntity } from '../../renderer-3d.entity';
 import { Grabbable3dEntity } from '../../grabbable-3d.entity';
+import { CharacterController3dEntity } from '../../character-controller-3d.entity';
 import { Gg3dWorld, Gg3dWorldTypeDocRepo } from '../../../gg-3d-world';
 
 /**
@@ -30,30 +22,13 @@ export type ObjectGrabControllerOptions = {
   /** Speed imparted to a thrown object along the camera's forward direction, in m/s. Default 12. */
   throwSpeed: number;
   /**
-   * Collision groups excluded from a held object's own `interactWithCollisionGroups` while held -
-   * typically the holder's own collision group(s), so a prop carried right in front of the player
-   * doesn't jitter against the player's own body. Passed straight through to
-   * `Grabbable3dEntity.grab()`. Default `[]` (no exclusion).
-   *
-   * Give the holder a dedicated collision group for this (e.g.
-   * `physicsWorld.registerCollisionGroup()`, assigned to the character's own `ownCollisionGroups`)
-   * rather than reading `characterController.ownCollisionGroups` directly and passing that through
-   * unchanged - a character left at its default `ownCollisionGroups: 'all'` reports *every*
-   * registered collision group there, not just "the player's own", and excluding all of them here
-   * leaves the held object colliding with nothing at all (walls included) for as long as it's
-   * carried, not just excluding the player.
-   *
-   * When assigning that dedicated group, **add** it to the holder's `ownCollisionGroups` alongside
-   * whatever it already had (typically `physicsWorld.mainCollisionGroup`) rather than replacing it
-   * outright - collision-group filtering is bidirectional (each side's own group must appear in the
-   * *other* side's `interactWithCollisionGroups` for the two to collide at all), and ordinary level
-   * geometry (walls/floor/static props) is usually created with the default
-   * `interactWithCollisionGroups: [mainCollisionGroup]`, not `'all'`. A holder whose own group no
-   * longer includes `mainCollisionGroup` at all stops colliding with that geometry entirely, not
-   * just with the held object - e.g. a player character capsule silently falling through its own
-   * level's floor.
+   * Extra clearance kept, in meters, beyond `holder`'s own capsule (radius and half-height alike)
+   * when clamping the hold point away from it - see this class's own doc for why the hold point is
+   * clamped there at all. `0` lets the target land right on the holder's surface (the carried object
+   * still visibly touches the holder at that point); the default leaves a small visible gap instead.
+   * Default 0.3.
    */
-  holderCollisionGroups: ReadonlyArray<CollisionGroup>;
+  holderExclusionMargin: number;
 };
 
 const DEFAULT_OPTIONS: ObjectGrabControllerOptions = {
@@ -61,7 +36,7 @@ const DEFAULT_OPTIONS: ObjectGrabControllerOptions = {
   maxGrabDistance: 3,
   holdDistance: 1.5,
   throwSpeed: 12,
-  holderCollisionGroups: [],
+  holderExclusionMargin: 0.3,
 };
 
 /**
@@ -74,12 +49,39 @@ const DEFAULT_OPTIONS: ObjectGrabControllerOptions = {
  * passing the same `keyboard`/`mouseInput`/`camera` instances to both, rather than constructing a
  * second `MouseInput`/`KeyboardInput` here, so pointer-lock/focus behavior stays single-sourced.
  *
- * Held-object collision with the world (including other dynamic bodies, and the holder's own body
- * unless excluded via `holderCollisionGroups`) is intentionally left enabled while carried - see
- * `Grabbable3dEntity`'s own doc for why carrying is a velocity spring rather than a rigid
- * attachment. This means a carried prop can be nudged out of position by something it bumps into,
- * or pin against geometry it's pushed into, matching the feel of Source's own physgun rather than
- * a perfectly rigid hold.
+ * Held-object collision with the rest of the world (other dynamic bodies, static geometry) is
+ * intentionally left enabled while carried - see `Grabbable3dEntity`'s own doc for why carrying is a
+ * velocity spring rather than a rigid attachment. This means a carried prop can be nudged out of
+ * position by something it bumps into, or pin against geometry it's pushed into, matching the feel
+ * of Source's own physgun rather than a perfectly rigid hold.
+ *
+ * **Collision with `holder` specifically is excluded outright**, not left to the physics engine's
+ * ordinary group/mask filtering: whenever a `holder` is given, `tryGrab()` adds the held object's
+ * `objectBody` to `holder.characterController.ignoredBodies` (removed again by whichever of
+ * `throwHeld`/`dropHeld`/the tick loop's self-release handling ends the hold), making the object
+ * genuinely invisible to the holder's own collision queries for as long as it's held - see
+ * `ICharacterController3dComponent.ignoredBodies`'s doc for why a real per-pair exclusion like this,
+ * rather than collision groups, is what the job actually needs: group/mask filtering is incapable of
+ * excluding just this one pair while both the holder and the object still need to collide with the
+ * rest of the world (almost always true), no matter how the groups are arranged - there used to be a
+ * `holderCollisionGroups` option here built on exactly that approach; it never actually worked for
+ * that reason and was removed once `ignoredBodies` shipped as the real fix. `Grabbable3dEntity.grab()`
+ * still takes its own `ignoreCollisionGroups` parameter directly, for whatever unrelated group
+ * exclusion an app might still want while a prop is held - just not as a way to exclude `holder`.
+ *
+ * **The hold point is additionally clamped away from `holder`'s own capsule** (see
+ * `clampAwayFromHolder`) when a `holder` is given, purely to keep a resting/thrown-and-recaught prop
+ * from visibly sitting *inside* the holder's own model at the moment it's picked up, before the
+ * spring has had a chance to move it - `ignoredBodies` above is what actually keeps the holder's
+ * movement from being blocked by (or resonating with) a held prop; this clamp is a cosmetic
+ * finishing touch on top of that, not a second line of defense against it.
+ *
+ * `holder` is `null` for a holder with no capsule to exclude in the first place - e.g. this
+ * controller paired with a `FreeCameraController` (a free-flying spectator/debug camera, not a
+ * `CharacterController3dEntity`) rather than `PlayerCharacterController`. `ignoredBodies` and the
+ * clamp are simply skipped in that case - there's no kinematic capsule for a held prop to block or
+ * resonate with in the first place, and nothing here needs the holder to be a physics body at all
+ * when it isn't one.
  */
 export class ObjectGrabController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo> extends IEntity {
   // Must run before physics simulation, so the velocity `heldObject.updateHold()` sets this tick
@@ -98,6 +100,10 @@ export class ObjectGrabController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWor
     protected readonly keyboard: KeyboardInput,
     protected readonly mouseInput: MouseInput,
     protected readonly camera: Renderer3dEntity<TypeDoc['vTypeDoc']>,
+    /** The character whose capsule the hold point is kept clear of - see this class's own doc. Pass
+     * the same character driven by the paired `PlayerCharacterController`, or `null` if there's no
+     * capsule to exclude (e.g. paired with a `FreeCameraController` instead). */
+    protected readonly holder: CharacterController3dEntity<TypeDoc> | null,
     options: Partial<ObjectGrabControllerOptions> = {},
   ) {
     super();
@@ -146,6 +152,7 @@ export class ObjectGrabController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWor
             // `maxHoldDistance` - see its doc) - stay in sync so a stale reference here doesn't
             // block the next `tryGrab()` (which no-ops while `_heldObject` is set) or leave
             // `throwHeld()`/`dropHeld()` acting on an object that isn't actually held anymore.
+            this.unignoreForHolder(this._heldObject);
             this._heldObject = null;
           }
         }
@@ -164,7 +171,67 @@ export class ObjectGrabController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWor
   }
 
   private holdPoint(): Point3 {
-    return Pnt3.add(this.camera.position, Pnt3.scalarMult(this.cameraForward, this.options.holdDistance));
+    const raw = Pnt3.add(this.camera.position, Pnt3.scalarMult(this.cameraForward, this.options.holdDistance));
+    return this.clampAwayFromHolder(raw);
+  }
+
+  /**
+   * Pushes `target` radially out of a cylinder around `holder`'s own capsule (its actual current
+   * radius/`centersDistance`, so this tracks live crouch/stand transitions) if it landed inside one,
+   * plus `holderExclusionMargin` clearance - see this class's own doc for why this exists (a purely
+   * cosmetic finishing touch, not what actually keeps the holder from colliding with a held prop -
+   * see `ignoredBodies`/`ignoreForHolder` for that). A cylinder, not the capsule's own rounded caps,
+   * is deliberately used as the exclusion volume - simpler, and the margin already covers the
+   * difference near the caps.
+   *
+   * `target` already outside the cylinder (above/below it entirely, or beyond its radius) is
+   * returned unchanged. `target` landing on (or extremely close to) the capsule's own central axis -
+   * looking almost straight down/up at yourself - has no well-defined outward direction from the
+   * axis alone; falls back to the camera's own horizontal forward, then its horizontal right, so the
+   * object gets pushed out in front of (or beside) the holder rather than left exactly on the axis.
+   *
+   * A no-op (returns `target` unchanged) when `holder` is `null` - see this class's own doc for that
+   * case.
+   */
+  private clampAwayFromHolder(target: Point3): Point3 {
+    if (!this.holder) {
+      return target;
+    }
+    const character = this.holder.characterController;
+    const up = character.up;
+    const holderPos = this.holder.position;
+    const toTarget = Pnt3.sub(target, holderPos);
+    const alongUp = Pnt3.dot(toTarget, up);
+    const keepOutHalfHeight = character.radius + character.centersDistance / 2 + this.options.holderExclusionMargin;
+    if (Math.abs(alongUp) > keepOutHalfHeight) {
+      return target;
+    }
+
+    const horizontal = Pnt3.sub(toTarget, Pnt3.scalarMult(up, alongUp));
+    const horizontalDist = Pnt3.len(horizontal);
+    const keepOutRadius = character.radius + this.options.holderExclusionMargin;
+    if (horizontalDist >= keepOutRadius) {
+      return target;
+    }
+
+    let outDir: Point3;
+    if (horizontalDist > 1e-6) {
+      outDir = Pnt3.scalarMult(horizontal, 1 / horizontalDist);
+    } else {
+      const horizontalForward = Pnt3.sub(this.cameraForward, Pnt3.scalarMult(up, Pnt3.dot(this.cameraForward, up)));
+      const forwardDist = Pnt3.len(horizontalForward);
+      if (forwardDist > 1e-6) {
+        outDir = Pnt3.scalarMult(horizontalForward, 1 / forwardDist);
+      } else {
+        // Camera looking almost exactly along `up` too (straight down/up) - its forward has no
+        // usable horizontal component either; its right vector reliably does (camera roll aside).
+        const cameraRight = Pnt3.rot(Pnt3.X, this.camera.rotation);
+        const horizontalRight = Pnt3.sub(cameraRight, Pnt3.scalarMult(up, Pnt3.dot(cameraRight, up)));
+        outDir = Pnt3.norm(horizontalRight);
+      }
+    }
+
+    return Pnt3.add(holderPos, Pnt3.add(Pnt3.scalarMult(outDir, keepOutRadius), Pnt3.scalarMult(up, alongUp)));
   }
 
   private tryGrab(): void {
@@ -177,7 +244,32 @@ export class ObjectGrabController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWor
     const entity = result.hasHit ? result.hitBody?.entity : null;
     if (entity instanceof Grabbable3dEntity) {
       this._heldObject = entity as Grabbable3dEntity<TypeDoc>;
-      this._heldObject.grab(this.options.holderCollisionGroups);
+      this._heldObject.grab();
+      this.ignoreForHolder(this._heldObject);
+    }
+  }
+
+  /**
+   * Adds `obj.objectBody` to `holder.characterController.ignoredBodies` (see that property's own
+   * doc) so the holder's own collision queries never treat the object it's currently carrying as an
+   * obstacle - a no-op if there's no `holder`, or `obj` has no `objectBody` (impossible in practice -
+   * `Grabbable3dEntity`'s constructor requires one - but `objectBody`'s own type is nullable, see
+   * `Entity3d`). Always paired with `unignoreForHolder` on the same object before it stops being
+   * held, from every path that can end a hold (`throwHeld`/`dropHeld`, and the tick loop's own
+   * handling of `updateHold`'s self-release) - not just this class's own drop/throw methods, since
+   * leaving a stale entry in `ignoredBodies` would keep a since-dropped, no-longer-special object
+   * permanently invisible to the holder's own collision queries.
+   */
+  private ignoreForHolder(obj: Grabbable3dEntity<TypeDoc>): void {
+    if (this.holder && obj.objectBody) {
+      this.holder.characterController.ignoredBodies.add(obj.objectBody);
+    }
+  }
+
+  /** Undoes `ignoreForHolder` - see its own doc. */
+  private unignoreForHolder(obj: Grabbable3dEntity<TypeDoc>): void {
+    if (this.holder && obj.objectBody) {
+      this.holder.characterController.ignoredBodies.delete(obj.objectBody);
     }
   }
 
@@ -185,6 +277,7 @@ export class ObjectGrabController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWor
     if (!this._heldObject) {
       return;
     }
+    this.unignoreForHolder(this._heldObject);
     this._heldObject.throw(Pnt3.scalarMult(this.cameraForward, this.options.throwSpeed));
     this._heldObject = null;
   }
@@ -193,6 +286,7 @@ export class ObjectGrabController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWor
     if (!this._heldObject) {
       return;
     }
+    this.unignoreForHolder(this._heldObject);
     this._heldObject.release();
     this._heldObject = null;
   }

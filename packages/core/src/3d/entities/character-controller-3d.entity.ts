@@ -566,6 +566,15 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
       },
       { position: newPosition, rotation: this.rotation },
     );
+    // Carry over `ignoredBodies` (e.g. a currently-held `Grabbable3dEntity`'s objectBody - see
+    // `ICharacterController3dComponent.ignoredBodies`'s doc) - `created` starts with an empty set of
+    // its own, and this is a wholesale component swap, not a mutation of `old` in place, so nothing
+    // else does this automatically. Without it, crouching or standing up while holding something
+    // would silently drop the exclusion, making the held object collide with its own holder again
+    // from that tick on despite `grab()` never having been told anything changed.
+    for (const ignored of old.ignoredBodies) {
+      created.ignoredBodies.add(ignored);
+    }
 
     // `dispose: true` here is load-bearing, not decoration: `old` is dropped entirely right after
     // this call (no other reference survives), so freeing its native capsule shape/ghost object can
