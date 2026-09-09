@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "prettier-format": "prettier --config ../core/.prettierrc 'src/**/*.ts' --write",
+    "prettier-format": "prettier --config ../../.prettierrc 'src/**/*.ts' --write",
     "prepublish": "rm -rf ./dist/ && tsc",
     "build": "tsc"
   },
