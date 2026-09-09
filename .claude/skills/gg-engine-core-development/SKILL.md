@@ -182,6 +182,54 @@ cylinder around the holder's capsule) still exists alongside `ignoredBodies` too
 cosmetic finishing touch (stops a prop from visibly poking into the holder's own model at the instant
 it's picked up) — see that class's own doc for the current division of labor between the two.
 
+## `ObjectGrabController.tryGrab()`'s pick-up ray: don't skip a *guessed* distance, retry from where a close hit actually exits
+
+`tryGrab()` raycasts along the camera's forward direction to find what to pick up - but the camera
+sits inside (or right at the surface of) `holder`'s own capsule, so a ray cast from `camera.position`
+almost always self-hits that capsule first, before anything the player is actually aiming at.
+`tryGrab()` used to dodge this by starting the ray a fixed `holderClearance()` distance (a
+worst-case guess at how big the holder's capsule can possibly be) in front of the camera instead of
+at it — this reliably cleared the capsule, but at the cost of skipping over that same fixed distance
+of ray *unconditionally*, every cast, whether or not anything was actually in the way.
+
+That skip is only safe when nothing real sits inside it. A small grabbable prop resting on a
+pedestal — an entirely ordinary scene, not a contrived edge case — sits well below eye height, so a
+camera pitched down at it is close enough that the fixed skip distance flies *past* the prop
+entirely. Found via a real, reproducible gameplay report and confirmed by reproducing the reporter's
+*exact* failing position (read from the in-game dev console's entity inspector — camera position/
+rotation computed from it, not guessed): the skipped-past ray didn't just miss the prop, it flew on
+into the pedestal underneath it, a real, legitimate hit on a non-grabbable body — so `tryGrab()` saw
+"hit something, but not a `Grabbable3dEntity`" and silently did nothing, every time, regardless of
+which physics adapter the world was built with (this is adapter-agnostic; see
+`gg-engine-physics-adapter-ammo`'s own note on a *related*, genuinely adapter-specific raycast gap
+found and fixed while chasing this same report, which turned out to be real but not sufficient to
+resolve it — that note's own postscript on re-testing with the reporter's exact numbers before
+declaring a raycast bug closed is worth reading before touching this method again).
+
+**Fix**: cast once from the camera's actual, un-skipped position first. If that already lands on a
+`Grabbable3dEntity`, grab it — done, no retry (this also correctly handles a prop close enough to be
+found before any self-hit would even occur, which the old fixed-skip design never could). Otherwise,
+only retry — from exactly where that first hit's surface exits (`result.hitPoint`), plus a small
+fixed `SELF_HIT_SKIN` (0.01m, just enough to clear ordinary float/engine surface tolerance, *not* a
+guess at anything holder-sized) — when the first hit is closer than `holderClearance()` could ever
+put a genuinely different object, given the camera sits on/within the capsule's own axis. A hit
+farther than that is trusted as a real, legitimately-blocking obstacle and left alone, exactly as
+before — this only changes what happens for a hit close enough to plausibly be the holder's own
+capsule; it never lets the ray skip through geometry that's actually far away.
+
+This can't be done by checking `result.hitBody?.entity === holder` instead (a more "obviously
+correct"-looking identity check) — self-hit resolution isn't reliable across every adapter in the
+first place: `Rapier3dCharacterControllerComponent`'s own doc notes its collider is never registered
+in `Rapier3dWorldComponent.handleIdEntityMap` at all, so a self-hit there always resolves to
+`hitBody: undefined`, indistinguishable by identity from any other untracked hit. The
+distance-based heuristic above works identically regardless of whether a given adapter can resolve
+the self-hit's identity at all.
+
+Regression coverage: `packages/core/test/3d/entities/controllers/input/object-grab.controller.spec.ts`'s
+`grabbing` describe block has the "found immediately, no retry" case, the "retries from exactly the
+close hit's exit point" case, and the "does not retry past a hit farther than `holderClearance()`"
+case (a real obstacle still correctly blocks the grab).
+
 ## The TypeDocRepo generic pattern — read this before touching interfaces
 
 Core interfaces don't hardcode adapter types. Instead each dimension defines a "type doc

@@ -51,9 +51,12 @@ describe('ObjectGrabController', () => {
 
       expect(controller.heldObject).toBe(entity);
       expect(entity.isHeld).toBe(true);
+      // the very first cast already found a grabbable, so there's no self-hit retry - it's cast
+      // from the camera's own position, not skipped forward by a guessed distance (see tryGrab's doc).
+      expect(raycast).toHaveBeenCalledTimes(1);
       const { from, to } = raycast.mock.calls[0][0];
-      // identity rotation -> forward is -Z; from is nudged past the holder's capsule (0.3 + 0.5 + 0.3 margin = 1.1)
-      expect(from.z).toBeCloseTo(-1.1);
+      expect(from).toEqual(Pnt3.O);
+      // identity rotation -> forward is -Z
       expect(to.z).toBeCloseTo(-3);
     });
 
@@ -71,6 +74,51 @@ describe('ObjectGrabController', () => {
       controller.onSpawned({ physicsWorld: { raycast } } as any);
       keyboard.emulateKeyDown('KeyE');
       expect(controller.heldObject).toBeNull();
+    });
+
+    it(
+      "retries from exactly where a close, non-grabbable first hit exits (e.g. the holder's own " +
+        'capsule) rather than skipping a fixed guessed distance forward - regression: a small ' +
+        'grabbable prop sitting closer than that guessed distance used to be silently unreachable, ' +
+        "sometimes landing the ray on unrelated geometry behind the prop instead (see this class's " +
+        'own tryGrab doc)',
+      () => {
+        const raycast = jest.fn();
+        const { entity } = makeGrabbable();
+        // default holder: radius 0.3, centersDistance 1.0, margin 0.3 -> holderClearance 1.1
+        const closeSelfHit = {
+          hasHit: true,
+          hitBody: { entity: {} },
+          hitPoint: { x: 0, y: 0, z: -0.5 },
+          hitDistance: 0.5,
+        };
+        raycast.mockReturnValueOnce(closeSelfHit).mockReturnValueOnce({ hasHit: true, hitBody: { entity } });
+        const { keyboard, controller } = setup();
+        controller.onSpawned({ physicsWorld: { raycast } } as any);
+
+        keyboard.emulateKeyDown('KeyE');
+
+        expect(controller.heldObject).toBe(entity);
+        expect(raycast).toHaveBeenCalledTimes(2);
+        const { from } = raycast.mock.calls[1][0];
+        // exactly the first hit's exit point, nudged forward by SELF_HIT_SKIN (0.01) - not an
+        // arbitrary holder-sized guess.
+        expect(from).toEqual({ x: 0, y: 0, z: -0.51 });
+      },
+    );
+
+    it("does not retry past a hit farther than holderClearance could ever put the holder's own capsule - a real obstacle still blocks the grab", () => {
+      const raycast = jest.fn();
+      // farther than the default holder's 1.1m holderClearance, well within maxGrabDistance (3)
+      const farObstacle = { hasHit: true, hitBody: { entity: {} }, hitPoint: { x: 0, y: 0, z: -2 }, hitDistance: 2 };
+      raycast.mockReturnValue(farObstacle);
+      const { keyboard, controller } = setup();
+      controller.onSpawned({ physicsWorld: { raycast } } as any);
+
+      keyboard.emulateKeyDown('KeyE');
+
+      expect(controller.heldObject).toBeNull();
+      expect(raycast).toHaveBeenCalledTimes(1);
     });
 
     it('pressing the grab key again while holding something drops it instead of grabbing a new one', () => {
@@ -136,19 +184,23 @@ describe('ObjectGrabController', () => {
         expect(holder.characterController.ignoredBodies.has(objectBody)).toBe(false);
       });
 
-      it("updateHold's own self-release (regression: a stale ignoredBodies entry left behind by the " + 'same edge case that used to leave a stale heldObject reference) removes it too', () => {
-        const raycast = jest.fn();
-        const { entity, objectBody } = makeGrabbable({ maxHoldDistance: 0.001 });
-        raycast.mockReturnValue({ hasHit: true, hitBody: { entity } });
-        const { keyboard, holder, controller } = setup({ holdDistance: 2 });
-        controller.onSpawned({ physicsWorld: { raycast } } as any);
-        keyboard.emulateKeyDown('KeyE');
-        expect(holder.characterController.ignoredBodies.has(objectBody)).toBe(true);
+      it(
+        "updateHold's own self-release (regression: a stale ignoredBodies entry left behind by the " +
+          'same edge case that used to leave a stale heldObject reference) removes it too',
+        () => {
+          const raycast = jest.fn();
+          const { entity, objectBody } = makeGrabbable({ maxHoldDistance: 0.001 });
+          raycast.mockReturnValue({ hasHit: true, hitBody: { entity } });
+          const { keyboard, holder, controller } = setup({ holdDistance: 2 });
+          controller.onSpawned({ physicsWorld: { raycast } } as any);
+          keyboard.emulateKeyDown('KeyE');
+          expect(holder.characterController.ignoredBodies.has(objectBody)).toBe(true);
 
-        controller.tick$.next([0, 16]); // hold point (0,0,-2) vs object at origin -> force-release
+          controller.tick$.next([0, 16]); // hold point (0,0,-2) vs object at origin -> force-release
 
-        expect(holder.characterController.ignoredBodies.has(objectBody)).toBe(false);
-      });
+          expect(holder.characterController.ignoredBodies.has(objectBody)).toBe(false);
+        },
+      );
 
       it('is a no-op (no throw) when there is no holder', () => {
         const raycast = jest.fn();
@@ -269,71 +321,74 @@ describe('ObjectGrabController', () => {
     );
   });
 
-  describe('holder-exclusion clamp (regression: looking down to wedge a held prop under your own ' +
-    'feet used to drive it straight into the holder\'s capsule every tick)', () => {
-    it('pushes the hold point radially off the holder\'s own axis when it would otherwise land inside the capsule', () => {
-      const raycast = jest.fn();
-      const { entity, objectBody } = makeGrabbable();
-      raycast.mockReturnValue({ hasHit: true, hitBody: { entity } });
-      // Holder capsule at the origin (radius 0.3, centersDistance 1.0); camera 1.6m above it,
-      // looking straight down (identity rotation -> forward -Z) - exactly "looking down to put it
-      // under your own feet". Raw hold point (0,0,0.1) would land on the capsule's own central
-      // axis, comfortably inside it.
-      const camera = fakeCamera({ x: 0, y: 0, z: 1.6 });
-      const holder = fakeHolder(Pnt3.O, 0.3, 1.0);
-      const keyboard = new KeyboardInput();
-      keyboard.start();
-      const mouseInput = new MouseInput();
-      mouseInput.start();
-      const controller = new ObjectGrabController(keyboard, mouseInput, camera, holder);
-      controller.onSpawned({ physicsWorld: { raycast } } as any);
-      keyboard.emulateKeyDown('KeyE');
+  describe(
+    'holder-exclusion clamp (regression: looking down to wedge a held prop under your own ' +
+      "feet used to drive it straight into the holder's capsule every tick)",
+    () => {
+      it("pushes the hold point radially off the holder's own axis when it would otherwise land inside the capsule", () => {
+        const raycast = jest.fn();
+        const { entity, objectBody } = makeGrabbable();
+        raycast.mockReturnValue({ hasHit: true, hitBody: { entity } });
+        // Holder capsule at the origin (radius 0.3, centersDistance 1.0); camera 1.6m above it,
+        // looking straight down (identity rotation -> forward -Z) - exactly "looking down to put it
+        // under your own feet". Raw hold point (0,0,0.1) would land on the capsule's own central
+        // axis, comfortably inside it.
+        const camera = fakeCamera({ x: 0, y: 0, z: 1.6 });
+        const holder = fakeHolder(Pnt3.O, 0.3, 1.0);
+        const keyboard = new KeyboardInput();
+        keyboard.start();
+        const mouseInput = new MouseInput();
+        mouseInput.start();
+        const controller = new ObjectGrabController(keyboard, mouseInput, camera, holder);
+        controller.onSpawned({ physicsWorld: { raycast } } as any);
+        keyboard.emulateKeyDown('KeyE');
 
-      controller.tick$.next([0, 16]);
+        controller.tick$.next([0, 16]);
 
-      // Landing exactly on the axis has no well-defined outward direction, so this falls back to
-      // the camera's horizontal right (its forward is purely vertical here) - pushed towards +X,
-      // not left driving straight down into the holder (which would show up as z only, x === 0).
-      expect(objectBody.linearVelocity.x).toBeGreaterThan(0);
-    });
+        // Landing exactly on the axis has no well-defined outward direction, so this falls back to
+        // the camera's horizontal right (its forward is purely vertical here) - pushed towards +X,
+        // not left driving straight down into the holder (which would show up as z only, x === 0).
+        expect(objectBody.linearVelocity.x).toBeGreaterThan(0);
+      });
 
-    it('leaves the hold point alone once it is already outside the holder\'s exclusion cylinder', () => {
-      const raycast = jest.fn();
-      const { entity, objectBody } = makeGrabbable();
-      raycast.mockReturnValue({ hasHit: true, hitBody: { entity } });
-      // Same holder, but the camera (and so the hold point) is well clear of its exclusion cylinder
-      // (keepOutRadius 0.6m) off to the side.
-      const camera = fakeCamera({ x: 3, y: 0, z: 1.6 });
-      const holder = fakeHolder(Pnt3.O, 0.3, 1.0);
-      const keyboard = new KeyboardInput();
-      keyboard.start();
-      const mouseInput = new MouseInput();
-      mouseInput.start();
-      const controller = new ObjectGrabController(keyboard, mouseInput, camera, holder, { holdDistance: 1.5 });
-      controller.onSpawned({ physicsWorld: { raycast } } as any);
-      keyboard.emulateKeyDown('KeyE');
+      it("leaves the hold point alone once it is already outside the holder's exclusion cylinder", () => {
+        const raycast = jest.fn();
+        const { entity, objectBody } = makeGrabbable();
+        raycast.mockReturnValue({ hasHit: true, hitBody: { entity } });
+        // Same holder, but the camera (and so the hold point) is well clear of its exclusion cylinder
+        // (keepOutRadius 0.6m) off to the side.
+        const camera = fakeCamera({ x: 3, y: 0, z: 1.6 });
+        const holder = fakeHolder(Pnt3.O, 0.3, 1.0);
+        const keyboard = new KeyboardInput();
+        keyboard.start();
+        const mouseInput = new MouseInput();
+        mouseInput.start();
+        const controller = new ObjectGrabController(keyboard, mouseInput, camera, holder, { holdDistance: 1.5 });
+        controller.onSpawned({ physicsWorld: { raycast } } as any);
+        keyboard.emulateKeyDown('KeyE');
 
-      controller.tick$.next([0, 16]);
+        controller.tick$.next([0, 16]);
 
-      // Unclamped hold point is (3,0,0.1) - object starts at the origin, so the spring pulls it
-      // towards +X exactly as if no clamp existed at all.
-      expect(objectBody.linearVelocity.x).toBeGreaterThan(0);
-      expect(objectBody.linearVelocity.z).toBeGreaterThan(0);
-    });
+        // Unclamped hold point is (3,0,0.1) - object starts at the origin, so the spring pulls it
+        // towards +X exactly as if no clamp existed at all.
+        expect(objectBody.linearVelocity.x).toBeGreaterThan(0);
+        expect(objectBody.linearVelocity.z).toBeGreaterThan(0);
+      });
 
-    it('is skipped entirely when there is no holder (e.g. paired with a FreeCameraController)', () => {
-      const raycast = jest.fn();
-      const { entity, objectBody } = makeGrabbable();
-      raycast.mockReturnValue({ hasHit: true, hitBody: { entity } });
-      const { keyboard, controller } = setup({}, null);
-      controller.onSpawned({ physicsWorld: { raycast } } as any);
-      keyboard.emulateKeyDown('KeyE');
+      it('is skipped entirely when there is no holder (e.g. paired with a FreeCameraController)', () => {
+        const raycast = jest.fn();
+        const { entity, objectBody } = makeGrabbable();
+        raycast.mockReturnValue({ hasHit: true, hitBody: { entity } });
+        const { keyboard, controller } = setup({}, null);
+        controller.onSpawned({ physicsWorld: { raycast } } as any);
+        keyboard.emulateKeyDown('KeyE');
 
-      expect(() => controller.tick$.next([0, 16])).not.toThrow();
-      // setup()'s camera sits at the origin looking straight down (identity rotation, forward -Z);
-      // holdDistance defaults to 1.5 -> target (0,0,-1.5), reaching the object unclamped since
-      // holder is null.
-      expect(objectBody.linearVelocity.z).toBeLessThan(0);
-    });
-  });
+        expect(() => controller.tick$.next([0, 16])).not.toThrow();
+        // setup()'s camera sits at the origin looking straight down (identity rotation, forward -Z);
+        // holdDistance defaults to 1.5 -> target (0,0,-1.5), reaching the object unclamped since
+        // holder is null.
+        expect(objectBody.linearVelocity.z).toBeLessThan(0);
+      });
+    },
+  );
 });

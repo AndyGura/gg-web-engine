@@ -40,6 +40,13 @@ const DEFAULT_OPTIONS: ObjectGrabControllerOptions = {
 };
 
 /**
+ * How far past a self-hit's exact exit point `tryGrab()`'s retry cast starts from, in meters -
+ * just enough to clear ordinary floating-point/engine-internal surface tolerance, not a guess at
+ * the holder's own size (see `tryGrab()`'s own doc for why that distinction matters).
+ */
+const SELF_HIT_SKIN = 0.01;
+
+/**
  * HL2/Portal-style "use key carries a physics prop" input controller: raycasts from `camera`'s
  * current position/forward direction to find a `Grabbable3dEntity` within `maxGrabDistance`,
  * `grabKey` picks it up (and drops it again if already holding one - a second `grabKey` press is
@@ -193,7 +200,12 @@ export class ObjectGrabController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWor
    * A no-op (returns `target` unchanged) when `holder` is `null` - see this class's own doc for that
    * case.
    */
-  /** Radius of a sphere around `holder` guaranteed to clear its capsule in any direction. Assumes `holder` is set. */
+  /**
+   * Radius of a sphere around `holder` guaranteed to clear its capsule in any direction. Assumes
+   * `holder` is set. Used both by `clampAwayFromHolder` (the hold point's own exclusion radius) and
+   * by `tryGrab()` (as an upper-bound heuristic for "this first hit was probably my own capsule,
+   * not a real obstacle" - see that method's own doc).
+   */
   private holderClearance(): number {
     const character = this.holder!.characterController;
     return character.radius + character.centersDistance / 2 + this.options.holderExclusionMargin;
@@ -240,18 +252,55 @@ export class ObjectGrabController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWor
     return Pnt3.add(holderPos, Pnt3.add(Pnt3.scalarMult(outDir, keepOutRadius), Pnt3.scalarMult(up, alongUp)));
   }
 
+  /**
+   * A first-person camera sits inside (or right at the surface of) `holder`'s own capsule, so the
+   * very first thing a raycast from `camera.position` finds along almost any forward direction is
+   * that capsule itself, not whatever's actually being aimed at - `holder.characterController`
+   * isn't reliably resolvable back to `holder` from a `RaycastResult` on every adapter either (e.g.
+   * `Rapier3dCharacterControllerComponent`'s own doc - its collider is never registered for that),
+   * so this can't be told apart from "some other real obstacle" by identity.
+   *
+   * **This used to be dodged by starting the ray a fixed `holderClearance()` distance in front of
+   * the camera instead of at it - a worst-case guess at how big `holder`'s own capsule can possibly
+   * be, not where it actually ends along *this* particular ray.** That guess overshoots dramatically
+   * for a camera pitched steeply down at something close and small (the common case for a resting
+   * prop, which sits well below eye height) - real, reproduced bug: standing close enough to a small
+   * grabbable prop resting on a pedestal, the fixed skip flew straight past the prop *and* landed
+   * inside the pedestal underneath it, so the ray reported a legitimate hit on the (non-grabbable)
+   * pedestal instead of ever reaching the prop, silently blocking the pick-up.
+   *
+   * **Fixed with a real two-pass cast instead of a guessed skip distance**: cast once from the
+   * actual `camera.position` first. If that hit is already a `Grabbable3dEntity`, done - grab it,
+   * no retry needed (handles a prop close enough to be found before any self-hit would even occur).
+   * Otherwise, only if the hit is closer than `holderClearance()` could ever put a *different*
+   * object (given the camera sits on/within the capsule's own axis, nothing external can
+   * legitimately be that close without already overlapping the holder, an already-broken physics
+   * state this doesn't need to handle) - retry from exactly where that first hit exits (plus
+   * `SELF_HIT_SKIN`, a small fixed clearance for ordinary surface float tolerance, not a guess at
+   * anything holder-sized) rather than from an arbitrary fixed distance. A hit farther than
+   * `holderClearance()` away is trusted as a real obstacle and left blocking the grab, same as
+   * before - this only changes what happens for a hit close enough to plausibly be the holder's own
+   * capsule, never lets the ray skip through genuinely distant geometry.
+   */
   private tryGrab(): void {
     if (this._heldObject || !this.world?.physicsWorld) {
       return;
     }
-    // Start past holder's own capsule - a first-person camera sits inside it, so a raycast from
-    // the camera itself can self-hit the holder on some adapters (e.g. Rapier's solid-ray default).
-    const from = this.holder
-      ? Pnt3.add(this.camera.position, Pnt3.scalarMult(this.cameraForward, this.holderClearance()))
-      : this.camera.position;
     const to = Pnt3.add(this.camera.position, Pnt3.scalarMult(this.cameraForward, this.options.maxGrabDistance));
-    const result = this.world.physicsWorld.raycast({ from, to });
-    const entity = result.hasHit ? result.hitBody?.entity : null;
+    let result = this.world.physicsWorld.raycast({ from: this.camera.position, to });
+    let entity = result.hasHit ? result.hitBody?.entity : null;
+    if (
+      this.holder &&
+      !(entity instanceof Grabbable3dEntity) &&
+      result.hasHit &&
+      result.hitPoint &&
+      result.hitDistance !== undefined &&
+      result.hitDistance < this.holderClearance()
+    ) {
+      const from = Pnt3.add(result.hitPoint, Pnt3.scalarMult(this.cameraForward, SELF_HIT_SKIN));
+      result = this.world.physicsWorld.raycast({ from, to });
+      entity = result.hasHit ? result.hitBody?.entity : null;
+    }
     if (entity instanceof Grabbable3dEntity) {
       this._heldObject = entity as Grabbable3dEntity<TypeDoc>;
       this._heldObject.grab();

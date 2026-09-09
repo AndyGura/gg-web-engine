@@ -139,6 +139,21 @@ in the default/main group alongside a custom one), and a close-range reproductio
 `ammo-character-controller-freefall.spec.ts`'s existing "falls under gravity in empty space" test is
 what caught the `trySnapToGround` regression.
 
+**This fix alone did not resolve the original gameplay report - it was real and worth keeping (see
+the regression coverage above), but the report's actual root cause turned out to be a different,
+adapter-agnostic bug in `ObjectGrabController.tryGrab()` itself, fixed in `packages/core` instead -
+see `gg-engine-core-development`'s own notes on it.** Found by reproducing the user's *exact*
+reported failing position (read from the in-game dev console's entity inspector, not guessed) in a
+jest harness matching the real scene geometry: the fixed `holderClearance()`-sized forward skip this
+adapter fix was built to accommodate landed the ray not *inside* the small prop (this fix's case) but
+*past* it entirely and into the pedestal the prop was resting on - a real, legitimate hit on a
+non-grabbable body, which the "starts inside a shape" fallback above has no way to help with, since
+the plain `rayTest` already succeeds (on the wrong target) and never reaches the fallback at all.
+Worth remembering next time a raycast-adjacent gameplay bug report comes in only *partially*
+resolved by an adapter-level fix: re-test with the reporter's own exact numbers before considering it
+closed, rather than assuming a plausible-looking mechanism was the whole story once one real bug in
+the vicinity has been found and fixed.
+
 ## Pitfall: `btKinematicCharacterController` produced zero collision response in this build
 
 Implementing `AmmoCharacterControllerComponent`, the "obvious" approach - a `btPairCachingGhostObject`
