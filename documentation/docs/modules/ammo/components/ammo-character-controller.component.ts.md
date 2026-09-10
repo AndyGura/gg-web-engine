@@ -13,6 +13,8 @@ parent: Modules
 - [utils](#utils)
   - [AmmoCharacterControllerComponent (class)](#ammocharactercontrollercomponent-class)
     - [move (method)](#move-method)
+    - [detachIgnoredBodies (method)](#detachignoredbodies-method)
+    - [reattachIgnoredBodies (method)](#reattachignoredbodies-method)
     - [isWalkableNormal (method)](#iswalkablenormal-method)
     - [backOffFromObstacle (method)](#backofffromobstacle-method)
     - [moveHorizontalWithStepAndSlide (method)](#movehorizontalwithstepandslide-method)
@@ -28,6 +30,7 @@ parent: Modules
     - [entity (property)](#entity-property)
     - [radius (property)](#radius-property)
     - [centersDistance (property)](#centersdistance-property)
+    - [ignoredBodies (property)](#ignoredbodies-property)
     - [debugBodySettings (property)](#debugbodysettings-property)
 
 ---
@@ -95,6 +98,32 @@ ground this tick (e.g. standing still, or walking off a slope with no explicit v
 move(desiredTranslation: Point3, dt?: number): void
 ```
 
+### detachIgnoredBodies (method)
+
+Removes every currently-added body in `ignoredBodies` from the collision world's broadphase,
+mirroring the self-exclusion trick `sweep()`/`recoverFromPenetration()` already use for this
+character's own ghost object - see `ICharacterController3dComponent.ignoredBodies`'s doc for why
+this, not collision groups, is the actual mechanism. Returns the subset that was genuinely
+detached (i.e. was in the world to begin with) - pass this straight to `reattachIgnoredBodies`
+once the query is done; a body that was never added is left alone rather than incorrectly added
+to the world by the matching reattach call.
+
+**Signature**
+
+```ts
+private detachIgnoredBodies(): AmmoRigidBodyComponent[]
+```
+
+### reattachIgnoredBodies (method)
+
+Undoes `detachIgnoredBodies()` for exactly the bodies it returned.
+
+**Signature**
+
+```ts
+private reattachIgnoredBodies(detached: AmmoRigidBodyComponent[]): void
+```
+
 ### isWalkableNormal (method)
 
 **Signature**
@@ -151,7 +180,8 @@ One extra downward ray beyond the main vertical sweep above - lets a still/near-
 character (zero or near-zero vertical input this tick) register as grounded, and approximates
 `snapToGroundDistance` for following a slope/staircase down without briefly going airborne each
 step. The ray starts a hair below the capsule's actual bottom point (past its own outward
-surface) so it can never register a hit against the character's own shape.
+surface), which by itself is _inside_ this character's own capsule - see the temporary
+self-detach below for why that no longer safely rules out a self-hit on its own.
 
 **Signature**
 
@@ -312,6 +342,17 @@ readonly radius: number
 
 ```ts
 readonly centersDistance: number
+```
+
+### ignoredBodies (property)
+
+See `ICharacterController3dComponent.ignoredBodies`'s doc. Consulted fresh by `sweep()` and
+`recoverFromPenetration()` every call - see `withIgnoredBodiesDetached`.
+
+**Signature**
+
+```ts
+readonly ignoredBodies: any
 ```
 
 ### debugBodySettings (property)

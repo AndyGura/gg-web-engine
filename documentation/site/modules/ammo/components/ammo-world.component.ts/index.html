@@ -557,6 +557,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#solidrayfallback-method" class="md-nav__link">
+    solidRayFallback (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#dispose-method" class="md-nav__link">
     dispose (method)
   </a>
@@ -666,6 +673,7 @@
 <li><a href="#registercollisiongroup-method">registerCollisionGroup (method)</a></li>
 <li><a href="#deregistercollisiongroup-method">deregisterCollisionGroup (method)</a></li>
 <li><a href="#raycast-method">raycast (method)</a></li>
+<li><a href="#solidrayfallback-method">solidRayFallback (method)</a></li>
 <li><a href="#dispose-method">dispose (method)</a></li>
 <li><a href="#aftertick-property">afterTick$ (property)</a></li>
 <li><a href="#added-property">added$ (property)</a></li>
@@ -707,6 +715,54 @@
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">raycast(options: RaycastOptions&lt;Point3&gt;): RaycastResult&lt;Point3, AmmoRigidBodyComponent | AmmoTriggerComponent&gt;
 </code></pre>
+<h3 id="solidrayfallback-method">solidRayFallback (method)</h3>
+<p>Bullet's own <code>rayTest</code> (used above) can only compute an entry point when the ray <em>starts</em>
+outside its target - once <code>options.from</code> is already inside (or has passed all the way through)
+a convex shape, it finds nothing for that shape at all, from any distance further along the
+same direction, not just while still inside it (verified empirically: a box shape stops being
+hittable the instant <code>from</code> crosses into it, and stays unhittable for every <code>from</code> further past
+it too). <code>Rapier3dWorldComponent.raycast</code> doesn't have this gap - it calls <code>castRay</code> with
+<code>solid: true</code>, Rapier's own explicit "report a hit at zero distance on whatever contains the
+ray's origin" mode - so the exact same query silently behaves differently depending on which
+physics adapter a world is built with.</p>
+<p>This came up as a real, reproducible gameplay bug: <code>ObjectGrabController.tryGrab()</code> (see its
+own doc) deliberately starts its pick-up ray a fixed distance in front of the holder's camera
+to dodge a self-hit on the holder's own capsule - but that same fixed offset can just as easily
+land <em>inside</em> a small grabbable prop sitting closer than that offset, which then became
+silently ungrabbable on Ammo specifically (working fine on Rapier) the moment the player stood
+close enough to it - exactly this gap.</p>
+<p>Fixed by mirroring Rapier's <code>solid</code> behavior here too: whenever the plain <code>rayTest</code> above found
+nothing, run one discrete point-overlap probe (<code>btCollisionWorld.contactTest</code>, the same
+discrete-overlap primitive <code>AmmoCharacterControllerComponent.recoverFromPenetration</code> already
+uses for an unrelated reason - see its doc) against a throwaway zero-size collision object
+placed exactly at <code>options.from</code>, and report whatever it overlaps as a hit at distance 0.</p>
+<p><strong><code>options.collisionFilterGroups</code>/<code>collisionFilterMask</code> are only ever honored here as an
+<em>extra</em> narrowing on top of Bullet's own default pair filtering, never as a way to widen it</strong> -
+verified empirically, not by reading Bullet's C++ source: <code>ContactResultCallback</code>'s own
+<code>m_collisionFilterGroup</code>/<code>m_collisionFilterMask</code> fields (which is what its internal
+<code>needsCollision</code> actually checks a candidate's real broadphase proxy against) have no exposed
+setter on <code>ConcreteContactResultCallback</code> in this Ammo.js build - <code>set_m_collisionFilterGroup</code>/
+<code>set_m_collisionFilterMask</code> are simply <code>undefined</code> on a constructed instance, unlike the same
+two setters on <code>ClosestRayResultCallback</code> (used by the plain <code>rayTest</code> above) which do exist.
+Registering the probe itself with matching group/mask bits via <code>addCollisionObject</code> doesn't
+help either (tried and measured no effect) - only the <em>candidate's</em> proxy is ever consulted,
+against the callback's own fixed default fields (<code>DefaultFilter</code>/<code>AllFilter</code> in stock Bullet).
+Net effect: a candidate whose own <code>interactWithCollisionGroups</code> excludes this world's
+default/main group (<code>mainCollisionGroup</code>, always group <code>0</code>) never reaches this fallback at all,
+no matter what <code>options</code> asks for - an unusual configuration in practice (most bodies keep
+interacting with the default group even after adding custom ones), and not one the reported
+bug (<code>ObjectGrabController.tryGrab()</code>, which passes no filter at all, against a body left at
+its own engine-wide default <code>ownCollisionGroups</code>/<code>interactWithCollisionGroups: 'all'</code>) ever hits</p>
+<ul>
+<li>so the manual check below still meaningfully narrows <em>down</em> from whatever Bullet's own coarse
+  default let through, it just can't rescue a candidate Bullet's fixed default already excluded
+  before this callback ever ran.</li>
+</ul>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private solidRayFallback(
+    options: RaycastOptions&lt;Point3&gt;,
+  ): RaycastResult&lt;Point3, AmmoRigidBodyComponent | AmmoTriggerComponent&gt; | null
+</code></pre>
 <h3 id="dispose-method">dispose (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">dispose(): void
@@ -732,10 +788,54 @@
 <pre><code class="language-ts">readonly mainCollisionGroup: any
 </code></pre>
 <h3 id="maxsubsteps-property">maxSubSteps (property)</h3>
+<p>Hard ceiling on how many substeps <code>simulate()</code> will ever run for one call, regardless of how
+large <code>delta</code> is - protects against a single huge catch-up call (a dropped/backgrounded tab)
+grinding substep-by-substep through an enormous amount of simulated time. Below this cap,
+<code>simulate()</code> always runs however many substeps keep each one no longer than <code>fixedTimeStep</code> -
+see that field's own doc for why a <em>dynamically computed</em> substep count/size, not Bullet's own
+built-in accumulator, is what actually gets used. <code>0</code>/<code>undefined</code> (default <code>100</code>) means no cap
+at all - the cap only ever trades simulation <em>accuracy</em> (larger-than-<code>fixedTimeStep</code> substeps)
+for guaranteeing <code>delta</code> is always fully consumed in one call, never deferred.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">maxSubSteps: number | undefined
 </code></pre>
 <h3 id="fixedtimestep-property">fixedTimeStep (property)</h3>
+<p>The largest a single internal substep is allowed to be, in seconds - smaller keeps the solver
+(suspension springs, fast/thin shapes, etc.) accurate and stable, at the cost of more substeps
+per call. Default <code>0.01</code> (10ms).</p>
+<p><strong>Not passed straight through to <code>stepSimulation</code> as its own <code>fixedTimeStep</code> argument</strong> - that
+argument drives Bullet's built-in <em>accumulator</em> (<code>m_localTime</code>), which carries whatever doesn't
+divide evenly into <code>fixedTimeStep</code> over into the <em>next</em> call. That accumulator is invisible and
+harmless for a body at rest, but for anything moving it means the amount of physics time
+actually simulated in a given <code>simulate()</code> call silently drifts above and below that call's own
+<code>delta</code> from tick to tick, depending on the accumulator's leftover phase - since nothing else in
+this engine's tick loop goes through that same accumulator (a camera driven directly off
+<code>CharacterController3dEntity.move()</code>'s own un-quantized per-tick <code>dt</code>, for one), that drift shows
+up as the camera and a physics-driven body disagreeing by a small, sign-flipping amount every
+other frame - real, reported, reproduced symptom: back-and-forth position jitter on a
+<code>Grabbable3dEntity</code> held in front of a moving/turning camera (worse the faster the camera
+moves - the drift is a fixed few milliseconds' worth of position error, so it scales with
+speed), and the same mechanism behind a fixed camera flickering relative to a moving raycast
+vehicle, or a chase camera's target flickering relative to its spinning chassis. <code>Rapier3dWorldComponent.simulate</code>
+never has this problem in the first place - it just sets its own <code>timestep</code> to <code>delta</code> and steps
+once, so simulated time always exactly equals real elapsed time.</p>
+<p>Fixed here without giving up bounded substep size at all: <code>simulate()</code> computes its own substep
+count <code>n = ceil(delta / fixedTimeStep)</code> (clamped by <code>maxSubSteps</code>) and calls <code>stepSimulation</code>
+with substeps of exactly <code>delta / n</code> each - always summing to exactly <code>delta</code>, every call, with
+nothing ever carried over. For any <code>delta</code> that already divides evenly by <code>fixedTimeStep</code> (every
+existing synthetic test in this package uses one) this reproduces Bullet's own accumulator
+result exactly; for a real variable render <code>delta</code> (never an exact multiple of <code>0.01</code>) it's what
+actually removes the drift, while every substep is still no larger than <code>fixedTimeStep</code> (unless
+<code>maxSubSteps</code> itself has to trade accuracy for guaranteeing <code>delta</code> is fully consumed - see its
+own doc). A first attempt at this fix (<code>maxSubSteps: 0</code>, Bullet's own single-step "variable
+timestep" mode, mirroring <code>Rapier3dWorldComponent.simulate</code> literally) removed the drift too,
+but at the cost of <em>all</em> substepping, not just the accumulator - confirmed as a real regression,
+not a hypothetical one, by this package's own test suite: a raycast vehicle's suspension
+(<code>ammo-raycast-vehicle.component.spec.ts</code>) stopped settling correctly and a trigger's exit event
+(<code>ammo-trigger.component.spec.ts</code>) stopped firing, from nothing more exotic than the existing
+tests' own ordinary <code>world.simulate(60)</code>-per-frame loops - well short of a huge catch-up frame.
+Substep chunking earns its keep for solver accuracy on every call, not just huge ones, so it's
+kept unconditionally rather than only above some <code>delta</code> threshold.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">fixedTimeStep: number | undefined
 </code></pre>

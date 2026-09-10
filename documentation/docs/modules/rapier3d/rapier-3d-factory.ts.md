@@ -1,6 +1,6 @@
 ---
 title: rapier3d/rapier-3d-factory.ts
-nav_order: 144
+nav_order: 146
 parent: Modules
 ---
 

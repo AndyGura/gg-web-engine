@@ -1,6 +1,6 @@
 ---
 title: three/components/three-physics-debug-view.ts
-nav_order: 150
+nav_order: 152
 parent: Modules
 ---
 

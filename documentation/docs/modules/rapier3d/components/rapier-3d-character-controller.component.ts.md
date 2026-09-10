@@ -1,6 +1,6 @@
 ---
 title: rapier3d/components/rapier-3d-character-controller.component.ts
-nav_order: 138
+nav_order: 140
 parent: Modules
 ---
 
@@ -13,6 +13,7 @@ parent: Modules
 - [utils](#utils)
   - [Rapier3dCharacterControllerComponent (class)](#rapier3dcharactercontrollercomponent-class)
     - [syncColliderTransform (method)](#synccollidertransform-method)
+    - [ignoredBodiesFilterPredicate (method)](#ignoredbodiesfilterpredicate-method)
     - [move (method)](#move-method)
     - [pushDynamicBodies (method)](#pushdynamicbodies-method)
     - [computeGroundNormal (method)](#computegroundnormal-method)
@@ -24,6 +25,7 @@ parent: Modules
     - [name (property)](#name-property)
     - [radius (property)](#radius-property)
     - [centersDistance (property)](#centersdistance-property)
+    - [ignoredBodies (property)](#ignoredbodies-property)
     - [\_nativeBody (property)](#_nativebody-property)
     - [\_nativeCollider (property)](#_nativecollider-property)
     - [\_nativeController (property)](#_nativecontroller-property)
@@ -87,6 +89,20 @@ needed here.
 
 ```ts
 private syncColliderTransform(): void
+```
+
+### ignoredBodiesFilterPredicate (method)
+
+Builds `computeColliderMovement`'s `filterPredicate` from `ignoredBodies` - `undefined` when
+empty (the common case) rather than an always-true closure, so an empty `ignoredBodies` set costs
+nothing extra per query. Compares by `RigidBody.handle` (a plain numeric id), not object
+identity - `Collider.parent()` isn't guaranteed to return the same wrapper instance across calls
+for the pinned `@dimforge/rapier3d-compat` build, only the same underlying native body.
+
+**Signature**
+
+```ts
+private ignoredBodiesFilterPredicate(): ((collider: Collider) => boolean) | undefined
 ```
 
 ### move (method)
@@ -223,6 +239,20 @@ readonly radius: number
 
 ```ts
 readonly centersDistance: number
+```
+
+### ignoredBodies (property)
+
+See `ICharacterController3dComponent.ignoredBodies`'s doc. Consulted fresh every `move()` call
+via `computeColliderMovement`'s own `filterPredicate` - unlike `AmmoCharacterControllerComponent`
+(which has to fake this by temporarily pulling ignored bodies out of the collision world),
+Rapier's character controller supports excluding specific colliders from a single query
+natively, so no such trick is needed here.
+
+**Signature**
+
+```ts
+readonly ignoredBodies: any
 ```
 
 ### \_nativeBody (property)
