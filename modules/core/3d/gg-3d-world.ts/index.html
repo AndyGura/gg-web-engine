@@ -529,6 +529,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#addgrabbableprimitive-method" class="md-nav__link">
+    addGrabbablePrimitive (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#addrenderer-method" class="md-nav__link">
     addRenderer (method)
   </a>
@@ -648,6 +655,7 @@
 <li><a href="#utils">utils</a></li>
 <li><a href="#gg3dworld-class">Gg3dWorld (class)</a><ul>
 <li><a href="#addprimitiverigidbody-method">addPrimitiveRigidBody (method)</a></li>
+<li><a href="#addgrabbableprimitive-method">addGrabbablePrimitive (method)</a></li>
 <li><a href="#addrenderer-method">addRenderer (method)</a></li>
 <li><a href="#registerconsolecommands-method">registerConsoleCommands (method)</a></li>
 <li><a href="#loader-property">loader (property)</a></li>
@@ -679,6 +687,19 @@
     rotation: Point4 = Qtrn.O,
     material: DisplayObject3dOpts&lt;TypeDoc['vTypeDoc']['texture']&gt; = {},
   ): Entity3d&lt;TypeDoc&gt;
+</code></pre>
+<h3 id="addgrabbableprimitive-method">addGrabbablePrimitive (method)</h3>
+<p>Same as <code>addPrimitiveRigidBody</code>, but the returned entity is a <code>Grabbable3dEntity</code> - a prop
+that can be picked up/carried/thrown (see that class and <code>ObjectGrabController</code>). <code>descr.body</code>
+must describe a dynamic body (<code>dynamic: true</code>) - a static/kinematic prop can't be carried.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">addGrabbablePrimitive(
+    descr: BodyShape3DDescriptor,
+    position: Point3 = Pnt3.O,
+    rotation: Point4 = Qtrn.O,
+    material: DisplayObject3dOpts&lt;TypeDoc['vTypeDoc']['texture']&gt; = {},
+    grabOptions: Partial&lt;Grabbable3dEntityOptions&gt; = {},
+  ): Grabbable3dEntity&lt;TypeDoc&gt;
 </code></pre>
 <h3 id="addrenderer-method">addRenderer (method)</h3>
 <p><strong>Signature</strong></p>

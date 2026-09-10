@@ -529,6 +529,20 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#detachignoredbodies-method" class="md-nav__link">
+    detachIgnoredBodies (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reattachignoredbodies-method" class="md-nav__link">
+    reattachIgnoredBodies (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#iswalkablenormal-method" class="md-nav__link">
     isWalkableNormal (method)
   </a>
@@ -634,6 +648,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#ignoredbodies-property" class="md-nav__link">
+    ignoredBodies (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#debugbodysettings-property" class="md-nav__link">
     debugBodySettings (property)
   </a>
@@ -676,6 +697,8 @@
 <li><a href="#utils">utils</a></li>
 <li><a href="#ammocharactercontrollercomponent-class">AmmoCharacterControllerComponent (class)</a><ul>
 <li><a href="#move-method">move (method)</a></li>
+<li><a href="#detachignoredbodies-method">detachIgnoredBodies (method)</a></li>
+<li><a href="#reattachignoredbodies-method">reattachIgnoredBodies (method)</a></li>
 <li><a href="#iswalkablenormal-method">isWalkableNormal (method)</a></li>
 <li><a href="#backofffromobstacle-method">backOffFromObstacle (method)</a></li>
 <li><a href="#movehorizontalwithstepandslide-method">moveHorizontalWithStepAndSlide (method)</a></li>
@@ -691,6 +714,7 @@
 <li><a href="#entity-property">entity (property)</a></li>
 <li><a href="#radius-property">radius (property)</a></li>
 <li><a href="#centersdistance-property">centersDistance (property)</a></li>
+<li><a href="#ignoredbodies-property">ignoredBodies (property)</a></li>
 <li><a href="#debugbodysettings-property">debugBodySettings (property)</a></li>
 </ul>
 </li>
@@ -747,6 +771,22 @@ ground this tick (e.g. standing still, or walking off a slope with no explicit v
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">move(desiredTranslation: Point3, dt?: number): void
 </code></pre>
+<h3 id="detachignoredbodies-method">detachIgnoredBodies (method)</h3>
+<p>Removes every currently-added body in <code>ignoredBodies</code> from the collision world's broadphase,
+mirroring the self-exclusion trick <code>sweep()</code>/<code>recoverFromPenetration()</code> already use for this
+character's own ghost object - see <code>ICharacterController3dComponent.ignoredBodies</code>'s doc for why
+this, not collision groups, is the actual mechanism. Returns the subset that was genuinely
+detached (i.e. was in the world to begin with) - pass this straight to <code>reattachIgnoredBodies</code>
+once the query is done; a body that was never added is left alone rather than incorrectly added
+to the world by the matching reattach call.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private detachIgnoredBodies(): AmmoRigidBodyComponent[]
+</code></pre>
+<h3 id="reattachignoredbodies-method">reattachIgnoredBodies (method)</h3>
+<p>Undoes <code>detachIgnoredBodies()</code> for exactly the bodies it returned.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private reattachIgnoredBodies(detached: AmmoRigidBodyComponent[]): void
+</code></pre>
 <h3 id="iswalkablenormal-method">isWalkableNormal (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">private isWalkableNormal(normal: Point3, up: Point3): boolean
@@ -788,7 +828,8 @@ remaining blocked distance, projected onto the obstacle's surface plane.</p>
 character (zero or near-zero vertical input this tick) register as grounded, and approximates
 <code>snapToGroundDistance</code> for following a slope/staircase down without briefly going airborne each
 step. The ray starts a hair below the capsule's actual bottom point (past its own outward
-surface) so it can never register a hit against the character's own shape.</p>
+surface), which by itself is <em>inside</em> this character's own capsule - see the temporary
+self-detach below for why that no longer safely rules out a self-hit on its own.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">private trySnapToGround(pos: Point3, up: Point3, skin: number): { position: Point3; normal: Point3 } | null
 </code></pre>
@@ -896,6 +937,12 @@ harder push) is left alone rather than being slowed back down to <code>character
 <h3 id="centersdistance-property">centersDistance (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly centersDistance: number
+</code></pre>
+<h3 id="ignoredbodies-property">ignoredBodies (property)</h3>
+<p>See <code>ICharacterController3dComponent.ignoredBodies</code>'s doc. Consulted fresh by <code>sweep()</code> and
+<code>recoverFromPenetration()</code> every call - see <code>withIgnoredBodiesDetached</code>.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly ignoredBodies: any
 </code></pre>
 <h3 id="debugbodysettings-property">debugBodySettings (property)</h3>
 <p><strong>Signature</strong></p>
