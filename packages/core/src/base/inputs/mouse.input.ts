@@ -220,7 +220,12 @@ export class MouseInput extends IInput<[], [unlockPointer?: boolean]> {
       }
       if (pointers.length === 0) {
         if (this.options.canvas) {
-          this.options.canvas.releasePointerCapture(event.pointerId);
+          // Throws if this pointer was never actually captured - own try/catch so that can't skip the cleanup below.
+          try {
+            this.options.canvas.releasePointerCapture(event.pointerId);
+          } catch (err) {
+            console.error(err);
+          }
         }
         window.removeEventListener('pointerup', onPointerUp as any);
         this._element.removeEventListener('pointercancel', onPointerUp as any);
@@ -232,16 +237,20 @@ export class MouseInput extends IInput<[], [unlockPointer?: boolean]> {
       .pipe(takeUntil(this.stopped$))
       .subscribe((event: PointerEvent) => {
         if (pointers.length === 0) {
-          try {
-            if (this.options.canvas) {
+          // Pointless (and throws) for a locked pointer - it has no screen position to stray
+          // outside the canvas with in the first place. Own try/catch regardless, so a failure
+          // here can't skip registering the pointerup/pointercancel listeners below, which would
+          // leave state$ stuck forever on this button's drag state.
+          if (this.options.canvas && !this.isPointerLocked) {
+            try {
               this.options.canvas.setPointerCapture(event.pointerId);
+            } catch (err) {
+              console.error(err);
             }
-            // use window instead of this._element to handle case when mouse was released over other element
-            window.addEventListener('pointerup', onPointerUp as any);
-            this._element.addEventListener('pointercancel', onPointerUp as any);
-          } catch (err) {
-            console.error(err);
           }
+          // use window instead of this._element to handle case when mouse was released over other element
+          window.addEventListener('pointerup', onPointerUp as any);
+          this._element.addEventListener('pointercancel', onPointerUp as any);
         }
         pointers.push(event);
         if (event.pointerType === 'touch') {
@@ -271,9 +280,11 @@ export class MouseInput extends IInput<[], [unlockPointer?: boolean]> {
   }
 
   /**
-   Request pointer lock on the canvas element.
+   Request pointer lock on the canvas element. No-op if already locked.
    */
   private canvasClickListener(): void {
-    this.options.canvas!.requestPointerLock();
+    if (!this.isPointerLocked) {
+      this.options.canvas!.requestPointerLock();
+    }
   }
 }

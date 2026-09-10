@@ -27,6 +27,24 @@ bug found here: `Rapier3dRaycastVehicleComponent`'s native vehicle controller ne
 reachable from an ordinary `removeFromWorld` before; fixed by calling `this.dispose()` from
 `removeFromWorld` when `dispose` is `true`.
 
+## Sleeping bodies silently ignored programmatic transform/velocity writes (3D; 2D shares the same native API and is worth checking too)
+
+See `gg-engine-physics-adapter`'s general contract note on this (the cross-adapter version of the
+bug, with the regression-test recipe). The Rapier-specific fact worth recording here: this package's
+own rigid-body setters were the direct cause, not an oversight elsewhere - Rapier's `RigidBody.setTranslation`/
+`setRotation`/`setLinvel`/`setAngvel` all take an explicit trailing `wakeUp: boolean` argument (the
+native API makes the choice visible, unlike Bullet's - see `gg-engine-physics-adapter-ammo`), and
+`Rapier3dRigidBodyComponent`'s four setters all passed `false`. A sleeping body's island is skipped
+entirely by Rapier's own `step()` regardless of what its translation/velocity is set to, so this
+silently no-opped every write to a body that happened to be asleep at the time - found live via
+`Grabbable3dEntity` (core): a prop resting on a pedestal long enough to sleep completely ignored
+every per-tick `updateHold()` velocity write and stayed frozen, even though the component's own
+getters read back whatever was just (uselessly) set. Fix: pass `true` in all four setters.
+`resetMotion()`'s own direct `setAngvel`/`setLinvel(..., false)` calls were deliberately left as
+`false` - it's clearing a body's motion right before/after a teleport, not asking it to move, so
+there's no obvious need to force a wake there; revisit only if a similar frozen-body symptom is ever
+reported for a body going through `resetMotion` specifically.
+
 ## Pitfall: a freshly-created collider is invisible to sweeps/raycasts until the world steps once
 
 Hit implementing `Rapier3dCharacterControllerComponent`: calling `move()` immediately after creating
@@ -296,6 +314,27 @@ Applies to both packages (each has its own `jest` config/`node_modules`):
   silently lost - this is a correctness requirement for any real consumer of this API (a per-frame game
   loop already does this naturally), not just a test artifact. Write trigger tests as small (e.g. 10ms)
   simulate-then-check steps in a loop rather than jumping to a checkpoint with one large timestep.
+
+## `ignoredBodies` (3D): Rapier's own `filterPredicate` does this natively, no broadphase-detach trick needed
+
+`Rapier3dCharacterControllerComponent.ignoredBodies` (a `Set<Rapier3dRigidBodyComponent>`) is
+implemented via `KinematicCharacterController.computeColliderMovement`'s own optional 5th argument,
+`filterPredicate?: (collider: Collider) => boolean` - return `false` to exclude a candidate collider
+from that one call, no persistent state or collision-group changes needed. This is meaningfully
+simpler than `AmmoCharacterControllerComponent`'s equivalent (see `gg-engine-physics-adapter-ammo`'s
+own note), which has to fake the same effect by temporarily pulling ignored bodies out of the
+collision world's broadphase, since this pinned Ammo.js embind build exposes no such native predicate
+hook on `convexSweepTest`/`contactTest`. Build the exclusion set fresh each `move()` call from
+`RigidBody.handle` (a plain numeric id) rather than comparing `Collider`/`RigidBody` object identity -
+`collider.parent()` isn't guaranteed to return the same wrapper instance across calls on this pinned
+`@dimforge/rapier3d-compat` build, only the same underlying native body. Skip building a predicate at
+all (pass `undefined`, not an always-`true` closure) when `ignoredBodies` is empty, the common case -
+keeps the ordinary per-tick cost at zero for a character that never interacts with this feature.
+Because `computedCollision()` (used by this component's own `pushDynamicBodies`) is populated by the
+very same `computeColliderMovement` call, an excluded body simply never appears there either - no
+separate filtering needed on the push side, unlike a hand-rolled mover where movement-sweep exclusion
+and penetration-recovery exclusion are two separate code paths that both need it (again, see the Ammo
+note).
 
 ## Keep this skill current
 

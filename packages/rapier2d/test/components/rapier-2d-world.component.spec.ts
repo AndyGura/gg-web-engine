@@ -87,6 +87,34 @@ describe('Rapier2dWorldComponent', () => {
     });
   });
 
+  describe('Sleeping bodies', () => {
+    it(
+      'wakes a sleeping body when position/rotation/velocity is set programmatically ' +
+        '(regression: Rapier skips a sleeping body\'s island entirely during step(), so a ' +
+        'transform/velocity write passing wakeUp=false was silently never simulated)',
+      () => {
+        const circle = world.factory.createRigidBody(
+          { shape: { shape: 'CIRCLE', radius: 1 }, body: { dynamic: true, mass: 5 } },
+          { position: { x: 0, y: 0 } },
+        );
+        circle.addToWorld({ physicsWorld: world } as any);
+
+        // let it fall asleep: zero gravity (see beforeEach) and zero velocity means nothing ever
+        // disturbs it, so Rapier's own sleep threshold/timer runs out on its own.
+        for (let i = 0; i < 200; i++) {
+          world.simulate(60);
+        }
+        expect((circle as any).nativeBody.isSleeping()).toBe(true);
+
+        circle.linearVelocity = { x: 1, y: 0 };
+        for (let i = 0; i < 60; i++) {
+          world.simulate(60);
+        }
+        expect(circle.position.x).toBeGreaterThan(0.5);
+      },
+    );
+  });
+
   describe('Raycast', () => {
 
     it('should return no hit when ray does not intersect any object', () => {

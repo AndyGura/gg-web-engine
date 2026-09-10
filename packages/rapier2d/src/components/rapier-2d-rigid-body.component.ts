@@ -29,7 +29,7 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
 
   public set position(value: Point2) {
     if (this.nativeBody) {
-      this.nativeBody.setTranslation(new Vector2(value.x, value.y), false);
+      this.nativeBody.setTranslation(new Vector2(value.x, value.y), true);
     } else {
       this._bodyDescr.setTranslation(value.x, value.y);
     }
@@ -41,7 +41,7 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
 
   public set rotation(value: number) {
     if (this.nativeBody) {
-      this.nativeBody.setRotation(value, false);
+      this.nativeBody.setRotation(value, true);
     } else {
       this._bodyDescr.setRotation(value);
     }
@@ -53,7 +53,7 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
 
   set linearVelocity(value: Point2) {
     if (this.nativeBody) {
-      this.nativeBody.setLinvel(new Vector2(value.x, value.y), false);
+      this.nativeBody.setLinvel(new Vector2(value.x, value.y), true);
     }
   }
 
@@ -63,7 +63,7 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
 
   set angularVelocity(value: number) {
     if (this.nativeBody) {
-      this.nativeBody.setAngvel(value, false);
+      this.nativeBody.setAngvel(value, true);
     }
   }
 

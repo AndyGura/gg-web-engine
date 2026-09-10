@@ -20,6 +20,7 @@ import {
   Vector3,
 } from '@dimforge/rapier3d-compat';
 import { Rapier3dWorldComponent } from './rapier-3d-world.component';
+import { Rapier3dRigidBodyComponent } from './rapier-3d-rigid-body.component';
 import { Rapier3dGgWorld, Rapier3dPhysicsTypeDocRepo } from '../types';
 
 /**
@@ -77,6 +78,13 @@ export class Rapier3dCharacterControllerComponent implements ICharacterControlle
   public get groundNormal(): Point3 | null {
     return this._groundNormal;
   }
+
+  /** See `ICharacterController3dComponent.ignoredBodies`'s doc. Consulted fresh every `move()` call
+   * via `computeColliderMovement`'s own `filterPredicate` - unlike `AmmoCharacterControllerComponent`
+   * (which has to fake this by temporarily pulling ignored bodies out of the collision world),
+   * Rapier's character controller supports excluding specific colliders from a single query
+   * natively, so no such trick is needed here. */
+  public readonly ignoredBodies: Set<Rapier3dRigidBodyComponent> = new Set();
 
   // Module-wide (not per-instance) so a scene with several characters all being driven without
   // `dt` still only logs once, not once per character per tick - see `pushDynamicBodies`'s
@@ -190,6 +198,32 @@ export class Rapier3dCharacterControllerComponent implements ICharacterControlle
     this.world.nativeWorld.propagateModifiedBodyPositionsToColliders();
   }
 
+  /**
+   * Builds `computeColliderMovement`'s `filterPredicate` from `ignoredBodies` - `undefined` when
+   * empty (the common case) rather than an always-true closure, so an empty `ignoredBodies` set costs
+   * nothing extra per query. Compares by `RigidBody.handle` (a plain numeric id), not object
+   * identity - `Collider.parent()` isn't guaranteed to return the same wrapper instance across calls
+   * for the pinned `@dimforge/rapier3d-compat` build, only the same underlying native body.
+   */
+  private ignoredBodiesFilterPredicate(): ((collider: Collider) => boolean) | undefined {
+    if (this.ignoredBodies.size === 0) {
+      return undefined;
+    }
+    const ignoredHandles = new Set<number>();
+    for (const body of this.ignoredBodies) {
+      if (body.nativeBody) {
+        ignoredHandles.add(body.nativeBody.handle);
+      }
+    }
+    if (ignoredHandles.size === 0) {
+      return undefined;
+    }
+    return (collider: Collider) => {
+      const parent = collider.parent();
+      return !parent || !ignoredHandles.has(parent.handle);
+    };
+  }
+
   move(desiredTranslation: Point3, dt?: number): void {
     if (!this._nativeBody || !this._nativeCollider || !this._nativeController) {
       // not yet added to the world - nothing to sweep against (matches
@@ -236,7 +270,13 @@ export class Rapier3dCharacterControllerComponent implements ICharacterControlle
     }
 
     const desired = new Vector3(desiredTranslation.x, desiredTranslation.y, desiredTranslation.z);
-    this._nativeController.computeColliderMovement(this._nativeCollider, desired);
+    this._nativeController.computeColliderMovement(
+      this._nativeCollider,
+      desired,
+      undefined,
+      undefined,
+      this.ignoredBodiesFilterPredicate(),
+    );
     const computed = this._nativeController.computedMovement();
     const current = this._nativeBody.translation();
     const next = new Vector3(current.x + computed.x, current.y + computed.y, current.z + computed.z);

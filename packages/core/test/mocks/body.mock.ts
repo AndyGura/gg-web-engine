@@ -18,6 +18,10 @@ export const mock3DBody = () => {
   return {
     position: { x: 0, y: 0, z: 0 },
     rotation: { x: 0, y: 0, z: 0, w: 1 },
+    linearVelocity: { x: 0, y: 0, z: 0 },
+    angularVelocity: { x: 0, y: 0, z: 0 },
+    ownCollisionGroups: [0],
+    interactWithCollisionGroups: [0],
     name: '',
     addToWorld() {
     },

@@ -125,6 +125,30 @@ Both must implement `IPositionable(2d|3d)` (position/rotation proxied to the nat
 worth factoring into a common base component — see `AmmoBodyComponent` shared by
 `AmmoRigidBodyComponent` and `AmmoTriggerComponent`.
 
+**A dynamic body's `position`/`rotation`/`linearVelocity`/`angularVelocity` setters must wake a
+sleeping body.** Every native engine deactivates ("sleeps") a dynamic body that's been at rest for a
+while, as a performance optimization - and every native engine's own simulation step skips a sleeping
+body's island entirely regardless of what raw transform/velocity values sit in its memory, so a
+setter that writes the new value straight through without also forcing reactivation has that write
+silently never take effect until something else (e.g. a collision) wakes the body up first. Confirmed
+in both `packages/ammo` (`nativeBody.activate(true)`, missing entirely - Bullet's
+`setLinearVelocity`/`setWorldTransform` etc. don't imply activation on their own) and
+`packages/rapier3d` (`setLinvel`/`setTranslation`/etc. take an explicit trailing `wakeUp: boolean`
+argument, which this adapter had wired to `false`) - found live via `Grabbable3dEntity` (core): a
+prop resting on a pedestal long enough to fall asleep completely ignored every per-tick
+`updateHold()` velocity write and stayed frozen in place, even though the component's own
+`linearVelocity` getter correctly read back whatever was just set - until something else physically
+bumped it awake first, after which it worked normally. Any new adapter's rigid-body setters must
+force-wake the native body on every write, not just at creation; write a regression test that lets a
+body actually fall asleep (simulate at rest, with gravity zeroed, until the native "is
+active"/"is sleeping" query flips) before asserting a subsequent `linearVelocity`/`position` write
+actually moves it - a test that never lets the body sleep in the first place cannot catch this.
+Checked empirically and found *not* to apply to `packages/matter`: `matter-js`'s `Engine.create()`
+defaults `enableSleeping` to `false` and this adapter never overrides it, so a body never actually
+enters a sleeping state at all under the current setup, regardless of how long it rests - nothing to
+fix there unless a future change enables sleeping (see `gg-engine-physics-adapter-matter` for the
+one-line pointer).
+
 **Triggers** are sensor colliders with no collision response that emit enter/exit events; wire the
 native engine's collision-event mechanism into an RxJS-based interface matching
 `ITriggerComponent`, enabling the native "collision events" flag on the collider at creation time
@@ -196,6 +220,43 @@ synchronous contract like this (see `Rapier3dCharacterControllerComponent`):
   in the raycast reverse-map (so `world.raycast()` can resolve a hit back to it) is optional scope —
   reasonable to skip and document as a limitation, since it would otherwise force widening that map's
   and `raycast()`'s return-type generics for a corner case outside the interface's actual contract.
+- **`ignoredBodies: Set<PTypeDoc['rigidBody']>`** — a mutable set of rigid bodies this character's own
+  `move()` must treat as genuinely absent from the world (not merely non-colliding) for the duration
+  of its own sweeps/overlap-recovery, consulted fresh every call since membership changes between
+  ticks (e.g. `ObjectGrabController` adding/removing a currently-held `Grabbable3dEntity`'s
+  `objectBody` on grab/release). This exists because `ownCollisionGroups`/`interactWithCollisionGroups`
+  **cannot** express "exclude just this one pair" when both sides must keep colliding with some
+  shared group for ordinary world collision (almost always true) — see
+  `gg-engine-core-development`'s "Collision groups can't express..." note for the full argument, and
+  this interface member's own doc for the concrete bug (a held prop blocking/launching its own
+  holder) that motivated it. Two very different implementation strategies work, prefer whichever your
+  engine actually supports:
+  - A native per-query exclusion predicate/collider-list, if the engine's own sweep call takes one
+    (Rapier's `KinematicCharacterController.computeColliderMovement(collider, delta, filterFlags?,
+    filterGroups?, filterPredicate?)` does — build a `Set` of native body handles from `ignoredBodies`
+    once per `move()` call and return `false` from the predicate for a collider whose `.parent()`
+    handle is in it; compare by handle, not object identity, since a wrapper's `.parent()` isn't
+    guaranteed to return the same JS instance across calls).
+  - If the engine's sweep query has no such native hook, temporarily remove each ignored body from
+    the collision world's broadphase for the duration of every query that could see it, then restore
+    it immediately after — the exact same trick a hand-rolled mover already needs anyway to exclude
+    the character's *own* shape from its own sweep (see `AmmoCharacterControllerComponent.sweep`'s
+    doc). Every one of the mover's own collision queries needs this, not just the main movement sweep
+    — a hand-rolled mover's own overlap-recovery/penetration-correction step, if it has one (see
+    `gg-engine-physics-adapter-ammo`'s `recoverFromPenetration` for a concrete example), must ignore
+    these bodies too, or excluding a body from movement sweeps alone still leaves the
+    character's own recovery step reacting to it overlapping and shoving the character around based
+    on that overlap - exactly the bug this feature exists to prevent, just relocated to a different
+    method. Give the rigid-body component itself a small pair of public methods for this
+    (`detachFromBroadphaseTemporarily()` returning whether it actually did anything /
+    `reattachToBroadphase()`) rather than reaching into its internals from the character controller
+    class - the two are typically siblings under a shared base class with the group/mask bitmasks as
+    `protected` fields, not visible to each other directly.
+  - Whichever strategy: a component-swap operation that creates a *replacement* character-controller
+    instance for the same logical character (e.g. a stand/crouch capsule-resize implemented as
+    "create new, dispose old" rather than resizing in place) must copy `ignoredBodies`' contents into
+    the replacement itself - it doesn't happen automatically, and dropping it silently re-enables
+    collision with whatever was being held/ignored the instant such a swap occurs.
 
 ### The `removeFromWorld(dispose)` contract
 
