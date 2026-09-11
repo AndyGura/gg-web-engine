@@ -388,6 +388,7 @@ world.init().then(async () => {
   const playerController = new PlayerCharacterController(world.keyboardInput, player, renderer, {
     mouseOptions: { canvas },
     ignoreMouseUnlessPointerLocked: true,
+    toggleViewKey: null,
   });
   world.addEntity(playerController);
 
