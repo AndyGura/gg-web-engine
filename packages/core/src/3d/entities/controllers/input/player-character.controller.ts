@@ -16,6 +16,7 @@ import {
 import { Renderer3dEntity } from '../../renderer-3d.entity';
 import { CharacterController3dEntity } from '../../character-controller-3d.entity';
 import { Gg3dWorldTypeDocRepo } from '../../../gg-3d-world';
+import { characterControllerSelfHitSkip } from './character-controller-self-hit-skip';
 
 export type PlayerCharacterControllerViewMode = 'first-person' | 'third-person';
 
@@ -296,14 +297,18 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
         // indistinguishable from first-person (regression, found live in the rapier3d example: `V`
         // correctly flipped `viewMode` to `'third-person'`, but the camera stayed glued to the
         // character's own head position instead of pulling back). Nudge the ray's start point
-        // outward past the capsule's own radius along the same look direction first - the capsule's
-        // horizontal cross-section is exactly `radius` wide at any height within its cylindrical
-        // midsection, and close enough above/below it - then add that offset back onto the measured
-        // hit distance so it's still relative to `target`, not the nudged start point.
-        const skin = 0.05;
-        const startOffset = Math.min(
-          this.character.characterController.radius + skin,
-          this.options.thirdPersonDistance * 0.9,
+        // outward past the capsule's own geometry along the same look direction first via
+        // `characterControllerSelfHitSkip()` (see its own doc - `ObjectGrabController.tryGrab()` uses
+        // the same helper for the identical problem), then add that offset back onto the measured hit
+        // distance so it's still relative to `target`, not the nudged start point.
+        const startOffset = characterControllerSelfHitSkip(
+          target,
+          Pnt3.neg(lookDir),
+          this.character.position,
+          up,
+          this.character.characterController.radius,
+          this.character.characterController.centersDistance,
+          this.options.thirdPersonDistance,
         );
         const rayStart = Pnt3.sub(target, Pnt3.scalarMult(lookDir, startOffset));
         const desired = Pnt3.sub(target, Pnt3.scalarMult(lookDir, distance));

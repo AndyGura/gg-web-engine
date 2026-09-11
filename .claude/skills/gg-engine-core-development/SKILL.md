@@ -182,53 +182,88 @@ cylinder around the holder's capsule) still exists alongside `ignoredBodies` too
 cosmetic finishing touch (stops a prop from visibly poking into the holder's own model at the instant
 it's picked up) — see that class's own doc for the current division of labor between the two.
 
-## `ObjectGrabController.tryGrab()`'s pick-up ray: don't skip a *guessed* distance, retry from where a close hit actually exits
+## `characterControllerSelfHitSkip()` - the shared fix for "my own capsule self-hits a raycast starting on its axis"
 
-`tryGrab()` raycasts along the camera's forward direction to find what to pick up - but the camera
-sits inside (or right at the surface of) `holder`'s own capsule, so a ray cast from `camera.position`
-almost always self-hits that capsule first, before anything the player is actually aiming at.
-`tryGrab()` used to dodge this by starting the ray a fixed `holderClearance()` distance (a
-worst-case guess at how big the holder's capsule can possibly be) in front of the camera instead of
-at it — this reliably cleared the capsule, but at the cost of skipping over that same fixed distance
-of ray *unconditionally*, every cast, whether or not anything was actually in the way.
+Exported from `packages/core/src/3d/entities/controllers/input/character-controller-self-hit-skip.ts`
+(and from the package root), `characterControllerSelfHitSkip(origin, direction, capsuleCenter, up,
+radius, centersDistance, maxDistance, skin = 0.05)` returns a safe forward-skip distance, from `origin`
+along `direction`, for raycasting from a point on or inside a character controller's own capsule (a
+first-person camera, or a third-person camera's look target on the character's centerline) without
+ever reading an exit point off the raycast result itself. Two unrelated call sites need exactly this:
+`ObjectGrabController.tryGrab()`'s pick-up ray and `PlayerCharacterController`'s third-person
+`cameraCollision` ray - both hit the same underlying problem and share this one helper instead of each
+re-deriving it.
 
-That skip is only safe when nothing real sits inside it. A small grabbable prop resting on a
-pedestal — an entirely ordinary scene, not a contrived edge case — sits well below eye height, so a
-camera pitched down at it is close enough that the fixed skip distance flies *past* the prop
-entirely. Found via a real, reproducible gameplay report and confirmed by reproducing the reporter's
-*exact* failing position (read from the in-game dev console's entity inspector — camera position/
-rotation computed from it, not guessed): the skipped-past ray didn't just miss the prop, it flew on
-into the pedestal underneath it, a real, legitimate hit on a non-grabbable body — so `tryGrab()` saw
-"hit something, but not a `Grabbable3dEntity`" and silently did nothing, every time, regardless of
-which physics adapter the world was built with (this is adapter-agnostic; see
-`gg-engine-physics-adapter-ammo`'s own note on a *related*, genuinely adapter-specific raycast gap
-found and fixed while chasing this same report, which turned out to be real but not sufficient to
-resolve it — that note's own postscript on re-testing with the reporter's exact numbers before
-declaring a raycast bug closed is worth reading before touching this method again).
+**Why a raycast result can't supply this distance itself**: `RaycastOptions` has no per-call "exclude
+this body" hook, and a raycast whose origin already lies inside a shape has no reliable way to report
+where it *exits* that shape either - an adapter using a "solid" ray mode reports the containing shape
+hit at distance `0`, from the origin again, not its far boundary (Rapier3d's
+`castRay(..., solid: true, ...)`), while Ammo's `rayTest` simply can't see the shape containing its own
+origin at all and silently omits it. Building a retry on whatever point such a raycast happens to
+report is therefore adapter-dependent by construction: on Rapier (whose solid-ray mode *always*
+prefers the containing capsule over anything genuinely beyond it) a retry nudged forward from that
+reported point lands right back inside the same capsule, self-hitting again every time - `tryGrab()`
+went through exactly this as a real regression, working fine on Ammo (whose `rayTest` never needed the
+retry to begin with, since it already skips its own containing shape transparently) while silently
+breaking pick-up entirely on Rapier.
 
-**Fix**: cast once from the camera's actual, un-skipped position first. If that already lands on a
-`Grabbable3dEntity`, grab it — done, no retry (this also correctly handles a prop close enough to be
-found before any self-hit would even occur, which the old fixed-skip design never could). Otherwise,
-only retry — from exactly where that first hit's surface exits (`result.hitPoint`), plus a small
-fixed `SELF_HIT_SKIN` (0.01m, just enough to clear ordinary float/engine surface tolerance, *not* a
-guess at anything holder-sized) — when the first hit is closer than `holderClearance()` could ever
-put a genuinely different object, given the camera sits on/within the capsule's own axis. A hit
-farther than that is trusted as a real, legitimately-blocking obstacle and left alone, exactly as
-before — this only changes what happens for a hit close enough to plausibly be the holder's own
-capsule; it never lets the ray skip through geometry that's actually far away.
+**The fix computes the skip geometrically instead, by sphere-tracing the capsule's own exact distance
+field**: a capsule is exactly "every point within `radius` of its own medial segment" (the line
+between its two hemisphere centers, `centersDistance` apart, clamped to that segment when a point's
+axial projection falls outside it), so `radius - distanceToSegment(point)` is the *exact* signed
+distance from any point to the capsule's surface - not an approximation. Starting at `origin`, each
+iteration advances by exactly that remaining distance and re-measures; because the distance field is
+exact and 1-Lipschitz, this can never overshoot past the real exit point, and converges to it (20
+iterations gets well under float precision for realistic capsule sizes - verified empirically). The
+result plus `skin` (0.05 by default, ordinary float/engine surface tolerance) is clamped to at most
+90% of `maxDistance` (the full ray length in play at the call site) so a capsule large relative to a
+short ray can't consume the entire cast.
 
-This can't be done by checking `result.hitBody?.entity === holder` instead (a more "obviously
-correct"-looking identity check) — self-hit resolution isn't reliable across every adapter in the
+This replaced an earlier, simpler attempt that skipped a flat `radius + skin` regardless of direction
+or where on the capsule `origin` actually sat - correct only when `origin` is in the capsule's
+cylindrical midsection and `direction` is close to horizontal. That assumption broke on a real
+gameplay report at `ObjectGrabController`'s own default settings: a first-person camera sits
+`eyeHeight` (0.7 by default) above the character's capsule center, taller than the capsule's own
+half-height (`centersDistance / 2`, 0.5 at the example's own player settings) - so the camera actually
+starts inside the *rounded top cap*, not the cylindrical body - and a real downward-pitched look
+toward a low, close prop meant the flat skip landed the retry still measurably inside the capsule,
+self-hitting again and leaving the prop permanently ungrabbable at that exact position (found by
+reproducing the reporter's own exact in-game position, read from the dev console's entity inspector,
+in a jest harness matching the real scene geometry - not guessed). Sphere-tracing has no separate
+"which part of the capsule, which look angle" case to get wrong, since the same distance field
+describes the cylindrical body and both rounded caps continuously - this is also why the flat-`radius`
+version's own prior fix (see below) needed `holderClearance()` in the first place: that version
+couldn't safely handle *any* pitch, so it had to fall back to a worst-case bound for the ones it
+couldn't.
+
+The `holderClearance()`-sized skip that came before the flat-`radius` attempt (`radius +
+centersDistance / 2 + margin`, `ObjectGrabController`'s own worst-case bound for *any* direction) is
+still used, unrelated to the skip distance itself, as the *trigger* for whether to retry at all:
+`ObjectGrabController.tryGrab()` only calls into `characterControllerSelfHitSkip()` as a retry, not on
+every cast - it casts once from the camera's actual, un-skipped position first, and only retries when
+that first hit is closer than `holderClearance()` could ever put a genuinely different object (i.e.
+plausibly the holder's own capsule) - this is what lets a prop close enough to be found before any
+self-hit would even occur get grabbed directly, without ever needing the skip at all.
+
+This can't be replaced with checking `result.hitBody?.entity === holder` instead (a more "obviously
+correct"-looking identity check) - self-hit resolution isn't reliable across every adapter in the
 first place: `Rapier3dCharacterControllerComponent`'s own doc notes its collider is never registered
 in `Rapier3dWorldComponent.handleIdEntityMap` at all, so a self-hit there always resolves to
-`hitBody: undefined`, indistinguishable by identity from any other untracked hit. The
-distance-based heuristic above works identically regardless of whether a given adapter can resolve
-the self-hit's identity at all.
+`hitBody: undefined`, indistinguishable by identity from any other untracked hit. The distance-based
+heuristic works identically regardless of whether a given adapter can resolve the self-hit's identity
+at all.
 
-Regression coverage: `packages/core/test/3d/entities/controllers/input/object-grab.controller.spec.ts`'s
-`grabbing` describe block has the "found immediately, no retry" case, the "retries from exactly the
-close hit's exit point" case, and the "does not retry past a hit farther than `holderClearance()`"
-case (a real obstacle still correctly blocks the grab).
+Regression coverage: `character-controller-self-hit-skip.spec.ts` covers the helper directly (default
+skin, custom skin, the pitched-above-midsection case, the `maxDistance * 0.9` clamp).
+`object-grab.controller.spec.ts`'s `grabbing` describe block has the "found immediately, no retry"
+case, the "retries by sphere-tracing past the holder's own capsule" case, and the "does not retry past
+a hit farther than `holderClearance()`" case (a real obstacle still correctly blocks the grab).
+`packages/rapier3d/test/components/rapier-3d-object-grab-integration.spec.ts` exercises the whole
+mechanism end-to-end against a real `Rapier3dWorldComponent` and character-controller collider,
+including the exact position/rotation the gameplay report above was reproduced from - real,
+adapter-specific regressions like this one are worth reproducing at that level, not just against the
+core-level mocked-raycast tests, precisely because the bug lived in how a real adapter's raycast
+semantics interact with this helper, not in the helper's own math in isolation.
 
 ## The TypeDocRepo generic pattern — read this before touching interfaces
 

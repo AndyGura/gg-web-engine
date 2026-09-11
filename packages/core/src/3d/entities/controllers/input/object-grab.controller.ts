@@ -4,6 +4,7 @@ import { Renderer3dEntity } from '../../renderer-3d.entity';
 import { Grabbable3dEntity } from '../../grabbable-3d.entity';
 import { CharacterController3dEntity } from '../../character-controller-3d.entity';
 import { Gg3dWorld, Gg3dWorldTypeDocRepo } from '../../../gg-3d-world';
+import { characterControllerSelfHitSkip } from './character-controller-self-hit-skip';
 
 /**
  * Options for an `ObjectGrabController`.
@@ -38,13 +39,6 @@ const DEFAULT_OPTIONS: ObjectGrabControllerOptions = {
   throwSpeed: 12,
   holderExclusionMargin: 0.3,
 };
-
-/**
- * How far past a self-hit's exact exit point `tryGrab()`'s retry cast starts from, in meters -
- * just enough to clear ordinary floating-point/engine-internal surface tolerance, not a guess at
- * the holder's own size (see `tryGrab()`'s own doc for why that distinction matters).
- */
-const SELF_HIT_SKIN = 0.01;
 
 /**
  * HL2/Portal-style "use key carries a physics prop" input controller: raycasts from `camera`'s
@@ -258,29 +252,53 @@ export class ObjectGrabController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWor
    * that capsule itself, not whatever's actually being aimed at - `holder.characterController`
    * isn't reliably resolvable back to `holder` from a `RaycastResult` on every adapter either (e.g.
    * `Rapier3dCharacterControllerComponent`'s own doc - its collider is never registered for that),
-   * so this can't be told apart from "some other real obstacle" by identity.
+   * so this can't be told apart from "some other real obstacle" by identity, and `RaycastResult`
+   * gives no distance-through-the-shape either: a ray whose origin is already inside a shape reports
+   * that shape as hit at distance `0` (Rapier's `castRay(..., solid: true, ...)`, and Ammo's own
+   * `rayTest` finding nothing at all for the containing shape and falling back to a distance-`0`
+   * overlap probe) rather than the point where it would actually exit - so "retry from where the
+   * self-hit exits" has no real value to read a retry start point from on any adapter, and the two
+   * adapters aren't even consistent with each other about what a self-hit *is*: Ammo's `rayTest`
+   * simply can't see the shape containing its own ray origin, so it transparently reports whatever
+   * real object is actually hit beyond it (the common case needs no retry on Ammo at all); Rapier's
+   * `solid: true` mode does the opposite and always reports the containing shape at distance `0`,
+   * ahead of anything genuinely beyond it - so relying on the first cast to reliably find the *real*
+   * target only ever works by accident, and only on Ammo.
    *
-   * **This used to be dodged by starting the ray a fixed `holderClearance()` distance in front of
-   * the camera instead of at it - a worst-case guess at how big `holder`'s own capsule can possibly
-   * be, not where it actually ends along *this* particular ray.** That guess overshoots dramatically
-   * for a camera pitched steeply down at something close and small (the common case for a resting
-   * prop, which sits well below eye height) - real, reproduced bug: standing close enough to a small
-   * grabbable prop resting on a pedestal, the fixed skip flew straight past the prop *and* landed
-   * inside the pedestal underneath it, so the ray reported a legitimate hit on the (non-grabbable)
-   * pedestal instead of ever reaching the prop, silently blocking the pick-up.
+   * **First tried starting the ray a fixed `holderClearance()` distance in front of the camera
+   * instead of at it** - a worst-case guess at how big the holder's capsule can possibly be in *any*
+   * direction (it also accounts for `centersDistance`, the capsule's full half-height, not just its
+   * radius). That guess overshoots dramatically for a camera pitched steeply down at something close
+   * and small (the common case for a resting prop, which sits well below eye height) - real,
+   * reproduced bug: standing close enough to a small grabbable prop resting on a pedestal, the fixed
+   * skip flew straight past the prop *and* landed inside the pedestal underneath it, reporting a
+   * legitimate hit on the (non-grabbable) pedestal instead of ever reaching the prop.
    *
-   * **Fixed with a real two-pass cast instead of a guessed skip distance**: cast once from the
-   * actual `camera.position` first. If that hit is already a `Grabbable3dEntity`, done - grab it,
-   * no retry needed (handles a prop close enough to be found before any self-hit would even occur).
-   * Otherwise, only if the hit is closer than `holderClearance()` could ever put a *different*
-   * object (given the camera sits on/within the capsule's own axis, nothing external can
-   * legitimately be that close without already overlapping the holder, an already-broken physics
-   * state this doesn't need to handle) - retry from exactly where that first hit exits (plus
-   * `SELF_HIT_SKIN`, a small fixed clearance for ordinary surface float tolerance, not a guess at
-   * anything holder-sized) rather than from an arbitrary fixed distance. A hit farther than
-   * `holderClearance()` away is trusted as a real obstacle and left blocking the grab, same as
-   * before - this only changes what happens for a hit close enough to plausibly be the holder's own
-   * capsule, never lets the ray skip through genuinely distant geometry.
+   * **Then tried a two-pass cast, retrying from the first hit's own point** (whatever it was) plus a
+   * small fixed clearance - cast once from the actual `camera.position` first, and only if that
+   * missed (or hit something within `holderClearance()`, plausibly the holder's own capsule) retry
+   * from just past that hit. This reads right in isolation, but silently assumed the first hit's
+   * point marks where the ray *exits* the self-collision shape - which, per this doc's opening
+   * paragraph, is never true for a solid/fallback hit at distance `0`: the reported point is just the
+   * ray's own origin again. On Rapier specifically (where the first cast *always* reports the
+   * containing capsule this way whenever the camera is inside it) the retry's tiny nudge landed the
+   * second cast still deep inside the same capsule, which reported the exact same self-hit again -
+   * pick-up silently stopped working on Rapier entirely, while appearing to work fine on Ammo (whose
+   * `rayTest` never needed the retry to begin with, for the reason given above).
+   *
+   * **Fixed by computing the escape point geometrically instead of reading it off any raycast
+   * result**: cast once from the actual `camera.position` first - if that already lands on a
+   * `Grabbable3dEntity`, done, no retry needed (this is what lets a prop close enough to be found
+   * before any self-hit would even occur through on Ammo). Otherwise, when the hit is closer than
+   * `holderClearance()` could ever put a genuinely different object (given the camera sits on/within
+   * the capsule's own axis), retry from `camera.position` skipped forward by
+   * `characterControllerSelfHitSkip()` - see that function's own doc for why it sphere-traces the
+   * capsule's own exact geometry (rather than a flat `radius` guess, which broke down for a
+   * first-person camera pitched down at something close while sitting above the capsule's
+   * cylindrical midsection - a real, reproduced regression) or reading anything off the first cast's
+   * result. `PlayerCharacterController`'s third-person `cameraCollision` raycast leans on the exact
+   * same helper for the identical self-hit problem. A hit farther than `holderClearance()` away is
+   * trusted as a real obstacle and left blocking the grab, exactly as before.
    */
   private tryGrab(): void {
     if (this._heldObject || !this.world?.physicsWorld) {
@@ -293,11 +311,20 @@ export class ObjectGrabController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWor
       this.holder &&
       !(entity instanceof Grabbable3dEntity) &&
       result.hasHit &&
-      result.hitPoint &&
       result.hitDistance !== undefined &&
       result.hitDistance < this.holderClearance()
     ) {
-      const from = Pnt3.add(result.hitPoint, Pnt3.scalarMult(this.cameraForward, SELF_HIT_SKIN));
+      const character = this.holder.characterController;
+      const skipDistance = characterControllerSelfHitSkip(
+        this.camera.position,
+        this.cameraForward,
+        this.holder.position,
+        character.up,
+        character.radius,
+        character.centersDistance,
+        this.options.maxGrabDistance,
+      );
+      const from = Pnt3.add(this.camera.position, Pnt3.scalarMult(this.cameraForward, skipDistance));
       result = this.world.physicsWorld.raycast({ from, to });
       entity = result.hasHit ? result.hitBody?.entity : null;
     }

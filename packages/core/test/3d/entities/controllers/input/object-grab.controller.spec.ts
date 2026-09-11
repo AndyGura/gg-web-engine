@@ -77,23 +77,27 @@ describe('ObjectGrabController', () => {
     });
 
     it(
-      "retries from exactly where a close, non-grabbable first hit exits (e.g. the holder's own " +
-        'capsule) rather than skipping a fixed guessed distance forward - regression: a small ' +
-        'grabbable prop sitting closer than that guessed distance used to be silently unreachable, ' +
-        "sometimes landing the ray on unrelated geometry behind the prop instead (see this class's " +
-        'own tryGrab doc)',
+      "retries by sphere-tracing past the holder's own capsule from the camera's actual position " +
+        "when the first cast is a close, non-grabbable self-hit - regression: retrying from that " +
+        "first hit's own reported point instead used to silently stop working on adapters (e.g. " +
+        "Rapier) whose raycast reports a self-hit at distance 0 with no usable exit point, always " +
+        "landing the retry back inside the same capsule (see this class's own tryGrab doc)",
       () => {
         const raycast = jest.fn();
         const { entity } = makeGrabbable();
-        // default holder: radius 0.3, centersDistance 1.0, margin 0.3 -> holderClearance 1.1
+        // Holder capsule centered exactly on the camera (radius 0.3, centersDistance 1.0, so
+        // half-height 0.5) - the camera looks straight down its own central axis (identity rotation
+        // -> forward -Z), so the traced exit is exactly `radius + halfHeight` (0.8) along the axis,
+        // an exact, easily-checked distance rather than an approximation.
+        const holder = fakeHolder(Pnt3.O, 0.3, 1.0);
         const closeSelfHit = {
           hasHit: true,
           hitBody: { entity: {} },
-          hitPoint: { x: 0, y: 0, z: -0.5 },
-          hitDistance: 0.5,
+          hitPoint: { x: 0, y: 0, z: 0 },
+          hitDistance: 0,
         };
         raycast.mockReturnValueOnce(closeSelfHit).mockReturnValueOnce({ hasHit: true, hitBody: { entity } });
-        const { keyboard, controller } = setup();
+        const { keyboard, controller } = setup({}, holder);
         controller.onSpawned({ physicsWorld: { raycast } } as any);
 
         keyboard.emulateKeyDown('KeyE');
@@ -101,9 +105,11 @@ describe('ObjectGrabController', () => {
         expect(controller.heldObject).toBe(entity);
         expect(raycast).toHaveBeenCalledTimes(2);
         const { from } = raycast.mock.calls[1][0];
-        // exactly the first hit's exit point, nudged forward by SELF_HIT_SKIN (0.01) - not an
-        // arbitrary holder-sized guess.
-        expect(from).toEqual({ x: 0, y: 0, z: -0.51 });
+        // camera position (0,0,0) skipped forward by the traced exit (0.8) + SELF_HIT_SKIN (0.05) -
+        // not the first hit's own (unusable, distance-0) point, nor a flat `radius`-only guess.
+        expect(from.x).toBeCloseTo(0);
+        expect(from.y).toBeCloseTo(0);
+        expect(from.z).toBeCloseTo(-0.85);
       },
     );
 

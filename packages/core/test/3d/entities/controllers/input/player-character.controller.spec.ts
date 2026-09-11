@@ -183,7 +183,7 @@ describe('PlayerCharacterController', () => {
       const raycast = jest.fn().mockReturnValue({ hasHit: false });
       const character = fakeCharacter({
         position: { x: 0, y: 0, z: 1 },
-        characterController: { up: Pnt3.Z, radius: 0.4 },
+        characterController: { up: Pnt3.Z, radius: 0.4, centersDistance: 1.0 },
         world: { physicsWorld: { raycast } },
       });
       const { controller } = setup(character, { viewMode: 'third-person', thirdPersonHeight: 0.6 });
@@ -193,15 +193,19 @@ describe('PlayerCharacterController', () => {
       expect(raycast).toHaveBeenCalledTimes(1);
       const { from } = raycast.mock.calls[0][0];
       const target = { x: 0, y: 0, z: 1.6 }; // character.position + up * thirdPersonHeight
-      // pushed out by radius (0.4) + a small skin margin, not left sitting at `target` itself
-      expect(Pnt3.dist(from, target)).toBeCloseTo(0.45, 5);
+      // Default look direction here is straight down (see `fakeCamera`'s identity rotation), so the
+      // collision ray traces straight *up* from `target` - which, with capsule radius 0.4 and
+      // centersDistance 1.0 (half-height 0.5, top pole at z 1.9), is only 0.3m from the capsule's own
+      // surface plus the default 0.05 skin - not a flat `radius`-sized push (0.45) regardless of
+      // direction, since `target` itself already sits partway into the rounded top cap.
+      expect(Pnt3.dist(from, target)).toBeCloseTo(0.35, 5);
     });
 
     it('adds the raycast start-point offset back onto a reported hit distance, so an obstruction still pulls the camera in by the right amount relative to the look target', async () => {
       const raycast = jest.fn().mockReturnValue({ hasHit: true, hitDistance: 1.0 });
       const character = fakeCharacter({
         position: Pnt3.O,
-        characterController: { up: Pnt3.Z, radius: 0.4 },
+        characterController: { up: Pnt3.Z, radius: 0.4, centersDistance: 1.0 },
         world: { physicsWorld: { raycast } },
       });
       const camera = fakeCamera();
