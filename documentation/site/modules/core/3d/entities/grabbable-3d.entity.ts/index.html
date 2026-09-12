@@ -1,0 +1,809 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/3d/entities/grabbable-3d.entity.ts/">
+      
+      
+      
+      
+      <link rel="icon" href="../../../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.4.6">
+    
+    
+      
+        <title>core/3d/entities/grabbable-3d.entity.ts - GG-web-engine</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../../../assets/stylesheets/main.35e1ed30.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../../../assets/stylesheets/palette.356b1318.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../../../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&"object"==typeof palette.color)for(var key of Object.keys(palette.color))document.body.setAttribute("data-md-color-"+key,palette.color[key])</script>
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#grabbable-3dentity-overview" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../../../.." title="GG-web-engine" class="md-header__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            GG-web-engine
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              core/3d/entities/grabbable-3d.entity.ts
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12c0-2.42-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/AndyGura/gg-web-engine" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.4.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../../../.." title="GG-web-engine" class="md-nav__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    GG-web-engine
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/AndyGura/gg-web-engine" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.4.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../../" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Modules
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Modules
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../ammo" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ammo
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    core
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../matter" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    matter
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../pixi" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    pixi
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../rapier2d" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    rapier2d
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../rapier3d" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    rapier3d
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../three" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    three
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#grabbable-3dentity-overview" class="md-nav__link">
+    grabbable-3d.entity overview
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#utils" class="md-nav__link">
+    utils
+  </a>
+  
+    <nav class="md-nav" aria-label="utils">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#grabbable3dentity-class" class="md-nav__link">
+    Grabbable3dEntity (class)
+  </a>
+  
+    <nav class="md-nav" aria-label="Grabbable3dEntity (class)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#grab-method" class="md-nav__link">
+    grab (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#release-method" class="md-nav__link">
+    release (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#throw-method" class="md-nav__link">
+    throw (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#updatehold-method" class="md-nav__link">
+    updateHold (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#onremoved-method" class="md-nav__link">
+    onRemoved (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#graboptions-property" class="md-nav__link">
+    grabOptions (property)
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#grabbable3dentityoptions-type-alias" class="md-nav__link">
+    Grabbable3dEntityOptions (type alias)
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+  
+
+
+<h2 id="grabbable-3dentity-overview">grabbable-3d.entity overview</h2>
+<hr />
+<h2 class="text-delta">Table of contents</h2>
+
+<ul>
+<li><a href="#utils">utils</a></li>
+<li><a href="#grabbable3dentity-class">Grabbable3dEntity (class)</a><ul>
+<li><a href="#grab-method">grab (method)</a></li>
+<li><a href="#release-method">release (method)</a></li>
+<li><a href="#throw-method">throw (method)</a></li>
+<li><a href="#updatehold-method">updateHold (method)</a></li>
+<li><a href="#onremoved-method">onRemoved (method)</a></li>
+<li><a href="#graboptions-property">grabOptions (property)</a></li>
+</ul>
+</li>
+<li><a href="#grabbable3dentityoptions-type-alias">Grabbable3dEntityOptions (type alias)</a></li>
+</ul>
+<hr />
+<h1 id="utils">utils</h1>
+<h2 id="grabbable3dentity-class">Grabbable3dEntity (class)</h2>
+<p>A dynamic-body prop that can be picked up and carried, HL2/Portal-<code>+use</code>-key style - pair with
+<code>ObjectGrabController</code> for the input side (raycasting to find one in reach, binding grab/throw/
+drop to keys/mouse buttons), or drive it manually by calling <code>grab()</code>/<code>updateHold()</code>/<code>release()</code>/
+<code>throw()</code> yourself.</p>
+<p>Carrying is implemented as a velocity spring, <strong>not</strong> a position teleport: <code>updateHold()</code> sets
+<code>objectBody.linearVelocity</code> towards the target hold point every tick rather than overwriting
+<code>position</code> directly, so the physics engine's own collision resolution still applies while
+carried (the object gets stopped/deflected by geometry in the way, instead of tunnelling through
+it and then exploding back out from deep penetration the instant it's released or bumps
+something - the classic failure mode of teleport-style carrying). This does mean a carried
+object can visibly lag behind the target hold point when pressed against an obstruction, and can
+still be knocked around by other dynamic bodies while held (both deliberate - see
+<code>ObjectGrabController</code>'s doc for why that's the desired feel, matching Source's own physgun
+rather than a rigid attachment).</p>
+<p>There is deliberately no core-level "disable gravity for this body" primitive backing this
+class (no physics adapter exposes one) - <code>updateHold()</code> instead compensates for gravity
+algebraically, by subtracting one frame's worth of the world's gravity vector from the velocity
+it sets. This only approximately cancels out: the physics engine's own <code>simulate()</code> call may run
+several native substeps internally for one <code>updateHold()</code> call (this entity only gets to set
+velocity once per frame, before <code>simulate()</code> runs), each re-integrating gravity on top of
+whatever velocity was set, so a held object can sag very slightly between updates at high
+substep counts - imperceptible in practice, and no worse an approximation than
+<code>CharacterController3dEntity</code>'s own per-tick gravity integration.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export declare class Grabbable3dEntity&lt;TypeDoc&gt; {
+  constructor(
+    options: {
+      object3D?: TypeDoc['vTypeDoc']['displayObject'] | null
+      objectBody?: TypeDoc['pTypeDoc']['rigidBody'] | null
+    },
+    grabOptions: Partial&lt;Grabbable3dEntityOptions&gt; = {}
+  )
+}
+</code></pre>
+<h3 id="grab-method">grab (method)</h3>
+<p>Starts carrying this object: temporarily removes <code>ignoreCollisionGroups</code> from
+<code>objectBody.interactWithCollisionGroups</code> (restored by <code>release()</code>/<code>throw()</code>), and zeroes the
+object's current velocity so <code>updateHold()</code>'s spring starts clean instead of fighting whatever
+motion it had the instant before being grabbed. A no-op if already held.</p>
+<p><code>ignoreCollisionGroups</code> is a generic, low-level knob - whatever groups it names are simply
+removed from this object's own mask for as long as it's held, for any reason an app might want
+that. It is <strong>not</strong> how to stop this object from colliding with whoever is holding it: excluding
+a specific holder this way only works if the object and the holder don't otherwise share a group
+both need for ordinary world collision, which in practice they almost always do (both usually
+need to keep colliding with the level's static geometry) - see
+<code>ICharacterController3dComponent.ignoredBodies</code>'s doc for the actual mechanism that handles that
+case (already wired up automatically by <code>ObjectGrabController</code> when constructed with a <code>holder</code>).
+Passing every group the intended holder's own <code>ownCollisionGroups</code> happens to report (e.g. a
+character controller left at its default <code>ownCollisionGroups: 'all'</code>, which reports <em>every</em>
+registered group, not just "this character's own") filters all of them out of
+<code>interactWithCollisionGroups</code>, leaving this object colliding with nothing at all - not just the
+intended target - for as long as it's held.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">grab(ignoreCollisionGroups: ReadonlyArray&lt;CollisionGroup&gt; = []): void
+</code></pre>
+<h3 id="release-method">release (method)</h3>
+<p>Stops carrying this object, restoring the collision groups <code>grab()</code> removed. Leaves whatever
+velocity <code>updateHold()</code> last set on it (a gentle "let go in place") - use <code>throw()</code> instead to
+impart a deliberate outward velocity on release. A no-op if not currently held.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">release(): void
+</code></pre>
+<h3 id="throw-method">throw (method)</h3>
+<p>Stops carrying this object (same bookkeeping as <code>release()</code>) and immediately imparts
+<code>velocity</code> to it - used for a forward "punt" instead of a gentle drop.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">throw(velocity: Point3): void
+</code></pre>
+<h3 id="updatehold-method">updateHold (method)</h3>
+<p>Drives the held object towards <code>targetPosition</code> this tick via a velocity spring (see this
+class's own doc for why a velocity, not a position teleport) and damps its angular velocity
+per <code>grabOptions.angularDamping</code>. Force-<code>release()</code>s instead if <code>targetPosition</code> is currently
+farther than <code>grabOptions.maxHoldDistance</code> from the object - see that option's doc.</p>
+<p><strong>Never slows the object down below whatever speed it already has towards <code>targetPosition</code></strong> -
+only ever raises its speed in that direction up to the spring's own value, never lowers it (the
+spring's <em>perpendicular</em> component is still applied as normal, correcting sideways drift).
+Mirrors <code>AmmoCharacterControllerComponent.pushDynamicBody</code>'s own "only ever adds, never removes"
+rule: a body already moving <em>towards</em> the hold point faster than the spring would carry it - e.g.
+bumped or shoved there by something else entirely (another dynamic body, not the holder - the
+holder's own movement never contests a held object's position in the first place, see
+<code>ObjectGrabController</code>'s <code>ignoredBodies</code> doc) - is left alone instead of having that speed
+immediately overwritten with the spring's own, smaller one purely because the object happens to
+already be close to <code>targetPosition</code>. It keeps that speed (redirected exactly at
+<code>targetPosition</code>, not left along whatever direction it was originally pushed in) until it either
+arrives or drifts past the target, at which point ordinary spring behavior resumes from the other
+side.</p>
+<p>Must be called once per tick, <strong>before</strong> <code>IPhysicsWorld3dComponent.simulate()</code> runs that same
+tick - i.e. from a driver with <code>tickOrder &lt; TickOrder.PHYSICS_SIMULATION</code> (e.g.
+<code>ObjectGrabController</code>, or your own equivalent) - for the velocity set here to actually be
+integrated this frame. Deliberately <strong>not</strong> called from this entity's own <code>tick$</code>:
+<code>Entity3d</code>'s inherited <code>tickOrder</code> (<code>OBJECTS_BINDING</code>) runs <em>after</em> physics simulation, to sync
+the mesh from the just-simulated body - the opposite direction from what the hold spring
+needs - so this class does not add a second, earlier <code>tick$</code> subscription of its own. A no-op
+if not currently held, or if this entity hasn't been spawned into a world with a physics
+world yet.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">updateHold(targetPosition: Point3, dt: number): void
+</code></pre>
+<h3 id="onremoved-method">onRemoved (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">onRemoved(): void
+</code></pre>
+<h3 id="graboptions-property">grabOptions (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly grabOptions: Grabbable3dEntityOptions
+</code></pre>
+<h2 id="grabbable3dentityoptions-type-alias">Grabbable3dEntityOptions (type alias)</h2>
+<p>Tuning for a <code>Grabbable3dEntity</code>'s hold behavior - how it's driven towards the carrier's hold
+point while held, and when it gives up rather than fighting geometry it got squeezed into.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type Grabbable3dEntityOptions = {
+  /**
+   * How strongly (per second) the held object's velocity is driven towards the target hold
+   * point - effectively a spring constant. Higher snaps to the hold point faster/stiffer, lower
+   * feels heavier/springier. Default 12.
+   */
+  followStrength: number
+  /** Hard cap on the linear speed used to chase the hold point, in m/s. Default 20. */
+  maxFollowSpeed: number
+  /**
+   * How strongly the held object's own angular velocity is damped back towards zero each tick -
+   * `0` leaves it entirely alone (spins freely off whatever momentum it had when grabbed), `1`
+   * zeroes it outright every tick (rigid, non-spinning while carried, closest to Source's
+   * physcannon feel). Default 1.
+   */
+  angularDamping: number
+  /**
+   * If the hold target ever ends up farther than this from the object's actual position (e.g. it
+   * got squeezed into a wall/corner it can't be dragged through), it is force-`release()`d instead
+   * of being fought back out with an ever-growing spring velocity. In meters. Default 8.
+   *
+   * Set this comfortably larger than twice whatever `holdDistance` the driving controller uses
+   * (e.g. `ObjectGrabController.holdDistance`) - the hold point itself can jump by up to `2 ×
+   * holdDistance` from an ordinary, deliberate fast look-around alone (the camera spinning in
+   * place, not moving), even with nothing wrong or stuck: a target hold point directly in front of
+   * the camera traces a sphere of that radius around the camera position as it turns, so a ~180°
+   * flick moves the target by that full diameter in one or two ticks. `maxHoldDistance` set too
+   * close to `2 × holdDistance` (e.g. equal to it) force-releases the object on an ordinary fast
+   * turn, not just when it's genuinely stuck - reserve this threshold for the latter.
+   */
+  maxHoldDistance: number
+}
+</code></pre>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../../../../..", "features": ["navigation.indexes", "navigation.instant", "navigation.tracking"], "search": "../../../../../assets/javascripts/workers/search.f886a092.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../../../../assets/javascripts/bundle.aecac24b.min.js"></script>
+      
+    
+  </body>
+</html>

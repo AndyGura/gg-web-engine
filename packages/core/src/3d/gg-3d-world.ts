@@ -16,6 +16,7 @@ import { ICharacterController3dComponent } from './components/physics/i-characte
 import { IDisplayObject3dComponentLoader, IPhysicsBody3dComponentLoader } from './loaders';
 import { CharacterController3dEntity } from './entities/character-controller-3d.entity';
 import { PlayerCharacterController } from './entities/controllers/input/player-character.controller';
+import { Grabbable3dEntity, Grabbable3dEntityOptions } from './entities/grabbable-3d.entity';
 
 export type VisualTypeDocRepo3D = {
   factory: IDisplayObject3dComponentFactory;
@@ -105,6 +106,31 @@ export class Gg3dWorld<
       object3D: this.visualScene?.factory.createPrimitive(descr.shape, material),
       objectBody: this.physicsWorld?.factory.createRigidBody(descr),
     });
+    entity.position = position;
+    entity.rotation = rotation;
+    this.addEntity(entity);
+    return entity;
+  }
+
+  /**
+   * Same as `addPrimitiveRigidBody`, but the returned entity is a `Grabbable3dEntity` - a prop
+   * that can be picked up/carried/thrown (see that class and `ObjectGrabController`). `descr.body`
+   * must describe a dynamic body (`dynamic: true`) - a static/kinematic prop can't be carried.
+   */
+  addGrabbablePrimitive(
+    descr: BodyShape3DDescriptor,
+    position: Point3 = Pnt3.O,
+    rotation: Point4 = Qtrn.O,
+    material: DisplayObject3dOpts<TypeDoc['vTypeDoc']['texture']> = {},
+    grabOptions: Partial<Grabbable3dEntityOptions> = {},
+  ): Grabbable3dEntity<TypeDoc> {
+    const entity = new Grabbable3dEntity<TypeDoc>(
+      {
+        object3D: this.visualScene?.factory.createPrimitive(descr.shape, material),
+        objectBody: this.physicsWorld?.factory.createRigidBody(descr),
+      },
+      grabOptions,
+    );
     entity.position = position;
     entity.rotation = rotation;
     this.addEntity(entity);

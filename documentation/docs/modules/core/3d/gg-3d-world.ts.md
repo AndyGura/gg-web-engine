@@ -1,6 +1,6 @@
 ---
 title: core/3d/gg-3d-world.ts
-nav_order: 59
+nav_order: 61
 parent: Modules
 ---
 
@@ -13,6 +13,7 @@ parent: Modules
 - [utils](#utils)
   - [Gg3dWorld (class)](#gg3dworld-class)
     - [addPrimitiveRigidBody (method)](#addprimitiverigidbody-method)
+    - [addGrabbablePrimitive (method)](#addgrabbableprimitive-method)
     - [addRenderer (method)](#addrenderer-method)
     - [registerConsoleCommands (method)](#registerconsolecommands-method)
     - [loader (property)](#loader-property)
@@ -51,6 +52,24 @@ addPrimitiveRigidBody(
     rotation: Point4 = Qtrn.O,
     material: DisplayObject3dOpts<TypeDoc['vTypeDoc']['texture']> = {},
   ): Entity3d<TypeDoc>
+```
+
+### addGrabbablePrimitive (method)
+
+Same as `addPrimitiveRigidBody`, but the returned entity is a `Grabbable3dEntity` - a prop
+that can be picked up/carried/thrown (see that class and `ObjectGrabController`). `descr.body`
+must describe a dynamic body (`dynamic: true`) - a static/kinematic prop can't be carried.
+
+**Signature**
+
+```ts
+addGrabbablePrimitive(
+    descr: BodyShape3DDescriptor,
+    position: Point3 = Pnt3.O,
+    rotation: Point4 = Qtrn.O,
+    material: DisplayObject3dOpts<TypeDoc['vTypeDoc']['texture']> = {},
+    grabOptions: Partial<Grabbable3dEntityOptions> = {},
+  ): Grabbable3dEntity<TypeDoc>
 ```
 
 ### addRenderer (method)

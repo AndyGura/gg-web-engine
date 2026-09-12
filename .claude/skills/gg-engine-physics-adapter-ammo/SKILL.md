@@ -30,6 +30,21 @@ with the `chassisBody` passed into its constructor (same native handle, not a co
 vehicle's own `removeFromWorld`/`dispose()` frees it - never pass `dispose: true` down into
 `chassisBody.removeFromWorld` too, or the shared handle gets double-freed.
 
+## Sleeping bodies silently ignored programmatic transform/velocity writes
+
+See `gg-engine-physics-adapter`'s general contract note on this (the cross-adapter version of the
+bug, with the regression-test recipe) - the Ammo-specific fact worth recording here is exactly which
+calls needed it and why it was easy to miss: `AmmoBodyComponent.position`/`.rotation` (`setWorldTransform`)
+and `AmmoRigidBodyComponent.linearVelocity`/`.angularVelocity` (`setLinearVelocity`/`setAngularVelocity`)
+all wrote straight into a sleeping `btRigidBody`'s state with zero indication anything was wrong - no
+exception, no warning, `getLinearVelocity()` even read back the value that was just set. The only
+observable symptom was the body's `position` never actually changing tick over tick despite
+`simulate()` running normally for everything else in the world. Fix: call `this.nativeBody.activate(true)`
+at the end of all four setters. `activate(true)` (forced activation) is unconditionally safe to call
+even on a static/kinematic body - Bullet's own implementation already no-ops for `CF_STATIC_OBJECT`
+internally, so there's no need to guard the call with `isStaticOrKinematicObject()` first.
+
+
 **A leak that was consciously left alone**: `AmmoRigidBodyComponent`/`AmmoTriggerComponent` never
 capture or free their collision shape (`this._nativeBody.getCollisionShape()`) anywhere, including in
 `dispose()` - only the character controller's capsule (which owns a private, never-shared shape) was
@@ -47,6 +62,97 @@ for Rapier also exists in this package's pinned Ammo.js build: every existing
 `AmmoRaycastVehicleComponent`/`world.raycast()` test already calls `world.simulate(1)` once after
 `addToWorld()` for exactly this reason. The `settleWorld()` no-simulate-in-between-moves test pattern
 described there applies equally here.
+
+## `world.raycast()` missing a hit when `from` starts inside (or has passed through) the target
+
+Bullet's `rayTest` can only compute an entry point when the ray *starts outside* its target - once
+`options.from` lands inside a convex shape (or has flown all the way through it and out the other
+side), it finds nothing for that shape at all, from any distance further along the same direction,
+not just while still inside it. `Rapier3dWorldComponent.raycast` doesn't have this gap (it calls
+`castRay` with `solid: true`, Rapier's own explicit "report a hit at zero distance on whatever
+contains the ray's origin" mode), so the exact same query behaves differently depending on which
+physics adapter a world is built with - purely an adapter-parity bug, invisible from `packages/core`
+alone.
+
+Found from a real, reproducible gameplay report, not from reading Bullet's source first: a
+Portal-style demo's `ObjectGrabController.tryGrab()` (core, shared across every adapter)
+deliberately starts its pick-up ray a fixed distance in front of the holder's camera to dodge a
+self-hit on the holder's own capsule - fine for a target further away than that offset, but that
+same fixed offset lands *inside* a small grabbable prop sitting closer than it, which this gap then
+makes silently ungrabbable - reproduced on Ammo specifically (Rapier handled the identical query
+fine) only once the player stood close enough to the prop, matching the report exactly ("works fine
+until I step back a bit").
+
+**Fix**: `AmmoWorldComponent.raycast` now falls back to a discrete point-overlap probe
+(`btCollisionWorld.contactTest`, the same discrete-overlap primitive
+`AmmoCharacterControllerComponent.recoverFromPenetration` already uses for an unrelated reason)
+whenever the plain `rayTest` found nothing - construct a throwaway zero-size `btGhostObject` (a
+bare `btCollisionObject` has no public constructor in this build, "no constructor in IDL";
+`btGhostObject` is a plain collision object with a real one, and nothing about it being a ghost
+type matters since it's never added to the world) at `options.from`, run `contactTest`, and report
+whatever it overlaps as a hit at distance 0 - mirroring Rapier's `solid` result shape exactly.
+
+**A real filtering limitation, verified empirically rather than assumed**: `options
+.collisionFilterGroups`/`collisionFilterMask` can only ever *narrow* what this fallback reports,
+never widen it past whatever Bullet's own default pair filtering already lets through.
+`ContactResultCallback`'s internal `needsCollision` check runs against a candidate's *real*
+broadphase proxy and the callback's own `m_collisionFilterGroup`/`m_collisionFilterMask` fields
+(fixed at Bullet's stock `DefaultFilter`/`AllFilter` values) - but `ConcreteContactResultCallback`
+has no exposed setter for either field in this Ammo.js build (`set_m_collisionFilterGroup`/
+`set_m_collisionFilterMask` are simply `undefined` on a constructed instance, unlike the same two
+setters on `ClosestRayResultCallback`, which do exist and are what the plain `rayTest` above already
+uses). Registering the probe itself in the broadphase with explicit group/mask bits via
+`addCollisionObject` doesn't help either (tried and measured no effect - only the *candidate's* own
+proxy is ever consulted). Net effect: a candidate whose `interactWithCollisionGroups` excludes this
+world's default/main group (`mainCollisionGroup`, always group `0`) never reaches this fallback's
+JS callback at all, no matter what `options` asks for - an unusual configuration in practice (most
+bodies keep interacting with the default group even after adding custom ones), and not one the
+reported bug hits (`tryGrab()` passes no filter at all, against a body left at the engine-wide
+default `ownCollisionGroups`/`interactWithCollisionGroups: 'all'`). The fallback's own JS-side
+group/mask check (reading each candidate's public `ownCollisionGroups`/`interactWithCollisionGroups`
+getters) still meaningfully narrows *down* from whatever Bullet's fixed default let through - it
+just can't rescue a candidate Bullet's own default already excluded upstream.
+
+**A second, more severe regression this fix created and had to be paired with a fix for**:
+`AmmoCharacterControllerComponent.trySnapToGround`'s ground-snap ray deliberately starts its `from`
+point a hair inside this character's own capsule (moving "up" from the capsule's own lowest point
+moves towards its center, not away from it) - previously a safe trick, since a ray starting inside
+its own shape simply found nothing via plain `rayTest` and self-hits were never a concern. Once the
+solid-ray fallback above started reporting a hit for exactly that "starts inside a shape" case, this
+ray began self-hitting the character's own capsule on every tick instead of finding no ground -
+confirmed by a full test-suite run after landing the fallback: a "free fall in empty space, no floor
+at all" character-controller regression test failed with the character's fall arrested almost
+immediately, because it was being reported as standing on itself. Fixed by wrapping
+`trySnapToGround`'s `this.world.raycast(...)` call with the exact same temporary self-detach
+`sweep()` already uses for its own `convexSweepTest` call (`collisionWorld.removeCollisionObject
+(this.nativeBody)` / `detachIgnoredBodies()` before, `addCollisionObject`/`reattachIgnoredBodies`
+after, in a `try`/`finally`) - `trySnapToGround` is the *only* internal caller of `world.raycast()`
+in this package, so no other call site needed the same treatment, but the lesson generalizes: any
+future internal raycast call in this package that relies on "my `from` point happens to be inside my
+own shape, so it can't self-hit" needs the same explicit self-exclusion now, not just an assumption
+about `rayTest`'s own limitation.
+
+Regression coverage: `packages/ammo/test/components/ammo-world.component.spec.ts`'s `Raycast`
+describe block has the solid-ray-hit-at-distance-0 case, the filter-narrowing case (candidate kept
+in the default/main group alongside a custom one), and a close-range reproduction of the exact
+`ObjectGrabController`-shaped query against a small prop resting on a pedestal;
+`ammo-character-controller-freefall.spec.ts`'s existing "falls under gravity in empty space" test is
+what caught the `trySnapToGround` regression.
+
+**This fix alone did not resolve the original gameplay report - it was real and worth keeping (see
+the regression coverage above), but the report's actual root cause turned out to be a different,
+adapter-agnostic bug in `ObjectGrabController.tryGrab()` itself, fixed in `packages/core` instead -
+see `gg-engine-core-development`'s own notes on it.** Found by reproducing the user's *exact*
+reported failing position (read from the in-game dev console's entity inspector, not guessed) in a
+jest harness matching the real scene geometry: the fixed `holderClearance()`-sized forward skip this
+adapter fix was built to accommodate landed the ray not *inside* the small prop (this fix's case) but
+*past* it entirely and into the pedestal the prop was resting on - a real, legitimate hit on a
+non-grabbable body, which the "starts inside a shape" fallback above has no way to help with, since
+the plain `rayTest` already succeeds (on the wrong target) and never reaches the fallback at all.
+Worth remembering next time a raycast-adjacent gameplay bug report comes in only *partially*
+resolved by an adapter-level fix: re-test with the reporter's own exact numbers before considering it
+closed, rather than assuming a plausible-looking mechanism was the whole story once one real bug in
+the vicinity has been found and fixed.
 
 ## Pitfall: `btKinematicCharacterController` produced zero collision response in this build
 
@@ -354,6 +460,97 @@ settable on the already-constructed `btRigidBody` itself, via `nativeBody.setSpi
 (`AmmoFactory.createRigidBodyFromShape` calls this right after `new Ammo.btRigidBody(...)`, before
 wrapping it in `AmmoRigidBodyComponent`). Reuses the same `0.05` magnitude as `m_rollingFriction` - both
 are "resistance to spin" quantities of the same physical character, just about different axes.
+
+## `ignoredBodies`: excluding a specific body from this character's own sweeps *and* penetration recovery
+
+`AmmoCharacterControllerComponent.ignoredBodies` (a `Set<AmmoRigidBodyComponent>`) is implemented by
+temporarily removing each currently-ignored body from `dynamicAmmoWorld` via
+`AmmoRigidBodyComponent.detachFromBroadphaseTemporarily()`/`reattachToBroadphase()` - two small public
+methods on that class using its own `addRigidBody`/`removeRigidBody` pair (not
+`addCollisionObject`/`removeCollisionObject`, which is for ghost objects like the character's own
+shape, not full rigid bodies) - right alongside the character's own self-exclusion in **both**
+`sweep()` and `recoverFromPenetration()`, via a shared `detachIgnoredBodies()`/
+`reattachIgnoredBodies()` helper pair. Both call sites matter equally: excluding a body from `sweep()`
+alone stops it from blocking *movement*, but `recoverFromPenetration()` runs independently (at the top
+of every `move()`, regardless of whether that tick's sweep would have hit anything) and reacts to
+*any* overlap by shoving the character out - so a body excluded only from `sweep()` still gets treated
+as a solid obstacle the instant it overlaps the character (e.g. a currently-held prop the holder walked
+into before the hold spring moved it away), reintroducing the exact "held prop blocks/launches its own
+holder" bug `ignoredBodies` exists to fix, just via the other code path. `detachFromBroadphaseTemporarily()`
+returns `false` (no-op) for a body that isn't currently `addedToWorld`, so `reattachIgnoredBodies()` is
+only ever called with the subset that was actually detached - reattaching a body that was never removed
+would double-add it to the broadphase.
+
+`CharacterController3dEntity.recreateCapsule()` (core, shared across every adapter) copies the old
+capsule's `ignoredBodies` into the freshly-created replacement itself before discarding the old one -
+this is a core-level fix, not an Ammo-specific one, but worth knowing when debugging a crouch/stand
+transition that appears to silently drop a held-object exclusion: without it, every capsule swap (e.g.
+`recreateCapsule`) would reset to an empty set and re-enable collision with whatever was being ignored.
+
+## `AmmoWorldComponent.simulate()`'s fixed-substep accumulator drifting against the render loop
+
+`stepSimulation(timeStep, maxSubSteps, fixedTimeStep)` with a non-zero `maxSubSteps` puts Bullet into
+its own built-in fixed-timestep-with-accumulator mode: it keeps a running `m_localTime` counter,
+adds each call's `timeStep` to it, then consumes as many whole `fixedTimeStep`-sized chunks as fit,
+carrying the leftover fraction into the *next* call. `AmmoWorldComponent.simulate(delta)` used to hand
+`fixedTimeStep`/`maxSubSteps` straight through as those two arguments - which means the amount of
+physics time actually simulated in a given call is `floor(accumulated / fixedTimeStep) *
+fixedTimeStep`, not `delta` itself. At a real, variable render `delta` (~16.7ms at 60fps, essentially
+never an exact multiple of the default `fixedTimeStep: 0.01`), that accumulator alternates between
+consuming 10ms and 20ms of simulated time call to call while the true elapsed time stayed ~16.7ms
+both times - confirmed by isolating the arithmetic outside Ammo entirely: a realistic jittery ~60fps
+delta stream fed through the old accumulator formula showed simulated-time error alternating roughly
+±3-7ms in sign every other call, versus exactly `0` every call once fixed (see the fix below).
+
+Nothing else in this engine's tick loop goes through that same accumulator -
+`CharacterController3dEntity.move(desiredTranslation, dt)` (core, every adapter) applies the real,
+un-quantized per-tick `dt` directly, and `AmmoBodyComponent.position` reads
+`nativeBody.getWorldTransform()` straight off the rigid body with no render-time interpolation of its
+own. So a camera driven off the character controller advances by the exact real `delta` every tick,
+while a dynamic body's reported position advances by the accumulator's quantized, drifting amount -
+the mismatch alternates sign frame to frame and scales with the body's own speed (bigger speed ->
+bigger position error for the same few-millisecond timestep mismatch). Real, reported, reproduced
+symptom: grab a `Grabbable3dEntity`, walk sideways while looking forward - the held object visibly
+flickers back and forth along the strafe axis instead of settling into a smooth, linearly-closing
+offset from the camera; the same mechanism produces a fixed camera flickering relative to a moving
+raycast vehicle, or a chase camera's target flickering relative to its own spinning chassis.
+`Rapier3dWorldComponent.simulate` has no equivalent bug at all (confirmed reproducible on Ammo,
+never on Rapier3d) - it just sets its own `timestep` to `delta` and steps once, so simulated time
+always exactly equals real elapsed time, with no accumulator to drift.
+
+**Fix**: don't hand `fixedTimeStep`/`maxSubSteps` to Bullet's own accumulator at all - compute the
+substep count/size in JS instead, every call: `n = max(1, ceil(dt / fixedTimeStep))` (clamped by
+`maxSubSteps`, which is now purely a hard ceiling protecting against one huge catch-up call - e.g. a
+backgrounded tab - grinding through an enormous number of substeps), then call `stepSimulation(dt, n,
+dt / n)`. `n` equal-sized substeps of `dt / n` always sum to exactly `dt`, so nothing is ever left for
+Bullet's accumulator to carry into the next call - for any `delta` that already divides evenly by
+`fixedTimeStep` (every synthetic test in this package's own suite uses one) this reproduces the old
+accumulator's result exactly bit for bit; for a real, non-round render `delta` it's what actually
+removes the drift.
+
+**A first attempt at fixing this - `stepSimulation(dt, 0)`, Bullet's own single-step "variable
+timestep" mode, mirroring `Rapier3dWorldComponent.simulate` literally - also removed the drift, but
+was a real regression, not just a hypothetical stability concern, confirmed by running this package's
+own test suite against it: `ammo-raycast-vehicle.component.spec.ts`'s vehicle stopped settling
+correctly on its suspension, and `ammo-trigger.component.spec.ts`'s exit-detection test stopped firing,
+from nothing more extreme than those tests' own existing `world.simulate(60)`-per-frame loops - not a
+huge one-off catch-up delta.** Substep chunking turned out to be load-bearing for ordinary per-tick
+solver accuracy (suspension springs, narrow-phase overlap updates), not just a tunneling safeguard for
+rare large deltas, so a fix that removes all substepping to fix the accumulator drift trades one real
+bug for another. The `n = ceil(dt / fixedTimeStep)` scheme above keeps every substep bounded by
+`fixedTimeStep` unconditionally (not just above some delta threshold) while still eliminating the
+cross-call drift, which is why it - not plain variable-timestep mode - is the fix that shipped.
+`examples/shooter-three-ammo`/`examples/collision-groups-pool-three-ammo`, which both raise
+`maxSubSteps` explicitly for their own fast-shape/many-body stability needs, are unaffected by this
+change: their override still just clamps `n` the same way it clamped Bullet's own substep count before.
+
+Regression coverage: this package's full existing suite (particularly the two round-`delta`-driven
+tests above, which pin the new scheme to reproduce the old accumulator's result exactly for exact
+multiples of `fixedTimeStep`) is what caught the plain-variable-timestep regression and confirms the
+shipped fix doesn't reintroduce it - no dedicated jitter regression test was added, since the drift
+itself only manifests as an accumulating position disagreement against a separate, non-quantized
+camera/controller across many non-round-delta ticks, not as a single-call assertion this package's
+existing per-component test style is set up to express.
 
 ## Keep this skill current
 

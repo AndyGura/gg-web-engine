@@ -1,6 +1,6 @@
 ---
 title: core/base/entities/i-renderable.entity.ts
-nav_order: 90
+nav_order: 92
 parent: Modules
 ---
 

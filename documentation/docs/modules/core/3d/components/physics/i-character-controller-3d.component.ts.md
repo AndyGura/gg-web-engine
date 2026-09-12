@@ -58,6 +58,26 @@ export interface ICharacterController3dComponent<PTypeDoc extends PhysicsTypeDoc
   readonly groundNormal: Point3 | null
 
   /**
+   * Rigid bodies this character's own collision queries (the sweeps/overlap-recovery behind
+   * `move()`) must skip entirely - not just "don't collide", genuinely invisible to this character's
+   * queries, as if temporarily removed from the world. `ownCollisionGroups`/`interactWithCollisionGroups`
+   * **cannot** express this: excluding one specific body while both it and this character still need
+   * to collide with the rest of the world (almost always true) requires a bit that's absent from
+   * *both* sides of the pair, but present on each side for every other collision that still needs to
+   * happen - impossible with a single shared group both sides must keep for ordinary world collision
+   * (see `gg-engine-core-development`'s "Collision groups can't express..." note for the full
+   * argument). This is the actual, working mechanism instead: a real per-pair exclusion, checked
+   * directly by each adapter's own sweep/overlap query rather than via broadphase group/mask bits.
+   *
+   * A plain mutable `Set`, not a getter/setter pair - a caller adds/removes individual bodies
+   * (e.g. `Grabbable3dEntity`'s `objectBody`, added by `ObjectGrabController` on `grab()`, removed on
+   * `release()`/`throw()`) without needing to read-modify-write a whole replacement collection.
+   * Implementations must consult this set fresh on every `move()` call - membership can change
+   * between ticks. Empty by default (no exclusions).
+   */
+  readonly ignoredBodies: Set<PTypeDoc['rigidBody']>
+
+  /**
    * Attempts to move the character by exactly this desired displacement, sliding along
    * obstacles, automatically stepping over ledges up to `maxStepHeight`, and snapping to the
    * ground per `snapToGroundDistance` - see `CharacterController3dOptions`. Fully resolves

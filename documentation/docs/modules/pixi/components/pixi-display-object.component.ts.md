@@ -1,6 +1,6 @@
 ---
 title: pixi/components/pixi-display-object.component.ts
-nav_order: 125
+nav_order: 127
 parent: Modules
 ---
 

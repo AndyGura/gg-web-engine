@@ -1,6 +1,6 @@
 ---
 title: core/base/inputs/mouse.input.ts
-nav_order: 97
+nav_order: 99
 parent: Modules
 ---
 
@@ -62,7 +62,7 @@ protected stopInternal(unlockPointer: boolean = true)
 
 ### canvasClickListener (method)
 
-Request pointer lock on the canvas element.
+Request pointer lock on the canvas element. No-op if already locked.
 
 **Signature**
 

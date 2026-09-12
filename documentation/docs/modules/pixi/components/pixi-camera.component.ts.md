@@ -1,6 +1,6 @@
 ---
 title: pixi/components/pixi-camera.component.ts
-nav_order: 124
+nav_order: 126
 parent: Modules
 ---
 

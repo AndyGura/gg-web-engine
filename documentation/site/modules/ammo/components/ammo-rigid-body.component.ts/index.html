@@ -550,6 +550,20 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#detachfrombroadphasetemporarily-method" class="md-nav__link">
+    detachFromBroadphaseTemporarily (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reattachtobroadphase-method" class="md-nav__link">
+    reattachToBroadphase (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#resetmotion-method" class="md-nav__link">
     resetMotion (method)
   </a>
@@ -609,6 +623,8 @@
 <li><a href="#addtoworld-method">addToWorld (method)</a></li>
 <li><a href="#removefromworld-method">removeFromWorld (method)</a></li>
 <li><a href="#refreshcg-method">refreshCG (method)</a></li>
+<li><a href="#detachfrombroadphasetemporarily-method">detachFromBroadphaseTemporarily (method)</a></li>
+<li><a href="#reattachtobroadphase-method">reattachToBroadphase (method)</a></li>
 <li><a href="#resetmotion-method">resetMotion (method)</a></li>
 <li><a href="#entity-property">entity (property)</a></li>
 <li><a href="#debugbodysettings-property">debugBodySettings (property)</a></li>
@@ -642,6 +658,27 @@
 <h3 id="refreshcg-method">refreshCG (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">refreshCG(): void
+</code></pre>
+<h3 id="detachfrombroadphasetemporarily-method">detachFromBroadphaseTemporarily (method)</h3>
+<p>Temporarily detaches this body from the world's broadphase - deliberately <strong>not</strong> the same as
+<code>removeFromWorld</code>/<code>addToWorld</code> (no <code>world.removed$</code>/<code>added$</code> notification is emitted, and
+<code>addedToWorld</code> stays <code>true</code> throughout): for a caller doing a short, synchronous,
+self-contained collision query that needs this specific body genuinely invisible to detection,
+not just non-colliding, without those bookkeeping side effects. Restore with
+<code>reattachToBroadphase()</code> before returning control to anything else. See
+<code>AmmoCharacterControllerComponent.ignoredBodies</code> for the concrete use (a currently-held
+<code>Grabbable3dEntity</code> excluded from its holder's own sweeps/overlap recovery - see
+<code>ICharacterController3dComponent.ignoredBodies</code>'s doc for why collision groups can't do this).</p>
+<p>Returns whether this body was actually detached (<code>false</code>, a no-op, if it wasn't in this world's
+broadphase to begin with) - callers should only call <code>reattachToBroadphase()</code> for a body this
+returned <code>true</code> for, mirroring <code>removeCollisionObject</code>/<code>addCollisionObject</code>'s own pairing.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">detachFromBroadphaseTemporarily(): boolean
+</code></pre>
+<h3 id="reattachtobroadphase-method">reattachToBroadphase (method)</h3>
+<p>Undoes <code>detachFromBroadphaseTemporarily()</code> - see its own doc.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">reattachToBroadphase(): void
 </code></pre>
 <h3 id="resetmotion-method">resetMotion (method)</h3>
 <p><strong>Signature</strong></p>

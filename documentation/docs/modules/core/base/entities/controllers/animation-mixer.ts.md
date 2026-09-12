@@ -1,6 +1,6 @@
 ---
 title: core/base/entities/controllers/animation-mixer.ts
-nav_order: 86
+nav_order: 88
 parent: Modules
 ---
 
