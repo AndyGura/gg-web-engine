@@ -1,4 +1,5 @@
 import {
+  AudioSource3dEntity,
   CachingStrategy,
   Camera3dEntity,
   CharacterController3dEntity,
@@ -15,6 +16,7 @@ import {
 import { ThreeGgWorld, ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
 import { AmbientLight, DirectionalLight, Mesh, PointLight } from 'three';
 import { Rapier3dWorldComponent } from '@gg-web-engine/rapier3d';
+import { WebAudioScene3dComponent } from '@gg-web-engine/audio';
 
 GgStatic.instance.showStats = true;
 GgStatic.instance.devConsoleEnabled = true;
@@ -242,6 +244,7 @@ const level: LevelJson = {
 const world: ThreeGgWorld = new Gg3dWorld({
   visualScene: new ThreeSceneComponent(),
   physicsWorld: new Rapier3dWorldComponent(),
+  audioScene: new WebAudioScene3dComponent(),
 });
 world.init().then(async () => {
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
@@ -377,6 +380,26 @@ world.init().then(async () => {
       z: RADIO_SPAWN_POSITION.z - bounds.min.z,
     };
     world.addEntity(newRadio);
+
+    // Always-on, positional music - plays continuously wherever the radio currently is (resting
+    // on the pedestal, being carried, or mid-throw), not just while held. `AudioSource3dEntity`'s
+    // "attached" mode (the `newRadio` second argument) copies the radio's position every tick, so
+    // the sound genuinely follows it around the room rather than playing centered/global. Parented
+    // as a child of the radio itself (`addChildren`, not a separate `world.addEntity` call) so
+    // incinerating the radio (`world.removeEntity(radio, true)` below) cascades into
+    // removing+disposing this source too - no separate cleanup needed when a radio is burned.
+    const radioSource = world.audioScene!.factory.createSource({
+      clip: await world.audioScene!.factory.loadClip(`${ASSETS_BASE}/sfx/portal_radio.mp3`),
+      loop: true,
+      volume: 0.5,
+      spatial: true,
+    });
+    // Close-range full volume, fading out over roughly the room's own diagonal - audible across
+    // the whole chamber but clearly quieter from the far corners.
+    radioSource.refDistance = 1.5;
+    radioSource.maxDistance = 14;
+    newRadio.addChildren(new AudioSource3dEntity(radioSource, newRadio));
+
     return newRadio;
   }
   let radio = await spawnRadio();
@@ -400,27 +423,24 @@ world.init().then(async () => {
   const grabController = new ObjectGrabController(world.keyboardInput, playerController.mouseInput, renderer, player);
   world.addEntity(grabController);
 
-  // A nice thematic touch matching the prop's name: play its paired sfx while it's being carried.
-  const radioAudio = new Audio(`${ASSETS_BASE}/sfx/portal_radio.mp3`);
-  radioAudio.loop = true;
-  radioAudio.volume = 0.5;
-  grabController.tick$.subscribe(() => {
-    const held = grabController.heldObject === radio;
-    if (held && radioAudio.paused) {
-      radioAudio.play().catch(() => {});
-    } else if (!held && !radioAudio.paused) {
-      radioAudio.pause();
-    }
-  });
-
   // Throw (or drop) the radio into the incinerator and it's gone for good - a fresh one appears
   // back on the pedestal a moment later. `Grabbable3dEntity.onRemoved` already releases the object
   // from whoever's holding it before disposal, so this is safe to call even mid-carry.
+  //
+  // Loaded once up front rather than inside the subscription below - `loadClip` itself caches by
+  // URL, but there's no reason to `await` it (and make that subscription callback async) on every
+  // single incineration when one clip covers all of them.
+  const popClip = await world.audioScene!.factory.loadClip(`${ASSETS_BASE}/sfx/pop.mp3`);
   const incineratorMouth = levelGroup.getChildEntityByName<Trigger3dEntity>('IncineratorMouth');
   incineratorMouth.onEntityEntered.subscribe(entity => {
     if (!(entity instanceof Grabbable3dEntity)) {
       return;
     }
+    // A transient, positional pop right where the object was destroyed - not attached to it
+    // (nothing left to attach to a moment later), so a one-shot at its last position instead. Read
+    // before `removeEntity` disposes the entity, even though `position` itself would still be
+    // readable afterwards - keeps "what's being destroyed" and "where it was" together in one spot.
+    AudioSource3dEntity.playOneShot(world, { clip: popClip }, entity.position);
     world.removeEntity(entity, true);
     incineratorGlow.intensity = 6;
     setTimeout(() => (incineratorGlow.intensity = 1.5), 200);
