@@ -47,7 +47,6 @@ export class Rapier2dFactory implements IPhysicsBody2dComponentFactory<Rapier2dP
     const colliderDescr = this.createColliderDescr(descriptor);
     colliderDescr.forEach(c => {
       c.isSensor = true;
-      c.setActiveEvents(ActiveEvents.COLLISION_EVENTS);
     });
     return new Rapier2dTriggerComponent(
       this.world,
@@ -58,13 +57,25 @@ export class Rapier2dFactory implements IPhysicsBody2dComponentFactory<Rapier2dP
   }
 
   public createColliderDescr(descriptor: Shape2DDescriptor): ColliderDesc[] {
+    let descrs: ColliderDesc[];
     switch (descriptor.shape) {
       case 'SQUARE':
-        return [ColliderDesc.cuboid(descriptor.dimensions.x / 2, descriptor.dimensions.y / 2)];
+        descrs = [ColliderDesc.cuboid(descriptor.dimensions.x / 2, descriptor.dimensions.y / 2)];
+        break;
       case 'CIRCLE':
-        return [ColliderDesc.ball(descriptor.radius)];
+        descrs = [ColliderDesc.ball(descriptor.radius)];
+        break;
+      default:
+        throw new Error(`Shape "${(descriptor as any).shape}" not implemented for Rapier 2D`);
     }
-    throw new Error(`Shape "${(descriptor as any).shape}" not implemented for Rapier 2D`);
+    // Every collider (trigger sensors and ordinary rigid-body colliders alike) needs
+    // COLLISION_EVENTS active so `Rapier2dWorldComponent.simulate()` can drain both sensor
+    // overlap transitions (trigger enter/exit) and real contact start/stop transitions (rigid
+    // body onCollisionStart/onCollisionEnd) from the same event queue - Rapier only needs one
+    // side of a pair to have the flag set, but setting it universally here keeps every pair
+    // covered regardless of which side is which.
+    descrs.forEach(d => d.setActiveEvents(ActiveEvents.COLLISION_EVENTS));
+    return descrs;
   }
 
   public createRigidBodyDescr(

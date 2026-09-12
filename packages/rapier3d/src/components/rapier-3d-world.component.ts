@@ -1,5 +1,6 @@
 import {
   BitMask,
+  CollisionEvent,
   CollisionGroup,
   IPhysicsWorld3dComponent,
   Pnt3,
@@ -7,8 +8,9 @@ import {
   RaycastOptions,
   RaycastResult,
 } from '@gg-web-engine/core';
-import { EventQueue, init, Vector3, World } from '@dimforge/rapier3d-compat';
+import { Collider, EventQueue, init, Vector3, World } from '@dimforge/rapier3d-compat';
 import { Rapier3dRigidBodyComponent } from './rapier-3d-rigid-body.component';
+import { Rapier3dTriggerComponent } from './rapier-3d-trigger.component';
 import { Rapier3dCharacterControllerComponent } from './rapier-3d-character-controller.component';
 import { Rapier3dFactory } from '../rapier-3d-factory';
 import { Rapier3dLoader } from '../rapier-3d-loader';
@@ -90,6 +92,144 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
   simulate(delta: number): void {
     this._nativeWorld!.timestep = delta / 1000;
     this._nativeWorld?.step(this.eventQueue);
+    this.dispatchCollisionEvents();
+  }
+
+  /**
+   * Drains `eventQueue` exactly once per `simulate()` call and routes each entry to whichever
+   * component(s) care - this is the *only* place `drainCollisionEvents` is called for the whole
+   * world (see `Rapier3dTriggerComponent.notifyOverlap`'s doc for why a second/independent drain
+   * elsewhere would silently steal events from this one). A collider pair with sensor
+   * semantics (either side `isSensor()`) is routed as a trigger overlap; an ordinary pair is routed
+   * as a real rigid-body collision.
+   *
+   * `EventQueue.drainCollisionEvents` reports *collider* handles, not rigid-body handles -
+   * `handleIdEntityMap` is keyed by rigid-body handle (see `addToWorld`), so each handle is resolved
+   * via `World.getCollider(handle)` (returns `null` for a since-removed collider, not a throw - safe
+   * to just skip) then `Collider.parent()` to reach the owning `RigidBody` before the map lookup.
+   */
+  protected dispatchCollisionEvents(): void {
+    const nativeWorld = this._nativeWorld;
+    if (!nativeWorld) {
+      return;
+    }
+    this.eventQueue.drainCollisionEvents((h1, h2, started) => {
+      const collider1 = nativeWorld.getCollider(h1);
+      const collider2 = nativeWorld.getCollider(h2);
+      if (!collider1 || !collider2) {
+        return;
+      }
+      const body1 = collider1.parent();
+      const body2 = collider2.parent();
+      if (!body1 || !body2) {
+        return;
+      }
+      const comp1 = this.handleIdEntityMap.get(body1.handle);
+      const comp2 = this.handleIdEntityMap.get(body2.handle);
+      if (!comp1 || !comp2 || comp1 === comp2) {
+        return;
+      }
+
+      if (collider1.isSensor() || collider2.isSensor()) {
+        if (comp1 instanceof Rapier3dTriggerComponent) {
+          comp1.notifyOverlap(comp2, started);
+        }
+        if (comp2 instanceof Rapier3dTriggerComponent) {
+          comp2.notifyOverlap(comp1, started);
+        }
+        return;
+      }
+
+      if (started) {
+        const geometry = this.computeContactGeometry(collider1, collider2);
+        if (!geometry) {
+          return;
+        }
+        const v1 = body1.linvel();
+        const v2 = body2.linvel();
+        comp1.notifyCollisionStart({
+          otherBody: comp2,
+          position: geometry.position,
+          normal: geometry.normal,
+          relativeVelocity: Pnt3.sub(v2, v1),
+          impulse: geometry.impulse,
+        });
+        comp2.notifyCollisionStart({
+          otherBody: comp1,
+          position: geometry.position,
+          normal: Pnt3.scalarMult(geometry.normal, -1),
+          relativeVelocity: Pnt3.sub(v1, v2),
+          impulse: geometry.impulse,
+        });
+      } else {
+        comp1.notifyCollisionEnd(comp2);
+        comp2.notifyCollisionEnd(comp1);
+      }
+    });
+  }
+
+  /**
+   * Reads world-space contact position/normal/impulse for a just-started contact between two
+   * non-sensor colliders via `World.contactPair`'s `TempContactManifold`. Returns `null` only if the
+   * pair has no manifold at all (shouldn't normally happen for a pair `drainCollisionEvents` just
+   * reported as newly touching, but guarded defensively). `World.contactPair`'s callback can in
+   * principle be invoked once per manifold between the pair - for the compound/multi-collider shapes
+   * this can matter for, each sub-collider pair already gets its own separate `drainCollisionEvents`
+   * entry (and thus its own `computeContactGeometry` call) since collision events are per-*collider*,
+   * not per-body, so in practice a single call here only ever sees one manifold; only the first
+   * encountered is used regardless. `impulse` sums `contactImpulse(i)` across every contact point of
+   * that manifold (an already-solved *impulse*, not a force estimate - the pinned
+   * `@dimforge/rapier3d-compat` build's constraint solver runs within the same `World.step()` call
+   * that produced this `started` event, so the manifold's impulses are already up to date by the time
+   * this runs). `normal` is returned oriented "away from `collider1` towards `collider2`" - Rapier's
+   * `contactPair(a, b, f)` reports whether its own internally-cached manifold order matches the
+   * queried `(a, b)` order via the callback's `flipped` flag; when `flipped` is `true` the manifold's
+   * `normal()` (always world-space, always pointing from the manifold's own shape1 to shape2) actually
+   * points from `collider2` to `collider1` and must be negated to match this method's documented
+   * orientation - verified empirically against a ball resting on a floor below it (see
+   * `gg-engine-physics-adapter-rapier` for the exact reproduction).
+   */
+  protected computeContactGeometry(
+    collider1: Collider,
+    collider2: Collider,
+  ): { position: Point3; normal: Point3; impulse: number } | null {
+    const nativeWorld = this._nativeWorld;
+    if (!nativeWorld) {
+      return null;
+    }
+    let result: { position: Point3; normal: Point3; impulse: number } | null = null;
+    nativeWorld.contactPair(collider1, collider2, (manifold, flipped) => {
+      if (result) {
+        // only the first manifold is used - see doc above.
+        return;
+      }
+      const rawNormal = manifold.normal();
+      const normal: Point3 = flipped
+        ? { x: -rawNormal.x, y: -rawNormal.y, z: -rawNormal.z }
+        : { x: rawNormal.x, y: rawNormal.y, z: rawNormal.z };
+
+      const numSolverContacts = manifold.numSolverContacts();
+      let position: Point3 = Pnt3.O;
+      if (numSolverContacts > 0) {
+        let sum = Pnt3.O;
+        for (let i = 0; i < numSolverContacts; i++) {
+          const p = manifold.solverContactPoint(i);
+          if (p) {
+            sum = Pnt3.add(sum, p);
+          }
+        }
+        position = Pnt3.scalarMult(sum, 1 / numSolverContacts);
+      }
+
+      let impulse = 0;
+      const numContacts = manifold.numContacts();
+      for (let i = 0; i < numContacts; i++) {
+        impulse += manifold.contactImpulse(i);
+      }
+
+      result = { position, normal, impulse };
+    });
+    return result;
   }
 
   protected lockedCollisionGroups: number[] = [];

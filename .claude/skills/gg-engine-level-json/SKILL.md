@@ -149,6 +149,30 @@ const killZone = level.getChildEntityByName<Trigger3dEntity>('KillZone');
 killZone.onEntityEntered.subscribe(entity => world.removeEntity(entity, true));
 ```
 
+### Collision events - `onCollisionStart`/`onCollisionEnd` on any physics-bodied entity
+
+Unlike a `"Trigger"` (a sensor with no collision response), any entity built on `Entity3d`/`Entity2d`
+with a real rigid body exposes `onCollisionStart`/`onCollisionEnd` too - this covers a `"Primitive"`
+entry above, `RaycastVehicle3dEntity` (and therefore `GgCarEntity.raycastVehicle` - a `"GgCar"`
+entry's chassis), and any app-defined `Entity3d`/`Entity2d` subclass. `onCollisionStart` fires once
+per pair of bodies that just started touching, carrying `entity` (the other body's owning entity, or
+`null` if it has none - same convention as `onEntityEntered`), `position` (world-space contact
+point), `normal`, `relativeVelocity`, and `impulse` (a rough hit-strength scalar - see
+`CollisionEvent`'s own doc for why it isn't directly comparable across different physics adapters).
+`onCollisionEnd` fires once contact stops, emitting just the other entity (or `null`) - no further
+contact geometry is available at that point. Wire it exactly like a trigger event:
+
+```typescript
+const car = level.getChildEntityByName<GgCarEntity>('PlayerCar');
+car.raycastVehicle.onCollisionStart.subscribe(({ entity, impulse }) => {
+  if (impulse > 50) playCrashSound(entity);
+});
+```
+
+or declaratively from a level JSON's `events` (see "Blueprints" below) - the built-in `"PlaySound"`
+node's `impactClips` setting is built specifically for this: picking a different clip for a light tap
+versus a hard crash off this same `impulse` field.
+
 ### `"Camera"` (3D only) - a `Camera3dEntity`, ready to use
 
 `config: { fov?, aspectRatio?, frustrum?: { near, far } }`. Returns a `Camera3dEntity` (`.camera`
@@ -383,7 +407,10 @@ world.addEntity(engineSound);
 
 A blueprint is a small node graph, serializable as a `BlueprintJson`, that runs behavior in
 response to an entity's observable firing - the engine's analogue of an Unreal Blueprint event
-graph (no visual editor yet, just the JSON graph and its runtime). It replaces code like:
+graph (no visual editor yet, just the JSON graph and its runtime). Any observable property on the
+just-created entity works, not just `onEntityEntered`/`onEntityLeft` - e.g. `onCollisionStart`/
+`onCollisionEnd` (see "Collision events" above) for reacting to an actual physical hit rather than a
+trigger overlap. It replaces code like:
 
 ```typescript
 const killZone = level.getChildEntityByName<Trigger3dEntity>('KillZone');
@@ -505,13 +532,42 @@ to a `"Trigger"` entity's `onEntityEntered` for an impact sound:
 the same clip doesn't re-fetch/re-decode every time), `volume`, `playbackRate`, `spatial` (default
 `true`), `bus` (default `"sfx"`), and an optional fixed `position` overriding where it plays. With
 no `position` set, it uses the triggering value's own `.position` if it has one - true for whatever
-`onEntityEntered`/`onEntityLeft` emit (an `IEntity & IPositionable(2d|3d)`), which is exactly what
-makes the "impact where something hit a trigger" pattern above work with zero extra wiring: the
-sound plays at the entering body's own position, not the trigger volume's. A world with no
-`audioScene`, or a binding with no `clip` setting, logs a warning and does nothing (same posture as
+`onEntityEntered`/`onEntityLeft` emit (an `IEntity & IPositionable(2d|3d)`) and for `onCollisionStart`'s
+payload (see "Collision events" above), which is exactly what makes the "impact where something hit
+a trigger/body" pattern above work with zero extra wiring: the sound plays at the point of contact,
+not the trigger/body's own center. A world with no `audioScene`, or a binding with no `clip` setting
+(and no matching `impactClips` tier - see below), logs a warning and does nothing (same posture as
 `"RemoveEntity"` triggered without a valid entity). The spawned source disposes itself once playback
 ends - nothing to clean up by hand, same lifecycle as `AudioSource(3d|2d)Entity.playOneShot`, which
 this node is the blueprint-graph equivalent of.
+
+For "different sounds on light and hard hits", add `impactClips` - a `{ minImpulse, clip, volume?,
+playbackRate? }[]` matched against the triggering payload's own `impulse` (duck-typed the same way
+`position` is above; present on `onCollisionStart`'s payload, absent on a plain trigger's
+`onEntityEntered`/`onEntityLeft`). The node picks the highest-`minImpulse` tier that's still `<=` the
+payload's `impulse`, falling back to the top-level `clip`/`volume`/`playbackRate` when no tier
+matches or the payload carries no numeric `impulse` at all:
+
+```json
+{
+  "class": "Primitive",
+  "name": "Bumper",
+  "shape": "BOX",
+  "config": { "dimensions": { "x": 1, "y": 2, "z": 1 } },
+  "events": {
+    "onCollisionStart": {
+      "type": "PlaySound",
+      "settings": {
+        "clip": "assets/audio/tap.mp3",
+        "impactClips": [
+          { "minImpulse": 30, "clip": "assets/audio/crash-light.mp3" },
+          { "minImpulse": 150, "clip": "assets/audio/crash-hard.mp3", "volume": 1 }
+        ]
+      }
+    }
+  }
+}
+```
 
 ### Registering an app-defined blueprint node
 

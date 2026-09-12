@@ -39,6 +39,7 @@ export * from './interfaces/i-positionable';
 
 export * from './models/axis-directions';
 export * from './models/body-options';
+export * from './models/collision-event';
 export * from './models/geometry-nodes';
 export * from './models/points';
 export * from './models/raycasting';

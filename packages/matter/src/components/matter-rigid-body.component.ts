@@ -1,5 +1,6 @@
 import {
   BitMask,
+  CollisionEvent,
   CollisionGroup,
   DebugBody2DSettings,
   Entity2d,
@@ -9,6 +10,7 @@ import {
   Shape2DDescriptor,
 } from '@gg-web-engine/core';
 import { Body, Composite, Vector } from 'matter-js';
+import { Observable, Subject } from 'rxjs';
 import { MatterGgWorld, MatterPhysicsTypeDocRepo } from '../types';
 
 // FIXME why this needs to be introduced? investigate units in matter.js
@@ -61,11 +63,48 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
   protected _interactWithCGsMask = BitMask.full(16);
   protected _ownCGsMask = BitMask.full(16);
 
+  get onCollisionStart(): Observable<CollisionEvent<Point2, MatterRigidBodyComponent>> {
+    return this.onCollisionStart$.asObservable();
+  }
+
+  get onCollisionEnd(): Observable<MatterRigidBodyComponent | null> {
+    return this.onCollisionEnd$.asObservable();
+  }
+
+  protected readonly onCollisionStart$: Subject<CollisionEvent<Point2, MatterRigidBodyComponent>> =
+    new Subject<CollisionEvent<Point2, MatterRigidBodyComponent>>();
+  protected readonly onCollisionEnd$: Subject<MatterRigidBodyComponent | null> = new Subject<
+    MatterRigidBodyComponent | null
+  >();
+
+  /** Other rigid bodies this body is currently touching (non-sensor contact only), tracked so
+   * `removeFromWorld` can tell them apart to emit `onCollisionEnd(null)` per that member's
+   * documented "other body removed while still in contact" case. Maintained exclusively via
+   * `notifyCollisionStart`/`notifyCollisionEnd`, called by `MatterWorldComponent`'s single
+   * world-wide `collisionStart`/`collisionEnd` listener - not touched directly by anything else. */
+  protected readonly currentContacts: Set<MatterRigidBodyComponent> = new Set();
+
   constructor(
     public nativeBody: Body,
     public readonly shape: Shape2DDescriptor,
   ) {
     this.updateCollisionFilter();
+  }
+
+  /** @internal called by `MatterWorldComponent`'s global `collisionStart` listener - not part of
+   * this component's public API surface. */
+  notifyCollisionStart(collisionEvent: CollisionEvent<Point2, MatterRigidBodyComponent>): void {
+    this.currentContacts.add(collisionEvent.otherBody);
+    this.onCollisionStart$.next(collisionEvent);
+  }
+
+  /** @internal called by `MatterWorldComponent`'s global `collisionEnd` listener - not part of
+   * this component's public API surface. */
+  notifyCollisionEnd(otherBody: MatterRigidBodyComponent | null): void {
+    if (otherBody) {
+      this.currentContacts.delete(otherBody);
+    }
+    this.onCollisionEnd$.next(otherBody);
   }
 
   get interactWithCollisionGroups(): ReadonlyArray<CollisionGroup> {
@@ -131,16 +170,28 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
   removeFromWorld(world: MatterGgWorld, dispose: boolean = false): void {
     Composite.remove(world.physicsWorld.matterWorld!, this.nativeBody);
     world.physicsWorld.removed$.next(this);
+    // this body is leaving the world while still touching others - per `onCollisionEnd`'s own
+    // contract, each of those bodies sees `null` (no further contact geometry is available), not a
+    // dangling reference to a body no longer in the world.
+    for (const other of this.currentContacts) {
+      other.notifyCollisionEnd(null);
+      other.currentContacts.delete(this);
+    }
+    this.currentContacts.clear();
     if (dispose) {
       this.dispose();
     }
   }
 
   // matter.js bodies are plain JS objects with no native/WASM handle - ordinary GC reclaims them
-  // once `Composite.remove` above drops the engine's own reference, so there's nothing to free here
-  // at this level. `MatterTriggerComponent` overrides this to complete its own RxJS subjects, which
-  // *do* need an explicit dispose.
-  dispose(): void {}
+  // once `Composite.remove` above drops the engine's own reference, so there's nothing to free
+  // beyond completing this component's own RxJS subjects. `MatterTriggerComponent` overrides this
+  // to also complete its own `onEnter$`/`onLeft$` subjects, calling back into this via `super.
+  // dispose()`.
+  dispose(): void {
+    this.onCollisionStart$.complete();
+    this.onCollisionEnd$.complete();
+  }
 
   resetMotion(): void {
     Body.setVelocity(this.nativeBody, Pnt2.O);

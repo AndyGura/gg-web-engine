@@ -1,13 +1,65 @@
-import { Pnt2, Point2, TickOrder } from '../../base';
+import { EMPTY, Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
+import { IEntity, Pnt2, Point2, TickOrder } from '../../base';
 import { IPositionable2d } from '../interfaces/i-positionable-2d';
 import { IRenderable2dEntity } from './i-renderable-2d.entity';
-import { Gg2dWorldTypeDocRepo } from '../gg-2d-world';
+import { Gg2dWorldTypeDocPPatch, Gg2dWorldTypeDocRepo, PhysicsTypeDocRepo2D } from '../gg-2d-world';
 
 export class Entity2d<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTypeDocRepo>
   extends IRenderable2dEntity<TypeDoc>
   implements IPositionable2d
 {
   public readonly tickOrder = TickOrder.OBJECTS_BINDING;
+
+  /**
+   * Fires each time this entity's body begins touching another rigid body it wasn't already
+   * touching - see `IRigidBodyComponent.onCollisionStart`. `entity` is the other body's owning
+   * entity, if it has one (same convention `Trigger2dEntity.onEntityEntered` uses). Entities with
+   * no physics body (`objectBody` unset) never emit.
+   */
+  get onCollisionStart(): Observable<{
+    entity:
+      | (IEntity<Point2, number, Gg2dWorldTypeDocRepo & { pTypeDoc: TypeDoc['pTypeDoc'] }> & IPositionable2d)
+      | null;
+    otherBody: TypeDoc['pTypeDoc']['rigidBody'];
+    position: Point2;
+    normal: Point2;
+    relativeVelocity: Point2;
+    impulse: number;
+  }> {
+    if (!this.objectBody) {
+      return EMPTY;
+    }
+    return this.objectBody.onCollisionStart.pipe(
+      map(evt => ({
+        ...evt,
+        entity: (evt.otherBody.entity ?? null) as
+          | (IEntity<Point2, number, Gg2dWorldTypeDocPPatch<PhysicsTypeDocRepo2D>> & IPositionable2d)
+          | null,
+      })),
+    );
+  }
+
+  /**
+   * Fires each time this entity's body stops touching a rigid body it was previously touching -
+   * see `IRigidBodyComponent.onCollisionEnd`. `null` when the other body was removed from the
+   * world while still in contact, or when it (or its entity) can't be resolved.
+   */
+  get onCollisionEnd(): Observable<
+    (IEntity<Point2, number, Gg2dWorldTypeDocRepo & { pTypeDoc: TypeDoc['pTypeDoc'] }> & IPositionable2d) | null
+  > {
+    if (!this.objectBody) {
+      return EMPTY;
+    }
+    return this.objectBody.onCollisionEnd.pipe(
+      map(
+        otherBody =>
+          (otherBody?.entity ?? null) as
+            | (IEntity<Point2, number, Gg2dWorldTypeDocPPatch<PhysicsTypeDocRepo2D>> & IPositionable2d)
+            | null,
+      ),
+    );
+  }
 
   private _position = Pnt2.O;
   public get position(): Point2 {

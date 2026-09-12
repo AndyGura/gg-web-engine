@@ -1,10 +1,14 @@
+import { Subject } from 'rxjs';
 import { IRigidBody2dComponent, IRigidBody3dComponent } from '../../src';
 
 export const mock2DBody = () => {
   return {
+    entity: null,
     position: { x: 0, y: 0 },
     rotation: 0,
     name: '',
+    onCollisionStart: new Subject(),
+    onCollisionEnd: new Subject(),
     addToWorld() {
     },
     removeFromWorld() {
@@ -16,6 +20,7 @@ export const mock2DBody = () => {
 
 export const mock3DBody = () => {
   return {
+    entity: null,
     position: { x: 0, y: 0, z: 0 },
     rotation: { x: 0, y: 0, z: 0, w: 1 },
     linearVelocity: { x: 0, y: 0, z: 0 },
@@ -23,6 +28,8 @@ export const mock3DBody = () => {
     ownCollisionGroups: [0],
     interactWithCollisionGroups: [0],
     name: '',
+    onCollisionStart: new Subject(),
+    onCollisionEnd: new Subject(),
     addToWorld() {
     },
     removeFromWorld() {
