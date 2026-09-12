@@ -21,8 +21,7 @@ export class Entity3d<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRep
    */
   get onCollisionStart(): Observable<{
     entity:
-      | (IEntity<Point3, Point4, Gg3dWorldTypeDocRepo & { pTypeDoc: TypeDoc['pTypeDoc'] }> & IPositionable3d)
-      | null;
+      (IEntity<Point3, Point4, Gg3dWorldTypeDocRepo & { pTypeDoc: TypeDoc['pTypeDoc'] }> & IPositionable3d) | null;
     otherBody: TypeDoc['pTypeDoc']['rigidBody'];
     position: Point3;
     normal: Point3;
@@ -36,8 +35,7 @@ export class Entity3d<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRep
       map(evt => ({
         ...evt,
         entity: (evt.otherBody.entity ?? null) as
-          | (IEntity<Point3, Point4, Gg3dWorldTypeDocPPatch<PhysicsTypeDocRepo3D>> & IPositionable3d)
-          | null,
+          (IEntity<Point3, Point4, Gg3dWorldTypeDocPPatch<PhysicsTypeDocRepo3D>> & IPositionable3d) | null,
       })),
     );
   }
@@ -57,8 +55,7 @@ export class Entity3d<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRep
       map(
         otherBody =>
           (otherBody?.entity ?? null) as
-            | (IEntity<Point3, Point4, Gg3dWorldTypeDocPPatch<PhysicsTypeDocRepo3D>> & IPositionable3d)
-            | null,
+            (IEntity<Point3, Point4, Gg3dWorldTypeDocPPatch<PhysicsTypeDocRepo3D>> & IPositionable3d) | null,
       ),
     );
   }

@@ -19,8 +19,7 @@ export class Entity2d<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTypeDocRep
    */
   get onCollisionStart(): Observable<{
     entity:
-      | (IEntity<Point2, number, Gg2dWorldTypeDocRepo & { pTypeDoc: TypeDoc['pTypeDoc'] }> & IPositionable2d)
-      | null;
+      (IEntity<Point2, number, Gg2dWorldTypeDocRepo & { pTypeDoc: TypeDoc['pTypeDoc'] }> & IPositionable2d) | null;
     otherBody: TypeDoc['pTypeDoc']['rigidBody'];
     position: Point2;
     normal: Point2;
@@ -34,8 +33,7 @@ export class Entity2d<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTypeDocRep
       map(evt => ({
         ...evt,
         entity: (evt.otherBody.entity ?? null) as
-          | (IEntity<Point2, number, Gg2dWorldTypeDocPPatch<PhysicsTypeDocRepo2D>> & IPositionable2d)
-          | null,
+          (IEntity<Point2, number, Gg2dWorldTypeDocPPatch<PhysicsTypeDocRepo2D>> & IPositionable2d) | null,
       })),
     );
   }
@@ -55,8 +53,7 @@ export class Entity2d<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTypeDocRep
       map(
         otherBody =>
           (otherBody?.entity ?? null) as
-            | (IEntity<Point2, number, Gg2dWorldTypeDocPPatch<PhysicsTypeDocRepo2D>> & IPositionable2d)
-            | null,
+            (IEntity<Point2, number, Gg2dWorldTypeDocPPatch<PhysicsTypeDocRepo2D>> & IPositionable2d) | null,
       ),
     );
   }

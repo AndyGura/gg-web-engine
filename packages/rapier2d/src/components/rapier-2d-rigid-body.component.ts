@@ -85,8 +85,9 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
 
   public name: string = '';
 
-  protected readonly onCollisionStart$: Subject<CollisionEvent<Point2, Rapier2dRigidBodyComponent>> =
-    new Subject<CollisionEvent<Point2, Rapier2dRigidBodyComponent>>();
+  protected readonly onCollisionStart$: Subject<CollisionEvent<Point2, Rapier2dRigidBodyComponent>> = new Subject<
+    CollisionEvent<Point2, Rapier2dRigidBodyComponent>
+  >();
   protected readonly onCollisionEnd$: Subject<Rapier2dRigidBodyComponent | null> =
     new Subject<Rapier2dRigidBodyComponent | null>();
 

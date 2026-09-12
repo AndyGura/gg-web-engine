@@ -55,8 +55,9 @@ export class AmmoRigidBodyComponent
    * `AmmoTriggerComponent` keeps its own `onEnter$`/`onLeft$` reachable only through its own
    * bookkeeping method (`checkOverlaps`).
    */
-  protected readonly onCollisionStart$: Subject<CollisionEvent<Point3, AmmoRigidBodyComponent>> =
-    new Subject<CollisionEvent<Point3, AmmoRigidBodyComponent>>();
+  protected readonly onCollisionStart$: Subject<CollisionEvent<Point3, AmmoRigidBodyComponent>> = new Subject<
+    CollisionEvent<Point3, AmmoRigidBodyComponent>
+  >();
   protected readonly onCollisionEnd$: Subject<AmmoRigidBodyComponent | null> =
     new Subject<AmmoRigidBodyComponent | null>();
 

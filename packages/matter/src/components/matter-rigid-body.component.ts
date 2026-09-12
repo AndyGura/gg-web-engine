@@ -71,11 +71,11 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
     return this.onCollisionEnd$.asObservable();
   }
 
-  protected readonly onCollisionStart$: Subject<CollisionEvent<Point2, MatterRigidBodyComponent>> =
-    new Subject<CollisionEvent<Point2, MatterRigidBodyComponent>>();
-  protected readonly onCollisionEnd$: Subject<MatterRigidBodyComponent | null> = new Subject<
-    MatterRigidBodyComponent | null
+  protected readonly onCollisionStart$: Subject<CollisionEvent<Point2, MatterRigidBodyComponent>> = new Subject<
+    CollisionEvent<Point2, MatterRigidBodyComponent>
   >();
+  protected readonly onCollisionEnd$: Subject<MatterRigidBodyComponent | null> =
+    new Subject<MatterRigidBodyComponent | null>();
 
   /** Other rigid bodies this body is currently touching (non-sensor contact only), tracked so
    * `removeFromWorld` can tell them apart to emit `onCollisionEnd(null)` per that member's

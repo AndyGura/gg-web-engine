@@ -111,8 +111,9 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
    */
   public readonly collidingWith: Set<Rapier3dRigidBodyComponent> = new Set();
 
-  protected readonly onCollisionStart$: Subject<CollisionEvent<Point3, Rapier3dRigidBodyComponent>> =
-    new Subject<CollisionEvent<Point3, Rapier3dRigidBodyComponent>>();
+  protected readonly onCollisionStart$: Subject<CollisionEvent<Point3, Rapier3dRigidBodyComponent>> = new Subject<
+    CollisionEvent<Point3, Rapier3dRigidBodyComponent>
+  >();
   protected readonly onCollisionEnd$: Subject<Rapier3dRigidBodyComponent | null> =
     new Subject<Rapier3dRigidBodyComponent | null>();
 
