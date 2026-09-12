@@ -17,6 +17,7 @@ import { ThreeGgWorld, ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-w
 import { AmbientLight, DirectionalLight, Mesh, PointLight } from 'three';
 import { AmmoWorldComponent } from '@gg-web-engine/ammo';
 import { WebAudioScene3dComponent } from '@gg-web-engine/audio';
+import { throttleTime } from 'rxjs';
 
 GgStatic.instance.showStats = true;
 GgStatic.instance.devConsoleEnabled = true;
@@ -398,7 +399,27 @@ world.init().then(async () => {
     // the whole chamber but clearly quieter from the far corners.
     radioSource.refDistance = 1.5;
     radioSource.maxDistance = 14;
-    newRadio.addChildren(new AudioSource3dEntity(radioSource, newRadio));
+    let radioAudio = new AudioSource3dEntity(radioSource, newRadio);
+    newRadio.addChildren(radioAudio);
+
+    const hitClip = await world.audioScene!.factory.loadClip(`${ASSETS_BASE}/sfx/hit.mp3`);
+
+    let radioBrokenLevel = 0;
+    newRadio.onCollisionStart
+      .pipe(throttleTime(100)).subscribe(
+      ({ position, relativeVelocity }) => {
+        let rvel = Pnt3.len(relativeVelocity);
+        if (rvel > 0.5) {
+          AudioSource3dEntity.playOneShot(world, { clip: hitClip }, position);
+        }
+        if (rvel > 4) {
+          radioBrokenLevel += 1;
+          if (radioBrokenLevel > 4 && radioAudio.source.isPlaying) {
+            radioAudio.stop();
+          }
+          radioAudio.source.playbackRate = 0.9 ** radioBrokenLevel;
+        }
+      });
 
     return newRadio;
   }
