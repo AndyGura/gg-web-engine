@@ -1,6 +1,6 @@
 import { BodyShape3DDescriptor, Shape3DDescriptor, Shape3DMeshDescriptor } from './models/shapes';
-import { Point3, Point4 } from '../base';
-import { PhysicsTypeDocRepo3D, VisualTypeDocRepo3D } from './gg-3d-world';
+import { IAudioSourceComponentFactory, Point3, Point4 } from '../base';
+import { AudioTypeDocRepo3D, PhysicsTypeDocRepo3D, VisualTypeDocRepo3D } from './gg-3d-world';
 import { CharacterController3dOptions } from './models/character-controller-options';
 
 export type DisplayObject3dOpts<Tex> = {
@@ -94,3 +94,7 @@ export interface IPhysicsBody3dComponentFactory<PTypeDoc extends PhysicsTypeDocR
     },
   ): PTypeDoc['characterController'];
 }
+
+export interface IAudioSource3dComponentFactory<
+  ATypeDoc extends AudioTypeDocRepo3D = AudioTypeDocRepo3D,
+> extends IAudioSourceComponentFactory<Point3, Point4, ATypeDoc> {}

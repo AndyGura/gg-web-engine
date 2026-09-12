@@ -1,12 +1,13 @@
 import { LevelLoader } from '../base/level-loader';
 import { Gg3dWorld, Gg3dWorldTypeDocRepo } from './gg-3d-world';
-import { AxisDirection3, Point3, Point4 } from '../base';
+import { AudioDistanceModel, AxisDirection3, Point3, Point4 } from '../base';
 import { DisplayObject3dOpts } from './factories';
 import { Body3DOptions } from './models/body-options';
 import { Shape3DDescriptor } from './models/shapes';
 import { Entity3d } from './entities/entity-3d';
 import { Trigger3dEntity } from './entities/trigger-3d.entity';
 import { Camera3dEntity } from './entities/camera-3d.entity';
+import { AudioSource3dEntity } from './entities/audio-source-3d.entity';
 import {
   CharacterController3dEntity,
   CharacterController3dEntityOptions,
@@ -150,6 +151,48 @@ export interface Camera3DSettings {
    * Near and far frustum planes
    */
   frustrum?: { near: number; far: number };
+}
+
+/**
+ * Settings for the built-in `"Sound"` entity class: loads a clip (via `audioScene.factory
+ * .loadClip`) and builds a ready-to-use `AudioSource3dEntity`, positioned like any other level
+ * entity. Covers the "static" and "ambient/level music" placement modes from the audio RFC -
+ * "attached" (riding another entity's transform) isn't expressible in a level JSON, since JSON
+ * has no way to reference a not-yet-loaded entity; wire that up in app code instead, the same way
+ * a `"GgCar"` wheel's visual mesh or a `"Player"`'s input controller is - see
+ * `gg-engine-level-json`. `playOneShot`-style transient sounds aren't a level entity at all
+ * (there's nothing static to declare) - trigger them from a `"PlaySound"` blueprint node instead
+ * (see `EntityJson.events`).
+ */
+export interface Sound3DSettings {
+  /** Position of the sound source. */
+  position?: Point3;
+
+  /** Rotation of the sound source - only meaningful with a directional cone (`coneOuterAngle` on the source). */
+  rotation?: Point4;
+
+  /** URL of the clip to load. */
+  path: string;
+
+  /** Whether to loop. Defaults to `true` - static/ambient sounds are normally continuous. */
+  loop?: boolean;
+
+  volume?: number;
+  playbackRate?: number;
+
+  /** Positional 3D audio vs. flat/non-positional (ambient bed, level music, UI). Defaults to `true`. */
+  spatial?: boolean;
+
+  /** Output bus/category (e.g. `"sfx"`, `"music"`, `"ambient"`). Defaults to `"sfx"`. */
+  bus?: string;
+
+  /** Whether to start playing as soon as the level loads. Defaults to `true`. */
+  autoplay?: boolean;
+
+  refDistance?: number;
+  maxDistance?: number;
+  rolloffFactor?: number;
+  distanceModel?: AudioDistanceModel;
 }
 
 /**
@@ -324,6 +367,7 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
 
     this.registerClass('Trigger', this.createTrigger.bind(this));
     this.registerClass('Camera', this.createCamera.bind(this));
+    this.registerClass('Sound', this.createSound.bind(this));
     this.registerClass('Player', this.createPlayer.bind(this));
     this.registerClass('GgCar', this.createGgCar.bind(this));
     this.registerClass('MapGraph', this.createMapGraph.bind(this));
@@ -455,6 +499,57 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
     }
     if (rotation) {
       entity.rotation = rotation;
+    }
+    return entity;
+  }
+
+  /**
+   * Create a `"Sound"` entity: loads `settings.path` via `audioScene.factory.loadClip` and wraps
+   * the resulting source in a ready-to-use `AudioSource3dEntity`, statically positioned. Returns
+   * `undefined` (no-op) if the world has no `audioScene`, same posture as `createTrigger`/
+   * `createCamera` returning `undefined` for a missing physics/visual scene.
+   * @param world - The world instance
+   * @param settings - The sound settings
+   * @returns The created audio source entity
+   */
+  private async createSound(
+    world: Gg3dWorld<TypeDoc>,
+    settings: Sound3DSettings,
+  ): Promise<AudioSource3dEntity<TypeDoc> | undefined> {
+    if (!world.audioScene) {
+      return undefined;
+    }
+    if (!settings.path) {
+      throw new Error('"path" is required for Sound class');
+    }
+    const clip = await world.audioScene.factory.loadClip(settings.path);
+    const source = world.audioScene.factory.createSource({
+      clip,
+      loop: settings.loop ?? true,
+      volume: settings.volume,
+      playbackRate: settings.playbackRate,
+      spatial: settings.spatial,
+      bus: settings.bus,
+      autoplay: settings.autoplay,
+    });
+    if (settings.refDistance !== undefined) {
+      source.refDistance = settings.refDistance;
+    }
+    if (settings.maxDistance !== undefined) {
+      source.maxDistance = settings.maxDistance;
+    }
+    if (settings.rolloffFactor !== undefined) {
+      source.rolloffFactor = settings.rolloffFactor;
+    }
+    if (settings.distanceModel !== undefined) {
+      source.distanceModel = settings.distanceModel;
+    }
+    const entity = new AudioSource3dEntity<TypeDoc>(source);
+    if (settings.position) {
+      entity.position = settings.position;
+    }
+    if (settings.rotation) {
+      entity.rotation = settings.rotation;
     }
     return entity;
   }

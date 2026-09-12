@@ -11,6 +11,7 @@
     { "path": "packages/rapier2d" },
     { "path": "packages/rapier3d" },
     { "path": "packages/pixi" },
-    { "path": "packages/matter" }
+    { "path": "packages/matter" },
+    { "path": "packages/audio" }
   ]
 }

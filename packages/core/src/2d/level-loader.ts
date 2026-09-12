@@ -1,11 +1,12 @@
 import { LevelLoader } from '../base/level-loader';
 import { Gg2dWorld, Gg2dWorldTypeDocRepo } from './gg-2d-world';
-import { Point2 } from '../base';
+import { AudioDistanceModel, Point2 } from '../base';
 import { DisplayObject2dOpts } from './factories';
 import { Body2DOptions } from './models/body-options';
 import { Shape2DDescriptor } from './models/shapes';
 import { Entity2d } from './entities/entity-2d';
 import { Trigger2dEntity } from './entities/trigger-2d.entity';
+import { AudioSource2dEntity } from './entities/audio-source-2d.entity';
 
 const defaultBodyOptions: Body2DOptions = {
   dynamic: true,
@@ -85,7 +86,27 @@ export interface TriggerSettings {
 }
 
 /**
- * 2D level loader: registers the built-in primitive/trigger entity classes and dispatches
+ * Settings for the built-in `"Sound"` entity class - see the 3D `Sound3DSettings` doc (identical
+ * shape, `Point2`/no cone).
+ */
+export interface Sound2DSettings {
+  position?: Point2;
+  rotation?: number;
+  path: string;
+  loop?: boolean;
+  volume?: number;
+  playbackRate?: number;
+  spatial?: boolean;
+  bus?: string;
+  autoplay?: boolean;
+  refDistance?: number;
+  maxDistance?: number;
+  rolloffFactor?: number;
+  distanceModel?: AudioDistanceModel;
+}
+
+/**
+ * 2D level loader: registers the built-in primitive/trigger/sound entity classes and dispatches
  * `LevelJson` entities to them (or to custom classes registered via `registerClass`).
  * @template TypeDoc - The type document repository
  */
@@ -108,6 +129,7 @@ export class Gg2dLevelLoader<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTyp
     );
 
     this.registerClass('Trigger', this.createTrigger.bind(this));
+    this.registerClass('Sound', this.createSound.bind(this));
   }
 
   /**
@@ -179,6 +201,54 @@ export class Gg2dLevelLoader<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTyp
     }
     if (rotation !== undefined) {
       entity.rotation = rotation;
+    }
+    return entity;
+  }
+
+  /**
+   * Create a `"Sound"` entity - see the 3D loader's `createSound` doc (identical behavior).
+   * @param world - The world instance
+   * @param settings - The sound settings
+   * @returns The created audio source entity
+   */
+  private async createSound(
+    world: Gg2dWorld<TypeDoc>,
+    settings: Sound2DSettings,
+  ): Promise<AudioSource2dEntity<TypeDoc> | undefined> {
+    if (!world.audioScene) {
+      return undefined;
+    }
+    if (!settings.path) {
+      throw new Error('"path" is required for Sound class');
+    }
+    const clip = await world.audioScene.factory.loadClip(settings.path);
+    const source = world.audioScene.factory.createSource({
+      clip,
+      loop: settings.loop ?? true,
+      volume: settings.volume,
+      playbackRate: settings.playbackRate,
+      spatial: settings.spatial,
+      bus: settings.bus,
+      autoplay: settings.autoplay,
+    });
+    if (settings.refDistance !== undefined) {
+      source.refDistance = settings.refDistance;
+    }
+    if (settings.maxDistance !== undefined) {
+      source.maxDistance = settings.maxDistance;
+    }
+    if (settings.rolloffFactor !== undefined) {
+      source.rolloffFactor = settings.rolloffFactor;
+    }
+    if (settings.distanceModel !== undefined) {
+      source.distanceModel = settings.distanceModel;
+    }
+    const entity = new AudioSource2dEntity<TypeDoc>(source);
+    if (settings.position !== undefined) {
+      entity.position = settings.position;
+    }
+    if (settings.rotation !== undefined) {
+      entity.rotation = settings.rotation;
     }
     return entity;
   }

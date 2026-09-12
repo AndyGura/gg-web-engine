@@ -286,18 +286,36 @@ export type PhysicsTypeDocRepo2D = {
   rigidBody: IRigidBody2dComponent;
   trigger: ITrigger2dComponent;
 };
+export type AudioTypeDocRepo2D = {
+  factory: IAudioSource2dComponentFactory;
+  source: IAudioSource2dComponent;
+  clip: unknown;
+};
 ```
 
-`IVisualSceneComponent<D, R, VTypeDoc>`, `IPhysicsWorldComponent<D, R, PTypeDoc>`, etc. are generic
-over these repos with a default equal to the base (unbound) interface. An adapter package
-instantiates concrete versions (e.g. `ThreeVisualTypeDocRepo`, `Rapier2dPhysicsTypeDocRepo` in its
-own `types.ts`) and implements the interfaces parametrized with them. `Gg2dWorldTypeDocRepo` /
-`Gg3dWorldTypeDocRepo` combine a `vTypeDoc` + `pTypeDoc` pair, with `...VPatch`/`...PPatch` utility
-types letting an app specify only one side and utility types like `TypedGg2dWorld<VW, PW>` compose
-a full app-level world type from an independently-typed visual world and physics world. **Don't
-break this indirection** — e.g. never have a base interface reference a concrete adapter type
-directly, and when adding a new capability to a component interface, add the new type to the
-relevant `TypeDocRepo` rather than hardcoding it.
+`IVisualSceneComponent<D, R, VTypeDoc>`, `IPhysicsWorldComponent<D, R, PTypeDoc>`,
+`IAudioSceneComponent<D, R, ATypeDoc>`, etc. are generic over these repos with a default equal to
+the base (unbound) interface. An adapter package instantiates concrete versions (e.g.
+`ThreeVisualTypeDocRepo`, `Rapier2dPhysicsTypeDocRepo`, `WebAudioTypeDocRepo3D` in its own
+`types.ts`) and implements the interfaces parametrized with them. `Gg2dWorldTypeDocRepo` /
+`Gg3dWorldTypeDocRepo` combine a `vTypeDoc` + `pTypeDoc` + `aTypeDoc` triple, with
+`...VPatch`/`...PPatch`/`...APatch` utility types letting an app specify only one side and utility
+types like `TypedGg2dWorld<VW, PW, AW?>` compose a full app-level world type from an
+independently-typed visual world, physics world, and (optionally - it defaults to the base/unbound
+audio shape when omitted) audio world. **Don't break this indirection** — e.g. never have a base
+interface reference a concrete adapter type directly, and when adding a new capability to a
+component interface, add the new type to the relevant `TypeDocRepo` rather than hardcoding it.
+
+Unlike the visual/physics factory abstracts (`IDisplayObject(2d|3d)ComponentFactory`/
+`IPhysicsBody(2d|3d)ComponentFactory`, each declared fresh in `2d/factories.ts`/`3d/factories.ts`
+since their shape genuinely differs by dimension - different shape descriptors, different creation
+methods), the audio factory contract (`loadClip`/`createSource`) is identical regardless of
+dimension, so it's declared once as `IAudioSourceComponentFactory<D, R, ATypeDoc>` in
+`base/components/audio/i-audio-source.component-factory.ts`; `2d/factories.ts`/`3d/factories.ts`
+each just re-declare an `IAudioSource(2d|3d)ComponentFactory` that narrows `D`/`R` with no new
+members, the same way `IAudioScene(2d|3d)Component` narrows `IAudioSceneComponent`. Don't duplicate
+`loadClip`/`createSource`'s signatures into a new dimension-specific interface if you ever touch
+this - extend the base one instead.
 
 ## Interfaces that are the actual public contract
 
@@ -305,9 +323,10 @@ Changing any of these is a breaking change for every adapter package — grep
 `implements I<Name>` across `packages/*/src` before editing, and plan to update every hit:
 
 - `IComponent`, `IWorldComponent` (base)
-- `IPhysicsWorldComponent` / `IVisualSceneComponent` (+ 2D/3D specializations)
+- `IPhysicsWorldComponent` / `IVisualSceneComponent` / `IAudioSceneComponent` (+ 2D/3D specializations)
 - `IRigidBodyComponent`, `ITriggerComponent`, `IBodyComponent` (+ 2D/3D)
 - `IDisplayObjectComponent`, `IRendererComponent`, `ICameraComponent` (+ 2D/3D)
+- `IAudioSourceComponent`, `IAudioSourceComponentFactory` (+ 2D/3D specializations - see `gg-engine-audio-adapter`)
 - `IRaycastVehicleComponent`, `ICharacterController3dComponent` (3D only)
 - `IEntity`, `IRenderableEntity`, `IRendererEntity`
 - The factory abstracts in `2d/factories.ts` / `3d/factories.ts`
