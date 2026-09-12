@@ -1,4 +1,7 @@
 import {
+  IAudioSceneComponent,
+  IAudioSourceComponent,
+  IAudioSourceComponentFactory,
   IDisplayObjectComponent,
   IEntity,
   IPhysicsWorldComponent,
@@ -31,11 +34,18 @@ export type PhysicsTypeDocRepo<D, R> = {
   trigger: ITriggerComponent<D, R>;
 };
 
+export type AudioTypeDocRepo<D, R> = {
+  factory: IAudioSourceComponentFactory<D, R>;
+  source: IAudioSourceComponent<D, R>;
+  clip: unknown;
+};
+
 export type GgWorldTypeDocRepo<D, R> = {
   vTypeDoc: VisualTypeDocRepo<D, R>;
   pTypeDoc: PhysicsTypeDocRepo<D, R>;
+  aTypeDoc: AudioTypeDocRepo<D, R>;
 };
-// utility types to create world type doc by defining either vTypeDoc or pTypeDoc only
+// utility types to create world type doc by defining either vTypeDoc, pTypeDoc or aTypeDoc only
 export type GgWorldTypeDocVPatch<D, R, VTypeDoc extends VisualTypeDocRepo<D, R>> = Omit<
   GgWorldTypeDocRepo<D, R>,
   'vTypeDoc'
@@ -48,12 +58,19 @@ export type GgWorldTypeDocPPatch<D, R, PTypeDoc extends PhysicsTypeDocRepo<D, R>
 > & {
   pTypeDoc: PTypeDoc;
 };
+export type GgWorldTypeDocAPatch<D, R, ATypeDoc extends AudioTypeDocRepo<D, R>> = Omit<
+  GgWorldTypeDocRepo<D, R>,
+  'aTypeDoc'
+> & {
+  aTypeDoc: ATypeDoc;
+};
 
 export type GgWorldSceneTypeRepo<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R> = GgWorldTypeDocRepo<D, R>> = {
   visualScene: IVisualSceneComponent<D, R, TypeDoc['vTypeDoc']> | null;
   physicsWorld: IPhysicsWorldComponent<D, R, TypeDoc['pTypeDoc']> | null;
+  audioScene: IAudioSceneComponent<D, R, TypeDoc['aTypeDoc']> | null;
 };
-// utility types to create world scene type doc by defining either visualScene or physicsWorld type only
+// utility types to create world scene type doc by defining either visualScene, physicsWorld or audioScene only
 export type GgWorldSceneTypeDocVPatch<
   D,
   R,
@@ -66,6 +83,12 @@ export type GgWorldSceneTypeDocPPatch<
   PTypeDoc extends PhysicsTypeDocRepo<D, R>,
   PW extends IPhysicsWorldComponent<D, R, PTypeDoc> | null,
 > = Omit<GgWorldSceneTypeRepo<D, R>, 'physicsWorld'> & { physicsWorld: PW };
+export type GgWorldSceneTypeDocAPatch<
+  D,
+  R,
+  ATypeDoc extends AudioTypeDocRepo<D, R>,
+  AS extends IAudioSceneComponent<D, R, ATypeDoc> | null,
+> = Omit<GgWorldSceneTypeRepo<D, R>, 'audioScene'> & { audioScene: AS };
 
 // utility types to get type docs from world, can be used when defining custom entities
 export type TypeDocOf<W extends GgWorld<any, any>> =
@@ -89,6 +112,7 @@ export abstract class GgWorld<
 
   public readonly visualScene: SceneTypeDoc['visualScene'];
   public readonly physicsWorld: SceneTypeDoc['physicsWorld'];
+  public readonly audioScene: SceneTypeDoc['audioScene'];
 
   public readonly worldClock: PausableClock = new PausableClock(false);
   public readonly keyboardInput: KeyboardInput = new KeyboardInput();
@@ -113,9 +137,11 @@ export abstract class GgWorld<
   protected constructor(args: {
     visualScene?: SceneTypeDoc['visualScene'];
     physicsWorld?: SceneTypeDoc['physicsWorld'];
+    audioScene?: SceneTypeDoc['audioScene'];
   }) {
     this.visualScene = args.visualScene || null;
     this.physicsWorld = args.physicsWorld || null;
+    this.audioScene = args.audioScene || null;
     this.keyboardInput.start();
     if ((window as any).ggstatic) {
       this.registerConsoleCommands((window as any).ggstatic);
@@ -135,6 +161,9 @@ export abstract class GgWorld<
     }
     if (this.physicsWorld) {
       initPromises.push(this.physicsWorld.init());
+    }
+    if (this.audioScene) {
+      initPromises.push(this.audioScene.init());
     }
     await Promise.all(initPromises);
     const forwardTick = (listener: IEntity, elapsed: number, delta: number) => {
@@ -163,6 +192,12 @@ export abstract class GgWorld<
       // emit tick to all remained entities
       for (i; i < this.tickListeners.length; i++) {
         forwardTick(this.tickListeners[i], elapsed, delta);
+      }
+      // update the audio listener (and, for adapters with no native distance panning, every
+      // living spatial source) from whatever entities moved this frame - see
+      // IAudioSceneComponent.update's doc for why this runs last
+      if (this.audioScene) {
+        this.audioScene.update(elapsed, delta);
       }
     });
   }
@@ -218,6 +253,9 @@ export abstract class GgWorld<
     if (this.visualScene) {
       this.visualScene.dispose();
     }
+    if (this.audioScene) {
+      this.audioScene.dispose();
+    }
     GgWorld._documentWorlds.splice(GgWorld._documentWorlds.indexOf(this), 1);
     this.disposed$.next();
     this.disposed$.complete();
@@ -245,6 +283,7 @@ export abstract class GgWorld<
     this.tickListeners.push(entity);
     this.tickListeners.sort((l1, l2) => l1.tickOrder - l2.tickOrder);
     entity.onSpawned(this);
+    this.maybeBindAudioListener(entity);
   }
 
   public removeEntity(entity: IEntity, dispose = false): void {
@@ -282,6 +321,41 @@ export abstract class GgWorld<
       throw new Error(`No entity named "${name}" found in the world`);
     }
     return found as T;
+  }
+
+  /**
+   * Auto-bind `audioScene`'s listener the first time this world ends up with exactly one
+   * renderer, so a single-camera app never has to call `setActiveListener` itself. Deliberately
+   * does *not* guess once a second renderer shows up (e.g. a portal/minimap camera, or a second
+   * split-screen player) - it warns instead, since silently picking one would be a much harder
+   * bug to notice than an explicit console warning naming every renderer present. See the audio
+   * RFC's "The listener problem" section.
+   */
+  private audioListenerAutoBound = false;
+
+  private maybeBindAudioListener(entity: IEntity): void {
+    if (!this.audioScene || !(entity instanceof IRendererEntity)) {
+      return;
+    }
+    // An explicitly app-set listener (activeListener !== null and we didn't set it ourselves) is
+    // never touched or warned about, no matter how many renderers show up afterwards. A listener
+    // *this* method auto-bound is different: a later second renderer must still trigger the
+    // warning below, so the "already has a listener" check alone (used before this flag existed)
+    // isn't enough - it would silently skip the warning once the first renderer auto-bound one.
+    if (this.audioScene.activeListener !== null && !this.audioListenerAutoBound) {
+      return;
+    }
+    const renderers = this.renderers;
+    if (renderers.length === 1) {
+      this.audioScene.setActiveListener(renderers[0].camera);
+      this.audioListenerAutoBound = true;
+    } else if (renderers.length > 1) {
+      console.warn(
+        `GgWorld "${this.name}": ${renderers.length} renderers present and no active audio ` +
+          `listener set (${renderers.map(r => r.name).join(', ')}) - call ` +
+          `world.audioScene.setActiveListener(...) explicitly to choose one.`,
+      );
+    }
   }
 
   private onGgStaticInitialized() {
@@ -482,5 +556,64 @@ export abstract class GgWorld<
       'args: [ string, 0|1? ]; Remove the named entity from this world, disposing it by default. ' +
         'Pass 0 as second arg to detach without disposing (e.g. before re-adding it elsewhere)',
     );
+    if (this.audioScene) {
+      ggstatic.registerConsoleCommand(
+        this,
+        'audio_set_listener',
+        async (...args: string[]) => {
+          const name = args[0];
+          if (!name) {
+            throw new Error('usage: audio_set_listener NAME; use "renderers" to list renderer names');
+          }
+          const renderer = this.renderers.find(r => r.name === name);
+          if (renderer) {
+            this.audioScene!.setActiveListener(renderer.camera);
+            return `listener bound to renderer "${name}"`;
+          }
+          const entity = this.getEntityByName(name);
+          if (!('position' in entity) || !('rotation' in entity)) {
+            throw new Error(`Entity "${name}" (${entity.constructor.name}) is not positionable`);
+          }
+          this.audioScene!.setActiveListener(entity as unknown as IPositionable<D, R>);
+          return `listener bound to "${name}"`;
+        },
+        'args: [ string ]; Set the world audio listener to a renderer or positionable entity by ' +
+          'name. Use "renderers"/"entities" to find names. Needed once a world runs more than one ' +
+          'renderer - see the audio subsystem doc for why this is never guessed automatically',
+      );
+      ggstatic.registerConsoleCommand(
+        this,
+        'audio_master_volume',
+        async (...args: string[]) => {
+          if (args.length > 0) {
+            if (isNaN(+args[0])) {
+              throw new Error('usage: audio_master_volume [float]');
+            }
+            this.audioScene!.masterVolume = +args[0];
+          }
+          return this.audioScene!.masterVolume.toString();
+        },
+        'args: [ float? ]; Get or set the world audio scene master volume (0-1)',
+      );
+      ggstatic.registerConsoleCommand(
+        this,
+        'audio_bus_volume',
+        async (...args: string[]) => {
+          const [bus, value] = args;
+          if (!bus) {
+            throw new Error('usage: audio_bus_volume BUS [float]');
+          }
+          if (value !== undefined) {
+            if (isNaN(+value)) {
+              throw new Error('usage: audio_bus_volume BUS [float]');
+            }
+            this.audioScene!.setBusVolume(bus, +value);
+          }
+          return this.audioScene!.getBusVolume(bus).toString();
+        },
+        'args: [ string, float? ]; Get or set the volume (0-1) of one audio bus (e.g. "sfx", ' +
+          '"music", "ambient") - a bus not otherwise set behaves as if its volume were 1',
+      );
+    }
   }
 }

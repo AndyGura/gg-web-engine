@@ -1,4 +1,5 @@
 import {
+  AudioSource3dEntity,
   Camera3dEntity,
   CharacterController3dEntity,
   Gg3dLevelLoader,
@@ -16,6 +17,7 @@ import { mock3DBody } from '../mocks/body.mock';
 import { mock3DObject } from '../mocks/object.mock';
 import { mockRaycastVehicle } from '../mocks/raycast-vehicle.mock';
 import { mockCharacterController } from '../mocks/character-controller.mock';
+import { mock3DAudioSource } from '../mocks/audio-source.mock';
 
 const defaultBody = {
   dynamic: true,
@@ -52,6 +54,12 @@ describe('Gg3dLevelLoader', () => {
           createRigidBody: jest.fn().mockReturnValue(mock3DBody()),
           createRaycastVehicle: jest.fn().mockReturnValue(mockRaycastVehicle()),
           createCharacterController: jest.fn().mockReturnValue(mockCharacterController()),
+        },
+      },
+      audioScene: {
+        factory: {
+          loadClip: jest.fn().mockResolvedValue('decoded-clip'),
+          createSource: jest.fn().mockReturnValue(mock3DAudioSource()),
         },
       },
       addPrimitiveRigidBody: jest.fn().mockImplementation(() => new TestEntity()),
@@ -245,6 +253,56 @@ describe('Gg3dLevelLoader', () => {
       expect(cameraEntity).toBeInstanceOf(Camera3dEntity);
       expect(cameraEntity.position).toEqual({ x: 1, y: 2, z: 3 });
       expect(cameraEntity.rotation).toEqual({ x: 0, y: 0, z: 0, w: 1 });
+    });
+
+    it('should load a level with sounds, wrapped ready-to-use in an AudioSource3dEntity parented under the level', async () => {
+      const levelJson: LevelJson = {
+        entities: [
+          {
+            class: 'Sound',
+            position: { x: 4, y: 0, z: 0.5 },
+            name: 'Campfire',
+            config: { path: 'assets/audio/campfire.mp3', volume: 0.6, refDistance: 2, spatial: false, bus: 'ambient' },
+          },
+        ],
+      };
+
+      const level = await levelLoader.loadLevel(levelJson);
+
+      expect(world.audioScene?.factory.loadClip).toHaveBeenCalledWith('assets/audio/campfire.mp3');
+      expect(world.audioScene?.factory.createSource).toHaveBeenCalledWith(
+        expect.objectContaining({
+          clip: 'decoded-clip',
+          loop: true, // default
+          volume: 0.6,
+          spatial: false,
+          bus: 'ambient',
+        }),
+      );
+
+      const sound = level.getChildEntityByName<AudioSource3dEntity>('Campfire');
+      expect(sound).toBeInstanceOf(AudioSource3dEntity);
+      expect(sound.position).toEqual({ x: 4, y: 0, z: 0.5 });
+      expect(sound.source.refDistance).toBe(2);
+    });
+
+    it('should no-op (not throw) for a "Sound" entity when the world has no audioScene', async () => {
+      (world as any).audioScene = undefined;
+      const levelJson: LevelJson = {
+        entities: [{ class: 'Sound', name: 'Campfire', config: { path: 'assets/audio/campfire.mp3' } }],
+      };
+
+      const level = await levelLoader.loadLevel(levelJson);
+
+      expect(() => level.getChildEntityByName('Campfire')).toThrow();
+    });
+
+    it('should throw when a "Sound" entity has no path', async () => {
+      const levelJson: LevelJson = {
+        entities: [{ class: 'Sound', name: 'Campfire', config: {} }],
+      };
+
+      await expect(levelLoader.loadLevel(levelJson)).rejects.toThrow('"path" is required for Sound class');
     });
 
     it('should load a level with a Player, wrapped ready-to-use in a CharacterController3dEntity parented under the level', async () => {

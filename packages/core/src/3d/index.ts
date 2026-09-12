@@ -1,3 +1,5 @@
+export * from './components/audio/i-audio-scene-3d.component';
+export * from './components/audio/i-audio-source-3d.component';
 export * from './components/physics/i-raycast-vehicle.component';
 export * from './components/physics/i-rigid-body-3d.component';
 export * from './components/physics/i-trigger-3d.component';
@@ -9,6 +11,7 @@ export * from './components/rendering/i-renderer-3d.component';
 export * from './components/rendering/i-visual-scene-3d.component';
 
 export * from './entities/gg-car/gg-car.entity';
+export * from './entities/audio-source-3d.entity';
 export * from './entities/camera-3d.entity';
 export * from './entities/character-controller-3d.entity';
 export * from './entities/controllers/animators/camera-3d.animator';

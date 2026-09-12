@@ -1,5 +1,6 @@
-import { Gg2dLevelLoader, Gg2dWorld, IEntity, LevelJson, TickOrder, Trigger2dEntity } from '../../src';
+import { AudioSource2dEntity, Gg2dLevelLoader, Gg2dWorld, IEntity, LevelJson, TickOrder, Trigger2dEntity } from '../../src';
 import { mock2DBody } from '../mocks/body.mock';
+import { mock2DAudioSource } from '../mocks/audio-source.mock';
 
 // A trivial concrete IEntity for tests that need a generator to return a real entity
 class TestEntity extends IEntity {
@@ -19,6 +20,12 @@ describe('Gg2dLevelLoader', () => {
       physicsWorld: {
         factory: {
           createTrigger: jest.fn().mockReturnValue(mock2DBody()),
+        },
+      },
+      audioScene: {
+        factory: {
+          loadClip: jest.fn().mockResolvedValue('decoded-clip'),
+          createSource: jest.fn().mockReturnValue(mock2DAudioSource()),
         },
       },
       addPrimitiveRigidBody: jest.fn().mockImplementation(() => new TestEntity()),
@@ -192,6 +199,38 @@ describe('Gg2dLevelLoader', () => {
       expect(trigger).toBeInstanceOf(Trigger2dEntity);
       expect(trigger.position).toEqual({ x: 100, y: 200 });
       expect(trigger.rotation).toBe(0.5);
+    });
+
+    it('should load a level with sounds, wrapped ready-to-use in an AudioSource2dEntity parented under the level', async () => {
+      const levelJson: LevelJson = {
+        entities: [
+          {
+            class: 'Sound',
+            position: { x: 100, y: 200 },
+            name: 'Ambience',
+            config: { path: 'assets/audio/wind.mp3', spatial: false, bus: 'ambient' },
+          },
+        ],
+      };
+
+      const level = await levelLoader.loadLevel(levelJson);
+
+      expect(world.audioScene?.factory.loadClip).toHaveBeenCalledWith('assets/audio/wind.mp3');
+      expect(world.audioScene?.factory.createSource).toHaveBeenCalledWith(
+        expect.objectContaining({ clip: 'decoded-clip', loop: true, spatial: false, bus: 'ambient' }),
+      );
+
+      const sound = level.getChildEntityByName<AudioSource2dEntity>('Ambience');
+      expect(sound).toBeInstanceOf(AudioSource2dEntity);
+      expect(sound.position).toEqual({ x: 100, y: 200 });
+    });
+
+    it('should throw when a "Sound" entity has no path', async () => {
+      const levelJson: LevelJson = {
+        entities: [{ class: 'Sound', name: 'Ambience', config: {} }],
+      };
+
+      await expect(levelLoader.loadLevel(levelJson)).rejects.toThrow('"path" is required for Sound class');
     });
   });
 

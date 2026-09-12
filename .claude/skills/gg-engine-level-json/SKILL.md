@@ -1,6 +1,6 @@
 ---
 name: gg-engine-level-json
-description: Author or load a level/scene as a JSON document with gg-web-engine's LevelLoader (entities array, built-in "Primitive"/"Trigger"/"Camera"/"Player"/"Glb"/"GgCar"/"MapGraph" classes, app-defined entity classes via registerClass, blueprint graphs wired to entity events via registerBlueprintNode, name lookup via GgWorld.getEntityByName/IEntity.getChildEntityByName, level removal via the returned group entity). Use when the task is to write a level JSON file, add a new built-in level entity class in packages/core, wire an entity's event straight to behavior via a blueprint, or register a custom entity class/blueprint node an app's level JSON can reference.
+description: Author or load a level/scene as a JSON document with gg-web-engine's LevelLoader (entities array, built-in "Primitive"/"Trigger"/"Camera"/"Player"/"Glb"/"GgCar"/"MapGraph"/"Sound" classes, app-defined entity classes via registerClass, blueprint graphs - including the built-in "RemoveEntity"/"PlaySound" nodes - wired to entity events via registerBlueprintNode, name lookup via GgWorld.getEntityByName/IEntity.getChildEntityByName, level removal via the returned group entity). Use when the task is to write a level JSON file, add a new built-in level entity class in packages/core, wire an entity's event straight to behavior via a blueprint, or register a custom entity class/blueprint node an app's level JSON can reference.
 ---
 
 # Building level JSONs
@@ -341,6 +341,44 @@ createInlineTickController(world).subscribe(() => {
 });
 ```
 
+### `"Sound"` - a ready-to-use, statically-positioned audio source (2D and 3D)
+
+Requires the world to have an `audioScene` (see the audio subsystem design doc and
+`gg-engine-audio-adapter`) - with none, this class is a no-op (`undefined`, same posture as
+`"Trigger"`/`"Camera"` with no physics/visual scene), not a thrown error.
+
+```json
+{
+  "class": "Sound",
+  "name": "CampfireCrackle",
+  "position": { "x": 4, "y": 0, "z": 0.5 },
+  "config": { "path": "assets/audio/campfire.mp3", "refDistance": 2, "maxDistance": 20 }
+}
+```
+
+`config` (`Sound3DSettings`/`Sound2DSettings`): `path` (required - fetched+decoded via
+`audioScene.factory.loadClip`), `loop` (default `true` - a static/ambient sound is normally
+continuous), `volume`, `playbackRate`, `spatial` (default `true`), `bus` (default `"sfx"`),
+`autoplay` (default `true`), and the 3D-only/2D-only distance-rolloff fields
+(`refDistance`/`maxDistance`/`rolloffFactor`/`distanceModel`) matching `IAudioSource(3d|2d)Component`
+directly. Missing `path` throws `"path" is required for Sound class`.
+
+This one class covers both the "static" and "ambient/level music" placement modes from the audio
+design doc - level music is just a `"Sound"` entity with `spatial: false, loop: true, bus: "music"`,
+not a separate class. It does **not** cover "attached to another entity" (a level JSON has no way
+to reference a not-yet-loaded entity - the same reason a `"GgCar"` wheel's mesh can't reference an
+existing display object either) or one-shot/transient playback (nothing static to declare - see
+`AudioSource(3d|2d)Entity.playOneShot` for app code, or the `"PlaySound"` blueprint node below for a
+declarative trigger). An attached, continuous sound (e.g. a car engine) is app code, looked up the
+same way a `"Player"`'s controller or a `"GgCar"`'s steering is:
+
+```typescript
+const car = level.getChildEntityByName<GgCarEntity>('PlayerCar');
+const clip = await world.audioScene!.factory.loadClip('assets/audio/engine-loop.mp3');
+const engineSound = new AudioSource3dEntity(world.audioScene!.factory.createSource({ clip, loop: true }), car);
+world.addEntity(engineSound);
+```
+
 ## Blueprints - wiring entity events to behavior declaratively
 
 A blueprint is a small node graph, serializable as a `BlueprintJson`, that runs behavior in
@@ -442,6 +480,38 @@ emits the entity to act on (e.g. `onEntityEntered`/`onEntityLeft`). No output pi
 `settings.dispose` (boolean, default `false`) controls whether the removal also disposes the
 entity, exactly like the `dispose` argument of `GgWorld.removeEntity` - it's a static setting baked
 into the node's JSON, not a wired pin.
+
+### Built-in blueprint node: `"PlaySound"`
+
+Also registered by every `LevelLoader` out of the box (`PlaySoundBlueprintNode` in
+`packages/core/src/base/blueprint/nodes/play-sound.node.ts`, dimension-agnostic - it only touches
+`audioScene.factory`/`IAudioSourceComponent`, never a 2D/3D-specific entity type), with `"trigger"`
+as its default input pin. This is the "pop a one-shot sfx when something happens" node - e.g. wired
+to a `"Trigger"` entity's `onEntityEntered` for an impact sound:
+
+```json
+{
+  "class": "Trigger",
+  "name": "SignHitbox",
+  "config": { "dimensions": { "x": 1, "y": 1, "z": 2 } },
+  "events": {
+    "onEntityEntered": { "type": "PlaySound", "settings": { "clip": "assets/audio/sign-clang.mp3", "volume": 0.8 } }
+  }
+}
+```
+
+`settings` (`PlaySoundNodeSettings`): `clip` (required - a URL, resolved via
+`audioScene.factory.loadClip`, which is expected to cache by URL so triggering this repeatedly for
+the same clip doesn't re-fetch/re-decode every time), `volume`, `playbackRate`, `spatial` (default
+`true`), `bus` (default `"sfx"`), and an optional fixed `position` overriding where it plays. With
+no `position` set, it uses the triggering value's own `.position` if it has one - true for whatever
+`onEntityEntered`/`onEntityLeft` emit (an `IEntity & IPositionable(2d|3d)`), which is exactly what
+makes the "impact where something hit a trigger" pattern above work with zero extra wiring: the
+sound plays at the entering body's own position, not the trigger volume's. A world with no
+`audioScene`, or a binding with no `clip` setting, logs a warning and does nothing (same posture as
+`"RemoveEntity"` triggered without a valid entity). The spawned source disposes itself once playback
+ends - nothing to clean up by hand, same lifecycle as `AudioSource(3d|2d)Entity.playOneShot`, which
+this node is the blueprint-graph equivalent of.
 
 ### Registering an app-defined blueprint node
 
@@ -572,20 +642,26 @@ own coverage against a hand-rolled node type in
 `IEntity.getChildEntityByName` themselves have their own direct coverage in
 `packages/core/test/base/gg-world.spec.ts` and `packages/core/test/base/entities/i-entity.spec.ts`.
 `packages/core/test/{2d,3d}/level-loader.spec.ts` cover the built-in
-`"Primitive"`/`"Trigger"`/`"Camera"`/`"Player"`/`"GgCar"`/`"MapGraph"` classes against hand-rolled
-mock worlds (there, `addEntity`/`removeEntity` are plain `jest.fn()` stubs - fine since those tests
-only care about generator dispatch, not full spawn semantics); the `"GgCar"` cases stub
+`"Primitive"`/`"Trigger"`/`"Camera"`/`"Player"`/`"GgCar"`/`"MapGraph"`/`"Sound"` classes against
+hand-rolled mock worlds (there, `addEntity`/`removeEntity` are plain `jest.fn()` stubs - fine since
+those tests only care about generator dispatch, not full spawn semantics); the `"GgCar"` cases stub
 `physicsWorld.factory.createRigidBody`/`createRaycastVehicle` and
 `visualScene.factory.createBox`/`createCylinder`, reusing `mockRaycastVehicle` from
 `packages/core/test/mocks/raycast-vehicle.mock.ts` for the vehicle component the generator wraps;
 the `"Player"` case similarly stubs `physicsWorld.factory.createCharacterController` and
 `visualScene.factory.createCapsule`, reusing `mockCharacterController` from
-`packages/core/test/mocks/character-controller.mock.ts`.
+`packages/core/test/mocks/character-controller.mock.ts`; the `"Sound"` cases stub
+`audioScene.factory.loadClip`/`createSource`, reusing `mock3DAudioSource`/`mock2DAudioSource` from
+`packages/core/test/mocks/audio-source.mock.ts` for the source component the generator wraps.
 `packages/core/test/3d/loader.spec.ts` covers `Gg3dLoader` - the `"Glb"` class, and that
 `registerClass`/`loadLevel`/`loadLevelFromUrl` are available directly on it - stubbing `loadGgGlb`
 itself rather than the whole fetch/parse pipeline (which has no tests of its own - see
 `gg-engine-app-development`). Follow their existing structure for new built-in-class test cases -
-one `it` per shape/error case is the established pattern.
+one `it` per shape/error case is the established pattern. `PlaySoundBlueprintNode` has its own
+coverage in `packages/core/test/base/blueprint/play-sound.node.spec.ts` (missing-audioScene/missing-clip
+warnings, clip loading, payload-vs-fixed position resolution, self-dispose on `ended$`), and
+`GgWorld`'s listener auto-bind/warn behavior has its own `describe` block in
+`packages/core/test/base/gg-world.spec.ts` ("audio listener auto-bind").
 
 ## Keep this skill current
 
