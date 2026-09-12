@@ -100,6 +100,8 @@ export class WebAudioSource2dComponent
     return new WebAudioSource2dComponent(this.scene as WebAudioScene2dComponent, {
       clip: this.clip,
       loop: this.loop,
+      loopStart: this.loopStart,
+      loopEnd: this.loopEnd,
       volume: this.volume,
       playbackRate: this.playbackRate,
       spatial: this.spatial,

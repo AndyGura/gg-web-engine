@@ -26,6 +26,8 @@ export abstract class WebAudioSourceComponentBase<D, R> {
   public readonly ended$: Observable<void> = this.endedSubject.asObservable();
 
   private _loop: boolean;
+  private _loopStart: number;
+  private _loopEnd: number;
   private _volume: number;
   private _playbackRate: number;
   private _spatial: boolean;
@@ -42,6 +44,8 @@ export abstract class WebAudioSourceComponentBase<D, R> {
   ) {
     this.clip = descriptor.clip;
     this._loop = descriptor.loop ?? false;
+    this._loopStart = descriptor.loopStart ?? 0;
+    this._loopEnd = descriptor.loopEnd ?? 0;
     this._volume = descriptor.volume ?? 1;
     this._playbackRate = descriptor.playbackRate ?? 1;
     this._spatial = descriptor.spatial ?? true;
@@ -80,6 +84,28 @@ export abstract class WebAudioSourceComponentBase<D, R> {
     this._loop = value;
     if (this.bufferSource) {
       this.bufferSource.loop = value;
+    }
+  }
+
+  public get loopStart(): number {
+    return this._loopStart;
+  }
+
+  public set loopStart(value: number) {
+    this._loopStart = value;
+    if (this.bufferSource) {
+      this.bufferSource.loopStart = value;
+    }
+  }
+
+  public get loopEnd(): number {
+    return this._loopEnd;
+  }
+
+  public set loopEnd(value: number) {
+    this._loopEnd = value;
+    if (this.bufferSource) {
+      this.bufferSource.loopEnd = value;
     }
   }
 
@@ -139,6 +165,8 @@ export abstract class WebAudioSourceComponentBase<D, R> {
     const bufferSource = this.scene.context.createBufferSource();
     bufferSource.buffer = this.clip;
     bufferSource.loop = this._loop;
+    bufferSource.loopStart = this._loopStart;
+    bufferSource.loopEnd = this._loopEnd;
     bufferSource.playbackRate.value = this._playbackRate;
     bufferSource.connect(this.gainNode);
     bufferSource.onended = () => {

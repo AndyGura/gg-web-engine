@@ -23,6 +23,15 @@ export type AudioDistanceModel = 'linear' | 'inverse' | 'exponential';
 export interface AudioSourceDescriptor<Clip = unknown> {
   clip: Clip;
   loop?: boolean;
+  /**
+   * Loop region, in seconds from the start of the clip - for a clip authored with a lead-in
+   * before its seamless loop point (a common pattern for engine/ambience loops: play the intro
+   * once, then loop only the sustain portion). Ignored when `loop` is `false`. `loopEnd` of `0`
+   * (the default, matching `AudioBufferSourceNode.loopEnd`'s own default) means "the end of the
+   * clip" rather than a literal zero-length loop.
+   */
+  loopStart?: number;
+  loopEnd?: number;
   volume?: number;
   playbackRate?: number;
   /**
@@ -55,6 +64,9 @@ export interface AudioSourceDescriptor<Clip = unknown> {
 export interface IAudioSourceComponent<D, R, ATypeDoc extends AudioTypeDocRepo<D, R> = AudioTypeDocRepo<D, R>>
   extends IWorldComponent<D, R, GgWorldTypeDocAPatch<D, R, ATypeDoc>>, IPositionable<D, R> {
   loop: boolean;
+  /** See `AudioSourceDescriptor.loopStart`/`loopEnd` - same semantics, readable/writable at runtime. */
+  loopStart: number;
+  loopEnd: number;
   volume: number;
   playbackRate: number;
   spatial: boolean;

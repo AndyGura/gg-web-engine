@@ -49,11 +49,16 @@ how `ICamera3dComponent` adds FOV that 2D has no equivalent for.
   effect all call it repeatedly for the same clip) and `createSource(descriptor)`.
 - **`IAudioSourceComponent<D,R,ATypeDoc>`** (`base/components/audio/i-audio-source.component.ts`):
   one sound instance - `IPositionable<D,R>` (position/rotation proxied to the native
-  spatialization node) plus `loop`/`volume`/`playbackRate`/`spatial`/`bus`, `play()`/`pause()`/
-  `stop()`, `isPlaying`, and `ended$` (fires once when a non-looping clip finishes - what
-  `AudioSource(2d|3d)Entity.playOneShot` and the `"PlaySound"` blueprint node subscribe to for
-  self-cleanup). Also an `IWorldComponent` (`addToWorld`/`removeFromWorld`/`dispose`), same
-  contract as every other component - see `gg-engine-physics-adapter`'s section on `dispose`.
+  spatialization node) plus `loop`/`loopStart`/`loopEnd`/`volume`/`playbackRate`/`spatial`/`bus`,
+  `play()`/`pause()`/`stop()`, `isPlaying`, and `ended$` (fires once when a non-looping clip
+  finishes - what `AudioSource(2d|3d)Entity.playOneShot` and the `"PlaySound"` blueprint node
+  subscribe to for self-cleanup). `loopStart`/`loopEnd` (seconds, both default `0` - `loopEnd: 0`
+  means "end of clip", matching `AudioBufferSourceNode.loopEnd`'s own default) confine looping to a
+  sub-region of the clip rather than the whole thing - needed for any clip authored with a lead-in
+  before its seamless loop point (a real, common asset-authoring pattern for engine/ambience loops;
+  `examples/fly-city-three-ammo`'s engine sound is a real consumer of this). Also an
+  `IWorldComponent` (`addToWorld`/`removeFromWorld`/`dispose`), same contract as every other
+  component - see `gg-engine-physics-adapter`'s section on `dispose`.
 
 Core supplies the generic entity wrapper (`AudioSource3dEntity`/`AudioSource2dEntity`,
 `3d(2d)/entities/audio-source-(3d|2d).entity.ts`) - **you never need to write this yourself**, only

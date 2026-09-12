@@ -69,6 +69,7 @@ export class GameRunner {
       });
     this.audio = new GameAudio(
       this.http,
+      this.world,
       this.state$.asObservable(),
     );
   }

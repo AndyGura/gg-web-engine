@@ -9,6 +9,7 @@ import {
 import { Gg3dWorld, TypedGg3dWorld } from '@gg-web-engine/core';
 import { ThreeGgWorld, ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
 import { AmmoGgWorld, AmmoPhysicsTypeDocRepo, AmmoWorldComponent } from '@gg-web-engine/ammo';
+import { WebAudioGgWorld3D, WebAudioScene3dComponent, WebAudioTypeDocRepo3D } from '@gg-web-engine/audio';
 import { filter } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 import { GameRunner } from './game-runner';
@@ -17,8 +18,9 @@ import { GameFactory } from './game-factory';
 export type FlyCityTypeDoc = {
   vTypeDoc: ThreeVisualTypeDocRepo,
   pTypeDoc: AmmoPhysicsTypeDocRepo,
+  aTypeDoc: WebAudioTypeDocRepo3D,
 };
-export type FlyCityWorld = TypedGg3dWorld<ThreeGgWorld, AmmoGgWorld>;
+export type FlyCityWorld = TypedGg3dWorld<ThreeGgWorld, AmmoGgWorld, WebAudioGgWorld3D>;
 
 @Component({
     selector: 'app-root',
@@ -51,6 +53,7 @@ export class AppComponent implements AfterViewInit {
     this.world = new Gg3dWorld({
       visualScene: new ThreeSceneComponent(),
       physicsWorld: new AmmoWorldComponent(),
+      audioScene: new WebAudioScene3dComponent(),
     });
     const factory: GameFactory = new GameFactory(this.world);
     const [renderer, cityMapGraph, mapBounds] = await factory.initGame(this.canvas.nativeElement);

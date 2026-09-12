@@ -152,6 +152,8 @@ export class WebAudioSource3dComponent
     return new WebAudioSource3dComponent(this.scene as WebAudioScene3dComponent, {
       clip: this.clip,
       loop: this.loop,
+      loopStart: this.loopStart,
+      loopEnd: this.loopEnd,
       volume: this.volume,
       playbackRate: this.playbackRate,
       spatial: this.spatial,
