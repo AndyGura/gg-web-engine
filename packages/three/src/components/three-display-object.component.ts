@@ -57,11 +57,11 @@ export class ThreeDisplayObjectComponent implements IDisplayObject3dComponent<Th
   }
 
   public enableRenderLayer(layer: RenderLayer): void {
-    this.nativeMesh.layers.enable(layer);
+    this.nativeMesh.traverse(obj => obj.layers.enable(layer));
   }
 
   public disableRenderLayer(layer: RenderLayer): void {
-    this.nativeMesh.layers.disable(layer);
+    this.nativeMesh.traverse(obj => obj.layers.disable(layer));
   }
 
   public isRenderLayerEnabled(layer: RenderLayer): boolean {
