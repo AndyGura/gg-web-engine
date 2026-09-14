@@ -80,6 +80,27 @@ describe('AudioSourcePool', () => {
     expect(created[0].position.x).toBe(3); // ...then repurposed for the new play() call
   });
 
+  it('does not leak an ended$ subscription each time a voice is stolen', () => {
+    const created: FakeSource[] = [];
+    const pool = new AudioSourcePool(fakeScene(created), { clip: {} }, 1);
+
+    pool.play({ x: 1 }); // voice 0, busy
+    // steal the same lone voice repeatedly - since stop() never fires ended$ (matching the real
+    // WebAudioSourceComponentBase.stop(), which explicitly nulls onended before stopping), each
+    // steal used to leave the previous play() call's self-cleanup subscription still registered.
+    pool.play({ x: 2 });
+    pool.play({ x: 3 });
+    pool.play({ x: 4 });
+
+    // exactly one live subscriber on the voice's ended$ - the current play() call's own, not one
+    // per steal.
+    expect(created[0].ended$.observers.length).toBe(1);
+
+    created[0].end();
+    // and that one subscriber cleans itself up correctly once playback actually ends naturally.
+    expect(created[0].ended$.observers.length).toBe(0);
+  });
+
   it('passes rotation through to the voice when given', () => {
     const created: FakeSource[] = [];
     const pool = new AudioSourcePool(fakeScene(created), { clip: {} }, 4);

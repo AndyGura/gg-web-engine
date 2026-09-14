@@ -1,9 +1,14 @@
 import { AudioSourceDescriptor, IAudioSceneComponent } from '@gg-web-engine/core';
+import { Subscription } from 'rxjs';
 
 interface Voice<D, R> {
   source: ReturnType<IAudioSceneComponent<D, R>['factory']['createSource']>;
   busy: boolean;
   lastUsed: number;
+  /** The current play() call's self-cleanup subscription on `source.ended$` - tracked so a steal
+   * (see `play()` below) can unsubscribe it explicitly, since `source.stop()` never fires `ended$`
+   * itself (an explicit stop isn't a natural end - see `WebAudioSourceComponentBase.stop()`). */
+  endedSubscription: Subscription | null;
 }
 
 /**
@@ -42,10 +47,15 @@ export class AudioSourcePool<D, R> {
           source: this.scene.factory.createSource({ ...this.descriptor, loop: false, autoplay: false }),
           busy: false,
           lastUsed: 0,
+          endedSubscription: null,
         };
         this.voices.push(voice);
       } else {
         voice = this.voices.reduce((oldest, candidate) => (candidate.lastUsed < oldest.lastUsed ? candidate : oldest));
+        // stealing a still-busy voice: stop() won't fire ended$ (see the `endedSubscription` doc
+        // above), so the subscription from whichever play() call last owned this voice would
+        // otherwise never unsubscribe itself - explicitly tear it down here instead of leaking it.
+        voice.endedSubscription?.unsubscribe();
         voice.source.stop();
       }
     }
@@ -56,9 +66,10 @@ export class AudioSourcePool<D, R> {
       voice.source.rotation = rotation;
     }
     const currentVoice = voice;
-    const subscription = currentVoice.source.ended$.subscribe(() => {
+    currentVoice.endedSubscription = currentVoice.source.ended$.subscribe(() => {
       currentVoice.busy = false;
-      subscription.unsubscribe();
+      currentVoice.endedSubscription?.unsubscribe();
+      currentVoice.endedSubscription = null;
     });
     currentVoice.source.play();
   }
