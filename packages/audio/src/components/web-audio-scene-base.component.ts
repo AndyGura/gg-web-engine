@@ -15,7 +15,12 @@ export abstract class WebAudioSceneComponentBase<D, R> {
   private readonly clipCache = new Map<string, Promise<AudioBuffer>>();
   private readonly sources = new Set<WebAudioSourceComponentBase<D, R>>();
   private _activeListener: IPositionable<D, R> | null = null;
-  private resumeListenersBound = false;
+  /** The `resume` closure bound in `init()`, kept around so `dispose()` can remove it if the
+   * gesture never fires - `{ once: true }` only removes a listener once it *fires*, not on
+   * dispose, so without this the window would keep holding a live reference to this (disposed)
+   * scene's `resume` closure indefinitely. `null` whenever no listener is currently bound (never
+   * bound, or already resumed/torn down). */
+  private resumeListener: (() => void) | null = null;
 
   protected constructor() {
     this.context = new AudioContext();
@@ -24,13 +29,13 @@ export abstract class WebAudioSceneComponentBase<D, R> {
   }
 
   public async init(): Promise<void> {
-    if (this.context.state === 'suspended' && typeof window !== 'undefined' && !this.resumeListenersBound) {
-      this.resumeListenersBound = true;
+    if (this.context.state === 'suspended' && typeof window !== 'undefined' && !this.resumeListener) {
       const resume = () => {
         this.context.resume().catch(() => {
           /* ignore - browser will re-suspend until an accepted gesture happens */
         });
       };
+      this.resumeListener = resume;
       // Browser autoplay policy: an AudioContext starts (or is forced back into) "suspended"
       // until a user gesture resumes it. Resuming on the first pointerdown/keydown covers the
       // overwhelming majority of apps without requiring them to wire this up themselves; an app
@@ -41,11 +46,22 @@ export abstract class WebAudioSceneComponentBase<D, R> {
       window.addEventListener('keydown', resume, { once: true });
       this.context.onstatechange = () => {
         if (this.context.state === 'running') {
-          window.removeEventListener('pointerdown', resume);
-          window.removeEventListener('keydown', resume);
+          this.removeResumeListeners();
         }
       };
     }
+  }
+
+  /** Removes the `pointerdown`/`keydown` resume listeners bound in `init()`, if still bound -
+   * shared by the "gesture arrived" path (`onstatechange` above) and `dispose()` (for the "scene
+   * was torn down before any gesture arrived" case, see `resumeListener`'s doc). */
+  private removeResumeListeners(): void {
+    if (!this.resumeListener) {
+      return;
+    }
+    window.removeEventListener('pointerdown', this.resumeListener);
+    window.removeEventListener('keydown', this.resumeListener);
+    this.resumeListener = null;
   }
 
   public get masterVolume(): number {
@@ -111,6 +127,8 @@ export abstract class WebAudioSceneComponentBase<D, R> {
   public abstract update(elapsed: number, delta: number): void;
 
   public dispose(): void {
+    this.removeResumeListeners();
+    this.context.onstatechange = null;
     for (const source of [...this.sources]) {
       source.dispose();
     }
