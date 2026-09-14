@@ -84,7 +84,7 @@ done
 for ix in ${!libs[*]}
 do
   pushd ./packages/${libs[$ix]}
-  npm publish
+  npm publish --access public
   popd
 done
 
