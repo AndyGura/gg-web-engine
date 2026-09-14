@@ -16,14 +16,23 @@ export function computeDistanceGain(
   rolloffFactor: number,
   model: AudioDistanceModel,
 ): number {
-  const d = Math.max(refDistance, Math.min(distance, maxDistance));
   switch (model) {
-    case 'inverse':
+    // Per spec, only the linear model clamps distance to maxDistance - its gain formula is a
+    // straight ramp that would go negative past that point. inverse/exponential only clamp the
+    // lower bound (refDistance, so gain never exceeds 1) and are left to keep decaying naturally
+    // past maxDistance, same as a native PannerNode does - maxDistance isn't a hard cutoff for
+    // them, just the distance at which linear's ramp bottoms out.
+    case 'inverse': {
+      const d = Math.max(distance, refDistance);
       return refDistance / (refDistance + rolloffFactor * (d - refDistance));
-    case 'exponential':
+    }
+    case 'exponential': {
+      const d = Math.max(distance, refDistance);
       return Math.pow(d / refDistance, -rolloffFactor);
+    }
     case 'linear':
     default: {
+      const d = Math.max(refDistance, Math.min(distance, maxDistance));
       if (maxDistance <= refDistance) {
         return 1;
       }

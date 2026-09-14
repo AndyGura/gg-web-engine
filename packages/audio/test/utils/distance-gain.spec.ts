@@ -42,6 +42,15 @@ describe('computeDistanceGain', () => {
     it('never fully reaches zero, unlike the linear model', () => {
       expect(computeDistanceGain(1000, 1, 100000, 1, 'inverse')).toBeGreaterThan(0);
     });
+
+    it('keeps decaying past maxDistance instead of clamping to it', () => {
+      // maxDistance=10 here is well short of the sampled distances - a native PannerNode keeps
+      // attenuating past it for this model, it isn't a hard cutoff the way it is for linear.
+      const atMax = computeDistanceGain(10, 1, 10, 1, 'inverse');
+      const pastMax = computeDistanceGain(100, 1, 10, 1, 'inverse');
+      expect(pastMax).toBeLessThan(atMax);
+      expect(pastMax).toBeCloseTo(1 / (1 + 1 * (100 - 1)), 5);
+    });
   });
 
   describe('exponential model', () => {
@@ -54,6 +63,13 @@ describe('computeDistanceGain', () => {
       // (distance / refDistance) ^ -rolloffFactor
       const expected = Math.pow(4 / 1, -1.5);
       expect(computeDistanceGain(4, 1, 100, 1.5, 'exponential')).toBeCloseTo(expected, 5);
+    });
+
+    it('keeps decaying past maxDistance instead of clamping to it', () => {
+      const atMax = computeDistanceGain(10, 1, 10, 1.5, 'exponential');
+      const pastMax = computeDistanceGain(100, 1, 10, 1.5, 'exponential');
+      expect(pastMax).toBeLessThan(atMax);
+      expect(pastMax).toBeCloseTo(Math.pow(100 / 1, -1.5), 5);
     });
   });
 
