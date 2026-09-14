@@ -272,9 +272,11 @@ export interface GgCar3DCommonSettings {
 /**
  * Settings for the built-in `"GgCar"` entity class (3D only): builds a box-shaped chassis rigid
  * body (+ optional matching display box) and a full `GgCarEntity` on top of it - the procedural
- * counterpart of the GLB-driven car construction apps do by hand (see `examples/fly-city-three-ammo`'s
- * `GameFactory.generateCar`), for a car whose chassis/wheels are plain primitives rather than
- * loaded meshes.
+ * counterpart of the GLB-driven car construction an app does by hand when it instead loads a
+ * modeled chassis mesh/body and derives each wheel's position/specs from named dummy objects in
+ * that same model before constructing `GgCarEntity` directly. This settings type is for the case
+ * where the chassis/wheels are plain primitives rather than loaded meshes, so the whole thing can
+ * be declared as data in a level JSON instead.
  */
 export type GgCar3DSettings = GgCar3DCommonSettings & {
   position?: Point3;
