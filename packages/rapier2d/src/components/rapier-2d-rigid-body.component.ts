@@ -236,7 +236,6 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
       for (const other of this.activeContacts) {
         other.activeContacts.delete(this);
         other.handleCollisionEnd(null);
-        this.onCollisionEnd$.next(other);
       }
       this.activeContacts.clear();
       for (const col of this._nativeBodyColliders!) {

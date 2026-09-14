@@ -114,18 +114,27 @@ describe('Rapier2dRigidBodyComponent onCollisionStart/onCollisionEnd', () => {
     expect(floorEndEvents[0]).toBe(ball);
   });
 
-  it('fires onCollisionEnd with null on the surviving body when the other body is removed mid-contact', () => {
-    const { floor, ball } = makeFloorAndBall();
-    settle(200); // let it land and settle first
+  it(
+    'fires onCollisionEnd with null on the surviving body when the other body is removed mid-contact, ' +
+      "and not on the removed body's own stream",
+    () => {
+      const { floor, ball } = makeFloorAndBall();
+      settle(200); // let it land and settle first
 
-    const floorEndEvents: (Rapier2dRigidBodyComponent | null)[] = [];
-    floor.onCollisionEnd.subscribe(e => floorEndEvents.push(e));
+      const floorEndEvents: (Rapier2dRigidBodyComponent | null)[] = [];
+      const ballEndEvents: (Rapier2dRigidBodyComponent | null)[] = [];
+      floor.onCollisionEnd.subscribe(e => floorEndEvents.push(e));
+      ball.onCollisionEnd.subscribe(e => ballEndEvents.push(e));
 
-    ball.removeFromWorld({ physicsWorld: world } as any);
+      ball.removeFromWorld({ physicsWorld: world } as any);
 
-    expect(floorEndEvents.length).toBe(1);
-    expect(floorEndEvents[0]).toBeNull();
-  });
+      expect(floorEndEvents.length).toBe(1);
+      expect(floorEndEvents[0]).toBeNull();
+      // the body being removed is the one vanishing, not the one experiencing a contact ending -
+      // only the surviving partner (floor) should hear about it.
+      expect(ballEndEvents.length).toBe(0);
+    },
+  );
 
   it('does not fire onCollisionStart on a rigid body for a trigger overlap (sensor, no collision response)', () => {
     const trigger = factory.createTrigger(
