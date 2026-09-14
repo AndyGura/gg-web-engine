@@ -177,6 +177,20 @@ describe('Rapier2dRigidBodyComponent onCollisionStart/onCollisionEnd', () => {
     expect(events.length).toBe(0);
   });
 
+  it('completes onCollisionStart/onCollisionEnd on dispose, matching matter/ammo', () => {
+    const { ball } = makeFloorAndBall();
+
+    let startCompleted = false;
+    let endCompleted = false;
+    ball.onCollisionStart.subscribe({ complete: () => (startCompleted = true) });
+    ball.onCollisionEnd.subscribe({ complete: () => (endCompleted = true) });
+
+    ball.dispose();
+
+    expect(startCompleted).toBe(true);
+    expect(endCompleted).toBe(true);
+  });
+
   it('does not fire onCollisionStart on a rigid body for a trigger overlap (sensor, no collision response)', () => {
     const trigger = factory.createTrigger(
       { shape: 'SQUARE', dimensions: { x: 20, y: 20 } },

@@ -2,7 +2,6 @@ import { Pnt3 } from '@gg-web-engine/core';
 import { Rapier3dFactory, Rapier3dWorldComponent } from '../../src';
 
 describe(`Rapier3dTriggerComponent`, () => {
-
   let world: Rapier3dWorldComponent;
   let factory: Rapier3dFactory;
   beforeEach(async () => {
@@ -39,20 +38,23 @@ describe(`Rapier3dTriggerComponent`, () => {
   it(`should detect object intersection`, async () => {
     const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 10, y: 10, z: 10 } });
     trigger.addToWorld({ physicsWorld: world } as any);
-    const ball = factory.createRigidBody({
-      shape: { shape: 'SPHERE', radius: 1 },
-      body: { dynamic: true, mass: 1 },
-    }, { position: { x: 0, y: 0, z: 12 } });
+    const ball = factory.createRigidBody(
+      {
+        shape: { shape: 'SPHERE', radius: 1 },
+        body: { dynamic: true, mass: 1 },
+      },
+      { position: { x: 0, y: 0, z: 12 } },
+    );
     ball.addToWorld({ physicsWorld: world } as any);
     ball.linearVelocity = { x: 0, y: 0, z: -10 };
     let enterRegistered = false;
     let exitRegistered = false;
-    trigger.onEntityEntered.subscribe(((obj) => {
+    trigger.onEntityEntered.subscribe(obj => {
       enterRegistered = obj === ball;
-    }));
-    trigger.onEntityLeft.subscribe(((obj) => {
+    });
+    trigger.onEntityLeft.subscribe(obj => {
       exitRegistered = obj === ball;
-    }));
+    });
     advance(500, () => trigger.checkOverlaps()); // trigger entity performs that on tick
     expect(enterRegistered).toBe(false);
     expect(exitRegistered).toBe(false);
@@ -65,16 +67,19 @@ describe(`Rapier3dTriggerComponent`, () => {
   it(`should detect end of object intersection`, async () => {
     const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 10, y: 10, z: 10 } });
     trigger.addToWorld({ physicsWorld: world } as any);
-    const ball = factory.createRigidBody({
-      shape: { shape: 'SPHERE', radius: 1 },
-      body: { dynamic: true, mass: 1 },
-    }, { position: { x: 0, y: 0, z: 12 } });
+    const ball = factory.createRigidBody(
+      {
+        shape: { shape: 'SPHERE', radius: 1 },
+        body: { dynamic: true, mass: 1 },
+      },
+      { position: { x: 0, y: 0, z: 12 } },
+    );
     ball.addToWorld({ physicsWorld: world } as any);
     ball.linearVelocity = { x: 0, y: 0, z: -10 };
     let exitRegistered = false;
-    trigger.onEntityLeft.subscribe(((obj) => {
+    trigger.onEntityLeft.subscribe(obj => {
       exitRegistered = obj === ball;
-    }));
+    });
     advance(1000, () => trigger.checkOverlaps());
     expect(exitRegistered).toBe(false);
     advance(1000, () => trigger.checkOverlaps());
@@ -84,15 +89,18 @@ describe(`Rapier3dTriggerComponent`, () => {
   it(`should fire object intersection if spawned inside`, async () => {
     const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 10, y: 10, z: 10 } });
     trigger.addToWorld({ physicsWorld: world } as any);
-    const ball = factory.createRigidBody({
-      shape: { shape: 'SPHERE', radius: 1 },
-      body: { dynamic: true, mass: 1 },
-    }, { position: { x: 0, y: 0, z: 0 } });
+    const ball = factory.createRigidBody(
+      {
+        shape: { shape: 'SPHERE', radius: 1 },
+        body: { dynamic: true, mass: 1 },
+      },
+      { position: { x: 0, y: 0, z: 0 } },
+    );
     ball.addToWorld({ physicsWorld: world } as any);
     let enterRegistered = false;
-    trigger.onEntityEntered.subscribe(((obj) => {
+    trigger.onEntityEntered.subscribe(obj => {
       enterRegistered = obj === ball;
-    }));
+    });
     world.simulate(1000);
     trigger.checkOverlaps();
     expect(enterRegistered).toBe(true);
@@ -101,15 +109,18 @@ describe(`Rapier3dTriggerComponent`, () => {
   it(`should fire end of object intersection if trigger removed`, async () => {
     const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 10, y: 10, z: 10 } });
     trigger.addToWorld({ physicsWorld: world } as any);
-    const ball = factory.createRigidBody({
-      shape: { shape: 'SPHERE', radius: 1 },
-      body: { dynamic: true, mass: 1 },
-    }, { position: { x: 0, y: 0, z: 0 } });
+    const ball = factory.createRigidBody(
+      {
+        shape: { shape: 'SPHERE', radius: 1 },
+        body: { dynamic: true, mass: 1 },
+      },
+      { position: { x: 0, y: 0, z: 0 } },
+    );
     ball.addToWorld({ physicsWorld: world } as any);
     let exitRegistered = false;
-    trigger.onEntityLeft.subscribe(((obj) => {
+    trigger.onEntityLeft.subscribe(obj => {
       exitRegistered = obj === ball;
-    }));
+    });
     world.simulate(1);
     trigger.checkOverlaps();
     trigger.removeFromWorld({ physicsWorld: world } as any);
@@ -119,20 +130,44 @@ describe(`Rapier3dTriggerComponent`, () => {
   it(`should fire end of object intersection if object removed`, async () => {
     const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 10, y: 10, z: 10 } });
     trigger.addToWorld({ physicsWorld: world } as any);
-    const ball = factory.createRigidBody({
-      shape: { shape: 'SPHERE', radius: 1 },
-      body: { dynamic: true, mass: 1 },
-    }, { position: { x: 0, y: 0, z: 0 } });
+    const ball = factory.createRigidBody(
+      {
+        shape: { shape: 'SPHERE', radius: 1 },
+        body: { dynamic: true, mass: 1 },
+      },
+      { position: { x: 0, y: 0, z: 0 } },
+    );
     ball.addToWorld({ physicsWorld: world } as any);
     let exitRegistered = false;
-    trigger.onEntityLeft.subscribe(((obj) => {
+    trigger.onEntityLeft.subscribe(obj => {
       exitRegistered = obj === ball;
-    }));
+    });
     world.simulate(1);
     trigger.checkOverlaps();
     ball.removeFromWorld({ physicsWorld: world } as any);
     world.simulate(1);
     trigger.checkOverlaps();
     expect(exitRegistered).toBe(true);
+  });
+
+  it('completes onEntityEntered/onEntityLeft (and the inherited collision subjects) on dispose', () => {
+    const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 10, y: 10, z: 10 } });
+    trigger.addToWorld({ physicsWorld: world } as any);
+
+    let enterCompleted = false;
+    let leftCompleted = false;
+    let startCompleted = false;
+    let endCompleted = false;
+    trigger.onEntityEntered.subscribe({ complete: () => (enterCompleted = true) });
+    trigger.onEntityLeft.subscribe({ complete: () => (leftCompleted = true) });
+    trigger.onCollisionStart.subscribe({ complete: () => (startCompleted = true) });
+    trigger.onCollisionEnd.subscribe({ complete: () => (endCompleted = true) });
+
+    trigger.dispose();
+
+    expect(enterCompleted).toBe(true);
+    expect(leftCompleted).toBe(true);
+    expect(startCompleted).toBe(true);
+    expect(endCompleted).toBe(true);
   });
 });

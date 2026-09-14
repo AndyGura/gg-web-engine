@@ -283,5 +283,7 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
     if (this.nativeBody) {
       this.removeFromWorld({ physicsWorld: this.world } as any as Rapier3dGgWorld, true);
     }
+    this.onCollisionStart$.complete();
+    this.onCollisionEnd$.complete();
   }
 }

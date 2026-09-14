@@ -90,8 +90,13 @@ export class Rapier2dTriggerComponent
     return component;
   }
 
+  /** Completes `onEnter$`/`onLeft$` on top of `Rapier2dRigidBodyComponent.dispose()`'s own
+   * `onCollisionStart$`/`onCollisionEnd$` completion (via `super.dispose()`) - this trigger's own
+   * subjects have no other owner to complete them. */
   dispose() {
     this.overlaps.clear();
+    this.onEnter$.complete();
+    this.onLeft$.complete();
     super.dispose();
   }
 }

@@ -258,5 +258,7 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
     if (this.nativeBody) {
       this.removeFromWorld({ physicsWorld: this.world } as any as Rapier2dGgWorld, true);
     }
+    this.onCollisionStart$.complete();
+    this.onCollisionEnd$.complete();
   }
 }

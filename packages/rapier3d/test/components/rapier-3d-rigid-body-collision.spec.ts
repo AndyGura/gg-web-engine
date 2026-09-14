@@ -168,4 +168,18 @@ describe('Rapier3dRigidBodyComponent collision events', () => {
     expect(triggerEnters).toBeGreaterThanOrEqual(1);
     expect(ballCollisionStarts).toBe(0);
   });
+
+  it('completes onCollisionStart/onCollisionEnd on dispose, matching matter/ammo', () => {
+    const ball = createBall(0);
+
+    let startCompleted = false;
+    let endCompleted = false;
+    ball.onCollisionStart.subscribe({ complete: () => (startCompleted = true) });
+    ball.onCollisionEnd.subscribe({ complete: () => (endCompleted = true) });
+
+    ball.dispose();
+
+    expect(startCompleted).toBe(true);
+    expect(endCompleted).toBe(true);
+  });
 });
