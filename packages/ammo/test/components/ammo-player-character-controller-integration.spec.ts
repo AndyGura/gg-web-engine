@@ -5,7 +5,16 @@ import { AmmoWorldComponent } from '../../src';
 // maps to world -Z at identity, in this Z-up engine), which is a degenerate/arbitrary case for
 // `PlayerCharacterController.reset()`'s yaw derivation (atan2(0,0)); every real app sets an actual
 // look direction before/immediately after spawning a camera, so this is the representative case.
-const fakeCamera = () => ({ position: { x: 0, y: 0, z: 0 }, rotation: Qtrn.lookAt(Pnt3.O, Pnt3.Y) }) as any;
+const fakeCamera = () =>
+  ({
+    position: { x: 0, y: 0, z: 0 },
+    rotation: Qtrn.lookAt(Pnt3.O, Pnt3.Y),
+    // `PlayerCharacterController`'s view-mode toggle calls these on its own camera - stubbed here
+    // purely so constructing it doesn't throw; this suite doesn't assert on render-layer state.
+    enableRenderLayer: () => {},
+    disableRenderLayer: () => {},
+    isRenderLayerEnabled: () => true,
+  }) as any;
 
 const setup = async () => {
   const world = new AmmoWorldComponent();

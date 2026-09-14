@@ -10,7 +10,13 @@ class GgEntityMock extends IEntity {
 
 const mockRenderer3dEntity = (): Renderer3dEntity => {
   return new Renderer3dEntity({
-    camera: { position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0, w: 1 } },
+    camera: {
+      position: { x: 0, y: 0, z: 0 },
+      rotation: { x: 0, y: 0, z: 0, w: 1 },
+      enableRenderLayer() {},
+      disableRenderLayer() {},
+      isRenderLayerEnabled: () => true,
+    },
     rendererOptions: { size: { x: 100, y: 100 } },
     canvas: null,
     physicsDebugViewActive: false,
@@ -92,9 +98,7 @@ describe('Gg3dWorld', () => {
         entity.name = 'thing';
         world.addEntity(entity);
 
-        expect(await commands.get('set_position')!('thing', '1', '2', '3')).toBe(
-          JSON.stringify({ x: 1, y: 2, z: 3 }),
-        );
+        expect(await commands.get('set_position')!('thing', '1', '2', '3')).toBe(JSON.stringify({ x: 1, y: 2, z: 3 }));
         expect(entity.position).toEqual({ x: 1, y: 2, z: 3 });
       });
 

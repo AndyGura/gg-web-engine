@@ -165,13 +165,23 @@ export class ObjectGrabController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWor
     super.onRemoved();
   }
 
-  private get cameraForward(): Point3 {
+  /** `protected`, not `private` - a subclass computing its own aim-related raycasts (e.g. one
+   * overriding `findGrabTarget`/`holdPoint`) needs the same camera-forward convention. */
+  protected get cameraForward(): Point3 {
     // Camera-basis convention (local -Z forward) - see `FreeCameraController`'s identical
     // derivation, not `CharacterController3dEntity`'s (local +Y forward) convention.
     return Pnt3.rot(Pnt3.nZ, this.camera.rotation);
   }
 
-  private holdPoint(): Point3 {
+  /**
+   * The world-space point the held object is currently driven towards - `protected`, not `private`,
+   * so a subclass can override it (e.g. to redirect the hold point through a portal pair once the
+   * held object is known to be on the far side of one - see `findGrabTarget`'s own doc for the
+   * matching override point on the "what to grab" side of this same concern). An override should
+   * still route through `super.holdPoint()` for the ordinary, not-through-anything case rather than
+   * reimplementing `clampAwayFromHolder` itself.
+   */
+  protected holdPoint(): Point3 {
     const raw = Pnt3.add(this.camera.position, Pnt3.scalarMult(this.cameraForward, this.options.holdDistance));
     return this.clampAwayFromHolder(raw);
   }
@@ -200,12 +210,12 @@ export class ObjectGrabController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWor
    * by `tryGrab()` (as an upper-bound heuristic for "this first hit was probably my own capsule,
    * not a real obstacle" - see that method's own doc).
    */
-  private holderClearance(): number {
+  protected holderClearance(): number {
     const character = this.holder!.characterController;
     return character.radius + character.centersDistance / 2 + this.options.holderExclusionMargin;
   }
 
-  private clampAwayFromHolder(target: Point3): Point3 {
+  protected clampAwayFromHolder(target: Point3): Point3 {
     if (!this.holder) {
       return target;
     }
@@ -299,10 +309,19 @@ export class ObjectGrabController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWor
    * result. `PlayerCharacterController`'s third-person `cameraCollision` raycast leans on the exact
    * same helper for the identical self-hit problem. A hit farther than `holderClearance()` away is
    * trusted as a real obstacle and left blocking the grab, exactly as before.
+   *
+   * Split out of `tryGrab()` (which still owns actually committing to the grab - setting
+   * `_heldObject`, calling `grab()`/`ignoreForHolder`) and made `protected` so a subclass can extend
+   * *what* counts as reachable without touching any of that bookkeeping: override this method to
+   * try something extra first (e.g. a portal-aware cast that tunnels the ray through a placed
+   * portal pair to reach a `Grabbable3dEntity` sitting on the far side) and fall back to
+   * `super.findGrabTarget()` for the ordinary, not-through-anything case. `holdPoint()` is the
+   * matching override point for keeping such an object correctly positioned once held - see its own
+   * doc.
    */
-  private tryGrab(): void {
-    if (this._heldObject || !this.world?.physicsWorld) {
-      return;
+  protected findGrabTarget(): Grabbable3dEntity<TypeDoc> | null {
+    if (!this.world?.physicsWorld) {
+      return null;
     }
     const to = Pnt3.add(this.camera.position, Pnt3.scalarMult(this.cameraForward, this.options.maxGrabDistance));
     let result = this.world.physicsWorld.raycast({ from: this.camera.position, to });
@@ -328,8 +347,16 @@ export class ObjectGrabController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWor
       result = this.world.physicsWorld.raycast({ from, to });
       entity = result.hasHit ? result.hitBody?.entity : null;
     }
-    if (entity instanceof Grabbable3dEntity) {
-      this._heldObject = entity as Grabbable3dEntity<TypeDoc>;
+    return entity instanceof Grabbable3dEntity ? (entity as Grabbable3dEntity<TypeDoc>) : null;
+  }
+
+  private tryGrab(): void {
+    if (this._heldObject) {
+      return;
+    }
+    const entity = this.findGrabTarget();
+    if (entity) {
+      this._heldObject = entity;
       this._heldObject.grab();
       this.ignoreForHolder(this._heldObject);
     }

@@ -1,4 +1,12 @@
-import { CharacterController3dEntity, Gg3dWorld, Pnt3, Point3, Qtrn } from '../../../src';
+import {
+  CharacterController3dEntity,
+  Gg3dWorld,
+  MAIN_RENDER_LAYER,
+  Pnt3,
+  Point3,
+  Qtrn,
+  SELF_VIEW_HIDDEN_RENDER_LAYER,
+} from '../../../src';
 import { mockCharacterController } from '../../mocks/character-controller.mock';
 import { mock3DObject } from '../../mocks/object.mock';
 
@@ -20,7 +28,11 @@ describe('CharacterController3dEntity', () => {
     });
 
     it('defaults crouchCentersDistance to 60% of the standing centersDistance', () => {
-      const entity = new CharacterController3dEntity({ radius: 0.4, centersDistance: 1 }, null, mockCharacterController());
+      const entity = new CharacterController3dEntity(
+        { radius: 0.4, centersDistance: 1 },
+        null,
+        mockCharacterController(),
+      );
       expect(entity.options.crouchCentersDistance).toBeCloseTo(0.6);
     });
   });
@@ -65,7 +77,7 @@ describe('CharacterController3dEntity', () => {
       expectCloseVector(moveSpy.mock.calls[0][0], { x: 8, y: 0, z: 0 });
     });
 
-    it('carries the ground launch speed through the whole jump/fall arc, instead of throttling it once airborne (regression: used to collapse to walkSpeed * airControlFactor on every airborne tick, discarding a running takeoff\'s speed almost entirely)', () => {
+    it("carries the ground launch speed through the whole jump/fall arc, instead of throttling it once airborne (regression: used to collapse to walkSpeed * airControlFactor on every airborne tick, discarding a running takeoff's speed almost entirely)", () => {
       const cc = mockCharacterController(0.4, 1, {
         resolveMove: d => ({ appliedTranslation: d, isGrounded: false }),
       });
@@ -219,7 +231,7 @@ describe('CharacterController3dEntity', () => {
       expect(moveSpy.mock.calls[0][0].z).toBeCloseTo(0.5); // 5 m/s * 0.1s
     });
 
-    it('cancels upward velocity immediately on hitting a ceiling, instead of coasting through the rest of an unobstructed jump arc before falling (regression: a jump interrupted by a ceiling looked glued to it for as long as a free jump\'s whole rise phase, since _fallVelocity kept decelerating on gravity\'s own time schedule regardless of the character\'s actual, blocked position)', () => {
+    it("cancels upward velocity immediately on hitting a ceiling, instead of coasting through the rest of an unobstructed jump arc before falling (regression: a jump interrupted by a ceiling looked glued to it for as long as a free jump's whole rise phase, since _fallVelocity kept decelerating on gravity's own time schedule regardless of the character's actual, blocked position)", () => {
       // simulates a ceiling: any upward desired translation is fully blocked (z capped at 0),
       // horizontal movement still applies, never reports grounded
       const cc = mockCharacterController(0.4, 1, {
@@ -272,13 +284,48 @@ describe('CharacterController3dEntity', () => {
   });
 
   describe('hideMesh', () => {
-    it('hides the mesh regardless of worldVisible', () => {
+    it('moves the mesh onto SELF_VIEW_HIDDEN_RENDER_LAYER instead of touching visible/worldVisible', () => {
       const mesh = mock3DObject();
-      const entity = new CharacterController3dEntity({ radius: 0.4, centersDistance: 1 }, mesh, mockCharacterController());
+      const entity = new CharacterController3dEntity(
+        { radius: 0.4, centersDistance: 1 },
+        mesh,
+        mockCharacterController(),
+      );
+      // Starts on the same default layer as any other display object - hideMesh hasn't touched
+      // anything yet.
+      expect(mesh.isRenderLayerEnabled(MAIN_RENDER_LAYER)).toBe(true);
+      expect(mesh.isRenderLayerEnabled(SELF_VIEW_HIDDEN_RENDER_LAYER)).toBe(false);
+
       entity.hideMesh = true;
-      expect(mesh.visible).toBe(false);
-      entity.hideMesh = false;
+      expect(mesh.isRenderLayerEnabled(MAIN_RENDER_LAYER)).toBe(false);
+      expect(mesh.isRenderLayerEnabled(SELF_VIEW_HIDDEN_RENDER_LAYER)).toBe(true);
+      // Not a blanket hide (see this property's own doc) - `visible` itself is left alone, still
+      // driven purely by `worldVisible`.
       expect(mesh.visible).toBe(true);
+
+      entity.hideMesh = false;
+      expect(mesh.isRenderLayerEnabled(MAIN_RENDER_LAYER)).toBe(true);
+      expect(mesh.isRenderLayerEnabled(SELF_VIEW_HIDDEN_RENDER_LAYER)).toBe(false);
+    });
+  });
+
+  describe('momentum accessors', () => {
+    it('exposes fallVelocity/airHorizontalVelocity as independent read/write properties, and velocity as their read-only sum', () => {
+      const entity = new CharacterController3dEntity(
+        { radius: 0.4, centersDistance: 1 },
+        null,
+        mockCharacterController(),
+      );
+      expect(entity.velocity).toEqual(Pnt3.O);
+
+      entity.fallVelocity = { x: 0, y: 0, z: -5 };
+      expect(entity.fallVelocity).toEqual({ x: 0, y: 0, z: -5 });
+      expect(entity.airHorizontalVelocity).toEqual(Pnt3.O);
+      expect(entity.velocity).toEqual({ x: 0, y: 0, z: -5 });
+
+      entity.airHorizontalVelocity = { x: 2, y: 0, z: 0 };
+      expect(entity.fallVelocity).toEqual({ x: 0, y: 0, z: -5 });
+      expect(entity.velocity).toEqual({ x: 2, y: 0, z: -5 });
     });
   });
 

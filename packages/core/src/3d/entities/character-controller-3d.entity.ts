@@ -1,4 +1,4 @@
-import { Pnt3, Point3, Point4, Qtrn, TickOrder } from '../../base';
+import { MAIN_RENDER_LAYER, Pnt3, Point3, Point4, Qtrn, SELF_VIEW_HIDDEN_RENDER_LAYER, TickOrder } from '../../base';
 import { Gg3dWorld, Gg3dWorldTypeDocRepo } from '../gg-3d-world';
 import { IRenderable3dEntity } from './i-renderable-3d.entity';
 import { IPositionable3d } from '../interfaces/i-positionable-3d';
@@ -167,6 +167,50 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
    * only a handful at very high ones, without needing a fixed tick count or time-based timeout. */
   private _justJumped: boolean = false;
 
+  /**
+   * Public accessor for `_fallVelocity` - see this class's own doc for what it represents (a full
+   * 3D momentum vector, not just a scalar speed along `up`). Previously entirely private, with no
+   * way for external code to inspect or redirect a character's current momentum at all - exposed
+   * (getter *and* setter) so something driving this character through an event a plain `move()` call
+   * can't express on its own (most concretely: a future portal-crossing implementation, transforming
+   * this the same way `Grabbable3dEntity`'s own `objectBody.linearVelocity` already gets transformed
+   * through a portal pair - see `IRigidBody3dComponent.linearVelocity`) has something to read from
+   * and write back to. Setting this does **not** touch `airHorizontalVelocity` or `_wasResting` -
+   * see that property's own doc for the *other* half of this character's momentum, tracked
+   * separately for unrelated reasons that have nothing to do with why this one might need
+   * redirecting.
+   */
+  public get fallVelocity(): Point3 {
+    return this._fallVelocity;
+  }
+
+  public set fallVelocity(value: Point3) {
+    this._fallVelocity = value;
+  }
+
+  /**
+   * Public accessor for `_airHorizontalVelocity` - see this class's own doc for what it represents
+   * (ground speed carried through a jump/fall arc) and `fallVelocity`'s own doc for why this is
+   * exposed at all. Only meaningful while airborne - always `Pnt3.O` while resting on the ground,
+   * where movement is direct/momentum-free (see this class's own doc) and setting it has no visible
+   * effect until the character actually leaves the ground.
+   */
+  public get airHorizontalVelocity(): Point3 {
+    return this._airHorizontalVelocity;
+  }
+
+  public set airHorizontalVelocity(value: Point3) {
+    this._airHorizontalVelocity = value;
+  }
+
+  /** `fallVelocity + airHorizontalVelocity` - this character's full current momentum in one vector,
+   * for a reader that doesn't need to reason about the two separately. Read-only: write
+   * `fallVelocity`/`airHorizontalVelocity` individually instead of guessing how to split a combined
+   * vector back between them (see each one's own doc for why they're tracked separately at all). */
+  public get velocity(): Point3 {
+    return Pnt3.add(this._fallVelocity, this._airHorizontalVelocity);
+  }
+
   public get isCrouching(): boolean {
     return this._isCrouching;
   }
@@ -233,20 +277,43 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
   }
 
   private _hideMesh: boolean = false;
-  /** When `true`, the mesh is hidden regardless of `visible`/`worldVisible` - used by
-   * `PlayerCharacterController` to hide the character's own body in first-person view. */
+  /**
+   * When `true`, this character's own mesh is moved onto `SELF_VIEW_HIDDEN_RENDER_LAYER` instead of
+   * `MAIN_RENDER_LAYER` - used by `PlayerCharacterController` to hide the character's own body from
+   * its own first-person camera specifically, **not** from every camera looking at the scene the way
+   * plain `visible`/`worldVisible` would: every *other* camera (a portal's own "looking through"
+   * render pass, a third-person spectator view, ...) renders every registered layer by default (see
+   * `ICamera3dComponent`'s own doc) and so still renders this mesh normally, layer change or not -
+   * only a camera that's specifically been told to `disableRenderLayer(SELF_VIEW_HIDDEN_RENDER_LAYER)`
+   * (exactly what `PlayerCharacterController`'s own first-person camera does) stops seeing it.
+   *
+   * Does **not** touch `visible`/`worldVisible` at all (unlike the render-layer swap this used to be
+   * implemented as a blanket `object3D.visible = false`, invisible to literally every camera
+   * including a portal's own view - a real, reported bug, not a hypothetical one) - the two
+   * mechanisms are orthogonal: `worldVisible` still hides this character from *every* camera (an
+   * actually-despawned/inactive entity), `hideMesh` only ever changes which *one* camera stops
+   * seeing it.
+   */
   public get hideMesh(): boolean {
     return this._hideMesh;
   }
 
   public set hideMesh(value: boolean) {
     this._hideMesh = value;
-    this.updateVisibility();
+    if (this.object3D) {
+      if (value) {
+        this.object3D.disableRenderLayer(MAIN_RENDER_LAYER);
+        this.object3D.enableRenderLayer(SELF_VIEW_HIDDEN_RENDER_LAYER);
+      } else {
+        this.object3D.enableRenderLayer(MAIN_RENDER_LAYER);
+        this.object3D.disableRenderLayer(SELF_VIEW_HIDDEN_RENDER_LAYER);
+      }
+    }
   }
 
   public updateVisibility(): void {
     if (this.object3D) {
-      this.object3D.visible = this.worldVisible && !this._hideMesh;
+      this.object3D.visible = this.worldVisible;
     }
     super.updateVisibility();
   }

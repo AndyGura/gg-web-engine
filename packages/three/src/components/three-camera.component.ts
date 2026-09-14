@@ -24,5 +24,10 @@ export class ThreeCameraComponent
 
   constructor(public readonly nativeCamera: Camera) {
     super(nativeCamera);
+    // See `ICamera3dComponent`'s own doc: a camera renders every render layer by default, not just
+    // `MAIN_RENDER_LAYER` the way a fresh three.js `Camera`'s own native `layers.mask` (and every
+    // other, non-camera `ThreeDisplayObjectComponent`) defaults to - so a newly-placed camera never
+    // has to be told about a layer some unrelated system already registered/enabled.
+    nativeCamera.layers.enableAll();
   }
 }
