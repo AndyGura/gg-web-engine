@@ -61,7 +61,7 @@ sedi 's/"version": "[0-9.]*",/"version": "'$1'",/' package.json
 # --workspaces=false: see the comment in upgrade() above — keep this a standalone install/build,
 # not resolved through the packages/* workspace.
 rm -rf node_modules/ package-lock.json dist/ && npm i --workspaces=false && npm run prettier-format && npm run build
-npm publish
+npm publish --access public
 
 echo sleeping 30s...
 sleep 30
