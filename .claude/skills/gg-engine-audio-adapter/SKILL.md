@@ -102,8 +102,14 @@ as a click/zipper when repeated every tick - confirmed as the root cause of a re
 (volume jitter on a chase-cammed vehicle) that motivated this whole subsystem's design. See
 `packages/audio/src/utils/ramp.ts`'s `rampParam` helper and its doc comment for the full mechanism;
 every position/volume/pan setter in every `WebAudioSource(2d|3d)Component`/`WebAudioScene(2d|3d)Component`
-routes through it, with **no exception** anywhere in the codebase - if you find yourself writing
-`somAudioParam.value = ...` while extending this package, that's very likely the bug.
+routes through it, with **no exception for any write to an already-live node's `AudioParam`** - if
+you find yourself writing `someAudioParam.value = ...` against a node that's already connected/
+playing while extending this package, that's very likely the bug. The two legitimate direct
+assignments in this package are both an *initial* value on a node that was just created and isn't
+producing output yet - there's no previous value playing to click against, so there's nothing for a
+ramp to smooth: `gainNode.gain.value = this._volume` in `WebAudioSourceComponentBase`'s constructor
+and `bufferSource.playbackRate.value = this._playbackRate` in its `play()` (both in
+`web-audio-source-base.component.ts`), each set once on a freshly-created node before it's started.
 
 Static tuning fields that don't change every frame (`refDistance`, `maxDistance`, `rolloffFactor`,
 `distanceModel`, `coneInnerAngle`/`coneOuterAngle`/`coneOuterGain`) are fine to proxy directly to
