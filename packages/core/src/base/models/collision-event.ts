@@ -24,9 +24,15 @@ export interface CollisionEvent<D, RigidBody = unknown> {
   normal: D;
 
   /**
-   * velocity of `otherBody` relative to this body, at the moment contact began (i.e. the
-   * pre-response approach vector) - its magnitude and direction together describe how hard, and
-   * from which angle, the hit landed.
+   * Velocity of `otherBody` relative to this body, sampled at the moment contact began - its
+   * magnitude and direction together describe how hard, and from which angle, the hit landed.
+   * Exactly when relative to the solver this is sampled (the true pre-collision approach vector,
+   * vs. already-post-response velocities) differs per physics adapter, since not every native
+   * engine exposes a pre-solve velocity snapshot at the point its own collision-start event fires
+   * - don't assume bit-identical magnitudes across two different adapters for what looks like the
+   * same hit. What every adapter *does* guarantee: the reciprocal event `otherBody` receives for
+   * this same contact carries the exact negation of this `relativeVelocity`, since both sides read
+   * the same two bodies' velocities and just subtract them in the opposite order.
    */
   relativeVelocity: D;
 
