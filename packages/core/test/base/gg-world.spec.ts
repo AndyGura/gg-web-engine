@@ -464,5 +464,26 @@ describe('GgWorld', () => {
 
       expect(audioScene.activeListener).toBe(explicitListener);
     });
+
+    it('keeps an explicitly-set listener even after the sole renderer is swapped out for another one', () => {
+      const audioScene = makeFakeAudioScene();
+      const audioWorld = worldWithAudioScene(audioScene);
+      const first = new TestRendererEntity(makeFakeRenderer());
+      first.name = 'main';
+      audioWorld.addEntity(first);
+      expect(audioScene.activeListener).toBe(first.camera); // auto-bound so far
+
+      const explicitListener = { position: { x: 9, y: 9, z: 9 }, rotation: { x: 0, y: 0, z: 0, w: 1 } };
+      audioScene.setActiveListener(explicitListener); // app takes over explicitly
+      audioWorld.removeEntity(first);
+
+      const second = new TestRendererEntity(makeFakeRenderer());
+      second.name = 'main';
+      audioWorld.addEntity(second); // renderer swap - world is back down to exactly one renderer
+
+      // must still be the app's explicit choice - the earlier auto-bind must not re-arm and
+      // clobber it just because the renderer count dropped back to one
+      expect(audioScene.activeListener).toBe(explicitListener);
+    });
   });
 });

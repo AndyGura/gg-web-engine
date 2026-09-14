@@ -331,24 +331,27 @@ export abstract class GgWorld<
    * bug to notice than an explicit console warning naming every renderer present. See the audio
    * RFC's "The listener problem" section.
    */
-  private audioListenerAutoBound = false;
+  private autoBoundListener: IPositionable<D, R> | null = null;
 
   private maybeBindAudioListener(entity: IEntity): void {
     if (!this.audioScene || !(entity instanceof IRendererEntity)) {
       return;
     }
-    // An explicitly app-set listener (activeListener !== null and we didn't set it ourselves) is
-    // never touched or warned about, no matter how many renderers show up afterwards. A listener
-    // *this* method auto-bound is different: a later second renderer must still trigger the
-    // warning below, so the "already has a listener" check alone (used before this flag existed)
-    // isn't enough - it would silently skip the warning once the first renderer auto-bound one.
-    if (this.audioScene.activeListener !== null && !this.audioListenerAutoBound) {
+    // `activeListener` no longer being the object we last auto-bound means the app has since
+    // called `setActiveListener` itself (explicitly choosing one, or explicitly clearing it back
+    // to null isn't possible to distinguish from "never set" here, but that's fine - see below).
+    // Once that's happened, it's app-owned from then on: never touched or warned about again, no
+    // matter how many renderers show up or get swapped out afterwards. Comparing against the
+    // actual last-bound reference (rather than a plain "did we ever auto-bind" flag) is what lets
+    // this survive a renderer being removed and a different one added later - a stale flag would
+    // otherwise re-arm the auto-bind guard and clobber the app's explicit choice on that swap.
+    if (this.audioScene.activeListener !== null && this.audioScene.activeListener !== this.autoBoundListener) {
       return;
     }
     const renderers = this.renderers;
     if (renderers.length === 1) {
-      this.audioScene.setActiveListener(renderers[0].camera);
-      this.audioListenerAutoBound = true;
+      this.autoBoundListener = renderers[0].camera;
+      this.audioScene.setActiveListener(this.autoBoundListener);
     } else if (renderers.length > 1) {
       console.warn(
         `GgWorld "${this.name}": ${renderers.length} renderers present and no active audio ` +
