@@ -1,6 +1,6 @@
 ---
 title: core/3d/level-loader.ts
-nav_order: 64
+nav_order: 71
 parent: Modules
 ---
 
@@ -18,6 +18,7 @@ parent: Modules
     - [createPrimitive (method)](#createprimitive-method)
     - [createTrigger (method)](#createtrigger-method)
     - [createCamera (method)](#createcamera-method)
+    - [createSound (method)](#createsound-method)
     - [createPlayer (method)](#createplayer-method)
     - [resolveWheelDisplay (method)](#resolvewheeldisplay-method)
     - [createGgCar (method)](#createggcar-method)
@@ -33,6 +34,7 @@ parent: Modules
   - [Player3DSettings (type alias)](#player3dsettings-type-alias)
   - [Primitive3DSettings (interface)](#primitive3dsettings-interface)
   - [Primitive3DShapeName (type alias)](#primitive3dshapename-type-alias)
+  - [Sound3DSettings (interface)](#sound3dsettings-interface)
   - [Trigger3DSettings (interface)](#trigger3dsettings-interface)
 
 ---
@@ -157,6 +159,22 @@ private createCamera(
   ): Camera3dEntity<TypeDoc['vTypeDoc']> | undefined
 ```
 
+### createSound (method)
+
+Create a `"Sound"` entity: loads `settings.path` via `audioScene.factory.loadClip` and wraps
+the resulting source in a ready-to-use `AudioSource3dEntity`, statically positioned. Returns
+`undefined` (no-op) if the world has no `audioScene`, same posture as `createTrigger`/
+`createCamera` returning `undefined` for a missing physics/visual scene.
+
+**Signature**
+
+```ts
+private async createSound(
+    world: Gg3dWorld<TypeDoc>,
+    settings: Sound3DSettings,
+  ): Promise<AudioSource3dEntity<TypeDoc> | undefined>
+```
+
 ### createPlayer (method)
 
 Create a `"Player"` entity: a capsule-shaped `CharacterController3dEntity`, with a matching
@@ -238,9 +256,11 @@ export interface GgCar3DCommonSettings {
 
 Settings for the built-in `"GgCar"` entity class (3D only): builds a box-shaped chassis rigid
 body (+ optional matching display box) and a full `GgCarEntity` on top of it - the procedural
-counterpart of the GLB-driven car construction apps do by hand (see `examples/fly-city-three-ammo`'s
-`GameFactory.generateCar`), for a car whose chassis/wheels are plain primitives rather than
-loaded meshes.
+counterpart of the GLB-driven car construction an app does by hand when it instead loads a
+modeled chassis mesh/body and derives each wheel's position/specs from named dummy objects in
+that same model before constructing `GgCarEntity` directly. This settings type is for the case
+where the chassis/wheels are plain primitives rather than loaded meshes, so the whole thing can
+be declared as data in a level JSON instead.
 
 **Signature**
 
@@ -472,6 +492,53 @@ between a level JSON and `Gg3dWorld.addPrimitiveRigidBody`.
 
 ```ts
 export type Primitive3DShapeName = Shape3DDescriptor['shape']
+```
+
+## Sound3DSettings (interface)
+
+Settings for the built-in `"Sound"` entity class: loads a clip (via `audioScene.factory
+.loadClip`) and builds a ready-to-use `AudioSource3dEntity`, positioned like any other level
+entity. Covers `AudioSource3dEntity`'s "static" and "ambient/level music" placement modes -
+"attached" (riding another entity's transform) isn't expressible in a level JSON, since JSON
+has no way to reference a not-yet-loaded entity; wire that up in app code instead, the same way
+a `"GgCar"` wheel's visual mesh or a `"Player"`'s input controller is - see
+`gg-engine-level-json`. `playOneShot`-style transient sounds aren't a level entity at all
+(there's nothing static to declare) - trigger them from a `"PlaySound"` blueprint node instead
+(see `EntityJson.events`).
+
+**Signature**
+
+```ts
+export interface Sound3DSettings {
+  /** Position of the sound source. */
+  position?: Point3
+
+  /** Rotation of the sound source - only meaningful with a directional cone (`coneOuterAngle` on the source). */
+  rotation?: Point4
+
+  /** URL of the clip to load. */
+  path: string
+
+  /** Whether to loop. Defaults to `true` - static/ambient sounds are normally continuous. */
+  loop?: boolean
+
+  volume?: number
+  playbackRate?: number
+
+  /** Positional 3D audio vs. flat/non-positional (ambient bed, level music, UI). Defaults to `true`. */
+  spatial?: boolean
+
+  /** Output bus/category (e.g. `"sfx"`, `"music"`, `"ambient"`). Defaults to `"sfx"`. */
+  bus?: string
+
+  /** Whether to start playing as soon as the level loads. Defaults to `true`. */
+  autoplay?: boolean
+
+  refDistance?: number
+  maxDistance?: number
+  rolloffFactor?: number
+  distanceModel?: AudioDistanceModel
+}
 ```
 
 ## Trigger3DSettings (interface)

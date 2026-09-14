@@ -1,6 +1,6 @@
 ---
 title: core/base/gg-world.ts
-nav_order: 94
+nav_order: 105
 parent: Modules
 ---
 
@@ -11,6 +11,7 @@ parent: Modules
 <h2 class="text-delta">Table of contents</h2>
 
 - [utils](#utils)
+  - [AudioTypeDocRepo (type alias)](#audiotypedocrepo-type-alias)
   - [GgWorld (class)](#ggworld-class)
     - [init (method)](#init-method)
     - [start (method)](#start-method)
@@ -22,10 +23,12 @@ parent: Modules
     - [addEntity (method)](#addentity-method)
     - [removeEntity (method)](#removeentity-method)
     - [getEntityByName (method)](#getentitybyname-method)
+    - [maybeBindAudioListener (method)](#maybebindaudiolistener-method)
     - [onGgStaticInitialized (method)](#onggstaticinitialized-method)
     - [registerConsoleCommands (method)](#registerconsolecommands-method)
     - [visualScene (property)](#visualscene-property)
     - [physicsWorld (property)](#physicsworld-property)
+    - [audioScene (property)](#audioscene-property)
     - [worldClock (property)](#worldclock-property)
     - [keyboardInput (property)](#keyboardinput-property)
     - [name (property)](#name-property)
@@ -36,9 +39,11 @@ parent: Modules
     - [tickForwardedTo$ (property)](#tickforwardedto-property)
     - [paused$ (property)](#paused-property)
     - [disposed$ (property)](#disposed-property)
+  - [GgWorldSceneTypeDocAPatch (type alias)](#ggworldscenetypedocapatch-type-alias)
   - [GgWorldSceneTypeDocPPatch (type alias)](#ggworldscenetypedocppatch-type-alias)
   - [GgWorldSceneTypeDocVPatch (type alias)](#ggworldscenetypedocvpatch-type-alias)
   - [GgWorldSceneTypeRepo (type alias)](#ggworldscenetyperepo-type-alias)
+  - [GgWorldTypeDocAPatch (type alias)](#ggworldtypedocapatch-type-alias)
   - [GgWorldTypeDocPPatch (type alias)](#ggworldtypedocppatch-type-alias)
   - [GgWorldTypeDocRepo (type alias)](#ggworldtypedocrepo-type-alias)
   - [GgWorldTypeDocVPatch (type alias)](#ggworldtypedocvpatch-type-alias)
@@ -51,6 +56,18 @@ parent: Modules
 
 # utils
 
+## AudioTypeDocRepo (type alias)
+
+**Signature**
+
+```ts
+export type AudioTypeDocRepo<D, R> = {
+  factory: IAudioSourceComponentFactory<D, R>
+  source: IAudioSourceComponent<D, R>
+  clip: unknown
+}
+```
+
 ## GgWorld (class)
 
 **Signature**
@@ -60,6 +77,7 @@ export declare class GgWorld<D, R, TypeDoc, SceneTypeDoc> {
   protected constructor(args: {
     visualScene?: SceneTypeDoc['visualScene']
     physicsWorld?: SceneTypeDoc['physicsWorld']
+    audioScene?: SceneTypeDoc['audioScene']
   })
 }
 ```
@@ -154,6 +172,14 @@ entity's own subtree instead, use `IEntity.getChildEntityByName`.
 public getEntityByName<T extends IEntity = IEntity>(name: string): T
 ```
 
+### maybeBindAudioListener (method)
+
+**Signature**
+
+```ts
+private maybeBindAudioListener(entity: IEntity): void
+```
+
 ### onGgStaticInitialized (method)
 
 **Signature**
@@ -191,6 +217,14 @@ readonly visualScene: SceneTypeDoc["visualScene"]
 
 ```ts
 readonly physicsWorld: SceneTypeDoc["physicsWorld"]
+```
+
+### audioScene (property)
+
+**Signature**
+
+```ts
+readonly audioScene: SceneTypeDoc["audioScene"]
 ```
 
 ### worldClock (property)
@@ -273,6 +307,19 @@ readonly paused$: any
 readonly disposed$: any
 ```
 
+## GgWorldSceneTypeDocAPatch (type alias)
+
+**Signature**
+
+```ts
+export type GgWorldSceneTypeDocAPatch<
+  D,
+  R,
+  ATypeDoc extends AudioTypeDocRepo<D, R>,
+  AS extends IAudioSceneComponent<D, R, ATypeDoc> | null
+> = Omit<GgWorldSceneTypeRepo<D, R>, 'audioScene'> & { audioScene: AS }
+```
+
 ## GgWorldSceneTypeDocPPatch (type alias)
 
 **Signature**
@@ -307,6 +354,20 @@ export type GgWorldSceneTypeDocVPatch<
 export type GgWorldSceneTypeRepo<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R> = GgWorldTypeDocRepo<D, R>> = {
   visualScene: IVisualSceneComponent<D, R, TypeDoc['vTypeDoc']> | null
   physicsWorld: IPhysicsWorldComponent<D, R, TypeDoc['pTypeDoc']> | null
+  audioScene: IAudioSceneComponent<D, R, TypeDoc['aTypeDoc']> | null
+}
+```
+
+## GgWorldTypeDocAPatch (type alias)
+
+**Signature**
+
+```ts
+export type GgWorldTypeDocAPatch<D, R, ATypeDoc extends AudioTypeDocRepo<D, R>> = Omit<
+  GgWorldTypeDocRepo<D, R>,
+  'aTypeDoc'
+> & {
+  aTypeDoc: ATypeDoc
 }
 ```
 
@@ -331,6 +392,7 @@ export type GgWorldTypeDocPPatch<D, R, PTypeDoc extends PhysicsTypeDocRepo<D, R>
 export type GgWorldTypeDocRepo<D, R> = {
   vTypeDoc: VisualTypeDocRepo<D, R>
   pTypeDoc: PhysicsTypeDocRepo<D, R>
+  aTypeDoc: AudioTypeDocRepo<D, R>
 }
 ```
 

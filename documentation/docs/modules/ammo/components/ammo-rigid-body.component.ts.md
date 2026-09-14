@@ -12,6 +12,8 @@ parent: Modules
 
 - [utils](#utils)
   - [AmmoRigidBodyComponent (class)](#ammorigidbodycomponent-class)
+    - [emitCollisionStart (method)](#emitcollisionstart-method)
+    - [emitCollisionEnd (method)](#emitcollisionend-method)
     - [clone (method)](#clone-method)
     - [addToWorld (method)](#addtoworld-method)
     - [removeFromWorld (method)](#removefromworld-method)
@@ -19,8 +21,11 @@ parent: Modules
     - [detachFromBroadphaseTemporarily (method)](#detachfrombroadphasetemporarily-method)
     - [reattachToBroadphase (method)](#reattachtobroadphase-method)
     - [resetMotion (method)](#resetmotion-method)
+    - [dispose (method)](#dispose-method)
     - [entity (property)](#entity-property)
     - [debugBodySettings (property)](#debugbodysettings-property)
+    - [onCollisionStart$ (property)](#oncollisionstart-property)
+    - [onCollisionEnd$ (property)](#oncollisionend-property)
 
 ---
 
@@ -38,6 +43,26 @@ export declare class AmmoRigidBodyComponent {
     public readonly shape: Shape3DDescriptor
   )
 }
+```
+
+### emitCollisionStart (method)
+
+Called by `AmmoWorldComponent.simulate()` only - see `onCollisionStart$`'s own doc.
+
+**Signature**
+
+```ts
+emitCollisionStart(event: CollisionEvent<Point3, AmmoRigidBodyComponent>): void
+```
+
+### emitCollisionEnd (method)
+
+Called by `AmmoWorldComponent.simulate()` only - see `onCollisionStart$`'s own doc.
+
+**Signature**
+
+```ts
+emitCollisionEnd(other: AmmoRigidBodyComponent | null): void
 ```
 
 ### clone (method)
@@ -112,6 +137,14 @@ reattachToBroadphase(): void
 resetMotion(): void
 ```
 
+### dispose (method)
+
+**Signature**
+
+```ts
+dispose(): void
+```
+
 ### entity (property)
 
 **Signature**
@@ -126,4 +159,29 @@ entity: any
 
 ```ts
 readonly debugBodySettings: any
+```
+
+### onCollisionStart$ (property)
+
+Back `onCollisionStart`/`onCollisionEnd` below. Populated exclusively by
+`AmmoWorldComponent.simulate()`'s own post-`stepSimulation` manifold bookkeeping via
+`emitCollisionStart`/`emitCollisionEnd` - a single body has no way to discover the _other_
+side of a contact pair (or when it stops touching something) on its own, so the world
+component (which walks `dispatcher.getNumManifolds()` once per tick) is the only writer.
+Kept protected rather than exposing the Subjects directly, mirroring how
+`AmmoTriggerComponent` keeps its own `onEnter$`/`onLeft$` reachable only through its own
+bookkeeping method (`checkOverlaps`).
+
+**Signature**
+
+```ts
+readonly onCollisionStart$: any
+```
+
+### onCollisionEnd$ (property)
+
+**Signature**
+
+```ts
+readonly onCollisionEnd$: any
 ```

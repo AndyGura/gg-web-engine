@@ -1,6 +1,6 @@
 ---
 title: matter/components/matter-trigger.component.ts
-nav_order: 122
+nav_order: 135
 parent: Modules
 ---
 
@@ -12,8 +12,8 @@ parent: Modules
 
 - [utils](#utils)
   - [MatterTriggerComponent (class)](#mattertriggercomponent-class)
-    - [onCollisionStart (method)](#oncollisionstart-method)
-    - [onCollisionEnd (method)](#oncollisionend-method)
+    - [handleCollisionStart (method)](#handlecollisionstart-method)
+    - [handleCollisionEnd (method)](#handlecollisionend-method)
     - [addToWorld (method)](#addtoworld-method)
     - [removeFromWorld (method)](#removefromworld-method)
     - [dispose (method)](#dispose-method)
@@ -43,20 +43,20 @@ export declare class MatterTriggerComponent {
 }
 ```
 
-### onCollisionStart (method)
+### handleCollisionStart (method)
 
 **Signature**
 
 ```ts
-private onCollisionStart(event: IEventCollision<Engine>)
+private handleCollisionStart(event: IEventCollision<Engine>)
 ```
 
-### onCollisionEnd (method)
+### handleCollisionEnd (method)
 
 **Signature**
 
 ```ts
-private onCollisionEnd(event: IEventCollision<Engine>)
+private handleCollisionEnd(event: IEventCollision<Engine>)
 ```
 
 ### addToWorld (method)
@@ -77,8 +77,9 @@ removeFromWorld(world: MatterGgWorld, dispose?: boolean): void
 
 ### dispose (method)
 
-Completes `onEnter$`/`onLeft$` - `MatterRigidBodyComponent.dispose()` is a no-op (see its own
-doc), so this is the only place these two subjects ever get completed.
+Completes `onEnter$`/`onLeft$` on top of `MatterRigidBodyComponent.dispose()`'s own
+`onCollisionStart$`/`onCollisionEnd$` completion (via `super.dispose()`) - this trigger's own
+enter/exit subjects are a separate pair this subclass owns and must complete itself.
 
 **Signature**
 

@@ -1,6 +1,6 @@
 {
   "name": "@gg-web-engine/three",
-  "version": "0.0.66",
+  "version": "0.0.70",
   "description": "An attempt to create open source game engine for browser",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -29,7 +29,7 @@
   "dependencies": {
   },
   "devDependencies": {
-    "@gg-web-engine/core": "0.0.66",
+    "@gg-web-engine/core": "0.0.70",
     "@types/jest": "^30.0.0",
     "@types/three": "0.185.4",
     "jest": "^30.5.0",
@@ -41,7 +41,7 @@
     "typescript": "~6.0.3"
   },
   "peerDependencies": {
-    "@gg-web-engine/core": "0.0.66",
+    "@gg-web-engine/core": "0.0.70",
     "three": "0.185.1",
     "rxjs": "7.8.2"
   },

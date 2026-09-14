@@ -1,6 +1,6 @@
 ---
 title: core/base/components/physics/i-rigid-body.component.ts
-nav_order: 81
+nav_order: 92
 parent: Modules
 ---
 
@@ -22,14 +22,16 @@ parent: Modules
 **Signature**
 
 ```ts
-export interface IRigidBodyComponent<D, R, PTypeDoc extends PhysicsTypeDocRepo<D, R> = PhysicsTypeDocRepo<D, R>>
-  extends IBodyComponent<D, R, PTypeDoc> {
-  linearVelocity: D
-  angularVelocity: R | D
+export interface IRigidBodyComponent<
+  D,
+  R,
+  PTypeDoc extends PhysicsTypeDocRepo<D, R> = PhysicsTypeDocRepo<D, R>,
+> extends IBodyComponent<D, R, PTypeDoc> {
+  linearVelocity: D;
+  angularVelocity: R | D;
 
-  clone(): IRigidBodyComponent<D, R, PTypeDoc>
+  clone(): IRigidBodyComponent<D, R, PTypeDoc>;
 
   /** clear velocities etc. */
-  resetMotion(): void
-}
+  resetMotion(): void;
 ```

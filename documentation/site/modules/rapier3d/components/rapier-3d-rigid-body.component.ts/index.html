@@ -522,6 +522,20 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#notifycollisionstart-method" class="md-nav__link">
+    notifyCollisionStart (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#notifycollisionend-method" class="md-nav__link">
+    notifyCollisionEnd (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#clone-method" class="md-nav__link">
     clone (method)
   </a>
@@ -592,6 +606,27 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#collidingwith-property" class="md-nav__link">
+    collidingWith (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#oncollisionstart-property" class="md-nav__link">
+    onCollisionStart$ (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#oncollisionend-property" class="md-nav__link">
+    onCollisionEnd$ (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#collisiongroups-property" class="md-nav__link">
     collisionGroups (property)
   </a>
@@ -633,6 +668,8 @@
 <ul>
 <li><a href="#utils">utils</a></li>
 <li><a href="#rapier3drigidbodycomponent-class">Rapier3dRigidBodyComponent (class)</a><ul>
+<li><a href="#notifycollisionstart-method">notifyCollisionStart (method)</a></li>
+<li><a href="#notifycollisionend-method">notifyCollisionEnd (method)</a></li>
 <li><a href="#clone-method">clone (method)</a></li>
 <li><a href="#addtoworld-method">addToWorld (method)</a></li>
 <li><a href="#removefromworld-method">removeFromWorld (method)</a></li>
@@ -643,6 +680,9 @@
 <li><a href="#_nativebody-property">_nativeBody (property)</a></li>
 <li><a href="#_nativebodycolliders-property">_nativeBodyColliders (property)</a></li>
 <li><a href="#name-property">name (property)</a></li>
+<li><a href="#collidingwith-property">collidingWith (property)</a></li>
+<li><a href="#oncollisionstart-property">onCollisionStart$ (property)</a></li>
+<li><a href="#oncollisionend-property">onCollisionEnd$ (property)</a></li>
 <li><a href="#collisiongroups-property">collisionGroups (property)</a></li>
 </ul>
 </li>
@@ -660,6 +700,20 @@
     protected _colliderOptions: Omit&lt;Omit&lt;Body3DOptions, 'dynamic'&gt;, 'mass'&gt;
   )
 }
+</code></pre>
+<h3 id="notifycollisionstart-method">notifyCollisionStart (method)</h3>
+<p>Called by <code>Rapier3dWorldComponent</code>'s centralized collision-event dispatch (see
+<code>Rapier3dWorldComponent.simulate</code>) - not meant to be called by app code directly. Kept <code>public</code>
+(rather than some cross-class-accessible <code>protected</code>) purely because the dispatching class isn't
+a subclass of this one; there's nothing else in this package it's meant to be called from.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public notifyCollisionStart(event: CollisionEvent&lt;Point3, Rapier3dRigidBodyComponent&gt;): void
+</code></pre>
+<h3 id="notifycollisionend-method">notifyCollisionEnd (method)</h3>
+<p>See <code>notifyCollisionStart</code>'s doc. <code>otherBody: null</code> signals the partner was removed from the
+world while still in contact, per <code>onCollisionEnd</code>'s doc.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public notifyCollisionEnd(otherBody: Rapier3dRigidBodyComponent | null): void
 </code></pre>
 <h3 id="clone-method">clone (method)</h3>
 <p><strong>Signature</strong></p>
@@ -700,6 +754,28 @@
 <h3 id="name-property">name (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">name: string
+</code></pre>
+<h3 id="collidingwith-property">collidingWith (property)</h3>
+<p>Other rigid-body components this one is currently touching via a real (non-sensor) contact -
+mirrors <code>Rapier3dTriggerComponent.overlaps</code>, but symmetric: both sides of an ordinary collision
+get notified, so both sides track it. Populated/drained by <code>Rapier3dWorldComponent</code>'s centralized
+collision-event dispatch (see <code>notifyCollisionStart</code>/<code>notifyCollisionEnd</code> below), and consulted by
+<code>removeFromWorld</code> to emit <code>onCollisionEnd(null)</code> to any partner still touching this body at the
+moment it's removed (per <code>CollisionEvent</code>'s "null when the other body was removed from the world
+while still in contact" convention) - Rapier does not reliably emit a native collision-stop event
+for a collider that's simply deleted mid-contact (same reason <code>Rapier3dTriggerComponent.
+checkOverlaps</code> has its own manual <code>!body.nativeBody</code> cleanup pass instead of trusting the event
+queue for that case).</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly collidingWith: any
+</code></pre>
+<h3 id="oncollisionstart-property">onCollisionStart$ (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly onCollisionStart$: any
+</code></pre>
+<h3 id="oncollisionend-property">onCollisionEnd$ (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly onCollisionEnd$: any
 </code></pre>
 <h3 id="collisiongroups-property">collisionGroups (property)</h3>
 <p><strong>Signature</strong></p>

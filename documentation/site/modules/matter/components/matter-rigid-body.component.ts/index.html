@@ -598,6 +598,27 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#oncollisionstart-property" class="md-nav__link">
+    onCollisionStart$ (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#oncollisionend-property" class="md-nav__link">
+    onCollisionEnd$ (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#currentcontacts-property" class="md-nav__link">
+    currentContacts (property)
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -644,6 +665,9 @@
 <li><a href="#debugbodysettings-property">debugBodySettings (property)</a></li>
 <li><a href="#_interactwithcgsmask-property">_interactWithCGsMask (property)</a></li>
 <li><a href="#_owncgsmask-property">_ownCGsMask (property)</a></li>
+<li><a href="#oncollisionstart-property">onCollisionStart$ (property)</a></li>
+<li><a href="#oncollisionend-property">onCollisionEnd$ (property)</a></li>
+<li><a href="#currentcontacts-property">currentContacts (property)</a></li>
 </ul>
 </li>
 </ul>
@@ -698,6 +722,23 @@
 <h3 id="_owncgsmask-property">_ownCGsMask (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">_ownCGsMask: any
+</code></pre>
+<h3 id="oncollisionstart-property">onCollisionStart$ (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly onCollisionStart$: any
+</code></pre>
+<h3 id="oncollisionend-property">onCollisionEnd$ (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly onCollisionEnd$: any
+</code></pre>
+<h3 id="currentcontacts-property">currentContacts (property)</h3>
+<p>Other rigid bodies this body is currently touching (non-sensor contact only), tracked so
+<code>removeFromWorld</code> can tell them apart to emit <code>onCollisionEnd(null)</code> per that member's
+documented "other body removed while still in contact" case. Maintained exclusively via
+<code>notifyCollisionStart</code>/<code>notifyCollisionEnd</code>, called by <code>MatterWorldComponent</code>'s single
+world-wide <code>collisionStart</code>/<code>collisionEnd</code> listener - not touched directly by anything else.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly currentContacts: any
 </code></pre>
 
 

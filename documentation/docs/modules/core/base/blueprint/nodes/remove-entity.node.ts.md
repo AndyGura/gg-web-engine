@@ -1,6 +1,6 @@
 ---
 title: core/base/blueprint/nodes/remove-entity.node.ts
-nav_order: 73
+nav_order: 81
 parent: Modules
 ---
 

@@ -1,6 +1,6 @@
 ---
 title: rapier2d/components/rapier-2d-trigger.component.ts
-nav_order: 135
+nav_order: 148
 parent: Modules
 ---
 
@@ -74,6 +74,10 @@ clone(): Rapier2dTriggerComponent
 ```
 
 ### dispose (method)
+
+Completes `onEnter$`/`onLeft$` on top of `Rapier2dRigidBodyComponent.dispose()`'s own
+`onCollisionStart$`/`onCollisionEnd$` completion (via `super.dispose()`) - this trigger's own
+subjects have no other owner to complete them.
 
 **Signature**
 

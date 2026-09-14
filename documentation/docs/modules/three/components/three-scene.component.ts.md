@@ -1,6 +1,6 @@
 ---
 title: three/components/three-scene.component.ts
-nav_order: 154
+nav_order: 167
 parent: Modules
 ---
 
@@ -13,11 +13,15 @@ parent: Modules
 - [utils](#utils)
   - [ThreeSceneComponent (class)](#threescenecomponent-class)
     - [init (method)](#init-method)
+    - [registerRenderLayer (method)](#registerrenderlayer-method)
+    - [deregisterRenderLayer (method)](#deregisterrenderlayer-method)
     - [createRenderer (method)](#createrenderer-method)
     - [createComposerRenderer (method)](#createcomposerrenderer-method)
     - [dispose (method)](#dispose-method)
     - [factory (property)](#factory-property)
     - [loader (property)](#loader-property)
+    - [mainRenderLayer (property)](#mainrenderlayer-property)
+    - [lockedRenderLayers (property)](#lockedrenderlayers-property)
 
 ---
 
@@ -37,6 +41,22 @@ export declare class ThreeSceneComponent
 
 ```ts
 async init(): Promise<void>
+```
+
+### registerRenderLayer (method)
+
+**Signature**
+
+```ts
+registerRenderLayer(): RenderLayer
+```
+
+### deregisterRenderLayer (method)
+
+**Signature**
+
+```ts
+deregisterRenderLayer(layer: RenderLayer): void
 ```
 
 ### createRenderer (method)
@@ -85,4 +105,20 @@ readonly factory: ThreeFactory
 
 ```ts
 readonly loader: ThreeLoader
+```
+
+### mainRenderLayer (property)
+
+**Signature**
+
+```ts
+readonly mainRenderLayer: any
+```
+
+### lockedRenderLayers (property)
+
+**Signature**
+
+```ts
+lockedRenderLayers: any[]
 ```

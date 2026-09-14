@@ -549,6 +549,13 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#createsound-method" class="md-nav__link">
+    createSound (method)
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -564,6 +571,13 @@
           <li class="md-nav__item">
   <a href="#primitivesettings-interface" class="md-nav__link">
     PrimitiveSettings (interface)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sound2dsettings-interface" class="md-nav__link">
+    Sound2DSettings (interface)
   </a>
   
 </li>
@@ -609,16 +623,18 @@
 <li><a href="#buildshapedescriptor-method">buildShapeDescriptor (method)</a></li>
 <li><a href="#createprimitive-method">createPrimitive (method)</a></li>
 <li><a href="#createtrigger-method">createTrigger (method)</a></li>
+<li><a href="#createsound-method">createSound (method)</a></li>
 </ul>
 </li>
 <li><a href="#primitive2dshapename-type-alias">Primitive2DShapeName (type alias)</a></li>
 <li><a href="#primitivesettings-interface">PrimitiveSettings (interface)</a></li>
+<li><a href="#sound2dsettings-interface">Sound2DSettings (interface)</a></li>
 <li><a href="#triggersettings-interface">TriggerSettings (interface)</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
 <h2 id="gg2dlevelloader-class">Gg2dLevelLoader (class)</h2>
-<p>2D level loader: registers the built-in primitive/trigger entity classes and dispatches
+<p>2D level loader: registers the built-in primitive/trigger/sound entity classes and dispatches
 <code>LevelJson</code> entities to them (or to custom classes registered via <code>registerClass</code>).</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export declare class Gg2dLevelLoader&lt;TypeDoc&gt; {
@@ -654,6 +670,14 @@ base <code>LevelLoader</code> docs for how it's parented for level-lifecycle cle
     world: Gg2dWorld&lt;TypeDoc&gt;,
     settings: TriggerSettings,
   ): Trigger2dEntity&lt;TypeDoc['pTypeDoc']&gt; | undefined
+</code></pre>
+<h3 id="createsound-method">createSound (method)</h3>
+<p>Create a <code>"Sound"</code> entity - see the 3D loader's <code>createSound</code> doc (identical behavior).</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private async createSound(
+    world: Gg2dWorld&lt;TypeDoc&gt;,
+    settings: Sound2DSettings,
+  ): Promise&lt;AudioSource2dEntity&lt;TypeDoc&gt; | undefined&gt;
 </code></pre>
 <h2 id="primitive2dshapename-type-alias">Primitive2DShapeName (type alias)</h2>
 <p>Shape names accepted by the built-in <code>"Primitive"</code> entity class in a 2D level JSON, via the
@@ -701,6 +725,26 @@ between a level JSON and <code>Gg2dWorld.addPrimitiveRigidBody</code>.</p>
    * Physics body options, merged over sensible defaults
    */
   body?: Partial&lt;Body2DOptions&gt;
+}
+</code></pre>
+<h2 id="sound2dsettings-interface">Sound2DSettings (interface)</h2>
+<p>Settings for the built-in <code>"Sound"</code> entity class - see the 3D <code>Sound3DSettings</code> doc (identical
+shape, <code>Point2</code>/no cone).</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export interface Sound2DSettings {
+  position?: Point2
+  rotation?: number
+  path: string
+  loop?: boolean
+  volume?: number
+  playbackRate?: number
+  spatial?: boolean
+  bus?: string
+  autoplay?: boolean
+  refDistance?: number
+  maxDistance?: number
+  rolloffFactor?: number
+  distanceModel?: AudioDistanceModel
 }
 </code></pre>
 <h2 id="triggersettings-interface">TriggerSettings (interface)</h2>

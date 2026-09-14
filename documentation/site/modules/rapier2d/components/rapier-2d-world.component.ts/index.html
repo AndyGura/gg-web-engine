@@ -536,6 +536,20 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#dispatchcollisionevents-method" class="md-nav__link">
+    dispatchCollisionEvents (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#emitcollisionstart-method" class="md-nav__link">
+    emitCollisionStart (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#registercollisiongroup-method" class="md-nav__link">
     registerCollisionGroup (method)
   </a>
@@ -649,6 +663,8 @@
 <li><a href="#rapier2dworldcomponent-class">Rapier2dWorldComponent (class)</a><ul>
 <li><a href="#init-method">init (method)</a></li>
 <li><a href="#simulate-method">simulate (method)</a></li>
+<li><a href="#dispatchcollisionevents-method">dispatchCollisionEvents (method)</a></li>
+<li><a href="#emitcollisionstart-method">emitCollisionStart (method)</a></li>
 <li><a href="#registercollisiongroup-method">registerCollisionGroup (method)</a></li>
 <li><a href="#deregistercollisiongroup-method">deregisterCollisionGroup (method)</a></li>
 <li><a href="#raycast-method">raycast (method)</a></li>
@@ -678,6 +694,50 @@
 <h3 id="simulate-method">simulate (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">simulate(delta: number): void
+</code></pre>
+<h3 id="dispatchcollisionevents-method">dispatchCollisionEvents (method)</h3>
+<p>Drains this step's collision events from the world's single shared <code>EventQueue</code> and routes
+each start/stop transition to whichever component(s) it belongs to - a sensor-overlap
+transition (either side a <code>Rapier2dTriggerComponent</code>) goes to that trigger's own
+<code>handleOverlapEvent</code> (its <code>onEntityEntered</code>/<code>onEntityLeft</code>), a real contact transition between
+two plain rigid bodies goes to both sides' <code>handleCollisionStart</code>/<code>handleCollisionEnd</code>
+(<code>onCollisionStart</code>/<code>onCollisionEnd</code>).</p>
+<p>This drains the queue exactly once per <code>simulate()</code> call, centrally, rather than leaving each
+trigger to drain the whole (shared, single) queue itself from its own <code>checkOverlaps()</code> - two
+triggers both calling <code>drainCollisionEvents</code> in the same frame would otherwise race for the
+same queue, with the first drain silently consuming events the second was waiting for (this
+was already a latent limitation of the pre-existing single-trigger-only draining approach).
+<code>Rapier2dTriggerComponent.checkOverlaps()</code> still exists and is still called by <code>Trigger2dEntity</code>
+every tick, but it no longer drains anything itself - see its own doc.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private dispatchCollisionEvents(): void
+</code></pre>
+<h3 id="emitcollisionstart-method">emitCollisionStart (method)</h3>
+<p>Builds and emits the reciprocal <code>onCollisionStart</code> pair for two plain rigid-body colliders
+that Rapier just reported as newly touching.</p>
+<p><code>impulse</code> is derived from <code>TempContactManifold.contactImpulse(i)</code> - the actual per-contact
+impulse magnitude already solved by Rapier for this step (summed across every contact in the
+manifold), not an approximation - so it's directly comparable across hits from this adapter.
+<code>position</code> is the first solver contact point (already world-space); <code>normal</code> is the manifold's
+world-space contact normal, oriented for each body so it always points away from that body
+towards the other (Rapier's <code>contactPair</code> may invoke the callback with <code>flipped: true</code> when it
+internally stored the pair as (collider2, collider1) rather than (collider1, collider2), in
+which case the raw normal already points from collider2 towards collider1 and must be negated
+to keep a consistent "away from collider1, towards collider2" convention before per-body
+orientation is applied below).</p>
+<p>A manifold can legitimately be empty the same step a <code>started</code> event is reported for it (the
+narrow-phase pass that produced the event and the manifold read back here are the same pass,
+but Rapier doesn't guarantee a manifold survives with contact data intact for every shape pair
+across that boundary) - in that rare case this falls back to the midpoint between the two
+bodies' own positions and the direction between them, with <code>impulse: 0</code>, rather than dropping
+the event outright.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private emitCollisionStart(
+    c1: Rapier2dRigidBodyComponent,
+    c2: Rapier2dRigidBodyComponent,
+    collider1: Collider,
+    collider2: Collider,
+  ): void
 </code></pre>
 <h3 id="registercollisiongroup-method">registerCollisionGroup (method)</h3>
 <p><strong>Signature</strong></p>

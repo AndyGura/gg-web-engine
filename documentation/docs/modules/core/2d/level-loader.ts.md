@@ -1,6 +1,6 @@
 ---
 title: core/2d/level-loader.ts
-nav_order: 28
+nav_order: 31
 parent: Modules
 ---
 
@@ -16,8 +16,10 @@ parent: Modules
     - [buildShapeDescriptor (method)](#buildshapedescriptor-method)
     - [createPrimitive (method)](#createprimitive-method)
     - [createTrigger (method)](#createtrigger-method)
+    - [createSound (method)](#createsound-method)
   - [Primitive2DShapeName (type alias)](#primitive2dshapename-type-alias)
   - [PrimitiveSettings (interface)](#primitivesettings-interface)
+  - [Sound2DSettings (interface)](#sound2dsettings-interface)
   - [TriggerSettings (interface)](#triggersettings-interface)
 
 ---
@@ -26,7 +28,7 @@ parent: Modules
 
 ## Gg2dLevelLoader (class)
 
-2D level loader: registers the built-in primitive/trigger entity classes and dispatches
+2D level loader: registers the built-in primitive/trigger/sound entity classes and dispatches
 `LevelJson` entities to them (or to custom classes registered via `registerClass`).
 
 **Signature**
@@ -87,6 +89,19 @@ private createTrigger(
   ): Trigger2dEntity<TypeDoc['pTypeDoc']> | undefined
 ```
 
+### createSound (method)
+
+Create a `"Sound"` entity - see the 3D loader's `createSound` doc (identical behavior).
+
+**Signature**
+
+```ts
+private async createSound(
+    world: Gg2dWorld<TypeDoc>,
+    settings: Sound2DSettings,
+  ): Promise<AudioSource2dEntity<TypeDoc> | undefined>
+```
+
 ## Primitive2DShapeName (type alias)
 
 Shape names accepted by the built-in `"Primitive"` entity class in a 2D level JSON, via the
@@ -142,6 +157,31 @@ export interface PrimitiveSettings {
    * Physics body options, merged over sensible defaults
    */
   body?: Partial<Body2DOptions>
+}
+```
+
+## Sound2DSettings (interface)
+
+Settings for the built-in `"Sound"` entity class - see the 3D `Sound3DSettings` doc (identical
+shape, `Point2`/no cone).
+
+**Signature**
+
+```ts
+export interface Sound2DSettings {
+  position?: Point2
+  rotation?: number
+  path: string
+  loop?: boolean
+  volume?: number
+  playbackRate?: number
+  spatial?: boolean
+  bus?: string
+  autoplay?: boolean
+  refDistance?: number
+  maxDistance?: number
+  rolloffFactor?: number
+  distanceModel?: AudioDistanceModel
 }
 ```
 

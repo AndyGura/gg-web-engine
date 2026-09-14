@@ -14,6 +14,8 @@ parent: Modules
   - [AmmoWorldComponent (class)](#ammoworldcomponent-class)
     - [init (method)](#init-method)
     - [simulate (method)](#simulate-method)
+    - [processCollisionEvents (method)](#processcollisionevents-method)
+    - [emitCollisionStart (method)](#emitcollisionstart-method)
     - [registerCollisionGroup (method)](#registercollisiongroup-method)
     - [deregisterCollisionGroup (method)](#deregistercollisiongroup-method)
     - [raycast (method)](#raycast-method)
@@ -26,6 +28,7 @@ parent: Modules
     - [mainCollisionGroup (property)](#maincollisiongroup-property)
     - [maxSubSteps (property)](#maxsubsteps-property)
     - [fixedTimeStep (property)](#fixedtimestep-property)
+    - [enableCollisionEvents (property)](#enablecollisionevents-property)
     - [\_dynamicAmmoWorld (property)](#_dynamicammoworld-property)
     - [lockedCollisionGroups (property)](#lockedcollisiongroups-property)
 
@@ -57,6 +60,50 @@ async init(): Promise<void>
 
 ```ts
 simulate(delta: number): void
+```
+
+### processCollisionEvents (method)
+
+Derives `onCollisionStart`/`onCollisionEnd` for every `AmmoRigidBodyComponent` in this world,
+once per `simulate()` call, from Bullet's own post-`stepSimulation` contact manifolds - Ammo/
+Bullet has no native "collision started/ended" callback usable from this embind build (see
+`gg-engine-physics-adapter-ammo`), so this is the standard `dispatcher.getNumManifolds()`
+polling technique instead.
+
+A manifold existing is not the same as two bodies actually touching - Bullet keeps a manifold
+alive for a broad-phase AABB overlap even with zero narrow-phase contact points, so only a
+manifold with `getNumContacts() > 0` counts. Both `AmmoTriggerComponent` (a
+`CF_NO_CONTACT_RESPONSE` ghost object) and `AmmoCharacterControllerComponent` (also a ghost
+object) still generate ordinary manifolds/contact points against anything they overlap - that
+flag only suppresses the _solver_'s contact response, not narrow-phase manifold generation - so
+this only proceeds when **both** sides of a manifold resolve to an actual
+`AmmoRigidBodyComponent` via the shared `AmmoBodyComponent.nativeBodyReverseMap`; that one
+`instanceof` check is what keeps triggers/character controllers out of collision events
+entirely, without needing to inspect collision flags directly.
+
+**Signature**
+
+```ts
+private processCollisionEvents(): void
+```
+
+### emitCollisionStart (method)
+
+Builds and emits one body's own `CollisionEvent` for a just-started contact - `selfIsBody0`
+says which side of the manifold `self` is on (Bullet decides this internally per pair, not by
+creation/call order), which is what `position`/`normal` need to be expressed correctly in
+`self`'s own frame.
+
+**Signature**
+
+```ts
+private emitCollisionStart(
+    self: AmmoRigidBodyComponent,
+    other: AmmoRigidBodyComponent,
+    cp: Ammo.btManifoldPoint,
+    impulse: number,
+    selfIsBody0: boolean,
+  ): void
 ```
 
 ### registerCollisionGroup (method)
@@ -248,6 +295,34 @@ kept unconditionally rather than only above some `delta` threshold.
 
 ```ts
 fixedTimeStep: number | undefined
+```
+
+### enableCollisionEvents (property)
+
+Whether `simulate()` derives `IRigidBodyComponent.onCollisionStart`/`onCollisionEnd` at all.
+Defaults to `true`. Set to `false` for an app that never subscribes to either - Ammo/Bullet has
+no native "collision started/stopped" callback reachable from this embind build (unlike
+Rapier/matter-js, whose adapters are driven by the native engine's own edge-triggered event
+queue/callback and pay nothing for a continuing contact in the first place - see
+`gg-engine-physics-adapter-ammo`), so this package derives them by walking every broad-phase
+contact manifold in `processCollisionEvents()`, once per `simulate()` call, unconditionally.
+That walk is cheap per manifold (no per-contact-point/impulse extraction happens for a pair
+already known to be touching - see that method's own doc) but still scales with the total
+number of touching pairs in the world every single tick, whether or not anything is listening -
+for a scene with a very large number of simultaneously-resting bodies (a big debris field, a
+dense physics playground) and an app that has no use for these events at all, skipping the walk
+entirely removes that cost completely. Only `IRigidBody3dComponent.onCollisionStart`/
+`onCollisionEnd` are affected - `ITrigger3dComponent.onEntityEntered`/`onEntityLeft` (a
+different, already-existing mechanism, driven by each `AmmoTriggerComponent`'s own
+`checkOverlaps()`) keep working regardless of this setting. No other physics adapter in this
+engine needs an equivalent setting: Rapier2d/3d and matter-js all derive these same events from
+a native start/stop event rather than polling, so they have no comparable always-on cost to opt
+out of.
+
+**Signature**
+
+```ts
+enableCollisionEvents: boolean
 ```
 
 ### \_dynamicAmmoWorld (property)

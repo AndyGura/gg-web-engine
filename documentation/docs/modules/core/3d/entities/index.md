@@ -5,6 +5,7 @@ has_children: true
 
 <h2 class="text-delta">Directory table of contents</h2>
 
+- [core/3d/entities/audio-source-3d.entity.ts](/gg-web-engine/modules/core/3d/entities/audio-source-3d.entity.ts)
 - [core/3d/entities/camera-3d.entity.ts](/gg-web-engine/modules/core/3d/entities/camera-3d.entity.ts)
 - [core/3d/entities/character-controller-3d.entity.ts](/gg-web-engine/modules/core/3d/entities/character-controller-3d.entity.ts)
 - [core/3d/entities/controllers](/gg-web-engine/modules/core/3d/entities/controllers)

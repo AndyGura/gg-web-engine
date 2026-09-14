@@ -1,6 +1,6 @@
 ---
 title: core/3d/factories.ts
-nav_order: 60
+nav_order: 67
 parent: Modules
 ---
 
@@ -12,6 +12,7 @@ parent: Modules
 
 - [utils](#utils)
   - [DisplayObject3dOpts (type alias)](#displayobject3dopts-type-alias)
+  - [IAudioSource3dComponentFactory (interface)](#iaudiosource3dcomponentfactory-interface)
   - [IDisplayObject3dComponentFactory (class)](#idisplayobject3dcomponentfactory-class)
     - [createPrimitive (method)](#createprimitive-method)
     - [createPerspectiveCamera (method)](#createperspectivecamera-method)
@@ -40,6 +41,15 @@ export type DisplayObject3dOpts<Tex> = {
   castShadow?: boolean
   receiveShadow?: boolean
 }
+```
+
+## IAudioSource3dComponentFactory (interface)
+
+**Signature**
+
+```ts
+export interface IAudioSource3dComponentFactory<ATypeDoc extends AudioTypeDocRepo3D = AudioTypeDocRepo3D>
+  extends IAudioSourceComponentFactory<Point3, Point4, ATypeDoc> {}
 ```
 
 ## IDisplayObject3dComponentFactory (class)

@@ -1,6 +1,6 @@
 ---
 title: core/2d/factories.ts
-nav_order: 24
+nav_order: 27
 parent: Modules
 ---
 
@@ -12,6 +12,7 @@ parent: Modules
 
 - [utils](#utils)
   - [DisplayObject2dOpts (type alias)](#displayobject2dopts-type-alias)
+  - [IAudioSource2dComponentFactory (interface)](#iaudiosource2dcomponentfactory-interface)
   - [IDisplayObject2dComponentFactory (class)](#idisplayobject2dcomponentfactory-class)
     - [createPrimitive (method)](#createprimitive-method)
     - [randomColor (method)](#randomcolor-method)
@@ -32,6 +33,15 @@ export type DisplayObject2dOpts<Tex> = {
   color?: number
   texture?: Tex
 }
+```
+
+## IAudioSource2dComponentFactory (interface)
+
+**Signature**
+
+```ts
+export interface IAudioSource2dComponentFactory<ATypeDoc extends AudioTypeDocRepo2D = AudioTypeDocRepo2D>
+  extends IAudioSourceComponentFactory<Point2, number, ATypeDoc> {}
 ```
 
 ## IDisplayObject2dComponentFactory (class)

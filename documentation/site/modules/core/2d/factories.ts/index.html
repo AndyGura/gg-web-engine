@@ -521,6 +521,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#iaudiosource2dcomponentfactory-interface" class="md-nav__link">
+    IAudioSource2dComponentFactory (interface)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#idisplayobject2dcomponentfactory-class" class="md-nav__link">
     IDisplayObject2dComponentFactory (class)
   </a>
@@ -598,6 +605,7 @@
 <ul>
 <li><a href="#utils">utils</a></li>
 <li><a href="#displayobject2dopts-type-alias">DisplayObject2dOpts (type alias)</a></li>
+<li><a href="#iaudiosource2dcomponentfactory-interface">IAudioSource2dComponentFactory (interface)</a></li>
 <li><a href="#idisplayobject2dcomponentfactory-class">IDisplayObject2dComponentFactory (class)</a><ul>
 <li><a href="#createprimitive-method">createPrimitive (method)</a></li>
 <li><a href="#randomcolor-method">randomColor (method)</a></li>
@@ -615,6 +623,11 @@
   color?: number
   texture?: Tex
 }
+</code></pre>
+<h2 id="iaudiosource2dcomponentfactory-interface">IAudioSource2dComponentFactory (interface)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export interface IAudioSource2dComponentFactory&lt;ATypeDoc extends AudioTypeDocRepo2D = AudioTypeDocRepo2D&gt;
+  extends IAudioSourceComponentFactory&lt;Point2, number, ATypeDoc&gt; {}
 </code></pre>
 <h2 id="idisplayobject2dcomponentfactory-class">IDisplayObject2dComponentFactory (class)</h2>
 <p><strong>Signature</strong></p>

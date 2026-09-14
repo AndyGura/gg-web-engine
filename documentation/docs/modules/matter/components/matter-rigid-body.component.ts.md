@@ -1,6 +1,6 @@
 ---
 title: matter/components/matter-rigid-body.component.ts
-nav_order: 121
+nav_order: 134
 parent: Modules
 ---
 
@@ -23,6 +23,9 @@ parent: Modules
     - [debugBodySettings (property)](#debugbodysettings-property)
     - [\_interactWithCGsMask (property)](#_interactwithcgsmask-property)
     - [\_ownCGsMask (property)](#_owncgsmask-property)
+    - [onCollisionStart$ (property)](#oncollisionstart-property)
+    - [onCollisionEnd$ (property)](#oncollisionend-property)
+    - [currentContacts (property)](#currentcontacts-property)
 
 ---
 
@@ -124,4 +127,34 @@ _interactWithCGsMask: any
 
 ```ts
 _ownCGsMask: any
+```
+
+### onCollisionStart$ (property)
+
+**Signature**
+
+```ts
+readonly onCollisionStart$: any
+```
+
+### onCollisionEnd$ (property)
+
+**Signature**
+
+```ts
+readonly onCollisionEnd$: any
+```
+
+### currentContacts (property)
+
+Other rigid bodies this body is currently touching (non-sensor contact only), tracked so
+`removeFromWorld` can tell them apart to emit `onCollisionEnd(null)` per that member's
+documented "other body removed while still in contact" case. Maintained exclusively via
+`notifyCollisionStart`/`notifyCollisionEnd`, called by `MatterWorldComponent`'s single
+world-wide `collisionStart`/`collisionEnd` listener - not touched directly by anything else.
+
+**Signature**
+
+```ts
+readonly currentContacts: any
 ```

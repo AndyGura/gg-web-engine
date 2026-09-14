@@ -1,6 +1,6 @@
 ---
 title: core/3d/components/rendering/i-renderer-3d.component.ts
-nav_order: 39
+nav_order: 44
 parent: Modules
 ---
 

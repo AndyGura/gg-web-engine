@@ -1,6 +1,6 @@
 ---
 title: core/2d/components/physics/i-rigid-body-2d.component.ts
-nav_order: 13
+nav_order: 15
 parent: Modules
 ---
 
@@ -22,11 +22,11 @@ parent: Modules
 **Signature**
 
 ```ts
-export interface IRigidBody2dComponent<PTypeDoc extends PhysicsTypeDocRepo2D = PhysicsTypeDocRepo2D>
-  extends IRigidBodyComponent<Point2, number, PTypeDoc> {
-  angularVelocity: number
+export interface IRigidBody2dComponent<
+  PTypeDoc extends PhysicsTypeDocRepo2D = PhysicsTypeDocRepo2D,
+> extends IRigidBodyComponent<Point2, number, PTypeDoc> {
+  angularVelocity: number;
 
   /** body info for physics debugger view */
-  readonly debugBodySettings: DebugBody2DSettings
-}
+  readonly debugBodySettings: DebugBody2DSettings;
 ```

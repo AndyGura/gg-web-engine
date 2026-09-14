@@ -1,6 +1,6 @@
 ---
 title: core/base/entities/controllers/inline-controller.ts
-nav_order: 89
+nav_order: 100
 parent: Modules
 ---
 

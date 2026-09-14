@@ -1,6 +1,6 @@
 ---
 title: three/components/three-display-object.component.ts
-nav_order: 151
+nav_order: 164
 parent: Modules
 ---
 
@@ -12,6 +12,9 @@ parent: Modules
 
 - [utils](#utils)
   - [ThreeDisplayObjectComponent (class)](#threedisplayobjectcomponent-class)
+    - [enableRenderLayer (method)](#enablerenderlayer-method)
+    - [disableRenderLayer (method)](#disablerenderlayer-method)
+    - [isRenderLayerEnabled (method)](#isrenderlayerenabled-method)
     - [isEmpty (method)](#isempty-method)
     - [popChild (method)](#popchild-method)
     - [getBoundings (method)](#getboundings-method)
@@ -34,6 +37,30 @@ parent: Modules
 export declare class ThreeDisplayObjectComponent {
   constructor(public nativeMesh: Object3D)
 }
+```
+
+### enableRenderLayer (method)
+
+**Signature**
+
+```ts
+public enableRenderLayer(layer: RenderLayer): void
+```
+
+### disableRenderLayer (method)
+
+**Signature**
+
+```ts
+public disableRenderLayer(layer: RenderLayer): void
+```
+
+### isRenderLayerEnabled (method)
+
+**Signature**
+
+```ts
+public isRenderLayerEnabled(layer: RenderLayer): boolean
 ```
 
 ### isEmpty (method)

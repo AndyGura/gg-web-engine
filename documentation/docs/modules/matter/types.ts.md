@@ -1,6 +1,6 @@
 ---
 title: matter/types.ts
-nav_order: 125
+nav_order: 138
 parent: Modules
 ---
 

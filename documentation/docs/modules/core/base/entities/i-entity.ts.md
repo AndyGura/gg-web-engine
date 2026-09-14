@@ -1,6 +1,6 @@
 ---
 title: core/base/entities/i-entity.ts
-nav_order: 91
+nav_order: 102
 parent: Modules
 ---
 

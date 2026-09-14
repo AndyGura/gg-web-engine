@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/controllers/input/player-character.controller.ts
-nav_order: 50
+nav_order: 57
 parent: Modules
 ---
 
@@ -14,6 +14,7 @@ parent: Modules
   - [PlayerCharacterController (class)](#playercharactercontroller-class)
     - [toggleViewMode (method)](#toggleviewmode-method)
     - [reset (method)](#reset-method)
+    - [clampPitch (method)](#clamppitch-method)
     - [onSpawned (method)](#onspawned-method)
     - [onRemoved (method)](#onremoved-method)
     - [updateCamera (method)](#updatecamera-method)
@@ -68,6 +69,17 @@ public toggleViewMode(): void
 
 ```ts
 public reset(): void
+```
+
+### clampPitch (method)
+
+Shared by the mouse-look handler and `lookDirection`'s own setter - keeps both paths clamped to
+the exact same `minPitch`/`maxPitch` bounds instead of maintaining the conversion twice.
+
+**Signature**
+
+```ts
+private clampPitch(phi: number): number
 ```
 
 ### onSpawned (method)

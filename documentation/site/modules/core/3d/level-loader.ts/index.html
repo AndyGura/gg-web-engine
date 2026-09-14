@@ -564,6 +564,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#createsound-method" class="md-nav__link">
+    createSound (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#createplayer-method" class="md-nav__link">
     createPlayer (method)
   </a>
@@ -674,6 +681,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#sound3dsettings-interface" class="md-nav__link">
+    Sound3DSettings (interface)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#trigger3dsettings-interface" class="md-nav__link">
     Trigger3DSettings (interface)
   </a>
@@ -716,6 +730,7 @@
 <li><a href="#createprimitive-method">createPrimitive (method)</a></li>
 <li><a href="#createtrigger-method">createTrigger (method)</a></li>
 <li><a href="#createcamera-method">createCamera (method)</a></li>
+<li><a href="#createsound-method">createSound (method)</a></li>
 <li><a href="#createplayer-method">createPlayer (method)</a></li>
 <li><a href="#resolvewheeldisplay-method">resolveWheelDisplay (method)</a></li>
 <li><a href="#createggcar-method">createGgCar (method)</a></li>
@@ -733,6 +748,7 @@
 <li><a href="#player3dsettings-type-alias">Player3DSettings (type alias)</a></li>
 <li><a href="#primitive3dsettings-interface">Primitive3DSettings (interface)</a></li>
 <li><a href="#primitive3dshapename-type-alias">Primitive3DShapeName (type alias)</a></li>
+<li><a href="#sound3dsettings-interface">Sound3DSettings (interface)</a></li>
 <li><a href="#trigger3dsettings-interface">Trigger3DSettings (interface)</a></li>
 </ul>
 <hr />
@@ -820,6 +836,17 @@ separate, never-unloaded level instead (see <code>gg-engine-level-json</code>'s 
     settings: Camera3DSettings,
   ): Camera3dEntity&lt;TypeDoc['vTypeDoc']&gt; | undefined
 </code></pre>
+<h3 id="createsound-method">createSound (method)</h3>
+<p>Create a <code>"Sound"</code> entity: loads <code>settings.path</code> via <code>audioScene.factory.loadClip</code> and wraps
+the resulting source in a ready-to-use <code>AudioSource3dEntity</code>, statically positioned. Returns
+<code>undefined</code> (no-op) if the world has no <code>audioScene</code>, same posture as <code>createTrigger</code>/
+<code>createCamera</code> returning <code>undefined</code> for a missing physics/visual scene.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private async createSound(
+    world: Gg3dWorld&lt;TypeDoc&gt;,
+    settings: Sound3DSettings,
+  ): Promise&lt;AudioSource3dEntity&lt;TypeDoc&gt; | undefined&gt;
+</code></pre>
 <h3 id="createplayer-method">createPlayer (method)</h3>
 <p>Create a <code>"Player"</code> entity: a capsule-shaped <code>CharacterController3dEntity</code>, with a matching
 auto-generated capsule mesh when <code>display</code> is given and there's a visual scene (physics-only/
@@ -875,9 +902,11 @@ carried over into {@link GgCar3DSettings} as-is (already plain JSON-serializable
 <h2 id="ggcar3dsettings-type-alias">GgCar3DSettings (type alias)</h2>
 <p>Settings for the built-in <code>"GgCar"</code> entity class (3D only): builds a box-shaped chassis rigid
 body (+ optional matching display box) and a full <code>GgCarEntity</code> on top of it - the procedural
-counterpart of the GLB-driven car construction apps do by hand (see <code>examples/fly-city-three-ammo</code>'s
-<code>GameFactory.generateCar</code>), for a car whose chassis/wheels are plain primitives rather than
-loaded meshes.</p>
+counterpart of the GLB-driven car construction an app does by hand when it instead loads a
+modeled chassis mesh/body and derives each wheel's position/specs from named dummy objects in
+that same model before constructing <code>GgCarEntity</code> directly. This settings type is for the case
+where the chassis/wheels are plain primitives rather than loaded meshes, so the whole thing can
+be declared as data in a level JSON instead.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export type GgCar3DSettings = GgCar3DCommonSettings &amp; {
   position?: Point3
@@ -1061,6 +1090,48 @@ sibling <code>shape</code> field on the entity (e.g. <code>{ class: "Primitive",
 between a level JSON and <code>Gg3dWorld.addPrimitiveRigidBody</code>.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export type Primitive3DShapeName = Shape3DDescriptor['shape']
+</code></pre>
+<h2 id="sound3dsettings-interface">Sound3DSettings (interface)</h2>
+<p>Settings for the built-in <code>"Sound"</code> entity class: loads a clip (via <code>audioScene.factory
+.loadClip</code>) and builds a ready-to-use <code>AudioSource3dEntity</code>, positioned like any other level
+entity. Covers <code>AudioSource3dEntity</code>'s "static" and "ambient/level music" placement modes -
+"attached" (riding another entity's transform) isn't expressible in a level JSON, since JSON
+has no way to reference a not-yet-loaded entity; wire that up in app code instead, the same way
+a <code>"GgCar"</code> wheel's visual mesh or a <code>"Player"</code>'s input controller is - see
+<code>gg-engine-level-json</code>. <code>playOneShot</code>-style transient sounds aren't a level entity at all
+(there's nothing static to declare) - trigger them from a <code>"PlaySound"</code> blueprint node instead
+(see <code>EntityJson.events</code>).</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export interface Sound3DSettings {
+  /** Position of the sound source. */
+  position?: Point3
+
+  /** Rotation of the sound source - only meaningful with a directional cone (`coneOuterAngle` on the source). */
+  rotation?: Point4
+
+  /** URL of the clip to load. */
+  path: string
+
+  /** Whether to loop. Defaults to `true` - static/ambient sounds are normally continuous. */
+  loop?: boolean
+
+  volume?: number
+  playbackRate?: number
+
+  /** Positional 3D audio vs. flat/non-positional (ambient bed, level music, UI). Defaults to `true`. */
+  spatial?: boolean
+
+  /** Output bus/category (e.g. `&quot;sfx&quot;`, `&quot;music&quot;`, `&quot;ambient&quot;`). Defaults to `&quot;sfx&quot;`. */
+  bus?: string
+
+  /** Whether to start playing as soon as the level loads. Defaults to `true`. */
+  autoplay?: boolean
+
+  refDistance?: number
+  maxDistance?: number
+  rolloffFactor?: number
+  distanceModel?: AudioDistanceModel
+}
 </code></pre>
 <h2 id="trigger3dsettings-interface">Trigger3DSettings (interface)</h2>
 <p>Settings for a trigger entity</p>

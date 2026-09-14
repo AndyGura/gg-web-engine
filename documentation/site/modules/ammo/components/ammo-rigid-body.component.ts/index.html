@@ -522,6 +522,20 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#emitcollisionstart-method" class="md-nav__link">
+    emitCollisionStart (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#emitcollisionend-method" class="md-nav__link">
+    emitCollisionEnd (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#clone-method" class="md-nav__link">
     clone (method)
   </a>
@@ -571,6 +585,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#dispose-method" class="md-nav__link">
+    dispose (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#entity-property" class="md-nav__link">
     entity (property)
   </a>
@@ -580,6 +601,20 @@
           <li class="md-nav__item">
   <a href="#debugbodysettings-property" class="md-nav__link">
     debugBodySettings (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#oncollisionstart-property" class="md-nav__link">
+    onCollisionStart$ (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#oncollisionend-property" class="md-nav__link">
+    onCollisionEnd$ (property)
   </a>
   
 </li>
@@ -619,6 +654,8 @@
 <ul>
 <li><a href="#utils">utils</a></li>
 <li><a href="#ammorigidbodycomponent-class">AmmoRigidBodyComponent (class)</a><ul>
+<li><a href="#emitcollisionstart-method">emitCollisionStart (method)</a></li>
+<li><a href="#emitcollisionend-method">emitCollisionEnd (method)</a></li>
 <li><a href="#clone-method">clone (method)</a></li>
 <li><a href="#addtoworld-method">addToWorld (method)</a></li>
 <li><a href="#removefromworld-method">removeFromWorld (method)</a></li>
@@ -626,8 +663,11 @@
 <li><a href="#detachfrombroadphasetemporarily-method">detachFromBroadphaseTemporarily (method)</a></li>
 <li><a href="#reattachtobroadphase-method">reattachToBroadphase (method)</a></li>
 <li><a href="#resetmotion-method">resetMotion (method)</a></li>
+<li><a href="#dispose-method">dispose (method)</a></li>
 <li><a href="#entity-property">entity (property)</a></li>
 <li><a href="#debugbodysettings-property">debugBodySettings (property)</a></li>
+<li><a href="#oncollisionstart-property">onCollisionStart$ (property)</a></li>
+<li><a href="#oncollisionend-property">onCollisionEnd$ (property)</a></li>
 </ul>
 </li>
 </ul>
@@ -642,6 +682,16 @@
     public readonly shape: Shape3DDescriptor
   )
 }
+</code></pre>
+<h3 id="emitcollisionstart-method">emitCollisionStart (method)</h3>
+<p>Called by <code>AmmoWorldComponent.simulate()</code> only - see <code>onCollisionStart$</code>'s own doc.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">emitCollisionStart(event: CollisionEvent&lt;Point3, AmmoRigidBodyComponent&gt;): void
+</code></pre>
+<h3 id="emitcollisionend-method">emitCollisionEnd (method)</h3>
+<p>Called by <code>AmmoWorldComponent.simulate()</code> only - see <code>onCollisionStart$</code>'s own doc.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">emitCollisionEnd(other: AmmoRigidBodyComponent | null): void
 </code></pre>
 <h3 id="clone-method">clone (method)</h3>
 <p><strong>Signature</strong></p>
@@ -684,6 +734,10 @@ returned <code>true</code> for, mirroring <code>removeCollisionObject</code>/<co
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">resetMotion(): void
 </code></pre>
+<h3 id="dispose-method">dispose (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">dispose(): void
+</code></pre>
 <h3 id="entity-property">entity (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">entity: any
@@ -691,6 +745,22 @@ returned <code>true</code> for, mirroring <code>removeCollisionObject</code>/<co
 <h3 id="debugbodysettings-property">debugBodySettings (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly debugBodySettings: any
+</code></pre>
+<h3 id="oncollisionstart-property">onCollisionStart$ (property)</h3>
+<p>Back <code>onCollisionStart</code>/<code>onCollisionEnd</code> below. Populated exclusively by
+<code>AmmoWorldComponent.simulate()</code>'s own post-<code>stepSimulation</code> manifold bookkeeping via
+<code>emitCollisionStart</code>/<code>emitCollisionEnd</code> - a single body has no way to discover the <em>other</em>
+side of a contact pair (or when it stops touching something) on its own, so the world
+component (which walks <code>dispatcher.getNumManifolds()</code> once per tick) is the only writer.
+Kept protected rather than exposing the Subjects directly, mirroring how
+<code>AmmoTriggerComponent</code> keeps its own <code>onEnter$</code>/<code>onLeft$</code> reachable only through its own
+bookkeeping method (<code>checkOverlaps</code>).</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly onCollisionStart$: any
+</code></pre>
+<h3 id="oncollisionend-property">onCollisionEnd$ (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly onCollisionEnd$: any
 </code></pre>
 
 

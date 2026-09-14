@@ -1,6 +1,6 @@
 ---
 title: core/2d/interfaces/i-positionable-2d.ts
-nav_order: 27
+nav_order: 30
 parent: Modules
 ---
 

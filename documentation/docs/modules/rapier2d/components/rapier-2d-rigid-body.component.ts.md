@@ -1,6 +1,6 @@
 ---
 title: rapier2d/components/rapier-2d-rigid-body.component.ts
-nav_order: 134
+nav_order: 147
 parent: Modules
 ---
 
@@ -21,6 +21,9 @@ parent: Modules
     - [\_nativeBody (property)](#_nativebody-property)
     - [\_nativeBodyColliders (property)](#_nativebodycolliders-property)
     - [name (property)](#name-property)
+    - [onCollisionStart$ (property)](#oncollisionstart-property)
+    - [onCollisionEnd$ (property)](#oncollisionend-property)
+    - [activeContacts (property)](#activecontacts-property)
     - [debugBodySettings (property)](#debugbodysettings-property)
     - [collisionGroups (property)](#collisiongroups-property)
 
@@ -114,6 +117,34 @@ _nativeBodyColliders: any[] | null
 
 ```ts
 name: string
+```
+
+### onCollisionStart$ (property)
+
+**Signature**
+
+```ts
+readonly onCollisionStart$: any
+```
+
+### onCollisionEnd$ (property)
+
+**Signature**
+
+```ts
+readonly onCollisionEnd$: any
+```
+
+### activeContacts (property)
+
+other rigid bodies this body is currently in real (non-sensor) contact with - used to dedupe
+against Rapier's own start/stop transition events and to notify still-alive contacts when
+this body is removed from the world mid-contact (see `removeFromWorld`).
+
+**Signature**
+
+```ts
+readonly activeContacts: any
 ```
 
 ### debugBodySettings (property)

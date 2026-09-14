@@ -585,6 +585,27 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#oncollisionstart-property" class="md-nav__link">
+    onCollisionStart$ (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#oncollisionend-property" class="md-nav__link">
+    onCollisionEnd$ (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#activecontacts-property" class="md-nav__link">
+    activeContacts (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#debugbodysettings-property" class="md-nav__link">
     debugBodySettings (property)
   </a>
@@ -642,6 +663,9 @@
 <li><a href="#_nativebody-property">_nativeBody (property)</a></li>
 <li><a href="#_nativebodycolliders-property">_nativeBodyColliders (property)</a></li>
 <li><a href="#name-property">name (property)</a></li>
+<li><a href="#oncollisionstart-property">onCollisionStart$ (property)</a></li>
+<li><a href="#oncollisionend-property">onCollisionEnd$ (property)</a></li>
+<li><a href="#activecontacts-property">activeContacts (property)</a></li>
 <li><a href="#debugbodysettings-property">debugBodySettings (property)</a></li>
 <li><a href="#collisiongroups-property">collisionGroups (property)</a></li>
 </ul>
@@ -696,6 +720,21 @@
 <h3 id="name-property">name (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">name: string
+</code></pre>
+<h3 id="oncollisionstart-property">onCollisionStart$ (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly onCollisionStart$: any
+</code></pre>
+<h3 id="oncollisionend-property">onCollisionEnd$ (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly onCollisionEnd$: any
+</code></pre>
+<h3 id="activecontacts-property">activeContacts (property)</h3>
+<p>other rigid bodies this body is currently in real (non-sensor) contact with - used to dedupe
+against Rapier's own start/stop transition events and to notify still-alive contacts when
+this body is removed from the world mid-contact (see <code>removeFromWorld</code>).</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly activeContacts: any
 </code></pre>
 <h3 id="debugbodysettings-property">debugBodySettings (property)</h3>
 <p><strong>Signature</strong></p>

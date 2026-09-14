@@ -1,6 +1,6 @@
 ---
 title: core/base/data-structures/bitmask.ts
-nav_order: 86
+nav_order: 97
 parent: Modules
 ---
 
