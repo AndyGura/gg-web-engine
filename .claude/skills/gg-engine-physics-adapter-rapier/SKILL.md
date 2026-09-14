@@ -410,6 +410,31 @@ emitCollisionStart` falls back to the midpoint between the two bodies' positions
 between them / `impulse: 0` in that case rather than dropping the event, though this fallback wasn't
 observed to trigger in practice across the package's own test suite.
 
+**`removeFromWorld`'s `onCollisionEnd(null)` notification must never fire on the removed body's own
+stream, only on each surviving partner's.** `Rapier2dRigidBodyComponent.removeFromWorld` walks its
+own `activeContacts` set and calls `other.handleCollisionEnd(null)` for each partner still touching
+it - that's correct and required (see `gg-engine-physics-adapter`'s "Collision events" section), but
+an earlier version of this loop *also* called `this.onCollisionEnd$.next(other)` on the body being
+removed itself, firing a spurious event on the vanishing body's own stream for every partner it was
+still touching. Fixed by dropping that extra `next()` call - only `other.handleCollisionEnd(null)`
+should run. `packages/rapier3d`'s equivalent (`notifyCollisionEnd`, walked via `collidingWith`) never
+had this bug; use it as the reference when checking a similar loop in a new adapter.
+
+**Self-collision guard**: `Rapier2dWorldComponent.dispatchCollisionEvents` resolves both collider
+handles in a pair to components and skips the pair if resolution failed - but originally didn't also
+skip a pair that resolved to the *same* component on both sides (a compound body's own sub-colliders
+touching each other). Fixed by adding a `c1 === c2` check alongside the existing `!c1 || !c2` one,
+mirroring `Rapier3dWorldComponent.dispatchCollisionEvents`'s pre-existing `comp1 === comp2` guard
+(rapier3d had this from the start; rapier2d didn't).
+
+**Complete the RxJS Subjects on dispose**: `Rapier2dRigidBodyComponent.dispose()`/
+`Rapier2dTriggerComponent.dispose()` (and their rapier3d equivalents) must call `.complete()` on
+`onCollisionStart$`/`onCollisionEnd$` (rigid body) and `onEnter$`/`onLeft$` (trigger, on top of
+`super.dispose()`'s completion of the inherited pair) - both packages were missing this entirely
+until fixed to match `packages/matter`/`packages/ammo`'s existing pattern. An app subscribed to any
+of these four Observables via `.subscribe({ complete: ... })` (or an rxjs operator relying on
+completion, e.g. `firstValueFrom`/`toArray()`) would otherwise hang forever past a body's disposal.
+
 **Test gotcha - subscribe before any `simulate()` call that could itself fire the event under test**:
 if two bodies (including a trigger) are spawned already overlapping and a scenario doesn't intend to
 exercise the "spawned inside" case, don't call a settling `world.simulate(0)` (needed for the
