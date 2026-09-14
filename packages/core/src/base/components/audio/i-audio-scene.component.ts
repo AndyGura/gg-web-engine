@@ -5,8 +5,10 @@ import { IPositionable } from '../../interfaces/i-positionable';
 /**
  * The audio equivalent of `IVisualSceneComponent`: owns the native audio backend (e.g. a Web
  * Audio `AudioContext`), the source factory, and the single active listener a `GgWorld`'s
- * `audioScene` is composed from. See the audio RFC ("Where audio fits") for why this mirrors
- * `visualScene`/`physicsWorld` rather than being an app-level helper.
+ * `audioScene` is composed from. Mirrors `visualScene`/`physicsWorld` (a `GgWorld`-composed
+ * subsystem with its own `init`/`update`/`dispose` lifecycle) rather than being an app-level
+ * helper, so audio gets the same per-tick driving and teardown wiring those already have for free
+ * instead of every app reinventing it.
  * @template D - The position type
  * @template R - The rotation type
  * @template ATypeDoc - The type document repository

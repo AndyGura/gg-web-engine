@@ -232,9 +232,9 @@ describe block in `packages/core/test/base/gg-world.spec.ts` for the pattern.
 
 Same five steps as `gg-engine-visual-adapter`'s own "Wiring a new adapter into the repo" section:
 add it to the root `tsconfig.json`'s `references` array, add its name to `etc/publish_new_version.sh`'s
-`libs` array, add at least one example under `examples/` (none exist yet for `packages/audio` as of
-this writing - a good first one would extend an existing car example with `GgCarEntity.engineRpm$`-driven
-engine sound, since that's the case study the audio design doc uses), add it to the root `README.md`
+`libs` array, add at least one example under `examples/` (`examples/fly-city-three-ammo`'s
+`GameAudio`/`game-audio.ts` is the reference one, wiring `GgCarEntity.engineRpm$`-driven engine
+sound plus gear-change/honk one-shots into a car example), add it to the root `README.md`
 "Integrations" list plus its own `packages/<lib>/README.md`, and `npm install` at the repo root
 (no manual registration needed - `packages/*` is an npm workspace, a new directory joins it
 automatically). CI (`.github/workflows/pull_request_build.yml`) needs no per-package edit - it

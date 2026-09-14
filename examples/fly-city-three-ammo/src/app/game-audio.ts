@@ -16,10 +16,10 @@ type LoopMeta = { loop_start_time_ms?: number; loop_end_time_ms?: number };
 /**
  * Non-positional (`spatial: false`) engine/gear/honk audio for whichever car the player is
  * currently driving - see `game-audio.ts`'s own git history (pre-migration) for the Howler.js
- * version this replaces, and the audio subsystem design doc's "Case study: engine sound" section
- * for why this stays non-spatial even though the source is technically attached to a moving car:
- * the chase camera moves with the car, so its distance to the listener never meaningfully changes,
- * and spatializing it would only reintroduce the near-field jitter that doc diagnoses.
+ * version this replaces. Stays non-spatial even though the source is technically attached to a
+ * moving car: the chase camera moves with the car, so its distance to the listener never
+ * meaningfully changes, and spatializing it would only reintroduce the near-field position-jitter
+ * volume swings `AudioSourceDescriptor.spatial`'s doc describes for exactly this scenario.
  */
 export class GameAudio {
 

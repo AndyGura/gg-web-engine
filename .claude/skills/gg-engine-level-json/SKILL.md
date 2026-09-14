@@ -367,9 +367,9 @@ createInlineTickController(world).subscribe(() => {
 
 ### `"Sound"` - a ready-to-use, statically-positioned audio source (2D and 3D)
 
-Requires the world to have an `audioScene` (see the audio subsystem design doc and
-`gg-engine-audio-adapter`) - with none, this class is a no-op (`undefined`, same posture as
-`"Trigger"`/`"Camera"` with no physics/visual scene), not a thrown error.
+Requires the world to have an `audioScene` (see `gg-engine-audio-adapter`) - with none, this class
+is a no-op (`undefined`, same posture as `"Trigger"`/`"Camera"` with no physics/visual scene), not
+a thrown error.
 
 ```json
 {
@@ -387,9 +387,9 @@ continuous), `volume`, `playbackRate`, `spatial` (default `true`), `bus` (defaul
 (`refDistance`/`maxDistance`/`rolloffFactor`/`distanceModel`) matching `IAudioSource(3d|2d)Component`
 directly. Missing `path` throws `"path" is required for Sound class`.
 
-This one class covers both the "static" and "ambient/level music" placement modes from the audio
-design doc - level music is just a `"Sound"` entity with `spatial: false, loop: true, bus: "music"`,
-not a separate class. It does **not** cover "attached to another entity" (a level JSON has no way
+This one class covers both `AudioSource3dEntity`'s "static" and "ambient/level music" placement
+modes - level music is just a `"Sound"` entity with `spatial: false, loop: true, bus: "music"`, not
+a separate class. It does **not** cover "attached to another entity" (a level JSON has no way
 to reference a not-yet-loaded entity - the same reason a `"GgCar"` wheel's mesh can't reference an
 existing display object either) or one-shot/transient playback (nothing static to declare - see
 `AudioSource(3d|2d)Entity.playOneShot` for app code, or the `"PlaySound"` blueprint node below for a

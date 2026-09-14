@@ -4,7 +4,7 @@ import { Gg3dWorld, Gg3dWorldTypeDocRepo } from '../gg-3d-world';
 
 /**
  * Wraps one `IAudioSource3dComponent` as a world entity - the audio analogue of `Entity3d`. Three
- * placement modes, all built from the same class (see the audio RFC's "Placing a sound" section):
+ * placement modes, all built from the same class:
  *
  * - **Static**: construct with no `attachTo`. Position/rotation are whatever `source` already has
  *   (or whatever's set on the returned entity afterwards) - never touched again.

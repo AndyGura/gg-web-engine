@@ -328,8 +328,7 @@ export abstract class GgWorld<
    * renderer, so a single-camera app never has to call `setActiveListener` itself. Deliberately
    * does *not* guess once a second renderer shows up (e.g. a portal/minimap camera, or a second
    * split-screen player) - it warns instead, since silently picking one would be a much harder
-   * bug to notice than an explicit console warning naming every renderer present. See the audio
-   * RFC's "The listener problem" section.
+   * bug to notice than an explicit console warning naming every renderer present.
    */
   private autoBoundListener: IPositionable<D, R> | null = null;
 

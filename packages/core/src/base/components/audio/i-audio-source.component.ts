@@ -7,10 +7,10 @@ import { IPositionable } from '../../interfaces/i-positionable';
  * How a positional audio source's gain falls off with distance from the listener - the same
  * three curves the Web Audio `PannerNode` itself offers, so `packages/audio` (and any future
  * adapter built on the same primitive) can map this straight through. `'inverse'`'s slope is
- * steepest close to `refDistance` - the audio RFC's jitter investigation found this to be the
- * main amplifier of otherwise-inaudible per-tick position jitter into an audible volume swing for
- * a source sitting close to the listener (e.g. a chase-cammed vehicle's own engine), which is why
- * `IAudioSource3dComponent`/`IAudioSource2dComponent` default to `'linear'` instead.
+ * steepest close to `refDistance`, which is the main amplifier of otherwise-inaudible per-tick
+ * position jitter into an audible volume swing for a source sitting close to the listener (e.g. a
+ * chase-cammed vehicle's own engine), which is why `IAudioSource3dComponent`/
+ * `IAudioSource2dComponent` default to `'linear'` instead.
  */
 export type AudioDistanceModel = 'linear' | 'inverse' | 'exponential';
 
@@ -37,9 +37,11 @@ export interface AudioSourceDescriptor<Clip = unknown> {
   /**
    * Positional (spatialized relative to the active listener) vs. flat/non-positional audio.
    * Defaults to `true`. Set `false` for ambient/music/UI sounds, or for a source whose distance
-   * to the listener can't meaningfully change (e.g. the player's own chase-cammed vehicle) - see
-   * the audio RFC's case study on engine sound for why that case specifically benefits from
-   * turning spatialization off rather than tuning it.
+   * to the listener can't meaningfully change (e.g. the player's own chase-cammed vehicle, whose
+   * engine sound sits at a roughly fixed distance/angle from the camera every frame) - turning
+   * spatialization off avoids wasting a pan/distance calculation on a position delta that's
+   * already near-zero, and sidesteps the jitter `AudioDistanceModel`'s doc describes for that same
+   * scenario.
    */
   spatial?: boolean;
   /**
@@ -56,7 +58,8 @@ export interface AudioSourceDescriptor<Clip = unknown> {
  * One audio-emitting component: a single sound instance, positioned in the world like a display
  * object (`IPositionable`) and lifecycle-managed like any other world component
  * (`IWorldComponent`). Wrapped by the dimension-specific `AudioSource(2d|3d)Entity` in app-facing
- * code - see the audio RFC's "The contract" section and `gg-engine-audio-adapter`.
+ * code - see `gg-engine-audio-adapter` for the contract an adapter's own implementation must
+ * satisfy.
  * @template D - The position type
  * @template R - The rotation type
  * @template ATypeDoc - The type document repository

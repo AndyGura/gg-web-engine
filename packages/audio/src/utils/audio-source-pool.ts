@@ -12,14 +12,14 @@ interface Voice<D, R> {
 }
 
 /**
- * A fixed-size pool of reusable {@link IAudioSourceComponent} "voices" for high-frequency transient
- * sounds (a debris field, a crowd of impacts) - see the audio RFC's "Pooling for high-frequency
- * transients" section. What's actually bounded/reused here is each voice's own gain/panner node
- * chain, not the underlying `AudioBufferSourceNode` (which the Web Audio spec only allows starting
- * once per instance regardless - `IAudioSourceComponent.play()` always creates a fresh one
- * internally): without a pool, a debris field playing dozens of impacts per second would keep
- * allocating a fresh `PannerNode`+`GainNode` chain per hit and hitting the browser's cap on
- * concurrent audio nodes; with one, at most `size` such chains ever exist for this pool's clip.
+ * A fixed-size pool of reusable {@link IAudioSourceComponent} "voices" for high-frequency
+ * transient sounds (a debris field, a crowd of impacts). What's actually bounded/reused here is
+ * each voice's own gain/panner node chain, not the underlying `AudioBufferSourceNode` (which the
+ * Web Audio spec only allows starting once per instance regardless - `IAudioSourceComponent.
+ * play()` always creates a fresh one internally): without a pool, a debris field playing dozens of
+ * impacts per second would keep allocating a fresh `PannerNode`+`GainNode` chain per hit and
+ * hitting the browser's cap on concurrent audio nodes; with one, at most `size` such chains ever
+ * exist for this pool's clip.
  *
  * Every voice in one pool shares the same `descriptor` (clip, volume, spatial, bus, ...) -
  * position (and, if given, rotation) are the only things that vary per `play()` call. Use a

@@ -5,9 +5,11 @@ import { WebAudioSceneComponentBase } from './web-audio-scene-base.component';
 
 /**
  * Shared implementation behind `WebAudioSource3dComponent`/`WebAudioSource2dComponent`: the
- * buffer-source/gain graph, play/pause/stop, bus routing, and the ramped-write discipline the
- * audio RFC's jitter fix depends on. Subclasses only add the spatial node (`PannerNode`/
- * `StereoPannerNode`) and `position`/`rotation`.
+ * buffer-source/gain graph, play/pause/stop, bus routing, and the ramped-write discipline
+ * `utils/ramp.ts`'s doc explains (every `AudioParam` write goes through `rampParam`, never a
+ * direct `.value =`, to avoid audible zipper noise on per-tick position/volume changes).
+ * Subclasses only add the spatial node (`PannerNode`/`StereoPannerNode`) and `position`/
+ * `rotation`.
  *
  * A note on `AudioBufferSourceNode` reuse: per the Web Audio spec, a buffer source node can only
  * ever be `start()`ed once - it's discarded after `stop()`/naturally ending, never restarted. Every

@@ -156,7 +156,7 @@ export interface Camera3DSettings {
 /**
  * Settings for the built-in `"Sound"` entity class: loads a clip (via `audioScene.factory
  * .loadClip`) and builds a ready-to-use `AudioSource3dEntity`, positioned like any other level
- * entity. Covers the "static" and "ambient/level music" placement modes from the audio RFC -
+ * entity. Covers `AudioSource3dEntity`'s "static" and "ambient/level music" placement modes -
  * "attached" (riding another entity's transform) isn't expressible in a level JSON, since JSON
  * has no way to reference a not-yet-loaded entity; wire that up in app code instead, the same way
  * a `"GgCar"` wheel's visual mesh or a `"Player"`'s input controller is - see
