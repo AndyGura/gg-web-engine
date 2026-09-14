@@ -12,6 +12,8 @@ class FakeAudioSource {
   public readonly ended$ = new Subject<void>();
   public playCalled = false;
   public disposeCalled = false;
+  public addedToWorld: any;
+  public removedFromWorld: { world: any; dispose: boolean } | undefined;
 
   play(): void {
     this.playCalled = true;
@@ -19,6 +21,17 @@ class FakeAudioSource {
 
   dispose(): void {
     this.disposeCalled = true;
+  }
+
+  addToWorld(world: any): void {
+    this.addedToWorld = world;
+  }
+
+  removeFromWorld(world: any, dispose = false): void {
+    this.removedFromWorld = { world, dispose };
+    if (dispose) {
+      this.dispose();
+    }
   }
 
   end(): void {
@@ -233,5 +246,25 @@ describe('PlaySoundBlueprintNode', () => {
     expect(createdSources[0].disposeCalled).toBe(false);
     createdSources[0].end();
     expect(createdSources[0].disposeCalled).toBe(true);
+  });
+
+  it('registers the source with the world before playing, and unregisters+disposes it once playback ends', async () => {
+    const { scene, createdSources } = fakeAudioScene();
+    const world = new MockWorldWithAudio(scene);
+    const node = new PlaySoundBlueprintNode(world, { clip: 'sfx/pop.mp3' });
+
+    node.trigger('trigger', {});
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const source = createdSources[0];
+    expect(source.addedToWorld).toBe(world);
+    expect(source.playCalled).toBe(true);
+    expect(source.removedFromWorld).toBeUndefined();
+
+    source.end();
+
+    expect(source.removedFromWorld).toEqual({ world, dispose: true });
+    expect(source.disposeCalled).toBe(true);
   });
 });

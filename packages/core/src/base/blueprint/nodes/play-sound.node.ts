@@ -122,9 +122,10 @@ export class PlaySoundBlueprintNode<
         if (position !== undefined) {
           source.position = position as D;
         }
+        source.addToWorld(this.world);
         const subscription = source.ended$.subscribe(() => {
           subscription.unsubscribe();
-          source.dispose();
+          source.removeFromWorld(this.world, true);
         });
         source.play();
       })
