@@ -1,6 +1,7 @@
 import {
   BitMask,
   Body2DOptions,
+  CollisionEvent,
   CollisionGroup,
   DebugBody2DSettings,
   Entity2d,
@@ -17,6 +18,7 @@ import {
   RigidBodyDesc,
   Vector2,
 } from '@dimforge/rapier2d-compat';
+import { Observable, Subject } from 'rxjs';
 import { Rapier2dWorldComponent } from './rapier-2d-world.component';
 import { Rapier2dGgWorld, Rapier2dPhysicsTypeDocRepo } from '../types';
 
@@ -82,6 +84,43 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
   }
 
   public name: string = '';
+
+  protected readonly onCollisionStart$: Subject<CollisionEvent<Point2, Rapier2dRigidBodyComponent>> = new Subject<
+    CollisionEvent<Point2, Rapier2dRigidBodyComponent>
+  >();
+  protected readonly onCollisionEnd$: Subject<Rapier2dRigidBodyComponent | null> =
+    new Subject<Rapier2dRigidBodyComponent | null>();
+
+  /** other rigid bodies this body is currently in real (non-sensor) contact with - used to dedupe
+   * against Rapier's own start/stop transition events and to notify still-alive contacts when
+   * this body is removed from the world mid-contact (see `removeFromWorld`). */
+  protected readonly activeContacts: Set<Rapier2dRigidBodyComponent> = new Set<Rapier2dRigidBodyComponent>();
+
+  get onCollisionStart(): Observable<CollisionEvent<Point2, Rapier2dRigidBodyComponent>> {
+    return this.onCollisionStart$.asObservable();
+  }
+
+  get onCollisionEnd(): Observable<Rapier2dRigidBodyComponent | null> {
+    return this.onCollisionEnd$.asObservable();
+  }
+
+  /** @internal invoked by `Rapier2dWorldComponent` when this body begins touching another rigid
+   * body via a real contact (not a trigger/sensor overlap - see `Rapier2dTriggerComponent.
+   * handleOverlapEvent` for that). */
+  handleCollisionStart(event: CollisionEvent<Point2, Rapier2dRigidBodyComponent>): void {
+    this.activeContacts.add(event.otherBody);
+    this.onCollisionStart$.next(event);
+  }
+
+  /** @internal invoked by `Rapier2dWorldComponent` when this body stops touching `other` (a real
+   * contact separating), or with `null` when `other` was removed from the world while still in
+   * contact with this body (see `removeFromWorld`). */
+  handleCollisionEnd(other: Rapier2dRigidBodyComponent | null): void {
+    if (other) {
+      this.activeContacts.delete(other);
+    }
+    this.onCollisionEnd$.next(other);
+  }
 
   public get factoryProps(): [
     ColliderDesc[],
@@ -190,6 +229,15 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
       throw new Error('Rapier2D bodies cannot be shared between different worlds');
     }
     if (this._nativeBody) {
+      // this body is vanishing while still touching others - the still-alive side of each pair
+      // never gets a `started === false` event from Rapier for a collider that was just removed,
+      // so notify it directly (with `null`, per `onCollisionEnd`'s documented convention for this
+      // case) rather than leaving it thinking the contact is still ongoing.
+      for (const other of this.activeContacts) {
+        other.activeContacts.delete(this);
+        other.handleCollisionEnd(null);
+      }
+      this.activeContacts.clear();
       for (const col of this._nativeBodyColliders!) {
         this.world.nativeWorld!.removeCollider(col, false);
       }
@@ -210,5 +258,7 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
     if (this.nativeBody) {
       this.removeFromWorld({ physicsWorld: this.world } as any as Rapier2dGgWorld, true);
     }
+    this.onCollisionStart$.complete();
+    this.onCollisionEnd$.complete();
   }
 }

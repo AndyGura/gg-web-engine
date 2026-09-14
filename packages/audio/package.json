@@ -1,0 +1,67 @@
+{
+  "name": "@gg-web-engine/audio",
+  "version": "0.0.66",
+  "description": "An attempt to create open source game engine for browser",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "test": "jest",
+    "prettier-format": "prettier --config ../../.prettierrc 'src/**/*.ts' --write",
+    "prepublish": "rm -rf ./dist/ && tsc",
+    "build": "tsc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AndyGura/gg-web-engine.git"
+  },
+  "keywords": [
+    "game-development",
+    "game-engine",
+    "game-engine-framework",
+    "gamedev"
+  ],
+  "author": "AndyGura",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/AndyGura/gg-web-engine/issues"
+  },
+  "homepage": "https://github.com/AndyGura/gg-web-engine#readme",
+  "dependencies": {},
+  "devDependencies": {
+    "@gg-web-engine/core": "0.0.66",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^26.4.0",
+    "jest": "^30.5.0",
+    "jest-environment-jsdom": "^30.5.0",
+    "prettier": "^3.9.6",
+    "rxjs": "7.8.2",
+    "ts-jest": "^29.4.12",
+    "typescript": "~6.0.3"
+  },
+  "peerDependencies": {
+    "@gg-web-engine/core": "0.0.66",
+    "rxjs": "7.8.2"
+  },
+  "jest": {
+    "rootDir": ".",
+    "testRegex": "\\.spec\\.ts$",
+    "transform": {
+      "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "moduleNameMapper": {
+      "@gg-web-engine/core": "<rootDir>/../core/src/index.ts"
+    },
+    "preset": "ts-jest/presets/default",
+    "collectCoverageFrom": [
+      "**/*.ts",
+      "!**/*.module.ts"
+    ],
+    "coveragePathIgnorePatterns": [
+      "<rootDir>/node_modules/",
+      "<rootDir>/dist/",
+      "<rootDir>/test/"
+    ],
+    "coverageDirectory": "./coverage",
+    "testEnvironment": "jsdom"
+  }
+}

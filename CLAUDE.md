@@ -20,6 +20,7 @@ the task before writing code:
 | [`gg-engine-level-json`](.claude/skills/gg-engine-level-json/SKILL.md) | Authoring a level/scene JSON file, or registering an app-defined entity class the loader can dispatch to. |
 | [`gg-engine-core-development`](.claude/skills/gg-engine-core-development/SKILL.md) | Changing `packages/core` — the dimension-agnostic and 2D/3D interfaces every adapter implements. |
 | [`gg-engine-visual-adapter`](.claude/skills/gg-engine-visual-adapter/SKILL.md) | Creating/modifying a rendering backend package (`packages/three`, `packages/pixi`, or a new one). |
+| [`gg-engine-audio-adapter`](.claude/skills/gg-engine-audio-adapter/SKILL.md) | Creating/modifying an audio backend package (`packages/audio`, or a new one), or the `audioScene` contract itself. |
 | [`gg-engine-physics-adapter`](.claude/skills/gg-engine-physics-adapter/SKILL.md) | Creating a **new** physics backend package from scratch, or the general contract any physics adapter must satisfy. |
 | [`gg-engine-physics-adapter-ammo`](.claude/skills/gg-engine-physics-adapter-ammo/SKILL.md) | Fixing/extending the already-implemented `packages/ammo` adapter specifically — known Bullet/embind pitfalls. |
 | [`gg-engine-physics-adapter-rapier`](.claude/skills/gg-engine-physics-adapter-rapier/SKILL.md) | Fixing/extending `packages/rapier2d`/`packages/rapier3d` specifically — known `@dimforge/rapier-compat` pitfalls. |
@@ -67,8 +68,8 @@ investigation this session already did. Concretely:
 
 ## Keep the repo-development skills current
 
-`gg-engine-core-development`, `gg-engine-visual-adapter`, `gg-engine-physics-adapter`,
-`gg-engine-physics-adapter-ammo`, `gg-engine-physics-adapter-rapier`,
+`gg-engine-core-development`, `gg-engine-visual-adapter`, `gg-engine-audio-adapter`,
+`gg-engine-physics-adapter`, `gg-engine-physics-adapter-ammo`, `gg-engine-physics-adapter-rapier`,
 `gg-engine-physics-adapter-matter`, `gg-engine-examples`, and `gg-engine-release` document *how to
 work on this repo*. Whenever work under one of them hits a pitfall it doesn't mention, or something
 it says turns out to be wrong/incomplete and you had to find the real fix, update that skill's

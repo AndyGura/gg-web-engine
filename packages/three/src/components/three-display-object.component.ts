@@ -1,4 +1,13 @@
-import { GgBox3d, IDisplayObject3dComponent, IEntity, Pnt3, Point3, Point4, Qtrn } from '@gg-web-engine/core';
+import {
+  GgBox3d,
+  IDisplayObject3dComponent,
+  IEntity,
+  Pnt3,
+  Point3,
+  Point4,
+  Qtrn,
+  RenderLayer,
+} from '@gg-web-engine/core';
 import { Box3, Group, Mesh, Object3D, Scene } from 'three';
 import { ThreeGgWorld, ThreeVisualTypeDocRepo } from '../types';
 
@@ -45,6 +54,18 @@ export class ThreeDisplayObjectComponent implements IDisplayObject3dComponent<Th
 
   public set name(value: string) {
     this.nativeMesh.name = value;
+  }
+
+  public enableRenderLayer(layer: RenderLayer): void {
+    this.nativeMesh.traverse(obj => obj.layers.enable(layer));
+  }
+
+  public disableRenderLayer(layer: RenderLayer): void {
+    this.nativeMesh.traverse(obj => obj.layers.disable(layer));
+  }
+
+  public isRenderLayerEnabled(layer: RenderLayer): boolean {
+    return this.nativeMesh.layers.isEnabled(layer);
   }
 
   public isEmpty(): boolean {

@@ -20,6 +20,12 @@ const fakeCamera = () =>
     position: Pnt3.O,
     rotation: { x: 0, y: 0, z: 0, w: 1 },
     tick$: undefined,
+    // `viewMode`'s setter (see `PlayerCharacterController`) toggles these on the real
+    // `Renderer3dEntity` its own camera - stubbed here purely so constructing/toggling a controller
+    // in these tests doesn't throw; no test in this file asserts on render-layer state itself.
+    enableRenderLayer: jest.fn(),
+    disableRenderLayer: jest.fn(),
+    isRenderLayerEnabled: jest.fn(() => true),
   }) as any;
 
 describe('PlayerCharacterController', () => {
@@ -260,6 +266,40 @@ describe('PlayerCharacterController', () => {
       controller.tick$.next([16, 16]);
 
       expect(character.rotation).toEqual(before);
+    });
+  });
+
+  describe('lookDirection', () => {
+    it('reads back the same direction updateCamera() derives from mouse-look state', async () => {
+      const { controller, camera } = setup(fakeCharacter(), { viewMode: 'first-person' });
+      await controller.onSpawned({} as any);
+      controller.tick$.next([0, 16]);
+
+      const forward = Pnt3.rot(Pnt3.nZ, camera.rotation);
+      expect(controller.lookDirection.x).toBeCloseTo(forward.x);
+      expect(controller.lookDirection.y).toBeCloseTo(forward.y);
+      expect(controller.lookDirection.z).toBeCloseTo(forward.z);
+    });
+
+    it('setting it rotates the camera to face the new direction on the next tick', async () => {
+      const { controller, camera } = setup(fakeCharacter(), { viewMode: 'first-person' });
+      await controller.onSpawned({} as any);
+
+      controller.lookDirection = Pnt3.norm({ x: 1, y: 1, z: 0 });
+      controller.tick$.next([0, 16]);
+
+      const forward = Pnt3.rot(Pnt3.nZ, camera.rotation);
+      expect(forward.x).toBeCloseTo(Pnt3.norm({ x: 1, y: 1, z: 0 }).x);
+      expect(forward.y).toBeCloseTo(Pnt3.norm({ x: 1, y: 1, z: 0 }).y);
+      expect(forward.z).toBeCloseTo(0);
+    });
+
+    it('clamps the written pitch to minPitch/maxPitch, exactly like ordinary mouse-look', async () => {
+      const { controller } = setup(fakeCharacter(), { viewMode: 'first-person', maxPitch: 0 });
+
+      controller.lookDirection = Pnt3.Z; // straight up - well beyond a maxPitch of 0 (level)
+      const pitch = Math.PI / 2 - Pnt3.toSpherical(controller.lookDirection).phi;
+      expect(pitch).toBeCloseTo(0);
     });
   });
 });

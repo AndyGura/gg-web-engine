@@ -168,6 +168,36 @@ classes (constructor parameters, helper functions, entity subclasses in their ow
 small single-file app, inlining `TypedGg3dWorld<ThreeGgWorld, Rapier3dGgWorld>` directly at the
 `world` declaration is enough — no need to name a separate `AppTypeDoc`/`AppWorld` alias.
 
+## Adding a loose component to the world without an entity
+
+Every component that can live in a world - display objects/renderers (visual), rigid
+bodies/triggers (physics), audio sources - implements the same `IWorldComponent` contract:
+`addToWorld(world)` / `removeFromWorld(world, dispose?)`. `Entity3d`/`Entity2d.addComponents`
+(and `world.addPrimitiveRigidBody`, `world.addRenderer`, etc.) are just thin wrappers that call
+this for you and additionally track the component under an owning `IEntity` - there's no
+requirement to go through an entity at all. For a one-off object with no gameplay identity of its
+own (a placement/attachment preview "ghost" mesh, a debug marker, a fire-and-forget UI overlay),
+call `addToWorld`/`removeFromWorld` on the component directly:
+
+```typescript
+const ghost = world.visualScene!.factory.createPrimitive(shape, material);
+ghost.addToWorld(world);
+// ...
+ghost.removeFromWorld(world, true); // dispose: true also frees the native mesh/geometry
+```
+
+This is the correct replacement for reaching into `world.visualScene.nativeScene`/
+`world.physicsWorld`'s native handle and adding the adapter's native object yourself - every
+adapter's `addToWorld` already does exactly that internally (e.g. `ThreeDisplayObjectComponent
+.addToWorld` calls `world.visualScene.nativeScene.add(...)` for you), so calling it needs no cast
+to a concrete adapter class on either the component or the `world` argument - it's declared on the
+dimension-agnostic interface itself. The one thing you lose by skipping the entity wrapper: the
+component's own `entity` stays `null`, so anything that resolves a physics hit/collision back to
+an owning entity (raycasts, collision events) reports `entity: null` for it - expected for a
+standalone object with no entity-level identity, but worth knowing if you later want to give the
+ghost object gameplay behavior (tick logic, named lookup via `getEntityByName`) - at that point
+wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
+
 ## Where to find capabilities
 
 - **Available 3D shapes**: `Shape3DDescriptor` in `packages/core/src/3d/models/shapes.ts` —
@@ -386,6 +416,13 @@ on any named entity, including the player.
   `TypedGg2dWorld` when both concrete sides are actually needed.
 - Not disposing entities/world (`world.removeEntity(entity, true)`, `world.dispose()`) — native
   physics engines (Ammo/Rapier WASM) leak memory if handles aren't explicitly destroyed.
+- Reaching into `world.visualScene.nativeScene`/a physics world's native handle and calling the
+  adapter's native `add`/`remove` yourself, with a cast to the concrete adapter class to get there.
+  Call `component.addToWorld(world)` / `removeFromWorld(world, dispose?)` on the component itself
+  instead — every display object/renderer/rigid body/trigger/audio source component already
+  implements this (see "Adding a loose component to the world without an entity" above), needs no
+  adapter-specific cast on either side, and is what `Entity3d`/`Entity2d.addComponents` calls
+  internally anyway.
 - Assuming feature parity across physics/render backends — the engines are facades over quite
   different libraries; check the specific adapter's source under `packages/<adapter>/src` when a
   capability seems missing, and consult `docs/tasks.md`/`milestones.md` for known parity gaps

@@ -552,6 +552,117 @@ itself only manifests as an accumulating position disagreement against a separat
 camera/controller across many non-round-delta ticks, not as a single-call assertion this package's
 existing per-component test style is set up to express.
 
+## `onCollisionStart`/`onCollisionEnd`: manifold polling, not a native callback
+
+`AmmoRigidBodyComponent.onCollisionStart`/`onCollisionEnd` (backing `IRigidBody3dComponent`'s
+contract) are driven entirely by `AmmoWorldComponent.simulate()`'s own `processCollisionEvents()`,
+called once per tick right after `stepSimulation` - Ammo/Bullet has no native "collision
+started/ended" callback usable from this embind build, so this package uses the standard polling
+technique instead: walk `dispatcher.getNumManifolds()`/`getManifoldByIndexInternal(i)` (both
+declared directly on the `btDispatcher` base class - `_dynamicAmmoWorld.getDispatcher()` returns
+one), and for each manifold with `getNumContacts() > 0`, resolve `manifold.getBody0()`/
+`getBody1()` back to components via the existing `AmmoBodyComponent.nativeBodyReverseMap` (no
+second reverse-map needed). A `Map<string, [AmmoRigidBodyComponent, AmmoRigidBodyComponent]>` keyed
+by a sorted `"${lowerPtr}:${higherPtr}"` string, diffed frame to frame, is what turns "which pairs
+have contacts this tick" into "started"/"stopped" events - present now but not last frame = start,
+present last frame but not now = end.
+
+**A manifold existing is not the same as two bodies touching** - Bullet keeps a manifold alive for a
+mere broad-phase AABB overlap with zero narrow-phase contact points, so gating on
+`getNumContacts() > 0` (not manifold presence alone) is required, exactly as the general skill's
+task description warns.
+
+**Triggers and the character controller need no special-casing at all, because they already fail a
+simpler check.** Both `AmmoTriggerComponent` (a `CF_NO_CONTACT_RESPONSE` ghost object) and
+`AmmoCharacterControllerComponent` (also a ghost object) still generate ordinary manifolds/contact
+points against anything they overlap - `CF_NO_CONTACT_RESPONSE` only suppresses the *solver*'s
+response, not narrow-phase manifold generation, confirmed by this package's own dedicated test
+(`ammo-rigid-body-collision.spec.ts`'s trigger-overlap case: a real floor collision fires
+`onCollisionStart` while a trigger occupying the same overlap volume never does). Rather than
+checking collision flags/instance type against two separate classes, one `instanceof
+AmmoRigidBodyComponent` check on **both** resolved components is sufficient and simpler - a trigger
+or character controller's ghost object resolves to its own, different component class via the same
+reverse map, so it's excluded automatically without needing to know that CF_NO_CONTACT_RESPONSE is
+even involved.
+
+**Contact geometry/impulse API surface used** (none of this is declared in `ammo-ambient.d.ts` as a
+single documented group, so recording the exact combination here): `btManifoldPoint
+.getPositionWorldOnA()`/`.getPositionWorldOnB()` (contact point on each side, in world space),
+`.get_m_normalWorldOnB()` (contact normal - **always points from the manifold's body1 ("B") towards
+its body0 ("A")**, the same convention `AmmoWorldComponent.solidRayFallback` already documented and
+relies on; orient it per-body by negating for whichever side is body0), and
+`.getAppliedImpulse()` (solved impulse magnitude for that contact point, already non-negative in
+practice - picking the contact with the largest one is enough to pick "the" contact when a manifold
+has several, e.g. a box resting flush on a floor with 4 corner contacts).
+
+**`relativeVelocity` is necessarily an approximation, not the literal pre-collision approach
+vector.** Bullet resolves contact response within the same `stepSimulation` call that first
+generates a manifold's contact points, so by the time `processCollisionEvents()` runs (right after
+`stepSimulation` returns) and reads `self.linearVelocity`/`other.linearVelocity`, both are already
+post-response - there's no embind hook exposed in this build for a pre-solve velocity snapshot.
+This is fine in practice: the two reciprocal events remain exact negations of each other by
+construction (both read the same two velocities at the same instant), which is the property the
+core contract and this package's own reciprocal-event test actually check, rather than bit-exact
+physical precision.
+
+**`onCollisionEnd`'s `null` case is not just "best-effort via dispose"** - `processCollisionEvents`
+checks `this.children.includes(...)` for the other side of an ended pair, which flips to `null`
+for a plain `removeFromWorld()` (dispose or not), not only an actually-disposed component. No
+dedicated test exercises the disposed-while-touching sub-case specifically (removed-while-touching
+is the one path this package's own suite doesn't happen to need for its reported scenarios), but the
+mechanism naturally covers both since `children` reflects `removed$`/`added$` regardless of whether
+`dispose()` was also requested.
+
+Regression coverage: `packages/ammo/test/components/ammo-rigid-body-collision.spec.ts` - a falling
+box landing on a static floor (start event, `impulse > 0`, roughly-vertical normal), the reciprocal
+event on the floor with a negated normal and negated `relativeVelocity`, no re-firing of
+`onCollisionStart` for a pair that has settled at rest across many further `simulate()` calls, an
+end event when a settled box is knocked straight up and separates, and a trigger overlapping a real
+floor collision never producing a rigid-body collision event for that overlap (only its own
+`onEntityEntered`).
+
+**Performance: don't extract contact-point/impulse data for a pair that was already touching last
+frame.** The first version of `processCollisionEvents()` ran its per-contact `getContactPoint(j)`/
+`.getAppliedImpulse()` loop for *every* manifold with contacts, every tick, unconditionally - but
+that data is only ever used to build a `CollisionEvent` for a pair transitioning into contact
+(`onCollisionStart`); for a pair already present in `previousContactPairs` (still resting on
+something from a prior tick) it was computed and immediately discarded, every single frame. In a
+scene with many settled bodies - stacked crates, a car's wheels on the ground, static level geometry
+resting on other static geometry - that's the steady-state common case, not the rare one, so this
+was real, always-on wasted cost: `getContactPoint`/`getAppliedImpulse` each cross the embind/WASM
+boundary, which is measurably more expensive per call than plain JS. Fix: check
+`this.previousContactPairs.has(key)` (cheap - just the two `Ammo.getPointer()` calls and a string
+key, already needed anyway to track `currentPairs`) and `continue` before ever touching a contact
+point, for any pair already known to be touching. This shrinks the *unconditional* per-tick cost of
+collision polling for an already-settled scene down to "one manifold walk, cheap
+pointer/map-lookup work per manifold, no embind contact/impulse calls at all" - the expensive path
+now only runs proportionally to how many pairs are *newly* touching this tick, not how many are
+touching in total. Worth checking for the same shape of waste in any future adapter that polls
+native per-contact data every tick rather than reacting to a native start/stop event directly
+(Rapier/matter-js don't have this problem at all - their own `onCollisionStart`/`onCollisionEnd`
+implementations are driven by the native engine's own edge-triggered event queue/callback, which
+simply never fires for a continuing contact in the first place).
+
+**`AmmoWorldComponent.enableCollisionEvents` (default `true`) lets an app opt out of the manifold
+walk entirely.** Even after the above optimization, `processCollisionEvents()` still does one cheap
+pass over every manifold every `simulate()` call - unconditionally, regardless of whether anything is
+subscribed - to know which pairs are currently touching. For an app that never reads
+`onCollisionStart`/`onCollisionEnd` at all, and has a very large number of simultaneously-resting
+bodies (a big debris field, a dense physics playground), that per-manifold bookkeeping is pure
+overhead with nothing to show for it. Setting `enableCollisionEvents = false` skips the `simulate()`
+call into `processCollisionEvents()` outright, removing the cost completely; `onEntityEntered`/
+`onEntityLeft` on triggers are a separate, already-existing mechanism (each trigger's own
+`checkOverlaps()`) and are unaffected either way. Toggling this back to `true` later resumes
+normally without needing to clear any state first: `previousContactPairs` is simply never advanced
+while disabled, so the first `processCollisionEvents()` call after re-enabling diffs the world's
+actual current contacts against whatever `previousContactPairs` last held (empty, if collision
+events were never enabled before) - any pair already touching at that point is (re-)reported as a
+fresh `onCollisionStart`, which is the correct, if slightly delayed, way to surface a transition that
+happened while nobody was watching, rather than silently losing it. This flag is Ammo-specific by
+design (see the flag's own doc comment) - Rapier2d/3d and matter-js derive these events from a native
+start/stop event rather than polling, so they have no equivalent always-on cost and don't need (and
+should not get) a matching setting.
+
 ## Keep this skill current
 
 This file is read by future agents fixing/extending `packages/ammo` specifically, not by end users of

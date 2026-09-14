@@ -1,8 +1,15 @@
 import { AmmoWorldComponent } from './ammo-world.component';
 import Ammo from '../ammo.js/ammo';
 import { AmmoBodyComponent } from './ammo-body.component';
-import { DebugBody3DSettings, Entity3d, IRigidBody3dComponent, Point3, Shape3DDescriptor } from '@gg-web-engine/core';
-import { first } from 'rxjs';
+import {
+  CollisionEvent,
+  DebugBody3DSettings,
+  Entity3d,
+  IRigidBody3dComponent,
+  Point3,
+  Shape3DDescriptor,
+} from '@gg-web-engine/core';
+import { first, Observable, Subject } from 'rxjs';
 import { AmmoGgWorld, AmmoPhysicsTypeDocRepo } from '../types';
 
 export class AmmoRigidBodyComponent
@@ -37,6 +44,40 @@ export class AmmoRigidBodyComponent
       : { type: 'RIGID_DYNAMIC', sleeping: () => !this._nativeBody.isActive() },
     this.shape,
   );
+
+  /**
+   * Back `onCollisionStart`/`onCollisionEnd` below. Populated exclusively by
+   * `AmmoWorldComponent.simulate()`'s own post-`stepSimulation` manifold bookkeeping via
+   * `emitCollisionStart`/`emitCollisionEnd` - a single body has no way to discover the *other*
+   * side of a contact pair (or when it stops touching something) on its own, so the world
+   * component (which walks `dispatcher.getNumManifolds()` once per tick) is the only writer.
+   * Kept protected rather than exposing the Subjects directly, mirroring how
+   * `AmmoTriggerComponent` keeps its own `onEnter$`/`onLeft$` reachable only through its own
+   * bookkeeping method (`checkOverlaps`).
+   */
+  protected readonly onCollisionStart$: Subject<CollisionEvent<Point3, AmmoRigidBodyComponent>> = new Subject<
+    CollisionEvent<Point3, AmmoRigidBodyComponent>
+  >();
+  protected readonly onCollisionEnd$: Subject<AmmoRigidBodyComponent | null> =
+    new Subject<AmmoRigidBodyComponent | null>();
+
+  get onCollisionStart(): Observable<CollisionEvent<Point3, AmmoRigidBodyComponent>> {
+    return this.onCollisionStart$;
+  }
+
+  get onCollisionEnd(): Observable<AmmoRigidBodyComponent | null> {
+    return this.onCollisionEnd$;
+  }
+
+  /** Called by `AmmoWorldComponent.simulate()` only - see `onCollisionStart$`'s own doc. */
+  emitCollisionStart(event: CollisionEvent<Point3, AmmoRigidBodyComponent>): void {
+    this.onCollisionStart$.next(event);
+  }
+
+  /** Called by `AmmoWorldComponent.simulate()` only - see `onCollisionStart$`'s own doc. */
+  emitCollisionEnd(other: AmmoRigidBodyComponent | null): void {
+    this.onCollisionEnd$.next(other);
+  }
 
   constructor(
     protected readonly world: AmmoWorldComponent,
@@ -135,5 +176,11 @@ export class AmmoRigidBodyComponent
       });
     }
     Ammo.destroy(emptyVector);
+  }
+
+  dispose(): void {
+    super.dispose();
+    this.onCollisionStart$.complete();
+    this.onCollisionEnd$.complete();
   }
 }

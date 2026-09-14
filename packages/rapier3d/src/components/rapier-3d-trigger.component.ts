@@ -56,23 +56,38 @@ export class Rapier3dTriggerComponent
     super.removeFromWorld(world, dispose);
   }
 
+  /**
+   * Called by `Rapier3dWorldComponent`'s centralized collision-event dispatch (see
+   * `Rapier3dWorldComponent.simulate`) once per drained sensor-intersection event involving this
+   * trigger - not meant to be called by app code directly. Previously this trigger drained
+   * `world.eventQueue` itself from inside `checkOverlaps()`, matching `otherBody` by comparing an
+   * event's *collider* handle against `this.nativeBody?.handle` (a *rigid-body* handle) - those are
+   * two different handle namespaces in this pinned `@dimforge/rapier3d-compat` build, and the
+   * comparison only ever happened to work by coincidence (a body's first/only collider is allocated
+   * from a separate arena that, absent any prior removals, marches in lockstep with the rigid-body
+   * arena for the common one-collider-per-body case - see `gg-engine-physics-adapter-rapier` for the
+   * full incident). `EventQueue.drainCollisionEvents` also fully drains the *shared* queue on every
+   * call, so more than one consumer draining it independently (this trigger, another trigger, and now
+   * `Rapier3dRigidBodyComponent`'s own collision events) would silently steal each other's events -
+   * `Rapier3dWorldComponent` is now the single place that drains it, resolving collider handles to
+   * components correctly via `Collider.parent()`, and pushes matching events to whichever
+   * component(s) care.
+   */
+  public notifyOverlap(otherBody: Rapier3dRigidBodyComponent, started: boolean): void {
+    if (started) {
+      this.overlaps.add(otherBody);
+      this.onEnter$.next(otherBody);
+    } else {
+      this.overlaps.delete(otherBody);
+      this.onLeft$.next(otherBody);
+    }
+  }
+
   checkOverlaps(): void {
-    this.world.eventQueue.drainCollisionEvents((h1: any, h2: any, started: any) => {
-      let otherBody: Rapier3dRigidBodyComponent | undefined;
-      if (h1 === this.nativeBody?.handle) {
-        otherBody = this.world.handleIdEntityMap.get(h2);
-      } else if (h2 === this.nativeBody?.handle) {
-        otherBody = this.world.handleIdEntityMap.get(h1);
-      }
-      if (!otherBody) return;
-      if (started) {
-        this.overlaps.add(otherBody);
-        this.onEnter$.next(otherBody);
-      } else {
-        this.overlaps.delete(otherBody);
-        this.onLeft$.next(otherBody);
-      }
-    });
+    // Rapier does not reliably emit a native intersection-stop event for a collider that's simply
+    // removed from the world mid-overlap (confirmed empirically) - this manual pass catches that case
+    // every tick regardless of whether `Rapier3dWorldComponent.simulate`'s own event dispatch already
+    // ran this tick.
     for (const body of this.overlaps.keys()) {
       if (!body.nativeBody) {
         this.overlaps.delete(body);
@@ -89,8 +104,13 @@ export class Rapier3dTriggerComponent
     return component;
   }
 
+  /** Completes `onEnter$`/`onLeft$` on top of `Rapier3dRigidBodyComponent.dispose()`'s own
+   * `onCollisionStart$`/`onCollisionEnd$` completion (via `super.dispose()`) - this trigger's own
+   * subjects have no other owner to complete them. */
   dispose() {
     this.overlaps.clear();
+    this.onEnter$.complete();
+    this.onLeft$.complete();
     super.dispose();
   }
 }

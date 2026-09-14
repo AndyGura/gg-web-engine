@@ -1,6 +1,7 @@
 import { AnimationMixer, Entity3d } from '../../../src';
 import { mock3DBody } from '../../mocks/body.mock';
 import { mock3DObject } from '../../mocks/object.mock';
+import { Subject } from 'rxjs';
 
 describe(`Entity3d`, () => {
 
@@ -72,6 +73,92 @@ describe(`Entity3d`, () => {
       const entity = new Entity3d({ objectBody });
       entity.dispose();
       expect(() => entity.dispose()).not.toThrow(Error);
+    });
+  });
+
+  describe(`onCollisionStart`, () => {
+    it(`should re-emit the body's collision event with the other body's entity resolved`, () => {
+      const objectBody = mock3DBody();
+      const entity = new Entity3d({ objectBody });
+      const otherEntity = new Entity3d({ objectBody: mock3DBody() });
+      const otherBody = mock3DBody();
+      (otherBody as any).entity = otherEntity;
+
+      const received: any[] = [];
+      entity.onCollisionStart.subscribe(evt => received.push(evt));
+
+      (objectBody.onCollisionStart as Subject<any>).next({
+        otherBody,
+        position: { x: 1, y: 2, z: 3 },
+        normal: { x: 0, y: 0, z: 1 },
+        relativeVelocity: { x: 5, y: 0, z: 0 },
+        impulse: 12,
+      });
+
+      expect(received).toHaveLength(1);
+      expect(received[0]).toMatchObject({
+        entity: otherEntity,
+        otherBody,
+        position: { x: 1, y: 2, z: 3 },
+        normal: { x: 0, y: 0, z: 1 },
+        relativeVelocity: { x: 5, y: 0, z: 0 },
+        impulse: 12,
+      });
+    });
+
+    it(`should resolve entity to null when the other body has none`, () => {
+      const objectBody = mock3DBody();
+      const entity = new Entity3d({ objectBody });
+      const otherBody = mock3DBody();
+
+      const received: any[] = [];
+      entity.onCollisionStart.subscribe(evt => received.push(evt));
+
+      (objectBody.onCollisionStart as Subject<any>).next({
+        otherBody,
+        position: { x: 0, y: 0, z: 0 },
+        normal: { x: 0, y: 1, z: 0 },
+        relativeVelocity: { x: 0, y: 0, z: 0 },
+        impulse: 1,
+      });
+
+      expect(received[0].entity).toBeNull();
+    });
+
+    it(`should never emit for an entity with no physics body`, () => {
+      const entity = new Entity3d({ object3D: mock3DObject() });
+      const received: any[] = [];
+      entity.onCollisionStart.subscribe(evt => received.push(evt));
+      expect(received).toHaveLength(0);
+    });
+  });
+
+  describe(`onCollisionEnd`, () => {
+    it(`should resolve to the other body's entity`, () => {
+      const objectBody = mock3DBody();
+      const entity = new Entity3d({ objectBody });
+      const otherEntity = new Entity3d({ objectBody: mock3DBody() });
+      const otherBody = mock3DBody();
+      (otherBody as any).entity = otherEntity;
+
+      const received: any[] = [];
+      entity.onCollisionEnd.subscribe(evt => received.push(evt));
+
+      (objectBody.onCollisionEnd as Subject<any>).next(otherBody);
+
+      expect(received).toEqual([otherEntity]);
+    });
+
+    it(`should resolve to null when the other body was removed (null payload)`, () => {
+      const objectBody = mock3DBody();
+      const entity = new Entity3d({ objectBody });
+
+      const received: any[] = [];
+      entity.onCollisionEnd.subscribe(evt => received.push(evt));
+
+      (objectBody.onCollisionEnd as Subject<any>).next(null);
+
+      expect(received).toEqual([null]);
     });
   });
 

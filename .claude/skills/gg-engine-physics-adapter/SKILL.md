@@ -155,6 +155,53 @@ native engine's collision-event mechanism into an RxJS-based interface matching
 (see `Rapier2dFactory.createTrigger` calling `colliderDescr.setActiveEvents(ActiveEvents.
 COLLISION_EVENTS)`).
 
+### Collision events
+
+A rigid body component exposes `onCollisionStart: Observable<CollisionEvent<D, RigidBody>>` and
+`onCollisionEnd: Observable<RigidBody | null>`, fired for a real (non-sensor) contact only - a
+trigger overlap never reaches these, only `ITriggerComponent.onEntityEntered`/`onEntityLeft` (see
+the **Triggers** paragraph above). `CollisionEvent` carries `otherBody`, `position` (world-space
+contact point), `normal` (pointing away from *this* body towards `otherBody`), `relativeVelocity`
+(`otherBody`'s velocity relative to this one), and `impulse` (see `CollisionEvent`'s own doc in
+`packages/core` for exactly what each field guarantees across adapters and what it doesn't).
+
+Every adapter must uphold the same invariants regardless of how the native engine itself reports a
+pair:
+
+- **Reciprocal, not one-sided.** Both bodies in a pair get their own `onCollisionStart`/
+  `onCollisionEnd` event for the same contact, oriented from their own side (`normal`/
+  `relativeVelocity` negated between the two, `position`/`impulse` identical). A native engine that
+  only reports a pair once per step (matter-js's single `collisionStart` engine event, e.g.) must
+  still synthesize both sides' events from that one report - see `MatterWorldComponent.
+  handleCollisionStart` for the pattern (and its doc comment for a worked-out normal-direction
+  gotcha specific to matter-js's own convention).
+- **Self-collision guard.** A compound body's own sub-colliders can resolve to the *same* component
+  on both sides of a reported pair - that must never reach `onCollisionStart`/`onCollisionEnd`, or
+  a body would appear to collide with itself. Skip the pair whenever both sides resolve to the same
+  component instance (see `Rapier3dWorldComponent.dispatchCollisionEvents`'s `comp1 === comp2`
+  check, mirrored in `packages/rapier2d`).
+- **`onCollisionEnd(null)` means "removed mid-contact", and only the survivor hears it.** When a
+  body is removed from the world while still touching others, the native engine typically never
+  emits a native collision-stop event for a collider that's simply gone - so `removeFromWorld` must
+  walk that body's own still-active-contacts bookkeeping and explicitly call the *other* body's
+  `onCollisionEnd` with `null` (not a dangling reference to the now-gone body). Critically, this
+  only ever fires on the **surviving** partner's stream - the body being removed must never also
+  emit its own `onCollisionEnd` for that same separation, since it isn't "this body's contact
+  ending", it's "this body vanishing out from under its partner". See `Rapier3dRigidBodyComponent.
+  removeFromWorld`/`MatterRigidBodyComponent.removeFromWorld` for the pattern, and
+  `gg-engine-physics-adapter-rapier` for a bug this exact asymmetry caught in `packages/rapier2d`.
+- **Complete the Subjects on dispose.** `onCollisionStart$`/`onCollisionEnd$` (and a trigger's own
+  `onEnter$`/`onLeft$`) are ordinary RxJS `Subject`s owned by the component - `dispose()` must call
+  `.complete()` on all of them, the same as any other RxJS-based component in this engine. A
+  trigger's `dispose()` must complete its own `onEnter$`/`onLeft$` *and* still call `super.dispose()`
+  for the inherited collision subjects - forgetting either half leaves an app-side subscriber
+  waiting forever for a `complete` that never comes.
+
+For the exact per-library recipe (which native event/query API to hook, how contact
+geometry/impulse is actually extracted, ordering quirks), see the already-implemented adapters'
+own skills: `gg-engine-physics-adapter-ammo`, `gg-engine-physics-adapter-rapier`,
+`gg-engine-physics-adapter-matter`.
+
 ## Character controller component (3D only)
 
 `ICharacterController3dComponent` (`packages/core/src/3d/components/physics/i-character-controller-3d.component.ts`)

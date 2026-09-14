@@ -5,12 +5,19 @@ import { Entity2d } from './entities/entity-2d';
 import { IPhysicsWorld2dComponent } from './components/physics/i-physics-world-2d.component';
 import { IVisualScene2dComponent } from './components/rendering/i-visual-scene-2d.component';
 import { Renderer2dEntity } from './entities/renderer-2d.entity';
-import { DisplayObject2dOpts, IDisplayObject2dComponentFactory, IPhysicsBody2dComponentFactory } from './factories';
+import {
+  DisplayObject2dOpts,
+  IAudioSource2dComponentFactory,
+  IDisplayObject2dComponentFactory,
+  IPhysicsBody2dComponentFactory,
+} from './factories';
 import { IRenderer2dComponent } from './components/rendering/i-renderer-2d.component';
 import { IDisplayObject2dComponent } from './components/rendering/i-display-object-2d.component';
 import { ICamera2dComponent } from './components/rendering/i-camera-2d.component';
 import { ITrigger2dComponent } from './components/physics/i-trigger-2d.component';
 import { IRigidBody2dComponent } from './components/physics/i-rigid-body-2d.component';
+import { IAudioScene2dComponent } from './components/audio/i-audio-scene-2d.component';
+import { IAudioSource2dComponent } from './components/audio/i-audio-source-2d.component';
 
 export type VisualTypeDocRepo2D = {
   factory: IDisplayObject2dComponentFactory;
@@ -27,23 +34,34 @@ export type PhysicsTypeDocRepo2D = {
   trigger: ITrigger2dComponent;
 };
 
+export type AudioTypeDocRepo2D = {
+  factory: IAudioSource2dComponentFactory;
+  source: IAudioSource2dComponent;
+  clip: unknown;
+};
+
 export type Gg2dWorldTypeDocRepo = {
   vTypeDoc: VisualTypeDocRepo2D;
   pTypeDoc: PhysicsTypeDocRepo2D;
+  aTypeDoc: AudioTypeDocRepo2D;
 };
-// utility types to create world type doc by defining either vTypeDoc or pTypeDoc only
+// utility types to create world type doc by defining either vTypeDoc, pTypeDoc or aTypeDoc only
 export type Gg2dWorldTypeDocVPatch<VTypeDoc extends VisualTypeDocRepo2D> = Omit<Gg2dWorldTypeDocRepo, 'vTypeDoc'> & {
   vTypeDoc: VTypeDoc;
 };
 export type Gg2dWorldTypeDocPPatch<PTypeDoc extends PhysicsTypeDocRepo2D> = Omit<Gg2dWorldTypeDocRepo, 'pTypeDoc'> & {
   pTypeDoc: PTypeDoc;
 };
+export type Gg2dWorldTypeDocAPatch<ATypeDoc extends AudioTypeDocRepo2D> = Omit<Gg2dWorldTypeDocRepo, 'aTypeDoc'> & {
+  aTypeDoc: ATypeDoc;
+};
 
 export type Gg2dWorldSceneTypeRepo<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTypeDocRepo> = {
   visualScene: IVisualScene2dComponent<TypeDoc['vTypeDoc']> | null;
   physicsWorld: IPhysicsWorld2dComponent<TypeDoc['pTypeDoc']> | null;
+  audioScene: IAudioScene2dComponent<TypeDoc['aTypeDoc']> | null;
 };
-// utility types to create world scene type doc by defining either visualScene or physicsWorld type only
+// utility types to create world scene type doc by defining either visualScene, physicsWorld or audioScene only
 export type Gg2dWorldSceneTypeDocVPatch<
   VTypeDoc extends VisualTypeDocRepo2D,
   VS extends IVisualScene2dComponent<VTypeDoc> | null,
@@ -52,26 +70,36 @@ export type Gg2dWorldSceneTypeDocPPatch<
   PTypeDoc extends PhysicsTypeDocRepo2D,
   PW extends IPhysicsWorld2dComponent<PTypeDoc> | null,
 > = Omit<Gg2dWorldSceneTypeRepo, 'physicsWorld'> & { physicsWorld: PW };
+export type Gg2dWorldSceneTypeDocAPatch<
+  ATypeDoc extends AudioTypeDocRepo2D,
+  AS extends IAudioScene2dComponent<ATypeDoc> | null,
+> = Omit<Gg2dWorldSceneTypeRepo, 'audioScene'> & { audioScene: AS };
 
 // A helper type to build a full type for the world according to installed modules
-// Each module provides its type, like "PixiGgWorld" or "Rapier2dGgWorld"
-// Caller code can define type like this: world: TypedGg2dWorld<ThreeGgWorld, Rapier2dGgWorld>
-// Important: visual library world comes first, then physics library
-export type TypedGg2dWorld<VW extends Gg2dWorld<any> | null, PW extends Gg2dWorld<any> | null> = VW extends Gg2dWorld<
-  infer VTD,
-  infer VSTD
-> | null
+// Each module provides its type, like "PixiGgWorld", "Rapier2dGgWorld" or "WebAudioGgWorld"
+// Caller code can define type like this: world: TypedGg2dWorld<ThreeGgWorld, Rapier2dGgWorld, WebAudioGgWorld>
+// Important: visual library world comes first, then physics library, then (optionally) audio library.
+// See TypedGg3dWorld's own comment for why the audio slot needs one combined
+// `AW extends Gg2dWorld<infer ATD, infer ASTD>` check rather than two separate ones.
+export type TypedGg2dWorld<
+  VW extends Gg2dWorld<any> | null,
+  PW extends Gg2dWorld<any> | null,
+  AW extends Gg2dWorld<any> | null = null,
+> = VW extends Gg2dWorld<infer VTD, infer VSTD> | null
   ? PW extends Gg2dWorld<infer PTD, infer PSTD> | null
-    ? Gg2dWorld<
-        {
-          vTypeDoc: VTD['vTypeDoc'];
-          pTypeDoc: PTD['pTypeDoc'];
-        },
-        {
-          visualScene: VSTD['visualScene'];
-          physicsWorld: PSTD['physicsWorld'];
-        }
-      >
+    ? AW extends Gg2dWorld<infer ATD, infer ASTD>
+      ? Gg2dWorld<
+          { vTypeDoc: VTD['vTypeDoc']; pTypeDoc: PTD['pTypeDoc']; aTypeDoc: ATD['aTypeDoc'] },
+          { visualScene: VSTD['visualScene']; physicsWorld: PSTD['physicsWorld']; audioScene: ASTD['audioScene'] }
+        >
+      : Gg2dWorld<
+          { vTypeDoc: VTD['vTypeDoc']; pTypeDoc: PTD['pTypeDoc']; aTypeDoc: AudioTypeDocRepo2D },
+          {
+            visualScene: VSTD['visualScene'];
+            physicsWorld: PSTD['physicsWorld'];
+            audioScene: IAudioScene2dComponent | null;
+          }
+        >
     : never
   : never;
 
@@ -81,7 +109,11 @@ export class Gg2dWorld<
 > extends GgWorld<Point2, number, TypeDoc, SceneTypeDoc> {
   public readonly loader: Gg2dLoader<TypeDoc>;
 
-  constructor(args: { visualScene?: SceneTypeDoc['visualScene']; physicsWorld?: SceneTypeDoc['physicsWorld'] }) {
+  constructor(args: {
+    visualScene?: SceneTypeDoc['visualScene'];
+    physicsWorld?: SceneTypeDoc['physicsWorld'];
+    audioScene?: SceneTypeDoc['audioScene'];
+  }) {
     super(args);
     this.loader = new Gg2dLoader(this);
   }

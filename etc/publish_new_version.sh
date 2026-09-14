@@ -18,6 +18,7 @@ libs=(
   "rapier3d"
   "pixi"
   "matter"
+  "audio"
 )
 
 upgrade() {

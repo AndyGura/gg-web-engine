@@ -1,15 +1,64 @@
-import { Pnt3, Point3, Point4, Qtrn, TickOrder } from '../../base';
+import { EMPTY, Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
+import { IEntity, Pnt3, Point3, Point4, Qtrn, TickOrder } from '../../base';
 import { IRigidBody3dComponent } from '../components/physics/i-rigid-body-3d.component';
 import { IDisplayObject3dComponent } from '../components/rendering/i-display-object-3d.component';
 import { IPositionable3d } from '../interfaces/i-positionable-3d';
 import { IRenderable3dEntity } from './i-renderable-3d.entity';
-import { Gg3dWorldTypeDocRepo } from '../gg-3d-world';
+import { Gg3dWorldTypeDocPPatch, Gg3dWorldTypeDocRepo, PhysicsTypeDocRepo3D } from '../gg-3d-world';
 
 export class Entity3d<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo>
   extends IRenderable3dEntity<TypeDoc>
   implements IPositionable3d
 {
   public readonly tickOrder = TickOrder.OBJECTS_BINDING;
+
+  /**
+   * Fires each time this entity's body begins touching another rigid body it wasn't already
+   * touching - see `IRigidBodyComponent.onCollisionStart`. `entity` is the other body's owning
+   * entity, if it has one (same convention `Trigger3dEntity.onEntityEntered` uses). Entities with
+   * no physics body (`objectBody` unset) never emit.
+   */
+  get onCollisionStart(): Observable<{
+    entity:
+      (IEntity<Point3, Point4, Gg3dWorldTypeDocRepo & { pTypeDoc: TypeDoc['pTypeDoc'] }> & IPositionable3d) | null;
+    otherBody: TypeDoc['pTypeDoc']['rigidBody'];
+    position: Point3;
+    normal: Point3;
+    relativeVelocity: Point3;
+    impulse: number;
+  }> {
+    if (!this.objectBody) {
+      return EMPTY;
+    }
+    return this.objectBody.onCollisionStart.pipe(
+      map(evt => ({
+        ...evt,
+        entity: (evt.otherBody.entity ?? null) as
+          (IEntity<Point3, Point4, Gg3dWorldTypeDocPPatch<PhysicsTypeDocRepo3D>> & IPositionable3d) | null,
+      })),
+    );
+  }
+
+  /**
+   * Fires each time this entity's body stops touching a rigid body it was previously touching -
+   * see `IRigidBodyComponent.onCollisionEnd`. `null` when the other body was removed from the
+   * world while still in contact, or when it (or its entity) can't be resolved.
+   */
+  get onCollisionEnd(): Observable<
+    (IEntity<Point3, Point4, Gg3dWorldTypeDocRepo & { pTypeDoc: TypeDoc['pTypeDoc'] }> & IPositionable3d) | null
+  > {
+    if (!this.objectBody) {
+      return EMPTY;
+    }
+    return this.objectBody.onCollisionEnd.pipe(
+      map(
+        otherBody =>
+          (otherBody?.entity ?? null) as
+            (IEntity<Point3, Point4, Gg3dWorldTypeDocPPatch<PhysicsTypeDocRepo3D>> & IPositionable3d) | null,
+      ),
+    );
+  }
 
   private _position = Pnt3.O;
   public get position(): Point3 {

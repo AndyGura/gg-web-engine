@@ -1,5 +1,6 @@
 import {
   BitMask,
+  CollisionEvent,
   CollisionGroup,
   IPhysicsWorld2dComponent,
   Pnt2,
@@ -8,8 +9,9 @@ import {
   RaycastOptions,
   RaycastResult,
 } from '@gg-web-engine/core';
-import { EventQueue, init, Vector2, World } from '@dimforge/rapier2d-compat';
+import { Collider, EventQueue, init, Vector2, World } from '@dimforge/rapier2d-compat';
 import { Rapier2dRigidBodyComponent } from './rapier-2d-rigid-body.component';
+import { Rapier2dTriggerComponent } from './rapier-2d-trigger.component';
 import { Rapier2dFactory } from '../rapier-2d-factory';
 import { Rapier2dPhysicsTypeDocRepo } from '../types';
 import { Subject } from 'rxjs';
@@ -76,6 +78,138 @@ export class Rapier2dWorldComponent implements IPhysicsWorld2dComponent<Rapier2d
   simulate(delta: number): void {
     this._nativeWorld!.timestep = delta / 1000;
     this._nativeWorld?.step(this.eventQueue);
+    this.dispatchCollisionEvents();
+  }
+
+  /**
+   * Drains this step's collision events from the world's single shared `EventQueue` and routes
+   * each start/stop transition to whichever component(s) it belongs to - a sensor-overlap
+   * transition (either side a `Rapier2dTriggerComponent`) goes to that trigger's own
+   * `handleOverlapEvent` (its `onEntityEntered`/`onEntityLeft`), a real contact transition between
+   * two plain rigid bodies goes to both sides' `handleCollisionStart`/`handleCollisionEnd`
+   * (`onCollisionStart`/`onCollisionEnd`).
+   *
+   * This drains the queue exactly once per `simulate()` call, centrally, rather than leaving each
+   * trigger to drain the whole (shared, single) queue itself from its own `checkOverlaps()` - two
+   * triggers both calling `drainCollisionEvents` in the same frame would otherwise race for the
+   * same queue, with the first drain silently consuming events the second was waiting for (this
+   * was already a latent limitation of the pre-existing single-trigger-only draining approach).
+   * `Rapier2dTriggerComponent.checkOverlaps()` still exists and is still called by `Trigger2dEntity`
+   * every tick, but it no longer drains anything itself - see its own doc.
+   */
+  private dispatchCollisionEvents(): void {
+    if (!this._nativeWorld) {
+      return;
+    }
+    const nativeWorld = this._nativeWorld;
+    this.eventQueue.drainCollisionEvents((h1, h2, started) => {
+      const collider1 = nativeWorld.colliders.get(h1);
+      const collider2 = nativeWorld.colliders.get(h2);
+      const body1 = collider1?.parent();
+      const body2 = collider2?.parent();
+      if (!collider1 || !collider2 || !body1 || !body2) {
+        return;
+      }
+      const c1 = this.handleIdEntityMap.get(body1.handle);
+      const c2 = this.handleIdEntityMap.get(body2.handle);
+      // `c1 === c2` happens for a compound body's own sub-colliders touching each other (e.g. two
+      // parts of the same multi-collider rigid body briefly overlapping) - not a real collision
+      // between two bodies, so it must never reach a component's own onCollisionStart/onCollisionEnd
+      // stream. Mirrors rapier3d's `dispatchCollisionEvents` guard.
+      if (!c1 || !c2 || c1 === c2) {
+        return;
+      }
+
+      const trigger1 = c1 instanceof Rapier2dTriggerComponent ? c1 : null;
+      const trigger2 = c2 instanceof Rapier2dTriggerComponent ? c2 : null;
+      if (trigger1 || trigger2) {
+        // sensor overlap (at least one side is a trigger) - a trigger has no collision response,
+        // so this must never reach the plain-rigid-body onCollisionStart/onCollisionEnd path.
+        trigger1?.handleOverlapEvent(c2, started);
+        trigger2?.handleOverlapEvent(c1, started);
+        return;
+      }
+
+      if (started) {
+        this.emitCollisionStart(c1, c2, collider1, collider2);
+      } else {
+        c1.handleCollisionEnd(c2);
+        c2.handleCollisionEnd(c1);
+      }
+    });
+  }
+
+  /**
+   * Builds and emits the reciprocal `onCollisionStart` pair for two plain rigid-body colliders
+   * that Rapier just reported as newly touching.
+   *
+   * `impulse` is derived from `TempContactManifold.contactImpulse(i)` - the actual per-contact
+   * impulse magnitude already solved by Rapier for this step (summed across every contact in the
+   * manifold), not an approximation - so it's directly comparable across hits from this adapter.
+   * `position` is the first solver contact point (already world-space); `normal` is the manifold's
+   * world-space contact normal, oriented for each body so it always points away from that body
+   * towards the other (Rapier's `contactPair` may invoke the callback with `flipped: true` when it
+   * internally stored the pair as (collider2, collider1) rather than (collider1, collider2), in
+   * which case the raw normal already points from collider2 towards collider1 and must be negated
+   * to keep a consistent "away from collider1, towards collider2" convention before per-body
+   * orientation is applied below).
+   *
+   * A manifold can legitimately be empty the same step a `started` event is reported for it (the
+   * narrow-phase pass that produced the event and the manifold read back here are the same pass,
+   * but Rapier doesn't guarantee a manifold survives with contact data intact for every shape pair
+   * across that boundary) - in that rare case this falls back to the midpoint between the two
+   * bodies' own positions and the direction between them, with `impulse: 0`, rather than dropping
+   * the event outright.
+   */
+  private emitCollisionStart(
+    c1: Rapier2dRigidBodyComponent,
+    c2: Rapier2dRigidBodyComponent,
+    collider1: Collider,
+    collider2: Collider,
+  ): void {
+    let position: Point2 | null = null;
+    let normalTowards2: Point2 | null = null;
+    let impulse = 0;
+    this.nativeWorld.contactPair(collider1, collider2, (manifold, flipped) => {
+      const n = manifold.normal();
+      normalTowards2 = flipped ? { x: -n.x, y: -n.y } : { x: n.x, y: n.y };
+      if (manifold.numSolverContacts() > 0) {
+        const p = manifold.solverContactPoint(0);
+        if (p) {
+          position = { x: p.x, y: p.y };
+        }
+      }
+      for (let i = 0; i < manifold.numContacts(); i++) {
+        impulse += manifold.contactImpulse(i);
+      }
+    });
+    if (!position) {
+      position = Pnt2.avg(c1.position, c2.position);
+    }
+    if (!normalTowards2) {
+      const dir = Pnt2.sub(c2.position, c1.position);
+      normalTowards2 = Pnt2.len(dir) > 1e-9 ? Pnt2.norm(dir) : Pnt2.Y;
+    }
+
+    const v1 = c1.linearVelocity;
+    const v2 = c2.linearVelocity;
+
+    const event1: CollisionEvent<Point2, Rapier2dRigidBodyComponent> = {
+      otherBody: c2,
+      position,
+      normal: normalTowards2,
+      relativeVelocity: Pnt2.sub(v2, v1),
+      impulse,
+    };
+    const event2: CollisionEvent<Point2, Rapier2dRigidBodyComponent> = {
+      otherBody: c1,
+      position,
+      normal: Pnt2.neg(normalTowards2),
+      relativeVelocity: Pnt2.sub(v1, v2),
+      impulse,
+    };
+    c1.handleCollisionStart(event1);
+    c2.handleCollisionStart(event2);
   }
 
   protected lockedCollisionGroups: number[] = [];

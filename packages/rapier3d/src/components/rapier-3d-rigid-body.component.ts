@@ -1,6 +1,7 @@
 import {
   BitMask,
   Body3DOptions,
+  CollisionEvent,
   CollisionGroup,
   DebugBody3DSettings,
   Entity3d,
@@ -20,6 +21,7 @@ import {
   RigidBodyDesc,
   Vector3,
 } from '@dimforge/rapier3d-compat';
+import { Observable, Subject } from 'rxjs';
 import { Rapier3dWorldComponent } from './rapier-3d-world.component';
 import { Rapier3dGgWorld, Rapier3dPhysicsTypeDocRepo } from '../types';
 
@@ -94,6 +96,54 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
   }
 
   public name: string = '';
+
+  /**
+   * Other rigid-body components this one is currently touching via a real (non-sensor) contact -
+   * mirrors `Rapier3dTriggerComponent.overlaps`, but symmetric: both sides of an ordinary collision
+   * get notified, so both sides track it. Populated/drained by `Rapier3dWorldComponent`'s centralized
+   * collision-event dispatch (see `notifyCollisionStart`/`notifyCollisionEnd` below), and consulted by
+   * `removeFromWorld` to emit `onCollisionEnd(null)` to any partner still touching this body at the
+   * moment it's removed (per `CollisionEvent`'s "null when the other body was removed from the world
+   * while still in contact" convention) - Rapier does not reliably emit a native collision-stop event
+   * for a collider that's simply deleted mid-contact (same reason `Rapier3dTriggerComponent.
+   * checkOverlaps` has its own manual `!body.nativeBody` cleanup pass instead of trusting the event
+   * queue for that case).
+   */
+  public readonly collidingWith: Set<Rapier3dRigidBodyComponent> = new Set();
+
+  protected readonly onCollisionStart$: Subject<CollisionEvent<Point3, Rapier3dRigidBodyComponent>> = new Subject<
+    CollisionEvent<Point3, Rapier3dRigidBodyComponent>
+  >();
+  protected readonly onCollisionEnd$: Subject<Rapier3dRigidBodyComponent | null> =
+    new Subject<Rapier3dRigidBodyComponent | null>();
+
+  get onCollisionStart(): Observable<CollisionEvent<Point3, Rapier3dRigidBodyComponent>> {
+    return this.onCollisionStart$.asObservable();
+  }
+
+  get onCollisionEnd(): Observable<Rapier3dRigidBodyComponent | null> {
+    return this.onCollisionEnd$.asObservable();
+  }
+
+  /**
+   * Called by `Rapier3dWorldComponent`'s centralized collision-event dispatch (see
+   * `Rapier3dWorldComponent.simulate`) - not meant to be called by app code directly. Kept `public`
+   * (rather than some cross-class-accessible `protected`) purely because the dispatching class isn't
+   * a subclass of this one; there's nothing else in this package it's meant to be called from.
+   */
+  public notifyCollisionStart(event: CollisionEvent<Point3, Rapier3dRigidBodyComponent>): void {
+    this.collidingWith.add(event.otherBody);
+    this.onCollisionStart$.next(event);
+  }
+
+  /** See `notifyCollisionStart`'s doc. `otherBody: null` signals the partner was removed from the
+   *  world while still in contact, per `onCollisionEnd`'s doc. */
+  public notifyCollisionEnd(otherBody: Rapier3dRigidBodyComponent | null): void {
+    if (otherBody) {
+      this.collidingWith.delete(otherBody);
+    }
+    this.onCollisionEnd$.next(otherBody);
+  }
 
   public get factoryProps(): [
     ColliderDesc[],
@@ -205,6 +255,13 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
     if (world.physicsWorld != this.world) {
       throw new Error('Rapier3D bodies cannot be shared between different worlds');
     }
+    // notify every body still touching this one that the contact ended because *this* body vanished
+    // (not because they physically separated) - see `collidingWith`'s doc.
+    for (const other of this.collidingWith) {
+      other.collidingWith.delete(this);
+      other.notifyCollisionEnd(null);
+    }
+    this.collidingWith.clear();
     if (this._nativeBody) {
       for (const col of this._nativeBodyColliders!) {
         this.world.nativeWorld!.removeCollider(col, false);
@@ -226,5 +283,7 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
     if (this.nativeBody) {
       this.removeFromWorld({ physicsWorld: this.world } as any as Rapier3dGgWorld, true);
     }
+    this.onCollisionStart$.complete();
+    this.onCollisionEnd$.complete();
   }
 }

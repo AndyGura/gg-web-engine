@@ -382,4 +382,108 @@ describe('GgWorld', () => {
       });
     });
   });
+
+  describe('audio listener auto-bind', () => {
+    function makeFakeAudioScene(): any {
+      let activeListener: any = null;
+      return {
+        init: async () => {},
+        dispose: () => {},
+        update: () => {},
+        get activeListener() {
+          return activeListener;
+        },
+        setActiveListener: (target: any) => {
+          activeListener = target;
+        },
+      };
+    }
+
+    function worldWithAudioScene(audioScene: any): GgWorld<any, any> {
+      class MockWorldWithAudio extends GgWorld<any, any> {
+        constructor() {
+          super({
+            visualScene: { init: async () => {}, dispose: () => {} } as any,
+            physicsWorld: { init: async () => {}, simulate: () => {}, dispose: () => {} } as any,
+            audioScene,
+          });
+        }
+
+        addPrimitiveRigidBody(): any {
+          return undefined;
+        }
+      }
+      return new MockWorldWithAudio();
+    }
+
+    it('does nothing when the world has no audioScene', () => {
+      // MockWorld (the default `world` from the outer beforeEach) has no audioScene at all
+      const renderer = new TestRendererEntity(makeFakeRenderer());
+      expect(() => world.addEntity(renderer)).not.toThrow();
+    });
+
+    it('binds the listener to the sole renderer camera automatically', () => {
+      const audioScene = makeFakeAudioScene();
+      const audioWorld = worldWithAudioScene(audioScene);
+      const fakeRenderer = makeFakeRenderer();
+      const renderer = new TestRendererEntity(fakeRenderer);
+      renderer.name = 'main';
+
+      audioWorld.addEntity(renderer);
+
+      expect(audioScene.activeListener).toBe(fakeRenderer.camera);
+    });
+
+    it('does not guess, and warns, once a second renderer is added with no explicit listener', () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const audioScene = makeFakeAudioScene();
+      const audioWorld = worldWithAudioScene(audioScene);
+      const first = new TestRendererEntity(makeFakeRenderer());
+      first.name = 'main';
+      const second = new TestRendererEntity(makeFakeRenderer());
+      second.name = 'minimap';
+
+      audioWorld.addEntity(first);
+      const listenerAfterFirst = audioScene.activeListener;
+      audioWorld.addEntity(second);
+
+      expect(audioScene.activeListener).toBe(listenerAfterFirst); // unchanged - no guessing
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('2 renderers present'));
+      warnSpy.mockRestore();
+    });
+
+    it('never overrides a listener the app already set explicitly', () => {
+      const audioScene = makeFakeAudioScene();
+      const explicitListener = { position: { x: 9, y: 9, z: 9 }, rotation: { x: 0, y: 0, z: 0, w: 1 } };
+      audioScene.setActiveListener(explicitListener);
+      const audioWorld = worldWithAudioScene(audioScene);
+      const renderer = new TestRendererEntity(makeFakeRenderer());
+      renderer.name = 'main';
+
+      audioWorld.addEntity(renderer);
+
+      expect(audioScene.activeListener).toBe(explicitListener);
+    });
+
+    it('keeps an explicitly-set listener even after the sole renderer is swapped out for another one', () => {
+      const audioScene = makeFakeAudioScene();
+      const audioWorld = worldWithAudioScene(audioScene);
+      const first = new TestRendererEntity(makeFakeRenderer());
+      first.name = 'main';
+      audioWorld.addEntity(first);
+      expect(audioScene.activeListener).toBe(first.camera); // auto-bound so far
+
+      const explicitListener = { position: { x: 9, y: 9, z: 9 }, rotation: { x: 0, y: 0, z: 0, w: 1 } };
+      audioScene.setActiveListener(explicitListener); // app takes over explicitly
+      audioWorld.removeEntity(first);
+
+      const second = new TestRendererEntity(makeFakeRenderer());
+      second.name = 'main';
+      audioWorld.addEntity(second); // renderer swap - world is back down to exactly one renderer
+
+      // must still be the app's explicit choice - the earlier auto-bind must not re-arm and
+      // clobber it just because the renderer count dropped back to one
+      expect(audioScene.activeListener).toBe(explicitListener);
+    });
+  });
 });

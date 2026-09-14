@@ -10,7 +10,9 @@ import {
   MutablePoint3,
   MutableSpherical,
   Pnt3,
+  Point3,
   Qtrn,
+  SELF_VIEW_HIDDEN_RENDER_LAYER,
   TickOrder,
 } from '../../../../base';
 import { Renderer3dEntity } from '../../renderer-3d.entity';
@@ -107,7 +109,10 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
   public readonly directionsInput: DirectionKeyboardInput;
 
   private _spherical: MutableSpherical = { phi: Math.PI / 2, theta: 0, radius: 1 };
-  private _viewMode: PlayerCharacterControllerViewMode;
+  // Definite-assignment asserted: always set via the `viewMode` setter at the end of the
+  // constructor (`this.viewMode = this.options.viewMode`), not assigned directly - see that call's
+  // own comment for why it's routed through the setter instead.
+  private _viewMode!: PlayerCharacterControllerViewMode;
 
   public get viewMode(): PlayerCharacterControllerViewMode {
     return this._viewMode;
@@ -115,8 +120,20 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
 
   public set viewMode(value: PlayerCharacterControllerViewMode) {
     this._viewMode = value;
+    const firstPerson = value === 'first-person';
     if (this.character) {
-      this.character.hideMesh = value === 'first-person';
+      this.character.hideMesh = firstPerson;
+    }
+    // `character.hideMesh` alone only moves the mesh onto `SELF_VIEW_HIDDEN_RENDER_LAYER` - nothing
+    // stops seeing it there until *this* camera specifically excludes that layer (see
+    // `CharacterController3dEntity.hideMesh`'s own doc). Every other camera in the world (a portal's
+    // own "looking through" render pass, a third-person spectator view, ...) is never touched here
+    // and keeps rendering every layer by default, so it keeps seeing this character's body
+    // regardless of this camera's own first/third-person state.
+    if (firstPerson) {
+      this.camera.disableRenderLayer(SELF_VIEW_HIDDEN_RENDER_LAYER);
+    } else {
+      this.camera.enableRenderLayer(SELF_VIEW_HIDDEN_RENDER_LAYER);
     }
   }
 
@@ -139,6 +156,40 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
     this._spherical = Pnt3.toSpherical(Pnt3.rot(Pnt3.nZ, this.camera.rotation));
   }
 
+  /**
+   * `Pnt3.fromSpherical(this._spherical)` - the same world-space look direction `updateCamera()`
+   * itself derives every tick from the internal `_spherical` mouse-look state (that state has no
+   * other public accessor at all otherwise). Read to get the current view direction; **write** to
+   * nudge it by an arbitrary rotation without waiting for mouse input - most concretely, a future
+   * portal-crossing implementation applying a portal pair's own delta rotation to the view the
+   * instant the character crosses (exactly as `PortalGunController`'s existing
+   * `getOppositePortalPositioning` already reorients a *held* `Grabbable3dEntity`'s rotation, just
+   * with nothing today able to reach in and do the same to the player's own look direction).
+   *
+   * The written direction's pitch is clamped to `minPitch`/`maxPitch` the same way ordinary
+   * mouse-look already is - see `clampPitch`. Only yaw/pitch are ever recovered from `value`
+   * (`_spherical.radius` itself is meaningless here and left untouched) - a non-unit-length `value`
+   * is fine, only its direction is used.
+   */
+  public get lookDirection(): Point3 {
+    return Pnt3.fromSpherical(this._spherical);
+  }
+
+  public set lookDirection(value: Point3) {
+    const spherical = Pnt3.toSpherical(value);
+    this._spherical.theta = spherical.theta;
+    this._spherical.phi = this.clampPitch(spherical.phi);
+  }
+
+  /** Shared by the mouse-look handler and `lookDirection`'s own setter - keeps both paths clamped to
+   * the exact same `minPitch`/`maxPitch` bounds instead of maintaining the conversion twice. */
+  private clampPitch(phi: number): number {
+    const pitchToPhi = (pitch: number) => Math.PI / 2 - pitch;
+    const phiMin = pitchToPhi(this.options.maxPitch);
+    const phiMax = pitchToPhi(this.options.minPitch);
+    return Math.max(phiMin, Math.min(phiMax, phi));
+  }
+
   constructor(
     protected readonly keyboard: KeyboardInput,
     /** The character this controller drives. May be swapped/set to `null` at any time. */
@@ -152,12 +203,14 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
       ...options,
       mouseOptions: { ...DEFAULT_OPTIONS.mouseOptions, ...options.mouseOptions },
     };
-    this._viewMode = this.options.viewMode;
     this.mouseInput = new MouseInput(this.options.mouseOptions);
     this.directionsInput = new DirectionKeyboardInput(keyboard, this.options.keymap);
-    if (this.character) {
-      this.character.hideMesh = this._viewMode === 'first-person';
-    }
+    // Routed through the `viewMode` setter (not just `this._viewMode = ...`) so the initial
+    // `character.hideMesh`/camera render-layer state are both applied up front too, exactly as a
+    // later `toggleViewMode()` call would - `_viewMode` itself hasn't been assigned yet at this
+    // point, so the setter's own `this._viewMode = value` line is what establishes it here, not a
+    // redundant re-assignment of an already-set field.
+    this.viewMode = this.options.viewMode;
   }
 
   async onSpawned(world: GgWorld<any, any>): Promise<void> {
@@ -231,13 +284,7 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
       )
       .subscribe(delta => {
         this._spherical.theta -= (delta.x * this.options.mouseSensitivity) / 1000;
-        const pitchToPhi = (pitch: number) => Math.PI / 2 - pitch;
-        const phiMin = pitchToPhi(this.options.maxPitch);
-        const phiMax = pitchToPhi(this.options.minPitch);
-        this._spherical.phi = Math.max(
-          phiMin,
-          Math.min(phiMax, this._spherical.phi + (delta.y * this.options.mouseSensitivity) / 1000),
-        );
+        this._spherical.phi = this.clampPitch(this._spherical.phi + (delta.y * this.options.mouseSensitivity) / 1000);
       });
 
     this.tick$
@@ -294,9 +341,9 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
         // (`RaycastOptions` has no per-call "exclude this body" hook, and the character's collision
         // group is not, by default, distinct from ordinary level geometry's) immediately reports a
         // self-hit at ~0 distance, collapsing the third-person camera onto `target` every tick -
-        // indistinguishable from first-person (regression, found live in the rapier3d example: `V`
-        // correctly flipped `viewMode` to `'third-person'`, but the camera stayed glued to the
-        // character's own head position instead of pulling back). Nudge the ray's start point
+        // indistinguishable from first-person (regression, found live in a third-person rapier3d
+        // scene: `V` correctly flipped `viewMode` to `'third-person'`, but the camera stayed glued
+        // to the character's own head position instead of pulling back). Nudge the ray's start point
         // outward past the capsule's own geometry along the same look direction first via
         // `characterControllerSelfHitSkip()` (see its own doc - `ObjectGrabController.tryGrab()` uses
         // the same helper for the identical problem), then add that offset back onto the measured hit

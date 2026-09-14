@@ -18,13 +18,14 @@ describe('MatterWorldComponent', () => {
   });
 
   describe('Rigid bodies', () => {
-
     it('should simulate inertial motion of rigid body', () => {
-
-      const circle = world.factory.createRigidBody({
-        shape: { shape: 'CIRCLE', radius: 1 },
-        body: { dynamic: true, mass: 5 },
-      }, { position: { x: -5, y: 0 } });
+      const circle = world.factory.createRigidBody(
+        {
+          shape: { shape: 'CIRCLE', radius: 1 },
+          body: { dynamic: true, mass: 5 },
+        },
+        { position: { x: -5, y: 0 } },
+      );
       circle.addToWorld({ physicsWorld: world } as any);
       circle.linearVelocity = { x: 1, y: 0 };
       circle.nativeBody.frictionAir = 0;
@@ -37,19 +38,24 @@ describe('MatterWorldComponent', () => {
     });
 
     it('should simulate collision of two rigid bodies', () => {
-
-      const circle0 = world.factory.createRigidBody({
-        shape: { shape: 'CIRCLE', radius: 1 },
-        body: { dynamic: true, mass: 5 },
-      }, { position: { x: -5, y: 0 } });
+      const circle0 = world.factory.createRigidBody(
+        {
+          shape: { shape: 'CIRCLE', radius: 1 },
+          body: { dynamic: true, mass: 5 },
+        },
+        { position: { x: -5, y: 0 } },
+      );
       circle0.addToWorld({ physicsWorld: world } as any);
       circle0.linearVelocity = { x: 1, y: 0 };
       circle0.nativeBody.frictionAir = 0;
 
-      const circle1 = world.factory.createRigidBody({
-        shape: { shape: 'CIRCLE', radius: 1 },
-        body: { dynamic: true, mass: 5 },
-      }, { position: { x: 5, y: 0 } });
+      const circle1 = world.factory.createRigidBody(
+        {
+          shape: { shape: 'CIRCLE', radius: 1 },
+          body: { dynamic: true, mass: 5 },
+        },
+        { position: { x: 5, y: 0 } },
+      );
       circle1.addToWorld({ physicsWorld: world } as any);
       circle1.linearVelocity = { x: -1, y: 0 };
       circle1.nativeBody.frictionAir = 0;
@@ -62,22 +68,42 @@ describe('MatterWorldComponent', () => {
       expect(circle1.position.x).toBeGreaterThan(0);
     });
 
+    it('keeps handleIdEntityMap (the O(1) findRigidBody lookup) in sync with children on add/remove', () => {
+      const circle = world.factory.createRigidBody(
+        { shape: { shape: 'CIRCLE', radius: 1 }, body: { dynamic: true, mass: 1 } },
+        { position: { x: 0, y: 0 } },
+      );
+      circle.addToWorld({ physicsWorld: world } as any);
+
+      expect(world.handleIdEntityMap.get(circle.nativeBody.id)).toBe(circle);
+
+      circle.removeFromWorld({ physicsWorld: world } as any);
+
+      expect(world.handleIdEntityMap.has(circle.nativeBody.id)).toBe(false);
+    });
+
     it('should not simulate collision of two rigid bodies with different collision groups', () => {
       const cg0 = world.registerCollisionGroup();
-      const circle0 = world.factory.createRigidBody({
-        shape: { shape: 'CIRCLE', radius: 1 },
-        body: { dynamic: true, mass: 5 },
-      }, { position: { x: -5, y: 0 } });
+      const circle0 = world.factory.createRigidBody(
+        {
+          shape: { shape: 'CIRCLE', radius: 1 },
+          body: { dynamic: true, mass: 5 },
+        },
+        { position: { x: -5, y: 0 } },
+      );
       circle0.addToWorld({ physicsWorld: world } as any);
       circle0.linearVelocity = { x: 1, y: 0 };
       circle0.nativeBody.frictionAir = 0;
       circle0.ownCollisionGroups = circle0.interactWithCollisionGroups = [cg0];
 
       const cg1 = world.registerCollisionGroup();
-      const circle1 = world.factory.createRigidBody({
-        shape: { shape: 'CIRCLE', radius: 1 },
-        body: { dynamic: true, mass: 5 },
-      }, { position: { x: 5, y: 0 } });
+      const circle1 = world.factory.createRigidBody(
+        {
+          shape: { shape: 'CIRCLE', radius: 1 },
+          body: { dynamic: true, mass: 5 },
+        },
+        { position: { x: 5, y: 0 } },
+      );
       circle1.addToWorld({ physicsWorld: world } as any);
       circle1.linearVelocity = { x: -1, y: 0 };
       circle1.nativeBody.frictionAir = 0;
@@ -93,13 +119,15 @@ describe('MatterWorldComponent', () => {
   });
 
   describe.skip('Raycast', () => {
-
     it('should return no hit when ray does not intersect any object', () => {
       // Create a square far away from the ray
-      const square = world.factory.createRigidBody({
-        shape: { shape: 'SQUARE', dimensions: { x: 1, y: 1 } },
-        body: { dynamic: false, mass: 0 },
-      }, { position: { x: 10, y: 10 } });
+      const square = world.factory.createRigidBody(
+        {
+          shape: { shape: 'SQUARE', dimensions: { x: 1, y: 1 } },
+          body: { dynamic: false, mass: 0 },
+        },
+        { position: { x: 10, y: 10 } },
+      );
       square.addToWorld({ physicsWorld: world } as any);
 
       world.simulate(1);
@@ -119,10 +147,13 @@ describe('MatterWorldComponent', () => {
 
     it('should detect hit when ray intersects an object', () => {
       // Create a square in the path of the ray
-      const square = world.factory.createRigidBody({
-        shape: { shape: 'SQUARE', dimensions: { x: 2, y: 2 } },
-        body: { dynamic: false, mass: 0 },
-      }, { position: { x: 0, y: -5 } });
+      const square = world.factory.createRigidBody(
+        {
+          shape: { shape: 'SQUARE', dimensions: { x: 2, y: 2 } },
+          body: { dynamic: false, mass: 0 },
+        },
+        { position: { x: 0, y: -5 } },
+      );
       square.addToWorld({ physicsWorld: world } as any);
 
       world.simulate(1);
@@ -153,15 +184,18 @@ describe('MatterWorldComponent', () => {
       const group2 = world.registerCollisionGroup();
 
       // Create a square that only belongs to group1
-      const square1 = world.factory.createRigidBody({
-        shape: { shape: 'SQUARE', dimensions: { x: 2, y: 2 } },
-        body: {
-          dynamic: false,
-          mass: 0,
-          ownCollisionGroups: [group1],
-          interactWithCollisionGroups: [group1, group2],
+      const square1 = world.factory.createRigidBody(
+        {
+          shape: { shape: 'SQUARE', dimensions: { x: 2, y: 2 } },
+          body: {
+            dynamic: false,
+            mass: 0,
+            ownCollisionGroups: [group1],
+            interactWithCollisionGroups: [group1, group2],
+          },
         },
-      }, { position: { x: 0, y: -5 } });
+        { position: { x: 0, y: -5 } },
+      );
       square1.addToWorld({ physicsWorld: world } as any);
 
       world.simulate(1);
@@ -192,10 +226,13 @@ describe('MatterWorldComponent', () => {
 
     it('should calculate hit distance correctly', () => {
       // Create a square at a known distance
-      const square = world.factory.createRigidBody({
-        shape: { shape: 'SQUARE', dimensions: { x: 2, y: 2 } },
-        body: { dynamic: false, mass: 0 },
-      }, { position: { x: 0, y: -5 } });
+      const square = world.factory.createRigidBody(
+        {
+          shape: { shape: 'SQUARE', dimensions: { x: 2, y: 2 } },
+          body: { dynamic: false, mass: 0 },
+        },
+        { position: { x: 0, y: -5 } },
+      );
       square.addToWorld({ physicsWorld: world } as any);
 
       world.simulate(1);
@@ -220,15 +257,18 @@ describe('MatterWorldComponent', () => {
       const group2 = world.registerCollisionGroup();
 
       // Create a square that belongs to group1
-      const square = world.factory.createRigidBody({
-        shape: { shape: 'SQUARE', dimensions: { x: 2, y: 2 } },
-        body: {
-          dynamic: false,
-          mass: 0,
-          ownCollisionGroups: [group1],
-          interactWithCollisionGroups: [group1, group2],
+      const square = world.factory.createRigidBody(
+        {
+          shape: { shape: 'SQUARE', dimensions: { x: 2, y: 2 } },
+          body: {
+            dynamic: false,
+            mass: 0,
+            ownCollisionGroups: [group1],
+            interactWithCollisionGroups: [group1, group2],
+          },
         },
-      }, { position: { x: 0, y: -5 } });
+        { position: { x: 0, y: -5 } },
+      );
       square.addToWorld({ physicsWorld: world } as any);
 
       world.simulate(1);
@@ -247,16 +287,22 @@ describe('MatterWorldComponent', () => {
 
     it('should return correct hit body', () => {
       // Create two squares at different positions
-      const square1 = world.factory.createRigidBody({
-        shape: { shape: 'SQUARE', dimensions: { x: 1, y: 1 } },
-        body: { dynamic: false, mass: 0 },
-      }, { position: { x: 0, y: -3 } });
+      const square1 = world.factory.createRigidBody(
+        {
+          shape: { shape: 'SQUARE', dimensions: { x: 1, y: 1 } },
+          body: { dynamic: false, mass: 0 },
+        },
+        { position: { x: 0, y: -3 } },
+      );
       square1.addToWorld({ physicsWorld: world } as any);
 
-      const square2 = world.factory.createRigidBody({
-        shape: { shape: 'SQUARE', dimensions: { x: 1, y: 1 } },
-        body: { dynamic: false, mass: 0 },
-      }, { position: { x: 0, y: -7 } });
+      const square2 = world.factory.createRigidBody(
+        {
+          shape: { shape: 'SQUARE', dimensions: { x: 1, y: 1 } },
+          body: { dynamic: false, mass: 0 },
+        },
+        { position: { x: 0, y: -7 } },
+      );
       square2.addToWorld({ physicsWorld: world } as any);
 
       world.simulate(1);
@@ -275,10 +321,13 @@ describe('MatterWorldComponent', () => {
 
     it('should handle edge case with ray starting inside an object', () => {
       // Create a square
-      const square = world.factory.createRigidBody({
-        shape: { shape: 'SQUARE', dimensions: { x: 4, y: 4 } },
-        body: { dynamic: false, mass: 0 },
-      }, { position: { x: 0, y: 0 } });
+      const square = world.factory.createRigidBody(
+        {
+          shape: { shape: 'SQUARE', dimensions: { x: 4, y: 4 } },
+          body: { dynamic: false, mass: 0 },
+        },
+        { position: { x: 0, y: 0 } },
+      );
       square.addToWorld({ physicsWorld: world } as any);
 
       world.simulate(1);

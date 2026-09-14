@@ -1,11 +1,15 @@
 export * from './blueprint/blueprint';
 export * from './blueprint/blueprint-node';
 export * from './blueprint/nodes/remove-entity.node';
+export * from './blueprint/nodes/play-sound.node';
 
 export * from './clock/global-clock';
 export * from './clock/i-clock';
 export * from './clock/pausable-clock';
 
+export * from './components/audio/i-audio-scene.component';
+export * from './components/audio/i-audio-source.component';
+export * from './components/audio/i-audio-source.component-factory';
 export * from './components/physics/i-body.component';
 export * from './components/physics/i-rigid-body.component';
 export * from './components/physics/i-trigger.component';
@@ -35,9 +39,11 @@ export * from './interfaces/i-positionable';
 
 export * from './models/axis-directions';
 export * from './models/body-options';
+export * from './models/collision-event';
 export * from './models/geometry-nodes';
 export * from './models/points';
 export * from './models/raycasting';
+export * from './models/render-layer';
 
 export * from './math/box';
 export * from './math/point2';

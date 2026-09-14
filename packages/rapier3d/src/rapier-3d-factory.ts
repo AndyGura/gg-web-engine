@@ -42,9 +42,16 @@ export class Rapier3dFactory implements IPhysicsBody3dComponentFactory<Rapier3dP
       rotation?: Point4;
     },
   ): Rapier3dRigidBodyComponent {
+    // `Rapier3dRigidBodyComponent.onCollisionStart`/`onCollisionEnd` are backed by Rapier's own
+    // collision-event queue (drained centrally by `Rapier3dWorldComponent.simulate`), which only
+    // reports a contact pair when *at least one* of its two colliders has `COLLISION_EVENTS` active
+    // (triggers already set this on their own sensor collider - see `createTrigger` below - but an
+    // ordinary rigid-body-vs-rigid-body contact needs it here too, since neither side had it before).
+    const colliderDescr = this.createColliderDescr(descriptor.shape);
+    colliderDescr.forEach(c => c.setActiveEvents(ActiveEvents.COLLISION_EVENTS));
     return new Rapier3dRigidBodyComponent(
       this.world,
-      this.createColliderDescr(descriptor.shape),
+      colliderDescr,
       descriptor.shape,
       this.createRigidBodyDescr(descriptor.body, transform),
       {

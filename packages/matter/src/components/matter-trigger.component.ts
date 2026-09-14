@@ -28,7 +28,7 @@ export class MatterTriggerComponent
   protected intersectionsAmount = 0;
   protected currentOverlaps: Set<MatterRigidBodyComponent> = new Set();
 
-  private onCollisionStart(event: IEventCollision<Engine>) {
+  private handleCollisionStart(event: IEventCollision<Engine>) {
     for (const pair of event.pairs) {
       let body: Body | null = null;
       if (pair.bodyA === this.nativeBody) {
@@ -45,7 +45,7 @@ export class MatterTriggerComponent
     }
   }
 
-  private onCollisionEnd(event: IEventCollision<Engine>) {
+  private handleCollisionEnd(event: IEventCollision<Engine>) {
     for (const pair of event.pairs) {
       let body: Body | null = null;
       if (pair.bodyA === this.nativeBody) {
@@ -76,8 +76,8 @@ export class MatterTriggerComponent
         this.intersectionsAmount--;
       }
     });
-    this.onCollisionStart = this.onCollisionStart.bind(this);
-    this.onCollisionEnd = this.onCollisionEnd.bind(this);
+    this.handleCollisionStart = this.handleCollisionStart.bind(this);
+    this.handleCollisionEnd = this.handleCollisionEnd.bind(this);
   }
 
   addToWorld(world: MatterGgWorld): void {
@@ -88,13 +88,13 @@ export class MatterTriggerComponent
     this.currentOverlaps.clear();
     super.addToWorld(world);
 
-    Events.on(world.physicsWorld.matterEngine!, 'collisionStart', this.onCollisionStart);
-    Events.on(world.physicsWorld.matterEngine!, 'collisionEnd', this.onCollisionEnd);
+    Events.on(world.physicsWorld.matterEngine!, 'collisionStart', this.handleCollisionStart);
+    Events.on(world.physicsWorld.matterEngine!, 'collisionEnd', this.handleCollisionEnd);
   }
 
   removeFromWorld(world: MatterGgWorld, dispose?: boolean): void {
-    Events.off(world.physicsWorld.matterEngine!, 'collisionStart', this.onCollisionStart);
-    Events.off(world.physicsWorld.matterEngine!, 'collisionEnd', this.onCollisionEnd);
+    Events.off(world.physicsWorld.matterEngine!, 'collisionStart', this.handleCollisionStart);
+    Events.off(world.physicsWorld.matterEngine!, 'collisionEnd', this.handleCollisionEnd);
 
     for (const body of this.currentOverlaps) {
       this.onLeft$.next(body);
@@ -103,8 +103,9 @@ export class MatterTriggerComponent
     super.removeFromWorld(world, dispose);
   }
 
-  /** Completes `onEnter$`/`onLeft$` - `MatterRigidBodyComponent.dispose()` is a no-op (see its own
-   * doc), so this is the only place these two subjects ever get completed. */
+  /** Completes `onEnter$`/`onLeft$` on top of `MatterRigidBodyComponent.dispose()`'s own
+   * `onCollisionStart$`/`onCollisionEnd$` completion (via `super.dispose()`) - this trigger's own
+   * enter/exit subjects are a separate pair this subclass owns and must complete itself. */
   dispose(): void {
     this.onEnter$.complete();
     this.onLeft$.complete();

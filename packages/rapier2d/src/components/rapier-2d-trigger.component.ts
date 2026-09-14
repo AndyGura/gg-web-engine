@@ -56,24 +56,25 @@ export class Rapier2dTriggerComponent
     super.removeFromWorld(world, dispose);
   }
 
+  /** @internal invoked by `Rapier2dWorldComponent.simulate()` for each sensor-overlap start/stop
+   * transition drained from the world's shared event queue that involves this trigger - draining
+   * now happens once, centrally, in the world component (so it can also route plain rigid-body
+   * contact events to `Rapier2dRigidBodyComponent.handleCollisionStart`/`handleCollisionEnd`
+   * without racing this trigger for the same queue - see `Rapier2dWorldComponent.simulate`'s own
+   * doc), rather than each trigger draining the whole queue itself on every `checkOverlaps()` call
+   * as before. */
+  handleOverlapEvent(other: Rapier2dRigidBodyComponent, started: boolean): void {
+    if (started) {
+      this.overlaps.add(other);
+      this.onEnter$.next(other);
+    } else {
+      this.overlaps.delete(other);
+      this.onLeft$.next(other);
+    }
+  }
+
   checkOverlaps(): void {
-    this.world.eventQueue.drainCollisionEvents((h1: any, h2: any, started: any) => {
-      let otherBody: Rapier2dRigidBodyComponent | undefined;
-      if (h1 === this.nativeBody?.handle) {
-        otherBody = this.world.handleIdEntityMap.get(h2);
-      } else if (h2 === this.nativeBody?.handle) {
-        otherBody = this.world.handleIdEntityMap.get(h1);
-      }
-      if (!otherBody) return;
-      if (started) {
-        this.overlaps.add(otherBody);
-        this.onEnter$.next(otherBody);
-      } else {
-        this.overlaps.delete(otherBody);
-        this.onLeft$.next(otherBody);
-      }
-    });
-    for (const body of this.overlaps.keys()) {
+    for (const body of this.overlaps) {
       if (!body.nativeBody) {
         this.overlaps.delete(body);
         this.onLeft$.next(body);
@@ -89,8 +90,13 @@ export class Rapier2dTriggerComponent
     return component;
   }
 
+  /** Completes `onEnter$`/`onLeft$` on top of `Rapier2dRigidBodyComponent.dispose()`'s own
+   * `onCollisionStart$`/`onCollisionEnd$` completion (via `super.dispose()`) - this trigger's own
+   * subjects have no other owner to complete them. */
   dispose() {
     this.overlaps.clear();
+    this.onEnter$.complete();
+    this.onLeft$.complete();
     super.dispose();
   }
 }

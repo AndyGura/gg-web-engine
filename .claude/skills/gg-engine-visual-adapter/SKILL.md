@@ -60,7 +60,12 @@ Every adapter component class then `implements I<Thing>Component<<Lib>VisualType
 - **Scene component** (`IVisualScene(2d|3d)Component`): owns the native scene graph root,
   `async init()` (create native scene — do heavy/async setup here, not in the constructor),
   `createRenderer(camera, canvas?, rendererOptions?)`, and `dispose()`. Expose the native scene
-  object as a getter (`nativeScene` in `ThreeSceneComponent`) for advanced consumer access.
+  object as a getter (`nativeScene` in `ThreeSceneComponent`) for advanced consumer access. 3D only:
+  also owns render layers — `mainRenderLayer` must report `0` (matching a fresh native scene
+  graph's own default layer, so it agrees with `MAIN_RENDER_LAYER` without either needing to be
+  threaded through call sites) and `registerRenderLayer()`/`deregisterRenderLayer(layer)` allocate/
+  free layer indices from a locked pool (see `ThreeSceneComponent.lockedRenderLayers` for the
+  pattern); deregistering doesn't itself touch any object's/camera's current layer membership.
 - **Factory** (`IDisplayObject(2d|3d)ComponentFactory`): `createPrimitive(descriptor, material?)`
   is the one required method; the base class in core already provides `createSquare`/`createCircle`
   (2D) shortcuts built on top of it — 3D equivalents should cover the shapes in
@@ -72,10 +77,24 @@ Every adapter component class then `implements I<Thing>Component<<Lib>VisualType
 - **Display object component** (`IDisplayObject(2d|3d)Component`): must implement
   `IPositionable(2d|3d)` — position/rotation getters and setters proxied to the native
   transform — since `Entity(2d|3d)` syncs this against the physics body every tick. This is the
-  most performance-sensitive piece; avoid allocating new objects per get/set.
+  most performance-sensitive piece; avoid allocating new objects per get/set. 3D only: also
+  implements `enableRenderLayer`/`disableRenderLayer`/`isRenderLayerEnabled(layer)` — a
+  layer-membership bitmask tested the same way collision groups are (an object is rendered by a
+  given camera iff at least one layer is enabled on both sides). Apply these to the object's
+  *entire native subtree* (its own root node plus every descendant), not just the root, since a
+  multi-mesh model must hide/show as one unit — see `ThreeDisplayObjectComponent.
+  enableRenderLayer`'s `nativeMesh.traverse(...)` for the pattern. Watch the traversal callback's
+  own semantics here: three.js's `Object3D.traverse()` fires on the root node itself *first*, then
+  recursively on children — a traversal that assumes it only ever visits descendants will silently
+  skip the root and leave it on the wrong layer.
 - **Camera component** (`ICamera(2d|3d)Component`): wraps the native camera type; 3D typically
   needs both perspective and orthographic factory methods (see `world.visualScene.factory.
-  createPerspectiveCamera()` used in the core README quickstart).
+  createPerspectiveCamera()` used in the core README quickstart). 3D only: `ICamera3dComponent`
+  extends `IDisplayObject3dComponent`, so it inherits the same three render-layer methods rather
+  than declaring its own — a freshly-created camera must default to rendering *every* layer (three:
+  `nativeCamera.layers.enableAll()`, not just the main one), so only a camera that deliberately
+  wants to exclude something (e.g. hiding a character's own body from its own first-person view via
+  `SELF_VIEW_HIDDEN_RENDER_LAYER`) ever needs to call `disableRenderLayer`.
 - **Renderer component** (`IRenderer(2d|3d)Component`): accepts an optional `HTMLCanvasElement`
   (create an offscreen/detached canvas if none given) and `RendererOptions`, drives the actual
   draw call, supports resize, and `dispose()`s native GPU resources. `RendererOptions &

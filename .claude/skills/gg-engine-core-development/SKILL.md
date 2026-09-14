@@ -286,18 +286,63 @@ export type PhysicsTypeDocRepo2D = {
   rigidBody: IRigidBody2dComponent;
   trigger: ITrigger2dComponent;
 };
+export type AudioTypeDocRepo2D = {
+  factory: IAudioSource2dComponentFactory;
+  source: IAudioSource2dComponent;
+  clip: unknown;
+};
 ```
 
-`IVisualSceneComponent<D, R, VTypeDoc>`, `IPhysicsWorldComponent<D, R, PTypeDoc>`, etc. are generic
-over these repos with a default equal to the base (unbound) interface. An adapter package
-instantiates concrete versions (e.g. `ThreeVisualTypeDocRepo`, `Rapier2dPhysicsTypeDocRepo` in its
-own `types.ts`) and implements the interfaces parametrized with them. `Gg2dWorldTypeDocRepo` /
-`Gg3dWorldTypeDocRepo` combine a `vTypeDoc` + `pTypeDoc` pair, with `...VPatch`/`...PPatch` utility
-types letting an app specify only one side and utility types like `TypedGg2dWorld<VW, PW>` compose
-a full app-level world type from an independently-typed visual world and physics world. **Don't
-break this indirection** — e.g. never have a base interface reference a concrete adapter type
-directly, and when adding a new capability to a component interface, add the new type to the
-relevant `TypeDocRepo` rather than hardcoding it.
+`IVisualSceneComponent<D, R, VTypeDoc>`, `IPhysicsWorldComponent<D, R, PTypeDoc>`,
+`IAudioSceneComponent<D, R, ATypeDoc>`, etc. are generic over these repos with a default equal to
+the base (unbound) interface. An adapter package instantiates concrete versions (e.g.
+`ThreeVisualTypeDocRepo`, `Rapier2dPhysicsTypeDocRepo`, `WebAudioTypeDocRepo3D` in its own
+`types.ts`) and implements the interfaces parametrized with them. `Gg2dWorldTypeDocRepo` /
+`Gg3dWorldTypeDocRepo` combine a `vTypeDoc` + `pTypeDoc` + `aTypeDoc` triple, with
+`...VPatch`/`...PPatch`/`...APatch` utility types letting an app specify only one side and utility
+types like `TypedGg2dWorld<VW, PW, AW?>` compose a full app-level world type from an
+independently-typed visual world, physics world, and (optionally - it defaults to the base/unbound
+audio shape when omitted) audio world. **Don't break this indirection** — e.g. never have a base
+interface reference a concrete adapter type directly, and when adding a new capability to a
+component interface, add the new type to the relevant `TypeDocRepo` rather than hardcoding it.
+
+**A getter returning `Observable<SomeWrapperType<..., PTypeDoc['rigidBody']>>` at the *base*,
+unbound-PTypeDoc interface level fails to compile with a confusing, deeply-nested "types of
+`subscribe`'s `next` parameter are incompatible" error** - found adding
+`IRigidBodyComponent.onCollisionStart`/`onCollisionEnd` (`CollisionEvent`, mirroring
+`ITriggerComponent.onEntityEntered`/`onEntityLeft`'s enter/leave shape but with a payload object
+instead of just the body itself). The existing trigger getters get away with returning
+`Observable<IRigidBodyComponent<D, R, PTypeDoc>>` at the base interface (the *abstract* interface
+type, not `PTypeDoc['rigidBody']`) precisely so nothing self-referential happens; a 2D/3D-specific
+subinterface then re-declares the getter narrowed to `Observable<PTypeDoc['rigidBody']>` for the
+concrete type. Baking `PTypeDoc['rigidBody']` into a wrapper type used *directly in the base
+interface's own declaration* breaks this: `PTypeDoc` defaults to `PhysicsTypeDocRepo<D, R>`, whose
+own `rigidBody` field is `IRigidBodyComponent<D, R>` again - a self-referential expansion that, once
+nested inside a nominal nested type of the wrapper class (like `otherBody: PTypeDoc['rigidBody']`
+inside a `CollisionEvent<D, R, PTypeDoc>`), no longer matches structurally between two different
+subinterfaces (e.g. `ITrigger2dComponent`'s narrowing of `ITriggerComponent`) even though it looks
+like it should - `Observable`/`Subject`'s `subscribe` overloads take the emitted value as a callback
+*parameter*, and a getter (unlike a method) gets no bivariant-parameter-checking leniency, so this
+surfaces as a hard error instead of silently type-checking loosely. **Fix**: keep the wrapper type's
+"other body" field generic over its own free type parameter instead of deriving it from `PTypeDoc`
+directly (`CollisionEvent<D, RigidBody = unknown>`, not `CollisionEvent<D, R, PTypeDoc>`). Declare
+the base interface's getter as `Observable<CollisionEvent<D, IRigidBodyComponent<D, R, PTypeDoc>>>`
+(matching the existing trigger pattern's use of the abstract interface type at the base level), then
+re-declare narrowed to `Observable<CollisionEvent<Point(2|3), PTypeDoc['rigidBody']>>` in each 2D/3D
+subinterface, same as trigger's own enter/leave getters already do. Any future "richer than just the
+body itself" event payload added to a `TypeDocRepo`-generic interface should follow this same split
+rather than assuming `PTypeDoc['rigidBody']` is safe to embed at the base-interface declaration.
+
+Unlike the visual/physics factory abstracts (`IDisplayObject(2d|3d)ComponentFactory`/
+`IPhysicsBody(2d|3d)ComponentFactory`, each declared fresh in `2d/factories.ts`/`3d/factories.ts`
+since their shape genuinely differs by dimension - different shape descriptors, different creation
+methods), the audio factory contract (`loadClip`/`createSource`) is identical regardless of
+dimension, so it's declared once as `IAudioSourceComponentFactory<D, R, ATypeDoc>` in
+`base/components/audio/i-audio-source.component-factory.ts`; `2d/factories.ts`/`3d/factories.ts`
+each just re-declare an `IAudioSource(2d|3d)ComponentFactory` that narrows `D`/`R` with no new
+members, the same way `IAudioScene(2d|3d)Component` narrows `IAudioSceneComponent`. Don't duplicate
+`loadClip`/`createSource`'s signatures into a new dimension-specific interface if you ever touch
+this - extend the base one instead.
 
 ## Interfaces that are the actual public contract
 
@@ -305,9 +350,10 @@ Changing any of these is a breaking change for every adapter package — grep
 `implements I<Name>` across `packages/*/src` before editing, and plan to update every hit:
 
 - `IComponent`, `IWorldComponent` (base)
-- `IPhysicsWorldComponent` / `IVisualSceneComponent` (+ 2D/3D specializations)
+- `IPhysicsWorldComponent` / `IVisualSceneComponent` / `IAudioSceneComponent` (+ 2D/3D specializations)
 - `IRigidBodyComponent`, `ITriggerComponent`, `IBodyComponent` (+ 2D/3D)
 - `IDisplayObjectComponent`, `IRendererComponent`, `ICameraComponent` (+ 2D/3D)
+- `IAudioSourceComponent`, `IAudioSourceComponentFactory` (+ 2D/3D specializations - see `gg-engine-audio-adapter`)
 - `IRaycastVehicleComponent`, `ICharacterController3dComponent` (3D only)
 - `IEntity`, `IRenderableEntity`, `IRendererEntity`
 - The factory abstracts in `2d/factories.ts` / `3d/factories.ts`

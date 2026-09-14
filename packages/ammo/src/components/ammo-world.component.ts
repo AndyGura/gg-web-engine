@@ -1,5 +1,6 @@
 import {
   BitMask,
+  CollisionEvent,
   CollisionGroup,
   IPhysicsWorld3dComponent,
   Point3,
@@ -105,6 +106,29 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
    */
   public fixedTimeStep?: number = 0.01;
 
+  /**
+   * Whether `simulate()` derives `IRigidBodyComponent.onCollisionStart`/`onCollisionEnd` at all.
+   * Defaults to `true`. Set to `false` for an app that never subscribes to either - Ammo/Bullet has
+   * no native "collision started/stopped" callback reachable from this embind build (unlike
+   * Rapier/matter-js, whose adapters are driven by the native engine's own edge-triggered event
+   * queue/callback and pay nothing for a continuing contact in the first place - see
+   * `gg-engine-physics-adapter-ammo`), so this package derives them by walking every broad-phase
+   * contact manifold in `processCollisionEvents()`, once per `simulate()` call, unconditionally.
+   * That walk is cheap per manifold (no per-contact-point/impulse extraction happens for a pair
+   * already known to be touching - see that method's own doc) but still scales with the total
+   * number of touching pairs in the world every single tick, whether or not anything is listening -
+   * for a scene with a very large number of simultaneously-resting bodies (a big debris field, a
+   * dense physics playground) and an app that has no use for these events at all, skipping the walk
+   * entirely removes that cost completely. Only `IRigidBody3dComponent.onCollisionStart`/
+   * `onCollisionEnd` are affected - `ITrigger3dComponent.onEntityEntered`/`onEntityLeft` (a
+   * different, already-existing mechanism, driven by each `AmmoTriggerComponent`'s own
+   * `checkOverlaps()`) keep working regardless of this setting. No other physics adapter in this
+   * engine needs an equivalent setting: Rapier2d/3d and matter-js all derive these same events from
+   * a native start/stop event rather than polling, so they have no comparable always-on cost to opt
+   * out of.
+   */
+  public enableCollisionEvents = true;
+
   public get dynamicAmmoWorld(): Ammo.btDiscreteDynamicsWorld | undefined {
     return this._dynamicAmmoWorld;
   }
@@ -162,7 +186,176 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
     // `dt` call - `m_localTime (0) >= fixedTimeStep` false-ing out safely to "no substeps run" needs
     // a positive divisor, not `0/0`.
     this._dynamicAmmoWorld?.stepSimulation(dt, subSteps, dt > 0 ? dt / subSteps : maxStep);
+    if (this.enableCollisionEvents) {
+      this.processCollisionEvents();
+    }
     this.afterTick$.next();
+  }
+
+  /**
+   * Pair of native pointers (sorted, joined as `"${lower}:${higher}"`) -> the two
+   * `AmmoRigidBodyComponent`s last seen touching, one tick ago - the state `processCollisionEvents`
+   * diffs against every call to derive "started touching this frame"/"stopped touching this frame".
+   * Deliberately keyed by native pointer rather than component identity so a stale entry naturally
+   * drops out the tick after either side's native body is actually destroyed (a fresh allocation at
+   * the same address is an accepted, pre-existing risk shared with `AmmoBodyComponent
+   * .nativeBodyReverseMap` itself - nothing new introduced here).
+   */
+  private previousContactPairs: Map<string, [AmmoRigidBodyComponent, AmmoRigidBodyComponent]> = new Map();
+
+  /**
+   * Derives `onCollisionStart`/`onCollisionEnd` for every `AmmoRigidBodyComponent` in this world,
+   * once per `simulate()` call, from Bullet's own post-`stepSimulation` contact manifolds - Ammo/
+   * Bullet has no native "collision started/ended" callback usable from this embind build (see
+   * `gg-engine-physics-adapter-ammo`), so this is the standard `dispatcher.getNumManifolds()`
+   * polling technique instead.
+   *
+   * A manifold existing is not the same as two bodies actually touching - Bullet keeps a manifold
+   * alive for a broad-phase AABB overlap even with zero narrow-phase contact points, so only a
+   * manifold with `getNumContacts() > 0` counts. Both `AmmoTriggerComponent` (a
+   * `CF_NO_CONTACT_RESPONSE` ghost object) and `AmmoCharacterControllerComponent` (also a ghost
+   * object) still generate ordinary manifolds/contact points against anything they overlap - that
+   * flag only suppresses the *solver*'s contact response, not narrow-phase manifold generation - so
+   * this only proceeds when **both** sides of a manifold resolve to an actual
+   * `AmmoRigidBodyComponent` via the shared `AmmoBodyComponent.nativeBodyReverseMap`; that one
+   * `instanceof` check is what keeps triggers/character controllers out of collision events
+   * entirely, without needing to inspect collision flags directly.
+   */
+  private processCollisionEvents(): void {
+    if (!this._dynamicAmmoWorld) {
+      return;
+    }
+    const dispatcher = this._dynamicAmmoWorld.getDispatcher();
+    const numManifolds = dispatcher.getNumManifolds();
+
+    const currentPairs: Map<string, [AmmoRigidBodyComponent, AmmoRigidBodyComponent]> = new Map();
+    const bestContacts: Map<
+      string,
+      { compA: AmmoRigidBodyComponent; compB: AmmoRigidBodyComponent; cp: Ammo.btManifoldPoint; impulse: number }
+    > = new Map();
+
+    for (let i = 0; i < numManifolds; i++) {
+      const manifold = dispatcher.getManifoldByIndexInternal(i);
+      const numContacts = manifold.getNumContacts();
+      if (numContacts === 0) {
+        continue;
+      }
+      const body0 = manifold.getBody0();
+      const body1 = manifold.getBody1();
+      const ptr0 = Ammo.getPointer(body0);
+      const ptr1 = Ammo.getPointer(body1);
+      const comp0 = AmmoBodyComponent.nativeBodyReverseMap.get(ptr0);
+      const comp1 = AmmoBodyComponent.nativeBodyReverseMap.get(ptr1);
+      if (!(comp0 instanceof AmmoRigidBodyComponent) || !(comp1 instanceof AmmoRigidBodyComponent)) {
+        continue;
+      }
+
+      const key = ptr0 < ptr1 ? `${ptr0}:${ptr1}` : `${ptr1}:${ptr0}`;
+      currentPairs.set(key, [comp0, comp1]);
+
+      // `onCollisionStart` only fires for a pair transitioning from not-touching to touching (see
+      // the emit loop below, which skips any key already present in `previousContactPairs`) - so
+      // for a pair that was *already* touching last frame, the per-contact-point walk below would
+      // just be computed and immediately discarded. Skipping it here matters: `getContactPoint`/
+      // `getAppliedImpulse` each cross the embind/WASM boundary, and this is the dominant per-tick
+      // cost of collision-event polling in a scene with many settled/resting bodies (stacked
+      // crates, a car's wheels on the ground, static level geometry) - exactly the common
+      // steady-state case, not just the rarer moment of a fresh impact.
+      if (this.previousContactPairs.has(key)) {
+        continue;
+      }
+
+      // A manifold can have several contact points (e.g. a box resting flush on a floor) - use
+      // whichever one carried the largest solved impulse this step as "the" contact for the pair.
+      let bestCp: Ammo.btManifoldPoint | null = null;
+      let bestImpulse = -Infinity;
+      for (let j = 0; j < numContacts; j++) {
+        const cp = manifold.getContactPoint(j);
+        const impulse = cp.getAppliedImpulse();
+        if (impulse > bestImpulse) {
+          bestImpulse = impulse;
+          bestCp = cp;
+        }
+      }
+
+      // A compound-shaped body pair can produce more than one manifold for the same two bodies
+      // (one per overlapping child shape) - keep whichever manifold carried the larger impulse.
+      const existing = bestContacts.get(key);
+      if (!existing || bestImpulse > existing.impulse) {
+        bestContacts.set(key, { compA: comp0, compB: comp1, cp: bestCp!, impulse: Math.max(bestImpulse, 0) });
+      }
+    }
+
+    // Started touching this frame: a pair with contacts now that had none (or didn't exist) last
+    // frame. Emitted reciprocally, once per side, each with its own frame-correct normal/position.
+    for (const [key, { compA, compB, cp, impulse }] of bestContacts) {
+      if (this.previousContactPairs.has(key)) {
+        continue;
+      }
+      this.emitCollisionStart(compA, compB, cp, impulse, true);
+      this.emitCollisionStart(compB, compA, cp, impulse, false);
+    }
+
+    // Stopped touching this frame: a pair that had contacts last frame but doesn't now. `null` is
+    // reported instead of the other component whenever that other component is no longer tracked
+    // in this world's `children` (removed via `removeFromWorld`, disposed or not) - best-effort
+    // detection per `IRigidBodyComponent.onCollisionEnd`'s own doc.
+    for (const [key, [compA, compB]] of this.previousContactPairs) {
+      if (currentPairs.has(key)) {
+        continue;
+      }
+      const aStillInWorld = this.children.includes(compA);
+      const bStillInWorld = this.children.includes(compB);
+      compA.emitCollisionEnd(bStillInWorld ? compB : null);
+      compB.emitCollisionEnd(aStillInWorld ? compA : null);
+    }
+
+    this.previousContactPairs = currentPairs;
+  }
+
+  /**
+   * Builds and emits one body's own `CollisionEvent` for a just-started contact - `selfIsBody0`
+   * says which side of the manifold `self` is on (Bullet decides this internally per pair, not by
+   * creation/call order), which is what `position`/`normal` need to be expressed correctly in
+   * `self`'s own frame.
+   */
+  private emitCollisionStart(
+    self: AmmoRigidBodyComponent,
+    other: AmmoRigidBodyComponent,
+    cp: Ammo.btManifoldPoint,
+    impulse: number,
+    selfIsBody0: boolean,
+  ): void {
+    const n = cp.get_m_normalWorldOnB();
+    const rawNormal: Point3 = { x: n.x(), y: n.y(), z: n.z() };
+    // `m_normalWorldOnB` always points from the manifold's body1 ("B") towards its body0 ("A") -
+    // the same convention already relied on in `solidRayFallback` above. Orient it to point away
+    // from `self` towards `other`, per `CollisionEvent.normal`'s own contract, regardless of which
+    // side of the manifold `self` happens to be.
+    const normal: Point3 = selfIsBody0 ? { x: -rawNormal.x, y: -rawNormal.y, z: -rawNormal.z } : rawNormal;
+    const posAmmo = selfIsBody0 ? cp.getPositionWorldOnA() : cp.getPositionWorldOnB();
+    const position: Point3 = { x: posAmmo.x(), y: posAmmo.y(), z: posAmmo.z() };
+    // Read post-`stepSimulation` velocities as an approximation of "at the moment contact began" -
+    // Bullet resolves contact response within the same `stepSimulation` call that first generates
+    // the manifold's contact points, so this is already post-response rather than the true
+    // pre-collision approach vector; there's no native embind hook here for a pre-solve velocity
+    // snapshot. Symmetric by construction regardless (self/other are always exact negations of one
+    // another), which is what the reciprocal-event contract actually requires.
+    const selfVel = self.linearVelocity;
+    const otherVel = other.linearVelocity;
+    const relativeVelocity: Point3 = {
+      x: otherVel.x - selfVel.x,
+      y: otherVel.y - selfVel.y,
+      z: otherVel.z - selfVel.z,
+    };
+    const event: CollisionEvent<Point3, AmmoRigidBodyComponent> = {
+      otherBody: other,
+      position,
+      normal,
+      relativeVelocity,
+      impulse,
+    };
+    self.emitCollisionStart(event);
   }
 
   protected lockedCollisionGroups: number[] = [];

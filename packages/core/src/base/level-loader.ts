@@ -4,6 +4,7 @@ import { GroupEntity } from './entities/group.entity';
 import { IEntity, TickOrder } from './entities/i-entity';
 import { Blueprint, BlueprintJson, BlueprintNodeFactory } from './blueprint/blueprint';
 import { RemoveEntityBlueprintNode } from './blueprint/nodes/remove-entity.node';
+import { PlaySoundBlueprintNode } from './blueprint/nodes/play-sound.node';
 
 /**
  * A function that turns per-entity JSON settings into a spawned `IEntity` (e.g. a primitive body,
@@ -158,6 +159,11 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
       'RemoveEntity',
       (w, settings) => new RemoveEntityBlueprintNode<D, R, TypeDoc>(w, settings),
       'entity',
+    );
+    this.registerBlueprintNode(
+      'PlaySound',
+      (w, settings) => new PlaySoundBlueprintNode<D, R, TypeDoc>(w, settings),
+      'trigger',
     );
   }
 

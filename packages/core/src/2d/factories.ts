@@ -1,6 +1,6 @@
-import { Point2 } from '../base';
+import { IAudioSourceComponentFactory, Point2 } from '../base';
 import { BodyShape2DDescriptor, Shape2DDescriptor } from './models/shapes';
-import { PhysicsTypeDocRepo2D, VisualTypeDocRepo2D } from './gg-2d-world';
+import { AudioTypeDocRepo2D, PhysicsTypeDocRepo2D, VisualTypeDocRepo2D } from './gg-2d-world';
 
 export type DisplayObject2dOpts<Tex> = {
   color?: number;
@@ -46,3 +46,7 @@ export interface IPhysicsBody2dComponentFactory<PTypeDoc extends PhysicsTypeDocR
     },
   ): PTypeDoc['trigger'];
 }
+
+export interface IAudioSource2dComponentFactory<
+  ATypeDoc extends AudioTypeDocRepo2D = AudioTypeDocRepo2D,
+> extends IAudioSourceComponentFactory<Point2, number, ATypeDoc> {}

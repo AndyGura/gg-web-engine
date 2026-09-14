@@ -75,6 +75,7 @@ While the current focus is on racing game features and 3D worlds, future updates
 - [**@gg-web-engine/pixi**](https://github.com/AndyGura/gg-web-engine/tree/main/packages/pixi/README.md) - 2D rendering ([Pixi.js](https://github.com/pixijs/pixijs))
 - [**@gg-web-engine/matter**](https://github.com/AndyGura/gg-web-engine/tree/main/packages/matter/README.md) - 2D physics ([Matter.js](https://github.com/liabru/matter-js))
 - [**@gg-web-engine/rapier2d**](https://github.com/AndyGura/gg-web-engine/tree/main/packages/rapier2d/README.md) - 2D physics ([Rapier.js](https://github.com/dimforge/rapier.js))
+- [**@gg-web-engine/audio**](https://github.com/AndyGura/gg-web-engine/tree/main/packages/audio/README.md) - 2D/3D positional audio ([Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API))
 
 ## ⚡ Quickstart
 ### Installation

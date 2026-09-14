@@ -7,12 +7,19 @@ import { Renderer3dEntity } from './entities/renderer-3d.entity';
 import { ICamera3dComponent } from './components/rendering/i-camera-3d.component';
 import { IRenderer3dComponent } from './components/rendering/i-renderer-3d.component';
 import { IPhysicsWorld3dComponent } from './components/physics/i-physics-world-3d.component';
-import { DisplayObject3dOpts, IDisplayObject3dComponentFactory, IPhysicsBody3dComponentFactory } from './factories';
+import {
+  DisplayObject3dOpts,
+  IAudioSource3dComponentFactory,
+  IDisplayObject3dComponentFactory,
+  IPhysicsBody3dComponentFactory,
+} from './factories';
 import { IDisplayObject3dComponent } from './components/rendering/i-display-object-3d.component';
 import { IRaycastVehicleComponent } from './components/physics/i-raycast-vehicle.component';
 import { IRigidBody3dComponent } from './components/physics/i-rigid-body-3d.component';
 import { ITrigger3dComponent } from './components/physics/i-trigger-3d.component';
 import { ICharacterController3dComponent } from './components/physics/i-character-controller-3d.component';
+import { IAudioScene3dComponent } from './components/audio/i-audio-scene-3d.component';
+import { IAudioSource3dComponent } from './components/audio/i-audio-source-3d.component';
 import { IDisplayObject3dComponentLoader, IPhysicsBody3dComponentLoader } from './loaders';
 import { CharacterController3dEntity } from './entities/character-controller-3d.entity';
 import { PlayerCharacterController } from './entities/controllers/input/player-character.controller';
@@ -37,23 +44,34 @@ export type PhysicsTypeDocRepo3D = {
   characterController: ICharacterController3dComponent;
 };
 
+export type AudioTypeDocRepo3D = {
+  factory: IAudioSource3dComponentFactory;
+  source: IAudioSource3dComponent;
+  clip: unknown;
+};
+
 export type Gg3dWorldTypeDocRepo = {
   vTypeDoc: VisualTypeDocRepo3D;
   pTypeDoc: PhysicsTypeDocRepo3D;
+  aTypeDoc: AudioTypeDocRepo3D;
 };
-// utility types to create world type doc by defining either vTypeDoc or pTypeDoc only
+// utility types to create world type doc by defining either vTypeDoc, pTypeDoc or aTypeDoc only
 export type Gg3dWorldTypeDocVPatch<VTypeDoc extends VisualTypeDocRepo3D> = Omit<Gg3dWorldTypeDocRepo, 'vTypeDoc'> & {
   vTypeDoc: VTypeDoc;
 };
 export type Gg3dWorldTypeDocPPatch<PTypeDoc extends PhysicsTypeDocRepo3D> = Omit<Gg3dWorldTypeDocRepo, 'pTypeDoc'> & {
   pTypeDoc: PTypeDoc;
 };
+export type Gg3dWorldTypeDocAPatch<ATypeDoc extends AudioTypeDocRepo3D> = Omit<Gg3dWorldTypeDocRepo, 'aTypeDoc'> & {
+  aTypeDoc: ATypeDoc;
+};
 
 export type Gg3dWorldSceneTypeRepo<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo> = {
   visualScene: IVisualScene3dComponent<TypeDoc['vTypeDoc']> | null;
   physicsWorld: IPhysicsWorld3dComponent<TypeDoc['pTypeDoc']> | null;
+  audioScene: IAudioScene3dComponent<TypeDoc['aTypeDoc']> | null;
 };
-// utility types to create world scene type doc by defining either visualScene or physicsWorld type only
+// utility types to create world scene type doc by defining either visualScene, physicsWorld or audioScene only
 export type Gg3dWorldSceneTypeDocVPatch<
   VTypeDoc extends VisualTypeDocRepo3D,
   VS extends IVisualScene3dComponent<VTypeDoc> | null,
@@ -62,26 +80,39 @@ export type Gg3dWorldSceneTypeDocPPatch<
   PTypeDoc extends PhysicsTypeDocRepo3D,
   PW extends IPhysicsWorld3dComponent<PTypeDoc> | null,
 > = Omit<Gg3dWorldSceneTypeRepo, 'physicsWorld'> & { physicsWorld: PW };
+export type Gg3dWorldSceneTypeDocAPatch<
+  ATypeDoc extends AudioTypeDocRepo3D,
+  AS extends IAudioScene3dComponent<ATypeDoc> | null,
+> = Omit<Gg3dWorldSceneTypeRepo, 'audioScene'> & { audioScene: AS };
 
 // A helper type to build a full type for the world according to installed modules
-// Each module provides its type, like "ThreeGgWorld" or "Rapier3dGgWorld"
-// Caller code can define type like this: world: TypedGg3dWorld<ThreeGgWorld, AmmoGgWorld>
-// Important: visual library world comes first, then physics library
-export type TypedGg3dWorld<VW extends Gg3dWorld<any> | null, PW extends Gg3dWorld<any> | null> = VW extends Gg3dWorld<
-  infer VTD,
-  infer VSTD
-> | null
+// Each module provides its type, like "ThreeGgWorld", "Rapier3dGgWorld" or "WebAudioGgWorld"
+// Caller code can define type like this: world: TypedGg3dWorld<ThreeGgWorld, AmmoGgWorld, WebAudioGgWorld>
+// Important: visual library world comes first, then physics library, then (optionally) audio library.
+// The audio slot is resolved by a single `AW extends Gg3dWorld<infer ATD, infer ASTD>` check (both
+// inferred together, same as VTD/VSTD and PTD/PSTD above) rather than two separate checks, so
+// `ASTD['audioScene']` is provably assignable against `ATD['aTypeDoc']` by Gg3dWorld's own generic
+// constraint - inferring them from two independent conditional expressions doesn't type-check,
+// since TS has no way to know two separately-inferred type variables came from the same AW.
+export type TypedGg3dWorld<
+  VW extends Gg3dWorld<any> | null,
+  PW extends Gg3dWorld<any> | null,
+  AW extends Gg3dWorld<any> | null = null,
+> = VW extends Gg3dWorld<infer VTD, infer VSTD> | null
   ? PW extends Gg3dWorld<infer PTD, infer PSTD> | null
-    ? Gg3dWorld<
-        {
-          vTypeDoc: VTD['vTypeDoc'];
-          pTypeDoc: PTD['pTypeDoc'];
-        },
-        {
-          visualScene: VSTD['visualScene'];
-          physicsWorld: PSTD['physicsWorld'];
-        }
-      >
+    ? AW extends Gg3dWorld<infer ATD, infer ASTD>
+      ? Gg3dWorld<
+          { vTypeDoc: VTD['vTypeDoc']; pTypeDoc: PTD['pTypeDoc']; aTypeDoc: ATD['aTypeDoc'] },
+          { visualScene: VSTD['visualScene']; physicsWorld: PSTD['physicsWorld']; audioScene: ASTD['audioScene'] }
+        >
+      : Gg3dWorld<
+          { vTypeDoc: VTD['vTypeDoc']; pTypeDoc: PTD['pTypeDoc']; aTypeDoc: AudioTypeDocRepo3D },
+          {
+            visualScene: VSTD['visualScene'];
+            physicsWorld: PSTD['physicsWorld'];
+            audioScene: IAudioScene3dComponent | null;
+          }
+        >
     : never
   : never;
 
@@ -91,7 +122,11 @@ export class Gg3dWorld<
 > extends GgWorld<Point3, Point4, TypeDoc, SceneTypeDoc> {
   public readonly loader: Gg3dLoader<TypeDoc>;
 
-  constructor(args: { visualScene?: SceneTypeDoc['visualScene']; physicsWorld?: SceneTypeDoc['physicsWorld'] }) {
+  constructor(args: {
+    visualScene?: SceneTypeDoc['visualScene'];
+    physicsWorld?: SceneTypeDoc['physicsWorld'];
+    audioScene?: SceneTypeDoc['audioScene'];
+  }) {
     super(args);
     this.loader = new Gg3dLoader(this);
   }
