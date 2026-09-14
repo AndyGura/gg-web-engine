@@ -341,9 +341,9 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
         // (`RaycastOptions` has no per-call "exclude this body" hook, and the character's collision
         // group is not, by default, distinct from ordinary level geometry's) immediately reports a
         // self-hit at ~0 distance, collapsing the third-person camera onto `target` every tick -
-        // indistinguishable from first-person (regression, found live in the rapier3d example: `V`
-        // correctly flipped `viewMode` to `'third-person'`, but the camera stayed glued to the
-        // character's own head position instead of pulling back). Nudge the ray's start point
+        // indistinguishable from first-person (regression, found live in a third-person rapier3d
+        // scene: `V` correctly flipped `viewMode` to `'third-person'`, but the camera stayed glued
+        // to the character's own head position instead of pulling back). Nudge the ray's start point
         // outward past the capsule's own geometry along the same look direction first via
         // `characterControllerSelfHitSkip()` (see its own doc - `ObjectGrabController.tryGrab()` uses
         // the same helper for the identical problem), then add that offset back onto the measured hit
