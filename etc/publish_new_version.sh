@@ -40,7 +40,11 @@ wait_package_publish() {
     echo Waiting $package_name@$desired_version to be available before continuation
     start_time=$(date +%s)
     while true; do
-        current_version=$(npm view "$package_name" version --force)
+        # A brand-new package's first-ever publish hasn't been indexed yet, so `npm view` 404s
+        # (nonzero exit) instead of returning an old version like an already-published package
+        # would. With `set -e` a bare failing command here would kill the whole script instead of
+        # retrying, so swallow the failure and treat it as just another "not yet available" tick.
+        current_version=$(npm view "$package_name" version --force 2>/dev/null || echo "")
         end_time=$(date +%s)
         elapsed_time=$((end_time - start_time))
         if [ "$current_version" = "$desired_version" ]; then

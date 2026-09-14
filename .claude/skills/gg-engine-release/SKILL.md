@@ -39,6 +39,37 @@ After the script, the workflow also regenerates API docs (`documentation/` via `
 generate`), commits the version bump back to `main`, tags the release, and deploys
 `documentation/site` to GitHub Pages.
 
+## Known failure modes when a package is new to the release
+
+A package's first-ever appearance in a release (freshly added to `libs`, e.g. `audio`) hits two
+npm-registry quirks that already-released packages never trigger, both already fixed in
+`etc/publish_new_version.sh` — noted here so a future "new package" addition doesn't reintroduce
+either:
+
+- **Private-by-default on first publish.** A brand-new scoped package's first `npm publish`
+  defaults to restricted/private access unless told otherwise — npm only remembers "public" once a
+  first publish has established it. `core` passes `npm publish --access public` explicitly; the
+  per-package publish loop for `libs` now does too, for the same reason. Without it, a new
+  package's first release fails with `402 Payment Required - You must sign up for private
+  packages`, while every already-released package keeps working with a bare `npm publish` (their
+  public access was established long ago).
+- **`npm view` 404s instead of returning a stale version.** `wait_package_publish` polls
+  `npm view "$package_name" version` until it equals the just-published version. For an
+  already-released package, before the new version propagates `npm view` still succeeds and just
+  returns the old version, so the loop's not-equal check prints and retries normally. For a
+  package's first-ever publish, npm hasn't indexed it at all yet, so `npm view` exits non-zero
+  (`404 Not Found`) instead. The script has `set -e`, and that failing command sits in a plain
+  `var=$(...)` assignment, so the *whole script* dies immediately on that 404 — no retry, no
+  timeout message, just an abrupt failure right after the npm error. Fixed by swallowing the
+  failure (`npm view ... 2>/dev/null || echo ""`) so a 404 is treated as just another "not yet
+  available" tick and the loop keeps polling until the package is indexed or the 15-minute timeout
+  hits.
+
+If a release fails partway (some packages published at `X.Y.Z`, one failed before publishing),
+don't retry the same version — `npm publish` rejects re-publishing a version that already exists
+for a package. Cut the next attempt as `[pre-release] [X.Y.(Z+1)]` instead; the packages that did
+succeed at the old version are harmless leftovers on npm.
+
 ## Adding a new package to the release
 
 A new adapter package (see `gg-engine-visual-adapter` / `gg-engine-physics-adapter`) is **silently
