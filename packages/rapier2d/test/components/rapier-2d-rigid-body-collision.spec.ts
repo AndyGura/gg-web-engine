@@ -1,5 +1,6 @@
 import { CollisionEvent, Pnt2, Point2 } from '@gg-web-engine/core';
 import { Rapier2dFactory, Rapier2dRigidBodyComponent, Rapier2dWorldComponent } from '../../src';
+import { ActiveEvents, ColliderDesc } from '@dimforge/rapier2d-compat';
 
 describe('Rapier2dRigidBodyComponent onCollisionStart/onCollisionEnd', () => {
   let world: Rapier2dWorldComponent;
@@ -135,6 +136,46 @@ describe('Rapier2dRigidBodyComponent onCollisionStart/onCollisionEnd', () => {
       expect(ballEndEvents.length).toBe(0);
     },
   );
+
+  it('never dispatches a collision event when both colliders resolve to the same body (compound body)', () => {
+    // Two colliders on one rigid body - the multi-collider ("compound") shape case. Rapier itself
+    // never generates a real broad-phase pair between colliders of the same body, so the guard is
+    // exercised directly by forcing `drainCollisionEvents` to report a pair whose two collider
+    // handles both belong to this one body, exactly as a spurious/defensive edge case would look.
+    const bodyDescr = factory.createRigidBodyDescr({ dynamic: true, mass: 1 }, { position: { x: 0, y: 5 } });
+    const colliderDescrs = [
+      ColliderDesc.cuboid(0.5, 0.5).setActiveEvents(ActiveEvents.COLLISION_EVENTS),
+      ColliderDesc.cuboid(0.5, 0.5).setTranslation(0.4, 0).setActiveEvents(ActiveEvents.COLLISION_EVENTS),
+    ];
+    const compound = new Rapier2dRigidBodyComponent(
+      world,
+      colliderDescrs,
+      { shape: 'SQUARE', dimensions: { x: 1, y: 1 } },
+      bodyDescr,
+      {
+        friction: 0.5,
+        restitution: 0.1,
+        ownCollisionGroups: [world.mainCollisionGroup],
+        interactWithCollisionGroups: [world.mainCollisionGroup],
+      },
+    );
+    compound.addToWorld({ physicsWorld: world } as any);
+    world.simulate(0);
+
+    const nativeBody = compound.nativeBody!;
+    expect(nativeBody.numColliders()).toBe(2);
+    const h1 = nativeBody.collider(0).handle;
+    const h2 = nativeBody.collider(1).handle;
+
+    const events: CollisionEvent<Point2, Rapier2dRigidBodyComponent>[] = [];
+    compound.onCollisionStart.subscribe(e => events.push(e));
+
+    jest.spyOn(world.eventQueue, 'drainCollisionEvents').mockImplementation(f => f(h1, h2, true));
+
+    world.simulate(16);
+
+    expect(events.length).toBe(0);
+  });
 
   it('does not fire onCollisionStart on a rigid body for a trigger overlap (sensor, no collision response)', () => {
     const trigger = factory.createTrigger(

@@ -112,7 +112,11 @@ export class Rapier2dWorldComponent implements IPhysicsWorld2dComponent<Rapier2d
       }
       const c1 = this.handleIdEntityMap.get(body1.handle);
       const c2 = this.handleIdEntityMap.get(body2.handle);
-      if (!c1 || !c2) {
+      // `c1 === c2` happens for a compound body's own sub-colliders touching each other (e.g. two
+      // parts of the same multi-collider rigid body briefly overlapping) - not a real collision
+      // between two bodies, so it must never reach a component's own onCollisionStart/onCollisionEnd
+      // stream. Mirrors rapier3d's `dispatchCollisionEvents` guard.
+      if (!c1 || !c2 || c1 === c2) {
         return;
       }
 
