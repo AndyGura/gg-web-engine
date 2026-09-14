@@ -57,6 +57,12 @@ export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhys
   public readonly removed$: Subject<MatterRigidBodyComponent | MatterTriggerComponent> = new Subject();
   public readonly children: (MatterRigidBodyComponent | MatterTriggerComponent)[] = [];
 
+  /** Mirrors the rapier packages' `handleIdEntityMap` pattern: `Body.id` (matter-js's own
+   * globally-unique numeric id, assigned once per body via `Body.nextId` and stable for its whole
+   * lifetime) to component, kept in sync alongside `children` so `findRigidBody` - called once per
+   * collision pair, per step - is an O(1) lookup instead of an O(n) `Array.find` scan. */
+  public readonly handleIdEntityMap: Map<number, MatterRigidBodyComponent> = new Map();
+
   private _gravity: Point2 = { x: 0, y: 9.82 };
   public get gravity(): Point2 {
     return this._gravity;
@@ -73,8 +79,14 @@ export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhys
   readonly mainCollisionGroup: CollisionGroup = 0;
 
   constructor() {
-    this.added$.subscribe(c => this.children.push(c));
-    this.removed$.subscribe(c => this.children.splice(this.children.indexOf(c), 1));
+    this.added$.subscribe(c => {
+      this.children.push(c);
+      this.handleIdEntityMap.set(c.nativeBody.id, c);
+    });
+    this.removed$.subscribe(c => {
+      this.children.splice(this.children.indexOf(c), 1);
+      this.handleIdEntityMap.delete(c.nativeBody.id);
+    });
     this.factory = new MatterFactory(this);
     this.handleCollisionStart = this.handleCollisionStart.bind(this);
     this.handleCollisionEnd = this.handleCollisionEnd.bind(this);
@@ -89,7 +101,7 @@ export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhys
   }
 
   private findRigidBody(nativeBody: Body): MatterRigidBodyComponent | undefined {
-    return this.children.find(c => c.nativeBody === nativeBody);
+    return this.handleIdEntityMap.get(nativeBody.id);
   }
 
   /**
