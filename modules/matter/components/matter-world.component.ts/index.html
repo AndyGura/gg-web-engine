@@ -529,6 +529,27 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#findrigidbody-method" class="md-nav__link">
+    findRigidBody (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#handlecollisionstart-method" class="md-nav__link">
+    handleCollisionStart (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#handlecollisionend-method" class="md-nav__link">
+    handleCollisionEnd (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#registercollisiongroup-method" class="md-nav__link">
     registerCollisionGroup (method)
   </a>
@@ -599,6 +620,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#handleidentitymap-property" class="md-nav__link">
+    handleIdEntityMap (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#maincollisiongroup-property" class="md-nav__link">
     mainCollisionGroup (property)
   </a>
@@ -648,6 +676,9 @@
 <li><a href="#utils">utils</a></li>
 <li><a href="#matterworldcomponent-class">MatterWorldComponent (class)</a><ul>
 <li><a href="#init-method">init (method)</a></li>
+<li><a href="#findrigidbody-method">findRigidBody (method)</a></li>
+<li><a href="#handlecollisionstart-method">handleCollisionStart (method)</a></li>
+<li><a href="#handlecollisionend-method">handleCollisionEnd (method)</a></li>
 <li><a href="#registercollisiongroup-method">registerCollisionGroup (method)</a></li>
 <li><a href="#deregistercollisiongroup-method">deregisterCollisionGroup (method)</a></li>
 <li><a href="#simulate-method">simulate (method)</a></li>
@@ -658,6 +689,7 @@
 <li><a href="#added-property">added$ (property)</a></li>
 <li><a href="#removed-property">removed$ (property)</a></li>
 <li><a href="#children-property">children (property)</a></li>
+<li><a href="#handleidentitymap-property">handleIdEntityMap (property)</a></li>
 <li><a href="#maincollisiongroup-property">mainCollisionGroup (property)</a></li>
 <li><a href="#lockedcollisiongroups-property">lockedCollisionGroups (property)</a></li>
 </ul>
@@ -674,6 +706,37 @@
 <h3 id="init-method">init (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">async init(): Promise&lt;void&gt;
+</code></pre>
+<h3 id="findrigidbody-method">findRigidBody (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private findRigidBody(nativeBody: Body): MatterRigidBodyComponent | undefined
+</code></pre>
+<h3 id="handlecollisionstart-method">handleCollisionStart (method)</h3>
+<p>Wires <code>IRigidBody2dComponent.onCollisionStart</code> for every non-sensor pair in the world, off
+matter-js's own <code>Matter.Events</code> 'collisionStart' (fired once per engine, not per-body - see
+<code>gg-engine-physics-adapter-matter</code> for why it's registered here rather than per component).
+<code>pair.isSensor</code> (true whenever either side is a trigger's underlying body, which always has
+<code>isSensor: true</code> - see <code>MatterTriggerComponent</code>'s constructor) is skipped entirely, so a
+trigger overlapping a rigid body only ever fires the trigger's own <code>onEntityEntered</code>, never
+this.</p>
+<p>Impulse: at the point this event fires, matter-js hasn't run <code>Resolver.solveVelocity</code> yet for
+this step (that happens later in <code>Engine.update</code>, whose event order is
+collisionStart → position solve → velocity solve → collisionActive → collisionEnd) - so a
+freshly-created pair's <code>pair.contacts[*].normalImpulse</code>/<code>tangentImpulse</code> are still their
+just-initialized <code>0</code>, not yet a meaningful number, for every pair this event could ever
+report. Rather than reading always-zero data, <code>impulse</code> here is estimated as
+<code>|relativeVelocity| * min(massA, massB)</code> (a rough "how hard did they hit" proxy - a static
+body's <code>mass</code> is <code>Infinity</code>, so <code>min</code> naturally reduces to the dynamic side's mass when one
+side is static).</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private handleCollisionStart(event: IEventCollision&lt;Engine&gt;): void
+</code></pre>
+<h3 id="handlecollisionend-method">handleCollisionEnd (method)</h3>
+<p>Wires <code>IRigidBody2dComponent.onCollisionEnd</code> for every non-sensor pair that just stopped
+touching - see <code>handleCollisionStart</code>'s doc for why sensor pairs are skipped and why this is
+registered once per engine rather than per-body.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private handleCollisionEnd(event: IEventCollision&lt;Engine&gt;): void
 </code></pre>
 <h3 id="registercollisiongroup-method">registerCollisionGroup (method)</h3>
 <p><strong>Signature</strong></p>
@@ -714,6 +777,14 @@
 <h3 id="children-property">children (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly children: (MatterRigidBodyComponent | MatterTriggerComponent)[]
+</code></pre>
+<h3 id="handleidentitymap-property">handleIdEntityMap (property)</h3>
+<p>Mirrors the rapier packages' <code>handleIdEntityMap</code> pattern: <code>Body.id</code> (matter-js's own
+globally-unique numeric id, assigned once per body via <code>Body.nextId</code> and stable for its whole
+lifetime) to component, kept in sync alongside <code>children</code> so <code>findRigidBody</code> - called once per
+collision pair, per step - is an O(1) lookup instead of an O(n) <code>Array.find</code> scan.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly handleIdEntityMap: any
 </code></pre>
 <h3 id="maincollisiongroup-property">mainCollisionGroup (property)</h3>
 <p><strong>Signature</strong></p>

@@ -536,6 +536,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#notifyoverlap-method" class="md-nav__link">
+    notifyOverlap (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#checkoverlaps-method" class="md-nav__link">
     checkOverlaps (method)
   </a>
@@ -621,6 +628,7 @@
 <li><a href="#rapier3dtriggercomponent-class">Rapier3dTriggerComponent (class)</a><ul>
 <li><a href="#addtoworld-method">addToWorld (method)</a></li>
 <li><a href="#removefromworld-method">removeFromWorld (method)</a></li>
+<li><a href="#notifyoverlap-method">notifyOverlap (method)</a></li>
 <li><a href="#checkoverlaps-method">checkOverlaps (method)</a></li>
 <li><a href="#clone-method">clone (method)</a></li>
 <li><a href="#dispose-method">dispose (method)</a></li>
@@ -652,6 +660,25 @@
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">removeFromWorld(world: Rapier3dGgWorld, dispose?: boolean)
 </code></pre>
+<h3 id="notifyoverlap-method">notifyOverlap (method)</h3>
+<p>Called by <code>Rapier3dWorldComponent</code>'s centralized collision-event dispatch (see
+<code>Rapier3dWorldComponent.simulate</code>) once per drained sensor-intersection event involving this
+trigger - not meant to be called by app code directly. Previously this trigger drained
+<code>world.eventQueue</code> itself from inside <code>checkOverlaps()</code>, matching <code>otherBody</code> by comparing an
+event's <em>collider</em> handle against <code>this.nativeBody?.handle</code> (a <em>rigid-body</em> handle) - those are
+two different handle namespaces in this pinned <code>@dimforge/rapier3d-compat</code> build, and the
+comparison only ever happened to work by coincidence (a body's first/only collider is allocated
+from a separate arena that, absent any prior removals, marches in lockstep with the rigid-body
+arena for the common one-collider-per-body case - see <code>gg-engine-physics-adapter-rapier</code> for the
+full incident). <code>EventQueue.drainCollisionEvents</code> also fully drains the <em>shared</em> queue on every
+call, so more than one consumer draining it independently (this trigger, another trigger, and now
+<code>Rapier3dRigidBodyComponent</code>'s own collision events) would silently steal each other's events -
+<code>Rapier3dWorldComponent</code> is now the single place that drains it, resolving collider handles to
+components correctly via <code>Collider.parent()</code>, and pushes matching events to whichever
+component(s) care.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public notifyOverlap(otherBody: Rapier3dRigidBodyComponent, started: boolean): void
+</code></pre>
 <h3 id="checkoverlaps-method">checkOverlaps (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">checkOverlaps(): void
@@ -661,6 +688,9 @@
 <pre><code class="language-ts">clone(): Rapier3dTriggerComponent
 </code></pre>
 <h3 id="dispose-method">dispose (method)</h3>
+<p>Completes <code>onEnter$</code>/<code>onLeft$</code> on top of <code>Rapier3dRigidBodyComponent.dispose()</code>'s own
+<code>onCollisionStart$</code>/<code>onCollisionEnd$</code> completion (via <code>super.dispose()</code>) - this trigger's own
+subjects have no other owner to complete them.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">dispose()
 </code></pre>

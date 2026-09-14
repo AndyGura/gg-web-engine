@@ -555,13 +555,13 @@
 <h1 id="utils">utils</h1>
 <h2 id="irigidbody2dcomponent-interface">IRigidBody2dComponent (interface)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export interface IRigidBody2dComponent&lt;PTypeDoc extends PhysicsTypeDocRepo2D = PhysicsTypeDocRepo2D&gt;
-  extends IRigidBodyComponent&lt;Point2, number, PTypeDoc&gt; {
-  angularVelocity: number
+<pre><code class="language-ts">export interface IRigidBody2dComponent&lt;
+  PTypeDoc extends PhysicsTypeDocRepo2D = PhysicsTypeDocRepo2D,
+&gt; extends IRigidBodyComponent&lt;Point2, number, PTypeDoc&gt; {
+  angularVelocity: number;
 
   /** body info for physics debugger view */
-  readonly debugBodySettings: DebugBody2DSettings
-}
+  readonly debugBodySettings: DebugBody2DSettings;
 </code></pre>
 
 

@@ -514,6 +514,13 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#audiotypedocrepo-type-alias" class="md-nav__link">
+    AudioTypeDocRepo (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#ggworld-class" class="md-nav__link">
     GgWorld (class)
   </a>
@@ -592,6 +599,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#maybebindaudiolistener-method" class="md-nav__link">
+    maybeBindAudioListener (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#onggstaticinitialized-method" class="md-nav__link">
     onGgStaticInitialized (method)
   </a>
@@ -615,6 +629,13 @@
           <li class="md-nav__item">
   <a href="#physicsworld-property" class="md-nav__link">
     physicsWorld (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#audioscene-property" class="md-nav__link">
+    audioScene (property)
   </a>
   
 </li>
@@ -695,6 +716,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#ggworldscenetypedocapatch-type-alias" class="md-nav__link">
+    GgWorldSceneTypeDocAPatch (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#ggworldscenetypedocppatch-type-alias" class="md-nav__link">
     GgWorldSceneTypeDocPPatch (type alias)
   </a>
@@ -711,6 +739,13 @@
           <li class="md-nav__item">
   <a href="#ggworldscenetyperepo-type-alias" class="md-nav__link">
     GgWorldSceneTypeRepo (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ggworldtypedocapatch-type-alias" class="md-nav__link">
+    GgWorldTypeDocAPatch (type alias)
   </a>
   
 </li>
@@ -793,6 +828,7 @@
 
 <ul>
 <li><a href="#utils">utils</a></li>
+<li><a href="#audiotypedocrepo-type-alias">AudioTypeDocRepo (type alias)</a></li>
 <li><a href="#ggworld-class">GgWorld (class)</a><ul>
 <li><a href="#init-method">init (method)</a></li>
 <li><a href="#start-method">start (method)</a></li>
@@ -804,10 +840,12 @@
 <li><a href="#addentity-method">addEntity (method)</a></li>
 <li><a href="#removeentity-method">removeEntity (method)</a></li>
 <li><a href="#getentitybyname-method">getEntityByName (method)</a></li>
+<li><a href="#maybebindaudiolistener-method">maybeBindAudioListener (method)</a></li>
 <li><a href="#onggstaticinitialized-method">onGgStaticInitialized (method)</a></li>
 <li><a href="#registerconsolecommands-method">registerConsoleCommands (method)</a></li>
 <li><a href="#visualscene-property">visualScene (property)</a></li>
 <li><a href="#physicsworld-property">physicsWorld (property)</a></li>
+<li><a href="#audioscene-property">audioScene (property)</a></li>
 <li><a href="#worldclock-property">worldClock (property)</a></li>
 <li><a href="#keyboardinput-property">keyboardInput (property)</a></li>
 <li><a href="#name-property">name (property)</a></li>
@@ -820,9 +858,11 @@
 <li><a href="#disposed-property">disposed$ (property)</a></li>
 </ul>
 </li>
+<li><a href="#ggworldscenetypedocapatch-type-alias">GgWorldSceneTypeDocAPatch (type alias)</a></li>
 <li><a href="#ggworldscenetypedocppatch-type-alias">GgWorldSceneTypeDocPPatch (type alias)</a></li>
 <li><a href="#ggworldscenetypedocvpatch-type-alias">GgWorldSceneTypeDocVPatch (type alias)</a></li>
 <li><a href="#ggworldscenetyperepo-type-alias">GgWorldSceneTypeRepo (type alias)</a></li>
+<li><a href="#ggworldtypedocapatch-type-alias">GgWorldTypeDocAPatch (type alias)</a></li>
 <li><a href="#ggworldtypedocppatch-type-alias">GgWorldTypeDocPPatch (type alias)</a></li>
 <li><a href="#ggworldtypedocrepo-type-alias">GgWorldTypeDocRepo (type alias)</a></li>
 <li><a href="#ggworldtypedocvpatch-type-alias">GgWorldTypeDocVPatch (type alias)</a></li>
@@ -833,12 +873,21 @@
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
+<h2 id="audiotypedocrepo-type-alias">AudioTypeDocRepo (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type AudioTypeDocRepo&lt;D, R&gt; = {
+  factory: IAudioSourceComponentFactory&lt;D, R&gt;
+  source: IAudioSourceComponent&lt;D, R&gt;
+  clip: unknown
+}
+</code></pre>
 <h2 id="ggworld-class">GgWorld (class)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export declare class GgWorld&lt;D, R, TypeDoc, SceneTypeDoc&gt; {
   protected constructor(args: {
     visualScene?: SceneTypeDoc['visualScene']
     physicsWorld?: SceneTypeDoc['physicsWorld']
+    audioScene?: SceneTypeDoc['audioScene']
   })
 }
 </code></pre>
@@ -891,6 +940,10 @@ entity's own subtree instead, use <code>IEntity.getChildEntityByName</code>.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public getEntityByName&lt;T extends IEntity = IEntity&gt;(name: string): T
 </code></pre>
+<h3 id="maybebindaudiolistener-method">maybeBindAudioListener (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private maybeBindAudioListener(entity: IEntity): void
+</code></pre>
 <h3 id="onggstaticinitialized-method">onGgStaticInitialized (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">private onGgStaticInitialized()
@@ -913,6 +966,10 @@ entity's own subtree instead, use <code>IEntity.getChildEntityByName</code>.</p>
 <h3 id="physicsworld-property">physicsWorld (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly physicsWorld: SceneTypeDoc[&quot;physicsWorld&quot;]
+</code></pre>
+<h3 id="audioscene-property">audioScene (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly audioScene: SceneTypeDoc[&quot;audioScene&quot;]
 </code></pre>
 <h3 id="worldclock-property">worldClock (property)</h3>
 <p><strong>Signature</strong></p>
@@ -954,6 +1011,15 @@ entity's own subtree instead, use <code>IEntity.getChildEntityByName</code>.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly disposed$: any
 </code></pre>
+<h2 id="ggworldscenetypedocapatch-type-alias">GgWorldSceneTypeDocAPatch (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type GgWorldSceneTypeDocAPatch&lt;
+  D,
+  R,
+  ATypeDoc extends AudioTypeDocRepo&lt;D, R&gt;,
+  AS extends IAudioSceneComponent&lt;D, R, ATypeDoc&gt; | null
+&gt; = Omit&lt;GgWorldSceneTypeRepo&lt;D, R&gt;, 'audioScene'&gt; &amp; { audioScene: AS }
+</code></pre>
 <h2 id="ggworldscenetypedocppatch-type-alias">GgWorldSceneTypeDocPPatch (type alias)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export type GgWorldSceneTypeDocPPatch&lt;
@@ -977,6 +1043,16 @@ entity's own subtree instead, use <code>IEntity.getChildEntityByName</code>.</p>
 <pre><code class="language-ts">export type GgWorldSceneTypeRepo&lt;D, R, TypeDoc extends GgWorldTypeDocRepo&lt;D, R&gt; = GgWorldTypeDocRepo&lt;D, R&gt;&gt; = {
   visualScene: IVisualSceneComponent&lt;D, R, TypeDoc['vTypeDoc']&gt; | null
   physicsWorld: IPhysicsWorldComponent&lt;D, R, TypeDoc['pTypeDoc']&gt; | null
+  audioScene: IAudioSceneComponent&lt;D, R, TypeDoc['aTypeDoc']&gt; | null
+}
+</code></pre>
+<h2 id="ggworldtypedocapatch-type-alias">GgWorldTypeDocAPatch (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type GgWorldTypeDocAPatch&lt;D, R, ATypeDoc extends AudioTypeDocRepo&lt;D, R&gt;&gt; = Omit&lt;
+  GgWorldTypeDocRepo&lt;D, R&gt;,
+  'aTypeDoc'
+&gt; &amp; {
+  aTypeDoc: ATypeDoc
 }
 </code></pre>
 <h2 id="ggworldtypedocppatch-type-alias">GgWorldTypeDocPPatch (type alias)</h2>
@@ -993,6 +1069,7 @@ entity's own subtree instead, use <code>IEntity.getChildEntityByName</code>.</p>
 <pre><code class="language-ts">export type GgWorldTypeDocRepo&lt;D, R&gt; = {
   vTypeDoc: VisualTypeDocRepo&lt;D, R&gt;
   pTypeDoc: PhysicsTypeDocRepo&lt;D, R&gt;
+  aTypeDoc: AudioTypeDocRepo&lt;D, R&gt;
 }
 </code></pre>
 <h2 id="ggworldtypedocvpatch-type-alias">GgWorldTypeDocVPatch (type alias)</h2>

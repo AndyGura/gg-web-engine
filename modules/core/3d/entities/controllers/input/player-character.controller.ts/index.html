@@ -536,6 +536,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#clamppitch-method" class="md-nav__link">
+    clampPitch (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#onspawned-method" class="md-nav__link">
     onSpawned (method)
   </a>
@@ -635,6 +642,7 @@
 <li><a href="#playercharactercontroller-class">PlayerCharacterController (class)</a><ul>
 <li><a href="#toggleviewmode-method">toggleViewMode (method)</a></li>
 <li><a href="#reset-method">reset (method)</a></li>
+<li><a href="#clamppitch-method">clampPitch (method)</a></li>
 <li><a href="#onspawned-method">onSpawned (method)</a></li>
 <li><a href="#onremoved-method">onRemoved (method)</a></li>
 <li><a href="#updatecamera-method">updateCamera (method)</a></li>
@@ -676,6 +684,12 @@ movement is relative to that facing.</p>
 <h3 id="reset-method">reset (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public reset(): void
+</code></pre>
+<h3 id="clamppitch-method">clampPitch (method)</h3>
+<p>Shared by the mouse-look handler and <code>lookDirection</code>'s own setter - keeps both paths clamped to
+the exact same <code>minPitch</code>/<code>maxPitch</code> bounds instead of maintaining the conversion twice.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private clampPitch(phi: number): number
 </code></pre>
 <h3 id="onspawned-method">onSpawned (method)</h3>
 <p><strong>Signature</strong></p>

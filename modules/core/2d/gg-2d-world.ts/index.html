@@ -514,6 +514,13 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#audiotypedocrepo2d-type-alias" class="md-nav__link">
+    AudioTypeDocRepo2D (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#gg2dworld-class" class="md-nav__link">
     Gg2dWorld (class)
   </a>
@@ -555,6 +562,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#gg2dworldscenetypedocapatch-type-alias" class="md-nav__link">
+    Gg2dWorldSceneTypeDocAPatch (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#gg2dworldscenetypedocppatch-type-alias" class="md-nav__link">
     Gg2dWorldSceneTypeDocPPatch (type alias)
   </a>
@@ -571,6 +585,13 @@
           <li class="md-nav__item">
   <a href="#gg2dworldscenetyperepo-type-alias" class="md-nav__link">
     Gg2dWorldSceneTypeRepo (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#gg2dworldtypedocapatch-type-alias" class="md-nav__link">
+    Gg2dWorldTypeDocAPatch (type alias)
   </a>
   
 </li>
@@ -646,6 +667,7 @@
 
 <ul>
 <li><a href="#utils">utils</a></li>
+<li><a href="#audiotypedocrepo2d-type-alias">AudioTypeDocRepo2D (type alias)</a></li>
 <li><a href="#gg2dworld-class">Gg2dWorld (class)</a><ul>
 <li><a href="#addprimitiverigidbody-method">addPrimitiveRigidBody (method)</a></li>
 <li><a href="#addrenderer-method">addRenderer (method)</a></li>
@@ -653,9 +675,11 @@
 <li><a href="#loader-property">loader (property)</a></li>
 </ul>
 </li>
+<li><a href="#gg2dworldscenetypedocapatch-type-alias">Gg2dWorldSceneTypeDocAPatch (type alias)</a></li>
 <li><a href="#gg2dworldscenetypedocppatch-type-alias">Gg2dWorldSceneTypeDocPPatch (type alias)</a></li>
 <li><a href="#gg2dworldscenetypedocvpatch-type-alias">Gg2dWorldSceneTypeDocVPatch (type alias)</a></li>
 <li><a href="#gg2dworldscenetyperepo-type-alias">Gg2dWorldSceneTypeRepo (type alias)</a></li>
+<li><a href="#gg2dworldtypedocapatch-type-alias">Gg2dWorldTypeDocAPatch (type alias)</a></li>
 <li><a href="#gg2dworldtypedocppatch-type-alias">Gg2dWorldTypeDocPPatch (type alias)</a></li>
 <li><a href="#gg2dworldtypedocrepo-type-alias">Gg2dWorldTypeDocRepo (type alias)</a></li>
 <li><a href="#gg2dworldtypedocvpatch-type-alias">Gg2dWorldTypeDocVPatch (type alias)</a></li>
@@ -665,10 +689,22 @@
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
+<h2 id="audiotypedocrepo2d-type-alias">AudioTypeDocRepo2D (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type AudioTypeDocRepo2D = {
+  factory: IAudioSource2dComponentFactory
+  source: IAudioSource2dComponent
+  clip: unknown
+}
+</code></pre>
 <h2 id="gg2dworld-class">Gg2dWorld (class)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export declare class Gg2dWorld&lt;TypeDoc, SceneTypeDoc&gt; {
-  constructor(args: { visualScene?: SceneTypeDoc['visualScene']; physicsWorld?: SceneTypeDoc['physicsWorld'] })
+  constructor(args: {
+    visualScene?: SceneTypeDoc['visualScene']
+    physicsWorld?: SceneTypeDoc['physicsWorld']
+    audioScene?: SceneTypeDoc['audioScene']
+  })
 }
 </code></pre>
 <h3 id="addprimitiverigidbody-method">addPrimitiveRigidBody (method)</h3>
@@ -703,6 +739,13 @@
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly loader: Gg2dLoader&lt;TypeDoc&gt;
 </code></pre>
+<h2 id="gg2dworldscenetypedocapatch-type-alias">Gg2dWorldSceneTypeDocAPatch (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type Gg2dWorldSceneTypeDocAPatch&lt;
+  ATypeDoc extends AudioTypeDocRepo2D,
+  AS extends IAudioScene2dComponent&lt;ATypeDoc&gt; | null
+&gt; = Omit&lt;Gg2dWorldSceneTypeRepo, 'audioScene'&gt; &amp; { audioScene: AS }
+</code></pre>
 <h2 id="gg2dworldscenetypedocppatch-type-alias">Gg2dWorldSceneTypeDocPPatch (type alias)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export type Gg2dWorldSceneTypeDocPPatch&lt;
@@ -722,6 +765,13 @@
 <pre><code class="language-ts">export type Gg2dWorldSceneTypeRepo&lt;TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTypeDocRepo&gt; = {
   visualScene: IVisualScene2dComponent&lt;TypeDoc['vTypeDoc']&gt; | null
   physicsWorld: IPhysicsWorld2dComponent&lt;TypeDoc['pTypeDoc']&gt; | null
+  audioScene: IAudioScene2dComponent&lt;TypeDoc['aTypeDoc']&gt; | null
+}
+</code></pre>
+<h2 id="gg2dworldtypedocapatch-type-alias">Gg2dWorldTypeDocAPatch (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type Gg2dWorldTypeDocAPatch&lt;ATypeDoc extends AudioTypeDocRepo2D&gt; = Omit&lt;Gg2dWorldTypeDocRepo, 'aTypeDoc'&gt; &amp; {
+  aTypeDoc: ATypeDoc
 }
 </code></pre>
 <h2 id="gg2dworldtypedocppatch-type-alias">Gg2dWorldTypeDocPPatch (type alias)</h2>
@@ -735,6 +785,7 @@
 <pre><code class="language-ts">export type Gg2dWorldTypeDocRepo = {
   vTypeDoc: VisualTypeDocRepo2D
   pTypeDoc: PhysicsTypeDocRepo2D
+  aTypeDoc: AudioTypeDocRepo2D
 }
 </code></pre>
 <h2 id="gg2dworldtypedocvpatch-type-alias">Gg2dWorldTypeDocVPatch (type alias)</h2>
@@ -753,21 +804,25 @@
 </code></pre>
 <h2 id="typedgg2dworld-type-alias">TypedGg2dWorld (type alias)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type TypedGg2dWorld&lt;VW extends Gg2dWorld&lt;any&gt; | null, PW extends Gg2dWorld&lt;any&gt; | null&gt; = VW extends Gg2dWorld&lt;
-  infer VTD,
-  infer VSTD
-&gt; | null
+<pre><code class="language-ts">export type TypedGg2dWorld&lt;
+  VW extends Gg2dWorld&lt;any&gt; | null,
+  PW extends Gg2dWorld&lt;any&gt; | null,
+  AW extends Gg2dWorld&lt;any&gt; | null = null
+&gt; = VW extends Gg2dWorld&lt;infer VTD, infer VSTD&gt; | null
   ? PW extends Gg2dWorld&lt;infer PTD, infer PSTD&gt; | null
-    ? Gg2dWorld&lt;
-        {
-          vTypeDoc: VTD['vTypeDoc']
-          pTypeDoc: PTD['pTypeDoc']
-        },
-        {
-          visualScene: VSTD['visualScene']
-          physicsWorld: PSTD['physicsWorld']
-        }
-      &gt;
+    ? AW extends Gg2dWorld&lt;infer ATD, infer ASTD&gt;
+      ? Gg2dWorld&lt;
+          { vTypeDoc: VTD['vTypeDoc']; pTypeDoc: PTD['pTypeDoc']; aTypeDoc: ATD['aTypeDoc'] },
+          { visualScene: VSTD['visualScene']; physicsWorld: PSTD['physicsWorld']; audioScene: ASTD['audioScene'] }
+        &gt;
+      : Gg2dWorld&lt;
+          { vTypeDoc: VTD['vTypeDoc']; pTypeDoc: PTD['pTypeDoc']; aTypeDoc: AudioTypeDocRepo2D },
+          {
+            visualScene: VSTD['visualScene']
+            physicsWorld: PSTD['physicsWorld']
+            audioScene: IAudioScene2dComponent | null
+          }
+        &gt;
     : never
   : never
 </code></pre>

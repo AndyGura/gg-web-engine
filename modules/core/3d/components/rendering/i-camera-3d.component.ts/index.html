@@ -554,6 +554,17 @@
 <hr />
 <h1 id="utils">utils</h1>
 <h2 id="icamera3dcomponent-interface">ICamera3dComponent (interface)</h2>
+<p>A camera is itself a display object (<code>IDisplayObject3dComponent</code>) with a position/rotation of its
+own, so <code>enableRenderLayer</code>/<code>disableRenderLayer</code>/<code>isRenderLayerEnabled</code> are inherited rather than
+redeclared here - on a camera they mean "which render layers this camera renders" instead of
+"which render layers this object belongs to", see that interface's own doc. <strong>A freshly-created
+camera renders every currently-registered render layer</strong> (an adapter's own camera-construction
+code is expected to enable every layer up front, not just <code>MAIN_RENDER_LAYER</code> alone the way a
+freshly-created non-camera display object does) - so an app placing a second camera in the scene
+(a portal's own "looking through" render pass, a third-person spectator view, ...) never has to
+remember to opt it into layers some other, unrelated system registered; only a camera that
+deliberately needs to see <em>less</em> than everything (e.g. <code>PlayerCharacterController</code>'s own
+first-person camera excluding <code>SELF_VIEW_HIDDEN_RENDER_LAYER</code>) ever calls <code>disableRenderLayer</code>.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export interface ICamera3dComponent&lt;
   VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D,

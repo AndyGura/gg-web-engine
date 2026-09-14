@@ -536,6 +536,20 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#dispatchcollisionevents-method" class="md-nav__link">
+    dispatchCollisionEvents (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#computecontactgeometry-method" class="md-nav__link">
+    computeContactGeometry (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#registercollisiongroup-method" class="md-nav__link">
     registerCollisionGroup (method)
   </a>
@@ -649,6 +663,8 @@
 <li><a href="#rapier3dworldcomponent-class">Rapier3dWorldComponent (class)</a><ul>
 <li><a href="#init-method">init (method)</a></li>
 <li><a href="#simulate-method">simulate (method)</a></li>
+<li><a href="#dispatchcollisionevents-method">dispatchCollisionEvents (method)</a></li>
+<li><a href="#computecontactgeometry-method">computeContactGeometry (method)</a></li>
 <li><a href="#registercollisiongroup-method">registerCollisionGroup (method)</a></li>
 <li><a href="#deregistercollisiongroup-method">deregisterCollisionGroup (method)</a></li>
 <li><a href="#raycast-method">raycast (method)</a></li>
@@ -678,6 +694,46 @@
 <h3 id="simulate-method">simulate (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">simulate(delta: number): void
+</code></pre>
+<h3 id="dispatchcollisionevents-method">dispatchCollisionEvents (method)</h3>
+<p>Drains <code>eventQueue</code> exactly once per <code>simulate()</code> call and routes each entry to whichever
+component(s) care - this is the <em>only</em> place <code>drainCollisionEvents</code> is called for the whole
+world (see <code>Rapier3dTriggerComponent.notifyOverlap</code>'s doc for why a second/independent drain
+elsewhere would silently steal events from this one). A collider pair with sensor
+semantics (either side <code>isSensor()</code>) is routed as a trigger overlap; an ordinary pair is routed
+as a real rigid-body collision.</p>
+<p><code>EventQueue.drainCollisionEvents</code> reports <em>collider</em> handles, not rigid-body handles -
+<code>handleIdEntityMap</code> is keyed by rigid-body handle (see <code>addToWorld</code>), so each handle is resolved
+via <code>World.getCollider(handle)</code> (returns <code>null</code> for a since-removed collider, not a throw - safe
+to just skip) then <code>Collider.parent()</code> to reach the owning <code>RigidBody</code> before the map lookup.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">protected dispatchCollisionEvents(): void
+</code></pre>
+<h3 id="computecontactgeometry-method">computeContactGeometry (method)</h3>
+<p>Reads world-space contact position/normal/impulse for a just-started contact between two
+non-sensor colliders via <code>World.contactPair</code>'s <code>TempContactManifold</code>. Returns <code>null</code> only if the
+pair has no manifold at all (shouldn't normally happen for a pair <code>drainCollisionEvents</code> just
+reported as newly touching, but guarded defensively). <code>World.contactPair</code>'s callback can in
+principle be invoked once per manifold between the pair - for the compound/multi-collider shapes
+this can matter for, each sub-collider pair already gets its own separate <code>drainCollisionEvents</code>
+entry (and thus its own <code>computeContactGeometry</code> call) since collision events are per-<em>collider</em>,
+not per-body, so in practice a single call here only ever sees one manifold; only the first
+encountered is used regardless. <code>impulse</code> sums <code>contactImpulse(i)</code> across every contact point of
+that manifold (an already-solved <em>impulse</em>, not a force estimate - the pinned
+<code>@dimforge/rapier3d-compat</code> build's constraint solver runs within the same <code>World.step()</code> call
+that produced this <code>started</code> event, so the manifold's impulses are already up to date by the time
+this runs). <code>normal</code> is returned oriented "away from <code>collider1</code> towards <code>collider2</code>" - Rapier's
+<code>contactPair(a, b, f)</code> reports whether its own internally-cached manifold order matches the
+queried <code>(a, b)</code> order via the callback's <code>flipped</code> flag; when <code>flipped</code> is <code>true</code> the manifold's
+<code>normal()</code> (always world-space, always pointing from the manifold's own shape1 to shape2) actually
+points from <code>collider2</code> to <code>collider1</code> and must be negated to match this method's documented
+orientation - verified empirically against a ball resting on a floor below it (see
+<code>gg-engine-physics-adapter-rapier</code> for the exact reproduction).</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">protected computeContactGeometry(
+    collider1: Collider,
+    collider2: Collider,
+  ): { position: Point3; normal: Point3; impulse: number } | null
 </code></pre>
 <h3 id="registercollisiongroup-method">registerCollisionGroup (method)</h3>
 <p><strong>Signature</strong></p>

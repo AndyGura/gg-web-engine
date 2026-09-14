@@ -518,6 +518,33 @@
     Renderer3dEntity (class)
   </a>
   
+    <nav class="md-nav" aria-label="Renderer3dEntity (class)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#enablerenderlayer-method" class="md-nav__link">
+    enableRenderLayer (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#disablerenderlayer-method" class="md-nav__link">
+    disableRenderLayer (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#isrenderlayerenabled-method" class="md-nav__link">
+    isRenderLayerEnabled (method)
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
       </ul>
@@ -549,13 +576,38 @@
 
 <ul>
 <li><a href="#utils">utils</a></li>
-<li><a href="#renderer3dentity-class">Renderer3dEntity (class)</a></li>
+<li><a href="#renderer3dentity-class">Renderer3dEntity (class)</a><ul>
+<li><a href="#enablerenderlayer-method">enableRenderLayer (method)</a></li>
+<li><a href="#disablerenderlayer-method">disableRenderLayer (method)</a></li>
+<li><a href="#isrenderlayerenabled-method">isRenderLayerEnabled (method)</a></li>
+</ul>
+</li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
 <h2 id="renderer3dentity-class">Renderer3dEntity (class)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export declare class Renderer3dEntity&lt;VTypeDoc&gt;
+</code></pre>
+<h3 id="enablerenderlayer-method">enableRenderLayer (method)</h3>
+<p>Proxies to <code>this.camera.enableRenderLayer</code>/<code>disableRenderLayer</code>/<code>isRenderLayerEnabled</code> - see
+<code>ICamera3dComponent</code>'s own doc for what enabling/disabling a render layer on a camera means.
+Mirrors the inherited <code>position</code>/<code>rotation</code> accessors (<code>IRendererEntity</code>), which proxy to the
+same underlying <code>camera</code> for the same reason: call sites driving a renderer/its camera (e.g.
+<code>PlayerCharacterController</code>) shouldn't need to reach through <code>this.camera.camera</code> just because
+this one concept doesn't already have its own top-level accessor the way position/rotation do.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">enableRenderLayer(layer: RenderLayer): void
+</code></pre>
+<h3 id="disablerenderlayer-method">disableRenderLayer (method)</h3>
+<p>See <code>enableRenderLayer</code>'s own doc.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">disableRenderLayer(layer: RenderLayer): void
+</code></pre>
+<h3 id="isrenderlayerenabled-method">isRenderLayerEnabled (method)</h3>
+<p>See <code>enableRenderLayer</code>'s own doc.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">isRenderLayerEnabled(layer: RenderLayer): boolean
 </code></pre>
 
 

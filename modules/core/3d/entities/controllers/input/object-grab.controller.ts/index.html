@@ -557,6 +557,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#findgrabtarget-method" class="md-nav__link">
+    findGrabTarget (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#trygrab-method" class="md-nav__link">
     tryGrab (method)
   </a>
@@ -652,6 +659,7 @@
 <li><a href="#holdpoint-method">holdPoint (method)</a></li>
 <li><a href="#holderclearance-method">holderClearance (method)</a></li>
 <li><a href="#clampawayfromholder-method">clampAwayFromHolder (method)</a></li>
+<li><a href="#findgrabtarget-method">findGrabTarget (method)</a></li>
 <li><a href="#trygrab-method">tryGrab (method)</a></li>
 <li><a href="#ignoreforholder-method">ignoreForHolder (method)</a></li>
 <li><a href="#unignoreforholder-method">unignoreForHolder (method)</a></li>
@@ -727,8 +735,14 @@ when it isn't one.</p>
 <pre><code class="language-ts">onRemoved(): void
 </code></pre>
 <h3 id="holdpoint-method">holdPoint (method)</h3>
+<p>The world-space point the held object is currently driven towards - <code>protected</code>, not <code>private</code>,
+so a subclass can override it (e.g. to redirect the hold point through a portal pair once the
+held object is known to be on the far side of one - see <code>findGrabTarget</code>'s own doc for the
+matching override point on the "what to grab" side of this same concern). An override should
+still route through <code>super.holdPoint()</code> for the ordinary, not-through-anything case rather than
+reimplementing <code>clampAwayFromHolder</code> itself.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">private holdPoint(): Point3
+<pre><code class="language-ts">protected holdPoint(): Point3
 </code></pre>
 <h3 id="holderclearance-method">holderClearance (method)</h3>
 <p>Radius of a sphere around <code>holder</code> guaranteed to clear its capsule in any direction. Assumes
@@ -736,39 +750,74 @@ when it isn't one.</p>
 by <code>tryGrab()</code> (as an upper-bound heuristic for "this first hit was probably my own capsule,
 not a real obstacle" - see that method's own doc).</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">private holderClearance(): number
+<pre><code class="language-ts">protected holderClearance(): number
 </code></pre>
 <h3 id="clampawayfromholder-method">clampAwayFromHolder (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">private clampAwayFromHolder(target: Point3): Point3
+<pre><code class="language-ts">protected clampAwayFromHolder(target: Point3): Point3
 </code></pre>
-<h3 id="trygrab-method">tryGrab (method)</h3>
+<h3 id="findgrabtarget-method">findGrabTarget (method)</h3>
 <p>A first-person camera sits inside (or right at the surface of) <code>holder</code>'s own capsule, so the
 very first thing a raycast from <code>camera.position</code> finds along almost any forward direction is
 that capsule itself, not whatever's actually being aimed at - <code>holder.characterController</code>
 isn't reliably resolvable back to <code>holder</code> from a <code>RaycastResult</code> on every adapter either (e.g.
 <code>Rapier3dCharacterControllerComponent</code>'s own doc - its collider is never registered for that),
-so this can't be told apart from "some other real obstacle" by identity.</p>
-<p><strong>This used to be dodged by starting the ray a fixed <code>holderClearance()</code> distance in front of
-the camera instead of at it - a worst-case guess at how big <code>holder</code>'s own capsule can possibly
-be, not where it actually ends along <em>this</em> particular ray.</strong> That guess overshoots dramatically
-for a camera pitched steeply down at something close and small (the common case for a resting
-prop, which sits well below eye height) - real, reproduced bug: standing close enough to a small
-grabbable prop resting on a pedestal, the fixed skip flew straight past the prop <em>and</em> landed
-inside the pedestal underneath it, so the ray reported a legitimate hit on the (non-grabbable)
-pedestal instead of ever reaching the prop, silently blocking the pick-up.</p>
-<p><strong>Fixed with a real two-pass cast instead of a guessed skip distance</strong>: cast once from the
-actual <code>camera.position</code> first. If that hit is already a <code>Grabbable3dEntity</code>, done - grab it,
-no retry needed (handles a prop close enough to be found before any self-hit would even occur).
-Otherwise, only if the hit is closer than <code>holderClearance()</code> could ever put a <em>different</em>
-object (given the camera sits on/within the capsule's own axis, nothing external can
-legitimately be that close without already overlapping the holder, an already-broken physics
-state this doesn't need to handle) - retry from exactly where that first hit exits (plus
-<code>SELF_HIT_SKIN</code>, a small fixed clearance for ordinary surface float tolerance, not a guess at
-anything holder-sized) rather than from an arbitrary fixed distance. A hit farther than
-<code>holderClearance()</code> away is trusted as a real obstacle and left blocking the grab, same as
-before - this only changes what happens for a hit close enough to plausibly be the holder's own
-capsule, never lets the ray skip through genuinely distant geometry.</p>
+so this can't be told apart from "some other real obstacle" by identity, and <code>RaycastResult</code>
+gives no distance-through-the-shape either: a ray whose origin is already inside a shape reports
+that shape as hit at distance <code>0</code> (Rapier's <code>castRay(..., solid: true, ...)</code>, and Ammo's own
+<code>rayTest</code> finding nothing at all for the containing shape and falling back to a distance-<code>0</code>
+overlap probe) rather than the point where it would actually exit - so "retry from where the
+self-hit exits" has no real value to read a retry start point from on any adapter, and the two
+adapters aren't even consistent with each other about what a self-hit <em>is</em>: Ammo's <code>rayTest</code>
+simply can't see the shape containing its own ray origin, so it transparently reports whatever
+real object is actually hit beyond it (the common case needs no retry on Ammo at all); Rapier's
+<code>solid: true</code> mode does the opposite and always reports the containing shape at distance <code>0</code>,
+ahead of anything genuinely beyond it - so relying on the first cast to reliably find the <em>real</em>
+target only ever works by accident, and only on Ammo.</p>
+<p><strong>First tried starting the ray a fixed <code>holderClearance()</code> distance in front of the camera
+instead of at it</strong> - a worst-case guess at how big the holder's capsule can possibly be in <em>any</em>
+direction (it also accounts for <code>centersDistance</code>, the capsule's full half-height, not just its
+radius). That guess overshoots dramatically for a camera pitched steeply down at something close
+and small (the common case for a resting prop, which sits well below eye height) - real,
+reproduced bug: standing close enough to a small grabbable prop resting on a pedestal, the fixed
+skip flew straight past the prop <em>and</em> landed inside the pedestal underneath it, reporting a
+legitimate hit on the (non-grabbable) pedestal instead of ever reaching the prop.</p>
+<p><strong>Then tried a two-pass cast, retrying from the first hit's own point</strong> (whatever it was) plus a
+small fixed clearance - cast once from the actual <code>camera.position</code> first, and only if that
+missed (or hit something within <code>holderClearance()</code>, plausibly the holder's own capsule) retry
+from just past that hit. This reads right in isolation, but silently assumed the first hit's
+point marks where the ray <em>exits</em> the self-collision shape - which, per this doc's opening
+paragraph, is never true for a solid/fallback hit at distance <code>0</code>: the reported point is just the
+ray's own origin again. On Rapier specifically (where the first cast <em>always</em> reports the
+containing capsule this way whenever the camera is inside it) the retry's tiny nudge landed the
+second cast still deep inside the same capsule, which reported the exact same self-hit again -
+pick-up silently stopped working on Rapier entirely, while appearing to work fine on Ammo (whose
+<code>rayTest</code> never needed the retry to begin with, for the reason given above).</p>
+<p><strong>Fixed by computing the escape point geometrically instead of reading it off any raycast
+result</strong>: cast once from the actual <code>camera.position</code> first - if that already lands on a
+<code>Grabbable3dEntity</code>, done, no retry needed (this is what lets a prop close enough to be found
+before any self-hit would even occur through on Ammo). Otherwise, when the hit is closer than
+<code>holderClearance()</code> could ever put a genuinely different object (given the camera sits on/within
+the capsule's own axis), retry from <code>camera.position</code> skipped forward by
+<code>characterControllerSelfHitSkip()</code> - see that function's own doc for why it sphere-traces the
+capsule's own exact geometry (rather than a flat <code>radius</code> guess, which broke down for a
+first-person camera pitched down at something close while sitting above the capsule's
+cylindrical midsection - a real, reproduced regression) or reading anything off the first cast's
+result. <code>PlayerCharacterController</code>'s third-person <code>cameraCollision</code> raycast leans on the exact
+same helper for the identical self-hit problem. A hit farther than <code>holderClearance()</code> away is
+trusted as a real obstacle and left blocking the grab, exactly as before.</p>
+<p>Split out of <code>tryGrab()</code> (which still owns actually committing to the grab - setting
+<code>_heldObject</code>, calling <code>grab()</code>/<code>ignoreForHolder</code>) and made <code>protected</code> so a subclass can extend
+<em>what</em> counts as reachable without touching any of that bookkeeping: override this method to
+try something extra first (e.g. a portal-aware cast that tunnels the ray through a placed
+portal pair to reach a <code>Grabbable3dEntity</code> sitting on the far side) and fall back to
+<code>super.findGrabTarget()</code> for the ordinary, not-through-anything case. <code>holdPoint()</code> is the
+matching override point for keeping such an object correctly positioned once held - see its own
+doc.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">protected findGrabTarget(): Grabbable3dEntity&lt;TypeDoc&gt; | null
+</code></pre>
+<h3 id="trygrab-method">tryGrab (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">private tryGrab(): void
 </code></pre>

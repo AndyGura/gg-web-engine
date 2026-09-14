@@ -661,6 +661,9 @@
 <pre><code class="language-ts">clone(): Rapier2dTriggerComponent
 </code></pre>
 <h3 id="dispose-method">dispose (method)</h3>
+<p>Completes <code>onEnter$</code>/<code>onLeft$</code> on top of <code>Rapier2dRigidBodyComponent.dispose()</code>'s own
+<code>onCollisionStart$</code>/<code>onCollisionEnd$</code> completion (via <code>super.dispose()</code>) - this trigger's own
+subjects have no other owner to complete them.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">dispose()
 </code></pre>

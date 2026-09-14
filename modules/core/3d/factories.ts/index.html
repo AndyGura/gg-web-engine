@@ -521,6 +521,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#iaudiosource3dcomponentfactory-interface" class="md-nav__link">
+    IAudioSource3dComponentFactory (interface)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#idisplayobject3dcomponentfactory-class" class="md-nav__link">
     IDisplayObject3dComponentFactory (class)
   </a>
@@ -633,6 +640,7 @@
 <ul>
 <li><a href="#utils">utils</a></li>
 <li><a href="#displayobject3dopts-type-alias">DisplayObject3dOpts (type alias)</a></li>
+<li><a href="#iaudiosource3dcomponentfactory-interface">IAudioSource3dComponentFactory (interface)</a></li>
 <li><a href="#idisplayobject3dcomponentfactory-class">IDisplayObject3dComponentFactory (class)</a><ul>
 <li><a href="#createprimitive-method">createPrimitive (method)</a></li>
 <li><a href="#createperspectivecamera-method">createPerspectiveCamera (method)</a></li>
@@ -658,6 +666,11 @@
   castShadow?: boolean
   receiveShadow?: boolean
 }
+</code></pre>
+<h2 id="iaudiosource3dcomponentfactory-interface">IAudioSource3dComponentFactory (interface)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export interface IAudioSource3dComponentFactory&lt;ATypeDoc extends AudioTypeDocRepo3D = AudioTypeDocRepo3D&gt;
+  extends IAudioSourceComponentFactory&lt;Point3, Point4, ATypeDoc&gt; {}
 </code></pre>
 <h2 id="idisplayobject3dcomponentfactory-class">IDisplayObject3dComponentFactory (class)</h2>
 <p><strong>Signature</strong></p>
