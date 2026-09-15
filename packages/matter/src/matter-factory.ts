@@ -110,8 +110,8 @@ export class MatterFactory implements IPhysicsBody2dComponentFactory<MatterPhysi
     if (options.bodyType === 'kinematic_pos' || options.bodyType === 'kinematic_vel') {
       warnUnsupportedOnce(
         `bodyType: '${options.bodyType}' has no matter-js equivalent - falling back to a plain static ` +
-          'body. Resting bodies won\'t be pushed or woken when you move it, the same as manually ' +
-          'teleporting a static body\'s position. See Body2DOptions.kinematic_pos/kinematic_vel\'s doc.',
+          "body. Resting bodies won't be pushed or woken when you move it, the same as manually " +
+          "teleporting a static body's position. See Body2DOptions.kinematic_pos/kinematic_vel's doc.",
       );
     }
     if (options.ccd) {
