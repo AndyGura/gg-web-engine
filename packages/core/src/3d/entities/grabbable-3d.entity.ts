@@ -72,6 +72,19 @@ const DEFAULT_OPTIONS: Grabbable3dEntityOptions = {
  * whatever velocity was set, so a held object can sag very slightly between updates at high
  * substep counts - imperceptible in practice, and no worse an approximation than
  * `CharacterController3dEntity`'s own per-tick gravity integration.
+ *
+ * **`objectBody` should be created with `ccd: true`.** The hold spring can drive a body at up to
+ * `maxFollowSpeed` (20 m/s by default) directly at whatever the camera is aimed through, including
+ * thin static geometry - exactly the fast-moving-dynamic-body scenario `BodyOptions.ccd` exists
+ * for (see its own doc), and without it a hard enough push can cross a wall's thickness within a
+ * single physics step. A high `restitution` on `objectBody` is also worth avoiding for the same
+ * underlying reason from the other direction: pinned against geometry it can't get through, the
+ * spring re-asserts full into-the-obstacle velocity every tick regardless of what the solver did
+ * the tick before, so a bouncy restitution fights that every contact tick and reads as a visible
+ * jitter (how pronounced this looks is adapter-dependent - some engines' discrete collision
+ * detection resolves the resulting shallow penetration into a visible bounce loop every tick,
+ * where `ccd` alone doesn't help since the body was never moving fast enough per step to actually
+ * tunnel) rather than the object settling flush against the surface.
  */
 export class Grabbable3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo> extends Entity3d<TypeDoc> {
   public readonly grabOptions: Grabbable3dEntityOptions;

@@ -366,7 +366,11 @@ world.init().then(async () => {
     const center = Pnt3.scalarMult(Pnt3.add(bounds.max, bounds.min), 0.5);
     const radioBody = world.physicsWorld!.factory.createRigidBody({
       shape: { shape: 'COMPOUND', children: [{ position: center, shape: { shape: 'BOX', dimensions: size } }] },
-      body: { bodyType: 'dynamic', mass: 3, friction: 0.8, restitution: 0.2 },
+      // `ccd: true` is what actually stops this body from tunnelling through a wall when the
+      // velocity-spring hold (see `Grabbable3dEntity`'s doc) drives it hard into one - without it,
+      // a fast enough push can cross an entire wall's thickness within a single physics step. This
+      // is the original repro for that bug: grab the radio and push it into a wall.
+      body: { bodyType: 'dynamic', mass: 3, friction: 0.8, restitution: 0.05, ccd: true },
     });
     const newRadio = new Grabbable3dEntity(
       { object3D: radioObject, objectBody: radioBody },
