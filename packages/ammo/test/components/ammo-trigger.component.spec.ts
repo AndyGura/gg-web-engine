@@ -24,7 +24,7 @@ describe(`AmmoTriggerComponent`, () => {
     trigger.addToWorld({ physicsWorld: world } as any);
     const ball = factory.createRigidBody({
       shape: { shape: 'SPHERE', radius: 1 },
-      body: { dynamic: true, mass: 1 },
+      body: { bodyType: 'dynamic', mass: 1 },
     }, { position: { x: 0, y: 0, z: 12 } });
     ball.addToWorld({ physicsWorld: world } as any);
     ball.linearVelocity = { x: 0, y: 0, z: -10 };
@@ -52,7 +52,7 @@ describe(`AmmoTriggerComponent`, () => {
     trigger.addToWorld({ physicsWorld: world } as any);
     const ball = factory.createRigidBody({
       shape: { shape: 'SPHERE', radius: 1 },
-      body: { dynamic: true, mass: 1 },
+      body: { bodyType: 'dynamic', mass: 1 },
     }, { position: { x: 0, y: 0, z: 12 } });
     ball.addToWorld({ physicsWorld: world } as any);
     ball.linearVelocity = { x: 0, y: 0, z: -10 };
@@ -73,7 +73,7 @@ describe(`AmmoTriggerComponent`, () => {
     trigger.addToWorld({ physicsWorld: world } as any);
     const ball = factory.createRigidBody({
       shape: { shape: 'SPHERE', radius: 1 },
-      body: { dynamic: true, mass: 1 },
+      body: { bodyType: 'dynamic', mass: 1 },
     }, { position: { x: 0, y: 0, z: 0 } });
     ball.addToWorld({ physicsWorld: world } as any);
     let enterRegistered = false;
@@ -90,7 +90,7 @@ describe(`AmmoTriggerComponent`, () => {
     trigger.addToWorld({ physicsWorld: world } as any);
     const ball = factory.createRigidBody({
       shape: { shape: 'SPHERE', radius: 1 },
-      body: { dynamic: true, mass: 1 },
+      body: { bodyType: 'dynamic', mass: 1 },
     }, { position: { x: 0, y: 0, z: 0 } });
     ball.addToWorld({ physicsWorld: world } as any);
     let exitRegistered = false;
@@ -108,7 +108,7 @@ describe(`AmmoTriggerComponent`, () => {
     trigger.addToWorld({ physicsWorld: world } as any);
     const ball = factory.createRigidBody({
       shape: { shape: 'SPHERE', radius: 1 },
-      body: { dynamic: true, mass: 1 },
+      body: { bodyType: 'dynamic', mass: 1 },
     }, { position: { x: 0, y: 0, z: 0 } });
     ball.addToWorld({ physicsWorld: world } as any);
     let exitRegistered = false;

@@ -106,6 +106,39 @@ scale), re-run this exact check before assuming `Body.setPosition`/`setVelocity`
 still work uniformly regardless of sleep state, and wake the body explicitly if not (matter-js
 exposes `Sleeping.set(body, false)` for this).
 
+## `bodyType: 'kinematic_pos'`/`'kinematic_vel'` and `ccd`: warn-once, fall back, never throw
+
+matter-js has no kinematic body concept (only `isStatic`) and no continuous collision detection at
+all - both genuine, long-standing upstream limitations (not a gap in this adapter package), see
+`gg-engine-physics-adapter`'s own section on the general contract for why every adapter is still
+expected to *accept* these `BodyOptions` fields regardless. `MatterFactory.transformOptions` is the
+reference implementation of that "warn once, fall back, never throw" pattern other adapters facing an
+unsupported feature should follow:
+
+- `bodyType: 'kinematic_pos'`/`'kinematic_vel'` both fall back to `isStatic: true` - the closest
+  matter-js has - with the exact same caveats as manually teleporting a `'static'` body's position by
+  hand (`Body.setPosition` on a static body moves it, but doesn't push or wake anything resting on
+  it the way a real kinematic body would).
+- `ccd: true` is accepted and simply has no effect beyond the warning - a fast-moving or fast-driven
+  body can still tunnel through thin geometry in one step.
+- Both warn via a module-level `warnUnsupportedOnce(message)` (a `Set<string>` of already-warned
+  messages) rather than `console.warn` directly at the call site - keyed on the *message*, so
+  distinct warnings (kinematic vs ccd) each still get one appearance, but creating many bodies with
+  the same unsupported request (e.g. spawning a dozen kinematic props) only logs once total, not once
+  per body. Per-body/per-tick warnings here would be worse than no warning at all - they'd teach a
+  developer to tune the console out rather than surface the one thing worth fixing.
+
+**Don't derive a body's debug-view label (`RIGID_STATIC`/`RIGID_DYNAMIC`/`RIGID_KINEMATIC`) from the
+`bodyType` an app *asked for*.** An earlier version of `MatterRigidBodyComponent.debugBodySettings`
+reported `RIGID_KINEMATIC` for any non-finite-mass body, on the theory that `kinematic_pos`/
+`kinematic_vel` requests should show as kinematic in the debugger - but that mislabeled every genuine
+`'static'` body as kinematic too (matter-js's `isStatic` can't distinguish "asked for static" from
+"asked for kinematic, fell back to static" once the body actually exists, and this component doesn't
+separately track the original request). Fixed by going back to deriving the label from what the body
+*physically is* (`isFinite(mass) ? RIGID_DYNAMIC : RIGID_STATIC`) - the console warning at creation
+time is what tells a developer their kinematic request wasn't honored; the debug view's job is to show
+real physics state, not restate the app's original ask.
+
 ## Keep this skill current
 
 This file is read by future agents fixing/extending `packages/matter` specifically, not by end users of

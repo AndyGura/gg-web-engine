@@ -1,15 +1,18 @@
 export type CollisionGroup = number;
+export type BodyType = 'dynamic' | 'static' | 'kinematic_pos' | 'kinematic_vel';
 
 export interface BodyOptions {
-  dynamic: boolean;
+  bodyType: BodyType;
   mass: number;
   restitution: number;
   friction: number;
   ownCollisionGroups: ReadonlyArray<CollisionGroup> | 'all';
   interactWithCollisionGroups: ReadonlyArray<CollisionGroup> | 'all';
+  ccd: boolean;
 }
 
 export type DebugBodyType =
+  | { type: 'RIGID_KINEMATIC' }
   | { type: 'RIGID_STATIC' }
   | { type: 'TRIGGER'; activated: () => boolean }
   | { type: 'RIGID_DYNAMIC'; sleeping: () => boolean };
@@ -60,13 +63,16 @@ export abstract class DebugBodySettings<S> {
     } else {
       switch (this.type.type) {
         case 'RIGID_DYNAMIC':
-          color = this.type.sleeping() ? 0x0000ff : 0xff0000;
+          color = this.type.sleeping() ? 0x4dabf7 : 0xff4d4d;
           break;
         case 'RIGID_STATIC':
-          color = 0x00ff00;
+          color = 0x51cf66;
+          break;
+        case 'RIGID_KINEMATIC':
+          color = 0xae77ff;
           break;
         case 'TRIGGER':
-          color = this.type.activated() ? 0xff9900 : 0xffff00;
+          color = this.type.activated() ? 0xff922b : 0xffd43b;
           break;
       }
     }

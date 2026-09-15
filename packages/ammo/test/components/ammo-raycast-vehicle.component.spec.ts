@@ -40,7 +40,7 @@ const createFloor = (
   factory.createRigidBody(
     {
       shape: { shape: 'BOX', dimensions: { x: 75, y: 75, z: 1 } },
-      body: { dynamic: false, mass: 0 },
+      body: { bodyType: 'static', mass: 0 },
     },
     { position: { x: 0, y: 0, z: topZ - 0.5 } },
   );
@@ -51,7 +51,7 @@ const createVehicle = (
   position: { x: number; y: number; z: number },
 ): AmmoRaycastVehicleComponent => {
   const chassis = factory.createRigidBody(
-    { shape: { shape: 'BOX', dimensions: { x: 1.8, y: 4, z: 0.6 } }, body: { dynamic: true, mass: 800 } },
+    { shape: { shape: 'BOX', dimensions: { x: 1.8, y: 4, z: 0.6 } }, body: { bodyType: 'dynamic', mass: 800 } },
     { position },
   );
   const vehicle = factory.createRaycastVehicle(chassis);

@@ -24,7 +24,7 @@ describe(`Rapier2dTriggerComponent`, () => {
     const circle = factory.createRigidBody(
       {
         shape: { shape: 'CIRCLE', radius: 1 },
-        body: { dynamic: true, mass: 1 },
+        body: { bodyType: 'dynamic', mass: 1 },
       },
       { position: { x: 0, y: 12 } },
     );
@@ -64,7 +64,7 @@ describe(`Rapier2dTriggerComponent`, () => {
     const circle = factory.createRigidBody(
       {
         shape: { shape: 'CIRCLE', radius: 1 },
-        body: { dynamic: true, mass: 1 },
+        body: { bodyType: 'dynamic', mass: 1 },
       },
       { position: { x: 0, y: 12 } },
     );
@@ -94,7 +94,7 @@ describe(`Rapier2dTriggerComponent`, () => {
     const circle = factory.createRigidBody(
       {
         shape: { shape: 'CIRCLE', radius: 1 },
-        body: { dynamic: true, mass: 1 },
+        body: { bodyType: 'dynamic', mass: 1 },
       },
       { position: Pnt2.O },
     );
@@ -114,7 +114,7 @@ describe(`Rapier2dTriggerComponent`, () => {
     const circle = factory.createRigidBody(
       {
         shape: { shape: 'CIRCLE', radius: 1 },
-        body: { dynamic: true, mass: 1 },
+        body: { bodyType: 'dynamic', mass: 1 },
       },
       { position: Pnt2.O },
     );
@@ -135,7 +135,7 @@ describe(`Rapier2dTriggerComponent`, () => {
     const circle = factory.createRigidBody(
       {
         shape: { shape: 'CIRCLE', radius: 1 },
-        body: { dynamic: true, mass: 1 },
+        body: { bodyType: 'dynamic', mass: 1 },
       },
       { position: Pnt2.O },
     );

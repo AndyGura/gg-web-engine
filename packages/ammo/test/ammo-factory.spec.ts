@@ -65,7 +65,7 @@ describe('AmmoFactory', () => {
 
   describe.each(shapes)('$name shape', ({ shape }) => {
     it('should create a static rigid body without throwing', () => {
-      const body = factory.createRigidBody({ shape, body: { dynamic: false, mass: 0 } }, { position: { x: 1, y: 2, z: 3 } });
+      const body = factory.createRigidBody({ shape, body: { bodyType: 'static', mass: 0 } }, { position: { x: 1, y: 2, z: 3 } });
       body.addToWorld({ physicsWorld: world } as any);
       expect(body.position).toEqual({ x: 1, y: 2, z: 3 });
       world.simulate(16);
@@ -82,14 +82,14 @@ describe('AmmoFactory', () => {
   it('should throw a clear error for an unsupported shape', () => {
     expect(() => factory.createRigidBody({
       shape: { shape: 'NOT_A_SHAPE' } as any,
-      body: { dynamic: false, mass: 0 },
+      body: { bodyType: 'static', mass: 0 },
     })).toThrow(/not implemented for Ammo\.js/);
   });
 
   describe('createCharacterController', () => {
     it('should create a working character controller that falls and settles on a floor', () => {
       const floor = factory.createRigidBody(
-        { shape: { shape: 'BOX', dimensions: { x: 50, y: 50, z: 1 } }, body: { dynamic: false, mass: 0 } },
+        { shape: { shape: 'BOX', dimensions: { x: 50, y: 50, z: 1 } }, body: { bodyType: 'static', mass: 0 } },
         { position: { x: 0, y: 0, z: -0.5 } },
       );
       floor.addToWorld({ physicsWorld: world } as any);

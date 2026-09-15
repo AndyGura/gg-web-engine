@@ -35,7 +35,7 @@ export class SurfaceFollowingEntity<PTypeDoc extends PhysicsTypeDocRepo3D = Phys
     public followFunc: SurfaceFollowFunc,
     /** Optional body configuration. */
     protected bodyOptions: Partial<
-      Omit<BodyOptions, 'dynamic' | 'mass' | 'ownCollisionGroups' | 'interactWithCollisionGroups'>
+      Omit<BodyOptions, 'bodyType' | 'mass' | 'ownCollisionGroups' | 'interactWithCollisionGroups'>
     > = {},
   ) {
     super();
@@ -66,7 +66,7 @@ export class SurfaceFollowingEntity<PTypeDoc extends PhysicsTypeDocRepo3D = Phys
       shape: { shape: 'PLANE' },
       body: {
         ...this.bodyOptions,
-        dynamic: false,
+        bodyType: 'kinematic_pos',
         ownCollisionGroups: [cg],
         interactWithCollisionGroups: [cg],
       },
@@ -152,7 +152,7 @@ export class SurfaceFollowingEntity<PTypeDoc extends PhysicsTypeDocRepo3D = Phys
         if (!this.customGlobalDebugDummyBody) {
           this.customGlobalDebugDummyBody = this.world!.physicsWorld!.factory.createRigidBody({
             shape: { shape: 'BOX', dimensions: Pnt3.O },
-            body: { dynamic: false },
+            body: { bodyType: 'static' },
           });
           this.customGlobalDebugDummyBody.ownCollisionGroups = [];
           this.customGlobalDebugDummyBody.interactWithCollisionGroups = [];

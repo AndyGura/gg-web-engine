@@ -38,7 +38,7 @@ describe('Rapier3dFactory', () => {
 
       // works: a downward move against a floor grounds it, fully synchronously
       const floor = factory.createRigidBody(
-        { shape: { shape: 'BOX', dimensions: { x: 20, y: 20, z: 1 } }, body: { dynamic: false, mass: 0 } },
+        { shape: { shape: 'BOX', dimensions: { x: 20, y: 20, z: 1 } }, body: { bodyType: 'static', mass: 0 } },
         { position: { x: 0, y: 0, z: -0.5 } },
       );
       floor.addToWorld({ physicsWorld: world } as any);

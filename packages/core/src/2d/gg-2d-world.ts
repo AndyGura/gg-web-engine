@@ -1,4 +1,4 @@
-import { GgWorld, Pnt2, Point2, RendererOptions } from '../base';
+import { BodyType, GgWorld, Pnt2, Point2, RendererOptions } from '../base';
 import { Gg2dLoader } from './loader';
 import { BodyShape2DDescriptor } from './models/shapes';
 import { Entity2d } from './entities/entity-2d';
@@ -201,11 +201,24 @@ export class Gg2dWorld<
       this,
       'spawn',
       async (...args: string[]) => {
-        const [shapeArg, x, y, dynamicArg] = args;
+        const [shapeArg, x, y, bodyTypeArg] = args;
         if ([x, y].some(v => v === undefined || isNaN(+v))) {
-          throw new Error('usage: spawn SQUARE|CIRCLE X Y [dynamic=0|1]');
+          throw new Error(
+            'usage: spawn SQUARE|CIRCLE X Y [bodyType=0|1|2|3|static|dynamic|kinematic_pos|kinematic_vel]',
+          );
         }
-        const dynamic = dynamicArg === undefined ? true : dynamicArg === '1';
+        let bodyType: BodyType = 'dynamic';
+        if (['dynamic', 'static', 'kinematic_pos', 'kinematic_vel'].includes(bodyTypeArg || '')) {
+          bodyType = bodyTypeArg as BodyType;
+        } else if (bodyTypeArg === '0') {
+          bodyType = 'static';
+        } else if (bodyTypeArg === '1') {
+          bodyType = 'dynamic';
+        } else if (bodyTypeArg === '2') {
+          bodyType = 'kinematic_pos';
+        } else if (bodyTypeArg === '3') {
+          bodyType = 'kinematic_vel';
+        }
         let shape: BodyShape2DDescriptor['shape'];
         switch ((shapeArg || '').toUpperCase()) {
           case 'SQUARE':
@@ -217,12 +230,13 @@ export class Gg2dWorld<
           default:
             throw new Error(`Unknown shape "${shapeArg}". Use SQUARE|CIRCLE`);
         }
-        const entity = this.addPrimitiveRigidBody({ shape, body: { dynamic } }, { x: +x, y: +y });
+        const entity = this.addPrimitiveRigidBody({ shape, body: { bodyType } }, { x: +x, y: +y });
         return `spawned "${entity.name}" (${shape.shape}) at ${JSON.stringify(entity.position)}`;
       },
-      'args: [ SQUARE|CIRCLE, float, float, 0|1? ]; Spawn a default-sized primitive rigid body at ' +
-        'world-space coordinates, for probing physics. dynamic (last arg) defaults to 1 (falls ' +
-        'under gravity); pass 0 for a static prop',
+      'args: [ SQUARE|CIRCLE, float, float, bodyType=0|1|2|3|static|dynamic|kinematic_pos|' +
+        'kinematic_vel? ]; Spawn a default-sized primitive rigid body at world-space coordinates, ' +
+        'for probing physics. bodyType (last arg) defaults to dynamic (1, falls under gravity); ' +
+        'numeric shorthand: 0=static, 2=kinematic_pos, 3=kinematic_vel',
     );
     if (this.physicsWorld) {
       ggstatic.registerConsoleCommand(

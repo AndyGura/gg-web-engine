@@ -68,7 +68,7 @@ world.init().then(async () => {
       for (let x = startX; x <= endX; x += 3) {
         const item = world.addPrimitiveRigidBody({
           shape: { shape: 'BOX', dimensions: { x: 3, y: 1.5, z: 1.5 }, collisionMargin: 0.05 },
-          body: { dynamic: true, mass: brickMass },
+          body: { bodyType: 'dynamic', mass: brickMass },
         }, { x: x + offsetX, y, z: z + 0.75 }, Qtrn.O, { castShadow: true, receiveShadow: true });
         const materialIndex = Math.floor(Math.random() * material.length);
         (item.object3D!.nativeMesh as Mesh).material = material[materialIndex];
@@ -84,7 +84,7 @@ world.init().then(async () => {
       for (let y = startY; y <= endY; y += 3) {
         const item = world.addPrimitiveRigidBody({
           shape: { shape: 'BOX', dimensions: { x: 3, y: 1.5, z: 1.5 }, collisionMargin: 0.05 },
-          body: { dynamic: true, mass: brickMass },
+          body: { bodyType: 'dynamic', mass: brickMass },
         }, { x, y: y + offsetY, z: z + 0.75 }, Qtrn.O, { castShadow: true, receiveShadow: true });
         item.rotation = quat;
         const materialIndex = Math.floor(Math.random() * material.length);
@@ -100,7 +100,7 @@ world.init().then(async () => {
   world.addPrimitiveRigidBody(
     {
       shape: { shape: 'BOX', dimensions: { x: 100, y: 100, z: 1 }, collisionMargin: 0.05 },
-      body: { dynamic: false, mass: 0 },
+      body: { bodyType: 'static', mass: 0 },
     },
     { x: 0, y: 0, z: -0.5 },
     Qtrn.O,

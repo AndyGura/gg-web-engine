@@ -19,6 +19,7 @@ import {
   Quaternion,
   RigidBody,
   RigidBodyDesc,
+  RigidBodyType,
   Vector3,
 } from '@dimforge/rapier3d-compat';
 import { Observable, Subject } from 'rxjs';
@@ -34,7 +35,17 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
 
   public set position(value: Point3) {
     if (this.nativeBody) {
-      this.nativeBody.setTranslation(new Vector3(value.x, value.y, value.z), true);
+      // A `kinematicPositionBased` body must move through `setNextKinematicTranslation` rather
+      // than the immediate teleport `setTranslation` does - only that path lets Rapier derive the
+      // body's effective velocity for this step and correctly push/wake dynamic bodies in its way
+      // (see `BodyOptions.kinematic_pos`'s own doc, and the "plain teleport" pitfall it links to).
+      // `kinematicVelocityBased` and `dynamic` bodies keep the immediate teleport - the former is
+      // already driven by `linearVelocity` each step, not by `position` writes.
+      if (this.nativeBody.bodyType() === RigidBodyType.KinematicPositionBased) {
+        this.nativeBody.setNextKinematicTranslation(new Vector3(value.x, value.y, value.z));
+      } else {
+        this.nativeBody.setTranslation(new Vector3(value.x, value.y, value.z), true);
+      }
     } else {
       this._bodyDescr.setTranslation(value.x, value.y, value.z);
     }
@@ -46,7 +57,13 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
 
   public set rotation(value: Point4) {
     if (this.nativeBody) {
-      this.nativeBody.setRotation(new Quaternion(value.x, value.y, value.z, value.w), true);
+      // see `position`'s setter above for why a kinematic-position-based body needs the "next
+      // kinematic" API instead of an immediate teleport.
+      if (this.nativeBody.bodyType() === RigidBodyType.KinematicPositionBased) {
+        this.nativeBody.setNextKinematicRotation(new Quaternion(value.x, value.y, value.z, value.w));
+      } else {
+        this.nativeBody.setRotation(new Quaternion(value.x, value.y, value.z, value.w), true);
+      }
     } else {
       this._bodyDescr.setRotation(new Quaternion(value.x, value.y, value.z, value.w));
     }
@@ -75,9 +92,11 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
   }
 
   readonly debugBodySettings: DebugBody3DSettings = new DebugBody3DSettings(
-    this._bodyDescr.mass > 0
-      ? { type: 'RIGID_DYNAMIC', sleeping: () => !!this._nativeBody?.isSleeping() }
-      : { type: 'RIGID_STATIC' },
+    this._bodyDescr.status == RigidBodyType.Fixed
+      ? { type: 'RIGID_STATIC' }
+      : this._bodyDescr.status == RigidBodyType.Dynamic
+        ? { type: 'RIGID_DYNAMIC', sleeping: () => !!this._nativeBody?.isSleeping() }
+        : { type: 'RIGID_KINEMATIC' },
     this.shape,
   );
 
@@ -149,7 +168,7 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
     ColliderDesc[],
     Shape3DDescriptor,
     RigidBodyDesc,
-    Omit<Omit<Body3DOptions, 'dynamic'>, 'mass'>,
+    Omit<Omit<Body3DOptions, 'bodyType'>, 'mass'>,
   ] {
     const colliderDescr = this._colliderDescr.map(cd => {
       const d = new ColliderDesc(cd.shape);
@@ -166,6 +185,10 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
     bd.mass = this._bodyDescr.mass;
     bd.setTranslation(this._bodyDescr.translation.x, this._bodyDescr.translation.y, this._bodyDescr.translation.z);
     bd.setRotation({ ...this._bodyDescr.rotation });
+    // `ccdEnabled` is a plain field on `RigidBodyDesc` (not copied by the constructor above), not
+    // just a constructor-only `setCcdEnabled` call - carry it over explicitly so `clone()` doesn't
+    // silently drop CCD off the copy.
+    bd.setCcdEnabled(this._bodyDescr.ccdEnabled);
     // TODO more fields here?
     return [colliderDescr, this.shape, bd, this._colliderOptions];
   }
@@ -175,7 +198,7 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
     protected _colliderDescr: ColliderDesc[],
     public readonly shape: Shape3DDescriptor,
     protected _bodyDescr: RigidBodyDesc,
-    protected _colliderOptions: Omit<Omit<Body3DOptions, 'dynamic'>, 'mass'>,
+    protected _colliderOptions: Omit<Omit<Body3DOptions, 'bodyType'>, 'mass'>,
   ) {
     this.ownCollisionGroups = _colliderOptions?.ownCollisionGroups || [world.mainCollisionGroup];
     this.interactWithCollisionGroups = _colliderOptions?.interactWithCollisionGroups || [world.mainCollisionGroup];

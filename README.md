@@ -115,7 +115,7 @@ renderer.rotation = Qtrn.lookAt(renderer.camera.position, Pnt3.O);
 // create floor (static rigid body)
 world.addPrimitiveRigidBody({
   shape: { shape: 'BOX', dimensions: { x: 7, y: 7, z: 1 } },
-  body: { dynamic: false },
+  body: { bodyType: 'static' },
 });
 
 // spawn cubes with mass 1kg twice a second

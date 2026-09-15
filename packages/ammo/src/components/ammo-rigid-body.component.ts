@@ -2,6 +2,7 @@ import { AmmoWorldComponent } from './ammo-world.component';
 import Ammo from '../ammo.js/ammo';
 import { AmmoBodyComponent } from './ammo-body.component';
 import {
+  BodyType,
   CollisionEvent,
   DebugBody3DSettings,
   Entity3d,
@@ -39,9 +40,11 @@ export class AmmoRigidBodyComponent
   }
 
   readonly debugBodySettings: DebugBody3DSettings = new DebugBody3DSettings(
-    this._nativeBody.isStaticOrKinematicObject()
+    this._nativeBody.isStaticObject()
       ? { type: 'RIGID_STATIC' }
-      : { type: 'RIGID_DYNAMIC', sleeping: () => !this._nativeBody.isActive() },
+      : this._nativeBody.isKinematicObject()
+        ? { type: 'RIGID_KINEMATIC' }
+        : { type: 'RIGID_DYNAMIC', sleeping: () => !this._nativeBody.isActive() },
     this.shape,
   );
 
@@ -83,6 +86,15 @@ export class AmmoRigidBodyComponent
     protected readonly world: AmmoWorldComponent,
     protected _nativeBody: Ammo.btRigidBody,
     public readonly shape: Shape3DDescriptor,
+    /**
+     * `kinematic_pos` vs `kinematic_vel` is an adapter-level bookkeeping distinction with no
+     * native Bullet equivalent - both set the exact same `CF_KINEMATIC_OBJECT` flag (see
+     * `AmmoFactory.createRigidBodyFromShape`), so unlike `static`/`dynamic` it can't be recovered
+     * by reading the native body back (`isKinematicObject()` can't tell the two apart). Stored
+     * here instead, purely so `clone()` and `AmmoWorldComponent`'s `kinematic_vel` velocity
+     * integration (see `registerKinematicVelBody`) know which one this body actually is.
+     */
+    public readonly bodyType: BodyType = 'dynamic',
   ) {
     super(world, _nativeBody, shape);
   }
@@ -92,7 +104,7 @@ export class AmmoRigidBodyComponent
       this._nativeBody.getCollisionShape(),
       this.shape,
       {
-        dynamic: !this._nativeBody.isStaticOrKinematicObject(),
+        bodyType: this.bodyType,
         mass: this._nativeBody.getMass(),
         friction: this._nativeBody.getFriction(),
         restitution: this._nativeBody.getRestitution(),
@@ -106,11 +118,17 @@ export class AmmoRigidBodyComponent
 
   addToWorld(world: AmmoGgWorld): void {
     this.world.dynamicAmmoWorld?.addRigidBody(this.nativeBody, this._ownCGsMask, this._interactWithCGsMask);
+    if (this.bodyType === 'kinematic_vel') {
+      this.world.registerKinematicVelBody(this);
+    }
     super.addToWorld(world);
   }
 
   removeFromWorld(world: AmmoGgWorld, dispose?: boolean): void {
     this.world.dynamicAmmoWorld?.removeRigidBody(this.nativeBody);
+    if (this.bodyType === 'kinematic_vel') {
+      this.world.unregisterKinematicVelBody(this);
+    }
     super.removeFromWorld(world, dispose);
   }
 

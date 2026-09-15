@@ -1,6 +1,7 @@
 import {
   Body3DOptions,
   BodyShape3DDescriptor,
+  BodyType,
   CharacterController3dOptions,
   IPhysicsBody3dComponentFactory,
   Pnt3,
@@ -16,6 +17,26 @@ import { AmmoWorldComponent } from './components/ammo-world.component';
 import { AmmoPhysicsTypeDocRepo } from './types';
 import { AmmoRaycastVehicleComponent } from './components/ammo-raycast-vehicle.component';
 import { AmmoCharacterControllerComponent } from './components/ammo-character-controller.component';
+
+/** btCollisionObject::CF_STATIC_OBJECT - not exposed as a numeric constant by the Ammo.js embind
+ * bindings (only as the string-keyed `btCollisionObject_CollisionFlags` type), same reason this
+ * package inlines `CF_KINEMATIC_OBJECT`/`CF_CHARACTER_OBJECT`/`CF_NO_CONTACT_RESPONSE` elsewhere
+ * (see `AmmoCharacterControllerComponent`'s own doc on `CF_CHARACTER_OBJECT`). */
+const CF_STATIC_OBJECT = 1;
+/** btCollisionObject::CF_KINEMATIC_OBJECT - see `CF_STATIC_OBJECT`'s doc above. Marks a body as
+ * position-driven and immovable by forces/collisions of its own, without the "two immovable
+ * objects never need a real collision response" broadphase shortcuts `CF_STATIC_OBJECT` implies -
+ * Bullet still lets a kinematic body push/wake the dynamic bodies it moves into, which is the
+ * entire reason `BodyOptions.kinematic_pos`/`kinematic_vel` exist as distinct from `static`. */
+const CF_KINEMATIC_OBJECT = 2;
+/** btCollisionObject::DISABLE_DEACTIVATION - an activation *state* (`setActivationState`, not a
+ * collision *flag*), reused from `AmmoRaycastVehicleComponent`'s own identical inline use on its
+ * chassis body. A kinematic body's transform is moved entirely by this adapter's own `position`/
+ * `rotation` writes (see `AmmoBodyComponent`'s setters) - Bullet's own inactivity-based sleep
+ * logic has no way to know those writes are still happening and would otherwise eventually freeze
+ * the body (and anything resting on it) mid-move, so kinematic bodies must never be allowed to
+ * sleep at all. */
+const DISABLE_DEACTIVATION = 4;
 
 export class AmmoFactory implements IPhysicsBody3dComponentFactory<AmmoPhysicsTypeDocRepo> {
   constructor(protected readonly world: AmmoWorldComponent) {}
@@ -148,7 +169,8 @@ export class AmmoFactory implements IPhysicsBody3dComponentFactory<AmmoPhysicsTy
     options: Partial<Body3DOptions>,
     transform?: { position?: Point3; rotation?: Point4 },
   ): AmmoRigidBodyComponent {
-    if (options.dynamic === false) {
+    let bodyType: BodyType = options.bodyType ?? (options.mass ? 'dynamic' : 'static');
+    if (bodyType !== 'dynamic') {
       options.mass = 0;
     }
     const pos = transform?.position || Pnt3.O;
@@ -219,7 +241,35 @@ export class AmmoFactory implements IPhysicsBody3dComponentFactory<AmmoPhysicsTy
     // the same physical character, just about different axes, so there's no reason to expect a very
     // different right order-of-magnitude for one versus the other.
     nativeBody.setSpinningFriction(0.05);
-    const comp = new AmmoRigidBodyComponent(this.world, nativeBody, shapeDescr);
+    if (bodyType === 'static') {
+      nativeBody.setCollisionFlags(nativeBody.getCollisionFlags() | CF_STATIC_OBJECT);
+    } else if (bodyType === 'kinematic_pos' || bodyType === 'kinematic_vel') {
+      nativeBody.setCollisionFlags(nativeBody.getCollisionFlags() | CF_KINEMATIC_OBJECT);
+      nativeBody.setActivationState(DISABLE_DEACTIVATION);
+    } else if (options.ccd) {
+      // CCD only matters for a dynamic body - a fixed/kinematic body is never the one moving too
+      // fast to be detected within a single step (see `BodyOptions.ccd`'s own doc). Bullet's CCD
+      // is a swept-*sphere* approximation of the real shape rather than a sweep of the shape
+      // itself (unlike Rapier's), so it needs an actual radius - derived here from this body's own
+      // AABB at its starting transform, following Bullet's own canonical CCD setup (see e.g. the
+      // engine's official `Kinematic`/`Chains` demos): trigger the sweep once a step's motion
+      // exceeds roughly the body's own size, approximate the swept volume as half that size.
+      const aabbMin = new Ammo.btVector3();
+      const aabbMax = new Ammo.btVector3();
+      nativeBody.getAabb(aabbMin, aabbMax);
+      const halfExtents = new Ammo.btVector3(
+        (aabbMax.x() - aabbMin.x()) / 2,
+        (aabbMax.y() - aabbMin.y()) / 2,
+        (aabbMax.z() - aabbMin.z()) / 2,
+      );
+      const radius = halfExtents.length();
+      nativeBody.setCcdMotionThreshold(radius);
+      nativeBody.setCcdSweptSphereRadius(radius * 0.5);
+      Ammo.destroy(aabbMin);
+      Ammo.destroy(aabbMax);
+      Ammo.destroy(halfExtents);
+    }
+    const comp = new AmmoRigidBodyComponent(this.world, nativeBody, shapeDescr, bodyType);
     if (options.ownCollisionGroups && options.ownCollisionGroups !== 'all') {
       comp.ownCollisionGroups = options.ownCollisionGroups;
     }

@@ -63,7 +63,7 @@ renderer.rotation = Qtrn.lookAt(renderer.camera.position, Pnt3.O);
 
 world.addPrimitiveRigidBody({
   shape: { shape: 'BOX', dimensions: { x: 7, y: 7, z: 1 } },
-  body: { dynamic: false },
+  body: { bodyType: 'static' },
 });
 
 world.start(); // starts the tick clock (visual RAF loop + physics simulate())
@@ -204,8 +204,9 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   `PLANE`, `BOX`, `CONE`, `CYLINDER`, `CAPSULE`, `SPHERE`, `COMPOUND`, `CONVEX_HULL`, `MESH`.
 - **Available 2D shapes**: `Shape2DDescriptor` in `packages/core/src/2d/models/shapes.ts` —
   currently `SQUARE`, `CIRCLE` only.
-- **Body options** (`Partial<Body3DOptions>`/`Body2DOptions`): `mass`, `dynamic`, friction/
-  restitution, collision groups — see `packages/core/src/base/models/body-options.ts`.
+- **Body options** (`Partial<Body3DOptions>`/`Body2DOptions`): `mass`, `bodyType` (`'dynamic'` |
+  `'static'` | `'kinematic_pos'` | `'kinematic_vel'`), `ccd`, friction/restitution, collision groups
+  — see `packages/core/src/base/models/body-options.ts`.
 - **Ready-made controllers** (attach to entities via `entity.addController(...)`):
   `FreeCameraController`, `OrbitCameraController`, `CarKeyboardHandlingController` /
   `GgCarKeyboardHandlingController` in `packages/core/src/3d/entities/controllers/input/`.
@@ -328,9 +329,11 @@ rotation args already differ) — same command names, different parsing:
   setter gameplay code uses, keeping physics and rendering in sync.
 - `set_rotation NAME ...` — 3D accepts either 3 numbers (Euler angles, radians, converted via
   `Qtrn.fromEuler`) or 4 (a raw quaternion `x y z w`); 2D takes a single angle in radians.
-- `spawn SHAPE X Y [Z] [dynamic=0|1]` — drop a default-sized primitive rigid body at a point
-  for probing physics/collisions without touching game code. 3D shapes: `BOX|SPHERE|CYLINDER|
-  CONE|CAPSULE|PLANE`; 2D shapes: `SQUARE|CIRCLE`. `dynamic` defaults to `1` (falls under gravity).
+- `spawn SHAPE X Y [Z] [bodyType=0|1|2|3|static|dynamic|kinematic_pos|kinematic_vel]` — drop a
+  default-sized primitive rigid body at a point for probing physics/collisions without touching
+  game code. 3D shapes: `BOX|SPHERE|CYLINDER|CONE|CAPSULE|PLANE`; 2D shapes: `SQUARE|CIRCLE`.
+  `bodyType` defaults to `dynamic` (falls under gravity); numeric shorthand: `0`=static,
+  `2`=kinematic_pos, `3`=kinematic_vel.
 
 3D worlds also register two commands for a default controllable character, gated on a physics
 world and at least one renderer already being present:

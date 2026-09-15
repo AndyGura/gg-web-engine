@@ -45,7 +45,7 @@ function App() {
 
       world.addPrimitiveRigidBody({
         shape: { shape: 'BOX', dimensions: { x: 7, y: 7, z: 1 } },
-        body: { dynamic: false },
+        body: { bodyType: 'static' },
       });
 
       const destroyTrigger = new Trigger3dEntity(

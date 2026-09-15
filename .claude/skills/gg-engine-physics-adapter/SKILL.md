@@ -410,13 +410,66 @@ ground-snap/jump and push pitfalls.
    shapes.ts`) and build the native collider shape(s). Throw
    `Shape "<x>" not implemented for <Lib>` for anything unsupported instead of guessing.
 2. `createRigidBodyDescr(bodyOptions, transform?)` — map `Partial<Body(2D|3D)Options>` (`mass`,
-   `dynamic`, friction, restitution, collision groups — see `packages/core/src/base/models/
-   body-options.ts`) onto the native rigid-body descriptor; a body is static/fixed when
-   `dynamic === false` or `mass` is falsy, dynamic otherwise.
+   `bodyType`, `ccd`, friction, restitution, collision groups — see `packages/core/src/base/models/
+   body-options.ts`) onto the native rigid-body descriptor. `bodyType: BodyType` (`'dynamic' |
+   'static' | 'kinematic_pos' | 'kinematic_vel'`) is the one field every adapter's descriptor-mapping
+   switches on (`options.bodyType ?? (options.mass ? 'dynamic' : 'static')` is the established
+   fallback for a caller that only ever set `mass`, from before `bodyType` existed) — a body is
+   static/fixed for `'static'`, and dynamic (with the given `mass`, defaulting to `1`) otherwise.
 3. Merge in engine-reasonable defaults (e.g. `friction: 0.5, restitution: 0.1,
    ownCollisionGroups: [world.mainCollisionGroup], interactWithCollisionGroups:
    [world.mainCollisionGroup]`) before applying the caller's overrides, so bodies work out of the
    box without every caller specifying materials.
+
+### `kinematic_pos`/`kinematic_vel` and `ccd` — native where the engine has it, warn-and-fallback where it doesn't
+
+These three `BodyOptions` fields are real, common physics-engine concepts (present in Bullet/Ammo,
+Rapier, PhysX, Jolt, Box2D — not something specific to one backend), but not every engine can back
+all of them, so the contract is "implement natively wherever the engine actually supports the
+concept; warn once and fall back to the closest native approximation where it can't" — never throw
+for one of these three alone, since a caller (or a level JSON authored against a different adapter)
+shouldn't have its whole scene fail to load over a body-motion nuance the current engine can't
+express as precisely.
+
+- **`kinematic_pos`** (position-driven, infinite mass, still pushes/wakes dynamic bodies it moves
+  into): if the engine has a real kinematic body type (Rapier's `kinematicPositionBased`, Bullet's
+  `CF_KINEMATIC_OBJECT` flag), create that. Critically, **the component's `position`/`rotation`
+  setters must branch on it** — an immediate teleport (Rapier's `setTranslation`, a bare
+  `setWorldTransform` with no supporting collision flag) either skips the engine's own "derive this
+  step's effective velocity from the transform change" bookkeeping (Rapier) or doesn't get treated as
+  a moving kinematic body at all (Bullet, where the write path is fine but the missing
+  `CF_KINEMATIC_OBJECT` flag is what actually matters). See `gg-engine-physics-adapter-rapier`'s
+  `setNextKinematicTranslation`/`setNextKinematicRotation` note and `gg-engine-physics-adapter-ammo`'s
+  `CF_KINEMATIC_OBJECT`/`DISABLE_DEACTIVATION` note for the two concrete per-engine mechanisms. An
+  engine with no kinematic concept at all (matter-js) falls back to the same representation as
+  `'static'`, with the caveats that implies for anything resting on it (see
+  `gg-engine-physics-adapter-matter`).
+- **`kinematic_vel`** (velocity-driven — an app sets `linearVelocity`/`angularVelocity` once and the
+  body keeps moving under its own steam, e.g. a rotating platform): a native equivalent exists where
+  the engine's kinematic body type is itself split into position-based and velocity-based variants
+  (Rapier's `kinematicVelocityBased`) — nothing more to do there, the existing `linearVelocity`/
+  `angularVelocity` setters already work unchanged. An engine with no such variant (Bullet: kinematic
+  bodies are always transform-driven, there is no velocity-integrated kinematic mode) has to be
+  emulated by the *adapter itself* integrating `position += linearVelocity · dt` (and the equivalent
+  quaternion integration for `angularVelocity`, see `Qtrn.rotAround`) once per `simulate()` call,
+  before stepping the native engine — see `AmmoWorldComponent.simulate()`'s own
+  `kinematicVelBodies` loop for a worked example, including why it has to run once per whole `dt`
+  and not once per internal substep.
+- **`ccd`** (continuous collision detection — sweep a fast dynamic body's motion across a step
+  instead of only checking its start/end position, so it can't tunnel through thin geometry): only
+  ever meaningful for a `'dynamic'` body specifically (a fixed/kinematic body is never the one moving
+  too fast to be detected). A single boolean flag on the native descriptor if the engine exposes CCD
+  that way (Rapier's `setCcdEnabled`); a derived motion-threshold/swept-sphere-radius pair if it
+  doesn't (Bullet's `setCcdMotionThreshold`/`setCcdSweptSphereRadius`, both reasonably derived from
+  the body's own AABB — see `gg-engine-physics-adapter-ammo`'s note for the exact formula). An engine
+  with no CCD concept at all (matter-js) just warns and leaves the flag as a no-op.
+
+Whichever fields a given adapter can't back natively, warn through a small **warn-once-per-distinct-
+message** helper (a module-level `Set<string>` of already-warned messages, or equivalent) — never
+once per body/per tick. An app spawning many kinematic props, or requesting `ccd` on many fast bodies,
+would otherwise flood the console with an identical warning per instance, which trains a developer to
+ignore the console rather than fix the one call site that actually needs attention. See
+`MatterFactory.transformOptions` for the reference implementation of this pattern.
 
 ## Collision groups implementation detail
 

@@ -36,13 +36,13 @@ import { Rapier3dWorldComponent } from '../../src';
 describe('ObjectGrabController + Rapier3dWorldComponent - end-to-end pick-up range', () => {
   const setupPedestalAndRadio = (world: Rapier3dWorldComponent, radioPosition: Point3) => {
     const pedestal = world.factory.createRigidBody(
-      { shape: { shape: 'CYLINDER', radius: 0.5, height: 0.9 }, body: { dynamic: false, mass: 0 } },
+      { shape: { shape: 'CYLINDER', radius: 0.5, height: 0.9 }, body: { bodyType: 'static', mass: 0 } },
       { position: { x: 0, y: 0, z: 0.45 } },
     );
     pedestal.addToWorld({ physicsWorld: world } as any);
 
     const propBody = world.factory.createRigidBody(
-      { shape: { shape: 'BOX', dimensions: { x: 0.41, y: 0.23, z: 0.49 } }, body: { dynamic: true, mass: 3 } },
+      { shape: { shape: 'BOX', dimensions: { x: 0.41, y: 0.23, z: 0.49 } }, body: { bodyType: 'dynamic', mass: 3 } },
       { position: radioPosition },
     );
     propBody.addToWorld({ physicsWorld: world } as any);
