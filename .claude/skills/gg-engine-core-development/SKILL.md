@@ -112,8 +112,8 @@ then exploding back out from deep penetration on release).
 **A velocity spring driving a dynamic body directly at the object's own position error, with no cap
 on how fast the *commanded* velocity itself can change tick to tick, will eventually let the object
 punch through whatever it's pinned against - this is a real, reproduced bug, not just a smoothness
-nicety, and it looks different per physics engine.** Confirmed with a standalone repro (spring
-constants matching the portal-room example's radio, driven at a static wall, logged every tick): with
+nicety, and it looks different per physics engine.** Confirmed with a standalone repro (realistic
+spring constants for a held/carried object, driven at a static wall, logged every tick): with
 an uncapped spring, on Rapier the object's *position* visibly creeps a few centimeters deeper into the
 wall each tick for several ticks, then suddenly passes clean through at full speed once its origin has
 crept far enough in that Rapier's CCD/TOI sweep can no longer find a valid time-of-impact from an
@@ -126,11 +126,11 @@ velocity from scratch every single tick regardless of what actually happened to 
 so a contact solver's partial correction gets immediately re-fought rather than allowed to converge.
 
 Getting the actual fix right in `Grabbable3dEntity.updateHold()` (`grabOptions.maxAcceleration`) took
-three iterations, each one only fully validated by an in-browser repro against the *real* portal
-example (real compound collider from the loaded GLB, real gravity, real WASM build) - a from-scratch
-standalone Node repro (simple box shape, zero gravity, hand-built world) kept passing while the real
-scene still jittered, so treat "it settles in the minimal repro" as necessary but **not** sufficient
-once tuning this kind of spring:
+three iterations, each one only fully validated by an in-browser repro against a real, GLB-loaded
+scene (real compound collider, real gravity, real WASM build) - a from-scratch standalone Node repro
+(simple box shape, zero gravity, hand-built world) kept passing while the real scene still jittered,
+so treat "it settles in the minimal repro" as necessary but **not** sufficient once tuning this kind
+of spring:
 
 1. **Unconditional cap** (cap the commanded velocity's rate of change every tick, blocked or not) -
    stops the tunnelling/jitter, but a real, reported regression: an unobstructed carry needs to swing
@@ -522,7 +522,7 @@ selected - the only one in a single-world example). From there:
   with the `read_console_messages` tool's `pattern` filter - remove the instrumentation once done, it's
   scratch, not something to leave in the shipped source. A single `javascript_tool` call is also a
   simpler source of the same data when you don't need every tick logged: read a component's own
-  internal fields directly the same way (e.g. `radio._consecutiveAchievedTicks`), or accumulate
+  internal fields directly the same way (e.g. `someController._consecutiveAchievedTicks`), or accumulate
   samples into a local array across a loop and return it as the call's result instead of going through
   `console` at all.
 - `npx tsc -b` at the repo root rebuilds `packages/core/dist` (and every adapter) in place; a `webpack
@@ -619,3 +619,16 @@ generic/type-inference dead end, an interface change that broke more adapters th
 something written here turns out to be wrong or incomplete and you had to dig out the real
 answer, add a short note (what went wrong, why, the fix) before finishing the task. Prefer
 folding it into the relevant existing section over appending an unstructured log at the bottom.
+
+**Never name a real `examples/*` app, level, or in-app entity when adding such a note** (e.g. "the
+portal example", "the radio prop"), even if that's literally where the bug was found or the repro
+was validated. This file documents `packages/core` in isolation from any particular consumer of
+it — a real example's name is noise to an agent whose task is core, and it rots the moment that
+example is renamed, reworked, or deleted (which core has no way to track). Describe the *scenario*
+generically instead — "a driven dynamic body pinned against static geometry", "a first-person
+camera whose origin sits inside its own character capsule" — the same way the rest of this file
+already does. Generic mentions of "an example" or the `examples/<example-dir>` placeholder path
+(e.g. in the local-dev-workflow section above) are fine; only a specific example's own name or
+content is off-limits. If you validated a fix against a real example and that provenance matters,
+say so without naming it ("validated live in a real, GLB-loaded example scene, not just a
+simplified standalone repro").
