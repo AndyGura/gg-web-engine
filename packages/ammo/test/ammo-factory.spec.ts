@@ -25,6 +25,7 @@ describe('AmmoFactory', () => {
     { name: 'SPHERE', shape: { shape: 'SPHERE', radius: 1 } },
     { name: 'CAPSULE', shape: { shape: 'CAPSULE', radius: 0.5, centersDistance: 1 } },
     { name: 'CYLINDER', shape: { shape: 'CYLINDER', radius: 0.5, height: 1 } },
+    { name: 'ELLIPTICAL_CYLINDER', shape: { shape: 'CYLINDER', radiusX: 0.5, radiusY: 1, height: 1 } },
     { name: 'CONE', shape: { shape: 'CONE', radius: 0.5, height: 1 } },
     {
       name: 'COMPOUND',

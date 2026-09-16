@@ -129,7 +129,11 @@ engine API level (no translation needed between a level JSON and e.g.
   (needs `radius`).
 - **3D** (`Gg3dLevelLoader`, `Primitive3DSettings`): `"BOX"` (needs `dimensions`), `"SPHERE"`
   (needs `radius`), `"PLANE"`, `"CAPSULE"` (needs `radius` + `centersDistance`), `"CYLINDER"`
-  (needs `radius` + `height`), `"CONE"` (needs `radius` + `height`).
+  (needs `height`, plus either `radius` for a circular cross-section or `radiusX`+`radiusY`
+  together for an elliptical one - see below), `"CONE"` (needs `radius` + `height`).
+
+`"CYLINDER"`'s elliptical form (`radiusX`/`radiusY` instead of `radius`) is 3D-only and
+cylinder-only - `"CONE"` and the 2D shapes have no elliptical counterpart.
 
 Common `config` fields for both: `material` (`DisplayObject2dOpts`/`DisplayObject3dOpts`, e.g.
 `{ "color": ... }`) and `body` (`Partial<Body2DOptions>`/`Partial<Body3DOptions>`, merged over a

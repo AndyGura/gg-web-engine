@@ -1,5 +1,6 @@
 import {
   DisplayObject3dOpts,
+  getCylinderRadii,
   IDisplayObject3dComponentFactory,
   Pnt3,
   Qtrn,
@@ -109,19 +110,20 @@ export class ThreeFactory extends IDisplayObject3dComponentFactory<ThreeVisualTy
         );
         this.transformPrimitiveZUp(mesh as Mesh);
         break;
-      case 'CYLINDER':
-        mesh = new Mesh(
-          new CylinderGeometry(
-            descriptor.radius,
-            descriptor.radius,
-            descriptor.height,
-            descriptor.radialSegments,
-            descriptor.heightSegments,
-          ),
-          threeMat,
+      case 'CYLINDER': {
+        const { radiusX, radiusY } = getCylinderRadii(descriptor);
+        const cylinderGeometry = new CylinderGeometry(
+          1,
+          1,
+          descriptor.height,
+          descriptor.radialSegments,
+          descriptor.heightSegments,
         );
+        cylinderGeometry.scale(radiusX, 1, radiusY);
+        mesh = new Mesh(cylinderGeometry, threeMat);
         this.transformPrimitiveZUp(mesh as Mesh);
         break;
+      }
       case 'CONE':
         mesh = new Mesh(
           new ConeGeometry(descriptor.radius, descriptor.height, descriptor.radialSegments, descriptor.heightSegments),

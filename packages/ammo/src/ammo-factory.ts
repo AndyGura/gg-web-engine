@@ -3,6 +3,7 @@ import {
   BodyShape3DDescriptor,
   BodyType,
   CharacterController3dOptions,
+  getCylinderRadii,
   IPhysicsBody3dComponentFactory,
   Pnt3,
   Point3,
@@ -94,11 +95,11 @@ export class AmmoFactory implements IPhysicsBody3dComponentFactory<AmmoPhysicsTy
       case 'CAPSULE':
         shape = new Ammo.btCapsuleShapeZ(descriptor.radius, descriptor.centersDistance);
         break;
-      case 'CYLINDER':
-        shape = new Ammo.btCylinderShapeZ(
-          new Ammo.btVector3(descriptor.radius, descriptor.radius, descriptor.height / 2),
-        );
+      case 'CYLINDER': {
+        const { radiusX, radiusY } = getCylinderRadii(descriptor);
+        shape = new Ammo.btCylinderShapeZ(new Ammo.btVector3(radiusX, radiusY, descriptor.height / 2));
         break;
+      }
       case 'CONE':
         shape = new Ammo.btConeShapeZ(descriptor.radius, descriptor.height);
         break;
