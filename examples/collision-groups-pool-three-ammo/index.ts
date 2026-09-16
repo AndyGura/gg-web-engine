@@ -73,7 +73,7 @@ world.init().then(async () => {
           // per-step velocity from the position delta (see `BodyOptions.bodyType`'s doc), so the
           // balls actually get carried/pushed by the floor instead of tunnelling through it.
           bodyType: 'kinematic_pos',
-          restitution: 0.3,
+          restitution: 0.05,
           ownCollisionGroups: [collisionGroup],
           interactWithCollisionGroups: [collisionGroup],
         },
@@ -133,7 +133,7 @@ world.init().then(async () => {
             shape: { shape: 'SPHERE', radius: 0.48 },
             body: {
               mass: 1,
-              restitution: 0.3,
+              restitution: 0.05,
               ownCollisionGroups: [collisionGroup, world.physicsWorld.mainCollisionGroup],
               interactWithCollisionGroups: [collisionGroup, world.physicsWorld.mainCollisionGroup],
             },

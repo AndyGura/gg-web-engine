@@ -16,6 +16,33 @@ export type Grabbable3dEntityOptions = {
   /** Hard cap on the linear speed used to chase the hold point, in m/s. Default 20. */
   maxFollowSpeed: number;
   /**
+   * Cap on how fast the held object's *commanded* velocity is allowed to change per second, in
+   * m/s² - but **only while `updateHold()` detects the previous tick's commanded velocity wasn't
+   * actually achieved** (see this class's own doc for why: pushed hard against a wall, the object's
+   * actual velocity gets stopped/bounced back by the solver each tick, but with no cap the very next
+   * tick immediately re-commands the *same* full-speed push straight back into the wall, over and
+   * over - depending on the physics engine this either reads as visible jitter or, worse, eventually
+   * breaks through entirely once repeated small residual penetrations add up enough that most
+   * engines' CCD/TOI sweep can no longer find a valid time-of-impact from an already-overlapping
+   * start).
+   *
+   * Applying this cap *unconditionally* (every tick, blocked or not) was tried first and reverted -
+   * a real, reported regression, not a hypothetical: an unobstructed carry needs to swing its
+   * commanded velocity by up to `2 × maxFollowSpeed` in a single tick on an ordinary fast turn (the
+   * target point can reverse direction almost outright - see `maxHoldDistance`'s own doc on how far
+   * it can jump), and an unconditional cap throttles that exactly as hard as it throttles a genuinely
+   * blocked push, adding a sluggish, unintended "inertia" to every turn instead of just the
+   * once-in-a-while wall-pinned case. Gating the cap on "was last tick's command actually achieved"
+   * tells these two cases apart: a free turn's new command gets achieved essentially in full the very
+   * next tick (nothing resists it), so the cap never engages; a wall-pinned push keeps failing to be
+   * achieved tick after tick, so the cap stays engaged for as long as that persists. Default 60 -
+   * only needs to be low enough to stop the creep once blocked is actually detected (confirmed safe
+   * well below the ~700-800 m/s² point where a standalone wall-push repro at this class's own
+   * default spring constants started tunnelling again), not to feel snappy on its own, since once
+   * blocked is detected it's no longer trying to feel snappy - it's trying to stop.
+   */
+  maxAcceleration: number;
+  /**
    * How strongly the held object's own angular velocity is damped back towards zero each tick -
    * `0` leaves it entirely alone (spins freely off whatever momentum it had when grabbed), `1`
    * zeroes it outright every tick (rigid, non-spinning while carried, closest to Source's
@@ -39,9 +66,27 @@ export type Grabbable3dEntityOptions = {
   maxHoldDistance: number;
 };
 
+/**
+ * How many consecutive ticks `updateHold()` must see the previous commanded velocity actually
+ * achieved before trusting the object is free again - see `_consecutiveAchievedTicks`'s own doc.
+ * A single-tick check (this constant effectively `1`) was tried first and reverted: pinned against
+ * a wall, a real physics body's per-tick contact response is noisy enough (a bounce, a settle, one
+ * lucky mostly-unobstructed tick) to occasionally read as "achieved" for one tick in isolation even
+ * while still genuinely pinned, which immediately re-armed a full-power push into the obstacle right
+ * when the object was already close to it - confirmed via a live repro (the portal example's radio,
+ * real compound collider, real gravity) to both jitter harder than an always-on cap (a repeating
+ * full-power/damped-power alternation, worse than either extreme alone) and, on Rapier, still let it
+ * squeeze through occasionally. Requiring several ticks in a row filters that single-tick noise out
+ * without meaningfully affecting turn responsiveness (an unobstructed carry stays "achieved" for far
+ * longer than a few ticks at a time, so the streak requirement is met almost immediately and stays
+ * met).
+ */
+const UNBLOCK_STREAK = 6;
+
 const DEFAULT_OPTIONS: Grabbable3dEntityOptions = {
   followStrength: 12,
   maxFollowSpeed: 20,
+  maxAcceleration: 60,
   angularDamping: 1,
   maxHoldDistance: 8,
 };
@@ -98,6 +143,19 @@ export class Grabbable3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldT
    * `release()`/`throw()` - `null` while not held. */
   private _savedInteractWithCollisionGroups: ReadonlyArray<CollisionGroup> | null = null;
 
+  /** The velocity `updateHold()` commanded last tick - compared against the object's actual
+   * velocity at the top of the next `updateHold()` call to detect whether it's currently blocked
+   * (see `grabOptions.maxAcceleration`'s own doc). `null` right after `grab()` so the very first
+   * `updateHold()` call of a new hold is never mistaken for a blocked one. */
+  private _lastCommandedVelocity: Point3 | null = null;
+
+  /** Consecutive ticks in a row the previous tick's commanded velocity has actually been achieved -
+   * see `updateHold()`'s own doc for why this needs to be a *streak*, not a single-tick check: reset
+   * to `0` the instant a tick isn't achieved, capped at (and reset back to, by `grab()`)
+   * `UNBLOCK_STREAK` once achieved consistently again. `updateHold()` only trusts the object is truly
+   * free once this reaches `UNBLOCK_STREAK`. */
+  private _consecutiveAchievedTicks: number = UNBLOCK_STREAK;
+
   constructor(
     options: {
       object3D?: TypeDoc['vTypeDoc']['displayObject'] | null;
@@ -148,6 +206,8 @@ export class Grabbable3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldT
     }
     this.objectBody.linearVelocity = Pnt3.O;
     this.objectBody.angularVelocity = Pnt3.O;
+    this._lastCommandedVelocity = null;
+    this._consecutiveAchievedTicks = UNBLOCK_STREAK;
   }
 
   /**
@@ -197,6 +257,17 @@ export class Grabbable3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldT
    * arrives or drifts past the target, at which point ordinary spring behavior resumes from the other
    * side.
    *
+   * **Once `UNBLOCK_STREAK` consecutive ticks pass without the previous tick's commanded velocity
+   * actually being achieved, this tick's commanded velocity is rate-limited to
+   * `grabOptions.maxAcceleration`** - see that constant's and that option's own doc for why this is
+   * conditional (an *unconditional* cap makes ordinary fast turns feel sluggish), why it's a streak
+   * and not a single-tick check (a lone noisy "achieved" tick while still genuinely pinned against a
+   * wall re-arms a full-power push right when the object is already close to it - worse than either
+   * an always-on or a naive single-tick-gated cap), and why it exists at all (a real, reproduced
+   * tunneling/jitter bug otherwise: a blocked object gets its full-speed into-the-obstacle command
+   * re-issued outright every single tick regardless of what the solver did the tick before). Applied
+   * last, after both the `maxFollowSpeed` clamp and the "never slows down" rule above.
+   *
    * Must be called once per tick, **before** `IPhysicsWorld3dComponent.simulate()` runs that same
    * tick - i.e. from a driver with `tickOrder < TickOrder.PHYSICS_SIMULATION` (e.g.
    * `ObjectGrabController`, or your own equivalent) - for the velocity set here to actually be
@@ -216,6 +287,7 @@ export class Grabbable3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldT
       this.release();
       return;
     }
+    const currentVelocity = this.objectBody.linearVelocity;
     let desiredVelocity = Pnt3.scalarMult(toTarget, this.grabOptions.followStrength);
     let speed = Pnt3.len(desiredVelocity);
     if (speed > this.grabOptions.maxFollowSpeed) {
@@ -226,9 +298,50 @@ export class Grabbable3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldT
       // See this method's own doc for why: don't let the spring undo a push/bump that's already
       // carrying the object towards the target faster than the spring itself would.
       const towardsTarget = Pnt3.scalarMult(desiredVelocity, 1 / speed);
-      const currentSpeedTowardsTarget = Pnt3.dot(this.objectBody.linearVelocity, towardsTarget);
+      const currentSpeedTowardsTarget = Pnt3.dot(currentVelocity, towardsTarget);
       if (currentSpeedTowardsTarget > speed) {
         desiredVelocity = Pnt3.scalarMult(towardsTarget, currentSpeedTowardsTarget);
+      }
+    }
+    // See `grabOptions.maxAcceleration`'s own doc for why this only engages when blocked: how much
+    // of *last* tick's RAW (pre-cap - see below) commanded velocity actually showed up in the
+    // object's *current* velocity (read above, before this tick's own command overwrites it) tells
+    // apart "free to move, a fresh command will just work" (achieved ~= commanded, e.g. an ordinary
+    // turn) from "something's resisting the push" (achieved << commanded, e.g. pinned against a
+    // wall) - a single large desired-velocity jump alone can't tell these apart, since a fast turn
+    // produces one too. See `UNBLOCK_STREAK`'s own doc for why this is a multi-tick streak, not a
+    // single-tick check.
+    let achievedThisTick = true;
+    if (this._lastCommandedVelocity) {
+      const lastCommandedSpeed = Pnt3.len(this._lastCommandedVelocity);
+      if (lastCommandedSpeed > 1e-6) {
+        const lastCommandedDir = Pnt3.scalarMult(this._lastCommandedVelocity, 1 / lastCommandedSpeed);
+        const achievedSpeed = Pnt3.dot(currentVelocity, lastCommandedDir);
+        achievedThisTick = achievedSpeed >= lastCommandedSpeed * 0.5;
+      }
+    }
+    this._consecutiveAchievedTicks = achievedThisTick
+      ? Math.min(UNBLOCK_STREAK, this._consecutiveAchievedTicks + 1)
+      : 0;
+    const blocked = this._consecutiveAchievedTicks < UNBLOCK_STREAK;
+    // Recorded *before* the cap below touches `desiredVelocity` - deliberately what the spring
+    // actually wanted this tick, not what it settled for once capped. Comparing next tick's
+    // achievement against the *capped* value instead (tried first, reverted) is self-fulfilling:
+    // a capped command is designed to be small enough to succeed, so it reads as "achieved" every
+    // single tick even while the object is still genuinely pinned, which prematurely rebuilds the
+    // unblock streak and lets a full-power push back into the obstacle slip through - confirmed via
+    // the same live repro as a real, reproduced bug (a slow, sustained bounce-off-the-wall cycle,
+    // worse to look at than the original tick-to-tick jitter it replaced).
+    this._lastCommandedVelocity = desiredVelocity;
+    if (blocked) {
+      const velocityDelta = Pnt3.sub(desiredVelocity, currentVelocity);
+      const velocityDeltaLen = Pnt3.len(velocityDelta);
+      const maxVelocityDelta = this.grabOptions.maxAcceleration * dt;
+      if (velocityDeltaLen > maxVelocityDelta && velocityDeltaLen > 1e-6) {
+        desiredVelocity = Pnt3.add(
+          currentVelocity,
+          Pnt3.scalarMult(velocityDelta, maxVelocityDelta / velocityDeltaLen),
+        );
       }
     }
     const gravity = this.world?.physicsWorld?.gravity ?? Pnt3.O;

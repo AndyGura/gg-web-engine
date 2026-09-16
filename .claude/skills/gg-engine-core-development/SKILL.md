@@ -107,9 +107,68 @@ velocity-setting version.
 A held/driven dynamic body should also be moved via velocity (`linearVelocity`), not by teleporting
 `position` directly, if it needs to keep colliding with the world realistically while driven —
 `Grabbable3dEntity`'s own doc comment explains why (teleporting risks tunnelling through geometry
-then exploding back out from deep penetration on release); this was verified empirically against a
-real Ammo world (a sphere driven by `updateHold()` into a static wall stopped exactly at the wall's
-surface plus the sphere's own radius, rather than passing through it).
+then exploding back out from deep penetration on release).
+
+**A velocity spring driving a dynamic body directly at the object's own position error, with no cap
+on how fast the *commanded* velocity itself can change tick to tick, will eventually let the object
+punch through whatever it's pinned against - this is a real, reproduced bug, not just a smoothness
+nicety, and it looks different per physics engine.** Confirmed with a standalone repro (spring
+constants matching the portal-room example's radio, driven at a static wall, logged every tick): with
+an uncapped spring, on Rapier the object's *position* visibly creeps a few centimeters deeper into the
+wall each tick for several ticks, then suddenly passes clean through at full speed once its origin has
+crept far enough in that Rapier's CCD/TOI sweep can no longer find a valid time-of-impact from an
+already-overlapping start (CCD only ever prevents crossing *into* a solid from a clear starting
+position - it does nothing to rescue a body that already started penetrating, on any engine); on Ammo,
+the same setup instead reads as the object's *velocity* oscillating hard tick to tick while position
+barely advances - visible jitter rather than a clean tunnel-through, but the same underlying cause.
+Both are downstream of the same mechanism: the spring recomputes and re-commands its full target
+velocity from scratch every single tick regardless of what actually happened to the object last tick,
+so a contact solver's partial correction gets immediately re-fought rather than allowed to converge.
+
+Getting the actual fix right in `Grabbable3dEntity.updateHold()` (`grabOptions.maxAcceleration`) took
+three iterations, each one only fully validated by an in-browser repro against the *real* portal
+example (real compound collider from the loaded GLB, real gravity, real WASM build) - a from-scratch
+standalone Node repro (simple box shape, zero gravity, hand-built world) kept passing while the real
+scene still jittered, so treat "it settles in the minimal repro" as necessary but **not** sufficient
+once tuning this kind of spring:
+
+1. **Unconditional cap** (cap the commanded velocity's rate of change every tick, blocked or not) -
+   stops the tunnelling/jitter, but a real, reported regression: an unobstructed carry needs to swing
+   its commanded velocity by up to `2 × maxFollowSpeed` in a single tick on an ordinary fast turn (the
+   target point can reverse direction almost outright), and an unconditional cap throttles that
+   exactly as hard as a genuinely blocked push, adding sluggish "inertia" to every turn.
+2. **Single-tick "was last tick's command achieved" gate** (only cap once `achievedSpeed <
+   commandedSpeed × 0.5` for the *immediately preceding* tick) - fixes turn responsiveness (a free
+   turn's command is achieved in full the very next tick, so the cap never engages), but a real,
+   reproduced regression of its own: a real physics body's per-tick contact response near an
+   obstruction is noisy enough (one lucky bounce/settle tick) to occasionally read as "achieved" for a
+   single tick while still genuinely pinned, which immediately re-arms a full-power push right when
+   the object is already close to the obstacle - live-repro-confirmed to jitter *harder* than the
+   always-on cap (a repeating full-power/damped alternation) and, on Rapier, still let the object
+   squeeze through occasionally.
+3. **Multi-tick streak, gated on the *raw* (pre-cap) desired velocity** - the shipped version.
+   `UNBLOCK_STREAK` (6) consecutive achieved ticks are required before trusting the object is free
+   again, which alone wasn't enough either: the first version of the streak compared against the
+   previous tick's *already-capped* commanded velocity, which is self-fulfilling - a capped command is
+   deliberately small enough to be achievable, so it reads as "achieved" every tick even while still
+   genuinely pinned, rebuilding the streak from a gentle, accel-limited retreat and letting a
+   full-power push back into the wall slip through the moment the streak completed. Live-repro-
+   confirmed as a *third* distinct failure mode: a slow, sustained "bounce off the wall, retreat,
+   recharge trust, slam back in" cycle (worse to look at than the original tick-to-tick jitter it
+   replaced). Fixed by comparing against the *raw* spring output instead - what the spring actually
+   wanted before any cap touched it, stored via `_lastCommandedVelocity = desiredVelocity` **before**
+   the `maxAcceleration` clamp is applied, not after. Confirmed via the same live repro to settle
+   cleanly and stay settled (position stable within ~0.001m for 5+ simulated seconds, both engines) -
+   one known, accepted remaining rough edge: turning *away* from an obstacle immediately after being
+   pinned against it still takes a handful of ticks to reach full speed (the streak has to rebuild from
+   0, same as recovering from being blocked at all), unlike a turn in open space which stays instant.
+
+Any future controller that drives a dynamic body's velocity as a per-tick function of position error
+alone (not just `Grabbable3dEntity`) should expect to need the same three-part shape (an acceleration
+cap, gated on a multi-tick achieved-streak, measured against the raw uncapped command) - and should
+validate it against a live repro in the real scene it's meant for, not just a simplified standalone
+one, given how differently each iteration's failure mode showed up in the real, GLB-loaded, gravity-
+affected scene versus a simplified box-vs-wall reconstruction.
 
 **Two entities at the same `tickOrder` writing to the same body's velocity this tick: last
 subscriber wins, and that order is insertion order, not something to rely on.** `addEntity()` pushes
@@ -423,6 +482,54 @@ package, unless it's genuinely adapter-specific behavior.
 - **Jest 30 dropped the `toThrowError` matcher alias** (`@types/jest` 30 no longer types it) — it's
   `toThrow` now, same signature. A grep for `toThrowError` across `test/` after bumping `jest`/
   `@types/jest` past 29 catches every call site at once.
+
+## Debugging a running example live, without real keyboard/mouse input
+
+Useful when a bug only shows up in a real, GLB-loaded scene (real gravity, real compound colliders)
+and a from-scratch standalone repro isn't reproducing it (see the velocity-spring section above for a
+case where this mattered) - drive the actual running example's own `world`/entities directly from the
+browser console/`javascript_tool` instead of trying to automate real pointer-lock mouse look and WASD,
+which is unreliable under CDP-driven automation (pointer lock in particular routinely fails with "The
+root document of this element is not valid for pointer lock" when triggered by an automated click, not
+a real user gesture).
+
+Every example sets `GgStatic.instance.devConsoleEnabled = true`, and `GgStatic.instance` is reachable
+from the page as `window.ggstatic` - `ggstatic._selectedWorld$.value` is the live `Gg3dWorld`/
+`Gg2dWorld` instance (an RxJS `BehaviorSubject` holding whichever world the dev console currently has
+selected - the only one in a single-world example). From there:
+
+- `world.children` is every top-level entity, `.find(c => c.constructor.name === 'SomeClass')` /
+  `.find(c => c.name === 'SomeName')` locates a specific one (level-JSON-spawned entities generally
+  have no explicit `name`, so match on `constructor.name` for those; entities constructed by hand in
+  `index.ts`, like a level's `Grabbable3dEntity` or `ObjectGrabController`, don't either unless the
+  app happened to set one - check both).
+- Call entity methods (`grab()`, `updateHold()`, `release()`, `move()`, etc.) and `world.physicsWorld
+  .simulate(deltaMs)` directly in a plain synchronous JS loop, rather than waiting on the example's own
+  `requestAnimationFrame` loop - this sidesteps needing the loop to even be running (it can be stalled
+  or throttled for reasons unrelated to what you're debugging) and gives fully deterministic,
+  single-step control over exactly when physics advances relative to your own calls, exactly like a
+  jest spec's `world.simulate(16)` loop would, but against the real browser-instantiated adapters and
+  assets instead of a hand-built one.
+- Bypassing an input-driven controller's own target-acquisition logic (e.g. `ObjectGrabController
+  .tryGrab()`'s camera raycast) by reassigning its private fields directly (`controller._heldObject =
+  someEntity`) or monkey-patching one of its methods (`controller.holdPoint = () => ({x, y, z})`) works
+  fine at runtime - TS's `private`/`protected` are compile-time-only, and the compiled bundle has no
+  such restriction. Useful for pinning a controller to an exact, reproducible scenario (a fixed hold
+  target beyond a wall, say) without needing to actually position a camera/character correctly first.
+- To read what's actually happening tick-to-tick without instrumenting the app's own UI, add a
+  temporary `console.debug` gated behind a `(globalThis as any).__someDebugFlag` check at the point of
+  interest, flip the flag on from `javascript_tool` (`window.__someDebugFlag = true`), and read it back
+  with the `read_console_messages` tool's `pattern` filter - remove the instrumentation once done, it's
+  scratch, not something to leave in the shipped source. A single `javascript_tool` call is also a
+  simpler source of the same data when you don't need every tick logged: read a component's own
+  internal fields directly the same way (e.g. `radio._consecutiveAchievedTicks`), or accumulate
+  samples into a local array across a loop and return it as the call's result instead of going through
+  `console` at all.
+- `npx tsc -b` at the repo root rebuilds `packages/core/dist` (and every adapter) in place; a `webpack
+  serve` dev server for an example already running picks that up via its own file watcher and issues a
+  hot-update automatically (confirm via its terminal log - look for a `hot-update.js` line referencing
+  the changed file) - reload the page after that to get a clean state rather than trusting HMR to have
+  swapped a class definition correctly under live entities that already hold references to the old one.
 
 ## Local dev workflow: core + adapter + example, all in watch mode
 

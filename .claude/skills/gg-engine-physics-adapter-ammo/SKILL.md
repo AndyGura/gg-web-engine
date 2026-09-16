@@ -684,13 +684,33 @@ activation-state constant `AmmoRaycastVehicleComponent`'s chassis body already u
 Bullet eventually deactivates a kinematic body that's gone motionless for a while exactly like it would
 a resting dynamic one, and a deactivated body ignores further `setWorldTransform` writes.
 
-**The `position`/`rotation` setters (`AmmoBodyComponent`, shared by every body type) need no change
-for kinematic bodies** - unlike Rapier (see `gg-engine-physics-adapter-rapier`'s equivalent note),
-Bullet reads a kinematic body's authoritative transform from the exact same `setWorldTransform` call
-an ordinary teleport already uses; the flag above is what tells Bullet's dynamics world to treat those
-writes as "this is where the kinematic body is now, push/wake anything in the way" instead of an
-inert immovable object. Setting the flag is the entire fix - no separate "next kinematic transform"
-API exists to reach for here.
+**The `position`/`rotation` setters (`AmmoBodyComponent`, shared by every body type) DO need to
+change for kinematic bodies - a real, reproduced regression, not a hypothetical.** `AmmoRigidBodyComponent`
+overrides both setters: for `kinematic_pos`/`kinematic_vel` it writes the new transform to *both*
+`nativeBody.setWorldTransform(transform)` **and** `nativeBody.getMotionState().setWorldTransform(transform)`;
+every other body type keeps using the base `AmmoBodyComponent` setter (`setWorldTransform` alone), via
+`super.position = value`/`super.rotation = value`.
+
+The reason: once `CF_KINEMATIC_OBJECT` is set, Bullet's own `btRigidBody::saveKinematicState` runs once
+per internal substep for that body and **overwrites `m_worldTransform` by reading it back out of the
+body's motion state** (`getMotionState()->getWorldTransform(m_worldTransform)`) - not from whatever
+`btRigidBody::setWorldTransform` was called with directly; those are two independent pieces of state,
+and only the motion-state one feeds `saveKinematicState`'s velocity computation (the delta between this
+read and the previous step's is what lets the kinematic body correctly push/wake dynamic bodies it
+sweeps into). Writing only `nativeBody.setWorldTransform(...)` - correct for `dynamic`/`static` bodies,
+since neither of those ever call `saveKinematicState` - is silently overwritten back to whatever the
+motion state's *own* stale transform still says (unchanged since the body's construction, since nothing
+else ever calls the motion state's `setWorldTransform`) the moment the next `stepSimulation` runs.
+Confirmed empirically: a slider-driven moving-platform floor (`bodyType: 'kinematic_pos'`, position
+written every tick from a UI slider) switched from `static` to `kinematic_pos` and appeared to fight/
+ignore position writes in one direction - the floor could be dragged down but not back up - because
+each tick's write was getting silently reverted by the very next physics step. Writing the *same*
+transform to both the body and its motion state keeps the synchronous `position`/`rotation` getters
+(which read `nativeBody.getWorldTransform()` directly, unaffected by the motion state) consistent
+immediately, while giving `saveKinematicState` a real, non-stale delta to compute kinematic velocity
+from. There is still no separate "next kinematic transform" API to reach for (unlike Rapier's
+`setNextKinematicTranslation`) - the fix is which of Bullet's *two* existing transform slots gets
+written, not a different API.
 
 **`kinematic_vel` has no native Bullet equivalent at all** - a `CF_KINEMATIC_OBJECT` body's transform
 is only ever moved by explicit `setWorldTransform` writes; Bullet's dynamics solver never integrates a

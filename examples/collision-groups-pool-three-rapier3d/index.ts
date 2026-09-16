@@ -56,7 +56,7 @@ world.init().then(async () => {
     0xff00ff,
   ].map(c => ([c, world.physicsWorld.registerCollisionGroup()]));
 
-  const maxFloorTranslationPerTick = 0.1;
+  const maxFloorTranslationPerTick = 0.5;
   for (let i = 0; i <= cgs.length; i++) {
     const [color, collisionGroup] = i < cgs.length ? cgs[i] : [0x00ffff, 15];
     const floor = world.addPrimitiveRigidBody({
@@ -71,7 +71,7 @@ world.init().then(async () => {
           // per-step velocity from the position delta (see `BodyOptions.bodyType`'s doc), so the
           // balls actually get carried/pushed by the floor instead of tunnelling through it.
           bodyType: 'kinematic_pos',
-          restitution: 0.3,
+          restitution: 0.05,
           ownCollisionGroups: [collisionGroup],
           interactWithCollisionGroups: [collisionGroup],
         },
@@ -131,7 +131,7 @@ world.init().then(async () => {
             shape: { shape: 'SPHERE', radius: 0.48 },
             body: {
               mass: 1,
-              restitution: 0.3,
+              restitution: 0.05,
               ownCollisionGroups: [collisionGroup, world.physicsWorld.mainCollisionGroup],
               interactWithCollisionGroups: [collisionGroup, world.physicsWorld.mainCollisionGroup],
             },

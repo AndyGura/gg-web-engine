@@ -8,6 +8,7 @@ import {
   Entity3d,
   IRigidBody3dComponent,
   Point3,
+  Point4,
   Shape3DDescriptor,
 } from '@gg-web-engine/core';
 import { first, Observable, Subject } from 'rxjs';
@@ -27,6 +28,61 @@ export class AmmoRigidBodyComponent
   set linearVelocity(value: Point3) {
     this.nativeBody.setLinearVelocity(new Ammo.btVector3(value.x, value.y, value.z));
     this.nativeBody.activate(true);
+  }
+
+  get position(): Point3 {
+    return super.position;
+  }
+
+  /**
+   * Overridden (not inherited as-is from `AmmoBodyComponent`) for `kinematic_pos`/`kinematic_vel`
+   * bodies specifically - writing only `nativeBody.setWorldTransform(...)` (what the base setter
+   * does, still correct for `dynamic`/`static` bodies) is silently undone the moment
+   * `stepSimulation` next runs. Bullet's own kinematic bookkeeping
+   * (`btRigidBody::saveKinematicState`, run once per internal substep for every
+   * `CF_KINEMATIC_OBJECT`-flagged body - see `AmmoFactory.createRigidBodyFromShape`) derives that
+   * step's kinematic velocity (the value that lets this body correctly push/wake dynamic bodies it
+   * sweeps into, not just teleport through them) by *pulling* the transform from this body's own
+   * motion state (`getMotionState().getWorldTransform()`), not from whatever
+   * `btRigidBody::setWorldTransform` was last called with directly - those are two independent
+   * pieces of Bullet state, and only the motion state one ever feeds `saveKinematicState`. Real,
+   * reproduced regression: a moving kinematic floor's position writes looked fought/ignored (worse
+   * in one direction than the other, since the stale-vs-real delta interacts with gravity settling
+   * dynamic bodies resting on it) the instant `bodyType` switched from `static` (never touched by
+   * `saveKinematicState` at all, so the direct-only write "just worked" as a teleport) to
+   * `kinematic_pos`. Fixed by writing the same transform to both the body and its motion state -
+   * keeps the synchronous getter above consistent immediately (no need to wait for the next
+   * `stepSimulation` to read back what was just set), while still giving Bullet a real, non-stale
+   * delta to compute kinematic velocity from.
+   */
+  set position(value: Point3) {
+    if (this.bodyType === 'kinematic_pos' || this.bodyType === 'kinematic_vel') {
+      const transform = this.nativeBody.getWorldTransform();
+      transform.setOrigin(new Ammo.btVector3(value.x, value.y, value.z));
+      this.nativeBody.getMotionState().setWorldTransform(transform);
+      this.nativeBody.setWorldTransform(transform);
+      this.nativeBody.activate(true);
+    } else {
+      super.position = value;
+    }
+  }
+
+  get rotation(): Point4 {
+    return super.rotation;
+  }
+
+  /** See `position`'s own setter doc - same fix, same reason, for `btRigidBody::setRotation`'s
+   * rotational counterpart. */
+  set rotation(value: Point4) {
+    if (this.bodyType === 'kinematic_pos' || this.bodyType === 'kinematic_vel') {
+      const transform = this.nativeBody.getWorldTransform();
+      transform.setRotation(new Ammo.btQuaternion(value.x, value.y, value.z, value.w));
+      this.nativeBody.getMotionState().setWorldTransform(transform);
+      this.nativeBody.setWorldTransform(transform);
+      this.nativeBody.activate(true);
+    } else {
+      super.rotation = value;
+    }
   }
 
   get angularVelocity(): Point3 {
