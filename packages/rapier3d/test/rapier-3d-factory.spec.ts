@@ -22,7 +22,7 @@ describe('Rapier3dFactory', () => {
   describe('createColliderDescr', () => {
     it('creates a circular cylinder collider that can be added to the world', () => {
       const body = factory.createRigidBody(
-        { shape: { shape: 'CYLINDER', radius: 0.5, height: 1 }, body: { dynamic: false, mass: 0 } },
+        { shape: { shape: 'CYLINDER', radius: 0.5, height: 1 }, body: { bodyType: 'static', mass: 0 } },
         { position: { x: 0, y: 0, z: 0 } },
       );
       body.addToWorld({ physicsWorld: world } as any);
@@ -31,7 +31,7 @@ describe('Rapier3dFactory', () => {
 
     it('falls back to a convex-hull approximation for an elliptical cylinder', () => {
       const body = factory.createRigidBody(
-        { shape: { shape: 'CYLINDER', radiusX: 0.5, radiusY: 1, height: 1 }, body: { dynamic: false, mass: 0 } },
+        { shape: { shape: 'CYLINDER', radiusX: 0.5, radiusY: 1, height: 1 }, body: { bodyType: 'static', mass: 0 } },
         { position: { x: 0, y: 0, z: 0 } },
       );
       body.addToWorld({ physicsWorld: world } as any);
