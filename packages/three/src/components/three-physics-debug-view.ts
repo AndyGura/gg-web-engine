@@ -1,5 +1,6 @@
 import {
   DebugBody3DSettings,
+  getCylinderRadii,
   IBodyComponent,
   Pnt3,
   Point3,
@@ -128,13 +129,14 @@ export class ThreePhysicsDebugView {
         ...tabulateArray(8, i => new Vector3(i % 4 < 2 ? d.x : -d.x, i % 2 ? d.y : -d.y, i < 4 ? d.z : -d.z)),
       ];
     } else if (shape.shape === 'CYLINDER') {
+      const { radiusX, radiusY } = getCylinderRadii(shape);
       return [
         ...tabulateArray(
           32,
           i =>
             new Vector3(
-              shape.radius * Math.sin((Math.floor((i + 1) / 2) * Math.PI) / 8),
-              shape.radius * Math.cos((Math.floor((i + 1) / 2) * Math.PI) / 8),
+              radiusX * Math.sin((Math.floor((i + 1) / 2) * Math.PI) / 8),
+              radiusY * Math.cos((Math.floor((i + 1) / 2) * Math.PI) / 8),
               -shape.height / 2,
             ),
         ),
@@ -142,8 +144,8 @@ export class ThreePhysicsDebugView {
           32,
           i =>
             new Vector3(
-              shape.radius * Math.sin((Math.floor((i + 1) / 2) * Math.PI) / 8),
-              shape.radius * Math.cos((Math.floor((i + 1) / 2) * Math.PI) / 8),
+              radiusX * Math.sin((Math.floor((i + 1) / 2) * Math.PI) / 8),
+              radiusY * Math.cos((Math.floor((i + 1) / 2) * Math.PI) / 8),
               shape.height / 2,
             ),
         ),
@@ -151,8 +153,8 @@ export class ThreePhysicsDebugView {
           8,
           i =>
             new Vector3(
-              Math.floor(i / 2) % 2 ? 0 : i < 4 ? shape.radius : -shape.radius,
-              Math.floor(i / 2) % 2 ? (i < 4 ? shape.radius : -shape.radius) : 0,
+              Math.floor(i / 2) % 2 ? 0 : i < 4 ? radiusX : -radiusX,
+              Math.floor(i / 2) % 2 ? (i < 4 ? radiusY : -radiusY) : 0,
               i % 2 ? shape.height / 2 : -shape.height / 2,
             ),
         ),

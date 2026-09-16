@@ -83,6 +83,18 @@ export interface Primitive3DSettings {
   radius?: number;
 
   /**
+   * Elliptical cross-section radius along local X, as an alternative to `radius` (Cylinder only).
+   * Must be given together with `radiusY`.
+   */
+  radiusX?: number;
+
+  /**
+   * Elliptical cross-section radius along local Y, as an alternative to `radius` (Cylinder only).
+   * Must be given together with `radiusX`.
+   */
+  radiusY?: number;
+
+  /**
    * Height of the primitive (for Cylinder, Cone)
    */
   height?: number;
@@ -405,13 +417,16 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
         }
         return { shape: 'CAPSULE', radius: settings.radius, centersDistance: settings.centersDistance };
       case 'CYLINDER':
-        if (settings.radius === undefined) {
-          throw new Error('Radius is required for CYLINDER primitive');
-        }
         if (settings.height === undefined) {
           throw new Error('Height is required for CYLINDER primitive');
         }
-        return { shape: 'CYLINDER', radius: settings.radius, height: settings.height };
+        if (settings.radius !== undefined) {
+          return { shape: 'CYLINDER', radius: settings.radius, height: settings.height };
+        }
+        if (settings.radiusX !== undefined && settings.radiusY !== undefined) {
+          return { shape: 'CYLINDER', radiusX: settings.radiusX, radiusY: settings.radiusY, height: settings.height };
+        }
+        throw new Error('Radius (or radiusX and radiusY) is required for CYLINDER primitive');
       case 'CONE':
         if (settings.radius === undefined) {
           throw new Error('Radius is required for CONE primitive');

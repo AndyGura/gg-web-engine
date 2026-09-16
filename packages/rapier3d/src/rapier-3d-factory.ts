@@ -2,6 +2,7 @@ import {
   Body3DOptions,
   BodyShape3DDescriptor,
   CharacterController3dOptions,
+  getCylinderRadii,
   IPhysicsBody3dComponentFactory,
   Pnt3,
   Point3,
@@ -123,10 +124,27 @@ export class Rapier3dFactory implements IPhysicsBody3dComponentFactory<Rapier3dP
         const capsule = ColliderDesc.capsule(descriptor.centersDistance / 2, descriptor.radius);
         capsule.setRotation(new Quaternion(yToZUp.x, yToZUp.y, yToZUp.z, yToZUp.w));
         return [capsule];
-      case 'CYLINDER':
-        const cylinder = ColliderDesc.cylinder(descriptor.height / 2, descriptor.radius);
-        cylinder.setRotation(new Quaternion(yToZUp.x, yToZUp.y, yToZUp.z, yToZUp.w));
-        return [cylinder];
+      case 'CYLINDER': {
+        const { radiusX, radiusY } = getCylinderRadii(descriptor);
+        if (radiusX === radiusY) {
+          const cylinder = ColliderDesc.cylinder(descriptor.height / 2, radiusX);
+          cylinder.setRotation(new Quaternion(yToZUp.x, yToZUp.y, yToZUp.z, yToZUp.w));
+          return [cylinder];
+        }
+        // Rapier/parry has no native elliptical-radius primitive (unlike Bullet's
+        // btCylinderShapeZ, which takes independent X/Y half-extents) - approximate with a
+        // convex hull over the two elliptical end-cap rings instead.
+        const ellipseSegments = 32;
+        const halfHeight = descriptor.height / 2;
+        const vertices: number[] = [];
+        for (let i = 0; i < ellipseSegments; i++) {
+          const angle = (i / ellipseSegments) * Math.PI * 2;
+          const x = radiusX * Math.cos(angle);
+          const y = radiusY * Math.sin(angle);
+          vertices.push(x, y, -halfHeight, x, y, halfHeight);
+        }
+        return [ColliderDesc.convexHull(new Float32Array(vertices))!];
+      }
       case 'CONE':
         const cone = ColliderDesc.cone(descriptor.height / 2, descriptor.radius);
         cone.setRotation(new Quaternion(yToZUp.x, yToZUp.y, yToZUp.z, yToZUp.w));
