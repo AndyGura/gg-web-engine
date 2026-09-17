@@ -87,7 +87,7 @@ describe('three.js scene', () => {
 
 describe('.meta sidecar', () => {
   it('declares a formatVersion the loader understands', () => {
-    expect(meta.formatVersion).toBe(1);
+    expect(meta.formatVersion).toBe(2);
   });
 
   it('captures the empty as a dummy, with its custom property and position', () => {
