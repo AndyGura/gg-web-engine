@@ -14,7 +14,7 @@ describe('AmmoCharacterControllerComponent - ignoredBodies', () => {
     return world.init().then(() => {
       world.gravity = { x: 0, y: 0, z: 0 };
       const floor = world.factory.createRigidBody(
-        { shape: { shape: 'BOX', dimensions: { x: 100, y: 100, z: 1 } }, body: { dynamic: false, mass: 0 } },
+        { shape: { shape: 'BOX', dimensions: { x: 100, y: 100, z: 1 } }, body: { bodyType: 'static', mass: 0 } },
         { position: { x: 0, y: 0, z: -0.5 } },
       );
       floor.addToWorld({ physicsWorld: world } as any);
@@ -22,7 +22,7 @@ describe('AmmoCharacterControllerComponent - ignoredBodies', () => {
       // Squarely in the character's path 2m ahead - spans y in [1.5, 2.5], well within the capsule's
       // own z-range once standing on the floor.
       const obstacle = world.factory.createRigidBody(
-        { shape: { shape: 'BOX', dimensions: { x: 2, y: 1, z: 2 } }, body: { dynamic: true, mass: 3 } },
+        { shape: { shape: 'BOX', dimensions: { x: 2, y: 1, z: 2 } }, body: { bodyType: 'dynamic', mass: 3 } },
         { position: { x: 0, y: 2, z: 1.0 } },
       );
       obstacle.addToWorld({ physicsWorld: world } as any);

@@ -16,6 +16,7 @@ import {
   InteractionGroups,
   RigidBody,
   RigidBodyDesc,
+  RigidBodyType,
   Vector2,
 } from '@dimforge/rapier2d-compat';
 import { Observable, Subject } from 'rxjs';
@@ -31,7 +32,17 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
 
   public set position(value: Point2) {
     if (this.nativeBody) {
-      this.nativeBody.setTranslation(new Vector2(value.x, value.y), true);
+      // A `kinematicPositionBased` body must move through `setNextKinematicTranslation` rather
+      // than the immediate teleport `setTranslation` does - only that path lets Rapier derive the
+      // body's effective velocity for this step and correctly push/wake dynamic bodies in its way
+      // (see `BodyOptions.kinematic_pos`'s own doc, and the "plain teleport" pitfall it links to).
+      // `kinematicVelocityBased` and `dynamic` bodies keep the immediate teleport - the former is
+      // already driven by `linearVelocity` each step, not by `position` writes.
+      if (this.nativeBody.bodyType() === RigidBodyType.KinematicPositionBased) {
+        this.nativeBody.setNextKinematicTranslation(new Vector2(value.x, value.y));
+      } else {
+        this.nativeBody.setTranslation(new Vector2(value.x, value.y), true);
+      }
     } else {
       this._bodyDescr.setTranslation(value.x, value.y);
     }
@@ -43,7 +54,13 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
 
   public set rotation(value: number) {
     if (this.nativeBody) {
-      this.nativeBody.setRotation(value, true);
+      // see `position`'s setter above for why a kinematic-position-based body needs the "next
+      // kinematic" API instead of an immediate teleport.
+      if (this.nativeBody.bodyType() === RigidBodyType.KinematicPositionBased) {
+        this.nativeBody.setNextKinematicRotation(value);
+      } else {
+        this.nativeBody.setRotation(value, true);
+      }
     } else {
       this._bodyDescr.setRotation(value);
     }
@@ -126,15 +143,17 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
     ColliderDesc[],
     Shape2DDescriptor,
     RigidBodyDesc,
-    Omit<Omit<Body2DOptions, 'dynamic'>, 'mass'>,
+    Omit<Omit<Body2DOptions, 'bodyType'>, 'mass'>,
   ] {
     return [this._colliderDescr, this.shape, this._bodyDescr, this._colliderOptions];
   }
 
   readonly debugBodySettings: DebugBody2DSettings = new DebugBody2DSettings(
-    this._bodyDescr.mass > 0
-      ? { type: 'RIGID_DYNAMIC', sleeping: () => !!this._nativeBody?.isSleeping() }
-      : { type: 'RIGID_STATIC' },
+    this._bodyDescr.status == RigidBodyType.Fixed
+      ? { type: 'RIGID_STATIC' }
+      : this._bodyDescr.status == RigidBodyType.Dynamic
+        ? { type: 'RIGID_DYNAMIC', sleeping: () => !!this._nativeBody?.isSleeping() }
+        : { type: 'RIGID_KINEMATIC' },
     this.shape,
   );
 
@@ -143,7 +162,7 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
     protected _colliderDescr: ColliderDesc[],
     public readonly shape: Shape2DDescriptor,
     protected _bodyDescr: RigidBodyDesc,
-    protected _colliderOptions: Omit<Omit<Body2DOptions, 'dynamic'>, 'mass'>,
+    protected _colliderOptions: Omit<Omit<Body2DOptions, 'bodyType'>, 'mass'>,
   ) {
     this.ownCollisionGroups = _colliderOptions?.ownCollisionGroups || [world.mainCollisionGroup];
     this.interactWithCollisionGroups = _colliderOptions?.interactWithCollisionGroups || [world.mainCollisionGroup];

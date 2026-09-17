@@ -21,7 +21,7 @@ const setup = async () => {
   await world.init();
   world.gravity = { x: 0, y: 0, z: 0 };
   const floor = world.factory.createRigidBody(
-    { shape: { shape: 'BOX', dimensions: { x: 100, y: 100, z: 1 } }, body: { dynamic: false, mass: 0 } },
+    { shape: { shape: 'BOX', dimensions: { x: 100, y: 100, z: 1 } }, body: { bodyType: 'static', mass: 0 } },
     { position: { x: 0, y: 0, z: -0.5 } },
   );
   floor.addToWorld({ physicsWorld: world } as any);
@@ -149,12 +149,12 @@ describe('CharacterController3dEntity + Rapier3dCharacterControllerComponent - s
     await world.init();
     world.gravity = { x: 0, y: 0, z: -9.82 };
     const floor = world.factory.createRigidBody(
-      { shape: { shape: 'BOX', dimensions: { x: 100, y: 100, z: 1 } }, body: { dynamic: false, mass: 0 } },
+      { shape: { shape: 'BOX', dimensions: { x: 100, y: 100, z: 1 } }, body: { bodyType: 'static', mass: 0 } },
       { position: { x: 0, y: 0, z: -0.5 } },
     );
     floor.addToWorld({ physicsWorld: world } as any);
     const sphere = world.factory.createRigidBody(
-      { shape: { shape: 'SPHERE', radius: 1 }, body: { dynamic: false, mass: 0 } },
+      { shape: { shape: 'SPHERE', radius: 1 }, body: { bodyType: 'static', mass: 0 } },
       { position: { x: 0, y: 0, z: 1 } },
     );
     sphere.addToWorld({ physicsWorld: world } as any);

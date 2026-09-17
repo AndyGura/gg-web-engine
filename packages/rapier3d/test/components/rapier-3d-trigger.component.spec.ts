@@ -41,7 +41,7 @@ describe(`Rapier3dTriggerComponent`, () => {
     const ball = factory.createRigidBody(
       {
         shape: { shape: 'SPHERE', radius: 1 },
-        body: { dynamic: true, mass: 1 },
+        body: { bodyType: 'dynamic', mass: 1 },
       },
       { position: { x: 0, y: 0, z: 12 } },
     );
@@ -70,7 +70,7 @@ describe(`Rapier3dTriggerComponent`, () => {
     const ball = factory.createRigidBody(
       {
         shape: { shape: 'SPHERE', radius: 1 },
-        body: { dynamic: true, mass: 1 },
+        body: { bodyType: 'dynamic', mass: 1 },
       },
       { position: { x: 0, y: 0, z: 12 } },
     );
@@ -92,7 +92,7 @@ describe(`Rapier3dTriggerComponent`, () => {
     const ball = factory.createRigidBody(
       {
         shape: { shape: 'SPHERE', radius: 1 },
-        body: { dynamic: true, mass: 1 },
+        body: { bodyType: 'dynamic', mass: 1 },
       },
       { position: { x: 0, y: 0, z: 0 } },
     );
@@ -112,7 +112,7 @@ describe(`Rapier3dTriggerComponent`, () => {
     const ball = factory.createRigidBody(
       {
         shape: { shape: 'SPHERE', radius: 1 },
-        body: { dynamic: true, mass: 1 },
+        body: { bodyType: 'dynamic', mass: 1 },
       },
       { position: { x: 0, y: 0, z: 0 } },
     );
@@ -133,7 +133,7 @@ describe(`Rapier3dTriggerComponent`, () => {
     const ball = factory.createRigidBody(
       {
         shape: { shape: 'SPHERE', radius: 1 },
-        body: { dynamic: true, mass: 1 },
+        body: { bodyType: 'dynamic', mass: 1 },
       },
       { position: { x: 0, y: 0, z: 0 } },
     );

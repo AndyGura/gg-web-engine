@@ -7,7 +7,7 @@ describe('AmmoCharacterControllerComponent - continuous walking over a real floo
     return world.init().then(() => {
       world.gravity = { x: 0, y: 0, z: 0 };
       const floor = world.factory.createRigidBody(
-        { shape: { shape: 'BOX', dimensions: { x: 100, y: 100, z: 1 } }, body: { dynamic: false, mass: 0 } },
+        { shape: { shape: 'BOX', dimensions: { x: 100, y: 100, z: 1 } }, body: { bodyType: 'static', mass: 0 } },
         { position: { x: 0, y: 0, z: -0.5 } },
       );
       floor.addToWorld({ physicsWorld: world } as any);
@@ -54,7 +54,7 @@ describe('AmmoCharacterControllerComponent - continuous walking over a real floo
     return world.init().then(() => {
       world.gravity = { x: 0, y: 0, z: 0 };
       const floor = world.factory.createRigidBody(
-        { shape: { shape: 'BOX', dimensions: { x: 100, y: 100, z: 1 } }, body: { dynamic: false, mass: 0 } },
+        { shape: { shape: 'BOX', dimensions: { x: 100, y: 100, z: 1 } }, body: { bodyType: 'static', mass: 0 } },
         { position: { x: 0, y: 0, z: -0.5 } },
       );
       floor.addToWorld({ physicsWorld: world } as any);

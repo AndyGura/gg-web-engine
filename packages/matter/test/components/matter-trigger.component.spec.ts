@@ -28,7 +28,7 @@ describe(`MatterTriggerComponent`, () => {
     trigger.addToWorld({ physicsWorld: world } as any);
     const circle = factory.createRigidBody({
       shape: { shape: 'CIRCLE', radius: 1 },
-      body: { dynamic: true, mass: 1 },
+      body: { bodyType: 'dynamic', mass: 1 },
     }, { position: { x: 0, y: 12 } });
     circle.addToWorld({ physicsWorld: world } as any);
     circle.linearVelocity = { x: 0, y: -10 };
@@ -57,7 +57,7 @@ describe(`MatterTriggerComponent`, () => {
     trigger.addToWorld({ physicsWorld: world } as any);
     const circle = factory.createRigidBody({
       shape: { shape: 'CIRCLE', radius: 1 },
-      body: { dynamic: true, mass: 1 },
+      body: { bodyType: 'dynamic', mass: 1 },
     }, { position: { x: 0, y: 12 } });
     circle.addToWorld({ physicsWorld: world } as any);
     circle.linearVelocity = { x: 0, y: -10 };
@@ -79,7 +79,7 @@ describe(`MatterTriggerComponent`, () => {
     trigger.addToWorld({ physicsWorld: world } as any);
     const circle = factory.createRigidBody({
       shape: { shape: 'CIRCLE', radius: 1 },
-      body: { dynamic: true, mass: 1 },
+      body: { bodyType: 'dynamic', mass: 1 },
     }, { position: Pnt2.O });
     circle.addToWorld({ physicsWorld: world } as any);
     let enterRegistered = false;
@@ -96,7 +96,7 @@ describe(`MatterTriggerComponent`, () => {
     trigger.addToWorld({ physicsWorld: world } as any);
     const circle = factory.createRigidBody({
       shape: { shape: 'CIRCLE', radius: 1 },
-      body: { dynamic: true, mass: 1 },
+      body: { bodyType: 'dynamic', mass: 1 },
     }, { position: Pnt2.O });
     circle.addToWorld({ physicsWorld: world } as any);
     let exitRegistered = false;
@@ -114,7 +114,7 @@ describe(`MatterTriggerComponent`, () => {
     trigger.addToWorld({ physicsWorld: world } as any);
     const circle = factory.createRigidBody({
       shape: { shape: 'CIRCLE', radius: 1 },
-      body: { dynamic: true, mass: 1 },
+      body: { bodyType: 'dynamic', mass: 1 },
     }, { position: Pnt2.O });
     circle.addToWorld({ physicsWorld: world } as any);
     let exitRegistered = false;

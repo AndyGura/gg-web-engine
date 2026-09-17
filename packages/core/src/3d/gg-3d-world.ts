@@ -1,4 +1,4 @@
-import { GgWorld, Pnt3, Point3, Point4, Qtrn, RendererOptions } from '../base';
+import { BodyType, GgWorld, Pnt3, Point3, Point4, Qtrn, RendererOptions } from '../base';
 import { Gg3dLoader } from './loader';
 import { Entity3d } from './entities/entity-3d';
 import { BodyShape3DDescriptor } from './models/shapes';
@@ -150,7 +150,7 @@ export class Gg3dWorld<
   /**
    * Same as `addPrimitiveRigidBody`, but the returned entity is a `Grabbable3dEntity` - a prop
    * that can be picked up/carried/thrown (see that class and `ObjectGrabController`). `descr.body`
-   * must describe a dynamic body (`dynamic: true`) - a static/kinematic prop can't be carried.
+   * must describe a dynamic body (`bodyType: 'dynamic'`) - a static/kinematic prop can't be carried.
    */
   addGrabbablePrimitive(
     descr: BodyShape3DDescriptor,
@@ -248,11 +248,24 @@ export class Gg3dWorld<
       this,
       'spawn',
       async (...args: string[]) => {
-        const [shapeArg, x, y, z, dynamicArg] = args;
+        const [shapeArg, x, y, z, bodyTypeArg] = args;
         if ([x, y, z].some(v => v === undefined || isNaN(+v))) {
-          throw new Error('usage: spawn BOX|SPHERE|CYLINDER|CONE|CAPSULE|PLANE X Y Z [dynamic=0|1]');
+          throw new Error(
+            'usage: spawn BOX|SPHERE|CYLINDER|CONE|CAPSULE|PLANE X Y Z [bodyType=0|1|2|3|static|dynamic|kinematic_pos|kinematic_vel]',
+          );
         }
-        const dynamic = dynamicArg === undefined ? true : dynamicArg === '1';
+        let bodyType: BodyType = 'dynamic';
+        if (['dynamic', 'static', 'kinematic_pos', 'kinematic_vel'].includes(bodyTypeArg || '')) {
+          bodyType = bodyTypeArg as BodyType;
+        } else if (bodyTypeArg === '0') {
+          bodyType = 'static';
+        } else if (bodyTypeArg === '1') {
+          bodyType = 'dynamic';
+        } else if (bodyTypeArg === '2') {
+          bodyType = 'kinematic_pos';
+        } else if (bodyTypeArg === '3') {
+          bodyType = 'kinematic_vel';
+        }
         let shape: BodyShape3DDescriptor['shape'];
         switch ((shapeArg || '').toUpperCase()) {
           case 'BOX':
@@ -276,12 +289,14 @@ export class Gg3dWorld<
           default:
             throw new Error(`Unknown shape "${shapeArg}". Use BOX|SPHERE|CYLINDER|CONE|CAPSULE|PLANE`);
         }
-        const entity = this.addPrimitiveRigidBody({ shape, body: { dynamic } }, { x: +x, y: +y, z: +z });
+        const entity = this.addPrimitiveRigidBody({ shape, body: { bodyType } }, { x: +x, y: +y, z: +z });
         return `spawned "${entity.name}" (${shape.shape}) at ${JSON.stringify(entity.position)}`;
       },
-      'args: [ BOX|SPHERE|CYLINDER|CONE|CAPSULE|PLANE, float, float, float, 0|1? ]; Spawn a ' +
-        'default-sized primitive rigid body at world-space coordinates, for probing physics. ' +
-        'dynamic (last arg) defaults to 1 (falls under gravity); pass 0 for a static prop',
+      'args: [ BOX|SPHERE|CYLINDER|CONE|CAPSULE|PLANE, float, float, float, ' +
+        'bodyType=0|1|2|3|static|dynamic|kinematic_pos|kinematic_vel? ]; Spawn a default-sized ' +
+        'primitive rigid body at world-space coordinates, for probing physics. bodyType (last ' +
+        'arg) defaults to dynamic (1, falls under gravity); numeric shorthand: 0=static, ' +
+        '2=kinematic_pos, 3=kinematic_vel',
     );
     if (this.physicsWorld) {
       ggstatic.registerConsoleCommand(

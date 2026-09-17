@@ -59,8 +59,14 @@ Picking a filename `foo.glb` writes `foo.glb` and `foo.meta` next to each other;
 - **Objects with a Rigid Body** (Blender's own Physics > Rigid Body panel) become entries in
   `.meta`'s `rigidBodies` array: position (relative to the parent chain), rotation, collision shape,
   and - unless the object is itself a child of a `COMPOUND`-shaped rigid body, in which case it's
-  nested under that parent's `shape.children` instead - body parameters (dynamic/mass/restitution/
-  friction). Supported `Collision Shape` values: `BOX`, `SPHERE`, `CONE`, `CYLINDER`, `CAPSULE`,
+  nested under that parent's `shape.children` instead - body parameters (bodyType/mass/restitution/
+  friction). `bodyType` is derived from Blender's own `Type` (Active/Passive) and `Animated`
+  (`kinematic`) rigid body settings: Passive → `static`; Active → `dynamic`, or `kinematic_pos` if
+  `Animated` is checked (a keyframe-driven body that still pushes/wakes dynamic bodies it moves
+  into, unlike a plain static/passive one - see `get_body_type` in `exporter.py`). `kinematic_vel`
+  (velocity- rather than keyframe-driven) has no Blender authoring equivalent and is never written
+  by this exporter - it's only ever set by app code driving a body's velocity at runtime. Supported
+  `Collision Shape` values: `BOX`, `SPHERE`, `CONE`, `CYLINDER`, `CAPSULE`,
   `CONVEX_HULL`, `MESH`, `COMPOUND`. Anything else raises an error at export time rather than
   silently producing a body the loader can't construct.
 

@@ -71,7 +71,7 @@ const level: LevelJson = {
       config: {
         dimensions: { x: ROOM_SIZE, y: ROOM_SIZE, z: 1 },
         material: { color: COLOR_WALL },
-        body: { dynamic: false, friction: 1.2 },
+        body: { bodyType: 'static', friction: 1.2 },
       },
     },
     {
@@ -82,7 +82,7 @@ const level: LevelJson = {
       config: {
         dimensions: { x: ROOM_SIZE, y: ROOM_SIZE, z: 1 },
         material: { color: COLOR_CEILING },
-        body: { dynamic: false },
+        body: { bodyType: 'static' },
       },
     },
     {
@@ -93,7 +93,7 @@ const level: LevelJson = {
       config: {
         dimensions: { x: ROOM_SIZE * 0.5, y: ROOM_SIZE * 0.2, z: 0.02 },
         material: { shading: 'unlit', color: 0xffffff },
-        body: { dynamic: false },
+        body: { bodyType: 'static' },
       },
     },
     {
@@ -104,7 +104,7 @@ const level: LevelJson = {
       config: {
         dimensions: { x: ROOM_SIZE + WALL_THICKNESS, y: WALL_THICKNESS, z: WALL_HEIGHT },
         material: { color: COLOR_WALL },
-        body: { dynamic: false },
+        body: { bodyType: 'static' },
       },
     },
     {
@@ -115,7 +115,7 @@ const level: LevelJson = {
       config: {
         dimensions: { x: ROOM_SIZE + WALL_THICKNESS, y: WALL_THICKNESS, z: WALL_HEIGHT },
         material: { color: COLOR_WALL },
-        body: { dynamic: false },
+        body: { bodyType: 'static' },
       },
     },
     {
@@ -126,7 +126,7 @@ const level: LevelJson = {
       config: {
         dimensions: { x: WALL_THICKNESS, y: ROOM_SIZE + WALL_THICKNESS, z: WALL_HEIGHT },
         material: { color: COLOR_WALL },
-        body: { dynamic: false },
+        body: { bodyType: 'static' },
       },
     },
     {
@@ -137,7 +137,7 @@ const level: LevelJson = {
       config: {
         dimensions: { x: WALL_THICKNESS, y: ROOM_SIZE + WALL_THICKNESS, z: WALL_HEIGHT },
         material: { color: COLOR_WALL },
-        body: { dynamic: false },
+        body: { bodyType: 'static' },
       },
     },
     {
@@ -149,7 +149,7 @@ const level: LevelJson = {
         radius: 0.5,
         height: PEDESTAL_HEIGHT,
         material: { color: COLOR_PEDESTAL, shading: 'phong' },
-        body: { dynamic: false },
+        body: { bodyType: 'static' },
       },
     },
     // The incinerator's four walls, forming a hollow square ring around an actual open hole (see
@@ -167,7 +167,7 @@ const level: LevelJson = {
       config: {
         dimensions: { x: INCINERATOR_OUTER, y: INCINERATOR_WALL, z: INCINERATOR_HEIGHT },
         material: { color: COLOR_INCINERATOR, shading: 'phong' },
-        body: { dynamic: false },
+        body: { bodyType: 'static' },
       },
     },
     {
@@ -182,7 +182,7 @@ const level: LevelJson = {
       config: {
         dimensions: { x: INCINERATOR_OUTER, y: INCINERATOR_WALL, z: INCINERATOR_HEIGHT },
         material: { color: COLOR_INCINERATOR, shading: 'phong' },
-        body: { dynamic: false },
+        body: { bodyType: 'static' },
       },
     },
     {
@@ -197,7 +197,7 @@ const level: LevelJson = {
       config: {
         dimensions: { x: INCINERATOR_WALL, y: INCINERATOR_OUTER, z: INCINERATOR_HEIGHT },
         material: { color: COLOR_INCINERATOR, shading: 'phong' },
-        body: { dynamic: false },
+        body: { bodyType: 'static' },
       },
     },
     {
@@ -212,7 +212,7 @@ const level: LevelJson = {
       config: {
         dimensions: { x: INCINERATOR_WALL, y: INCINERATOR_OUTER, z: INCINERATOR_HEIGHT },
         material: { color: COLOR_INCINERATOR, shading: 'phong' },
-        body: { dynamic: false },
+        body: { bodyType: 'static' },
       },
     },
     // Fills only the bottom of the hole, not the whole shaft up to the rim - so something has to
@@ -366,7 +366,7 @@ world.init().then(async () => {
     const center = Pnt3.scalarMult(Pnt3.add(bounds.max, bounds.min), 0.5);
     const radioBody = world.physicsWorld!.factory.createRigidBody({
       shape: { shape: 'COMPOUND', children: [{ position: center, shape: { shape: 'BOX', dimensions: size } }] },
-      body: { dynamic: true, mass: 3, friction: 0.8, restitution: 0.2 },
+      body: { bodyType: 'dynamic', mass: 3, friction: 0.8, restitution: 0.05, ccd: true },
     });
     const newRadio = new Grabbable3dEntity(
       { object3D: radioObject, objectBody: radioBody },

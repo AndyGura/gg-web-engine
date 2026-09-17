@@ -87,7 +87,7 @@ describe('three.js scene', () => {
 
 describe('.meta sidecar', () => {
   it('declares a formatVersion the loader understands', () => {
-    expect(meta.formatVersion).toBe(1);
+    expect(meta.formatVersion).toBe(2);
   });
 
   it('captures the empty as a dummy, with its custom property and position', () => {
@@ -114,7 +114,7 @@ describe('.meta sidecar', () => {
     if (box!.shape.shape === 'BOX') {
       expect(box!.shape.dimensions.x).toBeCloseTo(1);
     }
-    expect(box!.body.dynamic).toBe(true);
+    expect(box!.body.bodyType).toBe('dynamic');
     expect(box!.body.mass).toBeCloseTo(2);
     expect(box!.body.friction).toBeCloseTo(0.5);
     expect(box!.body.restitution).toBeCloseTo(0.3);
@@ -127,7 +127,7 @@ describe('.meta sidecar', () => {
     if (ball!.shape.shape === 'SPHERE') {
       expect(ball!.shape.radius).toBeCloseTo(0.5);
     }
-    expect(ball!.body.dynamic).toBe(false);
+    expect(ball!.body.bodyType).toBe('static');
   });
 
   it('captures the compound rigid body with its two nested box children', () => {

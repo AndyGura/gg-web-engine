@@ -60,6 +60,7 @@ export class Rapier3dFactory implements IPhysicsBody3dComponentFactory<Rapier3dP
         restitution: 0.1,
         ownCollisionGroups: [this.world.mainCollisionGroup],
         interactWithCollisionGroups: [this.world.mainCollisionGroup],
+        ccd: false,
         ...descriptor.body,
       },
     );
@@ -81,7 +82,7 @@ export class Rapier3dFactory implements IPhysicsBody3dComponentFactory<Rapier3dP
       this.world,
       colliderDescr,
       descriptor,
-      this.createRigidBodyDescr({ dynamic: false }, transform),
+      this.createRigidBodyDescr({ bodyType: 'static' }, transform),
     );
   }
 
@@ -203,13 +204,21 @@ export class Rapier3dFactory implements IPhysicsBody3dComponentFactory<Rapier3dP
   ): RigidBodyDesc {
     const pos = transform?.position || Pnt3.O;
     const rot = transform?.rotation || Qtrn.O;
-    const fixed = options.dynamic === false || !options.mass;
     let bodyDesc!: RigidBodyDesc;
-    if (fixed) {
+    let bodyType = options.bodyType || (options.mass ? 'dynamic' : 'static');
+    if (bodyType === 'static') {
       bodyDesc = RigidBodyDesc.fixed();
+    } else if (bodyType === 'kinematic_pos') {
+      bodyDesc = RigidBodyDesc.kinematicPositionBased();
+    } else if (bodyType === 'kinematic_vel') {
+      bodyDesc = RigidBodyDesc.kinematicVelocityBased();
     } else {
       bodyDesc = RigidBodyDesc.dynamic();
       bodyDesc.mass = options.mass || 1;
+      // Only a dynamic body can tunnel through geometry it crosses within a single step - a fixed
+      // or kinematic body is never the one doing the moving-too-fast-to-detect part of that, so CCD
+      // is meaningless for either (see `BodyOptions.ccd`'s own doc).
+      bodyDesc.setCcdEnabled(!!options.ccd);
     }
     return bodyDesc.setTranslation(pos.x, pos.y, pos.z).setRotation(new Quaternion(rot.x, rot.y, rot.z, rot.w));
   }

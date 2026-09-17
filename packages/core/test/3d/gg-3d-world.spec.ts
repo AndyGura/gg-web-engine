@@ -173,7 +173,7 @@ describe('Gg3dWorld', () => {
         );
         expect(physicsWorld.factory.createRigidBody).toHaveBeenCalledWith({
           shape: { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } },
-          body: { dynamic: true },
+          body: { bodyType: 'dynamic' },
         });
       });
 
@@ -183,7 +183,7 @@ describe('Gg3dWorld', () => {
 
         expect(physicsWorld.factory.createRigidBody).toHaveBeenCalledWith({
           shape: { shape: 'SPHERE', radius: 0.5 },
-          body: { dynamic: false },
+          body: { bodyType: 'static' },
         });
       });
 

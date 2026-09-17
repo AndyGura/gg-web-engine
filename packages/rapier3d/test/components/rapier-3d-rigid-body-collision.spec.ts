@@ -32,7 +32,7 @@ describe('Rapier3dRigidBodyComponent collision events', () => {
 
   const createFloor = () => {
     const floor = factory.createRigidBody(
-      { shape: { shape: 'BOX', dimensions: { x: 20, y: 20, z: 1 } }, body: { dynamic: false } },
+      { shape: { shape: 'BOX', dimensions: { x: 20, y: 20, z: 1 } }, body: { bodyType: 'static' } },
       { position: { x: 0, y: 0, z: -0.5 } },
     );
     floor.addToWorld({ physicsWorld: world } as any);
@@ -43,7 +43,7 @@ describe('Rapier3dRigidBodyComponent collision events', () => {
     // restitution 0 so the ball settles without bouncing, keeping the "no further onCollisionStart
     // once resting" assertion below unambiguous.
     const ball = factory.createRigidBody(
-      { shape: { shape: 'SPHERE', radius: 1 }, body: { dynamic: true, mass: 1, restitution: 0 } },
+      { shape: { shape: 'SPHERE', radius: 1 }, body: { bodyType: 'dynamic', mass: 1, restitution: 0 } },
       { position: { x: 0, y: 0, z } },
     );
     ball.addToWorld({ physicsWorld: world } as any);

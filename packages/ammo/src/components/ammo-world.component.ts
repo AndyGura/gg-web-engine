@@ -3,7 +3,9 @@ import {
   CollisionEvent,
   CollisionGroup,
   IPhysicsWorld3dComponent,
+  Pnt3,
   Point3,
+  Qtrn,
   RaycastOptions,
   RaycastResult,
 } from '@gg-web-engine/core';
@@ -29,6 +31,24 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
   public readonly added$: Subject<AmmoRigidBodyComponent | AmmoTriggerComponent> = new Subject();
   public readonly removed$: Subject<AmmoRigidBodyComponent | AmmoTriggerComponent> = new Subject();
   public readonly children: (AmmoRigidBodyComponent | AmmoTriggerComponent)[] = [];
+
+  /**
+   * Every currently-in-world `kinematic_vel` body - see `simulate()`'s own integration step.
+   * Bullet has no native velocity-driven kinematic body (unlike Rapier's
+   * `kinematicVelocityBased`): a `CF_KINEMATIC_OBJECT` body's transform is only ever read from
+   * this adapter's own `position`/`rotation` writes, never integrated from `linearVelocity`/
+   * `angularVelocity` by the dynamics solver the way a `dynamic` body's is. Maintained by
+   * `AmmoRigidBodyComponent.addToWorld`/`removeFromWorld` - not meant to be written to directly.
+   */
+  public readonly kinematicVelBodies: Set<AmmoRigidBodyComponent> = new Set();
+
+  registerKinematicVelBody(body: AmmoRigidBodyComponent): void {
+    this.kinematicVelBodies.add(body);
+  }
+
+  unregisterKinematicVelBody(body: AmmoRigidBodyComponent): void {
+    this.kinematicVelBodies.delete(body);
+  }
 
   private _loader: AmmoLoader | null = null;
   public get loader(): AmmoLoader {
@@ -172,6 +192,23 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
 
   simulate(delta: number): void {
     const dt = delta / 1000;
+    // `kinematic_vel` bodies have no native Bullet integration to lean on (see
+    // `kinematicVelBodies`'s own doc) - advance each one's transform by its own velocity here,
+    // once per `simulate()` call (not per substep below: `linearVelocity`/`angularVelocity` are
+    // this whole call's rate, same as how a `dynamic` body's velocity is a per-second rate
+    // regardless of how many substeps `stepSimulation` splits it into), before stepping so this
+    // frame's move is visible to Bullet's own collision detection this same step.
+    for (const body of this.kinematicVelBodies) {
+      const linvel = body.linearVelocity;
+      if (linvel.x || linvel.y || linvel.z) {
+        body.position = Pnt3.add(body.position, Pnt3.scalarMult(linvel, dt));
+      }
+      const angvel = body.angularVelocity;
+      const angSpeed = Pnt3.len(angvel);
+      if (angSpeed > 1e-9) {
+        body.rotation = Qtrn.rotAround(body.rotation, Pnt3.scalarMult(angvel, 1 / angSpeed), angSpeed * dt);
+      }
+    }
     // Compute our own substep count/size rather than handing `fixedTimeStep`/`maxSubSteps` straight
     // to Bullet's own accumulator-based `stepSimulation` - see `fixedTimeStep`'s own doc for why:
     // in short, an evenly-sized split of *this exact* `dt` never leaves anything for Bullet's

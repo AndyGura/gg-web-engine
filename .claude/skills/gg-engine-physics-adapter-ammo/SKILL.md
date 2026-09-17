@@ -400,8 +400,11 @@ going through `ICharacterController3dComponent` directly without it, but when it
 understates push force by roughly a factor of `dt` (a 16ms tick's displacement is ~60x smaller than the
 equivalent m/s figure) rather than erroring or visibly misbehaving, which is exactly the kind of
 wrong-but-plausible-looking physics that goes unnoticed. Fix: skip the push for that tick entirely when
-`dt` is missing/non-positive, guarded by a one-time `console.warn` (module-level flag, not per-instance,
-so a scene with several such characters logs once total) rather than per-tick spam.
+`dt` is missing/non-positive, guarded by `@gg-web-engine/core`'s `warnOnce` (deduped process-wide by
+message text, not per-instance, so a scene with several such characters logs once total) rather than
+per-tick spam. Both this component and `Rapier3dCharacterControllerComponent` used to hand-roll this
+with their own `private static warnedMissingDtForPush` boolean before `warnOnce` existed - reach for
+the shared helper instead of repeating that pattern in a new backend.
 
 **Related pitfall, easy to misdiagnose as "friction can't induce rotation" - it can: a pushed sphere
 given pure linear velocity looked like it would never start rolling on its own, but the real cause was
@@ -662,6 +665,83 @@ happened while nobody was watching, rather than silently losing it. This flag is
 design (see the flag's own doc comment) - Rapier2d/3d and matter-js derive these events from a native
 start/stop event rather than polling, so they have no equivalent always-on cost and don't need (and
 should not get) a matching setting.
+
+## Wiring `bodyType: 'static'`/`'kinematic_pos'`/`'kinematic_vel'` and `ccd`
+
+`AmmoFactory.createRigidBodyFromShape` is the one place all of this is set up - see
+`gg-engine-physics-adapter`'s own section on the general `bodyType`/`ccd` contract first.
+
+**Every one of these is a `btCollisionObject` collision *flag* or activation *state*, not something
+Bullet derives from `mass` on its own.** `mass === 0` alone (what `bodyType !== 'dynamic'` already
+zeroes) makes a body immovable by forces, but `isStaticObject()`/`isKinematicObject()` are backed by
+`CF_STATIC_OBJECT`/`CF_KINEMATIC_OBJECT`, two completely separate bits nothing in this package used to
+set at all - confirmed empirically (and worth re-checking if this ever regresses): before this was
+added, every "static" body in the engine reported `isStaticObject() === false`, so anything reading
+that flag (this component's own `debugBodySettings`, `clone()`) silently mislabeled every static body
+as dynamic. Fix, both inlined as local numeric constants in `ammo-factory.ts` following the existing
+`CF_CHARACTER_OBJECT`/`CF_NO_CONTACT_RESPONSE` convention (Ammo.js's embind bindings only expose these
+as a string-keyed type, not real numeric exports - see those two constants' own doc comments):
+`CF_STATIC_OBJECT = 1` for `bodyType: 'static'`, `CF_KINEMATIC_OBJECT = 2` for either kinematic
+variant. A kinematic body additionally needs `setActivationState(DISABLE_DEACTIVATION)` (`= 4`, same
+activation-state constant `AmmoRaycastVehicleComponent`'s chassis body already uses) - without it,
+Bullet eventually deactivates a kinematic body that's gone motionless for a while exactly like it would
+a resting dynamic one, and a deactivated body ignores further `setWorldTransform` writes.
+
+**The `position`/`rotation` setters (`AmmoBodyComponent`, shared by every body type) DO need to
+change for kinematic bodies - a real, reproduced regression, not a hypothetical.** `AmmoRigidBodyComponent`
+overrides both setters: for `kinematic_pos`/`kinematic_vel` it writes the new transform to *both*
+`nativeBody.setWorldTransform(transform)` **and** `nativeBody.getMotionState().setWorldTransform(transform)`;
+every other body type keeps using the base `AmmoBodyComponent` setter (`setWorldTransform` alone), via
+`super.position = value`/`super.rotation = value`.
+
+The reason: once `CF_KINEMATIC_OBJECT` is set, Bullet's own `btRigidBody::saveKinematicState` runs once
+per internal substep for that body and **overwrites `m_worldTransform` by reading it back out of the
+body's motion state** (`getMotionState()->getWorldTransform(m_worldTransform)`) - not from whatever
+`btRigidBody::setWorldTransform` was called with directly; those are two independent pieces of state,
+and only the motion-state one feeds `saveKinematicState`'s velocity computation (the delta between this
+read and the previous step's is what lets the kinematic body correctly push/wake dynamic bodies it
+sweeps into). Writing only `nativeBody.setWorldTransform(...)` - correct for `dynamic`/`static` bodies,
+since neither of those ever call `saveKinematicState` - is silently overwritten back to whatever the
+motion state's *own* stale transform still says (unchanged since the body's construction, since nothing
+else ever calls the motion state's `setWorldTransform`) the moment the next `stepSimulation` runs.
+Confirmed empirically: a slider-driven moving-platform floor (`bodyType: 'kinematic_pos'`, position
+written every tick from a UI slider) switched from `static` to `kinematic_pos` and appeared to fight/
+ignore position writes in one direction - the floor could be dragged down but not back up - because
+each tick's write was getting silently reverted by the very next physics step. Writing the *same*
+transform to both the body and its motion state keeps the synchronous `position`/`rotation` getters
+(which read `nativeBody.getWorldTransform()` directly, unaffected by the motion state) consistent
+immediately, while giving `saveKinematicState` a real, non-stale delta to compute kinematic velocity
+from. There is still no separate "next kinematic transform" API to reach for (unlike Rapier's
+`setNextKinematicTranslation`) - the fix is which of Bullet's *two* existing transform slots gets
+written, not a different API.
+
+**`kinematic_vel` has no native Bullet equivalent at all** - a `CF_KINEMATIC_OBJECT` body's transform
+is only ever moved by explicit `setWorldTransform` writes; Bullet's dynamics solver never integrates a
+kinematic body's `linearVelocity`/`angularVelocity` into its position the way it does for a dynamic
+body (those fields are still stored and readable, and still matter for contact response - a dynamic
+body pushed by a moving kinematic one reads a sensible relative velocity - but nothing auto-advances
+the kinematic body's own position from them). Emulated instead by `AmmoWorldComponent.simulate()`,
+which keeps its own `kinematicVelBodies: Set<AmmoRigidBodyComponent>` (registered/unregistered by
+`AmmoRigidBodyComponent.addToWorld`/`removeFromWorld`) and, once per `simulate()` call - not per
+internal substep, since `linearVelocity`/`angularVelocity` are a per-second rate for the whole call
+regardless of how many substeps `stepSimulation` splits it into - integrates
+`position += linearVelocity · dt` and rotates by `angularVelocity`'s axis/magnitude via `Qtrn
+.rotAround`, writing through the same `position`/`rotation` setters an app would use. Because
+`kinematic_pos` vs `kinematic_vel` collapse to the identical `CF_KINEMATIC_OBJECT` flag natively,
+Bullet has no way to report back which one a body was created as - `AmmoRigidBodyComponent` stores its
+own `bodyType` explicitly rather than trying to re-derive it, which `clone()` also depends on.
+
+**`ccd` (dynamic bodies only) uses Bullet's swept-sphere CCD**, `setCcdMotionThreshold`/
+`setCcdSweptSphereRadius` - cruder than Rapier's conservative-advancement sweep of the real shape (see
+`gg-engine-physics-adapter-rapier`), since Bullet only sweeps an approximating sphere, but it's the
+only CCD Bullet has. Both values are derived from the constructed body's own world-space AABB
+(`nativeBody.getAabb(aabbMin, aabbMax)`, called right after construction so it's still at the body's
+starting transform) rather than hand-computing a shape-specific bounding radius per `Shape3DDescriptor`
+variant (`MESH`/`CONVEX_HULL`/`COMPOUND` would otherwise need real vertex-iteration math) - half the
+AABB's diagonal as the radius, `motionThreshold = radius` (trigger the sweep once a step's motion
+exceeds roughly the body's own size) and `sweptSphereRadius = radius * 0.5` (Bullet's own canonical
+CCD setup convention, e.g. its `Kinematic`/`Chains` demos: the swept sphere approximating the moving
+shape is smaller than the shape itself, not equal to it).
 
 ## Keep this skill current
 

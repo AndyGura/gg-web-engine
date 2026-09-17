@@ -2,12 +2,15 @@ import { AmmoWorldComponent } from './ammo-world.component';
 import Ammo from '../ammo.js/ammo';
 import { AmmoBodyComponent } from './ammo-body.component';
 import {
+  BodyType,
   CollisionEvent,
   DebugBody3DSettings,
   Entity3d,
   IRigidBody3dComponent,
   Point3,
+  Point4,
   Shape3DDescriptor,
+  warnOnce,
 } from '@gg-web-engine/core';
 import { first, Observable, Subject } from 'rxjs';
 import { AmmoGgWorld, AmmoPhysicsTypeDocRepo } from '../types';
@@ -28,6 +31,61 @@ export class AmmoRigidBodyComponent
     this.nativeBody.activate(true);
   }
 
+  get position(): Point3 {
+    return super.position;
+  }
+
+  /**
+   * Overridden (not inherited as-is from `AmmoBodyComponent`) for `kinematic_pos`/`kinematic_vel`
+   * bodies specifically - writing only `nativeBody.setWorldTransform(...)` (what the base setter
+   * does, still correct for `dynamic`/`static` bodies) is silently undone the moment
+   * `stepSimulation` next runs. Bullet's own kinematic bookkeeping
+   * (`btRigidBody::saveKinematicState`, run once per internal substep for every
+   * `CF_KINEMATIC_OBJECT`-flagged body - see `AmmoFactory.createRigidBodyFromShape`) derives that
+   * step's kinematic velocity (the value that lets this body correctly push/wake dynamic bodies it
+   * sweeps into, not just teleport through them) by *pulling* the transform from this body's own
+   * motion state (`getMotionState().getWorldTransform()`), not from whatever
+   * `btRigidBody::setWorldTransform` was last called with directly - those are two independent
+   * pieces of Bullet state, and only the motion state one ever feeds `saveKinematicState`. Real,
+   * reproduced regression: a moving kinematic floor's position writes looked fought/ignored (worse
+   * in one direction than the other, since the stale-vs-real delta interacts with gravity settling
+   * dynamic bodies resting on it) the instant `bodyType` switched from `static` (never touched by
+   * `saveKinematicState` at all, so the direct-only write "just worked" as a teleport) to
+   * `kinematic_pos`. Fixed by writing the same transform to both the body and its motion state -
+   * keeps the synchronous getter above consistent immediately (no need to wait for the next
+   * `stepSimulation` to read back what was just set), while still giving Bullet a real, non-stale
+   * delta to compute kinematic velocity from.
+   */
+  set position(value: Point3) {
+    if (this.bodyType === 'kinematic_pos' || this.bodyType === 'kinematic_vel') {
+      const transform = this.nativeBody.getWorldTransform();
+      transform.setOrigin(new Ammo.btVector3(value.x, value.y, value.z));
+      this.nativeBody.getMotionState().setWorldTransform(transform);
+      this.nativeBody.setWorldTransform(transform);
+      this.nativeBody.activate(true);
+    } else {
+      super.position = value;
+    }
+  }
+
+  get rotation(): Point4 {
+    return super.rotation;
+  }
+
+  /** See `position`'s own setter doc - same fix, same reason, for `btRigidBody::setRotation`'s
+   * rotational counterpart. */
+  set rotation(value: Point4) {
+    if (this.bodyType === 'kinematic_pos' || this.bodyType === 'kinematic_vel') {
+      const transform = this.nativeBody.getWorldTransform();
+      transform.setRotation(new Ammo.btQuaternion(value.x, value.y, value.z, value.w));
+      this.nativeBody.getMotionState().setWorldTransform(transform);
+      this.nativeBody.setWorldTransform(transform);
+      this.nativeBody.activate(true);
+    } else {
+      super.rotation = value;
+    }
+  }
+
   get angularVelocity(): Point3 {
     const v = this.nativeBody.getAngularVelocity();
     return { x: v.x(), y: v.y(), z: v.z() };
@@ -39,9 +97,11 @@ export class AmmoRigidBodyComponent
   }
 
   readonly debugBodySettings: DebugBody3DSettings = new DebugBody3DSettings(
-    this._nativeBody.isStaticOrKinematicObject()
+    this._nativeBody.isStaticObject()
       ? { type: 'RIGID_STATIC' }
-      : { type: 'RIGID_DYNAMIC', sleeping: () => !this._nativeBody.isActive() },
+      : this._nativeBody.isKinematicObject()
+        ? { type: 'RIGID_KINEMATIC' }
+        : { type: 'RIGID_DYNAMIC', sleeping: () => !this._nativeBody.isActive() },
     this.shape,
   );
 
@@ -83,6 +143,7 @@ export class AmmoRigidBodyComponent
     protected readonly world: AmmoWorldComponent,
     protected _nativeBody: Ammo.btRigidBody,
     public readonly shape: Shape3DDescriptor,
+    public readonly bodyType: BodyType = 'dynamic',
   ) {
     super(world, _nativeBody, shape);
   }
@@ -92,7 +153,7 @@ export class AmmoRigidBodyComponent
       this._nativeBody.getCollisionShape(),
       this.shape,
       {
-        dynamic: !this._nativeBody.isStaticOrKinematicObject(),
+        bodyType: this.bodyType,
         mass: this._nativeBody.getMass(),
         friction: this._nativeBody.getFriction(),
         restitution: this._nativeBody.getRestitution(),
@@ -106,11 +167,17 @@ export class AmmoRigidBodyComponent
 
   addToWorld(world: AmmoGgWorld): void {
     this.world.dynamicAmmoWorld?.addRigidBody(this.nativeBody, this._ownCGsMask, this._interactWithCGsMask);
+    if (this.bodyType === 'kinematic_vel') {
+      this.world.registerKinematicVelBody(this);
+    }
     super.addToWorld(world);
   }
 
   removeFromWorld(world: AmmoGgWorld, dispose?: boolean): void {
     this.world.dynamicAmmoWorld?.removeRigidBody(this.nativeBody);
+    if (this.bodyType === 'kinematic_vel') {
+      this.world.unregisterKinematicVelBody(this);
+    }
     super.removeFromWorld(world, dispose);
   }
 
@@ -168,7 +235,7 @@ export class AmmoRigidBodyComponent
         this.addToWorld({ physicsWorld: ammoWorld } as any);
         const newLinVel = this.linearVelocity;
         if (isNaN(newLinVel.x) || isNaN(newLinVel.y) || isNaN(newLinVel.z)) {
-          console.warn('resetMotion caused ammo body to have broken velocity. Fixing');
+          warnOnce('resetMotion caused ammo body to have broken velocity. Fixing');
           this.position = position;
           this.rotation = rotation;
           this.resetMotion();

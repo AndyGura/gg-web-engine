@@ -22,7 +22,7 @@ describe('MatterWorldComponent', () => {
       const circle = world.factory.createRigidBody(
         {
           shape: { shape: 'CIRCLE', radius: 1 },
-          body: { dynamic: true, mass: 5 },
+          body: { bodyType: 'dynamic', mass: 5 },
         },
         { position: { x: -5, y: 0 } },
       );
@@ -41,7 +41,7 @@ describe('MatterWorldComponent', () => {
       const circle0 = world.factory.createRigidBody(
         {
           shape: { shape: 'CIRCLE', radius: 1 },
-          body: { dynamic: true, mass: 5 },
+          body: { bodyType: 'dynamic', mass: 5 },
         },
         { position: { x: -5, y: 0 } },
       );
@@ -52,7 +52,7 @@ describe('MatterWorldComponent', () => {
       const circle1 = world.factory.createRigidBody(
         {
           shape: { shape: 'CIRCLE', radius: 1 },
-          body: { dynamic: true, mass: 5 },
+          body: { bodyType: 'dynamic', mass: 5 },
         },
         { position: { x: 5, y: 0 } },
       );
@@ -70,7 +70,7 @@ describe('MatterWorldComponent', () => {
 
     it('keeps handleIdEntityMap (the O(1) findRigidBody lookup) in sync with children on add/remove', () => {
       const circle = world.factory.createRigidBody(
-        { shape: { shape: 'CIRCLE', radius: 1 }, body: { dynamic: true, mass: 1 } },
+        { shape: { shape: 'CIRCLE', radius: 1 }, body: { bodyType: 'dynamic', mass: 1 } },
         { position: { x: 0, y: 0 } },
       );
       circle.addToWorld({ physicsWorld: world } as any);
@@ -87,7 +87,7 @@ describe('MatterWorldComponent', () => {
       const circle0 = world.factory.createRigidBody(
         {
           shape: { shape: 'CIRCLE', radius: 1 },
-          body: { dynamic: true, mass: 5 },
+          body: { bodyType: 'dynamic', mass: 5 },
         },
         { position: { x: -5, y: 0 } },
       );
@@ -100,7 +100,7 @@ describe('MatterWorldComponent', () => {
       const circle1 = world.factory.createRigidBody(
         {
           shape: { shape: 'CIRCLE', radius: 1 },
-          body: { dynamic: true, mass: 5 },
+          body: { bodyType: 'dynamic', mass: 5 },
         },
         { position: { x: 5, y: 0 } },
       );
@@ -124,7 +124,7 @@ describe('MatterWorldComponent', () => {
       const square = world.factory.createRigidBody(
         {
           shape: { shape: 'SQUARE', dimensions: { x: 1, y: 1 } },
-          body: { dynamic: false, mass: 0 },
+          body: { bodyType: 'static', mass: 0 },
         },
         { position: { x: 10, y: 10 } },
       );
@@ -150,7 +150,7 @@ describe('MatterWorldComponent', () => {
       const square = world.factory.createRigidBody(
         {
           shape: { shape: 'SQUARE', dimensions: { x: 2, y: 2 } },
-          body: { dynamic: false, mass: 0 },
+          body: { bodyType: 'static', mass: 0 },
         },
         { position: { x: 0, y: -5 } },
       );
@@ -188,7 +188,7 @@ describe('MatterWorldComponent', () => {
         {
           shape: { shape: 'SQUARE', dimensions: { x: 2, y: 2 } },
           body: {
-            dynamic: false,
+            bodyType: 'static',
             mass: 0,
             ownCollisionGroups: [group1],
             interactWithCollisionGroups: [group1, group2],
@@ -229,7 +229,7 @@ describe('MatterWorldComponent', () => {
       const square = world.factory.createRigidBody(
         {
           shape: { shape: 'SQUARE', dimensions: { x: 2, y: 2 } },
-          body: { dynamic: false, mass: 0 },
+          body: { bodyType: 'static', mass: 0 },
         },
         { position: { x: 0, y: -5 } },
       );
@@ -261,7 +261,7 @@ describe('MatterWorldComponent', () => {
         {
           shape: { shape: 'SQUARE', dimensions: { x: 2, y: 2 } },
           body: {
-            dynamic: false,
+            bodyType: 'static',
             mass: 0,
             ownCollisionGroups: [group1],
             interactWithCollisionGroups: [group1, group2],
@@ -290,7 +290,7 @@ describe('MatterWorldComponent', () => {
       const square1 = world.factory.createRigidBody(
         {
           shape: { shape: 'SQUARE', dimensions: { x: 1, y: 1 } },
-          body: { dynamic: false, mass: 0 },
+          body: { bodyType: 'static', mass: 0 },
         },
         { position: { x: 0, y: -3 } },
       );
@@ -299,7 +299,7 @@ describe('MatterWorldComponent', () => {
       const square2 = world.factory.createRigidBody(
         {
           shape: { shape: 'SQUARE', dimensions: { x: 1, y: 1 } },
-          body: { dynamic: false, mass: 0 },
+          body: { bodyType: 'static', mass: 0 },
         },
         { position: { x: 0, y: -7 } },
       );
@@ -324,7 +324,7 @@ describe('MatterWorldComponent', () => {
       const square = world.factory.createRigidBody(
         {
           shape: { shape: 'SQUARE', dimensions: { x: 4, y: 4 } },
-          body: { dynamic: false, mass: 0 },
+          body: { bodyType: 'static', mass: 0 },
         },
         { position: { x: 0, y: 0 } },
       );

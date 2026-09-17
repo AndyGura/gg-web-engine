@@ -50,11 +50,11 @@ world.init().then(async () => {
   // create objects
   world.addPrimitiveRigidBody({
     shape: { shape: 'BOX', dimensions: { x: 75, y: 75, z: 1 } },
-    body: { dynamic: false, mass: 0 },
+    body: { bodyType: 'static', mass: 0 },
   }, { x: 0, y: 0, z: -0.5 }, Qtrn.O, materialStatic);
   world.addPrimitiveRigidBody({
     shape: { shape: 'BOX', dimensions: { x: 8, y: 10, z: 4 } },
-    body: { dynamic: false, mass: 0 },
+    body: { bodyType: 'static', mass: 0 },
   }, { x: 0, y: 0, z: -1.5 }, Qtrn.fromAngle(Pnt3.X, Math.PI / 18), materialStatic);
   const size = 0.75;
   const nw = 8;
@@ -63,7 +63,7 @@ world.init().then(async () => {
     for (let i = 0; i < nh; i++) {
       const item = world.addPrimitiveRigidBody({
         shape: { shape: 'BOX', dimensions: { x: size, y: size, z: size } },
-        body: { dynamic: true, mass: 10 },
+        body: { bodyType: 'dynamic', mass: 10 },
       }, { x: size * j - (size * (nw - 1)) / 2, y: 10, z: size * (i + 0.5) }, Qtrn.O, materialDynamic);
     }
 

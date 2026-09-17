@@ -19,7 +19,7 @@ describe('AmmoRigidBodyComponent collision events', () => {
 
   function createFloor(): AmmoRigidBodyComponent {
     const floor = world.factory.createRigidBody(
-      { shape: { shape: 'PLANE' }, body: { dynamic: false } },
+      { shape: { shape: 'PLANE' }, body: { bodyType: 'static' } },
       { position: { x: 0, y: 0, z: 0 } },
     );
     floor.addToWorld({ physicsWorld: world } as any);
@@ -28,7 +28,7 @@ describe('AmmoRigidBodyComponent collision events', () => {
 
   function createFallingBox(z: number): AmmoRigidBodyComponent {
     const box = world.factory.createRigidBody(
-      { shape: { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } }, body: { dynamic: true, mass: 1 } },
+      { shape: { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } }, body: { bodyType: 'dynamic', mass: 1 } },
       { position: { x: 0, y: 0, z } },
     );
     box.addToWorld({ physicsWorld: world } as any);

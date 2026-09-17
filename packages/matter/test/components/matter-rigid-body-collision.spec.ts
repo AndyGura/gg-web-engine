@@ -22,13 +22,13 @@ describe('MatterRigidBodyComponent collision events', () => {
   it('should fire onCollisionStart reciprocally, with a sane position/normal, when a falling body lands on a floor', () => {
     // static floor, top edge sits at y = -5
     const floor = factory.createRigidBody(
-      { shape: { shape: 'SQUARE', dimensions: { x: 50, y: 10 } }, body: { dynamic: false, mass: 0 } },
+      { shape: { shape: 'SQUARE', dimensions: { x: 50, y: 10 } }, body: { bodyType: 'static', mass: 0 } },
       { position: { x: 0, y: 0 } },
     );
     floor.addToWorld({ physicsWorld: world } as any);
 
     const ball = factory.createRigidBody(
-      { shape: { shape: 'CIRCLE', radius: 1 }, body: { dynamic: true, mass: 1 } },
+      { shape: { shape: 'CIRCLE', radius: 1 }, body: { bodyType: 'dynamic', mass: 1 } },
       { position: { x: 0, y: -20 } },
     );
     ball.addToWorld({ physicsWorld: world } as any);
@@ -67,13 +67,13 @@ describe('MatterRigidBodyComponent collision events', () => {
 
   it('should not keep re-firing onCollisionStart while a body rests stably on another', () => {
     const floor = factory.createRigidBody(
-      { shape: { shape: 'SQUARE', dimensions: { x: 50, y: 10 } }, body: { dynamic: false, mass: 0 } },
+      { shape: { shape: 'SQUARE', dimensions: { x: 50, y: 10 } }, body: { bodyType: 'static', mass: 0 } },
       { position: { x: 0, y: 0 } },
     );
     floor.addToWorld({ physicsWorld: world } as any);
 
     const ball = factory.createRigidBody(
-      { shape: { shape: 'CIRCLE', radius: 1 }, body: { dynamic: true, mass: 1 } },
+      { shape: { shape: 'CIRCLE', radius: 1 }, body: { bodyType: 'dynamic', mass: 1 } },
       { position: { x: 0, y: -20 } },
     );
     ball.addToWorld({ physicsWorld: world } as any);
@@ -101,13 +101,13 @@ describe('MatterRigidBodyComponent collision events', () => {
 
   it('should fire onCollisionEnd when a body is knocked away and separates', () => {
     const floor = factory.createRigidBody(
-      { shape: { shape: 'SQUARE', dimensions: { x: 50, y: 10 } }, body: { dynamic: false, mass: 0 } },
+      { shape: { shape: 'SQUARE', dimensions: { x: 50, y: 10 } }, body: { bodyType: 'static', mass: 0 } },
       { position: { x: 0, y: 0 } },
     );
     floor.addToWorld({ physicsWorld: world } as any);
 
     const ball = factory.createRigidBody(
-      { shape: { shape: 'CIRCLE', radius: 1 }, body: { dynamic: true, mass: 1 } },
+      { shape: { shape: 'CIRCLE', radius: 1 }, body: { bodyType: 'dynamic', mass: 1 } },
       { position: { x: 0, y: -20 } },
     );
     ball.addToWorld({ physicsWorld: world } as any);
@@ -131,13 +131,13 @@ describe('MatterRigidBodyComponent collision events', () => {
 
   it('should emit onCollisionEnd(null) on the remaining body when the other body is removed from the world while still touching', () => {
     const floor = factory.createRigidBody(
-      { shape: { shape: 'SQUARE', dimensions: { x: 50, y: 10 } }, body: { dynamic: false, mass: 0 } },
+      { shape: { shape: 'SQUARE', dimensions: { x: 50, y: 10 } }, body: { bodyType: 'static', mass: 0 } },
       { position: { x: 0, y: 0 } },
     );
     floor.addToWorld({ physicsWorld: world } as any);
 
     const ball = factory.createRigidBody(
-      { shape: { shape: 'CIRCLE', radius: 1 }, body: { dynamic: true, mass: 1 } },
+      { shape: { shape: 'CIRCLE', radius: 1 }, body: { bodyType: 'dynamic', mass: 1 } },
       { position: { x: 0, y: -20 } },
     );
     ball.addToWorld({ physicsWorld: world } as any);
@@ -165,7 +165,7 @@ describe('MatterRigidBodyComponent collision events', () => {
     trigger.addToWorld({ physicsWorld: world } as any);
 
     const ball = factory.createRigidBody(
-      { shape: { shape: 'CIRCLE', radius: 1 }, body: { dynamic: true, mass: 1 } },
+      { shape: { shape: 'CIRCLE', radius: 1 }, body: { bodyType: 'dynamic', mass: 1 } },
       { position: { x: 0, y: -20 } },
     );
     ball.addToWorld({ physicsWorld: world } as any);

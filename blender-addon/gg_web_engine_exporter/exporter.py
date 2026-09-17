@@ -33,7 +33,14 @@ from rna_prop_ui import rna_idprop_value_to_python
 # Bumped whenever the .meta JSON shape changes in a way old readers can't ignore.
 # `Gg3dLoader`/`GgMeta` on the JS side can check this to warn on stale/future
 # exports instead of silently misreading them.
-GG_META_FORMAT_VERSION = 1
+#
+# 2: `body.dynamic` (boolean) replaced by `body.bodyType` ('dynamic'|'static'|'kinematic_pos'|
+#    'kinematic_vel') - see `get_rigid_body_description`'s own comment on how it's derived from
+#    Blender's `type`/`kinematic` rigid body properties. `IPhysicsBody3dComponentLoader
+#    .loadFromGgGlb` (`packages/core/src/3d/loaders.ts`) migrates an older `.meta`'s `dynamic`
+#    field on the fly, so re-exporting isn't required, but a `.meta` written by this version can no
+#    longer be read by a core build that only understands format 1.
+GG_META_FORMAT_VERSION = 2
 
 
 def parse_curve_obj(obj):
@@ -75,6 +82,33 @@ def parse_dummy_obj(obj):
     }
 
 
+def get_body_type(body):
+    """Maps a Blender `RigidBodyObject`'s `type` ('ACTIVE'|'PASSIVE') + `kinematic` checkbox to
+    this engine's `BodyType` ('dynamic'|'static'|'kinematic_pos'|'kinematic_vel' - see
+    `packages/core/src/base/models/body-options.ts`).
+
+    `kinematic` ("Animated" in the Physics panel) is only meaningful - and only exposed by
+    Blender - on an `ACTIVE` body: checking it turns an otherwise-dynamic body into one driven
+    entirely by its own keyframes/animation instead of forces, which is exactly `kinematic_pos`'s
+    definition (a position-driven body Bullet still lets push/wake dynamic bodies it moves into).
+    A `PASSIVE` body has no such checkbox - Blender lets you keyframe a Passive object's transform
+    freely with no separate flag needed, since it was never being simulated in the first place -
+    so there's no reliable, introspectable signal here to distinguish "genuinely static" from
+    "Passive but animated" the way `kinematic` does for Active; every Passive body exports as
+    plain `static` regardless.
+
+    `kinematic_vel` (velocity-driven, as opposed to keyframe/position-driven) has no Blender
+    authoring-time concept at all - it only makes sense for a body an app drives at runtime by
+    setting `linearVelocity`/`angularVelocity` directly (e.g. a rotating platform) - so this
+    exporter never produces it.
+    """
+    if body.type != "ACTIVE":
+        return "static"
+    if getattr(body, "kinematic", False):
+        return "kinematic_pos"
+    return "dynamic"
+
+
 def get_rigid_body_description(obj, export_body_parameters=True):
     body = obj.rigid_body
     obj.rotation_mode = "QUATERNION"
@@ -98,7 +132,7 @@ def get_rigid_body_description(obj, export_body_parameters=True):
     }
     if export_body_parameters:
         meta["body"] = {
-            "dynamic": body.type == "ACTIVE",
+            "bodyType": get_body_type(body),
             "mass": body.mass,
             "restitution": body.restitution,
             "friction": body.friction,

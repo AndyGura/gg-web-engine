@@ -15,7 +15,7 @@ doesn't derive one from the other.
 bl_info = {
     "name": "GG Web Engine Exporter",
     "author": "AndyGura",
-    "version": (1, 0, 0),
+    "version": (1, 0, 1),
     "blender": (4, 2, 0),
     "location": "File > Export > GG Web Engine (.glb + .meta)",
     "description": "Export scenes to the .glb + .meta format read by @gg-web-engine/core's GLB loader",
