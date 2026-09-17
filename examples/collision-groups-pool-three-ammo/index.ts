@@ -65,13 +65,6 @@ world.init().then(async () => {
         shape: { shape: 'BOX', dimensions: { x: 16, y: 16, z: 0.5 } },
         // collision groups can be set immediately when creating entity
         body: {
-          // `kinematic_pos`, not `static` - this floor's position is driven every tick below (see
-          // the slider-following `createInlineTickController` subscription). A `static` body moved
-          // by teleporting its position each tick is exactly the bug this repros: it has no notion
-          // of its own velocity, so a ball resting on it can end up clipped through instead of
-          // pushed along when the slider is dragged quickly. `kinematic_pos` derives a real
-          // per-step velocity from the position delta (see `BodyOptions.bodyType`'s doc), so the
-          // balls actually get carried/pushed by the floor instead of tunnelling through it.
           bodyType: 'kinematic_pos',
           restitution: 0.05,
           ownCollisionGroups: [collisionGroup],

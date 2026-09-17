@@ -142,14 +142,6 @@ export class AmmoRigidBodyComponent
     protected readonly world: AmmoWorldComponent,
     protected _nativeBody: Ammo.btRigidBody,
     public readonly shape: Shape3DDescriptor,
-    /**
-     * `kinematic_pos` vs `kinematic_vel` is an adapter-level bookkeeping distinction with no
-     * native Bullet equivalent - both set the exact same `CF_KINEMATIC_OBJECT` flag (see
-     * `AmmoFactory.createRigidBodyFromShape`), so unlike `static`/`dynamic` it can't be recovered
-     * by reading the native body back (`isKinematicObject()` can't tell the two apart). Stored
-     * here instead, purely so `clone()` and `AmmoWorldComponent`'s `kinematic_vel` velocity
-     * integration (see `registerKinematicVelBody`) know which one this body actually is.
-     */
     public readonly bodyType: BodyType = 'dynamic',
   ) {
     super(world, _nativeBody, shape);

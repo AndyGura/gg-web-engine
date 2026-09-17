@@ -322,17 +322,6 @@ touching this again:
   than reconstructing one, so nothing needs copying there; don't assume the two packages' `clone()`
   work identically just because their public shape matches.
 
-**Real bug found doing this migration, worth grepping for if this resurfaces**: `Rapier2dRigidBodyComponent`
-imported `RigidBodyType` from `@dimforge/rapier3d-compat` - a *different sibling package*, not a deep
-subpath of its own dependency (see "Don't import a WASM-bindgen native library's internal file paths"
-above, which is about the latter). It compiled and even ran correctly, for the same class of reason as
-that pitfall: `@dimforge/rapier3d-compat` happens to be present in the repo's `node_modules` (this is
-an npm workspace, `packages/rapier3d` is a sibling package), `RigidBodyType` is a plain numeric enum
-with identical values in both compat builds, and `rapier2d`'s own `package.json` never actually
-declares `@dimforge/rapier3d-compat` as a dependency at all - nothing catches an accidental cross-
-package import like this except actually reading the import list. Fixed by importing from
-`@dimforge/rapier2d-compat` instead (already imported in the same file for other symbols).
-
 ## Jest 30 / WASM-backed adapter pitfalls (hit upgrading `rapier2d`/`rapier3d` off a 2024 prerelease build)
 
 Applies to both packages (each has its own `jest` config/`node_modules`):
