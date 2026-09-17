@@ -15,6 +15,7 @@ import {
   KeyboardInput,
   PausableClock,
   TickOrder,
+  warnOnce,
 } from '../base';
 import { lastValueFrom, Subject, take } from 'rxjs';
 import { PerformanceMeterEntity } from '../dev';
@@ -276,7 +277,7 @@ export abstract class GgWorld<
       return;
     }
     if (entity.world) {
-      console.warn('Trying to spawn entity, which is already spawned');
+      warnOnce('Trying to spawn entity, which is already spawned');
       return;
     }
     this.children.push(entity);
@@ -352,7 +353,7 @@ export abstract class GgWorld<
       this.autoBoundListener = renderers[0].camera;
       this.audioScene.setActiveListener(this.autoBoundListener);
     } else if (renderers.length > 1) {
-      console.warn(
+      warnOnce(
         `GgWorld "${this.name}": ${renderers.length} renderers present and no active audio ` +
           `listener set (${renderers.map(r => r.name).join(', ')}) - call ` +
           `world.audioScene.setActiveListener(...) explicitly to choose one.`,

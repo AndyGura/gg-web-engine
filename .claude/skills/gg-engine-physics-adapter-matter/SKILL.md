@@ -121,12 +121,17 @@ unsupported feature should follow:
   it the way a real kinematic body would).
 - `ccd: true` is accepted and simply has no effect beyond the warning - a fast-moving or fast-driven
   body can still tunnel through thin geometry in one step.
-- Both warn via a module-level `warnUnsupportedOnce(message)` (a `Set<string>` of already-warned
-  messages) rather than `console.warn` directly at the call site - keyed on the *message*, so
-  distinct warnings (kinematic vs ccd) each still get one appearance, but creating many bodies with
-  the same unsupported request (e.g. spawning a dozen kinematic props) only logs once total, not once
-  per body. Per-body/per-tick warnings here would be worse than no warning at all - they'd teach a
-  developer to tune the console out rather than surface the one thing worth fixing.
+- Both warn via `@gg-web-engine/core`'s `warnOnce(message)` (imported into `matter-factory.ts` and
+  wrapped by a local `warnUnsupportedOnce` that just prefixes `[@gg-web-engine/matter]`) rather than
+  `console.warn` directly at the call site - keyed on the *message*, so distinct warnings (kinematic
+  vs ccd) each still get one appearance, but creating many bodies with the same unsupported request
+  (e.g. spawning a dozen kinematic props) only logs once total, not once per body. Per-body/per-tick
+  warnings here would be worse than no warning at all - they'd teach a developer to tune the console
+  out rather than surface the one thing worth fixing. See `gg-engine-core-development` for `warnOnce`
+  itself - it's a general-purpose helper, not matter-specific, and every adapter package should reach
+  for it instead of hand-rolling a `Set<string>`/static-boolean dedup guard the way
+  `packages/ammo`/`packages/rapier3d`'s character controllers used to for their own missing-`dt`
+  warnings.
 
 **Don't derive a body's debug-view label (`RIGID_STATIC`/`RIGID_DYNAMIC`/`RIGID_KINEMATIC`) from the
 `bodyType` an app *asked for*.** An earlier version of `MatterRigidBodyComponent.debugBodySettings`

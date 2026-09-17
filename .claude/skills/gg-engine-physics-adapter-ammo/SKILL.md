@@ -400,8 +400,11 @@ going through `ICharacterController3dComponent` directly without it, but when it
 understates push force by roughly a factor of `dt` (a 16ms tick's displacement is ~60x smaller than the
 equivalent m/s figure) rather than erroring or visibly misbehaving, which is exactly the kind of
 wrong-but-plausible-looking physics that goes unnoticed. Fix: skip the push for that tick entirely when
-`dt` is missing/non-positive, guarded by a one-time `console.warn` (module-level flag, not per-instance,
-so a scene with several such characters logs once total) rather than per-tick spam.
+`dt` is missing/non-positive, guarded by `@gg-web-engine/core`'s `warnOnce` (deduped process-wide by
+message text, not per-instance, so a scene with several such characters logs once total) rather than
+per-tick spam. Both this component and `Rapier3dCharacterControllerComponent` used to hand-roll this
+with their own `private static warnedMissingDtForPush` boolean before `warnOnce` existed - reach for
+the shared helper instead of repeating that pattern in a new backend.
 
 **Related pitfall, easy to misdiagnose as "friction can't induce rotation" - it can: a pushed sphere
 given pure linear velocity looked like it would never start rolling on its own, but the real cause was

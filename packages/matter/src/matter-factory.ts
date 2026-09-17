@@ -4,6 +4,7 @@ import {
   IPhysicsBody2dComponentFactory,
   Point2,
   Shape2DDescriptor,
+  warnOnce,
 } from '@gg-web-engine/core';
 import { MatterRigidBodyComponent } from './components/matter-rigid-body.component';
 import { MatterTriggerComponent } from './components/matter-trigger.component';
@@ -15,19 +16,13 @@ import { MatterPhysicsTypeDocRepo } from './types';
  * `kinematic_pos`/`kinematic_vel`/`ccd` have no native matter-js equivalent at all - unlike
  * `packages/ammo`/`packages/rapier2d`/`packages/rapier3d`, this package can only warn and fall
  * back rather than actually implement either (see `transformOptions`'s own doc). Warned once per
- * distinct message rather than once per body/tick - an app that spawns many kinematic props (or
- * requests `ccd` on many fast-moving bodies) would otherwise flood the console with an identical
- * warning on every single one, which teaches a developer to ignore the console rather than to fix
- * the one call site that needs it.
+ * distinct message (via core's `warnOnce`) rather than once per body/tick - an app that spawns many
+ * kinematic props (or requests `ccd` on many fast-moving bodies) would otherwise flood the console
+ * with an identical warning on every single one, which teaches a developer to ignore the console
+ * rather than to fix the one call site that needs it.
  */
-const warnedOnce = new Set<string>();
-
 function warnUnsupportedOnce(message: string): void {
-  if (warnedOnce.has(message)) {
-    return;
-  }
-  warnedOnce.add(message);
-  console.warn(`[@gg-web-engine/matter] ${message}`);
+  warnOnce(`[@gg-web-engine/matter] ${message}`);
 }
 
 export class MatterFactory implements IPhysicsBody2dComponentFactory<MatterPhysicsTypeDocRepo> {

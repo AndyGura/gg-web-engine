@@ -1,6 +1,7 @@
 import { Observable, Subscription } from 'rxjs';
 import { GgWorld, GgWorldTypeDocRepo } from '../gg-world';
 import { BlueprintNode } from './blueprint-node';
+import { warnOnce } from '../logging';
 
 /**
  * A function that builds a {@link BlueprintNode} instance from its baked-in settings. Registered
@@ -124,7 +125,7 @@ export class Blueprint<D = any, R = any, TypeDoc extends GgWorldTypeDocRepo<D, R
     for (const nodeJson of json.nodes) {
       const factory = registry.get(nodeJson.type);
       if (!factory) {
-        console.warn(`No blueprint node type registered for "${nodeJson.type}" - skipping node "${nodeJson.id}"`);
+        warnOnce(`No blueprint node type registered for "${nodeJson.type}" - skipping node "${nodeJson.id}"`);
         continue;
       }
       this.nodes.set(nodeJson.id, factory(world, nodeJson.settings ?? {}));
@@ -134,7 +135,7 @@ export class Blueprint<D = any, R = any, TypeDoc extends GgWorldTypeDocRepo<D, R
       const source = this.nodes.get(link.from.node);
       const target = this.nodes.get(link.to.node);
       if (!source || !target) {
-        console.warn(`Blueprint link references an unknown node ("${link.from.node}" -> "${link.to.node}") - skipping`);
+        warnOnce(`Blueprint link references an unknown node ("${link.from.node}" -> "${link.to.node}") - skipping`);
         continue;
       }
       this.linkSubscriptions.push(source.output(link.from.pin).subscribe(value => target.trigger(link.to.pin, value)));
@@ -150,7 +151,7 @@ export class Blueprint<D = any, R = any, TypeDoc extends GgWorldTypeDocRepo<D, R
   public trigger(inputName: string, value?: unknown): void {
     const ref = this.json.inputs?.[inputName];
     if (!ref) {
-      console.warn(`Blueprint has no declared input named "${inputName}" - ignoring trigger`);
+      warnOnce(`Blueprint has no declared input named "${inputName}" - ignoring trigger`);
       return;
     }
     const node = this.nodes.get(ref.node);

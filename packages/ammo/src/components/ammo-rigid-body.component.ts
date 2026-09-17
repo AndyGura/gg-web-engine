@@ -10,6 +10,7 @@ import {
   Point3,
   Point4,
   Shape3DDescriptor,
+  warnOnce,
 } from '@gg-web-engine/core';
 import { first, Observable, Subject } from 'rxjs';
 import { AmmoGgWorld, AmmoPhysicsTypeDocRepo } from '../types';
@@ -234,7 +235,7 @@ export class AmmoRigidBodyComponent
         this.addToWorld({ physicsWorld: ammoWorld } as any);
         const newLinVel = this.linearVelocity;
         if (isNaN(newLinVel.x) || isNaN(newLinVel.y) || isNaN(newLinVel.z)) {
-          console.warn('resetMotion caused ammo body to have broken velocity. Fixing');
+          warnOnce('resetMotion caused ammo body to have broken velocity. Fixing');
           this.position = position;
           this.rotation = rotation;
           this.resetMotion();

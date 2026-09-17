@@ -26,6 +26,31 @@ Each of `base/2d/3d` mirrors the same sub-structure: `components/{physics,render
 `entities/`, `interfaces/`, `models/`. When adding a concept to 3D, check whether it belongs in
 `base/` instead (dimension-agnostic) before duplicating it into both `2d/` and `3d/`.
 
+## Deduping a warning that could fire many times with the same message: `warnOnce`
+
+`base/logging.ts` (exported from the package root) provides `warnOnce(message, ...optionalParams)`:
+a drop-in replacement for `console.warn` that logs `message` (plus any `optionalParams`, e.g. an
+error object) only the first time that exact `message` string is seen, and is a silent no-op on
+every later call with the same `message` - deduped process-wide via a module-level `Set<string>`,
+forever (no expiry, no per-instance/per-world scoping). Reach for it instead of a bare
+`console.warn` for anything that could plausibly fire many times with an identical message from a
+hot path - once per tick, once per blueprint trigger/event firing, once per entity in a level-load
+loop - where a plain `console.warn` would flood the console with the same line and teach a
+developer to tune it out. It is used this way throughout `packages/core` itself (`GgWorld`,
+`LevelLoader`, `Blueprint` and its built-in nodes, `Gg3dLoader`) and by adapter packages for
+per-tick warnings (e.g. `packages/matter`'s unsupported-`bodyType`/`ccd` warnings,
+`packages/ammo`/`packages/rapier3d`'s character-controller missing-`dt` warnings) - prefer it over
+hand-rolling a local `Set<string>` or a `private static warned = false` flag the way those adapters
+used to before this helper existed.
+
+Don't reach for it when every occurrence of a warning carries genuinely distinct information (a
+different entity name, a different id baked into the message) - deduping on message text alone
+would silently drop exactly the information that makes each occurrence worth seeing. It's also not
+useful for a warning that can only fire once per process regardless (nothing to spam). If a warning
+legitimately needs to reappear later (e.g. once per level load rather than once ever), bake
+something that changes into the message string itself - `warnOnce` has no notion of "reset" and
+dedupes purely on the string it's given.
+
 The Blender-side authoring tool that produces the `.glb`+`.meta` pair `src/3d/loader.ts`'s
 `Gg3dLoader.loadGgGlb` reads is **not** part of this package — it lives at the repo-root
 `blender-addon/` as a standalone, independently-versioned Blender add-on (see

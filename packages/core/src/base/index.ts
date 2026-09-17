@@ -37,6 +37,8 @@ export * from './inputs/mouse.input';
 
 export * from './interfaces/i-positionable';
 
+export * from './logging';
+
 export * from './models/axis-directions';
 export * from './models/body-options';
 export * from './models/collision-event';
