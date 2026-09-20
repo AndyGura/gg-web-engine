@@ -18,17 +18,25 @@ landing a commit on `main` with that exact message prefix and the target version
 
 ## What the pipeline does (`etc/publish_new_version.sh X.Y.Z`)
 
+0. Before `etc/publish_new_version.sh` even runs, `release_action.yml` does a plain workspace
+   `npm install && npm run build && npm run test` at the repo root (the same commands
+   `pull_request_build.yml` runs on every PR) and fails the job right there if any of it errors —
+   so an outright broken commit never gets as far as publishing `core`. This is a different install
+   mode than the rest of the pipeline (workspace-hoisted, not each package's own standalone
+   install — see the `--workspaces=false` note below), so it's a sanity check on the source tree,
+   not a substitute for the per-package build failures the rest of this section covers.
 1. Bumps `packages/core/package.json` version, clean-installs, `prettier-format`, builds, and
    `npm publish`es core first.
 2. Polls `npm view @gg-web-engine/core version` until the just-published version is live (up to 5
    minutes) before touching dependents.
 3. In parallel, for every package in its `libs` array (`three`, `ammo`, `rapier2d`, `rapier3d`,
-   `pixi`, `matter`): bumps its own version **and** its `@gg-web-engine/core` dependency version,
-   clean-installs, formats, builds. Every `npm i` in this script passes `--workspaces=false` — even
-   though `packages/*` is an npm workspace for local dev (see `gg-engine-core-development`), the
-   release build must install the just-published real `@gg-web-engine/core` from the registry as a
-   sanity check, not silently resolve it back to the local workspace symlink, and the parallel
-   per-package installs would otherwise race on one shared root lockfile.
+   `pixi`, `matter`, `audio`): bumps its own version **and** its `@gg-web-engine/core` dependency
+   version, clean-installs, formats, builds. Every `npm i` in this script passes
+   `--workspaces=false` — even though `packages/*` is an npm workspace for local dev (see
+   `gg-engine-core-development`), the release build must install the just-published real
+   `@gg-web-engine/core` from the registry as a sanity check, not silently resolve it back to the
+   local workspace symlink, and the parallel per-package installs would otherwise race on one
+   shared root lockfile.
 4. Publishes each of those packages to npm, then polls npm again until every one is live.
 5. Bumps `@gg-web-engine/*` dependency versions in every example listed in
    `examples/examples-list.txt` and reinstalls them, in parallel.
@@ -69,6 +77,29 @@ If a release fails partway (some packages published at `X.Y.Z`, one failed befor
 don't retry the same version — `npm publish` rejects re-publishing a version that already exists
 for a package. Cut the next attempt as `[pre-release] [X.Y.(Z+1)]` instead; the packages that did
 succeed at the old version are harmless leftovers on npm.
+
+**A per-package build failure inside `upgrade()`/the core install block used to publish anyway.**
+`three@0.0.71` shipped to npm with no `dist/` at all (just `package.json`, `README.md`, and
+whatever else `.npmignore` didn't exclude) even though the release job reported success. Root
+cause: `upgrade()`'s body was one `&&`-joined line (`rm -rf ... && npm i --workspaces=false && npm
+run prettier-format && npm run build`) followed by `popd`. Bash's `set -e` only aborts a script on
+the failure of the *last* command in an `&&`/`||` list — every earlier command in such a list is
+explicitly exempted from triggering errexit, and when one of them fails the list just
+short-circuits (skipping the rest of that one line) and execution falls through to the *next
+statement* as if nothing happened. Here that `npm i --workspaces=false` failed on a real
+dependency conflict (an adapter's own devDependency needed a version range compatible with another
+test devDependency's peer constraint, and only the release script's standalone/non-workspace
+install exposed it — the workspace-hoisted local dev install papered over it with a warning
+instead of a hard error), `npm run build` never ran, and `popd` still executed — so the function
+"succeeded", the background job's exit code (checked via `wait $pid`) was 0, and
+`npm publish --access public` ran against whatever was left in the package directory after `rm -rf
+dist/` had already deleted the old build output. The fix, applied throughout the script (the core
+install block, `upgrade()`, and `upgrade_example()`/its final wait loop): put each step on its own
+line instead of chaining with `&&`, and check every background job's exit status individually
+(`for pid in "${pids[@]}"; do wait $pid || exit 1; done`, never a bare `wait` with no per-pid
+check). A `release_action.yml` preflight (see step 0 above) reduces how often this class of bug
+bites, but doesn't replace it — the preflight uses a workspace install, which is exactly the install
+mode that didn't reproduce this particular conflict.
 
 ## Adding a new package to the release
 

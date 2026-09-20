@@ -187,6 +187,21 @@ root with just the commonjs-transform plugin, and in the `jest` block split the 
 one path isn't skipped. A package that doesn't import `three` directly in its tests (like `pixi`,
 whose one spec file is pure-logic) doesn't need any of this.
 
+Pin `@babel/core` and `@babel/plugin-transform-modules-commonjs` to the same `^7.x` major, not
+`^8.x` — `ts-jest@29.4.12` (this package's other test dependency) declares a peerOptional
+`@babel/core@">=7.0.0-beta.0 <8"`. `babel-jest`'s own peer range accepts either major, so nothing
+forces 8.x, and mixing majors here doesn't fail every install: the root `packages/*` npm workspace
+install can resolve it with just an "ERESOLVE overriding peer dependency" warning (existing hoisted
+`@babel/core@7.x` from elsewhere in the graph papers over it), but `etc/publish_new_version.sh`
+installs each adapter standalone (`npm i --workspaces=false`, no workspace hoisting to fall back
+on) and that same conflict is a hard `ERESOLVE` failure there — exactly the kind of failure
+`gg-engine-release`'s "Known failure modes" section now documents as having shipped `three` to npm
+without a `dist/` at all. Local `npm run build`/`npm run test` passing is not sufficient to catch this;
+if you add a new devDependency to an adapter, check its version range against every other test
+devDependency's peer constraints, or actually run a clean standalone install
+(`rm -rf node_modules package-lock.json && npm i --workspaces=false` inside the package alone) to
+reproduce the release script's install mode before landing the change.
+
 ## Wiring a new adapter into the repo
 
 1. Nothing to add to `.github/workflows/pull_request_build.yml` — it's a single generic job

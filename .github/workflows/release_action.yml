@@ -48,6 +48,13 @@ jobs:
           node-version: '24.x'
           registry-url: 'https://registry.npmjs.org'
 
+      - name: Verify everything builds and tests pass
+        if: env.PRE_RELEASE == 'true'
+        run: |
+          npm install
+          npm run build
+          npm run test
+
       - name: Publish
         if: env.PRE_RELEASE == 'true'
         env:

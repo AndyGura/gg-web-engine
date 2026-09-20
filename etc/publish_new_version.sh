@@ -29,7 +29,10 @@ upgrade() {
     # version of @gg-web-engine/core (this is the sanity check that the published tarball actually
     # works), not the local packages/core via the packages/* workspace. It also keeps these
     # parallel installs from racing on the shared root package-lock.json/node_modules.
-    rm -rf node_modules/ package-lock.json dist/ && npm i --workspaces=false && npm run prettier-format && npm run build
+    rm -rf node_modules/ package-lock.json dist/
+    npm i --workspaces=false
+    npm run prettier-format
+    npm run build
     popd
 }
 
@@ -63,8 +66,13 @@ wait_package_publish() {
 pushd ./packages/core
 sedi 's/"version": "[0-9.]*",/"version": "'$1'",/' package.json
 # --workspaces=false: see the comment in upgrade() above — keep this a standalone install/build,
-# not resolved through the packages/* workspace.
-rm -rf node_modules/ package-lock.json dist/ && npm i --workspaces=false && npm run prettier-format && npm run build
+# not resolved through the packages/* workspace. Each step is its own statement (not `&&`-joined)
+# for the same reason as upgrade() below — a failure in `npm i`/`prettier-format` must not fall
+# through to `npm publish` on a stale/missing dist.
+rm -rf node_modules/ package-lock.json dist/
+npm i --workspaces=false
+npm run prettier-format
+npm run build
 npm publish --access public
 
 echo sleeping 30s...
@@ -111,14 +119,22 @@ upgrade_example() {
     do
       sedi 's/"@gg-web-engine\/'${libs[$ix]}'": "[0-9.]*",/"@gg-web-engine\/'${libs[$ix]}'": "'$2'",/' package.json
     done
-    rm -rf node_modules/ package-lock.json dist/ && npm i
+    rm -rf node_modules/ package-lock.json dist/
+    npm i
     popd
 }
+example_pids=()
 for ix in ${!examples[*]}
 do
   upgrade_example ${examples[$ix]} $1 &
+  example_pids+=($!)
 done
-wait
+for pid in "${example_pids[@]}"; do
+  if ! wait $pid; then
+    echo "Error: A background process failed."
+    exit 1
+  fi
+done
 sedi "s/\(const sbBranchSuffix = '\)[^']*\(';\)/\1$1\2/" ./examples/index.html
 
 echo "Reminder: "
