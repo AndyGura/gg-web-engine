@@ -24,6 +24,29 @@
       "archive_url": "./gg_web_engine_exporter-1.0.0.zip",
       "archive_size": 5502,
       "archive_hash": "sha256:351fbd52bc6e64e4ad369a42b66bf3520ba708755b8b40540162852f15dc69f2"
+    },
+    {
+      "schema_version": "1.0.0",
+      "id": "gg_web_engine_exporter",
+      "name": "GG Web Engine Exporter",
+      "tagline": "Export scenes to .glb + .meta format for gg-web-engine",
+      "version": "1.0.1",
+      "type": "add-on",
+      "maintainer": "AndyGura",
+      "license": [
+        "SPDX:Apache-2.0"
+      ],
+      "blender_version_min": "4.2.0",
+      "website": "https://github.com/AndyGura/gg-web-engine",
+      "permissions": {
+        "files": "Writes exported .glb and .meta files to your chosen path"
+      },
+      "tags": [
+        "Import-Export"
+      ],
+      "archive_url": "./gg_web_engine_exporter-1.0.1.zip",
+      "archive_size": 6399,
+      "archive_hash": "sha256:b80910ccb7f67d535d18b8d29b72f7dd683129914509cee349945cfb6119ef9e"
     }
   ]
 }
