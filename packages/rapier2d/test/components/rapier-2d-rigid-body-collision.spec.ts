@@ -28,13 +28,13 @@ describe('Rapier2dRigidBodyComponent onCollisionStart/onCollisionEnd', () => {
 
   function makeFloorAndBall(): { floor: Rapier2dRigidBodyComponent; ball: Rapier2dRigidBodyComponent } {
     const floor = factory.createRigidBody(
-      { shape: { shape: 'SQUARE', dimensions: { x: 20, y: 2 } }, body: { dynamic: false, mass: 0 } },
+      { shape: { shape: 'SQUARE', dimensions: { x: 20, y: 2 } }, body: { bodyType: 'static', mass: 0 } },
       { position: { x: 0, y: -1 } },
     );
     floor.addToWorld({ physicsWorld: world } as any);
 
     const ball = factory.createRigidBody(
-      { shape: { shape: 'CIRCLE', radius: 1 }, body: { dynamic: true, mass: 2 } },
+      { shape: { shape: 'CIRCLE', radius: 1 }, body: { bodyType: 'dynamic', mass: 2 } },
       { position: { x: 0, y: 5 } },
     );
     ball.addToWorld({ physicsWorld: world } as any);
@@ -142,7 +142,7 @@ describe('Rapier2dRigidBodyComponent onCollisionStart/onCollisionEnd', () => {
     // never generates a real broad-phase pair between colliders of the same body, so the guard is
     // exercised directly by forcing `drainCollisionEvents` to report a pair whose two collider
     // handles both belong to this one body, exactly as a spurious/defensive edge case would look.
-    const bodyDescr = factory.createRigidBodyDescr({ dynamic: true, mass: 1 }, { position: { x: 0, y: 5 } });
+    const bodyDescr = factory.createRigidBodyDescr({ bodyType: 'dynamic', mass: 1 }, { position: { x: 0, y: 5 } });
     const colliderDescrs = [
       ColliderDesc.cuboid(0.5, 0.5).setActiveEvents(ActiveEvents.COLLISION_EVENTS),
       ColliderDesc.cuboid(0.5, 0.5).setTranslation(0.4, 0).setActiveEvents(ActiveEvents.COLLISION_EVENTS),
@@ -157,6 +157,7 @@ describe('Rapier2dRigidBodyComponent onCollisionStart/onCollisionEnd', () => {
         restitution: 0.1,
         ownCollisionGroups: [world.mainCollisionGroup],
         interactWithCollisionGroups: [world.mainCollisionGroup],
+        ccd: false,
       },
     );
     compound.addToWorld({ physicsWorld: world } as any);
@@ -201,7 +202,7 @@ describe('Rapier2dRigidBodyComponent onCollisionStart/onCollisionEnd', () => {
     // spawned clear of the trigger's top edge (square half-height 10, centered at y=0) so the
     // overlap genuinely starts *after* subscribing below, not at spawn time.
     const ball = factory.createRigidBody(
-      { shape: { shape: 'CIRCLE', radius: 1 }, body: { dynamic: true, mass: 1 } },
+      { shape: { shape: 'CIRCLE', radius: 1 }, body: { bodyType: 'dynamic', mass: 1 } },
       { position: { x: 0, y: 15 } },
     );
     ball.addToWorld({ physicsWorld: world } as any);

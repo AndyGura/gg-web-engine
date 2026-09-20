@@ -20,12 +20,13 @@ import { mockCharacterController } from '../mocks/character-controller.mock';
 import { mock3DAudioSource } from '../mocks/audio-source.mock';
 
 const defaultBody = {
-  dynamic: true,
+  bodyType: 'dynamic',
   mass: 1,
   restitution: 0.2,
   friction: 0.5,
   ownCollisionGroups: 'all',
   interactWithCollisionGroups: 'all',
+  ccd: false,
 };
 
 // A trivial concrete IEntity for tests that need a generator to return a real entity

@@ -32,6 +32,7 @@ export class Rapier2dFactory implements IPhysicsBody2dComponentFactory<Rapier2dP
         restitution: 0.1,
         ownCollisionGroups: [this.world.mainCollisionGroup],
         interactWithCollisionGroups: [this.world.mainCollisionGroup],
+        ccd: false,
         ...descriptor.body,
       },
     );
@@ -52,7 +53,7 @@ export class Rapier2dFactory implements IPhysicsBody2dComponentFactory<Rapier2dP
       this.world,
       colliderDescr,
       descriptor,
-      this.createRigidBodyDescr({ dynamic: false }, transform),
+      this.createRigidBodyDescr({ bodyType: 'static' }, transform),
     );
   }
 
@@ -84,13 +85,20 @@ export class Rapier2dFactory implements IPhysicsBody2dComponentFactory<Rapier2dP
   ): RigidBodyDesc {
     const pos = transform?.position || Pnt2.O;
     const rot = transform?.rotation || 0;
-    const fixed = options.dynamic === false || !options.mass;
     let bodyDesc!: RigidBodyDesc;
-    if (fixed) {
+    let bodyType = options.bodyType || (options.mass ? 'dynamic' : 'static');
+    if (bodyType === 'static') {
       bodyDesc = RigidBodyDesc.fixed();
+    } else if (bodyType === 'kinematic_pos') {
+      bodyDesc = RigidBodyDesc.kinematicPositionBased();
+    } else if (bodyType === 'kinematic_vel') {
+      bodyDesc = RigidBodyDesc.kinematicVelocityBased();
     } else {
       bodyDesc = RigidBodyDesc.dynamic();
       bodyDesc.mass = options.mass || 1;
+      // Only a dynamic body can tunnel through geometry it crosses within a single step - see
+      // `BodyOptions.ccd`'s own doc.
+      bodyDesc.setCcdEnabled(!!options.ccd);
     }
     return bodyDesc.setTranslation(pos.x, pos.y).setRotation(rot);
   }

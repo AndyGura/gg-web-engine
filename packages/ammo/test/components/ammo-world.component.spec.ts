@@ -32,7 +32,7 @@ describe('AmmoWorldComponent', () => {
       const ball = world.factory.createRigidBody(
         {
           shape: { shape: 'SPHERE', radius: 1 },
-          body: { dynamic: true, mass: 1 },
+          body: { bodyType: 'dynamic', mass: 1 },
         },
         { position: { x: 0, y: 0, z: 0 } },
       );
@@ -75,7 +75,7 @@ describe('AmmoWorldComponent', () => {
       const ball = world.factory.createRigidBody(
         {
           shape: { shape: 'SPHERE', radius: 1 },
-          body: { dynamic: true, mass: 5 },
+          body: { bodyType: 'dynamic', mass: 5 },
         },
         { position: { x: -5, y: 0, z: 0 } },
       );
@@ -93,7 +93,7 @@ describe('AmmoWorldComponent', () => {
       const ball0 = world.factory.createRigidBody(
         {
           shape: { shape: 'SPHERE', radius: 1 },
-          body: { dynamic: true, mass: 5 },
+          body: { bodyType: 'dynamic', mass: 5 },
         },
         { position: { x: -5, y: 0, z: 0 } },
       );
@@ -103,7 +103,7 @@ describe('AmmoWorldComponent', () => {
       const ball1 = world.factory.createRigidBody(
         {
           shape: { shape: 'SPHERE', radius: 1 },
-          body: { dynamic: true, mass: 5 },
+          body: { bodyType: 'dynamic', mass: 5 },
         },
         { position: { x: 5, y: 0, z: 0 } },
       );
@@ -123,7 +123,7 @@ describe('AmmoWorldComponent', () => {
       const ball0 = world.factory.createRigidBody(
         {
           shape: { shape: 'SPHERE', radius: 1 },
-          body: { dynamic: true, mass: 5 },
+          body: { bodyType: 'dynamic', mass: 5 },
         },
         { position: { x: -5, y: 0, z: 0 } },
       );
@@ -135,7 +135,7 @@ describe('AmmoWorldComponent', () => {
       const ball1 = world.factory.createRigidBody(
         {
           shape: { shape: 'SPHERE', radius: 1 },
-          body: { dynamic: true, mass: 5 },
+          body: { bodyType: 'dynamic', mass: 5 },
         },
         { position: { x: 5, y: 0, z: 0 } },
       );
@@ -159,7 +159,7 @@ describe('AmmoWorldComponent', () => {
         'transform/velocity write that never woke it up was silently never simulated)',
       () => {
         const ball = world.factory.createRigidBody(
-          { shape: { shape: 'SPHERE', radius: 1 }, body: { dynamic: true, mass: 5 } },
+          { shape: { shape: 'SPHERE', radius: 1 }, body: { bodyType: 'dynamic', mass: 5 } },
           { position: { x: 0, y: 0, z: 0 } },
         );
         ball.addToWorld({ physicsWorld: world } as any);
@@ -186,7 +186,7 @@ describe('AmmoWorldComponent', () => {
       const box = world.factory.createRigidBody(
         {
           shape: { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } },
-          body: { dynamic: false, mass: 0 },
+          body: { bodyType: 'static', mass: 0 },
         },
         { position: { x: 10, y: 10, z: 10 } },
       );
@@ -212,7 +212,7 @@ describe('AmmoWorldComponent', () => {
       const box = world.factory.createRigidBody(
         {
           shape: { shape: 'BOX', dimensions: { x: 2, y: 2, z: 2 } },
-          body: { dynamic: false, mass: 0 },
+          body: { bodyType: 'static', mass: 0 },
         },
         { position: { x: 0, y: 0, z: -5 } },
       );
@@ -250,7 +250,7 @@ describe('AmmoWorldComponent', () => {
         {
           shape: { shape: 'BOX', dimensions: { x: 2, y: 2, z: 2 } },
           body: {
-            dynamic: false,
+            bodyType: 'static',
             mass: 0,
             ownCollisionGroups: [group1],
             interactWithCollisionGroups: [group1, group2],
@@ -291,7 +291,7 @@ describe('AmmoWorldComponent', () => {
       const box = world.factory.createRigidBody(
         {
           shape: { shape: 'BOX', dimensions: { x: 2, y: 2, z: 2 } },
-          body: { dynamic: false, mass: 0 },
+          body: { bodyType: 'static', mass: 0 },
         },
         { position: { x: 0, y: 0, z: -5 } },
       );
@@ -323,7 +323,7 @@ describe('AmmoWorldComponent', () => {
         {
           shape: { shape: 'BOX', dimensions: { x: 2, y: 2, z: 2 } },
           body: {
-            dynamic: false,
+            bodyType: 'static',
             mass: 0,
             ownCollisionGroups: [group1],
             interactWithCollisionGroups: [group1, group2],
@@ -352,7 +352,7 @@ describe('AmmoWorldComponent', () => {
       const box1 = world.factory.createRigidBody(
         {
           shape: { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } },
-          body: { dynamic: false, mass: 0 },
+          body: { bodyType: 'static', mass: 0 },
         },
         { position: { x: 0, y: 0, z: -3 } },
       );
@@ -361,7 +361,7 @@ describe('AmmoWorldComponent', () => {
       const box2 = world.factory.createRigidBody(
         {
           shape: { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } },
-          body: { dynamic: false, mass: 0 },
+          body: { bodyType: 'static', mass: 0 },
         },
         { position: { x: 0, y: 0, z: -7 } },
       );
@@ -390,7 +390,7 @@ describe('AmmoWorldComponent', () => {
       const box = world.factory.createRigidBody(
         {
           shape: { shape: 'BOX', dimensions: { x: 4, y: 4, z: 4 } },
-          body: { dynamic: false, mass: 0 },
+          body: { bodyType: 'static', mass: 0 },
         },
         { position: { x: 0, y: 0, z: 0 } },
       );
@@ -423,7 +423,7 @@ describe('AmmoWorldComponent', () => {
         {
           shape: { shape: 'BOX', dimensions: { x: 4, y: 4, z: 4 } },
           body: {
-            dynamic: false,
+            bodyType: 'static',
             mass: 0,
             ownCollisionGroups: [world.mainCollisionGroup, group1],
             interactWithCollisionGroups: [world.mainCollisionGroup, group1],
@@ -464,7 +464,7 @@ describe('AmmoWorldComponent', () => {
       const pedestal = world.factory.createRigidBody(
         {
           shape: { shape: 'CYLINDER', radius: 0.5, height: 0.9 },
-          body: { dynamic: false, mass: 0 },
+          body: { bodyType: 'static', mass: 0 },
         },
         { position: { x: 0, y: 0, z: 0.45 } },
       );
@@ -473,7 +473,7 @@ describe('AmmoWorldComponent', () => {
       const prop = world.factory.createRigidBody(
         {
           shape: { shape: 'BOX', dimensions: { x: 0.41, y: 0.23, z: 0.49 } },
-          body: { dynamic: true, mass: 3 },
+          body: { bodyType: 'dynamic', mass: 3 },
         },
         { position: { x: 0, y: 0, z: 1.145 } },
       );

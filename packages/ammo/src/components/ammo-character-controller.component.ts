@@ -7,6 +7,7 @@ import {
   Point3,
   Point4,
   Qtrn,
+  warnOnce,
 } from '@gg-web-engine/core';
 import Ammo from '../ammo.js/ammo';
 import { AmmoBodyComponent } from './ammo-body.component';
@@ -130,11 +131,6 @@ export class AmmoCharacterControllerComponent
   /** See `ICharacterController3dComponent.ignoredBodies`'s doc. Consulted fresh by `sweep()` and
    * `recoverFromPenetration()` every call - see `withIgnoredBodiesDetached`. */
   public readonly ignoredBodies: Set<AmmoRigidBodyComponent> = new Set();
-
-  // Module-wide (not per-instance) so a scene with several characters all being driven without
-  // `dt` still only logs once, not once per character per tick - see `move()`'s missing-`dt`
-  // handling below.
-  private static warnedMissingDtForPush = false;
 
   public get up(): Point3 {
     return this._up;
@@ -397,9 +393,8 @@ export class AmmoCharacterControllerComponent
       if (dt && dt > 1e-9) {
         const speed = Pnt3.len(horizontal) / dt;
         this.pushDynamicBody(result.hitObjectPtr, Pnt3.norm(horizontal), speed);
-      } else if (this.resolvedOptions.pushMass > 0 && !AmmoCharacterControllerComponent.warnedMissingDtForPush) {
-        AmmoCharacterControllerComponent.warnedMissingDtForPush = true;
-        console.warn(
+      } else if (this.resolvedOptions.pushMass > 0) {
+        warnOnce(
           '[AmmoCharacterControllerComponent] move() was called without `dt` while `pushMass` > 0 - ' +
             'skipping this dynamic-body push rather than approximating character speed from raw ' +
             'per-tick displacement (which would understate push force by roughly 1/dt). Pass the ' +

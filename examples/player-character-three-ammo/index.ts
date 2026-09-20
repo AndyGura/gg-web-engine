@@ -33,7 +33,7 @@ const level: LevelJson = {
       config: {
         dimensions: { x: ROOM_SIZE, y: ROOM_SIZE, z: 1 },
         material: { color: 0x808080 },
-        body: { dynamic: false, friction: 1.5 },
+        body: { bodyType: 'static', friction: 1.5 },
       },
     },
     {
@@ -41,7 +41,7 @@ const level: LevelJson = {
       shape: 'BOX',
       name: 'Ceiling',
       position: { x: 0, y: 0, z: WALL_HEIGHT + 0.5 },
-      config: { dimensions: { x: ROOM_SIZE, y: ROOM_SIZE, z: 1 }, material: { color: 0xa0a0a0 }, body: { dynamic: false } },
+      config: { dimensions: { x: ROOM_SIZE, y: ROOM_SIZE, z: 1 }, material: { color: 0xa0a0a0 }, body: { bodyType: 'static' } },
     },
     {
       class: 'Primitive',
@@ -51,7 +51,7 @@ const level: LevelJson = {
       config: {
         dimensions: { x: ROOM_SIZE + 0.5, y: 0.5, z: WALL_HEIGHT },
         material: { color: 0x909090 },
-        body: { dynamic: false },
+        body: { bodyType: 'static' },
       },
     },
     {
@@ -62,7 +62,7 @@ const level: LevelJson = {
       config: {
         dimensions: { x: ROOM_SIZE + 0.5, y: 0.5, z: WALL_HEIGHT },
         material: { color: 0x909090 },
-        body: { dynamic: false },
+        body: { bodyType: 'static' },
       },
     },
     {
@@ -73,7 +73,7 @@ const level: LevelJson = {
       config: {
         dimensions: { x: 0.5, y: ROOM_SIZE + 0.5, z: WALL_HEIGHT },
         material: { color: 0x909090 },
-        body: { dynamic: false },
+        body: { bodyType: 'static' },
       },
     },
     {
@@ -84,7 +84,7 @@ const level: LevelJson = {
       config: {
         dimensions: { x: 0.5, y: ROOM_SIZE + 0.5, z: WALL_HEIGHT },
         material: { color: 0x909090 },
-        body: { dynamic: false },
+        body: { bodyType: 'static' },
       },
     },
     {
@@ -92,35 +92,35 @@ const level: LevelJson = {
       shape: 'BOX',
       name: 'Pillar',
       position: { x: 6, y: 0, z: 1 },
-      config: { dimensions: { x: 2, y: 2, z: 2 }, material: { color: 0x606060 }, body: { dynamic: false } },
+      config: { dimensions: { x: 2, y: 2, z: 2 }, material: { color: 0x606060 }, body: { bodyType: 'static' } },
     },
     {
       class: 'Primitive',
       shape: 'SPHERE',
       name: 'Boulder',
       position: { x: 6, y: -4, z: 1 },
-      config: { radius: 1, material: { color: 0xd62828 }, body: { dynamic: false } },
+      config: { radius: 1, material: { color: 0xd62828 }, body: { bodyType: 'static' } },
     },
     {
       class: 'Primitive',
       shape: 'CYLINDER',
       name: 'Column',
       position: { x: 6, y: 4, z: 1 },
-      config: { radius: 0.8, height: 2, material: { color: 0x2a9d8f }, body: { dynamic: false } },
+      config: { radius: 0.8, height: 2, material: { color: 0x2a9d8f }, body: { bodyType: 'static' } },
     },
     {
       class: 'Primitive',
       shape: 'BOX',
       name: 'JumpBarrier',
       position: { x: 0, y: -3, z: 0.3 },
-      config: { dimensions: { x: 4, y: 0.6, z: 0.6 }, material: { color: 0xf4a261 }, body: { dynamic: false } },
+      config: { dimensions: { x: 4, y: 0.6, z: 0.6 }, material: { color: 0xf4a261 }, body: { bodyType: 'static' } },
     },
     {
       class: 'Primitive',
       shape: 'BOX',
       name: 'CrouchBeam',
       position: { x: 0, y: 3, z: 2.1 },
-      config: { dimensions: { x: 4, y: 1.0, z: 1.0 }, material: { color: 0x8338ec }, body: { dynamic: false } },
+      config: { dimensions: { x: 4, y: 1.0, z: 1.0 }, material: { color: 0x8338ec }, body: { bodyType: 'static' } },
     },
     {
       class: 'Primitive',

@@ -7,7 +7,7 @@ const createFloor = (
   dimensions: { x: number; y: number; z: number } = { x: 50, y: 50, z: 1 },
 ): AmmoRigidBodyComponent =>
   factory.createRigidBody(
-    { shape: { shape: 'BOX', dimensions }, body: { dynamic: false, mass: 0 } },
+    { shape: { shape: 'BOX', dimensions }, body: { bodyType: 'static', mass: 0 } },
     { position: { x: 0, y: 0, z: topZ - dimensions.z / 2 } },
   );
 
@@ -95,7 +95,7 @@ describe('AmmoCharacterControllerComponent', () => {
     floor.addToWorld({ physicsWorld: world } as any);
 
     const wall = factory.createRigidBody(
-      { shape: { shape: 'BOX', dimensions: { x: 0.5, y: 10, z: 5 } }, body: { dynamic: false, mass: 0 } },
+      { shape: { shape: 'BOX', dimensions: { x: 0.5, y: 10, z: 5 } }, body: { bodyType: 'static', mass: 0 } },
       { position: { x: 2, y: 0, z: 2 } },
     );
     wall.addToWorld({ physicsWorld: world } as any);
@@ -128,7 +128,7 @@ describe('AmmoCharacterControllerComponent', () => {
     // low floor ends (x=2) and extending far enough out (to x=22) that walking 40 steps of 0.2
     // starting from x=0 (ending around x=8) never runs off its far edge
     const ledge = factory.createRigidBody(
-      { shape: { shape: 'BOX', dimensions: { x: 20, y: 4, z: 1 } }, body: { dynamic: false, mass: 0 } },
+      { shape: { shape: 'BOX', dimensions: { x: 20, y: 4, z: 1 } }, body: { bodyType: 'static', mass: 0 } },
       { position: { x: 12, y: 0, z: 0.2 - 0.5 } },
     );
     ledge.addToWorld({ physicsWorld: world } as any);
@@ -165,7 +165,7 @@ describe('AmmoCharacterControllerComponent', () => {
 
     // a tall vertical cylinder - far too tall to ever be a legitimate "step" at maxStepHeight (0.3)
     const cylinder = factory.createRigidBody(
-      { shape: { shape: 'CYLINDER', radius: 1, height: 5 }, body: { dynamic: false, mass: 0 } },
+      { shape: { shape: 'CYLINDER', radius: 1, height: 5 }, body: { bodyType: 'static', mass: 0 } },
       { position: { x: 2, y: 0, z: 2.5 } },
     );
     cylinder.addToWorld({ physicsWorld: world } as any);
@@ -200,7 +200,7 @@ describe('AmmoCharacterControllerComponent', () => {
     // once settled on the floor (center z ~= 0.9) its top is at ~1.8 - a beam whose underside is at
     // 1.6 overlaps the top 0.2 of the capsule and must block it
     const beam = factory.createRigidBody(
-      { shape: { shape: 'BOX', dimensions: { x: 4, y: 1, z: 1 } }, body: { dynamic: false, mass: 0 } },
+      { shape: { shape: 'BOX', dimensions: { x: 4, y: 1, z: 1 } }, body: { bodyType: 'static', mass: 0 } },
       { position: { x: 3, y: 0, z: 2.1 } },
     );
     beam.addToWorld({ physicsWorld: world } as any);
@@ -238,7 +238,7 @@ describe('AmmoCharacterControllerComponent', () => {
     // would need heightDiff=0.5 of clearance above that to stand - this ceiling only leaves 0.05,
     // enough to crouch under but nowhere near enough to stand under.
     const ceiling = factory.createRigidBody(
-      { shape: { shape: 'BOX', dimensions: { x: 4, y: 4, z: 1 } }, body: { dynamic: false, mass: 0 } },
+      { shape: { shape: 'BOX', dimensions: { x: 4, y: 4, z: 1 } }, body: { bodyType: 'static', mass: 0 } },
       { position: { x: 0, y: 0, z: 1.85 } }, // underside at 1.85 - 0.5 = 1.35
     );
     ceiling.addToWorld({ physicsWorld: world } as any);
@@ -278,7 +278,7 @@ describe('AmmoCharacterControllerComponent', () => {
     // mostly towards +X, well past the walkable limit
     const rampAngle = (80 * Math.PI) / 180;
     const ramp = factory.createRigidBody(
-      { shape: { shape: 'BOX', dimensions: { x: 10, y: 10, z: 0.5 } }, body: { dynamic: false, mass: 0 } },
+      { shape: { shape: 'BOX', dimensions: { x: 10, y: 10, z: 0.5 } }, body: { bodyType: 'static', mass: 0 } },
       { position: { x: 0, y: 0, z: -0.1 }, rotation: Qtrn.fromAngle({ x: 0, y: 1, z: 0 }, rampAngle) },
     );
     ramp.addToWorld({ physicsWorld: world } as any);

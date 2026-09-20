@@ -29,7 +29,7 @@ describe('Rapier3dCharacterControllerComponent', () => {
     const floor = factory.createRigidBody(
       {
         shape: { shape: 'BOX', dimensions: { x: sizeX, y: 20, z: thickness } },
-        body: { dynamic: false, mass: 0 },
+        body: { bodyType: 'static', mass: 0 },
       },
       { position: { x: centerX, y: 0, z: topZ - thickness / 2 } },
     );
@@ -42,7 +42,7 @@ describe('Rapier3dCharacterControllerComponent', () => {
     const wall = factory.createRigidBody(
       {
         shape: { shape: 'BOX', dimensions: { x: thickness, y: 20, z: 5 } },
-        body: { dynamic: false, mass: 0 },
+        body: { bodyType: 'static', mass: 0 },
       },
       { position: { x: x + thickness / 2, y: 0, z: 2.5 } },
     );
@@ -98,7 +98,7 @@ describe('Rapier3dCharacterControllerComponent', () => {
     // continued contact with the steep surface.
     addFloor(0, 20, 0);
     const sphere = factory.createRigidBody(
-      { shape: { shape: 'SPHERE', radius: 1 }, body: { dynamic: false, mass: 0 } },
+      { shape: { shape: 'SPHERE', radius: 1 }, body: { bodyType: 'static', mass: 0 } },
       { position: { x: 0, y: 0, z: 1 } },
     );
     sphere.addToWorld({ physicsWorld: world } as any);

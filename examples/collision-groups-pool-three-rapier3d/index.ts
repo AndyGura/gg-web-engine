@@ -56,15 +56,15 @@ world.init().then(async () => {
     0xff00ff,
   ].map(c => ([c, world.physicsWorld.registerCollisionGroup()]));
 
-  const maxFloorTranslationPerTick = 0.1;
+  const maxFloorTranslationPerTick = 0.5;
   for (let i = 0; i <= cgs.length; i++) {
     const [color, collisionGroup] = i < cgs.length ? cgs[i] : [0x00ffff, 15];
     const floor = world.addPrimitiveRigidBody({
         shape: { shape: 'BOX', dimensions: { x: 16, y: 16, z: 1 } },
         // collision groups can be set immediately when creating entity
         body: {
-          dynamic: false,
-          restitution: 0.3,
+          bodyType: 'kinematic_pos',
+          restitution: 0.05,
           ownCollisionGroups: [collisionGroup],
           interactWithCollisionGroups: [collisionGroup],
         },
@@ -106,7 +106,7 @@ world.init().then(async () => {
       objectBody: world.physicsWorld.factory.createRigidBody({
         shape: { shape: 'BOX', dimensions: { x: 40, y: 40, z: 400 } },
         body: {
-          dynamic: false,
+          bodyType: 'static',
           restitution: 0.3,
         },
       }),
@@ -124,7 +124,7 @@ world.init().then(async () => {
             shape: { shape: 'SPHERE', radius: 0.48 },
             body: {
               mass: 1,
-              restitution: 0.3,
+              restitution: 0.05,
               ownCollisionGroups: [collisionGroup, world.physicsWorld.mainCollisionGroup],
               interactWithCollisionGroups: [collisionGroup, world.physicsWorld.mainCollisionGroup],
             },

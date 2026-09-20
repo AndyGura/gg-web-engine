@@ -1,5 +1,6 @@
 import { GgWorldTypeDocRepo } from '../../gg-world';
 import { BlueprintNode, BlueprintPinDefinition } from '../blueprint-node';
+import { warnOnce } from '../../logging';
 
 /**
  * One impulse-tiered clip variant - see {@link PlaySoundNodeSettings.impactClips}.
@@ -95,7 +96,7 @@ export class PlaySoundBlueprintNode<
     }
     const audioScene = this.world.audioScene;
     if (!audioScene) {
-      console.warn('PlaySound blueprint node triggered, but this world has no audioScene - ignoring');
+      warnOnce('PlaySound blueprint node triggered, but this world has no audioScene - ignoring');
       return;
     }
     const settings = this.settings as PlaySoundNodeSettings;
@@ -103,7 +104,7 @@ export class PlaySoundBlueprintNode<
     const tier = impulse !== undefined ? this.pickImpactTier(settings.impactClips, impulse) : undefined;
     const clip = tier?.clip ?? settings.clip;
     if (!clip) {
-      console.warn('PlaySound blueprint node has no "clip" setting (and no matching impact tier) - ignoring');
+      warnOnce('PlaySound blueprint node has no "clip" setting (and no matching impact tier) - ignoring');
       return;
     }
     const position = settings.position ?? this.resolvePayloadPosition(value);
@@ -129,7 +130,7 @@ export class PlaySoundBlueprintNode<
         });
         source.play();
       })
-      .catch(e => console.warn(`PlaySound blueprint node failed to load/play "${clip}":`, e));
+      .catch(e => warnOnce(`PlaySound blueprint node failed to load/play "${clip}":`, e));
   }
 
   private resolvePayloadPosition(value: unknown): D | undefined {

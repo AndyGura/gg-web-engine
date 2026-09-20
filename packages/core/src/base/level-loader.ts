@@ -5,6 +5,7 @@ import { IEntity, TickOrder } from './entities/i-entity';
 import { Blueprint, BlueprintJson, BlueprintNodeFactory } from './blueprint/blueprint';
 import { RemoveEntityBlueprintNode } from './blueprint/nodes/remove-entity.node';
 import { PlaySoundBlueprintNode } from './blueprint/nodes/play-sound.node';
+import { warnOnce } from './logging';
 
 /**
  * A function that turns per-entity JSON settings into a spawned `IEntity` (e.g. a primitive body,
@@ -228,7 +229,7 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
         const { class: classAlias, shape, position, rotation, name, config, events } = entityJson;
         const generator = this.generators.get(classAlias);
         if (!generator) {
-          console.warn(`No generator registered for class alias "${classAlias}"`);
+          warnOnce(`No generator registered for class alias "${classAlias}"`);
           continue;
         }
 
@@ -242,7 +243,7 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
 
         const entity = await generator(this.world, settings);
         if (!(entity instanceof IEntity)) {
-          console.warn(`Generator for class alias "${classAlias}" did not return an IEntity - skipping`);
+          warnOnce(`Generator for class alias "${classAlias}" did not return an IEntity - skipping`);
           continue;
         }
         if (name !== undefined) {
@@ -299,7 +300,7 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
     }
     const observable = (entity as any)[eventName];
     if (!observable || typeof observable.subscribe !== 'function') {
-      console.warn(`Entity has no observable property "${eventName}" to bind a blueprint to`);
+      warnOnce(`Entity has no observable property "${eventName}" to bind a blueprint to`);
       return undefined;
     }
     const blueprint = new Blueprint<D, R, TypeDoc>(this.world, blueprintJson, this.blueprintNodes);
@@ -332,7 +333,7 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
     if (this.blueprintNodes.has(eventBinding)) {
       return this.inlineNodeBlueprint(eventName, eventBinding, undefined);
     }
-    console.warn(
+    warnOnce(
       `No blueprint or blueprint node type named "${eventBinding}" found for event "${eventName}" - skipping`,
     );
     return undefined;
@@ -354,12 +355,12 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
     settings: Record<string, any> | undefined,
   ): BlueprintJson | undefined {
     if (!this.blueprintNodes.has(nodeType)) {
-      console.warn(`No blueprint node type registered for "${nodeType}" (event "${eventName}") - skipping`);
+      warnOnce(`No blueprint node type registered for "${nodeType}" (event "${eventName}") - skipping`);
       return undefined;
     }
     const inputPin = this.blueprintNodeDefaultInputs.get(nodeType);
     if (!inputPin) {
-      console.warn(
+      warnOnce(
         `Blueprint node type "${nodeType}" has no default input pin registered - event "${eventName}" must ` +
           `reference a full graph declared in "blueprints" instead, addressing the desired pin explicitly`,
       );

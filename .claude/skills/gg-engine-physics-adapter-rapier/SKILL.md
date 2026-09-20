@@ -289,6 +289,39 @@ specifically after any version bump of such a dependency (this applies equally t
 `@dimforge/rapier2d-compat`), since a lucky stale-`node_modules` resolution can hide the breakage for a
 while.
 
+## Wiring `bodyType: 'kinematic_pos'`/`'kinematic_vel'` and `ccd` (both packages)
+
+`RigidBodyDesc.kinematicPositionBased()`/`.kinematicVelocityBased()`/`.setCcdEnabled(bool)` all map
+directly onto `BodyOptions.bodyType`/`ccd` (see `gg-engine-physics-adapter`'s own section on this) -
+Rapier already has real, first-class native support for all three, unlike Ammo (see
+`gg-engine-physics-adapter-ammo`) or matter-js (see `gg-engine-physics-adapter-matter`), so there's no
+warn-and-fallback path needed in either of these two packages. Two things worth knowing before
+touching this again:
+
+- **A `kinematicPositionBased` body's `position`/`rotation` setters must branch to
+  `setNextKinematicTranslation`/`setNextKinematicRotation` instead of the ordinary
+  `setTranslation`/`setRotation` an immediate teleport uses** (checked via `nativeBody.bodyType() ===
+  RigidBodyType.KinematicPositionBased`) - this is the exact same mechanism
+  `Rapier3dCharacterControllerComponent.move()` already uses (see the "freshly-created collider"
+  pitfall above for the general "kinematic moves need a world step to take effect" caveat that
+  applies here too), just now needed by a plain rigid body as well, not only the character
+  controller. Using the immediate-teleport setter instead compiles and even visually looks right for
+  the kinematic body's own motion, but silently loses the "derive this step's effective velocity from
+  the transform change" bookkeeping Rapier needs to correctly push/wake dynamic bodies the kinematic
+  body moves into - exactly the "moving a fixed body doesn't push resting bodies correctly" symptom
+  `bodyType: 'kinematic_pos'` exists to fix in the first place, so getting this branch wrong quietly
+  defeats the entire feature while still looking correct in isolation. `kinematicVelocityBased`
+  bodies don't need this - they're already driven by the existing `linearVelocity`/`angularVelocity`
+  setters, which work unchanged for a kinematic body the same as a dynamic one.
+- **`RigidBodyDesc.ccdEnabled` is a plain field, not something `RigidBodyDesc`'s constructor copies
+  from another descriptor.** `Rapier3dRigidBodyComponent.factoryProps` (used by `clone()`) rebuilds a
+  fresh `RigidBodyDesc` from the original's `status`/`mass`/`translation`/`rotation` - `ccdEnabled`
+  silently dropped off every clone of a CCD-enabled body until an explicit `bd.setCcdEnabled(this
+  ._bodyDescr.ccdEnabled)` was added alongside the other fields. `Rapier2dRigidBodyComponent
+  .factoryProps` doesn't have this problem - it returns the *same* `RigidBodyDesc` instance rather
+  than reconstructing one, so nothing needs copying there; don't assume the two packages' `clone()`
+  work identically just because their public shape matches.
+
 ## Jest 30 / WASM-backed adapter pitfalls (hit upgrading `rapier2d`/`rapier3d` off a 2024 prerelease build)
 
 Applies to both packages (each has its own `jest` config/`node_modules`):

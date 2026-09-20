@@ -26,12 +26,13 @@ import {
 } from './entities/map-graph-3d.entity';
 
 const defaultBodyOptions: Body3DOptions = {
-  dynamic: true,
+  bodyType: 'dynamic',
   mass: 1,
   restitution: 0.2,
   friction: 0.5,
   ownCollisionGroups: 'all',
   interactWithCollisionGroups: 'all',
+  ccd: false,
 };
 
 const defaultCarChassisBodyOptions: Body3DOptions = {

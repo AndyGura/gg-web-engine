@@ -52,7 +52,7 @@ world.init().then(async () => {
     world.addPrimitiveRigidBody({
         shape: { shape: 'BOX', dimensions: { x: 7, y: 7, z: 0.5 } },
         // collision groups can be set immediately when creating entity
-        body: { dynamic: false, ownCollisionGroups: [collisionGroup], interactWithCollisionGroups: [collisionGroup] },
+        body: { bodyType: 'static', ownCollisionGroups: [collisionGroup], interactWithCollisionGroups: [collisionGroup] },
       },
       { x: 0, y: 0, z: -(i + 1 - cgs.length / 2) * 5 },
       Qtrn.fromEuler({ x: Math.PI / 4, y: 0, z: 2 * i * Math.PI / cgs.length }), {

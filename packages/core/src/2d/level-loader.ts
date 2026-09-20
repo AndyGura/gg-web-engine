@@ -9,12 +9,13 @@ import { Trigger2dEntity } from './entities/trigger-2d.entity';
 import { AudioSource2dEntity } from './entities/audio-source-2d.entity';
 
 const defaultBodyOptions: Body2DOptions = {
-  dynamic: true,
+  bodyType: 'dynamic',
   mass: 1,
   restitution: 0.2,
   friction: 0.5,
   ownCollisionGroups: 'all',
   interactWithCollisionGroups: 'all',
+  ccd: false,
 };
 
 /**

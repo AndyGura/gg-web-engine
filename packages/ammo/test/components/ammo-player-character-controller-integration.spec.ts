@@ -21,7 +21,7 @@ const setup = async () => {
   await world.init();
   world.gravity = { x: 0, y: 0, z: 0 };
   const floor = world.factory.createRigidBody(
-    { shape: { shape: 'BOX', dimensions: { x: 100, y: 100, z: 1 } }, body: { dynamic: false, mass: 0 } },
+    { shape: { shape: 'BOX', dimensions: { x: 100, y: 100, z: 1 } }, body: { bodyType: 'static', mass: 0 } },
     { position: { x: 0, y: 0, z: -0.5 } },
   );
   floor.addToWorld({ physicsWorld: world } as any);
@@ -63,7 +63,7 @@ describe('crouch + ceiling + jump - end-to-end (regression: jumping while crouch
     await world.init();
     world.gravity = { x: 0, y: 0, z: 0 };
     const floor = world.factory.createRigidBody(
-      { shape: { shape: 'BOX', dimensions: { x: 100, y: 100, z: 1 } }, body: { dynamic: false, mass: 0 } },
+      { shape: { shape: 'BOX', dimensions: { x: 100, y: 100, z: 1 } }, body: { bodyType: 'static', mass: 0 } },
       { position: { x: 0, y: 0, z: -0.5 } },
     );
     floor.addToWorld({ physicsWorld: world } as any);
@@ -75,7 +75,7 @@ describe('crouch + ceiling + jump - end-to-end (regression: jumping while crouch
     // resting center 0.7, top at 1.4) fits, with 0.2m of headroom to spare, not the 0.4m standing
     // up from a crouch would need.
     const beam = world.factory.createRigidBody(
-      { shape: { shape: 'BOX', dimensions: { x: 4, y: 1, z: 1 } }, body: { dynamic: false, mass: 0 } },
+      { shape: { shape: 'BOX', dimensions: { x: 4, y: 1, z: 1 } }, body: { bodyType: 'static', mass: 0 } },
       { position: { x: 0, y: 3, z: 2.1 } },
     );
     beam.addToWorld({ physicsWorld: world } as any);

@@ -77,7 +77,12 @@ describe('Grabbable3dEntity', () => {
     });
 
     it('drives velocity towards the target, compensating for one frame of gravity', () => {
-      const { entity, objectBody } = setup({ followStrength: 1, maxFollowSpeed: 1000, maxHoldDistance: 1000 });
+      const { entity, objectBody } = setup({
+        followStrength: 1,
+        maxFollowSpeed: 1000,
+        maxHoldDistance: 1000,
+        maxAcceleration: Infinity, // isolate this test from the (separately tested) acceleration cap
+      });
       entity.grab();
       const dt = 1 / 60;
       entity.updateHold({ x: 10, y: 0, z: 0 }, dt);
@@ -88,11 +93,67 @@ describe('Grabbable3dEntity', () => {
     });
 
     it('clamps the follow velocity to maxFollowSpeed', () => {
-      const { entity, objectBody } = setup({ followStrength: 100, maxFollowSpeed: 5, maxHoldDistance: 1000 });
+      const { entity, objectBody } = setup({
+        followStrength: 100,
+        maxFollowSpeed: 5,
+        maxHoldDistance: 1000,
+        maxAcceleration: Infinity,
+      });
       entity.grab();
       entity.updateHold({ x: 10, y: 0, z: 0 }, 0);
       expect(Pnt3.len(objectBody.linearVelocity)).toBeCloseTo(5);
     });
+
+    it(
+      "does not cap an ordinary command - even a large one - as long as last tick's command was " +
+        'actually achieved (an unconditional cap here is what made turning around feel sluggish; ' +
+        "see maxAcceleration's own doc)",
+      () => {
+        const { entity, objectBody } = setup({
+          followStrength: 1000,
+          maxFollowSpeed: 1000,
+          maxHoldDistance: 1000,
+          maxAcceleration: 60,
+        });
+        entity.grab();
+        const dt = 1 / 60;
+        // First tick: nothing commanded yet, so nothing can be "blocked" - full (maxFollowSpeed-
+        // clamped) command goes through.
+        entity.updateHold({ x: 10, y: 0, z: 0 }, dt);
+        expect(objectBody.linearVelocity.x).toBeCloseTo(1000);
+        // Mock achieves exactly what was commanded (unlike a real, resisted physics body) - a sharp
+        // reversal (simulating a fast turn) should still go through in full, uncapped.
+        entity.updateHold({ x: -10, y: 0, z: 0 }, dt);
+        expect(objectBody.linearVelocity.x).toBeCloseTo(-1000);
+      },
+    );
+
+    it(
+      "caps the commanded velocity's rate of change once last tick's command comes back mostly " +
+        "unachieved (simulates a real physics body pinned against an obstacle it can't push " +
+        'through - regression: an uncapped spring re-commands the full into-obstacle velocity every ' +
+        'tick regardless of whether the object actually moved, which is what let a held object ' +
+        "tunnel through a wall it was pushed into - see maxAcceleration's own doc)",
+      () => {
+        const { entity, objectBody } = setup({
+          followStrength: 1000,
+          maxFollowSpeed: 1000,
+          maxHoldDistance: 1000,
+          maxAcceleration: 60,
+        });
+        entity.grab();
+        const dt = 1 / 60;
+        entity.updateHold({ x: 10, y: 0, z: 0 }, dt);
+        expect(objectBody.linearVelocity.x).toBeCloseTo(1000);
+        // Simulate a physics step that mostly resisted the commanded push (e.g. a wall) - only a
+        // small fraction of the commanded velocity was actually achieved.
+        objectBody.linearVelocity = { x: 0.1, y: 0, z: 0 };
+        entity.updateHold({ x: 10, y: 0, z: 0 }, dt);
+        // blocked: this tick's commanded velocity is now rate-limited to 60 * dt = 1 m/s away from
+        // the (mostly-unachieved) current velocity of 0.1.
+        expect(objectBody.linearVelocity.x).toBeCloseTo(0.1 + 60 * dt);
+      },
+    );
 
     it(
       'does not slow the object below a current speed towards the target that already exceeds the ' +
@@ -100,7 +161,12 @@ describe('Grabbable3dEntity', () => {
         'own way got silently discarded the same tick, since it ran before updateHold and this method ' +
         'used to unconditionally overwrite whatever velocity was already set)',
       () => {
-        const { entity, objectBody } = setup({ followStrength: 1, maxFollowSpeed: 1000, maxHoldDistance: 1000 });
+        const { entity, objectBody } = setup({
+          followStrength: 1,
+          maxFollowSpeed: 1000,
+          maxHoldDistance: 1000,
+          maxAcceleration: Infinity,
+        });
         entity.grab();
         // Simulate an external push (e.g. `AmmoCharacterControllerComponent.pushDynamicBody`) having
         // already set a fast velocity towards the target this same tick, before updateHold() runs.
@@ -111,7 +177,12 @@ describe('Grabbable3dEntity', () => {
     );
 
     it('still corrects sideways drift while preserving a faster forward speed towards the target', () => {
-      const { entity, objectBody } = setup({ followStrength: 1, maxFollowSpeed: 1000, maxHoldDistance: 1000 });
+      const { entity, objectBody } = setup({
+        followStrength: 1,
+        maxFollowSpeed: 1000,
+        maxHoldDistance: 1000,
+        maxAcceleration: Infinity,
+      });
       entity.grab();
       objectBody.linearVelocity = { x: 5, y: 3, z: 0 }; // 5 towards the target, 3 sideways drift
       entity.updateHold({ x: 1, y: 0, z: 0 }, 0);
@@ -120,7 +191,12 @@ describe('Grabbable3dEntity', () => {
     });
 
     it('reels the object back in normally when its current velocity points away from the target', () => {
-      const { entity, objectBody } = setup({ followStrength: 1, maxFollowSpeed: 1000, maxHoldDistance: 1000 });
+      const { entity, objectBody } = setup({
+        followStrength: 1,
+        maxFollowSpeed: 1000,
+        maxHoldDistance: 1000,
+        maxAcceleration: Infinity,
+      });
       entity.grab();
       objectBody.linearVelocity = { x: -5, y: 0, z: 0 }; // moving away from the target
       entity.updateHold({ x: 1, y: 0, z: 0 }, 0);

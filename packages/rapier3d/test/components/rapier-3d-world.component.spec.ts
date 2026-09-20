@@ -23,7 +23,7 @@ describe('Rapier3dWorldComponent', () => {
 
       const ball = world.factory.createRigidBody({
         shape: { shape: 'SPHERE', radius: 1 },
-        body: { dynamic: true, mass: 5 },
+        body: { bodyType: 'dynamic', mass: 5 },
       }, { position: { x: -5, y: 0, z: 0 } });
       ball.addToWorld({ physicsWorld: world } as any);
       ball.linearVelocity = { x: 1, y: 0, z: 0 };
@@ -39,14 +39,14 @@ describe('Rapier3dWorldComponent', () => {
 
       const ball0 = world.factory.createRigidBody({
         shape: { shape: 'SPHERE', radius: 1 },
-        body: { dynamic: true, mass: 5 },
+        body: { bodyType: 'dynamic', mass: 5 },
       }, { position: { x: -5, y: 0, z: 0 } });
       ball0.addToWorld({ physicsWorld: world } as any);
       ball0.linearVelocity = { x: 1, y: 0, z: 0 };
 
       const ball1 = world.factory.createRigidBody({
         shape: { shape: 'SPHERE', radius: 1 },
-        body: { dynamic: true, mass: 5 },
+        body: { bodyType: 'dynamic', mass: 5 },
       }, { position: { x: 5, y: 0, z: 0 } });
       ball1.addToWorld({ physicsWorld: world } as any);
       ball1.linearVelocity = { x: -1, y: 0, z: 0 };
@@ -63,7 +63,7 @@ describe('Rapier3dWorldComponent', () => {
       const cg0 = world.registerCollisionGroup();
       const ball0 = world.factory.createRigidBody({
         shape: { shape: 'SPHERE', radius: 1 },
-        body: { dynamic: true, mass: 5 },
+        body: { bodyType: 'dynamic', mass: 5 },
       }, { position: { x: -5, y: 0, z: 0 } });
       ball0.addToWorld({ physicsWorld: world } as any);
       ball0.linearVelocity = { x: 1, y: 0, z: 0 };
@@ -72,7 +72,7 @@ describe('Rapier3dWorldComponent', () => {
       const cg1 = world.registerCollisionGroup();
       const ball1 = world.factory.createRigidBody({
         shape: { shape: 'SPHERE', radius: 1 },
-        body: { dynamic: true, mass: 5 },
+        body: { bodyType: 'dynamic', mass: 5 },
       }, { position: { x: 5, y: 0, z: 0 } });
       ball1.addToWorld({ physicsWorld: world } as any);
       ball1.linearVelocity = { x: -1, y: 0, z: 0 };
@@ -94,7 +94,7 @@ describe('Rapier3dWorldComponent', () => {
         'transform/velocity write passing wakeUp=false was silently never simulated)',
       () => {
         const ball = world.factory.createRigidBody(
-          { shape: { shape: 'SPHERE', radius: 1 }, body: { dynamic: true, mass: 5 } },
+          { shape: { shape: 'SPHERE', radius: 1 }, body: { bodyType: 'dynamic', mass: 5 } },
           { position: { x: 0, y: 0, z: 0 } },
         );
         ball.addToWorld({ physicsWorld: world } as any);
@@ -121,7 +121,7 @@ describe('Rapier3dWorldComponent', () => {
       // Create a box far away from the ray
       const box = world.factory.createRigidBody({
         shape: { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } },
-        body: { dynamic: false, mass: 0 },
+        body: { bodyType: 'static', mass: 0 },
       }, { position: { x: 10, y: 10, z: 10 } });
       box.addToWorld({ physicsWorld: world } as any);
 
@@ -144,7 +144,7 @@ describe('Rapier3dWorldComponent', () => {
       // Create a box in the path of the ray
       const box = world.factory.createRigidBody({
         shape: { shape: 'BOX', dimensions: { x: 2, y: 2, z: 2 } },
-        body: { dynamic: false, mass: 0 },
+        body: { bodyType: 'static', mass: 0 },
       }, { position: { x: 0, y: 0, z: -5 } });
       box.addToWorld({ physicsWorld: world } as any);
 
@@ -179,7 +179,7 @@ describe('Rapier3dWorldComponent', () => {
       const box1 = world.factory.createRigidBody({
         shape: { shape: 'BOX', dimensions: { x: 2, y: 2, z: 2 } },
         body: {
-          dynamic: false,
+          bodyType: 'static',
           mass: 0,
           ownCollisionGroups: [group1],
           interactWithCollisionGroups: [group1, group2],
@@ -217,7 +217,7 @@ describe('Rapier3dWorldComponent', () => {
       // Create a box at a known distance
       const box = world.factory.createRigidBody({
         shape: { shape: 'BOX', dimensions: { x: 2, y: 2, z: 2 } },
-        body: { dynamic: false, mass: 0 },
+        body: { bodyType: 'static', mass: 0 },
       }, { position: { x: 0, y: 0, z: -5 } });
       box.addToWorld({ physicsWorld: world } as any);
 
@@ -246,7 +246,7 @@ describe('Rapier3dWorldComponent', () => {
       const box = world.factory.createRigidBody({
         shape: { shape: 'BOX', dimensions: { x: 2, y: 2, z: 2 } },
         body: {
-          dynamic: false,
+          bodyType: 'static',
           mass: 0,
           ownCollisionGroups: [group1],
           interactWithCollisionGroups: [group1, group2],
@@ -272,13 +272,13 @@ describe('Rapier3dWorldComponent', () => {
       // Create two boxes at different positions
       const box1 = world.factory.createRigidBody({
         shape: { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } },
-        body: { dynamic: false, mass: 0 },
+        body: { bodyType: 'static', mass: 0 },
       }, { position: { x: 0, y: 0, z: -3 } });
       box1.addToWorld({ physicsWorld: world } as any);
 
       const box2 = world.factory.createRigidBody({
         shape: { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } },
-        body: { dynamic: false, mass: 0 },
+        body: { bodyType: 'static', mass: 0 },
       }, { position: { x: 0, y: 0, z: -7 } });
       box2.addToWorld({ physicsWorld: world } as any);
 
@@ -300,7 +300,7 @@ describe('Rapier3dWorldComponent', () => {
       // Create a box
       const box = world.factory.createRigidBody({
         shape: { shape: 'BOX', dimensions: { x: 4, y: 4, z: 4 } },
-        body: { dynamic: false, mass: 0 },
+        body: { bodyType: 'static', mass: 0 },
       }, { position: { x: 0, y: 0, z: 0 } });
       box.addToWorld({ physicsWorld: world } as any);
 

@@ -14,7 +14,7 @@ const level: LevelJson = {
       name: 'Floor',
       config: {
         dimensions: { x: 7, y: 7, z: 1 },
-        body: { dynamic: false },
+        body: { bodyType: 'static' },
       },
     },
     {

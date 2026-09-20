@@ -23,7 +23,7 @@ describe('Rapier2dWorldComponent', () => {
 
       const circle = world.factory.createRigidBody({
         shape: { shape: 'CIRCLE', radius: 1 },
-        body: { dynamic: true, mass: 5 },
+        body: { bodyType: 'dynamic', mass: 5 },
       }, { position: { x: -5, y: 0 } });
       circle.addToWorld({ physicsWorld: world } as any);
       circle.linearVelocity = { x: 1, y: 0 };
@@ -39,14 +39,14 @@ describe('Rapier2dWorldComponent', () => {
 
       const circle0 = world.factory.createRigidBody({
         shape: { shape: 'CIRCLE', radius: 1 },
-        body: { dynamic: true, mass: 5 },
+        body: { bodyType: 'dynamic', mass: 5 },
       }, { position: { x: -5, y: 0 } });
       circle0.addToWorld({ physicsWorld: world } as any);
       circle0.linearVelocity = { x: 1, y: 0 };
 
       const circle1 = world.factory.createRigidBody({
         shape: { shape: 'CIRCLE', radius: 1 },
-        body: { dynamic: true, mass: 5 },
+        body: { bodyType: 'dynamic', mass: 5 },
       }, { position: { x: 5, y: 0 } });
       circle1.addToWorld({ physicsWorld: world } as any);
       circle1.linearVelocity = { x: -1, y: 0 };
@@ -63,7 +63,7 @@ describe('Rapier2dWorldComponent', () => {
       const cg0 = world.registerCollisionGroup();
       const circle0 = world.factory.createRigidBody({
         shape: { shape: 'CIRCLE', radius: 1 },
-        body: { dynamic: true, mass: 5 },
+        body: { bodyType: 'dynamic', mass: 5 },
       }, { position: { x: -5, y: 0 } });
       circle0.addToWorld({ physicsWorld: world } as any);
       circle0.linearVelocity = { x: 1, y: 0 };
@@ -72,7 +72,7 @@ describe('Rapier2dWorldComponent', () => {
       const cg1 = world.registerCollisionGroup();
       const circle1 = world.factory.createRigidBody({
         shape: { shape: 'CIRCLE', radius: 1 },
-        body: { dynamic: true, mass: 5 },
+        body: { bodyType: 'dynamic', mass: 5 },
       }, { position: { x: 5, y: 0 } });
       circle1.addToWorld({ physicsWorld: world } as any);
       circle1.linearVelocity = { x: -1, y: 0 };
@@ -94,7 +94,7 @@ describe('Rapier2dWorldComponent', () => {
         'transform/velocity write passing wakeUp=false was silently never simulated)',
       () => {
         const circle = world.factory.createRigidBody(
-          { shape: { shape: 'CIRCLE', radius: 1 }, body: { dynamic: true, mass: 5 } },
+          { shape: { shape: 'CIRCLE', radius: 1 }, body: { bodyType: 'dynamic', mass: 5 } },
           { position: { x: 0, y: 0 } },
         );
         circle.addToWorld({ physicsWorld: world } as any);
@@ -121,7 +121,7 @@ describe('Rapier2dWorldComponent', () => {
       // Create a square far away from the ray
       const square = world.factory.createRigidBody({
         shape: { shape: 'SQUARE', dimensions: { x: 1, y: 1 } },
-        body: { dynamic: false, mass: 0 },
+        body: { bodyType: 'static', mass: 0 },
       }, { position: { x: 10, y: 10 } });
       square.addToWorld({ physicsWorld: world } as any);
 
@@ -144,7 +144,7 @@ describe('Rapier2dWorldComponent', () => {
       // Create a square in the path of the ray
       const square = world.factory.createRigidBody({
         shape: { shape: 'SQUARE', dimensions: { x: 2, y: 2 } },
-        body: { dynamic: false, mass: 0 },
+        body: { bodyType: 'static', mass: 0 },
       }, { position: { x: 0, y: -5 } });
       square.addToWorld({ physicsWorld: world } as any);
 
@@ -179,7 +179,7 @@ describe('Rapier2dWorldComponent', () => {
       const square1 = world.factory.createRigidBody({
         shape: { shape: 'SQUARE', dimensions: { x: 2, y: 2 } },
         body: {
-          dynamic: false,
+          bodyType: 'static',
           mass: 0,
           ownCollisionGroups: [group1],
           interactWithCollisionGroups: [group1, group2],
@@ -217,7 +217,7 @@ describe('Rapier2dWorldComponent', () => {
       // Create a square at a known distance
       const square = world.factory.createRigidBody({
         shape: { shape: 'SQUARE', dimensions: { x: 2, y: 2 } },
-        body: { dynamic: false, mass: 0 },
+        body: { bodyType: 'static', mass: 0 },
       }, { position: { x: 0, y: -5 } });
       square.addToWorld({ physicsWorld: world } as any);
 
@@ -246,7 +246,7 @@ describe('Rapier2dWorldComponent', () => {
       const square = world.factory.createRigidBody({
         shape: { shape: 'SQUARE', dimensions: { x: 2, y: 2 } },
         body: {
-          dynamic: false,
+          bodyType: 'static',
           mass: 0,
           ownCollisionGroups: [group1],
           interactWithCollisionGroups: [group1, group2],
@@ -272,13 +272,13 @@ describe('Rapier2dWorldComponent', () => {
       // Create two squares at different positions
       const square1 = world.factory.createRigidBody({
         shape: { shape: 'SQUARE', dimensions: { x: 1, y: 1 } },
-        body: { dynamic: false, mass: 0 },
+        body: { bodyType: 'static', mass: 0 },
       }, { position: { x: 0, y: -3 } });
       square1.addToWorld({ physicsWorld: world } as any);
 
       const square2 = world.factory.createRigidBody({
         shape: { shape: 'SQUARE', dimensions: { x: 1, y: 1 } },
-        body: { dynamic: false, mass: 0 },
+        body: { bodyType: 'static', mass: 0 },
       }, { position: { x: 0, y: -7 } });
       square2.addToWorld({ physicsWorld: world } as any);
 
@@ -300,7 +300,7 @@ describe('Rapier2dWorldComponent', () => {
       // Create a square
       const square = world.factory.createRigidBody({
         shape: { shape: 'SQUARE', dimensions: { x: 4, y: 4 } },
-        body: { dynamic: false, mass: 0 },
+        body: { bodyType: 'static', mass: 0 },
       }, { position: { x: 0, y: 0 } });
       square.addToWorld({ physicsWorld: world } as any);
 

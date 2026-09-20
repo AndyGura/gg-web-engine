@@ -53,6 +53,11 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
 
   public entity: Entity2d | null = null;
 
+  // matter-js has no native kinematic body - a body requested as `kinematic_pos`/`kinematic_vel`
+  // is physically an ordinary `isStatic: true` body under the hood (see `MatterFactory
+  // .transformOptions`'s own doc), so the debug view reports what it actually *is* (`RIGID_STATIC`)
+  // rather than what an app originally asked for - the console warning at creation time is what
+  // tells a developer their kinematic request wasn't honored, not this view.
   readonly debugBodySettings: DebugBody2DSettings = new DebugBody2DSettings(
     isFinite(this.nativeBody.mass)
       ? { type: 'RIGID_DYNAMIC', sleeping: () => this.nativeBody.isSleeping }

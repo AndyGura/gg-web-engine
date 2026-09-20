@@ -66,12 +66,13 @@ describe('Gg2dLevelLoader', () => {
         {
           shape: { shape: 'SQUARE', dimensions: { x: 50, y: 50 } },
           body: {
-            dynamic: true,
+            bodyType: 'dynamic',
             mass: 1,
             restitution: 0.2,
             friction: 0.5,
             ownCollisionGroups: 'all',
             interactWithCollisionGroups: 'all',
+            ccd: false,
           },
         },
         { x: 100, y: 200 },
@@ -125,12 +126,13 @@ describe('Gg2dLevelLoader', () => {
         {
           shape: { shape: 'CIRCLE', radius: 25 },
           body: {
-            dynamic: true,
+            bodyType: 'dynamic',
             mass: 1,
             restitution: 0.2,
             friction: 0.5,
             ownCollisionGroups: 'all',
             interactWithCollisionGroups: 'all',
+            ccd: false,
           },
         },
         { x: 100, y: 200 },
@@ -145,7 +147,7 @@ describe('Gg2dLevelLoader', () => {
           {
             class: 'Primitive',
             shape: 'CIRCLE',
-            config: { radius: 25, body: { dynamic: false, mass: 5 } },
+            config: { radius: 25, body: { bodyType: 'static', mass: 5 } },
           },
         ],
       };
@@ -156,12 +158,13 @@ describe('Gg2dLevelLoader', () => {
         {
           shape: { shape: 'CIRCLE', radius: 25 },
           body: {
-            dynamic: false,
+            bodyType: 'static',
             mass: 5,
             restitution: 0.2,
             friction: 0.5,
             ownCollisionGroups: 'all',
             interactWithCollisionGroups: 'all',
+            ccd: false,
           },
         },
         undefined,

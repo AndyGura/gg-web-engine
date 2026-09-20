@@ -1,6 +1,7 @@
 import { GgWorldTypeDocRepo } from '../../gg-world';
 import { IEntity } from '../../entities/i-entity';
 import { BlueprintNode, BlueprintPinDefinition } from '../blueprint-node';
+import { warnOnce } from '../../logging';
 
 /**
  * Settings for the built-in `"RemoveEntity"` blueprint node - baked in from its
@@ -35,7 +36,7 @@ export class RemoveEntityBlueprintNode<
       return;
     }
     if (!(value instanceof IEntity)) {
-      console.warn('RemoveEntity blueprint node triggered without a valid entity reference - ignoring');
+      warnOnce('RemoveEntity blueprint node triggered without a valid entity reference - ignoring');
       return;
     }
     const settings = this.settings as RemoveEntityNodeSettings;

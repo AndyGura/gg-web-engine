@@ -35,7 +35,7 @@ and read `packages/core/src/base/level-loader.ts` first.
       "config": {
         "dimensions": { "x": 7, "y": 7, "z": 1 },
         "material": { "color": 8947848 },
-        "body": { "dynamic": false }
+        "body": { "bodyType": "static" }
       }
     }
   ]
@@ -137,7 +137,7 @@ cylinder-only - `"CONE"` and the 2D shapes have no elliptical counterpart.
 
 Common `config` fields for both: `material` (`DisplayObject2dOpts`/`DisplayObject3dOpts`, e.g.
 `{ "color": ... }`) and `body` (`Partial<Body2DOptions>`/`Partial<Body3DOptions>`, merged over a
-default dynamic body: `{ dynamic: true, mass: 1, restitution: 0.2, friction: 0.5,
+default dynamic body: `{ bodyType: 'dynamic', mass: 1, restitution: 0.2, friction: 0.5,
 ownCollisionGroups: 'all', interactWithCollisionGroups: 'all' }`). Missing a shape-required field,
 or using an unrecognized `shape` value, throws (and fails the whole `loadLevel` call - see above).
 
