@@ -153,17 +153,31 @@ vendor helper sources, see below) as a template:
 
 ## Testing
 
-Rendering adapters currently have little/no automated testing in this repo — `three` and `pixi`
-are only `npm run build`-checked in CI (`.github/workflows/pull_request_build.yml`), relying on the
-`examples/primitives-three-*` / `examples/primitives-pixi-*` example apps for manual smoke
-testing. If you do add unit tests (encouraged for factory/shape-mapping logic that doesn't need a
-real GPU context), mirror the jest + `jest-environment-jsdom` setup from `packages/matter` or
-`packages/rapier2d`.
+Both `three` and `pixi` have a jest + `jest-environment-jsdom` suite (`npm test` in each package;
+picked up automatically by the root `npm run test` / CI, no per-package wiring needed — see root
+`package.json`'s `test` script). Coverage is still thin relative to the physics adapters — mostly
+factory/shape-mapping and small pure-utility logic that doesn't need a real GPU context — and the
+`examples/primitives-three-*` / `examples/primitives-pixi-*` example apps remain the way to
+smoke-test anything that does need a real renderer. When adding a test, mirror `packages/three`'s
+setup (the sibling visual adapter) rather than a physics adapter's: same `package.json` `jest` block
+(`ts-jest` preset, `moduleNameMapper` pointing `@gg-web-engine/core` at `../core/src/index.ts`,
+`testEnvironment: "jsdom"`), and the same `tsconfig.json` shape — `"include": ["src/*.ts",
+"src/**/*.ts"]` (scoped to `src/` only, so `tsc -b`'s project-reference build doesn't try to compile
+`test/**/*` too) plus an explicit `"types"` array so `describe`/`it`/`expect` resolve under TS 6 (see
+`gg-engine-core-development`'s TS6 pitfalls). If the package also carries an ambient global-only
+`@types/*` devDependency (like `pixi`'s `@types/offscreencanvas`, needed transitively because
+`pixi.js`'s own `.d.ts` reference the `OffscreenCanvas` global), that package's name must be added to
+the same `"types"` array too (e.g. `["jest", "node", "offscreencanvas"]`) — an explicit `"types"`
+array replaces TS's default "auto-include everything under `node_modules/@types`" behavior, so
+leaving it out silently breaks that ambient type instead of just adding jest globals.
 
 ## Wiring a new adapter into the repo
 
-1. Add a `build` (and `test`, if present) step to `.github/workflows/pull_request_build.yml`,
-   following the existing per-package steps.
+1. Nothing to add to `.github/workflows/pull_request_build.yml` — it's a single generic job
+   (`npm install`, `npm run build`, `npm run test` at the repo root), not per-package steps; the
+   root `test` script already runs `npm run test --workspace=packages --if-present`, so any package
+   with a `test` script in its own `package.json` (including a brand-new one) is picked up
+   automatically.
 2. Add `{ "path": "../<lib>" }` to the root `tsconfig.json`'s `references` array (so `npm run
    build:watch` picks it up) and the package name to the `libs` array in
    `etc/publish_new_version.sh` (so releases include it) — see `gg-engine-release`. You do **not**

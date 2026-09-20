@@ -5,6 +5,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
+    "test": "jest",
     "prettier-format": "prettier --config ../../.prettierrc 'src/**/*.ts' --write",
     "prepublish": "rm -rf ./dist/ && tsc",
     "build": "tsc"
@@ -28,16 +29,43 @@
   "dependencies": {
   },
   "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/node": "^26.4.0",
     "@types/offscreencanvas": "2019.7.3",
     "@gg-web-engine/core": "0.0.70",
+    "jest": "^30.5.0",
+    "jest-environment-jsdom": "^30.5.0",
     "pixi.js": "8.20.1",
     "prettier": "^3.9.6",
     "rxjs": "7.8.2",
+    "ts-jest": "^29.4.12",
     "typescript": "~6.0.3"
   },
   "peerDependencies": {
     "@gg-web-engine/core": "0.0.70",
     "pixi.js": "8.20.1",
     "rxjs": "7.8.2"
+  },
+  "jest": {
+    "rootDir": ".",
+    "testRegex": "\\.spec\\.ts$",
+    "transform": {
+      "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "moduleNameMapper": {
+      "@gg-web-engine/core": "<rootDir>/../core/src/index.ts"
+    },
+    "preset": "ts-jest/presets/default",
+    "collectCoverageFrom": [
+      "**/*.ts",
+      "!**/*.module.ts"
+    ],
+    "coveragePathIgnorePatterns": [
+      "<rootDir>/node_modules/",
+      "<rootDir>/dist/",
+      "<rootDir>/test/"
+    ],
+    "coverageDirectory": "./coverage",
+    "testEnvironment": "jsdom"
   }
 }

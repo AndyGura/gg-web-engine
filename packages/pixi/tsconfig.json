@@ -6,7 +6,8 @@
     "rootDir": "./src/",
     "tsBuildInfoFile": "./dist/tsconfig.tsbuildinfo",
     "allowSyntheticDefaultImports": true,
+    "types": ["jest", "node", "offscreencanvas"],
   },
-  "include": ["*.ts", "**/*.ts"],
+  "include": ["src/*.ts", "src/**/*.ts"],
   "references": [{ "path": "../core" }]
 }
