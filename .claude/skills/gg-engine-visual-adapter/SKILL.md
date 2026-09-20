@@ -171,6 +171,22 @@ the same `"types"` array too (e.g. `["jest", "node", "offscreencanvas"]`) — an
 array replaces TS's default "auto-include everything under `node_modules/@types`" behavior, so
 leaving it out silently breaks that ambient type instead of just adding jest globals.
 
+`three` is ESM-only as of r186: its `package.json` `"type"` is `"module"`, and even the `require`
+export condition (`three.cjs`) now just does a plain Node `require('./three.module.js')` at
+runtime rather than shipping a real CJS build. Jest's own "require() of ES modules on Node 24.9+"
+support doesn't cover this case — that fallback only applies to files jest's transform pipeline has
+already parsed, and node_modules files are excluded from transform by default, so a spec file that
+imports from `'three'` fails with `Must use import to load ES Module: .../three/build/three.module.js`
+even on a Node version that supports native `require(esm)` outside jest. The fix (already applied in
+`packages/three/package.json`) is to give `three`'s build files their own narrow transform instead of
+relying on jest's ESM interop: add `babel-jest`, `@babel/core`, and
+`@babel/plugin-transform-modules-commonjs` as devDependencies, a `babel.config.js` in the package
+root with just the commonjs-transform plugin, and in the `jest` block split the transform so
+`"^.+\\.ts$"` still goes to `ts-jest` while `"/node_modules/three/build/.+\\.js$"` goes to
+`babel-jest`, paired with `"transformIgnorePatterns": ["/node_modules/(?!three/build/)"]` so that
+one path isn't skipped. A package that doesn't import `three` directly in its tests (like `pixi`,
+whose one spec file is pure-logic) doesn't need any of this.
+
 ## Wiring a new adapter into the repo
 
 1. Nothing to add to `.github/workflows/pull_request_build.yml` — it's a single generic job

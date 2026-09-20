@@ -35,7 +35,7 @@
     "@gg-web-engine/core": "0.0.70",
     "jest": "^30.5.0",
     "jest-environment-jsdom": "^30.5.0",
-    "pixi.js": "8.20.1",
+    "pixi.js": "8.21.0",
     "prettier": "^3.9.6",
     "rxjs": "7.8.2",
     "ts-jest": "^29.4.12",
@@ -43,7 +43,7 @@
   },
   "peerDependencies": {
     "@gg-web-engine/core": "0.0.70",
-    "pixi.js": "8.20.1",
+    "pixi.js": "8.21.0",
     "rxjs": "7.8.2"
   },
   "jest": {
