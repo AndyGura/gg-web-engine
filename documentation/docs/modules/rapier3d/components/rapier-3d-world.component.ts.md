@@ -170,7 +170,7 @@ readonly children: Rapier3dWorldChild[]
 **Signature**
 
 ```ts
-readonly mainCollisionGroup: any
+readonly mainCollisionGroup: number
 ```
 
 ### \_nativeWorld (property)
@@ -178,7 +178,7 @@ readonly mainCollisionGroup: any
 **Signature**
 
 ```ts
-_nativeWorld: any
+_nativeWorld: World | null
 ```
 
 ### handleIdEntityMap (property)
@@ -186,7 +186,7 @@ _nativeWorld: any
 **Signature**
 
 ```ts
-readonly handleIdEntityMap: any
+readonly handleIdEntityMap: Map<number, Rapier3dRigidBodyComponent>
 ```
 
 ### lockedCollisionGroups (property)

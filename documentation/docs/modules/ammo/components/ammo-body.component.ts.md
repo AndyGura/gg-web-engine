@@ -94,7 +94,7 @@ name: string
 **Signature**
 
 ```ts
-entity: any
+entity: IEntity<any, any, GgWorldTypeDocRepo<any, any>> | null
 ```
 
 ### addedToWorld (property)
@@ -110,7 +110,7 @@ addedToWorld: boolean
 **Signature**
 
 ```ts
-_interactWithCGsMask: any
+_interactWithCGsMask: number
 ```
 
 ### \_ownCGsMask (property)
@@ -118,5 +118,5 @@ _interactWithCGsMask: any
 **Signature**
 
 ```ts
-_ownCGsMask: any
+_ownCGsMask: number
 ```

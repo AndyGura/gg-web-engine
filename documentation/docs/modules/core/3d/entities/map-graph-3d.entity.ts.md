@@ -160,7 +160,7 @@ readonly loaderCursor$: any
 **Signature**
 
 ```ts
-readonly loaded: any
+readonly loaded: Map<MapGraphNodeType, (IEntity<any, any, GgWorldTypeDocRepo<any, any>> & IPositionable3d)[]>
 ```
 
 ### \_chunkLoaded$ (property)

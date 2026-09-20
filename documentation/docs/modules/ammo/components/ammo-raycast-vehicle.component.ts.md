@@ -187,7 +187,7 @@ readonly wheelAxleCS: Ammo.btVector3
 **Signature**
 
 ```ts
-entity: any
+entity: RaycastVehicle3dEntity<Gg3dWorldTypeDocRepo> | null
 ```
 
 ### raycaster (property)

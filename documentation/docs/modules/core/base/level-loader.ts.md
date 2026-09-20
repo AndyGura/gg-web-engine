@@ -294,7 +294,7 @@ Map of class aliases to generator functions
 **Signature**
 
 ```ts
-generators: any
+generators: Map<string, EntityGenerator<D, R, TypeDoc, any, any>>
 ```
 
 ### blueprintNodes (property)
@@ -304,7 +304,7 @@ Map of blueprint node type aliases to node factory functions - see {@link regist
 **Signature**
 
 ```ts
-blueprintNodes: any
+blueprintNodes: Map<string, BlueprintNodeFactory<D, R, TypeDoc>>
 ```
 
 ### blueprintNodeDefaultInputs (property)
@@ -315,5 +315,5 @@ with one - see {@link registerBlueprintNode}.
 **Signature**
 
 ```ts
-blueprintNodeDefaultInputs: any
+blueprintNodeDefaultInputs: Map<string, string>
 ```

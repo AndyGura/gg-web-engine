@@ -74,5 +74,5 @@ dispose(): void
 **Signature**
 
 ```ts
-readonly nativeComposer: any
+readonly nativeComposer: EffectComposer
 ```

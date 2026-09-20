@@ -97,7 +97,7 @@ dispose(): void
 **Signature**
 
 ```ts
-entity: any
+entity: IEntity<any, any, GgWorldTypeDocRepo<any, any>> | null
 ```
 
 ### name (property)

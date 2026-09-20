@@ -143,7 +143,7 @@ dispose(): void
 **Signature**
 
 ```ts
-matterEngine_: any
+matterEngine_: Engine | null
 ```
 
 ### factory (property)
@@ -188,7 +188,7 @@ collision pair, per step - is an O(1) lookup instead of an O(n) `Array.find` sca
 **Signature**
 
 ```ts
-readonly handleIdEntityMap: any
+readonly handleIdEntityMap: Map<number, MatterRigidBodyComponent>
 ```
 
 ### mainCollisionGroup (property)
@@ -196,7 +196,7 @@ readonly handleIdEntityMap: any
 **Signature**
 
 ```ts
-readonly mainCollisionGroup: any
+readonly mainCollisionGroup: number
 ```
 
 ### lockedCollisionGroups (property)

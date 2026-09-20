@@ -95,7 +95,7 @@ dispose(): void
 **Signature**
 
 ```ts
-entity: any
+entity: IEntity<any, any, GgWorldTypeDocRepo<any, any>> | null
 ```
 
 ### debugBodySettings (property)
@@ -103,7 +103,7 @@ entity: any
 **Signature**
 
 ```ts
-readonly debugBodySettings: any
+readonly debugBodySettings: DebugBody3DSettings
 ```
 
 ### overlaps (property)
@@ -111,7 +111,7 @@ readonly debugBodySettings: any
 **Signature**
 
 ```ts
-readonly overlaps: any
+readonly overlaps: Set<Ammo.btCollisionObject>
 ```
 
 ### onEnter$ (property)

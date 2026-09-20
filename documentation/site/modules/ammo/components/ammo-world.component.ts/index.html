@@ -880,11 +880,11 @@ this adapter's own <code>position</code>/<code>rotation</code> writes, never int
 <code>angularVelocity</code> by the dynamics solver the way a <code>dynamic</code> body's is. Maintained by
 <code>AmmoRigidBodyComponent.addToWorld</code>/<code>removeFromWorld</code> - not meant to be written to directly.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly kinematicVelBodies: any
+<pre><code class="language-ts">readonly kinematicVelBodies: Set&lt;AmmoRigidBodyComponent&gt;
 </code></pre>
 <h3 id="maincollisiongroup-property">mainCollisionGroup (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly mainCollisionGroup: any
+<pre><code class="language-ts">readonly mainCollisionGroup: number
 </code></pre>
 <h3 id="maxsubsteps-property">maxSubSteps (property)</h3>
 <p>Hard ceiling on how many substeps <code>simulate()</code> will ever run for one call, regardless of how

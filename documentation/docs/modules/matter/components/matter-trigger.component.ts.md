@@ -124,7 +124,7 @@ readonly onLeft$: any
 **Signature**
 
 ```ts
-readonly debugBodySettings: any
+readonly debugBodySettings: DebugBody2DSettings
 ```
 
 ### intersectionsAmount (property)
@@ -140,5 +140,5 @@ intersectionsAmount: number
 **Signature**
 
 ```ts
-currentOverlaps: any
+currentOverlaps: Set<MatterRigidBodyComponent>
 ```

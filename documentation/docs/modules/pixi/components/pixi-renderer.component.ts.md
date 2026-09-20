@@ -84,7 +84,7 @@ dispose(): void
 **Signature**
 
 ```ts
-readonly application: any
+readonly application: Application<Renderer<HTMLCanvasElement>>
 ```
 
 ### world (property)
@@ -92,5 +92,5 @@ readonly application: any
 **Signature**
 
 ```ts
-world: any
+world: PixiGgWorld | null
 ```

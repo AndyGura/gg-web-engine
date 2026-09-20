@@ -325,7 +325,7 @@ clone(): AmmoCharacterControllerComponent
 **Signature**
 
 ```ts
-entity: any
+entity: IEntity<any, any, GgWorldTypeDocRepo<any, any>> | null
 ```
 
 ### radius (property)
@@ -352,7 +352,7 @@ See `ICharacterController3dComponent.ignoredBodies`'s doc. Consulted fresh by `s
 **Signature**
 
 ```ts
-readonly ignoredBodies: any
+readonly ignoredBodies: Set<AmmoRigidBodyComponent>
 ```
 
 ### debugBodySettings (property)
@@ -360,5 +360,5 @@ readonly ignoredBodies: any
 **Signature**
 
 ```ts
-readonly debugBodySettings: any
+readonly debugBodySettings: DebugBody3DSettings
 ```

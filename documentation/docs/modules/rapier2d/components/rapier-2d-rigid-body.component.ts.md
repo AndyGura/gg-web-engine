@@ -92,7 +92,7 @@ dispose(): void
 **Signature**
 
 ```ts
-entity: any
+entity: Entity2d<Gg2dWorldTypeDocRepo> | null
 ```
 
 ### \_nativeBody (property)
@@ -100,7 +100,7 @@ entity: any
 **Signature**
 
 ```ts
-_nativeBody: any
+_nativeBody: RigidBody | null
 ```
 
 ### \_nativeBodyColliders (property)
@@ -108,7 +108,7 @@ _nativeBody: any
 **Signature**
 
 ```ts
-_nativeBodyColliders: any[] | null
+_nativeBodyColliders: Collider[] | null
 ```
 
 ### name (property)
@@ -144,7 +144,7 @@ this body is removed from the world mid-contact (see `removeFromWorld`).
 **Signature**
 
 ```ts
-readonly activeContacts: any
+readonly activeContacts: Set<Rapier2dRigidBodyComponent>
 ```
 
 ### debugBodySettings (property)
@@ -152,7 +152,7 @@ readonly activeContacts: any
 **Signature**
 
 ```ts
-readonly debugBodySettings: any
+readonly debugBodySettings: DebugBody2DSettings
 ```
 
 ### collisionGroups (property)
@@ -160,5 +160,5 @@ readonly debugBodySettings: any
 **Signature**
 
 ```ts
-collisionGroups: any
+collisionGroups: number
 ```

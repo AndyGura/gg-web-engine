@@ -101,5 +101,8 @@ consoleKeyPressEventListener: (event: KeyboardEvent) => void
 **Signature**
 
 ```ts
-consoleCommands: any
+consoleCommands: Map<
+  GgWorld<any, any, GgWorldTypeDocRepo<any, any>, GgWorldSceneTypeRepo<any, any, GgWorldTypeDocRepo<any, any>>> | null,
+  { [key: string]: { handler: (...args: string[]) => Promise<string>; doc?: string | undefined } }
+>
 ```

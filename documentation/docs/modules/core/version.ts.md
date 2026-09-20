@@ -22,5 +22,5 @@ parent: Modules
 **Signature**
 
 ```ts
-export declare const VERSION: '0.0.71'
+export declare const VERSION: '0.0.72'
 ```

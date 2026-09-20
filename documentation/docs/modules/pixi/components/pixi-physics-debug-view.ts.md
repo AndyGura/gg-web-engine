@@ -69,5 +69,5 @@ public dispose()
 **Signature**
 
 ```ts
-readonly debugContainer: any
+readonly debugContainer: Container<ContainerChild>
 ```

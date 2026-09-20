@@ -132,5 +132,5 @@ dispose()
 **Signature**
 
 ```ts
-_nativeVehicle: any
+_nativeVehicle: DynamicRayCastVehicleController | null
 ```

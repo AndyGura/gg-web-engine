@@ -872,18 +872,18 @@ shipped and consumed as a single static JSON file.</p>
 <h3 id="generators-property">generators (property)</h3>
 <p>Map of class aliases to generator functions</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">generators: any
+<pre><code class="language-ts">generators: Map&lt;string, EntityGenerator&lt;D, R, TypeDoc, any, any&gt;&gt;
 </code></pre>
 <h3 id="blueprintnodes-property">blueprintNodes (property)</h3>
 <p>Map of blueprint node type aliases to node factory functions - see {@link registerBlueprintNode}.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">blueprintNodes: any
+<pre><code class="language-ts">blueprintNodes: Map&lt;string, BlueprintNodeFactory&lt;D, R, TypeDoc&gt;&gt;
 </code></pre>
 <h3 id="blueprintnodedefaultinputs-property">blueprintNodeDefaultInputs (property)</h3>
 <p>Map of blueprint node type aliases to their default input pin name, for node types registered
 with one - see {@link registerBlueprintNode}.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">blueprintNodeDefaultInputs: any
+<pre><code class="language-ts">blueprintNodeDefaultInputs: Map&lt;string, string&gt;
 </code></pre>
 
 

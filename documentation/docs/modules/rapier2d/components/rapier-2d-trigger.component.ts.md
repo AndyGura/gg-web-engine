@@ -90,7 +90,7 @@ dispose()
 **Signature**
 
 ```ts
-readonly debugBodySettings: any
+readonly debugBodySettings: DebugBody2DSettings
 ```
 
 ### overlaps (property)
@@ -98,7 +98,7 @@ readonly debugBodySettings: any
 **Signature**
 
 ```ts
-readonly overlaps: any
+readonly overlaps: Set<Rapier2dRigidBodyComponent>
 ```
 
 ### onEnter$ (property)

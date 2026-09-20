@@ -118,7 +118,7 @@ dispose(): void
 **Signature**
 
 ```ts
-entity: any
+entity: Entity3d<Gg3dWorldTypeDocRepo> | null
 ```
 
 ### debugBodySettings (property)
@@ -126,7 +126,7 @@ entity: any
 **Signature**
 
 ```ts
-readonly debugBodySettings: any
+readonly debugBodySettings: DebugBody3DSettings
 ```
 
 ### \_nativeBody (property)
@@ -134,7 +134,7 @@ readonly debugBodySettings: any
 **Signature**
 
 ```ts
-_nativeBody: any
+_nativeBody: RigidBody | null
 ```
 
 ### \_nativeBodyColliders (property)
@@ -142,7 +142,7 @@ _nativeBody: any
 **Signature**
 
 ```ts
-_nativeBodyColliders: any[] | null
+_nativeBodyColliders: Collider[] | null
 ```
 
 ### name (property)
@@ -169,7 +169,7 @@ queue for that case).
 **Signature**
 
 ```ts
-readonly collidingWith: any
+readonly collidingWith: Set<Rapier3dRigidBodyComponent>
 ```
 
 ### onCollisionStart$ (property)
@@ -193,5 +193,5 @@ readonly onCollisionEnd$: any
 **Signature**
 
 ```ts
-collisionGroups: any
+collisionGroups: number
 ```

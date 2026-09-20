@@ -112,7 +112,7 @@ readonly loader: ThreeLoader
 **Signature**
 
 ```ts
-readonly mainRenderLayer: any
+readonly mainRenderLayer: number
 ```
 
 ### lockedRenderLayers (property)
@@ -120,5 +120,5 @@ readonly mainRenderLayer: any
 **Signature**
 
 ```ts
-lockedRenderLayers: any[]
+lockedRenderLayers: number[]
 ```

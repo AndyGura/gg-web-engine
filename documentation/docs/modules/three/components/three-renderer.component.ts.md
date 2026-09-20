@@ -85,7 +85,7 @@ dispose(): void
 **Signature**
 
 ```ts
-readonly nativeRenderer: any
+readonly nativeRenderer: WebGLRenderer
 ```
 
 ### world (property)
@@ -93,7 +93,7 @@ readonly nativeRenderer: any
 **Signature**
 
 ```ts
-world: any
+world: ThreeGgWorld | null
 ```
 
 ### debugView (property)

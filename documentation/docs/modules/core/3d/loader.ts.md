@@ -78,7 +78,7 @@ public async loadGgGlb(
 **Signature**
 
 ```ts
-readonly filesCache: any
+readonly filesCache: Map<string, [ArrayBuffer, GgMeta] | Promise<[ArrayBuffer, GgMeta]>>
 ```
 
 ### loadResultCache (property)
@@ -86,7 +86,7 @@ readonly filesCache: any
 **Signature**
 
 ```ts
-readonly loadResultCache: any
+readonly loadResultCache: Map<string, LoadResourcesResult<TypeDoc> | Promise<LoadResourcesResult<TypeDoc>>>
 ```
 
 ## Glb3DSettings (interface)

@@ -256,7 +256,7 @@ this adapter's own `position`/`rotation` writes, never integrated from `linearVe
 **Signature**
 
 ```ts
-readonly kinematicVelBodies: any
+readonly kinematicVelBodies: Set<AmmoRigidBodyComponent>
 ```
 
 ### mainCollisionGroup (property)
@@ -264,7 +264,7 @@ readonly kinematicVelBodies: any
 **Signature**
 
 ```ts
-readonly mainCollisionGroup: any
+readonly mainCollisionGroup: number
 ```
 
 ### maxSubSteps (property)

@@ -214,7 +214,7 @@ dispose(): void
 **Signature**
 
 ```ts
-entity: any
+entity: Entity3d<Gg3dWorldTypeDocRepo> | null
 ```
 
 ### name (property)
@@ -252,7 +252,7 @@ natively, so no such trick is needed here.
 **Signature**
 
 ```ts
-readonly ignoredBodies: any
+readonly ignoredBodies: Set<Rapier3dRigidBodyComponent>
 ```
 
 ### \_nativeBody (property)
@@ -260,7 +260,7 @@ readonly ignoredBodies: any
 **Signature**
 
 ```ts
-_nativeBody: any
+_nativeBody: RigidBody | null
 ```
 
 ### \_nativeCollider (property)
@@ -268,7 +268,7 @@ _nativeBody: any
 **Signature**
 
 ```ts
-_nativeCollider: any
+_nativeCollider: Collider | null
 ```
 
 ### \_nativeController (property)
@@ -276,7 +276,7 @@ _nativeCollider: any
 **Signature**
 
 ```ts
-_nativeController: any
+_nativeController: KinematicCharacterController | null
 ```
 
 ### debugBodySettings (property)
@@ -284,7 +284,7 @@ _nativeController: any
 **Signature**
 
 ```ts
-readonly debugBodySettings: any
+readonly debugBodySettings: DebugBody3DSettings
 ```
 
 ### collisionGroups (property)
@@ -292,5 +292,5 @@ readonly debugBodySettings: any
 **Signature**
 
 ```ts
-collisionGroups: any
+collisionGroups: number
 ```

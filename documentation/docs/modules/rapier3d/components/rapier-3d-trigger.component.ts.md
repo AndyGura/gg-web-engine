@@ -115,7 +115,7 @@ dispose()
 **Signature**
 
 ```ts
-readonly debugBodySettings: any
+readonly debugBodySettings: DebugBody3DSettings
 ```
 
 ### overlaps (property)
@@ -123,7 +123,7 @@ readonly debugBodySettings: any
 **Signature**
 
 ```ts
-readonly overlaps: any
+readonly overlaps: Set<Rapier3dRigidBodyComponent>
 ```
 
 ### onEnter$ (property)

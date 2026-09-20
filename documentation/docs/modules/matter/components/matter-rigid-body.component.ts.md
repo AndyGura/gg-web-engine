@@ -102,7 +102,7 @@ name: string
 **Signature**
 
 ```ts
-entity: any
+entity: Entity2d<Gg2dWorldTypeDocRepo> | null
 ```
 
 ### debugBodySettings (property)
@@ -110,7 +110,7 @@ entity: any
 **Signature**
 
 ```ts
-readonly debugBodySettings: any
+readonly debugBodySettings: DebugBody2DSettings
 ```
 
 ### \_interactWithCGsMask (property)
@@ -118,7 +118,7 @@ readonly debugBodySettings: any
 **Signature**
 
 ```ts
-_interactWithCGsMask: any
+_interactWithCGsMask: number
 ```
 
 ### \_ownCGsMask (property)
@@ -126,7 +126,7 @@ _interactWithCGsMask: any
 **Signature**
 
 ```ts
-_ownCGsMask: any
+_ownCGsMask: number
 ```
 
 ### onCollisionStart$ (property)
@@ -156,5 +156,5 @@ world-wide `collisionStart`/`collisionEnd` listener - not touched directly by an
 **Signature**
 
 ```ts
-readonly currentContacts: any
+readonly currentContacts: Set<MatterRigidBodyComponent>
 ```

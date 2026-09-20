@@ -132,5 +132,5 @@ private disposeMesh(mesh: Mesh)
 **Signature**
 
 ```ts
-entity: any
+entity: IEntity<any, any, GgWorldTypeDocRepo<any, any>> | null
 ```

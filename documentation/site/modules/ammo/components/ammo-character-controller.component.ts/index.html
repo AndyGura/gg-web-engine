@@ -928,7 +928,7 @@ harder push) is left alone rather than being slowed back down to <code>character
 </code></pre>
 <h3 id="entity-property">entity (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">entity: any
+<pre><code class="language-ts">entity: IEntity&lt;any, any, GgWorldTypeDocRepo&lt;any, any&gt;&gt; | null
 </code></pre>
 <h3 id="radius-property">radius (property)</h3>
 <p><strong>Signature</strong></p>
@@ -942,11 +942,11 @@ harder push) is left alone rather than being slowed back down to <code>character
 <p>See <code>ICharacterController3dComponent.ignoredBodies</code>'s doc. Consulted fresh by <code>sweep()</code> and
 <code>recoverFromPenetration()</code> every call - see <code>withIgnoredBodiesDetached</code>.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly ignoredBodies: any
+<pre><code class="language-ts">readonly ignoredBodies: Set&lt;AmmoRigidBodyComponent&gt;
 </code></pre>
 <h3 id="debugbodysettings-property">debugBodySettings (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly debugBodySettings: any
+<pre><code class="language-ts">readonly debugBodySettings: DebugBody3DSettings
 </code></pre>
 
 

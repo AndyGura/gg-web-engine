@@ -151,7 +151,7 @@ dispose(): void
 **Signature**
 
 ```ts
-entity: any
+entity: Entity3d<Gg3dWorldTypeDocRepo> | null
 ```
 
 ### debugBodySettings (property)
@@ -159,7 +159,7 @@ entity: any
 **Signature**
 
 ```ts
-readonly debugBodySettings: any
+readonly debugBodySettings: DebugBody3DSettings
 ```
 
 ### onCollisionStart$ (property)
