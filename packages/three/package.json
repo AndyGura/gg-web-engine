@@ -29,28 +29,35 @@
   "dependencies": {
   },
   "devDependencies": {
+    "@babel/core": "^8.0.6",
+    "@babel/plugin-transform-modules-commonjs": "^8.0.1",
     "@gg-web-engine/core": "0.0.70",
     "@types/jest": "^30.0.0",
-    "@types/three": "0.185.4",
+    "@types/three": "0.186.0",
+    "babel-jest": "^30.5.2",
     "jest": "^30.5.0",
     "jest-environment-jsdom": "^30.5.0",
     "prettier": "^3.9.6",
     "rxjs": "7.8.2",
-    "three": "0.185.1",
+    "three": "0.186.0",
     "ts-jest": "^29.4.12",
     "typescript": "~6.0.3"
   },
   "peerDependencies": {
     "@gg-web-engine/core": "0.0.70",
-    "three": "0.185.1",
+    "three": "0.186.0",
     "rxjs": "7.8.2"
   },
   "jest": {
     "rootDir": ".",
     "testRegex": "\\.spec\\.ts$",
     "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
+      "^.+\\.ts$": "ts-jest",
+      "/node_modules/three/build/.+\\.js$": "babel-jest"
     },
+    "transformIgnorePatterns": [
+      "/node_modules/(?!three/build/)"
+    ],
     "moduleNameMapper": {
       "@gg-web-engine/core": "<rootDir>/../core/src/index.ts"
     },

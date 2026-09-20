@@ -333,9 +333,7 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
     if (this.blueprintNodes.has(eventBinding)) {
       return this.inlineNodeBlueprint(eventName, eventBinding, undefined);
     }
-    warnOnce(
-      `No blueprint or blueprint node type named "${eventBinding}" found for event "${eventName}" - skipping`,
-    );
+    warnOnce(`No blueprint or blueprint node type named "${eventBinding}" found for event "${eventName}" - skipping`);
     return undefined;
   }
 
