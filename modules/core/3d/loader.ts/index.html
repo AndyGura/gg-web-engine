@@ -672,11 +672,11 @@ way it places primitives/triggers/cameras.</p>
 </code></pre>
 <h3 id="filescache-property">filesCache (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly filesCache: any
+<pre><code class="language-ts">readonly filesCache: Map&lt;string, [ArrayBuffer, GgMeta] | Promise&lt;[ArrayBuffer, GgMeta]&gt;&gt;
 </code></pre>
 <h3 id="loadresultcache-property">loadResultCache (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly loadResultCache: any
+<pre><code class="language-ts">readonly loadResultCache: Map&lt;string, LoadResourcesResult&lt;TypeDoc&gt; | Promise&lt;LoadResourcesResult&lt;TypeDoc&gt;&gt;&gt;
 </code></pre>
 <h2 id="glb3dsettings-interface">Glb3DSettings (interface)</h2>
 <p>Settings for the built-in <code>"Glb"</code> level entity class (3D only): loads a GG GLB+meta pair via

@@ -666,7 +666,10 @@
 </code></pre>
 <h3 id="consolecommands-property">consoleCommands (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">consoleCommands: any
+<pre><code class="language-ts">consoleCommands: Map&lt;
+  GgWorld&lt;any, any, GgWorldTypeDocRepo&lt;any, any&gt;, GgWorldSceneTypeRepo&lt;any, any, GgWorldTypeDocRepo&lt;any, any&gt;&gt;&gt; | null,
+  { [key: string]: { handler: (...args: string[]) =&gt; Promise&lt;string&gt;; doc?: string | undefined } }
+&gt;
 </code></pre>
 
 

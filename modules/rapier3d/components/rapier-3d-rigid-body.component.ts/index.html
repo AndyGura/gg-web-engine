@@ -737,19 +737,19 @@ world while still in contact, per <code>onCollisionEnd</code>'s doc.</p>
 </code></pre>
 <h3 id="entity-property">entity (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">entity: any
+<pre><code class="language-ts">entity: Entity3d&lt;Gg3dWorldTypeDocRepo&gt; | null
 </code></pre>
 <h3 id="debugbodysettings-property">debugBodySettings (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly debugBodySettings: any
+<pre><code class="language-ts">readonly debugBodySettings: DebugBody3DSettings
 </code></pre>
 <h3 id="_nativebody-property">_nativeBody (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">_nativeBody: any
+<pre><code class="language-ts">_nativeBody: RigidBody | null
 </code></pre>
 <h3 id="_nativebodycolliders-property">_nativeBodyColliders (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">_nativeBodyColliders: any[] | null
+<pre><code class="language-ts">_nativeBodyColliders: Collider[] | null
 </code></pre>
 <h3 id="name-property">name (property)</h3>
 <p><strong>Signature</strong></p>
@@ -767,7 +767,7 @@ for a collider that's simply deleted mid-contact (same reason <code>Rapier3dTrig
 checkOverlaps</code> has its own manual <code>!body.nativeBody</code> cleanup pass instead of trusting the event
 queue for that case).</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly collidingWith: any
+<pre><code class="language-ts">readonly collidingWith: Set&lt;Rapier3dRigidBodyComponent&gt;
 </code></pre>
 <h3 id="oncollisionstart-property">onCollisionStart$ (property)</h3>
 <p><strong>Signature</strong></p>
@@ -779,7 +779,7 @@ queue for that case).</p>
 </code></pre>
 <h3 id="collisiongroups-property">collisionGroups (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">collisionGroups: any
+<pre><code class="language-ts">collisionGroups: number
 </code></pre>
 
 

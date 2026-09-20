@@ -709,19 +709,19 @@
 </code></pre>
 <h3 id="entity-property">entity (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">entity: any
+<pre><code class="language-ts">entity: Entity2d&lt;Gg2dWorldTypeDocRepo&gt; | null
 </code></pre>
 <h3 id="debugbodysettings-property">debugBodySettings (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly debugBodySettings: any
+<pre><code class="language-ts">readonly debugBodySettings: DebugBody2DSettings
 </code></pre>
 <h3 id="_interactwithcgsmask-property">_interactWithCGsMask (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">_interactWithCGsMask: any
+<pre><code class="language-ts">_interactWithCGsMask: number
 </code></pre>
 <h3 id="_owncgsmask-property">_ownCGsMask (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">_ownCGsMask: any
+<pre><code class="language-ts">_ownCGsMask: number
 </code></pre>
 <h3 id="oncollisionstart-property">onCollisionStart$ (property)</h3>
 <p><strong>Signature</strong></p>
@@ -738,7 +738,7 @@ documented "other body removed while still in contact" case. Maintained exclusiv
 <code>notifyCollisionStart</code>/<code>notifyCollisionEnd</code>, called by <code>MatterWorldComponent</code>'s single
 world-wide <code>collisionStart</code>/<code>collisionEnd</code> listener - not touched directly by anything else.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly currentContacts: any
+<pre><code class="language-ts">readonly currentContacts: Set&lt;MatterRigidBodyComponent&gt;
 </code></pre>
 
 

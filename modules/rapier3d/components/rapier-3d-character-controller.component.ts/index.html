@@ -840,7 +840,7 @@ airborne, so a later landing never reuses a stale value from a previous, unrelat
 </code></pre>
 <h3 id="entity-property">entity (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">entity: any
+<pre><code class="language-ts">entity: Entity3d&lt;Gg3dWorldTypeDocRepo&gt; | null
 </code></pre>
 <h3 id="name-property">name (property)</h3>
 <p><strong>Signature</strong></p>
@@ -861,27 +861,27 @@ via <code>computeColliderMovement</code>'s own <code>filterPredicate</code> - un
 Rapier's character controller supports excluding specific colliders from a single query
 natively, so no such trick is needed here.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly ignoredBodies: any
+<pre><code class="language-ts">readonly ignoredBodies: Set&lt;Rapier3dRigidBodyComponent&gt;
 </code></pre>
 <h3 id="_nativebody-property">_nativeBody (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">_nativeBody: any
+<pre><code class="language-ts">_nativeBody: RigidBody | null
 </code></pre>
 <h3 id="_nativecollider-property">_nativeCollider (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">_nativeCollider: any
+<pre><code class="language-ts">_nativeCollider: Collider | null
 </code></pre>
 <h3 id="_nativecontroller-property">_nativeController (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">_nativeController: any
+<pre><code class="language-ts">_nativeController: KinematicCharacterController | null
 </code></pre>
 <h3 id="debugbodysettings-property">debugBodySettings (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly debugBodySettings: any
+<pre><code class="language-ts">readonly debugBodySettings: DebugBody3DSettings
 </code></pre>
 <h3 id="collisiongroups-property">collisionGroups (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">collisionGroups: any
+<pre><code class="language-ts">collisionGroups: number
 </code></pre>
 
 

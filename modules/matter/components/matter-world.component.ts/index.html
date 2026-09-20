@@ -760,7 +760,7 @@ registered once per engine rather than per-body.</p>
 </code></pre>
 <h3 id="matterengine_-property">matterEngine_ (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">matterEngine_: any
+<pre><code class="language-ts">matterEngine_: Engine | null
 </code></pre>
 <h3 id="factory-property">factory (property)</h3>
 <p><strong>Signature</strong></p>
@@ -784,11 +784,11 @@ globally-unique numeric id, assigned once per body via <code>Body.nextId</code> 
 lifetime) to component, kept in sync alongside <code>children</code> so <code>findRigidBody</code> - called once per
 collision pair, per step - is an O(1) lookup instead of an O(n) <code>Array.find</code> scan.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly handleIdEntityMap: any
+<pre><code class="language-ts">readonly handleIdEntityMap: Map&lt;number, MatterRigidBodyComponent&gt;
 </code></pre>
 <h3 id="maincollisiongroup-property">mainCollisionGroup (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly mainCollisionGroup: any
+<pre><code class="language-ts">readonly mainCollisionGroup: number
 </code></pre>
 <h3 id="lockedcollisiongroups-property">lockedCollisionGroups (property)</h3>
 <p><strong>Signature</strong></p>

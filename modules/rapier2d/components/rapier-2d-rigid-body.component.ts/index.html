@@ -707,15 +707,15 @@
 </code></pre>
 <h3 id="entity-property">entity (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">entity: any
+<pre><code class="language-ts">entity: Entity2d&lt;Gg2dWorldTypeDocRepo&gt; | null
 </code></pre>
 <h3 id="_nativebody-property">_nativeBody (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">_nativeBody: any
+<pre><code class="language-ts">_nativeBody: RigidBody | null
 </code></pre>
 <h3 id="_nativebodycolliders-property">_nativeBodyColliders (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">_nativeBodyColliders: any[] | null
+<pre><code class="language-ts">_nativeBodyColliders: Collider[] | null
 </code></pre>
 <h3 id="name-property">name (property)</h3>
 <p><strong>Signature</strong></p>
@@ -734,15 +734,15 @@
 against Rapier's own start/stop transition events and to notify still-alive contacts when
 this body is removed from the world mid-contact (see <code>removeFromWorld</code>).</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly activeContacts: any
+<pre><code class="language-ts">readonly activeContacts: Set&lt;Rapier2dRigidBodyComponent&gt;
 </code></pre>
 <h3 id="debugbodysettings-property">debugBodySettings (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly debugBodySettings: any
+<pre><code class="language-ts">readonly debugBodySettings: DebugBody2DSettings
 </code></pre>
 <h3 id="collisiongroups-property">collisionGroups (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">collisionGroups: any
+<pre><code class="language-ts">collisionGroups: number
 </code></pre>
 
 
