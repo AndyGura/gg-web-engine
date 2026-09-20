@@ -521,6 +521,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#bodytype-type-alias" class="md-nav__link">
+    BodyType (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#collisiongroup-type-alias" class="md-nav__link">
     CollisionGroup (type alias)
   </a>
@@ -571,6 +578,7 @@
 <ul>
 <li><a href="#utils">utils</a></li>
 <li><a href="#bodyoptions-interface">BodyOptions (interface)</a></li>
+<li><a href="#bodytype-type-alias">BodyType (type alias)</a></li>
 <li><a href="#collisiongroup-type-alias">CollisionGroup (type alias)</a></li>
 <li><a href="#debugbodysettings-class">DebugBodySettings (class)</a></li>
 <li><a href="#debugbodytype-type-alias">DebugBodyType (type alias)</a></li>
@@ -580,13 +588,18 @@
 <h2 id="bodyoptions-interface">BodyOptions (interface)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export interface BodyOptions {
-  dynamic: boolean
+  bodyType: BodyType
   mass: number
   restitution: number
   friction: number
   ownCollisionGroups: ReadonlyArray&lt;CollisionGroup&gt; | 'all'
   interactWithCollisionGroups: ReadonlyArray&lt;CollisionGroup&gt; | 'all'
+  ccd: boolean
 }
+</code></pre>
+<h2 id="bodytype-type-alias">BodyType (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type BodyType = 'dynamic' | 'static' | 'kinematic_pos' | 'kinematic_vel'
 </code></pre>
 <h2 id="collisiongroup-type-alias">CollisionGroup (type alias)</h2>
 <p><strong>Signature</strong></p>
@@ -606,6 +619,7 @@
 <h2 id="debugbodytype-type-alias">DebugBodyType (type alias)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export type DebugBodyType =
+  | { type: 'RIGID_KINEMATIC' }
   | { type: 'RIGID_STATIC' }
   | { type: 'TRIGGER'; activated: () =&gt; boolean }
   | { type: 'RIGID_DYNAMIC'; sleeping: () =&gt; boolean }

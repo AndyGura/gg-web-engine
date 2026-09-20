@@ -522,6 +522,20 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#registerkinematicvelbody-method" class="md-nav__link">
+    registerKinematicVelBody (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unregisterkinematicvelbody-method" class="md-nav__link">
+    unregisterKinematicVelBody (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#init-method" class="md-nav__link">
     init (method)
   </a>
@@ -613,6 +627,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#kinematicvelbodies-property" class="md-nav__link">
+    kinematicVelBodies (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#maincollisiongroup-property" class="md-nav__link">
     mainCollisionGroup (property)
   </a>
@@ -689,6 +710,8 @@
 <ul>
 <li><a href="#utils">utils</a></li>
 <li><a href="#ammoworldcomponent-class">AmmoWorldComponent (class)</a><ul>
+<li><a href="#registerkinematicvelbody-method">registerKinematicVelBody (method)</a></li>
+<li><a href="#unregisterkinematicvelbody-method">unregisterKinematicVelBody (method)</a></li>
 <li><a href="#init-method">init (method)</a></li>
 <li><a href="#simulate-method">simulate (method)</a></li>
 <li><a href="#processcollisionevents-method">processCollisionEvents (method)</a></li>
@@ -702,6 +725,7 @@
 <li><a href="#added-property">added$ (property)</a></li>
 <li><a href="#removed-property">removed$ (property)</a></li>
 <li><a href="#children-property">children (property)</a></li>
+<li><a href="#kinematicvelbodies-property">kinematicVelBodies (property)</a></li>
 <li><a href="#maincollisiongroup-property">mainCollisionGroup (property)</a></li>
 <li><a href="#maxsubsteps-property">maxSubSteps (property)</a></li>
 <li><a href="#fixedtimestep-property">fixedTimeStep (property)</a></li>
@@ -718,6 +742,14 @@
 <pre><code class="language-ts">export declare class AmmoWorldComponent {
   constructor()
 }
+</code></pre>
+<h3 id="registerkinematicvelbody-method">registerKinematicVelBody (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">registerKinematicVelBody(body: AmmoRigidBodyComponent): void
+</code></pre>
+<h3 id="unregisterkinematicvelbody-method">unregisterKinematicVelBody (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">unregisterKinematicVelBody(body: AmmoRigidBodyComponent): void
 </code></pre>
 <h3 id="init-method">init (method)</h3>
 <p><strong>Signature</strong></p>
@@ -839,6 +871,16 @@ its own engine-wide default <code>ownCollisionGroups</code>/<code>interactWithCo
 <h3 id="children-property">children (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly children: (AmmoRigidBodyComponent | AmmoTriggerComponent)[]
+</code></pre>
+<h3 id="kinematicvelbodies-property">kinematicVelBodies (property)</h3>
+<p>Every currently-in-world <code>kinematic_vel</code> body - see <code>simulate()</code>'s own integration step.
+Bullet has no native velocity-driven kinematic body (unlike Rapier's
+<code>kinematicVelocityBased</code>): a <code>CF_KINEMATIC_OBJECT</code> body's transform is only ever read from
+this adapter's own <code>position</code>/<code>rotation</code> writes, never integrated from <code>linearVelocity</code>/
+<code>angularVelocity</code> by the dynamics solver the way a <code>dynamic</code> body's is. Maintained by
+<code>AmmoRigidBodyComponent.addToWorld</code>/<code>removeFromWorld</code> - not meant to be written to directly.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly kinematicVelBodies: any
 </code></pre>
 <h3 id="maincollisiongroup-property">mainCollisionGroup (property)</h3>
 <p><strong>Signature</strong></p>

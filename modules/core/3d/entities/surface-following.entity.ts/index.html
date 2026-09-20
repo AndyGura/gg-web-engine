@@ -665,7 +665,7 @@ its position and orientation based on a given surface function.</p>
     public followFunc: SurfaceFollowFunc,
     /** Optional body configuration. */
     protected bodyOptions: Partial&lt;
-      Omit&lt;BodyOptions, 'dynamic' | 'mass' | 'ownCollisionGroups' | 'interactWithCollisionGroups'&gt;
+      Omit&lt;BodyOptions, 'bodyType' | 'mass' | 'ownCollisionGroups' | 'interactWithCollisionGroups'&gt;
     &gt; = {}
   )
 }
