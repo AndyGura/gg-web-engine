@@ -727,7 +727,7 @@
 <h3 id="addgrabbableprimitive-method">addGrabbablePrimitive (method)</h3>
 <p>Same as <code>addPrimitiveRigidBody</code>, but the returned entity is a <code>Grabbable3dEntity</code> - a prop
 that can be picked up/carried/thrown (see that class and <code>ObjectGrabController</code>). <code>descr.body</code>
-must describe a dynamic body (<code>dynamic: true</code>) - a static/kinematic prop can't be carried.</p>
+must describe a dynamic body (<code>bodyType: 'dynamic'</code>) - a static/kinematic prop can't be carried.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">addGrabbablePrimitive(
     descr: BodyShape3DDescriptor,

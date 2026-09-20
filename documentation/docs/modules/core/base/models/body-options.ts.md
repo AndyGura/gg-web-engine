@@ -1,6 +1,6 @@
 ---
 title: core/base/models/body-options.ts
-nav_order: 121
+nav_order: 122
 parent: Modules
 ---
 
@@ -12,6 +12,7 @@ parent: Modules
 
 - [utils](#utils)
   - [BodyOptions (interface)](#bodyoptions-interface)
+  - [BodyType (type alias)](#bodytype-type-alias)
   - [CollisionGroup (type alias)](#collisiongroup-type-alias)
   - [DebugBodySettings (class)](#debugbodysettings-class)
   - [DebugBodyType (type alias)](#debugbodytype-type-alias)
@@ -26,13 +27,22 @@ parent: Modules
 
 ```ts
 export interface BodyOptions {
-  dynamic: boolean
+  bodyType: BodyType
   mass: number
   restitution: number
   friction: number
   ownCollisionGroups: ReadonlyArray<CollisionGroup> | 'all'
   interactWithCollisionGroups: ReadonlyArray<CollisionGroup> | 'all'
+  ccd: boolean
 }
+```
+
+## BodyType (type alias)
+
+**Signature**
+
+```ts
+export type BodyType = 'dynamic' | 'static' | 'kinematic_pos' | 'kinematic_vel'
 ```
 
 ## CollisionGroup (type alias)
@@ -64,6 +74,7 @@ export declare class DebugBodySettings<S> {
 
 ```ts
 export type DebugBodyType =
+  | { type: 'RIGID_KINEMATIC' }
   | { type: 'RIGID_STATIC' }
   | { type: 'TRIGGER'; activated: () => boolean }
   | { type: 'RIGID_DYNAMIC'; sleeping: () => boolean }

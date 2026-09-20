@@ -77,7 +77,7 @@ addPrimitiveRigidBody(
 
 Same as `addPrimitiveRigidBody`, but the returned entity is a `Grabbable3dEntity` - a prop
 that can be picked up/carried/thrown (see that class and `ObjectGrabController`). `descr.body`
-must describe a dynamic body (`dynamic: true`) - a static/kinematic prop can't be carried.
+must describe a dynamic body (`bodyType: 'dynamic'`) - a static/kinematic prop can't be carried.
 
 **Signature**
 

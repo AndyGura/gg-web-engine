@@ -612,6 +612,16 @@
   ): MatterTriggerComponent
 </code></pre>
 <h3 id="transformoptions-method">transformOptions (method)</h3>
+<p>matter-js's own body model only has <code>isStatic</code> - no distinct kinematic body type (position-
+driven, but still pushes/wakes dynamic bodies it moves into) and no continuous collision
+detection at all, at any level. Both are long-standing, documented upstream limitations, not
+something this adapter package failed to wire up - see <code>BodyOptions.kinematic_pos</code>/
+<code>ccd</code>'s own doc in <code>packages/core</code> for what each is supposed to do.</p>
+<p><code>kinematic_pos</code>/<code>kinematic_vel</code> fall back to <code>isStatic: true</code> - the closest matter-js has - so
+a caller gets <em>a</em> body rather than a thrown error, but with the exact same caveat as
+teleporting a <code>static</code> body's position by hand (see that doc): resting bodies on top won't be
+pushed or woken correctly. <code>ccd: true</code> is silently accepted as a no-op beyond the warning below -
+a fast-moving or fast-driven body can still tunnel clean through thin geometry in one step.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">private transformOptions(options: Partial&lt;Body2DOptions&gt;): IChamferableBodyDefinition
 </code></pre>

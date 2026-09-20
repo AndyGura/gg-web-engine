@@ -1,6 +1,6 @@
 ---
 title: rapier3d/components/rapier-3d-rigid-body.component.ts
-nav_order: 155
+nav_order: 156
 parent: Modules
 ---
 
@@ -44,7 +44,7 @@ export declare class Rapier3dRigidBodyComponent {
     protected _colliderDescr: ColliderDesc[],
     public readonly shape: Shape3DDescriptor,
     protected _bodyDescr: RigidBodyDesc,
-    protected _colliderOptions: Omit<Omit<Body3DOptions, 'dynamic'>, 'mass'>
+    protected _colliderOptions: Omit<Omit<Body3DOptions, 'bodyType'>, 'mass'>
   )
 }
 ```

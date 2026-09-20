@@ -12,6 +12,8 @@ parent: Modules
 
 - [utils](#utils)
   - [AmmoWorldComponent (class)](#ammoworldcomponent-class)
+    - [registerKinematicVelBody (method)](#registerkinematicvelbody-method)
+    - [unregisterKinematicVelBody (method)](#unregisterkinematicvelbody-method)
     - [init (method)](#init-method)
     - [simulate (method)](#simulate-method)
     - [processCollisionEvents (method)](#processcollisionevents-method)
@@ -25,6 +27,7 @@ parent: Modules
     - [added$ (property)](#added-property)
     - [removed$ (property)](#removed-property)
     - [children (property)](#children-property)
+    - [kinematicVelBodies (property)](#kinematicvelbodies-property)
     - [mainCollisionGroup (property)](#maincollisiongroup-property)
     - [maxSubSteps (property)](#maxsubsteps-property)
     - [fixedTimeStep (property)](#fixedtimestep-property)
@@ -44,6 +47,22 @@ parent: Modules
 export declare class AmmoWorldComponent {
   constructor()
 }
+```
+
+### registerKinematicVelBody (method)
+
+**Signature**
+
+```ts
+registerKinematicVelBody(body: AmmoRigidBodyComponent): void
+```
+
+### unregisterKinematicVelBody (method)
+
+**Signature**
+
+```ts
+unregisterKinematicVelBody(body: AmmoRigidBodyComponent): void
 ```
 
 ### init (method)
@@ -223,6 +242,21 @@ readonly removed$: any
 
 ```ts
 readonly children: (AmmoRigidBodyComponent | AmmoTriggerComponent)[]
+```
+
+### kinematicVelBodies (property)
+
+Every currently-in-world `kinematic_vel` body - see `simulate()`'s own integration step.
+Bullet has no native velocity-driven kinematic body (unlike Rapier's
+`kinematicVelocityBased`): a `CF_KINEMATIC_OBJECT` body's transform is only ever read from
+this adapter's own `position`/`rotation` writes, never integrated from `linearVelocity`/
+`angularVelocity` by the dynamics solver the way a `dynamic` body's is. Maintained by
+`AmmoRigidBodyComponent.addToWorld`/`removeFromWorld` - not meant to be written to directly.
+
+**Signature**
+
+```ts
+readonly kinematicVelBodies: any
 ```
 
 ### mainCollisionGroup (property)

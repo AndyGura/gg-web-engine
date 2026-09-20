@@ -1,6 +1,6 @@
 ---
 title: pixi/types.ts
-nav_order: 145
+nav_order: 146
 parent: Modules
 ---
 

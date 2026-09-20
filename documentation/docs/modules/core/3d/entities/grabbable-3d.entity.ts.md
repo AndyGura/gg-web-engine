@@ -52,6 +52,19 @@ whatever velocity was set, so a held object can sag very slightly between update
 substep counts - imperceptible in practice, and no worse an approximation than
 `CharacterController3dEntity`'s own per-tick gravity integration.
 
+**`objectBody` should be created with `ccd: true`.** The hold spring can drive a body at up to
+`maxFollowSpeed` (20 m/s by default) directly at whatever the camera is aimed through, including
+thin static geometry - exactly the fast-moving-dynamic-body scenario `BodyOptions.ccd` exists
+for (see its own doc), and without it a hard enough push can cross a wall's thickness within a
+single physics step. A high `restitution` on `objectBody` is also worth avoiding for the same
+underlying reason from the other direction: pinned against geometry it can't get through, the
+spring re-asserts full into-the-obstacle velocity every tick regardless of what the solver did
+the tick before, so a bouncy restitution fights that every contact tick and reads as a visible
+jitter (how pronounced this looks is adapter-dependent - some engines' discrete collision
+detection resolves the resulting shallow penetration into a visible bounce loop every tick,
+where `ccd` alone doesn't help since the body was never moving fast enough per step to actually
+tunnel) rather than the object settling flush against the surface.
+
 **Signature**
 
 ```ts
@@ -137,6 +150,17 @@ already be close to `targetPosition`. It keeps that speed (redirected exactly at
 arrives or drifts past the target, at which point ordinary spring behavior resumes from the other
 side.
 
+**Once `UNBLOCK_STREAK` consecutive ticks pass without the previous tick's commanded velocity
+actually being achieved, this tick's commanded velocity is rate-limited to
+`grabOptions.maxAcceleration`** - see that constant's and that option's own doc for why this is
+conditional (an _unconditional_ cap makes ordinary fast turns feel sluggish), why it's a streak
+and not a single-tick check (a lone noisy "achieved" tick while still genuinely pinned against a
+wall re-arms a full-power push right when the object is already close to it - worse than either
+an always-on or a naive single-tick-gated cap), and why it exists at all (a real, reproduced
+tunneling/jitter bug otherwise: a blocked object gets its full-speed into-the-obstacle command
+re-issued outright every single tick regardless of what the solver did the tick before). Applied
+last, after both the `maxFollowSpeed` clamp and the "never slows down" rule above.
+
 Must be called once per tick, **before** `IPhysicsWorld3dComponent.simulate()` runs that same
 tick - i.e. from a driver with `tickOrder < TickOrder.PHYSICS_SIMULATION` (e.g.
 `ObjectGrabController`, or your own equivalent) - for the velocity set here to actually be
@@ -186,6 +210,33 @@ export type Grabbable3dEntityOptions = {
   followStrength: number
   /** Hard cap on the linear speed used to chase the hold point, in m/s. Default 20. */
   maxFollowSpeed: number
+  /**
+   * Cap on how fast the held object's *commanded* velocity is allowed to change per second, in
+   * m/s² - but **only while `updateHold()` detects the previous tick's commanded velocity wasn't
+   * actually achieved** (see this class's own doc for why: pushed hard against a wall, the object's
+   * actual velocity gets stopped/bounced back by the solver each tick, but with no cap the very next
+   * tick immediately re-commands the *same* full-speed push straight back into the wall, over and
+   * over - depending on the physics engine this either reads as visible jitter or, worse, eventually
+   * breaks through entirely once repeated small residual penetrations add up enough that most
+   * engines' CCD/TOI sweep can no longer find a valid time-of-impact from an already-overlapping
+   * start).
+   *
+   * Applying this cap *unconditionally* (every tick, blocked or not) was tried first and reverted -
+   * a real, reported regression, not a hypothetical: an unobstructed carry needs to swing its
+   * commanded velocity by up to `2 × maxFollowSpeed` in a single tick on an ordinary fast turn (the
+   * target point can reverse direction almost outright - see `maxHoldDistance`'s own doc on how far
+   * it can jump), and an unconditional cap throttles that exactly as hard as it throttles a genuinely
+   * blocked push, adding a sluggish, unintended "inertia" to every turn instead of just the
+   * once-in-a-while wall-pinned case. Gating the cap on "was last tick's command actually achieved"
+   * tells these two cases apart: a free turn's new command gets achieved essentially in full the very
+   * next tick (nothing resists it), so the cap never engages; a wall-pinned push keeps failing to be
+   * achieved tick after tick, so the cap stays engaged for as long as that persists. Default 60 -
+   * only needs to be low enough to stop the creep once blocked is actually detected (confirmed safe
+   * well below the ~700-800 m/s² point where a standalone wall-push repro at this class's own
+   * default spring constants started tunnelling again), not to feel snappy on its own, since once
+   * blocked is detected it's no longer trying to feel snappy - it's trying to stop.
+   */
+  maxAcceleration: number
   /**
    * How strongly the held object's own angular velocity is damped back towards zero each tick -
    * `0` leaves it entirely alone (spins freely off whatever momentum it had when grabbed), `1`

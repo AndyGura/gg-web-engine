@@ -460,6 +460,18 @@ export interface Primitive3DSettings {
   radius?: number
 
   /**
+   * Elliptical cross-section radius along local X, as an alternative to `radius` (Cylinder only).
+   * Must be given together with `radiusY`.
+   */
+  radiusX?: number
+
+  /**
+   * Elliptical cross-section radius along local Y, as an alternative to `radius` (Cylinder only).
+   * Must be given together with `radiusX`.
+   */
+  radiusY?: number
+
+  /**
    * Height of the primitive (for Cylinder, Cone)
    */
   height?: number

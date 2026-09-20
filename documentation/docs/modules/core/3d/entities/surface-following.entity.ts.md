@@ -53,7 +53,7 @@ export declare class SurfaceFollowingEntity<PTypeDoc> {
     public followFunc: SurfaceFollowFunc,
     /** Optional body configuration. */
     protected bodyOptions: Partial<
-      Omit<BodyOptions, 'dynamic' | 'mass' | 'ownCollisionGroups' | 'interactWithCollisionGroups'>
+      Omit<BodyOptions, 'bodyType' | 'mass' | 'ownCollisionGroups' | 'interactWithCollisionGroups'>
     > = {}
   )
 }
