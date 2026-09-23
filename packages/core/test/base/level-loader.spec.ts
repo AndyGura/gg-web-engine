@@ -60,7 +60,7 @@ describe('LevelLoader', () => {
       };
 
       // Load the level
-      await levelLoader.loadLevel(levelJson);
+      await levelLoader.loadLevel(levelJson, 'TestLevel');
 
       // Verify that the generator was called with the correct arguments, and its result is named
       // and reachable through the world
@@ -96,7 +96,7 @@ describe('LevelLoader', () => {
       };
 
       // Load the level
-      await levelLoader.loadLevel(levelJson);
+      await levelLoader.loadLevel(levelJson, 'TestLevel');
 
       // Verify that shape was folded into the settings alongside position/config
       expect(mockGenerator).toHaveBeenCalledWith(world, {
@@ -126,7 +126,7 @@ describe('LevelLoader', () => {
       console.warn = jest.fn();
 
       // Load the level
-      await levelLoader.loadLevel(levelJson);
+      await levelLoader.loadLevel(levelJson, 'TestLevel');
 
       // Verify that no entity was created and a warning was logged
       expect(() => world.getEntityByName('UnknownEntity1')).toThrow(
@@ -172,7 +172,7 @@ describe('LevelLoader', () => {
       };
 
       // Load the level
-      await levelLoader.loadLevel(levelJson);
+      await levelLoader.loadLevel(levelJson, 'TestLevel');
 
       // Verify that both entities were created and are reachable by name
       expect(mockGenerator1).toHaveBeenCalledWith(world, {
@@ -196,7 +196,58 @@ describe('LevelLoader', () => {
       };
 
       // Load the level - should not throw
-      await expect(levelLoader.loadLevel(levelJson)).resolves.not.toThrow();
+      await expect(levelLoader.loadLevel(levelJson, 'TestLevel')).resolves.not.toThrow();
+    });
+
+    it('should derive a deterministic default name (levelName__classAlias_index) for an entity with no explicit name', async () => {
+      levelLoader.registerClass('TestEntity', () => new TestEntity());
+
+      const levelJson: LevelJson = {
+        entities: [{ class: 'TestEntity', position: { x: 1, y: 2 } }],
+      };
+
+      await levelLoader.loadLevel(levelJson, 'MainLevel');
+
+      expect(world.getEntityByName('MainLevel__TestEntity_0')).toBeInstanceOf(TestEntity);
+    });
+
+    it('should key the derived default name off each entity own position in the entities array, not a shared counter', async () => {
+      levelLoader.registerClass('TestEntity', () => new TestEntity());
+
+      const levelJson: LevelJson = {
+        entities: [
+          { class: 'TestEntity', name: 'Explicit' },
+          { class: 'TestEntity' },
+          { class: 'TestEntity' },
+        ],
+      };
+
+      await levelLoader.loadLevel(levelJson, 'MainLevel');
+
+      expect(world.getEntityByName('Explicit')).toBeDefined();
+      expect(world.getEntityByName('MainLevel__TestEntity_1')).toBeDefined();
+      expect(world.getEntityByName('MainLevel__TestEntity_2')).toBeDefined();
+    });
+
+    it('should produce identical default names for two independent loaders given the same levelJson and levelName', async () => {
+      const otherWorld = new MockWorld();
+      const otherLoader = new TestLevelLoader(otherWorld);
+      levelLoader.registerClass('TestEntity', () => new TestEntity());
+      otherLoader.registerClass('TestEntity', () => new TestEntity());
+
+      const levelJson: LevelJson = {
+        entities: [{ class: 'TestEntity' }, { class: 'TestEntity' }],
+      };
+
+      await levelLoader.loadLevel(levelJson, 'SharedLevel');
+      await otherLoader.loadLevel(levelJson, 'SharedLevel');
+
+      expect(world.getEntityByName('SharedLevel__TestEntity_0').name).toBe(
+        otherWorld.getEntityByName('SharedLevel__TestEntity_0').name,
+      );
+      expect(world.getEntityByName('SharedLevel__TestEntity_1').name).toBe(
+        otherWorld.getEntityByName('SharedLevel__TestEntity_1').name,
+      );
     });
 
     it('should warn and skip a generator that returns null', async () => {
@@ -223,7 +274,7 @@ describe('LevelLoader', () => {
       };
 
       // Load the level
-      await levelLoader.loadLevel(levelJson);
+      await levelLoader.loadLevel(levelJson, 'TestLevel');
 
       // Verify that no entity was registered under that name, and a warning was logged
       expect(() => world.getEntityByName('NullEntity1')).toThrow('No entity named "NullEntity1" found in the world');
@@ -237,7 +288,7 @@ describe('LevelLoader', () => {
 
       const level = await levelLoader.loadLevel({
         entities: [{ class: 'TestEntity', name: 'Child' }],
-      });
+      }, 'Level1');
 
       expect(level).toBeInstanceOf(GroupEntity);
       expect(level.world).toBe(world);
@@ -261,7 +312,7 @@ describe('LevelLoader', () => {
           { class: 'RealEntity', name: 'Real' },
           { class: 'PlainObject', name: 'Plain' },
         ],
-      });
+      }, 'Level1');
 
       expect(level.children).toEqual([level.getChildEntityByName('Real')]);
       expect(() => level.getChildEntityByName('Plain')).toThrow('No child entity named "Plain"');
@@ -282,7 +333,7 @@ describe('LevelLoader', () => {
 
       const level = await levelLoader.loadLevel({
         entities: [{ class: 'SelfAdding', name: 'SelfAdded' }],
-      });
+      }, 'Level1');
       const entity = world.getEntityByName('SelfAdded');
 
       // Reparented under the level, present in world.children exactly once, no spurious warning
@@ -307,7 +358,7 @@ describe('LevelLoader', () => {
             { class: 'RealEntity', name: 'Real' },
             { class: 'Bad' },
           ],
-        }),
+        }, 'Level1'),
       ).rejects.toThrow('boom');
 
       // The entity created before the throw was torn down along with the level, and is no longer
@@ -338,7 +389,7 @@ describe('LevelLoader', () => {
       const mockGenerator = jest.fn().mockImplementation(() => new TestEntity());
       levelLoader.registerClass('TestEntity', mockGenerator);
 
-      await levelLoader.loadLevelFromUrl('https://example.com/level.json');
+      await levelLoader.loadLevelFromUrl('https://example.com/level.json', 'TestLevel');
 
       expect(global.fetch).toHaveBeenCalledWith('https://example.com/level.json');
       expect(world.getEntityByName('TestEntity1')).toBeInstanceOf(TestEntity);
@@ -351,7 +402,7 @@ describe('LevelLoader', () => {
         statusText: 'Not Found',
       }) as any;
 
-      await expect(levelLoader.loadLevelFromUrl('https://example.com/missing.json')).rejects.toThrow(
+      await expect(levelLoader.loadLevelFromUrl('https://example.com/missing.json', 'TestLevel')).rejects.toThrow(
         'Failed to load level JSON from "https://example.com/missing.json": 404 Not Found',
       );
     });
@@ -371,7 +422,7 @@ describe('LevelLoader', () => {
             inputs: { in: { node: 'n1', pin: 'entity' } },
           },
         },
-      });
+      }, 'Level1');
       const source = level.getChildEntityByName<ObservableEntity>('Source');
 
       source.onSomething.next(target);
@@ -394,7 +445,7 @@ describe('LevelLoader', () => {
             inputs: { in: { node: 'n1', pin: 'entity' } },
           },
         },
-      });
+      }, 'Level1');
       const source = level.getChildEntityByName<ObservableEntity>('Source');
       const victim = new TestEntity();
       world.addEntity(victim);
@@ -410,7 +461,7 @@ describe('LevelLoader', () => {
 
       await levelLoader.loadLevel({
         entities: [{ class: 'Observable', name: 'Source', events: { onSomething: 'DoesNotExist' } }],
-      });
+      }, 'Level1');
 
       expect(warnSpy).toHaveBeenCalledWith(
         'No blueprint or blueprint node type named "DoesNotExist" found for event "onSomething" - skipping',
@@ -431,7 +482,7 @@ describe('LevelLoader', () => {
             inputs: { in: { node: 'n1', pin: 'entity' } },
           },
         },
-      });
+      }, 'Level1');
 
       expect(warnSpy).toHaveBeenCalledWith(
         'Entity has no observable property "notAnObservable" to bind a blueprint to',
@@ -451,7 +502,7 @@ describe('LevelLoader', () => {
             inputs: { in: { node: 'n1', pin: 'entity' } },
           },
         },
-      });
+      }, 'Level1');
       const source = level.getChildEntityByName<ObservableEntity>('Source');
 
       world.removeEntity(level, true);
@@ -472,7 +523,7 @@ describe('LevelLoader', () => {
 
         const level = await levelLoader.loadLevel({
           entities: [{ class: 'Observable', name: 'Source', events: { onSomething: 'RemoveEntity' } }],
-        });
+        }, 'Level1');
         const source = level.getChildEntityByName<ObservableEntity>('Source');
         const disposeSpy = jest.spyOn(target, 'dispose');
 
@@ -496,7 +547,7 @@ describe('LevelLoader', () => {
               events: { onSomething: { type: 'RemoveEntity', settings: { dispose: true } } },
             },
           ],
-        });
+        }, 'Level1');
         const source = level.getChildEntityByName<ObservableEntity>('Source');
         const disposeSpy = jest.spyOn(target, 'dispose');
 
@@ -519,7 +570,7 @@ describe('LevelLoader', () => {
               inputs: { in: { node: 'n1', pin: 'entity' } },
             },
           },
-        });
+        }, 'Level1');
         const source = level.getChildEntityByName<ObservableEntity>('Source');
         const disposeSpy = jest.spyOn(target, 'dispose');
 
@@ -535,7 +586,7 @@ describe('LevelLoader', () => {
 
         await levelLoader.loadLevel({
           entities: [{ class: 'Observable', name: 'Source', events: { onSomething: { type: 'NoDefaultPin' } } }],
-        });
+        }, 'Level1');
 
         expect(warnSpy).toHaveBeenCalledWith(
           'Blueprint node type "NoDefaultPin" has no default input pin registered - event "onSomething" must ' +
@@ -551,7 +602,7 @@ describe('LevelLoader', () => {
 
         await levelLoader.loadLevel({
           entities: [{ class: 'Observable', name: 'Source', events: { onSomething: { type: 'Unregistered' } } }],
-        });
+        }, 'Level1');
 
         expect(warnSpy).toHaveBeenCalledWith(
           'No blueprint node type registered for "Unregistered" (event "onSomething") - skipping',

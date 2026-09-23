@@ -76,6 +76,56 @@ describe('GgWorld', () => {
       expect(world.children.filter(e => e === child).length).toBe(1);
       warnSpy.mockRestore();
     });
+
+    it('should throw, and leave the world unchanged, when adding an entity whose name is already in use', () => {
+      const first = new GgEntityMock();
+      first.name = 'Dup';
+      world.addEntity(first);
+
+      const second = new GgEntityMock();
+      second.name = 'Dup';
+
+      expect(() => world.addEntity(second)).toThrow(
+        'Cannot add entity - name "Dup" is already in use by another entity in this world',
+      );
+      expect(second.world).toBeNull();
+      expect(world.getEntityByName('Dup')).toBe(first);
+    });
+  });
+
+  describe('renaming a spawned entity', () => {
+    it('should update the world name index, so the entity is found under its new name and not the old one', () => {
+      const entity = new GgEntityMock();
+      entity.name = 'Before';
+      world.addEntity(entity);
+
+      entity.name = 'After';
+
+      expect(world.getEntityByName('After')).toBe(entity);
+      expect(() => world.getEntityByName('Before')).toThrow('No entity named "Before" found in the world');
+    });
+
+    it('should throw, and leave both entities under their original names, when renamed to a name already in use', () => {
+      const first = new GgEntityMock();
+      first.name = 'Alice';
+      world.addEntity(first);
+      const second = new GgEntityMock();
+      second.name = 'Bob';
+      world.addEntity(second);
+
+      expect(() => (second.name = 'Alice')).toThrow(
+        'Cannot rename entity "Bob" to "Alice" - name already in use by another entity in this world',
+      );
+      expect(second.name).toBe('Bob');
+      expect(world.getEntityByName('Alice')).toBe(first);
+      expect(world.getEntityByName('Bob')).toBe(second);
+    });
+
+    it('should allow renaming an entity not (yet) part of any world, with no uniqueness check', () => {
+      const entity = new GgEntityMock();
+      entity.name = 'Free';
+      expect(entity.name).toBe('Free');
+    });
   });
 
   describe('getEntityByName', () => {

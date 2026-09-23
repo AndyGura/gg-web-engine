@@ -47,6 +47,6 @@ world.init().then(async () => {
     new ShapeSpawner(w, settings),
   );
 
-  await world.loader.loadLevel(level);
+  await world.loader.loadLevel(level, 'MainLevel');
   world.start();
 });

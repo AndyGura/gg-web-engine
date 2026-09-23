@@ -84,6 +84,9 @@ export interface EntityJson {
    * (overriding whatever default the generator gave it), so it can be found afterwards with
    * `GgWorld.getEntityByName`/`IEntity.getChildEntityByName`. Moot if the generator doesn't return
    * an `IEntity` - that result is discarded (with a console warning) before naming is applied.
+   * Optional - an entity with no explicit `name` here instead gets one derived from the level's own
+   * `levelName` and this entity's position in `entities`, deterministic across every peer loading
+   * the same document under the same `levelName` - see `LevelLoader.loadLevel`.
    */
   name?: string;
 
@@ -211,21 +214,31 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
   /**
    * Load a level from an already-parsed JSON document. Every `IEntity` the level's entities
    * produce is parented under - and, on failure, torn down along with - the returned
-   * {@link GroupEntity}, already added to the world.
+   * {@link GroupEntity}, already added to the world under `levelName`.
+   *
+   * Every entity that doesn't specify its own `name` in `levelJson` gets one derived as
+   * `` `${levelName}__${classAlias}_${indexInEntitiesArray}` `` instead of the usual
+   * process-global `IEntity` auto-generated default - deterministic purely from `levelName` and
+   * this document's own content, so two peers loading the same `levelJson` under the same
+   * `levelName` always agree on every entity's name, regardless of load order, timing, or what
+   * else either peer has spawned. `levelName` must therefore be both required and unique per
+   * loaded *instance* (loading the same level twice - e.g. two copies of one room - needs two
+   * distinct `levelName`s, the same way two `GroupEntity`s can't otherwise be told apart by name).
    * @param levelJson - The level JSON
-   * @param levelName - Optional name for the returned group entity (e.g. so a debugger/console
-   * listing entities by name shows something more meaningful than the default auto-generated one)
+   * @param levelName - Name for the returned group entity, and the scope entities in this level
+   * fall back to naming themselves under when `levelJson` doesn't give them an explicit `name`
    * @returns The level's root group entity
+   * @throws if `levelName`, or any name (explicit or derived) an entity ends up with, collides
+   * with a name already in use elsewhere in the world
    */
-  public async loadLevel(levelJson: LevelJson, levelName?: string): Promise<GroupEntity<D, R, TypeDoc>> {
+  public async loadLevel(levelJson: LevelJson, levelName: string): Promise<GroupEntity<D, R, TypeDoc>> {
     const level = new GroupEntity<D, R, TypeDoc>();
-    if (levelName !== undefined) {
-      level.name = levelName;
-    }
+    level.name = levelName;
     this.world.addEntity(level);
 
     try {
-      for (const entityJson of levelJson.entities) {
+      for (let index = 0; index < levelJson.entities.length; index++) {
+        const entityJson = levelJson.entities[index];
         const { class: classAlias, shape, position, rotation, name, config, events } = entityJson;
         const generator = this.generators.get(classAlias);
         if (!generator) {
@@ -246,9 +259,7 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
           warnOnce(`Generator for class alias "${classAlias}" did not return an IEntity - skipping`);
           continue;
         }
-        if (name !== undefined) {
-          entity.name = name;
-        }
+        entity.name = name !== undefined ? name : `${levelName}__${classAlias}_${index}`;
         // addChildren reparents the entity under level regardless of whether a generator already
         // self-added it to the world (e.g. addPrimitiveRigidBody does) - safe either way.
         level.addChildren(entity);
@@ -374,10 +385,10 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
    * Fetch a level JSON document hosted at `url` and load it, so a whole level/scene can be
    * shipped and consumed as a single static JSON file.
    * @param url - URL (or path) of the level JSON document
-   * @param levelName - Optional name for the returned group entity, see {@link loadLevel}
+   * @param levelName - Name for the returned group entity, see {@link loadLevel}
    * @returns The level's root group entity
    */
-  public async loadLevelFromUrl(url: string, levelName?: string): Promise<GroupEntity<D, R, TypeDoc>> {
+  public async loadLevelFromUrl(url: string, levelName: string): Promise<GroupEntity<D, R, TypeDoc>> {
     const response = await fetch(url);
     if (!response.ok) {
       throw new Error(`Failed to load level JSON from "${url}": ${response.status} ${response.statusText}`);

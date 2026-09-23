@@ -197,7 +197,7 @@ world.init().then(async () => {
   dirLight.shadow.camera.far = 100;
   world.visualScene.nativeScene?.add(dirLight);
 
-  const levelGroup = await world.loader.loadLevel(level);
+  const levelGroup = await world.loader.loadLevel(level, 'MainLevel');
 
   for (const item of levelGroup.children as { object3D?: { nativeMesh: Mesh } }[]) {
     item.object3D?.nativeMesh.traverse(obj => {

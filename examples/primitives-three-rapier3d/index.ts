@@ -61,7 +61,7 @@ world.init().then(async () => {
   // as a child; named entities it produced (the camera below) can be looked up by the `name` they
   // were given in `level` via `levelGroup.getChildEntityByName`. The kill-floor trigger needs no
   // such lookup - its "events" binding above wires it straight to the "RemoveEntity" blueprint node.
-  const levelGroup = await world.loader.loadLevel(level);
+  const levelGroup = await world.loader.loadLevel(level, 'MainLevel');
 
   // `Camera` entities from a level are a plain camera component wrapped in a `Camera3dEntity` -
   // not attached to any renderer/canvas (a level JSON has no notion of one), already parented

@@ -27,7 +27,7 @@ describe('Gg3dLoader', () => {
   describe('"Glb" level entity class', () => {
     it('throws when path is missing', async () => {
       const levelJson: LevelJson = { entities: [{ class: 'Glb', config: {} }] };
-      await expect(loader.loadLevel(levelJson)).rejects.toThrow('Path is required for Glb class');
+      await expect(loader.loadLevel(levelJson, 'TestLevel')).rejects.toThrow('Path is required for Glb class');
     });
 
     it('loads a GLB, groups every entity it produces (including nested props) under one GroupEntity', async () => {
@@ -58,7 +58,7 @@ describe('Gg3dLoader', () => {
         ],
       };
 
-      const level = await loader.loadLevel(levelJson);
+      const level = await loader.loadLevel(levelJson, 'TestLevel');
 
       expect(loadGgGlbSpy).toHaveBeenCalledWith('assets/my-model', {
         position: { x: 1, y: 2, z: 3 },

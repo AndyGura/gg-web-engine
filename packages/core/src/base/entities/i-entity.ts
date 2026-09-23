@@ -17,6 +17,36 @@ export enum TickOrder {
 
 export abstract class IEntity<D = any, R = any, TypeDoc extends GgWorldTypeDocRepo<D, R> = GgWorldTypeDocRepo<D, R>> {
   private static default_name_counter = 0;
+
+  /**
+   * Transforms applied, in registration order, to every auto-generated default entity name (never
+   * to a name explicitly assigned by app code or `LevelLoader`) - see
+   * {@link useDefaultNameMiddleware}.
+   */
+  private static defaultNameMiddlewares: Array<(name: string) => string> = [];
+
+  /**
+   * Register a transform run on every subsequently-constructed entity's auto-generated default
+   * name (`'e0x...'` plus a process-wide counter) at construction time, before anything else can
+   * touch it. Multiple registrations chain in call order. This is the one seam a package with its
+   * own notion of identity (e.g. a future network layer wanting to qualify every otherwise-unnamed
+   * entity with a peer id) needs: app code keeps calling ordinary core factories/constructors with
+   * no awareness such a layer exists, and every entity that isn't explicitly named by that app code
+   * or by `LevelLoader` picks up the transform automatically. Core itself never calls this.
+   * @param middleware - Receives the default name generated so far, returns the name to use
+   */
+  public static useDefaultNameMiddleware(middleware: (name: string) => string): void {
+    IEntity.defaultNameMiddlewares.push(middleware);
+  }
+
+  private static generateDefaultName(): string {
+    let name = 'e0x' + (IEntity.default_name_counter++).toString(16);
+    for (const middleware of IEntity.defaultNameMiddlewares) {
+      name = middleware(name);
+    }
+    return name;
+  }
+
   /**
    * will receive [elapsed time, delta] of each world clock tick
    */
@@ -34,13 +64,22 @@ export abstract class IEntity<D = any, R = any, TypeDoc extends GgWorldTypeDocRe
     return this._world;
   }
 
-  protected _name: string = 'e0x' + (IEntity.default_name_counter++).toString(16);
+  /**
+   * Falls back to an auto-generated `'e0x...'` default (see {@link useDefaultNameMiddleware}) until
+   * explicitly assigned. Must be unique within whichever `GgWorld` this entity is (or becomes) a
+   * member of - the `name` setter validates this itself once the entity is spawned, and `GgWorld
+   * .addEntity` validates it at spawn time otherwise; both throw on a collision.
+   */
+  protected _name: string = IEntity.generateDefaultName();
 
   public get name(): string {
     return this._name;
   }
 
   public set name(value: string) {
+    if (this._world) {
+      this._world.renameEntity(this, value);
+    }
     this._name = value;
   }
 

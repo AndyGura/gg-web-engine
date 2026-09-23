@@ -52,7 +52,13 @@ Per entity:
 - `position`/`rotation` (optional) - `Point2`/`number` for a 2D level, `Point3`/`Point4`
   (quaternion) for a 3D level. Omit either to leave it at the generator's default.
 - `name` (optional) - the generator's returned entity's `.name` is set to this (overriding whatever
-  default it had), so it can be found afterwards - see "Finding entities by name" below.
+  default it had), so it can be found afterwards - see "Finding entities by name" below. Omitted
+  entirely, the entity is instead named `` `${levelName}__${classAlias}_${index}` `` (`index` its
+  position in `entities`) - deterministic purely from the level document's own content and the
+  `levelName` the app loads it under, so two peers loading the same JSON under the same `levelName`
+  always agree on every unnamed entity's name too (this is why `levelName` is a required argument
+  to `loadLevel`/
+  `loadLevelFromUrl` - see "Loading a level, and tearing it back down" below).
 - `config` (optional) - class-specific settings (e.g. `dimensions`, `radius`, `material`, `body`
   for `"Primitive"`). Spread directly into the settings object the generator receives.
 
@@ -64,7 +70,7 @@ generator, so a generator's settings parameter sees one flat object:
 ## Loading a level, and tearing it back down
 
 ```typescript
-const level = await world.loader.loadLevelFromUrl(LEVEL_URL);
+const level = await world.loader.loadLevelFromUrl(LEVEL_URL, 'MainLevel');
 // ... later, e.g. to swap in a different level:
 world.removeEntity(level, true);
 ```
@@ -91,10 +97,14 @@ everything added to it so far) is torn down (`world.removeEntity(level, true)`) 
 rethrown - a failed load doesn't leave orphaned entities behind, since the caller never gets a
 `level` reference to clean up itself in that case.
 
-Optionally name the group itself: `loadLevel(json, 'MyLevel')` / `loadLevelFromUrl(url, 'MyLevel')`
-sets `level.name` - handy for a debugger/console entity listing, or so
-`world.removeEntity(world.getEntityByName('MyLevel'), true)` works without holding onto the
-returned value.
+`levelName` is a required second argument - `loadLevel(json, 'MyLevel')` /
+`loadLevelFromUrl(url, 'MyLevel')` - and sets `level.name`, so `world.removeEntity
+(world.getEntityByName('MyLevel'), true)` works without holding onto the returned value; it also
+scopes every unnamed entity's derived default name (see the `name` field above), so pick something
+unique per loaded *instance*, not just per level type - loading the same level JSON twice (e.g. two
+copies of one room) needs two distinct `levelName`s, the same way two `GroupEntity`s can't otherwise
+be told apart by name. `GgWorld` enforces this: `loadLevel` throws if `levelName`, or any entity
+name (explicit or derived) it produces, collides with a name already in use anywhere in the world.
 
 ## Finding entities by name
 
@@ -113,9 +123,9 @@ entity back after loading:
 Both throw (`No child entity named "..." found under "..."` / `No entity named "..." found in the
 world`) rather than returning `undefined`, so a typo fails loudly. Both search live state, not a
 cache - a removed/disposed entity simply stops being found, it doesn't linger as a stale reference.
-If more than one entity shares a name, whichever is encountered first (child-array order for
-`getChildEntityByName`, insertion order for `getEntityByName`) wins; a level JSON generally
-shouldn't reuse a `name`, but nothing enforces that.
+Names are enforced unique world-wide - `GgWorld.addEntity` and `IEntity`'s own `name` setter both
+throw immediately on a collision - so a level JSON reusing a `name` (or colliding with an entity
+from another level/the app's own code) fails loudly at load time rather than silently shadowing.
 
 ## Built-in classes
 
@@ -148,7 +158,7 @@ physics trigger component: already positioned, already parented under the level'
 (hence already in the world), and ready to subscribe to:
 
 ```typescript
-const level = await world.loader.loadLevelFromUrl(LEVEL_URL); // has a "Trigger" entity named "KillZone"
+const level = await world.loader.loadLevelFromUrl(LEVEL_URL, 'MainLevel'); // has a "Trigger" entity named "KillZone"
 const killZone = level.getChildEntityByName<Trigger3dEntity>('KillZone');
 killZone.onEntityEntered.subscribe(entity => world.removeEntity(entity, true));
 ```
@@ -647,7 +657,7 @@ class ShapeSpawner extends IEntity {
 world.loader.registerClass('ShapeSpawner', (w: Gg3dWorld, settings: ShapeSpawnerSettings) =>
   new ShapeSpawner(w, settings),
 );
-await world.loader.loadLevel(level); // level has an entity with "class": "ShapeSpawner"
+await world.loader.loadLevel(level, 'MainLevel'); // level has an entity with "class": "ShapeSpawner"
 ```
 
 There's nothing engine-specific about `ShapeSpawner` here - it's ordinary app code, registered the
@@ -674,13 +684,13 @@ that class registered first, or that entity silently disappears.
 ## Where level JSON content lives
 
 The `examples/primitives-*` demos all declare their level as a hardcoded `const level: LevelJson =
-{...}` object directly in `index.ts` and pass it straight to `world.loader.loadLevel(level)` - no
-separate `.json` file, no `fetch`. This is the right default for a level that's small and doesn't
-need to change without a rebuild: it type-checks against `LevelJson` like any other TS object, and
-there's no `resolveJsonModule`/loader wiring to think about.
+{...}` object directly in `index.ts` and pass it straight to `world.loader.loadLevel(level, 'MainLevel')`
+- no separate `.json` file, no `fetch`. This is the right default for a level that's small and
+doesn't need to change without a rebuild: it type-checks against `LevelJson` like any other TS
+object, and there's no `resolveJsonModule`/loader wiring to think about.
 
 There's no required location or format for an app's own level content in general - reach for a
-separate hosted/static `.json` file plus `loadLevelFromUrl(url)` instead when a level should be
+separate hosted/static `.json` file plus `loadLevelFromUrl(url, levelName)` instead when a level should be
 swappable at runtime without a rebuild (CDN-hosted content, user-authored levels, a StackBlitz demo
 where a visitor edits the JSON in the IDE pane and reruns). A file-based level still type-checks as
 `LevelJson` if imported directly (`import level from './level.json'`, `"resolveJsonModule": true` +

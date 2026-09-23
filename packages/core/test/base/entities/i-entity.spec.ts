@@ -44,6 +44,39 @@ describe('IEntity', () => {
     expect(ggEntity.name).toBe(newName);
   });
 
+  describe('useDefaultNameMiddleware', () => {
+    afterEach(() => {
+      // middlewares are process-global and would otherwise leak into every later test in this file
+      (IEntity as any).defaultNameMiddlewares = [];
+    });
+
+    it('applies a registered middleware to every subsequently-constructed entity default name', () => {
+      IEntity.useDefaultNameMiddleware(name => `peer1:${name}`);
+
+      const entity = new GgEntityMock();
+
+      expect(entity.name).toMatch(/^peer1:e0x[0-9a-f]+$/);
+    });
+
+    it('chains multiple middlewares in registration order', () => {
+      IEntity.useDefaultNameMiddleware(name => `a(${name})`);
+      IEntity.useDefaultNameMiddleware(name => `b(${name})`);
+
+      const entity = new GgEntityMock();
+
+      expect(entity.name).toMatch(/^b\(a\(e0x[0-9a-f]+\)\)$/);
+    });
+
+    it('never touches a name explicitly assigned afterward', () => {
+      IEntity.useDefaultNameMiddleware(name => `peer1:${name}`);
+
+      const entity = new GgEntityMock();
+      entity.name = 'Explicit';
+
+      expect(entity.name).toBe('Explicit');
+    });
+  });
+
   it('should add children entities', () => {
     const child1 = new GgEntityMock();
     const child2 = new GgEntityMock();
