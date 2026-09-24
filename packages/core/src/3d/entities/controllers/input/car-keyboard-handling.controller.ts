@@ -15,6 +15,7 @@ export type CarKeyboardControllerOptions = {
 export type CarHandlingOutput = { upDown: number; leftRight: number };
 
 export class CarKeyboardHandlingController extends IEntity {
+  static readonly entityTypeName: string = 'CarKeyboardHandlingController';
   public readonly tickOrder = TickOrder.INPUT_CONTROLLERS;
 
   public readonly directionsInput: DirectionKeyboardInput;

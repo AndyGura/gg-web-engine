@@ -78,6 +78,7 @@ const DEFAULT_FREE_CAMERA_CONTROLLER_OPTIONS: FreeCameraControllerOptions = {
  * A controller for a free-moving camera.
  */
 export class FreeCameraController extends IEntity {
+  static readonly entityTypeName: string = 'FreeCameraController';
   public readonly tickOrder = TickOrder.INPUT_CONTROLLERS;
 
   protected readonly options: FreeCameraControllerOptions;

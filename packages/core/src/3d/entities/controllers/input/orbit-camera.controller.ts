@@ -55,6 +55,7 @@ const DEFAULT_OPTIONS: OrbitCameraControllerOptions = {
 };
 
 export class OrbitCameraController extends IEntity {
+  static readonly entityTypeName: string = 'OrbitCameraController';
   public readonly tickOrder = TickOrder.INPUT_CONTROLLERS;
 
   protected readonly options: OrbitCameraControllerOptions;

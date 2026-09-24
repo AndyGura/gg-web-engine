@@ -19,6 +19,7 @@ export class AnimationMixer<
   R = any,
   TypeDoc extends GgWorldTypeDocRepo<D, R> = GgWorldTypeDocRepo<D, R>,
 > extends IEntity<D, R, TypeDoc> {
+  static readonly entityTypeName: string = 'AnimationMixer';
   public readonly tickOrder: number = TickOrder.ANIMATION_MIXERS;
   /**
    * A subject that emits the current value of the animation on every tick.

@@ -9,6 +9,7 @@ export class Trigger3dEntity<PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsType
   extends IEntity<Point3, Point4, Gg3dWorldTypeDocPPatch<PTypeDoc>>
   implements IPositionable3d
 {
+  static readonly entityTypeName: string = 'Trigger3dEntity';
   public readonly tickOrder = TickOrder.OBJECTS_BINDING;
 
   get onEntityEntered(): Observable<

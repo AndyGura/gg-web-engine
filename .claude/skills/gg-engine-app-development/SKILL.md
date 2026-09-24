@@ -168,6 +168,56 @@ classes (constructor parameters, helper functions, entity subclasses in their ow
 small single-file app, inlining `TypedGg3dWorld<ThreeGgWorld, Rapier3dGgWorld>` directly at the
 `world` declaration is enough — no need to name a separate `AppTypeDoc`/`AppWorld` alias.
 
+## Every custom entity class needs `static readonly entityTypeName`
+
+**Any class the app defines that extends `IEntity`/`Entity3d`/`Entity2d` (a `Car`, a
+`ShapeSpawner`-style level-JSON class registered via `registerClass`, a custom controller) must
+declare `static readonly entityTypeName: string = 'ClassName';`, matching the class's own name, as
+(or near) its first member.** This is a required practice, not an optional nicety - check for it on
+any new entity class you write, and flag its absence when reviewing one:
+
+```typescript
+class Car extends Entity3d<AppTypeDoc> {
+  static readonly entityTypeName: string = 'Car';
+  // ...
+}
+```
+
+**Why this matters more than it looks:** it's a stable, class-identifying string the engine's future
+entity serializer needs every entity class to already have. `LevelLoader` today only loads (JSON →
+entities), with no inverse direction yet (see `milestones.md`'s M2 "Export/serialize selected
+runtime state back to JSON" item and the "Networking / multiplayer" item under "Later / Under
+Consideration"); once that direction is built, turning a live, runtime-spawned `Car` back into a
+level-JSON-shaped descriptor - so it can be reproduced elsewhere - needs exactly this kind of tag as
+the descriptor's `class` value. Tagging your entity classes as you write them now means none of them
+need a retrofit pass later just to become serializable.
+
+As a free bonus today: any `Car` an app constructs without an explicit `name` (`new Car(...)` with
+nothing else naming it - e.g. one dynamically spawned at runtime rather than loaded from level JSON)
+would otherwise show up in the dev console's `entities`/`entity` commands, and in any `console.log`
+of the raw entity, as an opaque `e0x7`-style default with no indication of what it even is. With the
+tag, it reads as `Car_0`, `Car_1`, ... instead - `IEntity` reads `entityTypeName` off
+`this.constructor` at construction time and uses it to build the default name, whenever the app
+hasn't given the entity an explicit `.name` itself (level-JSON-loaded and explicitly-named entities
+are unaffected either way - see `gg-engine-level-json`'s own naming section).
+
+Two details worth getting right:
+
+- **Always add the `: string` type annotation**, even though `static readonly entityTypeName =
+  'Car';` compiles fine on its own - TypeScript infers the bare literal type `'Car'` without it,
+  which breaks the moment a subclass of `Car` also declares its own tag (`Class static side ...
+  incorrectly extends base class static side ... Type '"..."' is not assignable to type '"Car"'`,
+  TS2417). The annotation avoids that surprise for any future subclass.
+- A subclass that doesn't declare its own tag inherits its parent's automatically (ordinary JS
+  static inheritance via the constructor prototype chain) - only give a subclass its own tag when it
+  should read as its own name rather than its parent's in the debug console.
+
+Don't derive this from `this.constructor.name`/`Function.name` instead - a production bundler
+commonly mangles a class's real `Function.name` under minification (most minifiers don't preserve it
+by default), which would make the default name meaningless, or worse, silently different between a
+dev build and this same app's production build. `entityTypeName` is a plain static string property,
+untouched by minification regardless of build config.
+
 ## Adding a loose component to the world without an entity
 
 Every component that can live in a world - display objects/renderers (visual), rigid
@@ -305,7 +355,10 @@ wireframe overlay), `performance [avg|peak] [sampleCount]`, and three **generic,
 entity commands that need no game-rules knowledge**:
 
 - `entities [nameFilter?]` — list every entity's name and class in the selected world (`children`
-  is already a flat list, nested entities included), optionally filtered by a substring.
+  is already a flat list, nested entities included), optionally filtered by a substring. An entity
+  with no explicit `name` reads as `ClassName_0`/`ClassName_1`/... here rather than an opaque
+  `e0x7` - see "Every custom entity class needs `static readonly entityTypeName`" above - so an unreadable name in
+  this listing is a signal the class producing it is missing the tag.
 - `entity NAME` — dump one entity's class, active/visible flags, position/rotation (if it has
   any — printed generically via duck-typing, so this works for both 2D and 3D entities), parent,
   and children names.
@@ -408,6 +461,10 @@ on any named entity, including the player.
 
 ## Common pitfalls
 
+- Defining a custom entity class without `static readonly entityTypeName: string = 'ClassName';` -
+  see "Every custom entity class needs `static readonly entityTypeName`" above. Easy to miss since nothing fails to
+  compile or run without it; the only symptom is an opaque `e0x7`-style name for any instance the
+  app doesn't explicitly name, instead of a readable `ClassName_0`.
 - Forgetting `await world.init()` before calling `.factory`, `.addRenderer`, etc. (adapters throw
   "not initialized" errors by design — see e.g. `AmmoWorldComponent.factory` getter).
 - Passing a canvas element that isn't attached to the DOM yet when calling `addRenderer`.

@@ -139,6 +139,25 @@ Status
   `test/base/gg-world.spec.ts`, `test/base/entities/i-entity.spec.ts`, `test/{2d,3d}/level-loader.spec.ts`,
   `test/3d/loader.spec.ts`) and the four `primitives-*` examples; documented for consumers in the
   `gg-engine-level-json` skill.
+- ✅ Sync-safe entity naming, laying groundwork for the multiplayer design under consideration below
+  (2026-09-23): `loadLevel`/`loadLevelFromUrl`'s `levelName` argument is now required rather than
+  optional, and any entity `loadLevel` doesn't explicitly name gets one derived as
+  `` `${levelName}__${classAlias}_${index}` `` instead of the previous process-global
+  `IEntity` counter default (`'e0x...'`) - deterministic purely from the level document's own
+  content and `levelName`, so two peers loading the same level JSON under the same `levelName` agree
+  on every entity's name regardless of load order or what else either peer has spawned. `GgWorld`
+  gained a `name -> entity` index (`addEntity`/`removeEntity`/the `IEntity.name` setter all keep it
+  in sync), making `getEntityByName` O(1) and, more importantly, enforcing world-wide name uniqueness
+  - both throw immediately on a collision, so a reused name fails loudly at load/rename time instead
+  of silently shadowing. `IEntity` also gained `useDefaultNameMiddleware` (a static hook chaining
+  transforms onto every subsequently-constructed entity's auto-generated default name, never onto an
+  explicitly-assigned one) - a future `network-p2p` package's intended seam for qualifying otherwise-
+  unnamed runtime-spawned entities (e.g. with a peer id) without core taking any dependency on a
+  "peer" concept, and without app code (which just calls ordinary core factories) needing to know
+  that layer exists. Covered by new tests in `test/base/gg-world.spec.ts`,
+  `test/base/entities/i-entity.spec.ts`, and `test/base/level-loader.spec.ts`; documented in the
+  `gg-engine-level-json` skill; every example and existing test call site updated for the now-required
+  `levelName` argument.
 - Document the Level JSON shape as a machine-checkable JSON Schema (`docs/specs/level-json.schema.json`)
   with CI validation of example levels — not started. The `gg-engine-level-json` skill documents the
   shape informally today, which is enough for humans but not enforced anywhere.

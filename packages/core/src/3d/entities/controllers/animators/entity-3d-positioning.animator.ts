@@ -14,6 +14,7 @@ export class Entity3dPositioningAnimator<T extends IPositionable3d = IPositionab
   Point4,
   Gg3dWorldTypeDocRepo
 > {
+  static readonly entityTypeName: string = 'Entity3dPositioningAnimator';
   constructor(
     public entity: T,
     protected _animationFunction: AnimationFunction<Positioning3d>,

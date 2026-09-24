@@ -59,7 +59,7 @@ describe('Gg2dLevelLoader', () => {
       };
 
       // Load the level
-      const level = await levelLoader.loadLevel(levelJson);
+      const level = await levelLoader.loadLevel(levelJson, 'TestLevel');
 
       // Verify that the entity was created via the world's primitive helper, and reachable by name
       expect(world.addPrimitiveRigidBody).toHaveBeenCalledWith(
@@ -87,7 +87,7 @@ describe('Gg2dLevelLoader', () => {
         entities: [{ class: 'Primitive', shape: 'SQUARE', position: { x: 0, y: 0 } }],
       };
 
-      await expect(levelLoader.loadLevel(levelJson)).rejects.toThrow('Dimensions are required for SQUARE primitive');
+      await expect(levelLoader.loadLevel(levelJson, 'TestLevel')).rejects.toThrow('Dimensions are required for SQUARE primitive');
     });
 
     it('should throw for an unknown primitive shape', async () => {
@@ -95,7 +95,7 @@ describe('Gg2dLevelLoader', () => {
         entities: [{ class: 'Primitive', shape: 'Triangle' }],
       };
 
-      await expect(levelLoader.loadLevel(levelJson)).rejects.toThrow('Unknown primitive shape "Triangle"');
+      await expect(levelLoader.loadLevel(levelJson, 'TestLevel')).rejects.toThrow('Unknown primitive shape "Triangle"');
     });
 
     it('should load a level with circle primitives', async () => {
@@ -119,7 +119,7 @@ describe('Gg2dLevelLoader', () => {
       };
 
       // Load the level
-      await levelLoader.loadLevel(levelJson);
+      await levelLoader.loadLevel(levelJson, 'TestLevel');
 
       // Verify that the entity was created via the world's primitive helper
       expect(world.addPrimitiveRigidBody).toHaveBeenCalledWith(
@@ -152,7 +152,7 @@ describe('Gg2dLevelLoader', () => {
         ],
       };
 
-      await levelLoader.loadLevel(levelJson);
+      await levelLoader.loadLevel(levelJson, 'TestLevel');
 
       expect(world.addPrimitiveRigidBody).toHaveBeenCalledWith(
         {
@@ -190,7 +190,7 @@ describe('Gg2dLevelLoader', () => {
       };
 
       // Load the level
-      const level = await levelLoader.loadLevel(levelJson);
+      const level = await levelLoader.loadLevel(levelJson, 'TestLevel');
 
       // Verify that the trigger was created, and reachable by name as a positioned entity (not
       // just the raw physics trigger component)
@@ -216,7 +216,7 @@ describe('Gg2dLevelLoader', () => {
         ],
       };
 
-      const level = await levelLoader.loadLevel(levelJson);
+      const level = await levelLoader.loadLevel(levelJson, 'TestLevel');
 
       expect(world.audioScene?.factory.loadClip).toHaveBeenCalledWith('assets/audio/wind.mp3');
       expect(world.audioScene?.factory.createSource).toHaveBeenCalledWith(
@@ -233,7 +233,7 @@ describe('Gg2dLevelLoader', () => {
         entities: [{ class: 'Sound', name: 'Ambience', config: {} }],
       };
 
-      await expect(levelLoader.loadLevel(levelJson)).rejects.toThrow('"path" is required for Sound class');
+      await expect(levelLoader.loadLevel(levelJson, 'TestLevel')).rejects.toThrow('"path" is required for Sound class');
     });
   });
 
@@ -260,7 +260,7 @@ describe('Gg2dLevelLoader', () => {
       };
 
       // Load the level
-      const level = await levelLoader.loadLevel(levelJson);
+      const level = await levelLoader.loadLevel(levelJson, 'TestLevel');
 
       // Verify that the custom generator was called with the correct arguments, and reachable by name
       expect(mockGenerator).toHaveBeenCalledWith(world, {
@@ -291,7 +291,7 @@ describe('Gg2dLevelLoader', () => {
       console.warn = jest.fn();
 
       // Load the level
-      const level = await levelLoader.loadLevel(levelJson);
+      const level = await levelLoader.loadLevel(levelJson, 'TestLevel');
 
       // Verify that no entity was created and a warning was logged
       expect(() => level.getChildEntityByName('TestUnknownEntity')).toThrow(

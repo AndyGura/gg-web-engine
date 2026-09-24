@@ -16,6 +16,7 @@ export class Camera3dEntity<VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDoc
   extends IEntity<Point3, Point4, Gg3dWorldTypeDocVPatch<VTypeDoc>>
   implements IPositionable3d
 {
+  static readonly entityTypeName: string = 'Camera3dEntity';
   public readonly tickOrder = TickOrder.OBJECTS_BINDING;
 
   private _position = Pnt3.O;

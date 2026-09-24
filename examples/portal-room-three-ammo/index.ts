@@ -273,7 +273,7 @@ world.init().then(async () => {
   incineratorGlow.position.set(INCINERATOR_X, INCINERATOR_Y, INCINERATOR_HEIGHT + 0.3);
   world.visualScene.nativeScene?.add(incineratorGlow);
 
-  const levelGroup = await world.loader.loadLevel(level);
+  const levelGroup = await world.loader.loadLevel(level, 'MainLevel');
   for (const item of levelGroup.children as { object3D?: { nativeMesh: Mesh } }[]) {
     item.object3D?.nativeMesh.traverse(obj => {
       obj.castShadow = true;

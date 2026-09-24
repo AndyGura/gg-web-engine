@@ -2,6 +2,7 @@ import { GgWorld, IEntity, TickOrder } from '../base';
 import { takeUntil } from 'rxjs';
 
 export class PerformanceMeterEntity extends IEntity {
+  static readonly entityTypeName: string = 'PerformanceMeterEntity';
   readonly tickOrder: TickOrder | number = Number.MAX_SAFE_INTEGER;
 
   private sampleIndex = 0;

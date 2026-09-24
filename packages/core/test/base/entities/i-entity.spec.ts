@@ -44,6 +44,90 @@ describe('IEntity', () => {
     expect(ggEntity.name).toBe(newName);
   });
 
+  describe('useDefaultNameMiddleware', () => {
+    afterEach(() => {
+      // middlewares are process-global and would otherwise leak into every later test in this file
+      (IEntity as any).defaultNameMiddlewares = [];
+    });
+
+    it('applies a registered middleware to every subsequently-constructed entity default name', () => {
+      IEntity.useDefaultNameMiddleware(name => `peer1:${name}`);
+
+      const entity = new GgEntityMock();
+
+      expect(entity.name).toMatch(/^peer1:e0x[0-9a-f]+$/);
+    });
+
+    it('chains multiple middlewares in registration order', () => {
+      IEntity.useDefaultNameMiddleware(name => `a(${name})`);
+      IEntity.useDefaultNameMiddleware(name => `b(${name})`);
+
+      const entity = new GgEntityMock();
+
+      expect(entity.name).toMatch(/^b\(a\(e0x[0-9a-f]+\)\)$/);
+    });
+
+    it('never touches a name explicitly assigned afterward', () => {
+      IEntity.useDefaultNameMiddleware(name => `peer1:${name}`);
+
+      const entity = new GgEntityMock();
+      entity.name = 'Explicit';
+
+      expect(entity.name).toBe('Explicit');
+    });
+  });
+
+  describe('entityTypeName-based default naming', () => {
+    afterEach(() => {
+      // middlewares and per-type counters are process-global and would otherwise leak into every
+      // later test in this file
+      (IEntity as any).defaultNameMiddlewares = [];
+      (IEntity as any).defaultNameCountersByType = new Map();
+    });
+
+    it('uses "${entityTypeName}_${n}" instead of the opaque default when the class declares one', () => {
+      const a = new TaggedEntityMock();
+      const b = new TaggedEntityMock();
+
+      expect(a.name).toBe('TaggedEntityMock_0');
+      expect(b.name).toBe('TaggedEntityMock_1');
+    });
+
+    it('scopes the counter per entityTypeName, not globally', () => {
+      const a = new TaggedEntityMock();
+      const c = new OtherTaggedEntityMock();
+
+      expect(a.name).toBe('TaggedEntityMock_0');
+      expect(c.name).toBe('OtherTaggedEntityMock_0');
+    });
+
+    it('falls back to a parent class entityTypeName when a subclass declares none of its own', () => {
+      const entity = new UntaggedSubclassOfTaggedMock();
+
+      expect(entity.name).toBe('TaggedEntityMock_0');
+    });
+
+    it('still runs default-name middlewares on top of an entityTypeName-derived name', () => {
+      IEntity.useDefaultNameMiddleware(name => `peer1:${name}`);
+
+      const entity = new TaggedEntityMock();
+
+      expect(entity.name).toBe('peer1:TaggedEntityMock_0');
+    });
+
+    class TaggedEntityMock extends IEntity {
+      static readonly entityTypeName: string = 'TaggedEntityMock';
+      readonly tickOrder = TickOrder.OBJECTS_BINDING;
+    }
+
+    class OtherTaggedEntityMock extends IEntity {
+      static readonly entityTypeName: string = 'OtherTaggedEntityMock';
+      readonly tickOrder = TickOrder.OBJECTS_BINDING;
+    }
+
+    class UntaggedSubclassOfTaggedMock extends TaggedEntityMock {}
+  });
+
   it('should add children entities', () => {
     const child1 = new GgEntityMock();
     const child2 = new GgEntityMock();

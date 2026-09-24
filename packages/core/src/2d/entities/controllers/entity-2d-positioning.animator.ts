@@ -14,6 +14,7 @@ export class Entity2dPositioningAnimator<T extends Entity2d = Entity2d> extends 
   number,
   Gg2dWorldTypeDocRepo
 > {
+  static readonly entityTypeName: string = 'Entity2dPositioningAnimator';
   constructor(
     public entity: T,
     protected _animationFunction: AnimationFunction<Positioning2d>,

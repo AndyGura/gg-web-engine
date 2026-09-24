@@ -3,6 +3,7 @@ import { IEntity, TickOrder } from '../i-entity';
 import { finalize, Observable } from 'rxjs';
 
 class InlineTickController extends IEntity {
+  static readonly entityTypeName: string = 'InlineTickController';
   constructor(public readonly tickOrder: TickOrder | number) {
     super();
   }

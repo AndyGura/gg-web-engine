@@ -85,6 +85,7 @@ const DEFAULT_OPTIONS: ObjectGrabControllerOptions = {
  * when it isn't one.
  */
 export class ObjectGrabController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo> extends IEntity {
+  static readonly entityTypeName: string = 'ObjectGrabController';
   // Must run before physics simulation, so the velocity `heldObject.updateHold()` sets this tick
   // is what actually gets integrated this frame - see `Grabbable3dEntity.updateHold`'s doc.
   public readonly tickOrder = TickOrder.PHYSICS_SIMULATION - 5;

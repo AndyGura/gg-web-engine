@@ -4,4 +4,7 @@ import { IPositionable2d } from '../interfaces/i-positionable-2d';
 
 export class Renderer2dEntity<VTypeDoc extends VisualTypeDocRepo2D = VisualTypeDocRepo2D>
   extends IRendererEntity<Point2, number, VTypeDoc>
-  implements IPositionable2d {}
+  implements IPositionable2d
+{
+  static readonly entityTypeName: string = 'Renderer2dEntity';
+}

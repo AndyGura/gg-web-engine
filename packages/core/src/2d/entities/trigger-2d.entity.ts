@@ -9,6 +9,7 @@ export class Trigger2dEntity<PTypeDoc extends PhysicsTypeDocRepo2D = PhysicsType
   extends IEntity<Point2, number, Gg2dWorldTypeDocPPatch<PTypeDoc>>
   implements IPositionable2d
 {
+  static readonly entityTypeName: string = 'Trigger2dEntity';
   public readonly tickOrder = TickOrder.OBJECTS_BINDING;
 
   get onEntityEntered(): Observable<

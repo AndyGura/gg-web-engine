@@ -123,6 +123,9 @@ export abstract class GgWorld<
   readonly children: IEntity[] = [];
   // the same as children, but sorted by tick order
   protected readonly tickListeners: IEntity[] = [];
+  // name -> entity index over every entity in `children`, kept in sync by addEntity/removeEntity/
+  // renameEntity/dispose - backs getEntityByName and enforces world-wide name uniqueness
+  private readonly entitiesByName: Map<string, IEntity> = new Map();
 
   public get renderers(): IRendererEntity<D, R>[] {
     return this.tickListeners.filter(e => e instanceof IRendererEntity) as IRendererEntity<D, R>[];
@@ -248,6 +251,7 @@ export abstract class GgWorld<
     }
     this.children.splice(0, this.children.length);
     this.tickListeners.splice(0, this.tickListeners.length);
+    this.entitiesByName.clear();
     if (this.physicsWorld) {
       this.physicsWorld.dispose();
     }
@@ -280,6 +284,11 @@ export abstract class GgWorld<
       warnOnce('Trying to spawn entity, which is already spawned');
       return;
     }
+    const existing = this.entitiesByName.get(entity.name);
+    if (existing && existing !== entity) {
+      throw new Error(`Cannot add entity - name "${entity.name}" is already in use by another entity in this world`);
+    }
+    this.entitiesByName.set(entity.name, entity);
     this.children.push(entity);
     this.tickListeners.push(entity);
     this.tickListeners.sort((l1, l2) => l1.tickOrder - l2.tickOrder);
@@ -300,6 +309,7 @@ export abstract class GgWorld<
         this.tickListeners.findIndex(x => (x as any) === entity),
         1,
       );
+      this.entitiesByName.delete(entity.name);
       entity.onRemoved();
     }
     if (dispose) {
@@ -308,16 +318,40 @@ export abstract class GgWorld<
   }
 
   /**
-   * Find an entity anywhere in the world by name. `children` is a flat list of every entity ever
-   * added via `addEntity` (nested entities included - `addChildren`/`onSpawned` cascade into it
-   * too), so this is a plain linear scan, not a tree walk; to search inside one particular
-   * entity's own subtree instead, use `IEntity.getChildEntityByName`.
+   * Update this world's name index to reflect `entity` being renamed to `newName` - called by
+   * `IEntity`'s own `name` setter, not meant to be called directly. Validates uniqueness the same
+   * way `addEntity` does.
+   * @param entity - The entity being renamed, still reporting its *old* `name` at this point
+   * @param newName - The name it's about to be renamed to
+   * @throws if another entity in this world already has `newName`
+   */
+  public renameEntity(entity: IEntity, newName: string): void {
+    if (newName === entity.name) {
+      return;
+    }
+    const existing = this.entitiesByName.get(newName);
+    if (existing && existing !== entity) {
+      throw new Error(
+        `Cannot rename entity "${entity.name}" to "${newName}" - name already in use by another entity in this world`,
+      );
+    }
+    this.entitiesByName.delete(entity.name);
+    this.entitiesByName.set(newName, entity);
+  }
+
+  /**
+   * Find an entity anywhere in the world by name - an O(1) lookup backed by an index kept in sync
+   * by `addEntity`/`removeEntity`/`renameEntity`, covering every entity ever added via `addEntity`
+   * (nested entities included - `addChildren`/`onSpawned` cascade into it too); to search inside
+   * one particular entity's own subtree instead, use `IEntity.getChildEntityByName`. Names are
+   * enforced unique world-wide - `addEntity` and the `name` setter both throw on a collision - so
+   * there is never more than one match to choose between.
    * @param name - The entity's `name`
-   * @returns The first entity found with that name (insertion order), if more than one shares it
+   * @returns The entity with that name
    * @throws if no entity in the world has that name
    */
   public getEntityByName<T extends IEntity = IEntity>(name: string): T {
-    const found = this.children.find(e => e.name === name);
+    const found = this.entitiesByName.get(name);
     if (!found) {
       throw new Error(`No entity named "${name}" found in the world`);
     }

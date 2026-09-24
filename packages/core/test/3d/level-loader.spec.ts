@@ -94,7 +94,7 @@ describe('Gg3dLevelLoader', () => {
       };
 
       // Load the level
-      const level = await levelLoader.loadLevel(levelJson);
+      const level = await levelLoader.loadLevel(levelJson, 'TestLevel');
 
       // Verify that the entity was created via the world's primitive helper, and reachable by name
       expect(world.addPrimitiveRigidBody).toHaveBeenCalledWith(
@@ -108,12 +108,12 @@ describe('Gg3dLevelLoader', () => {
 
     it('should throw when dimensions are missing for a Box primitive', async () => {
       const levelJson: LevelJson = { entities: [{ class: 'Primitive', shape: 'BOX' }] };
-      await expect(levelLoader.loadLevel(levelJson)).rejects.toThrow('Dimensions are required for BOX primitive');
+      await expect(levelLoader.loadLevel(levelJson, 'TestLevel')).rejects.toThrow('Dimensions are required for BOX primitive');
     });
 
     it('should throw for an unknown primitive shape', async () => {
       const levelJson: LevelJson = { entities: [{ class: 'Primitive', shape: 'Torus' }] };
-      await expect(levelLoader.loadLevel(levelJson)).rejects.toThrow('Unknown primitive shape "Torus"');
+      await expect(levelLoader.loadLevel(levelJson, 'TestLevel')).rejects.toThrow('Unknown primitive shape "Torus"');
     });
 
     it('should load a level with sphere primitives', async () => {
@@ -121,7 +121,7 @@ describe('Gg3dLevelLoader', () => {
         entities: [{ class: 'Primitive', shape: 'SPHERE', config: { radius: 0.5 } }],
       };
 
-      await levelLoader.loadLevel(levelJson);
+      await levelLoader.loadLevel(levelJson, 'TestLevel');
 
       expect(world.addPrimitiveRigidBody).toHaveBeenCalledWith(
         { shape: { shape: 'SPHERE', radius: 0.5 }, body: defaultBody },
@@ -134,7 +134,7 @@ describe('Gg3dLevelLoader', () => {
     it('should load a level with plane primitives', async () => {
       const levelJson: LevelJson = { entities: [{ class: 'Primitive', shape: 'PLANE' }] };
 
-      await levelLoader.loadLevel(levelJson);
+      await levelLoader.loadLevel(levelJson, 'TestLevel');
 
       expect(world.addPrimitiveRigidBody).toHaveBeenCalledWith(
         { shape: { shape: 'PLANE' }, body: defaultBody },
@@ -149,7 +149,7 @@ describe('Gg3dLevelLoader', () => {
         entities: [{ class: 'Primitive', shape: 'CAPSULE', config: { radius: 0.5, centersDistance: 1 } }],
       };
 
-      await levelLoader.loadLevel(levelJson);
+      await levelLoader.loadLevel(levelJson, 'TestLevel');
 
       expect(world.addPrimitiveRigidBody).toHaveBeenCalledWith(
         { shape: { shape: 'CAPSULE', radius: 0.5, centersDistance: 1 }, body: defaultBody },
@@ -164,7 +164,7 @@ describe('Gg3dLevelLoader', () => {
         entities: [{ class: 'Primitive', shape: 'CYLINDER', config: { radius: 0.5, height: 2 } }],
       };
 
-      await levelLoader.loadLevel(levelJson);
+      await levelLoader.loadLevel(levelJson, 'TestLevel');
 
       expect(world.addPrimitiveRigidBody).toHaveBeenCalledWith(
         { shape: { shape: 'CYLINDER', radius: 0.5, height: 2 }, body: defaultBody },
@@ -179,7 +179,7 @@ describe('Gg3dLevelLoader', () => {
         entities: [{ class: 'Primitive', shape: 'CONE', config: { radius: 0.5, height: 2 } }],
       };
 
-      await levelLoader.loadLevel(levelJson);
+      await levelLoader.loadLevel(levelJson, 'TestLevel');
 
       expect(world.addPrimitiveRigidBody).toHaveBeenCalledWith(
         { shape: { shape: 'CONE', radius: 0.5, height: 2 }, body: defaultBody },
@@ -206,7 +206,7 @@ describe('Gg3dLevelLoader', () => {
       };
 
       // Load the level
-      const level = await levelLoader.loadLevel(levelJson);
+      const level = await levelLoader.loadLevel(levelJson, 'TestLevel');
 
       // Verify that the trigger was created, and reachable by name as a positioned entity (not
       // just the raw physics trigger component)
@@ -239,7 +239,7 @@ describe('Gg3dLevelLoader', () => {
       };
 
       // Load the level
-      const level = await levelLoader.loadLevel(levelJson);
+      const level = await levelLoader.loadLevel(levelJson, 'TestLevel');
 
       // Verify that the camera was created
       expect(world.visualScene?.factory.createPerspectiveCamera).toHaveBeenCalledWith({
@@ -268,7 +268,7 @@ describe('Gg3dLevelLoader', () => {
         ],
       };
 
-      const level = await levelLoader.loadLevel(levelJson);
+      const level = await levelLoader.loadLevel(levelJson, 'TestLevel');
 
       expect(world.audioScene?.factory.loadClip).toHaveBeenCalledWith('assets/audio/campfire.mp3');
       expect(world.audioScene?.factory.createSource).toHaveBeenCalledWith(
@@ -293,7 +293,7 @@ describe('Gg3dLevelLoader', () => {
         entities: [{ class: 'Sound', name: 'Campfire', config: { path: 'assets/audio/campfire.mp3' } }],
       };
 
-      const level = await levelLoader.loadLevel(levelJson);
+      const level = await levelLoader.loadLevel(levelJson, 'TestLevel');
 
       expect(() => level.getChildEntityByName('Campfire')).toThrow();
     });
@@ -303,7 +303,7 @@ describe('Gg3dLevelLoader', () => {
         entities: [{ class: 'Sound', name: 'Campfire', config: {} }],
       };
 
-      await expect(levelLoader.loadLevel(levelJson)).rejects.toThrow('"path" is required for Sound class');
+      await expect(levelLoader.loadLevel(levelJson, 'TestLevel')).rejects.toThrow('"path" is required for Sound class');
     });
 
     it('should load a level with a Player, wrapped ready-to-use in a CharacterController3dEntity parented under the level', async () => {
@@ -318,7 +318,7 @@ describe('Gg3dLevelLoader', () => {
         ],
       };
 
-      const level = await levelLoader.loadLevel(levelJson);
+      const level = await levelLoader.loadLevel(levelJson, 'TestLevel');
 
       expect(world.physicsWorld?.factory.createCharacterController).toHaveBeenCalledWith(
         expect.objectContaining({ radius: 0.4, centersDistance: 1.2 }),
@@ -339,7 +339,7 @@ describe('Gg3dLevelLoader', () => {
         ],
       };
 
-      const level = await levelLoader.loadLevel(levelJson);
+      const level = await levelLoader.loadLevel(levelJson, 'TestLevel');
 
       const [physicsOptions] = (world.physicsWorld?.factory.createCharacterController as jest.Mock).mock.calls[0];
       for (const key of ['offset', 'maxStepHeight', 'minStepWidth', 'maxSlopeClimbAngleRad', 'snapToGroundDistance']) {
@@ -370,7 +370,7 @@ describe('Gg3dLevelLoader', () => {
         ],
       };
 
-      const level = await levelLoader.loadLevel(levelJson);
+      const level = await levelLoader.loadLevel(levelJson, 'TestLevel');
 
       expect(world.physicsWorld?.factory.createCharacterController).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -439,7 +439,7 @@ describe('Gg3dLevelLoader', () => {
         ],
       };
 
-      const level = await levelLoader.loadLevel(levelJson);
+      const level = await levelLoader.loadLevel(levelJson, 'TestLevel');
 
       // Chassis rigid body created from the box shape, body options merged over the (heavier
       // than a default primitive's) car chassis defaults
@@ -490,7 +490,7 @@ describe('Gg3dLevelLoader', () => {
         ],
       };
 
-      const level = await levelLoader.loadLevel(levelJson);
+      const level = await levelLoader.loadLevel(levelJson, 'TestLevel');
 
       // Every wheel inherits its display from sharedWheelOptions
       expect(world.visualScene?.factory.createCylinder).toHaveBeenCalledTimes(4);
@@ -504,7 +504,7 @@ describe('Gg3dLevelLoader', () => {
       const levelJson: LevelJson = {
         entities: [{ class: 'GgCar', config: { ...carCommonConfig, chassis: {}, wheelOptions: [] } }],
       };
-      await expect(levelLoader.loadLevel(levelJson)).rejects.toThrow('Chassis dimensions are required for GgCar class');
+      await expect(levelLoader.loadLevel(levelJson, 'TestLevel')).rejects.toThrow('Chassis dimensions are required for GgCar class');
     });
 
     it('should throw when GgCar has neither wheelBase nor wheelOptions', async () => {
@@ -513,7 +513,7 @@ describe('Gg3dLevelLoader', () => {
           { class: 'GgCar', config: { ...carCommonConfig, chassis: { dimensions: { x: 1, y: 1, z: 1 } } } },
         ],
       };
-      await expect(levelLoader.loadLevel(levelJson)).rejects.toThrow(
+      await expect(levelLoader.loadLevel(levelJson, 'TestLevel')).rejects.toThrow(
         'Either "wheelBase" or "wheelOptions" is required for GgCar class',
       );
     });
@@ -541,7 +541,7 @@ describe('Gg3dLevelLoader', () => {
         ],
       };
 
-      const level = await levelLoader.loadLevel(levelJson);
+      const level = await levelLoader.loadLevel(levelJson, 'TestLevel');
 
       const mapGraph = level.getChildEntityByName<MapGraph3dEntity>('TestMapGraph');
       expect(mapGraph).toBeInstanceOf(MapGraph3dEntity);
@@ -579,7 +579,7 @@ describe('Gg3dLevelLoader', () => {
         ],
       };
 
-      const level = await levelLoader.loadLevel(levelJson);
+      const level = await levelLoader.loadLevel(levelJson, 'TestLevel');
 
       const mapGraph = level.getChildEntityByName<MapGraph3dEntity>('TestGridMapGraph');
       expect(mapGraph).toBeInstanceOf(MapGraph3dEntity);
@@ -588,12 +588,12 @@ describe('Gg3dLevelLoader', () => {
 
     it('should throw when MapGraph "graph" is missing', async () => {
       const levelJson: LevelJson = { entities: [{ class: 'MapGraph', config: {} }] };
-      await expect(levelLoader.loadLevel(levelJson)).rejects.toThrow('"graph" is required for MapGraph class');
+      await expect(levelLoader.loadLevel(levelJson, 'TestLevel')).rejects.toThrow('"graph" is required for MapGraph class');
     });
 
     it('should throw when MapGraph array graph has no nodes', async () => {
       const levelJson: LevelJson = { entities: [{ class: 'MapGraph', config: { graph: { nodes: [] } } }] };
-      await expect(levelLoader.loadLevel(levelJson)).rejects.toThrow(
+      await expect(levelLoader.loadLevel(levelJson, 'TestLevel')).rejects.toThrow(
         '"graph.nodes" must be a non-empty array for MapGraph class',
       );
     });
@@ -602,7 +602,7 @@ describe('Gg3dLevelLoader', () => {
       const levelJson: LevelJson = {
         entities: [{ class: 'MapGraph', config: { graph: { type: 'grid', grid: [] } } }],
       };
-      await expect(levelLoader.loadLevel(levelJson)).rejects.toThrow(
+      await expect(levelLoader.loadLevel(levelJson, 'TestLevel')).rejects.toThrow(
         '"graph.grid" must be a non-empty grid for MapGraph class',
       );
     });
@@ -631,7 +631,7 @@ describe('Gg3dLevelLoader', () => {
       };
 
       // Load the level
-      const level = await levelLoader.loadLevel(levelJson);
+      const level = await levelLoader.loadLevel(levelJson, 'TestLevel');
 
       // Verify that the custom generator was called with the correct arguments, and reachable by name
       expect(mockGenerator).toHaveBeenCalledWith(world, {
@@ -662,7 +662,7 @@ describe('Gg3dLevelLoader', () => {
       console.warn = jest.fn();
 
       // Load the level
-      const level = await levelLoader.loadLevel(levelJson);
+      const level = await levelLoader.loadLevel(levelJson, 'TestLevel');
 
       // Verify that no entity was created and a warning was logged
       expect(() => level.getChildEntityByName('TestUnknownEntity')).toThrow(

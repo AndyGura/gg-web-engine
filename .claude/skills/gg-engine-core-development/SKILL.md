@@ -90,8 +90,9 @@ Error(...)` inside the handler:
 `Entity3d`/`Entity2d`'s constructor (and `CharacterController3dEntity`'s) copies `name` from
 whichever native component was passed in (`objectBody.name`, `object3D.name`/`object2D.name`,
 `characterController.name`), but **only when that native name is non-empty** — an empty string is
-left alone so `IEntity`'s own auto-generated fallback (`'e0x' + counter`, set unconditionally by
-the `IEntity` base constructor) survives. This matters because every existing physics/rendering
+left alone so `IEntity`'s own auto-generated fallback (see "Entity naming: declare `entityTypeName`
+on every new entity class" below) survives, set unconditionally by the `IEntity` base constructor.
+This matters because every existing physics/rendering
 adapter's native component defaults `name` to `''` unless the caller explicitly named it (e.g. via
 Blender-authored level content, where object names come from the `.glb`) — assigning
 unconditionally, as this code used to, clobbers the entity's only identifier with an empty string
@@ -103,6 +104,70 @@ name truthy)` check the same way, and add a body/mock with the adapter-realistic
 (see `test/mocks/body.mock.ts`, `test/mocks/character-controller.mock.ts`) to any test asserting on
 spawned-entity names — a test mock that defaults to a non-empty placeholder name (as
 `mockCharacterController` used to) hides exactly this bug.
+
+## Entity naming: declare `entityTypeName` on every new entity class
+
+**Every new concrete entity class - anything with its own `tickOrder`, i.e. anything that could be
+constructed and added to a world on its own (`extends IEntity`/`Entity3d`/`Entity2d`/any other
+entity base) - must declare `static readonly entityTypeName: string = 'ClassName';`, matching the
+class's own name, as (or near) its first member.** This is a required practice for every entity
+class added to `packages/core`, not an optional nicety - check for it explicitly whenever writing
+or reviewing a diff that introduces one.
+
+**Why this matters more than it looks:** it's a stable, class-identifying string a future entity
+serializer needs every entity class to already have. `LevelLoader` today only loads (JSON →
+entities); there's no inverse direction yet - see `milestones.md`'s M2 "Export/serialize selected
+runtime state back to JSON" item and the "Networking / multiplayer" item under "Later / Under
+Consideration" for the two roadmap entries this feeds. Whenever that direction gets built, turning a
+live, runtime-spawned entity back into a level-JSON-shaped descriptor (so it can be reproduced by
+another loader, another peer, a savegame) needs exactly this kind of tag as the descriptor's `class`
+value - a plain string, not `this.constructor.name` (see below). Declaring `entityTypeName` on every
+entity class now, as new ones are added, means nothing needs a retrofit pass class-by-class once
+that serializer exists.
+
+Concretely today: `IEntity` (`base/entities/i-entity.ts`) reads this static field off
+`this.constructor` when an entity is constructed with no explicit `name`, and uses it to build the
+auto-generated default name as `` `${entityTypeName}_${n}` `` (`n` a counter scoped to that one
+type) instead of the opaque `'e0x...'` fallback every class without the tag still falls back to -
+a free bonus: an unnamed entity reads as `OrbitCameraController_0` rather than `e0x9` in the dev
+console's `entities`/`entity` commands and in `console.log`s of raw entity objects. Every entity
+`packages/core` itself defines already carries this tag (`Entity3d`, `Entity2d`, `GroupEntity`,
+`Renderer3dEntity`/`2d`, `Camera3dEntity`, `Trigger3dEntity`/`2d`, `GgCarEntity`,
+`CharacterController3dEntity`, `OrbitCameraController`, the internal `BlueprintBindingEntity`, and
+every other one - grep `entityTypeName` across `src/` for the full, current list), and a new one
+that skips this silently regresses back to the opaque fallback for every instance nobody explicitly
+names, on top of leaving that class unready for serialization later.
+
+Two things worth getting right when adding the tag:
+
+- **Type it explicitly as `string`, never let TypeScript infer the bare string literal.** `static
+  readonly entityTypeName = 'MyEntity';` (no annotation) gets inferred as the literal type
+  `'MyEntity'`, not `string` - fine in isolation, but the moment a subclass of an *already-tagged*
+  class declares its own tag too (e.g. `Grabbable3dEntity extends Entity3d`, both tagged), TypeScript's
+  static-side inheritance check rejects it: `Class static side 'typeof Grabbable3dEntity'
+  incorrectly extends base class static side 'typeof Entity3d' - Types of property 'entityTypeName'
+  are incompatible - Type '"Grabbable3dEntity"' is not assignable to type '"Entity3d"'` (`TS2417`,
+  hit for real introducing this convention - five of the first pass's classes needed the explicit
+  annotation before the whole workspace built clean). Always write `static readonly entityTypeName:
+  string = 'MyEntity';` with the annotation, even for a class with no tagged ancestor, so this never
+  surprises a later subclass.
+- **A subclass of an already-tagged class inherits its ancestor's tag for free via ordinary JS
+  static inheritance** (`this.constructor.entityTypeName` walks the constructor-function prototype
+  chain) if it doesn't declare its own - only redeclare the field when the subclass wants a more
+  specific label than its parent's (which is normally what you want, since "every `Grabbable3dEntity`
+  defaults to naming itself `Entity3d_7`" is a worse debugging experience than `Grabbable3dEntity_7`).
+
+Deliberately **not** derived from `this.constructor.name`/`Function.name` - see `IEntity
+.entityTypeName`'s own doc comment for why: a production bundler commonly mangles a class's real
+`Function.name` under minification (most minifiers don't preserve it unless configured to), which
+would make the default name meaningless, or worse, silently different between a dev build and a
+production build of the same app. A plain static string property is an ordinary object property
+assignment, completely unaffected by whether the class's own `Function.name` gets mangled.
+
+This is a `packages/core`-authoring practice specifically; an app or example defining its own custom
+entity class (e.g. a `ShapeSpawner`-style class registered via `LevelLoader.registerClass`) should
+follow the exact same convention - see `gg-engine-app-development`'s own section on this for that
+side of it.
 
 ## `tickOrder`: driving a dynamic rigid body before physics `simulate()` runs
 

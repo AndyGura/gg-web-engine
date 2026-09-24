@@ -18,5 +18,6 @@ export class GroupEntity<
   R = any,
   TypeDoc extends GgWorldTypeDocRepo<D, R> = GgWorldTypeDocRepo<D, R>,
 > extends IEntity<D, R, TypeDoc> {
+  static readonly entityTypeName: string = 'GroupEntity';
   public readonly tickOrder = TickOrder.OBJECTS_BINDING;
 }

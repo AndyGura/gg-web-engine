@@ -10,6 +10,7 @@ export type GgCarKeyboardControllerOptions = CarKeyboardControllerOptions & {
 };
 
 export class GgCarKeyboardHandlingController extends IEntity {
+  static readonly entityTypeName: string = 'GgCarKeyboardHandlingController';
   public readonly tickOrder = TickOrder.INPUT_CONTROLLERS;
 
   public readonly carHandlingInput: CarKeyboardHandlingController;

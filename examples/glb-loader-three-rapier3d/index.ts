@@ -71,7 +71,7 @@ world.init().then(async () => {
       new GlbSpawner(w, settings),
   );
 
-  const levelGroup = await world.loader.loadLevel(level);
+  const levelGroup = await world.loader.loadLevel(level, 'MainLevel');
 
   const cameraEntity = levelGroup.getChildEntityByName<Camera3dEntity<ThreeVisualTypeDocRepo>>('MainCamera');
   const renderer = world.addRenderer(cameraEntity.camera, canvas);
