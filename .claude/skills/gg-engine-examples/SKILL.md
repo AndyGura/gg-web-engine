@@ -114,6 +114,91 @@ npm run start   # webpack-dev-server, for plain webpack examples
 npm run build   # produces dist/bundle.js for static hosting
 ```
 
+## Adding a shared asset under `examples/assets`
+
+The shared `examples/assets` folder is published as a whole to the hosted demo CDN by
+`examples/deploy.sh` (`aws s3 sync ./assets s3://gg-web-engine-demos/assets`), so an asset placed at
+`examples/assets/<subfolder>/<name>.glb` ends up reachable at
+`https://gg-web-demos.guraklgames.com/assets/<subfolder>/<name>` once deployed - which is why
+existing GLB-loading examples (e.g. `glb-loader-three-ammo`) hardcode that absolute CDN URL directly
+in their committed `index.ts` rather than a relative path. That URL obviously doesn't exist yet for
+an asset added in the same change as the example using it, and this repo has no established way to
+test against it locally before an actual deploy. For an example that needs its new asset to actually
+load during local `npm start` (so it can be verified in-browser, not just compile-checked), add a
+`devServer.static` entry to that example's `webpack.dev.config.js` serving the shared folder at the
+same `/assets` path structure the CDN uses:
+
+```js
+devServer: {
+  static: [{ directory: path.resolve(__dirname, '../assets'), publicPath: '/assets' }],
+},
+```
+
+then reference the asset from `index.ts` as `/assets/<subfolder>/<name>` (no extension, for a loader
+that appends one itself, e.g. `loadFromGlb`/`loadGgGlb`-style path conventions). This only serves
+`examples/assets` for that one example's own dev server - it has no effect on `npm run build`'s
+`dist/bundle.js`, which stays a plain bundle same as any other example (the CDN copy comes from
+`examples/deploy.sh`'s own `assets` sync, not from anything in an example's `dist/`).
+
+### Generating a placeholder 3D asset procedurally instead of sourcing one
+
+When an example needs a `.glb` this repo has no license-clean way to source externally (e.g. a
+rigged, animated character model, where a "just download one" instinct runs into real licensing
+questions), building it programmatically with three.js in a throwaway Node script - then baking it
+to `.glb` via `GLTFExporter` - is a viable, self-contained alternative. `examples/assets/characters/
+generate-blockman.mjs` is a worked example (a boxy humanoid `SkinnedMesh`, hand-built bone hierarchy,
+keyframed `AnimationClip`s) - keep a generator script like this committed alongside its output
+`.glb`, the same role a `.blend` source file plays for the hand-authored assets elsewhere under
+`examples/assets`, so the binary isn't the only record of how it was made and it can be regenerated/
+tweaked later. Run such a script as plain Node from somewhere inside the repo tree (not `/tmp` or
+another scratch location) so `three`'s own subpath exports (`three/examples/jsm/...`) resolve
+against the repo's hoisted root `node_modules` via ordinary upward node_modules resolution - Node's
+ESM resolver doesn't honor `NODE_PATH`, so a script located outside the repo entirely won't find it
+without its own separate `npm install`.
+
+**`GLTFExporter.parse()`/`parseAsync()` needs a `FileReader` polyfill to run under plain Node,
+regardless of the `binary` option.** It unconditionally builds its output through `new
+Blob(buffers, ...)` then `new FileReader().readAsArrayBuffer(blob)` (binary `.glb`) or
+`.readAsDataURL(blob)` (embedded-base64 JSON) internally - `Blob` is a Node global since v18 and
+works fine, but `FileReader` is browser-only and doesn't exist in Node at all, so export throws
+`FileReader is not defined` with no polyfill, on every export regardless of `options.binary`. Fix:
+assign a minimal `globalThis.FileReader` before calling the exporter, backed by the real Node
+`Blob`'s own `.arrayBuffer()`:
+
+```js
+class NodeFileReader {
+  readAsArrayBuffer(blob) {
+    blob.arrayBuffer().then(buf => { this.result = buf; this.onloadend?.(); });
+  }
+  readAsDataURL(blob) {
+    blob.arrayBuffer().then(buf => {
+      this.result = `data:${blob.type || 'application/octet-stream'};base64,${Buffer.from(buf).toString('base64')}`;
+      this.onloadend?.();
+    });
+  }
+}
+globalThis.FileReader = NodeFileReader;
+```
+
+This is the only Node-incompatibility that matters for a script with no image/texture content (pure
+geometry, skinning, vertex colors, animation) - the exporter's other browser-only paths
+(`document.createElement('canvas')`, `OffscreenCanvas`, `ImageBitmap`) are only reached while
+processing texture images, never for geometry-only export.
+
+**Author the whole rig directly with height along three.js's own Z axis, not its natively Y-up
+convention**, per this engine's own Z-up-always 3D convention (see this repo's root `CLAUDE.md`) -
+GLTFExporter is a straight numeric passthrough (three.js's coordinate space already matches the
+glTF spec's Y-up convention 1:1, so it does no axis conversion of its own), and the engine's own GLB
+loading path (`ThreeLoader.loadFromGgGlb`/`loadFromGlb`) applies no corrective rotation either
+(unlike `three-factory.ts`'s primitive-shape generators, which do rotate three's Y-up-native
+`CapsuleGeometry`/etc. onto Z - see `gg-engine-core-development`'s "Non-obvious repo facts"). A
+script authoring content with the natural three.js Y-up convention and exporting verbatim would load
+into the engine lying on its side. This is the same "don't do the usual up-axis conversion" outcome
+the engine's own Blender exporter reaches via `export_yup=False`
+(`blender-addon/gg_web_engine_exporter/exporter.py`) - just reached here by authoring directly in
+that target convention from the start instead of converting an existing Z-up Blender scene at
+export time.
+
 ## Live-debugging an example through browser automation
 
 When chasing a reported gameplay bug (movement/physics behaving wrong, not a build error), driving

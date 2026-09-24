@@ -1,6 +1,6 @@
 import { LevelLoader } from '../base/level-loader';
 import { Gg3dWorld, Gg3dWorldTypeDocRepo } from './gg-3d-world';
-import { AudioDistanceModel, AxisDirection3, Point3, Point4 } from '../base';
+import { AudioDistanceModel, AxisDirection3, Pnt3, Point3, Point4 } from '../base';
 import { DisplayObject3dOpts } from './factories';
 import { Body3DOptions } from './models/body-options';
 import { Shape3DDescriptor } from './models/shapes';
@@ -12,6 +12,11 @@ import {
   CharacterController3dEntity,
   CharacterController3dEntityOptions,
 } from './entities/character-controller-3d.entity';
+import {
+  CharacterAnimationClipMap,
+  CharacterAnimationController,
+} from './entities/controllers/character-animation.controller';
+import { isAnimatedDisplayObject3d } from './components/rendering/i-animated-display-object-3d.component';
 import { GgCarEntity, GgCarProperties } from './entities/gg-car/gg-car.entity';
 import {
   RVEntityAxleOptions,
@@ -209,6 +214,39 @@ export interface Sound3DSettings {
 }
 
 /**
+ * Settings for the built-in `"Player"` entity class's `display.model` - loads a bone-animated `.glb`
+ * character model (via `loadFromGlb`) in place of the auto-generated capsule mesh, and wires up a
+ * `CharacterAnimationController` (as a child of the returned entity - see
+ * `CharacterController3dEntity.addChildren`) to drive idle/walk/run/crouch/jump switching
+ * automatically, using the character's own `isGrounded`/`isCrouching`/`isRunning`/`moveDirection`
+ * state - no extra app code needed for either. Ignored (with the rest of `display`) if there's no
+ * visual scene.
+ */
+export interface PlayerModel3DSettings {
+  /** Path (URL or path prefix, without extension) to the `.glb` file - passed straight through to
+   * `loadFromGlb`. */
+  path: string;
+  /**
+   * Local offset applied to the loaded model relative to the capsule's own center - see
+   * `LoadGlbOptions.offset`. Defaults to `-(radius + centersDistance / 2)` along `up` (the
+   * capsule's own bottom), matching a model authored with its origin at the feet, the common case
+   * for a character rig. Set explicitly (e.g. `Pnt3.O`) for a model already authored with its
+   * origin at the capsule's center.
+   */
+  offset?: Point3;
+  /** See `CharacterAnimationClipMap` - maps a built-in animation state to this model's own clip
+   * name, for a model whose clips aren't already named `"idle"`/`"walk"`/`"run"`/`"crouch"`/
+   * `"jump"`. */
+  animations?: CharacterAnimationClipMap;
+  /** Crossfade duration (seconds) applied on every animation state switch. Default 0.2. */
+  fadeDuration?: number;
+  /** See `CharacterAnimationControllerOptions.groundedTransitionDelay` - how long `isGrounded` must
+   * hold steady before the animation state trusts it, to avoid flickering between a grounded state
+   * and `"jump"` while standing at an edge. Default 0.15. */
+  groundedTransitionDelay?: number;
+}
+
+/**
  * Settings for the built-in `"Player"` entity class: a capsule-bodied `CharacterController3dEntity`
  * (see that class's own doc for the gameplay fields below). Only the physics/visual capsule is
  * built here - the input/camera wiring (`PlayerCharacterController`) needs a live canvas/
@@ -225,8 +263,12 @@ export type Player3DSettings = Partial<Omit<CharacterController3dEntityOptions, 
   radius?: number;
   /** Standing capsule centersDistance. Default 1.0. */
   centersDistance?: number;
-  /** Material options for the auto-generated capsule mesh; omit for a physics-only, invisible player. */
-  display?: DisplayObject3dOpts<any>;
+  /**
+   * Material options for the auto-generated capsule mesh; omit (along with `model`) for a
+   * physics-only, invisible player. `model`, if given, loads an animated character model instead of
+   * the capsule mesh entirely - the rest of `display` (`color`/`shading`/...) is then ignored.
+   */
+  display?: DisplayObject3dOpts<any> & { model?: PlayerModel3DSettings };
 };
 
 /**
@@ -581,10 +623,10 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
    * @param settings - The player settings
    * @returns The created character entity
    */
-  private createPlayer(
+  private async createPlayer(
     world: Gg3dWorld<TypeDoc>,
     settings: Player3DSettings,
-  ): CharacterController3dEntity<TypeDoc> | undefined {
+  ): Promise<CharacterController3dEntity<TypeDoc> | undefined> {
     const {
       position,
       rotation,
@@ -631,9 +673,23 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
       { radius, centersDistance, ...tunableOptions },
       { position, rotation },
     );
-    const object3D = world.visualScene
-      ? world.visualScene.factory.createCapsule(radius, centersDistance, display)
-      : null;
+    let object3D: TypeDoc['vTypeDoc']['displayObject'] | null = null;
+    if (world.visualScene) {
+      if (display?.model) {
+        // Default: the model's own origin sits at the capsule's bottom (`up` negated by the
+        // capsule's own half-height) - the common convention for a character rig authored with its
+        // origin at the feet. `tunableOptions.up` mirrors the same "leave it out entirely when
+        // unset" reasoning as every other field above - `?? Pnt3.Z` supplies the same default
+        // `CharacterController3dEntity`/every adapter's own `createCharacterController` falls back
+        // to when `up` isn't explicitly given.
+        const modelOffset =
+          display.model.offset ?? Pnt3.scalarMult(tunableOptions.up ?? Pnt3.Z, -(radius + centersDistance / 2));
+        const glb = await fetch(`${display.model.path}.glb`).then(r => r.arrayBuffer());
+        object3D = await world.visualScene.loader.loadFromGlb(glb, { offset: modelOffset });
+      } else {
+        object3D = world.visualScene.factory.createCapsule(radius, centersDistance, display);
+      }
+    }
     const entity = new CharacterController3dEntity<TypeDoc>(
       {
         radius,
@@ -649,6 +705,17 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
     }
     if (rotation) {
       entity.rotation = rotation;
+    }
+    if (display?.model && isAnimatedDisplayObject3d(object3D)) {
+      entity.addChildren(
+        new CharacterAnimationController<TypeDoc>(entity, {
+          clipMap: display.model.animations ?? {},
+          ...(display.model.fadeDuration !== undefined && { fadeDuration: display.model.fadeDuration }),
+          ...(display.model.groundedTransitionDelay !== undefined && {
+            groundedTransitionDelay: display.model.groundedTransitionDelay,
+          }),
+        }),
+      );
     }
     return entity;
   }

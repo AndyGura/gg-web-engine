@@ -103,6 +103,36 @@ Every adapter component class then `implements I<Thing>Component<<Lib>VisualType
 - **Physics debug view** (optional but expected for parity with `three`/`pixi`): renders
   wireframes/bounds for the physics world's `children`, toggled via the dev console/debugger UI in
   `packages/core/src/dev/`.
+- **Animated display object** (3D only, optional): a display object backed by a bone-animated
+  model (loaded skinned mesh + clips) implements `IAnimatedDisplayObject3dComponent` on top of the
+  ordinary display object contract - see `gg-engine-core-development`'s note on this pattern
+  (declared as its own interface, not baked into the `TypeDoc`'s `displayObject` field, with an
+  `isXxx` type guard at call sites). `packages/three`'s `ThreeAnimatedDisplayObjectComponent`
+  (`components/three-animated-display-object.component.ts`) is the reference implementation: one
+  `THREE.AnimationMixer` per instance rooted at `nativeMesh` (works whether that's the loaded
+  model's own scene root, or a wrapping `Group` one level up - see the next paragraph), a
+  `Map<clipName, AnimationClip>`, and `playAnimation`/`stopAnimation` driving `AnimationAction
+  .crossFadeTo`. **Cloning a `SkinnedMesh` needs `SkeletonUtils.clone()`
+  (`three/examples/jsm/utils/SkeletonUtils.js`), never the inherited plain `Object3D.clone()`** -
+  the latter clones the bone hierarchy but leaves the mesh's own `skeleton.bones` array pointing at
+  the *original* bones, silently breaking skinning on the clone (visually: the clone either doesn't
+  deform at all under animation, or deforms using the original's live pose) - override `clone()` to
+  route through `SkeletonUtils.clone` specifically for any display object component backed by a
+  `SkinnedMesh`.
+
+  A loaded model's own origin often isn't the point that should track the entity driving it (e.g. a
+  character rig authored with its origin at the feet, needing to align with a
+  `CharacterController3dEntity` capsule's *center*) - `IDisplayObject3dComponentLoader.loadFromGlb`'s
+  `LoadGlbOptions.offset` handles this by wrapping the loaded scene one level deeper in a plain
+  `THREE.Group` and applying the offset to the *inner* node, leaving the outer `Group` (returned as
+  `nativeMesh`) untouched at identity - never apply such an offset directly to the node whose
+  `position` a display object component's own `position` setter writes to, since that gets
+  overwritten wholesale every tick by whatever drives it (`Entity3d`/`CharacterController3dEntity`
+  syncing from a body/controller), silently discarding the offset the next tick. This one extra
+  level of nesting doesn't break `AnimationMixer`/`AnimationClip` targeting - clip tracks address
+  bones by name via `root.getObjectByName(...)`, found the same way regardless of how many ancestors
+  sit above the named node, so the mixer can be rooted at either the wrapper or the inner scene with
+  identical playback.
 
 ## The `removeFromWorld(dispose)` contract
 

@@ -592,6 +592,17 @@ doesn't implement raycast vehicles at all (`Rapier3dFactory.createRaycastVehicle
 `gg-engine-physics-adapter-ammo`'s test for the equivalent vehicle coverage on the one adapter that
 does support them.
 
+`Rapier3dTriggerComponent.onEnter$`/`onLeft$` (and `notifyOverlap`'s `otherBody` parameter) are typed
+as `Rapier3dRigidBodyComponent | Rapier3dCharacterControllerComponent`, matching the core
+`ITrigger3dComponent.onEntityEntered`/`onEntityLeft` contract (`PTypeDoc['rigidBody'] |
+PTypeDoc['characterController']` - see `gg-engine-core-development`'s type-accuracy note on this).
+Earlier this was force-cast to `Rapier3dRigidBodyComponent` alone, which type-checked but was
+inaccurate for exactly the character-controller-enters-a-trigger case this section describes -
+`Trigger3dEntity` itself was never affected (it only ever reads `.entity` off the emitted value,
+present on both), but any adapter-level code reaching `onEntityEntered`/`onEntityLeft` directly and
+calling a rigid-body-only member (`linearVelocity`, `resetMotion()`, `onCollisionStart`/`onCollisionEnd`)
+against a character controller would have hit a runtime `undefined`/throw with no compile-time warning.
+
 ## Keep this skill current
 
 This file is read by future agents fixing/extending `packages/rapier2d` or `packages/rapier3d`

@@ -241,7 +241,49 @@ but has no effect. Leave `gravity` out entirely to have the character follow `ph
 live (including a runtime change via the `gravity` dev-console command); only set it to give this
 character a gravity scale different from the rest of the world. `display` (optional,
 `DisplayObject3dOpts`) builds a matching capsule mesh via `visualScene.factory.createCapsule`; omit
-it for a physics-only, invisible character.
+it (and `display.model`) for a physics-only, invisible character.
+
+`display.model` (`PlayerModel3DSettings`) swaps the auto-generated capsule for a bone-animated
+`.glb` character model, loaded via `loadFromGlb` - the rest of `display` (`color`/`shading`/...) is
+then ignored:
+
+```json
+{
+  "class": "Player",
+  "name": "Player",
+  "position": { "x": 0, "y": 0, "z": 2 },
+  "config": {
+    "radius": 0.4,
+    "centersDistance": 1.0,
+    "walkSpeed": 4,
+    "jumpSpeed": 5,
+    "display": { "model": { "path": "assets/characters/blockman" } }
+  }
+}
+```
+
+`path` is passed straight to `loadFromGlb` (no paired `.meta` needed - this is a plain visual-only
+`.glb`, not the GG GLB+meta pipeline `"Glb"` below uses). `offset` (default: the capsule's own
+bottom, i.e. `-(radius + centersDistance / 2)` along `up`) shifts the loaded model relative to the
+capsule's center - the default matches a model authored with its origin at the feet, the common
+convention for a character rig; pass `{"x":0,"y":0,"z":0}` for a model already centered on the
+capsule. `animations` (`CharacterAnimationClipMap`) maps a built-in animation state
+(`"idle"`/`"walk"`/`"run"`/`"crouch"`/`"jump"`) to that model's own clip name, only needed when the
+model's clips aren't already named exactly that. `fadeDuration` (default 0.2s) sets the crossfade
+applied on every state switch. `groundedTransitionDelay` (default 0.15s) sets how long the raw
+`isGrounded` reading must hold steady before the animation state trusts it - `isGrounded` flickers
+tick-to-tick right at the edge of a platform (an adapter's own sweep/overlap check toggling with no
+actual movement involved), and without this debounce that flicker would visibly pop the animation
+between `"jump"` and whatever grounded state applies every single tick; `0` disables the debounce
+entirely (every raw flip trusted immediately) if that's ever actually wanted.
+
+Setting `display.model` also wires a `CharacterAnimationController` in automatically, as a child of
+the returned `CharacterController3dEntity` (`entity.addChildren(...)`, not a separate top-level
+level entity - `level.getChildEntityByName('Player')` still returns the character itself, unchanged)
+- it reads the character's own `isGrounded`/`isCrouching`/`isRunning`/`moveDirection` every tick and
+switches clips accordingly, with no app code needed. For a character built outside a level JSON (or
+one needing custom state logic), construct `CharacterAnimationController` directly instead - see its
+own doc in `packages/core/src/3d/entities/controllers/character-animation.controller.ts`.
 
 Unlike `"GgCar"`, this only builds the physics+visual capsule - **not** the keyboard/mouse/camera
 wiring (`PlayerCharacterController`), since that inherently needs a live canvas/`KeyboardInput`/

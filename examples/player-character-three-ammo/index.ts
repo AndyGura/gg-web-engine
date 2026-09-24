@@ -168,7 +168,7 @@ const level: LevelJson = {
         walkSpeed: 4,
         runSpeedMultiplier: 1.8,
         jumpSpeed: 4,
-        display: { color: 0x3388ff },
+        display: { model: { path: '/assets/characters/blockman' } },
       },
     },
   ],
