@@ -521,6 +521,23 @@ realistically. See `gg-engine-physics-adapter-rapier`'s own note on this same cl
 adapter (a different root cause there - `ActiveCollisionTypes`/`QueryFilterFlags`, not a manual
 broadphase-detach loop - but the identical symptom: a trigger physically blocking movement).
 
+Their *type* did need a fix, separately: both getters used to force-cast whatever
+`nativeBodyReverseMap` resolved to `AmmoRigidBodyComponent`, which type-checked even for a
+character-controller overlap but was inaccurate - a character controller only satisfies
+`IBodyComponent` (`.entity`/`.position`/`.rotation`/...), not `IRigidBodyComponent`
+(`linearVelocity`/`resetMotion()`/`onCollisionStart`/`onCollisionEnd`). Both getters are now typed
+`Observable<AmmoRigidBodyComponent | AmmoCharacterControllerComponent>` (`| null` for
+`onEntityLeft`), matching the core `ITrigger3dComponent.onEntityEntered`/`onEntityLeft` contract
+(`PTypeDoc['rigidBody'] | PTypeDoc['characterController']` - see `gg-engine-core-development`'s
+type-accuracy note on this). `Trigger3dEntity` itself was never at risk (it only ever reads `.entity`
+off the emitted value), but adapter-level code reaching these getters directly and calling a
+rigid-body-only member against what was actually a character controller would have hit a runtime
+`undefined`/throw with no compile-time warning. The narrowing still ultimately rests on an explicit
+cast (`nativeBodyReverseMap`'s own value type is the abstract `AmmoBodyComponent<any>`, since any
+subclass - in principle including another `AmmoTriggerComponent` - can register there), justified by
+the contract that a trigger's overlap partner is always a rigid body or a character controller, never
+another trigger - not something the type system can verify on its own from this map's shape.
+
 ## `AmmoWorldComponent.simulate()`'s fixed-substep accumulator drifting against the render loop
 
 `stepSimulation(timeStep, maxSubSteps, fixedTimeStep)` with a non-zero `maxSubSteps` puts Bullet into

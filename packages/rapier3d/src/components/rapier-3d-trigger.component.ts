@@ -15,17 +15,19 @@ export class Rapier3dTriggerComponent
     this.shape,
   );
 
-  get onEntityEntered(): Observable<Rapier3dRigidBodyComponent> {
+  get onEntityEntered(): Observable<Rapier3dRigidBodyComponent | Rapier3dCharacterControllerComponent> {
     return this.onEnter$.asObservable();
   }
 
-  get onEntityLeft(): Observable<Rapier3dRigidBodyComponent> {
+  get onEntityLeft(): Observable<Rapier3dRigidBodyComponent | Rapier3dCharacterControllerComponent> {
     return this.onLeft$.asObservable();
   }
 
-  protected readonly overlaps: Set<Rapier3dRigidBodyComponent> = new Set<Rapier3dRigidBodyComponent>();
-  protected readonly onEnter$: Subject<Rapier3dRigidBodyComponent> = new Subject<Rapier3dRigidBodyComponent>();
-  protected readonly onLeft$: Subject<Rapier3dRigidBodyComponent> = new Subject<Rapier3dRigidBodyComponent>();
+  protected readonly overlaps: Set<Rapier3dRigidBodyComponent | Rapier3dCharacterControllerComponent> = new Set();
+  protected readonly onEnter$: Subject<Rapier3dRigidBodyComponent | Rapier3dCharacterControllerComponent> =
+    new Subject();
+  protected readonly onLeft$: Subject<Rapier3dRigidBodyComponent | Rapier3dCharacterControllerComponent> =
+    new Subject();
 
   constructor(
     protected readonly world: Rapier3dWorldComponent,
@@ -79,18 +81,17 @@ export class Rapier3dTriggerComponent
     started: boolean,
   ): void {
     // `otherBody` can be a `Rapier3dCharacterControllerComponent` (a player walking through this
-    // trigger) as well as an ordinary rigid body - it isn't an `IRigidBodyComponent` itself, but the
-    // core `ITrigger3dComponent`/`Trigger3dEntity` contract only ever reads `.entity` off whatever
-    // `onEntityEntered`/`onEntityLeft` emit (see `Trigger3dEntity`), which a character controller has
-    // too, so it's cast through here exactly like an ordinary body. This mirrors the ammo adapter's
-    // own `AmmoTriggerComponent`, which resolves the same overlap case the same way.
-    const body = otherBody as Rapier3dRigidBodyComponent;
+    // trigger) as well as an ordinary rigid body - `onEnter$`/`onLeft$` (and `ITrigger3dComponent`'s
+    // own `onEntityEntered`/`onEntityLeft`) are typed as this same union rather than narrowed to a
+    // rigid body, since a character controller only satisfies `IBodyComponent`, not
+    // `IRigidBodyComponent` (no `linearVelocity`/`resetMotion()`/collision events). This mirrors the
+    // ammo adapter's own `AmmoTriggerComponent`, which resolves the same overlap case the same way.
     if (started) {
-      this.overlaps.add(body);
-      this.onEnter$.next(body);
+      this.overlaps.add(otherBody);
+      this.onEnter$.next(otherBody);
     } else {
-      this.overlaps.delete(body);
-      this.onLeft$.next(body);
+      this.overlaps.delete(otherBody);
+      this.onLeft$.next(otherBody);
     }
   }
 

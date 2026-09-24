@@ -4,6 +4,7 @@ import { filter, map, Observable, Subject } from 'rxjs';
 import Ammo from '../ammo.js/ammo';
 import { AmmoBodyComponent } from './ammo-body.component';
 import { AmmoRigidBodyComponent } from './ammo-rigid-body.component';
+import { AmmoCharacterControllerComponent } from './ammo-character-controller.component';
 import { AmmoGgWorld, AmmoPhysicsTypeDocRepo } from '../types';
 
 export class AmmoTriggerComponent
@@ -17,17 +18,21 @@ export class AmmoTriggerComponent
     this.shape,
   );
 
-  get onEntityEntered(): Observable<AmmoRigidBodyComponent> {
+  get onEntityEntered(): Observable<AmmoRigidBodyComponent | AmmoCharacterControllerComponent> {
     return this.onEnter$.pipe(
       map(b => AmmoBodyComponent.nativeBodyReverseMap.get(b)),
-      filter(x => !!x),
-    ) as Observable<AmmoRigidBodyComponent>;
+      filter((x): x is AmmoRigidBodyComponent | AmmoCharacterControllerComponent => !!x),
+    );
   }
 
-  get onEntityLeft(): Observable<AmmoRigidBodyComponent | null> {
+  get onEntityLeft(): Observable<AmmoRigidBodyComponent | AmmoCharacterControllerComponent | null> {
     return this.onLeft$.pipe(
-      map(b => AmmoBodyComponent.nativeBodyReverseMap.get(b) || null),
-    ) as Observable<AmmoRigidBodyComponent>;
+      map(
+        b =>
+          (AmmoBodyComponent.nativeBodyReverseMap.get(b) ?? null) as
+            AmmoRigidBodyComponent | AmmoCharacterControllerComponent | null,
+      ),
+    );
   }
 
   constructor(

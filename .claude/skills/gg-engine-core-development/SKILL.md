@@ -464,10 +464,17 @@ unbound-PTypeDoc interface level fails to compile with a confusing, deeply-neste
 `IRigidBodyComponent.onCollisionStart`/`onCollisionEnd` (`CollisionEvent`, mirroring
 `ITriggerComponent.onEntityEntered`/`onEntityLeft`'s enter/leave shape but with a payload object
 instead of just the body itself). The existing trigger getters get away with returning
-`Observable<IRigidBodyComponent<D, R, PTypeDoc>>` at the base interface (the *abstract* interface
-type, not `PTypeDoc['rigidBody']`) precisely so nothing self-referential happens; a 2D/3D-specific
-subinterface then re-declares the getter narrowed to `Observable<PTypeDoc['rigidBody']>` for the
-concrete type. Baking `PTypeDoc['rigidBody']` into a wrapper type used *directly in the base
+`Observable<IBodyComponent<D, R, PTypeDoc>>` at the base interface (the *abstract* interface type
+for the truly-guaranteed shape, not `PTypeDoc['rigidBody']`) precisely so nothing self-referential
+happens; a 2D/3D-specific subinterface then re-declares the getter narrowed to whichever
+`PTypeDoc[...]` members can genuinely overlap a trigger in that dimension (`ITrigger2dComponent`:
+`PTypeDoc['rigidBody']` alone, since 2D has no character controller; `ITrigger3dComponent`:
+`PTypeDoc['rigidBody'] | PTypeDoc['characterController']`, since a kinematic character controller can
+walk through a 3D trigger's volume too - see `ITriggerComponent.onEntityEntered`'s own doc comment for
+why the base declaration is deliberately `IBodyComponent`, not `IRigidBodyComponent`: only
+`.entity`/`.position`/`.rotation`/etc. are guaranteed on whatever a trigger emits, never
+`linearVelocity`/`resetMotion()`/collision-event members, which a character controller doesn't have).
+Baking `PTypeDoc['rigidBody']` into a wrapper type used *directly in the base
 interface's own declaration* breaks this: `PTypeDoc` defaults to `PhysicsTypeDocRepo<D, R>`, whose
 own `rigidBody` field is `IRigidBodyComponent<D, R>` again - a self-referential expansion that, once
 nested inside a nominal nested type of the wrapper class (like `otherBody: PTypeDoc['rigidBody']`

@@ -9,7 +9,7 @@ export interface ITrigger3dComponent<
   /** body info for physics debugger view */
   readonly debugBodySettings: DebugBody3DSettings;
 
-  get onEntityEntered(): Observable<PTypeDoc['rigidBody']>;
+  get onEntityEntered(): Observable<PTypeDoc['rigidBody'] | PTypeDoc['characterController']>;
 
-  get onEntityLeft(): Observable<PTypeDoc['rigidBody'] | null>;
+  get onEntityLeft(): Observable<PTypeDoc['rigidBody'] | PTypeDoc['characterController'] | null>;
 }
