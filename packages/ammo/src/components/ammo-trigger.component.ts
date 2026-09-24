@@ -88,6 +88,28 @@ export class AmmoTriggerComponent
     this.world.dynamicAmmoWorld?.addCollisionObject(this.nativeBody, this._ownCGsMask, this._interactWithCGsMask);
   }
 
+  /**
+   * Mirrors `AmmoRigidBodyComponent.detachFromBroadphaseTemporarily()`/`reattachToBroadphase()` for
+   * this trigger's ghost object, backed by `removeCollisionObject`/`addCollisionObject` (the same
+   * pair `addToWorld` itself uses, unlike a real rigid body's `removeRigidBody`/`addRigidBody`) -
+   * see `AmmoCharacterControllerComponent`'s own doc for why its movement/ground-check queries need
+   * every trigger excluded from the collision world for their duration: a trigger is a sensor with
+   * no collision response by definition (see `ITrigger3dComponent`), so it must never physically
+   * block or "ground" a character the way a real obstacle does.
+   */
+  detachFromBroadphaseTemporarily(): boolean {
+    if (!this.addedToWorld) {
+      return false;
+    }
+    this.world.dynamicAmmoWorld?.removeCollisionObject(this.nativeBody);
+    return true;
+  }
+
+  /** Undoes `detachFromBroadphaseTemporarily()` - see its own doc. */
+  reattachToBroadphase(): void {
+    this.world.dynamicAmmoWorld?.addCollisionObject(this.nativeBody, this._ownCGsMask, this._interactWithCGsMask);
+  }
+
   dispose(): void {
     super.dispose();
     this.overlaps.clear();

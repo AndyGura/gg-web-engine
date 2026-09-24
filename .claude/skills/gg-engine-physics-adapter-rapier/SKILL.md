@@ -527,6 +527,71 @@ too via `Rapier3dFactory.createRigidBody` and not just `createTrigger`, the `con
   two reciprocal `relativeVelocity` readings for a pair are exact negations of each other, since
   they're both derived from the same two bodies' `linvel()` calls a moment apart.
 
+## A `Trigger3dEntity` never fired for a character controller (Rapier3d): two separate, compounding gaps
+
+Two independent bugs, both required to genuinely fix "a player walking into a `Trigger` fires
+`onEntityEntered`/`onEntityLeft`" - fixing only one still left the feature broken, just with a
+different symptom:
+
+1. **`Rapier3dWorldComponent.handleIdEntityMap` never registered a character controller's native
+   body handle.** `dispatchCollisionEvents` resolves both sides of every collider pair purely through
+   this map (`this.handleIdEntityMap.get(bodyN.handle)`); a `Rapier3dCharacterControllerComponent`'s
+   `kinematicPositionBased` body has a real Rapier rigid-body handle just like any other body once
+   `addToWorld()` runs, but that handle was deliberately left out of the map (an earlier version of
+   this class's own doc called this "a documented limitation rather than done speculatively" - it
+   isn't a limitation any more, see below). Fix: register it in `addToWorld()`/deregister it in
+   `removeFromWorld()`, same as `Rapier3dRigidBodyComponent`/`Rapier3dTriggerComponent` already do.
+   `dispatchCollisionEvents`'s real-contact branch (as opposed to its sensor-overlap branch) then
+   needs an explicit `instanceof Rapier3dRigidBodyComponent` narrowing on both sides before calling
+   `notifyCollisionStart`/`notifyCollisionEnd` - a character controller has no such API (its physical
+   response comes from its own sweep-based `move()`, not Rapier's contact solver), so without the
+   narrowing, a real (non-sensor) contact between a character and an ordinary body throws.
+   `world.raycast()` deliberately still filters a resolved character controller back out before
+   setting `hitBody` (`instanceof Rapier3dRigidBodyComponent` check there too) - widening its return
+   type is a separate, still-not-done piece of work outside `IPhysicsWorldComponent.raycast`'s own
+   documented `PTypeDoc['rigidBody'] | PTypeDoc['trigger']` contract; the self-hit-skip mechanism in
+   `packages/core` (see `gg-engine-core-development`'s own note on this) never depended on this
+   resolving anyway, so leaving raycast alone costs nothing there.
+2. **Even with (1) fixed, no event ever fired**, because the pair simply never reached narrow-phase at
+   all: Rapier's `ActiveCollisionTypes` gates collider pairs by *rigid-body type* combination, and its
+   default (`ActiveCollisionTypes.DEFAULT = DYNAMIC_DYNAMIC | DYNAMIC_FIXED | DYNAMIC_KINEMATIC`)
+   excludes `KINEMATIC_FIXED` - exactly the combination a `kinematicPositionBased` character makes with
+   a `static` `Trigger`. Confirmed empirically: a character parked motionless for a full simulated
+   second inside a trigger's volume never fired `onEntityEntered` until this was set. Fix:
+   `colliderDescr.setActiveCollisionTypes(ActiveCollisionTypes.ALL)` on the character's own collider in
+   `Rapier3dCharacterControllerComponent.addToWorld()` - `.ALL` rather than just `KINEMATIC_FIXED`
+   covers every other rigid-body-type pairing the character could ever meet too (another kinematic
+   character, a kinematic trigger, etc.), not just this one combination. Separately,
+   `ActiveEvents.COLLISION_EVENTS` (the different, per-*collider* "actually emit an event for an
+   allowed pair" flag - unaffected by `ActiveCollisionTypes`) is also set on this same collider, even
+   though a trigger's own sensor collider already carries it and one side is normally sufficient (see
+   `Rapier3dFactory.createRigidBody`'s own doc) - belt-and-suspenders for a real (non-sensor) contact
+   against another kinematic body, where neither side would otherwise have it pre-set.
+
+**A third, layered bug was found while regression-testing the above, from a completely different
+mechanism**: even after both fixes, a character `move()`-ing straight at a trigger's volume physically
+*stopped dead at its boundary* instead of walking through it - confirmed by logging position per step
+and seeing it plateau exactly at the trigger's near face plus the capsule's radius.
+`KinematicCharacterController.computeColliderMovement()` treats a sensor collider as a solid obstacle
+by default (no `filterFlags` argument passed = no exclusion) - entirely independent of
+`ActiveCollisionTypes`/`ActiveEvents` above, which only gate the collision-*event* queue, not this
+sweep-based movement query. Fix: pass `QueryFilterFlags.EXCLUDE_SENSORS` as `computeColliderMovement`'s
+3rd argument in `move()`. Without this fix specifically, a character could get stuck straddling a
+trigger's boundary forever - `onEntityEntered` firing correctly (genuine overlap right at the boundary)
+but `onEntityLeft` never following, since the character could make it no further in. See
+`gg-engine-physics-adapter-ammo`'s own note on the identical symptom on that adapter (different root
+cause - Ammo's `convexSweepTest`/`contactTest` needed every `AmmoTriggerComponent` manually detached
+from the broadphase for the query's duration, since `CF_NO_CONTACT_RESPONSE` only suppresses the
+*dynamics* solver's response, not a geometric sweep/contact query - but the same underlying class of
+bug: a sensor silently acting as a solid obstacle to character movement).
+
+Regression coverage: `rapier-3d-trigger-character-controller-integration.spec.ts` (walking through a
+trigger end-to-end, and spawning already inside one). No vehicle-side test was needed here - Rapier3d
+doesn't implement raycast vehicles at all (`Rapier3dFactory.createRaycastVehicle` throws
+"not implemented"), so this gap could never have applied to a vehicle on this adapter; see
+`gg-engine-physics-adapter-ammo`'s test for the equivalent vehicle coverage on the one adapter that
+does support them.
+
 ## Keep this skill current
 
 This file is read by future agents fixing/extending `packages/rapier2d` or `packages/rapier3d`

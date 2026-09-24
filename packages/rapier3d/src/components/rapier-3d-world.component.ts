@@ -18,7 +18,6 @@ import { Rapier3dPhysicsTypeDocRepo } from '../types';
 import { Subject } from 'rxjs';
 
 // bodies that get pushed into `children`/`added$`/`removed$` - see Rapier3dWorldComponent's ctor.
-// `handleIdEntityMap` deliberately stays narrower (see Rapier3dCharacterControllerComponent's doc).
 type Rapier3dWorldChild = Rapier3dRigidBodyComponent | Rapier3dCharacterControllerComponent;
 
 export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3dPhysicsTypeDocRepo> {
@@ -74,7 +73,20 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
     return this._eventQueue;
   }
 
-  public readonly handleIdEntityMap: Map<number, Rapier3dRigidBodyComponent> = new Map();
+  /**
+   * Keyed by rigid-body handle. Includes `Rapier3dCharacterControllerComponent`s alongside ordinary
+   * `Rapier3dRigidBodyComponent`s (triggers included, since `Rapier3dTriggerComponent extends
+   * Rapier3dRigidBodyComponent`) - a character controller's kinematic body still gets a real Rapier
+   * rigid-body handle on `addToWorld` (see that class), so it registers here the same way, letting
+   * `dispatchCollisionEvents` resolve sensor-overlap pairs against it (so a `Trigger` fires for a
+   * player walking through it, not just for ordinary rigid bodies/vehicle chassis) and letting
+   * `raycast()` resolve a hit against it too. `dispatchCollisionEvents` still narrows to
+   * `Rapier3dRigidBodyComponent` before treating a pair as a real (non-sensor) contact, since a
+   * character controller has no `notifyCollisionStart`/`notifyCollisionEnd` to call - its physical
+   * response comes from its own sweep-based `move()`, not Rapier's contact solver.
+   */
+  public readonly handleIdEntityMap: Map<number, Rapier3dRigidBodyComponent | Rapier3dCharacterControllerComponent> =
+    new Map();
 
   constructor() {
     this.added$.subscribe(c => this.children.push(c));
@@ -107,6 +119,12 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
    * `handleIdEntityMap` is keyed by rigid-body handle (see `addToWorld`), so each handle is resolved
    * via `World.getCollider(handle)` (returns `null` for a since-removed collider, not a throw - safe
    * to just skip) then `Collider.parent()` to reach the owning `RigidBody` before the map lookup.
+   *
+   * `handleIdEntityMap` also holds `Rapier3dCharacterControllerComponent`s (see its own doc), so
+   * `comp1`/`comp2` below can each be a character controller as well as a rigid body/trigger - the
+   * sensor branch handles that directly (`notifyOverlap` accepts either), while the real-contact
+   * branch narrows to `Rapier3dRigidBodyComponent` first, since a character controller has no
+   * collision-event API to call into.
    */
   protected dispatchCollisionEvents(): void {
     const nativeWorld = this._nativeWorld;
@@ -137,6 +155,14 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
         if (comp2 instanceof Rapier3dTriggerComponent) {
           comp2.notifyOverlap(comp1, started);
         }
+        return;
+      }
+
+      // A character controller has no real-contact API (`notifyCollisionStart`/`notifyCollisionEnd`)
+      // to call into - its own sweep-based `move()` already handles physical response, so a non-sensor
+      // pair involving one is simply not reported as a collision event. (Sensor pairs above are
+      // unaffected by this - `notifyOverlap` accepts either component type.)
+      if (!(comp1 instanceof Rapier3dRigidBodyComponent) || !(comp2 instanceof Rapier3dRigidBodyComponent)) {
         return;
       }
 
@@ -285,7 +311,14 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
       if (!rigidBody) {
         return { hasHit: false };
       }
-      result.hitBody = this.handleIdEntityMap.get(rigidBody.handle);
+      // `handleIdEntityMap` also holds character controllers now (see its own doc) - raycast's
+      // contract only promises `PTypeDoc['rigidBody'] | PTypeDoc['trigger']`, so a hit against one is
+      // filtered out here rather than surfaced as `hitBody`, unlike a trigger's sensor-overlap
+      // resolution which does report it. `ObjectGrabController`'s character-controller self-hit skip
+      // (see `gg-engine-core-development`) is unaffected either way - it never relied on `hitBody`
+      // resolving at all.
+      const resolvedHitBody = this.handleIdEntityMap.get(rigidBody.handle);
+      result.hitBody = resolvedHitBody instanceof Rapier3dRigidBodyComponent ? resolvedHitBody : undefined;
       result.hitDistance = hit.timeOfImpact;
       result.hitPoint = Pnt3.add(origin, Pnt3.scalarMult(direction, hit.timeOfImpact));
 

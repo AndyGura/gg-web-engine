@@ -396,11 +396,14 @@ self-hit would even occur get grabbed directly, without ever needing the skip at
 
 This can't be replaced with checking `result.hitBody?.entity === holder` instead (a more "obviously
 correct"-looking identity check) - self-hit resolution isn't reliable across every adapter in the
-first place: `Rapier3dCharacterControllerComponent`'s own doc notes its collider is never registered
-in `Rapier3dWorldComponent.handleIdEntityMap` at all, so a self-hit there always resolves to
-`hitBody: undefined`, indistinguishable by identity from any other untracked hit. The distance-based
-heuristic works identically regardless of whether a given adapter can resolve the self-hit's identity
-at all.
+first place: `Rapier3dWorldComponent.raycast()` deliberately still filters a character controller back
+out of `hitBody` even though `handleIdEntityMap` itself now also tracks character controllers (for
+`Trigger3dEntity`'s sake - see `gg-engine-physics-adapter-rapier`), since widening `raycast()`'s own
+public return-type generic is separate, not-yet-done work outside `IPhysicsWorldComponent.raycast`'s
+documented `PTypeDoc['rigidBody'] | PTypeDoc['trigger']` contract - so a self-hit there still always
+resolves to `hitBody: undefined`, indistinguishable by identity from any other untracked hit. The
+distance-based heuristic works identically regardless of whether a given adapter can resolve the
+self-hit's identity at all.
 
 Regression coverage: `character-controller-self-hit-skip.spec.ts` covers the helper directly (default
 skin, custom skin, the pitched-above-midsection case, the `maxDistance * 0.9` clamp).
