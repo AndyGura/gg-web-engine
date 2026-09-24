@@ -496,6 +496,27 @@ members, the same way `IAudioScene(2d|3d)Component` narrows `IAudioSceneComponen
 `loadClip`/`createSource`'s signatures into a new dimension-specific interface if you ever touch
 this - extend the base one instead.
 
+**Adding a capability only some display objects have (not every adapter, not even every object a
+given adapter produces) doesn't belong on the `TypeDoc`'s `displayObject` field itself** - that
+field's type is a hard contract every value assigned to it must satisfy unconditionally, so baking
+an optional capability in there forces every trivial primitive mesh to carry (even if only as
+no-ops) methods that only make sense for a narrow subset of objects. `IAnimatedDisplayObject3dComponent`
+(`3d/components/rendering/i-animated-display-object-3d.component.ts`) - the skeletal-animation
+contract a loaded, bone-animated model satisfies but an auto-generated capsule/box never does - is
+the established pattern for this instead: declare a separate interface `extends
+IDisplayObject3dComponent<VTypeDoc>` with the extra members, keep the `TypeDoc`'s own
+`displayObject` field typed as the plain base interface (an adapter's concrete class is free to
+implement the richer interface without that needing to appear in the `TypeDoc` at all - see
+`ThreeAnimatedDisplayObjectComponent` in `packages/three`, a `ThreeDisplayObjectComponent` subclass
+nowhere named in `ThreeVisualTypeDocRepo`), and export a `isXxx(x): x is Xxx` type guard
+(`isAnimatedDisplayObject3d`) that checks for the distinguishing method(s) at the call site instead
+of an `instanceof` against any concrete adapter class - the latter would defeat the whole point of
+the library-agnostic interfaces this pattern lives alongside. A driving controller
+(`CharacterAnimationController`, `3d/entities/controllers/character-animation.controller.ts`)
+narrows with the guard before touching the extra members, and is a correct no-op against any
+display object that doesn't implement them (e.g. a `CharacterController3dEntity` using its default
+auto-generated capsule mesh instead of a loaded animated model).
+
 ## Interfaces that are the actual public contract
 
 Changing any of these is a breaking change for every adapter package — grep
@@ -539,6 +560,23 @@ Never hand-edit `src/version.ts` — it's generated. Tests live under `test/`, m
 paths, with shared fakes in `test/mocks/` (`body.mock.ts`, `object.mock.ts`, `world.mock.ts`,
 `raycast-vehicle.mock.ts`). New core logic should get a `.spec.ts` there, not in an adapter
 package, unless it's genuinely adapter-specific behavior.
+
+**A `get someProp()` accessor defined inside an object literal that also uses `...spread` to pull
+in another object's properties silently stops being live** - this is real spec `Object.assign`/
+object-spread behavior (invokes `[[Get]]` on the source and copies the *current return value* as a
+plain data property), not a TS-downlevel artifact, and it bites a hand-rolled mock exactly the way
+it would bite any other spread-merged object. Concretely: `{ ...base, get current() { return
+x; }, set(v) { x = v; } }` looks like it defines a live getter on the result, but `current` reads
+back the *value `x` happened to be at construction time* forever after, never updating even though
+`set()` keeps reassigning `x` - confirmed with a minimal repro with no mocks involved at all.
+`test/mocks/object.mock.ts`'s `mockAnimatedObject()` hit this building a mock
+`IAnimatedDisplayObject3dComponent`: a `get currentAnimationName()` closure-backed getter, spread
+together with a `mock3DObject()` base, always read back `null` even right after calling the mock's
+own `playAnimation()`. Fix: skip the getter entirely and mutate a plain property directly off the
+returned object reference from within its own methods (`result.currentAnimationName = name;` inside
+`playAnimation`, closing over `result` itself) - see that file for the working pattern. Applies to
+any new mock built by spreading a base helper's return value together with additional accessor
+properties, not just this one.
 
 ### TypeScript 6 / Jest 30 pitfalls (hit upgrading off TS 5.5 / Jest 29)
 

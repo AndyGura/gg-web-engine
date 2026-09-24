@@ -3,6 +3,7 @@ import { GG_META_SUPPORTED_FORMAT_VERSION, GgMeta } from './models/gg-meta';
 import { Entity3d } from './entities/entity-3d';
 import { GroupEntity, Pnt3, Point3, Point4, Qtrn, warnOnce } from '../base';
 import { Gg3dLevelLoader } from './level-loader';
+import { LoadGlbOptions } from './loaders';
 
 export enum CachingStrategy {
   Nothing,
@@ -213,6 +214,22 @@ export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocR
       this.loadResultCache.set(path, cloneLoadResourcesResult(result));
     }
     return result;
+  }
+
+  /**
+   * Loads a plain `.glb` (no `.meta` pair - see `loadGgGlb`) via `visualScene.loader.loadFromGlb`,
+   * for a visual-only asset that has no physics representation of its own (a character model
+   * driven by a separately-created `CharacterController3dEntity`'s capsule, a decorative prop, ...).
+   * `undefined`/`null` if there's no visual scene to load against.
+   * @param path - Path (URL or path prefix, without extension) to the `.glb` file
+   * @param options - See `LoadGlbOptions`
+   */
+  public async loadModel(path: string, options?: LoadGlbOptions): Promise<TypeDoc['vTypeDoc']['displayObject'] | null> {
+    if (!this.world.visualScene) {
+      return null;
+    }
+    const glb = await fetch(`${path}.glb`).then(r => r.arrayBuffer());
+    return this.world.visualScene.loader.loadFromGlb(glb, options);
   }
 
   public async loadGgGlb(

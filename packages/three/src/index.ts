@@ -1,4 +1,5 @@
 export * from './components/three-display-object.component';
+export * from './components/three-animated-display-object.component';
 export * from './components/three-scene.component';
 export * from './components/three-renderer.component';
 export * from './components/three-composer-renderer.component';

@@ -62,6 +62,7 @@ While the current focus is on racing game features and 3D worlds, future updates
 - Physics/Rendering Synchronization: Automates position/rotation updates.
 - Customizable Controllers: Add functionality with reusable tick-based controllers.
 - Entities: Predefined entities like rigid bodies, triggers, raycast vehicles, and more.
+- Character Animation: Bone-animated character models with automatic idle/walk/run/crouch/jump state switching.
 - Developer Console: Built-in UI console for debugging and tweaking settings.
 - Map Graph Loading: Load map areas dynamically based on proximity (3D worlds).
 - Free-Fly Camera: Explore 3D worlds effortlessly.
