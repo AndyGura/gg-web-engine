@@ -7,6 +7,7 @@ export interface ShapeSpawnerSettings {
 }
 
 export class ShapeSpawner extends IEntity {
+  static readonly entityTypeName: string = 'ShapeSpawner';
   public readonly tickOrder = TickOrder.CONTROLLERS;
   private readonly clock: PausableClock;
   private readonly spawnSub: Subscription;

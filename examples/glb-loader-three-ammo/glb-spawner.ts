@@ -12,6 +12,7 @@ export interface GlbSpawnerSettings {
 }
 
 export class GlbSpawner extends IEntity {
+  static readonly entityTypeName: string = 'GlbSpawner';
   public readonly tickOrder = TickOrder.CONTROLLERS;
   private readonly clock: PausableClock;
   private readonly spawnSub: Subscription;

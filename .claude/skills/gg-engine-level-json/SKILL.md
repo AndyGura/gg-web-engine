@@ -634,6 +634,7 @@ interface ShapeSpawnerSettings {
 }
 
 class ShapeSpawner extends IEntity {
+  static readonly entityTypeName: string = 'ShapeSpawner';
   public readonly tickOrder = TickOrder.CONTROLLERS;
   private readonly clock: PausableClock;
   private readonly spawnSub: Subscription;
@@ -680,6 +681,20 @@ plus the spawner, no `"Trigger"`/`"Camera"` entities; `examples/primitives-three
 A `class` with no registered generator logs `console.warn('No generator registered for class alias
 "..."')` and is skipped rather than throwing - so a level JSON referencing an app class must have
 that class registered first, or that entity silently disappears.
+
+`static readonly entityTypeName` (`ShapeSpawner` above declares one) is required on every
+app-defined entity class, not optional - see `gg-engine-app-development`'s own section on this. It's
+a stable, class-identifying string the engine's future entity serializer will need every entity
+class to already have, to turn a live, runtime-spawned entity back into a level-JSON-shaped
+descriptor (`LevelLoader` today only loads, JSON → entities, with no inverse direction yet - see
+`milestones.md`'s M2 "Export/serialize" item and its "Networking / multiplayer" item) - tag your
+classes as you write them so none need a retrofit pass once that lands. As a bonus today, it's also
+what makes an instance loaded with no explicit `name` in its `EntityJson` read as `ShapeSpawner_0` in
+the dev console instead of an opaque `e0x7`; without it, only entities explicitly named in level JSON
+(or given the `` `${levelName}__${classAlias}_${index}` `` fallback name loaded-but-unnamed level
+entities get - see the `name` field under "Shape of a level JSON" above) stay readable, and anything
+the class spawns at runtime beyond what the level JSON itself describes (e.g. `ShapeSpawner`'s own
+spawned shapes) falls back to the opaque default without it.
 
 ## Where level JSON content lives
 
