@@ -101,6 +101,7 @@ const DEFAULT_OPTIONS: PlayerCharacterControllerOptions = {
  * movement is relative to that facing.
  */
 export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo> extends IEntity {
+  static readonly entityTypeName: string = 'PlayerCharacterController';
   public readonly tickOrder = TickOrder.CONTROLLERS;
 
   protected readonly options: PlayerCharacterControllerOptions;

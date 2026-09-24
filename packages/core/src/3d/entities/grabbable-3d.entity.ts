@@ -132,6 +132,7 @@ const DEFAULT_OPTIONS: Grabbable3dEntityOptions = {
  * tunnel) rather than the object settling flush against the surface.
  */
 export class Grabbable3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo> extends Entity3d<TypeDoc> {
+  static readonly entityTypeName: string = 'Grabbable3dEntity';
   public readonly grabOptions: Grabbable3dEntityOptions;
 
   private _isHeld: boolean = false;

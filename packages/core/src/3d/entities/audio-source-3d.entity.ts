@@ -18,6 +18,7 @@ export class AudioSource3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorl
   extends IEntity<Point3, Point4, TypeDoc>
   implements IPositionable3d
 {
+  static readonly entityTypeName: string = 'AudioSource3dEntity';
   // A touch above OBJECTS_BINDING (400), not equal to it: an attached source must read its
   // target's transform *after* that target has been synced from physics this same frame, and
   // same-tickOrder ties resolve by addEntity() insertion order, not declaration order (see

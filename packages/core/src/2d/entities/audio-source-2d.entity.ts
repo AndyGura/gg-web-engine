@@ -11,6 +11,7 @@ export class AudioSource2dEntity<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorl
   extends IEntity<Point2, number, TypeDoc>
   implements IPositionable2d
 {
+  static readonly entityTypeName: string = 'AudioSource2dEntity';
   // See AudioSource3dEntity's doc for why this sits just above OBJECTS_BINDING rather than at it.
   public readonly tickOrder = TickOrder.OBJECTS_BINDING + 10;
 

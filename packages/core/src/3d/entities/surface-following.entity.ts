@@ -20,6 +20,7 @@ export class SurfaceFollowingEntity<PTypeDoc extends PhysicsTypeDocRepo3D = Phys
   Point4,
   Gg3dWorldTypeDocPPatch<PTypeDoc>
 > {
+  static readonly entityTypeName: string = 'SurfaceFollowingEntity';
   /**
    * Determines the execution order for physics simulation.
    */

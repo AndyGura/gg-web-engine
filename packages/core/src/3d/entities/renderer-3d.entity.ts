@@ -6,6 +6,7 @@ export class Renderer3dEntity<VTypeDoc extends VisualTypeDocRepo3D = VisualTypeD
   extends IRendererEntity<Point3, Point4, VTypeDoc>
   implements IPositionable3d
 {
+  static readonly entityTypeName: string = 'Renderer3dEntity';
   /**
    * Proxies to `this.camera.enableRenderLayer`/`disableRenderLayer`/`isRenderLayerEnabled` - see
    * `ICamera3dComponent`'s own doc for what enabling/disabling a render layer on a camera means.

@@ -68,6 +68,7 @@ const wheeelDefaults = {
 export class RaycastVehicle3dEntity<
   TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo,
 > extends Entity3d<TypeDoc> {
+  static readonly entityTypeName: string = 'RaycastVehicle3dEntity';
   protected readonly wheels: (Entity3d<TypeDoc> | null)[] = [];
   protected readonly wheelLocalRotation: (Point4 | null)[] = [];
   protected readonly frontWheelsIndices: number[] = [];

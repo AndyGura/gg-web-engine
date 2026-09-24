@@ -77,6 +77,57 @@ describe('IEntity', () => {
     });
   });
 
+  describe('entityTypeName-based default naming', () => {
+    afterEach(() => {
+      // middlewares and per-type counters are process-global and would otherwise leak into every
+      // later test in this file
+      (IEntity as any).defaultNameMiddlewares = [];
+      (IEntity as any).defaultNameCountersByType = new Map();
+    });
+
+    it('uses "${entityTypeName}_${n}" instead of the opaque default when the class declares one', () => {
+      const a = new TaggedEntityMock();
+      const b = new TaggedEntityMock();
+
+      expect(a.name).toBe('TaggedEntityMock_0');
+      expect(b.name).toBe('TaggedEntityMock_1');
+    });
+
+    it('scopes the counter per entityTypeName, not globally', () => {
+      const a = new TaggedEntityMock();
+      const c = new OtherTaggedEntityMock();
+
+      expect(a.name).toBe('TaggedEntityMock_0');
+      expect(c.name).toBe('OtherTaggedEntityMock_0');
+    });
+
+    it('falls back to a parent class entityTypeName when a subclass declares none of its own', () => {
+      const entity = new UntaggedSubclassOfTaggedMock();
+
+      expect(entity.name).toBe('TaggedEntityMock_0');
+    });
+
+    it('still runs default-name middlewares on top of an entityTypeName-derived name', () => {
+      IEntity.useDefaultNameMiddleware(name => `peer1:${name}`);
+
+      const entity = new TaggedEntityMock();
+
+      expect(entity.name).toBe('peer1:TaggedEntityMock_0');
+    });
+
+    class TaggedEntityMock extends IEntity {
+      static readonly entityTypeName: string = 'TaggedEntityMock';
+      readonly tickOrder = TickOrder.OBJECTS_BINDING;
+    }
+
+    class OtherTaggedEntityMock extends IEntity {
+      static readonly entityTypeName: string = 'OtherTaggedEntityMock';
+      readonly tickOrder = TickOrder.OBJECTS_BINDING;
+    }
+
+    class UntaggedSubclassOfTaggedMock extends TaggedEntityMock {}
+  });
+
   it('should add children entities', () => {
     const child1 = new GgEntityMock();
     const child2 = new GgEntityMock();

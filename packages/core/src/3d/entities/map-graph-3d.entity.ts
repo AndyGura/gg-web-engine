@@ -103,6 +103,7 @@ const defaultOptions: Gg3dMapGraphEntityOptions = {
 export class MapGraph3dEntity<
   TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo,
 > extends IRenderable3dEntity<TypeDoc> {
+  static readonly entityTypeName: string = 'MapGraph3dEntity';
   public readonly tickOrder = TickOrder.POST_RENDERING;
 
   public readonly loaderCursor$: BehaviorSubject<Point3> = new BehaviorSubject<Point3>(Pnt3.O);

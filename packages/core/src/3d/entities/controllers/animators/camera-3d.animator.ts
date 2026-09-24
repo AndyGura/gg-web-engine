@@ -19,6 +19,7 @@ export class Camera3dAnimator<VTypeDoc extends VisualTypeDocRepo3D = VisualTypeD
   Point4,
   Gg3dWorldTypeDocVPatch<VTypeDoc>
 > {
+  static readonly entityTypeName: string = 'Camera3dAnimator';
   constructor(
     public entity: Renderer3dEntity<VTypeDoc>,
     protected _animationFunction: AnimationFunction<Camera3dAnimationArgs>,

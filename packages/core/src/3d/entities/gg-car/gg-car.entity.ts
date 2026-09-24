@@ -56,6 +56,7 @@ export class GgCarEntity<
   extends IRenderable3dEntity<TypeDoc>
   implements IPositionable3d
 {
+  static readonly entityTypeName: string = 'GgCarEntity';
   public readonly tickOrder = TickOrder.PHYSICS_SIMULATION - 5;
 
   get position(): Point3 {

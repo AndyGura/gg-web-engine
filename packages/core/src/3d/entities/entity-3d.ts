@@ -11,6 +11,7 @@ export class Entity3d<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRep
   extends IRenderable3dEntity<TypeDoc>
   implements IPositionable3d
 {
+  static readonly entityTypeName: string = 'Entity3d';
   public readonly tickOrder = TickOrder.OBJECTS_BINDING;
 
   /**

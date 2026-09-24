@@ -123,6 +123,7 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
   extends IRenderable3dEntity<TypeDoc>
   implements IPositionable3d
 {
+  static readonly entityTypeName: string = 'CharacterController3dEntity';
   public readonly tickOrder = TickOrder.PHYSICS_SIMULATION - 5;
 
   public readonly options: Required<CharacterController3dEntityOptions>;

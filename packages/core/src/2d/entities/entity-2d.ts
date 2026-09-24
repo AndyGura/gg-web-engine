@@ -9,6 +9,7 @@ export class Entity2d<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTypeDocRep
   extends IRenderable2dEntity<TypeDoc>
   implements IPositionable2d
 {
+  static readonly entityTypeName: string = 'Entity2d';
   public readonly tickOrder = TickOrder.OBJECTS_BINDING;
 
   /**

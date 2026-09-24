@@ -409,6 +409,7 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
  * @template TypeDoc - The type document repository
  */
 class BlueprintBindingEntity<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>> extends IEntity<D, R, TypeDoc> {
+  static readonly entityTypeName: string = 'BlueprintBindingEntity';
   public readonly tickOrder = TickOrder.CONTROLLERS;
   private readonly subscription: Subscription;
 
