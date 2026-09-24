@@ -3,6 +3,7 @@ import { ColliderDesc, RigidBodyDesc } from '@dimforge/rapier3d-compat';
 import { Rapier3dRigidBodyComponent } from './rapier-3d-rigid-body.component';
 import { DebugBody3DSettings, ITrigger3dComponent, Shape3DDescriptor } from '@gg-web-engine/core';
 import { Rapier3dWorldComponent } from './rapier-3d-world.component';
+import { Rapier3dCharacterControllerComponent } from './rapier-3d-character-controller.component';
 import { Rapier3dGgWorld, Rapier3dPhysicsTypeDocRepo } from '../types';
 
 export class Rapier3dTriggerComponent
@@ -73,13 +74,23 @@ export class Rapier3dTriggerComponent
    * components correctly via `Collider.parent()`, and pushes matching events to whichever
    * component(s) care.
    */
-  public notifyOverlap(otherBody: Rapier3dRigidBodyComponent, started: boolean): void {
+  public notifyOverlap(
+    otherBody: Rapier3dRigidBodyComponent | Rapier3dCharacterControllerComponent,
+    started: boolean,
+  ): void {
+    // `otherBody` can be a `Rapier3dCharacterControllerComponent` (a player walking through this
+    // trigger) as well as an ordinary rigid body - it isn't an `IRigidBodyComponent` itself, but the
+    // core `ITrigger3dComponent`/`Trigger3dEntity` contract only ever reads `.entity` off whatever
+    // `onEntityEntered`/`onEntityLeft` emit (see `Trigger3dEntity`), which a character controller has
+    // too, so it's cast through here exactly like an ordinary body. This mirrors the ammo adapter's
+    // own `AmmoTriggerComponent`, which resolves the same overlap case the same way.
+    const body = otherBody as Rapier3dRigidBodyComponent;
     if (started) {
-      this.overlaps.add(otherBody);
-      this.onEnter$.next(otherBody);
+      this.overlaps.add(body);
+      this.onEnter$.next(body);
     } else {
-      this.overlaps.delete(otherBody);
-      this.onLeft$.next(otherBody);
+      this.overlaps.delete(body);
+      this.onLeft$.next(body);
     }
   }
 

@@ -490,6 +490,37 @@ this is a core-level fix, not an Ammo-specific one, but worth knowing when debug
 transition that appears to silently drop a held-object exclusion: without it, every capsule swap (e.g.
 `recreateCapsule`) would reset to an empty set and re-enable collision with whatever was being ignored.
 
+## Every `AmmoTriggerComponent` in the world is excluded from a character's own sweeps too, unconditionally
+
+`AmmoCharacterControllerComponent.sweep()`, `recoverFromPenetration()`, and `trySnapToGround()`'s
+ground-detection ray each also call `detachTriggers()`/`reattachTriggers()` alongside
+`detachIgnoredBodies()`/`reattachIgnoredBodies()`, right beside the character's own self-exclusion -
+mirroring that pair's mechanism exactly (`AmmoTriggerComponent.detachFromBroadphaseTemporarily()`/
+`reattachToBroadphase()`, backed by `removeCollisionObject`/`addCollisionObject` since a trigger's
+native body is a ghost object, not a full rigid body) but with a different scope: `detachTriggers()`
+pulls out *every* `AmmoTriggerComponent` currently in `world.children`, unconditionally, not just an
+opt-in set. A `Trigger` (see `ITrigger3dComponent`) is a sensor with no collision response by
+definition - it was never supposed to be a solid obstacle to any character, for any game, so there is
+no scenario where a character should walk-block against one or "ground" on top of one, unlike
+`ignoredBodies` (which is deliberately per-character/per-body opt-in for props a specific holder is
+carrying).
+
+Bug found empirically (regression test: `ammo-trigger-player-vehicle-integration.spec.ts`): before
+this, a character walking straight at a `Trigger`'s volume physically stopped dead at its boundary
+instead of walking through it - `convexSweepTest`/`contactTest` test geometry only, unaffected by the
+`CF_NO_CONTACT_RESPONSE` flag a trigger's ghost object carries (that flag only suppresses
+`btDiscreteDynamicsWorld`'s own constraint-solver response, a completely different code path this
+character's hand-rolled mover never uses to begin with - see the class's own doc for why). So a
+character could get stuck straddling a trigger's boundary, `onEntityEntered` firing correctly (its
+capsule genuinely does overlap the volume at that boundary) but `onEntityLeft` never following, since
+the character could make it no further in. `AmmoTriggerComponent.onEntityEntered`/`onEntityLeft`
+themselves needed no fix at all - they already resolved a character-controller overlap correctly via
+the shared `AmmoBodyComponent.nativeBodyReverseMap` every body component registers into; the bug was
+purely that the character could never actually get far enough into/out of the volume to exercise it
+realistically. See `gg-engine-physics-adapter-rapier`'s own note on this same class of bug on that
+adapter (a different root cause there - `ActiveCollisionTypes`/`QueryFilterFlags`, not a manual
+broadphase-detach loop - but the identical symptom: a trigger physically blocking movement).
+
 ## `AmmoWorldComponent.simulate()`'s fixed-substep accumulator drifting against the render loop
 
 `stepSimulation(timeStep, maxSubSteps, fixedTimeStep)` with a non-zero `maxSubSteps` puts Bullet into

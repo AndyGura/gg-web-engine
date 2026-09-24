@@ -12,9 +12,12 @@ import {
   warnOnce,
 } from '@gg-web-engine/core';
 import {
+  ActiveCollisionTypes,
+  ActiveEvents,
   Collider,
   InteractionGroups,
   KinematicCharacterController,
+  QueryFilterFlags,
   Quaternion,
   RigidBody,
   RigidBodyDesc,
@@ -43,12 +46,17 @@ import { Rapier3dGgWorld, Rapier3dPhysicsTypeDocRepo } from '../types';
  * specific to this component; a normal per-frame game loop that calls `physicsWorld.simulate()`
  * every tick already satisfies it after the first tick.
  *
- * Note: unlike `Rapier3dRigidBodyComponent`/`Rapier3dTriggerComponent`, this component's native body
- * handle is *not* registered in `Rapier3dWorldComponent.handleIdEntityMap` - `world.raycast()` cannot
- * currently resolve a hit against a character controller back to this component (it will simply be
- * absent from `RaycastResult.hitBody`). Wiring that up would require widening the reverse-map's and
- * `raycast()`'s return-type generics repo-wide for a corner case outside this interface's contract;
- * left as a documented limitation rather than done speculatively.
+ * Note: this component's native body handle *is* registered in
+ * `Rapier3dWorldComponent.handleIdEntityMap` (see `addToWorld`/`removeFromWorld` below), alongside
+ * ordinary `Rapier3dRigidBodyComponent`/`Rapier3dTriggerComponent` handles - this is what lets a
+ * `Trigger3dEntity`'s `onEntityEntered`/`onEntityLeft` fire for a player walking through it, not just
+ * for ordinary rigid bodies/vehicle chassis (`Rapier3dWorldComponent.dispatchCollisionEvents` resolves
+ * a sensor-overlap pair's components through this same map). `world.raycast()` deliberately still does
+ * *not* resolve a hit against a character controller back to this component (filtered out in
+ * `raycast()` itself) - widening that too would mean widening the public `raycast()` return-type
+ * generic repo-wide for a case outside `IPhysicsWorldComponent.raycast`'s own documented contract
+ * (`PTypeDoc['rigidBody'] | PTypeDoc['trigger']`), so it's left resolving to `hitBody: undefined`
+ * there, same as before.
  */
 export class Rapier3dCharacterControllerComponent implements ICharacterController3dComponent<Rapier3dPhysicsTypeDocRepo> {
   public entity: Entity3d | null = null;
@@ -269,7 +277,17 @@ export class Rapier3dCharacterControllerComponent implements ICharacterControlle
     this._nativeController.computeColliderMovement(
       this._nativeCollider,
       desired,
-      undefined,
+      // `computeColliderMovement`'s own default (no `filterFlags`) treats a sensor collider as a
+      // solid obstacle, exactly like any real one - confirmed empirically (a character walking
+      // straight at a `Trigger`'s volume physically stopped dead at its boundary instead of walking
+      // through it, well before Rapier's own `KINEMATIC_FIXED` intersection event ever had a chance
+      // to fire - see `Rapier3dWorldComponent.handleIdEntityMap`'s doc for that separate, now also
+      // fixed, half of this). `EXCLUDE_SENSORS` is required so a character can walk into/through a
+      // trigger's volume at all, matching what "trigger" means everywhere else in this engine (a
+      // sensor with no collision response, see `ITrigger3dComponent`) and what `AmmoCharacterControllerComponent`'s
+      // own sweep-based mover already does (Ammo's `CF_NO_CONTACT_RESPONSE` ghost trigger was never a
+      // solid obstacle to begin with).
+      QueryFilterFlags.EXCLUDE_SENSORS,
       undefined,
       this.ignoredBodiesFilterPredicate(),
     );
@@ -438,6 +456,24 @@ export class Rapier3dCharacterControllerComponent implements ICharacterControlle
       radius: this.radius,
       centersDistance: this.centersDistance,
     })[0];
+    // Both needed for `Rapier3dWorldComponent.dispatchCollisionEvents` to ever see a pair involving
+    // this character controller (sensor overlap *or* real contact):
+    // - `ActiveCollisionTypes` gates which pairs even reach narrow-phase at all, gated by the two
+    //   bodies' *rigid-body* types - Rapier's own default (`ActiveCollisionTypes.DEFAULT`) is only
+    //   `DYNAMIC_DYNAMIC | DYNAMIC_FIXED | DYNAMIC_KINEMATIC`; this `kinematicPositionBased` body
+    //   paired against a `static` trigger is `KINEMATIC_FIXED`, which `DEFAULT` excludes entirely -
+    //   confirmed empirically (a character parked motionless inside a trigger's volume for a full
+    //   second of simulated time never fired `onEntityEntered` until this was set). `.ALL` covers
+    //   every other rigid-body-type combination this character could ever meet too (another
+    //   kinematic character, a `Trigger` that's itself kinematic, etc.), not just this one pairing.
+    // - `ActiveEvents.COLLISION_EVENTS` is the separate, per-*collider*, "actually emit an event for
+    //   an allowed pair" flag - a trigger's own sensor collider already sets it (see
+    //   `Rapier3dFactory.createTrigger`) and one side being enough is normally sufficient (see
+    //   `Rapier3dFactory.createRigidBody`'s doc), but this collider sets it too regardless, so a real
+    //   (non-sensor) contact against another kinematic body - which would have neither side pre-set -
+    //   still produces events consistently.
+    colliderDescr.setActiveCollisionTypes(ActiveCollisionTypes.ALL);
+    colliderDescr.setActiveEvents(ActiveEvents.COLLISION_EVENTS);
     this._nativeCollider = nativeWorld.createCollider(colliderDescr, this._nativeBody);
     this._nativeCollider.setCollisionGroups(this.collisionGroups);
 
@@ -450,6 +486,7 @@ export class Rapier3dCharacterControllerComponent implements ICharacterControlle
     if (this.options.snapToGroundDistance > 0) {
       this._nativeController.enableSnapToGround(this.options.snapToGroundDistance);
     }
+    this.world.handleIdEntityMap.set(this._nativeBody.handle, this);
     // Rapier's own `KinematicCharacterController` has a built-in equivalent of `pushMass`
     // (`setApplyImpulsesToDynamicBodies(true)` + `setCharacterMass(...)`) that looked like the
     // obvious way to implement pushing here - no hand-rolled logic needed, unlike
@@ -480,6 +517,7 @@ export class Rapier3dCharacterControllerComponent implements ICharacterControlle
       this._nativeController = null;
     }
     if (this._nativeBody) {
+      this.world.handleIdEntityMap.delete(this._nativeBody.handle);
       if (this._nativeCollider) {
         this.world.nativeWorld.removeCollider(this._nativeCollider, false);
         this._nativeCollider = null;

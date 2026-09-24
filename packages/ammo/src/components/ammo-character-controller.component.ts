@@ -12,6 +12,7 @@ import {
 import Ammo from '../ammo.js/ammo';
 import { AmmoBodyComponent } from './ammo-body.component';
 import { AmmoRigidBodyComponent } from './ammo-rigid-body.component';
+import { AmmoTriggerComponent } from './ammo-trigger.component';
 import { AmmoWorldComponent } from './ammo-world.component';
 import { AmmoGgWorld, AmmoPhysicsTypeDocRepo } from '../types';
 
@@ -313,6 +314,37 @@ export class AmmoCharacterControllerComponent
     }
   }
 
+  /**
+   * Removes every `AmmoTriggerComponent` currently in this world from the collision world's
+   * broadphase, for the exact same reason and via the exact same mechanism as
+   * `detachIgnoredBodies()` above - a trigger is a sensor with no collision response (see
+   * `ITrigger3dComponent`), so it must never physically block this character's movement (`sweep()`)
+   * or "ground" it (`trySnapToGround()`'s raycast) the way a real obstacle would. Unlike
+   * `ignoredBodies` (an explicit, per-character opt-in set), every trigger in the world qualifies
+   * automatically - a `Trigger` was never meant to be a solid obstacle to begin with, for any
+   * character. Bug found empirically: without this, a character walking straight at a `Trigger`'s
+   * volume physically stopped dead at its boundary instead of walking through it, so `Trigger`'s own
+   * `onEntityEntered`/`onEntityLeft` (which do already resolve a character-controller overlap
+   * correctly, via the shared `AmmoBodyComponent.nativeBodyReverseMap`) never got the chance to see
+   * the character genuinely enter or leave.
+   */
+  private detachTriggers(): AmmoTriggerComponent[] {
+    const detached: AmmoTriggerComponent[] = [];
+    for (const child of this.world.children) {
+      if (child instanceof AmmoTriggerComponent && child.detachFromBroadphaseTemporarily()) {
+        detached.push(child);
+      }
+    }
+    return detached;
+  }
+
+  /** Undoes `detachTriggers()` for exactly the triggers it returned. */
+  private reattachTriggers(detached: AmmoTriggerComponent[]): void {
+    for (const trigger of detached) {
+      trigger.reattachToBroadphase();
+    }
+  }
+
   private isWalkableNormal(normal: Point3, up: Point3): boolean {
     return Pnt3.angle(normal, up) <= this.resolvedOptions.maxSlopeClimbAngleRad;
   }
@@ -484,6 +516,7 @@ export class AmmoCharacterControllerComponent
     const collisionWorld = this.world.dynamicAmmoWorld!;
     collisionWorld.removeCollisionObject(this.nativeBody);
     const reattach = this.detachIgnoredBodies();
+    const reattachTriggers = this.detachTriggers();
     let result;
     try {
       result = this.world.raycast({
@@ -495,6 +528,7 @@ export class AmmoCharacterControllerComponent
     } finally {
       collisionWorld.addCollisionObject(this.nativeBody, this._ownCGsMask, this._interactWithCGsMask);
       this.reattachIgnoredBodies(reattach);
+      this.reattachTriggers(reattachTriggers);
     }
     if (!result.hasHit || !result.hitPoint || !result.hitNormal || !this.isWalkableNormal(result.hitNormal, up)) {
       return null;
@@ -563,11 +597,13 @@ export class AmmoCharacterControllerComponent
 
       collisionWorld.removeCollisionObject(this.nativeBody);
       const reattach = this.detachIgnoredBodies();
+      const reattachTriggers = this.detachTriggers();
       try {
         collisionWorld.contactTest(this.nativeBody, callback);
       } finally {
         collisionWorld.addCollisionObject(this.nativeBody, this._ownCGsMask, this._interactWithCGsMask);
         this.reattachIgnoredBodies(reattach);
+        this.reattachTriggers(reattachTriggers);
         Ammo.destroy(callback);
       }
 
@@ -621,6 +657,7 @@ export class AmmoCharacterControllerComponent
 
     collisionWorld.removeCollisionObject(this.nativeBody);
     const reattach = this.detachIgnoredBodies();
+    const reattachTriggers = this.detachTriggers();
     try {
       collisionWorld.convexSweepTest(
         this.nativeShape as unknown as Ammo.btConvexShape,
@@ -632,6 +669,7 @@ export class AmmoCharacterControllerComponent
     } finally {
       collisionWorld.addCollisionObject(this.nativeBody, this._ownCGsMask, this._interactWithCGsMask);
       this.reattachIgnoredBodies(reattach);
+      this.reattachTriggers(reattachTriggers);
     }
 
     const hasHit = callback.hasHit();
