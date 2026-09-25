@@ -1,6 +1,8 @@
 import {
   BitMask,
   Body2DOptions,
+  BodyOptions,
+  BodyType,
   CollisionEvent,
   CollisionGroup,
   DebugBody2DSettings,
@@ -22,6 +24,21 @@ import {
 import { Observable, Subject } from 'rxjs';
 import { Rapier2dWorldComponent } from './rapier-2d-world.component';
 import { Rapier2dGgWorld, Rapier2dPhysicsTypeDocRepo } from '../types';
+
+/** Inverse of `Rapier2dFactory.createRigidBodyDescr`'s own `BodyType -> RigidBodyType` mapping -
+ * backs `Rapier2dRigidBodyComponent.bodyOptions`. */
+function rapierBodyTypeToBodyType(status: RigidBodyType): BodyType {
+  switch (status) {
+    case RigidBodyType.Fixed:
+      return 'static';
+    case RigidBodyType.KinematicPositionBased:
+      return 'kinematic_pos';
+    case RigidBodyType.KinematicVelocityBased:
+      return 'kinematic_vel';
+    default:
+      return 'dynamic';
+  }
+}
 
 export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2dPhysicsTypeDocRepo> {
   public entity: Entity2d | null = null;
@@ -156,6 +173,25 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
         : { type: 'RIGID_KINEMATIC' },
     this.shape,
   );
+
+  /**
+   * See `IRigidBodyComponent.bodyOptions`'s own doc. Reads straight off `_bodyDescr`/
+   * `_colliderOptions` (also what `addToWorld` itself builds the native body/colliders from, and
+   * what `factoryProps`/`clone()` already round-trip) rather than the native body/colliders - this
+   * engine's own API never mutates any of `bodyType`/`mass`/`friction`/`restitution`/`ccd` after
+   * construction, so the stored descriptor is exactly as accurate as a native query would be.
+   */
+  get bodyOptions(): Readonly<BodyOptions> {
+    return {
+      bodyType: rapierBodyTypeToBodyType(this._bodyDescr.status),
+      mass: this._bodyDescr.mass,
+      friction: this._colliderOptions.friction,
+      restitution: this._colliderOptions.restitution,
+      ccd: this._bodyDescr.ccdEnabled,
+      ownCollisionGroups: this.ownCollisionGroups,
+      interactWithCollisionGroups: this.interactWithCollisionGroups,
+    };
+  }
 
   constructor(
     protected readonly world: Rapier2dWorldComponent,

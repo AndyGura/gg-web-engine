@@ -2,6 +2,7 @@ import { AmmoWorldComponent } from './ammo-world.component';
 import Ammo from '../ammo.js/ammo';
 import { AmmoBodyComponent } from './ammo-body.component';
 import {
+  BodyOptions,
   BodyType,
   CollisionEvent,
   DebugBody3DSettings,
@@ -105,6 +106,18 @@ export class AmmoRigidBodyComponent
     this.shape,
   );
 
+  get bodyOptions(): Readonly<BodyOptions> {
+    return {
+      bodyType: this.bodyType,
+      mass: this.nativeBody.getMass(),
+      friction: this.nativeBody.getFriction(),
+      restitution: this.nativeBody.getRestitution(),
+      ccd: this.ccd,
+      ownCollisionGroups: this.ownCollisionGroups,
+      interactWithCollisionGroups: this.interactWithCollisionGroups,
+    };
+  }
+
   /**
    * Back `onCollisionStart`/`onCollisionEnd` below. Populated exclusively by
    * `AmmoWorldComponent.simulate()`'s own post-`stepSimulation` manifold bookkeeping via
@@ -144,6 +157,7 @@ export class AmmoRigidBodyComponent
     protected _nativeBody: Ammo.btRigidBody,
     public readonly shape: Shape3DDescriptor,
     public readonly bodyType: BodyType = 'dynamic',
+    public readonly ccd: boolean = false,
   ) {
     super(world, _nativeBody, shape);
   }
@@ -157,6 +171,7 @@ export class AmmoRigidBodyComponent
         mass: this._nativeBody.getMass(),
         friction: this._nativeBody.getFriction(),
         restitution: this._nativeBody.getRestitution(),
+        ccd: this.ccd,
       },
       {
         position: this.position,

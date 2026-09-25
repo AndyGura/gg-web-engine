@@ -270,7 +270,7 @@ export class AmmoFactory implements IPhysicsBody3dComponentFactory<AmmoPhysicsTy
       Ammo.destroy(aabbMax);
       Ammo.destroy(halfExtents);
     }
-    const comp = new AmmoRigidBodyComponent(this.world, nativeBody, shapeDescr, bodyType);
+    const comp = new AmmoRigidBodyComponent(this.world, nativeBody, shapeDescr, bodyType, !!options.ccd);
     if (options.ownCollisionGroups && options.ownCollisionGroups !== 'all') {
       comp.ownCollisionGroups = options.ownCollisionGroups;
     }

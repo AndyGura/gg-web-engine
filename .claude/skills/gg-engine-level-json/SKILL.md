@@ -127,6 +127,111 @@ Names are enforced unique world-wide - `GgWorld.addEntity` and `IEntity`'s own `
 throw immediately on a collision - so a level JSON reusing a `name` (or colliding with an entity
 from another level/the app's own code) fails loudly at load time rather than silently shadowing.
 
+## Building a single entity outside a level - `world.loader.createEntity`
+
+`loadLevel` always builds a whole `LevelJson`'s worth of entities at once, parented under one
+`GroupEntity`. For a runtime spawn that doesn't come from (and shouldn't be forced into) a level
+document - e.g. a networked "spawn this entity" message carrying one `EntityJson`, or a
+gameplay-triggered spawn built from a small hand-written descriptor - `world.loader.createEntity(entityJson)`
+builds a single entity the same way (dispatching `entityJson.class` to its registered generator),
+without any level/group involved:
+
+```typescript
+const crate = await world.loader.createEntity({
+  class: 'Primitive',
+  shape: 'BOX',
+  position: { x: 3, y: 0, z: 1 },
+  config: { dimensions: { x: 1, y: 1, z: 1 }, body: { mass: 5 } },
+});
+if (crate) {
+  world.addEntity(crate); // safe even if the generator already self-added it (e.g. addPrimitiveRigidBody does)
+}
+```
+
+Unlike `loadLevel`, the returned entity is **not** parented under any group and is **not** added to
+the world automatically - the caller does both itself (`world.addEntity(entity)`, and optionally
+`someParent.addChildren(entity)`). `entity.name` is left at whatever default the entity itself
+generated unless `entityJson.name` is explicitly given - there's no level/index to derive a
+fallback name from outside `loadLevel`. Returns `undefined` (logged via `console.warn`, same as
+`loadLevel`'s per-entity posture) if `entityJson.class` has no registered generator, or that
+generator didn't return an `IEntity`.
+
+## Serializing an entity or a level back to JSON
+
+`world.loader.serializeEntity(entity)` is the inverse of `createEntity`/`loadLevel`: given a live
+entity, it returns the `EntityJson` that could reproduce it. It tries two mechanisms, in order:
+
+1. **Live serializers** - read the entity's own *current* physics/visual state directly, so they
+   work for an entity regardless of how (or by what code) it was actually built, and reflect
+   however much its state has drifted since spawn (moved, given a different velocity, ...). The
+   built-in `"Primitive"`/`"Trigger"` classes (2D and 3D) work this way: they recover `shape`/
+   `dimensions`/`radius`/etc. from the physics body's own `debugBodySettings.shape`, and
+   `body`/`linearVelocity`/`angularVelocity` from the live body itself (`bodyOptions`,
+   `linearVelocity`, `angularVelocity`) - not from whatever JSON (if any) the entity happened to be
+   loaded from:
+
+   ```typescript
+   const crate = world.addPrimitiveRigidBody(
+     { shape: { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } }, body: { bodyType: 'dynamic', mass: 2 } },
+     { x: 0, y: 0, z: 5 },
+   ); // built directly, no level JSON or createEntity call involved at all
+   // ...gravity pulls it down, a push gives it some velocity...
+   world.loader.serializeEntity(crate);
+   // => { class: 'Primitive', shape: 'BOX', name: 'Entity3d_0', position: {x, y, z now},
+   //      rotation: {...}, config: { dimensions: {x:1,y:1,z:1}, body: {...live bodyOptions...},
+   //      linearVelocity: {...}, angularVelocity: {...} } }
+   ```
+
+   One real gap: a primitive's **material** (color/shading) can't be recovered this way - no
+   adapter's visual display-object component exposes an equivalent "what was I actually created
+   with" accessor the way a rigid body's `debugBodySettings`/`bodyOptions` do, so a serialized
+   `"Primitive"` always reloads with default material. A richer subclass isn't silently
+   mis-serialized either: the live `"Primitive"`/`"Trigger"` serializers match an entity's *exact*
+   concrete class, not `instanceof`, so e.g. a `Grabbable3dEntity` (extends `Entity3d`, built via
+   `world.addGrabbablePrimitive` - not itself a registered level-loader class) falls through
+   instead of being mistaken for a plain, non-grabbable primitive.
+
+2. **Spawn-record echo** - falls back to this only if no live serializer matched. Works only for an
+   entity that was itself built by the loader (`createEntity`, and therefore `loadLevel` too): the
+   loader remembers the `class`/`shape`/`config` each entity was built from and echoes them
+   straight back, still reading `name`/`position`/`rotation` live off the entity (so a moved or
+   renamed entity serializes to where it actually is now, not its spawn-time values) - this is the
+   only option available for a class with no live-state equivalent to read from (`"GgCar"`'s engine/
+   suspension/transmission tuning, `"MapGraph"`'s graph structure, `"Player"`'s model asset path,
+   `"Sound"`'s clip URL - none of these are recoverable from any live component today).
+
+An entity matched by neither - built some other way with no live serializer registered for its
+class (a raw `new SomeEntity(...)` call), or a child an entity class adds to itself (a `"Player"`'s
+`CharacterAnimationController`, one of a `"GgCar"`'s individual wheel components) - has nothing to
+reconstruct it from; `serializeEntity` logs a warning and returns `undefined` rather than guessing.
+
+`world.loader.serializeLevel(level)` is the level-wide counterpart: it walks `level.children` and
+serializes each one that either a live serializer recognizes or has a spawn record, into a
+`LevelJson`'s `entities` array - silently skipping a child that's neither (e.g. a blueprint event
+binding `loadLevel` itself parents under the level - see "Blueprints" below) rather than warning
+about it, since that kind of internal child is expected there. `serializeLevel` only reconstructs
+`entities` - `blueprints`/`events` bindings aren't serialized back, since a live event binding
+doesn't expose the `BlueprintJson` it was built from.
+
+Two extension points, for a class whose built-in handling isn't enough:
+
+- `world.loader.registerLiveSerializer((entity) => EntityJson | undefined)` - register a fully
+  independent, state-reading reconstruction (the same mechanism `"Primitive"`/`"Trigger"` use) for
+  an app-defined class whose live state can be read back well enough to reconstruct an `EntityJson`
+  without needing a spawn record at all. Tried in registration order, ahead of every other
+  registered one (built-ins included) and ahead of the spawn-record echo.
+- `world.loader.registerSerializer(classAlias, (entity, defaultJson) => EntityJson | undefined)` -
+  layers onto the spawn-record echo instead of replacing it: receives what the echo would have
+  produced (`defaultJson`) and returns the `EntityJson` to actually emit, typically adding extra
+  fields onto `defaultJson.config` (e.g. some runtime-mutated state the spawn-time `config` alone
+  wouldn't reflect) rather than building one from scratch. Only runs for an entity that already has
+  a spawn record (built via `createEntity`/`loadLevel`).
+
+`"Primitive"`'s `config` also accepts optional `linearVelocity`/`angularVelocity` (2D: `Point2`/a
+radians-per-second number; 3D: `Point3`/`Point3`), applied once right after the body is created -
+this is what lets a serialized primitive's velocity round-trip through `loadLevel` too, not just
+through `serializeEntity`'s own read side.
+
 ## Built-in classes
 
 ### `"Primitive"` - a display object + physics body pair
@@ -146,10 +251,13 @@ engine API level (no translation needed between a level JSON and e.g.
 cylinder-only - `"CONE"` and the 2D shapes have no elliptical counterpart.
 
 Common `config` fields for both: `material` (`DisplayObject2dOpts`/`DisplayObject3dOpts`, e.g.
-`{ "color": ... }`) and `body` (`Partial<Body2DOptions>`/`Partial<Body3DOptions>`, merged over a
+`{ "color": ... }`), `body` (`Partial<Body2DOptions>`/`Partial<Body3DOptions>`, merged over a
 default dynamic body: `{ bodyType: 'dynamic', mass: 1, restitution: 0.2, friction: 0.5,
-ownCollisionGroups: 'all', interactWithCollisionGroups: 'all' }`). Missing a shape-required field,
-or using an unrecognized `shape` value, throws (and fails the whole `loadLevel` call - see above).
+ownCollisionGroups: 'all', interactWithCollisionGroups: 'all' }`), and optional `linearVelocity`/
+`angularVelocity` (2D: `Point2`/a radians-per-second number; 3D: `Point3`/`Point3`) applied once
+right after the body is created, e.g. to spawn something already moving. Missing a shape-required
+field, or using an unrecognized `shape` value, throws (and fails the whole `loadLevel` call - see
+above).
 
 ### `"Trigger"` - a physics-only trigger volume, ready to use
 
@@ -726,17 +834,16 @@ that class registered first, or that entity silently disappears.
 
 `static readonly entityTypeName` (`ShapeSpawner` above declares one) is required on every
 app-defined entity class, not optional - see `gg-engine-app-development`'s own section on this. It's
-a stable, class-identifying string the engine's future entity serializer will need every entity
-class to already have, to turn a live, runtime-spawned entity back into a level-JSON-shaped
-descriptor (`LevelLoader` today only loads, JSON → entities, with no inverse direction yet - see
-`milestones.md`'s M2 "Export/serialize" item and its "Networking / multiplayer" item) - tag your
-classes as you write them so none need a retrofit pass once that lands. As a bonus today, it's also
+a stable, class-identifying string every entity's auto-generated default name is built from - it's
 what makes an instance loaded with no explicit `name` in its `EntityJson` read as `ShapeSpawner_0` in
 the dev console instead of an opaque `e0x7`; without it, only entities explicitly named in level JSON
 (or given the `` `${levelName}__${classAlias}_${index}` `` fallback name loaded-but-unnamed level
 entities get - see the `name` field under "Shape of a level JSON" above) stay readable, and anything
 the class spawns at runtime beyond what the level JSON itself describes (e.g. `ShapeSpawner`'s own
-spawned shapes) falls back to the opaque default without it.
+spawned shapes) falls back to the opaque default without it. It's unrelated to
+`LevelLoader.serializeEntity`/`serializeLevel` (see "Serializing an entity or a level back to JSON"
+above) - that round-trip keys its reconstruction off the `class` alias an entity was actually built
+under via `createEntity`/`loadLevel`, not off `entityTypeName`.
 
 ## Where level JSON content lives
 
@@ -762,6 +869,23 @@ parenting/teardown) is covered by `packages/core/test/base/level-loader.spec.ts`
 exercise spawn/parent/dispose cascades meaningfully) - including its `blueprint event bindings`
 describe block, covering `events`/`blueprints` wiring, the missing-blueprint-name and
 non-observable-property warning paths, and that a binding is torn down when its level is removed.
+The same file's `createEntity` describe block covers the standalone single-entity build API (no
+group parenting, no auto-add-to-world, the auto-generated-name-when-omitted case, and both warning
+paths); its `serializeEntity`/`registerSerializer`/`serializeLevel` describe blocks cover the
+spawn-record-echo fallback direction - live position/rotation/name readback, the no-spawn-record
+warning, a custom serializer overriding the default, and `serializeLevel` silently skipping a level
+child with no spawn record (a blueprint event binding). `packages/core/test/{2d,3d}/level-loader.spec.ts`
+each add their own `live serializers` describe block covering the *live*, state-reading direction:
+serializing a `"Primitive"`/`"Trigger"` built directly (`new Entity3d(...)`/`new Trigger3dEntity(...)`,
+not through `createEntity`/`loadLevel` at all), that the result reflects the body's state as of the
+`serializeEntity` call rather than its spawn-time config (moved position, changed velocity), that a
+richer `Entity3d` subclass isn't mistaken for a plain primitive, and that an entity neither live
+serializer recognizes still falls through to the spawn-record echo. These reuse
+`test/mocks/body.mock.ts`'s `mock2DBody`/`mock3DBody`, which take optional `shape`/`bodyOptions`
+arguments (default: a `1x1(x1)` `BOX`/`SQUARE` and a plain dynamic-body `BodyOptions`) and construct
+a real `DebugBody2DSettings`/`DebugBody3DSettings` plus a `bodyOptions` field, matching what a real
+adapter's rigid body component now exposes (see `gg-engine-core-development`'s section on
+`IRigidBodyComponent.bodyOptions`).
 `Blueprint` graph wiring itself (node construction, links, `inputs`/`outputs`, `dispose`) has its
 own coverage against a hand-rolled node type in
 `packages/core/test/base/blueprint/blueprint.spec.ts`; `RemoveEntityBlueprintNode` has its own in

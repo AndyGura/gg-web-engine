@@ -1,6 +1,7 @@
 import {
   Body2DOptions,
   BodyShape2DDescriptor,
+  BodyType,
   IPhysicsBody2dComponentFactory,
   Point2,
   Shape2DDescriptor,
@@ -55,7 +56,8 @@ export class MatterFactory implements IPhysicsBody2dComponentFactory<MatterPhysi
     }
     nativeBody.position = Vector.create(transform?.position?.x || 0, transform?.position?.y || 0);
     nativeBody.angle = transform?.rotation || 0;
-    return new MatterRigidBodyComponent(nativeBody, descriptor.shape);
+    const bodyType: BodyType = descriptor.body.bodyType ?? (descriptor.body.mass ? 'dynamic' : 'static');
+    return new MatterRigidBodyComponent(nativeBody, descriptor.shape, bodyType, !!descriptor.body.ccd);
   }
 
   createTrigger(

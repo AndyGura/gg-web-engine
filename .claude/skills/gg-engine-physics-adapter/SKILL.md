@@ -125,6 +125,24 @@ Both must implement `IPositionable(2d|3d)` (position/rotation proxied to the nat
 worth factoring into a common base component — see `AmmoBodyComponent` shared by
 `AmmoRigidBodyComponent` and `AmmoTriggerComponent`.
 
+A rigid body component (not a trigger — `mass`/`friction`/`restitution`/`ccd` aren't meaningful for
+a sensor-only trigger) must also implement `get bodyOptions(): Readonly<BodyOptions>` — the exact
+`BodyOptions` (`bodyType`/`mass`/`restitution`/`friction`/`ccd`, plus the already-live
+`ownCollisionGroups`/`interactWithCollisionGroups`) this body was actually constructed with, read
+back regardless of how the body was built. Since this engine's public API never lets any of
+`bodyType`/`mass`/`restitution`/`friction`/`ccd` change after construction (no setter exists for
+any of the five, here or on any concrete component), it's correct to read `mass`/`friction`/
+`restitution` live off the native body when the native engine exposes a getter for them (more
+accurate than echoing the request, since a native engine's own defaults may differ from an unset
+option — see Ammo's/Matter's `bodyOptions` in `gg-engine-core-development`'s own section on this
+getter) and to fall back to a plain stored constructor field for anything the native engine has no
+live query for at all (Ammo's/Matter's `bodyType`/`ccd`, since Bullet's CCD setup is a derived
+swept-sphere radius rather than a boolean, and matter-js has no kinematic/CCD concept whatsoever —
+see that same section for the concrete pattern each existing adapter follows). This getter exists
+so `LevelLoader.serializeEntity`'s live serializers (`gg-engine-level-json`) can reconstruct a
+`"Primitive"`/`"Trigger"` `EntityJson` from any live entity, not just one built through the level
+loader itself — see that skill's own section on this.
+
 **A dynamic body's `position`/`rotation`/`linearVelocity`/`angularVelocity` setters must wake a
 sleeping body.** Every native engine deactivates ("sleeps") a dynamic body that's been at rest for a
 while, as a performance optimization - and every native engine's own simulation step skips a sleeping

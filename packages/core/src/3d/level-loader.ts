@@ -1,6 +1,6 @@
-import { LevelLoader } from '../base/level-loader';
+import { EntityJson, LevelLoader } from '../base/level-loader';
 import { Gg3dWorld, Gg3dWorldTypeDocRepo } from './gg-3d-world';
-import { AudioDistanceModel, AxisDirection3, Pnt3, Point3, Point4 } from '../base';
+import { AudioDistanceModel, AxisDirection3, IEntity, Pnt3, Point3, Point4 } from '../base';
 import { DisplayObject3dOpts } from './factories';
 import { Body3DOptions } from './models/body-options';
 import { Shape3DDescriptor } from './models/shapes';
@@ -50,6 +50,40 @@ const defaultCarChassisBodyOptions: Body3DOptions = {
  * wheel's own default (`RaycastVehicle3dEntity`'s internal `wheeelDefaults`) applied when a
  * wheel's `tyreRadius`/`tyreWidth` is left unset entirely. */
 const defaultWheelDisplaySize = { tyreRadius: 0.4, tyreWidth: 0.3 };
+
+/**
+ * Inverse of `Gg3dLevelLoader.buildShapeDescriptor`: turns a live `Shape3DDescriptor` (as read off
+ * a rigid body's `debugBodySettings.shape`) back into the `shape`/`config` fields a `"Primitive"`
+ * `EntityJson` needs - backs `Gg3dLevelLoader.serializePrimitive`. Returns `undefined` for a shape
+ * `"Primitive"` has no `shape` value for (`COMPOUND`/`CONVEX_HULL`/`MESH`/`TRIANGLE_MESH`, and
+ * anything else not listed in `buildShapeDescriptor`'s own `switch`).
+ */
+function primitiveConfigFromShape(
+  shape: Shape3DDescriptor,
+): { shape: string; config: Record<string, any> } | undefined {
+  switch (shape.shape) {
+    case 'BOX':
+      return { shape: 'BOX', config: { dimensions: shape.dimensions } };
+    case 'SPHERE':
+      return { shape: 'SPHERE', config: { radius: shape.radius } };
+    case 'PLANE':
+      return { shape: 'PLANE', config: {} };
+    case 'CAPSULE':
+      return { shape: 'CAPSULE', config: { radius: shape.radius, centersDistance: shape.centersDistance } };
+    case 'CYLINDER':
+      return {
+        shape: 'CYLINDER',
+        config:
+          'radius' in shape
+            ? { radius: shape.radius, height: shape.height }
+            : { radiusX: shape.radiusX, radiusY: shape.radiusY, height: shape.height },
+      };
+    case 'CONE':
+      return { shape: 'CONE', config: { radius: shape.radius, height: shape.height } };
+    default:
+      return undefined;
+  }
+}
 
 /**
  * Shape names accepted by the built-in `"Primitive"` entity class in a 3D level JSON, via the
@@ -119,6 +153,17 @@ export interface Primitive3DSettings {
    * Physics body options, merged over sensible defaults
    */
   body?: Partial<Body3DOptions>;
+
+  /**
+   * Initial linear velocity, applied once right after the body is created (a physics-only
+   * property, only meaningful for a dynamic/kinematic_vel body - has no lasting effect on a
+   * static/kinematic_pos one). Left unset entirely (not just omitted) means the body starts at
+   * rest, same as not setting it at all.
+   */
+  linearVelocity?: Point3;
+
+  /** Initial angular velocity - see `linearVelocity`'s own doc, same caveats. */
+  angularVelocity?: Point3;
 }
 
 /**
@@ -428,6 +473,79 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
     this.registerClass('Player', this.createPlayer.bind(this));
     this.registerClass('GgCar', this.createGgCar.bind(this));
     this.registerClass('MapGraph', this.createMapGraph.bind(this));
+
+    this.registerLiveSerializer(this.serializePrimitive.bind(this));
+    this.registerLiveSerializer(this.serializeTrigger.bind(this));
+  }
+
+  /**
+   * Live serializer for the built-in `"Primitive"` class - see `LiveEntitySerializer`'s own doc for
+   * the general contract. Matches an entity built by `addPrimitiveRigidBody`/`createPrimitive`
+   * exactly (`entity.constructor === Entity3d`, deliberately not `instanceof` - a richer subclass
+   * like `Grabbable3dEntity` needs its own dedicated serializer, not yet provided, to round-trip
+   * correctly instead of silently losing its grabbable behavior). Recovers `shape`/`dimensions`/
+   * `radius`/etc. from `objectBody.debugBodySettings.shape` (the exact `Shape3DDescriptor` the body
+   * was actually built with, tracked by every physics adapter regardless of how the body was
+   * constructed) and `body`/`linearVelocity`/`angularVelocity` from the live physics body itself
+   * (`objectBody.bodyOptions`, `.linearVelocity`, `.angularVelocity`) - not from whatever `config`
+   * the entity may or may not have originally been loaded from. Returns `undefined` (falls through
+   * to the next serializer, then the spawn-record echo) for a shape `"Primitive"` doesn't support
+   * (`COMPOUND`/`CONVEX_HULL`/`MESH`/`TRIANGLE_MESH` - buildable directly via
+   * `physicsWorld.factory.createRigidBody`, just not through this level-JSON class) or an entity
+   * with no physics body at all (`objectBody` unset - a display-only primitive has nothing this
+   * serializer can recover a `shape`/`body` from).
+   *
+   * Deliberately doesn't attempt to recover `material` - unlike a rigid body's `debugBodySettings
+   * .shape`/`bodyOptions`, no adapter's visual display-object component exposes an equivalent
+   * "what was I actually created with" accessor, so a primitive's color/shading can't be read back
+   * from its live `object3D` today; a serialized `"Primitive"` reloads with default material.
+   */
+  private serializePrimitive(entity: IEntity<Point3, Point4, TypeDoc>): EntityJson | undefined {
+    if (entity.constructor !== Entity3d || !(entity as Entity3d<TypeDoc>).objectBody) {
+      return undefined;
+    }
+    const positionable = entity as Entity3d<TypeDoc>;
+    const body = positionable.objectBody!;
+    const shapeConfig = primitiveConfigFromShape(body.debugBodySettings.shape);
+    if (!shapeConfig) {
+      return undefined;
+    }
+    return {
+      class: 'Primitive',
+      shape: shapeConfig.shape,
+      name: positionable.name,
+      position: positionable.position,
+      rotation: positionable.rotation,
+      config: {
+        ...shapeConfig.config,
+        body: body.bodyOptions,
+        linearVelocity: body.linearVelocity,
+        angularVelocity: body.angularVelocity,
+      },
+    };
+  }
+
+  /**
+   * Live serializer for the built-in `"Trigger"` class - see `serializePrimitive`'s own doc for the
+   * general approach (same `debugBodySettings.shape`-based recovery, applied to a trigger's `ITrigger3dComponent`
+   * instead of a rigid body). Matches `entity.constructor === Trigger3dEntity` exactly.
+   */
+  private serializeTrigger(entity: IEntity<Point3, Point4, TypeDoc>): EntityJson | undefined {
+    if (entity.constructor !== Trigger3dEntity) {
+      return undefined;
+    }
+    const trigger = entity as Trigger3dEntity<TypeDoc['pTypeDoc']>;
+    const shape = trigger.objectBody.debugBodySettings.shape;
+    if (shape.shape !== 'BOX') {
+      return undefined;
+    }
+    return {
+      class: 'Trigger',
+      name: trigger.name,
+      position: trigger.position,
+      rotation: trigger.rotation,
+      config: { dimensions: shape.dimensions },
+    };
   }
 
   /**
@@ -497,13 +615,22 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
     shape: Shape3DDescriptor,
     settings: Primitive3DSettings,
   ): Entity3d<TypeDoc> {
-    const { position, rotation, material, body } = settings;
-    return world.addPrimitiveRigidBody(
+    const { position, rotation, material, body, linearVelocity, angularVelocity } = settings;
+    const entity = world.addPrimitiveRigidBody(
       { shape, body: { ...defaultBodyOptions, ...body } },
       position,
       rotation,
       material,
     );
+    if (entity.objectBody) {
+      if (linearVelocity) {
+        entity.objectBody.linearVelocity = linearVelocity;
+      }
+      if (angularVelocity) {
+        entity.objectBody.angularVelocity = angularVelocity;
+      }
+    }
+    return entity;
   }
 
   /**

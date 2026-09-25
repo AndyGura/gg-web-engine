@@ -1,6 +1,8 @@
 import {
   BitMask,
   Body3DOptions,
+  BodyOptions,
+  BodyType,
   CollisionEvent,
   CollisionGroup,
   DebugBody3DSettings,
@@ -25,6 +27,21 @@ import {
 import { Observable, Subject } from 'rxjs';
 import { Rapier3dWorldComponent } from './rapier-3d-world.component';
 import { Rapier3dGgWorld, Rapier3dPhysicsTypeDocRepo } from '../types';
+
+/** Inverse of `Rapier3dFactory.createRigidBodyDescr`'s own `BodyType -> RigidBodyType` mapping -
+ * backs `Rapier3dRigidBodyComponent.bodyOptions`. */
+function rapierBodyTypeToBodyType(status: RigidBodyType): BodyType {
+  switch (status) {
+    case RigidBodyType.Fixed:
+      return 'static';
+    case RigidBodyType.KinematicPositionBased:
+      return 'kinematic_pos';
+    case RigidBodyType.KinematicVelocityBased:
+      return 'kinematic_vel';
+    default:
+      return 'dynamic';
+  }
+}
 
 export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3dPhysicsTypeDocRepo> {
   public entity: Entity3d | null = null;
@@ -99,6 +116,25 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
         : { type: 'RIGID_KINEMATIC' },
     this.shape,
   );
+
+  /**
+   * See `IRigidBodyComponent.bodyOptions`'s own doc. Reads straight off `_bodyDescr`/
+   * `_colliderOptions` (also what `addToWorld` itself builds the native body/colliders from, and
+   * what `factoryProps`/`clone()` already round-trip) rather than the native body/colliders - this
+   * engine's own API never mutates any of `bodyType`/`mass`/`friction`/`restitution`/`ccd` after
+   * construction, so the stored descriptor is exactly as accurate as a native query would be.
+   */
+  get bodyOptions(): Readonly<BodyOptions> {
+    return {
+      bodyType: rapierBodyTypeToBodyType(this._bodyDescr.status),
+      mass: this._bodyDescr.mass,
+      friction: this._colliderOptions.friction,
+      restitution: this._colliderOptions.restitution,
+      ccd: this._bodyDescr.ccdEnabled,
+      ownCollisionGroups: this.ownCollisionGroups,
+      interactWithCollisionGroups: this.interactWithCollisionGroups,
+    };
+  }
 
   protected _nativeBody: RigidBody | null = null;
   protected _nativeBodyColliders: Collider[] | null = null;

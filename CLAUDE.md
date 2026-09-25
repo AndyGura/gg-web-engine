@@ -127,17 +127,18 @@ point.
 - `docs/tasks.md` and `milestones.md` at the repo root track known architectural gaps and the
   public roadmap — check them before assuming a rough edge you find is unintentional/unknown.
 - **Every concrete entity class — engine-internal or app-defined — must declare `static readonly
-  entityTypeName: string = 'ClassName';`.** This is a stable, class-identifying string a future
-  entity serializer (the not-yet-built other half of `LevelLoader` - see `milestones.md`'s M2 entry
-  and the "Networking / multiplayer" item under "Later / Under Consideration" - that turns a live,
-  runtime-spawned entity back into a level-JSON-shaped descriptor so it can be reproduced elsewhere)
-  will need every entity class to already have; declaring it now keeps every class ready for that
-  rather than needing a retrofit pass later. It's deliberately not derived from
-  `constructor.name`/`Function.name`, which a production bundler commonly mangles under
-  minification - a serializer (or anything else) keying off the class's real runtime name would get
-  different, meaningless values between a dev build and a production build. As a bonus today, it's
-  also what makes an entity's auto-generated default name (used whenever nothing explicitly assigns
-  `.name`) read as `ClassName_0` in the dev console and in logs, instead of an opaque `e0x7`. Check
-  for it on any new entity class you write or review, in this repo
-  (`gg-engine-core-development`'s own section on this) or in a consuming app
-  (`gg-engine-app-development`'s).
+  entityTypeName: string = 'ClassName';`.** This is a stable, class-identifying string used to give
+  every one of that class's instances a readable auto-generated default name (see below); it's
+  deliberately not derived from `constructor.name`/`Function.name`, which a production bundler
+  commonly mangles under minification - anything keying off the class's real runtime name would get
+  different, meaningless values between a dev build and a production build. Concretely, it's what
+  makes an entity's auto-generated default name (used whenever nothing explicitly assigns `.name`)
+  read as `ClassName_0` in the dev console and in logs, instead of an opaque `e0x7`. Check for it on
+  any new entity class you write or review, in this repo (`gg-engine-core-development`'s own section
+  on this) or in a consuming app (`gg-engine-app-development`'s). It is a separate mechanism from
+  `LevelLoader`'s JSON round-trip (`loadLevel`/`createEntity` to build, `serializeEntity`/
+  `serializeLevel` to reconstruct an `EntityJson` from a live entity - see `gg-engine-level-json`'s
+  own section on this): neither of `serializeEntity`'s two mechanisms - a live serializer matching an
+  entity's exact concrete class, or the spawn-record echo keyed off the `class` alias an entity was
+  built under via the loader - ever reads `entityTypeName`, so it remains purely a naming
+  convenience, not load-bearing for serialization either way.

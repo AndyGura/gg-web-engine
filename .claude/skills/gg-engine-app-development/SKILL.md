@@ -183,14 +183,16 @@ class Car extends Entity3d<AppTypeDoc> {
 }
 ```
 
-**Why this matters more than it looks:** it's a stable, class-identifying string the engine's future
-entity serializer needs every entity class to already have. `LevelLoader` today only loads (JSON →
-entities), with no inverse direction yet (see `milestones.md`'s M2 "Export/serialize selected
-runtime state back to JSON" item and the "Networking / multiplayer" item under "Later / Under
-Consideration"); once that direction is built, turning a live, runtime-spawned `Car` back into a
-level-JSON-shaped descriptor - so it can be reproduced elsewhere - needs exactly this kind of tag as
-the descriptor's `class` value. Tagging your entity classes as you write them now means none of them
-need a retrofit pass later just to become serializable.
+**Why this matters more than it looks:** it's a stable, class-identifying string every entity's
+auto-generated default name is built from (see below). It's unrelated to `LevelLoader`'s own JSON
+round-trip - `loadLevel`/`world.loader.createEntity(entityJson)` to build an entity from a `class`
+alias, `world.loader.serializeEntity(entity)`/`serializeLevel(level)` to reconstruct an `EntityJson`
+back from a live entity (see the `gg-engine-level-json` skill) - which never reads `entityTypeName`
+either: it either matches a registered live serializer against the entity's own concrete class, or
+falls back to echoing the `class` alias an entity was actually built under via the loader. Declaring
+`entityTypeName` doesn't by itself make a class serializable either way, and skipping it doesn't
+prevent an entity the loader built from being serializable via the echo. Declare it anyway, for the
+naming benefit below.
 
 As a free bonus today: any `Car` an app constructs without an explicit `name` (`new Car(...)` with
 nothing else naming it - e.g. one dynamically spawned at runtime rather than loaded from level JSON)
