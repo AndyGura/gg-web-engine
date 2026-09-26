@@ -49,6 +49,19 @@ export class MatterFactory implements IPhysicsBody2dComponentFactory<MatterPhysi
       case 'CIRCLE':
         nativeBody = Bodies.circle(0, 0, descriptor.shape.radius, this.transformOptions(descriptor.body));
         break;
+      case 'CAPSULE':
+        nativeBody = Bodies.rectangle(
+          0,
+          0,
+          descriptor.shape.radius * 2,
+          descriptor.shape.centersDistance + descriptor.shape.radius * 2,
+          {
+            chamfer: {
+              radius: descriptor.shape.radius,
+            },
+          },
+        );
+        break;
     }
     if (!nativeBody) {
       throw new Error(`Shape "${descriptor.shape}" not implemented for Matter.js`);
@@ -72,6 +85,14 @@ export class MatterFactory implements IPhysicsBody2dComponentFactory<MatterPhysi
         break;
       case 'CIRCLE':
         nativeBody = Bodies.circle(0, 0, descriptor.radius, { isSensor: true });
+        break;
+      case 'CAPSULE':
+        nativeBody = Bodies.rectangle(0, 0, descriptor.radius * 2, descriptor.centersDistance + descriptor.radius * 2, {
+          isSensor: true,
+          chamfer: {
+            radius: descriptor.radius,
+          },
+        });
         break;
     }
     if (!nativeBody) {

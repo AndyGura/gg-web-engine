@@ -83,6 +83,33 @@ export class PixiPhysicsDebugView {
         { x: -shape.radius, y: 0 },
         { x: shape.radius, y: 0 },
       ];
+    } else if (shape.shape === 'CAPSULE') {
+      const segments = 16;
+      const halfDistance = shape.centersDistance / 2;
+      const bottomSemicircle = tabulateArray(segments + 1, i => {
+        const angle = -Math.PI / 2 + (i * Math.PI) / segments;
+        return {
+          x: shape.radius * Math.sin(angle),
+          y: halfDistance + shape.radius * Math.cos(angle),
+        };
+      });
+      const topSemicircle = tabulateArray(segments + 1, i => {
+        const angle = Math.PI / 2 + (i * Math.PI) / segments;
+        return {
+          x: shape.radius * Math.sin(angle),
+          y: -halfDistance + shape.radius * Math.cos(angle),
+        };
+      });
+      return [
+        ...tabulateArray(bottomSemicircle.length - 1, i => [bottomSemicircle[i], bottomSemicircle[i + 1]]).flat(),
+        bottomSemicircle[bottomSemicircle.length - 1],
+        topSemicircle[0],
+        ...tabulateArray(topSemicircle.length - 1, i => [topSemicircle[i], topSemicircle[i + 1]]).flat(),
+        topSemicircle[topSemicircle.length - 1],
+        bottomSemicircle[0],
+        { x: 0, y: -halfDistance },
+        { x: 0, y: halfDistance },
+      ];
     }
     return [
       { x: -10, y: 0 },

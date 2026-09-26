@@ -28,6 +28,18 @@ export class PixiFactory extends IDisplayObject2dComponentFactory<PixiVisualType
         return new PixiDisplayObjectComponent(
           new Graphics().circle(0, 0, descriptor.radius).fill(material.color || this.randomColor()),
         );
+      case 'CAPSULE': {
+        const halfDistance = descriptor.centersDistance / 2;
+        const radius = descriptor.radius;
+        const graphics = new Graphics()
+          .moveTo(radius, -halfDistance)
+          .lineTo(radius, halfDistance)
+          .arc(0, halfDistance, radius, 0, Math.PI)
+          .lineTo(-radius, -halfDistance)
+          .arc(0, -halfDistance, radius, Math.PI, Math.PI * 2)
+          .fill(material.color || this.randomColor());
+        return new PixiDisplayObjectComponent(graphics);
+      }
     }
   }
 }

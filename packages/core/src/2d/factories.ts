@@ -27,6 +27,14 @@ export abstract class IDisplayObject2dComponentFactory<VTypeDoc extends VisualTy
   createCircle(radius: number, material: DisplayObject2dOpts<VTypeDoc['texture']> = {}): VTypeDoc['displayObject'] {
     return this.createPrimitive({ shape: 'CIRCLE', radius }, material);
   }
+
+  createCapsule(
+    radius: number,
+    centersDistance: number,
+    material: DisplayObject2dOpts<VTypeDoc['texture']> = {},
+  ): VTypeDoc['displayObject'] {
+    return this.createPrimitive({ shape: 'CAPSULE', radius, centersDistance }, material);
+  }
 }
 
 export interface IPhysicsBody2dComponentFactory<PTypeDoc extends PhysicsTypeDocRepo2D = PhysicsTypeDocRepo2D> {

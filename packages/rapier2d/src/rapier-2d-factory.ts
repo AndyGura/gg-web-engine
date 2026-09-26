@@ -66,6 +66,9 @@ export class Rapier2dFactory implements IPhysicsBody2dComponentFactory<Rapier2dP
       case 'CIRCLE':
         descrs = [ColliderDesc.ball(descriptor.radius)];
         break;
+      case 'CAPSULE':
+        descrs = [ColliderDesc.capsule(descriptor.centersDistance / 2, descriptor.radius)];
+        break;
       default:
         throw new Error(`Shape "${(descriptor as any).shape}" not implemented for Rapier 2D`);
     }
