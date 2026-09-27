@@ -69,6 +69,24 @@ export class Rapier2dFactory implements IPhysicsBody2dComponentFactory<Rapier2dP
       case 'CAPSULE':
         descrs = [ColliderDesc.capsule(descriptor.centersDistance / 2, descriptor.radius)];
         break;
+      case 'POLYGON': {
+        const points = new Float32Array(descriptor.vertices.length * 2);
+        descriptor.vertices.forEach((v, i) => {
+          points[i * 2] = v.x;
+          points[i * 2 + 1] = v.y;
+        });
+        const segments = new Uint32Array(descriptor.vertices.length * 2);
+        descriptor.vertices.forEach((_, i) => {
+          segments[i * 2] = i;
+          segments[i * 2 + 1] = (i + 1) % descriptor.vertices.length;
+        });
+        const colliderDesc = ColliderDesc.convexDecomposition(points, segments);
+        if (!colliderDesc) {
+          throw new Error('Rapier 2D: failed to build a convex decomposition for the given POLYGON vertices');
+        }
+        descrs = [colliderDesc];
+        break;
+      }
       default:
         throw new Error(`Shape "${(descriptor as any).shape}" not implemented for Rapier 2D`);
     }

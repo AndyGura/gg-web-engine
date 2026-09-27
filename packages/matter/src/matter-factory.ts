@@ -9,8 +9,18 @@ import {
 import { MatterRigidBodyComponent } from './components/matter-rigid-body.component';
 import { MatterTriggerComponent } from './components/matter-trigger.component';
 import { MatterWorldComponent } from './components/matter-world.component';
-import { Bodies, Body, IChamferableBodyDefinition, Vector } from 'matter-js';
+import { Bodies, Body, Common, IChamferableBodyDefinition, Vector } from 'matter-js';
+import * as decomp from 'poly-decomp';
 import { MatterPhysicsTypeDocRepo } from './types';
+
+/**
+ * `Bodies.fromVertices` (used for the `POLYGON` shape below) only actually decomposes a concave
+ * vertex set into convex parts when a decomposition library is registered via `Common.setDecomp` -
+ * without it, matter-js silently falls back to the convex hull of the given vertices, so a concave
+ * `POLYGON` would render/collide as if it were convex. Registering `poly-decomp` here, once, at
+ * module load makes `Bodies.fromVertices` actually decompose concave outlines everywhere it's used.
+ */
+Common.setDecomp(decomp);
 
 /**
  * `kinematic_pos`/`kinematic_vel`/`ccd` have no native matter-js equivalent at all - unlike
@@ -62,6 +72,14 @@ export class MatterFactory implements IPhysicsBody2dComponentFactory<MatterPhysi
           },
         );
         break;
+      case 'POLYGON':
+        nativeBody = Bodies.fromVertices(
+          0,
+          0,
+          [descriptor.shape.vertices.map(v => Vector.create(v.x, v.y))],
+          this.transformOptions(descriptor.body),
+        );
+        break;
     }
     if (!nativeBody) {
       throw new Error(`Shape "${descriptor.shape}" not implemented for Matter.js`);
@@ -92,6 +110,11 @@ export class MatterFactory implements IPhysicsBody2dComponentFactory<MatterPhysi
           chamfer: {
             radius: descriptor.radius,
           },
+        });
+        break;
+      case 'POLYGON':
+        nativeBody = Bodies.fromVertices(0, 0, [descriptor.vertices.map(v => Vector.create(v.x, v.y))], {
+          isSensor: true,
         });
         break;
     }

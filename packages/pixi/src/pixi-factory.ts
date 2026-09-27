@@ -40,6 +40,12 @@ export class PixiFactory extends IDisplayObject2dComponentFactory<PixiVisualType
           .fill(material.color || this.randomColor());
         return new PixiDisplayObjectComponent(graphics);
       }
+      case 'POLYGON': {
+        const graphics = new Graphics()
+          .poly(descriptor.vertices.map(v => ({ x: v.x, y: v.y })))
+          .fill(material.color || this.randomColor());
+        return new PixiDisplayObjectComponent(graphics);
+      }
     }
   }
 }

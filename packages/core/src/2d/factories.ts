@@ -35,6 +35,13 @@ export abstract class IDisplayObject2dComponentFactory<VTypeDoc extends VisualTy
   ): VTypeDoc['displayObject'] {
     return this.createPrimitive({ shape: 'CAPSULE', radius, centersDistance }, material);
   }
+
+  createPolygon(
+    vertices: Point2[],
+    material: DisplayObject2dOpts<VTypeDoc['texture']> = {},
+  ): VTypeDoc['displayObject'] {
+    return this.createPrimitive({ shape: 'POLYGON', vertices }, material);
+  }
 }
 
 export interface IPhysicsBody2dComponentFactory<PTypeDoc extends PhysicsTypeDocRepo2D = PhysicsTypeDocRepo2D> {

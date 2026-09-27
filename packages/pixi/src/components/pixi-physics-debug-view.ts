@@ -110,6 +110,9 @@ export class PixiPhysicsDebugView {
         { x: 0, y: -halfDistance },
         { x: 0, y: halfDistance },
       ];
+    } else if (shape.shape === 'POLYGON') {
+      const vertices = shape.vertices;
+      return tabulateArray(vertices.length, i => [vertices[i], vertices[(i + 1) % vertices.length]]).flat();
     }
     return [
       { x: -10, y: 0 },
