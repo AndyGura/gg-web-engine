@@ -2,6 +2,7 @@ import {
   Body2DOptions,
   BodyShape2DDescriptor,
   IPhysicsBody2dComponentFactory,
+  Pnt2,
   Point2,
   Shape2DDescriptor,
   warnOnce,
@@ -72,6 +73,14 @@ export class MatterFactory implements IPhysicsBody2dComponentFactory<MatterPhysi
           },
         );
         break;
+      case 'CONVEX_HULL':
+        nativeBody = Bodies.fromVertices(
+          0,
+          0,
+          [Pnt2.hull(descriptor.shape.vertices).map(v => Vector.create(v.x, v.y))],
+          this.transformOptions(descriptor.body),
+        );
+        break;
       case 'POLYGON':
         nativeBody = Bodies.fromVertices(
           0,
@@ -110,6 +119,11 @@ export class MatterFactory implements IPhysicsBody2dComponentFactory<MatterPhysi
           chamfer: {
             radius: descriptor.radius,
           },
+        });
+        break;
+      case 'CONVEX_HULL':
+        nativeBody = Bodies.fromVertices(0, 0, [Pnt2.hull(descriptor.vertices).map(v => Vector.create(v.x, v.y))], {
+          isSensor: true,
         });
         break;
       case 'POLYGON':

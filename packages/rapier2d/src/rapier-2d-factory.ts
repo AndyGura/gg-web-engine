@@ -69,6 +69,19 @@ export class Rapier2dFactory implements IPhysicsBody2dComponentFactory<Rapier2dP
       case 'CAPSULE':
         descrs = [ColliderDesc.capsule(descriptor.centersDistance / 2, descriptor.radius)];
         break;
+      case 'CONVEX_HULL': {
+        const points = new Float32Array(descriptor.vertices.length * 2);
+        descriptor.vertices.forEach((v, i) => {
+          points[i * 2] = v.x;
+          points[i * 2 + 1] = v.y;
+        });
+        const colliderDesc = ColliderDesc.convexHull(points);
+        if (!colliderDesc) {
+          throw new Error('Rapier 2D: failed to build a convex hull for the given CONVEX_HULL vertices');
+        }
+        descrs = [colliderDesc];
+        break;
+      }
       case 'POLYGON': {
         const points = new Float32Array(descriptor.vertices.length * 2);
         descriptor.vertices.forEach((v, i) => {

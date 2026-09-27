@@ -19,16 +19,30 @@ export class ShapeSpawner extends IEntity {
     this.clock.tickRateLimit = 1 / (settings.intervalSeconds ?? 0.5);
     this.spawnSub = this.clock.tick$.subscribe(() => {
       let item: Entity2d;
-      if (Math.random() >= 0.25) {
+      if (Math.random() >= 0.2) {
         item = world.addPrimitiveRigidBody({
           shape: { shape: 'SQUARE', dimensions: { x: 25, y: 25 } },
           body: { mass: 1 },
         });
-      } else if (Math.random() >= 0.5) {
+      } else if (Math.random() >= 0.4) {
         item = world.addPrimitiveRigidBody({ shape: { shape: 'CIRCLE', radius: 13 }, body: { mass: 1 } });
-      } else if (Math.random() >= 0.75) {
+      } else if (Math.random() >= 0.6) {
         item = world.addPrimitiveRigidBody({
           shape: { shape: 'CAPSULE', radius: 10, centersDistance: 15 },
+          body: { mass: 1 },
+        });
+      } else if (Math.random() >= 0.8) {
+        item = world.addPrimitiveRigidBody({
+          shape: {
+            shape: 'CONVEX_HULL',
+            vertices: [
+              { x: 0, y: -15 },
+              { x: 13, y: 10 },
+              { x: 0, y: 0 },
+              { x: -13, y: 10 },
+              { x: 5, y: -5 },
+            ],
+          },
           body: { mass: 1 },
         });
       } else {

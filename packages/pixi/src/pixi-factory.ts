@@ -1,4 +1,4 @@
-import { DisplayObject2dOpts, IDisplayObject2dComponentFactory, Shape2DDescriptor } from '@gg-web-engine/core';
+import { DisplayObject2dOpts, IDisplayObject2dComponentFactory, Pnt2, Shape2DDescriptor } from '@gg-web-engine/core';
 import { PixiDisplayObjectComponent } from './components/pixi-display-object.component';
 import { Graphics, Sprite, Texture } from 'pixi.js';
 import { PixiVisualTypeDocRepo2D } from './types';
@@ -37,6 +37,12 @@ export class PixiFactory extends IDisplayObject2dComponentFactory<PixiVisualType
           .arc(0, halfDistance, radius, 0, Math.PI)
           .lineTo(-radius, -halfDistance)
           .arc(0, -halfDistance, radius, Math.PI, Math.PI * 2)
+          .fill(material.color || this.randomColor());
+        return new PixiDisplayObjectComponent(graphics);
+      }
+      case 'CONVEX_HULL': {
+        const graphics = new Graphics()
+          .poly(Pnt2.hull(descriptor.vertices).map(v => ({ x: v.x, y: v.y })))
           .fill(material.color || this.randomColor());
         return new PixiDisplayObjectComponent(graphics);
       }
