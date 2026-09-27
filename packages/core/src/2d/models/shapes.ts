@@ -2,7 +2,7 @@ import { Point2 } from '../../base';
 import { Body2DOptions } from './body-options';
 
 export type Shape2DDescriptor = { collisionMargin?: number } & (
-  | { shape: 'SQUARE'; dimensions: Point2 } // TODO rename to "BOX"
+  | { shape: 'BOX'; dimensions: Point2 }
   | { shape: 'CIRCLE'; radius: number }
   | { shape: 'CAPSULE'; radius: number; centersDistance: number }
   | { shape: 'CONVEX_HULL'; vertices: Point2[] }

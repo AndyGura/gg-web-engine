@@ -67,11 +67,19 @@ Every adapter component class then `implements I<Thing>Component<<Lib>VisualType
   free layer indices from a locked pool (see `ThreeSceneComponent.lockedRenderLayers` for the
   pattern); deregistering doesn't itself touch any object's/camera's current layer membership.
 - **Factory** (`IDisplayObject(2d|3d)ComponentFactory`): `createPrimitive(descriptor, material?)`
-  is the one required method; the base class in core already provides `createSquare`/`createCircle`
-  (2D) shortcuts built on top of it — 3D equivalents should cover the shapes in
-  `Shape3DDescriptor` (`packages/core/src/3d/models/shapes.ts`: `PLANE`, `BOX`, `CONE`,
-  `CYLINDER`, `CAPSULE`, `SPHERE`, `COMPOUND`, `CONVEX_HULL`, `MESH`) as far as the target library
-  reasonably supports; throw a clear `Shape "<x>" not implemented for <Lib>` error for the rest
+  is the one required method; the base class in core already provides `createBox`/`createCircle`/
+  `createCapsule`/`createConvexHull`/`createPolygon` (2D) shortcuts built on top of it (no
+  `createCompound` shortcut, in either dimension — a compound's `children` are too shape-specific
+  to give a single convenience-method signature) — `createPrimitive` itself must still cover every
+  `Shape2DDescriptor` member (`packages/core/src/2d/models/shapes.ts`: `BOX`, `CIRCLE`, `CAPSULE`,
+  `CONVEX_HULL`, `POLYGON`, `COMPOUND`) as far as the target library reasonably supports. `COMPOUND`
+  is a `Container`/`Group`-style parent holding one child display object per entry, each positioned/
+  rotated to its own `position`/`rotation` (a 2D `rotation` is a scalar in radians, not 3D's `Point4`
+  quaternion) — see `PixiFactory.createPrimitive`'s `COMPOUND` case or `ThreeFactory.createPrimitive`'s
+  for the pattern (recurse into `createPrimitive` per child, nest the resulting native objects). 3D
+  equivalents should cover the shapes in `Shape3DDescriptor` (`packages/core/src/3d/models/
+  shapes.ts`: `PLANE`, `BOX`, `CONE`, `CYLINDER`, `CAPSULE`, `SPHERE`, `COMPOUND`, `CONVEX_HULL`,
+  `MESH`) the same way; throw a clear `Shape "<x>" not implemented for <Lib>` error for the rest
   rather than silently failing (see `Rapier2dFactory.createColliderDescr` for the pattern, applied
   to physics but identical in spirit).
 - **Display object component** (`IDisplayObject(2d|3d)Component`): must implement

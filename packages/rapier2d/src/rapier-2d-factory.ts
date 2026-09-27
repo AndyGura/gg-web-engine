@@ -60,7 +60,7 @@ export class Rapier2dFactory implements IPhysicsBody2dComponentFactory<Rapier2dP
   public createColliderDescr(descriptor: Shape2DDescriptor): ColliderDesc[] {
     let descrs: ColliderDesc[];
     switch (descriptor.shape) {
-      case 'SQUARE':
+      case 'BOX':
         descrs = [ColliderDesc.cuboid(descriptor.dimensions.x / 2, descriptor.dimensions.y / 2)];
         break;
       case 'CIRCLE':

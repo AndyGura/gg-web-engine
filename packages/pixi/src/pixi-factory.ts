@@ -8,7 +8,7 @@ export type PixiDisplayObject3dOpts = DisplayObject2dOpts<Texture>;
 export class PixiFactory extends IDisplayObject2dComponentFactory<PixiVisualTypeDocRepo2D> {
   createPrimitive(descriptor: Shape2DDescriptor, material: PixiDisplayObject3dOpts = {}): PixiDisplayObjectComponent {
     switch (descriptor.shape) {
-      case 'SQUARE':
+      case 'BOX':
         const sprite = new Sprite(material.texture || Texture.WHITE);
         sprite.width = descriptor.dimensions.x;
         sprite.height = descriptor.dimensions.y;

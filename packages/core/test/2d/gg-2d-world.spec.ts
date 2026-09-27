@@ -120,17 +120,17 @@ describe('Gg2dWorld', () => {
     });
 
     describe('spawn', () => {
-      it('spawns a default-sized square at the given coordinates, dynamic by default', async () => {
+      it('spawns a default-sized box at the given coordinates, dynamic by default', async () => {
         const commands = collectConsoleCommands(world);
-        const result = await commands.get('spawn')!('SQUARE', '1', '2');
+        const result = await commands.get('spawn')!('BOX', '1', '2');
 
-        expect(result).toMatch(/^spawned ".+" \(SQUARE\) at \{"x":1,"y":2\}$/);
+        expect(result).toMatch(/^spawned ".+" \(BOX\) at \{"x":1,"y":2\}$/);
         expect(visualScene.factory.createPrimitive).toHaveBeenCalledWith(
-          { shape: 'SQUARE', dimensions: { x: 1, y: 1 } },
+          { shape: 'BOX', dimensions: { x: 25, y: 25 } },
           {},
         );
         expect(physicsWorld.factory.createRigidBody).toHaveBeenCalledWith({
-          shape: { shape: 'SQUARE', dimensions: { x: 1, y: 1 } },
+          shape: { shape: 'BOX', dimensions: { x: 25, y: 25 } },
           body: { bodyType: 'dynamic' },
         });
       });
@@ -140,14 +140,14 @@ describe('Gg2dWorld', () => {
         await commands.get('spawn')!('CIRCLE', '0', '0', '0');
 
         expect(physicsWorld.factory.createRigidBody).toHaveBeenCalledWith({
-          shape: { shape: 'CIRCLE', radius: 0.5 },
+          shape: { shape: 'CIRCLE', radius: 13 },
           body: { bodyType: 'static' },
         });
       });
 
       it('supports every documented shape', async () => {
         const commands = collectConsoleCommands(world);
-        for (const shape of ['SQUARE', 'CIRCLE']) {
+        for (const shape of ['BOX', 'CIRCLE', 'CAPSULE', 'CONVEX_HULL', 'POLYGON']) {
           await expect(commands.get('spawn')!(shape, '0', '0')).resolves.toContain(`(${shape})`);
         }
       });
@@ -159,7 +159,7 @@ describe('Gg2dWorld', () => {
 
       it('rejects missing/non-numeric coordinates', async () => {
         const commands = collectConsoleCommands(world);
-        await expect(commands.get('spawn')!('SQUARE', '1')).rejects.toThrow('usage: spawn');
+        await expect(commands.get('spawn')!('BOX', '1')).rejects.toThrow('usage: spawn');
       });
     });
   });

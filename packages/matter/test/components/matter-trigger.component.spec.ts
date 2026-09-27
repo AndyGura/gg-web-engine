@@ -24,7 +24,7 @@ describe(`MatterTriggerComponent`, () => {
   // infinity just by setting it's position and other wonderful miracles. Investigate why these tests fail and try to fix.
   // Note: this test is identical to rapier2d trigger test, and it is expected
   it.skip(`should detect object intersection`, async () => {
-    const trigger = factory.createTrigger({ shape: 'SQUARE', dimensions: { x: 10, y: 10 } });
+    const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 10, y: 10 } });
     trigger.addToWorld({ physicsWorld: world } as any);
     const circle = factory.createRigidBody({
       shape: { shape: 'CIRCLE', radius: 1 },
@@ -53,7 +53,7 @@ describe(`MatterTriggerComponent`, () => {
   });
 
   it.skip(`should detect end of object intersection`, async () => {
-    const trigger = factory.createTrigger({ shape: 'SQUARE', dimensions: { x: 10, y: 10 } });
+    const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 10, y: 10 } });
     trigger.addToWorld({ physicsWorld: world } as any);
     const circle = factory.createRigidBody({
       shape: { shape: 'CIRCLE', radius: 1 },
@@ -75,7 +75,7 @@ describe(`MatterTriggerComponent`, () => {
   });
 
   it.skip(`should fire object intersection if spawned inside`, async () => {
-    const trigger = factory.createTrigger({ shape: 'SQUARE', dimensions: { x: 10, y: 10 } });
+    const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 10, y: 10 } });
     trigger.addToWorld({ physicsWorld: world } as any);
     const circle = factory.createRigidBody({
       shape: { shape: 'CIRCLE', radius: 1 },
@@ -92,7 +92,7 @@ describe(`MatterTriggerComponent`, () => {
   });
 
   it.skip(`should fire end of object intersection if trigger removed`, async () => {
-    const trigger = factory.createTrigger({ shape: 'SQUARE', dimensions: { x: 10, y: 10 } });
+    const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 10, y: 10 } });
     trigger.addToWorld({ physicsWorld: world } as any);
     const circle = factory.createRigidBody({
       shape: { shape: 'CIRCLE', radius: 1 },
@@ -110,7 +110,7 @@ describe(`MatterTriggerComponent`, () => {
   });
 
   it.skip(`should fire end of object intersection if object removed`, async () => {
-    const trigger = factory.createTrigger({ shape: 'SQUARE', dimensions: { x: 10, y: 10 } });
+    const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 10, y: 10 } });
     trigger.addToWorld({ physicsWorld: world } as any);
     const circle = factory.createRigidBody({
       shape: { shape: 'CIRCLE', radius: 1 },

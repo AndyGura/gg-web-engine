@@ -48,7 +48,7 @@ export class MatterFactory implements IPhysicsBody2dComponentFactory<MatterPhysi
   ): MatterRigidBodyComponent {
     let nativeBody: Body | null = null;
     switch (descriptor.shape.shape) {
-      case 'SQUARE':
+      case 'BOX':
         nativeBody = Bodies.rectangle(
           0,
           0,
@@ -110,7 +110,7 @@ export class MatterFactory implements IPhysicsBody2dComponentFactory<MatterPhysi
   ): MatterTriggerComponent {
     let nativeBody: Body | null = null;
     switch (descriptor.shape) {
-      case 'SQUARE':
+      case 'BOX':
         nativeBody = Bodies.rectangle(0, 0, descriptor.dimensions.x, descriptor.dimensions.y, { isSensor: true });
         break;
       case 'CIRCLE':
@@ -154,7 +154,7 @@ export class MatterFactory implements IPhysicsBody2dComponentFactory<MatterPhysi
 
   private createShapeParts(shape: Shape2DDescriptor, options: IChamferableBodyDefinition): Body[] {
     switch (shape.shape) {
-      case 'SQUARE':
+      case 'BOX':
         return [Bodies.rectangle(0, 0, shape.dimensions.x, shape.dimensions.y, options)];
       case 'CIRCLE':
         return [Bodies.circle(0, 0, shape.radius, options)];

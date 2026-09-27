@@ -10,7 +10,7 @@ const level: LevelJson = {
   entities: [
     {
       class: 'Primitive',
-      shape: 'SQUARE',
+      shape: 'BOX',
       name: 'Floor',
       position: { x: 0, y: 300 },
       config: {

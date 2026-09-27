@@ -20,8 +20,8 @@ export abstract class IDisplayObject2dComponentFactory<VTypeDoc extends VisualTy
   }
 
   // shortcuts
-  createSquare(dimensions: Point2, material: DisplayObject2dOpts<VTypeDoc['texture']> = {}): VTypeDoc['displayObject'] {
-    return this.createPrimitive({ shape: 'SQUARE', dimensions }, material);
+  createBox(dimensions: Point2, material: DisplayObject2dOpts<VTypeDoc['texture']> = {}): VTypeDoc['displayObject'] {
+    return this.createPrimitive({ shape: 'BOX', dimensions }, material);
   }
 
   createCircle(radius: number, material: DisplayObject2dOpts<VTypeDoc['texture']> = {}): VTypeDoc['displayObject'] {

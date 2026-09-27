@@ -62,7 +62,7 @@ export class PixiPhysicsDebugView {
   private syncMap: Map<IBodyComponent<Point2, number>, [Graphics, number]> = new Map();
 
   private lineSegmentPointsForShape(shape: Shape2DDescriptor): Point2[] {
-    if (shape.shape === 'SQUARE') {
+    if (shape.shape === 'BOX') {
       const d = Pnt2.scalarMult(shape.dimensions, 0.5);
       return [
         ...tabulateArray(4, i => ({ x: i % 2 ? d.x : -d.x, y: i < 2 ? d.y : -d.y })),

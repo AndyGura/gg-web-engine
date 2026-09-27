@@ -22,7 +22,7 @@ export class ShapeSpawner extends IEntity {
       const r = Math.random();
       if (r < 1 / 6) {
         item = world.addPrimitiveRigidBody({
-          shape: { shape: 'SQUARE', dimensions: { x: 25, y: 25 } },
+          shape: { shape: 'BOX', dimensions: { x: 25, y: 25 } },
           body: { mass: 1 },
         });
       } else if (r < 2 / 6) {
@@ -72,7 +72,7 @@ export class ShapeSpawner extends IEntity {
             children: [
               { position: { x: -15, y: 0 }, shape: { shape: 'CIRCLE', radius: 8 } },
               { position: { x: 15, y: 0 }, shape: { shape: 'CIRCLE', radius: 8 } },
-              { shape: { shape: 'SQUARE', dimensions: { x: 30, y: 4 } } },
+              { shape: { shape: 'BOX', dimensions: { x: 30, y: 4 } } },
             ],
           },
           body: { mass: 1 },

@@ -204,7 +204,8 @@ export class Gg2dWorld<
         const [shapeArg, x, y, bodyTypeArg] = args;
         if ([x, y].some(v => v === undefined || isNaN(+v))) {
           throw new Error(
-            'usage: spawn SQUARE|CIRCLE X Y [bodyType=0|1|2|3|static|dynamic|kinematic_pos|kinematic_vel]',
+            'usage: spawn BOX|CIRCLE|CAPSULE|CONVEX_HULL|POLYGON X Y ' +
+              '[bodyType=0|1|2|3|static|dynamic|kinematic_pos|kinematic_vel]',
           );
         }
         let bodyType: BodyType = 'dynamic';
@@ -219,24 +220,58 @@ export class Gg2dWorld<
         } else if (bodyTypeArg === '3') {
           bodyType = 'kinematic_vel';
         }
+        // Sized in pixels, matching the scale `examples/primitives-pixi-*`'s shape-spawner uses -
+        // 2D worlds have no fixed "1 unit" convention the way 3D's meter-scaled shapes do, so a
+        // 3D-style unit-scale default (radius 0.5, dimensions 1x1) would spawn shapes too tiny to
+        // see/interact with with a typical pixel-scale camera/renderer setup.
         let shape: BodyShape2DDescriptor['shape'];
         switch ((shapeArg || '').toUpperCase()) {
-          case 'SQUARE':
-            shape = { shape: 'SQUARE', dimensions: { x: 1, y: 1 } };
+          case 'BOX':
+            shape = { shape: 'BOX', dimensions: { x: 25, y: 25 } };
             break;
           case 'CIRCLE':
-            shape = { shape: 'CIRCLE', radius: 0.5 };
+            shape = { shape: 'CIRCLE', radius: 13 };
+            break;
+          case 'CAPSULE':
+            shape = { shape: 'CAPSULE', radius: 10, centersDistance: 15 };
+            break;
+          case 'CONVEX_HULL':
+            shape = {
+              shape: 'CONVEX_HULL',
+              vertices: [
+                { x: 0, y: -15 },
+                { x: 13, y: 10 },
+                { x: 0, y: 0 },
+                { x: -13, y: 10 },
+                { x: 5, y: -5 },
+              ],
+            };
+            break;
+          case 'POLYGON':
+            shape = {
+              // non-convex L-shape, to demonstrate POLYGON isn't reduced to its convex hull
+              shape: 'POLYGON',
+              vertices: [
+                { x: -15, y: -15 },
+                { x: 0, y: -15 },
+                { x: 0, y: 0 },
+                { x: 15, y: 0 },
+                { x: 15, y: 15 },
+                { x: -15, y: 15 },
+              ],
+            };
             break;
           default:
-            throw new Error(`Unknown shape "${shapeArg}". Use SQUARE|CIRCLE`);
+            throw new Error(`Unknown shape "${shapeArg}". Use BOX|CIRCLE|CAPSULE|CONVEX_HULL|POLYGON`);
         }
         const entity = this.addPrimitiveRigidBody({ shape, body: { bodyType } }, { x: +x, y: +y });
         return `spawned "${entity.name}" (${shape.shape}) at ${JSON.stringify(entity.position)}`;
       },
-      'args: [ SQUARE|CIRCLE, float, float, bodyType=0|1|2|3|static|dynamic|kinematic_pos|' +
-        'kinematic_vel? ]; Spawn a default-sized primitive rigid body at world-space coordinates, ' +
-        'for probing physics. bodyType (last arg) defaults to dynamic (1, falls under gravity); ' +
-        'numeric shorthand: 0=static, 2=kinematic_pos, 3=kinematic_vel',
+      'args: [ BOX|CIRCLE|CAPSULE|CONVEX_HULL|POLYGON, float, float, ' +
+        'bodyType=0|1|2|3|static|dynamic|kinematic_pos|kinematic_vel? ]; Spawn a default-sized ' +
+        'primitive rigid body at world-space coordinates, for probing physics. bodyType (last ' +
+        'arg) defaults to dynamic (1, falls under gravity); numeric shorthand: 0=static, ' +
+        '2=kinematic_pos, 3=kinematic_vel',
     );
     if (this.physicsWorld) {
       ggstatic.registerConsoleCommand(

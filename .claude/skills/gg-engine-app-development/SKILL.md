@@ -69,8 +69,9 @@ world.addPrimitiveRigidBody({
 world.start(); // starts the tick clock (visual RAF loop + physics simulate())
 ```
 
-The 2D equivalent (`Gg2dWorld`) uses `Shape2DDescriptor` (`SQUARE`/`CIRCLE`) and `Point2`/`number`
-rotation instead of quaternions.
+The 2D equivalent (`Gg2dWorld`) uses `Shape2DDescriptor` (`BOX`/`CIRCLE`/`CAPSULE`/`CONVEX_HULL`/
+`POLYGON`/`COMPOUND`) and `Point2`/`number` rotation instead of quaternions - a `COMPOUND` child's
+`rotation` is a plain radians scalar rather than 3D's `Point4` quaternion.
 
 ## Typing the world down to the integration-library level
 
@@ -253,7 +254,7 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
 - **Available 3D shapes**: `Shape3DDescriptor` in `packages/core/src/3d/models/shapes.ts` —
   `PLANE`, `BOX`, `CONE`, `CYLINDER`, `CAPSULE`, `SPHERE`, `COMPOUND`, `CONVEX_HULL`, `MESH`.
 - **Available 2D shapes**: `Shape2DDescriptor` in `packages/core/src/2d/models/shapes.ts` —
-  currently `SQUARE`, `CIRCLE` only.
+  `BOX`, `CIRCLE`, `CAPSULE`, `CONVEX_HULL`, `POLYGON`, `COMPOUND`.
 - **Body options** (`Partial<Body3DOptions>`/`Body2DOptions`): `mass`, `bodyType` (`'dynamic'` |
   `'static'` | `'kinematic_pos'` | `'kinematic_vel'`), `ccd`, friction/restitution, collision groups
   — see `packages/core/src/base/models/body-options.ts`.
@@ -384,9 +385,13 @@ rotation args already differ) — same command names, different parsing:
   `Qtrn.fromEuler`) or 4 (a raw quaternion `x y z w`); 2D takes a single angle in radians.
 - `spawn SHAPE X Y [Z] [bodyType=0|1|2|3|static|dynamic|kinematic_pos|kinematic_vel]` — drop a
   default-sized primitive rigid body at a point for probing physics/collisions without touching
-  game code. 3D shapes: `BOX|SPHERE|CYLINDER|CONE|CAPSULE|PLANE`; 2D shapes: `SQUARE|CIRCLE`.
-  `bodyType` defaults to `dynamic` (falls under gravity); numeric shorthand: `0`=static,
-  `2`=kinematic_pos, `3`=kinematic_vel.
+  game code. 3D shapes: `BOX|SPHERE|CYLINDER|CONE|CAPSULE|PLANE`; 2D shapes:
+  `BOX|CIRCLE|CAPSULE|CONVEX_HULL|POLYGON`. `COMPOUND` is deliberately excluded from the spawner
+  in both dimensions - unlike every other shape, it has no single sensible "default size" (its
+  `children` array is open-ended), so it isn't wired into either `spawn` command; reach for
+  `addPrimitiveRigidBody` directly (or a level JSON `"Primitive"` entity - see `gg-engine-level-json`)
+  to spawn one. `bodyType` defaults to `dynamic` (falls under gravity);
+  numeric shorthand: `0`=static, `2`=kinematic_pos, `3`=kinematic_vel.
 
 3D worlds also register two commands for a default controllable character, gated on a physics
 world and at least one renderer already being present:
