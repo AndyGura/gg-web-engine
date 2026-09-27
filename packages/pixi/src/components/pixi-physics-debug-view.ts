@@ -116,6 +116,16 @@ export class PixiPhysicsDebugView {
     } else if (shape.shape === 'POLYGON') {
       const vertices = shape.vertices;
       return tabulateArray(vertices.length, i => [vertices[i], vertices[(i + 1) % vertices.length]]).flat();
+    } else if (shape.shape === 'COMPOUND') {
+      const vertices: Point2[] = [];
+      for (const { position, rotation, shape: subShape } of shape.children) {
+        vertices.push(
+          ...this.lineSegmentPointsForShape(subShape).map(v =>
+            Pnt2.add(position || Pnt2.O, Pnt2.rot(v, rotation || 0)),
+          ),
+        );
+      }
+      return vertices;
     }
     return [
       { x: -10, y: 0 },

@@ -89,6 +89,9 @@ export class MatterFactory implements IPhysicsBody2dComponentFactory<MatterPhysi
           this.transformOptions(descriptor.body),
         );
         break;
+      case 'COMPOUND':
+        nativeBody = this.createShapeBody(descriptor.shape, this.transformOptions(descriptor.body));
+        break;
     }
     if (!nativeBody) {
       throw new Error(`Shape "${descriptor.shape}" not implemented for Matter.js`);
@@ -131,6 +134,9 @@ export class MatterFactory implements IPhysicsBody2dComponentFactory<MatterPhysi
           isSensor: true,
         });
         break;
+      case 'COMPOUND':
+        nativeBody = this.createShapeBody(descriptor, { isSensor: true });
+        break;
     }
     if (!nativeBody) {
       throw new Error(`Shape "${descriptor.shape}" not implemented for Matter.js`);
@@ -144,6 +150,48 @@ export class MatterFactory implements IPhysicsBody2dComponentFactory<MatterPhysi
     }
 
     return new MatterTriggerComponent(nativeBody, descriptor, this.world);
+  }
+
+  private createShapeParts(shape: Shape2DDescriptor, options: IChamferableBodyDefinition): Body[] {
+    switch (shape.shape) {
+      case 'SQUARE':
+        return [Bodies.rectangle(0, 0, shape.dimensions.x, shape.dimensions.y, options)];
+      case 'CIRCLE':
+        return [Bodies.circle(0, 0, shape.radius, options)];
+      case 'CAPSULE':
+        return [
+          Bodies.rectangle(0, 0, shape.radius * 2, shape.centersDistance + shape.radius * 2, {
+            ...options,
+            chamfer: { radius: shape.radius },
+          }),
+        ];
+      case 'CONVEX_HULL':
+        return [Bodies.fromVertices(0, 0, [Pnt2.hull(shape.vertices).map(v => Vector.create(v.x, v.y))], options)];
+      case 'POLYGON':
+        return [Bodies.fromVertices(0, 0, [shape.vertices.map(v => Vector.create(v.x, v.y))], options)];
+      case 'COMPOUND': {
+        const parts: Body[] = [];
+        for (const { position, rotation, shape: childShape } of shape.children) {
+          const childParts = this.createShapeParts(childShape, options);
+          for (const part of childParts) {
+            Body.setPosition(
+              part,
+              Vector.add(
+                Vector.rotate(part.position, rotation || 0),
+                Vector.create(position?.x || 0, position?.y || 0),
+              ),
+            );
+            Body.setAngle(part, part.angle + (rotation || 0));
+          }
+          parts.push(...childParts);
+        }
+        return parts;
+      }
+    }
+  }
+
+  private createShapeBody(shape: Shape2DDescriptor, options: IChamferableBodyDefinition): Body {
+    return Body.create({ parts: this.createShapeParts(shape, options), ...options });
   }
 
   /**

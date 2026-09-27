@@ -1,6 +1,6 @@
 import { DisplayObject2dOpts, IDisplayObject2dComponentFactory, Pnt2, Shape2DDescriptor } from '@gg-web-engine/core';
 import { PixiDisplayObjectComponent } from './components/pixi-display-object.component';
-import { Graphics, Sprite, Texture } from 'pixi.js';
+import { Container, Graphics, Sprite, Texture } from 'pixi.js';
 import { PixiVisualTypeDocRepo2D } from './types';
 
 export type PixiDisplayObject3dOpts = DisplayObject2dOpts<Texture>;
@@ -51,6 +51,20 @@ export class PixiFactory extends IDisplayObject2dComponentFactory<PixiVisualType
           .poly(descriptor.vertices.map(v => ({ x: v.x, y: v.y })))
           .fill(material.color || this.randomColor());
         return new PixiDisplayObjectComponent(graphics);
+      }
+      case 'COMPOUND': {
+        const container = new Container();
+        for (const { position, rotation, shape } of descriptor.children) {
+          const submesh = this.createPrimitive(shape, material).nativeSprite;
+          if (position) {
+            submesh.position.set(position.x, position.y);
+          }
+          if (rotation) {
+            submesh.rotation = rotation;
+          }
+          container.addChild(submesh);
+        }
+        return new PixiDisplayObjectComponent(container);
       }
     }
   }

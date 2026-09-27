@@ -100,6 +100,20 @@ export class Rapier2dFactory implements IPhysicsBody2dComponentFactory<Rapier2dP
         descrs = [colliderDesc];
         break;
       }
+      case 'COMPOUND': {
+        const res: ColliderDesc[] = [];
+        for (const item of descriptor.children) {
+          const subDescrs = this.createColliderDescr(item.shape);
+          subDescrs.forEach(d => {
+            const p = Pnt2.add(item.position || Pnt2.O, d.translation);
+            d.setTranslation(p.x, p.y);
+            d.setRotation((item.rotation || 0) + d.rotation);
+          });
+          res.push(...subDescrs);
+        }
+        descrs = res;
+        break;
+      }
       default:
         throw new Error(`Shape "${(descriptor as any).shape}" not implemented for Rapier 2D`);
     }

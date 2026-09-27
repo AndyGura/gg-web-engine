@@ -20,19 +20,19 @@ export class ShapeSpawner extends IEntity {
     this.spawnSub = this.clock.tick$.subscribe(() => {
       let item: Entity2d;
       const r = Math.random();
-      if (r < 0.2) {
+      if (r < 1 / 6) {
         item = world.addPrimitiveRigidBody({
           shape: { shape: 'SQUARE', dimensions: { x: 25, y: 25 } },
           body: { mass: 1 },
         });
-      } else if (r < 0.4) {
+      } else if (r < 2 / 6) {
         item = world.addPrimitiveRigidBody({ shape: { shape: 'CIRCLE', radius: 13 }, body: { mass: 1 } });
-      } else if (r < 0.6) {
+      } else if (r < 3 / 6) {
         item = world.addPrimitiveRigidBody({
           shape: { shape: 'CAPSULE', radius: 10, centersDistance: 15 },
           body: { mass: 1 },
         });
-      } else if (r < 0.8) {
+      } else if (r < 4 / 6) {
         item = world.addPrimitiveRigidBody({
           shape: {
             shape: 'CONVEX_HULL',
@@ -46,7 +46,7 @@ export class ShapeSpawner extends IEntity {
           },
           body: { mass: 1 },
         });
-      } else {
+      } else if (r < 5 / 6) {
         item = world.addPrimitiveRigidBody({
           shape: {
             // non-convex L-shaped polygon, to check that concave shapes aren't silently
@@ -59,6 +59,20 @@ export class ShapeSpawner extends IEntity {
               { x: 15, y: 0 },
               { x: 15, y: 15 },
               { x: -15, y: 15 },
+            ],
+          },
+          body: { mass: 1 },
+        });
+      } else {
+        item = world.addPrimitiveRigidBody({
+          shape: {
+            // dumbbell: two circular weights joined by a bar, to check that a rigid body built
+            // from several offset child shapes behaves as one solid piece
+            shape: 'COMPOUND',
+            children: [
+              { position: { x: -15, y: 0 }, shape: { shape: 'CIRCLE', radius: 8 } },
+              { position: { x: 15, y: 0 }, shape: { shape: 'CIRCLE', radius: 8 } },
+              { shape: { shape: 'SQUARE', dimensions: { x: 30, y: 4 } } },
             ],
           },
           body: { mass: 1 },
