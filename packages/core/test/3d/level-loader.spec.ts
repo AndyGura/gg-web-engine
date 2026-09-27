@@ -189,6 +189,137 @@ describe('Gg3dLevelLoader', () => {
       );
     });
 
+    it('should load a level with convex hull primitives', async () => {
+      const vertices = [
+        { x: 0, y: 0, z: 1 },
+        { x: 1, y: 0, z: -1 },
+        { x: -1, y: 0, z: -1 },
+        { x: 0, y: 1, z: -1 },
+      ];
+      const levelJson: LevelJson = {
+        entities: [{ class: 'Primitive', shape: 'CONVEX_HULL', config: { vertices } }],
+      };
+
+      await levelLoader.loadLevel(levelJson, 'TestLevel');
+
+      expect(world.addPrimitiveRigidBody).toHaveBeenCalledWith(
+        { shape: { shape: 'CONVEX_HULL', vertices }, body: defaultBody },
+        undefined,
+        undefined,
+        undefined,
+      );
+    });
+
+    it('should throw when vertices are missing for a ConvexHull primitive', async () => {
+      const levelJson: LevelJson = {
+        entities: [{ class: 'Primitive', shape: 'CONVEX_HULL' }],
+      };
+
+      await expect(levelLoader.loadLevel(levelJson, 'TestLevel')).rejects.toThrow(
+        'Vertices are required for CONVEX_HULL primitive',
+      );
+    });
+
+    it('should load a level with mesh primitives', async () => {
+      const vertices = [
+        { x: 0, y: 0, z: 1 },
+        { x: 1, y: 0, z: -1 },
+        { x: -1, y: 0, z: -1 },
+      ];
+      const faces: [number, number, number][] = [[0, 1, 2]];
+      const levelJson: LevelJson = {
+        entities: [{ class: 'Primitive', shape: 'MESH', config: { vertices, faces } }],
+      };
+
+      await levelLoader.loadLevel(levelJson, 'TestLevel');
+
+      expect(world.addPrimitiveRigidBody).toHaveBeenCalledWith(
+        { shape: { shape: 'MESH', vertices, faces }, body: defaultBody },
+        undefined,
+        undefined,
+        undefined,
+      );
+    });
+
+    it('should throw when vertices are missing for a Mesh primitive', async () => {
+      const levelJson: LevelJson = {
+        entities: [{ class: 'Primitive', shape: 'MESH' }],
+      };
+
+      await expect(levelLoader.loadLevel(levelJson, 'TestLevel')).rejects.toThrow('Vertices are required for MESH primitive');
+    });
+
+    it('should throw when faces are missing for a Mesh primitive', async () => {
+      const levelJson: LevelJson = {
+        entities: [{ class: 'Primitive', shape: 'MESH', config: { vertices: [{ x: 0, y: 0, z: 0 }] } }],
+      };
+
+      await expect(levelLoader.loadLevel(levelJson, 'TestLevel')).rejects.toThrow('Faces are required for MESH primitive');
+    });
+
+    it('should load a level with compound primitives, recursively building nested children', async () => {
+      const levelJson: LevelJson = {
+        entities: [
+          {
+            class: 'Primitive',
+            shape: 'COMPOUND',
+            config: {
+              children: [
+                { position: { x: -1, y: 0, z: 0 }, shape: 'SPHERE', radius: 0.5 },
+                {
+                  position: { x: 1, y: 0, z: 0 },
+                  rotation: { x: 0, y: 0, z: 0, w: 1 },
+                  shape: 'COMPOUND',
+                  children: [{ shape: 'BOX', dimensions: { x: 0.5, y: 0.5, z: 0.5 } }],
+                },
+              ],
+            },
+          },
+        ],
+      };
+
+      await levelLoader.loadLevel(levelJson, 'TestLevel');
+
+      expect(world.addPrimitiveRigidBody).toHaveBeenCalledWith(
+        {
+          shape: {
+            shape: 'COMPOUND',
+            children: [
+              { position: { x: -1, y: 0, z: 0 }, rotation: undefined, shape: { shape: 'SPHERE', radius: 0.5 } },
+              {
+                position: { x: 1, y: 0, z: 0 },
+                rotation: { x: 0, y: 0, z: 0, w: 1 },
+                shape: {
+                  shape: 'COMPOUND',
+                  children: [
+                    {
+                      position: undefined,
+                      rotation: undefined,
+                      shape: { shape: 'BOX', dimensions: { x: 0.5, y: 0.5, z: 0.5 } },
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+          body: defaultBody,
+        },
+        undefined,
+        undefined,
+        undefined,
+      );
+    });
+
+    it('should throw when children are missing for a Compound primitive', async () => {
+      const levelJson: LevelJson = {
+        entities: [{ class: 'Primitive', shape: 'COMPOUND' }],
+      };
+
+      await expect(levelLoader.loadLevel(levelJson, 'TestLevel')).rejects.toThrow(
+        'Children are required for COMPOUND primitive',
+      );
+    });
+
     it('should load a level with triggers, wrapped ready-to-use in a Trigger3dEntity', async () => {
       // Create a level JSON with a trigger
       const levelJson: LevelJson = {

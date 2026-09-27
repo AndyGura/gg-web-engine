@@ -1,6 +1,6 @@
 ---
 name: gg-engine-physics-adapter-matter
-description: Known, already-solved implementation pitfalls specific to packages/matter (the matter-js 2D physics adapter) - removeFromWorld/dispose semantics, @types/matter-js version-bump typing gotchas. Use when fixing or extending packages/matter itself, not when building a new physics adapter from scratch (see gg-engine-physics-adapter for the general contract every adapter implements).
+description: Known, already-solved implementation pitfalls specific to packages/matter (the matter-js 2D physics adapter) - removeFromWorld/dispose semantics, @types/matter-js version-bump typing gotchas, flattening COMPOUND shapes into leaf Body.create({ parts }) entries. Use when fixing or extending packages/matter itself, not when building a new physics adapter from scratch (see gg-engine-physics-adapter for the general contract every adapter implements).
 ---
 
 # packages/matter implementation notes
@@ -143,6 +143,30 @@ separately track the original request). Fixed by going back to deriving the labe
 *physically is* (`isFinite(mass) ? RIGID_DYNAMIC : RIGID_STATIC`) - the console warning at creation
 time is what tells a developer their kinematic request wasn't honored; the debug view's job is to show
 real physics state, not restate the app's original ask.
+
+## `COMPOUND` shapes: flatten to leaf parts, don't nest composite bodies
+
+`Body.create({ parts })` does **not** descend into a part that is itself a multi-part compound
+body - `Body.setParts` just pushes each element of the `parts` array you pass it into the new
+body's own `.parts`, verbatim; if one of those elements already has its own `.parts.length > 1`
+(because it's itself the result of an earlier `Body.create({ parts })` call), the outer body ends
+up with exactly one part that Matter's own narrowphase can't correctly treat as a compound shape.
+Confirmed empirically: building a nested `COMPOUND` (a `COMPOUND` child whose own `shape` is
+another `COMPOUND`) by recursively calling a single "build one full `Body`" helper and passing the
+nested body straight into the parent's `parts` array produced a parent with only 3 parts where 5
+leaf shapes were expected.
+
+The fix (see `MatterFactory.createShapeParts`) is to make the recursive shape-building helper
+return a **flat array of leaf part `Body`s** rather than one `Body`, with `COMPOUND` itself
+recursing and flattening: for each child, recursively get its own flat leaf-part array, then
+re-home every one of those parts by rotating its already-set local `position` by this level's
+`rotation` and translating by this level's `position` (`Vector.add(Vector.rotate(part.position,
+rotation), Vector.create(position))`), and incrementing its `angle` by this level's `rotation`.
+Only the outermost call wraps the fully-flattened array in one `Body.create({ parts, ...options })`.
+This mirrors what `packages/rapier2d`/`packages/rapier3d` already have to do for the same underlying
+reason (their `ColliderDesc[]` has no native nesting either) - see `gg-engine-physics-adapter`'s own
+`COMPOUND` note. Only Ammo/Bullet's `btCompoundShape` can nest a child compound shape directly
+without flattening, because Bullet's narrowphase itself walks nested compound shapes recursively.
 
 ## Keep this skill current
 

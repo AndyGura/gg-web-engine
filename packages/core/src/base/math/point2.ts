@@ -175,4 +175,34 @@ export class Pnt2 {
       y: p.radius * Math.sin(p.phi),
     };
   }
+
+  /**
+   * Computes the convex hull of an arbitrary (possibly unordered, possibly non-convex) set of
+   * points, using Andrew's monotone chain algorithm. The result is a new array of points, a
+   * subset of the input, ordered so that they form the hull's outline.
+   * @param points - The input points.
+   * @returns The hull's vertices, in order.
+   */
+  static hull(points: Point2[]): Point2[] {
+    if (points.length < 3) {
+      return points.map(Pnt2.clone);
+    }
+    const sorted = [...points].sort((a, b) => a.x - b.x || a.y - b.y);
+    const cross = (o: Point2, a: Point2, b: Point2): number => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+    const buildHalf = (pts: Point2[]): Point2[] => {
+      const half: Point2[] = [];
+      for (const p of pts) {
+        while (half.length >= 2 && cross(half[half.length - 2], half[half.length - 1], p) <= 0) {
+          half.pop();
+        }
+        half.push(p);
+      }
+      return half;
+    };
+    const lower = buildHalf(sorted);
+    const upper = buildHalf([...sorted].reverse());
+    lower.pop();
+    upper.pop();
+    return [...lower, ...upper];
+  }
 }

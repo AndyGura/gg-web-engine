@@ -38,16 +38,16 @@ describe('Gg2dLevelLoader', () => {
   });
 
   describe('loadLevel', () => {
-    it('should load a level with square primitives', async () => {
-      // Create a level JSON with a square primitive
+    it('should load a level with box primitives', async () => {
+      // Create a level JSON with a box primitive
       const levelJson: LevelJson = {
         entities: [
           {
             class: 'Primitive',
-            shape: 'SQUARE',
+            shape: 'BOX',
             position: { x: 100, y: 200 },
             rotation: 0.5,
-            name: 'TestSquare',
+            name: 'TestBox',
             config: {
               dimensions: { x: 50, y: 50 },
               material: {
@@ -64,7 +64,7 @@ describe('Gg2dLevelLoader', () => {
       // Verify that the entity was created via the world's primitive helper, and reachable by name
       expect(world.addPrimitiveRigidBody).toHaveBeenCalledWith(
         {
-          shape: { shape: 'SQUARE', dimensions: { x: 50, y: 50 } },
+          shape: { shape: 'BOX', dimensions: { x: 50, y: 50 } },
           body: {
             bodyType: 'dynamic',
             mass: 1,
@@ -79,15 +79,15 @@ describe('Gg2dLevelLoader', () => {
         0.5,
         { color: 0xff0000 },
       );
-      expect(level.getChildEntityByName('TestSquare')).toBeInstanceOf(TestEntity);
+      expect(level.getChildEntityByName('TestBox')).toBeInstanceOf(TestEntity);
     });
 
-    it('should throw when dimensions are missing for a Square primitive', async () => {
+    it('should throw when dimensions are missing for a Box primitive', async () => {
       const levelJson: LevelJson = {
-        entities: [{ class: 'Primitive', shape: 'SQUARE', position: { x: 0, y: 0 } }],
+        entities: [{ class: 'Primitive', shape: 'BOX', position: { x: 0, y: 0 } }],
       };
 
-      await expect(levelLoader.loadLevel(levelJson, 'TestLevel')).rejects.toThrow('Dimensions are required for SQUARE primitive');
+      await expect(levelLoader.loadLevel(levelJson, 'TestLevel')).rejects.toThrow('Dimensions are required for BOX primitive');
     });
 
     it('should throw for an unknown primitive shape', async () => {
@@ -138,6 +138,152 @@ describe('Gg2dLevelLoader', () => {
         { x: 100, y: 200 },
         0.5,
         { color: 0x00ff00 },
+      );
+    });
+
+    it('should load a level with capsule primitives', async () => {
+      const levelJson: LevelJson = {
+        entities: [
+          {
+            class: 'Primitive',
+            shape: 'CAPSULE',
+            config: { radius: 10, centersDistance: 20 },
+          },
+        ],
+      };
+
+      await levelLoader.loadLevel(levelJson, 'TestLevel');
+
+      expect(world.addPrimitiveRigidBody).toHaveBeenCalledWith(
+        {
+          shape: { shape: 'CAPSULE', radius: 10, centersDistance: 20 },
+          body: {
+            bodyType: 'dynamic',
+            mass: 1,
+            restitution: 0.2,
+            friction: 0.5,
+            ownCollisionGroups: 'all',
+            interactWithCollisionGroups: 'all',
+            ccd: false,
+          },
+        },
+        undefined,
+        undefined,
+        undefined,
+      );
+    });
+
+    it('should throw when centers distance is missing for a Capsule primitive', async () => {
+      const levelJson: LevelJson = {
+        entities: [{ class: 'Primitive', shape: 'CAPSULE', config: { radius: 10 } }],
+      };
+
+      await expect(levelLoader.loadLevel(levelJson, 'TestLevel')).rejects.toThrow(
+        'Centers distance is required for CAPSULE primitive',
+      );
+    });
+
+    it('should load a level with convex hull primitives', async () => {
+      const vertices = [
+        { x: 0, y: -15 },
+        { x: 13, y: 10 },
+        { x: -13, y: 10 },
+      ];
+      const levelJson: LevelJson = {
+        entities: [{ class: 'Primitive', shape: 'CONVEX_HULL', config: { vertices } }],
+      };
+
+      await levelLoader.loadLevel(levelJson, 'TestLevel');
+
+      expect(world.addPrimitiveRigidBody).toHaveBeenCalledWith(
+        expect.objectContaining({ shape: { shape: 'CONVEX_HULL', vertices } }),
+        undefined,
+        undefined,
+        undefined,
+      );
+    });
+
+    it('should load a level with polygon primitives', async () => {
+      const vertices = [
+        { x: -15, y: -15 },
+        { x: 0, y: -15 },
+        { x: 0, y: 0 },
+        { x: 15, y: 0 },
+      ];
+      const levelJson: LevelJson = {
+        entities: [{ class: 'Primitive', shape: 'POLYGON', config: { vertices } }],
+      };
+
+      await levelLoader.loadLevel(levelJson, 'TestLevel');
+
+      expect(world.addPrimitiveRigidBody).toHaveBeenCalledWith(
+        expect.objectContaining({ shape: { shape: 'POLYGON', vertices } }),
+        undefined,
+        undefined,
+        undefined,
+      );
+    });
+
+    it('should throw when vertices are missing for a ConvexHull/Polygon primitive', async () => {
+      const levelJson: LevelJson = {
+        entities: [{ class: 'Primitive', shape: 'CONVEX_HULL' }],
+      };
+
+      await expect(levelLoader.loadLevel(levelJson, 'TestLevel')).rejects.toThrow(
+        'Vertices are required for CONVEX_HULL primitive',
+      );
+    });
+
+    it('should load a level with compound primitives, recursively building nested children', async () => {
+      const levelJson: LevelJson = {
+        entities: [
+          {
+            class: 'Primitive',
+            shape: 'COMPOUND',
+            config: {
+              children: [
+                { position: { x: -15, y: 0 }, shape: 'CIRCLE', radius: 8 },
+                {
+                  position: { x: 15, y: 0 },
+                  rotation: 0.2,
+                  shape: 'COMPOUND',
+                  children: [{ shape: 'BOX', dimensions: { x: 4, y: 4 } }],
+                },
+              ],
+            },
+          },
+        ],
+      };
+
+      await levelLoader.loadLevel(levelJson, 'TestLevel');
+
+      expect(world.addPrimitiveRigidBody).toHaveBeenCalledWith(
+        expect.objectContaining({
+          shape: {
+            shape: 'COMPOUND',
+            children: [
+              { position: { x: -15, y: 0 }, rotation: undefined, shape: { shape: 'CIRCLE', radius: 8 } },
+              {
+                position: { x: 15, y: 0 },
+                rotation: 0.2,
+                shape: { shape: 'COMPOUND', children: [{ position: undefined, rotation: undefined, shape: { shape: 'BOX', dimensions: { x: 4, y: 4 } } }] },
+              },
+            ],
+          },
+        }),
+        undefined,
+        undefined,
+        undefined,
+      );
+    });
+
+    it('should throw when children are missing for a Compound primitive', async () => {
+      const levelJson: LevelJson = {
+        entities: [{ class: 'Primitive', shape: 'COMPOUND' }],
+      };
+
+      await expect(levelLoader.loadLevel(levelJson, 'TestLevel')).rejects.toThrow(
+        'Children are required for COMPOUND primitive',
       );
     });
 
@@ -195,7 +341,7 @@ describe('Gg2dLevelLoader', () => {
       // Verify that the trigger was created, and reachable by name as a positioned entity (not
       // just the raw physics trigger component)
       expect(world.physicsWorld?.factory.createTrigger).toHaveBeenCalledWith(
-        { shape: 'SQUARE', dimensions: { x: 50, y: 50 } },
+        { shape: 'BOX', dimensions: { x: 50, y: 50 } },
         { position: { x: 100, y: 200 }, rotation: 0.5 },
       );
       const trigger = level.getChildEntityByName<Trigger2dEntity>('TestTrigger');

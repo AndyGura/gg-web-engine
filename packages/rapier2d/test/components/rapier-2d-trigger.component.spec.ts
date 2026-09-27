@@ -19,7 +19,7 @@ describe(`Rapier2dTriggerComponent`, () => {
   });
 
   it(`should detect object intersection`, async () => {
-    const trigger = factory.createTrigger({ shape: 'SQUARE', dimensions: { x: 10, y: 10 } });
+    const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 10, y: 10 } });
     trigger.addToWorld({ physicsWorld: world } as any);
     const circle = factory.createRigidBody(
       {
@@ -59,7 +59,7 @@ describe(`Rapier2dTriggerComponent`, () => {
   });
 
   it(`should detect end of object intersection`, async () => {
-    const trigger = factory.createTrigger({ shape: 'SQUARE', dimensions: { x: 10, y: 10 } });
+    const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 10, y: 10 } });
     trigger.addToWorld({ physicsWorld: world } as any);
     const circle = factory.createRigidBody(
       {
@@ -89,7 +89,7 @@ describe(`Rapier2dTriggerComponent`, () => {
   });
 
   it(`should fire object intersection if spawned inside`, async () => {
-    const trigger = factory.createTrigger({ shape: 'SQUARE', dimensions: { x: 10, y: 10 } });
+    const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 10, y: 10 } });
     trigger.addToWorld({ physicsWorld: world } as any);
     const circle = factory.createRigidBody(
       {
@@ -109,7 +109,7 @@ describe(`Rapier2dTriggerComponent`, () => {
   });
 
   it(`should fire end of object intersection if trigger removed`, async () => {
-    const trigger = factory.createTrigger({ shape: 'SQUARE', dimensions: { x: 10, y: 10 } });
+    const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 10, y: 10 } });
     trigger.addToWorld({ physicsWorld: world } as any);
     const circle = factory.createRigidBody(
       {
@@ -130,7 +130,7 @@ describe(`Rapier2dTriggerComponent`, () => {
   });
 
   it(`should fire end of object intersection if object removed`, async () => {
-    const trigger = factory.createTrigger({ shape: 'SQUARE', dimensions: { x: 10, y: 10 } });
+    const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 10, y: 10 } });
     trigger.addToWorld({ physicsWorld: world } as any);
     const circle = factory.createRigidBody(
       {
@@ -153,7 +153,7 @@ describe(`Rapier2dTriggerComponent`, () => {
   });
 
   it('completes onEntityEntered/onEntityLeft (and the inherited collision subjects) on dispose', () => {
-    const trigger = factory.createTrigger({ shape: 'SQUARE', dimensions: { x: 10, y: 10 } });
+    const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 10, y: 10 } });
     trigger.addToWorld({ physicsWorld: world } as any);
 
     let enterCompleted = false;

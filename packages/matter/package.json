@@ -27,11 +27,12 @@
   },
   "homepage": "https://github.com/AndyGura/gg-web-engine#readme",
   "dependencies": {
+    "poly-decomp": "^0.3.0"
   },
   "devDependencies": {
-    "@types/matter-js": "0.20.2",
     "@gg-web-engine/core": "0.0.72",
     "@types/jest": "^30.0.0",
+    "@types/matter-js": "0.20.2",
     "@types/node": "^26.4.0",
     "jest": "^30.5.0",
     "jest-environment-jsdom": "^30.5.0",

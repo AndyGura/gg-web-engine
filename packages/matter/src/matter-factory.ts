@@ -2,6 +2,7 @@ import {
   Body2DOptions,
   BodyShape2DDescriptor,
   IPhysicsBody2dComponentFactory,
+  Pnt2,
   Point2,
   Shape2DDescriptor,
   warnOnce,
@@ -9,8 +10,18 @@ import {
 import { MatterRigidBodyComponent } from './components/matter-rigid-body.component';
 import { MatterTriggerComponent } from './components/matter-trigger.component';
 import { MatterWorldComponent } from './components/matter-world.component';
-import { Bodies, Body, IChamferableBodyDefinition, Vector } from 'matter-js';
+import { Bodies, Body, Common, IChamferableBodyDefinition, Vector } from 'matter-js';
+import * as decomp from 'poly-decomp';
 import { MatterPhysicsTypeDocRepo } from './types';
+
+/**
+ * `Bodies.fromVertices` (used for the `POLYGON` shape below) only actually decomposes a concave
+ * vertex set into convex parts when a decomposition library is registered via `Common.setDecomp` -
+ * without it, matter-js silently falls back to the convex hull of the given vertices, so a concave
+ * `POLYGON` would render/collide as if it were convex. Registering `poly-decomp` here, once, at
+ * module load makes `Bodies.fromVertices` actually decompose concave outlines everywhere it's used.
+ */
+Common.setDecomp(decomp);
 
 /**
  * `kinematic_pos`/`kinematic_vel`/`ccd` have no native matter-js equivalent at all - unlike
@@ -37,7 +48,7 @@ export class MatterFactory implements IPhysicsBody2dComponentFactory<MatterPhysi
   ): MatterRigidBodyComponent {
     let nativeBody: Body | null = null;
     switch (descriptor.shape.shape) {
-      case 'SQUARE':
+      case 'BOX':
         nativeBody = Bodies.rectangle(
           0,
           0,
@@ -48,6 +59,38 @@ export class MatterFactory implements IPhysicsBody2dComponentFactory<MatterPhysi
         break;
       case 'CIRCLE':
         nativeBody = Bodies.circle(0, 0, descriptor.shape.radius, this.transformOptions(descriptor.body));
+        break;
+      case 'CAPSULE':
+        nativeBody = Bodies.rectangle(
+          0,
+          0,
+          descriptor.shape.radius * 2,
+          descriptor.shape.centersDistance + descriptor.shape.radius * 2,
+          {
+            chamfer: {
+              radius: descriptor.shape.radius,
+            },
+          },
+        );
+        break;
+      case 'CONVEX_HULL':
+        nativeBody = Bodies.fromVertices(
+          0,
+          0,
+          [Pnt2.hull(descriptor.shape.vertices).map(v => Vector.create(v.x, v.y))],
+          this.transformOptions(descriptor.body),
+        );
+        break;
+      case 'POLYGON':
+        nativeBody = Bodies.fromVertices(
+          0,
+          0,
+          [descriptor.shape.vertices.map(v => Vector.create(v.x, v.y))],
+          this.transformOptions(descriptor.body),
+        );
+        break;
+      case 'COMPOUND':
+        nativeBody = this.createShapeBody(descriptor.shape, this.transformOptions(descriptor.body));
         break;
     }
     if (!nativeBody) {
@@ -67,11 +110,32 @@ export class MatterFactory implements IPhysicsBody2dComponentFactory<MatterPhysi
   ): MatterTriggerComponent {
     let nativeBody: Body | null = null;
     switch (descriptor.shape) {
-      case 'SQUARE':
+      case 'BOX':
         nativeBody = Bodies.rectangle(0, 0, descriptor.dimensions.x, descriptor.dimensions.y, { isSensor: true });
         break;
       case 'CIRCLE':
         nativeBody = Bodies.circle(0, 0, descriptor.radius, { isSensor: true });
+        break;
+      case 'CAPSULE':
+        nativeBody = Bodies.rectangle(0, 0, descriptor.radius * 2, descriptor.centersDistance + descriptor.radius * 2, {
+          isSensor: true,
+          chamfer: {
+            radius: descriptor.radius,
+          },
+        });
+        break;
+      case 'CONVEX_HULL':
+        nativeBody = Bodies.fromVertices(0, 0, [Pnt2.hull(descriptor.vertices).map(v => Vector.create(v.x, v.y))], {
+          isSensor: true,
+        });
+        break;
+      case 'POLYGON':
+        nativeBody = Bodies.fromVertices(0, 0, [descriptor.vertices.map(v => Vector.create(v.x, v.y))], {
+          isSensor: true,
+        });
+        break;
+      case 'COMPOUND':
+        nativeBody = this.createShapeBody(descriptor, { isSensor: true });
         break;
     }
     if (!nativeBody) {
@@ -86,6 +150,48 @@ export class MatterFactory implements IPhysicsBody2dComponentFactory<MatterPhysi
     }
 
     return new MatterTriggerComponent(nativeBody, descriptor, this.world);
+  }
+
+  private createShapeParts(shape: Shape2DDescriptor, options: IChamferableBodyDefinition): Body[] {
+    switch (shape.shape) {
+      case 'BOX':
+        return [Bodies.rectangle(0, 0, shape.dimensions.x, shape.dimensions.y, options)];
+      case 'CIRCLE':
+        return [Bodies.circle(0, 0, shape.radius, options)];
+      case 'CAPSULE':
+        return [
+          Bodies.rectangle(0, 0, shape.radius * 2, shape.centersDistance + shape.radius * 2, {
+            ...options,
+            chamfer: { radius: shape.radius },
+          }),
+        ];
+      case 'CONVEX_HULL':
+        return [Bodies.fromVertices(0, 0, [Pnt2.hull(shape.vertices).map(v => Vector.create(v.x, v.y))], options)];
+      case 'POLYGON':
+        return [Bodies.fromVertices(0, 0, [shape.vertices.map(v => Vector.create(v.x, v.y))], options)];
+      case 'COMPOUND': {
+        const parts: Body[] = [];
+        for (const { position, rotation, shape: childShape } of shape.children) {
+          const childParts = this.createShapeParts(childShape, options);
+          for (const part of childParts) {
+            Body.setPosition(
+              part,
+              Vector.add(
+                Vector.rotate(part.position, rotation || 0),
+                Vector.create(position?.x || 0, position?.y || 0),
+              ),
+            );
+            Body.setAngle(part, part.angle + (rotation || 0));
+          }
+          parts.push(...childParts);
+        }
+        return parts;
+      }
+    }
+  }
+
+  private createShapeBody(shape: Shape2DDescriptor, options: IChamferableBodyDefinition): Body {
+    return Body.create({ parts: this.createShapeParts(shape, options), ...options });
   }
 
   /**

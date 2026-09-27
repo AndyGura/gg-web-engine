@@ -22,7 +22,7 @@ describe('MatterRigidBodyComponent collision events', () => {
   it('should fire onCollisionStart reciprocally, with a sane position/normal, when a falling body lands on a floor', () => {
     // static floor, top edge sits at y = -5
     const floor = factory.createRigidBody(
-      { shape: { shape: 'SQUARE', dimensions: { x: 50, y: 10 } }, body: { bodyType: 'static', mass: 0 } },
+      { shape: { shape: 'BOX', dimensions: { x: 50, y: 10 } }, body: { bodyType: 'static', mass: 0 } },
       { position: { x: 0, y: 0 } },
     );
     floor.addToWorld({ physicsWorld: world } as any);
@@ -67,7 +67,7 @@ describe('MatterRigidBodyComponent collision events', () => {
 
   it('should not keep re-firing onCollisionStart while a body rests stably on another', () => {
     const floor = factory.createRigidBody(
-      { shape: { shape: 'SQUARE', dimensions: { x: 50, y: 10 } }, body: { bodyType: 'static', mass: 0 } },
+      { shape: { shape: 'BOX', dimensions: { x: 50, y: 10 } }, body: { bodyType: 'static', mass: 0 } },
       { position: { x: 0, y: 0 } },
     );
     floor.addToWorld({ physicsWorld: world } as any);
@@ -101,7 +101,7 @@ describe('MatterRigidBodyComponent collision events', () => {
 
   it('should fire onCollisionEnd when a body is knocked away and separates', () => {
     const floor = factory.createRigidBody(
-      { shape: { shape: 'SQUARE', dimensions: { x: 50, y: 10 } }, body: { bodyType: 'static', mass: 0 } },
+      { shape: { shape: 'BOX', dimensions: { x: 50, y: 10 } }, body: { bodyType: 'static', mass: 0 } },
       { position: { x: 0, y: 0 } },
     );
     floor.addToWorld({ physicsWorld: world } as any);
@@ -131,7 +131,7 @@ describe('MatterRigidBodyComponent collision events', () => {
 
   it('should emit onCollisionEnd(null) on the remaining body when the other body is removed from the world while still touching', () => {
     const floor = factory.createRigidBody(
-      { shape: { shape: 'SQUARE', dimensions: { x: 50, y: 10 } }, body: { bodyType: 'static', mass: 0 } },
+      { shape: { shape: 'BOX', dimensions: { x: 50, y: 10 } }, body: { bodyType: 'static', mass: 0 } },
       { position: { x: 0, y: 0 } },
     );
     floor.addToWorld({ physicsWorld: world } as any);
@@ -161,7 +161,7 @@ describe('MatterRigidBodyComponent collision events', () => {
   });
 
   it('should not fire the rigid body onCollisionStart for a trigger overlapping a rigid body', () => {
-    const trigger = factory.createTrigger({ shape: 'SQUARE', dimensions: { x: 50, y: 10 } }, { position: { x: 0, y: 0 } });
+    const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 50, y: 10 } }, { position: { x: 0, y: 0 } });
     trigger.addToWorld({ physicsWorld: world } as any);
 
     const ball = factory.createRigidBody(

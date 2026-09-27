@@ -60,12 +60,60 @@ export class Rapier2dFactory implements IPhysicsBody2dComponentFactory<Rapier2dP
   public createColliderDescr(descriptor: Shape2DDescriptor): ColliderDesc[] {
     let descrs: ColliderDesc[];
     switch (descriptor.shape) {
-      case 'SQUARE':
+      case 'BOX':
         descrs = [ColliderDesc.cuboid(descriptor.dimensions.x / 2, descriptor.dimensions.y / 2)];
         break;
       case 'CIRCLE':
         descrs = [ColliderDesc.ball(descriptor.radius)];
         break;
+      case 'CAPSULE':
+        descrs = [ColliderDesc.capsule(descriptor.centersDistance / 2, descriptor.radius)];
+        break;
+      case 'CONVEX_HULL': {
+        const points = new Float32Array(descriptor.vertices.length * 2);
+        descriptor.vertices.forEach((v, i) => {
+          points[i * 2] = v.x;
+          points[i * 2 + 1] = v.y;
+        });
+        const colliderDesc = ColliderDesc.convexHull(points);
+        if (!colliderDesc) {
+          throw new Error('Rapier 2D: failed to build a convex hull for the given CONVEX_HULL vertices');
+        }
+        descrs = [colliderDesc];
+        break;
+      }
+      case 'POLYGON': {
+        const points = new Float32Array(descriptor.vertices.length * 2);
+        descriptor.vertices.forEach((v, i) => {
+          points[i * 2] = v.x;
+          points[i * 2 + 1] = v.y;
+        });
+        const segments = new Uint32Array(descriptor.vertices.length * 2);
+        descriptor.vertices.forEach((_, i) => {
+          segments[i * 2] = i;
+          segments[i * 2 + 1] = (i + 1) % descriptor.vertices.length;
+        });
+        const colliderDesc = ColliderDesc.convexDecomposition(points, segments);
+        if (!colliderDesc) {
+          throw new Error('Rapier 2D: failed to build a convex decomposition for the given POLYGON vertices');
+        }
+        descrs = [colliderDesc];
+        break;
+      }
+      case 'COMPOUND': {
+        const res: ColliderDesc[] = [];
+        for (const item of descriptor.children) {
+          const subDescrs = this.createColliderDescr(item.shape);
+          subDescrs.forEach(d => {
+            const p = Pnt2.add(item.position || Pnt2.O, d.translation);
+            d.setTranslation(p.x, p.y);
+            d.setRotation((item.rotation || 0) + d.rotation);
+          });
+          res.push(...subDescrs);
+        }
+        descrs = res;
+        break;
+      }
       default:
         throw new Error(`Shape "${(descriptor as any).shape}" not implemented for Rapier 2D`);
     }

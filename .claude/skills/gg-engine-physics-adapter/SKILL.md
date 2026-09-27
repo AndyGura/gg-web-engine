@@ -405,10 +405,22 @@ ground-snap/jump and push pitfalls.
 `Rapier2dFactory`):
 
 1. `createColliderDescr(shapeDescriptor)` — `switch` over the shape discriminant
-   (`Shape2DDescriptor`: `SQUARE`/`CIRCLE`; `Shape3DDescriptor`: `PLANE`/`BOX`/`CONE`/`CYLINDER`/
-   `CAPSULE`/`SPHERE`/`COMPOUND`/`CONVEX_HULL`/`MESH` — see `packages/core/src/{2d,3d}/models/
-   shapes.ts`) and build the native collider shape(s). Throw
-   `Shape "<x>" not implemented for <Lib>` for anything unsupported instead of guessing.
+   (`Shape2DDescriptor`: `BOX`/`CIRCLE`/`CAPSULE`/`CONVEX_HULL`/`POLYGON`/`COMPOUND`;
+   `Shape3DDescriptor`: `PLANE`/`BOX`/`CONE`/`CYLINDER`/`CAPSULE`/`SPHERE`/`COMPOUND`/
+   `CONVEX_HULL`/`MESH` — see `packages/core/src/{2d,3d}/models/shapes.ts`) and build the native
+   collider shape(s). Throw `Shape "<x>" not implemented for <Lib>` for anything unsupported
+   instead of guessing. `COMPOUND`'s `children` are `{ position?, rotation?, shape }` - a 2D
+   `rotation` is a plain radians scalar (added to a child's own accumulated rotation when
+   composing), unlike 3D's `Point4` quaternion. If the native library has no way to nest a compound
+   shape natively as one collider (matter-js; Rapier's `ColliderDesc` is likewise always flat), the
+   adapter must flatten `COMPOUND` (recursively, for nested `COMPOUND`s) into the underlying
+   flat list of leaf colliders/parts, combining each level's own `position`/`rotation` into its
+   children as it flattens outward - see `packages/rapier2d/src/rapier-2d-factory.ts`'s
+   `createColliderDescr` and `packages/matter/src/matter-factory.ts`'s `createShapeParts` for two
+   different concrete shapes this takes (an array of already-offset `ColliderDesc`s sharing one
+   rigid body vs. matter's own `Body.create({ parts })`). Only a library with genuine native nested
+   compound shapes (Bullet/Ammo's `btCompoundShape`) can skip flattening and recurse by nesting
+   instead - see `gg-engine-physics-adapter-ammo`.
 2. `createRigidBodyDescr(bodyOptions, transform?)` — map `Partial<Body(2D|3D)Options>` (`mass`,
    `bodyType`, `ccd`, friction, restitution, collision groups — see `packages/core/src/base/models/
    body-options.ts`) onto the native rigid-body descriptor. `bodyType: BodyType` (`'dynamic' |

@@ -62,7 +62,7 @@ export class PixiPhysicsDebugView {
   private syncMap: Map<IBodyComponent<Point2, number>, [Graphics, number]> = new Map();
 
   private lineSegmentPointsForShape(shape: Shape2DDescriptor): Point2[] {
-    if (shape.shape === 'SQUARE') {
+    if (shape.shape === 'BOX') {
       const d = Pnt2.scalarMult(shape.dimensions, 0.5);
       return [
         ...tabulateArray(4, i => ({ x: i % 2 ? d.x : -d.x, y: i < 2 ? d.y : -d.y })),
@@ -83,6 +83,49 @@ export class PixiPhysicsDebugView {
         { x: -shape.radius, y: 0 },
         { x: shape.radius, y: 0 },
       ];
+    } else if (shape.shape === 'CAPSULE') {
+      const segments = 16;
+      const halfDistance = shape.centersDistance / 2;
+      const bottomSemicircle = tabulateArray(segments + 1, i => {
+        const angle = -Math.PI / 2 + (i * Math.PI) / segments;
+        return {
+          x: shape.radius * Math.sin(angle),
+          y: halfDistance + shape.radius * Math.cos(angle),
+        };
+      });
+      const topSemicircle = tabulateArray(segments + 1, i => {
+        const angle = Math.PI / 2 + (i * Math.PI) / segments;
+        return {
+          x: shape.radius * Math.sin(angle),
+          y: -halfDistance + shape.radius * Math.cos(angle),
+        };
+      });
+      return [
+        ...tabulateArray(bottomSemicircle.length - 1, i => [bottomSemicircle[i], bottomSemicircle[i + 1]]).flat(),
+        bottomSemicircle[bottomSemicircle.length - 1],
+        topSemicircle[0],
+        ...tabulateArray(topSemicircle.length - 1, i => [topSemicircle[i], topSemicircle[i + 1]]).flat(),
+        topSemicircle[topSemicircle.length - 1],
+        bottomSemicircle[0],
+        { x: 0, y: -halfDistance },
+        { x: 0, y: halfDistance },
+      ];
+    } else if (shape.shape === 'CONVEX_HULL') {
+      const vertices = Pnt2.hull(shape.vertices);
+      return tabulateArray(vertices.length, i => [vertices[i], vertices[(i + 1) % vertices.length]]).flat();
+    } else if (shape.shape === 'POLYGON') {
+      const vertices = shape.vertices;
+      return tabulateArray(vertices.length, i => [vertices[i], vertices[(i + 1) % vertices.length]]).flat();
+    } else if (shape.shape === 'COMPOUND') {
+      const vertices: Point2[] = [];
+      for (const { position, rotation, shape: subShape } of shape.children) {
+        vertices.push(
+          ...this.lineSegmentPointsForShape(subShape).map(v =>
+            Pnt2.add(position || Pnt2.O, Pnt2.rot(v, rotation || 0)),
+          ),
+        );
+      }
+      return vertices;
     }
     return [
       { x: -10, y: 0 },
