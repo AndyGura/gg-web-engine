@@ -17,15 +17,16 @@ interface); the ones that aren't say so explicitly.
 ## The `removeFromWorld(dispose)` contract, Rapier specifics
 
 Rapier is WASM but reference-counted per-call, not manually tracked like Ammo: every rigid-body/
-trigger/character-controller `removeFromWorld` already unconditionally freed its native handles
-regardless of any flag - `addToWorld` always recreates them fresh from stored descriptors, so eager
-freeing on every removal is both safe and cheap to undo, unlike Ammo's handles. These now accept
-`dispose?: boolean` for interface conformance (and each `dispose()` passes `true` through to
-`removeFromWorld` for self-documentation), but the parameter doesn't change behavior. The one genuine
-bug found here: `Rapier3dRaycastVehicleComponent`'s native vehicle controller needs an explicit
-`.free()` beyond `removeVehicleController`, which - like the Ammo raycast vehicle - was never
-reachable from an ordinary `removeFromWorld` before; fixed by calling `this.dispose()` from
-`removeFromWorld` when `dispose` is `true`.
+trigger/character-controller/raycast-vehicle `removeFromWorld` unconditionally frees its native
+handles regardless of the `dispose` flag - `addToWorld` always recreates them fresh from stored
+descriptors (or, for a raycast vehicle, from its own wheel list - see below), so eager freeing on
+every removal is both safe and cheap to undo, unlike Ammo's handles. `dispose?: boolean` is accepted
+purely for interface conformance (and each `dispose()` passes `true` through to `removeFromWorld` for
+self-documentation), but the parameter doesn't change behavior anywhere in this package.
+`Rapier3dRaycastVehicleComponent.removeFromWorld` is the one component whose native state includes a
+handle beyond the ordinary rigid-body/collider pair - its vehicle controller needs both
+`removeVehicleController` (unregisters it from the world) *and* an explicit `.free()` (releases its own
+native handle, which nothing else ever reaches) every time, not only when `dispose` is `true`.
 
 ## Sleeping bodies silently ignored programmatic transform/velocity writes (3D; 2D shares the same native API and is worth checking too)
 
@@ -586,11 +587,11 @@ from the broadphase for the query's duration, since `CF_NO_CONTACT_RESPONSE` onl
 bug: a sensor silently acting as a solid obstacle to character movement).
 
 Regression coverage: `rapier-3d-trigger-character-controller-integration.spec.ts` (walking through a
-trigger end-to-end, and spawning already inside one). No vehicle-side test was needed here - Rapier3d
-doesn't implement raycast vehicles at all (`Rapier3dFactory.createRaycastVehicle` throws
-"not implemented"), so this gap could never have applied to a vehicle on this adapter; see
-`gg-engine-physics-adapter-ammo`'s test for the equivalent vehicle coverage on the one adapter that
-does support them.
+trigger end-to-end, and spawning already inside one). No vehicle-side test was needed here for this
+specific gap - a vehicle chassis colliding with a `Trigger` is exercised by
+`rapier-3d-raycast-vehicle.component.spec.ts` only incidentally (via ordinary collision groups), not
+as a dedicated sensor-passthrough test; see `gg-engine-physics-adapter-ammo`'s test for the
+equivalent vehicle coverage on that adapter.
 
 `Rapier3dTriggerComponent.onEnter$`/`onLeft$` (and `notifyOverlap`'s `otherBody` parameter) are typed
 as `Rapier3dRigidBodyComponent | Rapier3dCharacterControllerComponent`, matching the core
@@ -602,6 +603,147 @@ inaccurate for exactly the character-controller-enters-a-trigger case this secti
 present on both), but any adapter-level code reaching `onEntityEntered`/`onEntityLeft` directly and
 calling a rigid-body-only member (`linearVelocity`, `resetMotion()`, `onCollisionStart`/`onCollisionEnd`)
 against a character controller would have hit a runtime `undefined`/throw with no compile-time warning.
+
+## `IRaycastVehicleComponent` (3D, implemented in `packages/rapier3d`)
+
+`Rapier3dRaycastVehicleComponent` wraps Rapier's `DynamicRayCastVehicleController`
+(`world.createVehicleController(chassisBody)`), created and driven from `Rapier3dFactory.createRaycastVehicle`.
+It extends `Rapier3dRigidBodyComponent` and builds its own chassis body from `chassisBody.factoryProps`
+(the same "spawn a fresh body from stored descriptors" pattern `clone()` uses elsewhere in this package)
+rather than reusing the passed-in `chassisBody` instance directly - unlike `AmmoRaycastVehicleComponent`,
+which wraps the *same* native body Ammo already created for it. The passed-in `chassisBody` component
+itself is never added to the world; only the vehicle component's own body is.
+
+**No native equivalent of Bullet's `addAction` - the world component must drive `updateVehicle()` itself,
+every tick, before stepping.** `DynamicRayCastVehicleController.updateVehicle(dt, filterFlags?, filterGroups?)`
+directly overwrites the chassis's own `linvel`/`angvel` from that call's suspension/engine/brake/friction
+model - nothing steps it automatically as part of `World.step()` the way Bullet's `btDynamicsWorld::addAction`
+does for `btRaycastVehicle`. `Rapier3dWorldComponent` tracks every added vehicle in its own
+`raycastVehicles: Set<Rapier3dRaycastVehicleComponent>` (added/removed by the vehicle's own
+`addToWorld`/`removeFromWorld`, mirroring `handleIdEntityMap`'s pattern) and `simulate()` calls each one's
+`stepVehicleController(dt)` immediately *before* `nativeWorld.step()`, so the velocity `updateVehicle` just
+wrote gets integrated by that same step. `stepVehicleController` also threads this vehicle's own
+`collisionGroups` (inherited from `Rapier3dRigidBodyComponent`, already packed in the `InteractionGroups`
+layout Rapier expects) into `updateVehicle`'s `filterGroups` argument, plus `QueryFilterFlags.EXCLUDE_SENSORS`
+- without the former, the wheels' own suspension ray-casts would ignore collision groups entirely (only the
+chassis's ordinary broadphase collision would respect them), exactly the gap
+`AmmoRaycastVehicleComponent`'s patched `btVehicleRaycaster` exists to close on that adapter (see
+`gg-engine-physics-adapter`'s testing guidance on this) - confirmed by
+`rapier-3d-raycast-vehicle.component.spec.ts`'s two-vehicles-two-floors regression test, which fails
+without it.
+
+**A vehicle chassis built through `factoryProps` had an explicit zero rotational inertia baked in -
+found live as "steering makes the car slide sideways, never actually turn to face its heading".**
+`Rapier3dRigidBodyComponent.factoryProps` used to unconditionally call
+`d.setMassProperties(cd.mass, cd.centerOfMass, cd.principalAngularInertia, cd.angularInertiaLocalFrame)`
+on every rebuilt `ColliderDesc`, copying whatever the *original* descriptor's own mass-property fields
+currently held. A freshly-constructed `ColliderDesc` that's never had `setMass`/`setDensity`/
+`setMassProperties` called on it (the common case - `Rapier3dFactory.createColliderDescr` never calls any
+of them) sits in the default `MassPropsMode.Density` mode, where `mass`/`centerOfMass`/
+`principalAngularInertia`/`angularInertiaLocalFrame` are all just zeroed placeholders Rapier ignores in
+favor of auto-computing both mass *and* rotational inertia from the shape and `density` (default `1`) -
+confirmed empirically (`cd.massPropsMode === 0`, `cd.mass === 0`, `cd.principalAngularInertia ===
+{0,0,0}` on a freshly-built `ColliderDesc`). Blindly copying those placeholders via `setMassProperties`
+force-switches the *rebuilt* collider into explicit `MassPropsMode.MassProps` with a **real, load-bearing
+zero** rotational inertia tensor, discarding whatever shape-derived inertia the original would have had -
+harmless for `clone()`'s existing callers (nothing in this package's tests exercises rotational dynamics
+on a cloned body), but directly hit by `Rapier3dRaycastVehicleComponent`, which builds its *only* body
+this same way: confirmed via direct `nativeBody.angvel()` inspection that steering produced an exact,
+unchanging `{0,0,0}` angular velocity every tick - not just small, literally zero - while `linvel` moved
+the chassis sideways under wheel friction just fine (torque / ~zero inertia normally means huge angular
+acceleration, but an *explicit* zero tensor combined with Rapier's own divide-by-zero guard evidently
+clamps to no angular change at all rather than blowing up). Fixed by making `factoryProps` check
+`cd.massPropsMode` first: `MassProps` copies via `setMassProperties` as before, `Mass` copies via
+`setMass(cd.mass)`, and the default `Density` mode now copies via `setDensity(cd.density)` instead of
+calling `setMassProperties` with meaningless placeholders - letting Rapier re-derive proper shape-scaled
+mass and inertia for the rebuilt collider, exactly as the original would have gotten.
+
+**Fixing the above alone still wasn't enough - a heavy chassis with a *feather-light*, shape-only
+rotational inertia spun wildly on any steering input instead of turning smoothly.** The deeper issue:
+every dynamic body's mass (this package predating vehicles entirely, not something introduced by them)
+was being set via the plain `RigidBodyDesc.mass` field (`bodyDesc.mass = options.mass || 1` in
+`Rapier3dFactory.createRigidBodyDescr`) - which is documented as *additional* mass layered on top of
+whatever the attached collider(s) themselves contribute from their own density, and critically,
+additional mass contributes **no extra rotational inertia of its own** (it behaves like a point mass
+sitting exactly at the body's center of mass). With every collider left at the factory's default
+density (`1`), a `mass: 800` chassis ended up with a correctly-scaled *total* mass (~800kg, dominated by
+the additional-mass term) but a rotational inertia derived only from the density-1 collider (a few kg's
+worth) - a large mass with a tiny moment of inertia resisting rotation, so any steering-induced torque
+produced wildly excessive angular acceleration (confirmed empirically: the chassis's height/rotation
+oscillated and briefly tumbled before the fix below, versus settling into a smooth, steady turn after
+it). Fixed by moving mass onto the collider(s) instead: `createRigidBodyDescr` now takes the rigid
+body's `ColliderDesc[]` as a third parameter and, for a dynamic body, calls `c.setMass(mass /
+colliderDescr.length)` on every one of them (splitting evenly across a `COMPOUND`'s sub-colliders, since
+no per-sub-shape volume query is exposed to weight this by volume instead) rather than setting
+`bodyDesc.mass` at all - `ColliderDesc.setMass` auto-derives inertia from the shape *scaled to that
+mass*, giving a consistent, correctly-proportioned mass/inertia pairing for any dynamic body in this
+package, vehicle chassis included, not just a special case bolted onto the vehicle component. Worth
+re-checking if a future change ever reintroduces `RigidBodyDesc.mass`/`setAdditionalMass` for a dynamic
+body in this package - the failure mode (translation looks fine, rotation is wildly wrong) is easy to
+miss without specifically testing a torque-inducing scenario, which is exactly why the vehicle feature
+was what surfaced it instead of any of this package's pre-existing tests.
+
+**`wheelSpeed` must not apply Bullet's km/h conversion.** `AmmoRaycastVehicleComponent.wheelSpeed`
+divides `getCurrentSpeedKmHour()` by `3.6` to recover m/s, since Bullet's own helper returns km/h.
+Rapier's `DynamicRayCastVehicleController.currentVehicleSpeed()` has no analogous unit note in its own
+doc, and copying that same `/ 3.6` blindly (an easy mistake when porting the Ammo implementation as a
+template) would silently under-report speed by a factor of 3.6. Confirmed empirically (isolated,
+wheel-free `world.createVehicleController(chassis)` + `chassisBody.setLinvel({x:0,y:v,z:0}, true)` then
+`updateVehicle(0)`, no gravity, no suspension in play at all): `currentVehicleSpeed()` returns exactly
+`v` for every tested value, i.e. it's already the forward-axis component of the chassis's own `linvel()`
+in plain m/s, refreshed only by `updateVehicle()` (reads back `0` before the first call, even with
+`linvel` already set) - so `Rapier3dRaycastVehicleComponent.wheelSpeed` returns it directly, unscaled.
+
+**A single constant wheel axle, not one flipped per side, is required for engine force to actually
+propel the chassis - found live as "the car never moves under engine force, `angvel`/`linvel` both stay
+near zero despite `setWheelEngineForce` being called every tick".** An earlier version used
+`options.isLeft ? Pnt3.X : Pnt3.nX` as each wheel's `axleCs`, on the theory that it would let
+`getWheelTransform`'s roll rotation (computed from `wheelRotation(i)` around this same axis) spin each
+side's mesh the visually correct way without extra bookkeeping. Rapier's engine-force/friction model
+treats `axleCs` as the wheel's forward-tire-direction reference for that computation - flipping it on
+one side makes that side apply its engine force in the opposite world direction from the other side, so
+the two sides' forces exactly cancel and the chassis never accelerates at all (confirmed via a dedicated
+regression test - drive under engine force and assert net displacement over a few seconds - since a
+settle-only test never applies engine force and so cannot catch this). Fixed to match
+`AmmoRaycastVehicleComponent`'s own single, unflipped `wheelAxleCS` convention: every wheel uses
+`Pnt3.X` regardless of side. Left/right visual mirroring of the wheel mesh doesn't need any
+compensation for this at the adapter level either way - it's already handled adapter-agnostically by
+`RaycastVehicle3dEntity`'s own `wheelLocalRotation` (derived from `WheelOptions.isLeft`).
+
+**`getWheelTransform` has no single native call to read from, unlike Ammo's `getWheelTransformWS`.**
+Rapier's controller only exposes the individual pieces, composed by hand:
+- **Position**: `wheelHardPoint(i)` is already world-space (the wheel ray-cast's own fixed start
+  point) - `wheelDirectionCs(i)` (chassis-local) rotated by the chassis's current rotation, then scaled
+  by `wheelSuspensionLength(i)` (the wheel's *current* compressed-or-extended travel, airborne or
+  grounded alike) and added to the hard point, lands exactly on the wheel's current center.
+- **Rotation**: composed as chassis rotation ∘ steering (`Qtrn.rotAround(Qtrn.O, Pnt3.Z, wheelSteering(i))`
+  - `Pnt3.Z` because `indexUpAxis` is set to `2`) ∘ roll (`Qtrn.rotAround(Qtrn.O, Pnt3.X,
+  wheelRotation(i))` - `Pnt3.X` matching the single constant `axleCs` above, not a per-side value).
+
+Both are best-effort reconstructions, not values read back verbatim from the native engine the way
+Ammo's are - same "document as a known limitation rather than chasing exactness" spirit as
+`Rapier3dCharacterControllerComponent`'s own ground-normal approximation; not confirmed pixel-accurate
+against Ammo's equivalent, only confirmed geometrically sound (all four wheels sit at their configured
+corner offsets and translate/rotate along with the chassis) and visually plausible in the
+`ammo-car-three-rapier3d` example.
+
+**`resetSuspension()` is a documented no-op.** Rapier exposes no way to directly set a wheel's *current*
+suspension length (only the rest length/travel bounds that shape it), unlike Bullet's
+`resetSuspension()` + `updateWheelTransform(i, true)`. Not load-bearing here the way it is for Ammo,
+either - the very next `stepVehicleController` tick re-derives every wheel's suspension length from a
+fresh ray-cast against the vehicle's (by then already reset) position, so a teleport/respawn recovers
+within one tick even without an explicit reset.
+
+**`clone()` must also re-add every wheel.** An earlier version's `clone()` only forwarded the chassis
+body, producing a vehicle with zero wheels - `addWheel` must be replayed for each entry in this
+component's own wheel list (kept for exactly this purpose, alongside the native `addWheel` call) onto
+the new instance.
+
+Regression coverage: `rapier-3d-raycast-vehicle.component.spec.ts` - settling under gravity onto a
+floor, the two-vehicles-two-collision-groups-two-floors test from `gg-engine-physics-adapter`'s testing
+guidance, and a drive-under-engine-force test asserting both net displacement and a sane (neither ~0 nor
+implausibly large) `wheelSpeed` - the last one is what originally caught both the axle-cancellation bug
+and would have caught a reintroduced unit-conversion bug in `wheelSpeed`.
 
 ## Keep this skill current
 
