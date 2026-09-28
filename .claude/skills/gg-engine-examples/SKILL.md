@@ -89,21 +89,23 @@ did run a bare `npm install` afterwards by mistake, just re-run
 `bash etc/switch_example_to_local_gg.sh examples/<your-example-dir>` (idempotent) to relink before
 building again.
 
-**The script's very first step is `git checkout -- package.json tsconfig.json`** (that's what makes
-re-running it idempotent instead of compounding patches) — so if you've just hand-edited either file
-(e.g. adding a missing `@gg-web-engine/*` dependency line before it's been committed) and then run
-this script, your edit is silently discarded before the script even reads the file, and the
-`@gg-web-engine/` lines it greps for `libs=(...)`/`npm link`s come from the **committed** version, not
-your working tree. Symptom: the script exits 0 with no error, but `node_modules/@gg-web-engine/`
-ends up empty and nothing got linked — easy to misread as the script being broken. Either commit the
-package.json/tsconfig.json fix first, or skip the script and run its `npm link
-$(cd ../../packages/<lib> && pwd) ...` step by hand against your uncommitted file. This also means:
-**never commit an example while it's in its "switched" (locally-linked) state** — a commit made after
-running this script captures `package.json` with its `@gg-web-engine/*` lines already stripped
-(and, for an Ammo-backed example, `tsconfig.json`'s `paths` already rewritten to point into a linked
-package's own `node_modules`), so every future `git checkout`/clone of that commit starts from a
-broken, non-standalone package.json — run `restore_example_from_local_gg.sh` (or `git checkout` the
-two files back) before committing.
+**The script's very first step is `git checkout -- package.json tsconfig.json
+webpack.dev.config.js`** (that's what makes re-running it idempotent instead of compounding
+patches) — so if you've just hand-edited any of those files (e.g. adding a missing
+`@gg-web-engine/*` dependency line before it's been committed) and then run this script, your edit
+is silently discarded before the script even reads the file, and the `@gg-web-engine/` lines it
+greps for `libs=(...)`/`npm link`s come from the **committed** version, not your working tree.
+Symptom: the script exits 0 with no error, but `node_modules/@gg-web-engine/` ends up empty and
+nothing got linked — easy to misread as the script being broken. Either commit the fix first, or
+skip the script and run its `npm link $(cd ../../packages/<lib> && pwd) ...` step by hand against
+your uncommitted file. This also means: **never commit an example while it's in its "switched"
+(locally-linked) state** — a commit made after running this script captures `package.json` with
+its `@gg-web-engine/*` lines already stripped (and, for an Ammo-backed example, `tsconfig.json`'s
+`paths` already rewritten to point into a linked package's own `node_modules`, and, for an example
+with a shared `examples/assets` dependency, `webpack.dev.config.js`'s `devServer.static` block
+uncommented — see "Adding a shared asset under `examples/assets`" below), so every future `git
+checkout`/clone of that commit starts from a broken, non-standalone package.json — run
+`restore_example_from_local_gg.sh` (or `git checkout` the three files back) before committing.
 
 ## Running
 
@@ -139,6 +141,14 @@ that appends one itself, e.g. `loadFromGlb`/`loadGgGlb`-style path conventions).
 `examples/assets` for that one example's own dev server - it has no effect on `npm run build`'s
 `dist/bundle.js`, which stays a plain bundle same as any other example (the CDN copy comes from
 `examples/deploy.sh`'s own `assets` sync, not from anything in an example's `dist/`).
+
+Commit this `devServer.static` block **commented out**, exactly as shown above - a standalone clone
+of just that one example directory (e.g. via StackBlitz/degit) has no sibling `../assets` folder to
+serve, so an active block would break `npm start` there. `switch_example_to_local_gg.sh` uncomments
+it automatically (it's running inside the full repo checkout, where `../assets` does exist) via its
+`fix_dev_server_assets` function, and `restore_example_from_local_gg.sh` reverts it back to
+commented-out via its `git checkout -- ... webpack.dev.config.js` - so day-to-day local development
+never needs you to touch this block by hand, only the initial commit adding it.
 
 ### An asset that belongs to just one example (not shared/CDN-deployed): bundle it via webpack directly
 
