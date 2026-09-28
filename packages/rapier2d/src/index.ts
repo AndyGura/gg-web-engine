@@ -1,3 +1,4 @@
+export * from './components/rapier-2d-character-controller.component';
 export * from './components/rapier-2d-rigid-body.component';
 export * from './components/rapier-2d-trigger.component';
 export * from './components/rapier-2d-world.component';

@@ -16,8 +16,11 @@ import { IDisplayObject2dComponent } from './components/rendering/i-display-obje
 import { ICamera2dComponent } from './components/rendering/i-camera-2d.component';
 import { ITrigger2dComponent } from './components/physics/i-trigger-2d.component';
 import { IRigidBody2dComponent } from './components/physics/i-rigid-body-2d.component';
+import { ICharacterController2dComponent } from './components/physics/i-character-controller-2d.component';
 import { IAudioScene2dComponent } from './components/audio/i-audio-scene-2d.component';
 import { IAudioSource2dComponent } from './components/audio/i-audio-source-2d.component';
+import { CharacterController2dEntity } from './entities/character-controller-2d.entity';
+import { PlayerCharacterController2d } from './entities/controllers/input/player-character-2d.controller';
 
 export type VisualTypeDocRepo2D = {
   factory: IDisplayObject2dComponentFactory;
@@ -32,6 +35,7 @@ export type PhysicsTypeDocRepo2D = {
   factory: IPhysicsBody2dComponentFactory;
   rigidBody: IRigidBody2dComponent;
   trigger: ITrigger2dComponent;
+  characterController: ICharacterController2dComponent;
 };
 
 export type AudioTypeDocRepo2D = {
@@ -292,6 +296,36 @@ export class Gg2dWorld<
         'args: [ ?float, ?float ]; Get or set 2D world gravity vector. 1 argument sets' +
           ' vector {x: 0, y: value}, 2 arguments sets the whole vector.' +
           ' Default value is "9.82" or "0 9.82"',
+      );
+      ggstatic.registerConsoleCommand(
+        this,
+        'player_spawn',
+        async (...args: string[]) => {
+          const [x, y] = args;
+          if ([x, y].some(v => v === undefined || isNaN(+v))) {
+            throw new Error('usage: player_spawn X Y');
+          }
+          const renderer = this.renderers[0] as Renderer2dEntity<TypeDoc['vTypeDoc']> | undefined;
+          if (!renderer) {
+            throw new Error('Cannot spawn a player without a renderer - call addRenderer first');
+          }
+          const characterController = this.physicsWorld!.factory.createCharacterController(
+            { radius: 20, centersDistance: 40 },
+            { position: { x: +x, y: +y } },
+          );
+          const character = new CharacterController2dEntity<TypeDoc>(
+            { radius: 20, centersDistance: 40 },
+            this.visualScene?.factory.createCapsule(20, 40) ?? null,
+            characterController,
+          );
+          this.addEntity(character);
+          const controller = new PlayerCharacterController2d<TypeDoc>(this.keyboardInput, character, renderer);
+          this.addEntity(controller);
+          return `spawned "${character.name}" at ${JSON.stringify(character.position)}, controlled by "${controller.name}"`;
+        },
+        'usage: player_spawn X Y; Spawn a default player character (capsule body, left/right/' +
+          'jump/run keys) at world-space position X Y and control the first renderer\'s camera ' +
+          'with it. Sized in pixels, matching the "spawn" command\'s own default-shape scale.',
       );
     }
   }

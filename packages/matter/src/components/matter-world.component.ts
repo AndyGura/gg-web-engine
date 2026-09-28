@@ -12,6 +12,15 @@ import { MatterPhysicsTypeDocRepo } from '../types';
 import { Subject } from 'rxjs';
 import { MatterRigidBodyComponent } from './matter-rigid-body.component';
 import { MatterTriggerComponent } from './matter-trigger.component';
+import { MatterCharacterControllerComponent } from './matter-character-controller.component';
+
+// bodies that get pushed into `children`/`added$`/`removed$`/`handleIdEntityMap` - see
+// MatterWorldComponent's ctor. A character controller's own phantom body is never added to
+// `Composite`/`engine.world` (see that class's own doc), so it never participates in
+// `handleCollisionStart`/`handleCollisionEnd` below - it's tracked here purely so
+// `MatterTriggerComponent.checkOverlaps()` can enumerate the currently-added character controllers
+// to poll against, mirroring `children`'s existing role for ordinary rigid bodies/triggers.
+type MatterWorldChild = MatterRigidBodyComponent | MatterTriggerComponent | MatterCharacterControllerComponent;
 
 /**
  * Averages matter-js's collision support points into a single representative contact point for
@@ -53,15 +62,17 @@ export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhys
 
   public readonly factory: MatterFactory;
 
-  public readonly added$: Subject<MatterRigidBodyComponent | MatterTriggerComponent> = new Subject();
-  public readonly removed$: Subject<MatterRigidBodyComponent | MatterTriggerComponent> = new Subject();
-  public readonly children: (MatterRigidBodyComponent | MatterTriggerComponent)[] = [];
+  public readonly added$: Subject<MatterWorldChild> = new Subject();
+  public readonly removed$: Subject<MatterWorldChild> = new Subject();
+  public readonly children: MatterWorldChild[] = [];
 
   /** Mirrors the rapier packages' `handleIdEntityMap` pattern: `Body.id` (matter-js's own
    * globally-unique numeric id, assigned once per body via `Body.nextId` and stable for its whole
    * lifetime) to component, kept in sync alongside `children` so `findRigidBody` - called once per
-   * collision pair, per step - is an O(1) lookup instead of an O(n) `Array.find` scan. */
-  public readonly handleIdEntityMap: Map<number, MatterRigidBodyComponent> = new Map();
+   * collision pair, per step - is an O(1) lookup instead of an O(n) `Array.find` scan. Also used by
+   * `MatterCharacterControllerComponent.pushDynamicBodies` to resolve a native body it just bumped
+   * into back to its owning component. */
+  public readonly handleIdEntityMap: Map<number, MatterWorldChild> = new Map();
 
   private _gravity: Point2 = { x: 0, y: 9.82 };
   public get gravity(): Point2 {
@@ -101,7 +112,11 @@ export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhys
   }
 
   private findRigidBody(nativeBody: Body): MatterRigidBodyComponent | undefined {
-    return this.handleIdEntityMap.get(nativeBody.id);
+    // a character controller's phantom body is never added to `Composite`/`engine.world` (see its
+    // own doc), so it can never actually be `pair.bodyA`/`pair.bodyB` here - this narrows the lookup's
+    // type back down since `handleIdEntityMap` itself now also tracks that component class.
+    const comp = this.handleIdEntityMap.get(nativeBody.id);
+    return comp instanceof MatterRigidBodyComponent ? comp : undefined;
   }
 
   /**

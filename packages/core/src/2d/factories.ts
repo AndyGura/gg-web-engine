@@ -1,6 +1,7 @@
 import { IAudioSourceComponentFactory, Point2 } from '../base';
 import { BodyShape2DDescriptor, Shape2DDescriptor } from './models/shapes';
 import { AudioTypeDocRepo2D, PhysicsTypeDocRepo2D, VisualTypeDocRepo2D } from './gg-2d-world';
+import { CharacterController2dOptions } from './models/character-controller-options';
 
 export type DisplayObject2dOpts<Tex> = {
   color?: number;
@@ -67,6 +68,14 @@ export interface IPhysicsBody2dComponentFactory<PTypeDoc extends PhysicsTypeDocR
       rotation?: number;
     },
   ): PTypeDoc['trigger'];
+
+  createCharacterController(
+    options: CharacterController2dOptions,
+    transform?: {
+      position?: Point2;
+      rotation?: number;
+    },
+  ): PTypeDoc['characterController'];
 }
 
 export interface IAudioSource2dComponentFactory<

@@ -140,6 +140,40 @@ that appends one itself, e.g. `loadFromGlb`/`loadGgGlb`-style path conventions).
 `dist/bundle.js`, which stays a plain bundle same as any other example (the CDN copy comes from
 `examples/deploy.sh`'s own `assets` sync, not from anything in an example's `dist/`).
 
+### An asset that belongs to just one example (not shared/CDN-deployed): bundle it via webpack directly
+
+Not every example asset needs the `examples/assets` CDN treatment above - a texture/atlas/image
+that's only ever used by one specific example (e.g. a hand-authored sprite sheet for a single demo)
+belongs inside that example's own directory instead (e.g.
+`examples/<your-example>/assets/character-atlas.png`), committed alongside whatever script generated
+it (see the procedural-generation pattern below - the same "keep the generator script next to its
+output" reasoning applies to a 2D image just as much as a 3D `.glb`). Load it as an ordinary bundled
+webpack asset rather than reaching for the CDN/`devServer.static` machinery above:
+
+1. Add an `asset/resource` rule to *both* `webpack.config.js` and `webpack.dev.config.js`'s `module.rules`:
+   ```js
+   { test: /\.png$/, type: 'asset/resource' },
+   ```
+2. Add an ambient module declaration (e.g. `assets.d.ts` at the example's root) so `tsc`/`ts-loader`
+   accepts the import at all - webpack's own asset-module resolution isn't something the TypeScript
+   compiler knows about on its own:
+   ```ts
+   declare module '*.png' {
+     const src: string;
+     export default src;
+   }
+   ```
+3. `import atlasUrl from './assets/character-atlas.png';` in `index.ts` - webpack resolves this to a
+   content-hashed URL string at build time (e.g. `1cb559558c4f56d7df06.png`), and both `npm start`
+   and `npm run build` serve/emit it correctly with no further config. Hand that URL to whatever
+   loader the visual library provides (e.g. pixi.js's `Assets.load(atlasUrl)`, which returns a
+   `Promise` resolving to a `Texture`) exactly as if it were served from a real path.
+
+This is a different mechanism from the shared-CDN-asset workflow above on purpose: a CDN-synced
+asset must stay a stable, absolute, hand-typed URL (deploy-time, not build-time), while an
+example-owned asset should just be a normal bundled module - don't set up `devServer.static`/hardcode
+a CDN URL for something only one example will ever reference.
+
 ### Generating a placeholder 3D asset procedurally instead of sourcing one
 
 When an example needs a `.glb` this repo has no license-clean way to source externally (e.g. a
@@ -198,6 +232,29 @@ the engine's own Blender exporter reaches via `export_yup=False`
 (`blender-addon/gg_web_engine_exporter/exporter.py`) - just reached here by authoring directly in
 that target convention from the start instead of converting an existing Z-up Blender scene at
 export time.
+
+### Generating a placeholder 2D pixel-art sprite atlas procedurally instead of sourcing one
+
+The same licensing-clean-placeholder reasoning applies to a 2D character sprite sheet (idle/walk/
+run/jump-style atlas) - draw it with a throwaway Python/Pillow script instead of sourcing external
+art, and keep the script committed next to its output PNG (e.g.
+`examples/<your-example>/assets/generate-character-atlas.py` alongside `character-atlas.png`), same
+as a 3D asset's own generator. Much simpler than the GLB pipeline above (no `FileReader` polyfill,
+no rig/skinning): draw each frame on a small logical-pixel canvas (e.g. 16x24) with plain rectangle
+fills for body parts, upscale with `Image.resize((w, h), Image.NEAREST)` (never a smooth resampling
+filter, which would defeat the deliberately blocky pixel-art look), and composite the frames into one
+atlas image (`Image.new("RGBA", ...)` + repeated `.paste(frame, (col * frameW, row * frameH), frame)`
+using the frame itself as its own alpha mask). A parametric per-frame "pose" (leg/arm x-offset +
+"lift" height, whole-body vertical bob, computed from a `sin`/triangle-wave phase per frame index) is
+enough to fake a readable walk/run stride and a jump arc (crouch → launch → rise → apex → fall →
+land) without hand-placing every pixel of every frame individually. If the system Python's `pip` is
+externally managed (`pip install` refuses with `externally-managed-environment`), create a throwaway
+venv in the scratchpad directory (`python3 -m venv <scratchpad>/venv && <scratchpad>/venv/bin/pip
+install Pillow`) rather than passing `--break-system-packages` against the system interpreter.
+Sanity-check the result by cropping/upscaling individual rows or frames back out and reading them as
+images before wiring the atlas into the example - a raw thumbnail of the whole grid at native
+resolution is often too small to tell a genuine rendering bug (e.g. a mis-sliced frame rectangle)
+apart from the art simply being small.
 
 ## Live-debugging an example through browser automation
 

@@ -12,9 +12,13 @@ import {
 import { Collider, EventQueue, init, Vector2, World } from '@dimforge/rapier2d-compat';
 import { Rapier2dRigidBodyComponent } from './rapier-2d-rigid-body.component';
 import { Rapier2dTriggerComponent } from './rapier-2d-trigger.component';
+import { Rapier2dCharacterControllerComponent } from './rapier-2d-character-controller.component';
 import { Rapier2dFactory } from '../rapier-2d-factory';
 import { Rapier2dPhysicsTypeDocRepo } from '../types';
 import { Subject } from 'rxjs';
+
+// bodies that get pushed into `children`/`added$`/`removed$` - see Rapier2dWorldComponent's ctor.
+type Rapier2dWorldChild = Rapier2dRigidBodyComponent | Rapier2dCharacterControllerComponent;
 
 export class Rapier2dWorldComponent implements IPhysicsWorld2dComponent<Rapier2dPhysicsTypeDocRepo> {
   private _factory: Rapier2dFactory | null = null;
@@ -25,9 +29,9 @@ export class Rapier2dWorldComponent implements IPhysicsWorld2dComponent<Rapier2d
     return this._factory;
   }
 
-  public readonly added$: Subject<Rapier2dRigidBodyComponent> = new Subject();
-  public readonly removed$: Subject<Rapier2dRigidBodyComponent> = new Subject();
-  public readonly children: Rapier2dRigidBodyComponent[] = [];
+  public readonly added$: Subject<Rapier2dWorldChild> = new Subject();
+  public readonly removed$: Subject<Rapier2dWorldChild> = new Subject();
+  public readonly children: Rapier2dWorldChild[] = [];
 
   private readonly unitScale: number = 100; // TODO abstractize somehow, hardcoded now
   private _gravity: Point2 = Pnt2.scalarMult({ x: 0, y: 9.82 }, this.unitScale);
@@ -61,7 +65,7 @@ export class Rapier2dWorldComponent implements IPhysicsWorld2dComponent<Rapier2d
     return this._eventQueue;
   }
 
-  public readonly handleIdEntityMap: Map<number, Rapier2dRigidBodyComponent> = new Map();
+  public readonly handleIdEntityMap: Map<number, Rapier2dWorldChild> = new Map();
 
   constructor() {
     this.added$.subscribe(c => this.children.push(c));
@@ -125,8 +129,17 @@ export class Rapier2dWorldComponent implements IPhysicsWorld2dComponent<Rapier2d
       if (trigger1 || trigger2) {
         // sensor overlap (at least one side is a trigger) - a trigger has no collision response,
         // so this must never reach the plain-rigid-body onCollisionStart/onCollisionEnd path.
+        // `handleOverlapEvent` accepts either a rigid body or a character controller.
         trigger1?.handleOverlapEvent(c2, started);
         trigger2?.handleOverlapEvent(c1, started);
+        return;
+      }
+
+      // A character controller has no real-contact API (`handleCollisionStart`/`handleCollisionEnd`)
+      // to call into - its own sweep-based `move()` already handles physical response, so a
+      // non-sensor pair involving one is simply not reported as a collision event (sensor pairs
+      // above are unaffected - `handleOverlapEvent` accepts either component type).
+      if (!(c1 instanceof Rapier2dRigidBodyComponent) || !(c2 instanceof Rapier2dRigidBodyComponent)) {
         return;
       }
 
@@ -265,7 +278,12 @@ export class Rapier2dWorldComponent implements IPhysicsWorld2dComponent<Rapier2d
       if (!rigidBody) {
         return { hasHit: false };
       }
-      result.hitBody = this.handleIdEntityMap.get(rigidBody.handle);
+      // `handleIdEntityMap` also holds character controllers (see its own doc) - `raycast`'s
+      // contract only promises `PTypeDoc['rigidBody'] | PTypeDoc['trigger']`, so a hit against one
+      // is filtered out here rather than surfaced as `hitBody`, mirroring
+      // `Rapier3dWorldComponent.raycast`'s identical filter.
+      const resolvedHitBody = this.handleIdEntityMap.get(rigidBody.handle);
+      result.hitBody = resolvedHitBody instanceof Rapier2dRigidBodyComponent ? resolvedHitBody : undefined;
       result.hitDistance = hit.timeOfImpact;
       result.hitPoint = Pnt2.add(origin, Pnt2.scalarMult(direction, hit.timeOfImpact));
 

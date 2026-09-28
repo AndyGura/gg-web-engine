@@ -8,11 +8,16 @@ description: Known, already-solved implementation pitfalls specific to packages/
 This file is Rapier-specific (`@dimforge/rapier2d-compat`/`@dimforge/rapier3d-compat`) history: real
 bugs hit and fixed while building these two packages, kept here so nobody re-discovers them from
 scratch while touching either one again. Read `gg-engine-physics-adapter` first for the general
-interface contract (`IPhysicsWorldComponent`, `ICharacterController3dComponent`, the
+interface contract (`IPhysicsWorldComponent`, `ICharacterController(2d|3d)Component`, the
 `removeFromWorld(dispose)` contract, etc.) - everything below assumes that contract and only covers
-where Rapier's own native API/build made it non-obvious to satisfy. Most sections below are 3D-only
-(`Rapier3dCharacterControllerComponent` has no 2D counterpart - core has no 2D character-controller
-interface); the ones that aren't say so explicitly.
+where Rapier's own native API/build made it non-obvious to satisfy. `Rapier2dCharacterControllerComponent`
+mirrors `Rapier3dCharacterControllerComponent` near-verbatim (Rapier's own
+`KinematicCharacterController`/`computeColliderMovement`/`computedGrounded`/`computedCollision` API is
+essentially identical between `@dimforge/rapier2d-compat` and `@dimforge/rapier3d-compat` - `Vector2`/a
+plain scalar rotation instead of `Vector3`/`Quaternion`, otherwise the same method names and semantics)
+- so most of the character-controller pitfalls below apply to both packages even though they were
+each found on one specific side first; sections that genuinely don't apply to the other dimension say
+so explicitly.
 
 ## The `removeFromWorld(dispose)` contract, Rapier specifics
 
@@ -350,9 +355,10 @@ Applies to both packages (each has its own `jest` config/`node_modules`):
   loop already does this naturally), not just a test artifact. Write trigger tests as small (e.g. 10ms)
   simulate-then-check steps in a loop rather than jumping to a checkpoint with one large timestep.
 
-## `ignoredBodies` (3D): Rapier's own `filterPredicate` does this natively, no broadphase-detach trick needed
+## `ignoredBodies` (2D and 3D): Rapier's own `filterPredicate` does this natively, no broadphase-detach trick needed
 
-`Rapier3dCharacterControllerComponent.ignoredBodies` (a `Set<Rapier3dRigidBodyComponent>`) is
+`Rapier3dCharacterControllerComponent.ignoredBodies` (a `Set<Rapier3dRigidBodyComponent>`,
+`Rapier2dCharacterControllerComponent.ignoredBodies` on the 2D side identically) is
 implemented via `KinematicCharacterController.computeColliderMovement`'s own optional 5th argument,
 `filterPredicate?: (collider: Collider) => boolean` - return `false` to exclude a candidate collider
 from that one call, no persistent state or collision-group changes needed. This is meaningfully

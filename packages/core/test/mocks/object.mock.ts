@@ -1,4 +1,11 @@
-import { IAnimatedDisplayObject3dComponent, IDisplayObject2dComponent, IDisplayObject3dComponent, Pnt2, Pnt3 } from '../../src';
+import {
+  IAnimatedDisplayObject2dComponent,
+  IAnimatedDisplayObject3dComponent,
+  IDisplayObject2dComponent,
+  IDisplayObject3dComponent,
+  Pnt2,
+  Pnt3,
+} from '../../src';
 
 export const mock2DObject = (): IDisplayObject2dComponent => {
   return {
@@ -12,6 +19,35 @@ export const mock2DObject = (): IDisplayObject2dComponent => {
     clone: () => mock2DObject(),
     getBoundings: () => ({ min: Pnt2.O, max: { x: 10, y: 10 } }),
   } as unknown as IDisplayObject2dComponent;
+};
+
+/**
+ * A `mock2DObject()` extended with `IAnimatedDisplayObject2dComponent`'s methods - mirrors
+ * `mockAnimatedObject` (3D). `playCalls` records every `playAnimation` call verbatim (in order,
+ * oldest first) for assertions, on top of tracking `currentAnimationName` the same way a real
+ * adapter would.
+ */
+export const mockAnimatedObject2d = (
+  animationNames: string[],
+): IAnimatedDisplayObject2dComponent & { playCalls: { name: string; options?: Record<string, unknown> }[] } => {
+  const base = mock2DObject();
+  const result = {
+    ...base,
+    animationNames,
+    currentAnimationName: null as string | null,
+    playAnimation(name: string, options?: Record<string, unknown>) {
+      result.playCalls.push({ name, options });
+      result.currentAnimationName = name;
+    },
+    stopAnimation() {
+      result.currentAnimationName = null;
+    },
+    updateAnimations() {},
+    playCalls: [] as { name: string; options?: Record<string, unknown> }[],
+  };
+  return result as unknown as IAnimatedDisplayObject2dComponent & {
+    playCalls: { name: string; options?: Record<string, unknown> }[];
+  };
 };
 
 export const mock3DObject = (): IDisplayObject3dComponent => {

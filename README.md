@@ -62,7 +62,7 @@ While the current focus is on racing game features and 3D worlds, future updates
 - Physics/Rendering Synchronization: Automates position/rotation updates.
 - Customizable Controllers: Add functionality with reusable tick-based controllers.
 - Entities: Predefined entities like rigid bodies, triggers, raycast vehicles, and more.
-- Character Animation: Bone-animated character models with automatic idle/walk/run/crouch/jump state switching.
+- Character Animation: Bone-animated 3D character models or atlas-framed 2D sprites, with automatic idle/walk/run/crouch/jump (3D) or idle/walk/run/jump (2D) state switching.
 - Developer Console: Built-in UI console for debugging and tweaking settings.
 - Map Graph Loading: Load map areas dynamically based on proximity (3D worlds).
 - Free-Fly Camera: Explore 3D worlds effortlessly.
@@ -294,8 +294,8 @@ Basically, everything that listens ticks and can be added/removed from world. Bu
 - **[RaycastVehicle3dEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/raycast-vehicle-3d.entity.ts/#raycastvehicle3dentity-class)** a general entity with raycast vehicle. Encapsulates positioning binding for chassis and wheels meshes, provides simplified interface for applying engine or brake forces
 - **[GgCarEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/gg-car/gg-car.entity.ts/#ggCarentity-class)** a more sophisticated 4-wheel car which simulates engine with torque table, gear box etc.
 - **[SurfaceFollowingEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/surface-following.entity.ts/#surfacefollowingentity-class)** An entity which simulates smooth surface collider, declared parametrically
-- **[CharacterController3dEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/character-controller-3d.entity.ts/#charactercontroller3dentity-class)** a capsule-bodied, physics-driven character (walk/run/crouch/jump/gravity), backend-agnostic on top of any adapter implementing `ICharacterController3dComponent`
-- **[PlayerCharacterController](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/controllers/input/player-character.controller.ts/#playercharactercontroller-class)** WASD/arrows/both movement, sprint/crouch/jump keys and mouse-look for a **CharacterController3dEntity**, with first- and third-person camera modes (the latter with camera-collision avoidance)
+- **[CharacterController2dEntity](https://andygura.github.io/gg-web-engine/modules/core/2d/entities/character-controller-2d.entity.ts/#charactercontroller2dentity-class)** / **[CharacterController3dEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/character-controller-3d.entity.ts/#charactercontroller3dentity-class)** a capsule-bodied, physics-driven character (walk/run/jump/gravity, plus crouch in 3D), backend-agnostic on top of any adapter implementing `ICharacterController2dComponent`/`ICharacterController3dComponent`
+- **[PlayerCharacterController2d](https://andygura.github.io/gg-web-engine/modules/core/2d/entities/controllers/input/player-character-2d.controller.ts/#playercharactercontroller2d-class)** / **[PlayerCharacterController](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/controllers/input/player-character.controller.ts/#playercharactercontroller-class)** left/right/sprint/jump keys and a following camera for a **CharacterController2dEntity** (2D side-scroller), or WASD/arrows/both movement, sprint/crouch/jump keys and mouse-look for a **CharacterController3dEntity** with first- and third-person camera modes (the latter with camera-collision avoidance)
 - **[Grabbable3dEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/grabbable-3d.entity.ts/#grabbable3dentity-class)** a dynamic-body prop that can be picked up and carried, HL2/Portal-style, paired with **[ObjectGrabController](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/controllers/input/object-grab.controller.ts/#objectgrabcontroller-class)** for the pick up/carry/throw/drop input side
 
 ### [Input](https://andygura.github.io/gg-web-engine/modules/core/base/inputs/input.ts/)
@@ -365,6 +365,7 @@ provide custom console commands using `GgStatic.instance.registerConsoleCommand`
 | Command   | Arguments        | Description                                                                                                                                         |
 |-----------|------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
 | `gravity` | `?float, ?float` | Get or set 2D world gravity vector. 1 argument sets vector {x: 0, y: value}, 2 arguments sets the whole vector. Default value is "9.82" or "0 9.82" |
+| `player_spawn` | `float, float` | Spawn a default player character (capsule body, left/right/jump/run keys) at world-space coordinates, controlling the first renderer's camera |
 
 #### Default 3D world-specific console commands
 | Command        | Arguments                              | Description                                                                                                                                                  |

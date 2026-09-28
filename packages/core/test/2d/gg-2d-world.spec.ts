@@ -1,24 +1,61 @@
-import { Entity2d, Gg2dWorld, IEntity, TickOrder } from '../../src';
+import { Entity2d, Gg2dWorld, IEntity, PlayerCharacterController2d, Renderer2dEntity, TickOrder } from '../../src';
 import { mock2DBody } from '../mocks/body.mock';
 import { mock2DObject } from '../mocks/object.mock';
+import { mockCharacterController2d } from '../mocks/character-controller-2d.mock';
 import { collectConsoleCommands } from '../mocks/console-commands.mock';
 
 class GgEntityMock extends IEntity {
   readonly tickOrder: TickOrder = TickOrder.OBJECTS_BINDING;
 }
 
+const mockRenderer2dEntity = (): Renderer2dEntity => {
+  return new Renderer2dEntity({
+    camera: {
+      position: { x: 0, y: 0 },
+      rotation: 0,
+      enableRenderLayer() {},
+      disableRenderLayer() {},
+      isRenderLayerEnabled: () => true,
+    },
+    rendererOptions: { size: { x: 100, y: 100 } },
+    canvas: null,
+    physicsDebugViewActive: false,
+    render() {},
+    resizeRenderer() {},
+    addToWorld() {},
+    removeFromWorld() {},
+    dispose() {},
+  } as any);
+};
+
 describe('Gg2dWorld', () => {
-  let visualScene: { factory: { createPrimitive: jest.Mock }; dispose: () => void };
-  let physicsWorld: { factory: { createRigidBody: jest.Mock }; gravity: any; dispose: () => void };
+  let visualScene: { factory: { createPrimitive: jest.Mock; createCapsule: jest.Mock }; dispose: () => void };
+  let physicsWorld: {
+    factory: { createRigidBody: jest.Mock; createCharacterController: jest.Mock };
+    gravity: any;
+    dispose: () => void;
+  };
   let world: Gg2dWorld;
 
   beforeEach(() => {
     visualScene = {
-      factory: { createPrimitive: jest.fn(() => mock2DObject()) },
+      factory: {
+        createPrimitive: jest.fn(() => mock2DObject()),
+        createCapsule: jest.fn(() => mock2DObject()),
+      },
       dispose: () => {},
     };
     physicsWorld = {
-      factory: { createRigidBody: jest.fn(() => mock2DBody()) },
+      factory: {
+        createRigidBody: jest.fn(() => mock2DBody()),
+        createCharacterController: jest.fn((options: any, transform: any) => {
+          const created = mockCharacterController2d(options.radius, options.centersDistance);
+          if (transform?.position) {
+            created.position = transform.position;
+          }
+          return created;
+        }),
+      },
       gravity: { x: 0, y: 9.82 },
       dispose: () => {},
     };
@@ -160,6 +197,36 @@ describe('Gg2dWorld', () => {
       it('rejects missing/non-numeric coordinates', async () => {
         const commands = collectConsoleCommands(world);
         await expect(commands.get('spawn')!('BOX', '1')).rejects.toThrow('usage: spawn');
+      });
+    });
+
+    describe('player_spawn', () => {
+      it('rejects when there is no renderer yet', async () => {
+        const commands = collectConsoleCommands(world);
+        await expect(commands.get('player_spawn')!('0', '0')).rejects.toThrow('renderer');
+      });
+
+      it('spawns a character controller and a PlayerCharacterController2d wired to the first renderer', async () => {
+        world.addEntity(mockRenderer2dEntity());
+        const commands = collectConsoleCommands(world);
+
+        const result = await commands.get('player_spawn')!('1', '2');
+
+        expect(physicsWorld.factory.createCharacterController).toHaveBeenCalledWith(
+          expect.objectContaining({ radius: 20, centersDistance: 40 }),
+          { position: { x: 1, y: 2 } },
+        );
+        expect(result).toMatch(/^spawned ".+" at \{"x":1,"y":2\}, controlled by ".+"$/);
+        const controllerName = result.match(/controlled by "(.*)"$/)![1];
+        expect(world.getEntityByName<PlayerCharacterController2d>(controllerName)).toBeInstanceOf(
+          PlayerCharacterController2d,
+        );
+      });
+
+      it('rejects missing/non-numeric coordinates', async () => {
+        world.addEntity(mockRenderer2dEntity());
+        const commands = collectConsoleCommands(world);
+        await expect(commands.get('player_spawn')!('1')).rejects.toThrow('usage: player_spawn');
       });
     });
   });

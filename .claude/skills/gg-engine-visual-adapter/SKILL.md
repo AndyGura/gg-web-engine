@@ -111,8 +111,9 @@ Every adapter component class then `implements I<Thing>Component<<Lib>VisualType
 - **Physics debug view** (optional but expected for parity with `three`/`pixi`): renders
   wireframes/bounds for the physics world's `children`, toggled via the dev console/debugger UI in
   `packages/core/src/dev/`.
-- **Animated display object** (3D only, optional): a display object backed by a bone-animated
-  model (loaded skinned mesh + clips) implements `IAnimatedDisplayObject3dComponent` on top of the
+- **Animated display object** (optional, both dimensions): a display object backed by a bone-animated
+  model (3D: loaded skinned mesh + clips) or a frame-based atlas (2D: a sprite sheet's named clips)
+  implements `IAnimatedDisplayObject3dComponent`/`IAnimatedDisplayObject2dComponent` on top of the
   ordinary display object contract - see `gg-engine-core-development`'s note on this pattern
   (declared as its own interface, not baked into the `TypeDoc`'s `displayObject` field, with an
   `isXxx` type guard at call sites). `packages/three`'s `ThreeAnimatedDisplayObjectComponent`
@@ -141,6 +142,24 @@ Every adapter component class then `implements I<Thing>Component<<Lib>VisualType
   bones by name via `root.getObjectByName(...)`, found the same way regardless of how many ancestors
   sit above the named node, so the mixer can be rooted at either the wrapper or the inner scene with
   identical playback.
+
+  `packages/pixi`'s `PixiAnimatedSpriteComponent` (`components/pixi-animated-sprite.component.ts`)
+  is the reference 2D implementation, built by `PixiFactory.createAnimatedSprite(baseTexture,
+  { frameWidth, frameHeight, clips })` from a uniform-grid atlas (one row per named clip,
+  `frameCount` consecutive columns starting at column 0) - slicing each frame as `new Texture({
+  source: baseTexture.source, frame: new Rectangle(col * frameWidth, row * frameHeight, frameWidth,
+  frameHeight) })`, sharing the base texture's source rather than copying pixels. Set
+  `baseTexture.source.scaleMode = 'nearest'` once, before slicing, for a crisp (non-blurred) look
+  when a pixel-art atlas is scaled up - every sliced sub-texture shares the same source, so this one
+  assignment covers all of them. **`pixi.js` v8's `AnimatedSprite.update(ticker)` only ever reads
+  `ticker.deltaTime`** (confirmed from its own source, not just its `.d.ts`) - so a component driven
+  by this engine's own per-tick `updateAnimations(deltaSeconds)` (never pixi's own shared `Ticker`,
+  since every adapter here is driven by the engine's own tick loop) can synthesize a throwaway
+  object with just that one field (`{ deltaTime: deltaSeconds * 60 } as Ticker`, matching
+  `deltaTime`'s own "`1` == one frame at a 60fps baseline" convention) rather than constructing a
+  real `Ticker`; construct the sprite itself with `autoUpdate: false` (or the two-arg
+  `new AnimatedSprite(frames, false)` constructor) so `play()` never subscribes it to
+  `Ticker.shared` on its own.
 
 ## The `removeFromWorld(dispose)` contract
 

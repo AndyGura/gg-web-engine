@@ -1,6 +1,6 @@
 ---
 name: gg-engine-physics-adapter-matter
-description: Known, already-solved implementation pitfalls specific to packages/matter (the matter-js 2D physics adapter) - removeFromWorld/dispose semantics, @types/matter-js version-bump typing gotchas, flattening COMPOUND shapes into leaf Body.create({ parts }) entries. Use when fixing or extending packages/matter itself, not when building a new physics adapter from scratch (see gg-engine-physics-adapter for the general contract every adapter implements).
+description: Known, already-solved implementation pitfalls specific to packages/matter (the matter-js 2D physics adapter) - removeFromWorld/dispose semantics, @types/matter-js version-bump typing gotchas, flattening COMPOUND shapes into leaf Body.create({ parts }) entries, the from-scratch discrete-query character controller, and a critical Body.setPosition/setAngle-vs-raw-field-write gotcha in MatterFactory. Use when fixing or extending packages/matter itself, not when building a new physics adapter from scratch (see gg-engine-physics-adapter for the general contract every adapter implements).
 ---
 
 # packages/matter implementation notes
@@ -167,6 +167,134 @@ This mirrors what `packages/rapier2d`/`packages/rapier3d` already have to do for
 reason (their `ColliderDesc[]` has no native nesting either) - see `gg-engine-physics-adapter`'s own
 `COMPOUND` note. Only Ammo/Bullet's `btCompoundShape` can nest a child compound shape directly
 without flattening, because Bullet's narrowphase itself walks nested compound shapes recursively.
+
+## Critical: `MatterFactory.createRigidBody`/`createTrigger` must move a freshly-built shape via `Body.setPosition`/`Body.setAngle`, never a raw `.position =`/`.angle =` field write
+
+Every shape-building helper in `MatterFactory` (`Bodies.rectangle`/`Bodies.circle`/`Bodies.fromVertices`,
+and the `COMPOUND` case's own `Body.create({ parts })`) is always called at local origin (`x=0, y=0`) -
+the desired world transform is applied afterward. `Body.create`'s own internal `_initProperties` only
+ever translates a fresh body's `.vertices`/`.bounds` to match `.position` **once, at that origin**, so a
+following plain `nativeBody.position = Vector.create(x, y)` (or, worse, mutating `.position.x`/`.position
+.y` in place, as `createTrigger` used to) changes what `.position` *reports* without moving the real
+collision geometry at all - `.vertices`/`.bounds` stay wherever they were built, permanently desynced
+from `.position` until something else corrects them. Confirmed empirically (see the worked example
+below) and directly responsible for this file's own now-fixed `MatterTriggerComponent` test suite's
+long-standing FIXME ("spawning objects on some coordinates seems to cause collisions with all the
+objects that intersect the line between (0, 0) and desired position, sensors are flying away to the
+infinity") - a body's vertices sitting at the origin while `.position` claims otherwise is exactly what
+produces that symptom.
+
+```js
+const b = Bodies.circle(0, 0, 1, {});
+b.position = Vector.create(-5, 0);           // WRONG - .bounds stays at (-0.951..0.951, -1..1)
+Body.setPosition(b, Vector.create(-5, 0));   // RIGHT - .bounds becomes (-5.951..-4.049, -1..1)
+```
+
+**Why this was so easy to miss**: any real per-frame game loop (or a test that calls `world.simulate()`
+with a real nonzero delta many times) self-corrects within the very first step - `Body.update`'s Verlet
+integration computes that step's implied velocity from `position - positionPrev`, and `positionPrev` is
+still whatever it was at *creation* (the origin), so the first step applies one enormous one-time
+"catch-up" jump that drags the real vertices to roughly match `.position`. This makes the bug **entirely
+invisible** to any rigid-body/trigger test that simulates for a while before asserting anything, or to
+any real app (which always steps the world before rendering/reading state back) - it only actually
+manifests for a caller that queries collision geometry before any simulation step ever runs. That is
+exactly `MatterCharacterControllerComponent`'s situation (see this file's own section below: its
+`Query.collides` calls never go through `Engine.update` at all, by design), and it would bite on the very
+first frame after a level loads a floor/wall at a non-origin position and spawns a character on the same
+tick - `CharacterController2dEntity`'s tick order runs before `IPhysicsWorld2dComponent.simulate()` each
+frame, so nothing would ever have "caught up" the obstacles' geometry yet. Fixed at the source
+(`MatterFactory.createRigidBody`/`createTrigger`, both call sites) rather than worked around per-caller.
+
+**Collateral effect on `test/components/matter-rigid-body-collision.spec.ts` worth knowing about**: two
+resting-contact tests in that file were (unknowingly) tuned against the *buggy* trajectory - one used the
+bug's own one-time "catch-up" jump to get an early, spurious contact; without the bug, a `CIRCLE` shape
+resting under weak gravity with `frictionAir` zeroed out never actually settles in this engine at all
+(confirmed by tracing it for 1000+ steps: it just takes longer to numerically drift/roll away instead of
+settling, regardless of the position bug) - it's a real, pre-existing energy-accumulation characteristic
+of an un-substepped, non-sleeping resolver, not something this fix introduced. Both tests were changed to
+use a `BOX` (no rolling degree of freedom) and matter's own default `frictionAir` (not zeroed - some
+velocity damping is what actually lets resting energy bleed off instead of slowly accumulating over
+hundreds of steps), and one no longer hardcodes a "wait N steps, then knock it away" magic constant -
+it reacts to the real `onCollisionStart` event instead, since the exact number of steps a fall of a given
+distance/speed takes to make contact isn't what that test means to assert. If you ever need a
+CIRCLE-on-floor resting scenario specifically, budget for this - it is not this engine's strong suit.
+
+## Character controller: a from-scratch discrete-query mover, no native sweep to lean on
+
+`MatterCharacterControllerComponent` implements `ICharacterController2dComponent` as a capsule `Body`
+(`Bodies.rectangle` with a `chamfer`, matching `MatterFactory.createRigidBody`'s own `CAPSULE` case) that
+is **never added to `Composite`/`engine.world`** - it stays `isStatic: true` so `Engine.update` never
+touches it, and every collision query `move()` needs is issued directly against it and an explicit list
+of other bodies via `Matter.Query.collides`/`Collision.collides`, bypassing matter's own broadphase
+entirely (see `gg-engine-physics-adapter`'s general section on this pattern - matter-js has no
+`kinematic_pos` equivalent at all, so there is no "real" kinematic body to build this on top of).
+
+- **No CCD means substep-marching real movement, not just a single test at the final position.**
+  `Query.collides`/`Collision.collides` are purely discrete overlap tests at whatever transform a body
+  currently has - there is no time-of-impact/swept query to call instead (unlike Rapier's
+  `computeColliderMovement` or Bullet's `convexSweepTest`). A naive "move to the fully-displaced
+  candidate, then test" would tunnel clean through anything thinner than the requested displacement (a
+  large single-tick `move()` call is routine - e.g. the "slide to a stop against a wall" test moves 5
+  units in one call against a 1-unit-thick wall). `marchMove` subdivides every requested delta into
+  substeps no longer than `min(radius, 0.1)` and re-queries after each one, stopping at the first
+  substep whose query finds a meaningfully-opposing obstacle - the direct 2D analog of what a sweep
+  primitive gives other backends for free, and worth remembering for any other library in this position
+  (a discrete-only collision query with no swept-cast equivalent).
+- **A rejected substep must correct along the blocking contact's own normal by its exact `Collision
+  .depth`, not simply revert the whole substep.** An early version reverted fully to the pre-substep
+  position on any block, which is only ever as precise as the substep length itself (up to `maxSubstep`,
+  i.e. ~0.1 units) short of the true surface - regression, found via a "step up onto a ledge" test
+  landing at `y=-1.0` instead of the true `y=-0.9` resting height, exactly one substep short. Instead,
+  `marchMove` pushes the *candidate* (which the query already proved is embedded) back out along
+  `normalTowardCharacter(collision)` by `collision.depth + this.options.offset` (the same
+  penetration-recovery technique `recoverFromPenetration` uses, plus the configured skin gap) - this
+  lands at the true contact surface to within floating-point precision regardless of substep
+  granularity, and the `+ offset` skin avoids landing at *exactly* zero-gap contact, one bad rounding
+  away from spurious re-penetration on the very next tick's query.
+- **`Matter.Collision`'s own `bodyA`/`bodyB` (and `parentA`/`parentB`) are reassigned by ascending
+  `Body.id`, not by the order two bodies were passed into `Query.collides`/`Collision.collides`** - the
+  same gotcha `MatterWorldComponent.handleCollisionStart` already documents for the engine-wide
+  `collisionStart` event, but it applies identically here since it's the same underlying `Collision
+  .collides` function. The final `collision.normal` always satisfies `dot(normal, bodyB.position -
+  bodyA.position) <= 0` (verified empirically; `Collision.js`'s own inline comment claiming "away from
+  bodyA" does not match its actual flip-check code), i.e. it points *towards* `parentA`/`bodyA`, away
+  from `parentB`/`bodyB` - regardless of which side of the call this character's own body ended up on.
+  `normalTowardCharacter` compares `collision.parentA` against `this.nativeBody` by reference (not
+  argument position) to re-derive a consistent "away from the obstacle, towards this character"
+  direction from that.
+- **Collision-group filtering has to be done by hand, in `collectObstacles`, before ever calling
+  `Query.collides`.** `Query.collides`/`Collision.collides` test raw geometry only and know nothing
+  about `collisionFilter` - only matter's own `Detector.canCollide` (part of the broadphase pipeline
+  this character's phantom body never goes through, since it's never added to `Composite`) applies
+  that. `collectObstacles` replicates `Detector.canCollide`'s exact category/mask check
+  (`(interactMask & other.category) !== 0 && (other.mask & ownMask) !== 0`) against
+  `this._ownCGsMask`/`this._interactWithCGsMask` before any query, alongside excluding sensors and
+  `ignoredBodies`.
+- **`Trigger2dEntity`'s per-tick `checkOverlaps()` call is the natural (and only) hook for detecting
+  this character walking through a trigger**, since matter's native `collisionStart`/`collisionEnd`
+  engine events - what `MatterTriggerComponent` normally relies on for ordinary rigid bodies - can never
+  fire for a body that was deliberately never added to `Composite`. `checkOverlaps()` used to be a pure
+  no-op for matter-js (regular bodies are handled entirely by the native-event path); it now
+  additionally polls every `MatterCharacterControllerComponent` currently in `world.children` via
+  `Query.collides` each time it's called, diffed against its own `currentCharacterOverlaps` set to fire
+  `onEntityEntered`/`onEntityLeft` on the real transitions - a second, independent mechanism living
+  alongside the native-event path rather than replacing it, since ordinary rigid-body overlap detection
+  already works and had no reason to change. This poll needs its own hand-rolled collision-group filter
+  too, for the exact same reason `collectObstacles` does (`Query.collides` ignores `collisionFilter`
+  entirely) - `checkOverlaps()` replicates the same bidirectional category/mask check against each
+  candidate character's own `nativeBody.collisionFilter` before including it, so a character whose
+  groups wouldn't ordinarily interact with this trigger isn't falsely reported entering it.
+- **`MatterWorldComponent.children`/`added$`/`removed$`/`handleIdEntityMap` all had to widen to a
+  three-way union** (`MatterRigidBodyComponent | MatterTriggerComponent |
+  MatterCharacterControllerComponent`) even though the character's own phantom body is never in
+  `Composite` - `children` is what the trigger polling above enumerates, and `handleIdEntityMap` is what
+  `pushDynamicBodies` uses to resolve a native body it just bumped into back to its owning component
+  (via `MatterRigidBodyComponent.linearVelocity`'s existing get/set, which already carries the
+  `MATTER_VELOCITY_SCALE` conversion - reuse that rather than touching `Body.velocity` directly and
+  re-deriving the scale factor). `MatterWorldComponent.findRigidBody` (used by the real
+  `collisionStart`/`collisionEnd` listeners) needed an explicit `instanceof MatterRigidBodyComponent`
+  narrow after this widening, since a character controller's phantom body can never actually be a
+  reported pair's `bodyA`/`bodyB` but the map's value type no longer says so on its own.
 
 ## Keep this skill current
 

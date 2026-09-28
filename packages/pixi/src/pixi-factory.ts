@@ -1,7 +1,34 @@
 import { DisplayObject2dOpts, IDisplayObject2dComponentFactory, Pnt2, Shape2DDescriptor } from '@gg-web-engine/core';
 import { PixiDisplayObjectComponent } from './components/pixi-display-object.component';
-import { Container, Graphics, Sprite, Texture } from 'pixi.js';
+import { AnimatedSprite, Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js';
 import { PixiVisualTypeDocRepo2D } from './types';
+import { PixiAnimationClip, PixiAnimatedSpriteComponent } from './components/pixi-animated-sprite.component';
+
+/** A single named clip's location within a uniform-grid atlas - see `PixiGridAtlasOptions`. */
+export type PixiGridAtlasClip = {
+  /** Row index (0-based) within the grid this clip's frames live on. */
+  row: number;
+  /** Number of consecutive frames (columns), starting at column 0, this clip uses. */
+  frameCount: number;
+  /** Playback speed, in frames per second. Default 10. */
+  fps?: number;
+};
+
+/**
+ * Describes a texture atlas laid out as a uniform grid of equally-sized frames (the common case for
+ * a hand-authored pixel-art character sheet) - one row per animation clip, `frameCount` consecutive
+ * columns per clip starting at column 0. See `PixiFactory.createAnimatedSprite`.
+ */
+export type PixiGridAtlasOptions = {
+  /** Width, in pixels, of a single frame cell. */
+  frameWidth: number;
+  /** Height, in pixels, of a single frame cell. */
+  frameHeight: number;
+  /** Named clips, keyed the same way `CharacterAnimation2dClipMap`/`CharacterAnimation2dState` expect
+   * (e.g. `idle`/`walk`/`run`/`jump`) - any name is accepted, `IAnimatedDisplayObject2dComponent.animationNames`
+   * just reflects whatever keys are given here. */
+  clips: Record<string, PixiGridAtlasClip>;
+};
 
 export type PixiDisplayObject3dOpts = DisplayObject2dOpts<Texture>;
 
@@ -67,5 +94,32 @@ export class PixiFactory extends IDisplayObject2dComponentFactory<PixiVisualType
         return new PixiDisplayObjectComponent(container);
       }
     }
+  }
+
+  /**
+   * Builds an animated sprite from a texture laid out as a uniform grid atlas (see
+   * `PixiGridAtlasOptions`) - the entry point for a character sprite with named clips (idle/walk/
+   * run/jump, ...). Slices each clip's own row into `frameCount` individual frame textures sharing
+   * `baseTexture`'s source (no copying/re-encoding, just distinct `frame` rectangles).
+   */
+  createAnimatedSprite(baseTexture: Texture, options: PixiGridAtlasOptions): PixiAnimatedSpriteComponent {
+    const { frameWidth, frameHeight, clips } = options;
+    const resolvedClips: Record<string, PixiAnimationClip> = {};
+    for (const [name, clip] of Object.entries(clips)) {
+      const frames: Texture[] = [];
+      for (let col = 0; col < clip.frameCount; col++) {
+        frames.push(
+          new Texture({
+            source: baseTexture.source,
+            frame: new Rectangle(col * frameWidth, clip.row * frameHeight, frameWidth, frameHeight),
+          }),
+        );
+      }
+      resolvedClips[name] = { frames, fps: clip.fps };
+    }
+    const firstClipName = Object.keys(resolvedClips)[0];
+    const sprite = new AnimatedSprite(resolvedClips[firstClipName].frames, false);
+    sprite.anchor.x = sprite.anchor.y = 0.5;
+    return new PixiAnimatedSpriteComponent(sprite, resolvedClips);
   }
 }
