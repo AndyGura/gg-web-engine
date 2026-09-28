@@ -23,11 +23,9 @@ type WheelEntry = {
 };
 
 /**
- * Rapier's `DynamicRayCastVehicleController` (`world.createVehicleController`) is a much thinner
- * wrapper around wheel raycasting than Bullet's `btRaycastVehicle` (see
- * `AmmoRaycastVehicleComponent`) - it has no equivalent of Bullet's `btDynamicsWorld::addAction`,
- * so nothing steps it automatically as part of `World.step()`. Instead, `updateVehicle(dt, ...)`
- * must be called once per tick *before* `world.step()` - it directly writes the chassis's own
+ * Rapier's `DynamicRayCastVehicleController` (`world.createVehicleController`) is a thin wrapper
+ * around wheel raycasting only - nothing steps it automatically as part of `World.step()`.
+ * Instead, `updateVehicle(dt, ...)` must be called once per tick *before* `world.step()` - it directly writes the chassis's own
  * `linvel`/`angvel` from that tick's suspension/engine/brake forces, which `world.step()` then
  * integrates like any other dynamic body's velocity. This component registers itself into
  * `Rapier3dWorldComponent.raycastVehicles` on `addToWorld`/`removeFromWorld` so the world component
@@ -107,8 +105,7 @@ export class Rapier3dRaycastVehicleComponent
    * `InteractionGroups` layout Rapier expects) into the wheels' own suspension raycasts, so a
    * vehicle in one collision group doesn't get held up by suspension force from a floor it isn't
    * meant to interact with - without this, only the chassis's own broadphase collision would
-   * respect collision groups, not the ray-cast-based wheel/ground detection (the equivalent gap
-   * `AmmoRaycastVehicleComponent`'s patched `btVehicleRaycaster` exists to close - see
+   * respect collision groups, not the ray-cast-based wheel/ground detection (see
    * `gg-engine-physics-adapter`'s testing guidance on this). `EXCLUDE_SENSORS` keeps a `Trigger`'s
    * sensor volume from ever acting as solid ground for a wheel, mirroring
    * `Rapier3dCharacterControllerComponent.move()`'s identical guard.
@@ -131,8 +128,8 @@ export class Rapier3dRaycastVehicleComponent
     // Rapier has no single field named "roll influence" - `WheelOptions.rollInfluence` (how much a
     // wheel resists roll-inducing side force, per `IRaycastVehicleComponent`'s doc) is approximated
     // with the closest native equivalent, side-friction stiffness. Best-effort, same spirit as
-    // `Rapier3dCharacterControllerComponent`'s documented ground-normal approximation - not a
-    // guaranteed identical feel to Ammo's own `m_rollInfluence` on the same numeric value.
+    // `Rapier3dCharacterControllerComponent`'s documented ground-normal approximation - not
+    // guaranteed to produce an identical feel for a given numeric value across physics engines.
     nativeVehicle.setWheelSideFrictionStiffness(i, wheel.options.rollInfluence);
   }
 
@@ -140,8 +137,7 @@ export class Rapier3dRaycastVehicleComponent
     const wheel: WheelEntry = {
       connectionPointCs: Pnt3.clone(options.position),
       directionCs: Pnt3.nZ,
-      // One constant axle for every wheel, left or right - matching Ammo's single, unflipped
-      // `wheelAxleCS` (see `AmmoRaycastVehicleComponent`). Confirmed empirically that flipping this
+      // One constant axle for every wheel, left or right. Confirmed empirically that flipping this
       // per side (an earlier version of this method used `options.isLeft ? Pnt3.X : Pnt3.nX`, on the
       // theory that it would make `getWheelTransform`'s roll rotation spin each side's mesh the
       // visually correct way) breaks *driving* outright: Rapier's engine-force/friction model treats
@@ -182,8 +178,8 @@ export class Rapier3dRaycastVehicleComponent
   }
 
   /**
-   * Rapier's controller has no equivalent of Bullet's `getWheelTransformWS` (a single call baking in
-   * suspension travel, steering and roll for rendering) - it only exposes the individual pieces
+   * Rapier's controller exposes no single call that bakes suspension travel, steering and roll into
+   * one transform for rendering - only the individual pieces
    * (`wheelHardPoint`/`wheelSuspensionLength`/`wheelDirectionCs`/`wheelAxleCs`/`wheelSteering`/
    * `wheelRotation`), which this method composes by hand:
    * - **Position**: `wheelHardPoint` is already world-space (the ray-cast's own start point, fixed
@@ -193,8 +189,8 @@ export class Rapier3dRaycastVehicleComponent
    * - **Rotation**: composed as chassis rotation ∘ steering (about the chassis's local up axis,
    *   `Pnt3.Z` - only ever nonzero for wheels `RaycastVehicle3dEntity` actually steers) ∘ roll (about
    *   this wheel's own configured local axle, `wheelRotation`'s accumulated spin angle). This is a
-   *   best-effort reconstruction, not something read back verbatim from the native engine the way
-   *   Ammo's is - same "document as a known limitation rather than chasing exactness" spirit as
+   *   best-effort reconstruction, not something read back verbatim from the native engine - document
+   *   as a known limitation rather than chasing exactness, same spirit as
    *   `Rapier3dCharacterControllerComponent`'s ground-normal approximation.
    */
   getWheelTransform(wheelIndex: number): { position: Point3; rotation: Point4 } {
@@ -224,12 +220,11 @@ export class Rapier3dRaycastVehicleComponent
 
   resetSuspension(): void {
     // No native equivalent: Rapier doesn't expose a settable "current suspension length" (only the
-    // rest length/travel bounds that shape it), unlike Bullet's `resetSuspension` +
-    // `updateWheelTransform(i, true)`. Not load-bearing the way it is for Ammo, either - the very
-    // next `stepVehicleController` tick re-derives every wheel's suspension length from a fresh
-    // ray-cast against the vehicle's (by then already reset) position, so a teleport/respawn recovers
-    // on its own within one tick without this. Kept as a documented no-op purely for interface
-    // conformance, same spirit as other best-effort gaps in this file.
+    // rest length/travel bounds that shape it). Not load-bearing, either - the very next
+    // `stepVehicleController` tick re-derives every wheel's suspension length from a fresh ray-cast
+    // against the vehicle's (by then already reset) position, so a teleport/respawn recovers on its
+    // own within one tick without this. Kept as a documented no-op purely for interface conformance,
+    // same spirit as other best-effort gaps in this file.
   }
 
   public clone(): Rapier3dRaycastVehicleComponent {

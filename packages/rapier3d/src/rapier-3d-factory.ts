@@ -30,7 +30,7 @@ const DEFAULT_CHARACTER_CONTROLLER_OPTIONS: Required<Omit<CharacterController3dO
     interactWithCollisionGroups: 'all',
     // `Rapier3dCharacterControllerComponent.addToWorld` wires this straight into Rapier's own
     // `KinematicCharacterController.setCharacterMass` + `setApplyImpulsesToDynamicBodies(true)` -
-    // unlike the ammo adapter, no hand-rolled push logic needed, Rapier already computes it.
+    // no hand-rolled push logic needed, Rapier already computes it.
     pushMass: 80,
   };
 

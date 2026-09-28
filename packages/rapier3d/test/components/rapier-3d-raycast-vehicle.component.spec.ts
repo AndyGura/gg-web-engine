@@ -1,8 +1,8 @@
 import { SuspensionOptions, WheelOptions } from '@gg-web-engine/core';
 import { Rapier3dFactory, Rapier3dRaycastVehicleComponent, Rapier3dRigidBodyComponent, Rapier3dWorldComponent } from '../../src';
 
-// Shared suspension/wheel setup mirroring examples/ammo-car-three-rapier3d (itself a port of
-// examples/ammo-car-three-ammo) - see that example for the full car setup.
+// Shared suspension/wheel setup mirroring examples/ammo-car-three-rapier3d - see that example
+// for the full car setup.
 const suspension: SuspensionOptions = {
   compression: 4.4,
   damping: 2.3,

@@ -92,11 +92,10 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
   /**
    * Every `Rapier3dRaycastVehicleComponent` currently in this world - unlike an ordinary rigid body
    * or `Rapier3dCharacterControllerComponent`, a vehicle needs an explicit per-tick
-   * `updateVehicle()` call (see that class's own doc for why: Rapier's vehicle controller has no
-   * equivalent of Bullet's `btDynamicsWorld::addAction`, so nothing steps it automatically as part
-   * of `World.step()`). `simulate()` drives every registered vehicle from this set immediately
-   * before stepping the world, so the forces it just wrote into the chassis's velocity get
-   * integrated by that same step.
+   * `updateVehicle()` call (see that class's own doc for why: nothing steps Rapier's vehicle
+   * controller automatically as part of `World.step()`). `simulate()` drives every registered
+   * vehicle from this set immediately before stepping the world, so the forces it just wrote into
+   * the chassis's velocity get integrated by that same step.
    */
   public readonly raycastVehicles: Set<Rapier3dRaycastVehicleComponent> = new Set();
 

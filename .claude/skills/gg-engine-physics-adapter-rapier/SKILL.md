@@ -16,13 +16,14 @@ interface); the ones that aren't say so explicitly.
 
 ## The `removeFromWorld(dispose)` contract, Rapier specifics
 
-Rapier is WASM but reference-counted per-call, not manually tracked like Ammo: every rigid-body/
-trigger/character-controller/raycast-vehicle `removeFromWorld` unconditionally frees its native
-handles regardless of the `dispose` flag - `addToWorld` always recreates them fresh from stored
-descriptors (or, for a raycast vehicle, from its own wheel list - see below), so eager freeing on
-every removal is both safe and cheap to undo, unlike Ammo's handles. `dispose?: boolean` is accepted
-purely for interface conformance (and each `dispose()` passes `true` through to `removeFromWorld` for
-self-documentation), but the parameter doesn't change behavior anywhere in this package.
+Rapier's native handles are WASM objects reference-counted per-call, not something this package needs
+to track manually across calls: every rigid-body/trigger/character-controller/raycast-vehicle
+`removeFromWorld` unconditionally frees its native handles regardless of the `dispose` flag -
+`addToWorld` always recreates them fresh from stored descriptors (or, for a raycast vehicle, from its
+own wheel list - see below), so eager freeing on every removal is both safe and cheap to undo.
+`dispose?: boolean` is accepted purely for interface conformance (and each `dispose()` passes `true`
+through to `removeFromWorld` for self-documentation), but the parameter doesn't change behavior
+anywhere in this package.
 `Rapier3dRaycastVehicleComponent.removeFromWorld` is the one component whose native state includes a
 handle beyond the ordinary rigid-body/collider pair - its vehicle controller needs both
 `removeVehicleController` (unregisters it from the world) *and* an explicit `.free()` (releases its own
@@ -590,8 +591,7 @@ Regression coverage: `rapier-3d-trigger-character-controller-integration.spec.ts
 trigger end-to-end, and spawning already inside one). No vehicle-side test was needed here for this
 specific gap - a vehicle chassis colliding with a `Trigger` is exercised by
 `rapier-3d-raycast-vehicle.component.spec.ts` only incidentally (via ordinary collision groups), not
-as a dedicated sensor-passthrough test; see `gg-engine-physics-adapter-ammo`'s test for the
-equivalent vehicle coverage on that adapter.
+as a dedicated sensor-passthrough test.
 
 `Rapier3dTriggerComponent.onEnter$`/`onLeft$` (and `notifyOverlap`'s `otherBody` parameter) are typed
 as `Rapier3dRigidBodyComponent | Rapier3dCharacterControllerComponent`, matching the core
@@ -610,15 +610,15 @@ against a character controller would have hit a runtime `undefined`/throw with n
 (`world.createVehicleController(chassisBody)`), created and driven from `Rapier3dFactory.createRaycastVehicle`.
 It extends `Rapier3dRigidBodyComponent` and builds its own chassis body from `chassisBody.factoryProps`
 (the same "spawn a fresh body from stored descriptors" pattern `clone()` uses elsewhere in this package)
-rather than reusing the passed-in `chassisBody` instance directly - unlike `AmmoRaycastVehicleComponent`,
-which wraps the *same* native body Ammo already created for it. The passed-in `chassisBody` component
+rather than reusing the passed-in `chassisBody` instance directly. The passed-in `chassisBody` component
 itself is never added to the world; only the vehicle component's own body is.
 
-**No native equivalent of Bullet's `addAction` - the world component must drive `updateVehicle()` itself,
-every tick, before stepping.** `DynamicRayCastVehicleController.updateVehicle(dt, filterFlags?, filterGroups?)`
+**Rapier's vehicle controller has no equivalent of stepping automatically as part of the world -
+the world component must drive `updateVehicle()` itself, every tick, before stepping.**
+`DynamicRayCastVehicleController.updateVehicle(dt, filterFlags?, filterGroups?)`
 directly overwrites the chassis's own `linvel`/`angvel` from that call's suspension/engine/brake/friction
-model - nothing steps it automatically as part of `World.step()` the way Bullet's `btDynamicsWorld::addAction`
-does for `btRaycastVehicle`. `Rapier3dWorldComponent` tracks every added vehicle in its own
+model - nothing steps it automatically as part of `World.step()`.
+`Rapier3dWorldComponent` tracks every added vehicle in its own
 `raycastVehicles: Set<Rapier3dRaycastVehicleComponent>` (added/removed by the vehicle's own
 `addToWorld`/`removeFromWorld`, mirroring `handleIdEntityMap`'s pattern) and `simulate()` calls each one's
 `stepVehicleController(dt)` immediately *before* `nativeWorld.step()`, so the velocity `updateVehicle` just
@@ -626,8 +626,7 @@ wrote gets integrated by that same step. `stepVehicleController` also threads th
 `collisionGroups` (inherited from `Rapier3dRigidBodyComponent`, already packed in the `InteractionGroups`
 layout Rapier expects) into `updateVehicle`'s `filterGroups` argument, plus `QueryFilterFlags.EXCLUDE_SENSORS`
 - without the former, the wheels' own suspension ray-casts would ignore collision groups entirely (only the
-chassis's ordinary broadphase collision would respect them), exactly the gap
-`AmmoRaycastVehicleComponent`'s patched `btVehicleRaycaster` exists to close on that adapter (see
+chassis's ordinary broadphase collision would respect them; see
 `gg-engine-physics-adapter`'s testing guidance on this) - confirmed by
 `rapier-3d-raycast-vehicle.component.spec.ts`'s two-vehicles-two-floors regression test, which fails
 without it.
@@ -683,16 +682,15 @@ body in this package - the failure mode (translation looks fine, rotation is wil
 miss without specifically testing a torque-inducing scenario, which is exactly why the vehicle feature
 was what surfaced it instead of any of this package's pre-existing tests.
 
-**`wheelSpeed` must not apply Bullet's km/h conversion.** `AmmoRaycastVehicleComponent.wheelSpeed`
-divides `getCurrentSpeedKmHour()` by `3.6` to recover m/s, since Bullet's own helper returns km/h.
-Rapier's `DynamicRayCastVehicleController.currentVehicleSpeed()` has no analogous unit note in its own
-doc, and copying that same `/ 3.6` blindly (an easy mistake when porting the Ammo implementation as a
-template) would silently under-report speed by a factor of 3.6. Confirmed empirically (isolated,
-wheel-free `world.createVehicleController(chassis)` + `chassisBody.setLinvel({x:0,y:v,z:0}, true)` then
-`updateVehicle(0)`, no gravity, no suspension in play at all): `currentVehicleSpeed()` returns exactly
-`v` for every tested value, i.e. it's already the forward-axis component of the chassis's own `linvel()`
-in plain m/s, refreshed only by `updateVehicle()` (reads back `0` before the first call, even with
-`linvel` already set) - so `Rapier3dRaycastVehicleComponent.wheelSpeed` returns it directly, unscaled.
+**`DynamicRayCastVehicleController.currentVehicleSpeed()` returns plain m/s, matching
+`IRaycastVehicleComponent.wheelSpeed`'s contract directly - no scaling needed.** Its own doc carries
+no unit note, so this is worth confirming rather than assuming either way. Confirmed empirically
+(isolated, wheel-free `world.createVehicleController(chassis)` +
+`chassisBody.setLinvel({x:0,y:v,z:0}, true)` then `updateVehicle(0)`, no gravity, no suspension in
+play at all): `currentVehicleSpeed()` returns exactly `v` for every tested value, i.e. it's already
+the forward-axis component of the chassis's own `linvel()` in plain m/s, refreshed only by
+`updateVehicle()` (reads back `0` before the first call, even with `linvel` already set) - so
+`Rapier3dRaycastVehicleComponent.wheelSpeed` returns it directly, unscaled.
 
 **A single constant wheel axle, not one flipped per side, is required for engine force to actually
 propel the chassis - found live as "the car never moves under engine force, `angvel`/`linvel` both stay
@@ -704,13 +702,13 @@ treats `axleCs` as the wheel's forward-tire-direction reference for that computa
 one side makes that side apply its engine force in the opposite world direction from the other side, so
 the two sides' forces exactly cancel and the chassis never accelerates at all (confirmed via a dedicated
 regression test - drive under engine force and assert net displacement over a few seconds - since a
-settle-only test never applies engine force and so cannot catch this). Fixed to match
-`AmmoRaycastVehicleComponent`'s own single, unflipped `wheelAxleCS` convention: every wheel uses
+settle-only test never applies engine force and so cannot catch this). Fixed to use a single,
+unflipped axle convention instead: every wheel uses
 `Pnt3.X` regardless of side. Left/right visual mirroring of the wheel mesh doesn't need any
 compensation for this at the adapter level either way - it's already handled adapter-agnostically by
 `RaycastVehicle3dEntity`'s own `wheelLocalRotation` (derived from `WheelOptions.isLeft`).
 
-**`getWheelTransform` has no single native call to read from, unlike Ammo's `getWheelTransformWS`.**
+**`getWheelTransform` has no single native call to read from.**
 Rapier's controller only exposes the individual pieces, composed by hand:
 - **Position**: `wheelHardPoint(i)` is already world-space (the wheel ray-cast's own fixed start
   point) - `wheelDirectionCs(i)` (chassis-local) rotated by the chassis's current rotation, then scaled
@@ -720,17 +718,15 @@ Rapier's controller only exposes the individual pieces, composed by hand:
   - `Pnt3.Z` because `indexUpAxis` is set to `2`) ∘ roll (`Qtrn.rotAround(Qtrn.O, Pnt3.X,
   wheelRotation(i))` - `Pnt3.X` matching the single constant `axleCs` above, not a per-side value).
 
-Both are best-effort reconstructions, not values read back verbatim from the native engine the way
-Ammo's are - same "document as a known limitation rather than chasing exactness" spirit as
-`Rapier3dCharacterControllerComponent`'s own ground-normal approximation; not confirmed pixel-accurate
-against Ammo's equivalent, only confirmed geometrically sound (all four wheels sit at their configured
-corner offsets and translate/rotate along with the chassis) and visually plausible in the
-`ammo-car-three-rapier3d` example.
+Both are best-effort reconstructions, not values read back verbatim from the native engine - document
+as a known limitation rather than chasing exactness, same spirit as
+`Rapier3dCharacterControllerComponent`'s own ground-normal approximation; only confirmed geometrically
+sound (all four wheels sit at their configured corner offsets and translate/rotate along with the
+chassis) and visually plausible in the `ammo-car-three-rapier3d` example.
 
 **`resetSuspension()` is a documented no-op.** Rapier exposes no way to directly set a wheel's *current*
-suspension length (only the rest length/travel bounds that shape it), unlike Bullet's
-`resetSuspension()` + `updateWheelTransform(i, true)`. Not load-bearing here the way it is for Ammo,
-either - the very next `stepVehicleController` tick re-derives every wheel's suspension length from a
+suspension length (only the rest length/travel bounds that shape it). Not load-bearing here, either -
+the very next `stepVehicleController` tick re-derives every wheel's suspension length from a
 fresh ray-cast against the vehicle's (by then already reset) position, so a teleport/respawn recovers
 within one tick even without an explicit reset.
 
@@ -753,3 +749,12 @@ specifically, not by end users of the engine. If Rapier's API fights the mapping
 you've actually worked with it (including after a `@dimforge/rapier{2,3}d-compat` version bump), add a
 short note (what went wrong, why, the fix) before finishing, folded into the relevant section rather
 than left as a loose log entry.
+
+Describe Rapier's own behavior on its own terms - don't reach for `packages/ammo`/Bullet (or any other
+adapter) as a reference point, comparison, or naming convention when explaining what Rapier does or why
+a fix works. An agent working on this package should never need to look at another package to make
+sense of a note here. This applies even when a bug or fix happens to mirror something already
+documented in `gg-engine-physics-adapter-ammo` - describe the Rapier-side symptom, root cause and fix
+in Rapier's own vocabulary; cross-reference another adapter's skill file only for the general,
+adapter-agnostic contract itself (`gg-engine-physics-adapter`), never to explain *this* package's own
+API or numbers by analogy to *its* API or numbers.
