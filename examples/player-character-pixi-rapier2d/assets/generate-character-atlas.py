@@ -1,4 +1,4 @@
-"""Generates a pixel-art character sprite atlas: idle/walk/run/jump rows on a uniform grid.
+"""Generates a pixel-art character sprite atlas: idle/walk/run/jump/crouch rows on a uniform grid.
 
 Logical drawing grid is small (chunky pixel-art look), then upscaled with NEAREST to the final
 per-frame size and composited into one atlas PNG, one row per animation clip.
@@ -13,7 +13,7 @@ SCALE = 3
 FW, FH = LW * SCALE, LH * SCALE
 
 COLS = 6
-ROWS = ["idle", "walk", "run", "jump"]
+ROWS = ["idle", "walk", "run", "jump", "crouch"]
 
 SKIN = (235, 188, 148, 255)
 HAIR = (86, 58, 42, 255)
@@ -58,12 +58,14 @@ def draw_frame(pose):
     head_y = 1 + bob
     torso_x = 5 + lean
     torso_y = 7 + bob
-    torso_h = 8
+    torso_h = pose.get("torso_h", 8)  # shorter for a hunched/crouched silhouette
 
-    # legs: independent x-offset (stride) and vertical "lift" (shortens the leg, foot off ground)
+    # legs: independent x-offset (stride) and vertical "lift" (shortens the leg, foot off ground).
+    # `leg_top` always sits right below the torso (rather than a fixed offset from `bob` alone) so a
+    # shortened `torso_h` (crouching) pulls the legs up with it instead of leaving a gap.
     l_off, l_lift = pose["left_leg"]
     r_off, r_lift = pose["right_leg"]
-    leg_top = 15 + bob
+    leg_top = torso_y + torso_h
     leg_h = 9 - l_lift
     rleg_h = 9 - r_lift
 
@@ -145,6 +147,25 @@ def stride_frames(n, amp, lift_amp, lean, arm_amp):
     return frames
 
 
+def crouch_frames():
+    frames = []
+    for i in range(4):
+        bob = [6, 7, 6, 7][i]  # large bob + shortened torso -> compact, hunched silhouette
+        frames.append(
+            draw_frame(
+                dict(
+                    bob=bob,
+                    torso_h=5,
+                    left_leg=(0, 0),
+                    right_leg=(0, 0),
+                    left_arm=(0, False),
+                    right_arm=(0, False),
+                )
+            )
+        )
+    return frames
+
+
 def jump_frames():
     # crouch, launch, rise, apex, fall, land
     poses = [
@@ -164,6 +185,7 @@ def main():
         "walk": stride_frames(6, amp=2, lift_amp=2, lean=0, arm_amp=2),
         "run": stride_frames(6, amp=4, lift_amp=3, lean=1, arm_amp=3),
         "jump": jump_frames(),
+        "crouch": crouch_frames(),
     }
 
     atlas = Image.new("RGBA", (FW * COLS, FH * len(ROWS)), BG)

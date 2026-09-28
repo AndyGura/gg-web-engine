@@ -23,9 +23,10 @@ import { PhysicsTypeDocRepo2D } from '../../gg-2d-world';
  * `removeFromWorld(world, dispose)` (inherited from `IBodyComponent`/`IWorldComponent` - see their
  * doc for the general contract) must free this component's own native shape/body/collider handles
  * when `dispose` is `true`, exactly as `ICharacterController3dComponent`'s doc describes (repeated
- * there in more detail; nothing here recreates the capsule the way a crouch/stand transition does
- * on the 3D side, since `CharacterController2dEntity` has no crouch state, but the same contract
- * still applies to ordinary component teardown).
+ * there in more detail) - this is load-bearing for `CharacterController2dEntity`'s own crouch/stand
+ * transition too, which swaps this component wholesale for a freshly-created one at a different
+ * `centersDistance` rather than resizing one in place, and relies on `dispose: true` to free the
+ * outgoing capsule's native handles.
  */
 export interface ICharacterController2dComponent<
   PTypeDoc extends PhysicsTypeDocRepo2D = PhysicsTypeDocRepo2D,

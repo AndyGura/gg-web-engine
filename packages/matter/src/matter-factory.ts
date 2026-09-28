@@ -108,7 +108,20 @@ export class MatterFactory implements IPhysicsBody2dComponentFactory<MatterPhysi
     // which this character-controller-adjacent code path can't rely on) happens to correct it.
     Body.setPosition(nativeBody, Vector.create(transform?.position?.x || 0, transform?.position?.y || 0));
     Body.setAngle(nativeBody, transform?.rotation || 0);
-    return new MatterRigidBodyComponent(nativeBody, descriptor.shape);
+    const component = new MatterRigidBodyComponent(nativeBody, descriptor.shape);
+    // `transformOptions` (used to build `nativeBody` above) only ever reads
+    // `bodyType`/`mass`/`restitution`/`friction` - `ownCollisionGroups`/`interactWithCollisionGroups`
+    // must be applied through the component's own setters afterward (same as
+    // `MatterCharacterControllerComponent`'s constructor already does for a character), or a
+    // configured collision group is silently dropped in favor of the "all groups" default every
+    // `MatterRigidBodyComponent` otherwise starts with.
+    if (descriptor.body.ownCollisionGroups !== undefined) {
+      component.ownCollisionGroups = descriptor.body.ownCollisionGroups;
+    }
+    if (descriptor.body.interactWithCollisionGroups !== undefined) {
+      component.interactWithCollisionGroups = descriptor.body.interactWithCollisionGroups;
+    }
+    return component;
   }
 
   createTrigger(

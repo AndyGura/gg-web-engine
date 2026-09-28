@@ -6,10 +6,9 @@ import { isAnimatedDisplayObject2d } from '../../components/rendering/i-animated
 
 /**
  * Built-in movement states a `CharacterAnimation2dController` distinguishes - the atlas-clip
- * counterpart of `CharacterAnimationState`, minus `'crouch'` (`CharacterController2dEntity` has no
- * crouch state - see its own doc for why).
+ * counterpart of `CharacterAnimationState`.
  */
-export type CharacterAnimation2dState = 'idle' | 'walk' | 'run' | 'jump';
+export type CharacterAnimation2dState = 'idle' | 'walk' | 'run' | 'crouch' | 'jump';
 
 /**
  * Maps a {@link CharacterAnimation2dState} to the animation clip name inside the character's own
@@ -21,11 +20,12 @@ export type CharacterAnimation2dClipMap = Partial<Record<CharacterAnimation2dSta
 
 /** `CharacterAnimation2dClipMap` fallback used for any state not given an explicit entry - the
  * state's own name, so an atlas whose clips happen to already be named `"idle"`/`"walk"`/`"run"`/
- * `"jump"` needs no mapping at all. */
+ * `"crouch"`/`"jump"` needs no mapping at all. */
 const DEFAULT_CLIP_MAP: Required<CharacterAnimation2dClipMap> = {
   idle: 'idle',
   walk: 'walk',
   run: 'run',
+  crouch: 'crouch',
   jump: 'jump',
 };
 
@@ -61,12 +61,12 @@ const DEFAULT_OPTIONS: CharacterAnimation2dControllerOptions = {
 /**
  * Drives a `CharacterController2dEntity`'s animated sprite (see `IAnimatedDisplayObject2dComponent`)
  * by picking a {@link CharacterAnimation2dState} from the character's own public movement state each
- * tick - `isGrounded`, `isRunning`, `moveDirection` - and calling `playAnimation` whenever that state
- * changes, plus `updateAnimations` every tick regardless (to advance the underlying clip's frame
- * timer). A no-op entity (still ticks, does nothing) if `character.object2D` isn't an animated
- * display object at the time of the check. Mirrors `CharacterAnimationController` (the 3D
- * counterpart) closely - see that class's own doc for the full grounded-debounce rationale, which
- * applies identically here.
+ * tick - `isGrounded`, `isCrouching`, `isRunning`, `moveDirection` - and calling `playAnimation`
+ * whenever that state changes, plus `updateAnimations` every tick regardless (to advance the
+ * underlying clip's frame timer). A no-op entity (still ticks, does nothing) if `character.object2D`
+ * isn't an animated display object at the time of the check. Mirrors `CharacterAnimationController`
+ * (the 3D counterpart) closely - see that class's own doc for the full grounded-debounce rationale,
+ * which applies identically here.
  *
  * Ticks at `TickOrder.ANIMATION_MIXERS`, deliberately *after* `character`'s own tick (`TickOrder
  * .PHYSICS_SIMULATION - 5`, pre-physics) and after `Entity2d`'s `OBJECTS_BINDING` sprite-position
@@ -102,13 +102,17 @@ export class CharacterAnimation2dController<
 
   /**
    * Resolves the character's current movement state to one of the built-in
-   * {@link CharacterAnimation2dState}s. Airborne takes priority over walking/running, which takes
-   * priority over idle. Reads `_debouncedGrounded`, not `character.isGrounded` directly - see this
-   * class's own doc for why.
+   * {@link CharacterAnimation2dState}s. Airborne takes priority over crouching (a character can't be
+   * both at once anyway, since `CharacterController2dEntity.tryStandUp` only runs while grounded),
+   * which takes priority over walking/running, which takes priority over idle. Reads
+   * `_debouncedGrounded`, not `character.isGrounded` directly - see this class's own doc for why.
    */
   protected resolveState(): CharacterAnimation2dState {
     if (!this._debouncedGrounded) {
       return 'jump';
+    }
+    if (this.character.isCrouching) {
+      return 'crouch';
     }
     if (Math.abs(this.character.moveDirection) <= this.options.movementEpsilon) {
       return 'idle';

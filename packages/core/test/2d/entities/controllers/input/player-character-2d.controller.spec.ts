@@ -5,8 +5,10 @@ const fakeCharacter = (overrides: Partial<any> = {}) =>
     position: { x: 0, y: 0 },
     moveDirection: 0,
     isRunning: false,
+    isCrouching: false,
     facing: 1,
     characterController: { up: Pnt2.nY },
+    options: { crouchMode: 'hold' as 'hold' | 'toggle' },
     jump: jest.fn(),
     ...overrides,
   }) as any;
@@ -53,7 +55,7 @@ describe('PlayerCharacterController2d', () => {
     });
   });
 
-  describe('jump/run keys', () => {
+  describe('jump/run/crouch keys', () => {
     it('calls character.jump() on the jump key while active', async () => {
       const { keyboard, controller, character } = setup();
       await controller.onSpawned({} as any);
@@ -78,6 +80,28 @@ describe('PlayerCharacterController2d', () => {
       expect(character.isRunning).toBe(true);
       keyboard.emulateKeyUp('ShiftLeft');
       expect(character.isRunning).toBe(false);
+    });
+
+    it('holds crouch while the crouch key is held in "hold" mode', async () => {
+      const character = fakeCharacter({ options: { crouchMode: 'hold' } });
+      const { keyboard, controller } = setup(character);
+      await controller.onSpawned({} as any);
+      keyboard.emulateKeyDown('ControlLeft');
+      expect(character.isCrouching).toBe(true);
+      keyboard.emulateKeyUp('ControlLeft');
+      expect(character.isCrouching).toBe(false);
+    });
+
+    it('toggles crouch on each key-down in "toggle" mode', async () => {
+      const character = fakeCharacter({ options: { crouchMode: 'toggle' } });
+      const { keyboard, controller } = setup(character);
+      await controller.onSpawned({} as any);
+      keyboard.emulateKeyDown('ControlLeft');
+      expect(character.isCrouching).toBe(true);
+      keyboard.emulateKeyUp('ControlLeft'); // no change on release
+      expect(character.isCrouching).toBe(true);
+      keyboard.emulateKeyDown('ControlLeft');
+      expect(character.isCrouching).toBe(false);
     });
   });
 

@@ -1,4 +1,5 @@
 import {
+  BitMask,
   CollisionGroup,
   IPhysicsWorld2dComponent,
   Pnt2,
@@ -6,7 +7,7 @@ import {
   RaycastOptions,
   RaycastResult,
 } from '@gg-web-engine/core';
-import { Body, Collision, Engine, Events, IEventCollision, Vector, World } from 'matter-js';
+import { Body, Collision, Composite, Engine, Events, IEventCollision, Vector, World } from 'matter-js';
 import { MatterFactory } from '../matter-factory';
 import { MatterPhysicsTypeDocRepo } from '../types';
 import { Subject } from 'rxjs';
@@ -44,6 +45,44 @@ function averageSupports(collision: Collision): Point2 {
     sum = Pnt2.add(sum, support);
   }
   return Pnt2.scalarMult(sum, 1 / supports.length);
+}
+
+/**
+ * Standard 2D segment-vs-segment intersection (parametric form): `p1->p2` is the ray segment,
+ * `p3->p4` one polygon edge. Returns the intersection's fractional position along `p1->p2`
+ * (`t`, always in `[0,1]` when a result is returned) and the world-space point itself, or `null`
+ * for parallel/non-intersecting/out-of-range segments. Used by `MatterWorldComponent.raycast`
+ * (see its own doc for why) instead of matter-js's own `Query.ray`/`Collision.collides`, which
+ * only ever reports an approximate SAT contact point, not a true point where the ray segment
+ * crosses a candidate's actual boundary.
+ */
+function segmentIntersection(p1: Point2, p2: Point2, p3: Point2, p4: Point2): { t: number; point: Point2 } | null {
+  const d1 = Pnt2.sub(p2, p1);
+  const d2 = Pnt2.sub(p4, p3);
+  const denom = d1.x * d2.y - d1.y * d2.x;
+  if (Math.abs(denom) < 1e-10) {
+    return null; // parallel (or degenerate) - no single intersection point
+  }
+  const diff = Pnt2.sub(p3, p1);
+  const t = (diff.x * d2.y - diff.y * d2.x) / denom;
+  const u = (diff.x * d1.y - diff.y * d1.x) / denom;
+  if (t < 0 || t > 1 || u < 0 || u > 1) {
+    return null;
+  }
+  return { t, point: Pnt2.add(p1, Pnt2.scalarMult(d1, t)) };
+}
+
+/**
+ * Every polygon (in matter-js's sense) making up `body`'s actual collision boundary, each as a
+ * closed loop of world-space vertices - `body` itself for a simple (non-compound) body, or every
+ * part but the synthetic index-0 "container" part for a compound one (mirrors `Query.collides`'s
+ * own `partsAStart = partsALength === 1 ? 0 : 1` convention). A circle is included via matter-js's
+ * own many-sided-polygon approximation (`Bodies.circle` is built on `Bodies.polygon`) - close
+ * enough for a raycast headroom check, not a true circle intersection.
+ */
+function bodyPolygons(body: Body): Vector[][] {
+  const parts = body.parts.length === 1 ? [body] : body.parts.slice(1);
+  return parts.map(part => part.vertices);
 }
 
 // TODO probably should be configurable in world
@@ -220,8 +259,88 @@ export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhys
     this.lastDelta = delta;
   }
 
+  /**
+   * matter-js has no native raycast query. Built on a true parametric ray-vs-polygon intersection
+   * (`segmentIntersection`/`bodyPolygons`), not `Matter.Query.ray` - that helper is only a thin
+   * wrapper over `Query.collides` (a full-geometry SAT test of a synthetic, very thin rectangle body
+   * against candidates), which reports an approximate overlap contact point, not a true "where does
+   * the ray segment first cross this body's boundary" point; verified via this adapter's own
+   * regression suite (`MatterWorldComponent.spec.ts`'s `Raycast` block expects a precise hit point at
+   * a known box edge) that the SAT-approximated version produces a visibly wrong point.
+   *
+   * `Query.collides`/`Collision.collides`/matter's own `Detector.canCollide` all test raw geometry
+   * only and know nothing about `collisionFilter` (the same limitation
+   * `MatterCharacterControllerComponent.collectObstacles`'s own doc describes) - candidates are
+   * pre-filtered here by hand, replicating `Detector.canCollide`'s category/mask check plus
+   * `options.collisionFilterGroups`/`collisionFilterMask`. Sensor bodies (triggers) are excluded from
+   * candidates entirely, mirroring `collectObstacles`'s own exclusion - a trigger never physically
+   * blocks anything, so it shouldn't register as a raycast hit either.
+   *
+   * `hitNormal` is derived from whichever polygon edge the closest intersection landed on (rotated
+   * 90°, sign chosen to point back towards `options.from`) - not from a matter-js collision object at
+   * all, sidestepping the sign-convention pitfall `handleCollisionStart`'s own doc describes for
+   * `pair.collision.normal`.
+   */
   raycast(options: RaycastOptions<Point2>): RaycastResult<Point2, MatterRigidBodyComponent> {
-    throw new Error('Ray casting is not implemented for Matter.js');
+    const matterWorld = this.matterWorld;
+    const direction = Pnt2.sub(options.to, options.from);
+    const rayLength = Pnt2.len(direction);
+    if (!matterWorld || rayLength === 0) {
+      return { hasHit: false };
+    }
+
+    const groupsMask = options.collisionFilterGroups
+      ? BitMask.pack(options.collisionFilterGroups, 16)
+      : BitMask.full(16);
+    const maskMask = options.collisionFilterMask ? BitMask.pack(options.collisionFilterMask, 16) : BitMask.full(16);
+    const candidates = Composite.allBodies(matterWorld).filter(b => {
+      if (b.isSensor) {
+        return false;
+      }
+      const filter = b.collisionFilter;
+      const category = filter.category ?? 0x0001;
+      const mask = filter.mask ?? 0xffffffff;
+      return (groupsMask & mask) !== 0 && (category & maskMask) !== 0;
+    });
+
+    let closestT = Infinity;
+    let closestPoint: Point2 | null = null;
+    let closestNormal: Point2 | null = null;
+    let closestBody: Body | null = null;
+    for (const body of candidates) {
+      for (const polygon of bodyPolygons(body)) {
+        for (let i = 0; i < polygon.length; i++) {
+          const a = polygon[i];
+          const b = polygon[(i + 1) % polygon.length];
+          const hit = segmentIntersection(options.from, options.to, a, b);
+          if (!hit || hit.t >= closestT) {
+            continue;
+          }
+          closestT = hit.t;
+          closestPoint = hit.point;
+          closestBody = body;
+          const edge = Pnt2.sub(b, a);
+          const normal = Pnt2.norm({ x: -edge.y, y: edge.x });
+          closestNormal = Pnt2.dot(normal, Pnt2.sub(options.from, hit.point)) >= 0 ? normal : Pnt2.neg(normal);
+        }
+      }
+    }
+    if (!closestBody) {
+      return { hasHit: false };
+    }
+
+    // A compound body's hit part is not the parent body `handleIdEntityMap` is keyed by (see
+    // `MatterFactory`'s compound-shape flattening) - `.parent` (self-referential for a non-compound
+    // body) resolves back to it.
+    const parentBody = closestBody.parent ?? closestBody;
+    const resolved = this.handleIdEntityMap.get(parentBody.id);
+    return {
+      hasHit: true,
+      hitBody: resolved instanceof MatterRigidBodyComponent ? resolved : undefined,
+      hitDistance: closestT * rayLength,
+      hitPoint: closestPoint!,
+      hitNormal: closestNormal!,
+    };
   }
 
   dispose(): void {

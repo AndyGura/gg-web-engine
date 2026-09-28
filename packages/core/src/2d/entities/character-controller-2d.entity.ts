@@ -6,18 +6,27 @@ import { CharacterController2dOptions } from '../models/character-controller-opt
 
 /**
  * Options for a `CharacterController2dEntity`: the capsule shape/mover tuning from
- * `CharacterController2dOptions`, plus the gameplay tuning (speed, jump, gravity) this entity owns
- * itself so behavior stays identical across physics backends - see the class doc. Mirrors
- * `CharacterController3dEntityOptions`, minus crouch (not a 2D side-scroller concept this engine
- * models - an app wanting a crouch pose can still drive one directly via `CharacterAnimation2dController`'s
- * `clipMap`/a custom animation state, it just isn't wired into movement/capsule-resize here the way
- * the 3D entity's `isCrouching` is).
+ * `CharacterController2dOptions`, plus the gameplay tuning (speed, jump, crouch, gravity) this
+ * entity owns itself so behavior stays identical across physics backends - see the class doc.
+ * Mirrors `CharacterController3dEntityOptions` field-for-field.
  */
 export type CharacterController2dEntityOptions = CharacterController2dOptions & {
   /** Walking speed, in world units/s. Default 4. */
   walkSpeed: number;
   /** Multiplier applied to `walkSpeed` while `isRunning`. Default 1.8. */
   runSpeedMultiplier: number;
+  /** Multiplier applied to `walkSpeed` while `isCrouching`. Default 0.5. */
+  crouchSpeedMultiplier: number;
+  /** Capsule `centersDistance` used while `isCrouching`. Must be smaller than `centersDistance`. */
+  crouchCentersDistance: number;
+  /**
+   * Not consumed by this class - carried here purely so an input driver (e.g.
+   * `PlayerCharacterController2d`) can read the crouch key behavior from the same options object
+   * used to configure the character itself. `'hold'`: crouch while the key is held, stand up on
+   * release (subject to the headroom check above). `'toggle'`: each press flips `isCrouching`.
+   * Default `'hold'`.
+   */
+  crouchMode: 'hold' | 'toggle';
   /** Takeoff vertical speed applied by `jump()`, opposing gravity along `up`. Default 5. */
   jumpSpeed: number;
   /**
@@ -36,7 +45,9 @@ export type CharacterController2dEntityOptions = CharacterController2dOptions & 
   airControlFactor: number;
 };
 
-const DEFAULT_OPTIONS: Required<Omit<CharacterController2dEntityOptions, 'radius' | 'centersDistance'>> = {
+const DEFAULT_OPTIONS: Required<
+  Omit<CharacterController2dEntityOptions, 'radius' | 'centersDistance' | 'crouchCentersDistance'>
+> = {
   offset: 0.01,
   maxStepHeight: 0.3,
   minStepWidth: 0.2,
@@ -48,19 +59,22 @@ const DEFAULT_OPTIONS: Required<Omit<CharacterController2dEntityOptions, 'radius
   pushMass: 80,
   walkSpeed: 4,
   runSpeedMultiplier: 1.8,
+  crouchSpeedMultiplier: 0.5,
+  crouchMode: 'hold',
   jumpSpeed: 5,
   gravity: undefined,
   airControlFactor: 0.3,
 };
 
 /**
- * A capsule-bodied, physics-driven character entity: walk/run/jump gameplay logic that works
+ * A capsule-bodied, physics-driven character entity: walk/run/crouch/jump gameplay logic that works
  * identically on top of any physics backend implementing `ICharacterController2dComponent` (see
- * that interface's doc for why - all of gravity/jump/speed integration happens here, not in the
- * backend-specific component). Reusable for the player (see a `PlayerCharacterController2d` input
- * driver) or for an NPC driven by AI logic instead. Mirrors `CharacterController3dEntity` closely -
- * see that class's own doc for the full reasoning behind the momentum-tracking/ceiling-block/
- * ground-walkability logic below, which is identical here just projected into 2D.
+ * that interface's doc for why - all of gravity/jump/speed/crouch integration happens here, not in
+ * the backend-specific component). Reusable for the player (see a `PlayerCharacterController2d`
+ * input driver) or for an NPC driven by AI logic instead. Mirrors `CharacterController3dEntity`
+ * closely - see that class's own doc for the full reasoning behind the momentum-tracking/
+ * ceiling-block/ground-walkability/crouch-capsule-swap logic below, which is identical here just
+ * projected into 2D.
  *
  * `moveDirection` is a single signed scalar (not a vector): this engine's 2D world is always a
  * side-view/platformer ground plane (gravity pulls along `up`, see `Gg2dWorldTypeDocRepo`'s own
@@ -107,6 +121,9 @@ export class CharacterController2dEntity<TypeDoc extends Gg2dWorldTypeDocRepo = 
    * the ground - see `CharacterController3dEntity._justJumped`'s doc for the full rationale. */
   private _justJumped: boolean = false;
 
+  private _isCrouching: boolean = false;
+  private _wantsToStand: boolean = false;
+
   /** Public accessor for `_fallVelocity` - see `CharacterController3dEntity.fallVelocity`'s doc. */
   public get fallVelocity(): Point2 {
     return this._fallVelocity;
@@ -128,6 +145,32 @@ export class CharacterController2dEntity<TypeDoc extends Gg2dWorldTypeDocRepo = 
   /** `fallVelocity + airHorizontalVelocity` - this character's full current momentum in one vector. */
   public get velocity(): Point2 {
     return Pnt2.add(this._fallVelocity, this._airHorizontalVelocity);
+  }
+
+  public get isCrouching(): boolean {
+    return this._isCrouching;
+  }
+
+  /**
+   * Crouching down always succeeds immediately. Standing back up first raycasts straight up (along
+   * `up`) for the extra height needed and only actually stands once that space is clear - if
+   * blocked, the request is remembered (`_wantsToStand`) and retried every tick until it succeeds,
+   * so the character never pops through a ceiling. See `CharacterController3dEntity.isCrouching`'s
+   * doc for the full rationale (identical here, just in 2D).
+   */
+  public set isCrouching(value: boolean) {
+    if (value) {
+      this._wantsToStand = false;
+      if (!this._isCrouching) {
+        this._isCrouching = true;
+        this.recreateCapsule(this.options.crouchCentersDistance);
+      }
+    } else {
+      this._wantsToStand = true;
+      if (this.isGrounded) {
+        this.tryStandUp();
+      }
+    }
   }
 
   public get isGrounded(): boolean {
@@ -183,6 +226,7 @@ export class CharacterController2dEntity<TypeDoc extends Gg2dWorldTypeDocRepo = 
     super();
     this.options = {
       ...DEFAULT_OPTIONS,
+      crouchCentersDistance: options.centersDistance * 0.6,
       ...options,
     };
     this.object2D = object2D;
@@ -257,7 +301,12 @@ export class CharacterController2dEntity<TypeDoc extends Gg2dWorldTypeDocRepo = 
       this._justJumped = false;
     }
 
-    const speed = this.options.walkSpeed * (this.isRunning ? this.options.runSpeedMultiplier : 1);
+    let speed = this.options.walkSpeed;
+    if (this._isCrouching) {
+      speed *= this.options.crouchSpeedMultiplier;
+    } else if (this.isRunning) {
+      speed *= this.options.runSpeedMultiplier;
+    }
     const desiredHoriz = Pnt2.scalarMult(right, speed * this.moveDirection);
     if (this.moveDirection !== 0) {
       this._facing = this.moveDirection > 0 ? 1 : -1;
@@ -309,6 +358,98 @@ export class CharacterController2dEntity<TypeDoc extends Gg2dWorldTypeDocRepo = 
           this._fallVelocity = Pnt2.sub(this._fallVelocity, Pnt2.scalarMult(up, fallAlongUp));
         }
       }
+    }
+
+    // Only ever attempt the headroom check while actually resting on something - see
+    // `tryStandUp`'s own doc for why airborne is unsafe to check at all, not just unnecessary. It
+    // retries again automatically the moment `isGrounded` goes back to `true`, per
+    // `_wantsToStand`'s own "retried every tick until it succeeds" contract - see
+    // `CharacterController3dEntity.updateMovement`'s doc for the full rationale (identical here,
+    // just in 2D).
+    if (this._wantsToStand && this.isGrounded) {
+      this.tryStandUp();
+    }
+  }
+
+  /**
+   * Raycasts straight up (along `up`) from the current (crouched) capsule's top by the extra height
+   * standing would need - see `CharacterController3dEntity.tryStandUp`'s doc for the full rationale
+   * behind the ray's placement/only-while-grounded restriction (identical here, just in 2D).
+   */
+  private tryStandUp(): void {
+    if (!this._isCrouching || !this.world?.physicsWorld) {
+      return;
+    }
+    const heightDiff = this.options.centersDistance - this.options.crouchCentersDistance;
+    if (heightDiff <= 0) {
+      this._isCrouching = false;
+      this._wantsToStand = false;
+      return;
+    }
+    const up = this.characterController.up;
+    const skin = Math.max(this.options.offset * 2, 0.02);
+    const currentTop = Pnt2.add(
+      this.position,
+      Pnt2.scalarMult(up, this.characterController.radius + this.options.crouchCentersDistance / 2),
+    );
+    const from = Pnt2.add(currentTop, Pnt2.scalarMult(up, skin));
+    const to = Pnt2.add(currentTop, Pnt2.scalarMult(up, heightDiff));
+    const result = this.world.physicsWorld.raycast({ from, to });
+    if (!result.hasHit) {
+      this._isCrouching = false;
+      this._wantsToStand = false;
+      this.recreateCapsule(this.options.centersDistance);
+    }
+    // otherwise: stays crouched, will retry next tick (see updateMovement)
+  }
+
+  /**
+   * Swaps the underlying `characterController` component for a freshly-created one at a different
+   * `centersDistance`, keeping the character's feet planted in place - see
+   * `CharacterController3dEntity.recreateCapsule`'s doc for the full rationale (identical here, just
+   * in 2D).
+   */
+  private recreateCapsule(newCentersDistance: number): void {
+    if (!this.world?.physicsWorld) {
+      // not spawned yet; nothing to recreate against
+      return;
+    }
+    const old = this.characterController;
+    const up = old.up;
+    const feetPoint = Pnt2.sub(this.position, Pnt2.scalarMult(up, old.radius + old.centersDistance / 2));
+    const newPosition = Pnt2.add(feetPoint, Pnt2.scalarMult(up, old.radius + newCentersDistance / 2));
+
+    const created = this.world.physicsWorld.factory.createCharacterController(
+      {
+        radius: this.options.radius,
+        centersDistance: newCentersDistance,
+        offset: this.options.offset,
+        maxStepHeight: this.options.maxStepHeight,
+        minStepWidth: this.options.minStepWidth,
+        maxSlopeClimbAngleRad: this.options.maxSlopeClimbAngleRad,
+        snapToGroundDistance: this.options.snapToGroundDistance,
+        up,
+        ownCollisionGroups: old.ownCollisionGroups,
+        interactWithCollisionGroups: old.interactWithCollisionGroups,
+      },
+      { position: newPosition, rotation: this.rotation },
+    );
+    // Carry over `ignoredBodies` - see `CharacterController3dEntity.recreateCapsule`'s doc for why.
+    for (const ignored of old.ignoredBodies) {
+      created.ignoredBodies.add(ignored);
+    }
+
+    // `dispose: true` here is load-bearing, not decoration - see
+    // `CharacterController3dEntity.recreateCapsule`'s doc and `ICharacterController2dComponent`'s
+    // own doc for the general `removeFromWorld(dispose)` contract this relies on.
+    this.removeComponents([old], true);
+    this.characterController = created;
+    this.addComponents(created);
+    this._position = created.position;
+    this._rotation = created.rotation;
+    if (this.object2D) {
+      this.object2D.position = this._position;
+      this.object2D.rotation = this._rotation;
     }
   }
 }

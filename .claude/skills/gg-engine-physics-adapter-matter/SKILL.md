@@ -1,6 +1,6 @@
 ---
 name: gg-engine-physics-adapter-matter
-description: Known, already-solved implementation pitfalls specific to packages/matter (the matter-js 2D physics adapter) - removeFromWorld/dispose semantics, @types/matter-js version-bump typing gotchas, flattening COMPOUND shapes into leaf Body.create({ parts }) entries, the from-scratch discrete-query character controller, and a critical Body.setPosition/setAngle-vs-raw-field-write gotcha in MatterFactory. Use when fixing or extending packages/matter itself, not when building a new physics adapter from scratch (see gg-engine-physics-adapter for the general contract every adapter implements).
+description: Known, already-solved implementation pitfalls specific to packages/matter (the matter-js 2D physics adapter) - removeFromWorld/dispose semantics, @types/matter-js version-bump typing gotchas, flattening COMPOUND shapes into leaf Body.create({ parts }) entries, the from-scratch discrete-query character controller, a critical Body.setPosition/setAngle-vs-raw-field-write gotcha in MatterFactory, the hand-rolled segment-vs-polygon raycast() implementation, and MatterFactory.createRigidBody wiring ownCollisionGroups/interactWithCollisionGroups through to the component. Use when fixing or extending packages/matter itself, not when building a new physics adapter from scratch (see gg-engine-physics-adapter for the general contract every adapter implements).
 ---
 
 # packages/matter implementation notes
@@ -295,6 +295,70 @@ entirely (see `gg-engine-physics-adapter`'s general section on this pattern - ma
   `collisionStart`/`collisionEnd` listeners) needed an explicit `instanceof MatterRigidBodyComponent`
   narrow after this widening, since a character controller's phantom body can never actually be a
   reported pair's `bodyA`/`bodyB` but the map's value type no longer says so on its own.
+
+## `MatterWorldComponent.raycast()`: hand-rolled segment-vs-polygon intersection, not `Matter.Query.ray`
+
+matter-js has no native raycast query. `Matter.Query.ray` exists but is only a thin wrapper over
+`Query.collides` - a full-geometry SAT overlap test between a synthetic, very thin rectangle body and
+each candidate - which reports an approximate contact point from the collision manifold, not a true
+"where does the segment first cross this body's boundary" point. This is precise enough for
+`hasHit` alone but not for `hitPoint`/`hitDistance`: verified via this adapter's own regression suite
+(`test/components/matter-world.component.spec.ts`'s `Raycast` block asserts a hit point at a known box
+edge to within `0.1` precision) that the `Query.ray`/SAT-approximated version lands on the wrong edge
+of a box entirely for a ray passing clean through it.
+
+`raycast()` instead does true parametric segment-vs-polygon intersection by hand: for every candidate
+body, `bodyPolygons(body)` returns each of its constituent polygons as a closed loop of world-space
+vertices (`body` itself for a simple body, every part but the synthetic index-0 "container" part for a
+compound one - mirrors `Query.collides`'s own `partsAStart = partsALength === 1 ? 0 : 1` convention; a
+circle is walked via matter-js's own many-sided-polygon approximation, close enough for this purpose).
+`segmentIntersection(p1, p2, p3, p4)` is the standard parametric line-segment intersection formula,
+returning the closest crossing's fractional position `t` along the ray (always in `[0,1]`) and the
+world-space point; the closest `t` across every edge of every candidate wins. `hitNormal` is derived
+from the winning edge itself (rotated 90°, sign chosen so it points back towards `options.from`) rather
+than from any matter-js collision object - this sidesteps `handleCollisionStart`'s own documented
+`collision.normal` sign-convention pitfall entirely, since nothing here ever reads that field.
+
+Candidates are pre-filtered by hand before the geometry test even runs, replicating
+`Detector.canCollide`'s bidirectional category/mask check against `options.collisionFilterGroups`/
+`collisionFilterMask` (packed the same way `MatterCharacterControllerComponent.collectObstacles` packs
+its own masks) - `Query.collides`/`Collision.collides`/`Detector.canCollide` all test raw geometry only
+and know nothing about `collisionFilter`, the same limitation `collectObstacles`'s own doc describes.
+Sensor bodies (triggers) are excluded from candidates entirely for the same reason `collectObstacles`
+excludes them - a trigger never physically blocks anything, so it shouldn't register as a raycast hit.
+A winning candidate that turns out to be one part of a compound body resolves back to the parent via
+`.parent` (self-referential for a non-compound body) before the `handleIdEntityMap` lookup, which is
+keyed by the parent's `Body.id`, never a sub-part's.
+
+`CharacterController2dEntity.tryStandUp`'s crouch/stand headroom check is this method's first real
+caller and only reads `hasHit` - if a future caller needs precise `hitNormal`/`hitPoint` semantics to
+match exactly what `Rapier2dWorldComponent.raycast` provides (a genuine closest-time-of-impact query,
+not geometry reconstructed by hand), re-verify against this adapter's own raycast spec rather than
+assuming parity by construction.
+
+## `MatterFactory.createRigidBody` must apply `ownCollisionGroups`/`interactWithCollisionGroups` itself
+
+`transformOptions(descriptor.body)` (used to build every shape's native `Bodies.rectangle`/`circle`/
+`fromVertices` options) only ever reads `bodyType`/`mass`/`restitution`/`friction` - it has no notion of
+collision groups at all. `MatterRigidBodyComponent`'s own `_ownCGsMask`/`_interactWithCGsMask` default
+to "all groups" (`BitMask.full(16)`) at construction and are only ever changed by its
+`ownCollisionGroups`/`interactWithCollisionGroups` *setters* (which also call `updateCollisionFilter()`
+to push the new mask into `nativeBody.collisionFilter`). `createRigidBody` must therefore explicitly
+assign `component.ownCollisionGroups = descriptor.body.ownCollisionGroups` (and the interact-with
+counterpart) after constructing the component, whenever the descriptor actually specifies one - a body
+created with an explicit `ownCollisionGroups`/`interactWithCollisionGroups` in its `Body2DOptions`
+otherwise silently gets the "collides with everything" default instead, indistinguishable from a body
+that never asked for group filtering at all. `MatterCharacterControllerComponent`'s own constructor
+already did this correctly for a character (`this.ownCollisionGroups = this.options.ownCollisionGroups`
+etc.) - `createRigidBody` needed the equivalent explicit pair of assignments for an ordinary rigid body.
+`createTrigger` has no equivalent gap: `Shape2DDescriptor` (its own descriptor type) carries no body
+options at all, so a trigger's collision groups are necessarily set after creation via the component's
+own setters regardless, the same way an app would for any other post-creation config.
+
+Found via this adapter's own pre-existing (previously `describe.skip`'d, since `raycast()` itself threw
+until it was implemented - see above) collision-filtering raycast tests: a ray configured to only hit
+one of two differently-grouped candidates hit both, because the "excluded" one's `collisionFilter` was
+silently still the default "all groups" despite its `Body2DOptions` asking for a specific group.
 
 ## Keep this skill current
 

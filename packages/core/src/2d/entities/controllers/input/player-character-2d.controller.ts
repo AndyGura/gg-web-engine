@@ -21,6 +21,8 @@ export type PlayerCharacterController2dOptions = {
   jumpKey: string;
   /** Key code that sets `character.isRunning`. `'ShiftLeft'` by default. */
   runKey: string;
+  /** Key code that drives `character.isCrouching`, per `character.options.crouchMode`. `'ControlLeft'` by default. */
+  crouchKey: string;
   /**
    * How far ahead of the character (along its `facing`) the camera's look target is offset, in
    * world units - a fixed lead so the player can see more of what's ahead than what's behind.
@@ -36,14 +38,15 @@ const DEFAULT_OPTIONS: PlayerCharacterController2dOptions = {
   keymap: 'wasd+arrows',
   jumpKey: 'Space',
   runKey: 'ShiftLeft',
+  crouchKey: 'ControlLeft',
   lookAheadDistance: 0,
   cameraSmoothing: 0.1,
 };
 
 /**
- * The player's input+camera controller for a 2D platformer character: left/right/sprint/jump keys
- * driving a plain `CharacterController2dEntity` (which owns the actual movement/gravity/jump
- * physics), plus a simple side-scroller camera that follows the character's position with
+ * The player's input+camera controller for a 2D platformer character: left/right/sprint/crouch/jump
+ * keys driving a plain `CharacterController2dEntity` (which owns the actual movement/gravity/jump/
+ * crouch physics), plus a simple side-scroller camera that follows the character's position with
  * exponential smoothing. Mirrors `PlayerCharacterController` (the 3D counterpart) in shape, without
  * mouse-look/view-mode switching - a 2D side view has no such concept (see
  * `CharacterController2dEntity`'s own doc for why `moveDirection` is a scalar, not a look-relative
@@ -96,6 +99,22 @@ export class PlayerCharacterController2d<TypeDoc extends Gg2dWorldTypeDocRepo = 
       .subscribe(down => {
         if (this.character) {
           this.character.isRunning = down;
+        }
+      });
+
+    this.keyboard
+      .bind(this.options.crouchKey)
+      .pipe(takeUntil(this._onRemoved$))
+      .subscribe(down => {
+        if (!this.character) {
+          return;
+        }
+        if (this.character.options.crouchMode === 'toggle') {
+          if (down) {
+            this.character.isCrouching = !this.character.isCrouching;
+          }
+        } else {
+          this.character.isCrouching = down;
         }
       });
 

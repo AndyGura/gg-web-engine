@@ -2,7 +2,7 @@ import { CharacterAnimation2dController, CharacterController2dEntity } from '../
 import { mockCharacterController2d } from '../../../mocks/character-controller-2d.mock';
 import { mock2DObject, mockAnimatedObject2d } from '../../../mocks/object.mock';
 
-const clips = ['idle', 'walk', 'run', 'jump'];
+const clips = ['idle', 'walk', 'run', 'crouch', 'jump'];
 
 describe('CharacterAnimation2dController', () => {
   it('plays "idle" by default when grounded and not moving', () => {
@@ -33,7 +33,21 @@ describe('CharacterAnimation2dController', () => {
     expect(object2D.currentAnimationName).toBe('run');
   });
 
-  it('switches to "jump" whenever the character is airborne', () => {
+  it('switches to "crouch" while crouching, regardless of movement', () => {
+    const object2D = mockAnimatedObject2d(clips);
+    const cc = mockCharacterController2d();
+    const character = new CharacterController2dEntity({ radius: 0.4, centersDistance: 1 }, object2D, cc);
+    character.onSpawned({} as any);
+    const controller = new CharacterAnimation2dController(character);
+    controller.onSpawned({} as any);
+
+    character.isCrouching = true;
+    controller.tick$.next([1000, 16]);
+
+    expect(object2D.currentAnimationName).toBe('crouch');
+  });
+
+  it('switches to "jump" whenever the character is airborne, taking priority over crouch', () => {
     const object2D = mockAnimatedObject2d(clips);
     const cc = mockCharacterController2d(0.4, 1, {}, false);
     const character = new CharacterController2dEntity({ radius: 0.4, centersDistance: 1 }, object2D, cc);

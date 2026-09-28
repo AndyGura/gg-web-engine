@@ -91,7 +91,7 @@ world.init().then(async () => {
 
   await world.loader.loadLevel(level, 'MainLevel');
 
-  // A pixel-art atlas (idle/walk/run/jump rows on a uniform grid - see
+  // A pixel-art atlas (idle/walk/run/jump/crouch rows on a uniform grid - see
   // ./assets/generate-character-atlas.py) sliced into named animation clips.
   const atlasTexture = await Assets.load(characterAtlasUrl);
   atlasTexture.source.scaleMode = 'nearest'; // keep the pixel-art look crisp when scaled up
@@ -103,6 +103,7 @@ world.init().then(async () => {
       walk: { row: 1, frameCount: 6, fps: 10 },
       run: { row: 2, frameCount: 6, fps: 14 },
       jump: { row: 3, frameCount: 6, fps: 10 },
+      crouch: { row: 4, frameCount: 4, fps: 6 },
     },
   });
   sprite.scale = { x: 1.2, y: 1.2 };
@@ -117,6 +118,7 @@ world.init().then(async () => {
       centersDistance: 40,
       walkSpeed: 260,
       runSpeedMultiplier: 1.8,
+      crouchSpeedMultiplier: 0.5,
       jumpSpeed: 780,
       // this world's own gravity default (9.82) is tuned for a meter-scale 3D world, not this
       // pixel-scale room - override with a pixel-scale-appropriate fall acceleration instead of

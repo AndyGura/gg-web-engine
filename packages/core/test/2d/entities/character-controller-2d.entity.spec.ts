@@ -1,4 +1,4 @@
-import { CharacterController2dEntity, Pnt2, Point2 } from '../../../src';
+import { CharacterController2dEntity, Gg2dWorld, Pnt2, Point2 } from '../../../src';
 import { mockCharacterController2d } from '../../mocks/character-controller-2d.mock';
 import { mock2DObject } from '../../mocks/object.mock';
 
@@ -16,6 +16,15 @@ describe('CharacterController2dEntity', () => {
       const entity = new CharacterController2dEntity({ radius: 0.4, centersDistance: 1 }, null, cc);
       expect(entity.position).toEqual({ x: 1, y: 2 });
       expect(entity.rotation).toEqual(1.5);
+    });
+
+    it('defaults crouchCentersDistance to 60% of the standing centersDistance', () => {
+      const entity = new CharacterController2dEntity(
+        { radius: 0.4, centersDistance: 1 },
+        null,
+        mockCharacterController2d(),
+      );
+      expect(entity.options.crouchCentersDistance).toBeCloseTo(0.6);
     });
   });
 
@@ -54,6 +63,22 @@ describe('CharacterController2dEntity', () => {
       entity.isRunning = true;
       entity.tick$.next([1000, 1000]);
       expectCloseVector(moveSpy.mock.calls[0][0], { x: 8, y: 0 });
+    });
+
+    it('scales speed by crouchSpeedMultiplier while crouching, overriding isRunning', () => {
+      const cc = mockCharacterController2d();
+      const entity = new CharacterController2dEntity(
+        { radius: 0.4, centersDistance: 1, walkSpeed: 4, runSpeedMultiplier: 2, crouchSpeedMultiplier: 0.5 },
+        null,
+        cc,
+      );
+      entity.onSpawned({} as any);
+      const moveSpy = jest.spyOn(cc, 'move');
+      entity.moveDirection = 1;
+      entity.isRunning = true;
+      entity.isCrouching = true; // no physicsWorld yet, so this just flips the flag - no capsule swap
+      entity.tick$.next([1000, 1000]);
+      expectCloseVector(moveSpy.mock.calls[0][0], { x: 2, y: 0 });
     });
 
     it("carries the ground launch speed through the whole jump/fall arc, instead of throttling it once airborne", () => {
@@ -256,6 +281,61 @@ describe('CharacterController2dEntity', () => {
       entity.moveDirection = 1;
       entity.tick$.next([1000, 1000]);
       expectCloseVector(sprite.position, entity.position);
+    });
+  });
+
+  describe('crouch', () => {
+    const setupSpawnedEntity = () => {
+      const visualScene = { factory: { createSprite: jest.fn(() => mock2DObject()) }, dispose: () => {} };
+      const createdControllers: ReturnType<typeof mockCharacterController2d>[] = [];
+      const physicsWorld = {
+        factory: {
+          createCharacterController: jest.fn((options: any, transform: any) => {
+            const created = mockCharacterController2d(options.radius, options.centersDistance);
+            created.position = transform.position;
+            created.rotation = transform.rotation;
+            createdControllers.push(created);
+            return created;
+          }),
+        },
+        raycast: jest.fn((): any => ({ hasHit: false })),
+        dispose: () => {},
+      };
+      const world = new Gg2dWorld({ visualScene: visualScene as any, physicsWorld: physicsWorld as any });
+      const initialCc = mockCharacterController2d(0.4, 1);
+      initialCc.position = { x: 0, y: -0.9 }; // feet at y=0 (radius 0.4 + centersDistance/2 0.5, up is -Y)
+      const entity = new CharacterController2dEntity(
+        { radius: 0.4, centersDistance: 1, crouchCentersDistance: 0.5 },
+        null,
+        initialCc,
+      );
+      world.addEntity(entity);
+      return { entity, physicsWorld, createdControllers };
+    };
+
+    it('crouching down recreates the capsule at a shorter height with feet held in place', () => {
+      const { entity, physicsWorld } = setupSpawnedEntity();
+      entity.isCrouching = true;
+      expect(entity.isCrouching).toBe(true);
+      expect(physicsWorld.factory.createCharacterController).toHaveBeenCalledTimes(1);
+      const [, transform] = physicsWorld.factory.createCharacterController.mock.calls[0];
+      // feet were at y=0; crouching with crouchCentersDistance=0.5 -> new center at -(radius+0.25)=-0.65
+      expect(transform.position.y).toBeCloseTo(-0.65);
+    });
+
+    it('standing up is blocked by a raycast hit and retried until clear', () => {
+      const { entity, physicsWorld } = setupSpawnedEntity();
+      entity.isCrouching = true;
+      physicsWorld.raycast.mockReturnValue({ hasHit: true, hitDistance: 0.1 });
+
+      entity.isCrouching = false;
+      expect(entity.isCrouching).toBe(true); // still crouched, headroom blocked
+      expect(physicsWorld.factory.createCharacterController).toHaveBeenCalledTimes(1); // no new capsule yet
+
+      physicsWorld.raycast.mockReturnValue({ hasHit: false });
+      entity.tick$.next([1000, 16]); // retried automatically on tick
+      expect(entity.isCrouching).toBe(false);
+      expect(physicsWorld.factory.createCharacterController).toHaveBeenCalledTimes(2);
     });
   });
 
