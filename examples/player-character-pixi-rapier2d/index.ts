@@ -12,8 +12,7 @@ import { PixiCameraComponent, PixiGgWorld, PixiSceneComponent } from '@gg-web-en
 import { Rapier2dGgWorld, Rapier2dWorldComponent } from '@gg-web-engine/rapier2d';
 import { Assets } from 'pixi.js';
 
-// Shared with player-character-pixi-matter - see examples/assets/characters/generate-character-atlas.py
-const characterAtlasUrl = 'https://gg-web-demos.guraklgames.com/assets/characters/character-atlas.png';
+const characterAtlasUrl = '/assets/characters/character-atlas.png';
 
 GgStatic.instance.showStats = true;
 GgStatic.instance.devConsoleEnabled = true;
