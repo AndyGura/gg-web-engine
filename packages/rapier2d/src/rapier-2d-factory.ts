@@ -14,17 +14,18 @@ import { Rapier2dCharacterControllerComponent } from './components/rapier-2d-cha
 import { Rapier2dWorldComponent } from './components/rapier-2d-world.component';
 import { Rapier2dPhysicsTypeDocRepo } from './types';
 
-const DEFAULT_CHARACTER_CONTROLLER_OPTIONS: Required<Omit<CharacterController2dOptions, 'radius' | 'centersDistance'>> = {
-  offset: 0.01,
-  maxStepHeight: 0.3,
-  minStepWidth: 0.2,
-  maxSlopeClimbAngleRad: (50 * Math.PI) / 180,
-  snapToGroundDistance: 0.3,
-  up: Pnt2.nY,
-  ownCollisionGroups: 'all',
-  interactWithCollisionGroups: 'all',
-  pushMass: 80,
-};
+const DEFAULT_CHARACTER_CONTROLLER_OPTIONS: Required<Omit<CharacterController2dOptions, 'radius' | 'centersDistance'>> =
+  {
+    offset: 0.01,
+    maxStepHeight: 0.3,
+    minStepWidth: 0.2,
+    maxSlopeClimbAngleRad: (50 * Math.PI) / 180,
+    snapToGroundDistance: 0.3,
+    up: Pnt2.nY,
+    ownCollisionGroups: 'all',
+    interactWithCollisionGroups: 'all',
+    pushMass: 80,
+  };
 
 export class Rapier2dFactory implements IPhysicsBody2dComponentFactory<Rapier2dPhysicsTypeDocRepo> {
   constructor(protected readonly world: Rapier2dWorldComponent) {}

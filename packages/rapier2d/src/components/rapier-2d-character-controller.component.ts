@@ -34,9 +34,7 @@ import { Rapier2dGgWorld, Rapier2dPhysicsTypeDocRepo } from '../types';
  * class's own doc for the full rationale behind each of these; only 2D-specific notes are repeated
  * here.
  */
-export class Rapier2dCharacterControllerComponent
-  implements ICharacterController2dComponent<Rapier2dPhysicsTypeDocRepo>
-{
+export class Rapier2dCharacterControllerComponent implements ICharacterController2dComponent<Rapier2dPhysicsTypeDocRepo> {
   public entity: Entity2d | null = null;
   public name: string = '';
 

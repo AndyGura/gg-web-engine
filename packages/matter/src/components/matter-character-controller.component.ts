@@ -15,7 +15,9 @@ import { MatterTriggerComponent } from './matter-trigger.component';
 import { MatterWorldComponent } from './matter-world.component';
 import { MatterGgWorld, MatterPhysicsTypeDocRepo } from '../types';
 
-const DEFAULT_OPTIONS: Required<Omit<CharacterController2dOptions, 'radius' | 'centersDistance' | 'ownCollisionGroups'>> = {
+const DEFAULT_OPTIONS: Required<
+  Omit<CharacterController2dOptions, 'radius' | 'centersDistance' | 'ownCollisionGroups'>
+> = {
   offset: 0.01,
   maxStepHeight: 0.3,
   minStepWidth: 0.2,
@@ -95,9 +97,7 @@ type AxisMoveResult = {
  * `checkOverlaps()` already existed as a per-tick hook with nothing else needing it for matter-js,
  * rather than inventing a second, differently-shaped mechanism.
  */
-export class MatterCharacterControllerComponent
-  implements ICharacterController2dComponent<MatterPhysicsTypeDocRepo>
-{
+export class MatterCharacterControllerComponent implements ICharacterController2dComponent<MatterPhysicsTypeDocRepo> {
   public entity: Entity2d | null = null;
   public name: string = '';
 
@@ -230,9 +230,7 @@ export class MatterCharacterControllerComponent
     for (const body of this.ignoredBodies) {
       ignoredNative.add(body.nativeBody);
     }
-    return Composite.allBodies(matterWorld).filter(
-      b => !b.isSensor && !ignoredNative.has(b) && this.canCollideWith(b),
-    );
+    return Composite.allBodies(matterWorld).filter(b => !b.isSensor && !ignoredNative.has(b) && this.canCollideWith(b));
   }
 
   private canCollideWith(other: Body): boolean {
@@ -337,10 +335,7 @@ export class MatterCharacterControllerComponent
         // .offset`'s own doc describes ("keep the underlying sweep test numerically stable") - without
         // it, this would land at *exactly* zero-gap contact, which is one bad floating-point rounding
         // away from a spurious re-penetration on the very next tick's query.
-        const corrected = Pnt2.add(
-          candidate,
-          Pnt2.scalarMult(blockingNormal, blockingDepth + this.options.offset),
-        );
+        const corrected = Pnt2.add(candidate, Pnt2.scalarMult(blockingNormal, blockingDepth + this.options.offset));
         Body.setPosition(this.nativeBody, corrected);
         return { pos: corrected, blocked: true, normal: blockingNormal, overlappingBodies };
       }

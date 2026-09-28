@@ -1,5 +1,12 @@
 import { filter, takeUntil } from 'rxjs';
-import { DirectionKeyboardInput, DirectionKeyboardKeymap, IEntity, KeyboardInput, Pnt2, TickOrder } from '../../../../base';
+import {
+  DirectionKeyboardInput,
+  DirectionKeyboardKeymap,
+  IEntity,
+  KeyboardInput,
+  Pnt2,
+  TickOrder,
+} from '../../../../base';
 import { Renderer2dEntity } from '../../renderer-2d.entity';
 import { CharacterController2dEntity } from '../../character-controller-2d.entity';
 import { Gg2dWorld, Gg2dWorldTypeDocRepo } from '../../../gg-2d-world';
@@ -42,9 +49,7 @@ const DEFAULT_OPTIONS: PlayerCharacterController2dOptions = {
  * `CharacterController2dEntity`'s own doc for why `moveDirection` is a scalar, not a look-relative
  * vector).
  */
-export class PlayerCharacterController2d<
-  TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTypeDocRepo,
-> extends IEntity {
+export class PlayerCharacterController2d<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTypeDocRepo> extends IEntity {
   static readonly entityTypeName: string = 'PlayerCharacterController2d';
   public readonly tickOrder = TickOrder.CONTROLLERS;
 
@@ -114,7 +119,10 @@ export class PlayerCharacterController2d<
       return;
     }
     const right = Pnt2.rot(this.character.characterController.up, Math.PI / 2);
-    const target = Pnt2.add(this.character.position, Pnt2.scalarMult(right, this.options.lookAheadDistance * this.character.facing));
+    const target = Pnt2.add(
+      this.character.position,
+      Pnt2.scalarMult(right, this.options.lookAheadDistance * this.character.facing),
+    );
     const t = Math.min(1, this.options.cameraSmoothing <= 0 ? 1 : this.options.cameraSmoothing * 60 * dt);
     this.camera.position = Pnt2.lerp(this.camera.position, target, t);
   }

@@ -324,7 +324,7 @@ export class Gg2dWorld<
           return `spawned "${character.name}" at ${JSON.stringify(character.position)}, controlled by "${controller.name}"`;
         },
         'usage: player_spawn X Y; Spawn a default player character (capsule body, left/right/' +
-          'jump/run keys) at world-space position X Y and control the first renderer\'s camera ' +
+          "jump/run keys) at world-space position X Y and control the first renderer's camera " +
           'with it. Sized in pixels, matching the "spawn" command\'s own default-shape scale.',
       );
     }

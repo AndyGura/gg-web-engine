@@ -47,7 +47,9 @@ export class PixiAnimatedSpriteComponent
   playAnimation(name: string, options: PlayAnimation2dOptions = {}): void {
     const clip = this.clips[name];
     if (!clip) {
-      warnOnce(`[@gg-web-engine/pixi] playAnimation: unknown clip "${name}" - known clips: ${this.animationNames.join(', ')}`);
+      warnOnce(
+        `[@gg-web-engine/pixi] playAnimation: unknown clip "${name}" - known clips: ${this.animationNames.join(', ')}`,
+      );
       return;
     }
     if (this._currentAnimationName === name) {
