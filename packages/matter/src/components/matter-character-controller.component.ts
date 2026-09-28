@@ -247,7 +247,9 @@ export class MatterCharacterControllerComponent implements ICharacterController2
       b => !b.isSensor && !ignoredNative.has(b) && this.canCollideWith(b),
     );
     const otherCharacters = this.world.children
-      .filter((c): c is MatterCharacterControllerComponent => c instanceof MatterCharacterControllerComponent && c !== this)
+      .filter(
+        (c): c is MatterCharacterControllerComponent => c instanceof MatterCharacterControllerComponent && c !== this,
+      )
       .map(c => c.nativeBody)
       .filter(b => !ignoredNative.has(b) && this.canCollideWith(b));
     return worldBodies.concat(otherCharacters);
