@@ -12,6 +12,7 @@ import { Collider, EventQueue, init, Vector3, World } from '@dimforge/rapier3d-c
 import { Rapier3dRigidBodyComponent } from './rapier-3d-rigid-body.component';
 import { Rapier3dTriggerComponent } from './rapier-3d-trigger.component';
 import { Rapier3dCharacterControllerComponent } from './rapier-3d-character-controller.component';
+import { Rapier3dRaycastVehicleComponent } from './rapier-3d-raycast-vehicle.component';
 import { Rapier3dFactory } from '../rapier-3d-factory';
 import { Rapier3dLoader } from '../rapier-3d-loader';
 import { Rapier3dPhysicsTypeDocRepo } from '../types';
@@ -88,6 +89,16 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
   public readonly handleIdEntityMap: Map<number, Rapier3dRigidBodyComponent | Rapier3dCharacterControllerComponent> =
     new Map();
 
+  /**
+   * Every `Rapier3dRaycastVehicleComponent` currently in this world - unlike an ordinary rigid body
+   * or `Rapier3dCharacterControllerComponent`, a vehicle needs an explicit per-tick
+   * `updateVehicle()` call (see that class's own doc for why: nothing steps Rapier's vehicle
+   * controller automatically as part of `World.step()`). `simulate()` drives every registered
+   * vehicle from this set immediately before stepping the world, so the forces it just wrote into
+   * the chassis's velocity get integrated by that same step.
+   */
+  public readonly raycastVehicles: Set<Rapier3dRaycastVehicleComponent> = new Set();
+
   constructor() {
     this.added$.subscribe(c => this.children.push(c));
     this.removed$.subscribe(c => this.children.splice(this.children.indexOf(c), 1));
@@ -102,7 +113,14 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
   }
 
   simulate(delta: number): void {
-    this._nativeWorld!.timestep = delta / 1000;
+    const dt = delta / 1000;
+    // must run *before* `World.step()` - `updateVehicle` directly writes each vehicle's chassis
+    // velocity from this tick's suspension/engine/brake forces, which `step()` then integrates like
+    // any other dynamic body's velocity (see `Rapier3dRaycastVehicleComponent`'s own doc).
+    for (const vehicle of this.raycastVehicles) {
+      vehicle.stepVehicleController(dt);
+    }
+    this._nativeWorld!.timestep = dt;
     this._nativeWorld?.step(this.eventQueue);
     this.dispatchCollisionEvents();
   }
