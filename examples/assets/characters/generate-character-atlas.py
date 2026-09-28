@@ -51,7 +51,11 @@ def draw_frame(pose):
     img = Image.new("RGBA", (LW, LH), BG)
     px = img.load()
 
-    bob = pose.get("bob", 0)  # whole-body vertical offset (torso/head/arms), legs stay planted
+    bob = pose.get("bob", 0)  # top-of-body vertical offset (head/torso/arms)
+    # legs' own vertical offset - defaults to `bob` so a whole-body bounce (walk/run/jump) still
+    # moves the legs too; idle passes `leg_bob=0` explicitly so only the top of the body breathes
+    # while the legs/feet stay planted at a constant Y (a uniform `bob` there reads as a hop/jump).
+    leg_bob = pose.get("leg_bob", bob)
     lean = pose.get("lean", 0)  # whole-body horizontal offset (torso/head), for running
 
     head_x = 5 + lean
@@ -61,11 +65,12 @@ def draw_frame(pose):
     torso_h = pose.get("torso_h", 8)  # shorter for a hunched/crouched silhouette
 
     # legs: independent x-offset (stride) and vertical "lift" (shortens the leg, foot off ground).
-    # `leg_top` always sits right below the torso (rather than a fixed offset from `bob` alone) so a
-    # shortened `torso_h` (crouching) pulls the legs up with it instead of leaving a gap.
+    # `leg_top` sits `torso_h` below the *leg_bob*-based torso top (rather than the top's own bob)
+    # so a shortened `torso_h` (crouching) still pulls the legs up to meet it with no gap, without
+    # coupling leg position to a top-of-body breathing bob that isn't meant to move the legs.
     l_off, l_lift = pose["left_leg"]
     r_off, r_lift = pose["right_leg"]
-    leg_top = torso_y + torso_h
+    leg_top = 7 + leg_bob + torso_h
     leg_h = 9 - l_lift
     rleg_h = 9 - r_lift
 
@@ -110,6 +115,7 @@ def idle_frames():
             draw_frame(
                 dict(
                     bob=bob,
+                    leg_bob=0,  # breathing only lifts the chest/head/arms - feet stay put
                     left_leg=(0, 0),
                     right_leg=(0, 0),
                     left_arm=(0, False),
@@ -150,7 +156,11 @@ def stride_frames(n, amp, lift_amp, lean, arm_amp):
 def crouch_frames():
     frames = []
     for i in range(4):
-        bob = [6, 7, 6, 7][i]  # large bob + shortened torso -> compact, hunched silhouette
+        # bob just large enough that the shortened torso still meets the legs at their normal
+        # standing `leg_top` (7 + bob + torso_h == 15, same as idle/walk) - a bigger bob overshoots
+        # that and pushes the whole pose (legs included) below the frame, clipping the feet off and
+        # reading as "sunk into the floor" relative to the (unchanged) capsule position.
+        bob = [2, 3, 2, 3][i]  # small hunched-breathing variation, compact silhouette
         frames.append(
             draw_frame(
                 dict(

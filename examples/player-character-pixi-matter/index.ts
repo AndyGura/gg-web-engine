@@ -11,7 +11,9 @@ import {
 import { PixiCameraComponent, PixiGgWorld, PixiSceneComponent } from '@gg-web-engine/pixi';
 import { MatterGgWorld, MatterWorldComponent } from '@gg-web-engine/matter';
 import { Assets } from 'pixi.js';
-import characterAtlasUrl from './assets/character-atlas.png';
+
+// Shared with player-character-pixi-rapier2d - see examples/assets/characters/generate-character-atlas.py
+const characterAtlasUrl = 'https://gg-web-demos.guraklgames.com/assets/characters/character-atlas.png';
 
 GgStatic.instance.showStats = true;
 GgStatic.instance.devConsoleEnabled = true;
@@ -92,7 +94,7 @@ world.init().then(async () => {
   await world.loader.loadLevel(level, 'MainLevel');
 
   // A pixel-art atlas (idle/walk/run/jump/crouch rows on a uniform grid - see
-  // ./assets/generate-character-atlas.py) sliced into named animation clips.
+  // ../assets/characters/generate-character-atlas.py) sliced into named animation clips.
   const atlasTexture = await Assets.load(characterAtlasUrl);
   atlasTexture.source.scaleMode = 'nearest'; // keep the pixel-art look crisp when scaled up
   const sprite = world.visualScene.factory.createAnimatedSprite(atlasTexture, {
