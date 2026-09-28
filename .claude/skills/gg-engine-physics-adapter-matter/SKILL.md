@@ -178,11 +178,12 @@ following plain `nativeBody.position = Vector.create(x, y)` (or, worse, mutating
 .y` in place, as `createTrigger` used to) changes what `.position` *reports* without moving the real
 collision geometry at all - `.vertices`/`.bounds` stay wherever they were built, permanently desynced
 from `.position` until something else corrects them. Confirmed empirically (see the worked example
-below) and directly responsible for this file's own now-fixed `MatterTriggerComponent` test suite's
+below) and was one of two bugs behind this file's own `MatterTriggerComponent` test suite's
 long-standing FIXME ("spawning objects on some coordinates seems to cause collisions with all the
 objects that intersect the line between (0, 0) and desired position, sensors are flying away to the
 infinity") - a body's vertices sitting at the origin while `.position` claims otherwise is exactly what
-produces that symptom.
+produces that symptom. This fix alone was only enough to unblock 3 of the suite's 5 `it.skip`s once
+they were re-enabled - see the next section for the second, unrelated bug the other 2 needed.
 
 ```js
 const b = Bodies.circle(0, 0, 1, {});
@@ -218,6 +219,35 @@ hundreds of steps), and one no longer hardcodes a "wait N steps, then knock it a
 it reacts to the real `onCollisionStart` event instead, since the exact number of steps a fall of a given
 distance/speed takes to make contact isn't what that test means to assert. If you ever need a
 CIRCLE-on-floor resting scenario specifically, budget for this - it is not this engine's strong suit.
+
+## `MatterTriggerComponent.currentOverlaps` must actually be populated, and a removed body must trigger an explicit exit
+
+The other bug behind the same long-standing `MatterTriggerComponent` test suite FIXME (the position-write
+bug above accounted for 3 of its 5 `it.skip`s; this one accounted for the remaining 2, both about
+`removeFromWorld`): `currentOverlaps` was declared and cleared in `addToWorld`/`removeFromWorld`, but
+`handleCollisionStart`/`handleCollisionEnd` never actually added or removed anything from it - they only
+ever pushed straight onto `onEnter$`/`onLeft$` and left the set permanently empty. That made
+`removeFromWorld`'s own "notify everyone still overlapping that this trigger is gone"
+loop (`for (const body of this.currentOverlaps) { this.onLeft$.next(body); }`) a silent no-op. Fixed by
+having `handleCollisionStart`/`handleCollisionEnd` add/delete `comp` from `currentOverlaps` themselves
+(narrowed via `comp instanceof MatterRigidBodyComponent`, since `world.children.find(...)` returns the
+wider `MatterWorldChild` union) right alongside firing `onEnter$`/`onLeft$`.
+
+Separately, the reverse direction had no mechanism at all: `Composite.remove` (what a rigid body's own
+`removeFromWorld` calls) never fires a native `collisionEnd` for the body being removed - matter-js just
+stops considering that body's pairs on the *next* step, it doesn't retroactively report whatever was
+active at the moment of removal. So a rigid body removed from the world while still overlapping a trigger
+left that trigger's `currentOverlaps` (and, for a character, `currentCharacterOverlaps`) permanently
+stale, and `onEntityLeft` never fired for it - this is a distinct gap from the sensor-pair skip in
+`MatterWorldComponent`'s own `handleCollisionStart`/`handleCollisionEnd` (which back
+`onCollisionStart`/`onCollisionEnd`, not a trigger's `onEntityEntered`/`onEntityLeft`, and were never in
+play here). Fixed by having `MatterTriggerComponent.addToWorld` subscribe to
+`world.physicsWorld.removed$` (already `.next()`'d by every component's own `removeFromWorld`, for any
+component - rigid body, trigger, or character controller) and, on each removal, drop the removed
+component from whichever overlap set actually contains it and fire `onLeft$` - skipping the case where
+the removed component is the trigger itself (its own `removeFromWorld` already handles that directly).
+The subscription is torn down in `removeFromWorld` alongside the existing `collisionStart`/`collisionEnd`
+listener cleanup.
 
 ## Character controller: a from-scratch discrete-query mover, no native sweep to lean on
 

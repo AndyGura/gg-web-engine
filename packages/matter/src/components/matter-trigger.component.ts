@@ -1,4 +1,4 @@
-import { map, merge, Observable, Subject } from 'rxjs';
+import { map, merge, Observable, Subject, Subscription } from 'rxjs';
 import { Body, Engine, Events, IEventCollision, Query } from 'matter-js';
 import { MatterRigidBodyComponent } from './matter-rigid-body.component';
 import { MatterCharacterControllerComponent } from './matter-character-controller.component';
@@ -35,6 +35,16 @@ export class MatterTriggerComponent
   protected intersectionsAmount = 0;
   protected currentOverlaps: Set<MatterRigidBodyComponent> = new Set();
 
+  /** `Composite.remove` (what `removeFromWorld` calls) never fires a native `collisionEnd` for the
+   * body it removes - matter-js simply stops considering that body's pairs on the next step, it
+   * doesn't retroactively report the pairs that were active at removal time. Without this, a body
+   * removed from the world while still overlapping this trigger would leave `currentOverlaps`
+   * (and, for a character, `currentCharacterOverlaps`) permanently stale and `onEntityLeft` would
+   * never fire for it. `world.physicsWorld.removed$` fires for every component removal regardless
+   * of overlap state, so this only actually acts when the removed component is one this trigger was
+   * still tracking as an overlap. */
+  private removedSub?: Subscription;
+
   private handleCollisionStart(event: IEventCollision<Engine>) {
     for (const pair of event.pairs) {
       let body: Body | null = null;
@@ -45,7 +55,8 @@ export class MatterTriggerComponent
       }
       if (body) {
         let comp = this.world.children.find(c => c.nativeBody === body);
-        if (comp) {
+        if (comp instanceof MatterRigidBodyComponent) {
+          this.currentOverlaps.add(comp);
           this.onEnter$.next(comp);
         }
       }
@@ -62,7 +73,8 @@ export class MatterTriggerComponent
       }
       if (body) {
         let comp = this.world.children.find(c => c.nativeBody === body);
-        if (comp) {
+        if (comp instanceof MatterRigidBodyComponent) {
+          this.currentOverlaps.delete(comp);
           this.onLeft$.next(comp);
         }
       }
@@ -97,11 +109,24 @@ export class MatterTriggerComponent
 
     Events.on(world.physicsWorld.matterEngine!, 'collisionStart', this.handleCollisionStart);
     Events.on(world.physicsWorld.matterEngine!, 'collisionEnd', this.handleCollisionEnd);
+    this.removedSub = world.physicsWorld.removed$.subscribe(c => {
+      if (c === this) {
+        return;
+      }
+      if (c instanceof MatterCharacterControllerComponent) {
+        if (this.currentCharacterOverlaps.delete(c)) {
+          this.onLeft$.next(c);
+        }
+      } else if (c instanceof MatterRigidBodyComponent && this.currentOverlaps.delete(c)) {
+        this.onLeft$.next(c);
+      }
+    });
   }
 
   removeFromWorld(world: MatterGgWorld, dispose?: boolean): void {
     Events.off(world.physicsWorld.matterEngine!, 'collisionStart', this.handleCollisionStart);
     Events.off(world.physicsWorld.matterEngine!, 'collisionEnd', this.handleCollisionEnd);
+    this.removedSub?.unsubscribe();
 
     for (const body of this.currentOverlaps) {
       this.onLeft$.next(body);
