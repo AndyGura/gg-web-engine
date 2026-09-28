@@ -3,8 +3,8 @@ import {
   CharacterController3dOptions,
   CollisionGroup,
   DebugBody3DSettings,
-  Entity3d,
   ICharacterController3dComponent,
+  IEntity,
   Pnt3,
   Point3,
   Point4,
@@ -59,7 +59,7 @@ import { Rapier3dGgWorld, Rapier3dPhysicsTypeDocRepo } from '../types';
  * there, same as before.
  */
 export class Rapier3dCharacterControllerComponent implements ICharacterController3dComponent<Rapier3dPhysicsTypeDocRepo> {
-  public entity: Entity3d | null = null;
+  public entity: IEntity | null = null;
   public name: string = '';
 
   public readonly radius: number;
@@ -441,6 +441,11 @@ export class Rapier3dCharacterControllerComponent implements ICharacterControlle
     bd.setTranslation(pos.x, pos.y, pos.z);
     bd.setRotation(new Quaternion(rot.x, rot.y, rot.z, rot.w));
     const comp = new Rapier3dCharacterControllerComponent(this.world, this.options, bd);
+    // `this.options.up` is only ever read once, in the constructor - the live `up` setter (used by
+    // any caller that rotates the character after construction) never writes back to it, so it goes
+    // stale the moment `up` changes; copy the CURRENT value here instead, the same way
+    // `collisionGroups` already does below.
+    comp.up = this.up;
     comp.collisionGroups = this.collisionGroups;
     return comp;
   }

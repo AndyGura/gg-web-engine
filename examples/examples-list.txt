@@ -14,5 +14,7 @@ collision-groups-pool-three-rapier3d
 shooter-three-ammo
 player-character-three-ammo
 player-character-three-rapier3d
+player-character-pixi-matter
+player-character-pixi-rapier2d
 portal-room-three-ammo
 portal-room-three-rapier3d

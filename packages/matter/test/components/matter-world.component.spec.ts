@@ -118,7 +118,7 @@ describe('MatterWorldComponent', () => {
     });
   });
 
-  describe.skip('Raycast', () => {
+  describe('Raycast', () => {
     it('should return no hit when ray does not intersect any object', () => {
       // Create a square far away from the ray
       const square = world.factory.createRigidBody(

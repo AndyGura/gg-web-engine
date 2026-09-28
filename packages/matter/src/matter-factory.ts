@@ -1,6 +1,7 @@
 import {
   Body2DOptions,
   BodyShape2DDescriptor,
+  CharacterController2dOptions,
   IPhysicsBody2dComponentFactory,
   Pnt2,
   Point2,
@@ -9,6 +10,7 @@ import {
 } from '@gg-web-engine/core';
 import { MatterRigidBodyComponent } from './components/matter-rigid-body.component';
 import { MatterTriggerComponent } from './components/matter-trigger.component';
+import { MatterCharacterControllerComponent } from './components/matter-character-controller.component';
 import { MatterWorldComponent } from './components/matter-world.component';
 import { Bodies, Body, Common, IChamferableBodyDefinition, Vector } from 'matter-js';
 import * as decomp from 'poly-decomp';
@@ -96,9 +98,30 @@ export class MatterFactory implements IPhysicsBody2dComponentFactory<MatterPhysi
     if (!nativeBody) {
       throw new Error(`Shape "${descriptor.shape}" not implemented for Matter.js`);
     }
-    nativeBody.position = Vector.create(transform?.position?.x || 0, transform?.position?.y || 0);
-    nativeBody.angle = transform?.rotation || 0;
-    return new MatterRigidBodyComponent(nativeBody, descriptor.shape);
+    // Must go through `Body.setPosition`/`Body.setAngle` (not a raw `nativeBody.position = ...`
+    // field assignment) - see `gg-engine-physics-adapter-matter`'s own note on this: a body's
+    // `vertices`/`bounds` (what every actual collision query reads) are only ever translated to
+    // match `.position` at creation time, using whatever position was passed into
+    // `Bodies.rectangle`/`Bodies.circle`/`Bodies.fromVertices` itself (always `(0, 0)` here) - a
+    // later raw field write changes what `.position` *reports* without moving the real collision
+    // geometry at all, permanently desyncing the two until something else (ordinary simulation,
+    // which this character-controller-adjacent code path can't rely on) happens to correct it.
+    Body.setPosition(nativeBody, Vector.create(transform?.position?.x || 0, transform?.position?.y || 0));
+    Body.setAngle(nativeBody, transform?.rotation || 0);
+    const component = new MatterRigidBodyComponent(nativeBody, descriptor.shape);
+    // `transformOptions` (used to build `nativeBody` above) only ever reads
+    // `bodyType`/`mass`/`restitution`/`friction` - `ownCollisionGroups`/`interactWithCollisionGroups`
+    // must be applied through the component's own setters afterward (same as
+    // `MatterCharacterControllerComponent`'s constructor already does for a character), or a
+    // configured collision group is silently dropped in favor of the "all groups" default every
+    // `MatterRigidBodyComponent` otherwise starts with.
+    if (descriptor.body.ownCollisionGroups !== undefined) {
+      component.ownCollisionGroups = descriptor.body.ownCollisionGroups;
+    }
+    if (descriptor.body.interactWithCollisionGroups !== undefined) {
+      component.interactWithCollisionGroups = descriptor.body.interactWithCollisionGroups;
+    }
+    return component;
   }
 
   createTrigger(
@@ -141,15 +164,27 @@ export class MatterFactory implements IPhysicsBody2dComponentFactory<MatterPhysi
     if (!nativeBody) {
       throw new Error(`Shape "${descriptor.shape}" not implemented for Matter.js`);
     }
-    nativeBody.position.x = transform?.position?.x || 0;
-    nativeBody.position.y = transform?.position?.y || 0;
-    nativeBody.angle = transform?.rotation || 0;
+    // See the identical fix (and its doc) in `createRigidBody` above - a trigger's collision
+    // geometry needs the same real `Body.setPosition`/`Body.setAngle` treatment, not a raw
+    // `.position.x`/`.position.y`/`.angle` field write.
+    Body.setPosition(nativeBody, Vector.create(transform?.position?.x || 0, transform?.position?.y || 0));
+    Body.setAngle(nativeBody, transform?.rotation || 0);
 
     if (!this.world) {
       throw new Error('MatterFactory: World not set. Make sure the factory is created by MatterWorldComponent.');
     }
 
     return new MatterTriggerComponent(nativeBody, descriptor, this.world);
+  }
+
+  createCharacterController(
+    options: CharacterController2dOptions,
+    transform?: {
+      position?: Point2;
+      rotation?: number;
+    },
+  ): MatterCharacterControllerComponent {
+    return new MatterCharacterControllerComponent(this.world, options, transform);
   }
 
   private createShapeParts(shape: Shape2DDescriptor, options: IChamferableBodyDefinition): Body[] {

@@ -89,21 +89,23 @@ did run a bare `npm install` afterwards by mistake, just re-run
 `bash etc/switch_example_to_local_gg.sh examples/<your-example-dir>` (idempotent) to relink before
 building again.
 
-**The script's very first step is `git checkout -- package.json tsconfig.json`** (that's what makes
-re-running it idempotent instead of compounding patches) — so if you've just hand-edited either file
-(e.g. adding a missing `@gg-web-engine/*` dependency line before it's been committed) and then run
-this script, your edit is silently discarded before the script even reads the file, and the
-`@gg-web-engine/` lines it greps for `libs=(...)`/`npm link`s come from the **committed** version, not
-your working tree. Symptom: the script exits 0 with no error, but `node_modules/@gg-web-engine/`
-ends up empty and nothing got linked — easy to misread as the script being broken. Either commit the
-package.json/tsconfig.json fix first, or skip the script and run its `npm link
-$(cd ../../packages/<lib> && pwd) ...` step by hand against your uncommitted file. This also means:
-**never commit an example while it's in its "switched" (locally-linked) state** — a commit made after
-running this script captures `package.json` with its `@gg-web-engine/*` lines already stripped
-(and, for an Ammo-backed example, `tsconfig.json`'s `paths` already rewritten to point into a linked
-package's own `node_modules`), so every future `git checkout`/clone of that commit starts from a
-broken, non-standalone package.json — run `restore_example_from_local_gg.sh` (or `git checkout` the
-two files back) before committing.
+**The script's very first step is `git checkout -- package.json tsconfig.json
+webpack.dev.config.js`** (that's what makes re-running it idempotent instead of compounding
+patches) — so if you've just hand-edited any of those files (e.g. adding a missing
+`@gg-web-engine/*` dependency line before it's been committed) and then run this script, your edit
+is silently discarded before the script even reads the file, and the `@gg-web-engine/` lines it
+greps for `libs=(...)`/`npm link`s come from the **committed** version, not your working tree.
+Symptom: the script exits 0 with no error, but `node_modules/@gg-web-engine/` ends up empty and
+nothing got linked — easy to misread as the script being broken. Either commit the fix first, or
+skip the script and run its `npm link $(cd ../../packages/<lib> && pwd) ...` step by hand against
+your uncommitted file. This also means: **never commit an example while it's in its "switched"
+(locally-linked) state** — a commit made after running this script captures `package.json` with
+its `@gg-web-engine/*` lines already stripped (and, for an Ammo-backed example, `tsconfig.json`'s
+`paths` already rewritten to point into a linked package's own `node_modules`, and, for an example
+with a shared `examples/assets` dependency, `webpack.dev.config.js`'s `devServer.static` block
+uncommented — see "Adding a shared asset under `examples/assets`" below), so every future `git
+checkout`/clone of that commit starts from a broken, non-standalone package.json — run
+`restore_example_from_local_gg.sh` (or `git checkout` the three files back) before committing.
 
 ## Running
 
@@ -139,6 +141,48 @@ that appends one itself, e.g. `loadFromGlb`/`loadGgGlb`-style path conventions).
 `examples/assets` for that one example's own dev server - it has no effect on `npm run build`'s
 `dist/bundle.js`, which stays a plain bundle same as any other example (the CDN copy comes from
 `examples/deploy.sh`'s own `assets` sync, not from anything in an example's `dist/`).
+
+Commit this `devServer.static` block **commented out**, exactly as shown above - a standalone clone
+of just that one example directory (e.g. via StackBlitz/degit) has no sibling `../assets` folder to
+serve, so an active block would break `npm start` there. `switch_example_to_local_gg.sh` uncomments
+it automatically (it's running inside the full repo checkout, where `../assets` does exist) via its
+`fix_dev_server_assets` function, and `restore_example_from_local_gg.sh` reverts it back to
+commented-out via its `git checkout -- ... webpack.dev.config.js` - so day-to-day local development
+never needs you to touch this block by hand, only the initial commit adding it.
+
+### An asset that belongs to just one example (not shared/CDN-deployed): bundle it via webpack directly
+
+Not every example asset needs the `examples/assets` CDN treatment above - a texture/atlas/image
+that's only ever used by one specific example (e.g. a hand-authored sprite sheet for a single demo)
+belongs inside that example's own directory instead (e.g.
+`examples/<your-example>/assets/character-atlas.png`), committed alongside whatever script generated
+it (see the procedural-generation pattern below - the same "keep the generator script next to its
+output" reasoning applies to a 2D image just as much as a 3D `.glb`). Load it as an ordinary bundled
+webpack asset rather than reaching for the CDN/`devServer.static` machinery above:
+
+1. Add an `asset/resource` rule to *both* `webpack.config.js` and `webpack.dev.config.js`'s `module.rules`:
+   ```js
+   { test: /\.png$/, type: 'asset/resource' },
+   ```
+2. Add an ambient module declaration (e.g. `assets.d.ts` at the example's root) so `tsc`/`ts-loader`
+   accepts the import at all - webpack's own asset-module resolution isn't something the TypeScript
+   compiler knows about on its own:
+   ```ts
+   declare module '*.png' {
+     const src: string;
+     export default src;
+   }
+   ```
+3. `import atlasUrl from './assets/character-atlas.png';` in `index.ts` - webpack resolves this to a
+   content-hashed URL string at build time (e.g. `1cb559558c4f56d7df06.png`), and both `npm start`
+   and `npm run build` serve/emit it correctly with no further config. Hand that URL to whatever
+   loader the visual library provides (e.g. pixi.js's `Assets.load(atlasUrl)`, which returns a
+   `Promise` resolving to a `Texture`) exactly as if it were served from a real path.
+
+This is a different mechanism from the shared-CDN-asset workflow above on purpose: a CDN-synced
+asset must stay a stable, absolute, hand-typed URL (deploy-time, not build-time), while an
+example-owned asset should just be a normal bundled module - don't set up `devServer.static`/hardcode
+a CDN URL for something only one example will ever reference.
 
 ### Generating a placeholder 3D asset procedurally instead of sourcing one
 
@@ -198,6 +242,29 @@ the engine's own Blender exporter reaches via `export_yup=False`
 (`blender-addon/gg_web_engine_exporter/exporter.py`) - just reached here by authoring directly in
 that target convention from the start instead of converting an existing Z-up Blender scene at
 export time.
+
+### Generating a placeholder 2D pixel-art sprite atlas procedurally instead of sourcing one
+
+The same licensing-clean-placeholder reasoning applies to a 2D character sprite sheet (idle/walk/
+run/jump-style atlas) - draw it with a throwaway Python/Pillow script instead of sourcing external
+art, and keep the script committed next to its output PNG (e.g.
+`examples/<your-example>/assets/generate-character-atlas.py` alongside `character-atlas.png`), same
+as a 3D asset's own generator. Much simpler than the GLB pipeline above (no `FileReader` polyfill,
+no rig/skinning): draw each frame on a small logical-pixel canvas (e.g. 16x24) with plain rectangle
+fills for body parts, upscale with `Image.resize((w, h), Image.NEAREST)` (never a smooth resampling
+filter, which would defeat the deliberately blocky pixel-art look), and composite the frames into one
+atlas image (`Image.new("RGBA", ...)` + repeated `.paste(frame, (col * frameW, row * frameH), frame)`
+using the frame itself as its own alpha mask). A parametric per-frame "pose" (leg/arm x-offset +
+"lift" height, whole-body vertical bob, computed from a `sin`/triangle-wave phase per frame index) is
+enough to fake a readable walk/run stride and a jump arc (crouch → launch → rise → apex → fall →
+land) without hand-placing every pixel of every frame individually. If the system Python's `pip` is
+externally managed (`pip install` refuses with `externally-managed-environment`), create a throwaway
+venv in the scratchpad directory (`python3 -m venv <scratchpad>/venv && <scratchpad>/venv/bin/pip
+install Pillow`) rather than passing `--break-system-packages` against the system interpreter.
+Sanity-check the result by cropping/upscaling individual rows or frames back out and reading them as
+images before wiring the atlas into the example - a raw thumbnail of the whole grid at native
+resolution is often too small to tell a genuine rendering bug (e.g. a mis-sliced frame rectangle)
+apart from the art simply being small.
 
 ## Live-debugging an example through browser automation
 

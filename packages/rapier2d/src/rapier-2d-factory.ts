@@ -1,6 +1,7 @@
 import {
   Body2DOptions,
   BodyShape2DDescriptor,
+  CharacterController2dOptions,
   IPhysicsBody2dComponentFactory,
   Pnt2,
   Point2,
@@ -9,8 +10,22 @@ import {
 import { ActiveEvents, ColliderDesc, RigidBodyDesc } from '@dimforge/rapier2d-compat';
 import { Rapier2dRigidBodyComponent } from './components/rapier-2d-rigid-body.component';
 import { Rapier2dTriggerComponent } from './components/rapier-2d-trigger.component';
+import { Rapier2dCharacterControllerComponent } from './components/rapier-2d-character-controller.component';
 import { Rapier2dWorldComponent } from './components/rapier-2d-world.component';
 import { Rapier2dPhysicsTypeDocRepo } from './types';
+
+const DEFAULT_CHARACTER_CONTROLLER_OPTIONS: Required<Omit<CharacterController2dOptions, 'radius' | 'centersDistance'>> =
+  {
+    offset: 0.01,
+    maxStepHeight: 0.3,
+    minStepWidth: 0.2,
+    maxSlopeClimbAngleRad: (50 * Math.PI) / 180,
+    snapToGroundDistance: 0.3,
+    up: Pnt2.nY,
+    ownCollisionGroups: 'all',
+    interactWithCollisionGroups: 'all',
+    pushMass: 80,
+  };
 
 export class Rapier2dFactory implements IPhysicsBody2dComponentFactory<Rapier2dPhysicsTypeDocRepo> {
   constructor(protected readonly world: Rapier2dWorldComponent) {}
@@ -55,6 +70,25 @@ export class Rapier2dFactory implements IPhysicsBody2dComponentFactory<Rapier2dP
       descriptor,
       this.createRigidBodyDescr({ bodyType: 'static' }, transform),
     );
+  }
+
+  createCharacterController(
+    options: CharacterController2dOptions,
+    transform?: {
+      position?: Point2;
+      rotation?: number;
+    },
+  ): Rapier2dCharacterControllerComponent {
+    const resolvedOptions: Required<CharacterController2dOptions> = {
+      ...DEFAULT_CHARACTER_CONTROLLER_OPTIONS,
+      ownCollisionGroups: [this.world.mainCollisionGroup],
+      ...options,
+    };
+    const bodyDescr = RigidBodyDesc.kinematicPositionBased();
+    const pos = transform?.position || Pnt2.O;
+    const rot = transform?.rotation || 0;
+    bodyDescr.setTranslation(pos.x, pos.y).setRotation(rot);
+    return new Rapier2dCharacterControllerComponent(this.world, resolvedOptions, bodyDescr);
   }
 
   public createColliderDescr(descriptor: Shape2DDescriptor): ColliderDesc[] {

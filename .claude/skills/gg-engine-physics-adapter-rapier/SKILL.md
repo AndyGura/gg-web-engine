@@ -8,11 +8,16 @@ description: Known, already-solved implementation pitfalls specific to packages/
 This file is Rapier-specific (`@dimforge/rapier2d-compat`/`@dimforge/rapier3d-compat`) history: real
 bugs hit and fixed while building these two packages, kept here so nobody re-discovers them from
 scratch while touching either one again. Read `gg-engine-physics-adapter` first for the general
-interface contract (`IPhysicsWorldComponent`, `ICharacterController3dComponent`, the
+interface contract (`IPhysicsWorldComponent`, `ICharacterController(2d|3d)Component`, the
 `removeFromWorld(dispose)` contract, etc.) - everything below assumes that contract and only covers
-where Rapier's own native API/build made it non-obvious to satisfy. Most sections below are 3D-only
-(`Rapier3dCharacterControllerComponent` has no 2D counterpart - core has no 2D character-controller
-interface); the ones that aren't say so explicitly.
+where Rapier's own native API/build made it non-obvious to satisfy. `Rapier2dCharacterControllerComponent`
+mirrors `Rapier3dCharacterControllerComponent` near-verbatim (Rapier's own
+`KinematicCharacterController`/`computeColliderMovement`/`computedGrounded`/`computedCollision` API is
+essentially identical between `@dimforge/rapier2d-compat` and `@dimforge/rapier3d-compat` - `Vector2`/a
+plain scalar rotation instead of `Vector3`/`Quaternion`, otherwise the same method names and semantics)
+- so most of the character-controller pitfalls below apply to both packages even though they were
+each found on one specific side first; sections that genuinely don't apply to the other dimension say
+so explicitly.
 
 ## The `removeFromWorld(dispose)` contract, Rapier specifics
 
@@ -222,6 +227,81 @@ player actually triggers this (run onto the obstacle, then let go of every key),
 settling `move()` call - a test that only checks the immediate landing tick's normal can pass while the
 underlying bug (which manifests one tick later, every time) is still very much present.
 
+## Pitfall (2D only, `packages/rapier2d`): `computeColliderMovement` can fully block horizontal movement, direction-dependently, whenever `desiredTranslation` mixes a horizontal component with *any* non-zero downward one
+
+Symptom reported live: in a side-scroller demo, walking one horizontal direction worked fine
+indefinitely, but walking the other direction got the character stuck at a fixed position after a few
+steps - not sliding, not jittering, just frozen - and jumping (which takes a different code path
+through `move()`, see below) immediately unstuck it. This is `Rapier2dCharacterControllerComponent`'s
+own instance of a native `KinematicCharacterController.computeColliderMovement` bug in this pinned
+`@dimforge/rapier2d-compat` build (`0.20.0`), not a level-geometry or gameplay-logic issue - it
+reproduces on a single infinite flat floor with nothing else in the scene.
+
+Root cause, confirmed empirically by feeding synthetic `desiredTranslation` vectors directly to a
+`move()` call (bypassing `CharacterController2dEntity` entirely) at a character resting flush on a
+flat floor: a **pure** horizontal or **pure** vertical `desiredTranslation` (the other axis' component
+bit-for-bit `0`) always sweeps correctly, at any magnitude. A **mixed** vector - both axes non-zero at
+once - returns an almost-exactly-zero `computedMovement()` for the *entire* movement (horizontal
+included), for *any* non-zero downward component down to ~1e-16 (float noise magnitude), regardless of
+`enableSnapToGround`/`enableAutostep` being on or off, regardless of how large the desired horizontal
+distance is, and regardless of there being no actual obstacle in that direction
+(`computedCollision(0)`'s own normal in this state is still flat, near-`up`, not a wall). This is not
+about proximity to the floor either - moving the character's body into open space first and repeating
+the same mixed-vector sweep still returns near-zero, ruling out a stale broad-phase/collider-transform-
+sync effect (see the "freshly-created collider" pitfall above); a mixed vector fails in open space too.
+Whatever this degenerate result resolves to for a given exact flush-contact configuration is direction-
+dependent (which horizontal sign gets "stuck" versus "recovers next tick" was observed to depend on the
+exact numeric position, not consistently left-vs-right) *and self-reinforcing*: a resolution of "fully
+blocked" leaves the position completely unchanged, so the identical degenerate input recurs next tick
+too - this is why the character stays frozen indefinitely rather than un-sticking on its own after a
+tick or two.
+
+**Why a mixed vector reaches `move()` at all during ordinary walking**, given
+`CharacterController2dEntity` only adds a vertical component to `desiredTranslation` while genuinely
+airborne (`_fallVelocity` is exactly `Pnt2.O` while `grounded` is `true`): `computedGrounded()` was
+observed to read `false` for one or two ticks immediately after horizontal movement starts from rest
+(a native jitter, not itself investigated further here - possibly related to the "`computedGrounded()`
+can stay stuck `true`" pitfall above but in the opposite direction), which is enough for
+`CharacterController2dEntity` to integrate one or two ticks of real (non-noise) gravity before
+`computedGrounded()` reports `true` again - exactly the mixed diagonal `desiredTranslation` this bug
+needs, reached from perfectly ordinary walking, not just adversarial input. Floating-point noise alone
+(e.g. `2.65e-16` left over from `Pnt2.add`/`scalarMult` arithmetic upstream, on an axis the caller
+considers "zero") is also sufficient to trigger it once the character is in a susceptible flush-contact
+configuration - confirmed by bisecting the vertical component's magnitude down to `1e-16` at a fixed
+position and finding the block persists at every tested magnitude above exact `0`, changing only with
+sign.
+
+**Fix**: `move()` never hands the native controller a mixed vector. It splits `desiredTranslation` into
+`horizPart`/`vertPart` (projections onto/off `up`, each constructed so the *other* axis is exactly
+`0` - not just small, since even a `1e-16` residual on the "zero" axis is what triggers this) and sweeps
+them as two separate single-axis `computeColliderMovement` calls when both are non-negligible:
+horizontal first (with `enableSnapToGround`/`enableAutostep` exactly as already decided by the
+`movingUp` check, so ground-following on a downward step/slope while walking still works, matching the
+purely-horizontal case that never reproduces this bug), then any remaining vertical intent (fall/jump
+takeoff/snap-glue) as its own pure-`up` sweep from the post-horizontal position. Even the common
+single-axis-only path (the overwhelming majority of ticks) sweeps with `horizPart`/`vertPart` rather
+than raw `desiredTranslation`, since that raw vector's own "unused" axis is exactly the kind of noisy
+near-zero value this bug treats as non-zero.
+
+**Implementation gotcha hit while building the two-phase split**: each phase must apply its own
+`computedMovement()` to the body (via `setTranslation`/`setNextKinematicTranslation` +
+`propagateModifiedBodyPositionsToColliders()`) *before* the next phase's sweep, since
+`computeColliderMovement` reads the collider's live transform - but the *final* position write must
+never be derived by re-reading `this._nativeBody.translation()` after an earlier phase already moved
+it and adding the accumulated `computed` on top again, or that phase's movement gets double-counted
+(caught by the existing `'should step up a ledge shorter than maxStepHeight without getting stuck'`
+regression test suddenly advancing at roughly 2x the intended per-tick distance during a full rewrite
+of `move()`). The fix that stuck: capture the tick's starting `translation()` exactly once, have every
+phase recompute the body's position as `start + (running total of computedMovement so far)`, and never
+re-read `translation()` as a basis for accumulation mid-tick.
+
+Only confirmed and fixed on `packages/rapier2d`; not independently re-verified on
+`packages/rapier3d`'s equivalent `move()`, which still sweeps `desiredTranslation` as a single 3D
+vector - if a similar direction-dependent stall is ever reported there, the same two-phase
+(horizontal-plane-then-vertical) split is the natural thing to try first, but 3D's extra horizontal
+degree of freedom (a full plane instead of a single scalar) would need its own investigation before
+assuming the exact same fix applies unchanged.
+
 ## Pitfall: the native dynamic-body-push feature is unusable on a kinematic character body - it explodes, not just mis-scales
 
 Rapier's `KinematicCharacterController` has a built-in, seemingly ideal equivalent of `pushMass`:
@@ -350,9 +430,10 @@ Applies to both packages (each has its own `jest` config/`node_modules`):
   loop already does this naturally), not just a test artifact. Write trigger tests as small (e.g. 10ms)
   simulate-then-check steps in a loop rather than jumping to a checkpoint with one large timestep.
 
-## `ignoredBodies` (3D): Rapier's own `filterPredicate` does this natively, no broadphase-detach trick needed
+## `ignoredBodies` (2D and 3D): Rapier's own `filterPredicate` does this natively, no broadphase-detach trick needed
 
-`Rapier3dCharacterControllerComponent.ignoredBodies` (a `Set<Rapier3dRigidBodyComponent>`) is
+`Rapier3dCharacterControllerComponent.ignoredBodies` (a `Set<Rapier3dRigidBodyComponent>`,
+`Rapier2dCharacterControllerComponent.ignoredBodies` on the 2D side identically) is
 implemented via `KinematicCharacterController.computeColliderMovement`'s own optional 5th argument,
 `filterPredicate?: (collider: Collider) => boolean` - return `false` to exclude a candidate collider
 from that one call, no persistent state or collision-group changes needed. This is meaningfully
