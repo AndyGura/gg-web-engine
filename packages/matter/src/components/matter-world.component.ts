@@ -7,7 +7,7 @@ import {
   RaycastOptions,
   RaycastResult,
 } from '@gg-web-engine/core';
-import { Body, Collision, Composite, Engine, Events, IEventCollision, Vector, World } from 'matter-js';
+import { Body, Collision, Composite, Detector, Engine, Events, IEventCollision, Vector, World } from 'matter-js';
 import { MatterFactory } from '../matter-factory';
 import { MatterPhysicsTypeDocRepo } from '../types';
 import { Subject } from 'rxjs';
@@ -268,13 +268,13 @@ export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhys
    * regression suite (`MatterWorldComponent.spec.ts`'s `Raycast` block expects a precise hit point at
    * a known box edge) that the SAT-approximated version produces a visibly wrong point.
    *
-   * `Query.collides`/`Collision.collides`/matter's own `Detector.canCollide` all test raw geometry
-   * only and know nothing about `collisionFilter` (the same limitation
-   * `MatterCharacterControllerComponent.collectObstacles`'s own doc describes) - candidates are
-   * pre-filtered here by hand, replicating `Detector.canCollide`'s category/mask check plus
-   * `options.collisionFilterGroups`/`collisionFilterMask`. Sensor bodies (triggers) are excluded from
-   * candidates entirely, mirroring `collectObstacles`'s own exclusion - a trigger never physically
-   * blocks anything, so it shouldn't register as a raycast hit either.
+   * `Query.collides`/`Collision.collides` test raw geometry only and know nothing about
+   * `collisionFilter` (the same limitation `MatterCharacterControllerComponent.collectObstacles`'s
+   * own doc describes) - candidates are pre-filtered here via `Detector.canCollide` itself, called
+   * directly against a synthetic filter built from `options.collisionFilterGroups`/
+   * `collisionFilterMask`. Sensor bodies (triggers) are excluded from candidates entirely, mirroring
+   * `collectObstacles`'s own exclusion - a trigger never physically blocks anything, so it shouldn't
+   * register as a raycast hit either.
    *
    * `hitNormal` is derived from whichever polygon edge the closest intersection landed on (rotated
    * 90°, sign chosen to point back towards `options.from`) - not from a matter-js collision object at
@@ -293,15 +293,10 @@ export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhys
       ? BitMask.pack(options.collisionFilterGroups, 16)
       : BitMask.full(16);
     const maskMask = options.collisionFilterMask ? BitMask.pack(options.collisionFilterMask, 16) : BitMask.full(16);
-    const candidates = Composite.allBodies(matterWorld).filter(b => {
-      if (b.isSensor) {
-        return false;
-      }
-      const filter = b.collisionFilter;
-      const category = filter.category ?? 0x0001;
-      const mask = filter.mask ?? 0xffffffff;
-      return (groupsMask & mask) !== 0 && (category & maskMask) !== 0;
-    });
+    const rayFilter = { category: groupsMask, mask: maskMask, group: 0 };
+    const candidates = Composite.allBodies(matterWorld).filter(
+      b => !b.isSensor && Detector.canCollide(rayFilter, b.collisionFilter),
+    );
 
     let closestT = Infinity;
     let closestPoint: Point2 | null = null;

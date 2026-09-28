@@ -104,6 +104,10 @@ export class PixiFactory extends IDisplayObject2dComponentFactory<PixiVisualType
    */
   createAnimatedSprite(baseTexture: Texture, options: PixiGridAtlasOptions): PixiAnimatedSpriteComponent {
     const { frameWidth, frameHeight, clips } = options;
+    const clipNames = Object.keys(clips);
+    if (clipNames.length === 0) {
+      throw new Error('PixiFactory.createAnimatedSprite: `options.clips` must declare at least one clip.');
+    }
     const resolvedClips: Record<string, PixiAnimationClip> = {};
     for (const [name, clip] of Object.entries(clips)) {
       const frames: Texture[] = [];
@@ -117,8 +121,7 @@ export class PixiFactory extends IDisplayObject2dComponentFactory<PixiVisualType
       }
       resolvedClips[name] = { frames, fps: clip.fps };
     }
-    const firstClipName = Object.keys(resolvedClips)[0];
-    const sprite = new AnimatedSprite(resolvedClips[firstClipName].frames, false);
+    const sprite = new AnimatedSprite(resolvedClips[clipNames[0]].frames, false);
     sprite.anchor.x = sprite.anchor.y = 0.5;
     return new PixiAnimatedSpriteComponent(sprite, resolvedClips);
   }

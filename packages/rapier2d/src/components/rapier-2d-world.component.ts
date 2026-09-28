@@ -9,7 +9,7 @@ import {
   RaycastOptions,
   RaycastResult,
 } from '@gg-web-engine/core';
-import { Collider, EventQueue, init, Vector2, World } from '@dimforge/rapier2d-compat';
+import { Collider, EventQueue, init, QueryFilterFlags, Vector2, World } from '@dimforge/rapier2d-compat';
 import { Rapier2dRigidBodyComponent } from './rapier-2d-rigid-body.component';
 import { Rapier2dTriggerComponent } from './rapier-2d-trigger.component';
 import { Rapier2dCharacterControllerComponent } from './rapier-2d-character-controller.component';
@@ -241,6 +241,12 @@ export class Rapier2dWorldComponent implements IPhysicsWorld2dComponent<Rapier2d
     this.lockedCollisionGroups = this.lockedCollisionGroups.filter(x => x !== group);
   }
 
+  /**
+   * `castRay`'s own default (no `filterFlags`) treats a sensor collider as a solid obstacle, exactly
+   * like any real one - `QueryFilterFlags.EXCLUDE_SENSORS` is required so a raycast never reports a
+   * hit against a `Trigger`'s own collider, matching what "trigger" means everywhere else in this
+   * engine (a sensor with no collision response, see `ITrigger2dComponent`).
+   */
   raycast(options: RaycastOptions<Point2>): RaycastResult<Point2, Rapier2dRigidBodyComponent> {
     if (!this._nativeWorld) {
       return { hasHit: false };
@@ -263,7 +269,7 @@ export class Rapier2dWorldComponent implements IPhysicsWorld2dComponent<Rapier2d
       ray,
       rayLength,
       true,
-      undefined,
+      QueryFilterFlags.EXCLUDE_SENSORS,
       (mask(options.collisionFilterGroups) << 16) | mask(options.collisionFilterMask),
     );
     if (!hit) {

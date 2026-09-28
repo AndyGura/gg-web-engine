@@ -287,6 +287,20 @@ describe('Rapier2dCharacterControllerComponent', () => {
     expect(clone.position).not.toEqual({ x: 0, y: -5 });
   });
 
+  it(
+    'should clone from the CURRENT up vector, not whatever was passed at construction time ' +
+      "(regression: clone() re-applied the live collisionGroups but not the live up, since " +
+      '`this.options.up` is only ever read once, in the constructor)',
+    () => {
+      const character = factory.createCharacterController(CHAR_OPTIONS, { position: { x: 0, y: -5 } });
+      character.up = { x: 1, y: 0 };
+
+      const clone = character.clone();
+
+      expect(clone.up).toEqual(character.up);
+    },
+  );
+
   it('move() before addToWorld() should be a silent no-op, not throw', () => {
     const character = factory.createCharacterController(CHAR_OPTIONS, { position: { x: 0, y: -5 } });
     expect(() => character.move({ x: 1, y: 0 })).not.toThrow();
@@ -303,4 +317,27 @@ describe('Rapier2dCharacterControllerComponent', () => {
     character.up = { x: 0, y: 3 };
     expect(character.up).toEqual({ x: 0, y: 1 });
   });
+
+  it(
+    'should push a dynamic body hit during the horizontal leg even when a vertical component is ' +
+      'also present this tick (regression: numComputedCollisions()/computedCollision() only ever ' +
+      "reflect the most recent computeColliderMovement call, so the vertical sweep's own list used " +
+      "to silently clobber the horizontal sweep's before pushDynamicBodies got a chance to read it)",
+    () => {
+      const character = factory.createCharacterController(CHAR_OPTIONS, { position: { x: 0, y: 0 } });
+      character.addToWorld({ physicsWorld: world } as any);
+      const box = factory.createRigidBody(
+        { shape: { shape: 'BOX', dimensions: { x: 1, y: 1 } }, body: { bodyType: 'dynamic', mass: 10 } },
+        { position: { x: 1.5, y: 0 } },
+      );
+      box.addToWorld({ physicsWorld: world } as any);
+      settleWorld();
+
+      // moves right (horizontal) and slightly down (vertical) in the same move() call - the "mixed"
+      // desiredTranslation shape that triggers the two-phase horizontal-then-vertical sweep.
+      character.move({ x: 2, y: 0.1 }, 1 / 60);
+
+      expect(box.linearVelocity.x).toBeGreaterThan(0);
+    },
+  );
 });

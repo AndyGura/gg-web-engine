@@ -3,8 +3,8 @@ import {
   CharacterController2dOptions,
   CollisionGroup,
   DebugBody2DSettings,
-  Entity2d,
   ICharacterController2dComponent,
+  IEntity,
   Pnt2,
   Point2,
   warnOnce,
@@ -36,7 +36,7 @@ import { Rapier2dGgWorld, Rapier2dPhysicsTypeDocRepo } from '../types';
  * intent) rather than 3D's single combined sweep - see this method's own doc for why.
  */
 export class Rapier2dCharacterControllerComponent implements ICharacterController2dComponent<Rapier2dPhysicsTypeDocRepo> {
-  public entity: Entity2d | null = null;
+  public entity: IEntity | null = null;
   public name: string = '';
 
   public readonly radius: number;
@@ -278,8 +278,26 @@ export class Rapier2dCharacterControllerComponent implements ICharacterControlle
       this.syncColliderTransform();
     };
 
+    // `numComputedCollisions()`/`computedCollision()` only ever reflect the most recent
+    // `computeColliderMovement` call - when both phases run below, the vertical sweep's own list
+    // would silently overwrite the horizontal one by the time `pushDynamicBodies` (below) needs it,
+    // losing any dynamic body the horizontal leg actually bumped into. Captured into
+    // `horizontalHitBodies` right after the horizontal sweep, before the vertical sweep (if any) can
+    // overwrite it.
+    const horizontalHitBodies: RigidBody[] = [];
+    const collectHorizontalHitBodies = (): void => {
+      const count = this._nativeController!.numComputedCollisions();
+      for (let i = 0; i < count; i++) {
+        const body = this._nativeController!.computedCollision(i)?.collider?.parent();
+        if (body) {
+          horizontalHitBodies.push(body);
+        }
+      }
+    };
+
     if (hasHoriz && hasVert) {
       applyPhase(sweep(horizPart));
+      collectHorizontalHitBodies();
       applyPhase(sweep(vertPart));
     } else if (hasVert) {
       applyPhase(sweep(vertPart));
@@ -287,18 +305,25 @@ export class Rapier2dCharacterControllerComponent implements ICharacterControlle
       // purely horizontal, or a fully negligible desired translation (still swept once, with an
       // exact-zero vertical component, to refresh `isGrounded`/`groundNormal` for this tick).
       applyPhase(sweep(horizPart));
+      collectHorizontalHitBodies();
     }
 
     this._isGrounded = this._nativeController.computedGrounded();
     this._groundNormal = this.computeGroundNormal();
 
-    this.pushDynamicBodies(desiredTranslation, dt);
+    this.pushDynamicBodies(horizontalHitBodies, desiredTranslation, dt);
   }
 
-  /** Mirrors `Rapier3dCharacterControllerComponent.pushDynamicBodies` exactly, projected into 2D. */
-  private pushDynamicBodies(desiredTranslation: Point2, dt: number | undefined): void {
+  /**
+   * Mirrors `Rapier3dCharacterControllerComponent.pushDynamicBodies` exactly, projected into 2D -
+   * except `hitBodies` is passed in by the caller rather than read fresh from
+   * `this._nativeController.numComputedCollisions()`/`computedCollision()` here, since by the time
+   * this runs those may already reflect a *later* sweep than the horizontal one this method cares
+   * about (see `move()`'s own `collectHorizontalHitBodies`).
+   */
+  private pushDynamicBodies(hitBodies: RigidBody[], desiredTranslation: Point2, dt: number | undefined): void {
     const pushMass = this.options.pushMass;
-    if (pushMass <= 0 || !this._nativeController) {
+    if (pushMass <= 0 || hitBodies.length === 0) {
       return;
     }
     const vertical = Pnt2.scalarMult(this._up, Pnt2.dot(desiredTranslation, this._up));
@@ -319,11 +344,8 @@ export class Rapier2dCharacterControllerComponent implements ICharacterControlle
     const direction = Pnt2.scalarMult(horizontal, 1 / horizLen);
     const characterSpeed = horizLen / dt;
 
-    const count = this._nativeController.numComputedCollisions();
-    for (let i = 0; i < count; i++) {
-      const collision = this._nativeController.computedCollision(i);
-      const body = collision?.collider?.parent();
-      if (!body || !body.isDynamic()) {
+    for (const body of hitBodies) {
+      if (!body.isDynamic()) {
         continue;
       }
       const bodyMass = body.mass();
@@ -373,6 +395,11 @@ export class Rapier2dCharacterControllerComponent implements ICharacterControlle
     bd.setTranslation(pos.x, pos.y);
     bd.setRotation(rot);
     const comp = new Rapier2dCharacterControllerComponent(this.world, this.options, bd);
+    // `this.options.up` is only ever read once, in the constructor - the live `up` setter (used by
+    // any caller that rotates the character after construction) never writes back to it, so it goes
+    // stale the moment `up` changes; copy the CURRENT value here instead, the same way
+    // `collisionGroups` already does below.
+    comp.up = this.up;
     comp.collisionGroups = this.collisionGroups;
     return comp;
   }

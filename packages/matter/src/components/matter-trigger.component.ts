@@ -1,5 +1,5 @@
 import { map, merge, Observable, Subject, Subscription } from 'rxjs';
-import { Body, Engine, Events, IEventCollision, Query } from 'matter-js';
+import { Body, Detector, Engine, Events, IEventCollision, Query } from 'matter-js';
 import { MatterRigidBodyComponent } from './matter-rigid-body.component';
 import { MatterCharacterControllerComponent } from './matter-character-controller.component';
 import { DebugBody2DSettings, ITrigger2dComponent, Shape2DDescriptor } from '@gg-web-engine/core';
@@ -164,22 +164,14 @@ export class MatterTriggerComponent
    */
   checkOverlaps(): void {
     // `Query.collides` tests raw geometry only and knows nothing about `collisionFilter` (see
-    // `MatterCharacterControllerComponent.collectObstacles`'s own doc on this same gap) - replicate
-    // matter's own `Detector.canCollide` category/mask check by hand so a character controller whose
-    // collision groups wouldn't ordinarily interact with this trigger isn't falsely reported entering
-    // it just because this poll bypasses the broadphase that would otherwise exclude it.
-    const canCollideWith = (other: Body): boolean => {
-      const a = this.nativeBody.collisionFilter;
-      const b = other.collisionFilter;
-      const aCategory = a.category ?? 0x0001;
-      const aMask = a.mask ?? 0xffffffff;
-      const bCategory = b.category ?? 0x0001;
-      const bMask = b.mask ?? 0xffffffff;
-      return (aMask & bCategory) !== 0 && (bMask & aCategory) !== 0;
-    };
+    // `MatterCharacterControllerComponent.collectObstacles`'s own doc on this same gap) - call
+    // matter's own `Detector.canCollide` directly so a character controller whose collision groups
+    // wouldn't ordinarily interact with this trigger isn't falsely reported entering it just because
+    // this poll bypasses the broadphase that would otherwise exclude it.
     const characters = this.world.children.filter(
       (c): c is MatterCharacterControllerComponent =>
-        c instanceof MatterCharacterControllerComponent && canCollideWith(c.nativeBody),
+        c instanceof MatterCharacterControllerComponent &&
+        Detector.canCollide(this.nativeBody.collisionFilter, c.nativeBody.collisionFilter),
     );
     const stillOverlapping = new Set<MatterCharacterControllerComponent>();
     if (characters.length > 0) {

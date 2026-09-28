@@ -105,6 +105,35 @@ describe('MatterCharacterControllerComponent', () => {
   });
 
   it(
+    'two character controllers should block each other instead of passing through (regression: a ' +
+      "character's own phantom body is never added to Composite/engine.world, so it was invisible to " +
+      "any other character's obstacle collection, which only ever enumerated Composite.allBodies)",
+    () => {
+      addFloor(0, 20, 0);
+      const characterA = factory.createCharacterController(CHAR_OPTIONS, {
+        position: { x: 0, y: -(HALF_HEIGHT + 0.5) },
+      });
+      const characterB = factory.createCharacterController(CHAR_OPTIONS, {
+        position: { x: 3, y: -(HALF_HEIGHT + 0.5) },
+      });
+      characterA.addToWorld({ physicsWorld: world } as any);
+      characterB.addToWorld({ physicsWorld: world } as any);
+      settleWorld();
+      characterA.move({ x: 0, y: 1 });
+      characterB.move({ x: 0, y: 1 });
+
+      for (let i = 0; i < 20; i++) {
+        characterA.move({ x: 0.2, y: 0 });
+      }
+
+      // characterB sits at x=3 and never moves - characterA must be blocked well short of it, not
+      // walk straight through to make its full requested 4 units of horizontal progress.
+      expect(characterA.position.x).toBeLessThan(2.5);
+      expect(characterB.position.x).toBe(3);
+    },
+  );
+
+  it(
     'walks straight through a body added to ignoredBodies instead of sliding to a stop against it ' +
       "(regression: collision groups alone can't express excluding just one specific body while both " +
       'it and the character still need to collide with the rest of the world - see ' +
@@ -230,6 +259,25 @@ describe('MatterCharacterControllerComponent', () => {
     expect(clone.position).toEqual(character.position);
     expect(clone.position).not.toEqual({ x: 0, y: -5 });
   });
+
+  it(
+    'should clone from the CURRENT up/ownCollisionGroups/interactWithCollisionGroups, not whatever ' +
+      'was passed at construction time (regression: clone() used to rebuild from the frozen ' +
+      "construction-time options object, silently discarding any of these three fields' live " +
+      'mutations via their own setters)',
+    () => {
+      const character = factory.createCharacterController(CHAR_OPTIONS, { position: { x: 0, y: -5 } });
+      character.up = { x: 1, y: 0 };
+      character.ownCollisionGroups = [world.registerCollisionGroup()];
+      character.interactWithCollisionGroups = [world.registerCollisionGroup()];
+
+      const clone = character.clone();
+
+      expect(clone.up).toEqual(character.up);
+      expect(clone.ownCollisionGroups).toEqual(character.ownCollisionGroups);
+      expect(clone.interactWithCollisionGroups).toEqual(character.interactWithCollisionGroups);
+    },
+  );
 
   it('move() before addToWorld() should be a silent no-op, not throw', () => {
     const character = factory.createCharacterController(CHAR_OPTIONS, { position: { x: 0, y: -5 } });

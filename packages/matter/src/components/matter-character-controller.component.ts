@@ -3,13 +3,13 @@ import {
   CharacterController2dOptions,
   CollisionGroup,
   DebugBody2DSettings,
-  Entity2d,
   ICharacterController2dComponent,
+  IEntity,
   Pnt2,
   Point2,
   warnOnce,
 } from '@gg-web-engine/core';
-import { Bodies, Body, Collision, Composite, Query, Vector } from 'matter-js';
+import { Bodies, Body, Collision, Composite, Detector, Query, Vector } from 'matter-js';
 import { MatterRigidBodyComponent } from './matter-rigid-body.component';
 import { MatterTriggerComponent } from './matter-trigger.component';
 import { MatterWorldComponent } from './matter-world.component';
@@ -64,8 +64,8 @@ type AxisMoveResult = {
  * **Why movement is substep-marched rather than a single discrete overlap test at the final
  * position**: matter-js has no continuous collision detection at all (see `MatterFactory
  * .transformOptions`'s own `ccd` note) and `Matter.Query.collides`/`Collision.collides` are purely
- * discrete overlap tests at whatever transform a body currently has - there is no swept/time-of-impact
- * query to call instead, unlike Rapier's `computeColliderMovement` or Bullet's `convexSweepTest`. A
+ * discrete overlap tests at whatever transform a body currently has - matter-js exposes no
+ * swept/time-of-impact query to call instead. A
  * single test-then-clamp at the fully-displaced candidate position would tunnel clean through any
  * obstacle thinner than the requested displacement (a large single-tick `move()` call, or a thin wall,
  * would simply never register contact at all). `marchMove` compensates by subdividing the requested
@@ -96,9 +96,17 @@ type AxisMoveResult = {
  * called, entirely independently of the native event path - this was the natural fit given
  * `checkOverlaps()` already existed as a per-tick hook with nothing else needing it for matter-js,
  * rather than inventing a second, differently-shaped mechanism.
+ *
+ * **Colliding with other character controllers**: `collectObstacles()` below includes every other
+ * `MatterCharacterControllerComponent` currently in the world (found via `this.world.children`, not
+ * `Composite.allBodies`, for the same reason as the previous paragraph) alongside ordinary bodies -
+ * two characters block each other's movement the same way any other obstacle does.
+ *
+ * **Divergence from the interface's own options**: `minStepWidth` is accepted but not honored - see
+ * `applyStepAssist`'s own doc for why.
  */
 export class MatterCharacterControllerComponent implements ICharacterController2dComponent<MatterPhysicsTypeDocRepo> {
-  public entity: Entity2d | null = null;
+  public entity: IEntity | null = null;
   public name: string = '';
 
   public readonly radius: number;
@@ -215,11 +223,16 @@ export class MatterCharacterControllerComponent implements ICharacterController2
    * Every other body currently in the world this character's own queries must consider - excludes
    * sensors (triggers never physically block anything, see `ITrigger2dComponent`), everything in
    * `ignoredBodies` (consulted fresh here, every call), and anything this character's own collision
-   * groups wouldn't interact with anyway. That last check is not optional here the way it would be
-   * for an ordinary rigid body added to `Composite`: `Query.collides`/`Collision.collides` test raw
-   * geometry only and know nothing about `collisionFilter` (unlike matter's own `Detector`, which this
-   * character's phantom body never passes through since it's never added to the world) - so this
-   * replicates `Detector.canCollide`'s own category/mask check by hand.
+   * groups wouldn't interact with anyway (`Query.collides`/`Collision.collides` test raw geometry
+   * only and know nothing about `collisionFilter`, unlike matter's own `Detector` - so `canCollideWith`
+   * calls `Detector.canCollide` directly against this character's own `nativeBody.collisionFilter`,
+   * which the `ownCollisionGroups`/`interactWithCollisionGroups` setters keep in sync).
+   *
+   * Also includes every *other* `MatterCharacterControllerComponent` currently in the world, via its
+   * own phantom `nativeBody` - without this, two character controllers could freely overlap and pass
+   * straight through each other, since neither one's phantom body is ever added to
+   * `Composite`/`engine.world` (see this class's own doc) and so neither is ever a candidate for the
+   * other's queries through `Composite.allBodies` alone.
    */
   private collectObstacles(): Body[] {
     const matterWorld = this.world.matterWorld;
@@ -230,14 +243,18 @@ export class MatterCharacterControllerComponent implements ICharacterController2
     for (const body of this.ignoredBodies) {
       ignoredNative.add(body.nativeBody);
     }
-    return Composite.allBodies(matterWorld).filter(b => !b.isSensor && !ignoredNative.has(b) && this.canCollideWith(b));
+    const worldBodies = Composite.allBodies(matterWorld).filter(
+      b => !b.isSensor && !ignoredNative.has(b) && this.canCollideWith(b),
+    );
+    const otherCharacters = this.world.children
+      .filter((c): c is MatterCharacterControllerComponent => c instanceof MatterCharacterControllerComponent && c !== this)
+      .map(c => c.nativeBody)
+      .filter(b => !ignoredNative.has(b) && this.canCollideWith(b));
+    return worldBodies.concat(otherCharacters);
   }
 
   private canCollideWith(other: Body): boolean {
-    const filter = other.collisionFilter;
-    const category = filter.category ?? 0x0001;
-    const mask = filter.mask ?? 0xffffffff;
-    return (this._interactWithCGsMask & category) !== 0 && (mask & this._ownCGsMask) !== 0;
+    return Detector.canCollide(this.nativeBody.collisionFilter, other.collisionFilter);
   }
 
   /** See this class's own doc for the sign convention this re-derives (`parentA`/`parentB`, not
@@ -257,12 +274,10 @@ export class MatterCharacterControllerComponent implements ICharacterController2
   }
 
   /**
-   * Pushes this character's phantom body out of any obstacle it currently overlaps at `pos`,
-   * iterating a few times since resolving one contact can reveal/deepen another - mirrors
-   * `AmmoCharacterControllerComponent.recoverFromPenetration`'s rationale (a discrete query can start
-   * this tick already embedded, e.g. from a previous tick's rounding/clamping), just via
-   * `Query.collides` instead of a native contact-test callback. Must run before any marching this
-   * tick.
+   * Pushes this character's phantom body out of any obstacle it currently overlaps at `pos`, via
+   * `Query.collides`, iterating a few times since resolving one contact can reveal/deepen another -
+   * a discrete query like this one can start a tick already embedded (e.g. from a previous tick's
+   * rounding/clamping). Must run before any marching this tick.
    */
   private recoverFromPenetration(pos: Point2, obstacles: Body[]): Point2 {
     let corrected = pos;
@@ -359,8 +374,20 @@ export class MatterCharacterControllerComponent implements ICharacterController2
    * if it both clears more horizontal distance than the unraised attempt *and* actually lands on
    * walkable ground, not just a curved/vertical surface that happens to allow more clearance a hair
    * higher up (see the general `gg-engine-physics-adapter` skill's own caution on this exact
-   * failure mode). Mirrors `AmmoCharacterControllerComponent.moveHorizontalWithStepAndSlide`'s
-   * step-up logic, using `probe`/`marchMove` in place of `convexSweepTest`.
+   * failure mode).
+   *
+   * **`minStepWidth` is not honored** - a step is accepted purely on `maxStepHeight`/walkability,
+   * with no separate check for how much free space sits on top of the ledge. An attempt at that
+   * check (probing forward from the landing spot by `minStepWidth` and requiring the ledge to still
+   * be walkable there) was tried and reverted: this mover's own step-up sequence routinely *accepts*
+   * a landing spot that is itself only a marginal, partial advance still snug against the same
+   * obstacle corner that blocked the original horizontal move (`marchMove`'s substep-and-slide
+   * approach, see this class's own doc, naturally creeps forward across several ticks rather than
+   * clearing a corner in one) - a width probe from a landing spot like that immediately re-hits the
+   * same corner and rejects the step outright, which stalls the character completely instead of
+   * letting it creep across a perfectly normal ledge over the next few ticks. `minStepWidth` is
+   * still accepted into this class's own options (see `CharacterController2dOptions.minStepWidth`'s
+   * own doc: "not every backend can honor this exactly").
    */
   private applyStepAssist(
     start: Point2,
@@ -532,13 +559,24 @@ export class MatterCharacterControllerComponent implements ICharacterController2
   }
 
   clone(): MatterCharacterControllerComponent {
-    // Reads the CURRENT position/rotation, not whatever transform was passed at construction time -
-    // that goes stale the instant this component is added to a world and starts being driven
-    // directly by `move()`/the `position`/`rotation` setters.
-    return new MatterCharacterControllerComponent(this.world, this.options, {
-      position: this.position,
-      rotation: this.rotation,
-    });
+    // Reads the CURRENT position/rotation, and the current `up`/`ownCollisionGroups`/
+    // `interactWithCollisionGroups` - not whatever `this.options` was frozen to at construction
+    // time. All five go stale the instant this component is added to a world and starts being
+    // driven directly by `move()`/their own live setters (`this.options` itself is never touched
+    // again after the constructor runs).
+    return new MatterCharacterControllerComponent(
+      this.world,
+      {
+        ...this.options,
+        up: this.up,
+        ownCollisionGroups: this.ownCollisionGroups,
+        interactWithCollisionGroups: this.interactWithCollisionGroups,
+      },
+      {
+        position: this.position,
+        rotation: this.rotation,
+      },
+    );
   }
 
   addToWorld(world: MatterGgWorld): void {
