@@ -20,7 +20,7 @@ const defaultBodyOptions: BodyOptions = {
 };
 
 export const mock2DBody = (
-  shape: Shape2DDescriptor = { shape: 'SQUARE', dimensions: { x: 1, y: 1 } },
+  shape: Shape2DDescriptor = { shape: 'BOX', dimensions: { x: 1, y: 1 } },
   bodyOptions: BodyOptions = defaultBodyOptions,
 ) => {
   return {

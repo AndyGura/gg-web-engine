@@ -7,6 +7,7 @@ import { RemoveEntityBlueprintNode } from './blueprint/nodes/remove-entity.node'
 import { PlaySoundBlueprintNode } from './blueprint/nodes/play-sound.node';
 import { warnOnce } from './logging';
 import { IPositionable } from './interfaces/i-positionable';
+import { isSerializableEntity } from './interfaces/i-serializable-entity';
 
 /**
  * A function that turns per-entity JSON settings into a spawned `IEntity` (e.g. a primitive body,
@@ -139,16 +140,22 @@ interface EntitySpawnRecord {
 
 /**
  * Customizes how {@link LevelLoader.serializeEntity} turns one entity back into an `EntityJson`,
- * for a class alias whose default serialization - an echo of the `shape`/`config` it was originally
- * built from, with `name`/`position`/`rotation` read live off the entity - isn't enough. Registered
- * via {@link LevelLoader.registerSerializer}, paired with `registerClass` on the same `classAlias`.
+ * for a class alias whose default serialization - either the entity's own
+ * {@link ISerializableEntity.serializeSettings} if it implements that, or (if not) an echo of the
+ * `shape`/`config` it was originally built from - isn't enough, in either case with `name`/
+ * `position`/`rotation` read live off the entity. Registered via
+ * {@link LevelLoader.registerSerializer}, paired with `registerClass` on the same `classAlias`.
  * Typically starts from `defaultJson` and layers extra/overridden fields onto its `config` (e.g. to
- * also capture runtime-mutated state - a gear, a health value - that spawn-time `config` alone
- * wouldn't reflect), rather than building an `EntityJson` from scratch.
+ * add something neither the entity class itself nor the spawn-time `config` capture) rather than
+ * building an `EntityJson` from scratch. This is an escape hatch for the *rare* case that needs to
+ * override a class's serialization from outside the class - prefer implementing
+ * {@link ISerializableEntity} directly on the entity class itself when you own that class, so the
+ * logic lives next to the state it describes instead of split across two files.
  * @param entity - The entity to serialize
- * @param defaultJson - What `serializeEntity` would emit without this override - `class`, the
- * spawn-time `shape`/`config` it was built from, and live `name`/`position`/`rotation` (the latter
- * two included only if `entity` actually has them)
+ * @param defaultJson - What `serializeEntity` would emit without this override - `class`, `shape`/
+ * `config` (from the entity's own `serializeSettings` if it implements `ISerializableEntity`,
+ * otherwise the spawn-time echo), and live `name`/`position`/`rotation` (the latter two included
+ * only if `entity` actually has them)
  * @returns The `EntityJson` to emit for this entity, or `undefined` to mark it not serializable
  * despite having a spawn record (logged as a warning by `serializeEntity`)
  */
@@ -161,9 +168,12 @@ export type EntitySerializer<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>> = (
  * Reconstructs an `EntityJson` by reading an entity's own *current* live state - not an echo of
  * whatever it happened to be constructed with - so it works for an entity regardless of how (or by
  * what code) it was actually built, and stays accurate no matter how much its state has drifted
- * since. Tried, in registration order, by {@link LevelLoader.serializeEntity} before it falls back
- * to the spawn-record echo {@link EntitySerializer} customizes - see
- * {@link LevelLoader.registerLiveSerializer}.
+ * since. Tried, in registration order, by {@link LevelLoader.serializeEntity} first, ahead of an
+ * entity's own {@link ISerializableEntity.serializeSettings} and the spawn-record echo - see
+ * {@link LevelLoader.registerLiveSerializer}. Reach for this (registered externally against the
+ * loader) only for a class like `"Primitive"` that has no single entity class of its own to
+ * implement `ISerializableEntity` on (it can produce a box, a sphere, ... all the same `Entity3d`);
+ * prefer `ISerializableEntity` directly on the entity class for anything that does.
  *
  * Must return `undefined` (not throw) for any entity it doesn't recognize/can't fully reconstruct -
  * `serializeEntity` moves on to the next registered live serializer, then to the spawn-record echo,
@@ -232,6 +242,15 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
   private readonly spawnRecords = new WeakMap<IEntity<D, R, TypeDoc>, EntitySpawnRecord>();
 
   /**
+   * Class alias each entity constructor is registered under - the optional third argument to
+   * {@link registerClass}. Lets {@link serializeEntity} resolve a self-serializing entity's `class`
+   * alias (see {@link ISerializableEntity}) even when that entity has no spawn record - i.e. wasn't
+   * built via {@link createEntity}/{@link loadLevel} at all, so there's nothing else to resolve it
+   * from.
+   */
+  private readonly classAliasesByCtor = new Map<Function, string>();
+
+  /**
    * Constructor
    * @param world - The world instance
    */
@@ -252,12 +271,25 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
    * Register a generator function for a class alias
    * @param classAlias - The class alias
    * @param generator - The generator function
+   * @param entityClass - The concrete entity constructor `generator` produces, if it always
+   * produces the same one. Optional - only needed to let {@link serializeEntity} resolve `class`
+   * for an instance of this class that's self-serializing (see {@link ISerializableEntity}) but
+   * wasn't itself built via `createEntity`/`loadLevel` (so has no spawn record to fall back on),
+   * e.g. one constructed directly with `new SomeEntity(...)`. Skip it for a generator whose result
+   * type varies (most built-ins - `"Primitive"` can produce several different shapes, and several
+   * different classes all produce a plain `GroupEntity`), or whose class doesn't self-serialize;
+   * neither loses anything by omitting it, since a spawn record already resolves `class` for any
+   * instance actually built through this loader.
    */
   public registerClass<Settings, W = any>(
     classAlias: string,
     generator: EntityGenerator<D, R, TypeDoc, Settings, W>,
+    entityClass?: Function,
   ): void {
     this.generators.set(classAlias, generator);
+    if (entityClass) {
+      this.classAliasesByCtor.set(entityClass, classAlias);
+    }
   }
 
   /**
@@ -364,22 +396,35 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
 
   /**
    * Turn a live entity back into the `EntityJson`-shaped descriptor that could reproduce it via
-   * {@link createEntity}/{@link loadLevel} - the inverse of entity construction. Tries every
-   * registered {@link LiveEntitySerializer} first, in registration order (see
-   * {@link registerLiveSerializer}) - these read the entity's own current physics/visual state, so
-   * they work regardless of how the entity was actually built, and reflect however much its state
-   * has drifted since (moved, reoriented, given a different velocity, ...). Only if none of those
-   * apply does this fall back to the spawn-record echo: works only for an entity that was itself
-   * built by this loader (`createEntity`, and therefore `loadLevel` too), which remembers the
-   * `class`/`shape`/`config` it was built from and echoes them straight back, with
-   * `name`/`position`/`rotation` still read live off the entity (not its spawn-time values).
+   * {@link createEntity}/{@link loadLevel} - the inverse of entity construction. Tries three
+   * mechanisms, in order:
    *
-   * An entity matched by neither - built some other way (a raw `new SomeEntity(...)` call with no
-   * live serializer registered for its class, or a child an entity class adds to itself, e.g. a
-   * `"Player"`'s `CharacterAnimationController`) - has nothing to reconstruct it from; this logs a
-   * warning and returns `undefined` rather than guessing. Register a custom serializer via
-   * {@link registerSerializer} (layered onto the echo) or {@link registerLiveSerializer} (a fully
-   * independent, state-reading reconstruction) for a class that needs either.
+   * 1. Every registered {@link LiveEntitySerializer}, in registration order (see
+   *    {@link registerLiveSerializer}) - these read the entity's own current physics/visual state
+   *    directly, so they work regardless of how the entity was actually built. This is the
+   *    mechanism the built-in `"Primitive"`/`"Trigger"` classes use, since there's no single entity
+   *    class those two alone would own (`"Primitive"` alone covers every shape).
+   * 2. The entity's own {@link ISerializableEntity.serializeSettings}, if it implements that
+   *    interface - the class-owned counterpart of (1), for a class (built-in, like `"GgCar"`, or
+   *    app-defined) that *does* have one entity class to own the logic. Its `class` alias is
+   *    resolved from the entity's spawn record if it has one (see (3)), or otherwise from the
+   *    constructor->alias mapping an optional third {@link registerClass} argument sets up - so this
+   *    still works for an entity built directly (`new SomeEntity(...)`), not only through this
+   *    loader, as long as its class was registered with that third argument.
+   * 3. Spawn-record echo - works only for an entity that was itself built by this loader
+   *    (`createEntity`, and therefore `loadLevel` too, but not tier (2), which already claims any
+   *    entity that both has a spawn record *and* self-serializes): remembers the `class`/`shape`/
+   *    `config` it was built from and echoes them straight back, with `name`/`position`/`rotation`
+   *    still read live off the entity (not its spawn-time values). This is the only option left for
+   *    a class with no live-state equivalent and no self-serialization of its own (a `"Sound"`'s
+   *    clip URL, a `"MapGraph"`'s graph structure).
+   *
+   * An entity matched by none of the three - built some other way with no live/self-serializer
+   * applicable, or a child an entity class adds to itself (a `"Player"`'s
+   * `CharacterAnimationController`) - has nothing to reconstruct it from; this logs a warning and
+   * returns `undefined` rather than guessing. {@link registerSerializer} (layered onto whichever of
+   * tiers (2)/(3) produced the entity's `class`/`shape`/`config`, if any did) is still available for
+   * a class that needs to add/override fields from outside the entity class itself.
    * @param entity - The entity to serialize
    * @returns The entity's `EntityJson` descriptor, or `undefined` if nothing could reconstruct it
    */
@@ -392,20 +437,48 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
     }
 
     const record = this.spawnRecords.get(entity);
+
+    if (isSerializableEntity(entity)) {
+      const classAlias = record?.classAlias ?? this.classAliasesByCtor.get(entity.constructor);
+      if (classAlias) {
+        const { shape, config } = entity.serializeSettings();
+        const json = this.buildEntityJson(classAlias, entity, shape, config);
+        const serializer = this.serializers.get(classAlias);
+        return serializer ? serializer(entity, json) : json;
+      }
+    }
+
     if (!record) {
       warnOnce(
-        `Cannot serialize entity "${entity.name}" - no registered live serializer recognizes it, and it has no ` +
-          `spawn record (wasn't built via createEntity/loadLevel) to fall back to`,
+        `Cannot serialize entity "${entity.name}" - no registered live/self-serializer recognizes it, and it has ` +
+          `no spawn record (wasn't built via createEntity/loadLevel) to fall back to`,
       );
       return undefined;
     }
 
-    const json: EntityJson = { class: record.classAlias, name: entity.name };
-    if (record.shape !== undefined) {
-      json.shape = record.shape;
+    const json = this.buildEntityJson(record.classAlias, entity, record.shape, record.config);
+    const serializer = this.serializers.get(record.classAlias);
+    return serializer ? serializer(entity, json) : json;
+  }
+
+  /**
+   * Assembles an `EntityJson` from a resolved `class` alias, optional `shape`/`config`, and this
+   * entity's own live `name`/`position`/`rotation` (the latter two included only if `entity`
+   * actually implements `IPositionable`) - the common tail shared by {@link serializeEntity}'s
+   * self-serialization and spawn-record-echo tiers.
+   */
+  private buildEntityJson(
+    classAlias: string,
+    entity: IEntity<D, R, TypeDoc>,
+    shape: string | undefined,
+    config: any,
+  ): EntityJson {
+    const json: EntityJson = { class: classAlias, name: entity.name };
+    if (shape !== undefined) {
+      json.shape = shape;
     }
-    if (record.config !== undefined) {
-      json.config = record.config;
+    if (config !== undefined) {
+      json.config = config;
     }
     const positionable = entity as unknown as Partial<IPositionable<D, R>>;
     if (positionable.position !== undefined) {
@@ -414,9 +487,7 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
     if (positionable.rotation !== undefined) {
       json.rotation = positionable.rotation;
     }
-
-    const serializer = this.serializers.get(record.classAlias);
-    return serializer ? serializer(entity, json) : json;
+    return json;
   }
 
   /**

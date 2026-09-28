@@ -3,6 +3,7 @@ import {
   GgWorld,
   GroupEntity,
   IEntity,
+  ISerializableEntity,
   LevelJson,
   LevelLoader,
   Point2,
@@ -34,6 +35,16 @@ class PositionableEntity extends IEntity {
     public rotation?: number,
   ) {
     super();
+  }
+}
+
+// An IEntity implementing ISerializableEntity, to exercise serializeEntity's self-serialization tier
+class SelfSerializingEntity extends IEntity implements ISerializableEntity {
+  public readonly tickOrder = TickOrder.OBJECTS_BINDING;
+  public mutableValue = 1;
+
+  public serializeSettings(): { shape?: string; config?: Record<string, any> } {
+    return { config: { mutableValue: this.mutableValue } };
   }
 }
 
@@ -760,11 +771,78 @@ describe('LevelLoader', () => {
 
       expect(json).toBeUndefined();
       expect(warnSpy).toHaveBeenCalledWith(
-        'Cannot serialize entity "Unrecorded" - no registered live serializer recognizes it, and it has no ' +
+        'Cannot serialize entity "Unrecorded" - no registered live/self-serializer recognizes it, and it has no ' +
           'spawn record (wasn\'t built via createEntity/loadLevel) to fall back to',
       );
 
       warnSpy.mockRestore();
+    });
+  });
+
+  describe('self-serialization (ISerializableEntity)', () => {
+    it("prefers an entity's own serializeSettings over the spawn-record echo, reflecting current state", async () => {
+      levelLoader.registerClass('SelfSerializing', () => new SelfSerializingEntity());
+
+      const entity = (await levelLoader.createEntity({
+        class: 'SelfSerializing',
+        name: 'Live1',
+        config: { mutableValue: 1 },
+      })) as SelfSerializingEntity;
+
+      entity.mutableValue = 42; // mutated after spawn - a spawn-record echo could never reflect this
+
+      expect(levelLoader.serializeEntity(entity)).toEqual({
+        class: 'SelfSerializing',
+        name: 'Live1',
+        config: { mutableValue: 42 },
+      });
+    });
+
+    it('resolves the class alias for a self-serializing entity built directly, via the registerClass constructor mapping', () => {
+      levelLoader.registerClass('SelfSerializing', () => new SelfSerializingEntity(), SelfSerializingEntity);
+
+      const entity = new SelfSerializingEntity();
+      entity.name = 'Direct1';
+      entity.mutableValue = 7;
+
+      expect(levelLoader.serializeEntity(entity)).toEqual({
+        class: 'SelfSerializing',
+        name: 'Direct1',
+        config: { mutableValue: 7 },
+      });
+    });
+
+    it('falls through (and eventually warns) for a self-serializing entity with no resolvable class alias', () => {
+      // registered with no third `entityClass` argument, and never built via createEntity/loadLevel
+      levelLoader.registerClass('SelfSerializing', () => new SelfSerializingEntity());
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const entity = new SelfSerializingEntity();
+      entity.name = 'Orphan1';
+
+      expect(levelLoader.serializeEntity(entity)).toBeUndefined();
+      expect(warnSpy).toHaveBeenCalled();
+
+      warnSpy.mockRestore();
+    });
+
+    it('still applies a registerSerializer override layered onto the self-serialized output', async () => {
+      levelLoader.registerClass('SelfSerializing', () => new SelfSerializingEntity());
+      levelLoader.registerSerializer('SelfSerializing', (entity, defaultJson) => ({
+        ...defaultJson,
+        config: { ...(defaultJson.config ?? {}), extra: 'layered' },
+      }));
+
+      const entity = (await levelLoader.createEntity({
+        class: 'SelfSerializing',
+        name: 'Layered1',
+      })) as SelfSerializingEntity;
+
+      expect(levelLoader.serializeEntity(entity)).toEqual({
+        class: 'SelfSerializing',
+        name: 'Layered1',
+        config: { mutableValue: 1, extra: 'layered' },
+      });
     });
   });
 

@@ -1,6 +1,7 @@
 import { AudioSource2dEntity, Entity2d, Gg2dLevelLoader, Gg2dWorld, IEntity, LevelJson, TickOrder, Trigger2dEntity } from '../../src';
 import { mock2DBody } from '../mocks/body.mock';
 import { mock2DAudioSource } from '../mocks/audio-source.mock';
+import { mock2DObject } from '../mocks/object.mock';
 
 // A trivial concrete IEntity for tests that need a generator to return a real entity
 class TestEntity extends IEntity {
@@ -488,8 +489,27 @@ describe('Gg2dLevelLoader', () => {
       });
     });
 
+    it('recovers material from object2D when it implements IMaterialReadable2dComponent', () => {
+      const body = mock2DBody({ shape: 'BOX', dimensions: { x: 1, y: 1 } });
+      const object2D = { ...mock2DObject(), materialOptions: { color: 8947848 } };
+      const entity = new Entity2d({ objectBody: body, object2D: object2D as any });
+      entity.name = 'MaterialPrimitive';
+
+      const json = levelLoader.serializeEntity(entity)!;
+      expect(json.config.material).toEqual({ color: 8947848 });
+    });
+
+    it('omits material for a display object with no IMaterialReadable2dComponent capability', () => {
+      const body = mock2DBody({ shape: 'BOX', dimensions: { x: 1, y: 1 } });
+      const entity = new Entity2d({ objectBody: body, object2D: mock2DObject() });
+      entity.name = 'NoMaterialPrimitive';
+
+      const json = levelLoader.serializeEntity(entity)!;
+      expect(json.config.material).toBeUndefined();
+    });
+
     it('serializes a Trigger entity from its live body, regardless of how it was built', () => {
-      const trigger = new Trigger2dEntity(mock2DBody({ shape: 'SQUARE', dimensions: { x: 4, y: 5 } }) as any);
+      const trigger = new Trigger2dEntity(mock2DBody({ shape: 'BOX', dimensions: { x: 4, y: 5 } }) as any);
       trigger.position = { x: 1, y: 2 };
       trigger.rotation = 0.3;
       trigger.name = 'DirectTrigger';

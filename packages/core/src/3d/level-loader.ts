@@ -17,6 +17,7 @@ import {
   CharacterAnimationController,
 } from './entities/controllers/character-animation.controller';
 import { isAnimatedDisplayObject3d } from './components/rendering/i-animated-display-object-3d.component';
+import { isMaterialReadable3d } from './components/rendering/i-material-readable-3d.component';
 import { GgCarEntity, GgCarProperties } from './entities/gg-car/gg-car.entity';
 import {
   RVEntityAxleOptions,
@@ -412,6 +413,23 @@ export interface GgCar3DCommonSettings {
 }
 
 /**
+ * Runtime-mutated driving state a spawn-time `config` alone can never reflect, since all five
+ * fields change continuously as a `"GgCar"` is driven - see `GgCarEntity.serializeSettings`, which
+ * populates this from a live car's own `gear`/`acceleration`/`brake`/`handBrake`/`steeringFactor`
+ * properties, and `Gg3dLevelLoader.createGgCar`, which applies it back onto a freshly-built one
+ * when present. Optional and independent of every other `GgCar3DSettings` field - a hand-authored
+ * level JSON is free to omit it entirely and get a car parked in neutral, same as before this
+ * field existed.
+ */
+export interface GgCarStateSettings {
+  gear?: number;
+  acceleration?: number;
+  brake?: number;
+  handBrake?: boolean;
+  steeringFactor?: number;
+}
+
+/**
  * Settings for the built-in `"GgCar"` entity class (3D only): builds a box-shaped chassis rigid
  * body (+ optional matching display box) and a full `GgCarEntity` on top of it - the procedural
  * counterpart of the GLB-driven car construction an app does by hand when it instead loads a
@@ -434,6 +452,9 @@ export type GgCar3DSettings = GgCar3DCommonSettings & {
     material?: DisplayObject3dOpts<any>;
     body?: Partial<Body3DOptions>;
   };
+
+  /** Initial driving state, applied once right after the car is built - see {@link GgCarStateSettings}. */
+  state?: GgCarStateSettings;
 } & (
     | {
         wheelBase: {
@@ -513,7 +534,7 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
     this.registerClass('Camera', this.createCamera.bind(this));
     this.registerClass('Sound', this.createSound.bind(this));
     this.registerClass('Player', this.createPlayer.bind(this));
-    this.registerClass('GgCar', this.createGgCar.bind(this));
+    this.registerClass('GgCar', this.createGgCar.bind(this), GgCarEntity);
     this.registerClass('MapGraph', this.createMapGraph.bind(this));
 
     this.registerLiveSerializer(this.serializePrimitive.bind(this));
@@ -537,10 +558,13 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
    * with no physics body at all (`objectBody` unset - a display-only primitive has nothing this
    * serializer can recover a `shape`/`body` from).
    *
-   * Deliberately doesn't attempt to recover `material` - unlike a rigid body's `debugBodySettings
-   * .shape`/`bodyOptions`, no adapter's visual display-object component exposes an equivalent
-   * "what was I actually created with" accessor, so a primitive's color/shading can't be read back
-   * from its live `object3D` today; a serialized `"Primitive"` reloads with default material.
+   * Recovers `material` too, when `object3D` implements `IMaterialReadable3dComponent` (true for
+   * anything built via `IDisplayObject3dComponentFactory.createPrimitive`/its shortcuts, which is
+   * how every `"Primitive"` gets its mesh - see that interface's own doc) - not from whatever
+   * `config` the entity may or may not have originally been loaded from, same as every other field
+   * here. A display-only primitive with no mesh at all, or one built by an adapter that hasn't
+   * wired up `IMaterialReadable3dComponent`, simply omits `material` - same as omitting it when
+   * building one in the first place.
    */
   private serializePrimitive(entity: IEntity<Point3, Point4, TypeDoc>): EntityJson | undefined {
     if (entity.constructor !== Entity3d || !(entity as Entity3d<TypeDoc>).objectBody) {
@@ -552,6 +576,7 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
     if (!shapeConfig) {
       return undefined;
     }
+    const material = isMaterialReadable3d(positionable.object3D) ? positionable.object3D.materialOptions : undefined;
     return {
       class: 'Primitive',
       shape: shapeConfig.shape,
@@ -560,6 +585,7 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
       rotation: positionable.rotation,
       config: {
         ...shapeConfig.config,
+        ...(material !== undefined ? { material } : {}),
         body: body.bodyOptions,
         linearVelocity: body.linearVelocity,
         angularVelocity: body.angularVelocity,
@@ -949,7 +975,8 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
    * Create a `"GgCar"` entity: a box chassis rigid body (+ optional matching display box) wrapped
    * in a full `GgCarEntity`, with each wheel's optional visual mesh built from its settings (see
    * {@link resolveWheelDisplay}) rather than referencing an existing display object component,
-   * which a level JSON has no way to do.
+   * which a level JSON has no way to do. `settings.state`, if given, is applied to the car once
+   * construction completes - see {@link GgCarStateSettings}.
    * @param world - The world instance
    * @param settings - The car settings
    * @returns The created car entity
@@ -958,7 +985,7 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
     if (!world.physicsWorld) {
       return undefined;
     }
-    const { position, rotation, chassis, wheelBase, wheelOptions, sharedWheelOptions, ...rest } = settings;
+    const { position, rotation, chassis, wheelBase, wheelOptions, sharedWheelOptions, state, ...rest } = settings;
     if (!chassis?.dimensions) {
       throw new Error('Chassis dimensions are required for GgCar class');
     }
@@ -1006,6 +1033,23 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
     }
     if (rotation) {
       entity.rotation = rotation;
+    }
+    if (state) {
+      if (state.gear !== undefined) {
+        entity.gear = state.gear;
+      }
+      if (state.acceleration !== undefined) {
+        entity.acceleration = state.acceleration;
+      }
+      if (state.brake !== undefined) {
+        entity.brake = state.brake;
+      }
+      if (state.handBrake !== undefined) {
+        entity.handBrake = state.handBrake;
+      }
+      if (state.steeringFactor !== undefined) {
+        entity.steeringFactor = state.steeringFactor;
+      }
     }
     return entity;
   }

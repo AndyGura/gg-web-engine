@@ -35,7 +35,7 @@ describe('MatterRigidBodyComponent.bodyOptions', () => {
 
   it('echoes the originally-requested bodyType/ccd even though matter-js degrades both', () => {
     const body = factory.createRigidBody(
-      { shape: { shape: 'SQUARE', dimensions: { x: 1, y: 1 } }, body: { bodyType: 'kinematic_pos', mass: 1, ccd: true } },
+      { shape: { shape: 'BOX', dimensions: { x: 1, y: 1 } }, body: { bodyType: 'kinematic_pos', mass: 1, ccd: true } },
       { position: { x: 0, y: 0 } },
     );
 

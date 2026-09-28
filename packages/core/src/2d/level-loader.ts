@@ -7,6 +7,7 @@ import { Shape2DDescriptor } from './models/shapes';
 import { Entity2d } from './entities/entity-2d';
 import { Trigger2dEntity } from './entities/trigger-2d.entity';
 import { AudioSource2dEntity } from './entities/audio-source-2d.entity';
+import { isMaterialReadable2d } from './components/rendering/i-material-readable-2d.component';
 
 const defaultBodyOptions: Body2DOptions = {
   bodyType: 'dynamic',
@@ -27,8 +28,8 @@ function primitiveConfigFromShape(
   shape: Shape2DDescriptor,
 ): { shape: string; config: Record<string, any> } | undefined {
   switch (shape.shape) {
-    case 'SQUARE':
-      return { shape: 'SQUARE', config: { dimensions: shape.dimensions } };
+    case 'BOX':
+      return { shape: 'BOX', config: { dimensions: shape.dimensions } };
     case 'CIRCLE':
       return { shape: 'CIRCLE', config: { radius: shape.radius } };
     default:
@@ -208,9 +209,9 @@ export class Gg2dLevelLoader<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTyp
    * Live serializer for the built-in `"Primitive"` class - see the 3D loader's
    * `Gg3dLevelLoader.serializePrimitive` for the general approach and rationale (identical here,
    * just 2D-typed): matches `entity.constructor === Entity2d` exactly, recovers shape/dimensions
-   * from `objectBody.debugBodySettings.shape` and `body`/velocity from the live physics body
-   * (`objectBody.bodyOptions`/`.linearVelocity`/`.angularVelocity`). Same `material`-can't-be-
-   * recovered caveat applies.
+   * from `objectBody.debugBodySettings.shape`, `body`/velocity from the live physics body
+   * (`objectBody.bodyOptions`/`.linearVelocity`/`.angularVelocity`), and `material` from
+   * `object2D` when it implements `IMaterialReadable2dComponent`.
    */
   private serializePrimitive(entity: IEntity<Point2, number, TypeDoc>): EntityJson | undefined {
     if (entity.constructor !== Entity2d || !(entity as Entity2d<TypeDoc>).objectBody) {
@@ -222,6 +223,7 @@ export class Gg2dLevelLoader<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTyp
     if (!shapeConfig) {
       return undefined;
     }
+    const material = isMaterialReadable2d(positionable.object2D) ? positionable.object2D.materialOptions : undefined;
     return {
       class: 'Primitive',
       shape: shapeConfig.shape,
@@ -230,6 +232,7 @@ export class Gg2dLevelLoader<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTyp
       rotation: positionable.rotation,
       config: {
         ...shapeConfig.config,
+        ...(material !== undefined ? { material } : {}),
         body: body.bodyOptions,
         linearVelocity: body.linearVelocity,
         angularVelocity: body.angularVelocity,
@@ -247,7 +250,7 @@ export class Gg2dLevelLoader<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTyp
     }
     const trigger = entity as Trigger2dEntity<TypeDoc['pTypeDoc']>;
     const shape = trigger.objectBody.debugBodySettings.shape;
-    if (shape.shape !== 'SQUARE') {
+    if (shape.shape !== 'BOX') {
       return undefined;
     }
     return {

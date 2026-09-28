@@ -555,7 +555,42 @@ pattern one level down: `IAnimatedDisplayObject2dComponent`/`isAnimatedDisplayOb
 `CharacterAnimation2dController` (`2d/entities/controllers/character-animation-2d.controller.ts`) -
 its own `PlayAnimation2dOptions` is a deliberately separate type from 3D's `PlayAnimationOptions`
 (same shape today, kept distinct so the 2D module never has to import from the 3D one for a type
-that only looks the same by coincidence).
+that only looks the same by coincidence). `IMaterialReadable3dComponent`/`IMaterialReadable2dComponent`
+(`{3d,2d}/components/rendering/i-material-readable-{3d,2d}.component.ts`, with
+`isMaterialReadable3d`/`isMaterialReadable2d` guards) are a third instance of the same pattern: a
+display object built via `IDisplayObjectComponentFactory.createPrimitive`/its shortcuts remembers the
+`DisplayObject(3d|2d)Opts` it was actually constructed with (as a plain `materialOptions` field), so
+`LevelLoader`'s `"Primitive"` live serializer (and `GgCarEntity.serializeSettings`, for its chassis/
+wheel meshes) can recover a `material` for the `EntityJson` it emits; a loaded `.glb`'s mesh has no
+such field and never satisfies the guard.
+
+## Entity-owned serialization: `ISerializableEntity`
+
+`ISerializableEntity` (`base/interfaces/i-serializable-entity.ts`) is the opt-in interface an entity
+class implements to own its own `EntityJson` serialization - `serializeSettings(): { shape?: string;
+config?: Record<string, any> }`, called fresh (never cached) every time `LevelLoader.serializeEntity`
+runs on a matching entity. `GgCarEntity` is the reference implementation (`3d/entities/gg-car/gg-car.entity.ts`):
+its `serializeSettings` returns its construction-time tuning straight off `carProperties`, chassis
+`dimensions`/`material`/`body` recovered from the live chassis body/mesh (the same
+`debugBodySettings.shape`/`bodyOptions`/`IMaterialReadable3dComponent` mechanisms the `"Primitive"`
+live serializer uses, applied to one specific entity class instead of registered externally against
+the loader), and a `state` block capturing the car's *current* `gear`/`acceleration`/`brake`/
+`handBrake`/`steeringFactor` - none of which a frozen spawn-time `config` could ever reflect. See the
+`gg-engine-level-json` skill's "Serializing an entity or a level back to JSON" and "Making an
+app-defined entity class serializable" sections for the full three-tier `serializeEntity` mechanism
+this plugs into (live serializers, then `ISerializableEntity`, then the spawn-record echo) and how an
+app-defined entity class adopts this on its own class - this is a `packages/core`-internal note on
+where the interface itself lives and its reference implementation, not the consumer-facing guide.
+
+`LevelLoader.registerClass` takes an optional third argument - the concrete entity constructor a
+generator produces, when it always produces the same one - purely to let `serializeEntity` resolve a
+self-serializing entity's `class` alias when that entity has no spawn record (i.e. wasn't built via
+`createEntity`/`loadLevel` at all). `Gg3dLevelLoader` passes `GgCarEntity` for the `"GgCar"` alias;
+it does *not* pass `Entity3d` for `"Primitive"` (one class produces many different shapes, so no
+single alias is correct) or `GroupEntity` for `"Glb"` (several different classes all produce a plain
+`GroupEntity`, so the mapping would be ambiguous) - skip this argument for any class in the same
+situation, or for one that doesn't implement `ISerializableEntity` at all; a spawn record already
+resolves `class` for any instance actually built through the loader either way.
 
 ## Interfaces that are the actual public contract
 
@@ -601,7 +636,13 @@ can drift after creation. Each adapter's implementation reflects that:
   around for `factoryProps`/`clone()`), not the native body/collider - `_bodyDescr.status` maps back
   to `BodyType` via a small local `rapierBodyTypeToBodyType` inverse of the factory's own
   `BodyType -> RigidBodyType` mapping (`Fixed` -> `'static'`, `KinematicPositionBased` ->
-  `'kinematic_pos'`, `KinematicVelocityBased` -> `'kinematic_vel'`, else `'dynamic'`).
+  `'kinematic_pos'`, `KinematicVelocityBased` -> `'kinematic_vel'`, else `'dynamic'`). `mass` is the
+  one field that differs between the two packages: Rapier2d's factory sets `mass` directly on
+  `RigidBodyDesc`, so `_bodyDescr.mass` is correct there; Rapier3d's factory instead sets mass on
+  each collider (`ColliderDesc.setMass`, for a real, shape-derived rotational inertia - see
+  `gg-engine-physics-adapter-rapier`'s own section on this), so `Rapier3dRigidBodyComponent.bodyOptions`
+  sums `_colliderDescr[].mass` across every collider instead of reading the (always-`0`, unused)
+  `_bodyDescr.mass` field.
 - **Matter** (`packages/matter`): `mass`/`friction`/`restitution` are read live off the native
   `Body`'s own plain fields (`Body.create`'s own resolved values, not just whatever was requested -
   more accurate than echoing the request, since matter-js applies its own defaults for anything left

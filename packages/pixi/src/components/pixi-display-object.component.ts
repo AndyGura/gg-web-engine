@@ -1,11 +1,39 @@
-import { GgBox2d, IDisplayObject2dComponent, IEntity, Pnt2, Point2 } from '@gg-web-engine/core';
+import {
+  DisplayObject2dOpts,
+  GgBox2d,
+  IDisplayObject2dComponent,
+  IEntity,
+  IMaterialReadable2dComponent,
+  Pnt2,
+  Point2,
+} from '@gg-web-engine/core';
 import { PixiGgWorld, PixiVisualTypeDocRepo2D } from '../types';
-import { Container } from 'pixi.js';
+import { Container, Texture } from 'pixi.js';
 
-export class PixiDisplayObjectComponent implements IDisplayObject2dComponent<PixiVisualTypeDocRepo2D> {
+export class PixiDisplayObjectComponent
+  implements
+    IDisplayObject2dComponent<PixiVisualTypeDocRepo2D>,
+    Partial<IMaterialReadable2dComponent<PixiVisualTypeDocRepo2D>>
+{
   entity: IEntity | null = null;
 
-  constructor(public nativeSprite: Container) {}
+  /**
+   * The options this display object was actually built with, when constructed via
+   * `PixiFactory.createPrimitive` - see `IMaterialReadable2dComponent`'s own doc. Left unset for a
+   * sprite built any other way (e.g. `PixiFactory.createAnimatedSprite`), which is why this is
+   * `Partial` rather than a hard implementation of that interface - check with
+   * `isMaterialReadable2d` before relying on it.
+   */
+  public readonly materialOptions?: DisplayObject2dOpts<Texture>;
+
+  constructor(
+    public nativeSprite: Container,
+    materialOptions?: DisplayObject2dOpts<Texture>,
+  ) {
+    if (materialOptions) {
+      this.materialOptions = materialOptions;
+    }
+  }
 
   public get position(): Point2 {
     return Pnt2.clone(this.nativeSprite.position);

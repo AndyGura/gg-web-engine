@@ -23,6 +23,23 @@ function buildCharacterModel(): Group {
 }
 
 describe('ThreeDisplayObjectComponent', () => {
+  describe('materialOptions (IMaterialReadable3dComponent)', () => {
+    it('exposes the options it was constructed with', () => {
+      const mesh = new Mesh(new BoxGeometry(1, 1, 1), new MeshBasicMaterial());
+      const component = new ThreeDisplayObjectComponent(mesh, { color: 0x990000, shading: 'phong' });
+
+      expect(component.materialOptions).toEqual({ color: 0x990000, shading: 'phong' });
+    });
+
+    it('leaves materialOptions unset when constructed without any (e.g. a loaded model)', () => {
+      const mesh = new Mesh(new BoxGeometry(1, 1, 1), new MeshBasicMaterial());
+      const component = new ThreeDisplayObjectComponent(mesh);
+
+      expect(component.materialOptions).toBeUndefined();
+      expect('materialOptions' in component).toBe(false);
+    });
+  });
+
   describe('render layers on a single mesh', () => {
     it('enables/disables/queries the render layer on the underlying Object3D', () => {
       const mesh = new Mesh(new BoxGeometry(1, 1, 1), new MeshBasicMaterial());

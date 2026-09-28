@@ -632,6 +632,77 @@ describe('Gg3dLevelLoader', () => {
       expect(car).toBeInstanceOf(GgCarEntity);
     });
 
+    it('applies an optional "state" block to a freshly-built GgCar', async () => {
+      const levelJson: LevelJson = {
+        entities: [
+          {
+            class: 'GgCar',
+            name: 'StatefulCar',
+            config: {
+              ...carCommonConfig,
+              chassis: { dimensions: { x: 1.8, y: 4, z: 0.6 } },
+              wheelBase: {
+                front: { halfAxleWidth: 1, axlePosition: 1.7, axleHeight: 0.3 },
+                rear: { halfAxleWidth: 1, axlePosition: -1, axleHeight: 0.3 },
+              },
+              state: { gear: 3, acceleration: 0.6, brake: 0.2, handBrake: true, steeringFactor: -0.4 },
+            },
+          },
+        ],
+      };
+
+      const level = await levelLoader.loadLevel(levelJson, 'TestLevel');
+      const car = level.getChildEntityByName<GgCarEntity>('StatefulCar');
+
+      expect(car.gear).toBe(3);
+      expect(car.acceleration).toBe(0.6);
+      expect(car.brake).toBe(0.2);
+      expect(car.handBrake).toBe(true);
+      expect(car.steeringFactor).toBeCloseTo(-0.4);
+    });
+
+    it('serializes a GgCar built via loadLevel from its own serializeSettings, reflecting current driving state', async () => {
+      const levelJson: LevelJson = {
+        entities: [
+          {
+            class: 'GgCar',
+            name: 'SerializedCar',
+            config: {
+              ...carCommonConfig,
+              chassis: { dimensions: { x: 1.8, y: 4, z: 0.6 } },
+              wheelBase: {
+                front: { halfAxleWidth: 1, axlePosition: 1.7, axleHeight: 0.3 },
+                rear: { halfAxleWidth: 1, axlePosition: -1, axleHeight: 0.3 },
+              },
+            },
+          },
+        ],
+      };
+
+      const level = await levelLoader.loadLevel(levelJson, 'TestLevel');
+      const car = level.getChildEntityByName<GgCarEntity>('SerializedCar');
+
+      // Mutate runtime state after spawn - a spawn-record echo could never reflect this, only the
+      // entity's own live serializeSettings can.
+      car.gear = 2;
+      car.acceleration = 0.9;
+
+      const json = levelLoader.serializeEntity(car)!;
+      expect(json.class).toBe('GgCar');
+      expect(json.name).toBe('SerializedCar');
+      expect(json.config.state).toEqual({
+        gear: 2,
+        acceleration: 0.9,
+        brake: 0,
+        handBrake: false,
+        steeringFactor: 0,
+      });
+      // Recovered from the raycast vehicle's own live debugBodySettings.shape - the shared mock
+      // world's createRaycastVehicle always returns a fresh default mockRaycastVehicle() regardless
+      // of the chassis body it's actually called with, which is what this value reflects here.
+      expect(json.config.chassis.dimensions).toEqual({ x: 1.8, y: 4, z: 0.6 });
+    });
+
     it('should throw when GgCar chassis dimensions are missing', async () => {
       const levelJson: LevelJson = {
         entities: [{ class: 'GgCar', config: { ...carCommonConfig, chassis: {}, wheelOptions: [] } }],
@@ -843,6 +914,25 @@ describe('Gg3dLevelLoader', () => {
           angularVelocity: { x: 0.1, y: 0.2, z: 0.3 },
         },
       });
+    });
+
+    it('recovers material from object3D when it implements IMaterialReadable3dComponent', () => {
+      const body = mock3DBody({ shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } });
+      const object3D = { ...mock3DObject(), materialOptions: { color: 8947848, shading: 'phong' } };
+      const entity = new Entity3d({ objectBody: body, object3D: object3D as any });
+      entity.name = 'MaterialPrimitive';
+
+      const json = levelLoader.serializeEntity(entity)!;
+      expect(json.config.material).toEqual({ color: 8947848, shading: 'phong' });
+    });
+
+    it('omits material for a display object with no IMaterialReadable3dComponent capability', () => {
+      const body = mock3DBody({ shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } });
+      const entity = new Entity3d({ objectBody: body, object3D: mock3DObject() });
+      entity.name = 'NoMaterialPrimitive';
+
+      const json = levelLoader.serializeEntity(entity)!;
+      expect(json.config.material).toBeUndefined();
     });
 
     it('reflects the body\'s current live state, not its spawn-time config, once it has moved/changed', async () => {

@@ -120,15 +120,29 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
 
   /**
    * See `IRigidBodyComponent.bodyOptions`'s own doc. Reads straight off `_bodyDescr`/
-   * `_colliderOptions` (also what `addToWorld` itself builds the native body/colliders from, and
-   * what `factoryProps`/`clone()` already round-trip) rather than the native body/colliders - this
-   * engine's own API never mutates any of `bodyType`/`mass`/`friction`/`restitution`/`ccd` after
-   * construction, so the stored descriptor is exactly as accurate as a native query would be.
+   * `_colliderDescr`/`_colliderOptions` (also what `addToWorld` itself builds the native body/
+   * colliders from, and what `factoryProps`/`clone()` already round-trip) rather than the native
+   * body/colliders - this engine's own API never mutates any of `bodyType`/`mass`/`friction`/
+   * `restitution`/`ccd` after construction, so the stored descriptor is exactly as accurate as a
+   * native query would be.
+   *
+   * `mass` is **not** `_bodyDescr.mass` - unlike `packages/rapier2d`, `Rapier3dFactory.createRigidBodyDescr`
+   * deliberately sets mass on each collider (`ColliderDesc.setMass`), not on the body descriptor
+   * (see that method's own doc for why: a `RigidBodyDesc.mass` is "additional" point mass with no
+   * rotational inertia of its own, wrong for a body whose inertia should scale with its actual
+   * mass). `_bodyDescr.mass` is therefore always its unused default (`0`) regardless of what was
+   * actually requested - the real total is the sum of every collider's own `mass`, which
+   * `ColliderDesc` only carries meaningfully once `setMass`/`setMassProperties` was actually called
+   * on it (true for every collider of a `dynamic` body, per `createRigidBodyDescr`; a `static`/
+   * `kinematic_*` body never calls either, so this correctly sums to `0` for one of those instead).
    */
   get bodyOptions(): Readonly<BodyOptions> {
     return {
       bodyType: rapierBodyTypeToBodyType(this._bodyDescr.status),
-      mass: this._bodyDescr.mass,
+      mass: this._colliderDescr.reduce(
+        (sum, cd) => sum + (cd.massPropsMode !== MassPropsMode.Density ? cd.mass : 0),
+        0,
+      ),
       friction: this._colliderOptions.friction,
       restitution: this._colliderOptions.restitution,
       ccd: this._bodyDescr.ccdEnabled,

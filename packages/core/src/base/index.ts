@@ -36,6 +36,7 @@ export * from './inputs/keyboard.input';
 export * from './inputs/mouse.input';
 
 export * from './interfaces/i-positionable';
+export * from './interfaces/i-serializable-entity';
 
 export * from './logging';
 

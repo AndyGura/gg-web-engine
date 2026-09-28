@@ -763,6 +763,26 @@ body in this package - the failure mode (translation looks fine, rotation is wil
 miss without specifically testing a torque-inducing scenario, which is exactly why the vehicle feature
 was what surfaced it instead of any of this package's pre-existing tests.
 
+**`Rapier3dRigidBodyComponent.bodyOptions.mass` must sum collider mass, not read `_bodyDescr.mass`
+- a later addition that didn't account for the collider-mass design above.** `IRigidBodyComponent
+.bodyOptions` (see `gg-engine-core-development`'s own section on this getter) is meant to read back
+a dynamic body's actual requested mass, for `LevelLoader.serializeEntity`'s live `"Primitive"`
+serializer to round-trip through. A first implementation read `this._bodyDescr.mass` directly - which
+compiles and looks identical to Rapier2d's own `bodyOptions` getter, but is wrong here specifically
+*because* of the fix above: `createRigidBodyDescr` deliberately never sets `RigidBodyDesc.mass` for a
+dynamic body (per the additional-mass/zero-inertia problem it solves), so `_bodyDescr.mass` is always
+its unused default (`0`) regardless of what was actually requested - confirmed by a direct test
+(`mass: 5` requested, `bodyOptions.mass` read back `0`). Fixed by summing `_colliderDescr[].mass`
+across every collider instead, gated on `cd.massPropsMode !== MassPropsMode.Density` (mirroring
+`factoryProps`'s own mode check above - `cd.mass` is only a meaningful, non-placeholder value once
+`setMass`/`setMassProperties` was actually called on that collider, true for every collider of a
+dynamic body per `createRigidBodyDescr`, never true for a static/kinematic one, which correctly sums
+to `0`). Worth re-checking any future field added to `bodyOptions` (or a similar "read back what this
+body's descriptors were actually built with" accessor) against which native structure the factory
+*actually* stores that field on in this package - it's not always the intuitively-named one
+(`RigidBodyDesc` vs. `ColliderDesc`), and Rapier2d/Rapier3d can genuinely disagree on this even for
+the same logical field, as they do here.
+
 **`DynamicRayCastVehicleController.currentVehicleSpeed()` returns plain m/s, matching
 `IRaycastVehicleComponent.wheelSpeed`'s contract directly - no scaling needed.** Its own doc carries
 no unit note, so this is worth confirming rather than assuming either way. Confirmed empirically

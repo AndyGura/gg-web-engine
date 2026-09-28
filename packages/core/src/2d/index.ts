@@ -7,6 +7,7 @@ export * from './components/physics/i-physics-world-2d.component';
 export * from './components/rendering/i-camera-2d.component';
 export * from './components/rendering/i-display-object-2d.component';
 export * from './components/rendering/i-animated-display-object-2d.component';
+export * from './components/rendering/i-material-readable-2d.component';
 export * from './components/rendering/i-renderer-2d.component';
 export * from './components/rendering/i-visual-scene-2d.component';
 
