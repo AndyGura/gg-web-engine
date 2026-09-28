@@ -7,6 +7,7 @@ export * from './components/physics/i-character-controller-3d.component';
 export * from './components/physics/i-physics-world-3d.component';
 export * from './components/rendering/i-display-object-3d.component';
 export * from './components/rendering/i-animated-display-object-3d.component';
+export * from './components/rendering/i-material-readable-3d.component';
 export * from './components/rendering/i-camera-3d.component';
 export * from './components/rendering/i-renderer-3d.component';
 export * from './components/rendering/i-visual-scene-3d.component';

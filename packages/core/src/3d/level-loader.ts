@@ -1,6 +1,6 @@
-import { LevelLoader } from '../base/level-loader';
+import { EntityJson, LevelLoader } from '../base/level-loader';
 import { Gg3dWorld, Gg3dWorldTypeDocRepo } from './gg-3d-world';
-import { AudioDistanceModel, AxisDirection3, Pnt3, Point3, Point4 } from '../base';
+import { AudioDistanceModel, AxisDirection3, IEntity, Pnt3, Point3, Point4 } from '../base';
 import { DisplayObject3dOpts } from './factories';
 import { Body3DOptions } from './models/body-options';
 import { Shape3DDescriptor } from './models/shapes';
@@ -17,6 +17,7 @@ import {
   CharacterAnimationController,
 } from './entities/controllers/character-animation.controller';
 import { isAnimatedDisplayObject3d } from './components/rendering/i-animated-display-object-3d.component';
+import { isMaterialReadable3d } from './components/rendering/i-material-readable-3d.component';
 import { GgCarEntity, GgCarProperties } from './entities/gg-car/gg-car.entity';
 import {
   RVEntityAxleOptions,
@@ -50,6 +51,40 @@ const defaultCarChassisBodyOptions: Body3DOptions = {
  * wheel's own default (`RaycastVehicle3dEntity`'s internal `wheeelDefaults`) applied when a
  * wheel's `tyreRadius`/`tyreWidth` is left unset entirely. */
 const defaultWheelDisplaySize = { tyreRadius: 0.4, tyreWidth: 0.3 };
+
+/**
+ * Inverse of `Gg3dLevelLoader.buildShapeDescriptor`: turns a live `Shape3DDescriptor` (as read off
+ * a rigid body's `debugBodySettings.shape`) back into the `shape`/`config` fields a `"Primitive"`
+ * `EntityJson` needs - backs `Gg3dLevelLoader.serializePrimitive`. Returns `undefined` for a shape
+ * `"Primitive"` has no `shape` value for (`COMPOUND`/`CONVEX_HULL`/`MESH`/`TRIANGLE_MESH`, and
+ * anything else not listed in `buildShapeDescriptor`'s own `switch`).
+ */
+function primitiveConfigFromShape(
+  shape: Shape3DDescriptor,
+): { shape: string; config: Record<string, any> } | undefined {
+  switch (shape.shape) {
+    case 'BOX':
+      return { shape: 'BOX', config: { dimensions: shape.dimensions } };
+    case 'SPHERE':
+      return { shape: 'SPHERE', config: { radius: shape.radius } };
+    case 'PLANE':
+      return { shape: 'PLANE', config: {} };
+    case 'CAPSULE':
+      return { shape: 'CAPSULE', config: { radius: shape.radius, centersDistance: shape.centersDistance } };
+    case 'CYLINDER':
+      return {
+        shape: 'CYLINDER',
+        config:
+          'radius' in shape
+            ? { radius: shape.radius, height: shape.height }
+            : { radiusX: shape.radiusX, radiusY: shape.radiusY, height: shape.height },
+      };
+    case 'CONE':
+      return { shape: 'CONE', config: { radius: shape.radius, height: shape.height } };
+    default:
+      return undefined;
+  }
+}
 
 /**
  * Shape names accepted by the built-in `"Primitive"` entity class in a 3D level JSON, via the
@@ -161,6 +196,17 @@ export interface Primitive3DSettings extends Primitive3DShapeSettings {
    * Physics body options, merged over sensible defaults
    */
   body?: Partial<Body3DOptions>;
+
+  /**
+   * Initial linear velocity, applied once right after the body is created (a physics-only
+   * property, only meaningful for a dynamic/kinematic_vel body - has no lasting effect on a
+   * static/kinematic_pos one). Left unset entirely (not just omitted) means the body starts at
+   * rest, same as not setting it at all.
+   */
+  linearVelocity?: Point3;
+
+  /** Initial angular velocity - see `linearVelocity`'s own doc, same caveats. */
+  angularVelocity?: Point3;
 }
 
 /**
@@ -367,6 +413,23 @@ export interface GgCar3DCommonSettings {
 }
 
 /**
+ * Runtime-mutated driving state a spawn-time `config` alone can never reflect, since all five
+ * fields change continuously as a `"GgCar"` is driven - see `GgCarEntity.serializeSettings`, which
+ * populates this from a live car's own `gear`/`acceleration`/`brake`/`handBrake`/`steeringFactor`
+ * properties, and `Gg3dLevelLoader.createGgCar`, which applies it back onto a freshly-built one
+ * when present. Optional and independent of every other `GgCar3DSettings` field - a hand-authored
+ * level JSON is free to omit it entirely and get a car parked in neutral, same as before this
+ * field existed.
+ */
+export interface GgCarStateSettings {
+  gear?: number;
+  acceleration?: number;
+  brake?: number;
+  handBrake?: boolean;
+  steeringFactor?: number;
+}
+
+/**
  * Settings for the built-in `"GgCar"` entity class (3D only): builds a box-shaped chassis rigid
  * body (+ optional matching display box) and a full `GgCarEntity` on top of it - the procedural
  * counterpart of the GLB-driven car construction an app does by hand when it instead loads a
@@ -389,6 +452,9 @@ export type GgCar3DSettings = GgCar3DCommonSettings & {
     material?: DisplayObject3dOpts<any>;
     body?: Partial<Body3DOptions>;
   };
+
+  /** Initial driving state, applied once right after the car is built - see {@link GgCarStateSettings}. */
+  state?: GgCarStateSettings;
 } & (
     | {
         wheelBase: {
@@ -468,8 +534,86 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
     this.registerClass('Camera', this.createCamera.bind(this));
     this.registerClass('Sound', this.createSound.bind(this));
     this.registerClass('Player', this.createPlayer.bind(this));
-    this.registerClass('GgCar', this.createGgCar.bind(this));
+    this.registerClass('GgCar', this.createGgCar.bind(this), GgCarEntity);
     this.registerClass('MapGraph', this.createMapGraph.bind(this));
+
+    this.registerLiveSerializer(this.serializePrimitive.bind(this));
+    this.registerLiveSerializer(this.serializeTrigger.bind(this));
+  }
+
+  /**
+   * Live serializer for the built-in `"Primitive"` class - see `LiveEntitySerializer`'s own doc for
+   * the general contract. Matches an entity built by `addPrimitiveRigidBody`/`createPrimitive`
+   * exactly (`entity.constructor === Entity3d`, deliberately not `instanceof` - a richer subclass
+   * like `Grabbable3dEntity` needs its own dedicated serializer, not yet provided, to round-trip
+   * correctly instead of silently losing its grabbable behavior). Recovers `shape`/`dimensions`/
+   * `radius`/etc. from `objectBody.debugBodySettings.shape` (the exact `Shape3DDescriptor` the body
+   * was actually built with, tracked by every physics adapter regardless of how the body was
+   * constructed) and `body`/`linearVelocity`/`angularVelocity` from the live physics body itself
+   * (`objectBody.bodyOptions`, `.linearVelocity`, `.angularVelocity`) - not from whatever `config`
+   * the entity may or may not have originally been loaded from. Returns `undefined` (falls through
+   * to the next serializer, then the spawn-record echo) for a shape `"Primitive"` doesn't support
+   * (`COMPOUND`/`CONVEX_HULL`/`MESH`/`TRIANGLE_MESH` - buildable directly via
+   * `physicsWorld.factory.createRigidBody`, just not through this level-JSON class) or an entity
+   * with no physics body at all (`objectBody` unset - a display-only primitive has nothing this
+   * serializer can recover a `shape`/`body` from).
+   *
+   * Recovers `material` too, when `object3D` implements `IMaterialReadable3dComponent` (true for
+   * anything built via `IDisplayObject3dComponentFactory.createPrimitive`/its shortcuts, which is
+   * how every `"Primitive"` gets its mesh - see that interface's own doc) - not from whatever
+   * `config` the entity may or may not have originally been loaded from, same as every other field
+   * here. A display-only primitive with no mesh at all, or one built by an adapter that hasn't
+   * wired up `IMaterialReadable3dComponent`, simply omits `material` - same as omitting it when
+   * building one in the first place.
+   */
+  private serializePrimitive(entity: IEntity<Point3, Point4, TypeDoc>): EntityJson | undefined {
+    if (entity.constructor !== Entity3d || !(entity as Entity3d<TypeDoc>).objectBody) {
+      return undefined;
+    }
+    const positionable = entity as Entity3d<TypeDoc>;
+    const body = positionable.objectBody!;
+    const shapeConfig = primitiveConfigFromShape(body.debugBodySettings.shape);
+    if (!shapeConfig) {
+      return undefined;
+    }
+    const material = isMaterialReadable3d(positionable.object3D) ? positionable.object3D.materialOptions : undefined;
+    return {
+      class: 'Primitive',
+      shape: shapeConfig.shape,
+      name: positionable.name,
+      position: positionable.position,
+      rotation: positionable.rotation,
+      config: {
+        ...shapeConfig.config,
+        ...(material !== undefined ? { material } : {}),
+        body: body.bodyOptions,
+        linearVelocity: body.linearVelocity,
+        angularVelocity: body.angularVelocity,
+      },
+    };
+  }
+
+  /**
+   * Live serializer for the built-in `"Trigger"` class - see `serializePrimitive`'s own doc for the
+   * general approach (same `debugBodySettings.shape`-based recovery, applied to a trigger's `ITrigger3dComponent`
+   * instead of a rigid body). Matches `entity.constructor === Trigger3dEntity` exactly.
+   */
+  private serializeTrigger(entity: IEntity<Point3, Point4, TypeDoc>): EntityJson | undefined {
+    if (entity.constructor !== Trigger3dEntity) {
+      return undefined;
+    }
+    const trigger = entity as Trigger3dEntity<TypeDoc['pTypeDoc']>;
+    const shape = trigger.objectBody.debugBodySettings.shape;
+    if (shape.shape !== 'BOX') {
+      return undefined;
+    }
+    return {
+      class: 'Trigger',
+      name: trigger.name,
+      position: trigger.position,
+      rotation: trigger.rotation,
+      config: { dimensions: shape.dimensions },
+    };
   }
 
   /**
@@ -566,13 +710,22 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
     shape: Shape3DDescriptor,
     settings: Primitive3DSettings,
   ): Entity3d<TypeDoc> {
-    const { position, rotation, material, body } = settings;
-    return world.addPrimitiveRigidBody(
+    const { position, rotation, material, body, linearVelocity, angularVelocity } = settings;
+    const entity = world.addPrimitiveRigidBody(
       { shape, body: { ...defaultBodyOptions, ...body } },
       position,
       rotation,
       material,
     );
+    if (entity.objectBody) {
+      if (linearVelocity) {
+        entity.objectBody.linearVelocity = linearVelocity;
+      }
+      if (angularVelocity) {
+        entity.objectBody.angularVelocity = angularVelocity;
+      }
+    }
+    return entity;
   }
 
   /**
@@ -822,7 +975,8 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
    * Create a `"GgCar"` entity: a box chassis rigid body (+ optional matching display box) wrapped
    * in a full `GgCarEntity`, with each wheel's optional visual mesh built from its settings (see
    * {@link resolveWheelDisplay}) rather than referencing an existing display object component,
-   * which a level JSON has no way to do.
+   * which a level JSON has no way to do. `settings.state`, if given, is applied to the car once
+   * construction completes - see {@link GgCarStateSettings}.
    * @param world - The world instance
    * @param settings - The car settings
    * @returns The created car entity
@@ -831,7 +985,7 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
     if (!world.physicsWorld) {
       return undefined;
     }
-    const { position, rotation, chassis, wheelBase, wheelOptions, sharedWheelOptions, ...rest } = settings;
+    const { position, rotation, chassis, wheelBase, wheelOptions, sharedWheelOptions, state, ...rest } = settings;
     if (!chassis?.dimensions) {
       throw new Error('Chassis dimensions are required for GgCar class');
     }
@@ -879,6 +1033,23 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
     }
     if (rotation) {
       entity.rotation = rotation;
+    }
+    if (state) {
+      if (state.gear !== undefined) {
+        entity.gear = state.gear;
+      }
+      if (state.acceleration !== undefined) {
+        entity.acceleration = state.acceleration;
+      }
+      if (state.brake !== undefined) {
+        entity.brake = state.brake;
+      }
+      if (state.handBrake !== undefined) {
+        entity.handBrake = state.handBrake;
+      }
+      if (state.steeringFactor !== undefined) {
+        entity.steeringFactor = state.steeringFactor;
+      }
     }
     return entity;
   }

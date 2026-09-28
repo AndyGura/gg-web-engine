@@ -160,6 +160,25 @@ Every adapter component class then `implements I<Thing>Component<<Lib>VisualType
   real `Ticker`; construct the sprite itself with `autoUpdate: false` (or the two-arg
   `new AnimatedSprite(frames, false)` constructor) so `play()` never subscribes it to
   `Ticker.shared` on its own.
+- **Material readability** (expected, cheap - implement this on every `createPrimitive`-produced
+  display object): a display object built by `createPrimitive` (or a shortcut on it) should remember
+  the `DisplayObject(2d|3d)Opts` it was actually constructed with as a plain `materialOptions` field,
+  implementing `IMaterialReadable(2d|3d)Component` (`{3d,2d}/components/rendering/
+  i-material-readable-{3d,2d}.component.ts` in `packages/core`) - see `gg-engine-core-development`'s
+  note on this same "capability only some display objects have" pattern for why it's a separate
+  interface rather than a `TypeDoc`/base-contract field. This is what lets `LevelLoader`'s
+  `"Primitive"` live serializer (and `GgCarEntity.serializeSettings`) recover a `material` for the
+  `EntityJson` they emit, instead of a serialized primitive always reloading with an unrelated
+  default/random color. `ThreeDisplayObjectComponent`/`PixiDisplayObjectComponent` are the reference
+  implementations: an optional second constructor parameter, assigned to a `public readonly
+  materialOptions?` field only when given (so `isMaterialReadable(2d|3d)`'s field-presence check
+  correctly reports "no capability" for a display object built any other way, e.g. a loaded `.glb`
+  mesh or `createAnimatedSprite`'s output - neither passes a `materialOptions` argument through).
+  `ThreeFactory.createPrimitive`/`PixiFactory.createPrimitive` pass their own `material` parameter
+  straight through to every display object component they construct - the caller's parameter
+  verbatim, not the fully-resolved material actually applied (e.g. a random auto-picked color, when
+  none was given, reads back as `{}` again, not the specific color that got picked) - acceptable,
+  since round-tripping a genuinely unspecified color isn't expected to be deterministic anyway.
 
 ## The `removeFromWorld(dispose)` contract
 
@@ -258,6 +277,26 @@ if you add a new devDependency to an adapter, check its version range against ev
 devDependency's peer constraints, or actually run a clean standalone install
 (`rm -rf node_modules package-lock.json && npm i --workspaces=false` inside the package alone) to
 reproduce the release script's install mode before landing the change.
+
+**`pixi.js` (v8) has the same ESM-import problem as `three` (above), just not yet worked around -
+a test file that imports a real value from `'pixi.js'` fails to run at all.** `pixi.js`'s own
+`lib/utils/utils.js` transitively pulls in `earcut` (a pure-ESM package, `import`/`export` syntax,
+no CJS build) through its rendering internals - even a spec that only needs a trivial value like
+`Container`/`Graphics` for a mock/fake pays the whole import chain, since jest evaluates the entire
+module graph a `require`d file pulls in, not just the named export actually used. This surfaces as
+`Must use import to load ES Module: .../node_modules/earcut/src/earcut.js`, the same class of error
+`three`'s own note above describes, needing the same fix in spirit (a `babel-jest` transform carved
+out for the offending `node_modules` path, paired with `transformIgnorePatterns`) - not yet applied
+to this package's `jest` config, so this package's existing spec file is deliberately pure-logic,
+importing nothing from `pixi.js` at all. **Until that transform is added, write a test needing a
+`pixi.js` type (`Container`, `Graphics`, `Sprite`, ...) against a plain fake object cast to that
+type** (`{} as unknown as Container`, or richer as the test needs) **and import the type itself with
+`import type`** (elided at compile time, so it adds no runtime `require('pixi.js')` at all) rather
+than a plain `import` - `packages/pixi/test/components/pixi-display-object.component.spec.ts`-style
+tests that don't need pixi.js's real runtime behavior (only a `nativeSprite` reference to hold) are
+the common case this applies to; a test that genuinely needs pixi.js's own real behavior (a real
+`Graphics` draw call, a real `Sprite` texture) has no workaround available yet and needs the babel
+transform fix applied first.
 
 ## Wiring a new adapter into the repo
 

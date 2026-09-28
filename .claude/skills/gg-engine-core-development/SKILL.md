@@ -114,16 +114,17 @@ class's own name, as (or near) its first member.** This is a required practice f
 class added to `packages/core`, not an optional nicety - check for it explicitly whenever writing
 or reviewing a diff that introduces one.
 
-**Why this matters more than it looks:** it's a stable, class-identifying string a future entity
-serializer needs every entity class to already have. `LevelLoader` today only loads (JSON →
-entities); there's no inverse direction yet - see `milestones.md`'s M2 "Export/serialize selected
-runtime state back to JSON" item and the "Networking / multiplayer" item under "Later / Under
-Consideration" for the two roadmap entries this feeds. Whenever that direction gets built, turning a
-live, runtime-spawned entity back into a level-JSON-shaped descriptor (so it can be reproduced by
-another loader, another peer, a savegame) needs exactly this kind of tag as the descriptor's `class`
-value - a plain string, not `this.constructor.name` (see below). Declaring `entityTypeName` on every
-entity class now, as new ones are added, means nothing needs a retrofit pass class-by-class once
-that serializer exists.
+**Why this matters more than it looks:** it's a stable, class-identifying string every entity's
+auto-generated default name is built from (see below) - a plain string, not `this.constructor.name`
+(see below), so it survives minification unchanged. It's a separate mechanism from `LevelLoader`'s
+own JSON round-trip (`loadLevel`/`createEntity` to build an entity from a `class` alias,
+`serializeEntity`/`serializeLevel` to reconstruct an `EntityJson` from a live entity - see
+`gg-engine-level-json`'s own section on this): neither of that round-trip's two reconstruction paths
+- a live serializer matching an entity's exact concrete class, or the spawn-record echo keyed off the
+`class` alias an entity was actually built under via the loader (remembered per-instance, not read
+off the class) - ever reads `entityTypeName`, so declaring it doesn't by itself make a
+class serializable, and skipping it doesn't prevent an entity built via the loader from being
+serialized. Declare it anyway on every new class for the naming benefit described next.
 
 Concretely today: `IEntity` (`base/entities/i-entity.ts`) reads this static field off
 `this.constructor` when an entity is constructed with no explicit `name`, and uses it to build the
@@ -136,7 +137,7 @@ console's `entities`/`entity` commands and in `console.log`s of raw entity objec
 `CharacterController3dEntity`, `OrbitCameraController`, the internal `BlueprintBindingEntity`, and
 every other one - grep `entityTypeName` across `src/` for the full, current list), and a new one
 that skips this silently regresses back to the opaque fallback for every instance nobody explicitly
-names, on top of leaving that class unready for serialization later.
+names.
 
 Two things worth getting right when adding the tag:
 
@@ -554,7 +555,42 @@ pattern one level down: `IAnimatedDisplayObject2dComponent`/`isAnimatedDisplayOb
 `CharacterAnimation2dController` (`2d/entities/controllers/character-animation-2d.controller.ts`) -
 its own `PlayAnimation2dOptions` is a deliberately separate type from 3D's `PlayAnimationOptions`
 (same shape today, kept distinct so the 2D module never has to import from the 3D one for a type
-that only looks the same by coincidence).
+that only looks the same by coincidence). `IMaterialReadable3dComponent`/`IMaterialReadable2dComponent`
+(`{3d,2d}/components/rendering/i-material-readable-{3d,2d}.component.ts`, with
+`isMaterialReadable3d`/`isMaterialReadable2d` guards) are a third instance of the same pattern: a
+display object built via `IDisplayObjectComponentFactory.createPrimitive`/its shortcuts remembers the
+`DisplayObject(3d|2d)Opts` it was actually constructed with (as a plain `materialOptions` field), so
+`LevelLoader`'s `"Primitive"` live serializer (and `GgCarEntity.serializeSettings`, for its chassis/
+wheel meshes) can recover a `material` for the `EntityJson` it emits; a loaded `.glb`'s mesh has no
+such field and never satisfies the guard.
+
+## Entity-owned serialization: `ISerializableEntity`
+
+`ISerializableEntity` (`base/interfaces/i-serializable-entity.ts`) is the opt-in interface an entity
+class implements to own its own `EntityJson` serialization - `serializeSettings(): { shape?: string;
+config?: Record<string, any> }`, called fresh (never cached) every time `LevelLoader.serializeEntity`
+runs on a matching entity. `GgCarEntity` is the reference implementation (`3d/entities/gg-car/gg-car.entity.ts`):
+its `serializeSettings` returns its construction-time tuning straight off `carProperties`, chassis
+`dimensions`/`material`/`body` recovered from the live chassis body/mesh (the same
+`debugBodySettings.shape`/`bodyOptions`/`IMaterialReadable3dComponent` mechanisms the `"Primitive"`
+live serializer uses, applied to one specific entity class instead of registered externally against
+the loader), and a `state` block capturing the car's *current* `gear`/`acceleration`/`brake`/
+`handBrake`/`steeringFactor` - none of which a frozen spawn-time `config` could ever reflect. See the
+`gg-engine-level-json` skill's "Serializing an entity or a level back to JSON" and "Making an
+app-defined entity class serializable" sections for the full three-tier `serializeEntity` mechanism
+this plugs into (live serializers, then `ISerializableEntity`, then the spawn-record echo) and how an
+app-defined entity class adopts this on its own class - this is a `packages/core`-internal note on
+where the interface itself lives and its reference implementation, not the consumer-facing guide.
+
+`LevelLoader.registerClass` takes an optional third argument - the concrete entity constructor a
+generator produces, when it always produces the same one - purely to let `serializeEntity` resolve a
+self-serializing entity's `class` alias when that entity has no spawn record (i.e. wasn't built via
+`createEntity`/`loadLevel` at all). `Gg3dLevelLoader` passes `GgCarEntity` for the `"GgCar"` alias;
+it does *not* pass `Entity3d` for `"Primitive"` (one class produces many different shapes, so no
+single alias is correct) or `GroupEntity` for `"Glb"` (several different classes all produce a plain
+`GroupEntity`, so the mapping would be ambiguous) - skip this argument for any class in the same
+situation, or for one that doesn't implement `ISerializableEntity` at all; a spawn record already
+resolves `class` for any instance actually built through the loader either way.
 
 ## Interfaces that are the actual public contract
 
@@ -569,6 +605,72 @@ Changing any of these is a breaking change for every adapter package — grep
 - `IRaycastVehicleComponent`, `ICharacterController3dComponent` (3D only)
 - `IEntity`, `IRenderableEntity`, `IRendererEntity`
 - The factory abstracts in `2d/factories.ts` / `3d/factories.ts`
+
+## `IRigidBodyComponent.bodyOptions` - reading a live body's construction settings back out
+
+`IRigidBodyComponent<D, R, PTypeDoc>` (`base/components/physics/i-rigid-body.component.ts`)
+declares `get bodyOptions(): Readonly<BodyOptions>` - `bodyType`/`mass`/`restitution`/`friction`/`ccd`
+exactly as the body was constructed, plus the already-live `ownCollisionGroups`/
+`interactWithCollisionGroups` folded in, so the getter alone is a complete, reusable `BodyOptions`.
+This is the read-back counterpart of the `body` field `IPhysicsBody(2d|3d)ComponentFactory
+.createRigidBody` takes - `factory.createRigidBody({shape, body: existingBody.bodyOptions},
+existingBody.position, existingBody.rotation)` reproduces an equivalent body. It exists specifically
+to let `LevelLoader.serializeEntity`'s live serializers (see `gg-engine-level-json`'s own section on
+this) reconstruct a `"Primitive"`/`"Trigger"` `EntityJson` from an entity's *current* physics state,
+regardless of how - or by what code - that entity was actually built, rather than only from an
+app-level record of what was originally requested.
+
+`bodyType`/`mass`/`restitution`/`friction`/`ccd` are safe to treat as unconditionally accurate for a
+body's entire lifetime, not just read once at construction: this engine's public API has no setter
+for any of the five, on this interface or on any adapter's own concrete component, so none of them
+can drift after creation. Each adapter's implementation reflects that:
+
+- **Ammo** (`packages/ammo`): `mass`/`friction`/`restitution` are read live off the native
+  `btRigidBody` (`getMass()`/`getFriction()`/`getRestitution()` - Bullet always has these, and
+  `AmmoRigidBodyComponent.clone()` already called them before this getter existed, for its own
+  `BodyOptions` reconstruction). `bodyType`/`ccd` have no Bullet-native getter at all (Bullet's own
+  CCD setup is a derived swept-sphere radius from the body's AABB, not a boolean anywhere to read
+  back) - both are instead plain constructor params stored on the component (`bodyType` already was;
+  `ccd` was added alongside it), unconditionally accurate for the same no-setter reason above.
+- **Rapier2d/Rapier3d**: reads straight off the stored `_bodyDescr`/`_colliderOptions` (already kept
+  around for `factoryProps`/`clone()`), not the native body/collider - `_bodyDescr.status` maps back
+  to `BodyType` via a small local `rapierBodyTypeToBodyType` inverse of the factory's own
+  `BodyType -> RigidBodyType` mapping (`Fixed` -> `'static'`, `KinematicPositionBased` ->
+  `'kinematic_pos'`, `KinematicVelocityBased` -> `'kinematic_vel'`, else `'dynamic'`). `mass` is the
+  one field that differs between the two packages: Rapier2d's factory sets `mass` directly on
+  `RigidBodyDesc`, so `_bodyDescr.mass` is correct there; Rapier3d's factory instead sets mass on
+  each collider (`ColliderDesc.setMass`, for a real, shape-derived rotational inertia - see
+  `gg-engine-physics-adapter-rapier`'s own section on this), so `Rapier3dRigidBodyComponent.bodyOptions`
+  sums `_colliderDescr[].mass` across every collider instead of reading the (always-`0`, unused)
+  `_bodyDescr.mass` field.
+- **Matter** (`packages/matter`): `mass`/`friction`/`restitution` are read live off the native
+  `Body`'s own plain fields (`Body.create`'s own resolved values, not just whatever was requested -
+  more accurate than echoing the request, since matter-js applies its own defaults for anything left
+  unset). `bodyType`/`ccd` are the *originally-requested* values, stored as plain constructor params
+  - matter-js has no kinematic body concept (a `kinematic_pos`/`kinematic_vel` request silently
+  degrades to a plain `isStatic` body) and no CCD at all, so neither is recoverable from - or even
+  meaningfully "live" on - the native body; echoing the request instead of the degraded reality is
+  what keeps a level reloaded under a different, kinematic/CCD-capable adapter faithful to what was
+  actually asked for, consistent with `debugBodySettings`'s own doc comment on this same tension
+  (that one deliberately reports the degraded reality instead, since it's a *debug view*, not a
+  reconstruction source - the two accessors intentionally disagree here, for different audiences).
+
+**A TypeScript narrowing pitfall found writing the `"Primitive"`/`"Trigger"` live serializers that
+consume this getter:** guarding a function with `if (entity.constructor !== SomeConcreteClass) return
+undefined;` and then, later in the same function, reading a plain inherited property directly off the
+original (unnarrowed) parameter - e.g. `entity.name` - fails with `Property 'name' does not exist on
+type 'never'`, even though the exact same property read via a separately-`as`-cast local variable
+(`const narrowed = entity as SomeConcreteClass; narrowed.name`) compiles fine. TypeScript does narrow
+control flow on a `.constructor === X` comparison (not just `instanceof`), and in this case narrowed
+the parameter's type down to an empty intersection - `never` - for the remainder of the function,
+specifically because the parameter's declared type (`IEntity<D, R, TypeDoc>` with a generic `TypeDoc`
+bound) and the compared-against class's own type (`Entity3d<TypeDoc>`) didn't structurally unify the
+way `instanceof` narrowing against a straightforward class would. **Fix**: don't reference the
+original parameter for anything past the guard - do all further work through the explicitly-cast
+local variable instead (which is needed anyway to access the subclass's own members). Cheap
+insurance against a repeat: prefer casting once into a `const narrowed = entity as X;` right after the
+guard and using only `narrowed` afterward, even if the original parameter would seem to work directly
+for a particular later access.
 
 ## Math & helpers
 

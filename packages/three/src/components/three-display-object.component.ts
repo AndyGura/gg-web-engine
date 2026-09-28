@@ -1,20 +1,41 @@
 import {
+  DisplayObject3dOpts,
   GgBox3d,
   IDisplayObject3dComponent,
   IEntity,
+  IMaterialReadable3dComponent,
   Pnt3,
   Point3,
   Point4,
   Qtrn,
   RenderLayer,
 } from '@gg-web-engine/core';
-import { Box3, Group, Mesh, Object3D, Scene } from 'three';
+import { Box3, Group, Mesh, Object3D, Scene, Texture } from 'three';
 import { ThreeGgWorld, ThreeVisualTypeDocRepo } from '../types';
 
-export class ThreeDisplayObjectComponent implements IDisplayObject3dComponent<ThreeVisualTypeDocRepo> {
+export class ThreeDisplayObjectComponent
+  implements
+    IDisplayObject3dComponent<ThreeVisualTypeDocRepo>,
+    Partial<IMaterialReadable3dComponent<ThreeVisualTypeDocRepo>>
+{
   entity: IEntity | null = null;
 
-  constructor(public nativeMesh: Object3D) {}
+  /**
+   * The options this mesh was actually built with, when constructed via `ThreeFactory.createPrimitive`
+   * (or a shortcut built on it) - see `IMaterialReadable3dComponent`'s own doc. Left unset for a mesh
+   * built any other way (e.g. a loaded `.glb`), which is the reason this is `Partial` rather than a
+   * hard implementation of that interface - check with `isMaterialReadable3d` before relying on it.
+   */
+  public readonly materialOptions?: DisplayObject3dOpts<Texture>;
+
+  constructor(
+    public nativeMesh: Object3D,
+    materialOptions?: DisplayObject3dOpts<Texture>,
+  ) {
+    if (materialOptions) {
+      this.materialOptions = materialOptions;
+    }
+  }
 
   public get position(): Point3 {
     return Pnt3.clone(this.nativeMesh.position);

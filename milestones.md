@@ -168,8 +168,80 @@ Status
 - 🚧 Caching: `Gg3dLoader` already has a `CachingStrategy` enum (Nothing/Files/Entities) for GLB
   loads; it's undocumented and unbenchmarked, and the new JSON level loader has no caching at all
   yet (arguably doesn't need any — level JSON files are small compared to GLB+textures).
-- Export/serialize selected runtime state back to JSON (savegames) — not started; the level loader
-  is currently load-only, no inverse "world → JSON" path.
+- ✅ Single-entity build API + JSON round-trip serialization (2026-09-25): `LevelLoader.createEntity(entityJson)`
+  builds one entity outside of a whole level document (dispatching to the same `registerClass`
+  generators `loadLevel` uses), without parenting it under a group or adding it to the world - the
+  caller does both itself; useful for a runtime spawn that doesn't come from (and shouldn't be forced
+  into) a level document, e.g. a networked "spawn this entity" message. `LevelLoader.serializeEntity(entity)`
+  is the inverse, trying two mechanisms in order: (1) **live serializers** - read an entity's own
+  current physics/visual state directly, so they work regardless of how the entity was actually
+  built and reflect however much it has drifted since spawn; the built-in `"Primitive"`/`"Trigger"`
+  classes (2D and 3D) work this way, recovering shape/dimensions from the physics body's
+  `debugBodySettings.shape` and body/velocity from the new `IRigidBodyComponent.bodyOptions` getter
+  plus the already-live `linearVelocity`/`angularVelocity` - matched by an entity's *exact* concrete
+  class (not `instanceof`), so a richer subclass like `Grabbable3dEntity` isn't mistaken for a plain
+  primitive; (2) **spawn-record echo** (the original, narrower implementation this replaces as the
+  primary path) - falls back to this for a class with no live-state equivalent to read from (a
+  `"GgCar"`'s engine/suspension tuning, a `"MapGraph"`'s graph structure, a `"Player"`'s model asset
+  path, a `"Sound"`'s clip URL): echoes the `class`/`shape`/`config` an entity was built from (kept
+  in a `WeakMap`, not reconstructed from live state), with `name`/`position`/`rotation` still read
+  live. An entity matched by neither has nothing to reconstruct it from - logs a warning, returns
+  `undefined`. `LevelLoader.serializeLevel(level)` does the level-wide equivalent, producing a
+  `LevelJson`'s `entities` array (not `blueprints`/`events` - a live event binding doesn't expose the
+  `BlueprintJson` it was built from). Two extension points for an app-defined class:
+  `registerLiveSerializer(fn)` (an independent, state-reading reconstruction, the same mechanism the
+  built-ins use) and `registerSerializer(classAlias, fn)` (layers onto the spawn-record echo instead
+  of replacing it). `"Primitive"`'s `config` also gained optional `linearVelocity`/`angularVelocity`,
+  applied once after body creation, so a serialized primitive's velocity round-trips through
+  `loadLevel` too. Landing the live path required exposing `mass`/`friction`/`restitution`/`ccd`/
+  `bodyType` as a read-back `IRigidBodyComponent.bodyOptions` getter (`base/components/physics/
+  i-rigid-body.component.ts`) - a core interface change implemented across all four physics adapters
+  (`ammo`, `matter`, `rapier2d`, `rapier3d`), each reading live off the native body where the engine
+  exposes a getter and falling back to a stored-at-construction value otherwise (safe either way,
+  since this engine's API has no setter for any of these five fields post-construction - see
+  `gg-engine-core-development`'s own section on this getter for the per-adapter breakdown, including
+  Matter's deliberate "echo the request, not matter-js's degraded reality" choice for `bodyType`/
+  `ccd`, which it doesn't natively support at all). Covered by
+  `createEntity`/`serializeEntity`/`registerSerializer`/`serializeLevel` describe blocks in
+  `packages/core/test/base/level-loader.spec.ts`, `live serializers` describe blocks in
+  `packages/core/test/{2d,3d}/level-loader.spec.ts`, and a `bodyOptions` describe block/spec file in
+  each physics adapter package's own tests; documented in the `gg-engine-level-json` and
+  `gg-engine-physics-adapter` skills.
+- ✅ Entity-owned serialization + material recovery (2026-09-28), closing the two gaps the previous
+  entry left open: (1) a third `LevelLoader.serializeEntity` tier, `ISerializableEntity`
+  (`base/interfaces/i-serializable-entity.ts`) - a `serializeSettings()` method an entity class
+  implements directly on itself, tried between the live serializers and the spawn-record echo, so a
+  class's own serialization logic lives next to the state it describes instead of split across the
+  class and loader-external registration. `GgCarEntity` is the reference implementation: its
+  `serializeSettings` returns its construction-time tuning off `carProperties`, chassis
+  `dimensions`/`material`/`body` recovered from the live chassis body/mesh, and a `state` block
+  (`gear`/`acceleration`/`brake`/`handBrake`/`steeringFactor`) capturing the car's *current* driving
+  state - none of which the old spawn-record echo could ever reflect, since it only ever replayed
+  whatever `config` a car happened to be built with. `"GgCar"`'s `config` gained a matching optional
+  `state` block, applied once right after construction, so a serialized car's driving state
+  round-trips through `loadLevel`/`createEntity` too. `LevelLoader.registerClass` gained an optional
+  third `entityClass` argument so this tier can resolve `class` for a self-serializing entity built
+  directly (`new SomeEntity(...)`), not only through the loader. (2) The primitive-material gap: a
+  new opt-in `IMaterialReadable3dComponent`/`IMaterialReadable2dComponent` capability
+  (`{3d,2d}/components/rendering/i-material-readable-{3d,2d}.component.ts`), implemented by
+  `ThreeDisplayObjectComponent`/`PixiDisplayObjectComponent` (an optional constructor parameter
+  storing the `DisplayObject(3d|2d)Opts` a display object was actually built with) and checked via
+  `isMaterialReadable3d`/`isMaterialReadable2d` from the `"Primitive"` live serializers (both
+  dimensions) and `GgCarEntity.serializeSettings` - a serialized `"Primitive"`/`"GgCar"` now
+  round-trips its material instead of always reloading with a default/random one. Also fixed along
+  the way (found while exercising this work, not pre-existing/unrelated): a `'SQUARE'`/`'BOX'`
+  naming mismatch that silently broke the 2D `"Primitive"`/`"Trigger"` live serializers for their
+  main box-shape case (fell back to the spawn-record echo without any error, since `Shape2DDescriptor`
+  only ever had `'BOX'`), and `Rapier3dRigidBodyComponent.bodyOptions.mass` reading the wrong native
+  field (`_bodyDescr.mass`, always `0` since `packages/rapier3d` deliberately puts mass on each
+  collider instead - see `gg-engine-physics-adapter-rapier`'s own section on this). Covered by a
+  `self-serialization (ISerializableEntity)` describe block in
+  `packages/core/test/base/level-loader.spec.ts`, material-recovery cases in the `live serializers`
+  describe blocks of `packages/core/test/{2d,3d}/level-loader.spec.ts`, a `serializeSettings`
+  describe block in `packages/core/test/3d/entities/gg-car.entity.spec.ts`, and `materialOptions`
+  describe blocks in each of `packages/three`/`packages/pixi`'s own component specs; documented in
+  the `gg-engine-level-json`, `gg-engine-core-development`, `gg-engine-visual-adapter`, and
+  `gg-engine-physics-adapter-rapier` skills.
 - ✅ Blender scene authoring tooling (2026-08-29): scenes are exported to the GLB+meta format via a
   proper installable Blender add-on (`blender-addon/`, `blender-addon/README.md`) rather than the
   former loose `build_blender_scene.py` CLI script that shipped inside the `@gg-web-engine/core` npm

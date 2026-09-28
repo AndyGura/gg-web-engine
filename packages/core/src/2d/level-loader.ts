@@ -1,12 +1,13 @@
-import { LevelLoader } from '../base/level-loader';
+import { EntityJson, LevelLoader } from '../base/level-loader';
 import { Gg2dWorld, Gg2dWorldTypeDocRepo } from './gg-2d-world';
-import { AudioDistanceModel, Point2 } from '../base';
+import { AudioDistanceModel, IEntity, Point2 } from '../base';
 import { DisplayObject2dOpts } from './factories';
 import { Body2DOptions } from './models/body-options';
 import { Shape2DDescriptor } from './models/shapes';
 import { Entity2d } from './entities/entity-2d';
 import { Trigger2dEntity } from './entities/trigger-2d.entity';
 import { AudioSource2dEntity } from './entities/audio-source-2d.entity';
+import { isMaterialReadable2d } from './components/rendering/i-material-readable-2d.component';
 
 const defaultBodyOptions: Body2DOptions = {
   bodyType: 'dynamic',
@@ -17,6 +18,24 @@ const defaultBodyOptions: Body2DOptions = {
   interactWithCollisionGroups: 'all',
   ccd: false,
 };
+
+/**
+ * Inverse of `Gg2dLevelLoader.buildShapeDescriptor`: turns a live `Shape2DDescriptor` (as read off
+ * a rigid body's `debugBodySettings.shape`) back into the `shape`/`config` fields a `"Primitive"`
+ * `EntityJson` needs - backs `Gg2dLevelLoader.serializePrimitive`.
+ */
+function primitiveConfigFromShape(
+  shape: Shape2DDescriptor,
+): { shape: string; config: Record<string, any> } | undefined {
+  switch (shape.shape) {
+    case 'BOX':
+      return { shape: 'BOX', config: { dimensions: shape.dimensions } };
+    case 'CIRCLE':
+      return { shape: 'CIRCLE', config: { radius: shape.radius } };
+    default:
+      return undefined;
+  }
+}
 
 /**
  * Shape names accepted by the built-in `"Primitive"` entity class in a 2D level JSON, via the
@@ -105,6 +124,15 @@ export interface PrimitiveSettings extends Primitive2DShapeSettings {
    * Physics body options, merged over sensible defaults
    */
   body?: Partial<Body2DOptions>;
+
+  /**
+   * Initial linear velocity, applied once right after the body is created - see the 3D loader's
+   * `Primitive3DSettings.linearVelocity` doc, same caveats.
+   */
+  linearVelocity?: Point2;
+
+  /** Initial angular velocity (radians/s) - see `linearVelocity`'s own doc, same caveats. */
+  angularVelocity?: number;
 }
 
 /**
@@ -172,6 +200,66 @@ export class Gg2dLevelLoader<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTyp
 
     this.registerClass('Trigger', this.createTrigger.bind(this));
     this.registerClass('Sound', this.createSound.bind(this));
+
+    this.registerLiveSerializer(this.serializePrimitive.bind(this));
+    this.registerLiveSerializer(this.serializeTrigger.bind(this));
+  }
+
+  /**
+   * Live serializer for the built-in `"Primitive"` class - see the 3D loader's
+   * `Gg3dLevelLoader.serializePrimitive` for the general approach and rationale (identical here,
+   * just 2D-typed): matches `entity.constructor === Entity2d` exactly, recovers shape/dimensions
+   * from `objectBody.debugBodySettings.shape`, `body`/velocity from the live physics body
+   * (`objectBody.bodyOptions`/`.linearVelocity`/`.angularVelocity`), and `material` from
+   * `object2D` when it implements `IMaterialReadable2dComponent`.
+   */
+  private serializePrimitive(entity: IEntity<Point2, number, TypeDoc>): EntityJson | undefined {
+    if (entity.constructor !== Entity2d || !(entity as Entity2d<TypeDoc>).objectBody) {
+      return undefined;
+    }
+    const positionable = entity as Entity2d<TypeDoc>;
+    const body = positionable.objectBody!;
+    const shapeConfig = primitiveConfigFromShape(body.debugBodySettings.shape);
+    if (!shapeConfig) {
+      return undefined;
+    }
+    const material = isMaterialReadable2d(positionable.object2D) ? positionable.object2D.materialOptions : undefined;
+    return {
+      class: 'Primitive',
+      shape: shapeConfig.shape,
+      name: positionable.name,
+      position: positionable.position,
+      rotation: positionable.rotation,
+      config: {
+        ...shapeConfig.config,
+        ...(material !== undefined ? { material } : {}),
+        body: body.bodyOptions,
+        linearVelocity: body.linearVelocity,
+        angularVelocity: body.angularVelocity,
+      },
+    };
+  }
+
+  /**
+   * Live serializer for the built-in `"Trigger"` class - see the 3D loader's own doc for the
+   * general approach. Matches `entity.constructor === Trigger2dEntity` exactly.
+   */
+  private serializeTrigger(entity: IEntity<Point2, number, TypeDoc>): EntityJson | undefined {
+    if (entity.constructor !== Trigger2dEntity) {
+      return undefined;
+    }
+    const trigger = entity as Trigger2dEntity<TypeDoc['pTypeDoc']>;
+    const shape = trigger.objectBody.debugBodySettings.shape;
+    if (shape.shape !== 'BOX') {
+      return undefined;
+    }
+    return {
+      class: 'Trigger',
+      name: trigger.name,
+      position: trigger.position,
+      rotation: trigger.rotation,
+      config: { dimensions: shape.dimensions },
+    };
   }
 
   /**
@@ -242,13 +330,22 @@ export class Gg2dLevelLoader<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTyp
     shape: Shape2DDescriptor,
     settings: PrimitiveSettings,
   ): Entity2d<TypeDoc> {
-    const { position, rotation, material, body } = settings;
-    return world.addPrimitiveRigidBody(
+    const { position, rotation, material, body, linearVelocity, angularVelocity } = settings;
+    const entity = world.addPrimitiveRigidBody(
       { shape, body: { ...defaultBodyOptions, ...body } },
       position,
       rotation,
       material,
     );
+    if (entity.objectBody) {
+      if (linearVelocity) {
+        entity.objectBody.linearVelocity = linearVelocity;
+      }
+      if (angularVelocity !== undefined) {
+        entity.objectBody.angularVelocity = angularVelocity;
+      }
+    }
+    return entity;
   }
 
   /**

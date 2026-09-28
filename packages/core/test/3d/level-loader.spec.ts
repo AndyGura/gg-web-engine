@@ -2,6 +2,7 @@ import {
   AudioSource3dEntity,
   Camera3dEntity,
   CharacterController3dEntity,
+  Entity3d,
   Gg3dLevelLoader,
   Gg3dWorld,
   GgCarEntity,
@@ -631,6 +632,77 @@ describe('Gg3dLevelLoader', () => {
       expect(car).toBeInstanceOf(GgCarEntity);
     });
 
+    it('applies an optional "state" block to a freshly-built GgCar', async () => {
+      const levelJson: LevelJson = {
+        entities: [
+          {
+            class: 'GgCar',
+            name: 'StatefulCar',
+            config: {
+              ...carCommonConfig,
+              chassis: { dimensions: { x: 1.8, y: 4, z: 0.6 } },
+              wheelBase: {
+                front: { halfAxleWidth: 1, axlePosition: 1.7, axleHeight: 0.3 },
+                rear: { halfAxleWidth: 1, axlePosition: -1, axleHeight: 0.3 },
+              },
+              state: { gear: 3, acceleration: 0.6, brake: 0.2, handBrake: true, steeringFactor: -0.4 },
+            },
+          },
+        ],
+      };
+
+      const level = await levelLoader.loadLevel(levelJson, 'TestLevel');
+      const car = level.getChildEntityByName<GgCarEntity>('StatefulCar');
+
+      expect(car.gear).toBe(3);
+      expect(car.acceleration).toBe(0.6);
+      expect(car.brake).toBe(0.2);
+      expect(car.handBrake).toBe(true);
+      expect(car.steeringFactor).toBeCloseTo(-0.4);
+    });
+
+    it('serializes a GgCar built via loadLevel from its own serializeSettings, reflecting current driving state', async () => {
+      const levelJson: LevelJson = {
+        entities: [
+          {
+            class: 'GgCar',
+            name: 'SerializedCar',
+            config: {
+              ...carCommonConfig,
+              chassis: { dimensions: { x: 1.8, y: 4, z: 0.6 } },
+              wheelBase: {
+                front: { halfAxleWidth: 1, axlePosition: 1.7, axleHeight: 0.3 },
+                rear: { halfAxleWidth: 1, axlePosition: -1, axleHeight: 0.3 },
+              },
+            },
+          },
+        ],
+      };
+
+      const level = await levelLoader.loadLevel(levelJson, 'TestLevel');
+      const car = level.getChildEntityByName<GgCarEntity>('SerializedCar');
+
+      // Mutate runtime state after spawn - a spawn-record echo could never reflect this, only the
+      // entity's own live serializeSettings can.
+      car.gear = 2;
+      car.acceleration = 0.9;
+
+      const json = levelLoader.serializeEntity(car)!;
+      expect(json.class).toBe('GgCar');
+      expect(json.name).toBe('SerializedCar');
+      expect(json.config.state).toEqual({
+        gear: 2,
+        acceleration: 0.9,
+        brake: 0,
+        handBrake: false,
+        steeringFactor: 0,
+      });
+      // Recovered from the raycast vehicle's own live debugBodySettings.shape - the shared mock
+      // world's createRaycastVehicle always returns a fresh default mockRaycastVehicle() regardless
+      // of the chassis body it's actually called with, which is what this value reflects here.
+      expect(json.config.chassis.dimensions).toEqual({ x: 1.8, y: 4, z: 0.6 });
+    });
+
     it('should throw when GgCar chassis dimensions are missing', async () => {
       const levelJson: LevelJson = {
         entities: [{ class: 'GgCar', config: { ...carCommonConfig, chassis: {}, wheelOptions: [] } }],
@@ -803,6 +875,135 @@ describe('Gg3dLevelLoader', () => {
 
       // Restore console.warn
       console.warn = originalWarn;
+    });
+  });
+
+  describe('live serializers', () => {
+    it("serializes a Primitive entity built directly (not via createEntity/loadLevel at all) from its live body's shape/bodyOptions/velocity", () => {
+      const body = mock3DBody(
+        { shape: 'SPHERE', radius: 2 },
+        {
+          bodyType: 'dynamic',
+          mass: 7,
+          friction: 0.4,
+          restitution: 0.6,
+          ccd: true,
+          ownCollisionGroups: [2],
+          interactWithCollisionGroups: [3],
+        },
+      );
+      body.linearVelocity = { x: 1, y: 2, z: 3 };
+      body.angularVelocity = { x: 0.1, y: 0.2, z: 0.3 };
+      // Exactly what Gg3dWorld.addPrimitiveRigidBody itself constructs - not going through the
+      // level loader at all.
+      const entity = new Entity3d({ objectBody: body });
+      entity.position = { x: 10, y: 20, z: 30 };
+      entity.rotation = { x: 0, y: 0, z: 0, w: 1 };
+      entity.name = 'DirectPrimitive';
+
+      expect(levelLoader.serializeEntity(entity)).toEqual({
+        class: 'Primitive',
+        shape: 'SPHERE',
+        name: 'DirectPrimitive',
+        position: { x: 10, y: 20, z: 30 },
+        rotation: { x: 0, y: 0, z: 0, w: 1 },
+        config: {
+          radius: 2,
+          body: body.bodyOptions,
+          linearVelocity: { x: 1, y: 2, z: 3 },
+          angularVelocity: { x: 0.1, y: 0.2, z: 0.3 },
+        },
+      });
+    });
+
+    it('recovers material from object3D when it implements IMaterialReadable3dComponent', () => {
+      const body = mock3DBody({ shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } });
+      const object3D = { ...mock3DObject(), materialOptions: { color: 8947848, shading: 'phong' } };
+      const entity = new Entity3d({ objectBody: body, object3D: object3D as any });
+      entity.name = 'MaterialPrimitive';
+
+      const json = levelLoader.serializeEntity(entity)!;
+      expect(json.config.material).toEqual({ color: 8947848, shading: 'phong' });
+    });
+
+    it('omits material for a display object with no IMaterialReadable3dComponent capability', () => {
+      const body = mock3DBody({ shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } });
+      const entity = new Entity3d({ objectBody: body, object3D: mock3DObject() });
+      entity.name = 'NoMaterialPrimitive';
+
+      const json = levelLoader.serializeEntity(entity)!;
+      expect(json.config.material).toBeUndefined();
+    });
+
+    it('reflects the body\'s current live state, not its spawn-time config, once it has moved/changed', async () => {
+      const body = mock3DBody({ shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } });
+      (world.addPrimitiveRigidBody as jest.Mock).mockImplementation(() => new Entity3d({ objectBody: body }));
+
+      const level = await levelLoader.loadLevel(
+        {
+          entities: [
+            {
+              class: 'Primitive',
+              shape: 'BOX',
+              name: 'Moved',
+              position: { x: 0, y: 0, z: 0 },
+              config: { dimensions: { x: 1, y: 1, z: 1 }, body: { bodyType: 'dynamic', mass: 1 } },
+            },
+          ],
+        },
+        'LiveDriftLevel',
+      );
+      const entity = level.getChildEntityByName<Entity3d>('Moved');
+
+      // Simulate physics having moved the body and changed its velocity since spawn - the live
+      // serializer must reflect this, not the config it was originally spawned from.
+      entity.position = { x: 99, y: 0, z: 0 };
+      body.linearVelocity = { x: 5, y: 0, z: 0 };
+
+      const json = levelLoader.serializeEntity(entity)!;
+      expect(json.position).toEqual({ x: 99, y: 0, z: 0 });
+      expect(json.config.linearVelocity).toEqual({ x: 5, y: 0, z: 0 });
+    });
+
+    it('serializes a Trigger entity from its live body, regardless of how it was built', () => {
+      const trigger = new Trigger3dEntity(mock3DBody({ shape: 'BOX', dimensions: { x: 4, y: 5, z: 6 } }) as any);
+      trigger.position = { x: 1, y: 2, z: 3 };
+      trigger.rotation = { x: 0, y: 0, z: 0, w: 1 };
+      trigger.name = 'DirectTrigger';
+
+      expect(levelLoader.serializeEntity(trigger)).toEqual({
+        class: 'Trigger',
+        name: 'DirectTrigger',
+        position: { x: 1, y: 2, z: 3 },
+        rotation: { x: 0, y: 0, z: 0, w: 1 },
+        config: { dimensions: { x: 4, y: 5, z: 6 } },
+      });
+    });
+
+    it('does not mistake a richer Entity3d subclass for a plain Primitive', () => {
+      class CustomEntity3d extends Entity3d {}
+      const entity = new CustomEntity3d({ objectBody: mock3DBody() });
+      entity.name = 'CustomSubclass';
+
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      expect(levelLoader.serializeEntity(entity)).toBeUndefined();
+      warnSpy.mockRestore();
+    });
+
+    it('falls through to the spawn-record echo for an entity the live serializers do not recognize', async () => {
+      levelLoader.registerClass('Custom', () => new TestEntity());
+
+      const level = await levelLoader.loadLevel(
+        { entities: [{ class: 'Custom', name: 'CustomOne', config: { foo: 'bar' } }] },
+        'FallbackLevel',
+      );
+      const entity = level.getChildEntityByName<TestEntity>('CustomOne');
+
+      expect(levelLoader.serializeEntity(entity as any)).toEqual({
+        class: 'Custom',
+        name: 'CustomOne',
+        config: { foo: 'bar' },
+      });
     });
   });
 });

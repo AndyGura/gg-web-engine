@@ -1,9 +1,18 @@
-import { RaycastVehicle3dEntity, RVEntityProperties } from '../raycast-vehicle-3d.entity';
+import { RaycastVehicle3dEntity, RVEntityProperties, WheelDisplayOptions } from '../raycast-vehicle-3d.entity';
 import { Gg3dWorld, Gg3dWorldTypeDocRepo } from '../../gg-3d-world';
 import { IRenderable3dEntity } from '../i-renderable-3d.entity';
 import { IPositionable3d } from '../../interfaces/i-positionable-3d';
-import { cubicSplineInterpolation, Point3, Point4, TickOrder } from '../../../base';
+import {
+  AxisDirection3,
+  cubicSplineInterpolation,
+  ISerializableEntity,
+  Point3,
+  Point4,
+  TickOrder,
+} from '../../../base';
 import { BehaviorSubject, filter, Observable, throttleTime } from 'rxjs';
+import { DisplayObject3dOpts } from '../../factories';
+import { isMaterialReadable3d } from '../../components/rendering/i-material-readable-3d.component';
 
 export type GgCarProperties = RVEntityProperties & {
   mpsToRpmFactor?: number;
@@ -54,7 +63,7 @@ export class GgCarEntity<
   RVEntity extends RaycastVehicle3dEntity<TypeDoc> = RaycastVehicle3dEntity<TypeDoc>,
 >
   extends IRenderable3dEntity<TypeDoc>
-  implements IPositionable3d
+  implements IPositionable3d, ISerializableEntity
 {
   static readonly entityTypeName: string = 'GgCarEntity';
   public readonly tickOrder = TickOrder.PHYSICS_SIMULATION - 5;
@@ -366,6 +375,105 @@ export class GgCarEntity<
       }
     }
     this._rpm$.next(Math.max(this.carProperties.engine.minRpm, Math.min(this.carProperties.engine.maxRpm, rpm)));
+  }
+
+  /**
+   * `ISerializableEntity` implementation: returns `GgCar3DSettings`-shaped `config` - both the
+   * construction-time tuning `carProperties` already holds (`engine`/`brake`/`transmission`/
+   * `suspension`/`tractionBias`/`maxSteerAngle`/`mpsToRpmFactor`, plus `wheelBase`/`wheelOptions`
+   * geometry) and what it doesn't: chassis `dimensions`/`material`/`body`, recovered from the live
+   * chassis rigid body/mesh the same way `Gg3dLevelLoader`'s `"Primitive"` live serializer recovers
+   * a primitive's own (see `IMaterialReadable3dComponent`) - plus a `state` block capturing this
+   * car's current runtime-mutated driving state (`gear`/`acceleration`/`brake`/`handBrake`/
+   * `steeringFactor`), none of which a spawn-time `config` alone could ever reflect, since all five
+   * change continuously as the car is driven. `Gg3dLevelLoader.createGgCar` applies `state` back
+   * onto a freshly-built car if present, after construction - see that method's own doc.
+   *
+   * Wheel/chassis `display`/`material` recovery only works for a mesh built via
+   * `IDisplayObject3dComponentFactory.createPrimitive` (or a shortcut built on it) - see
+   * `IMaterialReadable3dComponent`'s own doc; a chassis/wheel with no visual mesh at all
+   * (`chassis3D`/a wheel's `displayObject` unset) simply omits `material`/`display`, same as
+   * building one without `display`/`material` in the first place. `wheelObjectDirection`
+   * round-trips exactly (already plain data on `RVEntitySharedWheelOptions.display`);
+   * `autoScaleMesh` doesn't, since `Gg3dLevelLoader.resolveWheelDisplay` never sets it either.
+   */
+  public serializeSettings(): { config: Record<string, any> } {
+    const { tractionBias, suspension, mpsToRpmFactor, engine, brake, transmission, maxSteerAngle } = this.carProperties;
+
+    const chassisBody = this.raycastVehicle.objectBody;
+    const chassisShape = chassisBody?.debugBodySettings.shape;
+    const chassisMaterial = isMaterialReadable3d(this.raycastVehicle.chassis3D)
+      ? this.raycastVehicle.chassis3D.materialOptions
+      : undefined;
+
+    const config: Record<string, any> = {
+      chassis: {
+        ...(chassisShape?.shape === 'BOX' ? { dimensions: chassisShape.dimensions } : {}),
+        ...(chassisMaterial !== undefined ? { material: chassisMaterial } : {}),
+        ...(chassisBody ? { body: chassisBody.bodyOptions } : {}),
+      },
+      suspension,
+      tractionBias,
+      ...(mpsToRpmFactor !== undefined ? { mpsToRpmFactor } : {}),
+      engine,
+      brake,
+      transmission,
+      maxSteerAngle,
+      state: {
+        gear: this.gear,
+        acceleration: this.acceleration,
+        brake: this.brake,
+        handBrake: this.handBrake,
+        steeringFactor: this.steeringFactor,
+      },
+    };
+
+    if ('wheelBase' in this.carProperties) {
+      config.wheelBase = {
+        ...(this.carProperties.wheelBase.shared
+          ? { shared: this.serializeWheelFields(this.carProperties.wheelBase.shared) }
+          : {}),
+        front: this.serializeWheelFields(this.carProperties.wheelBase.front),
+        rear: this.serializeWheelFields(this.carProperties.wheelBase.rear),
+      };
+    } else {
+      config.wheelOptions = this.carProperties.wheelOptions.map(wheel => this.serializeWheelFields(wheel));
+      if (this.carProperties.sharedWheelOptions) {
+        config.sharedWheelOptions = this.serializeWheelFields(this.carProperties.sharedWheelOptions);
+      }
+    }
+
+    return { config };
+  }
+
+  /**
+   * Strips a wheel/axle settings object's live `display.displayObject` down to a JSON-safe
+   * `{ material?, wheelObjectDirection? }` - see {@link serializeSettings}'s own doc for the
+   * capability this depends on.
+   */
+  private serializeWheelFields<T extends { display?: WheelDisplayOptions }>(
+    wheel: T,
+  ): Omit<T, 'display'> & {
+    display?: { material?: DisplayObject3dOpts<any>; wheelObjectDirection?: AxisDirection3 };
+  } {
+    const { display, ...rest } = wheel;
+    if (!display) {
+      return rest;
+    }
+    const material =
+      display.displayObject && isMaterialReadable3d(display.displayObject)
+        ? display.displayObject.materialOptions
+        : undefined;
+    if (material === undefined && display.wheelObjectDirection === undefined) {
+      return rest;
+    }
+    return {
+      ...rest,
+      display: {
+        ...(material !== undefined ? { material } : {}),
+        ...(display.wheelObjectDirection !== undefined ? { wheelObjectDirection: display.wheelObjectDirection } : {}),
+      },
+    };
   }
 
   // TODO delete and let game application do all the steps

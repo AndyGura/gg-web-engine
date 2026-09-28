@@ -1,6 +1,7 @@
-import { AudioSource2dEntity, Gg2dLevelLoader, Gg2dWorld, IEntity, LevelJson, TickOrder, Trigger2dEntity } from '../../src';
+import { AudioSource2dEntity, Entity2d, Gg2dLevelLoader, Gg2dWorld, IEntity, LevelJson, TickOrder, Trigger2dEntity } from '../../src';
 import { mock2DBody } from '../mocks/body.mock';
 import { mock2DAudioSource } from '../mocks/audio-source.mock';
+import { mock2DObject } from '../mocks/object.mock';
 
 // A trivial concrete IEntity for tests that need a generator to return a real entity
 class TestEntity extends IEntity {
@@ -447,6 +448,95 @@ describe('Gg2dLevelLoader', () => {
 
       // Restore console.warn
       console.warn = originalWarn;
+    });
+  });
+
+  describe('live serializers', () => {
+    it("serializes a Primitive entity built directly (not via createEntity/loadLevel at all) from its live body's shape/bodyOptions/velocity", () => {
+      const body = mock2DBody(
+        { shape: 'CIRCLE', radius: 2 },
+        {
+          bodyType: 'dynamic',
+          mass: 7,
+          friction: 0.4,
+          restitution: 0.6,
+          ccd: true,
+          ownCollisionGroups: [2],
+          interactWithCollisionGroups: [3],
+        },
+      );
+      body.linearVelocity = { x: 1, y: 2 };
+      body.angularVelocity = 0.5;
+      // Exactly what Gg2dWorld.addPrimitiveRigidBody itself constructs - not going through the
+      // level loader at all.
+      const entity = new Entity2d({ objectBody: body });
+      entity.position = { x: 10, y: 20 };
+      entity.rotation = 1.2;
+      entity.name = 'DirectPrimitive';
+
+      expect(levelLoader.serializeEntity(entity)).toEqual({
+        class: 'Primitive',
+        shape: 'CIRCLE',
+        name: 'DirectPrimitive',
+        position: { x: 10, y: 20 },
+        rotation: 1.2,
+        config: {
+          radius: 2,
+          body: body.bodyOptions,
+          linearVelocity: { x: 1, y: 2 },
+          angularVelocity: 0.5,
+        },
+      });
+    });
+
+    it('recovers material from object2D when it implements IMaterialReadable2dComponent', () => {
+      const body = mock2DBody({ shape: 'BOX', dimensions: { x: 1, y: 1 } });
+      const object2D = { ...mock2DObject(), materialOptions: { color: 8947848 } };
+      const entity = new Entity2d({ objectBody: body, object2D: object2D as any });
+      entity.name = 'MaterialPrimitive';
+
+      const json = levelLoader.serializeEntity(entity)!;
+      expect(json.config.material).toEqual({ color: 8947848 });
+    });
+
+    it('omits material for a display object with no IMaterialReadable2dComponent capability', () => {
+      const body = mock2DBody({ shape: 'BOX', dimensions: { x: 1, y: 1 } });
+      const entity = new Entity2d({ objectBody: body, object2D: mock2DObject() });
+      entity.name = 'NoMaterialPrimitive';
+
+      const json = levelLoader.serializeEntity(entity)!;
+      expect(json.config.material).toBeUndefined();
+    });
+
+    it('serializes a Trigger entity from its live body, regardless of how it was built', () => {
+      const trigger = new Trigger2dEntity(mock2DBody({ shape: 'BOX', dimensions: { x: 4, y: 5 } }) as any);
+      trigger.position = { x: 1, y: 2 };
+      trigger.rotation = 0.3;
+      trigger.name = 'DirectTrigger';
+
+      expect(levelLoader.serializeEntity(trigger)).toEqual({
+        class: 'Trigger',
+        name: 'DirectTrigger',
+        position: { x: 1, y: 2 },
+        rotation: 0.3,
+        config: { dimensions: { x: 4, y: 5 } },
+      });
+    });
+
+    it('falls through to the spawn-record echo for an entity the live serializers do not recognize', async () => {
+      levelLoader.registerClass('Custom', () => new TestEntity());
+
+      const level = await levelLoader.loadLevel(
+        { entities: [{ class: 'Custom', name: 'CustomOne', config: { foo: 'bar' } }] },
+        'FallbackLevel',
+      );
+      const entity = level.getChildEntityByName<TestEntity>('CustomOne');
+
+      expect(levelLoader.serializeEntity(entity as any)).toEqual({
+        class: 'Custom',
+        name: 'CustomOne',
+        config: { foo: 'bar' },
+      });
     });
   });
 });

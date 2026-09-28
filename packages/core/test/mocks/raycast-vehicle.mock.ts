@@ -1,23 +1,47 @@
 import {
+  BodyOptions,
   GgCarEntity,
   GgCarProperties,
   IRaycastVehicleComponent,
   RaycastVehicle3dEntity,
   RVEntityProperties,
   RVEntityTractionBias,
+  Shape3DDescriptor,
 } from '../../src';
 import { mock3DObject } from './object.mock';
+import { mock3DBody } from './body.mock';
 
 export const mockRaycastVehicleEntity: () => RaycastVehicle3dEntity = () => new RaycastVehicle3dEntity(mockCarProperties(), mock3DObject(), mockRaycastVehicle());
 export const mockGgCarEntity: () => GgCarEntity = () => new GgCarEntity(mockCarProperties(), mock3DObject(), mockRaycastVehicle());
 
-export const mockRaycastVehicle: () => IRaycastVehicleComponent = () => {
+/**
+ * A `mockRaycastVehicle()` is `IRaycastVehicleComponent extends IRigidBody3dComponent`, so it's
+ * built on `mock3DBody()` (same optional `shape`/`bodyOptions` params, defaulting to a chassis-sized
+ * box) plus the handful of vehicle-only methods - this is what lets `GgCarEntity.serializeSettings`
+ * (and any other code reading a vehicle's live `debugBodySettings.shape`/`bodyOptions`) be exercised
+ * against this mock the same way `mock3DBody` already supports for a plain rigid body.
+ */
+export const mockRaycastVehicle = (
+  shape: Shape3DDescriptor = { shape: 'BOX', dimensions: { x: 1.8, y: 4, z: 0.6 } },
+  bodyOptions?: BodyOptions,
+): IRaycastVehicleComponent => {
   return {
+    ...mock3DBody(shape, bodyOptions),
+    wheelSpeed: 0,
     addWheel: () => {
     },
     setSteering: () => {
     },
-  } as any;
+    applyEngineForce: () => {
+    },
+    applyBrake: () => {
+    },
+    isWheelTouchesGround: () => true,
+    getWheelTransform: () => ({ position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0, w: 1 } }),
+    resetSuspension: () => {
+    },
+    clone: () => mockRaycastVehicle(shape, bodyOptions),
+  } as unknown as IRaycastVehicleComponent;
 };
 
 export const mockCarProperties: () => GgCarProperties & RVEntityProperties = () => ({

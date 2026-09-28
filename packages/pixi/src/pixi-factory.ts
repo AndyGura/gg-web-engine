@@ -43,17 +43,18 @@ export class PixiFactory extends IDisplayObject2dComponentFactory<PixiVisualType
           sprite.tint = material.color || this.randomColor();
         }
         sprite.anchor.x = sprite.anchor.y = 0.5;
-        return new PixiDisplayObjectComponent(sprite);
+        return new PixiDisplayObjectComponent(sprite, material);
       case 'CIRCLE':
         if (material.texture) {
           // assume that texture is circular
           const sprite = new Sprite(material.texture);
           sprite.width = sprite.height = descriptor.radius * 2;
           sprite.anchor.x = sprite.anchor.y = 0.5;
-          return new PixiDisplayObjectComponent(sprite);
+          return new PixiDisplayObjectComponent(sprite, material);
         }
         return new PixiDisplayObjectComponent(
           new Graphics().circle(0, 0, descriptor.radius).fill(material.color || this.randomColor()),
+          material,
         );
       case 'CAPSULE': {
         const halfDistance = descriptor.centersDistance / 2;
@@ -65,19 +66,19 @@ export class PixiFactory extends IDisplayObject2dComponentFactory<PixiVisualType
           .lineTo(-radius, -halfDistance)
           .arc(0, -halfDistance, radius, Math.PI, Math.PI * 2)
           .fill(material.color || this.randomColor());
-        return new PixiDisplayObjectComponent(graphics);
+        return new PixiDisplayObjectComponent(graphics, material);
       }
       case 'CONVEX_HULL': {
         const graphics = new Graphics()
           .poly(Pnt2.hull(descriptor.vertices).map(v => ({ x: v.x, y: v.y })))
           .fill(material.color || this.randomColor());
-        return new PixiDisplayObjectComponent(graphics);
+        return new PixiDisplayObjectComponent(graphics, material);
       }
       case 'POLYGON': {
         const graphics = new Graphics()
           .poly(descriptor.vertices.map(v => ({ x: v.x, y: v.y })))
           .fill(material.color || this.randomColor());
-        return new PixiDisplayObjectComponent(graphics);
+        return new PixiDisplayObjectComponent(graphics, material);
       }
       case 'COMPOUND': {
         const container = new Container();
@@ -91,7 +92,7 @@ export class PixiFactory extends IDisplayObject2dComponentFactory<PixiVisualType
           }
           container.addChild(submesh);
         }
-        return new PixiDisplayObjectComponent(container);
+        return new PixiDisplayObjectComponent(container, material);
       }
     }
   }

@@ -1,5 +1,7 @@
 import {
   BitMask,
+  BodyOptions,
+  BodyType,
   CollisionEvent,
   CollisionGroup,
   DebugBody2DSettings,
@@ -65,6 +67,30 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
     this.shape,
   );
 
+  /**
+   * See `IRigidBodyComponent.bodyOptions`'s own doc. `mass`/`friction`/`restitution` are read live
+   * off the native matter-js body (a plain JS object - `.mass`/`.friction`/`.restitution` are
+   * ordinary fields, resolved to matter-js's own defaults by `Body.create` for whichever of them
+   * weren't explicitly given, so this reflects the body's *actual* resolved values, not just
+   * whatever was requested). `bodyType`/`ccd` are stored as originally requested rather than
+   * derived from the native body: matter-js has no kinematic body concept at all (a requested
+   * `kinematic_pos`/`kinematic_vel` degrades to a plain `isStatic` body - see `MatterFactory
+   * .transformOptions`'s own doc) and no CCD, so neither is recoverable from - or even meaningfully
+   * "live" on - the native body itself; echoing the request instead keeps a level JSON reloaded
+   * under a different, kinematic/CCD-capable adapter faithful to what was actually asked for.
+   */
+  get bodyOptions(): Readonly<BodyOptions> {
+    return {
+      bodyType: this.bodyType,
+      mass: this.nativeBody.mass,
+      friction: this.nativeBody.friction,
+      restitution: this.nativeBody.restitution,
+      ccd: this.ccd,
+      ownCollisionGroups: this.ownCollisionGroups,
+      interactWithCollisionGroups: this.interactWithCollisionGroups,
+    };
+  }
+
   protected _interactWithCGsMask = BitMask.full(16);
   protected _ownCGsMask = BitMask.full(16);
 
@@ -92,6 +118,8 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
   constructor(
     public nativeBody: Body,
     public readonly shape: Shape2DDescriptor,
+    public readonly bodyType: BodyType = 'dynamic',
+    public readonly ccd: boolean = false,
   ) {
     this.updateCollisionFilter();
   }
@@ -161,7 +189,7 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
         ...this.nativeBody.collisionFilter,
       },
     });
-    const component = new MatterRigidBodyComponent(clonedBody, this.shape);
+    const component = new MatterRigidBodyComponent(clonedBody, this.shape, this.bodyType, this.ccd);
     component.ownCollisionGroups = this.ownCollisionGroups;
     component.interactWithCollisionGroups = this.interactWithCollisionGroups;
     return component;

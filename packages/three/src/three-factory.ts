@@ -172,7 +172,7 @@ export class ThreeFactory extends IDisplayObject3dComponentFactory<ThreeVisualTy
     if (material.receiveShadow !== undefined) {
       mesh.receiveShadow = material.receiveShadow;
     }
-    return new ThreeDisplayObjectComponent(mesh);
+    return new ThreeDisplayObjectComponent(mesh, material);
   }
 
   createPerspectiveCamera(

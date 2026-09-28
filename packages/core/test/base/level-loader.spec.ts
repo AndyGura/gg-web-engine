@@ -3,6 +3,7 @@ import {
   GgWorld,
   GroupEntity,
   IEntity,
+  ISerializableEntity,
   LevelJson,
   LevelLoader,
   Point2,
@@ -23,6 +24,28 @@ class TestEntity extends IEntity {
 class ObservableEntity extends IEntity {
   public readonly tickOrder = TickOrder.OBJECTS_BINDING;
   public readonly onSomething: Subject<unknown> = new Subject();
+}
+
+// An IEntity carrying mutable position/rotation, to exercise serializeEntity's live position/rotation readback
+class PositionableEntity extends IEntity {
+  public readonly tickOrder = TickOrder.OBJECTS_BINDING;
+
+  constructor(
+    public position?: Point2,
+    public rotation?: number,
+  ) {
+    super();
+  }
+}
+
+// An IEntity implementing ISerializableEntity, to exercise serializeEntity's self-serialization tier
+class SelfSerializingEntity extends IEntity implements ISerializableEntity {
+  public readonly tickOrder = TickOrder.OBJECTS_BINDING;
+  public mutableValue = 1;
+
+  public serializeSettings(): { shape?: string; config?: Record<string, any> } {
+    return { config: { mutableValue: this.mutableValue } };
+  }
 }
 
 describe('LevelLoader', () => {
@@ -136,6 +159,77 @@ describe('LevelLoader', () => {
 
       // Restore console.warn
       console.warn = originalWarn;
+    });
+  });
+
+  describe('createEntity', () => {
+    it('builds an entity without parenting it under a group or adding it to the world', async () => {
+      levelLoader.registerClass('TestEntity', () => new TestEntity());
+
+      const entity = await levelLoader.createEntity({ class: 'TestEntity', name: 'Standalone' });
+
+      expect(entity).toBeInstanceOf(TestEntity);
+      expect(entity!.name).toBe('Standalone');
+      expect(entity!.parent).toBeNull();
+      expect(entity!.world).toBeNull();
+      expect(() => world.getEntityByName('Standalone')).toThrow('No entity named "Standalone" found in the world');
+    });
+
+    it('passes the merged shape/position/rotation/name/config settings to the generator', async () => {
+      const mockGenerator = jest.fn().mockReturnValue(new TestEntity());
+      levelLoader.registerClass('TestEntity', mockGenerator);
+
+      await levelLoader.createEntity({
+        class: 'TestEntity',
+        shape: 'BOX',
+        position: { x: 1, y: 2 },
+        rotation: 0.5,
+        name: 'Standalone',
+        config: { testProperty: 'value' },
+      });
+
+      expect(mockGenerator).toHaveBeenCalledWith(world, {
+        shape: 'BOX',
+        position: { x: 1, y: 2 },
+        rotation: 0.5,
+        name: 'Standalone',
+        testProperty: 'value',
+      });
+    });
+
+    it('leaves name at its auto-generated default when entityJson.name is omitted', async () => {
+      levelLoader.registerClass('TestEntity', () => new TestEntity());
+
+      const entity = await levelLoader.createEntity({ class: 'TestEntity' });
+
+      // No explicit name and no level context to derive one from - the entity keeps whatever
+      // default IEntity itself generated at construction time.
+      expect(entity!.name).not.toBe('');
+    });
+
+    it('returns undefined and warns when class has no registered generator', async () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const entity = await levelLoader.createEntity({ class: 'NoGeneratorForCreateEntity' });
+
+      expect(entity).toBeUndefined();
+      expect(warnSpy).toHaveBeenCalledWith('No generator registered for class alias "NoGeneratorForCreateEntity"');
+
+      warnSpy.mockRestore();
+    });
+
+    it('returns undefined and warns when the generator does not return an IEntity', async () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      levelLoader.registerClass('BadGeneratorForCreateEntity', () => undefined);
+
+      const entity = await levelLoader.createEntity({ class: 'BadGeneratorForCreateEntity' });
+
+      expect(entity).toBeUndefined();
+      expect(warnSpy).toHaveBeenCalledWith(
+        'Generator for class alias "BadGeneratorForCreateEntity" did not return an IEntity - skipping',
+      );
+
+      warnSpy.mockRestore();
     });
   });
 
@@ -610,6 +704,209 @@ describe('LevelLoader', () => {
 
         warnSpy.mockRestore();
       });
+    });
+  });
+
+  describe('serializeEntity', () => {
+    it('reconstructs the EntityJson an entity was built from, via createEntity', async () => {
+      levelLoader.registerClass(
+        'Positionable',
+        (w: GgWorld<any, any>, settings: { position?: Point2; rotation?: number }) =>
+          new PositionableEntity(settings.position, settings.rotation),
+      );
+
+      const entityJson = {
+        class: 'Positionable',
+        shape: 'CIRCLE',
+        position: { x: 1, y: 2 },
+        rotation: 0.5,
+        name: 'Widget1',
+        config: { radius: 3 },
+      };
+      const entity = await levelLoader.createEntity(entityJson);
+
+      expect(levelLoader.serializeEntity(entity!)).toEqual(entityJson);
+    });
+
+    it('reads position/rotation/name live off the entity rather than its spawn-time values', async () => {
+      levelLoader.registerClass(
+        'Positionable',
+        (w: GgWorld<any, any>, settings: { position?: Point2; rotation?: number }) =>
+          new PositionableEntity(settings.position, settings.rotation),
+      );
+
+      const entity = (await levelLoader.createEntity({
+        class: 'Positionable',
+        position: { x: 1, y: 2 },
+        rotation: 0.5,
+        name: 'Widget2',
+      })) as PositionableEntity;
+
+      entity.position = { x: 10, y: 20 };
+      entity.rotation = 1.5;
+      entity.name = 'WidgetRenamed';
+
+      expect(levelLoader.serializeEntity(entity)).toEqual({
+        class: 'Positionable',
+        position: { x: 10, y: 20 },
+        rotation: 1.5,
+        name: 'WidgetRenamed',
+      });
+    });
+
+    it('omits shape/config/position/rotation the entity was not built with', async () => {
+      levelLoader.registerClass('TestEntity', () => new TestEntity());
+
+      const entity = await levelLoader.createEntity({ class: 'TestEntity', name: 'Bare' });
+
+      expect(levelLoader.serializeEntity(entity!)).toEqual({ class: 'TestEntity', name: 'Bare' });
+    });
+
+    it('returns undefined and warns for an entity with no spawn record', () => {
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const entity = new TestEntity();
+      entity.name = 'Unrecorded';
+
+      const json = levelLoader.serializeEntity(entity);
+
+      expect(json).toBeUndefined();
+      expect(warnSpy).toHaveBeenCalledWith(
+        'Cannot serialize entity "Unrecorded" - no registered live/self-serializer recognizes it, and it has no ' +
+          'spawn record (wasn\'t built via createEntity/loadLevel) to fall back to',
+      );
+
+      warnSpy.mockRestore();
+    });
+  });
+
+  describe('self-serialization (ISerializableEntity)', () => {
+    it("prefers an entity's own serializeSettings over the spawn-record echo, reflecting current state", async () => {
+      levelLoader.registerClass('SelfSerializing', () => new SelfSerializingEntity());
+
+      const entity = (await levelLoader.createEntity({
+        class: 'SelfSerializing',
+        name: 'Live1',
+        config: { mutableValue: 1 },
+      })) as SelfSerializingEntity;
+
+      entity.mutableValue = 42; // mutated after spawn - a spawn-record echo could never reflect this
+
+      expect(levelLoader.serializeEntity(entity)).toEqual({
+        class: 'SelfSerializing',
+        name: 'Live1',
+        config: { mutableValue: 42 },
+      });
+    });
+
+    it('resolves the class alias for a self-serializing entity built directly, via the registerClass constructor mapping', () => {
+      levelLoader.registerClass('SelfSerializing', () => new SelfSerializingEntity(), SelfSerializingEntity);
+
+      const entity = new SelfSerializingEntity();
+      entity.name = 'Direct1';
+      entity.mutableValue = 7;
+
+      expect(levelLoader.serializeEntity(entity)).toEqual({
+        class: 'SelfSerializing',
+        name: 'Direct1',
+        config: { mutableValue: 7 },
+      });
+    });
+
+    it('falls through (and eventually warns) for a self-serializing entity with no resolvable class alias', () => {
+      // registered with no third `entityClass` argument, and never built via createEntity/loadLevel
+      levelLoader.registerClass('SelfSerializing', () => new SelfSerializingEntity());
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const entity = new SelfSerializingEntity();
+      entity.name = 'Orphan1';
+
+      expect(levelLoader.serializeEntity(entity)).toBeUndefined();
+      expect(warnSpy).toHaveBeenCalled();
+
+      warnSpy.mockRestore();
+    });
+
+    it('still applies a registerSerializer override layered onto the self-serialized output', async () => {
+      levelLoader.registerClass('SelfSerializing', () => new SelfSerializingEntity());
+      levelLoader.registerSerializer('SelfSerializing', (entity, defaultJson) => ({
+        ...defaultJson,
+        config: { ...(defaultJson.config ?? {}), extra: 'layered' },
+      }));
+
+      const entity = (await levelLoader.createEntity({
+        class: 'SelfSerializing',
+        name: 'Layered1',
+      })) as SelfSerializingEntity;
+
+      expect(levelLoader.serializeEntity(entity)).toEqual({
+        class: 'SelfSerializing',
+        name: 'Layered1',
+        config: { mutableValue: 1, extra: 'layered' },
+      });
+    });
+  });
+
+  describe('registerSerializer', () => {
+    it('lets a custom serializer override the default output for a class alias', async () => {
+      levelLoader.registerClass('TestEntity', () => new TestEntity());
+      levelLoader.registerSerializer('TestEntity', (entity, defaultJson) => ({
+        ...defaultJson,
+        config: { ...(defaultJson.config ?? {}), extra: 'from custom serializer' },
+      }));
+
+      const entity = await levelLoader.createEntity({
+        class: 'TestEntity',
+        name: 'Custom1',
+        config: { original: true },
+      });
+
+      expect(levelLoader.serializeEntity(entity!)).toEqual({
+        class: 'TestEntity',
+        name: 'Custom1',
+        config: { original: true, extra: 'from custom serializer' },
+      });
+    });
+  });
+
+  describe('serializeLevel', () => {
+    it('reconstructs entities back into a LevelJson', async () => {
+      levelLoader.registerClass('TestEntity', () => new TestEntity());
+      levelLoader.registerClass(
+        'Positionable',
+        (w: GgWorld<any, any>, settings: { position?: Point2 }) => new PositionableEntity(settings.position),
+      );
+
+      const level = await levelLoader.loadLevel(
+        {
+          entities: [
+            { class: 'TestEntity', name: 'First', config: { a: 1 } },
+            { class: 'Positionable', name: 'Second', position: { x: 5, y: 6 } },
+          ],
+        },
+        'SerializeLevelTest',
+      );
+
+      expect(levelLoader.serializeLevel(level)).toEqual({
+        entities: [
+          { class: 'TestEntity', name: 'First', config: { a: 1 } },
+          { class: 'Positionable', name: 'Second', position: { x: 5, y: 6 } },
+        ],
+      });
+    });
+
+    it('silently skips level children with no spawn record (e.g. blueprint event bindings)', async () => {
+      levelLoader.registerClass('Observable', () => new ObservableEntity());
+
+      const level = await levelLoader.loadLevel(
+        {
+          entities: [{ class: 'Observable', name: 'SourceForSerialize', events: { onSomething: 'RemoveEntity' } }],
+        },
+        'SerializeLevelBindingTest',
+      );
+
+      const serialized = levelLoader.serializeLevel(level);
+
+      expect(serialized.entities).toEqual([{ class: 'Observable', name: 'SourceForSerialize' }]);
     });
   });
 });

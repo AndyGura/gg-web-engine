@@ -47,4 +47,59 @@ describe(`GgCarEntity`, () => {
       expectAngleAtSpeed(-17.5, 0.13);
     });
   });
+
+  describe(`serializeSettings`, () => {
+    it(`captures construction-time tuning, chassis geometry, and current driving state`, () => {
+      const chassis3D = { ...mock3DObject(), materialOptions: { color: 8947848 } };
+      const chassisBody = mockRaycastVehicle({ shape: 'BOX', dimensions: { x: 1.8, y: 4, z: 0.6 } });
+      const car = new GgCarEntity(mockCarProperties(), chassis3D as any, chassisBody);
+
+      car.gear = 2;
+      car.acceleration = 0.75;
+      car.brake = 0.1;
+      car.handBrake = true;
+      car.steeringFactor = 0.5;
+
+      const { config } = car.serializeSettings();
+      const carProperties = mockCarProperties();
+
+      expect(config.chassis).toEqual({
+        dimensions: { x: 1.8, y: 4, z: 0.6 },
+        material: { color: 8947848 },
+        body: chassisBody.bodyOptions,
+      });
+      expect(config.engine).toEqual(carProperties.engine);
+      expect(config.brake).toEqual(carProperties.brake);
+      expect(config.transmission).toEqual(carProperties.transmission);
+      expect(config.suspension).toEqual(carProperties.suspension);
+      expect(config.tractionBias).toEqual(carProperties.tractionBias);
+      expect(config.maxSteerAngle).toEqual(carProperties.maxSteerAngle);
+      expect(config.mpsToRpmFactor).toEqual(carProperties.mpsToRpmFactor);
+      // "shared"'s live displayObject can't round-trip through JSON - only its other fields do
+      expect(config.wheelBase.shared).toEqual({
+        tyreWidth: 1,
+        tyreRadius: 1,
+        frictionSlip: 0,
+        rollInfluence: 0,
+        maxTravel: 0,
+      });
+      expect(config.wheelBase.front).toEqual({ halfAxleWidth: 1, axleHeight: 0, axlePosition: 1 });
+      expect(config.wheelBase.rear).toEqual({ halfAxleWidth: 1, axleHeight: 0, axlePosition: -1 });
+      expect(config.state).toEqual({
+        gear: 2,
+        acceleration: 0.75,
+        brake: 0.1,
+        handBrake: true,
+        steeringFactor: 0.5,
+      });
+    });
+
+    it(`omits material when the chassis mesh doesn't implement IMaterialReadable3dComponent`, () => {
+      const car = new GgCarEntity(mockCarProperties(), mock3DObject(), mockRaycastVehicle());
+
+      const { config } = car.serializeSettings();
+
+      expect(config.chassis.material).toBeUndefined();
+    });
+  });
 });
