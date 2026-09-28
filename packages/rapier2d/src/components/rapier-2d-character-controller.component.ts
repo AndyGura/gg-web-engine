@@ -27,12 +27,13 @@ import { Rapier2dGgWorld, Rapier2dPhysicsTypeDocRepo } from '../types';
 /**
  * A capsule-shaped kinematic character controller backed by Rapier's own `KinematicCharacterController`
  * (`world.createCharacterController`) - the 2D counterpart of `Rapier3dCharacterControllerComponent`,
- * which this mirrors near-verbatim (2D `Vector2`/scalar rotation instead of 3D `Vector3`/`Quaternion`,
- * everything else - the synchronous-`move()` contract, the snap-to-ground/autostep-vs-jump guard, the
- * hand-rolled `pushDynamicBodies`, the "reuse the best-`up`-aligned collision normal, falling back to
- * the previous tick's rather than a flat guess" ground-normal derivation - is identical). See that
- * class's own doc for the full rationale behind each of these; only 2D-specific notes are repeated
- * here.
+ * which this mirrors closely (2D `Vector2`/scalar rotation instead of 3D `Vector3`/`Quaternion`, the
+ * snap-to-ground/autostep-vs-jump guard, the hand-rolled `pushDynamicBodies`, the "reuse the best-
+ * `up`-aligned collision normal, falling back to the previous tick's rather than a flat guess"
+ * ground-normal derivation - all identical). See that class's own doc for the full rationale behind
+ * each of these; only 2D-specific notes are repeated here. One deliberate divergence: `move()` here
+ * sweeps `desiredTranslation` as two single-axis passes (horizontal, then any remaining vertical
+ * intent) rather than 3D's single combined sweep - see this method's own doc for why.
  */
 export class Rapier2dCharacterControllerComponent implements ICharacterController2dComponent<Rapier2dPhysicsTypeDocRepo> {
   public entity: Entity2d | null = null;
@@ -189,7 +190,8 @@ export class Rapier2dCharacterControllerComponent implements ICharacterControlle
     }
     this.syncColliderTransform();
 
-    const movingUp = Pnt2.dot(desiredTranslation, this._up) > 1e-9;
+    const vertAmount = Pnt2.dot(desiredTranslation, this._up);
+    const movingUp = vertAmount > 1e-9;
     if (movingUp) {
       this._nativeController.disableSnapToGround();
       this._nativeController.disableAutostep();
@@ -202,22 +204,90 @@ export class Rapier2dCharacterControllerComponent implements ICharacterControlle
       }
     }
 
-    const desired = new Vector2(desiredTranslation.x, desiredTranslation.y);
-    this._nativeController.computeColliderMovement(
-      this._nativeCollider,
-      desired,
-      // see `Rapier3dCharacterControllerComponent.move`'s doc for why `EXCLUDE_SENSORS` is required
-      QueryFilterFlags.EXCLUDE_SENSORS,
-      undefined,
-      this.ignoredBodiesFilterPredicate(),
-    );
-    const computed = this._nativeController.computedMovement();
-    const current = this._nativeBody.translation();
-    const next = new Vector2(current.x + computed.x, current.y + computed.y);
+    const filterPredicate = this.ignoredBodiesFilterPredicate();
+    const sweep = (translation: Point2): Vector2 => {
+      this._nativeController!.computeColliderMovement(
+        this._nativeCollider!,
+        new Vector2(translation.x, translation.y),
+        // see `Rapier3dCharacterControllerComponent.move`'s doc for why `EXCLUDE_SENSORS` is required
+        QueryFilterFlags.EXCLUDE_SENSORS,
+        undefined,
+        filterPredicate,
+      );
+      return this._nativeController!.computedMovement();
+    };
 
-    this._nativeBody.setTranslation(next, true);
-    this._nativeBody.setNextKinematicTranslation(next);
-    this.syncColliderTransform();
+    // `horizPart`/`vertPart` are constructed so each has an *exactly* (bit-for-bit) zero component
+    // along the other axis - not merely a small one - see the native-bug note below for why that
+    // exactness matters and plain `desiredTranslation` (which can carry ~1e-16 floating-point noise
+    // on the axis its caller considers "unused", e.g. from `Pnt2.add`/`scalarMult` arithmetic
+    // upstream in `CharacterController2dEntity`) is never safe to hand to `computeColliderMovement`
+    // directly.
+    const horizPart = Pnt2.sub(desiredTranslation, Pnt2.scalarMult(this._up, vertAmount));
+    const vertPart = Pnt2.scalarMult(this._up, vertAmount);
+    const hasHoriz = Pnt2.len(horizPart) > 1e-9;
+    const hasVert = Math.abs(vertAmount) > 1e-9;
+
+    // Work around a native bug found empirically in this pinned `@dimforge/rapier2d-compat` build:
+    // `computeColliderMovement`, when the character starts the sweep already resting flush on a
+    // flat floor, and `desiredTranslation` has *any* non-zero component pointing away from `up`
+    // (i.e. downward - any magnitude at all, even ~1e-16 floating-point noise carried on an axis the
+    // caller never intended to move along) together with a non-zero horizontal component, returns an
+    // almost-exactly-zero result for the ENTIRE movement (horizontal included), regardless of
+    // `enableSnapToGround`/`enableAutostep`, regardless of how large the desired horizontal distance
+    // is, and regardless of there being no actual obstacle in that direction (`computedCollision(0)`'s
+    // own normal is flat, near-`up`, not a wall) - confirmed directly against the native controller
+    // with the character body moved into open space first (ruling out any stale broad-phase/collider-
+    // transform-sync effect), and by feeding synthetic desired vectors of every sign combination at
+    // the exact resting height (a *pure* horizontal or *pure* vertical desired translation, with the
+    // other component bit-for-bit `0`, is unaffected regardless of magnitude - only a genuinely mixed
+    // vector triggers it). Whatever this degenerate result resolves to for a given exact flush
+    // contact configuration is direction-dependent and self-reinforcing: a resolution of "fully
+    // blocked" leaves the position unchanged, so the identical degenerate input recurs next tick too
+    // - this is the concrete mechanism behind the "walking left gets stuck at discrete positions
+    // until I jump" symptom (jumping's own `movingUp` branch above always disables both native
+    // features outright and is not itself the trigger; the *direction* that ends up "stuck" versus
+    // "recovers next tick" was observed to depend on the exact numeric contact configuration, not on
+    // left/right consistently - so this is fixed for both directions, not just one). A one-tick
+    // `computedGrounded()` false reading immediately after starting horizontal movement from rest is
+    // enough to introduce exactly this kind of tiny genuine (non-noise) vertical component into
+    // `desiredTranslation` via `CharacterController2dEntity`'s own gravity integration, making this
+    // reachable from perfectly ordinary walking, not just edge-case input.
+    //
+    // Fixed by never handing the native controller a mixed vector at all: split into two single-axis
+    // sweeps - horizontal first (with snapping/autostep exactly as decided above, so ground-following
+    // on a downward step/slope while walking still works), then any remaining vertical intent
+    // (fall/jump takeoff/snap-glue) as its own pure-`up` sweep from the post-horizontal position - and
+    // always sweep with `horizPart`/`vertPart` (exact-zero orthogonal component by construction)
+    // rather than raw `desiredTranslation`, even on the common single-axis-only path, since that raw
+    // vector's own "zero" axis is exactly the kind of noisy near-zero value this bug treats as
+    // "non-zero" as shown above.
+    //
+    // `start` is the position at the top of this tick, captured once. Each phase below applies its
+    // own computed movement to the body immediately (so a following phase's sweep sees the right
+    // starting transform), accumulating into `computed` - the final write derives strictly from
+    // `start + computed`, never from a fresh `translation()` read, since that would already include
+    // an earlier phase's movement and double-count it.
+    const start = this._nativeBody.translation();
+    let computed: Point2 = { x: 0, y: 0 };
+    const applyPhase = (delta: Vector2): void => {
+      computed = Pnt2.add(computed, { x: delta.x, y: delta.y });
+      const next = new Vector2(start.x + computed.x, start.y + computed.y);
+      this._nativeBody!.setTranslation(next, true);
+      this._nativeBody!.setNextKinematicTranslation(next);
+      this.syncColliderTransform();
+    };
+
+    if (hasHoriz && hasVert) {
+      applyPhase(sweep(horizPart));
+      applyPhase(sweep(vertPart));
+    } else if (hasVert) {
+      applyPhase(sweep(vertPart));
+    } else {
+      // purely horizontal, or a fully negligible desired translation (still swept once, with an
+      // exact-zero vertical component, to refresh `isGrounded`/`groundNormal` for this tick).
+      applyPhase(sweep(horizPart));
+    }
 
     this._isGrounded = this._nativeController.computedGrounded();
     this._groundNormal = this.computeGroundNormal();

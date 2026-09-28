@@ -129,7 +129,7 @@ describe('Rapier2dCharacterControllerComponent', () => {
     'walks straight through a body added to ignoredBodies instead of sliding to a stop against it ' +
       "(regression: collision groups alone can't express excluding just one specific body while both " +
       'it and the character still need to collide with the rest of the world - see ' +
-      '`ICharacterController2dComponent.ignoredBodies`\'s doc)',
+      "`ICharacterController2dComponent.ignoredBodies`'s doc)",
     () => {
       addFloor(0, 20, 0);
       const wall = addWall(2);
@@ -191,6 +191,41 @@ describe('Rapier2dCharacterControllerComponent', () => {
     expect(character.position.x).toBeGreaterThan(2); // made meaningful forward progress past the step
     expect(character.position.y).toBeCloseTo(-(stepHeight + HALF_HEIGHT), 1); // stepped up onto the ledge
   });
+
+  it.each([
+    ['leftward', -1],
+    ['rightward', 1],
+  ])(
+    "keeps making %s progress across a flat floor when each move() also carries a small downward bias (regression: a native computeColliderMovement bug fully blocked horizontal movement, direction-dependently, whenever desiredTranslation mixed a non-zero horizontal component with any non-zero downward one - see this file's own doc)",
+    (_label, sign) => {
+      addFloor(0, 200, 0);
+      // starting exactly at the floor's own center (x=0) does not reliably land on the flush contact
+      // configuration this bug depends on - x=50 was confirmed (against the pre-fix component) to
+      // reproduce it within the first 100 ticks essentially every time; keep this starting position.
+      const character = factory.createCharacterController(CHAR_OPTIONS, {
+        position: { x: 50, y: -(HALF_HEIGHT + 0.5) },
+      });
+      character.addToWorld({ physicsWorld: world } as any);
+      settleWorld();
+      character.move({ x: 0, y: 1 });
+      expect(character.isGrounded).toBe(true);
+      const startX = character.position.x;
+
+      let prevX = startX;
+      let stuckTicks = 0;
+      for (let i = 0; i < 200; i++) {
+        character.move({ x: sign * 0.15, y: 0.05 });
+        if (Math.abs(character.position.x - prevX) < 1e-6) {
+          stuckTicks++;
+        }
+        prevX = character.position.x;
+      }
+
+      // real per-tick progress the whole way through, not stalled for long stretches at a time
+      expect(stuckTicks).toBeLessThan(5);
+      expect(character.position.x - startX).toBeCloseTo(sign * 0.15 * 200, 0);
+    },
+  );
 
   it('a small upward move (a jump takeoff tick) actually rises instead of being snapped back to the floor, even though it stays well within the default snapToGroundDistance of 0.3', () => {
     addFloor(0, 20, 0);
