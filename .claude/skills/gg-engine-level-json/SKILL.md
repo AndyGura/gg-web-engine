@@ -240,12 +240,24 @@ through `serializeEntity`'s own read side.
 engine API level (no translation needed between a level JSON and e.g.
 `Gg3dWorld.addPrimitiveRigidBody`):
 
-- **2D** (`Gg2dLevelLoader`, `PrimitiveSettings`): `"SQUARE"` (needs `dimensions`), `"CIRCLE"`
-  (needs `radius`).
-- **3D** (`Gg3dLevelLoader`, `Primitive3DSettings`): `"BOX"` (needs `dimensions`), `"SPHERE"`
-  (needs `radius`), `"PLANE"`, `"CAPSULE"` (needs `radius` + `centersDistance`), `"CYLINDER"`
-  (needs `height`, plus either `radius` for a circular cross-section or `radiusX`+`radiusY`
-  together for an elliptical one - see below), `"CONE"` (needs `radius` + `height`).
+- **2D** (`Gg2dLevelLoader`, `PrimitiveSettings`): every `Shape2DDescriptor` member - `"BOX"` (needs
+  `dimensions`), `"CIRCLE"` (needs `radius`), `"CAPSULE"` (needs `radius` + `centersDistance`),
+  `"CONVEX_HULL"`/`"POLYGON"` (need `vertices`), `"COMPOUND"` (needs `children`: an array of
+  `{ position?, rotation?, shape, ...shape-specific fields }`, recursing through the same
+  `Primitive2DShapeSettings` shape - a child's own `shape` may itself be `"COMPOUND"`, nesting
+  arbitrarily deep). See `packages/core/src/2d/level-loader.ts`'s `CompoundChild2DSettings`/
+  `buildShapeDescriptor`.
+- **3D** (`Gg3dLevelLoader`, `Primitive3DSettings`): every `Shape3DDescriptor` member - `"BOX"`
+  (needs `dimensions`), `"SPHERE"` (needs `radius`), `"PLANE"`, `"CAPSULE"` (needs `radius` +
+  `centersDistance`), `"CYLINDER"` (needs `height`, plus either `radius` for a circular
+  cross-section or `radiusX`+`radiusY` together for an elliptical one - see below), `"CONE"` (needs
+  `radius` + `height`), `"CONVEX_HULL"` (needs `vertices`), `"MESH"` (needs `vertices` + `faces`,
+  the latter vertex-index triples), `"COMPOUND"` (needs `children`: an array of
+  `{ position?, rotation?, shape, ...shape-specific fields }`, recursing through the same
+  `Primitive3DShapeSettings` shape - a child's own `shape` may itself be `"COMPOUND"`, nesting
+  arbitrarily deep; a child's `rotation` is a `Point4` quaternion, same as the top-level
+  primitive's). See `packages/core/src/3d/level-loader.ts`'s `CompoundChild3DSettings`/
+  `buildShapeDescriptor`.
 
 `"CYLINDER"`'s elliptical form (`radiusX`/`radiusY` instead of `radius`) is 3D-only and
 cylinder-only - `"CONE"` and the 2D shapes have no elliptical counterpart.

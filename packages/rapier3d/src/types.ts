@@ -2,6 +2,7 @@ import { Rapier3dFactory } from './rapier-3d-factory';
 import { Rapier3dLoader } from './rapier-3d-loader';
 import { Rapier3dRigidBodyComponent } from './components/rapier-3d-rigid-body.component';
 import { Rapier3dTriggerComponent } from './components/rapier-3d-trigger.component';
+import { Rapier3dRaycastVehicleComponent } from './components/rapier-3d-raycast-vehicle.component';
 import { Rapier3dCharacterControllerComponent } from './components/rapier-3d-character-controller.component';
 import { Gg3dWorld, Gg3dWorldSceneTypeDocPPatch, Gg3dWorldTypeDocPPatch } from '@gg-web-engine/core';
 import { Rapier3dWorldComponent } from './components/rapier-3d-world.component';
@@ -11,7 +12,7 @@ export type Rapier3dPhysicsTypeDocRepo = {
   loader: Rapier3dLoader;
   rigidBody: Rapier3dRigidBodyComponent;
   trigger: Rapier3dTriggerComponent;
-  raycastVehicle: never; //Rapier3dRaycastVehicleComponent;
+  raycastVehicle: Rapier3dRaycastVehicleComponent;
   characterController: Rapier3dCharacterControllerComponent;
 };
 

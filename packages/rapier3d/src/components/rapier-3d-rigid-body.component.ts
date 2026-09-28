@@ -18,6 +18,7 @@ import {
   Collider,
   ColliderDesc,
   InteractionGroups,
+  MassPropsMode,
   Quaternion,
   RigidBody,
   RigidBodyDesc,
@@ -210,7 +211,33 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
       const d = new ColliderDesc(cd.shape);
       d.setTranslation(cd.translation.x, cd.translation.y, cd.translation.z);
       d.setRotation({ ...cd.rotation });
-      d.setMassProperties(cd.mass, cd.centerOfMass, cd.principalAngularInertia, cd.angularInertiaLocalFrame);
+      // `cd.mass`/`centerOfMass`/`principalAngularInertia`/`angularInertiaLocalFrame` are only
+      // meaningful once something has actually switched `cd` into `MassPropsMode.MassProps` (via
+      // `setMassProperties`) or `.Mass` (via `setMass`/`ColliderDesc.mass`) - otherwise they're just
+      // a freshly-constructed `ColliderDesc`'s zeroed placeholder defaults (confirmed empirically:
+      // `mass: 0`, `principalAngularInertia: {0,0,0}`), irrelevant under the default
+      // `MassPropsMode.Density` mode, which instead derives mass *and* rotational inertia
+      // automatically from the shape and `cd.density`. Unconditionally copying those placeholders via
+      // `setMassProperties` here used to force every `factoryProps`-built collider (every `clone()`,
+      // and - since `Rapier3dRaycastVehicleComponent` builds its own body this same way - every
+      // raycast vehicle chassis) into an explicit zero-mass, zero-rotational-inertia `MassProps` mode
+      // regardless of the original's real mode, silently discarding the shape-derived inertia tensor
+      // a normal `factory.createRigidBody()` body gets for free. The practical symptom this caused:
+      // Rapier's own solver reduces "torque / (zero-plus-epsilon) angular inertia" to no angular
+      // acceleration at all, so a vehicle chassis built this way could never yaw - confirmed
+      // empirically (steering a vehicle chassis produced pure sideways-sliding translation with
+      // `angvel` staying exactly `{0,0,0}` every tick, never even a small nonzero value, which a
+      // merely-large-but-nonzero inertia tensor would still have produced). Fix: only propagate
+      // explicit mass properties when the original was actually in one of those two modes; otherwise
+      // just copy `density` and let Rapier re-derive mass/inertia from the (identical) shape, exactly
+      // like the original was computed.
+      if (cd.massPropsMode === MassPropsMode.MassProps) {
+        d.setMassProperties(cd.mass, cd.centerOfMass, cd.principalAngularInertia, cd.angularInertiaLocalFrame);
+      } else if (cd.massPropsMode === MassPropsMode.Mass) {
+        d.setMass(cd.mass);
+      } else {
+        d.setDensity(cd.density);
+      }
       d.setFriction(cd.friction);
       d.setEnabled(cd.enabled);
       d.setRestitution(cd.restitution);

@@ -1,3 +1,4 @@
+export * from './components/matter-character-controller.component';
 export * from './components/matter-rigid-body.component';
 export * from './components/matter-trigger.component';
 export * from './components/matter-world.component';

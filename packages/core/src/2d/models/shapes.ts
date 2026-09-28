@@ -2,8 +2,12 @@ import { Point2 } from '../../base';
 import { Body2DOptions } from './body-options';
 
 export type Shape2DDescriptor = { collisionMargin?: number } & (
-  { shape: 'SQUARE'; dimensions: Point2 } | { shape: 'CIRCLE'; radius: number }
+  | { shape: 'BOX'; dimensions: Point2 }
+  | { shape: 'CIRCLE'; radius: number }
+  | { shape: 'CAPSULE'; radius: number; centersDistance: number }
+  | { shape: 'CONVEX_HULL'; vertices: Point2[] }
+  | { shape: 'POLYGON'; vertices: Point2[] }
+  | { shape: 'COMPOUND'; children: { position?: Point2; rotation?: number; shape: Shape2DDescriptor }[] }
 );
-// TODO add more shapes
 
 export type BodyShape2DDescriptor = { shape: Shape2DDescriptor; body: Partial<Body2DOptions> };

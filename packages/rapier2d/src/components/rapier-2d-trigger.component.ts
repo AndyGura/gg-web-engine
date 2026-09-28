@@ -3,7 +3,12 @@ import { ColliderDesc, RigidBodyDesc } from '@dimforge/rapier2d-compat';
 import { Rapier2dRigidBodyComponent } from './rapier-2d-rigid-body.component';
 import { DebugBody2DSettings, ITrigger2dComponent, Shape2DDescriptor } from '@gg-web-engine/core';
 import { Rapier2dWorldComponent } from './rapier-2d-world.component';
+import { Rapier2dCharacterControllerComponent } from './rapier-2d-character-controller.component';
 import { Rapier2dGgWorld, Rapier2dPhysicsTypeDocRepo } from '../types';
+
+// a rigid body or a character controller can overlap this trigger's sensor volume - see
+// `handleOverlapEvent`'s doc.
+type Rapier2dOverlapping = Rapier2dRigidBodyComponent | Rapier2dCharacterControllerComponent;
 
 export class Rapier2dTriggerComponent
   extends Rapier2dRigidBodyComponent
@@ -14,17 +19,17 @@ export class Rapier2dTriggerComponent
     this.shape,
   );
 
-  get onEntityEntered(): Observable<Rapier2dRigidBodyComponent> {
+  get onEntityEntered(): Observable<Rapier2dOverlapping> {
     return this.onEnter$.asObservable();
   }
 
-  get onEntityLeft(): Observable<Rapier2dRigidBodyComponent> {
+  get onEntityLeft(): Observable<Rapier2dOverlapping> {
     return this.onLeft$.asObservable();
   }
 
-  protected readonly overlaps: Set<Rapier2dRigidBodyComponent> = new Set<Rapier2dRigidBodyComponent>();
-  protected readonly onEnter$: Subject<Rapier2dRigidBodyComponent> = new Subject<Rapier2dRigidBodyComponent>();
-  protected readonly onLeft$: Subject<Rapier2dRigidBodyComponent> = new Subject<Rapier2dRigidBodyComponent>();
+  protected readonly overlaps: Set<Rapier2dOverlapping> = new Set<Rapier2dOverlapping>();
+  protected readonly onEnter$: Subject<Rapier2dOverlapping> = new Subject<Rapier2dOverlapping>();
+  protected readonly onLeft$: Subject<Rapier2dOverlapping> = new Subject<Rapier2dOverlapping>();
 
   constructor(
     protected readonly world: Rapier2dWorldComponent,
@@ -63,7 +68,7 @@ export class Rapier2dTriggerComponent
    * without racing this trigger for the same queue - see `Rapier2dWorldComponent.simulate`'s own
    * doc), rather than each trigger draining the whole queue itself on every `checkOverlaps()` call
    * as before. */
-  handleOverlapEvent(other: Rapier2dRigidBodyComponent, started: boolean): void {
+  handleOverlapEvent(other: Rapier2dOverlapping, started: boolean): void {
     if (started) {
       this.overlaps.add(other);
       this.onEnter$.next(other);

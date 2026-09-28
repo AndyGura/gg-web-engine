@@ -118,12 +118,12 @@ describe('MatterWorldComponent', () => {
     });
   });
 
-  describe.skip('Raycast', () => {
+  describe('Raycast', () => {
     it('should return no hit when ray does not intersect any object', () => {
       // Create a square far away from the ray
       const square = world.factory.createRigidBody(
         {
-          shape: { shape: 'SQUARE', dimensions: { x: 1, y: 1 } },
+          shape: { shape: 'BOX', dimensions: { x: 1, y: 1 } },
           body: { bodyType: 'static', mass: 0 },
         },
         { position: { x: 10, y: 10 } },
@@ -149,7 +149,7 @@ describe('MatterWorldComponent', () => {
       // Create a square in the path of the ray
       const square = world.factory.createRigidBody(
         {
-          shape: { shape: 'SQUARE', dimensions: { x: 2, y: 2 } },
+          shape: { shape: 'BOX', dimensions: { x: 2, y: 2 } },
           body: { bodyType: 'static', mass: 0 },
         },
         { position: { x: 0, y: -5 } },
@@ -186,7 +186,7 @@ describe('MatterWorldComponent', () => {
       // Create a square that only belongs to group1
       const square1 = world.factory.createRigidBody(
         {
-          shape: { shape: 'SQUARE', dimensions: { x: 2, y: 2 } },
+          shape: { shape: 'BOX', dimensions: { x: 2, y: 2 } },
           body: {
             bodyType: 'static',
             mass: 0,
@@ -228,7 +228,7 @@ describe('MatterWorldComponent', () => {
       // Create a square at a known distance
       const square = world.factory.createRigidBody(
         {
-          shape: { shape: 'SQUARE', dimensions: { x: 2, y: 2 } },
+          shape: { shape: 'BOX', dimensions: { x: 2, y: 2 } },
           body: { bodyType: 'static', mass: 0 },
         },
         { position: { x: 0, y: -5 } },
@@ -259,7 +259,7 @@ describe('MatterWorldComponent', () => {
       // Create a square that belongs to group1
       const square = world.factory.createRigidBody(
         {
-          shape: { shape: 'SQUARE', dimensions: { x: 2, y: 2 } },
+          shape: { shape: 'BOX', dimensions: { x: 2, y: 2 } },
           body: {
             bodyType: 'static',
             mass: 0,
@@ -289,7 +289,7 @@ describe('MatterWorldComponent', () => {
       // Create two squares at different positions
       const square1 = world.factory.createRigidBody(
         {
-          shape: { shape: 'SQUARE', dimensions: { x: 1, y: 1 } },
+          shape: { shape: 'BOX', dimensions: { x: 1, y: 1 } },
           body: { bodyType: 'static', mass: 0 },
         },
         { position: { x: 0, y: -3 } },
@@ -298,7 +298,7 @@ describe('MatterWorldComponent', () => {
 
       const square2 = world.factory.createRigidBody(
         {
-          shape: { shape: 'SQUARE', dimensions: { x: 1, y: 1 } },
+          shape: { shape: 'BOX', dimensions: { x: 1, y: 1 } },
           body: { bodyType: 'static', mass: 0 },
         },
         { position: { x: 0, y: -7 } },
@@ -323,7 +323,7 @@ describe('MatterWorldComponent', () => {
       // Create a square
       const square = world.factory.createRigidBody(
         {
-          shape: { shape: 'SQUARE', dimensions: { x: 4, y: 4 } },
+          shape: { shape: 'BOX', dimensions: { x: 4, y: 4 } },
           body: { bodyType: 'static', mass: 0 },
         },
         { position: { x: 0, y: 0 } },

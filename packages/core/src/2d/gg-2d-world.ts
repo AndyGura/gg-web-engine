@@ -16,8 +16,11 @@ import { IDisplayObject2dComponent } from './components/rendering/i-display-obje
 import { ICamera2dComponent } from './components/rendering/i-camera-2d.component';
 import { ITrigger2dComponent } from './components/physics/i-trigger-2d.component';
 import { IRigidBody2dComponent } from './components/physics/i-rigid-body-2d.component';
+import { ICharacterController2dComponent } from './components/physics/i-character-controller-2d.component';
 import { IAudioScene2dComponent } from './components/audio/i-audio-scene-2d.component';
 import { IAudioSource2dComponent } from './components/audio/i-audio-source-2d.component';
+import { CharacterController2dEntity } from './entities/character-controller-2d.entity';
+import { PlayerCharacterController2d } from './entities/controllers/input/player-character-2d.controller';
 
 export type VisualTypeDocRepo2D = {
   factory: IDisplayObject2dComponentFactory;
@@ -32,6 +35,7 @@ export type PhysicsTypeDocRepo2D = {
   factory: IPhysicsBody2dComponentFactory;
   rigidBody: IRigidBody2dComponent;
   trigger: ITrigger2dComponent;
+  characterController: ICharacterController2dComponent;
 };
 
 export type AudioTypeDocRepo2D = {
@@ -204,7 +208,8 @@ export class Gg2dWorld<
         const [shapeArg, x, y, bodyTypeArg] = args;
         if ([x, y].some(v => v === undefined || isNaN(+v))) {
           throw new Error(
-            'usage: spawn SQUARE|CIRCLE X Y [bodyType=0|1|2|3|static|dynamic|kinematic_pos|kinematic_vel]',
+            'usage: spawn BOX|CIRCLE|CAPSULE|CONVEX_HULL|POLYGON X Y ' +
+              '[bodyType=0|1|2|3|static|dynamic|kinematic_pos|kinematic_vel]',
           );
         }
         let bodyType: BodyType = 'dynamic';
@@ -219,24 +224,58 @@ export class Gg2dWorld<
         } else if (bodyTypeArg === '3') {
           bodyType = 'kinematic_vel';
         }
+        // Sized in pixels, matching the scale `examples/primitives-pixi-*`'s shape-spawner uses -
+        // 2D worlds have no fixed "1 unit" convention the way 3D's meter-scaled shapes do, so a
+        // 3D-style unit-scale default (radius 0.5, dimensions 1x1) would spawn shapes too tiny to
+        // see/interact with with a typical pixel-scale camera/renderer setup.
         let shape: BodyShape2DDescriptor['shape'];
         switch ((shapeArg || '').toUpperCase()) {
-          case 'SQUARE':
-            shape = { shape: 'SQUARE', dimensions: { x: 1, y: 1 } };
+          case 'BOX':
+            shape = { shape: 'BOX', dimensions: { x: 25, y: 25 } };
             break;
           case 'CIRCLE':
-            shape = { shape: 'CIRCLE', radius: 0.5 };
+            shape = { shape: 'CIRCLE', radius: 13 };
+            break;
+          case 'CAPSULE':
+            shape = { shape: 'CAPSULE', radius: 10, centersDistance: 15 };
+            break;
+          case 'CONVEX_HULL':
+            shape = {
+              shape: 'CONVEX_HULL',
+              vertices: [
+                { x: 0, y: -15 },
+                { x: 13, y: 10 },
+                { x: 0, y: 0 },
+                { x: -13, y: 10 },
+                { x: 5, y: -5 },
+              ],
+            };
+            break;
+          case 'POLYGON':
+            shape = {
+              // non-convex L-shape, to demonstrate POLYGON isn't reduced to its convex hull
+              shape: 'POLYGON',
+              vertices: [
+                { x: -15, y: -15 },
+                { x: 0, y: -15 },
+                { x: 0, y: 0 },
+                { x: 15, y: 0 },
+                { x: 15, y: 15 },
+                { x: -15, y: 15 },
+              ],
+            };
             break;
           default:
-            throw new Error(`Unknown shape "${shapeArg}". Use SQUARE|CIRCLE`);
+            throw new Error(`Unknown shape "${shapeArg}". Use BOX|CIRCLE|CAPSULE|CONVEX_HULL|POLYGON`);
         }
         const entity = this.addPrimitiveRigidBody({ shape, body: { bodyType } }, { x: +x, y: +y });
         return `spawned "${entity.name}" (${shape.shape}) at ${JSON.stringify(entity.position)}`;
       },
-      'args: [ SQUARE|CIRCLE, float, float, bodyType=0|1|2|3|static|dynamic|kinematic_pos|' +
-        'kinematic_vel? ]; Spawn a default-sized primitive rigid body at world-space coordinates, ' +
-        'for probing physics. bodyType (last arg) defaults to dynamic (1, falls under gravity); ' +
-        'numeric shorthand: 0=static, 2=kinematic_pos, 3=kinematic_vel',
+      'args: [ BOX|CIRCLE|CAPSULE|CONVEX_HULL|POLYGON, float, float, ' +
+        'bodyType=0|1|2|3|static|dynamic|kinematic_pos|kinematic_vel? ]; Spawn a default-sized ' +
+        'primitive rigid body at world-space coordinates, for probing physics. bodyType (last ' +
+        'arg) defaults to dynamic (1, falls under gravity); numeric shorthand: 0=static, ' +
+        '2=kinematic_pos, 3=kinematic_vel',
     );
     if (this.physicsWorld) {
       ggstatic.registerConsoleCommand(
@@ -257,6 +296,36 @@ export class Gg2dWorld<
         'args: [ ?float, ?float ]; Get or set 2D world gravity vector. 1 argument sets' +
           ' vector {x: 0, y: value}, 2 arguments sets the whole vector.' +
           ' Default value is "9.82" or "0 9.82"',
+      );
+      ggstatic.registerConsoleCommand(
+        this,
+        'player_spawn',
+        async (...args: string[]) => {
+          const [x, y] = args;
+          if ([x, y].some(v => v === undefined || isNaN(+v))) {
+            throw new Error('usage: player_spawn X Y');
+          }
+          const renderer = this.renderers[0] as Renderer2dEntity<TypeDoc['vTypeDoc']> | undefined;
+          if (!renderer) {
+            throw new Error('Cannot spawn a player without a renderer - call addRenderer first');
+          }
+          const characterController = this.physicsWorld!.factory.createCharacterController(
+            { radius: 20, centersDistance: 40 },
+            { position: { x: +x, y: +y } },
+          );
+          const character = new CharacterController2dEntity<TypeDoc>(
+            { radius: 20, centersDistance: 40 },
+            this.visualScene?.factory.createCapsule(20, 40) ?? null,
+            characterController,
+          );
+          this.addEntity(character);
+          const controller = new PlayerCharacterController2d<TypeDoc>(this.keyboardInput, character, renderer);
+          this.addEntity(controller);
+          return `spawned "${character.name}" at ${JSON.stringify(character.position)}, controlled by "${controller.name}"`;
+        },
+        'usage: player_spawn X Y; Spawn a default player character (capsule body, left/right/' +
+          "jump/run keys) at world-space position X Y and control the first renderer's camera " +
+          'with it. Sized in pixels, matching the "spawn" command\'s own default-shape scale.',
       );
     }
   }

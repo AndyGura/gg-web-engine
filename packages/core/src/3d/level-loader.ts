@@ -94,23 +94,15 @@ function primitiveConfigFromShape(
 export type Primitive3DShapeName = Shape3DDescriptor['shape'];
 
 /**
- * Settings shared by every primitive entity (Box, Sphere, Plane, Capsule, Cylinder, Cone)
+ * The shape-selecting fields shared by `Primitive3DSettings` and a `COMPOUND` primitive's own
+ * `children` entries - `shape` plus every field any shape variant needs (each optional, since
+ * which ones are actually required depends on `shape` - see `buildShapeDescriptor`).
  */
-export interface Primitive3DSettings {
+export interface Primitive3DShapeSettings {
   /**
    * Which primitive shape to construct
    */
   shape: Primitive3DShapeName;
-
-  /**
-   * Position of the primitive
-   */
-  position?: Point3;
-
-  /**
-   * Rotation of the primitive
-   */
-  rotation?: Point4;
 
   /**
    * Dimensions of the primitive (for Box)
@@ -143,6 +135,56 @@ export interface Primitive3DSettings {
    * Centers distance of the primitive (for Capsule)
    */
   centersDistance?: number;
+
+  /**
+   * Child shapes making up a Compound primitive, each with its own local `position`/`rotation`
+   * offset. A child's `shape` may itself be `"COMPOUND"`, nesting arbitrarily deep.
+   */
+  children?: CompoundChild3DSettings[];
+
+  /**
+   * Vertices of the primitive (for ConvexHull, Mesh)
+   */
+  vertices?: Point3[];
+
+  /**
+   * Triangle faces, as vertex-index triples into `vertices` (for Mesh)
+   */
+  faces?: [number, number, number][];
+}
+
+/**
+ * One child of a `COMPOUND` primitive's `children` - the same shape-selecting fields as
+ * `Primitive3DSettings`, plus its own local `position`/`rotation` offset, but no `material`/`body`
+ * (a compound's children share one physics body and one display object, set on the parent
+ * `"Primitive"` entity only).
+ */
+export interface CompoundChild3DSettings extends Primitive3DShapeSettings {
+  /**
+   * Position of the child shape, relative to the compound's own origin
+   */
+  position?: Point3;
+
+  /**
+   * Rotation of the child shape, relative to the compound's own rotation
+   */
+  rotation?: Point4;
+}
+
+/**
+ * Settings shared by every primitive entity (Box, Sphere, Plane, Capsule, Cylinder, Cone, Compound,
+ * ConvexHull, Mesh)
+ */
+export interface Primitive3DSettings extends Primitive3DShapeSettings {
+  /**
+   * Position of the primitive
+   */
+  position?: Point3;
+
+  /**
+   * Rotation of the primitive
+   */
+  rotation?: Point4;
 
   /**
    * Material options for the primitive
@@ -549,13 +591,15 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
   }
 
   /**
-   * Turn a `Primitive3DSettings` (`shape` plus shape-specific fields) into the `Shape3DDescriptor`
-   * consumed by `Gg3dWorld.addPrimitiveRigidBody`.
-   * @param settings - The primitive settings, as parsed from a `"Primitive"` entity's `shape` +
-   * `config`
+   * Turn a `Primitive3DShapeSettings` (`shape` plus shape-specific fields) into the
+   * `Shape3DDescriptor` consumed by `Gg3dWorld.addPrimitiveRigidBody`. Used both for a
+   * `"Primitive"` entity's own top-level settings and, recursively, for each of a `COMPOUND`
+   * primitive's `children` (which may themselves be `COMPOUND`, nesting arbitrarily deep).
+   * @param settings - The shape settings, as parsed from a `"Primitive"` entity's `shape` +
+   * `config`, or from one entry of a `COMPOUND`'s `children`
    * @returns The shape descriptor
    */
-  private buildShapeDescriptor(settings: Primitive3DSettings): Shape3DDescriptor {
+  private buildShapeDescriptor(settings: Primitive3DShapeSettings): Shape3DDescriptor {
     switch (settings.shape) {
       case 'BOX':
         if (!settings.dimensions) {
@@ -596,6 +640,31 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
           throw new Error('Height is required for CONE primitive');
         }
         return { shape: 'CONE', radius: settings.radius, height: settings.height };
+      case 'COMPOUND':
+        if (!settings.children) {
+          throw new Error('Children are required for COMPOUND primitive');
+        }
+        return {
+          shape: 'COMPOUND',
+          children: settings.children.map(child => ({
+            position: child.position,
+            rotation: child.rotation,
+            shape: this.buildShapeDescriptor(child),
+          })),
+        };
+      case 'CONVEX_HULL':
+        if (!settings.vertices) {
+          throw new Error('Vertices are required for CONVEX_HULL primitive');
+        }
+        return { shape: 'CONVEX_HULL', vertices: settings.vertices };
+      case 'MESH':
+        if (!settings.vertices) {
+          throw new Error('Vertices are required for MESH primitive');
+        }
+        if (!settings.faces) {
+          throw new Error('Faces are required for MESH primitive');
+        }
+        return { shape: 'MESH', vertices: settings.vertices, faces: settings.faces };
       default:
         throw new Error(`Unknown primitive shape "${settings.shape}"`);
     }

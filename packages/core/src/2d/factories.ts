@@ -1,6 +1,7 @@
 import { IAudioSourceComponentFactory, Point2 } from '../base';
 import { BodyShape2DDescriptor, Shape2DDescriptor } from './models/shapes';
 import { AudioTypeDocRepo2D, PhysicsTypeDocRepo2D, VisualTypeDocRepo2D } from './gg-2d-world';
+import { CharacterController2dOptions } from './models/character-controller-options';
 
 export type DisplayObject2dOpts<Tex> = {
   color?: number;
@@ -20,12 +21,34 @@ export abstract class IDisplayObject2dComponentFactory<VTypeDoc extends VisualTy
   }
 
   // shortcuts
-  createSquare(dimensions: Point2, material: DisplayObject2dOpts<VTypeDoc['texture']> = {}): VTypeDoc['displayObject'] {
-    return this.createPrimitive({ shape: 'SQUARE', dimensions }, material);
+  createBox(dimensions: Point2, material: DisplayObject2dOpts<VTypeDoc['texture']> = {}): VTypeDoc['displayObject'] {
+    return this.createPrimitive({ shape: 'BOX', dimensions }, material);
   }
 
   createCircle(radius: number, material: DisplayObject2dOpts<VTypeDoc['texture']> = {}): VTypeDoc['displayObject'] {
     return this.createPrimitive({ shape: 'CIRCLE', radius }, material);
+  }
+
+  createCapsule(
+    radius: number,
+    centersDistance: number,
+    material: DisplayObject2dOpts<VTypeDoc['texture']> = {},
+  ): VTypeDoc['displayObject'] {
+    return this.createPrimitive({ shape: 'CAPSULE', radius, centersDistance }, material);
+  }
+
+  createConvexHull(
+    vertices: Point2[],
+    material: DisplayObject2dOpts<VTypeDoc['texture']> = {},
+  ): VTypeDoc['displayObject'] {
+    return this.createPrimitive({ shape: 'CONVEX_HULL', vertices }, material);
+  }
+
+  createPolygon(
+    vertices: Point2[],
+    material: DisplayObject2dOpts<VTypeDoc['texture']> = {},
+  ): VTypeDoc['displayObject'] {
+    return this.createPrimitive({ shape: 'POLYGON', vertices }, material);
   }
 }
 
@@ -45,6 +68,14 @@ export interface IPhysicsBody2dComponentFactory<PTypeDoc extends PhysicsTypeDocR
       rotation?: number;
     },
   ): PTypeDoc['trigger'];
+
+  createCharacterController(
+    options: CharacterController2dOptions,
+    transform?: {
+      position?: Point2;
+      rotation?: number;
+    },
+  ): PTypeDoc['characterController'];
 }
 
 export interface IAudioSource2dComponentFactory<

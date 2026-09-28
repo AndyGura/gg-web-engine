@@ -438,6 +438,7 @@ export type PhysicsTypeDocRepo2D = {
   factory: IPhysicsBody2dComponentFactory;
   rigidBody: IRigidBody2dComponent;
   trigger: ITrigger2dComponent;
+  characterController: ICharacterController2dComponent;
 };
 export type AudioTypeDocRepo2D = {
   factory: IAudioSource2dComponentFactory;
@@ -468,10 +469,10 @@ instead of just the body itself). The existing trigger getters get away with ret
 `Observable<IBodyComponent<D, R, PTypeDoc>>` at the base interface (the *abstract* interface type
 for the truly-guaranteed shape, not `PTypeDoc['rigidBody']`) precisely so nothing self-referential
 happens; a 2D/3D-specific subinterface then re-declares the getter narrowed to whichever
-`PTypeDoc[...]` members can genuinely overlap a trigger in that dimension (`ITrigger2dComponent`:
-`PTypeDoc['rigidBody']` alone, since 2D has no character controller; `ITrigger3dComponent`:
-`PTypeDoc['rigidBody'] | PTypeDoc['characterController']`, since a kinematic character controller can
-walk through a 3D trigger's volume too - see `ITriggerComponent.onEntityEntered`'s own doc comment for
+`PTypeDoc[...]` members can genuinely overlap a trigger in that dimension - both `ITrigger2dComponent`
+and `ITrigger3dComponent` declare `PTypeDoc['rigidBody'] | PTypeDoc['characterController']`, since a
+kinematic character controller (2D or 3D) can walk through a trigger's volume too - see
+`ITriggerComponent.onEntityEntered`'s own doc comment for
 why the base declaration is deliberately `IBodyComponent`, not `IRigidBodyComponent`: only
 `.entity`/`.position`/`.rotation`/etc. are guaranteed on whatever a trigger emits, never
 `linearVelocity`/`resetMotion()`/collision-event members, which a character controller doesn't have).
@@ -492,6 +493,30 @@ re-declare narrowed to `Observable<CollisionEvent<Point(2|3), PTypeDoc['rigidBod
 subinterface, same as trigger's own enter/leave getters already do. Any future "richer than just the
 body itself" event payload added to a `TypeDocRepo`-generic interface should follow this same split
 rather than assuming `PTypeDoc['rigidBody']` is safe to embed at the base-interface declaration.
+
+**Adding a new field to a dimension's `PhysicsTypeDocRepo(2D|3D)` (e.g. `characterController` when
+2D gained a character controller, mirroring 3D's) can break *every* adapter package's own
+`tsc --noEmit` with an error that looks nothing like the real cause** - confirmed live adding
+`ICharacterController2dComponent`: every `packages/rapier2d` file referencing
+`Rapier2dPhysicsTypeDocRepo` failed with `Type 'Rapier2dPhysicsTypeDocRepo' does not satisfy the
+constraint 'PhysicsTypeDocRepo2D'`, drilling down through `factory.createRigidBody(...).clone()
+.addToWorld` into a claim that the concrete `Rapier2dGgWorld` parameter type was "missing
+`loader`/`addRenderer`" compared to the generic base `GgWorld<...>` - which reads like a completely
+unrelated world-typing bug. The actual cause: `ITrigger2dComponent.onEntityEntered`/`onEntityLeft`
+(a *sibling* interface, not the one being changed) was still narrowed to `PTypeDoc['rigidBody']`
+alone, and once `PhysicsTypeDocRepo2D` gained a `characterController` field, that stale narrowing
+made `Rapier2dPhysicsTypeDocRepo` structurally fail to satisfy `PhysicsTypeDocRepo2D` at all - which
+then poisons every other structural check that recurses through `PhysicsTypeDocRepo2D` anywhere in
+the same file (which is most of an adapter's own code), surfacing as this unrelated-looking
+`addToWorld`/`GgWorld` error rather than pointing at the actual stale interface. Confirmed by
+bisection: reverting only the `PhysicsTypeDocRepo2D` field addition reproduced a clean, direct
+"Property 'characterController' is missing" error instead - the confusing cascade only appears once
+a sibling interface's own narrowing has silently gone stale relative to the widened repo. **Lesson:
+after adding a field to any `TypeDocRepo`, grep every interface that narrows a `PTypeDoc[...]`-typed
+member (particularly a trigger/event-emitting interface's `Observable<PTypeDoc[...]>` getters, per
+the pitfall above) for whether it also needs to include the new field, *before* trusting whatever
+adapter-side error message shows up first** - the reported error site is rarely where the real
+narrowing needs fixing.
 
 Unlike the visual/physics factory abstracts (`IDisplayObject(2d|3d)ComponentFactory`/
 `IPhysicsBody(2d|3d)ComponentFactory`, each declared fresh in `2d/factories.ts`/`3d/factories.ts`
@@ -523,7 +548,14 @@ the library-agnostic interfaces this pattern lives alongside. A driving controll
 (`CharacterAnimationController`, `3d/entities/controllers/character-animation.controller.ts`)
 narrows with the guard before touching the extra members, and is a correct no-op against any
 display object that doesn't implement them (e.g. a `CharacterController3dEntity` using its default
-auto-generated capsule mesh instead of a loaded animated model).
+auto-generated capsule mesh instead of a loaded animated model). The 2D side follows the identical
+pattern one level down: `IAnimatedDisplayObject2dComponent`/`isAnimatedDisplayObject2d`
+(`2d/components/rendering/i-animated-display-object-2d.component.ts`) for a frame-based atlas clip
+(e.g. a pixel-art character's idle/walk/run/jump sprite sheet) instead of a skeletal rig, driven by
+`CharacterAnimation2dController` (`2d/entities/controllers/character-animation-2d.controller.ts`) -
+its own `PlayAnimation2dOptions` is a deliberately separate type from 3D's `PlayAnimationOptions`
+(same shape today, kept distinct so the 2D module never has to import from the 3D one for a type
+that only looks the same by coincidence).
 
 ## Interfaces that are the actual public contract
 

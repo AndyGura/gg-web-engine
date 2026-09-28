@@ -38,21 +38,72 @@ function primitiveConfigFromShape(
 
 /**
  * Shape names accepted by the built-in `"Primitive"` entity class in a 2D level JSON, via the
- * sibling `shape` field on the entity (e.g. `{ class: "Primitive", shape: "SQUARE" }`) - the same
+ * sibling `shape` field on the entity (e.g. `{ class: "Primitive", shape: "BOX" }`) - the same
  * `Shape2DDescriptor['shape']` values used at the engine API level, so no translation is needed
  * between a level JSON and `Gg2dWorld.addPrimitiveRigidBody`.
  */
 export type Primitive2DShapeName = Shape2DDescriptor['shape'];
 
 /**
- * Settings shared by every primitive entity (Square, Circle, ...)
+ * The shape-selecting fields shared by `PrimitiveSettings` and a `COMPOUND` primitive's own
+ * `children` entries - `shape` plus every field any shape variant needs (each optional, since
+ * which ones are actually required depends on `shape` - see `buildShapeDescriptor`).
  */
-export interface PrimitiveSettings {
+export interface Primitive2DShapeSettings {
   /**
    * Which primitive shape to construct
    */
   shape: Primitive2DShapeName;
 
+  /**
+   * Dimensions of the primitive (for Box)
+   */
+  dimensions?: Point2;
+
+  /**
+   * Radius of the primitive (for Circle/Capsule)
+   */
+  radius?: number;
+
+  /**
+   * Distance between the two hemisphere centers (for Capsule)
+   */
+  centersDistance?: number;
+
+  /**
+   * Vertices of the primitive (for ConvexHull/Polygon)
+   */
+  vertices?: Point2[];
+
+  /**
+   * Child shapes making up a Compound primitive, each with its own local `position`/`rotation`
+   * offset. A child's `shape` may itself be `"COMPOUND"`, nesting arbitrarily deep.
+   */
+  children?: CompoundChild2DSettings[];
+}
+
+/**
+ * One child of a `COMPOUND` primitive's `children` - the same shape-selecting fields as
+ * `PrimitiveSettings`, plus its own local `position`/`rotation` offset, but no `material`/`body`
+ * (a compound's children share one physics body and one display object, set on the parent
+ * `"Primitive"` entity only).
+ */
+export interface CompoundChild2DSettings extends Primitive2DShapeSettings {
+  /**
+   * Position of the child shape, relative to the compound's own origin
+   */
+  position?: Point2;
+
+  /**
+   * Rotation of the child shape in radians, relative to the compound's own rotation
+   */
+  rotation?: number;
+}
+
+/**
+ * Settings shared by every primitive entity (Box, Circle, ...)
+ */
+export interface PrimitiveSettings extends Primitive2DShapeSettings {
   /**
    * Position of the primitive
    */
@@ -62,16 +113,6 @@ export interface PrimitiveSettings {
    * Rotation of the primitive in radians
    */
   rotation?: number;
-
-  /**
-   * Dimensions of the primitive (for Square)
-   */
-  dimensions?: Point2;
-
-  /**
-   * Radius of the primitive (for Circle)
-   */
-  radius?: number;
 
   /**
    * Material options for the primitive
@@ -219,24 +260,56 @@ export class Gg2dLevelLoader<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTyp
   }
 
   /**
-   * Turn a `PrimitiveSettings` (`shape` plus shape-specific fields) into the `Shape2DDescriptor`
-   * consumed by `Gg2dWorld.addPrimitiveRigidBody`.
-   * @param settings - The primitive settings, as parsed from a `"Primitive"` entity's `shape` +
-   * `config`
+   * Turn a `Primitive2DShapeSettings` (`shape` plus shape-specific fields) into the
+   * `Shape2DDescriptor` consumed by `Gg2dWorld.addPrimitiveRigidBody`. Used both for a
+   * `"Primitive"` entity's own top-level settings and, recursively, for each of a `COMPOUND`
+   * primitive's `children` (which may themselves be `COMPOUND`, nesting arbitrarily deep).
+   * @param settings - The shape settings, as parsed from a `"Primitive"` entity's `shape` +
+   * `config`, or from one entry of a `COMPOUND`'s `children`
    * @returns The shape descriptor
    */
-  private buildShapeDescriptor(settings: PrimitiveSettings): Shape2DDescriptor {
+  private buildShapeDescriptor(settings: Primitive2DShapeSettings): Shape2DDescriptor {
     switch (settings.shape) {
-      case 'SQUARE':
+      case 'BOX':
         if (!settings.dimensions) {
-          throw new Error('Dimensions are required for SQUARE primitive');
+          throw new Error('Dimensions are required for BOX primitive');
         }
-        return { shape: 'SQUARE', dimensions: settings.dimensions };
+        return { shape: 'BOX', dimensions: settings.dimensions };
       case 'CIRCLE':
         if (settings.radius === undefined) {
           throw new Error('Radius is required for CIRCLE primitive');
         }
         return { shape: 'CIRCLE', radius: settings.radius };
+      case 'CAPSULE':
+        if (settings.radius === undefined) {
+          throw new Error('Radius is required for CAPSULE primitive');
+        }
+        if (settings.centersDistance === undefined) {
+          throw new Error('Centers distance is required for CAPSULE primitive');
+        }
+        return { shape: 'CAPSULE', radius: settings.radius, centersDistance: settings.centersDistance };
+      case 'CONVEX_HULL':
+        if (!settings.vertices) {
+          throw new Error('Vertices are required for CONVEX_HULL primitive');
+        }
+        return { shape: 'CONVEX_HULL', vertices: settings.vertices };
+      case 'POLYGON':
+        if (!settings.vertices) {
+          throw new Error('Vertices are required for POLYGON primitive');
+        }
+        return { shape: 'POLYGON', vertices: settings.vertices };
+      case 'COMPOUND':
+        if (!settings.children) {
+          throw new Error('Children are required for COMPOUND primitive');
+        }
+        return {
+          shape: 'COMPOUND',
+          children: settings.children.map(child => ({
+            position: child.position,
+            rotation: child.rotation,
+            shape: this.buildShapeDescriptor(child),
+          })),
+        };
       default:
         throw new Error(`Unknown primitive shape "${settings.shape}"`);
     }
@@ -285,7 +358,7 @@ export class Gg2dLevelLoader<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTyp
     settings: TriggerSettings,
   ): Trigger2dEntity<TypeDoc['pTypeDoc']> | undefined {
     const { position, rotation, dimensions } = settings;
-    const shape: Shape2DDescriptor = { shape: 'SQUARE', dimensions };
+    const shape: Shape2DDescriptor = { shape: 'BOX', dimensions };
     const trigger = world.physicsWorld?.factory.createTrigger(shape, { position, rotation });
     if (!trigger) {
       return undefined;

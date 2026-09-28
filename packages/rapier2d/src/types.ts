@@ -1,6 +1,7 @@
 import { Rapier2dFactory } from './rapier-2d-factory';
 import { Rapier2dRigidBodyComponent } from './components/rapier-2d-rigid-body.component';
 import { Rapier2dTriggerComponent } from './components/rapier-2d-trigger.component';
+import { Rapier2dCharacterControllerComponent } from './components/rapier-2d-character-controller.component';
 import { Gg2dWorld, Gg2dWorldSceneTypeDocPPatch, Gg2dWorldTypeDocPPatch } from '@gg-web-engine/core';
 import { Rapier2dWorldComponent } from './components/rapier-2d-world.component';
 
@@ -8,6 +9,7 @@ export type Rapier2dPhysicsTypeDocRepo = {
   factory: Rapier2dFactory;
   rigidBody: Rapier2dRigidBodyComponent;
   trigger: Rapier2dTriggerComponent;
+  characterController: Rapier2dCharacterControllerComponent;
 };
 
 export type Rapier2dTypeDoc = Gg2dWorldTypeDocPPatch<Rapier2dPhysicsTypeDocRepo>;

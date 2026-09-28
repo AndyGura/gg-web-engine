@@ -22,7 +22,7 @@ describe('MatterRigidBodyComponent collision events', () => {
   it('should fire onCollisionStart reciprocally, with a sane position/normal, when a falling body lands on a floor', () => {
     // static floor, top edge sits at y = -5
     const floor = factory.createRigidBody(
-      { shape: { shape: 'SQUARE', dimensions: { x: 50, y: 10 } }, body: { bodyType: 'static', mass: 0 } },
+      { shape: { shape: 'BOX', dimensions: { x: 50, y: 10 } }, body: { bodyType: 'static', mass: 0 } },
       { position: { x: 0, y: 0 } },
     );
     floor.addToWorld({ physicsWorld: world } as any);
@@ -67,18 +67,25 @@ describe('MatterRigidBodyComponent collision events', () => {
 
   it('should not keep re-firing onCollisionStart while a body rests stably on another', () => {
     const floor = factory.createRigidBody(
-      { shape: { shape: 'SQUARE', dimensions: { x: 50, y: 10 } }, body: { bodyType: 'static', mass: 0 } },
+      { shape: { shape: 'BOX', dimensions: { x: 50, y: 10 } }, body: { bodyType: 'static', mass: 0 } },
       { position: { x: 0, y: 0 } },
     );
     floor.addToWorld({ physicsWorld: world } as any);
 
+    // A BOX, not a CIRCLE: a circle has no flat resting face, so under this engine's default (no
+    // sleeping - see `gg-engine-physics-adapter-matter`'s own note) it keeps finding tiny amounts of
+    // torque to roll away on indefinitely instead of ever truly settling, which is exactly the kind
+    // of never-stops-touching-and-un-touching motion this test's own premise ("rests stably") needs
+    // to rule out by construction. Also left at matter's own default `frictionAir` (not zeroed like
+    // the other tests in this file) - some velocity damping is what actually lets a resting body's
+    // energy bleed off instead of slowly building up over many hundreds of steps (see this file's own
+    // history for how thoroughly this was verified empirically).
     const ball = factory.createRigidBody(
-      { shape: { shape: 'CIRCLE', radius: 1 }, body: { bodyType: 'dynamic', mass: 1 } },
+      { shape: { shape: 'BOX', dimensions: { x: 2, y: 2 } }, body: { bodyType: 'dynamic', mass: 1 } },
       { position: { x: 0, y: -20 } },
     );
     ball.addToWorld({ physicsWorld: world } as any);
     ball.linearVelocity = { x: 0, y: 10 };
-    ball.nativeBody.frictionAir = 0;
 
     world.gravity = { x: 0, y: 1 };
 
@@ -101,28 +108,35 @@ describe('MatterRigidBodyComponent collision events', () => {
 
   it('should fire onCollisionEnd when a body is knocked away and separates', () => {
     const floor = factory.createRigidBody(
-      { shape: { shape: 'SQUARE', dimensions: { x: 50, y: 10 } }, body: { bodyType: 'static', mass: 0 } },
+      { shape: { shape: 'BOX', dimensions: { x: 50, y: 10 } }, body: { bodyType: 'static', mass: 0 } },
       { position: { x: 0, y: 0 } },
     );
     floor.addToWorld({ physicsWorld: world } as any);
 
+    // BOX, not CIRCLE - see the previous test's own doc for why.
     const ball = factory.createRigidBody(
-      { shape: { shape: 'CIRCLE', radius: 1 }, body: { bodyType: 'dynamic', mass: 1 } },
+      { shape: { shape: 'BOX', dimensions: { x: 2, y: 2 } }, body: { bodyType: 'dynamic', mass: 1 } },
       { position: { x: 0, y: -20 } },
     );
     ball.addToWorld({ physicsWorld: world } as any);
     ball.linearVelocity = { x: 0, y: 10 };
-    ball.nativeBody.frictionAir = 0;
 
     let endEvents: (MatterRigidBodyComponent | null)[] = [];
+    // Knock it away the instant it actually touches the floor (rather than after some fixed,
+    // speed/distance-dependent step count guessed to be "enough time to have touched by now") - the
+    // exact number of steps a fall of this distance/speed takes to make real contact isn't this
+    // test's concern and shouldn't be baked into a magic constant.
+    let knocked = false;
+    ball.onCollisionStart.subscribe(() => {
+      if (!knocked) {
+        knocked = true;
+        ball.linearVelocity = { x: 0, y: -10 };
+      }
+    });
     ball.onCollisionEnd.subscribe(e => endEvents.push(e));
 
     for (let i = 0; i < 200 && endEvents.length === 0; i++) {
       world.simulate(16);
-      if (i === 50) {
-        // knock it straight back up, away from the floor, once it's had a chance to touch
-        ball.linearVelocity = { x: 0, y: -10 };
-      }
     }
 
     expect(endEvents.length).toBeGreaterThan(0);
@@ -131,7 +145,7 @@ describe('MatterRigidBodyComponent collision events', () => {
 
   it('should emit onCollisionEnd(null) on the remaining body when the other body is removed from the world while still touching', () => {
     const floor = factory.createRigidBody(
-      { shape: { shape: 'SQUARE', dimensions: { x: 50, y: 10 } }, body: { bodyType: 'static', mass: 0 } },
+      { shape: { shape: 'BOX', dimensions: { x: 50, y: 10 } }, body: { bodyType: 'static', mass: 0 } },
       { position: { x: 0, y: 0 } },
     );
     floor.addToWorld({ physicsWorld: world } as any);
@@ -161,7 +175,7 @@ describe('MatterRigidBodyComponent collision events', () => {
   });
 
   it('should not fire the rigid body onCollisionStart for a trigger overlapping a rigid body', () => {
-    const trigger = factory.createTrigger({ shape: 'SQUARE', dimensions: { x: 50, y: 10 } }, { position: { x: 0, y: 0 } });
+    const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 50, y: 10 } }, { position: { x: 0, y: 0 } });
     trigger.addToWorld({ physicsWorld: world } as any);
 
     const ball = factory.createRigidBody(

@@ -28,7 +28,7 @@ describe('Rapier2dRigidBodyComponent onCollisionStart/onCollisionEnd', () => {
 
   function makeFloorAndBall(): { floor: Rapier2dRigidBodyComponent; ball: Rapier2dRigidBodyComponent } {
     const floor = factory.createRigidBody(
-      { shape: { shape: 'SQUARE', dimensions: { x: 20, y: 2 } }, body: { bodyType: 'static', mass: 0 } },
+      { shape: { shape: 'BOX', dimensions: { x: 20, y: 2 } }, body: { bodyType: 'static', mass: 0 } },
       { position: { x: 0, y: -1 } },
     );
     floor.addToWorld({ physicsWorld: world } as any);
@@ -150,7 +150,7 @@ describe('Rapier2dRigidBodyComponent onCollisionStart/onCollisionEnd', () => {
     const compound = new Rapier2dRigidBodyComponent(
       world,
       colliderDescrs,
-      { shape: 'SQUARE', dimensions: { x: 1, y: 1 } },
+      { shape: 'BOX', dimensions: { x: 1, y: 1 } },
       bodyDescr,
       {
         friction: 0.5,
@@ -194,7 +194,7 @@ describe('Rapier2dRigidBodyComponent onCollisionStart/onCollisionEnd', () => {
 
   it('does not fire onCollisionStart on a rigid body for a trigger overlap (sensor, no collision response)', () => {
     const trigger = factory.createTrigger(
-      { shape: 'SQUARE', dimensions: { x: 20, y: 20 } },
+      { shape: 'BOX', dimensions: { x: 20, y: 20 } },
       { position: { x: 0, y: 0 } },
     );
     trigger.addToWorld({ physicsWorld: world } as any);

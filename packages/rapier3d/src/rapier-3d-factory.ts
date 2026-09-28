@@ -13,6 +13,7 @@ import {
 import { ActiveEvents, ColliderDesc, Quaternion, RigidBodyDesc } from '@dimforge/rapier3d-compat';
 import { Rapier3dRigidBodyComponent } from './components/rapier-3d-rigid-body.component';
 import { Rapier3dTriggerComponent } from './components/rapier-3d-trigger.component';
+import { Rapier3dRaycastVehicleComponent } from './components/rapier-3d-raycast-vehicle.component';
 import { Rapier3dCharacterControllerComponent } from './components/rapier-3d-character-controller.component';
 import { Rapier3dWorldComponent } from './components/rapier-3d-world.component';
 import { Rapier3dPhysicsTypeDocRepo } from './types';
@@ -29,7 +30,7 @@ const DEFAULT_CHARACTER_CONTROLLER_OPTIONS: Required<Omit<CharacterController3dO
     interactWithCollisionGroups: 'all',
     // `Rapier3dCharacterControllerComponent.addToWorld` wires this straight into Rapier's own
     // `KinematicCharacterController.setCharacterMass` + `setApplyImpulsesToDynamicBodies(true)` -
-    // unlike the ammo adapter, no hand-rolled push logic needed, Rapier already computes it.
+    // no hand-rolled push logic needed, Rapier already computes it.
     pushMass: 80,
   };
 
@@ -54,7 +55,7 @@ export class Rapier3dFactory implements IPhysicsBody3dComponentFactory<Rapier3dP
       this.world,
       colliderDescr,
       descriptor.shape,
-      this.createRigidBodyDescr(descriptor.body, transform),
+      this.createRigidBodyDescr(descriptor.body, transform, colliderDescr),
       {
         friction: 0.5,
         restitution: 0.1,
@@ -86,8 +87,8 @@ export class Rapier3dFactory implements IPhysicsBody3dComponentFactory<Rapier3dP
     );
   }
 
-  createRaycastVehicle(chassis: Rapier3dRigidBodyComponent): never {
-    throw new Error('Raycast vehicle bindings for rapier3D are not implemented');
+  createRaycastVehicle(chassis: Rapier3dRigidBodyComponent): Rapier3dRaycastVehicleComponent {
+    return new Rapier3dRaycastVehicleComponent(this.world, chassis);
   }
 
   createCharacterController(
@@ -201,6 +202,7 @@ export class Rapier3dFactory implements IPhysicsBody3dComponentFactory<Rapier3dP
   public createRigidBodyDescr(
     options: Partial<Body3DOptions>,
     transform?: { position?: Point3; rotation?: Point4 },
+    colliderDescr: ColliderDesc[] = [],
   ): RigidBodyDesc {
     const pos = transform?.position || Pnt3.O;
     const rot = transform?.rotation || Qtrn.O;
@@ -214,7 +216,25 @@ export class Rapier3dFactory implements IPhysicsBody3dComponentFactory<Rapier3dP
       bodyDesc = RigidBodyDesc.kinematicVelocityBased();
     } else {
       bodyDesc = RigidBodyDesc.dynamic();
-      bodyDesc.mass = options.mass || 1;
+      // Mass is set on the collider(s) (`ColliderDesc.setMass`), not as `RigidBodyDesc.mass` -
+      // that field is "additional" mass layered on top of whatever the colliders themselves
+      // contribute (see its own doc: "the total mass of the rigid-body is equal to the sum of this
+      // additional mass and the mass computed from the colliders"), and critically, additional mass
+      // contributes no extra rotational inertia of its own - it behaves like a point mass exactly at
+      // the body's center of mass. Setting it there instead of on the collider(s) used to leave every
+      // dynamic body's rotational inertia derived from the collider's un-scaled default density (1),
+      // regardless of how large `options.mass` actually was - correct enough for the many demos that
+      // never depend on rotational dynamics, but confirmed to visibly break `Rapier3dRaycastVehicleComponent`:
+      // a heavy (mass: 800) chassis with a barely-there (~4kg, density-1-derived) rotational inertia
+      // spun wildly on any steering input (huge angular acceleration for a given torque, since inertia
+      // is what resists it) while still translating at a realistic, correctly-scaled 800kg pace.
+      // `setMass` instead asks Rapier to auto-derive inertia from the shape *scaled to that mass*, the
+      // same computation an un-overridden default density would produce, just correctly sized. Split
+      // evenly across every sub-collider of a `COMPOUND` shape (no per-sub-shape volume query is
+      // exposed to weight this by volume instead) so the sum still equals the requested total mass.
+      const mass = options.mass || 1;
+      const perColliderMass = mass / (colliderDescr.length || 1);
+      colliderDescr.forEach(c => c.setMass(perColliderMass));
       // Only a dynamic body can tunnel through geometry it crosses within a single step - a fixed
       // or kinematic body is never the one doing the moving-too-fast-to-detect part of that, so CCD
       // is meaningless for either (see `BodyOptions.ccd`'s own doc).
