@@ -158,6 +158,22 @@ Status
   `test/base/entities/i-entity.spec.ts`, and `test/base/level-loader.spec.ts`; documented in the
   `gg-engine-level-json` skill; every example and existing test call site updated for the now-required
   `levelName` argument.
+- ✅ Atomic `addEntity` + collision-free GLB entity names (2026-09-29): a loaded model whose group
+  carried a child named the same as an already-loaded one (the two loads of one `.glb` produce
+  identically-named entities) exposed that `GgWorld.addEntity` only failed a nested name collision
+  *after* the parent and every earlier sibling were already registered, leaving a half-spawned tree
+  with bodies/meshes live in the native scenes and nothing returned to clean it up. `addEntity` now
+  validates every name in the whole subtree up front (against the world *and* between the tree's
+  own entities) before touching anything, and rolls back fully if spawning still throws partway for
+  any other reason. On top of that, `Gg3dLoader.loadGgGlb` gained `LoadOptions.nameScope`: every
+  produced entity is named `` `${nameScope}__${objectName}` `` and props recurse under
+  `` `${nameScope}__${dummy.name}` `` - a fresh process-unique scope per call by default, an explicit
+  string for deterministic names, `null` for the raw Blender names. The built-in `"Glb"` level class
+  scopes under its own entity name, which `LevelLoader.createEntity` now resolves (explicit, else a
+  new optional `defaultName` argument `loadLevel` feeds its level-derived fallback through) and hands
+  to every generator as `settings.name` *before* building. Covered in `test/base/gg-world.spec.ts`,
+  `test/3d/loader.spec.ts`, `test/base/level-loader.spec.ts`; documented in the
+  `gg-engine-core-development`, `gg-engine-level-json` and `gg-engine-app-development` skills.
 - Document the Level JSON shape as a machine-checkable JSON Schema (`docs/specs/level-json.schema.json`)
   with CI validation of example levels — not started. The `gg-engine-level-json` skill documents the
   shape informally today, which is enough for humans but not enforced anywhere.

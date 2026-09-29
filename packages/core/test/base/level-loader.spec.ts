@@ -121,11 +121,13 @@ describe('LevelLoader', () => {
       // Load the level
       await levelLoader.loadLevel(levelJson, 'TestLevel');
 
-      // Verify that shape was folded into the settings alongside position/config
+      // Verify that shape was folded into the settings alongside position/config (and the
+      // level-derived fallback name, which loadLevel always resolves before building)
       expect(mockGenerator).toHaveBeenCalledWith(world, {
         shape: 'SQUARE',
         position: { x: 1, y: 2 },
         dimensions: { x: 10, y: 10 },
+        name: 'TestLevel__Primitive_0',
       });
     });
 
@@ -207,6 +209,26 @@ describe('LevelLoader', () => {
       expect(entity!.name).not.toBe('');
     });
 
+    it('uses defaultName, and hands it to the generator as settings.name, when entityJson.name is omitted', async () => {
+      const mockGenerator = jest.fn().mockReturnValue(new TestEntity());
+      levelLoader.registerClass('TestEntity', mockGenerator);
+
+      const entity = await levelLoader.createEntity({ class: 'TestEntity', config: { a: 1 } }, 'Fallback');
+
+      expect(entity!.name).toBe('Fallback');
+      expect(mockGenerator).toHaveBeenCalledWith(world, { a: 1, name: 'Fallback' });
+    });
+
+    it('prefers an explicit entityJson.name over defaultName', async () => {
+      const mockGenerator = jest.fn().mockReturnValue(new TestEntity());
+      levelLoader.registerClass('TestEntity', mockGenerator);
+
+      const entity = await levelLoader.createEntity({ class: 'TestEntity', name: 'Explicit' }, 'Fallback');
+
+      expect(entity!.name).toBe('Explicit');
+      expect(mockGenerator).toHaveBeenCalledWith(world, { name: 'Explicit' });
+    });
+
     it('returns undefined and warns when class has no registered generator', async () => {
       const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
@@ -234,6 +256,17 @@ describe('LevelLoader', () => {
   });
 
   describe('loadLevel', () => {
+    it('hands the level-derived fallback name to the generator as settings.name before building', async () => {
+      const mockGenerator = jest.fn().mockImplementation(() => new TestEntity());
+      levelLoader.registerClass('Unnamed', mockGenerator);
+
+      const level = await levelLoader.loadLevel({ entities: [{ class: 'Unnamed' }, { class: 'Unnamed' }] }, 'Lvl');
+
+      expect(mockGenerator).toHaveBeenNthCalledWith(1, world, { name: 'Lvl__Unnamed_0' });
+      expect(mockGenerator).toHaveBeenNthCalledWith(2, world, { name: 'Lvl__Unnamed_1' });
+      expect(level.children.map(c => c.name)).toEqual(['Lvl__Unnamed_0', 'Lvl__Unnamed_1']);
+    });
+
     it('should load a level with multiple entities', async () => {
       // Create mock generator functions
       const mockGenerator1 = jest.fn().mockImplementation(() => new TestEntity());

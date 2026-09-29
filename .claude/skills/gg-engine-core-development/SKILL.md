@@ -105,6 +105,39 @@ name truthy)` check the same way, and add a body/mock with the adapter-realistic
 spawned-entity names — a test mock that defaults to a non-empty placeholder name (as
 `mockCharacterController` used to) hides exactly this bug.
 
+## `GgWorld.addEntity` is atomic over the whole entity tree - keep it that way
+
+`addEntity(entity)` (`base/gg-world.ts`) spawns `entity` *and* everything nested under it (via
+`IEntity.onSpawned`, which cascades back into `addEntity` for each child). Because a child can only
+fail its own name-uniqueness check once its parent is already registered - and its earlier siblings
+already have their bodies/display objects in the native scenes - a naive per-entity check leaves a
+half-spawned tree behind on failure: the parent stays in `children`/`tickListeners`/the name index
+with `world` set, the siblings before the offending one keep rendering and colliding, and the caller
+gets nothing back to clean up with. Hit for real with a loaded model whose group carried a child
+named the same as an already-loaded one (the two loads of one `.glb` produce identically-named
+entities, see `Gg3dLoader`). `addEntity` therefore:
+
+- **validates every name in the subtree up front**, at the outermost call only (tracked by a private
+  nesting-depth counter - nested calls from `onSpawned` re-check just the entity itself, for a child
+  added dynamically from inside an `onSpawned` hook), against both the world's index and the other
+  entities of the same tree (two `"Suzanne"`s inside one group is rejected with its own message),
+  skipping any descendant that already has a `world` (a directly-added entity merely being
+  reparented keeps its registration; one in another world is skipped by the nested call anyway) -
+  so a name collision throws before a single component reaches a native scene; and
+- **rolls back on any other throw** from `onSpawned` (a component's `addToWorld` failing, say):
+  `removeEntity(entity)` un-adds whatever children/components did get in, then the error re-throws.
+  A nested failure has already rolled back its own subtree by the time it reaches the parent's
+  catch, so each level only undoes itself. One accepted asymmetry: an entity rolled back this way
+  sees `onRemoved$` fire without `onSpawned$` ever having fired.
+
+If you add another failure mode to spawning (a new per-entity invariant, say), put its check into
+the up-front subtree validation rather than inline after registration, so the "nothing reaches the
+native scenes on failure" guarantee holds - and cover it in `test/base/gg-world.spec.ts`'s
+`atomicity of a nested entity tree` block, which asserts on the mock components' `addToWorld`/
+`removeFromWorld` spies, not just on `entity.world`. Also don't "soften" the collision into a
+`console.warn` that continues: the entity then gets registered under a name that already maps to
+something else, silently clobbering `getEntityByName` for the earlier one while both still render.
+
 ## Entity naming: declare `entityTypeName` on every new entity class
 
 **Every new concrete entity class - anything with its own `tickOrder`, i.e. anything that could be

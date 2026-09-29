@@ -1,4 +1,5 @@
-import { Entity3d, GgWorld, IEntity, IRendererEntity, TickOrder } from '../../src';
+import { Entity3d, GgWorld, GroupEntity, IEntity, IRendererEntity, TickOrder } from '../../src';
+import { mock3DObject } from '../mocks/object.mock';
 import { MockWorld } from '../mocks/world.mock';
 import { mock3DBody } from '../mocks/body.mock';
 import { collectConsoleCommands } from '../mocks/console-commands.mock';
@@ -90,6 +91,145 @@ describe('GgWorld', () => {
       );
       expect(second.world).toBeNull();
       expect(world.getEntityByName('Dup')).toBe(first);
+    });
+
+    describe('atomicity of a nested entity tree', () => {
+      // an Entity3d with spied native components, the way a loaded model's entities look
+      const makeEntity3d = (name: string) => {
+        const body = mock3DBody();
+        body.name = name;
+        const object3D = mock3DObject();
+        const spies = {
+          bodyAdd: jest.spyOn(body, 'addToWorld'),
+          bodyRemove: jest.spyOn(body, 'removeFromWorld'),
+          objectAdd: jest.spyOn(object3D, 'addToWorld'),
+          objectRemove: jest.spyOn(object3D, 'removeFromWorld'),
+        };
+        return { entity: new Entity3d({ objectBody: body, object3D }), spies };
+      };
+
+      it('should throw, without ever touching the native scenes, when a nested child collides with an existing entity', () => {
+        const existing = new GgEntityMock();
+        existing.name = 'Suzanne';
+        world.addEntity(existing);
+        const childrenBefore = world.children.length;
+
+        const group = new GroupEntity();
+        const okChild = makeEntity3d('Floor');
+        const dupChild = makeEntity3d('Suzanne');
+        group.addChildren(okChild.entity, dupChild.entity);
+
+        expect(() => world.addEntity(group)).toThrow(
+          'Cannot add entity - name "Suzanne" is already in use by another entity in this world',
+        );
+
+        expect(group.world).toBeNull();
+        expect(okChild.entity.world).toBeNull();
+        expect(dupChild.entity.world).toBeNull();
+        expect(world.children.length).toBe(childrenBefore);
+        expect(world.getEntityByName('Suzanne')).toBe(existing);
+        expect(() => world.getEntityByName('Floor')).toThrow();
+        for (const c of [okChild, dupChild]) {
+          expect(c.spies.bodyAdd).not.toHaveBeenCalled();
+          expect(c.spies.objectAdd).not.toHaveBeenCalled();
+        }
+        // the group and its children are still a valid, intact tree that can be added once the
+        // collision is resolved
+        dupChild.entity.name = 'Suzanne.001';
+        world.addEntity(group);
+        expect(world.getEntityByName('Suzanne.001')).toBe(dupChild.entity);
+        expect(world.getEntityByName('Floor')).toBe(okChild.entity);
+        expect(dupChild.spies.bodyAdd).toHaveBeenCalledTimes(1);
+        expect(dupChild.spies.objectAdd).toHaveBeenCalledTimes(1);
+      });
+
+      it('should throw, without ever touching the native scenes, when two entities of the tree share a name', () => {
+        const group = new GroupEntity();
+        const first = makeEntity3d('Suzanne');
+        const second = makeEntity3d('Suzanne');
+        group.addChildren(first.entity, second.entity);
+
+        expect(() => world.addEntity(group)).toThrow(
+          'Cannot add entity - name "Suzanne" is used by more than one entity within the entity tree being added',
+        );
+
+        expect(group.world).toBeNull();
+        expect(first.entity.world).toBeNull();
+        expect(second.entity.world).toBeNull();
+        expect(world.children).not.toContain(group);
+        expect(() => world.getEntityByName('Suzanne')).toThrow();
+        for (const c of [first, second]) {
+          expect(c.spies.bodyAdd).not.toHaveBeenCalled();
+          expect(c.spies.objectAdd).not.toHaveBeenCalled();
+        }
+      });
+
+      it('should validate names at every nesting depth, not just direct children', () => {
+        const existing = new GgEntityMock();
+        existing.name = 'Deep';
+        world.addEntity(existing);
+
+        const root = new GroupEntity();
+        const mid = new GroupEntity();
+        const leaf = new GgEntityMock();
+        leaf.name = 'Deep';
+        mid.addChildren(leaf);
+        root.addChildren(mid);
+
+        expect(() => world.addEntity(root)).toThrow('name "Deep" is already in use');
+        expect(root.world).toBeNull();
+        expect(mid.world).toBeNull();
+        expect(leaf.world).toBeNull();
+      });
+
+      it('should still let an already-spawned entity be reparented under a tree being added', () => {
+        const alreadyIn = new GgEntityMock();
+        alreadyIn.name = 'AlreadyIn';
+        world.addEntity(alreadyIn);
+
+        const group = new GroupEntity();
+        group.addChildren(alreadyIn);
+        expect(alreadyIn.world).toBe(world);
+
+        expect(() => world.addEntity(group)).not.toThrow();
+        expect(group.world).toBe(world);
+        expect(alreadyIn.parent).toBe(group);
+        expect(world.getEntityByName('AlreadyIn')).toBe(alreadyIn);
+        expect(world.children.filter(e => e === alreadyIn).length).toBe(1);
+      });
+
+      it('should roll back everything already spawned when spawning throws partway for any other reason', () => {
+        const group = new GroupEntity();
+        const okChild = makeEntity3d('Floor');
+        const broken = makeEntity3d('Broken');
+        broken.spies.bodyAdd.mockImplementation(() => {
+          throw new Error('native body creation failed');
+        });
+        const later = makeEntity3d('Later');
+        group.addChildren(okChild.entity, broken.entity, later.entity);
+
+        expect(() => world.addEntity(group)).toThrow('native body creation failed');
+
+        expect(group.world).toBeNull();
+        expect(world.children).not.toContain(group);
+        for (const e of [okChild.entity, broken.entity, later.entity]) {
+          expect(e.world).toBeNull();
+          expect(world.children).not.toContain(e);
+          expect(() => world.getEntityByName(e.name)).toThrow();
+        }
+        // whatever did reach the native scenes before the failure was pulled back out again
+        expect(okChild.spies.bodyAdd).toHaveBeenCalledTimes(1);
+        expect(okChild.spies.bodyRemove).toHaveBeenCalledTimes(1);
+        expect(okChild.spies.objectAdd).toHaveBeenCalledTimes(1);
+        expect(okChild.spies.objectRemove).toHaveBeenCalledTimes(1);
+        expect(broken.spies.objectAdd).not.toHaveBeenCalled();
+        expect(later.spies.bodyAdd).not.toHaveBeenCalled();
+        expect(later.spies.objectAdd).not.toHaveBeenCalled();
+        // and the names are free again
+        const fresh = new GgEntityMock();
+        fresh.name = 'Floor';
+        expect(() => world.addEntity(fresh)).not.toThrow();
+      });
     });
   });
 

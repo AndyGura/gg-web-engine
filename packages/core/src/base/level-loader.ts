@@ -353,21 +353,33 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
    * counterpart of {@link loadLevel}, for a runtime spawn that doesn't come from (and shouldn't be
    * forced into) a whole level document, e.g. a networked "spawn this entity" message carrying one
    * `EntityJson`. Unlike `loadLevel`, the returned entity is **not** parented under any group, and
-   * `entity.name` is left untouched unless `entityJson.name` is explicitly given (no
-   * level-scoped/index-derived fallback name, since there's no level or index here) - the caller is
-   * responsible for both adding it to the world (`world.addEntity(entity)`, safe even if the
-   * generator already self-added it - see `loadLevel`'s own note on this) and, if desired, parenting
-   * it under something (`parent.addChildren(entity)`).
+   * `entity.name` is left untouched unless `entityJson.name` is explicitly given or `defaultName`
+   * is passed (no level-scoped/index-derived fallback name of its own, since there's no level or
+   * index here) - the caller is responsible for both adding it to the world
+   * (`world.addEntity(entity)`, safe even if the generator already self-added it - see
+   * `loadLevel`'s own note on this) and, if desired, parenting it under something
+   * (`parent.addChildren(entity)`).
+   *
+   * Whichever name is resolved (`entityJson.name`, else `defaultName`) is also handed to the
+   * generator as `settings.name` *before* the entity is built, so a generator that needs to derive
+   * something from the entity's final name (e.g. the built-in `"Glb"` class scoping the names of
+   * every sub-entity a model expands into under it) can - not just read it back afterwards.
    *
    * The entity's `class`/`shape`/`config` are remembered (in a `WeakMap`, keyed by the entity
    * itself) so {@link serializeEntity} can later reconstruct an equivalent `EntityJson` for it -
    * this is what makes an entity built this way (or via `loadLevel`) serializable at all.
    * @param entityJson - The entity descriptor
+   * @param defaultName - Name to give the entity when `entityJson.name` is absent; `loadLevel`
+   * passes its level-derived fallback here
    * @returns The built entity, or `undefined` (logged via `console.warn`) if `entityJson.class` has
    * no registered generator, or that generator didn't return an `IEntity`
    */
-  public async createEntity(entityJson: EntityJson): Promise<IEntity<D, R, TypeDoc> | undefined> {
-    const { class: classAlias, shape, position, rotation, name, config } = entityJson;
+  public async createEntity(
+    entityJson: EntityJson,
+    defaultName?: string,
+  ): Promise<IEntity<D, R, TypeDoc> | undefined> {
+    const { class: classAlias, shape, position, rotation, config } = entityJson;
+    const name = entityJson.name !== undefined ? entityJson.name : defaultName;
     const generator = this.generators.get(classAlias);
     if (!generator) {
       warnOnce(`No generator registered for class alias "${classAlias}"`);
@@ -544,13 +556,12 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
     try {
       for (let index = 0; index < levelJson.entities.length; index++) {
         const entityJson = levelJson.entities[index];
-        const { class: classAlias, name, events } = entityJson;
+        const { class: classAlias, events } = entityJson;
 
-        const entity = await this.createEntity(entityJson);
+        const entity = await this.createEntity(entityJson, `${levelName}__${classAlias}_${index}`);
         if (!entity) {
           continue;
         }
-        entity.name = name !== undefined ? name : `${levelName}__${classAlias}_${index}`;
         // addChildren reparents the entity under level regardless of whether a generator already
         // self-added it to the world (e.g. addPrimitiveRigidBody does) - safe either way.
         level.addChildren(entity);
