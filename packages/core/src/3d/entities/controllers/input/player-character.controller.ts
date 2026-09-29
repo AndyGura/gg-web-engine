@@ -112,13 +112,15 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
   /**
    * `this.camera.camera.fov` as it stood the moment this controller was constructed, before it ever
    * touched the camera itself - restored every time `viewMode` switches to `'third-person'` (see
-   * that setter), the same way switching into a vehicle always sets a definite fov rather than
-   * carrying over whatever a still-live `FreeCameraController` sharing the same `Renderer3dEntity`
-   * left it at (its own scroll-wheel zoom, `cameraFovInc`, mutates `camera.camera.fov` directly and
-   * permanently - see its own doc). Without this, zooming out in free-camera mode and then walking
-   * onto the character (or toggling into third-person from first-person, which never touches fov at
-   * all) leaves the third-person view stuck at that zoomed fov instead of the app's own configured
-   * default.
+   * that setter) and every time this controller (re-)activates while already in third-person (see
+   * the `active` setter), the same way switching into a vehicle always sets a definite fov rather
+   * than carrying over whatever a still-live `FreeCameraController` sharing the same
+   * `Renderer3dEntity` left it at (its own scroll-wheel zoom, `cameraFovInc`, mutates
+   * `camera.camera.fov` directly and permanently - see its own doc). Without both of those restore
+   * points, zooming out in free-camera mode and then walking onto the character - whether that
+   * switches `viewMode` explicitly or just reactivates this controller with `viewMode` already
+   * `'third-person'` from a previous session - would leave the third-person view stuck at that
+   * zoomed fov instead of the app's own configured default.
    */
   private readonly baseFov: number;
 
@@ -168,6 +170,7 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
   set active(value: boolean) {
     if (!super.active && value) {
       this.reset();
+      this.viewMode = this._viewMode;
     }
     super.active = value;
   }

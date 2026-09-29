@@ -142,6 +142,18 @@ describe('PlayerCharacterController', () => {
       keyboard.emulateKeyDown('KeyV');
       expect(controller.viewMode).toBe('third-person');
     });
+
+    it('restores the construction-time fov on re-activation, even without viewMode ever changing (e.g. staying third-person the whole time while another controller shares the camera)', async () => {
+      const character = fakeCharacter();
+      const { camera, controller } = setup(character, { viewMode: 'third-person' });
+      await controller.onSpawned({} as any);
+      controller.active = false;
+      // Simulates a still-live FreeCameraController sharing the same Renderer3dEntity zooming the
+      // camera directly while this controller is inactive.
+      camera.camera.fov = 30;
+      controller.active = true;
+      expect(camera.camera.fov).toBe(75);
+    });
   });
 
   describe('camera update', () => {
