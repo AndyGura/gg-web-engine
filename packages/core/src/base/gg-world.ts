@@ -323,15 +323,17 @@ export abstract class GgWorld<
     try {
       entity.onSpawned(this);
     } catch (e) {
-      // roll back to exactly the state before this call - a nested failure has already rolled
-      // back its own subtree by the time it reaches here, so removing `entity` (which detaches
-      // every child/component that did get added) is all that's left to undo
-      // (cast: TS still has `entity.world` narrowed to `null` from the guard above, but
-      // onSpawned's first statement normally reassigns it to this world before anything can throw)
+      // roll back to exactly the state before this call. IEntity.onSpawned already undoes its own
+      // component/child loop and resets `entity.world` back to null before rethrowing, so by the
+      // time a failure from that loop reaches here there is nothing left to detach - only
+      // unregistering `entity` itself from this world's bookkeeping remains. The one case where
+      // `entity.world` is still `this` here is a subclass override that calls `super.onSpawned()`
+      // (which fully succeeded) and then throws afterward - there, everything genuinely is attached,
+      // so the full `removeEntity`/`onRemoved` teardown is the correct, not merely defensive, path.
+      // (cast: TS still has `entity.world` narrowed to `null` from the guard above)
       if ((entity.world as unknown) === this) {
         this.removeEntity(entity);
       } else {
-        // onSpawned threw before even registering the world (an override throwing ahead of super)
         this.unregisterEntity(entity);
       }
       throw e;

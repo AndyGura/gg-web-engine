@@ -194,6 +194,19 @@ export abstract class IEntity<D = any, R = any, TypeDoc extends GgWorldTypeDocRe
 
   private _components: IWorldComponent<D, R, TypeDoc>[] = [];
 
+  /**
+   * The subset of `_components` that has actually had `addToWorld` called on it (and not yet a
+   * matching `removeFromWorld`) - not simply every component in `_components` while `_world` is
+   * set. Those two sets diverge exactly while a `_components` loop (in `addComponents` or
+   * `onSpawned`) is partway through, since a component added earlier in the same loop can already
+   * be attached while a later one hasn't been reached yet, or threw before reaching it. `onRemoved`
+   * and `removeComponents` iterate this set, not `_components`, so a component whose `addToWorld`
+   * never ran (or already had a matching `removeFromWorld`) never gets `removeFromWorld` called on
+   * it a second/erroneous time - many adapters free a native handle in `removeFromWorld` with no
+   * guard against being called on something that was never attached.
+   */
+  private _attachedComponents = new Set<IWorldComponent<D, R, TypeDoc>>();
+
   public get components(): IWorldComponent<D, R, TypeDoc>[] {
     return [...this._components];
   }
@@ -209,6 +222,7 @@ export abstract class IEntity<D = any, R = any, TypeDoc extends GgWorldTypeDocRe
     if (this._world) {
       for (const item of components) {
         item.addToWorld(this._world);
+        this._attachedComponents.add(item);
       }
     }
   }
@@ -217,7 +231,7 @@ export abstract class IEntity<D = any, R = any, TypeDoc extends GgWorldTypeDocRe
     this._components = this._components.filter(c => !components.includes(c));
     for (const item of components) {
       item.entity = null;
-      if (this._world) {
+      if (this._world && this._attachedComponents.delete(item)) {
         item.removeFromWorld(this._world, dispose);
       }
     }
@@ -236,11 +250,28 @@ export abstract class IEntity<D = any, R = any, TypeDoc extends GgWorldTypeDocRe
 
   public onSpawned(world: GgWorld<D, R, TypeDoc>) {
     this._world = world;
-    for (const c of this._components) {
-      c.addToWorld(world);
-    }
-    for (const c of this._children) {
-      world.addEntity(c);
+    try {
+      for (const c of this._components) {
+        c.addToWorld(world);
+        this._attachedComponents.add(c);
+      }
+      for (const c of this._children) {
+        world.addEntity(c);
+      }
+    } catch (e) {
+      // undo only what actually reached the native scenes before the failure - children already
+      // guard themselves (GgWorld.removeEntity no-ops on one whose `world` was never set), but a
+      // component's removeFromWorld generally assumes it was actually attached, so it must only
+      // ever run for components this same loop's addToWorld actually succeeded on
+      this._world = null;
+      for (const c of this._attachedComponents) {
+        c.removeFromWorld(world, false);
+      }
+      this._attachedComponents.clear();
+      for (const c of this._children) {
+        world.removeEntity(c);
+      }
+      throw e;
     }
     this._onSpawned$.next();
   }
@@ -251,9 +282,10 @@ export abstract class IEntity<D = any, R = any, TypeDoc extends GgWorldTypeDocRe
     for (const c of this._children) {
       world.removeEntity(c);
     }
-    for (const c of this._components) {
+    for (const c of this._attachedComponents) {
       c.removeFromWorld(world, false);
     }
+    this._attachedComponents.clear();
     this._onRemoved$.next();
   }
 

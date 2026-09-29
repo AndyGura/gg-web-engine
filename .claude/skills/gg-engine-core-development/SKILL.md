@@ -265,14 +265,19 @@ this way - but app code reacting to `chunkLoaded$` that derives a name purely fr
 position and its `.meta` dummy data (not from anything nameScope-scoped), the same way
 `fly-city-three-ammo`'s car-spawning does, computes the *identical* name on both firings and collides
 attaching the second batch. Worse than a single lost entity: `IEntity.addChildren(...entities)` stops
-at the first entity that fails `world.addEntity()`, so passing a whole batch to `attachToChunk` in one
-call meant every entity *after* the colliding one in that batch silently never got added either - the
-exact "cars stop appearing" symptom this was found from, not just one missing car. Fixed by tracking
-in-flight nodes (`loadingNodes`, a plain `Set<MapGraphNodeType>` populated for the duration of
-`loadChunk()`) and excluding them from the load-list computation the same way `this.loaded` already
-is. Defense in depth on the app side too: `fly-city-three-ammo` now calls `attachToChunk(node, [car])`
-once per car inside a `try`/`catch` instead of `attachToChunk(node, spawned)` for the whole batch, so
-a collision from any cause only drops the one offending car instead of every car queued after it.
+at the first entity that fails `world.addEntity()`, so attaching a whole batch of newly-spawned
+entities in one call means every entity *after* the colliding one in that batch silently never gets
+added either - the exact "cars stop appearing" symptom this was found from, not just one missing car.
+Fixed at the source by tracking in-flight nodes (`loadingNodes`, a plain `Set<MapGraphNodeType>`
+populated for the duration of `loadChunk()`) and excluding them from the load-list computation the
+same way `this.loaded` already is. App code with the same shape - deriving a name for
+`chunkLoaded$`-reacted content purely from chunk position/dummy data, then attaching a whole batch of
+it in one `attachToChunk`/`addChildren` call - is still exposed to the identical "one collision drops
+every entity queued after it in that batch" failure mode from any *other* cause (not just the
+double-`loadChunk()` case just fixed); attaching one entity at a time, each in its own `try`/`catch`,
+avoids that regardless of cause. `fly-city-three-ammo` itself does not do this today - its
+car-spawning still attaches its whole per-chunk batch through a plain loop of `world.addEntity(car)`
+calls, with no `attachToChunk` and no per-entity isolation.
 
 ## `tickOrder`: driving a dynamic rigid body before physics `simulate()` runs
 

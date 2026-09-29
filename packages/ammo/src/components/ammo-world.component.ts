@@ -449,10 +449,9 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
   }
 
   /**
-   * Never resolves a hit against a `Trigger` - matching `Rapier3dWorldComponent.raycast()`'s own
-   * `QueryFilterFlags.EXCLUDE_SENSORS` (see its doc): a raycast is a query like any other, and a
-   * trigger is a sensor with no collision response by definition (`ITrigger3dComponent`), so it was
-   * never meant to obstruct one.
+   * Never resolves a hit against a `Trigger`: a raycast is a query like any other, and a trigger
+   * is a sensor with no collision response by definition (`ITrigger3dComponent`), so it was never
+   * meant to obstruct one.
    *
    * Uses `Ammo.AllHitsRayResultCallback` (every hit along the ray, unsorted) rather than
    * `ClosestRayResultCallback`, and picks the closest hit whose resolved body is *not* an

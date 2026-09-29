@@ -234,12 +234,35 @@ describe('GgWorld', () => {
         expect(okChild.spies.objectAdd).toHaveBeenCalledTimes(1);
         expect(okChild.spies.objectRemove).toHaveBeenCalledTimes(1);
         expect(broken.spies.objectAdd).not.toHaveBeenCalled();
+        expect(broken.spies.objectRemove).not.toHaveBeenCalled();
         expect(later.spies.bodyAdd).not.toHaveBeenCalled();
         expect(later.spies.objectAdd).not.toHaveBeenCalled();
         // and the names are free again
         const fresh = new GgEntityMock();
         fresh.name = 'Floor';
         expect(() => world.addEntity(fresh)).not.toThrow();
+      });
+
+      it("should only roll back a single entity's own components that actually attached, not ones whose addToWorld never ran", () => {
+        // Entity3d adds its objectBody component before its object3D component (see its
+        // constructor) - so making the *second* component's addToWorld throw means the first
+        // component genuinely reached the native scene before the failure, while the second one
+        // never did. Only the first should ever see removeFromWorld.
+        const { entity, spies } = makeEntity3d('Broken');
+        spies.objectAdd.mockImplementation(() => {
+          throw new Error('native object creation failed');
+        });
+
+        expect(() => world.addEntity(entity)).toThrow('native object creation failed');
+
+        expect(entity.world).toBeNull();
+        expect(spies.bodyAdd).toHaveBeenCalledTimes(1);
+        expect(spies.bodyRemove).toHaveBeenCalledTimes(1);
+        expect(spies.objectAdd).toHaveBeenCalledTimes(1);
+        // the crux of the fix: removeFromWorld must never run on a component whose addToWorld
+        // never succeeded, since adapter implementations generally assume the reverse and free a
+        // native handle that, here, was never allocated
+        expect(spies.objectRemove).not.toHaveBeenCalled();
       });
     });
   });

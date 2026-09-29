@@ -300,6 +300,32 @@ Status
   `pixi` and `three` currently have none (`npm test` is a stub that exits 1) — examples are the
   only verification for those two today. Closing this gap would make conformance testing above
   much cheaper to build.
+- ✅ Ammo trigger/raycast parity fixes + a raycast-vehicle dispose leak (2026-09-29): three
+  independent, reproduced Ammo-specific bugs. (1) `world.raycast()` used to be able to resolve a
+  hit against a `Trigger` - a sensor with no collision response by definition, and never meant to
+  obstruct a query on any other adapter - fixed with a JS-side post-filter (`AllHitsRayResultCallback`
+  + picking the closest non-trigger hit in JS) rather than the broadphase detach/reattach mechanism
+  used elsewhere in this package, after that approach measured a real 300+ ms/frame regression
+  against real (non-box) scene geometry; the same fix was applied to
+  `AmmoCharacterControllerComponent.recoverFromPenetration()` for the identical reason. (2) A
+  `Trigger`'s own overlap tracking could fire `onEntityLeft` for the *wrong* entity when a body left
+  the world by some other path first (e.g. an unloaded map chunk) - the stale entry only got noticed
+  on some later `checkOverlaps()` poll, by which point Ammo could have already freed and reused that
+  body's native pointer. Fixed with a proactive `world.removed$` reaction that purges the stale entry
+  immediately, but only ever emits `onEntityLeft` on a deferred microtask - a synchronous emission
+  reintroduced a worse bug (WASM heap corruption severe enough to eventually abort the whole Ammo
+  module), since `removed$` can fire reentrantly mid-swap from inside
+  `CharacterController3dEntity.recreateCapsule()`. (3) `AmmoRaycastVehicleComponent.dispose()` now
+  guards each of its five native handles independently, matching the pattern every other Ammo
+  component's `dispose()` already uses - it previously threw on the first already-freed handle and
+  leaked the rest whenever `dispose()` ran a second time (reachable via `Gg3dWorld.removeEntity(e,
+  true)`, not just caller error). (1)-(3) covered by
+  `ammo-world.component.spec.ts`/`ammo-trigger-player-vehicle-integration.spec.ts`/
+  `ammo-raycast-vehicle.component.spec.ts`; documented in the `gg-engine-physics-adapter-ammo` skill.
+  A small, unrelated, core-level fix landed alongside these: `PlayerCharacterController` (core, not
+  Ammo-specific) now restores a captured `baseFov` on entering third-person, so a leftover
+  free-camera zoom no longer sticks - 🚧 no test asserts on this yet (`player-character.controller.spec.ts`'s
+  camera mock explicitly notes none of its tests check `fov`).
 
 ---
 

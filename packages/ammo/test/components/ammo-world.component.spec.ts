@@ -500,8 +500,7 @@ describe('AmmoWorldComponent', () => {
       // collision raycast and CharacterController3dEntity.tryStandUp()'s headroom check (which
       // could then never observe a clear result and so could never let the character stand back
       // up). A trigger is a sensor with no collision response by definition and must never
-      // obstruct a raycast, matching Rapier3dWorldComponent.raycast()'s own
-      // QueryFilterFlags.EXCLUDE_SENSORS.
+      // obstruct a raycast.
       const trigger = world.factory.createTrigger({ shape: 'BOX', dimensions: { x: 100, y: 100, z: 100 } });
       trigger.addToWorld({ physicsWorld: world } as any);
 

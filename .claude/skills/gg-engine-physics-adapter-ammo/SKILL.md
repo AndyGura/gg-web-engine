@@ -586,11 +586,9 @@ site with no JS-filterable native callback available at all (`sweep()`'s `Closes
 per the bullet above) - never assume a call site is "low frequency enough" without actually checking
 how often it runs and how many times it repeats the detach/reattach internally.
 
-Matches `Rapier3dWorldComponent.raycast()`'s own `QueryFilterFlags.EXCLUDE_SENSORS` (see that
-adapter's skill - Rapier already excluded sensors from raycasts via a native query flag with no
-broadphase cost of its own; Ammo has no equivalent flag, hence the JS-side post-filter here). See
-`gg-engine-core-development`'s `RaycastResult`/`RaycastOptions` doc for the cross-adapter contract
-this satisfies uniformly - a character could crouch but never stand back up before this fix
+See `gg-engine-core-development`'s `RaycastResult`/`RaycastOptions` doc for the cross-adapter
+contract every adapter's `raycast()` must satisfy uniformly (a raycast never resolving a trigger as
+a hit) - a character could crouch but never stand back up before this fix
 (`CharacterController3dEntity.tryStandUp()`'s headroom raycast was permanently "blocked" by the same
 trigger, retried every tick per its own doc, so a one-off glitch was actually a permanent stall), and
 a third-person camera collapsed onto the character every tick.
