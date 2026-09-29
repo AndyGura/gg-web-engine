@@ -985,7 +985,12 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
     if (!world.physicsWorld) {
       return undefined;
     }
-    const { position, rotation, chassis, wheelBase, wheelOptions, sharedWheelOptions, state, ...rest } = settings;
+    // `settings.name` is `createEntity`'s own routing field (also, independently, applied straight
+    // onto `entity.name` once this generator returns) - not a `GgCarProperties` field, so it must
+    // never reach `carProperties` via the `...rest` spread below, unlike every genuinely
+    // car-specific field `rest` is meant to forward.
+    const { position, rotation, chassis, wheelBase, wheelOptions, sharedWheelOptions, state, name: _name, ...rest } =
+      settings as GgCar3DSettings & { name?: string };
     if (!chassis?.dimensions) {
       throw new Error('Chassis dimensions are required for GgCar class');
     }

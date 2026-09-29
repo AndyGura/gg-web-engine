@@ -292,7 +292,12 @@ export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocR
       entities: resources.map((x, index) => {
         const entity = new Entity3d<TypeDoc>({ object3D: x.object3D, objectBody: x.body });
         if (nameScope !== null) {
-          const objectName = x.body?.name || x.object3D?.name || `${index}`;
+          // Mirrors Entity3d's own constructor fallback order: object3D's name is only ever
+          // considered when there is no body at all, not merely whenever the body happens to be
+          // unnamed - a body-having resource whose body.name is empty falls straight to the index,
+          // the same way Entity3d itself would leave such an entity at its generated default name
+          // rather than reaching past a present-but-unnamed objectBody for object3D.name.
+          const objectName = x.body ? x.body.name || `${index}` : x.object3D?.name || `${index}`;
           entity.name = `${nameScope}__${objectName}`;
         }
         return entity;

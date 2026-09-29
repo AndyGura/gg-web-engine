@@ -15,7 +15,7 @@ import { AmmoFactory } from '../ammo-factory';
 import { AmmoLoader } from '../ammo-loader';
 import { AmmoPhysicsTypeDocRepo } from '../types';
 import { AmmoRigidBodyComponent } from './ammo-rigid-body.component';
-import { AmmoTriggerComponent } from './ammo-trigger.component';
+import { AmmoTriggerComponent, isAmmoTrigger } from './ammo-trigger.component';
 import { AmmoBodyComponent } from './ammo-body.component';
 
 export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsTypeDocRepo> {
@@ -535,7 +535,7 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
     for (let i = 0; i < count; i++) {
       const body = AmmoBodyComponent.nativeBodyReverseMap.get(Ammo.getPointer(objects.at(i))) as
         AmmoRigidBodyComponent | AmmoTriggerComponent | undefined;
-      if (body instanceof AmmoTriggerComponent) {
+      if (isAmmoTrigger(body)) {
         continue;
       }
       const fraction = fractions.at(i);
@@ -655,9 +655,7 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
       if (!candidate) {
         return 0;
       }
-      // never a trigger - same reasoning as raycast()'s own doc; filtered here in JS rather than
-      // via detach/reattach for the identical performance reason
-      if (candidate instanceof AmmoTriggerComponent) {
+      if (isAmmoTrigger(candidate)) {
         return 0;
       }
       if (requestedMask !== null && (BitMask.pack(candidate.ownCollisionGroups, 16) & requestedMask) === 0) {

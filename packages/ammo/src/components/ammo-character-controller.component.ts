@@ -12,7 +12,7 @@ import {
 import Ammo from '../ammo.js/ammo';
 import { AmmoBodyComponent } from './ammo-body.component';
 import { AmmoRigidBodyComponent } from './ammo-rigid-body.component';
-import { AmmoTriggerComponent } from './ammo-trigger.component';
+import { AmmoTriggerComponent, isAmmoTrigger } from './ammo-trigger.component';
 import { AmmoWorldComponent } from './ammo-world.component';
 import { AmmoGgWorld, AmmoPhysicsTypeDocRepo } from '../types';
 
@@ -588,13 +588,13 @@ export class AmmoCharacterControllerComponent
           Ammo.btCollisionObjectWrapper,
         );
         const weAreObjectA = Ammo.getPointer(wrap0.getCollisionObject()) === selfPtr;
-        // Never push against a `Trigger` - same reasoning as `AmmoWorldComponent.raycast()`'s own
-        // doc, filtered here in JS (this callback is already a JS override, unlike `sweep()`'s
-        // `ClosestConvexResultCallback`) rather than via `detachTriggers()`/`reattachTriggers()` -
-        // that would pay the same expensive real-geometry broadphase reinsertion this method's
-        // sibling `trySnapToGround()`/`AmmoWorldComponent.raycast()` were fixed to avoid, and this
-        // method runs the same query up to 4 times per tick, unconditionally, whenever any
-        // character exists.
+        // Never push against a `Trigger` - filtered here in JS (this callback is already a JS
+        // override, unlike `sweep()`'s `ClosestConvexResultCallback`) rather than via
+        // `detachTriggers()`/`reattachTriggers()` - that would pay the same expensive real-geometry
+        // broadphase reinsertion this method's sibling `trySnapToGround()`/
+        // `AmmoWorldComponent.raycast()` were fixed to avoid, and this method runs the same query up
+        // to 4 times per tick, unconditionally, whenever any character exists. See `isAmmoTrigger`'s
+        // own doc for why a hit against one is excluded at all.
         const otherWrapPtr = weAreObjectA ? colObj1WrapPtr : colObj0WrapPtr;
         const otherWrap = (Ammo as unknown as AmmoWithWrapPointer).wrapPointer(
           otherWrapPtr,
@@ -602,7 +602,7 @@ export class AmmoCharacterControllerComponent
         );
         const otherPtr = Ammo.getPointer(otherWrap.getCollisionObject());
         const other = AmmoBodyComponent.nativeBodyReverseMap.get(otherPtr);
-        if (other instanceof AmmoTriggerComponent) {
+        if (isAmmoTrigger(other)) {
           return 0;
         }
         const n = cp.get_m_normalWorldOnB();

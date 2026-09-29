@@ -156,6 +156,21 @@ describe('Gg3dLoader', () => {
       expect(new Set(names).size).toBe(names.length);
     });
 
+    it("falls back to the index, not object3D's name, for a resource whose body exists but is unnamed - matching Entity3d's own constructor, which never reaches past a present objectBody for object3D.name", async () => {
+      const body = mock3DBody();
+      body.name = '';
+      const object3D = mock3DObject();
+      (object3D as any).name = 'SomeMeshName';
+      jest.spyOn(loader, 'loadGgGlbResources').mockResolvedValueOnce({
+        resources: [{ object3D, body }],
+        meta: { dummies: [] } as any,
+      });
+
+      const result = await loader.loadGgGlb('assets/scene', { nameScope: 'Room', loadProps: false });
+
+      expect(result.entities[0].name).toBe('Room__0');
+    });
+
     it('keeps the raw native object names when nameScope is null, props included', async () => {
       const result = await loader.loadGgGlb('assets/scene', { nameScope: null });
 

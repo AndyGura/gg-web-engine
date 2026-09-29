@@ -167,3 +167,16 @@ export class AmmoTriggerComponent
     this.onLeft$.complete();
   }
 }
+
+/**
+ * A query resolving a native body/ghost object to its owning component must never treat a
+ * `Trigger` as a hit - it's a sensor with no collision response by definition
+ * (`ITrigger3dComponent`), so it was never meant to obstruct one. Shared by every JS-side
+ * post-filter call site that needs this exact check
+ * (`AmmoWorldComponent.raycast()`'s `closestNonTriggerHit`/`solidRayFallback`,
+ * `AmmoCharacterControllerComponent.recoverFromPenetration()`) - see `raycast()`'s own doc for why
+ * these filter in JS rather than via a broadphase detach.
+ */
+export function isAmmoTrigger(body: unknown): body is AmmoTriggerComponent {
+  return body instanceof AmmoTriggerComponent;
+}
