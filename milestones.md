@@ -158,32 +158,19 @@ Status
   `test/base/entities/i-entity.spec.ts`, and `test/base/level-loader.spec.ts`; documented in the
   `gg-engine-level-json` skill; every example and existing test call site updated for the now-required
   `levelName` argument.
-- ✅ Atomic `addEntity` + collision-free GLB entity names (2026-09-29): a loaded model whose group
-  carried a child named the same as an already-loaded one (the two loads of one `.glb` produce
-  identically-named entities) exposed that `GgWorld.addEntity` only failed a nested name collision
-  *after* the parent and every earlier sibling were already registered, leaving a half-spawned tree
-  with bodies/meshes live in the native scenes and nothing returned to clean it up. `addEntity` now
-  validates every name in the whole subtree up front (against the world *and* between the tree's
-  own entities) before touching anything, and rolls back fully if spawning still throws partway for
-  any other reason. On top of that, `Gg3dLoader.loadGgGlb` gained `LoadOptions.nameScope`: every
-  produced entity is named `` `${nameScope}__${objectName}` `` and props recurse under
-  `` `${nameScope}__${dummy.name}` `` - a fresh process-unique scope per call by default, an explicit
-  string for deterministic names, `null` for the raw Blender names. The built-in `"Glb"` level class
-  scopes under its own entity name, which `LevelLoader.createEntity` now resolves (explicit, else a
-  new optional `defaultName` argument `loadLevel` feeds its level-derived fallback through) and hands
-  to every generator as `settings.name` *before* building. Covered in `test/base/gg-world.spec.ts`,
-  `test/3d/loader.spec.ts`, `test/base/level-loader.spec.ts`; documented in the
-  `gg-engine-core-development`, `gg-engine-level-json` and `gg-engine-app-development` skills.
-- ✅ Fixed a `MapGraph3dEntity` unload race (2026-09-30): the unload-candidate scan only runs from
-  the `loadClock` tick where `nearestDummy` changes, so a chunk whose `loadChunk()` was still
-  in-flight at that exact moment (tracked in `loadingNodes`, not yet `this.loaded`) was invisible to
-  it - if `nearestDummy` then settled and stopped changing before that load resolved, no later scan
-  ever reconsidered the chunk either, and it stayed loaded indefinitely even though it had already
-  fallen outside the load-eligibility set. Fixed by tracking that set (`lastCanBeLoaded`) across
-  ticks and re-checking each chunk against it right after its own `loadChunk()` settles, queuing it
-  for unload immediately if it's already stale instead of waiting on a `nearestDummy` change that
-  might never come. Covered by `test/3d/entities/map-graph-3d.entity.spec.ts` (new file - this
-  entity had no test coverage at all before).
+- ✅ Scoped GLB entity names + per-chunk content lifecycle (2026-09-29): `Gg3dLoader.loadGgGlb`
+  gained `LoadOptions.nameScope` - every produced entity is named `` `${nameScope}__${objectName}` ``
+  and props recurse under `` `${nameScope}__${dummy.name}` ``; a fresh process-unique scope per
+  call by default, an explicit string for deterministic names, `null` for the raw Blender names -
+  so one `.glb` can be loaded any number of times into a world without its identical object names
+  colliding. The built-in `"Glb"` level class scopes under its own entity name, which
+  `LevelLoader.createEntity` now resolves (explicit, else a new optional `defaultName` argument
+  `loadLevel` feeds its level-derived fallback through) and hands to every generator as
+  `settings.name` *before* building. `MapGraph3dEntity.chunkLoaded$` now also carries the loaded
+  `MapGraphNodeType` as a third tuple element, and a new `attachToChunk(node, entities)` ties
+  app-spawned per-chunk content to that chunk's own unload. Covered in `test/3d/loader.spec.ts`,
+  `test/base/level-loader.spec.ts`, `test/3d/entities/map-graph-3d.entity.spec.ts`; documented in
+  the `gg-engine-core-development`, `gg-engine-level-json` and `gg-engine-app-development` skills.
 - Document the Level JSON shape as a machine-checkable JSON Schema (`docs/specs/level-json.schema.json`)
   with CI validation of example levels — not started. The `gg-engine-level-json` skill documents the
   shape informally today, which is enough for humans but not enforced anywhere.
@@ -310,32 +297,6 @@ Status
   `pixi` and `three` currently have none (`npm test` is a stub that exits 1) — examples are the
   only verification for those two today. Closing this gap would make conformance testing above
   much cheaper to build.
-- ✅ Ammo trigger/raycast parity fixes + a raycast-vehicle dispose leak (2026-09-29): three
-  independent, reproduced Ammo-specific bugs. (1) `world.raycast()` used to be able to resolve a
-  hit against a `Trigger` - a sensor with no collision response by definition, and never meant to
-  obstruct a query on any other adapter - fixed with a JS-side post-filter (`AllHitsRayResultCallback`
-  + picking the closest non-trigger hit in JS) rather than the broadphase detach/reattach mechanism
-  used elsewhere in this package, after that approach measured a real 300+ ms/frame regression
-  against real (non-box) scene geometry; the same fix was applied to
-  `AmmoCharacterControllerComponent.recoverFromPenetration()` for the identical reason. (2) A
-  `Trigger`'s own overlap tracking could fire `onEntityLeft` for the *wrong* entity when a body left
-  the world by some other path first (e.g. an unloaded map chunk) - the stale entry only got noticed
-  on some later `checkOverlaps()` poll, by which point Ammo could have already freed and reused that
-  body's native pointer. Fixed with a proactive `world.removed$` reaction that purges the stale entry
-  immediately, but only ever emits `onEntityLeft` on a deferred microtask - a synchronous emission
-  reintroduced a worse bug (WASM heap corruption severe enough to eventually abort the whole Ammo
-  module), since `removed$` can fire reentrantly mid-swap from inside
-  `CharacterController3dEntity.recreateCapsule()`. (3) `AmmoRaycastVehicleComponent.dispose()` now
-  guards each of its five native handles independently, matching the pattern every other Ammo
-  component's `dispose()` already uses - it previously threw on the first already-freed handle and
-  leaked the rest whenever `dispose()` ran a second time (reachable via `Gg3dWorld.removeEntity(e,
-  true)`, not just caller error). (1)-(3) covered by
-  `ammo-world.component.spec.ts`/`ammo-trigger-player-vehicle-integration.spec.ts`/
-  `ammo-raycast-vehicle.component.spec.ts`; documented in the `gg-engine-physics-adapter-ammo` skill.
-  A small, unrelated, core-level fix landed alongside these: `PlayerCharacterController` (core, not
-  Ammo-specific) now restores a captured `baseFov` on entering third-person, so a leftover
-  free-camera zoom no longer sticks - 🚧 no test asserts on this yet (`player-character.controller.spec.ts`'s
-  camera mock explicitly notes none of its tests check `fov`).
 
 ---
 

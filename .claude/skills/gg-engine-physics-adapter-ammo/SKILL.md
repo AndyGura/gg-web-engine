@@ -542,9 +542,10 @@ performance cost against real (non-box) scene geometry:
 
 **Why raycast() doesn't just reuse detachTriggers()/reattachTriggers(), even though that's the
 "obvious", already-proven-correct mechanism right next to it:** it was the first version of this fix,
-and it caused a severe, real regression - not a hypothetical one. This engine's fly-city example has
-one world-enclosing `Trigger3dEntity` (map-bounds, a huge box around the whole playable area, left at
-the default/main collision group like everything else). Repeatedly removing and reinserting that huge
+and it caused a severe, real regression - not a hypothetical one. The reproducing scene had one
+world-enclosing `Trigger3dEntity` (a map-bounds kill volume - a huge box around the whole playable
+area, left at the default/main collision group like everything else) over a streamed map of real
+triangle-mesh static geometry. Repeatedly removing and reinserting that huge
 AABB into `btDbvtBroadphase` doesn't just cost O(1) bookkeeping - each reinsertion forces Bullet to
 regenerate that trigger's broadphase pairs and re-run *narrow-phase* collision detection against
 every real body it overlaps (narrow-phase runs regardless of the ghost object's
