@@ -249,6 +249,22 @@ the removed component is the trigger itself (its own `removeFromWorld` already h
 The subscription is torn down in `removeFromWorld` alongside the existing `collisionStart`/`collisionEnd`
 listener cleanup.
 
+**That reaction drops the stale entry synchronously but emits `onLeft$` via `queueMicrotask`, never
+inline.** `removed$` fires from inside whatever call stack performed the removal, and that stack can be
+another component's own half-finished lifecycle operation: `CharacterController2dEntity.recreateCapsule()`
+(every crouch/stand) calls `removeComponents([old], true)` on the *old* `MatterCharacterControllerComponent`
+before assigning the new one, so an `onLeft$` subscriber running inline at that moment (app code behind
+`Trigger2dEntity.onEntityLeft` - a kill volume resetting the character's `.position`, say) writes through
+the old controller, i.e. `Body.setPosition` on a phantom body nothing will ever query again; the write is
+silently lost and the replacement capsule spawns at the stale position. A microtask keeps the emission in
+the same JS turn (well before the next `Engine.update`) but after every in-flight synchronous stack,
+including the removal's own, has unwound. `matter-trigger.component.spec.ts` asserts the exact timing
+(not observable synchronously after `removeFromWorld`, observable after one `await Promise.resolve()`,
+no `simulate()`/`checkOverlaps()` in between). Any test that removes an overlapping body and then asserts
+`onEntityLeft` fired needs that one microtask hop before the assertion. The trigger's *own*
+`removeFromWorld` still emits `onLeft$` inline for everything it was overlapping - that's the trigger
+leaving at a controlled point in its own lifecycle, not a reaction to someone else's removal.
+
 ## Character controller: a from-scratch discrete-query mover, no native sweep to lean on
 
 `MatterCharacterControllerComponent` implements `ICharacterController2dComponent` as a capsule `Body`

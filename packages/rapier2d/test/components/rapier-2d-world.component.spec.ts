@@ -320,5 +320,38 @@ describe('Rapier2dWorldComponent', () => {
       // We just verify the method doesn't crash and returns a valid result
       expect(result).toBeDefined();
     });
+
+    it('should never resolve a hit against a trigger, even when the ray starts inside it', () => {
+      // A trigger is a sensor with no collision response (ITrigger2dComponent) and must never
+      // obstruct a raycast - a world-enclosing trigger (a map-bounds kill volume) would otherwise
+      // be "hit" at ~0 distance by every ray cast anywhere inside it. raycast() passes
+      // QueryFilterFlags.EXCLUDE_SENSORS to castRay for exactly this (see its own doc).
+      const trigger = world.factory.createTrigger({ shape: 'BOX', dimensions: { x: 100, y: 100 } });
+      trigger.addToWorld({ physicsWorld: world } as any);
+      // a freshly-created collider only enters the broad-phase once the world has stepped
+      world.simulate(1);
+
+      // from well inside the trigger's volume, hitting nothing else
+      const result = world.raycast({
+        from: { x: 0, y: 0 },
+        to: { x: 0, y: 10 },
+      });
+      expect(result.hasHit).toBe(false);
+
+      // a real solid body behind/through the trigger must still be hit normally
+      const square = world.factory.createRigidBody({
+        shape: { shape: 'BOX', dimensions: { x: 2, y: 2 } },
+        body: { bodyType: 'static', mass: 0 },
+      }, { position: { x: 0, y: -5 } });
+      square.addToWorld({ physicsWorld: world } as any);
+      world.simulate(1);
+
+      const throughResult = world.raycast({
+        from: { x: 0, y: 0 },
+        to: { x: 0, y: -10 },
+      });
+      expect(throughResult.hasHit).toBe(true);
+      expect(throughResult.hitBody).toBe(square);
+    });
   });
 });
