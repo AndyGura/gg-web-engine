@@ -150,6 +150,15 @@ it automatically (it's running inside the full repo checkout, where `../assets` 
 commented-out via its `git checkout -- ... webpack.dev.config.js` - so day-to-day local development
 never needs you to touch this block by hand, only the initial commit adding it.
 
+**Angular examples** (`examples/fly-city-three-ammo`) have no webpack config, and Angular's
+`assets` build option refuses folders outside the workspace root (`../assets` is rejected). Instead
+the example commits a `proxy.conf.mjs` that starts a tiny static file server over `../assets` and
+proxies `/assets` to it; `switch_example_to_local_gg.sh` enables it by adding
+`"options": { "proxyConfig": "proxy.conf.mjs" }` to the dev-server in `angular.json` (also in
+`fix_dev_server_assets`), and both scripts `git checkout` `angular.json` to undo it. Never commit
+`angular.json` with `proxyConfig` set, for the same standalone-clone reason. Reference the asset
+as `/assets/<subfolder>/<name>` from code.
+
 ### An asset that belongs to just one example (not shared/CDN-deployed): bundle it via webpack directly
 
 Not every example asset needs the `examples/assets` CDN treatment above - a texture/atlas/image

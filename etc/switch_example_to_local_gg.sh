@@ -40,8 +40,15 @@ function fix_pixi_paths {
 # devServer.static block commented out by default (see gg-engine-examples's "Adding a shared asset
 # under examples/assets"), since a standalone clone of just that example directory has no sibling
 # ../assets folder to serve. Inside the full repo checkout that folder does exist, so local dev
-# should serve it - uncomment the block if present.
+# should serve it - uncomment the block if present. Angular examples have no webpack config;
+# they ship a proxy.conf.mjs serving ../assets at /assets, which is switched on by pointing the
+# dev-server's "proxyConfig" option at it in angular.json.
 function fix_dev_server_assets {
+  if [ -f angular.json ] && [ -f proxy.conf.mjs ]; then
+    grep -q '"proxyConfig"' angular.json ||
+      sedi 's|^\( *\)"builder": "@angular/build:dev-server",$|&\
+\1"options": { "proxyConfig": "proxy.conf.mjs" },|' angular.json
+  fi
   [ -f webpack.dev.config.js ] || return 0
   grep -q '^  // devServer: {$' webpack.dev.config.js || return 0
   sedi 's|^  // devServer: {$|  devServer: {|' webpack.dev.config.js
@@ -52,7 +59,7 @@ function fix_dev_server_assets {
 pushd "$1"
 
 # always start from the committed state so re-runs are idempotent instead of compounding patches
-git checkout -- package.json tsconfig.json webpack.dev.config.js 2>/dev/null || true
+git checkout -- package.json tsconfig.json webpack.dev.config.js angular.json 2>/dev/null || true
 
 libs=($(grep '@gg-web-engine/' package.json | awk -F'/|:' '{print $2}' | tr -d '", '))
 link_paths=''

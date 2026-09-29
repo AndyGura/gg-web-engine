@@ -4,6 +4,7 @@ import {
   Camera3dAnimator,
   FreeCameraController,
   IPositionable3d,
+  PlayerCharacterController,
   Pnt3,
   Renderer3dEntity,
 } from '@gg-web-engine/core';
@@ -16,6 +17,7 @@ export class GameCameraController {
 
   public readonly freeCameraController: FreeCameraController;
   public readonly carCameraController: Camera3dAnimator<FlyCityTypeDoc['vTypeDoc']>;
+  public readonly playerController: PlayerCharacterController<FlyCityTypeDoc>;
   public readonly cameraIndex$: BehaviorSubject<number> = new BehaviorSubject<number>(0);
 
   cameraMotionFactory: [(car: IPositionable3d, type: 'lambo' | 'truck' | 'car') => AnimationFunction<Camera3dAnimationArgs>, number, (t: number) => number][] = [
@@ -27,8 +29,22 @@ export class GameCameraController {
   private state_: CurrentState = { mode: 'freecamera' };
 
   public set state(state: CurrentState) {
+    // detach the character from input first, so WASD doesn't walk it around while flying/driving
+    this.playerController.active = false;
+    this.playerController.character = null;
     if (state.mode === 'freecamera') {
       this.freeCameraController.active = true;
+      this.carCameraController.active = false;
+    } else if (state.mode === 'onfoot') {
+      this.freeCameraController.active = false;
+      this.carCameraController.active = false;
+      this.playerController.character = state.character;
+      this.playerController.active = true;
+    } else if (state.mode === 'entering') {
+      // no controller drives the camera while the character walks itself to the car - it just
+      // stays wherever it was, watching the character walk up, same as the "kept" the last
+      // controlled state's camera position
+      this.freeCameraController.active = false;
       this.carCameraController.active = false;
     } else if (state.mode === 'driving') {
       this.freeCameraController.active = false;
@@ -80,6 +96,19 @@ export class GameCameraController {
     this.carCameraController = new Camera3dAnimator(renderer, null!);
     this.carCameraController.active = false;
     this.world.addEntity(this.carCameraController);
+    this.playerController = new PlayerCharacterController<FlyCityTypeDoc>(
+      this.world.keyboardInput,
+      null,
+      renderer,
+      {
+        viewMode: 'third-person',
+        toggleViewKey: null,
+        ignoreMouseUnlessPointerLocked: true,
+        mouseOptions: { canvas: this.renderer.renderer.canvas!, pointerLock: true },
+      },
+    );
+    this.playerController.active = false;
+    this.world.addEntity(this.playerController);
     this.cameraIndex$.pipe(skip(1)).subscribe(index => {
       if (this.state_.mode == 'driving') {
         const [funcProto, duration, easing] = this.cameraMotionFactory[index];

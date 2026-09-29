@@ -6,20 +6,33 @@
 }
 @if (showHelpText) {
   <div class="screen-text app-helper">
-    <span>FLY MODE CONTROLS</span>
-    <span>Click on page and move mouse to look around (ESC to exit)</span>
-    <span>WASD/Arrow keys to fly</span>
-    <span>Q/E keys to fly up/down</span>
-    <span>Z/C keys to change camera FOV</span>
-    <span>F key to enter nearest car</span>
-    <span>DRIVE MODE CONTROLS</span>
-    <span>WASD/Arrow keys to handle car</span>
-    <span>Caps Lock/Shift keys to change gears (R/N/D)</span>
-    <span>C key to change camera</span>
-    <span>R key to reset car</span>
-    <span>F key to leave car</span>
-    <span>H key to honk</span>
-    <span>Space key to use hand brake</span>
+    @switch (legendMode) {
+      @case ('freecamera') {
+        <span>FLY MODE CONTROLS</span>
+        <span>Click on page and move mouse to look around (ESC to exit)</span>
+        <span>WASD/Arrow keys to fly</span>
+        <span>Q/E keys to fly up/down</span>
+        <span>Z/C keys to change camera FOV</span>
+        <span>G key to spawn a character in front of the camera</span>
+      }
+      @case ('onfoot') {
+        <span>ON FOOT CONTROLS</span>
+        <span>Mouse to look, WASD/Arrow keys to walk</span>
+        <span>Shift to run, Space to jump, Ctrl to crouch</span>
+        <span>F key to enter a nearby car</span>
+        <span>G key to release the character (back to fly mode)</span>
+      }
+      @case ('driving') {
+        <span>DRIVE MODE CONTROLS</span>
+        <span>WASD/Arrow keys to handle car</span>
+        <span>Caps Lock/Shift keys to change gears (R/N/D)</span>
+        <span>C key to change camera</span>
+        <span>R key to reset car</span>
+        <span>F key to leave car (control the character)</span>
+        <span>H key to honk</span>
+        <span>Space key to use hand brake</span>
+      }
+    }
     <span></span>
     <span>X to toggle this text</span>
     <span>P to toggle pause</span>

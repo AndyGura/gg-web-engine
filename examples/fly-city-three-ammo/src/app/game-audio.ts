@@ -4,10 +4,7 @@ import { distinctUntilChanged, NEVER, Observable, of, skip, switchMap } from 'rx
 import { map } from 'rxjs/operators';
 import { HttpClient } from '@angular/common/http';
 import { FlyCityWorld } from './app.component';
-
-export type CurrentState =
-  { mode: 'freecamera' }
-  | { mode: 'driving', car: GgCarEntity, carType: 'lambo' | 'truck' | 'car' };
+import type { CurrentState } from './game-runner';
 
 const ASSETS_BASE = 'https://gg-web-demos.guraklgames.com/assets/fly-city';
 
@@ -80,7 +77,7 @@ export class GameAudio {
     });
 
     this.state$.pipe(
-      switchMap(state => state.mode === 'freecamera' ? NEVER : state.car.gear$.pipe(skip(1))),
+      switchMap(state => state.mode !== 'driving' ? NEVER : state.car.gear$.pipe(skip(1))),
     ).subscribe(() => {
       // restart from the beginning on every gear change, even if the previous shift's sound is
       // still playing - play() is a no-op while already playing, so an explicit stop() first
@@ -92,7 +89,7 @@ export class GameAudio {
     });
 
     this.state$.pipe(
-      switchMap(state => state.mode === 'freecamera' ? of(null) : state.car.acceleration$),
+      switchMap(state => state.mode !== 'driving' ? of(null) : state.car.acceleration$),
       map((acc: number | null) => acc === null ? null : (acc > 0 ? this.engineOnSource : this.engineOffSource)),
       distinctUntilChanged(),
     ).subscribe((activeSource) => {
@@ -109,7 +106,7 @@ export class GameAudio {
     });
 
     this.state$.pipe(
-      switchMap(state => state.mode === 'freecamera' ? NEVER : state.car.engineRpm$.pipe(map(rpm => [state.car, rpm] as [GgCarEntity, number]))),
+      switchMap(state => state.mode !== 'driving' ? NEVER : state.car.engineRpm$.pipe(map(rpm => [state.car, rpm] as [GgCarEntity, number]))),
     ).subscribe(([car, rpm]: [GgCarEntity, number]) => {
       const engineRpmFactor = ((rpm - 800) / car.carProperties.engine.maxRpm) - 0.5;
       this.engineOnSource.playbackRate = 1 + engineRpmFactor;

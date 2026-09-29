@@ -92,7 +92,7 @@ export class GameFactory {
     ).subscribe(() => {
       cityMapGraph.loaderCursor$.next(renderCursor.position);
     });
-    cityMapGraph.chunkLoaded$.subscribe(async ([{ meta }, { position }]) => {
+    cityMapGraph.chunkLoaded$.subscribe(async ([{ meta }, { position }, node]) => {
       // spawn cars
       const cars =
         await Promise.all(meta.dummies
@@ -114,15 +114,40 @@ export class GameFactory {
               return null;
             }
             const entity = this.generateCar(chassisMesh, chassisBody, chassisDummies, wheelMesh, (dummy.car_id.startsWith('truck') ? TRUCK_SPECS : CAR_SPECS));
-            entity.name = dummy.car_id;
+            // `dummy.car_id` (e.g. "car_0") is the shared model type, not a unique identifier - the
+            // same tile can (and typically does) carry many dummies for the same car_id as
+            // alternative spawn points, and the same relative dummy name (e.g. "car_spawner.003")
+            // recurs in every tile too, so both need to be in the name to keep it world-wide unique;
+            // `position` (the tile's own world position) is unique per tile in this grid.
+            entity.name = `${dummy.car_id}__${position.x}_${position.y}__${dummy.name}`;
             entity.position = Pnt3.add(position, dummy.position);
             entity.rotation = dummy.rotation;
             return entity;
           }),
         );
-      for (const car of cars) {
-        if (car) {
-          this.world.addEntity(car);
+      const spawned = cars.filter((car): car is GgCarEntity => !!car);
+      if (cityMapGraph.loaded.has(node)) {
+        // tie these cars to the chunk's own lifecycle so they're removed automatically when this
+        // chunk unloads - otherwise they leak (and, on a later reload of the same chunk, collide by
+        // name with the still-leaked copy). Attached one at a time (not as a single
+        // `attachToChunk(node, spawned)` batch) and guarded individually: `IEntity.addChildren`
+        // stops at the first entity that fails to add, so a single name collision inside a batch
+        // (e.g. the same chunk having been mid-load twice concurrently - see `MapGraph3dEntity`'s
+        // own `loadingNodes` doc for when that could happen) used to silently drop every car after
+        // the colliding one in that batch, not just the offending one.
+        for (const car of spawned) {
+          try {
+            cityMapGraph.attachToChunk(node, [car]);
+          } catch (e) {
+            console.warn(`Failed to spawn car "${car.name}" - disposing it instead`, e);
+            car.dispose();
+          }
+        }
+      } else {
+        // the chunk was already unloaded while these cars were still loading - discard them instead
+        // of leaking their never-added native resources
+        for (const car of spawned) {
+          car.dispose();
         }
       }
     });

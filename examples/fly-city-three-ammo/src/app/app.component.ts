@@ -39,6 +39,12 @@ export class AppComponent implements AfterViewInit {
   showHelpText: boolean = true;
   paused: boolean = false;
 
+  /** Which controls legend to show - 'entering' (walking to a car, no player control) reuses the on-foot legend, since F (cancel) is still live. */
+  get legendMode(): 'freecamera' | 'onfoot' | 'driving' {
+    const mode = this.runner?.state$.getValue().mode ?? 'freecamera';
+    return mode === 'entering' ? 'onfoot' : mode;
+  }
+
   constructor(
     private readonly http: HttpClient,
     private readonly cdr: ChangeDetectorRef,
