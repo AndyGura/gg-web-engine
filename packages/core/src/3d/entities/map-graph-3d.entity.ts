@@ -202,6 +202,10 @@ export class MapGraph3dEntity<
 
     let loadList: MapGraphNodeType[] = [];
     let unloadList: MapGraphNodeType[] = [];
+    // The most recently computed "still allowed to stay loaded" set, kept around so a chunk whose
+    // `loadChunk()` finishes *after* this moved on can be checked against it directly - see
+    // `queueIfNowStale`'s own doc for why that's needed at all.
+    let lastCanBeLoaded: Set<MapGraphNodeType> = new Set();
 
     this.loadClock!.tick$.pipe(
       startWith(null), // map will perform initial loading even if world not started yet. Handy to preload map
@@ -225,6 +229,7 @@ export class MapGraph3dEntity<
         currentChunk.walkRead(this.options.loadDepth).forEach(node => haveToBeLoaded.add(node.data));
         canBeLoaded = haveToBeLoaded;
       }
+      lastCanBeLoaded = canBeLoaded;
       for (const loadedNode of this.loaded.keys()) {
         if (!canBeLoaded.has(loadedNode)) {
           if (!unloadList.includes(loadedNode)) {
@@ -246,6 +251,23 @@ export class MapGraph3dEntity<
         }
       }
     });
+    /**
+     * The unload-candidate scan above only runs when `nearestDummy` actually changes to a value
+     * distinct from its immediate predecessor - a node whose `loadChunk()` is still in flight at
+     * that moment is invisible to it (it's tracked in `loadingNodes`, not yet `this.loaded`), so it
+     * never gets a chance to land in `unloadList` for that transition. If `nearestDummy` then
+     * settles and stops changing before that load actually resolves, no *later* scan ever
+     * reconsiders it either - the node stays loaded indefinitely even though it already fell
+     * outside `canBeLoaded` by the time it finished. Called right after each `loadChunk()`
+     * settles (successfully) to close that gap: re-checks the node against the load-eligibility
+     * set as it stood the moment loading finished, and queues it for unload immediately if it's
+     * already stale, instead of waiting for a `nearestDummy` change that may never come.
+     */
+    const queueIfNowStale = (node: MapGraphNodeType) => {
+      if (this.loaded.has(node) && !lastCanBeLoaded.has(node) && !unloadList.includes(node)) {
+        unloadList.push(node);
+      }
+    };
     this.tick$
       .pipe(
         startWith(null), // map will perform initial loading even if world not started yet. Handy to preload map
@@ -262,9 +284,11 @@ export class MapGraph3dEntity<
           if (this._initialLoadComplete$.value && loadList.length > this.options.maxNodesLoadingPerTick) {
             let loadNow = loadList.slice(0, this.options.maxNodesLoadingPerTick);
             loadList = loadList.slice(this.options.maxNodesLoadingPerTick);
-            Promise.all(loadNow.map(n => this.loadChunk(n))).then();
+            Promise.all(loadNow.map(n => this.loadChunk(n))).then(() => loadNow.forEach(queueIfNowStale));
           } else {
-            Promise.all(loadList.map(n => this.loadChunk(n))).then(() => {
+            const loadingNow = loadList;
+            Promise.all(loadingNow.map(n => this.loadChunk(n))).then(() => {
+              loadingNow.forEach(queueIfNowStale);
               if (!this._initialLoadComplete$.value) {
                 this._initialLoadComplete$.next(true);
               }

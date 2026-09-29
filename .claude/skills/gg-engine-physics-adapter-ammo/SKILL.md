@@ -593,6 +593,19 @@ a hit) - a character could crouch but never stand back up before this fix
 trigger, retried every tick per its own doc, so a one-off glitch was actually a permanent stall), and
 a third-person camera collapsed onto the character every tick.
 
+**Measured cost of the new `solidRayFallback()` fallback path** (`raycast()`'s own doc explains why
+it exists): now that a trigger is never resolved as a hit, a ray whose only intersections are
+trigger volumes - previously short-circuited by "hitting" the trigger - reaches `solidRayFallback()`
+on every such call, allocating a `btGhostObject`/`btSphereShape`/`btTransform` and running one
+`contactTest`. Benchmarked directly (`AmmoWorldComponent`, real Ammo/Bullet, no mocks) against a
+world-enclosing trigger with real static geometry: ~0.07ms/call with 300 static bodies spread near
+the ray origin (realistic scene density), rising to ~0.5ms/call in a deliberately pathological case
+of 500 large static bodies all overlapping the exact probe point (not a realistic layout - real
+scenes don't stack hundreds of colliders on one point). Both are negligible next to the 300+ms/frame
+detach/reattach regression this whole fix exists to avoid, and even the pathological case stays well
+under a 16ms frame budget for the handful of calls (`recoverFromPenetration()`'s up-to-4 plus one
+camera raycast) this can run per tick. No further optimization needed here.
+
 Bug found empirically (regression test: `ammo-trigger-player-vehicle-integration.spec.ts`): before
 this, a character walking straight at a `Trigger`'s volume physically stopped dead at its boundary
 instead of walking through it - `convexSweepTest`/`contactTest` test geometry only, unaffected by the

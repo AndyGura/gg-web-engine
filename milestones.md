@@ -174,6 +174,16 @@ Status
   to every generator as `settings.name` *before* building. Covered in `test/base/gg-world.spec.ts`,
   `test/3d/loader.spec.ts`, `test/base/level-loader.spec.ts`; documented in the
   `gg-engine-core-development`, `gg-engine-level-json` and `gg-engine-app-development` skills.
+- ✅ Fixed a `MapGraph3dEntity` unload race (2026-09-30): the unload-candidate scan only runs from
+  the `loadClock` tick where `nearestDummy` changes, so a chunk whose `loadChunk()` was still
+  in-flight at that exact moment (tracked in `loadingNodes`, not yet `this.loaded`) was invisible to
+  it - if `nearestDummy` then settled and stopped changing before that load resolved, no later scan
+  ever reconsidered the chunk either, and it stayed loaded indefinitely even though it had already
+  fallen outside the load-eligibility set. Fixed by tracking that set (`lastCanBeLoaded`) across
+  ticks and re-checking each chunk against it right after its own `loadChunk()` settles, queuing it
+  for unload immediately if it's already stale instead of waiting on a `nearestDummy` change that
+  might never come. Covered by `test/3d/entities/map-graph-3d.entity.spec.ts` (new file - this
+  entity had no test coverage at all before).
 - Document the Level JSON shape as a machine-checkable JSON Schema (`docs/specs/level-json.schema.json`)
   with CI validation of example levels — not started. The `gg-engine-level-json` skill documents the
   shape informally today, which is enough for humans but not enforced anywhere.
