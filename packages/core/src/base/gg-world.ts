@@ -287,10 +287,16 @@ export abstract class GgWorld<
    * should spawning still throw partway for any other reason, whatever was already registered is
    * rolled back before the error propagates.
    * @param entity - The entity to add; a no-op if it's already a member of this world
+   * @throws if `entity` has already been disposed (see `IEntity.dispose()`/`disposed`) - every
+   * component it owns has already freed its native resources, so nothing about it is valid to
+   * attach to a world's native scenes again
    * @throws if `entity` or any of its descendants carries a name already in use by another entity
    * in this world, or shared by two entities of the subtree
    */
   public addEntity(entity: IEntity): void {
+    if (entity.disposed) {
+      throw new Error('Cannot add entity - it has already been disposed');
+    }
     if (entity.world === this) {
       // Already a member of this world - e.g. reparented (via addChildren) after having been
       // added directly, as level-loaded entities are. Not an error: just a no-op, since

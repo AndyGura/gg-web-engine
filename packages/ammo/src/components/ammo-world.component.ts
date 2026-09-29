@@ -411,6 +411,77 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
     this.lockedCollisionGroups = this.lockedCollisionGroups.filter(x => x !== group);
   }
 
+  /**
+   * Temporarily removes every currently-in-world trigger from the broadphase, for the duration of a
+   * query that must never resolve a hit against one - mirrors
+   * `AmmoTriggerComponent.detachFromBroadphaseTemporarily()`/`reattachToBroadphase()`'s own doc:
+   * a `Trigger` is a sensor with no collision response by definition (`ITrigger3dComponent`), so it
+   * was never meant to be a solid obstacle to *any* query, character-owned or not.
+   *
+   * Neither `raycast()` nor `solidRayFallback()` uses this (both exclude triggers with a JS-side
+   * post-filter instead - see `raycast()`'s own doc for why), and neither does
+   * `AmmoCharacterControllerComponent.recoverFromPenetration()`/`trySnapToGround()` (the former
+   * JS-filters its own `contactTest` results the same way `solidRayFallback` does; the latter calls
+   * `raycast()` itself, which already excludes triggers on its own). Only
+   * `AmmoCharacterControllerComponent.sweep()` still calls this: its `convexSweepTest` is driven by
+   * `Ammo.ClosestConvexResultCallback`, which this Ammo.js build never exposes an overridable
+   * `addSingleResult` on (unlike `ConcreteContactResultCallback`, used by the JS-filtered paths
+   * above) - there is no JS-side hook to reject a trigger candidate mid-query for a convex sweep, so
+   * physically excluding every trigger from the broadphase for the sweep's duration is the only
+   * option available. Call `reattachTriggers()` with the returned array once the query is done, in a
+   * `finally` so a throwing query still reattaches them.
+   */
+  detachTriggers(): AmmoTriggerComponent[] {
+    const detached: AmmoTriggerComponent[] = [];
+    for (const child of this.children) {
+      if (child instanceof AmmoTriggerComponent && child.detachFromBroadphaseTemporarily()) {
+        detached.push(child);
+      }
+    }
+    return detached;
+  }
+
+  /** Undoes `detachTriggers()` for exactly the triggers it returned. */
+  reattachTriggers(detached: AmmoTriggerComponent[]): void {
+    for (const trigger of detached) {
+      trigger.reattachToBroadphase();
+    }
+  }
+
+  /**
+   * Never resolves a hit against a `Trigger` - matching `Rapier3dWorldComponent.raycast()`'s own
+   * `QueryFilterFlags.EXCLUDE_SENSORS` (see its doc): a raycast is a query like any other, and a
+   * trigger is a sensor with no collision response by definition (`ITrigger3dComponent`), so it was
+   * never meant to obstruct one.
+   *
+   * Uses `Ammo.AllHitsRayResultCallback` (every hit along the ray, unsorted) rather than
+   * `ClosestRayResultCallback`, and picks the closest hit whose resolved body is *not* an
+   * `AmmoTriggerComponent` itself, entirely in JS (`m_hitFractions` - smaller is closer) -
+   * deliberately **not** `detachTriggers()`/`reattachTriggers()` - neither does `solidRayFallback()`
+   * just below it (its own `ConcreteContactResultCallback` JS-filters out a trigger candidate the
+   * same way this method does), nor `AmmoCharacterControllerComponent.recoverFromPenetration()`/
+   * `trySnapToGround()` (the latter calls this method directly, so it excludes triggers for free).
+   * An earlier version of this fix used the detach/reattach pair every call, mirroring
+   * `AmmoCharacterControllerComponent`'s own sweeps - correct, but a real, measured regression: this
+   * world-enclosing example's own map-bounds trigger (`Trigger3dEntity` around the whole playable
+   * area) forced Bullet to regenerate that trigger's broadphase pairs - and re-run narrow-phase
+   * collision detection against every one of the hundreds of real (non-box, triangle-mesh) static
+   * bodies it overlaps - on every single reinsertion, not just an O(1) broadphase bookkeeping cost.
+   * With `PlayerCharacterController`'s third-person camera-collision raycast calling `raycast()`
+   * every tick, this repeated full pair regeneration measured at 300+ ms per simulated frame once a
+   * player character existed - confirmed via isolated timing around `stepSimulation` itself, and
+   * confirmed *not* proportional to detach/reattach call count against a synthetic scene of simple
+   * box shapes (only real, complex mesh geometry reproduces it) - i.e. an inherent cost of repeatedly
+   * reinserting a huge AABB against many real triangle-mesh bodies, not a bug in the detach/reattach
+   * bookkeeping itself. The same reinsertion cost, paid many times per tick by every character's own
+   * `recoverFromPenetration()`/`trySnapToGround()` calls (regardless of whether the camera raycast
+   * above ever runs), is what made this worth fixing at every calling layer rather than just here -
+   * see `detachTriggers()`'s own doc for the one remaining caller (`sweep()`) that still has to pay
+   * it, for lack of a JS-filterable convex-sweep callback in this Ammo.js build. The post-filter
+   * approach here touches the broadphase not at all, at the cost of Bullet reporting every hit along
+   * the ray instead of just the closest (negligible - a ray typically crosses only a handful of
+   * shapes).
+   */
   raycast(options: RaycastOptions<Point3>): RaycastResult<Point3, AmmoRigidBodyComponent | AmmoTriggerComponent> {
     if (!this._dynamicAmmoWorld) {
       return { hasHit: false };
@@ -418,7 +489,7 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
     const from = new Ammo.btVector3(options.from.x, options.from.y, options.from.z);
     const to = new Ammo.btVector3(options.to.x, options.to.y, options.to.z);
 
-    const rayCallback = new Ammo.ClosestRayResultCallback(from, to);
+    const rayCallback = new Ammo.AllHitsRayResultCallback(from, to);
 
     if (options.collisionFilterGroups) {
       rayCallback.set_m_collisionFilterGroup(BitMask.pack(options.collisionFilterGroups, 16));
@@ -428,35 +499,13 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
     }
     this._dynamicAmmoWorld.rayTest(from, to, rayCallback);
 
-    const hasHit = rayCallback.hasHit();
-
-    const result: RaycastResult<Point3, any> = { hasHit };
-
-    if (hasHit) {
-      result.hitBody = AmmoBodyComponent.nativeBodyReverseMap.get(Ammo.getPointer(rayCallback.get_m_collisionObject()));
-      const hitPointAmmo = rayCallback.get_m_hitPointWorld();
-      result.hitPoint = {
-        x: hitPointAmmo.x(),
-        y: hitPointAmmo.y(),
-        z: hitPointAmmo.z(),
-      };
-      const hitNormalAmmo = rayCallback.get_m_hitNormalWorld();
-      result.hitNormal = {
-        x: hitNormalAmmo.x(),
-        y: hitNormalAmmo.y(),
-        z: hitNormalAmmo.z(),
-      };
-      const dx = result.hitPoint.x - options.from.x;
-      const dy = result.hitPoint.y - options.from.y;
-      const dz = result.hitPoint.z - options.from.z;
-      result.hitDistance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-    }
+    const result = this.closestNonTriggerHit(rayCallback, options.from);
 
     Ammo.destroy(from);
     Ammo.destroy(to);
     Ammo.destroy(rayCallback);
 
-    if (!hasHit) {
+    if (!result.hasHit) {
       const solidHit = this.solidRayFallback(options);
       if (solidHit) {
         return solidHit;
@@ -464,6 +513,56 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
     }
 
     return result;
+  }
+
+  /**
+   * Scans an `AllHitsRayResultCallback`'s collected hits (unsorted) for the closest one whose
+   * resolved body is not an `AmmoTriggerComponent` - see `raycast()`'s own doc for why this replaces
+   * a broadphase-level trigger exclusion. `m_hitFractions` is the ray parameter `t` (0 at `from`, 1
+   * at `to`) for each parallel entry in `m_collisionObjects`/`m_hitPointWorld`/`m_hitNormalWorld` -
+   * smaller is closer, and comparing fractions instead of recomputing distance per candidate avoids
+   * doing that work for hits that turn out not to be the closest anyway.
+   */
+  private closestNonTriggerHit(
+    rayCallback: Ammo.AllHitsRayResultCallback,
+    from: Point3,
+  ): RaycastResult<Point3, AmmoRigidBodyComponent | AmmoTriggerComponent> {
+    const objects = rayCallback.get_m_collisionObjects();
+    const fractions = rayCallback.get_m_hitFractions();
+    const count = objects.size();
+    let bestIndex = -1;
+    let bestFraction = Infinity;
+    let bestBody: AmmoRigidBodyComponent | AmmoTriggerComponent | undefined;
+    for (let i = 0; i < count; i++) {
+      const body = AmmoBodyComponent.nativeBodyReverseMap.get(Ammo.getPointer(objects.at(i))) as
+        AmmoRigidBodyComponent | AmmoTriggerComponent | undefined;
+      if (body instanceof AmmoTriggerComponent) {
+        continue;
+      }
+      const fraction = fractions.at(i);
+      if (fraction < bestFraction) {
+        bestFraction = fraction;
+        bestIndex = i;
+        bestBody = body;
+      }
+    }
+    if (bestIndex === -1) {
+      return { hasHit: false };
+    }
+    const hitPointAmmo = rayCallback.get_m_hitPointWorld().at(bestIndex);
+    const hitNormalAmmo = rayCallback.get_m_hitNormalWorld().at(bestIndex);
+    const hitPoint = { x: hitPointAmmo.x(), y: hitPointAmmo.y(), z: hitPointAmmo.z() };
+    const hitNormal = { x: hitNormalAmmo.x(), y: hitNormalAmmo.y(), z: hitNormalAmmo.z() };
+    const dx = hitPoint.x - from.x;
+    const dy = hitPoint.y - from.y;
+    const dz = hitPoint.z - from.z;
+    return {
+      hasHit: true,
+      hitBody: bestBody,
+      hitPoint,
+      hitNormal,
+      hitDistance: Math.sqrt(dx * dx + dy * dy + dz * dz),
+    };
   }
 
   /**
@@ -555,6 +654,11 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
       const candidate = AmmoBodyComponent.nativeBodyReverseMap.get(otherPtr) as
         AmmoRigidBodyComponent | AmmoTriggerComponent | undefined;
       if (!candidate) {
+        return 0;
+      }
+      // never a trigger - same reasoning as raycast()'s own doc; filtered here in JS rather than
+      // via detach/reattach for the identical performance reason
+      if (candidate instanceof AmmoTriggerComponent) {
         return 0;
       }
       if (requestedMask !== null && (BitMask.pack(candidate.ownCollisionGroups, 16) & requestedMask) === 0) {

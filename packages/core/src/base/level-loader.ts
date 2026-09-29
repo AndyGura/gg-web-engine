@@ -374,10 +374,7 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
    * @returns The built entity, or `undefined` (logged via `console.warn`) if `entityJson.class` has
    * no registered generator, or that generator didn't return an `IEntity`
    */
-  public async createEntity(
-    entityJson: EntityJson,
-    defaultName?: string,
-  ): Promise<IEntity<D, R, TypeDoc> | undefined> {
+  public async createEntity(entityJson: EntityJson, defaultName?: string): Promise<IEntity<D, R, TypeDoc> | undefined> {
     const { class: classAlias, shape, position, rotation, config } = entityJson;
     const name = entityJson.name !== undefined ? entityJson.name : defaultName;
     const generator = this.generators.get(classAlias);

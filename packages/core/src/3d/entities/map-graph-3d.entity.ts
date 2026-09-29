@@ -109,6 +109,23 @@ export class MapGraph3dEntity<
   public readonly loaderCursor$: BehaviorSubject<Point3> = new BehaviorSubject<Point3>(Pnt3.O);
   readonly loaded: Map<MapGraphNodeType, (IEntity & IPositionable3d)[]> = new Map();
 
+  /**
+   * Nodes currently mid-`loadChunk()` - awaiting `loader.loadGgGlb()`, not yet in `loaded`. Without
+   * this, a node can be handed to `loadChunk()` a second time while the first call is still
+   * in-flight: the load-list computation below only excludes a node already present in `loaded`
+   * (a *completed* load), and `loadList` itself is cleared the instant it's handed to
+   * `Promise.all(...).then()` (fire-and-forget, not awaited by the tick subscription) - so a node
+   * whose load hasn't finished yet can be re-queued and re-loaded on a later tick, which used to
+   * produce two independent, concurrently-resolving `loadChunk()` calls for the same node/position -
+   * real, reproduced symptom: flying back and forth over the same chunk repeatedly (unload before
+   * the first load finishes, then reload) could fire `chunkLoaded$` twice for that one chunk, and
+   * app code reacting to it (e.g. spawning cars keyed by chunk position + dummy name, not by which
+   * of the two concurrent loads produced them) would compute the *same* name twice and collide on
+   * `world.addEntity` the second time - silently losing that whole batch, since nothing in this
+   * engine's own `chunkLoaded$` plumbing awaits or catches an async subscriber's own rejection.
+   */
+  private readonly loadingNodes: Set<MapGraphNodeType> = new Set();
+
   private _initialLoadComplete$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
   public get initialLoadComplete$(): Observable<boolean> {
     return this._initialLoadComplete$.asObservable();
@@ -128,8 +145,16 @@ export class MapGraph3dEntity<
         position: Point3;
         rotation: Point4;
       },
+      MapGraphNodeType,
     ]
-  > = new Subject<[LoadResultWithProps<TypeDoc>, { position: Point3; rotation: Point4 }]>();
+  > = new Subject<[LoadResultWithProps<TypeDoc>, { position: Point3; rotation: Point4 }, MapGraphNodeType]>();
+  /**
+   * Fires once per loaded chunk, carrying the load result, its resolved position/rotation, and the
+   * `MapGraphNodeType` node itself (the same object identity `attachToChunk` expects) - the third
+   * element is for app code that spawns *additional* content per chunk beyond what the chunk's own
+   * GLB contains (e.g. traffic placed at that chunk's dummies), so it has a handle to pass to
+   * `attachToChunk` and get that content cleaned up automatically on unload too.
+   */
   public get chunkLoaded$(): Observable<
     [
       LoadResultWithProps<TypeDoc>,
@@ -137,6 +162,7 @@ export class MapGraph3dEntity<
         position: Point3;
         rotation: Point4;
       },
+      MapGraphNodeType,
     ]
   > {
     return this._chunkLoaded$.asObservable();
@@ -208,6 +234,12 @@ export class MapGraph3dEntity<
           haveToBeLoaded.delete(loadedNode);
         }
       }
+      // A node already mid-load must not be queued again - see `loadingNodes`'s own doc for why
+      // that's reachable even though `loadList` itself is deduped (it gets cleared before the load
+      // it queued actually finishes).
+      for (const loadingNode of this.loadingNodes) {
+        haveToBeLoaded.delete(loadingNode);
+      }
       for (let n of Array.from(haveToBeLoaded.keys())) {
         if (!loadList.includes(n)) {
           loadList.push(n);
@@ -253,24 +285,49 @@ export class MapGraph3dEntity<
   }
 
   protected async loadChunk(node: MapGraphNodeType): Promise<[Entity3d<TypeDoc>[], LoadResultWithProps<TypeDoc>]> {
-    const loaded = await this.world!.loader.loadGgGlb(node.path, {
-      position: node.position,
-      rotation: node.rotation || Qtrn.O,
-      ...node.loadOptions,
-    });
-    const entities = [
-      ...loaded.entities,
-      ...(loaded.props || [])
-        .map(p => p.entities)
-        .reduce((p, c) => {
-          p.push(...c);
-          return p;
-        }, []),
-    ];
-    this.loaded.set(node, entities);
+    this.loadingNodes.add(node);
+    try {
+      const loaded = await this.world!.loader.loadGgGlb(node.path, {
+        position: node.position,
+        rotation: node.rotation || Qtrn.O,
+        ...node.loadOptions,
+      });
+      const entities = [
+        ...loaded.entities,
+        ...(loaded.props || [])
+          .map(p => p.entities)
+          .reduce((p, c) => {
+            p.push(...c);
+            return p;
+          }, []),
+      ];
+      this.loaded.set(node, entities);
+      this.addChildren(...entities);
+      this._chunkLoaded$.next([loaded, { position: node.position, rotation: node.rotation || Qtrn.O }, node]);
+      return [entities, loaded];
+    } finally {
+      this.loadingNodes.delete(node);
+    }
+  }
+
+  /**
+   * Attaches already-constructed entities to an already-loaded chunk's own lifecycle: added as
+   * children now (same as the chunk's own GLB-loaded entities), and automatically removed/disposed
+   * the next time that chunk unloads. For content spawned in reaction to `chunkLoaded$` that isn't
+   * itself part of the chunk's GLB (e.g. traffic placed per-chunk by app code) - without this, such
+   * content has no lifecycle tied to the chunk at all, and leaks (and, if it reuses names on a later
+   * reload while the leaked copy is still around, collides with them) once the chunk unloads.
+   * @param node - The chunk this content belongs to, as received via `chunkLoaded$`'s third tuple element
+   * @param entities - The entities to attach
+   * @throws if `node` is not currently loaded (never loaded, or already unloaded)
+   */
+  public attachToChunk(node: MapGraphNodeType, entities: (IEntity & IPositionable3d)[]): void {
+    const attached = this.loaded.get(node);
+    if (!attached) {
+      throw new Error('Cannot attach entities to a chunk that is not currently loaded');
+    }
+    attached.push(...entities);
     this.addChildren(...entities);
-    this._chunkLoaded$.next([loaded, { position: node.position, rotation: node.rotation || Qtrn.O }]);
-    return [entities, loaded];
   }
 
   protected disposeChunk(node: MapGraphNodeType) {

@@ -138,6 +138,31 @@ native scenes on failure" guarantee holds - and cover it in `test/base/gg-world.
 `console.warn` that continues: the entity then gets registered under a name that already maps to
 something else, silently clobbering `getEntityByName` for the earlier one while both still render.
 
+`addEntity` also throws immediately, before any name validation, if `entity.disposed` is `true` (an
+`IEntity.dispose()`-backed getter, `false` until `dispose()` has run) - every component the entity
+owns has already freed its native resources by that point, so nothing about it is valid to attach to
+a world's native scenes again. This check runs on every nested call too (not gated behind the
+outermost-call-only branch the name validation uses), so a disposed entity anywhere in a subtree
+being added - not just at the root - still throws and rolls back the whole `addEntity` atomically.
+
+## `IEntity.dispose()` is idempotent - a second call is a no-op, by design
+
+A `_disposed` flag (exposed read-only as `entity.disposed`) makes every call after the first into a
+no-op: none of `removeEntity`/completing the `onSpawned$`/`onRemoved$`/`tick$` subjects/disposing
+children/disposing components runs again. This matters because `Gg3dWorld.removeEntity(entity,
+true)` calls `entity.dispose()` unconditionally whenever `dispose` is `true`, regardless of whether
+`entity.world` was already falsy - i.e. regardless of whether this is actually the *first* time this
+entity is being removed - so any caller that can end up invoking `removeEntity(sameEntity, true)`
+twice (not a hypothetical: a physics trigger's own overlap bookkeeping reacting a second time to a
+body that already left hit exactly this, in `gg-engine-physics-adapter-ammo`'s own trigger/dispose
+notes) would otherwise double-dispose every one of that entity's components. Several adapter
+components free more than one native handle in their own `dispose()` with no defensifying guard of
+their own (unlike the common single-handle case, which typically wraps its own `Ammo.destroy()`/
+equivalent in a `try`/`catch`) - a second call used to throw partway through and leak whatever handle
+came after the one that threw. This entity-level guard is the backstop for every such component, not
+a replacement for guarding a multi-handle `dispose()` itself (still worth doing independently - see
+`gg-engine-physics-adapter-ammo`'s note on `AmmoRaycastVehicleComponent` for why both layers matter).
+
 ## Entity naming: declare `entityTypeName` on every new entity class
 
 **Every new concrete entity class - anything with its own `tickOrder`, i.e. anything that could be
@@ -202,6 +227,52 @@ This is a `packages/core`-authoring practice specifically; an app or example def
 entity class (e.g. a `ShapeSpawner`-style class registered via `LevelLoader.registerClass`) should
 follow the exact same convention - see `gg-engine-app-development`'s own section on this for that
 side of it.
+
+## `MapGraph3dEntity.chunkLoaded$`/`attachToChunk`: tying app-spawned, per-chunk content to a chunk's own unload
+
+`chunkLoaded$` emits a 3-tuple: the chunk's `LoadResultWithProps`, its resolved
+`{position, rotation}`, and the `MapGraphNodeType` node itself (the same object identity
+`this.loaded` is keyed by internally). That third element exists specifically so app code reacting to
+a chunk load - to spawn something *in addition to* what the chunk's own GLB contains, e.g. traffic
+placed at that chunk's own dummies - has a handle to give back to `attachToChunk(node, entities)`,
+which adds those entities as children (same as the chunk's own GLB-loaded entities) *and* appends them
+to `this.loaded.get(node)`, so `disposeChunk`'s `removeChildren(..., true)` picks them up and disposes
+them automatically the next time that chunk unloads. Content spawned off `chunkLoaded$` without going
+through `attachToChunk` (e.g. just `world.addEntity(...)`ing it directly) has no lifecycle tied to the
+chunk at all - it leaks on unload, and if it's later reloaded under the same name while the leaked
+copy is still around, collides with it (`Cannot add entity - name "..." is already in use` -
+`fly-city-three-ammo`'s own car-spawning code hit exactly this before switching to `attachToChunk`).
+
+`attachToChunk` throws if `node` isn't currently loaded - always possible for content built
+asynchronously in reaction to `chunkLoaded$` (e.g. awaiting a GLB fetch for what to spawn), since the
+chunk can have already unloaded again by the time that async work resolves; check
+`mapGraph.loaded.has(node)` first and discard (`entity.dispose()`) whatever was built instead of
+attaching it, rather than letting the throw propagate out of an async handler unhandled.
+
+**A second, independent way to hit the exact same "name already in use" collision, even with
+`attachToChunk` already in place**: `MapGraph3dEntity` used to have no notion of "this node is
+currently mid-load", only "already loaded" (`this.loaded`, populated once `loadChunk()` resolves).
+Its own tick-driven load-list computation excluded nodes in `this.loaded` from being queued again,
+but a node that had been handed to `loadChunk()` and was still awaiting `loader.loadGgGlb()` - not
+yet in `this.loaded` - had no such protection, and `loadList` itself gets cleared the instant it's
+handed to `Promise.all(...).then()`, well before that promise actually resolves. Net effect: flying
+away from a chunk and back before its (slow network) load finished, then leaving `haveToBeLoaded`
+still wanting it on a later tick, could queue and start a *second*, fully independent `loadChunk()`
+call for the same node while the first was still in flight - both eventually firing `chunkLoaded$`
+for the same chunk. `loadGgGlb()`'s own `nameScope` is always a fresh, process-unique token per call
+(see `LoadOptions.nameScope`'s own doc), so the chunk's *own* GLB-derived entities never collided
+this way - but app code reacting to `chunkLoaded$` that derives a name purely from the chunk's
+position and its `.meta` dummy data (not from anything nameScope-scoped), the same way
+`fly-city-three-ammo`'s car-spawning does, computes the *identical* name on both firings and collides
+attaching the second batch. Worse than a single lost entity: `IEntity.addChildren(...entities)` stops
+at the first entity that fails `world.addEntity()`, so passing a whole batch to `attachToChunk` in one
+call meant every entity *after* the colliding one in that batch silently never got added either - the
+exact "cars stop appearing" symptom this was found from, not just one missing car. Fixed by tracking
+in-flight nodes (`loadingNodes`, a plain `Set<MapGraphNodeType>` populated for the duration of
+`loadChunk()`) and excluding them from the load-list computation the same way `this.loaded` already
+is. Defense in depth on the app side too: `fly-city-three-ammo` now calls `attachToChunk(node, [car])`
+once per car inside a `try`/`catch` instead of `attachToChunk(node, spawned)` for the whole batch, so
+a collision from any cause only drops the one offending car instead of every car queued after it.
 
 ## `tickOrder`: driving a dynamic rigid body before physics `simulate()` runs
 

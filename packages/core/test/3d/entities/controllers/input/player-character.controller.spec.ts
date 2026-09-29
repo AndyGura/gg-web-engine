@@ -26,6 +26,10 @@ const fakeCamera = () =>
     enableRenderLayer: jest.fn(),
     disableRenderLayer: jest.fn(),
     isRenderLayerEnabled: jest.fn(() => true),
+    // Read once at construction time (`baseFov`) and written back whenever third-person view is
+    // (re-)entered - a plain mutable field is enough for every test in this file; none of them
+    // assert on fov itself.
+    camera: { fov: 75 },
   }) as any;
 
 describe('PlayerCharacterController', () => {

@@ -118,8 +118,41 @@ describe(`AmmoTriggerComponent`, () => {
     world.simulate(1);
     trigger.checkOverlaps();
     ball.removeFromWorld({ physicsWorld: world } as any);
+    // the proactive world.removed$ reaction (see AmmoTriggerComponent's own doc) already drops the
+    // removed body from `overlaps` synchronously, so a later checkOverlaps() poll has nothing left
+    // to notice - onEntityLeft only fires via the deferred microtask that reaction schedules.
+    await Promise.resolve();
     world.simulate(1);
     trigger.checkOverlaps();
+    expect(exitRegistered).toBe(true);
+  });
+
+  it(`should fire end of object intersection on the next microtask when the object is removed, with no checkOverlaps() poll`, async () => {
+    // regression test: without proactively reacting to world.removed$, a body removed elsewhere
+    // while still overlapping stays in this trigger's own `overlaps` set until some later
+    // checkOverlaps() call happens to notice it dropped out of the ghost object's live overlap
+    // list - by which point its native handle may already be disposed. This asserts the fix drops
+    // it from `overlaps` and fires onEntityLeft without any checkOverlaps() call at all - on the
+    // next microtask specifically, not synchronously (see the fix's own doc for why: reacting
+    // synchronously, from inside whatever arbitrary call stack triggered the removal, is what
+    // caused a real, reproduced Ammo/WASM heap abort when app code driven by onEntityLeft wrote
+    // back into an entity whose own component swap was still in progress on that same stack).
+    const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 10, y: 10, z: 10 } });
+    trigger.addToWorld({ physicsWorld: world } as any);
+    const ball = factory.createRigidBody({
+      shape: { shape: 'SPHERE', radius: 1 },
+      body: { bodyType: 'dynamic', mass: 1 },
+    }, { position: { x: 0, y: 0, z: 0 } });
+    ball.addToWorld({ physicsWorld: world } as any);
+    world.simulate(1);
+    trigger.checkOverlaps();
+    let exitRegistered = false;
+    trigger.onEntityLeft.subscribe(((obj) => {
+      exitRegistered = obj === ball;
+    }));
+    ball.removeFromWorld({ physicsWorld: world } as any);
+    expect(exitRegistered).toBe(false); // not yet - deferred to a microtask
+    await Promise.resolve();
     expect(exitRegistered).toBe(true);
   });
 });

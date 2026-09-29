@@ -78,6 +78,17 @@ describe('GgWorld', () => {
       warnSpy.mockRestore();
     });
 
+    it('should throw when adding an entity that has already been disposed', () => {
+      const entity = new GgEntityMock();
+      entity.name = 'Gone';
+      world.addEntity(entity);
+      world.removeEntity(entity, true);
+      expect(entity.disposed).toBe(true);
+
+      expect(() => world.addEntity(entity)).toThrow('Cannot add entity - it has already been disposed');
+      expect(entity.world).toBeNull();
+    });
+
     it('should throw, and leave the world unchanged, when adding an entity whose name is already in use', () => {
       const first = new GgEntityMock();
       first.name = 'Dup';

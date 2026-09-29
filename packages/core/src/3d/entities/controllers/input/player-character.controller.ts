@@ -109,6 +109,19 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
   public readonly mouseInput: MouseInput;
   public readonly directionsInput: DirectionKeyboardInput;
 
+  /**
+   * `this.camera.camera.fov` as it stood the moment this controller was constructed, before it ever
+   * touched the camera itself - restored every time `viewMode` switches to `'third-person'` (see
+   * that setter), the same way switching into a vehicle always sets a definite fov rather than
+   * carrying over whatever a still-live `FreeCameraController` sharing the same `Renderer3dEntity`
+   * left it at (its own scroll-wheel zoom, `cameraFovInc`, mutates `camera.camera.fov` directly and
+   * permanently - see its own doc). Without this, zooming out in free-camera mode and then walking
+   * onto the character (or toggling into third-person from first-person, which never touches fov at
+   * all) leaves the third-person view stuck at that zoomed fov instead of the app's own configured
+   * default.
+   */
+  private readonly baseFov: number;
+
   private _spherical: MutableSpherical = { phi: Math.PI / 2, theta: 0, radius: 1 };
   // Definite-assignment asserted: always set via the `viewMode` setter at the end of the
   // constructor (`this.viewMode = this.options.viewMode`), not assigned directly - see that call's
@@ -135,6 +148,12 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
       this.camera.disableRenderLayer(SELF_VIEW_HIDDEN_RENDER_LAYER);
     } else {
       this.camera.enableRenderLayer(SELF_VIEW_HIDDEN_RENDER_LAYER);
+      // Restore a definite fov every time third-person is (re-)entered, the same way switching into
+      // a vehicle camera always does (see `baseFov`'s own doc) - `updateCamera()` itself never
+      // touches fov at all, so without this a zoom left over from free-camera mode (or from
+      // whatever the camera was doing before this controller became active) would otherwise persist
+      // indefinitely in third-person view.
+      this.camera.camera.fov = this.baseFov;
     }
   }
 
@@ -206,6 +225,10 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
     };
     this.mouseInput = new MouseInput(this.options.mouseOptions);
     this.directionsInput = new DirectionKeyboardInput(keyboard, this.options.keymap);
+    // Captured before the `viewMode` setter below ever runs, so it reflects the camera's fov as the
+    // app configured it, not anything this controller (or a third-person restore) already touched -
+    // see `baseFov`'s own doc.
+    this.baseFov = camera.camera.fov;
     // Routed through the `viewMode` setter (not just `this._viewMode = ...`) so the initial
     // `character.hideMesh`/camera render-layer state are both applied up front too, exactly as a
     // later `toggleViewMode()` call would - `_viewMode` itself hasn't been assigned yet at this

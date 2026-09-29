@@ -257,8 +257,35 @@ export abstract class IEntity<D = any, R = any, TypeDoc extends GgWorldTypeDocRe
     this._onRemoved$.next();
   }
 
-  // TODO add some flag to entity that it is disposed, and throw a normal error when trying to add such entity to world again
+  private _disposed: boolean = false;
+
+  /**
+   * Whether `dispose()` has already run on this entity - `true` forever after, never reset. Checked
+   * by `GgWorld.addEntity`, which refuses to (re-)spawn a disposed entity (see its own doc): every
+   * component this entity owns has already freed its native resources, so spawning it again would
+   * `addToWorld` components that no longer have anything valid to attach.
+   */
+  public get disposed(): boolean {
+    return this._disposed;
+  }
+
+  /**
+   * Idempotent: a second call is a no-op. Without this guard, every component's own `dispose()` -
+   * several of which (e.g. `AmmoRaycastVehicleComponent`) free multiple native handles with no
+   * defensive try/catch of their own, unlike the single-handle case `AmmoBodyComponent.dispose()`
+   * already guards - would run a second time and throw trying to free an already-freed native
+   * handle. This is reachable from ordinary (non-buggy) call patterns, not just a caller mistake:
+   * `Gg3dWorld.removeEntity(entity, true)` calls `entity.dispose()` unconditionally whenever
+   * `dispose` is `true`, regardless of whether `entity.world` was already falsy (i.e. regardless of
+   * whether this is actually the first time this entity is being removed) - so anything that can
+   * end up calling `removeEntity(sameEntity, true)` twice (e.g. a physics trigger's own overlap
+   * bookkeeping reacting a second time to a body that already left) hits exactly this path.
+   */
   public dispose(): void {
+    if (this._disposed) {
+      return;
+    }
+    this._disposed = true;
     if (this.world) {
       this.world.removeEntity(this, false);
     }

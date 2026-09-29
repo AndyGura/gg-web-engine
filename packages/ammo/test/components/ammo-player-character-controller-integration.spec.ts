@@ -14,6 +14,9 @@ const fakeCamera = () =>
     enableRenderLayer: () => {},
     disableRenderLayer: () => {},
     isRenderLayerEnabled: () => true,
+    // Read once at construction time (`baseFov`) and written back on entering third-person - a
+    // plain field is enough here, this suite doesn't assert on fov itself.
+    camera: { fov: 75 },
   }) as any;
 
 const setup = async () => {
