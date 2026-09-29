@@ -42,7 +42,20 @@ export class MatterTriggerComponent
    * (and, for a character, `currentCharacterOverlaps`) permanently stale and `onEntityLeft` would
    * never fire for it. `world.physicsWorld.removed$` fires for every component removal regardless
    * of overlap state, so this only actually acts when the removed component is one this trigger was
-   * still tracking as an overlap. */
+   * still tracking as an overlap.
+   *
+   * The stale entry is dropped synchronously, but `onLeft$` itself is only ever emitted on a
+   * microtask from this reaction, never inline. `removed$` fires from inside whatever call stack
+   * performed the removal - which can be another component's own in-progress lifecycle operation:
+   * `CharacterController2dEntity.recreateCapsule()` (crouch/stand) removes the *old*
+   * `characterController` with `dispose: true` before it has assigned the new one, so an `onLeft$`
+   * subscriber running inline there (app code driven by `Trigger2dEntity`, e.g. a kill volume
+   * resetting `.position` on the character that just left it) would write through the old,
+   * already-removed `MatterCharacterControllerComponent` - `Body.setPosition` on a body no longer
+   * queried by anything - and the write is silently lost, with the replacement capsule then spawning
+   * at the stale position. Deferring the emission keeps it within the same JS turn (well before the
+   * next `Engine.update`) but strictly after every synchronous call stack in flight, including the
+   * removal's own, has unwound. */
   private removedSub?: Subscription;
 
   private handleCollisionStart(event: IEventCollision<Engine>) {
@@ -115,10 +128,10 @@ export class MatterTriggerComponent
       }
       if (c instanceof MatterCharacterControllerComponent) {
         if (this.currentCharacterOverlaps.delete(c)) {
-          this.onLeft$.next(c);
+          queueMicrotask(() => this.onLeft$.next(c));
         }
       } else if (c instanceof MatterRigidBodyComponent && this.currentOverlaps.delete(c)) {
-        this.onLeft$.next(c);
+        queueMicrotask(() => this.onLeft$.next(c));
       }
     });
   }

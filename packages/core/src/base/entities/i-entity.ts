@@ -194,6 +194,19 @@ export abstract class IEntity<D = any, R = any, TypeDoc extends GgWorldTypeDocRe
 
   private _components: IWorldComponent<D, R, TypeDoc>[] = [];
 
+  /**
+   * The subset of `_components` that has actually had `addToWorld` called on it (and not yet a
+   * matching `removeFromWorld`) - not simply every component in `_components` while `_world` is
+   * set. Those two sets diverge exactly while a `_components` loop (in `addComponents` or
+   * `onSpawned`) is partway through, since a component added earlier in the same loop can already
+   * be attached while a later one hasn't been reached yet, or threw before reaching it. `onRemoved`
+   * and `removeComponents` iterate this set, not `_components`, so a component whose `addToWorld`
+   * never ran (or already had a matching `removeFromWorld`) never gets `removeFromWorld` called on
+   * it a second/erroneous time - many adapters free a native handle in `removeFromWorld` with no
+   * guard against being called on something that was never attached.
+   */
+  private _attachedComponents = new Set<IWorldComponent<D, R, TypeDoc>>();
+
   public get components(): IWorldComponent<D, R, TypeDoc>[] {
     return [...this._components];
   }
@@ -209,6 +222,7 @@ export abstract class IEntity<D = any, R = any, TypeDoc extends GgWorldTypeDocRe
     if (this._world) {
       for (const item of components) {
         item.addToWorld(this._world);
+        this._attachedComponents.add(item);
       }
     }
   }
@@ -217,7 +231,7 @@ export abstract class IEntity<D = any, R = any, TypeDoc extends GgWorldTypeDocRe
     this._components = this._components.filter(c => !components.includes(c));
     for (const item of components) {
       item.entity = null;
-      if (this._world) {
+      if (this._world && this._attachedComponents.delete(item)) {
         item.removeFromWorld(this._world, dispose);
       }
     }
@@ -236,11 +250,28 @@ export abstract class IEntity<D = any, R = any, TypeDoc extends GgWorldTypeDocRe
 
   public onSpawned(world: GgWorld<D, R, TypeDoc>) {
     this._world = world;
-    for (const c of this._components) {
-      c.addToWorld(world);
-    }
-    for (const c of this._children) {
-      world.addEntity(c);
+    try {
+      for (const c of this._components) {
+        c.addToWorld(world);
+        this._attachedComponents.add(c);
+      }
+      for (const c of this._children) {
+        world.addEntity(c);
+      }
+    } catch (e) {
+      // undo only what actually reached the native scenes before the failure - children already
+      // guard themselves (GgWorld.removeEntity no-ops on one whose `world` was never set), but a
+      // component's removeFromWorld generally assumes it was actually attached, so it must only
+      // ever run for components this same loop's addToWorld actually succeeded on
+      this._world = null;
+      for (const c of this._attachedComponents) {
+        c.removeFromWorld(world, false);
+      }
+      this._attachedComponents.clear();
+      for (const c of this._children) {
+        world.removeEntity(c);
+      }
+      throw e;
     }
     this._onSpawned$.next();
   }
@@ -251,14 +282,42 @@ export abstract class IEntity<D = any, R = any, TypeDoc extends GgWorldTypeDocRe
     for (const c of this._children) {
       world.removeEntity(c);
     }
-    for (const c of this._components) {
+    for (const c of this._attachedComponents) {
       c.removeFromWorld(world, false);
     }
+    this._attachedComponents.clear();
     this._onRemoved$.next();
   }
 
-  // TODO add some flag to entity that it is disposed, and throw a normal error when trying to add such entity to world again
+  private _disposed: boolean = false;
+
+  /**
+   * Whether `dispose()` has already run on this entity - `true` forever after, never reset. Checked
+   * by `GgWorld.addEntity`, which refuses to (re-)spawn a disposed entity (see its own doc): every
+   * component this entity owns has already freed its native resources, so spawning it again would
+   * `addToWorld` components that no longer have anything valid to attach.
+   */
+  public get disposed(): boolean {
+    return this._disposed;
+  }
+
+  /**
+   * Idempotent: a second call is a no-op. Without this guard, every component's own `dispose()` -
+   * several of which (e.g. `AmmoRaycastVehicleComponent`) free multiple native handles with no
+   * defensive try/catch of their own, unlike the single-handle case `AmmoBodyComponent.dispose()`
+   * already guards - would run a second time and throw trying to free an already-freed native
+   * handle. This is reachable from ordinary (non-buggy) call patterns, not just a caller mistake:
+   * `Gg3dWorld.removeEntity(entity, true)` calls `entity.dispose()` unconditionally whenever
+   * `dispose` is `true`, regardless of whether `entity.world` was already falsy (i.e. regardless of
+   * whether this is actually the first time this entity is being removed) - so anything that can
+   * end up calling `removeEntity(sameEntity, true)` twice (e.g. a physics trigger's own overlap
+   * bookkeeping reacting a second time to a body that already left) hits exactly this path.
+   */
   public dispose(): void {
+    if (this._disposed) {
+      return;
+    }
+    this._disposed = true;
     if (this.world) {
       this.world.removeEntity(this, false);
     }

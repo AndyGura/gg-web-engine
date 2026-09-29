@@ -91,11 +91,24 @@ export class AmmoRaycastVehicleComponent
   }
 
   dispose(): void {
-    Ammo.destroy(this.nativeVehicle);
-    Ammo.destroy(this.vehicleTuning);
-    Ammo.destroy(this.raycaster);
-    Ammo.destroy(this.wheelDirectionCS0);
-    Ammo.destroy(this.wheelAxleCS);
+    // each of these is its own native allocation, freed independently of `nativeBody` (freed by
+    // `super.dispose()`, shared with `chassisBody` - see this class's own doc) - guarded the same
+    // defensive way every other Ammo component's dispose() guards its own handle(s), so one
+    // already-freed handle (e.g. a caller disposing this entity twice) doesn't stop the rest from
+    // being freed
+    for (const handle of [
+      this.nativeVehicle,
+      this.vehicleTuning,
+      this.raycaster,
+      this.wheelDirectionCS0,
+      this.wheelAxleCS,
+    ]) {
+      try {
+        Ammo.destroy(handle);
+      } catch {
+        // pass
+      }
+    }
     super.dispose();
   }
 

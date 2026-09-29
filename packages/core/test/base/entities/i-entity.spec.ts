@@ -217,12 +217,40 @@ describe('IEntity', () => {
     const removeEntitySpy = jest.spyOn(ggWorld, 'removeEntity');
     const disposeSpy = jest.spyOn(ggEntity, 'dispose');
 
+    expect(ggEntity.disposed).toBe(false);
     ggEntity.onSpawned(ggWorld);
     ggEntity.dispose();
 
     expect(removeEntitySpy).toHaveBeenCalledWith(ggEntity, false);
     expect(ggEntity.world).toBeNull();
     expect(disposeSpy).toHaveBeenCalledTimes(1);
+    expect(ggEntity.disposed).toBe(true);
+  });
+
+  it('should be idempotent - a second dispose() call does not dispose components/children again', () => {
+    // regression test: a component's own dispose() often frees a native handle with no guard
+    // against being called twice (see e.g. AmmoRaycastVehicleComponent before this fix) - and
+    // Gg3dWorld.removeEntity(entity, true) calls entity.dispose() unconditionally whenever
+    // `dispose` is true, even if the entity was already removed/disposed. Without an idempotency
+    // guard on IEntity.dispose() itself, anything that can end up calling removeEntity(sameEntity,
+    // true) twice (e.g. a trigger reacting to the same body leaving via two different paths) would
+    // double-dispose every one of that entity's components.
+    const component = {
+      entity: null,
+      addToWorld: jest.fn(),
+      removeFromWorld: jest.fn(),
+      dispose: jest.fn(),
+    };
+    const child = new GgEntityMock();
+    const childDisposeSpy = jest.spyOn(child, 'dispose');
+    ggEntity.addComponents(component as any);
+    ggEntity.addChildren(child);
+
+    ggEntity.dispose();
+    ggEntity.dispose();
+
+    expect(component.dispose).toHaveBeenCalledTimes(1);
+    expect(childDisposeSpy).toHaveBeenCalledTimes(1);
   });
 
   // Mock class for GgEntity

@@ -26,6 +26,10 @@ const fakeCamera = () =>
     enableRenderLayer: jest.fn(),
     disableRenderLayer: jest.fn(),
     isRenderLayerEnabled: jest.fn(() => true),
+    // Read once at construction time (`baseFov`) and written back whenever third-person view is
+    // (re-)entered - a plain mutable field is enough for every test in this file; none of them
+    // assert on fov itself.
+    camera: { fov: 75 },
   }) as any;
 
 describe('PlayerCharacterController', () => {
@@ -137,6 +141,18 @@ describe('PlayerCharacterController', () => {
       await controller.onSpawned({} as any);
       keyboard.emulateKeyDown('KeyV');
       expect(controller.viewMode).toBe('third-person');
+    });
+
+    it('restores the construction-time fov on re-activation, even without viewMode ever changing (e.g. staying third-person the whole time while another controller shares the camera)', async () => {
+      const character = fakeCharacter();
+      const { camera, controller } = setup(character, { viewMode: 'third-person' });
+      await controller.onSpawned({} as any);
+      controller.active = false;
+      // Simulates a still-live FreeCameraController sharing the same Renderer3dEntity zooming the
+      // camera directly while this controller is inactive.
+      camera.camera.fov = 30;
+      controller.active = true;
+      expect(camera.camera.fov).toBe(75);
     });
   });
 

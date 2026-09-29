@@ -151,10 +151,17 @@ if (crate) {
 Unlike `loadLevel`, the returned entity is **not** parented under any group and is **not** added to
 the world automatically - the caller does both itself (`world.addEntity(entity)`, and optionally
 `someParent.addChildren(entity)`). `entity.name` is left at whatever default the entity itself
-generated unless `entityJson.name` is explicitly given - there's no level/index to derive a
-fallback name from outside `loadLevel`. Returns `undefined` (logged via `console.warn`, same as
-`loadLevel`'s per-entity posture) if `entityJson.class` has no registered generator, or that
-generator didn't return an `IEntity`.
+generated unless `entityJson.name` is explicitly given or a `defaultName` is passed as the optional
+second argument (`createEntity(entityJson, defaultName)`) - there's no level/index to derive a
+fallback name from outside `loadLevel`, which is exactly what passes its own
+`` `${levelName}__${classAlias}_${index}` `` fallback through this argument. Whichever name is
+resolved is also handed to the generator as `settings.name` *before* the entity is built (so it is
+always present in `settings` under `loadLevel`, and present under `createEntity` whenever either
+source supplies one) - a generator that needs to derive something from the entity's final name can,
+e.g. the built-in `"Glb"` class scopes every sub-entity a model expands into under it (see that
+class below). Returns `undefined` (logged via `console.warn`, same as `loadLevel`'s per-entity
+posture) if `entityJson.class` has no registered generator, or that generator didn't return an
+`IEntity`.
 
 ## Serializing an entity or a level back to JSON
 
@@ -459,14 +466,31 @@ world.addEntity(controller);
 
 `config` (`Glb3DSettings`): `path` (required - passed straight to `Gg3dLoader.loadGgGlb`, see
 `gg-engine-app-development`/`packages/core/src/3d/loader.ts` for the GLB+`.meta` sidecar format and
-the Blender exporter that produces it), plus optional `cachingStrategy`/`loadProps`/`propsPath`
-mirroring `loadGgGlb`'s own `LoadOptions`. Missing `path` throws `Path is required for Glb class`.
+the Blender exporter that produces it), plus optional `cachingStrategy`/`loadProps`/`propsPath`/
+`nameScope` mirroring `loadGgGlb`'s own `LoadOptions`. Missing `path` throws `Path is required for
+Glb class`.
 
 A GLB (with `loadProps` on, the default) can expand into several `Entity3d`s - the model itself plus
 any nested props/scenes. All of them - flattened, regardless of nesting depth - are added as
 children of one `GroupEntity` (distinct from the level's own root group), which is what
 `level.getChildEntityByName` on the `"Glb"` entity's own `name` hands back. That group *is* parented
 under the level's root, so it's still torn down along with the rest of the level.
+
+**Names of the entities a GLB expands into.** Blender object names are identical on every load of a
+file, and `GgWorld` enforces world-wide name uniqueness (`addEntity` rejects a collision outright,
+touching nothing), so `loadGgGlb` scopes every entity it produces under a `nameScope`: each one is
+named `` `${nameScope}__${objectName}` `` (the body's, else the display object's, native name;
+its index in the load result when neither has one), and every prop/scene dummy recurses under
+`` `${nameScope}__${dummy.name}` ``. The `"Glb"` class passes the entity's own resolved name as that
+scope by default - `"Scene"` in the snippet above, so the model's `Suzanne` object becomes
+`Scene__Suzanne`, and a prop placed by a dummy named `RadioSpot` yields `Scene__RadioSpot__Radio`;
+an unnamed `"Glb"` entry gets the level-derived `` `${levelName}__Glb_${index}` `` fallback as its
+scope instead. Either way the scope is unique in the world and deterministic per level document, so
+two `"Glb"` entries pointing at the same file never collide and peers agree on every name. Look
+such an entity up as `world.getEntityByName('Scene__Suzanne')` (or
+`level.getChildEntityByName(...)`). Set `config.nameScope` to a string to pick the scope
+explicitly, or to `null` to keep the raw Blender names (only safe when nothing else in the world
+loads that file).
 
 ### `"GgCar"` (3D only) - a procedural `GgCarEntity`, ready to use
 

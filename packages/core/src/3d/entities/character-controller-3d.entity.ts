@@ -648,11 +648,7 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
     // this call (no other reference survives), so freeing its native capsule shape/ghost object can
     // only happen inside this `removeFromWorld(world, true)` call - see
     // `ICharacterController3dComponent`'s doc (and `IWorldComponent.removeFromWorld`'s, which states
-    // the general contract) for what an adapter's override must do with `dispose`. TODO: at least
-    // one adapter (Ammo, `AmmoCharacterControllerComponent.removeFromWorld`) currently ignores this
-    // flag and leaks the old capsule/ghost object on every crouch/stand transition - fix pending,
-    // tracked per-adapter (see `gg-engine-physics-adapter`'s "The `removeFromWorld(dispose)`
-    // contract" section).
+    // the general contract) for what an adapter's override must do with `dispose`.
     this.removeComponents([old], true);
     this.characterController = created;
     this.addComponents(created);

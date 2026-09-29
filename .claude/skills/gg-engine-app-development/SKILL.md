@@ -266,7 +266,13 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
 - **GLB scene loading (3D)**: GLB + `.gg` meta sidecar, driven by `packages/core/src/3d/loader.ts`
   and the adapter's own `<lib>-loader.ts` (e.g. `ThreeLoader`). Levels are authored in Blender and
   exported with the `GG Web Engine Exporter` add-on in `blender-addon/` (see `blender-addon/README.md`
-  for install/usage).
+  for install/usage). `world.loader.loadGgGlb(path, options)` returns ready-to-add `Entity3d`s (plus
+  recursively loaded props) whose names are scoped under `options.nameScope` as
+  `` `${nameScope}__${blenderObjectName}` `` - by default a fresh process-unique scope per call
+  (`glb_0__Suzanne`, `glb_1__Suzanne`, ...), so spawning the same file repeatedly never trips
+  `GgWorld`'s world-wide name-uniqueness check (`addEntity` throws on a collision, adding nothing).
+  Pass a string `nameScope` when names must be deterministic (networked spawns, lookups by name), or
+  `null` to keep the raw Blender object names for a file loaded exactly once.
 - **Level JSON loading (2D & 3D)**: `world.loader` turns a JSON document of entities into world
   content, with built-in `"Primitive"`/`"Trigger"`/`"Camera"`/`"Glb"`/`"GgCar"`/`"MapGraph"` (the
   last four 3D only) classes and support for app-registered custom classes. Loading resolves to a

@@ -136,4 +136,16 @@ describe('AmmoRaycastVehicleComponent', () => {
     expect(vehicleB.position.z).toBeLessThan(-7);
     expect(vehicleB.isWheelTouchesGround(0)).toBe(true);
   });
+
+  it('should not throw when disposed twice', () => {
+    // regression test: dispose() used to free nativeVehicle/vehicleTuning/raycaster/
+    // wheelDirectionCS0/wheelAxleCS with no try/catch at all (unlike every other Ammo component's
+    // dispose()), so a second call - reachable in practice via Gg3dWorld.removeEntity(entity, true)
+    // being called twice for the same entity - threw "Cannot destroy object" on the very first
+    // handle and left the rest leaked.
+    const vehicle = createVehicle(world, factory, { x: 0, y: 0, z: 4 });
+    vehicle.addToWorld({ physicsWorld: world } as any);
+    vehicle.removeFromWorld({ physicsWorld: world } as any, true);
+    expect(() => vehicle.dispose()).not.toThrow();
+  });
 });

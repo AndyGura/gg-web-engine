@@ -599,6 +599,10 @@ describe('Gg3dLevelLoader', () => {
       expect(car.position).toEqual({ x: 1, y: 2, z: 3 });
       expect(car.rotation).toEqual({ x: 0, y: 0, z: 0, w: 1 });
       expect(car.carProperties.maxSteerAngle).toBe(0.35);
+      // regression: the entity's `name` (from the EntityJson, routed through `settings.name` by
+      // `createEntity`) must never leak into `carProperties` via createGgCar's `...rest` spread -
+      // `GgCarProperties` has no `name` field
+      expect(car.carProperties).not.toHaveProperty('name');
     });
 
     it('should load a level with a GgCar built from wheelOptions', async () => {

@@ -492,5 +492,44 @@ describe('AmmoWorldComponent', () => {
       expect(result.hasHit).toBe(true);
       expect(result.hitBody).toBe(prop);
     });
+
+    it('should never resolve a hit against a trigger, even when the ray starts inside it', () => {
+      // regression test: a world-enclosing trigger (this example's own map-bounds kill-volume
+      // being the concrete case that surfaced it) used to be hit by every raycast anywhere inside
+      // it, at ~0 distance - breaking both PlayerCharacterController's third-person camera-
+      // collision raycast and CharacterController3dEntity.tryStandUp()'s headroom check (which
+      // could then never observe a clear result and so could never let the character stand back
+      // up). A trigger is a sensor with no collision response by definition and must never
+      // obstruct a raycast.
+      const trigger = world.factory.createTrigger({ shape: 'BOX', dimensions: { x: 100, y: 100, z: 100 } });
+      trigger.addToWorld({ physicsWorld: world } as any);
+
+      world.simulate(1);
+
+      // straight up from well inside the trigger's volume, hitting nothing else
+      const result = world.raycast({
+        from: { x: 0, y: 0, z: 0 },
+        to: { x: 0, y: 0, z: 1 },
+      });
+      expect(result.hasHit).toBe(false);
+
+      // a real solid body behind/through the trigger must still be hit normally
+      const box = world.factory.createRigidBody(
+        {
+          shape: { shape: 'BOX', dimensions: { x: 2, y: 2, z: 2 } },
+          body: { bodyType: 'static', mass: 0 },
+        },
+        { position: { x: 0, y: 0, z: -5 } },
+      );
+      box.addToWorld({ physicsWorld: world } as any);
+      world.simulate(1);
+
+      const throughResult = world.raycast({
+        from: { x: 0, y: 0, z: 0 },
+        to: { x: 0, y: 0, z: -10 },
+      });
+      expect(throughResult.hasHit).toBe(true);
+      expect(throughResult.hitBody).toBe(box);
+    });
   });
 });

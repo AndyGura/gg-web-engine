@@ -105,6 +105,70 @@ name truthy)` check the same way, and add a body/mock with the adapter-realistic
 spawned-entity names — a test mock that defaults to a non-empty placeholder name (as
 `mockCharacterController` used to) hides exactly this bug.
 
+## `GgWorld.addEntity` is atomic over the whole entity tree - keep it that way
+
+`addEntity(entity)` (`base/gg-world.ts`) spawns `entity` *and* everything nested under it (via
+`IEntity.onSpawned`, which cascades back into `addEntity` for each child). Because a child can only
+fail its own name-uniqueness check once its parent is already registered - and its earlier siblings
+already have their bodies/display objects in the native scenes - a naive per-entity check leaves a
+half-spawned tree behind on failure: the parent stays in `children`/`tickListeners`/the name index
+with `world` set, the siblings before the offending one keep rendering and colliding, and the caller
+gets nothing back to clean up with. Hit for real with a loaded model whose group carried a child
+named the same as an already-loaded one (the two loads of one `.glb` produce identically-named
+entities, see `Gg3dLoader`). `addEntity` therefore:
+
+- **validates every name in the subtree up front**, at the outermost call only (tracked by a private
+  nesting-depth counter - nested calls from `onSpawned` re-check just the entity itself, for a child
+  added dynamically from inside an `onSpawned` hook), against both the world's index and the other
+  entities of the same tree (two `"Suzanne"`s inside one group is rejected with its own message),
+  skipping any descendant that already has a `world` (a directly-added entity merely being
+  reparented keeps its registration; one in another world is skipped by the nested call anyway) -
+  so a name collision throws before a single component reaches a native scene; and
+- **rolls back on any other throw** from `onSpawned` (a component's `addToWorld` failing, say).
+  `IEntity.onSpawned` itself undoes its own loop: it tracks which components actually had
+  `addToWorld` succeed (`_attachedComponents`, a private set that `onRemoved`/`removeComponents`
+  also iterate instead of `_components`), calls `removeFromWorld` on exactly those, removes whatever
+  children already spawned, resets `entity.world` to `null`, and re-throws - a component whose
+  `addToWorld` never ran (or threw) never sees `removeFromWorld`, since adapters generally free a
+  native handle there with no guard against being called on something never attached. `addEntity`'s
+  own catch then only unregisters the entity from the world's bookkeeping; neither `onSpawned$` nor
+  `onRemoved$` fires. The one path where `addEntity` does run the full `removeEntity`/`onRemoved`
+  teardown is a subclass override that throws *after* `super.onSpawned()` fully succeeded - there
+  everything genuinely is attached. A nested failure has already rolled back its own subtree by the
+  time it reaches the parent's catch, so each level only undoes itself.
+
+If you add another failure mode to spawning (a new per-entity invariant, say), put its check into
+the up-front subtree validation rather than inline after registration, so the "nothing reaches the
+native scenes on failure" guarantee holds - and cover it in `test/base/gg-world.spec.ts`'s
+`atomicity of a nested entity tree` block, which asserts on the mock components' `addToWorld`/
+`removeFromWorld` spies, not just on `entity.world`. Also don't "soften" the collision into a
+`console.warn` that continues: the entity then gets registered under a name that already maps to
+something else, silently clobbering `getEntityByName` for the earlier one while both still render.
+
+`addEntity` also throws immediately, before any name validation, if `entity.disposed` is `true` (an
+`IEntity.dispose()`-backed getter, `false` until `dispose()` has run) - every component the entity
+owns has already freed its native resources by that point, so nothing about it is valid to attach to
+a world's native scenes again. This check runs on every nested call too (not gated behind the
+outermost-call-only branch the name validation uses), so a disposed entity anywhere in a subtree
+being added - not just at the root - still throws and rolls back the whole `addEntity` atomically.
+
+## `IEntity.dispose()` is idempotent - a second call is a no-op, by design
+
+A `_disposed` flag (exposed read-only as `entity.disposed`) makes every call after the first into a
+no-op: none of `removeEntity`/completing the `onSpawned$`/`onRemoved$`/`tick$` subjects/disposing
+children/disposing components runs again. This matters because `Gg3dWorld.removeEntity(entity,
+true)` calls `entity.dispose()` unconditionally whenever `dispose` is `true`, regardless of whether
+`entity.world` was already falsy - i.e. regardless of whether this is actually the *first* time this
+entity is being removed - so any caller that can end up invoking `removeEntity(sameEntity, true)`
+twice (not a hypothetical: a physics trigger's own overlap bookkeeping reacting a second time to a
+body that already left hit exactly this, in `gg-engine-physics-adapter-ammo`'s own trigger/dispose
+notes) would otherwise double-dispose every one of that entity's components. That matters because
+an adapter component's `dispose()` frees native handles, and freeing one twice throws - for a
+component that frees several handles in sequence, the throw on the first already-freed one also
+leaks every handle after it. This entity-level guard is the backstop for every such component, not
+a replacement for guarding a multi-handle `dispose()` itself (still worth doing independently - see
+`gg-engine-physics-adapter-ammo`'s note on `AmmoRaycastVehicleComponent` for why both layers matter).
+
 ## Entity naming: declare `entityTypeName` on every new entity class
 
 **Every new concrete entity class - anything with its own `tickOrder`, i.e. anything that could be
@@ -169,6 +233,53 @@ This is a `packages/core`-authoring practice specifically; an app or example def
 entity class (e.g. a `ShapeSpawner`-style class registered via `LevelLoader.registerClass`) should
 follow the exact same convention - see `gg-engine-app-development`'s own section on this for that
 side of it.
+
+## `MapGraph3dEntity.chunkLoaded$`/`attachToChunk`: tying app-spawned, per-chunk content to a chunk's own unload
+
+`chunkLoaded$` emits a 3-tuple: the chunk's `LoadResultWithProps`, its resolved
+`{position, rotation}`, and the `MapGraphNodeType` node itself (the same object identity
+`this.loaded` is keyed by internally). That third element exists specifically so app code reacting to
+a chunk load - to spawn something *in addition to* what the chunk's own GLB contains, e.g. traffic
+placed at that chunk's own dummies - has a handle to give back to `attachToChunk(node, entities)`,
+which adds those entities as children (same as the chunk's own GLB-loaded entities) *and* appends them
+to `this.loaded.get(node)`, so `disposeChunk`'s `removeChildren(..., true)` picks them up and disposes
+them automatically the next time that chunk unloads. Content spawned off `chunkLoaded$` without going
+through `attachToChunk` (e.g. just `world.addEntity(...)`ing it directly) has no lifecycle tied to the
+chunk at all - it leaks on unload, and if it's later reloaded under the same name while the leaked
+copy is still around, collides with it (`Cannot add entity - name "..." is already in use`).
+
+`attachToChunk` throws if `node` isn't currently loaded - always possible for content built
+asynchronously in reaction to `chunkLoaded$` (e.g. awaiting a GLB fetch for what to spawn), since the
+chunk can have already unloaded again by the time that async work resolves; check
+`mapGraph.loaded.has(node)` first and discard (`entity.dispose()`) whatever was built instead of
+attaching it, rather than letting the throw propagate out of an async handler unhandled.
+
+**A second, independent way to hit the exact same "name already in use" collision, even with
+`attachToChunk` already in place**: `MapGraph3dEntity` used to have no notion of "this node is
+currently mid-load", only "already loaded" (`this.loaded`, populated once `loadChunk()` resolves).
+Its own tick-driven load-list computation excluded nodes in `this.loaded` from being queued again,
+but a node that had been handed to `loadChunk()` and was still awaiting `loader.loadGgGlb()` - not
+yet in `this.loaded` - had no such protection, and `loadList` itself gets cleared the instant it's
+handed to `Promise.all(...).then()`, well before that promise actually resolves. Net effect: flying
+away from a chunk and back before its (slow network) load finished, then leaving `haveToBeLoaded`
+still wanting it on a later tick, could queue and start a *second*, fully independent `loadChunk()`
+call for the same node while the first was still in flight - both eventually firing `chunkLoaded$`
+for the same chunk. `loadGgGlb()`'s own `nameScope` is always a fresh, process-unique token per call
+(see `LoadOptions.nameScope`'s own doc), so the chunk's *own* GLB-derived entities never collided
+this way - but app code reacting to `chunkLoaded$` that derives a name purely from the chunk's
+position and its `.meta` dummy data (not from anything nameScope-scoped) computes the *identical*
+name on both firings and collides attaching the second batch. Worse than a single lost entity:
+`IEntity.addChildren(...entities)` stops at the first entity that fails `world.addEntity()`, so
+attaching a whole batch of newly-spawned entities in one call means every entity *after* the
+colliding one in that batch silently never gets added either - not just the one that collided.
+Fixed at the source by tracking in-flight nodes (`loadingNodes`, a plain `Set<MapGraphNodeType>`
+populated for the duration of `loadChunk()`) and excluding them from the load-list computation the
+same way `this.loaded` already is. App code with the same shape - deriving a name for
+`chunkLoaded$`-reacted content purely from chunk position/dummy data, then attaching a whole batch of
+it in one `attachToChunk`/`addChildren` call - is still exposed to the identical "one collision drops
+every entity queued after it in that batch" failure mode from any *other* cause (not just the
+double-`loadChunk()` case just fixed); attaching one entity at a time, each in its own `try`/`catch`,
+avoids that regardless of cause.
 
 ## `tickOrder`: driving a dynamic rigid body before physics `simulate()` runs
 

@@ -158,6 +158,19 @@ Status
   `test/base/entities/i-entity.spec.ts`, and `test/base/level-loader.spec.ts`; documented in the
   `gg-engine-level-json` skill; every example and existing test call site updated for the now-required
   `levelName` argument.
+- ✅ Scoped GLB entity names + per-chunk content lifecycle (2026-09-29): `Gg3dLoader.loadGgGlb`
+  gained `LoadOptions.nameScope` - every produced entity is named `` `${nameScope}__${objectName}` ``
+  and props recurse under `` `${nameScope}__${dummy.name}` ``; a fresh process-unique scope per
+  call by default, an explicit string for deterministic names, `null` for the raw Blender names -
+  so one `.glb` can be loaded any number of times into a world without its identical object names
+  colliding. The built-in `"Glb"` level class scopes under its own entity name, which
+  `LevelLoader.createEntity` now resolves (explicit, else a new optional `defaultName` argument
+  `loadLevel` feeds its level-derived fallback through) and hands to every generator as
+  `settings.name` *before* building. `MapGraph3dEntity.chunkLoaded$` now also carries the loaded
+  `MapGraphNodeType` as a third tuple element, and a new `attachToChunk(node, entities)` ties
+  app-spawned per-chunk content to that chunk's own unload. Covered in `test/3d/loader.spec.ts`,
+  `test/base/level-loader.spec.ts`, `test/3d/entities/map-graph-3d.entity.spec.ts`; documented in
+  the `gg-engine-core-development`, `gg-engine-level-json` and `gg-engine-app-development` skills.
 - Document the Level JSON shape as a machine-checkable JSON Schema (`docs/specs/level-json.schema.json`)
   with CI validation of example levels — not started. The `gg-engine-level-json` skill documents the
   shape informally today, which is enough for humans but not enforced anywhere.

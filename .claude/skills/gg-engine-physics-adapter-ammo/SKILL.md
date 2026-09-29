@@ -30,6 +30,19 @@ with the `chassisBody` passed into its constructor (same native handle, not a co
 vehicle's own `removeFromWorld`/`dispose()` frees it - never pass `dispose: true` down into
 `chassisBody.removeFromWorld` too, or the shared handle gets double-freed.
 
+Every Ammo component's `dispose()` now runs behind `IEntity.dispose()`'s own idempotency guard (a
+`_disposed` flag, `dispose()` a no-op on a second call - see `gg-engine-core-development`'s own note
+on this), but that guard only protects a component reached through its owning entity's `dispose()`.
+`AmmoRaycastVehicleComponent.dispose()` still guards each of its five handles individually with its
+own `try { Ammo.destroy(handle) } catch {}` (matching every other Ammo component's own dispose()) for
+a second, independent reason: called a second time by any other path (not just a re-entrant
+`entity.dispose()`), the first `Ammo.destroy()` on an already-freed handle throws "Cannot destroy
+object. (Did you create it yourself?)" and skips freeing the rest - a real, reproduced bug (found via
+a `Trigger`'s own overlap-tracking reacting to the same removed body twice - see "Every
+`AmmoTriggerComponent`..." below), not a hypothetical one. Any future Ammo component with more than
+one native handle to free in `dispose()` should guard each handle independently the same way, rather
+than relying solely on the entity-level idempotency guard.
+
 ## Sleeping bodies silently ignored programmatic transform/velocity writes
 
 See `gg-engine-physics-adapter`'s general contract note on this (the cross-adapter version of the
@@ -490,20 +503,109 @@ this is a core-level fix, not an Ammo-specific one, but worth knowing when debug
 transition that appears to silently drop a held-object exclusion: without it, every capsule swap (e.g.
 `recreateCapsule`) would reset to an empty set and re-enable collision with whatever was being ignored.
 
-## Every `AmmoTriggerComponent` in the world is excluded from a character's own sweeps too, unconditionally
+## Every `AmmoTriggerComponent` is excluded from a character's own sweeps (broadphase detach) and from every `world.raycast()` (JS-side post-filter, not broadphase detach) - these are two different mechanisms, deliberately
 
-`AmmoCharacterControllerComponent.sweep()`, `recoverFromPenetration()`, and `trySnapToGround()`'s
-ground-detection ray each also call `detachTriggers()`/`reattachTriggers()` alongside
-`detachIgnoredBodies()`/`reattachIgnoredBodies()`, right beside the character's own self-exclusion -
-mirroring that pair's mechanism exactly (`AmmoTriggerComponent.detachFromBroadphaseTemporarily()`/
-`reattachToBroadphase()`, backed by `removeCollisionObject`/`addCollisionObject` since a trigger's
-native body is a ghost object, not a full rigid body) but with a different scope: `detachTriggers()`
-pulls out *every* `AmmoTriggerComponent` currently in `world.children`, unconditionally, not just an
-opt-in set. A `Trigger` (see `ITrigger3dComponent`) is a sensor with no collision response by
-definition - it was never supposed to be a solid obstacle to any character, for any game, so there is
-no scenario where a character should walk-block against one or "ground" on top of one, unlike
-`ignoredBodies` (which is deliberately per-character/per-body opt-in for props a specific holder is
-carrying).
+A `Trigger` (see `ITrigger3dComponent`) is a sensor with no collision response by definition - it was
+never supposed to be a solid obstacle to *any* query, character-owned or not. Several call sites need
+this, and only one of them still uses the broadphase-detach mechanism - every other one uses a
+JS-side post-filter instead, because the broadphase-level one turned out to have a real, measured
+performance cost against real (non-box) scene geometry:
+
+- **`AmmoCharacterControllerComponent.sweep()`** calls `AmmoWorldComponent.detachTriggers()`/
+  `reattachTriggers()` (pulling every `AmmoTriggerComponent` out of the broadphase for the query's
+  duration via `AmmoTriggerComponent.detachFromBroadphaseTemporarily()`/`reattachToBroadphase()` -
+  `removeCollisionObject`/`addCollisionObject`, since a trigger's native body is a ghost object, not
+  a full rigid body) - alongside its own `detachIgnoredBodies()`/`reattachIgnoredBodies()`. This is
+  the one remaining caller: its `convexSweepTest` is driven by `Ammo.ClosestConvexResultCallback`,
+  which this Ammo.js build never exposes an overridable `addSingleResult` on (unlike
+  `ConcreteContactResultCallback`, see below), so there is no JS-side hook available to reject a
+  trigger candidate mid-sweep the way every other call site here does - a physical broadphase detach
+  is the only option left.
+- **`AmmoCharacterControllerComponent.recoverFromPenetration()`** uses `Ammo.ConcreteContactResultCallback`
+  (its `addSingleResult` is already a JS override, needed anyway to compute the penetration
+  push-out), so it resolves the *other* side of each candidate contact via
+  `AmmoBodyComponent.nativeBodyReverseMap` and skips it (`return 0` without updating
+  `worstDistance`/`worstPush`) when that resolves to an `AmmoTriggerComponent`, instead of detaching
+  anything. It used to detach/reattach every trigger around its `contactTest` call, up to 4 times per
+  invocation (its own internal correction loop) - see the "starts appearing over time" note below for
+  why that mattered more than it looked.
+- **`AmmoCharacterControllerComponent.trySnapToGround()`**'s ground-detection ray calls
+  `AmmoWorldComponent.raycast()` directly, which already excludes triggers on its own (next bullet) -
+  it needs no trigger handling of its own at all beyond that, only its pre-existing self-exclusion
+  (`removeCollisionObject(this.nativeBody)`) and `detachIgnoredBodies()`/`reattachIgnoredBodies()`.
+- **`AmmoWorldComponent.raycast()`** does **not** use `detachTriggers()`/`reattachTriggers()` at all.
+  It uses `Ammo.AllHitsRayResultCallback` (every hit along the ray, unsorted) instead of
+  `ClosestRayResultCallback`, then picks the closest hit in JS whose resolved body is not an
+  `AmmoTriggerComponent` (`m_hitFractions` - smaller is closer). `solidRayFallback`'s own
+  `contactTest` callback does the identical check inline (skips a candidate that resolves to an
+  `AmmoTriggerComponent` before considering it further) rather than detaching anything either.
+
+**Why raycast() doesn't just reuse detachTriggers()/reattachTriggers(), even though that's the
+"obvious", already-proven-correct mechanism right next to it:** it was the first version of this fix,
+and it caused a severe, real regression - not a hypothetical one. The reproducing scene had one
+world-enclosing `Trigger3dEntity` (a map-bounds kill volume - a huge box around the whole playable
+area, left at the default/main collision group like everything else) over a streamed map of real
+triangle-mesh static geometry. Repeatedly removing and reinserting that huge
+AABB into `btDbvtBroadphase` doesn't just cost O(1) bookkeeping - each reinsertion forces Bullet to
+regenerate that trigger's broadphase pairs and re-run *narrow-phase* collision detection against
+every real body it overlaps (narrow-phase runs regardless of the ghost object's
+`CF_NO_CONTACT_RESPONSE` flag, which only suppresses the constraint solver's response, not collision
+detection itself - same point `gg-engine-core-development`'s trigger-vs-sweep note makes elsewhere).
+With `PlayerCharacterController`'s third-person camera-collision raycast calling `raycast()` every
+tick (on top of the character's own already-existing 3 sweep-related detach/reattach cycles per
+tick), this measured at 300+ ms per simulated frame the moment a player character existed - confirmed
+via isolated timing directly around `stepSimulation`, and confirmed *specific to real scene content*:
+an isolated synthetic benchmark using simple box shapes for the same body count showed no such cost
+even under far more detach/reattach churn than the real scene ever produced, while only real
+(triangle-mesh) static geometry reproduced it. The post-filter approach touches the broadphase not at
+all, so it has none of this cost, at the price of Bullet reporting every hit along the ray instead of
+just the closest one (negligible - a ray typically crosses only a handful of shapes).
+
+**The lesson generalizes beyond this one call site - and undoing it at the raycast() layer alone
+wasn't enough on its own:** removing and reinserting a *large* collision shape into
+`btDbvtBroadphase` at high frequency is not free the way it looks from the API alone, once real
+(non-primitive) scene geometry is in play - prefer a query-time post-filter over a broadphase
+detach/reattach for anything that runs every tick or every frame. The first pass at this fix only
+converted `raycast()` itself and left `recoverFromPenetration()`/`trySnapToGround()` on the
+detach/reattach path, reasoning (wrongly) that "the character's own movement-resolution calls...only
+run when that specific character is actually moving/ticking" made them a lower-frequency, tolerable
+baseline. That's backwards: `recoverFromPenetration()` runs unconditionally on *every* tick a
+character exists at all (per its own doc, "must run before any sweep this tick"), not just while
+moving, and its own internal correction loop repeats the detach/reattach up to 4 times in a single
+call - a far higher frequency than a third-person camera's one raycast per tick ever was. A real,
+reported symptom this produced: a chase/third-person camera (and, since it's a broadphase-wide
+effect and not localized to the character, every other body resting near the map-bounds trigger's
+real geometry too) visibly jittering, worse the longer a session ran and the more of a streamed-in
+map's real geometry the map-bounds trigger had come to overlap - the per-reinsertion narrow-phase
+cost scales with how much real geometry currently overlaps the reinserted trigger, so the same
+detach/reattach call gets more expensive over a play session purely from more map chunks having
+loaded, with no leak or bug required to explain "it gets worse the longer/more you play." Fixed by
+applying the identical JS-post-filter technique to `recoverFromPenetration()` too (see above) -
+`trySnapToGround()` needed no separate fix at all once it was routed through `raycast()`, since that
+already excludes triggers on its own. Reserve the physical detach/reattach pattern only for a call
+site with no JS-filterable native callback available at all (`sweep()`'s `ClosestConvexResultCallback`,
+per the bullet above) - never assume a call site is "low frequency enough" without actually checking
+how often it runs and how many times it repeats the detach/reattach internally.
+
+See `gg-engine-core-development`'s `RaycastResult`/`RaycastOptions` doc for the cross-adapter
+contract every adapter's `raycast()` must satisfy uniformly (a raycast never resolving a trigger as
+a hit) - a character could crouch but never stand back up before this fix
+(`CharacterController3dEntity.tryStandUp()`'s headroom raycast was permanently "blocked" by the same
+trigger, retried every tick per its own doc, so a one-off glitch was actually a permanent stall), and
+a third-person camera collapsed onto the character every tick.
+
+**Measured cost of the new `solidRayFallback()` fallback path** (`raycast()`'s own doc explains why
+it exists): now that a trigger is never resolved as a hit, a ray whose only intersections are
+trigger volumes - previously short-circuited by "hitting" the trigger - reaches `solidRayFallback()`
+on every such call, allocating a `btGhostObject`/`btSphereShape`/`btTransform` and running one
+`contactTest`. Benchmarked directly (`AmmoWorldComponent`, real Ammo/Bullet, no mocks) against a
+world-enclosing trigger with real static geometry: ~0.07ms/call with 300 static bodies spread near
+the ray origin (realistic scene density), rising to ~0.5ms/call in a deliberately pathological case
+of 500 large static bodies all overlapping the exact probe point (not a realistic layout - real
+scenes don't stack hundreds of colliders on one point). Both are negligible next to the 300+ms/frame
+detach/reattach regression this whole fix exists to avoid, and even the pathological case stays well
+under a 16ms frame budget for the handful of calls (`recoverFromPenetration()`'s up-to-4 plus one
+camera raycast) this can run per tick. No further optimization needed here.
 
 Bug found empirically (regression test: `ammo-trigger-player-vehicle-integration.spec.ts`): before
 this, a character walking straight at a `Trigger`'s volume physically stopped dead at its boundary
@@ -537,6 +639,47 @@ cast (`nativeBodyReverseMap`'s own value type is the abstract `AmmoBodyComponent
 subclass - in principle including another `AmmoTriggerComponent` - can register there), justified by
 the contract that a trigger's overlap partner is always a rigid body or a character controller, never
 another trigger - not something the type system can verify on its own from this map's shape.
+
+## `AmmoTriggerComponent` reacts to `world.removed$` to purge a stale overlap - but only ever emits `onEntityLeft` on a microtask, never synchronously
+
+A body disposed elsewhere (e.g. a map chunk's static geometry freed on unload) while still recorded
+in a trigger's own `overlaps` set used to stay there until some *later* `checkOverlaps()` poll
+happened to notice it dropped out of the ghost object's live overlap list. By then its native pointer
+had already been freed and can have been reused for an unrelated new allocation, which
+`AmmoBodyComponent.nativeBodyReverseMap` (keyed by raw pointer) then resolved to a completely
+different, still-live entity - `onEntityLeft` fired for the wrong entity, and app code reacting by
+removing *that* double-disposed something still in active use. Fixed by having
+`AmmoTriggerComponent`'s constructor subscribe to `this.world.removed$` and, on any removal, look up
+the removed component's `nativeBody` **by native pointer** (`Ammo.getPointer()`, not object identity -
+`overlaps` holds whatever wrapper objects `getOverlappingObject()` handed back, which embind doesn't
+guarantee are the same JS object as the `nativeBody` a component retains from its own construction,
+even though both wrap the same pointer) among `overlaps`, and drop it there if found. `removed$` fires
+synchronously from `removeFromWorld`, *before* that body's own `dispose()` runs (see
+`AmmoBodyComponent.removeFromWorld`), so the pointer being compared is always still a live handle at
+comparison time.
+
+**`onEntityLeft` itself is deliberately never emitted synchronously from this reaction** - only
+`queueMicrotask(() => this.onLeft$.next(removedPointer))`, after the stale entry is already deleted
+synchronously. Emitting synchronously was the first version of this fix, and it caused a real,
+reproduced regression: `world.removed$` can fire from deep inside another component's own in-progress
+lifecycle operation - found via `CharacterController3dEntity.recreateCapsule()` (called by the
+`isCrouching` setter), which removes the *old* `characterController` with `dispose: true` partway
+through swapping in the new one, well before reassigning `this.characterController = created`. If a
+trigger's `onLeft$` subscriber (app code driving despawn/reset logic through `Trigger3dEntity`, e.g. a
+map-bounds kill-volume resetting a character that wandered outside it) reacts by writing straight back
+into that same character (e.g. setting `.position`), it does so through the *old*, currently-being-
+disposed `characterController` - the swap hasn't happened yet on that same call stack. That corrupted
+Ammo/WASM state badly enough to eventually trip `Aborted(OOM)` (Emscripten's abort, after which every
+further call into the module fails) some number of ticks later, nowhere near the actual point of
+corruption - a genuinely hard bug to trace back to its cause without a minimal repro. Deferring to a
+microtask sidesteps this entirely: the purge itself still happens immediately (so a same-pointer
+reallocation can never resolve to the stale entry), but the notification only ever runs after every
+currently in-flight synchronous call stack - including whatever triggered the removal - has finished,
+so no `onLeft$` subscriber can ever be reentered into an unrelated component's own in-progress
+lifecycle transition. Any future reactive hookup off `world.removed$`/`added$` inside an Ammo
+component should default to this same deferred-emission shape rather than assuming its subscribers
+are safe to reenter synchronously - they generally aren't, since nothing about their own call sites
+was written expecting to run nested inside arbitrary unrelated removal code.
 
 ## `AmmoWorldComponent.simulate()`'s fixed-substep accumulator drifting against the render loop
 

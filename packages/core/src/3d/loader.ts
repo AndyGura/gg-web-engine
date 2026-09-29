@@ -25,6 +25,23 @@ export type LoadOptions = {
   loadProps: boolean;
   // path where to find prop scenes
   propsPath?: string;
+  /**
+   * Scope every produced entity's `name` under, so that the same file can be loaded any number of
+   * times into one world without the (Blender-authored, hence identical on every load) object
+   * names colliding - `GgWorld` enforces world-wide name uniqueness and `addEntity` rejects a
+   * collision outright. Each entity is named `` `${nameScope}__${objectName}` `` (`objectName`
+   * being the body's, else the display object's, own native name - falling back to the entity's
+   * index in `entities` when neither has one), and every prop/scene dummy loaded via `loadProps`
+   * recurses under `` `${nameScope}__${dummy.name}` `` - deterministic purely from `nameScope` and
+   * the files' own content, so two peers loading the same asset under the same scope agree on
+   * every name.
+   * - a `string`: that scope, e.g. the `"Glb"` level entity class passes its own entity name;
+   * - omitted/`undefined` (the default): a fresh process-unique scope (`` `glb_${n}` ``, `n` a
+   *   per-process counter) - always collision-free, but not deterministic across peers/reloads;
+   * - `null`: no scoping at all - entities keep their raw native object names. Opt in to this
+   *   only to look entities up by their Blender names, and only when the file is loaded once.
+   */
+  nameScope?: string | null;
 };
 
 const defaultLoadOptions: LoadOptions = {
@@ -106,6 +123,20 @@ export interface Glb3DSettings {
    * Path where to find prop scenes, if different from `path`'s own directory
    */
   propsPath?: string;
+
+  /**
+   * Scope for the names of every entity the GLB produces, see `LoadOptions.nameScope`. Defaults to
+   * this `"Glb"` entity's own resolved `name` (`name`, below) - which `LevelLoader.loadLevel`
+   * guarantees is unique in the world and deterministic per level document - so two `"Glb"`
+   * entries pointing at the same file never collide. `null` keeps the raw native object names.
+   */
+  nameScope?: string | null;
+
+  /**
+   * The entity's own resolved name - filled in by `LevelLoader.createEntity`/`loadLevel` (explicit
+   * `EntityJson.name`, else the level-derived fallback), not meant to be set in `config`
+   */
+  name?: string;
 }
 
 /**
@@ -117,6 +148,9 @@ export interface Glb3DSettings {
  * @template TypeDoc - The type document repository
  */
 export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo> extends Gg3dLevelLoader<TypeDoc> {
+  // backs `loadGgGlb`'s default (process-unique) `nameScope`, see `LoadOptions.nameScope`
+  private static nameScopeCounter = 0;
+
   readonly filesCache: Map<string, [ArrayBuffer, GgMeta] | Promise<[ArrayBuffer, GgMeta]>> = new Map<
     string,
     [ArrayBuffer, GgMeta] | Promise<[ArrayBuffer, GgMeta]>
@@ -133,13 +167,16 @@ export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocR
       if (!settings.path) {
         throw new Error('Path is required for Glb class');
       }
-      const { path, position, rotation, cachingStrategy, loadProps, propsPath } = settings;
+      const { path, position, rotation, cachingStrategy, loadProps, propsPath, nameScope, name } = settings;
       const result = await this.loadGgGlb(path, {
         ...(position !== undefined ? { position } : {}),
         ...(rotation !== undefined ? { rotation } : {}),
         ...(cachingStrategy !== undefined ? { cachingStrategy } : {}),
         ...(loadProps !== undefined ? { loadProps } : {}),
         ...(propsPath !== undefined ? { propsPath } : {}),
+        // explicit scope wins; else the entity's own (unique, level-deterministic) name; else
+        // (a bare createEntity with no name) loadGgGlb's own process-unique default
+        nameScope: nameScope !== undefined ? nameScope : name,
       });
       const group = new GroupEntity<Point3, Point4, TypeDoc>();
       group.addChildren(...flattenGlbEntities(result));
@@ -232,14 +269,39 @@ export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocR
     return this.world.visualScene.loader.loadFromGlb(glb, options);
   }
 
+  /**
+   * Load a GG GLB+meta pair into ready-to-add `Entity3d`s (one per rigid body the `.meta`
+   * declares, plus one for any body-less leftover geometry), recursively loading any prop/scene
+   * dummies too when `options.loadProps` is on. Every entity's `name` is scoped under
+   * `options.nameScope` (see `LoadOptions.nameScope` - a process-unique scope by default), so
+   * loading the same file repeatedly never produces colliding names.
+   * @param path - Path (URL or path prefix, without extension) to the `.glb`/`.meta` pair
+   * @param options - See `LoadOptions`
+   * @returns The produced entities (not yet added to the world), the parsed meta, and the
+   * recursively loaded props
+   */
   public async loadGgGlb(
     path: string,
     options: Partial<LoadOptions> = defaultLoadOptions,
   ): Promise<LoadResultWithProps<TypeDoc>> {
     const loadOptions = { ...defaultLoadOptions, ...options };
+    const nameScope: string | null =
+      loadOptions.nameScope === undefined ? `glb_${Gg3dLoader.nameScopeCounter++}` : loadOptions.nameScope;
     const { resources, meta } = await this.loadGgGlbResources(path, loadOptions.cachingStrategy);
     const result: LoadResultWithProps<TypeDoc> = {
-      entities: resources.map(x => new Entity3d({ object3D: x.object3D, objectBody: x.body })),
+      entities: resources.map((x, index) => {
+        const entity = new Entity3d<TypeDoc>({ object3D: x.object3D, objectBody: x.body });
+        if (nameScope !== null) {
+          // Mirrors Entity3d's own constructor fallback order: object3D's name is only ever
+          // considered when there is no body at all, not merely whenever the body happens to be
+          // unnamed - a body-having resource whose body.name is empty falls straight to the index,
+          // the same way Entity3d itself would leave such an entity at its generated default name
+          // rather than reaching past a present-but-unnamed objectBody for object3D.name.
+          const objectName = x.body ? x.body.name || `${index}` : x.object3D?.name || `${index}`;
+          entity.name = `${nameScope}__${objectName}`;
+        }
+        return entity;
+      }),
       meta,
     };
     if (loadOptions.loadProps) {
@@ -255,6 +317,7 @@ export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocR
                 loadProps: !!dummy.is_scene,
                 position: Pnt3.add(Pnt3.rot(dummy.position, loadOptions.rotation), loadOptions.position),
                 rotation: Qtrn.combineRotations(dummy.rotation, loadOptions.rotation),
+                nameScope: nameScope === null ? null : `${nameScope}__${dummy.name}`,
               },
             ),
           ),

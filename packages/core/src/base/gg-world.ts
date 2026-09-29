@@ -273,7 +273,30 @@ export abstract class GgWorld<
     material?: unknown, // type defined in subclasses
   ): IPositionable<D, R> & IRenderableEntity<D, R, TypeDoc>;
 
+  // Nesting depth of the addEntity call chain currently in progress - `onSpawned` cascades into
+  // `addEntity` for every child, and the subtree-wide name validation only needs to run once, at
+  // the outermost call, since it already covered every descendant.
+  private addEntityDepth = 0;
+
+  /**
+   * Add `entity` (and, cascading through `IEntity.onSpawned`, every entity nested under it) to
+   * this world. Atomic: either the whole subtree ends up spawned, or nothing changes. Every name in
+   * the subtree is validated up front, before any component/child is touched, so a collision
+   * (with an entity already in the world, or between two entities within the subtree itself)
+   * throws without the entity's bodies or display objects ever reaching the native scenes - and
+   * should spawning still throw partway for any other reason, whatever was already registered is
+   * rolled back before the error propagates.
+   * @param entity - The entity to add; a no-op if it's already a member of this world
+   * @throws if `entity` has already been disposed (see `IEntity.dispose()`/`disposed`) - every
+   * component it owns has already freed its native resources, so nothing about it is valid to
+   * attach to a world's native scenes again
+   * @throws if `entity` or any of its descendants carries a name already in use by another entity
+   * in this world, or shared by two entities of the subtree
+   */
   public addEntity(entity: IEntity): void {
+    if (entity.disposed) {
+      throw new Error('Cannot add entity - it has already been disposed');
+    }
     if (entity.world === this) {
       // Already a member of this world - e.g. reparented (via addChildren) after having been
       // added directly, as level-loaded entities are. Not an error: just a no-op, since
@@ -284,16 +307,92 @@ export abstract class GgWorld<
       warnOnce('Trying to spawn entity, which is already spawned');
       return;
     }
-    const existing = this.entitiesByName.get(entity.name);
-    if (existing && existing !== entity) {
-      throw new Error(`Cannot add entity - name "${entity.name}" is already in use by another entity in this world`);
+    if (this.addEntityDepth === 0) {
+      this.assertSubtreeNamesAvailable(entity);
+    } else {
+      // nested call (a child being cascaded into from its parent's onSpawned) - the subtree was
+      // already validated by the outermost call, but a child spawned dynamically from within an
+      // onSpawned hook wasn't part of that snapshot, so still check the entity itself
+      this.assertNameAvailable(entity, entity.name);
     }
     this.entitiesByName.set(entity.name, entity);
     this.children.push(entity);
     this.tickListeners.push(entity);
     this.tickListeners.sort((l1, l2) => l1.tickOrder - l2.tickOrder);
-    entity.onSpawned(this);
+    this.addEntityDepth++;
+    try {
+      entity.onSpawned(this);
+    } catch (e) {
+      // roll back to exactly the state before this call. IEntity.onSpawned already undoes its own
+      // component/child loop and resets `entity.world` back to null before rethrowing, so by the
+      // time a failure from that loop reaches here there is nothing left to detach - only
+      // unregistering `entity` itself from this world's bookkeeping remains. The one case where
+      // `entity.world` is still `this` here is a subclass override that calls `super.onSpawned()`
+      // (which fully succeeded) and then throws afterward - there, everything genuinely is attached,
+      // so the full `removeEntity`/`onRemoved` teardown is the correct, not merely defensive, path.
+      // (cast: TS still has `entity.world` narrowed to `null` from the guard above)
+      if ((entity.world as unknown) === this) {
+        this.removeEntity(entity);
+      } else {
+        this.unregisterEntity(entity);
+      }
+      throw e;
+    } finally {
+      this.addEntityDepth--;
+    }
     this.maybeBindAudioListener(entity);
+  }
+
+  /**
+   * Throw if `name` can't be given to `entity` in this world, i.e. another entity already holds it.
+   */
+  private assertNameAvailable(entity: IEntity, name: string): void {
+    const existing = this.entitiesByName.get(name);
+    if (existing && existing !== entity) {
+      throw new Error(`Cannot add entity - name "${name}" is already in use by another entity in this world`);
+    }
+  }
+
+  /**
+   * Throw if `root` or any entity nested under it (at any depth) carries a name that is already in
+   * use in this world or that another entity of the same subtree also carries - checked before any
+   * of them is registered, so a failing `addEntity` never leaves a partially-spawned subtree behind.
+   */
+  private assertSubtreeNamesAvailable(root: IEntity): void {
+    const seen = new Map<string, IEntity>();
+    const stack: IEntity[] = [root];
+    while (stack.length) {
+      const entity = stack.pop()!;
+      if (entity.world) {
+        // a descendant already spawned somewhere is never (re-)registered by this call - in this
+        // world it keeps its registration (merely being reparented), in another world the nested
+        // addEntity warns and skips it - so there is nothing to validate for it or anything under it
+        continue;
+      }
+      this.assertNameAvailable(entity, entity.name);
+      const sibling = seen.get(entity.name);
+      if (sibling && sibling !== entity) {
+        throw new Error(
+          `Cannot add entity - name "${entity.name}" is used by more than one entity within the entity tree being added`,
+        );
+      }
+      seen.set(entity.name, entity);
+      stack.push(...entity.children);
+    }
+  }
+
+  private unregisterEntity(entity: IEntity): void {
+    const childIndex = this.children.indexOf(entity);
+    if (childIndex >= 0) {
+      this.children.splice(childIndex, 1);
+    }
+    const listenerIndex = this.tickListeners.indexOf(entity);
+    if (listenerIndex >= 0) {
+      this.tickListeners.splice(listenerIndex, 1);
+    }
+    if (this.entitiesByName.get(entity.name) === entity) {
+      this.entitiesByName.delete(entity.name);
+    }
   }
 
   public removeEntity(entity: IEntity, dispose = false): void {
@@ -301,15 +400,7 @@ export abstract class GgWorld<
       if (entity.world !== this) {
         throw new Error('Entity is not a part of this world');
       }
-      this.children.splice(
-        this.children.findIndex(x => x === entity),
-        1,
-      );
-      this.tickListeners.splice(
-        this.tickListeners.findIndex(x => (x as any) === entity),
-        1,
-      );
-      this.entitiesByName.delete(entity.name);
+      this.unregisterEntity(entity);
       entity.onRemoved();
     }
     if (dispose) {
