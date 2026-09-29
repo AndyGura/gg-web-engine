@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Usage question
+    url: https://github.com/AndyGura/gg-web-engine/blob/main/README.md
+    about: Check the README (architecture overview, FAQ) and the live examples first. If they don't answer it, open a blank issue.
+  - name: Roadmap
+    url: https://github.com/AndyGura/gg-web-engine/blob/main/milestones.md
+    about: What's planned, in progress, or deliberately out of scope. Check before filing a feature request.

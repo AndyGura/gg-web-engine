@@ -190,6 +190,8 @@ remember. Undo the example link with `bash etc/restore_example_from_local_gg.sh
 examples/<example-dir>` when you're done. Full details, caveats, and the core/adapter/example
 workflow end-to-end are documented in the
 [`gg-engine-core-development`](.claude/skills/gg-engine-core-development/SKILL.md) skill.
+Branching and PR conventions, what a change must keep up to date, and how a release is cut are
+in [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## 🛠️ Examples
 ### [Interactive Demos](https://gg-web-demos.guraklgames.com/)
@@ -437,7 +439,7 @@ future of browser-based game development! 🎮
 
 You can support project by:
 - giving any feedback, bug report, feature request to [Issues](https://github.com/AndyGura/gg-web-engine/issues)
-- fork & submit a [Pull Request](https://github.com/AndyGura/gg-web-engine/pulls)
+- fork & submit a [Pull Request](https://github.com/AndyGura/gg-web-engine/pulls) — see [`CONTRIBUTING.md`](CONTRIBUTING.md)
 - [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/andygura)
 
 ## 📜 License

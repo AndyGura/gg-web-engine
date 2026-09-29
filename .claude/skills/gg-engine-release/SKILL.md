@@ -16,6 +16,23 @@ A push to `main` whose latest commit message matches `^\[pre-release\] \[X\.Y\.Z
 (`PRE_RELEASE=false`) — it's a no-op, not a failure. So "cutting a release" in practice means
 landing a commit on `main` with that exact message prefix and the target version.
 
+## Before the trigger commit: roll `CHANGELOG.md`
+
+The root `CHANGELOG.md` (Keep-a-Changelog format) has an `## [Unreleased]` section that every PR
+with a user-visible change appends to (the PR template's checklist asks for it). The
+`[pre-release] [X.Y.Z]` commit is where those lines become a release:
+
+1. Rename the `[Unreleased]` heading to `## [X.Y.Z] - YYYY-MM-DD` (today's date) and insert a
+   fresh, empty `## [Unreleased]` heading above it.
+2. At the bottom of the file, add `[X.Y.Z]: https://github.com/AndyGura/gg-web-engine/compare/
+   <previous-tag>...X.Y.Z` and point the `[Unreleased]` link at `compare/X.Y.Z...HEAD`.
+3. Include that edit in the trigger commit itself — the pipeline doesn't touch `CHANGELOG.md`.
+
+If `[Unreleased]` is empty (a rebuild-only release such as a CI fix), still add the version
+section with a one-line note saying what it re-published and why, so the version sequence in the
+file stays gap-free except for genuinely failed attempts (which the file's preamble already
+explains).
+
 ## What the pipeline does (`etc/publish_new_version.sh X.Y.Z`)
 
 0. Before `etc/publish_new_version.sh` even runs, `release_action.yml` does a plain workspace
@@ -149,3 +166,9 @@ pipeline behaves differently than described here (a new failure mode in `publish
 an npm propagation delay longer than the script accounts for, a manual follow-up this file
 doesn't list), add a short note (what went wrong, why, the fix) before finishing — folded into the
 relevant section rather than left as a loose log entry.
+
+The root `CONTRIBUTING.md` ("Cutting a release (maintainers)") is the human-facing mirror of the
+trigger/steps/failed-release parts of this file, for a maintainer not working through Claude
+Code. Whenever the *procedure* changes (trigger convention, a new pre-commit step like the
+changelog roll, a new manual follow-up), update that section in the same change; pipeline
+internals and failure-mode forensics stay here only.

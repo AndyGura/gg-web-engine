@@ -1,0 +1,50 @@
+name: Feature request
+description: Propose a new capability, API, adapter, or example.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing, skim [`milestones.md`](https://github.com/AndyGura/gg-web-engine/blob/main/milestones.md) —
+        the roadmap lists what's planned, what's partially done, and what has been considered and
+        deliberately left out (with the reasoning). If your idea is already there, comment on how
+        you'd use it instead of opening a duplicate.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The use case, not the solution. "I want my 2D platformer to have one-way platforms" is more useful than "add a flag to the collider".
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: How you imagine it working — an API sketch, a reference to how another engine does it, or just a description. Optional but helpful.
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Where would it live?
+      options:
+        - label: "core (dimension-agnostic, or shared 2D/3D abstraction)"
+        - label: "A rendering adapter (three / pixi)"
+        - label: "A physics adapter (ammo / rapier3d / matter / rapier2d)"
+        - label: "audio"
+        - label: "Blender add-on"
+        - label: "A new adapter package for a library the engine doesn't support yet"
+        - label: "An example / documentation"
+        - label: "Not sure"
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Workarounds you've tried
+      description: How you're solving it today, if at all. Helps judge how urgent it is.
+  - type: dropdown
+    id: contribute
+    attributes:
+      label: Would you be willing to implement it?
+      options:
+        - "Yes, with some guidance"
+        - "Yes, independently"
+        - "No"

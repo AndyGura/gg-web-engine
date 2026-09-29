@@ -1,0 +1,74 @@
+name: Bug report
+description: Something in the engine doesn't behave as documented or expected.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. The fastest way to get a bug fixed is a minimal reproduction —
+        every example under `examples/` opens in StackBlitz, so forking one and pasting the link
+        below is usually the quickest route.
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what actually happened.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Engine version
+      description: The `@gg-web-engine/*` version in your `package.json`. All packages ship at the same version.
+      placeholder: "0.0.72"
+    validations:
+      required: true
+  - type: checkboxes
+    id: packages
+    attributes:
+      label: Affected packages
+      description: Tick everything you believe is involved. If unsure, tick the adapters your app uses.
+      options:
+        - label: "@gg-web-engine/core"
+        - label: "@gg-web-engine/three (3D rendering)"
+        - label: "@gg-web-engine/pixi (2D rendering)"
+        - label: "@gg-web-engine/ammo (3D physics)"
+        - label: "@gg-web-engine/rapier3d (3D physics)"
+        - label: "@gg-web-engine/matter (2D physics)"
+        - label: "@gg-web-engine/rapier2d (2D physics)"
+        - label: "@gg-web-engine/audio"
+        - label: "Blender add-on (blender-addon/)"
+        - label: "An example under examples/"
+        - label: "Documentation"
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: A StackBlitz link, a repository, or a minimal code snippet. Steps to trigger the problem if it isn't immediate.
+      placeholder: |
+        1. Open https://stackblitz.com/...
+        2. Press W
+        3. The character falls through the floor
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Console output
+      description: Errors or warnings from the browser console, if any. Pasted text is preferred over screenshots.
+      render: shell
+  - type: input
+    id: environment
+    attributes:
+      label: Browser and OS
+      placeholder: "Chrome 130 on macOS 15; Firefox 132 on Windows 11; Safari on iOS 18"
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and this isn't a duplicate.
+          required: true
+        - label: I'm on the latest published version, or I've noted the version above.
+          required: true

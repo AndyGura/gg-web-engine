@@ -47,22 +47,39 @@ Objectives
   project without tribal knowledge.
 
 Status
-- ✅ CI on every PR (`.github/workflows/pull_request_build.yml`): builds+tests `core`, `ammo`,
-  `matter`, `rapier2d`, `rapier3d`; builds (no tests exist yet) `pixi`, `three`.
+- ✅ CI on every PR (`.github/workflows/pull_request_build.yml`): one workspace `npm install` at
+  the root, then builds+tests every package (`core`, `three`, `pixi`, `ammo`, `rapier2d`,
+  `rapier3d`, `matter`, `audio`) against the local core build. Two path-filtered workflows cover
+  the parts a plain node job can't: `blender_export_e2e.yml` (Blender export round-trip) and
+  `build_ammo.yml` (rebuilding the vendored ammo.js binary).
 - ✅ Coordinated release process: all `@gg-web-engine/*` packages ship together at one version via
-  `etc/publish_new_version.sh` + `etc/build_libs.sh`, tagged per release (see git tags
-  `0.0.48`…`0.0.58`) and documented step-by-step in the `gg-engine-release` skill.
-- 🚧 The release process above only exists as a `gg-engine-release` skill file — there's no
-  standalone `CONTRIBUTING.md` covering branching/commit/PR conventions or how to run a release,
-  for a reader who isn't going through Claude Code.
-- Issue/PR templates (`.github/ISSUE_TEMPLATE/*`, `PULL_REQUEST_TEMPLATE.md`) — not started.
-- `CODE_OF_CONDUCT.md` — not started; low priority before there's an actual outside contributor base.
-- `CHANGELOG.md` — not started; release history currently lives only in git tags/log.
+  `etc/publish_new_version.sh`, driven by a `[pre-release] [X.Y.Z]` commit on `main`
+  (`.github/workflows/release_action.yml`), tagged per release (see git tags `0.0.48`…`0.0.72`)
+  and documented step-by-step in the `gg-engine-release` skill.
+- ✅ `CONTRIBUTING.md` (2026-09-30): human-facing guide covering repo layout, prerequisites,
+  build/test/format commands, the example-linking loop, branch naming and squash-merge PR
+  conventions, what documentation a change must keep current, the CI workflow table, and the
+  release procedure (trigger commit, what the pipeline does, failed-release recovery, manual
+  follow-ups). Mirrors the `gg-engine-release`/`gg-engine-core-development` skills for readers
+  not going through Claude Code; `CLAUDE.md` now requires both to be updated together when the
+  process changes.
+- ✅ Issue/PR templates (2026-09-30): `.github/ISSUE_TEMPLATE/bug_report.yml` and
+  `feature_request.yml` (GitHub issue forms with engine version, affected packages, StackBlitz
+  reproduction), `config.yml` linking the README and roadmap, and
+  `.github/PULL_REQUEST_TEMPLATE.md` whose checklist encodes the repo's review conventions
+  (root workspace build/test, prettier, `CHANGELOG.md` entry, skill files, `milestones.md`,
+  `entityTypeName`, release-script wiring for new packages/examples).
+- ✅ `CODE_OF_CONDUCT.md` (2026-09-30): Contributor Covenant 2.1; reports go to the maintainer
+  via the `@AndyGura` GitHub profile.
+- ✅ `CHANGELOG.md` (2026-09-30): Keep-a-Changelog format, back-filled per git tag from `0.0.01`
+  through `0.0.72` (with the failed-attempt version gaps explained), plus an `[Unreleased]`
+  section that every user-visible PR appends to (PR template checklist) and that the
+  `[pre-release]` commit rolls into a version section (documented in `CONTRIBUTING.md` and the
+  `gg-engine-release` skill).
 
 Next concrete step
-- Write `CONTRIBUTING.md` as a human-facing translation of the `gg-engine-release` and
-  `gg-engine-core-development` skills (or have it simply point to them) so both audiences read one
-  source of truth instead of two that can drift.
+- None — milestone complete as scoped. Ongoing: keep `CONTRIBUTING.md`, `CHANGELOG.md`, and the
+  skill files in sync whenever the build/test/release process changes (see `CLAUDE.md`).
 
 ---
 
