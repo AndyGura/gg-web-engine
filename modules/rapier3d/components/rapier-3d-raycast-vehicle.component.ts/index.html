@@ -536,6 +536,20 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#stepvehiclecontroller-method" class="md-nav__link">
+    stepVehicleController (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#attachwheel-method" class="md-nav__link">
+    attachWheel (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#addwheel-method" class="md-nav__link">
     addWheel (method)
   </a>
@@ -592,8 +606,8 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#dispose-method" class="md-nav__link">
-    dispose (method)
+  <a href="#resetmotion-method" class="md-nav__link">
+    resetMotion (method)
   </a>
   
 </li>
@@ -642,6 +656,8 @@
 <li><a href="#rapier3draycastvehiclecomponent-class">Rapier3dRaycastVehicleComponent (class)</a><ul>
 <li><a href="#addtoworld-method">addToWorld (method)</a></li>
 <li><a href="#removefromworld-method">removeFromWorld (method)</a></li>
+<li><a href="#stepvehiclecontroller-method">stepVehicleController (method)</a></li>
+<li><a href="#attachwheel-method">attachWheel (method)</a></li>
 <li><a href="#addwheel-method">addWheel (method)</a></li>
 <li><a href="#setsteering-method">setSteering (method)</a></li>
 <li><a href="#applyengineforce-method">applyEngineForce (method)</a></li>
@@ -650,7 +666,7 @@
 <li><a href="#getwheeltransform-method">getWheelTransform (method)</a></li>
 <li><a href="#resetsuspension-method">resetSuspension (method)</a></li>
 <li><a href="#clone-method">clone (method)</a></li>
-<li><a href="#dispose-method">dispose (method)</a></li>
+<li><a href="#resetmotion-method">resetMotion (method)</a></li>
 <li><a href="#_nativevehicle-property">_nativeVehicle (property)</a></li>
 </ul>
 </li>
@@ -658,6 +674,18 @@
 <hr />
 <h1 id="utils">utils</h1>
 <h2 id="rapier3draycastvehiclecomponent-class">Rapier3dRaycastVehicleComponent (class)</h2>
+<p>Rapier's <code>DynamicRayCastVehicleController</code> (<code>world.createVehicleController</code>) is a thin wrapper
+around wheel raycasting only - nothing steps it automatically as part of <code>World.step()</code>.
+Instead, <code>updateVehicle(dt, ...)</code> must be called once per tick <em>before</em> <code>world.step()</code> - it directly writes the chassis's own
+<code>linvel</code>/<code>angvel</code> from that tick's suspension/engine/brake forces, which <code>world.step()</code> then
+integrates like any other dynamic body's velocity. This component registers itself into
+<code>Rapier3dWorldComponent.raycastVehicles</code> on <code>addToWorld</code>/<code>removeFromWorld</code> so the world component
+can drive that call centrally from <code>simulate()</code> - see that class's doc.</p>
+<p>Like <code>Rapier3dCharacterControllerComponent</code>/<code>Rapier3dTriggerComponent</code>, this class and
+<code>Rapier3dWorldComponent</code> import each other (the world needs this class purely as a type for its
+<code>raycastVehicles</code> set, the vehicle needs the world's concrete type for its constructor/<code>addToWorld</code>
+parameter) - this circular import is an established, safe pattern in this package (see those two
+classes), not specific to this one.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export declare class Rapier3dRaycastVehicleComponent {
   constructor(protected readonly world: Rapier3dWorldComponent, private chassisBody: Rapier3dRigidBodyComponent)
@@ -670,6 +698,24 @@
 <h3 id="removefromworld-method">removeFromWorld (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">removeFromWorld(world: Rapier3dGgWorld, dispose?: boolean)
+</code></pre>
+<h3 id="stepvehiclecontroller-method">stepVehicleController (method)</h3>
+<p>Called once per <code>simulate()</code> tick by <code>Rapier3dWorldComponent</code>, <em>before</em> <code>World.step()</code> - see
+this class's own doc for why. <code>filterGroups</code> threads this vehicle's own collision groups
+(<code>this.collisionGroups</code>, inherited from <code>Rapier3dRigidBodyComponent</code> and already packed in the
+<code>InteractionGroups</code> layout Rapier expects) into the wheels' own suspension raycasts, so a
+vehicle in one collision group doesn't get held up by suspension force from a floor it isn't
+meant to interact with - without this, only the chassis's own broadphase collision would
+respect collision groups, not the ray-cast-based wheel/ground detection (see
+<code>gg-engine-physics-adapter</code>'s testing guidance on this). <code>EXCLUDE_SENSORS</code> keeps a <code>Trigger</code>'s
+sensor volume from ever acting as solid ground for a wheel, mirroring
+<code>Rapier3dCharacterControllerComponent.move()</code>'s identical guard.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public stepVehicleController(dt: number): void
+</code></pre>
+<h3 id="attachwheel-method">attachWheel (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private attachWheel(nativeVehicle: DynamicRayCastVehicleController, wheel: WheelEntry): void
 </code></pre>
 <h3 id="addwheel-method">addWheel (method)</h3>
 <p><strong>Signature</strong></p>
@@ -692,6 +738,22 @@
 <pre><code class="language-ts">isWheelTouchesGround(wheelIndex: number): boolean
 </code></pre>
 <h3 id="getwheeltransform-method">getWheelTransform (method)</h3>
+<p>Rapier's controller exposes no single call that bakes suspension travel, steering and roll into
+one transform for rendering - only the individual pieces
+(<code>wheelHardPoint</code>/<code>wheelSuspensionLength</code>/<code>wheelDirectionCs</code>/<code>wheelAxleCs</code>/<code>wheelSteering</code>/
+<code>wheelRotation</code>), which this method composes by hand:</p>
+<ul>
+<li><strong>Position</strong>: <code>wheelHardPoint</code> is already world-space (the ray-cast's own start point, fixed
+  relative to the chassis) - moving it <code>wheelSuspensionLength</code> further along the <em>world-space</em>
+  suspension direction (<code>wheelDirectionCs</code> rotated by the chassis's current rotation) lands
+  exactly on the wheel's current (compressed-by-however-much) center, airborne or grounded alike.</li>
+<li><strong>Rotation</strong>: composed as chassis rotation ∘ steering (about the chassis's local up axis,
+  <code>Pnt3.Z</code> - only ever nonzero for wheels <code>RaycastVehicle3dEntity</code> actually steers) ∘ roll (about
+  this wheel's own configured local axle, <code>wheelRotation</code>'s accumulated spin angle). This is a
+  best-effort reconstruction, not something read back verbatim from the native engine - document
+  as a known limitation rather than chasing exactness, same spirit as
+  <code>Rapier3dCharacterControllerComponent</code>'s ground-normal approximation.</li>
+</ul>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">getWheelTransform(wheelIndex: number): { position: Point3; rotation: Point4 }
 </code></pre>
@@ -701,11 +763,11 @@
 </code></pre>
 <h3 id="clone-method">clone (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">clone(): Rapier3dRaycastVehicleComponent
+<pre><code class="language-ts">public clone(): Rapier3dRaycastVehicleComponent
 </code></pre>
-<h3 id="dispose-method">dispose (method)</h3>
+<h3 id="resetmotion-method">resetMotion (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">dispose()
+<pre><code class="language-ts">resetMotion()
 </code></pre>
 <h3 id="_nativevehicle-property">_nativeVehicle (property)</h3>
 <p><strong>Signature</strong></p>

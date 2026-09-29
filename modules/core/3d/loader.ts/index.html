@@ -536,6 +536,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#loadmodel-method" class="md-nav__link">
+    loadModel (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#loadggglb-method" class="md-nav__link">
     loadGgGlb (method)
   </a>
@@ -628,6 +635,7 @@
 <li><a href="#gg3dloader-class">Gg3dLoader (class)</a><ul>
 <li><a href="#loadggglbfiles-method">loadGgGlbFiles (method)</a></li>
 <li><a href="#loadggglbresources-method">loadGgGlbResources (method)</a></li>
+<li><a href="#loadmodel-method">loadModel (method)</a></li>
 <li><a href="#loadggglb-method">loadGgGlb (method)</a></li>
 <li><a href="#filescache-property">filesCache (property)</a></li>
 <li><a href="#loadresultcache-property">loadResultCache (property)</a></li>
@@ -663,7 +671,20 @@ way it places primitives/triggers/cameras.</p>
     cachingStrategy: CachingStrategy = CachingStrategy.Nothing,
   ): Promise&lt;LoadResourcesResult&lt;TypeDoc&gt;&gt;
 </code></pre>
+<h3 id="loadmodel-method">loadModel (method)</h3>
+<p>Loads a plain <code>.glb</code> (no <code>.meta</code> pair - see <code>loadGgGlb</code>) via <code>visualScene.loader.loadFromGlb</code>,
+for a visual-only asset that has no physics representation of its own (a character model
+driven by a separately-created <code>CharacterController3dEntity</code>'s capsule, a decorative prop, ...).
+<code>undefined</code>/<code>null</code> if there's no visual scene to load against.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public async loadModel(path: string, options?: LoadGlbOptions): Promise&lt;TypeDoc['vTypeDoc']['displayObject'] | null&gt;
+</code></pre>
 <h3 id="loadggglb-method">loadGgGlb (method)</h3>
+<p>Load a GG GLB+meta pair into ready-to-add <code>Entity3d</code>s (one per rigid body the <code>.meta</code>
+declares, plus one for any body-less leftover geometry), recursively loading any prop/scene
+dummies too when <code>options.loadProps</code> is on. Every entity's <code>name</code> is scoped under
+<code>options.nameScope</code> (see <code>LoadOptions.nameScope</code> - a process-unique scope by default), so
+loading the same file repeatedly never produces colliding names.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public async loadGgGlb(
     path: string,
@@ -715,6 +736,20 @@ props/scenes) grouped under one <code>GroupEntity</code>.</p>
    * Path where to find prop scenes, if different from `path`'s own directory
    */
   propsPath?: string
+
+  /**
+   * Scope for the names of every entity the GLB produces, see `LoadOptions.nameScope`. Defaults to
+   * this `&quot;Glb&quot;` entity's own resolved `name` (`name`, below) - which `LevelLoader.loadLevel`
+   * guarantees is unique in the world and deterministic per level document - so two `&quot;Glb&quot;`
+   * entries pointing at the same file never collide. `null` keeps the raw native object names.
+   */
+  nameScope?: string | null
+
+  /**
+   * The entity's own resolved name - filled in by `LevelLoader.createEntity`/`loadLevel` (explicit
+   * `EntityJson.name`, else the level-derived fallback), not meant to be set in `config`
+   */
+  name?: string
 }
 </code></pre>
 <h2 id="loadoptions-type-alias">LoadOptions (type alias)</h2>
@@ -733,6 +768,23 @@ props/scenes) grouped under one <code>GroupEntity</code>.</p>
   loadProps: boolean
   // path where to find prop scenes
   propsPath?: string
+  /**
+   * Scope every produced entity's `name` under, so that the same file can be loaded any number of
+   * times into one world without the (Blender-authored, hence identical on every load) object
+   * names colliding - `GgWorld` enforces world-wide name uniqueness and `addEntity` rejects a
+   * collision outright. Each entity is named `` `${nameScope}__${objectName}` `` (`objectName`
+   * being the body's, else the display object's, own native name - falling back to the entity's
+   * index in `entities` when neither has one), and every prop/scene dummy loaded via `loadProps`
+   * recurses under `` `${nameScope}__${dummy.name}` `` - deterministic purely from `nameScope` and
+   * the files' own content, so two peers loading the same asset under the same scope agree on
+   * every name.
+   * - a `string`: that scope, e.g. the `&quot;Glb&quot;` level entity class passes its own entity name;
+   * - omitted/`undefined` (the default): a fresh process-unique scope (`` `glb_${n}` ``, `n` a
+   *   per-process counter) - always collision-free, but not deterministic across peers/reloads;
+   * - `null`: no scoping at all - entities keep their raw native object names. Opt in to this
+   *   only to look entities up by their Blender names, and only when the file is loaded once.
+   */
+  nameScope?: string | null
 }
 </code></pre>
 <h2 id="loadresourcesresult-type-alias">LoadResourcesResult (type alias)</h2>

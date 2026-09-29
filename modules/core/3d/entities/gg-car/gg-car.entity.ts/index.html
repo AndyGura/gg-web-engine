@@ -564,6 +564,20 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#serializesettings-method" class="md-nav__link">
+    serializeSettings (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#serializewheelfields-method" class="md-nav__link">
+    serializeWheelFields (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#resetto-method" class="md-nav__link">
     resetTo (method)
   </a>
@@ -660,6 +674,8 @@
 <li><a href="#createraycastvehicle-method">createRaycastVehicle (method)</a></li>
 <li><a href="#onspawned-method">onSpawned (method)</a></li>
 <li><a href="#updateengine-method">updateEngine (method)</a></li>
+<li><a href="#serializesettings-method">serializeSettings (method)</a></li>
+<li><a href="#serializewheelfields-method">serializeWheelFields (method)</a></li>
 <li><a href="#resetto-method">resetTo (method)</a></li>
 <li><a href="#tickorder-property">tickOrder (property)</a></li>
 <li><a href="#_rpm-property">_rpm$ (property)</a></li>
@@ -712,6 +728,38 @@ scaling down with speed when that's given as a breakpoint array - see its TSDoc.
 <h3 id="updateengine-method">updateEngine (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">protected updateEngine(delta: number)
+</code></pre>
+<h3 id="serializesettings-method">serializeSettings (method)</h3>
+<p><code>ISerializableEntity</code> implementation: returns <code>GgCar3DSettings</code>-shaped <code>config</code> - both the
+construction-time tuning <code>carProperties</code> already holds (<code>engine</code>/<code>brake</code>/<code>transmission</code>/
+<code>suspension</code>/<code>tractionBias</code>/<code>maxSteerAngle</code>/<code>mpsToRpmFactor</code>, plus <code>wheelBase</code>/<code>wheelOptions</code>
+geometry) and what it doesn't: chassis <code>dimensions</code>/<code>material</code>/<code>body</code>, recovered from the live
+chassis rigid body/mesh the same way <code>Gg3dLevelLoader</code>'s <code>"Primitive"</code> live serializer recovers
+a primitive's own (see <code>IMaterialReadable3dComponent</code>) - plus a <code>state</code> block capturing this
+car's current runtime-mutated driving state (<code>gear</code>/<code>acceleration</code>/<code>brake</code>/<code>handBrake</code>/
+<code>steeringFactor</code>), none of which a spawn-time <code>config</code> alone could ever reflect, since all five
+change continuously as the car is driven. <code>Gg3dLevelLoader.createGgCar</code> applies <code>state</code> back
+onto a freshly-built car if present, after construction - see that method's own doc.</p>
+<p>Wheel/chassis <code>display</code>/<code>material</code> recovery only works for a mesh built via
+<code>IDisplayObject3dComponentFactory.createPrimitive</code> (or a shortcut built on it) - see
+<code>IMaterialReadable3dComponent</code>'s own doc; a chassis/wheel with no visual mesh at all
+(<code>chassis3D</code>/a wheel's <code>displayObject</code> unset) simply omits <code>material</code>/<code>display</code>, same as
+building one without <code>display</code>/<code>material</code> in the first place. <code>wheelObjectDirection</code>
+round-trips exactly (already plain data on <code>RVEntitySharedWheelOptions.display</code>);
+<code>autoScaleMesh</code> doesn't, since <code>Gg3dLevelLoader.resolveWheelDisplay</code> never sets it either.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public serializeSettings(): { config: Record&lt;string, any&gt; }
+</code></pre>
+<h3 id="serializewheelfields-method">serializeWheelFields (method)</h3>
+<p>Strips a wheel/axle settings object's live <code>display.displayObject</code> down to a JSON-safe
+<code>{ material?, wheelObjectDirection? }</code> - see {@link serializeSettings}'s own doc for the
+capability this depends on.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private serializeWheelFields&lt;T extends { display?: WheelDisplayOptions }&gt;(
+    wheel: T,
+  ): Omit&lt;T, 'display'&gt; &amp; {
+    display?: { material?: DisplayObject3dOpts&lt;any&gt;; wheelObjectDirection?: AxisDirection3 };
+  }
 </code></pre>
 <h3 id="resetto-method">resetTo (method)</h3>
 <p><strong>Signature</strong></p>

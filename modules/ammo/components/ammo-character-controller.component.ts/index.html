@@ -543,6 +543,20 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#detachtriggers-method" class="md-nav__link">
+    detachTriggers (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reattachtriggers-method" class="md-nav__link">
+    reattachTriggers (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#iswalkablenormal-method" class="md-nav__link">
     isWalkableNormal (method)
   </a>
@@ -699,6 +713,8 @@
 <li><a href="#move-method">move (method)</a></li>
 <li><a href="#detachignoredbodies-method">detachIgnoredBodies (method)</a></li>
 <li><a href="#reattachignoredbodies-method">reattachIgnoredBodies (method)</a></li>
+<li><a href="#detachtriggers-method">detachTriggers (method)</a></li>
+<li><a href="#reattachtriggers-method">reattachTriggers (method)</a></li>
 <li><a href="#iswalkablenormal-method">isWalkableNormal (method)</a></li>
 <li><a href="#backofffromobstacle-method">backOffFromObstacle (method)</a></li>
 <li><a href="#movehorizontalwithstepandslide-method">moveHorizontalWithStepAndSlide (method)</a></li>
@@ -786,6 +802,32 @@ to the world by the matching reattach call.</p>
 <p>Undoes <code>detachIgnoredBodies()</code> for exactly the bodies it returned.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">private reattachIgnoredBodies(detached: AmmoRigidBodyComponent[]): void
+</code></pre>
+<h3 id="detachtriggers-method">detachTriggers (method)</h3>
+<p>A trigger is a sensor with no collision response (see <code>ITrigger3dComponent</code>), so it must never
+physically block this character's movement (<code>sweep()</code>, the only remaining caller of this method</p>
+<ul>
+<li>see below) the way a real obstacle would - unlike <code>ignoredBodies</code> (an explicit, per-character
+  opt-in set), every trigger in the world qualifies automatically, a <code>Trigger</code> was never meant to
+  be a solid obstacle to begin with, for any character. Delegates to <code>AmmoWorldComponent</code>'s own
+  <code>detachTriggers()</code>/<code>reattachTriggers()</code> (see its doc for why <code>sweep()</code>'s <code>convexSweepTest</code> still
+  needs a physical broadphase detach where <code>recoverFromPenetration()</code>'s <code>contactTest</code> and
+  <code>trySnapToGround()</code>'s <code>raycast()</code> call no longer do - a JS-filterable native callback exists for
+  the other two but not for a convex sweep in this Ammo.js build), rather than keeping a separate
+  copy of the same broadphase-detach loop here.</li>
+</ul>
+<p>Bug found empirically: without this, a character walking straight at a <code>Trigger</code>'s volume
+physically stopped dead at its boundary instead of walking through it, so <code>Trigger</code>'s own
+<code>onEntityEntered</code>/<code>onEntityLeft</code> (which do already resolve a character-controller overlap
+correctly, via the shared <code>AmmoBodyComponent.nativeBodyReverseMap</code>) never got the chance to see
+the character genuinely enter or leave.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private detachTriggers(): AmmoTriggerComponent[]
+</code></pre>
+<h3 id="reattachtriggers-method">reattachTriggers (method)</h3>
+<p>Undoes <code>detachTriggers()</code> for exactly the triggers it returned.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private reattachTriggers(detached: AmmoTriggerComponent[]): void
 </code></pre>
 <h3 id="iswalkablenormal-method">isWalkableNormal (method)</h3>
 <p><strong>Signature</strong></p>

@@ -591,6 +591,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#attachtochunk-method" class="md-nav__link">
+    attachToChunk (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#disposechunk-method" class="md-nav__link">
     disposeChunk (method)
   </a>
@@ -699,6 +706,7 @@
 <li><a href="#onspawned-method">onSpawned (method)</a></li>
 <li><a href="#onremoved-method">onRemoved (method)</a></li>
 <li><a href="#loadchunk-method">loadChunk (method)</a></li>
+<li><a href="#attachtochunk-method">attachToChunk (method)</a></li>
 <li><a href="#disposechunk-method">disposeChunk (method)</a></li>
 <li><a href="#tickorder-property">tickOrder (property)</a></li>
 <li><a href="#loadercursor-property">loaderCursor$ (property)</a></li>
@@ -766,6 +774,16 @@ The nodes in the graph are created in the same order as the elements in the grid
 <h3 id="loadchunk-method">loadChunk (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">protected async loadChunk(node: MapGraphNodeType): Promise&lt;[Entity3d&lt;TypeDoc&gt;[], LoadResultWithProps&lt;TypeDoc&gt;]&gt;
+</code></pre>
+<h3 id="attachtochunk-method">attachToChunk (method)</h3>
+<p>Attaches already-constructed entities to an already-loaded chunk's own lifecycle: added as
+children now (same as the chunk's own GLB-loaded entities), and automatically removed/disposed
+the next time that chunk unloads. For content spawned in reaction to <code>chunkLoaded$</code> that isn't
+itself part of the chunk's GLB (e.g. traffic placed per-chunk by app code) - without this, such
+content has no lifecycle tied to the chunk at all, and leaks (and, if it reuses names on a later
+reload while the leaked copy is still around, collides with them) once the chunk unloads.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public attachToChunk(node: MapGraphNodeType, entities: (IEntity &amp; IPositionable3d)[]): void
 </code></pre>
 <h3 id="disposechunk-method">disposeChunk (method)</h3>
 <p><strong>Signature</strong></p>

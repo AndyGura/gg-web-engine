@@ -568,8 +568,12 @@
 <h2 id="shape2ddescriptor-type-alias">Shape2DDescriptor (type alias)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export type Shape2DDescriptor = { collisionMargin?: number } &amp; (
-  | { shape: 'SQUARE'; dimensions: Point2 }
+  | { shape: 'BOX'; dimensions: Point2 }
   | { shape: 'CIRCLE'; radius: number }
+  | { shape: 'CAPSULE'; radius: number; centersDistance: number }
+  | { shape: 'CONVEX_HULL'; vertices: Point2[] }
+  | { shape: 'POLYGON'; vertices: Point2[] }
+  | { shape: 'COMPOUND'; children: { position?: Point2; rotation?: number; shape: Shape2DDescriptor }[] }
 )
 </code></pre>
 

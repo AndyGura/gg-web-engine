@@ -668,6 +668,13 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#hull-static-method" class="md-nav__link">
+    hull (static method)
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -724,6 +731,7 @@
 <li><a href="#rotaround-static-method">rotAround (static method)</a></li>
 <li><a href="#topolar-static-method">toPolar (static method)</a></li>
 <li><a href="#frompolar-static-method">fromPolar (static method)</a></li>
+<li><a href="#hull-static-method">hull (static method)</a></li>
 </ul>
 </li>
 </ul>
@@ -839,6 +847,13 @@ phi == 0 is faced towards X axis direction</p>
 where phi == 0 is faced towards X axis direction</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">static fromPolar(p: Polar): Point2
+</code></pre>
+<h3 id="hull-static-method">hull (static method)</h3>
+<p>Computes the convex hull of an arbitrary (possibly unordered, possibly non-convex) set of
+points, using Andrew's monotone chain algorithm. The result is a new array of points, a
+subset of the input, ordered so that they form the hull's outline.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">static hull(points: Point2[]): Point2[]
 </code></pre>
 
 

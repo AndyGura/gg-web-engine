@@ -748,6 +748,10 @@ the event outright.</p>
 <pre><code class="language-ts">deregisterCollisionGroup(group: CollisionGroup): void
 </code></pre>
 <h3 id="raycast-method">raycast (method)</h3>
+<p><code>castRay</code>'s own default (no <code>filterFlags</code>) treats a sensor collider as a solid obstacle, exactly
+like any real one - <code>QueryFilterFlags.EXCLUDE_SENSORS</code> is required so a raycast never reports a
+hit against a <code>Trigger</code>'s own collider, matching what "trigger" means everywhere else in this
+engine (a sensor with no collision response, see <code>ITrigger2dComponent</code>).</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">raycast(options: RaycastOptions&lt;Point2&gt;): RaycastResult&lt;Point2, Rapier2dRigidBodyComponent&gt;
 </code></pre>
@@ -765,7 +769,7 @@ the event outright.</p>
 </code></pre>
 <h3 id="children-property">children (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly children: Rapier2dRigidBodyComponent[]
+<pre><code class="language-ts">readonly children: Rapier2dWorldChild[]
 </code></pre>
 <h3 id="maincollisiongroup-property">mainCollisionGroup (property)</h3>
 <p><strong>Signature</strong></p>
@@ -777,7 +781,7 @@ the event outright.</p>
 </code></pre>
 <h3 id="handleidentitymap-property">handleIdEntityMap (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly handleIdEntityMap: Map&lt;number, Rapier2dRigidBodyComponent&gt;
+<pre><code class="language-ts">readonly handleIdEntityMap: Map&lt;number, Rapier2dWorldChild&gt;
 </code></pre>
 <h3 id="lockedcollisiongroups-property">lockedCollisionGroups (property)</h3>
 <p><strong>Signature</strong></p>

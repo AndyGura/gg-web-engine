@@ -535,8 +535,29 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#createanimatedsprite-method" class="md-nav__link">
+    createAnimatedSprite (method)
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pixigridatlasclip-type-alias" class="md-nav__link">
+    PixiGridAtlasClip (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pixigridatlasoptions-type-alias" class="md-nav__link">
+    PixiGridAtlasOptions (type alias)
+  </a>
   
 </li>
         
@@ -572,8 +593,11 @@
 <li><a href="#pixidisplayobject3dopts-type-alias">PixiDisplayObject3dOpts (type alias)</a></li>
 <li><a href="#pixifactory-class">PixiFactory (class)</a><ul>
 <li><a href="#createprimitive-method">createPrimitive (method)</a></li>
+<li><a href="#createanimatedsprite-method">createAnimatedSprite (method)</a></li>
 </ul>
 </li>
+<li><a href="#pixigridatlasclip-type-alias">PixiGridAtlasClip (type alias)</a></li>
+<li><a href="#pixigridatlasoptions-type-alias">PixiGridAtlasOptions (type alias)</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
@@ -588,6 +612,42 @@
 <h3 id="createprimitive-method">createPrimitive (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">createPrimitive(descriptor: Shape2DDescriptor, material: PixiDisplayObject3dOpts = {}): PixiDisplayObjectComponent
+</code></pre>
+<h3 id="createanimatedsprite-method">createAnimatedSprite (method)</h3>
+<p>Builds an animated sprite from a texture laid out as a uniform grid atlas (see
+<code>PixiGridAtlasOptions</code>) - the entry point for a character sprite with named clips (idle/walk/
+run/jump, ...). Slices each clip's own row into <code>frameCount</code> individual frame textures sharing
+<code>baseTexture</code>'s source (no copying/re-encoding, just distinct <code>frame</code> rectangles).</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">createAnimatedSprite(baseTexture: Texture, options: PixiGridAtlasOptions): PixiAnimatedSpriteComponent
+</code></pre>
+<h2 id="pixigridatlasclip-type-alias">PixiGridAtlasClip (type alias)</h2>
+<p>A single named clip's location within a uniform-grid atlas - see <code>PixiGridAtlasOptions</code>.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type PixiGridAtlasClip = {
+  /** Row index (0-based) within the grid this clip's frames live on. */
+  row: number
+  /** Number of consecutive frames (columns), starting at column 0, this clip uses. */
+  frameCount: number
+  /** Playback speed, in frames per second. Default 10. */
+  fps?: number
+}
+</code></pre>
+<h2 id="pixigridatlasoptions-type-alias">PixiGridAtlasOptions (type alias)</h2>
+<p>Describes a texture atlas laid out as a uniform grid of equally-sized frames (the common case for
+a hand-authored pixel-art character sheet) - one row per animation clip, <code>frameCount</code> consecutive
+columns per clip starting at column 0. See <code>PixiFactory.createAnimatedSprite</code>.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type PixiGridAtlasOptions = {
+  /** Width, in pixels, of a single frame cell. */
+  frameWidth: number
+  /** Height, in pixels, of a single frame cell. */
+  frameHeight: number
+  /** Named clips, keyed the same way `CharacterAnimation2dClipMap`/`CharacterAnimation2dState` expect
+   * (e.g. `idle`/`walk`/`run`/`jump`) - any name is accepted, `IAnimatedDisplayObject2dComponent.animationNames`
+   * just reflects whatever keys are given here. */
+  clips: Record&lt;string, PixiGridAtlasClip&gt;
+}
 </code></pre>
 
 

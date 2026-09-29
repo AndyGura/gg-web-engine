@@ -514,6 +514,13 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#compoundchild2dsettings-interface" class="md-nav__link">
+    CompoundChild2DSettings (interface)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#gg2dlevelloader-class" class="md-nav__link">
     Gg2dLevelLoader (class)
   </a>
@@ -524,6 +531,20 @@
           <li class="md-nav__item">
   <a href="#registerdefaultclasses-method" class="md-nav__link">
     registerDefaultClasses (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#serializeprimitive-method" class="md-nav__link">
+    serializePrimitive (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#serializetrigger-method" class="md-nav__link">
+    serializeTrigger (method)
   </a>
   
 </li>
@@ -564,6 +585,13 @@
           <li class="md-nav__item">
   <a href="#primitive2dshapename-type-alias" class="md-nav__link">
     Primitive2DShapeName (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#primitive2dshapesettings-interface" class="md-nav__link">
+    Primitive2DShapeSettings (interface)
   </a>
   
 </li>
@@ -618,8 +646,11 @@
 
 <ul>
 <li><a href="#utils">utils</a></li>
+<li><a href="#compoundchild2dsettings-interface">CompoundChild2DSettings (interface)</a></li>
 <li><a href="#gg2dlevelloader-class">Gg2dLevelLoader (class)</a><ul>
 <li><a href="#registerdefaultclasses-method">registerDefaultClasses (method)</a></li>
+<li><a href="#serializeprimitive-method">serializePrimitive (method)</a></li>
+<li><a href="#serializetrigger-method">serializeTrigger (method)</a></li>
 <li><a href="#buildshapedescriptor-method">buildShapeDescriptor (method)</a></li>
 <li><a href="#createprimitive-method">createPrimitive (method)</a></li>
 <li><a href="#createtrigger-method">createTrigger (method)</a></li>
@@ -627,12 +658,31 @@
 </ul>
 </li>
 <li><a href="#primitive2dshapename-type-alias">Primitive2DShapeName (type alias)</a></li>
+<li><a href="#primitive2dshapesettings-interface">Primitive2DShapeSettings (interface)</a></li>
 <li><a href="#primitivesettings-interface">PrimitiveSettings (interface)</a></li>
 <li><a href="#sound2dsettings-interface">Sound2DSettings (interface)</a></li>
 <li><a href="#triggersettings-interface">TriggerSettings (interface)</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
+<h2 id="compoundchild2dsettings-interface">CompoundChild2DSettings (interface)</h2>
+<p>One child of a <code>COMPOUND</code> primitive's <code>children</code> - the same shape-selecting fields as
+<code>PrimitiveSettings</code>, plus its own local <code>position</code>/<code>rotation</code> offset, but no <code>material</code>/<code>body</code>
+(a compound's children share one physics body and one display object, set on the parent
+<code>"Primitive"</code> entity only).</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export interface CompoundChild2DSettings extends Primitive2DShapeSettings {
+  /**
+   * Position of the child shape, relative to the compound's own origin
+   */
+  position?: Point2
+
+  /**
+   * Rotation of the child shape in radians, relative to the compound's own rotation
+   */
+  rotation?: number
+}
+</code></pre>
 <h2 id="gg2dlevelloader-class">Gg2dLevelLoader (class)</h2>
 <p>2D level loader: registers the built-in primitive/trigger/sound entity classes and dispatches
 <code>LevelJson</code> entities to them (or to custom classes registered via <code>registerClass</code>).</p>
@@ -646,11 +696,29 @@
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">private registerDefaultClasses(): void
 </code></pre>
-<h3 id="buildshapedescriptor-method">buildShapeDescriptor (method)</h3>
-<p>Turn a <code>PrimitiveSettings</code> (<code>shape</code> plus shape-specific fields) into the <code>Shape2DDescriptor</code>
-consumed by <code>Gg2dWorld.addPrimitiveRigidBody</code>.</p>
+<h3 id="serializeprimitive-method">serializePrimitive (method)</h3>
+<p>Live serializer for the built-in <code>"Primitive"</code> class - see the 3D loader's
+<code>Gg3dLevelLoader.serializePrimitive</code> for the general approach and rationale (identical here,
+just 2D-typed): matches <code>entity.constructor === Entity2d</code> exactly, recovers shape/dimensions
+from <code>objectBody.debugBodySettings.shape</code>, <code>body</code>/velocity from the live physics body
+(<code>objectBody.bodyOptions</code>/<code>.linearVelocity</code>/<code>.angularVelocity</code>), and <code>material</code> from
+<code>object2D</code> when it implements <code>IMaterialReadable2dComponent</code>.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">private buildShapeDescriptor(settings: PrimitiveSettings): Shape2DDescriptor
+<pre><code class="language-ts">private serializePrimitive(entity: IEntity&lt;Point2, number, TypeDoc&gt;): EntityJson | undefined
+</code></pre>
+<h3 id="serializetrigger-method">serializeTrigger (method)</h3>
+<p>Live serializer for the built-in <code>"Trigger"</code> class - see the 3D loader's own doc for the
+general approach. Matches <code>entity.constructor === Trigger2dEntity</code> exactly.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private serializeTrigger(entity: IEntity&lt;Point2, number, TypeDoc&gt;): EntityJson | undefined
+</code></pre>
+<h3 id="buildshapedescriptor-method">buildShapeDescriptor (method)</h3>
+<p>Turn a <code>Primitive2DShapeSettings</code> (<code>shape</code> plus shape-specific fields) into the
+<code>Shape2DDescriptor</code> consumed by <code>Gg2dWorld.addPrimitiveRigidBody</code>. Used both for a
+<code>"Primitive"</code> entity's own top-level settings and, recursively, for each of a <code>COMPOUND</code>
+primitive's <code>children</code> (which may themselves be <code>COMPOUND</code>, nesting arbitrarily deep).</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private buildShapeDescriptor(settings: Primitive2DShapeSettings): Shape2DDescriptor
 </code></pre>
 <h3 id="createprimitive-method">createPrimitive (method)</h3>
 <p>Create a primitive entity (both display object and physics body) from a shape descriptor</p>
@@ -681,21 +749,54 @@ base <code>LevelLoader</code> docs for how it's parented for level-lifecycle cle
 </code></pre>
 <h2 id="primitive2dshapename-type-alias">Primitive2DShapeName (type alias)</h2>
 <p>Shape names accepted by the built-in <code>"Primitive"</code> entity class in a 2D level JSON, via the
-sibling <code>shape</code> field on the entity (e.g. <code>{ class: "Primitive", shape: "SQUARE" }</code>) - the same
+sibling <code>shape</code> field on the entity (e.g. <code>{ class: "Primitive", shape: "BOX" }</code>) - the same
 <code>Shape2DDescriptor['shape']</code> values used at the engine API level, so no translation is needed
 between a level JSON and <code>Gg2dWorld.addPrimitiveRigidBody</code>.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export type Primitive2DShapeName = Shape2DDescriptor['shape']
 </code></pre>
-<h2 id="primitivesettings-interface">PrimitiveSettings (interface)</h2>
-<p>Settings shared by every primitive entity (Square, Circle, ...)</p>
+<h2 id="primitive2dshapesettings-interface">Primitive2DShapeSettings (interface)</h2>
+<p>The shape-selecting fields shared by <code>PrimitiveSettings</code> and a <code>COMPOUND</code> primitive's own
+<code>children</code> entries - <code>shape</code> plus every field any shape variant needs (each optional, since
+which ones are actually required depends on <code>shape</code> - see <code>buildShapeDescriptor</code>).</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export interface PrimitiveSettings {
+<pre><code class="language-ts">export interface Primitive2DShapeSettings {
   /**
    * Which primitive shape to construct
    */
   shape: Primitive2DShapeName
 
+  /**
+   * Dimensions of the primitive (for Box)
+   */
+  dimensions?: Point2
+
+  /**
+   * Radius of the primitive (for Circle/Capsule)
+   */
+  radius?: number
+
+  /**
+   * Distance between the two hemisphere centers (for Capsule)
+   */
+  centersDistance?: number
+
+  /**
+   * Vertices of the primitive (for ConvexHull/Polygon)
+   */
+  vertices?: Point2[]
+
+  /**
+   * Child shapes making up a Compound primitive, each with its own local `position`/`rotation`
+   * offset. A child's `shape` may itself be `&quot;COMPOUND&quot;`, nesting arbitrarily deep.
+   */
+  children?: CompoundChild2DSettings[]
+}
+</code></pre>
+<h2 id="primitivesettings-interface">PrimitiveSettings (interface)</h2>
+<p>Settings shared by every primitive entity (Box, Circle, ...)</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export interface PrimitiveSettings extends Primitive2DShapeSettings {
   /**
    * Position of the primitive
    */
@@ -707,16 +808,6 @@ between a level JSON and <code>Gg2dWorld.addPrimitiveRigidBody</code>.</p>
   rotation?: number
 
   /**
-   * Dimensions of the primitive (for Square)
-   */
-  dimensions?: Point2
-
-  /**
-   * Radius of the primitive (for Circle)
-   */
-  radius?: number
-
-  /**
    * Material options for the primitive
    */
   material?: DisplayObject2dOpts&lt;any&gt;
@@ -725,6 +816,15 @@ between a level JSON and <code>Gg2dWorld.addPrimitiveRigidBody</code>.</p>
    * Physics body options, merged over sensible defaults
    */
   body?: Partial&lt;Body2DOptions&gt;
+
+  /**
+   * Initial linear velocity, applied once right after the body is created - see the 3D loader's
+   * `Primitive3DSettings.linearVelocity` doc, same caveats.
+   */
+  linearVelocity?: Point2
+
+  /** Initial angular velocity (radians/s) - see `linearVelocity`'s own doc, same caveats. */
+  angularVelocity?: number
 }
 </code></pre>
 <h2 id="sound2dsettings-interface">Sound2DSettings (interface)</h2>

@@ -557,6 +557,20 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#detachfrombroadphasetemporarily-method" class="md-nav__link">
+    detachFromBroadphaseTemporarily (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reattachtobroadphase-method" class="md-nav__link">
+    reattachToBroadphase (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#dispose-method" class="md-nav__link">
     dispose (method)
   </a>
@@ -603,6 +617,13 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#isammotrigger" class="md-nav__link">
+    isAmmoTrigger
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -638,6 +659,8 @@
 <li><a href="#addtoworld-method">addToWorld (method)</a></li>
 <li><a href="#removefromworld-method">removeFromWorld (method)</a></li>
 <li><a href="#refreshcg-method">refreshCG (method)</a></li>
+<li><a href="#detachfrombroadphasetemporarily-method">detachFromBroadphaseTemporarily (method)</a></li>
+<li><a href="#reattachtobroadphase-method">reattachToBroadphase (method)</a></li>
 <li><a href="#dispose-method">dispose (method)</a></li>
 <li><a href="#entity-property">entity (property)</a></li>
 <li><a href="#debugbodysettings-property">debugBodySettings (property)</a></li>
@@ -646,6 +669,7 @@
 <li><a href="#onleft-property">onLeft$ (property)</a></li>
 </ul>
 </li>
+<li><a href="#isammotrigger">isAmmoTrigger</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
@@ -679,6 +703,22 @@
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">refreshCG(): void
 </code></pre>
+<h3 id="detachfrombroadphasetemporarily-method">detachFromBroadphaseTemporarily (method)</h3>
+<p>Mirrors <code>AmmoRigidBodyComponent.detachFromBroadphaseTemporarily()</code>/<code>reattachToBroadphase()</code> for
+this trigger's ghost object, backed by <code>removeCollisionObject</code>/<code>addCollisionObject</code> (the same
+pair <code>addToWorld</code> itself uses, unlike a real rigid body's <code>removeRigidBody</code>/<code>addRigidBody</code>) -
+see <code>AmmoCharacterControllerComponent</code>'s own doc for why its movement/ground-check queries need
+every trigger excluded from the collision world for their duration: a trigger is a sensor with
+no collision response by definition (see <code>ITrigger3dComponent</code>), so it must never physically
+block or "ground" a character the way a real obstacle does.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">detachFromBroadphaseTemporarily(): boolean
+</code></pre>
+<h3 id="reattachtobroadphase-method">reattachToBroadphase (method)</h3>
+<p>Undoes <code>detachFromBroadphaseTemporarily()</code> - see its own doc.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">reattachToBroadphase(): void
+</code></pre>
 <h3 id="dispose-method">dispose (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">dispose(): void
@@ -702,6 +742,17 @@
 <h3 id="onleft-property">onLeft$ (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly onLeft$: any
+</code></pre>
+<h2 id="isammotrigger">isAmmoTrigger</h2>
+<p>A query resolving a native body/ghost object to its owning component must never treat a
+<code>Trigger</code> as a hit - it's a sensor with no collision response by definition
+(<code>ITrigger3dComponent</code>), so it was never meant to obstruct one. Shared by every JS-side
+post-filter call site that needs this exact check
+(<code>AmmoWorldComponent.raycast()</code>'s <code>closestNonTriggerHit</code>/<code>solidRayFallback</code>,
+<code>AmmoCharacterControllerComponent.recoverFromPenetration()</code>) - see <code>raycast()</code>'s own doc for why
+these filter in JS rather than via a broadphase detach.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export declare function isAmmoTrigger(body: unknown): body is AmmoTriggerComponent
 </code></pre>
 
 
