@@ -1,6 +1,6 @@
 ---
 title: rapier2d/rapier-2d-factory.ts
-nav_order: 152
+nav_order: 167
 parent: Modules
 ---
 
@@ -14,6 +14,7 @@ parent: Modules
   - [Rapier2dFactory (class)](#rapier2dfactory-class)
     - [createRigidBody (method)](#createrigidbody-method)
     - [createTrigger (method)](#createtrigger-method)
+    - [createCharacterController (method)](#createcharactercontroller-method)
     - [createColliderDescr (method)](#createcolliderdescr-method)
     - [createRigidBodyDescr (method)](#createrigidbodydescr-method)
 
@@ -57,6 +58,20 @@ createTrigger(
       rotation?: number;
     },
   ): Rapier2dTriggerComponent
+```
+
+### createCharacterController (method)
+
+**Signature**
+
+```ts
+createCharacterController(
+    options: CharacterController2dOptions,
+    transform?: {
+      position?: Point2;
+      rotation?: number;
+    },
+  ): Rapier2dCharacterControllerComponent
 ```
 
 ### createColliderDescr (method)

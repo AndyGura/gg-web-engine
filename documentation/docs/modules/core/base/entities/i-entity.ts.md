@@ -1,6 +1,6 @@
 ---
 title: core/base/entities/i-entity.ts
-nav_order: 102
+nav_order: 112
 parent: Modules
 ---
 
@@ -12,6 +12,8 @@ parent: Modules
 
 - [utils](#utils)
   - [IEntity (class)](#ientity-class)
+    - [useDefaultNameMiddleware (static method)](#usedefaultnamemiddleware-static-method)
+    - [generateDefaultName (method)](#generatedefaultname-method)
     - [addChildren (method)](#addchildren-method)
     - [removeChildren (method)](#removechildren-method)
     - [getChildEntityByName (method)](#getchildentitybyname-method)
@@ -40,6 +42,30 @@ parent: Modules
 
 ```ts
 export declare class IEntity<D, R, TypeDoc>
+```
+
+### useDefaultNameMiddleware (static method)
+
+Register a transform run on every subsequently-constructed entity's auto-generated default
+name (see {@link entityTypeName}) at construction time, before anything else can touch it.
+Multiple registrations chain in call order. This is the one seam a package with its own notion
+of identity (e.g. a future network layer wanting to qualify every otherwise-unnamed entity with
+a peer id) needs: app code keeps calling ordinary core factories/constructors with no awareness
+such a layer exists, and every entity that isn't explicitly named by that app code or by
+`LevelLoader` picks up the transform automatically. Core itself never calls this.
+
+**Signature**
+
+```ts
+public static useDefaultNameMiddleware(middleware: (name: string) => string): void
+```
+
+### generateDefaultName (method)
+
+**Signature**
+
+```ts
+private generateDefaultName(): string
 ```
 
 ### addChildren (method)
@@ -113,6 +139,17 @@ public onRemoved()
 
 ### dispose (method)
 
+Idempotent: a second call is a no-op. Without this guard, every component's own `dispose()` -
+several of which (e.g. `AmmoRaycastVehicleComponent`) free multiple native handles with no
+defensive try/catch of their own, unlike the single-handle case `AmmoBodyComponent.dispose()`
+already guards - would run a second time and throw trying to free an already-freed native
+handle. This is reachable from ordinary (non-buggy) call patterns, not just a caller mistake:
+`Gg3dWorld.removeEntity(entity, true)` calls `entity.dispose()` unconditionally whenever
+`dispose` is `true`, regardless of whether `entity.world` was already falsy (i.e. regardless of
+whether this is actually the first time this entity is being removed) - so anything that can
+end up calling `removeEntity(sameEntity, true)` twice (e.g. a physics trigger's own overlap
+bookkeeping reacting a second time to a body that already left) hits exactly this path.
+
 **Signature**
 
 ```ts
@@ -150,6 +187,12 @@ _world: GgWorld<D, R, TypeDoc, GgWorldSceneTypeRepo<D, R, TypeDoc>> | null
 ```
 
 ### \_name (property)
+
+Falls back to an auto-generated default (see {@link entityTypeName} and
+{@link useDefaultNameMiddleware}) until explicitly assigned. Must be unique within whichever
+`GgWorld` this entity is (or becomes) a member of - the `name` setter validates this itself
+once the entity is spawned, and `GgWorld.addEntity` validates it at spawn time otherwise; both
+throw on a collision.
 
 **Signature**
 

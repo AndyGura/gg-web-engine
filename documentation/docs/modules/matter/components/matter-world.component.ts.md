@@ -1,6 +1,6 @@
 ---
 title: matter/components/matter-world.component.ts
-nav_order: 137
+nav_order: 149
 parent: Modules
 ---
 
@@ -124,6 +124,27 @@ simulate(delta: number): void
 
 ### raycast (method)
 
+matter-js has no native raycast query. Built on a true parametric ray-vs-polygon intersection
+(`segmentIntersection`/`bodyPolygons`), not `Matter.Query.ray` - that helper is only a thin
+wrapper over `Query.collides` (a full-geometry SAT test of a synthetic, very thin rectangle body
+against candidates), which reports an approximate overlap contact point, not a true "where does
+the ray segment first cross this body's boundary" point; verified via this adapter's own
+regression suite (`MatterWorldComponent.spec.ts`'s `Raycast` block expects a precise hit point at
+a known box edge) that the SAT-approximated version produces a visibly wrong point.
+
+`Query.collides`/`Collision.collides` test raw geometry only and know nothing about
+`collisionFilter` (the same limitation `MatterCharacterControllerComponent.collectObstacles`'s
+own doc describes) - candidates are pre-filtered here via `Detector.canCollide` itself, called
+directly against a synthetic filter built from `options.collisionFilterGroups`/
+`collisionFilterMask`. Sensor bodies (triggers) are excluded from candidates entirely, mirroring
+`collectObstacles`'s own exclusion - a trigger never physically blocks anything, so it shouldn't
+register as a raycast hit either.
+
+`hitNormal` is derived from whichever polygon edge the closest intersection landed on (rotated
+90°, sign chosen to point back towards `options.from`) - not from a matter-js collision object at
+all, sidestepping the sign-convention pitfall `handleCollisionStart`'s own doc describes for
+`pair.collision.normal`.
+
 **Signature**
 
 ```ts
@@ -175,7 +196,7 @@ readonly removed$: any
 **Signature**
 
 ```ts
-readonly children: (MatterRigidBodyComponent | MatterTriggerComponent)[]
+readonly children: MatterWorldChild[]
 ```
 
 ### handleIdEntityMap (property)
@@ -183,12 +204,14 @@ readonly children: (MatterRigidBodyComponent | MatterTriggerComponent)[]
 Mirrors the rapier packages' `handleIdEntityMap` pattern: `Body.id` (matter-js's own
 globally-unique numeric id, assigned once per body via `Body.nextId` and stable for its whole
 lifetime) to component, kept in sync alongside `children` so `findRigidBody` - called once per
-collision pair, per step - is an O(1) lookup instead of an O(n) `Array.find` scan.
+collision pair, per step - is an O(1) lookup instead of an O(n) `Array.find` scan. Also used by
+`MatterCharacterControllerComponent.pushDynamicBodies` to resolve a native body it just bumped
+into back to its owning component.
 
 **Signature**
 
 ```ts
-readonly handleIdEntityMap: Map<number, MatterRigidBodyComponent>
+readonly handleIdEntityMap: Map<number, MatterWorldChild>
 ```
 
 ### mainCollisionGroup (property)

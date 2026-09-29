@@ -677,7 +677,10 @@ call, so more than one consumer draining it independently (this trigger, another
 components correctly via <code>Collider.parent()</code>, and pushes matching events to whichever
 component(s) care.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">public notifyOverlap(otherBody: Rapier3dRigidBodyComponent, started: boolean): void
+<pre><code class="language-ts">public notifyOverlap(
+    otherBody: Rapier3dRigidBodyComponent | Rapier3dCharacterControllerComponent,
+    started: boolean,
+  ): void
 </code></pre>
 <h3 id="checkoverlaps-method">checkOverlaps (method)</h3>
 <p><strong>Signature</strong></p>
@@ -700,7 +703,7 @@ subjects have no other owner to complete them.</p>
 </code></pre>
 <h3 id="overlaps-property">overlaps (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly overlaps: Set&lt;Rapier3dRigidBodyComponent&gt;
+<pre><code class="language-ts">readonly overlaps: Set&lt;Rapier3dRigidBodyComponent | Rapier3dCharacterControllerComponent&gt;
 </code></pre>
 <h3 id="onenter-property">onEnter$ (property)</h3>
 <p><strong>Signature</strong></p>

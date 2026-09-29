@@ -1,6 +1,6 @@
 ---
 title: core/3d/loader.ts
-nav_order: 72
+nav_order: 82
 parent: Modules
 ---
 
@@ -14,6 +14,7 @@ parent: Modules
   - [Gg3dLoader (class)](#gg3dloader-class)
     - [loadGgGlbFiles (method)](#loadggglbfiles-method)
     - [loadGgGlbResources (method)](#loadggglbresources-method)
+    - [loadModel (method)](#loadmodel-method)
     - [loadGgGlb (method)](#loadggglb-method)
     - [filesCache (property)](#filescache-property)
     - [loadResultCache (property)](#loadresultcache-property)
@@ -62,7 +63,26 @@ public async loadGgGlbResources(
   ): Promise<LoadResourcesResult<TypeDoc>>
 ```
 
+### loadModel (method)
+
+Loads a plain `.glb` (no `.meta` pair - see `loadGgGlb`) via `visualScene.loader.loadFromGlb`,
+for a visual-only asset that has no physics representation of its own (a character model
+driven by a separately-created `CharacterController3dEntity`'s capsule, a decorative prop, ...).
+`undefined`/`null` if there's no visual scene to load against.
+
+**Signature**
+
+```ts
+public async loadModel(path: string, options?: LoadGlbOptions): Promise<TypeDoc['vTypeDoc']['displayObject'] | null>
+```
+
 ### loadGgGlb (method)
+
+Load a GG GLB+meta pair into ready-to-add `Entity3d`s (one per rigid body the `.meta`
+declares, plus one for any body-less leftover geometry), recursively loading any prop/scene
+dummies too when `options.loadProps` is on. Every entity's `name` is scoped under
+`options.nameScope` (see `LoadOptions.nameScope` - a process-unique scope by default), so
+loading the same file repeatedly never produces colliding names.
 
 **Signature**
 
@@ -130,6 +150,20 @@ export interface Glb3DSettings {
    * Path where to find prop scenes, if different from `path`'s own directory
    */
   propsPath?: string
+
+  /**
+   * Scope for the names of every entity the GLB produces, see `LoadOptions.nameScope`. Defaults to
+   * this `"Glb"` entity's own resolved `name` (`name`, below) - which `LevelLoader.loadLevel`
+   * guarantees is unique in the world and deterministic per level document - so two `"Glb"`
+   * entries pointing at the same file never collide. `null` keeps the raw native object names.
+   */
+  nameScope?: string | null
+
+  /**
+   * The entity's own resolved name - filled in by `LevelLoader.createEntity`/`loadLevel` (explicit
+   * `EntityJson.name`, else the level-derived fallback), not meant to be set in `config`
+   */
+  name?: string
 }
 ```
 
@@ -152,6 +186,23 @@ export type LoadOptions = {
   loadProps: boolean
   // path where to find prop scenes
   propsPath?: string
+  /**
+   * Scope every produced entity's `name` under, so that the same file can be loaded any number of
+   * times into one world without the (Blender-authored, hence identical on every load) object
+   * names colliding - `GgWorld` enforces world-wide name uniqueness and `addEntity` rejects a
+   * collision outright. Each entity is named `` `${nameScope}__${objectName}` `` (`objectName`
+   * being the body's, else the display object's, own native name - falling back to the entity's
+   * index in `entities` when neither has one), and every prop/scene dummy loaded via `loadProps`
+   * recurses under `` `${nameScope}__${dummy.name}` `` - deterministic purely from `nameScope` and
+   * the files' own content, so two peers loading the same asset under the same scope agree on
+   * every name.
+   * - a `string`: that scope, e.g. the `"Glb"` level entity class passes its own entity name;
+   * - omitted/`undefined` (the default): a fresh process-unique scope (`` `glb_${n}` ``, `n` a
+   *   per-process counter) - always collision-free, but not deterministic across peers/reloads;
+   * - `null`: no scoping at all - entities keep their raw native object names. Opt in to this
+   *   only to look entities up by their Blender names, and only when the file is loaded once.
+   */
+  nameScope?: string | null
 }
 ```
 

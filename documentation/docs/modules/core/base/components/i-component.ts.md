@@ -1,6 +1,6 @@
 ---
 title: core/base/components/i-component.ts
-nav_order: 88
+nav_order: 98
 parent: Modules
 ---
 

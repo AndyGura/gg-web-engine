@@ -1,6 +1,6 @@
 ---
 title: core/2d/models/shapes.ts
-nav_order: 34
+nav_order: 41
 parent: Modules
 ---
 
@@ -32,7 +32,11 @@ export type BodyShape2DDescriptor = { shape: Shape2DDescriptor; body: Partial<Bo
 
 ```ts
 export type Shape2DDescriptor = { collisionMargin?: number } & (
-  | { shape: 'SQUARE'; dimensions: Point2 }
+  | { shape: 'BOX'; dimensions: Point2 }
   | { shape: 'CIRCLE'; radius: number }
+  | { shape: 'CAPSULE'; radius: number; centersDistance: number }
+  | { shape: 'CONVEX_HULL'; vertices: Point2[] }
+  | { shape: 'POLYGON'; vertices: Point2[] }
+  | { shape: 'COMPOUND'; children: { position?: Point2; rotation?: number; shape: Shape2DDescriptor }[] }
 )
 ```

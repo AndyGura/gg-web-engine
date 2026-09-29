@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/map-graph-3d.entity.ts
-nav_order: 62
+nav_order: 72
 parent: Modules
 ---
 
@@ -21,6 +21,7 @@ parent: Modules
     - [onSpawned (method)](#onspawned-method)
     - [onRemoved (method)](#onremoved-method)
     - [loadChunk (method)](#loadchunk-method)
+    - [attachToChunk (method)](#attachtochunk-method)
     - [disposeChunk (method)](#disposechunk-method)
     - [tickOrder (property)](#tickorder-property)
     - [loaderCursor$ (property)](#loadercursor-property)
@@ -129,6 +130,21 @@ onRemoved()
 
 ```ts
 protected async loadChunk(node: MapGraphNodeType): Promise<[Entity3d<TypeDoc>[], LoadResultWithProps<TypeDoc>]>
+```
+
+### attachToChunk (method)
+
+Attaches already-constructed entities to an already-loaded chunk's own lifecycle: added as
+children now (same as the chunk's own GLB-loaded entities), and automatically removed/disposed
+the next time that chunk unloads. For content spawned in reaction to `chunkLoaded$` that isn't
+itself part of the chunk's GLB (e.g. traffic placed per-chunk by app code) - without this, such
+content has no lifecycle tied to the chunk at all, and leaks (and, if it reuses names on a later
+reload while the leaked copy is still around, collides with them) once the chunk unloads.
+
+**Signature**
+
+```ts
+public attachToChunk(node: MapGraphNodeType, entities: (IEntity & IPositionable3d)[]): void
 ```
 
 ### disposeChunk (method)

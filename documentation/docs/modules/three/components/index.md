@@ -5,6 +5,7 @@ has_children: true
 
 <h2 class="text-delta">Directory table of contents</h2>
 
+- [three/components/three-animated-display-object.component.ts](/gg-web-engine/modules/three/components/three-animated-display-object.component.ts)
 - [three/components/three-camera.component.ts](/gg-web-engine/modules/three/components/three-camera.component.ts)
 - [three/components/three-composer-renderer.component.ts](/gg-web-engine/modules/three/components/three-composer-renderer.component.ts)
 - [three/components/three-display-object.component.ts](/gg-web-engine/modules/three/components/three-display-object.component.ts)

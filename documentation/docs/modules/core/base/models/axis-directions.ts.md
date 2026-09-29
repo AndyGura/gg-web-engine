@@ -1,6 +1,6 @@
 ---
 title: core/base/models/axis-directions.ts
-nav_order: 121
+nav_order: 132
 parent: Modules
 ---
 

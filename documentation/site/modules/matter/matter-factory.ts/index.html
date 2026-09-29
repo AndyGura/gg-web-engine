@@ -536,6 +536,27 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#createcharactercontroller-method" class="md-nav__link">
+    createCharacterController (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#createshapeparts-method" class="md-nav__link">
+    createShapeParts (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#createshapebody-method" class="md-nav__link">
+    createShapeBody (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#transformoptions-method" class="md-nav__link">
     transformOptions (method)
   </a>
@@ -579,6 +600,9 @@
 <li><a href="#matterfactory-class">MatterFactory (class)</a><ul>
 <li><a href="#createrigidbody-method">createRigidBody (method)</a></li>
 <li><a href="#createtrigger-method">createTrigger (method)</a></li>
+<li><a href="#createcharactercontroller-method">createCharacterController (method)</a></li>
+<li><a href="#createshapeparts-method">createShapeParts (method)</a></li>
+<li><a href="#createshapebody-method">createShapeBody (method)</a></li>
 <li><a href="#transformoptions-method">transformOptions (method)</a></li>
 </ul>
 </li>
@@ -610,6 +634,24 @@
       rotation?: number;
     },
   ): MatterTriggerComponent
+</code></pre>
+<h3 id="createcharactercontroller-method">createCharacterController (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">createCharacterController(
+    options: CharacterController2dOptions,
+    transform?: {
+      position?: Point2;
+      rotation?: number;
+    },
+  ): MatterCharacterControllerComponent
+</code></pre>
+<h3 id="createshapeparts-method">createShapeParts (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private createShapeParts(shape: Shape2DDescriptor, options: IChamferableBodyDefinition): Body[]
+</code></pre>
+<h3 id="createshapebody-method">createShapeBody (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private createShapeBody(shape: Shape2DDescriptor, options: IChamferableBodyDefinition): Body
 </code></pre>
 <h3 id="transformoptions-method">transformOptions (method)</h3>
 <p>matter-js's own body model only has <code>isStatic</code> - no distinct kinematic body type (position-

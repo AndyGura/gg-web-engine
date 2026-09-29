@@ -1,6 +1,6 @@
 ---
 title: rapier2d/components/rapier-2d-trigger.component.ts
-nav_order: 149
+nav_order: 164
 parent: Modules
 ---
 
@@ -98,7 +98,7 @@ readonly debugBodySettings: DebugBody2DSettings
 **Signature**
 
 ```ts
-readonly overlaps: Set<Rapier2dRigidBodyComponent>
+readonly overlaps: Set<Rapier2dRigidBodyComponent | Rapier2dCharacterControllerComponent>
 ```
 
 ### onEnter$ (property)

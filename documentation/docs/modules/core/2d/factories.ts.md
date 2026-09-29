@@ -1,6 +1,6 @@
 ---
 title: core/2d/factories.ts
-nav_order: 27
+nav_order: 33
 parent: Modules
 ---
 
@@ -16,8 +16,11 @@ parent: Modules
   - [IDisplayObject2dComponentFactory (class)](#idisplayobject2dcomponentfactory-class)
     - [createPrimitive (method)](#createprimitive-method)
     - [randomColor (method)](#randomcolor-method)
-    - [createSquare (method)](#createsquare-method)
+    - [createBox (method)](#createbox-method)
     - [createCircle (method)](#createcircle-method)
+    - [createCapsule (method)](#createcapsule-method)
+    - [createConvexHull (method)](#createconvexhull-method)
+    - [createPolygon (method)](#createpolygon-method)
   - [IPhysicsBody2dComponentFactory (interface)](#iphysicsbody2dcomponentfactory-interface)
 
 ---
@@ -71,12 +74,12 @@ abstract createPrimitive(
 randomColor(): number
 ```
 
-### createSquare (method)
+### createBox (method)
 
 **Signature**
 
 ```ts
-createSquare(dimensions: Point2, material: DisplayObject2dOpts<VTypeDoc['texture']> = {}): VTypeDoc['displayObject']
+createBox(dimensions: Point2, material: DisplayObject2dOpts<VTypeDoc['texture']> = {}): VTypeDoc['displayObject']
 ```
 
 ### createCircle (method)
@@ -85,6 +88,40 @@ createSquare(dimensions: Point2, material: DisplayObject2dOpts<VTypeDoc['texture
 
 ```ts
 createCircle(radius: number, material: DisplayObject2dOpts<VTypeDoc['texture']> = {}): VTypeDoc['displayObject']
+```
+
+### createCapsule (method)
+
+**Signature**
+
+```ts
+createCapsule(
+    radius: number,
+    centersDistance: number,
+    material: DisplayObject2dOpts<VTypeDoc['texture']> = {},
+  ): VTypeDoc['displayObject']
+```
+
+### createConvexHull (method)
+
+**Signature**
+
+```ts
+createConvexHull(
+    vertices: Point2[],
+    material: DisplayObject2dOpts<VTypeDoc['texture']> = {},
+  ): VTypeDoc['displayObject']
+```
+
+### createPolygon (method)
+
+**Signature**
+
+```ts
+createPolygon(
+    vertices: Point2[],
+    material: DisplayObject2dOpts<VTypeDoc['texture']> = {},
+  ): VTypeDoc['displayObject']
 ```
 
 ## IPhysicsBody2dComponentFactory (interface)
@@ -108,5 +145,13 @@ export interface IPhysicsBody2dComponentFactory<PTypeDoc extends PhysicsTypeDocR
       rotation?: number
     }
   ): PTypeDoc['trigger']
+
+  createCharacterController(
+    options: CharacterController2dOptions,
+    transform?: {
+      position?: Point2
+      rotation?: number
+    }
+  ): PTypeDoc['characterController']
 }
 ```

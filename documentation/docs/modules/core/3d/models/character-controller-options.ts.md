@@ -1,6 +1,6 @@
 ---
 title: core/3d/models/character-controller-options.ts
-nav_order: 75
+nav_order: 85
 parent: Modules
 ---
 

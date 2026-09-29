@@ -1,6 +1,6 @@
 ---
 title: pixi/components/pixi-display-object.component.ts
-nav_order: 141
+nav_order: 155
 parent: Modules
 ---
 
@@ -20,6 +20,7 @@ parent: Modules
     - [removeFromWorld (method)](#removefromworld-method)
     - [dispose (method)](#dispose-method)
     - [entity (property)](#entity-property)
+    - [materialOptions (property)](#materialoptions-property)
     - [name (property)](#name-property)
 
 ---
@@ -32,7 +33,7 @@ parent: Modules
 
 ```ts
 export declare class PixiDisplayObjectComponent {
-  constructor(public nativeSprite: Container)
+  constructor(public nativeSprite: Container, materialOptions?: DisplayObject2dOpts<Texture>)
 }
 ```
 
@@ -98,6 +99,20 @@ dispose(): void
 
 ```ts
 entity: IEntity<any, any, GgWorldTypeDocRepo<any, any>> | null
+```
+
+### materialOptions (property)
+
+The options this display object was actually built with, when constructed via
+`PixiFactory.createPrimitive` - see `IMaterialReadable2dComponent`'s own doc. Left unset for a
+sprite built any other way (e.g. `PixiFactory.createAnimatedSprite`), which is why this is
+`Partial` rather than a hard implementation of that interface - check with
+`isMaterialReadable2d` before relying on it.
+
+**Signature**
+
+```ts
+readonly materialOptions: DisplayObject2dOpts<Texture<TextureSource<any>>> | undefined
 ```
 
 ### name (property)

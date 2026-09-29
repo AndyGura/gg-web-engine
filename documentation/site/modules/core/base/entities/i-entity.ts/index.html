@@ -522,6 +522,20 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#usedefaultnamemiddleware-static-method" class="md-nav__link">
+    useDefaultNameMiddleware (static method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#generatedefaultname-method" class="md-nav__link">
+    generateDefaultName (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#addchildren-method" class="md-nav__link">
     addChildren (method)
   </a>
@@ -675,6 +689,8 @@
 <ul>
 <li><a href="#utils">utils</a></li>
 <li><a href="#ientity-class">IEntity (class)</a><ul>
+<li><a href="#usedefaultnamemiddleware-static-method">useDefaultNameMiddleware (static method)</a></li>
+<li><a href="#generatedefaultname-method">generateDefaultName (method)</a></li>
 <li><a href="#addchildren-method">addChildren (method)</a></li>
 <li><a href="#removechildren-method">removeChildren (method)</a></li>
 <li><a href="#getchildentitybyname-method">getChildEntityByName (method)</a></li>
@@ -700,6 +716,21 @@
 <h2 id="ientity-class">IEntity (class)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export declare class IEntity&lt;D, R, TypeDoc&gt;
+</code></pre>
+<h3 id="usedefaultnamemiddleware-static-method">useDefaultNameMiddleware (static method)</h3>
+<p>Register a transform run on every subsequently-constructed entity's auto-generated default
+name (see {@link entityTypeName}) at construction time, before anything else can touch it.
+Multiple registrations chain in call order. This is the one seam a package with its own notion
+of identity (e.g. a future network layer wanting to qualify every otherwise-unnamed entity with
+a peer id) needs: app code keeps calling ordinary core factories/constructors with no awareness
+such a layer exists, and every entity that isn't explicitly named by that app code or by
+<code>LevelLoader</code> picks up the transform automatically. Core itself never calls this.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public static useDefaultNameMiddleware(middleware: (name: string) =&gt; string): void
+</code></pre>
+<h3 id="generatedefaultname-method">generateDefaultName (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private generateDefaultName(): string
 </code></pre>
 <h3 id="addchildren-method">addChildren (method)</h3>
 <p><strong>Signature</strong></p>
@@ -738,6 +769,16 @@ pull a specific entity back out of a <code>GroupEntity</code> a <code>LevelLoade
 <pre><code class="language-ts">public onRemoved()
 </code></pre>
 <h3 id="dispose-method">dispose (method)</h3>
+<p>Idempotent: a second call is a no-op. Without this guard, every component's own <code>dispose()</code> -
+several of which (e.g. <code>AmmoRaycastVehicleComponent</code>) free multiple native handles with no
+defensive try/catch of their own, unlike the single-handle case <code>AmmoBodyComponent.dispose()</code>
+already guards - would run a second time and throw trying to free an already-freed native
+handle. This is reachable from ordinary (non-buggy) call patterns, not just a caller mistake:
+<code>Gg3dWorld.removeEntity(entity, true)</code> calls <code>entity.dispose()</code> unconditionally whenever
+<code>dispose</code> is <code>true</code>, regardless of whether <code>entity.world</code> was already falsy (i.e. regardless of
+whether this is actually the first time this entity is being removed) - so anything that can
+end up calling <code>removeEntity(sameEntity, true)</code> twice (e.g. a physics trigger's own overlap
+bookkeeping reacting a second time to a body that already left) hits exactly this path.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public dispose(): void
 </code></pre>
@@ -757,6 +798,11 @@ pull a specific entity back out of a <code>GroupEntity</code> a <code>LevelLoade
 <pre><code class="language-ts">_world: GgWorld&lt;D, R, TypeDoc, GgWorldSceneTypeRepo&lt;D, R, TypeDoc&gt;&gt; | null
 </code></pre>
 <h3 id="_name-property">_name (property)</h3>
+<p>Falls back to an auto-generated default (see {@link entityTypeName} and
+{@link useDefaultNameMiddleware}) until explicitly assigned. Must be unique within whichever
+<code>GgWorld</code> this entity is (or becomes) a member of - the <code>name</code> setter validates this itself
+once the entity is spawned, and <code>GgWorld.addEntity</code> validates it at spawn time otherwise; both
+throw on a collision.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">_name: string
 </code></pre>

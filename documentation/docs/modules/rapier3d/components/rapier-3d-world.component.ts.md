@@ -1,6 +1,6 @@
 ---
 title: rapier3d/components/rapier-3d-world.component.ts
-nav_order: 158
+nav_order: 173
 parent: Modules
 ---
 
@@ -26,6 +26,7 @@ parent: Modules
     - [mainCollisionGroup (property)](#maincollisiongroup-property)
     - [\_nativeWorld (property)](#_nativeworld-property)
     - [handleIdEntityMap (property)](#handleidentitymap-property)
+    - [raycastVehicles (property)](#raycastvehicles-property)
     - [lockedCollisionGroups (property)](#lockedcollisiongroups-property)
 
 ---
@@ -71,6 +72,12 @@ as a real rigid-body collision.
 `handleIdEntityMap` is keyed by rigid-body handle (see `addToWorld`), so each handle is resolved
 via `World.getCollider(handle)` (returns `null` for a since-removed collider, not a throw - safe
 to just skip) then `Collider.parent()` to reach the owning `RigidBody` before the map lookup.
+
+`handleIdEntityMap` also holds `Rapier3dCharacterControllerComponent`s (see its own doc), so
+`comp1`/`comp2` below can each be a character controller as well as a rigid body/trigger - the
+sensor branch handles that directly (`notifyOverlap` accepts either), while the real-contact
+branch narrows to `Rapier3dRigidBodyComponent` first, since a character controller has no
+collision-event API to call into.
 
 **Signature**
 
@@ -126,6 +133,11 @@ deregisterCollisionGroup(group: CollisionGroup): void
 ```
 
 ### raycast (method)
+
+`castRay`'s own default (no `filterFlags`) treats a sensor collider as a solid obstacle, exactly
+like any real one - `QueryFilterFlags.EXCLUDE_SENSORS` is required so a raycast never reports a
+hit against a `Trigger`'s own collider, matching what "trigger" means everywhere else in this
+engine (a sensor with no collision response, see `ITrigger3dComponent`).
 
 **Signature**
 
@@ -183,10 +195,36 @@ _nativeWorld: World | null
 
 ### handleIdEntityMap (property)
 
+Keyed by rigid-body handle. Includes `Rapier3dCharacterControllerComponent`s alongside ordinary
+`Rapier3dRigidBodyComponent`s (triggers included, since `Rapier3dTriggerComponent extends
+Rapier3dRigidBodyComponent`) - a character controller's kinematic body still gets a real Rapier
+rigid-body handle on `addToWorld` (see that class), so it registers here the same way, letting
+`dispatchCollisionEvents` resolve sensor-overlap pairs against it (so a `Trigger` fires for a
+player walking through it, not just for ordinary rigid bodies/vehicle chassis) and letting
+`raycast()` resolve a hit against it too. `dispatchCollisionEvents` still narrows to
+`Rapier3dRigidBodyComponent` before treating a pair as a real (non-sensor) contact, since a
+character controller has no `notifyCollisionStart`/`notifyCollisionEnd` to call - its physical
+response comes from its own sweep-based `move()`, not Rapier's contact solver.
+
 **Signature**
 
 ```ts
-readonly handleIdEntityMap: Map<number, Rapier3dRigidBodyComponent>
+readonly handleIdEntityMap: Map<number, Rapier3dWorldChild>
+```
+
+### raycastVehicles (property)
+
+Every `Rapier3dRaycastVehicleComponent` currently in this world - unlike an ordinary rigid body
+or `Rapier3dCharacterControllerComponent`, a vehicle needs an explicit per-tick
+`updateVehicle()` call (see that class's own doc for why: nothing steps Rapier's vehicle
+controller automatically as part of `World.step()`). `simulate()` drives every registered
+vehicle from this set immediately before stepping the world, so the forces it just wrote into
+the chassis's velocity get integrated by that same step.
+
+**Signature**
+
+```ts
+readonly raycastVehicles: Set<Rapier3dRaycastVehicleComponent>
 ```
 
 ### lockedCollisionGroups (property)

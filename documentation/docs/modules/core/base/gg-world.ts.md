@@ -1,6 +1,6 @@
 ---
 title: core/base/gg-world.ts
-nav_order: 105
+nav_order: 115
 parent: Modules
 ---
 
@@ -21,7 +21,11 @@ parent: Modules
     - [dispose (method)](#dispose-method)
     - [addPrimitiveRigidBody (method)](#addprimitiverigidbody-method)
     - [addEntity (method)](#addentity-method)
+    - [assertNameAvailable (method)](#assertnameavailable-method)
+    - [assertSubtreeNamesAvailable (method)](#assertsubtreenamesavailable-method)
+    - [unregisterEntity (method)](#unregisterentity-method)
     - [removeEntity (method)](#removeentity-method)
+    - [renameEntity (method)](#renameentity-method)
     - [getEntityByName (method)](#getentitybyname-method)
     - [maybeBindAudioListener (method)](#maybebindaudiolistener-method)
     - [onGgStaticInitialized (method)](#onggstaticinitialized-method)
@@ -145,10 +149,48 @@ abstract addPrimitiveRigidBody(
 
 ### addEntity (method)
 
+Add `entity` (and, cascading through `IEntity.onSpawned`, every entity nested under it) to
+this world. Atomic: either the whole subtree ends up spawned, or nothing changes. Every name in
+the subtree is validated up front, before any component/child is touched, so a collision
+(with an entity already in the world, or between two entities within the subtree itself)
+throws without the entity's bodies or display objects ever reaching the native scenes - and
+should spawning still throw partway for any other reason, whatever was already registered is
+rolled back before the error propagates.
+
 **Signature**
 
 ```ts
 public addEntity(entity: IEntity): void
+```
+
+### assertNameAvailable (method)
+
+Throw if `name` can't be given to `entity` in this world, i.e. another entity already holds it.
+
+**Signature**
+
+```ts
+private assertNameAvailable(entity: IEntity, name: string): void
+```
+
+### assertSubtreeNamesAvailable (method)
+
+Throw if `root` or any entity nested under it (at any depth) carries a name that is already in
+use in this world or that another entity of the same subtree also carries - checked before any
+of them is registered, so a failing `addEntity` never leaves a partially-spawned subtree behind.
+
+**Signature**
+
+```ts
+private assertSubtreeNamesAvailable(root: IEntity): void
+```
+
+### unregisterEntity (method)
+
+**Signature**
+
+```ts
+private unregisterEntity(entity: IEntity): void
 ```
 
 ### removeEntity (method)
@@ -159,12 +201,26 @@ public addEntity(entity: IEntity): void
 public removeEntity(entity: IEntity, dispose = false): void
 ```
 
+### renameEntity (method)
+
+Update this world's name index to reflect `entity` being renamed to `newName` - called by
+`IEntity`'s own `name` setter, not meant to be called directly. Validates uniqueness the same
+way `addEntity` does.
+
+**Signature**
+
+```ts
+public renameEntity(entity: IEntity, newName: string): void
+```
+
 ### getEntityByName (method)
 
-Find an entity anywhere in the world by name. `children` is a flat list of every entity ever
-added via `addEntity` (nested entities included - `addChildren`/`onSpawned` cascade into it
-too), so this is a plain linear scan, not a tree walk; to search inside one particular
-entity's own subtree instead, use `IEntity.getChildEntityByName`.
+Find an entity anywhere in the world by name - an O(1) lookup backed by an index kept in sync
+by `addEntity`/`removeEntity`/`renameEntity`, covering every entity ever added via `addEntity`
+(nested entities included - `addChildren`/`onSpawned` cascade into it too); to search inside
+one particular entity's own subtree instead, use `IEntity.getChildEntityByName`. Names are
+enforced unique world-wide - `addEntity` and the `name` setter both throw on a collision - so
+there is never more than one match to choose between.
 
 **Signature**
 

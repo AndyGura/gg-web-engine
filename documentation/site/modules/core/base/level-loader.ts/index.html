@@ -535,6 +535,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#entityserializer-type-alias" class="md-nav__link">
+    EntitySerializer (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#leveljson-interface" class="md-nav__link">
     LevelJson (interface)
   </a>
@@ -559,6 +566,48 @@
           <li class="md-nav__item">
   <a href="#registerblueprintnode-method" class="md-nav__link">
     registerBlueprintNode (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#registerserializer-method" class="md-nav__link">
+    registerSerializer (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#registerliveserializer-method" class="md-nav__link">
+    registerLiveSerializer (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#createentity-method" class="md-nav__link">
+    createEntity (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#serializeentity-method" class="md-nav__link">
+    serializeEntity (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#buildentityjson-method" class="md-nav__link">
+    buildEntityJson (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#serializelevel-method" class="md-nav__link">
+    serializeLevel (method)
   </a>
   
 </li>
@@ -619,8 +668,29 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#serializers-property" class="md-nav__link">
+    serializers (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#liveserializers-property" class="md-nav__link">
+    liveSerializers (property)
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#liveentityserializer-type-alias" class="md-nav__link">
+    LiveEntitySerializer (type alias)
+  </a>
   
 </li>
         
@@ -656,10 +726,17 @@
 <li><a href="#entityeventbinding-type-alias">EntityEventBinding (type alias)</a></li>
 <li><a href="#entitygenerator-type-alias">EntityGenerator (type alias)</a></li>
 <li><a href="#entityjson-interface">EntityJson (interface)</a></li>
+<li><a href="#entityserializer-type-alias">EntitySerializer (type alias)</a></li>
 <li><a href="#leveljson-interface">LevelJson (interface)</a></li>
 <li><a href="#levelloader-class">LevelLoader (class)</a><ul>
 <li><a href="#registerclass-method">registerClass (method)</a></li>
 <li><a href="#registerblueprintnode-method">registerBlueprintNode (method)</a></li>
+<li><a href="#registerserializer-method">registerSerializer (method)</a></li>
+<li><a href="#registerliveserializer-method">registerLiveSerializer (method)</a></li>
+<li><a href="#createentity-method">createEntity (method)</a></li>
+<li><a href="#serializeentity-method">serializeEntity (method)</a></li>
+<li><a href="#buildentityjson-method">buildEntityJson (method)</a></li>
+<li><a href="#serializelevel-method">serializeLevel (method)</a></li>
 <li><a href="#loadlevel-method">loadLevel (method)</a></li>
 <li><a href="#bindevent-method">bindEvent (method)</a></li>
 <li><a href="#resolveeventblueprint-method">resolveEventBlueprint (method)</a></li>
@@ -668,8 +745,11 @@
 <li><a href="#generators-property">generators (property)</a></li>
 <li><a href="#blueprintnodes-property">blueprintNodes (property)</a></li>
 <li><a href="#blueprintnodedefaultinputs-property">blueprintNodeDefaultInputs (property)</a></li>
+<li><a href="#serializers-property">serializers (property)</a></li>
+<li><a href="#liveserializers-property">liveSerializers (property)</a></li>
 </ul>
 </li>
+<li><a href="#liveentityserializer-type-alias">LiveEntitySerializer (type alias)</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
@@ -744,6 +824,9 @@ for 3D) of whichever <code>LevelLoader</code> subclass parses this JSON.</p>
    * (overriding whatever default the generator gave it), so it can be found afterwards with
    * `GgWorld.getEntityByName`/`IEntity.getChildEntityByName`. Moot if the generator doesn't return
    * an `IEntity` - that result is discarded (with a console warning) before naming is applied.
+   * Optional - an entity with no explicit `name` here instead gets one derived from the level's own
+   * `levelName` and this entity's position in `entities`, deterministic across every peer loading
+   * the same document under the same `levelName` - see `LevelLoader.loadLevel`.
    */
   name?: string
 
@@ -763,6 +846,25 @@ for 3D) of whichever <code>LevelLoader</code> subclass parses this JSON.</p>
    */
   events?: Record&lt;string, EntityEventBinding&gt;
 }
+</code></pre>
+<h2 id="entityserializer-type-alias">EntitySerializer (type alias)</h2>
+<p>Customizes how {@link LevelLoader.serializeEntity} turns one entity back into an <code>EntityJson</code>,
+for a class alias whose default serialization - either the entity's own
+{@link ISerializableEntity.serializeSettings} if it implements that, or (if not) an echo of the
+<code>shape</code>/<code>config</code> it was originally built from - isn't enough, in either case with <code>name</code>/
+<code>position</code>/<code>rotation</code> read live off the entity. Registered via
+{@link LevelLoader.registerSerializer}, paired with <code>registerClass</code> on the same <code>classAlias</code>.
+Typically starts from <code>defaultJson</code> and layers extra/overridden fields onto its <code>config</code> (e.g. to
+add something neither the entity class itself nor the spawn-time <code>config</code> capture) rather than
+building an <code>EntityJson</code> from scratch. This is an escape hatch for the <em>rare</em> case that needs to
+override a class's serialization from outside the class - prefer implementing
+{@link ISerializableEntity} directly on the entity class itself when you own that class, so the
+logic lives next to the state it describes instead of split across two files.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type EntitySerializer&lt;D, R, TypeDoc extends GgWorldTypeDocRepo&lt;D, R&gt;&gt; = (
+  entity: IEntity&lt;D, R, TypeDoc&gt;,
+  defaultJson: EntityJson
+) =&gt; EntityJson | undefined
 </code></pre>
 <h2 id="leveljson-interface">LevelJson (interface)</h2>
 <p>A level/scene, serializable as a single JSON document (e.g. to be hosted as a static file and
@@ -803,6 +905,7 @@ returns anything other than an <code>IEntity</code> (including <code>null</code>
 <pre><code class="language-ts">public registerClass&lt;Settings, W = any&gt;(
     classAlias: string,
     generator: EntityGenerator&lt;D, R, TypeDoc, Settings, W&gt;,
+    entityClass?: Function,
   ): void
 </code></pre>
 <h3 id="registerblueprintnode-method">registerBlueprintNode (method)</h3>
@@ -817,12 +920,121 @@ types within a blueprint graph, rather than entity classes within a level).</p>
     defaultInputPin?: string,
   ): void
 </code></pre>
+<h3 id="registerserializer-method">registerSerializer (method)</h3>
+<p>Register a custom {@link EntitySerializer} for a class alias, overriding
+{@link serializeEntity}'s default (spawn-config echo) serialization for entities built under
+that alias. Not required for a class to be serializable at all - any class built via
+<code>createEntity</code>/<code>loadLevel</code> already gets the default behavior for free; this is only for a class
+whose default isn't enough (e.g. it needs to capture runtime-mutated state into <code>config</code>).</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public registerSerializer(classAlias: string, serializer: EntitySerializer&lt;D, R, TypeDoc&gt;): void
+</code></pre>
+<h3 id="registerliveserializer-method">registerLiveSerializer (method)</h3>
+<p>Register a {@link LiveEntitySerializer}, tried (in registration order, before every other
+registered one) by {@link serializeEntity} ahead of the spawn-record echo. Use this instead of
+(or, for a class registered via <code>registerLiveSerializer</code> for its primary shape but wanting the
+echo as a secondary fallback, alongside) {@link registerSerializer} whenever an entity's state
+can be read back off its live physics/visual components well enough to reconstruct an
+equivalent <code>EntityJson</code> without needing to have gone through <code>createEntity</code>/<code>loadLevel</code> at all -
+see that type's own doc for the <code>"Primitive"</code>/<code>"Trigger"</code> reference implementation.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public registerLiveSerializer(serializer: LiveEntitySerializer&lt;D, R, TypeDoc&gt;): void
+</code></pre>
+<h3 id="createentity-method">createEntity (method)</h3>
+<p>Build a single entity from an <code>EntityJson</code>-shaped descriptor, dispatching <code>entityJson.class</code> to
+whichever generator is registered for it (see {@link registerClass}) - the single-entity
+counterpart of {@link loadLevel}, for a runtime spawn that doesn't come from (and shouldn't be
+forced into) a whole level document, e.g. a networked "spawn this entity" message carrying one
+<code>EntityJson</code>. Unlike <code>loadLevel</code>, the returned entity is <strong>not</strong> parented under any group, and
+<code>entity.name</code> is left untouched unless <code>entityJson.name</code> is explicitly given or <code>defaultName</code>
+is passed (no level-scoped/index-derived fallback name of its own, since there's no level or
+index here) - the caller is responsible for both adding it to the world
+(<code>world.addEntity(entity)</code>, safe even if the generator already self-added it - see
+<code>loadLevel</code>'s own note on this) and, if desired, parenting it under something
+(<code>parent.addChildren(entity)</code>).</p>
+<p>Whichever name is resolved (<code>entityJson.name</code>, else <code>defaultName</code>) is also handed to the
+generator as <code>settings.name</code> <em>before</em> the entity is built, so a generator that needs to derive
+something from the entity's final name (e.g. the built-in <code>"Glb"</code> class scoping the names of
+every sub-entity a model expands into under it) can - not just read it back afterwards.</p>
+<p>The entity's <code>class</code>/<code>shape</code>/<code>config</code> are remembered (in a <code>WeakMap</code>, keyed by the entity
+itself) so {@link serializeEntity} can later reconstruct an equivalent <code>EntityJson</code> for it -
+this is what makes an entity built this way (or via <code>loadLevel</code>) serializable at all.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public async createEntity(entityJson: EntityJson, defaultName?: string): Promise&lt;IEntity&lt;D, R, TypeDoc&gt; | undefined&gt;
+</code></pre>
+<h3 id="serializeentity-method">serializeEntity (method)</h3>
+<p>Turn a live entity back into the <code>EntityJson</code>-shaped descriptor that could reproduce it via
+{@link createEntity}/{@link loadLevel} - the inverse of entity construction. Tries three
+mechanisms, in order:</p>
+<ol>
+<li>Every registered {@link LiveEntitySerializer}, in registration order (see
+   {@link registerLiveSerializer}) - these read the entity's own current physics/visual state
+   directly, so they work regardless of how the entity was actually built. This is the
+   mechanism the built-in <code>"Primitive"</code>/<code>"Trigger"</code> classes use, since there's no single entity
+   class those two alone would own (<code>"Primitive"</code> alone covers every shape).</li>
+<li>The entity's own {@link ISerializableEntity.serializeSettings}, if it implements that
+   interface - the class-owned counterpart of (1), for a class (built-in, like <code>"GgCar"</code>, or
+   app-defined) that <em>does</em> have one entity class to own the logic. Its <code>class</code> alias is
+   resolved from the entity's spawn record if it has one (see (3)), or otherwise from the
+   constructor-&gt;alias mapping an optional third {@link registerClass} argument sets up - so this
+   still works for an entity built directly (<code>new SomeEntity(...)</code>), not only through this
+   loader, as long as its class was registered with that third argument.</li>
+<li>Spawn-record echo - works only for an entity that was itself built by this loader
+   (<code>createEntity</code>, and therefore <code>loadLevel</code> too, but not tier (2), which already claims any
+   entity that both has a spawn record <em>and</em> self-serializes): remembers the <code>class</code>/<code>shape</code>/
+   <code>config</code> it was built from and echoes them straight back, with <code>name</code>/<code>position</code>/<code>rotation</code>
+   still read live off the entity (not its spawn-time values). This is the only option left for
+   a class with no live-state equivalent and no self-serialization of its own (a <code>"Sound"</code>'s
+   clip URL, a <code>"MapGraph"</code>'s graph structure).</li>
+</ol>
+<p>An entity matched by none of the three - built some other way with no live/self-serializer
+applicable, or a child an entity class adds to itself (a <code>"Player"</code>'s
+<code>CharacterAnimationController</code>) - has nothing to reconstruct it from; this logs a warning and
+returns <code>undefined</code> rather than guessing. {@link registerSerializer} (layered onto whichever of
+tiers (2)/(3) produced the entity's <code>class</code>/<code>shape</code>/<code>config</code>, if any did) is still available for
+a class that needs to add/override fields from outside the entity class itself.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public serializeEntity(entity: IEntity&lt;D, R, TypeDoc&gt;): EntityJson | undefined
+</code></pre>
+<h3 id="buildentityjson-method">buildEntityJson (method)</h3>
+<p>Assembles an <code>EntityJson</code> from a resolved <code>class</code> alias, optional <code>shape</code>/<code>config</code>, and this
+entity's own live <code>name</code>/<code>position</code>/<code>rotation</code> (the latter two included only if <code>entity</code>
+actually implements <code>IPositionable</code>) - the common tail shared by {@link serializeEntity}'s
+self-serialization and spawn-record-echo tiers.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private buildEntityJson(
+    classAlias: string,
+    entity: IEntity&lt;D, R, TypeDoc&gt;,
+    shape: string | undefined,
+    config: any,
+  ): EntityJson
+</code></pre>
+<h3 id="serializelevel-method">serializeLevel (method)</h3>
+<p>Serialize every top-level child of a loaded level's group entity (as <code>loadLevel</code>/<code>createEntity</code>
+returned it) back into a <code>LevelJson</code>'s <code>entities</code> array - the level-wide counterpart of
+{@link serializeEntity}. A child with no spawn record (e.g. a <code>BlueprintBindingEntity</code>
+<code>loadLevel</code> itself parents under the level for an <code>events</code> binding) is skipped silently rather
+than warned about - unlike a direct <code>serializeEntity</code> call, having this kind of
+internal/non-<code>entities</code>-array child under a level is expected, not a sign of misuse. Only
+<code>entities</code> is reconstructed - <code>blueprints</code>/<code>events</code> bindings aren't, since a live
+<code>BlueprintBindingEntity</code> doesn't expose the <code>BlueprintJson</code>/binding it was built from.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public serializeLevel(level: GroupEntity&lt;D, R, TypeDoc&gt;): LevelJson
+</code></pre>
 <h3 id="loadlevel-method">loadLevel (method)</h3>
 <p>Load a level from an already-parsed JSON document. Every <code>IEntity</code> the level's entities
 produce is parented under - and, on failure, torn down along with - the returned
-{@link GroupEntity}, already added to the world.</p>
+{@link GroupEntity}, already added to the world under <code>levelName</code>.</p>
+<p>Every entity that doesn't specify its own <code>name</code> in <code>levelJson</code> gets one derived as
+<code>`${levelName}__${classAlias}_${indexInEntitiesArray}`</code> instead of the usual
+process-global <code>IEntity</code> auto-generated default - deterministic purely from <code>levelName</code> and
+this document's own content, so two peers loading the same <code>levelJson</code> under the same
+<code>levelName</code> always agree on every entity's name, regardless of load order, timing, or what
+else either peer has spawned. <code>levelName</code> must therefore be both required and unique per
+loaded <em>instance</em> (loading the same level twice - e.g. two copies of one room - needs two
+distinct <code>levelName</code>s, the same way two <code>GroupEntity</code>s can't otherwise be told apart by name).</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">public async loadLevel(levelJson: LevelJson, levelName?: string): Promise&lt;GroupEntity&lt;D, R, TypeDoc&gt;&gt;
+<pre><code class="language-ts">public async loadLevel(levelJson: LevelJson, levelName: string): Promise&lt;GroupEntity&lt;D, R, TypeDoc&gt;&gt;
 </code></pre>
 <h3 id="bindevent-method">bindEvent (method)</h3>
 <p>Resolve <code>eventBinding</code> (see {@link EntityEventBinding}) to a <code>BlueprintJson</code>, instantiate a
@@ -867,7 +1079,7 @@ powers the <code>EntityEventBinding</code> shorthand that skips declaring a <cod
 <p>Fetch a level JSON document hosted at <code>url</code> and load it, so a whole level/scene can be
 shipped and consumed as a single static JSON file.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">public async loadLevelFromUrl(url: string, levelName?: string): Promise&lt;GroupEntity&lt;D, R, TypeDoc&gt;&gt;
+<pre><code class="language-ts">public async loadLevelFromUrl(url: string, levelName: string): Promise&lt;GroupEntity&lt;D, R, TypeDoc&gt;&gt;
 </code></pre>
 <h3 id="generators-property">generators (property)</h3>
 <p>Map of class aliases to generator functions</p>
@@ -884,6 +1096,42 @@ shipped and consumed as a single static JSON file.</p>
 with one - see {@link registerBlueprintNode}.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">blueprintNodeDefaultInputs: Map&lt;string, string&gt;
+</code></pre>
+<h3 id="serializers-property">serializers (property)</h3>
+<p>Map of class aliases to custom serializers - see {@link registerSerializer}.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">serializers: Map&lt;string, EntitySerializer&lt;D, R, TypeDoc&gt;&gt;
+</code></pre>
+<h3 id="liveserializers-property">liveSerializers (property)</h3>
+<p>Live, state-reading serializers, tried in registration order before the spawn-record echo -
+see {@link registerLiveSerializer}.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">liveSerializers: LiveEntitySerializer &lt; D, R, TypeDoc &gt; []
+</code></pre>
+<h2 id="liveentityserializer-type-alias">LiveEntitySerializer (type alias)</h2>
+<p>Reconstructs an <code>EntityJson</code> by reading an entity's own <em>current</em> live state - not an echo of
+whatever it happened to be constructed with - so it works for an entity regardless of how (or by
+what code) it was actually built, and stays accurate no matter how much its state has drifted
+since. Tried, in registration order, by {@link LevelLoader.serializeEntity} first, ahead of an
+entity's own {@link ISerializableEntity.serializeSettings} and the spawn-record echo - see
+{@link LevelLoader.registerLiveSerializer}. Reach for this (registered externally against the
+loader) only for a class like <code>"Primitive"</code> that has no single entity class of its own to
+implement <code>ISerializableEntity</code> on (it can produce a box, a sphere, ... all the same <code>Entity3d</code>);
+prefer <code>ISerializableEntity</code> directly on the entity class for anything that does.</p>
+<p>Must return <code>undefined</code> (not throw) for any entity it doesn't recognize/can't fully reconstruct -
+<code>serializeEntity</code> moves on to the next registered live serializer, then to the spawn-record echo,
+treating <code>undefined</code> as "not my entity" rather than "this entity failed to serialize". The
+built-in <code>"Primitive"</code>/<code>"Trigger"</code> live serializers (registered by <code>Gg2dLevelLoader</code>/
+<code>Gg3dLevelLoader</code>) are the reference implementation: they match on the entity's own concrete
+class (<code>entity.constructor === Entity3d</code>, not <code>instanceof</code>, so a richer subclass like
+<code>Grabbable3dEntity</code> - which needs its own dedicated serializer to round-trip correctly, not yet
+provided - doesn't get silently mistaken for a plain primitive), then read shape (<code>objectBody
+.debugBodySettings.shape</code>), body options (<code>objectBody.bodyOptions</code>), and velocity
+(<code>objectBody.linearVelocity</code>/<code>angularVelocity</code>) straight off the live physics body.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type LiveEntitySerializer&lt;D, R, TypeDoc extends GgWorldTypeDocRepo&lt;D, R&gt;&gt; = (
+  entity: IEntity&lt;D, R, TypeDoc&gt;
+) =&gt; EntityJson | undefined
 </code></pre>
 
 

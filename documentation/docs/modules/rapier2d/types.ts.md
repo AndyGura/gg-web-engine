@@ -1,6 +1,6 @@
 ---
 title: rapier2d/types.ts
-nav_order: 153
+nav_order: 168
 parent: Modules
 ---
 
@@ -37,6 +37,7 @@ export type Rapier2dPhysicsTypeDocRepo = {
   factory: Rapier2dFactory
   rigidBody: Rapier2dRigidBodyComponent
   trigger: Rapier2dTriggerComponent
+  characterController: Rapier2dCharacterControllerComponent
 }
 ```
 

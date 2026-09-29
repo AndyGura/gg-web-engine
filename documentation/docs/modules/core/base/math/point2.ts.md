@@ -1,6 +1,6 @@
 ---
 title: core/base/math/point2.ts
-nav_order: 117
+nav_order: 128
 parent: Modules
 ---
 
@@ -33,6 +33,7 @@ parent: Modules
     - [rotAround (static method)](#rotaround-static-method)
     - [toPolar (static method)](#topolar-static-method)
     - [fromPolar (static method)](#frompolar-static-method)
+    - [hull (static method)](#hull-static-method)
 
 ---
 
@@ -256,4 +257,16 @@ where phi == 0 is faced towards X axis direction
 
 ```ts
 static fromPolar(p: Polar): Point2
+```
+
+### hull (static method)
+
+Computes the convex hull of an arbitrary (possibly unordered, possibly non-convex) set of
+points, using Andrew's monotone chain algorithm. The result is a new array of points, a
+subset of the input, ordered so that they form the hull's outline.
+
+**Signature**
+
+```ts
+static hull(points: Point2[]): Point2[]
 ```

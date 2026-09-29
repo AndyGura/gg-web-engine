@@ -1,6 +1,6 @@
 ---
 title: matter/components/matter-rigid-body.component.ts
-nav_order: 135
+nav_order: 147
 parent: Modules
 ---
 
@@ -37,7 +37,12 @@ parent: Modules
 
 ```ts
 export declare class MatterRigidBodyComponent {
-  constructor(public nativeBody: Body, public readonly shape: Shape2DDescriptor)
+  constructor(
+    public nativeBody: Body,
+    public readonly shape: Shape2DDescriptor,
+    public readonly bodyType: BodyType = 'dynamic',
+    public readonly ccd: boolean = false
+  )
 }
 ```
 

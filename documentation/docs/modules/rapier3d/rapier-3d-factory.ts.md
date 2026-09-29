@@ -1,6 +1,6 @@
 ---
 title: rapier3d/rapier-3d-factory.ts
-nav_order: 160
+nav_order: 175
 parent: Modules
 ---
 
@@ -66,7 +66,7 @@ createTrigger(
 **Signature**
 
 ```ts
-createRaycastVehicle(chassis: Rapier3dRigidBodyComponent): never
+createRaycastVehicle(chassis: Rapier3dRigidBodyComponent): Rapier3dRaycastVehicleComponent
 ```
 
 ### createCharacterController (method)
@@ -99,5 +99,6 @@ public createColliderDescr(descriptor: Shape3DDescriptor): ColliderDesc[]
 public createRigidBodyDescr(
     options: Partial<Body3DOptions>,
     transform?: { position?: Point3; rotation?: Point4 },
+    colliderDescr: ColliderDesc[] = [],
   ): RigidBodyDesc
 ```

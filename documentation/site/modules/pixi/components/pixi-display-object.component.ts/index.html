@@ -578,6 +578,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#materialoptions-property" class="md-nav__link">
+    materialOptions (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#name-property" class="md-nav__link">
     name (property)
   </a>
@@ -627,6 +634,7 @@
 <li><a href="#removefromworld-method">removeFromWorld (method)</a></li>
 <li><a href="#dispose-method">dispose (method)</a></li>
 <li><a href="#entity-property">entity (property)</a></li>
+<li><a href="#materialoptions-property">materialOptions (property)</a></li>
 <li><a href="#name-property">name (property)</a></li>
 </ul>
 </li>
@@ -636,7 +644,7 @@
 <h2 id="pixidisplayobjectcomponent-class">PixiDisplayObjectComponent (class)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export declare class PixiDisplayObjectComponent {
-  constructor(public nativeSprite: Container)
+  constructor(public nativeSprite: Container, materialOptions?: DisplayObject2dOpts&lt;Texture&gt;)
 }
 </code></pre>
 <h3 id="isempty-method">isEmpty (method)</h3>
@@ -670,6 +678,15 @@
 <h3 id="entity-property">entity (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">entity: IEntity&lt;any, any, GgWorldTypeDocRepo&lt;any, any&gt;&gt; | null
+</code></pre>
+<h3 id="materialoptions-property">materialOptions (property)</h3>
+<p>The options this display object was actually built with, when constructed via
+<code>PixiFactory.createPrimitive</code> - see <code>IMaterialReadable2dComponent</code>'s own doc. Left unset for a
+sprite built any other way (e.g. <code>PixiFactory.createAnimatedSprite</code>), which is why this is
+<code>Partial</code> rather than a hard implementation of that interface - check with
+<code>isMaterialReadable2d</code> before relying on it.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly materialOptions: DisplayObject2dOpts&lt;Texture&lt;TextureSource&lt;any&gt;&gt;&gt; | undefined
 </code></pre>
 <h3 id="name-property">name (property)</h3>
 <p><strong>Signature</strong></p>

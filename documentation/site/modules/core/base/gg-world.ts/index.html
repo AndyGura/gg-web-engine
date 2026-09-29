@@ -585,8 +585,36 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#assertnameavailable-method" class="md-nav__link">
+    assertNameAvailable (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#assertsubtreenamesavailable-method" class="md-nav__link">
+    assertSubtreeNamesAvailable (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unregisterentity-method" class="md-nav__link">
+    unregisterEntity (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#removeentity-method" class="md-nav__link">
     removeEntity (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#renameentity-method" class="md-nav__link">
+    renameEntity (method)
   </a>
   
 </li>
@@ -838,7 +866,11 @@
 <li><a href="#dispose-method">dispose (method)</a></li>
 <li><a href="#addprimitiverigidbody-method">addPrimitiveRigidBody (method)</a></li>
 <li><a href="#addentity-method">addEntity (method)</a></li>
+<li><a href="#assertnameavailable-method">assertNameAvailable (method)</a></li>
+<li><a href="#assertsubtreenamesavailable-method">assertSubtreeNamesAvailable (method)</a></li>
+<li><a href="#unregisterentity-method">unregisterEntity (method)</a></li>
 <li><a href="#removeentity-method">removeEntity (method)</a></li>
+<li><a href="#renameentity-method">renameEntity (method)</a></li>
 <li><a href="#getentitybyname-method">getEntityByName (method)</a></li>
 <li><a href="#maybebindaudiolistener-method">maybeBindAudioListener (method)</a></li>
 <li><a href="#onggstaticinitialized-method">onGgStaticInitialized (method)</a></li>
@@ -925,18 +957,50 @@
   ): IPositionable&lt;D, R&gt; &amp; IRenderableEntity&lt;D, R, TypeDoc&gt;;
 </code></pre>
 <h3 id="addentity-method">addEntity (method)</h3>
+<p>Add <code>entity</code> (and, cascading through <code>IEntity.onSpawned</code>, every entity nested under it) to
+this world. Atomic: either the whole subtree ends up spawned, or nothing changes. Every name in
+the subtree is validated up front, before any component/child is touched, so a collision
+(with an entity already in the world, or between two entities within the subtree itself)
+throws without the entity's bodies or display objects ever reaching the native scenes - and
+should spawning still throw partway for any other reason, whatever was already registered is
+rolled back before the error propagates.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public addEntity(entity: IEntity): void
+</code></pre>
+<h3 id="assertnameavailable-method">assertNameAvailable (method)</h3>
+<p>Throw if <code>name</code> can't be given to <code>entity</code> in this world, i.e. another entity already holds it.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private assertNameAvailable(entity: IEntity, name: string): void
+</code></pre>
+<h3 id="assertsubtreenamesavailable-method">assertSubtreeNamesAvailable (method)</h3>
+<p>Throw if <code>root</code> or any entity nested under it (at any depth) carries a name that is already in
+use in this world or that another entity of the same subtree also carries - checked before any
+of them is registered, so a failing <code>addEntity</code> never leaves a partially-spawned subtree behind.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private assertSubtreeNamesAvailable(root: IEntity): void
+</code></pre>
+<h3 id="unregisterentity-method">unregisterEntity (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private unregisterEntity(entity: IEntity): void
 </code></pre>
 <h3 id="removeentity-method">removeEntity (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public removeEntity(entity: IEntity, dispose = false): void
 </code></pre>
+<h3 id="renameentity-method">renameEntity (method)</h3>
+<p>Update this world's name index to reflect <code>entity</code> being renamed to <code>newName</code> - called by
+<code>IEntity</code>'s own <code>name</code> setter, not meant to be called directly. Validates uniqueness the same
+way <code>addEntity</code> does.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public renameEntity(entity: IEntity, newName: string): void
+</code></pre>
 <h3 id="getentitybyname-method">getEntityByName (method)</h3>
-<p>Find an entity anywhere in the world by name. <code>children</code> is a flat list of every entity ever
-added via <code>addEntity</code> (nested entities included - <code>addChildren</code>/<code>onSpawned</code> cascade into it
-too), so this is a plain linear scan, not a tree walk; to search inside one particular
-entity's own subtree instead, use <code>IEntity.getChildEntityByName</code>.</p>
+<p>Find an entity anywhere in the world by name - an O(1) lookup backed by an index kept in sync
+by <code>addEntity</code>/<code>removeEntity</code>/<code>renameEntity</code>, covering every entity ever added via <code>addEntity</code>
+(nested entities included - <code>addChildren</code>/<code>onSpawned</code> cascade into it too); to search inside
+one particular entity's own subtree instead, use <code>IEntity.getChildEntityByName</code>. Names are
+enforced unique world-wide - <code>addEntity</code> and the <code>name</code> setter both throw on a collision - so
+there is never more than one match to choose between.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public getEntityByName&lt;T extends IEntity = IEntity&gt;(name: string): T
 </code></pre>

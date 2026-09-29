@@ -550,8 +550,8 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#createsquare-method" class="md-nav__link">
-    createSquare (method)
+  <a href="#createbox-method" class="md-nav__link">
+    createBox (method)
   </a>
   
 </li>
@@ -559,6 +559,27 @@
           <li class="md-nav__item">
   <a href="#createcircle-method" class="md-nav__link">
     createCircle (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#createcapsule-method" class="md-nav__link">
+    createCapsule (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#createconvexhull-method" class="md-nav__link">
+    createConvexHull (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#createpolygon-method" class="md-nav__link">
+    createPolygon (method)
   </a>
   
 </li>
@@ -609,8 +630,11 @@
 <li><a href="#idisplayobject2dcomponentfactory-class">IDisplayObject2dComponentFactory (class)</a><ul>
 <li><a href="#createprimitive-method">createPrimitive (method)</a></li>
 <li><a href="#randomcolor-method">randomColor (method)</a></li>
-<li><a href="#createsquare-method">createSquare (method)</a></li>
+<li><a href="#createbox-method">createBox (method)</a></li>
 <li><a href="#createcircle-method">createCircle (method)</a></li>
+<li><a href="#createcapsule-method">createCapsule (method)</a></li>
+<li><a href="#createconvexhull-method">createConvexHull (method)</a></li>
+<li><a href="#createpolygon-method">createPolygon (method)</a></li>
 </ul>
 </li>
 <li><a href="#iphysicsbody2dcomponentfactory-interface">IPhysicsBody2dComponentFactory (interface)</a></li>
@@ -644,13 +668,35 @@
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">randomColor(): number
 </code></pre>
-<h3 id="createsquare-method">createSquare (method)</h3>
+<h3 id="createbox-method">createBox (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">createSquare(dimensions: Point2, material: DisplayObject2dOpts&lt;VTypeDoc['texture']&gt; = {}): VTypeDoc['displayObject']
+<pre><code class="language-ts">createBox(dimensions: Point2, material: DisplayObject2dOpts&lt;VTypeDoc['texture']&gt; = {}): VTypeDoc['displayObject']
 </code></pre>
 <h3 id="createcircle-method">createCircle (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">createCircle(radius: number, material: DisplayObject2dOpts&lt;VTypeDoc['texture']&gt; = {}): VTypeDoc['displayObject']
+</code></pre>
+<h3 id="createcapsule-method">createCapsule (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">createCapsule(
+    radius: number,
+    centersDistance: number,
+    material: DisplayObject2dOpts&lt;VTypeDoc['texture']&gt; = {},
+  ): VTypeDoc['displayObject']
+</code></pre>
+<h3 id="createconvexhull-method">createConvexHull (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">createConvexHull(
+    vertices: Point2[],
+    material: DisplayObject2dOpts&lt;VTypeDoc['texture']&gt; = {},
+  ): VTypeDoc['displayObject']
+</code></pre>
+<h3 id="createpolygon-method">createPolygon (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">createPolygon(
+    vertices: Point2[],
+    material: DisplayObject2dOpts&lt;VTypeDoc['texture']&gt; = {},
+  ): VTypeDoc['displayObject']
 </code></pre>
 <h2 id="iphysicsbody2dcomponentfactory-interface">IPhysicsBody2dComponentFactory (interface)</h2>
 <p><strong>Signature</strong></p>
@@ -670,6 +716,14 @@
       rotation?: number
     }
   ): PTypeDoc['trigger']
+
+  createCharacterController(
+    options: CharacterController2dOptions,
+    transform?: {
+      position?: Point2
+      rotation?: number
+    }
+  ): PTypeDoc['characterController']
 }
 </code></pre>
 

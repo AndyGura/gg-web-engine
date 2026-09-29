@@ -1,6 +1,6 @@
 ---
 title: rapier2d/components/rapier-2d-world.component.ts
-nav_order: 150
+nav_order: 165
 parent: Modules
 ---
 
@@ -133,6 +133,11 @@ deregisterCollisionGroup(group: CollisionGroup): void
 
 ### raycast (method)
 
+`castRay`'s own default (no `filterFlags`) treats a sensor collider as a solid obstacle, exactly
+like any real one - `QueryFilterFlags.EXCLUDE_SENSORS` is required so a raycast never reports a
+hit against a `Trigger`'s own collider, matching what "trigger" means everywhere else in this
+engine (a sensor with no collision response, see `ITrigger2dComponent`).
+
 **Signature**
 
 ```ts
@@ -168,7 +173,7 @@ readonly removed$: any
 **Signature**
 
 ```ts
-readonly children: Rapier2dRigidBodyComponent[]
+readonly children: Rapier2dWorldChild[]
 ```
 
 ### mainCollisionGroup (property)
@@ -192,7 +197,7 @@ _nativeWorld: World | null
 **Signature**
 
 ```ts
-readonly handleIdEntityMap: Map<number, Rapier2dRigidBodyComponent>
+readonly handleIdEntityMap: Map<number, Rapier2dWorldChild>
 ```
 
 ### lockedCollisionGroups (property)

@@ -1,6 +1,6 @@
 ---
 title: core/2d/entities/entity-2d.ts
-nav_order: 23
+nav_order: 29
 parent: Modules
 ---
 

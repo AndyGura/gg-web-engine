@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/gg-car/gg-car.entity.ts
-nav_order: 59
+nav_order: 69
 parent: Modules
 ---
 
@@ -18,6 +18,8 @@ parent: Modules
     - [createRaycastVehicle (method)](#createraycastvehicle-method)
     - [onSpawned (method)](#onspawned-method)
     - [updateEngine (method)](#updateengine-method)
+    - [serializeSettings (method)](#serializesettings-method)
+    - [serializeWheelFields (method)](#serializewheelfields-method)
     - [resetTo (method)](#resetto-method)
     - [tickOrder (property)](#tickorder-property)
     - [\_rpm$ (property)](#_rpm-property)
@@ -98,6 +100,49 @@ onSpawned(world: Gg3dWorld<TypeDoc>)
 
 ```ts
 protected updateEngine(delta: number)
+```
+
+### serializeSettings (method)
+
+`ISerializableEntity` implementation: returns `GgCar3DSettings`-shaped `config` - both the
+construction-time tuning `carProperties` already holds (`engine`/`brake`/`transmission`/
+`suspension`/`tractionBias`/`maxSteerAngle`/`mpsToRpmFactor`, plus `wheelBase`/`wheelOptions`
+geometry) and what it doesn't: chassis `dimensions`/`material`/`body`, recovered from the live
+chassis rigid body/mesh the same way `Gg3dLevelLoader`'s `"Primitive"` live serializer recovers
+a primitive's own (see `IMaterialReadable3dComponent`) - plus a `state` block capturing this
+car's current runtime-mutated driving state (`gear`/`acceleration`/`brake`/`handBrake`/
+`steeringFactor`), none of which a spawn-time `config` alone could ever reflect, since all five
+change continuously as the car is driven. `Gg3dLevelLoader.createGgCar` applies `state` back
+onto a freshly-built car if present, after construction - see that method's own doc.
+
+Wheel/chassis `display`/`material` recovery only works for a mesh built via
+`IDisplayObject3dComponentFactory.createPrimitive` (or a shortcut built on it) - see
+`IMaterialReadable3dComponent`'s own doc; a chassis/wheel with no visual mesh at all
+(`chassis3D`/a wheel's `displayObject` unset) simply omits `material`/`display`, same as
+building one without `display`/`material` in the first place. `wheelObjectDirection`
+round-trips exactly (already plain data on `RVEntitySharedWheelOptions.display`);
+`autoScaleMesh` doesn't, since `Gg3dLevelLoader.resolveWheelDisplay` never sets it either.
+
+**Signature**
+
+```ts
+public serializeSettings(): { config: Record<string, any> }
+```
+
+### serializeWheelFields (method)
+
+Strips a wheel/axle settings object's live `display.displayObject` down to a JSON-safe
+`{ material?, wheelObjectDirection? }` - see {@link serializeSettings}'s own doc for the
+capability this depends on.
+
+**Signature**
+
+```ts
+private serializeWheelFields<T extends { display?: WheelDisplayOptions }>(
+    wheel: T,
+  ): Omit<T, 'display'> & {
+    display?: { material?: DisplayObject3dOpts<any>; wheelObjectDirection?: AxisDirection3 };
+  }
 ```
 
 ### resetTo (method)

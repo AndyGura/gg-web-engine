@@ -1,6 +1,6 @@
 ---
 title: core/2d/gg-2d-world.ts
-nav_order: 28
+nav_order: 34
 parent: Modules
 ---
 
@@ -203,6 +203,7 @@ export type PhysicsTypeDocRepo2D = {
   factory: IPhysicsBody2dComponentFactory
   rigidBody: IRigidBody2dComponent
   trigger: ITrigger2dComponent
+  characterController: ICharacterController2dComponent
 }
 ```
 

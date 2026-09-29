@@ -1,6 +1,6 @@
 ---
 title: three/three-loader.ts
-nav_order: 170
+nav_order: 186
 parent: Modules
 ---
 
@@ -13,6 +13,7 @@ parent: Modules
 - [utils](#utils)
   - [ThreeLoader (class)](#threeloader-class)
     - [loadFromGgGlb (method)](#loadfromggglb-method)
+    - [loadFromGlb (method)](#loadfromglb-method)
 
 ---
 
@@ -32,4 +33,15 @@ export declare class ThreeLoader
 
 ```ts
 public async loadFromGgGlb(glbFile: ArrayBuffer, meta: GgMeta): Promise<ThreeDisplayObjectComponent | null>
+```
+
+### loadFromGlb (method)
+
+**Signature**
+
+```ts
+public async loadFromGlb(
+    glbFile: ArrayBuffer,
+    options: LoadGlbOptions = {},
+  ): Promise<ThreeDisplayObjectComponent | null>
 ```

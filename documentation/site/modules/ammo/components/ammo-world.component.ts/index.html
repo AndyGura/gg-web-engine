@@ -578,8 +578,29 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#detachtriggers-method" class="md-nav__link">
+    detachTriggers (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reattachtriggers-method" class="md-nav__link">
+    reattachTriggers (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#raycast-method" class="md-nav__link">
     raycast (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#closestnontriggerhit-method" class="md-nav__link">
+    closestNonTriggerHit (method)
   </a>
   
 </li>
@@ -718,7 +739,10 @@
 <li><a href="#emitcollisionstart-method">emitCollisionStart (method)</a></li>
 <li><a href="#registercollisiongroup-method">registerCollisionGroup (method)</a></li>
 <li><a href="#deregistercollisiongroup-method">deregisterCollisionGroup (method)</a></li>
+<li><a href="#detachtriggers-method">detachTriggers (method)</a></li>
+<li><a href="#reattachtriggers-method">reattachTriggers (method)</a></li>
 <li><a href="#raycast-method">raycast (method)</a></li>
+<li><a href="#closestnontriggerhit-method">closestNonTriggerHit (method)</a></li>
 <li><a href="#solidrayfallback-method">solidRayFallback (method)</a></li>
 <li><a href="#dispose-method">dispose (method)</a></li>
 <li><a href="#aftertick-property">afterTick$ (property)</a></li>
@@ -800,9 +824,78 @@ creation/call order), which is what <code>position</code>/<code>normal</code> ne
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">deregisterCollisionGroup(group: CollisionGroup): void
 </code></pre>
+<h3 id="detachtriggers-method">detachTriggers (method)</h3>
+<p>Temporarily removes every currently-in-world trigger from the broadphase, for the duration of a
+query that must never resolve a hit against one - mirrors
+<code>AmmoTriggerComponent.detachFromBroadphaseTemporarily()</code>/<code>reattachToBroadphase()</code>'s own doc:
+a <code>Trigger</code> is a sensor with no collision response by definition (<code>ITrigger3dComponent</code>), so it
+was never meant to be a solid obstacle to <em>any</em> query, character-owned or not.</p>
+<p>Neither <code>raycast()</code> nor <code>solidRayFallback()</code> uses this (both exclude triggers with a JS-side
+post-filter instead - see <code>raycast()</code>'s own doc for why), and neither does
+<code>AmmoCharacterControllerComponent.recoverFromPenetration()</code>/<code>trySnapToGround()</code> (the former
+JS-filters its own <code>contactTest</code> results the same way <code>solidRayFallback</code> does; the latter calls
+<code>raycast()</code> itself, which already excludes triggers on its own). Only
+<code>AmmoCharacterControllerComponent.sweep()</code> still calls this: its <code>convexSweepTest</code> is driven by
+<code>Ammo.ClosestConvexResultCallback</code>, which this Ammo.js build never exposes an overridable
+<code>addSingleResult</code> on (unlike <code>ConcreteContactResultCallback</code>, used by the JS-filtered paths
+above) - there is no JS-side hook to reject a trigger candidate mid-query for a convex sweep, so
+physically excluding every trigger from the broadphase for the sweep's duration is the only
+option available. Call <code>reattachTriggers()</code> with the returned array once the query is done, in a
+<code>finally</code> so a throwing query still reattaches them.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">detachTriggers(): AmmoTriggerComponent[]
+</code></pre>
+<h3 id="reattachtriggers-method">reattachTriggers (method)</h3>
+<p>Undoes <code>detachTriggers()</code> for exactly the triggers it returned.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">reattachTriggers(detached: AmmoTriggerComponent[]): void
+</code></pre>
 <h3 id="raycast-method">raycast (method)</h3>
+<p>Never resolves a hit against a <code>Trigger</code>: a raycast is a query like any other, and a trigger
+is a sensor with no collision response by definition (<code>ITrigger3dComponent</code>), so it was never
+meant to obstruct one.</p>
+<p>Uses <code>Ammo.AllHitsRayResultCallback</code> (every hit along the ray, unsorted) rather than
+<code>ClosestRayResultCallback</code>, and picks the closest hit whose resolved body is <em>not</em> an
+<code>AmmoTriggerComponent</code> itself, entirely in JS (<code>m_hitFractions</code> - smaller is closer) -
+deliberately <strong>not</strong> <code>detachTriggers()</code>/<code>reattachTriggers()</code> - neither does <code>solidRayFallback()</code>
+just below it (its own <code>ConcreteContactResultCallback</code> JS-filters out a trigger candidate the
+same way this method does), nor <code>AmmoCharacterControllerComponent.recoverFromPenetration()</code>/
+<code>trySnapToGround()</code> (the latter calls this method directly, so it excludes triggers for free).
+An earlier version of this fix used the detach/reattach pair every call, mirroring
+<code>AmmoCharacterControllerComponent</code>'s own sweeps - correct, but a real, measured regression: this
+world-enclosing example's own map-bounds trigger (<code>Trigger3dEntity</code> around the whole playable
+area) forced Bullet to regenerate that trigger's broadphase pairs - and re-run narrow-phase
+collision detection against every one of the hundreds of real (non-box, triangle-mesh) static
+bodies it overlaps - on every single reinsertion, not just an O(1) broadphase bookkeeping cost.
+With <code>PlayerCharacterController</code>'s third-person camera-collision raycast calling <code>raycast()</code>
+every tick, this repeated full pair regeneration measured at 300+ ms per simulated frame once a
+player character existed - confirmed via isolated timing around <code>stepSimulation</code> itself, and
+confirmed <em>not</em> proportional to detach/reattach call count against a synthetic scene of simple
+box shapes (only real, complex mesh geometry reproduces it) - i.e. an inherent cost of repeatedly
+reinserting a huge AABB against many real triangle-mesh bodies, not a bug in the detach/reattach
+bookkeeping itself. The same reinsertion cost, paid many times per tick by every character's own
+<code>recoverFromPenetration()</code>/<code>trySnapToGround()</code> calls (regardless of whether the camera raycast
+above ever runs), is what made this worth fixing at every calling layer rather than just here -
+see <code>detachTriggers()</code>'s own doc for the one remaining caller (<code>sweep()</code>) that still has to pay
+it, for lack of a JS-filterable convex-sweep callback in this Ammo.js build. The post-filter
+approach here touches the broadphase not at all, at the cost of Bullet reporting every hit along
+the ray instead of just the closest (negligible - a ray typically crosses only a handful of
+shapes).</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">raycast(options: RaycastOptions&lt;Point3&gt;): RaycastResult&lt;Point3, AmmoRigidBodyComponent | AmmoTriggerComponent&gt;
+</code></pre>
+<h3 id="closestnontriggerhit-method">closestNonTriggerHit (method)</h3>
+<p>Scans an <code>AllHitsRayResultCallback</code>'s collected hits (unsorted) for the closest one whose
+resolved body is not an <code>AmmoTriggerComponent</code> - see <code>raycast()</code>'s own doc for why this replaces
+a broadphase-level trigger exclusion. <code>m_hitFractions</code> is the ray parameter <code>t</code> (0 at <code>from</code>, 1
+at <code>to</code>) for each parallel entry in <code>m_collisionObjects</code>/<code>m_hitPointWorld</code>/<code>m_hitNormalWorld</code> -
+smaller is closer, and comparing fractions instead of recomputing distance per candidate avoids
+doing that work for hits that turn out not to be the closest anyway.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private closestNonTriggerHit(
+    rayCallback: Ammo.AllHitsRayResultCallback,
+    from: Point3,
+  ): RaycastResult&lt;Point3, AmmoRigidBodyComponent | AmmoTriggerComponent&gt;
 </code></pre>
 <h3 id="solidrayfallback-method">solidRayFallback (method)</h3>
 <p>Bullet's own <code>rayTest</code> (used above) can only compute an entry point when the ray <em>starts</em>

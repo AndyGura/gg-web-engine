@@ -1,6 +1,6 @@
 ---
 title: core/base/pipes/gg-elastic.pipe.ts
-nav_order: 128
+nav_order: 139
 parent: Modules
 ---
 

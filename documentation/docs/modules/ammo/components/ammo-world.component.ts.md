@@ -20,7 +20,10 @@ parent: Modules
     - [emitCollisionStart (method)](#emitcollisionstart-method)
     - [registerCollisionGroup (method)](#registercollisiongroup-method)
     - [deregisterCollisionGroup (method)](#deregistercollisiongroup-method)
+    - [detachTriggers (method)](#detachtriggers-method)
+    - [reattachTriggers (method)](#reattachtriggers-method)
     - [raycast (method)](#raycast-method)
+    - [closestNonTriggerHit (method)](#closestnontriggerhit-method)
     - [solidRayFallback (method)](#solidrayfallback-method)
     - [dispose (method)](#dispose-method)
     - [afterTick$ (property)](#aftertick-property)
@@ -141,12 +144,99 @@ registerCollisionGroup(): CollisionGroup
 deregisterCollisionGroup(group: CollisionGroup): void
 ```
 
+### detachTriggers (method)
+
+Temporarily removes every currently-in-world trigger from the broadphase, for the duration of a
+query that must never resolve a hit against one - mirrors
+`AmmoTriggerComponent.detachFromBroadphaseTemporarily()`/`reattachToBroadphase()`'s own doc:
+a `Trigger` is a sensor with no collision response by definition (`ITrigger3dComponent`), so it
+was never meant to be a solid obstacle to _any_ query, character-owned or not.
+
+Neither `raycast()` nor `solidRayFallback()` uses this (both exclude triggers with a JS-side
+post-filter instead - see `raycast()`'s own doc for why), and neither does
+`AmmoCharacterControllerComponent.recoverFromPenetration()`/`trySnapToGround()` (the former
+JS-filters its own `contactTest` results the same way `solidRayFallback` does; the latter calls
+`raycast()` itself, which already excludes triggers on its own). Only
+`AmmoCharacterControllerComponent.sweep()` still calls this: its `convexSweepTest` is driven by
+`Ammo.ClosestConvexResultCallback`, which this Ammo.js build never exposes an overridable
+`addSingleResult` on (unlike `ConcreteContactResultCallback`, used by the JS-filtered paths
+above) - there is no JS-side hook to reject a trigger candidate mid-query for a convex sweep, so
+physically excluding every trigger from the broadphase for the sweep's duration is the only
+option available. Call `reattachTriggers()` with the returned array once the query is done, in a
+`finally` so a throwing query still reattaches them.
+
+**Signature**
+
+```ts
+detachTriggers(): AmmoTriggerComponent[]
+```
+
+### reattachTriggers (method)
+
+Undoes `detachTriggers()` for exactly the triggers it returned.
+
+**Signature**
+
+```ts
+reattachTriggers(detached: AmmoTriggerComponent[]): void
+```
+
 ### raycast (method)
+
+Never resolves a hit against a `Trigger`: a raycast is a query like any other, and a trigger
+is a sensor with no collision response by definition (`ITrigger3dComponent`), so it was never
+meant to obstruct one.
+
+Uses `Ammo.AllHitsRayResultCallback` (every hit along the ray, unsorted) rather than
+`ClosestRayResultCallback`, and picks the closest hit whose resolved body is _not_ an
+`AmmoTriggerComponent` itself, entirely in JS (`m_hitFractions` - smaller is closer) -
+deliberately **not** `detachTriggers()`/`reattachTriggers()` - neither does `solidRayFallback()`
+just below it (its own `ConcreteContactResultCallback` JS-filters out a trigger candidate the
+same way this method does), nor `AmmoCharacterControllerComponent.recoverFromPenetration()`/
+`trySnapToGround()` (the latter calls this method directly, so it excludes triggers for free).
+An earlier version of this fix used the detach/reattach pair every call, mirroring
+`AmmoCharacterControllerComponent`'s own sweeps - correct, but a real, measured regression: this
+world-enclosing example's own map-bounds trigger (`Trigger3dEntity` around the whole playable
+area) forced Bullet to regenerate that trigger's broadphase pairs - and re-run narrow-phase
+collision detection against every one of the hundreds of real (non-box, triangle-mesh) static
+bodies it overlaps - on every single reinsertion, not just an O(1) broadphase bookkeeping cost.
+With `PlayerCharacterController`'s third-person camera-collision raycast calling `raycast()`
+every tick, this repeated full pair regeneration measured at 300+ ms per simulated frame once a
+player character existed - confirmed via isolated timing around `stepSimulation` itself, and
+confirmed _not_ proportional to detach/reattach call count against a synthetic scene of simple
+box shapes (only real, complex mesh geometry reproduces it) - i.e. an inherent cost of repeatedly
+reinserting a huge AABB against many real triangle-mesh bodies, not a bug in the detach/reattach
+bookkeeping itself. The same reinsertion cost, paid many times per tick by every character's own
+`recoverFromPenetration()`/`trySnapToGround()` calls (regardless of whether the camera raycast
+above ever runs), is what made this worth fixing at every calling layer rather than just here -
+see `detachTriggers()`'s own doc for the one remaining caller (`sweep()`) that still has to pay
+it, for lack of a JS-filterable convex-sweep callback in this Ammo.js build. The post-filter
+approach here touches the broadphase not at all, at the cost of Bullet reporting every hit along
+the ray instead of just the closest (negligible - a ray typically crosses only a handful of
+shapes).
 
 **Signature**
 
 ```ts
 raycast(options: RaycastOptions<Point3>): RaycastResult<Point3, AmmoRigidBodyComponent | AmmoTriggerComponent>
+```
+
+### closestNonTriggerHit (method)
+
+Scans an `AllHitsRayResultCallback`'s collected hits (unsorted) for the closest one whose
+resolved body is not an `AmmoTriggerComponent` - see `raycast()`'s own doc for why this replaces
+a broadphase-level trigger exclusion. `m_hitFractions` is the ray parameter `t` (0 at `from`, 1
+at `to`) for each parallel entry in `m_collisionObjects`/`m_hitPointWorld`/`m_hitNormalWorld` -
+smaller is closer, and comparing fractions instead of recomputing distance per candidate avoids
+doing that work for hits that turn out not to be the closest anyway.
+
+**Signature**
+
+```ts
+private closestNonTriggerHit(
+    rayCallback: Ammo.AllHitsRayResultCallback,
+    from: Point3,
+  ): RaycastResult<Point3, AmmoRigidBodyComponent | AmmoTriggerComponent>
 ```
 
 ### solidRayFallback (method)

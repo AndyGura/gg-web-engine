@@ -1,6 +1,6 @@
 ---
 title: matter/components/matter-trigger.component.ts
-nav_order: 136
+nav_order: 148
 parent: Modules
 ---
 
@@ -21,6 +21,7 @@ parent: Modules
     - [clone (method)](#clone-method)
     - [onEnter$ (property)](#onenter-property)
     - [onLeft$ (property)](#onleft-property)
+    - [currentCharacterOverlaps (property)](#currentcharacteroverlaps-property)
     - [debugBodySettings (property)](#debugbodysettings-property)
     - [intersectionsAmount (property)](#intersectionsamount-property)
     - [currentOverlaps (property)](#currentoverlaps-property)
@@ -89,6 +90,19 @@ dispose(): void
 
 ### checkOverlaps (method)
 
+Regular rigid-body overlaps are handled entirely by `handleCollisionStart`/`handleCollisionEnd`
+above, off matter's own native `collisionStart`/`collisionEnd` engine events - so this used to be
+a pure no-op for matter-js. A `MatterCharacterControllerComponent`'s own phantom body is
+deliberately never added to `Composite`/`engine.world` at all (see that class's own doc), so no
+native collision pair - and thus no native event - can ever involve it. Since `checkOverlaps()` is
+already called once per tick by `Trigger2dEntity` regardless of backend, this is the natural place
+to add the poll this needs instead of inventing a second, differently-shaped mechanism: every
+`MatterCharacterControllerComponent` currently in the world (`world.children`, which - unlike
+matter's own `Composite` - already tracks it) is tested against this trigger's own body via
+`Query.collides`, diffed against `currentCharacterOverlaps` to fire `onEntityEntered`/
+`onEntityLeft` exactly on the enter/exit transitions, the same as the native-event path does for
+ordinary bodies.
+
 **Signature**
 
 ```ts
@@ -117,6 +131,19 @@ readonly onEnter$: any
 
 ```ts
 readonly onLeft$: any
+```
+
+### currentCharacterOverlaps (property)
+
+Character controllers currently overlapping this trigger, as of the last `checkOverlaps()`
+poll - see that method's own doc for why this needs its own separate polling mechanism instead
+of the native `collisionStart`/`collisionEnd` events `handleCollisionStart`/`handleCollisionEnd`
+below rely on for ordinary rigid bodies.
+
+**Signature**
+
+```ts
+currentCharacterOverlaps: Set<MatterCharacterControllerComponent>
 ```
 
 ### debugBodySettings (property)

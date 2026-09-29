@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/controllers/input/gg-car-keyboard-handling.controller.ts
-nav_order: 54
+nav_order: 64
 parent: Modules
 ---
 

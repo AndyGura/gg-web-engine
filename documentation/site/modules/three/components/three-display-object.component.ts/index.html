@@ -605,6 +605,13 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#materialoptions-property" class="md-nav__link">
+    materialOptions (property)
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -652,6 +659,7 @@
 <li><a href="#dispose-method">dispose (method)</a></li>
 <li><a href="#disposemesh-method">disposeMesh (method)</a></li>
 <li><a href="#entity-property">entity (property)</a></li>
+<li><a href="#materialoptions-property">materialOptions (property)</a></li>
 </ul>
 </li>
 </ul>
@@ -660,7 +668,7 @@
 <h2 id="threedisplayobjectcomponent-class">ThreeDisplayObjectComponent (class)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export declare class ThreeDisplayObjectComponent {
-  constructor(public nativeMesh: Object3D)
+  constructor(public nativeMesh: Object3D, materialOptions?: DisplayObject3dOpts&lt;Texture&gt;)
 }
 </code></pre>
 <h3 id="enablerenderlayer-method">enableRenderLayer (method)</h3>
@@ -710,6 +718,14 @@
 <h3 id="entity-property">entity (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">entity: IEntity&lt;any, any, GgWorldTypeDocRepo&lt;any, any&gt;&gt; | null
+</code></pre>
+<h3 id="materialoptions-property">materialOptions (property)</h3>
+<p>The options this mesh was actually built with, when constructed via <code>ThreeFactory.createPrimitive</code>
+(or a shortcut built on it) - see <code>IMaterialReadable3dComponent</code>'s own doc. Left unset for a mesh
+built any other way (e.g. a loaded <code>.glb</code>), which is the reason this is <code>Partial</code> rather than a
+hard implementation of that interface - check with <code>isMaterialReadable3d</code> before relying on it.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly materialOptions: DisplayObject3dOpts&lt;Texture&lt;unknown, TextureEventMap&gt;&gt; | undefined
 </code></pre>
 
 

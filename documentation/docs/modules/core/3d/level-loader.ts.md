@@ -1,6 +1,6 @@
 ---
 title: core/3d/level-loader.ts
-nav_order: 71
+nav_order: 81
 parent: Modules
 ---
 
@@ -12,8 +12,11 @@ parent: Modules
 
 - [utils](#utils)
   - [Camera3DSettings (interface)](#camera3dsettings-interface)
+  - [CompoundChild3DSettings (interface)](#compoundchild3dsettings-interface)
   - [Gg3dLevelLoader (class)](#gg3dlevelloader-class)
     - [registerDefaultClasses (method)](#registerdefaultclasses-method)
+    - [serializePrimitive (method)](#serializeprimitive-method)
+    - [serializeTrigger (method)](#serializetrigger-method)
     - [buildShapeDescriptor (method)](#buildshapedescriptor-method)
     - [createPrimitive (method)](#createprimitive-method)
     - [createTrigger (method)](#createtrigger-method)
@@ -27,13 +30,16 @@ parent: Modules
   - [GgCar3DSettings (type alias)](#ggcar3dsettings-type-alias)
   - [GgCarAxleSettings (type alias)](#ggcaraxlesettings-type-alias)
   - [GgCarSharedWheelSettings (type alias)](#ggcarsharedwheelsettings-type-alias)
+  - [GgCarStateSettings (interface)](#ggcarstatesettings-interface)
   - [GgCarWheelDisplaySettings (interface)](#ggcarwheeldisplaysettings-interface)
   - [GgCarWheelSettings (type alias)](#ggcarwheelsettings-type-alias)
   - [MapGraph3DSettings (interface)](#mapgraph3dsettings-interface)
   - [MapGraphNodeJson (type alias)](#mapgraphnodejson-type-alias)
   - [Player3DSettings (type alias)](#player3dsettings-type-alias)
+  - [PlayerModel3DSettings (interface)](#playermodel3dsettings-interface)
   - [Primitive3DSettings (interface)](#primitive3dsettings-interface)
   - [Primitive3DShapeName (type alias)](#primitive3dshapename-type-alias)
+  - [Primitive3DShapeSettings (interface)](#primitive3dshapesettings-interface)
   - [Sound3DSettings (interface)](#sound3dsettings-interface)
   - [Trigger3DSettings (interface)](#trigger3dsettings-interface)
 
@@ -76,6 +82,29 @@ export interface Camera3DSettings {
 }
 ```
 
+## CompoundChild3DSettings (interface)
+
+One child of a `COMPOUND` primitive's `children` - the same shape-selecting fields as
+`Primitive3DSettings`, plus its own local `position`/`rotation` offset, but no `material`/`body`
+(a compound's children share one physics body and one display object, set on the parent
+`"Primitive"` entity only).
+
+**Signature**
+
+```ts
+export interface CompoundChild3DSettings extends Primitive3DShapeSettings {
+  /**
+   * Position of the child shape, relative to the compound's own origin
+   */
+  position?: Point3
+
+  /**
+   * Rotation of the child shape, relative to the compound's own rotation
+   */
+  rotation?: Point4
+}
+```
+
 ## Gg3dLevelLoader (class)
 
 3D level loader: registers the built-in primitive/trigger/camera/car/map-graph entity classes
@@ -100,15 +129,61 @@ Register the built-in classes for primitives, triggers, and cameras
 private registerDefaultClasses(): void
 ```
 
-### buildShapeDescriptor (method)
+### serializePrimitive (method)
 
-Turn a `Primitive3DSettings` (`shape` plus shape-specific fields) into the `Shape3DDescriptor`
-consumed by `Gg3dWorld.addPrimitiveRigidBody`.
+Live serializer for the built-in `"Primitive"` class - see `LiveEntitySerializer`'s own doc for
+the general contract. Matches an entity built by `addPrimitiveRigidBody`/`createPrimitive`
+exactly (`entity.constructor === Entity3d`, deliberately not `instanceof` - a richer subclass
+like `Grabbable3dEntity` needs its own dedicated serializer, not yet provided, to round-trip
+correctly instead of silently losing its grabbable behavior). Recovers `shape`/`dimensions`/
+`radius`/etc. from `objectBody.debugBodySettings.shape` (the exact `Shape3DDescriptor` the body
+was actually built with, tracked by every physics adapter regardless of how the body was
+constructed) and `body`/`linearVelocity`/`angularVelocity` from the live physics body itself
+(`objectBody.bodyOptions`, `.linearVelocity`, `.angularVelocity`) - not from whatever `config`
+the entity may or may not have originally been loaded from. Returns `undefined` (falls through
+to the next serializer, then the spawn-record echo) for a shape `"Primitive"` doesn't support
+(`COMPOUND`/`CONVEX_HULL`/`MESH`/`TRIANGLE_MESH` - buildable directly via
+`physicsWorld.factory.createRigidBody`, just not through this level-JSON class) or an entity
+with no physics body at all (`objectBody` unset - a display-only primitive has nothing this
+serializer can recover a `shape`/`body` from).
+
+Recovers `material` too, when `object3D` implements `IMaterialReadable3dComponent` (true for
+anything built via `IDisplayObject3dComponentFactory.createPrimitive`/its shortcuts, which is
+how every `"Primitive"` gets its mesh - see that interface's own doc) - not from whatever
+`config` the entity may or may not have originally been loaded from, same as every other field
+here. A display-only primitive with no mesh at all, or one built by an adapter that hasn't
+wired up `IMaterialReadable3dComponent`, simply omits `material` - same as omitting it when
+building one in the first place.
 
 **Signature**
 
 ```ts
-private buildShapeDescriptor(settings: Primitive3DSettings): Shape3DDescriptor
+private serializePrimitive(entity: IEntity<Point3, Point4, TypeDoc>): EntityJson | undefined
+```
+
+### serializeTrigger (method)
+
+Live serializer for the built-in `"Trigger"` class - see `serializePrimitive`'s own doc for the
+general approach (same `debugBodySettings.shape`-based recovery, applied to a trigger's `ITrigger3dComponent`
+instead of a rigid body). Matches `entity.constructor === Trigger3dEntity` exactly.
+
+**Signature**
+
+```ts
+private serializeTrigger(entity: IEntity<Point3, Point4, TypeDoc>): EntityJson | undefined
+```
+
+### buildShapeDescriptor (method)
+
+Turn a `Primitive3DShapeSettings` (`shape` plus shape-specific fields) into the
+`Shape3DDescriptor` consumed by `Gg3dWorld.addPrimitiveRigidBody`. Used both for a
+`"Primitive"` entity's own top-level settings and, recursively, for each of a `COMPOUND`
+primitive's `children` (which may themselves be `COMPOUND`, nesting arbitrarily deep).
+
+**Signature**
+
+```ts
+private buildShapeDescriptor(settings: Primitive3DShapeSettings): Shape3DDescriptor
 ```
 
 ### createPrimitive (method)
@@ -185,10 +260,10 @@ invisible otherwise). See `Player3DSettings`'s doc for why this doesn't also bui
 **Signature**
 
 ```ts
-private createPlayer(
+private async createPlayer(
     world: Gg3dWorld<TypeDoc>,
     settings: Player3DSettings,
-  ): CharacterController3dEntity<TypeDoc> | undefined
+  ): Promise<CharacterController3dEntity<TypeDoc> | undefined>
 ```
 
 ### resolveWheelDisplay (method)
@@ -212,7 +287,8 @@ private resolveWheelDisplay(
 Create a `"GgCar"` entity: a box chassis rigid body (+ optional matching display box) wrapped
 in a full `GgCarEntity`, with each wheel's optional visual mesh built from its settings (see
 {@link resolveWheelDisplay}) rather than referencing an existing display object component,
-which a level JSON has no way to do.
+which a level JSON has no way to do. `settings.state`, if given, is applied to the car once
+construction completes - see {@link GgCarStateSettings}.
 
 **Signature**
 
@@ -279,6 +355,9 @@ export type GgCar3DSettings = GgCar3DCommonSettings & {
     material?: DisplayObject3dOpts<any>
     body?: Partial<Body3DOptions>
   }
+
+  /** Initial driving state, applied once right after the car is built - see {@link GgCarStateSettings}. */
+  state?: GgCarStateSettings
 } & (
     | {
         wheelBase: {
@@ -319,6 +398,28 @@ JSON-friendly counterpart of `RVEntitySharedWheelOptions`: identical except `dis
 ```ts
 export type GgCarSharedWheelSettings = Omit<RVEntitySharedWheelOptions, 'display'> & {
   display?: GgCarWheelDisplaySettings
+}
+```
+
+## GgCarStateSettings (interface)
+
+Runtime-mutated driving state a spawn-time `config` alone can never reflect, since all five
+fields change continuously as a `"GgCar"` is driven - see `GgCarEntity.serializeSettings`, which
+populates this from a live car's own `gear`/`acceleration`/`brake`/`handBrake`/`steeringFactor`
+properties, and `Gg3dLevelLoader.createGgCar`, which applies it back onto a freshly-built one
+when present. Optional and independent of every other `GgCar3DSettings` field - a hand-authored
+level JSON is free to omit it entirely and get a car parked in neutral, same as before this
+field existed.
+
+**Signature**
+
+```ts
+export interface GgCarStateSettings {
+  gear?: number
+  acceleration?: number
+  brake?: number
+  handBrake?: boolean
+  steeringFactor?: number
 }
 ```
 
@@ -421,24 +522,62 @@ export type Player3DSettings = Partial<Omit<CharacterController3dEntityOptions, 
   radius?: number
   /** Standing capsule centersDistance. Default 1.0. */
   centersDistance?: number
-  /** Material options for the auto-generated capsule mesh; omit for a physics-only, invisible player. */
-  display?: DisplayObject3dOpts<any>
+  /**
+   * Material options for the auto-generated capsule mesh; omit (along with `model`) for a
+   * physics-only, invisible player. `model`, if given, loads an animated character model instead of
+   * the capsule mesh entirely - the rest of `display` (`color`/`shading`/...) is then ignored.
+   */
+  display?: DisplayObject3dOpts<any> & { model?: PlayerModel3DSettings }
+}
+```
+
+## PlayerModel3DSettings (interface)
+
+Settings for the built-in `"Player"` entity class's `display.model` - loads a bone-animated `.glb`
+character model (via `loadFromGlb`) in place of the auto-generated capsule mesh, and wires up a
+`CharacterAnimationController` (as a child of the returned entity - see
+`CharacterController3dEntity.addChildren`) to drive idle/walk/run/crouch/jump switching
+automatically, using the character's own `isGrounded`/`isCrouching`/`isRunning`/`moveDirection`
+state - no extra app code needed for either. Ignored (with the rest of `display`) if there's no
+visual scene.
+
+**Signature**
+
+```ts
+export interface PlayerModel3DSettings {
+  /** Path (URL or path prefix, without extension) to the `.glb` file - passed straight through to
+   * `loadFromGlb`. */
+  path: string
+  /**
+   * Local offset applied to the loaded model relative to the capsule's own center - see
+   * `LoadGlbOptions.offset`. Defaults to `-(radius + centersDistance / 2)` along `up` (the
+   * capsule's own bottom), matching a model authored with its origin at the feet, the common case
+   * for a character rig. Set explicitly (e.g. `Pnt3.O`) for a model already authored with its
+   * origin at the capsule's center.
+   */
+  offset?: Point3
+  /** See `CharacterAnimationClipMap` - maps a built-in animation state to this model's own clip
+   * name, for a model whose clips aren't already named `"idle"`/`"walk"`/`"run"`/`"crouch"`/
+   * `"jump"`. */
+  animations?: CharacterAnimationClipMap
+  /** Crossfade duration (seconds) applied on every animation state switch. Default 0.2. */
+  fadeDuration?: number
+  /** See `CharacterAnimationControllerOptions.groundedTransitionDelay` - how long `isGrounded` must
+   * hold steady before the animation state trusts it, to avoid flickering between a grounded state
+   * and `"jump"` while standing at an edge. Default 0.15. */
+  groundedTransitionDelay?: number
 }
 ```
 
 ## Primitive3DSettings (interface)
 
-Settings shared by every primitive entity (Box, Sphere, Plane, Capsule, Cylinder, Cone)
+Settings shared by every primitive entity (Box, Sphere, Plane, Capsule, Cylinder, Cone, Compound,
+ConvexHull, Mesh)
 
 **Signature**
 
 ```ts
-export interface Primitive3DSettings {
-  /**
-   * Which primitive shape to construct
-   */
-  shape: Primitive3DShapeName
-
+export interface Primitive3DSettings extends Primitive3DShapeSettings {
   /**
    * Position of the primitive
    */
@@ -448,6 +587,57 @@ export interface Primitive3DSettings {
    * Rotation of the primitive
    */
   rotation?: Point4
+
+  /**
+   * Material options for the primitive
+   */
+  material?: DisplayObject3dOpts<any>
+
+  /**
+   * Physics body options, merged over sensible defaults
+   */
+  body?: Partial<Body3DOptions>
+
+  /**
+   * Initial linear velocity, applied once right after the body is created (a physics-only
+   * property, only meaningful for a dynamic/kinematic_vel body - has no lasting effect on a
+   * static/kinematic_pos one). Left unset entirely (not just omitted) means the body starts at
+   * rest, same as not setting it at all.
+   */
+  linearVelocity?: Point3
+
+  /** Initial angular velocity - see `linearVelocity`'s own doc, same caveats. */
+  angularVelocity?: Point3
+}
+```
+
+## Primitive3DShapeName (type alias)
+
+Shape names accepted by the built-in `"Primitive"` entity class in a 3D level JSON, via the
+sibling `shape` field on the entity (e.g. `{ class: "Primitive", shape: "BOX" }`) - the same
+`Shape3DDescriptor['shape']` values used at the engine API level, so no translation is needed
+between a level JSON and `Gg3dWorld.addPrimitiveRigidBody`.
+
+**Signature**
+
+```ts
+export type Primitive3DShapeName = Shape3DDescriptor['shape']
+```
+
+## Primitive3DShapeSettings (interface)
+
+The shape-selecting fields shared by `Primitive3DSettings` and a `COMPOUND` primitive's own
+`children` entries - `shape` plus every field any shape variant needs (each optional, since
+which ones are actually required depends on `shape` - see `buildShapeDescriptor`).
+
+**Signature**
+
+```ts
+export interface Primitive3DShapeSettings {
+  /**
+   * Which primitive shape to construct
+   */
+  shape: Primitive3DShapeName
 
   /**
    * Dimensions of the primitive (for Box)
@@ -482,28 +672,21 @@ export interface Primitive3DSettings {
   centersDistance?: number
 
   /**
-   * Material options for the primitive
+   * Child shapes making up a Compound primitive, each with its own local `position`/`rotation`
+   * offset. A child's `shape` may itself be `"COMPOUND"`, nesting arbitrarily deep.
    */
-  material?: DisplayObject3dOpts<any>
+  children?: CompoundChild3DSettings[]
 
   /**
-   * Physics body options, merged over sensible defaults
+   * Vertices of the primitive (for ConvexHull, Mesh)
    */
-  body?: Partial<Body3DOptions>
+  vertices?: Point3[]
+
+  /**
+   * Triangle faces, as vertex-index triples into `vertices` (for Mesh)
+   */
+  faces?: [number, number, number][]
 }
-```
-
-## Primitive3DShapeName (type alias)
-
-Shape names accepted by the built-in `"Primitive"` entity class in a 3D level JSON, via the
-sibling `shape` field on the entity (e.g. `{ class: "Primitive", shape: "BOX" }`) - the same
-`Shape3DDescriptor['shape']` values used at the engine API level, so no translation is needed
-between a level JSON and `Gg3dWorld.addPrimitiveRigidBody`.
-
-**Signature**
-
-```ts
-export type Primitive3DShapeName = Shape3DDescriptor['shape']
 ```
 
 ## Sound3DSettings (interface)

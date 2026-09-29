@@ -751,6 +751,24 @@ registered once per engine rather than per-body.</p>
 <pre><code class="language-ts">simulate(delta: number): void
 </code></pre>
 <h3 id="raycast-method">raycast (method)</h3>
+<p>matter-js has no native raycast query. Built on a true parametric ray-vs-polygon intersection
+(<code>segmentIntersection</code>/<code>bodyPolygons</code>), not <code>Matter.Query.ray</code> - that helper is only a thin
+wrapper over <code>Query.collides</code> (a full-geometry SAT test of a synthetic, very thin rectangle body
+against candidates), which reports an approximate overlap contact point, not a true "where does
+the ray segment first cross this body's boundary" point; verified via this adapter's own
+regression suite (<code>MatterWorldComponent.spec.ts</code>'s <code>Raycast</code> block expects a precise hit point at
+a known box edge) that the SAT-approximated version produces a visibly wrong point.</p>
+<p><code>Query.collides</code>/<code>Collision.collides</code> test raw geometry only and know nothing about
+<code>collisionFilter</code> (the same limitation <code>MatterCharacterControllerComponent.collectObstacles</code>'s
+own doc describes) - candidates are pre-filtered here via <code>Detector.canCollide</code> itself, called
+directly against a synthetic filter built from <code>options.collisionFilterGroups</code>/
+<code>collisionFilterMask</code>. Sensor bodies (triggers) are excluded from candidates entirely, mirroring
+<code>collectObstacles</code>'s own exclusion - a trigger never physically blocks anything, so it shouldn't
+register as a raycast hit either.</p>
+<p><code>hitNormal</code> is derived from whichever polygon edge the closest intersection landed on (rotated
+90°, sign chosen to point back towards <code>options.from</code>) - not from a matter-js collision object at
+all, sidestepping the sign-convention pitfall <code>handleCollisionStart</code>'s own doc describes for
+<code>pair.collision.normal</code>.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">raycast(options: RaycastOptions&lt;Point2&gt;): RaycastResult&lt;Point2, MatterRigidBodyComponent&gt;
 </code></pre>
@@ -776,15 +794,17 @@ registered once per engine rather than per-body.</p>
 </code></pre>
 <h3 id="children-property">children (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly children: (MatterRigidBodyComponent | MatterTriggerComponent)[]
+<pre><code class="language-ts">readonly children: MatterWorldChild[]
 </code></pre>
 <h3 id="handleidentitymap-property">handleIdEntityMap (property)</h3>
 <p>Mirrors the rapier packages' <code>handleIdEntityMap</code> pattern: <code>Body.id</code> (matter-js's own
 globally-unique numeric id, assigned once per body via <code>Body.nextId</code> and stable for its whole
 lifetime) to component, kept in sync alongside <code>children</code> so <code>findRigidBody</code> - called once per
-collision pair, per step - is an O(1) lookup instead of an O(n) <code>Array.find</code> scan.</p>
+collision pair, per step - is an O(1) lookup instead of an O(n) <code>Array.find</code> scan. Also used by
+<code>MatterCharacterControllerComponent.pushDynamicBodies</code> to resolve a native body it just bumped
+into back to its owning component.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly handleIdEntityMap: Map&lt;number, MatterRigidBodyComponent&gt;
+<pre><code class="language-ts">readonly handleIdEntityMap: Map&lt;number, MatterWorldChild&gt;
 </code></pre>
 <h3 id="maincollisiongroup-property">mainCollisionGroup (property)</h3>
 <p><strong>Signature</strong></p>

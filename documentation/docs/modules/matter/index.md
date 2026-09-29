@@ -7,4 +7,5 @@ has_children: true
 
 - [matter/components](/gg-web-engine/modules/matter/components)
 - [matter/matter-factory.ts](/gg-web-engine/modules/matter/matter-factory.ts)
+- [matter/poly-decomp.d.ts](/gg-web-engine/modules/matter/poly-decomp.d.ts)
 - [matter/types.ts](/gg-web-engine/modules/matter/types.ts)

@@ -1,6 +1,6 @@
 ---
 title: matter/matter-factory.ts
-nav_order: 138
+nav_order: 150
 parent: Modules
 ---
 
@@ -14,6 +14,9 @@ parent: Modules
   - [MatterFactory (class)](#matterfactory-class)
     - [createRigidBody (method)](#createrigidbody-method)
     - [createTrigger (method)](#createtrigger-method)
+    - [createCharacterController (method)](#createcharactercontroller-method)
+    - [createShapeParts (method)](#createshapeparts-method)
+    - [createShapeBody (method)](#createshapebody-method)
     - [transformOptions (method)](#transformoptions-method)
 
 ---
@@ -56,6 +59,36 @@ createTrigger(
       rotation?: number;
     },
   ): MatterTriggerComponent
+```
+
+### createCharacterController (method)
+
+**Signature**
+
+```ts
+createCharacterController(
+    options: CharacterController2dOptions,
+    transform?: {
+      position?: Point2;
+      rotation?: number;
+    },
+  ): MatterCharacterControllerComponent
+```
+
+### createShapeParts (method)
+
+**Signature**
+
+```ts
+private createShapeParts(shape: Shape2DDescriptor, options: IChamferableBodyDefinition): Body[]
+```
+
+### createShapeBody (method)
+
+**Signature**
+
+```ts
+private createShapeBody(shape: Shape2DDescriptor, options: IChamferableBodyDefinition): Body
 ```
 
 ### transformOptions (method)

@@ -15,6 +15,8 @@ parent: Modules
     - [move (method)](#move-method)
     - [detachIgnoredBodies (method)](#detachignoredbodies-method)
     - [reattachIgnoredBodies (method)](#reattachignoredbodies-method)
+    - [detachTriggers (method)](#detachtriggers-method)
+    - [reattachTriggers (method)](#reattachtriggers-method)
     - [isWalkableNormal (method)](#iswalkablenormal-method)
     - [backOffFromObstacle (method)](#backofffromobstacle-method)
     - [moveHorizontalWithStepAndSlide (method)](#movehorizontalwithstepandslide-method)
@@ -122,6 +124,42 @@ Undoes `detachIgnoredBodies()` for exactly the bodies it returned.
 
 ```ts
 private reattachIgnoredBodies(detached: AmmoRigidBodyComponent[]): void
+```
+
+### detachTriggers (method)
+
+A trigger is a sensor with no collision response (see `ITrigger3dComponent`), so it must never
+physically block this character's movement (`sweep()`, the only remaining caller of this method
+
+- see below) the way a real obstacle would - unlike `ignoredBodies` (an explicit, per-character
+  opt-in set), every trigger in the world qualifies automatically, a `Trigger` was never meant to
+  be a solid obstacle to begin with, for any character. Delegates to `AmmoWorldComponent`'s own
+  `detachTriggers()`/`reattachTriggers()` (see its doc for why `sweep()`'s `convexSweepTest` still
+  needs a physical broadphase detach where `recoverFromPenetration()`'s `contactTest` and
+  `trySnapToGround()`'s `raycast()` call no longer do - a JS-filterable native callback exists for
+  the other two but not for a convex sweep in this Ammo.js build), rather than keeping a separate
+  copy of the same broadphase-detach loop here.
+
+Bug found empirically: without this, a character walking straight at a `Trigger`'s volume
+physically stopped dead at its boundary instead of walking through it, so `Trigger`'s own
+`onEntityEntered`/`onEntityLeft` (which do already resolve a character-controller overlap
+correctly, via the shared `AmmoBodyComponent.nativeBodyReverseMap`) never got the chance to see
+the character genuinely enter or leave.
+
+**Signature**
+
+```ts
+private detachTriggers(): AmmoTriggerComponent[]
+```
+
+### reattachTriggers (method)
+
+Undoes `detachTriggers()` for exactly the triggers it returned.
+
+**Signature**
+
+```ts
+private reattachTriggers(detached: AmmoTriggerComponent[]): void
 ```
 
 ### isWalkableNormal (method)

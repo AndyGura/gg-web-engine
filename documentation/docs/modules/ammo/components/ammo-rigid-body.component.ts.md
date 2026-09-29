@@ -41,7 +41,8 @@ export declare class AmmoRigidBodyComponent {
     protected readonly world: AmmoWorldComponent,
     protected _nativeBody: Ammo.btRigidBody,
     public readonly shape: Shape3DDescriptor,
-    public readonly bodyType: BodyType = 'dynamic'
+    public readonly bodyType: BodyType = 'dynamic',
+    public readonly ccd: boolean = false
   )
 }
 ```

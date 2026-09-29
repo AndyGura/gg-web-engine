@@ -1,6 +1,6 @@
 ---
 title: rapier3d/components/rapier-3d-trigger.component.ts
-nav_order: 157
+nav_order: 172
 parent: Modules
 ---
 
@@ -79,7 +79,10 @@ component(s) care.
 **Signature**
 
 ```ts
-public notifyOverlap(otherBody: Rapier3dRigidBodyComponent, started: boolean): void
+public notifyOverlap(
+    otherBody: Rapier3dRigidBodyComponent | Rapier3dCharacterControllerComponent,
+    started: boolean,
+  ): void
 ```
 
 ### checkOverlaps (method)
@@ -123,7 +126,7 @@ readonly debugBodySettings: DebugBody3DSettings
 **Signature**
 
 ```ts
-readonly overlaps: Set<Rapier3dRigidBodyComponent>
+readonly overlaps: Set<Rapier3dRigidBodyComponent | Rapier3dCharacterControllerComponent>
 ```
 
 ### onEnter$ (property)

@@ -637,7 +637,7 @@
 </code></pre>
 <h3 id="createraycastvehicle-method">createRaycastVehicle (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">createRaycastVehicle(chassis: Rapier3dRigidBodyComponent): never
+<pre><code class="language-ts">createRaycastVehicle(chassis: Rapier3dRigidBodyComponent): Rapier3dRaycastVehicleComponent
 </code></pre>
 <h3 id="createcharactercontroller-method">createCharacterController (method)</h3>
 <p><strong>Signature</strong></p>
@@ -658,6 +658,7 @@
 <pre><code class="language-ts">public createRigidBodyDescr(
     options: Partial&lt;Body3DOptions&gt;,
     transform?: { position?: Point3; rotation?: Point4 },
+    colliderDescr: ColliderDesc[] = [],
   ): RigidBodyDesc
 </code></pre>
 

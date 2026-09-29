@@ -1,6 +1,6 @@
 ---
 title: three/components/three-display-object.component.ts
-nav_order: 165
+nav_order: 181
 parent: Modules
 ---
 
@@ -24,6 +24,7 @@ parent: Modules
     - [dispose (method)](#dispose-method)
     - [disposeMesh (method)](#disposemesh-method)
     - [entity (property)](#entity-property)
+    - [materialOptions (property)](#materialoptions-property)
 
 ---
 
@@ -35,7 +36,7 @@ parent: Modules
 
 ```ts
 export declare class ThreeDisplayObjectComponent {
-  constructor(public nativeMesh: Object3D)
+  constructor(public nativeMesh: Object3D, materialOptions?: DisplayObject3dOpts<Texture>)
 }
 ```
 
@@ -133,4 +134,17 @@ private disposeMesh(mesh: Mesh)
 
 ```ts
 entity: IEntity<any, any, GgWorldTypeDocRepo<any, any>> | null
+```
+
+### materialOptions (property)
+
+The options this mesh was actually built with, when constructed via `ThreeFactory.createPrimitive`
+(or a shortcut built on it) - see `IMaterialReadable3dComponent`'s own doc. Left unset for a mesh
+built any other way (e.g. a loaded `.glb`), which is the reason this is `Partial` rather than a
+hard implementation of that interface - check with `isMaterialReadable3d` before relying on it.
+
+**Signature**
+
+```ts
+readonly materialOptions: DisplayObject3dOpts<Texture<unknown, TextureEventMap>> | undefined
 ```

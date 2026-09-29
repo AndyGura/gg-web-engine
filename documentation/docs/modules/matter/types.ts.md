@@ -1,6 +1,6 @@
 ---
 title: matter/types.ts
-nav_order: 139
+nav_order: 152
 parent: Modules
 ---
 
@@ -37,6 +37,7 @@ export type MatterPhysicsTypeDocRepo = {
   factory: MatterFactory
   rigidBody: MatterRigidBodyComponent
   trigger: MatterTriggerComponent
+  characterController: MatterCharacterControllerComponent
 }
 ```
 

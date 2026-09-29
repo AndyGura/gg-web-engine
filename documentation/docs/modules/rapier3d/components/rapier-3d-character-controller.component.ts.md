@@ -1,6 +1,6 @@
 ---
 title: rapier3d/components/rapier-3d-character-controller.component.ts
-nav_order: 154
+nav_order: 169
 parent: Modules
 ---
 
@@ -56,12 +56,17 @@ sweep test, exactly as it would be to `world.raycast()`. This is a pre-existing 
 specific to this component; a normal per-frame game loop that calls `physicsWorld.simulate()`
 every tick already satisfies it after the first tick.
 
-Note: unlike `Rapier3dRigidBodyComponent`/`Rapier3dTriggerComponent`, this component's native body
-handle is _not_ registered in `Rapier3dWorldComponent.handleIdEntityMap` - `world.raycast()` cannot
-currently resolve a hit against a character controller back to this component (it will simply be
-absent from `RaycastResult.hitBody`). Wiring that up would require widening the reverse-map's and
-`raycast()`'s return-type generics repo-wide for a corner case outside this interface's contract;
-left as a documented limitation rather than done speculatively.
+Note: this component's native body handle _is_ registered in
+`Rapier3dWorldComponent.handleIdEntityMap` (see `addToWorld`/`removeFromWorld` below), alongside
+ordinary `Rapier3dRigidBodyComponent`/`Rapier3dTriggerComponent` handles - this is what lets a
+`Trigger3dEntity`'s `onEntityEntered`/`onEntityLeft` fire for a player walking through it, not just
+for ordinary rigid bodies/vehicle chassis (`Rapier3dWorldComponent.dispatchCollisionEvents` resolves
+a sensor-overlap pair's components through this same map). `world.raycast()` deliberately still does
+_not_ resolve a hit against a character controller back to this component (filtered out in
+`raycast()` itself) - widening that too would mean widening the public `raycast()` return-type
+generic repo-wide for a case outside `IPhysicsWorldComponent.raycast`'s own documented contract
+(`PTypeDoc['rigidBody'] | PTypeDoc['trigger']`), so it's left resolving to `hitBody: undefined`
+there, same as before.
 
 **Signature**
 
@@ -214,7 +219,7 @@ dispose(): void
 **Signature**
 
 ```ts
-entity: Entity3d<Gg3dWorldTypeDocRepo> | null
+entity: IEntity<any, any, GgWorldTypeDocRepo<any, any>> | null
 ```
 
 ### name (property)
