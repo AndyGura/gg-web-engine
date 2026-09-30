@@ -32,6 +32,16 @@ jobs:
             exit 0
           fi
 
+      # Runs before anything is installed, built or published: a malformed CHANGELOG.md (the
+      # `[Unreleased]` marker missing, duplicated, or the version already present) aborts the
+      # release here in seconds rather than after core is already on npm. The rolled file is
+      # committed back to main by the "Update version in git" step below.
+      - name: Roll CHANGELOG.md
+        if: env.PRE_RELEASE == 'true'
+        run: |
+          chmod +x ./etc/roll_changelog.sh
+          ./etc/roll_changelog.sh ${{ env.version }}
+
       - name: Setup python
         if: env.PRE_RELEASE == 'true'
         uses: getsentry/action-setup-venv@v2.1.1

@@ -199,19 +199,28 @@ the add-on actually changed.
 ### Steps
 
 1. Make sure `main` is green and every change you want in the release is merged.
-2. Move the entries under `## [Unreleased]` in `CHANGELOG.md` into a new
-   `## [X.Y.Z] - YYYY-MM-DD` section (and add the compare link at the bottom of the file).
-   Leave an empty `[Unreleased]` section behind.
-3. Commit that on `main` with the subject **`[pre-release] [X.Y.Z] <short description>`** and
-   push. The version must be a plain `MAJOR.MINOR.PATCH`. Nothing else in the repo needs to be
-   edited by hand for the version bump — the pipeline does it.
+2. Check `CHANGELOG.md` is in the shape the pipeline expects: exactly two `[Unreleased]` markers
+   in the whole file (the `## [Unreleased]` heading and the `[Unreleased]: .../compare/<prev>...HEAD`
+   link at the bottom), and the new version not mentioned anywhere yet. Don't roll the section
+   by hand — the job does it. If the section is empty (a rebuild-only release such as a CI fix),
+   add a one-line note under it saying what the release re-publishes and why, so the version
+   sequence in the file stays gap-free except for genuinely failed attempts.
+3. Commit on `main` with the subject **`[pre-release] [X.Y.Z] <short description>`** and push.
+   The version must be a plain `MAJOR.MINOR.PATCH`. Nothing in the repo needs to be edited by
+   hand for the version bump — the pipeline does it. The commit can be empty
+   (`git commit --allow-empty`) if there's nothing else to land.
 4. Watch the `Release new version` job in GitHub Actions. On success it has:
+   - rolled `CHANGELOG.md` (`etc/roll_changelog.sh`): renamed `## [Unreleased]` to
+     `## [X.Y.Z] - <today>` under a fresh empty `## [Unreleased]`, turned the `[Unreleased]`
+     compare link into `[X.Y.Z]: .../compare/<prev>...X.Y.Z` and added a new
+     `[Unreleased]: .../compare/X.Y.Z...HEAD` above it. This is the first step after the version
+     is parsed, so a malformed changelog fails the job before anything is built or published;
    - built and tested everything from a workspace install as a preflight;
    - bumped `packages/core`, published it, and waited for npm to serve the new version;
    - bumped every adapter's own version and its `@gg-web-engine/core` dependency, built each one
      against the *published* core (not the workspace symlink), and published them;
    - bumped `@gg-web-engine/*` versions in every example listed in `examples/examples-list.txt`;
-   - regenerated `documentation/`, committed all of the above back to `main` as
+   - regenerated `documentation/`, committed all of the above (the rolled changelog included) back to `main` as
      `X.Y.Z release`, tagged it `X.Y.Z`, and deployed the docs site plus the Blender extension
      repository to GitHub Pages.
 5. Do the manual follow-ups the job doesn't cover:

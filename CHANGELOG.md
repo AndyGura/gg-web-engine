@@ -9,12 +9,14 @@ releases (see the README's "Current Status").
 
 How this file is maintained:
 
-- Every PR with a user-visible change adds a line under `[Unreleased]` (feature, behavior change,
-  bug fix, dependency bump that affects consumers). Internal refactors and doc-only changes are
-  omitted.
-- The `[pre-release] [X.Y.Z]` commit that cuts a release moves those lines into a new
-  `## [X.Y.Z] - YYYY-MM-DD` section and adds the compare link at the bottom. See
-  [`CONTRIBUTING.md`](CONTRIBUTING.md).
+- Every PR with a user-visible change adds a line under the `Unreleased` heading (feature,
+  behavior change, bug fix, dependency bump that affects consumers). Internal refactors and
+  doc-only changes are omitted.
+- The release pipeline (`etc/roll_changelog.sh`, run first thing by the `[pre-release] [X.Y.Z]`
+  job) moves those lines into a new `## [X.Y.Z] - YYYY-MM-DD` section, adds the compare link at
+  the bottom and leaves a fresh empty `Unreleased` section behind. It requires the bracketed
+  `Unreleased` marker to appear exactly twice in this file (that heading and its compare link),
+  so never write it anywhere else here. See [`CONTRIBUTING.md`](CONTRIBUTING.md).
 - Gaps in the version sequence (`0.0.41`–`0.0.47`, `0.0.50`–`0.0.55`, `0.0.64`, `0.0.67`–`0.0.69`)
   are release attempts that failed partway through the publish pipeline. npm refuses to
   re-publish an existing version, so each retry took the next number. Nothing was released under
@@ -25,6 +27,8 @@ commit history on 2026-09-30, so early sections are terse and reference pull req
 where one exists.
 
 ## [Unreleased]
+
+## [0.0.73] - 2026-09-30
 
 ### Added
 - Stable entity naming: every entity class declares `static readonly entityTypeName`, giving
@@ -346,7 +350,8 @@ where one exists.
 
 First published version: `@gg-web-engine/core`, `three`, `pixi`, `ammo`, and `matter`.
 
-[Unreleased]: https://github.com/AndyGura/gg-web-engine/compare/0.0.72...HEAD
+[Unreleased]: https://github.com/AndyGura/gg-web-engine/compare/0.0.73...HEAD
+[0.0.73]: https://github.com/AndyGura/gg-web-engine/compare/0.0.72...0.0.73
 [0.0.72]: https://github.com/AndyGura/gg-web-engine/compare/0.0.71...0.0.72
 [0.0.71]: https://github.com/AndyGura/gg-web-engine/compare/0.0.70...0.0.71
 [0.0.70]: https://github.com/AndyGura/gg-web-engine/compare/0.0.66...0.0.70

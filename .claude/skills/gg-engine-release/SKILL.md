@@ -16,26 +16,42 @@ A push to `main` whose latest commit message matches `^\[pre-release\] \[X\.Y\.Z
 (`PRE_RELEASE=false`) — it's a no-op, not a failure. So "cutting a release" in practice means
 landing a commit on `main` with that exact message prefix and the target version.
 
-## Before the trigger commit: roll `CHANGELOG.md`
+## `CHANGELOG.md` is rolled by the pipeline, not by hand
 
 The root `CHANGELOG.md` (Keep-a-Changelog format) has an `## [Unreleased]` section that every PR
-with a user-visible change appends to (the PR template's checklist asks for it). The
-`[pre-release] [X.Y.Z]` commit is where those lines become a release:
+with a user-visible change appends to (the PR template's checklist asks for it). The release job
+rolls it itself, as its very first step after parsing the version out of the trigger commit and
+before any install/build/publish — `etc/roll_changelog.sh X.Y.Z`:
 
-1. Rename the `[Unreleased]` heading to `## [X.Y.Z] - YYYY-MM-DD` (today's date) and insert a
-   fresh, empty `## [Unreleased]` heading above it.
-2. At the bottom of the file, add `[X.Y.Z]: https://github.com/AndyGura/gg-web-engine/compare/
-   <previous-tag>...X.Y.Z` and point the `[Unreleased]` link at `compare/X.Y.Z...HEAD`.
-3. Include that edit in the trigger commit itself — the pipeline doesn't touch `CHANGELOG.md`.
+1. Asserts the literal string `[Unreleased]` occurs **exactly twice** in the file: the
+   `## [Unreleased]` heading and the `[Unreleased]: <repo>/compare/<prev-tag>...HEAD` link line.
+   It also asserts `[X.Y.Z]` isn't already mentioned. Any mismatch prints the offending lines and
+   exits non-zero, failing the job within seconds, before `core` is anywhere near npm. This is
+   why the file's own preamble spells the marker as `` `Unreleased` `` without brackets: a third
+   occurrence anywhere (prose, a code span, a stray link) aborts the release.
+2. Renames the heading to `## [X.Y.Z] - YYYY-MM-DD` (UTC today) and inserts a fresh, empty
+   `## [Unreleased]` heading above it.
+3. Rewrites the link line into two: `[Unreleased]: <repo>/compare/X.Y.Z...HEAD` followed by
+   `[X.Y.Z]: <repo>/compare/<prev-tag>...X.Y.Z` (the previous tag is read from the old link, so a
+   skipped/failed version number is handled automatically).
 
-If `[Unreleased]` is empty (a rebuild-only release such as a CI fix), still add the version
-section with a one-line note saying what it re-published and why, so the version sequence in the
-file stays gap-free except for genuinely failed attempts (which the file's preamble already
-explains).
+The rolled file is picked up by the workflow's "Update version in git" step along with the
+`package.json` bumps, in the `X.Y.Z release` commit. `etc/publish_new_version.sh` never touches
+`CHANGELOG.md`.
+
+So the `[pre-release] [X.Y.Z]` trigger commit needs **no** changelog edit; it can be an empty
+commit. Before pushing it, only check the two-marker invariant holds on `main` (a quick
+`grep -c -F '[Unreleased]' CHANGELOG.md` should print `2`), and if `[Unreleased]` is empty (a
+rebuild-only release such as a CI fix) add a one-line note under it saying what the release
+re-publishes and why, so the version sequence in the file stays gap-free except for genuinely
+failed attempts (which the file's preamble already explains). The script can be run locally
+against a copy to preview the result: `etc/roll_changelog.sh X.Y.Z /path/to/copy.md` (it's
+BSD/GNU-portable — plain `grep`/`awk`, no `sed -i`).
 
 ## What the pipeline does (`etc/publish_new_version.sh X.Y.Z`)
 
-0. Before `etc/publish_new_version.sh` even runs, `release_action.yml` does a plain workspace
+0. Before `etc/publish_new_version.sh` even runs, `release_action.yml` rolls `CHANGELOG.md` (see
+   the section above — this is where a malformed changelog aborts the job) and then does a plain workspace
    `npm install && npm run build && npm run test` at the repo root (the same commands
    `pull_request_build.yml` runs on every PR) and fails the job right there if any of it errors —
    so an outright broken commit never gets as far as publishing `core`. This is a different install
@@ -169,6 +185,6 @@ relevant section rather than left as a loose log entry.
 
 The root `CONTRIBUTING.md` ("Cutting a release (maintainers)") is the human-facing mirror of the
 trigger/steps/failed-release parts of this file, for a maintainer not working through Claude
-Code. Whenever the *procedure* changes (trigger convention, a new pre-commit step like the
-changelog roll, a new manual follow-up), update that section in the same change; pipeline
+Code. Whenever the *procedure* changes (trigger convention, a new pre-commit check like the
+changelog two-marker invariant, a new manual follow-up), update that section in the same change; pipeline
 internals and failure-mode forensics stay here only.
