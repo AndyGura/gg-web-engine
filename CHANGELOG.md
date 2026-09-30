@@ -28,6 +28,12 @@ where one exists.
 
 ## [Unreleased]
 
+### Fixed
+- `PlayerCharacterController`/`PlayerCharacterController2d`: setting `active = false` now fully
+  detaches input - direction/run/crouch keys and (3D) mouse-look stop writing to `character` while
+  inactive, and deactivating mid-input zeroes `moveDirection`/`isRunning` (and, in "hold" crouch
+  mode, `isCrouching`) instead of leaving the character stuck mid-motion.
+
 ## [0.0.73] - 2026-09-30
 
 ### Added

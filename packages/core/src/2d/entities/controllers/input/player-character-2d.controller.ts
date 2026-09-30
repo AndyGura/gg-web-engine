@@ -60,6 +60,28 @@ export class PlayerCharacterController2d<TypeDoc extends Gg2dWorldTypeDocRepo = 
 
   public readonly directionsInput: DirectionKeyboardInput;
 
+  get active(): boolean {
+    return super.active;
+  }
+
+  set active(value: boolean) {
+    const wasActive = super.active;
+    if (wasActive && !value) {
+      // Neutralize whatever this controller last wrote to `character` so a deactivated controller
+      // leaves it in a resting state instead of "stuck" mid-input (e.g. still walking forever if
+      // `active` is set to `false` while a direction key is held down) - see the subscriptions
+      // below, all now gated on `this.active` too so they stop writing anything further.
+      if (this.character) {
+        this.character.moveDirection = 0;
+        this.character.isRunning = false;
+        if (this.character.options.crouchMode === 'hold') {
+          this.character.isCrouching = false;
+        }
+      }
+    }
+    super.active = value;
+  }
+
   constructor(
     protected readonly keyboard: KeyboardInput,
     /** The character this controller drives. May be swapped/set to `null` at any time. */
@@ -75,15 +97,20 @@ export class PlayerCharacterController2d<TypeDoc extends Gg2dWorldTypeDocRepo = 
   async onSpawned(world: Gg2dWorld<TypeDoc>): Promise<void> {
     super.onSpawned(world);
 
-    this.directionsInput.output$.pipe(takeUntil(this._onRemoved$)).subscribe(({ leftRight }) => {
-      // `leftRight === true` means the left key is held (see `DirectionKeyboardInput`'s own doc) -
-      // this character's `moveDirection` is positive along `right` (see
-      // `CharacterController2dEntity`'s doc), so left maps to `-1`.
-      const direction = leftRight === undefined ? 0 : leftRight ? -1 : 1;
-      if (this.character) {
-        this.character.moveDirection = direction;
-      }
-    });
+    this.directionsInput.output$
+      .pipe(
+        takeUntil(this._onRemoved$),
+        filter(() => this.active),
+      )
+      .subscribe(({ leftRight }) => {
+        // `leftRight === true` means the left key is held (see `DirectionKeyboardInput`'s own doc) -
+        // this character's `moveDirection` is positive along `right` (see
+        // `CharacterController2dEntity`'s doc), so left maps to `-1`.
+        const direction = leftRight === undefined ? 0 : leftRight ? -1 : 1;
+        if (this.character) {
+          this.character.moveDirection = direction;
+        }
+      });
 
     this.keyboard
       .bind(this.options.jumpKey)
@@ -95,7 +122,10 @@ export class PlayerCharacterController2d<TypeDoc extends Gg2dWorldTypeDocRepo = 
 
     this.keyboard
       .bind(this.options.runKey)
-      .pipe(takeUntil(this._onRemoved$))
+      .pipe(
+        takeUntil(this._onRemoved$),
+        filter(() => this.active),
+      )
       .subscribe(down => {
         if (this.character) {
           this.character.isRunning = down;
@@ -104,7 +134,10 @@ export class PlayerCharacterController2d<TypeDoc extends Gg2dWorldTypeDocRepo = 
 
     this.keyboard
       .bind(this.options.crouchKey)
-      .pipe(takeUntil(this._onRemoved$))
+      .pipe(
+        takeUntil(this._onRemoved$),
+        filter(() => this.active),
+      )
       .subscribe(down => {
         if (!this.character) {
           return;

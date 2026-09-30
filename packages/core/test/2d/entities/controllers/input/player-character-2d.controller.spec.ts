@@ -105,6 +105,69 @@ describe('PlayerCharacterController2d', () => {
     });
   });
 
+  describe('active gating', () => {
+    it('does not react to direction/run/crouch keys while inactive', async () => {
+      const character = fakeCharacter();
+      const { keyboard, controller } = setup(character);
+      await controller.onSpawned({} as any);
+      controller.active = false;
+
+      keyboard.emulateKeyDown('KeyD');
+      keyboard.emulateKeyDown('ShiftLeft');
+      keyboard.emulateKeyDown('ControlLeft');
+
+      expect(character.moveDirection).toBe(0);
+      expect(character.isRunning).toBe(false);
+      expect(character.isCrouching).toBe(false);
+    });
+
+    it('zeroes moveDirection and isRunning, and clears "hold"-mode isCrouching, when deactivated mid-input', async () => {
+      const character = fakeCharacter();
+      const { keyboard, controller } = setup(character);
+      await controller.onSpawned({} as any);
+
+      keyboard.emulateKeyDown('KeyD');
+      keyboard.emulateKeyDown('ShiftLeft');
+      keyboard.emulateKeyDown('ControlLeft');
+      expect(character.moveDirection).toBe(1);
+      expect(character.isRunning).toBe(true);
+      expect(character.isCrouching).toBe(true);
+
+      controller.active = false;
+
+      expect(character.moveDirection).toBe(0);
+      expect(character.isRunning).toBe(false);
+      expect(character.isCrouching).toBe(false);
+    });
+
+    it('does not clear "toggle"-mode isCrouching on deactivation', async () => {
+      const character = fakeCharacter({ options: { crouchMode: 'toggle' } });
+      const { keyboard, controller } = setup(character);
+      await controller.onSpawned({} as any);
+
+      keyboard.emulateKeyDown('ControlLeft');
+      expect(character.isCrouching).toBe(true);
+
+      controller.active = false;
+      expect(character.isCrouching).toBe(true);
+    });
+
+    it('resumes reacting to direction keys once reactivated', async () => {
+      const character = fakeCharacter();
+      const { keyboard, controller } = setup(character);
+      await controller.onSpawned({} as any);
+
+      keyboard.emulateKeyDown('KeyD');
+      controller.active = false;
+      expect(character.moveDirection).toBe(0);
+
+      controller.active = true;
+      keyboard.emulateKeyUp('KeyD');
+      keyboard.emulateKeyDown('KeyA');
+      expect(character.moveDirection).toBe(-1);
+    });
+  });
+
   describe('camera follow', () => {
     it('moves the camera towards the character position, smoothed rather than snapped', async () => {
       const character = fakeCharacter({ position: { x: 100, y: 0 } });

@@ -529,6 +529,51 @@ adapter-specific regressions like this one are worth reproducing at that level, 
 core-level mocked-raycast tests, precisely because the bug lived in how a real adapter's raycast
 semantics interact with this helper, not in the helper's own math in isolation.
 
+## `PlayerCharacterController`/`PlayerCharacterController2d`: `active` fully detaches input
+
+Setting `active = false` on `PlayerCharacterController` (3D,
+`3d/entities/controllers/input/player-character.controller.ts`) or `PlayerCharacterController2d`
+(2D, `2d/entities/controllers/input/player-character-2d.controller.ts`) fully detaches the
+controller from whatever `character` it's driving: every subscription that writes to `character` -
+direction keys (`moveDirection`), the run key (`isRunning`), the crouch key (`isCrouching`), and
+(3D only) mouse-look (which feeds the internal `_spherical` state that `updateCamera()` turns into
+`character.rotation`/the camera every tick) - is gated on `this.active`, the same way the jump key
+and (3D) the view-toggle key already were. Deactivating additionally neutralizes whatever the
+controller last wrote, so switching a controller off mid-input doesn't leave the character walking/
+running/crouching forever: `moveDirection` resets to zero (`Pnt3.O` in 3D, `0` in 2D), `isRunning`
+to `false`, and - only when `character.options.crouchMode === 'hold'` - `isCrouching` to `false` (a
+`'toggle'`-mode crouch is a latched state the player explicitly set, not "input held down", so
+deactivating leaves it alone). `character.rotation` is never touched by this neutralization -
+facing direction isn't part of the "input held down" state being cleared. Reactivating
+(`active = true`) runs the same `reset()`-based mouse-look resync it always did (3D only -
+`reset()` re-derives `_spherical` from the camera's current rotation); it does not replay whatever
+a key was doing at the moment of deactivation - a key still held down when the controller
+reactivates only resumes affecting `character` on its next actual transition (release, or a
+different key), since `DirectionKeyboardInput.output$`/`KeyboardInput.bind(...)` only emit on a key
+state change, not continuously.
+
+Practical consequence for anything driving these controllers (an app, or `gg-engine-app-development`'s
+own guidance): swapping a `PlayerCharacterController`/`PlayerCharacterController2d` to a different
+character, or temporarily suspending player input (a cutscene, a menu), only needs
+`controller.active = false`/`true` - `character` itself can stay whatever it already is (it's a
+plain public, freely-reassignable field either way), and setting it to `null` is never required
+just to stop the controller from acting on it.
+
+`GgCarKeyboardHandlingController`/`CarKeyboardHandlingController` don't need (and don't have) this
+same per-subscription `active` filtering on the writes that matter most (`car.steeringFactor`/
+`acceleration`/`brake`, from `GgCarKeyboardHandlingController`'s subscription to
+`carHandlingInput.output$`): that output is only ever pushed from `CarKeyboardHandlingController`'s
+own `tick$`-driven subscription, and `GgWorld`'s tick loop (`forwardTick` in `base/gg-world.ts`)
+never delivers a tick to an inactive entity in the first place. `CarKeyboardHandlingController` is
+added as a child of `GgCarKeyboardHandlingController` via `addChildren` in the constructor, so
+deactivating the parent already makes the child inactive too (`IEntity.active` factors in
+`parent.active`) - no extra wiring needed. Confirming this holds requires driving a real `GgWorld`
+tick loop in a test (`await world.init()`, then
+`(world.worldClock as any)._tick$.next([elapsed, delta])`), not calling `controller.tick$.next(...)`
+directly - the latter bypasses `forwardTick`'s own `active` check entirely and would pass even if
+the gating were broken (see `car-keyboard-handling.controller.spec.ts`/
+`gg-car-keyboard-handling.controller.spec.ts` for this pattern in practice).
+
 ## The TypeDocRepo generic pattern — read this before touching interfaces
 
 Core interfaces don't hardcode adapter types. Instead each dimension defines a "type doc
