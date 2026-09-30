@@ -39,6 +39,10 @@ where one exists.
 - `matter`: `MatterRigidBodyComponent.rotation`'s setter now calls `Body.setAngle` instead of
   writing `nativeBody.angle` directly, so a rotation write no longer corrupts angular velocity
   (mirrors the existing `Body.setPosition`-based `position` setter).
+- `PlayerCharacterController`/`PlayerCharacterController2d`: setting `active = false` now fully
+  detaches input - direction/run/crouch keys and (3D) mouse-look stop writing to `character` while
+  inactive, and deactivating mid-input zeroes `moveDirection`/`isRunning` (and, in "hold" crouch
+  mode, `isCrouching`) instead of leaving the character stuck mid-motion.
 
 ## [0.0.73] - 2026-09-30
 

@@ -168,9 +168,24 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
   }
 
   set active(value: boolean) {
-    if (!super.active && value) {
+    const wasActive = super.active;
+    if (!wasActive && value) {
       this.reset();
       this.viewMode = this._viewMode;
+    } else if (wasActive && !value) {
+      // Neutralize whatever this controller last wrote to `character` so a deactivated controller
+      // leaves it in a resting state instead of "stuck" mid-input (e.g. still walking forever if
+      // `active` is set to `false` while a direction key is held down) - see the subscriptions
+      // below, all now gated on `this.active` too so they stop writing anything further. Rotation is
+      // deliberately left untouched: unlike movement/run/crouch, facing direction isn't an "input
+      // held down" state that needs resetting on deactivation.
+      if (this.character) {
+        this.character.moveDirection = Pnt3.O;
+        this.character.isRunning = false;
+        if (this.character.options.crouchMode === 'hold') {
+          this.character.isCrouching = false;
+        }
+      }
     }
     super.active = value;
   }
@@ -244,21 +259,26 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
     super.onSpawned(world);
     this.reset();
 
-    this.directionsInput.output$.pipe(takeUntil(this._onRemoved$)).subscribe(({ upDown, leftRight }) => {
-      // Local axes here follow `CharacterController3dEntity.moveDirection`'s own convention (see
-      // its doc): local +Y is "forward at zero yaw", local +X is "right at zero yaw" - the same
-      // right=X/forward=Y/up=Z axis paradigm `RaycastVehicle3dEntity`/`GgCarEntity` use (see e.g.
-      // `AmmoRaycastVehicleComponent`'s `setCoordinateSystem(0, 2, 1)`), NOT the camera/
-      // `FreeCameraController` convention (local -Z forward, local Y up), which does not apply here
-      // since the character's identity/rest orientation stands with its long axis along `up` (Z),
-      // not along local Y like a camera's.
-      const local: MutablePoint3 = { x: 0, y: 0, z: 0 };
-      if (upDown !== undefined) local.y = upDown ? 1 : -1;
-      if (leftRight !== undefined) local.x = leftRight ? -1 : 1;
-      if (this.character) {
-        this.character.moveDirection = local;
-      }
-    });
+    this.directionsInput.output$
+      .pipe(
+        takeUntil(this._onRemoved$),
+        filter(() => this.active),
+      )
+      .subscribe(({ upDown, leftRight }) => {
+        // Local axes here follow `CharacterController3dEntity.moveDirection`'s own convention (see
+        // its doc): local +Y is "forward at zero yaw", local +X is "right at zero yaw" - the same
+        // right=X/forward=Y/up=Z axis paradigm `RaycastVehicle3dEntity`/`GgCarEntity` use (see e.g.
+        // `AmmoRaycastVehicleComponent`'s `setCoordinateSystem(0, 2, 1)`), NOT the camera/
+        // `FreeCameraController` convention (local -Z forward, local Y up), which does not apply here
+        // since the character's identity/rest orientation stands with its long axis along `up` (Z),
+        // not along local Y like a camera's.
+        const local: MutablePoint3 = { x: 0, y: 0, z: 0 };
+        if (upDown !== undefined) local.y = upDown ? 1 : -1;
+        if (leftRight !== undefined) local.x = leftRight ? -1 : 1;
+        if (this.character) {
+          this.character.moveDirection = local;
+        }
+      });
 
     this.keyboard
       .bind(this.options.jumpKey)
@@ -270,7 +290,10 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
 
     this.keyboard
       .bind(this.options.runKey)
-      .pipe(takeUntil(this._onRemoved$))
+      .pipe(
+        takeUntil(this._onRemoved$),
+        filter(() => this.active),
+      )
       .subscribe(down => {
         if (this.character) {
           this.character.isRunning = down;
@@ -279,7 +302,10 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
 
     this.keyboard
       .bind(this.options.crouchKey)
-      .pipe(takeUntil(this._onRemoved$))
+      .pipe(
+        takeUntil(this._onRemoved$),
+        filter(() => this.active),
+      )
       .subscribe(down => {
         if (!this.character) {
           return;
@@ -307,7 +333,11 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
     this.mouseInput.delta$
       .pipe(
         takeUntil(this._onRemoved$),
-        filter(() => isTouchScreen || !this.options.ignoreMouseUnlessPointerLocked || this.mouseInput.isPointerLocked),
+        filter(
+          () =>
+            this.active &&
+            (isTouchScreen || !this.options.ignoreMouseUnlessPointerLocked || this.mouseInput.isPointerLocked),
+        ),
       )
       .subscribe(delta => {
         this._spherical.theta -= (delta.x * this.options.mouseSensitivity) / 1000;

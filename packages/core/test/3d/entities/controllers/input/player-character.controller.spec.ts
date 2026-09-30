@@ -110,6 +110,97 @@ describe('PlayerCharacterController', () => {
     });
   });
 
+  describe('active gating', () => {
+    it('does not react to direction/run/crouch keys while inactive', async () => {
+      const character = fakeCharacter();
+      const { keyboard, controller } = setup(character);
+      await controller.onSpawned({} as any);
+      controller.active = false;
+
+      keyboard.emulateKeyDown('KeyW');
+      keyboard.emulateKeyDown('ShiftLeft');
+      keyboard.emulateKeyDown('ControlLeft');
+
+      expect(character.moveDirection).toEqual(Pnt3.O);
+      expect(character.isRunning).toBe(false);
+      expect(character.isCrouching).toBe(false);
+    });
+
+    it('zeroes moveDirection and isRunning, and clears "hold"-mode isCrouching, when deactivated mid-input', async () => {
+      const character = fakeCharacter();
+      const { keyboard, controller } = setup(character);
+      await controller.onSpawned({} as any);
+
+      keyboard.emulateKeyDown('KeyW');
+      keyboard.emulateKeyDown('ShiftLeft');
+      keyboard.emulateKeyDown('ControlLeft');
+      expect(character.moveDirection).toEqual({ x: 0, y: 1, z: 0 });
+      expect(character.isRunning).toBe(true);
+      expect(character.isCrouching).toBe(true);
+
+      controller.active = false;
+
+      expect(character.moveDirection).toEqual(Pnt3.O);
+      expect(character.isRunning).toBe(false);
+      expect(character.isCrouching).toBe(false);
+    });
+
+    it('does not clear "toggle"-mode isCrouching on deactivation', async () => {
+      const character = fakeCharacter({ options: { crouchMode: 'toggle' } });
+      const { keyboard, controller } = setup(character);
+      await controller.onSpawned({} as any);
+
+      keyboard.emulateKeyDown('ControlLeft');
+      expect(character.isCrouching).toBe(true);
+
+      controller.active = false;
+      expect(character.isCrouching).toBe(true);
+    });
+
+    it('does not touch character.rotation on deactivation', async () => {
+      const character = fakeCharacter();
+      const { controller } = setup(character);
+      await controller.onSpawned({} as any);
+      controller.tick$.next([0, 16]);
+      const rotationBefore = { ...character.rotation };
+
+      controller.active = false;
+
+      expect(character.rotation).toEqual(rotationBefore);
+    });
+
+    it('resumes reacting to direction keys once reactivated', async () => {
+      const character = fakeCharacter();
+      const { keyboard, controller } = setup(character);
+      await controller.onSpawned({} as any);
+
+      keyboard.emulateKeyDown('KeyW');
+      controller.active = false;
+      expect(character.moveDirection).toEqual(Pnt3.O);
+
+      controller.active = true;
+      keyboard.emulateKeyUp('KeyW');
+      keyboard.emulateKeyDown('KeyD');
+      expect(character.moveDirection).toEqual({ x: 1, y: 0, z: 0 });
+    });
+
+    it('ignores mouse-look while inactive', async () => {
+      const emitMouseDelta = (mouseInput: any, delta: { x: number; y: number }) => mouseInput._delta$.next(delta);
+      const character = fakeCharacter();
+      const { controller } = setup(character, { viewMode: 'first-person' });
+      await controller.onSpawned({} as any);
+      controller.tick$.next([0, 16]);
+      const before = { ...controller.lookDirection };
+
+      controller.active = false;
+      emitMouseDelta(controller.mouseInput, { x: 500, y: 500 });
+
+      expect(controller.lookDirection.x).toBeCloseTo(before.x);
+      expect(controller.lookDirection.y).toBeCloseTo(before.y);
+      expect(controller.lookDirection.z).toBeCloseTo(before.z);
+    });
+  });
+
   describe('view mode', () => {
     it('starts in the configured view mode and hides the mesh in first-person', () => {
       const character = fakeCharacter();

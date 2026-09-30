@@ -261,8 +261,16 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   `'static'` | `'kinematic_pos'` | `'kinematic_vel'`), `ccd`, friction/restitution, collision groups
   — see `packages/core/src/base/models/body-options.ts`.
 - **Ready-made controllers** (attach to entities via `entity.addController(...)`):
-  `FreeCameraController`, `OrbitCameraController`, `CarKeyboardHandlingController` /
-  `GgCarKeyboardHandlingController` in `packages/core/src/3d/entities/controllers/input/`.
+  `FreeCameraController`, `OrbitCameraController`, `PlayerCharacterController` (3D) /
+  `PlayerCharacterController2d` (2D), `CarKeyboardHandlingController` /
+  `GgCarKeyboardHandlingController` in `packages/core/src/3d/entities/controllers/input/` (2D under
+  `packages/core/src/2d/entities/controllers/input/`). Swapping a `PlayerCharacterController`/
+  `PlayerCharacterController2d` to drive a different character, or temporarily suspending player
+  input (a cutscene, a menu), only needs `controller.active = false`/`true` - setting `.character`
+  to `null` is optional and never required just to stop the controller from acting on it, since
+  `active = false` already stops every input subscription from touching `character` and neutralizes
+  whatever it last wrote (`moveDirection`/`isRunning` zeroed, plus `isCrouching` in "hold" crouch
+  mode) rather than leaving it stuck mid-motion.
 - **GLB scene loading (3D)**: GLB + `.gg` meta sidecar, driven by `packages/core/src/3d/loader.ts`
   and the adapter's own `<lib>-loader.ts` (e.g. `ThreeLoader`). Levels are authored in Blender and
   exported with the `GG Web Engine Exporter` add-on in `blender-addon/` (see `blender-addon/README.md`
