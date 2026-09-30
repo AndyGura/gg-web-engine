@@ -28,6 +28,11 @@ where one exists.
 
 ## [Unreleased]
 
+### Added
+- `LevelLoader.createEntity` now applies an `EntityJson`'s `events` bindings (an optional third
+  `blueprints` argument supplies named graphs a binding may reference), parenting the resulting
+  binding under the created entity itself so it's torn down whenever that entity is.
+
 ## [0.0.73] - 2026-09-30
 
 ### Added

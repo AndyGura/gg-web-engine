@@ -163,6 +163,30 @@ class below). Returns `undefined` (logged via `console.warn`, same as `loadLevel
 posture) if `entityJson.class` has no registered generator, or that generator didn't return an
 `IEntity`.
 
+`createEntity` also honors `entityJson.events` (see "Blueprints" below), via an optional third
+`blueprints` argument (`createEntity(entityJson, defaultName, blueprints)`) supplying the named
+graphs a string binding may reference by name - the same role `levelJson.blueprints` plays for
+`loadLevel` (which is, in fact, implemented as a `createEntity` call per entity, passing its own
+`levelJson.blueprints` through this argument). Each binding is resolved exactly as it is under
+`loadLevel` and the resulting binding entity is parented directly under the just-built entity
+(`entity.addChildren(bindingEntity)`) rather than under any group - `createEntity` doesn't have one.
+This means disposing/removing (with `dispose: true`) the entity on its own - not just tearing down a
+whole level - tears the binding's subscription and blueprint down right along with it, with nothing
+extra for the caller to clean up:
+
+```typescript
+const killZone = await world.loader.createEntity({
+  class: 'Trigger',
+  config: { dimensions: { x: 10, y: 1, z: 10 } },
+  events: { onEntityEntered: 'RemoveEntity' },
+});
+if (killZone) {
+  world.addEntity(killZone);
+}
+// ...later...
+world.removeEntity(killZone!, true); // tears the "onEntityEntered" binding down along with killZone
+```
+
 ## Serializing an entity or a level back to JSON
 
 `world.loader.serializeEntity(entity)` is the inverse of `createEntity`/`loadLevel`: given a live
@@ -689,13 +713,16 @@ Need non-default settings on that one node (e.g. `RemoveEntity`'s `dispose` flag
 ```
 
 `EntityJson.events` is `Record<eventPropertyName, EntityEventBinding>`, where an
-`EntityEventBinding` is either form above. For each entry, `loadLevel` reads that observable
-property off the just-created entity (e.g. `Trigger3dEntity.onEntityEntered`), resolves the binding
-to a `BlueprintJson` (see below), builds a fresh `Blueprint` instance from it, and subscribes so
-every value the observable emits triggers that blueprint's `"in"` entry point with that value as
-the payload. The binding itself is a plain `IEntity` parented under the level's group (same pattern
-as `ShapeSpawner` below), so `world.removeEntity(level, true)` unsubscribes it and disposes the
-blueprint along with the rest of the level - nothing else to clean up by hand.
+`EntityEventBinding` is either form above. For each entry, `createEntity` (and therefore `loadLevel`,
+which builds every entity through it - see "Building a single entity outside a level" above) reads
+that observable property off the just-created entity (e.g. `Trigger3dEntity.onEntityEntered`),
+resolves the binding to a `BlueprintJson` (see below), builds a fresh `Blueprint` instance from it,
+and subscribes so every value the observable emits triggers that blueprint's `"in"` entry point with
+that value as the payload. The binding itself is a plain `IEntity`, parented directly under the
+entity it's bound to (not under the level's group, and not requiring one) - so disposing/removing
+(with `dispose: true`) that entity tears the binding down right along with it, whether that happens
+on its own (a `createEntity`-built entity outside any level) or as part of `world.removeEntity(level,
+true)` tearing down a whole level - nothing else to clean up by hand either way.
 
 A **string** binding is tried, in order: (1) as a key into the level's own top-level `blueprints`
 map (a named, possibly multi-node graph - see below); (2) if not found there, as a bare node type
@@ -990,8 +1017,11 @@ exercise spawn/parent/dispose cascades meaningfully) - including its `blueprint 
 describe block, covering `events`/`blueprints` wiring, the missing-blueprint-name and
 non-observable-property warning paths, and that a binding is torn down when its level is removed.
 The same file's `createEntity` describe block covers the standalone single-entity build API (no
-group parenting, no auto-add-to-world, the auto-generated-name-when-omitted case, and both warning
-paths); its `serializeEntity`/`registerSerializer`/`serializeLevel` describe blocks cover the
+group parenting, no auto-add-to-world, the auto-generated-name-when-omitted case, both warning
+paths, and its own `events`/`blueprints` handling - binding a built-in node directly, the binding
+being parented under the created entity itself and disposed along with it, and a binding resolved
+against a blueprint name passed through the optional third `blueprints` argument); its
+`serializeEntity`/`registerSerializer`/`serializeLevel` describe blocks cover the
 spawn-record-echo fallback direction - live position/rotation/name readback, the no-spawn-record
 warning, a custom serializer overriding the default, and `serializeLevel` silently skipping a level
 child with no spawn record (a blueprint event binding). Its own `self-serialization (ISerializableEntity)`

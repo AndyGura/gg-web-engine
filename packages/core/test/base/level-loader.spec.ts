@@ -253,6 +253,74 @@ describe('LevelLoader', () => {
 
       warnSpy.mockRestore();
     });
+
+    it('binds an "events" entry against a built-in blueprint node and fires it when the observable emits', async () => {
+      levelLoader.registerClass('Observable', () => new ObservableEntity());
+      const target = new TestEntity();
+      world.addEntity(target);
+
+      const entity = (await levelLoader.createEntity({
+        class: 'Observable',
+        name: 'StandaloneSource',
+        events: { onSomething: { type: 'RemoveEntity', settings: { dispose: true } } },
+      })) as ObservableEntity;
+      const disposeSpy = jest.spyOn(target, 'dispose');
+
+      entity.onSomething.next(target);
+
+      expect(target.world).toBeNull();
+      expect(disposeSpy).toHaveBeenCalled();
+    });
+
+    it('parents the binding under the created entity itself and disposes it along with the entity', async () => {
+      levelLoader.registerClass('Observable', () => new ObservableEntity());
+
+      const entity = (await levelLoader.createEntity({
+        class: 'Observable',
+        name: 'StandaloneSource2',
+        events: { onSomething: 'RemoveEntity' },
+      })) as ObservableEntity;
+
+      // No group/level involved at all - the binding is a plain child of the entity itself.
+      expect(entity.children.length).toBe(1);
+      const bindingEntity = entity.children[0];
+      const disposeSpy = jest.spyOn(bindingEntity, 'dispose');
+
+      entity.dispose();
+
+      expect(disposeSpy).toHaveBeenCalled();
+
+      // The binding's subscription was torn down along with the entity, so a later emission is inert.
+      const victim = new TestEntity();
+      world.addEntity(victim);
+      entity.onSomething.next(victim);
+      expect(victim.world).toBe(world);
+    });
+
+    it('resolves an "events" binding against a blueprint name in the passed blueprints map', async () => {
+      levelLoader.registerClass('Observable', () => new ObservableEntity());
+      const target = new TestEntity();
+      world.addEntity(target);
+
+      const entity = (await levelLoader.createEntity(
+        {
+          class: 'Observable',
+          name: 'StandaloneSource3',
+          events: { onSomething: 'RemoveOnEvent' },
+        },
+        undefined,
+        {
+          RemoveOnEvent: {
+            nodes: [{ id: 'n1', type: 'RemoveEntity' }],
+            inputs: { in: { node: 'n1', pin: 'entity' } },
+          },
+        },
+      )) as ObservableEntity;
+
+      entity.onSomething.next(target);
+
+      expect(target.world).toBeNull();
+    });
   });
 
   describe('loadLevel', () => {
