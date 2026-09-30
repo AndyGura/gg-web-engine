@@ -75,6 +75,26 @@ describe('IEntity', () => {
 
       expect(entity.name).toBe('Explicit');
     });
+
+    it('returns an unregister function that removes exactly that middleware, leaving the others in place', () => {
+      const unregisterA = IEntity.useDefaultNameMiddleware(name => `a(${name})`);
+      IEntity.useDefaultNameMiddleware(name => `b(${name})`);
+
+      unregisterA();
+      const entity = new GgEntityMock();
+
+      expect(entity.name).toMatch(/^b\(e0x[0-9a-f]+\)$/);
+    });
+
+    it('is a no-op the second time it is called', () => {
+      const unregister = IEntity.useDefaultNameMiddleware(name => `peer1:${name}`);
+
+      unregister();
+      expect(() => unregister()).not.toThrow();
+      const entity = new GgEntityMock();
+
+      expect(entity.name).toMatch(/^e0x[0-9a-f]+$/);
+    });
   });
 
   describe('entityTypeName-based default naming', () => {

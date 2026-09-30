@@ -44,6 +44,9 @@ where one exists.
   `fixedPhysicsStep` (ms) option, driving `physicsWorld.simulate()` off a fixed-timestep
   accumulator instead of the raw per-tick delta, plus a `maxPhysicsStepsPerTick` (default 8)
   spiral-of-death guard.
+- `GgWorld.entityAdded$`/`entityRemoved$` observables, emitted after a spawn/removal fully
+  succeeds (nested entities included); `IEntity.useDefaultNameMiddleware` now returns an
+  unregister function for the middleware it just registered.
 
 ### Fixed
 - `matter`: `MatterRigidBodyComponent.rotation`'s setter now calls `Body.setAngle` instead of

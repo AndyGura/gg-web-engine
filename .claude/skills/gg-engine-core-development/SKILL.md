@@ -152,6 +152,33 @@ a world's native scenes again. This check runs on every nested call too (not gat
 outermost-call-only branch the name validation uses), so a disposed entity anywhere in a subtree
 being added - not just at the root - still throws and rolls back the whole `addEntity` atomically.
 
+### `GgWorld.entityAdded$`/`entityRemoved$`: per-entity spawn/removal notifications
+
+`GgWorld` exposes `entityAdded$: Observable<IEntity>` and `entityRemoved$: Observable<IEntity>`
+(private `Subject`s underneath, exposed via a getter's `asObservable()`, the same pattern
+`IEntity.onSpawned$`/`onRemoved$` already use). `entityAdded$` emits an entity once `addEntity` has
+fully succeeded for it - after `onSpawned` has returned without throwing, so `entity.world` is
+already set and every one of its components has already had `addToWorld` called; `entityRemoved$`
+emits once `removeEntity` has fully succeeded - after `onRemoved` has returned, so `entity.world` is
+already back to `null` and every component has already had `removeFromWorld` called. Both fire from
+inside `addEntity`/`removeEntity` themselves, not from `onSpawned$`/`onRemoved$` - they're a
+world-wide feed of every entity that's ever passed through this world, as opposed to `IEntity`'s own
+per-instance subjects.
+
+Because `onSpawned`/`onRemoved` cascade into `addEntity`/`removeEntity` for every child (see the
+atomicity section above), a nested entity emits its own `entityAdded$`/`entityRemoved$` independently
+of its parent, and always *before* the parent's own event - a nested `addEntity`/`removeEntity` call
+completes (and so emits) before the outer call that triggered it does. Neither observable ever fires
+for an entity whose own spawn/removal call never actually completed: a name collision, a no-op call
+(entity already spawned/not currently in this world), or a component/child throwing partway through
+`onSpawned` all skip straight to rethrowing without reaching the emission - including for an entity
+that gets swept up in a rollback after a *sibling* elsewhere in the same subtree failed (its own
+`addEntity` call did complete first, so it still gets a matching `entityAdded$`/`entityRemoved$`
+pair, one right after the other, rather than neither firing). Both subjects complete in `dispose()` -
+but `dispose()` tears down its own top-level children by calling `onRemoved()`/`dispose()` on them
+directly rather than through `removeEntity`, so `entityRemoved$` never fires for that teardown, only
+completes afterward.
+
 ## `IEntity.dispose()` is idempotent - a second call is a no-op, by design
 
 A `_disposed` flag (exposed read-only as `entity.disposed`) makes every call after the first into a
@@ -233,6 +260,17 @@ This is a `packages/core`-authoring practice specifically; an app or example def
 entity class (e.g. a `ShapeSpawner`-style class registered via `LevelLoader.registerClass`) should
 follow the exact same convention - see `gg-engine-app-development`'s own section on this for that
 side of it.
+
+`IEntity.useDefaultNameMiddleware(middleware)` registers a transform run on every subsequently-
+constructed entity's auto-generated default name (whichever of the two schemes above produced it),
+chaining in registration order, and returns a plain `() => void` unregister function that removes
+*exactly that* middleware - the other registered middlewares (if any) keep running, in their own
+original relative order, unaffected. Calling the returned function a second time (or after that
+middleware was already removed some other way) is a no-op rather than throwing or removing a
+different middleware. Since `defaultNameMiddlewares` is process-global static state, a test that
+registers one should always call the function it got back in an `afterEach`/`finally` rather than
+resetting the whole array by hand, so an assertion failure partway through the test doesn't leak the
+middleware into every later test in the file.
 
 ## `MapGraph3dEntity.chunkLoaded$`/`attachToChunk`: tying app-spawned, per-chunk content to a chunk's own unload
 

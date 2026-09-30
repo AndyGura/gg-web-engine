@@ -131,8 +131,8 @@ point.
 - All `@gg-web-engine/*` packages are released together at one version number (see
   `gg-engine-release`); adapters pin exact versions of both `@gg-web-engine/core` and their
   underlying third-party library.
-- `docs/tasks.md` and `milestones.md` at the repo root track known architectural gaps and the
-  public roadmap — check them before assuming a rough edge you find is unintentional/unknown.
+- `milestones.md` at the repo root tracks known architectural gaps and the public roadmap — check
+  it before assuming a rough edge you find is unintentional/unknown.
 - `CHANGELOG.md` at the repo root is hand-maintained in Keep-a-Changelog format: any user-visible
   change (new API, behavior change, bug fix, consumer-affecting dependency bump) gets a line under
   `## [Unreleased]` as part of the same PR; the `[pre-release] [X.Y.Z]` release commit rolls that

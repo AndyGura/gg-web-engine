@@ -184,6 +184,45 @@ export abstract class GgWorld<
   public readonly paused$: Subject<boolean> = new Subject<boolean>();
   public readonly disposed$: Subject<void> = new Subject<void>();
 
+  // emits `entity` once its spawn has fully succeeded - see `addEntity`'s own doc for exactly when
+  private readonly _entityAdded$: Subject<IEntity> = new Subject<IEntity>();
+  // emits `entity` once it has been fully removed - see `removeEntity`'s own doc for exactly when
+  private readonly _entityRemoved$: Subject<IEntity> = new Subject<IEntity>();
+
+  /**
+   * Emits an entity once its spawn into this world has fully succeeded: after `IEntity.onSpawned`
+   * has returned without throwing, so `entity.world` is already set and every one of its components
+   * has already had `addToWorld` called - i.e. it's fully usable at the point of emission, not just
+   * registered. A nested entity spawned as part of `onSpawned`'s own cascade (a child of an entity
+   * passed to `addEntity`, added via `addChildren` before the parent itself is spawned) emits its
+   * own event too, at the point its own nested `addEntity` call succeeds - which happens before the
+   * parent's own event, since the parent's `onSpawned` (and so its own success) only completes once
+   * every child has already finished spawning.
+   *
+   * Never emits for an `addEntity` call that throws (a name collision, or a component/child failing
+   * partway through the atomic spawn - see `addEntity`'s own doc) - rolled-back entities never
+   * successfully attached to anything, so there is nothing to report. Completes in `dispose()`.
+   */
+  public get entityAdded$(): Observable<IEntity> {
+    return this._entityAdded$.asObservable();
+  }
+
+  /**
+   * Emits an entity once it has been fully removed from this world: after `IEntity.onRemoved` has
+   * returned, so `entity.world` is already `null` again and every component has already had
+   * `removeFromWorld` called. A nested entity removed as part of `onRemoved`'s own cascade (a child
+   * of the entity passed to `removeEntity`) emits its own event too, before the parent's own event,
+   * mirroring `entityAdded$`'s nested-cascade ordering.
+   *
+   * Does not fire for an entity torn down by `dispose()` itself (top-level children there are torn
+   * down directly via `onRemoved`/`dispose`, not via `removeEntity` - the world itself is going
+   * away, so there is nothing left to notify) - only `entityAdded$`/`entityRemoved$` themselves
+   * completing there matters. Completes in `dispose()`.
+   */
+  public get entityRemoved$(): Observable<IEntity> {
+    return this._entityRemoved$.asObservable();
+  }
+
   protected constructor(args: {
     visualScene?: SceneTypeDoc['visualScene'];
     physicsWorld?: SceneTypeDoc['physicsWorld'];
@@ -378,6 +417,8 @@ export abstract class GgWorld<
     this.tickStarted$.complete();
     this.tickForwardTo$.complete();
     this.tickForwardedTo$.complete();
+    this._entityAdded$.complete();
+    this._entityRemoved$.complete();
     for (let i = 0; i < this.children.length; i++) {
       this.children[i].onRemoved();
       this.children[i].dispose();
@@ -418,7 +459,8 @@ export abstract class GgWorld<
    * (with an entity already in the world, or between two entities within the subtree itself)
    * throws without the entity's bodies or display objects ever reaching the native scenes - and
    * should spawning still throw partway for any other reason, whatever was already registered is
-   * rolled back before the error propagates.
+   * rolled back before the error propagates. Emits `entityAdded$` for `entity` once its own spawn
+   * has fully succeeded - see that getter's own doc for the nested-cascade emission order.
    * @param entity - The entity to add; a no-op if it's already a member of this world
    * @throws if `entity` has already been disposed (see `IEntity.dispose()`/`disposed`) - every
    * component it owns has already freed its native resources, so nothing about it is valid to
@@ -474,6 +516,7 @@ export abstract class GgWorld<
       this.addEntityDepth--;
     }
     this.maybeBindAudioListener(entity);
+    this._entityAdded$.next(entity);
   }
 
   /**
@@ -535,6 +578,7 @@ export abstract class GgWorld<
       }
       this.unregisterEntity(entity);
       entity.onRemoved();
+      this._entityRemoved$.next(entity);
     }
     if (dispose) {
       entity.dispose();

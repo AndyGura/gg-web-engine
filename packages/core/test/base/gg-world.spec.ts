@@ -25,6 +25,20 @@ function makeFakeRenderer(overrides: Partial<any> = {}): any {
   } as any;
 }
 
+// an Entity3d with spied native components, the way a loaded model's entities look
+function makeEntity3d(name: string) {
+  const body = mock3DBody();
+  body.name = name;
+  const object3D = mock3DObject();
+  const spies = {
+    bodyAdd: jest.spyOn(body, 'addToWorld'),
+    bodyRemove: jest.spyOn(body, 'removeFromWorld'),
+    objectAdd: jest.spyOn(object3D, 'addToWorld'),
+    objectRemove: jest.spyOn(object3D, 'removeFromWorld'),
+  };
+  return { entity: new Entity3d({ objectBody: body, object3D }), spies };
+}
+
 describe('GgWorld', () => {
   let world: GgWorld<any, any>;
 
@@ -105,20 +119,6 @@ describe('GgWorld', () => {
     });
 
     describe('atomicity of a nested entity tree', () => {
-      // an Entity3d with spied native components, the way a loaded model's entities look
-      const makeEntity3d = (name: string) => {
-        const body = mock3DBody();
-        body.name = name;
-        const object3D = mock3DObject();
-        const spies = {
-          bodyAdd: jest.spyOn(body, 'addToWorld'),
-          bodyRemove: jest.spyOn(body, 'removeFromWorld'),
-          objectAdd: jest.spyOn(object3D, 'addToWorld'),
-          objectRemove: jest.spyOn(object3D, 'removeFromWorld'),
-        };
-        return { entity: new Entity3d({ objectBody: body, object3D }), spies };
-      };
-
       it('should throw, without ever touching the native scenes, when a nested child collides with an existing entity', () => {
         const existing = new GgEntityMock();
         existing.name = 'Suzanne';
@@ -264,6 +264,140 @@ describe('GgWorld', () => {
         // native handle that, here, was never allocated
         expect(spies.objectRemove).not.toHaveBeenCalled();
       });
+    });
+  });
+
+  describe('entityAdded$ / entityRemoved$', () => {
+    it('emits entityAdded$ once, after the entity is fully attached to the world', () => {
+      const { entity, spies } = makeEntity3d('Spawned');
+      const received: IEntity[] = [];
+      let worldAtEmission: GgWorld<any, any> | null = null;
+      world.entityAdded$.subscribe(e => {
+        received.push(e);
+        worldAtEmission = e.world;
+      });
+
+      world.addEntity(entity);
+
+      expect(received).toEqual([entity]);
+      expect(worldAtEmission).toBe(world);
+      expect(spies.bodyAdd).toHaveBeenCalledTimes(1);
+    });
+
+    it('emits entityAdded$ for nested children before their parent, cascading through onSpawned', () => {
+      const group = new GroupEntity();
+      const child1 = makeEntity3d('Child1');
+      const child2 = makeEntity3d('Child2');
+      group.addChildren(child1.entity, child2.entity);
+      const received: IEntity[] = [];
+      world.entityAdded$.subscribe(e => received.push(e));
+
+      world.addEntity(group);
+
+      expect(received).toEqual([child1.entity, child2.entity, group]);
+    });
+
+    it('does not emit entityAdded$ when addEntity throws because of a name collision', () => {
+      const existing = new GgEntityMock();
+      existing.name = 'Dup';
+      world.addEntity(existing);
+      const second = new GgEntityMock();
+      second.name = 'Dup';
+      const received: IEntity[] = [];
+      world.entityAdded$.subscribe(e => received.push(e));
+
+      expect(() => world.addEntity(second)).toThrow();
+
+      expect(received).toEqual([]);
+    });
+
+    it('never emits entityAdded$ for an entity whose own spawn throws or gets rolled back, even though an already-spawned sibling swept up in the same rollback gets a matching entityRemoved$', () => {
+      const group = new GroupEntity();
+      const okChild = makeEntity3d('Floor');
+      const broken = makeEntity3d('Broken');
+      broken.spies.bodyAdd.mockImplementation(() => {
+        throw new Error('native body creation failed');
+      });
+      const later = makeEntity3d('Later');
+      group.addChildren(okChild.entity, broken.entity, later.entity);
+      const added: IEntity[] = [];
+      const removed: IEntity[] = [];
+      world.entityAdded$.subscribe(e => added.push(e));
+      world.entityRemoved$.subscribe(e => removed.push(e));
+
+      expect(() => world.addEntity(group)).toThrow('native body creation failed');
+
+      // okChild genuinely finished spawning (and so emitted entityAdded$) before `broken` failed and
+      // the whole subtree was rolled back, so it also genuinely gets removed again (entityRemoved$) -
+      // `broken`, `later` and `group` itself never successfully spawned, so neither event ever fires
+      // for them
+      expect(added).toEqual([okChild.entity]);
+      expect(removed).toEqual([okChild.entity]);
+    });
+
+    it('emits entityRemoved$ once, after the entity is fully detached from the world', () => {
+      const { entity, spies } = makeEntity3d('Removable');
+      world.addEntity(entity);
+      const received: IEntity[] = [];
+      let worldAtEmission: GgWorld<any, any> | null = null;
+      world.entityRemoved$.subscribe(e => {
+        received.push(e);
+        worldAtEmission = e.world;
+      });
+
+      world.removeEntity(entity);
+
+      expect(received).toEqual([entity]);
+      expect(worldAtEmission).toBeNull();
+      expect(spies.bodyRemove).toHaveBeenCalledTimes(1);
+    });
+
+    it('emits entityRemoved$ for nested children before their parent, cascading through onRemoved', () => {
+      const group = new GroupEntity();
+      const child1 = makeEntity3d('Child1');
+      const child2 = makeEntity3d('Child2');
+      group.addChildren(child1.entity, child2.entity);
+      world.addEntity(group);
+      const received: IEntity[] = [];
+      world.entityRemoved$.subscribe(e => received.push(e));
+
+      world.removeEntity(group);
+
+      expect(received).toEqual([child1.entity, child2.entity, group]);
+    });
+
+    it('does not emit entityRemoved$ for a no-op removeEntity call on an entity not part of this world', () => {
+      const entity = new GgEntityMock();
+      const received: IEntity[] = [];
+      world.entityRemoved$.subscribe(e => received.push(e));
+
+      world.removeEntity(entity);
+
+      expect(received).toEqual([]);
+    });
+
+    it('does not emit entityRemoved$ for children torn down as part of world.dispose() itself', () => {
+      const entity = new GgEntityMock();
+      entity.name = 'Torn';
+      world.addEntity(entity);
+      const received: IEntity[] = [];
+      world.entityRemoved$.subscribe(e => received.push(e));
+
+      world.dispose();
+
+      expect(received).toEqual([]);
+    });
+
+    it('completes both entityAdded$ and entityRemoved$ when the world is disposed', () => {
+      let addedCompleted = false;
+      let removedCompleted = false;
+      world.entityAdded$.subscribe({ complete: () => (addedCompleted = true) });
+      world.entityRemoved$.subscribe({ complete: () => (removedCompleted = true) });
+
+      world.dispose();
+
+      expect(addedCompleted).toBe(true);
+      expect(removedCompleted).toBe(true);
     });
   });
 

@@ -58,9 +58,18 @@ export abstract class IEntity<D = any, R = any, TypeDoc extends GgWorldTypeDocRe
    * such a layer exists, and every entity that isn't explicitly named by that app code or by
    * `LevelLoader` picks up the transform automatically. Core itself never calls this.
    * @param middleware - Receives the default name generated so far, returns the name to use
+   * @returns A function that unregisters exactly this middleware (a no-op if called again, or if
+   * this exact middleware was already removed some other way) - the remaining middlewares keep
+   * their own relative call order
    */
-  public static useDefaultNameMiddleware(middleware: (name: string) => string): void {
+  public static useDefaultNameMiddleware(middleware: (name: string) => string): () => void {
     IEntity.defaultNameMiddlewares.push(middleware);
+    return () => {
+      const index = IEntity.defaultNameMiddlewares.indexOf(middleware);
+      if (index >= 0) {
+        IEntity.defaultNameMiddlewares.splice(index, 1);
+      }
+    };
   }
 
   private generateDefaultName(): string {

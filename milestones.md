@@ -13,9 +13,8 @@ GG-Web-Engine is currently a single-maintainer, experimental-stage project (see 
 "Current Status"), built by hand up to this point. The repo also carries a set of Claude Code
 skills under `.claude/skills/*`, written by the maintainer as reference documentation for how to
 work on each package — useful context regardless of who (or what) is making the change. This doc
-is the higher-level "what and why," `docs/tasks.md` is the granular backlog of individual
-improvements, and the skills are the "how." Keep those three in sync rather than letting them
-silently drift apart.
+is the higher-level "what and why," and the skills are the "how." Keep those two in sync rather
+than letting them silently drift apart.
 
 ## How to read this document
 - Status per deliverable: ✅ done, 🚧 partially done / exists but incomplete, unmarked = not started.
@@ -98,10 +97,10 @@ Status
 - Remove non-null assertions (`!`) from public paths — not started. Still present in at least 8
   files under `packages/core/src` (`3d/gg-3d-world.ts`, `3d/entities/map-graph-3d.entity.ts`,
   `3d/entities/surface-following.entity.ts`, `2d/gg-2d-world.ts`, `base/inputs/mouse.input.ts`,
-  and the `dev/` UI files). Tracked as `docs/tasks.md` #21.
-- Lightweight DI for swappable modules (factory/loader registries) — not started. Tracked as
-  `docs/tasks.md` #1. Worth scoping narrowly (e.g. just entity-generator/factory registries, which
-  the level loader already does on a small scale — see M2) rather than a general DI container.
+  and the `dev/` UI files). Not yet tracked.
+- Lightweight DI for swappable modules (factory/loader registries) — not started. Not yet tracked.
+  Worth scoping narrowly (e.g. just entity-generator/factory registries, which the level loader
+  already does on a small scale — see M2) rather than a general DI container.
 
 Cut from the original version
 - "Unified event bus abstraction to avoid RxJS leakage" — RxJS is already the engine's one
@@ -344,7 +343,7 @@ Status
 - Spatial partitioning (BVH/quad/oct-tree) for culling and broadphase hints — not started.
 - Instanced rendering (3D) / batched sprites (2D) — not started.
 - Optional Web Worker physics stepping — not started.
-- LOD utilities — not started (`docs/tasks.md` #29).
+- LOD utilities — not started (not yet tracked).
 - A `packages/bench` benchmarking setup — doesn't exist yet. Create it with 2–3 baseline scenarios
   before committing to any numeric improvement targets; the original version of this doc assumed
   it already existed.
@@ -383,8 +382,8 @@ Status
 - Generated API docs from TSDoc — not started; no `typedoc` (or equivalent) config anywhere in the
   repo.
 - A progressive "Hello World → small game" tutorial — not started.
-- Automated/visual-regression testing of examples so they can't silently rot — not started
-  (`docs/tasks.md` #39, #40).
+- Automated/visual-regression testing of examples so they can't silently rot — not started (not yet
+  tracked).
 
 ---
 
@@ -413,8 +412,6 @@ for it:
 - Performance benchmarks once `packages/bench` exists (M5).
 
 ## Tracking
-- Day-to-day, granular items live in `docs/tasks.md` — check it before assuming something here is
-  unstarted or unknown.
 - This document is a living proposal, not a contract. If you pick up a deliverable, update its
   status here as part of the same change (see how the M2 level-loader entry above was updated) —
   that's cheaper than letting the doc drift and needing another full rewrite later.
