@@ -142,6 +142,18 @@ export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhys
     this.handleCollisionEnd = this.handleCollisionEnd.bind(this);
   }
 
+  /**
+   * `Engine.create` is never given `enableSleeping: true` here, matching matter-js's own default -
+   * so a body this world creates never *naturally* falls asleep from prolonged inactivity, no matter
+   * how long it rests. `IRigidBodyComponent.sleep()`/`wakeUp()` still work regardless of this flag
+   * (`Matter.Sleeping.set` writes a body's `isSleeping` flag directly, and `Engine.update`'s own
+   * per-body integration skip checks that flag unconditionally, not gated behind
+   * `engine.enableSleeping` - only the *automatic* fall-asleep-from-rest/wake-on-collision behavior
+   * is gated behind that flag) - only automatic, inactivity-driven sleeping is unavailable under the
+   * current setup. A future change enabling it should re-check
+   * `gg-engine-physics-adapter-matter`'s own note on this before assuming every existing
+   * position/velocity setter still behaves the same way once bodies can sleep on their own.
+   */
   async init(): Promise<void> {
     this.matterEngine_ = Engine.create({
       gravity: { ...this._gravity, scale: MATTER_WORLD_SCALE },

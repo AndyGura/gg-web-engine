@@ -57,6 +57,27 @@ at the end of all four setters. `activate(true)` (forced activation) is uncondit
 even on a static/kinematic body - Bullet's own implementation already no-ops for `CF_STATIC_OBJECT`
 internally, so there's no need to guard the call with `isStaticOrKinematicObject()` first.
 
+## `IRigidBodyComponent.isSleeping`/`wakeUp()`/`sleep()`: Bullet's activation-state trio
+
+`AmmoRigidBodyComponent.isSleeping` reads `!this.nativeBody.isActive()`, gated by `this.bodyType !==
+'static'` (a static body always reports `false`, matching the interface's own contract, rather than
+relying on `isStaticObject()` - `bodyType` is this component's own stored constructor field, already
+the source of truth every other branch in this file uses). `wakeUp()` calls
+`this.nativeBody.activate(true)` - the exact same call the four position/rotation/velocity setters
+already make to force-wake a sleeping body on write (see the section above); `sleep()` calls
+`this.nativeBody.forceActivationState(2)` (Bullet's `ISLAND_SLEEPING` constant from
+`btCollisionObject.h` - not exposed as a named export by this pinned Ammo.js embind build, only as a
+plain numeric parameter, so it's hardcoded as a local `private static readonly` on the component
+rather than referenced off the native module). Both are no-ops when `bodyType === 'static'`.
+
+`forceActivationState` (not `setActivationState`) is the right call here specifically because it
+writes Bullet's internal activation state field directly rather than merely requesting a
+deactivation Bullet's own bookkeeping will honor on some later internal step - `isActive()`/
+`isSleeping` reflect the change immediately after `sleep()` returns, with no need to run
+`stepSimulation` first. `debugBodySettings`'s own `RIGID_DYNAMIC` variant now reads
+`() => this.isSleeping` instead of querying `this.nativeBody.isActive()` a second, separate way -
+one source of truth for whether a body reads as asleep, whether from the debug view or from
+`IRigidBodyComponent.isSleeping` directly.
 
 **A leak that was consciously left alone**: `AmmoRigidBodyComponent`/`AmmoTriggerComponent` never
 capture or free their collision shape (`this._nativeBody.getCollisionShape()`) anywhere, including in

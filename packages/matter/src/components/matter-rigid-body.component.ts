@@ -11,7 +11,7 @@ import {
   Point2,
   Shape2DDescriptor,
 } from '@gg-web-engine/core';
-import { Body, Composite, Vector } from 'matter-js';
+import { Body, Composite, Sleeping, Vector } from 'matter-js';
 import { Observable, Subject } from 'rxjs';
 import { MatterGgWorld, MatterPhysicsTypeDocRepo } from '../types';
 
@@ -62,7 +62,7 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
   // tells a developer their kinematic request wasn't honored, not this view.
   readonly debugBodySettings: DebugBody2DSettings = new DebugBody2DSettings(
     isFinite(this.nativeBody.mass)
-      ? { type: 'RIGID_DYNAMIC', sleeping: () => this.nativeBody.isSleeping }
+      ? { type: 'RIGID_DYNAMIC', sleeping: () => this.isSleeping }
       : { type: 'RIGID_STATIC' },
     this.shape,
   );
@@ -229,5 +229,46 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
   resetMotion(): void {
     Body.setVelocity(this.nativeBody, Pnt2.O);
     Body.setAngularVelocity(this.nativeBody, 0);
+  }
+
+  /**
+   * A `kinematic_pos`/`kinematic_vel` request also reports `isStatic: true` here - see this
+   * component's own `bodyType`/`bodyOptions` doc for why matter-js can't distinguish that from a
+   * genuine `'static'` body natively. Both are equally never simulated as a sleepable dynamic body,
+   * so gating on the native `isStatic` flag rather than `this.bodyType === 'static'` is correct for
+   * both cases, not just the literal static one.
+   *
+   * Also always `false` regardless of `isStatic` unless the world's underlying `Matter.Engine` was
+   * created with `enableSleeping: true` - this adapter never turns that on itself (see
+   * `MatterWorldComponent`'s own doc on its `matterWorld`/engine setup), so a body constructed
+   * through this adapter alone never actually falls asleep on its own; `sleep()` below still forces
+   * it regardless of that engine setting.
+   */
+  get isSleeping(): boolean {
+    return !this.nativeBody.isStatic && this.nativeBody.isSleeping;
+  }
+
+  /**
+   * No-op on a body that reports `isStatic` (a genuine `'static'` body, or a `kinematic_pos`/
+   * `kinematic_vel` request - see `isSleeping`'s own doc for why both are treated the same here).
+   */
+  wakeUp(): void {
+    if (this.nativeBody.isStatic) {
+      return;
+    }
+    Sleeping.set(this.nativeBody, false);
+  }
+
+  /**
+   * No-op on a body that reports `isStatic` (see `isSleeping`'s own doc). Forces sleep immediately,
+   * regardless of whether the world's `Matter.Engine` has `enableSleeping` turned on - unlike a
+   * body naturally falling asleep from inactivity (which requires that engine flag), an explicit
+   * `Sleeping.set(body, true)` call takes effect either way.
+   */
+  sleep(): void {
+    if (this.nativeBody.isStatic) {
+      return;
+    }
+    Sleeping.set(this.nativeBody, true);
   }
 }

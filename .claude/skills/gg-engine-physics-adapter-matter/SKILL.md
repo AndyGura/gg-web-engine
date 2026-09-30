@@ -93,18 +93,35 @@ of the common base. Re-check this specifically after any future `@types/matter-j
 package widening or narrowing one call's options independently of the others is exactly the kind of
 change that only shows up as a compile error, not a runtime one.
 
-## Sleeping-body writes: checked, not currently a problem here
+## Sleeping-body writes: `position`/`rotation`/velocity setters preserve sleep state here, by design
 
-`gg-engine-physics-adapter`'s general contract note describes a cross-adapter bug where a sleeping
-body silently ignores a programmatic `position`/`rotation`/velocity write (confirmed and fixed in
-`packages/ammo` and both `packages/rapier2d`/`rapier3d`). Checked empirically here too (a body left
-at rest with zero gravity for 12 simulated seconds, then given a velocity write): it never actually
-went to sleep in the first place, because `MatterWorldComponent`'s `Engine.create({...})` never sets
-`enableSleeping` and `matter-js` itself defaults that to `false`. Nothing to fix currently - but if a
-future change ever turns `enableSleeping: true` on for this adapter (e.g. for the CPU-cost benefit at
-scale), re-run this exact check before assuming `Body.setPosition`/`setVelocity`/`setAngularVelocity`
-still work uniformly regardless of sleep state, and wake the body explicitly if not (matter-js
-exposes `Sleeping.set(body, false)` for this).
+`gg-engine-physics-adapter`'s general contract note describes the cross-adapter expectation that a
+dynamic body's `position`/`rotation`/`linearVelocity`/`angularVelocity` setters wake a sleeping body
+on write. This adapter is the one documented exception: `Body.setPosition`/`Body.setVelocity`/
+`Body.setAngularVelocity` are plain field writes that never touch a body's `isSleeping` flag, so a
+write to a sleeping body here takes effect (nothing is silently dropped) without waking it - a
+caller that needs a write to *also* wake the body should call `wakeUp()` itself right after, and one
+that must write state on a sleeping body *without* waking it (the scenario this asymmetry exists for)
+can call `sleep()` again right after the write to force it back down regardless.
+
+`MatterRigidBodyComponent.isSleeping`/`wakeUp()`/`sleep()` map onto `nativeBody.isSleeping`/
+`Matter.Sleeping.set(nativeBody, false)`/`Matter.Sleeping.set(nativeBody, true)`, gated on
+`!nativeBody.isStatic` - a `bodyType: 'kinematic_pos'`/`'kinematic_vel'` request also reports
+`isStatic: true` under the hood (see this component's own `bodyType`/`bodyOptions` doc), so gating on
+the native flag rather than `this.bodyType === 'static'` literally correctly treats both cases as
+"never sleeps, both calls are no-ops" rather than just the genuinely-static one.
+
+`Sleeping.set(body, true)` writes `body.isSleeping = true` directly, and `Engine.update`'s own
+per-body integration loop skips any body with `isSleeping` true unconditionally - **not** gated
+behind `engine.enableSleeping`, which only controls the *automatic*, inactivity-driven transition
+into/out of sleep (`Sleeping.update`/`Sleeping.afterCollisions`, called from `Engine.update` only
+when that flag is on). So `sleep()`/`wakeUp()` work correctly and take effect immediately regardless
+of `enableSleeping` - confirmed by reading `Sleeping.js`/`Engine.js` directly, not assumed. What
+`enableSleeping` actually gates (and what staying at its default `false` here means) is documented on
+`MatterWorldComponent.init()`'s own doc comment: a body constructed through this adapter never falls
+asleep *naturally* from prolonged inactivity, no matter how long it rests, only via an explicit
+`sleep()` call. Re-check this doc comment (and the "still work uniformly" claim above) if a future
+change ever turns `enableSleeping: true` on for this adapter.
 
 ## `bodyType: 'kinematic_pos'`/`'kinematic_vel'` and `ccd`: warn-once, fall back, never throw
 

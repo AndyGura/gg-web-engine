@@ -32,6 +32,8 @@ where one exists.
 - `LevelLoader.createEntity` now applies an `EntityJson`'s `events` bindings (an optional third
   `blueprints` argument supplies named graphs a binding may reference), parenting the resulting
   binding under the created entity itself so it's torn down whenever that entity is.
+- Public sleep API on rigid bodies: `IRigidBodyComponent.isSleeping`/`wakeUp()`/`sleep()`, implemented
+  across `ammo`, `rapier2d`, `rapier3d`, and `matter`.
 
 ### Fixed
 - `matter`: `MatterRigidBodyComponent.rotation`'s setter now calls `Body.setAngle` instead of

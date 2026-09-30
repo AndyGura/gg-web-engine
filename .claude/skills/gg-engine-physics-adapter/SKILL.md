@@ -163,9 +163,42 @@ active"/"is sleeping" query flips) before asserting a subsequent `linearVelocity
 actually moves it - a test that never lets the body sleep in the first place cannot catch this.
 Checked empirically and found *not* to apply to `packages/matter`: `matter-js`'s `Engine.create()`
 defaults `enableSleeping` to `false` and this adapter never overrides it, so a body never actually
-enters a sleeping state at all under the current setup, regardless of how long it rests - nothing to
-fix there unless a future change enables sleeping (see `gg-engine-physics-adapter-matter` for the
-one-line pointer).
+enters a sleeping state *on its own* under the current setup, regardless of how long it rests - see
+`gg-engine-physics-adapter-matter` for the one-line pointer on what changes if a future change ever
+turns that flag on.
+
+**`IRigidBodyComponent` also exposes an explicit `get isSleeping(): boolean`/`wakeUp(): void`/
+`sleep(): void` trio**, independent of the automatic-wake-on-write behavior above. `isSleeping`
+always reports `false` for a static body, and `wakeUp()`/`sleep()` are no-ops on one - sleeping is
+only ever a dynamic-body concept. Map these onto whatever native activation-state/sleep query and
+mutators the engine already exposes for exactly this purpose (Bullet's `isActive()`/`activate(true)`/
+`setActivationState`/`forceActivationState`; Rapier's `RigidBody.isSleeping()`/`.wakeUp()`/`.sleep()`;
+matter-js's `body.isSleeping`/`Matter.Sleeping.set(body, flag)`) rather than trying to derive them
+from anything else. A body's own debug-view `sleeping()` closure (part of
+`DebugBody(2D|3D)Settings`'s `RIGID_DYNAMIC` variant) should read this same `isSleeping` getter
+rather than querying the native engine a second, separate way, so there is exactly one source of
+truth for "is this body asleep" inside a given adapter.
+
+Every adapter's `sleep()` forces the native body to sleep immediately, regardless of whether that
+engine's own automatic/inactivity-driven sleeping is currently enabled at all (confirmed for Rapier
+and for matter-js's `Sleeping.set` specifically - an explicit call writes the sleep flag directly and
+the engine's own per-body step-skip check reads that flag unconditionally, not gated behind whatever
+setting controls *automatic* sleep-from-rest). This is what makes `sleep()`/`wakeUp()`/`isSleeping`
+independently testable without ever needing a body to actually go idle long enough to fall asleep on
+its own - a regression test can call `sleep()` directly and assert `isSleeping` flips, rather than
+simulating at rest for many ticks the way the automatic-wake-on-write regression test above has to.
+
+The one adapter-specific asymmetry worth knowing before relying on this: every adapter's existing
+`position`/`rotation`/`linearVelocity`/`angularVelocity` setters wake a sleeping dynamic body on
+write (per the automatic-wake behavior described above) **except `packages/matter`'s**, whose
+setters preserve whatever sleep state the body was already in - not a bug, just a consequence of
+matter-js's plain-field writes (`Body.setPosition`, etc.) never touching the sleep flag the way
+Bullet's `activate(true)`/Rapier's `wakeUp: boolean` argument do. A caller that must write one of
+those four members on a body without waking it should call `sleep()` again right after the write, on
+every adapter - harmless on the three adapters where the write already wakes the body (it just
+re-sleeps it), and load-bearing on `packages/matter` (where the write never woke it in the first
+place, but calling `sleep()` afterward keeps the intent explicit and adapter-agnostic rather than
+relying on which adapter happens to be active).
 
 **Triggers** are sensor colliders with no collision response that emit enter/exit events; wire the
 native engine's collision-event mechanism into an RxJS-based interface matching

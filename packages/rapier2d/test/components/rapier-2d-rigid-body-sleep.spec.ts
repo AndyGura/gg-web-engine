@@ -1,0 +1,75 @@
+import { Pnt2 } from '@gg-web-engine/core';
+import { Rapier2dFactory, Rapier2dWorldComponent } from '../../src';
+
+describe('Rapier2dRigidBodyComponent sleep API', () => {
+  let world: Rapier2dWorldComponent;
+  let factory: Rapier2dFactory;
+
+  beforeEach(async () => {
+    if (world) {
+      world.dispose();
+    }
+    world = new Rapier2dWorldComponent();
+    factory = new Rapier2dFactory(world);
+    await world.init();
+    world.gravity = Pnt2.O;
+  });
+
+  afterAll(() => {
+    world.dispose();
+  });
+
+  it('reports a fresh dynamic body as not sleeping', () => {
+    const body = factory.createRigidBody(
+      { shape: { shape: 'CIRCLE', radius: 1 }, body: { bodyType: 'dynamic', mass: 1 } },
+      { position: { x: 0, y: 0 } },
+    );
+    body.addToWorld({ physicsWorld: world } as any);
+
+    expect(body.isSleeping).toBe(false);
+  });
+
+  it('sleep() forces isSleeping true, wakeUp() flips it back', () => {
+    const body = factory.createRigidBody(
+      { shape: { shape: 'CIRCLE', radius: 1 }, body: { bodyType: 'dynamic', mass: 1 } },
+      { position: { x: 0, y: 0 } },
+    );
+    body.addToWorld({ physicsWorld: world } as any);
+
+    body.sleep();
+    expect(body.isSleeping).toBe(true);
+
+    body.wakeUp();
+    expect(body.isSleeping).toBe(false);
+  });
+
+  it('a position write on a sleeping body wakes it back up', () => {
+    const body = factory.createRigidBody(
+      { shape: { shape: 'CIRCLE', radius: 1 }, body: { bodyType: 'dynamic', mass: 1 } },
+      { position: { x: 0, y: 0 } },
+    );
+    body.addToWorld({ physicsWorld: world } as any);
+
+    body.sleep();
+    expect(body.isSleeping).toBe(true);
+
+    body.position = { x: 1, y: 2 };
+    expect(body.isSleeping).toBe(false);
+  });
+
+  it('a static body always reports not sleeping, and sleep()/wakeUp() are no-ops', () => {
+    const floor = factory.createRigidBody(
+      { shape: { shape: 'BOX', dimensions: { x: 10, y: 1 } }, body: { bodyType: 'static' } },
+      { position: { x: 0, y: 0 } },
+    );
+    floor.addToWorld({ physicsWorld: world } as any);
+
+    expect(floor.isSleeping).toBe(false);
+
+    floor.sleep();
+    expect(floor.isSleeping).toBe(false);
+
+    floor.wakeUp();
+    expect(floor.isSleeping).toBe(false);
+  });
+});
