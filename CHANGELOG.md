@@ -28,6 +28,11 @@ where one exists.
 
 ## [Unreleased]
 
+### Added
+- `GgWorld.entityAdded$`/`entityRemoved$` observables, emitted after a spawn/removal fully
+  succeeds (nested entities included); `IEntity.useDefaultNameMiddleware` now returns an
+  unregister function for the middleware it just registered.
+
 ## [0.0.73] - 2026-09-30
 
 ### Added
