@@ -53,6 +53,9 @@ where one exists.
   detaches input - direction/run/crouch keys and (3D) mouse-look stop writing to `character` while
   inactive, and deactivating mid-input zeroes `moveDirection`/`isRunning` (and, in "hold" crouch
   mode, `isCrouching`) instead of leaving the character stuck mid-motion.
+- `Gg2dWorld`/`Gg3dWorld` constructors now accept `maxTickDelta`/`pauseWhenHidden`, matching
+  `GgWorld`'s own constructor - passing either through `new Gg3dWorld(...)`/`new Gg2dWorld(...)`
+  was a type error since those two options were added to `GgWorld` alone.
 
 ## [0.0.73] - 2026-09-30
 

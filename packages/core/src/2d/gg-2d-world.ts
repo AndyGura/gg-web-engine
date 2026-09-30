@@ -117,6 +117,8 @@ export class Gg2dWorld<
     visualScene?: SceneTypeDoc['visualScene'];
     physicsWorld?: SceneTypeDoc['physicsWorld'];
     audioScene?: SceneTypeDoc['audioScene'];
+    maxTickDelta?: number;
+    pauseWhenHidden?: boolean;
     fixedPhysicsStep?: number;
     maxPhysicsStepsPerTick?: number;
   }) {
