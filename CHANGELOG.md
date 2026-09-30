@@ -38,6 +38,8 @@ where one exists.
   before it reaches `tick$`, and `GgWorld` gained a matching `maxTickDelta` constructor option plus
   a `pauseWhenHidden` option that auto-pauses/resumes the world on tab visibility changes; a new
   `GgWorld.visibility$` observable reports tab visibility regardless of that option.
+- Built-in `"Player"` level-JSON class for 2D, mirroring the existing 3D one: a capsule-bodied
+  `CharacterController2dEntity`, ready to use.
 
 ### Fixed
 - `matter`: `MatterRigidBodyComponent.rotation`'s setter now calls `Body.setAngle` instead of
