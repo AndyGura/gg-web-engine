@@ -79,6 +79,24 @@ export class PausableClock extends IClock {
    */
   public tickRateLimit: number = 0;
 
+  /**
+   * Upper bound, in milliseconds, on the scaled delta of any single tick reaching `tick$` -
+   * protects against a huge, unrepresentative delta after a long stall (a backgrounded/minimized
+   * tab being one common cause - see `GgWorld.pauseWhenHidden` for pausing the clock outright
+   * instead, which avoids producing a tick at all) blowing up physics/animation that assumes a
+   * roughly real-time delta. When the parent clock's delta, scaled by `timeScale`, exceeds this
+   * value, the tick reaching `tick$` (and the amount `elapsedTime` advances by) is clamped to
+   * exactly `maxTickDelta`; the remainder is simply dropped, not carried over to a later tick. This
+   * means `elapsedTime` and real wall-clock time deliberately diverge by the sum of every dropped
+   * remainder once clamping has ever triggered - `elapsedTime` under-counts wall time by design, so
+   * that anything driven by clock ticks (physics integration, animation) never has to reason about
+   * an implausibly large single-frame delta. Defaults to 250 (ms); set to 0 to disable clamping
+   * entirely. `step()` is never subject to this clamp - it always reports exactly the `delta` it
+   * was called with, since it exists for deterministic frame-by-frame control, not real-time
+   * playback.
+   */
+  public maxTickDelta: number = 250;
+
   // events
   public readonly paused$: Subject<boolean> = new Subject<boolean>();
 
@@ -196,7 +214,20 @@ export class PausableClock extends IClock {
     }
     this.tickSub = this.parentClock.tick$
       .pipe(
-        map(([_, d]) => [this.oldRelativeTime, this.oldRelativeTime + d * this.timeScale] as [number, number]),
+        map(([_, d]) => {
+          let scaledDelta = d * this.timeScale;
+          if (this.maxTickDelta && scaledDelta > this.maxTickDelta) {
+            // Drop the remainder rather than carrying it forward: nudge `startedAt` ahead by the
+            // (unscaled) dropped amount so `elapsedTime` - computed independently from
+            // `parentClock.elapsedTime - startedAt` - reflects only the clamped delta too, exactly
+            // the same compensation the `timeScale` setter applies when it shifts `startedAt` to
+            // keep `elapsedTime` continuous across a scale change.
+            const dropped = scaledDelta - this.maxTickDelta;
+            this.startedAt += this._timeScale !== 0 ? dropped / this._timeScale : dropped;
+            scaledDelta = this.maxTickDelta;
+          }
+          return [this.oldRelativeTime, this.oldRelativeTime + scaledDelta] as [number, number];
+        }),
         tap(([_, cur]) => (this.oldRelativeTime = cur)),
       )
       .subscribe(this._internalTick$);

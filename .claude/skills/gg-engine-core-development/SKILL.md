@@ -395,6 +395,41 @@ controller that sets a shared dynamic body's velocity outright each tick should 
 "never fights a faster push already headed the right way" pattern rather than assuming it's the only
 writer that tick.
 
+## Clock: bounding tick delta and reacting to tab visibility
+
+`PausableClock` (`base/clock/pausable-clock.ts`) has a public `maxTickDelta: number` field
+(milliseconds, defaults to `250`) that bounds every single tick's *scaled* delta (`parentTickDelta *
+timeScale`) before it reaches `tick$`. A tick whose scaled delta would exceed `maxTickDelta` is
+clamped to exactly `maxTickDelta` - the dropped remainder is discarded, never carried into a later
+tick - which also means `elapsedTime` only advances by the clamped amount, not the full wall-time
+delta, for that tick: `elapsedTime` and real wall-clock time deliberately diverge, by the sum of
+every dropped remainder, once clamping has ever triggered. This protects anything driven by ticks
+(physics integration, animation, a controller's own per-tick math) from ever seeing an implausibly
+huge single-frame delta after a long stall - a backgrounded/minimized tab throttling
+`requestAnimationFrame` way down is the common real-world cause. Set `maxTickDelta = 0` to disable
+clamping entirely (falls back to the old unbounded behavior). `PausableClock.step()` - the
+frame-by-frame debug/console-driven advance - is never subject to this clamp; it always reports
+exactly the delta it was called with, since its whole purpose is deterministic manual control, not
+real-time playback.
+
+`GgWorld`'s constructor takes an optional `maxTickDelta?: number`, forwarded straight to
+`worldClock.maxTickDelta` (so omitting it keeps `PausableClock`'s own 250ms default) - this is the
+knob an app actually reaches for, rather than touching `world.worldClock.maxTickDelta` directly
+after construction.
+
+Separately, `GgWorld` also takes an optional `pauseWhenHidden?: boolean` (default `false`). When
+`true`, `init()` subscribes to the document's `visibilitychange` event and calls `pauseWorld()` the
+moment the tab goes hidden and `resumeWorld()` once it's visible again - but only for a hide/show
+cycle the world itself paused: if the app had already called `pauseWorld()` before the tab was
+hidden, that pause is left alone and the visibility handler never resumes it (tracked via a private
+"did *I* cause this pause" flag, not just "is the world currently paused"). The subscription is torn
+down in `dispose()`. Regardless of `pauseWhenHidden`, `GgWorld.visibility$: Observable<boolean>`
+(`true` = visible) reports every visibility change to any app code that wants to react itself
+(muting audio, pausing network updates, etc.) without opting into the auto-pause behavior. On a host
+with no global `document` (a non-browser host, or a test harness with no DOM at all), both mechanisms
+are a no-op - `visibility$` simply never emits, and `pauseWhenHidden` never pauses/resumes anything -
+rather than throwing; this is what lets jsdom-less test suites construct and use a `GgWorld` freely.
+
 ## Collision groups can't express "these two specific bodies don't collide"
 
 `ownCollisionGroups`/`interactWithCollisionGroups` filtering is bidirectional AND logic: a pair

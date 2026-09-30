@@ -34,6 +34,10 @@ where one exists.
   binding under the created entity itself so it's torn down whenever that entity is.
 - Public sleep API on rigid bodies: `IRigidBodyComponent.isSleeping`/`wakeUp()`/`sleep()`, implemented
   across `ammo`, `rapier2d`, `rapier3d`, and `matter`.
+- `PausableClock.maxTickDelta` (default 250ms, 0 disables) clamps any single tick's scaled delta
+  before it reaches `tick$`, and `GgWorld` gained a matching `maxTickDelta` constructor option plus
+  a `pauseWhenHidden` option that auto-pauses/resumes the world on tab visibility changes; a new
+  `GgWorld.visibility$` observable reports tab visibility regardless of that option.
 
 ### Fixed
 - `matter`: `MatterRigidBodyComponent.rotation`'s setter now calls `Body.setAngle` instead of

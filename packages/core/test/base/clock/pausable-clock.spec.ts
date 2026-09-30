@@ -397,6 +397,75 @@ describe('PausableClock', () => {
     });
   });
 
+  describe('max tick delta', () => {
+    it('should default to 250', () => {
+      const c = new PausableClock(false);
+      expect(c.maxTickDelta).toBe(250);
+    });
+
+    it('should clamp a tick whose scaled delta exceeds maxTickDelta, dropping the remainder', () => {
+      const c = new PausableClock(true, gClockMock);
+      c.maxTickDelta = 100;
+      const ticks: [number, number][] = [];
+      c.tick$.subscribe((x) => ticks.push(x));
+      gClockMock._tick$.next([0, 300]);
+      expect(ticks).toEqual([[100, 100]]);
+    });
+
+    it('should not clamp a tick whose scaled delta is within maxTickDelta', () => {
+      const c = new PausableClock(true, gClockMock);
+      c.maxTickDelta = 100;
+      const ticks: [number, number][] = [];
+      c.tick$.subscribe((x) => ticks.push(x));
+      gClockMock._tick$.next([0, 50]);
+      expect(ticks).toEqual([[50, 50]]);
+    });
+
+    it('should disable clamping when set to 0', () => {
+      const c = new PausableClock(true, gClockMock);
+      c.maxTickDelta = 0;
+      const ticks: [number, number][] = [];
+      c.tick$.subscribe((x) => ticks.push(x));
+      gClockMock._tick$.next([0, 5000]);
+      expect(ticks).toEqual([[5000, 5000]]);
+    });
+
+    it('elapsedTime should advance by exactly the clamped amount, diverging from wall time by the dropped remainder', () => {
+      const c = new PausableClock(true, gClockMock);
+      c.maxTickDelta = 100;
+      jest.advanceTimersByTime(300);
+      gClockMock._tick$.next([0, 300]);
+      // 200ms of the 300ms real/wall delta was dropped by the clamp - elapsedTime only advanced by
+      // the clamped 100ms, and stays 200ms behind wall time from here on
+      expect(c.elapsedTime).toBe(100);
+    });
+
+    it('should clamp repeatedly across several oversized ticks, each dropping its own remainder', () => {
+      const c = new PausableClock(true, gClockMock);
+      c.maxTickDelta = 100;
+      const ticks: [number, number][] = [];
+      c.tick$.subscribe((x) => ticks.push(x));
+      gClockMock._tick$.next([0, 300]);
+      gClockMock._tick$.next([300, 700]);
+      expect(ticks).toEqual([
+        [100, 100],
+        [200, 100],
+      ]);
+    });
+
+    it('should never clamp a manual step, regardless of maxTickDelta', () => {
+      const c = new PausableClock(true);
+      c.maxTickDelta = 50;
+      jest.advanceTimersByTime(1500);
+      c.pause();
+      const ticks: [number, number][] = [];
+      c.tick$.subscribe((x) => ticks.push(x));
+      c.step(1000);
+      expect(ticks).toEqual([[2500, 1000]]);
+      expect(c.elapsedTime).toBe(2500);
+    });
+  });
+
   describe('clocks hierarchy', () => {
     it('should list children', () => {
       const parent = new PausableClock(true, gClockMock);
