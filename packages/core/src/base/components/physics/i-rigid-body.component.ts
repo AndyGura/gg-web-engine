@@ -37,6 +37,38 @@ export interface IRigidBodyComponent<
   resetMotion(): void;
 
   /**
+   * Whether this body is currently asleep - a native engine's own performance optimization that
+   * deactivates a dynamic body once it's been at rest for a while, skipping it entirely from the
+   * next `simulate()` step until something (a write to this body, or a collision) wakes it back up.
+   * A static body always reports `false` here - sleeping is only ever a dynamic-body concept.
+   */
+  get isSleeping(): boolean;
+
+  /**
+   * Forces this body awake. A no-op on a static body.
+   *
+   * Every adapter's existing `position`/`rotation`/`linearVelocity`/`angularVelocity` setters
+   * already wake a sleeping dynamic body on write - **except `packages/matter`'s**, whose setters
+   * preserve whatever sleep state the body was already in. Calling `wakeUp()` explicitly is only
+   * needed when you want a body awake without also writing one of those four (e.g. to keep it
+   * simulating this step for some other reason).
+   */
+  wakeUp(): void;
+
+  /**
+   * Forces this body to sleep immediately, without waiting for it to naturally come to rest. A
+   * no-op on a static body.
+   *
+   * Every adapter's existing `position`/`rotation`/`linearVelocity`/`angularVelocity` setters wake
+   * a sleeping dynamic body back up on write, except `packages/matter`'s, which preserve sleep
+   * state across such a write. So a caller that must write one of those four on a body without
+   * waking it - on any adapter, `packages/matter`'s included - should call `sleep()` again right
+   * after the write, to force it back to sleep regardless of whether that particular adapter's
+   * setter would have woken it or not.
+   */
+  sleep(): void;
+
+  /**
    * Fires each time this body begins touching another rigid body it wasn't already touching -
    * the "hit"/crash counterpart of `ITriggerComponent.onEntityEntered`, but for a real collision
    * response rather than a sensor overlap.

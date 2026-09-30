@@ -169,7 +169,7 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
     this._bodyDescr.status == RigidBodyType.Fixed
       ? { type: 'RIGID_STATIC' }
       : this._bodyDescr.status == RigidBodyType.Dynamic
-        ? { type: 'RIGID_DYNAMIC', sleeping: () => !!this._nativeBody?.isSleeping() }
+        ? { type: 'RIGID_DYNAMIC', sleeping: () => this.isSleeping }
         : { type: 'RIGID_KINEMATIC' },
     this.shape,
   );
@@ -307,6 +307,24 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
   resetMotion(): void {
     this._nativeBody!.setAngvel(0, false);
     this._nativeBody!.setLinvel(new Vector2(0, 0), false);
+  }
+
+  get isSleeping(): boolean {
+    return this._bodyDescr.status !== RigidBodyType.Fixed && !!this._nativeBody?.isSleeping();
+  }
+
+  wakeUp(): void {
+    if (this._bodyDescr.status === RigidBodyType.Fixed) {
+      return;
+    }
+    this._nativeBody?.wakeUp();
+  }
+
+  sleep(): void {
+    if (this._bodyDescr.status === RigidBodyType.Fixed) {
+      return;
+    }
+    this._nativeBody?.sleep();
   }
 
   dispose(): void {

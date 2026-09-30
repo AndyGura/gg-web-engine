@@ -102,7 +102,7 @@ export class AmmoRigidBodyComponent
       ? { type: 'RIGID_STATIC' }
       : this._nativeBody.isKinematicObject()
         ? { type: 'RIGID_KINEMATIC' }
-        : { type: 'RIGID_DYNAMIC', sleeping: () => !this._nativeBody.isActive() },
+        : { type: 'RIGID_DYNAMIC', sleeping: () => this.isSleeping },
     this.shape,
   );
 
@@ -227,6 +227,36 @@ export class AmmoRigidBodyComponent
   /** Undoes `detachFromBroadphaseTemporarily()` - see its own doc. */
   reattachToBroadphase(): void {
     this.world.dynamicAmmoWorld?.addRigidBody(this.nativeBody, this._ownCGsMask, this._interactWithCGsMask);
+  }
+
+  /**
+   * Bullet's own `ISLAND_SLEEPING` activation-state constant (`btCollisionObject.h`'s
+   * `ACTIVE_TAG = 1, ISLAND_SLEEPING = 2, WANTS_DEACTIVATION = 3, DISABLE_DEACTIVATION = 4,
+   * DISABLE_SIMULATION = 5`) - not exposed as a named constant by this pinned Ammo.js embind build,
+   * only as a plain `number` parameter on `setActivationState`/`forceActivationState`, so it's
+   * hardcoded here rather than referenced off the native module.
+   */
+  private static readonly ISLAND_SLEEPING = 2;
+
+  get isSleeping(): boolean {
+    return this.bodyType !== 'static' && !this.nativeBody.isActive();
+  }
+
+  wakeUp(): void {
+    if (this.bodyType === 'static') {
+      return;
+    }
+    this.nativeBody.activate(true);
+  }
+
+  sleep(): void {
+    if (this.bodyType === 'static') {
+      return;
+    }
+    // `forceActivationState` (unlike `setActivationState`) writes Bullet's internal activation
+    // state directly, so `isActive()`/`isSleeping` above reflect the change immediately rather than
+    // waiting for the next `stepSimulation` to notice a deactivation request.
+    this.nativeBody.forceActivationState(AmmoRigidBodyComponent.ISLAND_SLEEPING);
   }
 
   resetMotion(): void {

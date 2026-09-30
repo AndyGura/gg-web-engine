@@ -28,6 +28,10 @@ where one exists.
 
 ## [Unreleased]
 
+### Added
+- Public sleep API on rigid bodies: `IRigidBodyComponent.isSleeping`/`wakeUp()`/`sleep()`, implemented
+  across `ammo`, `rapier2d`, `rapier3d`, and `matter`.
+
 ## [0.0.73] - 2026-09-30
 
 ### Added

@@ -52,6 +52,26 @@ getters read back whatever was just (uselessly) set. Fix: pass `true` in all fou
 there's no obvious need to force a wake there; revisit only if a similar frozen-body symptom is ever
 reported for a body going through `resetMotion` specifically.
 
+## `IRigidBodyComponent.isSleeping`/`wakeUp()`/`sleep()`: native `RigidBody` methods, no adapter logic needed
+
+Both packages' rigid-body components map these three straight onto `RigidBody.isSleeping()`/
+`.wakeUp()`/`.sleep()`, which this pinned `@dimforge/rapier{2,3}d-compat` build already exposes with
+exactly matching semantics - no polling/derivation needed the way some other interface members on
+this component require. `isSleeping`/`wakeUp()`/`sleep()` are each gated on `this._bodyDescr.status
+!== RigidBodyType.Fixed` (a `Fixed`/static body always reports `isSleeping: false`, and the other two
+are no-ops on one, per the interface's own contract) rather than querying the native body for this -
+`_bodyDescr.status` is already this component's own source of truth for `bodyType` elsewhere (see
+`bodyOptions`'s own doc), and a body that hasn't been `addToWorld`'d yet has no `_nativeBody` to query
+at all, so `isSleeping` also short-circuits to `false` whenever `_nativeBody` is still `null`.
+
+`RigidBody.sleep()` forces the sleep flag immediately and unconditionally, regardless of whatever the
+world's own automatic sleep-from-inactivity behavior is doing for other bodies at the time - useful
+for testing this API directly (`sleep()` then assert `isSleeping`) without needing a body to actually
+go idle long enough to fall asleep on its own first. `debugBodySettings`'s own `RIGID_DYNAMIC` variant
+now reads `() => this.isSleeping` instead of calling `this._nativeBody?.isSleeping()` a second,
+separate way - one source of truth for whether a body reads as asleep, whether from the debug view or
+from `IRigidBodyComponent.isSleeping` directly.
+
 ## Pitfall: a freshly-created collider is invisible to sweeps/raycasts until the world steps once
 
 Hit implementing `Rapier3dCharacterControllerComponent`: calling `move()` immediately after creating
