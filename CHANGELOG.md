@@ -28,6 +28,10 @@ where one exists.
 
 ## [Unreleased]
 
+### Added
+- Built-in `"Player"` level-JSON class for 2D, mirroring the existing 3D one: a capsule-bodied
+  `CharacterController2dEntity`, ready to use.
+
 ## [0.0.73] - 2026-09-30
 
 ### Added

@@ -533,7 +533,7 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
     this.registerClass('Trigger', this.createTrigger.bind(this));
     this.registerClass('Camera', this.createCamera.bind(this));
     this.registerClass('Sound', this.createSound.bind(this));
-    this.registerClass('Player', this.createPlayer.bind(this));
+    this.registerClass('Player', this.createPlayer.bind(this), CharacterController3dEntity);
     this.registerClass('GgCar', this.createGgCar.bind(this), GgCarEntity);
     this.registerClass('MapGraph', this.createMapGraph.bind(this));
 

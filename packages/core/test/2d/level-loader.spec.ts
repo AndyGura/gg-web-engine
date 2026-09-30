@@ -1,7 +1,18 @@
-import { AudioSource2dEntity, Entity2d, Gg2dLevelLoader, Gg2dWorld, IEntity, LevelJson, TickOrder, Trigger2dEntity } from '../../src';
+import {
+  AudioSource2dEntity,
+  CharacterController2dEntity,
+  Entity2d,
+  Gg2dLevelLoader,
+  Gg2dWorld,
+  IEntity,
+  LevelJson,
+  TickOrder,
+  Trigger2dEntity,
+} from '../../src';
 import { mock2DBody } from '../mocks/body.mock';
 import { mock2DAudioSource } from '../mocks/audio-source.mock';
 import { mock2DObject } from '../mocks/object.mock';
+import { mockCharacterController2d } from '../mocks/character-controller-2d.mock';
 
 // A trivial concrete IEntity for tests that need a generator to return a real entity
 class TestEntity extends IEntity {
@@ -16,11 +27,14 @@ describe('Gg2dLevelLoader', () => {
     // Create a mock world with necessary components
     world = {
       visualScene: {
-        factory: {},
+        factory: {
+          createCapsule: jest.fn().mockReturnValue(mock2DObject()),
+        },
       },
       physicsWorld: {
         factory: {
           createTrigger: jest.fn().mockReturnValue(mock2DBody()),
+          createCharacterController: jest.fn().mockReturnValue(mockCharacterController2d()),
         },
       },
       audioScene: {
@@ -88,7 +102,9 @@ describe('Gg2dLevelLoader', () => {
         entities: [{ class: 'Primitive', shape: 'BOX', position: { x: 0, y: 0 } }],
       };
 
-      await expect(levelLoader.loadLevel(levelJson, 'TestLevel')).rejects.toThrow('Dimensions are required for BOX primitive');
+      await expect(levelLoader.loadLevel(levelJson, 'TestLevel')).rejects.toThrow(
+        'Dimensions are required for BOX primitive',
+      );
     });
 
     it('should throw for an unknown primitive shape', async () => {
@@ -267,7 +283,12 @@ describe('Gg2dLevelLoader', () => {
               {
                 position: { x: 15, y: 0 },
                 rotation: 0.2,
-                shape: { shape: 'COMPOUND', children: [{ position: undefined, rotation: undefined, shape: { shape: 'BOX', dimensions: { x: 4, y: 4 } } }] },
+                shape: {
+                  shape: 'COMPOUND',
+                  children: [
+                    { position: undefined, rotation: undefined, shape: { shape: 'BOX', dimensions: { x: 4, y: 4 } } },
+                  ],
+                },
               },
             ],
           },
@@ -381,6 +402,91 @@ describe('Gg2dLevelLoader', () => {
       };
 
       await expect(levelLoader.loadLevel(levelJson, 'TestLevel')).rejects.toThrow('"path" is required for Sound class');
+    });
+
+    it('should load a level with a Player, wrapped ready-to-use in a CharacterController2dEntity parented under the level', async () => {
+      const levelJson: LevelJson = {
+        entities: [
+          {
+            class: 'Player',
+            position: { x: 1, y: 2 },
+            name: 'TestPlayer',
+            config: { radius: 0.4, centersDistance: 1.2, walkSpeed: 5 },
+          },
+        ],
+      };
+
+      const level = await levelLoader.loadLevel(levelJson, 'TestLevel');
+
+      expect(world.physicsWorld?.factory.createCharacterController).toHaveBeenCalledWith(
+        expect.objectContaining({ radius: 0.4, centersDistance: 1.2 }),
+        { position: { x: 1, y: 2 }, rotation: undefined },
+      );
+      expect(world.visualScene?.factory.createCapsule).toHaveBeenCalledWith(0.4, 1.2, undefined);
+
+      const player = level.getChildEntityByName<CharacterController2dEntity>('TestPlayer');
+      expect(player).toBeInstanceOf(CharacterController2dEntity);
+      expect(player.position).toEqual({ x: 1, y: 2 });
+      expect(player.options.walkSpeed).toBe(5);
+    });
+
+    it("never forwards `offset`/`maxStepHeight`/`minStepWidth`/`maxSlopeClimbAngleRad`/`snapToGroundDistance` as explicit `undefined` when a Player config omits them (mirrors the 3D loader's own regression coverage for the same bug)", async () => {
+      const levelJson: LevelJson = {
+        entities: [
+          {
+            class: 'Player',
+            position: { x: 0, y: 0 },
+            name: 'TestPlayer',
+            config: { radius: 0.4, centersDistance: 1.2 },
+          },
+        ],
+      };
+
+      const level = await levelLoader.loadLevel(levelJson, 'TestLevel');
+
+      const [physicsOptions] = (world.physicsWorld?.factory.createCharacterController as jest.Mock).mock.calls[0];
+      for (const key of ['offset', 'maxStepHeight', 'minStepWidth', 'maxSlopeClimbAngleRad', 'snapToGroundDistance']) {
+        expect(physicsOptions).not.toHaveProperty(key);
+      }
+
+      const player = level.getChildEntityByName<CharacterController2dEntity>('TestPlayer');
+      expect(player.options.maxSlopeClimbAngleRad).toBeCloseTo((50 * Math.PI) / 180);
+      expect(player.options.snapToGroundDistance).toBeCloseTo(0.3);
+    });
+
+    it("forwards a Player config's `up`/`ownCollisionGroups`/`interactWithCollisionGroups` to `factory.createCharacterController` as well as to the entity", async () => {
+      const levelJson: LevelJson = {
+        entities: [
+          {
+            class: 'Player',
+            position: { x: 0, y: 0 },
+            name: 'TestPlayer',
+            config: {
+              radius: 0.4,
+              centersDistance: 1.2,
+              up: { x: 1, y: 0 },
+              ownCollisionGroups: [2],
+              interactWithCollisionGroups: [3],
+            },
+          },
+        ],
+      };
+
+      const level = await levelLoader.loadLevel(levelJson, 'TestLevel');
+
+      expect(world.physicsWorld?.factory.createCharacterController).toHaveBeenCalledWith(
+        expect.objectContaining({
+          up: { x: 1, y: 0 },
+          ownCollisionGroups: [2],
+          interactWithCollisionGroups: [3],
+        }),
+        { position: { x: 0, y: 0 }, rotation: undefined },
+      );
+
+      const player = level.getChildEntityByName<CharacterController2dEntity>('TestPlayer');
+      expect(player.options.up).toEqual({ x: 1, y: 0 });
+      expect(player.options.ownCollisionGroups).toEqual([2]);
+      expect(player.options.interactWithCollisionGroups).toEqual([3]);
     });
   });
 
@@ -520,6 +626,24 @@ describe('Gg2dLevelLoader', () => {
         position: { x: 1, y: 2 },
         rotation: 0.3,
         config: { dimensions: { x: 4, y: 5 } },
+      });
+    });
+
+    it('serializes a Player built via createEntity with class "Player" (spawn-record echo - CharacterController2dEntity has no live/self-serializer)', async () => {
+      const character = await levelLoader.createEntity({
+        class: 'Player',
+        name: 'DirectPlayer',
+        position: { x: 3, y: 4 },
+        config: { radius: 0.4, centersDistance: 1.0 },
+      });
+
+      expect(character).toBeInstanceOf(CharacterController2dEntity);
+      expect(levelLoader.serializeEntity(character!)).toEqual({
+        class: 'Player',
+        name: 'DirectPlayer',
+        position: { x: 3, y: 4 },
+        rotation: 0,
+        config: { radius: 0.4, centersDistance: 1.0 },
       });
     });
 

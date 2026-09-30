@@ -372,7 +372,11 @@ independent of any one swappable level:
   gameplay levels can then be freely loaded/unloaded against `world.loader.loadLevel(...)` /
   `world.removeEntity(gameplayLevel, true)` without ever touching the system level or its camera.
 
-### `"Player"` (3D only) - a capsule-bodied `CharacterController3dEntity`, ready to use
+### `"Player"` - a capsule-bodied character controller, ready to use (2D and 3D)
+
+#### 3D
+
+A `CharacterController3dEntity`:
 
 ```json
 {
@@ -456,6 +460,64 @@ const player = level.getChildEntityByName<CharacterController3dEntity>('Player')
 const renderer = world.addRenderer(cameraEntity.camera, canvas);
 const controller = new PlayerCharacterController(world.keyboardInput, player, renderer, { mouseOptions: { canvas } });
 world.addEntity(controller);
+```
+
+#### 2D
+
+A `CharacterController2dEntity`:
+
+```json
+{
+  "class": "Player",
+  "name": "Player",
+  "position": { "x": 0, "y": 0 },
+  "config": {
+    "radius": 0.4,
+    "centersDistance": 1.0,
+    "walkSpeed": 4,
+    "jumpSpeed": 5,
+    "display": { "color": 3381606 }
+  }
+}
+```
+
+`config` (`Player2DSettings`): `radius`/`centersDistance` (capsule dimensions, default `0.4`/`1.0`),
+plus every gameplay field `CharacterController2dEntity` itself takes (`walkSpeed`,
+`runSpeedMultiplier`, `crouchSpeedMultiplier`, `crouchCentersDistance`, `crouchMode`, `jumpSpeed`,
+`gravity`, `airControlFactor`) and the underlying mover's tuning (`offset`, `maxStepHeight`,
+`minStepWidth`, `maxSlopeClimbAngleRad`, `snapToGroundDistance`, `up`, `ownCollisionGroups`,
+`interactWithCollisionGroups`, `pushMass`) - see that class's own doc for defaults, identical
+field-for-field to the 3D `Player3DSettings` above just projected into 2D (`up` a `Point2`, no
+`Point3`/`Point4` fields). Leave `gravity` out entirely to have the character follow
+`physicsWorld.gravity` live; only set it to give this character a gravity scale different from the
+rest of the world. `display` (optional, `DisplayObject2dOpts`) builds a matching capsule mesh via
+`visualScene.factory.createCapsule`; there's no `world.visualScene` check bypass the way 3D's is
+documented - a level with no visual scene simply builds no mesh at all (physics-only character),
+regardless of `display`.
+
+Unlike the 3D `"Player"` class, there is no `display.model` equivalent here yet: an animated
+character in 2D would need a frame-atlas sprite (`IAnimatedDisplayObject2dComponent`, driven by
+`CharacterAnimation2dController`) loaded from a path, but `IDisplayObject2dComponentFactory` has no
+method to load a texture atlas by path at all today (only `createPrimitive`/its box/circle/capsule/
+convexHull/polygon shortcuts) - there's nothing this class could call to build one, the way the 3D
+class calls `loadFromGlb`. This is a documented gap (see `Player2DSettings`'s own doc comment in
+`packages/core/src/2d/level-loader.ts`), not an oversight: until a 2D visual factory gains an
+atlas/sprite-sheet loading method, an animated-sprite character has to be assembled by app code
+instead - construct the capsule via `world.loader.createEntity({ class: "Player", ... })` (or just
+`new CharacterController2dEntity(...)` directly) with no `display`, build the animated sprite
+separately via whatever adapter-specific API loads a texture atlas, assign it to
+`character.object2D` yourself, and drive it with a `CharacterAnimation2dController` exactly as
+`gg-engine-core-development`'s "The TypeDocRepo generic pattern" section describes for
+`IAnimatedDisplayObject2dComponent`.
+
+Like the 3D class, this only builds the physics+visual capsule - **not** any keyboard/input wiring
+(a `PlayerCharacterController2d`-style driver), since that needs a live canvas/`KeyboardInput` the
+level JSON has no notion of. Look the character up once the level is loaded and wrap it yourself:
+
+```typescript
+const player = level.getChildEntityByName<CharacterController2dEntity>('Player');
+// e.g. wire an input driver to set this every tick, or drive it from AI logic
+player.moveDirection = 1;
 ```
 
 ### `"Glb"` (3D only) - a GG GLB+meta model, loaded and added to the world
@@ -1035,17 +1097,23 @@ own coverage against a hand-rolled node type in
 `packages/core/test/base/blueprint/remove-entity.node.spec.ts`. `GgWorld.getEntityByName` and
 `IEntity.getChildEntityByName` themselves have their own direct coverage in
 `packages/core/test/base/gg-world.spec.ts` and `packages/core/test/base/entities/i-entity.spec.ts`.
-`packages/core/test/{2d,3d}/level-loader.spec.ts` cover the built-in
-`"Primitive"`/`"Trigger"`/`"Camera"`/`"Player"`/`"GgCar"`/`"MapGraph"`/`"Sound"` classes against
-hand-rolled mock worlds (there, `addEntity`/`removeEntity` are plain `jest.fn()` stubs - fine since
-those tests only care about generator dispatch, not full spawn semantics); the `"GgCar"` cases stub
-`physicsWorld.factory.createRigidBody`/`createRaycastVehicle` and
+`packages/core/test/{2d,3d}/level-loader.spec.ts` cover the built-in `"Primitive"`/`"Trigger"`/
+`"Player"`/`"Sound"` classes (both dimensions) plus the 3D-only `"Camera"`/`"GgCar"`/`"MapGraph"`
+against hand-rolled mock worlds (there, `addEntity`/`removeEntity` are plain `jest.fn()` stubs - fine
+since those tests only care about generator dispatch, not full spawn semantics); the `"GgCar"` cases
+stub `physicsWorld.factory.createRigidBody`/`createRaycastVehicle` and
 `visualScene.factory.createBox`/`createCylinder`, reusing `mockRaycastVehicle` from
 `packages/core/test/mocks/raycast-vehicle.mock.ts` for the vehicle component the generator wraps;
-the `"Player"` case similarly stubs `physicsWorld.factory.createCharacterController` and
-`visualScene.factory.createCapsule`, reusing `mockCharacterController` from
-`packages/core/test/mocks/character-controller.mock.ts`; the `"Sound"` cases stub
-`audioScene.factory.loadClip`/`createSource`, reusing `mock3DAudioSource`/`mock2DAudioSource` from
+the `"Player"` cases similarly stub `physicsWorld.factory.createCharacterController` and
+`visualScene.factory.createCapsule`, reusing `mockCharacterController`/`mockCharacterController2d`
+from `packages/core/test/mocks/character-controller.mock.ts`/`character-controller-2d.mock.ts` for
+the 3D/2D component the generator wraps respectively - both specs' `live serializers` describe block
+additionally covers `serializeEntity` on a `"Player"` built via `createEntity` resolving to `class:
+"Player"` through the spawn-record echo (`CharacterController(2d|3d)Entity` implements neither a live
+serializer nor `ISerializableEntity`, so this is the only tier that applies - `registerClass`'s
+optional third argument is still passed for both, for parity with `"GgCar"`'s pattern, even though it
+has no effect without `ISerializableEntity`); the `"Sound"` cases stub `audioScene.factory
+.loadClip`/`createSource`, reusing `mock3DAudioSource`/`mock2DAudioSource` from
 `packages/core/test/mocks/audio-source.mock.ts` for the source component the generator wraps.
 `packages/core/test/3d/loader.spec.ts` covers `Gg3dLoader` - the `"Glb"` class, and that
 `registerClass`/`loadLevel`/`loadLevelFromUrl` are available directly on it - stubbing `loadGgGlb`

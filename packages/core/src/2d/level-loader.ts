@@ -8,6 +8,10 @@ import { Entity2d } from './entities/entity-2d';
 import { Trigger2dEntity } from './entities/trigger-2d.entity';
 import { AudioSource2dEntity } from './entities/audio-source-2d.entity';
 import { isMaterialReadable2d } from './components/rendering/i-material-readable-2d.component';
+import {
+  CharacterController2dEntity,
+  CharacterController2dEntityOptions,
+} from './entities/character-controller-2d.entity';
 
 const defaultBodyOptions: Body2DOptions = {
   bodyType: 'dynamic',
@@ -176,8 +180,40 @@ export interface Sound2DSettings {
 }
 
 /**
- * 2D level loader: registers the built-in primitive/trigger/sound entity classes and dispatches
- * `LevelJson` entities to them (or to custom classes registered via `registerClass`).
+ * Settings for the built-in `"Player"` entity class: a capsule-shaped `CharacterController2dEntity`
+ * (see that class's own doc for the gameplay fields below). Only the physics/visual capsule is
+ * built here - the input wiring (a `PlayerCharacterController2d`-style driver) needs a live
+ * canvas/`KeyboardInput` the app supplies, so it's left to the app's own code, mirroring the 3D
+ * `"Player"` class's own division of labor (see `Player3DSettings`).
+ *
+ * Unlike the 3D `"Player"` class, this has no `display.model` equivalent: an animated character in
+ * 2D would need a frame-atlas sprite (`IAnimatedDisplayObject2dComponent`, driven by
+ * `CharacterAnimation2dController`) loaded from a path, but `IDisplayObject2dComponentFactory` has
+ * no method to load a texture atlas by path at all today (only `createPrimitive`/its box/circle/
+ * capsule/convexHull/polygon shortcuts) - there is nothing this class could call to build one, the
+ * way the 3D class calls `loadFromGlb`. TODO: once a 2D factory gains an atlas/sprite-sheet loading
+ * method, add a `display.model`-equivalent here and wire a `CharacterAnimation2dController` child in
+ * automatically, mirroring `Gg3dLevelLoader.createPlayer` exactly. Until then, a level JSON can only
+ * produce a plain (optionally solid-color/textured) capsule sprite or a physics-only invisible one -
+ * an animated sprite character has to be assembled by app code, the same way an attached/continuous
+ * `"Sound"` does.
+ */
+export type Player2DSettings = Partial<Omit<CharacterController2dEntityOptions, 'radius' | 'centersDistance'>> & {
+  /** Spawn position of the character (capsule center). */
+  position?: Point2;
+  /** Spawn rotation of the character, in radians. */
+  rotation?: number;
+  /** Capsule radius. Default 0.4. */
+  radius?: number;
+  /** Standing capsule centersDistance. Default 1.0. */
+  centersDistance?: number;
+  /** Material options for the auto-generated capsule mesh; omit for a plain default-material capsule. */
+  display?: DisplayObject2dOpts<any>;
+};
+
+/**
+ * 2D level loader: registers the built-in primitive/trigger/player/sound entity classes and
+ * dispatches `LevelJson` entities to them (or to custom classes registered via `registerClass`).
  * @template TypeDoc - The type document repository
  */
 export class Gg2dLevelLoader<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTypeDocRepo> extends LevelLoader<
@@ -200,6 +236,7 @@ export class Gg2dLevelLoader<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTyp
 
     this.registerClass('Trigger', this.createTrigger.bind(this));
     this.registerClass('Sound', this.createSound.bind(this));
+    this.registerClass('Player', this.createPlayer.bind(this), CharacterController2dEntity);
 
     this.registerLiveSerializer(this.serializePrimitive.bind(this));
     this.registerLiveSerializer(this.serializeTrigger.bind(this));
@@ -368,6 +405,85 @@ export class Gg2dLevelLoader<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTyp
     }
     const entity = new Trigger2dEntity<TypeDoc['pTypeDoc']>(trigger);
     if (position !== undefined) {
+      entity.position = position;
+    }
+    if (rotation !== undefined) {
+      entity.rotation = rotation;
+    }
+    return entity;
+  }
+
+  /**
+   * Create a `"Player"` entity: a capsule-shaped `CharacterController2dEntity`, with a matching
+   * auto-generated capsule mesh when there's a visual scene (physics-only/invisible otherwise). See
+   * `Player2DSettings`'s doc for why this doesn't also build an animated-sprite equivalent of the 3D
+   * class's `display.model`, or a `PlayerCharacterController2d`-style input driver.
+   * @param world - The world instance
+   * @param settings - The player settings
+   * @returns The created character entity
+   */
+  private createPlayer(
+    world: Gg2dWorld<TypeDoc>,
+    settings: Player2DSettings,
+  ): CharacterController2dEntity<TypeDoc> | undefined {
+    const {
+      position,
+      rotation,
+      radius = 0.4,
+      centersDistance = 1.0,
+      offset,
+      maxStepHeight,
+      minStepWidth,
+      maxSlopeClimbAngleRad,
+      snapToGroundDistance,
+      pushMass,
+      up,
+      ownCollisionGroups,
+      interactWithCollisionGroups,
+      display,
+      ...gameplay
+    } = settings;
+    if (!world.physicsWorld) {
+      return undefined;
+    }
+    // See the 3D loader's `createPlayer` for the full rationale: every one of these must be left
+    // out of the objects below entirely (not passed through as explicit `undefined`) whenever the
+    // level JSON didn't set them, so each adapter's/`CharacterController2dEntity`'s own
+    // `{...DEFAULT_OPTIONS, ...options}` merge actually falls back to its default instead of a
+    // present-but-`undefined` key overwriting it. `up`/`ownCollisionGroups`/
+    // `interactWithCollisionGroups` must be included here (not left to fall into `...gameplay`
+    // below) so they reach `factory.createCharacterController` and actually configure the physics
+    // component, not just the entity's own cosmetic options object.
+    const tunableOptions = {
+      ...(offset !== undefined && { offset }),
+      ...(maxStepHeight !== undefined && { maxStepHeight }),
+      ...(minStepWidth !== undefined && { minStepWidth }),
+      ...(maxSlopeClimbAngleRad !== undefined && { maxSlopeClimbAngleRad }),
+      ...(snapToGroundDistance !== undefined && { snapToGroundDistance }),
+      ...(pushMass !== undefined && { pushMass }),
+      ...(up !== undefined && { up }),
+      ...(ownCollisionGroups !== undefined && { ownCollisionGroups }),
+      ...(interactWithCollisionGroups !== undefined && { interactWithCollisionGroups }),
+    };
+    const characterController = world.physicsWorld.factory.createCharacterController(
+      { radius, centersDistance, ...tunableOptions },
+      { position, rotation },
+    );
+    let object2D: TypeDoc['vTypeDoc']['displayObject'] | null = null;
+    if (world.visualScene) {
+      object2D = world.visualScene.factory.createCapsule(radius, centersDistance, display);
+    }
+    const entity = new CharacterController2dEntity<TypeDoc>(
+      {
+        radius,
+        centersDistance,
+        ...tunableOptions,
+        ...gameplay,
+      },
+      object2D,
+      characterController,
+    );
+    if (position) {
       entity.position = position;
     }
     if (rotation !== undefined) {

@@ -109,7 +109,9 @@ describe('Gg3dLevelLoader', () => {
 
     it('should throw when dimensions are missing for a Box primitive', async () => {
       const levelJson: LevelJson = { entities: [{ class: 'Primitive', shape: 'BOX' }] };
-      await expect(levelLoader.loadLevel(levelJson, 'TestLevel')).rejects.toThrow('Dimensions are required for BOX primitive');
+      await expect(levelLoader.loadLevel(levelJson, 'TestLevel')).rejects.toThrow(
+        'Dimensions are required for BOX primitive',
+      );
     });
 
     it('should throw for an unknown primitive shape', async () => {
@@ -247,7 +249,9 @@ describe('Gg3dLevelLoader', () => {
         entities: [{ class: 'Primitive', shape: 'MESH' }],
       };
 
-      await expect(levelLoader.loadLevel(levelJson, 'TestLevel')).rejects.toThrow('Vertices are required for MESH primitive');
+      await expect(levelLoader.loadLevel(levelJson, 'TestLevel')).rejects.toThrow(
+        'Vertices are required for MESH primitive',
+      );
     });
 
     it('should throw when faces are missing for a Mesh primitive', async () => {
@@ -255,7 +259,9 @@ describe('Gg3dLevelLoader', () => {
         entities: [{ class: 'Primitive', shape: 'MESH', config: { vertices: [{ x: 0, y: 0, z: 0 }] } }],
       };
 
-      await expect(levelLoader.loadLevel(levelJson, 'TestLevel')).rejects.toThrow('Faces are required for MESH primitive');
+      await expect(levelLoader.loadLevel(levelJson, 'TestLevel')).rejects.toThrow(
+        'Faces are required for MESH primitive',
+      );
     });
 
     it('should load a level with compound primitives, recursively building nested children', async () => {
@@ -467,7 +473,12 @@ describe('Gg3dLevelLoader', () => {
     it('never forwards `offset`/`maxStepHeight`/`minStepWidth`/`maxSlopeClimbAngleRad`/`snapToGroundDistance` as explicit `undefined` when a Player config omits them (regression: an explicit-`undefined` key overwrote each adapter/entity default instead of falling back to it - e.g. an unset `maxSlopeClimbAngleRad` silently disabled all ground detection)', async () => {
       const levelJson: LevelJson = {
         entities: [
-          { class: 'Player', position: { x: 0, y: 0, z: 0 }, name: 'TestPlayer', config: { radius: 0.4, centersDistance: 1.2 } },
+          {
+            class: 'Player',
+            position: { x: 0, y: 0, z: 0 },
+            name: 'TestPlayer',
+            config: { radius: 0.4, centersDistance: 1.2 },
+          },
         ],
       };
 
@@ -526,7 +537,10 @@ describe('Gg3dLevelLoader', () => {
       engine: {
         minRpm: 700,
         maxRpm: 7000,
-        torques: [{ rpm: 1000, torque: 270 }, { rpm: 7000, torque: 430 }],
+        torques: [
+          { rpm: 1000, torque: 270 },
+          { rpm: 7000, torque: 430 },
+        ],
         maxRpmIncreasePerSecond: 8000,
         maxRpmDecreasePerSecond: 8000,
       },
@@ -580,10 +594,7 @@ describe('Gg3dLevelLoader', () => {
         body: { ...defaultBody, mass: 900 },
       });
       // Chassis display box created to match
-      expect(world.visualScene?.factory.createBox).toHaveBeenCalledWith(
-        { x: 1.8, y: 4, z: 0.6 },
-        { color: 0x990000 },
-      );
+      expect(world.visualScene?.factory.createBox).toHaveBeenCalledWith({ x: 1.8, y: 4, z: 0.6 }, { color: 0x990000 });
       // The raycast vehicle wraps the chassis body that was just created
       expect(world.physicsWorld?.factory.createRaycastVehicle).toHaveBeenCalledWith(
         (world.physicsWorld?.factory.createRigidBody as jest.Mock).mock.results[0].value,
@@ -711,14 +722,14 @@ describe('Gg3dLevelLoader', () => {
       const levelJson: LevelJson = {
         entities: [{ class: 'GgCar', config: { ...carCommonConfig, chassis: {}, wheelOptions: [] } }],
       };
-      await expect(levelLoader.loadLevel(levelJson, 'TestLevel')).rejects.toThrow('Chassis dimensions are required for GgCar class');
+      await expect(levelLoader.loadLevel(levelJson, 'TestLevel')).rejects.toThrow(
+        'Chassis dimensions are required for GgCar class',
+      );
     });
 
     it('should throw when GgCar has neither wheelBase nor wheelOptions', async () => {
       const levelJson: LevelJson = {
-        entities: [
-          { class: 'GgCar', config: { ...carCommonConfig, chassis: { dimensions: { x: 1, y: 1, z: 1 } } } },
-        ],
+        entities: [{ class: 'GgCar', config: { ...carCommonConfig, chassis: { dimensions: { x: 1, y: 1, z: 1 } } } }],
       };
       await expect(levelLoader.loadLevel(levelJson, 'TestLevel')).rejects.toThrow(
         'Either "wheelBase" or "wheelOptions" is required for GgCar class',
@@ -795,7 +806,9 @@ describe('Gg3dLevelLoader', () => {
 
     it('should throw when MapGraph "graph" is missing', async () => {
       const levelJson: LevelJson = { entities: [{ class: 'MapGraph', config: {} }] };
-      await expect(levelLoader.loadLevel(levelJson, 'TestLevel')).rejects.toThrow('"graph" is required for MapGraph class');
+      await expect(levelLoader.loadLevel(levelJson, 'TestLevel')).rejects.toThrow(
+        '"graph" is required for MapGraph class',
+      );
     });
 
     it('should throw when MapGraph array graph has no nodes', async () => {
@@ -939,7 +952,7 @@ describe('Gg3dLevelLoader', () => {
       expect(json.config.material).toBeUndefined();
     });
 
-    it('reflects the body\'s current live state, not its spawn-time config, once it has moved/changed', async () => {
+    it("reflects the body's current live state, not its spawn-time config, once it has moved/changed", async () => {
       const body = mock3DBody({ shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } });
       (world.addPrimitiveRigidBody as jest.Mock).mockImplementation(() => new Entity3d({ objectBody: body }));
 
@@ -992,6 +1005,24 @@ describe('Gg3dLevelLoader', () => {
       const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
       expect(levelLoader.serializeEntity(entity)).toBeUndefined();
       warnSpy.mockRestore();
+    });
+
+    it('serializes a Player built via createEntity with class "Player" (spawn-record echo - CharacterController3dEntity has no live/self-serializer)', async () => {
+      const character = await levelLoader.createEntity({
+        class: 'Player',
+        name: 'DirectPlayer',
+        position: { x: 3, y: 4, z: 5 },
+        config: { radius: 0.4, centersDistance: 1.0 },
+      });
+
+      expect(character).toBeInstanceOf(CharacterController3dEntity);
+      expect(levelLoader.serializeEntity(character!)).toEqual({
+        class: 'Player',
+        name: 'DirectPlayer',
+        position: { x: 3, y: 4, z: 5 },
+        rotation: { x: 0, y: 0, z: 0, w: 1 },
+        config: { radius: 0.4, centersDistance: 1.0 },
+      });
     });
 
     it('falls through to the spawn-record echo for an entity the live serializers do not recognize', async () => {
