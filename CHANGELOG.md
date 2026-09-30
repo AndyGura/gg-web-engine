@@ -28,6 +28,11 @@ where one exists.
 
 ## [Unreleased]
 
+### Added
+- `LevelLoader.createEntity` now applies an `EntityJson`'s `events` bindings (an optional third
+  `blueprints` argument supplies named graphs a binding may reference), parenting the resulting
+  binding under the created entity itself so it's torn down whenever that entity is.
+
 ### Fixed
 - `matter`: `MatterRigidBodyComponent.rotation`'s setter now calls `Body.setAngle` instead of
   writing `nativeBody.angle` directly, so a rotation write no longer corrupts angular velocity

@@ -100,11 +100,12 @@ export interface EntityJson {
   /**
    * Maps an observable property name on this entity's generated `IEntity` (e.g. `Trigger3dEntity`'s
    * `"onEntityEntered"`) to what should run whenever that observable fires - see
-   * {@link EntityEventBinding}. `loadLevel` subscribes to the observable and triggers a fresh
-   * `Blueprint` instance (via its `"in"` entry point) with whatever value it emits, each time it
-   * fires - see `LevelLoader.loadLevel` and the `gg-engine-level-json` skill's "Blueprints"
-   * section. Silently ignored (with a console warning) if the binding can't be resolved to a
-   * blueprint, or the named property isn't an `Observable`.
+   * {@link EntityEventBinding}. `createEntity` (and therefore `loadLevel`, which builds every entity
+   * through it) subscribes to the observable and triggers a fresh `Blueprint` instance (via its
+   * `"in"` entry point) with whatever value it emits, each time it fires, and parents the binding
+   * directly under this entity - see `LevelLoader.createEntity` and the `gg-engine-level-json`
+   * skill's "Blueprints" section. Silently ignored (with a console warning) if the binding can't be
+   * resolved to a blueprint, or the named property isn't an `Observable`.
    */
   events?: Record<string, EntityEventBinding>;
 }
@@ -368,14 +369,29 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
    * The entity's `class`/`shape`/`config` are remembered (in a `WeakMap`, keyed by the entity
    * itself) so {@link serializeEntity} can later reconstruct an equivalent `EntityJson` for it -
    * this is what makes an entity built this way (or via `loadLevel`) serializable at all.
+   *
+   * If `entityJson.events` is present, each binding is resolved via the same mechanism `loadLevel`
+   * uses (see {@link bindEvent} and the `gg-engine-level-json` skill's "Blueprints" section) and the
+   * resulting binding entity is parented directly under the just-built entity
+   * (`entity.addChildren(bindingEntity)`) - not under any group, since `createEntity` doesn't have
+   * one. This means the binding's subscription/blueprint is torn down whenever the entity itself is
+   * (`entity.dispose()`, or removal with `dispose: true` once added to a world), with nothing extra
+   * for the caller to clean up. `loadLevel` relies on this same behavior (see below) rather than
+   * parenting bindings under the level's group itself.
    * @param entityJson - The entity descriptor
    * @param defaultName - Name to give the entity when `entityJson.name` is absent; `loadLevel`
    * passes its level-derived fallback here
+   * @param blueprints - Named blueprint graphs `entityJson.events` bindings may reference by name;
+   * `loadLevel` passes the level's own top-level `blueprints` map here
    * @returns The built entity, or `undefined` (logged via `console.warn`) if `entityJson.class` has
    * no registered generator, or that generator didn't return an `IEntity`
    */
-  public async createEntity(entityJson: EntityJson, defaultName?: string): Promise<IEntity<D, R, TypeDoc> | undefined> {
-    const { class: classAlias, shape, position, rotation, config } = entityJson;
+  public async createEntity(
+    entityJson: EntityJson,
+    defaultName?: string,
+    blueprints?: Record<string, BlueprintJson>,
+  ): Promise<IEntity<D, R, TypeDoc> | undefined> {
+    const { class: classAlias, shape, position, rotation, config, events } = entityJson;
     const name = entityJson.name !== undefined ? entityJson.name : defaultName;
     const generator = this.generators.get(classAlias);
     if (!generator) {
@@ -400,6 +416,16 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
       entity.name = name;
     }
     this.spawnRecords.set(entity, { classAlias, shape, config });
+
+    if (events) {
+      for (const [eventName, eventBinding] of Object.entries(events)) {
+        const bindingEntity = this.bindEvent(entity, eventName, eventBinding, blueprints);
+        if (bindingEntity) {
+          entity.addChildren(bindingEntity);
+        }
+      }
+    }
+
     return entity;
   }
 
@@ -502,11 +528,13 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
   /**
    * Serialize every top-level child of a loaded level's group entity (as `loadLevel`/`createEntity`
    * returned it) back into a `LevelJson`'s `entities` array - the level-wide counterpart of
-   * {@link serializeEntity}. A child with no spawn record (e.g. a `BlueprintBindingEntity`
-   * `loadLevel` itself parents under the level for an `events` binding) is skipped silently rather
-   * than warned about - unlike a direct `serializeEntity` call, having this kind of
-   * internal/non-`entities`-array child under a level is expected, not a sign of misuse. Only
-   * `entities` is reconstructed - `blueprints`/`events` bindings aren't, since a live
+   * {@link serializeEntity}. A child with no spawn record is skipped silently rather than warned
+   * about - unlike a direct `serializeEntity` call, having this kind of internal/non-`entities`-array
+   * child under a level is expected, not a sign of misuse (a `BlueprintBindingEntity` an `events`
+   * binding creates is itself parented under the entity it's bound to, not directly under the level -
+   * see `createEntity` - but this skip still guards against any other non-spawn-recorded child a
+   * level's group might end up with). Only `entities` is reconstructed - `blueprints`/`events`
+   * bindings aren't, since a live
    * `BlueprintBindingEntity` doesn't expose the `BlueprintJson`/binding it was built from.
    * @param level - A level's root group entity, as returned by `loadLevel`/`loadLevelFromUrl`
    * @returns The reconstructed level JSON (`entities` only - see above)
@@ -553,24 +581,17 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
     try {
       for (let index = 0; index < levelJson.entities.length; index++) {
         const entityJson = levelJson.entities[index];
-        const { class: classAlias, events } = entityJson;
+        const { class: classAlias } = entityJson;
 
-        const entity = await this.createEntity(entityJson, `${levelName}__${classAlias}_${index}`);
+        // createEntity resolves entityJson.events (if any) against levelJson.blueprints and parents
+        // the resulting binding(s) under the entity itself - see its own doc.
+        const entity = await this.createEntity(entityJson, `${levelName}__${classAlias}_${index}`, levelJson.blueprints);
         if (!entity) {
           continue;
         }
         // addChildren reparents the entity under level regardless of whether a generator already
         // self-added it to the world (e.g. addPrimitiveRigidBody does) - safe either way.
         level.addChildren(entity);
-
-        if (events) {
-          for (const [eventName, eventBinding] of Object.entries(events)) {
-            const bindingEntity = this.bindEvent(entity, eventName, eventBinding, levelJson.blueprints);
-            if (bindingEntity) {
-              level.addChildren(bindingEntity);
-            }
-          }
-        }
       }
     } catch (e) {
       // Don't leave a partially-loaded level (and its already-spawned entities) behind if a
@@ -587,16 +608,16 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
    * fresh `Blueprint` from it, and subscribe it to `entity[eventName]` so every value that
    * observable emits triggers the blueprint's `"in"` entry point. Wrapped in a
    * `BlueprintBindingEntity` so the subscription (and the blueprint's own node state) is torn down
-   * automatically once that entity is disposed - the caller parents the returned entity under the
-   * level's group for that reason.
+   * automatically once that entity is disposed - `createEntity` parents the returned entity under
+   * `entity` itself (`entity.addChildren(bindingEntity)`) for that reason, so the binding's lifetime
+   * is tied to the entity it's bound to, not to whatever group (if any) that entity ends up under.
    * @param entity - The entity carrying the observable property
    * @param eventName - Name of the observable property on `entity`
    * @param eventBinding - What to run - a `blueprints` name, a bare node type alias, or `{ type,
    * settings? }`
    * @param blueprints - The level's top-level blueprint map, if any
-   * @returns The binding entity to parent under the level, or `undefined` if `eventBinding`
-   * couldn't be resolved or the named property isn't an `Observable` (both logged via
-   * `console.warn`)
+   * @returns The binding entity to parent under `entity`, or `undefined` if `eventBinding` couldn't
+   * be resolved or the named property isn't an `Observable` (both logged via `console.warn`)
    */
   private bindEvent(
     entity: IEntity<D, R, TypeDoc>,
@@ -700,9 +721,10 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
 /**
  * Plain do-nothing `IEntity` that owns one event-to-blueprint binding created by
  * `LevelLoader.bindEvent`: subscribes to the bound observable on construction, and unsubscribes
- * plus disposes the `Blueprint` on `dispose()`. Parented under the level's group entity like any
- * other level-produced entity, so `world.removeEntity(level, true)` tears the binding down along
- * with the rest of the level - there is nothing else app code needs to do to clean it up.
+ * plus disposes the `Blueprint` on `dispose()`. `createEntity` parents it directly under the entity
+ * it's bound to (not under any group), so disposing/removing (with `dispose: true`) that entity - on
+ * its own, or as part of tearing down a whole level via `world.removeEntity(level, true)` - tears the
+ * binding down right along with it; there is nothing else app code needs to do to clean it up.
  * @template D - The position type
  * @template R - The rotation type
  * @template TypeDoc - The type document repository
