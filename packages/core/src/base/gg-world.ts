@@ -17,7 +17,7 @@ import {
   TickOrder,
   warnOnce,
 } from '../base';
-import { lastValueFrom, Subject, take } from 'rxjs';
+import { lastValueFrom, Observable, Subject, take } from 'rxjs';
 import { PerformanceMeterEntity } from '../dev';
 import { IVisualScene2dComponent, VisualTypeDocRepo2D } from '../2d';
 
@@ -118,6 +118,34 @@ export abstract class GgWorld<
   public readonly worldClock: PausableClock = new PausableClock(false);
   public readonly keyboardInput: KeyboardInput = new KeyboardInput();
 
+  /**
+   * When `true`, this world pauses itself automatically while the document/tab is hidden
+   * (`document.visibilitychange`, checked via `document.hidden`) and resumes itself once visible
+   * again - but only if the world wasn't already paused by app code at the moment it went hidden.
+   * A world the app paused itself stays paused across a hide/show cycle; this flag never resumes
+   * it. Defaults to `false`. The subscription is set up in `init()` and torn down in `dispose()`;
+   * on a host with no `document` (e.g. a non-browser/jsdom-less test harness) this is a no-op -
+   * nothing ever gets paused/resumed by visibility regardless of this flag.
+   */
+  public readonly pauseWhenHidden: boolean;
+
+  private readonly _visibility$: Subject<boolean> = new Subject<boolean>();
+
+  /**
+   * Emits the document/tab's visibility state (`true` = visible, `false` = hidden) every time it
+   * changes, regardless of `pauseWhenHidden` - apps can subscribe directly (e.g. to mute audio, or
+   * drop network updates while hidden) without opting into the auto-pause behavior. On a host with
+   * no `document` (jsdom-less tests, non-browser hosts) this simply never emits - a safe no-op
+   * fallback rather than throwing.
+   */
+  public readonly visibility$: Observable<boolean> = this._visibility$.asObservable();
+
+  private visibilityChangeListener: (() => void) | null = null;
+  // set exactly when pauseWhenHidden's own visibilitychange handler is the one that paused the
+  // world - so its own "visible again" branch only ever resumes a world *it* paused, never one the
+  // app paused itself independently
+  private pausedByVisibility: boolean = false;
+
   public name: string = 'w0x' + (GgWorld.default_name_counter++).toString(16);
 
   readonly children: IEntity[] = [];
@@ -142,10 +170,28 @@ export abstract class GgWorld<
     visualScene?: SceneTypeDoc['visualScene'];
     physicsWorld?: SceneTypeDoc['physicsWorld'];
     audioScene?: SceneTypeDoc['audioScene'];
+    /**
+     * Upper bound, in milliseconds, on any single tick delta this world's `worldClock` (and
+     * therefore every entity's `tick$` and `physicsWorld.simulate`) ever sees - forwarded straight
+     * to `worldClock.maxTickDelta`. Defaults to `PausableClock`'s own default (250ms) when omitted;
+     * pass `0` to disable clamping entirely. See `PausableClock.maxTickDelta`'s own doc for what
+     * clamping does to `elapsedTime`.
+     */
+    maxTickDelta?: number;
+    /**
+     * When `true`, this world pauses itself while the document/tab is hidden and resumes itself
+     * when it becomes visible again (unless the app had already paused it itself) - see
+     * `GgWorld.pauseWhenHidden`'s own doc. Defaults to `false`.
+     */
+    pauseWhenHidden?: boolean;
   }) {
     this.visualScene = args.visualScene || null;
     this.physicsWorld = args.physicsWorld || null;
     this.audioScene = args.audioScene || null;
+    if (args.maxTickDelta !== undefined) {
+      this.worldClock.maxTickDelta = args.maxTickDelta;
+    }
+    this.pauseWhenHidden = args.pauseWhenHidden ?? false;
     this.keyboardInput.start();
     if ((window as any).ggstatic) {
       this.registerConsoleCommands((window as any).ggstatic);
@@ -159,6 +205,24 @@ export abstract class GgWorld<
   }
 
   public async init() {
+    if (typeof document !== 'undefined') {
+      this.visibilityChangeListener = () => {
+        const visible = document.visibilityState !== 'hidden';
+        this._visibility$.next(visible);
+        if (this.pauseWhenHidden) {
+          if (!visible) {
+            if (!this.isPaused) {
+              this.pausedByVisibility = true;
+              this.pauseWorld();
+            }
+          } else if (this.pausedByVisibility) {
+            this.pausedByVisibility = false;
+            this.resumeWorld();
+          }
+        }
+      };
+      document.addEventListener('visibilitychange', this.visibilityChangeListener);
+    }
     const initPromises = [];
     if (this.visualScene) {
       initPromises.push(this.visualScene.init());
@@ -239,6 +303,10 @@ export abstract class GgWorld<
       (window as any).ggstatic.deregisterWorldCommands(this);
     } else {
       window.removeEventListener('ggstatic_added', this.onGgStaticInitialized);
+    }
+    if (this.visibilityChangeListener) {
+      document.removeEventListener('visibilitychange', this.visibilityChangeListener);
+      this.visibilityChangeListener = null;
     }
     this.worldClock.stop();
     this.keyboardInput.stop();

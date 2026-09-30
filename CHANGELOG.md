@@ -28,6 +28,12 @@ where one exists.
 
 ## [Unreleased]
 
+### Added
+- `PausableClock.maxTickDelta` (default 250ms, 0 disables) clamps any single tick's scaled delta
+  before it reaches `tick$`, and `GgWorld` gained a matching `maxTickDelta` constructor option plus
+  a `pauseWhenHidden` option that auto-pauses/resumes the world on tab visibility changes; a new
+  `GgWorld.visibility$` observable reports tab visibility regardless of that option.
+
 ## [0.0.73] - 2026-09-30
 
 ### Added

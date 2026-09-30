@@ -1,7 +1,7 @@
 import { Entity2d, GgWorld } from '../../src';
 
 export class MockWorld extends GgWorld<any, any> {
-  constructor() {
+  constructor(args: { maxTickDelta?: number; pauseWhenHidden?: boolean } = {}) {
     super({
       visualScene: {
         init: async () => {
@@ -17,6 +17,7 @@ export class MockWorld extends GgWorld<any, any> {
         dispose: () => {
         },
       } as any,
+      ...args,
     });
   }
 

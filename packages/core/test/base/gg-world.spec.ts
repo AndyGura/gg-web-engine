@@ -710,4 +710,96 @@ describe('GgWorld', () => {
       expect(audioScene.activeListener).toBe(explicitListener);
     });
   });
+
+  describe('tab visibility', () => {
+    function setVisibility(state: 'visible' | 'hidden') {
+      Object.defineProperty(document, 'visibilityState', { value: state, configurable: true });
+      document.dispatchEvent(new Event('visibilitychange'));
+    }
+
+    afterEach(() => {
+      // restore jsdom's default so later tests/suites see a clean 'visible' document
+      Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
+    });
+
+    it('defaults pauseWhenHidden to false and does not pause when hidden', async () => {
+      const plainWorld = new MockWorld();
+      expect(plainWorld.pauseWhenHidden).toBe(false);
+      await plainWorld.init();
+      plainWorld.start();
+
+      setVisibility('hidden');
+
+      expect(plainWorld.isPaused).toBe(false);
+      plainWorld.dispose();
+    });
+
+    it('pauses on hidden and resumes on visible again when pauseWhenHidden is true', async () => {
+      const hiddenWorld = new MockWorld({ pauseWhenHidden: true });
+      await hiddenWorld.init();
+      hiddenWorld.start();
+      expect(hiddenWorld.isPaused).toBe(false);
+
+      setVisibility('hidden');
+      expect(hiddenWorld.isPaused).toBe(true);
+
+      setVisibility('visible');
+      expect(hiddenWorld.isPaused).toBe(false);
+
+      hiddenWorld.dispose();
+    });
+
+    it('does not resume a world the app paused itself before the tab was hidden', async () => {
+      const hiddenWorld = new MockWorld({ pauseWhenHidden: true });
+      await hiddenWorld.init();
+      hiddenWorld.start();
+      hiddenWorld.pauseWorld(); // app-initiated pause
+      expect(hiddenWorld.isPaused).toBe(true);
+
+      setVisibility('hidden');
+      setVisibility('visible');
+
+      // still paused - the visibility handler must never resume a pause it didn't cause itself
+      expect(hiddenWorld.isPaused).toBe(true);
+
+      hiddenWorld.dispose();
+    });
+
+    it('does not re-pause on a further hidden event while already hidden, and only resumes once', async () => {
+      const hiddenWorld = new MockWorld({ pauseWhenHidden: true });
+      await hiddenWorld.init();
+      hiddenWorld.start();
+
+      setVisibility('hidden');
+      setVisibility('hidden');
+      expect(hiddenWorld.isPaused).toBe(true);
+
+      setVisibility('visible');
+      expect(hiddenWorld.isPaused).toBe(false);
+
+      hiddenWorld.dispose();
+    });
+
+    it('exposes visibility$ regardless of pauseWhenHidden', async () => {
+      const plainWorld = new MockWorld();
+      await plainWorld.init();
+      const states: boolean[] = [];
+      plainWorld.visibility$.subscribe(v => states.push(v));
+
+      setVisibility('hidden');
+      setVisibility('visible');
+
+      expect(states).toEqual([false, true]);
+      plainWorld.dispose();
+    });
+
+    it('stops reacting to visibilitychange once disposed', async () => {
+      const hiddenWorld = new MockWorld({ pauseWhenHidden: true });
+      await hiddenWorld.init();
+      hiddenWorld.start();
+      hiddenWorld.dispose();
+
+      expect(() => setVisibility('hidden')).not.toThrow();
+    });
+  });
 });

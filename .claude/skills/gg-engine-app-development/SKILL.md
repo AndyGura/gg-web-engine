@@ -73,6 +73,19 @@ The 2D equivalent (`Gg2dWorld`) uses `Shape2DDescriptor` (`BOX`/`CIRCLE`/`CAPSUL
 `POLYGON`/`COMPOUND`) and `Point2`/`number` rotation instead of quaternions - a `COMPOUND` child's
 `rotation` is a plain radians scalar rather than 3D's `Point4` quaternion.
 
+## Hidden tab: pausing automatically, or just reacting to it
+
+Pass `pauseWhenHidden: true` in the `Gg3dWorld`/`Gg2dWorld` constructor args to have the world pause
+itself automatically while the browser tab is hidden and resume itself when it becomes visible again
+(it won't resume a world your own code already paused before the tab was hidden - that pause is left
+alone). Whether or not you use that option, `world.visibility$` is an `Observable<boolean>` (`true` =
+visible) you can subscribe to directly for anything else that should react to tab visibility - muting
+audio, pausing polling/network calls, etc. Separately, `maxTickDelta?: number` in the same constructor
+args (default 250ms, forwarded to `world.worldClock.maxTickDelta`) bounds how large a single tick's
+delta can ever be, so returning to a long-backgrounded tab (if you didn't opt into
+`pauseWhenHidden`) can't hand physics/animation one huge catch-up frame - pass `0` only if your app
+genuinely needs unbounded ticks.
+
 ## Typing the world down to the integration-library level
 
 `Gg3dWorld`/`Gg2dWorld` are generic over a `TypeDoc` (which concrete component classes fill each
