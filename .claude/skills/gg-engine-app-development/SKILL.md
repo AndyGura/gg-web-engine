@@ -73,6 +73,39 @@ The 2D equivalent (`Gg2dWorld`) uses `Shape2DDescriptor` (`BOX`/`CIRCLE`/`CAPSUL
 `POLYGON`/`COMPOUND`) and `Point2`/`number` rotation instead of quaternions - a `COMPOUND` child's
 `rotation` is a plain radians scalar rather than 3D's `Point4` quaternion.
 
+## Opt-in fixed physics timestep
+
+By default, `world.physicsWorld.simulate()` runs once per world tick with that tick's own
+(variable) delta - fine for most apps, since every adapter's own physics stepping tolerates a
+varying `delta`. Pass `fixedPhysicsStep` (milliseconds) to `Gg3dWorld`/`Gg2dWorld`'s constructor to
+switch to a constant-size step instead:
+
+```typescript
+const world = new Gg3dWorld({
+  visualScene: new ThreeSceneComponent(),
+  physicsWorld: new AmmoWorldComponent(),
+  fixedPhysicsStep: 1000 / 60, // simulate physics at a constant 60Hz regardless of frame rate
+});
+```
+
+With this set, the world accumulates each tick's real delta and calls `simulate(fixedPhysicsStep)`
+as many times as fit into the accumulator that tick (zero, one, or several - a fast frame may
+accumulate for a couple of ticks before the next substep fires), carrying any leftover fractional
+time into the next tick. `maxPhysicsStepsPerTick` (default 8, also a constructor arg) caps how many
+of those calls one tick can make - if the world falls badly behind (e.g. the tab was backgrounded
+and resumes with a huge delta), the rest of that tick's accumulated time is dropped rather than
+queued up as an ever-growing backlog.
+
+Reach for this when gameplay logic depends on the physics engine advancing by predictable, identical
+steps regardless of the actual frame rate - a fighting-game-style input buffer keyed to physics
+ticks, replay/determinism work, or any tuning (spring constants, character-controller acceleration
+caps) that was validated at one step size and drifts visibly when the frame rate varies. Leave it
+unset for the common case of a physics simulation that already behaves fine driven by whatever delta
+the renderer happens to produce each frame - the fixed-step accumulator's own zero/one/several
+`simulate()` calls per rendered frame is a real behavior change from "always exactly once," not a
+free upgrade, and not needed unless something downstream actually cares about the step size being
+constant.
+
 ## Typing the world down to the integration-library level
 
 `Gg3dWorld`/`Gg2dWorld` are generic over a `TypeDoc` (which concrete component classes fill each

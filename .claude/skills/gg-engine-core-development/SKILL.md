@@ -395,6 +395,66 @@ controller that sets a shared dynamic body's velocity outright each tick should 
 "never fights a faster push already headed the right way" pattern rather than assuming it's the only
 writer that tick.
 
+## Opt-in fixed physics timestep: `fixedPhysicsStep`/`maxPhysicsStepsPerTick`
+
+`GgWorld`'s constructor (`base/gg-world.ts`) takes two optional args controlling how
+`physicsWorld.simulate()` is driven off the world clock's tick loop:
+
+- `fixedPhysicsStep?: number` - a constant step size in milliseconds. Left `undefined` (the
+  default), the tick loop keeps calling `simulate(delta)` exactly once per world tick with that
+  tick's own variable delta, unchanged from before this option existed. Set, the tick loop instead
+  maintains an accumulator: each tick adds that tick's `delta` to it, then calls
+  `simulate(fixedPhysicsStep)` as many times as fit (`while (accumulator >= fixedPhysicsStep)
+  { simulate(fixedPhysicsStep); accumulator -= fixedPhysicsStep; }`), leaving whatever doesn't
+  divide evenly to carry over into the next tick's accumulator. A tick faster than
+  `fixedPhysicsStep` can therefore call `simulate` zero times, letting time accumulate across
+  several ticks before the next substep fires.
+- `maxPhysicsStepsPerTick` (default 8) - the spiral-of-death guard: the most `simulate()` calls a
+  single world tick's accumulated time is allowed to spend down before the *rest* of that tick's
+  accumulated time is dropped outright (accumulator reset to 0) rather than carried forward. Without
+  this, a single abnormally large delta (e.g. a backgrounded tab resuming) would queue more fixed
+  steps than the next tick can also spend down, compounding tick over tick into a runaway backlog
+  that only grows - the classic "spiral of death" for a fixed-step loop. `warnOnce` fires (keyed on
+  the world's own name, so distinct worlds each get their own first warning) whenever the cap is
+  hit. A bounded/clamped tick delta upstream, wherever one exists in the world-clock chain, is a
+  complementary safeguard at a different layer - it limits how large `delta` itself can ever be
+  before it reaches `GgWorld`, whereas `maxPhysicsStepsPerTick` bounds how much physics work one
+  already-received tick is allowed to trigger regardless of how large its delta was.
+
+Both `Gg2dWorld` and `Gg3dWorld` re-declare their own constructor `args` object type (they don't
+reuse `GgWorld`'s literally, since TS structural typing on an object-literal parameter needs the
+member listed to accept it from a caller) - if this option ever needs a third field alongside it,
+add it to all three constructor signatures (`base/gg-world.ts`, `2d/gg-2d-world.ts`,
+`3d/gg-3d-world.ts`), not just the base class's.
+
+`tickForwardTo$`/`tickForwardedTo$` emitting `'PHYSICS_WORLD'` still fire exactly once per world
+tick regardless of how many substeps ran that tick - they wrap the whole accumulator batch (the
+`while` loop above happens entirely between the two emissions), not each individual `simulate()`
+call, so a hook listening for them has no way to tell how many substeps just ran from the emission
+count alone. Likewise, an entity's own `tick$` still fires exactly once per world tick no matter
+its `tickOrder` relative to `TickOrder.PHYSICS_SIMULATION` (200) - fixed-stepping only changes how
+many times `physicsWorld.simulate()` itself gets called inside the gap between the pre-physics and
+post-physics entity-tick loops, not the entity tick loop's own once-per-world-tick structure (see
+the `tickOrder` section above for that split).
+
+Because `IPhysicsWorldComponent.simulate` may now be called several times in a row with the exact
+same constant `delta` within a single world tick - or zero times on a tick where the accumulator
+hasn't reached `fixedPhysicsStep` yet - an adapter implementing it must not assume it's called at
+most once per rendered frame, or infer anything about wall-clock time elapsed between two calls
+from call count alone; see that interface method's own doc comment. No adapter shipped in this repo
+needed a change for this - none of `packages/ammo`/`matter`/`rapier2d`/`rapier3d`'s `simulate()`
+implementations key any per-call bookkeeping off assumed call frequency, only off the `delta`
+argument itself - but this is exactly the kind of assumption to check for when reviewing a new
+adapter's own `simulate()`.
+
+Regression coverage lives in `test/base/gg-world.spec.ts`'s `fixedPhysicsStep` describe block, using
+a mocked `physicsWorld.simulate` jest spy and `worldClock.start()`/`pause()`/`step(ms)` to drive
+exact, deterministic ticks (the same pattern the console `step` command itself relies on - see
+`PausableClock.step`'s own doc) - covering the unset/unchanged-default case, an exact-division tick
+with a carried remainder, the substep cap dropping (not carrying) the remainder, both hook subjects
+firing once per tick regardless of substep count, and a `PHYSICS_SIMULATION`-adjacent entity's
+`tick$` still firing exactly once per world tick.
+
 ## Collision groups can't express "these two specific bodies don't collide"
 
 `ownCollisionGroups`/`interactWithCollisionGroups` filtering is bidirectional AND logic: a pair

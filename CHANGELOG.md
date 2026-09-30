@@ -28,6 +28,12 @@ where one exists.
 
 ## [Unreleased]
 
+### Added
+- Opt-in fixed physics timestep: `GgWorld`'s (`Gg3dWorld`/`Gg2dWorld`) constructor now accepts a
+  `fixedPhysicsStep` (ms) option, driving `physicsWorld.simulate()` off a fixed-timestep
+  accumulator instead of the raw per-tick delta, plus a `maxPhysicsStepsPerTick` (default 8)
+  spiral-of-death guard.
+
 ## [0.0.73] - 2026-09-30
 
 ### Added
