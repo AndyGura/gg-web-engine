@@ -220,6 +220,30 @@ it reacts to the real `onCollisionStart` event instead, since the exact number o
 distance/speed takes to make contact isn't what that test means to assert. If you ever need a
 CIRCLE-on-floor resting scenario specifically, budget for this - it is not this engine's strong suit.
 
+**The same rule applies to `MatterRigidBodyComponent`'s own `position`/`rotation` setters, used at
+runtime on a body already in the world - not just to `MatterFactory`'s one-time initial placement
+above - and for a different reason: velocity corruption, not permanent geometry desync.**
+`MatterRigidBodyComponent.position`'s setter calls `Body.setPosition(this.nativeBody, ...)`, and
+`rotation`'s setter calls `Body.setAngle(this.nativeBody, value)` (both with the library's default,
+implicit `updateVelocity: false` - i.e. never passing `true`). Both native functions, called this way,
+shift the body's internal `positionPrev`/`anglePrev` bookkeeping by the same delta as `position`/
+`angle` itself, so the *next* `Engine.update` computes the same `linearVelocity`/`angularVelocity` it
+would have without the write - exactly like teleporting a body by re-deriving its previous-position
+history, not by injecting a velocity spike. A raw `nativeBody.position = ...`/`nativeBody.angle = ...`
+field write, by contrast, moves the current value but leaves `positionPrev`/`anglePrev` stale at the
+old value - `Body.update`'s Verlet integration reads that gap as one tick's worth of implied velocity
+on the very next `simulate()` call, silently overwriting whatever real `linearVelocity`/
+`angularVelocity` the body had a moment before with a large, spurious one derived from the jump. This
+is the velocity-corruption counterpart to the geometry-desync bug documented above for
+`MatterFactory`'s shape-placement call sites - both are instances of "never write `.position`/`.angle`
+directly on a Matter body, always go through `Body.setPosition`/`Body.setAngle`", just surfacing
+through different symptoms depending on whether the raw write happens before the body's first
+simulation step (permanently stale vertices/bounds) or after (a one-tick velocity spike on the next
+step). Pass `updateVelocity: true` explicitly only when a caller actually wants the write itself to
+*become* the body's new velocity (inferred from the jump) rather than preserving whatever velocity it
+already had - neither setter here does, matching how `linearVelocity`/`angularVelocity` are exposed as
+their own independent settable properties on this component.
+
 ## `MatterTriggerComponent.currentOverlaps` must actually be populated, and a removed body must trigger an explicit exit
 
 The other bug behind the same long-standing `MatterTriggerComponent` test suite FIXME (the position-write

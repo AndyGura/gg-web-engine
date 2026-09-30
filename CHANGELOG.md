@@ -28,6 +28,11 @@ where one exists.
 
 ## [Unreleased]
 
+### Fixed
+- `matter`: `MatterRigidBodyComponent.rotation`'s setter now calls `Body.setAngle` instead of
+  writing `nativeBody.angle` directly, so a rotation write no longer corrupts angular velocity
+  (mirrors the existing `Body.setPosition`-based `position` setter).
+
 ## [0.0.73] - 2026-09-30
 
 ### Added

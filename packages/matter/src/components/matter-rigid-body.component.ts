@@ -32,7 +32,7 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
   }
 
   public set rotation(value: number) {
-    this.nativeBody.angle = value;
+    Body.setAngle(this.nativeBody, value);
   }
 
   get linearVelocity(): Point2 {
