@@ -802,4 +802,97 @@ describe('GgWorld', () => {
       expect(() => setVisibility('hidden')).not.toThrow();
     });
   });
+
+  describe('fixedPhysicsStep', () => {
+    function makePhysicsWorldMock() {
+      return {
+        init: async () => {},
+        simulate: jest.fn(),
+        dispose: () => {},
+      };
+    }
+
+    // Drives the world's tick loop manually via `worldClock.step()`, the same deterministic
+    // pattern the "step" console command itself uses - see `PausableClock.step`'s own doc.
+    async function makeSteppableWorld(opts: { fixedPhysicsStep?: number; maxPhysicsStepsPerTick?: number }) {
+      const physicsWorld = makePhysicsWorldMock();
+      const w = new MockWorld({ physicsWorld, ...opts });
+      await w.init();
+      w.worldClock.start();
+      w.worldClock.pause();
+      return { world: w, physicsWorld };
+    }
+
+    it('leaves the original behavior unchanged when unset: simulate(delta) once per tick', async () => {
+      const { world: w, physicsWorld } = await makeSteppableWorld({});
+
+      w.worldClock.step(50);
+
+      expect(physicsWorld.simulate).toHaveBeenCalledTimes(1);
+      expect(physicsWorld.simulate).toHaveBeenCalledWith(50);
+    });
+
+    it('a 50ms tick at fixedPhysicsStep 16 calls simulate 3 times with 16 and carries 2ms over', async () => {
+      const { world: w, physicsWorld } = await makeSteppableWorld({ fixedPhysicsStep: 16 });
+
+      w.worldClock.step(50);
+
+      expect(physicsWorld.simulate).toHaveBeenCalledTimes(3);
+      expect(physicsWorld.simulate).toHaveBeenNthCalledWith(1, 16);
+      expect(physicsWorld.simulate).toHaveBeenNthCalledWith(2, 16);
+      expect(physicsWorld.simulate).toHaveBeenNthCalledWith(3, 16);
+
+      // the leftover 2ms from the first tick carries over - a further 14ms tick brings the
+      // accumulator to exactly 16ms, triggering exactly one more substep
+      w.worldClock.step(14);
+      expect(physicsWorld.simulate).toHaveBeenCalledTimes(4);
+    });
+
+    it('caps substeps at maxPhysicsStepsPerTick and drops the remainder instead of carrying it over', async () => {
+      const { world: w, physicsWorld } = await makeSteppableWorld({ fixedPhysicsStep: 16, maxPhysicsStepsPerTick: 8 });
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+      // a 1000ms tick would need 62 steps of 16ms - far more than the 8-step cap
+      w.worldClock.step(1000);
+
+      expect(physicsWorld.simulate).toHaveBeenCalledTimes(8);
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('maxPhysicsStepsPerTick'));
+      warnSpy.mockRestore();
+
+      // the remainder was dropped (not carried): a subsequent 1ms tick doesn't push the
+      // accumulator anywhere near another 16ms step
+      w.worldClock.step(1);
+      expect(physicsWorld.simulate).toHaveBeenCalledTimes(8);
+    });
+
+    it('fires tickForwardTo$/tickForwardedTo$("PHYSICS_WORLD") once per tick, not once per substep', async () => {
+      const { world: w, physicsWorld } = await makeSteppableWorld({ fixedPhysicsStep: 16 });
+      const forwardTo: unknown[] = [];
+      const forwardedTo: unknown[] = [];
+      w.tickForwardTo$.subscribe(x => forwardTo.push(x));
+      w.tickForwardedTo$.subscribe(x => forwardedTo.push(x));
+
+      w.worldClock.step(50); // 3 substeps
+
+      expect(physicsWorld.simulate).toHaveBeenCalledTimes(3);
+      expect(forwardTo.filter(x => x === 'PHYSICS_WORLD').length).toBe(1);
+      expect(forwardedTo.filter(x => x === 'PHYSICS_WORLD').length).toBe(1);
+    });
+
+    it('an entity ticking just before PHYSICS_SIMULATION still ticks exactly once per world tick regardless of substep count', async () => {
+      const { world: w } = await makeSteppableWorld({ fixedPhysicsStep: 16 });
+      class PrePhysicsEntity extends IEntity {
+        readonly tickOrder = TickOrder.PHYSICS_SIMULATION - 5;
+      }
+      const entity = new PrePhysicsEntity();
+      entity.name = 'PrePhysics';
+      w.addEntity(entity);
+      const tickSpy = jest.fn();
+      entity.tick$.subscribe(tickSpy);
+
+      w.worldClock.step(50); // 3 physics substeps this tick
+
+      expect(tickSpy).toHaveBeenCalledTimes(1);
+    });
+  });
 });

@@ -146,6 +146,24 @@ export abstract class GgWorld<
   // app paused itself independently
   private pausedByVisibility: boolean = false;
 
+  /**
+   * When set, `physicsWorld.simulate()` is driven by a fixed-timestep accumulator instead of the
+   * raw per-tick delta - see the constructor's `fixedPhysicsStep` argument doc for the full
+   * semantics.
+   */
+  public readonly fixedPhysicsStep?: number;
+
+  /**
+   * Spiral-of-death guard for the `fixedPhysicsStep` accumulator: the most `simulate()` calls one
+   * world tick is allowed to make before the remaining accumulated time is dropped instead of
+   * carried over. Only meaningful when `fixedPhysicsStep` is set. Defaults to 8.
+   */
+  public readonly maxPhysicsStepsPerTick: number;
+
+  // Leftover, not-yet-simulated tick time, in ms, when `fixedPhysicsStep` is set - see the tick
+  // loop in `init()`.
+  private physicsAccumulator: number = 0;
+
   public name: string = 'w0x' + (GgWorld.default_name_counter++).toString(16);
 
   readonly children: IEntity[] = [];
@@ -184,6 +202,29 @@ export abstract class GgWorld<
      * `GgWorld.pauseWhenHidden`'s own doc. Defaults to `false`.
      */
     pauseWhenHidden?: boolean;
+    /**
+     * Opt-in fixed physics timestep, in milliseconds. Left `undefined` (the default), the tick
+     * loop keeps its original behavior: `physicsWorld.simulate(delta)` is called exactly once per
+     * world tick, with that tick's own (variable) delta. Set to a value, the tick loop instead
+     * accumulates each tick's delta and calls `physicsWorld.simulate(fixedPhysicsStep)` as many
+     * times as fit in the accumulator (0 or more - a tick faster than `fixedPhysicsStep` may call
+     * `simulate` zero times, letting time accumulate across ticks), carrying any leftover
+     * fractional time over to the next tick. This gives the physics engine a constant, reproducible
+     * step size regardless of the actual frame rate, at the cost of it running zero, one, or
+     * several times within a single rendered frame. `maxPhysicsStepsPerTick` bounds how many of
+     * those calls a single world tick can make.
+     */
+    fixedPhysicsStep?: number;
+    /**
+     * Spiral-of-death guard for `fixedPhysicsStep`: the most `simulate()` calls one world tick may
+     * make before the rest of that tick's accumulated time is dropped instead of carried over to
+     * the next tick (e.g. after the tab was backgrounded and comes back with a huge delta). Only
+     * meaningful when `fixedPhysicsStep` is set. Defaults to 8. `PausableClock`'s own bounded tick
+     * delta (`maxTickDelta`, where available) is a complementary safeguard at the clock level -
+     * this cap is what keeps a single tick's physics work bounded even if an oversized delta
+     * reaches `GgWorld` anyway.
+     */
+    maxPhysicsStepsPerTick?: number;
   }) {
     this.visualScene = args.visualScene || null;
     this.physicsWorld = args.physicsWorld || null;
@@ -192,6 +233,8 @@ export abstract class GgWorld<
       this.worldClock.maxTickDelta = args.maxTickDelta;
     }
     this.pauseWhenHidden = args.pauseWhenHidden ?? false;
+    this.fixedPhysicsStep = args.fixedPhysicsStep;
+    this.maxPhysicsStepsPerTick = args.maxPhysicsStepsPerTick ?? 8;
     this.keyboardInput.start();
     if ((window as any).ggstatic) {
       this.registerConsoleCommands((window as any).ggstatic);
@@ -251,10 +294,32 @@ export abstract class GgWorld<
         }
         forwardTick(this.tickListeners[i], elapsed, delta);
       }
-      // run physics simulation
+      // run physics simulation - tickForwardTo$/tickForwardedTo$('PHYSICS_WORLD') fire exactly
+      // once per world tick either way, wrapping the whole fixed-step batch below rather than each
+      // individual simulate() call, so a hook listening for them can't tell how many substeps ran.
       if (this.physicsWorld) {
         this.tickForwardTo$.next('PHYSICS_WORLD');
-        this.physicsWorld.simulate(delta);
+        if (this.fixedPhysicsStep !== undefined) {
+          this.physicsAccumulator += delta;
+          let steps = 0;
+          while (this.physicsAccumulator >= this.fixedPhysicsStep && steps < this.maxPhysicsStepsPerTick) {
+            this.physicsWorld.simulate(this.fixedPhysicsStep);
+            this.physicsAccumulator -= this.fixedPhysicsStep;
+            steps++;
+          }
+          if (steps >= this.maxPhysicsStepsPerTick && this.physicsAccumulator >= this.fixedPhysicsStep) {
+            // spiral-of-death guard: this tick alone accumulated more time than
+            // maxPhysicsStepsPerTick fixed steps can consume (e.g. a huge delta from a
+            // backgrounded tab) - drop the rest rather than let the debt grow tick over tick.
+            warnOnce(
+              `GgWorld "${this.name}": fixedPhysicsStep accumulator exceeded maxPhysicsStepsPerTick ` +
+                `(${this.maxPhysicsStepsPerTick}) in one tick - dropping the remaining accumulated time`,
+            );
+            this.physicsAccumulator = 0;
+          }
+        } else {
+          this.physicsWorld.simulate(delta);
+        }
         this.tickForwardedTo$.next('PHYSICS_WORLD');
       }
       // emit tick to all remained entities

@@ -1,7 +1,15 @@
 import { Entity2d, GgWorld } from '../../src';
 
 export class MockWorld extends GgWorld<any, any> {
-  constructor(args: { maxTickDelta?: number; pauseWhenHidden?: boolean } = {}) {
+  constructor(
+    args: {
+      physicsWorld?: any;
+      maxTickDelta?: number;
+      pauseWhenHidden?: boolean;
+      fixedPhysicsStep?: number;
+      maxPhysicsStepsPerTick?: number;
+    } = {},
+  ) {
     super({
       visualScene: {
         init: async () => {
@@ -9,15 +17,18 @@ export class MockWorld extends GgWorld<any, any> {
         dispose: () => {
         },
       } as any,
-      physicsWorld: {
+      physicsWorld: args.physicsWorld ?? ({
         init: async () => {
         },
         simulate: () => {
         },
         dispose: () => {
         },
-      } as any,
-      ...args,
+      } as any),
+      maxTickDelta: args.maxTickDelta,
+      pauseWhenHidden: args.pauseWhenHidden,
+      fixedPhysicsStep: args.fixedPhysicsStep,
+      maxPhysicsStepsPerTick: args.maxPhysicsStepsPerTick,
     });
   }
 

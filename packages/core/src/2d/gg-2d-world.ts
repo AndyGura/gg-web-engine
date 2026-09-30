@@ -117,6 +117,8 @@ export class Gg2dWorld<
     visualScene?: SceneTypeDoc['visualScene'];
     physicsWorld?: SceneTypeDoc['physicsWorld'];
     audioScene?: SceneTypeDoc['audioScene'];
+    fixedPhysicsStep?: number;
+    maxPhysicsStepsPerTick?: number;
   }) {
     super(args);
     this.loader = new Gg2dLoader(this);

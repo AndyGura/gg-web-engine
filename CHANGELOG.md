@@ -40,6 +40,10 @@ where one exists.
   `GgWorld.visibility$` observable reports tab visibility regardless of that option.
 - Built-in `"Player"` level-JSON class for 2D, mirroring the existing 3D one: a capsule-bodied
   `CharacterController2dEntity`, ready to use.
+- Opt-in fixed physics timestep: `GgWorld`'s (`Gg3dWorld`/`Gg2dWorld`) constructor now accepts a
+  `fixedPhysicsStep` (ms) option, driving `physicsWorld.simulate()` off a fixed-timestep
+  accumulator instead of the raw per-tick delta, plus a `maxPhysicsStepsPerTick` (default 8)
+  spiral-of-death guard.
 
 ### Fixed
 - `matter`: `MatterRigidBodyComponent.rotation`'s setter now calls `Body.setAngle` instead of

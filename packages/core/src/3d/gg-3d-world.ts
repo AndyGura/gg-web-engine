@@ -126,6 +126,8 @@ export class Gg3dWorld<
     visualScene?: SceneTypeDoc['visualScene'];
     physicsWorld?: SceneTypeDoc['physicsWorld'];
     audioScene?: SceneTypeDoc['audioScene'];
+    fixedPhysicsStep?: number;
+    maxPhysicsStepsPerTick?: number;
   }) {
     super(args);
     this.loader = new Gg3dLoader(this);
