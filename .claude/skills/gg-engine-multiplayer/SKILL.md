@@ -111,6 +111,10 @@ join handshakes, link latency) runs on the injected `NetScheduler`, never on `ti
   car). A runtime spawn also clears a tombstone for its id.
 - **`despawn` works for non-networked shared content** (a coin trigger): broadcast and remove by name,
   and pending/joined entities whose name is tombstoned are removed on processing.
+- **Peers' clocks share no origin.** `performance.now()` counts from each tab's start, so a remote
+  timestamp means nothing before that peer's first clock-sync sample (`toLocalTime` returns "now"
+  until then). A duration crosses the wire as two timestamps of one sender - a spawn's lifetime is
+  `expiresAt - ts`, added to the receiver's own clock - never as one converted absolute time.
 - **Contact claims compare pre-impact speeds** (the latest snapshot's `lv`), never the bodies' current
   velocities - those are post-solve, and the hit body is then often the faster one, which made it
   "claim" the hitter right back. Some adapters (Ammo) report impulse 0 on a contact's first step;

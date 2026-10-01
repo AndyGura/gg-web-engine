@@ -1,5 +1,5 @@
 import { Entity3d, GgStatic, IEntity } from '@gg-web-engine/core';
-import { Network3dController } from '../../src';
+import { ClockSync, NetScheduler, Network3dController } from '../../src';
 import { ADAPTERS, Harness, TICK_MS } from './harness';
 
 jest.setTimeout(60_000);
@@ -74,6 +74,29 @@ describe('NetworkController features', () => {
     expect(findByName(h, 'b', box.name)).toBeDefined();
     await h.run(Math.ceil(600 / TICK_MS));
     expect(box.world).toBeNull();
+    expect(findByName(h, 'b', box.name)).toBeUndefined();
+  });
+
+  it('keeps a lifetime that arrives before the clock sync, whatever the sender clock', async () => {
+    h = new Harness(adapter, { latencyMs: 50 });
+    const shared = h.scheduler;
+    // a's clock counts from a minute later than everybody else's (another tab's performance.now())
+    const skewed: NetScheduler = {
+      now: () => shared.now() - 60_000,
+      setTimeout: (fn, ms) => shared.setTimeout(fn, ms),
+      clearTimeout: t => shared.clearTimeout(t),
+      setInterval: (fn, ms) => shared.setInterval(fn, ms),
+      clearInterval: t => shared.clearInterval(t),
+    };
+    const a = await h.addPeer('a', undefined, { scheduler: skewed });
+    const b = await h.addPeer('b');
+    await h.run(5);
+    (b.net as any).peers.get('a').clock = new ClockSync(); // no sample from a yet
+    const box = adapter.addBox(a.world, adapter.at(0, 1));
+    a.net.setLifetime(box, 2000);
+    await h.run(10);
+    expect(findByName(h, 'b', box.name)).toBeDefined();
+    await h.run(Math.ceil(2500 / TICK_MS));
     expect(findByName(h, 'b', box.name)).toBeUndefined();
   });
 

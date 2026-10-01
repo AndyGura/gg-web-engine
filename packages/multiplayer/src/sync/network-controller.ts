@@ -1544,8 +1544,14 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     return peer;
   }
 
+  /**
+   * a peer's timestamp in local time - or now, until the first clock-sync sample: the peers' clocks
+   * have unrelated origins (`performance.now()` counts from each tab's start), so an unsynced
+   * timestamp can be minutes off
+   */
   private toLocalTime(from: string, ts: number): number {
-    return this.peers.get(from)?.clock.toLocal(ts) ?? ts;
+    const clock = this.peers.get(from)?.clock;
+    return clock && clock.samples > 0 ? clock.toLocal(ts) : this.now;
   }
 
   private onMessage(from: string, msg: WireMessage): void {
@@ -1729,7 +1735,8 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       this.setPossessor(rec, item.possessor);
     }
     if (item.expiresAt !== undefined) {
-      rec.expiresAt = this.toLocalTime(from, item.expiresAt);
+      // the lifetime left when the item was sent: both on the sender's clock, so no sync needed
+      rec.expiresAt = this.now + (item.expiresAt - item.ts);
     }
     rec.requestedAt = null;
     if (rec.owner === this.localPeerId) {
