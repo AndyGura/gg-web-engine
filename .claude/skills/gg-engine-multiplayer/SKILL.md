@@ -49,7 +49,8 @@ reuses.
   on replicas; `null` = neutral (entity defines it).
 - Built-ins: `Entity2d`/`Entity3d` (rigid-body snapshot; enabled only with a non-static body),
   `GgCarEntity` (chassis snapshot + gear/steering/throttle/brake/handbrake; input-driven;
-  `autoShiftEnabled`, auto-suspended while remote input drives it), both character entities
+  `autoShiftEnabled`, auto-suspended while remote input drives it; the snapshot's driving state is
+  adopted only without remote input), both character entities
   (`MoverNetState`, input incl. `jumpSeq` = `jumpCount`, `externalDisplacement`, `actualVelocity`,
   `ISerializableEntity` with a `state` block the `"Player"` loader class applies).
 - **An entity nested under a networked entity is never networked itself** - the parent's state

@@ -6,7 +6,11 @@ import { mock3DObject } from '../../mocks/object.mock';
 describe(`GgCarEntity`, () => {
   describe(`steeringFactor`, () => {
     it(`applies a plain-number maxSteerAngle unconditionally of speed`, () => {
-      const car = new GgCarEntity({ ...mockCarProperties(), maxSteerAngle: 0.35 }, mock3DObject(), mockRaycastVehicle());
+      const car = new GgCarEntity(
+        { ...mockCarProperties(), maxSteerAngle: 0.35 },
+        mock3DObject(),
+        mockRaycastVehicle(),
+      );
 
       for (const speed of [0, 5, 17.5, 30, 100]) {
         jest.spyOn(car.raycastVehicle, 'getSpeed').mockReturnValue(speed);
@@ -173,6 +177,21 @@ describe(`GgCarEntity`, () => {
       expect(resetSpy).toHaveBeenCalled();
       expect(replica.gear).toBe(2);
       expect(replica.acceleration).toBe(0.5);
+    });
+
+    it(`leaves the driving state to remote input while it drives the car`, () => {
+      const replica = new GgCarEntity(mockCarProperties(), mock3DObject(), mockRaycastVehicle());
+      replica.applyRemoteInput({ steeringFactor: 0.3, acceleration: 1, brake: 0, gear: 2, handBrake: false });
+      const state = { ...replica.captureNetworkState(), gear: 4, steering: -1, accel: 0, brake: 1, handBrake: true };
+      replica.applyNetworkState(state, { ageMs: 0, dt: 16, snap: false, tuning: { ...DEFAULT_CORRECTION_TUNING } });
+      expect(replica.gear).toBe(2);
+      expect(replica.steeringFactor).toBe(0.3);
+      expect(replica.acceleration).toBe(1);
+      expect(replica.handBrake).toBe(false);
+      replica.applyRemoteInput(null);
+      replica.applyNetworkState(state, { ageMs: 0, dt: 16, snap: false, tuning: { ...DEFAULT_CORRECTION_TUNING } });
+      expect(replica.gear).toBe(4);
+      expect(replica.handBrake).toBe(true);
     });
   });
 });

@@ -73,7 +73,8 @@ transports or possession. The pieces (see `gg-engine-multiplayer` for the full m
   number), the same way every other helper here operates on plain `Point2`/`Point3`/`Point4` data.
   `net-math.ts` is internal (not re-exported).
 - Implementations on `Entity2d`/`Entity3d` (`isNetworkSyncEnabled` only with a non-static body),
-  `GgCarEntity` (plus `autoShiftEnabled`, and auto-shift suspended while remote input drives it) and
+  `GgCarEntity` (plus `autoShiftEnabled`; while remote input drives it, auto-shift is suspended and
+  `applyNetworkState` corrects only the chassis - the input already carries the driving state) and
   both character entities (`externalDisplacement` folded into the next `move()` then cleared,
   `jumpCount` incremented only by a jump that happened, `actualVelocity` = last tick's real
   displacement / dt).

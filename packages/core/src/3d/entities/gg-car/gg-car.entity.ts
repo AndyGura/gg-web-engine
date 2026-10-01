@@ -64,7 +64,8 @@ export type GgCarProperties = RVEntityProperties & {
 };
 
 /**
- * Networked state of a `GgCarEntity`: the chassis rigid-body snapshot plus its driving state.
+ * Networked state of a `GgCarEntity`: the chassis rigid-body snapshot plus its driving state, which
+ * a replica adopts only while no remote input drives it (a Free car keeps its owner's controls).
  * Engine RPM is deliberately absent - it's derived locally from speed and gear on every peer.
  */
 export type GgCarNetState = RigidBodyNetState<Point3, Point4> & {
@@ -545,13 +546,17 @@ export class GgCarEntity<
 
   /**
    * `INetworkSyncable`: correct the chassis toward the owner's snapshot (see `RigidBodyCorrection`)
-   * and adopt its driving state. A snap also resets the suspension, so the wheels don't spring from
-   * the old pose.
+   * and adopt its driving state - unless remote input drives this car, which already carries the
+   * same values (see `applyRemoteInput`). A snap also resets the suspension, so the wheels don't
+   * spring from the old pose.
    */
   public applyNetworkState(target: GgCarNetState, ctx: NetworkApplyContext): void {
     const outcome = RigidBodyCorrection.correct(this.raycastVehicle.vehicleComponent, target, ctx);
     if (outcome === 'snap') {
       this.raycastVehicle.vehicleComponent.resetSuspension();
+    }
+    if (this._remoteInputActive) {
+      return;
     }
     this.gear = target.gear;
     this.steeringFactor = target.steering;
