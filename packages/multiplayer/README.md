@@ -112,14 +112,17 @@ authentication and the **Realtime Database**, deploy the rules, optionally App C
 |---|---|---|
 | `meta` | `{ createdAt, uid }` | the room creator; removed by its `onDisconnect` |
 | `presence/{peerId}` | `{ uid, cell, ts }` (`ts` refreshed every 2 min) | that peer only |
-| `signals/{toPeerId}/{pushId}` | `{ uid, from, payload, ts }` (`payload` = JSON string ≤ 16000 chars) | any authenticated peer; deleted by the recipient on read |
+| `signals/{toPeerId}/{pushId}` | `{ uid, from, payload, ts }` (`payload` = JSON string ≤ 16000 chars) | the peer `from` (any peer in the room may signal any other); deleted by the recipient on read |
 
 The rules the client relies on:
 - every read/write requires `auth != null`;
 - `meta` and `presence/{peerId}`: create only with `uid === auth.uid`, change only by that same uid;
   `peerId` matches `^[0-9a-z]{1,32}$`, `cell` is a string ≤ 32 chars; the room id is a UUID v4;
 - `signals/{to}`: readable only by the uid that owns `presence/{to}`; a message is created with
-  `uid === auth.uid` and validated for shape/size, and may be deleted (never edited) afterwards.
+  `uid === auth.uid` and a `from` whose `presence/{from}` belongs to that same uid (nobody signals in
+  another peer's name), validated for shape/size, and never edited. A message may be deleted by its
+  sender or by the owner of `presence/{to}`, the whole inbox only by that owner - and by anyone once
+  `presence/{to}` is gone (an orphaned inbox).
 
 Every node a client writes is registered with `onDisconnect().remove()`. The optional backstop
 (`firebase/functions`, needs the Blaze plan) is a scheduled function removing presence/signal nodes
