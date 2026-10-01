@@ -2,4 +2,3 @@ node_modules
 src
 test
 firebase
-jest.bot.config.js

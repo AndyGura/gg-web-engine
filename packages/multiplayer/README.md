@@ -88,8 +88,9 @@ of one browser with no backend at all - open the same `?room=` URL in two tabs.
 `new WebRtcMeshTransport({ ..., zoning: { cellSize } })` places each peer on a grid over the ground
 plane (x/y), connects only to peers within the 5×5 cell ring and streams state to the 3×3 ring;
 connections outside the wide ring age out after 10 s. Sizing rule: the fastest entity's speed ×
-connection setup time must fit inside the wide ring's radius. Validate with the bot harness:
-`GG_FIREBASE_CONFIG='{...}' npm run bot` (see `test/bot/zoning-bot.bot.ts`).
+connection setup time must fit inside the one-cell margin between the two rings. Setup measured
+71–680 ms with every peer on one machine; peers on different networks add STUN/TURN round trips.
+`WebRtcMeshTransport.setupTimes` reports each link's setup time for your own measurements.
 
 ### Dev tools
 With the dev console: `net_status`, `net_owners [filter]`, `net_tuning key value`,

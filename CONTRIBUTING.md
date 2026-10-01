@@ -50,7 +50,7 @@ best-effort.
 | `packages/ammo`, `packages/rapier3d` | 3D physics adapters (Bullet via ammo.js, Rapier). |
 | `packages/matter`, `packages/rapier2d` | 2D physics adapters (matter-js, Rapier). |
 | `packages/audio` | Web Audio API adapter. |
-| `packages/multiplayer` | Shared-world P2P multiplayer (network controller, WebRTC mesh transport, Firebase/BroadcastChannel signaling). Its in-process harness runs on all four physics adapters; `npm run bot` there runs the on-demand zoning bot against a real Firebase project. |
+| `packages/multiplayer` | Shared-world P2P multiplayer (network controller, WebRTC mesh transport, Firebase/BroadcastChannel signaling). Its in-process harness runs on all four physics adapters. |
 | `examples/` | Standalone demo apps (plain webpack, plus Angular/React framework samples). Each is an independent npm project so it stays cloneable into StackBlitz. `examples/examples-list.txt` is the registry the release script bumps. |
 | `e2e/` | End-to-end test harnesses that need more than a package (currently the Blender export round-trip). |
 | `blender-addon/` | Blender extension that exports a scene as `.glb` + `.meta` for the 3D loader. Published alongside every engine release. |

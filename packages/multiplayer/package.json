@@ -6,7 +6,6 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "test": "jest",
-    "bot": "jest --config jest.bot.config.js --runInBand",
     "prettier-format": "prettier --config ../../.prettierrc 'src/**/*.ts' --write",
     "prepublish": "rm -rf ./dist/ && tsc",
     "build": "tsc"

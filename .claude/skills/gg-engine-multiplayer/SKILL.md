@@ -32,7 +32,7 @@ packages/multiplayer/src/p2p/    WebRtcMeshTransport, ISignalingChannel, Firebas
                                  BroadcastChannelSignaling, zoning, room URL helpers
 packages/multiplayer/firebase/   deployable rules + optional sweep function (not in the npm package)
 packages/multiplayer/test/       sync unit tests, in-process harness (all 4 physics adapters),
-                                 p2p tests (fake RTCPeerConnection, fake Firebase), bot harness
+                                 p2p tests (fake RTCPeerConnection, fake Firebase)
 ```
 
 `src/sync` must never import from `src/p2p` - it is the half a future dedicated-server package
@@ -135,9 +135,10 @@ join handshakes, link latency) runs on the injected `NetScheduler`, never on `ti
 - `firebase/*` is mapped to `test/stubs/firebase.ts`, an in-memory Realtime Database (with real-RTDB
   pruning of empty nodes) - `FirebaseSignaling` is tested against it. `test/p2p/fakes.ts` has a fake
   `RTCPeerConnection` and an in-memory signaling hub for `WebRtcMeshTransport`.
-- **Bot harness** (`npm run bot`, `test/bot/zoning-bot.bot.ts`, own `jest.bot.config.js`): real Firebase
-  + a node WebRTC package, on demand only. It imports `src/p2p` files directly - the package index pulls
-  in `@gg-web-engine/core`, which needs a browser `window`.
+- **Real connection timing** is never tested automatically. `WebRtcMeshTransport.setupTimes` holds each
+  link's setup time; with every peer on one machine it measured 71–680 ms. That is a best case, since
+  peers on one machine connect over local host candidates and real peers add STUN (and possibly TURN)
+  round trips. Check zoning cell sizes against it: speed × setup time must fit in the one-cell margin.
 - Live: open an example's `?room=` URL in two tabs (BroadcastChannel signaling needs no backend).
   Automation tabs are hidden: `requestAnimationFrame` doesn't tick and `setTimeout` is clamped to ≥1 s,
   so drive worlds with `worldClock.step(16)` in a loop that yields through a `MessageChannel` (not

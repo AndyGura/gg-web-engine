@@ -35,7 +35,7 @@ export interface WebRtcMeshTransportOptions {
   reconnectBaseDelayMs?: number;
   /** Default 30000. */
   reconnectMaxDelayMs?: number;
-  /** `RTCPeerConnection` implementation, for non-browser hosts (e.g. a node bot with a WebRTC package). */
+  /** `RTCPeerConnection` implementation, for non-browser hosts (e.g. node with a WebRTC package). */
   rtcPeerConnection?: typeof RTCPeerConnection;
   scheduler?: NetScheduler;
 }
@@ -94,7 +94,7 @@ export class WebRtcMeshTransport implements ITransport {
   private readonly _peers$ = new BehaviorSubject<ReadonlyArray<string>>([]);
   private readonly _messages$ = new Subject<{ from: string; msg: WireMessage }>();
   private readonly _peerLeft$ = new Subject<string>();
-  /** time (scheduler ms) each link took from creation to both channels open - for diagnostics and the zoning bot */
+  /** time (scheduler ms) each link took from creation to both channels open - for diagnostics, e.g. checking zoning cell sizes */
   public readonly setupTimes = new Map<string, number>();
 
   constructor(options: WebRtcMeshTransportOptions) {

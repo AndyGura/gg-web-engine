@@ -1,5 +1,5 @@
 import { IEntity } from '@gg-web-engine/core';
-import { FirebaseSignaling, PresenceEntry, SdpOrIce, WebRtcMeshTransport } from '../../src';
+import { DEFAULT_FIREBASE_CONFIG, FirebaseSignaling, PresenceEntry, SdpOrIce, WebRtcMeshTransport } from '../../src';
 import { fakeFirebase } from '../stubs/firebase';
 import { FakeRTCPeerConnection, settle } from './fakes';
 import { ADAPTERS, TICK_MS } from '../harness/harness';
@@ -10,8 +10,9 @@ const config = { apiKey: 'k', projectId: 'p', databaseURL: 'https://p.firebaseio
 describe('FirebaseSignaling', () => {
   beforeEach(() => fakeFirebase.reset());
 
-  it('refuses to start without a config when no default is set', () => {
-    expect(() => new FirebaseSignaling()).toThrow(/no Firebase config/);
+  it('uses DEFAULT_FIREBASE_CONFIG when no config is passed', () => {
+    new FirebaseSignaling();
+    expect(fakeFirebase.state.apps.map(app => app.options)).toEqual([DEFAULT_FIREBASE_CONFIG]);
   });
 
   it('creates a room, tracks presence and cells, relays signals and cleans its inbox', async () => {
@@ -101,7 +102,7 @@ describe('NetworkController over WebRtcMeshTransport (fake WebRTC, fake Firebase
     await new Promise(r => setTimeout(r, 0));
     const replica = b.world.children.find((e: IEntity) => e.name === box.name);
     expect(replica).toBeDefined();
-    expect(b.net.ownerOf(replica!)).toBe("a");
+    expect(b.net.ownerOf(replica!)).toBe('a');
     peers.forEach(p => p.world.dispose());
   });
 });
