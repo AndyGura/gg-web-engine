@@ -1118,15 +1118,33 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     this.suppressRemoval.delete(entity);
   }
 
-  private broadcastSpawn(rec: NetRecord): boolean {
-    const loader = this.requireLoader();
+  /** the `spawn` message describing `rec`, or undefined when its level loader can't serialize it */
+  private spawnMessage(rec: NetRecord): WireMessage | undefined {
     let descriptor: EntityJson | undefined;
     try {
-      descriptor = loader.serializeEntity(rec.entity);
+      descriptor = this.requireLoader().serializeEntity(rec.entity);
     } catch (e) {
       descriptor = undefined;
     }
     if (!descriptor) {
+      return undefined;
+    }
+    return {
+      t: 'spawn',
+      entityId: rec.id,
+      descriptor,
+      owner: rec.owner,
+      epoch: rec.epoch,
+      possessor: rec.possessor,
+      ts: this.now,
+      ...(rec.expiresAt !== null ? { expiresAt: rec.expiresAt } : {}),
+      full: this.captureFull(rec),
+    };
+  }
+
+  private broadcastSpawn(rec: NetRecord): boolean {
+    const msg = this.spawnMessage(rec);
+    if (!msg) {
       const reason =
         `NetworkController: cannot network the runtime spawn "${rec.id}" - its level loader can't serialize it ` +
         `(register its class on the loader passed to the controller, or mark it shared / exclude it)`;
@@ -1137,17 +1155,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     if (this.transport.peers.length === 0) {
       return true;
     }
-    this.broadcast({
-      t: 'spawn',
-      entityId: rec.id,
-      descriptor,
-      owner: rec.owner,
-      epoch: rec.epoch,
-      possessor: rec.possessor,
-      ts: this.now,
-      ...(rec.expiresAt !== null ? { expiresAt: rec.expiresAt } : {}),
-      full: this.captureFull(rec),
-    });
+    this.broadcast(msg);
     return true;
   }
 
@@ -1516,9 +1524,29 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
           this.transport.send(id, 'reliable', this.heartbeatMessage());
           this.transport.send(id, 'reliable', { t: 'ping', t0: this.now });
         }
+        if (this.joined) {
+          this.sendOwnedSpawns(id);
+        }
       }
     }
     this.publishPeers();
+  }
+
+  /**
+   * Send `peerId` a `spawn` of every runtime spawn the local peer owns: a link that opens after
+   * joining (zoning, a slow or retried connection) never carried the earlier ones, and no join dump
+   * follows. A peer still joining gets them in its dump as well - spawns are idempotent.
+   */
+  private sendOwnedSpawns(peerId: string): void {
+    for (const rec of this.records.values()) {
+      if (rec.owner !== this.localPeerId || rec.shared) {
+        continue;
+      }
+      const msg = this.spawnMessage(rec);
+      if (msg) {
+        this.transport.send(peerId, 'reliable', msg);
+      }
+    }
   }
 
   private publishPeers(): void {
@@ -1789,8 +1817,8 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
   }
 
   private async spawnFromItem(from: string, item: SpawnItem): Promise<void> {
-    if (!this.world || !item.descriptor) {
-      return;
+    if (!this.world || !item.descriptor || this.records.has(item.entityId) || this.spawning.has(item.entityId)) {
+      return; // already built or being built (a join dump and a spawn may both describe it)
     }
     this.spawning.set(item.entityId, []);
     let entity: IEntity | undefined;

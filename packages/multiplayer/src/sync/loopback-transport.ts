@@ -23,6 +23,8 @@ export class LoopbackHub {
   private readonly transports = new Map<string, LoopbackTransport>();
   // per directed link: when the last reliable message is delivered, so reliable stays ordered
   private readonly reliableTail = new Map<string, number>();
+  // unordered peer pairs with no link between them (see cutLink)
+  private readonly cutLinks = new Set<string>();
   private random: () => number;
 
   constructor(
@@ -57,6 +59,24 @@ export class LoopbackHub {
     this.transports.get(peerId)?.setPartitioned(false);
   }
 
+  /**
+   * Close the link between `a` and `b` (or keep it from opening): each drops out of the other's
+   * peers, nothing flows between them, and nobody is told the other left - like two zoned peers out
+   * of each other's range. {@link openLink} opens it (again).
+   */
+  cutLink(a: string, b: string): void {
+    this.cutLinks.add(linkKey(a, b));
+    this.transports.get(a)?._refreshPeers();
+    this.transports.get(b)?._refreshPeers();
+  }
+
+  /** Undo {@link cutLink}. */
+  openLink(a: string, b: string): void {
+    this.cutLinks.delete(linkKey(a, b));
+    this.transports.get(a)?._refreshPeers();
+    this.transports.get(b)?._refreshPeers();
+  }
+
   /** @internal */
   _attach(transport: LoopbackTransport): void {
     this.transports.set(transport.localPeerId, transport);
@@ -79,7 +99,7 @@ export class LoopbackHub {
 
   /** @internal */
   _peersOf(peerId: string): string[] {
-    return [...this.transports.keys()].filter(id => id !== peerId);
+    return [...this.transports.keys()].filter(id => id !== peerId && !this.cutLinks.has(linkKey(id, peerId)));
   }
 
   /** @internal */
@@ -91,6 +111,9 @@ export class LoopbackHub {
     const targets = to === 'all' ? this._peersOf(from) : typeof to === 'string' ? [to] : to;
     const payload = JSON.stringify(msg);
     for (const target of targets) {
+      if (this.cutLinks.has(linkKey(from, target))) {
+        continue;
+      }
       if (channel === 'unreliable' && this.random() < this.conditions.lossRate) {
         continue;
       }
@@ -103,12 +126,21 @@ export class LoopbackHub {
       }
       this.scheduler.setTimeout(() => {
         const receiver = this.transports.get(target);
-        if (receiver && !receiver.partitioned && this.transports.get(from)?.partitioned !== true) {
+        if (
+          receiver &&
+          !receiver.partitioned &&
+          this.transports.get(from)?.partitioned !== true &&
+          !this.cutLinks.has(linkKey(from, target))
+        ) {
           receiver._receive(from, JSON.parse(payload));
         }
       }, delay);
     }
   }
+}
+
+function linkKey(a: string, b: string): string {
+  return a < b ? `${a}|${b}` : `${b}|${a}`;
 }
 
 /** One peer's end of a {@link LoopbackHub}. */

@@ -93,6 +93,12 @@ join handshakes, link latency) runs on the injected `NetScheduler`, never on `ti
   `desiredPossessions`, drained every joined tick, after `connect()` and after a resync - never
   return `false` for it: games ignore the result, and a dropped possession leaves the player's own
   character Free, so another peer may take it.
+- **A link can open long after joining.** Join dumps only cover the links open during `connect()`;
+  with zoning, two joined peers meet later (and a slow or retried connection opens late too). Each
+  side then sends the other a `spawn` of every runtime spawn it owns (`sendOwnedSpawns`), or the
+  other never builds them and drops their state as unknown. Spawns are idempotent: a peer still
+  joining may get the same entity from a `spawn` and its dump, and `spawnFromItem` skips an id
+  already built or being built.
 - **Departed ≠ out of range.** With zoning, a peer leaving the connect ring is still in the room and
   still owns its things; taking them over causes split-brain ownership. The transport reports
   `peerLeft$` only when a peer leaves the signaling presence (aged-out connections close silently);
@@ -171,6 +177,8 @@ join handshakes, link latency) runs on the injected `NetScheduler`, never on `ti
   (`worldClock.step` on paused worlds). `in-process.spec.ts` runs every scenario on rapier2d, matter,
   rapier3d and ammo (`describe.each(ADAPTERS)`); add new scenarios there. Use `adapter.at/up/along` and
   compare distances in meters (`dist / adapter.unit`). matter-js never falls asleep on its own.
+  `LoopbackHub.partition`/`heal` simulate a crashed peer (silent, noticed by heartbeat timeout);
+  `cutLink`/`openLink` simulate two peers out of each other's zoning range (no link, nobody left).
 - Adapter sources are mapped in jest (`@gg-web-engine/<adapter>` → `../<adapter>/src`) and resolve
   through the workspace - **don't add adapter packages to `devDependencies`**: the release script
   installs each package standalone against the freshly published core, and the old adapter versions'

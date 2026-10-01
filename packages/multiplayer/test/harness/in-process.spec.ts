@@ -85,7 +85,11 @@ describe.each(ADAPTERS)('in-process multiplayer harness ($name)', adapter => {
   });
 
   it('claims a foreign Free body hit hard by a possessed body (contact rule), without chaining', async () => {
-    h = new Harness(adapter, {}, { ownership: new NearestPeerOwnership({ contactImpulseThreshold: 0.001, floor: 10 * adapter.unit }) });
+    h = new Harness(
+      adapter,
+      {},
+      { ownership: new NearestPeerOwnership({ contactImpulseThreshold: 0.001, floor: 10 * adapter.unit }) },
+    );
     const a = await h.addPeer('a');
     const b = await h.addPeer('b');
     const target = adapter.addBox(a.world, adapter.at(0, 0.5));
@@ -120,6 +124,32 @@ describe.each(ADAPTERS)('in-process multiplayer harness ($name)', adapter => {
     expect(c.net.possessorOf(onC(boxB.name))).toBe('b');
     expect(meters(onC(boxA.name).position, boxA.position)).toBeLessThan(0.1);
     expect(meters(onC(boxB.name).position, boxB.position)).toBeLessThan(0.1);
+  });
+
+  it('exchanges runtime spawns over a link that opens after both peers joined (zoning)', async () => {
+    h = new Harness(adapter);
+    const a = await h.addPeer('a');
+    await h.addPeer('b');
+    h.hub.cutLink('a', 'c'); // out of each other's range: c joins knowing only b
+    const c = await h.addPeer('c');
+    const boxA = adapter.addBox(a.world, adapter.at(-2, 0.5));
+    const boxC = adapter.addBox(c.world, adapter.at(2, 0.5));
+    await h.run(5);
+    a.net.possess(boxA);
+    c.net.possess(boxC);
+    await h.run(60);
+    expect(findByName(h, 'c', boxA.name)).toBeUndefined();
+    expect(findByName(h, 'a', boxC.name)).toBeUndefined();
+    h.hub.openLink('a', 'c'); // they meet
+    await h.run(30);
+    const aOnC = findByName(h, 'c', boxA.name);
+    const cOnA = findByName(h, 'a', boxC.name);
+    expect(aOnC).toBeDefined();
+    expect(cOnA).toBeDefined();
+    expect(c.net.possessorOf(aOnC)).toBe('a');
+    expect(a.net.possessorOf(cOnA)).toBe('c');
+    expect(meters(aOnC.position, boxA.position)).toBeLessThan(0.1);
+    expect(meters(cOnA.position, boxC.position)).toBeLessThan(0.1);
   });
 
   it('takes over a silent peer: owned and possessed entities move to the nearest peer as Free', async () => {
@@ -176,7 +206,13 @@ describe.each(ADAPTERS)('in-process multiplayer harness ($name)', adapter => {
     const crateDims = adapter.dim === 2 ? { x: 1, y: 1 } : { x: 1, y: 1, z: 1 };
     const level = {
       entities: [
-        { class: 'Primitive', shape: 'BOX', name: 'crate', position: adapter.at(0, 0.5), config: { dimensions: crateDims } },
+        {
+          class: 'Primitive',
+          shape: 'BOX',
+          name: 'crate',
+          position: adapter.at(0, 0.5),
+          config: { dimensions: crateDims },
+        },
       ],
     };
     const setup = async (peer: any) => {
@@ -198,7 +234,9 @@ describe.each(ADAPTERS)('in-process multiplayer harness ($name)', adapter => {
   it('despawns shared content that is not itself networked (a trigger), everywhere and for late joiners', async () => {
     h = new Harness(adapter);
     const dims = adapter.dim === 2 ? { x: 100, y: 100 } : { x: 1, y: 1, z: 1 };
-    const level = { entities: [{ class: 'Trigger', name: 'coin', position: adapter.at(0, 1), config: { dimensions: dims } }] };
+    const level = {
+      entities: [{ class: 'Trigger', name: 'coin', position: adapter.at(0, 1), config: { dimensions: dims } }],
+    };
     const setup = async (peer: any) => {
       await peer.net.loadSharedLevel(level, 'coins', 'coins.json');
     };
