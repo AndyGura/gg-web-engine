@@ -417,10 +417,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     this.installSessionHooks();
     this._sessionState$.next('joined');
     this.processPending();
-    for (const entity of this.desiredPossessions) {
-      this.possess(entity);
-    }
-    this.desiredPossessions.clear();
+    this.possessDesired();
   }
 
   /** Leave the room: disconnect the transport (peers take over what this peer owned) and restore single-player hooks. */
@@ -437,6 +434,8 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
    * Make the local peer possessor (and owner) of `entity`: its state is broadcast from here, its
    * input forwarded, and nobody else takes it until {@link release} (or a takeover after this peer
    * goes away). Possessing a Free entity another peer owns transfers it in the same message.
+   * Outside a joined session (connecting, away, left), or while the entity can't be registered yet
+   * (a remote spawn is still being built), the possession is queued and taken as soon as it can be.
    * @returns `false` when another peer possesses it - the game decides what to show
    */
   possess(entity: IEntity): boolean {
@@ -445,6 +444,10 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       return true;
     }
     const rec = this.ensureRecord(entity);
+    if (!rec && this.pendingAdded.has(entity)) {
+      this.desiredPossessions.add(entity);
+      return true;
+    }
     if (!rec) {
       warnOnce(`NetworkController: cannot possess "${entity.name}" - it isn't a networked entity`);
       return false;
@@ -733,6 +736,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     this.tickCount++;
     if (this.joined) {
       this.processPending();
+      this.possessDesired();
     }
     const now = this.now;
     for (const rec of this.records.values()) {
@@ -863,6 +867,20 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
         continue;
       }
       this.tryRegister(entity);
+    }
+  }
+
+  /** take the possessions queued while they couldn't be taken (see {@link possess}) */
+  private possessDesired(): void {
+    if (this.desiredPossessions.size === 0) {
+      return;
+    }
+    const desired = [...this.desiredPossessions];
+    this.desiredPossessions.clear();
+    for (const entity of desired) {
+      if (entity.world) {
+        this.possess(entity);
+      }
     }
   }
 
@@ -1986,6 +2004,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       }
     }
     this.possessedBeforeAway = [];
+    this.possessDesired();
     this._resynced$.next();
   }
 

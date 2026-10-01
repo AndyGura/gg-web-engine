@@ -98,6 +98,43 @@ describe('NetworkController features', () => {
     expect(b.net.isLocallyPossessed(box)).toBe(true);
   });
 
+  it('possesses an entity added while a remote spawn is still being built', async () => {
+    h = new Harness(adapter);
+    const a = await h.addPeer('a');
+    const b = await h.addPeer('b');
+    const createEntity = b.loader.createEntity.bind(b.loader);
+    let finishSpawn!: () => void;
+    const gate = new Promise<void>(resolve => (finishSpawn = resolve));
+    jest.spyOn(b.loader, 'createEntity').mockImplementation(async (...args) => {
+      await gate;
+      return createEntity(...args);
+    });
+    adapter.addBox(a.world, adapter.at(3, 1));
+    await h.run(3);
+    const mine = adapter.addBox(b.world, adapter.at(0, 1));
+    expect(b.net.possess(mine)).toBe(true);
+    finishSpawn();
+    await h.run(5);
+    expect(b.net.isLocallyPossessed(mine)).toBe(true);
+    expect(a.net.possessorOf(findByName(h, 'a', mine.name))).toBe('b');
+  });
+
+  it('possesses an entity requested while away once back', async () => {
+    h = new Harness(adapter);
+    const a = await h.addPeer('a');
+    const b = await h.addPeer('b');
+    b.net.goAway();
+    await h.run(3);
+    const mine = adapter.addBox(b.world, adapter.at(0, 1));
+    expect(b.net.possess(mine)).toBe(true);
+    const resync = b.net.returnFromAway();
+    await h.run(10);
+    await resync;
+    await h.run(5);
+    expect(b.net.isLocallyPossessed(mine)).toBe(true);
+    expect(a.net.possessorOf(findByName(h, 'a', mine.name))).toBe('b');
+  });
+
   it('a non-networked entity spawned by an unserializable class reports spawnFailed and stays local', async () => {
     h = new Harness(adapter);
     const a = await h.addPeer('a');
@@ -150,7 +187,12 @@ describe('NetworkController features', () => {
     adapter.addGround(world);
     const loader = adapter.createLoader(world);
     const transport = h.hub.createTransport('b');
-    const net = new Network3dController({ transport, scheduler: h.scheduler, levelLoader: loader, prefixEntityNames: false });
+    const net = new Network3dController({
+      transport,
+      scheduler: h.scheduler,
+      levelLoader: loader,
+      prefixEntityNames: false,
+    });
     world.addEntity(net);
     h.peers.push({ id: 'b', world, net, loader, position: adapter.at(0, 0) });
     world.resumeWorld();

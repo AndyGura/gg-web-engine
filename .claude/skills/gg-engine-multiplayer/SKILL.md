@@ -87,7 +87,11 @@ join handshakes, link latency) runs on the injected `NetScheduler`, never on `ti
 - **While any remote spawn is being built, don't classify pending entities at all.** A generator
   (e.g. `"Primitive"` → `addPrimitiveRigidBody`) adds the entity to the world under a provisional
   auto-name *before* `createEntity` resolves and renames it; a tick in between registered it as a
-  local spawn and bounced a copy back - an endless spawn ping-pong between peers.
+  local spawn and bounced a copy back - an endless spawn ping-pong between peers. A `possess()` of an
+  entity that can't be registered yet (this case, or a session that isn't `'joined'`) goes to
+  `desiredPossessions`, drained every joined tick, after `connect()` and after a resync - never
+  return `false` for it: games ignore the result, and a dropped possession leaves the player's own
+  character Free, so another peer may take it.
 - **Departed ≠ out of range.** With zoning, a peer leaving the connect ring is still in the room and
   still owns its things; taking them over causes split-brain ownership. The transport reports
   `peerLeft$` only when a peer leaves the signaling presence (aged-out connections close silently);
