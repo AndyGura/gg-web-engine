@@ -180,6 +180,34 @@ describe('WebRtcMeshTransport', () => {
     expect(b.peers).toEqual(['a']);
   });
 
+  it('with zoning, reconnects to a peer that left the connect ring before its retry and came back', async () => {
+    const hub = new InMemorySignalingHub();
+    const scheduler = new VirtualScheduler();
+    const zoning = { cellSize: 100, ageOutMs: 10_000 };
+    const a = makeTransport(hub, 'a', { scheduler, zoning, reconnectBaseDelayMs: 1000 });
+    const b = makeTransport(hub, 'b', { scheduler, zoning, reconnectBaseDelayMs: 1000 });
+    a.updateLocalPosition({ x: 50, y: 50 });
+    b.updateLocalPosition({ x: 150, y: 50 });
+    const all = Promise.all([a.connect(), b.connect()]);
+    for (let i = 0; i < 5; i++) {
+      await settle();
+      scheduler.advance(10);
+    }
+    await all;
+    await settle(40);
+    expect(a.peers).toEqual(['b']);
+    FakeRTCPeerConnection.instances.find(p => p.remote)!.fail();
+    await settle();
+    b.updateLocalPosition({ x: 900, y: 50 }); // out of a's connect ring before the retry fires
+    await settle(40);
+    scheduler.advance(1000);
+    await settle(40);
+    expect(a.peers).toEqual([]);
+    b.updateLocalPosition({ x: 150, y: 50 });
+    await settle(40);
+    expect(a.peers).toEqual(['b']);
+  });
+
   it('with zoning, connects within the 5x5 ring, streams within 3x3, and ages out far peers', async () => {
     const hub = new InMemorySignalingHub();
     const scheduler = new VirtualScheduler();

@@ -518,12 +518,16 @@ export class WebRtcMeshTransport implements ITransport {
     const attempt = (this.retries.get(id)?.attempt ?? 0) + 1;
     const delay = Math.min(this.opts.reconnectMaxDelayMs, this.opts.reconnectBaseDelayMs * 2 ** (attempt - 1));
     const timer = this.scheduler.setTimeout(() => {
-      const retry = this.retries.get(id);
-      if (retry) {
-        retry.timer = null;
-      }
       if (this.connected && !this.links.has(id) && this.desiredPeers().includes(id)) {
+        // keep the entry (its attempt count grows the next backoff) until the link opens
+        const retry = this.retries.get(id);
+        if (retry) {
+          retry.timer = null;
+        }
         void this.startOffer(id);
+      } else {
+        // out of the connect ring by now: reconcile() offers afresh once the peer is back in range
+        this.retries.delete(id);
       }
     }, delay);
     this.retries.set(id, { attempt, timer });
