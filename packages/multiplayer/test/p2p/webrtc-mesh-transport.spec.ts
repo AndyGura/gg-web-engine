@@ -127,6 +127,21 @@ describe('WebRtcMeshTransport', () => {
     expect(a.peers).toEqual([]);
   });
 
+  it('a failed signaling join leaves the transport disconnected, so connect() can be retried', async () => {
+    const hub = new InMemorySignalingHub();
+    const a = makeTransport(hub, 'a');
+    await a.connect();
+    const signaling = hub.create();
+    const join = signaling.join.bind(signaling);
+    signaling.join = jest.fn().mockRejectedValueOnce(new Error('sign-in failed')).mockImplementation(join);
+    const b = makeTransport(hub, 'b', { signaling });
+    await expect(b.connect()).rejects.toThrow('sign-in failed');
+    await b.connect();
+    await settle();
+    expect(signaling.join).toHaveBeenCalledTimes(2);
+    expect(b.peers).toEqual(['a']);
+  });
+
   it('reconnects with exponential backoff while the peer is still present', async () => {
     const hub = new InMemorySignalingHub();
     const scheduler = new VirtualScheduler();

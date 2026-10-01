@@ -147,6 +147,8 @@ export class WebRtcMeshTransport implements ITransport {
    * Join the room through the signaling channel and open connections to every peer already present
    * (within the connect ring, with zoning). Resolves once those are open, or after
    * `connectTimeoutMs` with whatever opened by then.
+   * @throws if joining the room through the signaling channel fails - the transport is then
+   * disconnected again and `connect()` may be retried
    */
   async connect(): Promise<void> {
     if (this.connected) {
@@ -157,10 +159,15 @@ export class WebRtcMeshTransport implements ITransport {
       this.signaling.incoming$.subscribe(({ from, payload }) => void this.onSignal(from, payload)),
       this.signaling.presence$.subscribe(entries => this.onPresence(entries)),
     );
-    await this.signaling.join(this.roomId, this.localPeerId);
-    if (this.localCell) {
-      // a position reported before joining couldn't be published yet
-      await this.signaling.setCell(this.localCell);
+    try {
+      await this.signaling.join(this.roomId, this.localPeerId);
+      if (this.localCell) {
+        // a position reported before joining couldn't be published yet
+        await this.signaling.setCell(this.localCell);
+      }
+    } catch (e) {
+      this.disconnect();
+      throw e;
     }
     if (this.zoning) {
       this.ageTimer = this.scheduler.setInterval(() => this.reconcile(), 1000);
