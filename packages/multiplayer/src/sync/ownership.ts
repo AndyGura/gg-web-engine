@@ -1,4 +1,4 @@
-import { CollisionEvent, IEntity } from '@gg-web-engine/core';
+import { CollisionEvent, IEntity, Pnt2, Pnt3 } from '@gg-web-engine/core';
 
 /**
  * Context the network layer hands an ownership strategy alongside each decision.
@@ -82,10 +82,7 @@ export const DEFAULT_NEAREST_PEER_OWNERSHIP: Readonly<NearestPeerOwnershipOption
 
 /** Squared distance between two `Point2`/`Point3` values. */
 export function distanceSq(a: any, b: any): number {
-  const dx = a.x - b.x;
-  const dy = a.y - b.y;
-  const dz = (a.z ?? 0) - (b.z ?? 0);
-  return dx * dx + dy * dy + dz * dz;
+  return typeof a.z === 'number' && typeof b.z === 'number' ? Pnt3.lenSq(Pnt3.sub(a, b)) : Pnt2.lenSq(Pnt2.sub(a, b));
 }
 
 /** The entity's position, if it has one. */

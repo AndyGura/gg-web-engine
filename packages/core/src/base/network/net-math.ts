@@ -1,12 +1,15 @@
 import { Point2, Point3, Point4 } from '../models/points';
 import { Qtrn } from '../math/quaternion';
 import { lerpAngle } from '../math/numbers';
+import { Pnt2 } from '../math/point2';
+import { Pnt3 } from '../math/point3';
 
 /**
  * Dimension-agnostic vector/rotation helpers the correction helpers share. A 2D world's positions
  * are `Point2` and rotations plain angles; a 3D world's are `Point3` and quaternions - every function
- * here tells them apart at runtime (`z` present / rotation is a number), so one algorithm serves
- * both. Internal to the network helpers, not re-exported from the package root.
+ * here tells them apart at runtime (`z` present / rotation is a number) and dispatches to
+ * `Pnt2`/`Pnt3`/`Qtrn`, so one algorithm serves both. Internal to the network helpers, not
+ * re-exported from the package root.
  */
 
 export type NetVec = Point2 | Point3;
@@ -15,32 +18,32 @@ export type NetRot = number | Point4;
 const is3d = (v: NetVec): v is Point3 => typeof (v as Point3).z === 'number';
 
 export function vAdd<D extends NetVec>(a: D, b: D): D {
-  return (is3d(a) ? { x: a.x + b.x, y: a.y + b.y, z: a.z + (b as Point3).z } : { x: a.x + b.x, y: a.y + b.y }) as D;
+  return (is3d(a) ? Pnt3.add(a, b as Point3) : Pnt2.add(a, b)) as D;
 }
 
 export function vSub<D extends NetVec>(a: D, b: D): D {
-  return (is3d(a) ? { x: a.x - b.x, y: a.y - b.y, z: a.z - (b as Point3).z } : { x: a.x - b.x, y: a.y - b.y }) as D;
+  return (is3d(a) ? Pnt3.sub(a, b as Point3) : Pnt2.sub(a, b)) as D;
 }
 
 export function vScale<D extends NetVec>(a: D, s: number): D {
-  return (is3d(a) ? { x: a.x * s, y: a.y * s, z: a.z * s } : { x: a.x * s, y: a.y * s }) as D;
+  return (is3d(a) ? Pnt3.scalarMult(a, s) : Pnt2.scalarMult(a, s)) as D;
 }
 
 export function vLen(a: NetVec): number {
-  return Math.sqrt(a.x * a.x + a.y * a.y + (is3d(a) ? a.z * a.z : 0));
+  return is3d(a) ? Pnt3.len(a) : Pnt2.len(a);
 }
 
 export function vLerp<D extends NetVec>(a: D, b: D, t: number): D {
-  return vAdd(a, vScale(vSub(b, a), t));
+  return (is3d(a) ? Pnt3.lerp(a, b as Point3, t) : Pnt2.lerp(a, b, t)) as D;
 }
 
 export function vZero<D extends NetVec>(like: D): D {
-  return (is3d(like) ? { x: 0, y: 0, z: 0 } : { x: 0, y: 0 }) as D;
+  return (is3d(like) ? Pnt3.O : Pnt2.O) as D;
 }
 
 /** Plain-JSON copy of a vector (drops any extra fields a native/adapter vector object might carry). */
 export function vClone<D extends NetVec>(a: D): D {
-  return (is3d(a) ? { x: a.x, y: a.y, z: a.z } : { x: a.x, y: a.y }) as D;
+  return (is3d(a) ? Pnt3.clone(a) : Pnt2.clone(a)) as D;
 }
 
 /** Plain-JSON copy of a rotation. */
