@@ -63,8 +63,10 @@ drives them), typically by delegating to core's `RigidBodyCorrection`/`MoverCorr
 ### Gameplay authority
 Every peer sees every collision and trigger. A gameplay consequence must happen once:
 `net.hasAuthority(entity, eventName, payload)` (installed as `world.eventAuthority` while joined, so
-level JSON `events` blueprints are gated automatically) is true on exactly one peer - the owner of the
-entity entering a trigger, the smaller-id owner of two colliding entities. Run consequences there and
+level JSON `events` blueprints are gated automatically) is true on at most one peer - the owner of the
+entity entering a trigger, the smaller-id owner of two colliding entities. A peer that doesn't know a
+participant's owner yet defers, so an event involving an entity nobody owns yet (shared content in
+the moment after it loads) runs nowhere rather than everywhere. Run consequences there and
 broadcast them (`net.despawn`, `net.send(data)` → `appMessages$`). `net.joinState` supplies late
 joiners with game state (`joinState$`).
 

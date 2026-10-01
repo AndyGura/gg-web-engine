@@ -190,6 +190,22 @@ describe('NetworkController features', () => {
     q.world.dispose();
   });
 
+  it('defers event authority over a shared entity whose owner is not known yet', async () => {
+    h = new Harness(adapter);
+    const a = await h.addPeer('a');
+    a.position = adapter.at(100, 0); // b is the nearest peer, so it claims the box once nobody answers
+    const b = await h.addPeer('b');
+    const box = adapter.addBox(b.world, adapter.at(0, 1));
+    box.name = 'only-on-b';
+    b.net.markShared(box); // a never answers the state request: b doesn't know who owns it yet
+    h.step(2);
+    expect(b.net.ownerOf(box)).toBe('');
+    expect(b.net.hasAuthority(box, 'onEntityEntered', null)).toBe(false);
+    await h.run(Math.ceil(1500 / TICK_MS));
+    expect(b.net.ownerOf(box)).toBe('b');
+    expect(b.net.hasAuthority(box, 'onEntityEntered', null)).toBe(true);
+  });
+
   it('a runtime spawn may reuse the name of an entity despawned earlier', async () => {
     h = new Harness(adapter);
     const a = await h.addPeer('a');

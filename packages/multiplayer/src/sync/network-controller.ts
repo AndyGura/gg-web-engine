@@ -584,14 +584,17 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
   /**
    * Whether the local peer holds authority over an event: a trigger enter/exit belongs to the owner
    * of the entering entity; a collision between two networked entities to the owner with the
-   * lexically smaller peer id; an event with no networked participant runs locally. Installed as
-   * `world.eventAuthority` while joined, so level JSON `events` bindings run once across the room.
+   * lexically smaller peer id; an event with no networked participant runs locally. A peer that
+   * doesn't know the owner of a participant yet (a shared entity awaiting its state) defers to the
+   * peers that do. Installed as `world.eventAuthority` while joined, so level JSON `events`
+   * bindings run once across the room.
    */
   hasAuthority(entity: IEntity, _eventName: string, payload: unknown): boolean {
     if (this.sessionState !== 'joined' && this.sessionState !== 'away') {
       return true;
     }
     const owners: string[] = [];
+    let unknownOwner = false;
     const consider = (e: unknown) => {
       if (!(e instanceof IEntity)) {
         return;
@@ -599,6 +602,8 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       const rec = this.recordOfDescendant(e);
       if (rec && rec.owner) {
         owners.push(rec.owner);
+      } else if (rec) {
+        unknownOwner = true;
       }
     };
     consider(entity);
@@ -606,6 +611,9 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     if (payload && typeof payload === 'object' && !(payload instanceof IEntity)) {
       consider((payload as any).entity);
       consider((payload as any).otherBody?.entity);
+    }
+    if (unknownOwner) {
+      return false;
     }
     if (owners.length === 0) {
       return true;
