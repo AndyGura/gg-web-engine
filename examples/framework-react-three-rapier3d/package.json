@@ -11,13 +11,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@dimforge/rapier3d-compat": "0.20.0",
+    "@dimforge/rapier3d-compat": "0.21.0",
     "@gg-web-engine/core": "0.0.66",
     "@gg-web-engine/rapier3d": "0.0.66",
     "@gg-web-engine/three": "0.0.66",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "three": "0.186.0"
+    "three": "0.186.1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

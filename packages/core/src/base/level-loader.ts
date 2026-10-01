@@ -585,7 +585,11 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
 
         // createEntity resolves entityJson.events (if any) against levelJson.blueprints and parents
         // the resulting binding(s) under the entity itself - see its own doc.
-        const entity = await this.createEntity(entityJson, `${levelName}__${classAlias}_${index}`, levelJson.blueprints);
+        const entity = await this.createEntity(
+          entityJson,
+          `${levelName}__${classAlias}_${index}`,
+          levelJson.blueprints,
+        );
         if (!entity) {
           continue;
         }

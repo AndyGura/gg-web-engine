@@ -6,7 +6,7 @@
     "start": "webpack serve --config ./webpack.dev.config.js"
   },
   "dependencies": {
-    "@dimforge/rapier2d-compat": "0.20.0",
+    "@dimforge/rapier2d-compat": "0.21.0",
     "@gg-web-engine/core": "0.0.73",
     "@gg-web-engine/pixi": "0.0.73",
     "@gg-web-engine/rapier2d": "0.0.73",

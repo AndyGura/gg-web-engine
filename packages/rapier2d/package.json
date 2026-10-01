@@ -27,7 +27,7 @@
   },
   "homepage": "https://github.com/AndyGura/gg-web-engine#readme",
   "devDependencies": {
-    "@dimforge/rapier2d-compat": "0.20.0",
+    "@dimforge/rapier2d-compat": "0.21.0",
     "@gg-web-engine/core": "0.0.73",
     "@types/jest": "^30.0.0",
     "@types/node": "^26.4.0",
@@ -39,7 +39,7 @@
     "typescript": "~6.0.3"
   },
   "peerDependencies": {
-    "@dimforge/rapier2d-compat": "0.20.0",
+    "@dimforge/rapier2d-compat": "0.21.0",
     "@gg-web-engine/core": "0.0.73",
     "rxjs": "7.8.2"
   },

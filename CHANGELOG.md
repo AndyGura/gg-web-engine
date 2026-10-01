@@ -60,6 +60,10 @@ where one exists.
   `GgWorld`'s own constructor - passing either through `new Gg3dWorld(...)`/`new Gg2dWorld(...)`
   was a type error since those two options were added to `GgWorld` alone.
 
+### Changed
+- Upgraded `three` (`0.186.0` → `0.186.1`) and `@dimforge/rapier2d-compat`/
+  `@dimforge/rapier3d-compat` (`0.20.0` → `0.21.0`) dependencies.
+
 ## [0.0.73] - 2026-09-30
 
 ### Added
