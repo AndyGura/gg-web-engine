@@ -83,12 +83,12 @@ export class LoopbackHub {
   }
 
   /** @internal */
-  _deliver(from: string, to: string | 'all', channel: WireChannel, msg: WireMessage): void {
+  _deliver(from: string, to: string | 'all' | ReadonlyArray<string>, channel: WireChannel, msg: WireMessage): void {
     const sender = this.transports.get(from);
     if (!sender || sender.partitioned) {
       return;
     }
-    const targets = to === 'all' ? this._peersOf(from) : [to];
+    const targets = to === 'all' ? this._peersOf(from) : typeof to === 'string' ? [to] : to;
     const payload = JSON.stringify(msg);
     for (const target of targets) {
       if (channel === 'unreliable' && this.random() < this.conditions.lossRate) {
@@ -155,7 +155,7 @@ export class LoopbackTransport implements ITransport {
     this._peers$.next([]);
   }
 
-  send(to: string | 'all', channel: WireChannel, msg: WireMessage): void {
+  send(to: string | 'all' | ReadonlyArray<string>, channel: WireChannel, msg: WireMessage): void {
     if (this.connected) {
       this.hub._deliver(this.localPeerId, to, channel, msg);
     }

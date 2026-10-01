@@ -17,10 +17,11 @@ export interface ITransport {
   readonly peers: ReadonlyArray<string>;
 
   /**
-   * Send `msg` to one peer or every connected peer. `reliable` = ordered and guaranteed (ownership,
-   * spawns, join dumps, ...); `unreliable` = unordered, may drop (the state stream).
+   * Send `msg` to one peer, a list of peers (serialized once for all of them) or every connected
+   * peer. `reliable` = ordered and guaranteed (ownership, spawns, join dumps, ...); `unreliable` =
+   * unordered, may drop (the state stream).
    */
-  send(to: string | 'all', channel: WireChannel, msg: WireMessage): void;
+  send(to: string | 'all' | ReadonlyArray<string>, channel: WireChannel, msg: WireMessage): void;
 
   readonly messages$: Observable<{ from: string; msg: WireMessage }>;
 

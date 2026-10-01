@@ -259,9 +259,11 @@ export class WebRtcMeshTransport implements ITransport {
     void this.signaling.leave();
   }
 
-  send(to: string | 'all', channel: WireChannel, msg: WireMessage): void {
+  send(to: string | 'all' | ReadonlyArray<string>, channel: WireChannel, msg: WireMessage): void {
     const targets =
-      to === 'all' ? [...this.links.values()].filter(l => l.open) : [this.links.get(to)].filter(l => l?.open);
+      to === 'all'
+        ? [...this.links.values()].filter(l => l.open)
+        : (typeof to === 'string' ? [to] : to).map(id => this.links.get(id)).filter(l => l?.open);
     if (targets.length === 0) {
       return;
     }

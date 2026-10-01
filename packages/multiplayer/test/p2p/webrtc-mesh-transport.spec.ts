@@ -92,6 +92,27 @@ describe('WebRtcMeshTransport', () => {
     expect(b.setupTimes.has('a')).toBe(true);
   });
 
+  it('sends to a list of peers, serializing the message once', async () => {
+    const hub = new InMemorySignalingHub();
+    const a = makeTransport(hub, 'a');
+    const b = makeTransport(hub, 'b');
+    const c = makeTransport(hub, 'c');
+    const d = makeTransport(hub, 'd');
+    await a.connect();
+    await Promise.all([b.connect(), c.connect(), d.connect()]);
+    await settle();
+    const got: string[] = [];
+    for (const t of [b, c, d]) {
+      t.messages$.subscribe(() => got.push(t.localPeerId));
+    }
+    const stringify = jest.spyOn(JSON, 'stringify');
+    a.send(['b', 'c'], 'unreliable', { t: 'state', items: [] });
+    expect(stringify).toHaveBeenCalledTimes(1);
+    stringify.mockRestore();
+    await settle();
+    expect(got.sort()).toEqual(['b', 'c']);
+  });
+
   it('chunks large reliable messages and splits large state messages by items', async () => {
     const hub = new InMemorySignalingHub();
     const a = makeTransport(hub, 'a', { chunkSize: 200 });

@@ -157,10 +157,11 @@ join handshakes, link latency) runs on the injected `NetScheduler`, never on `ti
 
 ## Writing a transport or signaling backend
 
-`ITransport`: `localPeerId`, `peers$`/`peers` (connected), `send(to | 'all', 'reliable' |
+`ITransport`: `localPeerId`, `peers$`/`peers` (connected), `send(to | to[] | 'all', 'reliable' |
 'unreliable', msg)`, `messages$`, `peerLeft$` (left for good), `connect()`, `disconnect()`, optional
 `streamTargets()` (interest management) and `updateLocalPosition()` (zoning). A single-channel
-transport ignores the channel hint. `ISignalingChannel`: rooms, presence (with zoning cells), SDP/ICE
+transport ignores the channel hint. Serialize a message once per `send()`, whatever the number of
+targets: the controller sends each state flush to all of `streamTargets()` in one call. `ISignalingChannel`: rooms, presence (with zoning cells), SDP/ICE
 relay, optional `discoveryDelayMs`. A server variant pairs a websocket `ITransport` with
 `AlwaysServerOwnership`.
 

@@ -820,6 +820,8 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
         warnOnce(`NetworkController: capturing "${rec.id}" threw: ${e}`);
         continue;
       }
+      // compared as a string snapshot, not against the captured objects: an entity may return objects
+      // it keeps mutating, and a kept reference would then always equal the next capture
       const json = JSON.stringify([s, i, rec.epoch, rec.possessor]);
       if (json === rec.lastSentJson && now - rec.lastSentAt < keepaliveMs) {
         continue;
@@ -839,14 +841,8 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     if (items.length === 0) {
       return;
     }
-    const targets = this.transport.streamTargets?.();
-    if (!targets) {
-      this.transport.send('all', 'unreliable', { t: 'state', items });
-    } else {
-      for (const target of targets) {
-        this.transport.send(target, 'unreliable', { t: 'state', items });
-      }
-    }
+    // one send for every stream target, so the message is serialized once
+    this.transport.send(this.transport.streamTargets?.() ?? 'all', 'unreliable', { t: 'state', items });
   }
 
   // ---------------------------------------------------------------------------------------------

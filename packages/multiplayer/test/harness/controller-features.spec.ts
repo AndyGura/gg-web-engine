@@ -206,6 +206,32 @@ describe('NetworkController features', () => {
     expect(b.net.hasAuthority(box, 'onEntityEntered', null)).toBe(true);
   });
 
+  it('streams state to every stream target in one send', async () => {
+    h = new Harness(adapter);
+    const a = await h.addPeer('a');
+    await h.addPeer('b');
+    await h.addPeer('c');
+    adapter.addBox(a.world, adapter.at(0, 1));
+    await h.run(5);
+    a.net.transport.streamTargets = () => ['b'];
+    await h.run(5); // let state already in flight to c land
+    const send = jest.spyOn(a.net.transport, 'send');
+    const received = new Map<string, number>();
+    for (const id of ['b', 'c']) {
+      h.peer(id).net.transport.messages$.subscribe(({ from, msg }) => {
+        if (from === 'a' && msg.t === 'state') {
+          received.set(id, (received.get(id) ?? 0) + 1);
+        }
+      });
+    }
+    await h.run(10);
+    const stateSends = send.mock.calls.filter(([, , msg]) => msg.t === 'state');
+    expect(stateSends.length).toBeGreaterThan(0);
+    expect(stateSends.every(([to]) => Array.isArray(to) && to.length === 1 && to[0] === 'b')).toBe(true);
+    expect(received.get('b')).toBeGreaterThan(0);
+    expect(received.get('c')).toBeUndefined();
+  });
+
   it('a runtime spawn may reuse the name of an entity despawned earlier', async () => {
     h = new Harness(adapter);
     const a = await h.addPeer('a');
