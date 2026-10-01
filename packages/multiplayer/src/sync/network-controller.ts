@@ -560,11 +560,11 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       if (rec.shared) {
         this.tombstones.add(rec.id);
       }
-      this.broadcast({ t: 'despawn', entityId: rec.id, epoch: rec.epoch });
+      this.broadcast({ t: 'despawn', entityId: rec.id, epoch: rec.epoch, ...(rec.shared ? { shared: true } : {}) });
     } else if (this.isShared(entity)) {
       // shared content that isn't itself networked (a trigger, a decoration): removed by name
       this.tombstones.add(entity.name);
-      this.broadcast({ t: 'despawn', entityId: entity.name, epoch: 0 });
+      this.broadcast({ t: 'despawn', entityId: entity.name, epoch: 0, shared: true });
     }
     this.removeLocally(entity);
   }
@@ -1564,7 +1564,9 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
         break;
       case 'despawn': {
         const rec = this.records.get(msg.entityId);
-        this.tombstones.add(msg.entityId);
+        if (msg.shared || rec?.shared) {
+          this.tombstones.add(msg.entityId);
+        }
         if (rec) {
           this.unregister(rec);
           this.removeLocally(rec.entity);

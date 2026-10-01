@@ -274,6 +274,29 @@ describe('NetworkController features', () => {
     expect(received.get('c')).toBeUndefined();
   });
 
+  it('keeps tombstones for despawned shared content only, never for runtime spawns', async () => {
+    h = new Harness(adapter);
+    const a = await h.addPeer('a');
+    await h.addPeer('b');
+    const shared = adapter.addBox(a.world, adapter.at(0, 1));
+    shared.name = 'shared-box';
+    a.net.markShared(shared);
+    const spawned = adapter.addBox(a.world, adapter.at(2, 1));
+    await h.run(5);
+    a.net.despawn(shared);
+    a.net.despawn(spawned);
+    await h.run(5);
+    const despawnedLists: string[][] = [];
+    await h.addPeer('c', peer => {
+      peer.net.transport.messages$.subscribe(({ msg }) => {
+        if (msg.t === 'joinDump') {
+          despawnedLists.push(msg.despawned);
+        }
+      });
+    });
+    expect(despawnedLists).toEqual([['shared-box'], ['shared-box']]);
+  });
+
   it('a runtime spawn may reuse the name of an entity despawned earlier', async () => {
     h = new Harness(adapter);
     const a = await h.addPeer('a');

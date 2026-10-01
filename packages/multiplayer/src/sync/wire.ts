@@ -57,7 +57,8 @@ export type WireMessage =
       expiresAt?: number;
       full: unknown;
     }
-  | { t: 'despawn'; entityId: string; epoch: number }
+  /** `shared`: removed shared content - receivers keep a tombstone, so it stays removed for good */
+  | { t: 'despawn'; entityId: string; epoch: number; shared?: true }
   | { t: 'joinRequest' }
   | {
       t: 'joinDump';

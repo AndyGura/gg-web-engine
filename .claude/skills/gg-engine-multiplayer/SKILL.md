@@ -100,8 +100,11 @@ join handshakes, link latency) runs on the injected `NetScheduler`, never on `ti
 - **Shared levels registered after joining are new content, not a mismatch.** Two peers connecting
   at once each see the other's dump list only the first level; the level check runs only for sources
   registered before `connect()` (not on resync).
-- **Tombstones only mean removed shared content.** A runtime spawn clears a tombstone for its id - a
-  player's character legitimately comes back under the same name after leaving a car.
+- **Tombstones only mean removed shared content.** A `despawn` of shared content carries
+  `shared: true`, and only those are tombstoned (and listed in join dumps) - a runtime spawn's id
+  never is: tombstones live forever, and a stale one makes a joiner drop the live entity that later
+  reused the name (a player's character legitimately comes back under the same name after leaving a
+  car). A runtime spawn also clears a tombstone for its id.
 - **`despawn` works for non-networked shared content** (a coin trigger): broadcast and remove by name,
   and pending/joined entities whose name is tombstoned are removed on processing.
 - **Contact claims compare pre-impact speeds** (the latest snapshot's `lv`), never the bodies' current
