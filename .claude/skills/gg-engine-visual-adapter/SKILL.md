@@ -199,7 +199,10 @@ vendor helper sources, see below) as a template:
   version (check `packages/core/package.json`).
 - `@gg-web-engine/core` and the underlying rendering library go in **both** `devDependencies` and
   `peerDependencies`, pinned to the exact version you developed/tested against — adapters do not
-  use version ranges for these.
+  use version ranges for these. A bump of the library must also update any other workspace member
+  that pins it: `e2e/blender-export/app` pins `three` (and `@dimforge/rapier3d-compat`). A differing
+  pin installs a second copy, and that harness's `instanceof` checks fail against the adapter's
+  objects (see its README).
 - Scripts: `"build": "tsc"`, `"prepublish": "rm -rf ./dist/ && tsc"`, `"test"` (jest, if you add
   tests — see Testing below), `"prettier-format"` pointing at `../core/.prettierrc`.
 - If you vendor extra source from the underlying library (as `three` does for GLTFLoader /
