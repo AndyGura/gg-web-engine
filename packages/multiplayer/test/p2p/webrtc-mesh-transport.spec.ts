@@ -51,7 +51,8 @@ describe('zoning', () => {
     expect(z.update({ x: 111, y: 50 })).toBe('1:0');
     expect(z.update({ x: 95, y: 50 })).toBe('1:0');
     expect(z.update({ x: 89, y: -1 })).toBe('0:-1');
-    expect(z.update(null)).toBe('');
+    expect(z.update(null)).toBe('0:-1'); // no position (hidden, spectating): stays where last seen
+    expect(new ZoneTracker().update(null)).toBe(''); // never placed: in every ring
   });
 
   it('rings use Chebyshev distance; an unknown cell is in every ring', () => {
@@ -124,7 +125,14 @@ describe('WebRtcMeshTransport', () => {
     b.messages$.subscribe(({ msg }) => got.push(msg));
     const big: WireMessage = { t: 'app', data: 'x'.repeat(2000) };
     a.send('b', 'reliable', big);
-    const items = Array.from({ length: 20 }, (_, i) => ({ id: `e${i}`, owner: 'a', epoch: 0, seq: 1, ts: 0, s: { p: i } }));
+    const items = Array.from({ length: 20 }, (_, i) => ({
+      id: `e${i}`,
+      owner: 'a',
+      epoch: 0,
+      seq: 1,
+      ts: 0,
+      s: { p: i },
+    }));
     a.send('b', 'unreliable', { t: 'state', items });
     await settle(60);
     expect(got[0]).toEqual(big);

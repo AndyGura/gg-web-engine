@@ -141,7 +141,7 @@ export class WebRtcMeshTransport implements ITransport {
     return this._peerLeft$.asObservable();
   }
 
-  /** the local peer's zoning cell ('' without zoning or position) */
+  /** the local peer's zoning cell ('' without zoning, or before its first position) */
   get localCell(): string {
     return this.zoneTracker?.cell ?? '';
   }

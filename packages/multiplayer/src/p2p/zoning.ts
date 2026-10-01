@@ -65,11 +65,13 @@ export class ZoneTracker {
     return cellId(this.current);
   }
 
-  /** Feed the latest position; returns the (possibly unchanged) cell id. */
+  /**
+   * Feed the latest position; returns the (possibly unchanged) cell id. `null` (no position: a hidden
+   * tab, a spectator) keeps the last cell - an empty cell would put this peer in every ring.
+   */
   update(position: { x: number; y: number } | null): string {
     if (!position) {
-      this.current = null;
-      return '';
+      return this.cell;
     }
     const size = this.options.cellSize;
     const raw: Cell = { x: Math.floor(position.x / size), y: Math.floor(position.y / size) };

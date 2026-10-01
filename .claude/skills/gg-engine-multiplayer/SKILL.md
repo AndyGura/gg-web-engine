@@ -97,6 +97,10 @@ join handshakes, link latency) runs on the injected `NetScheduler`, never on `ti
   `peerLeft$` only when a peer leaves the signaling presence (aged-out connections close silently);
   the controller's `departed` set (peerLeft or heartbeat timeout *while connected*) is the only thing
   that makes an owner "unavailable", and owner-silence claims apply only to connected owners.
+- **A peer without a position keeps its last zoning cell.** An empty cell (`''`) counts as inside every
+  ring - right for a peer never placed yet, but a hidden tab (heartbeat `pos: null`) or a spectator
+  publishing it would make every peer in the room connect and stream full state to the one peer that
+  needs the least. `ZoneTracker.update(null)` keeps the current cell.
 - **Shared levels registered after joining are new content, not a mismatch.** Two peers connecting
   at once each see the other's dump list only the first level; the level check runs only for sources
   registered before `connect()` (not on resync).
