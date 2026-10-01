@@ -232,7 +232,7 @@ export class CharacterController2dEntity<TypeDoc extends Gg2dWorldTypeDocRepo = 
   public set isCrouching(value: boolean) {
     if (!this.world) {
       // not spawned: there's no physics world to rebuild the capsule against yet - remember the
-      // flag, and onSpawned brings the capsule in line with it
+      // flag, and onSpawned brings the capsule in line with it (keeping the position as set)
       this._isCrouching = value;
       this._wantsToStand = false;
       return;
@@ -326,7 +326,9 @@ export class CharacterController2dEntity<TypeDoc extends Gg2dWorldTypeDocRepo = 
       ? this.options.crouchCentersDistance
       : this.options.centersDistance;
     if (this.characterController.centersDistance !== expectedCentersDistance) {
-      this.recreateCapsule(expectedCentersDistance);
+      // the position was set for the capsule as it should be (a serialized crouching character
+      // stores its crouched capsule's center) - keep it rather than the feet of the placeholder one
+      this.recreateCapsule(expectedCentersDistance, true);
     }
     this.tick$.subscribe(([_, delta]) => this.updateMovement(delta));
   }
@@ -495,8 +497,9 @@ export class CharacterController2dEntity<TypeDoc extends Gg2dWorldTypeDocRepo = 
    * `centersDistance`, keeping the character's feet planted in place - see
    * `CharacterController3dEntity.recreateCapsule`'s doc for the full rationale (identical here, just
    * in 2D).
+   * `keepCenter` keeps the capsule center where it is instead (the spawn-time rebuild).
    */
-  private recreateCapsule(newCentersDistance: number): void {
+  private recreateCapsule(newCentersDistance: number, keepCenter = false): void {
     if (!this.world?.physicsWorld) {
       // not spawned yet; nothing to recreate against
       return;
@@ -504,7 +507,9 @@ export class CharacterController2dEntity<TypeDoc extends Gg2dWorldTypeDocRepo = 
     const old = this.characterController;
     const up = old.up;
     const feetPoint = Pnt2.sub(this.position, Pnt2.scalarMult(up, old.radius + old.centersDistance / 2));
-    const newPosition = Pnt2.add(feetPoint, Pnt2.scalarMult(up, old.radius + newCentersDistance / 2));
+    const newPosition = keepCenter
+      ? this.position
+      : Pnt2.add(feetPoint, Pnt2.scalarMult(up, old.radius + newCentersDistance / 2));
 
     const created = this.world.physicsWorld.factory.createCharacterController(
       {

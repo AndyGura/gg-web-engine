@@ -88,7 +88,10 @@ helpers); one nested under another networked entity is covered by its parent and
 its own. Character entities also implement `ISerializableEntity` (the `"Player"` class) with a
 `state` block applied back by `applyState` - a spawn descriptor on another peer continues mid-jump.
 Setting a character's `isCrouching` before it is spawned only records the flag; `onSpawned` rebuilds
-the capsule to match (there is no physics world to rebuild it against earlier).
+the capsule to match (there is no physics world to rebuild it against earlier). That spawn-time
+rebuild keeps the capsule *center* at the position as set, unlike a runtime crouch/stand, which keeps
+the feet planted. A serialized crouching character stores its crouched capsule's center as
+`position`, so a feet-anchored rebuild would reload it lower, by half the height difference.
 
 ## Adding a built-in dev-console command
 

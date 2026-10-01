@@ -75,7 +75,8 @@ where one exists.
   reporting static geometry on the way down). Kinematic and sleeping bodies, which matter-js never
   pairs with a static body, are detected by polling.
 - Setting a character's `isCrouching` before it is spawned now takes effect: the capsule is rebuilt
-  on spawn.
+  on spawn, centered at the position as set (so a character serialized while crouching reloads where
+  it was).
 - `matter`: `MatterRigidBodyComponent.rotation`'s setter now calls `Body.setAngle` instead of
   writing `nativeBody.angle` directly, so a rotation write no longer corrupts angular velocity
   (mirrors the existing `Body.setPosition`-based `position` setter).

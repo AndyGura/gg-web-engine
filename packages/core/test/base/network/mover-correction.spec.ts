@@ -176,9 +176,49 @@ describe('CharacterController3dEntity network contracts', () => {
     expect(created).toHaveLength(1);
     expect(entity.characterController.centersDistance).toBeCloseTo(0.6);
   });
+
+  it('a crouch set before spawning keeps the position as set (a serialized crouched capsule center)', () => {
+    const entity = new CharacterController3dEntity({ radius: 0.4, centersDistance: 1 }, null, mockCharacterController());
+    entity.position = { x: 1, y: 2, z: 3 };
+    entity.applyState({ isCrouching: true });
+    const world: any = {
+      physicsWorld: {
+        factory: {
+          createCharacterController: (opts: any, transform: any) => {
+            const c = mockCharacterController(opts.radius, opts.centersDistance);
+            c.position = transform.position;
+            return c;
+          },
+        },
+      },
+    };
+    entity.onSpawned(world);
+    expect(entity.characterController.centersDistance).toBeCloseTo(0.6);
+    expect(entity.characterController.position).toEqual({ x: 1, y: 2, z: 3 });
+  });
 });
 
 describe('CharacterController2dEntity network contracts', () => {
+  it('a crouch set before spawning keeps the position as set (a serialized crouched capsule center)', () => {
+    const entity = new CharacterController2dEntity({ radius: 0.4, centersDistance: 1 }, null, mockCharacterController2d());
+    entity.position = { x: 1, y: 2 };
+    entity.applyState({ isCrouching: true });
+    const world: any = {
+      physicsWorld: {
+        factory: {
+          createCharacterController: (opts: any, transform: any) => {
+            const c = mockCharacterController2d(opts.radius, opts.centersDistance);
+            c.position = transform.position;
+            return c;
+          },
+        },
+      },
+    };
+    entity.onSpawned(world);
+    expect(entity.characterController.centersDistance).toBeCloseTo(0.6);
+    expect(entity.characterController.position).toEqual({ x: 1, y: 2 });
+  });
+
   it('captures and applies 2D input', () => {
     const owner = new CharacterController2dEntity({ radius: 0.4, centersDistance: 1 }, null, mockCharacterController2d());
     const replica = new CharacterController2dEntity({ radius: 0.4, centersDistance: 1 }, null, mockCharacterController2d());
