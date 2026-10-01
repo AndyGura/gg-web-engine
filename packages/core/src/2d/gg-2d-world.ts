@@ -161,6 +161,7 @@ export class Gg2dWorld<
       command: string,
       handler: (...args: string[]) => Promise<string>,
       doc?: string,
+      mutates?: boolean,
     ) => void;
   }) {
     super.registerConsoleCommands(ggstatic);
@@ -184,6 +185,7 @@ export class Gg2dWorld<
       },
       'args: [ string, float, float ]; Teleport a named entity to world-space coordinates. Use ' +
         '"entities"/"entity NAME" to find entity names and their current position',
+      true,
     );
     ggstatic.registerConsoleCommand(
       this,
@@ -204,6 +206,7 @@ export class Gg2dWorld<
         return JSON.stringify((entity as unknown as Entity2d<TypeDoc>).rotation);
       },
       'args: [ string, float ]; Rotate a named entity to the given angle, in radians',
+      true,
     );
     ggstatic.registerConsoleCommand(
       this,
@@ -280,6 +283,7 @@ export class Gg2dWorld<
         'primitive rigid body at world-space coordinates, for probing physics. bodyType (last ' +
         'arg) defaults to dynamic (1, falls under gravity); numeric shorthand: 0=static, ' +
         '2=kinematic_pos, 3=kinematic_vel',
+      true,
     );
     if (this.physicsWorld) {
       ggstatic.registerConsoleCommand(
@@ -300,6 +304,7 @@ export class Gg2dWorld<
         'args: [ ?float, ?float ]; Get or set 2D world gravity vector. 1 argument sets' +
           ' vector {x: 0, y: value}, 2 arguments sets the whole vector.' +
           ' Default value is "9.82" or "0 9.82"',
+        true,
       );
       ggstatic.registerConsoleCommand(
         this,
@@ -330,6 +335,7 @@ export class Gg2dWorld<
         'usage: player_spawn X Y; Spawn a default player character (capsule body, left/right/' +
           "jump/run keys) at world-space position X Y and control the first renderer's camera " +
           'with it. Sized in pixels, matching the "spawn" command\'s own default-shape scale.',
+        true,
       );
     }
   }

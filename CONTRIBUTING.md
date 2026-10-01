@@ -50,6 +50,7 @@ best-effort.
 | `packages/ammo`, `packages/rapier3d` | 3D physics adapters (Bullet via ammo.js, Rapier). |
 | `packages/matter`, `packages/rapier2d` | 2D physics adapters (matter-js, Rapier). |
 | `packages/audio` | Web Audio API adapter. |
+| `packages/multiplayer` | Shared-world P2P multiplayer (network controller, WebRTC mesh transport, Firebase/BroadcastChannel signaling). Its in-process harness runs on all four physics adapters; `npm run bot` there runs the on-demand zoning bot against a real Firebase project. |
 | `examples/` | Standalone demo apps (plain webpack, plus Angular/React framework samples). Each is an independent npm project so it stays cloneable into StackBlitz. `examples/examples-list.txt` is the registry the release script bumps. |
 | `e2e/` | End-to-end test harnesses that need more than a package (currently the Blender export round-trip). |
 | `blender-addon/` | Blender extension that exports a scene as `.glb` + `.meta` for the 3D loader. Published alongside every engine release. |
@@ -174,7 +175,10 @@ Conventions the review will check for:
   It gives instances a readable auto-generated name that survives minification.
 - A new adapter package is wired into: the `libs` array in `etc/publish_new_version.sh`, the root
   `tsconfig.json` `references`, and (for a physics/visual adapter) the matching skill's file
-  layout conventions. Without the first of those it is silently excluded from releases.
+  layout conventions. Without the first of those it is silently excluded from releases. Its
+  `devDependencies` never list other `@gg-web-engine/*` adapter packages (the release installs each
+  package standalone, and the previous adapter release would conflict with the new core); tests
+  that need adapters resolve them through the workspace instead.
 - A new example is added to `examples/examples-list.txt` (so the release script bumps its
   dependency versions) and, if it should be publicly browsable, to `examples/index.html`.
 - Unit tests for new core or adapter logic, in the package that owns the behavior.

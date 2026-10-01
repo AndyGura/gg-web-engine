@@ -77,6 +77,7 @@ While the current focus is on racing game features and 3D worlds, future updates
 - [**@gg-web-engine/matter**](https://github.com/AndyGura/gg-web-engine/tree/main/packages/matter/README.md) - 2D physics ([Matter.js](https://github.com/liabru/matter-js))
 - [**@gg-web-engine/rapier2d**](https://github.com/AndyGura/gg-web-engine/tree/main/packages/rapier2d/README.md) - 2D physics ([Rapier.js](https://github.com/dimforge/rapier.js))
 - [**@gg-web-engine/audio**](https://github.com/AndyGura/gg-web-engine/tree/main/packages/audio/README.md) - 2D/3D positional audio ([Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API))
+- [**@gg-web-engine/multiplayer**](https://github.com/AndyGura/gg-web-engine/tree/main/packages/multiplayer/README.md) - P2P shared-world multiplayer for any 2D/3D adapter ([WebRTC](https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API), [Firebase](https://firebase.google.com/docs/database) signaling)
 
 ## ⚡ Quickstart
 ### Installation

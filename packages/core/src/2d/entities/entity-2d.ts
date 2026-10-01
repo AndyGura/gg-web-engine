@@ -1,13 +1,22 @@
 import { EMPTY, Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { IEntity, Pnt2, Point2, TickOrder } from '../../base';
+import {
+  IEntity,
+  INetworkSyncable,
+  NetworkApplyContext,
+  Pnt2,
+  Point2,
+  RigidBodyCorrection,
+  RigidBodyNetState,
+  TickOrder,
+} from '../../base';
 import { IPositionable2d } from '../interfaces/i-positionable-2d';
 import { IRenderable2dEntity } from './i-renderable-2d.entity';
 import { Gg2dWorldTypeDocPPatch, Gg2dWorldTypeDocRepo, PhysicsTypeDocRepo2D } from '../gg-2d-world';
 
 export class Entity2d<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTypeDocRepo>
   extends IRenderable2dEntity<TypeDoc>
-  implements IPositionable2d
+  implements IPositionable2d, INetworkSyncable<RigidBodyNetState<Point2, number>>
 {
   static readonly entityTypeName: string = 'Entity2d';
   public readonly tickOrder = TickOrder.OBJECTS_BINDING;
@@ -144,6 +153,29 @@ export class Entity2d<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTypeDocRep
         this.runTransformBinding(this.objectBody!, this.object2D);
       });
       this.runTransformBinding(this.objectBody, this.object2D);
+    }
+  }
+
+  /**
+   * `INetworkSyncable`: only an entity with a non-static rigid body takes part in networking - a
+   * purely visual entity, or a static body that never moves, has nothing to synchronize.
+   */
+  public get isNetworkSyncEnabled(): boolean {
+    return !!this.objectBody && this.objectBody.bodyOptions.bodyType !== 'static';
+  }
+
+  /** `INetworkSyncable`: owner-side snapshot of `objectBody` - see `RigidBodyCorrection`. */
+  public captureNetworkState(): RigidBodyNetState<Point2, number> {
+    if (!this.objectBody) {
+      return { p: this.position, r: this.rotation, lv: Pnt2.O, av: 0, s: true };
+    }
+    return RigidBodyCorrection.capture(this.objectBody);
+  }
+
+  /** `INetworkSyncable`: replica-side correction of `objectBody` - see `RigidBodyCorrection`. No-op without a body. */
+  public applyNetworkState(target: RigidBodyNetState<Point2, number>, ctx: NetworkApplyContext): void {
+    if (this.objectBody) {
+      RigidBodyCorrection.correct(this.objectBody, target, ctx);
     }
   }
 }

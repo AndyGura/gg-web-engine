@@ -137,6 +137,7 @@ interface EntitySpawnRecord {
   classAlias: string;
   shape?: string;
   config?: any;
+  events?: Record<string, EntityEventBinding>;
 }
 
 /**
@@ -415,7 +416,7 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
     if (name !== undefined) {
       entity.name = name;
     }
-    this.spawnRecords.set(entity, { classAlias, shape, config });
+    this.spawnRecords.set(entity, { classAlias, shape, config, ...(events ? { events } : {}) });
 
     if (events) {
       for (const [eventName, eventBinding] of Object.entries(events)) {
@@ -454,6 +455,10 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
    *    a class with no live-state equivalent and no self-serialization of its own (a `"Sound"`'s
    *    clip URL, a `"MapGraph"`'s graph structure).
    *
+   * Tiers (2) and (3) also echo the `events` bindings an entity was built with (by `createEntity`), so
+   * re-creating an entity from its own serialization - e.g. on another peer - rebinds them (against
+   * whatever `blueprints` map that `createEntity` call is given).
+   *
    * An entity matched by none of the three - built some other way with no live/self-serializer
    * applicable, or a child an entity class adds to itself (a `"Player"`'s
    * `CharacterAnimationController`) - has nothing to reconstruct it from; this logs a warning and
@@ -477,7 +482,7 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
       const classAlias = record?.classAlias ?? this.classAliasesByCtor.get(entity.constructor);
       if (classAlias) {
         const { shape, config } = entity.serializeSettings();
-        const json = this.buildEntityJson(classAlias, entity, shape, config);
+        const json = this.buildEntityJson(classAlias, entity, shape, config, record?.events);
         const serializer = this.serializers.get(classAlias);
         return serializer ? serializer(entity, json) : json;
       }
@@ -491,7 +496,7 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
       return undefined;
     }
 
-    const json = this.buildEntityJson(record.classAlias, entity, record.shape, record.config);
+    const json = this.buildEntityJson(record.classAlias, entity, record.shape, record.config, record.events);
     const serializer = this.serializers.get(record.classAlias);
     return serializer ? serializer(entity, json) : json;
   }
@@ -507,6 +512,7 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
     entity: IEntity<D, R, TypeDoc>,
     shape: string | undefined,
     config: any,
+    events?: Record<string, EntityEventBinding>,
   ): EntityJson {
     const json: EntityJson = { class: classAlias, name: entity.name };
     if (shape !== undefined) {
@@ -514,6 +520,9 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
     }
     if (config !== undefined) {
       json.config = config;
+    }
+    if (events !== undefined) {
+      json.events = events;
     }
     const positionable = entity as unknown as Partial<IPositionable<D, R>>;
     if (positionable.position !== undefined) {
@@ -533,9 +542,9 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
    * child under a level is expected, not a sign of misuse (a `BlueprintBindingEntity` an `events`
    * binding creates is itself parented under the entity it's bound to, not directly under the level -
    * see `createEntity` - but this skip still guards against any other non-spawn-recorded child a
-   * level's group might end up with). Only `entities` is reconstructed - `blueprints`/`events`
-   * bindings aren't, since a live
-   * `BlueprintBindingEntity` doesn't expose the `BlueprintJson`/binding it was built from.
+   * level's group might end up with). Only `entities` is reconstructed: each entity echoes the
+   * `events` bindings it was built with, but the level's top-level `blueprints` map isn't rebuilt -
+   * keep the original `blueprints` alongside if those bindings reference named graphs.
    * @param level - A level's root group entity, as returned by `loadLevel`/`loadLevelFromUrl`
    * @returns The reconstructed level JSON (`entities` only - see above)
    */
@@ -639,7 +648,13 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
       return undefined;
     }
     const blueprint = new Blueprint<D, R, TypeDoc>(this.world, blueprintJson, this.blueprintNodes);
-    return new BlueprintBindingEntity<D, R, TypeDoc>(blueprint, observable as Observable<unknown>);
+    return new BlueprintBindingEntity<D, R, TypeDoc>(
+      blueprint,
+      observable as Observable<unknown>,
+      this.world,
+      entity,
+      eventName,
+    );
   }
 
   /**
@@ -729,6 +744,8 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
  * it's bound to (not under any group), so disposing/removing (with `dispose: true`) that entity - on
  * its own, or as part of tearing down a whole level via `world.removeEntity(level, true)` - tears the
  * binding down right along with it; there is nothing else app code needs to do to clean it up.
+ * Every emission is first checked against `GgWorld.eventAuthority` - a network layer uses that to
+ * make a gameplay-consequential binding run on exactly one peer instead of on every peer.
  * @template D - The position type
  * @template R - The rotation type
  * @template TypeDoc - The type document repository
@@ -741,9 +758,16 @@ class BlueprintBindingEntity<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>> ext
   constructor(
     private readonly blueprint: Blueprint<D, R, TypeDoc>,
     observable: Observable<unknown>,
+    world: GgWorld<D, R, TypeDoc>,
+    boundEntity: IEntity<D, R, TypeDoc>,
+    eventName: string,
   ) {
     super();
-    this.subscription = observable.subscribe(value => this.blueprint.trigger('in', value));
+    this.subscription = observable.subscribe(value => {
+      if (world.eventAuthority(boundEntity, eventName, value)) {
+        this.blueprint.trigger('in', value);
+      }
+    });
   }
 
   public override dispose(): void {

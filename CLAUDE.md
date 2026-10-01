@@ -25,6 +25,7 @@ the task before writing code:
 | [`gg-engine-physics-adapter-ammo`](.claude/skills/gg-engine-physics-adapter-ammo/SKILL.md) | Fixing/extending the already-implemented `packages/ammo` adapter specifically — known Bullet/embind pitfalls. |
 | [`gg-engine-physics-adapter-rapier`](.claude/skills/gg-engine-physics-adapter-rapier/SKILL.md) | Fixing/extending `packages/rapier2d`/`packages/rapier3d` specifically — known `@dimforge/rapier-compat` pitfalls. |
 | [`gg-engine-physics-adapter-matter`](.claude/skills/gg-engine-physics-adapter-matter/SKILL.md) | Fixing/extending `packages/matter` specifically — known `matter-js` pitfalls. |
+| [`gg-engine-multiplayer`](.claude/skills/gg-engine-multiplayer/SKILL.md) | Working on `packages/multiplayer` (shared-world networking, WebRTC/signaling transports) or core's networking contracts (`INetworkSyncable`/`INetworkInputDriven`, correction helpers), or making an entity class network-aware. |
 | [`gg-engine-examples`](.claude/skills/gg-engine-examples/SKILL.md) | Adding/updating a demo under `examples/`. |
 | [`gg-engine-release`](.claude/skills/gg-engine-release/SKILL.md) | Cutting a coordinated multi-package release. |
 
@@ -70,18 +71,18 @@ investigation this session already did. Concretely:
 
 `gg-engine-core-development`, `gg-engine-visual-adapter`, `gg-engine-audio-adapter`,
 `gg-engine-physics-adapter`, `gg-engine-physics-adapter-ammo`, `gg-engine-physics-adapter-rapier`,
-`gg-engine-physics-adapter-matter`, `gg-engine-examples`, and `gg-engine-release` document *how to
-work on this repo*. Whenever work under one of them hits a pitfall it doesn't mention, or something
-it says turns out to be wrong/incomplete and you had to find the real fix, update that skill's
-`SKILL.md` with the lesson before finishing the task — a short note on what went wrong, why, and the
-fix, folded into the relevant section rather than dumped as an unstructured log. This applies whether
-you're doing the work directly or reviewing a subagent's — if a subagent you spawned hits and solves
-one of these, have it (or do it yourself) fold the lesson into the skill file as part of finishing,
-since the next agent to touch that package starts from the skill file alone and won't have this
-conversation's context. A lesson specific to one already-implemented physics adapter (`ammo`/
-`rapier2d`/`rapier3d`/`matter`) belongs in that library's own `gg-engine-physics-adapter-*` skill, not
-in the general `gg-engine-physics-adapter` file — see that file's own "Keep this skill current"
-section for the split.
+`gg-engine-physics-adapter-matter`, `gg-engine-multiplayer`, `gg-engine-examples`, and
+`gg-engine-release` document *how to work on this repo*. Whenever work under one of them hits a
+pitfall it doesn't mention, or something it says turns out to be wrong/incomplete and you had to
+find the real fix, update that skill's `SKILL.md` with the lesson before finishing the task — a
+short note on what went wrong, why, and the fix, folded into the relevant section rather than dumped
+as an unstructured log. This applies whether you're doing the work directly or reviewing a
+subagent's — if a subagent you spawned hits and solves one of these, have it (or do it yourself)
+fold the lesson into the skill file as part of finishing, since the next agent to touch that package
+starts from the skill file alone and won't have this conversation's context. A lesson specific to
+one already-implemented physics adapter (`ammo`/`rapier2d`/`rapier3d`/`matter`) belongs in that
+library's own `gg-engine-physics-adapter-*` skill, not in the general `gg-engine-physics-adapter`
+file — see that file's own "Keep this skill current" section for the split.
 
 `CONTRIBUTING.md` at the repo root is the human-facing mirror of the process parts of
 `gg-engine-core-development` (build/test/format commands, the example-linking loop) and

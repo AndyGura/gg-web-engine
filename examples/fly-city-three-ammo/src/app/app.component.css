@@ -30,3 +30,28 @@ app-dashboard {
     align-items: center;
     justify-content: space-around;
 }
+
+.room-panel {
+    z-index: 6;
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    row-gap: 0.4rem;
+    color: white;
+    font-family: monospace;
+    font-weight: bold;
+    text-shadow: 0.05rem 0 0 #000, 0 -0.05rem 0 #000, 0 0.05rem 0 #000, -0.05rem 0 0 #000;
+}
+
+.room-link {
+    display: flex;
+    column-gap: 0.4rem;
+}
+
+.room-link input {
+    width: 22rem;
+    font-family: monospace;
+}

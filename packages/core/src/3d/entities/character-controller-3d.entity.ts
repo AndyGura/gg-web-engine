@@ -1,4 +1,19 @@
-import { MAIN_RENDER_LAYER, Pnt3, Point3, Point4, Qtrn, SELF_VIEW_HIDDEN_RENDER_LAYER, TickOrder } from '../../base';
+import {
+  INetworkInputDriven,
+  INetworkSyncable,
+  ISerializableEntity,
+  MAIN_RENDER_LAYER,
+  MoverCorrection,
+  MoverNetState,
+  NetworkApplyContext,
+  Pnt3,
+  Point3,
+  Point4,
+  Qtrn,
+  SELF_VIEW_HIDDEN_RENDER_LAYER,
+  TickOrder,
+} from '../../base';
+import { isMaterialReadable3d } from '../components/rendering/i-material-readable-3d.component';
 import { Gg3dWorld, Gg3dWorldTypeDocRepo } from '../gg-3d-world';
 import { IRenderable3dEntity } from './i-renderable-3d.entity';
 import { IPositionable3d } from '../interfaces/i-positionable-3d';
@@ -54,6 +69,32 @@ export type CharacterController3dEntityOptions = CharacterController3dOptions & 
    */
   airControlFactor: number;
 };
+
+/**
+ * Input a possessing peer forwards for a `CharacterController3dEntity` - see
+ * `INetworkInputDriven`. `jumpSeq` is the possessor's `jumpCount`: a replica jumps once per observed
+ * increment, so a dropped packet never loses a jump.
+ */
+export interface CharacterInput3d {
+  moveDirection: Point3;
+  rotation: Point4;
+  isRunning: boolean;
+  isCrouching: boolean;
+  jumpSeq: number;
+}
+
+/**
+ * Runtime state of a `CharacterController3dEntity` a spawn-time `config` can't reflect - emitted as
+ * the `"Player"` class's `config.state` by `serializeSettings` and applied back by the level loader,
+ * so a character spawned on another peer mid-jump/mid-crouch continues from where it was.
+ */
+export interface CharacterState3d {
+  isCrouching?: boolean;
+  isRunning?: boolean;
+  moveDirection?: Point3;
+  fallVelocity?: Point3;
+  airHorizontalVelocity?: Point3;
+}
 
 const DEFAULT_OPTIONS: Required<
   Omit<CharacterController3dEntityOptions, 'radius' | 'centersDistance' | 'crouchCentersDistance'>
@@ -121,7 +162,11 @@ const DEFAULT_OPTIONS: Required<
  */
 export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo>
   extends IRenderable3dEntity<TypeDoc>
-  implements IPositionable3d
+  implements
+    IPositionable3d,
+    INetworkSyncable<MoverNetState<Point3, Point4>>,
+    INetworkInputDriven<CharacterInput3d>,
+    ISerializableEntity
 {
   static readonly entityTypeName: string = 'CharacterController3dEntity';
   public readonly tickOrder = TickOrder.PHYSICS_SIMULATION - 5;
@@ -167,6 +212,40 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
    * flag catches up with reality - this self-resolves in one extra tick at typical frame rates and
    * only a handful at very high ones, without needing a fixed tick count or time-based timeout. */
   private _justJumped: boolean = false;
+
+  /**
+   * Extra translation folded into the next tick's `move()` call (added to the desired translation,
+   * then cleared) - lets something other than the input driver nudge the character while still
+   * sliding against geometry and respecting step/snap-to-ground, instead of teleporting it through
+   * the `position` setter. The network layer's replica correction (`MoverCorrection`) writes this.
+   */
+  public externalDisplacement: Point3 = Pnt3.O;
+
+  private _jumpCount: number = 0;
+
+  /** How many jumps `jump()` has actually performed (a call while not on walkable ground doesn't
+   * count). Forwarded as `CharacterInput3d.jumpSeq` so replicas fire each jump exactly once. */
+  public get jumpCount(): number {
+    return this._jumpCount;
+  }
+
+  private _actualVelocity: Point3 = Pnt3.O;
+
+  /** The velocity this character actually moved at on its last tick (displacement after collision
+   * resolution divided by the tick's duration) - unlike `velocity`, it includes grounded walking. */
+  public get actualVelocity(): Point3 {
+    return this._actualVelocity;
+  }
+
+  /**
+   * The `display` settings a level loader built this character from, echoed back by
+   * `serializeSettings` (a loaded model's path can't be recovered from the live mesh). Set by
+   * `Gg3dLevelLoader`'s `"Player"` class; app code building a character by hand may set it too.
+   */
+  public displaySettings: Record<string, any> | undefined = undefined;
+
+  // last jumpSeq observed from remote input, null until the first remote sample (see applyRemoteInput)
+  private _remoteJumpSeq: number | null = null;
 
   /**
    * Public accessor for `_fallVelocity` - see this class's own doc for what it represents (a full
@@ -226,6 +305,13 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
    * moment of landing, same as being blocked defers every retry after that.
    */
   public set isCrouching(value: boolean) {
+    if (!this.world) {
+      // not spawned: there's no physics world to rebuild the capsule against yet - remember the
+      // flag, and onSpawned brings the capsule in line with it
+      this._isCrouching = value;
+      this._wantsToStand = false;
+      return;
+    }
     if (value) {
       this._wantsToStand = false;
       if (!this._isCrouching) {
@@ -346,6 +432,12 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
 
   onSpawned(world: Gg3dWorld<TypeDoc>) {
     super.onSpawned(world);
+    const expectedCentersDistance = this._isCrouching
+      ? this.options.crouchCentersDistance
+      : this.options.centersDistance;
+    if (this.characterController.centersDistance !== expectedCentersDistance) {
+      this.recreateCapsule(expectedCentersDistance);
+    }
     this.tick$.subscribe(([_, delta]) => this.updateMovement(delta));
   }
 
@@ -415,6 +507,7 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
         Pnt3.scalarMult(up, direction * this.options.jumpSpeed - currentAlongUp),
       );
       this._justJumped = true;
+      this._jumpCount++;
     }
   }
 
@@ -496,9 +589,10 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
     this._wasResting = grounded;
 
     const desiredTranslation = Pnt3.add(
-      Pnt3.scalarMult(horizontalVelocity, dt),
-      Pnt3.scalarMult(this._fallVelocity, dt),
+      Pnt3.add(Pnt3.scalarMult(horizontalVelocity, dt), Pnt3.scalarMult(this._fallVelocity, dt)),
+      this.externalDisplacement,
     );
+    this.externalDisplacement = Pnt3.O;
 
     const previousPosition = this._position;
     this.characterController.move(desiredTranslation, dt);
@@ -513,6 +607,7 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
       this.object3D.position = this._position;
       this.object3D.rotation = this._rotation;
     }
+    this._actualVelocity = dt > 0 ? Pnt3.scalarMult(Pnt3.sub(this._position, previousPosition), 1 / dt) : Pnt3.O;
 
     // Detect being blocked from above (e.g. jumping into a ceiling) while airborne and ascending.
     // `move()` resolves the collision by capping the actual displacement, but
@@ -657,6 +752,108 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
     if (this.object3D) {
       this.object3D.position = this._position;
       this.object3D.rotation = this._rotation;
+    }
+  }
+
+  /** `INetworkSyncable`: owner-side snapshot - see `MoverCorrection`. */
+  public captureNetworkState(): MoverNetState<Point3, Point4> {
+    return MoverCorrection.capture(this);
+  }
+
+  /** `INetworkSyncable`: replica-side reconciliation through `externalDisplacement` - see `MoverCorrection`. */
+  public applyNetworkState(target: MoverNetState<Point3, Point4>, ctx: NetworkApplyContext): void {
+    MoverCorrection.correct(this, target, ctx);
+  }
+
+  /** `INetworkInputDriven`: what the local input driver set on this character. */
+  public captureLocalInput(): CharacterInput3d {
+    return {
+      moveDirection: { x: this.moveDirection.x, y: this.moveDirection.y, z: this.moveDirection.z },
+      rotation: { x: this._rotation.x, y: this._rotation.y, z: this._rotation.z, w: this._rotation.w },
+      isRunning: this.isRunning,
+      isCrouching: this._isCrouching,
+      jumpSeq: this._jumpCount,
+    };
+  }
+
+  /**
+   * `INetworkInputDriven`: drive this replica with the possessor's input; `null` is neutral (no
+   * movement, not running). A jump fires once per observed `jumpSeq` increment; the first sample
+   * only records the baseline, so a replica created mid-session never replays old jumps.
+   */
+  public applyRemoteInput(input: CharacterInput3d | null): void {
+    if (input === null) {
+      this.moveDirection = Pnt3.O;
+      this.isRunning = false;
+      this._remoteJumpSeq = null;
+      return;
+    }
+    this.moveDirection = input.moveDirection;
+    this.isRunning = input.isRunning;
+    if (input.isCrouching !== this._isCrouching) {
+      this.isCrouching = input.isCrouching;
+    }
+    this.rotation = input.rotation;
+    if (this._remoteJumpSeq !== null && input.jumpSeq > this._remoteJumpSeq) {
+      this.jump();
+    }
+    this._remoteJumpSeq = input.jumpSeq;
+  }
+
+  /**
+   * `ISerializableEntity`: the `"Player"` class's `config` - capsule size, every option that
+   * differs from its default, `display` (from `displaySettings`, else the auto-generated capsule
+   * mesh's material) and a `state` block with the runtime movement state (see `CharacterState3d`).
+   */
+  public serializeSettings(): { config: Record<string, any> } {
+    const config: Record<string, any> = {
+      radius: this.options.radius,
+      centersDistance: this.options.centersDistance,
+    };
+    for (const [key, defaultValue] of Object.entries(DEFAULT_OPTIONS)) {
+      const value = (this.options as Record<string, any>)[key];
+      if (value !== undefined && JSON.stringify(value) !== JSON.stringify(defaultValue)) {
+        config[key] = value;
+      }
+    }
+    if (this.options.crouchCentersDistance !== this.options.centersDistance * 0.6) {
+      config.crouchCentersDistance = this.options.crouchCentersDistance;
+    }
+    if (this.displaySettings) {
+      config.display = this.displaySettings;
+    } else if (isMaterialReadable3d(this.object3D)) {
+      config.display = this.object3D.materialOptions;
+    }
+    config.state = {
+      isCrouching: this._isCrouching,
+      isRunning: this.isRunning,
+      moveDirection: this.moveDirection,
+      fallVelocity: this._fallVelocity,
+      airHorizontalVelocity: this._airHorizontalVelocity,
+    } as CharacterState3d;
+    return { config };
+  }
+
+  /** Apply a `CharacterState3d` block (see `serializeSettings`); every field is optional. */
+  public applyState(state: CharacterState3d): void {
+    if (state.isCrouching !== undefined) {
+      this.isCrouching = state.isCrouching;
+    }
+    if (state.isRunning !== undefined) {
+      this.isRunning = state.isRunning;
+    }
+    if (state.moveDirection !== undefined) {
+      this.moveDirection = state.moveDirection;
+    }
+    if (state.fallVelocity !== undefined) {
+      this._fallVelocity = state.fallVelocity;
+    }
+    if (state.airHorizontalVelocity !== undefined) {
+      this._airHorizontalVelocity = state.airHorizontalVelocity;
+      if (Pnt3.lenSq(state.airHorizontalVelocity) > 0) {
+        // carried airborne momentum: don't let the next tick re-seed it from ground speed
+        this._wasResting = false;
+      }
     }
   }
 }

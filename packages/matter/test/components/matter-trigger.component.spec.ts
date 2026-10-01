@@ -19,6 +19,25 @@ describe(`MatterTriggerComponent`, () => {
     world.dispose();
   });
 
+  it(`stays where it was placed under gravity, and never reports static level geometry`, async () => {
+    world.gravity = { x: 0, y: 9.82 };
+    const ground = factory.createRigidBody(
+      { shape: { shape: 'BOX', dimensions: { x: 100, y: 10 } }, body: { bodyType: 'static', mass: 0 } },
+      { position: { x: 0, y: 50 } },
+    );
+    ground.addToWorld({ physicsWorld: world } as any);
+    const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 10, y: 10 } }, { position: { x: 0, y: 0 } });
+    trigger.addToWorld({ physicsWorld: world } as any);
+    let entered = 0;
+    trigger.onEntityEntered.subscribe(() => entered++);
+    for (let i = 0; i < 300; i++) {
+      world.simulate(16);
+      trigger.checkOverlaps();
+    }
+    expect(trigger.position).toEqual({ x: 0, y: 0 });
+    expect(entered).toBe(0);
+  });
+
   // Note: this test is identical to rapier2d trigger test, and it is expected
   it(`should detect object intersection`, async () => {
     const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 10, y: 10 } });

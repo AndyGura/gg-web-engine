@@ -1,0 +1,61 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset='utf-8'>
+    <title>GG example</title>
+    <meta name='viewport' content='width=device-width,initial-scale=1'>
+  </head>
+  <body>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+      }
+      #hud {
+        position: absolute;
+        top: 1rem;
+        left: 1rem;
+        right: 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        color: white;
+        font-family: monospace;
+        font-size: 1rem;
+        text-shadow: 0 0 3px #000;
+        pointer-events: none;
+      }
+      #hud button, #hud input {
+        pointer-events: auto;
+        font-family: monospace;
+      }
+      #room {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        row-gap: 0.4rem;
+      }
+      #room input {
+        width: 22rem;
+      }
+      #banner {
+        position: absolute;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-family: monospace;
+        font-size: 3rem;
+        text-shadow: 0 0 6px #000;
+        pointer-events: none;
+      }
+    </style>
+    <canvas id='gg'></canvas>
+    <div id='hud'>
+      <div id='scores'></div>
+      <div id='room'></div>
+    </div>
+    <div id='banner'></div>
+  </body>
+</html>

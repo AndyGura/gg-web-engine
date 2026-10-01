@@ -1,0 +1,92 @@
+{
+  "name": "@gg-web-engine/multiplayer",
+  "version": "0.0.73",
+  "description": "An attempt to create open source game engine for browser",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "test": "jest",
+    "bot": "jest --config jest.bot.config.js --runInBand",
+    "prettier-format": "prettier --config ../../.prettierrc 'src/**/*.ts' --write",
+    "prepublish": "rm -rf ./dist/ && tsc",
+    "build": "tsc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AndyGura/gg-web-engine.git"
+  },
+  "keywords": [
+    "game-development",
+    "game-engine",
+    "game-engine-framework",
+    "gamedev",
+    "multiplayer",
+    "webrtc"
+  ],
+  "author": "AndyGura",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/AndyGura/gg-web-engine/issues"
+  },
+  "homepage": "https://github.com/AndyGura/gg-web-engine#readme",
+  "devDependencies": {
+    "@gg-web-engine/core": "0.0.73",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^26.4.0",
+    "firebase": "12.19.0",
+    "jest": "^30.5.0",
+    "jest-environment-jsdom": "^30.5.0",
+    "prettier": "^3.9.6",
+    "rxjs": "7.8.2",
+    "ts-jest": "^29.4.12",
+    "typescript": "~6.0.3"
+  },
+  "peerDependencies": {
+    "@gg-web-engine/core": "0.0.73",
+    "firebase": "12.19.0",
+    "rxjs": "7.8.2"
+  },
+  "jest": {
+    "rootDir": ".",
+    "testRegex": "\\.spec\\.ts$",
+    "transform": {
+      "^.+\\.(t|j)s$": [
+        "ts-jest",
+        {
+          "tsconfig": {
+            "esModuleInterop": true
+          },
+          "diagnostics": {
+            "exclude": [
+              "**/core/src/**",
+              "**/matter/src/**",
+              "**/rapier2d/src/**",
+              "**/rapier3d/src/**",
+              "**/ammo/src/**"
+            ]
+          }
+        }
+      ]
+    },
+    "moduleNameMapper": {
+      "@gg-web-engine/core": "<rootDir>/../core/src/index.ts",
+      "@gg-web-engine/(ammo|matter|rapier2d|rapier3d)": "<rootDir>/../$1/src/index.ts",
+      "^firebase/(app|auth|app-check|database)$": "<rootDir>/test/stubs/firebase.ts"
+    },
+    "setupFiles": [
+      "<rootDir>/test/jest.polyfills.ts"
+    ],
+    "preset": "ts-jest/presets/default",
+    "collectCoverageFrom": [
+      "**/*.ts",
+      "!**/*.module.ts"
+    ],
+    "coveragePathIgnorePatterns": [
+      "<rootDir>/node_modules/",
+      "<rootDir>/dist/",
+      "<rootDir>/test/"
+    ],
+    "coverageDirectory": "./coverage",
+    "testEnvironment": "jsdom"
+  }
+}

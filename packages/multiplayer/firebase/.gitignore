@@ -1,0 +1,6 @@
+# The maintainer's Firebase project files are deliberately not committed - the client-side contract
+# they implement is documented in ../README.md ("Firebase project setup").
+database.rules.json
+firebase.json
+.firebaserc
+functions/

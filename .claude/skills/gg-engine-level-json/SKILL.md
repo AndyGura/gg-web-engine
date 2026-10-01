@@ -240,7 +240,12 @@ entity, it returns the `EntityJson` that could reproduce it. It tries three mech
    mesh the same way (1) does for a `"Primitive"`, and a `state` block (`gear`/`acceleration`/
    `brake`/`handBrake`/`steeringFactor`) capturing the car's *current* driving state - none of
    which a spawn-time `config` alone could ever reflect, since all five change continuously as the
-   car is driven. `serializeEntity` resolves this tier's `class` alias from the entity's spawn
+   car is driven. The built-in `"Player"` class (2D and 3D) works the same way:
+   `CharacterController(2d|3d)Entity.serializeSettings()` returns `radius`/`centersDistance`, every
+   option that differs from its default, `display` (the `display` block the loader built it from,
+   kept on the entity's `displaySettings` - so a loaded model's path round-trips - else the capsule
+   mesh's material) and a `state` block (`isCrouching`/`isRunning`/`moveDirection`/`fallVelocity`/
+   `airHorizontalVelocity`). `serializeEntity` resolves this tier's `class` alias from the entity's spawn
    record if it has one (see (3)), or otherwise from the constructor->alias mapping an optional
    third `registerClass` argument sets up (see "App-defined entity classes" below) - so a
    self-serializing entity is reconstructable even when built directly (`new GgCarEntity(...)`,
@@ -256,8 +261,12 @@ entity, it returns the `EntityJson` that could reproduce it. It tries three mech
    and echoes them straight back, still reading `name`/`position`/`rotation` live off the entity (so
    a moved or renamed entity serializes to where it actually is now, not its spawn-time values) -
    this is the only option left for a class with neither a live nor a self-serialized equivalent to
-   read from (`"MapGraph"`'s graph structure, `"Player"`'s model asset path, `"Sound"`'s clip URL -
-   none of these are recoverable from any live component today).
+   read from (`"MapGraph"`'s graph structure, `"Sound"`'s clip URL - neither is recoverable from any
+   live component today).
+
+Tiers (2) and (3) also echo the `events` bindings an entity was built with (by `createEntity`), so
+re-creating an entity from its own serialization (e.g. on another peer) rebinds them - against
+whatever `blueprints` map that `createEntity` call is given.
 
 An entity matched by none of the three - built some other way with no live/self-serializer
 applicable, or a child an entity class adds to itself (a `"Player"`'s
@@ -269,8 +278,9 @@ serializes each one that either a live/self-serializer recognizes or has a spawn
 `LevelJson`'s `entities` array - silently skipping a child that's neither (e.g. a blueprint event
 binding `loadLevel` itself parents under the level - see "Blueprints" below) rather than warning
 about it, since that kind of internal child is expected there. `serializeLevel` only reconstructs
-`entities` - `blueprints`/`events` bindings aren't serialized back, since a live event binding
-doesn't expose the `BlueprintJson` it was built from.
+`entities` - each one carries its own `events` bindings, but the level's top-level `blueprints` map
+isn't rebuilt (a live binding doesn't expose the `BlueprintJson` it was built from); keep the original
+`blueprints` alongside if those bindings reference named graphs.
 
 Two extension points, for a class whose built-in handling isn't enough:
 
@@ -294,7 +304,8 @@ radians-per-second number; 3D: `Point3`/`Point3`), applied once right after the 
 this is what lets a serialized primitive's velocity round-trip through `loadLevel` too, not just
 through `serializeEntity`'s own read side. `"GgCar"`'s `config` similarly accepts an optional
 `state` block (see (2) above), applied once right after the car is built - see that class's own
-section below.
+section below - and so does `"Player"`'s (`CharacterState3d`/`CharacterState2d`), applied right
+after the character is built (a crouch set before spawning takes effect when it spawns).
 
 ## Built-in classes
 
@@ -798,6 +809,11 @@ instead. A binding that can't be resolved (unknown blueprint name *and* unknown 
 `{ type }` naming a node with no default input pin, or a non-observable event property name) is a
 `console.warn` and that one binding is skipped, not a thrown error.
 
+Before every run, a binding asks `world.eventAuthority(entity, eventName, payload)` - `false`
+skips that run. It defaults to always `true`; a network layer (`@gg-web-engine/multiplayer`)
+installs a rule there while a session is joined, so a gameplay-consequential binding (a kill zone
+removing what entered it) runs on exactly one peer instead of on every peer that saw the overlap.
+
 Each binding gets its own `Blueprint` instance (and therefore its own node instances), even when
 several entities' `events` reference the same blueprint name or node type - so per-node state a
 future node might hold (e.g. a delay timer) is never accidentally shared between unrelated
@@ -1138,11 +1154,9 @@ the `"Player"` cases similarly stub `physicsWorld.factory.createCharacterControl
 `visualScene.factory.createCapsule`, reusing `mockCharacterController`/`mockCharacterController2d`
 from `packages/core/test/mocks/character-controller.mock.ts`/`character-controller-2d.mock.ts` for
 the 3D/2D component the generator wraps respectively - both specs' `live serializers` describe block
-additionally covers `serializeEntity` on a `"Player"` built via `createEntity` resolving to `class:
-"Player"` through the spawn-record echo (`CharacterController(2d|3d)Entity` implements neither a live
-serializer nor `ISerializableEntity`, so this is the only tier that applies - `registerClass`'s
-optional third argument is still passed for both, for parity with `"GgCar"`'s pattern, even though it
-has no effect without `ISerializableEntity`); the `"Sound"` cases stub `audioScene.factory
+additionally covers `serializeEntity` on a `"Player"` built via `createEntity` (self-serialized,
+with its `state` block) and a full `serializeEntity`/`createEntity` round trip of non-default options
+and runtime state; the `"Sound"` cases stub `audioScene.factory
 .loadClip`/`createSource`, reusing `mock3DAudioSource`/`mock2DAudioSource` from
 `packages/core/test/mocks/audio-source.mock.ts` for the source component the generator wraps.
 `packages/core/test/3d/loader.spec.ts` covers `Gg3dLoader` - the `"Glb"` class, and that

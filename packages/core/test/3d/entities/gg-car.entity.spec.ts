@@ -1,5 +1,6 @@
 import { mockCarProperties, mockRaycastVehicle } from '../../mocks/raycast-vehicle.mock';
-import { GgCarEntity } from '../../../src';
+import { DEFAULT_CORRECTION_TUNING, GgCarEntity, isNetworkInputDriven, isNetworkSyncable } from '../../../src';
+import { MockWorld } from '../../mocks/world.mock';
 import { mock3DObject } from '../../mocks/object.mock';
 
 describe(`GgCarEntity`, () => {
@@ -100,6 +101,78 @@ describe(`GgCarEntity`, () => {
       const { config } = car.serializeSettings();
 
       expect(config.chassis.material).toBeUndefined();
+    });
+  });
+
+  describe(`network contracts`, () => {
+    const spawnedCar = () => {
+      const car = new GgCarEntity(mockCarProperties(), mock3DObject(), mockRaycastVehicle());
+      const world = new MockWorld();
+      world.addEntity(car);
+      jest.spyOn(car.raycastVehicle, 'getSpeed').mockReturnValue(40);
+      return car;
+    };
+
+    it(`implements INetworkSyncable and INetworkInputDriven`, () => {
+      const car = new GgCarEntity(mockCarProperties(), mock3DObject(), mockRaycastVehicle());
+      expect(isNetworkSyncable(car)).toBe(true);
+      expect(isNetworkInputDriven(car)).toBe(true);
+      expect(car.isNetworkSyncEnabled).toBe(true);
+    });
+
+    it(`auto-shifts by default`, () => {
+      const car = spawnedCar();
+      car.gear = 1;
+      car.tick$.next([1000, 1000]);
+      expect(car.gear).toBeGreaterThan(1);
+    });
+
+    it(`skips auto-shifting while autoShiftEnabled is false`, () => {
+      const car = spawnedCar();
+      car.autoShiftEnabled = false;
+      car.gear = 1;
+      car.tick$.next([1000, 1000]);
+      expect(car.gear).toBe(1);
+    });
+
+    it(`suspends auto-shifting while driven by remote input, and resumes on local capture`, () => {
+      const car = spawnedCar();
+      car.applyRemoteInput({ steeringFactor: 0, acceleration: 1, brake: 0, gear: 1, handBrake: false });
+      car.tick$.next([1000, 1000]);
+      expect(car.gear).toBe(1);
+      car.captureLocalInput();
+      car.tick$.next([2000, 1000]);
+      expect(car.gear).toBeGreaterThan(1);
+    });
+
+    it(`applies neutral input on null`, () => {
+      const car = new GgCarEntity(mockCarProperties(), mock3DObject(), mockRaycastVehicle());
+      car.acceleration = 1;
+      car.gear = 3;
+      car.applyRemoteInput(null);
+      expect(car.acceleration).toBe(0);
+      expect(car.brake).toBe(1);
+      expect(car.gear).toBe(0);
+    });
+
+    it(`captures chassis state plus driving state, and adopts it on a replica`, () => {
+      const owner = new GgCarEntity(mockCarProperties(), mock3DObject(), mockRaycastVehicle());
+      owner.raycastVehicle.vehicleComponent.position = { x: 10, y: 0, z: 0 };
+      owner.gear = 2;
+      owner.acceleration = 0.5;
+      (owner.raycastVehicle.vehicleComponent as any).isSleeping = false;
+      const state = owner.captureNetworkState();
+      expect(state).toEqual(expect.objectContaining({ p: { x: 10, y: 0, z: 0 }, gear: 2, accel: 0.5 }));
+
+      const vehicle = mockRaycastVehicle();
+      Object.assign(vehicle, { wakeUp: () => {}, sleep: () => {}, isSleeping: false });
+      const resetSpy = jest.spyOn(vehicle, 'resetSuspension');
+      const replica = new GgCarEntity(mockCarProperties(), mock3DObject(), vehicle);
+      replica.applyNetworkState(state, { ageMs: 0, dt: 16, snap: false, tuning: { ...DEFAULT_CORRECTION_TUNING } });
+      expect(replica.raycastVehicle.vehicleComponent.position).toEqual({ x: 10, y: 0, z: 0 }); // 10m away: snapped
+      expect(resetSpy).toHaveBeenCalled();
+      expect(replica.gear).toBe(2);
+      expect(replica.acceleration).toBe(0.5);
     });
   });
 });

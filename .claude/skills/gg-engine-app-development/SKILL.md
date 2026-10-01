@@ -357,6 +357,38 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
 - **Vehicles**: `RaycastVehicle3dEntity` / `GgCarEntity` in `packages/core/src/3d/entities/` for
   raycast-based car physics.
 
+## Multiplayer
+
+`@gg-web-engine/multiplayer` makes a world shared between 2–8 peers (see its package README for the
+full guide). The app-side shape:
+
+```typescript
+const net = new Network3dController({ transport: new WebRtcMeshTransport({ signaling, roomId }) });
+world.addEntity(net);
+await net.loadSharedLevel(levelJson, 'level', 'level.json'); // built by every peer itself
+await net.connect();
+const player = await world.loader.createEntity({ class: 'Player', name: `Player_${net.localPeerId}` });
+world.addEntity(player); // runtime spawn: appears on every peer
+net.possess(player); // this peer drives it; release(entity) gives it back
+```
+
+Rules of thumb:
+- **Names are network ids.** Anything every peer builds itself (levels, seeded/streamed content) needs
+  identical names everywhere - declare it shared (`loadSharedLevel`/`registerSharedLevel`,
+  `markShared(entities)` right after creating them); per-peer things need distinct names (prefix the
+  peer id). Seed per-chunk randomness from the room, never `Math.random()`.
+- **Every peer sees every event; consequences happen once.** Gate gameplay reactions with
+  `net.hasAuthority(entity, eventName, payload)` (level JSON `events` blueprints are gated
+  automatically), remove shared things with `net.despawn(entity)`, share game state with
+  `net.send(data)`/`appMessages$`, and give late joiners `net.joinState`.
+- **Possession is game logic**: possess on entering a car / taking a control panel, release on
+  leaving, and react to `possessionChanged$` (a race for the same seat is lost by one peer).
+- Set `net.localPosition` to where the player is (`null` while spectating) - distance arbitration
+  and zoning use it.
+- Custom entity classes take part by implementing `INetworkSyncable` (and `INetworkInputDriven` if a
+  player drives them) - see `gg-engine-multiplayer`.
+- In 2D, distances are pixels: `Network2dController` scales its defaults by `unitScale` (100).
+
 ## Framework integration
 
 For Angular/React/Vue/vanilla wiring, the pattern is the same regardless of framework: create the

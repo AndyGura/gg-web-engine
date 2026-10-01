@@ -1,4 +1,15 @@
-import { Pnt2, Point2, TickOrder } from '../../base';
+import {
+  INetworkInputDriven,
+  INetworkSyncable,
+  ISerializableEntity,
+  MoverCorrection,
+  MoverNetState,
+  NetworkApplyContext,
+  Pnt2,
+  Point2,
+  TickOrder,
+} from '../../base';
+import { isMaterialReadable2d } from '../components/rendering/i-material-readable-2d.component';
 import { Gg2dWorld, Gg2dWorldTypeDocRepo } from '../gg-2d-world';
 import { IRenderable2dEntity } from './i-renderable-2d.entity';
 import { IPositionable2d } from '../interfaces/i-positionable-2d';
@@ -45,6 +56,29 @@ export type CharacterController2dEntityOptions = CharacterController2dOptions & 
   airControlFactor: number;
 };
 
+/**
+ * Input a possessing peer forwards for a `CharacterController2dEntity` - see `INetworkInputDriven`.
+ * `jumpSeq` is the possessor's `jumpCount`: a replica jumps once per observed increment.
+ */
+export interface CharacterInput2d {
+  moveDirection: number;
+  isRunning: boolean;
+  isCrouching: boolean;
+  jumpSeq: number;
+}
+
+/**
+ * Runtime state of a `CharacterController2dEntity` a spawn-time `config` can't reflect - emitted as
+ * the 2D `"Player"` class's `config.state` by `serializeSettings` and applied back by the loader.
+ */
+export interface CharacterState2d {
+  isCrouching?: boolean;
+  isRunning?: boolean;
+  moveDirection?: number;
+  fallVelocity?: Point2;
+  airHorizontalVelocity?: Point2;
+}
+
 const DEFAULT_OPTIONS: Required<
   Omit<CharacterController2dEntityOptions, 'radius' | 'centersDistance' | 'crouchCentersDistance'>
 > = {
@@ -87,7 +121,11 @@ const DEFAULT_OPTIONS: Required<
  */
 export class CharacterController2dEntity<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTypeDocRepo>
   extends IRenderable2dEntity<TypeDoc>
-  implements IPositionable2d
+  implements
+    IPositionable2d,
+    INetworkSyncable<MoverNetState<Point2, number>>,
+    INetworkInputDriven<CharacterInput2d>,
+    ISerializableEntity
 {
   static readonly entityTypeName: string = 'CharacterController2dEntity';
   public readonly tickOrder = TickOrder.PHYSICS_SIMULATION - 5;
@@ -120,6 +158,39 @@ export class CharacterController2dEntity<TypeDoc extends Gg2dWorldTypeDocRepo = 
   /** Set by `jump()`; consumed the first tick the adapter genuinely agrees the character has left
    * the ground - see `CharacterController3dEntity._justJumped`'s doc for the full rationale. */
   private _justJumped: boolean = false;
+
+  /**
+   * Extra translation folded into the next tick's `move()` call (added to the desired translation,
+   * then cleared) - lets something other than the input driver nudge the character while still
+   * sliding against geometry, instead of teleporting it through the `position` setter. The network
+   * layer's replica correction (`MoverCorrection`) writes this.
+   */
+  public externalDisplacement: Point2 = Pnt2.O;
+
+  private _jumpCount: number = 0;
+
+  /** How many jumps `jump()` has actually performed (a call while not on walkable ground doesn't
+   * count). Forwarded as `CharacterInput2d.jumpSeq` so replicas fire each jump exactly once. */
+  public get jumpCount(): number {
+    return this._jumpCount;
+  }
+
+  private _actualVelocity: Point2 = Pnt2.O;
+
+  /** The velocity this character actually moved at on its last tick (displacement after collision
+   * resolution divided by the tick's duration) - unlike `velocity`, it includes grounded walking. */
+  public get actualVelocity(): Point2 {
+    return this._actualVelocity;
+  }
+
+  /**
+   * The `display` settings a level loader built this character from, echoed back by
+   * `serializeSettings`. Set by `Gg2dLevelLoader`'s `"Player"` class.
+   */
+  public displaySettings: Record<string, any> | undefined = undefined;
+
+  // last jumpSeq observed from remote input, null until the first remote sample (see applyRemoteInput)
+  private _remoteJumpSeq: number | null = null;
 
   private _isCrouching: boolean = false;
   private _wantsToStand: boolean = false;
@@ -159,6 +230,13 @@ export class CharacterController2dEntity<TypeDoc extends Gg2dWorldTypeDocRepo = 
    * doc for the full rationale (identical here, just in 2D).
    */
   public set isCrouching(value: boolean) {
+    if (!this.world) {
+      // not spawned: there's no physics world to rebuild the capsule against yet - remember the
+      // flag, and onSpawned brings the capsule in line with it
+      this._isCrouching = value;
+      this._wantsToStand = false;
+      return;
+    }
     if (value) {
       this._wantsToStand = false;
       if (!this._isCrouching) {
@@ -244,6 +322,12 @@ export class CharacterController2dEntity<TypeDoc extends Gg2dWorldTypeDocRepo = 
 
   onSpawned(world: Gg2dWorld<TypeDoc>) {
     super.onSpawned(world);
+    const expectedCentersDistance = this._isCrouching
+      ? this.options.crouchCentersDistance
+      : this.options.centersDistance;
+    if (this.characterController.centersDistance !== expectedCentersDistance) {
+      this.recreateCapsule(expectedCentersDistance);
+    }
     this.tick$.subscribe(([_, delta]) => this.updateMovement(delta));
   }
 
@@ -282,6 +366,7 @@ export class CharacterController2dEntity<TypeDoc extends Gg2dWorldTypeDocRepo = 
         Pnt2.scalarMult(up, direction * this.options.jumpSpeed - currentAlongUp),
       );
       this._justJumped = true;
+      this._jumpCount++;
     }
   }
 
@@ -332,9 +417,10 @@ export class CharacterController2dEntity<TypeDoc extends Gg2dWorldTypeDocRepo = 
     this._wasResting = grounded;
 
     const desiredTranslation = Pnt2.add(
-      Pnt2.scalarMult(horizontalVelocity, dt),
-      Pnt2.scalarMult(this._fallVelocity, dt),
+      Pnt2.add(Pnt2.scalarMult(horizontalVelocity, dt), Pnt2.scalarMult(this._fallVelocity, dt)),
+      this.externalDisplacement,
     );
+    this.externalDisplacement = Pnt2.O;
 
     const previousPosition = this._position;
     this.characterController.move(desiredTranslation, dt);
@@ -345,6 +431,7 @@ export class CharacterController2dEntity<TypeDoc extends Gg2dWorldTypeDocRepo = 
       this.object2D.position = this._position;
       this.object2D.rotation = this._rotation;
     }
+    this._actualVelocity = dt > 0 ? Pnt2.scalarMult(Pnt2.sub(this._position, previousPosition), 1 / dt) : Pnt2.O;
 
     // Detect being blocked from above (e.g. jumping into a ceiling) while airborne and ascending -
     // see `CharacterController3dEntity.updateMovement`'s doc for the full rationale.
@@ -450,6 +537,106 @@ export class CharacterController2dEntity<TypeDoc extends Gg2dWorldTypeDocRepo = 
     if (this.object2D) {
       this.object2D.position = this._position;
       this.object2D.rotation = this._rotation;
+    }
+  }
+
+  /** `INetworkSyncable`: owner-side snapshot - see `MoverCorrection`. */
+  public captureNetworkState(): MoverNetState<Point2, number> {
+    return MoverCorrection.capture(this);
+  }
+
+  /** `INetworkSyncable`: replica-side reconciliation through `externalDisplacement` - see `MoverCorrection`. */
+  public applyNetworkState(target: MoverNetState<Point2, number>, ctx: NetworkApplyContext): void {
+    MoverCorrection.correct(this, target, ctx);
+  }
+
+  /** `INetworkInputDriven`: what the local input driver set on this character. */
+  public captureLocalInput(): CharacterInput2d {
+    return {
+      moveDirection: this.moveDirection,
+      isRunning: this.isRunning,
+      isCrouching: this._isCrouching,
+      jumpSeq: this._jumpCount,
+    };
+  }
+
+  /**
+   * `INetworkInputDriven`: drive this replica with the possessor's input; `null` is neutral (no
+   * movement, not running). A jump fires once per observed `jumpSeq` increment; the first sample
+   * only records the baseline, so a replica created mid-session never replays old jumps.
+   */
+  public applyRemoteInput(input: CharacterInput2d | null): void {
+    if (input === null) {
+      this.moveDirection = 0;
+      this.isRunning = false;
+      this._remoteJumpSeq = null;
+      return;
+    }
+    this.moveDirection = input.moveDirection;
+    this.isRunning = input.isRunning;
+    if (input.isCrouching !== this._isCrouching) {
+      this.isCrouching = input.isCrouching;
+    }
+    if (this._remoteJumpSeq !== null && input.jumpSeq > this._remoteJumpSeq) {
+      this.jump();
+    }
+    this._remoteJumpSeq = input.jumpSeq;
+  }
+
+  /**
+   * `ISerializableEntity`: the 2D `"Player"` class's `config` - capsule size, every option that
+   * differs from its default, `display` (from `displaySettings`, else the auto-generated capsule
+   * sprite's material) and a `state` block with the runtime movement state (see `CharacterState2d`).
+   */
+  public serializeSettings(): { config: Record<string, any> } {
+    const config: Record<string, any> = {
+      radius: this.options.radius,
+      centersDistance: this.options.centersDistance,
+    };
+    for (const [key, defaultValue] of Object.entries(DEFAULT_OPTIONS)) {
+      const value = (this.options as Record<string, any>)[key];
+      if (value !== undefined && JSON.stringify(value) !== JSON.stringify(defaultValue)) {
+        config[key] = value;
+      }
+    }
+    if (this.options.crouchCentersDistance !== this.options.centersDistance * 0.6) {
+      config.crouchCentersDistance = this.options.crouchCentersDistance;
+    }
+    if (this.displaySettings) {
+      config.display = this.displaySettings;
+    } else if (isMaterialReadable2d(this.object2D)) {
+      config.display = this.object2D.materialOptions;
+    }
+    config.state = {
+      isCrouching: this._isCrouching,
+      isRunning: this.isRunning,
+      moveDirection: this.moveDirection,
+      fallVelocity: this._fallVelocity,
+      airHorizontalVelocity: this._airHorizontalVelocity,
+    } as CharacterState2d;
+    return { config };
+  }
+
+  /** Apply a `CharacterState2d` block (see `serializeSettings`); every field is optional. */
+  public applyState(state: CharacterState2d): void {
+    if (state.isCrouching !== undefined) {
+      this.isCrouching = state.isCrouching;
+    }
+    if (state.isRunning !== undefined) {
+      this.isRunning = state.isRunning;
+    }
+    if (state.moveDirection !== undefined) {
+      this.moveDirection = state.moveDirection;
+    }
+    if (state.fallVelocity !== undefined) {
+      this._fallVelocity = state.fallVelocity;
+    }
+    if (state.airHorizontalVelocity !== undefined) {
+      this._airHorizontalVelocity = state.airHorizontalVelocity;
+      if (Pnt2.lenSq(state.airHorizontalVelocity) > 0) {
+        // carried airborne momentum: don't let the next tick re-seed it from ground speed
+        this._wasResting = false;
+      }
     }
   }
 }

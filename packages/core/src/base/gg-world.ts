@@ -166,6 +166,28 @@ export abstract class GgWorld<
 
   public name: string = 'w0x' + (GgWorld.default_name_counter++).toString(16);
 
+  /**
+   * Consulted by every level JSON `events` binding (see `LevelLoader.createEntity`) right before it
+   * runs its blueprint: `false` skips that run. Defaults to always `true`, so single-player
+   * behavior is unaffected. A network layer installs a rule here while a session is joined, so a
+   * gameplay-consequential binding (a coin's trigger removing the coin, say) runs on exactly the one
+   * peer holding authority over the event instead of on every peer, and restores the default on
+   * leave.
+   * @param entity - The entity the binding is attached to (the one whose observable fired)
+   * @param eventName - Name of the observable property that fired, e.g. `"onEntityEntered"`
+   * @param payload - The value the observable emitted
+   */
+  public eventAuthority: (entity: IEntity, eventName: string, payload: unknown) => boolean = () => true;
+
+  /**
+   * Consulted by the dev console before running one of this world's commands registered as mutating
+   * (`mutates: true`, see `GgStatic.registerConsoleCommand`): a returned string rejects the command
+   * with that reason, `null` lets it run. `null` (the default) means no guard. A network layer
+   * installs one while a session is joined, since a local-only edit of shared world state would
+   * silently desync peers. A local guardrail, not a trust boundary.
+   */
+  public commandGuard: ((command: string, args: string[]) => string | null) | null = null;
+
   readonly children: IEntity[] = [];
   // the same as children, but sorted by tick order
   protected readonly tickListeners: IEntity[] = [];
@@ -674,6 +696,7 @@ export abstract class GgWorld<
       command: string,
       handler: (...args: string[]) => Promise<string>,
       doc?: string,
+      mutates?: boolean,
     ) => void;
   }) {
     ggstatic.registerConsoleCommand(
@@ -687,6 +710,7 @@ export abstract class GgWorld<
       },
       'args: [ float? ]; Get current time scale of selected world clock or set it.' +
         ' Default value is 1.0 (no time scale applied)',
+      true,
     );
     ggstatic.registerConsoleCommand(
       this,
@@ -716,6 +740,7 @@ export abstract class GgWorld<
       'args: [ float? ]; Advance a paused world clock by exactly one tick of the given duration ' +
         'in milliseconds (default 8, i.e. 1000/120). Only works while the world is paused via ' +
         '"timescale 0"; rejects otherwise',
+      true,
     );
     ggstatic.registerConsoleCommand(
       this,
@@ -860,6 +885,7 @@ export abstract class GgWorld<
       },
       'args: [ string, 0|1? ]; Remove the named entity from this world, disposing it by default. ' +
         'Pass 0 as second arg to detach without disposing (e.g. before re-adding it elsewhere)',
+      true,
     );
     if (this.audioScene) {
       ggstatic.registerConsoleCommand(

@@ -1,6 +1,17 @@
 import { EMPTY, Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
-import { IEntity, Pnt3, Point3, Point4, Qtrn, TickOrder } from '../../base';
+import {
+  IEntity,
+  INetworkSyncable,
+  NetworkApplyContext,
+  Pnt3,
+  Point3,
+  Point4,
+  Qtrn,
+  RigidBodyCorrection,
+  RigidBodyNetState,
+  TickOrder,
+} from '../../base';
 import { IRigidBody3dComponent } from '../components/physics/i-rigid-body-3d.component';
 import { IDisplayObject3dComponent } from '../components/rendering/i-display-object-3d.component';
 import { IPositionable3d } from '../interfaces/i-positionable-3d';
@@ -9,7 +20,7 @@ import { Gg3dWorldTypeDocPPatch, Gg3dWorldTypeDocRepo, PhysicsTypeDocRepo3D } fr
 
 export class Entity3d<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo>
   extends IRenderable3dEntity<TypeDoc>
-  implements IPositionable3d
+  implements IPositionable3d, INetworkSyncable<RigidBodyNetState<Point3, Point4>>
 {
   static readonly entityTypeName: string = 'Entity3d';
   public readonly tickOrder = TickOrder.OBJECTS_BINDING;
@@ -143,6 +154,29 @@ export class Entity3d<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRep
         this.runTransformBinding(this.objectBody!, this.object3D);
       });
       this.runTransformBinding(this.objectBody, this.object3D);
+    }
+  }
+
+  /**
+   * `INetworkSyncable`: only an entity with a non-static rigid body takes part in networking - a
+   * purely visual entity, or a static body that never moves, has nothing to synchronize.
+   */
+  public get isNetworkSyncEnabled(): boolean {
+    return !!this.objectBody && this.objectBody.bodyOptions.bodyType !== 'static';
+  }
+
+  /** `INetworkSyncable`: owner-side snapshot of `objectBody` - see `RigidBodyCorrection`. */
+  public captureNetworkState(): RigidBodyNetState<Point3, Point4> {
+    if (!this.objectBody) {
+      return { p: this.position, r: this.rotation, lv: Pnt3.O, av: Pnt3.O, s: true };
+    }
+    return RigidBodyCorrection.capture(this.objectBody);
+  }
+
+  /** `INetworkSyncable`: replica-side correction of `objectBody` - see `RigidBodyCorrection`. No-op without a body. */
+  public applyNetworkState(target: RigidBodyNetState<Point3, Point4>, ctx: NetworkApplyContext): void {
+    if (this.objectBody) {
+      RigidBodyCorrection.correct(this.objectBody, target, ctx);
     }
   }
 }

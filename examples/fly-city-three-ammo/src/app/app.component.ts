@@ -14,6 +14,7 @@ import { filter } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 import { GameRunner } from './game-runner';
 import { GameFactory } from './game-factory';
+import { Multiplayer } from './multiplayer';
 
 export type FlyCityTypeDoc = {
   vTypeDoc: ThreeVisualTypeDocRepo,
@@ -39,6 +40,11 @@ export class AppComponent implements AfterViewInit {
   showHelpText: boolean = true;
   paused: boolean = false;
 
+  /** set when the page URL carries `?room=` */
+  mp: Multiplayer | null = null;
+  mpStatus: string = '';
+  copied: boolean = false;
+
   /** Which controls legend to show - 'entering' (walking to a car, no player control) reuses the on-foot legend, since F (cancel) is still live. */
   get legendMode(): 'freecamera' | 'onfoot' | 'driving' {
     const mode = this.runner?.state$.getValue().mode ?? 'freecamera';
@@ -61,11 +67,21 @@ export class AppComponent implements AfterViewInit {
       physicsWorld: new AmmoWorldComponent(),
       audioScene: new WebAudioScene3dComponent(),
     });
-    const factory: GameFactory = new GameFactory(this.world);
+    // multiplayer when the URL carries a room; the network controller exists before any car spawns,
+    // so chunk cars can be marked shared as they load
+    const roomId = Multiplayer.roomIdFromUrl();
+    this.mp = roomId ? new Multiplayer(this.world, roomId) : null;
+    if (this.mp) {
+      this.world.addEntity(this.mp.net);
+    }
+    const factory: GameFactory = new GameFactory(this.world, this.mp);
     const [renderer, cityMapGraph, mapBounds] = await factory.initGame(this.canvas.nativeElement);
+    if (this.mp) {
+      this.mp.camera = renderer;
+    }
     await factory.spawnLambo();
 
-    this.runner = new GameRunner(this.http, this.world, renderer, cityMapGraph, mapBounds);
+    this.runner = new GameRunner(this.http, this.world, renderer, cityMapGraph, mapBounds, this.mp);
     await this.runner.audio.initAudio();
     this.runner.setupKeyBindings();
 
@@ -93,6 +109,33 @@ export class AppComponent implements AfterViewInit {
       this.cdr.markForCheck();
     });
 
+    if (this.mp) {
+      const mp = this.mp;
+      this.mpStatus = 'connecting...';
+      this.cdr.markForCheck();
+      mp.net.peers$.subscribe(peers => {
+        this.mpStatus = `${peers.length + 1} player${peers.length ? 's' : ''} (${mp.signalingKind} signaling)`;
+        this.cdr.markForCheck();
+      });
+      await mp.net.connect();
+    }
+
     this.world.start();
+  }
+
+  createRoom() {
+    Multiplayer.createRoom();
+  }
+
+  async copyRoomUrl() {
+    if (this.mp) {
+      await navigator.clipboard.writeText(this.mp.roomUrl);
+      this.copied = true;
+      this.cdr.markForCheck();
+      setTimeout(() => {
+        this.copied = false;
+        this.cdr.markForCheck();
+      }, 1500);
+    }
   }
 }

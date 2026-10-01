@@ -161,13 +161,27 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
   private gravityVector: Ammo.btVector3 | undefined;
   protected _dynamicAmmoWorld: Ammo.btDiscreteDynamicsWorld | undefined;
 
+  // The vendored Ammo.js is an Emscripten MODULARIZE factory: calling it instantiates a fresh WASM
+  // heap and rebinds every class onto the shared `Ammo` object. Running it once per world (as init()
+  // used to) re-instantiated the heap underneath every world created earlier, whose native handles
+  // then pointed into the abandoned heap - their bodies silently stopped simulating. Initialize once
+  // per process; every world shares the module.
+  private static ammoModuleReady: Promise<unknown> | null = null;
+
+  private static initAmmoModule(): Promise<unknown> {
+    if (!AmmoWorldComponent.ammoModuleReady) {
+      AmmoWorldComponent.ammoModuleReady = Ammo.bind(Ammo)(Ammo);
+    }
+    return AmmoWorldComponent.ammoModuleReady;
+  }
+
   constructor() {
     this.added$.subscribe(c => this.children.push(c));
     this.removed$.subscribe(c => this.children.splice(this.children.indexOf(c), 1));
   }
 
   async init(): Promise<void> {
-    await Ammo.bind(Ammo)(Ammo);
+    await AmmoWorldComponent.initAmmoModule();
     this.collisionConfiguration = new Ammo.btDefaultCollisionConfiguration();
     this.dispatcher = new Ammo.btCollisionDispatcher(this.collisionConfiguration);
     this.broadphase = new Ammo.btDbvtBroadphase();

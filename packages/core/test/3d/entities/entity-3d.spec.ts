@@ -1,4 +1,4 @@
-import { AnimationMixer, Entity3d } from '../../../src';
+import { AnimationMixer, Entity3d, isNetworkSyncable } from '../../../src';
 import { mock3DBody } from '../../mocks/body.mock';
 import { mock3DObject } from '../../mocks/object.mock';
 import { Subject } from 'rxjs';
@@ -276,6 +276,28 @@ describe(`Entity3d`, () => {
       const call = jest.spyOn(gg3dEntity, 'updateVisibility');
       a.removeChildren([gg3dEntity]);
       expect(call).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('network contract', () => {
+    it('enables network sync only for an entity with a non-static rigid body', () => {
+      const dynamic = new Entity3d({ objectBody: mock3DBody() });
+      const fixed = new Entity3d({
+        objectBody: mock3DBody(undefined, {
+          bodyType: 'static',
+          mass: 0,
+          restitution: 0,
+          friction: 0,
+          ownCollisionGroups: 'all',
+          interactWithCollisionGroups: 'all',
+          ccd: false,
+        }),
+      });
+      const visualOnly = new Entity3d({ object3D: mock3DObject() });
+      expect(isNetworkSyncable(dynamic)).toBe(true);
+      expect(dynamic.isNetworkSyncEnabled).toBe(true);
+      expect(fixed.isNetworkSyncEnabled).toBe(false);
+      expect(visualOnly.isNetworkSyncEnabled).toBe(false);
     });
   });
 });

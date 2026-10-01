@@ -306,6 +306,17 @@ no `simulate()`/`checkOverlaps()` in between). Any test that removes an overlapp
 `removeFromWorld` still emits `onLeft$` inline for everything it was overlapping - that's the trigger
 leaving at a controlled point in its own lifecycle, not a reaction to someone else's removal.
 
+## `MatterTriggerComponent`'s sensor body is static
+
+A trigger's native body is `isSensor` *and* `Body.setStatic(body, true)` (set in the component's
+constructor). `Bodies.rectangle(..., { isSensor: true })` alone builds a *dynamic* body: under gravity
+matter-js integrates it like any other, and since a sensor never collides it falls straight through the
+level - overlapping and reporting static level geometry on the way down, and never being where the
+level placed it. Every existing trigger test ran with `gravity = Pnt2.O`, which hid this completely.
+Static also keeps trigger-vs-static-geometry pairs out of matter's broadphase (static-static pairs are
+never generated). Regression: `matter-trigger.component.spec.ts`'s "stays where it was placed under
+gravity" case - keep gravity on in any new trigger test.
+
 ## Character controller: a from-scratch discrete-query mover, no native sweep to lean on
 
 `MatterCharacterControllerComponent` implements `ICharacterController2dComponent` as a capsule `Body`

@@ -101,6 +101,11 @@ export class MatterTriggerComponent
   ) {
     super(nativeBody, shape);
     this.nativeBody.isSensor = true;
+    // A trigger is a fixed volume: left non-static, matter-js integrates its sensor body under
+    // gravity like any dynamic body, and since a sensor never collides it falls through the level
+    // (overlapping, and reporting, whatever it passes on the way down). Static also keeps
+    // static-static pairs (trigger vs level geometry) out of matter's broadphase entirely.
+    Body.setStatic(this.nativeBody, true);
     merge(this.onEnter$.pipe(map(() => true)), this.onLeft$.pipe(map(() => false))).subscribe(enter => {
       if (enter) {
         this.intersectionsAmount++;

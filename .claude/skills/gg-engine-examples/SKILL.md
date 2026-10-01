@@ -304,6 +304,14 @@ entities/world reference the injected script needs via a temporary `(window as a
 world, ... };` line, and remove both temporary lines before finishing - see `git diff` on the
 example's `index.ts` to confirm nothing but the intended fix remains.
 
+Driving *two* example tabs at once (e.g. a multiplayer room) adds one more trap: a hidden tab clamps
+`setTimeout` to at least one second, so a step loop that yields with `await new Promise(r =>
+setTimeout(r, 0))` crawls at one tick per second (and a `wait until joined` poll with a short
+timeout outlives the tool call). Yield through a `MessageChannel` instead (`port2.postMessage` /
+`port1.onmessage` tasks aren't throttled) - network messages (WebRTC data channels,
+`BroadcastChannel`) still get processed between steps. Start one tab's loop fire-and-forget (with a
+`window.__stop` flag to end it), then drive the other tab's scenario in its own call.
+
 **Real keyboard events do not reach a backgrounded automation tab at all** - confirmed empirically:
 dispatching a key press through the browser tool's OS-level key-press action produced *zero*
 `keydown` events even on a raw `window.addEventListener('keydown', ..., true)` listener added purely

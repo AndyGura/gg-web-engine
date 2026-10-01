@@ -63,7 +63,7 @@ BSD/GNU-portable — plain `grep`/`awk`, no `sed -i`).
 2. Polls `npm view @gg-web-engine/core version` until the just-published version is live (up to 5
    minutes) before touching dependents.
 3. In parallel, for every package in its `libs` array (`three`, `ammo`, `rapier2d`, `rapier3d`,
-   `pixi`, `matter`, `audio`): bumps its own version **and** its `@gg-web-engine/core` dependency
+   `pixi`, `matter`, `audio`, `multiplayer`): bumps its own version **and** its `@gg-web-engine/core` dependency
    version, clean-installs, formats, builds. Every `npm i` in this script passes
    `--workspaces=false` — even though `packages/*` is an npm workspace for local dev (see
    `gg-engine-core-development`), the release build must install the just-published real
@@ -143,6 +143,12 @@ excluded** from releases until you add it to:
 - the per-package build/test step list in `.github/workflows/pull_request_build.yml`
 - the root `tsconfig.json`'s `references` array (so `npm run build:watch` picks it up locally —
   not required for releases themselves, but easy to forget at the same time)
+
+Keep such a package's `devDependencies` free of *other* `@gg-web-engine/*` adapter packages (only
+`@gg-web-engine/core`, which step 3 bumps): the standalone `npm i --workspaces=false` of step 3 would
+install the previous release of those adapters, whose exact `peerDependencies` on the previous core
+conflict with the just-published one. A package whose tests need adapters (e.g. `multiplayer`'s
+in-process harness) maps their sources in its jest config and resolves them through the workspace.
 
 It does **not** need registering anywhere for local dev linking: `packages/*` is an npm workspace,
 so a new package directory is picked up by the next `npm install` automatically (see
