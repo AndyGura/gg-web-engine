@@ -54,6 +54,13 @@ earlier world afterwards is silently never simulated (no error, `position` just 
 the newest world works fine. Any page/test with two Ammo worlds (split views, an in-process multiplayer
 harness) hits this. Regression: `ammo-world.component.spec.ts`'s "several worlds in one process".
 
+A *rejected* initialization (a transient WASM fetch or instantiation failure) is not cached: the
+promise is cleared on rejection, so the next `init()` runs the factory again. That is safe, because
+no world exists on a module that never initialized. Caching the rejection would make every later
+world on the page fail instantly with no way to recover. The factory's return value is wrapped in
+`Promise.resolve`, because the Emscripten module is only a thenable and has no `catch`.
+Regression: `ammo-world-init-retry.spec.ts`, which `jest.mock`s the vendored factory to reject once.
+
 ## Sleeping bodies silently ignored programmatic transform/velocity writes
 
 See `gg-engine-physics-adapter`'s general contract note on this (the cross-adapter version of the

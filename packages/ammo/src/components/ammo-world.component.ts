@@ -165,12 +165,19 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
   // heap and rebinds every class onto the shared `Ammo` object. Running it once per world (as init()
   // used to) re-instantiated the heap underneath every world created earlier, whose native handles
   // then pointed into the abandoned heap - their bodies silently stopped simulating. Initialize once
-  // per process; every world shares the module.
+  // per process; every world shares the module. A failed initialization (e.g. a transient WASM fetch
+  // error) is not kept: no world exists on that module, so the next init() simply tries again.
   private static ammoModuleReady: Promise<unknown> | null = null;
 
   private static initAmmoModule(): Promise<unknown> {
     if (!AmmoWorldComponent.ammoModuleReady) {
-      AmmoWorldComponent.ammoModuleReady = Ammo.bind(Ammo)(Ammo);
+      const ready = Promise.resolve(Ammo.bind(Ammo)(Ammo));
+      AmmoWorldComponent.ammoModuleReady = ready;
+      ready.catch(() => {
+        if (AmmoWorldComponent.ammoModuleReady === ready) {
+          AmmoWorldComponent.ammoModuleReady = null;
+        }
+      });
     }
     return AmmoWorldComponent.ammoModuleReady;
   }
