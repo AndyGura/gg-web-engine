@@ -140,6 +140,13 @@ join handshakes, link latency) runs on the injected `NetScheduler`, never on `ti
   "possessor became null"; and `isLocallyOwned` is `true` for a not-yet-classified (not networked)
   entity, hence the `isNetworked` guard. A peer back from away should respawn its character if it's
   gone (`resynced$`).
+- **Every record always has an owner, also outside a session.** `leave()` makes the local peer owner
+  of everything (it is alone) and keeps its possessions, queued in `desiredPossessions`. Without that,
+  a reconnect started from stale owners - one that left the room meanwhile was neither connected nor
+  `departed`, so nothing ever reclaimed its entities, frozen on its last snapshot. A `connect()` after
+  a session is a *rejoin*: dumps are applied with force (the room's ownership wins whatever the
+  epochs), the queued possessions are taken at once, and a non-shared record nobody vouched for is
+  gone from the room - removed if it was a remote spawn, re-announced (`spawn`) if it was our own.
 - **Presence `ts` is refreshed every 2 minutes**, because the optional backstop sweep deletes presence
   older than 10 minutes. The sweep needs the Blaze plan and the default project runs without it, so
   the client must never depend on it - `onDisconnect()` removal is the cleanup mechanism.

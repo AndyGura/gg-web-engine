@@ -258,6 +258,8 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
   private previousEventAuthority: GgWorld<any, any>['eventAuthority'] | null = null;
   private previousCommandGuard: GgWorld<any, any>['commandGuard'] | null | undefined = undefined;
   private possessedBeforeAway: IEntity[] = [];
+  /** whether a session was ever joined - a later `connect()` is a rejoin of entities this peer already holds */
+  private everJoined = false;
   private contactPairsThisTick = new Set<string>();
   private readonly timers: unknown[] = [];
   private readonly subscriptions: Subscription[] = [];
@@ -401,7 +403,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       this.startTimers();
       const others = [...this.transport.peers];
       if (others.length > 0) {
-        await this.requestDumps(others, true);
+        await this.requestDumps(others, this.everJoined ? 'rejoin' : 'join');
       }
     } catch (e) {
       if (generation !== this.sessionGeneration) {
@@ -415,18 +417,45 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       return;
     }
     this.installSessionHooks();
+    this.everJoined = true;
     this._sessionState$.next('joined');
     this.processPending();
     this.possessDesired();
   }
 
-  /** Leave the room: disconnect the transport (peers take over what this peer owned) and restore single-player hooks. */
+  /**
+   * Leave the room: disconnect the transport (peers take over what this peer owned) and restore
+   * single-player hooks. Alone again, the local peer owns every entity and keeps its possessions; a
+   * later {@link connect} adopts the room's ownership and re-possesses them at once.
+   */
   leave(): void {
     if (this.sessionState === 'idle' || this.sessionState === 'left') {
       return;
     }
+    for (const rec of this.records.values()) {
+      if (rec.possessor === this.localPeerId) {
+        this.desiredPossessions.add(rec.entity);
+      }
+    }
+    for (const entity of this.possessedBeforeAway) {
+      this.desiredPossessions.add(entity);
+    }
+    this.possessedBeforeAway = [];
     this.sessionGeneration++;
     this.teardownSession();
+    for (const rec of this.records.values()) {
+      if (rec.possessor !== null && rec.possessor !== this.localPeerId) {
+        this.setPossessor(rec, null);
+      }
+      if (rec.owner !== this.localPeerId) {
+        this.setOwner(rec, this.localPeerId, Math.max(rec.epoch, 0));
+      }
+    }
+    this.departed.clear();
+    this.lastPositions.clear();
+    this.heldState.clear();
+    this.heldSpawnItems.clear();
+    this.pendingStateRequests.clear();
     this._sessionState$.next('left');
   }
 
@@ -1837,11 +1866,15 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     return dump;
   }
 
-  private async requestDumps(peerIds: string[], initial: boolean): Promise<void> {
+  /**
+   * Ask `peerIds` for their join dumps and apply them: `'join'` - a first join; `'rejoin'` - a
+   * `connect()` after `leave()`, holding entities of the earlier session; `'resync'` - back from away.
+   */
+  private async requestDumps(peerIds: string[], mode: 'join' | 'rejoin' | 'resync'): Promise<void> {
     if (!this.world) {
       return;
     }
-    if (initial && !this.world.isPaused && this.world.isRunning) {
+    if (mode !== 'resync' && !this.world.isPaused && this.world.isRunning) {
       this.world.pauseWorld();
       this.pausedForJoin = true;
     }
@@ -1872,7 +1905,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       return; // left meanwhile - the teardown already resumed the world
     }
     try {
-      await this.applyDumps(join!.dumps, !initial);
+      await this.applyDumps(join!.dumps, mode);
     } finally {
       if (this.pausedForJoin) {
         this.pausedForJoin = false;
@@ -1881,7 +1914,13 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     }
   }
 
-  private async applyDumps(dumps: Extract<WireMessage, { t: 'joinDump' }>[], resync: boolean): Promise<void> {
+  private async applyDumps(
+    dumps: Extract<WireMessage, { t: 'joinDump' }>[],
+    mode: 'join' | 'rejoin' | 'resync',
+  ): Promise<void> {
+    const resync = mode === 'resync';
+    // what this peer still holds from an earlier session takes the room's word for its ownership
+    const force = mode !== 'join';
     const levels = new Set<string>();
     for (const dump of dumps) {
       dump.sharedLevels.forEach(l => levels.add(l));
@@ -1916,7 +1955,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
         covered.add(item.entityId);
         const rec = this.records.get(item.entityId);
         if (rec) {
-          this.applySpawnItem(rec, item, from, resync);
+          this.applySpawnItem(rec, item, from, force);
         } else if (item.descriptor) {
           spawns.push(this.spawnFromItem(from, item));
         } else {
@@ -1925,6 +1964,21 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       }
     }
     await Promise.all(spawns);
+    if (mode === 'rejoin') {
+      // everything here is ours since leaving; what nobody vouched for the room no longer has: a remote
+      // spawn was despawned meanwhile, a runtime spawn of our own was lost with our departure
+      for (const rec of [...this.records.values()]) {
+        if (covered.has(rec.id) || rec.owner !== this.localPeerId || rec.shared) {
+          continue;
+        }
+        if (this.networkSpawned.has(rec.entity)) {
+          this.unregister(rec);
+          this.removeLocally(rec.entity);
+        } else {
+          this.broadcastSpawn(rec);
+        }
+      }
+    }
     if (resync) {
       // whatever we still believe we own but nobody vouched for stays ours; everything else
       // remote that wasn't in any dump has no live owner - let arbitration pick it up
@@ -1987,7 +2041,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     const generation = this.sessionGeneration;
     const others = [...this.transport.peers];
     if (others.length > 0) {
-      await this.requestDumps(others, false);
+      await this.requestDumps(others, 'resync');
     }
     if (generation !== this.sessionGeneration || this.sessionState !== 'away') {
       return;

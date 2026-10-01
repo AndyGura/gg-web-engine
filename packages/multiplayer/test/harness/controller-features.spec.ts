@@ -179,6 +179,60 @@ describe('NetworkController features', () => {
     expect(b.net.sessionState).toBe('joined');
   });
 
+  it('owns everything after leave(), and on reconnecting adopts the room and takes its possessions back', async () => {
+    h = new Harness(adapter);
+    const a = await h.addPeer('a');
+    const b = await h.addPeer('b');
+    const c = await h.addPeer('c');
+    const ofC = adapter.addBox(c.world, adapter.at(4, 1));
+    const ofB = adapter.addBox(b.world, adapter.at(0, 1));
+    const doomed = adapter.addBox(a.world, adapter.at(-4, 1));
+    await h.run(5);
+    b.net.possess(ofB);
+    await h.run(5);
+    b.net.leave();
+    const ofCOnB = findByName(h, 'b', ofC.name);
+    expect(b.net.ownerOf(ofCOnB)).toBe('b');
+    expect(b.net.isLocallyPossessed(ofB)).toBe(true);
+    await h.run(5);
+    a.net.despawn(findByName(h, 'a', doomed.name));
+    c.net.leave(); // ofC's owner is gone by the time b is back
+    await h.run(Math.ceil(5000 / TICK_MS));
+    const rejoin = b.net.connect();
+    await h.run(10);
+    await rejoin;
+    await h.run(10);
+    expect(b.net.sessionState).toBe('joined');
+    expect(b.net.ownerOf(ofCOnB)).toBe(a.net.ownerOf(findByName(h, 'a', ofC.name)));
+    expect(b.net.ownerOf(ofCOnB)).not.toBe('c');
+    expect(findByName(h, 'b', doomed.name)).toBeUndefined();
+    expect(b.net.isLocallyPossessed(ofB)).toBe(true);
+    expect(a.net.possessorOf(findByName(h, 'a', ofB.name))).toBe('b');
+  });
+
+  it('re-announces its own runtime spawn the room lost while it was gone', async () => {
+    h = new Harness(adapter);
+    const a = await h.addPeer('a');
+    const b = await h.addPeer('b');
+    const ofB = adapter.addBox(b.world, adapter.at(0, 1));
+    await h.run(5);
+    b.net.possess(ofB);
+    await h.run(5);
+    b.net.leave();
+    await h.run(5);
+    // the taker removes a departed player's character, as games do
+    a.net.despawn(findByName(h, 'a', ofB.name));
+    await h.run(5);
+    expect(findByName(h, 'a', ofB.name)).toBeUndefined();
+    const rejoin = b.net.connect();
+    await h.run(10);
+    await rejoin;
+    await h.run(10);
+    expect(ofB.world).toBe(b.world);
+    expect(b.net.isLocallyPossessed(ofB)).toBe(true);
+    expect(a.net.possessorOf(findByName(h, 'a', ofB.name))).toBe('b');
+  });
+
   it('leave() while waiting for join dumps cancels the join', async () => {
     h = new Harness(adapter);
     const a = await h.addPeer('a');
