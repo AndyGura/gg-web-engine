@@ -72,7 +72,8 @@ where one exists.
   second world used to re-instantiate the WASM heap under the first, whose new bodies then silently
   stopped simulating.
 - `matter`: trigger sensor bodies are static - they used to fall under gravity (through the level,
-  reporting static geometry on the way down).
+  reporting static geometry on the way down). Kinematic and sleeping bodies, which matter-js never
+  pairs with a static body, are detected by polling.
 - Setting a character's `isCrouching` before it is spawned now takes effect: the capsule is rebuilt
   on spawn.
 - `matter`: `MatterRigidBodyComponent.rotation`'s setter now calls `Body.setAngle` instead of
