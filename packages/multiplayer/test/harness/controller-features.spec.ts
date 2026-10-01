@@ -167,6 +167,29 @@ describe('NetworkController features', () => {
     expect(world.commandGuard).toBeNull();
   });
 
+  it('prefixes default names with one peer id, and only while that controller is in a world', async () => {
+    h = new Harness(adapter);
+    const make = async (id: string) => {
+      const world = await adapter.createWorld();
+      const net = new Network3dController({ transport: h.hub.createTransport(id), scheduler: h.scheduler });
+      return { world, net };
+    };
+    const p = await make('p');
+    const q = await make('q');
+    const beforeAdding = adapter.addBox(p.world, adapter.at(0, 1));
+    expect(beforeAdding.name).not.toContain('.');
+    p.world.addEntity(p.net);
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    q.world.addEntity(q.net);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('prefixEntityNames'));
+    warn.mockRestore();
+    expect(adapter.addBox(q.world, adapter.at(0, 1)).name).toMatch(/^p\.[^.]+$/);
+    p.world.removeEntity(p.net);
+    expect(adapter.addBox(p.world, adapter.at(0, 1)).name).not.toContain('.');
+    p.world.dispose();
+    q.world.dispose();
+  });
+
   it('a runtime spawn may reuse the name of an entity despawned earlier', async () => {
     h = new Harness(adapter);
     const a = await h.addPeer('a');

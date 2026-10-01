@@ -107,8 +107,13 @@ join handshakes, link latency) runs on the injected `NetScheduler`, never on `ti
 - **2D worlds are pixels.** Both 2D physics adapters work at 100 px/m; every distance default (deadzone,
   snap distance, ownership floor, impulse threshold) is scaled by `unitScale` (`Network2dController`
   defaults it to 100). A 1-unit test box in a 2D world is a 1-pixel box and behaves absurdly.
-- **One controller per process**: the default-name middleware (`prefixEntityNames`) is process-global;
-  the in-process harness turns it off.
+- **One prefixing controller per process.** The default-name middleware (`prefixEntityNames`) is
+  process-wide, because names are generated at construction, before an entity has a world. It is
+  registered while the controller is in a world (`onSpawned` to `onRemoved`), not only while
+  connected: an entity built before `connect()` (the player's character) still needs a peer-unique
+  name once it is networked. A second prefixing controller warns and doesn't register, so prefixes
+  never stack. The in-process harness turns prefixing off for every peer. Shared content must be named
+  explicitly, because its auto-generated names differ between peers.
 - **`connect()` must not decide whom to wait for before presence is known** - wait for the first
   presence snapshot containing the local peer, plus the signaling's `discoveryDelayMs`
   (`BroadcastChannelSignaling` peers only answer a newcomer's announcement), or a joiner thinks it is

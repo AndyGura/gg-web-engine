@@ -90,7 +90,12 @@ export interface NetworkControllerOptions<D> {
   takeoverOnHidden?: boolean;
   /** after a resync, re-possess what was possessed before going away. Default true. */
   repossessOnReturn?: boolean;
-  /** prefix auto-generated entity names with the local peer id. Default true. */
+  /**
+   * Prefix auto-generated entity names with the local peer id while the controller is in a world,
+   * so runtime spawns of different peers never share a name. The default-name middleware is
+   * process-wide, so only one controller per process can prefix (a second one warns and doesn't).
+   * Default true.
+   */
   prefixEntityNames?: boolean;
   /** tint replicas' physics debug view (`debug_view`). Default true. */
   tintReplicas?: boolean;
@@ -259,7 +264,9 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
   private readonly transportSubscriptions: Subscription[] = [];
   // sender of each received join dump, for clock conversion of its timestamps
   private readonly dumpSenders = new WeakMap<object, string>();
-  private readonly unregisterNameMiddleware: (() => void) | null = null;
+  private unregisterNameMiddleware: (() => void) | null = null;
+  /** the controller whose peer id the process-wide default-name middleware currently prefixes */
+  private static prefixingController: NetworkController | null = null;
   private readonly registeredCommands: string[] = [];
 
   private readonly _sessionState$ = new BehaviorSubject<NetworkSessionState>('idle');
@@ -308,10 +315,6 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       tintReplicas: options.tintReplicas ?? true,
       replicaTint: options.replicaTint ?? 0xff6ec7,
     };
-    if (this.opts.prefixEntityNames) {
-      const prefix = () => this.transport.localPeerId;
-      this.unregisterNameMiddleware = IEntity.useDefaultNameMiddleware(name => `${prefix()}.${name}`);
-    }
   }
 
   // ---------------------------------------------------------------------------------------------
@@ -508,6 +511,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
    * Declare entities shared content: built locally by every peer from the same source with the same
    * deterministic names (a chunk's cars, a seeded spawn). Shared entities never travel as spawn
    * descriptors - only their state does; a peer that loads one asks the room for its current state.
+   * Name them explicitly: auto-generated names differ between peers (see `prefixEntityNames`).
    * Call right after creating them (before the next world tick).
    */
   markShared(entities: IEntity | IEntity[]): void {
@@ -616,6 +620,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
 
   onSpawned(world: GgWorld<D, R>): void {
     super.onSpawned(world);
+    this.installNamePrefix();
     if (!this.levelLoader) {
       this.levelLoader = this.createDefaultLevelLoader(world);
     }
@@ -646,6 +651,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     if (world) {
       this.deregisterConsoleCommands(world);
     }
+    this.uninstallNamePrefix();
     super.onRemoved();
   }
 
@@ -654,7 +660,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       this.world.removeEntity(this);
     }
     this.leave();
-    this.unregisterNameMiddleware?.();
+    this.uninstallNamePrefix();
     for (const rec of [...this.records.values()]) {
       this.unregister(rec);
     }
@@ -667,6 +673,30 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     this._spawnFailed$.complete();
     this._resynced$.complete();
     super.dispose();
+  }
+
+  private installNamePrefix(): void {
+    if (!this.opts.prefixEntityNames || this.unregisterNameMiddleware) {
+      return;
+    }
+    if (NetworkController.prefixingController) {
+      warnOnce(
+        'NetworkController: another controller already prefixes default entity names in this process - ' +
+          'pass `prefixEntityNames: false` to all but one',
+      );
+      return;
+    }
+    NetworkController.prefixingController = this;
+    const unregister = IEntity.useDefaultNameMiddleware(name => `${this.localPeerId}.${name}`);
+    this.unregisterNameMiddleware = () => {
+      unregister();
+      NetworkController.prefixingController = null;
+    };
+  }
+
+  private uninstallNamePrefix(): void {
+    this.unregisterNameMiddleware?.();
+    this.unregisterNameMiddleware = null;
   }
 
   /** Build the level loader used when none was passed - overridden by the 2D/3D controllers. */
