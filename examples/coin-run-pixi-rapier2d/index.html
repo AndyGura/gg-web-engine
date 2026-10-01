@@ -10,6 +10,7 @@
       body {
         margin: 0;
         overflow: hidden;
+        background: #111;
       }
       #hud {
         position: absolute;
@@ -19,15 +20,62 @@
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
+        column-gap: 1rem;
         color: white;
         font-family: monospace;
-        font-size: 1rem;
+        font-size: 0.95rem;
         text-shadow: 0 0 3px #000;
         pointer-events: none;
       }
       #hud button, #hud input {
         pointer-events: auto;
         font-family: monospace;
+      }
+      #scores {
+        min-width: 16rem;
+        padding: 0.6rem 0.8rem;
+        border-radius: 0.5rem;
+        background: rgba(0, 0, 0, 0.45);
+      }
+      #scores .title {
+        font-size: 1.3rem;
+        font-weight: bold;
+        color: #ffd166;
+      }
+      #scores .rule, #scores .help {
+        margin: 0.2rem 0 0.5rem;
+        font-size: 0.8rem;
+        opacity: 0.75;
+      }
+      #scores .help {
+        margin: 0.6rem 0 0;
+      }
+      #scores .row {
+        display: flex;
+        align-items: center;
+        column-gap: 0.5rem;
+        padding: 0.1rem 0;
+      }
+      #scores .row .name {
+        flex: 1;
+      }
+      #scores .row.lead b::after {
+        content: ' \2605';
+        color: #ffd166;
+      }
+      #scores .dot {
+        width: 0.8rem;
+        height: 0.8rem;
+        border-radius: 50%;
+      }
+      #status {
+        flex: 1;
+        text-align: center;
+        font-size: 1.1rem;
+        padding-top: 0.4rem;
+      }
+      #status .hurry {
+        color: #ef476f;
       }
       #room {
         display: flex;
@@ -42,20 +90,28 @@
         position: absolute;
         inset: 0;
         display: none;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
         color: white;
         font-family: monospace;
-        font-size: 3rem;
-        text-shadow: 0 0 6px #000;
+        text-shadow: 0 0 8px #000, 0 0 2px #000;
         pointer-events: none;
+      }
+      #banner .big {
+        font-size: 4rem;
+        font-weight: bold;
+      }
+      #banner .small {
+        font-size: 1.3rem;
       }
     </style>
     <canvas id='gg'></canvas>
     <div id='hud'>
       <div id='scores'></div>
+      <div id='status'></div>
       <div id='room'></div>
     </div>
-    <div id='banner'></div>
+    <div id='banner'><div class='big'></div><div class='small'></div></div>
   </body>
 </html>

@@ -6,7 +6,7 @@
 #
 # Usage: bash etc/switch_example_to_local_gg.sh examples/<example-dir>
 #
-# Idempotent: always resets package.json/tsconfig.json to their committed state first, so re-runs
+# Idempotent: always resets package.json and friends to their committed state first, so re-runs
 # (e.g. after a fresh `npm install`) never compound edits. Undo with
 # restore_example_from_local_gg.sh.
 set -e
@@ -21,19 +21,34 @@ function sedi {
   sed -i.bak "$1" "$2" && rm -f "$2.bak"
 }
 
-function fix_ammo_paths {
-  grep -q '@gg-web-engine/ammo/node_modules/mini-signals' tsconfig.json ||
-    sedi 's/\/mini-signals/\/@gg-web-engine\/ammo\/node_modules\/mini-signals/' tsconfig.json
+# A linked package resolves its peer dependencies (pixi.js, three, rxjs, the rapier builds, ...) from
+# its own real location - with the root npm workspace, the repo root's node_modules - while the
+# example resolves them from its own node_modules. Two copies of one library break anything compared
+# by identity (pixi's Texture.WHITE, three's classes, rxjs types), so replace the example's copy of
+# every linked package's peer dependency with a symlink to the copy that package actually uses: one
+# copy for webpack and tsc alike.
+function dedupe_peer_deps {
+  node - "$@" <<'NODE'
+const fs = require('fs');
+const path = require('path');
+for (const pkgDir of process.argv.slice(2)) {
+  const peers = Object.keys(require(path.join(pkgDir, 'package.json')).peerDependencies || {});
+  for (const dep of peers.filter(d => !d.startsWith('@gg-web-engine/'))) {
+    const own = path.join('node_modules', dep);
+    if (!fs.existsSync(own)) continue;
+    let target = null;
+    for (let dir = pkgDir; !target; dir = path.dirname(dir)) {
+      const candidate = path.join(dir, 'node_modules', dep);
+      if (fs.existsSync(candidate)) target = fs.realpathSync(candidate);
+      if (path.dirname(dir) === dir) break;
+    }
+    if (!target || fs.realpathSync(own) === target) continue;
+    fs.rmSync(own, { recursive: true, force: true });
+    fs.symlinkSync(target, own, 'dir');
+    console.log(`deduped ${dep} -> ${target}`);
+  }
 }
-
-function fix_three_paths {
-  grep -q '"three":' tsconfig.json ||
-    sedi 's/"paths": {/"paths": {\n"three": [".\/node_modules\/@gg-web-engine\/three\/node_modules\/three"],/' tsconfig.json
-}
-
-function fix_pixi_paths {
-  grep -q '"pixi.js":' tsconfig.json ||
-    sedi 's/"paths": {/"paths": {\n"pixi.js": [".\/node_modules\/@gg-web-engine\/pixi\/node_modules\/pixi.js"],/' tsconfig.json
+NODE
 }
 
 # Examples that reference a shared examples/assets asset ship webpack.dev.config.js with a
@@ -58,29 +73,15 @@ function fix_dev_server_assets {
 
 pushd "$1"
 
-# always start from the committed state so re-runs are idempotent instead of compounding patches
-git checkout -- package.json tsconfig.json webpack.dev.config.js angular.json 2>/dev/null || true
+# always start from the committed state so re-runs are idempotent instead of compounding patches -
+# only the files this example has (one missing pathspec makes `git checkout` restore nothing at all)
+git checkout -- $(git ls-files package.json tsconfig.json webpack.dev.config.js angular.json)
 
 libs=($(grep '@gg-web-engine/' package.json | awk -F'/|:' '{print $2}' | tr -d '", '))
 link_paths=''
-has_three=false
-has_ammo=false
-has_pixi=false
 for ix in ${!libs[*]}
 do
   link_paths=$link_paths' '"$repo_root"'/packages/'${libs[$ix]}
-  if [ ${libs[$ix]} == three ]
-  then
-    has_three=true
-  fi
-  if [ ${libs[$ix]} == ammo ]
-  then
-    has_ammo=true
-  fi
-  if [ ${libs[$ix]} == pixi ]
-  then
-    has_pixi=true
-  fi
 done
 
 # perform patch
@@ -90,17 +91,6 @@ npm install
 # having registered a global link first, and no risk of colliding with a same-named package linked
 # globally by some other checkout of this repo.
 npm link $link_paths
-if [ $has_ammo == true ]
-then
-  fix_ammo_paths
-fi
-if [ $has_three == true ]
-then
-  fix_three_paths
-fi
-if [ $has_pixi == true ]
-then
-  fix_pixi_paths
-fi
+dedupe_peer_deps $link_paths
 fix_dev_server_assets
 popd

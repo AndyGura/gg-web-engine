@@ -67,9 +67,8 @@ bash etc/switch_example_to_local_gg.sh examples/<your-example-dir>
 ```
 
 This strips the `@gg-web-engine/*` lines from the example's `package.json`, `npm link`s the local
-`packages/*` builds in by path instead, and patches `tsconfig.json` path mappings for libraries
-whose types live under a linked package's own `node_modules` (three/pixi/ammo — see the
-`fix_*_paths` functions in the script). It's idempotent (safe to re-run) and reversible — undo it
+`packages/*` builds in by path instead, and dedupes their peer dependencies (`dedupe_peer_deps` -
+see below). It's idempotent (safe to re-run) and reversible — undo it
 with `bash etc/restore_example_from_local_gg.sh examples/<your-example-dir>`. Run `npm install` at
 the repo root first if the local adapter packages themselves need to pick up local core changes;
 for the full "edit core, see it live in this example" watch-mode loop (`tsc -b
@@ -88,6 +87,26 @@ needed at all — go straight to `npm run build`/`npm start` after the script fi
 did run a bare `npm install` afterwards by mistake, just re-run
 `bash etc/switch_example_to_local_gg.sh examples/<your-example-dir>` (idempotent) to relink before
 building again.
+
+**Every peer dependency of a linked package must be one physical copy.** A linked package resolves
+its peers (`pixi.js`, `three`, `rxjs`, the rapier compat builds, `firebase`, `mini-signals`) from its
+real location - with the root npm workspace hoisting everything, the repo root's `node_modules` -
+while the example's own imports resolve its own `node_modules`. Two copies break anything compared by
+identity: a pixi `Text`/`Graphics` built by the example holds its copy's `Texture.WHITE`, the
+adapter's renderer compares against the other copy's, treats the fill as a texture pattern and throws
+`Failed to execute 'createPattern' on 'CanvasRenderingContext2D'` on the first render (three's
+classes and rxjs types fail similarly). The script's `dedupe_peer_deps` replaces the example's copy of
+each linked package's peer with a symlink to the copy that package resolves, which fixes webpack and
+`tsc` at once - so an example's committed `tsconfig.json` `paths` (e.g. ammo examples' `mini-signals`
+mapping into `./node_modules/...`) stay valid as they are. A published install never has the problem
+(peers dedupe). To confirm one copy in a running dev server: `curl -s localhost:<port>/main.js | grep
+-o '"[^"]*node_modules/pixi.js/lib/index.mjs"' | sort -u` prints one path.
+
+The script resets `package.json`/`tsconfig.json`/`webpack.dev.config.js`/`angular.json` with `git
+checkout -- $(git ls-files ...)`, i.e. only the ones the example tracks: `git checkout` with any
+pathspec that matches nothing restores *none* of the others, so listing `angular.json` for a webpack
+example would silently skip the reset and a re-run would read an already-stripped `package.json` and
+link nothing. Keep that `git ls-files` filter when adding a file to either script's reset list.
 
 **The script's very first step is `git checkout -- package.json tsconfig.json
 webpack.dev.config.js`** (that's what makes re-running it idempotent instead of compounding

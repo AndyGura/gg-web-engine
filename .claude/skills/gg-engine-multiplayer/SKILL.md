@@ -124,6 +124,15 @@ join handshakes, link latency) runs on the injected `NetScheduler`, never on `ti
   after each `await`. The teardown also resolves a pending join and resumes a world paused for it, so
   nothing finishes joining a session that was left. A failed join (transport error, level mismatch)
   tears the session down to `'idle'`, so `connect()` can be retried; never leave it in `'connecting'`.
+- **A departed peer's possessed entities stay in the world.** The takeover election (nearest remaining
+  peer) only moves ownership to the taker and clears possession; removing a departed player's
+  character is the game's decision. The pattern: on `peers$` and `ownershipChanged$`, `despawn` every
+  character whose player isn't in `[localPeerId, ...peerInfos]` and that is `isNetworked` and
+  `isLocallyOwned` - so only the taker removes it. Two traps: a hidden tab (`goAway`) triggers the same
+  takeover while its peer stays in `peerInfos` (with `away: true`), so check presence, never just
+  "possessor became null"; and `isLocallyOwned` is `true` for a not-yet-classified (not networked)
+  entity, hence the `isNetworked` guard. A peer back from away should respawn its character if it's
+  gone (`resynced$`).
 - **Presence `ts` is refreshed every 2 minutes**, because the optional backstop sweep deletes presence
   older than 10 minutes. The sweep needs the Blaze plan and the default project runs without it, so
   the client must never depend on it - `onDisconnect()` removal is the cleanup mechanism.
