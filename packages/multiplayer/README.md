@@ -98,8 +98,12 @@ while joined - a local-only edit would desync peers. With `debug_view`, replicas
 
 ### Firebase project setup
 `FirebaseSignaling` uses `DEFAULT_FIREBASE_CONFIG` (the maintainer's project) unless you pass
-`config`. To run your own project: enable **Anonymous** authentication and the **Realtime Database**,
-optionally App Check (pass `appCheckSiteKey`). Data lives under `gg-rooms/{roomId}`:
+`config`. To run your own project, follow
+[`firebase/README.md`](https://github.com/AndyGura/gg-web-engine/tree/main/packages/multiplayer/firebase)
+in the repo - it holds the deployable rules and the optional sweep function: enable **Anonymous**
+authentication and the **Realtime Database**, deploy the rules, optionally App Check (pass
+`appCheckSiteKey`). Everything the client needs runs on the free Spark plan. Data lives under
+`gg-rooms/{roomId}`:
 
 | Node | Shape | Written by |
 |---|---|---|
@@ -114,5 +118,6 @@ The rules the client relies on:
 - `signals/{to}`: readable only by the uid that owns `presence/{to}`; a message is created with
   `uid === auth.uid` and validated for shape/size, and may be deleted (never edited) afterwards.
 
-Every node a client writes is registered with `onDisconnect().remove()`. As a backstop, schedule a
-function that removes presence/signal nodes older than 10 minutes and rooms with no live presence.
+Every node a client writes is registered with `onDisconnect().remove()`. The optional backstop
+(`firebase/functions`, needs the Blaze plan) is a scheduled function removing presence/signal nodes
+older than 10 minutes and rooms with no live presence.

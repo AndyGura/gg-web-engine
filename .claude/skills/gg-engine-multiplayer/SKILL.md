@@ -30,7 +30,7 @@ packages/multiplayer/src/sync/   transport-agnostic: NetworkController (+ 2D/3D)
                                  ClockSync, chunking, ownership strategies, LinkConditioner
 packages/multiplayer/src/p2p/    WebRtcMeshTransport, ISignalingChannel, FirebaseSignaling,
                                  BroadcastChannelSignaling, zoning, room URL helpers
-packages/multiplayer/firebase/   deploy files (gitignored except README) - rules + sweep function
+packages/multiplayer/firebase/   deployable rules + optional sweep function (not in the npm package)
 packages/multiplayer/test/       sync unit tests, in-process harness (all 4 physics adapters),
                                  p2p tests (fake RTCPeerConnection, fake Firebase), bot harness
 ```
@@ -113,8 +113,13 @@ join handshakes, link latency) runs on the injected `NetScheduler`, never on `ti
   presence snapshot containing the local peer, plus the signaling's `discoveryDelayMs`
   (`BroadcastChannelSignaling` peers only answer a newcomer's announcement), or a joiner thinks it is
   alone and claims everything.
-- **Presence `ts` is refreshed every 2 minutes**, because the backstop sweep deletes presence older than
-  10 minutes.
+- **Presence `ts` is refreshed every 2 minutes**, because the optional backstop sweep deletes presence
+  older than 10 minutes. The sweep needs the Blaze plan and the default project runs without it, so
+  the client must never depend on it - `onDisconnect()` removal is the cleanup mechanism.
+- **A rules change is a contract change.** `firebase/database.rules.json` is deployed by hand
+  (`firebase deploy --only database`); keep it and the package README's rule list in agreement when
+  changing what the client writes. The in-memory stub (`test/stubs/firebase.ts`) doesn't enforce rules,
+  so a mismatch only shows up live, as `PERMISSION_DENIED` in the browser console.
 
 ## Testing
 

@@ -1,0 +1,31 @@
+{
+  "rules": {
+    "gg-rooms": {
+      "$room": {
+        ".validate": "$room.matches(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/)",
+        "meta": {
+          ".read": "auth != null",
+          ".write": "auth != null && (!data.exists() || data.child('uid').val() === auth.uid)",
+          ".validate": "!newData.exists() || (newData.hasChildren(['createdAt', 'uid']) && newData.child('uid').val() === auth.uid)"
+        },
+        "presence": {
+          ".read": "auth != null",
+          "$peer": {
+            ".write": "auth != null && (!data.exists() || data.child('uid').val() === auth.uid)",
+            ".validate": "!newData.exists() || ($peer.matches(/^[0-9a-z]{1,32}$/) && newData.hasChildren(['uid', 'cell', 'ts']) && newData.child('uid').val() === auth.uid && newData.child('cell').isString() && newData.child('cell').val().length <= 32)"
+          }
+        },
+        "signals": {
+          "$to": {
+            ".read": "auth != null && root.child('gg-rooms').child($room).child('presence').child($to).child('uid').val() === auth.uid",
+            ".write": "auth != null && !newData.exists()",
+            "$msg": {
+              ".write": "auth != null && (!data.exists() || !newData.exists())",
+              ".validate": "!newData.exists() || (newData.hasChildren(['uid', 'from', 'payload', 'ts']) && newData.child('uid').val() === auth.uid && newData.child('from').isString() && newData.child('payload').isString() && newData.child('payload').val().length <= 16000)"
+            }
+          }
+        }
+      }
+    }
+  }
+}

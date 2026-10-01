@@ -20,12 +20,20 @@ import { ISignalingChannel, PresenceEntry, SdpOrIce } from './signaling';
 import { generateRoomId } from './room-url';
 
 /**
- * The engine maintainer's Firebase project, used when no `config` is passed. `null` until the
- * maintainer fills in the project's public web config (project id, database URL, API key - these are
- * public identifiers, not secrets; access is governed by the database rules documented in the
- * package README). Pass your own `config` to run against your own project.
+ * The engine maintainer's Firebase project, used when no `config` is passed. Its web config (project
+ * id, database URL, API key) is a set of public identifiers, not secrets: access is governed by the
+ * database rules in the repo's `packages/multiplayer/firebase/`. Pass your own `config` to run against
+ * your own project.
  */
-export const DEFAULT_FIREBASE_CONFIG: FirebaseOptions | null = null;
+export const DEFAULT_FIREBASE_CONFIG: FirebaseOptions | null = {
+  apiKey: 'AIzaSyBlf9JZ_-uGKWAEmbv4M1FMeW8AJ0A6dCU',
+  authDomain: 'gg-web-engine-public.firebaseapp.com',
+  databaseURL: 'https://gg-web-engine-public-default-rtdb.europe-west1.firebasedatabase.app',
+  projectId: 'gg-web-engine-public',
+  storageBucket: 'gg-web-engine-public.firebasestorage.app',
+  messagingSenderId: '431308664646',
+  appId: '1:431308664646:web:2469a4d3e62cdef8603f47',
+};
 
 export interface FirebaseSignalingOptions {
   /** Firebase web config; defaults to {@link DEFAULT_FIREBASE_CONFIG} */
@@ -50,9 +58,9 @@ const APP_NAME = 'gg-web-engine-multiplayer';
  *   the recipient deletes each one as it reads it
  *
  * Every node a peer writes is registered with `onDisconnect().remove()`, so nothing depends on a
- * Cloud Function in the common case; a scheduled function sweeping nodes older than 10 minutes is the
- * backstop for the rest. The rules the client relies on (anonymous auth, per-uid write scope,
- * shape/size validation) are documented in the package README.
+ * Cloud Function in the common case; an optional scheduled function sweeping nodes older than 10
+ * minutes is the backstop for the rest. The rules the client relies on (anonymous auth, per-uid write
+ * scope, shape/size validation) are documented in the package README.
  */
 export class FirebaseSignaling implements ISignalingChannel {
   private readonly app: FirebaseApp;
