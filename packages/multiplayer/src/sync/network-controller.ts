@@ -247,6 +247,8 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
   private lastDelta = 16;
   private sendAccumulator = 0;
   private pendingJoin: PendingJoin | null = null;
+  /** bumped by every `connect()` and `leave()`, so a join still in flight notices it was cancelled */
+  private sessionGeneration = 0;
   private pausedForJoin = false;
   private previousEventAuthority: GgWorld<any, any>['eventAuthority'] | null = null;
   private previousCommandGuard: GgWorld<any, any>['commandGuard'] | null | undefined = undefined;
@@ -373,6 +375,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
    * Connect the transport and join the room: alone, the local peer owns everything; otherwise the
    * world clock is paused while every peer's join dump arrives (runtime spawns are built, shared
    * entities snapped, possession and epochs adopted), then resumed.
+   * A {@link leave} while connecting cancels the join: `connect()` then resolves without joining.
    * @throws if the transport fails to connect, or the room has shared levels and one registered
    * locally isn't among them - the controller is then back to `'idle'` and `connect()` may be retried
    */
@@ -384,9 +387,13 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       return;
     }
     this._sessionState$.next('connecting');
+    const generation = ++this.sessionGeneration;
     try {
       this.subscribeTransport();
       await this.transport.connect();
+      if (generation !== this.sessionGeneration) {
+        return;
+      }
       this.joinedAt = this.now;
       this.startTimers();
       const others = [...this.transport.peers];
@@ -394,9 +401,15 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
         await this.requestDumps(others, true);
       }
     } catch (e) {
+      if (generation !== this.sessionGeneration) {
+        return; // left while connecting - whatever failed belongs to the cancelled join
+      }
       this.teardownSession();
       this._sessionState$.next('idle');
       throw e;
+    }
+    if (generation !== this.sessionGeneration) {
+      return;
     }
     this.installSessionHooks();
     this._sessionState$.next('joined');
@@ -412,6 +425,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     if (this.sessionState === 'idle' || this.sessionState === 'left') {
       return;
     }
+    this.sessionGeneration++;
     this.teardownSession();
     this._sessionState$.next('left');
   }
@@ -1331,9 +1345,18 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     this.transportSubscriptions.length = 0;
   }
 
-  /** stop everything a session runs: timers, the transport and its subscriptions, the world hooks */
+  /**
+   * stop everything a session runs: timers, a join handshake in flight, the transport and its
+   * subscriptions, the world hooks
+   */
   private teardownSession(): void {
     this.stopTimers();
+    this.pendingJoin?.resolve();
+    this.pendingJoin = null;
+    if (this.pausedForJoin) {
+      this.pausedForJoin = false;
+      this.world?.resumeWorld();
+    }
     this.transport.disconnect();
     this.unsubscribeTransport();
     this.uninstallSessionHooks();
@@ -1768,9 +1791,11 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       this.world.pauseWorld();
       this.pausedForJoin = true;
     }
+    const generation = this.sessionGeneration;
+    let join: PendingJoin | null = null;
     await new Promise<void>(resolve => {
       let timeout: unknown = null;
-      this.pendingJoin = {
+      join = {
         waitingFor: new Set(peerIds),
         dumps: [],
         resolve: () => {
@@ -1780,15 +1805,20 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
           resolve();
         },
       };
+      this.pendingJoin = join;
       timeout = this.scheduler.setTimeout(() => resolve(), this.opts.joinTimeoutMs);
       for (const id of peerIds) {
         this.transport.send(id, 'reliable', { t: 'joinRequest' });
       }
     });
-    const dumps = this.pendingJoin?.dumps ?? [];
-    this.pendingJoin = null;
+    if (this.pendingJoin === join) {
+      this.pendingJoin = null;
+    }
+    if (generation !== this.sessionGeneration) {
+      return; // left meanwhile - the teardown already resumed the world
+    }
     try {
-      await this.applyDumps(dumps, !initial);
+      await this.applyDumps(join!.dumps, !initial);
     } finally {
       if (this.pausedForJoin) {
         this.pausedForJoin = false;
@@ -1900,9 +1930,13 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     if (this.sessionState !== 'away') {
       return;
     }
+    const generation = this.sessionGeneration;
     const others = [...this.transport.peers];
     if (others.length > 0) {
       await this.requestDumps(others, false);
+    }
+    if (generation !== this.sessionGeneration || this.sessionState !== 'away') {
+      return;
     }
     this._sessionState$.next('joined');
     this.transport.send('all', 'reliable', this.heartbeatMessage());

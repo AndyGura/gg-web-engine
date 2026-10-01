@@ -113,6 +113,12 @@ join handshakes, link latency) runs on the injected `NetScheduler`, never on `ti
   presence snapshot containing the local peer, plus the signaling's `discoveryDelayMs`
   (`BroadcastChannelSignaling` peers only answer a newcomer's announcement), or a joiner thinks it is
   alone and claims everything.
+- **Every `await` in a join path is a cancellation point.** `leave()` can run while `connect()` or
+  `returnFromAway()` waits on the transport or on join dumps, and `disconnect()` while the transport's
+  own `connect()` waits on signaling. Both bump a generation counter that the suspended code checks
+  after each `await`. The teardown also resolves a pending join and resumes a world paused for it, so
+  nothing finishes joining a session that was left. A failed join (transport error, level mismatch)
+  tears the session down to `'idle'`, so `connect()` can be retried; never leave it in `'connecting'`.
 - **Presence `ts` is refreshed every 2 minutes**, because the optional backstop sweep deletes presence
   older than 10 minutes. The sweep needs the Blaze plan and the default project runs without it, so
   the client must never depend on it - `onDisconnect()` removal is the cleanup mechanism.

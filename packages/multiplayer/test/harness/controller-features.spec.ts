@@ -1,4 +1,5 @@
 import { Entity3d, GgStatic, IEntity } from '@gg-web-engine/core';
+import { Network3dController } from '../../src';
 import { ADAPTERS, Harness, TICK_MS } from './harness';
 
 jest.setTimeout(60_000);
@@ -139,6 +140,31 @@ describe('NetworkController features', () => {
     await h.run(5);
     await retry;
     expect(b.net.sessionState).toBe('joined');
+  });
+
+  it('leave() while waiting for join dumps cancels the join', async () => {
+    h = new Harness(adapter);
+    const a = await h.addPeer('a');
+    a.net.conditioner.latencyMs = 10_000; // a's join dump arrives only after b gave up
+    const world = await adapter.createWorld();
+    adapter.addGround(world);
+    const loader = adapter.createLoader(world);
+    const transport = h.hub.createTransport('b');
+    const net = new Network3dController({ transport, scheduler: h.scheduler, levelLoader: loader, prefixEntityNames: false });
+    world.addEntity(net);
+    h.peers.push({ id: 'b', world, net, loader, position: adapter.at(0, 0) });
+    world.resumeWorld();
+    const connecting = net.connect();
+    await h.run(3);
+    expect(net.sessionState).toBe('connecting');
+    expect(world.isPaused).toBe(true);
+    net.leave();
+    expect(world.isPaused).toBe(false);
+    await connecting;
+    world.pauseWorld();
+    await h.run(Math.ceil(12_000 / TICK_MS));
+    expect(net.sessionState).toBe('left');
+    expect(world.commandGuard).toBeNull();
   });
 
   it('a runtime spawn may reuse the name of an entity despawned earlier', async () => {

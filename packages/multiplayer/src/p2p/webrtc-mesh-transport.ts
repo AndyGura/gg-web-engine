@@ -1,4 +1,4 @@
-import { BehaviorSubject, Observable, Subject, Subscription } from 'rxjs';
+import { BehaviorSubject, NEVER, Observable, Subject, Subscription } from 'rxjs';
 import { ITransport } from '../sync/transport';
 import { WireChannel, WireMessage } from '../sync/wire';
 import { ChunkAssembler, DEFAULT_CHUNK_SIZE, frameMessage } from '../sync/chunking';
@@ -90,10 +90,13 @@ export class WebRtcMeshTransport implements ITransport {
   // peers reported on peers$ at some point and not yet reported on peerLeft$
   private readonly announced = new Set<string>();
   private connected = false;
+  /** bumped by every `connect()` and `disconnect()`, so a connect still in flight notices it was cancelled */
+  private connectGeneration = 0;
   private ageTimer: unknown = null;
   private readonly _peers$ = new BehaviorSubject<ReadonlyArray<string>>([]);
   private readonly _messages$ = new Subject<{ from: string; msg: WireMessage }>();
   private readonly _peerLeft$ = new Subject<string>();
+  private readonly disconnected$ = new Subject<void>();
   /** time (scheduler ms) each link took from creation to both channels open - for diagnostics, e.g. checking zoning cell sizes */
   public readonly setupTimes = new Map<string, number>();
 
@@ -147,6 +150,7 @@ export class WebRtcMeshTransport implements ITransport {
    * Join the room through the signaling channel and open connections to every peer already present
    * (within the connect ring, with zoning). Resolves once those are open, or after
    * `connectTimeoutMs` with whatever opened by then.
+   * A `disconnect()` meanwhile cancels it: `connect()` then resolves right away.
    * @throws if joining the room through the signaling channel fails - the transport is then
    * disconnected again and `connect()` may be retried
    */
@@ -155,6 +159,8 @@ export class WebRtcMeshTransport implements ITransport {
       return;
     }
     this.connected = true;
+    const generation = ++this.connectGeneration;
+    const cancelled = () => generation !== this.connectGeneration;
     this.subscriptions.push(
       this.signaling.incoming$.subscribe(({ from, payload }) => void this.onSignal(from, payload)),
       this.signaling.presence$.subscribe(entries => this.onPresence(entries)),
@@ -166,56 +172,63 @@ export class WebRtcMeshTransport implements ITransport {
         await this.signaling.setCell(this.localCell);
       }
     } catch (e) {
+      if (cancelled()) {
+        return;
+      }
       this.disconnect();
       throw e;
+    }
+    if (cancelled()) {
+      return;
     }
     if (this.zoning) {
       this.ageTimer = this.scheduler.setInterval(() => this.reconcile(), 1000);
     }
     // don't decide whom to wait for before the room's presence is actually known
-    await this.waitFor(() => this.presence.some(p => p.peerId === this.localPeerId), this.opts.connectTimeoutMs);
-    if (this.signaling.discoveryDelayMs) {
-      await new Promise<void>(resolve => this.scheduler.setTimeout(resolve, this.signaling.discoveryDelayMs!));
+    await this.waitFor(
+      this.signaling.presence$,
+      () => this.presence.some(p => p.peerId === this.localPeerId),
+      this.opts.connectTimeoutMs,
+    );
+    if (this.signaling.discoveryDelayMs && !cancelled()) {
+      await this.waitFor(NEVER, () => false, this.signaling.discoveryDelayMs);
     }
-    const expected = this.desiredPeers();
+    const expected = cancelled() ? [] : this.desiredPeers();
     if (expected.length === 0) {
       return;
     }
-    await new Promise<void>(resolve => {
-      const timeout = this.scheduler.setTimeout(() => {
-        sub.unsubscribe();
-        resolve();
-      }, this.opts.connectTimeoutMs);
-      const sub = this._peers$.subscribe(peers => {
-        if (expected.every(id => peers.includes(id) || !this.presence.some(p => p.peerId === id))) {
-          this.scheduler.clearTimeout(timeout);
-          queueMicrotask(() => sub.unsubscribe());
-          resolve();
-        }
-      });
-    });
+    await this.waitFor(
+      this._peers$,
+      () => expected.every(id => this.peers.includes(id) || !this.presence.some(p => p.peerId === id)),
+      this.opts.connectTimeoutMs,
+    );
   }
 
-  private waitFor(condition: () => boolean, timeoutMs: number): Promise<void> {
+  /** resolves once `condition()` holds (checked whenever `trigger$` emits), after `timeoutMs`, or on `disconnect()` */
+  private waitFor(trigger$: Observable<unknown>, condition: () => boolean, timeoutMs: number): Promise<void> {
     if (condition()) {
       return Promise.resolve();
     }
     return new Promise<void>(resolve => {
       let done = false;
+      const subscriptions: Subscription[] = [];
       const finish = () => {
         if (!done) {
           done = true;
           this.scheduler.clearTimeout(timeout);
-          queueMicrotask(() => sub.unsubscribe());
+          queueMicrotask(() => subscriptions.forEach(s => s.unsubscribe()));
           resolve();
         }
       };
       const timeout = this.scheduler.setTimeout(finish, timeoutMs);
-      const sub = this.signaling.presence$.subscribe(() => {
-        if (condition()) {
-          finish();
-        }
-      });
+      subscriptions.push(
+        trigger$.subscribe(() => {
+          if (condition()) {
+            finish();
+          }
+        }),
+        this.disconnected$.subscribe(finish),
+      );
     });
   }
 
@@ -224,6 +237,7 @@ export class WebRtcMeshTransport implements ITransport {
       return;
     }
     this.connected = false;
+    this.connectGeneration++;
     for (const s of this.subscriptions) {
       s.unsubscribe();
     }
@@ -241,6 +255,7 @@ export class WebRtcMeshTransport implements ITransport {
     }
     this.announced.clear();
     this._peers$.next([]);
+    this.disconnected$.next();
     void this.signaling.leave();
   }
 

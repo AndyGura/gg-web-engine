@@ -142,6 +142,20 @@ describe('WebRtcMeshTransport', () => {
     expect(b.peers).toEqual(['a']);
   });
 
+  it('disconnect() while connecting resolves connect() without waiting for its timeout', async () => {
+    const hub = new InMemorySignalingHub();
+    const scheduler = new VirtualScheduler();
+    await hub.create().join('room', 'z'); // present, but never answers an offer
+    const b = makeTransport(hub, 'b', { scheduler });
+    let done = false;
+    const connecting = b.connect().then(() => (done = true));
+    await settle();
+    expect(done).toBe(false);
+    b.disconnect();
+    await connecting;
+    expect(b.peers).toEqual([]);
+  });
+
   it('reconnects with exponential backoff while the peer is still present', async () => {
     const hub = new InMemorySignalingHub();
     const scheduler = new VirtualScheduler();
