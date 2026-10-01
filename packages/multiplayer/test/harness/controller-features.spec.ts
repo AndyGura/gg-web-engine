@@ -118,6 +118,29 @@ describe('NetworkController features', () => {
     expect(findByName(h, 'b', custom.name)).toBeUndefined();
   });
 
+  it('a joiner refused for a shared level mismatch resumes its world and can connect again', async () => {
+    h = new Harness(adapter);
+    const a = await h.addPeer('a', peer => peer.net.registerSharedLevel('level', 'source-a'));
+    await expect(
+      h.addPeer('b', peer => {
+        peer.net.registerSharedLevel('level', 'source-b');
+        peer.world.resumeWorld();
+      }),
+    ).rejects.toThrow(/don't match/);
+    const b = h.peer('b');
+    b.world.pauseWorld();
+    expect(b.net.sessionState).toBe('idle');
+    expect(b.world.commandGuard).toBeNull();
+    await h.run(Math.ceil(6000 / TICK_MS));
+    expect(a.net.peerInfos).toEqual([]);
+    a.net.leave();
+    await h.run(2);
+    const retry = b.net.connect();
+    await h.run(5);
+    await retry;
+    expect(b.net.sessionState).toBe('joined');
+  });
+
   it('a runtime spawn may reuse the name of an entity despawned earlier', async () => {
     h = new Harness(adapter);
     const a = await h.addPeer('a');

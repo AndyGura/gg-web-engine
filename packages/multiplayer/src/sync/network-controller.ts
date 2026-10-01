@@ -373,7 +373,8 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
    * Connect the transport and join the room: alone, the local peer owns everything; otherwise the
    * world clock is paused while every peer's join dump arrives (runtime spawns are built, shared
    * entities snapped, possession and epochs adopted), then resumed.
-   * @throws if the room has shared levels and one registered locally isn't among them
+   * @throws if the transport fails to connect, or the room has shared levels and one registered
+   * locally isn't among them - the controller is then back to `'idle'` and `connect()` may be retried
    */
   async connect(): Promise<void> {
     if (!this.world) {
@@ -383,13 +384,19 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       return;
     }
     this._sessionState$.next('connecting');
-    this.subscribeTransport();
-    await this.transport.connect();
-    this.joinedAt = this.now;
-    this.startTimers();
-    const others = [...this.transport.peers];
-    if (others.length > 0) {
-      await this.requestDumps(others, true);
+    try {
+      this.subscribeTransport();
+      await this.transport.connect();
+      this.joinedAt = this.now;
+      this.startTimers();
+      const others = [...this.transport.peers];
+      if (others.length > 0) {
+        await this.requestDumps(others, true);
+      }
+    } catch (e) {
+      this.teardownSession();
+      this._sessionState$.next('idle');
+      throw e;
     }
     this.installSessionHooks();
     this._sessionState$.next('joined');
@@ -405,14 +412,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     if (this.sessionState === 'idle' || this.sessionState === 'left') {
       return;
     }
-    this.stopTimers();
-    this.transport.disconnect();
-    this.unsubscribeTransport();
-    this.uninstallSessionHooks();
-    for (const peer of [...this.peers.keys()]) {
-      this.peers.delete(peer);
-    }
-    this.publishPeers();
+    this.teardownSession();
     this._sessionState$.next('left');
   }
 
@@ -1331,6 +1331,16 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     this.transportSubscriptions.length = 0;
   }
 
+  /** stop everything a session runs: timers, the transport and its subscriptions, the world hooks */
+  private teardownSession(): void {
+    this.stopTimers();
+    this.transport.disconnect();
+    this.unsubscribeTransport();
+    this.uninstallSessionHooks();
+    this.peers.clear();
+    this.publishPeers();
+  }
+
   private broadcast(msg: WireMessage): void {
     if (this.sessionState === 'idle' || this.sessionState === 'left') {
       return;
@@ -1777,10 +1787,13 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     });
     const dumps = this.pendingJoin?.dumps ?? [];
     this.pendingJoin = null;
-    await this.applyDumps(dumps, !initial);
-    if (this.pausedForJoin) {
-      this.pausedForJoin = false;
-      this.world?.resumeWorld();
+    try {
+      await this.applyDumps(dumps, !initial);
+    } finally {
+      if (this.pausedForJoin) {
+        this.pausedForJoin = false;
+        this.world?.resumeWorld();
+      }
     }
   }
 
