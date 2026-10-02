@@ -1,6 +1,6 @@
 ---
 title: rapier2d/components/rapier-2d-rigid-body.component.ts
-nav_order: 163
+nav_order: 167
 parent: Modules
 ---
 
@@ -16,6 +16,8 @@ parent: Modules
     - [addToWorld (method)](#addtoworld-method)
     - [removeFromWorld (method)](#removefromworld-method)
     - [resetMotion (method)](#resetmotion-method)
+    - [wakeUp (method)](#wakeup-method)
+    - [sleep (method)](#sleep-method)
     - [dispose (method)](#dispose-method)
     - [entity (property)](#entity-property)
     - [\_nativeBody (property)](#_nativebody-property)
@@ -77,6 +79,22 @@ removeFromWorld(world: Rapier2dGgWorld, dispose?: boolean): void
 
 ```ts
 resetMotion(): void
+```
+
+### wakeUp (method)
+
+**Signature**
+
+```ts
+wakeUp(): void
+```
+
+### sleep (method)
+
+**Signature**
+
+```ts
+sleep(): void
 ```
 
 ### dispose (method)

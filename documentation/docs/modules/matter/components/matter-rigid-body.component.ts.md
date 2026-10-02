@@ -1,6 +1,6 @@
 ---
 title: matter/components/matter-rigid-body.component.ts
-nav_order: 147
+nav_order: 151
 parent: Modules
 ---
 
@@ -18,6 +18,8 @@ parent: Modules
     - [removeFromWorld (method)](#removefromworld-method)
     - [dispose (method)](#dispose-method)
     - [resetMotion (method)](#resetmotion-method)
+    - [wakeUp (method)](#wakeup-method)
+    - [sleep (method)](#sleep-method)
     - [name (property)](#name-property)
     - [entity (property)](#entity-property)
     - [debugBodySettings (property)](#debugbodysettings-property)
@@ -92,6 +94,30 @@ dispose(): void
 
 ```ts
 resetMotion(): void
+```
+
+### wakeUp (method)
+
+No-op on a body that reports `isStatic` (a genuine `'static'` body, or a `kinematic_pos`/
+`kinematic_vel` request - see `isSleeping`'s own doc for why both are treated the same here).
+
+**Signature**
+
+```ts
+wakeUp(): void
+```
+
+### sleep (method)
+
+No-op on a body that reports `isStatic` (see `isSleeping`'s own doc). Forces sleep immediately,
+regardless of whether the world's `Matter.Engine` has `enableSleeping` turned on - unlike a
+body naturally falling asleep from inactivity (which requires that engine flag), an explicit
+`Sleeping.set(body, true)` call takes effect either way.
+
+**Signature**
+
+```ts
+sleep(): void
 ```
 
 ### name (property)

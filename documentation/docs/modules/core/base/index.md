@@ -18,4 +18,5 @@ has_children: true
 - [core/base/logging.ts](/gg-web-engine/modules/core/base/logging.ts)
 - [core/base/math](/gg-web-engine/modules/core/base/math)
 - [core/base/models](/gg-web-engine/modules/core/base/models)
+- [core/base/network](/gg-web-engine/modules/core/base/network)
 - [core/base/pipes](/gg-web-engine/modules/core/base/pipes)

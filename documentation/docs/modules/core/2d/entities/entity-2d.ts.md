@@ -14,6 +14,8 @@ parent: Modules
   - [Entity2d (class)](#entity2d-class)
     - [updateVisibility (method)](#updatevisibility-method)
     - [runTransformBinding (method)](#runtransformbinding-method)
+    - [captureNetworkState (method)](#capturenetworkstate-method)
+    - [applyNetworkState (method)](#applynetworkstate-method)
     - [tickOrder (property)](#tickorder-property)
     - [object2D (property)](#object2d-property)
     - [objectBody (property)](#objectbody-property)
@@ -54,6 +56,26 @@ protected runTransformBinding(
     objectBody: TypeDoc['pTypeDoc']['rigidBody'],
     object2D: TypeDoc['vTypeDoc']['displayObject'] | null,
   ): void
+```
+
+### captureNetworkState (method)
+
+`INetworkSyncable`: owner-side snapshot of `objectBody` - see `RigidBodyCorrection`.
+
+**Signature**
+
+```ts
+public captureNetworkState(): RigidBodyNetState<Point2, number>
+```
+
+### applyNetworkState (method)
+
+`INetworkSyncable`: replica-side correction of `objectBody` - see `RigidBodyCorrection`. No-op without a body.
+
+**Signature**
+
+```ts
+public applyNetworkState(target: RigidBodyNetState<Point2, number>, ctx: NetworkApplyContext): void
 ```
 
 ### tickOrder (property)

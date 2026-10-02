@@ -1,6 +1,6 @@
 ---
 title: matter/components/matter-world.component.ts
-nav_order: 149
+nav_order: 153
 parent: Modules
 ---
 
@@ -45,6 +45,17 @@ export declare class MatterWorldComponent {
 ```
 
 ### init (method)
+
+`Engine.create` is never given `enableSleeping: true` here, matching matter-js's own default -
+so a body this world creates never _naturally_ falls asleep from prolonged inactivity, no matter
+how long it rests. `IRigidBodyComponent.sleep()`/`wakeUp()` still work regardless of this flag
+(`Matter.Sleeping.set` writes a body's `isSleeping` flag directly, and `Engine.update`'s own
+per-body integration skip checks that flag unconditionally, not gated behind
+`engine.enableSleeping` - only the _automatic_ fall-asleep-from-rest/wake-on-collision behavior
+is gated behind that flag) - only automatic, inactivity-driven sleeping is unavailable under the
+current setup. A future change enabling it should re-check
+`gg-engine-physics-adapter-matter`'s own note on this before assuming every existing
+position/velocity setter still behaves the same way once bodies can sleep on their own.
 
 **Signature**
 

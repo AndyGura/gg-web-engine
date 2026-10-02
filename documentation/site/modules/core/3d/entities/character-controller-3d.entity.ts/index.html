@@ -564,6 +564,48 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#capturenetworkstate-method" class="md-nav__link">
+    captureNetworkState (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#applynetworkstate-method" class="md-nav__link">
+    applyNetworkState (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#capturelocalinput-method" class="md-nav__link">
+    captureLocalInput (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#applyremoteinput-method" class="md-nav__link">
+    applyRemoteInput (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#serializesettings-method" class="md-nav__link">
+    serializeSettings (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#applystate-method" class="md-nav__link">
+    applyState (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#tickorder-property" class="md-nav__link">
     tickOrder (property)
   </a>
@@ -592,6 +634,20 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#externaldisplacement-property" class="md-nav__link">
+    externalDisplacement (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#displaysettings-property" class="md-nav__link">
+    displaySettings (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#object3d-property" class="md-nav__link">
     object3D (property)
   </a>
@@ -613,6 +669,20 @@
           <li class="md-nav__item">
   <a href="#charactercontroller3dentityoptions-type-alias" class="md-nav__link">
     CharacterController3dEntityOptions (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#characterinput3d-interface" class="md-nav__link">
+    CharacterInput3d (interface)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#characterstate3d-interface" class="md-nav__link">
+    CharacterState3d (interface)
   </a>
   
 </li>
@@ -653,15 +723,25 @@
 <li><a href="#updatemovement-method">updateMovement (method)</a></li>
 <li><a href="#trystandup-method">tryStandUp (method)</a></li>
 <li><a href="#recreatecapsule-method">recreateCapsule (method)</a></li>
+<li><a href="#capturenetworkstate-method">captureNetworkState (method)</a></li>
+<li><a href="#applynetworkstate-method">applyNetworkState (method)</a></li>
+<li><a href="#capturelocalinput-method">captureLocalInput (method)</a></li>
+<li><a href="#applyremoteinput-method">applyRemoteInput (method)</a></li>
+<li><a href="#serializesettings-method">serializeSettings (method)</a></li>
+<li><a href="#applystate-method">applyState (method)</a></li>
 <li><a href="#tickorder-property">tickOrder (property)</a></li>
 <li><a href="#options-property">options (property)</a></li>
 <li><a href="#movedirection-property">moveDirection (property)</a></li>
 <li><a href="#isrunning-property">isRunning (property)</a></li>
+<li><a href="#externaldisplacement-property">externalDisplacement (property)</a></li>
+<li><a href="#displaysettings-property">displaySettings (property)</a></li>
 <li><a href="#object3d-property">object3D (property)</a></li>
 <li><a href="#charactercontroller-property">characterController (property)</a></li>
 </ul>
 </li>
 <li><a href="#charactercontroller3dentityoptions-type-alias">CharacterController3dEntityOptions (type alias)</a></li>
+<li><a href="#characterinput3d-interface">CharacterInput3d (interface)</a></li>
+<li><a href="#characterstate3d-interface">CharacterState3d (interface)</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
@@ -768,9 +848,44 @@ might still be mid-flight in the first place.</p>
 <p>Swaps the underlying <code>characterController</code> component for a freshly-created one at a different
 <code>centersDistance</code>, keeping the character's feet planted in place. Used for crouch/stand
 transitions instead of resizing a component in place - see <code>ICharacterController3dComponent</code>'s
-doc for why.</p>
+doc for why.
+<code>keepCenter</code> keeps the capsule center where it is instead (the spawn-time rebuild).</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">private recreateCapsule(newCentersDistance: number): void
+<pre><code class="language-ts">private recreateCapsule(newCentersDistance: number, keepCenter = false): void
+</code></pre>
+<h3 id="capturenetworkstate-method">captureNetworkState (method)</h3>
+<p><code>INetworkSyncable</code>: owner-side snapshot - see <code>MoverCorrection</code>.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public captureNetworkState(): MoverNetState&lt;Point3, Point4&gt;
+</code></pre>
+<h3 id="applynetworkstate-method">applyNetworkState (method)</h3>
+<p><code>INetworkSyncable</code>: replica-side reconciliation through <code>externalDisplacement</code> - see <code>MoverCorrection</code>.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public applyNetworkState(target: MoverNetState&lt;Point3, Point4&gt;, ctx: NetworkApplyContext): void
+</code></pre>
+<h3 id="capturelocalinput-method">captureLocalInput (method)</h3>
+<p><code>INetworkInputDriven</code>: what the local input driver set on this character.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public captureLocalInput(): CharacterInput3d
+</code></pre>
+<h3 id="applyremoteinput-method">applyRemoteInput (method)</h3>
+<p><code>INetworkInputDriven</code>: drive this replica with the possessor's input; <code>null</code> is neutral (no
+movement, not running). A jump fires once per observed <code>jumpSeq</code> increment; the first sample
+only records the baseline, so a replica created mid-session never replays old jumps.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public applyRemoteInput(input: CharacterInput3d | null): void
+</code></pre>
+<h3 id="serializesettings-method">serializeSettings (method)</h3>
+<p><code>ISerializableEntity</code>: the <code>"Player"</code> class's <code>config</code> - capsule size, every option that
+differs from its default, <code>display</code> (from <code>displaySettings</code>, else the auto-generated capsule
+mesh's material) and a <code>state</code> block with the runtime movement state (see <code>CharacterState3d</code>).</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public serializeSettings(): { config: Record&lt;string, any&gt; }
+</code></pre>
+<h3 id="applystate-method">applyState (method)</h3>
+<p>Apply a <code>CharacterState3d</code> block (see <code>serializeSettings</code>); every field is optional.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public applyState(state: CharacterState3d): void
 </code></pre>
 <h3 id="tickorder-property">tickOrder (property)</h3>
 <p><strong>Signature</strong></p>
@@ -789,6 +904,21 @@ doc for why.</p>
 <p>Whether to move at <code>walkSpeed * runSpeedMultiplier</code>. Ignored while <code>isCrouching</code>.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">isRunning: boolean
+</code></pre>
+<h3 id="externaldisplacement-property">externalDisplacement (property)</h3>
+<p>Extra translation folded into the next tick's <code>move()</code> call (added to the desired translation,
+then cleared) - lets something other than the input driver nudge the character while still
+sliding against geometry and respecting step/snap-to-ground, instead of teleporting it through
+the <code>position</code> setter. The network layer's replica correction (<code>MoverCorrection</code>) writes this.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">externalDisplacement: Readonly&lt;MutablePoint3&gt;
+</code></pre>
+<h3 id="displaysettings-property">displaySettings (property)</h3>
+<p>The <code>display</code> settings a level loader built this character from, echoed back by
+<code>serializeSettings</code> (a loaded model's path can't be recovered from the live mesh). Set by
+<code>Gg3dLevelLoader</code>'s <code>"Player"</code> class; app code building a character by hand may set it too.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">displaySettings: Record&lt;string, any&gt; | undefined
 </code></pre>
 <h3 id="object3d-property">object3D (property)</h3>
 <p><strong>Signature</strong></p>
@@ -847,6 +977,32 @@ itself so behavior stays identical across physics backends - see the class doc.<
    * desired direction/speed once airborne (see `updateMovement`'s doc). Default 0.3.
    */
   airControlFactor: number
+}
+</code></pre>
+<h2 id="characterinput3d-interface">CharacterInput3d (interface)</h2>
+<p>Input a possessing peer forwards for a <code>CharacterController3dEntity</code> - see
+<code>INetworkInputDriven</code>. <code>jumpSeq</code> is the possessor's <code>jumpCount</code>: a replica jumps once per observed
+increment, so a dropped packet never loses a jump.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export interface CharacterInput3d {
+  moveDirection: Point3
+  rotation: Point4
+  isRunning: boolean
+  isCrouching: boolean
+  jumpSeq: number
+}
+</code></pre>
+<h2 id="characterstate3d-interface">CharacterState3d (interface)</h2>
+<p>Runtime state of a <code>CharacterController3dEntity</code> a spawn-time <code>config</code> can't reflect - emitted as
+the <code>"Player"</code> class's <code>config.state</code> by <code>serializeSettings</code> and applied back by the level loader,
+so a character spawned on another peer mid-jump/mid-crouch continues from where it was.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export interface CharacterState3d {
+  isCrouching?: boolean
+  isRunning?: boolean
+  moveDirection?: Point3
+  fallVelocity?: Point3
+  airHorizontalVelocity?: Point3
 }
 </code></pre>
 

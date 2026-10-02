@@ -57,7 +57,7 @@ such a layer exists, and every entity that isn't explicitly named by that app co
 **Signature**
 
 ```ts
-public static useDefaultNameMiddleware(middleware: (name: string) => string): void
+public static useDefaultNameMiddleware(middleware: (name: string) => string): () => void
 ```
 
 ### generateDefaultName (method)

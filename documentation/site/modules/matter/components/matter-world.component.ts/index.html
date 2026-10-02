@@ -704,6 +704,16 @@
 }
 </code></pre>
 <h3 id="init-method">init (method)</h3>
+<p><code>Engine.create</code> is never given <code>enableSleeping: true</code> here, matching matter-js's own default -
+so a body this world creates never <em>naturally</em> falls asleep from prolonged inactivity, no matter
+how long it rests. <code>IRigidBodyComponent.sleep()</code>/<code>wakeUp()</code> still work regardless of this flag
+(<code>Matter.Sleeping.set</code> writes a body's <code>isSleeping</code> flag directly, and <code>Engine.update</code>'s own
+per-body integration skip checks that flag unconditionally, not gated behind
+<code>engine.enableSleeping</code> - only the <em>automatic</em> fall-asleep-from-rest/wake-on-collision behavior
+is gated behind that flag) - only automatic, inactivity-driven sleeping is unavailable under the
+current setup. A future change enabling it should re-check
+<code>gg-engine-physics-adapter-matter</code>'s own note on this before assuming every existing
+position/velocity setter still behaves the same way once bodies can sleep on their own.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">async init(): Promise&lt;void&gt;
 </code></pre>

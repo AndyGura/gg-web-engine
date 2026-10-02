@@ -1,6 +1,6 @@
 ---
 title: matter/components/matter-trigger.component.ts
-nav_order: 148
+nav_order: 152
 parent: Modules
 ---
 
@@ -14,10 +14,13 @@ parent: Modules
   - [MatterTriggerComponent (class)](#mattertriggercomponent-class)
     - [handleCollisionStart (method)](#handlecollisionstart-method)
     - [handleCollisionEnd (method)](#handlecollisionend-method)
+    - [isPolled (method)](#ispolled-method)
+    - [overlaps (method)](#overlaps-method)
     - [addToWorld (method)](#addtoworld-method)
     - [removeFromWorld (method)](#removefromworld-method)
     - [dispose (method)](#dispose-method)
     - [checkOverlaps (method)](#checkoverlaps-method)
+    - [checkPolledBodyOverlaps (method)](#checkpolledbodyoverlaps-method)
     - [clone (method)](#clone-method)
     - [onEnter$ (property)](#onenter-property)
     - [onLeft$ (property)](#onleft-property)
@@ -25,6 +28,7 @@ parent: Modules
     - [debugBodySettings (property)](#debugbodysettings-property)
     - [intersectionsAmount (property)](#intersectionsamount-property)
     - [currentOverlaps (property)](#currentoverlaps-property)
+    - [polledOverlaps (property)](#polledoverlaps-property)
 
 ---
 
@@ -60,6 +64,27 @@ private handleCollisionStart(event: IEventCollision<Engine>)
 private handleCollisionEnd(event: IEventCollision<Engine>)
 ```
 
+### isPolled (method)
+
+Whether matter's detector never pairs `comp` with this trigger: it skips every pair whose bodies
+are both static or sleeping, and the trigger body is static. That covers sleeping bodies and
+kinematic ones (built as static here, see `MatterFactory`). Bodies requested as `'static'` are
+level geometry and are never reported.
+
+**Signature**
+
+```ts
+protected isPolled(comp: MatterRigidBodyComponent): boolean
+```
+
+### overlaps (method)
+
+**Signature**
+
+```ts
+protected overlaps(comp: MatterRigidBodyComponent): boolean
+```
+
 ### addToWorld (method)
 
 **Signature**
@@ -90,9 +115,10 @@ dispose(): void
 
 ### checkOverlaps (method)
 
-Regular rigid-body overlaps are handled entirely by `handleCollisionStart`/`handleCollisionEnd`
-above, off matter's own native `collisionStart`/`collisionEnd` engine events - so this used to be
-a pure no-op for matter-js. A `MatterCharacterControllerComponent`'s own phantom body is
+Awake dynamic bodies are handled by `handleCollisionStart`/`handleCollisionEnd` above, off
+matter's own native `collisionStart`/`collisionEnd` engine events; kinematic and sleeping ones,
+which matter never pairs with this static body, are polled by `checkPolledBodyOverlaps()`.
+A `MatterCharacterControllerComponent`'s own phantom body is
 deliberately never added to `Composite`/`engine.world` at all (see that class's own doc), so no
 native collision pair - and thus no native event - can ever involve it. Since `checkOverlaps()` is
 already called once per tick by `Trigger2dEntity` regardless of backend, this is the natural place
@@ -107,6 +133,19 @@ ordinary bodies.
 
 ```ts
 checkOverlaps(): void
+```
+
+### checkPolledBodyOverlaps (method)
+
+Enter/exit of the rigid bodies matter's detector never pairs with this trigger (see
+{@link isPolled}): a kinematic platform moving in or out, a body asleep inside. Like the
+character poll below, `Query.collides` ignores `collisionFilter`, so `Detector.canCollide` is
+checked by hand.
+
+**Signature**
+
+```ts
+protected checkPolledBodyOverlaps(): void
 ```
 
 ### clone (method)
@@ -168,4 +207,16 @@ intersectionsAmount: number
 
 ```ts
 currentOverlaps: Set<MatterRigidBodyComponent>
+```
+
+### polledOverlaps (property)
+
+The subset of `currentOverlaps` whose exit `checkOverlaps()` detects by polling, because matter's
+detector doesn't pair them with this (static) trigger body - see {@link isPolled}. A body moves
+back to the native-event path once a native `collisionStart` reports it (it woke up inside).
+
+**Signature**
+
+```ts
+polledOverlaps: Set<MatterRigidBodyComponent>
 ```

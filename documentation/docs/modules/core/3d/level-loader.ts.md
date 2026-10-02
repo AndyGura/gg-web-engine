@@ -528,6 +528,12 @@ export type Player3DSettings = Partial<Omit<CharacterController3dEntityOptions, 
    * the capsule mesh entirely - the rest of `display` (`color`/`shading`/...) is then ignored.
    */
   display?: DisplayObject3dOpts<any> & { model?: PlayerModel3DSettings }
+  /**
+   * Runtime movement state applied once right after the character is built (see `CharacterState3d`) - what
+   * `serializeSettings` emits, so a character re-created from its own serialization (e.g. on another
+   * peer) continues mid-jump/mid-crouch.
+   */
+  state?: CharacterState3d
 }
 ```
 

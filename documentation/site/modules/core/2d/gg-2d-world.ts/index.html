@@ -704,6 +704,10 @@
     visualScene?: SceneTypeDoc['visualScene']
     physicsWorld?: SceneTypeDoc['physicsWorld']
     audioScene?: SceneTypeDoc['audioScene']
+    maxTickDelta?: number
+    pauseWhenHidden?: boolean
+    fixedPhysicsStep?: number
+    maxPhysicsStepsPerTick?: number
   })
 }
 </code></pre>
@@ -732,6 +736,7 @@
       command: string,
       handler: (...args: string[]) =&gt; Promise&lt;string&gt;,
       doc?: string,
+      mutates?: boolean,
     ) =&gt; void;
   })
 </code></pre>

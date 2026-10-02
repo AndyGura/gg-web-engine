@@ -14,6 +14,8 @@ parent: Modules
   - [Entity3d (class)](#entity3d-class)
     - [updateVisibility (method)](#updatevisibility-method)
     - [runTransformBinding (method)](#runtransformbinding-method)
+    - [captureNetworkState (method)](#capturenetworkstate-method)
+    - [applyNetworkState (method)](#applynetworkstate-method)
     - [tickOrder (property)](#tickorder-property)
     - [object3D (property)](#object3d-property)
     - [objectBody (property)](#objectbody-property)
@@ -51,6 +53,26 @@ Synchronize physics body transform with entity (and mesh if defined)
 
 ```ts
 protected runTransformBinding(objectBody: IRigidBody3dComponent, object3D: IDisplayObject3dComponent | null): void
+```
+
+### captureNetworkState (method)
+
+`INetworkSyncable`: owner-side snapshot of `objectBody` - see `RigidBodyCorrection`.
+
+**Signature**
+
+```ts
+public captureNetworkState(): RigidBodyNetState<Point3, Point4>
+```
+
+### applyNetworkState (method)
+
+`INetworkSyncable`: replica-side correction of `objectBody` - see `RigidBodyCorrection`. No-op without a body.
+
+**Signature**
+
+```ts
+public applyNetworkState(target: RigidBodyNetState<Point3, Point4>, ctx: NetworkApplyContext): void
 ```
 
 ### tickOrder (property)

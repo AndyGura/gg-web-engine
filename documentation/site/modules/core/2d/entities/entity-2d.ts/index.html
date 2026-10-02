@@ -536,6 +536,20 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#capturenetworkstate-method" class="md-nav__link">
+    captureNetworkState (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#applynetworkstate-method" class="md-nav__link">
+    applyNetworkState (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#tickorder-property" class="md-nav__link">
     tickOrder (property)
   </a>
@@ -593,6 +607,8 @@
 <li><a href="#entity2d-class">Entity2d (class)</a><ul>
 <li><a href="#updatevisibility-method">updateVisibility (method)</a></li>
 <li><a href="#runtransformbinding-method">runTransformBinding (method)</a></li>
+<li><a href="#capturenetworkstate-method">captureNetworkState (method)</a></li>
+<li><a href="#applynetworkstate-method">applyNetworkState (method)</a></li>
 <li><a href="#tickorder-property">tickOrder (property)</a></li>
 <li><a href="#object2d-property">object2D (property)</a></li>
 <li><a href="#objectbody-property">objectBody (property)</a></li>
@@ -621,6 +637,16 @@
     objectBody: TypeDoc['pTypeDoc']['rigidBody'],
     object2D: TypeDoc['vTypeDoc']['displayObject'] | null,
   ): void
+</code></pre>
+<h3 id="capturenetworkstate-method">captureNetworkState (method)</h3>
+<p><code>INetworkSyncable</code>: owner-side snapshot of <code>objectBody</code> - see <code>RigidBodyCorrection</code>.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public captureNetworkState(): RigidBodyNetState&lt;Point2, number&gt;
+</code></pre>
+<h3 id="applynetworkstate-method">applyNetworkState (method)</h3>
+<p><code>INetworkSyncable</code>: replica-side correction of <code>objectBody</code> - see <code>RigidBodyCorrection</code>. No-op without a body.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public applyNetworkState(target: RigidBodyNetState&lt;Point2, number&gt;, ctx: NetworkApplyContext): void
 </code></pre>
 <h3 id="tickorder-property">tickOrder (property)</h3>
 <p><strong>Signature</strong></p>

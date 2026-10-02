@@ -28,6 +28,8 @@ where one exists.
 
 ## [Unreleased]
 
+## [0.0.74] - 2026-10-02
+
 ### Added
 - `LevelLoader.createEntity` now applies an `EntityJson`'s `events` bindings (an optional third
   `blueprints` argument supplies named graphs a binding may reference), parenting the resulting
@@ -414,7 +416,8 @@ where one exists.
 
 First published version: `@gg-web-engine/core`, `three`, `pixi`, `ammo`, and `matter`.
 
-[Unreleased]: https://github.com/AndyGura/gg-web-engine/compare/0.0.73...HEAD
+[Unreleased]: https://github.com/AndyGura/gg-web-engine/compare/0.0.74...HEAD
+[0.0.74]: https://github.com/AndyGura/gg-web-engine/compare/0.0.73...0.0.74
 [0.0.73]: https://github.com/AndyGura/gg-web-engine/compare/0.0.72...0.0.73
 [0.0.72]: https://github.com/AndyGura/gg-web-engine/compare/0.0.71...0.0.72
 [0.0.71]: https://github.com/AndyGura/gg-web-engine/compare/0.0.70...0.0.71

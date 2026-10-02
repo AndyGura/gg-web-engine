@@ -838,11 +838,12 @@ for 3D) of whichever <code>LevelLoader</code> subclass parses this JSON.</p>
   /**
    * Maps an observable property name on this entity's generated `IEntity` (e.g. `Trigger3dEntity`'s
    * `&quot;onEntityEntered&quot;`) to what should run whenever that observable fires - see
-   * {@link EntityEventBinding}. `loadLevel` subscribes to the observable and triggers a fresh
-   * `Blueprint` instance (via its `&quot;in&quot;` entry point) with whatever value it emits, each time it
-   * fires - see `LevelLoader.loadLevel` and the `gg-engine-level-json` skill's &quot;Blueprints&quot;
-   * section. Silently ignored (with a console warning) if the binding can't be resolved to a
-   * blueprint, or the named property isn't an `Observable`.
+   * {@link EntityEventBinding}. `createEntity` (and therefore `loadLevel`, which builds every entity
+   * through it) subscribes to the observable and triggers a fresh `Blueprint` instance (via its
+   * `&quot;in&quot;` entry point) with whatever value it emits, each time it fires, and parents the binding
+   * directly under this entity - see `LevelLoader.createEntity` and the `gg-engine-level-json`
+   * skill's &quot;Blueprints&quot; section. Silently ignored (with a console warning) if the binding can't be
+   * resolved to a blueprint, or the named property isn't an `Observable`.
    */
   events?: Record&lt;string, EntityEventBinding&gt;
 }
@@ -959,8 +960,20 @@ every sub-entity a model expands into under it) can - not just read it back afte
 <p>The entity's <code>class</code>/<code>shape</code>/<code>config</code> are remembered (in a <code>WeakMap</code>, keyed by the entity
 itself) so {@link serializeEntity} can later reconstruct an equivalent <code>EntityJson</code> for it -
 this is what makes an entity built this way (or via <code>loadLevel</code>) serializable at all.</p>
+<p>If <code>entityJson.events</code> is present, each binding is resolved via the same mechanism <code>loadLevel</code>
+uses (see {@link bindEvent} and the <code>gg-engine-level-json</code> skill's "Blueprints" section) and the
+resulting binding entity is parented directly under the just-built entity
+(<code>entity.addChildren(bindingEntity)</code>) - not under any group, since <code>createEntity</code> doesn't have
+one. This means the binding's subscription/blueprint is torn down whenever the entity itself is
+(<code>entity.dispose()</code>, or removal with <code>dispose: true</code> once added to a world), with nothing extra
+for the caller to clean up. <code>loadLevel</code> relies on this same behavior (see below) rather than
+parenting bindings under the level's group itself.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">public async createEntity(entityJson: EntityJson, defaultName?: string): Promise&lt;IEntity&lt;D, R, TypeDoc&gt; | undefined&gt;
+<pre><code class="language-ts">public async createEntity(
+    entityJson: EntityJson,
+    defaultName?: string,
+    blueprints?: Record&lt;string, BlueprintJson&gt;,
+  ): Promise&lt;IEntity&lt;D, R, TypeDoc&gt; | undefined&gt;
 </code></pre>
 <h3 id="serializeentity-method">serializeEntity (method)</h3>
 <p>Turn a live entity back into the <code>EntityJson</code>-shaped descriptor that could reproduce it via
@@ -987,6 +1000,9 @@ mechanisms, in order:</p>
    a class with no live-state equivalent and no self-serialization of its own (a <code>"Sound"</code>'s
    clip URL, a <code>"MapGraph"</code>'s graph structure).</li>
 </ol>
+<p>Tiers (2) and (3) also echo the <code>events</code> bindings an entity was built with (by <code>createEntity</code>), so
+re-creating an entity from its own serialization - e.g. on another peer - rebinds them (against
+whatever <code>blueprints</code> map that <code>createEntity</code> call is given).</p>
 <p>An entity matched by none of the three - built some other way with no live/self-serializer
 applicable, or a child an entity class adds to itself (a <code>"Player"</code>'s
 <code>CharacterAnimationController</code>) - has nothing to reconstruct it from; this logs a warning and
@@ -1007,17 +1023,20 @@ self-serialization and spawn-record-echo tiers.</p>
     entity: IEntity&lt;D, R, TypeDoc&gt;,
     shape: string | undefined,
     config: any,
+    events?: Record&lt;string, EntityEventBinding&gt;,
   ): EntityJson
 </code></pre>
 <h3 id="serializelevel-method">serializeLevel (method)</h3>
 <p>Serialize every top-level child of a loaded level's group entity (as <code>loadLevel</code>/<code>createEntity</code>
 returned it) back into a <code>LevelJson</code>'s <code>entities</code> array - the level-wide counterpart of
-{@link serializeEntity}. A child with no spawn record (e.g. a <code>BlueprintBindingEntity</code>
-<code>loadLevel</code> itself parents under the level for an <code>events</code> binding) is skipped silently rather
-than warned about - unlike a direct <code>serializeEntity</code> call, having this kind of
-internal/non-<code>entities</code>-array child under a level is expected, not a sign of misuse. Only
-<code>entities</code> is reconstructed - <code>blueprints</code>/<code>events</code> bindings aren't, since a live
-<code>BlueprintBindingEntity</code> doesn't expose the <code>BlueprintJson</code>/binding it was built from.</p>
+{@link serializeEntity}. A child with no spawn record is skipped silently rather than warned
+about - unlike a direct <code>serializeEntity</code> call, having this kind of internal/non-<code>entities</code>-array
+child under a level is expected, not a sign of misuse (a <code>BlueprintBindingEntity</code> an <code>events</code>
+binding creates is itself parented under the entity it's bound to, not directly under the level -
+see <code>createEntity</code> - but this skip still guards against any other non-spawn-recorded child a
+level's group might end up with). Only <code>entities</code> is reconstructed: each entity echoes the
+<code>events</code> bindings it was built with, but the level's top-level <code>blueprints</code> map isn't rebuilt -
+keep the original <code>blueprints</code> alongside if those bindings reference named graphs.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public serializeLevel(level: GroupEntity&lt;D, R, TypeDoc&gt;): LevelJson
 </code></pre>
@@ -1041,8 +1060,9 @@ distinct <code>levelName</code>s, the same way two <code>GroupEntity</code>s can
 fresh <code>Blueprint</code> from it, and subscribe it to <code>entity[eventName]</code> so every value that
 observable emits triggers the blueprint's <code>"in"</code> entry point. Wrapped in a
 <code>BlueprintBindingEntity</code> so the subscription (and the blueprint's own node state) is torn down
-automatically once that entity is disposed - the caller parents the returned entity under the
-level's group for that reason.</p>
+automatically once that entity is disposed - <code>createEntity</code> parents the returned entity under
+<code>entity</code> itself (<code>entity.addChildren(bindingEntity)</code>) for that reason, so the binding's lifetime
+is tied to the entity it's bound to, not to whatever group (if any) that entity ends up under.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">private bindEvent(
     entity: IEntity&lt;D, R, TypeDoc&gt;,

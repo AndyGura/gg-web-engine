@@ -35,7 +35,13 @@ parent: Modules
     - [audioScene (property)](#audioscene-property)
     - [worldClock (property)](#worldclock-property)
     - [keyboardInput (property)](#keyboardinput-property)
+    - [pauseWhenHidden (property)](#pausewhenhidden-property)
+    - [visibility$ (property)](#visibility-property)
+    - [fixedPhysicsStep (property)](#fixedphysicsstep-property)
+    - [maxPhysicsStepsPerTick (property)](#maxphysicsstepspertick-property)
     - [name (property)](#name-property)
+    - [eventAuthority (property)](#eventauthority-property)
+    - [commandGuard (property)](#commandguard-property)
     - [children (property)](#children-property)
     - [tickListeners (property)](#ticklisteners-property)
     - [tickStarted$ (property)](#tickstarted-property)
@@ -82,6 +88,43 @@ export declare class GgWorld<D, R, TypeDoc, SceneTypeDoc> {
     visualScene?: SceneTypeDoc['visualScene']
     physicsWorld?: SceneTypeDoc['physicsWorld']
     audioScene?: SceneTypeDoc['audioScene']
+    /**
+     * Upper bound, in milliseconds, on any single tick delta this world's `worldClock` (and
+     * therefore every entity's `tick$` and `physicsWorld.simulate`) ever sees - forwarded straight
+     * to `worldClock.maxTickDelta`. Defaults to `PausableClock`'s own default (250ms) when omitted;
+     * pass `0` to disable clamping entirely. See `PausableClock.maxTickDelta`'s own doc for what
+     * clamping does to `elapsedTime`.
+     */
+    maxTickDelta?: number
+    /**
+     * When `true`, this world pauses itself while the document/tab is hidden and resumes itself
+     * when it becomes visible again (unless the app had already paused it itself) - see
+     * `GgWorld.pauseWhenHidden`'s own doc. Defaults to `false`.
+     */
+    pauseWhenHidden?: boolean
+    /**
+     * Opt-in fixed physics timestep, in milliseconds. Left `undefined` (the default), the tick
+     * loop keeps its original behavior: `physicsWorld.simulate(delta)` is called exactly once per
+     * world tick, with that tick's own (variable) delta. Set to a value, the tick loop instead
+     * accumulates each tick's delta and calls `physicsWorld.simulate(fixedPhysicsStep)` as many
+     * times as fit in the accumulator (0 or more - a tick faster than `fixedPhysicsStep` may call
+     * `simulate` zero times, letting time accumulate across ticks), carrying any leftover
+     * fractional time over to the next tick. This gives the physics engine a constant, reproducible
+     * step size regardless of the actual frame rate, at the cost of it running zero, one, or
+     * several times within a single rendered frame. `maxPhysicsStepsPerTick` bounds how many of
+     * those calls a single world tick can make.
+     */
+    fixedPhysicsStep?: number
+    /**
+     * Spiral-of-death guard for `fixedPhysicsStep`: the most `simulate()` calls one world tick may
+     * make before the rest of that tick's accumulated time is dropped instead of carried over to
+     * the next tick (e.g. after the tab was backgrounded and comes back with a huge delta). Only
+     * meaningful when `fixedPhysicsStep` is set. Defaults to 8. `PausableClock`'s own bounded tick
+     * delta (`maxTickDelta`, where available) is a complementary safeguard at the clock level -
+     * this cap is what keeps a single tick's physics work bounded even if an oversized delta
+     * reaches `GgWorld` anyway.
+     */
+    maxPhysicsStepsPerTick?: number
   })
 }
 ```
@@ -155,7 +198,8 @@ the subtree is validated up front, before any component/child is touched, so a c
 (with an entity already in the world, or between two entities within the subtree itself)
 throws without the entity's bodies or display objects ever reaching the native scenes - and
 should spawning still throw partway for any other reason, whatever was already registered is
-rolled back before the error propagates.
+rolled back before the error propagates. Emits `entityAdded$` for `entity` once its own spawn
+has fully succeeded - see that getter's own doc for the nested-cascade emission order.
 
 **Signature**
 
@@ -255,6 +299,7 @@ protected registerConsoleCommands(ggstatic: {
       command: string,
       handler: (...args: string[]) => Promise<string>,
       doc?: string,
+      mutates?: boolean,
     ) => void;
   })
 ```
@@ -299,12 +344,95 @@ readonly worldClock: PausableClock
 readonly keyboardInput: KeyboardInput
 ```
 
+### pauseWhenHidden (property)
+
+When `true`, this world pauses itself automatically while the document/tab is hidden
+(`document.visibilitychange`, checked via `document.hidden`) and resumes itself once visible
+again - but only if the world wasn't already paused by app code at the moment it went hidden.
+A world the app paused itself stays paused across a hide/show cycle; this flag never resumes
+it. Defaults to `false`. The subscription is set up in `init()` and torn down in `dispose()`;
+on a host with no `document` (e.g. a non-browser/jsdom-less test harness) this is a no-op -
+nothing ever gets paused/resumed by visibility regardless of this flag.
+
+**Signature**
+
+```ts
+readonly pauseWhenHidden: boolean
+```
+
+### visibility$ (property)
+
+Emits the document/tab's visibility state (`true` = visible, `false` = hidden) every time it
+changes, regardless of `pauseWhenHidden` - apps can subscribe directly (e.g. to mute audio, or
+drop network updates while hidden) without opting into the auto-pause behavior. On a host with
+no `document` (jsdom-less tests, non-browser hosts) this simply never emits - a safe no-op
+fallback rather than throwing.
+
+**Signature**
+
+```ts
+readonly visibility$: any
+```
+
+### fixedPhysicsStep (property)
+
+When set, `physicsWorld.simulate()` is driven by a fixed-timestep accumulator instead of the
+raw per-tick delta - see the constructor's `fixedPhysicsStep` argument doc for the full
+semantics.
+
+**Signature**
+
+```ts
+readonly fixedPhysicsStep: number | undefined
+```
+
+### maxPhysicsStepsPerTick (property)
+
+Spiral-of-death guard for the `fixedPhysicsStep` accumulator: the most `simulate()` calls one
+world tick is allowed to make before the remaining accumulated time is dropped instead of
+carried over. Only meaningful when `fixedPhysicsStep` is set. Defaults to 8.
+
+**Signature**
+
+```ts
+readonly maxPhysicsStepsPerTick: number
+```
+
 ### name (property)
 
 **Signature**
 
 ```ts
 name: string
+```
+
+### eventAuthority (property)
+
+Consulted by every level JSON `events` binding (see `LevelLoader.createEntity`) right before it
+runs its blueprint: `false` skips that run. Defaults to always `true`, so single-player
+behavior is unaffected. A network layer installs a rule here while a session is joined, so a
+gameplay-consequential binding (a coin's trigger removing the coin, say) runs on exactly the one
+peer holding authority over the event instead of on every peer, and restores the default on
+leave.
+
+**Signature**
+
+```ts
+eventAuthority: (entity: IEntity, eventName: string, payload: unknown) => boolean
+```
+
+### commandGuard (property)
+
+Consulted by the dev console before running one of this world's commands registered as mutating
+(`mutates: true`, see `GgStatic.registerConsoleCommand`): a returned string rejects the command
+with that reason, `null` lets it run. `null` (the default) means no guard. A network layer
+installs one while a session is joined, since a local-only edit of shared world state would
+silently desync peers. A local guardrail, not a trust boundary.
+
+**Signature**
+
+```ts
+commandGuard: ((command: string, args: string[]) => string | null) | null
 ```
 
 ### children (property)

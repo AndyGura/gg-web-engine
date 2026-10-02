@@ -571,6 +571,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#createplayer-method" class="md-nav__link">
+    createPlayer (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#createsound-method" class="md-nav__link">
     createSound (method)
   </a>
@@ -579,6 +586,13 @@
         
       </ul>
     </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#player2dsettings-type-alias" class="md-nav__link">
+    Player2DSettings (type alias)
+  </a>
   
 </li>
         
@@ -654,9 +668,11 @@
 <li><a href="#buildshapedescriptor-method">buildShapeDescriptor (method)</a></li>
 <li><a href="#createprimitive-method">createPrimitive (method)</a></li>
 <li><a href="#createtrigger-method">createTrigger (method)</a></li>
+<li><a href="#createplayer-method">createPlayer (method)</a></li>
 <li><a href="#createsound-method">createSound (method)</a></li>
 </ul>
 </li>
+<li><a href="#player2dsettings-type-alias">Player2DSettings (type alias)</a></li>
 <li><a href="#primitive2dshapename-type-alias">Primitive2DShapeName (type alias)</a></li>
 <li><a href="#primitive2dshapesettings-interface">Primitive2DShapeSettings (interface)</a></li>
 <li><a href="#primitivesettings-interface">PrimitiveSettings (interface)</a></li>
@@ -684,8 +700,8 @@
 }
 </code></pre>
 <h2 id="gg2dlevelloader-class">Gg2dLevelLoader (class)</h2>
-<p>2D level loader: registers the built-in primitive/trigger/sound entity classes and dispatches
-<code>LevelJson</code> entities to them (or to custom classes registered via <code>registerClass</code>).</p>
+<p>2D level loader: registers the built-in primitive/trigger/player/sound entity classes and
+dispatches <code>LevelJson</code> entities to them (or to custom classes registered via <code>registerClass</code>).</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export declare class Gg2dLevelLoader&lt;TypeDoc&gt; {
   constructor(protected readonly world: Gg2dWorld&lt;TypeDoc&gt;)
@@ -739,6 +755,17 @@ base <code>LevelLoader</code> docs for how it's parented for level-lifecycle cle
     settings: TriggerSettings,
   ): Trigger2dEntity&lt;TypeDoc['pTypeDoc']&gt; | undefined
 </code></pre>
+<h3 id="createplayer-method">createPlayer (method)</h3>
+<p>Create a <code>"Player"</code> entity: a capsule-shaped <code>CharacterController2dEntity</code>, with a matching
+auto-generated capsule mesh when there's a visual scene (physics-only/invisible otherwise). See
+<code>Player2DSettings</code>'s doc for why this doesn't also build an animated-sprite equivalent of the 3D
+class's <code>display.model</code>, or a <code>PlayerCharacterController2d</code>-style input driver.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private createPlayer(
+    world: Gg2dWorld&lt;TypeDoc&gt;,
+    settings: Player2DSettings,
+  ): CharacterController2dEntity&lt;TypeDoc&gt; | undefined
+</code></pre>
 <h3 id="createsound-method">createSound (method)</h3>
 <p>Create a <code>"Sound"</code> entity - see the 3D loader's <code>createSound</code> doc (identical behavior).</p>
 <p><strong>Signature</strong></p>
@@ -746,6 +773,43 @@ base <code>LevelLoader</code> docs for how it's parented for level-lifecycle cle
     world: Gg2dWorld&lt;TypeDoc&gt;,
     settings: Sound2DSettings,
   ): Promise&lt;AudioSource2dEntity&lt;TypeDoc&gt; | undefined&gt;
+</code></pre>
+<h2 id="player2dsettings-type-alias">Player2DSettings (type alias)</h2>
+<p>Settings for the built-in <code>"Player"</code> entity class: a capsule-shaped <code>CharacterController2dEntity</code>
+(see that class's own doc for the gameplay fields below). Only the physics/visual capsule is
+built here - the input wiring (a <code>PlayerCharacterController2d</code>-style driver) needs a live
+canvas/<code>KeyboardInput</code> the app supplies, so it's left to the app's own code, mirroring the 3D
+<code>"Player"</code> class's own division of labor (see <code>Player3DSettings</code>).</p>
+<p>Unlike the 3D <code>"Player"</code> class, this has no <code>display.model</code> equivalent: an animated character in
+2D would need a frame-atlas sprite (<code>IAnimatedDisplayObject2dComponent</code>, driven by
+<code>CharacterAnimation2dController</code>) loaded from a path, but <code>IDisplayObject2dComponentFactory</code> has
+no method to load a texture atlas by path at all today (only <code>createPrimitive</code>/its box/circle/
+capsule/convexHull/polygon shortcuts) - there is nothing this class could call to build one, the
+way the 3D class calls <code>loadFromGlb</code>. TODO: once a 2D factory gains an atlas/sprite-sheet loading
+method, add a <code>display.model</code>-equivalent here and wire a <code>CharacterAnimation2dController</code> child in
+automatically, mirroring <code>Gg3dLevelLoader.createPlayer</code> exactly. Until then, a level JSON can only
+produce a plain (optionally solid-color/textured) capsule sprite or a physics-only invisible one -
+an animated sprite character has to be assembled by app code, the same way an attached/continuous
+<code>"Sound"</code> does.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type Player2DSettings = Partial&lt;Omit&lt;CharacterController2dEntityOptions, 'radius' | 'centersDistance'&gt;&gt; &amp; {
+  /** Spawn position of the character (capsule center). */
+  position?: Point2
+  /** Spawn rotation of the character, in radians. */
+  rotation?: number
+  /** Capsule radius. Default 0.4. */
+  radius?: number
+  /** Standing capsule centersDistance. Default 1.0. */
+  centersDistance?: number
+  /** Material options for the auto-generated capsule mesh; omit for a plain default-material capsule. */
+  display?: DisplayObject2dOpts&lt;any&gt;
+  /**
+   * Runtime movement state applied once right after the character is built (see `CharacterState2d`) - what
+   * `serializeSettings` emits, so a character re-created from its own serialization (e.g. on another
+   * peer) continues mid-jump/mid-crouch.
+   */
+  state?: CharacterState2d
+}
 </code></pre>
 <h2 id="primitive2dshapename-type-alias">Primitive2DShapeName (type alias)</h2>
 <p>Shape names accepted by the built-in <code>"Primitive"</code> entity class in a 2D level JSON, via the

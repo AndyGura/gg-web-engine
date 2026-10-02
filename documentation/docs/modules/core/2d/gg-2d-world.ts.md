@@ -55,6 +55,10 @@ export declare class Gg2dWorld<TypeDoc, SceneTypeDoc> {
     visualScene?: SceneTypeDoc['visualScene']
     physicsWorld?: SceneTypeDoc['physicsWorld']
     audioScene?: SceneTypeDoc['audioScene']
+    maxTickDelta?: number
+    pauseWhenHidden?: boolean
+    fixedPhysicsStep?: number
+    maxPhysicsStepsPerTick?: number
   })
 }
 ```
@@ -95,6 +99,7 @@ protected registerConsoleCommands(ggstatic: {
       command: string,
       handler: (...args: string[]) => Promise<string>,
       doc?: string,
+      mutates?: boolean,
     ) => void;
   })
 ```

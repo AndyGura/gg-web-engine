@@ -18,13 +18,23 @@ parent: Modules
     - [updateMovement (method)](#updatemovement-method)
     - [tryStandUp (method)](#trystandup-method)
     - [recreateCapsule (method)](#recreatecapsule-method)
+    - [captureNetworkState (method)](#capturenetworkstate-method)
+    - [applyNetworkState (method)](#applynetworkstate-method)
+    - [captureLocalInput (method)](#capturelocalinput-method)
+    - [applyRemoteInput (method)](#applyremoteinput-method)
+    - [serializeSettings (method)](#serializesettings-method)
+    - [applyState (method)](#applystate-method)
     - [tickOrder (property)](#tickorder-property)
     - [options (property)](#options-property)
     - [moveDirection (property)](#movedirection-property)
     - [isRunning (property)](#isrunning-property)
+    - [externalDisplacement (property)](#externaldisplacement-property)
+    - [displaySettings (property)](#displaysettings-property)
     - [object2D (property)](#object2d-property)
     - [characterController (property)](#charactercontroller-property)
   - [CharacterController2dEntityOptions (type alias)](#charactercontroller2dentityoptions-type-alias)
+  - [CharacterInput2d (interface)](#characterinput2d-interface)
+  - [CharacterState2d (interface)](#characterstate2d-interface)
 
 ---
 
@@ -117,11 +127,76 @@ Swaps the underlying `characterController` component for a freshly-created one a
 `centersDistance`, keeping the character's feet planted in place - see
 `CharacterController3dEntity.recreateCapsule`'s doc for the full rationale (identical here, just
 in 2D).
+`keepCenter` keeps the capsule center where it is instead (the spawn-time rebuild).
 
 **Signature**
 
 ```ts
-private recreateCapsule(newCentersDistance: number): void
+private recreateCapsule(newCentersDistance: number, keepCenter = false): void
+```
+
+### captureNetworkState (method)
+
+`INetworkSyncable`: owner-side snapshot - see `MoverCorrection`.
+
+**Signature**
+
+```ts
+public captureNetworkState(): MoverNetState<Point2, number>
+```
+
+### applyNetworkState (method)
+
+`INetworkSyncable`: replica-side reconciliation through `externalDisplacement` - see `MoverCorrection`.
+
+**Signature**
+
+```ts
+public applyNetworkState(target: MoverNetState<Point2, number>, ctx: NetworkApplyContext): void
+```
+
+### captureLocalInput (method)
+
+`INetworkInputDriven`: what the local input driver set on this character.
+
+**Signature**
+
+```ts
+public captureLocalInput(): CharacterInput2d
+```
+
+### applyRemoteInput (method)
+
+`INetworkInputDriven`: drive this replica with the possessor's input; `null` is neutral (no
+movement, not running). A jump fires once per observed `jumpSeq` increment; the first sample
+only records the baseline, so a replica created mid-session never replays old jumps.
+
+**Signature**
+
+```ts
+public applyRemoteInput(input: CharacterInput2d | null): void
+```
+
+### serializeSettings (method)
+
+`ISerializableEntity`: the 2D `"Player"` class's `config` - capsule size, every option that
+differs from its default, `display` (from `displaySettings`, else the auto-generated capsule
+sprite's material) and a `state` block with the runtime movement state (see `CharacterState2d`).
+
+**Signature**
+
+```ts
+public serializeSettings(): { config: Record<string, any> }
+```
+
+### applyState (method)
+
+Apply a `CharacterState2d` block (see `serializeSettings`); every field is optional.
+
+**Signature**
+
+```ts
+public applyState(state: CharacterState2d): void
 ```
 
 ### tickOrder (property)
@@ -159,6 +234,30 @@ Whether to move at `walkSpeed * runSpeedMultiplier`.
 
 ```ts
 isRunning: boolean
+```
+
+### externalDisplacement (property)
+
+Extra translation folded into the next tick's `move()` call (added to the desired translation,
+then cleared) - lets something other than the input driver nudge the character while still
+sliding against geometry, instead of teleporting it through the `position` setter. The network
+layer's replica correction (`MoverCorrection`) writes this.
+
+**Signature**
+
+```ts
+externalDisplacement: Readonly<MutablePoint2>
+```
+
+### displaySettings (property)
+
+The `display` settings a level loader built this character from, echoed back by
+`serializeSettings`. Set by `Gg2dLevelLoader`'s `"Player"` class.
+
+**Signature**
+
+```ts
+displaySettings: Record<string, any> | undefined
 ```
 
 ### object2D (property)
@@ -220,5 +319,38 @@ export type CharacterController2dEntityOptions = CharacterController2dOptions & 
    * `CharacterController3dEntityOptions.airControlFactor`'s doc. Default 0.3.
    */
   airControlFactor: number
+}
+```
+
+## CharacterInput2d (interface)
+
+Input a possessing peer forwards for a `CharacterController2dEntity` - see `INetworkInputDriven`.
+`jumpSeq` is the possessor's `jumpCount`: a replica jumps once per observed increment.
+
+**Signature**
+
+```ts
+export interface CharacterInput2d {
+  moveDirection: number
+  isRunning: boolean
+  isCrouching: boolean
+  jumpSeq: number
+}
+```
+
+## CharacterState2d (interface)
+
+Runtime state of a `CharacterController2dEntity` a spawn-time `config` can't reflect - emitted as
+the 2D `"Player"` class's `config.state` by `serializeSettings` and applied back by the loader.
+
+**Signature**
+
+```ts
+export interface CharacterState2d {
+  isCrouching?: boolean
+  isRunning?: boolean
+  moveDirection?: number
+  fallVelocity?: Point2
+  airHorizontalVelocity?: Point2
 }
 ```

@@ -20,6 +20,8 @@ parent: Modules
     - [refreshCG (method)](#refreshcg-method)
     - [detachFromBroadphaseTemporarily (method)](#detachfrombroadphasetemporarily-method)
     - [reattachToBroadphase (method)](#reattachtobroadphase-method)
+    - [wakeUp (method)](#wakeup-method)
+    - [sleep (method)](#sleep-method)
     - [resetMotion (method)](#resetmotion-method)
     - [dispose (method)](#dispose-method)
     - [entity (property)](#entity-property)
@@ -129,6 +131,22 @@ Undoes `detachFromBroadphaseTemporarily()` - see its own doc.
 
 ```ts
 reattachToBroadphase(): void
+```
+
+### wakeUp (method)
+
+**Signature**
+
+```ts
+wakeUp(): void
+```
+
+### sleep (method)
+
+**Signature**
+
+```ts
+sleep(): void
 ```
 
 ### resetMotion (method)

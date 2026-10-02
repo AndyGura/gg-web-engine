@@ -66,6 +66,15 @@ export interface IPhysicsWorldComponent<D, R, PTypeDoc extends PhysicsTypeDocRep
   /**
    * Runs the simulation of the physics world for the given time step.
    *
+   * `GgWorld` may call this once per rendered frame with that frame's own (variable) delta - the
+   * original, still-default behavior - but when its `fixedPhysicsStep` option is set it instead
+   * calls this zero, one, or several times within a single frame, every time with the exact same
+   * constant `delta` value (an accumulator batches the frame's real elapsed time into fixed-size
+   * steps - see `GgWorld`'s constructor doc). An implementation must not assume `simulate` is
+   * called at most once per rendered frame, or that consecutive calls are spaced apart by whatever
+   * time actually elapsed on the wall clock - any per-call bookkeeping keyed on real elapsed time
+   * (rather than purely on `delta`) will be wrong under a fixed step.
+   *
    * @param delta - The time step in milliseconds since the last update.
    */
   simulate(delta: number): void

@@ -712,6 +712,10 @@
     visualScene?: SceneTypeDoc['visualScene']
     physicsWorld?: SceneTypeDoc['physicsWorld']
     audioScene?: SceneTypeDoc['audioScene']
+    maxTickDelta?: number
+    pauseWhenHidden?: boolean
+    fixedPhysicsStep?: number
+    maxPhysicsStepsPerTick?: number
   })
 }
 </code></pre>
@@ -753,6 +757,7 @@ must describe a dynamic body (<code>bodyType: 'dynamic'</code>) - a static/kinem
       command: string,
       handler: (...args: string[]) =&gt; Promise&lt;string&gt;,
       doc?: string,
+      mutates?: boolean,
     ) =&gt; void;
   })
 </code></pre>

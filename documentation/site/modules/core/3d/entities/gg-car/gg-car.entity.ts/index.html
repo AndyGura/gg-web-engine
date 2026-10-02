@@ -585,6 +585,34 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#capturenetworkstate-method" class="md-nav__link">
+    captureNetworkState (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#applynetworkstate-method" class="md-nav__link">
+    applyNetworkState (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#capturelocalinput-method" class="md-nav__link">
+    captureLocalInput (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#applyremoteinput-method" class="md-nav__link">
+    applyRemoteInput (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#tickorder-property" class="md-nav__link">
     tickOrder (property)
   </a>
@@ -620,6 +648,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#autoshiftenabled-property" class="md-nav__link">
+    autoShiftEnabled (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#raycastvehicle-property" class="md-nav__link">
     raycastVehicle (property)
   </a>
@@ -628,6 +663,20 @@
         
       </ul>
     </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ggcarinput-interface" class="md-nav__link">
+    GgCarInput (interface)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ggcarnetstate-type-alias" class="md-nav__link">
+    GgCarNetState (type alias)
+  </a>
   
 </li>
         
@@ -677,14 +726,21 @@
 <li><a href="#serializesettings-method">serializeSettings (method)</a></li>
 <li><a href="#serializewheelfields-method">serializeWheelFields (method)</a></li>
 <li><a href="#resetto-method">resetTo (method)</a></li>
+<li><a href="#capturenetworkstate-method">captureNetworkState (method)</a></li>
+<li><a href="#applynetworkstate-method">applyNetworkState (method)</a></li>
+<li><a href="#capturelocalinput-method">captureLocalInput (method)</a></li>
+<li><a href="#applyremoteinput-method">applyRemoteInput (method)</a></li>
 <li><a href="#tickorder-property">tickOrder (property)</a></li>
 <li><a href="#_rpm-property">_rpm$ (property)</a></li>
 <li><a href="#_acceleration-property">_acceleration$ (property)</a></li>
 <li><a href="#_brake-property">_brake$ (property)</a></li>
 <li><a href="#handbrake-property">handBrake$ (property)</a></li>
+<li><a href="#autoshiftenabled-property">autoShiftEnabled (property)</a></li>
 <li><a href="#raycastvehicle-property">raycastVehicle (property)</a></li>
 </ul>
 </li>
+<li><a href="#ggcarinput-interface">GgCarInput (interface)</a></li>
+<li><a href="#ggcarnetstate-type-alias">GgCarNetState (type alias)</a></li>
 <li><a href="#ggcarproperties-type-alias">GgCarProperties (type alias)</a></li>
 </ul>
 <hr />
@@ -770,6 +826,31 @@ capability this depends on.</p>
     } = {},
   )
 </code></pre>
+<h3 id="capturenetworkstate-method">captureNetworkState (method)</h3>
+<p><code>INetworkSyncable</code>: chassis snapshot plus driving state - see <code>GgCarNetState</code>.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public captureNetworkState(): GgCarNetState
+</code></pre>
+<h3 id="applynetworkstate-method">applyNetworkState (method)</h3>
+<p><code>INetworkSyncable</code>: correct the chassis toward the owner's snapshot (see <code>RigidBodyCorrection</code>)
+and adopt its driving state - unless remote input drives this car, which already carries the
+same values (see <code>applyRemoteInput</code>). A snap also resets the suspension, so the wheels don't
+spring from the old pose.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public applyNetworkState(target: GgCarNetState, ctx: NetworkApplyContext): void
+</code></pre>
+<h3 id="capturelocalinput-method">captureLocalInput (method)</h3>
+<p><code>INetworkInputDriven</code>: what the local input driver set on this car. Ends any remote-input suspension of auto-shift.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public captureLocalInput(): GgCarInput
+</code></pre>
+<h3 id="applyremoteinput-method">applyRemoteInput (method)</h3>
+<p><code>INetworkInputDriven</code>: drive this replica with the possessor's input. <code>null</code> is neutral:
+throttle 0, steering 0, full brake, neutral gear, handbrake off. Auto-shift stays suspended
+while non-null input arrives, since the gear comes from the possessor.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public applyRemoteInput(input: GgCarInput | null): void
+</code></pre>
 <h3 id="tickorder-property">tickOrder (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly tickOrder: number
@@ -790,9 +871,41 @@ capability this depends on.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">handBrake$: any
 </code></pre>
+<h3 id="autoshiftenabled-property">autoShiftEnabled (property)</h3>
+<p>Whether an automatic transmission (<code>carProperties.transmission.isAuto</code>) shifts gears by itself.
+Default <code>true</code>. While <code>false</code> the auto-shift logic doesn't run and <code>gear</code> only ever changes from
+outside. Also suspended automatically while the car is driven by remote input (a networked
+replica takes its gear from the possessor's input instead of shifting on its own).</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">autoShiftEnabled: boolean
+</code></pre>
 <h3 id="raycastvehicle-property">raycastVehicle (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly raycastVehicle: RVEntity
+</code></pre>
+<h2 id="ggcarinput-interface">GgCarInput (interface)</h2>
+<p>Input a possessing peer forwards for a <code>GgCarEntity</code> - see <code>INetworkInputDriven</code>.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export interface GgCarInput {
+  steeringFactor: number
+  acceleration: number
+  brake: number
+  gear: number
+  handBrake: boolean
+}
+</code></pre>
+<h2 id="ggcarnetstate-type-alias">GgCarNetState (type alias)</h2>
+<p>Networked state of a <code>GgCarEntity</code>: the chassis rigid-body snapshot plus its driving state, which
+a replica adopts only while no remote input drives it (a Free car keeps its owner's controls).
+Engine RPM is deliberately absent - it's derived locally from speed and gear on every peer.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type GgCarNetState = RigidBodyNetState&lt;Point3, Point4&gt; &amp; {
+  gear: number
+  steering: number
+  accel: number
+  brake: number
+  handBrake: boolean
+}
 </code></pre>
 <h2 id="ggcarproperties-type-alias">GgCarProperties (type alias)</h2>
 <p><strong>Signature</strong></p>

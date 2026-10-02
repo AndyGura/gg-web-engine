@@ -1,6 +1,6 @@
 ---
 title: core/dev/gg-static.ts
-nav_order: 142
+nav_order: 146
 parent: Modules
 ---
 
@@ -15,6 +15,7 @@ parent: Modules
     - [toggleDevConsole (method)](#toggledevconsole-method)
     - [autoAssignSelectedWorld (method)](#autoassignselectedworld-method)
     - [registerConsoleCommand (method)](#registerconsolecommand-method)
+    - [deregisterConsoleCommand (method)](#deregisterconsolecommand-method)
     - [deregisterWorldCommands (method)](#deregisterworldcommands-method)
     - [console (method)](#console-method)
     - [runConsoleCommand (method)](#runconsolecommand-method)
@@ -53,6 +54,8 @@ private autoAssignSelectedWorld()
 
 ### registerConsoleCommand (method)
 
+Register a dev-console command, globally (`world` = `null`) or for one world.
+
 **Signature**
 
 ```ts
@@ -61,7 +64,18 @@ public registerConsoleCommand(
     command: string,
     handler: (...args: string[]) => Promise<string>,
     doc?: string,
+    mutates?: boolean,
   ): void
+```
+
+### deregisterConsoleCommand (method)
+
+Remove one command registered via {@link registerConsoleCommand}; a no-op if it isn't registered.
+
+**Signature**
+
+```ts
+public deregisterConsoleCommand(world: GgWorld<any, any> | null, command: string): void
 ```
 
 ### deregisterWorldCommands (method)
@@ -103,6 +117,12 @@ consoleKeyPressEventListener: (event: KeyboardEvent) => void
 ```ts
 consoleCommands: Map<
   GgWorld<any, any, GgWorldTypeDocRepo<any, any>, GgWorldSceneTypeRepo<any, any, GgWorldTypeDocRepo<any, any>>> | null,
-  { [key: string]: { handler: (...args: string[]) => Promise<string>; doc?: string | undefined } }
+  {
+    [key: string]: {
+      handler: (...args: string[]) => Promise<string>
+      doc?: string | undefined
+      mutates?: boolean | undefined
+    }
+  }
 >
 ```

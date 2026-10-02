@@ -19,7 +19,9 @@ parent: Modules
     - [buildShapeDescriptor (method)](#buildshapedescriptor-method)
     - [createPrimitive (method)](#createprimitive-method)
     - [createTrigger (method)](#createtrigger-method)
+    - [createPlayer (method)](#createplayer-method)
     - [createSound (method)](#createsound-method)
+  - [Player2DSettings (type alias)](#player2dsettings-type-alias)
   - [Primitive2DShapeName (type alias)](#primitive2dshapename-type-alias)
   - [Primitive2DShapeSettings (interface)](#primitive2dshapesettings-interface)
   - [PrimitiveSettings (interface)](#primitivesettings-interface)
@@ -55,8 +57,8 @@ export interface CompoundChild2DSettings extends Primitive2DShapeSettings {
 
 ## Gg2dLevelLoader (class)
 
-2D level loader: registers the built-in primitive/trigger/sound entity classes and dispatches
-`LevelJson` entities to them (or to custom classes registered via `registerClass`).
+2D level loader: registers the built-in primitive/trigger/player/sound entity classes and
+dispatches `LevelJson` entities to them (or to custom classes registered via `registerClass`).
 
 **Signature**
 
@@ -144,6 +146,22 @@ private createTrigger(
   ): Trigger2dEntity<TypeDoc['pTypeDoc']> | undefined
 ```
 
+### createPlayer (method)
+
+Create a `"Player"` entity: a capsule-shaped `CharacterController2dEntity`, with a matching
+auto-generated capsule mesh when there's a visual scene (physics-only/invisible otherwise). See
+`Player2DSettings`'s doc for why this doesn't also build an animated-sprite equivalent of the 3D
+class's `display.model`, or a `PlayerCharacterController2d`-style input driver.
+
+**Signature**
+
+```ts
+private createPlayer(
+    world: Gg2dWorld<TypeDoc>,
+    settings: Player2DSettings,
+  ): CharacterController2dEntity<TypeDoc> | undefined
+```
+
 ### createSound (method)
 
 Create a `"Sound"` entity - see the 3D loader's `createSound` doc (identical behavior).
@@ -155,6 +173,49 @@ private async createSound(
     world: Gg2dWorld<TypeDoc>,
     settings: Sound2DSettings,
   ): Promise<AudioSource2dEntity<TypeDoc> | undefined>
+```
+
+## Player2DSettings (type alias)
+
+Settings for the built-in `"Player"` entity class: a capsule-shaped `CharacterController2dEntity`
+(see that class's own doc for the gameplay fields below). Only the physics/visual capsule is
+built here - the input wiring (a `PlayerCharacterController2d`-style driver) needs a live
+canvas/`KeyboardInput` the app supplies, so it's left to the app's own code, mirroring the 3D
+`"Player"` class's own division of labor (see `Player3DSettings`).
+
+Unlike the 3D `"Player"` class, this has no `display.model` equivalent: an animated character in
+2D would need a frame-atlas sprite (`IAnimatedDisplayObject2dComponent`, driven by
+`CharacterAnimation2dController`) loaded from a path, but `IDisplayObject2dComponentFactory` has
+no method to load a texture atlas by path at all today (only `createPrimitive`/its box/circle/
+capsule/convexHull/polygon shortcuts) - there is nothing this class could call to build one, the
+way the 3D class calls `loadFromGlb`. TODO: once a 2D factory gains an atlas/sprite-sheet loading
+method, add a `display.model`-equivalent here and wire a `CharacterAnimation2dController` child in
+automatically, mirroring `Gg3dLevelLoader.createPlayer` exactly. Until then, a level JSON can only
+produce a plain (optionally solid-color/textured) capsule sprite or a physics-only invisible one -
+an animated sprite character has to be assembled by app code, the same way an attached/continuous
+`"Sound"` does.
+
+**Signature**
+
+```ts
+export type Player2DSettings = Partial<Omit<CharacterController2dEntityOptions, 'radius' | 'centersDistance'>> & {
+  /** Spawn position of the character (capsule center). */
+  position?: Point2
+  /** Spawn rotation of the character, in radians. */
+  rotation?: number
+  /** Capsule radius. Default 0.4. */
+  radius?: number
+  /** Standing capsule centersDistance. Default 1.0. */
+  centersDistance?: number
+  /** Material options for the auto-generated capsule mesh; omit for a plain default-material capsule. */
+  display?: DisplayObject2dOpts<any>
+  /**
+   * Runtime movement state applied once right after the character is built (see `CharacterState2d`) - what
+   * `serializeSettings` emits, so a character re-created from its own serialization (e.g. on another
+   * peer) continues mid-jump/mid-crouch.
+   */
+  state?: CharacterState2d
+}
 ```
 
 ## Primitive2DShapeName (type alias)

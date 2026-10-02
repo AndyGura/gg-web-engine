@@ -12,6 +12,7 @@ parent: Modules
 
 - [utils](#utils)
   - [AmmoWorldComponent (class)](#ammoworldcomponent-class)
+    - [initAmmoModule (static method)](#initammomodule-static-method)
     - [registerKinematicVelBody (method)](#registerkinematicvelbody-method)
     - [unregisterKinematicVelBody (method)](#unregisterkinematicvelbody-method)
     - [init (method)](#init-method)
@@ -50,6 +51,14 @@ parent: Modules
 export declare class AmmoWorldComponent {
   constructor()
 }
+```
+
+### initAmmoModule (static method)
+
+**Signature**
+
+```ts
+private static initAmmoModule(): Promise<unknown>
 ```
 
 ### registerKinematicVelBody (method)
