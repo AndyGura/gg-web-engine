@@ -5,7 +5,7 @@ together at the version listed, so one section covers `core` and every adapter.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning is
 `0.0.N` for now: the engine is experimental and the public API can change between any two
-releases (see the README's "Current Status").
+releases (see the README's "Project status").
 
 How this file is maintained:
 

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="../../documentation/assets/logo.png" style="height: 400px; width:400px;" alt=''/>
+  <img src="../../documentation/assets/banner.png" width="100%" alt="GG Web Engine"/>
 </p>
 
 ## [Pixi.js](https://github.com/pixijs/pixijs) integration for [gg-web-engine](https://github.com/AndyGura/gg-web-engine), providing 2D rendering

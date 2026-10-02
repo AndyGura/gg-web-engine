@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 420" width="1280" height="420" role="img" aria-label="GG Web Engine - modular 2D/3D game engine for the web">
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#0a0f1f"/><stop offset="1" stop-color="#111535"/>
+  </linearGradient>
+  <radialGradient id="glowA" cx="0.5" cy="0.5" r="0.5">
+    <stop offset="0" stop-color="#22d3ee" stop-opacity="0.38"/><stop offset="1" stop-color="#22d3ee" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="glowB" cx="0.5" cy="0.5" r="0.5">
+    <stop offset="0" stop-color="#8b5cf6" stop-opacity="0.30"/><stop offset="1" stop-color="#8b5cf6" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#22d3ee"/><stop offset="1" stop-color="#8b5cf6"/>
+  </linearGradient>
+  <linearGradient id="accTop" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#a5f3fc"/><stop offset="1" stop-color="#67e8f9"/>
+  </linearGradient>
+  <linearGradient id="accLeft" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#22d3ee"/><stop offset="1" stop-color="#0e7490"/>
+  </linearGradient>
+  <linearGradient id="accRight" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#8b5cf6"/><stop offset="1" stop-color="#4c1d95"/>
+  </linearGradient>
+  <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+    <path d="M40 0H0V40" fill="none" stroke="#ffffff" stroke-opacity="0.045" stroke-width="1"/>
+  </pattern>
+  <linearGradient id="fade" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0" stop-color="#fff" stop-opacity="1"/><stop offset="0.75" stop-color="#fff" stop-opacity="0.25"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+  </linearGradient>
+  <mask id="gridMask"><rect width="1280" height="420" fill="url(#fade)"/></mask>
+  <clipPath id="round"><rect width="1280" height="420" rx="28"/></clipPath>
+  <filter id="blur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="9"/></filter>
+</defs>
+<g clip-path="url(#round)">
+<rect width="1280" height="420" fill="url(#bg)"/>
+<rect width="1280" height="420" fill="url(#grid)" mask="url(#gridMask)"/>
+<ellipse cx="250" cy="200" rx="330" ry="270" fill="url(#glowA)"/>
+<ellipse cx="1120" cy="420" rx="420" ry="260" fill="url(#glowB)"/>
+
+<ellipse cx="250" cy="329" rx="150" ry="22" fill="#22d3ee" opacity="0.28" filter="url(#blur)"/>
+<g ><polygon points="250.0,153.0 303.7,184.0 250.0,215.0 196.3,184.0" fill="#e2e8f0" stroke="#0a0f1f" stroke-width="2.5" stroke-linejoin="round"/><polygon points="196.3,184.0 250.0,215.0 250.0,277.0 196.3,246.0" fill="#94a3b8" stroke="#0a0f1f" stroke-width="2.5" stroke-linejoin="round"/><polygon points="303.7,184.0 250.0,215.0 250.0,277.0 303.7,246.0" fill="#64748b" stroke="#0a0f1f" stroke-width="2.5" stroke-linejoin="round"/></g>
+<g ><polygon points="196.3,184.0 250.0,215.0 196.3,246.0 142.6,215.0" fill="#e2e8f0" stroke="#0a0f1f" stroke-width="2.5" stroke-linejoin="round"/><polygon points="142.6,215.0 196.3,246.0 196.3,308.0 142.6,277.0" fill="#94a3b8" stroke="#0a0f1f" stroke-width="2.5" stroke-linejoin="round"/><polygon points="250.0,215.0 196.3,246.0 196.3,308.0 250.0,277.0" fill="#64748b" stroke="#0a0f1f" stroke-width="2.5" stroke-linejoin="round"/></g>
+<g ><polygon points="303.7,184.0 357.4,215.0 303.7,246.0 250.0,215.0" fill="#e2e8f0" stroke="#0a0f1f" stroke-width="2.5" stroke-linejoin="round"/><polygon points="250.0,215.0 303.7,246.0 303.7,308.0 250.0,277.0" fill="#94a3b8" stroke="#0a0f1f" stroke-width="2.5" stroke-linejoin="round"/><polygon points="357.4,215.0 303.7,246.0 303.7,308.0 357.4,277.0" fill="#64748b" stroke="#0a0f1f" stroke-width="2.5" stroke-linejoin="round"/></g>
+<g ><polygon points="250.0,215.0 303.7,246.0 250.0,277.0 196.3,246.0" fill="#e2e8f0" stroke="#0a0f1f" stroke-width="2.5" stroke-linejoin="round"/><polygon points="196.3,246.0 250.0,277.0 250.0,339.0 196.3,308.0" fill="#94a3b8" stroke="#0a0f1f" stroke-width="2.5" stroke-linejoin="round"/><polygon points="303.7,246.0 250.0,277.0 250.0,339.0 303.7,308.0" fill="#64748b" stroke="#0a0f1f" stroke-width="2.5" stroke-linejoin="round"/></g>
+<g ><polygon points="250.0,91.0 303.7,122.0 250.0,153.0 196.3,122.0" fill="#e2e8f0" stroke="#0a0f1f" stroke-width="2.5" stroke-linejoin="round"/><polygon points="196.3,122.0 250.0,153.0 250.0,215.0 196.3,184.0" fill="#94a3b8" stroke="#0a0f1f" stroke-width="2.5" stroke-linejoin="round"/><polygon points="303.7,122.0 250.0,153.0 250.0,215.0 303.7,184.0" fill="#64748b" stroke="#0a0f1f" stroke-width="2.5" stroke-linejoin="round"/></g>
+<g ><polygon points="196.3,122.0 250.0,153.0 196.3,184.0 142.6,153.0" fill="#e2e8f0" stroke="#0a0f1f" stroke-width="2.5" stroke-linejoin="round"/><polygon points="142.6,153.0 196.3,184.0 196.3,246.0 142.6,215.0" fill="#94a3b8" stroke="#0a0f1f" stroke-width="2.5" stroke-linejoin="round"/><polygon points="250.0,153.0 196.3,184.0 196.3,246.0 250.0,215.0" fill="#64748b" stroke="#0a0f1f" stroke-width="2.5" stroke-linejoin="round"/></g>
+<g ><polygon points="303.7,122.0 357.4,153.0 303.7,184.0 250.0,153.0" fill="#e2e8f0" stroke="#0a0f1f" stroke-width="2.5" stroke-linejoin="round"/><polygon points="250.0,153.0 303.7,184.0 303.7,246.0 250.0,215.0" fill="#94a3b8" stroke="#0a0f1f" stroke-width="2.5" stroke-linejoin="round"/><polygon points="357.4,153.0 303.7,184.0 303.7,246.0 357.4,215.0" fill="#64748b" stroke="#0a0f1f" stroke-width="2.5" stroke-linejoin="round"/></g>
+<ellipse cx="250" cy="246" rx="46" ry="24" fill="#22d3ee" opacity="0.55" filter="url(#blur)"/>
+<ellipse cx="250.0" cy="236.4" rx="27" ry="14" fill="none" stroke="#67e8f9" stroke-opacity="0.60" stroke-width="2"/>
+<ellipse cx="250.0" cy="226.8" rx="24" ry="12" fill="none" stroke="#67e8f9" stroke-opacity="0.45" stroke-width="2"/>
+<ellipse cx="250.0" cy="217.2" rx="21" ry="10" fill="none" stroke="#67e8f9" stroke-opacity="0.30" stroke-width="2"/>
+<g ><polygon points="250.0,114.6 303.7,145.6 250.0,176.6 196.3,145.6" fill="url(#accTop)" stroke="#ecfeff" stroke-width="2.5" stroke-linejoin="round"/><polygon points="196.3,145.6 250.0,176.6 250.0,238.6 196.3,207.6" fill="url(#accLeft)" stroke="#ecfeff" stroke-width="2.5" stroke-linejoin="round"/><polygon points="303.7,145.6 250.0,176.6 250.0,238.6 303.7,207.6" fill="url(#accRight)" stroke="#ecfeff" stroke-width="2.5" stroke-linejoin="round"/></g>
+<line x1="70" y1="92" x2="440" y2="78" stroke="url(#accent)" stroke-opacity="0.28" stroke-width="1.5" stroke-dasharray="3 7" stroke-linecap="round"/>
+<line x1="440" y1="78" x2="462" y2="318" stroke="url(#accent)" stroke-opacity="0.28" stroke-width="1.5" stroke-dasharray="3 7" stroke-linecap="round"/>
+<line x1="462" y1="318" x2="52" y2="300" stroke="url(#accent)" stroke-opacity="0.28" stroke-width="1.5" stroke-dasharray="3 7" stroke-linecap="round"/>
+<line x1="52" y1="300" x2="70" y2="92" stroke="url(#accent)" stroke-opacity="0.28" stroke-width="1.5" stroke-dasharray="3 7" stroke-linecap="round"/>
+<line x1="70" y1="92" x2="462" y2="318" stroke="url(#accent)" stroke-opacity="0.28" stroke-width="1.5" stroke-dasharray="3 7" stroke-linecap="round"/>
+<circle cx="70" cy="92" r="11" fill="#22d3ee" opacity="0.18"/><circle cx="70" cy="92" r="5" fill="#a5f3fc"/>
+<circle cx="440" cy="78" r="11" fill="#22d3ee" opacity="0.18"/><circle cx="440" cy="78" r="5" fill="#a5f3fc"/>
+<circle cx="462" cy="318" r="11" fill="#22d3ee" opacity="0.18"/><circle cx="462" cy="318" r="5" fill="#a5f3fc"/>
+<circle cx="52" cy="300" r="11" fill="#22d3ee" opacity="0.18"/><circle cx="52" cy="300" r="5" fill="#a5f3fc"/>
+<text x="560" y="178" font-family="'Inter','Segoe UI','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="92" font-weight="800" letter-spacing="-2.5"><tspan fill="url(#accent)">GG</tspan><tspan fill="#f8fafc" dx="22">Web Engine</tspan></text>
+<text x="563" y="232" font-family="'Inter','Segoe UI','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="29" font-weight="500" fill="#cbd5e1">Modular 2D/3D game engine for the web</text>
+<rect x="563" y="270" width="214" height="42" rx="21" fill="#ffffff" fill-opacity="0.06" stroke="url(#accent)" stroke-opacity="0.65" stroke-width="1.5"/>
+<text x="670.0" y="297" text-anchor="middle" font-family="'Inter','Segoe UI','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="18" font-weight="600" fill="#e2e8f0">Pluggable rendering</text>
+<rect x="791" y="270" width="190" height="42" rx="21" fill="#ffffff" fill-opacity="0.06" stroke="url(#accent)" stroke-opacity="0.65" stroke-width="1.5"/>
+<text x="886.0" y="297" text-anchor="middle" font-family="'Inter','Segoe UI','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="18" font-weight="600" fill="#e2e8f0">Pluggable physics</text>
+<rect x="995" y="270" width="172" height="42" rx="21" fill="#ffffff" fill-opacity="0.06" stroke="url(#accent)" stroke-opacity="0.65" stroke-width="1.5"/>
+<text x="1081.0" y="297" text-anchor="middle" font-family="'Inter','Segoe UI','Helvetica Neue',Helvetica,Arial,sans-serif" font-size="18" font-weight="600" fill="#e2e8f0">P2P multiplayer</text>
+</g></svg>

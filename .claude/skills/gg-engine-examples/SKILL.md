@@ -1,6 +1,6 @@
 ---
 name: gg-engine-examples
-description: Add or update a demo project under examples/ in gg-web-engine (webpack demos, framework integration samples, or the StackBlitz gallery). Use when the task is to create a new example app, not general app development against a published engine version outside this repo.
+description: Add or update a demo project under examples/ in gg-web-engine (webpack demos or the StackBlitz gallery). Use when the task is to create a new example app, not general app development against a published engine version outside this repo.
 ---
 
 # Adding an example project
@@ -11,13 +11,10 @@ integration tests (rendering adapters have little automated testing, see
 
 ## Pick a template
 
-- **Plain webpack demo** (most examples): copy the nearest existing example with a matching
-  visual+physics combination, e.g. `examples/primitives-three-ammo` or
-  `examples/primitives-pixi-rapier2d`. Contains `index.html`, `index.ts`, `webpack.config.js`
-  (prod build), `webpack.dev.config.js` (dev server), `tsconfig.json`, `package.json`.
-- **Framework integration sample**: copy `examples/framework-angular-three-ammo` or
-  `examples/framework-react-three-rapier3d` instead — these have framework-specific tooling and
-  lifecycle wiring (create the world in `ngOnInit`/`useEffect`, dispose on teardown).
+Copy the nearest existing plain webpack example with a matching visual+physics combination, e.g.
+`examples/primitives-three-ammo` or `examples/primitives-pixi-rapier2d`. It contains `index.html`,
+`index.ts`, `webpack.config.js` (prod build), `webpack.dev.config.js` (dev server), `tsconfig.json`,
+`package.json`.
 
 Naming convention: `<feature-or-topic>-<visual-lib>-<physics-lib>` (e.g.
 `collision-groups-pool-three-rapier3d`, `glb-loader-three-ammo`). Physics-only or render-only demos

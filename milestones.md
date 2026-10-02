@@ -10,7 +10,7 @@ rewritten against the actual codebase: fewer, righter-sized milestones, explicit
 deliverable, and speculative ideas moved out of the milestone structure entirely.
 
 GG-Web-Engine is currently a single-maintainer, experimental-stage project (see the README's
-"Current Status"), built by hand up to this point. The repo also carries a set of Claude Code
+"Project status"), built by hand up to this point. The repo also carries a set of Claude Code
 skills under `.claude/skills/*`, written by the maintainer as reference documentation for how to
 work on each package — useful context regardless of who (or what) is making the change. This doc
 is the higher-level "what and why," and the skills are the "how." Keep those two in sync rather
@@ -377,8 +377,6 @@ Status
   entity construction, added 2026-08-27), GLB loader (2), collision groups (4), collision-groups
   pool (2), a car-physics demo, a shooter demo, and a city-flythrough demo — this grows with each
   feature and is in reasonable shape.
-- ✅ Framework integration samples: Angular (`framework-angular-three-ammo`) and React
-  (`framework-react-three-rapier3d`) exist; Vue/Svelte do not.
 - Generated API docs from TSDoc — not started; no `typedoc` (or equivalent) config anywhere in the
   repo.
 - A progressive "Hello World → small game" tutorial — not started.
