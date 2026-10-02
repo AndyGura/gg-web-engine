@@ -19,6 +19,100 @@ describe(`MatterTriggerComponent`, () => {
     world.dispose();
   });
 
+  it(`stays where it was placed under gravity, and never reports static level geometry`, async () => {
+    world.gravity = { x: 0, y: 9.82 };
+    const ground = factory.createRigidBody(
+      { shape: { shape: 'BOX', dimensions: { x: 100, y: 10 } }, body: { bodyType: 'static', mass: 0 } },
+      { position: { x: 0, y: 50 } },
+    );
+    ground.addToWorld({ physicsWorld: world } as any);
+    const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 10, y: 10 } }, { position: { x: 0, y: 0 } });
+    trigger.addToWorld({ physicsWorld: world } as any);
+    let entered = 0;
+    trigger.onEntityEntered.subscribe(() => entered++);
+    for (let i = 0; i < 300; i++) {
+      world.simulate(16);
+      trigger.checkOverlaps();
+    }
+    expect(trigger.position).toEqual({ x: 0, y: 0 });
+    expect(entered).toBe(0);
+  });
+
+  it(`detects a kinematic body moving in and out`, async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 10, y: 10 } });
+    trigger.addToWorld({ physicsWorld: world } as any);
+    const platform = factory.createRigidBody(
+      { shape: { shape: 'BOX', dimensions: { x: 2, y: 2 } }, body: { bodyType: 'kinematic_pos', mass: 0 } },
+      { position: { x: 20, y: 0 } },
+    );
+    warn.mockRestore();
+    platform.addToWorld({ physicsWorld: world } as any);
+    const events: string[] = [];
+    trigger.onEntityEntered.subscribe(obj => events.push(obj === platform ? 'enter' : 'other'));
+    trigger.onEntityLeft.subscribe(obj => events.push(obj === platform ? 'left' : 'other'));
+    const step = () => {
+      world.simulate(16);
+      trigger.checkOverlaps();
+    };
+    step();
+    platform.position = { x: 0, y: 0 };
+    step();
+    step();
+    expect(events).toEqual(['enter']);
+    platform.position = { x: 20, y: 0 };
+    step();
+    expect(events).toEqual(['enter', 'left']);
+  });
+
+  it(`keeps a body that falls asleep inside, and reports it leaving after waking up`, async () => {
+    const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 10, y: 10 } });
+    trigger.addToWorld({ physicsWorld: world } as any);
+    const box = factory.createRigidBody(
+      { shape: { shape: 'BOX', dimensions: { x: 2, y: 2 } }, body: { bodyType: 'dynamic', mass: 1 } },
+      { position: Pnt2.O },
+    );
+    box.addToWorld({ physicsWorld: world } as any);
+    const events: string[] = [];
+    trigger.onEntityEntered.subscribe(obj => events.push(obj === box ? 'enter' : 'other'));
+    trigger.onEntityLeft.subscribe(obj => events.push(obj === box ? 'left' : 'other'));
+    const step = () => {
+      world.simulate(16);
+      trigger.checkOverlaps();
+    };
+    step();
+    expect(events).toEqual(['enter']);
+    box.sleep();
+    for (let i = 0; i < 10; i++) {
+      step();
+    }
+    expect(events).toEqual(['enter']);
+    box.wakeUp();
+    step();
+    step();
+    expect(events).toEqual(['enter']);
+    box.position = { x: 20, y: 0 };
+    step();
+    step();
+    expect(events).toEqual(['enter', 'left']);
+  });
+
+  it(`detects a body that is put to sleep before entering`, async () => {
+    const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 10, y: 10 } });
+    trigger.addToWorld({ physicsWorld: world } as any);
+    const box = factory.createRigidBody(
+      { shape: { shape: 'BOX', dimensions: { x: 2, y: 2 } }, body: { bodyType: 'dynamic', mass: 1 } },
+      { position: Pnt2.O },
+    );
+    box.sleep();
+    box.addToWorld({ physicsWorld: world } as any);
+    let entered = 0;
+    trigger.onEntityEntered.subscribe(() => entered++);
+    world.simulate(16);
+    trigger.checkOverlaps();
+    expect(entered).toBe(1);
+  });
+
   // Note: this test is identical to rapier2d trigger test, and it is expected
   it(`should detect object intersection`, async () => {
     const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 10, y: 10 } });

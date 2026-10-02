@@ -37,6 +37,10 @@ export * from './inputs/mouse.input';
 
 export * from './interfaces/i-positionable';
 export * from './interfaces/i-serializable-entity';
+export * from './interfaces/i-network-syncable';
+
+export * from './network/rigid-body-correction';
+export * from './network/mover-correction';
 
 export * from './logging';
 

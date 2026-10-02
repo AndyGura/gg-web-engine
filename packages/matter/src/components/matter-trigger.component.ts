@@ -34,6 +34,10 @@ export class MatterTriggerComponent
 
   protected intersectionsAmount = 0;
   protected currentOverlaps: Set<MatterRigidBodyComponent> = new Set();
+  /** The subset of `currentOverlaps` whose exit `checkOverlaps()` detects by polling, because matter's
+   * detector doesn't pair them with this (static) trigger body - see {@link isPolled}. A body moves
+   * back to the native-event path once a native `collisionStart` reports it (it woke up inside). */
+  protected polledOverlaps: Set<MatterRigidBodyComponent> = new Set();
 
   /** `Composite.remove` (what `removeFromWorld` calls) never fires a native `collisionEnd` for the
    * body it removes - matter-js simply stops considering that body's pairs on the next step, it
@@ -69,6 +73,11 @@ export class MatterTriggerComponent
       if (body) {
         let comp = this.world.children.find(c => c.nativeBody === body);
         if (comp instanceof MatterRigidBodyComponent) {
+          if (this.currentOverlaps.has(comp)) {
+            // already inside via polling (it was asleep or kinematic): the native pair takes over
+            this.polledOverlaps.delete(comp);
+            continue;
+          }
           this.currentOverlaps.add(comp);
           this.onEnter$.next(comp);
         }
@@ -86,12 +95,32 @@ export class MatterTriggerComponent
       }
       if (body) {
         let comp = this.world.children.find(c => c.nativeBody === body);
-        if (comp instanceof MatterRigidBodyComponent) {
+        if (comp instanceof MatterRigidBodyComponent && this.currentOverlaps.has(comp)) {
+          if (this.isPolled(comp) && this.overlaps(comp)) {
+            // a body falling asleep inside: matter drops the pair without it having left
+            this.polledOverlaps.add(comp);
+            continue;
+          }
           this.currentOverlaps.delete(comp);
+          this.polledOverlaps.delete(comp);
           this.onLeft$.next(comp);
         }
       }
     }
+  }
+
+  /**
+   * Whether matter's detector never pairs `comp` with this trigger: it skips every pair whose bodies
+   * are both static or sleeping, and the trigger body is static. That covers sleeping bodies and
+   * kinematic ones (built as static here, see `MatterFactory`). Bodies requested as `'static'` are
+   * level geometry and are never reported.
+   */
+  protected isPolled(comp: MatterRigidBodyComponent): boolean {
+    return comp.bodyType === 'kinematic_pos' || comp.bodyType === 'kinematic_vel' || comp.nativeBody.isSleeping;
+  }
+
+  protected overlaps(comp: MatterRigidBodyComponent): boolean {
+    return Query.collides(this.nativeBody, [comp.nativeBody]).length > 0;
   }
 
   constructor(
@@ -101,6 +130,12 @@ export class MatterTriggerComponent
   ) {
     super(nativeBody, shape);
     this.nativeBody.isSensor = true;
+    // A trigger is a fixed volume: left non-static, matter-js integrates its sensor body under
+    // gravity like any dynamic body, and since a sensor never collides it falls through the level
+    // (overlapping, and reporting, whatever it passes on the way down). Static also keeps
+    // static-static pairs (trigger vs level geometry) out of matter's broadphase entirely - which
+    // drops kinematic and sleeping bodies too, so `checkOverlaps()` polls those.
+    Body.setStatic(this.nativeBody, true);
     merge(this.onEnter$.pipe(map(() => true)), this.onLeft$.pipe(map(() => false))).subscribe(enter => {
       if (enter) {
         this.intersectionsAmount++;
@@ -118,6 +153,7 @@ export class MatterTriggerComponent
     }
     this.intersectionsAmount = 0;
     this.currentOverlaps.clear();
+    this.polledOverlaps.clear();
     super.addToWorld(world);
 
     Events.on(world.physicsWorld.matterEngine!, 'collisionStart', this.handleCollisionStart);
@@ -131,6 +167,7 @@ export class MatterTriggerComponent
           queueMicrotask(() => this.onLeft$.next(c));
         }
       } else if (c instanceof MatterRigidBodyComponent && this.currentOverlaps.delete(c)) {
+        this.polledOverlaps.delete(c);
         queueMicrotask(() => this.onLeft$.next(c));
       }
     });
@@ -145,6 +182,7 @@ export class MatterTriggerComponent
       this.onLeft$.next(body);
     }
     this.currentOverlaps.clear();
+    this.polledOverlaps.clear();
     for (const character of this.currentCharacterOverlaps) {
       this.onLeft$.next(character);
     }
@@ -162,9 +200,10 @@ export class MatterTriggerComponent
   }
 
   /**
-   * Regular rigid-body overlaps are handled entirely by `handleCollisionStart`/`handleCollisionEnd`
-   * above, off matter's own native `collisionStart`/`collisionEnd` engine events - so this used to be
-   * a pure no-op for matter-js. A `MatterCharacterControllerComponent`'s own phantom body is
+   * Awake dynamic bodies are handled by `handleCollisionStart`/`handleCollisionEnd` above, off
+   * matter's own native `collisionStart`/`collisionEnd` engine events; kinematic and sleeping ones,
+   * which matter never pairs with this static body, are polled by `checkPolledBodyOverlaps()`.
+   * A `MatterCharacterControllerComponent`'s own phantom body is
    * deliberately never added to `Composite`/`engine.world` at all (see that class's own doc), so no
    * native collision pair - and thus no native event - can ever involve it. Since `checkOverlaps()` is
    * already called once per tick by `Trigger2dEntity` regardless of backend, this is the natural place
@@ -176,6 +215,7 @@ export class MatterTriggerComponent
    * ordinary bodies.
    */
   checkOverlaps(): void {
+    this.checkPolledBodyOverlaps();
     // `Query.collides` tests raw geometry only and knows nothing about `collisionFilter` (see
     // `MatterCharacterControllerComponent.collectObstacles`'s own doc on this same gap) - call
     // matter's own `Detector.canCollide` directly so a character controller whose collision groups
@@ -209,6 +249,36 @@ export class MatterTriggerComponent
     for (const comp of this.currentCharacterOverlaps) {
       if (!stillOverlapping.has(comp)) {
         this.currentCharacterOverlaps.delete(comp);
+        this.onLeft$.next(comp);
+      }
+    }
+  }
+
+  /**
+   * Enter/exit of the rigid bodies matter's detector never pairs with this trigger (see
+   * {@link isPolled}): a kinematic platform moving in or out, a body asleep inside. Like the
+   * character poll below, `Query.collides` ignores `collisionFilter`, so `Detector.canCollide` is
+   * checked by hand.
+   */
+  protected checkPolledBodyOverlaps(): void {
+    for (const comp of this.world.children) {
+      if (
+        comp instanceof MatterRigidBodyComponent &&
+        !(comp instanceof MatterTriggerComponent) &&
+        !this.currentOverlaps.has(comp) &&
+        this.isPolled(comp) &&
+        Detector.canCollide(this.nativeBody.collisionFilter, comp.nativeBody.collisionFilter) &&
+        this.overlaps(comp)
+      ) {
+        this.currentOverlaps.add(comp);
+        this.polledOverlaps.add(comp);
+        this.onEnter$.next(comp);
+      }
+    }
+    for (const comp of this.polledOverlaps) {
+      if (!this.overlaps(comp)) {
+        this.polledOverlaps.delete(comp);
+        this.currentOverlaps.delete(comp);
         this.onLeft$.next(comp);
       }
     }

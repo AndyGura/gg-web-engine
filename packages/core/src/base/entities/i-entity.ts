@@ -7,6 +7,11 @@ import { IWorldComponent } from '../components/i-world-component';
  */
 export enum TickOrder {
   INPUT_CONTROLLERS = 0,
+  /**
+   * Where a network layer applies remote input and replica corrections - after local input, and
+   * before the movers/vehicles at `PHYSICS_SIMULATION - 5` consume this tick's input and displacement.
+   */
+  NETWORK_IN = 100,
   PHYSICS_SIMULATION = 200,
   OBJECTS_BINDING = 400,
   ANIMATION_MIXERS = 600,

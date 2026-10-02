@@ -629,7 +629,7 @@ describe('Gg2dLevelLoader', () => {
       });
     });
 
-    it('serializes a Player built via createEntity with class "Player" (spawn-record echo - CharacterController2dEntity has no live/self-serializer)', async () => {
+    it('serializes a Player built via createEntity with class "Player" (self-serialized, with a runtime state block)', async () => {
       const character = await levelLoader.createEntity({
         class: 'Player',
         name: 'DirectPlayer',
@@ -638,13 +638,50 @@ describe('Gg2dLevelLoader', () => {
       });
 
       expect(character).toBeInstanceOf(CharacterController2dEntity);
-      expect(levelLoader.serializeEntity(character!)).toEqual({
+      const json = levelLoader.serializeEntity(character!)!;
+      expect(json).toEqual({
         class: 'Player',
         name: 'DirectPlayer',
         position: { x: 3, y: 4 },
         rotation: 0,
-        config: { radius: 0.4, centersDistance: 1.0 },
+        config: expect.objectContaining({
+          radius: 0.4,
+          centersDistance: 1.0,
+          state: {
+            isCrouching: false,
+            isRunning: false,
+            moveDirection: 0,
+            fallVelocity: { x: 0, y: 0 },
+            airHorizontalVelocity: { x: 0, y: 0 },
+          },
+        }),
       });
+    });
+
+    it('round-trips a Player\'s non-default options and runtime state through serializeEntity/createEntity', async () => {
+      const character = (await levelLoader.createEntity({
+        class: 'Player',
+        name: 'StatefulPlayer',
+        config: { radius: 0.5, centersDistance: 1.2, walkSpeed: 7 },
+      })) as CharacterController2dEntity;
+      character.isRunning = true;
+      character.moveDirection = 1;
+      character.fallVelocity = { x: 0, y: -2 };
+      character.airHorizontalVelocity = { x: 1.5, y: 0 };
+
+      const json = levelLoader.serializeEntity(character)!;
+      expect(json.config.walkSpeed).toBe(7);
+      expect(json.config).not.toHaveProperty('jumpSpeed'); // default values are omitted
+      json.name = 'StatefulPlayerCopy';
+      const copy = (await levelLoader.createEntity(json)) as CharacterController2dEntity;
+
+      expect(copy.options.radius).toBe(0.5);
+      expect(copy.options.centersDistance).toBe(1.2);
+      expect(copy.options.walkSpeed).toBe(7);
+      expect(copy.isRunning).toBe(true);
+      expect(copy.moveDirection).toEqual(1);
+      expect(copy.fallVelocity).toEqual({ x: 0, y: -2 });
+      expect(copy.airHorizontalVelocity).toEqual({ x: 1.5, y: 0 });
     });
 
     it('falls through to the spawn-record echo for an entity the live serializers do not recognize', async () => {

@@ -1,0 +1,4 @@
+# per-deployer state: `firebase use --add` writes the local project alias here
+.firebaserc
+functions/node_modules/
+*-debug.log

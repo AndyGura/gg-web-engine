@@ -195,6 +195,7 @@ export class Gg3dWorld<
       command: string,
       handler: (...args: string[]) => Promise<string>,
       doc?: string,
+      mutates?: boolean,
     ) => void;
   }) {
     super.registerConsoleCommands(ggstatic);
@@ -218,6 +219,7 @@ export class Gg3dWorld<
       },
       'args: [ string, float, float, float ]; Teleport a named entity to world-space coordinates. ' +
         'Use "entities"/"entity NAME" to find entity names and their current position',
+      true,
     );
     ggstatic.registerConsoleCommand(
       this,
@@ -247,6 +249,7 @@ export class Gg3dWorld<
       },
       'args: [ string, float, float, float, float? ]; Rotate a named entity. 3 numbers are euler ' +
         'angles in radians, 4 numbers are a raw quaternion (x y z w)',
+      true,
     );
     ggstatic.registerConsoleCommand(
       this,
@@ -301,6 +304,7 @@ export class Gg3dWorld<
         'primitive rigid body at world-space coordinates, for probing physics. bodyType (last ' +
         'arg) defaults to dynamic (1, falls under gravity); numeric shorthand: 0=static, ' +
         '2=kinematic_pos, 3=kinematic_vel',
+      true,
     );
     if (this.physicsWorld) {
       ggstatic.registerConsoleCommand(
@@ -321,6 +325,7 @@ export class Gg3dWorld<
         'args: [ ?float, ?float, ?float ]; Get or set 3D world gravity vector. 1 argument sets ' +
           'vector {x: 0, y: 0, z: -value}, 3 arguments set the whole vector.' +
           ' Default value is "9.82" or "0 0 -9.82"',
+        true,
       );
       ggstatic.registerConsoleCommand(
         this,
@@ -353,6 +358,7 @@ export class Gg3dWorld<
           "the ground) and control the first renderer's camera with it. Prints the spawned " +
           'controller entity\'s name (the "controlled by" part of the output) - pass that name to ' +
           '"player_mode" to switch it between first/third person',
+        true,
       );
       ggstatic.registerConsoleCommand(
         this,

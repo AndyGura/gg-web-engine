@@ -306,6 +306,33 @@ no `simulate()`/`checkOverlaps()` in between). Any test that removes an overlapp
 `removeFromWorld` still emits `onLeft$` inline for everything it was overlapping - that's the trigger
 leaving at a controlled point in its own lifecycle, not a reaction to someone else's removal.
 
+## `MatterTriggerComponent`'s sensor body is static
+
+A trigger's native body is `isSensor` *and* `Body.setStatic(body, true)` (set in the component's
+constructor). `Bodies.rectangle(..., { isSensor: true })` alone builds a *dynamic* body: under gravity
+matter-js integrates it like any other, and since a sensor never collides it falls straight through the
+level - overlapping and reporting static level geometry on the way down, and never being where the
+level placed it. Every existing trigger test ran with `gravity = Pnt2.O`, which hid this completely.
+Static also keeps trigger-vs-static-geometry pairs out of matter's broadphase (static-static pairs are
+never generated). Regression: `matter-trigger.component.spec.ts`'s "stays where it was placed under
+gravity" case - keep gravity on in any new trigger test.
+
+**What static costs: `Detector.collisions` skips every pair whose bodies are both static *or sleeping*.**
+That drops a trigger's pairs with kinematic bodies, which this adapter builds as `isStatic`, and with any
+sleeping body. A body put to sleep while inside also gets a spurious native `collisionEnd`: the pair
+stops updating, and `Pairs.update` only keeps a stale pair when *both* bodies have `sleepCounter > 0`,
+which the static trigger never has. `MatterTriggerComponent` therefore splits rigid-body overlaps by
+who can see them:
+- **Native events** handle awake dynamic bodies.
+- **`checkOverlaps()` polls** the bodies `isPolled()` names: `bodyType` `kinematic_pos`/`kinematic_vel`,
+  or `nativeBody.isSleeping`. It uses `Query.collides` plus a hand-rolled `Detector.canCollide` filter.
+  Bodies requested as `'static'` are level geometry and are never polled.
+- **`polledOverlaps`** (a subset of `currentOverlaps`) marks entries whose exit the poll owns. A native
+  `collisionEnd` for a body that is polled and still overlapping moves the body into that set instead
+  of emitting `onLeft$`. A native `collisionStart` for a body already in `currentOverlaps` (it woke up
+  inside) hands it back to the native path without a second `onEnter$`.
+- **Regressions** are the kinematic and sleep cases in `matter-trigger.component.spec.ts`.
+
 ## Character controller: a from-scratch discrete-query mover, no native sweep to lean on
 
 `MatterCharacterControllerComponent` implements `ICharacterController2dComponent` as a capsule `Body`

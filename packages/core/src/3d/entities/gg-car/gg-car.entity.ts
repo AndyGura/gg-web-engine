@@ -5,9 +5,14 @@ import { IPositionable3d } from '../../interfaces/i-positionable-3d';
 import {
   AxisDirection3,
   cubicSplineInterpolation,
+  INetworkInputDriven,
+  INetworkSyncable,
   ISerializableEntity,
+  NetworkApplyContext,
   Point3,
   Point4,
+  RigidBodyCorrection,
+  RigidBodyNetState,
   TickOrder,
 } from '../../../base';
 import { BehaviorSubject, filter, Observable, throttleTime } from 'rxjs';
@@ -58,12 +63,34 @@ export type GgCarProperties = RVEntityProperties & {
   maxSteerAngle: number | { atSpeedMs: number; angleRad: number }[];
 };
 
+/**
+ * Networked state of a `GgCarEntity`: the chassis rigid-body snapshot plus its driving state, which
+ * a replica adopts only while no remote input drives it (a Free car keeps its owner's controls).
+ * Engine RPM is deliberately absent - it's derived locally from speed and gear on every peer.
+ */
+export type GgCarNetState = RigidBodyNetState<Point3, Point4> & {
+  gear: number;
+  steering: number;
+  accel: number;
+  brake: number;
+  handBrake: boolean;
+};
+
+/** Input a possessing peer forwards for a `GgCarEntity` - see `INetworkInputDriven`. */
+export interface GgCarInput {
+  steeringFactor: number;
+  acceleration: number;
+  brake: number;
+  gear: number;
+  handBrake: boolean;
+}
+
 export class GgCarEntity<
   TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo,
   RVEntity extends RaycastVehicle3dEntity<TypeDoc> = RaycastVehicle3dEntity<TypeDoc>,
 >
   extends IRenderable3dEntity<TypeDoc>
-  implements IPositionable3d, ISerializableEntity
+  implements IPositionable3d, ISerializableEntity, INetworkSyncable<GgCarNetState>, INetworkInputDriven<GgCarInput>
 {
   static readonly entityTypeName: string = 'GgCarEntity';
   public readonly tickOrder = TickOrder.PHYSICS_SIMULATION - 5;
@@ -255,6 +282,17 @@ export class GgCarEntity<
   // TODO remove
   set isHonking(value: boolean) {}
 
+  /**
+   * Whether an automatic transmission (`carProperties.transmission.isAuto`) shifts gears by itself.
+   * Default `true`. While `false` the auto-shift logic doesn't run and `gear` only ever changes from
+   * outside. Also suspended automatically while the car is driven by remote input (a networked
+   * replica takes its gear from the possessor's input instead of shifting on its own).
+   */
+  public autoShiftEnabled: boolean = true;
+
+  // set while applyRemoteInput drives this car with a possessor's (non-null) input
+  private _remoteInputActive: boolean = false;
+
   public readonly raycastVehicle: RVEntity;
 
   constructor(
@@ -322,6 +360,7 @@ export class GgCarEntity<
     if (this.carProperties.transmission.isAuto) {
       this.tick$
         .pipe(
+          filter(() => this.autoShiftEnabled && !this._remoteInputActive),
           throttleTime(50),
           filter(() => this.raycastVehicle.isTouchingGround),
         )
@@ -486,5 +525,78 @@ export class GgCarEntity<
     this.raycastVehicle.resetTo(options);
     this.gear = 0;
     this._rpm$.next(this.carProperties.engine.minRpm);
+  }
+
+  /** `INetworkSyncable`: the chassis body is this car's networked body; its own child entity isn't synced separately. */
+  public get isNetworkSyncEnabled(): boolean {
+    return !!this.raycastVehicle.objectBody;
+  }
+
+  /** `INetworkSyncable`: chassis snapshot plus driving state - see `GgCarNetState`. */
+  public captureNetworkState(): GgCarNetState {
+    return {
+      ...RigidBodyCorrection.capture(this.raycastVehicle.vehicleComponent),
+      gear: this.gear,
+      steering: this.steeringFactor,
+      accel: this.acceleration,
+      brake: this.brake,
+      handBrake: this.handBrake,
+    };
+  }
+
+  /**
+   * `INetworkSyncable`: correct the chassis toward the owner's snapshot (see `RigidBodyCorrection`)
+   * and adopt its driving state - unless remote input drives this car, which already carries the
+   * same values (see `applyRemoteInput`). A snap also resets the suspension, so the wheels don't
+   * spring from the old pose.
+   */
+  public applyNetworkState(target: GgCarNetState, ctx: NetworkApplyContext): void {
+    const outcome = RigidBodyCorrection.correct(this.raycastVehicle.vehicleComponent, target, ctx);
+    if (outcome === 'snap') {
+      this.raycastVehicle.vehicleComponent.resetSuspension();
+    }
+    if (this._remoteInputActive) {
+      return;
+    }
+    this.gear = target.gear;
+    this.steeringFactor = target.steering;
+    this.acceleration = target.accel;
+    this.brake = target.brake;
+    this.handBrake = target.handBrake;
+  }
+
+  /** `INetworkInputDriven`: what the local input driver set on this car. Ends any remote-input suspension of auto-shift. */
+  public captureLocalInput(): GgCarInput {
+    this._remoteInputActive = false;
+    return {
+      steeringFactor: this.steeringFactor,
+      acceleration: this.acceleration,
+      brake: this.brake,
+      gear: this.gear,
+      handBrake: this.handBrake,
+    };
+  }
+
+  /**
+   * `INetworkInputDriven`: drive this replica with the possessor's input. `null` is neutral:
+   * throttle 0, steering 0, full brake, neutral gear, handbrake off. Auto-shift stays suspended
+   * while non-null input arrives, since the gear comes from the possessor.
+   */
+  public applyRemoteInput(input: GgCarInput | null): void {
+    if (input === null) {
+      this._remoteInputActive = false;
+      this.steeringFactor = 0;
+      this.acceleration = 0;
+      this.brake = 1;
+      this.gear = 0;
+      this.handBrake = false;
+      return;
+    }
+    this._remoteInputActive = true;
+    this.steeringFactor = input.steeringFactor;
+    this.acceleration = input.acceleration;
+    this.brake = input.brake;
+    this.gear = input.gear;
+    this.handBrake = input.handBrake;
   }
 }

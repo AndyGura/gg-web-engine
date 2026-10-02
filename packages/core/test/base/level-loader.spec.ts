@@ -272,6 +272,27 @@ describe('LevelLoader', () => {
       expect(disposeSpy).toHaveBeenCalled();
     });
 
+    it('consults world.eventAuthority before running a binding, skipping the run when it returns false', async () => {
+      levelLoader.registerClass('Observable', () => new ObservableEntity());
+      const target = new TestEntity();
+      world.addEntity(target);
+      const entity = (await levelLoader.createEntity({
+        class: 'Observable',
+        name: 'GatedSource',
+        events: { onSomething: 'RemoveEntity' },
+      })) as ObservableEntity;
+
+      const authority = jest.fn(() => false);
+      world.eventAuthority = authority;
+      entity.onSomething.next(target);
+      expect(authority).toHaveBeenCalledWith(entity, 'onSomething', target);
+      expect(target.world).toBe(world);
+
+      world.eventAuthority = () => true;
+      entity.onSomething.next(target);
+      expect(target.world).toBeNull();
+    });
+
     it('parents the binding under the created entity itself and disposes it along with the entity', async () => {
       levelLoader.registerClass('Observable', () => new ObservableEntity());
 
@@ -1007,7 +1028,10 @@ describe('LevelLoader', () => {
 
       const serialized = levelLoader.serializeLevel(level);
 
-      expect(serialized.entities).toEqual([{ class: 'Observable', name: 'SourceForSerialize' }]);
+      // the binding entity itself is skipped; the source entity echoes the binding it was built with
+      expect(serialized.entities).toEqual([
+        { class: 'Observable', name: 'SourceForSerialize', events: { onSomething: 'RemoveEntity' } },
+      ]);
     });
   });
 });

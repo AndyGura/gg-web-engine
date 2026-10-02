@@ -255,4 +255,33 @@ describe('GgStatic', () => {
       expect(result).toBe('one\ntwo');
     });
   });
+
+  describe('mutating commands and commandGuard', () => {
+    it('rejects a mutating world command while the world has a commandGuard returning a reason', async () => {
+      const ggstatic = GgStatic.instance;
+      const world = makeWorld('guarded');
+      (ggstatic as any)._selectedWorld$.next(world);
+      const handler = jest.fn(async () => 'done');
+      ggstatic.registerConsoleCommand(world, 'mutate_me', handler, 'doc', true);
+      ggstatic.registerConsoleCommand(world, 'read_me', async () => 'read', 'doc');
+
+      world.commandGuard = (command: string) => (command === 'mutate_me' ? 'locked by test' : null);
+      const rejected = await ggstatic.runConsoleCommand('mutate_me', []);
+      expect(rejected).toContain('locked by test');
+      expect(handler).not.toHaveBeenCalled();
+      expect(await ggstatic.runConsoleCommand('read_me', [])).toBe('read');
+
+      world.commandGuard = null;
+      expect(await ggstatic.runConsoleCommand('mutate_me', [])).toBe('done');
+    });
+
+    it('registers the built-in teleport/spawn/remove/time commands as mutating', () => {
+      const ggstatic = GgStatic.instance;
+      const world = makeWorld('flags');
+      const commands = (ggstatic as any).consoleCommands.get(world);
+      expect(commands.remove.mutates).toBe(true);
+      expect(commands.timescale.mutates).toBe(true);
+      expect(commands.entities.mutates).toBe(false);
+    });
+  });
 });

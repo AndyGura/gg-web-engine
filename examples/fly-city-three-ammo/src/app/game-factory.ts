@@ -19,12 +19,17 @@ import { filter, firstValueFrom } from 'rxjs';
 import { CAR_SPECS, LAMBO_SPECS, TRUCK_SPECS } from './car-specs';
 import { FlyCityTypeDoc, FlyCityWorld } from './app.component';
 import { takeUntil } from 'rxjs/operators';
+import { Multiplayer } from './multiplayer';
 
 GgStatic.instance.showStats = true;
 GgStatic.instance.devConsoleEnabled = true;
 
 export class GameFactory {
-  constructor(public readonly world: FlyCityWorld) {
+  constructor(
+    public readonly world: FlyCityWorld,
+    /** set in multiplayer mode */
+    public readonly mp: Multiplayer | null = null,
+  ) {
   }
 
   public async initGame(canvas: HTMLCanvasElement): Promise<[Renderer3dEntity<FlyCityTypeDoc['vTypeDoc']>, MapGraph3dEntity<FlyCityTypeDoc>, Trigger3dEntity<FlyCityTypeDoc['pTypeDoc']>]> {
@@ -93,10 +98,12 @@ export class GameFactory {
       cityMapGraph.loaderCursor$.next(renderCursor.position);
     });
     cityMapGraph.chunkLoaded$.subscribe(async ([{ meta }, { position }, node]) => {
-      // spawn cars
+      // spawn cars - in multiplayer the dice are seeded per room and tile, so every peer streaming
+      // this tile spawns the very same cars (with the same names) and they can be shared content
+      const random = this.mp ? this.mp.tileRandom(position.x, position.y) : Math.random;
       const cars =
         await Promise.all(meta.dummies
-          .filter(x => x.is_car && (Math.random() < (x.spawn_probability || 1) / 3))
+          .filter(x => x.is_car && (random() < (x.spawn_probability || 1) / 3))
           .map(async dummy => {
             const [
               {
@@ -126,6 +133,9 @@ export class GameFactory {
           }),
         );
       const spawned = cars.filter((car): car is GgCarEntity => !!car);
+      // every peer builds these itself: only their state travels; a peer loading the tile later asks
+      // the room for it, and unloading the tile is just a local unload
+      this.mp?.net.markShared(spawned);
       if (cityMapGraph.loaded.has(node)) {
         // tie these cars to the chunk's own lifecycle so they're removed automatically when this
         // chunk unloads - otherwise they leak (and, on a later reload of the same chunk, collide by
@@ -179,6 +189,7 @@ export class GameFactory {
     );
     const lambo = this.generateCar(chassisMesh, chassisBody!, chassisDummies, wheelMesh, LAMBO_SPECS);
     lambo.name = 'lambo';
+    this.mp?.net.markShared(lambo); // every peer spawns its own lambo at start
     this.world.addEntity(lambo);
     return lambo;
   }

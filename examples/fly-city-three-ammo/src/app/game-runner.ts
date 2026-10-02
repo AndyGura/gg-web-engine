@@ -19,6 +19,7 @@ import { GameCameraController } from './game-camera-controller';
 import { GameAudio } from './game-audio';
 import { HttpClient } from '@angular/common/http';
 import { FlyCityTypeDoc, FlyCityWorld } from './app.component';
+import { Multiplayer } from './multiplayer';
 
 // Blockman is shared with the player-character examples (source: examples/assets/characters).
 const PLAYER_MODEL_PATH = '/assets/characters/blockman';
@@ -57,8 +58,13 @@ export class GameRunner {
     public readonly renderer: Renderer3dEntity<FlyCityTypeDoc['vTypeDoc']>,
     public readonly cityMapGraph: MapGraph3dEntity<FlyCityTypeDoc>,
     public readonly mapBounds: Trigger3dEntity<FlyCityTypeDoc['pTypeDoc']>,
+    /** set in multiplayer mode */
+    public readonly mp: Multiplayer | null = null,
   ) {
     this.gameCameraController = new GameCameraController(this.world, this.renderer);
+    if (this.mp) {
+      this.setupMultiplayer(this.mp);
+    }
     this.state$.subscribe((state) => {
       this.gameCameraController.state = state;
       if (this.handling) {
@@ -79,6 +85,12 @@ export class GameRunner {
           // fell off the map (e.g. spawned/walked over a gap) - reset position instead of leaving
           // it disposed with the game stuck in onfoot/entering mode pointing at a dead entity
           this.resetMyCharacter(state.character);
+        } else if (this.mp) {
+          // every peer sees the fall; only the owner removes it, for everyone
+          const target = entity.parent instanceof GgCarEntity ? entity.parent : entity;
+          if (this.mp.net.isNetworked(target) && this.mp.net.isLocallyOwned(target)) {
+            this.mp.net.despawn(target);
+          }
         } else {
           this.world.removeEntity(entity, true);
         }
@@ -133,10 +145,12 @@ export class GameRunner {
     this.removeCharacter();
     // loadLevel builds the "Player" entity (capsule body + animated model) and adds it to the world
     // inside a group entity, which is what we later remove to get rid of the character.
+    // names are network ids: each peer's character needs its own
+    const name = this.mp ? `Player_${this.mp.net.localPeerId}` : 'Player';
     const group = await this.world.loader.loadLevel({
       entities: [{
         class: 'Player',
-        name: 'Player',
+        name,
         position,
         config: {
           radius: 0.4,
@@ -146,7 +160,10 @@ export class GameRunner {
       }],
     }, 'PlayerGroup');
     this.characterGroup = group;
-    return group.getChildEntityByName<CharacterController3dEntity<FlyCityTypeDoc>>('Player');
+    const character = group.getChildEntityByName<CharacterController3dEntity<FlyCityTypeDoc>>(name);
+    // a runtime spawn: it appears on every peer; possessing it makes this peer drive it
+    this.mp?.net.possess(character);
+    return character;
   }
 
   private removeCharacter() {
@@ -160,7 +177,7 @@ export class GameRunner {
     let distance = maxDistance;
     let car: GgCarEntity | null = null;
     for (const entity of this.world.children) {
-      if (entity instanceof GgCarEntity) {
+      if (entity instanceof GgCarEntity && !this.mp?.isPossessedByOther(entity)) {
         const curDistance = Pnt3.len(Pnt3.sub(from, entity.position));
         if (curDistance < distance) {
           distance = curDistance;
@@ -197,6 +214,11 @@ export class GameRunner {
     const flat: Point3 = { x: toTarget.x, y: toTarget.y, z: 0 };
     if (Pnt3.len(flat) <= ENTER_CAR_ARRIVE_DISTANCE) {
       character.moveDirection = Pnt3.O;
+      if (this.mp && !this.mp.net.possess(car)) {
+        // somebody else got in first
+        this.state$.next({ mode: 'onfoot', character });
+        return;
+      }
       this.removeCharacter(); // "entering" is just the character disappearing, no animation
       this.state$.next({ mode: 'driving', car, carType });
       return;
@@ -208,7 +230,30 @@ export class GameRunner {
   }
 
   private async leaveCar(car: GgCarEntity) {
+    this.mp?.net.release(car);
     await this.spawnAndControl(this.driverSeatSpot(car));
+  }
+
+  private setupMultiplayer(mp: Multiplayer) {
+    // where this player "is" for ownership arbitration; a free-flying spectator holds nothing
+    mp.net.localPosition = () => {
+      const state = this.state$.getValue();
+      switch (state.mode) {
+        case 'freecamera':
+          return null;
+        case 'driving':
+          return state.car.position;
+        default:
+          return state.character.position;
+      }
+    };
+    mp.net.possessionChanged$.subscribe(({ entity, to }) => {
+      const state = this.state$.getValue();
+      if (state.mode === 'driving' && state.car === entity && to !== null && to !== mp.net.localPeerId) {
+        // lost a race for the driver's seat - step out
+        this.spawnAndControl(this.driverSeatSpot(state.car)).then();
+      }
+    });
   }
 
   private async spawnInFrontOfCamera() {

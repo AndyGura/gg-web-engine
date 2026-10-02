@@ -43,6 +43,24 @@ a `Trigger`'s own overlap-tracking reacting to the same removed body twice - see
 one native handle to free in `dispose()` should guard each handle independently the same way, rather
 than relying solely on the entity-level idempotency guard.
 
+## Several `AmmoWorldComponent`s in one process share one Ammo module instance
+
+The vendored `ammo.js` is an Emscripten `MODULARIZE` factory: calling `Ammo(Ammo)` instantiates a
+fresh WASM heap and rebinds every class onto the shared `Ammo` object. `AmmoWorldComponent.init()`
+initializes it exactly once per process (a static `ammoModuleReady` promise) and every world awaits
+that same promise. Running the factory once per world re-instantiates the heap underneath every world
+created earlier: their native handles still point into the abandoned heap, so a body created for an
+earlier world afterwards is silently never simulated (no error, `position` just never changes) while
+the newest world works fine. Any page/test with two Ammo worlds (split views, an in-process multiplayer
+harness) hits this. Regression: `ammo-world.component.spec.ts`'s "several worlds in one process".
+
+A *rejected* initialization (a transient WASM fetch or instantiation failure) is not cached: the
+promise is cleared on rejection, so the next `init()` runs the factory again. That is safe, because
+no world exists on a module that never initialized. Caching the rejection would make every later
+world on the page fail instantly with no way to recover. The factory's return value is wrapped in
+`Promise.resolve`, because the Emscripten module is only a thenable and has no `catch`.
+Regression: `ammo-world-init-retry.spec.ts`, which `jest.mock`s the vendored factory to reject once.
+
 ## Sleeping bodies silently ignored programmatic transform/velocity writes
 
 See `gg-engine-physics-adapter`'s general contract note on this (the cross-adapter version of the

@@ -60,6 +60,41 @@ whatever the loader currently expects), bump `GG_META_FORMAT_VERSION` in
 `blender-addon/gg_web_engine_exporter/exporter.py` and update `blender-addon/README.md`'s
 object-convention table to match — the two sides aren't type-checked against each other.
 
+## Networking contracts: core knows how to be corrected, not who corrects it
+
+Core carries only what `@gg-web-engine/multiplayer` drives; it never mentions peers, owners,
+transports or possession. The pieces (see `gg-engine-multiplayer` for the full model):
+
+- `INetworkSyncable`/`INetworkInputDriven` (`base/interfaces/i-network-syncable.ts`), with
+  `isNetworkSyncable`/`isNetworkInputDriven` duck-type guards, `NetworkApplyContext` (`ageMs`, `dt`,
+  `snap`, `tuning`) and `CorrectionTuning`/`DEFAULT_CORRECTION_TUNING`.
+- `RigidBodyCorrection`/`MoverCorrection` (`base/network/`): the correction math, written once and
+  dimension-agnostic - `net-math.ts` tells 2D from 3D at runtime (`z` present / rotation is a
+  number), the same way every other helper here operates on plain `Point2`/`Point3`/`Point4` data.
+  `net-math.ts` is internal (not re-exported); its vector helpers only dispatch to `Pnt2`/`Pnt3`
+  (rotations to `Qtrn`) - add missing math there, not as another copy here.
+- Implementations on `Entity2d`/`Entity3d` (`isNetworkSyncEnabled` only with a non-static body),
+  `GgCarEntity` (plus `autoShiftEnabled`; while remote input drives it, auto-shift is suspended and
+  `applyNetworkState` corrects only the chassis - the input already carries the driving state) and
+  both character entities (`externalDisplacement` folded into the next `move()` then cleared,
+  `jumpCount` incremented only by a jump that happened, `actualVelocity` = last tick's real
+  displacement / dt).
+- `TickOrder.NETWORK_IN` (100): after input controllers, before the movers/vehicles at
+  `PHYSICS_SIMULATION - 5`, so remote input and corrections land in the same tick they're applied.
+- `GgWorld.eventAuthority` (consulted by `BlueprintBindingEntity` before each run) and
+  `GgWorld.commandGuard` (consulted by `GgStatic.runConsoleCommand` before a command registered with
+  `mutates: true`) - both are neutral by default, so single-player behavior is untouched.
+
+A new entity class with state worth networking implements the interfaces itself (delegating to the
+helpers); one nested under another networked entity is covered by its parent and never networked on
+its own. Character entities also implement `ISerializableEntity` (the `"Player"` class) with a
+`state` block applied back by `applyState` - a spawn descriptor on another peer continues mid-jump.
+Setting a character's `isCrouching` before it is spawned only records the flag; `onSpawned` rebuilds
+the capsule to match (there is no physics world to rebuild it against earlier). That spawn-time
+rebuild keeps the capsule *center* at the position as set, unlike a runtime crouch/stand, which keeps
+the feet planted. A serialized crouching character stores its crouched capsule's center as
+`position`, so a feet-anchored rebuild would reload it lower, by half the height difference.
+
 ## Adding a built-in dev-console command
 
 Built-in commands live in each world class's `registerConsoleCommands` override
@@ -77,6 +112,12 @@ Error(...)` inside the handler:
   `NAME`, `X`, `Y`, `Z`, `ANGLE_RADIANS` — or a bare `first-person|third-person`-style choice list.
   Reserve real `<...>` for a `doc` string that deliberately wants actual markup, e.g. `bind_key`'s
   doc links to a key-code reference with a genuine `<a href=...>` tag.
+- **Flag a command that changes world state as mutating** - the fifth `registerConsoleCommand`
+  argument (`mutates: true`): teleports, spawns, removals, physics/time retuning. `GgStatic` checks
+  the world's `commandGuard` before running such a command, which is how a network layer rejects
+  local-only edits while a session is joined. Read-only commands (listing, inspecting, toggling a
+  debug view) stay unflagged. `GgStatic.deregisterConsoleCommand(world, name)` removes a single
+  command (a package that registers commands on a world it doesn't own cleans up with it).
 - **Don't pick a command name that is a prefix-extension of another command's name** (e.g. don't
   add `spawn_player` next to the existing `spawn`). `gg-console.ui.ts`'s tab-autocomplete resolves
   a partial input to the *shortest* registered command that starts with what's typed, so typing the

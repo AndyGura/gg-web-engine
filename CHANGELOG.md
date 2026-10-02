@@ -47,8 +47,36 @@ where one exists.
 - `GgWorld.entityAdded$`/`entityRemoved$` observables, emitted after a spawn/removal fully
   succeeds (nested entities included); `IEntity.useDefaultNameMiddleware` now returns an
   unregister function for the middleware it just registered.
+- New package `@gg-web-engine/multiplayer`: shared-world multiplayer for 2–8 peers on any 2D/3D
+  physics adapter - `Network2dController`/`Network3dController` (ownership with possession,
+  distance/contact arbitration, replica correction, runtime spawn/despawn, late join, takeover of
+  hidden/departed peers, event-authority gating, mutation lock, `net_*` console commands), a WebRTC
+  mesh transport with chunking, reconnection and zoning, Firebase and BroadcastChannel signaling,
+  and an in-process `LoopbackTransport` for tests.
+- Core networking contracts: `INetworkSyncable`/`INetworkInputDriven`, implemented by `Entity2d`/
+  `Entity3d`, `GgCarEntity` and both character entities, with `RigidBodyCorrection`/
+  `MoverCorrection` helpers for app classes; `TickOrder.NETWORK_IN`.
+- Characters gained `externalDisplacement` (folded into the next `move()`), `jumpCount`,
+  `actualVelocity`, and serialize themselves (`"Player"` class) including a runtime `state` block
+  the loader applies back; `GgCarEntity.autoShiftEnabled`.
+- `GgWorld.eventAuthority` (consulted by level JSON `events` bindings before running) and
+  `GgWorld.commandGuard` (consulted before running a console command registered with the new
+  `mutates` flag of `GgStatic.registerConsoleCommand`); built-in teleport/spawn/remove/time commands
+  are flagged mutating. `GgStatic.deregisterConsoleCommand`.
+- `LevelLoader.serializeEntity` echoes the `events` bindings an entity was built with.
+- Multiplayer modes in examples: `fly-city-three-ammo` gained rooms (`?room=` link), and the new
+  `coin-run-pixi-rapier2d` example.
 
 ### Fixed
+- `ammo`: several `AmmoWorldComponent`s in one page share one Ammo module instance - initializing a
+  second world used to re-instantiate the WASM heap under the first, whose new bodies then silently
+  stopped simulating.
+- `matter`: trigger sensor bodies are static - they used to fall under gravity (through the level,
+  reporting static geometry on the way down). Kinematic and sleeping bodies, which matter-js never
+  pairs with a static body, are detected by polling.
+- Setting a character's `isCrouching` before it is spawned now takes effect: the capsule is rebuilt
+  on spawn, centered at the position as set (so a character serialized while crouching reloads where
+  it was).
 - `matter`: `MatterRigidBodyComponent.rotation`'s setter now calls `Body.setAngle` instead of
   writing `nativeBody.angle` directly, so a rotation write no longer corrupts angular velocity
   (mirrors the existing `Body.setPosition`-based `position` setter).

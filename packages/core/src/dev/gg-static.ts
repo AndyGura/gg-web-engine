@@ -112,7 +112,10 @@ export class GgStatic {
     }
   }
 
-  public get availableCommands(): [string, { handler: (...args: string[]) => Promise<string>; doc?: string }][] {
+  public get availableCommands(): [
+    string,
+    { handler: (...args: string[]) => Promise<string>; doc?: string; mutates?: boolean },
+  ][] {
     let commands = this.consoleCommands.get(null) || {};
     if (this.selectedWorld) {
       commands = { ...commands, ...(this.consoleCommands.get(this.selectedWorld) || {}) };
@@ -251,23 +254,44 @@ export class GgStatic {
   protected consoleCommands: Map<
     GgWorld<any, any> | null,
     {
-      [key: string]: { handler: (...args: string[]) => Promise<string>; doc?: string };
+      [key: string]: { handler: (...args: string[]) => Promise<string>; doc?: string; mutates?: boolean };
     }
   > = new Map();
 
+  /**
+   * Register a dev-console command, globally (`world` = `null`) or for one world.
+   * @param world - The world the command belongs to, or `null` for a global command
+   * @param command - Command name
+   * @param handler - Runs the command; resolves to the text to print
+   * @param doc - Help text shown by `commands`/`help`
+   * @param mutates - Whether the command changes world state (teleports, spawns, removes, retunes
+   * physics/time). A mutating world command is checked against that world's `commandGuard` before
+   * running, so e.g. a network layer can reject local-only edits while a session is joined.
+   */
   public registerConsoleCommand(
     world: GgWorld<any, any> | null,
     command: string,
     handler: (...args: string[]) => Promise<string>,
     doc?: string,
+    mutates?: boolean,
   ): void {
-    let commands: { [key: string]: { handler: (...args: string[]) => Promise<string>; doc?: string } } = {};
+    let commands: {
+      [key: string]: { handler: (...args: string[]) => Promise<string>; doc?: string; mutates?: boolean };
+    } = {};
     if (!this.consoleCommands.has(world)) {
       this.consoleCommands.set(world, commands);
     } else {
       commands = this.consoleCommands.get(world)!;
     }
-    commands[command] = { handler, doc };
+    commands[command] = { handler, doc, mutates: !!mutates };
+  }
+
+  /** Remove one command registered via {@link registerConsoleCommand}; a no-op if it isn't registered. */
+  public deregisterConsoleCommand(world: GgWorld<any, any> | null, command: string): void {
+    const commands = this.consoleCommands.get(world);
+    if (commands) {
+      delete commands[command];
+    }
   }
 
   public deregisterWorldCommands(world: GgWorld<any, any> | null): void {
@@ -290,6 +314,12 @@ export class GgStatic {
       action = (this.consoleCommands.get(this.selectedWorld) || {})[command];
       if (!action) {
         return `<span style='color:red'>Unrecognized command: ${command}</span>`;
+      }
+      if (action.mutates && this.selectedWorld?.commandGuard) {
+        const rejection = this.selectedWorld.commandGuard(command, args);
+        if (rejection !== null) {
+          return `<span style='color:red'>Command "${command}" rejected: ${rejection}</span>`;
+        }
       }
     }
     try {

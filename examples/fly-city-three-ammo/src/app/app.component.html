@@ -39,6 +39,17 @@
     <span>L to reload level</span>
   </div>
 }
+<div class="room-panel">
+  @if (mp) {
+    <span>ROOM {{ mpStatus }}</span>
+    <div class="room-link">
+      <input readonly [value]="mp.roomUrl" (focus)="$any($event.target).select()"/>
+      <button (click)="copyRoomUrl()">{{ copied ? 'Copied' : 'Copy link' }}</button>
+    </div>
+  } @else {
+    <button (click)="createRoom()">Create room</button>
+  }
+</div>
 @if (paused) {
   <div class="screen-text paused-text">PAUSED</div>
 }

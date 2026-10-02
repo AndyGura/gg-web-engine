@@ -66,6 +66,12 @@ about if this ever needs touching again (see `app/test/jest.setup.ts` and `app/p
   have. `app/package.json`'s `jest.moduleNameMapper` points `@gg-web-engine/{core,three,rapier3d}`
   straight at each package's `src/index.ts` instead of `dist/`, exactly like `packages/rapier3d` and
   `packages/ammo`'s own unit tests already do - ts-jest compiles them to CommonJS on the fly.
+- `app/package.json` pins `three` and `@dimforge/rapier3d-compat` itself, and `app` is an npm
+  workspace member (root `package.json`), so keep both pins equal to `packages/three`'s and
+  `packages/rapier3d`'s. On a mismatch, `npm install` keeps two copies: the app's at the root and the
+  adapter's nested in `packages/<adapter>/node_modules`. The test's classes then aren't the adapter's,
+  and `instanceof` checks fail with the baffling `Expected constructor: Mesh / Received constructor:
+  Mesh`.
 - `@gg-web-engine/core` touches `window`/`HTMLInputElement` etc. at import time, so this needs
   `testEnvironment: "jsdom"`, not plain `"node"`.
 - jsdom's environment doesn't provide `fetch` (which `Gg3dLoader` uses to load the fixture) or

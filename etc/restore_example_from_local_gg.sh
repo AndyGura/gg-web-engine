@@ -9,7 +9,8 @@ set -e
 set -o pipefail
 
 pushd "$1"
-git checkout -- package.json tsconfig.json package-lock.json webpack.dev.config.js angular.json 2>/dev/null || true
+# only the files this example tracks (one missing pathspec makes `git checkout` restore nothing at all)
+git checkout -- $(git ls-files package.json tsconfig.json package-lock.json webpack.dev.config.js angular.json)
 rm -rf node_modules
 npm install
 popd

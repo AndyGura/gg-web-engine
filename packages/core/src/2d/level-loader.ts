@@ -11,6 +11,7 @@ import { isMaterialReadable2d } from './components/rendering/i-material-readable
 import {
   CharacterController2dEntity,
   CharacterController2dEntityOptions,
+  CharacterState2d,
 } from './entities/character-controller-2d.entity';
 
 const defaultBodyOptions: Body2DOptions = {
@@ -209,6 +210,12 @@ export type Player2DSettings = Partial<Omit<CharacterController2dEntityOptions, 
   centersDistance?: number;
   /** Material options for the auto-generated capsule mesh; omit for a plain default-material capsule. */
   display?: DisplayObject2dOpts<any>;
+  /**
+   * Runtime movement state applied once right after the character is built (see `CharacterState2d`) - what
+   * `serializeSettings` emits, so a character re-created from its own serialization (e.g. on another
+   * peer) continues mid-jump/mid-crouch.
+   */
+  state?: CharacterState2d;
 };
 
 /**
@@ -441,6 +448,7 @@ export class Gg2dLevelLoader<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTyp
       ownCollisionGroups,
       interactWithCollisionGroups,
       display,
+      state,
       ...gameplay
     } = settings;
     if (!world.physicsWorld) {
@@ -488,6 +496,12 @@ export class Gg2dLevelLoader<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTyp
     }
     if (rotation !== undefined) {
       entity.rotation = rotation;
+    }
+    if (display) {
+      entity.displaySettings = display;
+    }
+    if (state) {
+      entity.applyState(state);
     }
     return entity;
   }

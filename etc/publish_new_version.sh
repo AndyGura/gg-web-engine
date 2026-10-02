@@ -19,6 +19,7 @@ libs=(
   "pixi"
   "matter"
   "audio"
+  "multiplayer"
 )
 
 upgrade() {

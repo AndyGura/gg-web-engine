@@ -17,6 +17,27 @@ describe('AmmoWorldComponent', () => {
     world.dispose();
   });
 
+  describe('several worlds in one process', () => {
+    it('keeps simulating a world created before another world initialized', async () => {
+      const first = new AmmoWorldComponent();
+      await first.init();
+      const second = new AmmoWorldComponent();
+      await second.init();
+      // created after the second world's init: used to land in a re-instantiated WASM heap
+      const body = first.factory.createRigidBody(
+        { shape: { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } }, body: { bodyType: 'dynamic', mass: 1 } },
+        { position: { x: 0, y: 0, z: 10 } },
+      );
+      body.addToWorld({ physicsWorld: first } as any);
+      for (let i = 0; i < 10; i++) {
+        first.simulate(16);
+      }
+      expect(body.position.z).toBeLessThan(9.9);
+      first.dispose();
+      second.dispose();
+    });
+  });
+
   describe('Gravity', () => {
     it('should default to earth-like downward gravity on a fresh world', async () => {
       const freshWorld = new AmmoWorldComponent();
