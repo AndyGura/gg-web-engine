@@ -5,6 +5,9 @@ module.exports = {
   mode: "development",
   entry: path.resolve(__dirname, './index.ts'),
   devtool: 'inline-source-map',
+  // devServer: {
+  //   static: [{ directory: path.resolve(__dirname, '../assets'), publicPath: '/assets' }],
+  // },
   module: {
     rules: [
       {
