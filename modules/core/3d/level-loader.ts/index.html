@@ -1157,6 +1157,12 @@ built here - the input/camera wiring (<code>PlayerCharacterController</code>) ne
    * the capsule mesh entirely - the rest of `display` (`color`/`shading`/...) is then ignored.
    */
   display?: DisplayObject3dOpts&lt;any&gt; &amp; { model?: PlayerModel3DSettings }
+  /**
+   * Runtime movement state applied once right after the character is built (see `CharacterState3d`) - what
+   * `serializeSettings` emits, so a character re-created from its own serialization (e.g. on another
+   * peer) continues mid-jump/mid-crouch.
+   */
+  state?: CharacterState3d
 }
 </code></pre>
 <h2 id="playermodel3dsettings-interface">PlayerModel3DSettings (interface)</h2>

@@ -585,6 +585,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#maxtickdelta-property" class="md-nav__link">
+    maxTickDelta (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#paused-property" class="md-nav__link">
     paused$ (property)
   </a>
@@ -635,6 +642,7 @@
 <li><a href="#stoplisteningticks-method">stopListeningTicks (method)</a></li>
 <li><a href="#dispose-method">dispose (method)</a></li>
 <li><a href="#tickratelimit-property">tickRateLimit (property)</a></li>
+<li><a href="#maxtickdelta-property">maxTickDelta (property)</a></li>
 <li><a href="#paused-property">paused$ (property)</a></li>
 </ul>
 </li>
@@ -697,6 +705,24 @@ stepped-to instant rather than losing or double-counting the stepped time.</p>
 <p>Tick rate limiter. If set to 0 - tick rate is unlimited, 15 means "allow at most 15 ticks per second"</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">tickRateLimit: number
+</code></pre>
+<h3 id="maxtickdelta-property">maxTickDelta (property)</h3>
+<p>Upper bound, in milliseconds, on the scaled delta of any single tick reaching <code>tick$</code> -
+protects against a huge, unrepresentative delta after a long stall (a backgrounded/minimized
+tab being one common cause - see <code>GgWorld.pauseWhenHidden</code> for pausing the clock outright
+instead, which avoids producing a tick at all) blowing up physics/animation that assumes a
+roughly real-time delta. When the parent clock's delta, scaled by <code>timeScale</code>, exceeds this
+value, the tick reaching <code>tick$</code> (and the amount <code>elapsedTime</code> advances by) is clamped to
+exactly <code>maxTickDelta</code>; the remainder is simply dropped, not carried over to a later tick. This
+means <code>elapsedTime</code> and real wall-clock time deliberately diverge by the sum of every dropped
+remainder once clamping has ever triggered - <code>elapsedTime</code> under-counts wall time by design, so
+that anything driven by clock ticks (physics integration, animation) never has to reason about
+an implausibly large single-frame delta. Defaults to 250 (ms); set to 0 to disable clamping
+entirely. <code>step()</code> is never subject to this clamp - it always reports exactly the <code>delta</code> it
+was called with, since it exists for deterministic frame-by-frame control, not real-time
+playback.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">maxTickDelta: number
 </code></pre>
 <h3 id="paused-property">paused$ (property)</h3>
 <p><strong>Signature</strong></p>

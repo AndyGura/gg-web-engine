@@ -564,6 +564,20 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#wakeup-method" class="md-nav__link">
+    wakeUp (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sleep-method" class="md-nav__link">
+    sleep (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#name-property" class="md-nav__link">
     name (property)
   </a>
@@ -660,6 +674,8 @@
 <li><a href="#removefromworld-method">removeFromWorld (method)</a></li>
 <li><a href="#dispose-method">dispose (method)</a></li>
 <li><a href="#resetmotion-method">resetMotion (method)</a></li>
+<li><a href="#wakeup-method">wakeUp (method)</a></li>
+<li><a href="#sleep-method">sleep (method)</a></li>
 <li><a href="#name-property">name (property)</a></li>
 <li><a href="#entity-property">entity (property)</a></li>
 <li><a href="#debugbodysettings-property">debugBodySettings (property)</a></li>
@@ -707,6 +723,20 @@
 <h3 id="resetmotion-method">resetMotion (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">resetMotion(): void
+</code></pre>
+<h3 id="wakeup-method">wakeUp (method)</h3>
+<p>No-op on a body that reports <code>isStatic</code> (a genuine <code>'static'</code> body, or a <code>kinematic_pos</code>/
+<code>kinematic_vel</code> request - see <code>isSleeping</code>'s own doc for why both are treated the same here).</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">wakeUp(): void
+</code></pre>
+<h3 id="sleep-method">sleep (method)</h3>
+<p>No-op on a body that reports <code>isStatic</code> (see <code>isSleeping</code>'s own doc). Forces sleep immediately,
+regardless of whether the world's <code>Matter.Engine</code> has <code>enableSleeping</code> turned on - unlike a
+body naturally falling asleep from inactivity (which requires that engine flag), an explicit
+<code>Sleeping.set(body, true)</code> call takes effect either way.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">sleep(): void
 </code></pre>
 <h3 id="name-property">name (property)</h3>
 <p><strong>Signature</strong></p>

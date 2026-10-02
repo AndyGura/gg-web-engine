@@ -683,8 +683,50 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#pausewhenhidden-property" class="md-nav__link">
+    pauseWhenHidden (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#visibility-property" class="md-nav__link">
+    visibility$ (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixedphysicsstep-property" class="md-nav__link">
+    fixedPhysicsStep (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#maxphysicsstepspertick-property" class="md-nav__link">
+    maxPhysicsStepsPerTick (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#name-property" class="md-nav__link">
     name (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#eventauthority-property" class="md-nav__link">
+    eventAuthority (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#commandguard-property" class="md-nav__link">
+    commandGuard (property)
   </a>
   
 </li>
@@ -880,7 +922,13 @@
 <li><a href="#audioscene-property">audioScene (property)</a></li>
 <li><a href="#worldclock-property">worldClock (property)</a></li>
 <li><a href="#keyboardinput-property">keyboardInput (property)</a></li>
+<li><a href="#pausewhenhidden-property">pauseWhenHidden (property)</a></li>
+<li><a href="#visibility-property">visibility$ (property)</a></li>
+<li><a href="#fixedphysicsstep-property">fixedPhysicsStep (property)</a></li>
+<li><a href="#maxphysicsstepspertick-property">maxPhysicsStepsPerTick (property)</a></li>
 <li><a href="#name-property">name (property)</a></li>
+<li><a href="#eventauthority-property">eventAuthority (property)</a></li>
+<li><a href="#commandguard-property">commandGuard (property)</a></li>
 <li><a href="#children-property">children (property)</a></li>
 <li><a href="#ticklisteners-property">tickListeners (property)</a></li>
 <li><a href="#tickstarted-property">tickStarted$ (property)</a></li>
@@ -920,6 +968,43 @@
     visualScene?: SceneTypeDoc['visualScene']
     physicsWorld?: SceneTypeDoc['physicsWorld']
     audioScene?: SceneTypeDoc['audioScene']
+    /**
+     * Upper bound, in milliseconds, on any single tick delta this world's `worldClock` (and
+     * therefore every entity's `tick$` and `physicsWorld.simulate`) ever sees - forwarded straight
+     * to `worldClock.maxTickDelta`. Defaults to `PausableClock`'s own default (250ms) when omitted;
+     * pass `0` to disable clamping entirely. See `PausableClock.maxTickDelta`'s own doc for what
+     * clamping does to `elapsedTime`.
+     */
+    maxTickDelta?: number
+    /**
+     * When `true`, this world pauses itself while the document/tab is hidden and resumes itself
+     * when it becomes visible again (unless the app had already paused it itself) - see
+     * `GgWorld.pauseWhenHidden`'s own doc. Defaults to `false`.
+     */
+    pauseWhenHidden?: boolean
+    /**
+     * Opt-in fixed physics timestep, in milliseconds. Left `undefined` (the default), the tick
+     * loop keeps its original behavior: `physicsWorld.simulate(delta)` is called exactly once per
+     * world tick, with that tick's own (variable) delta. Set to a value, the tick loop instead
+     * accumulates each tick's delta and calls `physicsWorld.simulate(fixedPhysicsStep)` as many
+     * times as fit in the accumulator (0 or more - a tick faster than `fixedPhysicsStep` may call
+     * `simulate` zero times, letting time accumulate across ticks), carrying any leftover
+     * fractional time over to the next tick. This gives the physics engine a constant, reproducible
+     * step size regardless of the actual frame rate, at the cost of it running zero, one, or
+     * several times within a single rendered frame. `maxPhysicsStepsPerTick` bounds how many of
+     * those calls a single world tick can make.
+     */
+    fixedPhysicsStep?: number
+    /**
+     * Spiral-of-death guard for `fixedPhysicsStep`: the most `simulate()` calls one world tick may
+     * make before the rest of that tick's accumulated time is dropped instead of carried over to
+     * the next tick (e.g. after the tab was backgrounded and comes back with a huge delta). Only
+     * meaningful when `fixedPhysicsStep` is set. Defaults to 8. `PausableClock`'s own bounded tick
+     * delta (`maxTickDelta`, where available) is a complementary safeguard at the clock level -
+     * this cap is what keeps a single tick's physics work bounded even if an oversized delta
+     * reaches `GgWorld` anyway.
+     */
+    maxPhysicsStepsPerTick?: number
   })
 }
 </code></pre>
@@ -963,7 +1048,8 @@ the subtree is validated up front, before any component/child is touched, so a c
 (with an entity already in the world, or between two entities within the subtree itself)
 throws without the entity's bodies or display objects ever reaching the native scenes - and
 should spawning still throw partway for any other reason, whatever was already registered is
-rolled back before the error propagates.</p>
+rolled back before the error propagates. Emits <code>entityAdded$</code> for <code>entity</code> once its own spawn
+has fully succeeded - see that getter's own doc for the nested-cascade emission order.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public addEntity(entity: IEntity): void
 </code></pre>
@@ -1020,6 +1106,7 @@ there is never more than one match to choose between.</p>
       command: string,
       handler: (...args: string[]) =&gt; Promise&lt;string&gt;,
       doc?: string,
+      mutates?: boolean,
     ) =&gt; void;
   })
 </code></pre>
@@ -1043,9 +1130,62 @@ there is never more than one match to choose between.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly keyboardInput: KeyboardInput
 </code></pre>
+<h3 id="pausewhenhidden-property">pauseWhenHidden (property)</h3>
+<p>When <code>true</code>, this world pauses itself automatically while the document/tab is hidden
+(<code>document.visibilitychange</code>, checked via <code>document.hidden</code>) and resumes itself once visible
+again - but only if the world wasn't already paused by app code at the moment it went hidden.
+A world the app paused itself stays paused across a hide/show cycle; this flag never resumes
+it. Defaults to <code>false</code>. The subscription is set up in <code>init()</code> and torn down in <code>dispose()</code>;
+on a host with no <code>document</code> (e.g. a non-browser/jsdom-less test harness) this is a no-op -
+nothing ever gets paused/resumed by visibility regardless of this flag.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly pauseWhenHidden: boolean
+</code></pre>
+<h3 id="visibility-property">visibility$ (property)</h3>
+<p>Emits the document/tab's visibility state (<code>true</code> = visible, <code>false</code> = hidden) every time it
+changes, regardless of <code>pauseWhenHidden</code> - apps can subscribe directly (e.g. to mute audio, or
+drop network updates while hidden) without opting into the auto-pause behavior. On a host with
+no <code>document</code> (jsdom-less tests, non-browser hosts) this simply never emits - a safe no-op
+fallback rather than throwing.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly visibility$: any
+</code></pre>
+<h3 id="fixedphysicsstep-property">fixedPhysicsStep (property)</h3>
+<p>When set, <code>physicsWorld.simulate()</code> is driven by a fixed-timestep accumulator instead of the
+raw per-tick delta - see the constructor's <code>fixedPhysicsStep</code> argument doc for the full
+semantics.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly fixedPhysicsStep: number | undefined
+</code></pre>
+<h3 id="maxphysicsstepspertick-property">maxPhysicsStepsPerTick (property)</h3>
+<p>Spiral-of-death guard for the <code>fixedPhysicsStep</code> accumulator: the most <code>simulate()</code> calls one
+world tick is allowed to make before the remaining accumulated time is dropped instead of
+carried over. Only meaningful when <code>fixedPhysicsStep</code> is set. Defaults to 8.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly maxPhysicsStepsPerTick: number
+</code></pre>
 <h3 id="name-property">name (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">name: string
+</code></pre>
+<h3 id="eventauthority-property">eventAuthority (property)</h3>
+<p>Consulted by every level JSON <code>events</code> binding (see <code>LevelLoader.createEntity</code>) right before it
+runs its blueprint: <code>false</code> skips that run. Defaults to always <code>true</code>, so single-player
+behavior is unaffected. A network layer installs a rule here while a session is joined, so a
+gameplay-consequential binding (a coin's trigger removing the coin, say) runs on exactly the one
+peer holding authority over the event instead of on every peer, and restores the default on
+leave.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">eventAuthority: (entity: IEntity, eventName: string, payload: unknown) =&gt; boolean
+</code></pre>
+<h3 id="commandguard-property">commandGuard (property)</h3>
+<p>Consulted by the dev console before running one of this world's commands registered as mutating
+(<code>mutates: true</code>, see <code>GgStatic.registerConsoleCommand</code>): a returned string rejects the command
+with that reason, <code>null</code> lets it run. <code>null</code> (the default) means no guard. A network layer
+installs one while a session is joined, since a local-only edit of shared world state would
+silently desync peers. A local guardrail, not a trust boundary.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">commandGuard: ((command: string, args: string[]) =&gt; string | null) | null
 </code></pre>
 <h3 id="children-property">children (property)</h3>
 <p><strong>Signature</strong></p>

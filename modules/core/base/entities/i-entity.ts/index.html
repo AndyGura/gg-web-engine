@@ -726,7 +726,7 @@ a peer id) needs: app code keeps calling ordinary core factories/constructors wi
 such a layer exists, and every entity that isn't explicitly named by that app code or by
 <code>LevelLoader</code> picks up the transform automatically. Core itself never calls this.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">public static useDefaultNameMiddleware(middleware: (name: string) =&gt; string): void
+<pre><code class="language-ts">public static useDefaultNameMiddleware(middleware: (name: string) =&gt; string): () =&gt; void
 </code></pre>
 <h3 id="generatedefaultname-method">generateDefaultName (method)</h3>
 <p><strong>Signature</strong></p>

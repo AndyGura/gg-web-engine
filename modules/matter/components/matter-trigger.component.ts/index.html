@@ -536,6 +536,20 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#ispolled-method" class="md-nav__link">
+    isPolled (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#overlaps-method" class="md-nav__link">
+    overlaps (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#addtoworld-method" class="md-nav__link">
     addToWorld (method)
   </a>
@@ -559,6 +573,13 @@
           <li class="md-nav__item">
   <a href="#checkoverlaps-method" class="md-nav__link">
     checkOverlaps (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#checkpolledbodyoverlaps-method" class="md-nav__link">
+    checkPolledBodyOverlaps (method)
   </a>
   
 </li>
@@ -612,6 +633,13 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#polledoverlaps-property" class="md-nav__link">
+    polledOverlaps (property)
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -649,10 +677,13 @@
 <li><a href="#mattertriggercomponent-class">MatterTriggerComponent (class)</a><ul>
 <li><a href="#handlecollisionstart-method">handleCollisionStart (method)</a></li>
 <li><a href="#handlecollisionend-method">handleCollisionEnd (method)</a></li>
+<li><a href="#ispolled-method">isPolled (method)</a></li>
+<li><a href="#overlaps-method">overlaps (method)</a></li>
 <li><a href="#addtoworld-method">addToWorld (method)</a></li>
 <li><a href="#removefromworld-method">removeFromWorld (method)</a></li>
 <li><a href="#dispose-method">dispose (method)</a></li>
 <li><a href="#checkoverlaps-method">checkOverlaps (method)</a></li>
+<li><a href="#checkpolledbodyoverlaps-method">checkPolledBodyOverlaps (method)</a></li>
 <li><a href="#clone-method">clone (method)</a></li>
 <li><a href="#onenter-property">onEnter$ (property)</a></li>
 <li><a href="#onleft-property">onLeft$ (property)</a></li>
@@ -660,6 +691,7 @@
 <li><a href="#debugbodysettings-property">debugBodySettings (property)</a></li>
 <li><a href="#intersectionsamount-property">intersectionsAmount (property)</a></li>
 <li><a href="#currentoverlaps-property">currentOverlaps (property)</a></li>
+<li><a href="#polledoverlaps-property">polledOverlaps (property)</a></li>
 </ul>
 </li>
 </ul>
@@ -683,6 +715,18 @@
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">private handleCollisionEnd(event: IEventCollision&lt;Engine&gt;)
 </code></pre>
+<h3 id="ispolled-method">isPolled (method)</h3>
+<p>Whether matter's detector never pairs <code>comp</code> with this trigger: it skips every pair whose bodies
+are both static or sleeping, and the trigger body is static. That covers sleeping bodies and
+kinematic ones (built as static here, see <code>MatterFactory</code>). Bodies requested as <code>'static'</code> are
+level geometry and are never reported.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">protected isPolled(comp: MatterRigidBodyComponent): boolean
+</code></pre>
+<h3 id="overlaps-method">overlaps (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">protected overlaps(comp: MatterRigidBodyComponent): boolean
+</code></pre>
 <h3 id="addtoworld-method">addToWorld (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">addToWorld(world: MatterGgWorld): void
@@ -699,9 +743,10 @@ enter/exit subjects are a separate pair this subclass owns and must complete its
 <pre><code class="language-ts">dispose(): void
 </code></pre>
 <h3 id="checkoverlaps-method">checkOverlaps (method)</h3>
-<p>Regular rigid-body overlaps are handled entirely by <code>handleCollisionStart</code>/<code>handleCollisionEnd</code>
-above, off matter's own native <code>collisionStart</code>/<code>collisionEnd</code> engine events - so this used to be
-a pure no-op for matter-js. A <code>MatterCharacterControllerComponent</code>'s own phantom body is
+<p>Awake dynamic bodies are handled by <code>handleCollisionStart</code>/<code>handleCollisionEnd</code> above, off
+matter's own native <code>collisionStart</code>/<code>collisionEnd</code> engine events; kinematic and sleeping ones,
+which matter never pairs with this static body, are polled by <code>checkPolledBodyOverlaps()</code>.
+A <code>MatterCharacterControllerComponent</code>'s own phantom body is
 deliberately never added to <code>Composite</code>/<code>engine.world</code> at all (see that class's own doc), so no
 native collision pair - and thus no native event - can ever involve it. Since <code>checkOverlaps()</code> is
 already called once per tick by <code>Trigger2dEntity</code> regardless of backend, this is the natural place
@@ -713,6 +758,14 @@ matter's own <code>Composite</code> - already tracks it) is tested against this 
 ordinary bodies.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">checkOverlaps(): void
+</code></pre>
+<h3 id="checkpolledbodyoverlaps-method">checkPolledBodyOverlaps (method)</h3>
+<p>Enter/exit of the rigid bodies matter's detector never pairs with this trigger (see
+{@link isPolled}): a kinematic platform moving in or out, a body asleep inside. Like the
+character poll below, <code>Query.collides</code> ignores <code>collisionFilter</code>, so <code>Detector.canCollide</code> is
+checked by hand.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">protected checkPolledBodyOverlaps(): void
 </code></pre>
 <h3 id="clone-method">clone (method)</h3>
 <p><strong>Signature</strong></p>
@@ -745,6 +798,13 @@ below rely on for ordinary rigid bodies.</p>
 <h3 id="currentoverlaps-property">currentOverlaps (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">currentOverlaps: Set&lt;MatterRigidBodyComponent&gt;
+</code></pre>
+<h3 id="polledoverlaps-property">polledOverlaps (property)</h3>
+<p>The subset of <code>currentOverlaps</code> whose exit <code>checkOverlaps()</code> detects by polling, because matter's
+detector doesn't pair them with this (static) trigger body - see {@link isPolled}. A body moves
+back to the native-event path once a native <code>collisionStart</code> reports it (it woke up inside).</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">polledOverlaps: Set&lt;MatterRigidBodyComponent&gt;
 </code></pre>
 
 

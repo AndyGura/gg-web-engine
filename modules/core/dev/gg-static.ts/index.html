@@ -543,6 +543,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#deregisterconsolecommand-method" class="md-nav__link">
+    deregisterConsoleCommand (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#deregisterworldcommands-method" class="md-nav__link">
     deregisterWorldCommands (method)
   </a>
@@ -615,6 +622,7 @@
 <li><a href="#toggledevconsole-method">toggleDevConsole (method)</a></li>
 <li><a href="#autoassignselectedworld-method">autoAssignSelectedWorld (method)</a></li>
 <li><a href="#registerconsolecommand-method">registerConsoleCommand (method)</a></li>
+<li><a href="#deregisterconsolecommand-method">deregisterConsoleCommand (method)</a></li>
 <li><a href="#deregisterworldcommands-method">deregisterWorldCommands (method)</a></li>
 <li><a href="#console-method">console (method)</a></li>
 <li><a href="#runconsolecommand-method">runConsoleCommand (method)</a></li>
@@ -640,13 +648,20 @@
 <pre><code class="language-ts">private autoAssignSelectedWorld()
 </code></pre>
 <h3 id="registerconsolecommand-method">registerConsoleCommand (method)</h3>
+<p>Register a dev-console command, globally (<code>world</code> = <code>null</code>) or for one world.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public registerConsoleCommand(
     world: GgWorld&lt;any, any&gt; | null,
     command: string,
     handler: (...args: string[]) =&gt; Promise&lt;string&gt;,
     doc?: string,
+    mutates?: boolean,
   ): void
+</code></pre>
+<h3 id="deregisterconsolecommand-method">deregisterConsoleCommand (method)</h3>
+<p>Remove one command registered via {@link registerConsoleCommand}; a no-op if it isn't registered.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public deregisterConsoleCommand(world: GgWorld&lt;any, any&gt; | null, command: string): void
 </code></pre>
 <h3 id="deregisterworldcommands-method">deregisterWorldCommands (method)</h3>
 <p><strong>Signature</strong></p>
@@ -668,7 +683,13 @@
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">consoleCommands: Map&lt;
   GgWorld&lt;any, any, GgWorldTypeDocRepo&lt;any, any&gt;, GgWorldSceneTypeRepo&lt;any, any, GgWorldTypeDocRepo&lt;any, any&gt;&gt;&gt; | null,
-  { [key: string]: { handler: (...args: string[]) =&gt; Promise&lt;string&gt;; doc?: string | undefined } }
+  {
+    [key: string]: {
+      handler: (...args: string[]) =&gt; Promise&lt;string&gt;
+      doc?: string | undefined
+      mutates?: boolean | undefined
+    }
+  }
 &gt;
 </code></pre>
 
