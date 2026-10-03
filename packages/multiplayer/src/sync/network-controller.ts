@@ -74,7 +74,12 @@ export interface NetworkControllerOptions<D> {
   arbitrationIntervalTicks?: number;
   /** Default 1000. */
   heartbeatIntervalMs?: number;
-  /** a peer silent this long is taken over. Default 4000 (3+ missed heartbeats). */
+  /**
+   * a peer silent this long is taken over. Default 4000 (3+ missed heartbeats). Silence is never
+   * measured across a stall of the local peer (a frozen main thread, a throttled timer): when neither
+   * a world tick nor the heartbeat timer ran for over two heartbeat intervals, every peer and remote
+   * owner counts as heard from just now.
+   */
   heartbeatTimeoutMs?: number;
   /** Default 2000. */
   clockSyncIntervalMs?: number;
@@ -88,6 +93,13 @@ export interface NetworkControllerOptions<D> {
   ownerSilenceTimeoutMs?: number;
   /** hand everything over when the tab is hidden, resync when it's back. Default true. */
   takeoverOnHidden?: boolean;
+  /**
+   * Whether the entities a departed (or away) peer possesses are taken over along with the Free ones
+   * it owns. Default true: the taker owns them and their possession is cleared. `false`: a possessed
+   * entity never changes hands - it stays owned and possessed by its peer, frozen with neutral input
+   * on every other peer, until that peer is back or releases it. Must be the same on every peer.
+   */
+  takeoverPossessed?: boolean;
   /** after a resync, re-possess what was possessed before going away. Default true. */
   repossessOnReturn?: boolean;
   /**
@@ -250,6 +262,8 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
   private joinedAt = 0;
   private tickCount = 0;
   private lastDelta = 16;
+  /** when a world tick or the heartbeat timer last ran, see {@link checkStall} */
+  private lastAliveAt = 0;
   private sendAccumulator = 0;
   private pendingJoin: PendingJoin | null = null;
   /** bumped by every `connect()` and `leave()`, so a join still in flight notices it was cancelled */
@@ -312,6 +326,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       stateRequestTimeoutMs: options.stateRequestTimeoutMs ?? 1000,
       ownerSilenceTimeoutMs: options.ownerSilenceTimeoutMs ?? 3000,
       takeoverOnHidden: options.takeoverOnHidden ?? true,
+      takeoverPossessed: options.takeoverPossessed ?? true,
       repossessOnReturn: options.repossessOnReturn ?? true,
       prefixEntityNames: options.prefixEntityNames ?? true,
       tintReplicas: options.tintReplicas ?? true,
@@ -762,6 +777,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     if (!this.joined && this.sessionState !== 'away') {
       return;
     }
+    this.checkStall();
     this.tickCount++;
     if (this.joined) {
       this.processPending();
@@ -1465,6 +1481,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       this.scheduler.setInterval(() => this.onHeartbeatTimer(), this.opts.heartbeatIntervalMs),
       this.scheduler.setInterval(() => this.onClockSyncTimer(), this.opts.clockSyncIntervalMs),
     );
+    this.lastAliveAt = this.now;
     this.onClockSyncTimer();
   }
 
@@ -1480,7 +1497,31 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     return { t: 'heartbeat', pos: away ? null : this.localPosition(), ...(away ? { away: true } : {}) };
   }
 
+  /**
+   * Called by everything that judges silence (world tick, heartbeat timer). A gap of over two
+   * heartbeat intervals since the last call means the local peer itself was stalled (frozen main
+   * thread, throttled timers): what the others sent meanwhile is still queued, so their silence
+   * proves nothing - count every peer and every remote owner as heard from just now.
+   */
+  private checkStall(): void {
+    const now = this.now;
+    const stalled = now - this.lastAliveAt > 2 * this.opts.heartbeatIntervalMs;
+    this.lastAliveAt = now;
+    if (!stalled) {
+      return;
+    }
+    for (const peer of this.peers.values()) {
+      peer.lastHeard = now;
+    }
+    for (const rec of this.records.values()) {
+      if (rec.owner !== this.localPeerId && rec.lastStateAt !== -Infinity) {
+        rec.lastStateAt = now;
+      }
+    }
+  }
+
   private onHeartbeatTimer(): void {
+    this.checkStall();
     const msg = this.heartbeatMessage();
     this.transport.updateLocalPosition?.((msg as any).pos);
     this.broadcast(msg);
@@ -2112,13 +2153,23 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
   /**
    * Pick the peer nearest to `goneId`'s last position (ties and unknown positions: lexically
    * smallest id) among the peers still present; if that's the local peer, take over everything
-   * `goneId` owned or possessed in one `takeover` message.
+   * `goneId` owned or possessed in one `takeover` message. Without `takeoverPossessed`, what `goneId`
+   * possesses stays its own and only gets neutral input.
    */
   private electTakeover(goneId: string): void {
     if (this.sessionState !== 'joined') {
       return;
     }
-    const held = [...this.records.values()].filter(r => r.owner === goneId || r.possessor === goneId);
+    let held = [...this.records.values()].filter(r => r.owner === goneId || r.possessor === goneId);
+    if (!this.opts.takeoverPossessed) {
+      for (const rec of held) {
+        if (rec.possessor === goneId && rec.inputDriven) {
+          // nobody drives it until its peer is back: its next state packet brings the input again
+          (rec.entity as any).applyRemoteInput(null);
+        }
+      }
+      held = held.filter(r => r.possessor !== goneId);
+    }
     if (held.length === 0) {
       return;
     }

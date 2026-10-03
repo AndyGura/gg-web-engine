@@ -43,7 +43,10 @@ net.possess(player); // local input drives it, state + input are broadcast
 ```
 
 The rest of the game code is single-player code. Entering a car is `net.possess(car)`, leaving it
-`net.release(car)`; what a player can possess is game logic.
+`net.release(car)`; what a player can possess is game logic. When a peer leaves, goes silent or hides
+its tab, another peer takes over what it owned, possessed entities included (their possession is
+cleared); with `takeoverPossessed: false` a possessed entity never changes hands - it stays its
+player's and stands still with neutral input until that player is back.
 
 ### What gets networked
 Every entity implementing core's `INetworkSyncable` (built in: `Entity2d`/`Entity3d` with a

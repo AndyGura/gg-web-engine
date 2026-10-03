@@ -155,6 +155,20 @@ join handshakes, link latency) runs on the injected `NetScheduler`, never on `ti
   "possessor became null"; and `isLocallyOwned` is `true` for a not-yet-classified (not networked)
   entity, hence the `isNetworked` guard. A peer back from away should respawn its character if it's
   gone (`resynced$`).
+- **`takeoverPossessed: false` pins possessed entities to their peer.** The takeover election (departure,
+  heartbeat timeout, a hidden tab's `goAway`) then skips what the gone peer possesses: owner and
+  possessor stay, replicas get `applyRemoteInput(null)` (the last input would otherwise drive them on
+  forever) and freeze on the last snapshot; the peer's next state packet brings the input back.
+  Arbitration never touches a possessed record, so nothing else can move it. Every peer must use the
+  same value. It doesn't cover an entity not possessed *yet* (a shared entity whose player hasn't
+  connected is Free and gets arbitrated until that player's `possess` arrives).
+- **Silence is never measured across a local stall.** A frozen main thread (or a throttled timer)
+  resumes with everything the others sent still queued behind the timer or tick that runs first, so
+  every peer looks silent for the whole freeze - the stalled peer would declare them all departed and
+  take over everything. `checkStall()` runs at the start of both the world tick and the heartbeat
+  timer; a gap of over two heartbeat intervals since either last ran refreshes every peer's
+  `lastHeard` and every remote record's `lastStateAt`. Anything new that judges silence must call it
+  first. In the harness, a stall is `scheduler.time += N` (all peers at once).
 - **Every record always has an owner, also outside a session.** `leave()` makes the local peer owner
   of everything (it is alone) and keeps its possessions, queued in `desiredPossessions`. Without that,
   a reconnect started from stale owners - one that left the room meanwhile was neither connected nor

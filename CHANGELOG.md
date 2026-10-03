@@ -28,6 +28,18 @@ where one exists.
 
 ## [Unreleased]
 
+### Added
+- `@gg-web-engine/multiplayer`: `NetworkControllerOptions.takeoverPossessed` (default `true`). With
+  `false`, the entities a departed or away peer possesses are never taken over: they stay owned and
+  possessed by that peer (with neutral input on the others) until it is back; the Free entities it
+  owned are still taken over.
+
+### Fixed
+- `@gg-web-engine/multiplayer`: a stall of the local peer (frozen main thread, throttled timers) no
+  longer makes `NetworkController` declare every other peer departed and take over their entities:
+  after a gap of over two heartbeat intervals without a world tick or heartbeat timer, every peer and
+  remote owner counts as heard from just now.
+
 ## [0.0.74] - 2026-10-02
 
 ### Added

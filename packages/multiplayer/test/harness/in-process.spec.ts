@@ -173,6 +173,54 @@ describe.each(ADAPTERS)('in-process multiplayer harness ($name)', adapter => {
     expect(c.net.possessorOf(onC)).toBeNull();
   });
 
+  it("takeoverPossessed: false keeps a silent peer's possessed entity its own, Free ones are still taken", async () => {
+    h = new Harness(adapter);
+    const options = { takeoverPossessed: false };
+    const a = await h.addPeer('a', undefined, options);
+    const b = await h.addPeer('b', undefined, options);
+    const c = await h.addPeer('c', undefined, options);
+    const possessed = adapter.addBox(b.world, adapter.at(5, 0.5));
+    const free = adapter.addBox(b.world, adapter.at(8, 0.5));
+    await h.run(10);
+    b.net.possess(possessed);
+    b.position = adapter.at(5, 0);
+    a.position = adapter.at(30, 0);
+    c.position = adapter.at(4, 0);
+    await h.run(80);
+    expect(c.net.ownerOf(findByName(h, 'c', free.name))).toBe('b');
+    h.hub.partition('b');
+    await h.run(Math.ceil(6000 / TICK_MS));
+    for (const peer of [a, c]) {
+      const onPeer = findByName(h, peer.id, possessed.name);
+      expect(peer.net.ownerOf(onPeer)).toBe('b');
+      expect(peer.net.possessorOf(onPeer)).toBe('b');
+      expect(peer.net.ownerOf(findByName(h, peer.id, free.name))).toBe('c');
+    }
+    h.hub.heal('b');
+    await h.run(Math.ceil(2000 / TICK_MS));
+    expect(b.net.isLocallyPossessed(possessed)).toBe(true);
+    expect(a.net.possessorOf(findByName(h, 'a', possessed.name))).toBe('b');
+    expect(c.net.ownerOf(findByName(h, 'c', possessed.name))).toBe('b');
+  });
+
+  it('a stall of the local peer is not taken for silence of the others', async () => {
+    h = new Harness(adapter);
+    const a = await h.addPeer('a');
+    const b = await h.addPeer('b');
+    const c = await h.addPeer('c');
+    const boxB = adapter.addBox(b.world, adapter.at(5, 0.5));
+    await h.run(10);
+    b.net.possess(boxB);
+    await h.run(80);
+    // nothing ran for 10 s: no timer, no tick, no delivery
+    (h.scheduler as any).time += 10_000;
+    await h.run(Math.ceil(2000 / TICK_MS));
+    for (const peer of [a, b, c]) {
+      expect(peer.net.peerInfos.length).toBe(2);
+      expect(peer.net.possessorOf(findByName(h, peer.id, boxB.name))).toBe('b');
+    }
+  });
+
   it('a level JSON events binding fires exactly once across peers (event authority gate)', async () => {
     h = new Harness(adapter);
     const triggerDims = adapter.dim === 2 ? { x: 4, y: 2 } : { x: 4, y: 4, z: 2 };
