@@ -1,6 +1,6 @@
 {
   "name": "@gg-web-engine/multiplayer",
-  "version": "0.0.74",
+  "version": "0.0.75",
   "description": "An attempt to create open source game engine for browser",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -29,7 +29,7 @@
   },
   "homepage": "https://github.com/AndyGura/gg-web-engine#readme",
   "devDependencies": {
-    "@gg-web-engine/core": "0.0.74",
+    "@gg-web-engine/core": "0.0.75",
     "@types/jest": "^30.0.0",
     "@types/node": "^26.4.0",
     "firebase": "12.19.0",
@@ -41,7 +41,7 @@
     "typescript": "~6.0.3"
   },
   "peerDependencies": {
-    "@gg-web-engine/core": "0.0.74",
+    "@gg-web-engine/core": "0.0.75",
     "firebase": "12.19.0",
     "rxjs": "7.8.2"
   },

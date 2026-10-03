@@ -28,6 +28,8 @@ where one exists.
 
 ## [Unreleased]
 
+## [0.0.75] - 2026-10-03
+
 ### Added
 - `@gg-web-engine/multiplayer`: `NetworkControllerOptions.takeoverPossessed` (default `true`). With
   `false`, the entities a departed or away peer possesses are never taken over: they stay owned and
@@ -431,7 +433,8 @@ where one exists.
 
 First published version: `@gg-web-engine/core`, `three`, `pixi`, `ammo`, and `matter`.
 
-[Unreleased]: https://github.com/AndyGura/gg-web-engine/compare/0.0.74...HEAD
+[Unreleased]: https://github.com/AndyGura/gg-web-engine/compare/0.0.75...HEAD
+[0.0.75]: https://github.com/AndyGura/gg-web-engine/compare/0.0.74...0.0.75
 [0.0.74]: https://github.com/AndyGura/gg-web-engine/compare/0.0.73...0.0.74
 [0.0.73]: https://github.com/AndyGura/gg-web-engine/compare/0.0.72...0.0.73
 [0.0.72]: https://github.com/AndyGura/gg-web-engine/compare/0.0.71...0.0.72
