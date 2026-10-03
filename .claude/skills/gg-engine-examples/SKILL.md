@@ -407,6 +407,11 @@ same shared library:
   `peerDependencies` doesn't allow. Fix: `npm install --legacy-peer-deps`. This is a temporary,
   repo-wide condition that resolves itself once the packages are actually republished at a version
   whose metadata matches — not something to "fix" by pinning the example back to an old version.
+  `--legacy-peer-deps` also stops npm auto-installing peers, and prunes any peer-only package
+  already in the lockfile. An example that relied on a peer of an adapter instead of declaring it
+  (e.g. `matter-js`, a peer of `@gg-web-engine/matter`) then fails to build with `Module not found:
+  Can't resolve 'matter-js'`. Every example lists each adapter's underlying library in its own
+  `dependencies`, pinned to the adapter's version, so this can't happen.
 - **A second, nested physical copy of the shared library gets installed even with
   `--legacy-peer-deps`**, if the published adapter package declares it as a real (non-peer)
   `dependency` with an exact version — `@gg-web-engine/core@0.0.59` does this for `rxjs` (pinned

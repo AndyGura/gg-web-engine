@@ -9,7 +9,8 @@
     "@gg-web-engine/core": "0.0.74",
     "@gg-web-engine/pixi": "0.0.74",
     "@gg-web-engine/matter": "0.0.74",
-    "pixi.js": "8.21.0",
+    "matter-js": "0.20.0",
+    "pixi.js": "8.22.0",
     "rxjs": "7.8.2"
   },
   "devDependencies": {

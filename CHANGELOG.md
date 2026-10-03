@@ -34,6 +34,9 @@ where one exists.
   possessed by that peer (with neutral input on the others) until it is back; the Free entities it
   owned are still taken over.
 
+### Changed
+- `@gg-web-engine/pixi`: upgraded `pixi.js` to `8.22.0`.
+
 ### Fixed
 - `@gg-web-engine/multiplayer`: a stall of the local peer (frozen main thread, throttled timers) no
   longer makes `NetworkController` declare every other peer departed and take over their entities:
