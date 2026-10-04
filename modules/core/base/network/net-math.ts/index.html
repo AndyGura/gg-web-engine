@@ -542,6 +542,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#extrapolationseconds" class="md-nav__link">
+    extrapolationSeconds
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#gainfactor" class="md-nav__link">
     gainFactor
   </a>
@@ -551,6 +558,13 @@
           <li class="md-nav__item">
   <a href="#integraterotation" class="md-nav__link">
     integrateRotation
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#iscoasting" class="md-nav__link">
+    isCoasting
   </a>
   
 </li>
@@ -658,8 +672,10 @@
 <li><a href="#netvec-type-alias">NetVec (type alias)</a></li>
 <li><a href="#avclone">avClone</a></li>
 <li><a href="#avlerp">avLerp</a></li>
+<li><a href="#extrapolationseconds">extrapolationSeconds</a></li>
 <li><a href="#gainfactor">gainFactor</a></li>
 <li><a href="#integraterotation">integrateRotation</a></li>
+<li><a href="#iscoasting">isCoasting</a></li>
 <li><a href="#rclone">rClone</a></li>
 <li><a href="#rotationerror">rotationError</a></li>
 <li><a href="#rotationlerp">rotationLerp</a></li>
@@ -696,6 +712,11 @@ re-exported from the package root.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export declare function avLerp(a: number | Point3, b: number | Point3, t: number): number | Point3
 </code></pre>
+<h2 id="extrapolationseconds">extrapolationSeconds</h2>
+<p>how far (seconds) a snapshot <code>ageMs</code> old is extrapolated: its age, capped at <code>extrapolateMaxMs</code></p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export declare function extrapolationSeconds(ageMs: number, tuning: CorrectionTuning): number
+</code></pre>
 <h2 id="gainfactor">gainFactor</h2>
 <p>Per-tick blend factor for a per-second gain: <code>gain * dt</code>, clamped to [0, 1].</p>
 <p><strong>Signature</strong></p>
@@ -706,6 +727,12 @@ re-exported from the package root.</p>
 3D) over <code>seconds</code>.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export declare function integrateRotation&lt;R extends NetRot&gt;(r: R, av: number | Point3, seconds: number): R
+</code></pre>
+<h2 id="iscoasting">isCoasting</h2>
+<p>whether a replica whose latest snapshot arrived <code>sinceReceivedMs</code> ago coasts: the stream has been
+silent for longer than a snapshot is extrapolated, but not yet for the whole coasting window</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export declare function isCoasting(sinceReceivedMs: number | undefined, tuning: CorrectionTuning): boolean
 </code></pre>
 <h2 id="rclone">rClone</h2>
 <p>Plain-JSON copy of a rotation.</p>

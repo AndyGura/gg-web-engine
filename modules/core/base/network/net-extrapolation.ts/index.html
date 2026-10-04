@@ -8,7 +8,7 @@
       
       
       
-        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/base/network/rigid-body-correction.ts/">
+        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/base/network/net-extrapolation.ts/">
       
       
       
@@ -18,7 +18,7 @@
     
     
       
-        <title>core/base/network/rigid-body-correction.ts - GG-web-engine</title>
+        <title>core/base/network/net-extrapolation.ts - GG-web-engine</title>
       
     
     
@@ -73,7 +73,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#rigid-body-correction-overview" class="md-skip">
+        <a href="#net-extrapolation-overview" class="md-skip">
           Skip to content
         </a>
       
@@ -109,7 +109,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              core/base/network/rigid-body-correction.ts
+              core/base/network/net-extrapolation.ts
             
           </span>
         </div>
@@ -499,8 +499,8 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#rigid-body-correction-overview" class="md-nav__link">
-    rigid-body-correction overview
+  <a href="#net-extrapolation-overview" class="md-nav__link">
+    net-extrapolation overview
   </a>
   
 </li>
@@ -514,56 +514,15 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#rigidbodycorrection-class" class="md-nav__link">
-    RigidBodyCorrection (class)
-  </a>
-  
-    <nav class="md-nav" aria-label="RigidBodyCorrection (class)">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#capture-static-method" class="md-nav__link">
-    capture (static method)
+  <a href="#extrapolatenetposition" class="md-nav__link">
+    extrapolateNetPosition
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#targetposition-static-method" class="md-nav__link">
-    targetPosition (static method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#correct-static-method" class="md-nav__link">
-    correct (static method)
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#rigidbodynetstate-interface" class="md-nav__link">
-    RigidBodyNetState (interface)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#capturerigidbody" class="md-nav__link">
-    captureRigidBody
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#correctrigidbody" class="md-nav__link">
-    correctRigidBody
+  <a href="#isnetstatecoasting" class="md-nav__link">
+    isNetStateCoasting
   </a>
   
 </li>
@@ -591,100 +550,38 @@
   
 
 
-<h2 id="rigid-body-correction-overview">rigid-body-correction overview</h2>
+<h2 id="net-extrapolation-overview">net-extrapolation overview</h2>
 <hr />
 <h2 class="text-delta">Table of contents</h2>
 
 <ul>
 <li><a href="#utils">utils</a></li>
-<li><a href="#rigidbodycorrection-class">RigidBodyCorrection (class)</a><ul>
-<li><a href="#capture-static-method">capture (static method)</a></li>
-<li><a href="#targetposition-static-method">targetPosition (static method)</a></li>
-<li><a href="#correct-static-method">correct (static method)</a></li>
-</ul>
-</li>
-<li><a href="#rigidbodynetstate-interface">RigidBodyNetState (interface)</a></li>
-<li><a href="#capturerigidbody">captureRigidBody</a></li>
-<li><a href="#correctrigidbody">correctRigidBody</a></li>
+<li><a href="#extrapolatenetposition">extrapolateNetPosition</a></li>
+<li><a href="#isnetstatecoasting">isNetStateCoasting</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
-<h2 id="rigidbodycorrection-class">RigidBodyCorrection (class)</h2>
-<p>Replica correction for rigid bodies, shared by every entity class whose networked state is (or
-contains) a rigid body: one algorithm, applied per body kind.</p>
-<ol>
-<li>The snapshot is extrapolated to "now" along its velocities, capped at <code>extrapolateMaxMs</code>. A
-   dynamic replica of a moving target whose snapshot arrived longer ago than that
-   (<code>ctx.sinceReceivedMs</code>), up to <code>coastMaxMs</code>, is left alone (<code>'coast'</code>): the stream stalled, and
-   its own simulation is the better guess. A snapshot that is old only because the link is slow
-   is corrected to as usual.</li>
-<li>Error below the deadzone: nothing is written (and an awake replica of a sleeping target is put
-   to sleep).</li>
-<li>Error above <code>snapDistance</code>, or <code>ctx.snap</code>: the extrapolated state is written outright.</li>
-<li>Otherwise blend:</li>
-<li>dynamic body: velocity is steered toward <code>targetVelocity + error * velocityGain</code> at
-     <code>positionGain</code> per second (a velocity bias does not fight momentum the way a position lerp
-     does), rotation slerped at <code>rotationGain</code>, angular velocity lerped. A sleeping target instead
-     gets a gentle position/rotation lerp with zero velocity, so the replica comes to rest where
-     the owner's body rests;</li>
-<li>kinematic body (<code>kinematic_pos</code>/<code>kinematic_vel</code>): position/rotation lerp only, through the
-     setters - kinematic bodies don't integrate a written velocity on every adapter;</li>
-<li>static body: never corrected.</li>
-</ol>
-<p>The helper never reads a value back after writing it within one call (a position-based kinematic
-write is deferred to the next physics step on some adapters), and gains are per-second, scaled by
-<code>ctx.dt</code>.</p>
+<h2 id="extrapolatenetposition">extrapolateNetPosition</h2>
+<p>Where a replica of a networked <code>state</code> is steered to once the snapshot is <code>ageMs</code> old, for any state
+shaped like (or containing) a {@link RigidBodyNetState} or a {@link MoverNetState} - the same
+extrapolation the correction helpers apply. <code>null</code> for a state of another shape. For a network
+layer's diagnostics, which sees states without knowing their entity class.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class RigidBodyCorrection
+<pre><code class="language-ts">export declare function extrapolateNetPosition&lt;D = unknown&gt;(
+  state: unknown,
+  ageMs: number,
+  tuning: CorrectionTuning = DEFAULT_CORRECTION_TUNING
+): D | null
 </code></pre>
-<h3 id="capture-static-method">capture (static method)</h3>
-<p>Owner side: snapshot <code>body</code> as plain JSON.</p>
+<h2 id="isnetstatecoasting">isNetStateCoasting</h2>
+<p>Whether a replica whose latest snapshot arrived <code>sinceReceivedMs</code> ago is coasting: the stream has
+been silent for longer than a snapshot is extrapolated (<code>extrapolateMaxMs</code>), not yet long enough for
+the replica to be corrected to it again (<code>coastMaxMs</code>).</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">static capture&lt;D, R&gt;(body: IRigidBodyComponent&lt;D, R&gt;): RigidBodyNetState&lt;D, R&gt;
-</code></pre>
-<h3 id="targetposition-static-method">targetPosition (static method)</h3>
-<p>Where a replica of <code>target</code> is steered to once the snapshot is <code>ageMs</code> old: its position
-extrapolated along its linear velocity (not at all for a sleeping target), capped at
-<code>extrapolateMaxMs</code>.</p>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">static targetPosition&lt;D, R&gt;(
-    target: RigidBodyNetState&lt;D, R&gt;,
-    ageMs: number,
-    tuning: CorrectionTuning = DEFAULT_CORRECTION_TUNING,
-  ): D
-</code></pre>
-<h3 id="correct-static-method">correct (static method)</h3>
-<p>Replica side: reconcile <code>body</code> toward <code>target</code> - see the class doc for the algorithm.</p>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">static correct&lt;D, R&gt;(
-    body: IRigidBodyComponent&lt;D, R&gt;,
-    target: RigidBodyNetState&lt;D, R&gt;,
-    ctx: NetworkApplyContext,
-    tuning: CorrectionTuning = ctx.tuning ?? DEFAULT_CORRECTION_TUNING,
-  ): CorrectionOutcome
-</code></pre>
-<h2 id="rigidbodynetstate-interface">RigidBodyNetState (interface)</h2>
-<p>Networked snapshot of one rigid body: position, rotation, linear velocity, angular velocity
-(scalar in 2D, world-space axis*rate vector in 3D) and the sleep flag. Short keys keep the JSON
-small - it is sent many times per second per entity.</p>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">export interface RigidBodyNetState&lt;D = unknown, R = unknown&gt; {
-  p: D
-  r: R
-  lv: D
-  av: R | D
-  s: boolean
-}
-</code></pre>
-<h2 id="capturerigidbody">captureRigidBody</h2>
-<p>Function alias of {@link RigidBodyCorrection.capture}.</p>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare const captureRigidBody: typeof RigidBodyCorrection.capture
-</code></pre>
-<h2 id="correctrigidbody">correctRigidBody</h2>
-<p>Function alias of {@link RigidBodyCorrection.correct}.</p>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare const correctRigidBody: typeof RigidBodyCorrection.correct
+<pre><code class="language-ts">export declare function isNetStateCoasting(
+  sinceReceivedMs: number,
+  tuning: CorrectionTuning = DEFAULT_CORRECTION_TUNING
+): boolean
 </code></pre>
 
 
