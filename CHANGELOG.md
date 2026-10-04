@@ -40,6 +40,12 @@ where one exists.
   snapshot arrives late and useless, and the queue turned one lost packet into a stall of hundreds
   of ms.
 
+- `@gg-web-engine/multiplayer`: `LinkConditioner` (the `net_lag` console command) also simulates
+  jitter (`jitterMs`), delivery stalls (`stallMs` every `stallIntervalMs`, delivered as one burst) and
+  retransmitted reliable messages (`reliableDelayRate`, `reliableDelayMs`, with head-of-line blocking
+  per sender), plus `reset()` and `describe()`:
+  `net_lag MS LOSS% JITTER_MS STALL_MS STALL_EVERY_MS RELIABLE_DELAY_MS RELIABLE_DELAY%`.
+
 ### Changed
 - `@gg-web-engine/multiplayer`: peer clock sync no longer averages its samples. `ClockSync` keeps a
   window of the latest ones and estimates the offset from the fastest way out and the fastest way

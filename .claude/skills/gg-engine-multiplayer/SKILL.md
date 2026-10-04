@@ -218,6 +218,11 @@ join handshakes, link latency) runs on the injected `NetScheduler`, never on `ti
   link's setup time; with every peer on one machine it measured 71–680 ms. That is a best case, since
   peers on one machine connect over local host candidates and real peers add STUN (and possibly TURN)
   round trips. Check zoning cell sizes against it: speed × setup time must fit in the one-cell margin.
+- **A clean link hides timing bugs.** Loopback and same-machine WebRTC deliver in under a millisecond,
+  in order, with nothing lost. `LoopbackHub` conditions (latency, jitter, loss) cover tests;
+  `LinkConditioner` (`controller.conditioner`, the `net_lag` console command) reproduces a real link
+  on the receive path of a live peer: jitter, delivery stalls released as a burst, and reliable
+  messages delayed like a retransmission, holding back the sender's later ones.
 - Live: open an example's `?room=` URL in two tabs (BroadcastChannel signaling needs no backend).
   Automation tabs are hidden: `requestAnimationFrame` doesn't tick and `setTimeout` is clamped to ≥1 s,
   so drive worlds with `worldClock.step(16)` in a loop that yields through a `MessageChannel` (not

@@ -375,4 +375,56 @@ describe('LinkConditioner', () => {
     s.advance(1);
     expect(got).toEqual(['direct', 'kept', 'reliable']);
   });
+
+  it('jitters the delay around the latency', () => {
+    const s = new VirtualScheduler();
+    let r = 0;
+    const c = new LinkConditioner(s, () => [0, 1, 0.5][r++ % 3]);
+    c.latencyMs = 40;
+    c.jitterMs = 15;
+    const at: number[] = [];
+    for (let i = 0; i < 3; i++) {
+      c.pass('unreliable', () => at.push(s.now()));
+    }
+    s.advance(100);
+    expect(at).toEqual([25, 40, 55]);
+    expect(c.describe()).toBe('40 ms, 0% loss, +-15 ms jitter');
+  });
+
+  it('holds everything back during a stall and delivers it in one burst', () => {
+    const s = new VirtualScheduler();
+    const c = new LinkConditioner(s);
+    c.stallMs = 300;
+    c.stallIntervalMs = 1000;
+    const at: number[] = [];
+    s.advance(900);
+    for (let i = 0; i < 5; i++) {
+      c.pass(i % 2 ? 'reliable' : 'unreliable', () => at.push(s.now())); // at 900, 1000, 1100, 1200, 1300
+      s.advance(100);
+    }
+    s.advance(1000);
+    expect(at).toEqual([900, 1300, 1300, 1300, 1300]);
+  });
+
+  it('delays some reliable messages, holding back the later ones of that sender only', () => {
+    const s = new VirtualScheduler();
+    let r = 0;
+    const c = new LinkConditioner(s, () => [0.01, 0.9, 0.9, 0.9][r++ % 4]);
+    c.reliableDelayRate = 0.05;
+    c.reliableDelayMs = 400;
+    const got: string[] = [];
+    c.pass('reliable', () => got.push('a1'), 'a'); // delayed
+    c.pass('reliable', () => got.push('a2'), 'a');
+    c.pass('reliable', () => got.push('b1'), 'b');
+    c.pass('unreliable', () => got.push('a-state'), 'a');
+    expect(got).toEqual(['b1', 'a-state']);
+    c.reset(); // a clean link again still keeps the order of what is in flight
+    c.pass('reliable', () => got.push('a3'), 'a');
+    s.advance(399);
+    expect(got).toEqual(['b1', 'a-state']);
+    s.advance(1);
+    expect(got).toEqual(['b1', 'a-state', 'a1', 'a2', 'a3']);
+    c.pass('reliable', () => got.push('a4'), 'a');
+    expect(got[got.length - 1]).toBe('a4');
+  });
 });

@@ -1448,7 +1448,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     this.unsubscribeTransport();
     this.transportSubscriptions.push(
       this.transport.messages$.subscribe(({ from, msg }) =>
-        this.conditioner.pass(channelOf(msg), () => this.onMessage(from, msg)),
+        this.conditioner.pass(channelOf(msg), () => this.onMessage(from, msg), from),
       ),
       this.transport.peers$.subscribe(ids => this.onPeersChanged(ids)),
       this.transport.peerLeft$.subscribe(id => this.onPeerGone(id)),
@@ -2325,7 +2325,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
           );
         }
         if (this.conditioner.active) {
-          lines.push(`simulated lag: ${this.conditioner.latencyMs} ms, ${this.conditioner.lossRate * 100}% loss`);
+          lines.push(`simulated lag: ${this.conditioner.describe()}`);
         }
         return lines.join('\n');
       },
@@ -2363,17 +2363,28 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     register(
       'net_lag',
       async (...args: string[]) => {
-        const [ms, loss] = args;
-        if (ms !== undefined) {
-          if (isNaN(+ms) || (loss !== undefined && isNaN(+loss))) {
-            throw new Error('usage: net_lag MS LOSS_PERCENT');
+        if (args.length > 0) {
+          if (args.length > 7 || args.some(a => isNaN(+a))) {
+            throw new Error(
+              'usage: net_lag MS [LOSS_PERCENT [JITTER_MS [STALL_MS STALL_EVERY_MS [RELIABLE_DELAY_MS RELIABLE_DELAY_PERCENT]]]]',
+            );
           }
-          this.conditioner.latencyMs = Math.max(0, +ms);
-          this.conditioner.lossRate = loss === undefined ? 0 : Math.max(0, Math.min(1, +loss / 100));
+          const [ms, loss, jitter, stall, stallEvery, reliableDelay, reliableRate] = args.map(a => Math.max(0, +a));
+          const c = this.conditioner;
+          c.reset();
+          c.latencyMs = ms;
+          c.lossRate = Math.min(1, (loss ?? 0) / 100);
+          c.jitterMs = jitter ?? 0;
+          c.stallMs = stall ?? 0;
+          c.stallIntervalMs = stallEvery ?? 0;
+          c.reliableDelayMs = reliableDelay ?? 0;
+          c.reliableDelayRate = Math.min(1, (reliableRate ?? 0) / 100);
         }
-        return `${this.conditioner.latencyMs} ms, ${this.conditioner.lossRate * 100}% loss`;
+        return this.conditioner.describe();
       },
-      'args: [ float?, float? ]; Simulate incoming latency (ms) and unreliable-message loss (percent) on this peer',
+      'args: [ float?, float?, float?, float?, float?, float?, float? ]; Simulate a bad incoming link on this peer: ' +
+        'latency (ms), unreliable-message loss (percent), jitter (+- ms), delivery stalls (ms, every ms), ' +
+        'delayed reliable messages (extra ms, percent of them). Omitted values are 0',
     );
   }
 

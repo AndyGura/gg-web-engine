@@ -99,7 +99,9 @@ connection setup time must fit inside the one-cell margin between the two rings.
 
 ### Dev tools
 With the dev console: `net_status`, `net_owners [filter]`, `net_tuning key value`,
-`net_lag ms loss%`. Mutating console commands (`remove`, `spawn`, `set_position`, ...) are rejected
+`net_lag ms loss% jitterMs stallMs stallEveryMs reliableDelayMs reliableDelay%` (a simulated bad
+incoming link: latency, unreliable loss, jitter, delivery stalls, retransmitted reliable messages;
+e.g. `net_lag 40 2 15 300 5000 400 5`, `net_lag 0` to turn it off). Mutating console commands (`remove`, `spawn`, `set_position`, ...) are rejected
 while joined - a local-only edit would desync peers. With `debug_view`, replicas are tinted.
 
 ### Firebase project setup

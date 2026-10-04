@@ -26,6 +26,12 @@ describe('NetworkController features', () => {
     expect(await ggstatic.runConsoleCommand('net_status', [])).toContain('session: joined');
     expect(await ggstatic.runConsoleCommand('net_lag', ['100', '10'])).toBe('100 ms, 10% loss');
     expect(a.net.conditioner.latencyMs).toBe(100);
+    expect(await ggstatic.runConsoleCommand('net_lag', ['40', '2', '15', '300', '5000', '400', '5'])).toBe(
+      '40 ms, 2% loss, +-15 ms jitter, 300 ms stall every 5000 ms, 5% of reliable +400 ms',
+    );
+    expect(await ggstatic.runConsoleCommand('net_status', [])).toContain('simulated lag: 40 ms, 2% loss, +-15 ms');
+    expect(await ggstatic.runConsoleCommand('net_lag', ['0'])).toBe('0 ms, 0% loss');
+    expect(a.net.conditioner.active).toBe(false);
     expect(await ggstatic.runConsoleCommand('net_tuning', ['deadzone', '0.5'])).toContain('"deadzone":0.5');
     adapter.addBox(a.world, adapter.at(0, 1));
     h.step(2);
