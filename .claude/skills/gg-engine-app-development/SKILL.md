@@ -328,7 +328,7 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   Pass a string `nameScope` when names must be deterministic (networked spawns, lookups by name), or
   `null` to keep the raw Blender object names for a file loaded exactly once.
 - **Level JSON loading (2D & 3D)**: `world.loader` turns a JSON document of entities into world
-  content, with built-in `"Primitive"`/`"Trigger"`/`"Camera"`/`"Light"`/`"Environment"`/`"Glb"`/`"GgCar"`/
+  content, with built-in `"Primitive"`/`"Trigger"`/`"Camera"`/`"Light"`/`"Environment"`/`"ParallaxLayer"`/`"Glb"`/`"GgCar"`/
   `"MapGraph"` (all but the first two 3D only) classes and support for app-registered custom classes. Loading resolves to a
   group entity holding everything the level
   produced, so `world.removeEntity(level, true)` tears the whole level back down in one call, and
@@ -346,6 +346,15 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   direction, `pz` overhead) or `loadTexture(url, { mapping: 'equirectangular' })`. The level JSON has
   matching `"Light"`/`"Environment"` classes. Don't reach for the adapter's native light classes
   (`THREE.DirectionalLight` on `nativeScene`) - that ties the game to one renderer.
+- **Draw order and backdrops (2D)**: every 2D display object has a `zIndex` (higher draws on top,
+  default `0`). `world.visualScene.setEnvironment({ background })` sets a background color or a
+  screen-fixed image scaled to cover the view (images from `world.visualScene.factory.loadTexture(url)`).
+  `world.addParallaxLayer({ texture, parallax?, zIndex?, repeat?, offset?, scale? })` adds a
+  `ParallaxLayer2dEntity`: a texture that scrolls at `parallax` times the world's rate as the camera
+  moves (`0` stays fixed on screen, `1` moves with the world; default `0.5`), repeating along `'x'`
+  (default), `'y'`, `'both'` or `'none'`, drawn at `zIndex` (default `-1`, behind the world).
+  `offset` is the texture's world position while the camera is at the origin; `scale` is world units
+  per texture pixel. The level JSON has matching `"ParallaxLayer"`/`"Environment"` classes.
 - **Raycasting**: `world.physicsWorld.raycast({ from, to, collisionFilterGroups?, collisionFilterMask? })`.
 - **Collision groups**: `world.physicsWorld.registerCollisionGroup()` /
   `deregisterCollisionGroup(group)`; every body has `mainCollisionGroup` set by default (both

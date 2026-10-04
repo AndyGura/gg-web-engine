@@ -44,12 +44,27 @@ where one exists.
 - `@gg-web-engine/core`: `"Light"` and `"Environment"` level-JSON classes. `"Environment"` creates an
   `Environment3dEntity`, which restores the previous background/environment map/fog when its level
   is unloaded.
+- `@gg-web-engine/core`, `@gg-web-engine/pixi`: 2D draw order and backdrops. Every 2D display object
+  has a `zIndex` (higher draws on top, default `0`). `visualScene.setEnvironment({ background })`
+  sets a background color or a screen-fixed image scaled to cover the view. Parallax layers
+  (`factory.createParallaxLayer(options)`, or `Gg2dWorld.addParallaxLayer(options)` which wraps one
+  in a new `ParallaxLayer2dEntity`) draw a texture that scrolls at its own rate as the camera moves
+  (`parallax`, per axis), repeating along `x`, `y`, both or neither, with `zIndex`, `offset` and
+  `scale`. `factory.loadTexture(url)` loads an image for either.
+- `@gg-web-engine/core`: 2D `"ParallaxLayer"` and `"Environment"` level-JSON classes (texture and
+  background image given as URLs). `"Environment"` creates an `Environment2dEntity`, which restores
+  the previous background when its level is unloaded.
 
 ### Changed
 - `@gg-web-engine/core`: `VisualTypeDocRepo3D` has a new `light` member, and
   `IDisplayObject3dComponentFactory`, `IVisualScene3dComponent` and `IDisplayObject3dComponentLoader`
   have new required members (`createLight`; `environment`/`setEnvironment`;
   `loadTexture`/`loadCubeTexture`). A third-party 3D visual adapter must implement them.
+- `@gg-web-engine/core`: `VisualTypeDocRepo2D` has a new `parallaxLayer` member, and
+  `IDisplayObject2dComponent` (`zIndex`), `IVisualScene2dComponent` (`environment`/`setEnvironment`)
+  and `IDisplayObject2dComponentFactory` (`createParallaxLayer`, `loadTexture`) have new required
+  members. A third-party 2D visual adapter must implement them.
+- `@gg-web-engine/pixi`: the scene's world container sorts its children by `zIndex`.
 
 ## [0.0.76] - 2026-10-04
 

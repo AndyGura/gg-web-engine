@@ -1,6 +1,13 @@
-import { DisplayObject2dOpts, IDisplayObject2dComponentFactory, Pnt2, Shape2DDescriptor } from '@gg-web-engine/core';
+import {
+  DisplayObject2dOpts,
+  IDisplayObject2dComponentFactory,
+  ParallaxLayer2dOpts,
+  Pnt2,
+  Shape2DDescriptor,
+} from '@gg-web-engine/core';
 import { PixiDisplayObjectComponent } from './components/pixi-display-object.component';
-import { AnimatedSprite, Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js';
+import { AnimatedSprite, Assets, Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js';
+import { PixiParallaxLayerComponent } from './components/pixi-parallax-layer.component';
 import { PixiVisualTypeDocRepo2D } from './types';
 import { PixiAnimationClip, PixiAnimatedSpriteComponent } from './components/pixi-animated-sprite.component';
 
@@ -125,5 +132,13 @@ export class PixiFactory extends IDisplayObject2dComponentFactory<PixiVisualType
     const sprite = new AnimatedSprite(resolvedClips[clipNames[0]].frames, false);
     sprite.anchor.x = sprite.anchor.y = 0.5;
     return new PixiAnimatedSpriteComponent(sprite, resolvedClips);
+  }
+
+  createParallaxLayer(options: ParallaxLayer2dOpts<Texture>): PixiParallaxLayerComponent {
+    return new PixiParallaxLayerComponent(options);
+  }
+
+  loadTexture(url: string): Promise<Texture> {
+    return Assets.load<Texture>(url);
   }
 }

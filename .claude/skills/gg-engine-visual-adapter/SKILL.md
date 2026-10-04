@@ -126,6 +126,25 @@ Every adapter component class then `implements I<Thing>Component<<Lib>VisualType
   `scene.backgroundRotation`/`environmentRotation` of `+PI/2` around X. Both were checked by
   rendering solid-colored faces in headless Chromium (ANGLE/SwiftShader) and reading back the center
   pixel looking along each axis - a cheap way to verify any orientation question in a new adapter.
+- **Draw order and backdrops (2D)**: `IDisplayObject2dComponent.zIndex` orders siblings (pixi: the
+  scene's world container is created with `sortableChildren: true` and `zIndex` maps to the native
+  `zIndex`). `IVisualScene2dComponent.environment`/`setEnvironment(partial)` holds `background`: a
+  color, a texture drawn fixed to the screen and scaled to cover the view, or `null` for the
+  renderer's own `RendererOptions.background`. The pixi renderer applies it every `render()`: a color
+  sets `renderer.background.color` (only when it changed - pixi v8's color setter also resets the
+  background alpha to opaque, so the renderer re-applies the `transparent` alpha after it), a texture
+  becomes a `Sprite` at stage index 0, behind the world container.
+  `IDisplayObject2dComponentFactory.createParallaxLayer(options)` returns the TypeDoc's
+  `parallaxLayer` member (an `IParallaxLayer2dComponent`); resolve its options with core's
+  `resolveParallaxLayer2dOpts` so defaults match. A layer depends on the camera, and a scene can have
+  several renderers, so each renderer positions every layer for its own camera right before drawing
+  (pixi: the scene tracks its layers in `parallaxLayers`, `PixiRendererComponent.render()` calls
+  `updateView(cameraPosition, halfExtent)` on each, with `halfExtent = hypot(width, height) / 2 / zoom`
+  on both axes so a rotated camera stays covered). `PixiParallaxLayerComponent` is a `TilingSprite`
+  in the world container (so it sorts by `zIndex` against everything else). Per axis, the texture's
+  world origin is `offset + camera * (1 - parallax)`; a repeating axis spans the whole view with
+  `tilePosition = (origin - viewStart) mod tileSize`, a non-repeating one is placed at the origin
+  one tile wide. `factory.loadTexture(url)` (pixi: `Assets.load`) supplies textures for both.
 - **Renderer component** (`IRenderer(2d|3d)Component`): accepts an optional `HTMLCanvasElement`
   (create an offscreen/detached canvas if none given) and `RendererOptions`, drives the actual
   draw call, supports resize, and `dispose()`s native GPU resources. `RendererOptions &
@@ -323,9 +342,14 @@ type** (`{} as unknown as Container`, or richer as the test needs) **and import 
 `import type`** (elided at compile time, so it adds no runtime `require('pixi.js')` at all) rather
 than a plain `import` - `packages/pixi/test/components/pixi-display-object.component.spec.ts`-style
 tests that don't need pixi.js's real runtime behavior (only a `nativeSprite` reference to hold) are
-the common case this applies to; a test that genuinely needs pixi.js's own real behavior (a real
-`Graphics` draw call, a real `Sprite` texture) has no workaround available yet and needs the babel
-transform fix applied first.
+the common case this applies to. A component that constructs a pixi.js object itself (e.g.
+`PixiParallaxLayerComponent`'s `new TilingSprite(...)`) can still be tested by replacing the module
+with `jest.mock('pixi.js', () => ({ TilingSprite: FakeTilingSprite }))` at the top of the spec - a
+factory mock never loads the real module (see
+`packages/pixi/test/components/pixi-parallax-layer.component.spec.ts`). A test that genuinely needs
+pixi.js's own real behavior (a real `Graphics` draw call, a real `Sprite` texture) has no workaround
+available yet and needs the babel transform fix applied first; verify such behavior by rendering in
+headless Chromium instead.
 
 ## Wiring a new adapter into the repo
 

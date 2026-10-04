@@ -305,8 +305,9 @@ Status
   `IVisualScene*Component`/`IPhysicsWorldComponent` interfaces from core — but there's no
   automated check that two adapters actually produce equivalent results for the same input.
   Lights and scene environment are behind core too (2026-10-04: `createLight`/`Gg3dWorld.addLight`,
-  `visualScene.setEnvironment`, `"Light"`/`"Environment"` level classes), so no example adds native
-  lights or skyboxes any more; custom materials, post-processing, particles and text/UI are still
+  `visualScene.setEnvironment`, `"Light"`/`"Environment"` level classes; in 2D, `zIndex`, a
+  background color/image and parallax layers), so no example adds native lights or skyboxes any
+  more; custom materials, post-processing, particles and text/UI are still
   adapter-native.
 - Cross-engine conformance tests (same scenario run against two renderers / two physics engines,
   compared within tolerance) — not started.

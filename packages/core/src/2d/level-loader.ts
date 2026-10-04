@@ -7,6 +7,9 @@ import { Shape2DDescriptor } from './models/shapes';
 import { Entity2d } from './entities/entity-2d';
 import { Trigger2dEntity } from './entities/trigger-2d.entity';
 import { AudioSource2dEntity } from './entities/audio-source-2d.entity';
+import { ParallaxLayer2dEntity } from './entities/parallax-layer-2d.entity';
+import { Environment2dEntity } from './entities/environment-2d.entity';
+import { ParallaxLayer2dRepeat } from './models/environment';
 import { isMaterialReadable2d } from './components/rendering/i-material-readable-2d.component';
 import {
   CharacterController2dEntity,
@@ -164,6 +167,29 @@ export interface TriggerSettings {
  * Settings for the built-in `"Sound"` entity class - see the 3D `Sound3DSettings` doc (identical
  * shape, `Point2`/no cone).
  */
+/**
+ * Settings for the built-in 2D `"ParallaxLayer"` class - `ParallaxLayer2dOpts`, with the texture
+ * given as an image URL. Creates a `ParallaxLayer2dEntity`; a no-op without a visual scene.
+ */
+export interface ParallaxLayer2DSettings {
+  /** URL of the layer's image, loaded with `factory.loadTexture`. */
+  texture: string;
+  parallax?: Point2 | number;
+  zIndex?: number;
+  repeat?: ParallaxLayer2dRepeat;
+  offset?: Point2;
+  scale?: Point2 | number;
+}
+
+/**
+ * Settings for the built-in 2D `"Environment"` class (see `IVisualScene2dComponent.setEnvironment`):
+ * `background` is a `0xRRGGBB` color, `{ "image": "url" }`, or `null`. Applied while the level is
+ * loaded and restored when it is unloaded (see `Environment2dEntity`). A no-op without a visual scene.
+ */
+export interface Environment2DSettings {
+  background?: number | { image: string } | null;
+}
+
 export interface Sound2DSettings {
   position?: Point2;
   rotation?: number;
@@ -243,6 +269,8 @@ export class Gg2dLevelLoader<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTyp
 
     this.registerClass('Trigger', this.createTrigger.bind(this));
     this.registerClass('Sound', this.createSound.bind(this));
+    this.registerClass('ParallaxLayer', this.createParallaxLayer.bind(this));
+    this.registerClass('Environment', this.createEnvironment.bind(this));
     this.registerClass('Player', this.createPlayer.bind(this), CharacterController2dEntity);
 
     this.registerLiveSerializer(this.serializePrimitive.bind(this));
@@ -504,6 +532,55 @@ export class Gg2dLevelLoader<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTyp
       entity.applyState(state);
     }
     return entity;
+  }
+
+  /**
+   * Create a `"ParallaxLayer"` entity: loads the texture, then wraps a parallax layer built from the
+   * settings in a `ParallaxLayer2dEntity`. Returns `undefined` without a visual scene.
+   */
+  private async createParallaxLayer(
+    world: Gg2dWorld<TypeDoc>,
+    settings: ParallaxLayer2DSettings,
+  ): Promise<ParallaxLayer2dEntity<TypeDoc['vTypeDoc']> | undefined> {
+    const scene = world.visualScene;
+    if (!scene) {
+      return undefined;
+    }
+    if (!settings.texture) {
+      throw new Error('"texture" is required for ParallaxLayer class');
+    }
+    const { texture, parallax, zIndex, repeat, offset, scale } = settings;
+    return new ParallaxLayer2dEntity<TypeDoc['vTypeDoc']>(
+      scene.factory.createParallaxLayer({
+        texture: await scene.factory.loadTexture(texture),
+        parallax,
+        zIndex,
+        repeat,
+        offset,
+        scale,
+      }),
+    );
+  }
+
+  /**
+   * Create an `"Environment"` entity: loads a background image if one is given, then returns an
+   * `Environment2dEntity` that applies the settings while it is in the world. Returns `undefined`
+   * without a visual scene.
+   */
+  private async createEnvironment(
+    world: Gg2dWorld<TypeDoc>,
+    settings: Environment2DSettings,
+  ): Promise<Environment2dEntity<TypeDoc['vTypeDoc']> | undefined> {
+    const scene = world.visualScene;
+    if (!scene) {
+      return undefined;
+    }
+    const environment: { background?: number | TypeDoc['vTypeDoc']['texture'] | null } = {};
+    if (settings.background !== undefined) {
+      const bg = settings.background;
+      environment.background = bg === null || typeof bg === 'number' ? bg : await scene.factory.loadTexture(bg.image);
+    }
+    return new Environment2dEntity<TypeDoc['vTypeDoc']>(environment);
   }
 
   /**

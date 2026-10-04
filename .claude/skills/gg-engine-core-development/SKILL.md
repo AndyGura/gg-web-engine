@@ -944,9 +944,14 @@ Changing any of these is a breaking change for every adapter package — grep
 - `IAudioSourceComponent`, `IAudioSourceComponentFactory` (+ 2D/3D specializations - see `gg-engine-audio-adapter`)
 - `IRaycastVehicleComponent`, `ICharacterController3dComponent` (3D only)
 - `IEntity`, `IRenderableEntity`, `IRendererEntity`
-- The factory abstracts in `2d/factories.ts` / `3d/factories.ts` (3D includes `createLight`)
+- The factory abstracts in `2d/factories.ts` / `3d/factories.ts` (3D includes `createLight`; 2D
+  includes `createParallaxLayer` and `loadTexture`)
 - `ILight3dComponent` and the 3D scene's `environment`/`setEnvironment`, plus the 3D loader's
   `loadTexture`/`loadCubeTexture` (`VisualTypeDocRepo3D` has a `light` member for the former)
+- `IDisplayObject2dComponent.zIndex`, `IParallaxLayer2dComponent` and the 2D scene's
+  `environment`/`setEnvironment` (`VisualTypeDocRepo2D` has a `parallaxLayer` member for the
+  layer). `resolveParallaxLayer2dOpts` fills in `ParallaxLayer2dOpts` defaults, so every adapter
+  agrees on them.
 
 ## `IRigidBodyComponent.bodyOptions` - reading a live body's construction settings back out
 

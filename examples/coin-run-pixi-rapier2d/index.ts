@@ -166,6 +166,40 @@ const peerOf = (entity: IEntity) =>
     ? entity.name.slice(CHARACTER_PREFIX.length)
     : null;
 
+/** a texture drawn on a canvas at runtime - the backdrop needs no image files */
+const paint = (width: number, height: number, draw: (ctx: CanvasRenderingContext2D) => void) => {
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  draw(canvas.getContext('2d')!);
+  return Texture.from(canvas);
+};
+
+/** a sky gradient: the scene background, fixed to the screen behind everything */
+const skyTexture = () =>
+  paint(512, 256, ctx => {
+    const gradient = ctx.createLinearGradient(0, 0, 0, 256);
+    gradient.addColorStop(0, '#1d1b3a');
+    gradient.addColorStop(0.6, '#5c4d7d');
+    gradient.addColorStop(1, '#c9ada7');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 512, 256);
+  });
+
+/** a row of hills, seamless left to right (each wave fits the width a whole number of times) */
+const hillsTexture = (color: string, height: number, waves: [number, number][], seed: number) =>
+  paint(512, height, ctx => {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(0, height);
+    for (let x = 0; x <= 512; x += 4) {
+      const y = waves.reduce((sum, [count, amp]) => sum + amp * Math.sin((2 * Math.PI * count * x) / 512 + seed), 0);
+      ctx.lineTo(x, 80 + y);
+    }
+    ctx.lineTo(512, height);
+    ctx.fill();
+  });
+
 /** a text sprite in the world - purely local decoration, never networked (it has no body) */
 class Label extends Entity2d {
   static readonly entityTypeName: string = 'Label';
@@ -240,6 +274,22 @@ world.init().then(async () => {
   renderer.rendererSize$.subscribe(newSize => {
     if (!newSize) return;
     renderer.camera.zoom = Math.min(newSize.x / (ROOM_WIDTH + 100), newSize.y / (ROOM_HEIGHT + 100), 1);
+  });
+
+  // --- backdrop: a screen-fixed sky, and two rows of hills scrolling slower than the arena as the
+  // camera follows the player (lower parallax reads as farther away). Purely local decoration.
+  world.visualScene.setEnvironment({ background: skyTexture() });
+  world.addParallaxLayer({
+    texture: hillsTexture('#3b3561', 800, [[2, 30], [5, 12]], 0),
+    parallax: 0.2,
+    zIndex: -2,
+    offset: { x: 0, y: -40 },
+  });
+  world.addParallaxLayer({
+    texture: hillsTexture('#2a2546', 800, [[3, 25], [7, 8]], 1.3),
+    parallax: 0.5,
+    zIndex: -1,
+    offset: { x: 0, y: 40 },
   });
 
   // --- room: from the URL, or a fresh one put into the URL so the address bar is the invite link
