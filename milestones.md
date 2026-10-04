@@ -304,12 +304,10 @@ Status
 - 🚧 Facade consistency exists by construction — every adapter implements the same
   `IVisualScene*Component`/`IPhysicsWorldComponent` interfaces from core — but there's no
   automated check that two adapters actually produce equivalent results for the same input.
-- ✅ Lights and scene environment are library-agnostic (2026-10-04): `factory.createLight` /
-  `Gg3dWorld.addLight` (`Light3dEntity`, ambient/hemisphere/directional/point/spot with shadow
-  options), `visualScene.setEnvironment` (background color or Z-up-oriented cube/equirectangular sky,
-  environment map, fog), the loader's `loadTexture`/`loadCubeTexture`, and `"Light"`/`"Environment"`
-  level-JSON classes. Every 3D example used to add raw three.js lights to `nativeScene`; none does
-  now. Custom materials, post-processing, particles and text/UI are still adapter-native.
+  Lights and scene environment are behind core too (2026-10-04: `createLight`/`Gg3dWorld.addLight`,
+  `visualScene.setEnvironment`, `"Light"`/`"Environment"` level classes), so no example adds native
+  lights or skyboxes any more; custom materials, post-processing, particles and text/UI are still
+  adapter-native.
 - Cross-engine conformance tests (same scenario run against two renderers / two physics engines,
   compared within tolerance) — not started.
 - ✅ Shared debug overlay already exists and is pluggable per renderer: the dev console's
