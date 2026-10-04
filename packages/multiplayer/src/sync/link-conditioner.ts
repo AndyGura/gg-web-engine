@@ -70,9 +70,11 @@ export class LinkConditioner {
    */
   pass(channel: WireChannel, deliver: () => void, from: string = ''): void {
     const now = this.scheduler.now();
-    const tail = this.reliableTail.get(from);
-    if (tail !== undefined && tail <= now) {
-      this.reliableTail.delete(from);
+    // forget every sender with nothing in flight any more, also the ones that are gone
+    for (const [sender, tail] of this.reliableTail) {
+      if (tail <= now) {
+        this.reliableTail.delete(sender);
+      }
     }
     if (!this.active && !(channel === 'reliable' && this.reliableTail.has(from))) {
       deliver();

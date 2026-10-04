@@ -75,7 +75,11 @@ describe('NetworkController features', () => {
       expect(document.querySelectorAll('#gg_net_panel')).toHaveLength(1);
       b.world.removeEntity(b.net);
       expect(document.getElementById('gg_net_panel')).toBeNull();
-      expect(b.net.measureTraffic).toBe(false);
+      // the panel never touches the app's own switch
+      b.net.measureTraffic = true;
+      b.net.showNetPanel = true;
+      b.net.showNetPanel = false;
+      expect(b.net.measureTraffic).toBe(true);
     } finally {
       jest.useRealTimers();
     }
@@ -260,14 +264,45 @@ describe('NetworkController features', () => {
     expect(stats.snaps).toBe(0);
     expect(stats.lunges).toBe(0);
 
+    // a split message arrives as parts with one counter, in any order: counted once
+    const countState = (n: number) => (b.net as any).countStateMessage((b.net as any).peers.get('a'), n);
+    const messages = () => b.net.netStats.peers[0].stateMessages;
+    const lostNow = () => b.net.netStats.peers[0].stateMessagesLost;
+    const n0: number = (b.net as any).peers.get('a').lastStateN;
+    const [m0, l0] = [messages(), lostNow()];
+    countState(n0 + 1);
+    countState(n0 + 2);
+    countState(n0 + 1);
+    countState(n0 + 4); // n0 + 3 is missing
+    expect([messages() - m0, lostNow() - l0]).toEqual([3, 1]);
+    countState(n0 + 3); // late after all
+    expect([messages() - m0, lostNow() - l0]).toEqual([4, 0]);
+    // a gap after a silent second is a paused stream (out of the sender's stream ring), not loss
+    h.hub.conditions.lossRate = 0;
+    const rate = a.net.sendRate;
+    a.net.sendRate = 0.001;
+    await h.run(Math.ceil(1500 / TICK_MS));
+    const [n1, l1] = [(b.net as any).peers.get('a').lastStateN as number, lostNow()];
+    countState(n1 + 50);
+    expect(lostNow()).toBe(l1);
+    countState(n1 + 60); // while one within a running stream is
+    expect(lostNow()).toBe(l1 + 9);
+    (b.net as any).peers.get('a').lastStateN = null; // back in step with the real stream
+    a.net.sendRate = rate;
+    await h.run(5);
+    // the pause froze the replica's target (extrapolation is capped) while its body kept moving: it was
+    // snapped back several times, and the stream resuming was a lunge
+    const resumed = b.net.netStats.peers[0];
+    expect(resumed.lunges).toBe(1);
+    expect(resumed.snaps).toBeGreaterThan(1);
+
     // the owner's body jumps 30 m: the next snapshot moves the replica's target (a lunge), beyond snapDistance
     h.hub.conditions.lossRate = 0;
     const p = box.objectBody!.position;
     box.objectBody!.position = { x: p.x, y: p.y + 30, z: p.z };
     await h.run(Math.ceil(500 / TICK_MS));
     stats = b.net.netStats.peers[0];
-    expect(stats.lunges).toBe(1);
-    expect(stats.snaps).toBe(1);
+    expect([stats.lunges - resumed.lunges, stats.snaps - resumed.snaps]).toEqual([1, 1]);
     expect(dist(findByName(h, 'b', box.name).position, box.position)).toBeLessThan(1);
   });
 

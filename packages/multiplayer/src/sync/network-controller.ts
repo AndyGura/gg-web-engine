@@ -239,6 +239,9 @@ interface PeerRecord {
   stateAgeCount: number;
   /** counter (`n`) of the latest state message received, null before the first */
   lastStateN: number | null;
+  /** counters of the latest state messages received (within `MAX_LOSS_GAP` of the latest) */
+  seenStateN: Set<number>;
+  lastStateMessageAt: number;
   stateMessages: number;
   stateMessagesLost: number;
   snaps: number;
@@ -287,6 +290,8 @@ const SESSION_HOOK_REJECTION =
 const CHAIN_BLOCK_MS = 2000;
 // a longer gap in a peer's state message counter is a paused stream, not that many lost messages
 const MAX_LOSS_GAP = 100;
+// no state message from a peer for this long means its stream was off, so the gap after it isn't loss
+const STREAM_PAUSE_MS = 1000;
 
 /**
  * The world entity that makes a `GgWorld` multiplayer: it discovers every `INetworkSyncable` entity,
@@ -315,7 +320,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
   public readonly conditioner: LinkConditioner;
   /**
    * Whether {@link netStats} also counts bytes: every message is serialized once more for it, so it is
-   * off unless something reads them (the `net_panel` overlay turns it on while shown).
+   * off unless something reads them. They are counted while the `net_panel` overlay is shown either way.
    */
   public measureTraffic = false;
 
@@ -540,7 +545,6 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
 
   set showNetPanel(value: boolean) {
     this.debugPanel.shown = value;
-    this.measureTraffic = this.debugPanel.shown;
   }
 
   get possessionChanged$(): Observable<{ entity: IEntity; from: string | null; to: string | null }> {
@@ -1639,8 +1643,8 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
             this.onMessage(from, msg);
             const peer = this.peers.get(from);
             if (peer) {
-              countTraffic(this.receivedCounters, msg, 1, this.measureTraffic);
-              countTraffic(peer.received, msg, 1, this.measureTraffic);
+              countTraffic(this.receivedCounters, msg, 1, this.measureTraffic || this.debugPanel.shown);
+              countTraffic(peer.received, msg, 1, this.measureTraffic || this.debugPanel.shown);
             }
           },
           from,
@@ -1680,7 +1684,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
   /** every outgoing message goes through here, so `netStats` counts it */
   private transmit(to: string | 'all' | ReadonlyArray<string>, channel: WireChannel, msg: WireMessage): void {
     const targets = to === 'all' ? this.transport.peers.length : typeof to === 'string' ? 1 : to.length;
-    countTraffic(this.sentCounters, msg, targets, this.measureTraffic);
+    countTraffic(this.sentCounters, msg, targets, this.measureTraffic || this.debugPanel.shown);
     this.transport.send(to, channel, msg);
   }
 
@@ -1805,6 +1809,8 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       stateAgeSumMs: 0,
       stateAgeCount: 0,
       lastStateN: null,
+      seenStateN: new Set<number>(),
+      lastStateMessageAt: 0,
       stateMessages: 0,
       stateMessagesLost: 0,
       snaps: 0,
@@ -2039,26 +2045,35 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
 
   /**
    * loss accounting from the sender's message counter: a gap is that many messages lost, until one of
-   * them shows up late after all (the channel is unordered). A long gap is the stream having been off
-   * (out of the sender's stream ring, a hidden tab), not loss.
+   * them shows up late after all (the channel is unordered). A gap after a pause of the stream (out of
+   * the sender's stream ring, a hidden tab) is not loss, and neither is a very long one. A counter
+   * seen before is another part of a message the transport split.
    */
   private countStateMessage(peer: PeerRecord, n: number | undefined): void {
-    if (n === undefined) {
+    if (n === undefined || peer.seenStateN.has(n)) {
       return;
     }
+    const now = this.now;
     const last = peer.lastStateN;
     if (last === null || n > last) {
       const gap = last === null ? 0 : n - last - 1;
-      if (gap <= MAX_LOSS_GAP) {
+      if (gap <= MAX_LOSS_GAP && now - peer.lastStateMessageAt <= STREAM_PAUSE_MS) {
         peer.stateMessagesLost += gap;
       }
       peer.lastStateN = n;
-      peer.stateMessages++;
-    } else if (n < last && last - n <= MAX_LOSS_GAP) {
+      for (const seen of peer.seenStateN) {
+        if (seen < n - MAX_LOSS_GAP) {
+          peer.seenStateN.delete(seen);
+        }
+      }
+    } else if (last - n > MAX_LOSS_GAP) {
+      return;
+    } else {
       peer.stateMessagesLost = Math.max(0, peer.stateMessagesLost - 1);
-      peer.stateMessages++;
     }
-    // n === last: the other part of a message the transport split
+    peer.seenStateN.add(n);
+    peer.lastStateMessageAt = now;
+    peer.stateMessages++;
   }
 
   private acceptStateItem(rec: NetRecord, item: StateItem, from: string): void {

@@ -426,5 +426,6 @@ describe('LinkConditioner', () => {
     expect(got).toEqual(['b1', 'a-state', 'a1', 'a2', 'a3']);
     c.pass('reliable', () => got.push('a4'), 'a');
     expect(got[got.length - 1]).toBe('a4');
+    expect((c as any).reliableTail.size).toBe(0); // nothing is remembered about a sender with nothing in flight
   });
 });
