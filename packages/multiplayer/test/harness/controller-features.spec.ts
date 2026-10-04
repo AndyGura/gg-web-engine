@@ -277,9 +277,22 @@ describe('NetworkController features', () => {
     expect([messages() - m0, lostNow() - l0]).toEqual([3, 1]);
     countState(n0 + 3); // late after all
     expect([messages() - m0, lostNow() - l0]).toEqual([4, 0]);
-    // a gap after a silent second is a paused stream (out of the sender's stream ring), not loss
+    // the stream stalls for most of a second: the replica coasts on its own simulation instead of being
+    // snapped back to where extrapolation stopped, and is where it should be when the stream resumes
     h.hub.conditions.lossRate = 0;
+    await h.run(10);
     const rate = a.net.sendRate;
+    const stalled = b.net.netStats.peers[0];
+    a.net.sendRate = 0.001;
+    await h.run(Math.ceil(800 / TICK_MS));
+    expect(dist(findByName(h, 'b', box.name).position, box.position)).toBeLessThan(0.5);
+    a.net.sendRate = rate;
+    await h.run(10);
+    stats = b.net.netStats.peers[0];
+    expect([stats.snaps - stalled.snaps, stats.lunges - stalled.lunges]).toEqual([0, 0]);
+    expect(dist(findByName(h, 'b', box.name).position, box.position)).toBeLessThan(0.5);
+
+    // a gap after a silent second is a paused stream (out of the sender's stream ring), not loss
     a.net.sendRate = 0.001;
     await h.run(Math.ceil(1500 / TICK_MS));
     const [n1, l1] = [(b.net as any).peers.get('a').lastStateN as number, lostNow()];
@@ -290,11 +303,10 @@ describe('NetworkController features', () => {
     (b.net as any).peers.get('a').lastStateN = null; // back in step with the real stream
     a.net.sendRate = rate;
     await h.run(5);
-    // the pause froze the replica's target (extrapolation is capped) while its body kept moving: it was
-    // snapped back several times, and the stream resuming was a lunge
+    // a stream gone for longer than coastMaxMs: the replica is held where extrapolation stopped, and
+    // snapped forward when the stream resumes
     const resumed = b.net.netStats.peers[0];
-    expect(resumed.lunges).toBe(1);
-    expect(resumed.snaps).toBeGreaterThan(1);
+    expect(resumed.snaps).toBeGreaterThan(stats.snaps);
 
     // the owner's body jumps 30 m: the next snapshot moves the replica's target (a lunge), beyond snapDistance
     h.hub.conditions.lossRate = 0;

@@ -74,7 +74,12 @@ transports or possession. The pieces (see `gg-engine-multiplayer` for the full m
   dimension-agnostic - `net-math.ts` tells 2D from 3D at runtime (`z` present / rotation is a
   number), the same way every other helper here operates on plain `Point2`/`Point3`/`Point4` data.
   `net-math.ts` is internal (not re-exported); its vector helpers only dispatch to `Pnt2`/`Pnt3`
-  (rotations to `Qtrn`) - add missing math there, not as another copy here.
+  (rotations to `Qtrn`) - add missing math there, not as another copy here. Where a replica is
+  steered to has one definition: each helper's `targetPosition(target, ageMs, tuning)`, which
+  `correct` itself uses; `extrapolateNetPosition`/`isNetStateCoasting` (`net-extrapolation.ts`) expose
+  it for a state of unknown class, so a network layer's diagnostics never re-derive it. A snapshot
+  older than `extrapolateMaxMs` (up to `coastMaxMs`) makes `correct` return `'coast'` without writing
+  position or velocity - never for `ctx.snap`, a sleeping target or a kinematic body.
 - Implementations on `Entity2d`/`Entity3d` (`isNetworkSyncEnabled` only with a non-static body),
   `GgCarEntity` (plus `autoShiftEnabled`; while remote input drives it, auto-shift is suspended and
   `applyNetworkState` corrects only the chassis - the input already carries the driving state) and

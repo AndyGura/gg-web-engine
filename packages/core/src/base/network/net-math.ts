@@ -1,3 +1,4 @@
+import { CorrectionTuning } from '../interfaces/i-network-syncable';
 import { Point2, Point3, Point4 } from '../models/points';
 import { Qtrn } from '../math/quaternion';
 import { lerpAngle } from '../math/numbers';
@@ -126,4 +127,14 @@ function normalizeQuat(q: Point4): Point4 {
 /** Per-tick blend factor for a per-second gain: `gain * dt`, clamped to [0, 1]. */
 export function gainFactor(gainPerSecond: number, dtMs: number): number {
   return Math.max(0, Math.min(1, (gainPerSecond * dtMs) / 1000));
+}
+
+/** how far (seconds) a snapshot `ageMs` old is extrapolated: its age, capped at `extrapolateMaxMs` */
+export function extrapolationSeconds(ageMs: number, tuning: CorrectionTuning): number {
+  return Math.max(0, Math.min(ageMs, tuning.extrapolateMaxMs)) / 1000;
+}
+
+/** whether a snapshot `ageMs` old is past extrapolation but still within the coasting window */
+export function isCoasting(ageMs: number, tuning: CorrectionTuning): boolean {
+  return ageMs > tuning.extrapolateMaxMs && ageMs <= (tuning.coastMaxMs ?? 0);
 }

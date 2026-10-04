@@ -9,8 +9,10 @@ import { Point3 } from '../models/points';
 import {
   avClone,
   avLerp,
+  extrapolationSeconds,
   gainFactor,
   integrateRotation,
+  isCoasting,
   NetRot,
   NetVec,
   rClone,
@@ -42,7 +44,9 @@ export interface RigidBodyNetState<D = unknown, R = unknown> {
  * Replica correction for rigid bodies, shared by every entity class whose networked state is (or
  * contains) a rigid body: one algorithm, applied per body kind.
  *
- * 1. The snapshot is extrapolated to "now" along its velocities, capped at `extrapolateMaxMs`.
+ * 1. The snapshot is extrapolated to "now" along its velocities, capped at `extrapolateMaxMs`. A
+ *    dynamic replica of a moving target whose snapshot is older than that, up to `coastMaxMs`, is
+ *    left alone (`'coast'`): the stream stalled, and its own simulation is the better guess.
  * 2. Error below the deadzone: nothing is written (and an awake replica of a sleeping target is put
  *    to sleep).
  * 3. Error above `snapDistance`, or `ctx.snap`: the extrapolated state is written outright.
@@ -73,6 +77,20 @@ export class RigidBodyCorrection {
   }
 
   /**
+   * Where a replica of `target` is steered to once the snapshot is `ageMs` old: its position
+   * extrapolated along its linear velocity (not at all for a sleeping target), capped at
+   * `extrapolateMaxMs`.
+   */
+  static targetPosition<D, R>(
+    target: RigidBodyNetState<D, R>,
+    ageMs: number,
+    tuning: CorrectionTuning = DEFAULT_CORRECTION_TUNING,
+  ): D {
+    const ageS = target.s ? 0 : extrapolationSeconds(ageMs, tuning);
+    return vAdd(target.p as unknown as NetVec, vScale(target.lv as unknown as NetVec, ageS)) as unknown as D;
+  }
+
+  /**
    * Replica side: reconcile `body` toward `target` - see the class doc for the algorithm.
    * @param body - the replica's local body
    * @param target - the owner's snapshot
@@ -89,15 +107,18 @@ export class RigidBodyCorrection {
     if (bodyType === 'static') {
       return 'none';
     }
-    const ageS = target.s ? 0 : Math.max(0, Math.min(ctx.ageMs, tuning.extrapolateMaxMs)) / 1000;
-    const tP = vAdd(target.p as unknown as NetVec, vScale(target.lv as unknown as NetVec, ageS));
+    const isDynamic = bodyType === 'dynamic';
+    if (!ctx.snap && isDynamic && !target.s && isCoasting(ctx.ageMs, tuning)) {
+      return 'coast';
+    }
+    const ageS = target.s ? 0 : extrapolationSeconds(ctx.ageMs, tuning);
+    const tP = RigidBodyCorrection.targetPosition(target, ctx.ageMs, tuning) as unknown as NetVec;
     const tR = integrateRotation(target.r as unknown as NetRot, target.av as unknown as number | Point3, ageS);
     const lP = body.position as unknown as NetVec;
     const lR = body.rotation as unknown as NetRot;
     const error = vSub(tP, lP);
     const errLen = vLen(error);
     const rotErr = rotationError(lR, tR);
-    const isDynamic = bodyType === 'dynamic';
 
     if (ctx.snap || errLen > tuning.snapDistance) {
       body.position = tP as unknown as D;

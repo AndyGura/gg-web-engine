@@ -62,12 +62,14 @@ reuses.
   actualVelocity`).
 
 `RigidBodyCorrection` (per body kind): extrapolate the snapshot by velocity (capped at
-`extrapolateMaxMs`), deadzone → nothing (and an awake replica of a sleeping target is put to sleep),
+`extrapolateMaxMs`; a dynamic replica of a moving target whose snapshot is older than that, up to
+`coastMaxMs`, coasts on its own simulation - pinning it to the point extrapolation stopped at made it
+snap back every `snapDistance` for as long as the stream stalled), deadzone → nothing (and an awake replica of a sleeping target is put to sleep),
 `snap`/beyond `snapDistance` → write outright, else dynamic = steer velocity toward
 `targetLv + error·velocityGain` at `positionGain`/s (a *P-controller on velocity*: adding the bias
 to the previous tick's velocity accumulates and overshoots badly), sleeping target = glide with zero
 velocity, kinematic = transform lerp only, static = never. `MoverCorrection` never teleports: the
-error becomes `externalDisplacement`, consumed by the next `move()`. It extrapolates by `v` (the
+error becomes `externalDisplacement`, consumed by the next `move()`. It coasts through a stale snapshot the same way, and extrapolates by `v` (the
 owner's actual last-tick velocity) - `fallVelocity + airHorizontalVelocity` alone omit grounded
 walking, so extrapolating by them makes every replica pull back toward a stale position.
 

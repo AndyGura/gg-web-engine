@@ -59,7 +59,17 @@ where one exists.
   `Entity3d`, `GgCarEntity`, both character entities) do. A network layer uses it for diagnostics
   only, and a `void` implementation stays valid.
 
+- `@gg-web-engine/core`: `RigidBodyCorrection.targetPosition`/`MoverCorrection.targetPosition` (the
+  point a replica is steered to for a snapshot of a given age) and `extrapolateNetPosition(state,
+  ageMs, tuning)`, the same for a state of unknown class; `isNetStateCoasting(ageMs, tuning)`.
+
 ### Changed
+- `@gg-web-engine/core`: replicas coast through a stalled state stream. A snapshot older than
+  `extrapolateMaxMs` used to pin the replica to the point extrapolation stopped at, so a moving
+  replica was snapped back to it every `snapDistance` until the stream resumed. Now, until the
+  snapshot is `CorrectionTuning.coastMaxMs` old (new, default 1000, 0 = off), a dynamic body with a
+  moving target and a character are left to their own simulation (`CorrectionOutcome` `'coast'`);
+  past it they are corrected to that point as before.
 - `@gg-web-engine/multiplayer`: peer clock sync no longer averages its samples. `ClockSync` keeps a
   window of the latest ones and estimates the offset from the fastest way out and the fastest way
   back among them, so a sample delayed on one leg (a busy main thread, a queued packet) is ignored

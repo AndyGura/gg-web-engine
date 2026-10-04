@@ -22,6 +22,14 @@ export interface CorrectionTuning {
   rotationGain: number;
   /** Upper bound of how far (ms) a snapshot is extrapolated forward along its velocity. Default 250. */
   extrapolateMaxMs: number;
+  /**
+   * A snapshot older than `extrapolateMaxMs` has nothing more to say about where its entity is now.
+   * Until it is this old (ms), a moving replica is left to its own simulation instead of being pulled
+   * back to the point the extrapolation stopped at - the owner's stream stalled, and the next snapshot
+   * will most likely find the replica about where it should be. Past it, the replica is corrected to
+   * that point again. 0 turns coasting off. Default 1000.
+   */
+  coastMaxMs: number;
 }
 
 export const DEFAULT_CORRECTION_TUNING: Readonly<CorrectionTuning> = Object.freeze({
@@ -32,6 +40,7 @@ export const DEFAULT_CORRECTION_TUNING: Readonly<CorrectionTuning> = Object.free
   velocityGain: 4,
   rotationGain: 8,
   extrapolateMaxMs: 250,
+  coastMaxMs: 1000,
 });
 
 /**
@@ -50,7 +59,7 @@ export interface NetworkApplyContext {
 }
 
 /** What a correction ended up doing - handy for tests and debug overlays. */
-export type CorrectionOutcome = 'none' | 'blend' | 'snap' | 'sleep';
+export type CorrectionOutcome = 'none' | 'blend' | 'snap' | 'sleep' | 'coast';
 
 /**
  * Per-entity networked-state contract, the network counterpart of `ISerializableEntity`: each

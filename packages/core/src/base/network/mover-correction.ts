@@ -5,7 +5,9 @@ import {
   NetworkApplyContext,
 } from '../interfaces/i-network-syncable';
 import {
+  extrapolationSeconds,
   gainFactor,
+  isCoasting,
   NetRot,
   NetVec,
   rClone,
@@ -73,6 +75,19 @@ export class MoverCorrection {
   }
 
   /**
+   * Where a replica of `target` is steered to once the snapshot is `ageMs` old: its position
+   * extrapolated along the owner's velocity, capped at `extrapolateMaxMs`.
+   */
+  static targetPosition<D, R>(
+    target: MoverNetState<D, R>,
+    ageMs: number,
+    tuning: CorrectionTuning = DEFAULT_CORRECTION_TUNING,
+  ): D {
+    const velocity = (target.v ?? vAdd(target.fv as unknown as NetVec, target.ahv as unknown as NetVec)) as NetVec;
+    return vAdd(target.p as unknown as NetVec, vScale(velocity, extrapolationSeconds(ageMs, tuning))) as unknown as D;
+  }
+
+  /**
    * Replica side: reconcile `mover` toward `target` - see the class doc.
    * @param mover - the replica's local character entity
    * @param target - the owner's snapshot
@@ -85,15 +100,18 @@ export class MoverCorrection {
     ctx: NetworkApplyContext,
     tuning: CorrectionTuning = ctx.tuning ?? DEFAULT_CORRECTION_TUNING,
   ): CorrectionOutcome {
-    const ageS = Math.max(0, Math.min(ctx.ageMs, tuning.extrapolateMaxMs)) / 1000;
-    const velocity = (target.v ?? vAdd(target.fv as unknown as NetVec, target.ahv as unknown as NetVec)) as NetVec;
-    const tP = vAdd(target.p as unknown as NetVec, vScale(velocity, ageS));
+    const tP = MoverCorrection.targetPosition(target, ctx.ageMs, tuning) as unknown as NetVec;
     const lP = mover.position as unknown as NetVec;
     const error = vSub(tP, lP);
     const errLen = vLen(error);
 
     if (mover.isCrouching !== target.crouch) {
       mover.isCrouching = target.crouch;
+    }
+
+    if (!ctx.snap && isCoasting(ctx.ageMs, tuning)) {
+      // the stream stalled: the mover keeps going on the input it has rather than being pulled back
+      return 'coast';
     }
 
     if (ctx.snap || errLen > tuning.snapDistance) {

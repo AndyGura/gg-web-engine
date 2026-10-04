@@ -41,6 +41,7 @@ export * from './interfaces/i-network-syncable';
 
 export * from './network/rigid-body-correction';
 export * from './network/mover-correction';
+export * from './network/net-extrapolation';
 
 export * from './logging';
 

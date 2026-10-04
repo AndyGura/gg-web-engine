@@ -4,12 +4,14 @@ import {
   CorrectionTuning,
   DEFAULT_CORRECTION_TUNING,
   EntityJson,
+  extrapolateNetPosition,
   GgWorld,
   GroupEntity,
   IEntity,
   INetworkSyncable,
   isNetworkInputDriven,
   isNetworkSyncable,
+  isNetStateCoasting,
   LevelJson,
   LevelLoader,
   TickOrder,
@@ -257,29 +259,6 @@ interface PendingJoin {
 }
 
 /** `lv` of a `RigidBodyNetState`-shaped payload (any syncable whose state carries one), else null */
-/**
- * where a replica of a snapshot `ageMs` old is steered to, the way the correction helpers extrapolate
- * it - for a state carrying a position `p` and a velocity (`lv` of a rigid body, `v` of a mover),
- * else null
- */
-function extrapolatedPosition(
-  s: unknown,
-  ageMs: number,
-  tuning: CorrectionTuning,
-): { x: number; y: number; z?: number } | null {
-  const p = (s as any)?.p;
-  const v = (s as any)?.lv ?? (s as any)?.v;
-  if (!p || typeof p.x !== 'number' || !v || typeof v.x !== 'number') {
-    return null;
-  }
-  const ageS = (s as any).s === true ? 0 : Math.max(0, Math.min(ageMs, tuning.extrapolateMaxMs)) / 1000;
-  return {
-    x: p.x + v.x * ageS,
-    y: p.y + v.y * ageS,
-    z: typeof p.z === 'number' ? p.z + (v.z ?? 0) * ageS : undefined,
-  };
-}
-
 function velocityOfState(s: unknown): any | null {
   const lv = (s as any)?.lv;
   return lv && typeof lv.x === 'number' ? lv : null;
@@ -2104,9 +2083,12 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       peer.stateAgeSumMs += this.now - localTs;
       peer.stateAgeCount++;
       const tuning = rec.entity.networkTuning ? { ...this.tuning, ...rec.entity.networkTuning } : this.tuning;
-      const before = rec.latest && extrapolatedPosition(rec.latest.s, this.now - rec.latest.localTs, tuning);
-      const after = extrapolatedPosition(item.s, this.now - localTs, tuning);
-      if (before && after) {
+      type Position = { x: number; y: number; z?: number };
+      const oldAge = rec.latest ? this.now - rec.latest.localTs : 0;
+      const before = rec.latest && extrapolateNetPosition<Position>(rec.latest.s, oldAge, tuning);
+      const after = extrapolateNetPosition<Position>(item.s, this.now - localTs, tuning);
+      // a coasting replica wasn't being steered to the old target, so it can't lunge from it
+      if (before && after && !isNetStateCoasting(oldAge, tuning)) {
         const jump = Math.hypot(after.x - before.x, after.y - before.y, (after.z ?? 0) - (before.z ?? 0));
         peer.targetJumpSum += jump;
         peer.targetJumpCount++;
