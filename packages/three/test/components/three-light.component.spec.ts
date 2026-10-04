@@ -1,4 +1,14 @@
-import { Color, DirectionalLight, Fog, FogExp2, HemisphereLight, OrthographicCamera, Texture, Vector3 } from 'three';
+import {
+  Color,
+  CubeTexture,
+  DirectionalLight,
+  Fog,
+  FogExp2,
+  HemisphereLight,
+  OrthographicCamera,
+  Texture,
+  Vector3,
+} from 'three';
 import { ThreeLightComponent } from '../../src/components/three-light.component';
 import { ThreeSceneComponent } from '../../src/components/three-scene.component';
 
@@ -28,6 +38,15 @@ describe('ThreeLightComponent', () => {
     expect([camera.left, camera.right, camera.top, camera.bottom, camera.near, camera.far]).toEqual([
       -20, 20, 20, -20, 1, 300,
     ]);
+  });
+
+  it('keeps shadow settings given without castShadow', () => {
+    const light = ThreeLightComponent.create({ type: 'DIRECTIONAL', shadow: { mapSize: 2048, area: 20 } });
+    expect(light.castShadow).toBe(false);
+    expect(light.nativeShadow!.mapSize.x).toBe(2048);
+    expect(light.lightOptions).toMatchObject({ castShadow: false, shadow: { mapSize: 2048, area: 20 } });
+    light.castShadow = true;
+    expect((light.clone().nativeShadow!.camera as OrthographicCamera).right).toBe(20);
   });
 
   it('reports its live settings in lightOptions, and clones from them', () => {
@@ -81,6 +100,12 @@ describe('ThreeSceneComponent environment', () => {
     scene.setEnvironment({ environmentMap: panorama, fog: { type: 'EXPONENTIAL', color: 0, density: 0.01 } });
     expect(native.environment).toBe(panorama);
     expect(native.environmentRotation.x).toBeCloseTo(Math.PI / 2);
+
+    const cube = new CubeTexture();
+    scene.setEnvironment({ background: cube });
+    expect(native.backgroundRotation.x).toBeCloseTo(Math.PI / 2);
+    scene.setEnvironment({ background: 0x112233 });
+    expect(native.backgroundRotation.x).toBe(0);
     expect((native.background as Color).getHex()).toBe(0x112233);
     expect(native.fog).toBeInstanceOf(FogExp2);
 

@@ -30,7 +30,9 @@ export type Environment3dOpts<Tex> = {
 
 /**
  * The six images of a cube-map sky, each named after the world direction it is seen in (the
- * engine is Z-up, so `pz` is the sky overhead and `nz` the ground below).
+ * engine is Z-up, so `pz` is the sky overhead and `nz` the ground below). Every image is drawn as
+ * seen from inside the cube. The four side images (`px`, `nx`, `py`, `ny`) have their top edge
+ * towards `+Z`; the top edge of `pz` is towards `+Y` and the top edge of `nz` towards `-Y`.
  */
 export type CubeTextureFaces = {
   px: string;

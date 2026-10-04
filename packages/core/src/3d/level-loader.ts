@@ -887,8 +887,8 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
 
   /**
    * Create an `"Environment"` entity: loads any sky textures the settings reference, then returns
-   * an `Environment3dEntity` that applies them while it is in the world. Returns `undefined`
-   * without a visual scene.
+   * an `Environment3dEntity` that applies them while it is in the world and frees them when it is
+   * disposed. Returns `undefined` without a visual scene.
    */
   private async createEnvironment(
     world: Gg3dWorld<TypeDoc>,
@@ -898,14 +898,18 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
     if (!scene) {
       return undefined;
     }
-    const loadTexture = (texture: EnvironmentTexture3DSettings): Promise<TypeDoc['vTypeDoc']['texture']> => {
+    const loaded: TypeDoc['vTypeDoc']['texture'][] = [];
+    const loadTexture = async (texture: EnvironmentTexture3DSettings): Promise<TypeDoc['vTypeDoc']['texture']> => {
+      let result: TypeDoc['vTypeDoc']['texture'];
       if ('cube' in texture) {
-        return scene.loader.loadCubeTexture(texture.cube);
+        result = await scene.loader.loadCubeTexture(texture.cube);
+      } else if ('equirectangular' in texture) {
+        result = await scene.loader.loadTexture(texture.equirectangular, { mapping: 'equirectangular' });
+      } else {
+        throw new Error('Environment texture must have either "cube" or "equirectangular"');
       }
-      if ('equirectangular' in texture) {
-        return scene.loader.loadTexture(texture.equirectangular, { mapping: 'equirectangular' });
-      }
-      throw new Error('Environment texture must have either "cube" or "equirectangular"');
+      loaded.push(result);
+      return result;
     };
     const environment: Partial<Environment3dOpts<TypeDoc['vTypeDoc']['texture']>> = {};
     if (settings.background !== undefined) {
@@ -920,7 +924,12 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
     if (settings.fog !== undefined) {
       environment.fog = settings.fog;
     }
-    return new Environment3dEntity<TypeDoc['vTypeDoc']>(environment);
+    // the textures were loaded for this entity alone, so they go when it does
+    return new Environment3dEntity<TypeDoc['vTypeDoc']>(environment, () => {
+      for (const texture of loaded) {
+        scene.loader.disposeTexture(texture);
+      }
+    });
   }
 
   /**

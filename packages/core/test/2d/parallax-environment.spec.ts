@@ -108,4 +108,16 @@ describe('2D environment', () => {
     expect(visualScene.environment.background).toBeNull();
     expect(visualScene.factory.loadTexture).not.toHaveBeenCalled();
   });
+
+  it('keeps a later background applied when an earlier one is removed first', () => {
+    const visualScene = mockScene();
+    const a = new Environment2dEntity<any>({ background: 0x00000a });
+    const b = new Environment2dEntity<any>({ background: 0x00000b });
+    a.onSpawned({ visualScene } as any);
+    b.onSpawned({ visualScene } as any);
+    a.onRemoved();
+    expect(visualScene.environment.background).toBe(0x00000b);
+    b.onRemoved();
+    expect(visualScene.environment.background).toBeNull();
+  });
 });

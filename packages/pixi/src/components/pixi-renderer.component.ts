@@ -15,7 +15,10 @@ export class PixiRendererComponent extends IRenderer2dComponent<PixiVisualTypeDo
   private debugView: PixiPhysicsDebugView | null = null;
   /** Screen-fixed sprite showing the scene's background texture, when it has one. */
   private backgroundSprite: Sprite | null = null;
+  /** The environment color currently overriding the renderer's clear color, `null` when none is. */
   private appliedClearColor: number | null = null;
+  /** The clear color and alpha the renderer was created with, captured when first overridden. */
+  private initialClear: { color: number; alpha: number } | null = null;
   private _physicsDebugViewActive: boolean = false;
   public get physicsDebugViewActive(): boolean {
     return this._physicsDebugViewActive;
@@ -138,12 +141,13 @@ export class PixiRendererComponent extends IRenderer2dComponent<PixiVisualTypeDo
 
   /**
    * Shows the scene's `environment.background`: a color becomes the renderer's clear color, a
-   * texture a sprite behind the world container scaled to cover the whole canvas.
+   * texture a sprite behind the world container scaled to cover the whole canvas. Without one the
+   * renderer keeps the clear color it was created with.
    */
   private applyBackground(width: number, height: number): void {
     const background = this.scene.environment.background;
     if (background instanceof Texture) {
-      this.setClearColor(this.rendererOptions.background ?? 0x000000);
+      this.setClearColor(null);
       if (!this.backgroundSprite) {
         this.backgroundSprite = new Sprite();
         this.application.stage.addChildAt(this.backgroundSprite, 0);
@@ -159,18 +163,25 @@ export class PixiRendererComponent extends IRenderer2dComponent<PixiVisualTypeDo
       this.backgroundSprite.destroy({ texture: false });
       this.backgroundSprite = null;
     }
-    this.setClearColor(background ?? this.rendererOptions.background ?? 0x000000);
+    this.setClearColor(background ?? null);
   }
 
-  private setClearColor(color: number): void {
+  /**
+   * Overrides the renderer's clear color with `color`, or with `null` puts back the one the
+   * renderer was created with. The alpha the renderer was created with is kept either way.
+   */
+  private setClearColor(color: number | null): void {
     if (this.appliedClearColor === color) {
       return;
     }
     this.appliedClearColor = color;
     const background = this.application.renderer.background;
+    if (!this.initialClear) {
+      this.initialClear = { color: background.color.toNumber(), alpha: background.alpha };
+    }
     // pixi's color setter resets alpha to opaque
-    background.color = color;
-    background.alpha = this.rendererOptions.transparent ? 0 : 1;
+    background.color = color ?? this.initialClear.color;
+    background.alpha = this.initialClear.alpha;
   }
 
   dispose(): void {

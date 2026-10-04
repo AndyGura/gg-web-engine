@@ -34,6 +34,7 @@ const mockScene = () => {
     loader: {
       loadCubeTexture: jest.fn(async () => 'cube-texture'),
       loadTexture: jest.fn(async () => 'equirect-texture'),
+      disposeTexture: jest.fn(),
     },
     get environment() {
       return environment;
@@ -127,6 +128,40 @@ describe('environment', () => {
       environmentMap: null,
       fog: { type: 'EXPONENTIAL', color: 0, density: 0.1 },
     });
+
+    expect(visualScene.loader.disposeTexture).not.toHaveBeenCalled();
+    env.dispose();
+    expect(visualScene.loader.disposeTexture.mock.calls).toEqual([['cube-texture'], ['equirect-texture']]);
+  });
+
+  it('keeps a later environment applied when an earlier one is removed first', () => {
+    const visualScene = mockScene();
+    visualScene.setEnvironment({ background: 0x000001 });
+    const world = { visualScene } as any;
+    const fogA = { type: 'LINEAR', color: 0xffffff, near: 1, far: 10 } as const;
+    const a = new Environment3dEntity<any>({ background: 0x00000a, fog: fogA });
+    const b = new Environment3dEntity<any>({ background: 0x00000b });
+    a.onSpawned(world);
+    b.onSpawned(world);
+    expect(visualScene.environment.background).toBe(0x00000b);
+
+    a.onRemoved();
+    expect(visualScene.environment).toEqual({ background: 0x00000b, environmentMap: null, fog: null });
+    b.onRemoved();
+    expect(visualScene.environment).toEqual({ background: 0x000001, environmentMap: null, fog: null });
+  });
+
+  it('falls back to the earlier environment when the later one is removed first', () => {
+    const visualScene = mockScene();
+    const world = { visualScene } as any;
+    const a = new Environment3dEntity<any>({ background: 0x00000a });
+    const b = new Environment3dEntity<any>({ background: 0x00000b });
+    a.onSpawned(world);
+    b.onSpawned(world);
+    b.onRemoved();
+    expect(visualScene.environment.background).toBe(0x00000a);
+    a.onRemoved();
+    expect(visualScene.environment.background).toBeNull();
   });
 
   it('leaves fields it does not set untouched', () => {

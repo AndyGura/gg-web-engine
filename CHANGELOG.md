@@ -39,11 +39,11 @@ where one exists.
   background, environmentMap, fog })` sets a background color or sky texture, image-based lighting
   and linear/exponential fog; `visualScene.environment` reads it back. The 3D loader gained
   `loadTexture(url, { mapping })` (`.hdr` supported) and `loadCubeTexture({ px, nx, py, ny, pz, nz })`,
-  whose faces are named by world direction (`pz` overhead); sky textures are oriented for the Z-up
-  world automatically.
+  whose faces are named by world direction (`pz` overhead), and `disposeTexture(texture)`; sky
+  textures are oriented for the Z-up world automatically.
 - `@gg-web-engine/core`: `"Light"` and `"Environment"` level-JSON classes. `"Environment"` creates an
   `Environment3dEntity`, which restores the previous background/environment map/fog when its level
-  is unloaded.
+  is unloaded and frees the textures it loaded.
 - `@gg-web-engine/core`, `@gg-web-engine/pixi`: 2D draw order and backdrops. Every 2D display object
   has a `zIndex` (higher draws on top, default `0`). `visualScene.setEnvironment({ background })`
   sets a background color or a screen-fixed image scaled to cover the view. Parallax layers
@@ -59,7 +59,7 @@ where one exists.
 - `@gg-web-engine/core`: `VisualTypeDocRepo3D` has a new `light` member, and
   `IDisplayObject3dComponentFactory`, `IVisualScene3dComponent` and `IDisplayObject3dComponentLoader`
   have new required members (`createLight`; `environment`/`setEnvironment`;
-  `loadTexture`/`loadCubeTexture`). A third-party 3D visual adapter must implement them.
+  `loadTexture`/`loadCubeTexture`/`disposeTexture`). A third-party 3D visual adapter must implement them.
 - `@gg-web-engine/core`: `VisualTypeDocRepo2D` has a new `parallaxLayer` member, and
   `IDisplayObject2dComponent` (`zIndex`), `IVisualScene2dComponent` (`environment`/`setEnvironment`)
   and `IDisplayObject2dComponentFactory` (`createParallaxLayer`, `loadTexture`) have new required

@@ -947,7 +947,7 @@ Changing any of these is a breaking change for every adapter package — grep
 - The factory abstracts in `2d/factories.ts` / `3d/factories.ts` (3D includes `createLight`; 2D
   includes `createParallaxLayer` and `loadTexture`)
 - `ILight3dComponent` and the 3D scene's `environment`/`setEnvironment`, plus the 3D loader's
-  `loadTexture`/`loadCubeTexture` (`VisualTypeDocRepo3D` has a `light` member for the former)
+  `loadTexture`/`loadCubeTexture`/`disposeTexture` (`VisualTypeDocRepo3D` has a `light` member for the former)
 - `IDisplayObject2dComponent.zIndex`, `IParallaxLayer2dComponent` and the 2D scene's
   `environment`/`setEnvironment` (`VisualTypeDocRepo2D` has a `parallaxLayer` member for the
   layer). `resolveParallaxLayer2dOpts` fills in `ParallaxLayer2dOpts` defaults, so every adapter

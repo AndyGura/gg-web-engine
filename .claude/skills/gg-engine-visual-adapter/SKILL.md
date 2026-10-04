@@ -120,19 +120,28 @@ Every adapter component class then `implements I<Thing>Component<<Lib>VisualType
   merge semantics (an absent field is untouched, `null` clears it) over `background` (color or
   texture), `environmentMap` and `fog` (`LINEAR`/`EXPONENTIAL`). Sky textures come from the loader's
   `loadCubeTexture({ px, nx, py, ny, pz, nz })` and `loadTexture(url, { mapping: 'equirectangular' })`
-  and must come out oriented for the Z-up world: in three.js, cube-map backgrounds are sampled with X
-  mirrored, so `ThreeLoader.loadCubeTexture` swaps the `px`/`nx` slots and passes the rest through
-  (three samples its `pz` slot looking along world `+Z`); equirectangular textures instead get
-  `scene.backgroundRotation`/`environmentRotation` of `+PI/2` around X. Both were checked by
-  rendering solid-colored faces in headless Chromium (ANGLE/SwiftShader) and reading back the center
-  pixel looking along each axis - a cheap way to verify any orientation question in a new adapter.
+  and must come out oriented for the Z-up world, each cube face upright as `CubeTextureFaces`
+  documents (side images' top edge towards `+Z`, `pz`'s towards `+Y`, `nz`'s towards `-Y`), not just
+  in the right direction. three.js samples both kinds of sky texture Y-up, so `ThreeSceneComponent`
+  sets `scene.backgroundRotation`/`environmentRotation` to `+PI/2` around X for either; for a cube
+  map `ThreeLoader.loadCubeTexture` fills three's slots to match that rotation (`pz` into `py`, `nz`
+  into `ny`, `ny` into `pz`, `py` into `nz`) and swaps `px`/`nx`, because three.js samples cube maps
+  with X mirrored. Moving faces between slots alone can never do this: a face's slot fixes which way
+  its top edge points, so the side images would lie on their side. Verify any such orientation
+  question by rendering in headless Chromium (ANGLE/SwiftShader) and reading pixels back looking
+  along each axis - with faces that carry a marker on their top and left edges, since solid-colored
+  faces show the direction but not a rotated or mirrored image - and, for the environment map, the
+  reflection on a mirror-like sphere. The loader's `disposeTexture(texture)` frees a texture either
+  load method returned.
 - **Draw order and backdrops (2D)**: `IDisplayObject2dComponent.zIndex` orders siblings (pixi: the
   scene's world container is created with `sortableChildren: true` and `zIndex` maps to the native
   `zIndex`). `IVisualScene2dComponent.environment`/`setEnvironment(partial)` holds `background`: a
   color, a texture drawn fixed to the screen and scaled to cover the view, or `null` for the
-  renderer's own `RendererOptions.background`. The pixi renderer applies it every `render()`: a color
+  clear color the renderer was created with. The pixi renderer applies it every `render()`: a color
   sets `renderer.background.color` (only when it changed - pixi v8's color setter also resets the
-  background alpha to opaque, so the renderer re-applies the `transparent` alpha after it), a texture
+  background alpha to opaque, so the renderer re-applies the alpha it was created with after it; with
+  no environment color it never writes to `renderer.background`, so pixi-native options such as
+  `backgroundAlpha` passed through the renderer options stay in effect), a texture
   becomes a `Sprite` at stage index 0, behind the world container.
   `IDisplayObject2dComponentFactory.createParallaxLayer(options)` returns the TypeDoc's
   `parallaxLayer` member (an `IParallaxLayer2dComponent`); resolve its options with core's

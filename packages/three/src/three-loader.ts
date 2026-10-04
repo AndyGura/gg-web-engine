@@ -48,21 +48,28 @@ export class ThreeLoader implements IDisplayObject3dComponentLoader<ThreeVisualT
   }
 
   /**
-   * Loads a cube-map sky. three.js cube maps are sampled with the X axis mirrored, so the `px`/`nx`
-   * images go into each other's slot; the remaining faces already match the engine's Z-up world
-   * as-is (three.js samples its `pz` slot when looking along world `+Z`, which is up here).
+   * Loads a cube-map sky. three.js lays a cube map out Y-up (its `py` slot is the sky, and the four
+   * side images have their top edge towards `+Y`) and samples it with the X axis mirrored. So the
+   * engine's Z-up faces go into the slots of the same sky turned a quarter around X - up `pz` into
+   * `py`, down `nz` into `ny`, `ny` into `pz` and `py` into `nz` - with `px`/`nx` in each other's
+   * slot, and `ThreeSceneComponent` turns the texture back by that quarter when it is used as a
+   * background or environment map.
    */
   public async loadCubeTexture(faces: CubeTextureFaces): Promise<CubeTexture> {
     const texture = await this.cubeTextureLoader.loadAsync([
       faces.nx,
       faces.px,
-      faces.py,
-      faces.ny,
       faces.pz,
       faces.nz,
+      faces.ny,
+      faces.py,
     ]);
     texture.colorSpace = SRGBColorSpace;
     return texture;
+  }
+
+  public disposeTexture(texture: Texture): void {
+    texture.dispose();
   }
 
   public async loadFromGgGlb(glbFile: ArrayBuffer, meta: GgMeta): Promise<ThreeDisplayObjectComponent | null> {

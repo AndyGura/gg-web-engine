@@ -343,7 +343,9 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   `world.visualScene.setEnvironment({ background, environmentMap, fog })` sets the scene background
   (a color or a sky texture), image-based lighting and fog; sky textures come from
   `world.visualScene.loader.loadCubeTexture({ px, nx, py, ny, pz, nz })` (faces named by world
-  direction, `pz` overhead) or `loadTexture(url, { mapping: 'equirectangular' })`. The level JSON has
+  direction, `pz` overhead; side images' top edge towards `+Z`, `pz`'s towards `+Y`, `nz`'s towards
+  `-Y`) or `loadTexture(url, { mapping: 'equirectangular' })`; free one you no longer use with
+  `loader.disposeTexture(texture)`. The level JSON has
   matching `"Light"`/`"Environment"` classes. Don't reach for the adapter's native light classes
   (`THREE.DirectionalLight` on `nativeScene`) - that ties the game to one renderer.
 - **Draw order and backdrops (2D)**: every 2D display object has a `zIndex` (higher draws on top,

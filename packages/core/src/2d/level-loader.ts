@@ -164,10 +164,6 @@ export interface TriggerSettings {
 }
 
 /**
- * Settings for the built-in `"Sound"` entity class - see the 3D `Sound3DSettings` doc (identical
- * shape, `Point2`/no cone).
- */
-/**
  * Settings for the built-in 2D `"ParallaxLayer"` class - `ParallaxLayer2dOpts`, with the texture
  * given as an image URL. Creates a `ParallaxLayer2dEntity`; a no-op without a visual scene.
  */
@@ -190,6 +186,10 @@ export interface Environment2DSettings {
   background?: number | { image: string } | null;
 }
 
+/**
+ * Settings for the built-in `"Sound"` entity class - see the 3D `Sound3DSettings` doc (identical
+ * shape, `Point2`/no cone).
+ */
 export interface Sound2DSettings {
   position?: Point2;
   rotation?: number;

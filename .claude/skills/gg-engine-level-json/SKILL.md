@@ -431,11 +431,15 @@ serializes too; the serialized form has `rotation` rather than `target`.
 `config: { background?, environmentMap?, fog? }`. `background` is a `0xRRGGBB` number, a texture
 reference, or `null`; `environmentMap` a texture reference or `null`; a texture reference is
 `{ "cube": { "px", "nx", "py", "ny", "pz", "nz" } }` (six image URLs, each named after the world
-direction it is seen in - `pz` is overhead) or `{ "equirectangular": "url" }` (a `.hdr` URL is
+direction it is seen in - `pz` is overhead; the side images' top edge is towards `+Z`, `pz`'s
+towards `+Y`, `nz`'s towards `-Y`) or `{ "equirectangular": "url" }` (a `.hdr` URL is
 decoded as HDR). `fog` is `{ "type": "LINEAR", color, near, far }`, `{ "type": "EXPONENTIAL", color,
 density }` or `null`. Textures are loaded while the level loads. The resulting `Environment3dEntity`
 applies only the fields present when spawned, and restores those fields to their previous values when
-removed, so unloading a level takes its sky and fog with it. It has no live serializer: one built by
+removed, so unloading a level takes its sky and fog with it. Several can be loaded at once and
+removed in any order (two levels overlapping during a transition): each field shows the most recently
+spawned one that sets it, and the pre-level value returns once none is left. The textures it loaded
+are freed when the entity is disposed. It has no live serializer: one built by
 the loader serializes through its spawn record (the original `config`, texture URLs included).
 
 ### `"ParallaxLayer"` (2D only) - a `ParallaxLayer2dEntity`
@@ -459,7 +463,7 @@ visual scene. No live serializer: it serializes through its spawn record.
 `config: { background? }`, where `background` is a `0xRRGGBB` number, `{ "image": "url" }` (a
 screen-fixed image scaled to cover the view) or `null`. The resulting `Environment2dEntity` behaves
 like the 3D `Environment3dEntity` above: applies the field when spawned, restores the previous value
-when removed. A no-op without a visual scene.
+when removed, with the same any-order behavior for several at once. A no-op without a visual scene.
 
 ### `"Player"` - a capsule-bodied character controller, ready to use (2D and 3D)
 

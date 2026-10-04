@@ -41,13 +41,12 @@ export class ThreeSceneComponent implements IVisualScene3dComponent<ThreeVisualT
   }
 
   /**
-   * Equirectangular panoramas are authored Y-up, so they're turned a quarter around X to put
-   * their top edge overhead in the engine's Z-up world. Cube textures need no rotation: the
-   * engine's `loadCubeTexture` already puts each face in the slot three.js samples for that world
-   * direction (see `ThreeLoader.loadCubeTexture`).
+   * three.js samples sky textures Y-up - an equirectangular panorama's top edge and a cube map's
+   * `py` slot are both towards `+Y` - so they're turned a quarter around X to put that overhead in
+   * the engine's Z-up world (`ThreeLoader.loadCubeTexture` fills the cube slots to match).
    */
   private static zUpRotationX(texture: Texture | null): number {
-    return texture && !(texture as any).isCubeTexture ? Math.PI / 2 : 0;
+    return texture ? Math.PI / 2 : 0;
   }
 
   private applyEnvironment(): void {

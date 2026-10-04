@@ -93,13 +93,12 @@ export class ThreeLightComponent
     if (nativeLight instanceof HemisphereLight) {
       nativeLight.position.set(0, 0, 1);
     }
-    if ('castShadow' in descriptor) {
-      this.shadowOpts = descriptor.shadow;
-      const shadow = this.nativeShadow;
-      if (shadow) {
-        ThreeLightComponent.applyShadowOpts(shadow, descriptor.shadow || {});
-        nativeLight.castShadow = !!descriptor.castShadow;
-      }
+    const shadow = this.nativeShadow;
+    if (shadow) {
+      const { castShadow, shadow: shadowOpts } = descriptor as { castShadow?: boolean; shadow?: Light3dShadowOpts };
+      this.shadowOpts = shadowOpts;
+      ThreeLightComponent.applyShadowOpts(shadow, shadowOpts || {});
+      nativeLight.castShadow = !!castShadow;
     }
   }
 

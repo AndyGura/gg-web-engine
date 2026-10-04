@@ -81,4 +81,10 @@ export interface IDisplayObject3dComponentLoader<VTypeDoc extends VisualTypeDocR
    * `CubeTextureFaces`).
    */
   loadCubeTexture(faces: CubeTextureFaces): Promise<VTypeDoc['texture']>;
+
+  /**
+   * Frees a texture returned by `loadTexture`/`loadCubeTexture`. Call it once nothing uses the
+   * texture anymore (no scene environment, no material).
+   */
+  disposeTexture(texture: VTypeDoc['texture']): void;
 }
