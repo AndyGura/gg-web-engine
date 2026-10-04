@@ -55,6 +55,20 @@ describe('MoverCorrection', () => {
     expect(entity.position.x).toBeCloseTo(0.4);
   });
 
+  it('coasts while the stream is stalled instead of pulling the mover back', () => {
+    const { entity } = spawned3d();
+    const walking = target3d({ p: { x: -5, y: 0, z: 0 }, v: { x: 4, y: 0, z: 0 }, crouch: true });
+    expect(MoverCorrection.correct(entity, walking, ctx({ ageMs: 650, sinceReceivedMs: 600 }))).toBe('coast');
+    expect(entity.position).toEqual({ x: 0, y: 0, z: 0 });
+    expect(entity.externalDisplacement).toEqual({ x: 0, y: 0, z: 0 });
+    expect(entity.isCrouching).toBe(true); // discrete state is still adopted
+    // a slow link is not a stalled stream: an old snapshot that has just arrived is corrected to
+    const slow = spawned3d().entity;
+    expect(MoverCorrection.correct(slow, walking, ctx({ ageMs: 600, sinceReceivedMs: 20 }))).toBe('snap');
+    expect(MoverCorrection.correct(entity, walking, ctx({ ageMs: 1051, sinceReceivedMs: 1001 }))).toBe('snap');
+    expect(MoverCorrection.targetPosition(walking, 100).x).toBeCloseTo(-4.6);
+  });
+
   it('snaps above snapDistance and adopts the owner momentum', () => {
     const { entity } = spawned3d();
     const outcome = MoverCorrection.correct(
@@ -178,7 +192,11 @@ describe('CharacterController3dEntity network contracts', () => {
   });
 
   it('a crouch set before spawning keeps the position as set (a serialized crouched capsule center)', () => {
-    const entity = new CharacterController3dEntity({ radius: 0.4, centersDistance: 1 }, null, mockCharacterController());
+    const entity = new CharacterController3dEntity(
+      { radius: 0.4, centersDistance: 1 },
+      null,
+      mockCharacterController(),
+    );
     entity.position = { x: 1, y: 2, z: 3 };
     entity.applyState({ isCrouching: true });
     const world: any = {
@@ -200,7 +218,11 @@ describe('CharacterController3dEntity network contracts', () => {
 
 describe('CharacterController2dEntity network contracts', () => {
   it('a crouch set before spawning keeps the position as set (a serialized crouched capsule center)', () => {
-    const entity = new CharacterController2dEntity({ radius: 0.4, centersDistance: 1 }, null, mockCharacterController2d());
+    const entity = new CharacterController2dEntity(
+      { radius: 0.4, centersDistance: 1 },
+      null,
+      mockCharacterController2d(),
+    );
     entity.position = { x: 1, y: 2 };
     entity.applyState({ isCrouching: true });
     const world: any = {
@@ -220,8 +242,16 @@ describe('CharacterController2dEntity network contracts', () => {
   });
 
   it('captures and applies 2D input', () => {
-    const owner = new CharacterController2dEntity({ radius: 0.4, centersDistance: 1 }, null, mockCharacterController2d());
-    const replica = new CharacterController2dEntity({ radius: 0.4, centersDistance: 1 }, null, mockCharacterController2d());
+    const owner = new CharacterController2dEntity(
+      { radius: 0.4, centersDistance: 1 },
+      null,
+      mockCharacterController2d(),
+    );
+    const replica = new CharacterController2dEntity(
+      { radius: 0.4, centersDistance: 1 },
+      null,
+      mockCharacterController2d(),
+    );
     owner.onSpawned({} as any);
     replica.onSpawned({} as any);
     owner.moveDirection = -1;

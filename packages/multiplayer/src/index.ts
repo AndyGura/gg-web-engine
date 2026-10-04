@@ -6,6 +6,7 @@ export * from './sync/chunking';
 export * from './sync/clock-sync';
 export * from './sync/link-conditioner';
 export * from './sync/ownership';
+export * from './sync/net-debug-panel';
 export * from './sync/network-controller';
 export * from './sync/network-2d-controller';
 export * from './sync/network-3d-controller';

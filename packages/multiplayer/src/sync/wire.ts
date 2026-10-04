@@ -42,7 +42,8 @@ export interface SpawnItem {
 }
 
 export type WireMessage =
-  | { t: 'state'; items: StateItem[] }
+  /** `n` counts the sender's state messages, so a receiver can tell how many never arrived */
+  | { t: 'state'; items: StateItem[]; n?: number }
   | { t: 'claim'; entityId: string; epoch: number; candidate: string }
   | { t: 'possess'; entityId: string; epoch: number; peerId: string }
   | { t: 'release'; entityId: string; epoch: number }
@@ -89,7 +90,7 @@ export type WireMessage =
 
 export type WireChannel = 'reliable' | 'unreliable';
 
-/** The channel each message kind travels on: everything but the state stream (and its pings) is reliable. */
+/** The channel each message kind travels on: everything but the state stream and the clock-sync pings is reliable. */
 export function channelOf(msg: WireMessage): WireChannel {
-  return msg.t === 'state' ? 'unreliable' : 'reliable';
+  return msg.t === 'state' || msg.t === 'ping' || msg.t === 'pong' ? 'unreliable' : 'reliable';
 }

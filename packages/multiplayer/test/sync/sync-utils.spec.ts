@@ -62,7 +62,11 @@ describe('LoopbackHub', () => {
     const s = new VirtualScheduler();
     let r = 0;
     const randoms = [0.9, 0.1, 0.5, 0.0, 0.99, 0.3];
-    const hub = new LoopbackHub(s, { latencyMs: 10, jitterMs: 100, lossRate: 0.5 }, () => randoms[r++ % randoms.length]);
+    const hub = new LoopbackHub(
+      s,
+      { latencyMs: 10, jitterMs: 100, lossRate: 0.5 },
+      () => randoms[r++ % randoms.length],
+    );
     const a = hub.createTransport('a');
     const b = hub.createTransport('b');
     await a.connect();
@@ -146,6 +150,18 @@ describe('chunking', () => {
 });
 
 describe('ClockSync', () => {
+  const TRUE_OFFSET = 5000;
+  // one exchange: ping sent at local `t0`, legs taking `out` and `back` ms
+  const exchange = (clock: ClockSync, t0: number, out: number, back: number) =>
+    clock.addSample(t0, t0 + out + TRUE_OFFSET, t0 + out + TRUE_OFFSET, t0 + out + back);
+  const mulberry32 = (seed: number) => () => {
+    seed = (seed + 0x6d2b79f5) >>> 0;
+    let t = seed;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+
   it('estimates offset and rtt from four timestamps', () => {
     const clock = new ClockSync();
     // remote clock runs 1000 ms ahead, 20 ms each way, 2 ms processing
@@ -153,13 +169,121 @@ describe('ClockSync', () => {
     expect(clock.offset).toBeCloseTo(1000);
     expect(clock.rtt).toBeCloseTo(40);
     expect(clock.toLocal(1500)).toBeCloseTo(500);
+    expect(clock.toRemote(500)).toBeCloseTo(1500);
   });
 
-  it('smooths later samples', () => {
-    const clock = new ClockSync(0.5);
-    clock.addSample(0, 1020, 1020, 40); // offset sample 1000
-    clock.addSample(100, 1140, 1140, 140); // offset sample 1020
-    expect(clock.offset).toBeCloseTo(1010);
+  it('is ready only after the minimum number of samples', () => {
+    const clock = new ClockSync({ minSamples: 3 });
+    exchange(clock, 0, 20, 20);
+    exchange(clock, 100, 20, 20);
+    expect(clock.ready).toBe(false);
+    exchange(clock, 200, 20, 20);
+    expect(clock.ready).toBe(true);
+    expect(clock.samples).toBe(3);
+  });
+
+  it('ignores a sample with one leg delayed by 400 ms', () => {
+    const clock = new ClockSync();
+    for (let i = 0; i < 5; i++) {
+      exchange(clock, i * 150, 40, 40);
+    }
+    const before = clock.offset;
+    exchange(clock, 2000, 440, 40); // would read 200 ms off
+    clock.advance(4000);
+    expect(Math.abs(clock.offset - before)).toBeLessThan(2);
+    expect(clock.rtt).toBeCloseTo(80);
+    exchange(clock, 4000, 40, 440);
+    clock.advance(6000);
+    expect(Math.abs(clock.offset - TRUE_OFFSET)).toBeLessThan(2);
+  });
+
+  it('corrects a first sample that is 150 ms off within the connect burst', () => {
+    const clock = new ClockSync();
+    exchange(clock, 0, 340, 40); // the handler stamping t1 was stalled for 300 ms
+    expect(Math.abs(clock.offset - TRUE_OFFSET)).toBeCloseTo(150);
+    for (let i = 1; i < 5; i++) {
+      exchange(clock, i * 150, 40, 40);
+    }
+    expect(clock.ready).toBe(true);
+    expect(Math.abs(clock.offset - TRUE_OFFSET)).toBeLessThan(1);
+  });
+
+  it('slews toward a changed estimate once ready, never steps', () => {
+    const clock = new ClockSync({ slewMsPerSecond: 5 });
+    for (let i = 0; i < 3; i++) {
+      exchange(clock, i * 150, 60, 20); // every sample reads 20 ms off
+    }
+    expect(clock.offset).toBeCloseTo(TRUE_OFFSET + 20);
+    exchange(clock, 1000, 20, 20); // a better sample: the estimate moves by 20 ms
+    expect(clock.targetOffset).toBeCloseTo(TRUE_OFFSET);
+    expect(clock.offset).toBeCloseTo(TRUE_OFFSET + 20);
+    clock.advance(2040);
+    expect(clock.offset).toBeCloseTo(TRUE_OFFSET + 15);
+    clock.advance(10_000);
+    expect(clock.offset).toBeCloseTo(TRUE_OFFSET);
+  });
+
+  it('applies a gross error at once', () => {
+    const clock = new ClockSync();
+    for (let i = 0; i < 5; i++) {
+      exchange(clock, i * 150, 20, 20);
+    }
+    // the remote clock jumped an hour ahead (its machine slept)
+    clock.addSample(5000, 5020 + TRUE_OFFSET + 3_600_000, 5020 + TRUE_OFFSET + 3_600_000, 5040);
+    expect(clock.offset).toBeCloseTo(TRUE_OFFSET + 3_600_000);
+  });
+
+  it('takes late, reordered and duplicate pongs', () => {
+    const clock = new ClockSync();
+    exchange(clock, 300, 20, 20);
+    exchange(clock, 0, 20, 20); // the pong of an earlier ping arrives after a later one
+    exchange(clock, 0, 20, 20); // twice
+    expect(clock.samples).toBe(2);
+    clock.addSample(600, NaN, NaN, 640);
+    clock.addSample(900, 0, 0, 800); // "received" before it was sent
+    expect(clock.samples).toBe(2);
+    expect(clock.offset).toBeCloseTo(TRUE_OFFSET);
+  });
+
+  it('stays within a few ms of the true offset under jitter and loss, moving no faster than the slew rate', () => {
+    const slew = 5;
+    const clock = new ClockSync({ slewMsPerSecond: slew });
+    const s = new VirtualScheduler();
+    const random = mulberry32(7);
+    const leg = () => 40 + (random() * 2 - 1) * 15;
+    const ping = () => {
+      if (random() < 0.02) {
+        return; // lost on the way out
+      }
+      const t0 = s.now();
+      const out = leg();
+      const back = leg();
+      const lostBack = random() < 0.02;
+      s.setTimeout(() => {
+        const t1 = s.now() + TRUE_OFFSET;
+        if (!lostBack) {
+          s.setTimeout(() => clock.addSample(t0, t1, t1, s.now()), back);
+        }
+      }, out);
+    };
+    for (let i = 0; i < 5; i++) {
+      s.setTimeout(ping, i * 150);
+    }
+    s.advance(1000);
+    expect(clock.ready).toBe(true);
+    s.setInterval(ping, 2000);
+    let worst = 0;
+    clock.advance(s.now());
+    let last = clock.offset;
+    for (let t = 0; t < 300_000; t += 100) {
+      s.advance(100);
+      clock.advance(s.now());
+      expect(Math.abs(clock.offset - last)).toBeLessThanOrEqual((slew * 100) / 1000 + 1e-6);
+      last = clock.offset;
+      worst = Math.max(worst, Math.abs(clock.offset - TRUE_OFFSET));
+    }
+    expect(clock.samples).toBeGreaterThan(100);
+    expect(worst).toBeLessThan(8);
   });
 });
 
@@ -190,8 +314,12 @@ describe('ownership', () => {
     it('respects the transfer cooldown', () => {
       const e = new Positioned({ x: 0, y: 0 });
       const p = peers({ a: { x: 30, y: 0 }, b: { x: 1, y: 0 } });
-      expect(strategy.proposeOwner(e, 'a', p, null, { msSinceLastTransfer: 100, msSinceLastContactClaim: Infinity })).toBeNull();
-      expect(strategy.proposeOwner(e, 'a', p, null, { msSinceLastTransfer: 2000, msSinceLastContactClaim: Infinity })).toBe('b');
+      expect(
+        strategy.proposeOwner(e, 'a', p, null, { msSinceLastTransfer: 100, msSinceLastContactClaim: Infinity }),
+      ).toBeNull();
+      expect(
+        strategy.proposeOwner(e, 'a', p, null, { msSinceLastTransfer: 2000, msSinceLastContactClaim: Infinity }),
+      ).toBe('b');
     });
 
     it('moves a Free entity off a peer with no position right away, and never to one', () => {
@@ -201,9 +329,16 @@ describe('ownership', () => {
     });
 
     it('contact: claims on a hard hit by a possessed body, never on resting contact or within the cooldown', () => {
-      const evt = (impulse: number) => ({ otherBody: null, position: {}, normal: {}, relativeVelocity: {}, impulse }) as any;
+      const evt = (impulse: number) =>
+        ({ otherBody: null, position: {}, normal: {}, relativeVelocity: {}, impulse }) as any;
       const e = new Positioned({ x: 0, y: 0 });
-      const ctx = { msSinceLastTransfer: Infinity, msSinceLastContactClaim: Infinity, localSpeed: 0, foreignSpeed: 0, estimatedImpulse: 0 };
+      const ctx = {
+        msSinceLastTransfer: Infinity,
+        msSinceLastContactClaim: Infinity,
+        localSpeed: 0,
+        foreignSpeed: 0,
+        estimatedImpulse: 0,
+      };
       expect(strategy.onContact(e, evt(5), true, ctx)).toBe(true);
       expect(strategy.onContact(e, evt(0.1), true, ctx)).toBe(false);
       expect(strategy.onContact(e, evt(5), false, ctx)).toBe(false); // free body, not faster
@@ -239,5 +374,85 @@ describe('LinkConditioner', () => {
     expect(got).toEqual(['direct']);
     s.advance(1);
     expect(got).toEqual(['direct', 'kept', 'reliable']);
+  });
+
+  it('jitters the delay around the latency', () => {
+    const s = new VirtualScheduler();
+    let r = 0;
+    const c = new LinkConditioner(s, () => [0, 1, 0.5][r++ % 3]);
+    c.latencyMs = 40;
+    c.jitterMs = 15;
+    const at: number[] = [];
+    for (let i = 0; i < 3; i++) {
+      c.pass('unreliable', () => at.push(s.now()));
+    }
+    s.advance(100);
+    expect(at).toEqual([25, 40, 55]);
+    expect(c.describe()).toBe('40 ms, 0% loss, +-15 ms jitter');
+  });
+
+  it('holds everything back during a stall and delivers it in one burst', () => {
+    const s = new VirtualScheduler();
+    const c = new LinkConditioner(s);
+    c.stallMs = 300;
+    c.stallIntervalMs = 1000;
+    const at: number[] = [];
+    s.advance(900);
+    for (let i = 0; i < 5; i++) {
+      c.pass(i % 2 ? 'reliable' : 'unreliable', () => at.push(s.now())); // at 900, 1000, 1100, 1200, 1300
+      s.advance(100);
+    }
+    s.advance(1000);
+    expect(at).toEqual([900, 1300, 1300, 1300, 1300]);
+  });
+
+  it('delays some reliable messages, holding back the later ones of that sender only', () => {
+    const s = new VirtualScheduler();
+    let r = 0;
+    const c = new LinkConditioner(s, () => [0.01, 0.9, 0.9, 0.9][r++ % 4]);
+    c.reliableDelayRate = 0.05;
+    c.reliableDelayMs = 400;
+    const got: string[] = [];
+    c.pass('reliable', () => got.push('a1'), 'a'); // delayed
+    c.pass('reliable', () => got.push('a2'), 'a');
+    c.pass('reliable', () => got.push('b1'), 'b');
+    c.pass('unreliable', () => got.push('a-state'), 'a');
+    expect(got).toEqual(['b1', 'a-state']);
+    c.reset(); // a clean link again still keeps the order of what is in flight
+    c.pass('reliable', () => got.push('a3'), 'a');
+    s.advance(399);
+    expect(got).toEqual(['b1', 'a-state']);
+    s.advance(1);
+    expect(got).toEqual(['b1', 'a-state', 'a1', 'a2', 'a3']);
+    c.pass('reliable', () => got.push('a4'), 'a');
+    expect(got[got.length - 1]).toBe('a4');
+    expect((c as any).reliableQueues.size).toBe(0); // nothing is remembered about a sender with nothing in flight
+  });
+
+  it('keeps the order of reliable messages when timers fire early or out of order', () => {
+    // a host's timers: delays cut to whole ms, so of two messages due at once the later one fires first
+    const s = new VirtualScheduler();
+    const host = {
+      now: () => s.now(),
+      setTimeout: (fn: () => void, ms: number) => s.setTimeout(fn, Math.floor(ms)),
+      clearTimeout: (handle: unknown) => s.clearTimeout(handle),
+      setInterval: (fn: () => void, ms: number) => s.setInterval(fn, ms),
+      clearInterval: (handle: unknown) => s.clearInterval(handle),
+    };
+    const c = new LinkConditioner(host);
+    c.stallMs = 300;
+    c.stallIntervalMs = 1000;
+    const got: string[] = [];
+    s.advance(1000.9);
+    c.pass('reliable', () => got.push('a1'), 'a'); // due at 1300, its timer cut to 1299.9
+    s.advance(0.3);
+    c.pass('reliable', () => got.push('a2'), 'a'); // due at 1300, a timer of its own would be cut to 1299.2
+    s.advance(297.9);
+    c.reset();
+    c.pass('reliable', () => got.push('a3'), 'a'); // no delay of its own, but a1 and a2 are still in flight
+    expect(got).toEqual([]);
+    s.advance(1);
+    expect(got).toEqual(['a1', 'a2', 'a3']);
+    expect((c as any).reliableQueues.size).toBe(0);
   });
 });

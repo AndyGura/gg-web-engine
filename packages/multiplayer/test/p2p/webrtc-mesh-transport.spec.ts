@@ -93,6 +93,34 @@ describe('WebRtcMeshTransport', () => {
     expect(b.setupTimes.has('a')).toBe(true);
   });
 
+  it('drops an unreliable message while the channel send buffer is backed up, never a reliable one', async () => {
+    const hub = new InMemorySignalingHub();
+    const a = makeTransport(hub, 'a', { unreliableBufferLimit: 1000 });
+    const b = makeTransport(hub, 'b');
+    await a.connect();
+    await b.connect();
+    await settle();
+    const got: WireMessage[] = [];
+    b.messages$.subscribe(m => got.push(m.msg));
+    // the offering side (a) created the channels
+    const channels = FakeRTCPeerConnection.instances.flatMap(pc => pc.channels).filter(c => c.sent !== undefined);
+    const backUp = (bytes: number) => channels.forEach(c => (c.bufferedAmount = bytes));
+    backUp(1001);
+    a.send('b', 'unreliable', { t: 'state', items: [] });
+    a.send('b', 'unreliable', { t: 'ping', t0: 1 });
+    a.send('b', 'reliable', { t: 'app', data: 1 });
+    await settle();
+    expect(got).toEqual([{ t: 'app', data: 1 }]);
+    expect(a.droppedUnreliable).toBe(2);
+    backUp(1000);
+    a.send('b', 'unreliable', { t: 'ping', t0: 2 });
+    await settle();
+    expect(got).toEqual([
+      { t: 'app', data: 1 },
+      { t: 'ping', t0: 2 },
+    ]);
+  });
+
   it('sends to a list of peers, serializing the message once', async () => {
     const hub = new InMemorySignalingHub();
     const a = makeTransport(hub, 'a');
@@ -133,12 +161,13 @@ describe('WebRtcMeshTransport', () => {
       ts: 0,
       s: { p: i },
     }));
-    a.send('b', 'unreliable', { t: 'state', items });
+    a.send('b', 'unreliable', { t: 'state', items, n: 7 });
     await settle(60);
     expect(got[0]).toEqual(big);
     const stateMsgs = got.slice(1) as Extract<WireMessage, { t: 'state' }>[];
     expect(stateMsgs.length).toBeGreaterThan(1);
     expect(stateMsgs.flatMap(m => m.items)).toEqual(items);
+    expect(stateMsgs.every(m => m.n === 7)).toBe(true); // every part keeps the message counter
   });
 
   it('reports a peer that leaves the room', async () => {

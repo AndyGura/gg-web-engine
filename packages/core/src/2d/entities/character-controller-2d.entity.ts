@@ -4,6 +4,7 @@ import {
   ISerializableEntity,
   MoverCorrection,
   MoverNetState,
+  CorrectionOutcome,
   NetworkApplyContext,
   Pnt2,
   Point2,
@@ -551,8 +552,8 @@ export class CharacterController2dEntity<TypeDoc extends Gg2dWorldTypeDocRepo = 
   }
 
   /** `INetworkSyncable`: replica-side reconciliation through `externalDisplacement` - see `MoverCorrection`. */
-  public applyNetworkState(target: MoverNetState<Point2, number>, ctx: NetworkApplyContext): void {
-    MoverCorrection.correct(this, target, ctx);
+  public applyNetworkState(target: MoverNetState<Point2, number>, ctx: NetworkApplyContext): CorrectionOutcome {
+    return MoverCorrection.correct(this, target, ctx);
   }
 
   /** `INetworkInputDriven`: what the local input driver set on this character. */

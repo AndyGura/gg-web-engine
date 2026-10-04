@@ -41,10 +41,13 @@ reuses.
 ## Core contracts (what an entity implements)
 
 - `INetworkSyncable<S>`: `captureNetworkState(): S` (plain JSON) on the owner,
-  `applyNetworkState(target, ctx)` on replicas, optional `captureFullNetworkState()` (join/takeover),
+  `applyNetworkState(target, ctx)` on replicas (may return the helper's `CorrectionOutcome`, used
+  only for diagnostics), optional `captureFullNetworkState()` (join/takeover),
   optional `isNetworkSyncEnabled` (`false` = ignored entirely) and `networkTuning`.
-  `NetworkApplyContext` = `{ ageMs, dt, snap, tuning }` - `tuning` is the controller's merged with
-  the entity's override, so helpers need no extra argument.
+  `NetworkApplyContext` = `{ ageMs, sinceReceivedMs, dt, snap, tuning }` - `ageMs` is how old the
+  snapshot is on the owner's clock (latency included), `sinceReceivedMs` how long ago it arrived
+  here; `tuning` is the controller's merged with the entity's override, so helpers need no extra
+  argument.
 - `INetworkInputDriven<I>`: `captureLocalInput()` on the possessor, `applyRemoteInput(input | null)`
   on replicas; `null` = neutral (entity defines it).
 - Built-ins: `Entity2d`/`Entity3d` (rigid-body snapshot; enabled only with a non-static body),
@@ -61,13 +64,17 @@ reuses.
   actualVelocity`).
 
 `RigidBodyCorrection` (per body kind): extrapolate the snapshot by velocity (capped at
-`extrapolateMaxMs`), deadzone → nothing (and an awake replica of a sleeping target is put to sleep),
-`snap`/beyond `snapDistance` → write outright, else dynamic = steer velocity toward
+`extrapolateMaxMs`; a dynamic replica of a moving target whose snapshot arrived longer ago than that,
+up to `coastMaxMs`, coasts on its own simulation - pinning it to the point extrapolation stopped at
+made it snap back every `snapDistance` for as long as the stream stalled. A stall is judged by
+`sinceReceivedMs` only: by `ageMs`, a link slower than `extrapolateMaxMs` looks stalled all the time
+and its replicas are never corrected), deadzone → nothing (and an awake replica of a sleeping target
+is put to sleep), `snap`/beyond `snapDistance` → write outright, else dynamic = steer velocity toward
 `targetLv + error·velocityGain` at `positionGain`/s (a *P-controller on velocity*: adding the bias
 to the previous tick's velocity accumulates and overshoots badly), sleeping target = glide with zero
 velocity, kinematic = transform lerp only, static = never. `MoverCorrection` never teleports: the
-error becomes `externalDisplacement`, consumed by the next `move()`. It extrapolates by `v` (the
-owner's actual last-tick velocity) - `fallVelocity + airHorizontalVelocity` alone omit grounded
+error becomes `externalDisplacement`, consumed by the next `move()`. It coasts through a stalled
+stream the same way, and extrapolates by `v` (the owner's actual last-tick velocity) - `fallVelocity + airHorizontalVelocity` alone omit grounded
 walking, so extrapolating by them makes every replica pull back toward a stale position.
 
 ## Tick integration
@@ -119,9 +126,23 @@ join handshakes, link latency) runs on the injected `NetScheduler`, never on `ti
 - **`despawn` works for non-networked shared content** (a coin trigger): broadcast and remove by name,
   and pending/joined entities whose name is tombstoned are removed on processing.
 - **Peers' clocks share no origin.** `performance.now()` counts from each tab's start, so a remote
-  timestamp means nothing before that peer's first clock-sync sample (`toLocalTime` returns "now"
+  timestamp means nothing before that peer's clock sync is `ready` (`toLocalTime` returns "now"
   until then). A duration crosses the wire as two timestamps of one sender - a spawn's lifetime is
   `expiresAt - ts`, added to the receiver's own clock - never as one converted absolute time.
+- **A peer's clock offset must never step.** Replicas are extrapolated by sender timestamp, so a
+  change of the offset by `d` ms moves the target of everything that peer owns by `speed × d` at
+  once (70 m/s × 40 ms = 2.8 m: a teleport, or a lunge below `snapDistance`). A LAN never shows it.
+  Three rules follow. (1) One ping/pong only bounds the offset (`t2 - t3 <= offset <= t1 - t0`), and
+  its midpoint is off by half of whatever one leg was delayed (network, or a busy main thread
+  delaying the handler that stamps the time) - so `ClockSync` never averages: it takes the tightest
+  bound of each direction over a window of the latest samples, and a delayed sample just isn't one
+  of them. (2) Pings and pongs travel `unreliable`: a retransmitted or head-of-line-blocked one
+  measures the retransmission, a lost one is only a missing sample. A pong is valid whenever it
+  arrives (it carries its own `t0`). (3) Once `ready` (3 samples, which the burst of pings on a
+  newly opened link delivers within half a second), `offset` slews toward the estimate at a few
+  ms/s as `advance(now)` is called, and steps only for a gross error or when a sample contradicts
+  the window (the remote clock itself jumped). In a test, give a peer its own clock origin by
+  wrapping the shared scheduler with a shifted `now()`.
 - **Contact claims compare pre-impact speeds** (the latest snapshot's `lv`), never the bodies' current
   velocities - those are post-solve, and the hit body is then often the faster one, which made it
   "claim" the hitter right back. Some adapters (Ammo) report impulse 0 on a contact's first step;
@@ -204,6 +225,23 @@ join handshakes, link latency) runs on the injected `NetScheduler`, never on `ti
   link's setup time; with every peer on one machine it measured 71–680 ms. That is a best case, since
   peers on one machine connect over local host candidates and real peers add STUN (and possibly TURN)
   round trips. Check zoning cell sizes against it: speed × setup time must fit in the one-cell margin.
+- **A clean link hides timing bugs.** Loopback and same-machine WebRTC deliver in under a millisecond,
+  in order, with nothing lost. `LoopbackHub` conditions (latency, jitter, loss) cover tests;
+  `LinkConditioner` (`controller.conditioner`, the `net_lag` console command) reproduces a real link
+  on the receive path of a live peer: jitter, delivery stalls released as a burst, and reliable
+  messages delayed like a retransmission, holding back the sender's later ones (one queue per sender
+  drained by one timer at a time: timers of their own don't keep the order, since a host cuts a delay
+  to whole milliseconds and two messages due at the same moment then fire in either order). The `net_panel`
+  command shows what the link is doing while it happens (`NetDebugPanel`, fed by
+  `controller.netStats`): a per-peer offset that keeps slewing or a snapshot age that jumps is the
+  clock, a rising `loss` is the link, and `jump`/`lunges`/`snaps` say whether a replica's target
+  actually moved (`jump` is the distance between the old and the new snapshot, both extrapolated to
+  the moment the new one arrives - near zero for steady motion whatever the latency). Snaps are
+  counted from what `applyNetworkState` returns, so an app entity that wants to show up there returns
+  its correction helper's outcome. Loss comes from the counter `n` on every state message; a
+  transport that splits a state message must keep `n` on every part. A late message takes back a loss
+  only if its own counter was counted as lost (a gap after a paused stream never is). Every outgoing message must go through the
+  controller's `transmit()`, never `transport.send()` directly, or the stats miss it.
 - Live: open an example's `?room=` URL in two tabs (BroadcastChannel signaling needs no backend).
   Automation tabs are hidden: `requestAnimationFrame` doesn't tick and `setTimeout` is clamped to ≥1 s,
   so drive worlds with `worldClock.step(16)` in a loop that yields through a `MessageChannel` (not
@@ -215,7 +253,11 @@ join handshakes, link latency) runs on the injected `NetScheduler`, never on `ti
 'unreliable', msg)`, `messages$`, `peerLeft$` (left for good), `connect()`, `disconnect()`, optional
 `streamTargets()` (interest management) and `updateLocalPosition()` (zoning). A single-channel
 transport ignores the channel hint. Serialize a message once per `send()`, whatever the number of
-targets: the controller sends each state flush to all of `streamTargets()` in one call. `ISignalingChannel`: rooms, presence (with zoning cells), SDP/ICE
+targets: the controller sends each state flush to all of `streamTargets()` in one call. An unreliable message must never
+wait in a send queue: delivered late it is useless (a stale snapshot, a clock-sync ping measuring the
+queue), and the queue turns one lost packet into a stall. `WebRtcMeshTransport` drops it while the
+channel's `bufferedAmount` is above `unreliableBufferLimit` - checked once per message, before its
+first frame, so the frames of one split state message aren't starved by each other. `ISignalingChannel`: rooms, presence (with zoning cells), SDP/ICE
 relay, optional `discoveryDelayMs`. A server variant pairs a websocket `ITransport` with
 `AlwaysServerOwnership`.
 

@@ -8,6 +8,7 @@ import {
   INetworkInputDriven,
   INetworkSyncable,
   ISerializableEntity,
+  CorrectionOutcome,
   NetworkApplyContext,
   Point3,
   Point4,
@@ -550,19 +551,20 @@ export class GgCarEntity<
    * same values (see `applyRemoteInput`). A snap also resets the suspension, so the wheels don't
    * spring from the old pose.
    */
-  public applyNetworkState(target: GgCarNetState, ctx: NetworkApplyContext): void {
+  public applyNetworkState(target: GgCarNetState, ctx: NetworkApplyContext): CorrectionOutcome {
     const outcome = RigidBodyCorrection.correct(this.raycastVehicle.vehicleComponent, target, ctx);
     if (outcome === 'snap') {
       this.raycastVehicle.vehicleComponent.resetSuspension();
     }
     if (this._remoteInputActive) {
-      return;
+      return outcome;
     }
     this.gear = target.gear;
     this.steeringFactor = target.steering;
     this.acceleration = target.accel;
     this.brake = target.brake;
     this.handBrake = target.handBrake;
+    return outcome;
   }
 
   /** `INetworkInputDriven`: what the local input driver set on this car. Ends any remote-input suspension of auto-shift. */

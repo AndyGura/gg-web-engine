@@ -31,6 +31,11 @@ export interface WebRtcMeshTransportOptions {
   connectTimeoutMs?: number;
   /** reliable-channel messages above this many characters are chunked. Default 16 KB. */
   chunkSize?: number;
+  /**
+   * an unreliable message is dropped instead of sent while the peer's unreliable channel still has
+   * more than this many bytes queued (`RTCDataChannel.bufferedAmount`). Default 16 KB.
+   */
+  unreliableBufferLimit?: number;
   /** a failed connection to a still-present peer is retried with exponential backoff from this. Default 1000. */
   reconnectBaseDelayMs?: number;
   /** Default 30000. */
@@ -59,7 +64,8 @@ interface PeerLink {
  * each other and exchange SDP/ICE through an `ISignalingChannel`; the lexically smaller peer id of a
  * pair makes the offer, so two peers never offer to each other at once. Reliable messages above
  * `chunkSize` travel as `chunk` frames and are reassembled; oversized unreliable `state` messages are
- * split by items. A failed connection to a peer that is still present is retried with exponential
+ * split by items; an unreliable message is dropped rather than queued behind a backed-up send buffer.
+ * A failed connection to a peer that is still present is retried with exponential
  * backoff; a peer that leaves the room's presence is reported on `peerLeft$`.
  *
  * Note that P2P exposes peers' IP addresses to each other (ICE candidates); use
@@ -75,6 +81,7 @@ export class WebRtcMeshTransport implements ITransport {
     iceTransportPolicy: RTCIceTransportPolicy;
     connectTimeoutMs: number;
     chunkSize: number;
+    unreliableBufferLimit: number;
     reconnectBaseDelayMs: number;
     reconnectMaxDelayMs: number;
   };
@@ -99,6 +106,8 @@ export class WebRtcMeshTransport implements ITransport {
   private readonly disconnected$ = new Subject<void>();
   /** time (scheduler ms) each link took from creation to both channels open - for diagnostics, e.g. checking zoning cell sizes */
   public readonly setupTimes = new Map<string, number>();
+  /** unreliable messages dropped (per target) because the channel's send buffer was above `unreliableBufferLimit` - for diagnostics */
+  public droppedUnreliable = 0;
 
   constructor(options: WebRtcMeshTransportOptions) {
     this.signaling = options.signaling;
@@ -110,6 +119,7 @@ export class WebRtcMeshTransport implements ITransport {
       iceTransportPolicy: options.iceTransportPolicy ?? 'all',
       connectTimeoutMs: options.connectTimeoutMs ?? 10_000,
       chunkSize: options.chunkSize ?? DEFAULT_CHUNK_SIZE,
+      unreliableBufferLimit: options.unreliableBufferLimit ?? 16 * 1024,
       reconnectBaseDelayMs: options.reconnectBaseDelayMs ?? 1000,
       reconnectMaxDelayMs: options.reconnectMaxDelayMs ?? 30_000,
     };
@@ -271,6 +281,12 @@ export class WebRtcMeshTransport implements ITransport {
     for (const link of targets) {
       const dc = channel === 'reliable' ? link!.reliable : link!.unreliable;
       if (!dc || dc.readyState !== 'open') {
+        continue;
+      }
+      if (channel === 'unreliable' && dc.bufferedAmount > this.opts.unreliableBufferLimit) {
+        // the channel is backed up: whatever is queued behind it arrives late, and a late snapshot
+        // (or clock-sync ping) is worse than a missing one - the next one replaces it
+        this.droppedUnreliable++;
         continue;
       }
       for (const frame of frames) {
@@ -587,8 +603,8 @@ export class WebRtcMeshTransport implements ITransport {
     }
     const half = Math.ceil(msg.items.length / 2);
     return [
-      ...this.splitUnreliable({ t: 'state', items: msg.items.slice(0, half) }),
-      ...this.splitUnreliable({ t: 'state', items: msg.items.slice(half) }),
+      ...this.splitUnreliable({ ...msg, items: msg.items.slice(0, half) }),
+      ...this.splitUnreliable({ ...msg, items: msg.items.slice(half) }),
     ];
   }
 }

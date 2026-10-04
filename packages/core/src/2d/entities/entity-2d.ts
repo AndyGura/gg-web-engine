@@ -3,6 +3,7 @@ import { map } from 'rxjs/operators';
 import {
   IEntity,
   INetworkSyncable,
+  CorrectionOutcome,
   NetworkApplyContext,
   Pnt2,
   Point2,
@@ -173,9 +174,7 @@ export class Entity2d<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTypeDocRep
   }
 
   /** `INetworkSyncable`: replica-side correction of `objectBody` - see `RigidBodyCorrection`. No-op without a body. */
-  public applyNetworkState(target: RigidBodyNetState<Point2, number>, ctx: NetworkApplyContext): void {
-    if (this.objectBody) {
-      RigidBodyCorrection.correct(this.objectBody, target, ctx);
-    }
+  public applyNetworkState(target: RigidBodyNetState<Point2, number>, ctx: NetworkApplyContext): CorrectionOutcome {
+    return this.objectBody ? RigidBodyCorrection.correct(this.objectBody, target, ctx) : 'none';
   }
 }

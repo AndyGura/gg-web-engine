@@ -1,6 +1,6 @@
-import { Entity3d, GgStatic, IEntity } from '@gg-web-engine/core';
+import { Entity3d, GgStatic, IEntity, RigidBodyCorrection } from '@gg-web-engine/core';
 import { ClockSync, NetScheduler, Network3dController } from '../../src';
-import { ADAPTERS, Harness, TICK_MS } from './harness';
+import { ADAPTERS, dist, Harness, TICK_MS } from './harness';
 
 jest.setTimeout(60_000);
 
@@ -26,6 +26,12 @@ describe('NetworkController features', () => {
     expect(await ggstatic.runConsoleCommand('net_status', [])).toContain('session: joined');
     expect(await ggstatic.runConsoleCommand('net_lag', ['100', '10'])).toBe('100 ms, 10% loss');
     expect(a.net.conditioner.latencyMs).toBe(100);
+    expect(await ggstatic.runConsoleCommand('net_lag', ['40', '2', '15', '300', '5000', '400', '5'])).toBe(
+      '40 ms, 2% loss, +-15 ms jitter, 300 ms stall every 5000 ms, 5% of reliable +400 ms',
+    );
+    expect(await ggstatic.runConsoleCommand('net_status', [])).toContain('simulated lag: 40 ms, 2% loss, +-15 ms');
+    expect(await ggstatic.runConsoleCommand('net_lag', ['0'])).toBe('0 ms, 0% loss');
+    expect(a.net.conditioner.active).toBe(false);
     expect(await ggstatic.runConsoleCommand('net_tuning', ['deadzone', '0.5'])).toContain('"deadzone":0.5');
     adapter.addBox(a.world, adapter.at(0, 1));
     h.step(2);
@@ -33,6 +39,50 @@ describe('NetworkController features', () => {
     a.net.leave();
     expect(a.world.commandGuard).toBeNull();
     expect(await ggstatic.runConsoleCommand('remove', ['ground', '0'])).toContain('removed');
+  });
+
+  it('net_panel shows live stats of the session and every peer, and goes away with the controller', async () => {
+    jest.useFakeTimers({ doNotFake: ['setTimeout', 'performance'] });
+    try {
+      const ggstatic = GgStatic.instance;
+      h = new Harness(adapter, { latencyMs: 20 });
+      const a = await h.addPeer('a');
+      const b = await h.addPeer('b');
+      (ggstatic as any)._selectedWorld$.next(b.world);
+      const box = adapter.addBox(a.world, adapter.at(0, 1));
+      box.objectBody!.linearVelocity = adapter.along(1);
+      await h.run(Math.ceil(1000 / TICK_MS));
+      expect(await ggstatic.runConsoleCommand('net_panel', [])).toBe('1');
+      const panel = document.getElementById('gg_net_panel')!;
+      expect(panel.textContent).toContain('joined as b, 1 peer(s)');
+      expect(panel.textContent).toContain('1 replicas');
+      const before = b.net.netStats;
+      await h.run(Math.ceil(1000 / TICK_MS));
+      jest.advanceTimersByTime(500);
+      const stats = b.net.netStats;
+      expect(stats.received.stateItems).toBeGreaterThan(before.received.stateItems);
+      expect(stats.received.bytes).toBeGreaterThan(before.received.bytes);
+      expect(stats.sent.messages).toBeGreaterThan(before.sent.messages);
+      const peer = stats.peers[0];
+      expect(peer).toMatchObject({ peerId: 'a', clockReady: true, owned: 1 });
+      expect(peer.rttMs).toBeCloseTo(40, 0);
+      // snapshots arrive one link latency old
+      expect(peer.stateAgeSumMs / peer.stateAgeCount).toBeCloseTo(20, 0);
+      const row = panel.textContent!.split('\n').find(l => l.startsWith('a '))!;
+      expect(row).toContain('40.0 ms');
+      expect(row).toMatch(/2\d\.\d ms/); // age
+      expect(await ggstatic.runConsoleCommand('net_panel', ['1'])).toBe('1');
+      expect(document.querySelectorAll('#gg_net_panel')).toHaveLength(1);
+      b.world.removeEntity(b.net);
+      expect(document.getElementById('gg_net_panel')).toBeNull();
+      // the panel never touches the app's own switch
+      b.net.measureTraffic = true;
+      b.net.showNetPanel = true;
+      b.net.showNetPanel = false;
+      expect(b.net.measureTraffic).toBe(true);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('tints replicas in the physics debug view, never owned bodies', async () => {
@@ -98,6 +148,201 @@ describe('NetworkController features', () => {
     expect(findByName(h, 'b', box.name)).toBeDefined();
     await h.run(Math.ceil(2500 / TICK_MS));
     expect(findByName(h, 'b', box.name)).toBeUndefined();
+  });
+
+  // a scheduler whose clock counts from `skewMs` earlier than the shared one (another tab's performance.now())
+  const skewedScheduler = (shared: NetScheduler, skewMs: number): NetScheduler => ({
+    now: () => shared.now() - skewMs,
+    setTimeout: (fn, ms) => shared.setTimeout(fn, ms),
+    clearTimeout: t => shared.clearTimeout(t),
+    setInterval: (fn, ms) => shared.setInterval(fn, ms),
+    clearInterval: t => shared.clearInterval(t),
+  });
+
+  it('syncs clocks with a burst of unreliable pings when a link opens, then at the regular interval', async () => {
+    h = new Harness(adapter, { latencyMs: 40 });
+    const a = await h.addPeer('a', undefined, { scheduler: skewedScheduler(h.scheduler, 60_000) });
+    const pings: string[] = [];
+    const send = h.hub._deliver.bind(h.hub);
+    h.hub._deliver = (from, to, channel, msg) => {
+      if (msg.t === 'ping' || msg.t === 'pong') {
+        pings.push(`${from} ${msg.t} ${channel}`);
+      }
+      send(from, to, channel, msg);
+    };
+    const b = await h.addPeer('b');
+    await h.run(Math.ceil(1000 / TICK_MS));
+    expect(pings.every(p => p.endsWith('unreliable'))).toBe(true);
+    expect(pings.filter(p => p === 'b ping unreliable').length).toBe(5);
+    const clock: ClockSync = (b.net as any).peers.get('a').clock;
+    expect(clock.ready).toBe(true);
+    expect(clock.offset).toBeCloseTo(-60_000, 0);
+    expect(clock.rtt).toBeCloseTo(80, 0);
+    pings.length = 0;
+    await h.run(Math.ceil(6000 / TICK_MS));
+    expect(pings.filter(p => p === 'b ping unreliable').length).toBe(3);
+    // peerInfos (and net_status) report the same numbers
+    expect(b.net.peerInfos.find(p => p.peerId === 'a')!.offsetMs).toBeCloseTo(-60_000, 0);
+    expect(b.net.peerInfos.find(p => p.peerId === 'a')!.rttMs).toBeCloseTo(80, 0);
+  });
+
+  it('never snaps a replica moving at constant velocity under jitter and ping loss', async () => {
+    // 25..55 ms each way, 2% of everything unreliable lost
+    h = new Harness(adapter, { latencyMs: 25, jitterMs: 30, lossRate: 0.02 });
+    const a = await h.addPeer('a', undefined, { scheduler: skewedScheduler(h.scheduler, 60_000) });
+    const b = await h.addPeer('b');
+    for (const peer of [a, b]) {
+      (peer.world.physicsWorld as any).gravity = { x: 0, y: 0, z: 0 };
+    }
+    await h.run(Math.ceil(1000 / TICK_MS));
+    const speed = 70;
+    const box = adapter.addBox(a.world, adapter.at(-900, 20)) as Entity3d;
+    box.objectBody!.linearVelocity = adapter.along(speed);
+    a.net.possess(box);
+    const clock: ClockSync = (b.net as any).peers.get('a').clock;
+    const outcomes: string[] = [];
+    const correct = jest.spyOn(RigidBodyCorrection, 'correct');
+    let worstClock = 0;
+    let worstGap = 0;
+    try {
+      for (let i = 0; i < Math.ceil(25_000 / TICK_MS); i++) {
+        await h.run(1);
+        worstClock = Math.max(worstClock, Math.abs(clock.offset + 60_000));
+        const replica = findByName(h, 'b', box.name);
+        if (replica && i > 60) {
+          worstGap = Math.max(worstGap, Math.abs(replica.position.x - box.position.x));
+        }
+      }
+      for (const r of correct.mock.results) {
+        outcomes.push(r.value as string);
+      }
+    } finally {
+      correct.mockRestore();
+    }
+    expect(box.position.x).toBeGreaterThan(800);
+    expect(outcomes.length).toBeGreaterThan(1000);
+    // the spawn places the replica outright; nothing after that may teleport it
+    expect(outcomes.slice(1).filter(o => o === 'snap')).toEqual([]);
+    expect(worstClock).toBeLessThan(8);
+    // and the stats agree: no snap, no lunge, new snapshots barely move the target, ~2% of them lost
+    const stats = b.net.netStats.peers[0];
+    expect(stats.snaps).toBe(0);
+    expect(stats.lunges).toBe(0);
+    expect(stats.targetJumpCount).toBeGreaterThan(500);
+    expect(stats.targetJumpSum / stats.targetJumpCount).toBeLessThan(0.05);
+    const loss = stats.stateMessagesLost / (stats.stateMessagesLost + stats.stateMessages);
+    expect(loss).toBeGreaterThan(0.005);
+    expect(loss).toBeLessThan(0.05);
+    // the replica stays about a tick of travel (1.1 m) from the owner's body, well inside snapDistance
+    expect(worstGap).toBeLessThan(2);
+  });
+
+  it('keeps correcting replicas over a link slower than the extrapolation window', async () => {
+    // every snapshot arrives 400 ms old (extrapolateMaxMs is 250): old, but the stream isn't stalled
+    h = new Harness(adapter, { latencyMs: 400 });
+    const a = await h.addPeer('a');
+    const b = await h.addPeer('b');
+    for (const peer of [a, b]) {
+      (peer.world.physicsWorld as any).gravity = { x: 0, y: 0, z: 0 };
+    }
+    await h.run(Math.ceil(2000 / TICK_MS));
+    const box = adapter.addBox(a.world, adapter.at(0, 20)) as Entity3d;
+    box.objectBody!.linearVelocity = adapter.along(10);
+    await h.run(Math.ceil(2000 / TICK_MS));
+    const correct = jest.spyOn(RigidBodyCorrection, 'correct');
+    try {
+      await h.run(Math.ceil(2000 / TICK_MS));
+      const outcomes = correct.mock.results.map(r => r.value as string);
+      expect(outcomes.length).toBeGreaterThan(50);
+      expect(outcomes).not.toContain('coast');
+    } finally {
+      correct.mockRestore();
+    }
+  });
+
+  it('counts lost state messages, lunges and snaps per peer', async () => {
+    h = new Harness(adapter, { latencyMs: 20 });
+    const a = await h.addPeer('a');
+    const b = await h.addPeer('b');
+    for (const peer of [a, b]) {
+      (peer.world.physicsWorld as any).gravity = { x: 0, y: 0, z: 0 };
+    }
+    await h.run(Math.ceil(1000 / TICK_MS));
+    const box = adapter.addBox(a.world, adapter.at(0, 20)) as Entity3d;
+    box.objectBody!.linearVelocity = adapter.along(10);
+    await h.run(Math.ceil(2000 / TICK_MS));
+    let stats = b.net.netStats.peers[0];
+    expect(stats).toMatchObject({ peerId: 'a', stateMessagesLost: 0, snaps: 0, lunges: 0 });
+    expect(stats.stateMessages).toBeGreaterThan(40);
+
+    // one in five state messages lost on the way
+    h.hub.conditions.lossRate = 0.2;
+    const before = stats;
+    await h.run(Math.ceil(10_000 / TICK_MS));
+    stats = b.net.netStats.peers[0];
+    const lost = stats.stateMessagesLost - before.stateMessagesLost;
+    const arrived = stats.stateMessages - before.stateMessages;
+    expect(lost / (lost + arrived)).toBeGreaterThan(0.12);
+    expect(lost / (lost + arrived)).toBeLessThan(0.28);
+    expect(stats.snaps).toBe(0);
+    expect(stats.lunges).toBe(0);
+
+    // a split message arrives as parts with one counter, in any order: counted once
+    const countState = (n: number) => (b.net as any).countStateMessage((b.net as any).peers.get('a'), n);
+    const messages = () => b.net.netStats.peers[0].stateMessages;
+    const lostNow = () => b.net.netStats.peers[0].stateMessagesLost;
+    const n0: number = (b.net as any).peers.get('a').lastStateN;
+    const [m0, l0] = [messages(), lostNow()];
+    countState(n0 + 1);
+    countState(n0 + 2);
+    countState(n0 + 1);
+    countState(n0 + 4); // n0 + 3 is missing
+    expect([messages() - m0, lostNow() - l0]).toEqual([3, 1]);
+    countState(n0 + 3); // late after all
+    expect([messages() - m0, lostNow() - l0]).toEqual([4, 0]);
+    // the stream stalls for most of a second: the replica coasts on its own simulation instead of being
+    // snapped back to where extrapolation stopped, and is where it should be when the stream resumes
+    h.hub.conditions.lossRate = 0;
+    await h.run(10);
+    const rate = a.net.sendRate;
+    const stalled = b.net.netStats.peers[0];
+    a.net.sendRate = 0.001;
+    await h.run(Math.ceil(800 / TICK_MS));
+    expect(dist(findByName(h, 'b', box.name).position, box.position)).toBeLessThan(0.5);
+    a.net.sendRate = rate;
+    await h.run(10);
+    stats = b.net.netStats.peers[0];
+    expect([stats.snaps - stalled.snaps, stats.lunges - stalled.lunges]).toEqual([0, 0]);
+    expect(dist(findByName(h, 'b', box.name).position, box.position)).toBeLessThan(0.5);
+
+    // a gap after a silent second is a paused stream (out of the sender's stream ring), not loss
+    a.net.sendRate = 0.001;
+    await h.run(Math.ceil(1500 / TICK_MS));
+    const [n1, l1] = [(b.net as any).peers.get('a').lastStateN as number, lostNow()];
+    countState(n1 + 50);
+    expect(lostNow()).toBe(l1);
+    countState(n1 + 60); // while one within a running stream is
+    expect(lostNow()).toBe(l1 + 9);
+    countState(n1 + 20); // late out of the gap that wasn't counted: no loss to take back
+    expect(lostNow()).toBe(l1 + 9);
+    countState(n1 + 55); // late out of the counted one
+    expect(lostNow()).toBe(l1 + 8);
+    (b.net as any).peers.get('a').lastStateN = null; // back in step with the real stream
+    a.net.sendRate = rate;
+    await h.run(5);
+    // a stream gone for longer than coastMaxMs: the replica is held where extrapolation stopped, and
+    // snapped forward when the stream resumes
+    const resumed = b.net.netStats.peers[0];
+    expect(resumed.snaps).toBeGreaterThan(stats.snaps);
+
+    // the owner's body jumps 30 m: the next snapshot moves the replica's target (a lunge), beyond snapDistance
+    h.hub.conditions.lossRate = 0;
+    const p = box.objectBody!.position;
+    box.objectBody!.position = { x: p.x, y: p.y + 30, z: p.z };
+    await h.run(Math.ceil(500 / TICK_MS));
+    stats = b.net.netStats.peers[0];
+    expect([stats.lunges - resumed.lunges, stats.snaps - resumed.snaps]).toEqual([1, 1]);
+    expect(dist(findByName(h, 'b', box.name).position, box.position)).toBeLessThan(1);
   });
 
   it('a hidden peer hands its entities over and takes its possession back after resyncing', async () => {

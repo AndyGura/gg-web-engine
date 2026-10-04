@@ -4,12 +4,14 @@ import {
   CorrectionTuning,
   DEFAULT_CORRECTION_TUNING,
   EntityJson,
+  extrapolateNetPosition,
   GgWorld,
   GroupEntity,
   IEntity,
   INetworkSyncable,
   isNetworkInputDriven,
   isNetworkSyncable,
+  isNetStateCoasting,
   LevelJson,
   LevelLoader,
   TickOrder,
@@ -17,7 +19,7 @@ import {
 } from '@gg-web-engine/core';
 import { BehaviorSubject, filter, Observable, ReplaySubject, Subject, Subscription } from 'rxjs';
 import { ITransport } from './transport';
-import { channelOf, SpawnItem, StateItem, WireMessage } from './wire';
+import { channelOf, SpawnItem, StateItem, WireChannel, WireMessage } from './wire';
 import { NetScheduler, realScheduler } from './scheduler';
 import { ClockSync } from './clock-sync';
 import {
@@ -28,19 +30,94 @@ import {
   positionOf,
 } from './ownership';
 import { LinkConditioner } from './link-conditioner';
+import { NetDebugPanel } from './net-debug-panel';
 
 /** What the network layer reports about one connected peer. */
 export interface PeerInfo {
   peerId: string;
   /** last position the peer reported (`null` = spectating), `undefined` until its first heartbeat */
   position: unknown | null | undefined;
-  /** smoothed round-trip time, ms */
+  /** lowest round-trip time among the latest clock-sync samples, ms */
   rttMs: number;
-  /** smoothed clock offset (peer clock minus local clock), ms */
+  /** clock offset remote timestamps are converted with (peer clock minus local clock), ms */
   offsetMs: number;
   /** whether the peer announced it is away (hidden tab) */
   away: boolean;
 }
+
+/** Cumulative traffic counters. `bytes` (serialized characters) only grow while {@link NetworkController.measureTraffic} is on. */
+export interface NetTrafficCounters {
+  messages: number;
+  stateItems: number;
+  bytes: number;
+}
+
+/** Live numbers about one connected peer, see {@link NetworkController.netStats}. */
+export interface NetPeerStats extends PeerInfo {
+  /** the clock offset estimate `offsetMs` is slewing toward, ms */
+  targetOffsetMs: number;
+  clockSamples: number;
+  /** whether the peer's timestamps are converted yet (they count as "now" until then) */
+  clockReady: boolean;
+  /** time since anything was heard from the peer, ms */
+  silentMs: number;
+  /** networked entities the peer owns */
+  owned: number;
+  received: NetTrafficCounters;
+  /**
+   * cumulative age of the peer's state snapshots when they arrived (and how many), counted once its
+   * clock is ready: the one-way latency as the synced clocks see it
+   */
+  stateAgeSumMs: number;
+  stateAgeCount: number;
+  /** state messages of the peer that arrived, and that never did (gaps in its message counter) */
+  stateMessages: number;
+  stateMessagesLost: number;
+  /** times a replica of one of the peer's entities was teleported because it was beyond `snapDistance` */
+  snaps: number;
+  /**
+   * how far, in total, a new snapshot of the peer moved the point its replica was being steered to
+   * (the old snapshot and the new one, both extrapolated to the moment of arrival), over how many
+   * snapshots: near zero for steady motion on a good link, whatever the latency
+   */
+  targetJumpSum: number;
+  targetJumpCount: number;
+  /** how many of those jumps were lunges: above a quarter of `snapDistance` */
+  lunges: number;
+}
+
+/** A reading of the controller's live numbers; counters are cumulative, so rates are the difference of two readings. */
+export interface NetStats {
+  sessionState: NetworkSessionState;
+  localPeerId: string;
+  sendRate: number | 'tick';
+  keepaliveRate: number;
+  /** networked entities, and how many of them the local peer owns / possesses / corrects as replicas */
+  entities: number;
+  owned: number;
+  possessed: number;
+  replicas: number;
+  /** messages handed to the transport, counted once per target peer */
+  sent: NetTrafficCounters;
+  received: NetTrafficCounters;
+  /** unreliable messages the transport dropped over a backed-up send buffer, `null` if it doesn't count them */
+  droppedUnreliable: number | null;
+  /** the `net_lag` conditions, `null` when the link isn't conditioned */
+  simulatedLag: string | null;
+  peers: NetPeerStats[];
+}
+
+const newTrafficCounters = (): NetTrafficCounters => ({ messages: 0, stateItems: 0, bytes: 0 });
+
+const countTraffic = (counters: NetTrafficCounters, msg: WireMessage, times: number, measureBytes: boolean): void => {
+  counters.messages += times;
+  if (msg.t === 'state') {
+    counters.stateItems += msg.items.length * times;
+  }
+  if (measureBytes) {
+    counters.bytes += JSON.stringify(msg).length * times;
+  }
+};
 
 export type NetworkSessionState = 'idle' | 'connecting' | 'joined' | 'away' | 'left';
 
@@ -81,8 +158,15 @@ export interface NetworkControllerOptions<D> {
    * owner counts as heard from just now.
    */
   heartbeatTimeoutMs?: number;
-  /** Default 2000. */
+  /**
+   * how often every peer is pinged for clock sync once its link is settled. Default 2000. A link that
+   * just opened gets a burst first: `clockSyncBurstCount` pings `clockSyncBurstIntervalMs` apart.
+   */
   clockSyncIntervalMs?: number;
+  /** Default 5. */
+  clockSyncBurstCount?: number;
+  /** Default 150. */
+  clockSyncBurstIntervalMs?: number;
   /** how long `connect()` waits for join dumps. Default 5000. */
   joinTimeoutMs?: number;
   /** state for an id with no local entity yet is held this long, then dropped. Default 2000. */
@@ -128,7 +212,15 @@ interface NetRecord {
   epoch: number;
   possessor: string | null;
   lastSeq: number;
-  latest: { s: unknown; i: unknown; localTs: number; snap: boolean; inputPending: boolean } | null;
+  /** `localTs`: when it was captured, on the local clock; `receivedAt`: when it arrived here */
+  latest: {
+    s: unknown;
+    i: unknown;
+    localTs: number;
+    receivedAt: number;
+    snap: boolean;
+    inputPending: boolean;
+  } | null;
   lastStateAt: number;
   lastSentJson: string | null;
   lastSentAt: number;
@@ -148,7 +240,26 @@ interface PeerRecord {
   position: unknown | null | undefined;
   lastHeard: number;
   clock: ClockSync;
+  /** clock-sync pings sent to this peer since its link opened, and when the last one went out */
+  pingsSent: number;
+  lastPingAt: number;
   away: boolean;
+  received: NetTrafficCounters;
+  stateAgeSumMs: number;
+  stateAgeCount: number;
+  /** counter (`n`) of the latest state message received, null before the first */
+  lastStateN: number | null;
+  /** counters of the latest state messages received (within `MAX_LOSS_GAP` of the latest) */
+  seenStateN: Set<number>;
+  /** counters skipped by a gap that was counted as loss, until one shows up late after all */
+  lostStateN: Set<number>;
+  lastStateMessageAt: number;
+  stateMessages: number;
+  stateMessagesLost: number;
+  snaps: number;
+  targetJumpSum: number;
+  targetJumpCount: number;
+  lunges: number;
 }
 
 interface PendingJoin {
@@ -166,6 +277,10 @@ function velocityOfState(s: unknown): any | null {
 const SESSION_HOOK_REJECTION =
   'not available in a multiplayer session (a local-only edit of shared state desyncs peers)';
 const CHAIN_BLOCK_MS = 2000;
+// a longer gap in a peer's state message counter is a paused stream, not that many lost messages
+const MAX_LOSS_GAP = 100;
+// no state message from a peer for this long means its stream was off, so the gap after it isn't loss
+const STREAM_PAUSE_MS = 1000;
 
 /**
  * The world entity that makes a `GgWorld` multiplayer: it discovers every `INetworkSyncable` entity,
@@ -192,6 +307,11 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
   /** correction tuning in effect (entity `networkTuning` overrides on top). Mutable, e.g. via `net_tuning`. */
   public readonly tuning: CorrectionTuning;
   public readonly conditioner: LinkConditioner;
+  /**
+   * Whether {@link netStats} also counts bytes: every message is serialized once more for it, so it is
+   * off unless something reads them. They are counted while the `net_panel` overlay is shown either way.
+   */
+  public measureTraffic = false;
 
   /**
    * Where the local player "is", for distance arbitration and zoning: return `null` while spectating
@@ -259,6 +379,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
   private desiredPossessions = new Set<IEntity>();
   private _roomSharedLevels: string[] = [];
   private seq = 0;
+  private stateMessagesSent = 0;
   private joinedAt = 0;
   private tickCount = 0;
   private lastDelta = 16;
@@ -284,6 +405,9 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
   /** the controller whose peer id the process-wide default-name middleware currently prefixes */
   private static prefixingController: NetworkController | null = null;
   private readonly registeredCommands: string[] = [];
+  private readonly sentCounters = newTrafficCounters();
+  private readonly receivedCounters = newTrafficCounters();
+  private readonly debugPanel = new NetDebugPanel(() => this.netStats);
 
   private readonly _sessionState$ = new BehaviorSubject<NetworkSessionState>('idle');
   private readonly _peers$ = new BehaviorSubject<ReadonlyArray<PeerInfo>>([]);
@@ -321,6 +445,8 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       heartbeatIntervalMs: options.heartbeatIntervalMs ?? 1000,
       heartbeatTimeoutMs: options.heartbeatTimeoutMs ?? 4000,
       clockSyncIntervalMs: options.clockSyncIntervalMs ?? 2000,
+      clockSyncBurstCount: options.clockSyncBurstCount ?? 5,
+      clockSyncBurstIntervalMs: options.clockSyncBurstIntervalMs ?? 150,
       joinTimeoutMs: options.joinTimeoutMs ?? 5000,
       unknownStateHoldMs: options.unknownStateHoldMs ?? 2000,
       stateRequestTimeoutMs: options.stateRequestTimeoutMs ?? 1000,
@@ -356,6 +482,58 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
 
   get peerInfos(): ReadonlyArray<PeerInfo> {
     return this._peers$.getValue();
+  }
+
+  /** Live network numbers (what the `net_panel` overlay shows), for an app's own HUD or logging. */
+  get netStats(): NetStats {
+    const now = this.now;
+    const records = [...this.records.values()];
+    const owned = records.filter(r => r.owner === this.localPeerId).length;
+    const dropped = (this.transport as { droppedUnreliable?: unknown }).droppedUnreliable;
+    return {
+      sessionState: this.sessionState,
+      localPeerId: this.localPeerId,
+      sendRate: this.sendRate,
+      keepaliveRate: this.keepaliveRate,
+      entities: records.length,
+      owned,
+      possessed: records.filter(r => r.possessor === this.localPeerId).length,
+      replicas: records.length - owned,
+      sent: { ...this.sentCounters },
+      received: { ...this.receivedCounters },
+      droppedUnreliable: typeof dropped === 'number' ? dropped : null,
+      simulatedLag: this.conditioner.active ? this.conditioner.describe() : null,
+      peers: [...this.peers.values()].map(p => ({
+        peerId: p.id,
+        position: p.position,
+        rttMs: p.clock.rtt,
+        offsetMs: p.clock.offset,
+        away: p.away,
+        targetOffsetMs: p.clock.targetOffset,
+        clockSamples: p.clock.samples,
+        clockReady: p.clock.ready,
+        silentMs: Math.max(0, now - p.lastHeard),
+        owned: records.filter(r => r.owner === p.id).length,
+        received: { ...p.received },
+        stateAgeSumMs: p.stateAgeSumMs,
+        stateAgeCount: p.stateAgeCount,
+        stateMessages: p.stateMessages,
+        stateMessagesLost: p.stateMessagesLost,
+        snaps: p.snaps,
+        targetJumpSum: p.targetJumpSum,
+        targetJumpCount: p.targetJumpCount,
+        lunges: p.lunges,
+      })),
+    };
+  }
+
+  /** Whether the live network stats overlay (the `net_panel` console command) is shown. Browser only. */
+  get showNetPanel(): boolean {
+    return this.debugPanel.shown;
+  }
+
+  set showNetPanel(value: boolean) {
+    this.debugPanel.shown = value;
   }
 
   get possessionChanged$(): Observable<{ entity: IEntity; from: string | null; to: string | null }> {
@@ -706,6 +884,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     if (world) {
       this.deregisterConsoleCommands(world);
     }
+    this.showNetPanel = false;
     this.uninstallNamePrefix();
     super.onRemoved();
   }
@@ -802,12 +981,20 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       }
       latest.inputPending = false;
       try {
-        rec.entity.applyNetworkState(latest.s, {
+        const outcome = rec.entity.applyNetworkState(latest.s, {
           ageMs: Math.max(0, now - latest.localTs),
+          sinceReceivedMs: now - latest.receivedAt,
           dt: delta,
           snap: latest.snap,
           tuning: rec.entity.networkTuning ? { ...this.tuning, ...rec.entity.networkTuning } : this.tuning,
         });
+        if (outcome === 'snap' && !latest.snap) {
+          // nobody asked for this one: the replica was too far from where its owner says it is
+          const owner = this.peers.get(rec.owner);
+          if (owner) {
+            owner.snaps++;
+          }
+        }
       } catch (e) {
         warnOnce(`NetworkController: applyNetworkState of "${rec.id}" threw: ${e}`);
       }
@@ -891,7 +1078,11 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       return;
     }
     // one send for every stream target, so the message is serialized once
-    this.transport.send(this.transport.streamTargets?.() ?? 'all', 'unreliable', { t: 'state', items });
+    this.transmit(this.transport.streamTargets?.() ?? 'all', 'unreliable', {
+      t: 'state',
+      items,
+      n: ++this.stateMessagesSent,
+    });
   }
 
   // ---------------------------------------------------------------------------------------------
@@ -1436,7 +1627,18 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     this.unsubscribeTransport();
     this.transportSubscriptions.push(
       this.transport.messages$.subscribe(({ from, msg }) =>
-        this.conditioner.pass(channelOf(msg), () => this.onMessage(from, msg)),
+        this.conditioner.pass(
+          channelOf(msg),
+          () => {
+            this.onMessage(from, msg);
+            const peer = this.peers.get(from);
+            if (peer) {
+              countTraffic(this.receivedCounters, msg, 1, this.measureTraffic || this.debugPanel.shown);
+              countTraffic(peer.received, msg, 1, this.measureTraffic || this.debugPanel.shown);
+            }
+          },
+          from,
+        ),
       ),
       this.transport.peers$.subscribe(ids => this.onPeersChanged(ids)),
       this.transport.peerLeft$.subscribe(id => this.onPeerGone(id)),
@@ -1469,17 +1671,27 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     this.publishPeers();
   }
 
+  /** every outgoing message goes through here, so `netStats` counts it */
+  private transmit(to: string | 'all' | ReadonlyArray<string>, channel: WireChannel, msg: WireMessage): void {
+    const targets = to === 'all' ? this.transport.peers.length : typeof to === 'string' ? 1 : to.length;
+    countTraffic(this.sentCounters, msg, targets, this.measureTraffic || this.debugPanel.shown);
+    this.transport.send(to, channel, msg);
+  }
+
   private broadcast(msg: WireMessage): void {
     if (this.sessionState === 'idle' || this.sessionState === 'left') {
       return;
     }
-    this.transport.send('all', channelOf(msg), msg);
+    this.transmit('all', channelOf(msg), msg);
   }
 
   private startTimers(): void {
     this.timers.push(
       this.scheduler.setInterval(() => this.onHeartbeatTimer(), this.opts.heartbeatIntervalMs),
-      this.scheduler.setInterval(() => this.onClockSyncTimer(), this.opts.clockSyncIntervalMs),
+      this.scheduler.setInterval(
+        () => this.onClockSyncTimer(),
+        Math.min(this.opts.clockSyncIntervalMs, this.opts.clockSyncBurstIntervalMs),
+      ),
     );
     this.lastAliveAt = this.now;
     this.onClockSyncTimer();
@@ -1545,10 +1757,58 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     this.publishPeers();
   }
 
+  /**
+   * ping every peer that is due: a link that just opened is pinged every timer run until the burst is
+   * out (and on, a few times over, while lost pings leave its clock without enough samples), a
+   * settled one every `clockSyncIntervalMs`
+   */
   private onClockSyncTimer(): void {
+    const burst = this.opts.clockSyncBurstCount;
     for (const id of this.transport.peers) {
-      this.transport.send(id, 'reliable', { t: 'ping', t0: this.now });
+      const peer = this.peers.get(id);
+      if (!peer) {
+        continue;
+      }
+      const inBurst = peer.pingsSent < burst || (!peer.clock.ready && peer.pingsSent < burst * 4);
+      if (inBurst || this.now - peer.lastPingAt >= this.opts.clockSyncIntervalMs) {
+        this.sendPing(peer);
+      }
     }
+  }
+
+  /**
+   * pings and pongs travel unreliable: a retransmitted (or queued) one would arrive late and measure
+   * the retransmission, not the clocks - a lost one is just a missing sample
+   */
+  private sendPing(peer: PeerRecord): void {
+    peer.pingsSent++;
+    peer.lastPingAt = this.now;
+    this.transmit(peer.id, 'unreliable', { t: 'ping', t0: this.now });
+  }
+
+  private newPeerRecord(id: string): PeerRecord {
+    return {
+      id,
+      position: undefined,
+      lastHeard: this.now,
+      clock: new ClockSync(),
+      pingsSent: 0,
+      lastPingAt: 0,
+      away: false,
+      received: newTrafficCounters(),
+      stateAgeSumMs: 0,
+      stateAgeCount: 0,
+      lastStateN: null,
+      seenStateN: new Set<number>(),
+      lostStateN: new Set<number>(),
+      lastStateMessageAt: 0,
+      stateMessages: 0,
+      stateMessagesLost: 0,
+      snaps: 0,
+      targetJumpSum: 0,
+      targetJumpCount: 0,
+      lunges: 0,
+    };
   }
 
   private onPeersChanged(ids: ReadonlyArray<string>): void {
@@ -1560,10 +1820,12 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     }
     for (const id of ids) {
       if (!this.peers.has(id)) {
-        this.peers.set(id, { id, position: undefined, lastHeard: this.now, clock: new ClockSync(), away: false });
+        // a fresh record (also after a reconnect): its clock starts over, with a new ping burst
+        const peer = this.newPeerRecord(id);
+        this.peers.set(id, peer);
         if (this.sessionState !== 'idle' && this.sessionState !== 'left') {
-          this.transport.send(id, 'reliable', this.heartbeatMessage());
-          this.transport.send(id, 'reliable', { t: 'ping', t0: this.now });
+          this.transmit(id, 'reliable', this.heartbeatMessage());
+          this.sendPing(peer);
         }
         if (this.joined) {
           this.sendOwnedSpawns(id);
@@ -1585,7 +1847,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       }
       const msg = this.spawnMessage(rec);
       if (msg) {
-        this.transport.send(peerId, 'reliable', msg);
+        this.transmit(peerId, 'reliable', msg);
       }
     }
   }
@@ -1604,7 +1866,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
   private touchPeer(from: string): PeerRecord {
     let peer = this.peers.get(from);
     if (!peer) {
-      peer = { id: from, position: undefined, lastHeard: this.now, clock: new ClockSync(), away: false };
+      peer = this.newPeerRecord(from);
       this.peers.set(from, peer);
       this.publishPeers();
     }
@@ -1614,13 +1876,17 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
   }
 
   /**
-   * a peer's timestamp in local time - or now, until the first clock-sync sample: the peers' clocks
-   * have unrelated origins (`performance.now()` counts from each tab's start), so an unsynced
-   * timestamp can be minutes off
+   * a peer's timestamp in local time - or now, until its clock sync is ready: the peers' clocks have
+   * unrelated origins (`performance.now()` counts from each tab's start), so an unsynced timestamp
+   * can be minutes off
    */
   private toLocalTime(from: string, ts: number): number {
     const clock = this.peers.get(from)?.clock;
-    return clock && clock.samples > 0 ? clock.toLocal(ts) : this.now;
+    if (!clock || !clock.ready) {
+      return this.now;
+    }
+    clock.advance(this.now);
+    return clock.toLocal(ts);
   }
 
   private onMessage(from: string, msg: WireMessage): void {
@@ -1635,6 +1901,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     }
     switch (msg.t) {
       case 'state':
+        this.countStateMessage(peer, msg.n);
         for (const item of msg.items) {
           const rec = this.records.get(item.id);
           if (rec) {
@@ -1684,7 +1951,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
         break;
       }
       case 'joinRequest':
-        this.transport.send(from, 'reliable', this.buildJoinDump());
+        this.transmit(from, 'reliable', this.buildJoinDump());
         break;
       case 'joinDump':
         if (this.pendingJoin && this.pendingJoin.waitingFor.has(from)) {
@@ -1705,7 +1972,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
           }
         }
         if (entities.length > 0) {
-          this.transport.send(from, 'reliable', { t: 'stateReply', entities });
+          this.transmit(from, 'reliable', { t: 'stateReply', entities });
         }
         break;
       }
@@ -1746,7 +2013,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
         this._appMessages$.next({ from, data: msg.data });
         break;
       case 'ping':
-        this.transport.send(from, 'reliable', { t: 'pong', t0: msg.t0, t1: this.now, t2: this.now });
+        this.transmit(from, 'unreliable', { t: 'pong', t0: msg.t0, t1: this.now, t2: this.now });
         break;
       case 'pong':
         peer.clock.addSample(msg.t0, msg.t1, msg.t2, this.now);
@@ -1765,6 +2032,46 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
         // transports reassemble chunks before handing messages over
         break;
     }
+  }
+
+  /**
+   * loss accounting from the sender's message counter: a gap is that many messages lost, until one of
+   * them shows up late after all (the channel is unordered). A gap after a pause of the stream (out of
+   * the sender's stream ring, a hidden tab) is not loss, and neither is a very long one - a late
+   * message out of such a gap changes nothing. A counter
+   * seen before is another part of a message the transport split.
+   */
+  private countStateMessage(peer: PeerRecord, n: number | undefined): void {
+    if (n === undefined || peer.seenStateN.has(n)) {
+      return;
+    }
+    const now = this.now;
+    const last = peer.lastStateN;
+    if (last === null || n > last) {
+      const gap = last === null ? 0 : n - last - 1;
+      if (last !== null && gap <= MAX_LOSS_GAP && now - peer.lastStateMessageAt <= STREAM_PAUSE_MS) {
+        peer.stateMessagesLost += gap;
+        for (let lost = last + 1; lost < n; lost++) {
+          peer.lostStateN.add(lost);
+        }
+      }
+      peer.lastStateN = n;
+      for (const set of [peer.seenStateN, peer.lostStateN]) {
+        for (const old of set) {
+          if (old < n - MAX_LOSS_GAP) {
+            set.delete(old);
+          }
+        }
+      }
+    } else if (last - n > MAX_LOSS_GAP) {
+      return;
+    } else if (peer.lostStateN.delete(n)) {
+      // only a message counted as lost stops being one: a gap after a pause never was
+      peer.stateMessagesLost--;
+    }
+    peer.seenStateN.add(n);
+    peer.lastStateMessageAt = now;
+    peer.stateMessages++;
   }
 
   private acceptStateItem(rec: NetRecord, item: StateItem, from: string): void {
@@ -1789,10 +2096,31 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     rec.snapshotVelocity = velocityOfState(item.s);
     rec.requestedAt = null;
     const snap = rec.latest === null ? false : rec.latest.snap;
+    const localTs = this.toLocalTime(from, item.ts);
+    const peer = this.peers.get(from);
+    if (peer?.clock.ready) {
+      peer.stateAgeSumMs += this.now - localTs;
+      peer.stateAgeCount++;
+      const tuning = rec.entity.networkTuning ? { ...this.tuning, ...rec.entity.networkTuning } : this.tuning;
+      type Position = { x: number; y: number; z?: number };
+      const before =
+        rec.latest && extrapolateNetPosition<Position>(rec.latest.s, this.now - rec.latest.localTs, tuning);
+      const after = extrapolateNetPosition<Position>(item.s, this.now - localTs, tuning);
+      // a coasting replica wasn't being steered to the old target, so it can't lunge from it
+      if (before && after && !isNetStateCoasting(this.now - rec.latest!.receivedAt, tuning)) {
+        const jump = Math.hypot(after.x - before.x, after.y - before.y, (after.z ?? 0) - (before.z ?? 0));
+        peer.targetJumpSum += jump;
+        peer.targetJumpCount++;
+        if (jump > tuning.snapDistance / 4) {
+          peer.lunges++;
+        }
+      }
+    }
     rec.latest = {
       s: item.s,
       i: item.i,
-      localTs: this.toLocalTime(from, item.ts),
+      localTs,
+      receivedAt: this.now,
       snap,
       inputPending: item.i !== undefined || !!rec.latest?.inputPending,
     };
@@ -1816,6 +2144,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       s: item.full,
       i: undefined,
       localTs: this.toLocalTime(from, item.ts),
+      receivedAt: this.now,
       snap: true,
       inputPending: false,
     };
@@ -1971,7 +2300,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       this.pendingJoin = join;
       timeout = this.scheduler.setTimeout(() => resolve(), this.opts.joinTimeoutMs);
       for (const id of peerIds) {
-        this.transport.send(id, 'reliable', { t: 'joinRequest' });
+        this.transmit(id, 'reliable', { t: 'joinRequest' });
       }
     });
     if (this.pendingJoin === join) {
@@ -2100,13 +2429,13 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       .map(r => r.entity);
     const owned = [...this.records.values()].filter(r => r.owner === this.localPeerId);
     this._sessionState$.next('away');
-    this.transport.send('all', 'reliable', {
+    this.transmit('all', 'reliable', {
       t: 'takeover',
       peerId: this.localPeerId,
       entityIds: owned.map(r => r.id),
       epochs: owned.map(r => r.epoch),
     });
-    this.transport.send('all', 'reliable', this.heartbeatMessage());
+    this.transmit('all', 'reliable', this.heartbeatMessage());
   }
 
   /** Come back from away: resync like a late joiner, then re-possess (if `repossessOnReturn`). */
@@ -2123,7 +2452,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       return;
     }
     this._sessionState$.next('joined');
-    this.transport.send('all', 'reliable', this.heartbeatMessage());
+    this.transmit('all', 'reliable', this.heartbeatMessage());
     if (this.opts.repossessOnReturn) {
       for (const entity of this.possessedBeforeAway) {
         if (entity.world) {
@@ -2269,11 +2598,20 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
           );
         }
         if (this.conditioner.active) {
-          lines.push(`simulated lag: ${this.conditioner.latencyMs} ms, ${this.conditioner.lossRate * 100}% loss`);
+          lines.push(`simulated lag: ${this.conditioner.describe()}`);
         }
         return lines.join('\n');
       },
       'no args; Print the multiplayer session state, peers (RTT, clock offset, position) and send rate',
+    );
+    register(
+      'net_panel',
+      async (...args: string[]) => {
+        this.showNetPanel = args[0] === undefined ? !this.showNetPanel : args[0] === '1';
+        return this.showNetPanel ? '1' : '0';
+      },
+      'args: [ 0|1? ]; Turn on/off the live network stats panel (traffic, per-peer RTT, clock offset, snapshot ' +
+        'age), skip argument to toggle value',
     );
     register(
       'net_owners',
@@ -2307,17 +2645,28 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     register(
       'net_lag',
       async (...args: string[]) => {
-        const [ms, loss] = args;
-        if (ms !== undefined) {
-          if (isNaN(+ms) || (loss !== undefined && isNaN(+loss))) {
-            throw new Error('usage: net_lag MS LOSS_PERCENT');
+        if (args.length > 0) {
+          if (args.length > 7 || args.some(a => isNaN(+a))) {
+            throw new Error(
+              'usage: net_lag MS [LOSS_PERCENT [JITTER_MS [STALL_MS STALL_EVERY_MS [RELIABLE_DELAY_MS RELIABLE_DELAY_PERCENT]]]]',
+            );
           }
-          this.conditioner.latencyMs = Math.max(0, +ms);
-          this.conditioner.lossRate = loss === undefined ? 0 : Math.max(0, Math.min(1, +loss / 100));
+          const [ms, loss, jitter, stall, stallEvery, reliableDelay, reliableRate] = args.map(a => Math.max(0, +a));
+          const c = this.conditioner;
+          c.reset();
+          c.latencyMs = ms;
+          c.lossRate = Math.min(1, (loss ?? 0) / 100);
+          c.jitterMs = jitter ?? 0;
+          c.stallMs = stall ?? 0;
+          c.stallIntervalMs = stallEvery ?? 0;
+          c.reliableDelayMs = reliableDelay ?? 0;
+          c.reliableDelayRate = Math.min(1, (reliableRate ?? 0) / 100);
         }
-        return `${this.conditioner.latencyMs} ms, ${this.conditioner.lossRate * 100}% loss`;
+        return this.conditioner.describe();
       },
-      'args: [ float?, float? ]; Simulate incoming latency (ms) and unreliable-message loss (percent) on this peer',
+      'args: [ float?, float?, float?, float?, float?, float?, float? ]; Simulate a bad incoming link on this peer: ' +
+        'latency (ms), unreliable-message loss (percent), jitter (+- ms), delivery stalls (ms, every ms), ' +
+        'delayed reliable messages (extra ms, percent of them). Omitted values are 0',
     );
   }
 

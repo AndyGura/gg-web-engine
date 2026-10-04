@@ -28,6 +28,70 @@ where one exists.
 
 ## [Unreleased]
 
+### Added
+- `@gg-web-engine/multiplayer`: `NetworkControllerOptions.clockSyncBurstCount` (default 5) and
+  `clockSyncBurstIntervalMs` (default 150): a link that just opened (or reopened) gets a burst of
+  clock-sync pings before falling back to `clockSyncIntervalMs`. `ClockSync` gained `ready`,
+  `targetOffset` and `advance(localTime)`.
+
+- `@gg-web-engine/multiplayer`: `WebRtcMeshTransportOptions.unreliableBufferLimit` (default 16 KB) and
+  the `WebRtcMeshTransport.droppedUnreliable` counter: an unreliable message (state, clock-sync ping)
+  is dropped instead of queued while the channel's `bufferedAmount` is above the limit - a queued
+  snapshot arrives late and useless, and the queue turned one lost packet into a stall of hundreds
+  of ms.
+
+- `@gg-web-engine/multiplayer`: `LinkConditioner` (the `net_lag` console command) also simulates
+  jitter (`jitterMs`), delivery stalls (`stallMs` every `stallIntervalMs`, delivered as one burst) and
+  retransmitted reliable messages (`reliableDelayRate`, `reliableDelayMs`, with head-of-line blocking
+  per sender), plus `reset()` and `describe()`:
+  `net_lag MS LOSS% JITTER_MS STALL_MS STALL_EVERY_MS RELIABLE_DELAY_MS RELIABLE_DELAY%`.
+
+- `@gg-web-engine/multiplayer`: `net_panel` console command (`NetworkController.showNetPanel`): a
+  live overlay with the session state, entity counts, traffic rates and one row per peer (round trip,
+  clock offset and what it still has to slew, snapshot age, incoming rate, owned entities, silence).
+  The same numbers are available to an app as `NetworkController.netStats` (cumulative counters;
+  bytes are counted only while `measureTraffic` is on, which the panel turns on). Per peer it also
+  reports state message loss (state messages carry a counter, `n`), how far new snapshots move the
+  replicas' targets, and how often that was a lunge (above a quarter of `snapDistance`) or ended in
+  an unrequested snap.
+- `@gg-web-engine/core`: `INetworkSyncable.applyNetworkState` may return the `CorrectionOutcome`
+  (`'none' | 'blend' | 'snap' | 'sleep'`) of the correction; the built-in entities (`Entity2d`,
+  `Entity3d`, `GgCarEntity`, both character entities) do. A network layer uses it for diagnostics
+  only, and a `void` implementation stays valid.
+
+- `@gg-web-engine/core`: `RigidBodyCorrection.targetPosition`/`MoverCorrection.targetPosition` (the
+  point a replica is steered to for a snapshot of a given age) and `extrapolateNetPosition(state,
+  ageMs, tuning)`, the same for a state of unknown class; `isNetStateCoasting(sinceReceivedMs,
+  tuning)`. `NetworkApplyContext.sinceReceivedMs` (optional): how long ago the state arrived on this
+  peer, which unlike `ageMs` doesn't include the link's latency.
+
+### Changed
+- `@gg-web-engine/core`: replicas coast through a stalled state stream. A snapshot older than
+  `extrapolateMaxMs` used to pin the replica to the point extrapolation stopped at, so a moving
+  replica was snapped back to it every `snapDistance` until the stream resumed. Now, once no newer
+  snapshot has arrived for `extrapolateMaxMs` (`NetworkApplyContext.sinceReceivedMs`) and until that
+  silence lasts `CorrectionTuning.coastMaxMs` (new, default 1000, 0 = off), a dynamic body with a
+  moving target and a character are left to their own simulation (`CorrectionOutcome` `'coast'`);
+  past it they are corrected to that point as before. A snapshot that is old only because the link
+  is slow is corrected to as before, and so is everything under a network layer that doesn't pass
+  `sinceReceivedMs`.
+- `@gg-web-engine/multiplayer`: peer clock sync no longer averages its samples. `ClockSync` keeps a
+  window of the latest ones and estimates the offset from the fastest way out and the fastest way
+  back among them, so a sample delayed on one leg (a busy main thread, a queued packet) is ignored
+  instead of blended in; once ready, the offset used to convert remote timestamps slews toward a
+  changed estimate (5 ms/s) and steps only for an error above 250 ms. Remote timestamps are
+  converted only after 3 samples (they count as "now" until then). The `ClockSync` constructor takes
+  a `ClockSyncOptions` object instead of an EMA weight; `PeerInfo.rttMs` is the lowest recent round
+  trip instead of a smoothed one.
+- `@gg-web-engine/multiplayer`: clock-sync pings and pongs travel on the `unreliable` channel
+  (`channelOf` reports it), so a lost one is a missing sample instead of a retransmitted, late one.
+
+### Fixed
+- `@gg-web-engine/multiplayer`: replicas of a fast entity lunged or teleported every few seconds on
+  a real internet link, at constant speed on a straight path: one late clock-sync sample (a
+  retransmitted ping, a main thread busy loading when the link opened) shifted the peer's clock
+  offset by tens of ms, and with it the extrapolated target of everything that peer owns.
+
 ## [0.0.75] - 2026-10-03
 
 ### Added

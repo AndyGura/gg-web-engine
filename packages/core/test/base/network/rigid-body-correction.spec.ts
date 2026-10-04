@@ -2,7 +2,9 @@ import {
   BodyType,
   CorrectionTuning,
   DEFAULT_CORRECTION_TUNING,
+  extrapolateNetPosition,
   IRigidBodyComponent,
+  isNetStateCoasting,
   NetworkApplyContext,
   Pnt3,
   Point2,
@@ -155,6 +157,52 @@ describe('RigidBodyCorrection', () => {
         ctx({ ageMs: 10_000, snap: true }),
       );
       expect(body.position.x).toBeCloseTo(2.5); // 10 m/s * 250 ms
+    });
+
+    it('lets a dynamic replica of a moving target coast while the stream is stalled, up to coastMaxMs', () => {
+      const moving = state3d({ p: { x: 0, y: 0, z: 0 }, lv: { x: 10, y: 0, z: 0 } });
+      const stalled = (sinceReceivedMs: number, over: Partial<NetworkApplyContext> = {}) =>
+        ctx({ ageMs: sinceReceivedMs + 50, sinceReceivedMs, ...over });
+      const body = mockBody3d();
+      body.position = { x: 9, y: 0, z: 0 }; // far beyond the capped extrapolation (2.5) and snapDistance
+      body.writes.length = 0;
+      expect(RigidBodyCorrection.correct(body, moving, stalled(600))).toBe('coast');
+      expect(body.writes).toEqual([]);
+      // before the stream counts as stalled, and past the coasting window, it is corrected as usual
+      expect(RigidBodyCorrection.correct(mockBody3d(), moving, stalled(200))).toBe('snap');
+      expect(RigidBodyCorrection.correct(body, moving, stalled(1001))).toBe('snap');
+      expect(body.position.x).toBeCloseTo(2.5);
+      // a slow link is not a stalled stream: an old snapshot that has just arrived is corrected to
+      expect(RigidBodyCorrection.correct(mockBody3d(), moving, ctx({ ageMs: 600, sinceReceivedMs: 20 }))).toBe('snap');
+      expect(RigidBodyCorrection.correct(mockBody3d(), moving, ctx({ ageMs: 600 }))).toBe('snap');
+      // never for a demanded snap, a sleeping target, a kinematic body, or with coasting turned off
+      expect(RigidBodyCorrection.correct(mockBody3d(), moving, stalled(600, { snap: true }))).toBe('snap');
+      expect(RigidBodyCorrection.correct(mockBody3d(), { ...moving, s: true }, stalled(600))).not.toBe('coast');
+      expect(RigidBodyCorrection.correct(mockBody3d('kinematic_pos'), moving, stalled(600))).not.toBe('coast');
+      const off = stalled(600, { tuning: { ...DEFAULT_CORRECTION_TUNING, coastMaxMs: 0 } });
+      expect(RigidBodyCorrection.correct(mockBody3d(), moving, off)).toBe('snap');
+    });
+
+    it('targetPosition and extrapolateNetPosition give the point a replica is steered to', () => {
+      const moving = state3d({ p: { x: 1, y: 0, z: 0 }, lv: { x: 10, y: 0, z: 0 } });
+      expect(RigidBodyCorrection.targetPosition(moving, 100).x).toBeCloseTo(2);
+      expect(RigidBodyCorrection.targetPosition(moving, 5000).x).toBeCloseTo(3.5);
+      expect(RigidBodyCorrection.targetPosition({ ...moving, s: true }, 100).x).toBeCloseTo(1);
+      expect(extrapolateNetPosition<Point3>(moving, 100)!.x).toBeCloseTo(2);
+      // a mover-shaped state goes by the owner's actual velocity
+      const mover = {
+        p: { x: 0, y: 0 },
+        r: 0,
+        fv: { x: 0, y: 0 },
+        ahv: { x: 0, y: 0 },
+        crouch: false,
+        v: { x: 4, y: 0 },
+      };
+      expect(extrapolateNetPosition<Point2>(mover, 100)!.x).toBeCloseTo(0.4);
+      expect(extrapolateNetPosition({ score: 3 }, 100)).toBeNull();
+      expect(isNetStateCoasting(600)).toBe(true);
+      expect(isNetStateCoasting(100)).toBe(false);
+      expect(isNetStateCoasting(1500)).toBe(false);
     });
 
     it('blends through a velocity bias toward the target instead of teleporting', () => {

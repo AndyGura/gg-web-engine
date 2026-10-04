@@ -22,6 +22,15 @@ export interface CorrectionTuning {
   rotationGain: number;
   /** Upper bound of how far (ms) a snapshot is extrapolated forward along its velocity. Default 250. */
   extrapolateMaxMs: number;
+  /**
+   * When no newer snapshot has arrived for longer than `extrapolateMaxMs`, the owner's stream stalled
+   * and the latest one has nothing more to say about where its entity is now. Until that silence
+   * (`NetworkApplyContext.sinceReceivedMs`) lasts this long (ms), a moving replica is left to its own
+   * simulation instead of being pulled back to the point the extrapolation stopped at - the next
+   * snapshot will most likely find the replica about where it should be. Past it, the replica is
+   * corrected to that point again. 0 turns coasting off. Default 1000.
+   */
+  coastMaxMs: number;
 }
 
 export const DEFAULT_CORRECTION_TUNING: Readonly<CorrectionTuning> = Object.freeze({
@@ -32,6 +41,7 @@ export const DEFAULT_CORRECTION_TUNING: Readonly<CorrectionTuning> = Object.free
   velocityGain: 4,
   rotationGain: 8,
   extrapolateMaxMs: 250,
+  coastMaxMs: 1000,
 });
 
 /**
@@ -40,6 +50,12 @@ export const DEFAULT_CORRECTION_TUNING: Readonly<CorrectionTuning> = Object.free
 export interface NetworkApplyContext {
   /** ms elapsed on the owner's clock since `state` was captured (after clock-offset correction) */
   ageMs: number;
+  /**
+   * ms elapsed on this peer since `state` arrived. Unlike `ageMs` it doesn't include the link's
+   * latency, so it tells a stalled stream (it keeps growing) from a slow link (it stays below the
+   * send interval). A replica coasts only by this; without it, it never does.
+   */
+  sinceReceivedMs?: number;
   /** this tick's delta, ms */
   dt: number;
   /** true when the controller demands an exact state (late join, takeover, structural snap) */
@@ -48,6 +64,9 @@ export interface NetworkApplyContext {
    * entity's own {@link INetworkSyncable.networkTuning} override */
   tuning: CorrectionTuning;
 }
+
+/** What a correction ended up doing - handy for tests and debug overlays. */
+export type CorrectionOutcome = 'none' | 'blend' | 'snap' | 'sleep' | 'coast';
 
 /**
  * Per-entity networked-state contract, the network counterpart of `ISerializableEntity`: each
@@ -63,9 +82,11 @@ export interface INetworkSyncable<S = unknown> {
 
   /**
    * Replica side: reconcile local state toward `target`. The entity decides how (blend, velocity
-   * bias, `move()` displacement, snap) - typically by delegating to a correction helper.
+   * bias, `move()` displacement, snap) - typically by delegating to a correction helper. May return
+   * what the correction did (the helpers' own return value), which a network layer only uses for
+   * diagnostics, e.g. counting the replicas it had to snap.
    */
-  applyNetworkState(target: S, ctx: NetworkApplyContext): void;
+  applyNetworkState(target: S, ctx: NetworkApplyContext): CorrectionOutcome | void;
 
   /**
    * Optional: state for a peer that has no local copy yet (late join / takeover). Defaults to
