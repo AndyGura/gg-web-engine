@@ -94,9 +94,12 @@ for file_name in files:
     name_map = [["", "", "pz", ""],
                 ["ny", "nx", "py", "px"],
                 ["", "", "nz", ""]]
+    # Counter-clockwise turn applied to each face of the cross, to give the orientation the engine's
+    # `loadCubeTexture` expects: side faces upright (top edge towards +Z), top edge of `pz` towards
+    # +Y and of `nz` towards -Y. The sides are already upright in the cross.
     rotation = [[0, 0, 180, 0],
-                [0, 90, 180, -90],
-                [0, 0, 0, 0]]
+                [0, 0, 0, 0],
+                [0, 0, 180, 0]]
     width, height = imgOut.size
 
     cube_size = width / 4

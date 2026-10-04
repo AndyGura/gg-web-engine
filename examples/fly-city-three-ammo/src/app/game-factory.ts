@@ -20,7 +20,7 @@ import { FlyCityTypeDoc, FlyCityWorld } from './app.component';
 import { takeUntil } from 'rxjs/operators';
 import { Multiplayer } from './multiplayer';
 
-const ASSETS = 'https://gg-web-demos.guraklgames.com/assets/fly-city';
+const ASSETS = '/assets/fly-city';
 
 GgStatic.instance.showStats = true;
 GgStatic.instance.devConsoleEnabled = true;
