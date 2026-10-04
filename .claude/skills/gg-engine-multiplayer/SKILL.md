@@ -229,7 +229,11 @@ join handshakes, link latency) runs on the injected `NetScheduler`, never on `ti
 'unreliable', msg)`, `messages$`, `peerLeft$` (left for good), `connect()`, `disconnect()`, optional
 `streamTargets()` (interest management) and `updateLocalPosition()` (zoning). A single-channel
 transport ignores the channel hint. Serialize a message once per `send()`, whatever the number of
-targets: the controller sends each state flush to all of `streamTargets()` in one call. `ISignalingChannel`: rooms, presence (with zoning cells), SDP/ICE
+targets: the controller sends each state flush to all of `streamTargets()` in one call. An unreliable message must never
+wait in a send queue: delivered late it is useless (a stale snapshot, a clock-sync ping measuring the
+queue), and the queue turns one lost packet into a stall. `WebRtcMeshTransport` drops it while the
+channel's `bufferedAmount` is above `unreliableBufferLimit` - checked once per message, before its
+first frame, so the frames of one split state message aren't starved by each other. `ISignalingChannel`: rooms, presence (with zoning cells), SDP/ICE
 relay, optional `discoveryDelayMs`. A server variant pairs a websocket `ITransport` with
 `AlwaysServerOwnership`.
 

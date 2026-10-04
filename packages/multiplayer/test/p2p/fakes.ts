@@ -89,6 +89,7 @@ class FakeDataChannel {
   onmessage: ((e: { data: string }) => void) | null = null;
   twin: FakeDataChannel | null = null;
   sent: string[] = [];
+  bufferedAmount = 0;
 
   constructor(public readonly label: string) {}
 

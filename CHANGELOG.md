@@ -34,6 +34,12 @@ where one exists.
   clock-sync pings before falling back to `clockSyncIntervalMs`. `ClockSync` gained `ready`,
   `targetOffset` and `advance(localTime)`.
 
+- `@gg-web-engine/multiplayer`: `WebRtcMeshTransportOptions.unreliableBufferLimit` (default 16 KB) and
+  the `WebRtcMeshTransport.droppedUnreliable` counter: an unreliable message (state, clock-sync ping)
+  is dropped instead of queued while the channel's `bufferedAmount` is above the limit - a queued
+  snapshot arrives late and useless, and the queue turned one lost packet into a stall of hundreds
+  of ms.
+
 ### Changed
 - `@gg-web-engine/multiplayer`: peer clock sync no longer averages its samples. `ClockSync` keeps a
   window of the latest ones and estimates the offset from the fastest way out and the fastest way
