@@ -46,6 +46,12 @@ where one exists.
   per sender), plus `reset()` and `describe()`:
   `net_lag MS LOSS% JITTER_MS STALL_MS STALL_EVERY_MS RELIABLE_DELAY_MS RELIABLE_DELAY%`.
 
+- `@gg-web-engine/multiplayer`: `net_panel` console command (`NetworkController.showNetPanel`): a
+  live overlay with the session state, entity counts, traffic rates and one row per peer (round trip,
+  clock offset and what it still has to slew, snapshot age, incoming rate, owned entities, silence).
+  The same numbers are available to an app as `NetworkController.netStats` (cumulative counters;
+  bytes are counted only while `measureTraffic` is on, which the panel turns on).
+
 ### Changed
 - `@gg-web-engine/multiplayer`: peer clock sync no longer averages its samples. `ClockSync` keeps a
   window of the latest ones and estimates the offset from the fastest way out and the fastest way

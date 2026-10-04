@@ -41,6 +41,46 @@ describe('NetworkController features', () => {
     expect(await ggstatic.runConsoleCommand('remove', ['ground', '0'])).toContain('removed');
   });
 
+  it('net_panel shows live stats of the session and every peer, and goes away with the controller', async () => {
+    jest.useFakeTimers({ doNotFake: ['setTimeout', 'performance'] });
+    try {
+      const ggstatic = GgStatic.instance;
+      h = new Harness(adapter, { latencyMs: 20 });
+      const a = await h.addPeer('a');
+      const b = await h.addPeer('b');
+      (ggstatic as any)._selectedWorld$.next(b.world);
+      const box = adapter.addBox(a.world, adapter.at(0, 1));
+      box.objectBody!.linearVelocity = adapter.along(1);
+      await h.run(Math.ceil(1000 / TICK_MS));
+      expect(await ggstatic.runConsoleCommand('net_panel', [])).toBe('1');
+      const panel = document.getElementById('gg_net_panel')!;
+      expect(panel.textContent).toContain('joined as b, 1 peer(s)');
+      expect(panel.textContent).toContain('1 replicas');
+      const before = b.net.netStats;
+      await h.run(Math.ceil(1000 / TICK_MS));
+      jest.advanceTimersByTime(500);
+      const stats = b.net.netStats;
+      expect(stats.received.stateItems).toBeGreaterThan(before.received.stateItems);
+      expect(stats.received.bytes).toBeGreaterThan(before.received.bytes);
+      expect(stats.sent.messages).toBeGreaterThan(before.sent.messages);
+      const peer = stats.peers[0];
+      expect(peer).toMatchObject({ peerId: 'a', clockReady: true, owned: 1 });
+      expect(peer.rttMs).toBeCloseTo(40, 0);
+      // snapshots arrive one link latency old
+      expect(peer.stateAgeSumMs / peer.stateAgeCount).toBeCloseTo(20, 0);
+      const row = panel.textContent!.split('\n').find(l => l.startsWith('a '))!;
+      expect(row).toContain('40.0 ms');
+      expect(row).toMatch(/2\d\.\d ms/); // age
+      expect(await ggstatic.runConsoleCommand('net_panel', ['1'])).toBe('1');
+      expect(document.querySelectorAll('#gg_net_panel')).toHaveLength(1);
+      b.world.removeEntity(b.net);
+      expect(document.getElementById('gg_net_panel')).toBeNull();
+      expect(b.net.measureTraffic).toBe(false);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('tints replicas in the physics debug view, never owned bodies', async () => {
     h = new Harness(adapter);
     const a = await h.addPeer('a');

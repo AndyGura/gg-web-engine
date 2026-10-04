@@ -222,7 +222,11 @@ join handshakes, link latency) runs on the injected `NetScheduler`, never on `ti
   in order, with nothing lost. `LoopbackHub` conditions (latency, jitter, loss) cover tests;
   `LinkConditioner` (`controller.conditioner`, the `net_lag` console command) reproduces a real link
   on the receive path of a live peer: jitter, delivery stalls released as a burst, and reliable
-  messages delayed like a retransmission, holding back the sender's later ones.
+  messages delayed like a retransmission, holding back the sender's later ones. The `net_panel`
+  command shows what the link is doing while it happens (`NetDebugPanel`, fed by
+  `controller.netStats`): a per-peer offset that keeps slewing or a snapshot age that jumps is the
+  clock, a dropping incoming rate is the link. Every outgoing message must go through the
+  controller's `transmit()`, never `transport.send()` directly, or the stats miss it.
 - Live: open an example's `?room=` URL in two tabs (BroadcastChannel signaling needs no backend).
   Automation tabs are hidden: `requestAnimationFrame` doesn't tick and `setTimeout` is clamped to ≥1 s,
   so drive worlds with `worldClock.step(16)` in a loop that yields through a `MessageChannel` (not
