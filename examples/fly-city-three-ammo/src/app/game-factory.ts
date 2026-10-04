@@ -14,12 +14,13 @@ import {
   Renderer3dEntity,
   Trigger3dEntity,
 } from '@gg-web-engine/core';
-import { CubeReflectionMapping, CubeTexture, CubeTextureLoader, DirectionalLight, RGBAFormat } from 'three';
 import { filter, firstValueFrom } from 'rxjs';
 import { CAR_SPECS, LAMBO_SPECS, TRUCK_SPECS } from './car-specs';
 import { FlyCityTypeDoc, FlyCityWorld } from './app.component';
 import { takeUntil } from 'rxjs/operators';
 import { Multiplayer } from './multiplayer';
+
+const ASSETS = 'https://gg-web-demos.guraklgames.com/assets/fly-city';
 
 GgStatic.instance.showStats = true;
 GgStatic.instance.devConsoleEnabled = true;
@@ -57,25 +58,20 @@ export class GameFactory {
   }
 
   private addLights() {
-    const sun = new DirectionalLight(0xffffff, 3);
-    sun.position.set(200, 150, 120);
-    this.world.visualScene.nativeScene?.add(sun);
-    const sky = new DirectionalLight(0xaaaaff, 0.4);
-    sky.position.set(-200, -150, 20);
-    this.world.visualScene.nativeScene?.add(sky);
+    this.world.addLight({ type: 'DIRECTIONAL', intensity: 3 }, { x: 200, y: 150, z: 120 }, Pnt3.O);
+    this.world.addLight({ type: 'DIRECTIONAL', color: 0xaaaaff, intensity: 0.4 }, { x: -200, y: -150, z: 20 }, Pnt3.O);
   }
 
-  private setupSkybox() {
-    const envMap: CubeTexture = new CubeTextureLoader()
-      .setPath(`https://gg-web-demos.guraklgames.com/assets/fly-city/`)
-      .load([
-        'sky_nx.png', 'sky_px.png',
-        'sky_py.png', 'sky_ny.png',
-        'sky_pz.png', 'sky_nz.png',
-      ]);
-    envMap.format = RGBAFormat;
-    envMap.mapping = CubeReflectionMapping;
-    this.world.visualScene.nativeScene!.background = envMap;
+  private async setupSkybox() {
+    const sky = await this.world.visualScene.loader.loadCubeTexture({
+      px: `${ASSETS}/sky_px.png`,
+      nx: `${ASSETS}/sky_nx.png`,
+      py: `${ASSETS}/sky_py.png`,
+      ny: `${ASSETS}/sky_ny.png`,
+      pz: `${ASSETS}/sky_pz.png`,
+      nz: `${ASSETS}/sky_nz.png`,
+    });
+    this.world.visualScene.setEnvironment({ background: sky });
   }
 
   private setupMapGraph(renderCursor: (IEntity & IPositionable3d)): MapGraph3dEntity<FlyCityTypeDoc> {

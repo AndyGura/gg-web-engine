@@ -328,12 +328,24 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   Pass a string `nameScope` when names must be deterministic (networked spawns, lookups by name), or
   `null` to keep the raw Blender object names for a file loaded exactly once.
 - **Level JSON loading (2D & 3D)**: `world.loader` turns a JSON document of entities into world
-  content, with built-in `"Primitive"`/`"Trigger"`/`"Camera"`/`"Glb"`/`"GgCar"`/`"MapGraph"` (the
-  last four 3D only) classes and support for app-registered custom classes. Loading resolves to a
+  content, with built-in `"Primitive"`/`"Trigger"`/`"Camera"`/`"Light"`/`"Environment"`/`"Glb"`/`"GgCar"`/
+  `"MapGraph"` (all but the first two 3D only) classes and support for app-registered custom classes. Loading resolves to a
   group entity holding everything the level
   produced, so `world.removeEntity(level, true)` tears the whole level back down in one call, and
   `level.getChildEntityByName(name)`/`world.getEntityByName(name)` find a named entity afterwards —
   see the dedicated `gg-engine-level-json` skill for full authoring details.
+- **Lights, sky and fog (3D)**: `world.addLight(descriptor, position?, target?)` creates an
+  `AMBIENT`/`HEMISPHERE`/`DIRECTIONAL`/`POINT`/`SPOT` light (see `Light3dDescriptor` in
+  `packages/core/src/3d/models/lights.ts` - color, intensity, `castShadow` and `shadow: { mapSize,
+  area, near, far, bias, normalBias }`) wrapped in a `Light3dEntity`; `target` aims a directional/spot
+  light, which otherwise shines along its local `-Z` (the way a camera with the same rotation looks).
+  Meshes only take part in shadows with `castShadow`/`receiveShadow` in their `DisplayObject3dOpts`.
+  `world.visualScene.setEnvironment({ background, environmentMap, fog })` sets the scene background
+  (a color or a sky texture), image-based lighting and fog; sky textures come from
+  `world.visualScene.loader.loadCubeTexture({ px, nx, py, ny, pz, nz })` (faces named by world
+  direction, `pz` overhead) or `loadTexture(url, { mapping: 'equirectangular' })`. The level JSON has
+  matching `"Light"`/`"Environment"` classes. Don't reach for the adapter's native light classes
+  (`THREE.DirectionalLight` on `nativeScene`) - that ties the game to one renderer.
 - **Raycasting**: `world.physicsWorld.raycast({ from, to, collisionFilterGroups?, collisionFilterMask? })`.
 - **Collision groups**: `world.physicsWorld.registerCollisionGroup()` /
   `deregisterCollisionGroup(group)`; every body has `mainCollisionGroup` set by default (both

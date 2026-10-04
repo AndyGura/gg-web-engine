@@ -944,7 +944,9 @@ Changing any of these is a breaking change for every adapter package — grep
 - `IAudioSourceComponent`, `IAudioSourceComponentFactory` (+ 2D/3D specializations - see `gg-engine-audio-adapter`)
 - `IRaycastVehicleComponent`, `ICharacterController3dComponent` (3D only)
 - `IEntity`, `IRenderableEntity`, `IRendererEntity`
-- The factory abstracts in `2d/factories.ts` / `3d/factories.ts`
+- The factory abstracts in `2d/factories.ts` / `3d/factories.ts` (3D includes `createLight`)
+- `ILight3dComponent` and the 3D scene's `environment`/`setEnvironment`, plus the 3D loader's
+  `loadTexture`/`loadCubeTexture` (`VisualTypeDocRepo3D` has a `light` member for the former)
 
 ## `IRigidBodyComponent.bodyOptions` - reading a live body's construction settings back out
 

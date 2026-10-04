@@ -9,12 +9,15 @@ export * from './components/rendering/i-display-object-3d.component';
 export * from './components/rendering/i-animated-display-object-3d.component';
 export * from './components/rendering/i-material-readable-3d.component';
 export * from './components/rendering/i-camera-3d.component';
+export * from './components/rendering/i-light-3d.component';
 export * from './components/rendering/i-renderer-3d.component';
 export * from './components/rendering/i-visual-scene-3d.component';
 
 export * from './entities/gg-car/gg-car.entity';
 export * from './entities/audio-source-3d.entity';
 export * from './entities/camera-3d.entity';
+export * from './entities/environment-3d.entity';
+export * from './entities/light-3d.entity';
 export * from './entities/character-controller-3d.entity';
 export * from './entities/controllers/character-animation.controller';
 export * from './entities/controllers/animators/camera-3d.animator';
@@ -39,7 +42,9 @@ export * from './interfaces/i-positionable-3d';
 
 export * from './models/body-options';
 export * from './models/character-controller-options';
+export * from './models/environment';
 export * from './models/gg-meta';
+export * from './models/lights';
 export * from './models/shapes';
 
 export * from './loaders';

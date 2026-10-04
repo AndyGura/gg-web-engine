@@ -103,6 +103,29 @@ Every adapter component class then `implements I<Thing>Component<<Lib>VisualType
   `nativeCamera.layers.enableAll()`, not just the main one), so only a camera that deliberately
   wants to exclude something (e.g. hiding a character's own body from its own first-person view via
   `SELF_VIEW_HIDDEN_RENDER_LAYER`) ever needs to call `disableRenderLayer`.
+- **Lights (3D)**: `IDisplayObject3dComponentFactory.createLight(descriptor)` returns the TypeDoc's
+  `light` member, an `ILight3dComponent` (a display object plus `lightType`/`color`/`intensity`/
+  `castShadow` and a `lightOptions` read-back that reflects live values). Cover every
+  `Light3dDescriptor` type (`AMBIENT`, `HEMISPHERE`, `DIRECTIONAL`, `POINT`, `SPOT`) and apply
+  `shadow` options (`area` is the half-size of a directional light's orthographic shadow frustum).
+  Directional and spot lights must shine along the component's local `-Z`, so their direction follows
+  the rotation the engine sets: three.js aims them at a separate `target` object, which
+  `ThreeLightComponent` parents to the light one unit along `-Z` (three.js's own default leaves the
+  target at the world origin, and both light types start at `(0, 1, 0)` - reset that to the origin).
+  A three.js `HemisphereLight` takes its sky direction from its *position*, so its position setter is
+  ignored and the native position is kept at the rotated `+Z` unit vector instead. `clone()` rebuilds
+  from `lightOptions` rather than `Object3D.clone()`, which would leave the clone's `target`
+  pointing at an object outside its hierarchy.
+- **Scene environment (3D)**: `IVisualScene3dComponent.environment`/`setEnvironment(partial)` -
+  merge semantics (an absent field is untouched, `null` clears it) over `background` (color or
+  texture), `environmentMap` and `fog` (`LINEAR`/`EXPONENTIAL`). Sky textures come from the loader's
+  `loadCubeTexture({ px, nx, py, ny, pz, nz })` and `loadTexture(url, { mapping: 'equirectangular' })`
+  and must come out oriented for the Z-up world: in three.js, cube-map backgrounds are sampled with X
+  mirrored, so `ThreeLoader.loadCubeTexture` swaps the `px`/`nx` slots and passes the rest through
+  (three samples its `pz` slot looking along world `+Z`); equirectangular textures instead get
+  `scene.backgroundRotation`/`environmentRotation` of `+PI/2` around X. Both were checked by
+  rendering solid-colored faces in headless Chromium (ANGLE/SwiftShader) and reading back the center
+  pixel looking along each axis - a cheap way to verify any orientation question in a new adapter.
 - **Renderer component** (`IRenderer(2d|3d)Component`): accepts an optional `HTMLCanvasElement`
   (create an offscreen/detached canvas if none given) and `RendererOptions`, drives the actual
   draw call, supports resize, and `dispose()`s native GPU resources. `RendererOptions &
@@ -261,9 +284,12 @@ even on a Node version that supports native `require(esm)` outside jest. The fix
 relying on jest's ESM interop: add `babel-jest`, `@babel/core`, and
 `@babel/plugin-transform-modules-commonjs` as devDependencies, a `babel.config.js` in the package
 root with just the commonjs-transform plugin, and in the `jest` block split the transform so
-`"^.+\\.ts$"` still goes to `ts-jest` while `"/node_modules/three/build/.+\\.js$"` goes to
-`babel-jest`, paired with `"transformIgnorePatterns": ["/node_modules/(?!three/build/)"]` so that
-one path isn't skipped. A package that doesn't import `three` directly in its tests (like `pixi`,
+`"^.+\\.ts$"` still goes to `ts-jest` while `"/node_modules/three/(build|examples/jsm)/.+\\.js$"`
+goes to `babel-jest`, paired with `"transformIgnorePatterns": ["/node_modules/(?!three/(build|examples/jsm)/)"]`
+so those paths aren't skipped. The `examples/jsm` half matters as soon as a spec imports anything
+that pulls in an addon (`ThreeLoader` imports `GLTFLoader`/`HDRLoader`, so any spec reaching
+`ThreeSceneComponent` does): those files are ESM too, and fail with the same `Must use import`
+error otherwise. A package that doesn't import `three` directly in its tests (like `pixi`,
 whose one spec file is pure-logic) doesn't need any of this.
 
 Pin `@babel/core` and `@babel/plugin-transform-modules-commonjs` to the same `^7.x` major, not

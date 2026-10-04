@@ -2,6 +2,7 @@ import { BodyShape3DDescriptor, Shape3DDescriptor, Shape3DMeshDescriptor } from 
 import { IAudioSourceComponentFactory, Point3, Point4 } from '../base';
 import { AudioTypeDocRepo3D, PhysicsTypeDocRepo3D, VisualTypeDocRepo3D } from './gg-3d-world';
 import { CharacterController3dOptions } from './models/character-controller-options';
+import { Light3dDescriptor } from './models/lights';
 
 export type DisplayObject3dOpts<Tex> = {
   color?: number;
@@ -22,6 +23,11 @@ export abstract class IDisplayObject3dComponentFactory<VTypeDoc extends VisualTy
     aspectRatio?: number;
     frustrum?: { near: number; far: number };
   }): VTypeDoc['camera'];
+
+  /**
+   * Creates a light. Wrap it in a `Light3dEntity` (or use `Gg3dWorld.addLight`) to add it to a world.
+   */
+  abstract createLight(descriptor: Light3dDescriptor): VTypeDoc['light'];
 
   randomColor(): number {
     return (

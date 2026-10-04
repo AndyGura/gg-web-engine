@@ -2,6 +2,7 @@ import {
   DisplayObject3dOpts,
   getCylinderRadii,
   IDisplayObject3dComponentFactory,
+  Light3dDescriptor,
   Pnt3,
   Qtrn,
   Shape3DMeshDescriptor,
@@ -28,6 +29,7 @@ import {
 import { ThreeDisplayObjectComponent } from './components/three-display-object.component';
 import { ThreeVisualTypeDocRepo } from './types';
 import { ThreeCameraComponent } from './components/three-camera.component';
+import { ThreeLightComponent } from './components/three-light.component';
 
 export type ThreeDisplayObject3dOpts = DisplayObject3dOpts<Texture>;
 
@@ -190,5 +192,9 @@ export class ThreeFactory extends IDisplayObject3dComponentFactory<ThreeVisualTy
         settings.frustrum ? settings.frustrum.far : 10000,
       ),
     );
+  }
+
+  createLight(descriptor: Light3dDescriptor): ThreeLightComponent {
+    return ThreeLightComponent.create(descriptor);
   }
 }

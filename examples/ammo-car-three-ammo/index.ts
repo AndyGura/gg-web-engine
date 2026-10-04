@@ -11,7 +11,6 @@ import {
   TypedGg3dWorld,
 } from '@gg-web-engine/core';
 import { ThreeDisplayObject3dOpts, ThreeGgWorld, ThreeSceneComponent } from '@gg-web-engine/three';
-import { AmbientLight, DirectionalLight } from 'three';
 import { AmmoGgWorld, AmmoWorldComponent } from '@gg-web-engine/ammo';
 
 GgStatic.instance.showStats = true;
@@ -36,12 +35,8 @@ world.init().then(async () => {
     { x: 0, y: 0, z: 1 },
   );
 
-  const dirLight = new DirectionalLight(0xffffff, 4);
-  dirLight.position.set(-10, 5, 10);
-  world.visualScene.nativeScene!.add(dirLight);
-
-  const ambientLight = new AmbientLight(0x404040, 4);
-  world.visualScene.nativeScene!.add(ambientLight);
+  world.addLight({ type: 'DIRECTIONAL', intensity: 4 }, { x: -10, y: 5, z: 10 }, Pnt3.O);
+  world.addLight({ type: 'AMBIENT', color: 0x404040, intensity: 4 });
 
   const materialDynamic: ThreeDisplayObject3dOpts = { shading: 'phong', color: 0xfca400 };
   const materialStatic: ThreeDisplayObject3dOpts = { shading: 'phong', color: 0x999999 };

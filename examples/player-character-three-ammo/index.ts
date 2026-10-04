@@ -5,9 +5,10 @@ import {
   GgStatic,
   LevelJson,
   PlayerCharacterController,
+  Pnt3,
 } from '@gg-web-engine/core';
 import { ThreeGgWorld, ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
-import { AmbientLight, DirectionalLight, Mesh } from 'three';
+import { Mesh } from 'three';
 import { AmmoWorldComponent } from '@gg-web-engine/ammo';
 
 GgStatic.instance.showStats = true;
@@ -181,21 +182,18 @@ const world: ThreeGgWorld = new Gg3dWorld({
 world.init().then(async () => {
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
 
-  world.visualScene.nativeScene?.add(new AmbientLight(0xffffff, 0.6));
-  const dirLight = new DirectionalLight(0xffffff, 1);
-  dirLight.color.setHSL(0.1, 1, 0.95);
-  dirLight.position.set(15, -15, 25);
-  dirLight.lookAt(0, 0, 0);
-  dirLight.castShadow = true;
-  dirLight.shadow.mapSize.width = 2048;
-  dirLight.shadow.mapSize.height = 2048;
-  const d = 15;
-  dirLight.shadow.camera.left = -d;
-  dirLight.shadow.camera.right = d;
-  dirLight.shadow.camera.top = d;
-  dirLight.shadow.camera.bottom = -d;
-  dirLight.shadow.camera.far = 100;
-  world.visualScene.nativeScene?.add(dirLight);
+  world.addLight({ type: 'AMBIENT', intensity: 0.6 });
+  world.addLight(
+    {
+      type: 'DIRECTIONAL',
+      color: 0xfffaf3,
+      intensity: 1,
+      castShadow: true,
+      shadow: { mapSize: 2048, area: 15, far: 100 },
+    },
+    { x: 15, y: -15, z: 25 },
+    Pnt3.O,
+  );
 
   const levelGroup = await world.loader.loadLevel(level, 'MainLevel');
 

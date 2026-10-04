@@ -28,6 +28,29 @@ where one exists.
 
 ## [Unreleased]
 
+### Added
+- `@gg-web-engine/core`, `@gg-web-engine/three`: library-agnostic lights. `factory.createLight(descriptor)`
+  builds an `AMBIENT`, `HEMISPHERE`, `DIRECTIONAL`, `POINT` or `SPOT` light (`Light3dDescriptor`:
+  color, intensity, distance/decay/angle/penumbra, `castShadow` and `shadow: { mapSize, area, near,
+  far, bias, normalBias }`) as an `ILight3dComponent`; `Gg3dWorld.addLight(descriptor, position?,
+  target?)` wraps it in a new `Light3dEntity` (with `lookAt(target)`). Directional and spot lights
+  shine along their local `-Z`, like a camera.
+- `@gg-web-engine/core`, `@gg-web-engine/three`: scene environment. `visualScene.setEnvironment({
+  background, environmentMap, fog })` sets a background color or sky texture, image-based lighting
+  and linear/exponential fog; `visualScene.environment` reads it back. The 3D loader gained
+  `loadTexture(url, { mapping })` (`.hdr` supported) and `loadCubeTexture({ px, nx, py, ny, pz, nz })`,
+  whose faces are named by world direction (`pz` overhead); sky textures are oriented for the Z-up
+  world automatically.
+- `@gg-web-engine/core`: `"Light"` and `"Environment"` level-JSON classes. `"Environment"` creates an
+  `Environment3dEntity`, which restores the previous background/environment map/fog when its level
+  is unloaded.
+
+### Changed
+- `@gg-web-engine/core`: `VisualTypeDocRepo3D` has a new `light` member, and
+  `IDisplayObject3dComponentFactory`, `IVisualScene3dComponent` and `IDisplayObject3dComponentLoader`
+  have new required members (`createLight`; `environment`/`setEnvironment`;
+  `loadTexture`/`loadCubeTexture`). A third-party 3D visual adapter must implement them.
+
 ## [0.0.76] - 2026-10-04
 
 ### Added

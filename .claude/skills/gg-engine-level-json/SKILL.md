@@ -1,6 +1,6 @@
 ---
 name: gg-engine-level-json
-description: Author or load a level/scene as a JSON document with gg-web-engine's LevelLoader (entities array, built-in "Primitive"/"Trigger"/"Camera"/"Player"/"Glb"/"GgCar"/"MapGraph"/"Sound" classes, app-defined entity classes via registerClass, blueprint graphs - including the built-in "RemoveEntity"/"PlaySound" nodes - wired to entity events via registerBlueprintNode, name lookup via GgWorld.getEntityByName/IEntity.getChildEntityByName, level removal via the returned group entity). Use when the task is to write a level JSON file, add a new built-in level entity class in packages/core, wire an entity's event straight to behavior via a blueprint, or register a custom entity class/blueprint node an app's level JSON can reference.
+description: Author or load a level/scene as a JSON document with gg-web-engine's LevelLoader (entities array, built-in "Primitive"/"Trigger"/"Camera"/"Light"/"Environment"/"Player"/"Glb"/"GgCar"/"MapGraph"/"Sound" classes, app-defined entity classes via registerClass, blueprint graphs - including the built-in "RemoveEntity"/"PlaySound" nodes - wired to entity events via registerBlueprintNode, name lookup via GgWorld.getEntityByName/IEntity.getChildEntityByName, level removal via the returned group entity). Use when the task is to write a level JSON file, add a new built-in level entity class in packages/core, wire an entity's event straight to behavior via a blueprint, or register a custom entity class/blueprint node an app's level JSON can reference.
 ---
 
 # Building level JSONs
@@ -406,6 +406,37 @@ independent of any one swappable level:
   (lighting, persistent UI, global triggers). Since multiple levels can be loaded side by side,
   gameplay levels can then be freely loaded/unloaded against `world.loader.loadLevel(...)` /
   `world.removeEntity(gameplayLevel, true)` without ever touching the system level or its camera.
+
+### `"Light"` (3D only) - a `Light3dEntity`
+
+`config` is a `Light3dDescriptor` (`packages/core/src/3d/models/lights.ts`) plus an optional
+`target`: `{ type: "AMBIENT" | "HEMISPHERE" | "DIRECTIONAL" | "POINT" | "SPOT", color?, intensity?,
+castShadow?, shadow?: { mapSize?, area?, near?, far?, bias?, normalBias? }, ... }` (point/spot add
+`distance`/`decay`, spot adds `angle`/`penumbra`, hemisphere adds `groundColor`). Directional and spot
+lights shine along their local `-Z`; give either a `rotation` or a `target` point (aimed from the
+entity's `position`):
+
+```json
+{ "class": "Light", "name": "Sun", "position": { "x": 50, "y": 50, "z": 70 },
+  "config": { "type": "DIRECTIONAL", "intensity": 1, "castShadow": true,
+              "shadow": { "mapSize": 2048, "area": 20 }, "target": { "x": 0, "y": 0, "z": 0 } } }
+```
+
+A no-op (`undefined`) without a visual scene. A live serializer reads a `Light3dEntity`'s current
+settings back (`ILight3dComponent.lightOptions`), so a light built by hand with `world.addLight`
+serializes too; the serialized form has `rotation` rather than `target`.
+
+### `"Environment"` (3D only) - background, environment map and fog for as long as the level is loaded
+
+`config: { background?, environmentMap?, fog? }`. `background` is a `0xRRGGBB` number, a texture
+reference, or `null`; `environmentMap` a texture reference or `null`; a texture reference is
+`{ "cube": { "px", "nx", "py", "ny", "pz", "nz" } }` (six image URLs, each named after the world
+direction it is seen in - `pz` is overhead) or `{ "equirectangular": "url" }` (a `.hdr` URL is
+decoded as HDR). `fog` is `{ "type": "LINEAR", color, near, far }`, `{ "type": "EXPONENTIAL", color,
+density }` or `null`. Textures are loaded while the level loads. The resulting `Environment3dEntity`
+applies only the fields present when spawned, and restores those fields to their previous values when
+removed, so unloading a level takes its sky and fog with it. It has no live serializer: one built by
+the loader serializes through its spawn record (the original `config`, texture URLs included).
 
 ### `"Player"` - a capsule-bodied character controller, ready to use (2D and 3D)
 
@@ -1004,7 +1035,7 @@ await world.loader.loadLevel(level, 'MainLevel'); // level has an entity with "c
 ```
 
 There's nothing engine-specific about `ShapeSpawner` here - it's ordinary app code, registered the
-same way the built-in `"Primitive"`/`"Trigger"`/`"Camera"`/`"Player"`/`"Glb"`/`"GgCar"`/`"MapGraph"`
+same way the built-in `"Primitive"`/`"Trigger"`/`"Camera"`/`"Light"`/`"Environment"`/`"Player"`/`"Glb"`/`"GgCar"`/`"MapGraph"`
 classes are internally.
 Extending `IEntity` is what makes it eligible to be parented under the level's group (so
 `world.removeEntity(level, true)` disposes it - and, via the `dispose` override, stops its clock -
@@ -1145,6 +1176,7 @@ own coverage against a hand-rolled node type in
 `packages/core/test/base/gg-world.spec.ts` and `packages/core/test/base/entities/i-entity.spec.ts`.
 `packages/core/test/{2d,3d}/level-loader.spec.ts` cover the built-in `"Primitive"`/`"Trigger"`/
 `"Player"`/`"Sound"` classes (both dimensions) plus the 3D-only `"Camera"`/`"GgCar"`/`"MapGraph"`
+(`"Light"`/`"Environment"` are in `packages/core/test/3d/lights-environment.spec.ts`)
 against hand-rolled mock worlds (there, `addEntity`/`removeEntity` are plain `jest.fn()` stubs - fine
 since those tests only care about generator dispatch, not full spawn semantics); the `"GgCar"` cases
 stub `physicsWorld.factory.createRigidBody`/`createRaycastVehicle` and

@@ -7,9 +7,9 @@ import {
   GroupEntity,
   LevelJson,
   OrbitCameraController,
+  Pnt3,
 } from '@gg-web-engine/core';
 import { ThreeGgWorld, ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
-import { AmbientLight, DirectionalLight } from 'three';
 import { Rapier3dWorldComponent } from '@gg-web-engine/rapier3d';
 import { GlbSpawner, GlbSpawnerSettings } from './glb-spawner';
 
@@ -49,21 +49,18 @@ const world: ThreeGgWorld = new Gg3dWorld({
 world.init().then(async () => {
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
 
-  world.visualScene.nativeScene?.add(new AmbientLight(0xffffff, 0.6));
-  const dirLight = new DirectionalLight(0xffffff, 1);
-  dirLight.color.setHSL(0.1, 1, 0.95);
-  dirLight.position.set(50, 50, 70);
-  dirLight.lookAt(0, 0, 0);
-  dirLight.castShadow = true;
-  dirLight.shadow.mapSize.width = 2048;
-  dirLight.shadow.mapSize.height = 2048;
-  const d = 20;
-  dirLight.shadow.camera.left = -d;
-  dirLight.shadow.camera.right = d;
-  dirLight.shadow.camera.top = d;
-  dirLight.shadow.camera.bottom = -d;
-  dirLight.shadow.camera.far = 3500;
-  world.visualScene.nativeScene?.add(dirLight);
+  world.addLight({ type: 'AMBIENT', intensity: 0.6 });
+  world.addLight(
+    {
+      type: 'DIRECTIONAL',
+      color: 0xfffaf3,
+      intensity: 1,
+      castShadow: true,
+      shadow: { mapSize: 2048, area: 20, far: 3500 },
+    },
+    { x: 50, y: 50, z: 70 },
+    Pnt3.O,
+  );
 
   world.loader.registerClass(
     'GlbSpawner',
