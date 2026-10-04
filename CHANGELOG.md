@@ -28,6 +28,30 @@ where one exists.
 
 ## [Unreleased]
 
+### Added
+- `@gg-web-engine/multiplayer`: `NetworkControllerOptions.clockSyncBurstCount` (default 5) and
+  `clockSyncBurstIntervalMs` (default 150): a link that just opened (or reopened) gets a burst of
+  clock-sync pings before falling back to `clockSyncIntervalMs`. `ClockSync` gained `ready`,
+  `targetOffset` and `advance(localTime)`.
+
+### Changed
+- `@gg-web-engine/multiplayer`: peer clock sync no longer averages its samples. `ClockSync` keeps a
+  window of the latest ones and estimates the offset from the fastest way out and the fastest way
+  back among them, so a sample delayed on one leg (a busy main thread, a queued packet) is ignored
+  instead of blended in; once ready, the offset used to convert remote timestamps slews toward a
+  changed estimate (5 ms/s) and steps only for an error above 250 ms. Remote timestamps are
+  converted only after 3 samples (they count as "now" until then). The `ClockSync` constructor takes
+  a `ClockSyncOptions` object instead of an EMA weight; `PeerInfo.rttMs` is the lowest recent round
+  trip instead of a smoothed one.
+- `@gg-web-engine/multiplayer`: clock-sync pings and pongs travel on the `unreliable` channel
+  (`channelOf` reports it), so a lost one is a missing sample instead of a retransmitted, late one.
+
+### Fixed
+- `@gg-web-engine/multiplayer`: replicas of a fast entity lunged or teleported every few seconds on
+  a real internet link, at constant speed on a straight path: one late clock-sync sample (a
+  retransmitted ping, a main thread busy loading when the link opened) shifted the peer's clock
+  offset by tens of ms, and with it the extrapolated target of everything that peer owns.
+
 ## [0.0.75] - 2026-10-03
 
 ### Added

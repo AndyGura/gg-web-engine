@@ -119,9 +119,23 @@ join handshakes, link latency) runs on the injected `NetScheduler`, never on `ti
 - **`despawn` works for non-networked shared content** (a coin trigger): broadcast and remove by name,
   and pending/joined entities whose name is tombstoned are removed on processing.
 - **Peers' clocks share no origin.** `performance.now()` counts from each tab's start, so a remote
-  timestamp means nothing before that peer's first clock-sync sample (`toLocalTime` returns "now"
+  timestamp means nothing before that peer's clock sync is `ready` (`toLocalTime` returns "now"
   until then). A duration crosses the wire as two timestamps of one sender - a spawn's lifetime is
   `expiresAt - ts`, added to the receiver's own clock - never as one converted absolute time.
+- **A peer's clock offset must never step.** Replicas are extrapolated by sender timestamp, so a
+  change of the offset by `d` ms moves the target of everything that peer owns by `speed × d` at
+  once (70 m/s × 40 ms = 2.8 m: a teleport, or a lunge below `snapDistance`). A LAN never shows it.
+  Three rules follow. (1) One ping/pong only bounds the offset (`t2 - t3 <= offset <= t1 - t0`), and
+  its midpoint is off by half of whatever one leg was delayed (network, or a busy main thread
+  delaying the handler that stamps the time) - so `ClockSync` never averages: it takes the tightest
+  bound of each direction over a window of the latest samples, and a delayed sample just isn't one
+  of them. (2) Pings and pongs travel `unreliable`: a retransmitted or head-of-line-blocked one
+  measures the retransmission, a lost one is only a missing sample. A pong is valid whenever it
+  arrives (it carries its own `t0`). (3) Once `ready` (3 samples, which the burst of pings on a
+  newly opened link delivers within half a second), `offset` slews toward the estimate at a few
+  ms/s as `advance(now)` is called, and steps only for a gross error or when a sample contradicts
+  the window (the remote clock itself jumped). In a test, give a peer its own clock origin by
+  wrapping the shared scheduler with a shifted `now()`.
 - **Contact claims compare pre-impact speeds** (the latest snapshot's `lv`), never the bodies' current
   velocities - those are post-solve, and the hit body is then often the faster one, which made it
   "claim" the hitter right back. Some adapters (Ammo) report impulse 0 on a contact's first step;

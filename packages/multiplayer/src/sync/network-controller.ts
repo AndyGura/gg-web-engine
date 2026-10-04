@@ -34,9 +34,9 @@ export interface PeerInfo {
   peerId: string;
   /** last position the peer reported (`null` = spectating), `undefined` until its first heartbeat */
   position: unknown | null | undefined;
-  /** smoothed round-trip time, ms */
+  /** lowest round-trip time among the latest clock-sync samples, ms */
   rttMs: number;
-  /** smoothed clock offset (peer clock minus local clock), ms */
+  /** clock offset remote timestamps are converted with (peer clock minus local clock), ms */
   offsetMs: number;
   /** whether the peer announced it is away (hidden tab) */
   away: boolean;
@@ -81,8 +81,15 @@ export interface NetworkControllerOptions<D> {
    * owner counts as heard from just now.
    */
   heartbeatTimeoutMs?: number;
-  /** Default 2000. */
+  /**
+   * how often every peer is pinged for clock sync once its link is settled. Default 2000. A link that
+   * just opened gets a burst first: `clockSyncBurstCount` pings `clockSyncBurstIntervalMs` apart.
+   */
   clockSyncIntervalMs?: number;
+  /** Default 5. */
+  clockSyncBurstCount?: number;
+  /** Default 150. */
+  clockSyncBurstIntervalMs?: number;
   /** how long `connect()` waits for join dumps. Default 5000. */
   joinTimeoutMs?: number;
   /** state for an id with no local entity yet is held this long, then dropped. Default 2000. */
@@ -148,6 +155,9 @@ interface PeerRecord {
   position: unknown | null | undefined;
   lastHeard: number;
   clock: ClockSync;
+  /** clock-sync pings sent to this peer since its link opened, and when the last one went out */
+  pingsSent: number;
+  lastPingAt: number;
   away: boolean;
 }
 
@@ -321,6 +331,8 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       heartbeatIntervalMs: options.heartbeatIntervalMs ?? 1000,
       heartbeatTimeoutMs: options.heartbeatTimeoutMs ?? 4000,
       clockSyncIntervalMs: options.clockSyncIntervalMs ?? 2000,
+      clockSyncBurstCount: options.clockSyncBurstCount ?? 5,
+      clockSyncBurstIntervalMs: options.clockSyncBurstIntervalMs ?? 150,
       joinTimeoutMs: options.joinTimeoutMs ?? 5000,
       unknownStateHoldMs: options.unknownStateHoldMs ?? 2000,
       stateRequestTimeoutMs: options.stateRequestTimeoutMs ?? 1000,
@@ -1479,7 +1491,10 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
   private startTimers(): void {
     this.timers.push(
       this.scheduler.setInterval(() => this.onHeartbeatTimer(), this.opts.heartbeatIntervalMs),
-      this.scheduler.setInterval(() => this.onClockSyncTimer(), this.opts.clockSyncIntervalMs),
+      this.scheduler.setInterval(
+        () => this.onClockSyncTimer(),
+        Math.min(this.opts.clockSyncIntervalMs, this.opts.clockSyncBurstIntervalMs),
+      ),
     );
     this.lastAliveAt = this.now;
     this.onClockSyncTimer();
@@ -1545,10 +1560,45 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     this.publishPeers();
   }
 
+  /**
+   * ping every peer that is due: a link that just opened is pinged every timer run until the burst is
+   * out (and on, a few times over, while lost pings leave its clock without enough samples), a
+   * settled one every `clockSyncIntervalMs`
+   */
   private onClockSyncTimer(): void {
+    const burst = this.opts.clockSyncBurstCount;
     for (const id of this.transport.peers) {
-      this.transport.send(id, 'reliable', { t: 'ping', t0: this.now });
+      const peer = this.peers.get(id);
+      if (!peer) {
+        continue;
+      }
+      const inBurst = peer.pingsSent < burst || (!peer.clock.ready && peer.pingsSent < burst * 4);
+      if (inBurst || this.now - peer.lastPingAt >= this.opts.clockSyncIntervalMs) {
+        this.sendPing(peer);
+      }
     }
+  }
+
+  /**
+   * pings and pongs travel unreliable: a retransmitted (or queued) one would arrive late and measure
+   * the retransmission, not the clocks - a lost one is just a missing sample
+   */
+  private sendPing(peer: PeerRecord): void {
+    peer.pingsSent++;
+    peer.lastPingAt = this.now;
+    this.transport.send(peer.id, 'unreliable', { t: 'ping', t0: this.now });
+  }
+
+  private newPeerRecord(id: string): PeerRecord {
+    return {
+      id,
+      position: undefined,
+      lastHeard: this.now,
+      clock: new ClockSync(),
+      pingsSent: 0,
+      lastPingAt: 0,
+      away: false,
+    };
   }
 
   private onPeersChanged(ids: ReadonlyArray<string>): void {
@@ -1560,10 +1610,12 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     }
     for (const id of ids) {
       if (!this.peers.has(id)) {
-        this.peers.set(id, { id, position: undefined, lastHeard: this.now, clock: new ClockSync(), away: false });
+        // a fresh record (also after a reconnect): its clock starts over, with a new ping burst
+        const peer = this.newPeerRecord(id);
+        this.peers.set(id, peer);
         if (this.sessionState !== 'idle' && this.sessionState !== 'left') {
           this.transport.send(id, 'reliable', this.heartbeatMessage());
-          this.transport.send(id, 'reliable', { t: 'ping', t0: this.now });
+          this.sendPing(peer);
         }
         if (this.joined) {
           this.sendOwnedSpawns(id);
@@ -1604,7 +1656,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
   private touchPeer(from: string): PeerRecord {
     let peer = this.peers.get(from);
     if (!peer) {
-      peer = { id: from, position: undefined, lastHeard: this.now, clock: new ClockSync(), away: false };
+      peer = this.newPeerRecord(from);
       this.peers.set(from, peer);
       this.publishPeers();
     }
@@ -1614,13 +1666,17 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
   }
 
   /**
-   * a peer's timestamp in local time - or now, until the first clock-sync sample: the peers' clocks
-   * have unrelated origins (`performance.now()` counts from each tab's start), so an unsynced
-   * timestamp can be minutes off
+   * a peer's timestamp in local time - or now, until its clock sync is ready: the peers' clocks have
+   * unrelated origins (`performance.now()` counts from each tab's start), so an unsynced timestamp
+   * can be minutes off
    */
   private toLocalTime(from: string, ts: number): number {
     const clock = this.peers.get(from)?.clock;
-    return clock && clock.samples > 0 ? clock.toLocal(ts) : this.now;
+    if (!clock || !clock.ready) {
+      return this.now;
+    }
+    clock.advance(this.now);
+    return clock.toLocal(ts);
   }
 
   private onMessage(from: string, msg: WireMessage): void {
@@ -1746,7 +1802,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
         this._appMessages$.next({ from, data: msg.data });
         break;
       case 'ping':
-        this.transport.send(from, 'reliable', { t: 'pong', t0: msg.t0, t1: this.now, t2: this.now });
+        this.transport.send(from, 'unreliable', { t: 'pong', t0: msg.t0, t1: this.now, t2: this.now });
         break;
       case 'pong':
         peer.clock.addSample(msg.t0, msg.t1, msg.t2, this.now);

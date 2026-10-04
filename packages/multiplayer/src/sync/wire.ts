@@ -89,7 +89,7 @@ export type WireMessage =
 
 export type WireChannel = 'reliable' | 'unreliable';
 
-/** The channel each message kind travels on: everything but the state stream (and its pings) is reliable. */
+/** The channel each message kind travels on: everything but the state stream and the clock-sync pings is reliable. */
 export function channelOf(msg: WireMessage): WireChannel {
-  return msg.t === 'state' ? 'unreliable' : 'reliable';
+  return msg.t === 'state' || msg.t === 'ping' || msg.t === 'pong' ? 'unreliable' : 'reliable';
 }

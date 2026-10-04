@@ -1,4 +1,4 @@
-import { Entity3d, GgStatic, IEntity } from '@gg-web-engine/core';
+import { Entity3d, GgStatic, IEntity, RigidBodyCorrection } from '@gg-web-engine/core';
 import { ClockSync, NetScheduler, Network3dController } from '../../src';
 import { ADAPTERS, Harness, TICK_MS } from './harness';
 
@@ -98,6 +98,84 @@ describe('NetworkController features', () => {
     expect(findByName(h, 'b', box.name)).toBeDefined();
     await h.run(Math.ceil(2500 / TICK_MS));
     expect(findByName(h, 'b', box.name)).toBeUndefined();
+  });
+
+  // a scheduler whose clock counts from `skewMs` earlier than the shared one (another tab's performance.now())
+  const skewedScheduler = (shared: NetScheduler, skewMs: number): NetScheduler => ({
+    now: () => shared.now() - skewMs,
+    setTimeout: (fn, ms) => shared.setTimeout(fn, ms),
+    clearTimeout: t => shared.clearTimeout(t),
+    setInterval: (fn, ms) => shared.setInterval(fn, ms),
+    clearInterval: t => shared.clearInterval(t),
+  });
+
+  it('syncs clocks with a burst of unreliable pings when a link opens, then at the regular interval', async () => {
+    h = new Harness(adapter, { latencyMs: 40 });
+    const a = await h.addPeer('a', undefined, { scheduler: skewedScheduler(h.scheduler, 60_000) });
+    const pings: string[] = [];
+    const send = h.hub._deliver.bind(h.hub);
+    h.hub._deliver = (from, to, channel, msg) => {
+      if (msg.t === 'ping' || msg.t === 'pong') {
+        pings.push(`${from} ${msg.t} ${channel}`);
+      }
+      send(from, to, channel, msg);
+    };
+    const b = await h.addPeer('b');
+    await h.run(Math.ceil(1000 / TICK_MS));
+    expect(pings.every(p => p.endsWith('unreliable'))).toBe(true);
+    expect(pings.filter(p => p === 'b ping unreliable').length).toBe(5);
+    const clock: ClockSync = (b.net as any).peers.get('a').clock;
+    expect(clock.ready).toBe(true);
+    expect(clock.offset).toBeCloseTo(-60_000, 0);
+    expect(clock.rtt).toBeCloseTo(80, 0);
+    pings.length = 0;
+    await h.run(Math.ceil(6000 / TICK_MS));
+    expect(pings.filter(p => p === 'b ping unreliable').length).toBe(3);
+    // peerInfos (and net_status) report the same numbers
+    expect(b.net.peerInfos.find(p => p.peerId === 'a')!.offsetMs).toBeCloseTo(-60_000, 0);
+    expect(b.net.peerInfos.find(p => p.peerId === 'a')!.rttMs).toBeCloseTo(80, 0);
+  });
+
+  it('never snaps a replica moving at constant velocity under jitter and ping loss', async () => {
+    // 25..55 ms each way, 2% of everything unreliable lost
+    h = new Harness(adapter, { latencyMs: 25, jitterMs: 30, lossRate: 0.02 });
+    const a = await h.addPeer('a', undefined, { scheduler: skewedScheduler(h.scheduler, 60_000) });
+    const b = await h.addPeer('b');
+    for (const peer of [a, b]) {
+      (peer.world.physicsWorld as any).gravity = { x: 0, y: 0, z: 0 };
+    }
+    await h.run(Math.ceil(1000 / TICK_MS));
+    const speed = 70;
+    const box = adapter.addBox(a.world, adapter.at(-900, 20)) as Entity3d;
+    box.objectBody!.linearVelocity = adapter.along(speed);
+    a.net.possess(box);
+    const clock: ClockSync = (b.net as any).peers.get('a').clock;
+    const outcomes: string[] = [];
+    const correct = jest.spyOn(RigidBodyCorrection, 'correct');
+    let worstClock = 0;
+    let worstGap = 0;
+    try {
+      for (let i = 0; i < Math.ceil(25_000 / TICK_MS); i++) {
+        await h.run(1);
+        worstClock = Math.max(worstClock, Math.abs(clock.offset + 60_000));
+        const replica = findByName(h, 'b', box.name);
+        if (replica && i > 60) {
+          worstGap = Math.max(worstGap, Math.abs(replica.position.x - box.position.x));
+        }
+      }
+      for (const r of correct.mock.results) {
+        outcomes.push(r.value as string);
+      }
+    } finally {
+      correct.mockRestore();
+    }
+    expect(box.position.x).toBeGreaterThan(800);
+    expect(outcomes.length).toBeGreaterThan(1000);
+    // the spawn places the replica outright; nothing after that may teleport it
+    expect(outcomes.slice(1).filter(o => o === 'snap')).toEqual([]);
+    expect(worstClock).toBeLessThan(8);
+    // the replica stays about a tick of travel (1.1 m) from the owner's body, well inside snapDistance
+    expect(worstGap).toBeLessThan(2);
   });
 
   it('a hidden peer hands its entities over and takes its possession back after resyncing', async () => {
