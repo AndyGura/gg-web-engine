@@ -134,7 +134,14 @@ export function extrapolationSeconds(ageMs: number, tuning: CorrectionTuning): n
   return Math.max(0, Math.min(ageMs, tuning.extrapolateMaxMs)) / 1000;
 }
 
-/** whether a snapshot `ageMs` old is past extrapolation but still within the coasting window */
-export function isCoasting(ageMs: number, tuning: CorrectionTuning): boolean {
-  return ageMs > tuning.extrapolateMaxMs && ageMs <= (tuning.coastMaxMs ?? 0);
+/**
+ * whether a replica whose latest snapshot arrived `sinceReceivedMs` ago coasts: the stream has been
+ * silent for longer than a snapshot is extrapolated, but not yet for the whole coasting window
+ */
+export function isCoasting(sinceReceivedMs: number | undefined, tuning: CorrectionTuning): boolean {
+  return (
+    sinceReceivedMs !== undefined &&
+    sinceReceivedMs > tuning.extrapolateMaxMs &&
+    sinceReceivedMs <= (tuning.coastMaxMs ?? 0)
+  );
 }

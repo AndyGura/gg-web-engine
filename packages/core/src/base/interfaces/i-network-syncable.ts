@@ -23,11 +23,12 @@ export interface CorrectionTuning {
   /** Upper bound of how far (ms) a snapshot is extrapolated forward along its velocity. Default 250. */
   extrapolateMaxMs: number;
   /**
-   * A snapshot older than `extrapolateMaxMs` has nothing more to say about where its entity is now.
-   * Until it is this old (ms), a moving replica is left to its own simulation instead of being pulled
-   * back to the point the extrapolation stopped at - the owner's stream stalled, and the next snapshot
-   * will most likely find the replica about where it should be. Past it, the replica is corrected to
-   * that point again. 0 turns coasting off. Default 1000.
+   * When no newer snapshot has arrived for longer than `extrapolateMaxMs`, the owner's stream stalled
+   * and the latest one has nothing more to say about where its entity is now. Until that silence
+   * (`NetworkApplyContext.sinceReceivedMs`) lasts this long (ms), a moving replica is left to its own
+   * simulation instead of being pulled back to the point the extrapolation stopped at - the next
+   * snapshot will most likely find the replica about where it should be. Past it, the replica is
+   * corrected to that point again. 0 turns coasting off. Default 1000.
    */
   coastMaxMs: number;
 }
@@ -49,6 +50,12 @@ export const DEFAULT_CORRECTION_TUNING: Readonly<CorrectionTuning> = Object.free
 export interface NetworkApplyContext {
   /** ms elapsed on the owner's clock since `state` was captured (after clock-offset correction) */
   ageMs: number;
+  /**
+   * ms elapsed on this peer since `state` arrived. Unlike `ageMs` it doesn't include the link's
+   * latency, so it tells a stalled stream (it keeps growing) from a slow link (it stays below the
+   * send interval). A replica coasts only by this; without it, it never does.
+   */
+  sinceReceivedMs?: number;
   /** this tick's delta, ms */
   dt: number;
   /** true when the controller demands an exact state (late join, takeover, structural snap) */

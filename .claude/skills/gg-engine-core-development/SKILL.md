@@ -66,8 +66,8 @@ Core carries only what `@gg-web-engine/multiplayer` drives; it never mentions pe
 transports or possession. The pieces (see `gg-engine-multiplayer` for the full model):
 
 - `INetworkSyncable`/`INetworkInputDriven` (`base/interfaces/i-network-syncable.ts`), with
-  `isNetworkSyncable`/`isNetworkInputDriven` duck-type guards, `NetworkApplyContext` (`ageMs`, `dt`,
-  `snap`, `tuning`), `CorrectionTuning`/`DEFAULT_CORRECTION_TUNING` and `CorrectionOutcome` - what
+  `isNetworkSyncable`/`isNetworkInputDriven` duck-type guards, `NetworkApplyContext` (`ageMs`,
+  `sinceReceivedMs`, `dt`, `snap`, `tuning`), `CorrectionTuning`/`DEFAULT_CORRECTION_TUNING` and `CorrectionOutcome` - what
   both correction helpers return and `applyNetworkState` passes on (optional: `void` is valid; a
   network layer reads it for diagnostics only, never for behavior).
 - `RigidBodyCorrection`/`MoverCorrection` (`base/network/`): the correction math, written once and
@@ -78,8 +78,11 @@ transports or possession. The pieces (see `gg-engine-multiplayer` for the full m
   steered to has one definition: each helper's `targetPosition(target, ageMs, tuning)`, which
   `correct` itself uses; `extrapolateNetPosition`/`isNetStateCoasting` (`net-extrapolation.ts`) expose
   it for a state of unknown class, so a network layer's diagnostics never re-derive it. A snapshot
-  older than `extrapolateMaxMs` (up to `coastMaxMs`) makes `correct` return `'coast'` without writing
-  position or velocity - never for `ctx.snap`, a sleeping target or a kinematic body.
+  that arrived longer ago than `extrapolateMaxMs` (up to `coastMaxMs`) makes `correct` return
+  `'coast'` without writing position or velocity - never for `ctx.snap`, a sleeping target or a
+  kinematic body. That is `ctx.sinceReceivedMs`, never `ctx.ageMs`: the age includes the link's
+  latency, so on a link slower than `extrapolateMaxMs` every snapshot would arrive already "stalled"
+  and the replica would never be corrected.
 - Implementations on `Entity2d`/`Entity3d` (`isNetworkSyncEnabled` only with a non-static body),
   `GgCarEntity` (plus `autoShiftEnabled`; while remote input drives it, auto-shift is suspended and
   `applyNetworkState` corrects only the chassis - the input already carries the driving state) and

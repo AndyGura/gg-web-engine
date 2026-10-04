@@ -44,8 +44,10 @@ reuses.
   `applyNetworkState(target, ctx)` on replicas (may return the helper's `CorrectionOutcome`, used
   only for diagnostics), optional `captureFullNetworkState()` (join/takeover),
   optional `isNetworkSyncEnabled` (`false` = ignored entirely) and `networkTuning`.
-  `NetworkApplyContext` = `{ ageMs, dt, snap, tuning }` - `tuning` is the controller's merged with
-  the entity's override, so helpers need no extra argument.
+  `NetworkApplyContext` = `{ ageMs, sinceReceivedMs, dt, snap, tuning }` - `ageMs` is how old the
+  snapshot is on the owner's clock (latency included), `sinceReceivedMs` how long ago it arrived
+  here; `tuning` is the controller's merged with the entity's override, so helpers need no extra
+  argument.
 - `INetworkInputDriven<I>`: `captureLocalInput()` on the possessor, `applyRemoteInput(input | null)`
   on replicas; `null` = neutral (entity defines it).
 - Built-ins: `Entity2d`/`Entity3d` (rigid-body snapshot; enabled only with a non-static body),
@@ -62,15 +64,17 @@ reuses.
   actualVelocity`).
 
 `RigidBodyCorrection` (per body kind): extrapolate the snapshot by velocity (capped at
-`extrapolateMaxMs`; a dynamic replica of a moving target whose snapshot is older than that, up to
-`coastMaxMs`, coasts on its own simulation - pinning it to the point extrapolation stopped at made it
-snap back every `snapDistance` for as long as the stream stalled), deadzone → nothing (and an awake replica of a sleeping target is put to sleep),
-`snap`/beyond `snapDistance` → write outright, else dynamic = steer velocity toward
+`extrapolateMaxMs`; a dynamic replica of a moving target whose snapshot arrived longer ago than that,
+up to `coastMaxMs`, coasts on its own simulation - pinning it to the point extrapolation stopped at
+made it snap back every `snapDistance` for as long as the stream stalled. A stall is judged by
+`sinceReceivedMs` only: by `ageMs`, a link slower than `extrapolateMaxMs` looks stalled all the time
+and its replicas are never corrected), deadzone → nothing (and an awake replica of a sleeping target
+is put to sleep), `snap`/beyond `snapDistance` → write outright, else dynamic = steer velocity toward
 `targetLv + error·velocityGain` at `positionGain`/s (a *P-controller on velocity*: adding the bias
 to the previous tick's velocity accumulates and overshoots badly), sleeping target = glide with zero
 velocity, kinematic = transform lerp only, static = never. `MoverCorrection` never teleports: the
-error becomes `externalDisplacement`, consumed by the next `move()`. It coasts through a stale snapshot the same way, and extrapolates by `v` (the
-owner's actual last-tick velocity) - `fallVelocity + airHorizontalVelocity` alone omit grounded
+error becomes `externalDisplacement`, consumed by the next `move()`. It coasts through a stalled
+stream the same way, and extrapolates by `v` (the owner's actual last-tick velocity) - `fallVelocity + airHorizontalVelocity` alone omit grounded
 walking, so extrapolating by them makes every replica pull back toward a stale position.
 
 ## Tick integration
@@ -225,7 +229,9 @@ join handshakes, link latency) runs on the injected `NetScheduler`, never on `ti
   in order, with nothing lost. `LoopbackHub` conditions (latency, jitter, loss) cover tests;
   `LinkConditioner` (`controller.conditioner`, the `net_lag` console command) reproduces a real link
   on the receive path of a live peer: jitter, delivery stalls released as a burst, and reliable
-  messages delayed like a retransmission, holding back the sender's later ones. The `net_panel`
+  messages delayed like a retransmission, holding back the sender's later ones (one queue per sender
+  drained by one timer at a time: timers of their own don't keep the order, since a host cuts a delay
+  to whole milliseconds and two messages due at the same moment then fire in either order). The `net_panel`
   command shows what the link is doing while it happens (`NetDebugPanel`, fed by
   `controller.netStats`): a per-peer offset that keeps slewing or a snapshot age that jumps is the
   clock, a rising `loss` is the link, and `jump`/`lunges`/`snaps` say whether a replica's target
@@ -233,7 +239,8 @@ join handshakes, link latency) runs on the injected `NetScheduler`, never on `ti
   the moment the new one arrives - near zero for steady motion whatever the latency). Snaps are
   counted from what `applyNetworkState` returns, so an app entity that wants to show up there returns
   its correction helper's outcome. Loss comes from the counter `n` on every state message; a
-  transport that splits a state message must keep `n` on every part. Every outgoing message must go through the
+  transport that splits a state message must keep `n` on every part. A late message takes back a loss
+  only if its own counter was counted as lost (a gap after a paused stream never is). Every outgoing message must go through the
   controller's `transmit()`, never `transport.send()` directly, or the stats miss it.
 - Live: open an example's `?room=` URL in two tabs (BroadcastChannel signaling needs no backend).
   Automation tabs are hidden: `requestAnimationFrame` doesn't tick and `setTimeout` is clamped to ≥1 s,

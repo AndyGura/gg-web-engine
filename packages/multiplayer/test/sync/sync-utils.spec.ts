@@ -426,6 +426,33 @@ describe('LinkConditioner', () => {
     expect(got).toEqual(['b1', 'a-state', 'a1', 'a2', 'a3']);
     c.pass('reliable', () => got.push('a4'), 'a');
     expect(got[got.length - 1]).toBe('a4');
-    expect((c as any).reliableTail.size).toBe(0); // nothing is remembered about a sender with nothing in flight
+    expect((c as any).reliableQueues.size).toBe(0); // nothing is remembered about a sender with nothing in flight
+  });
+
+  it('keeps the order of reliable messages when timers fire early or out of order', () => {
+    // a host's timers: delays cut to whole ms, so of two messages due at once the later one fires first
+    const s = new VirtualScheduler();
+    const host = {
+      now: () => s.now(),
+      setTimeout: (fn: () => void, ms: number) => s.setTimeout(fn, Math.floor(ms)),
+      clearTimeout: (handle: unknown) => s.clearTimeout(handle),
+      setInterval: (fn: () => void, ms: number) => s.setInterval(fn, ms),
+      clearInterval: (handle: unknown) => s.clearInterval(handle),
+    };
+    const c = new LinkConditioner(host);
+    c.stallMs = 300;
+    c.stallIntervalMs = 1000;
+    const got: string[] = [];
+    s.advance(1000.9);
+    c.pass('reliable', () => got.push('a1'), 'a'); // due at 1300, its timer cut to 1299.9
+    s.advance(0.3);
+    c.pass('reliable', () => got.push('a2'), 'a'); // due at 1300, a timer of its own would be cut to 1299.2
+    s.advance(297.9);
+    c.reset();
+    c.pass('reliable', () => got.push('a3'), 'a'); // no delay of its own, but a1 and a2 are still in flight
+    expect(got).toEqual([]);
+    s.advance(1);
+    expect(got).toEqual(['a1', 'a2', 'a3']);
+    expect((c as any).reliableQueues.size).toBe(0);
   });
 });

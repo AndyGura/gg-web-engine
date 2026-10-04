@@ -45,8 +45,10 @@ export interface RigidBodyNetState<D = unknown, R = unknown> {
  * contains) a rigid body: one algorithm, applied per body kind.
  *
  * 1. The snapshot is extrapolated to "now" along its velocities, capped at `extrapolateMaxMs`. A
- *    dynamic replica of a moving target whose snapshot is older than that, up to `coastMaxMs`, is
- *    left alone (`'coast'`): the stream stalled, and its own simulation is the better guess.
+ *    dynamic replica of a moving target whose snapshot arrived longer ago than that
+ *    (`ctx.sinceReceivedMs`), up to `coastMaxMs`, is left alone (`'coast'`): the stream stalled, and
+ *    its own simulation is the better guess. A snapshot that is old only because the link is slow
+ *    is corrected to as usual.
  * 2. Error below the deadzone: nothing is written (and an awake replica of a sleeping target is put
  *    to sleep).
  * 3. Error above `snapDistance`, or `ctx.snap`: the extrapolated state is written outright.
@@ -94,7 +96,7 @@ export class RigidBodyCorrection {
    * Replica side: reconcile `body` toward `target` - see the class doc for the algorithm.
    * @param body - the replica's local body
    * @param target - the owner's snapshot
-   * @param ctx - age/dt/snap/tuning of this application
+   * @param ctx - age/silence/dt/snap/tuning of this application
    * @param tuning - overrides `ctx.tuning` when given
    */
   static correct<D, R>(
@@ -108,7 +110,7 @@ export class RigidBodyCorrection {
       return 'none';
     }
     const isDynamic = bodyType === 'dynamic';
-    if (!ctx.snap && isDynamic && !target.s && isCoasting(ctx.ageMs, tuning)) {
+    if (!ctx.snap && isDynamic && !target.s && isCoasting(ctx.sinceReceivedMs, tuning)) {
       return 'coast';
     }
     const ageS = target.s ? 0 : extrapolationSeconds(ctx.ageMs, tuning);

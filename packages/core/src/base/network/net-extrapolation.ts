@@ -30,9 +30,13 @@ export function extrapolateNetPosition<D = unknown>(
 }
 
 /**
- * Whether a snapshot `ageMs` old leaves its replica coasting: too old to extrapolate
- * (`extrapolateMaxMs`), not yet old enough to be corrected to again (`coastMaxMs`).
+ * Whether a replica whose latest snapshot arrived `sinceReceivedMs` ago is coasting: the stream has
+ * been silent for longer than a snapshot is extrapolated (`extrapolateMaxMs`), not yet long enough for
+ * the replica to be corrected to it again (`coastMaxMs`).
  */
-export function isNetStateCoasting(ageMs: number, tuning: CorrectionTuning = DEFAULT_CORRECTION_TUNING): boolean {
-  return isCoasting(ageMs, tuning);
+export function isNetStateCoasting(
+  sinceReceivedMs: number,
+  tuning: CorrectionTuning = DEFAULT_CORRECTION_TUNING,
+): boolean {
+  return isCoasting(sinceReceivedMs, tuning);
 }

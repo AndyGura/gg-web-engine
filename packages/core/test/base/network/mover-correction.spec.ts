@@ -55,14 +55,17 @@ describe('MoverCorrection', () => {
     expect(entity.position.x).toBeCloseTo(0.4);
   });
 
-  it('coasts while the snapshot is stale instead of pulling the mover back', () => {
+  it('coasts while the stream is stalled instead of pulling the mover back', () => {
     const { entity } = spawned3d();
     const walking = target3d({ p: { x: -5, y: 0, z: 0 }, v: { x: 4, y: 0, z: 0 }, crouch: true });
-    expect(MoverCorrection.correct(entity, walking, ctx({ ageMs: 600 }))).toBe('coast');
+    expect(MoverCorrection.correct(entity, walking, ctx({ ageMs: 650, sinceReceivedMs: 600 }))).toBe('coast');
     expect(entity.position).toEqual({ x: 0, y: 0, z: 0 });
     expect(entity.externalDisplacement).toEqual({ x: 0, y: 0, z: 0 });
     expect(entity.isCrouching).toBe(true); // discrete state is still adopted
-    expect(MoverCorrection.correct(entity, walking, ctx({ ageMs: 1001 }))).toBe('snap');
+    // a slow link is not a stalled stream: an old snapshot that has just arrived is corrected to
+    const slow = spawned3d().entity;
+    expect(MoverCorrection.correct(slow, walking, ctx({ ageMs: 600, sinceReceivedMs: 20 }))).toBe('snap');
+    expect(MoverCorrection.correct(entity, walking, ctx({ ageMs: 1051, sinceReceivedMs: 1001 }))).toBe('snap');
     expect(MoverCorrection.targetPosition(walking, 100).x).toBeCloseTo(-4.6);
   });
 

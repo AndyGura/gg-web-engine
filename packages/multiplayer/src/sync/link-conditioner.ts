@@ -11,7 +11,9 @@ import { WireChannel } from './wire';
  *   longer, as a retransmitted packet does.
  *
  * Reliable messages of one sender are always delivered in order, so a delayed one holds back every
- * later one (head-of-line blocking); unreliable ones may reorder.
+ * later one (head-of-line blocking); unreliable ones may reorder. The order never depends on timers
+ * firing in the order of their delays: a sender's delayed reliable messages wait in one queue, drained
+ * by one timer at a time.
  */
 export class LinkConditioner {
   public latencyMs = 0;
@@ -22,8 +24,8 @@ export class LinkConditioner {
   public reliableDelayRate = 0;
   public reliableDelayMs = 0;
 
-  // per sender: when its last reliable message is delivered
-  private readonly reliableTail = new Map<string, number>();
+  // per sender: its reliable messages in flight, in order of arrival. No entry with nothing in flight
+  private readonly reliableQueues = new Map<string, { deliver: () => void; due: number }[]>();
 
   constructor(
     private readonly scheduler: NetScheduler,
@@ -70,13 +72,8 @@ export class LinkConditioner {
    */
   pass(channel: WireChannel, deliver: () => void, from: string = ''): void {
     const now = this.scheduler.now();
-    // forget every sender with nothing in flight any more, also the ones that are gone
-    for (const [sender, tail] of this.reliableTail) {
-      if (tail <= now) {
-        this.reliableTail.delete(sender);
-      }
-    }
-    if (!this.active && !(channel === 'reliable' && this.reliableTail.has(from))) {
+    const queue = channel === 'reliable' ? this.reliableQueues.get(from) : undefined;
+    if (!this.active && !queue) {
       deliver();
       return;
     }
@@ -96,16 +93,41 @@ export class LinkConditioner {
         due += this.stallMs - phase;
       }
     }
-    if (channel === 'reliable') {
-      due = Math.max(due, this.reliableTail.get(from) ?? 0);
-      if (due > now) {
-        this.reliableTail.set(from, due);
-      }
-    }
-    if (due > now) {
-      this.scheduler.setTimeout(deliver, due - now);
-    } else {
+    if (queue) {
+      // behind everything of this sender still in flight, whatever its own delay
+      queue.push({ deliver, due });
+    } else if (due <= now) {
       deliver();
+    } else if (channel === 'reliable') {
+      this.reliableQueues.set(from, [{ deliver, due }]);
+      this.scheduler.setTimeout(() => this.drain(from), due - now);
+    } else {
+      this.scheduler.setTimeout(deliver, due - now);
+    }
+  }
+
+  /**
+   * The timer of a sender's first queued reliable message fired: deliver it and every later one that
+   * is due as well, then wait for the next. The sender is forgotten once nothing of it is in flight.
+   */
+  private drain(from: string): void {
+    const queue = this.reliableQueues.get(from);
+    if (!queue) {
+      return;
+    }
+    try {
+      // the first one is due by its timer having fired, even when a timer runs a fraction of a ms early
+      let first = true;
+      while (queue.length > 0 && (first || queue[0].due <= this.scheduler.now())) {
+        first = false;
+        queue.shift()!.deliver();
+      }
+    } finally {
+      if (queue.length > 0) {
+        this.scheduler.setTimeout(() => this.drain(from), Math.max(0, queue[0].due - this.scheduler.now()));
+      } else {
+        this.reliableQueues.delete(from);
+      }
     }
   }
 }

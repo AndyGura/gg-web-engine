@@ -58,7 +58,9 @@ export interface INetworkMover<D, R> {
  * `move()` consumes, so a correction slides against geometry and respects step/snap-to-ground like
  * any other movement. Forwarded input does most of the work; correction only erases a tick or two of
  * divergence. Rotation is lerped, `fallVelocity`/`airHorizontalVelocity` lerped toward the target,
- * crouch applied directly. A snap (error above `snapDistance`, or `ctx.snap`) writes position and
+ * crouch applied directly. While the stream is stalled (`ctx.sinceReceivedMs` between
+ * `extrapolateMaxMs` and `coastMaxMs`) the mover is left alone (`'coast'`), only crouch is still
+ * adopted. A snap (error above `snapDistance`, or `ctx.snap`) writes position and
  * rotation through the setters and resets both momentum vectors to the owner's.
  */
 export class MoverCorrection {
@@ -91,7 +93,7 @@ export class MoverCorrection {
    * Replica side: reconcile `mover` toward `target` - see the class doc.
    * @param mover - the replica's local character entity
    * @param target - the owner's snapshot
-   * @param ctx - age/dt/snap/tuning of this application
+   * @param ctx - age/silence/dt/snap/tuning of this application
    * @param tuning - overrides `ctx.tuning` when given
    */
   static correct<D, R>(
@@ -109,7 +111,7 @@ export class MoverCorrection {
       mover.isCrouching = target.crouch;
     }
 
-    if (!ctx.snap && isCoasting(ctx.ageMs, tuning)) {
+    if (!ctx.snap && isCoasting(ctx.sinceReceivedMs, tuning)) {
       // the stream stalled: the mover keeps going on the input it has rather than being pulled back
       return 'coast';
     }

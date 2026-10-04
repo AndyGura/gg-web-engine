@@ -159,22 +159,27 @@ describe('RigidBodyCorrection', () => {
       expect(body.position.x).toBeCloseTo(2.5); // 10 m/s * 250 ms
     });
 
-    it('lets a dynamic replica of a moving target coast while its snapshot is stale, up to coastMaxMs', () => {
+    it('lets a dynamic replica of a moving target coast while the stream is stalled, up to coastMaxMs', () => {
       const moving = state3d({ p: { x: 0, y: 0, z: 0 }, lv: { x: 10, y: 0, z: 0 } });
+      const stalled = (sinceReceivedMs: number, over: Partial<NetworkApplyContext> = {}) =>
+        ctx({ ageMs: sinceReceivedMs + 50, sinceReceivedMs, ...over });
       const body = mockBody3d();
       body.position = { x: 9, y: 0, z: 0 }; // far beyond the capped extrapolation (2.5) and snapDistance
       body.writes.length = 0;
-      expect(RigidBodyCorrection.correct(body, moving, ctx({ ageMs: 600 }))).toBe('coast');
+      expect(RigidBodyCorrection.correct(body, moving, stalled(600))).toBe('coast');
       expect(body.writes).toEqual([]);
-      // within the extrapolation window, and past the coasting one, it is corrected as usual
-      expect(RigidBodyCorrection.correct(mockBody3d(), moving, ctx({ ageMs: 250 }))).toBe('snap');
-      expect(RigidBodyCorrection.correct(body, moving, ctx({ ageMs: 1001 }))).toBe('snap');
+      // before the stream counts as stalled, and past the coasting window, it is corrected as usual
+      expect(RigidBodyCorrection.correct(mockBody3d(), moving, stalled(200))).toBe('snap');
+      expect(RigidBodyCorrection.correct(body, moving, stalled(1001))).toBe('snap');
       expect(body.position.x).toBeCloseTo(2.5);
+      // a slow link is not a stalled stream: an old snapshot that has just arrived is corrected to
+      expect(RigidBodyCorrection.correct(mockBody3d(), moving, ctx({ ageMs: 600, sinceReceivedMs: 20 }))).toBe('snap');
+      expect(RigidBodyCorrection.correct(mockBody3d(), moving, ctx({ ageMs: 600 }))).toBe('snap');
       // never for a demanded snap, a sleeping target, a kinematic body, or with coasting turned off
-      expect(RigidBodyCorrection.correct(mockBody3d(), moving, ctx({ ageMs: 600, snap: true }))).toBe('snap');
-      expect(RigidBodyCorrection.correct(mockBody3d(), { ...moving, s: true }, ctx({ ageMs: 600 }))).not.toBe('coast');
-      expect(RigidBodyCorrection.correct(mockBody3d('kinematic_pos'), moving, ctx({ ageMs: 600 }))).not.toBe('coast');
-      const off = ctx({ ageMs: 600, tuning: { ...DEFAULT_CORRECTION_TUNING, coastMaxMs: 0 } });
+      expect(RigidBodyCorrection.correct(mockBody3d(), moving, stalled(600, { snap: true }))).toBe('snap');
+      expect(RigidBodyCorrection.correct(mockBody3d(), { ...moving, s: true }, stalled(600))).not.toBe('coast');
+      expect(RigidBodyCorrection.correct(mockBody3d('kinematic_pos'), moving, stalled(600))).not.toBe('coast');
+      const off = stalled(600, { tuning: { ...DEFAULT_CORRECTION_TUNING, coastMaxMs: 0 } });
       expect(RigidBodyCorrection.correct(mockBody3d(), moving, off)).toBe('snap');
     });
 

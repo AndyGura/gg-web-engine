@@ -237,6 +237,29 @@ describe('NetworkController features', () => {
     expect(worstGap).toBeLessThan(2);
   });
 
+  it('keeps correcting replicas over a link slower than the extrapolation window', async () => {
+    // every snapshot arrives 400 ms old (extrapolateMaxMs is 250): old, but the stream isn't stalled
+    h = new Harness(adapter, { latencyMs: 400 });
+    const a = await h.addPeer('a');
+    const b = await h.addPeer('b');
+    for (const peer of [a, b]) {
+      (peer.world.physicsWorld as any).gravity = { x: 0, y: 0, z: 0 };
+    }
+    await h.run(Math.ceil(2000 / TICK_MS));
+    const box = adapter.addBox(a.world, adapter.at(0, 20)) as Entity3d;
+    box.objectBody!.linearVelocity = adapter.along(10);
+    await h.run(Math.ceil(2000 / TICK_MS));
+    const correct = jest.spyOn(RigidBodyCorrection, 'correct');
+    try {
+      await h.run(Math.ceil(2000 / TICK_MS));
+      const outcomes = correct.mock.results.map(r => r.value as string);
+      expect(outcomes.length).toBeGreaterThan(50);
+      expect(outcomes).not.toContain('coast');
+    } finally {
+      correct.mockRestore();
+    }
+  });
+
   it('counts lost state messages, lunges and snaps per peer', async () => {
     h = new Harness(adapter, { latencyMs: 20 });
     const a = await h.addPeer('a');
@@ -300,6 +323,10 @@ describe('NetworkController features', () => {
     expect(lostNow()).toBe(l1);
     countState(n1 + 60); // while one within a running stream is
     expect(lostNow()).toBe(l1 + 9);
+    countState(n1 + 20); // late out of the gap that wasn't counted: no loss to take back
+    expect(lostNow()).toBe(l1 + 9);
+    countState(n1 + 55); // late out of the counted one
+    expect(lostNow()).toBe(l1 + 8);
     (b.net as any).peers.get('a').lastStateN = null; // back in step with the real stream
     a.net.sendRate = rate;
     await h.run(5);

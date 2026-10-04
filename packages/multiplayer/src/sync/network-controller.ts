@@ -212,7 +212,15 @@ interface NetRecord {
   epoch: number;
   possessor: string | null;
   lastSeq: number;
-  latest: { s: unknown; i: unknown; localTs: number; snap: boolean; inputPending: boolean } | null;
+  /** `localTs`: when it was captured, on the local clock; `receivedAt`: when it arrived here */
+  latest: {
+    s: unknown;
+    i: unknown;
+    localTs: number;
+    receivedAt: number;
+    snap: boolean;
+    inputPending: boolean;
+  } | null;
   lastStateAt: number;
   lastSentJson: string | null;
   lastSentAt: number;
@@ -243,6 +251,8 @@ interface PeerRecord {
   lastStateN: number | null;
   /** counters of the latest state messages received (within `MAX_LOSS_GAP` of the latest) */
   seenStateN: Set<number>;
+  /** counters skipped by a gap that was counted as loss, until one shows up late after all */
+  lostStateN: Set<number>;
   lastStateMessageAt: number;
   stateMessages: number;
   stateMessagesLost: number;
@@ -973,6 +983,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       try {
         const outcome = rec.entity.applyNetworkState(latest.s, {
           ageMs: Math.max(0, now - latest.localTs),
+          sinceReceivedMs: now - latest.receivedAt,
           dt: delta,
           snap: latest.snap,
           tuning: rec.entity.networkTuning ? { ...this.tuning, ...rec.entity.networkTuning } : this.tuning,
@@ -1789,6 +1800,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       stateAgeCount: 0,
       lastStateN: null,
       seenStateN: new Set<number>(),
+      lostStateN: new Set<number>(),
       lastStateMessageAt: 0,
       stateMessages: 0,
       stateMessagesLost: 0,
@@ -2025,7 +2037,8 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
   /**
    * loss accounting from the sender's message counter: a gap is that many messages lost, until one of
    * them shows up late after all (the channel is unordered). A gap after a pause of the stream (out of
-   * the sender's stream ring, a hidden tab) is not loss, and neither is a very long one. A counter
+   * the sender's stream ring, a hidden tab) is not loss, and neither is a very long one - a late
+   * message out of such a gap changes nothing. A counter
    * seen before is another part of a message the transport split.
    */
   private countStateMessage(peer: PeerRecord, n: number | undefined): void {
@@ -2036,19 +2049,25 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     const last = peer.lastStateN;
     if (last === null || n > last) {
       const gap = last === null ? 0 : n - last - 1;
-      if (gap <= MAX_LOSS_GAP && now - peer.lastStateMessageAt <= STREAM_PAUSE_MS) {
+      if (last !== null && gap <= MAX_LOSS_GAP && now - peer.lastStateMessageAt <= STREAM_PAUSE_MS) {
         peer.stateMessagesLost += gap;
+        for (let lost = last + 1; lost < n; lost++) {
+          peer.lostStateN.add(lost);
+        }
       }
       peer.lastStateN = n;
-      for (const seen of peer.seenStateN) {
-        if (seen < n - MAX_LOSS_GAP) {
-          peer.seenStateN.delete(seen);
+      for (const set of [peer.seenStateN, peer.lostStateN]) {
+        for (const old of set) {
+          if (old < n - MAX_LOSS_GAP) {
+            set.delete(old);
+          }
         }
       }
     } else if (last - n > MAX_LOSS_GAP) {
       return;
-    } else {
-      peer.stateMessagesLost = Math.max(0, peer.stateMessagesLost - 1);
+    } else if (peer.lostStateN.delete(n)) {
+      // only a message counted as lost stops being one: a gap after a pause never was
+      peer.stateMessagesLost--;
     }
     peer.seenStateN.add(n);
     peer.lastStateMessageAt = now;
@@ -2084,11 +2103,11 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       peer.stateAgeCount++;
       const tuning = rec.entity.networkTuning ? { ...this.tuning, ...rec.entity.networkTuning } : this.tuning;
       type Position = { x: number; y: number; z?: number };
-      const oldAge = rec.latest ? this.now - rec.latest.localTs : 0;
-      const before = rec.latest && extrapolateNetPosition<Position>(rec.latest.s, oldAge, tuning);
+      const before =
+        rec.latest && extrapolateNetPosition<Position>(rec.latest.s, this.now - rec.latest.localTs, tuning);
       const after = extrapolateNetPosition<Position>(item.s, this.now - localTs, tuning);
       // a coasting replica wasn't being steered to the old target, so it can't lunge from it
-      if (before && after && !isNetStateCoasting(oldAge, tuning)) {
+      if (before && after && !isNetStateCoasting(this.now - rec.latest!.receivedAt, tuning)) {
         const jump = Math.hypot(after.x - before.x, after.y - before.y, (after.z ?? 0) - (before.z ?? 0));
         peer.targetJumpSum += jump;
         peer.targetJumpCount++;
@@ -2101,6 +2120,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       s: item.s,
       i: item.i,
       localTs,
+      receivedAt: this.now,
       snap,
       inputPending: item.i !== undefined || !!rec.latest?.inputPending,
     };
@@ -2124,6 +2144,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       s: item.full,
       i: undefined,
       localTs: this.toLocalTime(from, item.ts),
+      receivedAt: this.now,
       snap: true,
       inputPending: false,
     };
