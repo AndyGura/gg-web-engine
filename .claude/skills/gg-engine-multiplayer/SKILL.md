@@ -41,7 +41,8 @@ reuses.
 ## Core contracts (what an entity implements)
 
 - `INetworkSyncable<S>`: `captureNetworkState(): S` (plain JSON) on the owner,
-  `applyNetworkState(target, ctx)` on replicas, optional `captureFullNetworkState()` (join/takeover),
+  `applyNetworkState(target, ctx)` on replicas (may return the helper's `CorrectionOutcome`, used
+  only for diagnostics), optional `captureFullNetworkState()` (join/takeover),
   optional `isNetworkSyncEnabled` (`false` = ignored entirely) and `networkTuning`.
   `NetworkApplyContext` = `{ ageMs, dt, snap, tuning }` - `tuning` is the controller's merged with
   the entity's override, so helpers need no extra argument.
@@ -225,7 +226,12 @@ join handshakes, link latency) runs on the injected `NetScheduler`, never on `ti
   messages delayed like a retransmission, holding back the sender's later ones. The `net_panel`
   command shows what the link is doing while it happens (`NetDebugPanel`, fed by
   `controller.netStats`): a per-peer offset that keeps slewing or a snapshot age that jumps is the
-  clock, a dropping incoming rate is the link. Every outgoing message must go through the
+  clock, a rising `loss` is the link, and `jump`/`lunges`/`snaps` say whether a replica's target
+  actually moved (`jump` is the distance between the old and the new snapshot, both extrapolated to
+  the moment the new one arrives - near zero for steady motion whatever the latency). Snaps are
+  counted from what `applyNetworkState` returns, so an app entity that wants to show up there returns
+  its correction helper's outcome. Loss comes from the counter `n` on every state message; a
+  transport that splits a state message must keep `n` on every part. Every outgoing message must go through the
   controller's `transmit()`, never `transport.send()` directly, or the stats miss it.
 - Live: open an example's `?room=` URL in two tabs (BroadcastChannel signaling needs no backend).
   Automation tabs are hidden: `requestAnimationFrame` doesn't tick and `setTimeout` is clamped to ≥1 s,

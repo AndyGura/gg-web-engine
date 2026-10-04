@@ -68,6 +68,20 @@ export interface NetPeerStats extends PeerInfo {
    */
   stateAgeSumMs: number;
   stateAgeCount: number;
+  /** state messages of the peer that arrived, and that never did (gaps in its message counter) */
+  stateMessages: number;
+  stateMessagesLost: number;
+  /** times a replica of one of the peer's entities was teleported because it was beyond `snapDistance` */
+  snaps: number;
+  /**
+   * how far, in total, a new snapshot of the peer moved the point its replica was being steered to
+   * (the old snapshot and the new one, both extrapolated to the moment of arrival), over how many
+   * snapshots: near zero for steady motion on a good link, whatever the latency
+   */
+  targetJumpSum: number;
+  targetJumpCount: number;
+  /** how many of those jumps were lunges: above a quarter of `snapDistance` */
+  lunges: number;
 }
 
 /** A reading of the controller's live numbers; counters are cumulative, so rates are the difference of two readings. */
@@ -223,6 +237,14 @@ interface PeerRecord {
   received: NetTrafficCounters;
   stateAgeSumMs: number;
   stateAgeCount: number;
+  /** counter (`n`) of the latest state message received, null before the first */
+  lastStateN: number | null;
+  stateMessages: number;
+  stateMessagesLost: number;
+  snaps: number;
+  targetJumpSum: number;
+  targetJumpCount: number;
+  lunges: number;
 }
 
 interface PendingJoin {
@@ -232,6 +254,29 @@ interface PendingJoin {
 }
 
 /** `lv` of a `RigidBodyNetState`-shaped payload (any syncable whose state carries one), else null */
+/**
+ * where a replica of a snapshot `ageMs` old is steered to, the way the correction helpers extrapolate
+ * it - for a state carrying a position `p` and a velocity (`lv` of a rigid body, `v` of a mover),
+ * else null
+ */
+function extrapolatedPosition(
+  s: unknown,
+  ageMs: number,
+  tuning: CorrectionTuning,
+): { x: number; y: number; z?: number } | null {
+  const p = (s as any)?.p;
+  const v = (s as any)?.lv ?? (s as any)?.v;
+  if (!p || typeof p.x !== 'number' || !v || typeof v.x !== 'number') {
+    return null;
+  }
+  const ageS = (s as any).s === true ? 0 : Math.max(0, Math.min(ageMs, tuning.extrapolateMaxMs)) / 1000;
+  return {
+    x: p.x + v.x * ageS,
+    y: p.y + v.y * ageS,
+    z: typeof p.z === 'number' ? p.z + (v.z ?? 0) * ageS : undefined,
+  };
+}
+
 function velocityOfState(s: unknown): any | null {
   const lv = (s as any)?.lv;
   return lv && typeof lv.x === 'number' ? lv : null;
@@ -240,6 +285,8 @@ function velocityOfState(s: unknown): any | null {
 const SESSION_HOOK_REJECTION =
   'not available in a multiplayer session (a local-only edit of shared state desyncs peers)';
 const CHAIN_BLOCK_MS = 2000;
+// a longer gap in a peer's state message counter is a paused stream, not that many lost messages
+const MAX_LOSS_GAP = 100;
 
 /**
  * The world entity that makes a `GgWorld` multiplayer: it discovers every `INetworkSyncable` entity,
@@ -338,6 +385,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
   private desiredPossessions = new Set<IEntity>();
   private _roomSharedLevels: string[] = [];
   private seq = 0;
+  private stateMessagesSent = 0;
   private joinedAt = 0;
   private tickCount = 0;
   private lastDelta = 16;
@@ -475,6 +523,12 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
         received: { ...p.received },
         stateAgeSumMs: p.stateAgeSumMs,
         stateAgeCount: p.stateAgeCount,
+        stateMessages: p.stateMessages,
+        stateMessagesLost: p.stateMessagesLost,
+        snaps: p.snaps,
+        targetJumpSum: p.targetJumpSum,
+        targetJumpCount: p.targetJumpCount,
+        lunges: p.lunges,
       })),
     };
   }
@@ -934,12 +988,19 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       }
       latest.inputPending = false;
       try {
-        rec.entity.applyNetworkState(latest.s, {
+        const outcome = rec.entity.applyNetworkState(latest.s, {
           ageMs: Math.max(0, now - latest.localTs),
           dt: delta,
           snap: latest.snap,
           tuning: rec.entity.networkTuning ? { ...this.tuning, ...rec.entity.networkTuning } : this.tuning,
         });
+        if (outcome === 'snap' && !latest.snap) {
+          // nobody asked for this one: the replica was too far from where its owner says it is
+          const owner = this.peers.get(rec.owner);
+          if (owner) {
+            owner.snaps++;
+          }
+        }
       } catch (e) {
         warnOnce(`NetworkController: applyNetworkState of "${rec.id}" threw: ${e}`);
       }
@@ -1023,7 +1084,11 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       return;
     }
     // one send for every stream target, so the message is serialized once
-    this.transmit(this.transport.streamTargets?.() ?? 'all', 'unreliable', { t: 'state', items });
+    this.transmit(this.transport.streamTargets?.() ?? 'all', 'unreliable', {
+      t: 'state',
+      items,
+      n: ++this.stateMessagesSent,
+    });
   }
 
   // ---------------------------------------------------------------------------------------------
@@ -1739,6 +1804,13 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       received: newTrafficCounters(),
       stateAgeSumMs: 0,
       stateAgeCount: 0,
+      lastStateN: null,
+      stateMessages: 0,
+      stateMessagesLost: 0,
+      snaps: 0,
+      targetJumpSum: 0,
+      targetJumpCount: 0,
+      lunges: 0,
     };
   }
 
@@ -1832,6 +1904,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     }
     switch (msg.t) {
       case 'state':
+        this.countStateMessage(peer, msg.n);
         for (const item of msg.items) {
           const rec = this.records.get(item.id);
           if (rec) {
@@ -1964,6 +2037,30 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     }
   }
 
+  /**
+   * loss accounting from the sender's message counter: a gap is that many messages lost, until one of
+   * them shows up late after all (the channel is unordered). A long gap is the stream having been off
+   * (out of the sender's stream ring, a hidden tab), not loss.
+   */
+  private countStateMessage(peer: PeerRecord, n: number | undefined): void {
+    if (n === undefined) {
+      return;
+    }
+    const last = peer.lastStateN;
+    if (last === null || n > last) {
+      const gap = last === null ? 0 : n - last - 1;
+      if (gap <= MAX_LOSS_GAP) {
+        peer.stateMessagesLost += gap;
+      }
+      peer.lastStateN = n;
+      peer.stateMessages++;
+    } else if (n < last && last - n <= MAX_LOSS_GAP) {
+      peer.stateMessagesLost = Math.max(0, peer.stateMessagesLost - 1);
+      peer.stateMessages++;
+    }
+    // n === last: the other part of a message the transport split
+  }
+
   private acceptStateItem(rec: NetRecord, item: StateItem, from: string): void {
     if (item.owner === this.localPeerId || item.owner !== from) {
       return;
@@ -1991,6 +2088,17 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     if (peer?.clock.ready) {
       peer.stateAgeSumMs += this.now - localTs;
       peer.stateAgeCount++;
+      const tuning = rec.entity.networkTuning ? { ...this.tuning, ...rec.entity.networkTuning } : this.tuning;
+      const before = rec.latest && extrapolatedPosition(rec.latest.s, this.now - rec.latest.localTs, tuning);
+      const after = extrapolatedPosition(item.s, this.now - localTs, tuning);
+      if (before && after) {
+        const jump = Math.hypot(after.x - before.x, after.y - before.y, (after.z ?? 0) - (before.z ?? 0));
+        peer.targetJumpSum += jump;
+        peer.targetJumpCount++;
+        if (jump > tuning.snapDistance / 4) {
+          peer.lunges++;
+        }
+      }
     }
     rec.latest = {
       s: item.s,

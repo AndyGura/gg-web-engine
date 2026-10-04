@@ -42,7 +42,8 @@ export interface SpawnItem {
 }
 
 export type WireMessage =
-  | { t: 'state'; items: StateItem[] }
+  /** `n` counts the sender's state messages, so a receiver can tell how many never arrived */
+  | { t: 'state'; items: StateItem[]; n?: number }
   | { t: 'claim'; entityId: string; epoch: number; candidate: string }
   | { t: 'possess'; entityId: string; epoch: number; peerId: string }
   | { t: 'release'; entityId: string; epoch: number }

@@ -99,7 +99,7 @@ connection setup time must fit inside the one-cell margin between the two rings.
 
 ### Dev tools
 With the dev console: `net_status`, `net_panel` (a live overlay: traffic rates, and per peer the
-round trip, clock offset, snapshot age and incoming rate; the same numbers are on
+round trip, clock offset, snapshot age, state message loss, target jumps, lunges and snaps; the same numbers are on
 `controller.netStats`), `net_owners [filter]`, `net_tuning key value`,
 `net_lag ms loss% jitterMs stallMs stallEveryMs reliableDelayMs reliableDelay%` (a simulated bad
 incoming link: latency, unreliable loss, jitter, delivery stalls, retransmitted reliable messages;

@@ -7,7 +7,9 @@ const esc = (value: unknown): string =>
 
 /**
  * Live network stats overlay (the `net_panel` console command): session, entity counts, traffic rates
- * and one row per connected peer with its round trip, clock offset and snapshot age. Rates are the
+ * and one row per connected peer: round trip, clock offset, snapshot age, state message loss, how far
+ * new snapshots move the replicas' targets (`jump`, world units), and how often that was a lunge or
+ * ended in a snap. Rates are the
  * difference between two readings of the controller's cumulative counters. Browser only.
  */
 export class NetDebugPanel {
@@ -78,10 +80,33 @@ export class NetDebugPanel {
       lines.push(`<span style='color:orange'>simulated lag: ${esc(stats.simulatedLag)}</span>`);
     }
     if (stats.peers.length > 0) {
-      const rows = [['peer', 'rtt', 'offset', 'slew', 'sync', 'age', 'states/s', 'kB/s', 'owns', 'heard']];
+      const rows = [
+        [
+          'peer',
+          'rtt',
+          'offset',
+          'slew',
+          'sync',
+          'age',
+          'loss',
+          'jump',
+          'lunges',
+          'snaps',
+          'states/s',
+          'kB/s',
+          'owns',
+          'heard',
+        ],
+      ];
       for (const p of stats.peers) {
         const before = prev?.stats.peers.find(x => x.peerId === p.peerId);
         const ages = before ? p.stateAgeCount - before.stateAgeCount : 0;
+        const arrived = before ? p.stateMessages - before.stateMessages : 0;
+        const lost = before ? Math.max(0, p.stateMessagesLost - before.stateMessagesLost) : 0;
+        const jumps = before ? p.targetJumpCount - before.targetJumpCount : 0;
+        // a total, with what the last interval added
+        const total = (now: number, was: number | undefined) =>
+          was !== undefined && now > was ? `${now} (+${now - was})` : `${now}`;
         rows.push([
           p.peerId + (p.away ? ' (away)' : ''),
           `${p.rttMs.toFixed(1)} ms`,
@@ -90,6 +115,10 @@ export class NetDebugPanel {
           `${(p.targetOffsetMs - p.offsetMs).toFixed(1)} ms`,
           p.clockReady ? `${p.clockSamples}` : `${p.clockSamples} (wait)`,
           ages > 0 ? `${((p.stateAgeSumMs - before!.stateAgeSumMs) / ages).toFixed(1)} ms` : '-',
+          arrived + lost > 0 ? `${((lost * 100) / (arrived + lost)).toFixed(0)}%` : '-',
+          jumps > 0 ? ((p.targetJumpSum - before!.targetJumpSum) / jumps).toFixed(3) : '-',
+          total(p.lunges, before?.lunges),
+          total(p.snaps, before?.snaps),
           rate(p.received.stateItems, before?.received.stateItems).toFixed(0),
           (rate(p.received.bytes, before?.received.bytes) / 1024).toFixed(1),
           `${p.owned}`,

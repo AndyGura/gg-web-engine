@@ -49,6 +49,9 @@ export interface NetworkApplyContext {
   tuning: CorrectionTuning;
 }
 
+/** What a correction ended up doing - handy for tests and debug overlays. */
+export type CorrectionOutcome = 'none' | 'blend' | 'snap' | 'sleep';
+
 /**
  * Per-entity networked-state contract, the network counterpart of `ISerializableEntity`: each
  * entity class decides what it broadcasts (`S` is whatever the class chooses, as long as it is plain
@@ -63,9 +66,11 @@ export interface INetworkSyncable<S = unknown> {
 
   /**
    * Replica side: reconcile local state toward `target`. The entity decides how (blend, velocity
-   * bias, `move()` displacement, snap) - typically by delegating to a correction helper.
+   * bias, `move()` displacement, snap) - typically by delegating to a correction helper. May return
+   * what the correction did (the helpers' own return value), which a network layer only uses for
+   * diagnostics, e.g. counting the replicas it had to snap.
    */
-  applyNetworkState(target: S, ctx: NetworkApplyContext): void;
+  applyNetworkState(target: S, ctx: NetworkApplyContext): CorrectionOutcome | void;
 
   /**
    * Optional: state for a peer that has no local copy yet (late join / takeover). Defaults to

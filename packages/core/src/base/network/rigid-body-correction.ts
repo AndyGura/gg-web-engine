@@ -1,5 +1,10 @@
 import { IRigidBodyComponent } from '../components/physics/i-rigid-body.component';
-import { CorrectionTuning, DEFAULT_CORRECTION_TUNING, NetworkApplyContext } from '../interfaces/i-network-syncable';
+import {
+  CorrectionOutcome,
+  CorrectionTuning,
+  DEFAULT_CORRECTION_TUNING,
+  NetworkApplyContext,
+} from '../interfaces/i-network-syncable';
 import { Point3 } from '../models/points';
 import {
   avClone,
@@ -32,9 +37,6 @@ export interface RigidBodyNetState<D = unknown, R = unknown> {
   av: R | D;
   s: boolean;
 }
-
-/** What a correction call ended up doing - handy for tests and debug overlays. */
-export type CorrectionOutcome = 'none' | 'blend' | 'snap' | 'sleep';
 
 /**
  * Replica correction for rigid bodies, shared by every entity class whose networked state is (or

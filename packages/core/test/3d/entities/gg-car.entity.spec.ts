@@ -172,7 +172,8 @@ describe(`GgCarEntity`, () => {
       Object.assign(vehicle, { wakeUp: () => {}, sleep: () => {}, isSleeping: false });
       const resetSpy = jest.spyOn(vehicle, 'resetSuspension');
       const replica = new GgCarEntity(mockCarProperties(), mock3DObject(), vehicle);
-      replica.applyNetworkState(state, { ageMs: 0, dt: 16, snap: false, tuning: { ...DEFAULT_CORRECTION_TUNING } });
+      const ctx = { ageMs: 0, dt: 16, snap: false, tuning: { ...DEFAULT_CORRECTION_TUNING } };
+      expect(replica.applyNetworkState(state, ctx)).toBe('snap');
       expect(replica.raycastVehicle.vehicleComponent.position).toEqual({ x: 10, y: 0, z: 0 }); // 10m away: snapped
       expect(resetSpy).toHaveBeenCalled();
       expect(replica.gear).toBe(2);

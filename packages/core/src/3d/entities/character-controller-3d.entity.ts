@@ -5,6 +5,7 @@ import {
   MAIN_RENDER_LAYER,
   MoverCorrection,
   MoverNetState,
+  CorrectionOutcome,
   NetworkApplyContext,
   Pnt3,
   Point3,
@@ -766,8 +767,8 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
   }
 
   /** `INetworkSyncable`: replica-side reconciliation through `externalDisplacement` - see `MoverCorrection`. */
-  public applyNetworkState(target: MoverNetState<Point3, Point4>, ctx: NetworkApplyContext): void {
-    MoverCorrection.correct(this, target, ctx);
+  public applyNetworkState(target: MoverNetState<Point3, Point4>, ctx: NetworkApplyContext): CorrectionOutcome {
+    return MoverCorrection.correct(this, target, ctx);
   }
 
   /** `INetworkInputDriven`: what the local input driver set on this character. */

@@ -161,12 +161,13 @@ describe('WebRtcMeshTransport', () => {
       ts: 0,
       s: { p: i },
     }));
-    a.send('b', 'unreliable', { t: 'state', items });
+    a.send('b', 'unreliable', { t: 'state', items, n: 7 });
     await settle(60);
     expect(got[0]).toEqual(big);
     const stateMsgs = got.slice(1) as Extract<WireMessage, { t: 'state' }>[];
     expect(stateMsgs.length).toBeGreaterThan(1);
     expect(stateMsgs.flatMap(m => m.items)).toEqual(items);
+    expect(stateMsgs.every(m => m.n === 7)).toBe(true); // every part keeps the message counter
   });
 
   it('reports a peer that leaves the room', async () => {

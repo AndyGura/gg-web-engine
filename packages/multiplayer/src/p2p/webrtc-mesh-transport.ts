@@ -603,8 +603,8 @@ export class WebRtcMeshTransport implements ITransport {
     }
     const half = Math.ceil(msg.items.length / 2);
     return [
-      ...this.splitUnreliable({ t: 'state', items: msg.items.slice(0, half) }),
-      ...this.splitUnreliable({ t: 'state', items: msg.items.slice(half) }),
+      ...this.splitUnreliable({ ...msg, items: msg.items.slice(0, half) }),
+      ...this.splitUnreliable({ ...msg, items: msg.items.slice(half) }),
     ];
   }
 }

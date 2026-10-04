@@ -1,6 +1,6 @@
 import { Entity3d, GgStatic, IEntity, RigidBodyCorrection } from '@gg-web-engine/core';
 import { ClockSync, NetScheduler, Network3dController } from '../../src';
-import { ADAPTERS, Harness, TICK_MS } from './harness';
+import { ADAPTERS, dist, Harness, TICK_MS } from './harness';
 
 jest.setTimeout(60_000);
 
@@ -220,8 +220,55 @@ describe('NetworkController features', () => {
     // the spawn places the replica outright; nothing after that may teleport it
     expect(outcomes.slice(1).filter(o => o === 'snap')).toEqual([]);
     expect(worstClock).toBeLessThan(8);
+    // and the stats agree: no snap, no lunge, new snapshots barely move the target, ~2% of them lost
+    const stats = b.net.netStats.peers[0];
+    expect(stats.snaps).toBe(0);
+    expect(stats.lunges).toBe(0);
+    expect(stats.targetJumpCount).toBeGreaterThan(500);
+    expect(stats.targetJumpSum / stats.targetJumpCount).toBeLessThan(0.05);
+    const loss = stats.stateMessagesLost / (stats.stateMessagesLost + stats.stateMessages);
+    expect(loss).toBeGreaterThan(0.005);
+    expect(loss).toBeLessThan(0.05);
     // the replica stays about a tick of travel (1.1 m) from the owner's body, well inside snapDistance
     expect(worstGap).toBeLessThan(2);
+  });
+
+  it('counts lost state messages, lunges and snaps per peer', async () => {
+    h = new Harness(adapter, { latencyMs: 20 });
+    const a = await h.addPeer('a');
+    const b = await h.addPeer('b');
+    for (const peer of [a, b]) {
+      (peer.world.physicsWorld as any).gravity = { x: 0, y: 0, z: 0 };
+    }
+    await h.run(Math.ceil(1000 / TICK_MS));
+    const box = adapter.addBox(a.world, adapter.at(0, 20)) as Entity3d;
+    box.objectBody!.linearVelocity = adapter.along(10);
+    await h.run(Math.ceil(2000 / TICK_MS));
+    let stats = b.net.netStats.peers[0];
+    expect(stats).toMatchObject({ peerId: 'a', stateMessagesLost: 0, snaps: 0, lunges: 0 });
+    expect(stats.stateMessages).toBeGreaterThan(40);
+
+    // one in five state messages lost on the way
+    h.hub.conditions.lossRate = 0.2;
+    const before = stats;
+    await h.run(Math.ceil(10_000 / TICK_MS));
+    stats = b.net.netStats.peers[0];
+    const lost = stats.stateMessagesLost - before.stateMessagesLost;
+    const arrived = stats.stateMessages - before.stateMessages;
+    expect(lost / (lost + arrived)).toBeGreaterThan(0.12);
+    expect(lost / (lost + arrived)).toBeLessThan(0.28);
+    expect(stats.snaps).toBe(0);
+    expect(stats.lunges).toBe(0);
+
+    // the owner's body jumps 30 m: the next snapshot moves the replica's target (a lunge), beyond snapDistance
+    h.hub.conditions.lossRate = 0;
+    const p = box.objectBody!.position;
+    box.objectBody!.position = { x: p.x, y: p.y + 30, z: p.z };
+    await h.run(Math.ceil(500 / TICK_MS));
+    stats = b.net.netStats.peers[0];
+    expect(stats.lunges).toBe(1);
+    expect(stats.snaps).toBe(1);
+    expect(dist(findByName(h, 'b', box.name).position, box.position)).toBeLessThan(1);
   });
 
   it('a hidden peer hands its entities over and takes its possession back after resyncing', async () => {

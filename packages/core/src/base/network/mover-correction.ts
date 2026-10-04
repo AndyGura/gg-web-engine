@@ -1,4 +1,9 @@
-import { CorrectionTuning, DEFAULT_CORRECTION_TUNING, NetworkApplyContext } from '../interfaces/i-network-syncable';
+import {
+  CorrectionOutcome,
+  CorrectionTuning,
+  DEFAULT_CORRECTION_TUNING,
+  NetworkApplyContext,
+} from '../interfaces/i-network-syncable';
 import {
   gainFactor,
   NetRot,
@@ -13,7 +18,6 @@ import {
   vScale,
   vSub,
 } from './net-math';
-import { CorrectionOutcome } from './rigid-body-correction';
 
 /**
  * Networked snapshot of a mover (character controller): position, rotation, fall velocity,

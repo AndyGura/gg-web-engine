@@ -50,7 +50,14 @@ where one exists.
   live overlay with the session state, entity counts, traffic rates and one row per peer (round trip,
   clock offset and what it still has to slew, snapshot age, incoming rate, owned entities, silence).
   The same numbers are available to an app as `NetworkController.netStats` (cumulative counters;
-  bytes are counted only while `measureTraffic` is on, which the panel turns on).
+  bytes are counted only while `measureTraffic` is on, which the panel turns on). Per peer it also
+  reports state message loss (state messages carry a counter, `n`), how far new snapshots move the
+  replicas' targets, and how often that was a lunge (above a quarter of `snapDistance`) or ended in
+  an unrequested snap.
+- `@gg-web-engine/core`: `INetworkSyncable.applyNetworkState` may return the `CorrectionOutcome`
+  (`'none' | 'blend' | 'snap' | 'sleep'`) of the correction; the built-in entities (`Entity2d`,
+  `Entity3d`, `GgCarEntity`, both character entities) do. A network layer uses it for diagnostics
+  only, and a `void` implementation stays valid.
 
 ### Changed
 - `@gg-web-engine/multiplayer`: peer clock sync no longer averages its samples. `ClockSync` keeps a

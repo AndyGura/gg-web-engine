@@ -67,7 +67,9 @@ transports or possession. The pieces (see `gg-engine-multiplayer` for the full m
 
 - `INetworkSyncable`/`INetworkInputDriven` (`base/interfaces/i-network-syncable.ts`), with
   `isNetworkSyncable`/`isNetworkInputDriven` duck-type guards, `NetworkApplyContext` (`ageMs`, `dt`,
-  `snap`, `tuning`) and `CorrectionTuning`/`DEFAULT_CORRECTION_TUNING`.
+  `snap`, `tuning`), `CorrectionTuning`/`DEFAULT_CORRECTION_TUNING` and `CorrectionOutcome` - what
+  both correction helpers return and `applyNetworkState` passes on (optional: `void` is valid; a
+  network layer reads it for diagnostics only, never for behavior).
 - `RigidBodyCorrection`/`MoverCorrection` (`base/network/`): the correction math, written once and
   dimension-agnostic - `net-math.ts` tells 2D from 3D at runtime (`z` present / rotation is a
   number), the same way every other helper here operates on plain `Point2`/`Point3`/`Point4` data.
