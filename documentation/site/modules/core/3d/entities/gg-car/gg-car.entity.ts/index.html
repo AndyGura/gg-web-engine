@@ -837,7 +837,7 @@ and adopt its driving state - unless remote input drives this car, which already
 same values (see <code>applyRemoteInput</code>). A snap also resets the suspension, so the wheels don't
 spring from the old pose.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">public applyNetworkState(target: GgCarNetState, ctx: NetworkApplyContext): void
+<pre><code class="language-ts">public applyNetworkState(target: GgCarNetState, ctx: NetworkApplyContext): CorrectionOutcome
 </code></pre>
 <h3 id="capturelocalinput-method">captureLocalInput (method)</h3>
 <p><code>INetworkInputDriven</code>: what the local input driver set on this car. Ends any remote-input suspension of auto-shift.</p>

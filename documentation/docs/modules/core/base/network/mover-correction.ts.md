@@ -14,6 +14,7 @@ parent: Modules
   - [INetworkMover (interface)](#inetworkmover-interface)
   - [MoverCorrection (class)](#movercorrection-class)
     - [capture (static method)](#capture-static-method)
+    - [targetPosition (static method)](#targetposition-static-method)
     - [correct (static method)](#correct-static-method)
   - [MoverNetState (interface)](#movernetstate-interface)
   - [captureMover](#capturemover)
@@ -51,7 +52,9 @@ never teleports the capsule - it becomes the mover's `externalDisplacement`, whi
 `move()` consumes, so a correction slides against geometry and respects step/snap-to-ground like
 any other movement. Forwarded input does most of the work; correction only erases a tick or two of
 divergence. Rotation is lerped, `fallVelocity`/`airHorizontalVelocity` lerped toward the target,
-crouch applied directly. A snap (error above `snapDistance`, or `ctx.snap`) writes position and
+crouch applied directly. While the stream is stalled (`ctx.sinceReceivedMs` between
+`extrapolateMaxMs` and `coastMaxMs`) the mover is left alone (`'coast'`), only crouch is still
+adopted. A snap (error above `snapDistance`, or `ctx.snap`) writes position and
 rotation through the setters and resets both momentum vectors to the owner's.
 
 **Signature**
@@ -68,6 +71,21 @@ Owner side: snapshot `mover` as plain JSON.
 
 ```ts
 static capture<D, R>(mover: INetworkMover<D, R>): MoverNetState<D, R>
+```
+
+### targetPosition (static method)
+
+Where a replica of `target` is steered to once the snapshot is `ageMs` old: its position
+extrapolated along the owner's velocity, capped at `extrapolateMaxMs`.
+
+**Signature**
+
+```ts
+static targetPosition<D, R>(
+    target: MoverNetState<D, R>,
+    ageMs: number,
+    tuning: CorrectionTuning = DEFAULT_CORRECTION_TUNING,
+  ): D
 ```
 
 ### correct (static method)

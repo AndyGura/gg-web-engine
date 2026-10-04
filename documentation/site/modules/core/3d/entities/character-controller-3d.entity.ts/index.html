@@ -861,7 +861,7 @@ doc for why.
 <h3 id="applynetworkstate-method">applyNetworkState (method)</h3>
 <p><code>INetworkSyncable</code>: replica-side reconciliation through <code>externalDisplacement</code> - see <code>MoverCorrection</code>.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">public applyNetworkState(target: MoverNetState&lt;Point3, Point4&gt;, ctx: NetworkApplyContext): void
+<pre><code class="language-ts">public applyNetworkState(target: MoverNetState&lt;Point3, Point4&gt;, ctx: NetworkApplyContext): CorrectionOutcome
 </code></pre>
 <h3 id="capturelocalinput-method">captureLocalInput (method)</h3>
 <p><code>INetworkInputDriven</code>: what the local input driver set on this character.</p>

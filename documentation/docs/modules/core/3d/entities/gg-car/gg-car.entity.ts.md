@@ -185,7 +185,7 @@ spring from the old pose.
 **Signature**
 
 ```ts
-public applyNetworkState(target: GgCarNetState, ctx: NetworkApplyContext): void
+public applyNetworkState(target: GgCarNetState, ctx: NetworkApplyContext): CorrectionOutcome
 ```
 
 ### captureLocalInput (method)

@@ -201,7 +201,7 @@ public captureNetworkState(): MoverNetState<Point3, Point4>
 **Signature**
 
 ```ts
-public applyNetworkState(target: MoverNetState<Point3, Point4>, ctx: NetworkApplyContext): void
+public applyNetworkState(target: MoverNetState<Point3, Point4>, ctx: NetworkApplyContext): CorrectionOutcome
 ```
 
 ### captureLocalInput (method)

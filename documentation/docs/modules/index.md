@@ -157,6 +157,7 @@ has_children: true
 - [core/base/models/raycasting.ts](/gg-web-engine/modules/core/base/models/raycasting.ts)
 - [core/base/models/render-layer.ts](/gg-web-engine/modules/core/base/models/render-layer.ts)
 - [core/base/network/mover-correction.ts](/gg-web-engine/modules/core/base/network/mover-correction.ts)
+- [core/base/network/net-extrapolation.ts](/gg-web-engine/modules/core/base/network/net-extrapolation.ts)
 - [core/base/network/net-math.ts](/gg-web-engine/modules/core/base/network/net-math.ts)
 - [core/base/network/rigid-body-correction.ts](/gg-web-engine/modules/core/base/network/rigid-body-correction.ts)
 - [core/base/pipes/gg-elastic.pipe.ts](/gg-web-engine/modules/core/base/pipes/gg-elastic.pipe.ts)

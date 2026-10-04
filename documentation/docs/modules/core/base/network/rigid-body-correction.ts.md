@@ -1,6 +1,6 @@
 ---
 title: core/base/network/rigid-body-correction.ts
-nav_order: 142
+nav_order: 143
 parent: Modules
 ---
 
@@ -11,9 +11,9 @@ parent: Modules
 <h2 class="text-delta">Table of contents</h2>
 
 - [utils](#utils)
-  - [CorrectionOutcome (type alias)](#correctionoutcome-type-alias)
   - [RigidBodyCorrection (class)](#rigidbodycorrection-class)
     - [capture (static method)](#capture-static-method)
+    - [targetPosition (static method)](#targetposition-static-method)
     - [correct (static method)](#correct-static-method)
   - [RigidBodyNetState (interface)](#rigidbodynetstate-interface)
   - [captureRigidBody](#capturerigidbody)
@@ -23,22 +23,16 @@ parent: Modules
 
 # utils
 
-## CorrectionOutcome (type alias)
-
-What a correction call ended up doing - handy for tests and debug overlays.
-
-**Signature**
-
-```ts
-export type CorrectionOutcome = 'none' | 'blend' | 'snap' | 'sleep'
-```
-
 ## RigidBodyCorrection (class)
 
 Replica correction for rigid bodies, shared by every entity class whose networked state is (or
 contains) a rigid body: one algorithm, applied per body kind.
 
-1. The snapshot is extrapolated to "now" along its velocities, capped at `extrapolateMaxMs`.
+1. The snapshot is extrapolated to "now" along its velocities, capped at `extrapolateMaxMs`. A
+   dynamic replica of a moving target whose snapshot arrived longer ago than that
+   (`ctx.sinceReceivedMs`), up to `coastMaxMs`, is left alone (`'coast'`): the stream stalled, and
+   its own simulation is the better guess. A snapshot that is old only because the link is slow
+   is corrected to as usual.
 2. Error below the deadzone: nothing is written (and an awake replica of a sleeping target is put
    to sleep).
 3. Error above `snapDistance`, or `ctx.snap`: the extrapolated state is written outright.
@@ -70,6 +64,22 @@ Owner side: snapshot `body` as plain JSON.
 
 ```ts
 static capture<D, R>(body: IRigidBodyComponent<D, R>): RigidBodyNetState<D, R>
+```
+
+### targetPosition (static method)
+
+Where a replica of `target` is steered to once the snapshot is `ageMs` old: its position
+extrapolated along its linear velocity (not at all for a sleeping target), capped at
+`extrapolateMaxMs`.
+
+**Signature**
+
+```ts
+static targetPosition<D, R>(
+    target: RigidBodyNetState<D, R>,
+    ageMs: number,
+    tuning: CorrectionTuning = DEFAULT_CORRECTION_TUNING,
+  ): D
 ```
 
 ### correct (static method)

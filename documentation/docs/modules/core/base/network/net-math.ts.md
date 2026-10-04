@@ -1,6 +1,6 @@
 ---
 title: core/base/network/net-math.ts
-nav_order: 141
+nav_order: 142
 parent: Modules
 ---
 
@@ -15,8 +15,10 @@ parent: Modules
   - [NetVec (type alias)](#netvec-type-alias)
   - [avClone](#avclone)
   - [avLerp](#avlerp)
+  - [extrapolationSeconds](#extrapolationseconds)
   - [gainFactor](#gainfactor)
   - [integrateRotation](#integraterotation)
+  - [isCoasting](#iscoasting)
   - [rClone](#rclone)
   - [rotationError](#rotationerror)
   - [rotationLerp](#rotationlerp)
@@ -74,6 +76,16 @@ Interpolate angular velocity (scalar in 2D, vector in 3D).
 export declare function avLerp(a: number | Point3, b: number | Point3, t: number): number | Point3
 ```
 
+## extrapolationSeconds
+
+how far (seconds) a snapshot `ageMs` old is extrapolated: its age, capped at `extrapolateMaxMs`
+
+**Signature**
+
+```ts
+export declare function extrapolationSeconds(ageMs: number, tuning: CorrectionTuning): number
+```
+
 ## gainFactor
 
 Per-tick blend factor for a per-second gain: `gain * dt`, clamped to [0, 1].
@@ -93,6 +105,17 @@ Advance rotation `r` by angular velocity `av` (rad/s; scalar in 2D, world-space 
 
 ```ts
 export declare function integrateRotation<R extends NetRot>(r: R, av: number | Point3, seconds: number): R
+```
+
+## isCoasting
+
+whether a replica whose latest snapshot arrived `sinceReceivedMs` ago coasts: the stream has been
+silent for longer than a snapshot is extrapolated, but not yet for the whole coasting window
+
+**Signature**
+
+```ts
+export declare function isCoasting(sinceReceivedMs: number | undefined, tuning: CorrectionTuning): boolean
 ```
 
 ## rClone

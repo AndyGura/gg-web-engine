@@ -643,7 +643,7 @@
 <h3 id="applynetworkstate-method">applyNetworkState (method)</h3>
 <p><code>INetworkSyncable</code>: replica-side correction of <code>objectBody</code> - see <code>RigidBodyCorrection</code>. No-op without a body.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">public applyNetworkState(target: RigidBodyNetState&lt;Point3, Point4&gt;, ctx: NetworkApplyContext): void
+<pre><code class="language-ts">public applyNetworkState(target: RigidBodyNetState&lt;Point3, Point4&gt;, ctx: NetworkApplyContext): CorrectionOutcome
 </code></pre>
 <h3 id="tickorder-property">tickOrder (property)</h3>
 <p><strong>Signature</strong></p>

@@ -536,6 +536,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#targetposition-static-method" class="md-nav__link">
+    targetPosition (static method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#correct-static-method" class="md-nav__link">
     correct (static method)
   </a>
@@ -600,6 +607,7 @@
 <li><a href="#inetworkmover-interface">INetworkMover (interface)</a></li>
 <li><a href="#movercorrection-class">MoverCorrection (class)</a><ul>
 <li><a href="#capture-static-method">capture (static method)</a></li>
+<li><a href="#targetposition-static-method">targetPosition (static method)</a></li>
 <li><a href="#correct-static-method">correct (static method)</a></li>
 </ul>
 </li>
@@ -631,7 +639,9 @@ never teleports the capsule - it becomes the mover's <code>externalDisplacement<
 <code>move()</code> consumes, so a correction slides against geometry and respects step/snap-to-ground like
 any other movement. Forwarded input does most of the work; correction only erases a tick or two of
 divergence. Rotation is lerped, <code>fallVelocity</code>/<code>airHorizontalVelocity</code> lerped toward the target,
-crouch applied directly. A snap (error above <code>snapDistance</code>, or <code>ctx.snap</code>) writes position and
+crouch applied directly. While the stream is stalled (<code>ctx.sinceReceivedMs</code> between
+<code>extrapolateMaxMs</code> and <code>coastMaxMs</code>) the mover is left alone (<code>'coast'</code>), only crouch is still
+adopted. A snap (error above <code>snapDistance</code>, or <code>ctx.snap</code>) writes position and
 rotation through the setters and resets both momentum vectors to the owner's.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export declare class MoverCorrection
@@ -640,6 +650,16 @@ rotation through the setters and resets both momentum vectors to the owner's.</p
 <p>Owner side: snapshot <code>mover</code> as plain JSON.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">static capture&lt;D, R&gt;(mover: INetworkMover&lt;D, R&gt;): MoverNetState&lt;D, R&gt;
+</code></pre>
+<h3 id="targetposition-static-method">targetPosition (static method)</h3>
+<p>Where a replica of <code>target</code> is steered to once the snapshot is <code>ageMs</code> old: its position
+extrapolated along the owner's velocity, capped at <code>extrapolateMaxMs</code>.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">static targetPosition&lt;D, R&gt;(
+    target: MoverNetState&lt;D, R&gt;,
+    ageMs: number,
+    tuning: CorrectionTuning = DEFAULT_CORRECTION_TUNING,
+  ): D
 </code></pre>
 <h3 id="correct-static-method">correct (static method)</h3>
 <p>Replica side: reconcile <code>mover</code> toward <code>target</code> - see the class doc.</p>

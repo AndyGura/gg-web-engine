@@ -514,6 +514,13 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#correctionoutcome-type-alias" class="md-nav__link">
+    CorrectionOutcome (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#correctiontuning-interface" class="md-nav__link">
     CorrectionTuning (interface)
   </a>
@@ -594,6 +601,7 @@ See {@link DEFAULT_CORRECTION_TUNING} for the defaults.</p>
 
 <ul>
 <li><a href="#utils">utils</a></li>
+<li><a href="#correctionoutcome-type-alias">CorrectionOutcome (type alias)</a></li>
 <li><a href="#correctiontuning-interface">CorrectionTuning (interface)</a></li>
 <li><a href="#default_correction_tuning">DEFAULT_CORRECTION_TUNING</a></li>
 <li><a href="#inetworkinputdriven-interface">INetworkInputDriven (interface)</a></li>
@@ -604,6 +612,11 @@ See {@link DEFAULT_CORRECTION_TUNING} for the defaults.</p>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
+<h2 id="correctionoutcome-type-alias">CorrectionOutcome (type alias)</h2>
+<p>What a correction ended up doing - handy for tests and debug overlays.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type CorrectionOutcome = 'none' | 'blend' | 'snap' | 'sleep' | 'coast'
+</code></pre>
 <h2 id="correctiontuning-interface">CorrectionTuning (interface)</h2>
 <p>Tuning of the replica-correction helpers (<code>RigidBodyCorrection</code>, <code>MoverCorrection</code>). Gains are
 per-second and get scaled by the tick delta, so frame rate doesn't change how a correction feels.
@@ -628,6 +641,15 @@ See {@link DEFAULT_CORRECTION_TUNING} for the defaults.</p>
   rotationGain: number
   /** Upper bound of how far (ms) a snapshot is extrapolated forward along its velocity. Default 250. */
   extrapolateMaxMs: number
+  /**
+   * When no newer snapshot has arrived for longer than `extrapolateMaxMs`, the owner's stream stalled
+   * and the latest one has nothing more to say about where its entity is now. Until that silence
+   * (`NetworkApplyContext.sinceReceivedMs`) lasts this long (ms), a moving replica is left to its own
+   * simulation instead of being pulled back to the point the extrapolation stopped at - the next
+   * snapshot will most likely find the replica about where it should be. Past it, the replica is
+   * corrected to that point again. 0 turns coasting off. Default 1000.
+   */
+  coastMaxMs: number
 }
 </code></pre>
 <h2 id="default_correction_tuning">DEFAULT_CORRECTION_TUNING</h2>
@@ -666,9 +688,11 @@ entities implement it by delegating to <code>RigidBodyCorrection</code>/<code>Mo
 
   /**
    * Replica side: reconcile local state toward `target`. The entity decides how (blend, velocity
-   * bias, `move()` displacement, snap) - typically by delegating to a correction helper.
+   * bias, `move()` displacement, snap) - typically by delegating to a correction helper. May return
+   * what the correction did (the helpers' own return value), which a network layer only uses for
+   * diagnostics, e.g. counting the replicas it had to snap.
    */
-  applyNetworkState(target: S, ctx: NetworkApplyContext): void
+  applyNetworkState(target: S, ctx: NetworkApplyContext): CorrectionOutcome | void
 
   /**
    * Optional: state for a peer that has no local copy yet (late join / takeover). Defaults to
@@ -694,6 +718,12 @@ entities implement it by delegating to <code>RigidBodyCorrection</code>/<code>Mo
 <pre><code class="language-ts">export interface NetworkApplyContext {
   /** ms elapsed on the owner's clock since `state` was captured (after clock-offset correction) */
   ageMs: number
+  /**
+   * ms elapsed on this peer since `state` arrived. Unlike `ageMs` it doesn't include the link's
+   * latency, so it tells a stalled stream (it keeps growing) from a slow link (it stays below the
+   * send interval). A replica coasts only by this; without it, it never does.
+   */
+  sinceReceivedMs?: number
   /** this tick's delta, ms */
   dt: number
   /** true when the controller demands an exact state (late join, takeover, structural snap) */

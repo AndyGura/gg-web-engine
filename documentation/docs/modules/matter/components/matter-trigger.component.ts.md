@@ -1,6 +1,6 @@
 ---
 title: matter/components/matter-trigger.component.ts
-nav_order: 152
+nav_order: 153
 parent: Modules
 ---
 

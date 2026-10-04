@@ -72,7 +72,7 @@ public captureNetworkState(): RigidBodyNetState<Point3, Point4>
 **Signature**
 
 ```ts
-public applyNetworkState(target: RigidBodyNetState<Point3, Point4>, ctx: NetworkApplyContext): void
+public applyNetworkState(target: RigidBodyNetState<Point3, Point4>, ctx: NetworkApplyContext): CorrectionOutcome
 ```
 
 ### tickOrder (property)
