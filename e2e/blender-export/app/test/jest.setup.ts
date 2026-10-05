@@ -2,8 +2,9 @@
 // see packages/core/src/base/inputs/keyboard.input.ts), but jsdom's own test environment doesn't
 // implement `fetch`, which `Gg3dLoader.loadGgGlbFiles` uses to fetch the fixture from the static
 // server in export-load.e2e.spec.ts. Real apps get `fetch` from an actual browser; this is a
-// deliberately minimal stand-in providing only the two Response methods that loader actually
-// calls (`arrayBuffer()`/`text()`) - not a general-purpose fetch polyfill.
+// deliberately minimal stand-in providing only what core's `fetchWithProgress` reads off a
+// Response (`ok`/`status`/`statusText`, `headers.get`, `arrayBuffer()`, plus `text()`) - not a
+// general-purpose fetch polyfill. It has no `body` stream, so the file is read in one piece.
 import * as http from 'http';
 import { TextDecoder, TextEncoder } from 'util';
 
@@ -17,7 +18,7 @@ if (typeof (globalThis as any).TextEncoder === 'undefined') {
 }
 
 if (typeof (globalThis as any).fetch === 'undefined') {
-  (globalThis as any).fetch = (url: string): Promise<{ arrayBuffer(): Promise<ArrayBuffer>; text(): Promise<string> }> =>
+  (globalThis as any).fetch = (url: string): Promise<unknown> =>
     new Promise((resolve, reject) => {
       http
         .get(url, res => {
@@ -25,7 +26,12 @@ if (typeof (globalThis as any).fetch === 'undefined') {
           res.on('data', chunk => chunks.push(chunk));
           res.on('end', () => {
             const buffer = Buffer.concat(chunks);
+            const status = res.statusCode ?? 0;
             resolve({
+              ok: status >= 200 && status < 300,
+              status,
+              statusText: res.statusMessage ?? '',
+              headers: { get: (name: string) => res.headers[name.toLowerCase()]?.toString() ?? null },
               // Node's Buffer is backed by an ArrayBuffer from Node's own realm, which fails
               // `instanceof ArrayBuffer` checks made by code running in jsdom's realm (e.g.
               // GLTFLoader's binary-vs-JSON sniff) even though it looks identical - copy into a
