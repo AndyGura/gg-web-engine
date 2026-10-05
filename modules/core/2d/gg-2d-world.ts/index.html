@@ -536,6 +536,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#addparallaxlayer-method" class="md-nav__link">
+    addParallaxLayer (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#addrenderer-method" class="md-nav__link">
     addRenderer (method)
   </a>
@@ -670,6 +677,7 @@
 <li><a href="#audiotypedocrepo2d-type-alias">AudioTypeDocRepo2D (type alias)</a></li>
 <li><a href="#gg2dworld-class">Gg2dWorld (class)</a><ul>
 <li><a href="#addprimitiverigidbody-method">addPrimitiveRigidBody (method)</a></li>
+<li><a href="#addparallaxlayer-method">addParallaxLayer (method)</a></li>
 <li><a href="#addrenderer-method">addRenderer (method)</a></li>
 <li><a href="#registerconsolecommands-method">registerConsoleCommands (method)</a></li>
 <li><a href="#loader-property">loader (property)</a></li>
@@ -719,6 +727,14 @@
     rotation: number = 0,
     material: DisplayObject2dOpts&lt;TypeDoc['vTypeDoc']['texture']&gt; = {},
   ): Entity2d&lt;TypeDoc&gt;
+</code></pre>
+<h3 id="addparallaxlayer-method">addParallaxLayer (method)</h3>
+<p>Creates a parallax layer (see <code>ParallaxLayer2dOpts</code>), wraps it in a <code>ParallaxLayer2dEntity</code> and
+adds it to the world.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">addParallaxLayer(
+    options: ParallaxLayer2dOpts&lt;TypeDoc['vTypeDoc']['texture']&gt;,
+  ): ParallaxLayer2dEntity&lt;TypeDoc['vTypeDoc']&gt;
 </code></pre>
 <h3 id="addrenderer-method">addRenderer (method)</h3>
 <p><strong>Signature</strong></p>
@@ -840,6 +856,7 @@
   renderer: IRenderer2dComponent
   rendererExtraOpts: {}
   camera: ICamera2dComponent
+  parallaxLayer: IParallaxLayer2dComponent
   texture: unknown
 }
 </code></pre>

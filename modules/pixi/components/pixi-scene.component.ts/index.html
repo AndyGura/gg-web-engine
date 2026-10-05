@@ -529,6 +529,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#setenvironment-method" class="md-nav__link">
+    setEnvironment (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#createrenderer-method" class="md-nav__link">
     createRenderer (method)
   </a>
@@ -545,6 +552,13 @@
           <li class="md-nav__item">
   <a href="#factory-property" class="md-nav__link">
     factory (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#parallaxlayers-property" class="md-nav__link">
+    parallaxLayers (property)
   </a>
   
 </li>
@@ -585,9 +599,11 @@
 <li><a href="#utils">utils</a></li>
 <li><a href="#pixiscenecomponent-class">PixiSceneComponent (class)</a><ul>
 <li><a href="#init-method">init (method)</a></li>
+<li><a href="#setenvironment-method">setEnvironment (method)</a></li>
 <li><a href="#createrenderer-method">createRenderer (method)</a></li>
 <li><a href="#dispose-method">dispose (method)</a></li>
 <li><a href="#factory-property">factory (property)</a></li>
+<li><a href="#parallaxlayers-property">parallaxLayers (property)</a></li>
 </ul>
 </li>
 </ul>
@@ -602,6 +618,10 @@
 <h3 id="init-method">init (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">async init(): Promise&lt;void&gt;
+</code></pre>
+<h3 id="setenvironment-method">setEnvironment (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">setEnvironment(environment: Partial&lt;Environment2dOpts&lt;Texture&gt;&gt;): void
 </code></pre>
 <h3 id="createrenderer-method">createRenderer (method)</h3>
 <p><strong>Signature</strong></p>
@@ -618,6 +638,11 @@
 <h3 id="factory-property">factory (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly factory: PixiFactory
+</code></pre>
+<h3 id="parallaxlayers-property">parallaxLayers (property)</h3>
+<p>Parallax layers currently in this scene - each renderer positions them for its own camera.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly parallaxLayers: Set&lt;PixiParallaxLayerComponent&gt;
 </code></pre>
 
 

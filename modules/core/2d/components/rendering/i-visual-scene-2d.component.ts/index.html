@@ -556,7 +556,14 @@
 <h2 id="ivisualscene2dcomponent-interface">IVisualScene2dComponent (interface)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export interface IVisualScene2dComponent&lt;VTypeDoc extends VisualTypeDocRepo2D = VisualTypeDocRepo2D&gt;
-  extends IVisualSceneComponent&lt;Point2, number, VTypeDoc&gt; {}
+  extends IVisualSceneComponent&lt;Point2, number, VTypeDoc&gt; {
+  /** The scene's current environment. A fresh scene's `background` is `null`, so the renderer's
+   * own clear color shows. */
+  readonly environment: Readonly&lt;Environment2dOpts&lt;VTypeDoc['texture']&gt;&gt;
+
+  /** Changes the scene's environment. Only the fields present change; `null` clears a field. */
+  setEnvironment(environment: Partial&lt;Environment2dOpts&lt;VTypeDoc['texture']&gt;&gt;): void
+}
 </code></pre>
 
 

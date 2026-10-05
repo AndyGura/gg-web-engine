@@ -550,6 +550,20 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#applybackground-method" class="md-nav__link">
+    applyBackground (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#setclearcolor-method" class="md-nav__link">
+    setClearColor (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#dispose-method" class="md-nav__link">
     dispose (method)
   </a>
@@ -609,6 +623,8 @@
 <li><a href="#addtoworld-method">addToWorld (method)</a></li>
 <li><a href="#removefromworld-method">removeFromWorld (method)</a></li>
 <li><a href="#render-method">render (method)</a></li>
+<li><a href="#applybackground-method">applyBackground (method)</a></li>
+<li><a href="#setclearcolor-method">setClearColor (method)</a></li>
 <li><a href="#dispose-method">dispose (method)</a></li>
 <li><a href="#application-property">application (property)</a></li>
 <li><a href="#world-property">world (property)</a></li>
@@ -643,6 +659,19 @@
 <h3 id="render-method">render (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">render(): void
+</code></pre>
+<h3 id="applybackground-method">applyBackground (method)</h3>
+<p>Shows the scene's <code>environment.background</code>: a color becomes the renderer's clear color, a
+texture a sprite behind the world container scaled to cover the whole canvas. Without one the
+renderer keeps the clear color it was created with.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private applyBackground(width: number, height: number): void
+</code></pre>
+<h3 id="setclearcolor-method">setClearColor (method)</h3>
+<p>Overrides the renderer's clear color with <code>color</code>, or with <code>null</code> puts back the one the
+renderer was created with. The alpha the renderer was created with is kept either way.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private setClearColor(color: number | null): void
 </code></pre>
 <h3 id="dispose-method">dispose (method)</h3>
 <p><strong>Signature</strong></p>
