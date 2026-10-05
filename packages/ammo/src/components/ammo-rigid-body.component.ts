@@ -113,6 +113,7 @@ export class AmmoRigidBodyComponent
       friction: this.nativeBody.getFriction(),
       restitution: this.nativeBody.getRestitution(),
       ccd: this.ccd,
+      canSleep: this.canSleep,
       ownCollisionGroups: this.ownCollisionGroups,
       interactWithCollisionGroups: this.interactWithCollisionGroups,
     };
@@ -158,6 +159,7 @@ export class AmmoRigidBodyComponent
     public readonly shape: Shape3DDescriptor,
     public readonly bodyType: BodyType = 'dynamic',
     public readonly ccd: boolean = false,
+    public readonly canSleep: boolean = true,
   ) {
     super(world, _nativeBody, shape);
   }
@@ -172,6 +174,7 @@ export class AmmoRigidBodyComponent
         friction: this._nativeBody.getFriction(),
         restitution: this._nativeBody.getRestitution(),
         ccd: this.ccd,
+        canSleep: this.canSleep,
       },
       {
         position: this.position,
@@ -250,7 +253,7 @@ export class AmmoRigidBodyComponent
   }
 
   sleep(): void {
-    if (this.bodyType === 'static') {
+    if (this.bodyType === 'static' || !this.canSleep) {
       return;
     }
     // `forceActivationState` (unlike `setActivationState`) writes Bullet's internal activation

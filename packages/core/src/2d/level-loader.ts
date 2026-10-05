@@ -25,6 +25,7 @@ const defaultBodyOptions: Body2DOptions = {
   ownCollisionGroups: 'all',
   interactWithCollisionGroups: 'all',
   ccd: false,
+  canSleep: true,
 };
 
 /**

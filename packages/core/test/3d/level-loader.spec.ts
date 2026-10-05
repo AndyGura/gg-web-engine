@@ -28,6 +28,7 @@ const defaultBody = {
   ownCollisionGroups: 'all',
   interactWithCollisionGroups: 'all',
   ccd: false,
+  canSleep: true,
 };
 
 // A trivial concrete IEntity for tests that need a generator to return a real entity
@@ -905,6 +906,7 @@ describe('Gg3dLevelLoader', () => {
           friction: 0.4,
           restitution: 0.6,
           ccd: true,
+          canSleep: false,
           ownCollisionGroups: [2],
           interactWithCollisionGroups: [3],
         },

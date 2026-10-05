@@ -1,3 +1,5 @@
+import { Point2, TextureOptions } from '../../base';
+
 /**
  * Fog fading distant objects into `color`. `LINEAR` fog starts at `near` and is opaque at `far`;
  * `EXPONENTIAL` fog thickens with distance at the given `density`.
@@ -43,12 +45,21 @@ export type CubeTextureFaces = {
   nz: string;
 };
 
-/** Options for `IDisplayObject3dComponentLoader.loadTexture`. */
-export type LoadTextureOptions = {
+/**
+ * Options for `IDisplayObject3dComponentLoader.loadTexture` and
+ * `IDisplayObject3dComponentFactory.createTextureFromCanvas`.
+ */
+export type LoadTextureOptions = TextureOptions & {
   /**
    * How the texture is projected. `'uv'` (default) is an ordinary texture for a mesh's `diffuse`;
    * `'equirectangular'` is a 2:1 panorama usable as `Environment3dOpts.background`/`environmentMap`,
    * with its horizon along the world's horizontal (XY) plane.
    */
   mapping?: 'uv' | 'equirectangular';
+  /**
+   * How many times the texture tiles across a surface along each UV axis, e.g. `{ x: 5, y: 5 }` to
+   * cover a big floor with a small tile. Setting it makes the texture wrap around (repeat) instead
+   * of stretching its edge pixels. Default `{ x: 1, y: 1 }`.
+   */
+  repeat?: Point2;
 };

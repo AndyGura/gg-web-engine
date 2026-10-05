@@ -76,4 +76,16 @@ describe('MatterRigidBodyComponent sleep API', () => {
     floor.wakeUp();
     expect(floor.isSleeping).toBe(false);
   });
+
+  it('a canSleep: false body ignores sleep()', () => {
+    const body = factory.createRigidBody(
+      { shape: { shape: 'CIRCLE', radius: 1 }, body: { bodyType: 'dynamic', mass: 1, canSleep: false } },
+      { position: { x: 0, y: 0 } },
+    );
+    body.addToWorld({ physicsWorld: world } as any);
+
+    body.sleep();
+    expect(body.isSleeping).toBe(false);
+    expect(body.bodyOptions.canSleep).toBe(false);
+  });
 });

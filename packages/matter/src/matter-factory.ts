@@ -110,7 +110,13 @@ export class MatterFactory implements IPhysicsBody2dComponentFactory<MatterPhysi
     Body.setPosition(nativeBody, Vector.create(transform?.position?.x || 0, transform?.position?.y || 0));
     Body.setAngle(nativeBody, transform?.rotation || 0);
     const bodyType: BodyType = descriptor.body.bodyType ?? (descriptor.body.mass ? 'dynamic' : 'static');
-    const component = new MatterRigidBodyComponent(nativeBody, descriptor.shape, bodyType, !!descriptor.body.ccd);
+    const component = new MatterRigidBodyComponent(
+      nativeBody,
+      descriptor.shape,
+      bodyType,
+      !!descriptor.body.ccd,
+      descriptor.body.canSleep !== false,
+    );
     // `transformOptions` (used to build `nativeBody` above) only ever reads
     // `bodyType`/`mass`/`restitution`/`friction` - `ownCollisionGroups`/`interactWithCollisionGroups`
     // must be applied through the component's own setters afterward (same as

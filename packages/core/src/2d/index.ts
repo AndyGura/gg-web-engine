@@ -11,6 +11,7 @@ export * from './components/rendering/i-animated-display-object-2d.component';
 export * from './components/rendering/i-material-readable-2d.component';
 export * from './components/rendering/i-renderer-2d.component';
 export * from './components/rendering/i-visual-scene-2d.component';
+export * from './components/rendering/i-text-2d.component';
 
 export * from './entities/controllers/entity-2d-positioning.animator';
 export * from './entities/controllers/character-animation-2d.controller';
@@ -30,6 +31,7 @@ export * from './models/body-options';
 export * from './models/environment';
 export * from './models/character-controller-options';
 export * from './models/shapes';
+export * from './models/text';
 
 export * from './factories';
 export * from './gg-2d-world';

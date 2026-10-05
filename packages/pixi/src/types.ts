@@ -6,12 +6,14 @@ import { ApplicationOptions, Texture } from 'pixi.js';
 import { Gg2dWorld, Gg2dWorldSceneTypeDocVPatch, Gg2dWorldTypeDocVPatch } from '@gg-web-engine/core';
 import { PixiSceneComponent } from './components/pixi-scene.component';
 import { PixiParallaxLayerComponent } from './components/pixi-parallax-layer.component';
+import { PixiTextComponent } from './components/pixi-text.component';
 
 export type PixiVisualTypeDocRepo2D = {
   factory: PixiFactory;
   displayObject: PixiDisplayObjectComponent;
   camera: PixiCameraComponent;
   parallaxLayer: PixiParallaxLayerComponent;
+  text: PixiTextComponent;
   renderer: PixiRendererComponent;
   rendererExtraOpts: ApplicationOptions;
   texture: Texture;

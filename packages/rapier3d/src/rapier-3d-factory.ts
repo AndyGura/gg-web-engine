@@ -62,6 +62,7 @@ export class Rapier3dFactory implements IPhysicsBody3dComponentFactory<Rapier3dP
         ownCollisionGroups: [this.world.mainCollisionGroup],
         interactWithCollisionGroups: [this.world.mainCollisionGroup],
         ccd: false,
+        canSleep: true,
         ...descriptor.body,
       },
     );
@@ -239,6 +240,7 @@ export class Rapier3dFactory implements IPhysicsBody3dComponentFactory<Rapier3dP
       // or kinematic body is never the one doing the moving-too-fast-to-detect part of that, so CCD
       // is meaningless for either (see `BodyOptions.ccd`'s own doc).
       bodyDesc.setCcdEnabled(!!options.ccd);
+      bodyDesc.setCanSleep(options.canSleep !== false);
     }
     return bodyDesc.setTranslation(pos.x, pos.y, pos.z).setRotation(new Quaternion(rot.x, rot.y, rot.z, rot.w));
   }

@@ -52,6 +52,7 @@ export * from './models/geometry-nodes';
 export * from './models/points';
 export * from './models/raycasting';
 export * from './models/render-layer';
+export * from './models/texture-options';
 
 export * from './math/box';
 export * from './math/point2';

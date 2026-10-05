@@ -247,30 +247,42 @@ export class AmmoFactory implements IPhysicsBody3dComponentFactory<AmmoPhysicsTy
     } else if (bodyType === 'kinematic_pos' || bodyType === 'kinematic_vel') {
       nativeBody.setCollisionFlags(nativeBody.getCollisionFlags() | CF_KINEMATIC_OBJECT);
       nativeBody.setActivationState(DISABLE_DEACTIVATION);
-    } else if (options.ccd) {
-      // CCD only matters for a dynamic body - a fixed/kinematic body is never the one moving too
-      // fast to be detected within a single step (see `BodyOptions.ccd`'s own doc). Bullet's CCD
-      // is a swept-*sphere* approximation of the real shape rather than a sweep of the shape
-      // itself (unlike Rapier's), so it needs an actual radius - derived here from this body's own
-      // AABB at its starting transform, following Bullet's own canonical CCD setup (see e.g. the
-      // engine's official `Kinematic`/`Chains` demos): trigger the sweep once a step's motion
-      // exceeds roughly the body's own size, approximate the swept volume as half that size.
-      const aabbMin = new Ammo.btVector3();
-      const aabbMax = new Ammo.btVector3();
-      nativeBody.getAabb(aabbMin, aabbMax);
-      const halfExtents = new Ammo.btVector3(
-        (aabbMax.x() - aabbMin.x()) / 2,
-        (aabbMax.y() - aabbMin.y()) / 2,
-        (aabbMax.z() - aabbMin.z()) / 2,
-      );
-      const radius = halfExtents.length();
-      nativeBody.setCcdMotionThreshold(radius);
-      nativeBody.setCcdSweptSphereRadius(radius * 0.5);
-      Ammo.destroy(aabbMin);
-      Ammo.destroy(aabbMax);
-      Ammo.destroy(halfExtents);
+    } else {
+      if (options.canSleep === false) {
+        nativeBody.setActivationState(DISABLE_DEACTIVATION);
+      }
+      if (options.ccd) {
+        // CCD only matters for a dynamic body - a fixed/kinematic body is never the one moving too
+        // fast to be detected within a single step (see `BodyOptions.ccd`'s own doc). Bullet's CCD
+        // is a swept-*sphere* approximation of the real shape rather than a sweep of the shape
+        // itself (unlike Rapier's), so it needs an actual radius - derived here from this body's own
+        // AABB at its starting transform, following Bullet's own canonical CCD setup (see e.g. the
+        // engine's official `Kinematic`/`Chains` demos): trigger the sweep once a step's motion
+        // exceeds roughly the body's own size, approximate the swept volume as half that size.
+        const aabbMin = new Ammo.btVector3();
+        const aabbMax = new Ammo.btVector3();
+        nativeBody.getAabb(aabbMin, aabbMax);
+        const halfExtents = new Ammo.btVector3(
+          (aabbMax.x() - aabbMin.x()) / 2,
+          (aabbMax.y() - aabbMin.y()) / 2,
+          (aabbMax.z() - aabbMin.z()) / 2,
+        );
+        const radius = halfExtents.length();
+        nativeBody.setCcdMotionThreshold(radius);
+        nativeBody.setCcdSweptSphereRadius(radius * 0.5);
+        Ammo.destroy(aabbMin);
+        Ammo.destroy(aabbMax);
+        Ammo.destroy(halfExtents);
+      }
     }
-    const comp = new AmmoRigidBodyComponent(this.world, nativeBody, shapeDescr, bodyType, !!options.ccd);
+    const comp = new AmmoRigidBodyComponent(
+      this.world,
+      nativeBody,
+      shapeDescr,
+      bodyType,
+      !!options.ccd,
+      options.canSleep !== false,
+    );
     if (options.ownCollisionGroups && options.ownCollisionGroups !== 'all') {
       comp.ownCollisionGroups = options.ownCollisionGroups;
     }

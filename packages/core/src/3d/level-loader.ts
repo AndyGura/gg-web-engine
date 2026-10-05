@@ -44,6 +44,7 @@ const defaultBodyOptions: Body3DOptions = {
   ownCollisionGroups: 'all',
   interactWithCollisionGroups: 'all',
   ccd: false,
+  canSleep: true,
 };
 
 const defaultCarChassisBodyOptions: Body3DOptions = {

@@ -17,6 +17,7 @@ const defaultBodyOptions: BodyOptions = {
   ownCollisionGroups: [0],
   interactWithCollisionGroups: [0],
   ccd: false,
+  canSleep: true,
 };
 
 export const mock2DBody = (

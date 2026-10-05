@@ -1,12 +1,18 @@
-import { IAudioSourceComponentFactory, Point2 } from '../base';
+import { IAudioSourceComponentFactory, Point2, TextureOptions } from '../base';
 import { BodyShape2DDescriptor, Shape2DDescriptor } from './models/shapes';
 import { AudioTypeDocRepo2D, PhysicsTypeDocRepo2D, VisualTypeDocRepo2D } from './gg-2d-world';
 import { CharacterController2dOptions } from './models/character-controller-options';
 import { ParallaxLayer2dOpts } from './models/environment';
+import { Text2dStyle } from './models/text';
 
 export type DisplayObject2dOpts<Tex> = {
+  /** Fill color of an untextured shape; with a `texture`, a tint multiplied over it instead. */
   color?: number;
   texture?: Tex;
+  /** An outline around an untextured shape. Ignored for a textured one. */
+  stroke?: { color: number; width: number };
+  /** Opacity from `0` (invisible) to `1` (opaque, the default), see `IDisplayObject2dComponent.opacity`. */
+  opacity?: number;
 };
 
 export abstract class IDisplayObject2dComponentFactory<VTypeDoc extends VisualTypeDocRepo2D = VisualTypeDocRepo2D> {
@@ -22,7 +28,16 @@ export abstract class IDisplayObject2dComponentFactory<VTypeDoc extends VisualTy
   abstract createParallaxLayer(options: ParallaxLayer2dOpts<VTypeDoc['texture']>): VTypeDoc['parallaxLayer'];
 
   /** Loads an image as a texture, for `DisplayObject2dOpts.texture`, a parallax layer or a background. */
-  abstract loadTexture(url: string): Promise<VTypeDoc['texture']>;
+  abstract loadTexture(url: string, options?: TextureOptions): Promise<VTypeDoc['texture']>;
+
+  /**
+   * Creates a texture from a canvas the app has drawn on, e.g. a procedurally generated backdrop.
+   * The canvas is read once, now: drawing on it afterwards doesn't update the texture.
+   */
+  abstract createTextureFromCanvas(canvas: HTMLCanvasElement, options?: TextureOptions): VTypeDoc['texture'];
+
+  /** Creates a text object, see `IText2dComponent` and `Text2dStyle`. */
+  abstract createText(text: string, style?: Text2dStyle): VTypeDoc['text'];
 
   randomColor(): number {
     return (

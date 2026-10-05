@@ -6,22 +6,13 @@ import {
   LoadTextureOptions,
   warnOnce,
 } from '@gg-web-engine/core';
-import {
-  CubeTexture,
-  CubeTextureLoader,
-  EquirectangularReflectionMapping,
-  Group,
-  Light,
-  Object3D,
-  SRGBColorSpace,
-  Texture,
-  TextureLoader,
-} from 'three';
+import { CubeTexture, CubeTextureLoader, Group, Light, Object3D, SRGBColorSpace, Texture, TextureLoader } from 'three';
 import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
 import { ThreeDisplayObjectComponent } from './components/three-display-object.component';
 import { ThreeAnimatedDisplayObjectComponent } from './components/three-animated-display-object.component';
 import { ThreeVisualTypeDocRepo } from './types';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { applyTextureOptions } from './utils/texture-options';
 
 export class ThreeLoader implements IDisplayObject3dComponentLoader<ThreeVisualTypeDocRepo> {
   private gltfLoader: GLTFLoader = new GLTFLoader();
@@ -41,10 +32,7 @@ export class ThreeLoader implements IDisplayObject3dComponentLoader<ThreeVisualT
       texture = await this.textureLoader.loadAsync(url);
       texture.colorSpace = SRGBColorSpace;
     }
-    if (options.mapping === 'equirectangular') {
-      texture.mapping = EquirectangularReflectionMapping;
-    }
-    return texture;
+    return applyTextureOptions(texture, options);
   }
 
   /**

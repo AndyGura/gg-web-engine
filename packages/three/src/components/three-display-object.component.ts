@@ -89,6 +89,33 @@ export class ThreeDisplayObjectComponent
     return this.nativeMesh.layers.isEnabled(layer);
   }
 
+  public get castShadow(): boolean {
+    return this.nativeMesh.castShadow;
+  }
+
+  public set castShadow(value: boolean) {
+    this.nativeMesh.traverse(obj => (obj.castShadow = value));
+  }
+
+  public get receiveShadow(): boolean {
+    return this.nativeMesh.receiveShadow;
+  }
+
+  public set receiveShadow(value: boolean) {
+    this.nativeMesh.traverse(obj => (obj.receiveShadow = value));
+  }
+
+  public addChild(child: ThreeDisplayObjectComponent): void {
+    // `Object3D.add` already detaches the child from any previous parent
+    this.nativeMesh.add(child.nativeMesh);
+  }
+
+  public removeChild(child: ThreeDisplayObjectComponent): void {
+    if (child.nativeMesh.parent === this.nativeMesh) {
+      this.nativeMesh.remove(child.nativeMesh);
+    }
+  }
+
   public isEmpty(): boolean {
     if (this.nativeMesh instanceof Scene || this.nativeMesh instanceof Group) {
       return this.nativeMesh.children.length == 0;

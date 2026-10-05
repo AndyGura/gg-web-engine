@@ -104,6 +104,22 @@ describe('Gg3dLoader', () => {
       expect(loadGgGlbSpy).toHaveBeenNthCalledWith(1, 'assets/m', { nameScope: 'Custom' });
       expect(loadGgGlbSpy).toHaveBeenNthCalledWith(2, 'assets/m', { nameScope: null });
     });
+    it('passes castShadow/receiveShadow through to loadGgGlb', async () => {
+      const loadGgGlbSpy = jest
+        .spyOn(loader, 'loadGgGlb')
+        .mockResolvedValue({ entities: [new FakeEntity3d()], meta: {} as any } as unknown as LoadResultWithProps);
+
+      await loader.loadLevel(
+        { entities: [{ class: 'Glb', name: 'A', config: { path: 'assets/m', castShadow: true, receiveShadow: false } }] },
+        'TestLevel',
+      );
+
+      expect(loadGgGlbSpy).toHaveBeenCalledWith('assets/m', {
+        castShadow: true,
+        receiveShadow: false,
+        nameScope: 'A',
+      });
+    });
   });
 
   describe('loadGgGlb entity naming', () => {
@@ -177,6 +193,36 @@ describe('Gg3dLoader', () => {
       expect(result.entities.map(e => e.name)).toEqual(['Suzanne', 'Floor', 'Entity3d_' + result.entities[2].name.split('_')[1]]);
       expect(result.entities[2].name).toMatch(/^Entity3d_\d+$/);
       expect(result.props![0].entities.map(e => e.name).slice(0, 2)).toEqual(['Suzanne_prop', 'Floor_prop']);
+    });
+  });
+
+  describe('loadGgGlb shadows', () => {
+    beforeEach(() => {
+      jest.spyOn(loader, 'loadGgGlbResources').mockImplementation(async (path: string) => ({
+        resources: [{ object3D: mock3DObject(), body: null }],
+        meta: {
+          dummies:
+            path === 'assets/scene'
+              ? [{ name: 'Spot', is_prop: true, prop_id: 'prop', position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0, w: 1 } }]
+              : [],
+        } as any,
+      }));
+    });
+
+    it('applies castShadow/receiveShadow to every loaded display object, props included', async () => {
+      const result = await loader.loadGgGlb('assets/scene', { castShadow: true, receiveShadow: true });
+
+      for (const entity of [...result.entities, ...result.props![0].entities]) {
+        expect(entity.object3D!.castShadow).toBe(true);
+        expect(entity.object3D!.receiveShadow).toBe(true);
+      }
+    });
+
+    it('leaves shadows as loaded when the options are omitted', async () => {
+      const result = await loader.loadGgGlb('assets/scene');
+
+      expect(result.entities[0].object3D!.castShadow).toBeUndefined();
+      expect(result.entities[0].object3D!.receiveShadow).toBeUndefined();
     });
   });
 });

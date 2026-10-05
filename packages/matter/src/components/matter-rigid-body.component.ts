@@ -86,6 +86,7 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
       friction: this.nativeBody.friction,
       restitution: this.nativeBody.restitution,
       ccd: this.ccd,
+      canSleep: this.canSleep,
       ownCollisionGroups: this.ownCollisionGroups,
       interactWithCollisionGroups: this.interactWithCollisionGroups,
     };
@@ -120,8 +121,14 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
     public readonly shape: Shape2DDescriptor,
     public readonly bodyType: BodyType = 'dynamic',
     public readonly ccd: boolean = false,
+    public readonly canSleep: boolean = true,
   ) {
     this.updateCollisionFilter();
+    if (!canSleep) {
+      // this adapter's engine never sleeps bodies on its own, but an app may turn on
+      // `engine.enableSleeping` - an infinite threshold keeps this body awake even then
+      nativeBody.sleepThreshold = Infinity;
+    }
   }
 
   /** @internal called by `MatterWorldComponent`'s global `collisionStart` listener - not part of
@@ -189,7 +196,7 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
         ...this.nativeBody.collisionFilter,
       },
     });
-    const component = new MatterRigidBodyComponent(clonedBody, this.shape, this.bodyType, this.ccd);
+    const component = new MatterRigidBodyComponent(clonedBody, this.shape, this.bodyType, this.ccd, this.canSleep);
     component.ownCollisionGroups = this.ownCollisionGroups;
     component.interactWithCollisionGroups = this.interactWithCollisionGroups;
     return component;
@@ -260,13 +267,14 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
   }
 
   /**
-   * No-op on a body that reports `isStatic` (see `isSleeping`'s own doc). Forces sleep immediately,
+   * No-op on a body that reports `isStatic` (see `isSleeping`'s own doc) or was created with
+   * `canSleep: false`. Forces sleep immediately,
    * regardless of whether the world's `Matter.Engine` has `enableSleeping` turned on - unlike a
    * body naturally falling asleep from inactivity (which requires that engine flag), an explicit
    * `Sleeping.set(body, true)` call takes effect either way.
    */
   sleep(): void {
-    if (this.nativeBody.isStatic) {
+    if (this.nativeBody.isStatic || !this.canSleep) {
       return;
     }
     Sleeping.set(this.nativeBody, true);

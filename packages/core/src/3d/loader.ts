@@ -42,6 +42,13 @@ export type LoadOptions = {
    *   only to look entities up by their Blender names, and only when the file is loaded once.
    */
   nameScope?: string | null;
+  /**
+   * When set, every loaded display object (including nested props) gets this `castShadow` value,
+   * see `IDisplayObject3dComponent.castShadow`. Left as authored in the file when omitted.
+   */
+  castShadow?: boolean;
+  /** Same as `castShadow`, for `IDisplayObject3dComponent.receiveShadow`. */
+  receiveShadow?: boolean;
 };
 
 const defaultLoadOptions: LoadOptions = {
@@ -133,6 +140,18 @@ export interface Glb3DSettings {
   nameScope?: string | null;
 
   /**
+   * Whether the loaded model casts shadows, see `LoadOptions.castShadow`. Left as authored in the
+   * file when omitted.
+   */
+  castShadow?: boolean;
+
+  /**
+   * Whether the loaded model receives shadows, see `LoadOptions.receiveShadow`. Left as authored in
+   * the file when omitted.
+   */
+  receiveShadow?: boolean;
+
+  /**
    * The entity's own resolved name - filled in by `LevelLoader.createEntity`/`loadLevel` (explicit
    * `EntityJson.name`, else the level-derived fallback), not meant to be set in `config`
    */
@@ -167,13 +186,26 @@ export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocR
       if (!settings.path) {
         throw new Error('Path is required for Glb class');
       }
-      const { path, position, rotation, cachingStrategy, loadProps, propsPath, nameScope, name } = settings;
+      const {
+        path,
+        position,
+        rotation,
+        cachingStrategy,
+        loadProps,
+        propsPath,
+        nameScope,
+        castShadow,
+        receiveShadow,
+        name,
+      } = settings;
       const result = await this.loadGgGlb(path, {
         ...(position !== undefined ? { position } : {}),
         ...(rotation !== undefined ? { rotation } : {}),
         ...(cachingStrategy !== undefined ? { cachingStrategy } : {}),
         ...(loadProps !== undefined ? { loadProps } : {}),
         ...(propsPath !== undefined ? { propsPath } : {}),
+        ...(castShadow !== undefined ? { castShadow } : {}),
+        ...(receiveShadow !== undefined ? { receiveShadow } : {}),
         // explicit scope wins; else the entity's own (unique, level-deterministic) name; else
         // (a bare createEntity with no name) loadGgGlb's own process-unique default
         nameScope: nameScope !== undefined ? nameScope : name,
@@ -318,12 +350,20 @@ export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocR
                 position: Pnt3.add(Pnt3.rot(dummy.position, loadOptions.rotation), loadOptions.position),
                 rotation: Qtrn.combineRotations(dummy.rotation, loadOptions.rotation),
                 nameScope: nameScope === null ? null : `${nameScope}__${dummy.name}`,
+                ...(loadOptions.castShadow !== undefined ? { castShadow: loadOptions.castShadow } : {}),
+                ...(loadOptions.receiveShadow !== undefined ? { receiveShadow: loadOptions.receiveShadow } : {}),
               },
             ),
           ),
       );
     }
     result.entities.forEach(e => {
+      if (e.object3D && loadOptions.castShadow !== undefined) {
+        e.object3D.castShadow = loadOptions.castShadow;
+      }
+      if (e.object3D && loadOptions.receiveShadow !== undefined) {
+        e.object3D.receiveShadow = loadOptions.receiveShadow;
+      }
       e.position = Pnt3.add(Pnt3.rot(Pnt3.clone(e.position), loadOptions.rotation), loadOptions.position);
       // FIXME this rotation is wrong
       e.rotation = Qtrn.mult(Qtrn.clone(e.rotation), loadOptions.rotation);
