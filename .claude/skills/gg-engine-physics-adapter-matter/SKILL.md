@@ -85,7 +85,7 @@ Three real gotchas surfaced building this, all specific to this pinned `matter-j
 
 Hit bumping `@types/matter-js` 0.19.7 → 0.20.2: `Matter.Bodies.circle` still types its options as the
 base `IBodyDefinition`, but `Matter.Bodies.rectangle` narrowed to `IChamferableBodyDefinition extends
-IBodyDefinition` (which drops `null` from `chamfer`'s type). `MatterFactory.transformOptions()` builds
+IBodyDefinition` (which drops `null` from `chamfer`'s type). `transformOptions()` (in `matter-rigid-body-builder.ts`) builds
 one options object shared across both calls - typing it as the base interface no longer satisfies the
 narrower one under TS's stricter structural checking, even though the object literal never actually
 sets the property causing the mismatch. Type the shared object as the most derived/narrow type instead
@@ -128,7 +128,7 @@ change ever turns `enableSleeping: true` on for this adapter.
 matter-js has no kinematic body concept (only `isStatic`) and no continuous collision detection at
 all - both genuine, long-standing upstream limitations (not a gap in this adapter package), see
 `gg-engine-physics-adapter`'s own section on the general contract for why every adapter is still
-expected to *accept* these `BodyOptions` fields regardless. `MatterFactory.transformOptions` is the
+expected to *accept* these `BodyOptions` fields regardless. `transformOptions` (in `matter-rigid-body-builder.ts`) is the
 reference implementation of that "warn once, fall back, never throw" pattern other adapters facing an
 unsupported feature should follow:
 
@@ -138,7 +138,7 @@ unsupported feature should follow:
   it the way a real kinematic body would).
 - `ccd: true` is accepted and simply has no effect beyond the warning - a fast-moving or fast-driven
   body can still tunnel through thin geometry in one step.
-- Both warn via `@gg-web-engine/core`'s `warnOnce(message)` (imported into `matter-factory.ts` and
+- Both warn via `@gg-web-engine/core`'s `warnOnce(message)` (imported into `matter-rigid-body-builder.ts` and
   wrapped by a local `warnUnsupportedOnce` that just prefixes `[@gg-web-engine/matter]`) rather than
   `console.warn` directly at the call site - keyed on the *message*, so distinct warnings (kinematic
   vs ccd) each still get one appearance, but creating many bodies with the same unsupported request
@@ -473,6 +473,27 @@ Found via this adapter's own pre-existing (previously `describe.skip`'d, since `
 until it was implemented - see above) collision-filtering raycast tests: a ray configured to only hit
 one of two differently-grouped candidates hit both, because the "excluded" one's `collisionFilter` was
 silently still the default "all groups" despite its `Body2DOptions` asking for a specific group.
+
+## `MatterRigidBodyComponent.clone()` rebuilds from shape and options, never from the native body
+
+Every native rigid body (`MatterFactory.createRigidBody`, any shape) builds its whole body in
+`buildMatterRigidBody` (`src/matter-rigid-body-builder.ts`), and `clone()` calls it again with
+`this.shape`, `this.bodyOptions` and the current transform. Never clone by spreading the native body
+into `Body.create({ ...nativeBody })`: a matter-js body references itself (`parts[0]` is the body and
+every part's `parent` is the body), and `Body.create` deep-merges its options with `Common.extend`,
+which recurses through those references until the stack overflows - for every body, in a world or
+not. Pass `mass` only for a dynamic body when rebuilding: a static body reports `mass: Infinity`.
+Static bodies also read back `friction: 1`/`restitution: 0` because `Body.setStatic` overwrites them,
+so a static clone's options match its original's either way.
+
+The builder is a module of plain functions rather than a method on `MatterFactory` because the
+component can't import the factory module: that module imports `MatterTriggerComponent`, which
+`extends MatterRigidBodyComponent`, so loading it from the rigid body's module is a circular import
+that leaves the base class `undefined` at the `extends` (`Class extends value undefined`). Keep
+anything the component needs at runtime out of `matter-factory.ts`.
+
+The `CAPSULE` case passes `transformOptions(descriptor.body)` alongside its `chamfer`, like every
+other shape, so a capsule gets its requested mass, friction and static/dynamic type.
 
 ## Keep this skill current
 

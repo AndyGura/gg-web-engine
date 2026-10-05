@@ -46,6 +46,12 @@ where one exists.
 - `@gg-web-engine/core` and every physics adapter: `canSleep` body option (default `true`); `false`
   keeps a dynamic body simulated while it rests.
 
+### Fixed
+- `@gg-web-engine/matter`: `MatterRigidBodyComponent.clone()` overflowed the stack for every body;
+  it now rebuilds the body from its shape, options and transform.
+- `@gg-web-engine/matter`: a `CAPSULE` rigid body ignored its body options (mass, friction,
+  restitution, static/dynamic type).
+
 ## [0.0.77] - 2026-10-05
 
 ### Added

@@ -12,6 +12,7 @@ import {
   Shape2DDescriptor,
 } from '@gg-web-engine/core';
 import { Body, Composite, Sleeping, Vector } from 'matter-js';
+import { buildMatterRigidBody } from '../matter-rigid-body-builder';
 import { Observable, Subject } from 'rxjs';
 import { MatterGgWorld, MatterPhysicsTypeDocRepo } from '../types';
 
@@ -190,16 +191,18 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
   }
 
   clone(): MatterRigidBodyComponent {
-    const clonedBody = Body.create({
-      ...this.nativeBody,
-      collisionFilter: {
-        ...this.nativeBody.collisionFilter,
+    // Rebuilt from the shape and options rather than `Body.create({ ...this.nativeBody })`: a native
+    // body references itself (`parts[0]` and `parent` are the body itself), so matter-js's deep
+    // option merge recurses forever on it.
+    const { mass, ...options } = this.bodyOptions;
+    return buildMatterRigidBody(
+      {
+        shape: this.shape,
+        // a static body reports an infinite mass, which isn't a valid option to build one from
+        body: this.bodyType === 'dynamic' ? { ...options, mass } : options,
       },
-    });
-    const component = new MatterRigidBodyComponent(clonedBody, this.shape, this.bodyType, this.ccd, this.canSleep);
-    component.ownCollisionGroups = this.ownCollisionGroups;
-    component.interactWithCollisionGroups = this.interactWithCollisionGroups;
-    return component;
+      { position: this.position, rotation: this.rotation },
+    );
   }
 
   addToWorld(world: MatterGgWorld): void {
