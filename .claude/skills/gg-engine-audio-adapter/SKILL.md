@@ -67,7 +67,7 @@ how `ICamera3dComponent` adds FOV that 2D has no equivalent for.
   means "end of clip", matching `AudioBufferSourceNode.loopEnd`'s own default) confine looping to a
   sub-region of the clip rather than the whole thing - needed for any clip authored with a lead-in
   before its seamless loop point (a real, common asset-authoring pattern for engine/ambience loops;
-  `examples/fly-city-three-ammo`'s engine sound is a real consumer of this). Also an
+  `examples/3d/fly-city`'s engine sound is a real consumer of this). Also an
   `IWorldComponent` (`addToWorld`/`removeFromWorld`/`dispose`), same contract as every other
   component - see `gg-engine-physics-adapter`'s section on `dispose`.
 
@@ -251,7 +251,7 @@ describe block in `packages/core/test/base/gg-world.spec.ts` for the pattern.
 
 Same five steps as `gg-engine-visual-adapter`'s own "Wiring a new adapter into the repo" section:
 add it to the root `tsconfig.json`'s `references` array, add its name to `etc/publish_new_version.sh`'s
-`libs` array, add at least one example under `examples/` (`examples/fly-city-three-ammo`'s
+`libs` array, add at least one example under `examples/` (`examples/3d/fly-city`'s
 `GameAudio`/`game-audio.ts` is the reference one, wiring `GgCarEntity.engineRpm$`-driven engine
 sound plus gear-change/honk one-shots into a car example), add it to the root `README.md`
 "Integrations" list plus its own `packages/<lib>/README.md`, and `npm install` at the repo root

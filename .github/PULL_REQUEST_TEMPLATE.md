@@ -49,4 +49,4 @@ physics-related — which example you ran it in and what you looked at.
 - [ ] Nothing under `documentation/` was edited by hand (it's regenerated on release).
 - [ ] New entity classes declare `static readonly entityTypeName`.
 - [ ] A new adapter package is added to `libs` in `etc/publish_new_version.sh` and to the root `tsconfig.json` `references`.
-- [ ] A new example is added to `examples/examples-list.txt` (and `examples/index.html` if it should be publicly listed).
+- [ ] A new example is added to `examples/examples.json` (the gallery, build/deploy and release scripts all read it).

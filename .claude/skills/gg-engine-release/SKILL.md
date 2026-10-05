@@ -72,9 +72,9 @@ BSD/GNU-portable — plain `grep`/`awk`, no `sed -i`).
    shared root lockfile.
 4. Publishes each of those packages to npm, then polls npm again until every one is live.
 5. Bumps `@gg-web-engine/*` dependency versions in every example listed in
-   `examples/examples-list.txt` and reinstalls them, in parallel.
-6. Rewrites the StackBlitz branch suffix (`sbBranchSuffix`) in `examples/index.html` to the new
-   version.
+   `examples/examples.json` and reinstalls them, in parallel.
+6. Rewrites the top-level `version` of `examples/examples.json` to the new version - the git tag the
+   gallery's "Edit in StackBlitz" links open the examples at.
 
 After the script, the workflow also regenerates API docs (`documentation/` via `npm run
 generate`), commits the version bump back to `main`, tags the release, and deploys
@@ -158,7 +158,7 @@ so a new package directory is picked up by the next `npm install` automatically 
 
 1. Double-check the code sample in the root `README.md` quickstart still matches the current API.
 2. Redeploy any separately-hosted example demos.
-3. Spot-check the StackBlitz links for all examples still open correctly at the new branch suffix.
+3. Spot-check the StackBlitz links for all examples still open correctly at the new tag.
 
 ## Things not to do
 
