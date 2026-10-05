@@ -8,6 +8,7 @@
   "dependencies": {
     "@gg-web-engine/ammo": "0.0.77",
     "@gg-web-engine/core": "0.0.77",
+    "@gg-web-engine/mobile-controls": "0.0.77",
     "@gg-web-engine/three": "0.0.77",
     "mini-signals": "3.0.0",
     "rxjs": "7.8.2",

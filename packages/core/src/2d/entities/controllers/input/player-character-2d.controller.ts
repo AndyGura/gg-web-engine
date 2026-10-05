@@ -1,12 +1,5 @@
 import { filter, takeUntil } from 'rxjs';
-import {
-  DirectionKeyboardInput,
-  DirectionKeyboardKeymap,
-  IEntity,
-  KeyboardInput,
-  Pnt2,
-  TickOrder,
-} from '../../../../base';
+import { DirectionInput, DirectionKeymap, IEntity, KeyboardInput, Pnt2, TickOrder } from '../../../../base';
 import { Renderer2dEntity } from '../../renderer-2d.entity';
 import { CharacterController2dEntity } from '../../character-controller-2d.entity';
 import { Gg2dWorld, Gg2dWorldTypeDocRepo } from '../../../gg-2d-world';
@@ -16,7 +9,7 @@ import { Gg2dWorld, Gg2dWorldTypeDocRepo } from '../../../gg-2d-world';
  */
 export type PlayerCharacterController2dOptions = {
   /** Keymap for left/right movement. `'wasd+arrows'` by default (both layouts work at once). */
-  keymap: DirectionKeyboardKeymap;
+  keymap: DirectionKeymap;
   /** Key code that triggers `character.jump()`. `'Space'` by default. */
   jumpKey: string;
   /** Key code that sets `character.isRunning`. `'ShiftLeft'` by default. */
@@ -56,9 +49,9 @@ export class PlayerCharacterController2d<TypeDoc extends Gg2dWorldTypeDocRepo = 
   static readonly entityTypeName: string = 'PlayerCharacterController2d';
   public readonly tickOrder = TickOrder.CONTROLLERS;
 
-  protected readonly options: PlayerCharacterController2dOptions;
+  public readonly options: PlayerCharacterController2dOptions;
 
-  public readonly directionsInput: DirectionKeyboardInput;
+  public readonly directionsInput: DirectionInput;
 
   get active(): boolean {
     return super.active;
@@ -83,7 +76,7 @@ export class PlayerCharacterController2d<TypeDoc extends Gg2dWorldTypeDocRepo = 
   }
 
   constructor(
-    protected readonly keyboard: KeyboardInput,
+    public readonly keyboard: KeyboardInput,
     /** The character this controller drives. May be swapped/set to `null` at any time. */
     public character: CharacterController2dEntity<TypeDoc> | null,
     protected readonly camera: Renderer2dEntity<TypeDoc['vTypeDoc']>,
@@ -91,24 +84,22 @@ export class PlayerCharacterController2d<TypeDoc extends Gg2dWorldTypeDocRepo = 
   ) {
     super();
     this.options = { ...DEFAULT_OPTIONS, ...options };
-    this.directionsInput = new DirectionKeyboardInput(keyboard, this.options.keymap);
+    this.directionsInput = new DirectionInput(keyboard, this.options.keymap);
   }
 
   async onSpawned(world: Gg2dWorld<TypeDoc>): Promise<void> {
     super.onSpawned(world);
 
-    this.directionsInput.output$
+    this.directionsInput.direction$
       .pipe(
         takeUntil(this._onRemoved$),
         filter(() => this.active),
       )
-      .subscribe(({ leftRight }) => {
-        // `leftRight === true` means the left key is held (see `DirectionKeyboardInput`'s own doc) -
-        // this character's `moveDirection` is positive along `right` (see
-        // `CharacterController2dEntity`'s doc), so left maps to `-1`.
-        const direction = leftRight === undefined ? 0 : leftRight ? -1 : 1;
+      .subscribe(direction => {
+        // `direction.x` is positive to the right, the same as this character's `moveDirection` (see
+        // `CharacterController2dEntity`'s doc)
         if (this.character) {
-          this.character.moveDirection = direction;
+          this.character.moveDirection = direction.x;
         }
       });
 

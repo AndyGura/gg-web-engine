@@ -561,7 +561,11 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
       speed *= this.options.runSpeedMultiplier;
     }
 
-    const localHoriz = Pnt3.norm({ x: this.moveDirection.x, y: this.moveDirection.y, z: 0 });
+    // a `moveDirection` shorter than 1 (analog input) moves proportionally slower, a longer one is capped
+    let localHoriz: Point3 = { x: this.moveDirection.x, y: this.moveDirection.y, z: 0 };
+    if (Pnt3.len(localHoriz) > 1) {
+      localHoriz = Pnt3.norm(localHoriz);
+    }
     const desiredHoriz = Pnt3.rot(Pnt3.scalarMult(localHoriz, speed), this.rotation);
 
     let horizontalVelocity: Point3;

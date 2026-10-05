@@ -29,6 +29,19 @@ where one exists.
 ## [Unreleased]
 
 ### Added
+- New package `@gg-web-engine/mobile-controls`: an overlay of on-screen touch controls.
+  `world.addEntity(new MobileControls())` shows sticks and buttons matching whichever of the car,
+  character (3D/2D) and free camera controllers is active, on touch devices only. Layouts have
+  variants (buttons/stick/tilt steering, stick/d-pad movement, drag/stick look), can be adjusted
+  control by control, replaced, and registered for an app's own controllers; `TouchButton`,
+  `TouchStick`, `TouchDPad`, `TouchLookArea` and `TiltInput` are usable on their own.
+- `@gg-web-engine/core`: analog input. `DirectionInput.direction$`/`direction` report the
+  direction as a vector, combining the keys with contributions set through `setAnalogDirection`
+  (a `DirectionInput` created without a keyboard takes those alone); `MouseInput.emulateMove`
+  emits a movement through `delta$`. The car, character and free camera
+  controllers follow `direction$`, and expose `options` and `keyboard` publicly.
+- `@gg-web-engine/core`: `CharacterController3dEntity` moves proportionally slower for a
+  `moveDirection` shorter than 1 (a longer one is still capped at full speed).
 - `@gg-web-engine/core`, `@gg-web-engine/three`, `@gg-web-engine/pixi`: display-object nesting.
   `displayObject.addChild(child)`/`removeChild(child)` make a child follow its parent's position,
   rotation and scale (and get cloned and disposed with it).
@@ -46,7 +59,21 @@ where one exists.
 - `@gg-web-engine/core` and every physics adapter: `canSleep` body option (default `true`); `false`
   keeps a dynamic body simulated while it rests.
 
+### Changed
+- `@gg-web-engine/core`: `DirectionKeyboardInput` is renamed to `DirectionInput` and
+  `DirectionKeyboardKeymap` to `DirectionKeymap`, now that the input is no longer keyboard-only. The
+  old names are gone.
+- `@gg-web-engine/core`: `CarKeyboardHandlingController` is renamed to `CarHandlingController`,
+  `GgCarKeyboardHandlingController` to `GgCarHandlingController`, and their option types to
+  `CarHandlingControllerOptions`/`GgCarHandlingControllerOptions`: they follow any direction
+  source now, not the keyboard alone. The old names are gone.
+
 ### Fixed
+- `@gg-web-engine/core`: `MouseInput.isTouchDevice()` did not recognize an iPad (which reports a
+  desktop user agent) or any other device whose primary pointer is coarse, so the controllers'
+  "unless pointer locked" options blocked touch input there.
+- `@gg-web-engine/core`: `FreeCameraController` ignored its up/down/zoom/boost keys until a direction
+  key had been pressed once.
 - `@gg-web-engine/matter`: `MatterRigidBodyComponent.clone()` and `MatterTriggerComponent.clone()`
   overflowed the stack for every body; they now rebuild the body from its shape, options and
   transform.

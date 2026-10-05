@@ -1,8 +1,7 @@
 import { BehaviorSubject, combineLatest, filter, Subject, takeUntil } from 'rxjs';
 import {
-  DirectionKeyboardInput,
-  DirectionKeyboardKeymap,
-  DirectionKeyboardOutput,
+  DirectionInput,
+  DirectionKeymap,
   ggElastic,
   GgWorld,
   IEntity,
@@ -12,6 +11,7 @@ import {
   MutableSpherical,
   Pnt2,
   Pnt3,
+  Point2,
   Point3,
   Qtrn,
   Spherical,
@@ -27,7 +27,7 @@ export type FreeCameraControllerOptions = {
   /**
    * A keymap for controlling camera movement, where each key corresponds to a movement direction. 'wasd' by default
    */
-  keymap: DirectionKeyboardKeymap;
+  keymap: DirectionKeymap;
   /**
    * The speed of camera movement in meters per second. 20 by default
    */
@@ -53,7 +53,8 @@ export type FreeCameraControllerOptions = {
    */
   ignoreMouseUnlessPointerLocked: boolean;
   /**
-   * Flag to ignore keyboard events if pointer was not locked. false by default
+   * Flag to ignore keyboard events if pointer was not locked. false by default. Always ignored on a
+   * touch device, like `ignoreMouseUnlessPointerLocked`
    */
   ignoreKeyboardUnlessPointerLocked: boolean;
   /**
@@ -81,7 +82,7 @@ export class FreeCameraController extends IEntity {
   static readonly entityTypeName: string = 'FreeCameraController';
   public readonly tickOrder = TickOrder.INPUT_CONTROLLERS;
 
-  protected readonly options: FreeCameraControllerOptions;
+  public readonly options: FreeCameraControllerOptions;
 
   /**
    * The mouse input controller used for camera rotation.
@@ -90,7 +91,7 @@ export class FreeCameraController extends IEntity {
   /**
    * The keyboard input controller used for camera movement.
    */
-  public readonly directionsInput: DirectionKeyboardInput;
+  public readonly directionsInput: DirectionInput;
 
   protected _spherical: MutableSpherical = { phi: 0, radius: 1, theta: 0 };
 
@@ -124,7 +125,7 @@ export class FreeCameraController extends IEntity {
    * @param options Optional configuration options for the controller.
    */
   constructor(
-    protected readonly keyboard: KeyboardInput,
+    public readonly keyboard: KeyboardInput,
     protected readonly camera: Renderer3dEntity,
     options: Partial<FreeCameraControllerOptions> = {},
   ) {
@@ -140,7 +141,7 @@ export class FreeCameraController extends IEntity {
       };
     }
     this.mouseInput = new MouseInput(this.options.mouseOptions);
-    this.directionsInput = new DirectionKeyboardInput(keyboard, this.options.keymap);
+    this.directionsInput = new DirectionInput(keyboard, this.options.keymap);
   }
 
   public reset(): void {
@@ -157,22 +158,27 @@ export class FreeCameraController extends IEntity {
       keys.push('KeyZ', 'KeyC');
     }
     keys.push('ShiftLeft');
+    // a touch screen has no pointer lock, so neither "unless pointer locked" option applies to it
+    const isTouchScreen = MouseInput.isTouchDevice();
 
-    let controlsObs = combineLatest([this.directionsInput.output$, ...keys.map(c => this.keyboard.bind(c))]).pipe(
+    let controlsObs = combineLatest([this.directionsInput.direction$, ...keys.map(c => this.keyboard.bind(c))]).pipe(
       takeUntil(this._onRemoved$),
       map(([direction, ...rest]) => {
-        let c: { direction: DirectionKeyboardOutput; rest: boolean[] } = { direction: {}, rest: [] };
-        if (!this.options.ignoreKeyboardUnlessPointerLocked || this.mouseInput.isPointerLocked) {
+        let c: { direction: Point2; rest: boolean[] } = { direction: Pnt2.O, rest: [] };
+        if (!this.options.ignoreKeyboardUnlessPointerLocked || this.mouseInput.isPointerLocked || isTouchScreen) {
           c = { direction, rest };
         }
         let translate = { ...Pnt3.O } as { x: number; y: number; z: number };
         const [u, d, zo, zi, speedBoost] = c.rest;
-        if (c.direction.upDown !== undefined) translate.z = c.direction.upDown ? -1 : 1;
-        if (c.direction.leftRight !== undefined) translate.x = c.direction.leftRight ? -1 : 1;
+        translate.z = c.direction.y === 0 ? 0 : -c.direction.y;
+        translate.x = c.direction.x;
         if (u != d) translate.y = d ? -1 : 1;
         let cameraFovInc = 0;
         if (zo != zi) cameraFovInc = zo ? 1 : -1;
-        translate = Pnt3.norm(translate);
+        // an analog direction shorter than 1 moves the camera proportionally slower
+        if (Pnt3.len(translate) > 1) {
+          translate = Pnt3.norm(translate);
+        }
         if (speedBoost) {
           translate = Pnt3.scalarMult(translate, this.options.cameraBoostMultiplier);
         }
@@ -198,7 +204,6 @@ export class FreeCameraController extends IEntity {
     });
 
     // Subscribe to mouse input for camera rotation
-    let isTouchScreen = MouseInput.isTouchDevice();
     let mouseDelta$ = this.mouseInput.delta$.pipe(
       takeUntil(this._onRemoved$),
       filter(

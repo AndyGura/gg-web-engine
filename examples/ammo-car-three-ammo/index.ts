@@ -1,5 +1,5 @@
 import {
-  CarKeyboardHandlingController,
+  CarHandlingController,
   createInlineTickController,
   Gg3dWorld,
   GgStatic,
@@ -10,6 +10,7 @@ import {
   RVEntityTractionBias,
   TypedGg3dWorld,
 } from '@gg-web-engine/core';
+import { MobileControls } from '@gg-web-engine/mobile-controls';
 import { ThreeDisplayObject3dOpts, ThreeGgWorld, ThreeSceneComponent } from '@gg-web-engine/three';
 import { AmmoGgWorld, AmmoWorldComponent } from '@gg-web-engine/ammo';
 
@@ -83,11 +84,13 @@ world.init().then(async () => {
     return wheel;
   };
 
-  const carController = new CarKeyboardHandlingController(
+  const carController = new CarHandlingController(
     world.keyboardInput,
     { keymap: 'wasd', maxSteerDeltaPerSecond: .04 * 120 / .5 },
   );
   world.addEntity(carController);
+  // on-screen controls on phones and tablets; does nothing on a desktop
+  world.addEntity(new MobileControls());
 
   const vehicle = new RaycastVehicle3dEntity(
     {

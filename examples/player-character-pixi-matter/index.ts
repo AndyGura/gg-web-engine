@@ -8,6 +8,7 @@ import {
   PlayerCharacterController2d,
   TypedGg2dWorld,
 } from '@gg-web-engine/core';
+import { MobileControls } from '@gg-web-engine/mobile-controls';
 import { PixiCameraComponent, PixiGgWorld, PixiSceneComponent } from '@gg-web-engine/pixi';
 import { MatterGgWorld, MatterWorldComponent } from '@gg-web-engine/matter';
 
@@ -132,6 +133,8 @@ world.init().then(async () => {
   world.addEntity(player);
   world.addEntity(new CharacterAnimation2dController(player));
   world.addEntity(new PlayerCharacterController2d(world.keyboardInput, player, renderer, { lookAheadDistance: 120 }));
+  // on-screen controls on phones and tablets; does nothing on a desktop
+  world.addEntity(new MobileControls());
 
   world.start();
 });

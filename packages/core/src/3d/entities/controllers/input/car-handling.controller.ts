@@ -1,24 +1,17 @@
 import { combineLatest, filter, Observable, Subject, takeUntil } from 'rxjs';
-import {
-  DirectionKeyboardInput,
-  DirectionKeyboardKeymap,
-  GgWorld,
-  IEntity,
-  KeyboardInput,
-  TickOrder,
-} from '../../../../base';
+import { DirectionInput, DirectionKeymap, GgWorld, IEntity, KeyboardInput, TickOrder } from '../../../../base';
 
-export type CarKeyboardControllerOptions = {
-  readonly keymap: DirectionKeyboardKeymap;
+export type CarHandlingControllerOptions = {
+  readonly keymap: DirectionKeymap;
   readonly maxSteerDeltaPerSecond: number;
 };
 export type CarHandlingOutput = { upDown: number; leftRight: number };
 
-export class CarKeyboardHandlingController extends IEntity {
-  static readonly entityTypeName: string = 'CarKeyboardHandlingController';
+export class CarHandlingController extends IEntity {
+  static readonly entityTypeName: string = 'CarHandlingController';
   public readonly tickOrder = TickOrder.INPUT_CONTROLLERS;
 
-  public readonly directionsInput: DirectionKeyboardInput;
+  public readonly directionsInput: DirectionInput;
 
   private _output$: Subject<CarHandlingOutput> = new Subject<CarHandlingOutput>();
   public get output$(): Observable<CarHandlingOutput> {
@@ -26,28 +19,27 @@ export class CarKeyboardHandlingController extends IEntity {
   }
 
   constructor(
-    protected readonly keyboard: KeyboardInput,
-    protected readonly options: CarKeyboardControllerOptions = {
+    public readonly keyboard: KeyboardInput,
+    public readonly options: CarHandlingControllerOptions = {
       keymap: 'arrows',
       maxSteerDeltaPerSecond: 12,
     },
   ) {
     super();
-    this.directionsInput = new DirectionKeyboardInput(keyboard, options.keymap);
+    this.directionsInput = new DirectionInput(keyboard, options.keymap);
   }
 
   async onSpawned(world: GgWorld<any, any>): Promise<void> {
     super.onSpawned(world);
     let input: CarHandlingOutput = { upDown: 0, leftRight: 0 };
-    combineLatest([this.directionsInput.output$, this.tick$])
+    combineLatest([this.directionsInput.direction$, this.tick$])
       .pipe(
         filter(() => this.active),
         takeUntil(this._onRemoved$),
       )
       .subscribe(([d, [_, dt]]) => {
-        const direction: CarHandlingOutput = { upDown: 0, leftRight: 0 };
-        if (d.leftRight !== undefined) direction.leftRight = d.leftRight ? 1 : -1;
-        if (d.upDown !== undefined) direction.upDown = d.upDown ? 1 : -1;
+        // `leftRight` is positive to the left, the opposite of `direction$`'s `x`
+        const direction: CarHandlingOutput = { upDown: d.y, leftRight: d.x === 0 ? 0 : -d.x };
         if (direction.leftRight != input.leftRight) {
           let diff = Math.abs(direction.leftRight - input.leftRight);
           let maxSteerInputDelta = (this.options.maxSteerDeltaPerSecond * dt) / 1000;

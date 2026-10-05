@@ -366,8 +366,13 @@ Objectives
 
 Status
 - ✅ Desktop input abstraction already exists: `KeyboardInput`, `MouseInput`,
-  `DirectionKeyboardInput`, and a shared `IInput` base (`packages/core/src/base/inputs/`).
-- Gamepad support — not started.
+  `DirectionInput`, and a shared `IInput` base (`packages/core/src/base/inputs/`).
+- ✅ On-screen touch controls: `@gg-web-engine/mobile-controls` (`packages/mobile-controls`) - an
+  opt-in overlay of sticks, buttons, d-pads, look areas and tilt steering with built-in layouts for
+  the car, character (3D/2D) and free camera controllers, customizable per control and replaceable
+  per controller class. Core's part is an analog path into the existing inputs
+  (`DirectionInput.setAnalogDirection`/`direction$`, `MouseInput.emulateMove`).
+- Gamepad support — not started. The analog path above is what a gamepad input would feed too.
 - Touch/gesture recognition (pinch, pan, tap, swipe) — not started.
 - User-facing remapping API — not started; current input classes are configured in code, not
   remappable at runtime.
