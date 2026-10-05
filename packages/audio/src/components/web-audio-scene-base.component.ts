@@ -31,6 +31,11 @@ export abstract class WebAudioSceneComponentBase<D, R> {
   public async init(): Promise<void> {
     if (this.context.state === 'suspended' && typeof window !== 'undefined' && !this.resumeListener) {
       const resume = () => {
+        if (this.paused) {
+          // the world is paused: `setPaused(false)` resumes the context, from this same gesture's
+          // allowance, once the world continues
+          return;
+        }
         this.context.resume().catch(() => {
           /* ignore - browser will re-suspend until an accepted gesture happens */
         });
@@ -97,6 +102,28 @@ export abstract class WebAudioSceneComponentBase<D, R> {
 
   public setActiveListener(target: IPositionable<D, R> | null): void {
     this._activeListener = target;
+  }
+
+  private paused: boolean = false;
+
+  /**
+   * Suspends the whole `AudioContext` while paused: every source, including ones scheduled but not
+   * yet audible, stops where it is and continues from there - nothing has to be tracked per source.
+   */
+  public setPaused(paused: boolean): void {
+    if (this.paused === paused) {
+      return;
+    }
+    this.paused = paused;
+    const change = paused ? this.context.suspend() : this.context.resume();
+    change.catch(() => {
+      /* closed, or not yet allowed to start by the browser - nothing to do either way */
+    });
+  }
+
+  /** Decodes an already-fetched audio file - what `loadClip` does after its own fetch. */
+  public decodeClip(data: ArrayBuffer): Promise<AudioBuffer> {
+    return this.context.decodeAudioData(data);
   }
 
   public async loadClip(url: string): Promise<AudioBuffer> {

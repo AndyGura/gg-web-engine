@@ -1,10 +1,27 @@
 import { Gg3dWorld, Gg3dWorldTypeDocRepo } from './gg-3d-world';
 import { GG_META_SUPPORTED_FORMAT_VERSION, GgMeta } from './models/gg-meta';
 import { Entity3d } from './entities/entity-3d';
-import { GroupEntity, Pnt3, Point3, Point4, Qtrn, warnOnce } from '../base';
+import {
+  AssetProgress,
+  AssetRef,
+  fetchWithProgress,
+  GroupEntity,
+  LoadProgressGroup,
+  LoadTaskOptions,
+  Pnt3,
+  Point3,
+  Point4,
+  Qtrn,
+  throwIfAborted,
+  warnOnce,
+} from '../base';
 import { Gg3dLevelLoader } from './level-loader';
-import { LoadGlbOptions } from './loaders';
 
+/**
+ * Whether `loadGgGlb` goes through the loader's asset cache. Left out, it does. `Nothing` fetches
+ * and parses the file for that one call, outside the cache; `Files` and `Entities` both mean the
+ * cached default (they used to select what was cached).
+ */
 export enum CachingStrategy {
   Nothing,
   Files,
@@ -12,11 +29,8 @@ export enum CachingStrategy {
 }
 
 export type LoadOptions = {
-  // whether to cache anything
-  // "Nothing" does not cache anything
-  // "Files" caches GLB+Meta file contents
-  // "Entities" clones and saves parsed from GLB+Meta objects and bodies
-  cachingStrategy: CachingStrategy;
+  /** See `CachingStrategy`. Cached when left out. */
+  cachingStrategy?: CachingStrategy;
   // initial position
   position: Point3;
   // initial rotation
@@ -52,7 +66,6 @@ export type LoadOptions = {
 };
 
 const defaultLoadOptions: LoadOptions = {
-  cachingStrategy: CachingStrategy.Nothing,
   position: Pnt3.O,
   rotation: Qtrn.O,
   loadProps: true,
@@ -116,8 +129,7 @@ export interface Glb3DSettings {
   rotation?: Point4;
 
   /**
-   * Caching strategy, see `CachingStrategy`. Defaults to `CachingStrategy.Nothing`, same as
-   * `loadGgGlb` itself.
+   * Caching strategy, see `CachingStrategy`. Cached when left out, same as `loadGgGlb` itself.
    */
   cachingStrategy?: CachingStrategy;
 
@@ -170,19 +182,9 @@ export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocR
   // backs `loadGgGlb`'s default (process-unique) `nameScope`, see `LoadOptions.nameScope`
   private static nameScopeCounter = 0;
 
-  readonly filesCache: Map<string, [ArrayBuffer, GgMeta] | Promise<[ArrayBuffer, GgMeta]>> = new Map<
-    string,
-    [ArrayBuffer, GgMeta] | Promise<[ArrayBuffer, GgMeta]>
-  >();
-
-  readonly loadResultCache: Map<string, LoadResourcesResult<TypeDoc> | Promise<LoadResourcesResult<TypeDoc>>> = new Map<
-    string,
-    LoadResourcesResult<TypeDoc> | Promise<LoadResourcesResult<TypeDoc>>
-  >();
-
   constructor(world: Gg3dWorld<TypeDoc>) {
     super(world);
-    this.registerClass('Glb', async (w: Gg3dWorld<TypeDoc>, settings: Glb3DSettings) => {
+    const generator = async (w: Gg3dWorld<TypeDoc>, settings: Glb3DSettings, load: LoadTaskOptions = {}) => {
       if (!settings.path) {
         throw new Error('Path is required for Glb class');
       }
@@ -199,6 +201,7 @@ export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocR
         name,
       } = settings;
       const result = await this.loadGgGlb(path, {
+        ...load,
         ...(position !== undefined ? { position } : {}),
         ...(rotation !== undefined ? { rotation } : {}),
         ...(cachingStrategy !== undefined ? { cachingStrategy } : {}),
@@ -213,52 +216,54 @@ export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocR
       const group = new GroupEntity<Point3, Point4, TypeDoc>();
       group.addChildren(...flattenGlbEntities(result));
       return group;
+    };
+    this.registerClass('Glb', generator, {
+      assets: (settings: Glb3DSettings) =>
+        settings.path && settings.cachingStrategy !== CachingStrategy.Nothing
+          ? [{ kind: 'ggGlb', url: settings.path, loadProps: settings.loadProps, propsPath: settings.propsPath }]
+          : [],
     });
   }
 
-  public async loadGgGlbFiles(path: string, useCache: boolean = false): Promise<[ArrayBuffer, GgMeta]> {
-    if (useCache && this.filesCache.has(path)) {
-      return this.filesCache.get(path)!;
-    }
-    const loadPromise = Promise.all([
-      fetch(`${path}.glb`).then(r => r.arrayBuffer()),
-      fetch(`${path}.meta`)
-        .then(r => r.text())
-        .then(r => JSON.parse(r))
-        .then((meta: GgMeta) => {
-          if (meta.formatVersion !== undefined && meta.formatVersion > GG_META_SUPPORTED_FORMAT_VERSION) {
-            warnOnce(
-              `${path}.meta declares formatVersion ${meta.formatVersion}, but this build of ` +
-                `@gg-web-engine/core only understands up to ${GG_META_SUPPORTED_FORMAT_VERSION}. ` +
-                `Update @gg-web-engine/core, or re-export with an older version of the GG Web Engine Exporter add-on.`,
-            );
-          }
-          return meta;
-        }),
-    ]);
-    if (useCache) {
-      this.filesCache.set(path, loadPromise);
-    }
-    const result = await loadPromise;
-    if (useCache) {
-      this.filesCache.set(path, result);
-    }
+  /**
+   * Fetches a `.glb`/`.meta` pair. Nothing is cached here - `loadGgGlb` is the cached entry point.
+   * @param path - Path (URL or path prefix, without extension) to the pair
+   * @param options - Progress callback and abort signal
+   */
+  public async loadGgGlbFiles(path: string, options: LoadTaskOptions = {}): Promise<[ArrayBuffer, GgMeta]> {
+    const item = new AssetProgress(path, options.onProgress);
+    const result = await this.fetchGgGlb(path, item, options.signal);
+    item.done();
     return result;
   }
 
-  public async loadGgGlbResources(
+  private async fetchGgGlb(
     path: string,
-    cachingStrategy: CachingStrategy = CachingStrategy.Nothing,
+    item: AssetProgress,
+    signal: AbortSignal | undefined,
+  ): Promise<[ArrayBuffer, GgMeta]> {
+    const [glb, metaData] = await Promise.all([
+      fetchWithProgress(`${path}.glb`, item.file(), signal),
+      fetchWithProgress(`${path}.meta`, item.file(), signal),
+    ]);
+    const meta: GgMeta = JSON.parse(new TextDecoder().decode(metaData));
+    if (meta.formatVersion !== undefined && meta.formatVersion > GG_META_SUPPORTED_FORMAT_VERSION) {
+      warnOnce(
+        `${path}.meta declares formatVersion ${meta.formatVersion}, but this build of ` +
+          `@gg-web-engine/core only understands up to ${GG_META_SUPPORTED_FORMAT_VERSION}. ` +
+          `Update @gg-web-engine/core, or re-export with an older version of the GG Web Engine Exporter add-on.`,
+      );
+    }
+    return [glb, meta];
+  }
+
+  /** Fetches and parses a pair into display objects and bodies that own their resources. */
+  private async buildGgGlbResources(
+    path: string,
+    item: AssetProgress,
+    signal: AbortSignal | undefined,
   ): Promise<LoadResourcesResult<TypeDoc>> {
-    if (cachingStrategy == CachingStrategy.Entities && this.loadResultCache.has(path)) {
-      const cached = this.loadResultCache.get(path);
-      const cachedResult = cached instanceof Promise ? await cached : cached;
-      return cloneLoadResourcesResult(cachedResult!);
-    }
-    const [glb, meta] = await this.loadGgGlbFiles(path, cachingStrategy == CachingStrategy.Files);
-    if (!glb) {
-      throw new Error('GLB not found');
-    }
+    const [glb, meta] = await this.fetchGgGlb(path, item, signal);
     const [object, bodies] = await Promise.all([
       this.world.visualScene?.loader.loadFromGgGlb(glb, meta),
       this.world.physicsWorld?.loader.loadFromGgGlb(glb, meta),
@@ -267,6 +272,8 @@ export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocR
     if (!object) {
       return result;
     }
+    // before the object is split up: prepared as a whole, in one pass
+    await this.world.visualScene?.loader.prepare?.(object);
     if (bodies?.length == 0) {
       result.resources.push({ object3D: object, body: null });
     } else if (bodies?.length == 1) {
@@ -279,26 +286,86 @@ export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocR
         result.resources.push({ object3D: object, body: null });
       }
     }
-    if (cachingStrategy == CachingStrategy.Entities) {
-      this.loadResultCache.set(path, cloneLoadResourcesResult(result));
-    }
     return result;
   }
 
+  /** The cached, never-spawned original of a pair - `loadGgGlbResources` hands out copies of it. */
+  private acquireGgGlb(path: string, options: LoadTaskOptions): Promise<LoadResourcesResult<TypeDoc>> {
+    return this.acquireAsset(`ggGlb:${path}`, path, options, async item => {
+      const template = await this.buildGgGlbResources(path, item, options.signal);
+      return {
+        value: template,
+        dispose: () => {
+          for (const { object3D, body } of template.resources) {
+            object3D?.dispose();
+            body?.dispose();
+          }
+        },
+      };
+    });
+  }
+
   /**
-   * Loads a plain `.glb` (no `.meta` pair - see `loadGgGlb`) via `visualScene.loader.loadFromGlb`,
-   * for a visual-only asset that has no physics representation of its own (a character model
-   * driven by a separately-created `CharacterController3dEntity`'s capsule, a decorative prop, ...).
-   * `undefined`/`null` if there's no visual scene to load against.
-   * @param path - Path (URL or path prefix, without extension) to the `.glb` file
-   * @param options - See `LoadGlbOptions`
+   * Loads a `.glb`/`.meta` pair into display objects and bodies, not yet wrapped in entities. The
+   * pair is fetched and parsed once per world and kept in the loader's cache; every call gets its
+   * own copies (`clone()`) to place, which share the cached original's geometry, materials and
+   * collision shapes. `CachingStrategy.Nothing` skips the cache: the pair is fetched and parsed
+   * for this call alone, and the result owns its resources.
    */
-  public async loadModel(path: string, options?: LoadGlbOptions): Promise<TypeDoc['vTypeDoc']['displayObject'] | null> {
-    if (!this.world.visualScene) {
-      return null;
+  public async loadGgGlbResources(
+    path: string,
+    cachingStrategy?: CachingStrategy,
+    options: LoadTaskOptions = {},
+  ): Promise<LoadResourcesResult<TypeDoc>> {
+    if (cachingStrategy === CachingStrategy.Nothing) {
+      throwIfAborted(options.signal);
+      const item = new AssetProgress(path, options.onProgress);
+      const result = await this.buildGgGlbResources(path, item, options.signal);
+      throwIfAborted(options.signal);
+      item.done();
+      return result;
     }
-    const glb = await fetch(`${path}.glb`).then(r => r.arrayBuffer());
-    return this.world.visualScene.loader.loadFromGlb(glb, options);
+    return cloneLoadResourcesResult(await this.acquireGgGlb(path, options));
+  }
+
+  /** The props/scenes a meta references, as further pairs to load. */
+  private static propsOf(meta: GgMeta, path: string, propsPath: string | undefined) {
+    return (meta.dummies || [])
+      .filter(x => x.is_prop || x.is_scene)
+      .map(dummy => ({
+        dummy,
+        path: dummy.is_prop
+          ? (propsPath || path.substring(0, path.lastIndexOf('/') + 1)) + dummy.prop_id
+          : (dummy.scene_id as string),
+        loadProps: !!dummy.is_scene,
+      }));
+  }
+
+  /** Brings a pair, and with `loadProps` everything it references, into the cache. */
+  private async preloadGgGlb(
+    path: string,
+    loadProps: boolean,
+    propsPath: string | undefined,
+    options: LoadTaskOptions,
+  ): Promise<void> {
+    const group = new LoadProgressGroup(options);
+    const { meta } = await this.acquireGgGlb(path, group.sub());
+    if (loadProps) {
+      await Promise.all(
+        Gg3dLoader.propsOf(meta, path, propsPath).map(prop =>
+          this.preloadGgGlb(prop.path, prop.loadProps, undefined, group.sub()),
+        ),
+      );
+    }
+    group.finish();
+  }
+
+  protected override async preloadAsset(ref: AssetRef, options: LoadTaskOptions): Promise<void> {
+    if (ref.kind === 'ggGlb') {
+      await this.preloadGgGlb(ref.url, ref.loadProps ?? true, ref.propsPath, options);
+    } else {
+      await super.preloadAsset(ref, options);
+    }
   }
 
   /**
@@ -314,12 +381,13 @@ export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocR
    */
   public async loadGgGlb(
     path: string,
-    options: Partial<LoadOptions> = defaultLoadOptions,
+    options: Partial<LoadOptions> & LoadTaskOptions = {},
   ): Promise<LoadResultWithProps<TypeDoc>> {
     const loadOptions = { ...defaultLoadOptions, ...options };
+    const group = new LoadProgressGroup(options);
     const nameScope: string | null =
       loadOptions.nameScope === undefined ? `glb_${Gg3dLoader.nameScopeCounter++}` : loadOptions.nameScope;
-    const { resources, meta } = await this.loadGgGlbResources(path, loadOptions.cachingStrategy);
+    const { resources, meta } = await this.loadGgGlbResources(path, loadOptions.cachingStrategy, group.sub());
     const result: LoadResultWithProps<TypeDoc> = {
       entities: resources.map((x, index) => {
         const entity = new Entity3d<TypeDoc>({ object3D: x.object3D, objectBody: x.body });
@@ -338,23 +406,18 @@ export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocR
     };
     if (loadOptions.loadProps) {
       result.props = await Promise.all(
-        (meta as GgMeta).dummies
-          .filter(x => x.is_prop || x.is_scene)
-          .map(dummy =>
-            this.loadGgGlb(
-              dummy.is_prop
-                ? (loadOptions.propsPath || path.substring(0, path.lastIndexOf('/') + 1)) + dummy.prop_id
-                : dummy.scene_id,
-              {
-                loadProps: !!dummy.is_scene,
-                position: Pnt3.add(Pnt3.rot(dummy.position, loadOptions.rotation), loadOptions.position),
-                rotation: Qtrn.combineRotations(dummy.rotation, loadOptions.rotation),
-                nameScope: nameScope === null ? null : `${nameScope}__${dummy.name}`,
-                ...(loadOptions.castShadow !== undefined ? { castShadow: loadOptions.castShadow } : {}),
-                ...(loadOptions.receiveShadow !== undefined ? { receiveShadow: loadOptions.receiveShadow } : {}),
-              },
-            ),
-          ),
+        Gg3dLoader.propsOf(meta, path, loadOptions.propsPath).map(({ dummy, path: propPath, loadProps }) =>
+          this.loadGgGlb(propPath, {
+            ...group.sub(),
+            loadProps,
+            position: Pnt3.add(Pnt3.rot(dummy.position, loadOptions.rotation), loadOptions.position),
+            rotation: Qtrn.combineRotations(dummy.rotation, loadOptions.rotation),
+            nameScope: nameScope === null ? null : `${nameScope}__${dummy.name}`,
+            ...(loadOptions.cachingStrategy !== undefined ? { cachingStrategy: loadOptions.cachingStrategy } : {}),
+            ...(loadOptions.castShadow !== undefined ? { castShadow: loadOptions.castShadow } : {}),
+            ...(loadOptions.receiveShadow !== undefined ? { receiveShadow: loadOptions.receiveShadow } : {}),
+          }),
+        ),
       );
     }
     result.entities.forEach(e => {
@@ -368,6 +431,7 @@ export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocR
       // FIXME this rotation is wrong
       e.rotation = Qtrn.mult(Qtrn.clone(e.rotation), loadOptions.rotation);
     });
+    group.finish();
     return result;
   }
 }

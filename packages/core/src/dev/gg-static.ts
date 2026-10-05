@@ -1,6 +1,7 @@
 import { GgWorld, KeyboardInput } from '../base';
 import { GgConsoleUI } from './gg-console.ui';
 import { GgDebuggerUI } from './gg-debugger.ui';
+import { PerformanceMeterEntity } from './performance-meter.entity';
 import {
   BehaviorSubject,
   combineLatest,
@@ -284,6 +285,14 @@ export class GgStatic {
       commands = this.consoleCommands.get(world)!;
     }
     commands[command] = { handler, doc, mutates: !!mutates };
+  }
+
+  /**
+   * Builds the entity the `performance` console command measures a world with. World classes reach
+   * it through `window.ggstatic` instead of importing it, so nothing outside `dev/` depends on it.
+   */
+  public createPerformanceMeter(samples: number, maxRows: number): PerformanceMeterEntity {
+    return new PerformanceMeterEntity(samples, maxRows);
   }
 
   /** Remove one command registered via {@link registerConsoleCommand}; a no-op if it isn't registered. */

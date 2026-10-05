@@ -1,4 +1,4 @@
-import { BodyType, GgWorld, Pnt3, Point3, Point4, Qtrn, RendererOptions } from '../base';
+import { BodyType, GgConsoleHost, GgWorld, Pnt3, Point3, Point4, Qtrn, RendererOptions } from '../base';
 import { Gg3dLoader } from './loader';
 import { Entity3d } from './entities/entity-3d';
 import { BodyShape3DDescriptor } from './models/shapes';
@@ -215,15 +215,7 @@ export class Gg3dWorld<
     return entity;
   }
 
-  protected registerConsoleCommands(ggstatic: {
-    registerConsoleCommand: (
-      world: GgWorld<any, any> | null,
-      command: string,
-      handler: (...args: string[]) => Promise<string>,
-      doc?: string,
-      mutates?: boolean,
-    ) => void;
-  }) {
+  protected registerConsoleCommands(ggstatic: GgConsoleHost) {
     super.registerConsoleCommands(ggstatic);
     ggstatic.registerConsoleCommand(
       this,

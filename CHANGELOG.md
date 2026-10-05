@@ -58,6 +58,36 @@ where one exists.
   and `factory.createTextureFromCanvas`. A textured 2D primitive's `color` now tints the texture.
 - `@gg-web-engine/core` and every physics adapter: `canSleep` body option (default `true`); `false`
   keeps a dynamic body simulated while it rests.
+- `@gg-web-engine/core`: screens. `ScreenManager` keeps an app's `Screen`s (menu, game, pause
+  overlay, ...) as a stack of DOM layers with `push` (optionally `clearHistory`), `replace`,
+  `pop(count)`, `popTo` and `reset`. A screen enters once (`enter(ctx)`, with a loading view fed
+  by `ctx.reportProgress` while it is pending and `ctx.signal` aborted if it is removed mid-load),
+  is told when it is covered and uncovered, and exits once; worlds it registers with `addWorld`
+  are paused and have their input switched off while it is covered, and are disposed on exit.
+  `DefaultLoadingView` is the built-in progress bar. With `GgStatic` present, the console gains
+  `screens` and `screen_pop`.
+- `@gg-web-engine/core`: load progress and cancellation. `loadLevel`, `loadLevelFromUrl`,
+  `loadGgGlb`, `loadModel` and the new `world.loader.loadTexture`, `loadCubeTexture` (3D),
+  `loadClip` and `preload(assets)` take `{ onProgress, signal, scope }`. Progress
+  (`LoadProgress`) covers fetching by bytes and decoding (parsing, GPU upload, audio decoding);
+  a level reports one progress for everything it references, loaded in parallel before it is
+  built. `registerClass(alias, generator, { assets })` declares what a level entity class loads,
+  and generators receive the load's options as a third argument.
+- `@gg-web-engine/core`: a per-world asset cache on `world.loader`. Assets are fetched and decoded
+  once per world and shared by repeated and concurrent loads; they are held by an `AssetScope`
+  (`loader.createAssetScope()`) and freed when the last scope holding them is released. A level
+  holds its assets until its group entity is disposed, a `MapGraph3dEntity` chunk until it
+  unloads, an entity built with `createEntity` until it is disposed, anything else until the world
+  is disposed.
+- `@gg-web-engine/core`: `GgWorld.inputEnabled`/`inputEnabled$` switch a world's keyboard, the
+  built-in controllers' mouse and direction inputs and the `@gg-web-engine/mobile-controls`
+  overlay off and on together; `runWhileInputEnabled` ties an app's own inputs to it.
+  `GgWorld.localPauseAllowed` tells UI not to pause a shared world; `@gg-web-engine/multiplayer`
+  clears it while a session is joined.
+- `@gg-web-engine/core`: `IEntity.disposed$`.
+- `@gg-web-engine/three`, `@gg-web-engine/pixi`, `@gg-web-engine/audio`: decoding from fetched
+  data (`textureFromData`, `cubeTextureFromData`, `decodeClip`), `prepare` (GPU upload ahead of
+  the first frame) and, for pixi, `disposeTexture`.
 
 ### Changed
 - `@gg-web-engine/core`: `DirectionKeyboardInput` is renamed to `DirectionInput` and
@@ -67,6 +97,23 @@ where one exists.
   `GgCarKeyboardHandlingController` to `GgCarHandlingController`, and their option types to
   `CarHandlingControllerOptions`/`GgCarHandlingControllerOptions`: they follow any direction
   source now, not the keyboard alone. The old names are gone.
+- `@gg-web-engine/core`: `loadGgGlb` and `loadModel` cache by default and return copies of the
+  cached original (what `CachingStrategy.Entities` did). `CachingStrategy.Nothing` still loads
+  outside the cache; `Files` and `Entities` both mean the default now. `Gg3dLoader.filesCache`/
+  `loadResultCache` are gone (`loader.assetCache` replaces them), and `loadGgGlbFiles` takes load
+  options instead of a `useCache` flag.
+- `@gg-web-engine/core`, `@gg-web-engine/three`: a display object's `clone()` shares geometry,
+  materials and textures with its source and no longer frees them when disposed; the source does.
+  A model loaded from a `.glb` frees its textures along with its meshes.
+- `@gg-web-engine/core`: an `"Environment"` level entity's sky textures are freed with the level
+  (or, for one built by `createEntity`, with the entity), not by the entity's own `dispose()`
+  inside a level.
+- `@gg-web-engine/core`, `@gg-web-engine/audio`: pausing a world pauses its audio
+  (`IAudioSceneComponent.setPaused`): every sound stops where it is and continues on resume.
+- `@gg-web-engine/three`: disposing a renderer releases its WebGL context immediately. The canvas
+  can't host another renderer afterwards.
+- `@gg-web-engine/core`: `loadLevelFromUrl` reports a failed request as
+  `Failed to load "<url>": <status>`.
 
 ### Fixed
 - `@gg-web-engine/core`: `MouseInput.isTouchDevice()` did not recognize an iPad (which reports a
@@ -82,6 +129,12 @@ where one exists.
   (children included), and cloning a text or an animated sprite keeps its class, tint and opacity.
 - `@gg-web-engine/matter`: a `CAPSULE` rigid body ignored its body options (mass, friction,
   restitution, static/dynamic type).
+- `@gg-web-engine/core`: `KeyboardInput.stop()` added a `pointerlockchange` listener instead of
+  removing its own, leaking one per stopped input (per disposed world).
+- `@gg-web-engine/core`: `KeyboardInput` took the auto-repeat of a held key for a new press, so a
+  key held while its input was reset or restarted got pressed again.
+- `@gg-web-engine/core`: a `MouseInput.wheel$` subscriber stopped receiving after the input was
+  stopped and started again; a drag in progress now ends when the input stops.
 
 ## [0.0.77] - 2026-10-05
 

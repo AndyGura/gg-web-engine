@@ -122,8 +122,16 @@ Every adapter component class then `implements I<Thing>Component<<Lib>VisualType
   so the child's transform becomes relative to the parent; `removeChild` of something that isn't a
   direct child is a no-op, and `dispose()` must take nested children with it (pixi:
   `destroy({ children: true })`; three's `dispose()` already traverses). `clone()` must return a
-  component around its own deep copy of the native object and its nested children, never one
-  wrapping the same native object: disposing either would destroy what the other renders. three has
+  component around its own copy of the native object and its nested children, never one wrapping
+  the same native object. The copy shares the heavy resources with its source and must not free
+  them: core's loader caches one original per loaded file and hands out a `clone()` per use, so a
+  copy that freed shared geometry on `dispose()` would pull it out from under its siblings. The
+  source frees them, and is disposed last (see `IDisplayObjectComponent.clone`'s doc). In
+  `packages/three` this is `ThreeDisplayObjectComponent.resourceOwnership`: `'meshes'` by default
+  (geometry and materials, never textures - a primitive's `diffuse` belongs to whoever loaded it),
+  `'all'` for what `ThreeLoader` returns (a model's textures came with its file; `popChild` passes
+  it on to the parts a model is split into), `'none'` for every `clone()`. A subclass overriding
+  `clone()` (`ThreeAnimatedDisplayObjectComponent`) has to set `'none'` on its copy too. three has
   `Object3D.clone()`; pixi has no generic `Container.clone()`, so `src/utils/clone-container.ts`
   rebuilds each kind of native object the package creates (`cloneContainer`, sharing only textures)
   and a component subclass with its own constructor arguments or state overrides `clone()` to
@@ -267,6 +275,51 @@ supplies textures for both.
   none was given, reads back as `{}` again, not the specific color that got picked) - acceptable,
   since round-tripping a genuinely unspecified color isn't expected to be deterministic anyway.
 
+## Loading: core fetches, the adapter decodes
+
+`world.loader` (core) does every fetch itself - that is where byte progress, cancellation and the
+per-world asset cache live - and hands the adapter data to turn into resources. The adapter never
+sees a progress callback or an abort signal; core counts the decode phase as done when the
+adapter's promise resolves. What an adapter provides:
+
+- **Models** (3D loader): `loadFromGgGlb(arrayBuffer, meta)` and `loadFromGlb(arrayBuffer, options)`
+  already take bytes.
+- **Textures**: `textureFromData(blob, options)` on the 3D loader (plus
+  `cubeTextureFromData({ px, ..., nz })`) and on the 2D factory. `options.url` (3D) is the original
+  url, for anything decided by file extension - a blob has none. `packages/three` wraps the blob in
+  an object url and runs it through the very loaders `loadTexture(url)` uses (so orientation, color
+  space and HDR handling can't differ between the two paths), revoking the url whether decoding
+  succeeds or throws. `packages/pixi` decodes with `createImageBitmap` into an `ImageSource` of its
+  own and never touches `Assets`: an `Assets.load` texture lives in a cache global to the page,
+  shared by every world, with no owner to free it.
+- **`disposeTexture(texture)`**: frees what `textureFromData` made. Core calls it when the last
+  holder of the cached texture lets go.
+- **`prepare(resource)`** (optional): do now what would otherwise happen on the first frame the
+  resource is visible - upload textures, compile shaders - so it is part of the reported load. It
+  needs a renderer, so the scene keeps a `renderers` set that each renderer component joins in
+  `addToWorld` and leaves in `removeFromWorld`/`dispose`; with none, `prepare` resolves at once.
+  three: `renderer.initTexture(texture)` for a texture; for a model, `initTexture` on every texture
+  its materials reference (found by value: any material property that is a `Texture`), then
+  `compileAsync(object, camera, scene)`, which compiles against the scene's lights without the
+  object being in it. pixi: `renderer.texture.initSource(source)`, exposed by the renderer
+  component as `nativeTextureSystem` (`null` until pixi's async `Application.init` is done). Don't
+  use pixi's `renderer.prepare.upload`: it waits for a `Ticker.system` frame, which a background
+  tab may never deliver, and the load would hang.
+
+All four are optional in core's interfaces. Without `textureFromData` core calls the url-taking
+`loadTexture` instead: it still works and is still cached, but the download is invisible to the
+progress and can't be aborted.
+
+## Renderer disposal gives the context back
+
+`ThreeRendererComponent.dispose()` ends with `forceContextLoss()`. A browser allows a page about 16
+WebGL contexts and frees a discarded one only at garbage collection, so an app that creates a world
+per game session (menu → game → menu → ...) runs out without it. The price: a canvas whose context
+was force-lost can't host another renderer, so each renderer gets a canvas of its own. Anything a
+subclass disposes that lives in the context (`ThreeComposerRendererComponent`'s render targets)
+goes before `super.dispose()`. Verified in Chrome with more than 20 create/dispose round trips of a
+full world: every old context reports `isContextLost()`, the live one keeps rendering.
+
 ## The `removeFromWorld(dispose)` contract
 
 Every component class here also implements the same base `IWorldComponent` a physics adapter's
@@ -354,7 +407,14 @@ so those paths aren't skipped. The `examples/jsm` half matters as soon as a spec
 that pulls in an addon (`ThreeLoader` imports `GLTFLoader`/`HDRLoader`, so any spec reaching
 `ThreeSceneComponent` does): those files are ESM too, and fail with the same `Must use import`
 error otherwise. A package that doesn't import `three` directly in its tests (like `pixi`,
-whose one spec file is pure-logic) doesn't need any of this.
+whose spec files replace `pixi.js` with stand-ins) doesn't need any of this.
+
+jsdom has no `URL.createObjectURL`/`revokeObjectURL`, no `createImageBitmap` and no WebGL: a spec
+for the decode-from-data methods assigns fakes for the first three and spies on the native loader's
+`loadAsync` (`test/three-loader.spec.ts`), and `prepare` is tested against fake renderer objects put
+into the scene's `renderers` set. For pixi the whole module is mocked
+(`test/pixi-factory-textures.spec.ts`); the mock has to export every name the file under test
+imports at module level, as empty classes if nothing else.
 
 Pin `@babel/core` and `@babel/plugin-transform-modules-commonjs` to the same `^7.x` major, not
 `^8.x` — `ts-jest@29.4.12` (this package's other test dependency) declares a peerOptional

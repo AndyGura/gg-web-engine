@@ -181,4 +181,24 @@ describe('MobileControls', () => {
     expect(controls.shown).toBe(false);
     expect(controls.element.querySelector('.gg-mc-id-jump')).toBeNull();
   });
+
+  it('leaves the screen while the world input is switched off, even with the world paused, and comes back', () => {
+    const car = new GgCarHandlingController(world.keyboardInput, null);
+    world.addEntity(car);
+    const controls = new MobileControls({ enabled: true });
+    world.addEntity(controls);
+    const pause = new TouchButton({ id: 'pause' });
+    controls.addControls(pause);
+    expect(controls.shown).toBe(true);
+
+    // what a ScreenManager does to the world of a covered screen: no tick follows
+    world.pauseWorld();
+    world.inputEnabled = false;
+    expect(controls.shown).toBe(false);
+    expect(ids(controls)).toEqual(['pause']);
+
+    world.inputEnabled = true;
+    expect(controls.shown).toBe(true);
+    expect(ids(controls)).toContain('accelerate');
+  });
 });

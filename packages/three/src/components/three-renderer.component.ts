@@ -50,6 +50,7 @@ export class ThreeRendererComponent extends IRenderer3dComponent<ThreeVisualType
 
   addToWorld(world: ThreeGgWorld) {
     this.world = world;
+    this.scene.renderers.add(this);
     if (this.physicsDebugViewActive) {
       this.debugView = ThreePhysicsDebugView.startDebugView(this.world, this);
     }
@@ -61,6 +62,7 @@ export class ThreeRendererComponent extends IRenderer3dComponent<ThreeVisualType
       this.debugView = null;
     }
     this.world = null;
+    this.scene.renderers.delete(this);
     if (dispose) {
       this.dispose();
     }
@@ -84,10 +86,18 @@ export class ThreeRendererComponent extends IRenderer3dComponent<ThreeVisualType
     }
   }
 
+  /**
+   * Frees the renderer and gives its WebGL context back to the browser right away, instead of
+   * leaving that to garbage collection - a page gets only so many contexts (about 16), and an app
+   * that creates a world per game session would run out. The canvas can't be used for another
+   * renderer afterwards: create a new canvas for the next one.
+   */
   dispose(): void {
+    this.scene.renderers.delete(this);
     this.camera.dispose();
     this.nativeRenderer.clear();
     this.nativeRenderer.dispose();
+    this.nativeRenderer.forceContextLoss();
     this.nativeRenderer.domElement = null as any;
   }
 }

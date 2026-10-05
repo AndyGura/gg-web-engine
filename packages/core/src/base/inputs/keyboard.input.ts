@@ -46,7 +46,7 @@ export class KeyboardInput extends IInput {
     window.removeEventListener('keydown', this.handleKeys);
     window.removeEventListener('keyup', this.handleKeys);
     window.removeEventListener('blur', this.resetAllKeys);
-    document.addEventListener('pointerlockchange', this.onPointerLockChange);
+    document.removeEventListener('pointerlockchange', this.onPointerLockChange);
     this.resetAllKeys();
   }
 
@@ -166,6 +166,11 @@ export class KeyboardInput extends IInput {
     // whole page whenever that key happens to be held down.
     if (e.code !== 'Tab' && !e.altKey && !e.ctrlKey && !e.metaKey) {
       e.preventDefault();
+    }
+    // Auto-repeat of a held key is not a new press. Taking it for one would press the key again in
+    // an input that was restarted (or reset) while the key was down.
+    if (pressed && e.repeat) {
+      return;
     }
     for (const subj of subs) {
       subj.next(pressed);

@@ -129,8 +129,10 @@ describe('environment', () => {
       fog: { type: 'EXPONENTIAL', color: 0, density: 0.1 },
     });
 
-    expect(visualScene.loader.disposeTexture).not.toHaveBeenCalled();
+    // the textures belong to the level: they go when the level does, not with the entity
     env.dispose();
+    expect(visualScene.loader.disposeTexture).not.toHaveBeenCalled();
+    group.dispose();
     expect(visualScene.loader.disposeTexture.mock.calls).toEqual([['cube-texture'], ['equirect-texture']]);
   });
 

@@ -33,6 +33,21 @@ describe('KeyboardInput', () => {
     expect(values).toEqual([false, true, false]); // BehaviorSubject's initial value, then down, then up
   });
 
+  it('does not take the auto-repeat of a held key for a new press, though it still preventDefault()s it', () => {
+    keyboard.start();
+    const values: boolean[] = [];
+    keyboard.bind('Escape').subscribe(v => values.push(v));
+
+    dispatch('keydown', 'Escape');
+    // the key is released by a restart of the input (a screen getting covered and uncovered) while still held
+    keyboard.stop();
+    keyboard.start();
+    const repeated = dispatch('keydown', 'Escape', window, { repeat: true });
+
+    expect(repeated.defaultPrevented).toBe(true);
+    expect(values).toEqual([false, true, false]);
+  });
+
   it('does not react to key events at all before start() (or after stop())', () => {
     const values: boolean[] = [];
     keyboard.bind('Space').subscribe(v => values.push(v));

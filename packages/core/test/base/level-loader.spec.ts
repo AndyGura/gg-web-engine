@@ -91,7 +91,7 @@ describe('LevelLoader', () => {
         position: { x: 1, y: 2 },
         name: 'TestEntity1',
         testProperty: 'value',
-      });
+      }, expect.anything());
       const entity = world.getEntityByName('TestEntity1');
       expect(entity).toBeInstanceOf(TestEntity);
       expect(entity.name).toBe('TestEntity1');
@@ -128,7 +128,7 @@ describe('LevelLoader', () => {
         position: { x: 1, y: 2 },
         dimensions: { x: 10, y: 10 },
         name: 'TestLevel__Primitive_0',
-      });
+      }, expect.anything());
     });
 
     it('should handle missing generators gracefully', async () => {
@@ -196,7 +196,7 @@ describe('LevelLoader', () => {
         rotation: 0.5,
         name: 'Standalone',
         testProperty: 'value',
-      });
+      }, expect.anything());
     });
 
     it('leaves name at its auto-generated default when entityJson.name is omitted', async () => {
@@ -216,7 +216,7 @@ describe('LevelLoader', () => {
       const entity = await levelLoader.createEntity({ class: 'TestEntity', config: { a: 1 } }, 'Fallback');
 
       expect(entity!.name).toBe('Fallback');
-      expect(mockGenerator).toHaveBeenCalledWith(world, { a: 1, name: 'Fallback' });
+      expect(mockGenerator).toHaveBeenCalledWith(world, { a: 1, name: 'Fallback' }, expect.anything());
     });
 
     it('prefers an explicit entityJson.name over defaultName', async () => {
@@ -226,7 +226,7 @@ describe('LevelLoader', () => {
       const entity = await levelLoader.createEntity({ class: 'TestEntity', name: 'Explicit' }, 'Fallback');
 
       expect(entity!.name).toBe('Explicit');
-      expect(mockGenerator).toHaveBeenCalledWith(world, { name: 'Explicit' });
+      expect(mockGenerator).toHaveBeenCalledWith(world, { name: 'Explicit' }, expect.anything());
     });
 
     it('returns undefined and warns when class has no registered generator', async () => {
@@ -351,8 +351,8 @@ describe('LevelLoader', () => {
 
       const level = await levelLoader.loadLevel({ entities: [{ class: 'Unnamed' }, { class: 'Unnamed' }] }, 'Lvl');
 
-      expect(mockGenerator).toHaveBeenNthCalledWith(1, world, { name: 'Lvl__Unnamed_0' });
-      expect(mockGenerator).toHaveBeenNthCalledWith(2, world, { name: 'Lvl__Unnamed_1' });
+      expect(mockGenerator).toHaveBeenNthCalledWith(1, world, { name: 'Lvl__Unnamed_0' }, expect.anything());
+      expect(mockGenerator).toHaveBeenNthCalledWith(2, world, { name: 'Lvl__Unnamed_1' }, expect.anything());
       expect(level.children.map(c => c.name)).toEqual(['Lvl__Unnamed_0', 'Lvl__Unnamed_1']);
     });
 
@@ -395,12 +395,12 @@ describe('LevelLoader', () => {
         position: { x: 1, y: 2 },
         name: 'Entity1',
         property1: 'value1',
-      });
+      }, expect.anything());
       expect(mockGenerator2).toHaveBeenCalledWith(world, {
         position: { x: 3, y: 4 },
         name: 'Entity2',
         property2: 'value2',
-      });
+      }, expect.anything());
       expect(world.getEntityByName('Entity1')).toBeInstanceOf(TestEntity);
       expect(world.getEntityByName('Entity2')).toBeInstanceOf(TestEntity);
     });
@@ -443,6 +443,32 @@ describe('LevelLoader', () => {
       expect(world.getEntityByName('Explicit')).toBeDefined();
       expect(world.getEntityByName('MainLevel__TestEntity_1')).toBeDefined();
       expect(world.getEntityByName('MainLevel__TestEntity_2')).toBeDefined();
+    });
+
+    it('leaves nothing behind when aborted while the last entity is still being built', async () => {
+      const controller = new AbortController();
+      let finish: (() => void) | null = null;
+      // a generator that ignores the signal
+      levelLoader.registerClass('Slow', async () => {
+        await new Promise<void>(resolve => (finish = resolve));
+        return new TestEntity();
+      });
+
+      const loading = levelLoader.loadLevel({ entities: [{ class: 'Slow', name: 'Last' }] }, 'AbortedLevel', {
+        signal: controller.signal,
+      });
+      while (!finish) {
+        await Promise.resolve();
+      }
+      controller.abort();
+      (finish as () => void)();
+
+      await expect(loading).rejects.toMatchObject({ name: 'AbortError' });
+      expect(() => world.getEntityByName('AbortedLevel')).toThrow();
+      expect(() => world.getEntityByName('Last')).toThrow();
+      // the name is free again
+      levelLoader.registerClass('Slow', () => new TestEntity());
+      await expect(levelLoader.loadLevel({ entities: [{ class: 'Slow' }] }, 'AbortedLevel')).resolves.toBeDefined();
     });
 
     it('should produce identical default names for two independent loaders given the same levelJson and levelName', async () => {
@@ -599,7 +625,7 @@ describe('LevelLoader', () => {
       };
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve(levelJson),
+        arrayBuffer: async () => new TextEncoder().encode(JSON.stringify(levelJson)).buffer,
       }) as any;
 
       const mockGenerator = jest.fn().mockImplementation(() => new TestEntity());
@@ -619,7 +645,7 @@ describe('LevelLoader', () => {
       }) as any;
 
       await expect(levelLoader.loadLevelFromUrl('https://example.com/missing.json', 'TestLevel')).rejects.toThrow(
-        'Failed to load level JSON from "https://example.com/missing.json": 404 Not Found',
+        'Failed to load "https://example.com/missing.json": 404 Not Found',
       );
     });
   });

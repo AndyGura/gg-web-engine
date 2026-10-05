@@ -21,5 +21,12 @@ export interface IAudioSourceComponentFactory<D, R, ATypeDoc extends AudioTypeDo
    */
   loadClip(url: string): Promise<ATypeDoc['clip']>;
 
+  /**
+   * Decodes a clip from the bytes of an already-fetched audio file. `world.loader.loadClip` fetches
+   * the file itself (reporting progress, cancellable) and hands it over here; a factory without
+   * this method has its `loadClip` called instead, and the fetch then goes unreported.
+   */
+  decodeClip?(data: ArrayBuffer): Promise<ATypeDoc['clip']>;
+
   createSource(descriptor: AudioSourceDescriptor<ATypeDoc['clip']>): ATypeDoc['source'];
 }

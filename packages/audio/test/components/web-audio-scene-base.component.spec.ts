@@ -16,6 +16,11 @@ class FakeAudioContext {
     this.onstatechange?.();
     return Promise.resolve();
   });
+  suspend = jest.fn(() => {
+    this.state = 'suspended';
+    return Promise.resolve();
+  });
+  decodeAudioData = jest.fn((data: ArrayBuffer) => Promise.resolve({ decodedBytes: data.byteLength }));
   close = jest.fn(() => Promise.resolve());
 }
 
@@ -75,6 +80,60 @@ describe('WebAudioSceneComponentBase autoplay-resume listeners', () => {
     expect(removeSpy).toHaveBeenCalledWith('keydown', expect.any(Function));
 
     removeSpy.mockRestore();
+    scene.dispose();
+  });
+});
+
+describe('WebAudioSceneComponentBase pause and decoding', () => {
+  let originalAudioContext: unknown;
+  const contextOf = (scene: TestScene) => (scene as unknown as { context: FakeAudioContext }).context;
+
+  beforeEach(() => {
+    originalAudioContext = (global as any).AudioContext;
+    (global as any).AudioContext = FakeAudioContext;
+  });
+
+  afterEach(() => {
+    (global as any).AudioContext = originalAudioContext;
+  });
+
+  it('suspends the context while paused and resumes it afterwards', () => {
+    const scene = new TestScene();
+    const context = contextOf(scene);
+    context.state = 'running';
+
+    scene.setPaused(true);
+    expect(context.suspend).toHaveBeenCalledTimes(1);
+    scene.setPaused(true);
+    expect(context.suspend).toHaveBeenCalledTimes(1);
+
+    scene.setPaused(false);
+    expect(context.resume).toHaveBeenCalledTimes(1);
+    scene.dispose();
+  });
+
+  it('does not let the first user gesture wake a scene that is paused', async () => {
+    const addSpy = jest.spyOn(window, 'addEventListener');
+    const scene = new TestScene();
+    await scene.init();
+    const gesture = addSpy.mock.calls.find(c => c[0] === 'pointerdown')![1] as () => void;
+    const context = contextOf(scene);
+
+    scene.setPaused(true);
+    gesture();
+    expect(context.resume).not.toHaveBeenCalled();
+
+    scene.setPaused(false);
+    expect(context.resume).toHaveBeenCalledTimes(1);
+    addSpy.mockRestore();
+    scene.dispose();
+  });
+
+  it('decodeClip decodes bytes that were fetched elsewhere, without fetching', async () => {
+    const scene = new TestScene();
+    const clip = await scene.decodeClip(new ArrayBuffer(12));
+    expect(clip).toEqual({ decodedBytes: 12 });
+    expect(contextOf(scene).decodeAudioData).toHaveBeenCalledTimes(1);
     scene.dispose();
   });
 });

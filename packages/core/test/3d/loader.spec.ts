@@ -18,6 +18,8 @@ describe('Gg3dLoader', () => {
     } as unknown as Gg3dWorld;
 
     loader = new Gg3dLoader(world);
+    // the "Glb" class declares its file as a level asset; these specs mock loadGgGlb, not the fetch
+    jest.spyOn(loader, 'preload').mockResolvedValue();
   });
 
   it('exposes level-loading directly on the loader', () => {
@@ -62,11 +64,10 @@ describe('Gg3dLoader', () => {
 
       const level = await loader.loadLevel(levelJson, 'TestLevel');
 
-      expect(loadGgGlbSpy).toHaveBeenCalledWith('assets/my-model', {
-        position: { x: 1, y: 2, z: 3 },
-        loadProps: true,
-        nameScope: 'MyModel',
-      });
+      expect(loadGgGlbSpy).toHaveBeenCalledWith(
+        'assets/my-model',
+        expect.objectContaining({ position: { x: 1, y: 2, z: 3 }, loadProps: true, nameScope: 'MyModel' }),
+      );
 
       const group = level.getChildEntityByName<GroupEntity>('MyModel');
       expect(group).toBeInstanceOf(GroupEntity);
@@ -83,7 +84,7 @@ describe('Gg3dLoader', () => {
 
       await loader.loadLevel({ entities: [{ class: 'Glb', config: { path: 'assets/m' } }] }, 'TestLevel');
 
-      expect(loadGgGlbSpy).toHaveBeenCalledWith('assets/m', { nameScope: 'TestLevel__Glb_0' });
+      expect(loadGgGlbSpy).toHaveBeenCalledWith('assets/m', expect.objectContaining({ nameScope: 'TestLevel__Glb_0' }));
     });
 
     it('passes an explicit config.nameScope (including null) through untouched', async () => {
@@ -101,8 +102,8 @@ describe('Gg3dLoader', () => {
         'TestLevel',
       );
 
-      expect(loadGgGlbSpy).toHaveBeenNthCalledWith(1, 'assets/m', { nameScope: 'Custom' });
-      expect(loadGgGlbSpy).toHaveBeenNthCalledWith(2, 'assets/m', { nameScope: null });
+      expect(loadGgGlbSpy).toHaveBeenNthCalledWith(1, 'assets/m', expect.objectContaining({ nameScope: 'Custom' }));
+      expect(loadGgGlbSpy).toHaveBeenNthCalledWith(2, 'assets/m', expect.objectContaining({ nameScope: null }));
     });
     it('passes castShadow/receiveShadow through to loadGgGlb', async () => {
       const loadGgGlbSpy = jest
@@ -114,11 +115,10 @@ describe('Gg3dLoader', () => {
         'TestLevel',
       );
 
-      expect(loadGgGlbSpy).toHaveBeenCalledWith('assets/m', {
-        castShadow: true,
-        receiveShadow: false,
-        nameScope: 'A',
-      });
+      expect(loadGgGlbSpy).toHaveBeenCalledWith(
+        'assets/m',
+        expect.objectContaining({ castShadow: true, receiveShadow: false, nameScope: 'A' }),
+      );
     });
   });
 

@@ -1,4 +1,4 @@
-import { BodyType, GgWorld, Pnt2, Point2, RendererOptions } from '../base';
+import { BodyType, GgConsoleHost, GgWorld, Pnt2, Point2, RendererOptions } from '../base';
 import { Gg2dLoader } from './loader';
 import { BodyShape2DDescriptor } from './models/shapes';
 import { Entity2d } from './entities/entity-2d';
@@ -178,15 +178,7 @@ export class Gg2dWorld<
     return entity;
   }
 
-  protected registerConsoleCommands(ggstatic: {
-    registerConsoleCommand: (
-      world: GgWorld<any, any> | null,
-      command: string,
-      handler: (...args: string[]) => Promise<string>,
-      doc?: string,
-      mutates?: boolean,
-    ) => void;
-  }) {
+  protected registerConsoleCommands(ggstatic: GgConsoleHost) {
     super.registerConsoleCommands(ggstatic);
     ggstatic.registerConsoleCommand(
       this,

@@ -12,6 +12,7 @@ import {
   Pnt3,
   Point3,
   Qtrn,
+  runWhileInputEnabled,
   SELF_VIEW_HIDDEN_RENDER_LAYER,
   TickOrder,
 } from '../../../../base';
@@ -349,8 +350,18 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
       )
       .subscribe(() => this.updateCamera());
 
-    await this.mouseInput.start();
-    await this.directionsInput.start();
+    runWhileInputEnabled(
+      world,
+      this._onRemoved$,
+      () => {
+        this.mouseInput.start();
+        this.directionsInput.start();
+      },
+      () => {
+        this.mouseInput.stop(true);
+        this.directionsInput.stop();
+      },
+    );
   }
 
   async onRemoved(): Promise<void> {

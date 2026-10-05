@@ -71,7 +71,7 @@ describe('parallax layers', () => {
       },
       'L',
     );
-    expect(visualScene.factory.loadTexture).toHaveBeenCalledWith('hills.png');
+    expect(visualScene.factory.loadTexture).toHaveBeenCalledWith('hills.png', {});
     expect(visualScene.factory.createParallaxLayer).toHaveBeenCalledWith(
       expect.objectContaining({ texture: 'texture:hills.png', parallax: 0.4, repeat: 'both' }),
     );
@@ -89,7 +89,7 @@ describe('2D environment', () => {
       { entities: [{ class: 'Environment', name: 'Env', config: { background: { image: 'sky.png' } } }] },
       'L',
     );
-    expect(visualScene.factory.loadTexture).toHaveBeenCalledWith('sky.png');
+    expect(visualScene.factory.loadTexture).toHaveBeenCalledWith('sky.png', {});
     const env = group.getChildEntityByName<Environment2dEntity>('Env');
     expect(env.environment).toEqual({ background: 'texture:sky.png' });
 

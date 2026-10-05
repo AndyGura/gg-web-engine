@@ -97,6 +97,37 @@ everything added to it so far) is torn down (`world.removeEntity(level, true)`) 
 rethrown - a failed load doesn't leave orphaned entities behind, since the caller never gets a
 `level` reference to clean up itself in that case.
 
+### Progress, cancellation, and what happens to a level's assets
+
+Both calls take a third argument, `{ onProgress, signal }`:
+
+```typescript
+const controller = new AbortController();
+const level = await world.loader.loadLevelFromUrl(LEVEL_URL, 'MainLevel', {
+  onProgress: p => bar.style.width = `${p.fraction * 100}%`, // also p.loadedItems/totalItems/bytesLoaded/bytesTotal/current
+  signal: controller.signal, // controller.abort() rejects the load with an AbortError
+});
+```
+
+A level loads in two steps under that one progress. First every asset its entities and blueprints
+declare is loaded, all in parallel: a class says what it loads through an `assets` hook (see
+"App-defined entity classes"), and every built-in class that loads something has one (`"Glb"` with
+the props its `.meta` references, `"Player"`'s model, `"Sound"`, the `"Environment"` textures,
+`"ParallaxLayer"`, a `"PlaySound"` node's clips). Then the entities are built in document order,
+finding those assets in the loader's cache. `fraction` counts an asset's download by bytes and
+keeps a share of it for decoding, so it reaches 1 only when the level is built; it never goes
+down, though `totalItems` grows when an asset references more (a model's props) or a generator
+without a hook loads something. `bytesTotal` is `null` while a server hides a file's size.
+`"MapGraph"` chunks are not part of it: they stream in after the level is built (wait for the
+entity's `initialLoadComplete$` to keep a loading screen up until the first ones are there).
+
+An aborted load leaves nothing behind: no level entity, nothing cached.
+
+The level holds everything it loaded: removing it (`world.removeEntity(level, true)`) frees what
+only that level used. To switch levels without loading shared assets twice, load the new level
+before removing the old one. See `gg-engine-app-development`'s "Loading assets" for the cache this
+goes through.
+
 `levelName` is a required second argument - `loadLevel(json, 'MyLevel')` /
 `loadLevelFromUrl(url, 'MyLevel')` - and sets `level.name`, so `world.removeEntity
 (world.getEntityByName('MyLevel'), true)` works without holding onto the returned value; it also
@@ -438,8 +469,9 @@ density }` or `null`. Textures are loaded while the level loads. The resulting `
 applies only the fields present when spawned, and restores those fields to their previous values when
 removed, so unloading a level takes its sky and fog with it. Several can be loaded at once and
 removed in any order (two levels overlapping during a transition): each field shows the most recently
-spawned one that sets it, and the pre-level value returns once none is left. The textures it loaded
-are freed when the entity is disposed. It has no live serializer: one built by
+spawned one that sets it, and the pre-level value returns once none is left. The textures belong to
+the load that built the entity: they are freed when the level is removed, or, for an entity built on
+its own with `createEntity`, when that entity is disposed. It has no live serializer: one built by
 the loader serializes through its spawn record (the original `config`, texture URLs included).
 
 ### `"ParallaxLayer"` (2D only) - a `ParallaxLayer2dEntity`
@@ -455,7 +487,7 @@ is `"x"` (default), `"y"`, `"both"` or `"none"`; `zIndex` defaults to `-1` (behi
   "config": { "texture": "/img/hills.png", "parallax": 0.2, "zIndex": -2, "offset": { "x": 0, "y": 100 } } }
 ```
 
-The texture loads while the level loads (`factory.loadTexture`). A no-op (`undefined`) without a
+The texture loads while the level loads (`world.loader.loadTexture`). A no-op (`undefined`) without a
 visual scene. No live serializer: it serializes through its spawn record.
 
 ### `"Environment"` (2D) - a background for as long as the level is loaded
@@ -621,7 +653,9 @@ player.moveDirection = 1;
 
 `config` (`Glb3DSettings`): `path` (required - passed straight to `Gg3dLoader.loadGgGlb`, see
 `gg-engine-app-development`/`packages/core/src/3d/loader.ts` for the GLB+`.meta` sidecar format and
-the Blender exporter that produces it), plus optional `cachingStrategy`/`loadProps`/`propsPath`/
+the Blender exporter that produces it), plus optional `cachingStrategy` (`"Nothing"`'s enum value
+to load this entry outside the loader's cache; cached otherwise, so several entries with one `path`
+fetch and parse the file once)/`loadProps`/`propsPath`/
 `nameScope`/`castShadow`/`receiveShadow` mirroring `loadGgGlb`'s own `LoadOptions` (the last two set
 shadows on every mesh of the model and its props; omitted, they stay as authored in the file). Missing `path` throws `Path is required for
 Glb class`.
@@ -788,7 +822,7 @@ a thrown error.
 ```
 
 `config` (`Sound3DSettings`/`Sound2DSettings`): `path` (required - fetched+decoded via
-`audioScene.factory.loadClip`), `loop` (default `true` - a static/ambient sound is normally
+`world.loader.loadClip`), `loop` (default `true` - a static/ambient sound is normally
 continuous), `volume`, `playbackRate`, `spatial` (default `true`), `bus` (default `"sfx"`),
 `autoplay` (default `true`), and the 3D-only/2D-only distance-rolloff fields
 (`refDistance`/`maxDistance`/`rolloffFactor`/`distanceModel`) matching `IAudioSource(3d|2d)Component`
@@ -942,9 +976,9 @@ to a `"Trigger"` entity's `onEntityEntered` for an impact sound:
 }
 ```
 
-`settings` (`PlaySoundNodeSettings`): `clip` (required - a URL, resolved via
-`audioScene.factory.loadClip`, which is expected to cache by URL so triggering this repeatedly for
-the same clip doesn't re-fetch/re-decode every time), `volume`, `playbackRate`, `spatial` (default
+`settings` (`PlaySoundNodeSettings`): `clip` (required - a URL, loaded via `world.loader.loadClip`,
+so it is fetched and decoded once however often the node fires, is preloaded with the level that
+declares the node, and is freed when the node is disposed), `volume`, `playbackRate`, `spatial` (default
 `true`), `bus` (default `"sfx"`), and an optional fixed `position` overriding where it plays. With
 no `position` set, it uses the triggering value's own `.position` if it has one - true for whatever
 `onEntityEntered`/`onEntityLeft` emit (an `IEntity & IPositionable(2d|3d)`) and for `onCollisionStart`'s
@@ -1023,6 +1057,32 @@ constructor - against a new class alias via `registerClass`, **before** loading 
 references it. The generator **must** return an `IEntity`; anything else (including a `Promise`
 that resolves to something else, `null`, or `undefined`) makes `loadLevel` log a `console.warn` and
 skip that entity - see "Loading a level, and tearing it back down" above.
+
+A generator that loads files gets two more things to use. It receives the load's options as a third
+argument and passes them on to whatever `world.loader` method it calls, which makes the load part of
+the level's progress, cancellable with it, and freed with the level. And the class can declare its
+files up front with an `assets` hook, so the level loads them in parallel with everything else before
+building (and knows its total from the start) - the generator's own call then just finds them cached:
+
+```typescript
+world.loader.registerClass(
+  'Statue',
+  async (w: Gg3dWorld, settings: { model: string }, load: LoadTaskOptions) => {
+    const object3D = await w.loader.loadModel(settings.model, load);
+    return new Entity3d({ object3D });
+  },
+  { assets: (settings: { model: string }) => [{ kind: 'glb', url: settings.model }] },
+);
+```
+
+An `AssetRef` names one loader call: `{ kind: 'ggGlb', url, loadProps?, propsPath? }` (`loadGgGlb`),
+`{ kind: 'glb', url, options? }` (`loadModel`), `{ kind: 'texture', url, options? }` (`loadTexture`),
+`{ kind: 'cubeTexture', faces }`, `{ kind: 'clip', url }`. For the cache to be hit, `url` and
+`options` must be exactly what the generator passes (a `loadModel` with an `offset` is a different
+entry from one without). The hook is optional: without it the generator's loads are counted from
+the moment it makes them. The third `registerClass` argument is either this options object (with
+`entityClass` next to `assets`) or, as a shorthand, the entity constructor alone.
+`registerBlueprintNode` takes the same kind of hook as its fourth argument.
 
 For a class whose own behavior isn't naturally entity-shaped - e.g. a spawner that just hooks a
 clock subscription, with nothing to render or physically simulate itself - extend `IEntity` anyway
@@ -1222,8 +1282,12 @@ and runtime state; the `"Sound"` cases stub `audioScene.factory
 `packages/core/test/mocks/audio-source.mock.ts` for the source component the generator wraps.
 `packages/core/test/3d/loader.spec.ts` covers `Gg3dLoader` - the `"Glb"` class, and that
 `registerClass`/`loadLevel`/`loadLevelFromUrl` are available directly on it - stubbing `loadGgGlb`
-itself rather than the whole fetch/parse pipeline (which has no tests of its own - see
-`gg-engine-app-development`). Follow their existing structure for new built-in-class test cases -
+itself, and `preload` with it (the `"Glb"` class declares its file as a level asset, so an unstubbed
+`loadLevel` would fetch it). The fetch/parse/cache pipeline is covered by
+`packages/core/test/3d/loader-assets.spec.ts`, against `test/mocks/fetch.mock.ts` (a `fetch` serving
+files through a stream, with optional `Content-Length`, holdable for abort tests) - use it for
+anything about progress, caching, abort or asset lifetime. A spec asserting a generator's call
+arguments expects three: `(world, settings, expect.anything())`. Follow their existing structure for new built-in-class test cases -
 one `it` per shape/error case is the established pattern. `PlaySoundBlueprintNode` has its own
 coverage in `packages/core/test/base/blueprint/play-sound.node.spec.ts` (missing-audioScene/missing-clip
 warnings, clip loading, payload-vs-fixed position resolution, self-dispose on `ended$`), and

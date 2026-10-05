@@ -17,8 +17,9 @@ import {
   TickOrder,
   warnOnce,
 } from '../base';
-import { lastValueFrom, Observable, Subject, take } from 'rxjs';
-import { PerformanceMeterEntity } from '../dev';
+import { BehaviorSubject, lastValueFrom, Observable, Subject, take } from 'rxjs';
+import type { AssetScope } from './assets/asset-cache';
+import type { LoadTaskOptions } from './assets/load-progress';
 import { IVisualScene2dComponent, VisualTypeDocRepo2D } from '../2d';
 
 export type VisualTypeDocRepo<D, R> = {
@@ -97,6 +98,27 @@ export type TypeDocOf<W extends GgWorld<any, any>> =
 export type SceneTypeDocOf<W extends GgWorld<any, any>> =
   W extends GgWorld<infer D, infer R, infer TypeDoc, infer SceneTypeDoc> ? SceneTypeDoc : never;
 
+/**
+ * What a world needs from the dev console (`GgStatic`, see `src/dev`) to register its commands.
+ * World classes are handed it through `window.ggstatic` and never import anything from `dev/`.
+ */
+export type GgConsoleHost = {
+  registerConsoleCommand: (
+    world: GgWorld<any, any> | null,
+    command: string,
+    handler: (...args: string[]) => Promise<string>,
+    doc?: string,
+    mutates?: boolean,
+  ) => void;
+  createPerformanceMeter: (
+    samples: number,
+    maxRows: number,
+  ) => IEntity & {
+    readonly avgReport: { totalTime: number; entries: [string, number][] };
+    readonly peakReport: { totalTime: number; entries: [string, number][] };
+  };
+};
+
 export abstract class GgWorld<
   D,
   R,
@@ -115,8 +137,61 @@ export abstract class GgWorld<
   public readonly physicsWorld: SceneTypeDoc['physicsWorld'];
   public readonly audioScene: SceneTypeDoc['audioScene'];
 
+  /**
+   * The world's loader - assigned, and typed in full, by `Gg2dWorld`/`Gg3dWorld`. Declared here
+   * only as far as the base class uses it: typing it as `LevelLoader<D, R, TypeDoc>` makes `GgWorld`
+   * invariant in `TypeDoc` and breaks every `IEntity<any, any>` to `IEntity<D, R, TypeDoc>` use.
+   */
+  declare public readonly loader?: {
+    dispose(): void;
+    createAssetScope(): AssetScope;
+    loadClip(url: string, options?: LoadTaskOptions): Promise<any>;
+  };
+
   public readonly worldClock: PausableClock = new PausableClock(false);
   public readonly keyboardInput: KeyboardInput = new KeyboardInput();
+
+  private readonly _inputEnabled$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(true);
+
+  /**
+   * Whether this world reacts to the player. Switching it off stops `keyboardInput` (releasing
+   * every held key), and with it everything that follows `inputEnabled$`: the built-in input
+   * controllers stop their mouse and direction inputs and let go of pointer lock, and
+   * `@gg-web-engine/mobile-controls` takes its touch overlay off the screen. The world itself keeps
+   * running - this is independent of pausing. `ScreenManager` switches it off for the worlds of a
+   * screen that has another screen on top of it. An input the app created itself (its own
+   * `KeyboardInput`, a DOM listener) is not covered: gate it on `inputEnabled$`, or start and stop
+   * it with `runWhileInputEnabled`.
+   */
+  public get inputEnabled(): boolean {
+    return this._inputEnabled$.value;
+  }
+
+  public set inputEnabled(value: boolean) {
+    if (value === this._inputEnabled$.value) {
+      return;
+    }
+    if (value) {
+      this.keyboardInput.start();
+    } else {
+      this.keyboardInput.stop();
+    }
+    this._inputEnabled$.next(value);
+  }
+
+  /** The current `inputEnabled` on subscription, then every change. Completes in `dispose()`. */
+  public get inputEnabled$(): Observable<boolean> {
+    return this._inputEnabled$.asObservable();
+  }
+
+  /**
+   * Whether pausing this world is a local matter. `false` means its simulation is shared with
+   * someone else (a network layer sets it while a session is joined), so freezing it here would
+   * freeze or desync it for them: UI that pauses the game on the player's behalf must leave it
+   * running. `ScreenManager` consults it before pausing the world of a covered screen.
+   * `pauseWorld()` itself does not - it stays the explicit, unconditional call.
+   */
+  public localPauseAllowed: boolean = true;
 
   /**
    * When `true`, this world pauses itself automatically while the document/tab is hidden
@@ -304,6 +379,7 @@ export abstract class GgWorld<
       window.addEventListener('ggstatic_added', this.onGgStaticInitialized);
     }
     this.worldClock.paused$.subscribe(this.paused$);
+    this.worldClock.paused$.subscribe(paused => this.audioScene?.setPaused?.(paused));
     GgWorld._documentWorlds.push(this);
     GgWorld.worldCreated$.next(this);
   }
@@ -441,6 +517,7 @@ export abstract class GgWorld<
     this.tickForwardedTo$.complete();
     this._entityAdded$.complete();
     this._entityRemoved$.complete();
+    this._inputEnabled$.complete();
     for (let i = 0; i < this.children.length; i++) {
       this.children[i].onRemoved();
       this.children[i].dispose();
@@ -448,6 +525,8 @@ export abstract class GgWorld<
     this.children.splice(0, this.children.length);
     this.tickListeners.splice(0, this.tickListeners.length);
     this.entitiesByName.clear();
+    // cached assets go after the entities made from them, and before the scenes they belong to
+    this.loader?.dispose();
     if (this.physicsWorld) {
       this.physicsWorld.dispose();
     }
@@ -690,15 +769,7 @@ export abstract class GgWorld<
     this.registerConsoleCommands((window as any).ggstatic);
   }
 
-  protected registerConsoleCommands(ggstatic: {
-    registerConsoleCommand: (
-      world: GgWorld<any, any> | null,
-      command: string,
-      handler: (...args: string[]) => Promise<string>,
-      doc?: string,
-      mutates?: boolean,
-    ) => void;
-  }) {
+  protected registerConsoleCommands(ggstatic: GgConsoleHost) {
     ggstatic.registerConsoleCommand(
       this,
       'timescale',
@@ -790,7 +861,7 @@ export abstract class GgWorld<
             samples = +arg;
           }
         }
-        const meter = new PerformanceMeterEntity(samples, 250);
+        const meter = ggstatic.createPerformanceMeter(samples, 250);
         this.addEntity(meter);
         await lastValueFrom(this.worldClock.tick$.pipe(take(samples)));
         const report = mode === 'avg' ? meter.avgReport : meter.peakReport;

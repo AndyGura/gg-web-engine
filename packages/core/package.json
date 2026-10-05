@@ -48,6 +48,9 @@
       "ts"
     ],
     "rootDir": ".",
+    "setupFiles": [
+      "<rootDir>/test/jest.polyfills.ts"
+    ],
     "testRegex": "\\.spec\\.ts$",
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"

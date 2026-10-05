@@ -10,8 +10,13 @@ import {
   Qtrn,
   RenderLayer,
 } from '@gg-web-engine/core';
-import { Box3, Group, Light, Mesh, Object3D, Scene, Texture } from 'three';
+import { Box3, Group, Light, Material, Mesh, Object3D, Scene, Texture } from 'three';
 import { ThreeGgWorld, ThreeVisualTypeDocRepo } from '../types';
+
+/** Every texture a material references (its maps), found by value rather than by a list of names. */
+export function materialTextures(material: Material): Texture[] {
+  return Object.values(material).filter((value): value is Texture => !!value && (value as Texture).isTexture === true);
+}
 
 export class ThreeDisplayObjectComponent
   implements
@@ -27,6 +32,17 @@ export class ThreeDisplayObjectComponent
    * hard implementation of that interface - check with `isMaterialReadable3d` before relying on it.
    */
   public readonly materialOptions?: DisplayObject3dOpts<Texture>;
+
+  /**
+   * What `dispose()` frees:
+   * - `'meshes'` (default): the geometry and materials of every mesh in `nativeMesh`. Textures are
+   *   left alone - a primitive's `diffuse` texture belongs to whoever loaded it.
+   * - `'all'`: the materials' textures as well. Set by `ThreeLoader` on a loaded model, whose
+   *   textures came with the file and have no other owner.
+   * - `'none'`: nothing. A `clone()` shares geometry, materials and textures with its source, which
+   *   stays the one to free them.
+   */
+  public resourceOwnership: 'meshes' | 'all' | 'none' = 'meshes';
 
   constructor(
     public nativeMesh: Object3D,
@@ -133,7 +149,9 @@ export class ThreeDisplayObjectComponent
     const childMesh = this.nativeMesh.children.find(c => c.name === name || c.userData.name === name);
     if (childMesh) {
       childMesh.removeFromParent();
-      return new ThreeDisplayObjectComponent(childMesh);
+      const child = new ThreeDisplayObjectComponent(childMesh);
+      child.resourceOwnership = this.resourceOwnership;
+      return child;
     }
     return null;
   }
@@ -143,7 +161,9 @@ export class ThreeDisplayObjectComponent
   }
 
   clone(): ThreeDisplayObjectComponent {
-    return new ThreeDisplayObjectComponent(this.nativeMesh.clone());
+    const copy = new ThreeDisplayObjectComponent(this.nativeMesh.clone());
+    copy.resourceOwnership = 'none';
+    return copy;
   }
 
   addToWorld(world: ThreeGgWorld): void {
@@ -158,20 +178,26 @@ export class ThreeDisplayObjectComponent
   }
 
   dispose(): void {
+    if (this.resourceOwnership === 'none') {
+      return;
+    }
+    // `traverse` visits `nativeMesh` itself first, then every descendant
     this.nativeMesh.traverse(obj => {
       if (obj instanceof Mesh) {
         this.disposeMesh(obj);
       }
     });
-    if (this.nativeMesh instanceof Mesh) {
-      this.disposeMesh(this.nativeMesh);
-    }
   }
 
   private disposeMesh(mesh: Mesh) {
     mesh.geometry.dispose();
     const mats = mesh.material instanceof Array ? mesh.material : [mesh.material];
     for (const material of mats) {
+      if (this.resourceOwnership === 'all') {
+        for (const texture of materialTextures(material)) {
+          texture.dispose();
+        }
+      }
       material.dispose();
     }
   }

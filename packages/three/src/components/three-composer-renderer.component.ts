@@ -39,7 +39,8 @@ export class ThreeComposerRendererComponent extends ThreeRendererComponent {
   }
 
   dispose(): void {
-    super.dispose();
+    // render targets first: `super.dispose()` gives up the WebGL context they live in
     this.nativeComposer.dispose();
+    super.dispose();
   }
 }

@@ -1,6 +1,7 @@
 import { GgWorldTypeDocRepo } from '../../gg-world';
 import { BlueprintNode, BlueprintPinDefinition } from '../blueprint-node';
 import { warnOnce } from '../../logging';
+import type { AssetScope } from '../../assets/asset-cache';
 
 /**
  * One impulse-tiered clip variant - see {@link PlaySoundNodeSettings.impactClips}.
@@ -89,6 +90,8 @@ export class PlaySoundBlueprintNode<
 > extends BlueprintNode<D, R, TypeDoc> {
   public readonly inputs: readonly BlueprintPinDefinition[] = [{ name: 'trigger', kind: 'data' }];
   public readonly outputs: readonly BlueprintPinDefinition[] = [];
+  // holds the clips this node has played in the loader's cache, until the node is disposed
+  private scope: AssetScope | null = null;
 
   public trigger(inputName: string, value?: unknown): void {
     if (inputName !== 'trigger') {
@@ -108,8 +111,14 @@ export class PlaySoundBlueprintNode<
       return;
     }
     const position = settings.position ?? this.resolvePayloadPosition(value);
-    audioScene.factory
-      .loadClip(clip)
+    const loader = this.world.loader;
+    if (loader && (!this.scope || this.scope.released)) {
+      this.scope = loader.createAssetScope();
+    }
+    const loading: Promise<TypeDoc['aTypeDoc']['clip']> = loader
+      ? loader.loadClip(clip, { scope: this.scope! })
+      : audioScene.factory.loadClip(clip);
+    loading
       .then(loadedClip => {
         const source = audioScene.factory.createSource({
           clip: loadedClip,
@@ -131,6 +140,11 @@ export class PlaySoundBlueprintNode<
         source.play();
       })
       .catch(e => warnOnce(`PlaySound blueprint node failed to load/play "${clip}":`, e));
+  }
+
+  public override dispose(): void {
+    this.scope?.release();
+    this.scope = null;
   }
 
   private resolvePayloadPosition(value: unknown): D | undefined {

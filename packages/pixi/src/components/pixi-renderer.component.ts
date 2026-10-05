@@ -84,8 +84,14 @@ export class PixiRendererComponent extends IRenderer2dComponent<PixiVisualTypeDo
     }
   }
 
+  /** The native renderer's texture system once the renderer is initialized, `null` before. */
+  public get nativeTextureSystem(): unknown {
+    return this.initialized ? (this.application.renderer as any).texture : null;
+  }
+
   addToWorld(world: PixiGgWorld): void {
     this.world = world;
+    this.scene.renderers.add(this);
     this.application.stage.addChild(this.scene.nativeContainer!);
     if (this.physicsDebugViewActive) {
       this.debugView = new PixiPhysicsDebugView(world);
@@ -99,6 +105,7 @@ export class PixiRendererComponent extends IRenderer2dComponent<PixiVisualTypeDo
       this.debugView = null;
     }
     this.application.stage.removeChild(this.scene.nativeContainer!);
+    this.scene.renderers.delete(this);
     this.world = null;
     if (dispose) {
       this.dispose();
@@ -185,6 +192,7 @@ export class PixiRendererComponent extends IRenderer2dComponent<PixiVisualTypeDo
   }
 
   dispose(): void {
+    this.scene.renderers.delete(this);
     this.backgroundSprite?.destroy({ texture: false });
     this.backgroundSprite = null;
     this.application.destroy(true, true);

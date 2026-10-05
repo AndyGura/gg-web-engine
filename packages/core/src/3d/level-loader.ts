@@ -1,6 +1,19 @@
 import { EntityJson, LevelLoader } from '../base/level-loader';
 import { Gg3dWorld, Gg3dWorldTypeDocRepo } from './gg-3d-world';
-import { AudioDistanceModel, AxisDirection3, IEntity, Pnt3, Point3, Point4 } from '../base';
+import {
+  AssetRef,
+  AudioDistanceModel,
+  AxisDirection3,
+  fetchWithProgress,
+  IEntity,
+  imageBlob,
+  LoadTaskOptions,
+  Pnt3,
+  Point3,
+  Point4,
+  stableKey,
+} from '../base';
+import { LoadGlbOptions } from './loaders';
 import { DisplayObject3dOpts } from './factories';
 import { Body3DOptions } from './models/body-options';
 import { Shape3DDescriptor } from './models/shapes';
@@ -10,7 +23,7 @@ import { Camera3dEntity } from './entities/camera-3d.entity';
 import { Light3dEntity } from './entities/light-3d.entity';
 import { Environment3dEntity } from './entities/environment-3d.entity';
 import { Light3dDescriptor } from './models/lights';
-import { CubeTextureFaces, Environment3dOpts, Fog3dOpts } from './models/environment';
+import { CubeTextureFaces, Environment3dOpts, Fog3dOpts, LoadTextureOptions } from './models/environment';
 import { AudioSource3dEntity } from './entities/audio-source-3d.entity';
 import {
   CharacterController3dEntity,
@@ -21,6 +34,7 @@ import {
   CharacterAnimationClipMap,
   CharacterAnimationController,
 } from './entities/controllers/character-animation.controller';
+import { IDisplayObject3dComponent } from './components/rendering/i-display-object-3d.component';
 import { isAnimatedDisplayObject3d } from './components/rendering/i-animated-display-object-3d.component';
 import { isMaterialReadable3d } from './components/rendering/i-material-readable-3d.component';
 import { GgCarEntity, GgCarProperties } from './entities/gg-car/gg-car.entity';
@@ -35,6 +49,26 @@ import {
   MapGraph3dEntity,
   MapGraphNodeType,
 } from './entities/map-graph-3d.entity';
+
+/** Where a `"Player"`'s model sits relative to its capsule center - see `createPlayer`. */
+function playerModelOffset(settings: Player3DSettings): Point3 {
+  const { radius = 0.4, centersDistance = 1.0, up, display } = settings;
+  return display?.model?.offset ?? Pnt3.scalarMult(up ?? Pnt3.Z, -(radius + centersDistance / 2));
+}
+
+/** The assets one `"Environment"` texture setting stands for. */
+function environmentTextureAssets(texture: unknown): AssetRef[] {
+  if (!texture || typeof texture !== 'object') {
+    return [];
+  }
+  if ('cube' in texture) {
+    return [{ kind: 'cubeTexture', faces: (texture as any).cube }];
+  }
+  if ('equirectangular' in texture) {
+    return [{ kind: 'texture', url: (texture as any).equirectangular, options: { mapping: 'equirectangular' } }];
+  }
+  return [];
+}
 
 const defaultBodyOptions: Body3DOptions = {
   bodyType: 'dynamic',
@@ -571,6 +605,118 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
   }
 
   /**
+   * Loads an image as a texture, e.g. for `DisplayObject3dOpts.diffuse`, or, with
+   * `{ mapping: 'equirectangular' }`, a panorama for `IVisualScene3dComponent.setEnvironment`.
+   * Cached: the same url with the same options gives the same texture object, freed when the last
+   * scope holding it is released (see `LoadTaskOptions.scope`) - don't dispose it yourself.
+   * @throws if the world has no visual scene
+   */
+  public async loadTexture(
+    url: string,
+    options: LoadTextureOptions & LoadTaskOptions = {},
+  ): Promise<TypeDoc['vTypeDoc']['texture']> {
+    const loader = this.visualLoader();
+    const { onProgress, signal, scope, ...textureOptions } = options;
+    return this.acquireAsset(`texture:${url}:${stableKey(textureOptions)}`, url, options, async item => {
+      let texture: TypeDoc['vTypeDoc']['texture'];
+      if (loader.textureFromData) {
+        const data = await fetchWithProgress(url, item.file(), signal);
+        texture = await loader.textureFromData(imageBlob(data, url), { ...textureOptions, url });
+      } else {
+        texture = await loader.loadTexture(url, textureOptions);
+      }
+      await loader.prepare?.(texture);
+      return { value: texture, dispose: () => loader.disposeTexture(texture) };
+    });
+  }
+
+  /**
+   * Loads a six-image cube-map sky for `IVisualScene3dComponent.setEnvironment`. Cached and freed
+   * like `loadTexture`.
+   * @throws if the world has no visual scene
+   */
+  public async loadCubeTexture(
+    faces: CubeTextureFaces,
+    options: LoadTaskOptions = {},
+  ): Promise<TypeDoc['vTypeDoc']['texture']> {
+    const loader = this.visualLoader();
+    return this.acquireAsset(`cubeTexture:${stableKey(faces)}`, faces.px, options, async item => {
+      let texture: TypeDoc['vTypeDoc']['texture'];
+      if (loader.cubeTextureFromData) {
+        const names = ['px', 'nx', 'py', 'ny', 'pz', 'nz'] as const;
+        const files = await Promise.all(names.map(n => fetchWithProgress(faces[n], item.file(), options.signal)));
+        const blobs = {} as Record<keyof CubeTextureFaces, Blob>;
+        names.forEach((n, i) => (blobs[n] = imageBlob(files[i], faces[n])));
+        texture = await loader.cubeTextureFromData(blobs);
+      } else {
+        texture = await loader.loadCubeTexture(faces);
+      }
+      await loader.prepare?.(texture);
+      return { value: texture, dispose: () => loader.disposeTexture(texture) };
+    });
+  }
+
+  /**
+   * Loads a plain `.glb` (no `.meta` pair - see `loadGgGlb`) via `visualScene.loader.loadFromGlb`,
+   * for a visual-only asset that has no physics representation of its own (a character model
+   * driven by a separately-created `CharacterController3dEntity`'s capsule, a decorative prop, ...).
+   * The file is fetched and parsed once per world; every call returns its own copy to place
+   * (`IDisplayObjectComponent.clone`). `undefined`/`null` if there's no visual scene to load against.
+   * @param path - Path (URL or path prefix, without extension) to the `.glb` file
+   * @param options - See `LoadGlbOptions`
+   */
+  public async loadModel(
+    path: string,
+    options: LoadGlbOptions & LoadTaskOptions = {},
+  ): Promise<TypeDoc['vTypeDoc']['displayObject'] | null> {
+    const template = await this.acquireModel(path, options);
+    return template ? template.clone() : null;
+  }
+
+  /** The cached, never-shown original of a `loadModel` asset. */
+  private async acquireModel(
+    path: string,
+    options: LoadGlbOptions & LoadTaskOptions,
+  ): Promise<TypeDoc['vTypeDoc']['displayObject'] | null> {
+    const loader = this.world.visualScene?.loader;
+    if (!loader) {
+      return null;
+    }
+    const { onProgress, signal, scope, ...glbOptions } = options;
+    return this.acquireAsset(`glb:${path}:${stableKey(glbOptions)}`, `${path}.glb`, options, async item => {
+      const glb = await fetchWithProgress(`${path}.glb`, item.file(), signal);
+      const object = await loader.loadFromGlb(glb, glbOptions);
+      if (object) {
+        await loader.prepare?.(object);
+      }
+      return { value: object, dispose: () => object?.dispose() };
+    });
+  }
+
+  private visualLoader(): NonNullable<Gg3dWorld<TypeDoc>['visualScene']>['loader'] {
+    if (!this.world.visualScene) {
+      throw new Error('Cannot load a texture into a world without a visual scene');
+    }
+    return this.world.visualScene.loader;
+  }
+
+  protected override async preloadAsset(ref: AssetRef, options: LoadTaskOptions): Promise<void> {
+    if (ref.kind === 'glb') {
+      await this.acquireModel(ref.url, { ...ref.options, ...options });
+    } else if (ref.kind === 'texture') {
+      if (this.world.visualScene) {
+        await this.loadTexture(ref.url, { ...ref.options, ...options });
+      }
+    } else if (ref.kind === 'cubeTexture') {
+      if (this.world.visualScene) {
+        await this.loadCubeTexture(ref.faces as CubeTextureFaces, options);
+      }
+    } else {
+      await super.preloadAsset(ref, options);
+    }
+  }
+
+  /**
    * Register the built-in classes for primitives, triggers, and cameras
    */
   private registerDefaultClasses(): void {
@@ -581,9 +727,20 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
     this.registerClass('Trigger', this.createTrigger.bind(this));
     this.registerClass('Camera', this.createCamera.bind(this));
     this.registerClass('Light', this.createLight.bind(this));
-    this.registerClass('Environment', this.createEnvironment.bind(this));
-    this.registerClass('Sound', this.createSound.bind(this));
-    this.registerClass('Player', this.createPlayer.bind(this), CharacterController3dEntity);
+    this.registerClass('Environment', this.createEnvironment.bind(this), {
+      assets: (settings: Environment3DSettings) =>
+        [settings.background, settings.environmentMap].flatMap(texture => environmentTextureAssets(texture)),
+    });
+    this.registerClass('Sound', this.createSound.bind(this), {
+      assets: (settings: Sound3DSettings) => (settings.path ? [{ kind: 'clip', url: settings.path }] : []),
+    });
+    this.registerClass('Player', this.createPlayer.bind(this), {
+      entityClass: CharacterController3dEntity,
+      assets: (settings: Player3DSettings) =>
+        settings.display?.model
+          ? [{ kind: 'glb', url: settings.display.model.path, options: { offset: playerModelOffset(settings) } }]
+          : [],
+    });
     this.registerClass('GgCar', this.createGgCar.bind(this), GgCarEntity);
     this.registerClass('MapGraph', this.createMapGraph.bind(this));
 
@@ -894,23 +1051,19 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
   private async createEnvironment(
     world: Gg3dWorld<TypeDoc>,
     settings: Environment3DSettings,
+    load: LoadTaskOptions = {},
   ): Promise<Environment3dEntity<TypeDoc['vTypeDoc']> | undefined> {
     const scene = world.visualScene;
     if (!scene) {
       return undefined;
     }
-    const loaded: TypeDoc['vTypeDoc']['texture'][] = [];
     const loadTexture = async (texture: EnvironmentTexture3DSettings): Promise<TypeDoc['vTypeDoc']['texture']> => {
-      let result: TypeDoc['vTypeDoc']['texture'];
       if ('cube' in texture) {
-        result = await scene.loader.loadCubeTexture(texture.cube);
+        return this.loadCubeTexture(texture.cube, load);
       } else if ('equirectangular' in texture) {
-        result = await scene.loader.loadTexture(texture.equirectangular, { mapping: 'equirectangular' });
-      } else {
-        throw new Error('Environment texture must have either "cube" or "equirectangular"');
+        return this.loadTexture(texture.equirectangular, { mapping: 'equirectangular', ...load });
       }
-      loaded.push(result);
-      return result;
+      throw new Error('Environment texture must have either "cube" or "equirectangular"');
     };
     const environment: Partial<Environment3dOpts<TypeDoc['vTypeDoc']['texture']>> = {};
     if (settings.background !== undefined) {
@@ -925,12 +1078,8 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
     if (settings.fog !== undefined) {
       environment.fog = settings.fog;
     }
-    // the textures were loaded for this entity alone, so they go when it does
-    return new Environment3dEntity<TypeDoc['vTypeDoc']>(environment, () => {
-      for (const texture of loaded) {
-        scene.loader.disposeTexture(texture);
-      }
-    });
+    // the textures are held by the load's asset scope (the level's, or this entity's own)
+    return new Environment3dEntity<TypeDoc['vTypeDoc']>(environment);
   }
 
   /**
@@ -945,6 +1094,7 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
   private async createSound(
     world: Gg3dWorld<TypeDoc>,
     settings: Sound3DSettings,
+    load: LoadTaskOptions = {},
   ): Promise<AudioSource3dEntity<TypeDoc> | undefined> {
     if (!world.audioScene) {
       return undefined;
@@ -952,7 +1102,7 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
     if (!settings.path) {
       throw new Error('"path" is required for Sound class');
     }
-    const clip = await world.audioScene.factory.loadClip(settings.path);
+    const clip = await this.loadClip(settings.path, load);
     const source = world.audioScene.factory.createSource({
       clip,
       loop: settings.loop ?? true,
@@ -996,6 +1146,7 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
   private async createPlayer(
     world: Gg3dWorld<TypeDoc>,
     settings: Player3DSettings,
+    load: LoadTaskOptions = {},
   ): Promise<CharacterController3dEntity<TypeDoc> | undefined> {
     const {
       position,
@@ -1053,10 +1204,7 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
         // unset" reasoning as every other field above - `?? Pnt3.Z` supplies the same default
         // `CharacterController3dEntity`/every adapter's own `createCharacterController` falls back
         // to when `up` isn't explicitly given.
-        const modelOffset =
-          display.model.offset ?? Pnt3.scalarMult(tunableOptions.up ?? Pnt3.Z, -(radius + centersDistance / 2));
-        const glb = await fetch(`${display.model.path}.glb`).then(r => r.arrayBuffer());
-        object3D = await world.visualScene.loader.loadFromGlb(glb, { offset: modelOffset });
+        object3D = await this.loadModel(display.model.path, { offset: playerModelOffset(settings), ...load });
       } else {
         object3D = world.visualScene.factory.createCapsule(radius, centersDistance, display);
       }
@@ -1168,6 +1316,17 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
     });
     const chassis3D = world.visualScene?.factory.createBox(chassis.dimensions, chassis.material ?? {}) ?? null;
 
+    // The car shows clones of these wheel meshes, and a clone never frees what it shares with its
+    // source - so the sources are kept and disposed together with the car.
+    const wheelTemplates: IDisplayObject3dComponent[] = [];
+    const wheelDisplay = (wheelSettings: GgCarSharedWheelSettings): WheelDisplayOptions | undefined => {
+      const display = this.resolveWheelDisplay(world, wheelSettings);
+      if (display?.displayObject) {
+        wheelTemplates.push(display.displayObject);
+      }
+      return display;
+    };
+
     const carProperties: GgCarProperties = wheelBase
       ? {
           ...rest,
@@ -1175,11 +1334,11 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
             shared: { ...wheelBase.shared, display: undefined },
             front: {
               ...wheelBase.front,
-              display: this.resolveWheelDisplay(world, { ...wheelBase.shared, ...wheelBase.front }),
+              display: wheelDisplay({ ...wheelBase.shared, ...wheelBase.front }),
             },
             rear: {
               ...wheelBase.rear,
-              display: this.resolveWheelDisplay(world, { ...wheelBase.shared, ...wheelBase.rear }),
+              display: wheelDisplay({ ...wheelBase.shared, ...wheelBase.rear }),
             },
           },
         }
@@ -1187,7 +1346,7 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
           ...rest,
           wheelOptions: wheelOptions!.map(wheel => ({
             ...wheel,
-            display: this.resolveWheelDisplay(world, { ...sharedWheelOptions, ...wheel }),
+            display: wheelDisplay({ ...sharedWheelOptions, ...wheel }),
           })),
           sharedWheelOptions: sharedWheelOptions && { ...sharedWheelOptions, display: undefined },
         };
@@ -1197,6 +1356,7 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
       chassis3D,
       world.physicsWorld.factory.createRaycastVehicle(chassisBody),
     );
+    entity.disposed$.subscribe(() => wheelTemplates.forEach(template => template.dispose()));
     if (position) {
       entity.position = position;
     }

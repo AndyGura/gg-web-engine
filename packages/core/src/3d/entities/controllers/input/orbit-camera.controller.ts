@@ -11,6 +11,7 @@ import {
   Point2,
   Point3,
   Qtrn,
+  runWhileInputEnabled,
   Spherical,
   TickOrder,
 } from '../../../../base';
@@ -231,7 +232,12 @@ export class OrbitCameraController extends IEntity {
       });
 
     // start input
-    await this.mouseInput.start();
+    runWhileInputEnabled(
+      world,
+      this._onRemoved$,
+      () => this.mouseInput.start(),
+      () => this.mouseInput.stop(true),
+    );
   }
 
   async onRemoved(): Promise<void> {
