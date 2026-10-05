@@ -21,6 +21,9 @@ export class TouchButton extends TouchControl {
   public readonly mode: 'hold' | 'toggle';
 
   private readonly _pressed$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
+  private _pressed: boolean = false;
+  private emitting: boolean = false;
+  private disposeRequested: boolean = false;
 
   /** Emits the current state on subscription and then every change; completes on `dispose`. */
   public get pressed$(): Observable<boolean> {
@@ -28,17 +31,33 @@ export class TouchButton extends TouchControl {
   }
 
   public get pressed(): boolean {
-    return this._pressed$.getValue();
+    return this._pressed;
   }
 
   /** Settable, e.g. to bring a toggle button in line with a state that changed by other means. */
   public set pressed(value: boolean) {
-    if (this.disposed || value === this.pressed) {
+    if (this.disposed || value === this._pressed) {
       return;
     }
+    this._pressed = value;
     this.element.classList.toggle('gg-mc-active', value);
     this.element.setAttribute('aria-pressed', `${value}`);
-    this._pressed$.next(value);
+    if (this.emitting) {
+      // set from within a subscriber: the loop below delivers it once every subscriber has seen
+      // the change being emitted, so all of them get the changes in the same order
+      return;
+    }
+    this.emitting = true;
+    try {
+      while (this._pressed$.getValue() !== this._pressed) {
+        this._pressed$.next(this._pressed);
+      }
+    } finally {
+      this.emitting = false;
+    }
+    if (this.disposeRequested) {
+      super.dispose();
+    }
   }
 
   constructor(options: TouchButtonOptions = {}) {
@@ -88,6 +107,16 @@ export class TouchButton extends TouchControl {
   public reset(): void {
     super.reset();
     this.pressed = false;
+  }
+
+  public dispose(): void {
+    if (this.emitting) {
+      // disposed from within a subscriber: the release has to reach every subscriber first
+      this.disposeRequested = true;
+      this.reset();
+      return;
+    }
+    super.dispose();
   }
 
   /** `pressed$` without the value it replays on subscription. */

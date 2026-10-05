@@ -80,7 +80,8 @@ export abstract class TouchAxisControl extends TouchControl {
       if (this.disposed || (x === 0 && y === 0)) {
         return;
       }
-      const dt = Math.min(100, time - last) / 1000;
+      // the first frame's timestamp is its start time, which may precede the moment `last` was taken
+      const dt = Math.max(0, Math.min(100, time - last)) / 1000;
       last = time;
       // the pointer's y grows downwards, the control's upwards
       mouse.emulateMove({ x: x * speed * dt, y: -y * speed * dt });

@@ -793,6 +793,14 @@ keyboard and mouse they are named after. Anything else feeds them:
   several sources compose (a tilt sensor on `x`, a pedal button on `y`). `output$` stays keys-only.
 - `MouseInput.emulateMove(delta)` - a view rotation, through `delta$`.
 
+`MouseInput.isTouchDevice()` is what the controllers' `ignoreMouseUnlessPointerLocked`/
+`ignoreKeyboardUnlessPointerLocked` gates are bypassed by (a touch screen has no pointer lock). It
+is true for a phone/tablet user agent, an iPad reporting a desktop Mac user agent (told apart by
+`maxTouchPoints`), and any device whose primary pointer is coarse - so it holds wherever
+`packages/mobile-controls`' own `isTouchFirstDevice()` (`pointer: coarse`) shows the overlay. Keep
+that implication when changing either: an overlay shown where the bypass is off feeds input the
+controllers then drop.
+
 All three are ignored while the input is not running, and a stopped `DirectionInput` drops
 its contributions. A controller that moves by direction keys subscribes to `direction$`, never to
 `output$`, and treats the vector as analog (normalizing only when it is longer than 1) - that is the

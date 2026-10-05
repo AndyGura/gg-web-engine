@@ -125,4 +125,38 @@ describe('TouchButton', () => {
     pointer(button.element, 'pointerup');
     expect(release).toHaveBeenCalledTimes(1);
   });
+
+  it('delivers a change made by a subscriber to every binding in order', () => {
+    const button = new TouchButton();
+    const input = new DirectionInput();
+    input.start();
+    // the first binding hides the button as soon as it is pressed
+    button.onPress(() => (button.visible = false));
+    button.bindKey(keyboard, 'KeyF').bindDirection(input, { y: 1 });
+    const keys: boolean[] = [];
+    keyboard.bind('KeyF').subscribe(v => keys.push(v));
+    const values: boolean[] = [];
+    button.pressed$.subscribe(v => values.push(v));
+
+    pointer(button.element, 'pointerdown');
+
+    expect(values).toEqual([false, true, false]);
+    expect(button.pressed).toBe(false);
+    expect(keys).toEqual([false, true, false]);
+    expect(input.direction).toEqual({ x: 0, y: 0 });
+    input.stop();
+  });
+
+  it('releases every binding when disposed by a subscriber', () => {
+    const button = new TouchButton();
+    button.onPress(() => button.dispose());
+    button.bindKey(keyboard, 'KeyF');
+    const keys: boolean[] = [];
+    keyboard.bind('KeyF').subscribe(v => keys.push(v));
+
+    pointer(button.element, 'pointerdown');
+
+    expect(button.disposed).toBe(true);
+    expect(keys).toEqual([false, true, false]);
+  });
 });

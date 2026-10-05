@@ -50,11 +50,21 @@ export enum MouseInputState {
  * A class representing mouse input.
  */
 export class MouseInput extends IInput<[], [unlockPointer?: boolean]> {
+  /**
+   * Whether the device is operated by touch: there is no pointer lock on it, and its view is turned
+   * by dragging a finger.
+   */
   static isTouchDevice(): boolean {
+    if (typeof document === 'undefined' || typeof navigator === 'undefined') {
+      return false;
+    }
     return (
       'createTouch' in document ||
       !!navigator.userAgent.match(/(iPhone|iPod|iPad)/) ||
-      !!navigator.userAgent.match(/Android/)
+      !!navigator.userAgent.match(/Android/) ||
+      // an iPad introduces itself as a desktop Mac, which has no touch screen
+      (!!navigator.userAgent.match(/Macintosh/) && navigator.maxTouchPoints > 1) ||
+      (typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches)
     );
   }
 

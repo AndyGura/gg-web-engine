@@ -82,6 +82,29 @@ describe('TouchStick', () => {
     expect(left).toEqual([false, true, false]);
     keyboard.stop();
   });
+
+  it('never turns a bound view backwards on the first frame of a deflection', () => {
+    const frames: FrameRequestCallback[] = [];
+    const raf = jest.spyOn(window, 'requestAnimationFrame').mockImplementation(cb => frames.push(cb));
+    const now = jest.spyOn(performance, 'now').mockReturnValue(1000);
+    const mouse = new MouseInput();
+    mouse.start();
+    const deltas: Point2[] = [];
+    mouse.delta$.subscribe(d => deltas.push(d));
+    const stick = fixedStick().bindLook(mouse, 1000);
+
+    pointer(stick.element, 'pointerdown', 150, 100);
+    // a frame that began before the stick was touched
+    frames.shift()!(990);
+    frames.shift()!(1006);
+
+    expect(deltas[0].x).toBe(0);
+    expect(deltas[1].x).toBeCloseTo(16);
+    stick.dispose();
+    mouse.stop();
+    raf.mockRestore();
+    now.mockRestore();
+  });
 });
 
 describe('TouchDPad', () => {

@@ -69,6 +69,9 @@ where one exists.
   source now, not the keyboard alone. The old names are gone.
 
 ### Fixed
+- `@gg-web-engine/core`: `MouseInput.isTouchDevice()` did not recognize an iPad (which reports a
+  desktop user agent) or any other device whose primary pointer is coarse, so the controllers'
+  "unless pointer locked" options blocked touch input there.
 - `@gg-web-engine/core`: `FreeCameraController` ignored its up/down/zoom/boost keys until a direction
   key had been pressed once.
 - `@gg-web-engine/matter`: `MatterRigidBodyComponent.clone()` and `MatterTriggerComponent.clone()`
