@@ -356,7 +356,11 @@
 
     function loadFrame() {
       stage.classList.remove('empty');
-      frame.src = `./${state.example.dir}/index.html?${exampleQuery()}`;
+      // replace() rather than `frame.src =`: a frame navigation would add its own session-history
+      // entry next to the one pushUrl() makes, and Back would then step the frame alone, leaving the
+      // sidebar and address bar on the other example.
+      const url = new URL(`./${state.example.dir}/index.html?${exampleQuery()}`, location.href);
+      frame.contentWindow.location.replace(url.href);
     }
 
     function fillSelect(select, ids, labels, value) {
