@@ -1638,8 +1638,12 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
 
   private transfer(rec: NetRecord, candidate: string): void {
     const epoch = rec.epoch + 1;
+    // with interest management the new owner may have this entity hidden, holding no recent state of it
+    const handover =
+      candidate !== this.localPeerId && rec.owner === this.localPeerId && !!this.transport.streamTargets?.();
+    const state = handover ? { full: this.captureFull(rec), ts: this.now } : {};
     this.setOwner(rec, candidate, epoch);
-    this.broadcast({ t: 'claim', entityId: rec.id, epoch, candidate });
+    this.broadcast({ t: 'claim', entityId: rec.id, epoch, candidate, ...state });
   }
 
   private peerPositions(): Map<string, D | null> {
@@ -1699,7 +1703,16 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
           msSinceLastTransfer: now - rec.lastTransferAt,
           msSinceLastContactClaim: now - rec.lastContactClaimAt,
         });
-        if (proposal && proposal !== this.localPeerId && this.peers.has(proposal) && !this.ownerUnavailable(proposal)) {
+        // a runtime spawn only exists on the peers in view: one outside the stream ring never built it
+        const holdsIt =
+          rec.shared || !streaming || (!!proposal && streaming.has(proposal) && this.streamedTo.has(proposal));
+        if (
+          proposal &&
+          proposal !== this.localPeerId &&
+          this.peers.has(proposal) &&
+          !this.ownerUnavailable(proposal) &&
+          holdsIt
+        ) {
           this.transfer(rec, proposal);
         }
         continue;
@@ -2141,7 +2154,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
         this.acceptStateItems(msg.items, from);
         break;
       case 'claim':
-        this.onClaim(msg.entityId, msg.epoch, msg.candidate);
+        this.onClaim(from, msg);
         break;
       case 'possess': {
         const rec = this.records.get(msg.entityId);
@@ -2405,7 +2418,8 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     this.wake(rec);
   }
 
-  private onClaim(entityId: string, epoch: number, candidate: string): void {
+  private onClaim(from: string, msg: Extract<WireMessage, { t: 'claim' }>): void {
+    const { entityId, epoch, candidate } = msg;
     const rec = this.records.get(entityId);
     if (!rec) {
       if (candidate === this.localPeerId) {
@@ -2415,9 +2429,24 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       return;
     }
     if (this.wins(rec, epoch, candidate, false)) {
+      const wasHidden = rec.hidden;
       this.setOwner(rec, candidate, epoch);
       if (rec.possessor && rec.possessor !== candidate) {
         this.setPossessor(rec, null);
+      }
+      if (wasHidden && candidate === this.localPeerId && msg.full !== undefined && this.records.get(entityId) === rec) {
+        // it was hidden at the pose it had when its owner went out of view: take over from where
+        // that owner left it, not from there
+        try {
+          rec.entity.applyNetworkState(msg.full, {
+            ageMs: Math.max(0, this.now - this.toLocalTime(from, msg.ts ?? 0)),
+            dt: this.lastDelta,
+            snap: true,
+            tuning: rec.entity.networkTuning ? { ...this.tuning, ...rec.entity.networkTuning } : this.tuning,
+          });
+        } catch (e) {
+          warnOnce(`NetworkController: applyNetworkState of "${rec.id}" threw: ${e}`);
+        }
       }
     }
   }

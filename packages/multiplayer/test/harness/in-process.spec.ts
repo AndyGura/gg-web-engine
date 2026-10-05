@@ -433,6 +433,48 @@ describe.each(ADAPTERS)('in-process multiplayer harness ($name)', adapter => {
       expect(b.net.ownerOf(findByName(h, 'b', prop.name))).toBe('a');
     });
 
+    it('never hands a Free runtime spawn to a peer out of view, which never built it', async () => {
+      h = new Harness(adapter);
+      const a = await h.addPeer('a');
+      const b = await h.addPeer('b');
+      h.hub.cutStream('a', 'b');
+      const box = adapter.addBox(a.world, adapter.at(0, 0.5));
+      let transfers = 0;
+      a.net.ownershipChanged$.subscribe(({ entity, to }) => entity === box && to !== 'a' && transfers++);
+      // linked, but outside each other's stream ring: b is the one next to the box
+      a.position = adapter.at(60, 0);
+      b.position = adapter.at(2, 0);
+      await h.run(400);
+      expect(findByName(h, 'b', box.name)).toBeUndefined();
+      expect(a.net.ownerOf(box)).toBe('a');
+      expect(transfers).toBe(0);
+    });
+
+    it('shows hidden content where its owner left it when that owner hands it over', async () => {
+      h = new Harness(adapter);
+      const a = await h.addPeer('a', peer => void sharedBox(peer, 'car', adapter.at(0, 0.5)));
+      const b = await h.addPeer('b', peer => void sharedBox(peer, 'car', adapter.at(0, 0.5)));
+      const car = a.world.getEntityByName('car') as any;
+      const replica = b.world.getEntityByName('car') as any;
+      await h.run(5);
+      a.net.possess(car);
+      await h.run(30);
+      h.hub.cutStream('a', 'b');
+      await h.run(OUT_OF_VIEW);
+      expect(b.net.isHidden(replica)).toBe(true);
+
+      // parked far from where b last saw it, then its driver walks off and b comes next to it
+      car.position = adapter.at(25, 0.5);
+      await h.run(30);
+      a.net.release(car);
+      a.position = adapter.at(80, 0);
+      b.position = adapter.at(25, 0);
+      await h.run(200);
+      expect(b.net.ownerOf(replica)).toBe('b');
+      expect(findByName(h, 'b', 'car')).toBe(replica);
+      expect(meters(replica.position, car.position)).toBeLessThan(0.5);
+    });
+
     it('leaves everything alone on a transport without interest management', async () => {
       h = new Harness(adapter);
       const a = await h.addPeer('a');

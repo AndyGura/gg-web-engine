@@ -135,7 +135,10 @@ join handshakes, link latency) runs on the injected `NetScheduler`, never on `ti
   `removeLocally` is a no-op for an entity without a world, so it would leak. It wakes (`wake`:
   re-added under its parent, next correction snaps) when state for it is accepted
   (`acceptStateItem`/`applySpawnItem`), when the local peer becomes its owner (`setOwner`: takeover,
-  `leave()`), or when its owner departs. Never wake on a mere owner change to another remote peer:
+  `leave()`, a `claim` naming it), or when its owner departs. A hidden entity sits at the pose it had
+  when its owner went out of view, and whoever owns it broadcasts that pose - so an owner handing an
+  entity to another peer under interest management puts its full state in the `claim` (`full`, `ts`),
+  and the candidate applies it with `snap` if the record was hidden. Never wake on a mere owner change to another remote peer:
   it would show up at a stale position until that peer's state arrives. Its disposal by somebody
   else (the chunk it belongs to unloads) is noticed through `onRemoved$` completing. If the game
   builds a new entity under a hidden record's name, `tryRegister` gives the new entity the old
@@ -150,6 +153,10 @@ join handshakes, link latency) runs on the injected `NetScheduler`, never on `ti
   the grace period. The sender only re-sends after it saw the peer leave its own targets, so the
   receiver has a pull as well: state for an unknown id from its owner triggers one
   `stateRequest { spawn: true }`, answered with whole runtime spawns (shared ids are not answered).
+  For the same reason `arbitrate` hands a runtime spawn only to a peer it was sent to (a stream
+  target that is in `streamedTo`), whatever the strategy proposes: a peer that never built it answers
+  the `claim` with `relinquish`, and the two bounce ownership every cooldown. Shared content can go
+  to any connected peer - it exists there.
 - **A peer without a position keeps its last zoning cell.** An empty cell (`''`) counts as inside every
   ring - right for a peer never placed yet, but a hidden tab (heartbeat `pos: null`) or a spectator
   publishing it would make every peer in the room connect and stream full state to the one peer that
