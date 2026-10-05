@@ -86,6 +86,7 @@ version, so your core changes are exercised by every adapter's real test suite.
 npm install          # one-time: installs and links the packages/* workspace
 npm run build        # full build of every package, core first (includes non-TS asset copies)
 npm test             # jest suites of every package
+npm run lint:examples  # examples use @gg-web-engine/* APIs only (no three/pixi.js/physics imports)
 npm run build:watch  # tsc -b --watch at the root — rebuilds core + adapters on every save
 ```
 
@@ -181,13 +182,18 @@ Conventions the review will check for:
   that need adapters resolve them through the workspace instead.
 - A new example is added to `examples/examples-list.txt` (so the release script bumps its
   dependency versions) and, if it should be publicly browsable, to `examples/index.html`.
+- Examples use `@gg-web-engine/*` APIs only: no direct `three`/`pixi.js`/`ammo.js`/`matter-js`/
+  `@dimforge/*` import and no `native*` escape hatch (`nativeMesh`, `nativeSprite`, `nativeBody`,
+  ...). `npm run lint:examples` checks this. If an example needs something core can't express,
+  add the option to core and the adapters instead. A line that deliberately demonstrates native
+  interop can opt out with a trailing `// gg-allow-native` comment.
 - Unit tests for new core or adapter logic, in the package that owns the behavior.
 
 ## Continuous integration
 
 | Workflow | Runs when | Does |
 |---|---|---|
-| `pull_request_build.yml` | every PR | `npm install`, `npm run build`, `npm test` at the root — every package, against the local core build. |
+| `pull_request_build.yml` | every PR | `npm install`, `npm run build`, `npm test` at the root — every package, against the local core build — then `npm run lint:examples`. |
 | `blender_export_e2e.yml` | PRs touching `blender-addon/`, `e2e/blender-export/`, `packages/core/src/3d/`, `packages/three/`, `packages/rapier3d/`; or manually | Installs Blender and runs the export round-trip test. |
 | `build_ammo.yml` | PRs touching `packages/ammo/build_gg_ammo/`; or manually | Rebuilds the vendored ammo.js binary from source and runs ammo's tests against it. On manual dispatch, commits the refreshed binary back to the branch. |
 | `release_action.yml` | every push to `main` | No-op unless the commit subject matches `[pre-release] [X.Y.Z]`; otherwise runs the full release described below. |

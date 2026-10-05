@@ -307,8 +307,11 @@ Status
   Lights and scene environment are behind core too (2026-10-04: `createLight`/`Gg3dWorld.addLight`,
   `visualScene.setEnvironment`, `"Light"`/`"Environment"` level classes; in 2D, `zIndex`, a
   background color/image and parallax layers), so no example adds native lights or skyboxes any
-  more; custom materials, post-processing, particles and text/UI are still
-  adapter-native.
+  more. 2026-10-05: shadows on loaded models, material opacity, texture repeat/filter, textures
+  from a canvas, display-object nesting, 2D text, stroked 2D shapes, 2D tint and the `canSleep`
+  body option are behind core too, so no example imports three/pixi.js/a physics library or uses
+  a `native*` escape hatch any more (enforced in CI by `npm run lint:examples`). Custom shader
+  materials, post-processing and particles are still adapter-native.
 - Cross-engine conformance tests (same scenario run against two renderers / two physics engines,
   compared within tolerance) — not started.
 - ✅ Shared debug overlay already exists and is pluggable per renderer: the dev console's

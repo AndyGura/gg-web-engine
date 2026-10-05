@@ -200,9 +200,10 @@ webpack asset rather than reaching for the CDN/`devServer.static` machinery abov
    ```
 3. `import atlasUrl from './assets/character-atlas.png';` in `index.ts` - webpack resolves this to a
    content-hashed URL string at build time (e.g. `1cb559558c4f56d7df06.png`), and both `npm start`
-   and `npm run build` serve/emit it correctly with no further config. Hand that URL to whatever
-   loader the visual library provides (e.g. pixi.js's `Assets.load(atlasUrl)`, which returns a
-   `Promise` resolving to a `Texture`) exactly as if it were served from a real path.
+   and `npm run build` serve/emit it correctly with no further config. Hand that URL to the
+   engine's texture loader (`world.visualScene.factory.loadTexture(atlasUrl, { filter: 'nearest' })`
+   in 2D, `world.visualScene.loader.loadTexture(url)` in 3D) exactly as if it were served from a
+   real path.
 
 This is a different mechanism from the shared-CDN-asset workflow above on purpose: a CDN-synced
 asset must stay a stable, absolute, hand-typed URL (deploy-time, not build-time), while an
@@ -351,6 +352,17 @@ Examples are read as documentation — keep `index.ts`/`src/` short, comment the
 (why a controller is attached, what a collision group demonstrates), and prefer the same
 bootstrap shape used in the root `README.md` quickstart so readers can map one to the other. See
 `gg-engine-app-development` for the API surface to draw on.
+
+**Examples use `@gg-web-engine/*` APIs only.** No direct import of `three`, `pixi.js`, `ammo.js`,
+`matter-js` or `@dimforge/*`, and no adapter `native*` escape hatch (`nativeMesh`, `nativeSprite`,
+`nativeBody`, ...): an example is a tutorial, and one that reaches into the native library teaches a
+renderer-locked pattern and hides a gap in the engine. `npm run lint:examples` at the repo root
+(`etc/check_examples_no_native.mjs`, also run by the PR workflow) fails on any such line. When a demo
+needs something core can't express yet, add the option to core and every relevant adapter (see
+`gg-engine-core-development` and the adapter skills) and use it from the example. A line that
+deliberately demonstrates native interop can opt out with a trailing `// gg-allow-native` comment.
+Adapter-package exports that aren't native objects (`ThreeSceneComponent`, `PixiCameraComponent`,
+`ThreeDisplayObject3dOpts`, world type aliases) are fine.
 
 Give `world` an explicit type annotation from the visual adapter package (e.g. `const world:
 ThreeGgWorld = new Gg3dWorld({...})`, imported from `@gg-web-engine/three`; pixi equivalents follow

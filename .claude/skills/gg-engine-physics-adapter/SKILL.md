@@ -479,6 +479,11 @@ ground-snap/jump and push pitfalls.
    switches on (`options.bodyType ?? (options.mass ? 'dynamic' : 'static')` is the established
    fallback for a caller that only ever set `mass`, from before `bodyType` existed) — a body is
    static/fixed for `'static'`, and dynamic (with the given `mass`, defaulting to `1`) otherwise.
+   `canSleep: false` must keep a *dynamic* body out of the engine's inactivity-driven sleep for
+   good (Bullet: `setActivationState(DISABLE_DEACTIVATION)`; Rapier: `RigidBodyDesc.setCanSleep
+   (false)`; matter-js: `body.sleepThreshold = Infinity`, which only matters once an app turns on
+   `engine.enableSleeping`), make that body's `sleep()` a no-op, survive `clone()`, and read back
+   through `bodyOptions.canSleep`. Static and kinematic bodies ignore it.
 3. Merge in engine-reasonable defaults (e.g. `friction: 0.5, restitution: 0.1,
    ownCollisionGroups: [world.mainCollisionGroup], interactWithCollisionGroups:
    [world.mainCollisionGroup]`) before applying the caller's overrides, so bodies work out of the

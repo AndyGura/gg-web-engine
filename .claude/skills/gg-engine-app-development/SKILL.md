@@ -304,8 +304,26 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
 - **Available 2D shapes**: `Shape2DDescriptor` in `packages/core/src/2d/models/shapes.ts` —
   `BOX`, `CIRCLE`, `CAPSULE`, `CONVEX_HULL`, `POLYGON`, `COMPOUND`.
 - **Body options** (`Partial<Body3DOptions>`/`Body2DOptions`): `mass`, `bodyType` (`'dynamic'` |
-  `'static'` | `'kinematic_pos'` | `'kinematic_vel'`), `ccd`, friction/restitution, collision groups
-  — see `packages/core/src/base/models/body-options.ts`.
+  `'static'` | `'kinematic_pos'` | `'kinematic_vel'`), `ccd`, `canSleep` (default `true`; `false`
+  keeps a resting dynamic body simulated, e.g. one whose collision groups change under it),
+  friction/restitution, collision groups — see `packages/core/src/base/models/body-options.ts`.
+- **Materials and textures**: `DisplayObject3dOpts` (`color`, `shading`, `diffuse`, `opacity`,
+  `castShadow`, `receiveShadow`) and `DisplayObject2dOpts` (`color` - a tint when combined with a
+  `texture` -, `texture`, `stroke: { color, width }` for an outline, `opacity`). Textures come from
+  `world.visualScene.loader.loadTexture(url, { repeat, filter, mapping })` (3D; `repeat: { x, y }`
+  tiles a texture across a surface) or `world.visualScene.factory.loadTexture(url, { filter })` (2D;
+  `filter: 'nearest'` keeps pixel art crisp), or `factory.createTextureFromCanvas(canvas)` for one
+  drawn at runtime. Every 3D display object also has live `castShadow`/`receiveShadow` properties
+  that apply to a loaded model's whole hierarchy (`loadGgGlb` and the `"Glb"` level class take the
+  same two options); every 2D display object has live `tint` and `opacity`.
+- **Nesting display objects**: `parent.addChild(child)` makes `child` (from the same visual adapter,
+  not added to the world on its own) follow `parent`'s position/rotation/scale; `removeChild` detaches
+  it. Use it for parts that must move with a body, e.g. a marker on a spinning wheel.
+- **Text (2D)**: `world.visualScene.factory.createText(text, style)` returns an `IText2dComponent`
+  (`text`, `style`, `setStyle(partial)`; `Text2dStyle` has font family/size/weight/style, `color`,
+  `stroke`, `align` and `anchor`). Wrap it in an `Entity2d` to place it. Never reach for the
+  adapter's own classes (`nativeMesh`, `nativeSprite`, `nativeBody`, pixi `Text`/`Graphics`, three
+  materials) for any of the above - that ties the game to one renderer or physics engine.
 - **Ready-made controllers** (attach to entities via `entity.addController(...)`):
   `FreeCameraController`, `OrbitCameraController`, `PlayerCharacterController` (3D) /
   `PlayerCharacterController2d` (2D), `CarKeyboardHandlingController` /
