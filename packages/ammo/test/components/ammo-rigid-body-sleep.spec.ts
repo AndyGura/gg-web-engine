@@ -72,4 +72,34 @@ describe('AmmoRigidBodyComponent sleep API', () => {
     floor.wakeUp();
     expect(floor.isSleeping).toBe(false);
   });
+
+  describe('canSleep', () => {
+    const restFor = (seconds: number) => {
+      for (let i = 0; i < seconds * 60; i++) {
+        world.simulate(1000 / 60);
+      }
+    };
+
+    it('lets a resting dynamic body fall asleep by default', () => {
+      const body = factory.createRigidBody({ shape: { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } }, body: { bodyType: 'dynamic', mass: 1 } }, { position: { x: 0, y: 0, z: 0 } });
+      body.addToWorld({ physicsWorld: world } as any);
+
+      restFor(5);
+      expect(body.bodyOptions.canSleep).toBe(true);
+      expect(body.isSleeping).toBe(true);
+    });
+
+    it('keeps a canSleep: false body awake while resting, and sleep() is a no-op on it', () => {
+      const body = factory.createRigidBody({ shape: { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } }, body: { bodyType: 'dynamic', mass: 1, canSleep: false } }, { position: { x: 0, y: 0, z: 0 } });
+      body.addToWorld({ physicsWorld: world } as any);
+
+      restFor(5);
+      expect(body.isSleeping).toBe(false);
+
+      body.sleep();
+      expect(body.isSleeping).toBe(false);
+      expect(body.bodyOptions.canSleep).toBe(false);
+      expect(body.clone().bodyOptions.canSleep).toBe(false);
+    });
+  });
 });

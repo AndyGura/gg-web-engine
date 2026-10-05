@@ -14,7 +14,6 @@ import {
   Trigger3dEntity,
 } from '@gg-web-engine/core';
 import { ThreeGgWorld, ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
-import { Mesh } from 'three';
 import { AmmoWorldComponent } from '@gg-web-engine/ammo';
 import { WebAudioScene3dComponent } from '@gg-web-engine/audio';
 import { throttleTime } from 'rxjs';
@@ -271,11 +270,12 @@ world.init().then(async () => {
   ).light;
 
   const levelGroup = await world.loader.loadLevel(level, 'MainLevel');
-  for (const item of levelGroup.children as { object3D?: { nativeMesh: Mesh } }[]) {
-    item.object3D?.nativeMesh.traverse(obj => {
-      obj.castShadow = true;
-      obj.receiveShadow = true;
-    });
+  // the level's primitives and the player's model
+  for (const item of levelGroup.children) {
+    if ((item instanceof Entity3d || item instanceof CharacterController3dEntity) && item.object3D) {
+      item.object3D.castShadow = true;
+      item.object3D.receiveShadow = true;
+    }
   }
 
   // Decorative-only geometry from here on (checkered floor tiles, wall trim, the orange floor
@@ -354,10 +354,8 @@ world.init().then(async () => {
       cachingStrategy: CachingStrategy.Entities,
     });
     const radioObject = radioLoad.entities[0].object3D!;
-    radioObject.nativeMesh.traverse(obj => {
-      obj.castShadow = true;
-      obj.receiveShadow = true;
-    });
+    radioObject.castShadow = true;
+    radioObject.receiveShadow = true;
     const bounds = radioObject.getBoundings();
     const size = Pnt3.sub(bounds.max, bounds.min);
     const center = Pnt3.scalarMult(Pnt3.add(bounds.max, bounds.min), 0.5);

@@ -1,10 +1,8 @@
 import {
   Camera3dEntity,
-  Entity3d,
   Gg3dWorld,
   Gg3dWorldTypeDocVPatch,
   GgStatic,
-  GroupEntity,
   LevelJson,
   OrbitCameraController,
   Pnt3,
@@ -26,7 +24,11 @@ const level: LevelJson = {
     {
       class: 'Glb',
       name: 'PhScene',
-      config: { path: 'https://gg-web-demos.guraklgames.com/assets/model-loader/ph_scene' },
+      config: {
+        path: 'https://gg-web-demos.guraklgames.com/assets/model-loader/ph_scene',
+        castShadow: true,
+        receiveShadow: true,
+      },
     },
     {
       class: 'GlbSpawner',
@@ -74,16 +76,6 @@ world.init().then(async () => {
   const renderer = world.addRenderer(cameraEntity.camera, canvas);
   const controller = new OrbitCameraController(renderer, { mouseOptions: { canvas } });
   world.addEntity(controller);
-
-  const phScene = levelGroup.getChildEntityByName<GroupEntity>('PhScene');
-  for (const item of phScene.children as Entity3d<Gg3dWorldTypeDocVPatch<ThreeVisualTypeDocRepo>>[]) {
-    item.object3D?.nativeMesh.traverse(
-      (obj) => {
-        obj.castShadow = true;
-        obj.receiveShadow = true;
-      },
-    );
-  }
 
   world.start();
 });

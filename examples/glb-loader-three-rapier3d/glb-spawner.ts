@@ -1,6 +1,5 @@
 import { Gg3dWorld, Gg3dWorldTypeDocVPatch, IEntity, PausableClock, Point3, TickOrder } from '@gg-web-engine/core';
 import { ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
-import { Object3D } from 'three';
 import { Subscription } from 'rxjs';
 
 export interface GlbSpawnerSettings {
@@ -31,12 +30,10 @@ export class GlbSpawner extends IEntity {
           y: min.y + Math.random() * (max.y - min.y),
           z: min.z + Math.random() * (max.z - min.z),
         },
+        castShadow: true,
+        receiveShadow: true,
       });
       const item = entities[0];
-      item.object3D?.nativeMesh.traverse((obj: Object3D) => {
-        obj.castShadow = true;
-        obj.receiveShadow = true;
-      });
       world.addEntity(item);
       setTimeout(() => {
         world.removeEntity(item, true);

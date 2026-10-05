@@ -1,5 +1,6 @@
 import { BodyShape3DDescriptor, Shape3DDescriptor, Shape3DMeshDescriptor } from './models/shapes';
 import { IAudioSourceComponentFactory, Point3, Point4 } from '../base';
+import { LoadTextureOptions } from './models/environment';
 import { AudioTypeDocRepo3D, PhysicsTypeDocRepo3D, VisualTypeDocRepo3D } from './gg-3d-world';
 import { CharacterController3dOptions } from './models/character-controller-options';
 import { Light3dDescriptor } from './models/lights';
@@ -10,6 +11,11 @@ export type DisplayObject3dOpts<Tex> = {
   diffuse?: Tex;
   castShadow?: boolean;
   receiveShadow?: boolean;
+  /**
+   * Opacity from `0` (invisible) to `1` (opaque, the default). Anything below `1` makes the
+   * material render as transparent.
+   */
+  opacity?: number;
 };
 
 export abstract class IDisplayObject3dComponentFactory<VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D> {
@@ -28,6 +34,14 @@ export abstract class IDisplayObject3dComponentFactory<VTypeDoc extends VisualTy
    * Creates a light. Wrap it in a `Light3dEntity` (or use `Gg3dWorld.addLight`) to add it to a world.
    */
   abstract createLight(descriptor: Light3dDescriptor): VTypeDoc['light'];
+
+  /**
+   * Creates a texture from a canvas the app has drawn on, e.g. a procedurally generated pattern,
+   * for `DisplayObject3dOpts.diffuse`. The canvas is read once, now: drawing on it afterwards
+   * doesn't update the texture. To load an image file instead, see
+   * `IDisplayObject3dComponentLoader.loadTexture`.
+   */
+  abstract createTextureFromCanvas(canvas: HTMLCanvasElement, options?: LoadTextureOptions): VTypeDoc['texture'];
 
   randomColor(): number {
     return (

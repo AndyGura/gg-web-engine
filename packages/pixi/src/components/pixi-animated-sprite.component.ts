@@ -2,6 +2,7 @@ import { IAnimatedDisplayObject2dComponent, PlayAnimation2dOptions, warnOnce } f
 import { AnimatedSprite, Ticker } from 'pixi.js';
 import { PixiDisplayObjectComponent } from './pixi-display-object.component';
 import { PixiVisualTypeDocRepo2D } from '../types';
+import { cloneContainer } from '../utils/clone-container';
 
 /** One named clip's frames plus its own playback speed - see `PixiFactory.createAnimatedSprite`. */
 export type PixiAnimationClip = {
@@ -79,6 +80,6 @@ export class PixiAnimatedSpriteComponent
   }
 
   clone(): PixiAnimatedSpriteComponent {
-    return new PixiAnimatedSpriteComponent(new AnimatedSprite(this.animatedSprite.textures, false), this.clips);
+    return new PixiAnimatedSpriteComponent(cloneContainer(this.animatedSprite), this.clips);
   }
 }

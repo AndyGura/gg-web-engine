@@ -16,6 +16,7 @@ import { IDisplayObject2dComponent } from './components/rendering/i-display-obje
 import { ICamera2dComponent } from './components/rendering/i-camera-2d.component';
 import { IParallaxLayer2dComponent } from './components/rendering/i-parallax-layer-2d.component';
 import { ParallaxLayer2dOpts } from './models/environment';
+import { IText2dComponent } from './components/rendering/i-text-2d.component';
 import { ParallaxLayer2dEntity } from './entities/parallax-layer-2d.entity';
 import { ITrigger2dComponent } from './components/physics/i-trigger-2d.component';
 import { IRigidBody2dComponent } from './components/physics/i-rigid-body-2d.component';
@@ -32,6 +33,7 @@ export type VisualTypeDocRepo2D = {
   rendererExtraOpts: {};
   camera: ICamera2dComponent;
   parallaxLayer: IParallaxLayer2dComponent;
+  text: IText2dComponent;
   texture: unknown;
 };
 

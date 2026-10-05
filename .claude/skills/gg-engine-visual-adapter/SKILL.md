@@ -82,6 +82,21 @@ Every adapter component class then `implements I<Thing>Component<<Lib>VisualType
   `MESH`) the same way; throw a clear `Shape "<x>" not implemented for <Lib>` error for the rest
   rather than silently failing (see `Rapier2dFactory.createColliderDescr` for the pattern, applied
   to physics but identical in spirit).
+  Material options to honor: 3D `opacity` (below `1` makes the material transparent); 2D `opacity`,
+  `stroke: { color, width }` (an outline on every untextured shape - so an untextured stroked `BOX`
+  can't be pixi's cheap tinted-`Texture.WHITE` sprite and becomes a `Graphics` rect) and `color`,
+  which fills an untextured shape and tints a textured one. In a `COMPOUND`, apply `opacity` once on
+  the container, not again on every part, or the parts multiply it. Textures: 3D's loader
+  `loadTexture(url, { mapping, filter, repeat })` and both dimensions' factory
+  `createTextureFromCanvas(canvas, options?)` (three: `CanvasTexture`, `colorSpace = SRGBColorSpace`
+  like an image file; pixi: `Texture.from(canvas)`) share one options helper in `packages/three`
+  (`utils/texture-options.ts`); `repeat` sets the wrap mode to repeat as well as the repeat count.
+  2D's factory `loadTexture(url, { filter })` maps `filter` onto `texture.source.scaleMode` - the
+  source is shared by every texture of that image, which pixi's `Assets` cache hands out per url.
+  2D's factory also has `createText(text, style)`, returning the TypeDoc's `text` member (an
+  `IText2dComponent`: `text`, a `style` read-back and a merging `setStyle(partial)`; see
+  `PixiTextComponent`, which rebuilds the native style object from the merged `Text2dStyle` each
+  time, so a field set earlier is never lost).
 - **Display object component** (`IDisplayObject(2d|3d)Component`): must implement
   `IPositionable(2d|3d)` — position/rotation getters and setters proxied to the native
   transform — since `Entity(2d|3d)` syncs this against the physics body every tick. This is the
@@ -95,6 +110,26 @@ Every adapter component class then `implements I<Thing>Component<<Lib>VisualType
   own semantics here: three.js's `Object3D.traverse()` fires on the root node itself *first*, then
   recursively on children — a traversal that assumes it only ever visits descendants will silently
   skip the root and leave it on the wrong layer.
+  `castShadow`/`receiveShadow` (3D) follow the same whole-subtree rule on write (a loaded model's
+  sub-meshes are what actually render) and read back the root's own value. The `castShadow` write
+  skips lights embedded in the subtree (a loaded model can carry them): on a light that flag turns
+  shadow map rendering on or off, which is the light's own setting. `createPrimitive` must
+  apply `DisplayObject3dOpts.castShadow`/`receiveShadow` through those setters rather than on the
+  root node alone, or a `COMPOUND`'s parts never cast shadows. 2D adds `tint` (multiplied over the
+  object's colors, `0xffffff` = none; pixi: `Container.tint`) and `opacity` (pixi: `alpha`), both
+  inherited by children. Both dimensions implement `addChild(child)`/`removeChild(child)` as native
+  scene-graph nesting (three: `Object3D.add`/`remove`; pixi: `Container.addChild`/`removeChild`),
+  so the child's transform becomes relative to the parent; `removeChild` of something that isn't a
+  direct child is a no-op, and `dispose()` must take nested children with it (pixi:
+  `destroy({ children: true })`; three's `dispose()` already traverses). `clone()` must return a
+  component around its own deep copy of the native object and its nested children, never one
+  wrapping the same native object: disposing either would destroy what the other renders. three has
+  `Object3D.clone()`; pixi has no generic `Container.clone()`, so `src/utils/clone-container.ts`
+  rebuilds each kind of native object the package creates (`cloneContainer`, sharing only textures)
+  and a component subclass with its own constructor arguments or state overrides `clone()` to
+  return its own class (`copyContainerState` copies transform, tint, opacity and children onto a
+  native object the subclass built itself). A new kind of native object the package starts creating
+  needs a branch in `cloneContainer`, which otherwise copies it as an empty `Container`.
 - **Camera component** (`ICamera(2d|3d)Component`): wraps the native camera type; 3D typically
   needs both perspective and orthographic factory methods (see `world.visualScene.factory.
   createPerspectiveCamera()` used in the core README quickstart). 3D only: `ICamera3dComponent`
@@ -153,7 +188,8 @@ Every adapter component class then `implements I<Thing>Component<<Lib>VisualType
   in the world container (so it sorts by `zIndex` against everything else). Per axis, the texture's
   world origin is `offset + camera * (1 - parallax)`; a repeating axis spans the whole view with
   `tilePosition = (origin - viewStart) mod tileSize`, a non-repeating one is placed at the origin
-  one tile wide. `factory.loadTexture(url)` (pixi: `Assets.load`) supplies textures for both.
+  one tile wide. `factory.loadTexture(url)` (pixi: `Assets.load`) or `factory.createTextureFromCanvas`
+supplies textures for both.
 - **Renderer component** (`IRenderer(2d|3d)Component`): accepts an optional `HTMLCanvasElement`
   (create an offscreen/detached canvas if none given) and `RendererOptions`, drives the actual
   draw call, supports resize, and `dispose()`s native GPU resources. `RendererOptions &

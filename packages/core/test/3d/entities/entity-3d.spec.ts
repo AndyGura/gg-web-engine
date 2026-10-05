@@ -291,6 +291,7 @@ describe(`Entity3d`, () => {
           ownCollisionGroups: 'all',
           interactWithCollisionGroups: 'all',
           ccd: false,
+          canSleep: true,
         }),
       });
       const visualOnly = new Entity3d({ object3D: mock3DObject() });

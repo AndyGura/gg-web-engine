@@ -158,6 +158,7 @@ describe('Rapier2dRigidBodyComponent onCollisionStart/onCollisionEnd', () => {
         ownCollisionGroups: [world.mainCollisionGroup],
         interactWithCollisionGroups: [world.mainCollisionGroup],
         ccd: false,
+        canSleep: true,
       },
     );
     compound.addToWorld({ physicsWorld: world } as any);

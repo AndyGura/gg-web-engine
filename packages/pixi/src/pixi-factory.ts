@@ -4,11 +4,14 @@ import {
   ParallaxLayer2dOpts,
   Pnt2,
   Shape2DDescriptor,
+  Text2dStyle,
+  TextureOptions,
 } from '@gg-web-engine/core';
 import { PixiDisplayObjectComponent } from './components/pixi-display-object.component';
 import { AnimatedSprite, Assets, Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js';
 import { PixiParallaxLayerComponent } from './components/pixi-parallax-layer.component';
 import { PixiVisualTypeDocRepo2D } from './types';
+import { PixiTextComponent } from './components/pixi-text.component';
 import { PixiAnimationClip, PixiAnimatedSpriteComponent } from './components/pixi-animated-sprite.component';
 
 /** A single named clip's location within a uniform-grid atlas - see `PixiGridAtlasOptions`. */
@@ -41,56 +44,82 @@ export type PixiDisplayObject3dOpts = DisplayObject2dOpts<Texture>;
 
 export class PixiFactory extends IDisplayObject2dComponentFactory<PixiVisualTypeDocRepo2D> {
   createPrimitive(descriptor: Shape2DDescriptor, material: PixiDisplayObject3dOpts = {}): PixiDisplayObjectComponent {
+    const component = new PixiDisplayObjectComponent(this.createNativePrimitive(descriptor, material), material);
+    if (material.opacity !== undefined) {
+      component.opacity = material.opacity;
+    }
+    return component;
+  }
+
+  /** Fills an untextured shape's path with `material.color` and outlines it with `material.stroke`. */
+  private paint(graphics: Graphics, material: PixiDisplayObject3dOpts): Graphics {
+    graphics.fill(material.color ?? this.randomColor());
+    if (material.stroke) {
+      graphics.stroke({ width: material.stroke.width, color: material.stroke.color });
+    }
+    return graphics;
+  }
+
+  /** A sprite showing `texture`, centered on its position, tinted with `material.color` if set. */
+  private texturedSprite(texture: Texture, width: number, height: number, material: PixiDisplayObject3dOpts): Sprite {
+    const sprite = new Sprite(texture);
+    sprite.width = width;
+    sprite.height = height;
+    sprite.anchor.x = sprite.anchor.y = 0.5;
+    if (material.color !== undefined) {
+      sprite.tint = material.color;
+    }
+    return sprite;
+  }
+
+  private createNativePrimitive(descriptor: Shape2DDescriptor, material: PixiDisplayObject3dOpts): Container {
     switch (descriptor.shape) {
-      case 'BOX':
-        const sprite = new Sprite(material.texture || Texture.WHITE);
-        sprite.width = descriptor.dimensions.x;
-        sprite.height = descriptor.dimensions.y;
-        if (!material.texture) {
-          sprite.tint = material.color || this.randomColor();
+      case 'BOX': {
+        const { x: width, y: height } = descriptor.dimensions;
+        if (material.texture) {
+          return this.texturedSprite(material.texture, width, height, material);
         }
+        if (material.stroke) {
+          return this.paint(new Graphics().rect(-width / 2, -height / 2, width, height), material);
+        }
+        // a tinted white sprite is cheaper to draw than a Graphics rect
+        const sprite = new Sprite(Texture.WHITE);
+        sprite.width = width;
+        sprite.height = height;
+        sprite.tint = material.color ?? this.randomColor();
         sprite.anchor.x = sprite.anchor.y = 0.5;
-        return new PixiDisplayObjectComponent(sprite, material);
+        return sprite;
+      }
       case 'CIRCLE':
         if (material.texture) {
           // assume that texture is circular
-          const sprite = new Sprite(material.texture);
-          sprite.width = sprite.height = descriptor.radius * 2;
-          sprite.anchor.x = sprite.anchor.y = 0.5;
-          return new PixiDisplayObjectComponent(sprite, material);
+          return this.texturedSprite(material.texture, descriptor.radius * 2, descriptor.radius * 2, material);
         }
-        return new PixiDisplayObjectComponent(
-          new Graphics().circle(0, 0, descriptor.radius).fill(material.color || this.randomColor()),
-          material,
-        );
+        return this.paint(new Graphics().circle(0, 0, descriptor.radius), material);
       case 'CAPSULE': {
         const halfDistance = descriptor.centersDistance / 2;
         const radius = descriptor.radius;
-        const graphics = new Graphics()
-          .moveTo(radius, -halfDistance)
-          .lineTo(radius, halfDistance)
-          .arc(0, halfDistance, radius, 0, Math.PI)
-          .lineTo(-radius, -halfDistance)
-          .arc(0, -halfDistance, radius, Math.PI, Math.PI * 2)
-          .fill(material.color || this.randomColor());
-        return new PixiDisplayObjectComponent(graphics, material);
+        return this.paint(
+          new Graphics()
+            .moveTo(radius, -halfDistance)
+            .lineTo(radius, halfDistance)
+            .arc(0, halfDistance, radius, 0, Math.PI)
+            .lineTo(-radius, -halfDistance)
+            .arc(0, -halfDistance, radius, Math.PI, Math.PI * 2)
+            .closePath(),
+          material,
+        );
       }
-      case 'CONVEX_HULL': {
-        const graphics = new Graphics()
-          .poly(Pnt2.hull(descriptor.vertices).map(v => ({ x: v.x, y: v.y })))
-          .fill(material.color || this.randomColor());
-        return new PixiDisplayObjectComponent(graphics, material);
-      }
-      case 'POLYGON': {
-        const graphics = new Graphics()
-          .poly(descriptor.vertices.map(v => ({ x: v.x, y: v.y })))
-          .fill(material.color || this.randomColor());
-        return new PixiDisplayObjectComponent(graphics, material);
-      }
+      case 'CONVEX_HULL':
+        return this.paint(new Graphics().poly(Pnt2.hull(descriptor.vertices).map(v => ({ x: v.x, y: v.y }))), material);
+      case 'POLYGON':
+        return this.paint(new Graphics().poly(descriptor.vertices.map(v => ({ x: v.x, y: v.y }))), material);
       case 'COMPOUND': {
         const container = new Container();
+        // opacity applies once, to the whole compound, not again to each part
+        const { opacity, ...partMaterial } = material;
         for (const { position, rotation, shape } of descriptor.children) {
-          const submesh = this.createPrimitive(shape, material).nativeSprite;
+          const submesh = this.createNativePrimitive(shape, partMaterial);
           if (position) {
             submesh.position.set(position.x, position.y);
           }
@@ -99,7 +128,7 @@ export class PixiFactory extends IDisplayObject2dComponentFactory<PixiVisualType
           }
           container.addChild(submesh);
         }
-        return new PixiDisplayObjectComponent(container, material);
+        return container;
       }
     }
   }
@@ -138,7 +167,24 @@ export class PixiFactory extends IDisplayObject2dComponentFactory<PixiVisualType
     return new PixiParallaxLayerComponent(options);
   }
 
-  loadTexture(url: string): Promise<Texture> {
-    return Assets.load<Texture>(url);
+  async loadTexture(url: string, options: TextureOptions = {}): Promise<Texture> {
+    return this.applyTextureOptions(await Assets.load<Texture>(url), options);
+  }
+
+  createTextureFromCanvas(canvas: HTMLCanvasElement, options: TextureOptions = {}): Texture {
+    return this.applyTextureOptions(Texture.from(canvas), options);
+  }
+
+  createText(text: string, style: Text2dStyle = {}): PixiTextComponent {
+    return new PixiTextComponent(text, style);
+  }
+
+  private applyTextureOptions(texture: Texture, options: TextureOptions): Texture {
+    if (options.filter) {
+      // a texture source is shared by every texture made from the same image (`Assets` caches by
+      // url), so this applies to all of them
+      texture.source.scaleMode = options.filter;
+    }
+    return texture;
   }
 }

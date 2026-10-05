@@ -622,7 +622,8 @@ player.moveDirection = 1;
 `config` (`Glb3DSettings`): `path` (required - passed straight to `Gg3dLoader.loadGgGlb`, see
 `gg-engine-app-development`/`packages/core/src/3d/loader.ts` for the GLB+`.meta` sidecar format and
 the Blender exporter that produces it), plus optional `cachingStrategy`/`loadProps`/`propsPath`/
-`nameScope` mirroring `loadGgGlb`'s own `LoadOptions`. Missing `path` throws `Path is required for
+`nameScope`/`castShadow`/`receiveShadow` mirroring `loadGgGlb`'s own `LoadOptions` (the last two set
+shadows on every mesh of the model and its props; omitted, they stay as authored in the file). Missing `path` throws `Path is required for
 Glb class`.
 
 A GLB (with `loadProps` on, the default) can expand into several `Entity3d`s - the model itself plus

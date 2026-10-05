@@ -1,5 +1,6 @@
 import {
   DisplayObject3dOpts,
+  LoadTextureOptions,
   getCylinderRadii,
   IDisplayObject3dComponentFactory,
   Light3dDescriptor,
@@ -9,6 +10,8 @@ import {
 } from '@gg-web-engine/core';
 import {
   BoxGeometry,
+  CanvasTexture,
+  SRGBColorSpace,
   BufferGeometry,
   CapsuleGeometry,
   ConeGeometry,
@@ -30,6 +33,7 @@ import { ThreeDisplayObjectComponent } from './components/three-display-object.c
 import { ThreeVisualTypeDocRepo } from './types';
 import { ThreeCameraComponent } from './components/three-camera.component';
 import { ThreeLightComponent } from './components/three-light.component';
+import { applyTextureOptions } from './utils/texture-options';
 
 export type ThreeDisplayObject3dOpts = DisplayObject3dOpts<Texture>;
 
@@ -40,6 +44,9 @@ export class ThreeFactory extends IDisplayObject3dComponentFactory<ThreeVisualTy
       color = { color: descr.color };
     } else if (!descr.diffuse) {
       color = { color: super.randomColor() };
+    }
+    if (descr.opacity !== undefined && descr.opacity < 1) {
+      color = { ...color, opacity: descr.opacity, transparent: true };
     }
     let shading = descr.shading || 'unlit';
     switch (shading) {
@@ -168,13 +175,14 @@ export class ThreeFactory extends IDisplayObject3dComponentFactory<ThreeVisualTy
     if (!mesh) {
       throw new Error(`Primitive with shape "${descriptor.shape}" not implemented`);
     }
+    const result = new ThreeDisplayObjectComponent(mesh, material);
     if (material.castShadow !== undefined) {
-      mesh.castShadow = material.castShadow;
+      result.castShadow = material.castShadow;
     }
     if (material.receiveShadow !== undefined) {
-      mesh.receiveShadow = material.receiveShadow;
+      result.receiveShadow = material.receiveShadow;
     }
-    return new ThreeDisplayObjectComponent(mesh, material);
+    return result;
   }
 
   createPerspectiveCamera(
@@ -196,5 +204,12 @@ export class ThreeFactory extends IDisplayObject3dComponentFactory<ThreeVisualTy
 
   createLight(descriptor: Light3dDescriptor): ThreeLightComponent {
     return ThreeLightComponent.create(descriptor);
+  }
+
+  createTextureFromCanvas(canvas: HTMLCanvasElement, options: LoadTextureOptions = {}): Texture {
+    const texture = new CanvasTexture(canvas);
+    // canvas pixels are sRGB, same as an image file's
+    texture.colorSpace = SRGBColorSpace;
+    return applyTextureOptions(texture, options);
   }
 }

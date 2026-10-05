@@ -2,12 +2,12 @@ import {
   CharacterAnimation2dController,
   CharacterController2dEntity,
   CharacterState2d,
-  DisplayObject2dOpts,
   Entity2d,
   Gg2dWorld,
   GgStatic,
   GroupEntity,
   IEntity,
+  IText2dComponent,
   LevelJson,
   PlayerCharacterController2d,
   Point2,
@@ -15,7 +15,7 @@ import {
   Trigger2dEntity,
   TypedGg2dWorld,
 } from '@gg-web-engine/core';
-import { PixiCameraComponent, PixiDisplayObjectComponent, PixiGgWorld, PixiSceneComponent } from '@gg-web-engine/pixi';
+import { PixiCameraComponent, PixiGgWorld, PixiSceneComponent } from '@gg-web-engine/pixi';
 import { Rapier2dGgWorld, Rapier2dWorldComponent } from '@gg-web-engine/rapier2d';
 import {
   BroadcastChannelSignaling,
@@ -28,7 +28,6 @@ import {
   WebRtcMeshTransport,
 } from '@gg-web-engine/multiplayer';
 import { FirebaseOptions } from 'firebase/app';
-import { Assets, Graphics, Text, Texture } from 'pixi.js';
 
 // Coin run: every peer runs its own character around one shared platformer level. A lone player
 // waits (and can warm up); once a second player joins, rounds start: a countdown, then a race for
@@ -172,7 +171,7 @@ const paint = (width: number, height: number, draw: (ctx: CanvasRenderingContext
   canvas.width = width;
   canvas.height = height;
   draw(canvas.getContext('2d')!);
-  return Texture.from(canvas);
+  return world.visualScene.factory.createTextureFromCanvas(canvas);
 };
 
 /** a sky gradient: the scene background, fixed to the screen behind everything */
@@ -205,18 +204,18 @@ class Label extends Entity2d {
   static readonly entityTypeName: string = 'Label';
 
   constructor(
-    protected readonly text: Text,
+    protected readonly text: IText2dComponent,
     size: number,
   ) {
-    super({ object2D: new PixiDisplayObjectComponent(text) });
-    text.style = {
+    super({ object2D: text });
+    text.setStyle({
       fontFamily: 'monospace',
       fontSize: size,
       fontWeight: 'bold',
-      fill: '#ffffff',
-      stroke: { color: '#000000', width: 4 },
-    };
-    text.anchor.set(0.5, 1);
+      color: 0xffffff,
+      stroke: { color: 0x000000, width: 4 },
+      anchor: { x: 0.5, y: 1 },
+    });
   }
 }
 
@@ -226,14 +225,14 @@ class NameTag extends Label {
   public readonly tickOrder = TickOrder.OBJECTS_BINDING + 1;
 
   constructor(target: CharacterController2dEntity, label: (target: CharacterController2dEntity) => string) {
-    super(new Text({ text: '' }), 13);
+    super(world.visualScene.factory.createText(''), 13);
     this.tick$.subscribe(() => {
       // a remote character gets its final name only after it was added - so re-read it
       const text = label(target);
       if (this.text.text !== text) {
         this.text.text = text;
         const peer = peerOf(target);
-        this.text.style.fill = peer ? cssColorOf(peer) : '#ffffff';
+        this.text.setStyle({ color: peer ? colorOf(peer) : 0xffffff });
       }
       this.position = { x: target.position.x, y: target.position.y - 50 };
     });
@@ -244,16 +243,16 @@ class NameTag extends Label {
 class PopText extends Label {
   static readonly entityTypeName: string = 'PopText';
 
-  constructor(text: string, color: string, from: Point2) {
-    super(new Text({ text }), 20);
-    this.text.style.fill = color;
+  constructor(text: string, color: number, from: Point2) {
+    super(world.visualScene.factory.createText(text), 20);
+    this.text.setStyle({ color });
     this.position = from;
     let age = 0;
     this.tick$.subscribe(([, delta]) => {
       age += delta;
       const t = Math.min(age / 800, 1);
       this.position = { x: from.x, y: from.y - 50 * t };
-      this.text.alpha = 1 - t * t;
+      this.text.opacity = 1 - t * t;
       if (t === 1 && this.world) {
         // not mid-tick: removing an entity while the world iterates its tick listeners skips one
         const world = this.world;
@@ -421,7 +420,7 @@ world.init().then(async () => {
     if (round !== state.round || (state.phase !== 'playing' && state.phase !== 'countdown')) return;
     scores[by] = (scores[by] ?? 0) + 1;
     reachedAt[by] = ++pickups;
-    world.addEntity(new PopText('+1', cssColorOf(by), at));
+    world.addEntity(new PopText('+1', colorOf(by), at));
     renderHud();
     direct();
   };
@@ -435,17 +434,17 @@ world.init().then(async () => {
       w.physicsWorld!.factory.createTrigger({ shape: 'CIRCLE', radius: COIN_RADIUS }, { position: settings.position }),
     );
     coin.position = settings.position;
-    const disc = new Graphics()
-      .circle(0, 0, COIN_RADIUS)
-      .fill(0xffd166)
-      .stroke({ width: 3, color: 0xd99a00 })
-      .rect(-2, -COIN_RADIUS / 2, 4, COIN_RADIUS)
-      .fill(0xd99a00);
-    const sprite = new Entity2d({ object2D: new PixiDisplayObjectComponent(disc) });
+    // a gold disc with a slot across it - nested in the disc, so it follows the disc's spin
+    const disc = w.visualScene!.factory.createCircle(COIN_RADIUS, {
+      color: 0xffd166,
+      stroke: { width: 3, color: 0xd99a00 },
+    });
+    disc.addChild(w.visualScene!.factory.createBox({ x: 4, y: COIN_RADIUS }, { color: 0xd99a00 }));
+    const sprite = new Entity2d({ object2D: disc });
     sprite.position = settings.position;
     sprite.tick$.subscribe(([elapsed]) => {
       // spin by squashing horizontally, bob a little - offset by position so coins aren't in sync
-      disc.scale.x = Math.cos(elapsed / 300 + x / 50);
+      disc.scale = { x: Math.cos(elapsed / 300 + x / 50), y: 1 };
       sprite.position = { x, y: y + Math.sin(elapsed / 400 + x / 80) * 3 };
     });
     coin.addChildren(sprite);
@@ -465,11 +464,11 @@ world.init().then(async () => {
   // peer builds every character through this class: the network rebuilds a remote player's
   // character from its serialized config (options, `display` and the mid-jump `state`), so all of
   // that has to go through `settings`.
-  const atlas: Texture = await Assets.load(characterAtlasUrl);
-  atlas.source.scaleMode = 'nearest'; // keep the pixel-art look crisp when scaled up
+  // 'nearest' keeps the pixel-art look crisp when scaled up
+  const atlas = await world.visualScene.factory.loadTexture(characterAtlasUrl, { filter: 'nearest' });
   type RunnerSettings = Partial<ConstructorParameters<typeof CharacterController2dEntity>[0]> & {
     position?: Point2;
-    display?: DisplayObject2dOpts<Texture>;
+    display?: { color?: number };
     state?: CharacterState2d;
   };
   world.loader.registerClass('Runner', (w: typeof world, settings: RunnerSettings) => {
@@ -487,7 +486,7 @@ world.init().then(async () => {
     });
     sprite.scale = { x: 1.2, y: 1.2 };
     if (display?.color !== undefined) {
-      sprite.nativeSprite.tint = pastel(display.color);
+      sprite.tint = pastel(display.color);
     }
     const controller = w.physicsWorld!.factory.createCharacterController(
       { radius, centersDistance, ...(options.maxStepHeight !== undefined && { maxStepHeight: options.maxStepHeight }) },

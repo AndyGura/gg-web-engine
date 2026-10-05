@@ -9,7 +9,6 @@ import {
   TypedGg3dWorld,
 } from '@gg-web-engine/core';
 import { ThreeGgWorld, ThreeSceneComponent } from '@gg-web-engine/three';
-import { Material, Mesh } from 'three';
 import { AmmoGgWorld, AmmoWorldComponent } from '@gg-web-engine/ammo';
 
 GgStatic.instance.showStats = true;
@@ -71,9 +70,8 @@ world.init().then(async () => {
         color,
         shading: 'phong',
         receiveShadow: true,
+        opacity: 0.4,
       });
-    ((floor.object3D!.nativeMesh as Mesh).material as Material).opacity = 0.4;
-    ((floor.object3D!.nativeMesh as Mesh).material as Material).transparent = true;
     const slider: HTMLInputElement | undefined = document.getElementById('slider' + i) as any;
     if (slider) {
       createInlineTickController(world).subscribe(() => {
@@ -124,13 +122,14 @@ world.init().then(async () => {
               restitution: 0.05,
               ownCollisionGroups: [collisionGroup, world.physicsWorld.mainCollisionGroup],
               interactWithCollisionGroups: [collisionGroup, world.physicsWorld.mainCollisionGroup],
+              // keep every ball awake, so it falls as soon as the floor under it stops colliding with it
+              canSleep: false,
             },
           },
           { x: i, y: j, z: k },
           Qtrn.O,
           { color, shading: 'phong', castShadow: true, receiveShadow: true },
         );
-        item.objectBody!.nativeBody.setActivationState(4); // btCollisionObject::DISABLE_DEACTIVATION
         item.objectBody!.linearVelocity = { x: 2 * Math.random() - 1, y: 2 * Math.random() - 1, z: 0 };
       }
     }

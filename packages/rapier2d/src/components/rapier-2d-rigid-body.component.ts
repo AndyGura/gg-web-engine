@@ -188,6 +188,7 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
       friction: this._colliderOptions.friction,
       restitution: this._colliderOptions.restitution,
       ccd: this._bodyDescr.ccdEnabled,
+      canSleep: this._bodyDescr.canSleep,
       ownCollisionGroups: this.ownCollisionGroups,
       interactWithCollisionGroups: this.interactWithCollisionGroups,
     };
@@ -321,7 +322,7 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
   }
 
   sleep(): void {
-    if (this._bodyDescr.status === RigidBodyType.Fixed) {
+    if (this._bodyDescr.status === RigidBodyType.Fixed || !this._bodyDescr.canSleep) {
       return;
     }
     this._nativeBody?.sleep();

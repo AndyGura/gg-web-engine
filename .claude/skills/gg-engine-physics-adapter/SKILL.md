@@ -467,7 +467,7 @@ ground-snap/jump and push pitfalls.
    adapter must flatten `COMPOUND` (recursively, for nested `COMPOUND`s) into the underlying
    flat list of leaf colliders/parts, combining each level's own `position`/`rotation` into its
    children as it flattens outward - see `packages/rapier2d/src/rapier-2d-factory.ts`'s
-   `createColliderDescr` and `packages/matter/src/matter-factory.ts`'s `createShapeParts` for two
+   `createColliderDescr` and `packages/matter/src/matter-rigid-body-builder.ts`'s `createShapeParts` for two
    different concrete shapes this takes (an array of already-offset `ColliderDesc`s sharing one
    rigid body vs. matter's own `Body.create({ parts })`). Only a library with genuine native nested
    compound shapes (Bullet/Ammo's `btCompoundShape`) can skip flattening and recurse by nesting
@@ -479,6 +479,11 @@ ground-snap/jump and push pitfalls.
    switches on (`options.bodyType ?? (options.mass ? 'dynamic' : 'static')` is the established
    fallback for a caller that only ever set `mass`, from before `bodyType` existed) — a body is
    static/fixed for `'static'`, and dynamic (with the given `mass`, defaulting to `1`) otherwise.
+   `canSleep: false` must keep a *dynamic* body out of the engine's inactivity-driven sleep for
+   good (Bullet: `setActivationState(DISABLE_DEACTIVATION)`; Rapier: `RigidBodyDesc.setCanSleep
+   (false)`; matter-js: `body.sleepThreshold = Infinity`, which only matters once an app turns on
+   `engine.enableSleeping`), make that body's `sleep()` a no-op, survive `clone()`, and read back
+   through `bodyOptions.canSleep`. Static and kinematic bodies ignore it.
 3. Merge in engine-reasonable defaults (e.g. `friction: 0.5, restitution: 0.1,
    ownCollisionGroups: [world.mainCollisionGroup], interactWithCollisionGroups:
    [world.mainCollisionGroup]`) before applying the caller's overrides, so bodies work out of the
@@ -532,7 +537,7 @@ message** helper (a module-level `Set<string>` of already-warned messages, or eq
 once per body/per tick. An app spawning many kinematic props, or requesting `ccd` on many fast bodies,
 would otherwise flood the console with an identical warning per instance, which trains a developer to
 ignore the console rather than fix the one call site that actually needs attention. See
-`MatterFactory.transformOptions` for the reference implementation of this pattern.
+`transformOptions` in `packages/matter/src/matter-rigid-body-builder.ts` for the reference implementation of this pattern.
 
 ## Collision groups implementation detail
 

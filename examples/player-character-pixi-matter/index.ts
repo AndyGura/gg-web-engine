@@ -10,7 +10,6 @@ import {
 } from '@gg-web-engine/core';
 import { PixiCameraComponent, PixiGgWorld, PixiSceneComponent } from '@gg-web-engine/pixi';
 import { MatterGgWorld, MatterWorldComponent } from '@gg-web-engine/matter';
-import { Assets } from 'pixi.js';
 
 const characterAtlasUrl = '/assets/characters/character-atlas.png';
 
@@ -94,8 +93,8 @@ world.init().then(async () => {
 
   // A pixel-art atlas (idle/walk/run/jump/crouch rows on a uniform grid - see
   // ../assets/characters/generate-character-atlas.py) sliced into named animation clips.
-  const atlasTexture = await Assets.load(characterAtlasUrl);
-  atlasTexture.source.scaleMode = 'nearest'; // keep the pixel-art look crisp when scaled up
+  // 'nearest' keeps the pixel-art look crisp when scaled up
+  const atlasTexture = await world.visualScene.factory.loadTexture(characterAtlasUrl, { filter: 'nearest' });
   const sprite = world.visualScene.factory.createAnimatedSprite(atlasTexture, {
     frameWidth: 48,
     frameHeight: 72,

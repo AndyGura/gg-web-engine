@@ -10,7 +10,7 @@ import {
   Qtrn,
   RenderLayer,
 } from '@gg-web-engine/core';
-import { Box3, Group, Mesh, Object3D, Scene, Texture } from 'three';
+import { Box3, Group, Light, Mesh, Object3D, Scene, Texture } from 'three';
 import { ThreeGgWorld, ThreeVisualTypeDocRepo } from '../types';
 
 export class ThreeDisplayObjectComponent
@@ -87,6 +87,39 @@ export class ThreeDisplayObjectComponent
 
   public isRenderLayerEnabled(layer: RenderLayer): boolean {
     return this.nativeMesh.layers.isEnabled(layer);
+  }
+
+  public get castShadow(): boolean {
+    return this.nativeMesh.castShadow;
+  }
+
+  public set castShadow(value: boolean) {
+    this.nativeMesh.traverse(obj => {
+      // a light embedded in the hierarchy (e.g. one loaded from a .glb) keeps its own setting: on a
+      // light this flag turns shadow map rendering on or off
+      if (!(obj as Light).isLight) {
+        obj.castShadow = value;
+      }
+    });
+  }
+
+  public get receiveShadow(): boolean {
+    return this.nativeMesh.receiveShadow;
+  }
+
+  public set receiveShadow(value: boolean) {
+    this.nativeMesh.traverse(obj => (obj.receiveShadow = value));
+  }
+
+  public addChild(child: ThreeDisplayObjectComponent): void {
+    // `Object3D.add` already detaches the child from any previous parent
+    this.nativeMesh.add(child.nativeMesh);
+  }
+
+  public removeChild(child: ThreeDisplayObjectComponent): void {
+    if (child.nativeMesh.parent === this.nativeMesh) {
+      this.nativeMesh.remove(child.nativeMesh);
+    }
   }
 
   public isEmpty(): boolean {

@@ -9,6 +9,7 @@ import {
 } from '@gg-web-engine/core';
 import { PixiGgWorld, PixiVisualTypeDocRepo2D } from '../types';
 import { Container, Texture } from 'pixi.js';
+import { cloneContainer } from '../utils/clone-container';
 
 export class PixiDisplayObjectComponent
   implements
@@ -77,7 +78,34 @@ export class PixiDisplayObjectComponent
     this.nativeSprite.zIndex = value;
   }
 
+  public get tint(): number {
+    return this.nativeSprite.tint;
+  }
+
+  public set tint(value: number) {
+    this.nativeSprite.tint = value;
+  }
+
+  public get opacity(): number {
+    return this.nativeSprite.alpha;
+  }
+
+  public set opacity(value: number) {
+    this.nativeSprite.alpha = value;
+  }
+
   public name: string = '';
+
+  public addChild(child: PixiDisplayObjectComponent): void {
+    // `Container.addChild` already detaches the child from any previous parent
+    this.nativeSprite.addChild(child.nativeSprite);
+  }
+
+  public removeChild(child: PixiDisplayObjectComponent): void {
+    if (child.nativeSprite.parent === this.nativeSprite) {
+      this.nativeSprite.removeChild(child.nativeSprite);
+    }
+  }
 
   public isEmpty(): boolean {
     return false;
@@ -96,7 +124,7 @@ export class PixiDisplayObjectComponent
   }
 
   clone(): PixiDisplayObjectComponent {
-    return new PixiDisplayObjectComponent(this.nativeSprite);
+    return new PixiDisplayObjectComponent(cloneContainer(this.nativeSprite), this.materialOptions);
   }
 
   addToWorld(world: PixiGgWorld): void {
@@ -111,6 +139,7 @@ export class PixiDisplayObjectComponent
   }
 
   dispose(): void {
-    this.nativeSprite.destroy();
+    // children added with `addChild` are disposed together with their parent
+    this.nativeSprite.destroy({ children: true });
   }
 }

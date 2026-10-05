@@ -1,6 +1,5 @@
 import { FreeCameraController, Gg3dWorld, GgStatic, Pnt3, Qtrn, TypedGg3dWorld } from '@gg-web-engine/core';
-import { ThreeGgWorld, ThreeSceneComponent } from '@gg-web-engine/three';
-import { Mesh, MeshPhongMaterial, RepeatWrapping, TextureLoader } from 'three';
+import { ThreeDisplayObject3dOpts, ThreeGgWorld, ThreeSceneComponent } from '@gg-web-engine/three';
 import { AmmoGgWorld, AmmoWorldComponent } from '@gg-web-engine/ammo';
 
 GgStatic.instance.showStats = true;
@@ -36,24 +35,22 @@ world.init().then(async () => {
   );
   world.addLight({ type: 'AMBIENT', color: 0x606060 });
 
-  const textureLoader = new TextureLoader();
   // create objects
   const [groundTexture, brickTexture] = await Promise.all([
-    textureLoader.loadAsync('https://gg-web-demos.guraklgames.com/assets/shooter/cement.jpg'),
-    textureLoader.loadAsync('https://gg-web-demos.guraklgames.com/assets/shooter/brick.jpg'),
+    world.visualScene.loader.loadTexture('https://gg-web-demos.guraklgames.com/assets/shooter/cement.jpg', {
+      repeat: { x: 5, y: 5 },
+    }),
+    world.visualScene.loader.loadTexture('https://gg-web-demos.guraklgames.com/assets/shooter/brick.jpg'),
   ]);
-  groundTexture.wrapS = brickTexture.wrapS = RepeatWrapping;
-  groundTexture.wrapT = brickTexture.wrapT = RepeatWrapping;
-  groundTexture.repeat.set(5, 5);
 
-  let material = [
-    new MeshPhongMaterial({ color: 0xB7B7B7, map: brickTexture }),
-    new MeshPhongMaterial({ color: 0xAAAAAA, map: brickTexture }),
-    new MeshPhongMaterial({ color: 0xA4A4A4, map: brickTexture }),
-    new MeshPhongMaterial({ color: 0x979797, map: brickTexture }),
-    new MeshPhongMaterial({ color: 0x949494, map: brickTexture }),
-    new MeshPhongMaterial({ color: 0x909090, map: brickTexture }),
-  ];
+  const brickColors = [0xB7B7B7, 0xAAAAAA, 0xA4A4A4, 0x979797, 0x949494, 0x909090];
+  const brickMaterial = (): ThreeDisplayObject3dOpts => ({
+    shading: 'phong',
+    color: brickColors[Math.floor(Math.random() * brickColors.length)],
+    diffuse: brickTexture,
+    castShadow: true,
+    receiveShadow: true,
+  });
   const brickMass = 20;
 
   const createWall_X_axis = (startX: number, endX: number, y: number, zCount: number, shift: boolean) => {
@@ -61,12 +58,10 @@ world.init().then(async () => {
       let offsetX = shift ? 1.5 : 0;
       shift = !shift;
       for (let x = startX; x <= endX; x += 3) {
-        const item = world.addPrimitiveRigidBody({
+        world.addPrimitiveRigidBody({
           shape: { shape: 'BOX', dimensions: { x: 3, y: 1.5, z: 1.5 }, collisionMargin: 0.05 },
           body: { bodyType: 'dynamic', mass: brickMass },
-        }, { x: x + offsetX, y, z: z + 0.75 }, Qtrn.O, { castShadow: true, receiveShadow: true });
-        const materialIndex = Math.floor(Math.random() * material.length);
-        (item.object3D!.nativeMesh as Mesh).material = material[materialIndex];
+        }, { x: x + offsetX, y, z: z + 0.75 }, Qtrn.O, brickMaterial());
       }
     }
   };
@@ -80,10 +75,8 @@ world.init().then(async () => {
         const item = world.addPrimitiveRigidBody({
           shape: { shape: 'BOX', dimensions: { x: 3, y: 1.5, z: 1.5 }, collisionMargin: 0.05 },
           body: { bodyType: 'dynamic', mass: brickMass },
-        }, { x, y: y + offsetY, z: z + 0.75 }, Qtrn.O, { castShadow: true, receiveShadow: true });
+        }, { x, y: y + offsetY, z: z + 0.75 }, Qtrn.O, brickMaterial());
         item.rotation = quat;
-        const materialIndex = Math.floor(Math.random() * material.length);
-        (item.object3D!.nativeMesh as Mesh).material = material[materialIndex];
       }
     }
   };
@@ -117,8 +110,6 @@ world.init().then(async () => {
   world.addEntity(cameraController);
 
 
-  let ballMaterial = new MeshPhongMaterial({ color: 0x202020 });
-
   window.addEventListener('mousedown', (event) => {
     let element = <Element>event.target;
     if (element.nodeName == 'A' || world.isPaused)
@@ -130,9 +121,8 @@ world.init().then(async () => {
         },
         renderer.position,
         Qtrn.O,
-        { castShadow: true, receiveShadow: true },
+        { shading: 'phong', color: 0x202020, castShadow: true, receiveShadow: true },
       );
-      (ball.object3D!.nativeMesh as Mesh).material = ballMaterial;
 
       ball.objectBody!.linearVelocity = Pnt3.rot(Pnt3.scalarMult(Pnt3.nZ, 80), renderer.rotation);
     }

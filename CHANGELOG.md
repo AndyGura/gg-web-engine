@@ -28,6 +28,34 @@ where one exists.
 
 ## [Unreleased]
 
+### Added
+- `@gg-web-engine/core`, `@gg-web-engine/three`, `@gg-web-engine/pixi`: display-object nesting.
+  `displayObject.addChild(child)`/`removeChild(child)` make a child follow its parent's position,
+  rotation and scale (and get cloned and disposed with it).
+- `@gg-web-engine/core`, `@gg-web-engine/three`: `castShadow`/`receiveShadow` on every 3D display
+  object, applied to the whole hierarchy of a loaded model; `loadGgGlb` options and `"Glb"` level
+  entries accept `castShadow`/`receiveShadow` too.
+- `@gg-web-engine/core`, `@gg-web-engine/three`, `@gg-web-engine/pixi`: `opacity` material option
+  (`DisplayObject3dOpts`/`DisplayObject2dOpts`).
+- `@gg-web-engine/core`, `@gg-web-engine/three`: `loader.loadTexture` options `repeat` (tile a
+  texture across a surface) and `filter` (`'nearest'` for crisp pixel art); `factory.createTextureFromCanvas`.
+- `@gg-web-engine/core`, `@gg-web-engine/pixi`: 2D text (`factory.createText(text, style)` returning
+  an `IText2dComponent` with `text`, `style` and `setStyle`); `stroke` outlines for untextured 2D
+  shapes; `tint` and `opacity` on every 2D display object; `factory.loadTexture(url, { filter })`
+  and `factory.createTextureFromCanvas`. A textured 2D primitive's `color` now tints the texture.
+- `@gg-web-engine/core` and every physics adapter: `canSleep` body option (default `true`); `false`
+  keeps a dynamic body simulated while it rests.
+
+### Fixed
+- `@gg-web-engine/matter`: `MatterRigidBodyComponent.clone()` and `MatterTriggerComponent.clone()`
+  overflowed the stack for every body; they now rebuild the body from its shape, options and
+  transform.
+- `@gg-web-engine/pixi`: `clone()` of a display object returned a component sharing the original's
+  native object, so disposing one destroyed the other; it now makes an independent deep copy
+  (children included), and cloning a text or an animated sprite keeps its class, tint and opacity.
+- `@gg-web-engine/matter`: a `CAPSULE` rigid body ignored its body options (mass, friction,
+  restitution, static/dynamic type).
+
 ## [0.0.77] - 2026-10-05
 
 ### Added

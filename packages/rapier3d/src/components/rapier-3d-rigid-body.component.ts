@@ -146,6 +146,7 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
       friction: this._colliderOptions.friction,
       restitution: this._colliderOptions.restitution,
       ccd: this._bodyDescr.ccdEnabled,
+      canSleep: this._bodyDescr.canSleep,
       ownCollisionGroups: this.ownCollisionGroups,
       interactWithCollisionGroups: this.interactWithCollisionGroups,
     };
@@ -266,6 +267,7 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
     // just a constructor-only `setCcdEnabled` call - carry it over explicitly so `clone()` doesn't
     // silently drop CCD off the copy.
     bd.setCcdEnabled(this._bodyDescr.ccdEnabled);
+    bd.setCanSleep(this._bodyDescr.canSleep);
     // TODO more fields here?
     return [colliderDescr, this.shape, bd, this._colliderOptions];
   }
@@ -391,7 +393,7 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
   }
 
   sleep(): void {
-    if (this._bodyDescr.status === RigidBodyType.Fixed) {
+    if (this._bodyDescr.status === RigidBodyType.Fixed || !this._bodyDescr.canSleep) {
       return;
     }
     this._nativeBody?.sleep();

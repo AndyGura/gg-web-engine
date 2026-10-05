@@ -48,6 +48,7 @@ export class Rapier2dFactory implements IPhysicsBody2dComponentFactory<Rapier2dP
         ownCollisionGroups: [this.world.mainCollisionGroup],
         interactWithCollisionGroups: [this.world.mainCollisionGroup],
         ccd: false,
+        canSleep: true,
         ...descriptor.body,
       },
     );
@@ -181,6 +182,7 @@ export class Rapier2dFactory implements IPhysicsBody2dComponentFactory<Rapier2dP
       // Only a dynamic body can tunnel through geometry it crosses within a single step - see
       // `BodyOptions.ccd`'s own doc.
       bodyDesc.setCcdEnabled(!!options.ccd);
+      bodyDesc.setCanSleep(options.canSleep !== false);
     }
     return bodyDesc.setTranslation(pos.x, pos.y).setRotation(rot);
   }

@@ -1,4 +1,4 @@
-import { BoxGeometry, Group, Mesh, MeshBasicMaterial } from 'three';
+import { BoxGeometry, Group, Mesh, MeshBasicMaterial, PointLight } from 'three';
 import { ThreeDisplayObjectComponent } from '../../src/components/three-display-object.component';
 
 /** Builds a GLTF-shaped hierarchy: a root Group with two child Meshes nested a level apart, the
@@ -87,6 +87,71 @@ describe('ThreeDisplayObjectComponent', () => {
       // every Object3D starts on layer 0 by default - enabling an additional layer must not
       // knock descendants off it
       expect(body.layers.isEnabled(0)).toBe(true);
+    });
+  });
+
+  describe('shadows', () => {
+    it('applies castShadow/receiveShadow to every mesh of a hierarchy', () => {
+      const root = buildCharacterModel();
+      const component = new ThreeDisplayObjectComponent(root);
+
+      component.castShadow = true;
+      component.receiveShadow = true;
+
+      expect(component.castShadow).toBe(true);
+      expect(component.receiveShadow).toBe(true);
+      root.traverse(obj => {
+        expect(obj.castShadow).toBe(true);
+        expect(obj.receiveShadow).toBe(true);
+      });
+    });
+
+    it('leaves the castShadow of a light embedded in the hierarchy alone', () => {
+      const root = buildCharacterModel();
+      const lamp = new PointLight();
+      root.add(lamp);
+      const shadowLamp = new PointLight();
+      shadowLamp.castShadow = true;
+      root.add(shadowLamp);
+      const component = new ThreeDisplayObjectComponent(root);
+
+      component.castShadow = true;
+      expect(lamp.castShadow).toBe(false);
+      expect(root.getObjectByName('body')!.castShadow).toBe(true);
+
+      component.castShadow = false;
+      expect(shadowLamp.castShadow).toBe(true);
+      expect(root.getObjectByName('body')!.castShadow).toBe(false);
+    });
+  });
+
+  describe('addChild/removeChild', () => {
+    it('nests a child so it follows its parent, and detaches it again', () => {
+      const parent = new ThreeDisplayObjectComponent(new Mesh(new BoxGeometry(1, 1, 1), new MeshBasicMaterial()));
+      const child = new ThreeDisplayObjectComponent(new Mesh(new BoxGeometry(1, 1, 1), new MeshBasicMaterial()));
+      child.position = { x: 1, y: 0, z: 0 };
+
+      parent.addChild(child);
+      parent.position = { x: 10, y: 0, z: 0 };
+      parent.nativeMesh.updateMatrixWorld(true);
+      const worldPos = child.nativeMesh.getWorldPosition(child.nativeMesh.position.clone());
+      expect(worldPos.x).toBeCloseTo(11);
+      // carried along by clone()
+      expect(parent.clone().nativeMesh.children.length).toBe(1);
+
+      parent.removeChild(child);
+      expect(child.nativeMesh.parent).toBeNull();
+      expect(parent.nativeMesh.children.length).toBe(0);
+    });
+
+    it('ignores removeChild for an object that is not its child', () => {
+      const parent = new ThreeDisplayObjectComponent(new Group());
+      const other = new ThreeDisplayObjectComponent(new Group());
+      const stranger = new ThreeDisplayObjectComponent(new Group());
+      other.addChild(stranger);
+
+      parent.removeChild(stranger);
+      expect(stranger.nativeMesh.parent).toBe(other.nativeMesh);
     });
   });
 });

@@ -12,6 +12,7 @@ import {
   Shape2DDescriptor,
 } from '@gg-web-engine/core';
 import { Body, Composite, Sleeping, Vector } from 'matter-js';
+import { buildMatterRigidBody } from '../matter-rigid-body-builder';
 import { Observable, Subject } from 'rxjs';
 import { MatterGgWorld, MatterPhysicsTypeDocRepo } from '../types';
 
@@ -86,6 +87,7 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
       friction: this.nativeBody.friction,
       restitution: this.nativeBody.restitution,
       ccd: this.ccd,
+      canSleep: this.canSleep,
       ownCollisionGroups: this.ownCollisionGroups,
       interactWithCollisionGroups: this.interactWithCollisionGroups,
     };
@@ -120,8 +122,14 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
     public readonly shape: Shape2DDescriptor,
     public readonly bodyType: BodyType = 'dynamic',
     public readonly ccd: boolean = false,
+    public readonly canSleep: boolean = true,
   ) {
     this.updateCollisionFilter();
+    if (!canSleep) {
+      // this adapter's engine never sleeps bodies on its own, but an app may turn on
+      // `engine.enableSleeping` - an infinite threshold keeps this body awake even then
+      nativeBody.sleepThreshold = Infinity;
+    }
   }
 
   /** @internal called by `MatterWorldComponent`'s global `collisionStart` listener - not part of
@@ -183,16 +191,18 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
   }
 
   clone(): MatterRigidBodyComponent {
-    const clonedBody = Body.create({
-      ...this.nativeBody,
-      collisionFilter: {
-        ...this.nativeBody.collisionFilter,
+    // Rebuilt from the shape and options rather than `Body.create({ ...this.nativeBody })`: a native
+    // body references itself (`parts[0]` and `parent` are the body itself), so matter-js's deep
+    // option merge recurses forever on it.
+    const { mass, ...options } = this.bodyOptions;
+    return buildMatterRigidBody(
+      {
+        shape: this.shape,
+        // a static body reports an infinite mass, which isn't a valid option to build one from
+        body: this.bodyType === 'dynamic' ? { ...options, mass } : options,
       },
-    });
-    const component = new MatterRigidBodyComponent(clonedBody, this.shape, this.bodyType, this.ccd);
-    component.ownCollisionGroups = this.ownCollisionGroups;
-    component.interactWithCollisionGroups = this.interactWithCollisionGroups;
-    return component;
+      { position: this.position, rotation: this.rotation },
+    );
   }
 
   addToWorld(world: MatterGgWorld): void {
@@ -260,13 +270,14 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
   }
 
   /**
-   * No-op on a body that reports `isStatic` (see `isSleeping`'s own doc). Forces sleep immediately,
+   * No-op on a body that reports `isStatic` (see `isSleeping`'s own doc) or was created with
+   * `canSleep: false`. Forces sleep immediately,
    * regardless of whether the world's `Matter.Engine` has `enableSleeping` turned on - unlike a
    * body naturally falling asleep from inactivity (which requires that engine flag), an explicit
    * `Sleeping.set(body, true)` call takes effect either way.
    */
   sleep(): void {
-    if (this.nativeBody.isStatic) {
+    if (this.nativeBody.isStatic || !this.canSleep) {
       return;
     }
     Sleeping.set(this.nativeBody, true);
