@@ -1,6 +1,6 @@
 ---
 title: core/3d/gg-3d-world.ts
-nav_order: 78
+nav_order: 85
 parent: Modules
 ---
 
@@ -15,6 +15,7 @@ parent: Modules
   - [Gg3dWorld (class)](#gg3dworld-class)
     - [addPrimitiveRigidBody (method)](#addprimitiverigidbody-method)
     - [addGrabbablePrimitive (method)](#addgrabbableprimitive-method)
+    - [addLight (method)](#addlight-method)
     - [addRenderer (method)](#addrenderer-method)
     - [registerConsoleCommands (method)](#registerconsolecommands-method)
     - [loader (property)](#loader-property)
@@ -93,6 +94,22 @@ addGrabbablePrimitive(
     material: DisplayObject3dOpts<TypeDoc['vTypeDoc']['texture']> = {},
     grabOptions: Partial<Grabbable3dEntityOptions> = {},
   ): Grabbable3dEntity<TypeDoc>
+```
+
+### addLight (method)
+
+Creates a light (see `Light3dDescriptor`), wraps it in a `Light3dEntity` and adds it to the
+world. When `target` is given, the light is rotated to shine from `position` towards it, which
+is what `DIRECTIONAL` and `SPOT` lights normally want.
+
+**Signature**
+
+```ts
+addLight(
+    descriptor: Light3dDescriptor,
+    position: Point3 = Pnt3.O,
+    target?: Point3,
+  ): Light3dEntity<TypeDoc['vTypeDoc']>
 ```
 
 ### addRenderer (method)
@@ -273,6 +290,7 @@ export type VisualTypeDocRepo3D = {
   renderer: IRenderer3dComponent
   rendererExtraOpts: {}
   camera: ICamera3dComponent
+  light: ILight3dComponent
   texture: unknown
 }
 ```

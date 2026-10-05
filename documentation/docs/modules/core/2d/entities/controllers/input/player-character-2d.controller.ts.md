@@ -1,6 +1,6 @@
 ---
 title: core/2d/entities/controllers/input/player-character-2d.controller.ts
-nav_order: 28
+nav_order: 29
 parent: Modules
 ---
 

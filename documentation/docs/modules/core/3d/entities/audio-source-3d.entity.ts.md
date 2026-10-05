@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/audio-source-3d.entity.ts
-nav_order: 55
+nav_order: 60
 parent: Modules
 ---
 

@@ -1,6 +1,6 @@
 ---
 title: three/components/three-scene.component.ts
-nav_order: 189
+nav_order: 201
 parent: Modules
 ---
 
@@ -12,7 +12,10 @@ parent: Modules
 
 - [utils](#utils)
   - [ThreeSceneComponent (class)](#threescenecomponent-class)
+    - [zUpRotationX (static method)](#zuprotationx-static-method)
     - [init (method)](#init-method)
+    - [setEnvironment (method)](#setenvironment-method)
+    - [applyEnvironment (method)](#applyenvironment-method)
     - [registerRenderLayer (method)](#registerrenderlayer-method)
     - [deregisterRenderLayer (method)](#deregisterrenderlayer-method)
     - [createRenderer (method)](#createrenderer-method)
@@ -35,12 +38,40 @@ parent: Modules
 export declare class ThreeSceneComponent
 ```
 
+### zUpRotationX (static method)
+
+three.js samples sky textures Y-up - an equirectangular panorama's top edge and a cube map's
+`py` slot are both towards `+Y` - so they're turned a quarter around X to put that overhead in
+the engine's Z-up world (`ThreeLoader.loadCubeTexture` fills the cube slots to match).
+
+**Signature**
+
+```ts
+private static zUpRotationX(texture: Texture | null): number
+```
+
 ### init (method)
 
 **Signature**
 
 ```ts
 async init(): Promise<void>
+```
+
+### setEnvironment (method)
+
+**Signature**
+
+```ts
+setEnvironment(environment: Partial<Environment3dOpts<Texture>>): void
+```
+
+### applyEnvironment (method)
+
+**Signature**
+
+```ts
+private applyEnvironment(): void
 ```
 
 ### registerRenderLayer (method)

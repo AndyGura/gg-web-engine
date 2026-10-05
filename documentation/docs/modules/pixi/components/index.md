@@ -8,6 +8,7 @@ has_children: true
 - [pixi/components/pixi-animated-sprite.component.ts](/gg-web-engine/modules/pixi/components/pixi-animated-sprite.component.ts)
 - [pixi/components/pixi-camera.component.ts](/gg-web-engine/modules/pixi/components/pixi-camera.component.ts)
 - [pixi/components/pixi-display-object.component.ts](/gg-web-engine/modules/pixi/components/pixi-display-object.component.ts)
+- [pixi/components/pixi-parallax-layer.component.ts](/gg-web-engine/modules/pixi/components/pixi-parallax-layer.component.ts)
 - [pixi/components/pixi-physics-debug-view.ts](/gg-web-engine/modules/pixi/components/pixi-physics-debug-view.ts)
 - [pixi/components/pixi-renderer.component.ts](/gg-web-engine/modules/pixi/components/pixi-renderer.component.ts)
 - [pixi/components/pixi-scene.component.ts](/gg-web-engine/modules/pixi/components/pixi-scene.component.ts)

@@ -1,6 +1,6 @@
 ---
 title: core/3d/components/rendering/i-material-readable-3d.component.ts
-nav_order: 52
+nav_order: 57
 parent: Modules
 ---
 

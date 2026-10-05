@@ -1,6 +1,6 @@
 ---
 title: core/2d/components/rendering/i-visual-scene-2d.component.ts
-nav_order: 23
+nav_order: 24
 parent: Modules
 ---
 
@@ -23,5 +23,12 @@ parent: Modules
 
 ```ts
 export interface IVisualScene2dComponent<VTypeDoc extends VisualTypeDocRepo2D = VisualTypeDocRepo2D>
-  extends IVisualSceneComponent<Point2, number, VTypeDoc> {}
+  extends IVisualSceneComponent<Point2, number, VTypeDoc> {
+  /** The scene's current environment. A fresh scene's `background` is `null`, so the renderer's
+   * own clear color shows. */
+  readonly environment: Readonly<Environment2dOpts<VTypeDoc['texture']>>
+
+  /** Changes the scene's environment. Only the fields present change; `null` clears a field. */
+  setEnvironment(environment: Partial<Environment2dOpts<VTypeDoc['texture']>>): void
+}
 ```

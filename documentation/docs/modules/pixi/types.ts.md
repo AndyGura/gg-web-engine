@@ -1,6 +1,6 @@
 ---
 title: pixi/types.ts
-nav_order: 165
+nav_order: 176
 parent: Modules
 ---
 
@@ -53,6 +53,7 @@ export type PixiVisualTypeDocRepo2D = {
   factory: PixiFactory
   displayObject: PixiDisplayObjectComponent
   camera: PixiCameraComponent
+  parallaxLayer: PixiParallaxLayerComponent
   renderer: PixiRendererComponent
   rendererExtraOpts: ApplicationOptions
   texture: Texture

@@ -1,6 +1,6 @@
 ---
 title: core/3d/components/rendering/i-camera-3d.component.ts
-nav_order: 50
+nav_order: 54
 parent: Modules
 ---
 

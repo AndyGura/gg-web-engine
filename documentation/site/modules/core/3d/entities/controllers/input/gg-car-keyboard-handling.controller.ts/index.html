@@ -605,7 +605,23 @@
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export type GgCarKeyboardControllerOptions = CarKeyboardControllerOptions &amp; {
   gearUpDownKeys: [string, string]
+  /**
+   * Whether the throttle keys pick the driving direction by themselves. While `true`, holding
+   * &quot;down&quot; brakes a car moving forward, and once it (nearly) stands still shifts into reverse and
+   * swaps the two keys: &quot;down&quot; now accelerates backwards, &quot;up&quot; brakes - until the car stands still
+   * again with &quot;up&quot; held, which shifts back into first gear. While `false`, &quot;up&quot; is always the
+   * throttle and &quot;down&quot; always the brake, and the direction only changes with the gear keys.
+   */
   autoReverse: boolean
+  /**
+   * Whether `autoReverse` leaves a car in neutral alone. Default `true`: neutral is a gear the
+   * driver picks and leaves with the gear keys, and the throttle keys only rev the engine in it.
+   * With `false` neutral is never used: any throttle input shifts a car found in neutral (e.g. a
+   * freshly spawned one) into first gear or reverse right away, so it drives with the throttle
+   * keys alone. Pair it with `switchingGearsEnabled = false`, which turns the gear keys off. Has
+   * no effect without `autoReverse`.
+   */
+  neutralGear?: boolean
   handbrakeKey: string
 }
 </code></pre>

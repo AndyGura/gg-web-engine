@@ -1,6 +1,6 @@
 ---
 title: core/3d/components/audio/i-audio-source-3d.component.ts
-nav_order: 43
+nav_order: 47
 parent: Modules
 ---
 

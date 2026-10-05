@@ -1,6 +1,6 @@
 ---
 title: pixi/pixi-factory.ts
-nav_order: 164
+nav_order: 175
 parent: Modules
 ---
 
@@ -15,6 +15,8 @@ parent: Modules
   - [PixiFactory (class)](#pixifactory-class)
     - [createPrimitive (method)](#createprimitive-method)
     - [createAnimatedSprite (method)](#createanimatedsprite-method)
+    - [createParallaxLayer (method)](#createparallaxlayer-method)
+    - [loadTexture (method)](#loadtexture-method)
   - [PixiGridAtlasClip (type alias)](#pixigridatlasclip-type-alias)
   - [PixiGridAtlasOptions (type alias)](#pixigridatlasoptions-type-alias)
 
@@ -57,6 +59,22 @@ run/jump, ...). Slices each clip's own row into `frameCount` individual frame te
 
 ```ts
 createAnimatedSprite(baseTexture: Texture, options: PixiGridAtlasOptions): PixiAnimatedSpriteComponent
+```
+
+### createParallaxLayer (method)
+
+**Signature**
+
+```ts
+createParallaxLayer(options: ParallaxLayer2dOpts<Texture>): PixiParallaxLayerComponent
+```
+
+### loadTexture (method)
+
+**Signature**
+
+```ts
+loadTexture(url: string): Promise<Texture>
 ```
 
 ## PixiGridAtlasClip (type alias)

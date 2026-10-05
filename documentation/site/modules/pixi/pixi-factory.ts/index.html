@@ -542,6 +542,20 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#createparallaxlayer-method" class="md-nav__link">
+    createParallaxLayer (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#loadtexture-method" class="md-nav__link">
+    loadTexture (method)
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -594,6 +608,8 @@
 <li><a href="#pixifactory-class">PixiFactory (class)</a><ul>
 <li><a href="#createprimitive-method">createPrimitive (method)</a></li>
 <li><a href="#createanimatedsprite-method">createAnimatedSprite (method)</a></li>
+<li><a href="#createparallaxlayer-method">createParallaxLayer (method)</a></li>
+<li><a href="#loadtexture-method">loadTexture (method)</a></li>
 </ul>
 </li>
 <li><a href="#pixigridatlasclip-type-alias">PixiGridAtlasClip (type alias)</a></li>
@@ -620,6 +636,14 @@ run/jump, ...). Slices each clip's own row into <code>frameCount</code> individu
 <code>baseTexture</code>'s source (no copying/re-encoding, just distinct <code>frame</code> rectangles).</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">createAnimatedSprite(baseTexture: Texture, options: PixiGridAtlasOptions): PixiAnimatedSpriteComponent
+</code></pre>
+<h3 id="createparallaxlayer-method">createParallaxLayer (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">createParallaxLayer(options: ParallaxLayer2dOpts&lt;Texture&gt;): PixiParallaxLayerComponent
+</code></pre>
+<h3 id="loadtexture-method">loadTexture (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">loadTexture(url: string): Promise&lt;Texture&gt;
 </code></pre>
 <h2 id="pixigridatlasclip-type-alias">PixiGridAtlasClip (type alias)</h2>
 <p>A single named clip's location within a uniform-grid atlas - see <code>PixiGridAtlasOptions</code>.</p>

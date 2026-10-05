@@ -1,6 +1,6 @@
 ---
 title: core/2d/models/body-options.ts
-nav_order: 39
+nav_order: 42
 parent: Modules
 ---
 

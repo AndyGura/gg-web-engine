@@ -1,6 +1,6 @@
 ---
 title: pixi/components/pixi-physics-debug-view.ts
-nav_order: 161
+nav_order: 172
 parent: Modules
 ---
 

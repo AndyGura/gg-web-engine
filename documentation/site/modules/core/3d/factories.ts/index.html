@@ -550,6 +550,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#createlight-method" class="md-nav__link">
+    createLight (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#randomcolor-method" class="md-nav__link">
     randomColor (method)
   </a>
@@ -644,6 +651,7 @@
 <li><a href="#idisplayobject3dcomponentfactory-class">IDisplayObject3dComponentFactory (class)</a><ul>
 <li><a href="#createprimitive-method">createPrimitive (method)</a></li>
 <li><a href="#createperspectivecamera-method">createPerspectiveCamera (method)</a></li>
+<li><a href="#createlight-method">createLight (method)</a></li>
 <li><a href="#randomcolor-method">randomColor (method)</a></li>
 <li><a href="#createplane-method">createPlane (method)</a></li>
 <li><a href="#createbox-method">createBox (method)</a></li>
@@ -690,6 +698,11 @@
     aspectRatio?: number;
     frustrum?: { near: number; far: number };
   }): VTypeDoc['camera'];
+</code></pre>
+<h3 id="createlight-method">createLight (method)</h3>
+<p>Creates a light. Wrap it in a <code>Light3dEntity</code> (or use <code>Gg3dWorld.addLight</code>) to add it to a world.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">abstract createLight(descriptor: Light3dDescriptor): VTypeDoc['light'];
 </code></pre>
 <h3 id="randomcolor-method">randomColor (method)</h3>
 <p><strong>Signature</strong></p>

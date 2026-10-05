@@ -28,6 +28,8 @@ where one exists.
 
 ## [Unreleased]
 
+## [0.0.77] - 2026-10-05
+
 ### Added
 - `@gg-web-engine/core`, `@gg-web-engine/three`: library-agnostic lights. `factory.createLight(descriptor)`
   builds an `AMBIENT`, `HEMISPHERE`, `DIRECTIONAL`, `POINT` or `SPOT` light (`Light3dDescriptor`:
@@ -563,7 +565,8 @@ where one exists.
 
 First published version: `@gg-web-engine/core`, `three`, `pixi`, `ammo`, and `matter`.
 
-[Unreleased]: https://github.com/AndyGura/gg-web-engine/compare/0.0.76...HEAD
+[Unreleased]: https://github.com/AndyGura/gg-web-engine/compare/0.0.77...HEAD
+[0.0.77]: https://github.com/AndyGura/gg-web-engine/compare/0.0.76...0.0.77
 [0.0.76]: https://github.com/AndyGura/gg-web-engine/compare/0.0.75...0.0.76
 [0.0.75]: https://github.com/AndyGura/gg-web-engine/compare/0.0.74...0.0.75
 [0.0.74]: https://github.com/AndyGura/gg-web-engine/compare/0.0.73...0.0.74

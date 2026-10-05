@@ -1,6 +1,6 @@
 ---
 title: pixi/components/pixi-scene.component.ts
-nav_order: 163
+nav_order: 174
 parent: Modules
 ---
 
@@ -13,9 +13,11 @@ parent: Modules
 - [utils](#utils)
   - [PixiSceneComponent (class)](#pixiscenecomponent-class)
     - [init (method)](#init-method)
+    - [setEnvironment (method)](#setenvironment-method)
     - [createRenderer (method)](#createrenderer-method)
     - [dispose (method)](#dispose-method)
     - [factory (property)](#factory-property)
+    - [parallaxLayers (property)](#parallaxlayers-property)
 
 ---
 
@@ -37,6 +39,14 @@ export declare class PixiSceneComponent {
 
 ```ts
 async init(): Promise<void>
+```
+
+### setEnvironment (method)
+
+**Signature**
+
+```ts
+setEnvironment(environment: Partial<Environment2dOpts<Texture>>): void
 ```
 
 ### createRenderer (method)
@@ -65,4 +75,14 @@ dispose(): void
 
 ```ts
 readonly factory: PixiFactory
+```
+
+### parallaxLayers (property)
+
+Parallax layers currently in this scene - each renderer positions them for its own camera.
+
+**Signature**
+
+```ts
+readonly parallaxLayers: Set<PixiParallaxLayerComponent>
 ```

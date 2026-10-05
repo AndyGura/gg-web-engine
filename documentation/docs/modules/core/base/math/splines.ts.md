@@ -1,6 +1,6 @@
 ---
 title: core/base/math/splines.ts
-nav_order: 132
+nav_order: 142
 parent: Modules
 ---
 

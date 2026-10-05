@@ -1,6 +1,6 @@
 ---
 title: core/base/inputs/direction.keyboard.input.ts
-nav_order: 117
+nav_order: 127
 parent: Modules
 ---
 

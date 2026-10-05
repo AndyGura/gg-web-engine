@@ -8,6 +8,7 @@ has_children: true
 - [core/3d/components/rendering/i-animated-display-object-3d.component.ts](/gg-web-engine/modules/core/3d/components/rendering/i-animated-display-object-3d.component.ts)
 - [core/3d/components/rendering/i-camera-3d.component.ts](/gg-web-engine/modules/core/3d/components/rendering/i-camera-3d.component.ts)
 - [core/3d/components/rendering/i-display-object-3d.component.ts](/gg-web-engine/modules/core/3d/components/rendering/i-display-object-3d.component.ts)
+- [core/3d/components/rendering/i-light-3d.component.ts](/gg-web-engine/modules/core/3d/components/rendering/i-light-3d.component.ts)
 - [core/3d/components/rendering/i-material-readable-3d.component.ts](/gg-web-engine/modules/core/3d/components/rendering/i-material-readable-3d.component.ts)
 - [core/3d/components/rendering/i-renderer-3d.component.ts](/gg-web-engine/modules/core/3d/components/rendering/i-renderer-3d.component.ts)
 - [core/3d/components/rendering/i-visual-scene-3d.component.ts](/gg-web-engine/modules/core/3d/components/rendering/i-visual-scene-3d.component.ts)

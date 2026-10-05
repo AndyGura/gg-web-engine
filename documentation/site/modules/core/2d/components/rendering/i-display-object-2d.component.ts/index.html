@@ -556,7 +556,13 @@
 <h2 id="idisplayobject2dcomponent-interface">IDisplayObject2dComponent (interface)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export interface IDisplayObject2dComponent&lt;VTypeDoc extends VisualTypeDocRepo2D = VisualTypeDocRepo2D&gt;
-  extends IDisplayObjectComponent&lt;Point2, number, VTypeDoc&gt; {}
+  extends IDisplayObjectComponent&lt;Point2, number, VTypeDoc&gt; {
+  /**
+   * Draw order: objects with a higher `zIndex` are drawn on top of lower ones, and equal values keep
+   * the order they were added in. Default `0`. Parallax layers default to `-1` (behind the world).
+   */
+  zIndex: number
+}
 </code></pre>
 
 

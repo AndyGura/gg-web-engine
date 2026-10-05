@@ -1,6 +1,6 @@
 ---
 title: core/2d/gg-2d-world.ts
-nav_order: 34
+nav_order: 37
 parent: Modules
 ---
 
@@ -14,6 +14,7 @@ parent: Modules
   - [AudioTypeDocRepo2D (type alias)](#audiotypedocrepo2d-type-alias)
   - [Gg2dWorld (class)](#gg2dworld-class)
     - [addPrimitiveRigidBody (method)](#addprimitiverigidbody-method)
+    - [addParallaxLayer (method)](#addparallaxlayer-method)
     - [addRenderer (method)](#addrenderer-method)
     - [registerConsoleCommands (method)](#registerconsolecommands-method)
     - [loader (property)](#loader-property)
@@ -74,6 +75,19 @@ addPrimitiveRigidBody(
     rotation: number = 0,
     material: DisplayObject2dOpts<TypeDoc['vTypeDoc']['texture']> = {},
   ): Entity2d<TypeDoc>
+```
+
+### addParallaxLayer (method)
+
+Creates a parallax layer (see `ParallaxLayer2dOpts`), wraps it in a `ParallaxLayer2dEntity` and
+adds it to the world.
+
+**Signature**
+
+```ts
+addParallaxLayer(
+    options: ParallaxLayer2dOpts<TypeDoc['vTypeDoc']['texture']>,
+  ): ParallaxLayer2dEntity<TypeDoc['vTypeDoc']>
 ```
 
 ### addRenderer (method)
@@ -251,6 +265,7 @@ export type VisualTypeDocRepo2D = {
   renderer: IRenderer2dComponent
   rendererExtraOpts: {}
   camera: ICamera2dComponent
+  parallaxLayer: IParallaxLayer2dComponent
   texture: unknown
 }
 ```

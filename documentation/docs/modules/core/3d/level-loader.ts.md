@@ -1,6 +1,6 @@
 ---
 title: core/3d/level-loader.ts
-nav_order: 81
+nav_order: 88
 parent: Modules
 ---
 
@@ -13,14 +13,19 @@ parent: Modules
 - [utils](#utils)
   - [Camera3DSettings (interface)](#camera3dsettings-interface)
   - [CompoundChild3DSettings (interface)](#compoundchild3dsettings-interface)
+  - [Environment3DSettings (interface)](#environment3dsettings-interface)
+  - [EnvironmentTexture3DSettings (type alias)](#environmenttexture3dsettings-type-alias)
   - [Gg3dLevelLoader (class)](#gg3dlevelloader-class)
     - [registerDefaultClasses (method)](#registerdefaultclasses-method)
+    - [serializeLight (method)](#serializelight-method)
     - [serializePrimitive (method)](#serializeprimitive-method)
     - [serializeTrigger (method)](#serializetrigger-method)
     - [buildShapeDescriptor (method)](#buildshapedescriptor-method)
     - [createPrimitive (method)](#createprimitive-method)
     - [createTrigger (method)](#createtrigger-method)
     - [createCamera (method)](#createcamera-method)
+    - [createLight (method)](#createlight-method)
+    - [createEnvironment (method)](#createenvironment-method)
     - [createSound (method)](#createsound-method)
     - [createPlayer (method)](#createplayer-method)
     - [resolveWheelDisplay (method)](#resolvewheeldisplay-method)
@@ -33,6 +38,7 @@ parent: Modules
   - [GgCarStateSettings (interface)](#ggcarstatesettings-interface)
   - [GgCarWheelDisplaySettings (interface)](#ggcarwheeldisplaysettings-interface)
   - [GgCarWheelSettings (type alias)](#ggcarwheelsettings-type-alias)
+  - [Light3DSettings (type alias)](#light3dsettings-type-alias)
   - [MapGraph3DSettings (interface)](#mapgraph3dsettings-interface)
   - [MapGraphNodeJson (type alias)](#mapgraphnodejson-type-alias)
   - [Player3DSettings (type alias)](#player3dsettings-type-alias)
@@ -105,6 +111,38 @@ export interface CompoundChild3DSettings extends Primitive3DShapeSettings {
 }
 ```
 
+## Environment3DSettings (interface)
+
+Settings for the built-in `"Environment"` entity class: the scene's background, environment map
+and fog (see `IVisualScene3dComponent.setEnvironment`). Only the fields present are applied, and
+they're restored to what they were when the level is unloaded (see `Environment3dEntity`). A
+no-op without a visual scene.
+
+**Signature**
+
+```ts
+export interface Environment3DSettings {
+  /** A `0xRRGGBB` color, a sky texture, or `null` to show the renderer's clear color. */
+  background?: number | EnvironmentTexture3DSettings | null
+  /** Texture lit materials reflect, or `null` for none. */
+  environmentMap?: EnvironmentTexture3DSettings | null
+  /** Fog, or `null` for none. */
+  fog?: Fog3dOpts | null
+}
+```
+
+## EnvironmentTexture3DSettings (type alias)
+
+A texture reference inside `"Environment"` settings: either six cube-map images (see
+`CubeTextureFaces` - each named after the world direction it is seen in, `pz` being the sky
+overhead), or one equirectangular (2:1) panorama.
+
+**Signature**
+
+```ts
+export type EnvironmentTexture3DSettings = { cube: CubeTextureFaces } | { equirectangular: string }
+```
+
 ## Gg3dLevelLoader (class)
 
 3D level loader: registers the built-in primitive/trigger/camera/car/map-graph entity classes
@@ -127,6 +165,19 @@ Register the built-in classes for primitives, triggers, and cameras
 
 ```ts
 private registerDefaultClasses(): void
+```
+
+### serializeLight (method)
+
+Live serializer for the built-in `"Light"` class: matches `entity.constructor === Light3dEntity`
+and reads the light's current settings back from `ILight3dComponent.lightOptions`, so a light
+created with `Gg3dWorld.addLight` (or whose color/intensity changed after loading) serializes
+as it is now.
+
+**Signature**
+
+```ts
+private serializeLight(entity: IEntity<Point3, Point4, TypeDoc>): EntityJson | undefined
 ```
 
 ### serializePrimitive (method)
@@ -232,6 +283,35 @@ private createCamera(
     world: Gg3dWorld<TypeDoc>,
     settings: Camera3DSettings,
   ): Camera3dEntity<TypeDoc['vTypeDoc']> | undefined
+```
+
+### createLight (method)
+
+Create a `"Light"` entity: a `Light3dEntity` wrapping a light built from the settings'
+`Light3dDescriptor` fields. Returns `undefined` without a visual scene.
+
+**Signature**
+
+```ts
+private createLight(
+    world: Gg3dWorld<TypeDoc>,
+    settings: Light3DSettings & { name?: string },
+  ): Light3dEntity<TypeDoc['vTypeDoc']> | undefined
+```
+
+### createEnvironment (method)
+
+Create an `"Environment"` entity: loads any sky textures the settings reference, then returns
+an `Environment3dEntity` that applies them while it is in the world and frees them when it is
+disposed. Returns `undefined` without a visual scene.
+
+**Signature**
+
+```ts
+private async createEnvironment(
+    world: Gg3dWorld<TypeDoc>,
+    settings: Environment3DSettings,
+  ): Promise<Environment3dEntity<TypeDoc['vTypeDoc']> | undefined>
 ```
 
 ### createSound (method)
@@ -454,6 +534,25 @@ export type GgCarWheelSettings = GgCarSharedWheelSettings & {
   isLeft: boolean
   isFront: boolean
   position: Point3
+}
+```
+
+## Light3DSettings (type alias)
+
+Settings for the built-in `"Light"` entity class: a `Light3dDescriptor` (`type`, `color`,
+`intensity`, shadow settings, ... - put these in `config`) plus where the light is. Creates a
+`Light3dEntity`; a no-op without a visual scene.
+
+**Signature**
+
+```ts
+export type Light3DSettings = Light3dDescriptor & {
+  /** Position of the light. */
+  position?: Point3
+  /** Rotation of the light. `DIRECTIONAL`/`SPOT` lights shine along their local `-Z` axis. */
+  rotation?: Point4
+  /** Point the light shines towards, an alternative to `rotation` for `DIRECTIONAL`/`SPOT` lights. */
+  target?: Point3
 }
 ```
 

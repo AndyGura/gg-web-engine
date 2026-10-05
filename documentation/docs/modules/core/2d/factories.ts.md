@@ -1,6 +1,6 @@
 ---
 title: core/2d/factories.ts
-nav_order: 33
+nav_order: 36
 parent: Modules
 ---
 
@@ -15,6 +15,8 @@ parent: Modules
   - [IAudioSource2dComponentFactory (interface)](#iaudiosource2dcomponentfactory-interface)
   - [IDisplayObject2dComponentFactory (class)](#idisplayobject2dcomponentfactory-class)
     - [createPrimitive (method)](#createprimitive-method)
+    - [createParallaxLayer (method)](#createparallaxlayer-method)
+    - [loadTexture (method)](#loadtexture-method)
     - [randomColor (method)](#randomcolor-method)
     - [createBox (method)](#createbox-method)
     - [createCircle (method)](#createcircle-method)
@@ -64,6 +66,27 @@ abstract createPrimitive(
     descriptor: Shape2DDescriptor,
     material?: DisplayObject2dOpts<VTypeDoc['texture']>,
   ): VTypeDoc['displayObject'];
+```
+
+### createParallaxLayer (method)
+
+Creates a parallax layer (see `ParallaxLayer2dOpts`). Wrap it in a `ParallaxLayer2dEntity` (or
+use `Gg2dWorld.addParallaxLayer`) to add it to a world.
+
+**Signature**
+
+```ts
+abstract createParallaxLayer(options: ParallaxLayer2dOpts<VTypeDoc['texture']>): VTypeDoc['parallaxLayer'];
+```
+
+### loadTexture (method)
+
+Loads an image as a texture, for `DisplayObject2dOpts.texture`, a parallax layer or a background.
+
+**Signature**
+
+```ts
+abstract loadTexture(url: string): Promise<VTypeDoc['texture']>;
 ```
 
 ### randomColor (method)

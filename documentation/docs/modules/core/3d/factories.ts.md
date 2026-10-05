@@ -1,6 +1,6 @@
 ---
 title: core/3d/factories.ts
-nav_order: 77
+nav_order: 84
 parent: Modules
 ---
 
@@ -16,6 +16,7 @@ parent: Modules
   - [IDisplayObject3dComponentFactory (class)](#idisplayobject3dcomponentfactory-class)
     - [createPrimitive (method)](#createprimitive-method)
     - [createPerspectiveCamera (method)](#createperspectivecamera-method)
+    - [createLight (method)](#createlight-method)
     - [randomColor (method)](#randomcolor-method)
     - [createPlane (method)](#createplane-method)
     - [createBox (method)](#createbox-method)
@@ -81,6 +82,16 @@ abstract createPerspectiveCamera(settings?: {
     aspectRatio?: number;
     frustrum?: { near: number; far: number };
   }): VTypeDoc['camera'];
+```
+
+### createLight (method)
+
+Creates a light. Wrap it in a `Light3dEntity` (or use `Gg3dWorld.addLight`) to add it to a world.
+
+**Signature**
+
+```ts
+abstract createLight(descriptor: Light3dDescriptor): VTypeDoc['light'];
 ```
 
 ### randomColor (method)

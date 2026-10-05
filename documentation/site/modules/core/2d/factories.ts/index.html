@@ -543,6 +543,20 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#createparallaxlayer-method" class="md-nav__link">
+    createParallaxLayer (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#loadtexture-method" class="md-nav__link">
+    loadTexture (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#randomcolor-method" class="md-nav__link">
     randomColor (method)
   </a>
@@ -629,6 +643,8 @@
 <li><a href="#iaudiosource2dcomponentfactory-interface">IAudioSource2dComponentFactory (interface)</a></li>
 <li><a href="#idisplayobject2dcomponentfactory-class">IDisplayObject2dComponentFactory (class)</a><ul>
 <li><a href="#createprimitive-method">createPrimitive (method)</a></li>
+<li><a href="#createparallaxlayer-method">createParallaxLayer (method)</a></li>
+<li><a href="#loadtexture-method">loadTexture (method)</a></li>
 <li><a href="#randomcolor-method">randomColor (method)</a></li>
 <li><a href="#createbox-method">createBox (method)</a></li>
 <li><a href="#createcircle-method">createCircle (method)</a></li>
@@ -663,6 +679,17 @@
     descriptor: Shape2DDescriptor,
     material?: DisplayObject2dOpts&lt;VTypeDoc['texture']&gt;,
   ): VTypeDoc['displayObject'];
+</code></pre>
+<h3 id="createparallaxlayer-method">createParallaxLayer (method)</h3>
+<p>Creates a parallax layer (see <code>ParallaxLayer2dOpts</code>). Wrap it in a <code>ParallaxLayer2dEntity</code> (or
+use <code>Gg2dWorld.addParallaxLayer</code>) to add it to a world.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">abstract createParallaxLayer(options: ParallaxLayer2dOpts&lt;VTypeDoc['texture']&gt;): VTypeDoc['parallaxLayer'];
+</code></pre>
+<h3 id="loadtexture-method">loadTexture (method)</h3>
+<p>Loads an image as a texture, for <code>DisplayObject2dOpts.texture</code>, a parallax layer or a background.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">abstract loadTexture(url: string): Promise&lt;VTypeDoc['texture']&gt;;
 </code></pre>
 <h3 id="randomcolor-method">randomColor (method)</h3>
 <p><strong>Signature</strong></p>

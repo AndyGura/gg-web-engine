@@ -1,6 +1,6 @@
 ---
 title: core/3d/components/audio/i-audio-scene-3d.component.ts
-nav_order: 42
+nav_order: 46
 parent: Modules
 ---
 

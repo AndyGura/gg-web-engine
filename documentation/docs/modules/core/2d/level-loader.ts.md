@@ -1,6 +1,6 @@
 ---
 title: core/2d/level-loader.ts
-nav_order: 37
+nav_order: 40
 parent: Modules
 ---
 
@@ -12,6 +12,7 @@ parent: Modules
 
 - [utils](#utils)
   - [CompoundChild2DSettings (interface)](#compoundchild2dsettings-interface)
+  - [Environment2DSettings (interface)](#environment2dsettings-interface)
   - [Gg2dLevelLoader (class)](#gg2dlevelloader-class)
     - [registerDefaultClasses (method)](#registerdefaultclasses-method)
     - [serializePrimitive (method)](#serializeprimitive-method)
@@ -20,7 +21,10 @@ parent: Modules
     - [createPrimitive (method)](#createprimitive-method)
     - [createTrigger (method)](#createtrigger-method)
     - [createPlayer (method)](#createplayer-method)
+    - [createParallaxLayer (method)](#createparallaxlayer-method)
+    - [createEnvironment (method)](#createenvironment-method)
     - [createSound (method)](#createsound-method)
+  - [ParallaxLayer2DSettings (interface)](#parallaxlayer2dsettings-interface)
   - [Player2DSettings (type alias)](#player2dsettings-type-alias)
   - [Primitive2DShapeName (type alias)](#primitive2dshapename-type-alias)
   - [Primitive2DShapeSettings (interface)](#primitive2dshapesettings-interface)
@@ -52,6 +56,20 @@ export interface CompoundChild2DSettings extends Primitive2DShapeSettings {
    * Rotation of the child shape in radians, relative to the compound's own rotation
    */
   rotation?: number
+}
+```
+
+## Environment2DSettings (interface)
+
+Settings for the built-in 2D `"Environment"` class (see `IVisualScene2dComponent.setEnvironment`):
+`background` is a `0xRRGGBB` color, `{ "image": "url" }`, or `null`. Applied while the level is
+loaded and restored when it is unloaded (see `Environment2dEntity`). A no-op without a visual scene.
+
+**Signature**
+
+```ts
+export interface Environment2DSettings {
+  background?: number | { image: string } | null
 }
 ```
 
@@ -162,6 +180,35 @@ private createPlayer(
   ): CharacterController2dEntity<TypeDoc> | undefined
 ```
 
+### createParallaxLayer (method)
+
+Create a `"ParallaxLayer"` entity: loads the texture, then wraps a parallax layer built from the
+settings in a `ParallaxLayer2dEntity`. Returns `undefined` without a visual scene.
+
+**Signature**
+
+```ts
+private async createParallaxLayer(
+    world: Gg2dWorld<TypeDoc>,
+    settings: ParallaxLayer2DSettings,
+  ): Promise<ParallaxLayer2dEntity<TypeDoc['vTypeDoc']> | undefined>
+```
+
+### createEnvironment (method)
+
+Create an `"Environment"` entity: loads a background image if one is given, then returns an
+`Environment2dEntity` that applies the settings while it is in the world. Returns `undefined`
+without a visual scene.
+
+**Signature**
+
+```ts
+private async createEnvironment(
+    world: Gg2dWorld<TypeDoc>,
+    settings: Environment2DSettings,
+  ): Promise<Environment2dEntity<TypeDoc['vTypeDoc']> | undefined>
+```
+
 ### createSound (method)
 
 Create a `"Sound"` entity - see the 3D loader's `createSound` doc (identical behavior).
@@ -173,6 +220,25 @@ private async createSound(
     world: Gg2dWorld<TypeDoc>,
     settings: Sound2DSettings,
   ): Promise<AudioSource2dEntity<TypeDoc> | undefined>
+```
+
+## ParallaxLayer2DSettings (interface)
+
+Settings for the built-in 2D `"ParallaxLayer"` class - `ParallaxLayer2dOpts`, with the texture
+given as an image URL. Creates a `ParallaxLayer2dEntity`; a no-op without a visual scene.
+
+**Signature**
+
+```ts
+export interface ParallaxLayer2DSettings {
+  /** URL of the layer's image, loaded with `factory.loadTexture`. */
+  texture: string
+  parallax?: Point2 | number
+  zIndex?: number
+  repeat?: ParallaxLayer2dRepeat
+  offset?: Point2
+  scale?: Point2 | number
+}
 ```
 
 ## Player2DSettings (type alias)

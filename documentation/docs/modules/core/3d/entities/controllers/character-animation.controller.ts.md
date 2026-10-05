@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/controllers/character-animation.controller.ts
-nav_order: 60
+nav_order: 65
 parent: Modules
 ---
 

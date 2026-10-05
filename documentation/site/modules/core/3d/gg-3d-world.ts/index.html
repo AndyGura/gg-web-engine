@@ -543,6 +543,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#addlight-method" class="md-nav__link">
+    addLight (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#addrenderer-method" class="md-nav__link">
     addRenderer (method)
   </a>
@@ -678,6 +685,7 @@
 <li><a href="#gg3dworld-class">Gg3dWorld (class)</a><ul>
 <li><a href="#addprimitiverigidbody-method">addPrimitiveRigidBody (method)</a></li>
 <li><a href="#addgrabbableprimitive-method">addGrabbablePrimitive (method)</a></li>
+<li><a href="#addlight-method">addLight (method)</a></li>
 <li><a href="#addrenderer-method">addRenderer (method)</a></li>
 <li><a href="#registerconsolecommands-method">registerConsoleCommands (method)</a></li>
 <li><a href="#loader-property">loader (property)</a></li>
@@ -740,6 +748,17 @@ must describe a dynamic body (<code>bodyType: 'dynamic'</code>) - a static/kinem
     material: DisplayObject3dOpts&lt;TypeDoc['vTypeDoc']['texture']&gt; = {},
     grabOptions: Partial&lt;Grabbable3dEntityOptions&gt; = {},
   ): Grabbable3dEntity&lt;TypeDoc&gt;
+</code></pre>
+<h3 id="addlight-method">addLight (method)</h3>
+<p>Creates a light (see <code>Light3dDescriptor</code>), wraps it in a <code>Light3dEntity</code> and adds it to the
+world. When <code>target</code> is given, the light is rotated to shine from <code>position</code> towards it, which
+is what <code>DIRECTIONAL</code> and <code>SPOT</code> lights normally want.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">addLight(
+    descriptor: Light3dDescriptor,
+    position: Point3 = Pnt3.O,
+    target?: Point3,
+  ): Light3dEntity&lt;TypeDoc['vTypeDoc']&gt;
 </code></pre>
 <h3 id="addrenderer-method">addRenderer (method)</h3>
 <p><strong>Signature</strong></p>
@@ -864,6 +883,7 @@ must describe a dynamic body (<code>bodyType: 'dynamic'</code>) - a static/kinem
   renderer: IRenderer3dComponent
   rendererExtraOpts: {}
   camera: ICamera3dComponent
+  light: ILight3dComponent
   texture: unknown
 }
 </code></pre>

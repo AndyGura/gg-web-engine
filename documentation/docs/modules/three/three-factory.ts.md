@@ -1,6 +1,6 @@
 ---
 title: three/three-factory.ts
-nav_order: 190
+nav_order: 202
 parent: Modules
 ---
 
@@ -17,6 +17,7 @@ parent: Modules
     - [transformPrimitiveZUp (method)](#transformprimitivezup-method)
     - [createPrimitive (method)](#createprimitive-method)
     - [createPerspectiveCamera (method)](#createperspectivecamera-method)
+    - [createLight (method)](#createlight-method)
 
 ---
 
@@ -77,4 +78,12 @@ createPerspectiveCamera(
       frustrum?: { near: number; far: number };
     } = {},
   ): ThreeCameraComponent
+```
+
+### createLight (method)
+
+**Signature**
+
+```ts
+createLight(descriptor: Light3dDescriptor): ThreeLightComponent
 ```

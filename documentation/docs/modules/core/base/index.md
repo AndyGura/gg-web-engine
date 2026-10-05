@@ -10,6 +10,7 @@ has_children: true
 - [core/base/components](/gg-web-engine/modules/core/base/components)
 - [core/base/data-structures](/gg-web-engine/modules/core/base/data-structures)
 - [core/base/entities](/gg-web-engine/modules/core/base/entities)
+- [core/base/environment-overrides.ts](/gg-web-engine/modules/core/base/environment-overrides.ts)
 - [core/base/gg-world.ts](/gg-web-engine/modules/core/base/gg-world.ts)
 - [core/base/index.ts](/gg-web-engine/modules/core/base/index.ts)
 - [core/base/inputs](/gg-web-engine/modules/core/base/inputs)

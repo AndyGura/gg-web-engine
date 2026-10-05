@@ -1,6 +1,6 @@
 ---
 title: core/base/components/physics/i-body.component.ts
-nav_order: 100
+nav_order: 109
 parent: Modules
 ---
 

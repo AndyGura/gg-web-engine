@@ -1,6 +1,6 @@
 ---
 title: core/2d/entities/controllers/entity-2d-positioning.animator.ts
-nav_order: 27
+nav_order: 28
 parent: Modules
 ---
 

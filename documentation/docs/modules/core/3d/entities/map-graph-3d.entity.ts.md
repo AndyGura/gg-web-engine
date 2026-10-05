@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/map-graph-3d.entity.ts
-nav_order: 72
+nav_order: 79
 parent: Modules
 ---
 
@@ -22,6 +22,7 @@ parent: Modules
     - [onRemoved (method)](#onremoved-method)
     - [loadChunk (method)](#loadchunk-method)
     - [attachToChunk (method)](#attachtochunk-method)
+    - [detachFromChunk (method)](#detachfromchunk-method)
     - [disposeChunk (method)](#disposechunk-method)
     - [tickOrder (property)](#tickorder-property)
     - [loaderCursor$ (property)](#loadercursor-property)
@@ -145,6 +146,20 @@ reload while the leaked copy is still around, collides with them) once the chunk
 
 ```ts
 public attachToChunk(node: MapGraphNodeType, entities: (IEntity & IPositionable3d)[]): void
+```
+
+### detachFromChunk (method)
+
+Releases entities from whichever loaded chunk they are attached to, without removing them from
+the world: they stay spawned, as children of this entity, and no chunk's unload touches them
+any more. For content that has to outlive the chunk it was spawned with (e.g. a vehicle the
+player drove away from its home chunk) - hand it back with `attachToChunk` once it should
+follow a chunk's lifecycle again, or remove it yourself.
+
+**Signature**
+
+```ts
+public detachFromChunk(entities: (IEntity & IPositionable3d)[]): (IEntity & IPositionable3d)[]
 ```
 
 ### disposeChunk (method)

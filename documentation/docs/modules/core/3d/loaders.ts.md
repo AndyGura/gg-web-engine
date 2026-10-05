@@ -1,6 +1,6 @@
 ---
 title: core/3d/loaders.ts
-nav_order: 83
+nav_order: 90
 parent: Modules
 ---
 
@@ -38,6 +38,25 @@ export interface IDisplayObject3dComponentLoader<VTypeDoc extends VisualTypeDocR
    * need the GG meta/physics-body pipeline `loadFromGgGlb` provides.
    */
   loadFromGlb(glbFile: ArrayBuffer, options?: LoadGlbOptions): Promise<VTypeDoc['displayObject'] | null>
+
+  /**
+   * Loads an image as a texture, e.g. for `DisplayObject3dOpts.diffuse`, or, with
+   * `{ mapping: 'equirectangular' }`, a panorama for `IVisualScene3dComponent.setEnvironment`.
+   */
+  loadTexture(url: string, options?: LoadTextureOptions): Promise<VTypeDoc['texture']>
+
+  /**
+   * Loads a six-image cube-map sky for `IVisualScene3dComponent.setEnvironment`'s `background`/
+   * `environmentMap`. Each face is named after the world direction it is seen in (see
+   * `CubeTextureFaces`).
+   */
+  loadCubeTexture(faces: CubeTextureFaces): Promise<VTypeDoc['texture']>
+
+  /**
+   * Frees a texture returned by `loadTexture`/`loadCubeTexture`. Call it once nothing uses the
+   * texture anymore (no scene environment, no material).
+   */
+  disposeTexture(texture: VTypeDoc['texture']): void
 }
 ```
 

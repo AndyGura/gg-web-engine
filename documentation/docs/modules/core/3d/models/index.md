@@ -7,5 +7,7 @@ has_children: true
 
 - [core/3d/models/body-options.ts](/gg-web-engine/modules/core/3d/models/body-options.ts)
 - [core/3d/models/character-controller-options.ts](/gg-web-engine/modules/core/3d/models/character-controller-options.ts)
+- [core/3d/models/environment.ts](/gg-web-engine/modules/core/3d/models/environment.ts)
 - [core/3d/models/gg-meta.ts](/gg-web-engine/modules/core/3d/models/gg-meta.ts)
+- [core/3d/models/lights.ts](/gg-web-engine/modules/core/3d/models/lights.ts)
 - [core/3d/models/shapes.ts](/gg-web-engine/modules/core/3d/models/shapes.ts)

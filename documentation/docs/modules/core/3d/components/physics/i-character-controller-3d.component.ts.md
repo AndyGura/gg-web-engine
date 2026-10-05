@@ -1,6 +1,6 @@
 ---
 title: core/3d/components/physics/i-character-controller-3d.component.ts
-nav_order: 44
+nav_order: 48
 parent: Modules
 ---
 

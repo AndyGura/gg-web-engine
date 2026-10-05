@@ -522,8 +522,29 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#zuprotationx-static-method" class="md-nav__link">
+    zUpRotationX (static method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#init-method" class="md-nav__link">
     init (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#setenvironment-method" class="md-nav__link">
+    setEnvironment (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#applyenvironment-method" class="md-nav__link">
+    applyEnvironment (method)
   </a>
   
 </li>
@@ -626,7 +647,10 @@
 <ul>
 <li><a href="#utils">utils</a></li>
 <li><a href="#threescenecomponent-class">ThreeSceneComponent (class)</a><ul>
+<li><a href="#zuprotationx-static-method">zUpRotationX (static method)</a></li>
 <li><a href="#init-method">init (method)</a></li>
+<li><a href="#setenvironment-method">setEnvironment (method)</a></li>
+<li><a href="#applyenvironment-method">applyEnvironment (method)</a></li>
 <li><a href="#registerrenderlayer-method">registerRenderLayer (method)</a></li>
 <li><a href="#deregisterrenderlayer-method">deregisterRenderLayer (method)</a></li>
 <li><a href="#createrenderer-method">createRenderer (method)</a></li>
@@ -645,9 +669,24 @@
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export declare class ThreeSceneComponent
 </code></pre>
+<h3 id="zuprotationx-static-method">zUpRotationX (static method)</h3>
+<p>three.js samples sky textures Y-up - an equirectangular panorama's top edge and a cube map's
+<code>py</code> slot are both towards <code>+Y</code> - so they're turned a quarter around X to put that overhead in
+the engine's Z-up world (<code>ThreeLoader.loadCubeTexture</code> fills the cube slots to match).</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private static zUpRotationX(texture: Texture | null): number
+</code></pre>
 <h3 id="init-method">init (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">async init(): Promise&lt;void&gt;
+</code></pre>
+<h3 id="setenvironment-method">setEnvironment (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">setEnvironment(environment: Partial&lt;Environment3dOpts&lt;Texture&gt;&gt;): void
+</code></pre>
+<h3 id="applyenvironment-method">applyEnvironment (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private applyEnvironment(): void
 </code></pre>
 <h3 id="registerrenderlayer-method">registerRenderLayer (method)</h3>
 <p><strong>Signature</strong></p>
