@@ -1,4 +1,4 @@
-import { GgWorld } from '../../src';
+import { GgWorld, PerformanceMeterEntity } from '../../src';
 
 export type ConsoleCommandHandler = (...args: string[]) => Promise<string>;
 
@@ -17,6 +17,7 @@ export function collectConsoleCommands(world: GgWorld<any, any>): Map<string, Co
     ): void => {
       commands.set(command, handler);
     },
+    createPerformanceMeter: (samples: number, maxRows: number) => new PerformanceMeterEntity(samples, maxRows),
   };
   (world as any).registerConsoleCommands(fakeGgstatic);
   return commands;

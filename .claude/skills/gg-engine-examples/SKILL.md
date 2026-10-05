@@ -373,6 +373,12 @@ deliberately demonstrates native interop can opt out with a trailing `// gg-allo
 Adapter-package exports that aren't native objects (`ThreeSceneComponent`, `PixiCameraComponent`,
 `ThreeDisplayObject3dOpts`, world type aliases) are fine.
 
+**`GgStatic` in an example is a debugging aid for the demo, nothing more.** Examples turn on
+`GgStatic.instance.devConsoleEnabled` (and often `showStats`) so a reader can poke at the running
+scene. Nothing the demo shows may depend on it: no gameplay, UI or loading step goes through
+`GgStatic` or a console command, and the demo has to work the same with those lines deleted. A real
+app keeps them out of its production build (see `gg-engine-app-development`).
+
 Give `world` an explicit type annotation from the visual adapter package (e.g. `const world:
 ThreeGgWorld = new Gg3dWorld({...})`, imported from `@gg-web-engine/three`; pixi equivalents follow
 the same naming) whenever the demo reaches through `world.visualScene` for adapter-specific members

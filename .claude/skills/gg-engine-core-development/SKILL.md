@@ -105,6 +105,26 @@ rebuild keeps the capsule *center* at the position as set, unlike a runtime crou
 the feet planted. A serialized crouching character stores its crouched capsule's center as
 `position`, so a feet-anchored rebuild would reload it lower, by half the height difference.
 
+## `src/dev` is a debug-only shadow API: engine code never imports it
+
+`GgStatic` and the rest of `src/dev` (console UI, debugger UI, `PerformanceMeterEntity`) exist for
+debugging a running app. They are exported from the package root so an app can opt in, and that
+export is the only link: no file outside `src/dev` - in core or in any other package - imports from
+it, so the app's own reference is the only thing that can pull it into a build. Two rules follow:
+
+- **Reach it through `window.ggstatic`, and only when it exists.** `GgWorld`'s constructor is the
+  pattern: register commands right away if `window.ggstatic` is set, otherwise listen once for the
+  `ggstatic_added` window event; deregister in `dispose()`. A world's `registerConsoleCommands`
+  receives the instance typed as `GgConsoleHost` (`base/gg-world.ts`), a structural type listing
+  exactly what world code uses - `registerConsoleCommand` and `createPerformanceMeter` (how the
+  `performance` command gets its `PerformanceMeterEntity` without importing the class). Something a
+  command needs from `dev/` is added to `GgStatic` and to that type, not imported. A test driving
+  `registerConsoleCommands` with a fake host has to supply every member of the type
+  (`test/mocks/console-commands.mock.ts`).
+- **Never put a public API on `GgStatic`, or make one depend on it.** A feature lives on the world,
+  its loader, or an adapter; a console command is a second way to reach it. An app that never touches
+  `GgStatic` must lose nothing but the console.
+
 ## Adding a built-in dev-console command
 
 Built-in commands live in each world class's `registerConsoleCommands` override

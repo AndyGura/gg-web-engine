@@ -18,7 +18,6 @@ import {
   warnOnce,
 } from '../base';
 import { lastValueFrom, Observable, Subject, take } from 'rxjs';
-import { PerformanceMeterEntity } from '../dev';
 import { IVisualScene2dComponent, VisualTypeDocRepo2D } from '../2d';
 
 export type VisualTypeDocRepo<D, R> = {
@@ -96,6 +95,27 @@ export type TypeDocOf<W extends GgWorld<any, any>> =
   W extends GgWorld<infer D, infer R, infer TypeDoc> ? TypeDoc : never;
 export type SceneTypeDocOf<W extends GgWorld<any, any>> =
   W extends GgWorld<infer D, infer R, infer TypeDoc, infer SceneTypeDoc> ? SceneTypeDoc : never;
+
+/**
+ * What a world needs from the dev console (`GgStatic`, see `src/dev`) to register its commands.
+ * World classes are handed it through `window.ggstatic` and never import anything from `dev/`.
+ */
+export type GgConsoleHost = {
+  registerConsoleCommand: (
+    world: GgWorld<any, any> | null,
+    command: string,
+    handler: (...args: string[]) => Promise<string>,
+    doc?: string,
+    mutates?: boolean,
+  ) => void;
+  createPerformanceMeter: (
+    samples: number,
+    maxRows: number,
+  ) => IEntity & {
+    readonly avgReport: { totalTime: number; entries: [string, number][] };
+    readonly peakReport: { totalTime: number; entries: [string, number][] };
+  };
+};
 
 export abstract class GgWorld<
   D,
@@ -690,15 +710,7 @@ export abstract class GgWorld<
     this.registerConsoleCommands((window as any).ggstatic);
   }
 
-  protected registerConsoleCommands(ggstatic: {
-    registerConsoleCommand: (
-      world: GgWorld<any, any> | null,
-      command: string,
-      handler: (...args: string[]) => Promise<string>,
-      doc?: string,
-      mutates?: boolean,
-    ) => void;
-  }) {
+  protected registerConsoleCommands(ggstatic: GgConsoleHost) {
     ggstatic.registerConsoleCommand(
       this,
       'timescale',
@@ -790,7 +802,7 @@ export abstract class GgWorld<
             samples = +arg;
           }
         }
-        const meter = new PerformanceMeterEntity(samples, 250);
+        const meter = ggstatic.createPerformanceMeter(samples, 250);
         this.addEntity(meter);
         await lastValueFrom(this.worldClock.tick$.pipe(take(samples)));
         const report = mode === 'avg' ? meter.avgReport : meter.peakReport;

@@ -469,12 +469,25 @@ automation session — instead of reverse-engineering bundled/minified internals
 Commands go through the game's own public API (entity `.position`/`.rotation` setters, world
 getters, etc.), so they can't desync physics from rendering the way poking a raw property would.
 
+`GgStatic` is a development aid, not part of the game-facing API: nothing in the engine depends on
+it, and no engine feature is reachable only through it. Use it while developing; keep it out of a
+production build. Its commands move, spawn and retune anything in the world, so shipping it hands
+players a cheat console.
+
 ### Turning it on
 
 ```typescript
 import { GgStatic } from '@gg-web-engine/core';
-GgStatic.instance.devConsoleEnabled = true; // dev-only; gate behind an env/query flag for prod
+
+if (process.env.NODE_ENV !== 'production') {
+  GgStatic.instance.devConsoleEnabled = true;
+}
 ```
+
+Guard every reference to `GgStatic` with a condition the bundler resolves at build time, as above
+(or `import.meta.env.DEV` under Vite): the engine never imports `GgStatic` itself, so the app's own
+references are the only ones there are, and a production build has none left. A runtime check (a
+query flag, say) leaves the console reachable in production and only hides it.
 
 This does two independent things:
 - Enables the backquote (`` ` ``) key to toggle the visual console UI (`gg-console.ui.ts`) — a
