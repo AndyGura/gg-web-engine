@@ -63,6 +63,9 @@ export class GameFactory {
   }
 
   private async setupSkybox() {
+    // the city streams in 3 tiles (225m) around the camera: fade buildings into the sky's horizon
+    // color before that distance, so tiles don't pop in at the edge
+    this.world.visualScene.setEnvironment({ fog: { type: 'LINEAR', color: 0xabeafc, near: 80, far: 225 } });
     const sky = await this.world.visualScene.loader.loadCubeTexture({
       px: `${ASSETS}/sky_px.png`,
       nx: `${ASSETS}/sky_nx.png`,
