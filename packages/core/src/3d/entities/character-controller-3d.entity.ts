@@ -19,6 +19,7 @@ import { Gg3dWorld, Gg3dWorldTypeDocRepo } from '../gg-3d-world';
 import { IRenderable3dEntity } from './i-renderable-3d.entity';
 import { IPositionable3d } from '../interfaces/i-positionable-3d';
 import { CharacterController3dOptions } from '../models/character-controller-options';
+import { takeUntil } from 'rxjs';
 
 /**
  * Options for a `CharacterController3dEntity`: the capsule shape/mover tuning from
@@ -441,7 +442,8 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
       // stores its crouched capsule's center) - keep it rather than the feet of the placeholder one
       this.recreateCapsule(expectedCentersDistance, true);
     }
-    this.tick$.subscribe(([_, delta]) => this.updateMovement(delta));
+    // until removed: an entity may be removed from the world and added again
+    this.tick$.pipe(takeUntil(this._onRemoved$)).subscribe(([_, delta]) => this.updateMovement(delta));
   }
 
   /**

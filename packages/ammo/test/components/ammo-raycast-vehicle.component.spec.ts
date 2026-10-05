@@ -96,6 +96,31 @@ describe('AmmoRaycastVehicleComponent', () => {
     expect(vehicle.isWheelTouchesGround(0)).toBe(true);
   });
 
+  it('should stay put while removed from the world, and rest on the floor again once added back', () => {
+    const floor = createFloor(factory, 0);
+    floor.addToWorld({ physicsWorld: world } as any);
+    const vehicle = createVehicle(world, factory, { x: 0, y: 0, z: 4 });
+    vehicle.addToWorld({ physicsWorld: world } as any);
+    for (let i = 0; i < 100; i++) {
+      world.simulate(60);
+    }
+
+    vehicle.removeFromWorld({ physicsWorld: world } as any, false);
+    vehicle.position = { x: 10, y: 10, z: 6 };
+    for (let i = 0; i < 20; i++) {
+      world.simulate(60);
+    }
+    expect(vehicle.position.z).toBeCloseTo(6); // not simulated
+
+    vehicle.addToWorld({ physicsWorld: world } as any);
+    for (let i = 0; i < 100; i++) {
+      world.simulate(60);
+    }
+    expect(vehicle.position.z).toBeGreaterThan(-1);
+    expect(vehicle.position.z).toBeLessThan(3);
+    expect(vehicle.isWheelTouchesGround(0)).toBe(true);
+  });
+
   it('should let each vehicle fall through a floor with a different collision group and rest ' +
     'only on the floor sharing its own collision group', () => {
     const groupA = world.registerCollisionGroup();

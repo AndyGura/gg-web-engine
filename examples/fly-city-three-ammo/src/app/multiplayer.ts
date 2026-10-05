@@ -20,8 +20,12 @@ import { FlyCityWorld } from './app.component';
  */
 const FIREBASE_CONFIG: FirebaseOptions | null = null;
 
-/** The city's tiles are 75 m squares - zoning uses them as cells. */
-const CITY_TILE_SIZE = 75;
+/**
+ * The city's tiles are 75 m squares - zoning uses them as cells: peers connect within two tiles of
+ * each other and exchange state within one. Zoning is opt-in (meant for maps much larger than what
+ * one player sees); set this to `null` for a plain full mesh, where everybody sees everybody.
+ */
+const ZONING: { cellSize: number } | null = { cellSize: 75 };
 
 /**
  * Everything multiplayer-specific in this example: the room (from the page URL's `?room=`), the
@@ -61,7 +65,7 @@ export class Multiplayer {
       transport: new WebRtcMeshTransport({
         signaling,
         roomId,
-        zoning: { cellSize: CITY_TILE_SIZE },
+        zoning: ZONING,
         zonePosition: () => this.camera?.position ?? null,
       }),
     });

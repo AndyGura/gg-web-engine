@@ -307,6 +307,15 @@ export class WebRtcMeshTransport implements ITransport {
     return this.peers.filter(id => withinRing(local, this.cellOf(id), this.zoning!.streamRadius));
   }
 
+  inStreamRange(peerId: string): boolean {
+    if (!this.zoning) {
+      return true;
+    }
+    const entry = this.presence.find(p => p.peerId === peerId);
+    // not in the room (any more): whatever keeps it silent, it isn't the distance
+    return !entry || withinRing(this.localCell, entry.cell, this.zoning.streamRadius);
+  }
+
   updateLocalPosition(position: unknown | null): void {
     if (!this.zoneTracker) {
       return;
@@ -374,10 +383,10 @@ export class WebRtcMeshTransport implements ITransport {
         const since = this.outOfRingSince.get(id) ?? now;
         this.outOfRingSince.set(id, since);
         if (now - since >= this.zoning.ageOutMs) {
-          // out of range, not gone: drop the connection without reporting a departure
+          // out of range, not gone: drop the connection without reporting a departure - it stays
+          // announced, so leaving the room while out of range is still reported
           this.outOfRingSince.delete(id);
           this.closeLink(id, false);
-          this.announced.delete(id);
         }
       }
     }

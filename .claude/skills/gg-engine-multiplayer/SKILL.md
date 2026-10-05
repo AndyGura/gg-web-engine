@@ -101,16 +101,55 @@ join handshakes, link latency) runs on the injected `NetScheduler`, never on `ti
   return `false` for it: games ignore the result, and a dropped possession leaves the player's own
   character Free, so another peer may take it.
 - **A link can open long after joining.** Join dumps only cover the links open during `connect()`;
-  with zoning, two joined peers meet later (and a slow or retried connection opens late too). Each
-  side then sends the other a `spawn` of every runtime spawn it owns (`sendOwnedSpawns`), or the
-  other never builds them and drops their state as unknown. Spawns are idempotent: a peer still
-  joining may get the same entity from a `spawn` and its dump, and `spawnFromItem` skips an id
-  already built or being built.
+  a slow or retried connection opens late. Each side then sends the other a `spawn` of every runtime
+  spawn it owns (`sendOwnedSpawns`), or the other never builds them and drops their state as unknown.
+  Spawns are idempotent: a peer still joining may get the same entity from a `spawn` and its dump,
+  and `spawnFromItem` skips an id already built or being built.
 - **Departed ≠ out of range.** With zoning, a peer leaving the connect ring is still in the room and
-  still owns its things; taking them over causes split-brain ownership. The transport reports
-  `peerLeft$` only when a peer leaves the signaling presence (aged-out connections close silently);
-  the controller's `departed` set (peerLeft or heartbeat timeout *while connected*) is the only thing
-  that makes an owner "unavailable", and owner-silence claims apply only to connected owners.
+  still owns its things; a takeover election for it causes split-brain ownership. The transport
+  reports `peerLeft$` only when a peer leaves the signaling presence - also for one whose connection
+  aged out earlier (`announced` survives the age-out); the controller's `departed` set (peerLeft or
+  heartbeat timeout *while connected*) is the only thing that makes an owner "unavailable", and
+  owner-silence claims apply only to connected owners.
+- **Out of view is its own state, and only exists with interest management.** `streamTargets()`
+  returning a list (zoning) turns it on; `undefined` (full mesh, the default) means nothing is ever
+  out of view and none of the following runs. An owner is out of view for a record when it is not
+  the local peer, not `departed`, outside the stream range (`transport.inStreamRange(owner)` is
+  `false`), and the record got no state for `outOfViewGraceMs` - both conditions, because the two
+  peers' rings change at slightly different moments, and silence alone is just a bad link. Distance
+  must be the only reason: `inStreamRange` answers from the peer's published cell, connected or not,
+  so a connection that dropped while the peer is in range, a crashed tab or a hidden one never count
+  (those end in a takeover, or keep the entities frozen until the peer is back) - judging by "not
+  among `streamTargets()`" instead makes props vanish whenever a link fails. For such a record, every tick: no correction (a
+  replica steered to a frozen snapshot while the possessor's last input still drives it snaps back
+  forever) and neutral input, once. At arbitration cadence (`updateView`, right after `arbitrate`):
+  possessed + shared → **hidden** (`hide`: removed from the world without dispose, record kept,
+  `hiddenParent` remembered); possessed runtime spawn, or Free runtime spawn nobody claimed →
+  `discard` (unregister + local removal); Free shared → left alone, simulated locally. `arbitrate`
+  treats an out-of-view owner like an unavailable one, so the nearest local player claims first.
+  Hidden only applies to shared content because that is the content that can't be rebuilt from a
+  descriptor.
+- **A hidden record has an entity outside the world.** Everything that walks `records` must skip it
+  or handle it: `networkIn` and `arbitrate` skip, `onEntityRemoved` ignores it (that removal is the
+  hide itself), and removing one goes through `discard`/`discardHidden`, which dispose the entity -
+  `removeLocally` is a no-op for an entity without a world, so it would leak. It wakes (`wake`:
+  re-added under its parent, next correction snaps) when state for it is accepted
+  (`acceptStateItem`/`applySpawnItem`), when the local peer becomes its owner (`setOwner`: takeover,
+  `leave()`), or when its owner departs. Never wake on a mere owner change to another remote peer:
+  it would show up at a stale position until that peer's state arrives. Its disposal by somebody
+  else (the chunk it belongs to unloads) is noticed through `onRemoved$` completing. If the game
+  builds a new entity under a hidden record's name, `tryRegister` gives the new entity the old
+  record's owner, epoch, possessor and snapshot and hides it at once.
+- **Hiding removes an entity from the world and adds it again later.** An entity class must survive
+  that: a subscription made in `onSpawned` has to end at removal (`takeUntil(this._onRemoved$)`), or
+  every re-add stacks another per-tick update.
+- **With interest management, runtime spawns follow the stream ring, not the link.** They are sent
+  when a peer enters the stream targets (`syncStreamTargets`, from `flushState`), a new spawn goes
+  to the stream targets only, and a join dump for a peer out of view leaves them out - otherwise a
+  peer inside the connect ring but outside the stream ring builds an entity only to remove it after
+  the grace period. The sender only re-sends after it saw the peer leave its own targets, so the
+  receiver has a pull as well: state for an unknown id from its owner triggers one
+  `stateRequest { spawn: true }`, answered with whole runtime spawns (shared ids are not answered).
 - **A peer without a position keeps its last zoning cell.** An empty cell (`''`) counts as inside every
   ring - right for a peer never placed yet, but a hidden tab (heartbeat `pos: null`) or a spectator
   publishing it would make every peer in the room connect and stream full state to the one peer that
@@ -213,7 +252,10 @@ join handshakes, link latency) runs on the injected `NetScheduler`, never on `ti
   rapier3d and ammo (`describe.each(ADAPTERS)`); add new scenarios there. Use `adapter.at/up/along` and
   compare distances in meters (`dist / adapter.unit`). matter-js never falls asleep on its own.
   `LoopbackHub.partition`/`heal` simulate a crashed peer (silent, noticed by heartbeat timeout);
-  `cutLink`/`openLink` simulate two peers out of each other's zoning range (no link, nobody left).
+  `cutLink`/`openLink` simulate two peers out of each other's zoning connect ring (no link, nobody
+  left); `cutStream`/`openStream` two peers linked but outside each other's stream ring. The hub
+  only reports stream targets (so out-of-view handling only runs) once `interestManagement` is on -
+  `cutStream` turns it on, set it by hand to combine it with `cutLink` alone.
 - Adapter sources are mapped in jest (`@gg-web-engine/<adapter>` → `../<adapter>/src`) and resolve
   through the workspace - **don't add adapter packages to `devDependencies`**: the release script
   installs each package standalone against the freshly published core, and the old adapter versions'

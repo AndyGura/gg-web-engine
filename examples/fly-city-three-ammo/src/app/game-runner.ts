@@ -48,8 +48,12 @@ export class GameRunner {
   /** The one player character in the world (controlled on foot, or left standing after being released). */
   private characterGroup: GroupEntity | null = null;
   private spawning = false;
-  /** Whether the car being driven was taken out of a map tile, and goes back into one when left. */
-  private drivenCarFromTile = false;
+  /**
+   * Cars taken out of their map tile because somebody drives them (this player, or in multiplayer
+   * any other): a tile car unloads together with its tile, a driven one must not. Once nobody
+   * drives it, it goes into the tile it stands on.
+   */
+  private readonly roamingCars = new Set<GgCarEntity>();
   /** Where the driven car was last tick - a removed car can't be asked any more. */
   private drivenCarPosition: Point3 = Pnt3.O;
 
@@ -111,13 +115,8 @@ export class GameRunner {
     this.state$.pipe(pairwise()).subscribe(([oldState, newState]) => {
       const oldCar = oldState.mode === 'driving' ? oldState.car : null;
       const newCar = newState.mode === 'driving' ? newState.car : null;
-      if (oldCar !== newCar) {
-        if (oldCar) {
-          this.parkCar(oldCar);
-        }
-        if (newCar) {
-          this.takeCar(newCar);
-        }
+      if (newCar && oldCar !== newCar) {
+        this.takeCar(newCar);
       }
     });
     this.audio = new GameAudio(
@@ -135,15 +134,24 @@ export class GameRunner {
       } else if (state.mode === 'driving') {
         this.drivenCarPosition = state.car.position;
       }
+      for (const car of this.roamingCars) {
+        const driven = (state.mode === 'driving' && state.car === car) || !!this.mp?.net.possessorOf(car);
+        if (!driven) {
+          this.parkCar(car);
+        }
+      }
     });
   }
 
-  /**
-   * Tile cars unload together with the tile they belong to. The one being driven must not: it is
-   * taken out of its tile for the ride, so it survives leaving that tile far behind.
-   */
+  /** Take a car somebody starts driving out of its tile, so it survives leaving that tile far behind. */
+  private roam(car: GgCarEntity) {
+    if (this.cityMapGraph.detachFromChunk([car]).length > 0) {
+      this.roamingCars.add(car);
+    }
+  }
+
   private takeCar(car: GgCarEntity) {
-    this.drivenCarFromTile = this.cityMapGraph.detachFromChunk([car]).length > 0;
+    this.roam(car);
     this.drivenCarPosition = car.position;
     // whatever else removes the car (falling off the map, another peer despawning it): don't keep
     // driving a disposed entity - fly free, then get back on foot where the car was
@@ -158,10 +166,15 @@ export class GameRunner {
 
   /** A car left behind belongs to the tile it now stands on, and unloads with that one. */
   private parkCar(car: GgCarEntity) {
-    if (!this.drivenCarFromTile || !car.world) {
+    if (car.disposed) {
+      this.roamingCars.delete(car);
       return;
     }
-    this.drivenCarFromTile = false;
+    if (!car.world) {
+      // multiplayer hides a car whose driver is out of view - it is parked once it shows up again
+      return;
+    }
+    this.roamingCars.delete(car);
     let nearest: MapGraphNodeType | null = null;
     let distance = Infinity;
     for (const node of this.cityMapGraph.loaded.keys()) {
@@ -311,6 +324,10 @@ export class GameRunner {
       }
     };
     mp.net.possessionChanged$.subscribe(({ entity, to }) => {
+      if (entity instanceof GgCarEntity && to !== null && to !== mp.net.localPeerId) {
+        // another player's ride: this peer's tiles must not unload it under them either
+        this.roam(entity);
+      }
       const state = this.state$.getValue();
       if (state.mode === 'driving' && state.car === entity && to !== null && to !== mp.net.localPeerId) {
         // lost a race for the driver's seat - step out

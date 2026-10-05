@@ -16,7 +16,7 @@ import {
   RigidBodyNetState,
   TickOrder,
 } from '../../../base';
-import { BehaviorSubject, filter, Observable, throttleTime } from 'rxjs';
+import { BehaviorSubject, filter, Observable, takeUntil, throttleTime } from 'rxjs';
 import { DisplayObject3dOpts } from '../../factories';
 import { isMaterialReadable3d } from '../../components/rendering/i-material-readable-3d.component';
 
@@ -316,7 +316,8 @@ export class GgCarEntity<
 
   onSpawned(world: Gg3dWorld<TypeDoc>) {
     super.onSpawned(world);
-    this.tick$.subscribe(([_, delta]) => {
+    // until removed: an entity may be removed from the world and added again
+    this.tick$.pipe(takeUntil(this._onRemoved$)).subscribe(([_, delta]) => {
       this.updateEngine(delta);
       if (this.raycastVehicle.isTouchingGround) {
         // TODO 1 - R (1000 rpm) quick switch with acceleration pedal should have the same speed as without acceleration pedal

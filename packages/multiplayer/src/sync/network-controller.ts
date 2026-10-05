@@ -175,6 +175,12 @@ export interface NetworkControllerOptions<D> {
   stateRequestTimeoutMs?: number;
   /** a remote owner silent about one entity this long loses it to the nearest peer. Default 3000. */
   ownerSilenceTimeoutMs?: number;
+  /**
+   * With a transport that manages interest (zoning): an owner outside the local stream ring that has
+   * sent nothing about an entity for this long is out of view, see {@link NetworkController.isHidden}.
+   * Default 2000.
+   */
+  outOfViewGraceMs?: number;
   /** hand everything over when the tab is hidden, resync when it's back. Default true. */
   takeoverOnHidden?: boolean;
   /**
@@ -232,6 +238,15 @@ interface NetRecord {
   requestedAt: number | null;
   /** linear velocity from the latest snapshot (sent or received) - pre-impact, for contact claims */
   snapshotVelocity: any | null;
+  /**
+   * taken out of the world (not disposed) while its owner is out of view - only shared content: it
+   * can't be rebuilt from a descriptor, so it waits here for the owner's next state
+   */
+  hidden: boolean;
+  /** the parent a hidden entity goes back under */
+  hiddenParent: IEntity | null;
+  /** whether neutral input was applied because the owner went out of view */
+  neutralized: boolean;
   subscriptions: Subscription[];
 }
 
@@ -376,6 +391,8 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
   /** last known position of every peer ever heard from, for takeover elections */
   private readonly lastPositions = new Map<string, unknown | null>();
   private readonly pendingStateRequests = new Set<string>();
+  /** peers the owned runtime spawns were sent to when they entered the stream ring (interest management) */
+  private streamedTo = new Set<string>();
   private desiredPossessions = new Set<IEntity>();
   private _roomSharedLevels: string[] = [];
   private seq = 0;
@@ -451,6 +468,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       unknownStateHoldMs: options.unknownStateHoldMs ?? 2000,
       stateRequestTimeoutMs: options.stateRequestTimeoutMs ?? 1000,
       ownerSilenceTimeoutMs: options.ownerSilenceTimeoutMs ?? 3000,
+      outOfViewGraceMs: options.outOfViewGraceMs ?? 2000,
       takeoverOnHidden: options.takeoverOnHidden ?? true,
       takeoverPossessed: options.takeoverPossessed ?? true,
       repossessOnReturn: options.repossessOnReturn ?? true,
@@ -722,6 +740,18 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     return this.recordsByEntity.has(entity);
   }
 
+  /**
+   * Whether `entity` is hidden: shared content possessed by a peer that is out of view (outside the
+   * stream ring of a transport with zoning, and silent about it for `outOfViewGraceMs`). It is taken
+   * out of the world, not disposed, and comes back - at its owner's position - with the owner's next
+   * state, or when its owner changes to a peer in view. A runtime spawn of an out-of-view peer is
+   * removed instead, and rebuilt when its owner is back in view. Without zoning nothing is ever out
+   * of view.
+   */
+  isHidden(entity: IEntity): boolean {
+    return this.recordsByEntity.get(entity)?.hidden ?? false;
+  }
+
   /** Keep `entity` (and anything under it) out of networking, e.g. purely local debris. */
   exclude(entity: IEntity): void {
     this.excluded.add(entity);
@@ -896,7 +926,9 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     this.leave();
     this.uninstallNamePrefix();
     for (const rec of [...this.records.values()]) {
-      this.unregister(rec);
+      if (!this.discardHidden(rec)) {
+        this.unregister(rec);
+      }
     }
     this._sessionState$.complete();
     this._peers$.complete();
@@ -963,10 +995,25 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       this.possessDesired();
     }
     const now = this.now;
+    const streaming = this.streamingPeers();
     for (const rec of this.records.values()) {
+      if (rec.hidden) {
+        continue;
+      }
       if (rec.owner === this.localPeerId || !rec.owner || !rec.latest) {
         if (rec.owner === this.localPeerId && rec.expiresAt !== null && now >= rec.expiresAt && this.joined) {
           this.despawn(rec.entity);
+        }
+        continue;
+      }
+      if (streaming && this.ownerOutOfView(rec, streaming, now)) {
+        // nothing comes from this owner: steering the replica to its last snapshot forever would
+        // fight the local simulation, and its last input would drive it on
+        if (!rec.neutralized) {
+          rec.neutralized = true;
+          if (rec.inputDriven && rec.possessor && rec.possessor !== this.localPeerId) {
+            (rec.entity as any).applyRemoteInput(null);
+          }
         }
         continue;
       }
@@ -1001,7 +1048,8 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       latest.snap = false;
     }
     if (this.joined && this.tickCount % this.opts.arbitrationIntervalTicks === 0) {
-      this.arbitrate();
+      this.arbitrate(streaming);
+      this.updateView(streaming);
     }
     if (this.pendingStateRequests.size > 0) {
       this.broadcast({ t: 'stateRequest', ids: [...this.pendingStateRequests] });
@@ -1034,6 +1082,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
   }
 
   private flushState(): void {
+    const targets = this.syncStreamTargets();
     if (this.transport.peers.length === 0) {
       return;
     }
@@ -1078,7 +1127,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       return;
     }
     // one send for every stream target, so the message is serialized once
-    this.transmit(this.transport.streamTargets?.() ?? 'all', 'unreliable', {
+    this.transmit(targets ?? 'all', 'unreliable', {
       t: 'state',
       items,
       n: ++this.stateMessagesSent,
@@ -1185,13 +1234,28 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     }
     const id = entity.name;
     const clash = this.records.get(id);
-    if (clash) {
+    if (clash && !clash.hidden) {
       warnOnce(
         `NetworkController: two networked entities are named "${id}" - names are network ids; ignoring the second`,
       );
       return null;
     }
     const shared = this.isShared(entity);
+    if (clash) {
+      // the game rebuilt shared content that is hidden here (its chunk loaded again): the new entity
+      // takes over what is known about it
+      this.discardHidden(clash);
+      if (shared && !this.tombstones.has(id)) {
+        const rec = this.createRecord(entity, true);
+        this.setOwner(rec, clash.owner, clash.epoch);
+        this.setPossessor(rec, clash.possessor);
+        rec.latest = clash.latest;
+        rec.lastStateAt = clash.lastStateAt;
+        rec.lastSeq = clash.lastSeq;
+        this.hide(rec);
+        return rec;
+      }
+    }
     if (shared && this.tombstones.has(id)) {
       this.removeLocally(entity);
       return null;
@@ -1251,10 +1315,24 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       inputDriven: isNetworkInputDriven(entity),
       requestedAt: null,
       snapshotVelocity: null,
+      hidden: false,
+      hiddenParent: null,
+      neutralized: false,
       subscriptions: [],
     };
     this.records.set(rec.id, rec);
     this.recordsByEntity.set(entity, rec);
+    rec.subscriptions.push(
+      // a hidden entity is outside the world, so only its disposal (e.g. with the chunk it belongs
+      // to) says it is gone
+      entity.onRemoved$.subscribe({
+        complete: () => {
+          if (rec.hidden) {
+            this.unregister(rec);
+          }
+        },
+      }),
+    );
     const body = this.bodyOf(entity);
     if (body?.onCollisionStart) {
       rec.subscriptions.push(
@@ -1269,7 +1347,9 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       s.unsubscribe();
     }
     rec.subscriptions.length = 0;
-    this.applyTint(rec, true);
+    if (!rec.entity.disposed) {
+      this.applyTint(rec, true);
+    }
     if (this.records.get(rec.id) === rec) {
       this.records.delete(rec.id);
     }
@@ -1279,7 +1359,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
   private onEntityRemoved(entity: IEntity): void {
     this.pendingAdded.delete(entity);
     const rec = this.recordsByEntity.get(entity);
-    if (!rec) {
+    if (!rec || rec.hidden) {
       return;
     }
     this.unregister(rec);
@@ -1325,6 +1405,78 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     this.suppressRemoval.delete(entity);
   }
 
+  /** forget `rec` and remove its entity from this peer only */
+  private discard(rec: NetRecord): void {
+    if (!this.discardHidden(rec)) {
+      this.unregister(rec);
+      this.removeLocally(rec.entity);
+    }
+  }
+
+  /** forget a hidden `rec` and dispose its entity (which is in no world); `false` if it isn't hidden */
+  private discardHidden(rec: NetRecord): boolean {
+    if (!rec.hidden) {
+      return false;
+    }
+    rec.hidden = false;
+    rec.hiddenParent = null;
+    this.unregister(rec);
+    rec.entity.dispose();
+    return true;
+  }
+
+  /** take `rec`'s entity out of the world, keeping the entity and the record, see {@link isHidden} */
+  private hide(rec: NetRecord): void {
+    const entity = rec.entity;
+    if (rec.hidden || !entity.world) {
+      return;
+    }
+    if (rec.inputDriven) {
+      (entity as any).applyRemoteInput(null);
+    }
+    rec.hidden = true;
+    rec.hiddenParent = entity.parent;
+    if (entity.parent) {
+      entity.parent.removeChildren([entity]);
+    } else {
+      entity.world.removeEntity(entity);
+    }
+  }
+
+  /** put a hidden entity back where it was; its next correction snaps it to its owner's state */
+  private wake(rec: NetRecord): void {
+    if (!rec.hidden) {
+      return;
+    }
+    const entity = rec.entity;
+    const parent = rec.hiddenParent;
+    rec.hidden = false;
+    rec.hiddenParent = null;
+    let restored = false;
+    if (this.world && !entity.disposed) {
+      try {
+        if (!parent) {
+          this.world.addEntity(entity);
+          restored = true;
+        } else if (parent.world === this.world) {
+          parent.addChildren(entity);
+          restored = true;
+        }
+      } catch (e) {
+        // its name was taken meanwhile: that entity registers on its own
+        parent?.removeChildren([entity]);
+      }
+    }
+    if (!restored) {
+      this.unregister(rec);
+      entity.dispose();
+      return;
+    }
+    if (rec.latest) {
+      rec.latest.snap = true;
+    }
+  }
+
   /** the `spawn` message describing `rec`, or undefined when its level loader can't serialize it */
   private spawnMessage(rec: NetRecord): WireMessage | undefined {
     let descriptor: EntityJson | undefined;
@@ -1362,7 +1514,13 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     if (this.transport.peers.length === 0) {
       return true;
     }
-    this.broadcast(msg);
+    // with interest management only the peers in view build it; the others get it when they come into view
+    const targets = this.transport.streamTargets?.();
+    if (targets && this.sessionState !== 'idle' && this.sessionState !== 'left') {
+      this.transmit(targets, 'reliable', msg);
+    } else {
+      this.broadcast(msg);
+    }
     return true;
   }
 
@@ -1437,6 +1595,9 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     if (owner === this.localPeerId) {
       rec.latest = null;
       rec.requestedAt = null;
+    }
+    if (owner === this.localPeerId) {
+      this.wake(rec);
     }
     this.applyTint(rec);
     this._ownershipChanged$.next({ entity: rec.entity, from, to: owner, epoch });
@@ -1525,12 +1686,12 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     return best;
   }
 
-  private arbitrate(): void {
+  private arbitrate(streaming: ReadonlySet<string> | null): void {
     const positions = this.peerPositions();
     const local = positions.get(this.localPeerId) ?? null;
     const now = this.now;
     for (const rec of this.records.values()) {
-      if (rec.possessor) {
+      if (rec.possessor || rec.hidden) {
         continue;
       }
       if (rec.owner === this.localPeerId) {
@@ -1548,7 +1709,10 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       }
       const silent =
         rec.owner !== '' && this.peers.has(rec.owner) && now - rec.lastStateAt > this.opts.ownerSilenceTimeoutMs;
-      if (rec.owner === '' || this.ownerUnavailable(rec.owner) || silent) {
+      // an owner out of view keeps simulating its own copy; next to the local player the local copy
+      // is the one that matters, and the higher epoch settles it when the two meet again
+      const outOfView = !!streaming && this.ownerOutOfView(rec, streaming, now);
+      if (rec.owner === '' || this.ownerUnavailable(rec.owner) || silent || outOfView) {
         if (local && this.nearestPeer(rec.entity, positions) === this.localPeerId) {
           this.transfer(rec, this.localPeerId);
         } else if (rec.owner === '' && this.transport.peers.length === 0) {
@@ -1556,6 +1720,75 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
         }
       }
     }
+  }
+
+  /**
+   * the peers state is exchanged with, when the transport manages interest (zoning); `null` when it
+   * doesn't - every connected peer then sees everything, and nothing is ever out of view
+   */
+  private streamingPeers(): ReadonlySet<string> | null {
+    const targets = this.transport.streamTargets?.();
+    return targets ? new Set(targets) : null;
+  }
+
+  /**
+   * Whether `rec`'s owner is out of view: still in the room, but outside the stream range and silent
+   * about `rec` for `outOfViewGraceMs` (the two peers' rings change at slightly different moments).
+   * Distance is the only reason: an owner that left the room or went away is taken over instead, and
+   * one whose connection dropped while in range keeps its entities until it is back or gone.
+   */
+  private ownerOutOfView(rec: NetRecord, streaming: ReadonlySet<string>, now: number): boolean {
+    if (rec.owner === '' || rec.owner === this.localPeerId || this.departed.has(rec.owner)) {
+      return false;
+    }
+    const inRange = this.transport.inStreamRange ? this.transport.inStreamRange(rec.owner) : streaming.has(rec.owner);
+    return !inRange && now - rec.lastStateAt > this.opts.outOfViewGraceMs;
+  }
+
+  /**
+   * What an out-of-view owner leaves behind must not stay in the world as a frozen ghost: what its
+   * player possesses is hidden (shared content) or removed (a runtime spawn, rebuilt from its spawn
+   * when the owner is back in view), and so is a Free runtime spawn nobody here claimed. Free shared
+   * content stays, simulated locally. Hidden entities whose owner left the room come back.
+   */
+  private updateView(streaming: ReadonlySet<string> | null): void {
+    const now = this.now;
+    for (const rec of [...this.records.values()]) {
+      if (rec.hidden) {
+        if (!streaming || this.departed.has(rec.owner)) {
+          this.wake(rec);
+        }
+        continue;
+      }
+      if (!streaming || rec.possessor === this.localPeerId || !this.ownerOutOfView(rec, streaming, now)) {
+        continue;
+      }
+      if (rec.possessor && rec.shared) {
+        this.hide(rec);
+      } else if (!rec.shared) {
+        this.discard(rec);
+      }
+    }
+  }
+
+  /**
+   * With interest management, a peer entering the stream ring is sent every runtime spawn the local
+   * peer owns: it has none of them (or removed them when this peer went out of its view).
+   * @returns the stream targets, `undefined` when the transport doesn't manage interest
+   */
+  private syncStreamTargets(): ReadonlyArray<string> | undefined {
+    const targets = this.transport.streamTargets?.();
+    if (!targets) {
+      this.streamedTo.clear();
+      return undefined;
+    }
+    for (const id of targets) {
+      if (!this.streamedTo.has(id)) {
+        this.sendOwnedSpawns(id);
+      }
+    }
+    this.streamedTo = new Set(targets);
+    return targets;
   }
 
   private onLocalCollision(rec: NetRecord, evt: CollisionEvent<D>): void {
@@ -1668,6 +1901,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     this.unsubscribeTransport();
     this.uninstallSessionHooks();
     this.peers.clear();
+    this.streamedTo.clear();
     this.publishPeers();
   }
 
@@ -1827,7 +2061,8 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
           this.transmit(id, 'reliable', this.heartbeatMessage());
           this.sendPing(peer);
         }
-        if (this.joined) {
+        if (this.joined && !this.transport.streamTargets?.()) {
+          // with interest management they go out when the peer enters the stream ring instead
           this.sendOwnedSpawns(id);
         }
       }
@@ -1837,8 +2072,9 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
 
   /**
    * Send `peerId` a `spawn` of every runtime spawn the local peer owns: a link that opens after
-   * joining (zoning, a slow or retried connection) never carried the earlier ones, and no join dump
-   * follows. A peer still joining gets them in its dump as well - spawns are idempotent.
+   * joining (a slow or retried connection), or a peer coming into view (zoning), never got the
+   * earlier ones, and no join dump follows. A peer still joining gets them in its dump as well -
+   * spawns are idempotent.
    */
   private sendOwnedSpawns(peerId: string): void {
     for (const rec of this.records.values()) {
@@ -1902,14 +2138,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     switch (msg.t) {
       case 'state':
         this.countStateMessage(peer, msg.n);
-        for (const item of msg.items) {
-          const rec = this.records.get(item.id);
-          if (rec) {
-            this.acceptStateItem(rec, item, from);
-          } else {
-            this.heldState.set(item.id, { item, from, at: this.now });
-          }
-        }
+        this.acceptStateItems(msg.items, from);
         break;
       case 'claim':
         this.onClaim(msg.entityId, msg.epoch, msg.candidate);
@@ -1939,8 +2168,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
           this.tombstones.add(msg.entityId);
         }
         if (rec) {
-          this.unregister(rec);
-          this.removeLocally(rec.entity);
+          this.discard(rec);
         } else {
           this.heldState.delete(msg.entityId);
           const local = this.findEntity(msg.entityId);
@@ -1951,7 +2179,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
         break;
       }
       case 'joinRequest':
-        this.transmit(from, 'reliable', this.buildJoinDump());
+        this.transmit(from, 'reliable', this.buildJoinDump(from));
         break;
       case 'joinDump':
         if (this.pendingJoin && this.pendingJoin.waitingFor.has(from)) {
@@ -1967,8 +2195,9 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
         const entities: SpawnItem[] = [];
         for (const id of msg.ids) {
           const rec = this.records.get(id);
-          if (rec && rec.owner === this.localPeerId) {
-            entities.push(this.toSpawnItem(rec, false));
+          // `spawn`: the asker has no such entity - only a runtime spawn can be sent whole
+          if (rec && rec.owner === this.localPeerId && (!msg.spawn || !rec.shared)) {
+            entities.push(this.toSpawnItem(rec, !!msg.spawn));
           }
         }
         if (entities.length > 0) {
@@ -1981,6 +2210,8 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
           const rec = this.records.get(item.entityId);
           if (rec) {
             this.applySpawnItem(rec, item, from, false);
+          } else if (item.descriptor) {
+            void this.spawnFromItem(from, item);
           } else {
             this.heldSpawnItems.set(item.entityId, { item, from, at: this.now });
           }
@@ -2074,6 +2305,26 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     peer.stateMessages++;
   }
 
+  private acceptStateItems(items: StateItem[], from: string): void {
+    const unknown: string[] = [];
+    for (const item of items) {
+      const rec = this.records.get(item.id);
+      if (rec) {
+        this.acceptStateItem(rec, item, from);
+        continue;
+      }
+      if (!this.heldState.has(item.id) && !this.spawning.has(item.id) && item.owner === from) {
+        unknown.push(item.id);
+      }
+      this.heldState.set(item.id, { item, from, at: this.now });
+    }
+    if (unknown.length > 0 && this.joined && this.transport.streamTargets?.()) {
+      // with interest management a runtime spawn may have been removed here while its owner never
+      // saw this peer leave its view (so it never sends the spawn again) - ask for it, once
+      this.transmit(from, 'reliable', { t: 'stateRequest', ids: unknown, spawn: true });
+    }
+  }
+
   private acceptStateItem(rec: NetRecord, item: StateItem, from: string): void {
     if (item.owner === this.localPeerId || item.owner !== from) {
       return;
@@ -2124,6 +2375,8 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       snap,
       inputPending: item.i !== undefined || !!rec.latest?.inputPending,
     };
+    rec.neutralized = false;
+    this.wake(rec);
   }
 
   private applySpawnItem(rec: NetRecord, item: SpawnItem, from: string, force: boolean): void {
@@ -2148,6 +2401,8 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
       snap: true,
       inputPending: false,
     };
+    rec.neutralized = false;
+    this.wake(rec);
   }
 
   private onClaim(entityId: string, epoch: number, candidate: string): void {
@@ -2249,11 +2504,14 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
   // join, away, takeover
   // ---------------------------------------------------------------------------------------------
 
-  private buildJoinDump(): WireMessage {
+  private buildJoinDump(to: string): WireMessage {
     const entities: SpawnItem[] = [];
     if (this.joined) {
+      // with interest management a peer out of view gets the runtime spawns when it comes into view
+      const streaming = this.streamingPeers();
+      const inView = !streaming || streaming.has(to);
       for (const rec of this.records.values()) {
-        if (rec.owner === this.localPeerId) {
+        if (rec.owner === this.localPeerId && (inView || rec.shared)) {
           entities.push(this.toSpawnItem(rec, true));
         }
       }
@@ -2343,8 +2601,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     for (const id of this.tombstones) {
       const rec = this.records.get(id);
       if (rec && rec.shared) {
-        this.unregister(rec);
-        this.removeLocally(rec.entity);
+        this.discard(rec);
       } else if (!rec) {
         const local = this.findEntity(id);
         if (local && this.isShared(local) && !this.pendingAdded.has(local)) {
@@ -2377,8 +2634,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
           continue;
         }
         if (this.networkSpawned.has(rec.entity)) {
-          this.unregister(rec);
-          this.removeLocally(rec.entity);
+          this.discard(rec);
         } else {
           this.broadcastSpawn(rec);
         }
@@ -2622,7 +2878,8 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
           .map(
             r =>
               `${r.id}\towner ${r.owner || '(none)'} epoch ${r.epoch}` +
-              `${r.possessor ? ` possessed by ${r.possessor}` : ''}${r.shared ? ' [shared]' : ''}`,
+              `${r.possessor ? ` possessed by ${r.possessor}` : ''}${r.shared ? ' [shared]' : ''}` +
+              `${r.hidden ? ' [hidden]' : ''}`,
           );
         return rows.length ? rows.join('\n') : '(no networked entities)';
       },

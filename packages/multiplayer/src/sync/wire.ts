@@ -72,7 +72,8 @@ export type WireMessage =
       since: number;
       app?: unknown;
     }
-  | { t: 'stateRequest'; ids: string[] }
+  /** `spawn`: the sender has no such entities - reply with whole runtime spawns (descriptor included) */
+  | { t: 'stateRequest'; ids: string[]; spawn?: true }
   | { t: 'stateReply'; entities: SpawnItem[] }
   | { t: 'relinquish'; ids: string[] }
   | {

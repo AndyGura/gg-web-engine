@@ -286,6 +286,11 @@ describe('WebRtcMeshTransport', () => {
     await settle(40);
     expect([...a.peers].sort()).toEqual(['b', 'c']);
     expect([...(a.streamTargets() ?? [])].sort()).toEqual(['b']);
+    expect(a.inStreamRange('b')).toBe(true);
+    expect(a.inStreamRange('c')).toBe(false);
+    expect(a.inStreamRange('nobody')).toBe(true); // not in the room: not a matter of distance
+    const left: string[] = [];
+    a.peerLeft$.subscribe(id => left.push(id));
 
     c.updateLocalPosition({ x: 900, y: 50 }); // 9:0 - outside a's connect ring
     await settle(40);
@@ -295,5 +300,10 @@ describe('WebRtcMeshTransport', () => {
     scheduler.advance(6000);
     await settle(40);
     expect(a.peers).toEqual(['b']);
+    expect(left).toEqual([]); // out of range, still in the room
+
+    c.disconnect(); // leaving the room while out of range is still a departure
+    await settle(40);
+    expect(left).toEqual(['c']);
   });
 });

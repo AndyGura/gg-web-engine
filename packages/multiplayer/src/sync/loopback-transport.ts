@@ -25,6 +25,14 @@ export class LoopbackHub {
   private readonly reliableTail = new Map<string, number>();
   // unordered peer pairs with no link between them (see cutLink)
   private readonly cutLinks = new Set<string>();
+  // unordered peer pairs that are linked but don't stream state to each other (see cutStream)
+  private readonly cutStreams = new Set<string>();
+  /**
+   * Whether the transports manage interest like a zoning transport (`streamTargets()` returns the
+   * peers in view instead of `undefined`). Turned on by the first {@link cutStream}; set it to model
+   * zoning with {@link cutLink} alone.
+   */
+  public interestManagement = false;
   private random: () => number;
 
   constructor(
@@ -75,6 +83,34 @@ export class LoopbackHub {
     this.cutLinks.delete(linkKey(a, b));
     this.transports.get(a)?._refreshPeers();
     this.transports.get(b)?._refreshPeers();
+  }
+
+  /**
+   * Take `a` and `b` out of each other's stream targets while keeping their link: reliable messages
+   * and heartbeats still flow, the state stream doesn't - like two zoned peers inside the connect
+   * ring but outside the stream ring. {@link openStream} undoes it.
+   */
+  cutStream(a: string, b: string): void {
+    this.interestManagement = true;
+    this.cutStreams.add(linkKey(a, b));
+  }
+
+  /** Undo {@link cutStream}. */
+  openStream(a: string, b: string): void {
+    this.cutStreams.delete(linkKey(a, b));
+  }
+
+  /** @internal */
+  _streamTargetsOf(peerId: string): string[] | undefined {
+    if (!this.interestManagement) {
+      return undefined;
+    }
+    return this._peersOf(peerId).filter(id => !this.cutStreams.has(linkKey(id, peerId)));
+  }
+
+  /** @internal */
+  _inStreamRange(a: string, b: string): boolean {
+    return !this.interestManagement || !(this.cutStreams.has(linkKey(a, b)) || this.cutLinks.has(linkKey(a, b)));
   }
 
   /** @internal */
@@ -191,6 +227,14 @@ export class LoopbackTransport implements ITransport {
     if (this.connected) {
       this.hub._deliver(this.localPeerId, to, channel, msg);
     }
+  }
+
+  streamTargets(): ReadonlyArray<string> | undefined {
+    return this.connected ? this.hub._streamTargetsOf(this.localPeerId) : undefined;
+  }
+
+  inStreamRange(peerId: string): boolean {
+    return this.hub._inStreamRange(this.localPeerId, peerId);
   }
 
   /** @internal */
