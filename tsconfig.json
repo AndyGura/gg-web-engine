@@ -13,6 +13,7 @@
     { "path": "packages/pixi" },
     { "path": "packages/matter" },
     { "path": "packages/audio" },
-    { "path": "packages/multiplayer" }
+    { "path": "packages/multiplayer" },
+    { "path": "packages/mobile-controls" }
   ]
 }

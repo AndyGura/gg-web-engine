@@ -1,4 +1,4 @@
-import { GgCarKeyboardHandlingController, KeyboardInput } from '../../../../../src';
+import { GgCarHandlingController, KeyboardInput } from '../../../../../src';
 import { MockWorld } from '../../../../mocks/world.mock';
 
 const fakeCar = (overrides: Partial<any> = {}) =>
@@ -13,9 +13,9 @@ const fakeCar = (overrides: Partial<any> = {}) =>
     ...overrides,
   }) as any;
 
-describe('GgCarKeyboardHandlingController', () => {
+describe('GgCarHandlingController', () => {
   // `steeringFactor`/`acceleration`/`brake` are only ever written from the child
-  // `CarKeyboardHandlingController`'s tick-driven `output$` (see that class' own spec for why this
+  // `CarHandlingController`'s tick-driven `output$` (see that class' own spec for why this
   // needs a real `GgWorld` tick loop rather than calling `tick$.next(...)` directly) - deactivating
   // the parent here cascades to the child via ordinary `IEntity.active` parent-checking (the child is
   // added via `addChildren` in the constructor), with no explicit `active` filter of its own on that
@@ -26,7 +26,7 @@ describe('GgCarKeyboardHandlingController', () => {
     const keyboard = new KeyboardInput();
     keyboard.start();
     const car = fakeCar(carOverrides);
-    const controller = new GgCarKeyboardHandlingController(keyboard, car, {
+    const controller = new GgCarHandlingController(keyboard, car, {
       keymap: 'arrows',
       maxSteerDeltaPerSecond: 1000,
       gearUpDownKeys: ['KeyA', 'KeyZ'],

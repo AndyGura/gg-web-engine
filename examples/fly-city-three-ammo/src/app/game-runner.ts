@@ -3,7 +3,7 @@ import {
   createInlineTickController,
   GgCarEntity,
   GroupEntity,
-  GgCarKeyboardHandlingController,
+  GgCarHandlingController,
   MapGraph3dEntity,
   MapGraphNodeType,
   Pnt3,
@@ -14,6 +14,7 @@ import {
   TickOrder,
   Trigger3dEntity,
 } from '@gg-web-engine/core';
+import { MobileControls, TouchButton } from '@gg-web-engine/mobile-controls';
 import { BehaviorSubject, combineLatest, filter, Observable, pairwise } from 'rxjs';
 import { map, takeUntil } from 'rxjs/operators';
 import { GameCameraController } from './game-camera-controller';
@@ -39,7 +40,7 @@ export type CurrentState =
 
 export class GameRunner {
 
-  public handling?: GgCarKeyboardHandlingController;
+  public handling?: GgCarHandlingController;
   public readonly gameCameraController: GameCameraController;
   public readonly audio: GameAudio;
 
@@ -355,7 +356,7 @@ export class GameRunner {
   }
 
   public setupKeyBindings() {
-    this.handling = new GgCarKeyboardHandlingController(this.world.keyboardInput, null!, {
+    this.handling = new GgCarHandlingController(this.world.keyboardInput, null!, {
       keymap: 'wasd+arrows',
       gearUpDownKeys: ['CapsLock', 'ShiftLeft'],
       handbrakeKey: 'Space',
@@ -368,6 +369,23 @@ export class GameRunner {
     this.handling.switchingGearsEnabled = false;
     this.handling.active = false;
     this.world.addEntity(this.handling);
+    // On phones and tablets: the car, on-foot and free-camera controls come with the controllers
+    // themselves, the game's own keys get a button each
+    const mobileControls = new MobileControls();
+    const keyButton = (key: string, label: string, right: number) =>
+      new TouchButton({
+        id: `key-${key.toLowerCase()}`,
+        label,
+        content: key,
+        placement: { right, top: 12, width: 6.5, height: 6.5 },
+      }).bindKey(this.world.keyboardInput, `Key${key}`);
+    mobileControls.addControls(
+      keyButton('F', 'Enter or leave a car', 4),
+      keyButton('G', 'Spawn or free camera', 12),
+      keyButton('C', 'Next car camera', 20),
+      keyButton('R', 'Reset car', 28),
+    );
+    this.world.addEntity(mobileControls);
     this.world.keyboardInput.bind('KeyC').pipe(
       filter(x => !!x && this.state$.getValue().mode === 'driving'),
     ).subscribe(() => {

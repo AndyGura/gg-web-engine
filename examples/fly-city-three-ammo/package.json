@@ -19,6 +19,7 @@
     "@gg-web-engine/ammo": "0.0.77",
     "@gg-web-engine/audio": "0.0.77",
     "@gg-web-engine/core": "0.0.77",
+    "@gg-web-engine/mobile-controls": "0.0.77",
     "@gg-web-engine/multiplayer": "0.0.77",
     "@gg-web-engine/three": "0.0.77",
     "firebase": "12.19.0",

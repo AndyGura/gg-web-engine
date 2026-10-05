@@ -20,6 +20,7 @@ libs=(
   "matter"
   "audio"
   "multiplayer"
+  "mobile-controls"
 )
 
 upgrade() {

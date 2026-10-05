@@ -7,6 +7,7 @@
   },
   "dependencies": {
     "@gg-web-engine/core": "0.0.77",
+    "@gg-web-engine/mobile-controls": "0.0.77",
     "@gg-web-engine/rapier3d": "0.0.77",
     "@gg-web-engine/three": "0.0.77",
     "rxjs": "7.8.2",

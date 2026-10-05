@@ -71,6 +71,15 @@ the repo root first if the local adapter packages themselves need to pick up loc
 for the full "edit core, see it live in this example" watch-mode loop (`tsc -b
 --watch` + `npm start`), see `gg-engine-core-development`'s local dev workflow section.
 
+**The script discards an uncommitted `package.json`**: it starts with `git checkout -- package.json`
+and links only the `@gg-web-engine/*` packages listed in the committed file. When adding a new
+`@gg-web-engine/*` dependency to an example (e.g. an add-on package it did not use before), commit
+that `package.json` line first, or link the extra package by hand afterwards with
+`npm link <repo>/packages/<each already-linked package> <repo>/packages/<new package>` (a single
+`npm link` call replaces the previous links, so list them all) and re-apply the peer-dependency
+symlinks, which that call reinstalls as real copies. `restore_example_from_local_gg.sh` resets
+`package.json` the same way.
+
 **Do not run a bare `npm install` inside the example directory after this script** (with at least
 npm v11) — `npm link <path>` only creates the `node_modules/@gg-web-engine/*` symlinks, it does not
 add a `file:`-style entry back into `package.json` or `package-lock.json` (verified: neither file

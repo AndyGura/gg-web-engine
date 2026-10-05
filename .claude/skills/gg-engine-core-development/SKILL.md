@@ -756,7 +756,7 @@ facing direction isn't part of the "input held down" state being cleared. Reacti
 `reset()` re-derives `_spherical` from the camera's current rotation); it does not replay whatever
 a key was doing at the moment of deactivation - a key still held down when the controller
 reactivates only resumes affecting `character` on its next actual transition (release, or a
-different key), since `DirectionKeyboardInput.output$`/`KeyboardInput.bind(...)` only emit on a key
+different key), since `DirectionInput.output$`/`KeyboardInput.bind(...)` only emit on a key
 state change, not continuously.
 
 Practical consequence for anything driving these controllers (an app, or `gg-engine-app-development`'s
@@ -766,20 +766,72 @@ character, or temporarily suspending player input (a cutscene, a menu), only nee
 plain public, freely-reassignable field either way), and setting it to `null` is never required
 just to stop the controller from acting on it.
 
-`GgCarKeyboardHandlingController`/`CarKeyboardHandlingController` don't need (and don't have) this
+`GgCarHandlingController`/`CarHandlingController` don't need (and don't have) this
 same per-subscription `active` filtering on the writes that matter most (`car.steeringFactor`/
-`acceleration`/`brake`, from `GgCarKeyboardHandlingController`'s subscription to
-`carHandlingInput.output$`): that output is only ever pushed from `CarKeyboardHandlingController`'s
+`acceleration`/`brake`, from `GgCarHandlingController`'s subscription to
+`carHandlingInput.output$`): that output is only ever pushed from `CarHandlingController`'s
 own `tick$`-driven subscription, and `GgWorld`'s tick loop (`forwardTick` in `base/gg-world.ts`)
-never delivers a tick to an inactive entity in the first place. `CarKeyboardHandlingController` is
-added as a child of `GgCarKeyboardHandlingController` via `addChildren` in the constructor, so
+never delivers a tick to an inactive entity in the first place. `CarHandlingController` is
+added as a child of `GgCarHandlingController` via `addChildren` in the constructor, so
 deactivating the parent already makes the child inactive too (`IEntity.active` factors in
 `parent.active`) - no extra wiring needed. Confirming this holds requires driving a real `GgWorld`
 tick loop in a test (`await world.init()`, then
 `(world.worldClock as any)._tick$.next([elapsed, delta])`), not calling `controller.tick$.next(...)`
 directly - the latter bypasses `forwardTick`'s own `active` check entirely and would pass even if
-the gating were broken (see `car-keyboard-handling.controller.spec.ts`/
-`gg-car-keyboard-handling.controller.spec.ts` for this pattern in practice).
+the gating were broken (see `car-handling.controller.spec.ts`/
+`gg-car-handling.controller.spec.ts` for this pattern in practice).
+
+## Inputs take analog and emulated sources; `packages/mobile-controls` relies on it
+
+The input classes in `base/inputs/` are the single entry point for every input device, not only the
+keyboard and mouse they are named after. Anything else feeds them:
+
+- `KeyboardInput.emulateKeyDown`/`emulateKeyUp(code)` - a discrete action.
+- `DirectionInput.setAnalogDirection(source, { x?, y? } | null)` - an analog direction. Each
+  `source` (any value, normally the calling object) holds one contribution; `direction$`/`direction`
+  is the keys plus every contribution, each axis clamped to [-1, 1] (`x` right, `y` up/forward), so
+  several sources compose (a tilt sensor on `x`, a pedal button on `y`). `output$` stays keys-only.
+- `MouseInput.emulateMove(delta)` - a view rotation, through `delta$`.
+
+All three are ignored while the input is not running, and a stopped `DirectionInput` drops
+its contributions. A controller that moves by direction keys subscribes to `direction$`, never to
+`output$`, and treats the vector as analog (normalizing only when it is longer than 1) - that is the
+whole of what makes it drivable by an on-screen stick or, later, a gamepad.
+`CharacterController3dEntity` likewise scales its speed by a `moveDirection` shorter than 1.
+
+`packages/mobile-controls` (`@gg-web-engine/mobile-controls`) is the consumer of this: DOM controls
+(`TouchButton`, `TouchStick`, `TouchDPad`, `TouchLookArea`, plus `TiltInput`) bound to those entry
+points, and the `MobileControls` entity, which tracks the controllers of its world through
+`entityAdded$`/`entityRemoved$` and polls their `active` on its own tick to show the layout
+registered for each active one. It is a separate package so that an app not importing it ships none
+of it; it depends on core only. What it needs from a built-in controller, and what to keep when
+changing one:
+
+- `options` and `keyboard` are public on `CarHandlingController`,
+  `GgCarHandlingController`, `PlayerCharacterController`, `PlayerCharacterController2d` and
+  `FreeCameraController` - the layouts read key codes from them (`options.jumpKey`,
+  `options.gearUpDownKeys`, ...) and emulate on that same `keyboard`. `FreeCameraController`'s
+  up/down/boost keys are hardcoded (`KeyE`/`KeyQ`/`ShiftLeft`) in both places.
+- `directionsInput`/`mouseInput` are public on the same controllers and are what sticks and look
+  areas bind to. A new option-driven key on a controller needs a button in its layout
+  (`packages/mobile-controls/src/layouts/`) to be reachable on a phone.
+- `CarHandlingController` is registered both on its own and as the child of
+  `GgCarHandlingController`; `carLayout` returns nothing for the child, so a controller that
+  nests another built-in controller needs the same guard.
+
+Pitfalls met building it:
+
+- A control must call `stopPropagation` on its pointer events, not only capture the pointer: a
+  `MouseInput` created without a `canvas` listens on `window`, and would otherwise turn the camera
+  with the very finger that is on a stick.
+- `movementX`/`movementY` of touch pointer events are not dependable across browsers, so
+  `TouchLookArea` computes deltas from client positions per pointer id itself.
+- jsdom never computes layout: a spec gives an element a box by replacing its
+  `getBoundingClientRect`, and dispatches pointer events as `MouseEvent`s with `pointerId`/
+  `pointerType` defined on them (see `packages/mobile-controls/test/helpers.ts`).
+- Device orientation at `beta` = 90 is a gimbal singularity; `TiltInput` works from the gravity
+  direction within the screen plane instead of reading `gamma`/`beta` as a roll angle directly. Its
+  screen-rotation handling is covered by specs only, not yet by a hardware test.
 
 ## The TypeDocRepo generic pattern — read this before touching interfaces
 

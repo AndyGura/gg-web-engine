@@ -706,7 +706,7 @@ itself to keep some and override others.
 Steering/throttle/braking still have to be driven by app code once the level is loaded, same as any
 other entity a level JSON can't wire up on its own - look the car up with
 `level.getChildEntityByName<GgCarEntity>('PlayerCar')` and drive it directly (`car.acceleration`,
-`car.steeringFactor`, `car.brake`, `car.handBrake`) or via a `GgCarKeyboardHandlingController`
+`car.steeringFactor`, `car.brake`, `car.handBrake`) or via a `GgCarHandlingController`
 attached with `car.addController(...)`.
 
 An optional `state` block - `{ gear?, acceleration?, brake?, handBrake?, steeringFactor? }` - sets

@@ -8,6 +8,7 @@ import {
   PlayerCharacterController,
   Pnt3,
 } from '@gg-web-engine/core';
+import { MobileControls } from '@gg-web-engine/mobile-controls';
 import { ThreeGgWorld, ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
 import { Rapier3dWorldComponent } from '@gg-web-engine/rapier3d';
 
@@ -214,6 +215,8 @@ world.init().then(async () => {
     ignoreMouseUnlessPointerLocked: true,
   });
   world.addEntity(controller);
+  // on-screen stick and buttons on phones and tablets; does nothing on a desktop
+  world.addEntity(new MobileControls());
 
   world.start();
 });

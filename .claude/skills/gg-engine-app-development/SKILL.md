@@ -326,8 +326,8 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   materials) for any of the above - that ties the game to one renderer or physics engine.
 - **Ready-made controllers** (attach to entities via `entity.addController(...)`):
   `FreeCameraController`, `OrbitCameraController`, `PlayerCharacterController` (3D) /
-  `PlayerCharacterController2d` (2D), `CarKeyboardHandlingController` /
-  `GgCarKeyboardHandlingController` in `packages/core/src/3d/entities/controllers/input/` (2D under
+  `PlayerCharacterController2d` (2D), `CarHandlingController` /
+  `GgCarHandlingController` in `packages/core/src/3d/entities/controllers/input/` (2D under
   `packages/core/src/2d/entities/controllers/input/`). Swapping a `PlayerCharacterController`/
   `PlayerCharacterController2d` to drive a different character, or temporarily suspending player
   input (a cutscene, a menu), only needs `controller.active = false`/`true` - setting `.character`
@@ -397,6 +397,31 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   *running* game instance instead of poking internals through devtools.
 - **Vehicles**: `RaycastVehicle3dEntity` / `GgCarEntity` in `packages/core/src/3d/entities/` for
   raycast-based car physics.
+
+## Touch devices: on-screen controls
+
+`@gg-web-engine/mobile-controls` (a separate, optional package) overlays sticks and buttons on the
+canvas on phones and tablets (see its package README for the full guide). One line covers every
+built-in input controller in the world, present or added later:
+
+```typescript
+world.addEntity(new MobileControls()); // shown on touch-first devices only; enabled: true forces it
+```
+
+- It follows `GgCarHandlingController`/`CarHandlingController`,
+  `PlayerCharacterController`, `PlayerCharacterController2d` and `FreeCameraController`, showing the
+  layout of whichever is `active` - so switching controllers by `active` (see "Common pitfalls")
+  switches the touch controls too. `OrbitCameraController` handles touch drags natively.
+- Options pick a scheme per controller (`car: { steering: 'buttons' | 'stick' | 'tilt' }`,
+  `character: { movement: 'stick' | 'dpad', look: 'drag' | 'stick' }`) and adjust single controls
+  (`placements`, `icons`, `hide`, `extra`).
+- An app's own keys get a button with `new TouchButton({...}).bindKey(world.keyboardInput, 'KeyF')`,
+  added to a layout's `extra` or kept always on screen with `controls.addControls(...)`.
+- An app's own controller class gets a layout with `controls.registerLayout(MyController, factory)`.
+  To be drivable by a stick, read movement from `DirectionInput.direction$` (a vector, keys
+  and analog sources combined) rather than `output$` (keys only).
+- An app that embeds the canvas in a page, or uses the Fullscreen API, passes a positioned wrapper
+  element as `container`; otherwise the overlay covers the viewport.
 
 ## Multiplayer
 

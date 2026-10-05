@@ -1,7 +1,7 @@
-import { CarKeyboardHandlingController, KeyboardInput } from '../../../../../src';
+import { CarHandlingController, KeyboardInput } from '../../../../../src';
 import { MockWorld } from '../../../../mocks/world.mock';
 
-describe('CarKeyboardHandlingController', () => {
+describe('CarHandlingController', () => {
   // `output$` is only ever pushed from this controller's own `tick$` subscription (see the class'
   // source) - it carries no `active` filter of its own, relying entirely on `GgWorld` never
   // delivering a tick to an inactive entity in the first place (see `GgWorld`'s own `forwardTick`,
@@ -13,7 +13,7 @@ describe('CarKeyboardHandlingController', () => {
     await world.init();
     const keyboard = new KeyboardInput();
     keyboard.start();
-    const controller = new CarKeyboardHandlingController(keyboard, {
+    const controller = new CarHandlingController(keyboard, {
       keymap: 'arrows',
       maxSteerDeltaPerSecond: 1000,
       ...options,

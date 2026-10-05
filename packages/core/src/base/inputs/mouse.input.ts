@@ -170,6 +170,18 @@ export class MouseInput extends IInput<[], [unlockPointer?: boolean]> {
     this.canvasClickListener = this.canvasClickListener.bind(this);
   }
 
+  /**
+   * Emulates a pointer movement: `delta` is emitted through `delta$` as if the mouse had moved by
+   * that many pixels. For anything else that turns a view (an on-screen look pad or stick, a
+   * gamepad). Ignored while the input is not running.
+   */
+  emulateMove(delta: Point2): void {
+    if (!this.running) {
+      return;
+    }
+    this._delta$.next(delta);
+  }
+
   protected startInternal() {
     if (this.options.canvas) {
       this.options.canvas.style.touchAction = 'none';

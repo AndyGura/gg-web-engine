@@ -232,7 +232,7 @@ and share the room link.
 ## 📦 Packages
 
 Every package is published at the same version. Pick the core, one renderer and one physics engine
-of the same dimensionality; audio and multiplayer are optional.
+of the same dimensionality; audio, multiplayer and mobile controls are optional.
 
 | Package | Role | Built on |
 |---|---|---|
@@ -245,6 +245,7 @@ of the same dimensionality; audio and multiplayer are optional.
 | [`@gg-web-engine/matter`](packages/matter/README.md) | 2D physics | [Matter.js](https://github.com/liabru/matter-js) |
 | [`@gg-web-engine/audio`](packages/audio/README.md) | 2D/3D positional audio | [Web Audio API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API) |
 | [`@gg-web-engine/multiplayer`](packages/multiplayer/README.md) | P2P shared-world multiplayer | [WebRTC](https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API), [Firebase](https://firebase.google.com/docs/database) signaling |
+| [`@gg-web-engine/mobile-controls`](packages/mobile-controls/README.md) | On-screen touch controls: sticks, buttons, d-pads, tilt steering | DOM, [Pointer Events](https://developer.mozilla.org/en-US/docs/Web/API/Pointer_events) |
 
 Also in this repo: the [GG Web Engine Exporter](blender-addon/README.md) Blender add-on, which
 exports a scene as `.glb` + `.meta` (meshes, rigid bodies, splines, empties) for the 3D loader.
@@ -319,7 +320,7 @@ Supporting pieces:
   pausing a clock pauses its children, so in-game timers stop with the world.
 - **[Inputs](https://andygura.github.io/gg-web-engine/modules/core/base/inputs/input.ts/)** -
   `KeyboardInput` (key bindings as `Observable<boolean>`), `MouseInput` (deltas, pointer lock) and
-  `DirectionKeyboardInput` (WASD/arrows) - are created and consumed by controller entities.
+  `DirectionInput` (WASD/arrows) - are created and consumed by controller entities.
 - **Factories** ([2D](https://andygura.github.io/gg-web-engine/modules/core/2d/factories.ts/),
   [3D](https://andygura.github.io/gg-web-engine/modules/core/3d/factories.ts/)) create primitive
   display objects and rigid bodies from a shape descriptor.
@@ -334,7 +335,7 @@ Supporting pieces:
 - **[CharacterController2dEntity](https://andygura.github.io/gg-web-engine/modules/core/2d/entities/character-controller-2d.entity.ts/#charactercontroller2dentity-class)** / **[CharacterController3dEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/character-controller-3d.entity.ts/#charactercontroller3dentity-class)** - a capsule-bodied, physics-driven character: walk, run, jump, gravity, plus crouch in 3D
 - **[PlayerCharacterController2d](https://andygura.github.io/gg-web-engine/modules/core/2d/entities/controllers/input/player-character-2d.controller.ts/#playercharactercontroller2d-class)** / **[PlayerCharacterController](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/controllers/input/player-character.controller.ts/#playercharactercontroller-class)** - keyboard/mouse control and a following camera for a character; first- and third-person modes with camera-collision avoidance in 3D
 - **[RaycastVehicle3dEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/raycast-vehicle-3d.entity.ts/#raycastvehicle3dentity-class)** - a raycast vehicle with chassis and wheel meshes bound to it
-- **[GgCarEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/gg-car/gg-car.entity.ts/#ggCarentity-class)** - a four-wheel car simulating an engine with a torque table, a gearbox and more, with **[CarKeyboardHandlingController](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/controllers/input/car-keyboard-handling.controller.ts/#carkeyboardhandlingcontroller-class)** to drive it
+- **[GgCarEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/gg-car/gg-car.entity.ts/#ggCarentity-class)** - a four-wheel car simulating an engine with a torque table, a gearbox and more, with **[CarHandlingController](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/controllers/input/car-handling.controller.ts/#carkeyboardhandlingcontroller-class)** to drive it
 - **[Grabbable3dEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/grabbable-3d.entity.ts/#grabbable3dentity-class)** - a prop that can be picked up, carried and thrown, paired with **[ObjectGrabController](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/controllers/input/object-grab.controller.ts/#objectgrabcontroller-class)**
 - **[MapGraph3dEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/map-graph-3d.entity.ts/#mapgraph3dentity-class)** - loads the nearby parts of a big map and disposes the far ones
 - **[SurfaceFollowingEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/surface-following.entity.ts/#surfacefollowingentity-class)** - a smooth surface collider declared parametrically

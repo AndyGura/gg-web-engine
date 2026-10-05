@@ -4,7 +4,9 @@ GG-Web-Engine is a modular, library-agnostic 2D/3D web game engine. `@gg-web-eng
 rendering/physics-agnostic abstractions; separate adapter packages (`packages/three`,
 `packages/pixi` for rendering; `packages/ammo`, `packages/rapier2d`, `packages/rapier3d`,
 `packages/matter` for physics) implement those abstractions against real third-party libraries.
-Apps compose one visual + one physics adapter of matching dimensionality on top of core. See the
+Apps compose one visual + one physics adapter of matching dimensionality on top of core. Optional
+add-on packages (`packages/audio`, `packages/multiplayer`, `packages/mobile-controls`) plug into the
+same world. See the
 root `README.md` for the full pitch and a quickstart code sample.
 
 ## Skill set
@@ -18,7 +20,7 @@ the task before writing code:
 |---|---|
 | [`gg-engine-app-development`](.claude/skills/gg-engine-app-development/SKILL.md) | Writing app/game code that *consumes* published `@gg-web-engine/*` packages. |
 | [`gg-engine-level-json`](.claude/skills/gg-engine-level-json/SKILL.md) | Authoring a level/scene JSON file, or registering an app-defined entity class the loader can dispatch to. |
-| [`gg-engine-core-development`](.claude/skills/gg-engine-core-development/SKILL.md) | Changing `packages/core` — the dimension-agnostic and 2D/3D interfaces every adapter implements. |
+| [`gg-engine-core-development`](.claude/skills/gg-engine-core-development/SKILL.md) | Changing `packages/core` — the dimension-agnostic and 2D/3D interfaces every adapter implements. Also covers `packages/mobile-controls` (on-screen touch controls), which builds on core's input classes. |
 | [`gg-engine-visual-adapter`](.claude/skills/gg-engine-visual-adapter/SKILL.md) | Creating/modifying a rendering backend package (`packages/three`, `packages/pixi`, or a new one). |
 | [`gg-engine-audio-adapter`](.claude/skills/gg-engine-audio-adapter/SKILL.md) | Creating/modifying an audio backend package (`packages/audio`, or a new one), or the `audioScene` contract itself. |
 | [`gg-engine-physics-adapter`](.claude/skills/gg-engine-physics-adapter/SKILL.md) | Creating a **new** physics backend package from scratch, or the general contract any physics adapter must satisfy. |

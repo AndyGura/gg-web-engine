@@ -1,7 +1,7 @@
 import { filter, takeUntil } from 'rxjs';
 import {
-  DirectionKeyboardInput,
-  DirectionKeyboardKeymap,
+  DirectionInput,
+  DirectionKeymap,
   GgWorld,
   IEntity,
   KeyboardInput,
@@ -27,7 +27,7 @@ export type PlayerCharacterControllerViewMode = 'first-person' | 'third-person';
  */
 export type PlayerCharacterControllerOptions = {
   /** Keymap for walk/strafe direction. 'wasd+arrows' by default (both layouts work at once). */
-  keymap: DirectionKeyboardKeymap;
+  keymap: DirectionKeymap;
   /** Key code that triggers `character.jump()`. 'Space' by default. */
   jumpKey: string;
   /** Key code that sets `character.isRunning`. 'ShiftLeft' by default. */
@@ -93,8 +93,8 @@ const DEFAULT_OPTIONS: PlayerCharacterControllerOptions = {
  * The player's input+camera controller: WASD/arrows/both movement, sprint, crouch and jump keys,
  * and mouse-look driving a first- or third-person camera - all layered on top of a plain
  * `CharacterController3dEntity`, which owns the actual movement/gravity/jump physics. Mirrors
- * `GgCarKeyboardHandlingController` (input entity driving a separate physics entity) crossed with
- * `FreeCameraController` (mouse-look + pointer lock via the same `MouseInput`/`DirectionKeyboardInput`
+ * `GgCarHandlingController` (input entity driving a separate physics entity) crossed with
+ * `FreeCameraController` (mouse-look + pointer lock via the same `MouseInput`/`DirectionInput`
  * primitives).
  *
  * The character's yaw always follows the camera's yaw (mouse-look), in both view modes - `WASD`
@@ -104,10 +104,10 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
   static readonly entityTypeName: string = 'PlayerCharacterController';
   public readonly tickOrder = TickOrder.CONTROLLERS;
 
-  protected readonly options: PlayerCharacterControllerOptions;
+  public readonly options: PlayerCharacterControllerOptions;
 
   public readonly mouseInput: MouseInput;
-  public readonly directionsInput: DirectionKeyboardInput;
+  public readonly directionsInput: DirectionInput;
 
   /**
    * `this.camera.camera.fov` as it stood the moment this controller was constructed, before it ever
@@ -229,7 +229,7 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
   }
 
   constructor(
-    protected readonly keyboard: KeyboardInput,
+    public readonly keyboard: KeyboardInput,
     /** The character this controller drives. May be swapped/set to `null` at any time. */
     public character: CharacterController3dEntity<TypeDoc> | null,
     protected readonly camera: Renderer3dEntity<TypeDoc['vTypeDoc']>,
@@ -242,7 +242,7 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
       mouseOptions: { ...DEFAULT_OPTIONS.mouseOptions, ...options.mouseOptions },
     };
     this.mouseInput = new MouseInput(this.options.mouseOptions);
-    this.directionsInput = new DirectionKeyboardInput(keyboard, this.options.keymap);
+    this.directionsInput = new DirectionInput(keyboard, this.options.keymap);
     // Captured before the `viewMode` setter below ever runs, so it reflects the camera's fov as the
     // app configured it, not anything this controller (or a third-person restore) already touched -
     // see `baseFov`'s own doc.
@@ -259,12 +259,12 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
     super.onSpawned(world);
     this.reset();
 
-    this.directionsInput.output$
+    this.directionsInput.direction$
       .pipe(
         takeUntil(this._onRemoved$),
         filter(() => this.active),
       )
-      .subscribe(({ upDown, leftRight }) => {
+      .subscribe(direction => {
         // Local axes here follow `CharacterController3dEntity.moveDirection`'s own convention (see
         // its doc): local +Y is "forward at zero yaw", local +X is "right at zero yaw" - the same
         // right=X/forward=Y/up=Z axis paradigm `RaycastVehicle3dEntity`/`GgCarEntity` use (see e.g.
@@ -272,9 +272,7 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
         // `FreeCameraController` convention (local -Z forward, local Y up), which does not apply here
         // since the character's identity/rest orientation stands with its long axis along `up` (Z),
         // not along local Y like a camera's.
-        const local: MutablePoint3 = { x: 0, y: 0, z: 0 };
-        if (upDown !== undefined) local.y = upDown ? 1 : -1;
-        if (leftRight !== undefined) local.x = leftRight ? -1 : 1;
+        const local: MutablePoint3 = { x: direction.x, y: direction.y, z: 0 };
         if (this.character) {
           this.character.moveDirection = local;
         }

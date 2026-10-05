@@ -1,9 +1,9 @@
 import { filter, takeUntil } from 'rxjs';
 import { GgWorld, IEntity, KeyboardInput, TickOrder } from '../../../../base';
 import { GgCarEntity } from '../../gg-car/gg-car.entity';
-import { CarKeyboardControllerOptions, CarKeyboardHandlingController } from './car-keyboard-handling.controller';
+import { CarHandlingControllerOptions, CarHandlingController } from './car-handling.controller';
 
-export type GgCarKeyboardControllerOptions = CarKeyboardControllerOptions & {
+export type GgCarHandlingControllerOptions = CarHandlingControllerOptions & {
   gearUpDownKeys: [string, string];
   /**
    * Whether the throttle keys pick the driving direction by themselves. While `true`, holding
@@ -25,17 +25,17 @@ export type GgCarKeyboardControllerOptions = CarKeyboardControllerOptions & {
   handbrakeKey: string;
 };
 
-export class GgCarKeyboardHandlingController extends IEntity {
-  static readonly entityTypeName: string = 'GgCarKeyboardHandlingController';
+export class GgCarHandlingController extends IEntity {
+  static readonly entityTypeName: string = 'GgCarHandlingController';
   public readonly tickOrder = TickOrder.INPUT_CONTROLLERS;
 
-  public readonly carHandlingInput: CarKeyboardHandlingController;
+  public readonly carHandlingInput: CarHandlingController;
   public switchingGearsEnabled: boolean = true;
 
   constructor(
-    protected readonly keyboard: KeyboardInput,
+    public readonly keyboard: KeyboardInput,
     public car: GgCarEntity | null,
-    protected readonly options: GgCarKeyboardControllerOptions = {
+    public readonly options: GgCarHandlingControllerOptions = {
       keymap: 'arrows',
       maxSteerDeltaPerSecond: 12,
       gearUpDownKeys: ['KeyA', 'KeyZ'],
@@ -44,7 +44,7 @@ export class GgCarKeyboardHandlingController extends IEntity {
     },
   ) {
     super();
-    this.carHandlingInput = new CarKeyboardHandlingController(keyboard, options);
+    this.carHandlingInput = new CarHandlingController(keyboard, options);
     this.addChildren(this.carHandlingInput);
   }
 
