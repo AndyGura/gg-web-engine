@@ -1,15 +1,17 @@
 #!/bin/bash
+# Publishes the examples gallery: the static page + registry, the shared assets, and every example's
+# dist/ build (see build_examples.sh) under its examples.json `dir`, so the page can embed each one
+# by a relative URL.
 set -e
+cd "$(dirname "$0")"
 export AWS_DEFAULT_PROFILE=andygura
-# examples page
+# examples page + registry
 aws s3 cp index.html s3://gg-web-engine-demos/index.html
+aws s3 cp examples.json s3://gg-web-engine-demos/examples.json --cache-control max-age=300
 # example assets
 aws s3 sync ./assets s3://gg-web-engine-demos/assets --include "*" --exclude "*.blend" --cache-control max-age
 
-examples=()
-while IFS= read -r line || [ -n "$line" ]; do
-  examples+=("$line")
-done < ./examples-list.txt
+examples=($(node -p "require('./examples.json').examples.map(e => e.dir).join(' ')"))
 for ix in ${!examples[*]}
 do
     pushd ./${examples[$ix]}/dist

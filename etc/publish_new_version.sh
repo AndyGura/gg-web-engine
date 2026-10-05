@@ -110,10 +110,7 @@ do
 done
 
 echo NPM packages published, re-linking examples...
-examples=()
-while IFS= read -r line || [ -n "$line" ]; do
-  examples+=("$line")
-done < ./examples/examples-list.txt
+examples=($(node -p "require('./examples/examples.json').examples.map(e => e.dir).join(' ')"))
 upgrade_example() {
     pushd ./examples/$1
     sedi 's/"@gg-web-engine\/core": "[0-9.]*",/"@gg-web-engine\/core": "'$2'",/' package.json
@@ -137,7 +134,8 @@ for pid in "${example_pids[@]}"; do
     exit 1
   fi
 done
-sedi "s/\(const sbBranchSuffix = '\)[^']*\(';\)/\1$1\2/" ./examples/index.html
+# the gallery's StackBlitz links open the examples at the release tag
+sedi 's/"version": "[0-9.]*",/"version": "'$1'",/' ./examples/examples.json
 
 echo "Reminder: "
 echo "1) double-check readme code example"

@@ -1,15 +1,14 @@
 #!/bin/bash
+# Builds every example listed in examples.json into its own dist/ (see deploy.sh for publishing).
 set -e
+cd "$(dirname "$0")"
 
-examples=()
-while IFS= read -r line || [ -n "$line" ]; do
-  examples+=("$line")
-done < ./examples-list.txt
+examples=($(node -p "require('./examples.json').examples.map(e => e.dir).join(' ')"))
 build_example() {
     pushd ./$1
     rm -rf node_modules && rm -f package-lock.json && rm -rf dist
     npm i
-#    sh ../../etc/switch_example_to_local_gg.sh .
+#    sh ../../../etc/switch_example_to_local_gg.sh .
     npm run build
 #    npm run start
     popd

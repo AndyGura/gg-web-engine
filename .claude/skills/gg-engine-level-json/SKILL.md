@@ -707,7 +707,7 @@ loads that file).
 ```
 
 This is the procedural counterpart of the GLB-driven car construction an app does by hand when a
-car's chassis/wheels come from modeled meshes (see `examples/fly-city-three-ammo`'s
+car's chassis/wheels come from modeled meshes (see `examples/3d/fly-city`'s
 `GameFactory.generateCar`/`RaycastVehicle3dEntity` for that path) - `"GgCar"` builds a box chassis
 and cylinder wheel meshes procedurally instead, which is enough for a physics playground or a
 placeholder vehicle without any asset pipeline.
@@ -797,7 +797,7 @@ The returned `MapGraph3dEntity` doesn't implement `IPositionable3d` (every node 
 own absolute `position`/`rotation`), so there's no `position`/`rotation` field on the `"MapGraph"`
 entity itself, and it starts out never loading anything - `loaderCursor$` still has to be driven at
 runtime from whatever entity's position should determine which nodes are in range, same as
-`examples/fly-city-three-ammo`'s `GameFactory.setupMapGraph` does against a render cursor:
+`examples/3d/fly-city`'s `GameFactory.setupMapGraph` does against a render cursor:
 
 ```typescript
 const mapGraph = level.getChildEntityByName<MapGraph3dEntity>('CityMap');
@@ -1131,13 +1131,14 @@ along with the rest of the level) and findable via `level.getChildEntityByName`/
 `world.getEntityByName` (see "Finding entities by name" above) if given a `name` in the JSON.
 `tickOrder` just needs any valid value since this class doesn't use its own `tick$` (it drives
 itself off a separate `PausableClock` running at its own `interval`, not the per-frame tick every
-`IEntity` gets for free) - `TickOrder.CONTROLLERS` is as good a choice as any here. All four
-`examples/primitives-*` demos register and use a `ShapeSpawner` this way, kept in a sibling
-`shape-spawner.ts` file (exporting `ShapeSpawner`/`ShapeSpawnerSettings`) and imported into
-`index.ts`, replacing what would otherwise be a hand-rolled spawn timer. `examples/primitives-pixi-matter`
-(and its `primitives-pixi-rapier2d` twin) is the simplest complete reference - just a static floor
-plus the spawner, no `"Trigger"`/`"Camera"` entities; `examples/primitives-three-ammo` (and its
-`primitives-three-rapier3d` twin) is the same idea plus a `"Trigger"` kill-floor and a `"Camera"`.
+`IEntity` gets for free) - `TickOrder.CONTROLLERS` is as good a choice as any here. Both
+`primitives` demos (`examples/2d/primitives`, `examples/3d/primitives`) register and use a
+`ShapeSpawner` this way, kept in a sibling `shape-spawner.ts` file (exporting
+`ShapeSpawner`/`ShapeSpawnerSettings`) and imported into `index.ts`, replacing what would otherwise
+be a hand-rolled spawn timer. `examples/2d/primitives` is the simplest complete reference - just a
+static floor plus the spawner, no `"Trigger"`/`"Camera"` entities; `examples/3d/primitives` is the
+same idea plus a `"Trigger"` kill-floor and a `"Camera"` (each runs on either physics adapter of
+its dimension, see `gg-engine-examples`).
 
 A `class` with no registered generator logs `console.warn('No generator registered for class alias
 "..."')` and is skipped rather than throwing - so a level JSON referencing an app class must have

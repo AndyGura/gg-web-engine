@@ -246,7 +246,7 @@ export class Gg2dWorld<
         } else if (bodyTypeArg === '3') {
           bodyType = 'kinematic_vel';
         }
-        // Sized in pixels, matching the scale `examples/primitives-pixi-*`'s shape-spawner uses -
+        // Sized in pixels, matching the scale `examples/2d/primitives`'s shape-spawner uses -
         // 2D worlds have no fixed "1 unit" convention the way 3D's meter-scaled shapes do, so a
         // 3D-style unit-scale default (radius 0.5, dimensions 1x1) would spawn shapes too tiny to
         // see/interact with with a typical pixel-scale camera/renderer setup.

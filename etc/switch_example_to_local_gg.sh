@@ -67,7 +67,7 @@ function fix_dev_server_assets {
   [ -f webpack.dev.config.js ] || return 0
   grep -q '^  // devServer: {$' webpack.dev.config.js || return 0
   sedi 's|^  // devServer: {$|  devServer: {|' webpack.dev.config.js
-  sedi "s|^  //   static: \[{ directory: path.resolve(__dirname, '../assets'), publicPath: '/assets' }\],\$|    static: [{ directory: path.resolve(__dirname, '../assets'), publicPath: '/assets' }],|" webpack.dev.config.js
+  sedi "s|^  //   static: \[{ directory: path.resolve(__dirname, '../../assets'), publicPath: '/assets' }\],\$|    static: [{ directory: path.resolve(__dirname, '../../assets'), publicPath: '/assets' }],|" webpack.dev.config.js
   sedi 's|^  // },$|  },|' webpack.dev.config.js
 }
 

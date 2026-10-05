@@ -51,7 +51,7 @@ best-effort.
 | `packages/matter`, `packages/rapier2d` | 2D physics adapters (matter-js, Rapier). |
 | `packages/audio` | Web Audio API adapter. |
 | `packages/multiplayer` | Shared-world P2P multiplayer (network controller, WebRTC mesh transport, Firebase/BroadcastChannel signaling). Its in-process harness runs on all four physics adapters. |
-| `examples/` | Standalone demo apps. Each is an independent npm project so it stays cloneable into StackBlitz. `examples/examples-list.txt` is the registry the release script bumps. |
+| `examples/` | Standalone demo apps, one directory per example under `examples/2d` and `examples/3d`. Each is an independent npm project so it stays cloneable into StackBlitz, and picks its physics backend at startup from a `?physics=` query parameter (its `backends.ts`), which is how the gallery page (`examples/index.html`) swaps backends in place. `examples/examples.json` is the registry the gallery, `build_examples.sh`/`deploy.sh` and the release script all read. |
 | `e2e/` | End-to-end test harnesses that need more than a package (currently the Blender export round-trip). |
 | `blender-addon/` | Blender extension that exports a scene as `.glb` + `.meta` for the 3D loader. Published alongside every engine release. |
 | `etc/` | Shell scripts: the release pipeline (`publish_new_version.sh`) and the example-linking helpers. |
@@ -117,14 +117,17 @@ Examples are deliberately *not* part of the workspace. Link one to your local pa
 then start its dev server:
 
 ```bash
-bash etc/switch_example_to_local_gg.sh examples/<example-dir>
-cd examples/<example-dir> && npm start     # webpack-dev-server
+bash etc/switch_example_to_local_gg.sh examples/3d/<example-dir>
+cd examples/3d/<example-dir> && npm start     # webpack-dev-server
 ```
 
 With `npm run build:watch` and the example's dev server both running, any edit under
 `packages/*/src` shows up in the browser without another step. Undo the link with
-`bash etc/restore_example_from_local_gg.sh examples/<example-dir>`. The
-`gg-engine-core-development` skill documents caveats of this loop in detail.
+`bash etc/restore_example_from_local_gg.sh examples/3d/<example-dir>`. The
+`gg-engine-core-development` skill documents caveats of this loop in detail. Append
+`?physics=<backend>` to the dev server's URL to run the example on another physics backend; the
+gallery page itself can be previewed against local `dist/` builds with
+`node examples/serve_gallery.mjs`.
 
 ### The Blender export end-to-end test
 
@@ -180,8 +183,8 @@ Conventions the review will check for:
   `devDependencies` never list other `@gg-web-engine/*` adapter packages (the release installs each
   package standalone, and the previous adapter release would conflict with the new core); tests
   that need adapters resolve them through the workspace instead.
-- A new example is added to `examples/examples-list.txt` (so the release script bumps its
-  dependency versions) and, if it should be publicly browsable, to `examples/index.html`.
+- A new example is added to `examples/examples.json` (the gallery lists it from there, and the
+  build, deploy and release scripts iterate it), under `examples/2d` or `examples/3d`.
 - Examples use `@gg-web-engine/*` APIs only: no direct `three`/`pixi.js`/`ammo.js`/`matter-js`/
   `@dimforge/*` import and no `native*` escape hatch (`nativeMesh`, `nativeSprite`, `nativeBody`,
   ...). `npm run lint:examples` checks this. If an example needs something core can't express,
@@ -229,14 +232,16 @@ the add-on actually changed.
    - bumped `packages/core`, published it, and waited for npm to serve the new version;
    - bumped every adapter's own version and its `@gg-web-engine/core` dependency, built each one
      against the *published* core (not the workspace symlink), and published them;
-   - bumped `@gg-web-engine/*` versions in every example listed in `examples/examples-list.txt`;
+   - bumped `@gg-web-engine/*` versions in every example listed in `examples/examples.json`, and
+     that file's `version` (the git tag the gallery's StackBlitz links open);
    - regenerated `documentation/`, committed all of the above (the rolled changelog included) back to `main` as
      `X.Y.Z release`, tagged it `X.Y.Z`, and deployed the docs site plus the Blender extension
      repository to GitHub Pages.
 5. Do the manual follow-ups the job doesn't cover:
    - confirm the code sample in the root `README.md` quickstart still matches the current API;
-   - redeploy any separately-hosted example demos;
-   - spot-check that the StackBlitz links for the examples open at the new branch suffix.
+   - rebuild and redeploy the examples gallery (`examples/build_examples.sh`, then
+     `examples/deploy.sh`);
+   - spot-check that the gallery's StackBlitz links open at the new tag.
 
 ### If a release fails partway
 

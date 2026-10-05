@@ -90,6 +90,13 @@ where one exists.
   the first frame) and, for pixi, `disposeTexture`.
 
 ### Changed
+- Examples: one example per feature under `examples/2d` and `examples/3d` instead of one copy per
+  renderer/physics combination. Each example picks its physics backend at startup from a
+  `?physics=` query parameter (`backends.ts`, loading only the chosen adapter), and the gallery at
+  gg-web-demos.guraklgames.com swaps rendering/physics backends in place, forwards other query
+  parameters (a coin-run room link works through it) and still opens every example in StackBlitz.
+  `examples/examples.json` replaces `examples-list.txt` as the registry. The `ammo-car` example is
+  now `3d/raycast-vehicle`.
 - `@gg-web-engine/core`: `DirectionKeyboardInput` is renamed to `DirectionInput` and
   `DirectionKeyboardKeymap` to `DirectionKeymap`, now that the input is no longer keyboard-only. The
   old names are gone.

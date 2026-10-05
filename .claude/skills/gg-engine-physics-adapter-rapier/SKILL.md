@@ -141,7 +141,7 @@ every tick that isn't actively rising.
 
 The practical lesson for testing a fix like this: **a jump that works perfectly in open space is not
 sufficient evidence the fix is complete** - specifically test jumping while pressed against/blocked by
-a tall obstacle too (this repo's own `player-character-three-ammo`/`-rapier3d` demo scene ships a
+a tall obstacle too (this repo's own `3d/player-character`/`-rapier3d` demo scene ships a
 `JumpBarrier` purpose-built for exactly this), since that's the condition that exposes a second native
 feature interacting with the same code path that an open-field test can't reach at all. Also test the
 *realistic* version of that scenario (running at the obstacle from a normal approach distance and
@@ -843,7 +843,7 @@ Both are best-effort reconstructions, not values read back verbatim from the nat
 as a known limitation rather than chasing exactness, same spirit as
 `Rapier3dCharacterControllerComponent`'s own ground-normal approximation; only confirmed geometrically
 sound (all four wheels sit at their configured corner offsets and translate/rotate along with the
-chassis) and visually plausible in the `ammo-car-three-rapier3d` example.
+chassis) and visually plausible in the `3d/raycast-vehicle` example.
 
 **`resetSuspension()` is a documented no-op.** Rapier exposes no way to directly set a wheel's *current*
 suspension length (only the rest length/travel bounds that shape it). Not load-bearing here, either -

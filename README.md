@@ -225,8 +225,8 @@ The rest of the game stays single-player code. What you get:
 - **Testable**: an in-process loopback transport with simulated latency, jitter and packet loss, plus
   `net_*` console commands for live inspection.
 
-Try it: open the [Coin run](https://gg-web-demos.guraklgames.com/coin-run-pixi-rapier2d/index.html)
-(2D) or [Fly city](https://gg-web-demos.guraklgames.com/fly-city-three-ammo/index.html) (3D) demo
+Try it: open the [Coin run](https://gg-web-demos.guraklgames.com/?example=2d/coin-run)
+(2D) or [Fly city](https://gg-web-demos.guraklgames.com/?example=3d/fly-city) (3D) demo
 and share the room link.
 
 ## 📦 Packages
@@ -252,18 +252,19 @@ exports a scene as `.glb` + `.meta` (meshes, rigid bodies, splines, empties) for
 
 ## 🕹️ Demos
 
-**[Browse all interactive demos →](https://gg-web-demos.guraklgames.com/)** Each one opens in
-StackBlitz with one click, and its source lives under [`examples/`](examples).
+**[Browse all interactive demos →](https://gg-web-demos.guraklgames.com/)** Each one runs on every
+physics backend of its dimension (switch it in place) and opens in StackBlitz with one click; the
+source lives under [`examples/2d`](examples/2d) and [`examples/3d`](examples/3d).
 
 | Demo | Shows |
 |---|---|
-| [Fly city](https://gg-web-demos.guraklgames.com/fly-city-three-ammo/index.html) | Driving through a streamed city: cars, map graph, audio, multiplayer |
-| [Coin run](https://gg-web-demos.guraklgames.com/coin-run-pixi-rapier2d/index.html) | 2D multiplayer platformer rounds |
-| [Portal room](https://gg-web-demos.guraklgames.com/portal-room-three-rapier3d/index.html) | First-person character, grabbable props, positional sound |
-| [Player character](https://gg-web-demos.guraklgames.com/player-character-three-rapier3d/index.html) | Animated character controllers, in 3D and 2D |
-| [Shooter](https://gg-web-demos.guraklgames.com/shooter-three-ammo/index.html) | Free-fly camera in a textured physics scene, using native Three.js materials |
-| [Collision groups pool](https://gg-web-demos.guraklgames.com/collision-groups-pool-three-rapier3d/index.html) | Collision filtering |
-| [Primitives](https://gg-web-demos.guraklgames.com/primitives-three-rapier3d/index.html) | A level built from JSON, on every renderer/physics combination |
+| [Fly city](https://gg-web-demos.guraklgames.com/?example=3d/fly-city) | Driving through a streamed city: cars, map graph, audio, multiplayer |
+| [Coin run](https://gg-web-demos.guraklgames.com/?example=2d/coin-run) | 2D multiplayer platformer rounds |
+| [Portal room](https://gg-web-demos.guraklgames.com/?example=3d/portal-room&physics=rapier3d) | First-person character, grabbable props, positional sound |
+| [Player character](https://gg-web-demos.guraklgames.com/?example=3d/player-character&physics=rapier3d) | Animated character controllers, in 3D and 2D |
+| [Shooter](https://gg-web-demos.guraklgames.com/?example=3d/shooter) | Free-fly camera in a textured physics scene, using native Three.js materials |
+| [Collision groups pool](https://gg-web-demos.guraklgames.com/?example=3d/collision-groups-pool&physics=rapier3d) | Collision filtering |
+| [Primitives](https://gg-web-demos.guraklgames.com/?example=3d/primitives&physics=rapier3d) | A level built from JSON, in 3D and 2D, on every physics backend |
 
 Built with the engine: [The Need For Speed Web](https://tnfsw.guraklgames.com/), a browser remake
 of the 1994 classic and the project this engine grew out of.
@@ -520,11 +521,11 @@ npm run build:watch   # rebuild core + adapters on every save
 To see your changes live in an example app:
 
 ```bash
-bash etc/switch_example_to_local_gg.sh examples/<example-dir>
-cd examples/<example-dir> && npm start
+bash etc/switch_example_to_local_gg.sh examples/3d/<example-dir>
+cd examples/3d/<example-dir> && npm start
 ```
 
-Undo the link with `bash etc/restore_example_from_local_gg.sh examples/<example-dir>` before
+Undo the link with `bash etc/restore_example_from_local_gg.sh examples/3d/<example-dir>` before
 committing.
 
 If the engine is useful to you, a ⭐ on the repo helps others find it.

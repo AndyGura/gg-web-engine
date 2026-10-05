@@ -1,0 +1,47 @@
+{
+  "name": "fly-city-3d",
+  "version": "0.0.0",
+  "scripts": {
+    "ng": "ng",
+    "start": "ng serve",
+    "build": "ng build"
+  },
+  "private": true,
+  "dependencies": {
+    "@angular/animations": "^22.1.4",
+    "@angular/common": "^22.1.4",
+    "@angular/compiler": "^22.1.4",
+    "@angular/core": "^22.1.4",
+    "@angular/forms": "^22.1.4",
+    "@angular/platform-browser": "^22.1.4",
+    "@angular/platform-browser-dynamic": "^22.1.4",
+    "@angular/router": "^22.1.4",
+    "@gg-web-engine/ammo": "0.0.77",
+    "@gg-web-engine/audio": "0.0.77",
+    "@gg-web-engine/core": "0.0.77",
+    "@gg-web-engine/mobile-controls": "0.0.77",
+    "@gg-web-engine/multiplayer": "0.0.77",
+    "@gg-web-engine/three": "0.0.77",
+    "firebase": "12.19.0",
+    "rxjs": "7.8.2",
+    "three": "0.186.1",
+    "tslib": "^2.3.0",
+    "zone.js": "~0.16.2"
+  },
+  "devDependencies": {
+    "@angular/build": "^22.1.6",
+    "@angular/cli": "~22.1.6",
+    "@angular/compiler-cli": "^22.1.4",
+    "@types/three": "0.186.0",
+    "typescript": "~6.0.3"
+  },
+  "overrides": {
+    "rxjs": "7.8.2",
+    "three": "0.186.1"
+  },
+  "browser": {
+    "fs": false,
+    "os": false,
+    "path": false
+  }
+}

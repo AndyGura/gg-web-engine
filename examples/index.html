@@ -1,399 +1,435 @@
 <!DOCTYPE html>
-<html lang='en'>
+<html lang="en">
 <head>
-    <meta charset='UTF-8'>
-    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-    <title>GG Web Engine Examples</title>
-    <style>
-        body {
-            margin: 0;
-            font-family: 'Arial', sans-serif;
-            display: flex;
-            height: 100vh;
-            overflow: hidden;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GG Web Engine examples</title>
+  <meta name="description" content="Interactive examples of the GG Web Engine, a modular 2D/3D web game engine. Switch the rendering and physics backend of each example in place.">
+  <!--
+    The examples gallery: a static page, no build step. It reads examples.json (the registry every
+    example is listed in), shows one example at a time in an iframe and lets the visitor swap the
+    example's rendering/physics backend in place - each example reads `?physics=` / `?visual=` from
+    its own URL, so swapping just reloads the frame with a different query.
 
-        #navigation {
-            width: 20rem;
-            max-width: 50%;
-            padding-top: 2rem;
-            background-color: #333;
-            color: white;
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            overflow-y: auto;
-            z-index: 10;
-        }
+    URL scheme (bookmarkable):  ?example=3d/primitives&physics=rapier3d&visual=three
+    Every other query parameter (a multiplayer room id, say) is passed through to the example
+    untouched, so a link an example produces still works when wrapped in the gallery.
+    The old `#Label__visual__physics` hash links redirect to the new scheme.
+  -->
+  <style>
+    :root {
+      --bg: #15171c;
+      --panel: #1d2027;
+      --panel-2: #262a33;
+      --border: #333843;
+      --text: #e7e9ee;
+      --muted: #9aa1ad;
+      --accent: #f5a524;
+      --accent-text: #1a1300;
+      --radius: 8px;
+      --sidebar-w: 21rem;
+      font-size: 15px;
+    }
 
-        .navigation-hidden {
-            display: none !important;
-        }
+    * { box-sizing: border-box; }
 
-        #hide-button {
-            position: absolute;
-            top: 0.5rem;
-            left:0.5rem;
-            z-index: 11;
-            height: 2rem;
-            display: inline-block;
-            cursor: pointer;
-            box-shadow: black;
-        }
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Ubuntu, sans-serif;
+      line-height: 1.4;
+    }
 
-        .bar1, .bar2, .bar3 {
-            width: 35px;
-            height: 5px;
-            background-color: white;
-            margin: 6px 0;
-            transition: 0.4s;
-        }
+    body { display: flex; }
 
-        .change .bar1 {
-            transform: translate(0, 11px) rotate(-45deg);
-        }
-        .change .bar2 {opacity: 0;}
-        .change .bar3 {
-            transform: translate(0, -11px) rotate(45deg);
-        }
+    a { color: inherit; }
+    button, select { font: inherit; color: inherit; }
 
-        .navPanel {
-            margin: 1rem;
-        }
+    /* --- sidebar --- */
+    #sidebar {
+      width: var(--sidebar-w);
+      max-width: 100%;
+      flex: none;
+      display: flex;
+      flex-direction: column;
+      background: var(--panel);
+      border-right: 1px solid var(--border);
+      transition: margin-left 0.25s ease;
+    }
+    body.nav-hidden #sidebar { margin-left: calc(-1 * var(--sidebar-w)); }
 
-        #examplesNavPanel {
-            display: flex;
-            flex-direction: column;
-            margin: 1rem 0;
-            flex-grow: 1;
-        }
+    #brand {
+      padding: 1rem 1rem 0.75rem 3.25rem;
+      border-bottom: 1px solid var(--border);
+    }
+    #brand h1 {
+      margin: 0;
+      font-size: 1.05rem;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+    }
+    #brand p {
+      margin: 0.2rem 0 0;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    #brand p a { color: var(--muted); }
 
-        #examplesNavPanel > label {
-            margin: 1rem;
-        }
+    #dims {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.35rem;
+      margin: 0.85rem 1rem 0.5rem;
+      padding: 0.25rem;
+      background: var(--bg);
+      border-radius: var(--radius);
+    }
+    #dims button {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      padding: 0.45rem 0;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    #dims button[aria-selected="true"] {
+      background: var(--panel-2);
+      color: var(--text);
+    }
 
-        #examplesNavPanel > .example-option {
-            display: flex;
-            align-items: center;
-        }
+    #list {
+      flex: 1;
+      overflow-y: auto;
+      margin: 0;
+      padding: 0.25rem 0.5rem 0.5rem;
+      list-style: none;
+    }
+    #list li button {
+      display: block;
+      width: 100%;
+      text-align: left;
+      border: 0;
+      background: transparent;
+      padding: 0.55rem 0.6rem;
+      border-radius: var(--radius);
+      cursor: pointer;
+    }
+    #list li button:hover { background: var(--panel-2); }
+    #list li button[aria-current="true"] {
+      background: var(--accent);
+      color: var(--accent-text);
+    }
+    #list .title { display: block; font-weight: 600; }
+    #list .desc {
+      display: block;
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 0.1rem;
+    }
+    #list li button[aria-current="true"] .desc { color: var(--accent-text); opacity: 0.8; }
 
-        #examplesNavPanel > .example-option:has(> input:checked) {
-            background: #aaaaaa;
-        }
+    #backends {
+      border-top: 1px solid var(--border);
+      padding: 0.75rem 1rem 1rem;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 0.5rem 0.75rem;
+      align-items: center;
+    }
+    #backends label {
+      font-size: 0.8rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    #backends select {
+      width: 100%;
+      padding: 0.45rem 0.6rem;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    #backends select:disabled { cursor: default; opacity: 0.7; }
+    #backends .hint {
+      grid-column: 1 / -1;
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin: 0;
+    }
 
-        #examplesNavPanel > .example-option > label {
-            display: block;
-            width: 100%;
-            padding: 1rem;
-        }
+    /* --- stage --- */
+    #stage {
+      flex: 1;
+      position: relative;
+      min-width: 0;
+      background: #000;
+    }
+    #frame {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display: block;
+    }
+    #empty {
+      position: absolute;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      padding: 2rem;
+      text-align: center;
+    }
+    #stage.empty #empty { display: flex; }
+    #stage.empty #frame { visibility: hidden; }
 
-        #examplesNavPanel > .example-option:has(> input:checked) > label {
-            color: #101010;
-        }
+    #nav-toggle {
+      position: fixed;
+      top: 0.75rem;
+      left: 0.75rem;
+      z-index: 20;
+      width: 2rem;
+      height: 2rem;
+      border: 0;
+      border-radius: 6px;
+      background: rgba(0, 0, 0, 0.45);
+      color: #fff;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      padding: 0;
+    }
+    #nav-toggle span {
+      display: block;
+      width: 1.1rem;
+      height: 2px;
+      background: currentColor;
+      box-shadow: 0 -5px 0 currentColor, 0 5px 0 currentColor;
+    }
 
-        #examplesNavPanel > .example-option > input {
-            display: none;
-        }
+    #actions {
+      position: absolute;
+      right: 0.75rem;
+      bottom: 0.75rem;
+      display: flex;
+      gap: 0.5rem;
+      z-index: 10;
+    }
+    #actions a {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: var(--radius);
+      background: rgba(20, 22, 28, 0.85);
+      border: 1px solid var(--border);
+      color: var(--text);
+      text-decoration: none;
+      font-size: 0.85rem;
+      backdrop-filter: blur(6px);
+    }
+    #actions a:hover { background: var(--panel-2); }
+    #actions a.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--accent-text);
+      font-weight: 600;
+    }
+    #actions svg { width: 1em; height: 1em; fill: currentColor; }
 
-        #exampleContainer {
-            flex: 1;
-            overflow: hidden;
-            position: relative;
-        }
-
-        #iframeContainer {
-            width: 100%;
-            height: 100%;
-            position: relative;
-        }
-
-        #exampleIframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
-
-        #bottomRightButton {
-            position: absolute;
-            bottom: 1rem;
-            right: 1rem;
-            cursor: pointer;
-        }
-
-        select {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 10px;
-        }
-    </style>
+    @media (max-width: 720px) {
+      :root { --sidebar-w: 100vw; }
+      #sidebar { position: absolute; inset: 0 auto 0 0; z-index: 15; }
+      body.nav-hidden #sidebar { margin-left: -100vw; }
+    }
+  </style>
 </head>
 <body>
-<div id='navigation'>
-    <div class='navPanel'>
-        <label for='renderingModule'>Rendering Module:</label>
-        <select id='renderingModule' onchange='onRenderingModuleOptionChanged()'></select>
-    </div>
-    <div class='navPanel'>
-        <label for='physicsModule'>Physics Module:</label>
-        <select id='physicsModule' onchange='updateExamplesList()'></select>
-    </div>
-    <div id='examplesNavPanel'>
+<button id="nav-toggle" title="Toggle the examples list" aria-label="Toggle the examples list"><span></span></button>
 
-    </div>
-</div>
+<nav id="sidebar">
+  <div id="brand">
+    <h1>GG Web Engine examples</h1>
+    <p>Pick an example, then swap its rendering or physics backend in place.
+      <a href="https://github.com/AndyGura/gg-web-engine" target="_blank" rel="noopener">GitHub</a></p>
+  </div>
+  <div id="dims" role="tablist" aria-label="Dimension">
+    <button role="tab" data-dim="3d" aria-selected="true">3D</button>
+    <button role="tab" data-dim="2d" aria-selected="false">2D</button>
+  </div>
+  <ul id="list"></ul>
+  <div id="backends">
+    <label for="visual">Rendering</label>
+    <select id="visual"></select>
+    <label for="physics">Physics</label>
+    <select id="physics"></select>
+    <p class="hint">Switching reloads the example with the chosen backend.</p>
+  </div>
+</nav>
 
-<div id="hide-button" class="change" onclick="onTriggerHideClicked()">
-    <div class="bar1"></div>
-    <div class="bar2"></div>
-    <div class="bar3"></div>
-</div>
-
-<div id='exampleContainer'>
-    <div id='iframeContainer'>
-        <iframe id='exampleIframe' frameborder='0'></iframe>
-        <img src='https://developer.stackblitz.com/img/open_in_stackblitz.svg' id='bottomRightButton'
-             onclick='openStackBlitz()' alt='Open in Stackblitz'></img>
-    </div>
-</div>
+<main id="stage">
+  <iframe id="frame" title="Example" allow="autoplay; fullscreen; gamepad; accelerometer; gyroscope"></iframe>
+  <div id="empty">Select an example from the list.</div>
+  <div id="actions">
+    <a id="open-standalone" target="_blank" rel="noopener" title="Open this example on its own page (the URL is shareable)">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 2h8v8h-2V5.4L5.7 11.7 4.3 10.3 10.6 4H6V2zM2 4h3v2H4v6h6v-1h2v3H2V4z"/></svg>
+      Open standalone
+    </a>
+    <a id="open-editor" class="primary" target="_blank" rel="noopener" title="Open this example as an editable project in StackBlitz">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M9.5 1 3 9h4l-.5 6L13 7H9l.5-6z"/></svg>
+      Edit in StackBlitz
+    </a>
+  </div>
+</main>
 
 <script>
-    const initialHash = location.hash;
+  (async () => {
+    /** Query parameters the gallery owns; everything else is forwarded to the example as-is. */
+    const OWN_PARAMS = ['example', 'physics', 'visual'];
+    const VISUAL_LABELS = { three: 'three.js', pixi: 'pixi.js' };
+    const PHYSICS_LABELS = { ammo: 'Ammo.js (Bullet)', rapier3d: 'Rapier 3D', rapier2d: 'Rapier 2D', matter: 'matter-js' };
+    const label = (map, id) => map[id] ?? id;
 
-    const fillSelect = (selectId, options) => {
-        const select = document.getElementById(selectId);
-        select.innerHTML = '';
-        select.append(
-            ...options.map(o => {
-                const el = document.createElement('option');
-                el.innerText = o;
-                el.value = o;
-                return el;
-            }),
-        );
-    };
-    const updatePhysicsOptionsList = () => {
-        fillSelect(
-            'physicsModule',
-            [...new Set(examples
-                .filter(x => x.visualModule === document.getElementById('renderingModule').value)
-                .map(x => x.physicsModule))],
-        );
-    };
-    const examples = [
-        {
-            label: 'Primitives',
-            visualModule: 'three',
-            physicsModule: 'ammo',
-        },
-        {
-            label: 'Primitives',
-            visualModule: 'three',
-            physicsModule: 'rapier3d',
-        },
-        {
-            label: 'Primitives',
-            visualModule: 'pixi',
-            physicsModule: 'matter',
-        },
-        {
-            label: 'Primitives',
-            visualModule: 'pixi',
-            physicsModule: 'rapier2d',
-        },
-        {
-            label: 'GLB loader',
-            visualModule: 'three',
-            physicsModule: 'ammo',
-        },
-        {
-            label: 'GLB loader',
-            visualModule: 'three',
-            physicsModule: 'rapier3d',
-        },
-        {
-            label: 'Collision groups',
-            visualModule: 'three',
-            physicsModule: 'ammo',
-        },
-        {
-            label: 'Collision groups',
-            visualModule: 'three',
-            physicsModule: 'rapier3d',
-        },
-        {
-            label: 'Collision groups pool',
-            visualModule: 'three',
-            physicsModule: 'ammo',
-        },
-        {
-            label: 'Collision groups pool',
-            visualModule: 'three',
-            physicsModule: 'rapier3d',
-        },
-        {
-            label: 'Ammo car',
-            visualModule: 'three',
-            physicsModule: 'ammo',
-        },
-        {
-            label: 'Ammo car',
-            visualModule: 'three',
-            physicsModule: 'rapier3d',
-        },
-        {
-            label: 'Shooter',
-            visualModule: 'three',
-            physicsModule: 'ammo',
-        },
-        {
-            label: 'Fly city',
-            visualModule: 'three',
-            physicsModule: 'ammo',
-        },
-        {
-            label: 'Player character',
-            visualModule: 'three',
-            physicsModule: 'ammo',
-        },
-        {
-            label: 'Player character',
-            visualModule: 'three',
-            physicsModule: 'rapier3d',
-        },
-        {
-            label: 'Player character',
-            visualModule: 'pixi',
-            physicsModule: 'rapier2d',
-        },
-        {
-            label: 'Player character',
-            visualModule: 'pixi',
-            physicsModule: 'matter',
-        },
-        {
-            label: 'Coin run',
-            visualModule: 'pixi',
-            physicsModule: 'rapier2d',
-        },
-        {
-            label: 'Portal room',
-            visualModule: 'three',
-            physicsModule: 'ammo',
-        },
-        {
-            label: 'Portal room',
-            visualModule: 'three',
-            physicsModule: 'rapier3d',
-        },
-        {
-            label: 'Screens',
-            visualModule: 'three',
-            physicsModule: 'ammo',
-        },
-    ].map((ex) => {
-        const name = `${ex.label.toLowerCase().replace(/\s/g, '-')}-${ex.visualModule}-${ex.physicsModule}`;
-        const sbBranchSuffix = '0.0.77';
-        return {
-            ...ex,
-            url: `https://gg-web-demos.guraklgames.com/${name}/index.html`,
-            sbUrl: `https://stackblitz.com/github/AndyGura/gg-web-engine/tree/${sbBranchSuffix}/examples/${name}`,
+    const manifest = await (await fetch('./examples.json', { cache: 'no-cache' })).json();
+    const examples = manifest.examples.map(e => ({ ...e, dim: e.dir.split('/')[0] }));
+
+    const el = id => document.getElementById(id);
+    const sidebar = el('sidebar'), list = el('list'), frame = el('frame'), stage = el('stage');
+    const visualSelect = el('visual'), physicsSelect = el('physics');
+    const dimTabs = [...document.querySelectorAll('#dims button')];
+
+    const state = { example: null, physics: null, visual: null, extra: new URLSearchParams() };
+
+    // --- URL -> state -------------------------------------------------------------------------
+    function readUrl() {
+      const params = new URLSearchParams(location.search);
+      let dir = params.get('example');
+      let physics = params.get('physics');
+      let visual = params.get('visual');
+      if (!dir && location.hash.includes('__')) {
+        // legacy `#Label__visual__physics` links
+        const [legacyLabel, legacyVisual, legacyPhysics] = location.hash.slice(1).split('__').map(decodeURIComponent);
+        const legacyDim = legacyVisual === 'pixi' ? '2d' : '3d';
+        const slug = legacyLabel.toLowerCase().replace(/\s+/g, '-').replace('ammo-car', 'raycast-vehicle');
+        const found = examples.find(e => e.dir === `${legacyDim}/${slug}`);
+        if (found) { dir = found.dir; visual = legacyVisual; physics = legacyPhysics; }
+      }
+      const extra = new URLSearchParams();
+      for (const [k, v] of params) if (!OWN_PARAMS.includes(k)) extra.append(k, v);
+      const example = examples.find(e => e.dir === dir) ?? examples.find(e => e.dim === '3d') ?? examples[0];
+      select(example, { physics, visual, extra, replace: true });
+    }
+
+    // --- state -> everything --------------------------------------------------------------------
+    function select(example, { physics, visual, extra, replace = false } = {}) {
+      state.example = example;
+      state.physics = example.physics.includes(physics) ? physics : example.physics[0];
+      state.visual = example.visual.includes(visual) ? visual : example.visual[0];
+      if (extra) state.extra = extra;
+      render();
+      pushUrl(replace);
+      loadFrame();
+    }
+
+    function exampleQuery() {
+      const q = new URLSearchParams(state.extra);
+      q.set('physics', state.physics);
+      q.set('visual', state.visual);
+      return q;
+    }
+
+    function pushUrl(replace) {
+      const q = new URLSearchParams();
+      q.set('example', state.example.dir);
+      q.set('physics', state.physics);
+      q.set('visual', state.visual);
+      for (const [k, v] of state.extra) q.append(k, v);
+      const url = `${location.pathname}?${q}`;
+      if (url === location.pathname + location.search) return;
+      history[replace ? 'replaceState' : 'pushState'](null, '', url);
+    }
+
+    function loadFrame() {
+      stage.classList.remove('empty');
+      // replace() rather than `frame.src =`: a frame navigation would add its own session-history
+      // entry next to the one pushUrl() makes, and Back would then step the frame alone, leaving the
+      // sidebar and address bar on the other example.
+      const url = new URL(`./${state.example.dir}/index.html?${exampleQuery()}`, location.href);
+      frame.contentWindow.location.replace(url.href);
+    }
+
+    function fillSelect(select, ids, labels, value) {
+      select.innerHTML = '';
+      for (const id of ids) {
+        const option = document.createElement('option');
+        option.value = id;
+        option.textContent = label(labels, id);
+        select.append(option);
+      }
+      select.value = value;
+      select.disabled = ids.length < 2;
+      select.title = ids.length < 2 ? 'This example runs on one backend only' : '';
+    }
+
+    function render() {
+      const { example } = state;
+      for (const tab of dimTabs) tab.setAttribute('aria-selected', String(tab.dataset.dim === example.dim));
+      list.innerHTML = '';
+      for (const e of examples.filter(e => e.dim === example.dim)) {
+        const li = document.createElement('li');
+        const button = document.createElement('button');
+        button.setAttribute('aria-current', String(e === example));
+        button.innerHTML = `<span class="title"></span><span class="desc"></span>`;
+        button.querySelector('.title').textContent = e.title;
+        button.querySelector('.desc').textContent = e.description ?? '';
+        button.onclick = () => {
+          select(e, { physics: state.physics, visual: state.visual, extra: new URLSearchParams() });
+          if (matchMedia('(max-width: 720px)').matches) document.body.classList.add('nav-hidden');
         };
+        li.append(button);
+        list.append(li);
+      }
+      fillSelect(visualSelect, example.visual, VISUAL_LABELS, state.visual);
+      fillSelect(physicsSelect, example.physics, PHYSICS_LABELS, state.physics);
+      document.title = `${example.title} (${example.dim.toUpperCase()}) - GG Web Engine examples`;
+      el('open-editor').href =
+        `https://stackblitz.com/github/${manifest.repository}/tree/${manifest.version}/examples/${example.dir}` +
+        `?file=${encodeURIComponent(example.entryFile ?? 'index.ts')}`;
+      el('open-standalone').href = `./${example.dir}/index.html?${exampleQuery()}`;
+    }
+
+    // --- events -----------------------------------------------------------------------------------
+    for (const tab of dimTabs) {
+      tab.onclick = () => {
+        if (tab.dataset.dim === state.example.dim) return;
+        const first = examples.find(e => e.dim === tab.dataset.dim);
+        if (first) select(first, { extra: new URLSearchParams() });
+      };
+    }
+    physicsSelect.onchange = () => select(state.example, { physics: physicsSelect.value, visual: state.visual });
+    visualSelect.onchange = () => select(state.example, { physics: state.physics, visual: visualSelect.value });
+    el('nav-toggle').onclick = () => document.body.classList.toggle('nav-hidden');
+    window.addEventListener('popstate', readUrl);
+
+    // The example may rewrite its own URL (coin run puts a fresh room id in it). The frame is same-
+    // origin, so the standalone link can follow it: read the frame's URL when the link is used.
+    el('open-standalone').addEventListener('click', ev => {
+      try {
+        const live = frame.contentWindow.location.href;
+        if (live && live !== 'about:blank') ev.currentTarget.href = live;
+      } catch (_) { /* cross-origin frame: keep the computed link */ }
     });
-    fillSelect('renderingModule', [...new Set(examples.map(x => x.visualModule))]);
 
-    if (initialHash.length > 0) {
-        // open anchor link
-        let [label, visualModule, physicsModule] = initialHash.split('__');
-        label = decodeURIComponent(label.substring(1));
-        const selected = getSelectedExample();
-        if (label !== selected.label || visualModule !== selected.visualModule || physicsModule !== selected.physicsModule) {
-            document.getElementById('renderingModule').value = visualModule;
-            onRenderingModuleOptionChanged();
-            document.getElementById('physicsModule').value = physicsModule;
-            updateExamplesList();
-            let i = 0;
-            while (true) {
-                let radio = document.getElementById(`example${i++}`);
-                if (!radio) break;
-                if (JSON.parse(radio.value).label === label) {
-                    radio.checked = true;
-                    break;
-                }
-            }
-            loadExample();
-        } else {
-            updatePhysicsOptionsList();
-            updateExamplesList();
-        }
-    } else {
-        updatePhysicsOptionsList();
-        updateExamplesList();
+    if (matchMedia('(max-width: 720px)').matches && new URLSearchParams(location.search).has('example')) {
+      document.body.classList.add('nav-hidden');
     }
-
-    function onRenderingModuleOptionChanged() {
-        updatePhysicsOptionsList();
-        updateExamplesList();
-    }
-
-    function updateExamplesList() {
-        const examplesList = document.getElementById('examplesNavPanel');
-        examplesList.innerHTML = '';
-        const ex = examples
-            .filter(x => x.visualModule === document.getElementById('renderingModule').value &&
-                x.physicsModule === document.getElementById('physicsModule').value);
-        ex.forEach((example, i) => {
-            const div = document.createElement('div');
-            div.className = "example-option";
-            const inp = document.createElement('input');
-            inp.type = "radio"
-            inp.id = "example" + i;
-            inp.name = "example";
-            inp.value = JSON.stringify(example);
-            inp.onchange = loadExample;
-            if (i === 0) {
-                inp.checked = true;
-            }
-            const label = document.createElement('label');
-            label.htmlFor = "example" + i;
-            label.innerHTML = example.label;
-            div.append(inp);
-            div.append(label);
-            examplesList.append(div);
-        });
-        loadExample();
-    }
-
-    function getSelectedExample() {
-        let value = '{}';
-        let radios = document.getElementsByName("example");
-        for (let radio of radios) {
-            if (radio.checked) {
-                value = radio.value;
-                break;
-            }
-        }
-        return JSON.parse(value);
-    }
-
-    function loadExample() {
-        const {label, visualModule, physicsModule, url, sbUrl} = getSelectedExample();
-        document.getElementById('exampleIframe').src = url;
-        document.getElementById('bottomRightButton').style.display = (
-            sbUrl ? 'block' : 'none'
-        );
-        location.hash = `${label}__${visualModule}__${physicsModule}`;
-    }
-
-    function openStackBlitz() {
-        const {sbUrl} = getSelectedExample();
-        window.open(sbUrl);
-    }
-
-    function onTriggerHideClicked() {
-        document.getElementById("navigation").classList.toggle("navigation-hidden");
-        document.getElementById("hide-button").classList.toggle("change");
-    }
+    readUrl();
+  })();
 </script>
 </body>
 </html>

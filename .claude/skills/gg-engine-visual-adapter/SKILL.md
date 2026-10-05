@@ -376,7 +376,7 @@ Both `three` and `pixi` have a jest + `jest-environment-jsdom` suite (`npm test`
 picked up automatically by the root `npm run test` / CI, no per-package wiring needed — see root
 `package.json`'s `test` script). Coverage is still thin relative to the physics adapters — mostly
 factory/shape-mapping and small pure-utility logic that doesn't need a real GPU context — and the
-`examples/primitives-three-*` / `examples/primitives-pixi-*` example apps remain the way to
+`examples/3d/primitives` / `examples/2d/primitives` example apps remain the way to
 smoke-test anything that does need a real renderer. When adding a test, mirror `packages/three`'s
 setup (the sibling visual adapter) rather than a physics adapter's: same `package.json` `jest` block
 (`ts-jest` preset, `moduleNameMapper` pointing `@gg-web-engine/core` at `../core/src/index.ts`,

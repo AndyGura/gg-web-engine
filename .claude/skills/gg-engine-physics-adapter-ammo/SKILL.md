@@ -427,7 +427,7 @@ the dynamic body, but since it's driven by the manifold's penetration depth and 
 Baumgarte/split-impulse recovery-speed cap - not by any real momentum transfer from the "immovable" side
 - it comes out at *roughly the same magnitude regardless of the dynamic body's own mass*, and carries no
 friction/tangential component (so it never spins a pushed sphere). Confirmed empirically
-(`player-character-three-ammo`, added while building `pushDynamicBody`): a light and a heavy dynamic box
+(`3d/player-character`, added while building `pushDynamicBody`): a light and a heavy dynamic box
 both got shoved at effectively the same ~0.8 m/s by an identical walk-into, even with a hand-rolled,
 explicitly mass-aware push additionally disabled - i.e. this native response was the actual (mass-blind,
 non-rotating) source of "pushing" the whole time, silently drowning out anything a mass-aware push tries
@@ -773,7 +773,7 @@ rare large deltas, so a fix that removes all substepping to fix the accumulator 
 bug for another. The `n = ceil(dt / fixedTimeStep)` scheme above keeps every substep bounded by
 `fixedTimeStep` unconditionally (not just above some delta threshold) while still eliminating the
 cross-call drift, which is why it - not plain variable-timestep mode - is the fix that shipped.
-`examples/shooter-three-ammo`/`examples/collision-groups-pool-three-ammo`, which both raise
+`examples/3d/shooter`/`examples/3d/collision-groups-pool`, which both raise
 `maxSubSteps` explicitly for their own fast-shape/many-body stability needs, are unaffected by this
 change: their override still just clamps `n` the same way it clamped Bullet's own substep count before.
 

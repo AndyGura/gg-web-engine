@@ -1,0 +1,99 @@
+{
+  "$comment": "Registry of every example: the gallery (index.html) renders it, build_examples.sh / deploy.sh / etc/publish_new_version.sh iterate it. `version` is the git tag the StackBlitz links open; the release script bumps it. Order within a dimension is the order the gallery lists; the first entry of `physics` / `visual` is the default backend.",
+  "version": "0.0.77",
+  "repository": "AndyGura/gg-web-engine",
+  "examples": [
+    {
+      "dir": "3d/primitives",
+      "title": "Primitives",
+      "description": "A level built from JSON: primitive shapes rain onto a floor, with an orbit camera and a kill-floor trigger wired through a blueprint.",
+      "visual": ["three"],
+      "physics": ["ammo", "rapier3d"]
+    },
+    {
+      "dir": "3d/glb-loader",
+      "title": "GLB loader",
+      "description": "Loads GLB models carrying physics metadata from the engine's Blender exporter and keeps spawning them into a scene.",
+      "visual": ["three"],
+      "physics": ["ammo", "rapier3d"]
+    },
+    {
+      "dir": "3d/collision-groups",
+      "title": "Collision groups",
+      "description": "Collision filtering: bodies and triggers that only interact with their own groups.",
+      "visual": ["three"],
+      "physics": ["ammo", "rapier3d"]
+    },
+    {
+      "dir": "3d/collision-groups-pool",
+      "title": "Collision groups pool",
+      "description": "Hundreds of balls on stacked kinematic floors, where each floor only ever carries its own collision group.",
+      "visual": ["three"],
+      "physics": ["ammo", "rapier3d"]
+    },
+    {
+      "dir": "3d/raycast-vehicle",
+      "title": "Raycast vehicle",
+      "description": "A drivable raycast vehicle, ported from the ammo.js vehicle demo to the engine's vehicle API.",
+      "visual": ["three"],
+      "physics": ["ammo", "rapier3d"]
+    },
+    {
+      "dir": "3d/player-character",
+      "title": "Player character",
+      "description": "Animated third-person character controller over a GLB level, with on-screen mobile controls.",
+      "visual": ["three"],
+      "physics": ["ammo", "rapier3d"]
+    },
+    {
+      "dir": "3d/portal-room",
+      "title": "Portal room",
+      "description": "First-person character, grabbable props and positional sound.",
+      "visual": ["three"],
+      "physics": ["ammo", "rapier3d"]
+    },
+    {
+      "dir": "3d/shooter",
+      "title": "Shooter",
+      "description": "Free-fly camera shooting balls through a textured physics scene.",
+      "visual": ["three"],
+      "physics": ["ammo"]
+    },
+    {
+      "dir": "3d/screens",
+      "title": "Screens",
+      "description": "Menu, loading, game and pause screens driven by the ScreenManager, with the world owned by the game screen.",
+      "visual": ["three"],
+      "physics": ["ammo"]
+    },
+    {
+      "dir": "3d/fly-city",
+      "title": "Fly city",
+      "description": "Driving through a streamed city: cars, map graph, audio and multiplayer. An Angular app.",
+      "visual": ["three"],
+      "physics": ["ammo"],
+      "entryFile": "src/app/app.component.ts"
+    },
+    {
+      "dir": "2d/primitives",
+      "title": "Primitives",
+      "description": "A level built from JSON: primitive shapes rain onto a floor.",
+      "visual": ["pixi"],
+      "physics": ["matter", "rapier2d"]
+    },
+    {
+      "dir": "2d/player-character",
+      "title": "Player character",
+      "description": "Animated side-view character controller over a tiled level, with on-screen mobile controls.",
+      "visual": ["pixi"],
+      "physics": ["matter", "rapier2d"]
+    },
+    {
+      "dir": "2d/coin-run",
+      "title": "Coin run",
+      "description": "Multiplayer platformer rounds: collect coins against everyone in the room. The page URL is the invite link.",
+      "visual": ["pixi"],
+      "physics": ["rapier2d"]
+    }
+  ]
+}

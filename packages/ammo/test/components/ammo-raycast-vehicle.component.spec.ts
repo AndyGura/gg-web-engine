@@ -1,7 +1,7 @@
 import { SuspensionOptions, WheelOptions } from '@gg-web-engine/core';
 import { AmmoFactory, AmmoRaycastVehicleComponent, AmmoRigidBodyComponent, AmmoWorldComponent } from '../../src';
 
-// Shared suspension/wheel setup mirroring examples/ammo-car-three-ammo, known to produce a
+// Shared suspension/wheel setup mirroring examples/3d/raycast-vehicle, known to produce a
 // stable, quickly-settling vehicle - see that example for the full car setup.
 const suspension: SuspensionOptions = {
   compression: 4.4,

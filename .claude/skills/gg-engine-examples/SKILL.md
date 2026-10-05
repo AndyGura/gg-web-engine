@@ -5,27 +5,80 @@ description: Add or update a demo project under examples/ in gg-web-engine (webp
 
 # Adding an example project
 
-`examples/` holds one small, focused demo per feature/combination — they double as manual
-integration tests (rendering adapters have little automated testing, see
-`gg-engine-visual-adapter`) and as the tutorials linked from the README/StackBlitz gallery.
+`examples/` holds one small, focused demo per feature, under `examples/2d/` and `examples/3d/` —
+they double as manual integration tests (rendering adapters have little automated testing, see
+`gg-engine-visual-adapter`) and as the tutorials linked from the README and the examples gallery
+(`examples/index.html`, deployed to gg-web-demos.guraklgames.com). An example exists once, not once
+per renderer/physics combination: it picks its physics adapter at startup (see "Physics backend
+selection" below), and the gallery swaps the backend in place by reloading it with a different
+query parameter. Nothing is shared between example directories, which is what keeps each one
+standalone-cloneable (StackBlitz imports a single directory).
 
 ## Pick a template
 
-Copy the nearest existing plain webpack example with a matching visual+physics combination, e.g.
-`examples/primitives-three-ammo` or `examples/primitives-pixi-rapier2d`. It contains `index.html`,
-`index.ts`, `webpack.config.js` (prod build), `webpack.dev.config.js` (dev server), `tsconfig.json`,
-`package.json`.
+Copy the nearest existing plain webpack example of the same dimension, e.g. `examples/3d/primitives`
+or `examples/2d/primitives`. It contains `index.html`, `index.ts`, `backends.ts` (the physics
+backend switch), `webpack.config.js` (prod build), `webpack.dev.config.js` (dev server),
+`tsconfig.json`, `package.json`.
 
-Naming convention: `<feature-or-topic>-<visual-lib>-<physics-lib>` (e.g.
-`collision-groups-pool-three-rapier3d`, `glb-loader-three-ammo`). Physics-only or render-only demos
-just omit the missing half.
+Naming convention: `examples/<2d|3d>/<feature-or-topic>` (e.g. `3d/collision-groups-pool`,
+`2d/coin-run`) — no library names in the directory, since one directory covers every backend. The
+`name` in `package.json` is `<feature-or-topic>-<2d|3d>`.
+
+## Physics backend selection (`backends.ts`)
+
+Every multi-backend example has the same short `backends.ts`: a `PHYSICS_BACKENDS` list, a
+`DEFAULT_PHYSICS`, `selectedPhysicsBackend()` reading `?physics=` from `location.search` (falling
+back to the default, so the example works opened on its own or in StackBlitz), and
+`createPhysicsWorld()` returning `Promise<IPhysicsWorld3dComponent>` (`...2d...` in 2D) through a
+`switch` whose branches `await import(/* webpackChunkName: "rapier3d" */ '@gg-web-engine/rapier3d')`
+and construct that adapter's world component. The dynamic imports make webpack emit one chunk per
+adapter (`ammo.bundle.js`, `rapier3d.bundle.js`, ... via `output.chunkFilename: '[name].bundle.js'`
+in `webpack.config.js`), so a page downloads only the engine it runs on - Ammo's glue alone is
+2.6 MiB. `index.ts` then has exactly one backend-specific line:
+
+```ts
+const world: ThreeGgWorld = new Gg3dWorld({
+  visualScene: new ThreeSceneComponent(),
+  physicsWorld: await createPhysicsWorld(),
+});
+```
+
+What that implies for the rest of the example:
+
+- **Top-level `await`** needs `"module": "es2022"` in the example's `tsconfig.json` (TS1378
+  otherwise; webpack 5 handles the async entry module on its own). Every multi-backend example sets
+  it; a plain `.then()` restructuring is not worth the re-indentation of the whole demo.
+- **Type `world` with the visual adapter's alias** (`ThreeGgWorld`, `PixiGgWorld`), not
+  `TypedGg3dWorld<ThreeGgWorld, AmmoGgWorld>` - the physics side is unknown at compile time. That
+  alias leaves `world.physicsWorld` nullable, so the few places reaching it use `!`
+  (`world.physicsWorld!.factory.createRigidBody(...)`), the idiom core itself uses. Everything an
+  example may call is on core's physics interfaces anyway (`npm run lint:examples` forbids anything
+  else), so no adapter type is ever needed in `index.ts`.
+- **Backend-specific tuning goes in `backends.ts`, in that backend's branch**, not in `index.ts`
+  behind an `instanceof` (which would need a static import and defeat the splitting).
+  `3d/collision-groups-pool` sets Bullet's `maxSubSteps` this way; Rapier has no such knob.
+- **The visual side is fixed per dimension** (three.js in 3D, pixi.js in 2D). The gallery still
+  sends `visual=three`/`visual=pixi` and shows a (single-option) rendering selector so a visitor
+  sees which renderer runs; examples ignore the parameter. A second visual adapter would get the
+  same `await import()` treatment in `backends.ts`.
+- **An example that only runs on one backend** (`3d/fly-city`, `3d/shooter`, `3d/screens`,
+  `2d/coin-run`) keeps the plain static import and lists just that backend in `examples.json`; the
+  gallery disables the selector for it. Prefer the switch for anything new - it costs one file.
 
 ## package.json
 
 Pin `@gg-web-engine/*` and underlying library (`three`/`pixi.js`/rapier compat build) versions to
 whatever `packages/core/package.json`'s current `version` is — examples are not meant to float on
-version ranges. Copy the `browser` field (`{"fs": false, "os": false, "path": false}`) when the
-physics lib is Ammo (needed to stub Node built-ins the WASM glue references).
+version ranges. A multi-backend example lists every physics adapter of its dimension *and* each
+adapter's own library (`@gg-web-engine/ammo` + `mini-signals`, `@gg-web-engine/rapier3d` +
+`@dimforge/rapier3d-compat`; `@gg-web-engine/matter` + `matter-js` + `@types/matter-js`,
+`@gg-web-engine/rapier2d` + `@dimforge/rapier2d-compat`), pinned to the adapter's own versions.
+Copy the `browser` field (`{"fs": false, "os": false, "path": false}`) and the matching
+`resolve.fallback` in both webpack configs whenever Ammo is among the backends (needed to stub Node
+built-ins the WASM glue references). Keep a trailing comma after every `@gg-web-engine/*` line (i.e.
+never let one be the last dependency) - the release script's version bump matches `"...": "x.y.z",`
+with the comma.
 
 ## tsconfig `target`
 
@@ -47,12 +100,41 @@ check its `tsconfig.json` target before looking anywhere else.
 
 ## Register the example
 
-1. Add the directory name (no `examples/` prefix) as a new line in `examples/examples-list.txt` —
-   `etc/publish_new_version.sh` reads this file to bulk-bump every example's dependency versions
-   after a release. Skipping this means the example silently keeps pointing at an old version.
-2. Add an entry to `examples/index.html` (the StackBlitz gallery page) if the example should be
-   publicly browsable; it references the same `sbBranchSuffix` release-branch mechanism used by
-   the release script.
+Add an entry to `examples/examples.json`, the single registry of examples:
+
+```json
+{
+  "dir": "3d/my-feature",
+  "title": "My feature",
+  "description": "One sentence shown under the title in the gallery.",
+  "visual": ["three"],
+  "physics": ["ammo", "rapier3d"]
+}
+```
+
+- `dir` is the path under `examples/`; its first segment is the dimension the gallery files it
+  under. Entries are listed in the gallery in file order, 3D first then 2D (keep that grouping).
+- `physics`/`visual` are the backend ids the example accepts (`ammo`, `rapier3d`, `matter`,
+  `rapier2d`; `three`, `pixi`); the first one is the default. A single-backend example lists one.
+- `entryFile` (optional, default `index.ts`) is the file StackBlitz opens - `3d/fly-city` points it
+  at its Angular component.
+- The file's top-level `version` is the git tag the gallery's "Edit in StackBlitz" links open; the
+  release script bumps it (`etc/publish_new_version.sh`), never edit it by hand.
+
+Everything else reads this file: the gallery page (`fetch('./examples.json')` at runtime - it is a
+static page, no build), `examples/build_examples.sh` and `examples/deploy.sh` (which publishes each
+example's `dist/` under its `dir`, next to `index.html` and `examples.json`), and the release
+script's per-example dependency bump. An example missing from it is invisible to all of them and
+silently keeps pointing at an old engine version after a release.
+
+The gallery's own URL scheme is `?example=3d/primitives&physics=rapier3d&visual=three`; any other
+query parameter is forwarded to the example's iframe untouched (so a room link an example produces
+keeps working wrapped in the gallery), and the "Open standalone" button opens the example's own
+URL - reading the iframe's live URL, which an example may have rewritten (`2d/coin-run` puts its
+room id there). Old `#Label__visual__physics` hash links are translated. Preview the page locally
+against `dist/` builds with `node examples/serve_gallery.mjs` (a dependency-free static server that
+mounts each example's `dist/` at its `dir`, like the CDN); `fetch` of `examples.json` means the page
+does not work opened as a `file://` URL.
 
 ## Developing against unpublished engine changes
 
@@ -60,19 +142,26 @@ If the example needs to exercise an in-progress change to core or an adapter (no
 to npm), don't bump to a fake version — link locally instead:
 
 ```bash
-bash etc/switch_example_to_local_gg.sh examples/<your-example-dir>
+bash etc/switch_example_to_local_gg.sh examples/3d/<your-example-dir>
 ```
 
 This strips the `@gg-web-engine/*` lines from the example's `package.json`, `npm link`s the local
 `packages/*` builds in by path instead, and dedupes their peer dependencies (`dedupe_peer_deps` -
 see below). It's idempotent (safe to re-run) and reversible — undo it
-with `bash etc/restore_example_from_local_gg.sh examples/<your-example-dir>`. Run `npm install` at
+with `bash etc/restore_example_from_local_gg.sh examples/3d/<your-example-dir>`. Run `npm install` at
 the repo root first if the local adapter packages themselves need to pick up local core changes;
 for the full "edit core, see it live in this example" watch-mode loop (`tsc -b
 --watch` + `npm start`), see `gg-engine-core-development`'s local dev workflow section.
 
-**The script discards an uncommitted `package.json`**: it starts with `git checkout -- package.json`
-and links only the `@gg-web-engine/*` packages listed in the committed file. When adding a new
+**The script discards unstaged edits to `package.json`** (and `tsconfig.json`,
+`webpack.dev.config.js`, `angular.json`): it starts with `git checkout -- package.json ...`, which
+restores the *index* version, and links only the `@gg-web-engine/*` packages listed there. `git add`
+is enough to protect an edit (it doesn't have to be committed) - but stage *before* running the
+script, never after: staging while an example is in its switched state captures the stripped
+`package.json`/reset `tsconfig.json` into the index, and the next run of the script then "restores"
+exactly that broken state. This bit the 2d/3d restructuring: a build started before `git add`
+reset the new `tsconfig.json`, the add then staged the old one, and TS1378 (top-level `await`)
+persisted until the file was regenerated. When adding a new
 `@gg-web-engine/*` dependency to an example (e.g. an add-on package it did not use before), commit
 that `package.json` line first, or link the extra package by hand afterwards with
 `npm link <repo>/packages/<each already-linked package> <repo>/packages/<new package>` (a single
@@ -100,7 +189,7 @@ and the next build fails to resolve those imports. The script's own internal `np
 runs *before* it links) already installs every other dependency, so no further `npm install` is
 needed at all — go straight to `npm run build`/`npm start` after the script finishes. If something
 did run a bare `npm install` afterwards by mistake, just re-run
-`bash etc/switch_example_to_local_gg.sh examples/<your-example-dir>` (idempotent) to relink before
+`bash etc/switch_example_to_local_gg.sh examples/3d/<your-example-dir>` (idempotent) to relink before
 building again.
 
 **Every peer dependency of a linked package must be one physical copy.** A linked package resolves
@@ -144,11 +233,15 @@ checkout`/clone of that commit starts from a broken, non-standalone package.json
 ## Running
 
 ```bash
-cd examples/<your-example-dir>
+cd examples/3d/<your-example-dir>
 npm install
 npm run start   # webpack-dev-server, for plain webpack examples
-npm run build   # produces dist/bundle.js for static hosting
+npm run build   # produces dist/ (bundle.js + one chunk per physics adapter) for static hosting
 ```
+
+Append `?physics=<backend>` to the dev server's URL to run on another backend than the default. To
+see the result inside the gallery, `npm run build` and `node examples/serve_gallery.mjs` from the
+repo root.
 
 ## Adding a shared asset under `examples/assets`
 
@@ -156,7 +249,7 @@ The shared `examples/assets` folder is published as a whole to the hosted demo C
 `examples/deploy.sh` (`aws s3 sync ./assets s3://gg-web-engine-demos/assets`), so an asset placed at
 `examples/assets/<subfolder>/<name>.glb` ends up reachable at
 `https://gg-web-demos.guraklgames.com/assets/<subfolder>/<name>` once deployed - which is why
-existing GLB-loading examples (e.g. `glb-loader-three-ammo`) hardcode that absolute CDN URL directly
+existing GLB-loading examples (e.g. `3d/glb-loader`) hardcode that absolute CDN URL directly
 in their committed `index.ts` rather than a relative path. That URL obviously doesn't exist yet for
 an asset added in the same change as the example using it, and this repo has no established way to
 test against it locally before an actual deploy. For an example that needs its new asset to actually
@@ -166,7 +259,7 @@ same `/assets` path structure the CDN uses:
 
 ```js
 devServer: {
-  static: [{ directory: path.resolve(__dirname, '../assets'), publicPath: '/assets' }],
+  static: [{ directory: path.resolve(__dirname, '../../assets'), publicPath: '/assets' }],
 },
 ```
 
@@ -176,17 +269,19 @@ that appends one itself, e.g. `loadFromGlb`/`loadGgGlb`-style path conventions).
 `dist/bundle.js`, which stays a plain bundle same as any other example (the CDN copy comes from
 `examples/deploy.sh`'s own `assets` sync, not from anything in an example's `dist/`).
 
-Commit this `devServer.static` block **commented out**, exactly as shown above - a standalone clone
-of just that one example directory (e.g. via StackBlitz/degit) has no sibling `../assets` folder to
-serve, so an active block would break `npm start` there. `switch_example_to_local_gg.sh` uncomments
-it automatically (it's running inside the full repo checkout, where `../assets` does exist) via its
+Commit this `devServer.static` block **commented out**, exactly as shown above (the script matches
+the lines verbatim, `'../../assets'` included - examples sit two levels below `examples/`) - a
+standalone clone of just that one example directory (e.g. via StackBlitz/degit) has no `../../assets`
+folder to serve, so an active block would break `npm start` there. `switch_example_to_local_gg.sh`
+uncomments it automatically (it's running inside the full repo checkout, where `../../assets` does
+exist) via its
 `fix_dev_server_assets` function, and `restore_example_from_local_gg.sh` reverts it back to
 commented-out via its `git checkout -- ... webpack.dev.config.js` - so day-to-day local development
 never needs you to touch this block by hand, only the initial commit adding it.
 
-**Angular examples** (`examples/fly-city-three-ammo`) have no webpack config, and Angular's
-`assets` build option refuses folders outside the workspace root (`../assets` is rejected). Instead
-the example commits a `proxy.conf.mjs` that starts a tiny static file server over `../assets` and
+**Angular examples** (`examples/3d/fly-city`) have no webpack config, and Angular's
+`assets` build option refuses folders outside the workspace root (`../../assets` is rejected). Instead
+the example commits a `proxy.conf.mjs` that starts a tiny static file server over `../../assets` and
 proxies `/assets` to it; `switch_example_to_local_gg.sh` enables it by adding
 `"options": { "proxyConfig": "proxy.conf.mjs" }` to the dev-server in `angular.json` (also in
 `fix_dev_server_assets`), and both scripts `git checkout` `angular.json` to undo it. Never commit
@@ -402,7 +497,7 @@ carry the concrete visual scene type through — `world.visualScene` infers as t
 like `world.visualScene.nativeScene` fails with `TS2339: Property 'nativeScene' does not exist on
 type 'IVisualScene3dComponent<...>'` regardless of which physics adapter is paired with it. The
 explicit annotation sidesteps the inference entirely and is the pattern already used by examples
-like `collision-groups-three-ammo`.
+like `3d/collision-groups`.
 
 ## TypeScript 6 pitfalls in examples specifically (hit upgrading every example off TS 5.x)
 

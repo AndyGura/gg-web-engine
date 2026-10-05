@@ -399,6 +399,13 @@ Status
   entity construction, added 2026-08-27), GLB loader (2), collision groups (4), collision-groups
   pool (2), a car-physics demo, a shooter demo, and a city-flythrough demo — this grows with each
   feature and is in reasonable shape.
+- ✅ Examples gallery with in-place backend switching (2026-10-05): examples live once each under
+  `examples/2d` and `examples/3d` and choose their physics adapter at startup from `?physics=`
+  (`backends.ts`, dynamic import per adapter), so the static gallery page (`examples/index.html`,
+  driven by `examples/examples.json`) swaps rendering/physics backends per example, forwards any
+  other query parameters to the example and opens each one in StackBlitz. The 21 per-combination
+  directories collapsed to 13, with no code shared across example directories, which is what keeps
+  every one of them standalone-cloneable.
 - Generated API docs from TSDoc — not started; no `typedoc` (or equivalent) config anywhere in the
   repo.
 - A progressive "Hello World → small game" tutorial — not started.
