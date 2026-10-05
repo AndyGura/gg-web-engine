@@ -370,6 +370,20 @@ every entity queued after it in that batch" failure mode from any *other* cause 
 double-`loadChunk()` case just fixed); attaching one entity at a time, each in its own `try`/`catch`,
 avoids that regardless of cause.
 
+`detachFromChunk(entities)` is the way out of a chunk's lifecycle: it drops the entities from
+whichever `loaded` list holds them and returns the ones that actually were attached. They stay
+spawned, as children of the `MapGraph3dEntity`, and no chunk unload touches them - for content that
+has to outlive the chunk it was spawned with, typically a vehicle the player is driving, which
+otherwise gets disposed under the player the moment its *home* chunk falls out of range, however far
+from it the vehicle is by then. `attachToChunk` hands such an entity to a chunk again (the one it
+stands on now), and equally moves an entity attached to one chunk over to another. Neither call
+removes the entity from the world: `IEntity.addChildren` on an entity that already has a parent is a
+`removeEntity` plus `addEntity` (bodies leave and re-enter the native scenes, `entityRemoved$`
+fires, a network layer drops the entity's registration), so `attachToChunk` only calls it for
+entities that are not children of the map graph yet. App code reacting to `chunkLoaded$` has to
+expect a detached entity to still be around when its home chunk loads again, and skip respawning
+anything whose name is already in the world.
+
 ## `tickOrder`: driving a dynamic rigid body before physics `simulate()` runs
 
 `GgWorld`'s tick loop (`base/gg-world.ts`) fires every listener's `tick$` in ascending `tickOrder`

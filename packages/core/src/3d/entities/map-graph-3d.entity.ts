@@ -343,6 +343,10 @@ export class MapGraph3dEntity<
    * reload while the leaked copy is still around, collides with them) once the chunk unloads.
    * @param node - The chunk this content belongs to, as received via `chunkLoaded$`'s third tuple element
    * @param entities - The entities to attach
+   * An entity currently attached to another chunk (or detached earlier via `detachFromChunk`) is
+   * moved over in place: it stays spawned throughout, only the chunk it unloads with changes.
+   * @param node - The chunk this content belongs to, as received via `chunkLoaded$`'s third tuple element
+   * @param entities - The entities to attach
    * @throws if `node` is not currently loaded (never loaded, or already unloaded)
    */
   public attachToChunk(node: MapGraphNodeType, entities: (IEntity & IPositionable3d)[]): void {
@@ -350,8 +354,37 @@ export class MapGraph3dEntity<
     if (!attached) {
       throw new Error('Cannot attach entities to a chunk that is not currently loaded');
     }
+    this.detachFromChunk(entities);
     attached.push(...entities);
-    this.addChildren(...entities);
+    // an entity that is already a child must not go through `addChildren` again: reparenting
+    // removes it from the world and spawns it anew
+    const newChildren = entities.filter(e => e.parent !== this);
+    if (newChildren.length) {
+      this.addChildren(...newChildren);
+    }
+  }
+
+  /**
+   * Releases entities from whichever loaded chunk they are attached to, without removing them from
+   * the world: they stay spawned, as children of this entity, and no chunk's unload touches them
+   * any more. For content that has to outlive the chunk it was spawned with (e.g. a vehicle the
+   * player drove away from its home chunk) - hand it back with `attachToChunk` once it should
+   * follow a chunk's lifecycle again, or remove it yourself.
+   * @param entities - The entities to detach; one not attached to any chunk is skipped
+   * @returns The entities that were actually attached to a chunk, and no longer are
+   */
+  public detachFromChunk(entities: (IEntity & IPositionable3d)[]): (IEntity & IPositionable3d)[] {
+    const detached: (IEntity & IPositionable3d)[] = [];
+    for (const attached of this.loaded.values()) {
+      for (const entity of entities) {
+        const index = attached.indexOf(entity);
+        if (index >= 0) {
+          attached.splice(index, 1);
+          detached.push(entity);
+        }
+      }
+    }
+    return detached;
   }
 
   protected disposeChunk(node: MapGraphNodeType) {

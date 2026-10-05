@@ -1,4 +1,4 @@
-import { Gg3dWorld, MapGraph, MapGraph3dEntity, MapGraphNodeType } from '../../../src';
+import { Entity3d, Gg3dWorld, MapGraph, MapGraph3dEntity, MapGraphNodeType } from '../../../src';
 
 describe('MapGraph3dEntity', () => {
   let world: Gg3dWorld;
@@ -74,5 +74,111 @@ describe('MapGraph3dEntity', () => {
     step();
 
     expect(mapGraphEntity.loaded.has(nodeA)).toBe(false);
+  });
+
+  describe('attachToChunk / detachFromChunk', () => {
+    const nodeA: MapGraphNodeType = { path: 'a', position: { x: 0, y: 0, z: 0 }, loadOptions: {} };
+    const nodeB: MapGraphNodeType = { path: 'b', position: { x: 1000, y: 0, z: 0 }, loadOptions: {} };
+    let mapGraphEntity: MapGraph3dEntity;
+
+    // loads only the node nearest to the cursor: moving the cursor swaps which one is loaded
+    const moveTo = async (node: MapGraphNodeType) => {
+      mapGraphEntity.loaderCursor$.next(node.position);
+      // the nearest node changes on the load clock's tick; the unload/load lists it computes are
+      // applied by this entity's own tick, which may already have run in that same step
+      step();
+      step();
+      await flushMicrotasks();
+    };
+
+    beforeEach(async () => {
+      jest
+        .spyOn(world.loader, 'loadGgGlb')
+        .mockImplementation((): any => Promise.resolve({ entities: [], meta: { dummies: [] } }));
+      mapGraphEntity = new MapGraph3dEntity(MapGraph.fromMapArray([nodeA, nodeB]), {
+        loadDepth: 0,
+        inertia: 0,
+        maxNodesLoadingPerTick: 10,
+      });
+      mapGraphEntity.loadRateLimit = 0;
+      world.addEntity(mapGraphEntity);
+      await flushMicrotasks();
+      expect(mapGraphEntity.loaded.has(nodeA)).toBe(true);
+    });
+
+    it('removes and disposes an attached entity when its chunk unloads', async () => {
+      const entity = new Entity3d({});
+      mapGraphEntity.attachToChunk(nodeA, [entity]);
+      expect(entity.world).toBe(world);
+
+      await moveTo(nodeB);
+
+      expect(mapGraphEntity.loaded.has(nodeA)).toBe(false);
+      expect(entity.world).toBeNull();
+      expect(entity.disposed).toBe(true);
+    });
+
+    it('keeps a detached entity spawned when its former chunk unloads, without respawning it', async () => {
+      const entity = new Entity3d({});
+      mapGraphEntity.attachToChunk(nodeA, [entity]);
+      const removed = jest.fn();
+      world.entityRemoved$.subscribe(removed);
+
+      expect(mapGraphEntity.detachFromChunk([entity])).toEqual([entity]);
+      await moveTo(nodeB);
+
+      expect(mapGraphEntity.loaded.has(nodeA)).toBe(false);
+      expect(entity.world).toBe(world);
+      expect(entity.disposed).toBe(false);
+      expect(removed).not.toHaveBeenCalledWith(entity);
+    });
+
+    it('skips an entity that is not attached to any chunk', () => {
+      const entity = new Entity3d({});
+      world.addEntity(entity);
+
+      expect(mapGraphEntity.detachFromChunk([entity])).toEqual([]);
+      expect(entity.world).toBe(world);
+    });
+
+    it('re-attaches a detached entity to another chunk in place, and unloads it with that chunk', async () => {
+      const entity = new Entity3d({});
+      mapGraphEntity.attachToChunk(nodeA, [entity]);
+      mapGraphEntity.detachFromChunk([entity]);
+      await moveTo(nodeB);
+      const removed = jest.fn();
+      world.entityRemoved$.subscribe(removed);
+
+      mapGraphEntity.attachToChunk(nodeB, [entity]);
+
+      expect(entity.world).toBe(world);
+      expect(removed).not.toHaveBeenCalled();
+
+      await moveTo(nodeA);
+
+      expect(entity.world).toBeNull();
+      expect(entity.disposed).toBe(true);
+    });
+
+    it('moves an entity attached to one chunk over to another', async () => {
+      // both nodes loaded at once
+      world.removeEntity(mapGraphEntity, true);
+      mapGraphEntity = new MapGraph3dEntity(MapGraph.fromMapArray([nodeA, nodeB]), {
+        loadDepth: 1,
+        inertia: 0,
+        maxNodesLoadingPerTick: 10,
+      });
+      mapGraphEntity.loadRateLimit = 0;
+      world.addEntity(mapGraphEntity);
+      await flushMicrotasks();
+      const entity = new Entity3d({});
+      mapGraphEntity.attachToChunk(nodeA, [entity]);
+
+      mapGraphEntity.attachToChunk(nodeB, [entity]);
+
+      expect(mapGraphEntity.loaded.get(nodeA)).not.toContain(entity);
+      expect(mapGraphEntity.loaded.get(nodeB)).toEqual([entity]);
+      expect(entity.world).toBe(world);
+    });
   });
 });

@@ -5,6 +5,7 @@ import {
   GroupEntity,
   GgCarKeyboardHandlingController,
   MapGraph3dEntity,
+  MapGraphNodeType,
   Pnt3,
   Point3,
   Qtrn,
@@ -14,7 +15,7 @@ import {
   Trigger3dEntity,
 } from '@gg-web-engine/core';
 import { BehaviorSubject, combineLatest, filter, Observable, pairwise } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { map, takeUntil } from 'rxjs/operators';
 import { GameCameraController } from './game-camera-controller';
 import { GameAudio } from './game-audio';
 import { HttpClient } from '@angular/common/http';
@@ -47,6 +48,10 @@ export class GameRunner {
   /** The one player character in the world (controlled on foot, or left standing after being released). */
   private characterGroup: GroupEntity | null = null;
   private spawning = false;
+  /** Whether the car being driven was taken out of a map tile, and goes back into one when left. */
+  private drivenCarFromTile = false;
+  /** Where the driven car was last tick - a removed car can't be asked any more. */
+  private drivenCarPosition: Point3 = Pnt3.O;
 
   get controlCar$(): Observable<GgCarEntity | null> {
     return this.state$.pipe(map(x => x.mode === 'driving' ? x.car : null));
@@ -99,10 +104,22 @@ export class GameRunner {
     combineLatest(this.gameCameraController.cameraIndex$, this.state$.pipe(pairwise()))
       .subscribe(([index, [oldState, newState]]) => {
         const car: RaycastVehicle3dEntity | undefined = (newState as any).car || (oldState as any).car;
-        if (car) {
+        if (car && car.world) {
           car.visible = newState.mode !== 'driving' || index != 1; // invisible if bumper camera
         }
       });
+    this.state$.pipe(pairwise()).subscribe(([oldState, newState]) => {
+      const oldCar = oldState.mode === 'driving' ? oldState.car : null;
+      const newCar = newState.mode === 'driving' ? newState.car : null;
+      if (oldCar !== newCar) {
+        if (oldCar) {
+          this.parkCar(oldCar);
+        }
+        if (newCar) {
+          this.takeCar(newCar);
+        }
+      }
+    });
     this.audio = new GameAudio(
       this.http,
       this.world,
@@ -115,8 +132,48 @@ export class GameRunner {
       const state = this.state$.getValue();
       if (state.mode === 'entering') {
         this.updateEnteringCar(state);
+      } else if (state.mode === 'driving') {
+        this.drivenCarPosition = state.car.position;
       }
     });
+  }
+
+  /**
+   * Tile cars unload together with the tile they belong to. The one being driven must not: it is
+   * taken out of its tile for the ride, so it survives leaving that tile far behind.
+   */
+  private takeCar(car: GgCarEntity) {
+    this.drivenCarFromTile = this.cityMapGraph.detachFromChunk([car]).length > 0;
+    this.drivenCarPosition = car.position;
+    // whatever else removes the car (falling off the map, another peer despawning it): don't keep
+    // driving a disposed entity - fly free, then get back on foot where the car was
+    car.onRemoved$.pipe(
+      takeUntil(this.state$.pipe(filter(s => s.mode !== 'driving' || s.car !== car))),
+      takeUntil(this.world.disposed$),
+    ).subscribe(() => {
+      this.state$.next({ mode: 'freecamera' });
+      this.spawnAndControl(Pnt3.add(this.drivenCarPosition, { x: 0, y: 0, z: 2 })).then();
+    });
+  }
+
+  /** A car left behind belongs to the tile it now stands on, and unloads with that one. */
+  private parkCar(car: GgCarEntity) {
+    if (!this.drivenCarFromTile || !car.world) {
+      return;
+    }
+    this.drivenCarFromTile = false;
+    let nearest: MapGraphNodeType | null = null;
+    let distance = Infinity;
+    for (const node of this.cityMapGraph.loaded.keys()) {
+      const curDistance = Pnt3.len(Pnt3.sub(node.position, car.position));
+      if (curDistance < distance) {
+        distance = curDistance;
+        nearest = node;
+      }
+    }
+    if (nearest) {
+      this.cityMapGraph.attachToChunk(nearest, [car]);
+    }
   }
 
   public resetMyCar() {
@@ -212,6 +269,12 @@ export class GameRunner {
     const { character, car, carType, target } = state;
     const toTarget = Pnt3.sub(target, character.position);
     const flat: Point3 = { x: toTarget.x, y: toTarget.y, z: 0 };
+    if (!car.world) {
+      // the car is gone (e.g. its tile unloaded) - nothing to walk to any more
+      character.moveDirection = Pnt3.O;
+      this.state$.next({ mode: 'onfoot', character });
+      return;
+    }
     if (Pnt3.len(flat) <= ENTER_CAR_ARRIVE_DISTANCE) {
       character.moveDirection = Pnt3.O;
       if (this.mp && !this.mp.net.possess(car)) {
@@ -280,8 +343,12 @@ export class GameRunner {
       gearUpDownKeys: ['CapsLock', 'ShiftLeft'],
       handbrakeKey: 'Space',
       maxSteerDeltaPerSecond: 12,
-      autoReverse: false,
+      // the throttle keys pick the direction themselves: "down" brakes, and reverses once the car
+      // stands still - no neutral, no shifting by hand
+      autoReverse: true,
+      neutralGear: false,
     });
+    this.handling.switchingGearsEnabled = false;
     this.handling.active = false;
     this.world.addEntity(this.handling);
     this.world.keyboardInput.bind('KeyC').pipe(

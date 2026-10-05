@@ -100,9 +100,19 @@ export class GameFactory {
       // spawn cars - in multiplayer the dice are seeded per room and tile, so every peer streaming
       // this tile spawns the very same cars (with the same names) and they can be shared content
       const random = this.mp ? this.mp.tileRandom(position.x, position.y) : Math.random;
+      // `dummy.car_id` (e.g. "car_0") is the shared model type, not a unique identifier - the
+      // same tile can (and typically does) carry many dummies for the same car_id as
+      // alternative spawn points, and the same relative dummy name (e.g. "car_spawner.003")
+      // recurs in every tile too, so both need to be in the name to keep it world-wide unique;
+      // `position` (the tile's own world position) is unique per tile in this grid.
+      const carName = (dummy: GgDummy) => `${dummy.car_id}__${position.x}_${position.y}__${dummy.name}`;
       const cars =
         await Promise.all(meta.dummies
           .filter(x => x.is_car && (random() < (x.spawn_probability || 1) / 3))
+          // a car that was driven away from this tile outlives it (see `GameRunner`): when the tile
+          // loads again while that car is still around, its spawn point stays empty. Filtered after
+          // the dice roll, so the seeded sequence stays the same for every peer
+          .filter(dummy => !this.hasEntity(carName(dummy)))
           .map(async dummy => {
             const [
               {
@@ -120,18 +130,21 @@ export class GameFactory {
               return null;
             }
             const entity = this.generateCar(chassisMesh, chassisBody, chassisDummies, wheelMesh, (dummy.car_id.startsWith('truck') ? TRUCK_SPECS : CAR_SPECS));
-            // `dummy.car_id` (e.g. "car_0") is the shared model type, not a unique identifier - the
-            // same tile can (and typically does) carry many dummies for the same car_id as
-            // alternative spawn points, and the same relative dummy name (e.g. "car_spawner.003")
-            // recurs in every tile too, so both need to be in the name to keep it world-wide unique;
-            // `position` (the tile's own world position) is unique per tile in this grid.
-            entity.name = `${dummy.car_id}__${position.x}_${position.y}__${dummy.name}`;
+            entity.name = carName(dummy);
             entity.position = Pnt3.add(position, dummy.position);
             entity.rotation = dummy.rotation;
             return entity;
           }),
         );
-      const spawned = cars.filter((car): car is GgCarEntity => !!car);
+      const spawned = cars.filter((car): car is GgCarEntity => {
+        if (car && this.hasEntity(car.name)) {
+          // showed up while this one's model was loading - before `markShared`, so the duplicate
+          // is never registered with the network
+          car.dispose();
+          return false;
+        }
+        return !!car;
+      });
       // every peer builds these itself: only their state travels; a peer loading the tile later asks
       // the room for it, and unloading the tile is just a local unload
       this.mp?.net.markShared(spawned);
@@ -162,6 +175,15 @@ export class GameFactory {
     });
     this.world.addEntity(cityMapGraph);
     return cityMapGraph;
+  }
+
+  private hasEntity(name: string): boolean {
+    try {
+      this.world.getEntityByName(name);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   public createMapBounds(): Trigger3dEntity<FlyCityTypeDoc['pTypeDoc']> {

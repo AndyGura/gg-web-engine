@@ -54,6 +54,13 @@ where one exists.
 - `@gg-web-engine/core`: 2D `"ParallaxLayer"` and `"Environment"` level-JSON classes (texture and
   background image given as URLs). `"Environment"` creates an `Environment2dEntity`, which restores
   the previous background when its level is unloaded.
+- `@gg-web-engine/core`: `MapGraph3dEntity.detachFromChunk(entities)` releases entities from the chunk
+  they are attached to without removing them from the world, so content can outlive the chunk it
+  was spawned with (a vehicle driven away from it). `attachToChunk` moves an already attached or
+  detached entity to another chunk in place, without respawning it.
+- `@gg-web-engine/core`: `GgCarKeyboardHandlingController` option `neutralGear`. With `false` (and
+  `autoReverse`) neutral is never used: the throttle keys shift a car found in neutral into first
+  gear or reverse themselves, so it drives without the gear keys.
 
 ### Changed
 - `@gg-web-engine/core`: `VisualTypeDocRepo3D` has a new `light` member, and
