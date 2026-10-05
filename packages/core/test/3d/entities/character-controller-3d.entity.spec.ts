@@ -48,6 +48,17 @@ describe('CharacterController3dEntity', () => {
       expectCloseVector(moveSpy.mock.calls[0][0], { x: 4, y: 0, z: 0 });
     });
 
+    it('moves once per tick after being removed from the world and spawned again', () => {
+      const cc = mockCharacterController();
+      const entity = new CharacterController3dEntity({ radius: 0.4, centersDistance: 1 }, null, cc);
+      entity.onSpawned({} as any);
+      entity.onRemoved();
+      entity.onSpawned({} as any);
+      const moveSpy = jest.spyOn(cc, 'move');
+      entity.tick$.next([16, 16]);
+      expect(moveSpy).toHaveBeenCalledTimes(1);
+    });
+
     it('respects yaw rotation when computing world-space movement', () => {
       const cc = mockCharacterController();
       const entity = new CharacterController3dEntity({ radius: 0.4, centersDistance: 1, walkSpeed: 2 }, null, cc);

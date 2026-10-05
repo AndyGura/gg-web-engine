@@ -58,6 +58,11 @@ where one exists.
   they are attached to without removing them from the world, so content can outlive the chunk it
   was spawned with (a vehicle driven away from it). `attachToChunk` moves an already attached or
   detached entity to another chunk in place, without respawning it.
+- `@gg-web-engine/multiplayer`: `NetworkController.isHidden(entity)` and
+  `NetworkControllerOptions.outOfViewGraceMs` (default 2000) for zoning's out-of-view handling;
+  `net_owners` marks hidden entities. `ITransport.inStreamRange(peerId)` (optional) tells whether a
+  peer is inside the stream range, connected or not. `LoopbackHub.cutStream`/`openStream`/
+  `interestManagement` model a zoning stream ring in-process.
 - `@gg-web-engine/core`: `GgCarKeyboardHandlingController` option `neutralGear`. With `false` (and
   `autoReverse`) neutral is never used: the throttle keys shift a car found in neutral into first
   gear or reverse themselves, so it drives without the gear keys.
@@ -72,6 +77,20 @@ where one exists.
   and `IDisplayObject2dComponentFactory` (`createParallaxLayer`, `loadTexture`) have new required
   members. A third-party 2D visual adapter must implement them.
 - `@gg-web-engine/pixi`: the scene's world container sorts its children by `zIndex`.
+- `@gg-web-engine/multiplayer`: with zoning, what a peer outside the stream ring owns no longer stays
+  behind as a frozen replica. Entities its player possesses are hidden (shared content: taken out of
+  the world, kept, and shown again at the owner's position with its next state) or removed (runtime
+  spawns: rebuilt when the owner is back in view); a Free runtime spawn nobody in view claims is
+  removed as well; other replicas are no longer corrected toward their last snapshot. A Free entity
+  next to the local player is claimed from an out-of-view owner. Runtime spawns are sent to a peer
+  when it enters the stream ring (not when the link opens), and a join dump leaves them out for a
+  peer out of view. Nothing changes for a transport without zoning.
+
+### Fixed
+- `@gg-web-engine/multiplayer`: `WebRtcMeshTransport` reports a peer on `peerLeft$` when it leaves the
+  room after its connection aged out of the zoning connect ring, so what it owned is taken over.
+- `@gg-web-engine/core`: `GgCarEntity` and both character controller entities ran their per-tick
+  update once more per tick each time they were removed from a world and added again.
 
 ## [0.0.76] - 2026-10-04
 

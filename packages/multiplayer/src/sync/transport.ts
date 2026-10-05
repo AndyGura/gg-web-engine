@@ -39,6 +39,14 @@ export interface ITransport {
   streamTargets?(): ReadonlyArray<string> | undefined;
 
   /**
+   * Optional, with `streamTargets()`: whether `peerId` is inside the stream range, connected or not.
+   * `false` means it is out of range and nothing else - a peer whose connection dropped, or that is
+   * silent, while in range still answers `true`. Absent, a peer counts as in range exactly while it
+   * is among `streamTargets()`.
+   */
+  inStreamRange?(peerId: string): boolean;
+
+  /**
    * Optional: tell the transport where the local player is, so a zoning transport can publish its
    * cell. Called by `NetworkController` every heartbeat with `localPosition()`.
    */

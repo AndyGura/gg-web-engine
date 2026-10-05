@@ -90,12 +90,37 @@ Signaling: `FirebaseSignaling` (Realtime Database), or `BroadcastChannelSignalin
 of one browser with no backend at all - open the same `?room=` URL in two tabs.
 
 ### Zoning
+Zoning is off unless asked for: without the `zoning` option (or with `zoning: null`) the transport
+is a full mesh, every peer connects to every other and sees everything. That is the right choice
+for a map small enough that players see most of it. Zoning is for a world much larger than what one
+player sees, with players spread over it.
+
 `new WebRtcMeshTransport({ ..., zoning: { cellSize } })` places each peer on a grid over the ground
 plane (x/y), connects only to peers within the 5×5 cell ring and streams state to the 3×3 ring;
 connections outside the wide ring age out after 10 s. Sizing rule: the fastest entity's speed ×
 connection setup time must fit inside the one-cell margin between the two rings. Setup measured
 71–680 ms with every peer on one machine; peers on different networks add STUN/TURN round trips.
-`WebRtcMeshTransport.setupTimes` reports each link's setup time for your own measurements.
+`WebRtcMeshTransport.setupTimes` reports each link's setup time for your own measurements. Make the
+stream ring at least as wide as the view distance, or entities disappear in plain sight.
+
+A peer outside the stream ring is *out of view* (once it has also been silent about an entity for
+`outOfViewGraceMs`, default 2 s). Distance is the only way to get there: a peer that leaves the
+room, hides its tab or crashes is taken over exactly as without zoning, and one whose connection
+drops while it is in range keeps its entities. An out-of-view peer is still in the room and still
+owns its things, but nothing it owns stays around as a frozen copy:
+
+- what its player possesses disappears: a runtime spawn (its character) is removed and rebuilt when
+  the peer is back in view; shared content (a level's car it drives) is *hidden* - taken out of the
+  world but kept, and shown again at its real position with the owner's next state.
+  `controller.isHidden(entity)` tells; a hidden entity has no `world`, so don't keep acting on one.
+- a Free entity next to the local player is claimed (the local copy is the one that matters here);
+  a Free runtime spawn nobody in view claims is removed; Free shared content stays and is simulated
+  locally.
+- if the game rebuilds hidden shared content under the same name (its chunk loaded again), the new
+  entity takes over the hidden one's place and stays hidden.
+
+A peer that leaves the room while out of view is taken over like any other, and what was hidden for
+it shows up again where it was last seen.
 
 ### Dev tools
 With the dev console: `net_status`, `net_panel` (a live overlay: traffic rates, and per peer the

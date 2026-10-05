@@ -44,7 +44,11 @@ export interface SpawnItem {
 export type WireMessage =
   /** `n` counts the sender's state messages, so a receiver can tell how many never arrived */
   | { t: 'state'; items: StateItem[]; n?: number }
-  | { t: 'claim'; entityId: string; epoch: number; candidate: string }
+  /**
+   * `full` (with `ts`, sender clock): the entity's full state, when its owner hands it to `candidate`
+   * under interest management - that peer may hold no recent state of it
+   */
+  | { t: 'claim'; entityId: string; epoch: number; candidate: string; full?: unknown; ts?: number }
   | { t: 'possess'; entityId: string; epoch: number; peerId: string }
   | { t: 'release'; entityId: string; epoch: number }
   | {
@@ -72,7 +76,8 @@ export type WireMessage =
       since: number;
       app?: unknown;
     }
-  | { t: 'stateRequest'; ids: string[] }
+  /** `spawn`: the sender has no such entities - reply with whole runtime spawns (descriptor included) */
+  | { t: 'stateRequest'; ids: string[]; spawn?: true }
   | { t: 'stateReply'; entities: SpawnItem[] }
   | { t: 'relinquish'; ids: string[] }
   | {

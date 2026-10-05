@@ -152,6 +152,345 @@ describe.each(ADAPTERS)('in-process multiplayer harness ($name)', adapter => {
     expect(meters(cOnA.position, boxC.position)).toBeLessThan(0.1);
   });
 
+  describe('interest management (zoning): an owner out of view', () => {
+    // the grace period, plus the next arbitration round
+    const OUT_OF_VIEW = Math.ceil(3000 / TICK_MS);
+    const sharedBox = (peer: any, name: string, position: any) => {
+      const box = adapter.addBox(peer.world, position);
+      box.name = name;
+      peer.net.markShared(box);
+      return box;
+    };
+
+    it('removes a possessed runtime spawn, and rebuilds it when its owner is back in view', async () => {
+      h = new Harness(adapter);
+      const a = await h.addPeer('a');
+      const b = await h.addPeer('b');
+      const box = adapter.addBox(a.world, adapter.at(0, 0.5));
+      await h.run(5);
+      a.net.possess(box);
+      await h.run(30);
+      expect(findByName(h, 'b', box.name)).toBeDefined();
+
+      h.hub.cutStream('a', 'b');
+      await h.run(OUT_OF_VIEW);
+      expect(findByName(h, 'b', box.name)).toBeUndefined();
+      expect(findByName(h, 'a', box.name)).toBe(box);
+
+      box.position = adapter.at(20, 0.5);
+      h.hub.openStream('a', 'b');
+      await h.run(30);
+      const back = findByName(h, 'b', box.name);
+      expect(back).toBeDefined();
+      expect(b.net.possessorOf(back)).toBe('a');
+      expect(meters(back.position, box.position)).toBeLessThan(0.1);
+    });
+
+    it('hides possessed shared content, and shows the same entity at the owner position afterwards', async () => {
+      h = new Harness(adapter);
+      const a = await h.addPeer('a', peer => void sharedBox(peer, 'car', adapter.at(0, 0.5)));
+      const b = await h.addPeer('b', peer => void sharedBox(peer, 'car', adapter.at(0, 0.5)));
+      const car = a.world.getEntityByName('car') as any;
+      const replica = b.world.getEntityByName('car') as any;
+      await h.run(5);
+      a.net.possess(car);
+      await h.run(30);
+      expect(b.net.possessorOf(replica)).toBe('a');
+
+      h.hub.cutStream('a', 'b');
+      await h.run(OUT_OF_VIEW);
+      expect(findByName(h, 'b', 'car')).toBeUndefined();
+      expect(replica.world).toBeNull();
+      expect(replica.disposed).toBe(false);
+      expect(b.net.isHidden(replica)).toBe(true);
+
+      car.position = adapter.at(25, 0.5);
+      await h.run(30);
+      expect(b.net.isHidden(replica)).toBe(true);
+
+      h.hub.openStream('a', 'b');
+      await h.run(30);
+      expect(findByName(h, 'b', 'car')).toBe(replica);
+      expect(b.net.isHidden(replica)).toBe(false);
+      expect(b.net.possessorOf(replica)).toBe('a');
+      expect(meters(replica.position, car.position)).toBeLessThan(0.1);
+    });
+
+    it('stops correcting a replica instead of snapping it back to the last snapshot', async () => {
+      h = new Harness(adapter);
+      const a = await h.addPeer('a', peer => void sharedBox(peer, 'crate', adapter.at(0, 0.5)));
+      const b = await h.addPeer('b', peer => void sharedBox(peer, 'crate', adapter.at(0, 0.5)));
+      b.position = null; // a spectator never claims
+      const replica = b.world.getEntityByName('crate') as any;
+      await h.run(60);
+      expect(b.net.ownerOf(replica)).toBe('a');
+
+      h.hub.cutStream('a', 'b');
+      await h.run(OUT_OF_VIEW);
+      const snapsBefore = b.net.netStats.peers.find(p => p.peerId === 'a')!.snaps;
+      // pushed around locally, far beyond the snap distance from where its owner last reported it
+      replica.position = adapter.at(10, 0.5);
+      await h.run(120);
+      expect(b.net.ownerOf(replica)).toBe('a');
+      expect(meters(replica.position, adapter.at(10, 0.5))).toBeLessThan(0.5);
+      expect(b.net.netStats.peers.find(p => p.peerId === 'a')!.snaps).toBe(snapsBefore);
+    });
+
+    it('claims a Free entity next to the local player, and removes a Free runtime spawn nobody claims', async () => {
+      h = new Harness(adapter);
+      const a = await h.addPeer('a');
+      const b = await h.addPeer('b');
+      const c = await h.addPeer('c');
+      c.position = null; // a spectator never claims
+      const box = adapter.addBox(a.world, adapter.at(0, 0.5));
+      await h.run(30);
+      expect(findByName(h, 'b', box.name)).toBeDefined();
+      expect(findByName(h, 'c', box.name)).toBeDefined();
+
+      // a is out of range of both: no link at all
+      h.hub.interestManagement = true;
+      h.hub.cutLink('a', 'b');
+      h.hub.cutLink('a', 'c');
+      await h.run(OUT_OF_VIEW);
+      expect(b.net.ownerOf(findByName(h, 'b', box.name))).toBe('b');
+      // c learns it from b's stream
+      expect(c.net.ownerOf(findByName(h, 'c', box.name))).toBe('b');
+
+      // b drops out of c's view as well, c holds no position: nothing keeps the box on c
+      b.net.possess(findByName(h, 'b', box.name));
+      await h.run(10);
+      h.hub.cutStream('b', 'c');
+      await h.run(OUT_OF_VIEW);
+      expect(findByName(h, 'c', box.name)).toBeUndefined();
+    });
+
+    it('disposes hidden shared content its owner despawns', async () => {
+      h = new Harness(adapter);
+      const a = await h.addPeer('a', peer => void sharedBox(peer, 'car', adapter.at(0, 0.5)));
+      const b = await h.addPeer('b', peer => void sharedBox(peer, 'car', adapter.at(0, 0.5)));
+      const car = a.world.getEntityByName('car') as any;
+      const replica = b.world.getEntityByName('car') as any;
+      await h.run(5);
+      a.net.possess(car);
+      await h.run(30);
+      h.hub.cutStream('a', 'b');
+      await h.run(OUT_OF_VIEW);
+      expect(b.net.isHidden(replica)).toBe(true);
+
+      a.net.despawn(car);
+      await h.run(10);
+      expect(replica.disposed).toBe(true);
+      expect(b.net.isNetworked(replica)).toBe(false);
+    });
+
+    it('hands what is known about hidden content to the entity the game rebuilds under its name', async () => {
+      h = new Harness(adapter);
+      const a = await h.addPeer('a', peer => void sharedBox(peer, 'car', adapter.at(0, 0.5)));
+      const b = await h.addPeer('b', peer => void sharedBox(peer, 'car', adapter.at(0, 0.5)));
+      const car = a.world.getEntityByName('car') as any;
+      const replica = b.world.getEntityByName('car') as any;
+      await h.run(5);
+      a.net.possess(car);
+      await h.run(30);
+      h.hub.cutStream('a', 'b');
+      await h.run(OUT_OF_VIEW);
+      expect(b.net.isHidden(replica)).toBe(true);
+
+      // e.g. the chunk it belongs to was unloaded and loaded again
+      const rebuilt = sharedBox(b, 'car', adapter.at(0, 0.5)) as any;
+      await h.run(2);
+      expect(replica.disposed).toBe(true);
+      expect(b.net.isHidden(rebuilt)).toBe(true);
+      expect(findByName(h, 'b', 'car')).toBeUndefined();
+      expect(b.net.possessorOf(rebuilt)).toBe('a');
+
+      car.position = adapter.at(25, 0.5);
+      h.hub.openStream('a', 'b');
+      await h.run(30);
+      expect(findByName(h, 'b', 'car')).toBe(rebuilt);
+      expect(meters(rebuilt.position, car.position)).toBeLessThan(0.1);
+    });
+
+    it('shows hidden content again, taken over, when its owner leaves the room', async () => {
+      h = new Harness(adapter);
+      const a = await h.addPeer('a', peer => void sharedBox(peer, 'car', adapter.at(0, 0.5)));
+      const b = await h.addPeer('b', peer => void sharedBox(peer, 'car', adapter.at(0, 0.5)));
+      const replica = b.world.getEntityByName('car') as any;
+      await h.run(5);
+      a.net.possess(a.world.getEntityByName('car'));
+      await h.run(30);
+      h.hub.cutStream('a', 'b');
+      await h.run(OUT_OF_VIEW);
+      expect(b.net.isHidden(replica)).toBe(true);
+
+      a.net.leave();
+      await h.run(20);
+      expect(findByName(h, 'b', 'car')).toBe(replica);
+      expect(b.net.isHidden(replica)).toBe(false);
+      expect(b.net.ownerOf(replica)).toBe('b');
+      expect(b.net.possessorOf(replica)).toBeNull();
+    });
+
+    it('asks for a runtime spawn it removed when its state shows up again without a spawn', async () => {
+      h = new Harness(adapter);
+      const a = await h.addPeer('a');
+      const b = await h.addPeer('b');
+      const box = adapter.addBox(a.world, adapter.at(0, 0.5));
+      await h.run(5);
+      a.net.possess(box);
+      await h.run(30);
+      // a keeps b among its stream targets the whole time, so it never sends the spawn again by
+      // itself; b sees a outside its ring while nothing of a's stream arrives
+      h.hub.interestManagement = true;
+      await h.run(5);
+      b.net.transport.streamTargets = () => [];
+      b.net.transport.inStreamRange = () => false;
+      h.hub.conditions.lossRate = 1;
+      await h.run(OUT_OF_VIEW);
+      expect(findByName(h, 'b', box.name)).toBeUndefined();
+
+      h.hub.conditions.lossRate = 0;
+      delete (b.net.transport as any).streamTargets;
+      delete (b.net.transport as any).inStreamRange;
+      await h.run(90); // a body at rest is only sent at the keepalive rate
+      const back = findByName(h, 'b', box.name);
+      expect(back).toBeDefined();
+      expect(b.net.possessorOf(back)).toBe('a');
+    });
+
+    it('settles on one possessor when two peers possessed the same content while out of range', async () => {
+      h = new Harness(adapter);
+      const a = await h.addPeer('a', peer => void sharedBox(peer, 'car', adapter.at(0, 0.5)));
+      const b = await h.addPeer('b', peer => void sharedBox(peer, 'car', adapter.at(0, 0.5)));
+      const onA = a.world.getEntityByName('car');
+      const onB = b.world.getEntityByName('car');
+      await h.run(30);
+      h.hub.interestManagement = true;
+      h.hub.cutLink('a', 'b');
+      await h.run(5);
+      const lost: string[] = [];
+      for (const peer of [a, b]) {
+        peer.net.possessionChanged$.subscribe(({ from, to }) => {
+          if (from === peer.id && to !== peer.id) {
+            lost.push(peer.id);
+          }
+        });
+      }
+      expect(a.net.possess(onA)).toBe(true);
+      await h.run(OUT_OF_VIEW); // b claims it meanwhile: nobody near it that b can see
+      expect(b.net.possess(onB)).toBe(true);
+      await h.run(10);
+
+      h.hub.openLink('a', 'b');
+      await h.run(60);
+      const possessor = a.net.possessorOf(onA);
+      expect(possessor).not.toBeNull();
+      expect(b.net.possessorOf(onB)).toBe(possessor);
+      expect(a.net.ownerOf(onA)).toBe(possessor);
+      expect(b.net.ownerOf(onB)).toBe(possessor);
+      expect(lost).toEqual([possessor === 'a' ? 'b' : 'a']);
+    });
+
+    it('takes over the entities of a peer that left the room or went away, as without zoning', async () => {
+      h = new Harness(adapter);
+      const a = await h.addPeer('a');
+      const b = await h.addPeer('b');
+      const c = await h.addPeer('c');
+      h.hub.interestManagement = true;
+      const boxes = [a, b, c].map((peer, i) => adapter.addBox(peer.world, adapter.at(i * 3, 0.5)));
+      await h.run(5);
+      [a, b, c].forEach((peer, i) => peer.net.possess(boxes[i]));
+      const prop = adapter.addBox(a.world, adapter.at(-3, 0.5));
+      await h.run(30);
+
+      a.net.goAway(); // a hidden tab
+      await h.run(10);
+      b.net.leave(); // gone from the room
+      await h.run(OUT_OF_VIEW);
+      for (const box of [boxes[0], boxes[1], prop]) {
+        const onC = findByName(h, 'c', box.name);
+        expect(onC).toBeDefined();
+        expect(c.net.ownerOf(onC)).toBe('c');
+        expect(c.net.isHidden(onC)).toBe(false);
+      }
+    });
+
+    it('keeps the entities of a peer whose connection dropped while it is in range', async () => {
+      h = new Harness(adapter);
+      const a = await h.addPeer('a');
+      const b = await h.addPeer('b');
+      h.hub.interestManagement = true;
+      const box = adapter.addBox(a.world, adapter.at(0, 0.5));
+      const prop = adapter.addBox(a.world, adapter.at(3, 0.5));
+      await h.run(5);
+      a.net.possess(box);
+      b.position = null; // would not claim the prop either
+      await h.run(30);
+      b.net.transport.inStreamRange = () => true; // no link, but not because of the distance
+      h.hub.cutLink('a', 'b');
+      await h.run(OUT_OF_VIEW);
+      expect(b.net.possessorOf(findByName(h, 'b', box.name))).toBe('a');
+      expect(b.net.ownerOf(findByName(h, 'b', prop.name))).toBe('a');
+    });
+
+    it('never hands a Free runtime spawn to a peer out of view, which never built it', async () => {
+      h = new Harness(adapter);
+      const a = await h.addPeer('a');
+      const b = await h.addPeer('b');
+      h.hub.cutStream('a', 'b');
+      const box = adapter.addBox(a.world, adapter.at(0, 0.5));
+      let transfers = 0;
+      a.net.ownershipChanged$.subscribe(({ entity, to }) => entity === box && to !== 'a' && transfers++);
+      // linked, but outside each other's stream ring: b is the one next to the box
+      a.position = adapter.at(60, 0);
+      b.position = adapter.at(2, 0);
+      await h.run(400);
+      expect(findByName(h, 'b', box.name)).toBeUndefined();
+      expect(a.net.ownerOf(box)).toBe('a');
+      expect(transfers).toBe(0);
+    });
+
+    it('shows hidden content where its owner left it when that owner hands it over', async () => {
+      h = new Harness(adapter);
+      const a = await h.addPeer('a', peer => void sharedBox(peer, 'car', adapter.at(0, 0.5)));
+      const b = await h.addPeer('b', peer => void sharedBox(peer, 'car', adapter.at(0, 0.5)));
+      const car = a.world.getEntityByName('car') as any;
+      const replica = b.world.getEntityByName('car') as any;
+      await h.run(5);
+      a.net.possess(car);
+      await h.run(30);
+      h.hub.cutStream('a', 'b');
+      await h.run(OUT_OF_VIEW);
+      expect(b.net.isHidden(replica)).toBe(true);
+
+      // parked far from where b last saw it, then its driver walks off and b comes next to it
+      car.position = adapter.at(25, 0.5);
+      await h.run(30);
+      a.net.release(car);
+      a.position = adapter.at(80, 0);
+      b.position = adapter.at(25, 0);
+      await h.run(200);
+      expect(b.net.ownerOf(replica)).toBe('b');
+      expect(findByName(h, 'b', 'car')).toBe(replica);
+      expect(meters(replica.position, car.position)).toBeLessThan(0.5);
+    });
+
+    it('leaves everything alone on a transport without interest management', async () => {
+      h = new Harness(adapter);
+      const a = await h.addPeer('a');
+      const b = await h.addPeer('b');
+      const box = adapter.addBox(a.world, adapter.at(0, 0.5));
+      await h.run(5);
+      a.net.possess(box);
+      await h.run(30);
+      h.hub.cutLink('a', 'b'); // e.g. a dropped connection being retried
+      await h.run(OUT_OF_VIEW);
+      const replica = findByName(h, 'b', box.name);
+      expect(replica).toBeDefined();
+      expect(b.net.possessorOf(replica)).toBe('a');
+    });
+  });
+
   it('takes over a silent peer: owned and possessed entities move to the nearest peer as Free', async () => {
     h = new Harness(adapter);
     const a = await h.addPeer('a');

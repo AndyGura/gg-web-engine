@@ -230,6 +230,15 @@ but `dispose()` tears down its own top-level children by calling `onRemoved()`/`
 directly rather than through `removeEntity`, so `entityRemoved$` never fires for that teardown, only
 completes afterward.
 
+### An entity may be removed from a world and added again
+
+`removeEntity(entity)` without `dispose` leaves an entity that `addEntity` accepts again (a network
+layer does this to hide an entity for a while). So whatever an entity class sets up in `onSpawned`
+must end in `onRemoved`: a `tick$` subscription made there is piped through
+`takeUntil(this._onRemoved$)`, as `GgCarEntity` and the character controller entities do, or each
+re-add stacks one more per-tick update on top of the previous ones. A subscription made in the
+constructor lives as long as the entity and needs nothing.
+
 ## `IEntity.dispose()` is idempotent - a second call is a no-op, by design
 
 A `_disposed` flag (exposed read-only as `entity.disposed`) makes every call after the first into a
