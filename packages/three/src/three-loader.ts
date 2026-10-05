@@ -6,15 +6,48 @@ import {
   LoadTextureOptions,
   warnOnce,
 } from '@gg-web-engine/core';
-import { CubeTexture, CubeTextureLoader, Group, Light, Object3D, SRGBColorSpace, Texture, TextureLoader } from 'three';
+import {
+  CubeTexture,
+  CubeTextureLoader,
+  Group,
+  Light,
+  Mesh,
+  Object3D,
+  SRGBColorSpace,
+  Texture,
+  TextureLoader,
+} from 'three';
+import type { ThreeSceneComponent } from './components/three-scene.component';
 import { HDRLoader } from 'three/examples/jsm/loaders/HDRLoader.js';
-import { ThreeDisplayObjectComponent } from './components/three-display-object.component';
+import { materialTextures, ThreeDisplayObjectComponent } from './components/three-display-object.component';
 import { ThreeAnimatedDisplayObjectComponent } from './components/three-animated-display-object.component';
 import { ThreeVisualTypeDocRepo } from './types';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { applyTextureOptions } from './utils/texture-options';
 
+/** A loaded model's textures came with its file: it frees them along with its meshes. */
+function ownedByModel<T extends ThreeDisplayObjectComponent>(component: T): T {
+  component.resourceOwnership = 'all';
+  return component;
+}
+
+/** Runs `load` with a temporary object url for `data`, the form three's loaders take a file in. */
+async function withObjectUrl<T>(data: Blob[], load: (urls: string[]) => Promise<T>): Promise<T> {
+  const urls = data.map(blob => URL.createObjectURL(blob));
+  try {
+    return await load(urls);
+  } finally {
+    urls.forEach(url => URL.revokeObjectURL(url));
+  }
+}
+
 export class ThreeLoader implements IDisplayObject3dComponentLoader<ThreeVisualTypeDocRepo> {
+  /**
+   * @param scene - The scene this loader belongs to; `prepare` uploads to its renderers. Without
+   * one, `prepare` does nothing.
+   */
+  constructor(private readonly scene?: ThreeSceneComponent) {}
+
   private gltfLoader: GLTFLoader = new GLTFLoader();
   private textureLoader: TextureLoader = new TextureLoader();
   private cubeTextureLoader: CubeTextureLoader = new CubeTextureLoader();
@@ -25,11 +58,21 @@ export class ThreeLoader implements IDisplayObject3dComponentLoader<ThreeVisualT
    * format for image-based lighting); anything else as an sRGB image.
    */
   public async loadTexture(url: string, options: LoadTextureOptions = {}): Promise<Texture> {
+    return this.decodeTexture(url, url, options);
+  }
+
+  /** Decodes `data` like `loadTexture` decodes its url; `options.url` tells a `.hdr` file apart. */
+  public async textureFromData(data: Blob, options: LoadTextureOptions & { url?: string } = {}): Promise<Texture> {
+    const { url, ...textureOptions } = options;
+    return withObjectUrl([data], ([objectUrl]) => this.decodeTexture(objectUrl, url ?? '', textureOptions));
+  }
+
+  private async decodeTexture(source: string, name: string, options: LoadTextureOptions): Promise<Texture> {
     let texture: Texture;
-    if (/\.hdr($|\?)/i.test(url)) {
-      texture = await this.hdrLoader.loadAsync(url);
+    if (/\.hdr($|\?)/i.test(name)) {
+      texture = await this.hdrLoader.loadAsync(source);
     } else {
-      texture = await this.textureLoader.loadAsync(url);
+      texture = await this.textureLoader.loadAsync(source);
       texture.colorSpace = SRGBColorSpace;
     }
     return applyTextureOptions(texture, options);
@@ -56,6 +99,39 @@ export class ThreeLoader implements IDisplayObject3dComponentLoader<ThreeVisualT
     return texture;
   }
 
+  /** `loadCubeTexture` for faces that are already fetched. */
+  public async cubeTextureFromData(faces: Record<keyof CubeTextureFaces, Blob>): Promise<CubeTexture> {
+    return withObjectUrl([faces.px, faces.nx, faces.py, faces.ny, faces.pz, faces.nz], ([px, nx, py, ny, pz, nz]) =>
+      this.loadCubeTexture({ px, nx, py, ny, pz, nz }),
+    );
+  }
+
+  /**
+   * Uploads a texture, or compiles the shaders and uploads the textures of a model, on every
+   * renderer drawing the scene - the work three.js otherwise does on the first frame the resource
+   * is visible in. With no renderer added to the world yet there is nothing to upload to.
+   */
+  public async prepare(resource: Texture | ThreeDisplayObjectComponent): Promise<void> {
+    const scene = this.scene;
+    if (!scene || !scene.nativeScene) {
+      return;
+    }
+    for (const renderer of scene.renderers) {
+      const native = renderer.nativeRenderer;
+      if (resource instanceof Texture) {
+        native.initTexture(resource);
+        continue;
+      }
+      resource.nativeMesh.traverse(obj => {
+        const material = (obj as Mesh).material;
+        for (const m of material ? (Array.isArray(material) ? material : [material]) : []) {
+          materialTextures(m).forEach(texture => native.initTexture(texture));
+        }
+      });
+      await native.compileAsync(resource.nativeMesh, renderer.camera.nativeCamera, scene.nativeScene);
+    }
+  }
+
   public disposeTexture(texture: Texture): void {
     texture.dispose();
   }
@@ -69,7 +145,7 @@ export class ThreeLoader implements IDisplayObject3dComponentLoader<ThreeVisualT
         (obj as Light).intensity *= 0.005;
       }
     });
-    return new ThreeDisplayObjectComponent(gltf.scene);
+    return ownedByModel(new ThreeDisplayObjectComponent(gltf.scene));
   }
 
   public async loadFromGlb(
@@ -97,8 +173,8 @@ export class ThreeLoader implements IDisplayObject3dComponentLoader<ThreeVisualT
       root = group;
     }
     if (gltf.animations.length > 0) {
-      return new ThreeAnimatedDisplayObjectComponent(root, gltf.animations);
+      return ownedByModel(new ThreeAnimatedDisplayObjectComponent(root, gltf.animations));
     }
-    return new ThreeDisplayObjectComponent(root);
+    return ownedByModel(new ThreeDisplayObjectComponent(root));
   }
 }

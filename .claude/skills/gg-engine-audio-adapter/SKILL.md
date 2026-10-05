@@ -43,10 +43,21 @@ how `ICamera3dComponent` adds FOV that 2D has no equivalent for.
   narrowed by dimension in `2d/factories.ts`/`3d/factories.ts` (`IAudioSource(2d|3d)ComponentFactory
   extends IAudioSourceComponentFactory<Point(2|3), ..., ATypeDoc> {}`, no new methods) - a clip in,
   a positioned source out is identical in shape regardless of dimension, unlike
-  `Shape2DDescriptor`/`Shape3DDescriptor` which genuinely differ. Two methods: `loadClip(url)`
-  (fetch+decode into whatever native representation `createSource` expects - **must cache by URL**,
-  since the `"Sound"` level-JSON class, the `"PlaySound"` blueprint node, and any pooled one-shot
-  effect all call it repeatedly for the same clip) and `createSource(descriptor)`.
+  `Shape2DDescriptor`/`Shape3DDescriptor` which genuinely differ. Three methods:
+  `decodeClip(data: ArrayBuffer)` (decode an already-fetched file into whatever native
+  representation `createSource` expects), `loadClip(url)` (fetch+decode by itself, caching by URL)
+  and `createSource(descriptor)`. Core's own loading (`world.loader.loadClip`, which the `"Sound"`
+  level class and the `"PlaySound"` blueprint node use) does the fetch itself - that is where
+  progress, cancellation and the per-world cache live - and calls `decodeClip`; `loadClip` is the
+  direct shortcut for app code, and what core falls back to (without byte progress) when a factory
+  has no `decodeClip`.
+- **`setPaused(paused)`** on the scene: `GgWorld` calls it whenever its clock pauses or resumes.
+  It has to freeze every source in place and continue from there. `packages/audio` suspends and
+  resumes the whole `AudioContext`, which does that for free, including sources scheduled but not
+  yet audible; nothing is tracked per source. Two things to keep: the autoplay-gesture handler must
+  not resume a context that is paused this way (it returns early while paused, and
+  `setPaused(false)` does the resume), and `suspend()`/`resume()` reject on a closed context or one
+  the browser hasn't allowed to start yet - both are swallowed.
 - **`IAudioSourceComponent<D,R,ATypeDoc>`** (`base/components/audio/i-audio-source.component.ts`):
   one sound instance - `IPositionable<D,R>` (position/rotation proxied to the native
   spatialization node) plus `loop`/`loopStart`/`loopEnd`/`volume`/`playbackRate`/`spatial`/`bus`,
@@ -225,7 +236,9 @@ jsdom (this repo's jest environment) has no native Web Audio implementation at a
 real `AudioContext` to construct in a test, which is why `packages/audio` has no unit tests
 directly exercising `WebAudioSceneComponentBase`/`WebAudioSourceComponentBase` against a real
 context. What *is* tested, and should be for any audio adapter: pure logic that doesn't need a
-real native node - `computeDistanceGain` (`test/utils/distance-gain.spec.ts`, verified against the
+real native node, plus scene logic against a hand-rolled fake `AudioContext`
+(`test/components/web-audio-scene-base.component.spec.ts`: the gesture listeners, `setPaused`,
+`decodeClip`) - `computeDistanceGain` (`test/utils/distance-gain.spec.ts`, verified against the
 Web Audio spec's own three formulas) and `AudioSourcePool` (`test/utils/audio-source-pool.spec.ts`,
 against a hand-rolled fake `IAudioSceneComponent`/`IAudioSourceComponent`, the same "mock the
 interface, not the native API" approach `packages/core`'s own tests use for physics/rendering

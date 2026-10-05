@@ -21,7 +21,10 @@ export class ThreeSceneComponent implements IVisualScene3dComponent<ThreeVisualT
   }
 
   public readonly factory: ThreeFactory = new ThreeFactory();
-  public readonly loader: ThreeLoader = new ThreeLoader();
+  public readonly loader: ThreeLoader = new ThreeLoader(this);
+
+  /** The renderers currently drawing this scene - what `ThreeLoader.prepare` uploads to. */
+  public readonly renderers: Set<ThreeRendererComponent> = new Set();
 
   public readonly mainRenderLayer: RenderLayer = MAIN_RENDER_LAYER;
 

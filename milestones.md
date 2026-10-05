@@ -194,9 +194,18 @@ Status
   `packages/core/src/3d/loader.ts`) — not started, still present. This is the one open item here
   with a real correctness risk (wrong prop/scene composition under rotation), so it should jump
   the queue ahead of the schema/caching/export items below.
-- 🚧 Caching: `Gg3dLoader` already has a `CachingStrategy` enum (Nothing/Files/Entities) for GLB
-  loads; it's undocumented and unbenchmarked, and the new JSON level loader has no caching at all
-  yet (arguably doesn't need any — level JSON files are small compared to GLB+textures).
+- ✅ Caching (2026-10-06): every asset a world loads (GLB+meta pairs, plain GLBs, textures, cube
+  textures, audio clips) goes through one per-world cache on `world.loader`. An asset is fetched
+  and decoded once, shared by concurrent and repeated loads (a model as copies of one cached
+  original), and freed by reference: a level holds its assets until it is removed, a `MapGraph`
+  chunk until it unloads, anything else until the world is disposed or its `AssetScope` is
+  released. Caching is the default for `loadGgGlb`; `CachingStrategy.Nothing` opts a load out and
+  the other two values are aliases of the default. Level JSON documents themselves are not cached.
+  The same change added load progress and cancellation (`{ onProgress, signal }` on every loader,
+  one combined progress per level, with decoding and GPU upload counted) and the `assets` hook of
+  `registerClass`. Covered by `packages/core/test/base/assets/*.spec.ts` and
+  `packages/core/test/3d/loader-assets.spec.ts`; documented in `gg-engine-app-development`
+  ("Loading assets") and `gg-engine-level-json`. Unbenchmarked.
 - ✅ Single-entity build API + JSON round-trip serialization (2026-09-25): `LevelLoader.createEntity(entityJson)`
   builds one entity outside of a whole level document (dispatching to the same `registerClass`
   generators `loadLevel` uses), without parenting it under a group or adding it to the world - the

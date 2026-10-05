@@ -1,6 +1,6 @@
 import { BehaviorSubject, Observable, startWith, Subject, takeUntil } from 'rxjs';
 import { distinctUntilChanged, map, tap } from 'rxjs/operators';
-import { Graph, IEntity, PausableClock, Pnt3, Point3, Point4, Qtrn, TickOrder } from '../../base';
+import { AssetScope, Graph, IEntity, PausableClock, Pnt3, Point3, Point4, Qtrn, TickOrder } from '../../base';
 import { Gg3dWorld, Gg3dWorldTypeDocRepo } from '../gg-3d-world';
 import { Entity3d } from './entity-3d';
 import { LoadOptions, LoadResultWithProps } from '../loader';
@@ -125,6 +125,9 @@ export class MapGraph3dEntity<
    * engine's own `chunkLoaded$` plumbing awaits or catches an async subscriber's own rejection.
    */
   private readonly loadingNodes: Set<MapGraphNodeType> = new Set();
+
+  /** What holds each loaded chunk's assets in the loader's cache, released when the chunk unloads. */
+  private readonly chunkScopes: Map<MapGraphNodeType, AssetScope> = new Map();
 
   private _initialLoadComplete$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
   public get initialLoadComplete$(): Observable<boolean> {
@@ -310,11 +313,14 @@ export class MapGraph3dEntity<
 
   protected async loadChunk(node: MapGraphNodeType): Promise<[Entity3d<TypeDoc>[], LoadResultWithProps<TypeDoc>]> {
     this.loadingNodes.add(node);
+    // the chunk holds its assets on its own, so unloading it frees what no other chunk uses
+    const scope = this.world!.loader.createAssetScope();
     try {
       const loaded = await this.world!.loader.loadGgGlb(node.path, {
         position: node.position,
         rotation: node.rotation || Qtrn.O,
         ...node.loadOptions,
+        scope,
       });
       const entities = [
         ...loaded.entities,
@@ -326,9 +332,15 @@ export class MapGraph3dEntity<
           }, []),
       ];
       this.loaded.set(node, entities);
+      this.chunkScopes.set(node, scope);
       this.addChildren(...entities);
       this._chunkLoaded$.next([loaded, { position: node.position, rotation: node.rotation || Qtrn.O }, node]);
       return [entities, loaded];
+    } catch (e) {
+      if (this.chunkScopes.get(node) !== scope) {
+        scope.release();
+      }
+      throw e;
     } finally {
       this.loadingNodes.delete(node);
     }
@@ -387,11 +399,21 @@ export class MapGraph3dEntity<
     return detached;
   }
 
+  public override dispose(): void {
+    super.dispose();
+    for (const scope of this.chunkScopes.values()) {
+      scope.release();
+    }
+    this.chunkScopes.clear();
+  }
+
   protected disposeChunk(node: MapGraphNodeType) {
     if (!this.loaded.has(node)) {
       return;
     }
     this.removeChildren(this.loaded.get(node)!, true);
     this.loaded.delete(node);
+    this.chunkScopes.get(node)?.release();
+    this.chunkScopes.delete(node);
   }
 }

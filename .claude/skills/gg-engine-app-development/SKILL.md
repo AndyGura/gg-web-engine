@@ -310,10 +310,10 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
 - **Materials and textures**: `DisplayObject3dOpts` (`color`, `shading`, `diffuse`, `opacity`,
   `castShadow`, `receiveShadow`) and `DisplayObject2dOpts` (`color` - a tint when combined with a
   `texture` -, `texture`, `stroke: { color, width }` for an outline, `opacity`). Textures come from
-  `world.visualScene.loader.loadTexture(url, { repeat, filter, mapping })` (3D; `repeat: { x, y }`
-  tiles a texture across a surface) or `world.visualScene.factory.loadTexture(url, { filter })` (2D;
-  `filter: 'nearest'` keeps pixel art crisp), or `factory.createTextureFromCanvas(canvas)` for one
-  drawn at runtime. Every 3D display object also has live `castShadow`/`receiveShadow` properties
+  `world.loader.loadTexture(url, options)` - `{ repeat, filter, mapping }` in 3D (`repeat: { x, y }`
+  tiles a texture across a surface), `{ filter }` in 2D (`filter: 'nearest'` keeps pixel art crisp) -
+  or `world.visualScene.factory.createTextureFromCanvas(canvas)` for one drawn at runtime. See
+  "Loading assets" below. Every 3D display object also has live `castShadow`/`receiveShadow` properties
   that apply to a loaded model's whole hierarchy (`loadGgGlb` and the `"Glb"` level class take the
   same two options); every 2D display object has live `tint` and `opacity`.
 - **Nesting display objects**: `parent.addChild(child)` makes `child` (from the same visual adapter,
@@ -360,15 +360,14 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   Meshes only take part in shadows with `castShadow`/`receiveShadow` in their `DisplayObject3dOpts`.
   `world.visualScene.setEnvironment({ background, environmentMap, fog })` sets the scene background
   (a color or a sky texture), image-based lighting and fog; sky textures come from
-  `world.visualScene.loader.loadCubeTexture({ px, nx, py, ny, pz, nz })` (faces named by world
+  `world.loader.loadCubeTexture({ px, nx, py, ny, pz, nz })` (faces named by world
   direction, `pz` overhead; side images' top edge towards `+Z`, `pz`'s towards `+Y`, `nz`'s towards
-  `-Y`) or `loadTexture(url, { mapping: 'equirectangular' })`; free one you no longer use with
-  `loader.disposeTexture(texture)`. The level JSON has
+  `-Y`) or `world.loader.loadTexture(url, { mapping: 'equirectangular' })`. The level JSON has
   matching `"Light"`/`"Environment"` classes. Don't reach for the adapter's native light classes
   (`THREE.DirectionalLight` on `nativeScene`) - that ties the game to one renderer.
 - **Draw order and backdrops (2D)**: every 2D display object has a `zIndex` (higher draws on top,
   default `0`). `world.visualScene.setEnvironment({ background })` sets a background color or a
-  screen-fixed image scaled to cover the view (images from `world.visualScene.factory.loadTexture(url)`).
+  screen-fixed image scaled to cover the view (images from `world.loader.loadTexture(url)`).
   `world.addParallaxLayer({ texture, parallax?, zIndex?, repeat?, offset?, scale? })` adds a
   `ParallaxLayer2dEntity`: a texture that scrolls at `parallax` times the world's rate as the camera
   moves (`0` stays fixed on screen, `1` moves with the world; default `0.5`), repeating along `'x'`
@@ -397,6 +396,132 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   *running* game instance instead of poking internals through devtools.
 - **Vehicles**: `RaycastVehicle3dEntity` / `GgCarEntity` in `packages/core/src/3d/entities/` for
   raycast-based car physics.
+
+## Loading assets: progress, cancellation, and when they are freed
+
+Everything loaded from a URL goes through `world.loader`: `loadLevel`/`loadLevelFromUrl` (see
+`gg-engine-level-json`), `loadGgGlb` (a Blender-exported `.glb`+`.meta` pair, as entities),
+`loadModel` (a plain `.glb`, as a display object), `loadTexture`, `loadCubeTexture` (3D),
+`loadClip` (audio) and `preload([...])` (several assets at once, by `AssetRef`). They share three
+options:
+
+```typescript
+const result = await world.loader.loadGgGlb('assets/city', {
+  onProgress: p => console.log(p.fraction, p.loadedItems, p.totalItems, p.bytesLoaded, p.bytesTotal),
+  signal: abortController.signal, // abort() rejects with an AbortError
+  scope, // who holds the asset in the cache, see below
+});
+```
+
+- **Progress** covers the download (by bytes; `bytesTotal` is `null` when the server hides the size,
+  as compressed or cross-origin responses often do, and the asset then jumps when it arrives) and
+  the decoding after it: parsing a model, decoding an image or a clip, and uploading to the GPU.
+  The GPU part is only counted when the world already has a renderer, so call `world.addRenderer`
+  before loading if the first frames after a loading screen must not stutter. A level reports one
+  progress for all it references.
+- **Each asset is fetched and decoded once per world.** Loads of the same asset, at the same time or
+  later, share it. `loadGgGlb`/`loadModel` hand out a copy per call (own position, own animation
+  state) that shares geometry, materials and textures with the cached original; `loadTexture`/
+  `loadClip` return the one shared object. Consequences: changing a material on one copy changes it
+  on all, and you never dispose a loaded texture yourself. `cachingStrategy: CachingStrategy.Nothing`
+  on `loadGgGlb` loads a private, uncached instance instead.
+- **An asset is freed when nothing holds it anymore.** A level holds what it loaded until it is
+  removed; a `MapGraph` chunk until it unloads; an entity built with `world.loader.createEntity`
+  until it is disposed. Anything you load directly is held until `world.dispose()`, unless you pass
+  a scope and release it earlier:
+
+  ```typescript
+  const scope = world.loader.createAssetScope();
+  const boss = await world.loader.loadGgGlb('assets/boss', { scope });
+  // ... once the boss fight is over and its entities are removed:
+  scope.release();
+  ```
+
+  Dispose the entities made from an asset before releasing its scope, not after.
+
+Another world has its own cache: two worlds showing the same model each fetch and decode it (the
+browser's HTTP cache normally spares the second download).
+
+## Screens: menu, loading, game, pause
+
+`ScreenManager` and `Screen` (in `@gg-web-engine/core`) structure an app as a stack of screens.
+Each screen is a DOM layer over which it has full control; the game is usually the only screen with
+a world.
+
+```typescript
+const screens = new ScreenManager();
+screens.push(new MenuScreen());
+
+class MenuScreen extends Screen {
+  enter() {
+    this.layer.innerHTML = `<button>Play</button>`;
+    this.layer.querySelector('button')!.onclick = () =>
+      this.screens.push(new GameScreen('city'), { clearHistory: true });
+  }
+}
+
+class GameScreen extends Screen {
+  constructor(private readonly level: string) {
+    super();
+  }
+
+  async enter(ctx: ScreenEnterContext) {
+    const canvas = this.layer.appendChild(document.createElement('canvas'));
+    const world = this.addWorld(new Gg3dWorld({ visualScene, physicsWorld })); // before anything can fail
+    await world.init();
+    // ... camera, world.addRenderer(camera, canvas) ...
+    await world.loader.loadLevelFromUrl(`levels/${this.level}.json`, 'level', {
+      onProgress: ctx.reportProgress,
+      signal: ctx.signal,
+    });
+    world.addEntity(new MobileControls({ container: this.layer }));
+    this.addTeardown(this.keyboard.bind('Escape').subscribe(down => down && this.screens.push(new PauseScreen())));
+    world.start();
+  }
+}
+```
+
+- **Operations**: `push(screen, { clearHistory?, pauseBelow?, loadingView? })`, `replace(screen)`,
+  `pop(count = 1)`, `popTo(screenOrClass)`, `reset([bottom, ..., top])`. Each is one transition and
+  returns a promise for it; transitions run in request order. Screens that leave exit first, top
+  down, then the new top screen enters. `clearHistory` makes the pushed screen the only one.
+  `reset` builds a whole stack at once; the screens below its top enter later, when first uncovered.
+- **A screen instance is used once.** Create a new one per push and give it its parameters through
+  the constructor. `enter()` runs once, `exit()` once.
+- **Loading**: while `enter()`'s promise is pending the screen's layer is hidden and, after
+  `loadingDelay` (150 ms), the manager shows a loading view fed by `ctx.reportProgress` (a loader's
+  `LoadProgress`, or a 0..1 number). `DefaultLoadingView` is a plain progress bar; pass
+  `loadingView: () => myView` (an object with `element`, `setProgress`, `dispose`) to the manager
+  or to one push, or `null` for none. Anything but a plain `push` requested during the load aborts
+  it (`ctx.signal`), so "back" during loading cancels - pass the signal to every load.
+- **Cleanup is registration, not code in `exit()`**: `addWorld(world)` and
+  `addTeardown(fn | subscription | disposable)` as soon as the thing exists. On exit the teardowns
+  run in reverse and the worlds are disposed; this also happens when `enter()` throws or is
+  aborted, in which case `exit()` is not called at all. This is what makes menu → game → menu
+  repeatable: every game session is a new screen with a new world, and the old one is gone
+  completely, its WebGL context included (browsers allow only about 16 at once).
+- **A covered screen** (another one pushed on top) gets `onCovered()`, later `onUncovered()`. The
+  manager makes its layer `inert`, switches `world.inputEnabled` off for its worlds (keyboard,
+  the built-in controllers' mouse and direction inputs, pointer lock, the mobile-controls overlay)
+  and pauses them, audio included. `pauseBelow: false` on the push keeps them running (an inventory
+  over a live game). A world in a multiplayer session (`world.localPauseAllowed === false`, set by
+  `@gg-web-engine/multiplayer` while joined) is never paused this way - the shared world goes on,
+  only this player's input is off. A world you paused yourself is not resumed for you.
+- **Keys**: `this.keyboard` is the screen's own `KeyboardInput`, running only while the screen is
+  on top - use it for the screen's shortcuts (Escape, back). Gameplay keys stay on
+  `world.keyboardInput`. With the pointer locked the browser keeps Escape for releasing the lock,
+  so a game that pauses on Escape also pauses on `pointerlockchange` when the lock is gone. An
+  input you create yourself is not switched off for you: gate it on `world.inputEnabled$`, or
+  start/stop it with `runWhileInputEnabled(world, until$, start, stop)`.
+- **Touch controls**: pass `container: this.layer` to `MobileControls`, so the overlay belongs to
+  the game's layer and sits below any screen pushed on top. An on-screen pause button is
+  `controls.addControls(new TouchButton({ id: 'pause', content: 'II', placement: { top: 1, right: 1 } }).onPress(...))`.
+- **A screen can draw its UI with a renderer** instead of DOM: it creates its own world in `enter()`
+  (a 2D world for a pause menu over a 3D game, with a transparent renderer on a canvas in its
+  layer), registers it with `addWorld`, and never touches the game's world. Nothing requires both
+  renderers in an app that doesn't do this.
+- The manager adds a fixed, full-viewport container to `document.body` unless given `container`
+  (which must be positioned). `screens.stack`/`top`/`stack$`/`busy$` expose its state.
 
 ## Touch devices: on-screen controls
 

@@ -12,7 +12,10 @@ export class PixiSceneComponent implements IVisualScene2dComponent<PixiVisualTyp
     return this._nativeContainer;
   }
 
-  public readonly factory: PixiFactory = new PixiFactory();
+  public readonly factory: PixiFactory = new PixiFactory(this);
+
+  /** The renderers currently drawing this scene - what `PixiFactory.prepare` uploads to. */
+  public readonly renderers: Set<PixiRendererComponent> = new Set();
 
   constructor() {}
 

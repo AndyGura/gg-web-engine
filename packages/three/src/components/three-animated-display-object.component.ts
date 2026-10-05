@@ -83,7 +83,9 @@ export class ThreeAnimatedDisplayObjectComponent
   // `SkeletonUtils.clone` is three.js's own fix for this, walking the clone and re-binding skinned
   // meshes/skeletons to their cloned counterparts.
   clone(): ThreeAnimatedDisplayObjectComponent {
-    return new ThreeAnimatedDisplayObjectComponent(cloneSkeleton(this.nativeMesh), [...this.clips.values()]);
+    const copy = new ThreeAnimatedDisplayObjectComponent(cloneSkeleton(this.nativeMesh), [...this.clips.values()]);
+    copy.resourceOwnership = 'none';
+    return copy;
   }
 
   dispose(): void {

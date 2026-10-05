@@ -8,6 +8,10 @@ import { PlaySoundBlueprintNode } from './blueprint/nodes/play-sound.node';
 import { warnOnce } from './logging';
 import { IPositionable } from './interfaces/i-positionable';
 import { isSerializableEntity } from './interfaces/i-serializable-entity';
+import { AssetCache, AssetScope } from './assets/asset-cache';
+import { AssetRef } from './assets/asset-ref';
+import { fetchWithProgress } from './assets/fetch-with-progress';
+import { AssetProgress, LoadProgressGroup, LoadTaskOptions, throwIfAborted } from './assets/load-progress';
 
 /**
  * A function that turns per-entity JSON settings into a spawned `IEntity` (e.g. a primitive body,
@@ -19,6 +23,11 @@ import { isSerializableEntity } from './interfaces/i-serializable-entity';
  * @template D - The position type
  * @template R - The rotation type
  * @template TypeDoc - The type document repository
+ *
+ * The third argument carries the progress callback, abort signal and asset scope of the load the
+ * entity is built in. A generator that loads something itself passes it on to the `world.loader`
+ * method it calls (`world.loader.loadGgGlb(path, { ...load })`), so that load is counted in the
+ * level's progress, stops when the level load is aborted, and is freed with the level.
  * @template Settings - The settings object type
  * @template W - The world type
  */
@@ -28,7 +37,22 @@ export type EntityGenerator<
   TypeDoc extends GgWorldTypeDocRepo<D, R>,
   Settings = any,
   W = GgWorld<D, R, TypeDoc>,
-> = (world: W, settings: Settings) => any;
+> = (world: W, settings: Settings, load: LoadTaskOptions) => any;
+
+/**
+ * Options of {@link LevelLoader.registerClass}.
+ */
+export type EntityClassOptions<Settings = any> = {
+  /** The concrete entity constructor the generator produces - see `registerClass`. */
+  entityClass?: Function;
+  /**
+   * The assets an entity of this class loads, from its settings. `loadLevel` collects them from
+   * every entity of a level and loads them together, in parallel, before building anything, so
+   * the level's progress knows its total from the start. Without it the class still works: what
+   * its generator loads is counted from the moment the generator asks for it.
+   */
+  assets?: (settings: Settings) => AssetRef[];
+};
 
 /**
  * A level/scene, serializable as a single JSON document (e.g. to be hosted as a static file and
@@ -252,6 +276,19 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
    */
   private readonly classAliasesByCtor = new Map<Function, string>();
 
+  /** `assets` hooks by class alias - see {@link EntityClassOptions.assets}. */
+  private readonly classAssets = new Map<string, (settings: any) => AssetRef[]>();
+
+  /** `assets` hooks by blueprint node type alias - see {@link registerBlueprintNode}. */
+  private readonly blueprintNodeAssets = new Map<string, (settings: Record<string, any>) => AssetRef[]>();
+
+  /**
+   * This world's asset cache: every asset loaded through this loader is kept here, shared by
+   * concurrent and repeated loads, and freed when the last {@link AssetScope} holding it is
+   * released (or with the world).
+   */
+  public readonly assetCache: AssetCache = new AssetCache();
+
   /**
    * Constructor
    * @param world - The world instance
@@ -266,7 +303,107 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
       'PlaySound',
       (w, settings) => new PlaySoundBlueprintNode<D, R, TypeDoc>(w, settings),
       'trigger',
+      settings =>
+        [settings.clip, ...(settings.impactClips ?? []).map((tier: any) => tier?.clip)]
+          .filter(clip => typeof clip === 'string' && !!clip)
+          .map(url => ({ kind: 'clip', url })),
     );
+  }
+
+  /**
+   * Creates a holder for loaded assets: pass it as `scope` to any load, and call `release()` once
+   * what was loaded is no longer needed. `loadLevel` does this by itself for a level.
+   */
+  public createAssetScope(): AssetScope {
+    return this.assetCache.createScope();
+  }
+
+  /** Frees every cached asset. Called by the world when it is disposed. */
+  public dispose(): void {
+    this.assetCache.dispose();
+  }
+
+  /**
+   * Loads an audio clip for `audioScene.factory.createSource`.
+   * @throws if the world has no audio scene
+   */
+  public async loadClip(url: string, options: LoadTaskOptions = {}): Promise<TypeDoc['aTypeDoc']['clip']> {
+    const audioScene = this.world.audioScene;
+    if (!audioScene) {
+      throw new Error('Cannot load an audio clip into a world without an audio scene');
+    }
+    return this.acquireAsset(`clip:${url}`, url, options, async item => {
+      if (!audioScene.factory.decodeClip) {
+        return { value: await audioScene.factory.loadClip(url) };
+      }
+      const data = await fetchWithProgress(url, item.file(), options.signal);
+      return { value: await audioScene.factory.decodeClip(data) };
+    });
+  }
+
+  /**
+   * Loads assets ahead of use, in parallel, under one progress. A later load of the same asset
+   * through this loader finds it cached. An asset kind the world has no scene for (a clip without
+   * an audio scene, a model without a visual scene) is skipped.
+   */
+  public async preload(refs: AssetRef[], options: LoadTaskOptions = {}): Promise<void> {
+    const group = new LoadProgressGroup(options);
+    const results = await Promise.allSettled(refs.map(ref => this.preloadAsset(ref, group.sub())));
+    throwIfAborted(options.signal);
+    for (const result of results) {
+      if (result.status === 'rejected') {
+        throw result.reason;
+      }
+    }
+    group.finish();
+  }
+
+  /** Loads one {@link AssetRef}. Subclasses add the kinds of their dimension. */
+  protected async preloadAsset(ref: AssetRef, options: LoadTaskOptions): Promise<void> {
+    if (ref.kind === 'clip') {
+      if (this.world.audioScene) {
+        await this.loadClip(ref.url, options);
+      }
+      return;
+    }
+    throw new Error(`This loader cannot preload an asset of kind "${ref.kind}"`);
+  }
+
+  /**
+   * The cache access shared by every loader method: returns the asset under `key`, running `load`
+   * (with a progress reporter for it) when it is not cached, and reports the asset complete.
+   */
+  protected async acquireAsset<T>(
+    key: string,
+    url: string,
+    options: LoadTaskOptions,
+    load: (item: AssetProgress) => Promise<{ value: T; dispose?: () => void }>,
+  ): Promise<T> {
+    let item: AssetProgress | undefined;
+    const value = await this.assetCache.acquire(
+      key,
+      options.scope,
+      () => {
+        item = new AssetProgress(url, options.onProgress);
+        return load(item);
+      },
+      options.signal,
+    );
+    throwIfAborted(options.signal);
+    if (item) {
+      item.done();
+    } else {
+      // served from the cache: complete, and nothing new to count
+      options.onProgress?.({
+        fraction: 1,
+        loadedItems: 0,
+        totalItems: 0,
+        bytesLoaded: 0,
+        bytesTotal: 0,
+        current: url,
+      });
+    }
+    return value;
   }
 
   /**
@@ -281,16 +418,24 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
    * type varies (most built-ins - `"Primitive"` can produce several different shapes, and several
    * different classes all produce a plain `GroupEntity`), or whose class doesn't self-serialize;
    * neither loses anything by omitting it, since a spawn record already resolves `class` for any
-   * instance actually built through this loader.
+   * instance actually built through this loader. An {@link EntityClassOptions} object in its place
+   * carries it as `entityClass`, next to the class's `assets` hook.
    */
   public registerClass<Settings, W = any>(
     classAlias: string,
     generator: EntityGenerator<D, R, TypeDoc, Settings, W>,
-    entityClass?: Function,
+    entityClass?: Function | EntityClassOptions<Settings>,
   ): void {
+    const options: EntityClassOptions<Settings> =
+      typeof entityClass === 'function' ? { entityClass } : (entityClass ?? {});
     this.generators.set(classAlias, generator);
-    if (entityClass) {
-      this.classAliasesByCtor.set(entityClass, classAlias);
+    if (options.entityClass) {
+      this.classAliasesByCtor.set(options.entityClass, classAlias);
+    }
+    if (options.assets) {
+      this.classAssets.set(classAlias, options.assets);
+    } else {
+      this.classAssets.delete(classAlias);
     }
   }
 
@@ -308,13 +453,21 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
    * `BlueprintJson` graph in `blueprints` - see {@link EntityEventBinding}. Omit for a node type
    * with zero or multiple input pins, or one with no single obviously-correct default; it remains
    * usable from a full graph either way.
+   * @param assets - The assets a node of this type loads, from its settings - the node-level
+   * counterpart of {@link EntityClassOptions.assets}, collected by `loadLevel` the same way
    */
   public registerBlueprintNode(
     typeAlias: string,
     factory: BlueprintNodeFactory<D, R, TypeDoc>,
     defaultInputPin?: string,
+    assets?: (settings: Record<string, any>) => AssetRef[],
   ): void {
     this.blueprintNodes.set(typeAlias, factory);
+    if (assets) {
+      this.blueprintNodeAssets.set(typeAlias, assets);
+    } else {
+      this.blueprintNodeAssets.delete(typeAlias);
+    }
     if (defaultInputPin !== undefined) {
       this.blueprintNodeDefaultInputs.set(typeAlias, defaultInputPin);
     } else {
@@ -384,6 +537,9 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
    * passes its level-derived fallback here
    * @param blueprints - Named blueprint graphs `entityJson.events` bindings may reference by name;
    * `loadLevel` passes the level's own top-level `blueprints` map here
+   * @param load - Progress callback, abort signal and asset scope for whatever the entity loads.
+   * Without a `scope`, the entity gets one of its own: the assets it loaded are freed when it is
+   * disposed (unless something else holds them too).
    * @returns The built entity, or `undefined` (logged via `console.warn`) if `entityJson.class` has
    * no registered generator, or that generator didn't return an `IEntity`
    */
@@ -391,8 +547,9 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
     entityJson: EntityJson,
     defaultName?: string,
     blueprints?: Record<string, BlueprintJson>,
+    load: LoadTaskOptions = {},
   ): Promise<IEntity<D, R, TypeDoc> | undefined> {
-    const { class: classAlias, shape, position, rotation, config, events } = entityJson;
+    const { class: classAlias, shape, config, events } = entityJson;
     const name = entityJson.name !== undefined ? entityJson.name : defaultName;
     const generator = this.generators.get(classAlias);
     if (!generator) {
@@ -400,18 +557,22 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
       return undefined;
     }
 
-    const settings = {
-      ...(config ?? {}),
-      ...(shape !== undefined ? { shape } : {}),
-      ...(position !== undefined ? { position } : {}),
-      ...(rotation !== undefined ? { rotation } : {}),
-      ...(name !== undefined ? { name } : {}),
-    };
-
-    const entity = await generator(this.world, settings);
+    const settings = this.entitySettings(entityJson, name);
+    const ownScope = load.scope ? null : this.createAssetScope();
+    let entity: unknown;
+    try {
+      entity = await generator(this.world, settings, { ...load, scope: load.scope ?? ownScope! });
+    } catch (e) {
+      ownScope?.release();
+      throw e;
+    }
     if (!(entity instanceof IEntity)) {
+      ownScope?.release();
       warnOnce(`Generator for class alias "${classAlias}" did not return an IEntity - skipping`);
       return undefined;
+    }
+    if (ownScope) {
+      entity.disposed$.subscribe(() => ownScope.release());
     }
     if (name !== undefined) {
       entity.name = name;
@@ -428,6 +589,56 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
     }
 
     return entity;
+  }
+
+  /** The settings object a generator (and an `assets` hook) receives for `entityJson`. */
+  private entitySettings(entityJson: EntityJson, name: string | undefined): Record<string, any> {
+    const { shape, position, rotation, config } = entityJson;
+    return {
+      ...(config ?? {}),
+      ...(shape !== undefined ? { shape } : {}),
+      ...(position !== undefined ? { position } : {}),
+      ...(rotation !== undefined ? { rotation } : {}),
+      ...(name !== undefined ? { name } : {}),
+    };
+  }
+
+  /**
+   * Every asset the entities and blueprints of `levelJson` declare through their `assets` hooks
+   * (see {@link EntityClassOptions.assets}, {@link registerBlueprintNode}). A hook that throws on
+   * settings its generator would reject anyway is skipped, leaving the error to the generator.
+   */
+  public collectLevelAssets(levelJson: LevelJson, levelName: string = ''): AssetRef[] {
+    const refs: AssetRef[] = [];
+    const collect = (hook: ((settings: any) => AssetRef[]) | undefined, settings: any) => {
+      if (!hook) {
+        return;
+      }
+      try {
+        refs.push(...hook(settings));
+      } catch {
+        // the generator reports what is wrong with these settings
+      }
+    };
+    const collectNode = (type: string, settings: Record<string, any> | undefined) =>
+      collect(this.blueprintNodeAssets.get(type), settings ?? {});
+    levelJson.entities.forEach((entityJson, index) => {
+      const name = entityJson.name ?? `${levelName}__${entityJson.class}_${index}`;
+      collect(this.classAssets.get(entityJson.class), this.entitySettings(entityJson, name));
+      for (const binding of Object.values(entityJson.events ?? {})) {
+        if (typeof binding === 'object') {
+          collectNode(binding.type, binding.settings);
+        } else if (!levelJson.blueprints?.[binding]) {
+          collectNode(binding, undefined);
+        }
+      }
+    });
+    for (const blueprint of Object.values(levelJson.blueprints ?? {})) {
+      for (const node of blueprint.nodes ?? []) {
+        collectNode(node.type, node.settings);
+      }
+    }
+    return refs;
   }
 
   /**
@@ -576,19 +787,37 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
    * loaded *instance* (loading the same level twice - e.g. two copies of one room - needs two
    * distinct `levelName`s, the same way two `GroupEntity`s can't otherwise be told apart by name).
    * @param levelJson - The level JSON
+   *
+   * Loading runs in two steps under one progress: first every asset the level's entities and
+   * blueprints declare (see {@link collectLevelAssets}) is loaded, in parallel; then the entities
+   * are built in document order, finding those assets cached. What a generator loads beyond the
+   * declared assets is added to the progress as it appears. The level holds its assets through an
+   * {@link AssetScope} of its own (`options.scope` is not used), released when the returned group
+   * entity is disposed - so removing a level frees whatever only it used.
    * @param levelName - Name for the returned group entity, and the scope entities in this level
    * fall back to naming themselves under when `levelJson` doesn't give them an explicit `name`
+   * @param options - Progress callback and abort signal. An aborted load rejects with an
+   * `AbortError` and leaves nothing of the level behind.
    * @returns The level's root group entity
    * @throws if `levelName`, or any name (explicit or derived) an entity ends up with, collides
    * with a name already in use elsewhere in the world
    */
-  public async loadLevel(levelJson: LevelJson, levelName: string): Promise<GroupEntity<D, R, TypeDoc>> {
+  public async loadLevel(
+    levelJson: LevelJson,
+    levelName: string,
+    options: LoadTaskOptions = {},
+  ): Promise<GroupEntity<D, R, TypeDoc>> {
+    throwIfAborted(options.signal);
     const level = new GroupEntity<D, R, TypeDoc>();
     level.name = levelName;
     this.world.addEntity(level);
+    const scope = this.createAssetScope();
+    const group = new LoadProgressGroup({ ...options, scope });
 
     try {
+      await this.preload(this.collectLevelAssets(levelJson, levelName), group.sub());
       for (let index = 0; index < levelJson.entities.length; index++) {
+        throwIfAborted(options.signal);
         const entityJson = levelJson.entities[index];
         const { class: classAlias } = entityJson;
 
@@ -598,6 +827,7 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
           entityJson,
           `${levelName}__${classAlias}_${index}`,
           levelJson.blueprints,
+          group.sub(),
         );
         if (!entity) {
           continue;
@@ -610,8 +840,12 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
       // Don't leave a partially-loaded level (and its already-spawned entities) behind if a
       // generator throws partway through - the caller never gets `level` back to clean it up itself.
       this.world.removeEntity(level, true);
+      scope.release();
       throw e;
     }
+    throwIfAborted(options.signal);
+    level.disposed$.subscribe(() => scope.release());
+    group.finish();
 
     return level;
   }
@@ -725,15 +959,23 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
    * shipped and consumed as a single static JSON file.
    * @param url - URL (or path) of the level JSON document
    * @param levelName - Name for the returned group entity, see {@link loadLevel}
+   * @param options - See {@link loadLevel}; the level document itself is part of the progress
    * @returns The level's root group entity
    */
-  public async loadLevelFromUrl(url: string, levelName: string): Promise<GroupEntity<D, R, TypeDoc>> {
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`Failed to load level JSON from "${url}": ${response.status} ${response.statusText}`);
-    }
-    const levelJson: LevelJson = await response.json();
-    return this.loadLevel(levelJson, levelName);
+  public async loadLevelFromUrl(
+    url: string,
+    levelName: string,
+    options: LoadTaskOptions = {},
+  ): Promise<GroupEntity<D, R, TypeDoc>> {
+    const group = new LoadProgressGroup(options);
+    const documentOptions = group.sub();
+    const item = new AssetProgress(url, documentOptions.onProgress);
+    const data = await fetchWithProgress(url, item.file(), options.signal);
+    const levelJson: LevelJson = JSON.parse(new TextDecoder().decode(data));
+    item.done();
+    const level = await this.loadLevel(levelJson, levelName, group.sub());
+    group.finish();
+    return level;
   }
 }
 

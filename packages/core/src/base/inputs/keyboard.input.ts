@@ -46,7 +46,7 @@ export class KeyboardInput extends IInput {
     window.removeEventListener('keydown', this.handleKeys);
     window.removeEventListener('keyup', this.handleKeys);
     window.removeEventListener('blur', this.resetAllKeys);
-    document.addEventListener('pointerlockchange', this.onPointerLockChange);
+    document.removeEventListener('pointerlockchange', this.onPointerLockChange);
     this.resetAllKeys();
   }
 

@@ -80,6 +80,15 @@ that `package.json` line first, or link the extra package by hand afterwards wit
 symlinks, which that call reinstalls as real copies. `restore_example_from_local_gg.sh` resets
 `package.json` the same way.
 
+**A brand-new example has no committed `package.json` to go back to.** The script still works on it
+(its `git checkout` has nothing to restore), but it strips the `@gg-web-engine/*` lines from the only
+copy of `package.json` there is, uncomments a `devServer.static` block in `webpack.dev.config.js`,
+and its `npm install` writes a `package-lock.json` without those packages. Before running it on an
+example that isn't committed yet, copy `package.json` aside; afterwards put it back, delete the
+lockfile, and re-comment (or remove, if the example serves nothing from `../assets`) the
+`devServer.static` block. `npm install --package-lock-only` can't produce the real lockfile while
+the example uses engine APIs newer than the last published version.
+
 **Do not run a bare `npm install` inside the example directory after this script** (with at least
 npm v11) — `npm link <path>` only creates the `node_modules/@gg-web-engine/*` symlinks, it does not
 add a `file:`-style entry back into `package.json` or `package-lock.json` (verified: neither file
@@ -337,6 +346,11 @@ timeout outlives the tool call). Yield through a `MessageChannel` instead (`port
 `port1.onmessage` tasks aren't throttled) - network messages (WebRTC data channels,
 `BroadcastChannel`) still get processed between steps. Start one tab's loop fire-and-forget (with a
 `window.__stop` flag to end it), then drive the other tab's scenario in its own call.
+
+A script injected through the automation tool is cut off after 45 seconds, though it keeps running
+in the page. Anything longer (many load/unload round trips, say) is started fire-and-forget, writes
+its result to a `window` property when done, and is polled from later calls. Looking at the page
+while such a script is still running shows it mid-transition, which is easy to misread as a bug.
 
 **Real keyboard events do not reach a backgrounded automation tab at all** - confirmed empirically:
 dispatching a key press through the browser tool's OS-level key-press action produced *zero*

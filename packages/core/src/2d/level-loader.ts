@@ -1,6 +1,15 @@
 import { EntityJson, LevelLoader } from '../base/level-loader';
 import { Gg2dWorld, Gg2dWorldTypeDocRepo } from './gg-2d-world';
-import { AudioDistanceModel, IEntity, Point2 } from '../base';
+import {
+  AssetRef,
+  AudioDistanceModel,
+  fetchWithProgress,
+  IEntity,
+  LoadTaskOptions,
+  Point2,
+  stableKey,
+  TextureOptions,
+} from '../base';
 import { DisplayObject2dOpts } from './factories';
 import { Body2DOptions } from './models/body-options';
 import { Shape2DDescriptor } from './models/shapes';
@@ -261,6 +270,45 @@ export class Gg2dLevelLoader<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTyp
   }
 
   /**
+   * Loads an image as a texture, for `DisplayObject2dOpts.texture`, a parallax layer or a
+   * background. Cached: the same url with the same options gives the same texture object, freed
+   * when the last scope holding it is released (see `LoadTaskOptions.scope`) - don't dispose it
+   * yourself.
+   * @throws if the world has no visual scene
+   */
+  public async loadTexture(
+    url: string,
+    options: TextureOptions & LoadTaskOptions = {},
+  ): Promise<TypeDoc['vTypeDoc']['texture']> {
+    const factory = this.world.visualScene?.factory;
+    if (!factory) {
+      throw new Error('Cannot load a texture into a world without a visual scene');
+    }
+    const { onProgress, signal, scope, ...textureOptions } = options;
+    return this.acquireAsset(`texture:${url}:${stableKey(textureOptions)}`, url, options, async item => {
+      let texture: TypeDoc['vTypeDoc']['texture'];
+      if (factory.textureFromData) {
+        const data = await fetchWithProgress(url, item.file(), signal);
+        texture = await factory.textureFromData(new Blob([data]), textureOptions);
+      } else {
+        texture = await factory.loadTexture(url, textureOptions);
+      }
+      await factory.prepare?.(texture);
+      return { value: texture, dispose: () => factory.disposeTexture?.(texture) };
+    });
+  }
+
+  protected override async preloadAsset(ref: AssetRef, options: LoadTaskOptions): Promise<void> {
+    if (ref.kind === 'texture') {
+      if (this.world.visualScene) {
+        await this.loadTexture(ref.url, { ...ref.options, ...options });
+      }
+    } else {
+      await super.preloadAsset(ref, options);
+    }
+  }
+
+  /**
    * Register the built-in classes for primitives and triggers
    */
   private registerDefaultClasses(): void {
@@ -269,9 +317,19 @@ export class Gg2dLevelLoader<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTyp
     );
 
     this.registerClass('Trigger', this.createTrigger.bind(this));
-    this.registerClass('Sound', this.createSound.bind(this));
-    this.registerClass('ParallaxLayer', this.createParallaxLayer.bind(this));
-    this.registerClass('Environment', this.createEnvironment.bind(this));
+    this.registerClass('Sound', this.createSound.bind(this), {
+      assets: (settings: Sound2DSettings) => (settings.path ? [{ kind: 'clip', url: settings.path }] : []),
+    });
+    this.registerClass('ParallaxLayer', this.createParallaxLayer.bind(this), {
+      assets: (settings: ParallaxLayer2DSettings) =>
+        settings.texture ? [{ kind: 'texture', url: settings.texture }] : [],
+    });
+    this.registerClass('Environment', this.createEnvironment.bind(this), {
+      assets: (settings: Environment2DSettings) => {
+        const bg = settings.background;
+        return bg && typeof bg === 'object' ? [{ kind: 'texture', url: bg.image }] : [];
+      },
+    });
     this.registerClass('Player', this.createPlayer.bind(this), CharacterController2dEntity);
 
     this.registerLiveSerializer(this.serializePrimitive.bind(this));
@@ -542,6 +600,7 @@ export class Gg2dLevelLoader<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTyp
   private async createParallaxLayer(
     world: Gg2dWorld<TypeDoc>,
     settings: ParallaxLayer2DSettings,
+    load: LoadTaskOptions = {},
   ): Promise<ParallaxLayer2dEntity<TypeDoc['vTypeDoc']> | undefined> {
     const scene = world.visualScene;
     if (!scene) {
@@ -553,7 +612,7 @@ export class Gg2dLevelLoader<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTyp
     const { texture, parallax, zIndex, repeat, offset, scale } = settings;
     return new ParallaxLayer2dEntity<TypeDoc['vTypeDoc']>(
       scene.factory.createParallaxLayer({
-        texture: await scene.factory.loadTexture(texture),
+        texture: await this.loadTexture(texture, load),
         parallax,
         zIndex,
         repeat,
@@ -571,6 +630,7 @@ export class Gg2dLevelLoader<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTyp
   private async createEnvironment(
     world: Gg2dWorld<TypeDoc>,
     settings: Environment2DSettings,
+    load: LoadTaskOptions = {},
   ): Promise<Environment2dEntity<TypeDoc['vTypeDoc']> | undefined> {
     const scene = world.visualScene;
     if (!scene) {
@@ -579,7 +639,7 @@ export class Gg2dLevelLoader<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTyp
     const environment: { background?: number | TypeDoc['vTypeDoc']['texture'] | null } = {};
     if (settings.background !== undefined) {
       const bg = settings.background;
-      environment.background = bg === null || typeof bg === 'number' ? bg : await scene.factory.loadTexture(bg.image);
+      environment.background = bg === null || typeof bg === 'number' ? bg : await this.loadTexture(bg.image, load);
     }
     return new Environment2dEntity<TypeDoc['vTypeDoc']>(environment);
   }
@@ -593,6 +653,7 @@ export class Gg2dLevelLoader<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTyp
   private async createSound(
     world: Gg2dWorld<TypeDoc>,
     settings: Sound2DSettings,
+    load: LoadTaskOptions = {},
   ): Promise<AudioSource2dEntity<TypeDoc> | undefined> {
     if (!world.audioScene) {
       return undefined;
@@ -600,7 +661,7 @@ export class Gg2dLevelLoader<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTyp
     if (!settings.path) {
       throw new Error('"path" is required for Sound class');
     }
-    const clip = await world.audioScene.factory.loadClip(settings.path);
+    const clip = await this.loadClip(settings.path, load);
     const source = world.audioScene.factory.createSource({
       clip,
       loop: settings.loop ?? true,

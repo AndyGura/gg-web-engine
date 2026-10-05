@@ -304,6 +304,15 @@ export abstract class IEntity<D = any, R = any, TypeDoc extends GgWorldTypeDocRe
   }
 
   private _disposed: boolean = false;
+  private readonly _disposed$: Subject<void> = new Subject<void>();
+
+  /**
+   * Emits once, then completes, when `dispose()` has finished: the entity's children and
+   * components are already disposed at that point.
+   */
+  public get disposed$(): Observable<void> {
+    return this._disposed$.asObservable();
+  }
 
   /**
    * Whether `dispose()` has already run on this entity - `true` forever after, never reset. Checked
@@ -344,5 +353,7 @@ export abstract class IEntity<D = any, R = any, TypeDoc extends GgWorldTypeDocRe
     for (const c of this._components) {
       c.dispose();
     }
+    this._disposed$.next();
+    this._disposed$.complete();
   }
 }

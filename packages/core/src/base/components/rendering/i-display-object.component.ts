@@ -36,6 +36,12 @@ export interface IDisplayObjectComponent<
 
   getBoundings(): GgBox<D>;
 
+  /**
+   * A copy that can be placed and shown on its own. It shares the heavy resources (geometry,
+   * materials, textures) with this object and never frees them: disposing the copy frees only what
+   * is its own, disposing this object frees the shared resources. So the source has to stay alive
+   * for as long as any copy is in use, and is the one to dispose last.
+   */
   clone(): IDisplayObjectComponent<D, R, VTypeDoc>;
 
   addToWorld(world: GgWorld<D, R, GgWorldTypeDocVPatch<D, R, VTypeDoc>>): void;

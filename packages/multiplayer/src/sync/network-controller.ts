@@ -409,6 +409,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
   private pausedForJoin = false;
   private previousEventAuthority: GgWorld<any, any>['eventAuthority'] | null = null;
   private previousCommandGuard: GgWorld<any, any>['commandGuard'] | null | undefined = undefined;
+  private previousLocalPauseAllowed = true;
   private possessedBeforeAway: IEntity[] = [];
   /** whether a session was ever joined - a later `connect()` is a rejoin of entities this peer already holds */
   private everJoined = false;
@@ -2846,6 +2847,9 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     this.previousCommandGuard = world.commandGuard;
     world.eventAuthority = (entity, eventName, payload) => this.hasAuthority(entity, eventName, payload);
     world.commandGuard = () => SESSION_HOOK_REJECTION;
+    // the world is shared from here on: UI that pauses on the player's behalf must leave it running
+    this.previousLocalPauseAllowed = world.localPauseAllowed;
+    world.localPauseAllowed = false;
   }
 
   private uninstallSessionHooks(): void {
@@ -2855,6 +2859,7 @@ export class NetworkController<D = any, R = any> extends IEntity<D, R> {
     }
     world.eventAuthority = this.previousEventAuthority;
     world.commandGuard = this.previousCommandGuard ?? null;
+    world.localPauseAllowed = this.previousLocalPauseAllowed;
     this.previousEventAuthority = null;
     this.previousCommandGuard = undefined;
   }

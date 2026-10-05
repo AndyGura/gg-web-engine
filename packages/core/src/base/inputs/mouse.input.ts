@@ -96,7 +96,8 @@ export class MouseInput extends IInput<[], [unlockPointer?: boolean]> {
   public get wheel$(): Observable<number> {
     if (!this._wheel$) {
       this._wheel$ = (fromEvent(this._element, 'wheel', { passive: false }) as Observable<WheelEvent>).pipe(
-        takeUntil(this.stopped$),
+        // not ended by `stop()`: a subscriber keeps receiving after the input is started again
+        filter(() => this.running),
         finalize(() => (this._wheel$ = null)),
         tap(e => e.preventDefault()),
         map(e => e.deltaY),
@@ -295,6 +296,8 @@ export class MouseInput extends IInput<[], [unlockPointer?: boolean]> {
    */
   protected stopInternal(unlockPointer: boolean = true) {
     this.stopped$.next();
+    // a drag in progress ends with the input
+    this._state$.next(MouseInputState.NONE);
     if (unlockPointer && !!this.options.canvas) {
       this.options.canvas.removeEventListener('click', this.canvasClickListener);
       document.exitPointerLock();

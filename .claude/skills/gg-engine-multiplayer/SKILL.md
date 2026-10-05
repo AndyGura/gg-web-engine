@@ -86,6 +86,13 @@ moving), arbitrate every `arbitrationIntervalTicks`. Capture + send happen on
 unchanged state. Everything that must run while the world clock is paused (heartbeats, clock sync,
 join handshakes, link latency) runs on the injected `NetScheduler`, never on `tick$`.
 
+While a session is joined the controller also holds three neutral hooks on its world, installed and
+restored together (`installSessionHooks`/`uninstallSessionHooks`): `eventAuthority`, `commandGuard`,
+and `localPauseAllowed = false`. The last one is what a pause menu obeys: core's `ScreenManager`
+does not pause a covered screen's world while it is `false`, so opening a menu never freezes the
+shared world for the other peers (the local player's input is still switched off).
+`world.pauseWorld()` itself is not blocked - a join handshake relies on it.
+
 ## Things that bit, and the rule each one left behind
 
 - **Classify entities lazily, at the next `NETWORK_IN` tick, never inside `entityAdded$`.** Whether an

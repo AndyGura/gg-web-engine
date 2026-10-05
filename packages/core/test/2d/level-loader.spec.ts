@@ -524,7 +524,7 @@ describe('Gg2dLevelLoader', () => {
         position: { x: 100, y: 200 },
         name: 'TestCustomEntity',
         customProperty: 'value',
-      });
+      }, expect.anything());
       expect(level.getChildEntityByName('TestCustomEntity')).toBeInstanceOf(TestEntity);
     });
 

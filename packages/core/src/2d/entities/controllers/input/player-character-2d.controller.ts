@@ -1,5 +1,13 @@
 import { filter, takeUntil } from 'rxjs';
-import { DirectionInput, DirectionKeymap, IEntity, KeyboardInput, Pnt2, TickOrder } from '../../../../base';
+import {
+  DirectionInput,
+  DirectionKeymap,
+  IEntity,
+  KeyboardInput,
+  Pnt2,
+  runWhileInputEnabled,
+  TickOrder,
+} from '../../../../base';
 import { Renderer2dEntity } from '../../renderer-2d.entity';
 import { CharacterController2dEntity } from '../../character-controller-2d.entity';
 import { Gg2dWorld, Gg2dWorldTypeDocRepo } from '../../../gg-2d-world';
@@ -149,7 +157,12 @@ export class PlayerCharacterController2d<TypeDoc extends Gg2dWorldTypeDocRepo = 
       )
       .subscribe(([, delta]) => this.updateCamera(delta / 1000));
 
-    await this.directionsInput.start();
+    runWhileInputEnabled(
+      world,
+      this._onRemoved$,
+      () => this.directionsInput.start(),
+      () => this.directionsInput.stop(),
+    );
   }
 
   async onRemoved(): Promise<void> {

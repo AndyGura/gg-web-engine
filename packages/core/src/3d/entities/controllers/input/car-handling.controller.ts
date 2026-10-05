@@ -1,5 +1,13 @@
 import { combineLatest, filter, Observable, Subject, takeUntil } from 'rxjs';
-import { DirectionInput, DirectionKeymap, GgWorld, IEntity, KeyboardInput, TickOrder } from '../../../../base';
+import {
+  DirectionInput,
+  DirectionKeymap,
+  GgWorld,
+  IEntity,
+  KeyboardInput,
+  runWhileInputEnabled,
+  TickOrder,
+} from '../../../../base';
 
 export type CarHandlingControllerOptions = {
   readonly keymap: DirectionKeymap;
@@ -56,7 +64,12 @@ export class CarHandlingController extends IEntity {
     this.tick$.pipe(takeUntil(this._onRemoved$)).subscribe(() => {
       this._output$.next(input);
     });
-    await this.directionsInput.start();
+    runWhileInputEnabled(
+      world,
+      this._onRemoved$,
+      () => this.directionsInput.start(),
+      () => this.directionsInput.stop(),
+    );
   }
 
   async onRemoved(): Promise<void> {

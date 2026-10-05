@@ -8,7 +8,8 @@ import {
   TextureOptions,
 } from '@gg-web-engine/core';
 import { PixiDisplayObjectComponent } from './components/pixi-display-object.component';
-import { AnimatedSprite, Assets, Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js';
+import { AnimatedSprite, Assets, Container, Graphics, ImageSource, Rectangle, Sprite, Texture } from 'pixi.js';
+import type { PixiSceneComponent } from './components/pixi-scene.component';
 import { PixiParallaxLayerComponent } from './components/pixi-parallax-layer.component';
 import { PixiVisualTypeDocRepo2D } from './types';
 import { PixiTextComponent } from './components/pixi-text.component';
@@ -43,6 +44,14 @@ export type PixiGridAtlasOptions = {
 export type PixiDisplayObject3dOpts = DisplayObject2dOpts<Texture>;
 
 export class PixiFactory extends IDisplayObject2dComponentFactory<PixiVisualTypeDocRepo2D> {
+  /**
+   * @param scene - The scene this factory belongs to; `prepare` uploads to its renderers. Without
+   * one, `prepare` does nothing.
+   */
+  constructor(private readonly scene?: PixiSceneComponent) {
+    super();
+  }
+
   createPrimitive(descriptor: Shape2DDescriptor, material: PixiDisplayObject3dOpts = {}): PixiDisplayObjectComponent {
     const component = new PixiDisplayObjectComponent(this.createNativePrimitive(descriptor, material), material);
     if (material.opacity !== undefined) {
@@ -169,6 +178,32 @@ export class PixiFactory extends IDisplayObject2dComponentFactory<PixiVisualType
 
   async loadTexture(url: string, options: TextureOptions = {}): Promise<Texture> {
     return this.applyTextureOptions(await Assets.load<Texture>(url), options);
+  }
+
+  /**
+   * Decodes an already-fetched image file into a texture of its own: unlike `loadTexture`, nothing
+   * goes through pixi's global `Assets` cache, so the texture belongs to whoever asked for it and
+   * is freed with `disposeTexture`.
+   */
+  async textureFromData(data: Blob, options: TextureOptions = {}): Promise<Texture> {
+    const resource = await createImageBitmap(data);
+    const source = new ImageSource({ resource, alphaMode: 'premultiply-alpha-on-upload' });
+    return this.applyTextureOptions(new Texture({ source }), options);
+  }
+
+  /** Frees a texture made by `textureFromData`, together with its image. */
+  disposeTexture(texture: Texture): void {
+    texture.destroy(true);
+  }
+
+  /**
+   * Uploads a texture to the GPU on every renderer drawing the scene, instead of on the first
+   * frame it is visible in. A renderer that is not initialized yet is skipped.
+   */
+  async prepare(texture: Texture): Promise<void> {
+    for (const renderer of this.scene?.renderers ?? []) {
+      (renderer.nativeTextureSystem as { initSource?: (source: unknown) => void } | null)?.initSource?.(texture.source);
+    }
   }
 
   createTextureFromCanvas(canvas: HTMLCanvasElement, options: TextureOptions = {}): Texture {

@@ -15,6 +15,10 @@ export class WebAudioSource3dComponentFactory implements IAudioSource3dComponent
     return this.scene.loadClip(url);
   }
 
+  public decodeClip(data: ArrayBuffer): Promise<AudioBuffer> {
+    return this.scene.decodeClip(data);
+  }
+
   public createSource(descriptor: AudioSourceDescriptor<AudioBuffer>): WebAudioSource3dComponent {
     return new WebAudioSource3dComponent(this.scene, descriptor);
   }
@@ -25,6 +29,10 @@ export class WebAudioSource2dComponentFactory implements IAudioSource2dComponent
 
   public loadClip(url: string): Promise<AudioBuffer> {
     return this.scene.loadClip(url);
+  }
+
+  public decodeClip(data: ArrayBuffer): Promise<AudioBuffer> {
+    return this.scene.decodeClip(data);
   }
 
   public createSource(descriptor: AudioSourceDescriptor<AudioBuffer>): WebAudioSource2dComponent {

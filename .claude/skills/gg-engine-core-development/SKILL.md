@@ -15,7 +15,8 @@ ripple into every adapter and every app.
 
 ```
 src/base/    dimension-agnostic: IComponent, IEntity, clocks, math (Point2/3, Quaternion,
-             Matrix4, Box, splines), inputs, GgWorld base class, body-options base
+             Matrix4, Box, splines), inputs, GgWorld base class, body-options base,
+             assets/ (fetch with progress, the per-world asset cache), screens/ (ScreenManager)
 src/2d/      2D specialization: Gg2dWorld, Entity2d, 2D components/interfaces, 2D shapes
 src/3d/      3D specialization: Gg3dWorld, Entity3d, 3D components/interfaces, 3D shapes,
              loaders, controllers (camera/car/free-fly), GgCarEntity, MapGraph3dEntity
@@ -527,6 +528,106 @@ controller that sets a shared dynamic body's velocity outright each tick should 
 "never fights a faster push already headed the right way" pattern rather than assuming it's the only
 writer that tick.
 
+## Asset loading: one fetch path, one cache, one progress model (`base/assets/`)
+
+Everything a world loads from a URL goes through its loader (`LevelLoader` and its 2D/3D
+subclasses), built from four pieces in `base/assets/`:
+
+- `fetchWithProgress(url, onBytes?, signal?)`: the only place core fetches. Reads the body as a
+  stream when a byte callback is given, takes the total from `Content-Length` (ignored for a
+  response with `Content-Encoding`, whose header counts compressed bytes while the stream yields
+  decoded ones), rejects with an `AbortError`.
+- `AssetProgress` (one asset: any number of files, then a decode step with a fixed
+  `DECODE_PROGRESS_SHARE` of the asset) and `LoadProgressGroup` (combines nested loads: each
+  `group.sub()` is a `LoadTaskOptions` to hand to one nested loader call, carrying signal and scope
+  along). A group's fraction is the mean over the assets its slots report, clamped so it never
+  goes down when a late asset lowers the mean, and reaches 1 only on `finish()`. A load served
+  from the cache reports `totalItems: 0`, which gives it no weight - otherwise every cached asset
+  would be counted once when preloaded and again when used.
+- `AssetCache`/`AssetScope`: entries by key (`kind:url:options`), in-flight loads shared, each
+  entry held by scopes and disposed when the last one releases it. No scope means the cache's
+  `root` scope, released only by `dispose()`. A load aborted by the caller that started it is
+  restarted for the others waiting on the same entry.
+- `AssetRef`: plain data naming one loader call, for `preload` and the `assets` hooks.
+
+A new loader method follows the existing ones (`loadTexture`, `loadClip`): split
+`{ onProgress, signal, scope }` off the options, call `this.acquireAsset(key, url, options, async
+item => ...)`, fetch with `fetchWithProgress(url, item.file(), signal)`, decode through the
+adapter, return `{ value, dispose }`. Add its kind to `AssetRef` and to `preloadAsset`. A built-in
+level class that loads something declares it in `registerClass`'s `assets` option and passes its
+generator's third argument (`load`) on to the loader call; the hook must produce exactly the key
+the generator's call does, so derive anything computed (the `"Player"` model's offset) with one
+shared function.
+
+For models the cache holds an original that never enters a scene and every load returns
+`clone()`s of it; `IDisplayObjectComponent.clone` documents the ownership rule that makes this
+safe (a copy never frees shared resources, the source does), and each visual adapter implements it.
+Lifetime follows scopes: `loadLevel` creates one and releases it on the level group's `disposed$`,
+`createEntity` does the same per entity when it isn't given one, `MapGraph3dEntity` keeps one per
+chunk. World teardown order matters: `GgWorld.dispose()` disposes entities (the copies), then the
+loader's cache (the originals), then the scenes.
+
+Pitfalls met here:
+
+- **Typing `GgWorld.loader` at the base class breaks unrelated code.** Declaring it as
+  `LevelLoader<D, R, TypeDoc>` makes `GgWorld` invariant in `TypeDoc`, and every place that passes
+  an `IEntity<any, any>` where `IEntity<D, R, TypeDoc>` is expected stops compiling, with the error
+  pointing at `_world`, far from the cause. The base class declares `loader` (with `declare`, so
+  nothing is emitted) as a small non-generic structural type listing only what base code calls;
+  `Gg2dWorld`/`Gg3dWorld` declare the real type.
+- **jsdom has no `TextEncoder`/`TextDecoder`**, which the loaders decode fetched JSON with:
+  `test/jest.polyfills.ts` (a jest `setupFiles` entry) supplies them from `util`. Another package
+  whose tests run core's loaders from source needs the same file.
+- **Mock `fetch` with `test/mocks/fetch.mock.ts`**, not an ad hoc object: a response needs
+  `headers.get`, a `body.getReader()` or an `arrayBuffer()`, and has to honor `init.signal`.
+  `fetch.hold()`/`release()` park every body read for abort tests. `fetch` is called with one
+  argument when there is no signal, so `toHaveBeenCalledWith(url)` keeps working.
+
+## Screens (`base/screens/`)
+
+`ScreenManager` + `Screen` + `LoadingView`/`DefaultLoadingView`: an app's menu/loading/game/pause
+flow as a stack of DOM layers. The module imports nothing from an adapter and nothing from `dev/`
+(its two console commands are registered through `window.ggstatic`, as `GgWorld` does). See
+`gg-engine-app-development` for the consumer view; what matters when changing it:
+
+- **One generic `transition(wantedStack, options)`** implements every operation: exit what is not in
+  the wanted stack (top down), attach layers for new screens, then settle the top - cover the
+  active screens below it, and uncover it, or enter it if it is `pending`. `push`/`replace`/`pop`/
+  `popTo`/`reset` only compute the wanted stack, inside the queue, from the stack as it is when
+  their turn comes.
+- **Requests are serialized** on a promise chain. A request made while a screen is entering aborts
+  that screen unless it is a plain `push`. The aborted screen stays in the stack until the aborting
+  request's own transition removes it: taking it out at once would make a `pop()` issued to cancel
+  a load remove the screen below as well.
+- **`exit()` is only for screens that finished entering.** A screen that was never entered, failed
+  or was aborted gets its teardowns and world disposal alone. `addWorld`/`addTeardown` called after
+  the screen has exited (an `enter()` that ignored its signal) dispose their argument immediately.
+- **The manager reaches into a screen through `screen.internals`**, an object of closures, since TS
+  has no package-private access. It is `@internal`; app code has no use for it.
+- **Covering a screen** sets `inert` on its layer, `inputEnabled = false` on its worlds and pauses
+  them unless the push said otherwise or `world.localPauseAllowed` is `false`. Uncovering puts back
+  only what covering changed (flags per world), so a world the app paused itself stays paused.
+
+`GgWorld.inputEnabled` is the single switch for "this world does not react to the player": the
+setter stops/starts `keyboardInput` and feeds `inputEnabled$`, and everything else follows the
+observable - the built-in input controllers through `runWhileInputEnabled(world, this._onRemoved$,
+start, stop)` (`base/inputs/world-input.ts`), which replaces a direct `input.start()` in
+`onSpawned`, and `MobileControls`, which syncs on every emission because a covered world is usually
+paused and delivers no tick to poll on. A new built-in controller with inputs of its own must start
+them the same way. Two properties of the inputs make stop/start safe and must be kept: everything a
+consumer subscribes to on `MouseInput`/`DirectionInput` outlives a stop (`wheel$` is gated on
+`running` instead of ending with `stop()`), and stopping releases what was held (`KeyboardInput`
+resets its keys, `DirectionInput` its direction, `MouseInput` its drag state).
+
+`GgWorld` forwards its clock's `paused$` to `audioScene.setPaused` (optional on the interface), so
+pausing a world silences it; see `gg-engine-audio-adapter`.
+
+`test/base/screens/screen-manager.spec.ts` covers the transitions, covered-world rules, input
+blocking, loading view timing (fake timers), abort and failure, and a leak test: 25 round trips
+after which the number of worlds, the balance of `addEventListener`/`removeEventListener` calls on
+`window` and `document`, the container's children and the worlds' observers are all back where they
+started. Extend that test when a screen or a world gains something that needs releasing.
+
 ## Clock: bounding tick delta and reacting to tab visibility
 
 `PausableClock` (`base/clock/pausable-clock.ts`) has a public `maxTickDelta: number` field
@@ -827,6 +928,9 @@ its contributions. A controller that moves by direction keys subscribes to `dire
 whole of what makes it drivable by an on-screen stick or, later, a gamepad.
 `CharacterController3dEntity` likewise scales its speed by a `moveDirection` shorter than 1.
 
+All three are also what `GgWorld.inputEnabled` relies on (see "Screens"): an input that is stopped
+ignores emulated keys, analog directions and emulated moves, so nothing has to gate them separately.
+
 `packages/mobile-controls` (`@gg-web-engine/mobile-controls`) is the consumer of this: DOM controls
 (`TouchButton`, `TouchStick`, `TouchDPad`, `TouchLookArea`, plus `TiltInput`) bound to those entry
 points, and the `MobileControls` entity, which tracks the controllers of its world through
@@ -1047,6 +1151,10 @@ Changing any of these is a breaking change for every adapter package — grep
 - `IAudioSourceComponent`, `IAudioSourceComponentFactory` (+ 2D/3D specializations - see `gg-engine-audio-adapter`)
 - `IRaycastVehicleComponent`, `ICharacterController3dComponent` (3D only)
 - `IEntity`, `IRenderableEntity`, `IRendererEntity`
+- The loading hooks core's loader calls when present: `textureFromData`/`cubeTextureFromData`/
+  `prepare` on the 3D visual loader, `textureFromData`/`disposeTexture`/`prepare` on the 2D factory,
+  `decodeClip` on the audio factory, `setPaused` on the audio scene. All optional, so adding one
+  never breaks an adapter - and core must keep working (minus byte progress) without each of them.
 - The factory abstracts in `2d/factories.ts` / `3d/factories.ts` (3D includes `createLight`; 2D
   includes `createParallaxLayer` and `loadTexture`)
 - `ILight3dComponent` and the 3D scene's `environment`/`setEnvironment`, plus the 3D loader's

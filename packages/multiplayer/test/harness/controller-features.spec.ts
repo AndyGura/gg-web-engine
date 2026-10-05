@@ -36,8 +36,11 @@ describe('NetworkController features', () => {
     adapter.addBox(a.world, adapter.at(0, 1));
     h.step(2);
     expect(await ggstatic.runConsoleCommand('net_owners', [])).toContain('owner a');
+    // a joined world is shared: a pause menu must not freeze it for the other peers
+    expect(a.world.localPauseAllowed).toBe(false);
     a.net.leave();
     expect(a.world.commandGuard).toBeNull();
+    expect(a.world.localPauseAllowed).toBe(true);
     expect(await ggstatic.runConsoleCommand('remove', ['ground', '0'])).toContain('removed');
   });
 

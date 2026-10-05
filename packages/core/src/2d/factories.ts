@@ -31,6 +31,24 @@ export abstract class IDisplayObject2dComponentFactory<VTypeDoc extends VisualTy
   abstract loadTexture(url: string, options?: TextureOptions): Promise<VTypeDoc['texture']>;
 
   /**
+   * Decodes a texture from an already-fetched image file - what `loadTexture` does after its own
+   * fetch. `world.loader.loadTexture` fetches the file itself (reporting progress, cancellable) and
+   * hands it over here. A factory without this method has its `loadTexture` called instead, and the
+   * fetch then goes unreported.
+   */
+  textureFromData?(data: Blob, options?: TextureOptions): Promise<VTypeDoc['texture']>;
+
+  /** Frees a texture made by `loadTexture`/`textureFromData`, once nothing shows it anymore. */
+  disposeTexture?(texture: VTypeDoc['texture']): void;
+
+  /**
+   * Finishes whatever of a loaded texture would otherwise happen at its first render (GPU upload),
+   * so `world.loader` can count it as part of the load. Resolves at once when there is nothing to
+   * do it with yet (no renderer in the scene).
+   */
+  prepare?(texture: VTypeDoc['texture']): Promise<void>;
+
+  /**
    * Creates a texture from a canvas the app has drawn on, e.g. a procedurally generated backdrop.
    * The canvas is read once, now: drawing on it afterwards doesn't update the texture.
    */

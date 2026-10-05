@@ -14,6 +14,7 @@ import {
   Point2,
   Point3,
   Qtrn,
+  runWhileInputEnabled,
   Spherical,
   TickOrder,
 } from '../../../../base';
@@ -275,8 +276,18 @@ export class FreeCameraController extends IEntity {
       });
 
     // start input
-    this.mouseInput.start();
-    this.directionsInput.start();
+    runWhileInputEnabled(
+      world,
+      this._onRemoved$,
+      () => {
+        this.mouseInput.start();
+        this.directionsInput.start();
+      },
+      () => {
+        this.mouseInput.stop(true);
+        this.directionsInput.stop();
+      },
+    );
   }
 
   async onRemoved(): Promise<void> {

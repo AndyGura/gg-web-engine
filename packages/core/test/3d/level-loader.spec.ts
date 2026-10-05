@@ -859,7 +859,7 @@ describe('Gg3dLevelLoader', () => {
         position: { x: 1, y: 2, z: 3 },
         name: 'TestCustomEntity',
         customProperty: 'value',
-      });
+      }, expect.anything());
       expect(level.getChildEntityByName('TestCustomEntity')).toBeInstanceOf(TestEntity);
     });
 

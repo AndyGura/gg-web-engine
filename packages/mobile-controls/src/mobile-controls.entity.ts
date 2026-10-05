@@ -235,6 +235,9 @@ export class MobileControls extends IEntity {
         this.sync();
       }
     });
+    // a world whose input is switched off (a screen covering the game) takes its controls off the
+    // screen; it may be paused at that moment, so this can't wait for the next tick
+    world.inputEnabled$.pipe(takeUntil(this._onRemoved$)).subscribe(() => this.sync());
     // `active` has no change notification, so it is polled
     this.tick$.pipe(takeUntil(this._onRemoved$)).subscribe(() => this.sync());
     window.addEventListener('blur', this.releaseAll);
@@ -296,7 +299,11 @@ export class MobileControls extends IEntity {
 
   private sync(): void {
     const world = this.world;
-    const show = !!world && this._visible && (this._enabled === 'auto' ? isTouchFirstDevice() : this._enabled);
+    const show =
+      !!world &&
+      this._visible &&
+      world.inputEnabled !== false &&
+      (this._enabled === 'auto' ? isTouchFirstDevice() : this._enabled);
     if (show !== this.shown) {
       if (show) {
         if (this.options.injectStyles) {
