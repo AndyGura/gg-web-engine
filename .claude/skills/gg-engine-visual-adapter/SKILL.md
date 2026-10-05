@@ -111,7 +111,9 @@ Every adapter component class then `implements I<Thing>Component<<Lib>VisualType
   recursively on children — a traversal that assumes it only ever visits descendants will silently
   skip the root and leave it on the wrong layer.
   `castShadow`/`receiveShadow` (3D) follow the same whole-subtree rule on write (a loaded model's
-  sub-meshes are what actually render) and read back the root's own value. `createPrimitive` must
+  sub-meshes are what actually render) and read back the root's own value. The `castShadow` write
+  skips lights embedded in the subtree (a loaded model can carry them): on a light that flag turns
+  shadow map rendering on or off, which is the light's own setting. `createPrimitive` must
   apply `DisplayObject3dOpts.castShadow`/`receiveShadow` through those setters rather than on the
   root node alone, or a `COMPOUND`'s parts never cast shadows. 2D adds `tint` (multiplied over the
   object's colors, `0xffffff` = none; pixi: `Container.tint`) and `opacity` (pixi: `alpha`), both
@@ -119,7 +121,15 @@ Every adapter component class then `implements I<Thing>Component<<Lib>VisualType
   scene-graph nesting (three: `Object3D.add`/`remove`; pixi: `Container.addChild`/`removeChild`),
   so the child's transform becomes relative to the parent; `removeChild` of something that isn't a
   direct child is a no-op, and `dispose()` must take nested children with it (pixi:
-  `destroy({ children: true })`; three's `dispose()` already traverses).
+  `destroy({ children: true })`; three's `dispose()` already traverses). `clone()` must return a
+  component around its own deep copy of the native object and its nested children, never one
+  wrapping the same native object: disposing either would destroy what the other renders. three has
+  `Object3D.clone()`; pixi has no generic `Container.clone()`, so `src/utils/clone-container.ts`
+  rebuilds each kind of native object the package creates (`cloneContainer`, sharing only textures)
+  and a component subclass with its own constructor arguments or state overrides `clone()` to
+  return its own class (`copyContainerState` copies transform, tint, opacity and children onto a
+  native object the subclass built itself). A new kind of native object the package starts creating
+  needs a branch in `cloneContainer`, which otherwise copies it as an empty `Container`.
 - **Camera component** (`ICamera(2d|3d)Component`): wraps the native camera type; 3D typically
   needs both perspective and orthographic factory methods (see `world.visualScene.factory.
   createPerspectiveCamera()` used in the core README quickstart). 3D only: `ICamera3dComponent`

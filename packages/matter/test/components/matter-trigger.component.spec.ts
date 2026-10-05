@@ -250,4 +250,46 @@ describe(`MatterTriggerComponent`, () => {
     await Promise.resolve();
     expect(exitRegistered).toBe(true);
   });
+
+  it(`clones into an independent sensor of the same shape, transform and collision groups`, () => {
+    const trigger = factory.createTrigger(
+      { shape: 'BOX', dimensions: { x: 10, y: 4 } },
+      { position: { x: 3, y: 4 }, rotation: 0.5 },
+    );
+    trigger.ownCollisionGroups = [2];
+    trigger.interactWithCollisionGroups = [3];
+    trigger.addToWorld({ physicsWorld: world } as any);
+
+    const clone = trigger.clone();
+
+    expect(clone.nativeBody).not.toBe(trigger.nativeBody);
+    expect(clone.nativeBody.isSensor).toBe(true);
+    expect(clone.nativeBody.isStatic).toBe(true);
+    expect(clone.shape).toEqual(trigger.shape);
+    expect(clone.position.x).toBeCloseTo(3);
+    expect(clone.position.y).toBeCloseTo(4);
+    expect(clone.rotation).toBeCloseTo(0.5);
+    expect(clone.ownCollisionGroups).toEqual([2]);
+    expect(clone.interactWithCollisionGroups).toEqual([3]);
+
+    clone.addToWorld({ physicsWorld: world } as any);
+    expect(world.matterWorld!.bodies).toContain(clone.nativeBody);
+    clone.position = { x: 10, y: 10 };
+    expect(trigger.position.x).toBeCloseTo(3);
+  });
+
+  it(`clones a compound trigger`, () => {
+    const trigger = factory.createTrigger({
+      shape: 'COMPOUND',
+      children: [
+        { shape: { shape: 'BOX', dimensions: { x: 2, y: 2 } } },
+        { position: { x: 3, y: 0 }, shape: { shape: 'CIRCLE', radius: 1 } },
+      ],
+    });
+
+    const clone = trigger.clone();
+
+    expect(clone.nativeBody.parts.length).toBe(trigger.nativeBody.parts.length);
+    expect(clone.nativeBody.isSensor).toBe(true);
+  });
 });

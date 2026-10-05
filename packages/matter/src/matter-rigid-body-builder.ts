@@ -172,6 +172,26 @@ export function createShapeBody(shape: Shape2DDescriptor, options: IChamferableB
 }
 
 /**
+ * Builds the sensor body of a trigger, for `MatterFactory.createTrigger` and
+ * `MatterTriggerComponent.clone()`.
+ */
+export function buildMatterTriggerBody(
+  shape: Shape2DDescriptor,
+  transform?: {
+    position?: Point2;
+    rotation?: number;
+  },
+): Body {
+  const options: IChamferableBodyDefinition = { isSensor: true };
+  const nativeBody = shape.shape === 'COMPOUND' ? createShapeBody(shape, options) : createShapeParts(shape, options)[0];
+  // `Body.setPosition`/`Body.setAngle` rather than raw field writes, for the same reason as in
+  // `buildMatterRigidBody` above
+  Body.setPosition(nativeBody, Vector.create(transform?.position?.x || 0, transform?.position?.y || 0));
+  Body.setAngle(nativeBody, transform?.rotation || 0);
+  return nativeBody;
+}
+
+/**
  * matter-js's own body model only has `isStatic` - no distinct kinematic body type (position-
  * driven, but still pushes/wakes dynamic bodies it moves into) and no continuous collision
  * detection at all, at any level. Both are long-standing, documented upstream limitations, not

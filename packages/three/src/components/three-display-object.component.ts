@@ -10,7 +10,7 @@ import {
   Qtrn,
   RenderLayer,
 } from '@gg-web-engine/core';
-import { Box3, Group, Mesh, Object3D, Scene, Texture } from 'three';
+import { Box3, Group, Light, Mesh, Object3D, Scene, Texture } from 'three';
 import { ThreeGgWorld, ThreeVisualTypeDocRepo } from '../types';
 
 export class ThreeDisplayObjectComponent
@@ -94,7 +94,13 @@ export class ThreeDisplayObjectComponent
   }
 
   public set castShadow(value: boolean) {
-    this.nativeMesh.traverse(obj => (obj.castShadow = value));
+    this.nativeMesh.traverse(obj => {
+      // a light embedded in the hierarchy (e.g. one loaded from a .glb) keeps its own setting: on a
+      // light this flag turns shadow map rendering on or off
+      if (!(obj as Light).isLight) {
+        obj.castShadow = value;
+      }
+    });
   }
 
   public get receiveShadow(): boolean {

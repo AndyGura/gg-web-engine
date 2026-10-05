@@ -47,8 +47,12 @@ where one exists.
   keeps a dynamic body simulated while it rests.
 
 ### Fixed
-- `@gg-web-engine/matter`: `MatterRigidBodyComponent.clone()` overflowed the stack for every body;
-  it now rebuilds the body from its shape, options and transform.
+- `@gg-web-engine/matter`: `MatterRigidBodyComponent.clone()` and `MatterTriggerComponent.clone()`
+  overflowed the stack for every body; they now rebuild the body from its shape, options and
+  transform.
+- `@gg-web-engine/pixi`: `clone()` of a display object returned a component sharing the original's
+  native object, so disposing one destroyed the other; it now makes an independent deep copy
+  (children included), and cloning a text or an animated sprite keeps its class, tint and opacity.
 - `@gg-web-engine/matter`: a `CAPSULE` rigid body ignored its body options (mass, friction,
   restitution, static/dynamic type).
 

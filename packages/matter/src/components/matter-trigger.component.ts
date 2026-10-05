@@ -1,6 +1,7 @@
 import { map, merge, Observable, Subject, Subscription } from 'rxjs';
 import { Body, Detector, Engine, Events, IEventCollision, Query } from 'matter-js';
 import { MatterRigidBodyComponent } from './matter-rigid-body.component';
+import { buildMatterTriggerBody } from '../matter-rigid-body-builder';
 import { MatterCharacterControllerComponent } from './matter-character-controller.component';
 import { DebugBody2DSettings, ITrigger2dComponent, Shape2DDescriptor } from '@gg-web-engine/core';
 import { MatterWorldComponent } from './matter-world.component';
@@ -285,13 +286,8 @@ export class MatterTriggerComponent
   }
 
   clone(): MatterTriggerComponent {
-    const clonedBody = Body.create({
-      ...this.nativeBody,
-      isSensor: true,
-      collisionFilter: {
-        ...this.nativeBody.collisionFilter,
-      },
-    });
+    // rebuilt from the shape, for the same reason as in `MatterRigidBodyComponent.clone()`
+    const clonedBody = buildMatterTriggerBody(this.shape, { position: this.position, rotation: this.rotation });
     const component = new MatterTriggerComponent(clonedBody, this.shape, this.world);
     component.ownCollisionGroups = this.ownCollisionGroups;
     component.interactWithCollisionGroups = this.interactWithCollisionGroups;

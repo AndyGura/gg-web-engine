@@ -1,4 +1,4 @@
-import { BoxGeometry, Group, Mesh, MeshBasicMaterial } from 'three';
+import { BoxGeometry, Group, Mesh, MeshBasicMaterial, PointLight } from 'three';
 import { ThreeDisplayObjectComponent } from '../../src/components/three-display-object.component';
 
 /** Builds a GLTF-shaped hierarchy: a root Group with two child Meshes nested a level apart, the
@@ -104,6 +104,24 @@ describe('ThreeDisplayObjectComponent', () => {
         expect(obj.castShadow).toBe(true);
         expect(obj.receiveShadow).toBe(true);
       });
+    });
+
+    it('leaves the castShadow of a light embedded in the hierarchy alone', () => {
+      const root = buildCharacterModel();
+      const lamp = new PointLight();
+      root.add(lamp);
+      const shadowLamp = new PointLight();
+      shadowLamp.castShadow = true;
+      root.add(shadowLamp);
+      const component = new ThreeDisplayObjectComponent(root);
+
+      component.castShadow = true;
+      expect(lamp.castShadow).toBe(false);
+      expect(root.getObjectByName('body')!.castShadow).toBe(true);
+
+      component.castShadow = false;
+      expect(shadowLamp.castShadow).toBe(true);
+      expect(root.getObjectByName('body')!.castShadow).toBe(false);
     });
   });
 

@@ -486,6 +486,10 @@ not. Pass `mass` only for a dynamic body when rebuilding: a static body reports 
 Static bodies also read back `friction: 1`/`restitution: 0` because `Body.setStatic` overwrites them,
 so a static clone's options match its original's either way.
 
+`MatterTriggerComponent.clone()` follows the same rule: `buildMatterTriggerBody` (same module) builds
+the sensor body for both `MatterFactory.createTrigger` and the clone, from `this.shape` and the
+current transform, and the clone then copies the collision groups through the component's setters.
+
 The builder is a module of plain functions rather than a method on `MatterFactory` because the
 component can't import the factory module: that module imports `MatterTriggerComponent`, which
 `extends MatterRigidBodyComponent`, so loading it from the rigid body's module is a circular import

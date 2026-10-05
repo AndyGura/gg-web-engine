@@ -2,6 +2,7 @@ import { IText2dComponent, Text2dStyle } from '@gg-web-engine/core';
 import { Text, TextStyleOptions } from 'pixi.js';
 import { PixiDisplayObjectComponent } from './pixi-display-object.component';
 import { PixiVisualTypeDocRepo2D } from '../types';
+import { copyContainerState } from '../utils/clone-container';
 
 /** pixi.js implementation of `IText2dComponent`: a pixi `Text`. Built by `PixiFactory.createText`. */
 export class PixiTextComponent extends PixiDisplayObjectComponent implements IText2dComponent<PixiVisualTypeDocRepo2D> {
@@ -40,5 +41,11 @@ export class PixiTextComponent extends PixiDisplayObjectComponent implements ITe
     if (anchor !== undefined) {
       this.nativeSprite.anchor.set(anchor.x, anchor.y);
     }
+  }
+
+  clone(): PixiTextComponent {
+    const clone = new PixiTextComponent(this.text, this._style);
+    copyContainerState(this.nativeSprite, clone.nativeSprite);
+    return clone;
   }
 }

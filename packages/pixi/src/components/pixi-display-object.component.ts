@@ -9,6 +9,7 @@ import {
 } from '@gg-web-engine/core';
 import { PixiGgWorld, PixiVisualTypeDocRepo2D } from '../types';
 import { Container, Texture } from 'pixi.js';
+import { cloneContainer } from '../utils/clone-container';
 
 export class PixiDisplayObjectComponent
   implements
@@ -123,7 +124,7 @@ export class PixiDisplayObjectComponent
   }
 
   clone(): PixiDisplayObjectComponent {
-    return new PixiDisplayObjectComponent(this.nativeSprite);
+    return new PixiDisplayObjectComponent(cloneContainer(this.nativeSprite), this.materialOptions);
   }
 
   addToWorld(world: PixiGgWorld): void {
