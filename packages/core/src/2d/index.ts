@@ -5,6 +5,7 @@ export * from './components/physics/i-trigger-2d.component';
 export * from './components/physics/i-character-controller-2d.component';
 export * from './components/physics/i-physics-world-2d.component';
 export * from './components/rendering/i-camera-2d.component';
+export * from './components/rendering/i-parallax-layer-2d.component';
 export * from './components/rendering/i-display-object-2d.component';
 export * from './components/rendering/i-animated-display-object-2d.component';
 export * from './components/rendering/i-material-readable-2d.component';
@@ -16,6 +17,8 @@ export * from './entities/controllers/character-animation-2d.controller';
 export * from './entities/audio-source-2d.entity';
 export * from './entities/character-controller-2d.entity';
 export * from './entities/entity-2d';
+export * from './entities/environment-2d.entity';
+export * from './entities/parallax-layer-2d.entity';
 export * from './entities/trigger-2d.entity';
 export * from './entities/renderer-2d.entity';
 export * from './entities/i-renderable-2d.entity';
@@ -24,6 +27,7 @@ export * from './entities/controllers/input/player-character-2d.controller';
 export * from './interfaces/i-positionable-2d';
 
 export * from './models/body-options';
+export * from './models/environment';
 export * from './models/character-controller-options';
 export * from './models/shapes';
 

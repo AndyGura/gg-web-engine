@@ -260,7 +260,7 @@ StackBlitz with one click, and its source lives under [`examples/`](examples).
 | [Coin run](https://gg-web-demos.guraklgames.com/coin-run-pixi-rapier2d/index.html) | 2D multiplayer platformer rounds |
 | [Portal room](https://gg-web-demos.guraklgames.com/portal-room-three-rapier3d/index.html) | First-person character, grabbable props, positional sound |
 | [Player character](https://gg-web-demos.guraklgames.com/player-character-three-rapier3d/index.html) | Animated character controllers, in 3D and 2D |
-| [Shooter](https://gg-web-demos.guraklgames.com/shooter-three-ammo/index.html) | Free-fly camera in a textured physics scene, using native Three.js materials and lights |
+| [Shooter](https://gg-web-demos.guraklgames.com/shooter-three-ammo/index.html) | Free-fly camera in a textured physics scene, using native Three.js materials |
 | [Collision groups pool](https://gg-web-demos.guraklgames.com/collision-groups-pool-three-rapier3d/index.html) | Collision filtering |
 | [Primitives](https://gg-web-demos.guraklgames.com/primitives-three-rapier3d/index.html) | A level built from JSON, on every renderer/physics combination |
 

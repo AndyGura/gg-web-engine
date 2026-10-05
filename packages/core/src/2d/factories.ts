@@ -2,6 +2,7 @@ import { IAudioSourceComponentFactory, Point2 } from '../base';
 import { BodyShape2DDescriptor, Shape2DDescriptor } from './models/shapes';
 import { AudioTypeDocRepo2D, PhysicsTypeDocRepo2D, VisualTypeDocRepo2D } from './gg-2d-world';
 import { CharacterController2dOptions } from './models/character-controller-options';
+import { ParallaxLayer2dOpts } from './models/environment';
 
 export type DisplayObject2dOpts<Tex> = {
   color?: number;
@@ -13,6 +14,15 @@ export abstract class IDisplayObject2dComponentFactory<VTypeDoc extends VisualTy
     descriptor: Shape2DDescriptor,
     material?: DisplayObject2dOpts<VTypeDoc['texture']>,
   ): VTypeDoc['displayObject'];
+
+  /**
+   * Creates a parallax layer (see `ParallaxLayer2dOpts`). Wrap it in a `ParallaxLayer2dEntity` (or
+   * use `Gg2dWorld.addParallaxLayer`) to add it to a world.
+   */
+  abstract createParallaxLayer(options: ParallaxLayer2dOpts<VTypeDoc['texture']>): VTypeDoc['parallaxLayer'];
+
+  /** Loads an image as a texture, for `DisplayObject2dOpts.texture`, a parallax layer or a background. */
+  abstract loadTexture(url: string): Promise<VTypeDoc['texture']>;
 
   randomColor(): number {
     return (

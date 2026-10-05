@@ -103,6 +103,57 @@ Every adapter component class then `implements I<Thing>Component<<Lib>VisualType
   `nativeCamera.layers.enableAll()`, not just the main one), so only a camera that deliberately
   wants to exclude something (e.g. hiding a character's own body from its own first-person view via
   `SELF_VIEW_HIDDEN_RENDER_LAYER`) ever needs to call `disableRenderLayer`.
+- **Lights (3D)**: `IDisplayObject3dComponentFactory.createLight(descriptor)` returns the TypeDoc's
+  `light` member, an `ILight3dComponent` (a display object plus `lightType`/`color`/`intensity`/
+  `castShadow` and a `lightOptions` read-back that reflects live values). Cover every
+  `Light3dDescriptor` type (`AMBIENT`, `HEMISPHERE`, `DIRECTIONAL`, `POINT`, `SPOT`) and apply
+  `shadow` options (`area` is the half-size of a directional light's orthographic shadow frustum).
+  Directional and spot lights must shine along the component's local `-Z`, so their direction follows
+  the rotation the engine sets: three.js aims them at a separate `target` object, which
+  `ThreeLightComponent` parents to the light one unit along `-Z` (three.js's own default leaves the
+  target at the world origin, and both light types start at `(0, 1, 0)` - reset that to the origin).
+  A three.js `HemisphereLight` takes its sky direction from its *position*, so its position setter is
+  ignored and the native position is kept at the rotated `+Z` unit vector instead. `clone()` rebuilds
+  from `lightOptions` rather than `Object3D.clone()`, which would leave the clone's `target`
+  pointing at an object outside its hierarchy.
+- **Scene environment (3D)**: `IVisualScene3dComponent.environment`/`setEnvironment(partial)` -
+  merge semantics (an absent field is untouched, `null` clears it) over `background` (color or
+  texture), `environmentMap` and `fog` (`LINEAR`/`EXPONENTIAL`). Sky textures come from the loader's
+  `loadCubeTexture({ px, nx, py, ny, pz, nz })` and `loadTexture(url, { mapping: 'equirectangular' })`
+  and must come out oriented for the Z-up world, each cube face upright as `CubeTextureFaces`
+  documents (side images' top edge towards `+Z`, `pz`'s towards `+Y`, `nz`'s towards `-Y`), not just
+  in the right direction. three.js samples both kinds of sky texture Y-up, so `ThreeSceneComponent`
+  sets `scene.backgroundRotation`/`environmentRotation` to `+PI/2` around X for either; for a cube
+  map `ThreeLoader.loadCubeTexture` fills three's slots to match that rotation (`pz` into `py`, `nz`
+  into `ny`, `ny` into `pz`, `py` into `nz`) and swaps `px`/`nx`, because three.js samples cube maps
+  with X mirrored. Moving faces between slots alone can never do this: a face's slot fixes which way
+  its top edge points, so the side images would lie on their side. Verify any such orientation
+  question by rendering in headless Chromium (ANGLE/SwiftShader) and reading pixels back looking
+  along each axis - with faces that carry a marker on their top and left edges, since solid-colored
+  faces show the direction but not a rotated or mirrored image - and, for the environment map, the
+  reflection on a mirror-like sphere. The loader's `disposeTexture(texture)` frees a texture either
+  load method returned.
+- **Draw order and backdrops (2D)**: `IDisplayObject2dComponent.zIndex` orders siblings (pixi: the
+  scene's world container is created with `sortableChildren: true` and `zIndex` maps to the native
+  `zIndex`). `IVisualScene2dComponent.environment`/`setEnvironment(partial)` holds `background`: a
+  color, a texture drawn fixed to the screen and scaled to cover the view, or `null` for the
+  clear color the renderer was created with. The pixi renderer applies it every `render()`: a color
+  sets `renderer.background.color` (only when it changed - pixi v8's color setter also resets the
+  background alpha to opaque, so the renderer re-applies the alpha it was created with after it; with
+  no environment color it never writes to `renderer.background`, so pixi-native options such as
+  `backgroundAlpha` passed through the renderer options stay in effect), a texture
+  becomes a `Sprite` at stage index 0, behind the world container.
+  `IDisplayObject2dComponentFactory.createParallaxLayer(options)` returns the TypeDoc's
+  `parallaxLayer` member (an `IParallaxLayer2dComponent`); resolve its options with core's
+  `resolveParallaxLayer2dOpts` so defaults match. A layer depends on the camera, and a scene can have
+  several renderers, so each renderer positions every layer for its own camera right before drawing
+  (pixi: the scene tracks its layers in `parallaxLayers`, `PixiRendererComponent.render()` calls
+  `updateView(cameraPosition, halfExtent)` on each, with `halfExtent = hypot(width, height) / 2 / zoom`
+  on both axes so a rotated camera stays covered). `PixiParallaxLayerComponent` is a `TilingSprite`
+  in the world container (so it sorts by `zIndex` against everything else). Per axis, the texture's
+  world origin is `offset + camera * (1 - parallax)`; a repeating axis spans the whole view with
+  `tilePosition = (origin - viewStart) mod tileSize`, a non-repeating one is placed at the origin
+  one tile wide. `factory.loadTexture(url)` (pixi: `Assets.load`) supplies textures for both.
 - **Renderer component** (`IRenderer(2d|3d)Component`): accepts an optional `HTMLCanvasElement`
   (create an offscreen/detached canvas if none given) and `RendererOptions`, drives the actual
   draw call, supports resize, and `dispose()`s native GPU resources. `RendererOptions &
@@ -261,9 +312,12 @@ even on a Node version that supports native `require(esm)` outside jest. The fix
 relying on jest's ESM interop: add `babel-jest`, `@babel/core`, and
 `@babel/plugin-transform-modules-commonjs` as devDependencies, a `babel.config.js` in the package
 root with just the commonjs-transform plugin, and in the `jest` block split the transform so
-`"^.+\\.ts$"` still goes to `ts-jest` while `"/node_modules/three/build/.+\\.js$"` goes to
-`babel-jest`, paired with `"transformIgnorePatterns": ["/node_modules/(?!three/build/)"]` so that
-one path isn't skipped. A package that doesn't import `three` directly in its tests (like `pixi`,
+`"^.+\\.ts$"` still goes to `ts-jest` while `"/node_modules/three/(build|examples/jsm)/.+\\.js$"`
+goes to `babel-jest`, paired with `"transformIgnorePatterns": ["/node_modules/(?!three/(build|examples/jsm)/)"]`
+so those paths aren't skipped. The `examples/jsm` half matters as soon as a spec imports anything
+that pulls in an addon (`ThreeLoader` imports `GLTFLoader`/`HDRLoader`, so any spec reaching
+`ThreeSceneComponent` does): those files are ESM too, and fail with the same `Must use import`
+error otherwise. A package that doesn't import `three` directly in its tests (like `pixi`,
 whose one spec file is pure-logic) doesn't need any of this.
 
 Pin `@babel/core` and `@babel/plugin-transform-modules-commonjs` to the same `^7.x` major, not
@@ -297,9 +351,14 @@ type** (`{} as unknown as Container`, or richer as the test needs) **and import 
 `import type`** (elided at compile time, so it adds no runtime `require('pixi.js')` at all) rather
 than a plain `import` - `packages/pixi/test/components/pixi-display-object.component.spec.ts`-style
 tests that don't need pixi.js's real runtime behavior (only a `nativeSprite` reference to hold) are
-the common case this applies to; a test that genuinely needs pixi.js's own real behavior (a real
-`Graphics` draw call, a real `Sprite` texture) has no workaround available yet and needs the babel
-transform fix applied first.
+the common case this applies to. A component that constructs a pixi.js object itself (e.g.
+`PixiParallaxLayerComponent`'s `new TilingSprite(...)`) can still be tested by replacing the module
+with `jest.mock('pixi.js', () => ({ TilingSprite: FakeTilingSprite }))` at the top of the spec - a
+factory mock never loads the real module (see
+`packages/pixi/test/components/pixi-parallax-layer.component.spec.ts`). A test that genuinely needs
+pixi.js's own real behavior (a real `Graphics` draw call, a real `Sprite` texture) has no workaround
+available yet and needs the babel transform fix applied first; verify such behavior by rendering in
+headless Chromium instead.
 
 ## Wiring a new adapter into the repo
 

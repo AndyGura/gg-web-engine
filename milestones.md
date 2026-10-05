@@ -304,6 +304,11 @@ Status
 - 🚧 Facade consistency exists by construction — every adapter implements the same
   `IVisualScene*Component`/`IPhysicsWorldComponent` interfaces from core — but there's no
   automated check that two adapters actually produce equivalent results for the same input.
+  Lights and scene environment are behind core too (2026-10-04: `createLight`/`Gg3dWorld.addLight`,
+  `visualScene.setEnvironment`, `"Light"`/`"Environment"` level classes; in 2D, `zIndex`, a
+  background color/image and parallax layers), so no example adds native lights or skyboxes any
+  more; custom materials, post-processing, particles and text/UI are still
+  adapter-native.
 - Cross-engine conformance tests (same scenario run against two renderers / two physics engines,
   compared within tolerance) — not started.
 - ✅ Shared debug overlay already exists and is pluggable per renderer: the dev console's

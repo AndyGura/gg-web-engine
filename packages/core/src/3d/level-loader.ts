@@ -7,6 +7,10 @@ import { Shape3DDescriptor } from './models/shapes';
 import { Entity3d } from './entities/entity-3d';
 import { Trigger3dEntity } from './entities/trigger-3d.entity';
 import { Camera3dEntity } from './entities/camera-3d.entity';
+import { Light3dEntity } from './entities/light-3d.entity';
+import { Environment3dEntity } from './entities/environment-3d.entity';
+import { Light3dDescriptor } from './models/lights';
+import { CubeTextureFaces, Environment3dOpts, Fog3dOpts } from './models/environment';
 import { AudioSource3dEntity } from './entities/audio-source-3d.entity';
 import {
   CharacterController3dEntity,
@@ -303,6 +307,42 @@ export interface Sound3DSettings {
 }
 
 /**
+ * Settings for the built-in `"Light"` entity class: a `Light3dDescriptor` (`type`, `color`,
+ * `intensity`, shadow settings, ... - put these in `config`) plus where the light is. Creates a
+ * `Light3dEntity`; a no-op without a visual scene.
+ */
+export type Light3DSettings = Light3dDescriptor & {
+  /** Position of the light. */
+  position?: Point3;
+  /** Rotation of the light. `DIRECTIONAL`/`SPOT` lights shine along their local `-Z` axis. */
+  rotation?: Point4;
+  /** Point the light shines towards, an alternative to `rotation` for `DIRECTIONAL`/`SPOT` lights. */
+  target?: Point3;
+};
+
+/**
+ * A texture reference inside `"Environment"` settings: either six cube-map images (see
+ * `CubeTextureFaces` - each named after the world direction it is seen in, `pz` being the sky
+ * overhead), or one equirectangular (2:1) panorama.
+ */
+export type EnvironmentTexture3DSettings = { cube: CubeTextureFaces } | { equirectangular: string };
+
+/**
+ * Settings for the built-in `"Environment"` entity class: the scene's background, environment map
+ * and fog (see `IVisualScene3dComponent.setEnvironment`). Only the fields present are applied, and
+ * they're restored to what they were when the level is unloaded (see `Environment3dEntity`). A
+ * no-op without a visual scene.
+ */
+export interface Environment3DSettings {
+  /** A `0xRRGGBB` color, a sky texture, or `null` to show the renderer's clear color. */
+  background?: number | EnvironmentTexture3DSettings | null;
+  /** Texture lit materials reflect, or `null` for none. */
+  environmentMap?: EnvironmentTexture3DSettings | null;
+  /** Fog, or `null` for none. */
+  fog?: Fog3dOpts | null;
+}
+
+/**
  * Settings for the built-in `"Player"` entity class's `display.model` - loads a bone-animated `.glb`
  * character model (via `loadFromGlb`) in place of the auto-generated capsule mesh, and wires up a
  * `CharacterAnimationController` (as a child of the returned entity - see
@@ -539,6 +579,8 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
 
     this.registerClass('Trigger', this.createTrigger.bind(this));
     this.registerClass('Camera', this.createCamera.bind(this));
+    this.registerClass('Light', this.createLight.bind(this));
+    this.registerClass('Environment', this.createEnvironment.bind(this));
     this.registerClass('Sound', this.createSound.bind(this));
     this.registerClass('Player', this.createPlayer.bind(this), CharacterController3dEntity);
     this.registerClass('GgCar', this.createGgCar.bind(this), GgCarEntity);
@@ -546,6 +588,27 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
 
     this.registerLiveSerializer(this.serializePrimitive.bind(this));
     this.registerLiveSerializer(this.serializeTrigger.bind(this));
+    this.registerLiveSerializer(this.serializeLight.bind(this));
+  }
+
+  /**
+   * Live serializer for the built-in `"Light"` class: matches `entity.constructor === Light3dEntity`
+   * and reads the light's current settings back from `ILight3dComponent.lightOptions`, so a light
+   * created with `Gg3dWorld.addLight` (or whose color/intensity changed after loading) serializes
+   * as it is now.
+   */
+  private serializeLight(entity: IEntity<Point3, Point4, TypeDoc>): EntityJson | undefined {
+    if (entity.constructor !== Light3dEntity) {
+      return undefined;
+    }
+    const light = entity as Light3dEntity<TypeDoc['vTypeDoc']>;
+    return {
+      class: 'Light',
+      name: light.name,
+      position: light.position,
+      rotation: light.rotation,
+      config: { ...light.light.lightOptions },
+    };
   }
 
   /**
@@ -790,6 +853,83 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
       entity.rotation = rotation;
     }
     return entity;
+  }
+
+  /**
+   * Create a `"Light"` entity: a `Light3dEntity` wrapping a light built from the settings'
+   * `Light3dDescriptor` fields. Returns `undefined` without a visual scene.
+   */
+  private createLight(
+    world: Gg3dWorld<TypeDoc>,
+    settings: Light3DSettings & { name?: string },
+  ): Light3dEntity<TypeDoc['vTypeDoc']> | undefined {
+    if (!world.visualScene) {
+      return undefined;
+    }
+    const { position, rotation, target, name, ...descriptor } = settings;
+    if (!descriptor.type) {
+      throw new Error('"type" is required for Light class');
+    }
+    const entity = new Light3dEntity<TypeDoc['vTypeDoc']>(
+      world.visualScene.factory.createLight(descriptor as Light3dDescriptor),
+    );
+    if (position) {
+      entity.position = position;
+    }
+    if (rotation) {
+      entity.rotation = rotation;
+    }
+    if (target) {
+      entity.lookAt(target);
+    }
+    return entity;
+  }
+
+  /**
+   * Create an `"Environment"` entity: loads any sky textures the settings reference, then returns
+   * an `Environment3dEntity` that applies them while it is in the world and frees them when it is
+   * disposed. Returns `undefined` without a visual scene.
+   */
+  private async createEnvironment(
+    world: Gg3dWorld<TypeDoc>,
+    settings: Environment3DSettings,
+  ): Promise<Environment3dEntity<TypeDoc['vTypeDoc']> | undefined> {
+    const scene = world.visualScene;
+    if (!scene) {
+      return undefined;
+    }
+    const loaded: TypeDoc['vTypeDoc']['texture'][] = [];
+    const loadTexture = async (texture: EnvironmentTexture3DSettings): Promise<TypeDoc['vTypeDoc']['texture']> => {
+      let result: TypeDoc['vTypeDoc']['texture'];
+      if ('cube' in texture) {
+        result = await scene.loader.loadCubeTexture(texture.cube);
+      } else if ('equirectangular' in texture) {
+        result = await scene.loader.loadTexture(texture.equirectangular, { mapping: 'equirectangular' });
+      } else {
+        throw new Error('Environment texture must have either "cube" or "equirectangular"');
+      }
+      loaded.push(result);
+      return result;
+    };
+    const environment: Partial<Environment3dOpts<TypeDoc['vTypeDoc']['texture']>> = {};
+    if (settings.background !== undefined) {
+      environment.background =
+        settings.background === null || typeof settings.background === 'number'
+          ? settings.background
+          : await loadTexture(settings.background);
+    }
+    if (settings.environmentMap !== undefined) {
+      environment.environmentMap = settings.environmentMap === null ? null : await loadTexture(settings.environmentMap);
+    }
+    if (settings.fog !== undefined) {
+      environment.fog = settings.fog;
+    }
+    // the textures were loaded for this entity alone, so they go when it does
+    return new Environment3dEntity<TypeDoc['vTypeDoc']>(environment, () => {
+      for (const texture of loaded) {
+        scene.loader.disposeTexture(texture);
+      }
+    });
   }
 
   /**

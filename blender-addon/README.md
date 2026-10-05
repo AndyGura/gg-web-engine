@@ -89,6 +89,12 @@ A standalone tool for converting an equirectangular skybox texture into six cube
 on a regular system Python (needs `Pillow` and `numpy`), not inside Blender, so it isn't part of the
 add-on zip - run it directly: `python tools/spherical_to_cube_texture.py texture.png`.
 
+It writes `texture_px.png`, `texture_nx.png`, `texture_py.png`, `texture_ny.png`, `texture_pz.png`
+and `texture_nz.png`, named and oriented the way the engine's `loadCubeTexture` (and the level
+JSON's `"cube"` texture reference) expects: each face is named after the Z-up world direction it is
+seen in, the four side images are upright (top edge towards `+Z`), the top edge of `pz` is towards
+`+Y` and the top edge of `nz` towards `-Y`.
+
 ## Planned: exporting directly to Level JSON
 
 Today this add-on only produces the GLB+meta sidecar format. A second, separate export mode is

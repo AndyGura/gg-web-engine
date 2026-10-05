@@ -14,6 +14,9 @@ import {
 import { IRenderer2dComponent } from './components/rendering/i-renderer-2d.component';
 import { IDisplayObject2dComponent } from './components/rendering/i-display-object-2d.component';
 import { ICamera2dComponent } from './components/rendering/i-camera-2d.component';
+import { IParallaxLayer2dComponent } from './components/rendering/i-parallax-layer-2d.component';
+import { ParallaxLayer2dOpts } from './models/environment';
+import { ParallaxLayer2dEntity } from './entities/parallax-layer-2d.entity';
 import { ITrigger2dComponent } from './components/physics/i-trigger-2d.component';
 import { IRigidBody2dComponent } from './components/physics/i-rigid-body-2d.component';
 import { ICharacterController2dComponent } from './components/physics/i-character-controller-2d.component';
@@ -28,6 +31,7 @@ export type VisualTypeDocRepo2D = {
   renderer: IRenderer2dComponent;
   rendererExtraOpts: {};
   camera: ICamera2dComponent;
+  parallaxLayer: IParallaxLayer2dComponent;
   texture: unknown;
 };
 
@@ -138,6 +142,23 @@ export class Gg2dWorld<
     });
     entity.position = position;
     entity.rotation = rotation;
+    this.addEntity(entity);
+    return entity;
+  }
+
+  /**
+   * Creates a parallax layer (see `ParallaxLayer2dOpts`), wraps it in a `ParallaxLayer2dEntity` and
+   * adds it to the world.
+   */
+  addParallaxLayer(
+    options: ParallaxLayer2dOpts<TypeDoc['vTypeDoc']['texture']>,
+  ): ParallaxLayer2dEntity<TypeDoc['vTypeDoc']> {
+    if (!this.visualScene) {
+      throw new Error('Cannot add a parallax layer to the world without visual scene');
+    }
+    const entity = new ParallaxLayer2dEntity<TypeDoc['vTypeDoc']>(
+      this.visualScene.factory.createParallaxLayer(options),
+    );
     this.addEntity(entity);
     return entity;
   }

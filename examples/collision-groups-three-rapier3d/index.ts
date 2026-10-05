@@ -1,6 +1,5 @@
-import { Entity3d, Gg3dWorld, GgStatic, OrbitCameraController, Qtrn, Trigger3dEntity } from '@gg-web-engine/core';
+import { Entity3d, Gg3dWorld, GgStatic, OrbitCameraController, Pnt3, Qtrn, Trigger3dEntity } from '@gg-web-engine/core';
 import { ThreeGgWorld, ThreeSceneComponent, ThreeTypeDoc } from '@gg-web-engine/three';
-import { AmbientLight, DirectionalLight } from 'three';
 import { Rapier3dWorldComponent } from '@gg-web-engine/rapier3d';
 
 GgStatic.instance.showStats = true;
@@ -21,23 +20,18 @@ world.init().then(async () => {
   const controller = new OrbitCameraController(renderer, { mouseOptions: { canvas } });
   world.addEntity(controller);
 
-  const dirLight = new DirectionalLight(0xffffff, 1);
-  dirLight.color.setHSL(0.1, 1, 0.95);
-  dirLight.position.set(50, 50, 70);
-  dirLight.lookAt(0, 0, 0);
-  dirLight.castShadow = true;
-  dirLight.shadow.mapSize.width = 2048;
-  dirLight.shadow.mapSize.height = 2048;
-  const d = 20;
-  dirLight.shadow.camera.left = -d;
-  dirLight.shadow.camera.right = d;
-  dirLight.shadow.camera.top = d;
-  dirLight.shadow.camera.bottom = -d;
-  dirLight.shadow.camera.far = 3500;
-  world.visualScene.nativeScene!.add(dirLight);
-
-  const ambient = new AmbientLight(0xffffff, 0.3);
-  world.visualScene.nativeScene!.add(ambient);
+  world.addLight(
+    {
+      type: 'DIRECTIONAL',
+      color: 0xfffaf3,
+      intensity: 1,
+      castShadow: true,
+      shadow: { mapSize: 2048, area: 20, far: 3500 },
+    },
+    { x: 50, y: 50, z: 70 },
+    Pnt3.O,
+  );
+  world.addLight({ type: 'AMBIENT', intensity: 0.3 });
 
   const cgs = [
     0xff0000,

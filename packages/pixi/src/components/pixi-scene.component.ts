@@ -1,5 +1,6 @@
-import { IVisualScene2dComponent, RendererOptions } from '@gg-web-engine/core';
-import { ApplicationOptions, Container } from 'pixi.js';
+import { Environment2dOpts, IVisualScene2dComponent, RendererOptions } from '@gg-web-engine/core';
+import { ApplicationOptions, Container, Texture } from 'pixi.js';
+import type { PixiParallaxLayerComponent } from './pixi-parallax-layer.component';
 import { PixiFactory } from '../pixi-factory';
 import { PixiCameraComponent } from './pixi-camera.component';
 import { PixiRendererComponent } from './pixi-renderer.component';
@@ -15,8 +16,22 @@ export class PixiSceneComponent implements IVisualScene2dComponent<PixiVisualTyp
 
   constructor() {}
 
+  /** Parallax layers currently in this scene - each renderer positions them for its own camera. */
+  public readonly parallaxLayers: Set<PixiParallaxLayerComponent> = new Set();
+
   async init(): Promise<void> {
-    this._nativeContainer = new Container();
+    // draw order follows `zIndex` (see `IDisplayObject2dComponent.zIndex`)
+    this._nativeContainer = new Container({ sortableChildren: true });
+  }
+
+  private _environment: Environment2dOpts<Texture> = { background: null };
+  /** Applied by each renderer when it draws - see `PixiRendererComponent.render`. */
+  public get environment(): Readonly<Environment2dOpts<Texture>> {
+    return this._environment;
+  }
+
+  setEnvironment(environment: Partial<Environment2dOpts<Texture>>): void {
+    this._environment = { ...this._environment, ...environment };
   }
 
   createRenderer(
@@ -30,5 +45,7 @@ export class PixiSceneComponent implements IVisualScene2dComponent<PixiVisualTyp
   dispose(): void {
     this._nativeContainer?.destroy();
     this._nativeContainer = null;
+    this.parallaxLayers.clear();
+    this._environment = { background: null };
   }
 }

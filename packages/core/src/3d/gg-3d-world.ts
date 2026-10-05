@@ -14,6 +14,9 @@ import {
   IPhysicsBody3dComponentFactory,
 } from './factories';
 import { IDisplayObject3dComponent } from './components/rendering/i-display-object-3d.component';
+import { ILight3dComponent } from './components/rendering/i-light-3d.component';
+import { Light3dDescriptor } from './models/lights';
+import { Light3dEntity } from './entities/light-3d.entity';
 import { IRaycastVehicleComponent } from './components/physics/i-raycast-vehicle.component';
 import { IRigidBody3dComponent } from './components/physics/i-rigid-body-3d.component';
 import { ITrigger3dComponent } from './components/physics/i-trigger-3d.component';
@@ -32,6 +35,7 @@ export type VisualTypeDocRepo3D = {
   renderer: IRenderer3dComponent;
   rendererExtraOpts: {};
   camera: ICamera3dComponent;
+  light: ILight3dComponent;
   texture: unknown;
 };
 
@@ -172,6 +176,28 @@ export class Gg3dWorld<
     );
     entity.position = position;
     entity.rotation = rotation;
+    this.addEntity(entity);
+    return entity;
+  }
+
+  /**
+   * Creates a light (see `Light3dDescriptor`), wraps it in a `Light3dEntity` and adds it to the
+   * world. When `target` is given, the light is rotated to shine from `position` towards it, which
+   * is what `DIRECTIONAL` and `SPOT` lights normally want.
+   */
+  addLight(
+    descriptor: Light3dDescriptor,
+    position: Point3 = Pnt3.O,
+    target?: Point3,
+  ): Light3dEntity<TypeDoc['vTypeDoc']> {
+    if (!this.visualScene) {
+      throw new Error('Cannot add a light to the world without visual scene');
+    }
+    const entity = new Light3dEntity<TypeDoc['vTypeDoc']>(this.visualScene.factory.createLight(descriptor));
+    entity.position = position;
+    if (target) {
+      entity.lookAt(target);
+    }
     this.addEntity(entity);
     return entity;
   }

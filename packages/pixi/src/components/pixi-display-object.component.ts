@@ -69,6 +69,14 @@ export class PixiDisplayObjectComponent
     this.nativeSprite.visible = value;
   }
 
+  public get zIndex(): number {
+    return this.nativeSprite.zIndex;
+  }
+
+  public set zIndex(value: number) {
+    this.nativeSprite.zIndex = value;
+  }
+
   public name: string = '';
 
   public isEmpty(): boolean {

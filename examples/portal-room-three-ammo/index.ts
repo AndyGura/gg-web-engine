@@ -14,7 +14,7 @@ import {
   Trigger3dEntity,
 } from '@gg-web-engine/core';
 import { ThreeGgWorld, ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
-import { AmbientLight, DirectionalLight, Mesh, PointLight } from 'three';
+import { Mesh } from 'three';
 import { AmmoWorldComponent } from '@gg-web-engine/ammo';
 import { WebAudioScene3dComponent } from '@gg-web-engine/audio';
 import { throttleTime } from 'rxjs';
@@ -250,28 +250,25 @@ const world: ThreeGgWorld = new Gg3dWorld({
 world.init().then(async () => {
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
 
-  world.visualScene.nativeScene?.add(new AmbientLight(0xffffff, 0.8));
-  const dirLight = new DirectionalLight(0xffffff, 0.6);
-  dirLight.position.set(10, -10, 20);
-  dirLight.castShadow = true;
-  dirLight.shadow.mapSize.width = 2048;
-  dirLight.shadow.mapSize.height = 2048;
-  const d = 10;
-  dirLight.shadow.camera.left = -d;
-  dirLight.shadow.camera.right = d;
-  dirLight.shadow.camera.top = d;
-  dirLight.shadow.camera.bottom = -d;
-  dirLight.shadow.camera.far = 60;
-  world.visualScene.nativeScene?.add(dirLight);
+  world.addLight({ type: 'AMBIENT', intensity: 0.8 });
+  world.addLight(
+    {
+      type: 'DIRECTIONAL',
+      intensity: 0.6,
+      castShadow: true,
+      shadow: { mapSize: 2048, area: 10, far: 60 },
+    },
+    { x: 10, y: -10, z: 20 },
+    Pnt3.O,
+  );
   // a soft glow under the ceiling light fixture, on top of the directional key light above
-  const ceilingGlow = new PointLight(0xffffff, 1.2, 12);
-  ceilingGlow.position.set(0, 0, WALL_HEIGHT - 0.3);
-  world.visualScene.nativeScene?.add(ceilingGlow);
+  world.addLight({ type: 'POINT', intensity: 1.2, distance: 12 }, { x: 0, y: 0, z: WALL_HEIGHT - 0.3 });
   // a warm glow shining down into the incinerator's hole - the `IncineratorMouth` trigger
   // subscription below flashes it brighter for a moment whenever something actually gets burned.
-  const incineratorGlow = new PointLight(COLOR_INCINERATOR_GLOW, 1.5, 5);
-  incineratorGlow.position.set(INCINERATOR_X, INCINERATOR_Y, INCINERATOR_HEIGHT + 0.3);
-  world.visualScene.nativeScene?.add(incineratorGlow);
+  const incineratorGlow = world.addLight(
+    { type: 'POINT', color: COLOR_INCINERATOR_GLOW, intensity: 1.5, distance: 5 },
+    { x: INCINERATOR_X, y: INCINERATOR_Y, z: INCINERATOR_HEIGHT + 0.3 },
+  ).light;
 
   const levelGroup = await world.loader.loadLevel(level, 'MainLevel');
   for (const item of levelGroup.children as { object3D?: { nativeMesh: Mesh } }[]) {

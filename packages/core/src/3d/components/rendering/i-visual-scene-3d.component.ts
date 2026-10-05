@@ -1,5 +1,6 @@
 import { IVisualSceneComponent, Point3, Point4, RenderLayer } from '../../../base';
 import { VisualTypeDocRepo3D } from '../../gg-3d-world';
+import { Environment3dOpts } from '../../models/environment';
 
 export interface IVisualScene3dComponent<
   VTypeDoc extends VisualTypeDocRepo3D = VisualTypeDocRepo3D,
@@ -33,4 +34,18 @@ export interface IVisualScene3dComponent<
    * (typically moot: the layer is normally deregistered only once nothing references it anymore).
    */
   deregisterRenderLayer(layer: RenderLayer): void;
+
+  /**
+   * The scene's current environment: background, environment map (image-based lighting) and fog.
+   * A fresh scene has all three set to `null`, so the renderer's own clear color shows through.
+   */
+  readonly environment: Readonly<Environment3dOpts<VTypeDoc['texture']>>;
+
+  /**
+   * Changes the scene's environment. Only the fields present in `environment` change; a field set
+   * to `null` is cleared. Directional textures (cube and equirectangular skies) are oriented for
+   * the engine's Z-up world by the adapter, so the image named `pz` (or a panorama's top edge) is
+   * overhead.
+   */
+  setEnvironment(environment: Partial<Environment3dOpts<VTypeDoc['texture']>>): void;
 }

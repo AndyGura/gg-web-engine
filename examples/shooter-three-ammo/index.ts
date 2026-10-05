@@ -1,6 +1,6 @@
 import { FreeCameraController, Gg3dWorld, GgStatic, Pnt3, Qtrn, TypedGg3dWorld } from '@gg-web-engine/core';
 import { ThreeGgWorld, ThreeSceneComponent } from '@gg-web-engine/three';
-import { AmbientLight, DirectionalLight, Mesh, MeshPhongMaterial, RepeatWrapping, TextureLoader } from 'three';
+import { Mesh, MeshPhongMaterial, RepeatWrapping, TextureLoader } from 'three';
 import { AmmoGgWorld, AmmoWorldComponent } from '@gg-web-engine/ammo';
 
 GgStatic.instance.showStats = true;
@@ -24,22 +24,17 @@ world.init().then(async () => {
   renderer.camera.position = { x: 40, y: 40, z: 25 };
   renderer.camera.rotation = Qtrn.lookAt(renderer.camera.position, { x: 0, y: 0, z: 10 }, Pnt3.Z);
 
-  const dirLight = new DirectionalLight(0xffffff, 2.5);
-  dirLight.castShadow = true;
-  dirLight.position.set(50, 50, 100);
-  const d = 100;
-  dirLight.shadow.camera.left = -d;
-  dirLight.shadow.camera.right = d;
-  dirLight.shadow.camera.top = d;
-  dirLight.shadow.camera.bottom = -d;
-  dirLight.shadow.camera.near = 2;
-  dirLight.shadow.camera.far = 500;
-  dirLight.shadow.mapSize.x = 4096;
-  dirLight.shadow.mapSize.y = 4096;
-  world.visualScene.nativeScene!.add(dirLight);
-
-  const ambientLight = new AmbientLight(0x606060);
-  world.visualScene.nativeScene!.add(ambientLight);
+  world.addLight(
+    {
+      type: 'DIRECTIONAL',
+      intensity: 2.5,
+      castShadow: true,
+      shadow: { mapSize: 4096, area: 100, near: 2, far: 500 },
+    },
+    { x: 50, y: 50, z: 100 },
+    Pnt3.O,
+  );
+  world.addLight({ type: 'AMBIENT', color: 0x606060 });
 
   const textureLoader = new TextureLoader();
   // create objects

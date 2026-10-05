@@ -1,11 +1,12 @@
 import {
+  Environment3dOpts,
   IVisualScene3dComponent,
   MAIN_RENDER_LAYER,
   RenderLayer,
   RendererOptions,
   SELF_VIEW_HIDDEN_RENDER_LAYER,
 } from '@gg-web-engine/core';
-import { Scene, WebGLRendererParameters } from 'three';
+import { Color, Fog, FogExp2, Scene, Texture, WebGLRendererParameters } from 'three';
 import { ThreeFactory } from '../three-factory';
 import { ThreeLoader } from '../three-loader';
 import { ThreeCameraComponent } from './three-camera.component';
@@ -26,6 +27,50 @@ export class ThreeSceneComponent implements IVisualScene3dComponent<ThreeVisualT
 
   async init(): Promise<void> {
     this._nativeScene = new Scene();
+    this.applyEnvironment();
+  }
+
+  private _environment: Environment3dOpts<Texture> = { background: null, environmentMap: null, fog: null };
+  public get environment(): Readonly<Environment3dOpts<Texture>> {
+    return this._environment;
+  }
+
+  setEnvironment(environment: Partial<Environment3dOpts<Texture>>): void {
+    this._environment = { ...this._environment, ...environment };
+    this.applyEnvironment();
+  }
+
+  /**
+   * three.js samples sky textures Y-up - an equirectangular panorama's top edge and a cube map's
+   * `py` slot are both towards `+Y` - so they're turned a quarter around X to put that overhead in
+   * the engine's Z-up world (`ThreeLoader.loadCubeTexture` fills the cube slots to match).
+   */
+  private static zUpRotationX(texture: Texture | null): number {
+    return texture ? Math.PI / 2 : 0;
+  }
+
+  private applyEnvironment(): void {
+    const scene = this._nativeScene;
+    if (!scene) {
+      return;
+    }
+    const { background, environmentMap, fog } = this._environment;
+    if (typeof background === 'number') {
+      scene.background = new Color(background);
+      scene.backgroundRotation.set(0, 0, 0);
+    } else {
+      scene.background = background;
+      scene.backgroundRotation.set(ThreeSceneComponent.zUpRotationX(background), 0, 0);
+    }
+    scene.environment = environmentMap;
+    scene.environmentRotation.set(ThreeSceneComponent.zUpRotationX(environmentMap), 0, 0);
+    if (!fog) {
+      scene.fog = null;
+    } else if (fog.type === 'LINEAR') {
+      scene.fog = new Fog(fog.color, fog.near, fog.far);
+    } else {
+      scene.fog = new FogExp2(fog.color, fog.density);
+    }
   }
 
   // Mirrors `AmmoWorldComponent.lockedCollisionGroups`/`registerCollisionGroup` exactly - see that
@@ -69,5 +114,6 @@ export class ThreeSceneComponent implements IVisualScene3dComponent<ThreeVisualT
 
   dispose(): void {
     this._nativeScene = new Scene();
+    this._environment = { background: null, environmentMap: null, fog: null };
   }
 }

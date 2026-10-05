@@ -53,10 +53,10 @@
     "testRegex": "\\.spec\\.ts$",
     "transform": {
       "^.+\\.ts$": "ts-jest",
-      "/node_modules/three/build/.+\\.js$": "babel-jest"
+      "/node_modules/three/(build|examples/jsm)/.+\\.js$": "babel-jest"
     },
     "transformIgnorePatterns": [
-      "/node_modules/(?!three/build/)"
+      "/node_modules/(?!three/(build|examples/jsm)/)"
     ],
     "moduleNameMapper": {
       "@gg-web-engine/core": "<rootDir>/../core/src/index.ts"
