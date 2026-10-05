@@ -370,21 +370,38 @@ export class GameRunner {
     this.handling.active = false;
     this.world.addEntity(this.handling);
     // On phones and tablets: the car, on-foot and free-camera controls come with the controllers
-    // themselves, the game's own keys get a button each
+    // themselves; every key of the game's own gets a button, shown in the modes where it does
+    // something and packed into a row from the right
     const mobileControls = new MobileControls();
-    const keyButton = (key: string, label: string, right: number) =>
+    const keyButtons: [button: TouchButton, modes: CurrentState['mode'][] | 'always'][] = [
+      ['F', 'Enter or leave a car', ['onfoot', 'entering', 'driving']],
+      ['G', 'Spawn a character / back to fly mode', ['freecamera', 'onfoot']],
+      ['R', 'Reset car', ['driving']],
+      ['H', 'Honk', ['driving']],
+      ['C', 'Next car camera / camera FOV', ['driving', 'freecamera']],
+      ['Z', 'Camera FOV', ['freecamera']],
+      ['X', 'Toggle help', 'always'],
+      ['P', 'Pause', 'always'],
+      ['L', 'Reload level', 'always'],
+    ].map(([key, label, modes]) => [
       new TouchButton({
-        id: `key-${key.toLowerCase()}`,
-        label,
-        content: key,
-        placement: { right, top: 12, width: 6.5, height: 6.5 },
-      }).bindKey(this.world.keyboardInput, `Key${key}`);
-    mobileControls.addControls(
-      keyButton('F', 'Enter or leave a car', 4),
-      keyButton('G', 'Spawn or free camera', 12),
-      keyButton('C', 'Next car camera', 20),
-      keyButton('R', 'Reset car', 28),
-    );
+        id: `key-${(key as string).toLowerCase()}`,
+        label: label as string,
+        content: key as string,
+        placement: { top: 12, width: 6, height: 6 },
+      }).bindKey(this.world.keyboardInput, `Key${key}`),
+      modes as CurrentState['mode'][] | 'always',
+    ]);
+    mobileControls.addControls(...keyButtons.map(([button]) => button));
+    this.state$.subscribe(state => {
+      let slot = 0;
+      for (const [button, modes] of keyButtons) {
+        button.visible = modes === 'always' || modes.includes(state.mode);
+        if (button.visible) {
+          button.place({ right: 4 + 7.5 * slot++ });
+        }
+      }
+    });
     this.world.addEntity(mobileControls);
     this.world.keyboardInput.bind('KeyC').pipe(
       filter(x => !!x && this.state$.getValue().mode === 'driving'),

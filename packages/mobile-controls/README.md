@@ -79,7 +79,8 @@ controls.addControls(
 world.addEntity(controls);
 ```
 
-`controls.visible = false` hides everything (a menu, a cutscene) and releases whatever was held.
+A single control is hidden and shown with `control.visible` (an action not available right now) and
+moved with `control.place({...})`. `controls.visible = false` hides everything (a menu, a cutscene) and releases whatever was held.
 
 ### Styling
 The default stylesheet is driven by CSS custom properties on the overlay, so a class of your own
@@ -143,6 +144,8 @@ new MobileControls({ container: document.getElementById('game-wrapper') });
 ### Notes
 - A look area covers the canvas, so taps on the canvas itself do not reach the page while a layout
   with `look: 'drag'` is shown; use the area's `tap$`, or `look: false`.
+- Tilt steering works on pages served over https (or from localhost) only - a phone opening a dev
+  server by its LAN address over plain http gets no orientation data.
 - Tilt steering needs the device orientation permission on iOS. `TiltInput` asks for it on the first
   tap after it starts and reports the outcome through `permission$`.
 - A layout is built once per activation of its controller. After changing something it was built

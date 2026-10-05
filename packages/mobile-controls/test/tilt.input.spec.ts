@@ -57,6 +57,22 @@ describe('TiltInput', () => {
     tilt.stop();
   });
 
+  it('reports denied on a page that is not a secure context', () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    Object.defineProperty(window, 'isSecureContext', { value: false, configurable: true });
+    const tilt = new TiltInput({ deadzone: 0 });
+    const states: string[] = [];
+    tilt.permission$.subscribe(s => states.push(s));
+    tilt.start();
+    orient(0, 15);
+    expect(tilt.value).toBe(0);
+    expect(states).toEqual(['unknown', 'denied']);
+    expect(warn).toHaveBeenCalledTimes(1);
+    tilt.stop();
+    delete (window as any).isSecureContext;
+    warn.mockRestore();
+  });
+
   it('asks for the permission on the next tap where one is needed', async () => {
     const requestPermission = jest.fn().mockResolvedValue('granted');
     (window as any).DeviceOrientationEvent.requestPermission = requestPermission;

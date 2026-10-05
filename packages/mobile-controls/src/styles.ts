@@ -4,13 +4,15 @@
 export const MOBILE_CONTROLS_STYLE_ID = 'gg-mobile-controls-styles';
 
 /**
- * The default stylesheet of the overlay. Everything is sized in `--gg-mc-unit` and colored through
+ * The default stylesheet of the overlay. `--gg-mc-unit` follows the viewport so that the built-in
+ * layouts, which are up to 55 units wide, fit a phone held upright as well as on its side (at least
+ * 58 units across). Everything is sized in `--gg-mc-unit` and colored through
  * the other `--gg-mc-*` custom properties declared on `.gg-mc`, so an app restyles the overlay by
  * overriding those on its own class, and a single control through its `.gg-mc-id-*` class.
  */
 export const MOBILE_CONTROLS_CSS = `
 .gg-mc {
-  --gg-mc-unit: clamp(6px, 2vmin, 10px);
+  --gg-mc-unit: clamp(5px, min(2vmin, 1.7vw), 10px);
   --gg-mc-color: #fff;
   --gg-mc-background: rgba(18, 22, 30, 0.3);
   --gg-mc-border: rgba(255, 255, 255, 0.6);
@@ -38,6 +40,9 @@ export const MOBILE_CONTROLS_CSS = `
   box-sizing: border-box;
   pointer-events: auto;
   touch-action: none;
+}
+.gg-mc-control[hidden] {
+  display: none;
 }
 .gg-mc-control svg {
   width: 52%;

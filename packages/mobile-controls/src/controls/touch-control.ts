@@ -76,6 +76,26 @@ export abstract class TouchControl {
     return this.activePointerId !== null;
   }
 
+  public get visible(): boolean {
+    return !this.element.hidden;
+  }
+
+  /**
+   * Takes the control off the screen (and back) without disposing it, for an action that is not
+   * available at the moment. Hiding releases whatever the control holds.
+   */
+  public set visible(value: boolean) {
+    if (!value) {
+      this.reset();
+    }
+    this.element.hidden = !value;
+  }
+
+  /** Moves/resizes the control; edges and sizes left out of `placement` stay as they are. */
+  public place(placement: ControlPlacement): void {
+    applyControlPlacement(this.element, placement);
+  }
+
   protected constructor(kind: string, options: TouchControlOptions) {
     this.id = options.id;
     this.element = document.createElement('div');

@@ -10,9 +10,7 @@ export const MobileControlsIcons = {
   up: svg('<path d="M5 15l7-7 7 7"/>'),
   down: svg('<path d="M5 9l7 7 7-7"/>'),
   accelerate: svg('<path d="M6 12l6-6 6 6M6 19l6-6 6 6"/>'),
-  brake: svg(
-    '<circle cx="12" cy="12" r="6"/><path d="M4.5 6a10 10 0 0 0 0 12M19.5 6a10 10 0 0 1 0 12M12 9v3.5M12 15h.01"/>',
-  ),
+  brake: svg('<path d="M6 5l6 6 6-6M6 12l6 6 6-6"/>'),
   handbrake: svg(
     '<circle cx="12" cy="12" r="6"/><path d="M4.5 6a10 10 0 0 0 0 12M19.5 6a10 10 0 0 1 0 12M10.5 15V9h1.75a1.75 1.75 0 0 1 0 3.5H10.5"/>',
   ),

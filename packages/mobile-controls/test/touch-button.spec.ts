@@ -66,6 +66,17 @@ describe('TouchButton', () => {
     expect(button.pressed).toBe(false);
   });
 
+  it('releases what it holds when hidden', () => {
+    const button = new TouchButton({ mode: 'toggle' });
+    pointer(button.element, 'pointerdown');
+    pointer(button.element, 'pointerup');
+    button.visible = false;
+    expect(button.pressed).toBe(false);
+    expect(button.element.hidden).toBe(true);
+    button.visible = true;
+    expect(button.visible).toBe(true);
+  });
+
   it('acts as a bound key', () => {
     const values: boolean[] = [];
     keyboard.bind('Space').subscribe(v => values.push(v));

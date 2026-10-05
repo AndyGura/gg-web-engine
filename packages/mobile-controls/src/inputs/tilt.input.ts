@@ -18,6 +18,9 @@ const DEFAULT_OPTIONS: TiltInputOptions = { maxAngle: 30, deadzone: 2, invert: f
  * (the left edge of the screen is the lower one) to 1 (the right edge is), whichever way the screen
  * is currently rotated and whether the device is held upright or lies flat.
  *
+ * Orientation data is available to pages served over https (or from localhost) only; anywhere else
+ * `permission$` reports `'denied'`.
+ *
  * Some browsers (iOS Safari) only hand out orientation data after the user allowed it in a prompt
  * that has to be opened from a user gesture. `start()` takes care of that: when a permission is
  * needed, it asks on the next tap anywhere on the page and starts reporting once granted.
@@ -59,6 +62,13 @@ export class TiltInput extends IInput {
 
   protected startInternal(): void {
     if (!TiltInput.isSupported()) {
+      this._permission$.next('denied');
+      return;
+    }
+    if (window.isSecureContext === false) {
+      // browsers hand out orientation data to pages served over https (or from localhost) only, and
+      // on other pages stay silent instead of failing
+      console.warn('[TiltInput] device orientation is not available: the page is not served over https');
       this._permission$.next('denied');
       return;
     }
