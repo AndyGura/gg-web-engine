@@ -836,14 +836,16 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
         // self-added it to the world (e.g. addPrimitiveRigidBody does) - safe either way.
         level.addChildren(entity);
       }
+      // the last generator may have ignored the signal while it was awaiting something
+      throwIfAborted(options.signal);
     } catch (e) {
       // Don't leave a partially-loaded level (and its already-spawned entities) behind if a
-      // generator throws partway through - the caller never gets `level` back to clean it up itself.
+      // generator throws partway through, or the load is aborted - the caller never gets `level`
+      // back to clean it up itself.
       this.world.removeEntity(level, true);
       scope.release();
       throw e;
     }
-    throwIfAborted(options.signal);
     level.disposed$.subscribe(() => scope.release());
     group.finish();
 

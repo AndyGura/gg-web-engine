@@ -6,6 +6,7 @@ import {
   AxisDirection3,
   fetchWithProgress,
   IEntity,
+  imageBlob,
   LoadTaskOptions,
   Pnt3,
   Point3,
@@ -33,6 +34,7 @@ import {
   CharacterAnimationClipMap,
   CharacterAnimationController,
 } from './entities/controllers/character-animation.controller';
+import { IDisplayObject3dComponent } from './components/rendering/i-display-object-3d.component';
 import { isAnimatedDisplayObject3d } from './components/rendering/i-animated-display-object-3d.component';
 import { isMaterialReadable3d } from './components/rendering/i-material-readable-3d.component';
 import { GgCarEntity, GgCarProperties } from './entities/gg-car/gg-car.entity';
@@ -619,7 +621,7 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
       let texture: TypeDoc['vTypeDoc']['texture'];
       if (loader.textureFromData) {
         const data = await fetchWithProgress(url, item.file(), signal);
-        texture = await loader.textureFromData(new Blob([data]), { ...textureOptions, url });
+        texture = await loader.textureFromData(imageBlob(data, url), { ...textureOptions, url });
       } else {
         texture = await loader.loadTexture(url, textureOptions);
       }
@@ -644,7 +646,7 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
         const names = ['px', 'nx', 'py', 'ny', 'pz', 'nz'] as const;
         const files = await Promise.all(names.map(n => fetchWithProgress(faces[n], item.file(), options.signal)));
         const blobs = {} as Record<keyof CubeTextureFaces, Blob>;
-        names.forEach((n, i) => (blobs[n] = new Blob([files[i]])));
+        names.forEach((n, i) => (blobs[n] = imageBlob(files[i], faces[n])));
         texture = await loader.cubeTextureFromData(blobs);
       } else {
         texture = await loader.loadCubeTexture(faces);
@@ -1314,6 +1316,17 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
     });
     const chassis3D = world.visualScene?.factory.createBox(chassis.dimensions, chassis.material ?? {}) ?? null;
 
+    // The car shows clones of these wheel meshes, and a clone never frees what it shares with its
+    // source - so the sources are kept and disposed together with the car.
+    const wheelTemplates: IDisplayObject3dComponent[] = [];
+    const wheelDisplay = (wheelSettings: GgCarSharedWheelSettings): WheelDisplayOptions | undefined => {
+      const display = this.resolveWheelDisplay(world, wheelSettings);
+      if (display?.displayObject) {
+        wheelTemplates.push(display.displayObject);
+      }
+      return display;
+    };
+
     const carProperties: GgCarProperties = wheelBase
       ? {
           ...rest,
@@ -1321,11 +1334,11 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
             shared: { ...wheelBase.shared, display: undefined },
             front: {
               ...wheelBase.front,
-              display: this.resolveWheelDisplay(world, { ...wheelBase.shared, ...wheelBase.front }),
+              display: wheelDisplay({ ...wheelBase.shared, ...wheelBase.front }),
             },
             rear: {
               ...wheelBase.rear,
-              display: this.resolveWheelDisplay(world, { ...wheelBase.shared, ...wheelBase.rear }),
+              display: wheelDisplay({ ...wheelBase.shared, ...wheelBase.rear }),
             },
           },
         }
@@ -1333,7 +1346,7 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
           ...rest,
           wheelOptions: wheelOptions!.map(wheel => ({
             ...wheel,
-            display: this.resolveWheelDisplay(world, { ...sharedWheelOptions, ...wheel }),
+            display: wheelDisplay({ ...sharedWheelOptions, ...wheel }),
           })),
           sharedWheelOptions: sharedWheelOptions && { ...sharedWheelOptions, display: undefined },
         };
@@ -1343,6 +1356,7 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
       chassis3D,
       world.physicsWorld.factory.createRaycastVehicle(chassisBody),
     );
+    entity.disposed$.subscribe(() => wheelTemplates.forEach(template => template.dispose()));
     if (position) {
       entity.position = position;
     }

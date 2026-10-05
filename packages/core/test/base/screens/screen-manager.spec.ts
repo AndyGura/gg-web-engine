@@ -480,6 +480,23 @@ describe('ScreenManager', () => {
       expect(menu.state).toBe('active');
     });
 
+    it('a request that aborts a load and then fails still removes the loading screen', async () => {
+      const menu = new MenuScreen('menu', log);
+      await screens.push(menu);
+      const slow = new SlowScreen('slow', log);
+      const pushed = screens.push(slow);
+      await flush();
+      log.length = 0;
+
+      await expect(screens.popTo(SettingsScreen)).rejects.toThrow('no such screen');
+      await pushed;
+
+      expect(log).toEqual(['teardown slow', 'uncovered menu']);
+      expect(slow.state).toBe('exited');
+      expect(screens.stack).toEqual([menu]);
+      expect(menu.state).toBe('active');
+    });
+
     it('disposes a world the aborted screen adds after it was already removed', async () => {
       class LateWorldScreen extends SlowScreen {
         addLate(): GgWorld<any, any> {

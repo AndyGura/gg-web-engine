@@ -1,4 +1,4 @@
-import { fetchWithProgress, isAbortError } from '../../../src';
+import { fetchWithProgress, imageBlob, isAbortError } from '../../../src';
 import { mockFetch, restoreFetch } from '../../mocks/fetch.mock';
 
 describe('fetchWithProgress', () => {
@@ -59,5 +59,17 @@ describe('fetchWithProgress', () => {
     fetch.release();
     expect(isAbortError(await promise)).toBe(true);
     expect(onBytes).not.toHaveBeenCalledWith(expect.anything(), expect.anything(), true);
+  });
+});
+
+describe('imageBlob', () => {
+  it('types the blob by the extension in the url, ignoring a query or hash', () => {
+    const data = new ArrayBuffer(4);
+    expect(imageBlob(data, 'img/logo.svg').type).toBe('image/svg+xml');
+    expect(imageBlob(data, 'img/logo.SVG?v=2#x').type).toBe('image/svg+xml');
+    expect(imageBlob(data, 'img/photo.jpg').type).toBe('image/jpeg');
+    expect(imageBlob(data, 'img/sky.hdr').type).toBe('');
+    expect(imageBlob(data, 'img/no-extension').type).toBe('');
+    expect(imageBlob(data, 'img/logo.svg').size).toBe(4);
   });
 });

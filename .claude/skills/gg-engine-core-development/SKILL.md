@@ -578,6 +578,15 @@ Pitfalls met here:
 - **jsdom has no `TextEncoder`/`TextDecoder`**, which the loaders decode fetched JSON with:
   `test/jest.polyfills.ts` (a jest `setupFiles` entry) supplies them from `util`. Another package
   whose tests run core's loaders from source needs the same file.
+- **A fetched image goes to the adapter as `imageBlob(data, url)`**, never a bare
+  `new Blob([data])`: a browser recognizes PNG/JPEG/WebP by content but decodes an SVG only from a
+  blob typed `image/svg+xml`, and the type is all an adapter's `textureFromData` has to tell one
+  apart (`createImageBitmap` refuses an SVG in some browsers, so it needs an image element).
+- **A level generator that builds a display object only to hand out `clone()`s of it** (the
+  `"GgCar"` wheel meshes) owns that source: nothing else frees it, since a clone never frees what
+  it shares. Dispose it on the entity's `disposed$`.
+- **`loadLevel`'s abort checks all sit inside its `try`**, the one after the last entity included:
+  a generator may ignore the signal, and only the `catch` removes the level and releases its scope.
 - **Mock `fetch` with `test/mocks/fetch.mock.ts`**, not an ad hoc object: a response needs
   `headers.get`, a `body.getReader()` or an `arrayBuffer()`, and has to honor `init.signal`.
   `fetch.hold()`/`release()` park every body read for abort tests. `fetch` is called with one
@@ -598,7 +607,9 @@ flow as a stack of DOM layers. The module imports nothing from an adapter and no
 - **Requests are serialized** on a promise chain. A request made while a screen is entering aborts
   that screen unless it is a plain `push`. The aborted screen stays in the stack until the aborting
   request's own transition removes it: taking it out at once would make a `pop()` issued to cancel
-  a load remove the screen below as well.
+  a load remove the screen below as well. When the aborting request fails before its transition
+  runs (`popTo` with no such screen, a `reset` naming an exited screen), `request` removes the
+  aborted screen itself (`removeAborted`), or it would stay on top, hidden, over an inert stack.
 - **`exit()` is only for screens that finished entering.** A screen that was never entered, failed
   or was aborted gets its teardowns and world disposal alone. `addWorld`/`addTeardown` called after
   the screen has exited (an `enter()` that ignored its signal) dispose their argument immediately.
@@ -617,7 +628,10 @@ paused and delivers no tick to poll on. A new built-in controller with inputs of
 them the same way. Two properties of the inputs make stop/start safe and must be kept: everything a
 consumer subscribes to on `MouseInput`/`DirectionInput` outlives a stop (`wheel$` is gated on
 `running` instead of ending with `stop()`), and stopping releases what was held (`KeyboardInput`
-resets its keys, `DirectionInput` its direction, `MouseInput` its drag state).
+resets its keys, `DirectionInput` its direction, `MouseInput` its drag state). `KeyboardInput`
+ignores auto-repeat keydowns (`e.repeat`) for the same reason: a key held across a stop/start is
+not pressed again, so a key that opens a screen cannot reopen it at the repeat rate when the
+screen it opened closes on that same key.
 
 `GgWorld` forwards its clock's `paused$` to `audioScene.setPaused` (optional on the interface), so
 pausing a world silences it; see `gg-engine-audio-adapter`.

@@ -167,6 +167,11 @@ export class KeyboardInput extends IInput {
     if (e.code !== 'Tab' && !e.altKey && !e.ctrlKey && !e.metaKey) {
       e.preventDefault();
     }
+    // Auto-repeat of a held key is not a new press. Taking it for one would press the key again in
+    // an input that was restarted (or reset) while the key was down.
+    if (pressed && e.repeat) {
+      return;
+    }
     for (const subj of subs) {
       subj.next(pressed);
     }

@@ -61,3 +61,24 @@ export async function fetchWithProgress(
   onBytes!(loaded, loaded, true);
   return result.buffer;
 }
+
+const IMAGE_MIME_TYPES: Record<string, string> = {
+  svg: 'image/svg+xml',
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  webp: 'image/webp',
+  avif: 'image/avif',
+  gif: 'image/gif',
+  bmp: 'image/bmp',
+};
+
+/**
+ * Wraps a fetched image file in a `Blob` typed by the extension in `url`. A browser recognizes
+ * most image formats by their content, but decodes an SVG only when told that it is one.
+ */
+export function imageBlob(data: ArrayBuffer, url: string): Blob {
+  const extension = /\.([a-z0-9]+)(?:[?#]|$)/i.exec(url)?.[1].toLowerCase();
+  const type = extension ? IMAGE_MIME_TYPES[extension] : undefined;
+  return new Blob([data], type ? { type } : undefined);
+}

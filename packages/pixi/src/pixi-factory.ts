@@ -186,9 +186,22 @@ export class PixiFactory extends IDisplayObject2dComponentFactory<PixiVisualType
    * is freed with `disposeTexture`.
    */
   async textureFromData(data: Blob, options: TextureOptions = {}): Promise<Texture> {
-    const resource = await createImageBitmap(data);
+    const resource = data.type === 'image/svg+xml' ? await this.decodeSvg(data) : await createImageBitmap(data);
     const source = new ImageSource({ resource, alphaMode: 'premultiply-alpha-on-upload' });
     return this.applyTextureOptions(new Texture({ source }), options);
+  }
+
+  // `createImageBitmap` does not take an SVG file in every browser; an image element does
+  private async decodeSvg(data: Blob): Promise<HTMLImageElement> {
+    const url = URL.createObjectURL(data);
+    try {
+      const image = new Image();
+      image.src = url;
+      await image.decode();
+      return image;
+    } finally {
+      URL.revokeObjectURL(url);
+    }
   }
 
   /** Frees a texture made by `textureFromData`, together with its image. */

@@ -445,6 +445,32 @@ describe('LevelLoader', () => {
       expect(world.getEntityByName('MainLevel__TestEntity_2')).toBeDefined();
     });
 
+    it('leaves nothing behind when aborted while the last entity is still being built', async () => {
+      const controller = new AbortController();
+      let finish: (() => void) | null = null;
+      // a generator that ignores the signal
+      levelLoader.registerClass('Slow', async () => {
+        await new Promise<void>(resolve => (finish = resolve));
+        return new TestEntity();
+      });
+
+      const loading = levelLoader.loadLevel({ entities: [{ class: 'Slow', name: 'Last' }] }, 'AbortedLevel', {
+        signal: controller.signal,
+      });
+      while (!finish) {
+        await Promise.resolve();
+      }
+      controller.abort();
+      (finish as () => void)();
+
+      await expect(loading).rejects.toMatchObject({ name: 'AbortError' });
+      expect(() => world.getEntityByName('AbortedLevel')).toThrow();
+      expect(() => world.getEntityByName('Last')).toThrow();
+      // the name is free again
+      levelLoader.registerClass('Slow', () => new TestEntity());
+      await expect(levelLoader.loadLevel({ entities: [{ class: 'Slow' }] }, 'AbortedLevel')).resolves.toBeDefined();
+    });
+
     it('should produce identical default names for two independent loaders given the same levelJson and levelName', async () => {
       const otherWorld = new MockWorld();
       const otherLoader = new TestLevelLoader(otherWorld);

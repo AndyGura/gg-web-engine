@@ -131,6 +131,8 @@ where one exists.
   restitution, static/dynamic type).
 - `@gg-web-engine/core`: `KeyboardInput.stop()` added a `pointerlockchange` listener instead of
   removing its own, leaking one per stopped input (per disposed world).
+- `@gg-web-engine/core`: `KeyboardInput` took the auto-repeat of a held key for a new press, so a
+  key held while its input was reset or restarted got pressed again.
 - `@gg-web-engine/core`: a `MouseInput.wheel$` subscriber stopped receiving after the input was
   stopped and started again; a drag in progress now ends when the input stops.
 

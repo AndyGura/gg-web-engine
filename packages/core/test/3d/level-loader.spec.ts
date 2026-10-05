@@ -648,6 +648,48 @@ describe('Gg3dLevelLoader', () => {
       expect(car).toBeInstanceOf(GgCarEntity);
     });
 
+    it('frees the wheel meshes a GgCar was built with when the car is disposed', async () => {
+      const templates: { dispose: jest.Mock }[] = [];
+      (world.visualScene!.factory.createCylinder as jest.Mock).mockImplementation(() => {
+        const template = { ...mock3DObject(), dispose: jest.fn() };
+        templates.push(template);
+        return template;
+      });
+      const levelJson: LevelJson = {
+        entities: [
+          {
+            class: 'GgCar',
+            name: 'DisposedCar',
+            config: {
+              ...carCommonConfig,
+              chassis: { dimensions: { x: 1.8, y: 4, z: 0.6 } },
+              wheelBase: {
+                shared: { display: {} },
+                front: { halfAxleWidth: 1, axlePosition: 1.7, axleHeight: 0.3 },
+                rear: { halfAxleWidth: 1, axlePosition: -1, axleHeight: 0.3 },
+              },
+            },
+          },
+        ],
+      };
+
+      const level = await levelLoader.loadLevel(levelJson, 'TestLevel');
+      expect(templates).toHaveLength(2);
+      templates.forEach(template => expect(template.dispose).not.toHaveBeenCalled());
+
+      const car = level.getChildEntityByName<GgCarEntity>('DisposedCar');
+      // the shared component mocks have no dispose() of their own
+      const stubDispose = (entity: any) => {
+        for (const component of entity._components) {
+          component.dispose = component.dispose ?? (() => {});
+        }
+        entity.children.forEach(stubDispose);
+      };
+      stubDispose(car);
+      car.dispose();
+      templates.forEach(template => expect(template.dispose).toHaveBeenCalledTimes(1));
+    });
+
     it('applies an optional "state" block to a freshly-built GgCar', async () => {
       const levelJson: LevelJson = {
         entities: [

@@ -5,6 +5,7 @@ import {
   AudioDistanceModel,
   fetchWithProgress,
   IEntity,
+  imageBlob,
   LoadTaskOptions,
   Point2,
   stableKey,
@@ -289,7 +290,7 @@ export class Gg2dLevelLoader<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTyp
       let texture: TypeDoc['vTypeDoc']['texture'];
       if (factory.textureFromData) {
         const data = await fetchWithProgress(url, item.file(), signal);
-        texture = await factory.textureFromData(new Blob([data]), textureOptions);
+        texture = await factory.textureFromData(imageBlob(data, url), textureOptions);
       } else {
         texture = await factory.loadTexture(url, textureOptions);
       }

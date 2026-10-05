@@ -50,6 +50,37 @@ describe('PixiFactory textures from fetched data', () => {
     expect(Assets.load).not.toHaveBeenCalled();
   });
 
+  it('textureFromData decodes an SVG through an image element, which createImageBitmap may refuse', async () => {
+    const decode = jest.fn(async () => {});
+    const OriginalImage = (global as any).Image;
+    const images: any[] = [];
+    (global as any).Image = class {
+      src = '';
+      decode = decode;
+      constructor() {
+        images.push(this);
+      }
+    };
+    const originalCreate = URL.createObjectURL;
+    const originalRevoke = URL.revokeObjectURL;
+    URL.createObjectURL = jest.fn(() => 'blob:svg');
+    URL.revokeObjectURL = jest.fn();
+    try {
+      const blob = new Blob(['<svg/>'], { type: 'image/svg+xml' });
+      const texture: any = await new PixiFactory().textureFromData(blob);
+      expect((global as any).createImageBitmap).not.toHaveBeenCalled();
+      expect(images).toHaveLength(1);
+      expect(images[0].src).toBe('blob:svg');
+      expect(decode).toHaveBeenCalled();
+      expect(texture.source.options.resource).toBe(images[0]);
+      expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:svg');
+    } finally {
+      (global as any).Image = OriginalImage;
+      URL.createObjectURL = originalCreate;
+      URL.revokeObjectURL = originalRevoke;
+    }
+  });
+
   it('disposeTexture destroys the texture together with its source', async () => {
     const factory = new PixiFactory();
     const texture: any = await factory.textureFromData(new Blob(['x']));

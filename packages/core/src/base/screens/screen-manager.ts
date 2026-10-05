@@ -211,7 +211,14 @@ export class ScreenManager {
     if (this.pending === 1) {
       this._busy$.next(true);
     }
-    const result = this.queue.then(run);
+    const result = this.queue.then(async () => {
+      try {
+        await run();
+      } catch (e) {
+        await this.removeAborted();
+        throw e;
+      }
+    });
     this.queue = result
       .catch(() => {})
       .then(() => {
@@ -275,6 +282,21 @@ export class ScreenManager {
     }
     if (error !== undefined) {
       throw error;
+    }
+  }
+
+  /**
+   * A request that aborted the entering screen and then failed before its transition took that
+   * screen out leaves it on top, never shown: remove it and give the screen below back.
+   */
+  private async removeAborted(): Promise<void> {
+    if (!this.stack.some(screen => this.aborted.has(screen))) {
+      return;
+    }
+    try {
+      await this.transition([...this.stack], {});
+    } catch (e) {
+      console.error(e);
     }
   }
 
