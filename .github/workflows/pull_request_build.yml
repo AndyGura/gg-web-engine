@@ -28,3 +28,8 @@ jobs:
 
       - name: Test all packages
         run: npm run test
+
+      # Examples are the engine's tutorials: they must not import three/pixi.js/ammo.js/matter-js/
+      # @dimforge directly or use an adapter's native* escape hatch. See gg-engine-examples.
+      - name: Check examples use engine APIs only
+        run: npm run lint:examples

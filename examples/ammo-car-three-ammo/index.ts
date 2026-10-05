@@ -73,15 +73,14 @@ world.init().then(async () => {
     materialInteractive,
   );
   const createWheelMesh = (radius: number, width: number) => {
-    let m = world.visualScene.factory.createCylinder(radius, width, materialInteractive);
-    m.nativeMesh.add(
-      world.visualScene.factory.createBox({
-        x: radius * 1.75,
-        y: radius * 0.25,
-        z: width * 1.5,
-      }, materialInteractive).nativeMesh,
-    );
-    return m;
+    const wheel = world.visualScene.factory.createCylinder(radius, width, materialInteractive);
+    // a bar across the wheel, nested in it so it spins along and shows the wheel turning
+    wheel.addChild(world.visualScene.factory.createBox({
+      x: radius * 1.75,
+      y: radius * 0.25,
+      z: width * 1.5,
+    }, materialInteractive));
+    return wheel;
   };
 
   const carController = new CarKeyboardHandlingController(

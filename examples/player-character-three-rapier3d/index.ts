@@ -1,6 +1,7 @@
 import {
   Camera3dEntity,
   CharacterController3dEntity,
+  Entity3d,
   Gg3dWorld,
   GgStatic,
   LevelJson,
@@ -8,7 +9,6 @@ import {
   Pnt3,
 } from '@gg-web-engine/core';
 import { ThreeGgWorld, ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
-import { Mesh } from 'three';
 import { Rapier3dWorldComponent } from '@gg-web-engine/rapier3d';
 
 GgStatic.instance.showStats = true;
@@ -197,11 +197,12 @@ world.init().then(async () => {
 
   const levelGroup = await world.loader.loadLevel(level, 'MainLevel');
 
-  for (const item of levelGroup.children as { object3D?: { nativeMesh: Mesh } }[]) {
-    item.object3D?.nativeMesh.traverse(obj => {
-      obj.castShadow = true;
-      obj.receiveShadow = true;
-    });
+  // the level's primitives and the player's model
+  for (const item of levelGroup.children) {
+    if ((item instanceof Entity3d || item instanceof CharacterController3dEntity) && item.object3D) {
+      item.object3D.castShadow = true;
+      item.object3D.receiveShadow = true;
+    }
   }
 
   const cameraEntity = levelGroup.getChildEntityByName<Camera3dEntity<ThreeVisualTypeDocRepo>>('MainCamera');
