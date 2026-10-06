@@ -17,6 +17,7 @@ import {
 } from '@gg-web-engine/core';
 import { PixiCameraComponent, PixiGgWorld, PixiSceneComponent } from '@gg-web-engine/pixi';
 import { Rapier2dGgWorld, Rapier2dWorldComponent } from '@gg-web-engine/rapier2d';
+import { MobileControls } from '@gg-web-engine/mobile-controls';
 import {
   BroadcastChannelSignaling,
   buildRoomUrl,
@@ -270,6 +271,9 @@ const world: TypedGg2dWorld<PixiGgWorld, Rapier2dGgWorld> = new Gg2dWorld({
 world.init().then(async () => {
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
   const renderer = world.addRenderer(new PixiCameraComponent(), canvas);
+  // On a phone: left/right, jump, run and crouch buttons for the round's character controller,
+  // whichever round it is (the overlay follows the controllers of the world as they come and go).
+  world.addEntity(new MobileControls());
   renderer.rendererSize$.subscribe(newSize => {
     if (!newSize) return;
     renderer.camera.zoom = Math.min(newSize.x / (ROOM_WIDTH + 100), newSize.y / (ROOM_HEIGHT + 100), 1);

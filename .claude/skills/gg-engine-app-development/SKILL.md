@@ -534,9 +534,13 @@ world.addEntity(new MobileControls()); // shown on touch-first devices only; ena
 ```
 
 - It follows `GgCarHandlingController`/`CarHandlingController`,
-  `PlayerCharacterController`, `PlayerCharacterController2d` and `FreeCameraController`, showing the
+  `PlayerCharacterController`, `PlayerCharacterController2d`, `FreeCameraController` and
+  `ObjectGrabController` (grab/release and throw buttons next to the character's), showing the
   layout of whichever is `active` - so switching controllers by `active` (see "Common pitfalls")
-  switches the touch controls too. `OrbitCameraController` handles touch drags natively.
+  switches the touch controls too. `OrbitCameraController` handles touch drags natively, as does
+  any controller's mouse-look without an overlay: `MouseInput` scales a finger's movement by its
+  `touchSensitivity` option (3 by default) so a drag turns the view about as far as it does through
+  the overlay's look area.
 - Options pick a scheme per controller (`car: { steering: 'buttons' | 'stick' | 'tilt' }`,
   `character: { movement: 'stick' | 'dpad', look: 'drag' | 'stick' }`) and adjust single controls
   (`placements`, `icons`, `hide`, `extra`).

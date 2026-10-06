@@ -9,6 +9,7 @@ export * from './layouts/car.layout';
 export * from './layouts/character.layout';
 export * from './layouts/character-2d.layout';
 export * from './layouts/free-camera.layout';
+export * from './layouts/grab.layout';
 export * from './icons';
 export * from './styles';
 export * from './mobile-controls-layout';

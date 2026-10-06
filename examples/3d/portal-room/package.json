@@ -10,6 +10,7 @@
     "@gg-web-engine/ammo": "0.0.78",
     "@gg-web-engine/audio": "0.0.78",
     "@gg-web-engine/core": "0.0.78",
+    "@gg-web-engine/mobile-controls": "0.0.78",
     "@gg-web-engine/rapier3d": "0.0.78",
     "@gg-web-engine/three": "0.0.78",
     "mini-signals": "3.0.0",

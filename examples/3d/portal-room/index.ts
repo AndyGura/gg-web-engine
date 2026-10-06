@@ -15,6 +15,7 @@ import {
 } from '@gg-web-engine/core';
 import { ThreeGgWorld, ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
 import { createPhysicsWorld } from './backends';
+import { MobileControls } from '@gg-web-engine/mobile-controls';
 import { WebAudioScene3dComponent } from '@gg-web-engine/audio';
 import { throttleTime } from 'rxjs';
 
@@ -438,6 +439,12 @@ world.init().then(async () => {
   // needed here) and the hold point stays clamped away from the player's own capsule.
   const grabController = new ObjectGrabController(world.keyboardInput, playerController.mouseInput, renderer, player);
   world.addEntity(grabController);
+
+  // On a phone: the character's stick, look area and action buttons, plus the grab controller's
+  // grab/release and throw buttons (on a touch screen the mouse buttons do not throw or drop - a
+  // finger dragging to look around would). Nothing to configure: the overlay shows the built-in
+  // layout of every active controller in the world.
+  world.addEntity(new MobileControls());
 
   // Throw (or drop) the radio into the incinerator and it's gone for good - a fresh one appears
   // back on the pedestal a moment later. `Grabbable3dEntity.onRemoved` already releases the object

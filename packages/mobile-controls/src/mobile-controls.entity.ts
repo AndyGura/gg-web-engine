@@ -5,6 +5,7 @@ import {
   GgCarHandlingController,
   GgWorld,
   IEntity,
+  ObjectGrabController,
   PlayerCharacterController,
   PlayerCharacterController2d,
   TickOrder,
@@ -14,6 +15,7 @@ import { carLayout, CarLayoutOptions } from './layouts/car.layout';
 import { character2dLayout, Character2dLayoutOptions } from './layouts/character-2d.layout';
 import { characterLayout, CharacterLayoutOptions } from './layouts/character.layout';
 import { freeCameraLayout, FreeCameraLayoutOptions } from './layouts/free-camera.layout';
+import { grabLayout, GrabLayoutOptions } from './layouts/grab.layout';
 import { MobileControlsLayoutFactory, MobileControlsLayoutItem } from './mobile-controls-layout';
 import { injectMobileControlsStyles } from './styles';
 
@@ -59,6 +61,8 @@ export type MobileControlsOptions = {
   character2d: Character2dLayoutOptions | false;
   /** Options of the built-in layout for `FreeCameraController`, or `false` to have none. */
   freeCamera: FreeCameraLayoutOptions | false;
+  /** Options of the built-in layout for `ObjectGrabController`, or `false` to have none. */
+  grab: GrabLayoutOptions | false;
 };
 
 const DEFAULT_OPTIONS: MobileControlsOptions = {
@@ -70,6 +74,7 @@ const DEFAULT_OPTIONS: MobileControlsOptions = {
   character: {},
   character2d: {},
   freeCamera: {},
+  grab: {},
 };
 
 type ControllerClass<T extends IEntity> = abstract new (...args: any[]) => T;
@@ -84,8 +89,9 @@ type ControllerClass<T extends IEntity> = abstract new (...args: any[]) => T;
  * ```
  *
  * Out of the box it knows the car controllers (`GgCarHandlingController`,
- * `CarHandlingController`), `PlayerCharacterController`, `PlayerCharacterController2d` and
- * `FreeCameraController`. Each of those layouts is adjusted through
+ * `CarHandlingController`), `PlayerCharacterController`, `PlayerCharacterController2d`,
+ * `FreeCameraController` and `ObjectGrabController` (whose grab/release and throw buttons appear next
+ * to the controls of the controller it is paired with). Each of those layouts is adjusted through
  * its options (see `MobileControlsOptions`), replaced by `registerLayout`, and any other controller
  * class - including an app's own - gets a layout the same way. Controls that belong to no controller
  * (pause, a menu button) are added with `addControls`.
@@ -168,6 +174,9 @@ export class MobileControls extends IEntity {
     }
     if (this.options.freeCamera) {
       this.registerLayout(FreeCameraController, freeCameraLayout(this.options.freeCamera));
+    }
+    if (this.options.grab) {
+      this.registerLayout(ObjectGrabController, grabLayout(this.options.grab));
     }
   }
 

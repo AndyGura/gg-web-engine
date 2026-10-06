@@ -9,14 +9,20 @@ import { Pnt2 } from '../math/point2';
  *
  * canvas?: Canvas element. If not provided, mouse events will be listened on the whole window
  * pointerLock: The flag to enable pointer lock when clicking on canvas
+ * touchSensitivity: What a finger's movement counts for in `delta$`, relative to the mouse: a drag of
+ *   `n` pixels is reported as `n * touchSensitivity` pixels of mouse movement. A finger covers far
+ *   less distance than a mouse does for the same intended turn, so this is 3 by default - the
+ *   same factor the mobile-controls look area applies.
  */
 export type MouseInputOptions = {
   canvas?: HTMLCanvasElement;
   pointerLock: boolean;
+  touchSensitivity: number;
 };
 
 const DEFAULT_MOUSE_INPUT_OPTIONS: MouseInputOptions = {
   pointerLock: false,
+  touchSensitivity: 3,
 };
 
 /**
@@ -219,10 +225,21 @@ export class MouseInput extends IInput<[], [unlockPointer?: boolean]> {
       .pipe(takeUntil(this.stopped$))
       .subscribe((event: PointerEvent | MouseEvent) => {
         if (event instanceof PointerEvent) {
-          if (event.pointerType === 'touch') {
-            pointerPositions[event.pointerId] = { x: event.pageX, y: event.pageY };
-          }
           const newPosition = { x: event.pageX, y: event.pageY };
+          if (event.pointerType === 'touch') {
+            // `movementX`/`movementY` of a touch pointer are not dependable across browsers (zero or
+            // scaled oddly on some), so a finger's movement is measured from its own last position
+            const previous = pointerPositions[event.pointerId];
+            pointerPositions[event.pointerId] = newPosition;
+            this._position$.next(newPosition);
+            this._multiTouchPositions$.next(Object.values(pointerPositions));
+            // only the first finger turns the view; a second one is a gesture, not a movement
+            if (previous && event.isPrimary) {
+              const k = this.options.touchSensitivity;
+              this._delta$.next({ x: (newPosition.x - previous.x) * k, y: (newPosition.y - previous.y) * k });
+            }
+            return;
+          }
           this._position$.next(newPosition);
           this._multiTouchPositions$.next(Object.values(pointerPositions));
         } else {

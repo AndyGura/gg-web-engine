@@ -928,6 +928,19 @@ keyboard and mouse they are named after. Anything else feeds them:
   several sources compose (a tilt sensor on `x`, a pedal button on `y`). `output$` stays keys-only.
 - `MouseInput.emulateMove(delta)` - a view rotation, through `delta$`.
 
+`MouseInput` itself already handles a bare touch screen without any overlay: a touch pointer's
+movement is measured from that finger's own previous position (per pointer id - `movementX`/
+`movementY` of touch pointer events are not dependable across browsers) and multiplied by
+`MouseInputOptions.touchSensitivity` (3 by default, the same factor the mobile-controls look area
+applies; a finger covers far less distance than a mouse for the same intended turn), so every
+controller reading `delta$` with a "radians per 1000px" sensitivity turns at a comparable speed on a
+phone and on a desktop. Only the primary finger reports movement; a second finger is a gesture
+(`twoTouchGestureDelta$`), not a turn. A mouse pointer keeps reporting `movementX`/`movementY`.
+`ObjectGrabController` ignores the mouse-button edges on a touch device for the same reason - a
+single finger reads as `DRAG`, which is how the view is turned there - and exposes `keyboard`,
+`options`, `heldObject$`, `throwHeld()`/`dropHeld()` publicly so an on-screen button can do what the
+mouse buttons do.
+
 `MouseInput.isTouchDevice()` is what the controllers' `ignoreMouseUnlessPointerLocked`/
 `ignoreKeyboardUnlessPointerLocked` gates are bypassed by (a touch screen has no pointer lock). It
 is true for a phone/tablet user agent, an iPad reporting a desktop Mac user agent (told apart by
@@ -954,10 +967,12 @@ of it; it depends on core only. What it needs from a built-in controller, and wh
 changing one:
 
 - `options` and `keyboard` are public on `CarHandlingController`,
-  `GgCarHandlingController`, `PlayerCharacterController`, `PlayerCharacterController2d` and
-  `FreeCameraController` - the layouts read key codes from them (`options.jumpKey`,
-  `options.gearUpDownKeys`, ...) and emulate on that same `keyboard`. `FreeCameraController`'s
-  up/down/boost keys are hardcoded (`KeyE`/`KeyQ`/`ShiftLeft`) in both places.
+  `GgCarHandlingController`, `PlayerCharacterController`, `PlayerCharacterController2d`,
+  `FreeCameraController` and `ObjectGrabController` - the layouts read key codes from them
+  (`options.jumpKey`, `options.gearUpDownKeys`, `options.grabKey`, ...) and emulate on that same
+  `keyboard`. `FreeCameraController`'s up/down/boost keys are hardcoded (`KeyE`/`KeyQ`/`ShiftLeft`)
+  in both places. `ObjectGrabController`'s layout also reads `heldObject$` (to turn its grab button
+  into a release button and show a throw button while something is held) and calls `throwHeld()`.
 - `directionsInput`/`mouseInput` are public on the same controllers and are what sticks and look
   areas bind to. A new option-driven key on a controller needs a button in its layout
   (`packages/mobile-controls/src/layouts/`) to be reachable on a phone.

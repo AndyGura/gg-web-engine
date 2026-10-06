@@ -78,9 +78,9 @@ describe('ObjectGrabController', () => {
 
     it(
       "retries by sphere-tracing past the holder's own capsule from the camera's actual position " +
-        "when the first cast is a close, non-grabbable self-hit - regression: retrying from that " +
+        'when the first cast is a close, non-grabbable self-hit - regression: retrying from that ' +
         "first hit's own reported point instead used to silently stop working on adapters (e.g. " +
-        "Rapier) whose raycast reports a self-hit at distance 0 with no usable exit point, always " +
+        'Rapier) whose raycast reports a self-hit at distance 0 with no usable exit point, always ' +
         "landing the retry back inside the same capsule (see this class's own tryGrab doc)",
       () => {
         const raycast = jest.fn();
@@ -397,4 +397,58 @@ describe('ObjectGrabController', () => {
       });
     },
   );
+});
+
+describe('ObjectGrabController held object API', () => {
+  const setup = () => {
+    const keyboard = new KeyboardInput();
+    keyboard.start();
+    const mouseInput = new MouseInput();
+    mouseInput.start();
+    const controller = new ObjectGrabController(keyboard, mouseInput, fakeCamera(), null);
+    const { entity } = makeGrabbable();
+    const raycast = jest.fn().mockReturnValue({ hasHit: true, hitBody: { entity } });
+    return { keyboard, mouseInput, controller, entity, raycast };
+  };
+
+  afterEach(() => jest.restoreAllMocks());
+
+  it('reports the held object through heldObject$, current value first', () => {
+    const { keyboard, controller, entity, raycast } = setup();
+    controller.onSpawned({ physicsWorld: { raycast } } as any);
+    const seen: any[] = [];
+    controller.heldObject$.subscribe(held => seen.push(held));
+    expect(seen).toEqual([null]);
+
+    keyboard.emulateKeyDown('KeyE');
+    expect(seen).toEqual([null, entity]);
+
+    controller.dropHeld();
+    expect(seen).toEqual([null, entity, null]);
+    expect(entity.isHeld).toBe(false);
+  });
+
+  it('throws through the public throwHeld', () => {
+    const { keyboard, controller, entity, raycast } = setup();
+    controller.onSpawned({ physicsWorld: { raycast } } as any);
+    keyboard.emulateKeyDown('KeyE');
+    controller.throwHeld();
+    expect(controller.heldObject).toBeNull();
+    expect(entity.isHeld).toBe(false);
+    expect(entity.objectBody!.linearVelocity.z).toBeLessThan(0); // forward is -Z for the identity camera
+  });
+
+  it('ignores the mouse buttons on a touch device, where a drag turns the view', () => {
+    jest.spyOn(MouseInput, 'isTouchDevice').mockReturnValue(true);
+    const { keyboard, mouseInput, controller, entity, raycast } = setup();
+    controller.onSpawned({ physicsWorld: { raycast } } as any);
+    keyboard.emulateKeyDown('KeyE');
+    expect(controller.heldObject).toBe(entity);
+
+    (mouseInput as any)._state$.next(MouseInputState.DRAG);
+    expect(controller.heldObject).toBe(entity);
+    (mouseInput as any)._state$.next(MouseInputState.NONE);
+    (mouseInput as any)._state$.next(MouseInputState.DRAG_RIGHT_BUTTON);
+    expect(controller.heldObject).toBe(entity);
+  });
 });

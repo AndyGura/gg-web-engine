@@ -34,3 +34,81 @@ describe('MouseInput.isTouchDevice', () => {
     expect(MouseInput.isTouchDevice()).toBe(true);
   });
 });
+
+describe('MouseInput touch movement', () => {
+  // jsdom has no PointerEvent; MouseInput tells pointer events apart from mouse events by `instanceof`
+  const PointerEventPolyfill = class PointerEvent extends MouseEvent {};
+  beforeAll(() => ((globalThis as any).PointerEvent = PointerEventPolyfill));
+  afterAll(() => delete (globalThis as any).PointerEvent);
+
+  const pointerEvent = (
+    type: string,
+    init: { x: number; y: number; pointerId?: number; pointerType?: string; isPrimary?: boolean; movementX?: number },
+  ) => {
+    const event = new MouseEvent(type, { bubbles: true, clientX: init.x, clientY: init.y });
+    Object.defineProperty(event, 'pointerId', { value: init.pointerId ?? 1 });
+    Object.defineProperty(event, 'pointerType', { value: init.pointerType ?? 'touch' });
+    Object.defineProperty(event, 'isPrimary', { value: init.isPrimary ?? true });
+    Object.defineProperty(event, 'movementX', { value: init.movementX ?? 0 });
+    Object.defineProperty(event, 'movementY', { value: 0 });
+    Object.setPrototypeOf(event, PointerEventPolyfill.prototype);
+    return event;
+  };
+
+  let canvas: HTMLCanvasElement;
+  let input: MouseInput;
+  let deltas: { x: number; y: number }[];
+
+  beforeEach(() => {
+    canvas = document.createElement('canvas');
+    document.body.appendChild(canvas);
+    deltas = [];
+  });
+
+  afterEach(() => {
+    input.stop(false); // jsdom has no document.exitPointerLock
+    canvas.remove();
+  });
+
+  const start = (options: Partial<ConstructorParameters<typeof MouseInput>[0]> = {}) => {
+    input = new MouseInput({ canvas, ...options });
+    input.delta$.subscribe(d => deltas.push(d));
+    input.start();
+  };
+
+  it('measures a finger from its own previous position, times touchSensitivity, not movementX', () => {
+    start();
+    canvas.dispatchEvent(pointerEvent('pointerdown', { x: 100, y: 100 }));
+    canvas.dispatchEvent(pointerEvent('pointermove', { x: 110, y: 95, movementX: 1 }));
+    canvas.dispatchEvent(pointerEvent('pointermove', { x: 130, y: 95, movementX: 1 }));
+    expect(deltas).toEqual([
+      { x: 30, y: -15 },
+      { x: 60, y: 0 },
+    ]);
+  });
+
+  it('applies the configured touchSensitivity', () => {
+    start({ touchSensitivity: 1 });
+    canvas.dispatchEvent(pointerEvent('pointerdown', { x: 0, y: 0 }));
+    canvas.dispatchEvent(pointerEvent('pointermove', { x: 4, y: 2 }));
+    expect(deltas).toEqual([{ x: 4, y: 2 }]);
+  });
+
+  it('reports no movement for a finger it has not seen before, and none for a second finger', () => {
+    start({ touchSensitivity: 1 });
+    canvas.dispatchEvent(pointerEvent('pointermove', { x: 50, y: 50 }));
+    expect(deltas).toEqual([]);
+    canvas.dispatchEvent(pointerEvent('pointermove', { x: 60, y: 50 }));
+    expect(deltas).toEqual([{ x: 10, y: 0 }]);
+
+    canvas.dispatchEvent(pointerEvent('pointerdown', { x: 200, y: 200, pointerId: 2, isPrimary: false }));
+    canvas.dispatchEvent(pointerEvent('pointermove', { x: 230, y: 200, pointerId: 2, isPrimary: false }));
+    expect(deltas).toEqual([{ x: 10, y: 0 }]);
+  });
+
+  it('keeps using movementX/movementY for a mouse pointer', () => {
+    start();
+    canvas.dispatchEvent(pointerEvent('pointermove', { x: 10, y: 10, pointerType: 'mouse', movementX: 7 }));
+    expect(deltas).toEqual([{ x: 7, y: 0 }]);
+  });
+});

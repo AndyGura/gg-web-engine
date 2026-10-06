@@ -1,4 +1,4 @@
-import { filter, pairwise, startWith, takeUntil } from 'rxjs';
+import { BehaviorSubject, filter, Observable, pairwise, startWith, takeUntil } from 'rxjs';
 import { IEntity, KeyboardInput, MouseInput, MouseInputState, Pnt3, Point3, TickOrder } from '../../../../base';
 import { Renderer3dEntity } from '../../renderer-3d.entity';
 import { Grabbable3dEntity } from '../../grabbable-3d.entity';
@@ -45,7 +45,10 @@ const DEFAULT_OPTIONS: ObjectGrabControllerOptions = {
  * current position/forward direction to find a `Grabbable3dEntity` within `maxGrabDistance`,
  * `grabKey` picks it up (and drops it again if already holding one - a second `grabKey` press is
  * equivalent to the right mouse button), left mouse button throws it forward (`throwSpeed`), right
- * mouse button drops it in place. Mirrors `PlayerCharacterController` in shape (an input-only entity driving a
+ * mouse button drops it in place. On a touch device the mouse buttons do nothing here (a finger
+ * dragging to look around would otherwise throw the object): `grabKey` - emulated by an on-screen
+ * button - and the public `throwHeld`/`dropHeld` are the way to act on a held object there, which
+ * is what `@gg-web-engine/mobile-controls`' layout for this controller binds to. Mirrors `PlayerCharacterController` in shape (an input-only entity driving a
  * separate physics entity, reading `camera` for aim rather than owning it) - pair the two by
  * passing the same `keyboard`/`mouseInput`/`camera` instances to both, rather than constructing a
  * second `MouseInput`/`KeyboardInput` here, so pointer-lock/focus behavior stays single-sourced.
@@ -90,16 +93,37 @@ export class ObjectGrabController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWor
   // is what actually gets integrated this frame - see `Grabbable3dEntity.updateHold`'s doc.
   public readonly tickOrder = TickOrder.PHYSICS_SIMULATION - 5;
 
-  protected readonly options: ObjectGrabControllerOptions;
+  public readonly options: ObjectGrabControllerOptions;
 
-  private _heldObject: Grabbable3dEntity<TypeDoc> | null = null;
+  private readonly _heldObject$: BehaviorSubject<Grabbable3dEntity<TypeDoc> | null> =
+    new BehaviorSubject<Grabbable3dEntity<TypeDoc> | null>(null);
+
   /** The object currently being carried, or `null` if empty-handed. */
   public get heldObject(): Grabbable3dEntity<TypeDoc> | null {
-    return this._heldObject;
+    return this._heldObject$.getValue();
+  }
+
+  /**
+   * The object being carried, emitting the current one on subscription and then every change
+   * (`null` when it is let go of, however that happened - dropped, thrown, lost to `maxHoldDistance`
+   * or removed from the world).
+   */
+  public get heldObject$(): Observable<Grabbable3dEntity<TypeDoc> | null> {
+    return this._heldObject$.asObservable();
+  }
+
+  private get _heldObject(): Grabbable3dEntity<TypeDoc> | null {
+    return this._heldObject$.getValue();
+  }
+
+  private set _heldObject(value: Grabbable3dEntity<TypeDoc> | null) {
+    if (value !== this._heldObject$.getValue()) {
+      this._heldObject$.next(value);
+    }
   }
 
   constructor(
-    protected readonly keyboard: KeyboardInput,
+    public readonly keyboard: KeyboardInput,
     protected readonly mouseInput: MouseInput,
     protected readonly camera: Renderer3dEntity<TypeDoc['vTypeDoc']>,
     /** The character whose capsule the hold point is kept clear of - see this class's own doc. Pass
@@ -125,13 +149,15 @@ export class ObjectGrabController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWor
 
     // Left/right mouse button "just pressed" edges, derived from MouseInput's drag state (there is
     // no dedicated discrete click event on MouseInput itself - see its own doc for why DRAG/
-    // DRAG_RIGHT_BUTTON already distinguish which button, set on the underlying pointerdown).
+    // DRAG_RIGHT_BUTTON already distinguish which button, set on the underlying pointerdown). Not on
+    // a touch device: a single finger is DRAG too, and it is how the view is turned there.
+    const isTouchScreen = MouseInput.isTouchDevice();
     this.mouseInput.state$
       .pipe(
         takeUntil(this._onRemoved$),
         startWith(MouseInputState.NONE),
         pairwise(),
-        filter(() => this.active),
+        filter(() => this.active && !isTouchScreen),
       )
       .subscribe(([previous, current]) => {
         if (current === MouseInputState.DRAG && previous !== MouseInputState.DRAG) {
@@ -387,7 +413,8 @@ export class ObjectGrabController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWor
     }
   }
 
-  private throwHeld(): void {
+  /** Throws the held object forward at `throwSpeed`, if holding one - what the left mouse button does. */
+  public throwHeld(): void {
     if (!this._heldObject) {
       return;
     }
@@ -396,7 +423,8 @@ export class ObjectGrabController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWor
     this._heldObject = null;
   }
 
-  private dropHeld(): void {
+  /** Lets go of the held object where it is, if holding one - what the right mouse button does. */
+  public dropHeld(): void {
     if (!this._heldObject) {
       return;
     }

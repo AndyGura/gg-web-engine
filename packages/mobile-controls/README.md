@@ -30,8 +30,12 @@ controller is active, swapping them as controllers are activated, deactivated, s
 | `PlayerCharacterController` | move stick, look by dragging, jump, run, crouch, switch view |
 | `PlayerCharacterController2d` | left/right, jump, run, crouch |
 | `FreeCameraController` | move stick, look by dragging, up, down, boost |
+| `ObjectGrabController` | grab, turning into release while something is held; throw, shown only then |
 
 `OrbitCameraController` needs no controls, it follows one- and two-finger drags on the canvas itself.
+Looking around by dragging the canvas itself (no look area) works on every controller too: core's
+`MouseInput` reports a finger's movement times its `touchSensitivity` (3 by default), the same factor
+the look area applies, so both feel alike.
 
 By default the overlay exists only on a touch-first device (`enabled: 'auto'`); pass `enabled: true`
 to try it with a mouse.
@@ -48,6 +52,7 @@ new MobileControls({
   character: { movement: 'dpad', look: 'drag', lookSensitivity: 4 },
   character2d: { movement: 'stick' },
   freeCamera: false, // no touch controls for this controller
+  grab: { throw: false }, // grab/release only, no throw button
 });
 ```
 
