@@ -81,7 +81,7 @@ const DEFAULT_OPTIONS: PlayerCharacterControllerOptions = {
   eyeHeight: 0.7,
   thirdPersonDistance: 4,
   thirdPersonHeight: 0.6,
-  mouseSensitivity: 1,
+  mouseSensitivity: 2,
   minPitch: -Math.PI * 0.49,
   maxPitch: Math.PI * 0.49,
   cameraCollision: true,

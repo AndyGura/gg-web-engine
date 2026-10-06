@@ -69,7 +69,7 @@ const DEFAULT_FREE_CAMERA_CONTROLLER_OPTIONS: FreeCameraControllerOptions = {
   cameraLinearSpeed: 20,
   cameraMovementElasticity: 0,
   cameraBoostMultiplier: 2.5,
-  cameraRotationSensitivity: 1,
+  cameraRotationSensitivity: 2,
   cameraRotationElasticity: 0,
   mouseOptions: {},
   ignoreMouseUnlessPointerLocked: false,
