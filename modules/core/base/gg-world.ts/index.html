@@ -521,6 +521,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#ggconsolehost-type-alias" class="md-nav__link">
+    GgConsoleHost (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#ggworld-class" class="md-nav__link">
     GgWorld (class)
   </a>
@@ -669,6 +676,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#loader-property" class="md-nav__link">
+    loader (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#worldclock-property" class="md-nav__link">
     worldClock (property)
   </a>
@@ -678,6 +692,13 @@
           <li class="md-nav__item">
   <a href="#keyboardinput-property" class="md-nav__link">
     keyboardInput (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#localpauseallowed-property" class="md-nav__link">
+    localPauseAllowed (property)
   </a>
   
 </li>
@@ -899,6 +920,7 @@
 <ul>
 <li><a href="#utils">utils</a></li>
 <li><a href="#audiotypedocrepo-type-alias">AudioTypeDocRepo (type alias)</a></li>
+<li><a href="#ggconsolehost-type-alias">GgConsoleHost (type alias)</a></li>
 <li><a href="#ggworld-class">GgWorld (class)</a><ul>
 <li><a href="#init-method">init (method)</a></li>
 <li><a href="#start-method">start (method)</a></li>
@@ -920,8 +942,10 @@
 <li><a href="#visualscene-property">visualScene (property)</a></li>
 <li><a href="#physicsworld-property">physicsWorld (property)</a></li>
 <li><a href="#audioscene-property">audioScene (property)</a></li>
+<li><a href="#loader-property">loader (property)</a></li>
 <li><a href="#worldclock-property">worldClock (property)</a></li>
 <li><a href="#keyboardinput-property">keyboardInput (property)</a></li>
+<li><a href="#localpauseallowed-property">localPauseAllowed (property)</a></li>
 <li><a href="#pausewhenhidden-property">pauseWhenHidden (property)</a></li>
 <li><a href="#visibility-property">visibility$ (property)</a></li>
 <li><a href="#fixedphysicsstep-property">fixedPhysicsStep (property)</a></li>
@@ -959,6 +983,27 @@
   factory: IAudioSourceComponentFactory&lt;D, R&gt;
   source: IAudioSourceComponent&lt;D, R&gt;
   clip: unknown
+}
+</code></pre>
+<h2 id="ggconsolehost-type-alias">GgConsoleHost (type alias)</h2>
+<p>What a world needs from the dev console (<code>GgStatic</code>, see <code>src/dev</code>) to register its commands.
+World classes are handed it through <code>window.ggstatic</code> and never import anything from <code>dev/</code>.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type GgConsoleHost = {
+  registerConsoleCommand: (
+    world: GgWorld&lt;any, any&gt; | null,
+    command: string,
+    handler: (...args: string[]) =&gt; Promise&lt;string&gt;,
+    doc?: string,
+    mutates?: boolean
+  ) =&gt; void
+  createPerformanceMeter: (
+    samples: number,
+    maxRows: number
+  ) =&gt; IEntity &amp; {
+    readonly avgReport: { totalTime: number; entries: [string, number][] }
+    readonly peakReport: { totalTime: number; entries: [string, number][] }
+  }
 }
 </code></pre>
 <h2 id="ggworld-class">GgWorld (class)</h2>
@@ -1100,15 +1145,7 @@ there is never more than one match to choose between.</p>
 </code></pre>
 <h3 id="registerconsolecommands-method">registerConsoleCommands (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">protected registerConsoleCommands(ggstatic: {
-    registerConsoleCommand: (
-      world: GgWorld&lt;any, any&gt; | null,
-      command: string,
-      handler: (...args: string[]) =&gt; Promise&lt;string&gt;,
-      doc?: string,
-      mutates?: boolean,
-    ) =&gt; void;
-  })
+<pre><code class="language-ts">protected registerConsoleCommands(ggstatic: GgConsoleHost)
 </code></pre>
 <h3 id="visualscene-property">visualScene (property)</h3>
 <p><strong>Signature</strong></p>
@@ -1122,6 +1159,13 @@ there is never more than one match to choose between.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly audioScene: SceneTypeDoc[&quot;audioScene&quot;]
 </code></pre>
+<h3 id="loader-property">loader (property)</h3>
+<p>The world's loader - assigned, and typed in full, by <code>Gg2dWorld</code>/<code>Gg3dWorld</code>. Declared here
+only as far as the base class uses it: typing it as <code>LevelLoader&lt;D, R, TypeDoc&gt;</code> makes <code>GgWorld</code>
+invariant in <code>TypeDoc</code> and breaks every <code>IEntity&lt;any, any&gt;</code> to <code>IEntity&lt;D, R, TypeDoc&gt;</code> use.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly loader: { dispose(): void; createAssetScope(): AssetScope; loadClip(url: string, options?: LoadTaskOptions | undefined): Promise&lt;any&gt;; } | undefined
+</code></pre>
 <h3 id="worldclock-property">worldClock (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly worldClock: PausableClock
@@ -1129,6 +1173,15 @@ there is never more than one match to choose between.</p>
 <h3 id="keyboardinput-property">keyboardInput (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly keyboardInput: KeyboardInput
+</code></pre>
+<h3 id="localpauseallowed-property">localPauseAllowed (property)</h3>
+<p>Whether pausing this world is a local matter. <code>false</code> means its simulation is shared with
+someone else (a network layer sets it while a session is joined), so freezing it here would
+freeze or desync it for them: UI that pauses the game on the player's behalf must leave it
+running. <code>ScreenManager</code> consults it before pausing the world of a covered screen.
+<code>pauseWorld()</code> itself does not - it stays the explicit, unconditional call.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">localPauseAllowed: boolean
 </code></pre>
 <h3 id="pausewhenhidden-property">pauseWhenHidden (property)</h3>
 <p>When <code>true</code>, this world pauses itself automatically while the document/tab is hidden

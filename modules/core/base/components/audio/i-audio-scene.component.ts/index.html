@@ -597,6 +597,13 @@ instead of every app reinventing it.</p>
   setActiveListener(target: IPositionable&lt;D, R&gt; | null): void
 
   /**
+   * Freezes (`true`) or continues (`false`) everything this scene plays, every source keeping its
+   * place. `GgWorld` calls it whenever its clock pauses or resumes, so a paused world is silent
+   * and picks its sounds up where they stopped. A scene without it keeps playing through a pause.
+   */
+  setPaused?(paused: boolean): void
+
+  /**
    * Called once per world tick, after every entity's own `tick$` (renderers included), to update
    * the native listener's position/orientation from `activeListener` and, for adapters with no
    * native distance-based panning (e.g. `packages/audio`'s 2D implementation), recompute each

@@ -522,8 +522,36 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#propsof-static-method" class="md-nav__link">
+    propsOf (static method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#loadggglbfiles-method" class="md-nav__link">
     loadGgGlbFiles (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fetchggglb-method" class="md-nav__link">
+    fetchGgGlb (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#buildggglbresources-method" class="md-nav__link">
+    buildGgGlbResources (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#acquireggglb-method" class="md-nav__link">
+    acquireGgGlb (method)
   </a>
   
 </li>
@@ -536,8 +564,15 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#loadmodel-method" class="md-nav__link">
-    loadModel (method)
+  <a href="#preloadggglb-method" class="md-nav__link">
+    preloadGgGlb (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#preloadasset-method" class="md-nav__link">
+    preloadAsset (method)
   </a>
   
 </li>
@@ -550,15 +585,8 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#filescache-property" class="md-nav__link">
-    filesCache (property)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#loadresultcache-property" class="md-nav__link">
-    loadResultCache (property)
+  <a href="#override-property" class="md-nav__link">
+    override (property)
   </a>
   
 </li>
@@ -633,12 +661,16 @@
 <ul>
 <li><a href="#utils">utils</a></li>
 <li><a href="#gg3dloader-class">Gg3dLoader (class)</a><ul>
+<li><a href="#propsof-static-method">propsOf (static method)</a></li>
 <li><a href="#loadggglbfiles-method">loadGgGlbFiles (method)</a></li>
+<li><a href="#fetchggglb-method">fetchGgGlb (method)</a></li>
+<li><a href="#buildggglbresources-method">buildGgGlbResources (method)</a></li>
+<li><a href="#acquireggglb-method">acquireGgGlb (method)</a></li>
 <li><a href="#loadggglbresources-method">loadGgGlbResources (method)</a></li>
-<li><a href="#loadmodel-method">loadModel (method)</a></li>
+<li><a href="#preloadggglb-method">preloadGgGlb (method)</a></li>
+<li><a href="#preloadasset-method">preloadAsset (method)</a></li>
 <li><a href="#loadggglb-method">loadGgGlb (method)</a></li>
-<li><a href="#filescache-property">filesCache (property)</a></li>
-<li><a href="#loadresultcache-property">loadResultCache (property)</a></li>
+<li><a href="#override-property">override (property)</a></li>
 </ul>
 </li>
 <li><a href="#glb3dsettings-interface">Glb3DSettings (interface)</a></li>
@@ -660,24 +692,64 @@ way it places primitives/triggers/cameras.</p>
   constructor(world: Gg3dWorld&lt;TypeDoc&gt;)
 }
 </code></pre>
-<h3 id="loadggglbfiles-method">loadGgGlbFiles (method)</h3>
+<h3 id="propsof-static-method">propsOf (static method)</h3>
+<p>The props/scenes a meta references, as further pairs to load.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">public async loadGgGlbFiles(path: string, useCache: boolean = false): Promise&lt;[ArrayBuffer, GgMeta]&gt;
+<pre><code class="language-ts">private static propsOf(meta: GgMeta, path: string, propsPath: string | undefined)
+</code></pre>
+<h3 id="loadggglbfiles-method">loadGgGlbFiles (method)</h3>
+<p>Fetches a <code>.glb</code>/<code>.meta</code> pair. Nothing is cached here - <code>loadGgGlb</code> is the cached entry point.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public async loadGgGlbFiles(path: string, options: LoadTaskOptions = {}): Promise&lt;[ArrayBuffer, GgMeta]&gt;
+</code></pre>
+<h3 id="fetchggglb-method">fetchGgGlb (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private async fetchGgGlb(
+    path: string,
+    item: AssetProgress,
+    signal: AbortSignal | undefined,
+  ): Promise&lt;[ArrayBuffer, GgMeta]&gt;
+</code></pre>
+<h3 id="buildggglbresources-method">buildGgGlbResources (method)</h3>
+<p>Fetches and parses a pair into display objects and bodies that own their resources.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private async buildGgGlbResources(
+    path: string,
+    item: AssetProgress,
+    signal: AbortSignal | undefined,
+  ): Promise&lt;LoadResourcesResult&lt;TypeDoc&gt;&gt;
+</code></pre>
+<h3 id="acquireggglb-method">acquireGgGlb (method)</h3>
+<p>The cached, never-spawned original of a pair - <code>loadGgGlbResources</code> hands out copies of it.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private acquireGgGlb(path: string, options: LoadTaskOptions): Promise&lt;LoadResourcesResult&lt;TypeDoc&gt;&gt;
 </code></pre>
 <h3 id="loadggglbresources-method">loadGgGlbResources (method)</h3>
+<p>Loads a <code>.glb</code>/<code>.meta</code> pair into display objects and bodies, not yet wrapped in entities. The
+pair is fetched and parsed once per world and kept in the loader's cache; every call gets its
+own copies (<code>clone()</code>) to place, which share the cached original's geometry, materials and
+collision shapes. <code>CachingStrategy.Nothing</code> skips the cache: the pair is fetched and parsed
+for this call alone, and the result owns its resources.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public async loadGgGlbResources(
     path: string,
-    cachingStrategy: CachingStrategy = CachingStrategy.Nothing,
+    cachingStrategy?: CachingStrategy,
+    options: LoadTaskOptions = {},
   ): Promise&lt;LoadResourcesResult&lt;TypeDoc&gt;&gt;
 </code></pre>
-<h3 id="loadmodel-method">loadModel (method)</h3>
-<p>Loads a plain <code>.glb</code> (no <code>.meta</code> pair - see <code>loadGgGlb</code>) via <code>visualScene.loader.loadFromGlb</code>,
-for a visual-only asset that has no physics representation of its own (a character model
-driven by a separately-created <code>CharacterController3dEntity</code>'s capsule, a decorative prop, ...).
-<code>undefined</code>/<code>null</code> if there's no visual scene to load against.</p>
+<h3 id="preloadggglb-method">preloadGgGlb (method)</h3>
+<p>Brings a pair, and with <code>loadProps</code> everything it references, into the cache.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">public async loadModel(path: string, options?: LoadGlbOptions): Promise&lt;TypeDoc['vTypeDoc']['displayObject'] | null&gt;
+<pre><code class="language-ts">private async preloadGgGlb(
+    path: string,
+    loadProps: boolean,
+    propsPath: string | undefined,
+    options: LoadTaskOptions,
+  ): Promise&lt;void&gt;
+</code></pre>
+<h3 id="preloadasset-method">preloadAsset (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">async preloadAsset(ref: AssetRef, options: LoadTaskOptions): Promise&lt;void&gt;
 </code></pre>
 <h3 id="loadggglb-method">loadGgGlb (method)</h3>
 <p>Load a GG GLB+meta pair into ready-to-add <code>Entity3d</code>s (one per rigid body the <code>.meta</code>
@@ -688,16 +760,12 @@ loading the same file repeatedly never produces colliding names.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public async loadGgGlb(
     path: string,
-    options: Partial&lt;LoadOptions&gt; = defaultLoadOptions,
+    options: Partial&lt;LoadOptions&gt; &amp; LoadTaskOptions = {},
   ): Promise&lt;LoadResultWithProps&lt;TypeDoc&gt;&gt;
 </code></pre>
-<h3 id="filescache-property">filesCache (property)</h3>
+<h3 id="override-property">override (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly filesCache: Map&lt;string, [ArrayBuffer, GgMeta] | Promise&lt;[ArrayBuffer, GgMeta]&gt;&gt;
-</code></pre>
-<h3 id="loadresultcache-property">loadResultCache (property)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly loadResultCache: Map&lt;string, LoadResourcesResult&lt;TypeDoc&gt; | Promise&lt;LoadResourcesResult&lt;TypeDoc&gt;&gt;&gt;
+<pre><code class="language-ts">override: any
 </code></pre>
 <h2 id="glb3dsettings-interface">Glb3DSettings (interface)</h2>
 <p>Settings for the built-in <code>"Glb"</code> level entity class (3D only): loads a GG GLB+meta pair via
@@ -722,8 +790,7 @@ props/scenes) grouped under one <code>GroupEntity</code>.</p>
   rotation?: Point4
 
   /**
-   * Caching strategy, see `CachingStrategy`. Defaults to `CachingStrategy.Nothing`, same as
-   * `loadGgGlb` itself.
+   * Caching strategy, see `CachingStrategy`. Cached when left out, same as `loadGgGlb` itself.
    */
   cachingStrategy?: CachingStrategy
 
@@ -746,6 +813,18 @@ props/scenes) grouped under one <code>GroupEntity</code>.</p>
   nameScope?: string | null
 
   /**
+   * Whether the loaded model casts shadows, see `LoadOptions.castShadow`. Left as authored in the
+   * file when omitted.
+   */
+  castShadow?: boolean
+
+  /**
+   * Whether the loaded model receives shadows, see `LoadOptions.receiveShadow`. Left as authored in
+   * the file when omitted.
+   */
+  receiveShadow?: boolean
+
+  /**
    * The entity's own resolved name - filled in by `LevelLoader.createEntity`/`loadLevel` (explicit
    * `EntityJson.name`, else the level-derived fallback), not meant to be set in `config`
    */
@@ -755,11 +834,8 @@ props/scenes) grouped under one <code>GroupEntity</code>.</p>
 <h2 id="loadoptions-type-alias">LoadOptions (type alias)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export type LoadOptions = {
-  // whether to cache anything
-  // &quot;Nothing&quot; does not cache anything
-  // &quot;Files&quot; caches GLB+Meta file contents
-  // &quot;Entities&quot; clones and saves parsed from GLB+Meta objects and bodies
-  cachingStrategy: CachingStrategy
+  /** See `CachingStrategy`. Cached when left out. */
+  cachingStrategy?: CachingStrategy
   // initial position
   position: Point3
   // initial rotation
@@ -785,6 +861,13 @@ props/scenes) grouped under one <code>GroupEntity</code>.</p>
    *   only to look entities up by their Blender names, and only when the file is loaded once.
    */
   nameScope?: string | null
+  /**
+   * When set, every loaded display object (including nested props) gets this `castShadow` value,
+   * see `IDisplayObject3dComponent.castShadow`. Left as authored in the file when omitted.
+   */
+  castShadow?: boolean
+  /** Same as `castShadow`, for `IDisplayObject3dComponent.receiveShadow`. */
+  receiveShadow?: boolean
 }
 </code></pre>
 <h2 id="loadresourcesresult-type-alias">LoadResourcesResult (type alias)</h2>

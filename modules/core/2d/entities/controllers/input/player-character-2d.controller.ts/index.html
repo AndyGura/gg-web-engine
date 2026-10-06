@@ -628,7 +628,7 @@ vector).</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export declare class PlayerCharacterController2d&lt;TypeDoc&gt; {
   constructor(
-    protected readonly keyboard: KeyboardInput,
+    public readonly keyboard: KeyboardInput,
     /** The character this controller drives. May be swapped/set to `null` at any time. */
     public character: CharacterController2dEntity&lt;TypeDoc&gt; | null,
     protected readonly camera: Renderer2dEntity&lt;TypeDoc['vTypeDoc']&gt;,
@@ -658,14 +658,14 @@ vector).</p>
 </code></pre>
 <h3 id="directionsinput-property">directionsInput (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly directionsInput: DirectionKeyboardInput
+<pre><code class="language-ts">readonly directionsInput: DirectionInput
 </code></pre>
 <h2 id="playercharactercontroller2doptions-type-alias">PlayerCharacterController2dOptions (type alias)</h2>
 <p>Options for configuring a <code>PlayerCharacterController2d</code>.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export type PlayerCharacterController2dOptions = {
   /** Keymap for left/right movement. `'wasd+arrows'` by default (both layouts work at once). */
-  keymap: DirectionKeyboardKeymap
+  keymap: DirectionKeymap
   /** Key code that triggers `character.jump()`. `'Space'` by default. */
   jumpKey: string
   /** Key code that sets `character.isRunning`. `'ShiftLeft'` by default. */

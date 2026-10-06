@@ -646,7 +646,7 @@
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export declare class FreeCameraController {
   constructor(
-    protected readonly keyboard: KeyboardInput,
+    public readonly keyboard: KeyboardInput,
     protected readonly camera: Renderer3dEntity,
     options: Partial&lt;FreeCameraControllerOptions&gt; = {}
   )
@@ -680,7 +680,7 @@
 <h3 id="directionsinput-property">directionsInput (property)</h3>
 <p>The keyboard input controller used for camera movement.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly directionsInput: DirectionKeyboardInput
+<pre><code class="language-ts">readonly directionsInput: DirectionInput
 </code></pre>
 <h3 id="_spherical-property">_spherical (property)</h3>
 <p><strong>Signature</strong></p>
@@ -697,7 +697,7 @@
   /**
    * A keymap for controlling camera movement, where each key corresponds to a movement direction. 'wasd' by default
    */
-  keymap: DirectionKeyboardKeymap
+  keymap: DirectionKeymap
   /**
    * The speed of camera movement in meters per second. 20 by default
    */
@@ -723,7 +723,8 @@
    */
   ignoreMouseUnlessPointerLocked: boolean
   /**
-   * Flag to ignore keyboard events if pointer was not locked. false by default
+   * Flag to ignore keyboard events if pointer was not locked. false by default. Always ignored on a
+   * touch device, like `ignoreMouseUnlessPointerLocked`
    */
   ignoreKeyboardUnlessPointerLocked: boolean
   /**

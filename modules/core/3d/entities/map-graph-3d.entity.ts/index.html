@@ -605,6 +605,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#dispose-method" class="md-nav__link">
+    dispose (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#disposechunk-method" class="md-nav__link">
     disposeChunk (method)
   </a>
@@ -656,6 +663,13 @@
           <li class="md-nav__item">
   <a href="#loadclock-property" class="md-nav__link">
     loadClock (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#override-property" class="md-nav__link">
+    override (property)
   </a>
   
 </li>
@@ -715,6 +729,7 @@
 <li><a href="#loadchunk-method">loadChunk (method)</a></li>
 <li><a href="#attachtochunk-method">attachToChunk (method)</a></li>
 <li><a href="#detachfromchunk-method">detachFromChunk (method)</a></li>
+<li><a href="#dispose-method">dispose (method)</a></li>
 <li><a href="#disposechunk-method">disposeChunk (method)</a></li>
 <li><a href="#tickorder-property">tickOrder (property)</a></li>
 <li><a href="#loadercursor-property">loaderCursor$ (property)</a></li>
@@ -723,6 +738,7 @@
 <li><a href="#mapgraphnodes-property">mapGraphNodes (property)</a></li>
 <li><a href="#options-property">options (property)</a></li>
 <li><a href="#loadclock-property">loadClock (property)</a></li>
+<li><a href="#override-property">override (property)</a></li>
 </ul>
 </li>
 <li><a href="#mapgraphnodetype-type-alias">MapGraphNodeType (type alias)</a></li>
@@ -802,6 +818,10 @@ follow a chunk's lifecycle again, or remove it yourself.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public detachFromChunk(entities: (IEntity &amp; IPositionable3d)[]): (IEntity &amp; IPositionable3d)[]
 </code></pre>
+<h3 id="dispose-method">dispose (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">dispose(): void
+</code></pre>
 <h3 id="disposechunk-method">disposeChunk (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">protected disposeChunk(node: MapGraphNodeType)
@@ -833,6 +853,10 @@ follow a chunk's lifecycle again, or remove it yourself.</p>
 <h3 id="loadclock-property">loadClock (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">loadClock: PausableClock | null
+</code></pre>
+<h3 id="override-property">override (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">override: any
 </code></pre>
 <h2 id="mapgraphnodetype-type-alias">MapGraphNodeType (type alias)</h2>
 <p><strong>Signature</strong></p>

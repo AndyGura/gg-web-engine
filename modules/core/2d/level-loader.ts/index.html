@@ -536,6 +536,20 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#loadtexture-method" class="md-nav__link">
+    loadTexture (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#preloadasset-method" class="md-nav__link">
+    preloadAsset (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#registerdefaultclasses-method" class="md-nav__link">
     registerDefaultClasses (method)
   </a>
@@ -601,6 +615,13 @@
           <li class="md-nav__item">
   <a href="#createsound-method" class="md-nav__link">
     createSound (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#override-property" class="md-nav__link">
+    override (property)
   </a>
   
 </li>
@@ -691,6 +712,8 @@
 <li><a href="#compoundchild2dsettings-interface">CompoundChild2DSettings (interface)</a></li>
 <li><a href="#environment2dsettings-interface">Environment2DSettings (interface)</a></li>
 <li><a href="#gg2dlevelloader-class">Gg2dLevelLoader (class)</a><ul>
+<li><a href="#loadtexture-method">loadTexture (method)</a></li>
+<li><a href="#preloadasset-method">preloadAsset (method)</a></li>
 <li><a href="#registerdefaultclasses-method">registerDefaultClasses (method)</a></li>
 <li><a href="#serializeprimitive-method">serializePrimitive (method)</a></li>
 <li><a href="#serializetrigger-method">serializeTrigger (method)</a></li>
@@ -701,6 +724,7 @@
 <li><a href="#createparallaxlayer-method">createParallaxLayer (method)</a></li>
 <li><a href="#createenvironment-method">createEnvironment (method)</a></li>
 <li><a href="#createsound-method">createSound (method)</a></li>
+<li><a href="#override-property">override (property)</a></li>
 </ul>
 </li>
 <li><a href="#parallaxlayer2dsettings-interface">ParallaxLayer2DSettings (interface)</a></li>
@@ -747,6 +771,21 @@ dispatches <code>LevelJson</code> entities to them (or to custom classes registe
 <pre><code class="language-ts">export declare class Gg2dLevelLoader&lt;TypeDoc&gt; {
   constructor(protected readonly world: Gg2dWorld&lt;TypeDoc&gt;)
 }
+</code></pre>
+<h3 id="loadtexture-method">loadTexture (method)</h3>
+<p>Loads an image as a texture, for <code>DisplayObject2dOpts.texture</code>, a parallax layer or a
+background. Cached: the same url with the same options gives the same texture object, freed
+when the last scope holding it is released (see <code>LoadTaskOptions.scope</code>) - don't dispose it
+yourself.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public async loadTexture(
+    url: string,
+    options: TextureOptions &amp; LoadTaskOptions = {},
+  ): Promise&lt;TypeDoc['vTypeDoc']['texture']&gt;
+</code></pre>
+<h3 id="preloadasset-method">preloadAsset (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">async preloadAsset(ref: AssetRef, options: LoadTaskOptions): Promise&lt;void&gt;
 </code></pre>
 <h3 id="registerdefaultclasses-method">registerDefaultClasses (method)</h3>
 <p>Register the built-in classes for primitives and triggers</p>
@@ -814,6 +853,7 @@ settings in a <code>ParallaxLayer2dEntity</code>. Returns <code>undefined</code>
 <pre><code class="language-ts">private async createParallaxLayer(
     world: Gg2dWorld&lt;TypeDoc&gt;,
     settings: ParallaxLayer2DSettings,
+    load: LoadTaskOptions = {},
   ): Promise&lt;ParallaxLayer2dEntity&lt;TypeDoc['vTypeDoc']&gt; | undefined&gt;
 </code></pre>
 <h3 id="createenvironment-method">createEnvironment (method)</h3>
@@ -824,6 +864,7 @@ without a visual scene.</p>
 <pre><code class="language-ts">private async createEnvironment(
     world: Gg2dWorld&lt;TypeDoc&gt;,
     settings: Environment2DSettings,
+    load: LoadTaskOptions = {},
   ): Promise&lt;Environment2dEntity&lt;TypeDoc['vTypeDoc']&gt; | undefined&gt;
 </code></pre>
 <h3 id="createsound-method">createSound (method)</h3>
@@ -832,7 +873,12 @@ without a visual scene.</p>
 <pre><code class="language-ts">private async createSound(
     world: Gg2dWorld&lt;TypeDoc&gt;,
     settings: Sound2DSettings,
+    load: LoadTaskOptions = {},
   ): Promise&lt;AudioSource2dEntity&lt;TypeDoc&gt; | undefined&gt;
+</code></pre>
+<h3 id="override-property">override (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">override: any
 </code></pre>
 <h2 id="parallaxlayer2dsettings-interface">ParallaxLayer2DSettings (interface)</h2>
 <p>Settings for the built-in 2D <code>"ParallaxLayer"</code> class - <code>ParallaxLayer2dOpts</code>, with the texture

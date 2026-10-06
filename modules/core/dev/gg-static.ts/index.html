@@ -543,6 +543,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#createperformancemeter-method" class="md-nav__link">
+    createPerformanceMeter (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#deregisterconsolecommand-method" class="md-nav__link">
     deregisterConsoleCommand (method)
   </a>
@@ -622,6 +629,7 @@
 <li><a href="#toggledevconsole-method">toggleDevConsole (method)</a></li>
 <li><a href="#autoassignselectedworld-method">autoAssignSelectedWorld (method)</a></li>
 <li><a href="#registerconsolecommand-method">registerConsoleCommand (method)</a></li>
+<li><a href="#createperformancemeter-method">createPerformanceMeter (method)</a></li>
 <li><a href="#deregisterconsolecommand-method">deregisterConsoleCommand (method)</a></li>
 <li><a href="#deregisterworldcommands-method">deregisterWorldCommands (method)</a></li>
 <li><a href="#console-method">console (method)</a></li>
@@ -657,6 +665,12 @@
     doc?: string,
     mutates?: boolean,
   ): void
+</code></pre>
+<h3 id="createperformancemeter-method">createPerformanceMeter (method)</h3>
+<p>Builds the entity the <code>performance</code> console command measures a world with. World classes reach
+it through <code>window.ggstatic</code> instead of importing it, so nothing outside <code>dev/</code> depends on it.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public createPerformanceMeter(samples: number, maxRows: number): PerformanceMeterEntity
 </code></pre>
 <h3 id="deregisterconsolecommand-method">deregisterConsoleCommand (method)</h3>
 <p>Remove one command registered via {@link registerConsoleCommand}; a no-op if it isn't registered.</p>

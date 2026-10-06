@@ -543,6 +543,20 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#addchild-method" class="md-nav__link">
+    addChild (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#removechild-method" class="md-nav__link">
+    removeChild (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#isempty-method" class="md-nav__link">
     isEmpty (method)
   </a>
@@ -612,8 +626,22 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#resourceownership-property" class="md-nav__link">
+    resourceOwnership (property)
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#materialtextures" class="md-nav__link">
+    materialTextures
+  </a>
   
 </li>
         
@@ -650,6 +678,8 @@
 <li><a href="#enablerenderlayer-method">enableRenderLayer (method)</a></li>
 <li><a href="#disablerenderlayer-method">disableRenderLayer (method)</a></li>
 <li><a href="#isrenderlayerenabled-method">isRenderLayerEnabled (method)</a></li>
+<li><a href="#addchild-method">addChild (method)</a></li>
+<li><a href="#removechild-method">removeChild (method)</a></li>
 <li><a href="#isempty-method">isEmpty (method)</a></li>
 <li><a href="#popchild-method">popChild (method)</a></li>
 <li><a href="#getboundings-method">getBoundings (method)</a></li>
@@ -660,8 +690,10 @@
 <li><a href="#disposemesh-method">disposeMesh (method)</a></li>
 <li><a href="#entity-property">entity (property)</a></li>
 <li><a href="#materialoptions-property">materialOptions (property)</a></li>
+<li><a href="#resourceownership-property">resourceOwnership (property)</a></li>
 </ul>
 </li>
+<li><a href="#materialtextures">materialTextures</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
@@ -682,6 +714,14 @@
 <h3 id="isrenderlayerenabled-method">isRenderLayerEnabled (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public isRenderLayerEnabled(layer: RenderLayer): boolean
+</code></pre>
+<h3 id="addchild-method">addChild (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public addChild(child: ThreeDisplayObjectComponent): void
+</code></pre>
+<h3 id="removechild-method">removeChild (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public removeChild(child: ThreeDisplayObjectComponent): void
 </code></pre>
 <h3 id="isempty-method">isEmpty (method)</h3>
 <p><strong>Signature</strong></p>
@@ -726,6 +766,24 @@ built any other way (e.g. a loaded <code>.glb</code>), which is the reason this 
 hard implementation of that interface - check with <code>isMaterialReadable3d</code> before relying on it.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly materialOptions: DisplayObject3dOpts&lt;Texture&lt;unknown, TextureEventMap&gt;&gt; | undefined
+</code></pre>
+<h3 id="resourceownership-property">resourceOwnership (property)</h3>
+<p>What <code>dispose()</code> frees:</p>
+<ul>
+<li><code>'meshes'</code> (default): the geometry and materials of every mesh in <code>nativeMesh</code>. Textures are
+  left alone - a primitive's <code>diffuse</code> texture belongs to whoever loaded it.</li>
+<li><code>'all'</code>: the materials' textures as well. Set by <code>ThreeLoader</code> on a loaded model, whose
+  textures came with the file and have no other owner.</li>
+<li><code>'none'</code>: nothing. A <code>clone()</code> shares geometry, materials and textures with its source, which
+  stays the one to free them.</li>
+</ul>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">resourceOwnership: 'meshes' | 'all' | 'none'
+</code></pre>
+<h2 id="materialtextures">materialTextures</h2>
+<p>Every texture a material references (its maps), found by value rather than by a list of names.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export declare function materialTextures(material: Material): Texture[]
 </code></pre>
 
 

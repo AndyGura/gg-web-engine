@@ -661,15 +661,15 @@
 <p>The player's input+camera controller: WASD/arrows/both movement, sprint, crouch and jump keys,
 and mouse-look driving a first- or third-person camera - all layered on top of a plain
 <code>CharacterController3dEntity</code>, which owns the actual movement/gravity/jump physics. Mirrors
-<code>GgCarKeyboardHandlingController</code> (input entity driving a separate physics entity) crossed with
-<code>FreeCameraController</code> (mouse-look + pointer lock via the same <code>MouseInput</code>/<code>DirectionKeyboardInput</code>
+<code>GgCarHandlingController</code> (input entity driving a separate physics entity) crossed with
+<code>FreeCameraController</code> (mouse-look + pointer lock via the same <code>MouseInput</code>/<code>DirectionInput</code>
 primitives).</p>
 <p>The character's yaw always follows the camera's yaw (mouse-look), in both view modes - <code>WASD</code>
 movement is relative to that facing.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export declare class PlayerCharacterController&lt;TypeDoc&gt; {
   constructor(
-    protected readonly keyboard: KeyboardInput,
+    public readonly keyboard: KeyboardInput,
     /** The character this controller drives. May be swapped/set to `null` at any time. */
     public character: CharacterController3dEntity&lt;TypeDoc&gt; | null,
     protected readonly camera: Renderer3dEntity&lt;TypeDoc['vTypeDoc']&gt;,
@@ -717,14 +717,14 @@ the exact same <code>minPitch</code>/<code>maxPitch</code> bounds instead of mai
 </code></pre>
 <h3 id="directionsinput-property">directionsInput (property)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly directionsInput: DirectionKeyboardInput
+<pre><code class="language-ts">readonly directionsInput: DirectionInput
 </code></pre>
 <h2 id="playercharactercontrolleroptions-type-alias">PlayerCharacterControllerOptions (type alias)</h2>
 <p>Options for configuring a <code>PlayerCharacterController</code>.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export type PlayerCharacterControllerOptions = {
   /** Keymap for walk/strafe direction. 'wasd+arrows' by default (both layouts work at once). */
-  keymap: DirectionKeyboardKeymap
+  keymap: DirectionKeymap
   /** Key code that triggers `character.jump()`. 'Space' by default. */
   jumpKey: string
   /** Key code that sets `character.isRunning`. 'ShiftLeft' by default. */

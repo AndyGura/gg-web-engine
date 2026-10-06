@@ -529,6 +529,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#emulatemove-method" class="md-nav__link">
+    emulateMove (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#startinternal-method" class="md-nav__link">
     startInternal (method)
   </a>
@@ -592,6 +599,7 @@
 <li><a href="#utils">utils</a></li>
 <li><a href="#mouseinput-class">MouseInput (class)</a><ul>
 <li><a href="#istouchdevice-static-method">isTouchDevice (static method)</a></li>
+<li><a href="#emulatemove-method">emulateMove (method)</a></li>
 <li><a href="#startinternal-method">startInternal (method)</a></li>
 <li><a href="#stopinternal-method">stopInternal (method)</a></li>
 <li><a href="#canvasclicklistener-method">canvasClickListener (method)</a></li>
@@ -609,8 +617,17 @@
 }
 </code></pre>
 <h3 id="istouchdevice-static-method">isTouchDevice (static method)</h3>
+<p>Whether the device is operated by touch: there is no pointer lock on it, and its view is turned
+by dragging a finger.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">static isTouchDevice(): boolean
+</code></pre>
+<h3 id="emulatemove-method">emulateMove (method)</h3>
+<p>Emulates a pointer movement: <code>delta</code> is emitted through <code>delta$</code> as if the mouse had moved by
+that many pixels. For anything else that turns a view (an on-screen look pad or stick, a
+gamepad). Ignored while the input is not running.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">emulateMove(delta: Point2): void
 </code></pre>
 <h3 id="startinternal-method">startInternal (method)</h3>
 <p><strong>Signature</strong></p>

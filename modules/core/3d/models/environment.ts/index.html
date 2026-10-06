@@ -565,8 +565,6 @@
 
 
 <h2 id="environment-overview">environment overview</h2>
-<p>Fog fading distant objects into <code>color</code>. <code>LINEAR</code> fog starts at <code>near</code> and is opaque at <code>far</code>;
-<code>EXPONENTIAL</code> fog thickens with distance at the given <code>density</code>.</p>
 <hr />
 <h2 class="text-delta">Table of contents</h2>
 
@@ -624,15 +622,22 @@ towards <code>+Z</code>; the top edge of <code>pz</code> is towards <code>+Y</co
   | { type: 'EXPONENTIAL'; color: number; density: number }
 </code></pre>
 <h2 id="loadtextureoptions-type-alias">LoadTextureOptions (type alias)</h2>
-<p>Options for <code>IDisplayObject3dComponentLoader.loadTexture</code>.</p>
+<p>Options for <code>IDisplayObject3dComponentLoader.loadTexture</code> and
+<code>IDisplayObject3dComponentFactory.createTextureFromCanvas</code>.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type LoadTextureOptions = {
+<pre><code class="language-ts">export type LoadTextureOptions = TextureOptions &amp; {
   /**
    * How the texture is projected. `'uv'` (default) is an ordinary texture for a mesh's `diffuse`;
    * `'equirectangular'` is a 2:1 panorama usable as `Environment3dOpts.background`/`environmentMap`,
    * with its horizon along the world's horizontal (XY) plane.
    */
   mapping?: 'uv' | 'equirectangular'
+  /**
+   * How many times the texture tiles across a surface along each UV axis, e.g. `{ x: 5, y: 5 }` to
+   * cover a big floor with a small tile. Setting it makes the texture wrap around (repeat) instead
+   * of stretching its edge pixels. Default `{ x: 1, y: 1 }`.
+   */
+  repeat?: Point2
 }
 </code></pre>
 

@@ -514,6 +514,13 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#entityclassoptions-type-alias" class="md-nav__link">
+    EntityClassOptions (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#entityeventbinding-type-alias" class="md-nav__link">
     EntityEventBinding (type alias)
   </a>
@@ -557,6 +564,48 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#createassetscope-method" class="md-nav__link">
+    createAssetScope (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dispose-method" class="md-nav__link">
+    dispose (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#loadclip-method" class="md-nav__link">
+    loadClip (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#preload-method" class="md-nav__link">
+    preload (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#preloadasset-method" class="md-nav__link">
+    preloadAsset (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#acquireasset-method" class="md-nav__link">
+    acquireAsset (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#registerclass-method" class="md-nav__link">
     registerClass (method)
   </a>
@@ -587,6 +636,20 @@
           <li class="md-nav__item">
   <a href="#createentity-method" class="md-nav__link">
     createEntity (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#entitysettings-method" class="md-nav__link">
+    entitySettings (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#collectlevelassets-method" class="md-nav__link">
+    collectLevelAssets (method)
   </a>
   
 </li>
@@ -682,6 +745,13 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#assetcache-property" class="md-nav__link">
+    assetCache (property)
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -723,17 +793,26 @@
 
 <ul>
 <li><a href="#utils">utils</a></li>
+<li><a href="#entityclassoptions-type-alias">EntityClassOptions (type alias)</a></li>
 <li><a href="#entityeventbinding-type-alias">EntityEventBinding (type alias)</a></li>
 <li><a href="#entitygenerator-type-alias">EntityGenerator (type alias)</a></li>
 <li><a href="#entityjson-interface">EntityJson (interface)</a></li>
 <li><a href="#entityserializer-type-alias">EntitySerializer (type alias)</a></li>
 <li><a href="#leveljson-interface">LevelJson (interface)</a></li>
 <li><a href="#levelloader-class">LevelLoader (class)</a><ul>
+<li><a href="#createassetscope-method">createAssetScope (method)</a></li>
+<li><a href="#dispose-method">dispose (method)</a></li>
+<li><a href="#loadclip-method">loadClip (method)</a></li>
+<li><a href="#preload-method">preload (method)</a></li>
+<li><a href="#preloadasset-method">preloadAsset (method)</a></li>
+<li><a href="#acquireasset-method">acquireAsset (method)</a></li>
 <li><a href="#registerclass-method">registerClass (method)</a></li>
 <li><a href="#registerblueprintnode-method">registerBlueprintNode (method)</a></li>
 <li><a href="#registerserializer-method">registerSerializer (method)</a></li>
 <li><a href="#registerliveserializer-method">registerLiveSerializer (method)</a></li>
 <li><a href="#createentity-method">createEntity (method)</a></li>
+<li><a href="#entitysettings-method">entitySettings (method)</a></li>
+<li><a href="#collectlevelassets-method">collectLevelAssets (method)</a></li>
 <li><a href="#serializeentity-method">serializeEntity (method)</a></li>
 <li><a href="#buildentityjson-method">buildEntityJson (method)</a></li>
 <li><a href="#serializelevel-method">serializeLevel (method)</a></li>
@@ -747,12 +826,28 @@
 <li><a href="#blueprintnodedefaultinputs-property">blueprintNodeDefaultInputs (property)</a></li>
 <li><a href="#serializers-property">serializers (property)</a></li>
 <li><a href="#liveserializers-property">liveSerializers (property)</a></li>
+<li><a href="#assetcache-property">assetCache (property)</a></li>
 </ul>
 </li>
 <li><a href="#liveentityserializer-type-alias">LiveEntitySerializer (type alias)</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
+<h2 id="entityclassoptions-type-alias">EntityClassOptions (type alias)</h2>
+<p>Options of {@link LevelLoader.registerClass}.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type EntityClassOptions&lt;Settings = any&gt; = {
+  /** The concrete entity constructor the generator produces - see `registerClass`. */
+  entityClass?: Function
+  /**
+   * The assets an entity of this class loads, from its settings. `loadLevel` collects them from
+   * every entity of a level and loads them together, in parallel, before building anything, so
+   * the level's progress knows its total from the start. Without it the class still works: what
+   * its generator loads is counted from the moment the generator asks for it.
+   */
+  assets?: (settings: Settings) =&gt; AssetRef[]
+}
+</code></pre>
 <h2 id="entityeventbinding-type-alias">EntityEventBinding (type alias)</h2>
 <p>What an <code>EntityJson.events</code> entry runs. Either:</p>
 <ul>
@@ -784,7 +879,7 @@ result discarded - see {@link LevelLoader.loadLevel}.</p>
   TypeDoc extends GgWorldTypeDocRepo&lt;D, R&gt;,
   Settings = any,
   W = GgWorld&lt;D, R, TypeDoc&gt;
-&gt; = (world: W, settings: Settings) =&gt; any
+&gt; = (world: W, settings: Settings, load: LoadTaskOptions) =&gt; any
 </code></pre>
 <h2 id="entityjson-interface">EntityJson (interface)</h2>
 <p>JSON description of a single entity in a level. <code>position</code>/<code>rotation</code> are left untyped here
@@ -900,13 +995,52 @@ returns anything other than an <code>IEntity</code> (including <code>null</code>
   constructor(protected readonly world: GgWorld&lt;D, R, TypeDoc&gt;)
 }
 </code></pre>
+<h3 id="createassetscope-method">createAssetScope (method)</h3>
+<p>Creates a holder for loaded assets: pass it as <code>scope</code> to any load, and call <code>release()</code> once
+what was loaded is no longer needed. <code>loadLevel</code> does this by itself for a level.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public createAssetScope(): AssetScope
+</code></pre>
+<h3 id="dispose-method">dispose (method)</h3>
+<p>Frees every cached asset. Called by the world when it is disposed.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public dispose(): void
+</code></pre>
+<h3 id="loadclip-method">loadClip (method)</h3>
+<p>Loads an audio clip for <code>audioScene.factory.createSource</code>.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public async loadClip(url: string, options: LoadTaskOptions = {}): Promise&lt;TypeDoc['aTypeDoc']['clip']&gt;
+</code></pre>
+<h3 id="preload-method">preload (method)</h3>
+<p>Loads assets ahead of use, in parallel, under one progress. A later load of the same asset
+through this loader finds it cached. An asset kind the world has no scene for (a clip without
+an audio scene, a model without a visual scene) is skipped.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public async preload(refs: AssetRef[], options: LoadTaskOptions = {}): Promise&lt;void&gt;
+</code></pre>
+<h3 id="preloadasset-method">preloadAsset (method)</h3>
+<p>Loads one {@link AssetRef}. Subclasses add the kinds of their dimension.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">protected async preloadAsset(ref: AssetRef, options: LoadTaskOptions): Promise&lt;void&gt;
+</code></pre>
+<h3 id="acquireasset-method">acquireAsset (method)</h3>
+<p>The cache access shared by every loader method: returns the asset under <code>key</code>, running <code>load</code>
+(with a progress reporter for it) when it is not cached, and reports the asset complete.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">protected async acquireAsset&lt;T&gt;(
+    key: string,
+    url: string,
+    options: LoadTaskOptions,
+    load: (item: AssetProgress) =&gt; Promise&lt;{ value: T; dispose?: () =&gt; void }&gt;,
+  ): Promise&lt;T&gt;
+</code></pre>
 <h3 id="registerclass-method">registerClass (method)</h3>
 <p>Register a generator function for a class alias</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public registerClass&lt;Settings, W = any&gt;(
     classAlias: string,
     generator: EntityGenerator&lt;D, R, TypeDoc, Settings, W&gt;,
-    entityClass?: Function,
+    entityClass?: Function | EntityClassOptions&lt;Settings&gt;,
   ): void
 </code></pre>
 <h3 id="registerblueprintnode-method">registerBlueprintNode (method)</h3>
@@ -919,6 +1053,7 @@ types within a blueprint graph, rather than entity classes within a level).</p>
     typeAlias: string,
     factory: BlueprintNodeFactory&lt;D, R, TypeDoc&gt;,
     defaultInputPin?: string,
+    assets?: (settings: Record&lt;string, any&gt;) =&gt; AssetRef[],
   ): void
 </code></pre>
 <h3 id="registerserializer-method">registerSerializer (method)</h3>
@@ -973,7 +1108,20 @@ parenting bindings under the level's group itself.</p>
     entityJson: EntityJson,
     defaultName?: string,
     blueprints?: Record&lt;string, BlueprintJson&gt;,
+    load: LoadTaskOptions = {},
   ): Promise&lt;IEntity&lt;D, R, TypeDoc&gt; | undefined&gt;
+</code></pre>
+<h3 id="entitysettings-method">entitySettings (method)</h3>
+<p>The settings object a generator (and an <code>assets</code> hook) receives for <code>entityJson</code>.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private entitySettings(entityJson: EntityJson, name: string | undefined): Record&lt;string, any&gt;
+</code></pre>
+<h3 id="collectlevelassets-method">collectLevelAssets (method)</h3>
+<p>Every asset the entities and blueprints of <code>levelJson</code> declare through their <code>assets</code> hooks
+(see {@link EntityClassOptions.assets}, {@link registerBlueprintNode}). A hook that throws on
+settings its generator would reject anyway is skipped, leaving the error to the generator.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public collectLevelAssets(levelJson: LevelJson, levelName: string = ''): AssetRef[]
 </code></pre>
 <h3 id="serializeentity-method">serializeEntity (method)</h3>
 <p>Turn a live entity back into the <code>EntityJson</code>-shaped descriptor that could reproduce it via
@@ -1053,7 +1201,11 @@ else either peer has spawned. <code>levelName</code> must therefore be both requ
 loaded <em>instance</em> (loading the same level twice - e.g. two copies of one room - needs two
 distinct <code>levelName</code>s, the same way two <code>GroupEntity</code>s can't otherwise be told apart by name).</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">public async loadLevel(levelJson: LevelJson, levelName: string): Promise&lt;GroupEntity&lt;D, R, TypeDoc&gt;&gt;
+<pre><code class="language-ts">public async loadLevel(
+    levelJson: LevelJson,
+    levelName: string,
+    options: LoadTaskOptions = {},
+  ): Promise&lt;GroupEntity&lt;D, R, TypeDoc&gt;&gt;
 </code></pre>
 <h3 id="bindevent-method">bindEvent (method)</h3>
 <p>Resolve <code>eventBinding</code> (see {@link EntityEventBinding}) to a <code>BlueprintJson</code>, instantiate a
@@ -1099,7 +1251,11 @@ powers the <code>EntityEventBinding</code> shorthand that skips declaring a <cod
 <p>Fetch a level JSON document hosted at <code>url</code> and load it, so a whole level/scene can be
 shipped and consumed as a single static JSON file.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">public async loadLevelFromUrl(url: string, levelName: string): Promise&lt;GroupEntity&lt;D, R, TypeDoc&gt;&gt;
+<pre><code class="language-ts">public async loadLevelFromUrl(
+    url: string,
+    levelName: string,
+    options: LoadTaskOptions = {},
+  ): Promise&lt;GroupEntity&lt;D, R, TypeDoc&gt;&gt;
 </code></pre>
 <h3 id="generators-property">generators (property)</h3>
 <p>Map of class aliases to generator functions</p>
@@ -1127,6 +1283,13 @@ with one - see {@link registerBlueprintNode}.</p>
 see {@link registerLiveSerializer}.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">liveSerializers: LiveEntitySerializer &lt; D, R, TypeDoc &gt; []
+</code></pre>
+<h3 id="assetcache-property">assetCache (property)</h3>
+<p>This world's asset cache: every asset loaded through this loader is kept here, shared by
+concurrent and repeated loads, and freed when the last {@link AssetScope} holding it is
+released (or with the world).</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly assetCache: AssetCache
 </code></pre>
 <h2 id="liveentityserializer-type-alias">LiveEntitySerializer (type alias)</h2>
 <p>Reconstructs an <code>EntityJson</code> by reading an entity's own <em>current</em> live state - not an echo of
