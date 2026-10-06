@@ -1,6 +1,6 @@
 ---
 title: core/2d/loader.ts
-nav_order: 41
+nav_order: 42
 parent: Modules
 ---
 

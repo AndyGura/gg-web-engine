@@ -1,6 +1,6 @@
 ---
 title: core/3d/level-loader.ts
-nav_order: 88
+nav_order: 90
 parent: Modules
 ---
 
@@ -16,6 +16,12 @@ parent: Modules
   - [Environment3DSettings (interface)](#environment3dsettings-interface)
   - [EnvironmentTexture3DSettings (type alias)](#environmenttexture3dsettings-type-alias)
   - [Gg3dLevelLoader (class)](#gg3dlevelloader-class)
+    - [loadTexture (method)](#loadtexture-method)
+    - [loadCubeTexture (method)](#loadcubetexture-method)
+    - [loadModel (method)](#loadmodel-method)
+    - [acquireModel (method)](#acquiremodel-method)
+    - [visualLoader (method)](#visualloader-method)
+    - [preloadAsset (method)](#preloadasset-method)
     - [registerDefaultClasses (method)](#registerdefaultclasses-method)
     - [serializeLight (method)](#serializelight-method)
     - [serializePrimitive (method)](#serializeprimitive-method)
@@ -31,6 +37,7 @@ parent: Modules
     - [resolveWheelDisplay (method)](#resolvewheeldisplay-method)
     - [createGgCar (method)](#createggcar-method)
     - [createMapGraph (method)](#createmapgraph-method)
+    - [override (property)](#override-property)
   - [GgCar3DCommonSettings (interface)](#ggcar3dcommonsettings-interface)
   - [GgCar3DSettings (type alias)](#ggcar3dsettings-type-alias)
   - [GgCarAxleSettings (type alias)](#ggcaraxlesettings-type-alias)
@@ -155,6 +162,82 @@ and dispatches `LevelJson` entities to them (or to custom classes registered via
 export declare class Gg3dLevelLoader<TypeDoc> {
   constructor(protected readonly world: Gg3dWorld<TypeDoc>)
 }
+```
+
+### loadTexture (method)
+
+Loads an image as a texture, e.g. for `DisplayObject3dOpts.diffuse`, or, with
+`{ mapping: 'equirectangular' }`, a panorama for `IVisualScene3dComponent.setEnvironment`.
+Cached: the same url with the same options gives the same texture object, freed when the last
+scope holding it is released (see `LoadTaskOptions.scope`) - don't dispose it yourself.
+
+**Signature**
+
+```ts
+public async loadTexture(
+    url: string,
+    options: LoadTextureOptions & LoadTaskOptions = {},
+  ): Promise<TypeDoc['vTypeDoc']['texture']>
+```
+
+### loadCubeTexture (method)
+
+Loads a six-image cube-map sky for `IVisualScene3dComponent.setEnvironment`. Cached and freed
+like `loadTexture`.
+
+**Signature**
+
+```ts
+public async loadCubeTexture(
+    faces: CubeTextureFaces,
+    options: LoadTaskOptions = {},
+  ): Promise<TypeDoc['vTypeDoc']['texture']>
+```
+
+### loadModel (method)
+
+Loads a plain `.glb` (no `.meta` pair - see `loadGgGlb`) via `visualScene.loader.loadFromGlb`,
+for a visual-only asset that has no physics representation of its own (a character model
+driven by a separately-created `CharacterController3dEntity`'s capsule, a decorative prop, ...).
+The file is fetched and parsed once per world; every call returns its own copy to place
+(`IDisplayObjectComponent.clone`). `undefined`/`null` if there's no visual scene to load against.
+
+**Signature**
+
+```ts
+public async loadModel(
+    path: string,
+    options: LoadGlbOptions & LoadTaskOptions = {},
+  ): Promise<TypeDoc['vTypeDoc']['displayObject'] | null>
+```
+
+### acquireModel (method)
+
+The cached, never-shown original of a `loadModel` asset.
+
+**Signature**
+
+```ts
+private async acquireModel(
+    path: string,
+    options: LoadGlbOptions & LoadTaskOptions,
+  ): Promise<TypeDoc['vTypeDoc']['displayObject'] | null>
+```
+
+### visualLoader (method)
+
+**Signature**
+
+```ts
+private visualLoader(): NonNullable<Gg3dWorld<TypeDoc>['visualScene']>['loader']
+```
+
+### preloadAsset (method)
+
+**Signature**
+
+```ts
+async preloadAsset(ref: AssetRef, options: LoadTaskOptions): Promise<void>
 ```
 
 ### registerDefaultClasses (method)
@@ -311,6 +394,7 @@ disposed. Returns `undefined` without a visual scene.
 private async createEnvironment(
     world: Gg3dWorld<TypeDoc>,
     settings: Environment3DSettings,
+    load: LoadTaskOptions = {},
   ): Promise<Environment3dEntity<TypeDoc['vTypeDoc']> | undefined>
 ```
 
@@ -327,6 +411,7 @@ the resulting source in a ready-to-use `AudioSource3dEntity`, statically positio
 private async createSound(
     world: Gg3dWorld<TypeDoc>,
     settings: Sound3DSettings,
+    load: LoadTaskOptions = {},
   ): Promise<AudioSource3dEntity<TypeDoc> | undefined>
 ```
 
@@ -343,6 +428,7 @@ invisible otherwise). See `Player3DSettings`'s doc for why this doesn't also bui
 private async createPlayer(
     world: Gg3dWorld<TypeDoc>,
     settings: Player3DSettings,
+    load: LoadTaskOptions = {},
   ): Promise<CharacterController3dEntity<TypeDoc> | undefined>
 ```
 
@@ -387,6 +473,14 @@ loaded - see `gg-engine-level-json`'s "MapGraph" section.
 
 ```ts
 private createMapGraph(world: Gg3dWorld<TypeDoc>, settings: MapGraph3DSettings): MapGraph3dEntity<TypeDoc>
+```
+
+### override (property)
+
+**Signature**
+
+```ts
+override: any
 ```
 
 ## GgCar3DCommonSettings (interface)

@@ -536,6 +536,27 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#paint-method" class="md-nav__link">
+    paint (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#texturedsprite-method" class="md-nav__link">
+    texturedSprite (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#createnativeprimitive-method" class="md-nav__link">
+    createNativePrimitive (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#createanimatedsprite-method" class="md-nav__link">
     createAnimatedSprite (method)
   </a>
@@ -552,6 +573,55 @@
           <li class="md-nav__item">
   <a href="#loadtexture-method" class="md-nav__link">
     loadTexture (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#texturefromdata-method" class="md-nav__link">
+    textureFromData (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decodesvg-method" class="md-nav__link">
+    decodeSvg (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#disposetexture-method" class="md-nav__link">
+    disposeTexture (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#prepare-method" class="md-nav__link">
+    prepare (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#createtexturefromcanvas-method" class="md-nav__link">
+    createTextureFromCanvas (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#createtext-method" class="md-nav__link">
+    createText (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#applytextureoptions-method" class="md-nav__link">
+    applyTextureOptions (method)
   </a>
   
 </li>
@@ -607,9 +677,19 @@
 <li><a href="#pixidisplayobject3dopts-type-alias">PixiDisplayObject3dOpts (type alias)</a></li>
 <li><a href="#pixifactory-class">PixiFactory (class)</a><ul>
 <li><a href="#createprimitive-method">createPrimitive (method)</a></li>
+<li><a href="#paint-method">paint (method)</a></li>
+<li><a href="#texturedsprite-method">texturedSprite (method)</a></li>
+<li><a href="#createnativeprimitive-method">createNativePrimitive (method)</a></li>
 <li><a href="#createanimatedsprite-method">createAnimatedSprite (method)</a></li>
 <li><a href="#createparallaxlayer-method">createParallaxLayer (method)</a></li>
 <li><a href="#loadtexture-method">loadTexture (method)</a></li>
+<li><a href="#texturefromdata-method">textureFromData (method)</a></li>
+<li><a href="#decodesvg-method">decodeSvg (method)</a></li>
+<li><a href="#disposetexture-method">disposeTexture (method)</a></li>
+<li><a href="#prepare-method">prepare (method)</a></li>
+<li><a href="#createtexturefromcanvas-method">createTextureFromCanvas (method)</a></li>
+<li><a href="#createtext-method">createText (method)</a></li>
+<li><a href="#applytextureoptions-method">applyTextureOptions (method)</a></li>
 </ul>
 </li>
 <li><a href="#pixigridatlasclip-type-alias">PixiGridAtlasClip (type alias)</a></li>
@@ -623,11 +703,27 @@
 </code></pre>
 <h2 id="pixifactory-class">PixiFactory (class)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class PixiFactory
+<pre><code class="language-ts">export declare class PixiFactory {
+  constructor(private readonly scene?: PixiSceneComponent)
+}
 </code></pre>
 <h3 id="createprimitive-method">createPrimitive (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">createPrimitive(descriptor: Shape2DDescriptor, material: PixiDisplayObject3dOpts = {}): PixiDisplayObjectComponent
+</code></pre>
+<h3 id="paint-method">paint (method)</h3>
+<p>Fills an untextured shape's path with <code>material.color</code> and outlines it with <code>material.stroke</code>.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private paint(graphics: Graphics, material: PixiDisplayObject3dOpts): Graphics
+</code></pre>
+<h3 id="texturedsprite-method">texturedSprite (method)</h3>
+<p>A sprite showing <code>texture</code>, centered on its position, tinted with <code>material.color</code> if set.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private texturedSprite(texture: Texture, width: number, height: number, material: PixiDisplayObject3dOpts): Sprite
+</code></pre>
+<h3 id="createnativeprimitive-method">createNativePrimitive (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private createNativePrimitive(descriptor: Shape2DDescriptor, material: PixiDisplayObject3dOpts): Container
 </code></pre>
 <h3 id="createanimatedsprite-method">createAnimatedSprite (method)</h3>
 <p>Builds an animated sprite from a texture laid out as a uniform grid atlas (see
@@ -643,7 +739,41 @@ run/jump, ...). Slices each clip's own row into <code>frameCount</code> individu
 </code></pre>
 <h3 id="loadtexture-method">loadTexture (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">loadTexture(url: string): Promise&lt;Texture&gt;
+<pre><code class="language-ts">async loadTexture(url: string, options: TextureOptions = {}): Promise&lt;Texture&gt;
+</code></pre>
+<h3 id="texturefromdata-method">textureFromData (method)</h3>
+<p>Decodes an already-fetched image file into a texture of its own: unlike <code>loadTexture</code>, nothing
+goes through pixi's global <code>Assets</code> cache, so the texture belongs to whoever asked for it and
+is freed with <code>disposeTexture</code>.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">async textureFromData(data: Blob, options: TextureOptions = {}): Promise&lt;Texture&gt;
+</code></pre>
+<h3 id="decodesvg-method">decodeSvg (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private async decodeSvg(data: Blob): Promise&lt;HTMLImageElement&gt;
+</code></pre>
+<h3 id="disposetexture-method">disposeTexture (method)</h3>
+<p>Frees a texture made by <code>textureFromData</code>, together with its image.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">disposeTexture(texture: Texture): void
+</code></pre>
+<h3 id="prepare-method">prepare (method)</h3>
+<p>Uploads a texture to the GPU on every renderer drawing the scene, instead of on the first
+frame it is visible in. A renderer that is not initialized yet is skipped.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">async prepare(texture: Texture): Promise&lt;void&gt;
+</code></pre>
+<h3 id="createtexturefromcanvas-method">createTextureFromCanvas (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">createTextureFromCanvas(canvas: HTMLCanvasElement, options: TextureOptions = {}): Texture
+</code></pre>
+<h3 id="createtext-method">createText (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">createText(text: string, style: Text2dStyle = {}): PixiTextComponent
+</code></pre>
+<h3 id="applytextureoptions-method">applyTextureOptions (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private applyTextureOptions(texture: Texture, options: TextureOptions): Texture
 </code></pre>
 <h2 id="pixigridatlasclip-type-alias">PixiGridAtlasClip (type alias)</h2>
 <p>A single named clip's location within a uniform-grid atlas - see <code>PixiGridAtlasOptions</code>.</p>

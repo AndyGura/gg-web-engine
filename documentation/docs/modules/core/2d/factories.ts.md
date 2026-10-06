@@ -1,6 +1,6 @@
 ---
 title: core/2d/factories.ts
-nav_order: 36
+nav_order: 37
 parent: Modules
 ---
 
@@ -17,6 +17,8 @@ parent: Modules
     - [createPrimitive (method)](#createprimitive-method)
     - [createParallaxLayer (method)](#createparallaxlayer-method)
     - [loadTexture (method)](#loadtexture-method)
+    - [createTextureFromCanvas (method)](#createtexturefromcanvas-method)
+    - [createText (method)](#createtext-method)
     - [randomColor (method)](#randomcolor-method)
     - [createBox (method)](#createbox-method)
     - [createCircle (method)](#createcircle-method)
@@ -35,8 +37,13 @@ parent: Modules
 
 ```ts
 export type DisplayObject2dOpts<Tex> = {
+  /** Fill color of an untextured shape; with a `texture`, a tint multiplied over it instead. */
   color?: number
   texture?: Tex
+  /** An outline around an untextured shape. Ignored for a textured one. */
+  stroke?: { color: number; width: number }
+  /** Opacity from `0` (invisible) to `1` (opaque, the default), see `IDisplayObject2dComponent.opacity`. */
+  opacity?: number
 }
 ```
 
@@ -86,7 +93,28 @@ Loads an image as a texture, for `DisplayObject2dOpts.texture`, a parallax layer
 **Signature**
 
 ```ts
-abstract loadTexture(url: string): Promise<VTypeDoc['texture']>;
+abstract loadTexture(url: string, options?: TextureOptions): Promise<VTypeDoc['texture']>;
+```
+
+### createTextureFromCanvas (method)
+
+Creates a texture from a canvas the app has drawn on, e.g. a procedurally generated backdrop.
+The canvas is read once, now: drawing on it afterwards doesn't update the texture.
+
+**Signature**
+
+```ts
+abstract createTextureFromCanvas(canvas: HTMLCanvasElement, options?: TextureOptions): VTypeDoc['texture'];
+```
+
+### createText (method)
+
+Creates a text object, see `IText2dComponent` and `Text2dStyle`.
+
+**Signature**
+
+```ts
+abstract createText(text: string, style?: Text2dStyle): VTypeDoc['text'];
 ```
 
 ### randomColor (method)

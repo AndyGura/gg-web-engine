@@ -1,6 +1,6 @@
 ---
 title: core/base/blueprint/blueprint-node.ts
-nav_order: 97
+nav_order: 104
 parent: Modules
 ---
 

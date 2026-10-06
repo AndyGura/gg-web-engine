@@ -1,6 +1,6 @@
 ---
 title: core/2d/entities/controllers/input/player-character-2d.controller.ts
-nav_order: 29
+nav_order: 30
 parent: Modules
 ---
 
@@ -39,7 +39,7 @@ vector).
 ```ts
 export declare class PlayerCharacterController2d<TypeDoc> {
   constructor(
-    protected readonly keyboard: KeyboardInput,
+    public readonly keyboard: KeyboardInput,
     /** The character this controller drives. May be swapped/set to `null` at any time. */
     public character: CharacterController2dEntity<TypeDoc> | null,
     protected readonly camera: Renderer2dEntity<TypeDoc['vTypeDoc']>,
@@ -93,7 +93,7 @@ readonly options: PlayerCharacterController2dOptions
 **Signature**
 
 ```ts
-readonly directionsInput: DirectionKeyboardInput
+readonly directionsInput: DirectionInput
 ```
 
 ## PlayerCharacterController2dOptions (type alias)
@@ -105,7 +105,7 @@ Options for configuring a `PlayerCharacterController2d`.
 ```ts
 export type PlayerCharacterController2dOptions = {
   /** Keymap for left/right movement. `'wasd+arrows'` by default (both layouts work at once). */
-  keymap: DirectionKeyboardKeymap
+  keymap: DirectionKeymap
   /** Key code that triggers `character.jump()`. `'Space'` by default. */
   jumpKey: string
   /** Key code that sets `character.isRunning`. `'ShiftLeft'` by default. */

@@ -1,6 +1,6 @@
 ---
 title: three/components/three-renderer.component.ts
-nav_order: 200
+nav_order: 216
 parent: Modules
 ---
 
@@ -73,6 +73,11 @@ render(): void
 ```
 
 ### dispose (method)
+
+Frees the renderer and gives its WebGL context back to the browser right away, instead of
+leaving that to garbage collection - a page gets only so many contexts (about 16), and an app
+that creates a world per game session would run out. The canvas can't be used for another
+renderer afterwards: create a new canvas for the next one.
 
 **Signature**
 

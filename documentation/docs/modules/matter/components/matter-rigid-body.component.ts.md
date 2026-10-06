@@ -1,6 +1,6 @@
 ---
 title: matter/components/matter-rigid-body.component.ts
-nav_order: 162
+nav_order: 175
 parent: Modules
 ---
 
@@ -43,7 +43,8 @@ export declare class MatterRigidBodyComponent {
     public nativeBody: Body,
     public readonly shape: Shape2DDescriptor,
     public readonly bodyType: BodyType = 'dynamic',
-    public readonly ccd: boolean = false
+    public readonly ccd: boolean = false,
+    public readonly canSleep: boolean = true
   )
 }
 ```
@@ -109,7 +110,8 @@ wakeUp(): void
 
 ### sleep (method)
 
-No-op on a body that reports `isStatic` (see `isSleeping`'s own doc). Forces sleep immediately,
+No-op on a body that reports `isStatic` (see `isSleeping`'s own doc) or was created with
+`canSleep: false`. Forces sleep immediately,
 regardless of whether the world's `Matter.Engine` has `enableSleeping` turned on - unlike a
 body naturally falling asleep from inactivity (which requires that engine flag), an explicit
 `Sleeping.set(body, true)` call takes effect either way.

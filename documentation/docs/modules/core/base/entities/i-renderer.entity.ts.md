@@ -1,6 +1,6 @@
 ---
 title: core/base/entities/i-renderer.entity.ts
-nav_order: 123
+nav_order: 130
 parent: Modules
 ---
 

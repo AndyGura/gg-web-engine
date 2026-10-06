@@ -1,6 +1,6 @@
 ---
 title: pixi/components/pixi-animated-sprite.component.ts
-nav_order: 168
+nav_order: 182
 parent: Modules
 ---
 

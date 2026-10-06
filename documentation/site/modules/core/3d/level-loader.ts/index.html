@@ -550,6 +550,48 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#loadtexture-method" class="md-nav__link">
+    loadTexture (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#loadcubetexture-method" class="md-nav__link">
+    loadCubeTexture (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#loadmodel-method" class="md-nav__link">
+    loadModel (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#acquiremodel-method" class="md-nav__link">
+    acquireModel (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#visualloader-method" class="md-nav__link">
+    visualLoader (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#preloadasset-method" class="md-nav__link">
+    preloadAsset (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#registerdefaultclasses-method" class="md-nav__link">
     registerDefaultClasses (method)
   </a>
@@ -650,6 +692,13 @@
           <li class="md-nav__item">
   <a href="#createmapgraph-method" class="md-nav__link">
     createMapGraph (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#override-property" class="md-nav__link">
+    override (property)
   </a>
   
 </li>
@@ -812,6 +861,12 @@
 <li><a href="#environment3dsettings-interface">Environment3DSettings (interface)</a></li>
 <li><a href="#environmenttexture3dsettings-type-alias">EnvironmentTexture3DSettings (type alias)</a></li>
 <li><a href="#gg3dlevelloader-class">Gg3dLevelLoader (class)</a><ul>
+<li><a href="#loadtexture-method">loadTexture (method)</a></li>
+<li><a href="#loadcubetexture-method">loadCubeTexture (method)</a></li>
+<li><a href="#loadmodel-method">loadModel (method)</a></li>
+<li><a href="#acquiremodel-method">acquireModel (method)</a></li>
+<li><a href="#visualloader-method">visualLoader (method)</a></li>
+<li><a href="#preloadasset-method">preloadAsset (method)</a></li>
 <li><a href="#registerdefaultclasses-method">registerDefaultClasses (method)</a></li>
 <li><a href="#serializelight-method">serializeLight (method)</a></li>
 <li><a href="#serializeprimitive-method">serializePrimitive (method)</a></li>
@@ -827,6 +882,7 @@
 <li><a href="#resolvewheeldisplay-method">resolveWheelDisplay (method)</a></li>
 <li><a href="#createggcar-method">createGgCar (method)</a></li>
 <li><a href="#createmapgraph-method">createMapGraph (method)</a></li>
+<li><a href="#override-property">override (property)</a></li>
 </ul>
 </li>
 <li><a href="#ggcar3dcommonsettings-interface">GgCar3DCommonSettings (interface)</a></li>
@@ -927,6 +983,54 @@ and dispatches <code>LevelJson</code> entities to them (or to custom classes reg
 <pre><code class="language-ts">export declare class Gg3dLevelLoader&lt;TypeDoc&gt; {
   constructor(protected readonly world: Gg3dWorld&lt;TypeDoc&gt;)
 }
+</code></pre>
+<h3 id="loadtexture-method">loadTexture (method)</h3>
+<p>Loads an image as a texture, e.g. for <code>DisplayObject3dOpts.diffuse</code>, or, with
+<code>{ mapping: 'equirectangular' }</code>, a panorama for <code>IVisualScene3dComponent.setEnvironment</code>.
+Cached: the same url with the same options gives the same texture object, freed when the last
+scope holding it is released (see <code>LoadTaskOptions.scope</code>) - don't dispose it yourself.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public async loadTexture(
+    url: string,
+    options: LoadTextureOptions &amp; LoadTaskOptions = {},
+  ): Promise&lt;TypeDoc['vTypeDoc']['texture']&gt;
+</code></pre>
+<h3 id="loadcubetexture-method">loadCubeTexture (method)</h3>
+<p>Loads a six-image cube-map sky for <code>IVisualScene3dComponent.setEnvironment</code>. Cached and freed
+like <code>loadTexture</code>.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public async loadCubeTexture(
+    faces: CubeTextureFaces,
+    options: LoadTaskOptions = {},
+  ): Promise&lt;TypeDoc['vTypeDoc']['texture']&gt;
+</code></pre>
+<h3 id="loadmodel-method">loadModel (method)</h3>
+<p>Loads a plain <code>.glb</code> (no <code>.meta</code> pair - see <code>loadGgGlb</code>) via <code>visualScene.loader.loadFromGlb</code>,
+for a visual-only asset that has no physics representation of its own (a character model
+driven by a separately-created <code>CharacterController3dEntity</code>'s capsule, a decorative prop, ...).
+The file is fetched and parsed once per world; every call returns its own copy to place
+(<code>IDisplayObjectComponent.clone</code>). <code>undefined</code>/<code>null</code> if there's no visual scene to load against.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public async loadModel(
+    path: string,
+    options: LoadGlbOptions &amp; LoadTaskOptions = {},
+  ): Promise&lt;TypeDoc['vTypeDoc']['displayObject'] | null&gt;
+</code></pre>
+<h3 id="acquiremodel-method">acquireModel (method)</h3>
+<p>The cached, never-shown original of a <code>loadModel</code> asset.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private async acquireModel(
+    path: string,
+    options: LoadGlbOptions &amp; LoadTaskOptions,
+  ): Promise&lt;TypeDoc['vTypeDoc']['displayObject'] | null&gt;
+</code></pre>
+<h3 id="visualloader-method">visualLoader (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private visualLoader(): NonNullable&lt;Gg3dWorld&lt;TypeDoc&gt;['visualScene']&gt;['loader']
+</code></pre>
+<h3 id="preloadasset-method">preloadAsset (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">async preloadAsset(ref: AssetRef, options: LoadTaskOptions): Promise&lt;void&gt;
 </code></pre>
 <h3 id="registerdefaultclasses-method">registerDefaultClasses (method)</h3>
 <p>Register the built-in classes for primitives, triggers, and cameras</p>
@@ -1032,6 +1136,7 @@ disposed. Returns <code>undefined</code> without a visual scene.</p>
 <pre><code class="language-ts">private async createEnvironment(
     world: Gg3dWorld&lt;TypeDoc&gt;,
     settings: Environment3DSettings,
+    load: LoadTaskOptions = {},
   ): Promise&lt;Environment3dEntity&lt;TypeDoc['vTypeDoc']&gt; | undefined&gt;
 </code></pre>
 <h3 id="createsound-method">createSound (method)</h3>
@@ -1043,6 +1148,7 @@ the resulting source in a ready-to-use <code>AudioSource3dEntity</code>, statica
 <pre><code class="language-ts">private async createSound(
     world: Gg3dWorld&lt;TypeDoc&gt;,
     settings: Sound3DSettings,
+    load: LoadTaskOptions = {},
   ): Promise&lt;AudioSource3dEntity&lt;TypeDoc&gt; | undefined&gt;
 </code></pre>
 <h3 id="createplayer-method">createPlayer (method)</h3>
@@ -1054,6 +1160,7 @@ invisible otherwise). See <code>Player3DSettings</code>'s doc for why this doesn
 <pre><code class="language-ts">private async createPlayer(
     world: Gg3dWorld&lt;TypeDoc&gt;,
     settings: Player3DSettings,
+    load: LoadTaskOptions = {},
   ): Promise&lt;CharacterController3dEntity&lt;TypeDoc&gt; | undefined&gt;
 </code></pre>
 <h3 id="resolvewheeldisplay-method">resolveWheelDisplay (method)</h3>
@@ -1083,6 +1190,10 @@ a rectangular grid, see {@link MapGraph3DSettings}), wrapped in a ready-to-use
 loaded - see <code>gg-engine-level-json</code>'s "MapGraph" section.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">private createMapGraph(world: Gg3dWorld&lt;TypeDoc&gt;, settings: MapGraph3DSettings): MapGraph3dEntity&lt;TypeDoc&gt;
+</code></pre>
+<h3 id="override-property">override (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">override: any
 </code></pre>
 <h2 id="ggcar3dcommonsettings-interface">GgCar3DCommonSettings (interface)</h2>
 <p>Fields of <code>GgCarProperties</code> that don't vary between its <code>wheelBase</code>/<code>wheelOptions</code> shapes -

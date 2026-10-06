@@ -1,6 +1,6 @@
 ---
 title: core/2d/entities/character-controller-2d.entity.ts
-nav_order: 26
+nav_order: 27
 parent: Modules
 ---
 

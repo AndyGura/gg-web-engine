@@ -1,6 +1,6 @@
 ---
 title: three/three-factory.ts
-nav_order: 202
+nav_order: 218
 parent: Modules
 ---
 
@@ -18,6 +18,7 @@ parent: Modules
     - [createPrimitive (method)](#createprimitive-method)
     - [createPerspectiveCamera (method)](#createperspectivecamera-method)
     - [createLight (method)](#createlight-method)
+    - [createTextureFromCanvas (method)](#createtexturefromcanvas-method)
 
 ---
 
@@ -86,4 +87,12 @@ createPerspectiveCamera(
 
 ```ts
 createLight(descriptor: Light3dDescriptor): ThreeLightComponent
+```
+
+### createTextureFromCanvas (method)
+
+**Signature**
+
+```ts
+createTextureFromCanvas(canvas: HTMLCanvasElement, options: LoadTextureOptions = {}): Texture
 ```

@@ -570,6 +570,13 @@ rather than duplicated in <code>2d/factories.ts</code>/<code>3d/factories.ts</co
    */
   loadClip(url: string): Promise&lt;ATypeDoc['clip']&gt;
 
+  /**
+   * Decodes a clip from the bytes of an already-fetched audio file. `world.loader.loadClip` fetches
+   * the file itself (reporting progress, cancellable) and hands it over here; a factory without
+   * this method has its `loadClip` called instead, and the fetch then goes unreported.
+   */
+  decodeClip?(data: ArrayBuffer): Promise&lt;ATypeDoc['clip']&gt;
+
   createSource(descriptor: AudioSourceDescriptor&lt;ATypeDoc['clip']&gt;): ATypeDoc['source']
 }
 </code></pre>

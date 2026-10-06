@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/controllers/input/character-controller-self-hit-skip.ts
-nav_order: 67
+nav_order: 69
 parent: Modules
 ---
 

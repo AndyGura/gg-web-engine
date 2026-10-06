@@ -557,6 +557,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#renderers-property" class="md-nav__link">
+    renderers (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#parallaxlayers-property" class="md-nav__link">
     parallaxLayers (property)
   </a>
@@ -603,6 +610,7 @@
 <li><a href="#createrenderer-method">createRenderer (method)</a></li>
 <li><a href="#dispose-method">dispose (method)</a></li>
 <li><a href="#factory-property">factory (property)</a></li>
+<li><a href="#renderers-property">renderers (property)</a></li>
 <li><a href="#parallaxlayers-property">parallaxLayers (property)</a></li>
 </ul>
 </li>
@@ -638,6 +646,11 @@
 <h3 id="factory-property">factory (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly factory: PixiFactory
+</code></pre>
+<h3 id="renderers-property">renderers (property)</h3>
+<p>The renderers currently drawing this scene - what <code>PixiFactory.prepare</code> uploads to.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly renderers: Set&lt;PixiRendererComponent&gt;
 </code></pre>
 <h3 id="parallaxlayers-property">parallaxLayers (property)</h3>
 <p>Parallax layers currently in this scene - each renderer positions them for its own camera.</p>

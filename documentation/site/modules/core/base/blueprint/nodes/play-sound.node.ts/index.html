@@ -529,6 +529,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#dispose-method" class="md-nav__link">
+    dispose (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#resolvepayloadposition-method" class="md-nav__link">
     resolvePayloadPosition (method)
   </a>
@@ -559,6 +566,13 @@
           <li class="md-nav__item">
   <a href="#outputs-property" class="md-nav__link">
     outputs (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#override-property" class="md-nav__link">
+    override (property)
   </a>
   
 </li>
@@ -613,11 +627,13 @@
 <li><a href="#utils">utils</a></li>
 <li><a href="#playsoundblueprintnode-class">PlaySoundBlueprintNode (class)</a><ul>
 <li><a href="#trigger-method">trigger (method)</a></li>
+<li><a href="#dispose-method">dispose (method)</a></li>
 <li><a href="#resolvepayloadposition-method">resolvePayloadPosition (method)</a></li>
 <li><a href="#resolvepayloadimpulse-method">resolvePayloadImpulse (method)</a></li>
 <li><a href="#pickimpacttier-method">pickImpactTier (method)</a></li>
 <li><a href="#inputs-property">inputs (property)</a></li>
 <li><a href="#outputs-property">outputs (property)</a></li>
+<li><a href="#override-property">override (property)</a></li>
 </ul>
 </li>
 <li><a href="#playsoundimpacttier-interface">PlaySoundImpactTier (interface)</a></li>
@@ -645,6 +661,10 @@ missing-reference posture) rather than throwing.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public trigger(inputName: string, value?: unknown): void
 </code></pre>
+<h3 id="dispose-method">dispose (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">dispose(): void
+</code></pre>
 <h3 id="resolvepayloadposition-method">resolvePayloadPosition (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">private resolvePayloadPosition(value: unknown): D | undefined
@@ -667,6 +687,10 @@ missing-reference posture) rather than throwing.</p>
 <h3 id="outputs-property">outputs (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly outputs: readonly BlueprintPinDefinition[]
+</code></pre>
+<h3 id="override-property">override (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">override: any
 </code></pre>
 <h2 id="playsoundimpacttier-interface">PlaySoundImpactTier (interface)</h2>
 <p>One impulse-tiered clip variant - see {@link PlaySoundNodeSettings.impactClips}.</p>

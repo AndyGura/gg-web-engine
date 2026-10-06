@@ -1,6 +1,6 @@
 ---
 title: core/base/components/audio/i-audio-source.component-factory.ts
-nav_order: 105
+nav_order: 112
 parent: Modules
 ---
 
@@ -37,6 +37,13 @@ export interface IAudioSourceComponentFactory<D, R, ATypeDoc extends AudioTypeDo
    * re-fetch/re-decode every time.
    */
   loadClip(url: string): Promise<ATypeDoc['clip']>
+
+  /**
+   * Decodes a clip from the bytes of an already-fetched audio file. `world.loader.loadClip` fetches
+   * the file itself (reporting progress, cancellable) and hands it over here; a factory without
+   * this method has its `loadClip` called instead, and the fetch then goes unreported.
+   */
+  decodeClip?(data: ArrayBuffer): Promise<ATypeDoc['clip']>
 
   createSource(descriptor: AudioSourceDescriptor<ATypeDoc['clip']>): ATypeDoc['source']
 }

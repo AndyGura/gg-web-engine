@@ -9,3 +9,4 @@ has_children: true
 - [core/2d/models/character-controller-options.ts](/gg-web-engine/modules/core/2d/models/character-controller-options.ts)
 - [core/2d/models/environment.ts](/gg-web-engine/modules/core/2d/models/environment.ts)
 - [core/2d/models/shapes.ts](/gg-web-engine/modules/core/2d/models/shapes.ts)
+- [core/2d/models/text.ts](/gg-web-engine/modules/core/2d/models/text.ts)

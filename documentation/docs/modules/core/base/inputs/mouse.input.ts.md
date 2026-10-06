@@ -1,6 +1,6 @@
 ---
 title: core/base/inputs/mouse.input.ts
-nav_order: 130
+nav_order: 137
 parent: Modules
 ---
 
@@ -13,6 +13,7 @@ parent: Modules
 - [utils](#utils)
   - [MouseInput (class)](#mouseinput-class)
     - [isTouchDevice (static method)](#istouchdevice-static-method)
+    - [emulateMove (method)](#emulatemove-method)
     - [startInternal (method)](#startinternal-method)
     - [stopInternal (method)](#stopinternal-method)
     - [canvasClickListener (method)](#canvasclicklistener-method)
@@ -36,10 +37,25 @@ export declare class MouseInput {
 
 ### isTouchDevice (static method)
 
+Whether the device is operated by touch: there is no pointer lock on it, and its view is turned
+by dragging a finger.
+
 **Signature**
 
 ```ts
 static isTouchDevice(): boolean
+```
+
+### emulateMove (method)
+
+Emulates a pointer movement: `delta` is emitted through `delta$` as if the mouse had moved by
+that many pixels. For anything else that turns a view (an on-screen look pad or stick, a
+gamepad). Ignored while the input is not running.
+
+**Signature**
+
+```ts
+emulateMove(delta: Point2): void
 ```
 
 ### startInternal (method)

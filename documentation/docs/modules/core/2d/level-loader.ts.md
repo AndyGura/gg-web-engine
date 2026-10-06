@@ -1,6 +1,6 @@
 ---
 title: core/2d/level-loader.ts
-nav_order: 40
+nav_order: 41
 parent: Modules
 ---
 
@@ -14,6 +14,8 @@ parent: Modules
   - [CompoundChild2DSettings (interface)](#compoundchild2dsettings-interface)
   - [Environment2DSettings (interface)](#environment2dsettings-interface)
   - [Gg2dLevelLoader (class)](#gg2dlevelloader-class)
+    - [loadTexture (method)](#loadtexture-method)
+    - [preloadAsset (method)](#preloadasset-method)
     - [registerDefaultClasses (method)](#registerdefaultclasses-method)
     - [serializePrimitive (method)](#serializeprimitive-method)
     - [serializeTrigger (method)](#serializetrigger-method)
@@ -24,6 +26,7 @@ parent: Modules
     - [createParallaxLayer (method)](#createparallaxlayer-method)
     - [createEnvironment (method)](#createenvironment-method)
     - [createSound (method)](#createsound-method)
+    - [override (property)](#override-property)
   - [ParallaxLayer2DSettings (interface)](#parallaxlayer2dsettings-interface)
   - [Player2DSettings (type alias)](#player2dsettings-type-alias)
   - [Primitive2DShapeName (type alias)](#primitive2dshapename-type-alias)
@@ -84,6 +87,30 @@ dispatches `LevelJson` entities to them (or to custom classes registered via `re
 export declare class Gg2dLevelLoader<TypeDoc> {
   constructor(protected readonly world: Gg2dWorld<TypeDoc>)
 }
+```
+
+### loadTexture (method)
+
+Loads an image as a texture, for `DisplayObject2dOpts.texture`, a parallax layer or a
+background. Cached: the same url with the same options gives the same texture object, freed
+when the last scope holding it is released (see `LoadTaskOptions.scope`) - don't dispose it
+yourself.
+
+**Signature**
+
+```ts
+public async loadTexture(
+    url: string,
+    options: TextureOptions & LoadTaskOptions = {},
+  ): Promise<TypeDoc['vTypeDoc']['texture']>
+```
+
+### preloadAsset (method)
+
+**Signature**
+
+```ts
+async preloadAsset(ref: AssetRef, options: LoadTaskOptions): Promise<void>
 ```
 
 ### registerDefaultClasses (method)
@@ -191,6 +218,7 @@ settings in a `ParallaxLayer2dEntity`. Returns `undefined` without a visual scen
 private async createParallaxLayer(
     world: Gg2dWorld<TypeDoc>,
     settings: ParallaxLayer2DSettings,
+    load: LoadTaskOptions = {},
   ): Promise<ParallaxLayer2dEntity<TypeDoc['vTypeDoc']> | undefined>
 ```
 
@@ -206,6 +234,7 @@ without a visual scene.
 private async createEnvironment(
     world: Gg2dWorld<TypeDoc>,
     settings: Environment2DSettings,
+    load: LoadTaskOptions = {},
   ): Promise<Environment2dEntity<TypeDoc['vTypeDoc']> | undefined>
 ```
 
@@ -219,7 +248,16 @@ Create a `"Sound"` entity - see the 3D loader's `createSound` doc (identical beh
 private async createSound(
     world: Gg2dWorld<TypeDoc>,
     settings: Sound2DSettings,
+    load: LoadTaskOptions = {},
   ): Promise<AudioSource2dEntity<TypeDoc> | undefined>
+```
+
+### override (property)
+
+**Signature**
+
+```ts
+override: any
 ```
 
 ## ParallaxLayer2DSettings (interface)

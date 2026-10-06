@@ -1,6 +1,6 @@
 ---
 title: core/3d/loaders.ts
-nav_order: 90
+nav_order: 92
 parent: Modules
 ---
 
@@ -51,6 +51,25 @@ export interface IDisplayObject3dComponentLoader<VTypeDoc extends VisualTypeDocR
    * `CubeTextureFaces`).
    */
   loadCubeTexture(faces: CubeTextureFaces): Promise<VTypeDoc['texture']>
+
+  /**
+   * Decodes a texture from an already-fetched image file - what `loadTexture` does after its own
+   * fetch. `world.loader.loadTexture` fetches the file itself (reporting progress, cancellable) and
+   * hands it over here; `options.url` is where it came from, for telling the format by extension.
+   * A loader without this method has its `loadTexture` called instead, and the fetch then goes
+   * unreported.
+   */
+  textureFromData?(data: Blob, options?: LoadTextureOptions & { url?: string }): Promise<VTypeDoc['texture']>
+
+  /** The `loadCubeTexture` counterpart of `textureFromData`: one already-fetched image per face. */
+  cubeTextureFromData?(faces: Record<keyof CubeTextureFaces, Blob>): Promise<VTypeDoc['texture']>
+
+  /**
+   * Finishes whatever of a loaded texture or display object would otherwise happen at its first
+   * render (GPU upload, shader compilation), so `world.loader` can count it as part of the load.
+   * Resolves at once when there is nothing to do it with yet (no renderer in the scene).
+   */
+  prepare?(resource: VTypeDoc['texture'] | VTypeDoc['displayObject']): Promise<void>
 
   /**
    * Frees a texture returned by `loadTexture`/`loadCubeTexture`. Call it once nothing uses the

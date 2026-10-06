@@ -1,6 +1,6 @@
 ---
 title: core/base/interfaces/i-serializable-entity.ts
-nav_order: 133
+nav_order: 141
 parent: Modules
 ---
 

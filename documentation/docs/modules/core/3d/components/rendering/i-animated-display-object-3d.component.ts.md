@@ -1,6 +1,6 @@
 ---
 title: core/3d/components/rendering/i-animated-display-object-3d.component.ts
-nav_order: 53
+nav_order: 55
 parent: Modules
 ---
 

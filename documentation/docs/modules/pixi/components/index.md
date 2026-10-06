@@ -12,3 +12,4 @@ has_children: true
 - [pixi/components/pixi-physics-debug-view.ts](/gg-web-engine/modules/pixi/components/pixi-physics-debug-view.ts)
 - [pixi/components/pixi-renderer.component.ts](/gg-web-engine/modules/pixi/components/pixi-renderer.component.ts)
 - [pixi/components/pixi-scene.component.ts](/gg-web-engine/modules/pixi/components/pixi-scene.component.ts)
+- [pixi/components/pixi-text.component.ts](/gg-web-engine/modules/pixi/components/pixi-text.component.ts)

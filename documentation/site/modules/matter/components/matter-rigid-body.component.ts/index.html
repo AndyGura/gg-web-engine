@@ -696,7 +696,8 @@
     public nativeBody: Body,
     public readonly shape: Shape2DDescriptor,
     public readonly bodyType: BodyType = 'dynamic',
-    public readonly ccd: boolean = false
+    public readonly ccd: boolean = false,
+    public readonly canSleep: boolean = true
   )
 }
 </code></pre>
@@ -731,7 +732,8 @@
 <pre><code class="language-ts">wakeUp(): void
 </code></pre>
 <h3 id="sleep-method">sleep (method)</h3>
-<p>No-op on a body that reports <code>isStatic</code> (see <code>isSleeping</code>'s own doc). Forces sleep immediately,
+<p>No-op on a body that reports <code>isStatic</code> (see <code>isSleeping</code>'s own doc) or was created with
+<code>canSleep: false</code>. Forces sleep immediately,
 regardless of whether the world's <code>Matter.Engine</code> has <code>enableSleeping</code> turned on - unlike a
 body naturally falling asleep from inactivity (which requires that engine flag), an explicit
 <code>Sleeping.set(body, true)</code> call takes effect either way.</p>

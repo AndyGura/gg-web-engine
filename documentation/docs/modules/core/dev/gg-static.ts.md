@@ -1,6 +1,6 @@
 ---
 title: core/dev/gg-static.ts
-nav_order: 157
+nav_order: 170
 parent: Modules
 ---
 
@@ -15,6 +15,7 @@ parent: Modules
     - [toggleDevConsole (method)](#toggledevconsole-method)
     - [autoAssignSelectedWorld (method)](#autoassignselectedworld-method)
     - [registerConsoleCommand (method)](#registerconsolecommand-method)
+    - [createPerformanceMeter (method)](#createperformancemeter-method)
     - [deregisterConsoleCommand (method)](#deregisterconsolecommand-method)
     - [deregisterWorldCommands (method)](#deregisterworldcommands-method)
     - [console (method)](#console-method)
@@ -66,6 +67,17 @@ public registerConsoleCommand(
     doc?: string,
     mutates?: boolean,
   ): void
+```
+
+### createPerformanceMeter (method)
+
+Builds the entity the `performance` console command measures a world with. World classes reach
+it through `window.ggstatic` instead of importing it, so nothing outside `dev/` depends on it.
+
+**Signature**
+
+```ts
+public createPerformanceMeter(samples: number, maxRows: number): PerformanceMeterEntity
 ```
 
 ### deregisterConsoleCommand (method)

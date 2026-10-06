@@ -1,6 +1,6 @@
 ---
 title: core/3d/gg-3d-world.ts
-nav_order: 85
+nav_order: 87
 parent: Modules
 ---
 
@@ -129,15 +129,7 @@ addRenderer(
 **Signature**
 
 ```ts
-protected registerConsoleCommands(ggstatic: {
-    registerConsoleCommand: (
-      world: GgWorld<any, any> | null,
-      command: string,
-      handler: (...args: string[]) => Promise<string>,
-      doc?: string,
-      mutates?: boolean,
-    ) => void;
-  })
+protected registerConsoleCommands(ggstatic: GgConsoleHost)
 ```
 
 ### loader (property)

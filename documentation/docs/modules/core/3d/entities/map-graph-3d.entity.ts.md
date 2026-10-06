@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/map-graph-3d.entity.ts
-nav_order: 79
+nav_order: 81
 parent: Modules
 ---
 
@@ -23,6 +23,7 @@ parent: Modules
     - [loadChunk (method)](#loadchunk-method)
     - [attachToChunk (method)](#attachtochunk-method)
     - [detachFromChunk (method)](#detachfromchunk-method)
+    - [dispose (method)](#dispose-method)
     - [disposeChunk (method)](#disposechunk-method)
     - [tickOrder (property)](#tickorder-property)
     - [loaderCursor$ (property)](#loadercursor-property)
@@ -31,6 +32,7 @@ parent: Modules
     - [mapGraphNodes (property)](#mapgraphnodes-property)
     - [options (property)](#options-property)
     - [loadClock (property)](#loadclock-property)
+    - [override (property)](#override-property)
   - [MapGraphNodeType (type alias)](#mapgraphnodetype-type-alias)
 
 ---
@@ -162,6 +164,14 @@ follow a chunk's lifecycle again, or remove it yourself.
 public detachFromChunk(entities: (IEntity & IPositionable3d)[]): (IEntity & IPositionable3d)[]
 ```
 
+### dispose (method)
+
+**Signature**
+
+```ts
+dispose(): void
+```
+
 ### disposeChunk (method)
 
 **Signature**
@@ -224,6 +234,14 @@ readonly options: Gg3dMapGraphEntityOptions
 
 ```ts
 loadClock: PausableClock | null
+```
+
+### override (property)
+
+**Signature**
+
+```ts
+override: any
 ```
 
 ## MapGraphNodeType (type alias)

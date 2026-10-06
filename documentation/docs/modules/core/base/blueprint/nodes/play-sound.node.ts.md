@@ -1,6 +1,6 @@
 ---
 title: core/base/blueprint/nodes/play-sound.node.ts
-nav_order: 99
+nav_order: 106
 parent: Modules
 ---
 
@@ -13,11 +13,13 @@ parent: Modules
 - [utils](#utils)
   - [PlaySoundBlueprintNode (class)](#playsoundblueprintnode-class)
     - [trigger (method)](#trigger-method)
+    - [dispose (method)](#dispose-method)
     - [resolvePayloadPosition (method)](#resolvepayloadposition-method)
     - [resolvePayloadImpulse (method)](#resolvepayloadimpulse-method)
     - [pickImpactTier (method)](#pickimpacttier-method)
     - [inputs (property)](#inputs-property)
     - [outputs (property)](#outputs-property)
+    - [override (property)](#override-property)
   - [PlaySoundImpactTier (interface)](#playsoundimpacttier-interface)
   - [PlaySoundNodeSettings (interface)](#playsoundnodesettings-interface)
 
@@ -54,6 +56,14 @@ export declare class PlaySoundBlueprintNode<D, R, TypeDoc>
 
 ```ts
 public trigger(inputName: string, value?: unknown): void
+```
+
+### dispose (method)
+
+**Signature**
+
+```ts
+dispose(): void
 ```
 
 ### resolvePayloadPosition (method)
@@ -97,6 +107,14 @@ readonly inputs: readonly BlueprintPinDefinition[]
 
 ```ts
 readonly outputs: readonly BlueprintPinDefinition[]
+```
+
+### override (property)
+
+**Signature**
+
+```ts
+override: any
 ```
 
 ## PlaySoundImpactTier (interface)

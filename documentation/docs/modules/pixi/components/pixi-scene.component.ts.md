@@ -1,6 +1,6 @@
 ---
 title: pixi/components/pixi-scene.component.ts
-nav_order: 174
+nav_order: 188
 parent: Modules
 ---
 
@@ -17,6 +17,7 @@ parent: Modules
     - [createRenderer (method)](#createrenderer-method)
     - [dispose (method)](#dispose-method)
     - [factory (property)](#factory-property)
+    - [renderers (property)](#renderers-property)
     - [parallaxLayers (property)](#parallaxlayers-property)
 
 ---
@@ -75,6 +76,16 @@ dispose(): void
 
 ```ts
 readonly factory: PixiFactory
+```
+
+### renderers (property)
+
+The renderers currently drawing this scene - what `PixiFactory.prepare` uploads to.
+
+**Signature**
+
+```ts
+readonly renderers: Set<PixiRendererComponent>
 ```
 
 ### parallaxLayers (property)

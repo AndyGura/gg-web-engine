@@ -1,6 +1,6 @@
 ---
 title: core/base/components/audio/i-audio-scene.component.ts
-nav_order: 104
+nav_order: 111
 parent: Modules
 ---
 
@@ -63,6 +63,13 @@ export interface IAudioSceneComponent<D, R, ATypeDoc extends AudioTypeDocRepo<D,
   readonly activeListener: IPositionable<D, R> | null
 
   setActiveListener(target: IPositionable<D, R> | null): void
+
+  /**
+   * Freezes (`true`) or continues (`false`) everything this scene plays, every source keeping its
+   * place. `GgWorld` calls it whenever its clock pauses or resumes, so a paused world is silent
+   * and picks its sounds up where they stopped. A scene without it keeps playing through a pause.
+   */
+  setPaused?(paused: boolean): void
 
   /**
    * Called once per world tick, after every entity's own `tick$` (renderers included), to update

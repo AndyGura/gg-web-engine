@@ -1,6 +1,6 @@
 ---
 title: core/base/models/body-options.ts
-nav_order: 144
+nav_order: 152
 parent: Modules
 ---
 
@@ -34,6 +34,15 @@ export interface BodyOptions {
   ownCollisionGroups: ReadonlyArray<CollisionGroup> | 'all'
   interactWithCollisionGroups: ReadonlyArray<CollisionGroup> | 'all'
   ccd: boolean
+  /**
+   * Whether the physics engine may put this body to sleep once it comes to rest. Default `true`.
+   * A sleeping body is skipped by the solver until something wakes it up (a collision with an
+   * awake body, a velocity write, `wakeUp()`); `false` keeps it simulated every step - for a body
+   * whose motion matters even when it momentarily stops, e.g. one that should keep reacting to its
+   * collision groups being changed under it. Only meaningful for a dynamic body: static bodies
+   * never move and kinematic ones never sleep anyway.
+   */
+  canSleep: boolean
 }
 ```
 

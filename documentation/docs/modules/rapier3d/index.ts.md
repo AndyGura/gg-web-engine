@@ -1,6 +1,6 @@
 ---
 title: rapier3d/index.ts
-nav_order: 190
+nav_order: 206
 parent: Modules
 ---
 

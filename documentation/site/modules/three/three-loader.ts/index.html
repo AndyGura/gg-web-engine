@@ -529,8 +529,36 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#texturefromdata-method" class="md-nav__link">
+    textureFromData (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#decodetexture-method" class="md-nav__link">
+    decodeTexture (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#loadcubetexture-method" class="md-nav__link">
     loadCubeTexture (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cubetexturefromdata-method" class="md-nav__link">
+    cubeTextureFromData (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#prepare-method" class="md-nav__link">
+    prepare (method)
   </a>
   
 </li>
@@ -592,7 +620,11 @@
 <li><a href="#utils">utils</a></li>
 <li><a href="#threeloader-class">ThreeLoader (class)</a><ul>
 <li><a href="#loadtexture-method">loadTexture (method)</a></li>
+<li><a href="#texturefromdata-method">textureFromData (method)</a></li>
+<li><a href="#decodetexture-method">decodeTexture (method)</a></li>
 <li><a href="#loadcubetexture-method">loadCubeTexture (method)</a></li>
+<li><a href="#cubetexturefromdata-method">cubeTextureFromData (method)</a></li>
+<li><a href="#prepare-method">prepare (method)</a></li>
 <li><a href="#disposetexture-method">disposeTexture (method)</a></li>
 <li><a href="#loadfromggglb-method">loadFromGgGlb (method)</a></li>
 <li><a href="#loadfromglb-method">loadFromGlb (method)</a></li>
@@ -603,13 +635,24 @@
 <h1 id="utils">utils</h1>
 <h2 id="threeloader-class">ThreeLoader (class)</h2>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class ThreeLoader
+<pre><code class="language-ts">export declare class ThreeLoader {
+  constructor(private readonly scene?: ThreeSceneComponent)
+}
 </code></pre>
 <h3 id="loadtexture-method">loadTexture (method)</h3>
 <p>Loads an image texture. A <code>.hdr</code> URL is decoded as a linear Radiance HDR image (the usual
 format for image-based lighting); anything else as an sRGB image.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public async loadTexture(url: string, options: LoadTextureOptions = {}): Promise&lt;Texture&gt;
+</code></pre>
+<h3 id="texturefromdata-method">textureFromData (method)</h3>
+<p>Decodes <code>data</code> like <code>loadTexture</code> decodes its url; <code>options.url</code> tells a <code>.hdr</code> file apart.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public async textureFromData(data: Blob, options: LoadTextureOptions &amp; { url?: string } = {}): Promise&lt;Texture&gt;
+</code></pre>
+<h3 id="decodetexture-method">decodeTexture (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private async decodeTexture(source: string, name: string, options: LoadTextureOptions): Promise&lt;Texture&gt;
 </code></pre>
 <h3 id="loadcubetexture-method">loadCubeTexture (method)</h3>
 <p>Loads a cube-map sky. three.js lays a cube map out Y-up (its <code>py</code> slot is the sky, and the four
@@ -620,6 +663,18 @@ slot, and <code>ThreeSceneComponent</code> turns the texture back by that quarte
 background or environment map.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public async loadCubeTexture(faces: CubeTextureFaces): Promise&lt;CubeTexture&gt;
+</code></pre>
+<h3 id="cubetexturefromdata-method">cubeTextureFromData (method)</h3>
+<p><code>loadCubeTexture</code> for faces that are already fetched.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public async cubeTextureFromData(faces: Record&lt;keyof CubeTextureFaces, Blob&gt;): Promise&lt;CubeTexture&gt;
+</code></pre>
+<h3 id="prepare-method">prepare (method)</h3>
+<p>Uploads a texture, or compiles the shaders and uploads the textures of a model, on every
+renderer drawing the scene - the work three.js otherwise does on the first frame the resource
+is visible in. With no renderer added to the world yet there is nothing to upload to.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public async prepare(resource: Texture | ThreeDisplayObjectComponent): Promise&lt;void&gt;
 </code></pre>
 <h3 id="disposetexture-method">disposeTexture (method)</h3>
 <p><strong>Signature</strong></p>

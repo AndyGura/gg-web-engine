@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/controllers/input/free-camera.controller.ts
-nav_order: 68
+nav_order: 70
 parent: Modules
 ---
 
@@ -36,7 +36,7 @@ A controller for a free-moving camera.
 ```ts
 export declare class FreeCameraController {
   constructor(
-    protected readonly keyboard: KeyboardInput,
+    public readonly keyboard: KeyboardInput,
     protected readonly camera: Renderer3dEntity,
     options: Partial<FreeCameraControllerOptions> = {}
   )
@@ -100,7 +100,7 @@ The keyboard input controller used for camera movement.
 **Signature**
 
 ```ts
-readonly directionsInput: DirectionKeyboardInput
+readonly directionsInput: DirectionInput
 ```
 
 ### \_spherical (property)
@@ -130,7 +130,7 @@ export type FreeCameraControllerOptions = {
   /**
    * A keymap for controlling camera movement, where each key corresponds to a movement direction. 'wasd' by default
    */
-  keymap: DirectionKeyboardKeymap
+  keymap: DirectionKeymap
   /**
    * The speed of camera movement in meters per second. 20 by default
    */
@@ -156,7 +156,8 @@ export type FreeCameraControllerOptions = {
    */
   ignoreMouseUnlessPointerLocked: boolean
   /**
-   * Flag to ignore keyboard events if pointer was not locked. false by default
+   * Flag to ignore keyboard events if pointer was not locked. false by default. Always ignored on a
+   * touch device, like `ignoreMouseUnlessPointerLocked`
    */
   ignoreKeyboardUnlessPointerLocked: boolean
   /**

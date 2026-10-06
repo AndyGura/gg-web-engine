@@ -1,6 +1,6 @@
 ---
 title: pixi/components/pixi-parallax-layer.component.ts
-nav_order: 171
+nav_order: 185
 parent: Modules
 ---
 

@@ -1,6 +1,6 @@
 ---
 title: core/base/components/physics/i-physics-world.component.ts
-nav_order: 110
+nav_order: 117
 parent: Modules
 ---
 

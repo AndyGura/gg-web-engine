@@ -12,3 +12,4 @@ has_children: true
 - [core/base/models/points.ts](/gg-web-engine/modules/core/base/models/points.ts)
 - [core/base/models/raycasting.ts](/gg-web-engine/modules/core/base/models/raycasting.ts)
 - [core/base/models/render-layer.ts](/gg-web-engine/modules/core/base/models/render-layer.ts)
+- [core/base/models/texture-options.ts](/gg-web-engine/modules/core/base/models/texture-options.ts)

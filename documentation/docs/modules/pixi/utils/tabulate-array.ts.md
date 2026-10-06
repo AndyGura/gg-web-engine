@@ -1,6 +1,6 @@
 ---
 title: pixi/utils/tabulate-array.ts
-nav_order: 177
+nav_order: 193
 parent: Modules
 ---
 

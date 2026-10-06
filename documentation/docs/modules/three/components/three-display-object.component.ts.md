@@ -1,6 +1,6 @@
 ---
 title: three/components/three-display-object.component.ts
-nav_order: 197
+nav_order: 213
 parent: Modules
 ---
 
@@ -15,6 +15,8 @@ parent: Modules
     - [enableRenderLayer (method)](#enablerenderlayer-method)
     - [disableRenderLayer (method)](#disablerenderlayer-method)
     - [isRenderLayerEnabled (method)](#isrenderlayerenabled-method)
+    - [addChild (method)](#addchild-method)
+    - [removeChild (method)](#removechild-method)
     - [isEmpty (method)](#isempty-method)
     - [popChild (method)](#popchild-method)
     - [getBoundings (method)](#getboundings-method)
@@ -25,6 +27,8 @@ parent: Modules
     - [disposeMesh (method)](#disposemesh-method)
     - [entity (property)](#entity-property)
     - [materialOptions (property)](#materialoptions-property)
+    - [resourceOwnership (property)](#resourceownership-property)
+  - [materialTextures](#materialtextures)
 
 ---
 
@@ -62,6 +66,22 @@ public disableRenderLayer(layer: RenderLayer): void
 
 ```ts
 public isRenderLayerEnabled(layer: RenderLayer): boolean
+```
+
+### addChild (method)
+
+**Signature**
+
+```ts
+public addChild(child: ThreeDisplayObjectComponent): void
+```
+
+### removeChild (method)
+
+**Signature**
+
+```ts
+public removeChild(child: ThreeDisplayObjectComponent): void
 ```
 
 ### isEmpty (method)
@@ -147,4 +167,31 @@ hard implementation of that interface - check with `isMaterialReadable3d` before
 
 ```ts
 readonly materialOptions: DisplayObject3dOpts<Texture<unknown, TextureEventMap>> | undefined
+```
+
+### resourceOwnership (property)
+
+What `dispose()` frees:
+
+- `'meshes'` (default): the geometry and materials of every mesh in `nativeMesh`. Textures are
+  left alone - a primitive's `diffuse` texture belongs to whoever loaded it.
+- `'all'`: the materials' textures as well. Set by `ThreeLoader` on a loaded model, whose
+  textures came with the file and have no other owner.
+- `'none'`: nothing. A `clone()` shares geometry, materials and textures with its source, which
+  stays the one to free them.
+
+**Signature**
+
+```ts
+resourceOwnership: 'meshes' | 'all' | 'none'
+```
+
+## materialTextures
+
+Every texture a material references (its maps), found by value rather than by a list of names.
+
+**Signature**
+
+```ts
+export declare function materialTextures(material: Material): Texture[]
 ```

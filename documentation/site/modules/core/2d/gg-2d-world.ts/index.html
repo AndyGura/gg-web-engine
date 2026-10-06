@@ -746,15 +746,7 @@ adds it to the world.</p>
 </code></pre>
 <h3 id="registerconsolecommands-method">registerConsoleCommands (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">protected registerConsoleCommands(ggstatic: {
-    registerConsoleCommand: (
-      world: GgWorld&lt;any, any&gt; | null,
-      command: string,
-      handler: (...args: string[]) =&gt; Promise&lt;string&gt;,
-      doc?: string,
-      mutates?: boolean,
-    ) =&gt; void;
-  })
+<pre><code class="language-ts">protected registerConsoleCommands(ggstatic: GgConsoleHost)
 </code></pre>
 <h3 id="loader-property">loader (property)</h3>
 <p><strong>Signature</strong></p>
@@ -857,6 +849,7 @@ adds it to the world.</p>
   rendererExtraOpts: {}
   camera: ICamera2dComponent
   parallaxLayer: IParallaxLayer2dComponent
+  text: IText2dComponent
   texture: unknown
 }
 </code></pre>

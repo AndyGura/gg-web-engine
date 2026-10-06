@@ -5,6 +5,7 @@ has_children: true
 
 <h2 class="text-delta">Directory table of contents</h2>
 
+- [core/base/assets](/gg-web-engine/modules/core/base/assets)
 - [core/base/blueprint](/gg-web-engine/modules/core/base/blueprint)
 - [core/base/clock](/gg-web-engine/modules/core/base/clock)
 - [core/base/components](/gg-web-engine/modules/core/base/components)
@@ -21,3 +22,4 @@ has_children: true
 - [core/base/models](/gg-web-engine/modules/core/base/models)
 - [core/base/network](/gg-web-engine/modules/core/base/network)
 - [core/base/pipes](/gg-web-engine/modules/core/base/pipes)
+- [core/base/screens](/gg-web-engine/modules/core/base/screens)

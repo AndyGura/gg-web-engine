@@ -1,6 +1,6 @@
 ---
 title: pixi/components/pixi-display-object.component.ts
-nav_order: 170
+nav_order: 184
 parent: Modules
 ---
 
@@ -12,6 +12,8 @@ parent: Modules
 
 - [utils](#utils)
   - [PixiDisplayObjectComponent (class)](#pixidisplayobjectcomponent-class)
+    - [addChild (method)](#addchild-method)
+    - [removeChild (method)](#removechild-method)
     - [isEmpty (method)](#isempty-method)
     - [popChild (method)](#popchild-method)
     - [getBoundings (method)](#getboundings-method)
@@ -35,6 +37,22 @@ parent: Modules
 export declare class PixiDisplayObjectComponent {
   constructor(public nativeSprite: Container, materialOptions?: DisplayObject2dOpts<Texture>)
 }
+```
+
+### addChild (method)
+
+**Signature**
+
+```ts
+public addChild(child: PixiDisplayObjectComponent): void
+```
+
+### removeChild (method)
+
+**Signature**
+
+```ts
+public removeChild(child: PixiDisplayObjectComponent): void
 ```
 
 ### isEmpty (method)

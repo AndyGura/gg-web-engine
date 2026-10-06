@@ -1,6 +1,6 @@
 ---
 title: core/base/interfaces/i-positionable.ts
-nav_order: 132
+nav_order: 140
 parent: Modules
 ---
 

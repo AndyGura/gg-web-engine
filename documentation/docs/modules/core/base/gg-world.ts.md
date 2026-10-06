@@ -1,6 +1,6 @@
 ---
 title: core/base/gg-world.ts
-nav_order: 125
+nav_order: 132
 parent: Modules
 ---
 
@@ -12,6 +12,7 @@ parent: Modules
 
 - [utils](#utils)
   - [AudioTypeDocRepo (type alias)](#audiotypedocrepo-type-alias)
+  - [GgConsoleHost (type alias)](#ggconsolehost-type-alias)
   - [GgWorld (class)](#ggworld-class)
     - [init (method)](#init-method)
     - [start (method)](#start-method)
@@ -33,8 +34,10 @@ parent: Modules
     - [visualScene (property)](#visualscene-property)
     - [physicsWorld (property)](#physicsworld-property)
     - [audioScene (property)](#audioscene-property)
+    - [loader (property)](#loader-property)
     - [worldClock (property)](#worldclock-property)
     - [keyboardInput (property)](#keyboardinput-property)
+    - [localPauseAllowed (property)](#localpauseallowed-property)
     - [pauseWhenHidden (property)](#pausewhenhidden-property)
     - [visibility$ (property)](#visibility-property)
     - [fixedPhysicsStep (property)](#fixedphysicsstep-property)
@@ -75,6 +78,32 @@ export type AudioTypeDocRepo<D, R> = {
   factory: IAudioSourceComponentFactory<D, R>
   source: IAudioSourceComponent<D, R>
   clip: unknown
+}
+```
+
+## GgConsoleHost (type alias)
+
+What a world needs from the dev console (`GgStatic`, see `src/dev`) to register its commands.
+World classes are handed it through `window.ggstatic` and never import anything from `dev/`.
+
+**Signature**
+
+```ts
+export type GgConsoleHost = {
+  registerConsoleCommand: (
+    world: GgWorld<any, any> | null,
+    command: string,
+    handler: (...args: string[]) => Promise<string>,
+    doc?: string,
+    mutates?: boolean
+  ) => void
+  createPerformanceMeter: (
+    samples: number,
+    maxRows: number
+  ) => IEntity & {
+    readonly avgReport: { totalTime: number; entries: [string, number][] }
+    readonly peakReport: { totalTime: number; entries: [string, number][] }
+  }
 }
 ```
 
@@ -293,15 +322,7 @@ private onGgStaticInitialized()
 **Signature**
 
 ```ts
-protected registerConsoleCommands(ggstatic: {
-    registerConsoleCommand: (
-      world: GgWorld<any, any> | null,
-      command: string,
-      handler: (...args: string[]) => Promise<string>,
-      doc?: string,
-      mutates?: boolean,
-    ) => void;
-  })
+protected registerConsoleCommands(ggstatic: GgConsoleHost)
 ```
 
 ### visualScene (property)
@@ -328,6 +349,18 @@ readonly physicsWorld: SceneTypeDoc["physicsWorld"]
 readonly audioScene: SceneTypeDoc["audioScene"]
 ```
 
+### loader (property)
+
+The world's loader - assigned, and typed in full, by `Gg2dWorld`/`Gg3dWorld`. Declared here
+only as far as the base class uses it: typing it as `LevelLoader<D, R, TypeDoc>` makes `GgWorld`
+invariant in `TypeDoc` and breaks every `IEntity<any, any>` to `IEntity<D, R, TypeDoc>` use.
+
+**Signature**
+
+```ts
+readonly loader: { dispose(): void; createAssetScope(): AssetScope; loadClip(url: string, options?: LoadTaskOptions | undefined): Promise<any>; } | undefined
+```
+
 ### worldClock (property)
 
 **Signature**
@@ -342,6 +375,20 @@ readonly worldClock: PausableClock
 
 ```ts
 readonly keyboardInput: KeyboardInput
+```
+
+### localPauseAllowed (property)
+
+Whether pausing this world is a local matter. `false` means its simulation is shared with
+someone else (a network layer sets it while a session is joined), so freezing it here would
+freeze or desync it for them: UI that pauses the game on the player's behalf must leave it
+running. `ScreenManager` consults it before pausing the world of a covered screen.
+`pauseWorld()` itself does not - it stays the explicit, unconditional call.
+
+**Signature**
+
+```ts
+localPauseAllowed: boolean
 ```
 
 ### pauseWhenHidden (property)

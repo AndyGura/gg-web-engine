@@ -1,13 +1,10 @@
 ---
 title: core/3d/models/environment.ts
-nav_order: 93
+nav_order: 95
 parent: Modules
 ---
 
 ## environment overview
-
-Fog fading distant objects into `color`. `LINEAR` fog starts at `near` and is opaque at `far`;
-`EXPONENTIAL` fog thickens with distance at the given `density`.
 
 ---
 
@@ -84,17 +81,24 @@ export type Fog3dOpts =
 
 ## LoadTextureOptions (type alias)
 
-Options for `IDisplayObject3dComponentLoader.loadTexture`.
+Options for `IDisplayObject3dComponentLoader.loadTexture` and
+`IDisplayObject3dComponentFactory.createTextureFromCanvas`.
 
 **Signature**
 
 ```ts
-export type LoadTextureOptions = {
+export type LoadTextureOptions = TextureOptions & {
   /**
    * How the texture is projected. `'uv'` (default) is an ordinary texture for a mesh's `diffuse`;
    * `'equirectangular'` is a 2:1 panorama usable as `Environment3dOpts.background`/`environmentMap`,
    * with its horizon along the world's horizontal (XY) plane.
    */
   mapping?: 'uv' | 'equirectangular'
+  /**
+   * How many times the texture tiles across a surface along each UV axis, e.g. `{ x: 5, y: 5 }` to
+   * cover a big floor with a small tile. Setting it makes the texture wrap around (repeat) instead
+   * of stretching its edge pixels. Default `{ x: 1, y: 1 }`.
+   */
+  repeat?: Point2
 }
 ```

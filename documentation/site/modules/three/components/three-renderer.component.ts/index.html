@@ -653,6 +653,10 @@
 <pre><code class="language-ts">render(): void
 </code></pre>
 <h3 id="dispose-method">dispose (method)</h3>
+<p>Frees the renderer and gives its WebGL context back to the browser right away, instead of
+leaving that to garbage collection - a page gets only so many contexts (about 16), and an app
+that creates a world per game session would run out. The canvas can't be used for another
+renderer afterwards: create a new canvas for the next one.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">dispose(): void
 </code></pre>

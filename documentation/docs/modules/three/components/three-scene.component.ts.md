@@ -1,6 +1,6 @@
 ---
 title: three/components/three-scene.component.ts
-nav_order: 201
+nav_order: 217
 parent: Modules
 ---
 
@@ -23,6 +23,7 @@ parent: Modules
     - [dispose (method)](#dispose-method)
     - [factory (property)](#factory-property)
     - [loader (property)](#loader-property)
+    - [renderers (property)](#renderers-property)
     - [mainRenderLayer (property)](#mainrenderlayer-property)
     - [lockedRenderLayers (property)](#lockedrenderlayers-property)
 
@@ -136,6 +137,16 @@ readonly factory: ThreeFactory
 
 ```ts
 readonly loader: ThreeLoader
+```
+
+### renderers (property)
+
+The renderers currently drawing this scene - what `ThreeLoader.prepare` uploads to.
+
+**Signature**
+
+```ts
+readonly renderers: Set<ThreeRendererComponent>
 ```
 
 ### mainRenderLayer (property)

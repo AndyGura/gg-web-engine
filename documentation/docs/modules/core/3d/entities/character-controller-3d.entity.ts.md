@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/character-controller-3d.entity.ts
-nav_order: 62
+nav_order: 64
 parent: Modules
 ---
 

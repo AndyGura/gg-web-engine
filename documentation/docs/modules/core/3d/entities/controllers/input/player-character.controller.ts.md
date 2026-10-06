@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/controllers/input/player-character.controller.ts
-nav_order: 72
+nav_order: 74
 parent: Modules
 ---
 
@@ -34,8 +34,8 @@ parent: Modules
 The player's input+camera controller: WASD/arrows/both movement, sprint, crouch and jump keys,
 and mouse-look driving a first- or third-person camera - all layered on top of a plain
 `CharacterController3dEntity`, which owns the actual movement/gravity/jump physics. Mirrors
-`GgCarKeyboardHandlingController` (input entity driving a separate physics entity) crossed with
-`FreeCameraController` (mouse-look + pointer lock via the same `MouseInput`/`DirectionKeyboardInput`
+`GgCarHandlingController` (input entity driving a separate physics entity) crossed with
+`FreeCameraController` (mouse-look + pointer lock via the same `MouseInput`/`DirectionInput`
 primitives).
 
 The character's yaw always follows the camera's yaw (mouse-look), in both view modes - `WASD`
@@ -46,7 +46,7 @@ movement is relative to that facing.
 ```ts
 export declare class PlayerCharacterController<TypeDoc> {
   constructor(
-    protected readonly keyboard: KeyboardInput,
+    public readonly keyboard: KeyboardInput,
     /** The character this controller drives. May be swapped/set to `null` at any time. */
     public character: CharacterController3dEntity<TypeDoc> | null,
     protected readonly camera: Renderer3dEntity<TypeDoc['vTypeDoc']>,
@@ -135,7 +135,7 @@ readonly mouseInput: MouseInput
 **Signature**
 
 ```ts
-readonly directionsInput: DirectionKeyboardInput
+readonly directionsInput: DirectionInput
 ```
 
 ## PlayerCharacterControllerOptions (type alias)
@@ -147,7 +147,7 @@ Options for configuring a `PlayerCharacterController`.
 ```ts
 export type PlayerCharacterControllerOptions = {
   /** Keymap for walk/strafe direction. 'wasd+arrows' by default (both layouts work at once). */
-  keymap: DirectionKeyboardKeymap
+  keymap: DirectionKeymap
   /** Key code that triggers `character.jump()`. 'Space' by default. */
   jumpKey: string
   /** Key code that sets `character.isRunning`. 'ShiftLeft' by default. */

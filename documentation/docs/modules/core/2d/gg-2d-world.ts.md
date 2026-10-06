@@ -1,6 +1,6 @@
 ---
 title: core/2d/gg-2d-world.ts
-nav_order: 37
+nav_order: 38
 parent: Modules
 ---
 
@@ -107,15 +107,7 @@ addRenderer(
 **Signature**
 
 ```ts
-protected registerConsoleCommands(ggstatic: {
-    registerConsoleCommand: (
-      world: GgWorld<any, any> | null,
-      command: string,
-      handler: (...args: string[]) => Promise<string>,
-      doc?: string,
-      mutates?: boolean,
-    ) => void;
-  })
+protected registerConsoleCommands(ggstatic: GgConsoleHost)
 ```
 
 ### loader (property)
@@ -266,6 +258,7 @@ export type VisualTypeDocRepo2D = {
   rendererExtraOpts: {}
   camera: ICamera2dComponent
   parallaxLayer: IParallaxLayer2dComponent
+  text: IText2dComponent
   texture: unknown
 }
 ```

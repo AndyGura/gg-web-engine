@@ -1,6 +1,6 @@
 ---
 title: core/3d/factories.ts
-nav_order: 84
+nav_order: 86
 parent: Modules
 ---
 
@@ -17,6 +17,7 @@ parent: Modules
     - [createPrimitive (method)](#createprimitive-method)
     - [createPerspectiveCamera (method)](#createperspectivecamera-method)
     - [createLight (method)](#createlight-method)
+    - [createTextureFromCanvas (method)](#createtexturefromcanvas-method)
     - [randomColor (method)](#randomcolor-method)
     - [createPlane (method)](#createplane-method)
     - [createBox (method)](#createbox-method)
@@ -41,6 +42,11 @@ export type DisplayObject3dOpts<Tex> = {
   diffuse?: Tex
   castShadow?: boolean
   receiveShadow?: boolean
+  /**
+   * Opacity from `0` (invisible) to `1` (opaque, the default). Anything below `1` makes the
+   * material render as transparent.
+   */
+  opacity?: number
 }
 ```
 
@@ -92,6 +98,19 @@ Creates a light. Wrap it in a `Light3dEntity` (or use `Gg3dWorld.addLight`) to a
 
 ```ts
 abstract createLight(descriptor: Light3dDescriptor): VTypeDoc['light'];
+```
+
+### createTextureFromCanvas (method)
+
+Creates a texture from a canvas the app has drawn on, e.g. a procedurally generated pattern,
+for `DisplayObject3dOpts.diffuse`. The canvas is read once, now: drawing on it afterwards
+doesn't update the texture. To load an image file instead, see
+`IDisplayObject3dComponentLoader.loadTexture`.
+
+**Signature**
+
+```ts
+abstract createTextureFromCanvas(canvas: HTMLCanvasElement, options?: LoadTextureOptions): VTypeDoc['texture'];
 ```
 
 ### randomColor (method)

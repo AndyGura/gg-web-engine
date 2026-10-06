@@ -1,6 +1,6 @@
 ---
 title: core/3d/components/rendering/i-display-object-3d.component.ts
-nav_order: 55
+nav_order: 57
 parent: Modules
 ---
 
@@ -57,6 +57,16 @@ export interface IDisplayObject3dComponent<VTypeDoc extends VisualTypeDocRepo3D 
   /** Whether `layer` is currently one of this object's own render layers (or, for a camera, one of
    * the layers it currently renders) - see `enableRenderLayer`'s own doc. */
   isRenderLayerEnabled(layer: RenderLayer): boolean
+
+  /**
+   * Whether this object casts shadows from lights that have `castShadow` on. Setting it applies to
+   * the whole object, including every nested part of a loaded model and every child added with
+   * `addChild` at that moment; reading it returns the object's own (root) value.
+   */
+  castShadow: boolean
+
+  /** Whether shadows cast by other objects are drawn on this object. Applies like `castShadow`. */
+  receiveShadow: boolean
 
   /** Narrows the inherited `IDisplayObjectComponent.clone()`'s return type back to
    * `IDisplayObject3dComponent` (a 3D clone is always itself a 3D display object) - otherwise every

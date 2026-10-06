@@ -557,6 +557,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#createtexturefromcanvas-method" class="md-nav__link">
+    createTextureFromCanvas (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#randomcolor-method" class="md-nav__link">
     randomColor (method)
   </a>
@@ -652,6 +659,7 @@
 <li><a href="#createprimitive-method">createPrimitive (method)</a></li>
 <li><a href="#createperspectivecamera-method">createPerspectiveCamera (method)</a></li>
 <li><a href="#createlight-method">createLight (method)</a></li>
+<li><a href="#createtexturefromcanvas-method">createTextureFromCanvas (method)</a></li>
 <li><a href="#randomcolor-method">randomColor (method)</a></li>
 <li><a href="#createplane-method">createPlane (method)</a></li>
 <li><a href="#createbox-method">createBox (method)</a></li>
@@ -673,6 +681,11 @@
   diffuse?: Tex
   castShadow?: boolean
   receiveShadow?: boolean
+  /**
+   * Opacity from `0` (invisible) to `1` (opaque, the default). Anything below `1` makes the
+   * material render as transparent.
+   */
+  opacity?: number
 }
 </code></pre>
 <h2 id="iaudiosource3dcomponentfactory-interface">IAudioSource3dComponentFactory (interface)</h2>
@@ -703,6 +716,14 @@
 <p>Creates a light. Wrap it in a <code>Light3dEntity</code> (or use <code>Gg3dWorld.addLight</code>) to add it to a world.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">abstract createLight(descriptor: Light3dDescriptor): VTypeDoc['light'];
+</code></pre>
+<h3 id="createtexturefromcanvas-method">createTextureFromCanvas (method)</h3>
+<p>Creates a texture from a canvas the app has drawn on, e.g. a procedurally generated pattern,
+for <code>DisplayObject3dOpts.diffuse</code>. The canvas is read once, now: drawing on it afterwards
+doesn't update the texture. To load an image file instead, see
+<code>IDisplayObject3dComponentLoader.loadTexture</code>.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">abstract createTextureFromCanvas(canvas: HTMLCanvasElement, options?: LoadTextureOptions): VTypeDoc['texture'];
 </code></pre>
 <h3 id="randomcolor-method">randomColor (method)</h3>
 <p><strong>Signature</strong></p>

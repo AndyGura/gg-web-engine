@@ -557,6 +557,20 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#createtexturefromcanvas-method" class="md-nav__link">
+    createTextureFromCanvas (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#createtext-method" class="md-nav__link">
+    createText (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#randomcolor-method" class="md-nav__link">
     randomColor (method)
   </a>
@@ -645,6 +659,8 @@
 <li><a href="#createprimitive-method">createPrimitive (method)</a></li>
 <li><a href="#createparallaxlayer-method">createParallaxLayer (method)</a></li>
 <li><a href="#loadtexture-method">loadTexture (method)</a></li>
+<li><a href="#createtexturefromcanvas-method">createTextureFromCanvas (method)</a></li>
+<li><a href="#createtext-method">createText (method)</a></li>
 <li><a href="#randomcolor-method">randomColor (method)</a></li>
 <li><a href="#createbox-method">createBox (method)</a></li>
 <li><a href="#createcircle-method">createCircle (method)</a></li>
@@ -660,8 +676,13 @@
 <h2 id="displayobject2dopts-type-alias">DisplayObject2dOpts (type alias)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export type DisplayObject2dOpts&lt;Tex&gt; = {
+  /** Fill color of an untextured shape; with a `texture`, a tint multiplied over it instead. */
   color?: number
   texture?: Tex
+  /** An outline around an untextured shape. Ignored for a textured one. */
+  stroke?: { color: number; width: number }
+  /** Opacity from `0` (invisible) to `1` (opaque, the default), see `IDisplayObject2dComponent.opacity`. */
+  opacity?: number
 }
 </code></pre>
 <h2 id="iaudiosource2dcomponentfactory-interface">IAudioSource2dComponentFactory (interface)</h2>
@@ -689,7 +710,18 @@ use <code>Gg2dWorld.addParallaxLayer</code>) to add it to a world.</p>
 <h3 id="loadtexture-method">loadTexture (method)</h3>
 <p>Loads an image as a texture, for <code>DisplayObject2dOpts.texture</code>, a parallax layer or a background.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">abstract loadTexture(url: string): Promise&lt;VTypeDoc['texture']&gt;;
+<pre><code class="language-ts">abstract loadTexture(url: string, options?: TextureOptions): Promise&lt;VTypeDoc['texture']&gt;;
+</code></pre>
+<h3 id="createtexturefromcanvas-method">createTextureFromCanvas (method)</h3>
+<p>Creates a texture from a canvas the app has drawn on, e.g. a procedurally generated backdrop.
+The canvas is read once, now: drawing on it afterwards doesn't update the texture.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">abstract createTextureFromCanvas(canvas: HTMLCanvasElement, options?: TextureOptions): VTypeDoc['texture'];
+</code></pre>
+<h3 id="createtext-method">createText (method)</h3>
+<p>Creates a text object, see <code>IText2dComponent</code> and <code>Text2dStyle</code>.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">abstract createText(text: string, style?: Text2dStyle): VTypeDoc['text'];
 </code></pre>
 <h3 id="randomcolor-method">randomColor (method)</h3>
 <p><strong>Signature</strong></p>

@@ -1,6 +1,6 @@
 ---
 title: core/2d/entities/controllers/character-animation-2d.controller.ts
-nav_order: 27
+nav_order: 28
 parent: Modules
 ---
 

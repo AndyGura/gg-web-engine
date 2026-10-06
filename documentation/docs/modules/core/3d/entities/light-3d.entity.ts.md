@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/light-3d.entity.ts
-nav_order: 78
+nav_order: 80
 parent: Modules
 ---
 

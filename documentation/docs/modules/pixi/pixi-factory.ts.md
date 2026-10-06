@@ -1,6 +1,6 @@
 ---
 title: pixi/pixi-factory.ts
-nav_order: 175
+nav_order: 190
 parent: Modules
 ---
 
@@ -14,9 +14,19 @@ parent: Modules
   - [PixiDisplayObject3dOpts (type alias)](#pixidisplayobject3dopts-type-alias)
   - [PixiFactory (class)](#pixifactory-class)
     - [createPrimitive (method)](#createprimitive-method)
+    - [paint (method)](#paint-method)
+    - [texturedSprite (method)](#texturedsprite-method)
+    - [createNativePrimitive (method)](#createnativeprimitive-method)
     - [createAnimatedSprite (method)](#createanimatedsprite-method)
     - [createParallaxLayer (method)](#createparallaxlayer-method)
     - [loadTexture (method)](#loadtexture-method)
+    - [textureFromData (method)](#texturefromdata-method)
+    - [decodeSvg (method)](#decodesvg-method)
+    - [disposeTexture (method)](#disposetexture-method)
+    - [prepare (method)](#prepare-method)
+    - [createTextureFromCanvas (method)](#createtexturefromcanvas-method)
+    - [createText (method)](#createtext-method)
+    - [applyTextureOptions (method)](#applytextureoptions-method)
   - [PixiGridAtlasClip (type alias)](#pixigridatlasclip-type-alias)
   - [PixiGridAtlasOptions (type alias)](#pixigridatlasoptions-type-alias)
 
@@ -37,7 +47,9 @@ export type PixiDisplayObject3dOpts = DisplayObject2dOpts<Texture>
 **Signature**
 
 ```ts
-export declare class PixiFactory
+export declare class PixiFactory {
+  constructor(private readonly scene?: PixiSceneComponent)
+}
 ```
 
 ### createPrimitive (method)
@@ -46,6 +58,34 @@ export declare class PixiFactory
 
 ```ts
 createPrimitive(descriptor: Shape2DDescriptor, material: PixiDisplayObject3dOpts = {}): PixiDisplayObjectComponent
+```
+
+### paint (method)
+
+Fills an untextured shape's path with `material.color` and outlines it with `material.stroke`.
+
+**Signature**
+
+```ts
+private paint(graphics: Graphics, material: PixiDisplayObject3dOpts): Graphics
+```
+
+### texturedSprite (method)
+
+A sprite showing `texture`, centered on its position, tinted with `material.color` if set.
+
+**Signature**
+
+```ts
+private texturedSprite(texture: Texture, width: number, height: number, material: PixiDisplayObject3dOpts): Sprite
+```
+
+### createNativePrimitive (method)
+
+**Signature**
+
+```ts
+private createNativePrimitive(descriptor: Shape2DDescriptor, material: PixiDisplayObject3dOpts): Container
 ```
 
 ### createAnimatedSprite (method)
@@ -74,7 +114,72 @@ createParallaxLayer(options: ParallaxLayer2dOpts<Texture>): PixiParallaxLayerCom
 **Signature**
 
 ```ts
-loadTexture(url: string): Promise<Texture>
+async loadTexture(url: string, options: TextureOptions = {}): Promise<Texture>
+```
+
+### textureFromData (method)
+
+Decodes an already-fetched image file into a texture of its own: unlike `loadTexture`, nothing
+goes through pixi's global `Assets` cache, so the texture belongs to whoever asked for it and
+is freed with `disposeTexture`.
+
+**Signature**
+
+```ts
+async textureFromData(data: Blob, options: TextureOptions = {}): Promise<Texture>
+```
+
+### decodeSvg (method)
+
+**Signature**
+
+```ts
+private async decodeSvg(data: Blob): Promise<HTMLImageElement>
+```
+
+### disposeTexture (method)
+
+Frees a texture made by `textureFromData`, together with its image.
+
+**Signature**
+
+```ts
+disposeTexture(texture: Texture): void
+```
+
+### prepare (method)
+
+Uploads a texture to the GPU on every renderer drawing the scene, instead of on the first
+frame it is visible in. A renderer that is not initialized yet is skipped.
+
+**Signature**
+
+```ts
+async prepare(texture: Texture): Promise<void>
+```
+
+### createTextureFromCanvas (method)
+
+**Signature**
+
+```ts
+createTextureFromCanvas(canvas: HTMLCanvasElement, options: TextureOptions = {}): Texture
+```
+
+### createText (method)
+
+**Signature**
+
+```ts
+createText(text: string, style: Text2dStyle = {}): PixiTextComponent
+```
+
+### applyTextureOptions (method)
+
+**Signature**
+
+```ts
+private applyTextureOptions(texture: Texture, options: TextureOptions): Texture
 ```
 
 ## PixiGridAtlasClip (type alias)

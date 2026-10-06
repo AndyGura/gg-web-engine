@@ -5,10 +5,10 @@ has_children: true
 
 <h2 class="text-delta">Directory table of contents</h2>
 
-- [core/3d/entities/controllers/input/car-keyboard-handling.controller.ts](/gg-web-engine/modules/core/3d/entities/controllers/input/car-keyboard-handling.controller.ts)
+- [core/3d/entities/controllers/input/car-handling.controller.ts](/gg-web-engine/modules/core/3d/entities/controllers/input/car-handling.controller.ts)
 - [core/3d/entities/controllers/input/character-controller-self-hit-skip.ts](/gg-web-engine/modules/core/3d/entities/controllers/input/character-controller-self-hit-skip.ts)
 - [core/3d/entities/controllers/input/free-camera.controller.ts](/gg-web-engine/modules/core/3d/entities/controllers/input/free-camera.controller.ts)
-- [core/3d/entities/controllers/input/gg-car-keyboard-handling.controller.ts](/gg-web-engine/modules/core/3d/entities/controllers/input/gg-car-keyboard-handling.controller.ts)
+- [core/3d/entities/controllers/input/gg-car-handling.controller.ts](/gg-web-engine/modules/core/3d/entities/controllers/input/gg-car-handling.controller.ts)
 - [core/3d/entities/controllers/input/object-grab.controller.ts](/gg-web-engine/modules/core/3d/entities/controllers/input/object-grab.controller.ts)
 - [core/3d/entities/controllers/input/orbit-camera.controller.ts](/gg-web-engine/modules/core/3d/entities/controllers/input/orbit-camera.controller.ts)
 - [core/3d/entities/controllers/input/player-character.controller.ts](/gg-web-engine/modules/core/3d/entities/controllers/input/player-character.controller.ts)
