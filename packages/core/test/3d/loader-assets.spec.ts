@@ -182,6 +182,17 @@ describe('asset loading through Gg3dLoader', () => {
       expect(visualLoader.prepare).toHaveBeenCalledTimes(2);
     });
 
+    it('without props, the root alone fills the bar: no empty slot holds the fraction down', async () => {
+      const progress = record();
+      await world.loader.loadGgGlb('assets/room', { loadProps: false, onProgress: progress.onProgress });
+
+      expectMonotonic(progress.calls);
+      expect(progress.last()).toEqual(expect.objectContaining({ fraction: 1, loadedItems: 1, totalItems: 1 }));
+      // the root is fully fetched before decoding: more than half the way by then
+      const beforeDecode = progress.calls.filter(p => p.loadedItems === 0);
+      expect(Math.max(...beforeDecode.map(p => p.fraction))).toBeGreaterThan(0.5);
+    });
+
     it('frees the cached original when the scope it was loaded with is released, not when a copy is disposed', async () => {
       const scope = world.loader.createAssetScope();
       const result = await world.loader.loadGgGlb('assets/radio', { scope });

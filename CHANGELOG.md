@@ -76,6 +76,9 @@ where one exists.
   paused when the tab is shown again (`pauseWhenHidden`).
 - `@gg-web-engine/core`: `GgWorld.dispose()` disposes everything even when one step throws, and
   rethrows the first error afterwards.
+- `@gg-web-engine/core`: calling `ScreenManager.dispose()` twice before the first call finished no
+  longer detaches a different manager from the shared dev-console `screens` command; every call
+  shares the one disposal.
 - Every package declares `sideEffects`, so a bundler leaves out the modules an app doesn't use -
   for core that includes the dev console, debugger and stats.js.
 - `@gg-web-engine/pixi`: disposing a renderer (a world) before pixi finished initializing no longer

@@ -117,6 +117,7 @@ export class ScreenManager {
   /** `pointerEvents` of a covered screen's layer as the screen had it, put back on uncover. */
   private readonly pointerEventsBeforeCover: WeakMap<Screen, string> = new WeakMap<Screen, string>();
   private disposed = false;
+  private disposing: Promise<void> | null = null;
 
   /** The screens, bottom first. */
   public get stack(): readonly Screen[] {
@@ -224,10 +225,15 @@ export class ScreenManager {
   }
 
   /** Exits every screen and removes what the manager added to the page. */
-  public async dispose(): Promise<void> {
-    if (this.disposed) {
-      return;
+  public dispose(): Promise<void> {
+    // one disposal, shared by every caller: a second one must not detach another manager
+    if (!this.disposing) {
+      this.disposing = this.doDispose();
     }
+    return this.disposing;
+  }
+
+  private async doDispose(): Promise<void> {
     await this.reset([]);
     this.disposed = true;
     ScreenManager.managers.splice(ScreenManager.managers.indexOf(this), 1);
@@ -363,7 +369,8 @@ export class ScreenManager {
           return false;
         }
         if (outcome === 'entered') {
-          break;
+          // entered, but a later request already removes it: that request exits it, not shown
+          return !fallbackUsed && !this.cancelled.has(top);
         }
         // enter() threw: the screen is gone, show its replacement or what is below it
         const fallback = fallbackUsed ? null : this.fallbackFor(outcome.error, top);
@@ -371,6 +378,9 @@ export class ScreenManager {
         if (fallback) {
           this.attach(fallback);
           this.setStack([...this.stack, fallback]);
+          // the fallback stands where the failed screen stood, so that a request made while it
+          // enters sees it and can cancel it
+          this.projected = this.projected.map(screen => (screen === top ? fallback : screen));
         }
         error = fallback ? null : (error ?? outcome);
       }
@@ -394,12 +404,26 @@ export class ScreenManager {
     if (!this.onEnterError) {
       return null;
     }
+    let fallback: Screen | null | void;
     try {
-      return this.onEnterError(error, screen) || null;
+      fallback = this.onEnterError(error, screen);
     } catch (e) {
       console.error(e);
       return null;
     }
+    if (!fallback) {
+      return null;
+    }
+    // the same rules a requested screen gets: a fresh instance, not already in the stack
+    if (fallback.state === 'exited') {
+      console.error(new Error('onEnterError returned a screen that has exited: create a new instance'));
+      return null;
+    }
+    if (this.stack.includes(fallback)) {
+      console.error(new Error('onEnterError returned a screen that is already in the stack'));
+      return null;
+    }
+    return fallback;
   }
 
   /**
@@ -475,22 +499,26 @@ export class ScreenManager {
     };
 
     let failure: { error: unknown } | null = null;
+    // `enter()` ran to its end before any abort: the screen is in, whatever comes after
+    let entered = false;
     try {
       await screen.enter({ signal: controller.signal, reportProgress });
+      entered = !controller.signal.aborted;
     } catch (e) {
       failure = { error: e };
     }
     if (timer !== null) {
       clearTimeout(timer);
     }
-    if (view && !failure && !controller.signal.aborted) {
-      // a loading view that has just appeared doesn't vanish again within a frame
+    if (view && entered) {
+      // a loading view that has just appeared doesn't vanish again within a frame; an abort only
+      // cuts the wait short, the request behind it exits the screen as an entered one
       await sleep(this.loadingMinDuration - (Date.now() - viewShownAt), controller.signal);
     }
     (view as LoadingView | null)?.dispose();
     this.enteringControllers.delete(screen);
 
-    if (controller.signal.aborted) {
+    if (!entered && controller.signal.aborted) {
       // left in the stack for the request that aborted it: its transition takes it out
       this.aborted.add(screen);
       if (failure && !isAbortError(failure.error)) {
@@ -504,7 +532,10 @@ export class ScreenManager {
       return failure;
     }
     onShown();
-    screen.layer.style.visibility = '';
+    if (!controller.signal.aborted) {
+      // a screen on its way out again stays hidden: the stack above it already changed
+      screen.layer.style.visibility = '';
+    }
     screen.internals.setState('active');
     return 'entered';
   }

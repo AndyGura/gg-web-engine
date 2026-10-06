@@ -363,17 +363,18 @@ export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocR
   ): Promise<void> {
     const group = new LoadProgressGroup(options);
     const rootSlot = group.sub();
-    const propsSlot = group.sub();
+    // a slot only when there is something to put in it: an empty one would hold the fraction down
+    const propsSlot = loadProps ? group.sub() : null;
     const { meta } = await this.acquireGgGlb(path, rootSlot);
-    if (loadProps) {
+    if (propsSlot) {
       const props = new LoadProgressGroup(propsSlot);
       await Promise.all(
         Gg3dLoader.propsOf(meta, path, propsPath).map(prop =>
           this.preloadGgGlb(prop.path, prop.loadProps, undefined, props.sub()),
         ),
       );
+      group.complete(propsSlot);
     }
-    group.complete(propsSlot);
     group.finish();
   }
 
@@ -436,7 +437,8 @@ export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocR
     const nameScope: string | null =
       loadOptions.nameScope === undefined ? `glb_${Gg3dLoader.nameScopeCounter++}` : loadOptions.nameScope;
     const rootSlot = group.sub();
-    const propsSlot = group.sub();
+    // a slot only when there is something to put in it: an empty one would hold the fraction down
+    const propsSlot = loadOptions.loadProps ? group.sub() : null;
     const { resources, meta } = await this.loadGgGlbResources(path, loadOptions.cachingStrategy, rootSlot);
     const result: LoadResultWithProps<TypeDoc> = {
       entities: resources.map((x, index) => {
@@ -454,7 +456,7 @@ export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocR
       }),
       meta,
     };
-    if (loadOptions.loadProps) {
+    if (propsSlot) {
       const props = new LoadProgressGroup(propsSlot);
       result.props = await Promise.all(
         Gg3dLoader.propsOf(meta, path, loadOptions.propsPath).map(({ dummy, path: propPath, loadProps }) =>
@@ -482,7 +484,9 @@ export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocR
       // FIXME this rotation is wrong
       e.rotation = Qtrn.mult(Qtrn.clone(e.rotation), loadOptions.rotation);
     });
-    group.complete(propsSlot);
+    if (propsSlot) {
+      group.complete(propsSlot);
+    }
     group.finish();
     return result;
   }

@@ -699,6 +699,72 @@ describe('ScreenManager', () => {
       expect(fallback.state).toBe('active');
     });
 
+    it('going back while a fallback screen still loads aborts the fallback', async () => {
+      await screens.dispose();
+      const fallback = new SlowScreen('fallback', log);
+      screens = new ScreenManager({ loadingView: null, onEnterError: () => fallback });
+      const menu = new MenuScreen('menu', log);
+      await screens.push(menu);
+      const slow = new SlowScreen('slow', log);
+      const pushed = screens.push(slow);
+      await flush();
+      slow.fail(new Error('level is broken'));
+      await flush();
+      expect(fallback.state).toBe('entering');
+      log.length = 0;
+
+      const popped = screens.pop();
+      expect(fallback.ctx.signal.aborted).toBe(true);
+      await Promise.all([pushed, popped]);
+
+      expect(log).toEqual(['teardown fallback', 'uncovered menu']);
+      expect(screens.stack).toEqual([menu]);
+      expect(menu.state).toBe('active');
+    });
+
+    it('ignores a fallback that is already in the stack, and reports the error instead', async () => {
+      await screens.dispose();
+      const menu = new MenuScreen('menu', log);
+      screens = new ScreenManager({ loadingView: null, onEnterError: () => menu });
+      await screens.push(menu);
+      const slow = new SlowScreen('slow', log);
+      const pushed = screens.push(slow);
+      await flush();
+      const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+      slow.fail(new Error('level is broken'));
+
+      await expect(pushed).rejects.toThrow('level is broken');
+      expect(consoleError).toHaveBeenCalled();
+      consoleError.mockRestore();
+      expect(screens.stack).toEqual([menu]);
+      expect(menu.state).toBe('active');
+      await screens.pop();
+      expect(screens.stack).toEqual([]);
+      expect(menu.state).toBe('exited');
+    });
+
+    it('a screen that finished entering under the loading view exits properly when popped during the minimum time', async () => {
+      jest.useFakeTimers();
+      await screens.push(new MenuScreen('menu', log));
+      const slow = new SlowScreen('slow', log);
+      const pushed = screens.push(slow);
+      await flush();
+      jest.advanceTimersByTime(100);
+      slow.finish();
+      await flush();
+      expect(FakeLoadingView.instances[0].disposed).toBe(false);
+      log.length = 0;
+
+      const popped = screens.pop();
+      await flush();
+      expect(await pushed).toBe(false);
+      await popped;
+
+      expect(log).toEqual(['exit slow', 'teardown slow', 'uncovered menu']);
+      expect(slow.state).toBe('exited');
+      expect(FakeLoadingView.instances[0].disposed).toBe(true);
+    });
+
     it('keeps the layers of leaving screens until the new top screen or the loading view shows', async () => {
       jest.useFakeTimers();
       const menu = new MenuScreen('menu', log);
@@ -846,6 +912,22 @@ describe('ScreenManager', () => {
       expect(log).toEqual(['exit pause', 'teardown pause', 'exit game', 'teardown game']);
       expect(container.isConnected).toBe(false);
       await expect(manager.push(new LogScreen('late', log))).rejects.toThrow('disposed');
+    });
+
+    it('disposing twice at once detaches only that manager, and never another one', async () => {
+      const other = new ScreenManager({ loadingView: null });
+      const manager = new ScreenManager({ loadingView: null });
+      await manager.push(new LogScreen('a', log));
+      const container = manager.container;
+
+      await Promise.all([manager.dispose(), manager.dispose()]);
+      expect(container.isConnected).toBe(false);
+
+      // the other manager still works and still goes away cleanly
+      await other.push(new LogScreen('b', log));
+      expect(other.top?.state).toBe('active');
+      await other.dispose();
+      expect(other.container.isConnected).toBe(false);
     });
 
     it('leaves a container it was given in place, empty', async () => {
