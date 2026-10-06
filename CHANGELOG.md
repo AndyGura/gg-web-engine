@@ -28,14 +28,32 @@ where one exists.
 
 ## [Unreleased]
 
-## [0.0.78] - 2026-10-05
-
 ### Added
 - `@gg-web-engine/mobile-controls`: a built-in layout for `ObjectGrabController` - a grab button
   that turns into a release button while something is held, and a throw button shown only then
   (`grab` option, `grabLayout`). `ObjectGrabController` exposes `heldObject$`, `keyboard`, `options`
   and public `throwHeld()`/`dropHeld()` for it.
 - Examples: the coin run and portal room demos show on-screen controls on a phone.
+
+### Changed
+- `@gg-web-engine/core`: `MouseInput.delta$` reports each mouse movement once. It used to report
+  every movement twice (once from `pointermove` and once from the `mousemove` fired for the same
+  motion), so every mouse-look sensitivity - `OrbitCameraController`'s orbiting/panning/dollying,
+  `PlayerCharacterController.mouseSensitivity`, `FreeCameraController.cameraRotationSensitivity` -
+  effectively ran at double its documented "radians per 1000px". The same value now turns half as
+  far; an app that wants its previous feel back doubles its sensitivity.
+
+### Fixed
+- `@gg-web-engine/core`: looking around by dragging a finger over the canvas (`OrbitCameraController`,
+  `PlayerCharacterController`/`FreeCameraController` without an on-screen look area) was far slower
+  than with a mouse. `MouseInput` now measures a touch pointer from its own previous position instead
+  of the browser's `movementX`/`movementY` and scales it by a new `touchSensitivity` option (3 by
+  default, matching the mobile-controls look area). `ObjectGrabController` no longer throws or drops
+  on a touch device's drag - the on-screen buttons do that there.
+
+## [0.0.78] - 2026-10-05
+
+### Added
 - New package `@gg-web-engine/mobile-controls`: an overlay of on-screen touch controls.
   `world.addEntity(new MobileControls())` shows sticks and buttons matching whichever of the car,
   character (3D/2D) and free camera controllers is active, on touch devices only. Layouts have
@@ -130,12 +148,6 @@ where one exists.
   `Failed to load "<url>": <status>`.
 
 ### Fixed
-- `@gg-web-engine/core`: looking around by dragging a finger over the canvas (`OrbitCameraController`,
-  `PlayerCharacterController`/`FreeCameraController` without an on-screen look area) was far slower
-  than with a mouse. `MouseInput` now measures a touch pointer from its own previous position instead
-  of the browser's `movementX`/`movementY` and scales it by a new `touchSensitivity` option (3 by
-  default, matching the mobile-controls look area). `ObjectGrabController` no longer throws or drops
-  on a touch device's drag - the on-screen buttons do that there.
 - `@gg-web-engine/core`: `MouseInput.isTouchDevice()` did not recognize an iPad (which reports a
   desktop user agent) or any other device whose primary pointer is coarse, so the controllers'
   "unless pointer locked" options blocked touch input there.

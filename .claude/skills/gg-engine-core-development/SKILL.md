@@ -928,6 +928,11 @@ keyboard and mouse they are named after. Anything else feeds them:
   several sources compose (a tilt sensor on `x`, a pedal button on `y`). `output$` stays keys-only.
 - `MouseInput.emulateMove(delta)` - a view rotation, through `delta$`.
 
+`MouseInput.delta$` reports each movement exactly once, from `pointermove` alone - a mouse fires
+`mousemove` for the same motion, and listening to both (as this class once did) doubled every
+mouse-look sensitivity against its documented "radians per 1000px". Keep it that way when touching
+the event wiring; the spec covers it with a `pointermove` followed by its `mousemove`.
+
 `MouseInput` itself already handles a bare touch screen without any overlay: a touch pointer's
 movement is measured from that finger's own previous position (per pointer id - `movementX`/
 `movementY` of touch pointer events are not dependable across browsers) and multiplied by

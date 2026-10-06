@@ -106,9 +106,14 @@ describe('MouseInput touch movement', () => {
     expect(deltas).toEqual([{ x: 10, y: 0 }]);
   });
 
-  it('keeps using movementX/movementY for a mouse pointer', () => {
+  it('keeps using movementX/movementY for a mouse pointer, once per movement', () => {
     start();
     canvas.dispatchEvent(pointerEvent('pointermove', { x: 10, y: 10, pointerType: 'mouse', movementX: 7 }));
+    // the mousemove a browser fires for the same motion must not count again
+    const mouseMove = new MouseEvent('mousemove', { bubbles: true, clientX: 10, clientY: 10 });
+    Object.defineProperty(mouseMove, 'movementX', { value: 7 });
+    Object.defineProperty(mouseMove, 'movementY', { value: 0 });
+    canvas.dispatchEvent(mouseMove);
     expect(deltas).toEqual([{ x: 7, y: 0 }]);
   });
 });

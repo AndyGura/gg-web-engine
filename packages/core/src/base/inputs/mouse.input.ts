@@ -75,7 +75,9 @@ export class MouseInput extends IInput<[], [unlockPointer?: boolean]> {
   }
 
   /**
-   An observable of the change in the position of the mouse.
+   * The movement of the pointer, in pixels, once per pointer event: a mouse's `movementX`/`movementY`
+   * (also while the pointer is locked), a finger's movement since its previous position times
+   * `touchSensitivity`, and whatever `emulateMove` reports.
    */
   public get delta$(): Observable<Point2> {
     return this._delta$.asObservable();
@@ -215,16 +217,12 @@ export class MouseInput extends IInput<[], [unlockPointer?: boolean]> {
     const pointers: any[] = [];
     const pointerPositions: any = {};
 
-    (fromEvent(this._element, 'mousemove') as Observable<MouseEvent | PointerEvent>)
-      .pipe(takeUntil(this.stopped$))
-      .subscribe((event: MouseEvent) => {
-        this._delta$.next({ x: event.movementX, y: event.movementY });
-      });
-
+    // `pointermove` alone: a mouse fires it and `mousemove` for the same motion, so listening to both
+    // would report every movement twice
     (fromEvent(this._element, 'pointermove') as Observable<MouseEvent | PointerEvent>)
       .pipe(takeUntil(this.stopped$))
       .subscribe((event: PointerEvent | MouseEvent) => {
-        if (event instanceof PointerEvent) {
+        if (typeof PointerEvent !== 'undefined' && event instanceof PointerEvent) {
           const newPosition = { x: event.pageX, y: event.pageY };
           if (event.pointerType === 'touch') {
             // `movementX`/`movementY` of a touch pointer are not dependable across browsers (zero or
