@@ -126,6 +126,15 @@ it, so the app's own reference is the only thing that can pull it into a build. 
   its loader, or an adapter; a console command is a second way to reach it. An app that never touches
   `GgStatic` must lose nothing but the console.
 
+What keeps `dev/` out of an app's bundle is `"sideEffects": ["./dist/index.js"]` in
+`packages/core/package.json`: a bundler drops every module whose exports go unused, and with it
+stats.js. Without the field webpack keeps every module (stats.js, every entity class with a static
+field - a sample bundle went from 202 KB to 59 KB). `src/index.ts` (it sets `window.gg_version`) is
+the only module with a side effect at import time; a new one has to be listed there too, or it is
+silently dropped from bundles that use none of its exports. Every other package declares the field
+as well (`false`, or the files with an import-time side effect - see `gg-engine-visual-adapter`'s
+package.json section); `packages/mobile-controls` declares `false`.
+
 ## Adding a built-in dev-console command
 
 Built-in commands live in each world class's `registerConsoleCommands` override
@@ -412,7 +421,18 @@ removes the entity from the world: `IEntity.addChildren` on an entity that alrea
 fires, a network layer drops the entity's registration), so `attachToChunk` only calls it for
 entities that are not children of the map graph yet. App code reacting to `chunkLoaded$` has to
 expect a detached entity to still be around when its home chunk loads again, and skip respawning
-anything whose name is already in the world.
+anything whose name is already in the world. An entity the chunk loaded itself renders copies that
+share the chunk's cached originals: leaving the chunk (detached, or moved to another chunk) gives it
+its own `AssetScope` that `adopt`s the chunk's scope, released on the entity's `disposed$` - without
+it the chunk's unload frees geometry the entity still draws. App content attached with
+`attachToChunk` is not tracked (`loadedWith`), so moving it never pins a chunk's assets.
+
+The `"MapGraph"` level class preloads the chunks the entity loads first (`initialChunks`, at the
+cursor's starting position) through `Gg3dLoader.preloadInitialChunks`, so they are part of the
+level's progress and signal. They are held by a scope of their own that is released once
+`initialLoadComplete$` fires (the chunks hold them by then) or the entity is disposed - never by the
+level's scope, which would pin them for the level's lifetime. A bare `Gg3dLevelLoader` can't load
+`.glb` pairs, so its `preloadInitialChunks` does nothing.
 
 ## `tickOrder`: driving a dynamic rigid body before physics `simulate()` runs
 
@@ -540,20 +560,39 @@ subclasses), built from four pieces in `base/assets/`:
 - `AssetProgress` (one asset: any number of files, then a decode step with a fixed
   `DECODE_PROGRESS_SHARE` of the asset) and `LoadProgressGroup` (combines nested loads: each
   `group.sub()` is a `LoadTaskOptions` to hand to one nested loader call, carrying signal and scope
-  along). A group's fraction is the mean over the assets its slots report, clamped so it never
-  goes down when a late asset lowers the mean, and reaches 1 only on `finish()`. A load served
-  from the cache reports `totalItems: 0`, which gives it no weight - otherwise every cached asset
-  would be counted once when preloaded and again when used.
+  along). A group's fraction is the mean over the assets its slots report. A slot that has
+  reported no asset yet and isn't complete weighs as one asset, so a loader opens the slots of
+  every step it knows of up front - also those that only start once an earlier step is done (the
+  level after its JSON document, a model's props after its own file, each entity after the
+  preload) - or the first step finishing reads as the whole load being done and the bar sits at
+  99.9% while the rest loads. `group.complete(slot)` releases a slot whose step reported nothing.
+  When late assets lower the mean, the shown fraction holds and from then on covers the rest of
+  the bar in proportion to the remaining work: it never goes down and never stalls, and reaches 1
+  only on `finish()`. Test the fraction at a known point of the load (e.g. when a later file is
+  requested), not just monotonicity - a stuck-at-99.9% bar is monotonic. A load served from the
+  cache reports `totalItems: 0`, which gives it no weight - otherwise every cached asset would be
+  counted once when preloaded and again when used.
 - `AssetCache`/`AssetScope`: entries by key (`kind:url:options`), in-flight loads shared, each
   entry held by scopes and disposed when the last one releases it. No scope means the cache's
-  `root` scope, released only by `dispose()`. A load aborted by the caller that started it is
-  restarted for the others waiting on the same entry.
+  `root` scope, released only by `dispose()`. Every caller races the load against its own signal
+  (`abortable`), so it rejects at once rather than when a shared download, or a decode that ignores
+  signals, ends. A load aborted by the caller that started it is restarted for the others waiting
+  on the same entry; one nobody waits for any more is dropped from the cache and frees its result
+  if it finishes anyway. The cache has a lifetime signal that `dispose()` aborts: running loads are
+  cancelled and new ones rejected, so nothing loads into a disposed world. `preload` aborts its
+  remaining assets on the first failure and rethrows that failure, not the aborts it caused.
 - `AssetRef`: plain data naming one loader call, for `preload` and the `assets` hooks.
 
 A new loader method follows the existing ones (`loadTexture`, `loadClip`): split
 `{ onProgress, signal, scope }` off the options, call `this.acquireAsset(key, url, options, async
-item => ...)`, fetch with `fetchWithProgress(url, item.file(), signal)`, decode through the
-adapter, return `{ value, dispose }`. Add its kind to `AssetRef` and to `preloadAsset`. A built-in
+(item, loadSignal) => ...)`, fetch with `fetchWithProgress(url, item.file(), loadSignal)` - the
+signal the callback is given, never `options.signal`, which doesn't abort when the world is
+disposed - decode through the adapter, return `{ value, dispose }`. When the key holds more than
+the url (a model's or texture's options), fetch with `this.fetchShared(url, item, loadSignal)`
+instead: loads of one file with different options running at the same time then share one download
+(a short-lived `data:` entry, dropped once each of them has the bytes). A fetch that bypasses the cache
+(`CachingStrategy.Nothing`, the level document) links `options.signal` with
+`assetCache.lifetimeSignal` through `linkSignals` and `release()`s it when done. Add its kind to `AssetRef` and to `preloadAsset`. A built-in
 level class that loads something declares it in `registerClass`'s `assets` option and passes its
 generator's third argument (`load`) on to the loader call; the hook must produce exactly the key
 the generator's call does, so derive anything computed (the `"Player"` model's offset) with one
@@ -564,8 +603,11 @@ For models the cache holds an original that never enters a scene and every load 
 safe (a copy never frees shared resources, the source does), and each visual adapter implements it.
 Lifetime follows scopes: `loadLevel` creates one and releases it on the level group's `disposed$`,
 `createEntity` does the same per entity when it isn't given one, `MapGraph3dEntity` keeps one per
-chunk. World teardown order matters: `GgWorld.dispose()` disposes entities (the copies), then the
-loader's cache (the originals), then the scenes.
+chunk and cancels its chunk loads when it leaves the world (an abort controller per spawn; a chunk
+that finishes anyway is disposed and its scope released). World teardown order matters: `GgWorld.dispose()` disposes entities (the copies), then the
+loader's cache (the originals), then the scenes. Each step runs even when an earlier one throws
+(the first error is rethrown at the end), so one adapter failing to dispose never leaves an
+AudioContext or a GL context open.
 
 Pitfalls met here:
 
@@ -589,8 +631,9 @@ Pitfalls met here:
   a generator may ignore the signal, and only the `catch` removes the level and releases its scope.
 - **Mock `fetch` with `test/mocks/fetch.mock.ts`**, not an ad hoc object: a response needs
   `headers.get`, a `body.getReader()` or an `arrayBuffer()`, and has to honor `init.signal`.
-  `fetch.hold()`/`release()` park every body read for abort tests. `fetch` is called with one
-  argument when there is no signal, so `toHaveBeenCalledWith(url)` keeps working.
+  `fetch.hold()`/`release()` park every body read for abort tests. A loader always passes a
+  signal (the world's lifetime at least), so assert with `toHaveBeenCalledWith(url, { signal:
+  expect.anything() })`, or match on `fetch.mock.calls[i][0]`.
 
 ## Screens (`base/screens/`)
 
@@ -604,20 +647,42 @@ flow as a stack of DOM layers. The module imports nothing from an adapter and no
   active screens below it, and uncover it, or enter it if it is `pending`. `push`/`replace`/`pop`/
   `popTo`/`reset` only compute the wanted stack, inside the queue, from the stack as it is when
   their turn comes.
-- **Requests are serialized** on a promise chain. A request made while a screen is entering aborts
-  that screen unless it is a plain `push`. The aborted screen stays in the stack until the aborting
-  request's own transition removes it: taking it out at once would make a `pop()` issued to cancel
-  a load remove the screen below as well. When the aborting request fails before its transition
-  runs (`popTo` with no such screen, a `reset` naming an exited screen), `request` removes the
-  aborted screen itself (`removeAborted`), or it would stay on top, hidden, over an inert stack.
+- **Requests are serialized** on a promise chain. Each operation is a function from the stack
+  before it to the stack after it (`wanted`). `request` applies it at once to `projected` - the
+  stack once every queued operation has run - and any screen it removes that isn't shown yet
+  (`pending`/`entering`) is cancelled: an entering one is aborted through its controller, a pending
+  one is never entered (its transition sees it in `cancelled`, marks it `aborted` and returns
+  `false` before covering anything). When the operation's turn comes, `wanted` is applied again to
+  the real stack. A plain `push` removes nothing, so it cancels nothing; `push(a); push(b); pop()`
+  cancels only `b`. An operation whose `wanted` throws on the projection (popTo with no such
+  screen) cancels nothing. A cancelled screen stays in the stack until the cancelling operation's
+  own transition removes it: taking it out at once would make a `pop()` issued to cancel a load
+  remove the screen below as well. When that operation fails before its transition runs (a
+  `reset` naming an exited screen), `request` removes the aborted screen itself (`removeAborted`),
+  or it would stay on top, hidden, over an inert stack. `projected` is reset to the real stack
+  whenever the queue drains.
+- **Leaving screens keep their layers** until the new top is shown or the loading view appears
+  (`teardown(keepLayer)`, the transition removes them), so a transition never shows a blank
+  container. A loading view that appeared stays `loadingMinDuration`.
+- **Operations resolve with whether their top screen was shown** (`false` when cancelled). A failed
+  `enter()` asks `onEnterError` once per operation for a replacement screen; with one, the
+  operation resolves `false` instead of rejecting.
+- **The two console commands are shared by every live manager** (a static list); they are
+  deregistered when the last manager is disposed. `screens` names a screen by its class's
+  `screenTypeName`, falling back to the minifiable class name.
 - **`exit()` is only for screens that finished entering.** A screen that was never entered, failed
   or was aborted gets its teardowns and world disposal alone. `addWorld`/`addTeardown` called after
   the screen has exited (an `enter()` that ignored its signal) dispose their argument immediately.
 - **The manager reaches into a screen through `screen.internals`**, an object of closures, since TS
   has no package-private access. It is `@internal`; app code has no use for it.
 - **Covering a screen** sets `inert` on its layer, `inputEnabled = false` on its worlds and pauses
-  them unless the push said otherwise or `world.localPauseAllowed` is `false`. Uncovering puts back
-  only what covering changed (flags per world), so a world the app paused itself stays paused.
+  them unless the push said otherwise or `world.localPauseAllowed` is `false`. While covered it
+  follows `world.localPauseAllowed$`: a network session joined under an open menu resumes the
+  world, one that ends pauses it. A world already paused by `pauseWhenHidden` is taken over
+  (`adoptVisibilityPause`), so showing the tab again doesn't resume it under the menu; uncovering
+  while the tab is still hidden hands the pause back (`handVisibilityPauseBack`) instead of
+  resuming. Uncovering puts back only what covering changed (flags per world), so a world the app
+  paused itself stays paused.
 
 `GgWorld.inputEnabled` is the single switch for "this world does not react to the player": the
 setter stops/starts `keyboardInput` and feeds `inputEnabled$`, and everything else follows the

@@ -482,18 +482,31 @@ class GameScreen extends Screen {
 ```
 
 - **Operations**: `push(screen, { clearHistory?, pauseBelow?, loadingView? })`, `replace(screen)`,
-  `pop(count = 1)`, `popTo(screenOrClass)`, `reset([bottom, ..., top])`. Each is one transition and
-  returns a promise for it; transitions run in request order. Screens that leave exit first, top
-  down, then the new top screen enters. `clearHistory` makes the pushed screen the only one.
-  `reset` builds a whole stack at once; the screens below its top enter later, when first uncovered.
+  `pop(count = 1)` (a positive integer, else it rejects), `popTo(screenOrClass)`,
+  `reset([bottom, ..., top])`. Each is one transition and returns a promise for it; transitions run
+  in request order. Screens that leave exit first, top down, then the new top screen enters; their
+  layers stay up (inert) until the new screen or the loading view shows, so there is no blank frame.
+  `clearHistory` makes the pushed screen the only one. `reset` builds a whole stack at once; the
+  screens below its top enter later, when first uncovered. The promise resolves with `true` when
+  its screen was shown, `false` when a later operation cancelled it.
+- **Never `await` an operation inside a screen's own `enter()` or `exit()`** (a boot screen that
+  `await`s `push(menu)`): the operation waits for the transition, which waits for that hook, and
+  neither ends. Call it without awaiting - it runs right after.
 - **A screen instance is used once.** Create a new one per push and give it its parameters through
   the constructor. `enter()` runs once, `exit()` once.
 - **Loading**: while `enter()`'s promise is pending the screen's layer is hidden and, after
   `loadingDelay` (150 ms), the manager shows a loading view fed by `ctx.reportProgress` (a loader's
   `LoadProgress`, or a 0..1 number). `DefaultLoadingView` is a plain progress bar; pass
   `loadingView: () => myView` (an object with `element`, `setProgress`, `dispose`) to the manager
-  or to one push, or `null` for none. Anything but a plain `push` requested during the load aborts
-  it (`ctx.signal`), so "back" during loading cancels - pass the signal to every load.
+  or to one push, or `null` for none. Once shown, the view stays at least `loadingMinDuration`
+  (300 ms). An operation that removes a screen not shown yet cancels it: one that is loading is
+  aborted (`ctx.signal`), one still waiting its turn is never entered - judged by the stack the
+  queued operations lead to, so `push(a); push(b); pop()` cancels only `b`. "Back" during loading
+  cancels the load: pass the signal to every load.
+- **A failed `enter()`** removes the screen and shows the one below, and the operation rejects. A
+  game that replaced the menu (`clearHistory`) leaves nothing below - give the manager
+  `onEnterError: (error, screen) => new MenuScreen(...)` to show a screen in its place; the
+  operation then resolves with `false` instead of rejecting.
 - **Cleanup is registration, not code in `exit()`**: `addWorld(world)` and
   `addTeardown(fn | subscription | disposable)` as soon as the thing exists. On exit the teardowns
   run in reverse and the worlds are disposed; this also happens when `enter()` throws or is
@@ -522,6 +535,9 @@ class GameScreen extends Screen {
   renderers in an app that doesn't do this.
 - The manager adds a fixed, full-viewport container to `document.body` unless given `container`
   (which must be positioned). `screens.stack`/`top`/`stack$`/`busy$` expose its state.
+- Declare `static readonly screenTypeName: string = 'MenuScreen';` on each screen class: the dev
+  console's `screens` command prints it, where the class name would be minified in a production
+  build (the same reason entities declare `entityTypeName`).
 
 ## Touch devices: on-screen controls
 

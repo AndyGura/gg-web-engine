@@ -320,6 +320,14 @@ subclass disposes that lives in the context (`ThreeComposerRendererComponent`'s 
 goes before `super.dispose()`. Verified in Chrome with more than 20 create/dispose round trips of a
 full world: every old context reports `isContextLost()`, the live one keeps rendering.
 
+A renderer can be disposed before an async native init has finished (a screen popped while its
+world was still starting). pixi 8's `Application.destroy()` throws before `init()` resolves (its
+resize plugin's `destroy` calls a function `init` sets up), and the late `init` would then create a
+GL context nobody frees. `PixiRendererComponent.dispose()` only marks itself disposed in that case
+and the `init` callback destroys the application. Work deferred until init (`render`,
+`resizeRenderer`) waits on `onInitialized$.pipe(take(1))`, never `first()`: `dispose()` completes
+that subject, and `first()` errors on a subject completed without a value.
+
 ## The `removeFromWorld(dispose)` contract
 
 Every component class here also implements the same base `IWorldComponent` a physics adapter's
@@ -337,6 +345,10 @@ vendor helper sources, see below) as a template:
 
 - `name`: `@gg-web-engine/<lib>`, version kept in lockstep with `@gg-web-engine/core`'s current
   version (check `packages/core/package.json`).
+- `"sideEffects"`: `false`, unless a module of the package does something on import that another
+  module relies on - then list exactly those files (`dist/...`). It lets an app's bundler leave out
+  every module of the package the app doesn't use; a module listed nowhere and whose exports go
+  unused is dropped together with whatever it does on import. `three` and `pixi` have no such module and declare `false`.
 - `@gg-web-engine/core` and the underlying rendering library go in **both** `devDependencies` and
   `peerDependencies`, pinned to the exact version you developed/tested against — adapters do not
   use version ranges for these. A bump of the library must also update any other workspace member

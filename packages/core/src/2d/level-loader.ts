@@ -286,10 +286,10 @@ export class Gg2dLevelLoader<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTyp
       throw new Error('Cannot load a texture into a world without a visual scene');
     }
     const { onProgress, signal, scope, ...textureOptions } = options;
-    return this.acquireAsset(`texture:${url}:${stableKey(textureOptions)}`, url, options, async item => {
+    return this.acquireAsset(`texture:${url}:${stableKey(textureOptions)}`, url, options, async (item, loadSignal) => {
       let texture: TypeDoc['vTypeDoc']['texture'];
       if (factory.textureFromData) {
-        const data = await fetchWithProgress(url, item.file(), signal);
+        const data = await this.fetchShared(url, item, loadSignal);
         texture = await factory.textureFromData(imageBlob(data, url), textureOptions);
       } else {
         texture = await factory.loadTexture(url, textureOptions);

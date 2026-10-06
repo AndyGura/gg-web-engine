@@ -1,8 +1,10 @@
-import { isAbortError, throwIfAborted } from './load-progress';
+import { abortable, abortError, isAbortError, linkSignals, throwIfAborted } from './load-progress';
 
 type Entry = {
   promise: Promise<unknown>;
   holders: Set<AssetScope>;
+  /** Calls of `acquire` currently waiting for the load. */
+  waiters: number;
   settled: boolean;
   dispose?: () => void;
 };
@@ -22,6 +24,19 @@ export class AssetScope {
 
   public get released(): boolean {
     return this._released;
+  }
+
+  /**
+   * Holds everything `other` holds, independently of it: what `other` loaded stays cached until
+   * both have let go. For something made from another scope's assets that outlives it.
+   */
+  public adopt(other: AssetScope): void {
+    if (this._released) {
+      throw new Error('Cannot hold assets with an asset scope that was already released');
+    }
+    for (const key of other.keys) {
+      this.cache.hold(key, this);
+    }
   }
 
   /** Lets go of everything loaded with this scope. The scope can't be used afterwards. */
@@ -44,6 +59,16 @@ export class AssetCache {
   private readonly entries: Map<string, Entry> = new Map<string, Entry>();
   /** Holds every asset loaded without a scope of its own, until the cache is disposed. */
   public readonly root: AssetScope = new AssetScope(this);
+  private readonly lifetime = new AbortController();
+
+  /** Aborted by `dispose()`: every load still running for this cache is cancelled with it. */
+  public get lifetimeSignal(): AbortSignal {
+    return this.lifetime.signal;
+  }
+
+  public get disposed(): boolean {
+    return this.lifetime.signal.aborted;
+  }
 
   public get size(): number {
     return this.entries.size;
@@ -60,14 +85,16 @@ export class AssetCache {
   /**
    * Returns the asset cached under `key` for `scope` to hold, loading it with `load` when it is not
    * there. A load that is aborted by the caller that started it is started again for the others
-   * still waiting for it.
-   * @param load - Produces the asset and, optionally, how to free it
+   * still waiting for it. A caller rejects as soon as its own `signal` aborts, without waiting for
+   * the load to stop. Rejects with an `AbortError` once the cache is disposed.
+   * @param load - Produces the asset and, optionally, how to free it. Its signal aborts with the
+   * caller's `signal` or when the cache is disposed - the one to pass to fetches.
    * @param onShared - Called when an entry that already existed is used instead of running `load`
    */
   public async acquire<T>(
     key: string,
     scope: AssetScope | undefined,
-    load: () => Promise<{ value: T; dispose?: () => void }>,
+    load: (signal: AbortSignal) => Promise<{ value: T; dispose?: () => void }>,
     signal?: AbortSignal,
     onShared?: () => void,
   ): Promise<T> {
@@ -77,11 +104,26 @@ export class AssetCache {
     }
     while (true) {
       throwIfAborted(signal);
+      if (this.disposed) {
+        throw abortError();
+      }
       let entry = this.entries.get(key);
       const shared = !!entry;
       if (!entry) {
-        const created: Entry = { promise: null as any, holders: new Set<AssetScope>(), settled: false };
-        created.promise = load().then(
+        const created: Entry = {
+          promise: null as any,
+          holders: new Set<AssetScope>(),
+          waiters: 0,
+          settled: false,
+        };
+        const loadSignal = linkSignals(signal, this.lifetime.signal);
+        let loading: Promise<{ value: T; dispose?: () => void }>;
+        try {
+          loading = load(loadSignal.signal);
+        } catch (e) {
+          loading = Promise.reject(e);
+        }
+        created.promise = loading.finally(loadSignal.release).then(
           result => {
             created.settled = true;
             created.dispose = result.dispose;
@@ -93,33 +135,46 @@ export class AssetCache {
           },
           error => {
             created.settled = true;
-            for (const h of created.holders) {
-              h.keys.delete(key);
-            }
-            created.holders.clear();
-            if (this.entries.get(key) === created) {
-              this.entries.delete(key);
-            }
+            this.abandon(key, created);
             throw error;
           },
         );
+        // every waiter may have given up on it: its rejection is theirs, not unhandled
+        created.promise.catch(() => {});
         this.entries.set(key, created);
         entry = created;
       }
       entry.holders.add(holder);
       holder.keys.add(key);
+      entry.waiters++;
       try {
-        const value = (await entry.promise) as T;
+        // also when the load itself doesn't stop on its signal (a decode, an adapter's own loader)
+        const value = (await abortable(entry.promise, signal, this.lifetime.signal)) as T;
         if (shared) {
           onShared?.();
         }
         return value;
       } catch (e) {
-        if (shared && isAbortError(e) && !signal?.aborted) {
+        if (shared && isAbortError(e) && !signal?.aborted && !this.disposed) {
           continue;
         }
+        if (entry.waiters === 1 && !entry.settled) {
+          // nobody waits for the load any more: it is not cached, and frees its result if it ends
+          this.abandon(key, entry);
+        }
         throw e;
+      } finally {
+        entry.waiters--;
       }
+    }
+  }
+
+  /** @internal */
+  public hold(key: string, scope: AssetScope): void {
+    const entry = this.entries.get(key);
+    if (entry) {
+      entry.holders.add(scope);
+      scope.keys.add(key);
     }
   }
 
@@ -135,6 +190,16 @@ export class AssetCache {
     }
   }
 
+  private abandon(key: string, entry: Entry): void {
+    for (const h of entry.holders) {
+      h.keys.delete(key);
+    }
+    entry.holders.clear();
+    if (this.entries.get(key) === entry) {
+      this.entries.delete(key);
+    }
+  }
+
   private remove(key: string, entry: Entry): void {
     if (this.entries.get(key) === entry) {
       this.entries.delete(key);
@@ -144,8 +209,12 @@ export class AssetCache {
     dispose?.();
   }
 
-  /** Frees every entry. Loads still running free their result as they finish. */
+  /**
+   * Frees every entry and cancels the loads still running (a load that can't be cancelled frees
+   * its result when it finishes). The cache takes no new loads afterwards.
+   */
   public dispose(): void {
+    this.lifetime.abort();
     for (const [key, entry] of [...this.entries]) {
       for (const holder of entry.holders) {
         holder.keys.delete(key);

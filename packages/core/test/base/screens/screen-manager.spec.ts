@@ -57,6 +57,23 @@ class WorldScreen extends LogScreen {
   }
 }
 
+/** A game screen whose world pauses itself while the tab is hidden. */
+class HiddenAwareWorldScreen extends LogScreen {
+  public world!: MockWorld;
+
+  async enter(ctx: ScreenEnterContext): Promise<void> {
+    super.enter(ctx);
+    this.world = this.addWorld(new MockWorld({ pauseWhenHidden: true }));
+    await this.world.init();
+    this.world.start();
+  }
+}
+
+const setVisibility = (state: 'visible' | 'hidden') => {
+  Object.defineProperty(document, 'visibilityState', { value: state, configurable: true });
+  document.dispatchEvent(new Event('visibilitychange'));
+};
+
 /** A screen whose enter() stays pending until the test lets it go. */
 class SlowScreen extends LogScreen {
   public ctx!: ScreenEnterContext;
@@ -223,9 +240,40 @@ describe('ScreenManager', () => {
     it('runs requests one after another in the order they were made', async () => {
       const a = screens.push(new LogScreen('a', log));
       const b = screens.push(new LogScreen('b', log));
+      const c = screens.push(new LogScreen('c', log), { pauseBelow: false });
+      expect(await Promise.all([a, b, c])).toEqual([true, true, true]);
+      expect(log).toEqual(['enter a', 'covered a', 'enter b', 'covered b', 'enter c']);
+    });
+
+    it('never enters a queued screen a later request removes, and resolves its push with false', async () => {
+      const a = screens.push(new LogScreen('a', log));
+      const b = screens.push(new LogScreen('b', log));
       const c = screens.pop();
-      await Promise.all([a, b, c]);
-      expect(log).toEqual(['enter a', 'covered a', 'enter b', 'exit b', 'teardown b', 'uncovered a']);
+      expect(await Promise.all([a, b, c])).toEqual([true, false, true]);
+      expect(log).toEqual(['enter a']);
+      expect(screens.stack.map(screen => (screen as LogScreen).label)).toEqual(['a']);
+    });
+
+    it('cancels only what a request removes, judged by the stack the queued requests lead to', async () => {
+      const a = screens.push(new LogScreen('a', log));
+      const b = screens.push(new LogScreen('b', log));
+      const c = screens.push(new LogScreen('c', log));
+      const d = screens.replace(new LogScreen('d', log));
+      expect(await Promise.all([a, b, c, d])).toEqual([true, true, false, true]);
+      expect(log).toEqual(['enter a', 'covered a', 'enter b', 'covered b', 'enter d']);
+    });
+
+    it('rejects a pop count that is not a positive integer, without touching the stack', async () => {
+      const slow = new SlowScreen('slow', log);
+      const pushed = screens.push(slow);
+      await flush();
+      await expect(screens.pop(0)).rejects.toThrow(RangeError);
+      await expect(screens.pop(NaN)).rejects.toThrow(RangeError);
+      await expect(screens.pop(1.5)).rejects.toThrow(RangeError);
+      expect(slow.ctx.signal.aborted).toBe(false);
+      slow.finish();
+      await pushed;
+      expect(screens.stack).toEqual([slow]);
     });
 
     it('reports busy while transitions run', async () => {
@@ -267,6 +315,33 @@ describe('ScreenManager', () => {
       expect(game.world.inputEnabled).toBe(true);
     });
 
+    it('follows localPauseAllowed while covered: a session joined under the menu, then left', async () => {
+      await screens.push(new LogScreen('pause', log));
+      expect(game.world.isPaused).toBe(true);
+      game.world.localPauseAllowed = false;
+      expect(game.world.isPaused).toBe(false);
+      game.world.localPauseAllowed = true;
+      expect(game.world.isPaused).toBe(true);
+      await screens.pop();
+      expect(game.world.isPaused).toBe(false);
+    });
+
+    it('stops following localPauseAllowed once uncovered', async () => {
+      await screens.push(new LogScreen('pause', log));
+      await screens.pop();
+      game.world.localPauseAllowed = false;
+      game.world.localPauseAllowed = true;
+      expect(game.world.isPaused).toBe(false);
+    });
+
+    it("puts back the layer's own pointerEvents when uncovered", async () => {
+      game.layer.style.pointerEvents = 'auto';
+      await screens.push(new LogScreen('pause', log));
+      expect(game.layer.style.pointerEvents).toBe('none');
+      await screens.pop();
+      expect(game.layer.style.pointerEvents).toBe('auto');
+    });
+
     it('keeps the world running when the push asks for it', async () => {
       await screens.push(new LogScreen('inventory', log), { pauseBelow: false });
       expect(game.world.isPaused).toBe(false);
@@ -289,6 +364,36 @@ describe('ScreenManager', () => {
       expect(game.world.inputEnabled).toBe(false);
       await screens.pop();
       expect(game.world.isPaused).toBe(false);
+    });
+
+    describe('with a world that pauses for a hidden tab', () => {
+      let hiddenAware: HiddenAwareWorldScreen;
+
+      beforeEach(async () => {
+        hiddenAware = new HiddenAwareWorldScreen('hidden-aware', log);
+        await screens.replace(hiddenAware);
+      });
+
+      afterEach(() => setVisibility('visible'));
+
+      it('does not resume the world under a pause screen opened while the tab was hidden', async () => {
+        setVisibility('hidden');
+        expect(hiddenAware.world.isPaused).toBe(true);
+        await screens.push(new LogScreen('pause', log));
+        setVisibility('visible');
+        expect(hiddenAware.world.isPaused).toBe(true);
+        await screens.pop();
+        expect(hiddenAware.world.isPaused).toBe(false);
+      });
+
+      it('leaves the world paused when the screen above goes while the tab is hidden', async () => {
+        await screens.push(new LogScreen('pause', log));
+        setVisibility('hidden');
+        await screens.pop();
+        expect(hiddenAware.world.isPaused).toBe(true);
+        setVisibility('visible');
+        expect(hiddenAware.world.isPaused).toBe(false);
+      });
     });
 
     it('disposes the world when the screen exits', async () => {
@@ -437,6 +542,10 @@ describe('ScreenManager', () => {
       expect(view.progress[view.progress.length - 1]).toBe(loaderProgress);
 
       slow.finish();
+      await flush();
+      // shown 0ms ago: stays up for its minimum duration, the screen stays hidden under it
+      expect(view.disposed).toBe(false);
+      jest.advanceTimersByTime(300);
       await pending;
       expect(view.disposed).toBe(true);
       expect(slow.layer.style.visibility).toBe('');
@@ -480,16 +589,34 @@ describe('ScreenManager', () => {
       expect(menu.state).toBe('active');
     });
 
-    it('a request that aborts a load and then fails still removes the loading screen', async () => {
+    it('a request that fails to compute its stack cancels nothing', async () => {
       const menu = new MenuScreen('menu', log);
       await screens.push(menu);
       const slow = new SlowScreen('slow', log);
       const pushed = screens.push(slow);
       await flush();
+
+      const popped = screens.popTo(SettingsScreen);
+      expect(slow.ctx.signal.aborted).toBe(false);
+      slow.finish();
+      expect(await pushed).toBe(true);
+      await expect(popped).rejects.toThrow('no such screen');
+      expect(screens.stack).toEqual([menu, slow]);
+    });
+
+    it('a request that aborts a load and then fails still removes the loading screen', async () => {
+      const menu = new MenuScreen('menu', log);
+      await screens.push(menu);
+      const gone = new MenuScreen('gone', log);
+      await screens.push(gone);
+      await screens.pop();
+      const slow = new SlowScreen('slow', log);
+      const pushed = screens.push(slow);
+      await flush();
       log.length = 0;
 
-      await expect(screens.popTo(SettingsScreen)).rejects.toThrow('no such screen');
-      await pushed;
+      await expect(screens.reset([menu, gone])).rejects.toThrow('cannot be shown again');
+      expect(await pushed).toBe(false);
 
       expect(log).toEqual(['teardown slow', 'uncovered menu']);
       expect(slow.state).toBe('exited');
@@ -553,6 +680,119 @@ describe('ScreenManager', () => {
       expect(menu.state).toBe('active');
       expect(FakeLoadingView.instances.every(v => v.disposed)).toBe(true);
     });
+
+    it('shows the screen onEnterError returns in place of one that failed, and resolves with false', async () => {
+      await screens.dispose();
+      const fallback = new MenuScreen('fallback', log);
+      const onEnterError = jest.fn(() => fallback);
+      screens = new ScreenManager({ loadingView: null, onEnterError });
+      await screens.push(new MenuScreen('menu', log));
+      const slow = new SlowScreen('slow', log);
+      const replaced = screens.replace(slow, { clearHistory: true });
+      await flush();
+      const error = new Error('level is broken');
+      slow.fail(error);
+
+      expect(await replaced).toBe(false);
+      expect(onEnterError).toHaveBeenCalledWith(error, slow);
+      expect(screens.stack).toEqual([fallback]);
+      expect(fallback.state).toBe('active');
+    });
+
+    it('going back while a fallback screen still loads aborts the fallback', async () => {
+      await screens.dispose();
+      const fallback = new SlowScreen('fallback', log);
+      screens = new ScreenManager({ loadingView: null, onEnterError: () => fallback });
+      const menu = new MenuScreen('menu', log);
+      await screens.push(menu);
+      const slow = new SlowScreen('slow', log);
+      const pushed = screens.push(slow);
+      await flush();
+      slow.fail(new Error('level is broken'));
+      await flush();
+      expect(fallback.state).toBe('entering');
+      log.length = 0;
+
+      const popped = screens.pop();
+      expect(fallback.ctx.signal.aborted).toBe(true);
+      await Promise.all([pushed, popped]);
+
+      expect(log).toEqual(['teardown fallback', 'uncovered menu']);
+      expect(screens.stack).toEqual([menu]);
+      expect(menu.state).toBe('active');
+    });
+
+    it('ignores a fallback that is already in the stack, and reports the error instead', async () => {
+      await screens.dispose();
+      const menu = new MenuScreen('menu', log);
+      screens = new ScreenManager({ loadingView: null, onEnterError: () => menu });
+      await screens.push(menu);
+      const slow = new SlowScreen('slow', log);
+      const pushed = screens.push(slow);
+      await flush();
+      const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+      slow.fail(new Error('level is broken'));
+
+      await expect(pushed).rejects.toThrow('level is broken');
+      expect(consoleError).toHaveBeenCalled();
+      consoleError.mockRestore();
+      expect(screens.stack).toEqual([menu]);
+      expect(menu.state).toBe('active');
+      await screens.pop();
+      expect(screens.stack).toEqual([]);
+      expect(menu.state).toBe('exited');
+    });
+
+    it('a screen that finished entering under the loading view exits properly when popped during the minimum time', async () => {
+      jest.useFakeTimers();
+      await screens.push(new MenuScreen('menu', log));
+      const slow = new SlowScreen('slow', log);
+      const pushed = screens.push(slow);
+      await flush();
+      jest.advanceTimersByTime(100);
+      slow.finish();
+      await flush();
+      expect(FakeLoadingView.instances[0].disposed).toBe(false);
+      log.length = 0;
+
+      const popped = screens.pop();
+      await flush();
+      expect(await pushed).toBe(false);
+      await popped;
+
+      expect(log).toEqual(['exit slow', 'teardown slow', 'uncovered menu']);
+      expect(slow.state).toBe('exited');
+      expect(FakeLoadingView.instances[0].disposed).toBe(true);
+    });
+
+    it('keeps the layers of leaving screens until the new top screen or the loading view shows', async () => {
+      jest.useFakeTimers();
+      const menu = new MenuScreen('menu', log);
+      await screens.push(menu);
+      const menuLayer = menu.layer;
+      const slow = new SlowScreen('slow', log);
+      const replaced = screens.replace(slow);
+      await flush();
+      // menu exited, its layer still up (inert) while the next screen loads
+      expect(menu.state).toBe('exited');
+      expect(menuLayer.parentElement).toBe(screens.container);
+      expect(menuLayer.hasAttribute('inert')).toBe(true);
+      jest.advanceTimersByTime(100);
+      // the loading view took over
+      expect(menuLayer.parentElement).toBeNull();
+      slow.finish();
+      await flush();
+      jest.advanceTimersByTime(300);
+      await replaced;
+    });
+
+    it('takes leaving layers down as soon as a quick screen shows', async () => {
+      const menu = new MenuScreen('menu', log);
+      await screens.push(menu);
+      const menuLayer = menu.layer;
+      await screens.replace(new MenuScreen('next', log));
+      expect(menuLayer.parentElement).toBeNull();
+    });
   });
 
   describe('dev console', () => {
@@ -570,6 +810,7 @@ describe('ScreenManager', () => {
     };
 
     it('registers its commands through window.ggstatic when that exists, and removes them on dispose', async () => {
+      await screens.dispose();
       const ggstatic = fakeGgstatic();
       (window as any).ggstatic = ggstatic;
       const manager = new ScreenManager({ loadingView: null });
@@ -582,6 +823,28 @@ describe('ScreenManager', () => {
 
       await manager.dispose();
       expect(ggstatic.commands.size).toBe(0);
+    });
+
+    it('shares the commands between managers, and names screens by screenTypeName', async () => {
+      class NamedScreen extends LogScreen {
+        static readonly screenTypeName: string = 'Named';
+      }
+      const ggstatic = fakeGgstatic();
+      (window as any).ggstatic = ggstatic;
+      const second = new ScreenManager({ loadingView: null });
+      await screens.push(new NamedScreen('a', log));
+      await second.push(new MenuScreen('b', log));
+
+      expect(await ggstatic.commands.get('screens')!()).toBe(
+        'manager 0:\n  0: Named (active)\nmanager 1:\n  0: MenuScreen (active)',
+      );
+      await ggstatic.commands.get('screen_pop')!('1', '1');
+      expect(second.stack).toHaveLength(0);
+      expect(screens.stack).toHaveLength(1);
+
+      // the commands stay while one manager is left
+      await second.dispose();
+      expect(ggstatic.commands.size).toBe(2);
     });
 
     it('registers once the dev console appears later, and works without it', async () => {
@@ -649,6 +912,22 @@ describe('ScreenManager', () => {
       expect(log).toEqual(['exit pause', 'teardown pause', 'exit game', 'teardown game']);
       expect(container.isConnected).toBe(false);
       await expect(manager.push(new LogScreen('late', log))).rejects.toThrow('disposed');
+    });
+
+    it('disposing twice at once detaches only that manager, and never another one', async () => {
+      const other = new ScreenManager({ loadingView: null });
+      const manager = new ScreenManager({ loadingView: null });
+      await manager.push(new LogScreen('a', log));
+      const container = manager.container;
+
+      await Promise.all([manager.dispose(), manager.dispose()]);
+      expect(container.isConnected).toBe(false);
+
+      // the other manager still works and still goes away cleanly
+      await other.push(new LogScreen('b', log));
+      expect(other.top?.state).toBe('active');
+      await other.dispose();
+      expect(other.container.isConnected).toBe(false);
     });
 
     it('leaves a container it was given in place, empty', async () => {

@@ -48,7 +48,7 @@ export type OrbitCameraControllerOptions = {
 
 const DEFAULT_OPTIONS: OrbitCameraControllerOptions = {
   mouseOptions: {},
-  orbiting: { sensitivityX: 1, sensitivityY: 1 },
+  orbiting: { sensitivityX: 2, sensitivityY: 2 },
   orbitingElasticity: 0,
   zooming: { sensitivity: 1 },
   panning: { sensitivityX: 1, sensitivityY: 1 },

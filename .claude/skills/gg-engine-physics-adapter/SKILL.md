@@ -555,6 +555,12 @@ Copy `packages/rapier2d/package.json` or `packages/matter/package.json` as a tem
   an exact version/build (e.g. `@dimforge/rapier3d-compat` is pinned to a specific compat build
   hash, matching what `rapier2d` uses for the 2D counterpart — keep sibling packages' native
   dependency versions aligned when they share an upstream project).
+- `"sideEffects"`: `false`, unless a module of the package does something on import that another
+  module relies on - then list exactly those files (`dist/...`). It lets an app's bundler leave out
+  every module of the package the app doesn't use; a module listed nowhere and whose exports go
+  unused is dropped together with whatever it does on import. `packages/matter` lists
+  `./dist/matter-rigid-body-builder.js` (it registers `poly-decomp` with matter-js at load),
+  `packages/ammo` its vendored `./dist/ammo.js/*.js` glue (a UMD build that writes globals).
 - Scripts: `"build": "tsc"` (or `"rm -rf ./dist/ && tsc"` if the lib ships non-JS assets to copy,
   as `ammo` does with its `ammo.js` WASM glue), `"test": "jest"`, `"prepublish"` cleaning `dist/`
   first.

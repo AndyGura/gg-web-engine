@@ -7,6 +7,7 @@ import {
   LevelJson,
   LoadProgress,
   LoadTaskOptions,
+  MapGraph3dEntity,
   TickOrder,
 } from '../../src';
 import { mock3DBody } from '../mocks/body.mock';
@@ -125,6 +126,16 @@ describe('asset loading through Gg3dLoader', () => {
     }
   };
   const fetched = (url: string) => fetch.mock.calls.filter(c => c[0] === url).length;
+  /** The fraction `progress` showed when each URL was requested. */
+  const fractionWhenFetched = (progress: ReturnType<typeof record>) => {
+    const shownAt: Record<string, number> = {};
+    const original = fetch.getMockImplementation()!;
+    fetch.mockImplementation((url: string, init?: any) => {
+      shownAt[url] = progress.last()?.fraction ?? 0;
+      return original(url, init);
+    });
+    return shownAt;
+  };
 
   describe('loadGgGlb', () => {
     it('fetches and parses a file once per world and hands out copies of it', async () => {
@@ -147,7 +158,10 @@ describe('asset loading through Gg3dLoader', () => {
 
     it('reports bytes, then decoding, then completion - with props found in the meta added on the way', async () => {
       const progress = record();
+      const shownAt = fractionWhenFetched(progress);
       const result = await world.loader.loadGgGlb('assets/room', { onProgress: progress.onProgress });
+      // the props are part of the load: the root alone does not fill the bar
+      expect(shownAt['assets/radio.glb']).toBeLessThanOrEqual(0.5);
 
       expect(result.props).toHaveLength(1);
       expectMonotonic(progress.calls);
@@ -166,6 +180,17 @@ describe('asset loading through Gg3dLoader', () => {
       const beforeDecode = progress.calls.filter(p => p.loadedItems === 0);
       expect(Math.max(...beforeDecode.map(p => p.fraction))).toBeLessThan(1);
       expect(visualLoader.prepare).toHaveBeenCalledTimes(2);
+    });
+
+    it('without props, the root alone fills the bar: no empty slot holds the fraction down', async () => {
+      const progress = record();
+      await world.loader.loadGgGlb('assets/room', { loadProps: false, onProgress: progress.onProgress });
+
+      expectMonotonic(progress.calls);
+      expect(progress.last()).toEqual(expect.objectContaining({ fraction: 1, loadedItems: 1, totalItems: 1 }));
+      // the root is fully fetched before decoding: more than half the way by then
+      const beforeDecode = progress.calls.filter(p => p.loadedItems === 0);
+      expect(Math.max(...beforeDecode.map(p => p.fraction))).toBeGreaterThan(0.5);
     });
 
     it('frees the cached original when the scope it was loaded with is released, not when a copy is disposed', async () => {
@@ -243,8 +268,16 @@ describe('asset loading through Gg3dLoader', () => {
       await world.loader.loadTexture('sky.hdr', { scope });
       expect(fetched('sky.hdr')).toBe(2);
 
+      // the same file with different options at the same time: decoded twice, downloaded once
+      await Promise.all([
+        world.loader.loadTexture('sky.hdr', { scope, filter: 'nearest' }),
+        world.loader.loadTexture('sky.hdr', { scope, filter: 'linear' }),
+      ]);
+      expect(fetched('sky.hdr')).toBe(3);
+      expect(world.loader.assetCache.has('data:sky.hdr')).toBe(false);
+
       scope.release();
-      expect(visualLoader.disposeTexture).toHaveBeenCalledTimes(2);
+      expect(visualLoader.disposeTexture).toHaveBeenCalledTimes(4);
     });
 
     it('reports an unknown byte total, and still completes, when Content-Length is hidden', async () => {
@@ -385,13 +418,102 @@ describe('asset loading through Gg3dLoader', () => {
       expect(world.loader.assetCache.size).toBe(0);
     });
 
+    it('a failing asset cancels the rest of the preload and rejects with its own error', async () => {
+      visualLoader.textureFromData.mockRejectedValueOnce(new Error('bad image'));
+      // a decode that never ends: the preload must not wait for it
+      audioFactory.decodeClip.mockImplementationOnce(() => new Promise(() => {}));
+      const error = await world.loader
+        .preload([
+          { kind: 'clip', url: 'wind.mp3' },
+          { kind: 'texture', url: 'wall.png' },
+        ])
+        .catch(e => e);
+      expect(error.message).toBe('bad image');
+      expect(world.loader.assetCache.size).toBe(0);
+    });
+
+    it('disposing the world cancels its loads', async () => {
+      fetch.hold();
+      const promise = world.loader.loadGgGlb('assets/radio').catch(e => e);
+      await Promise.resolve();
+      world.dispose();
+      expect(isAbortError(await promise)).toBe(true);
+      expect(visualLoader.loadFromGgGlb).not.toHaveBeenCalled();
+      await expect(world.loader.loadTexture('wall.png')).rejects.toHaveProperty('name', 'AbortError');
+      // afterEach disposes again
+      world = { dispose: () => {} } as any;
+      fetch.release();
+    });
+
+    it('counts the chunks a MapGraph loads first as part of the level, and holds them no longer than its chunks', async () => {
+      const progress = record();
+      const scopes = jest.spyOn(world.loader, 'createAssetScope');
+      const group = await world.loader.loadLevel(
+        {
+          entities: [
+            {
+              class: 'MapGraph',
+              config: {
+                graph: {
+                  nodes: [
+                    { path: 'assets/radio', position: { x: 0, y: 0, z: 0 } },
+                    { path: 'assets/hero', position: { x: 1000, y: 0, z: 0 } },
+                  ],
+                },
+                loadDepth: 0,
+              },
+            },
+          ],
+        },
+        'L',
+        { onProgress: progress.onProgress },
+      );
+      // the nearest chunk to the cursor was loaded before the level resolved, the far one wasn't
+      expect(progress.last()).toEqual(expect.objectContaining({ fraction: 1, loadedItems: 1, totalItems: 1 }));
+      expect(fetched('assets/radio.glb')).toBe(1);
+      expect(fetched('assets/hero.glb')).toBe(0);
+      await new Promise(resolve => setTimeout(resolve, 0));
+      // the chunk itself found it in the cache
+      expect(fetched('assets/radio.glb')).toBe(1);
+      // level scope, preload hold, the chunk's own scope: the hold let go once the chunk took over
+      const [levelScope, hold, chunkScope] = scopes.mock.results.map(r => r.value);
+      expect([levelScope.released, hold.released, chunkScope.released]).toEqual([false, true, false]);
+      world.removeEntity(group, true);
+      expect(world.loader.assetCache.size).toBe(0);
+    });
+
+    it("keeps a chunk's assets for an entity detached from it until that entity is disposed", async () => {
+      const node = { path: 'assets/radio', position: { x: 0, y: 0, z: 0 } };
+      const group = await world.loader.loadLevel(
+        { entities: [{ class: 'MapGraph', name: 'Map', config: { graph: { nodes: [node] }, loadDepth: 0 } }] },
+        'L',
+      );
+      await new Promise(resolve => setTimeout(resolve, 0));
+      const mapGraph = group.getChildEntityByName<MapGraph3dEntity>('Map');
+      const [chunkNode, entities] = [...mapGraph.loaded.entries()][0];
+      const vehicle = entities[0];
+      mapGraph.detachFromChunk([vehicle]);
+
+      (mapGraph as any).disposeChunk(chunkNode);
+      // the copy the vehicle renders still has the original's geometry
+      expect(log).not.toContain('dispose ggGlb');
+      expect(vehicle.disposed).toBe(false);
+
+      vehicle.dispose();
+      expect(log).toContain('dispose ggGlb');
+      world.removeEntity(group, true);
+    });
+
     it('loadLevelFromUrl counts the level document and everything in it', async () => {
       (files as any)['level.json'] = JSON.stringify(level);
       const progress = record();
+      const shownAt = fractionWhenFetched(progress);
       const group = await world.loader.loadLevelFromUrl('level.json', 'L', { onProgress: progress.onProgress });
       expect(group).toBeInstanceOf(GroupEntity);
       expect(progress.last()).toEqual(expect.objectContaining({ fraction: 1, loadedItems: 6, totalItems: 6 }));
       expectMonotonic(progress.calls);
+      // the document alone is not the level: the bar is far from full when its assets start
+      expect(shownAt['assets/room.glb']).toBeLessThanOrEqual(0.5);
     });
 
     it('gives an entity built on its own a scope that ends with the entity', async () => {

@@ -11,7 +11,7 @@ import { isSerializableEntity } from './interfaces/i-serializable-entity';
 import { AssetCache, AssetScope } from './assets/asset-cache';
 import { AssetRef } from './assets/asset-ref';
 import { fetchWithProgress } from './assets/fetch-with-progress';
-import { AssetProgress, LoadProgressGroup, LoadTaskOptions, throwIfAborted } from './assets/load-progress';
+import { AssetProgress, linkSignals, LoadProgressGroup, LoadTaskOptions, throwIfAborted } from './assets/load-progress';
 
 /**
  * A function that turns per-entity JSON settings into a spawned `IEntity` (e.g. a primitive body,
@@ -332,11 +332,11 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
     if (!audioScene) {
       throw new Error('Cannot load an audio clip into a world without an audio scene');
     }
-    return this.acquireAsset(`clip:${url}`, url, options, async item => {
+    return this.acquireAsset(`clip:${url}`, url, options, async (item, signal) => {
       if (!audioScene.factory.decodeClip) {
         return { value: await audioScene.factory.loadClip(url) };
       }
-      const data = await fetchWithProgress(url, item.file(), options.signal);
+      const data = await fetchWithProgress(url, item.file(), signal);
       return { value: await audioScene.factory.decodeClip(data) };
     });
   }
@@ -347,13 +347,27 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
    * an audio scene, a model without a visual scene) is skipped.
    */
   public async preload(refs: AssetRef[], options: LoadTaskOptions = {}): Promise<void> {
-    const group = new LoadProgressGroup(options);
-    const results = await Promise.allSettled(refs.map(ref => this.preloadAsset(ref, group.sub())));
+    // the first failure cancels the rest
+    const cancel = new AbortController();
+    const linked = linkSignals(options.signal, cancel.signal);
+    const group = new LoadProgressGroup({ ...options, signal: linked.signal });
+    let failure: { error: unknown } | null = null;
+    await Promise.allSettled(
+      refs.map(async ref => {
+        const slot = group.sub();
+        try {
+          await this.preloadAsset(ref, slot);
+          group.complete(slot);
+        } catch (error) {
+          failure ??= { error };
+          cancel.abort();
+        }
+      }),
+    );
+    linked.release();
     throwIfAborted(options.signal);
-    for (const result of results) {
-      if (result.status === 'rejected') {
-        throw result.reason;
-      }
+    if (failure) {
+      throw (failure as { error: unknown }).error;
     }
     group.finish();
   }
@@ -370,22 +384,53 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
   }
 
   /**
+   * Fetches `url` for a cached asset whose key holds more than the url (a model loaded with
+   * different options, a texture with different filtering): loads of the same file running at the
+   * same time share one download. The bytes are not kept once every such load has them.
+   */
+  protected async fetchShared(url: string, item: AssetProgress, signal: AbortSignal): Promise<ArrayBuffer> {
+    const reading = this.createAssetScope();
+    const report = item.file();
+    let downloadedHere = false;
+    try {
+      const data = await this.assetCache.acquire(
+        `data:${url}`,
+        reading,
+        async loadSignal => {
+          downloadedHere = true;
+          return { value: await fetchWithProgress(url, report, loadSignal) };
+        },
+        signal,
+      );
+      if (!downloadedHere) {
+        // someone else's download: this load's file is complete all at once
+        report(data.byteLength, data.byteLength, true);
+      }
+      return data;
+    } finally {
+      reading.release();
+    }
+  }
+
+  /**
    * The cache access shared by every loader method: returns the asset under `key`, running `load`
-   * (with a progress reporter for it) when it is not cached, and reports the asset complete.
+   * (with a progress reporter for it) when it is not cached, and reports the asset complete. `load`
+   * fetches with the signal it is given, not `options.signal`: that one also aborts when the world
+   * is disposed.
    */
   protected async acquireAsset<T>(
     key: string,
     url: string,
     options: LoadTaskOptions,
-    load: (item: AssetProgress) => Promise<{ value: T; dispose?: () => void }>,
+    load: (item: AssetProgress, signal: AbortSignal) => Promise<{ value: T; dispose?: () => void }>,
   ): Promise<T> {
     let item: AssetProgress | undefined;
     const value = await this.assetCache.acquire(
       key,
       options.scope,
-      () => {
+      signal => {
         item = new AssetProgress(url, options.onProgress);
-        return load(item);
+        return load(item, signal);
       },
       options.signal,
     );
@@ -815,7 +860,10 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
     const group = new LoadProgressGroup({ ...options, scope });
 
     try {
-      await this.preload(this.collectLevelAssets(levelJson, levelName), group.sub());
+      const preloadSlot = group.sub();
+      // one slot per entity up front, so a finished preload does not read as a finished level
+      const entitySlots = levelJson.entities.map(() => group.sub());
+      await this.preload(this.collectLevelAssets(levelJson, levelName), preloadSlot);
       for (let index = 0; index < levelJson.entities.length; index++) {
         throwIfAborted(options.signal);
         const entityJson = levelJson.entities[index];
@@ -827,8 +875,9 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
           entityJson,
           `${levelName}__${classAlias}_${index}`,
           levelJson.blueprints,
-          group.sub(),
+          entitySlots[index],
         );
+        group.complete(entitySlots[index]);
         if (!entity) {
           continue;
         }
@@ -971,11 +1020,18 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
   ): Promise<GroupEntity<D, R, TypeDoc>> {
     const group = new LoadProgressGroup(options);
     const documentOptions = group.sub();
+    const levelOptions = group.sub();
     const item = new AssetProgress(url, documentOptions.onProgress);
-    const data = await fetchWithProgress(url, item.file(), options.signal);
+    const signal = linkSignals(options.signal, this.assetCache.lifetimeSignal);
+    let data: ArrayBuffer;
+    try {
+      data = await fetchWithProgress(url, item.file(), signal.signal);
+    } finally {
+      signal.release();
+    }
     const levelJson: LevelJson = JSON.parse(new TextDecoder().decode(data));
     item.done();
-    const level = await this.loadLevel(levelJson, levelName, group.sub());
+    const level = await this.loadLevel(levelJson, levelName, levelOptions);
     group.finish();
     return level;
   }

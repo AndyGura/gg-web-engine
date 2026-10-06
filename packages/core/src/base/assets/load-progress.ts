@@ -54,6 +54,57 @@ export function throwIfAborted(signal: AbortSignal | undefined): void {
   }
 }
 
+/**
+ * A signal aborted as soon as any of `signals` is. `release()` detaches it from them once the work
+ * it was made for is over, so a long-lived source signal doesn't keep a listener per load.
+ */
+export function linkSignals(...signals: (AbortSignal | undefined)[]): { signal: AbortSignal; release: () => void } {
+  const controller = new AbortController();
+  const sources = signals.filter((s): s is AbortSignal => !!s);
+  const abort = () => controller.abort();
+  if (sources.some(s => s.aborted)) {
+    controller.abort();
+    return { signal: controller.signal, release: () => {} };
+  }
+  for (const source of sources) {
+    source.addEventListener('abort', abort);
+  }
+  return {
+    signal: controller.signal,
+    release: () => sources.forEach(source => source.removeEventListener('abort', abort)),
+  };
+}
+
+/** Settles like `promise`, or rejects with an `AbortError` as soon as one of `signals` aborts. */
+export function abortable<T>(promise: Promise<T>, ...signals: (AbortSignal | undefined)[]): Promise<T> {
+  const sources = signals.filter((s): s is AbortSignal => !!s);
+  if (!sources.length) {
+    return promise;
+  }
+  return new Promise<T>((resolve, reject) => {
+    const linked = linkSignals(...sources);
+    const onAbort = () => {
+      linked.release();
+      reject(abortError());
+    };
+    if (linked.signal.aborted) {
+      onAbort();
+      return;
+    }
+    linked.signal.addEventListener('abort', onAbort);
+    promise.then(
+      value => {
+        linked.release();
+        resolve(value);
+      },
+      error => {
+        linked.release();
+        reject(error);
+      },
+    );
+  });
+}
+
 export function abortError(): Error {
   if (typeof DOMException !== 'undefined') {
     return new DOMException('The load was aborted', 'AbortError');
@@ -132,10 +183,21 @@ export class AssetProgress {
 /**
  * Combines the progress of several loads into one. Each `sub()` is a slot to hand to one nested
  * loader call as its options; the combined fraction is the mean over every asset the slots report.
+ *
+ * A slot that has not reported any asset yet, and is not complete, holds the weight of one asset:
+ * create the slots of every step known up front (also the ones that only start after an earlier
+ * step finished), so a first step that completes early does not read as the whole load being done.
+ * When assets turn up late and lower the mean, the shown fraction stays where it was and from then
+ * on covers the rest of the bar in proportion to the work that remains, so it never goes down and
+ * never stalls.
  */
 export class LoadProgressGroup {
-  private readonly slots: LoadProgress[] = [];
-  private fraction = 0;
+  private readonly slots: { progress: LoadProgress; complete: boolean }[] = [];
+  private readonly slotIndex = new Map<LoadTaskOptions, number>();
+  /** The fraction reported. */
+  private shown = 0;
+  /** The plain weighted mean `shown` was last brought in line with. */
+  private anchor = 0;
   private current: string | null = null;
   private finished = false;
 
@@ -145,14 +207,30 @@ export class LoadProgressGroup {
   public sub(): LoadTaskOptions {
     const result: LoadTaskOptions = { signal: this.options.signal, scope: this.options.scope };
     if (this.options.onProgress) {
-      const index = this.slots.push(EMPTY) - 1;
+      const slot = { progress: EMPTY, complete: false };
+      this.slotIndex.set(result, this.slots.push(slot) - 1);
       result.onProgress = progress => {
-        this.slots[index] = progress;
+        slot.progress = progress;
+        slot.complete = slot.complete || progress.fraction >= 1;
         this.current = progress.current ?? this.current;
         this.emit();
       };
     }
     return result;
+  }
+
+  /**
+   * Reports the load a slot was handed to as settled, also when it reported nothing (a step that
+   * loads nothing, or loaded only what the cache already held), so its reserved weight is released.
+   * @param slot - The options `sub()` returned
+   */
+  public complete(slot: LoadTaskOptions): void {
+    const index = this.slotIndex.get(slot);
+    if (index === undefined || this.slots[index].complete) {
+      return;
+    }
+    this.slots[index].complete = true;
+    this.emit();
   }
 
   /** Reports the group complete. Call once everything nested has settled. */
@@ -166,22 +244,32 @@ export class LoadProgressGroup {
       return;
     }
     let weighted = 0;
+    let weights = 0;
     let loadedItems = 0;
     let totalItems = 0;
     let bytesLoaded = 0;
     let bytesTotal: number | null = 0;
-    for (const slot of this.slots) {
-      weighted += slot.fraction * slot.totalItems;
-      loadedItems += slot.loadedItems;
-      totalItems += slot.totalItems;
-      bytesLoaded += slot.bytesLoaded;
-      bytesTotal = bytesTotal === null || slot.bytesTotal === null ? null : bytesTotal + slot.bytesTotal;
+    for (const { progress, complete } of this.slots) {
+      const weight = complete ? progress.totalItems : Math.max(progress.totalItems, 1);
+      weighted += (complete ? 1 : progress.fraction) * weight;
+      weights += weight;
+      loadedItems += progress.loadedItems;
+      totalItems += progress.totalItems;
+      bytesLoaded += progress.bytesLoaded;
+      bytesTotal = bytesTotal === null || progress.bytesTotal === null ? null : bytesTotal + progress.bytesTotal;
     }
-    const fraction = this.finished ? 1 : totalItems ? Math.min(weighted / totalItems, 0.999) : 0;
-    // an asset discovered late lowers the mean; what was already shown is never taken back
-    this.fraction = Math.max(this.fraction, fraction);
+    const mean = weights ? weighted / weights : 0;
+    if (this.finished) {
+      this.shown = 1;
+    } else if (mean < this.anchor) {
+      // assets discovered late: keep what was shown, measure further progress from here
+      this.anchor = mean;
+    } else if (mean > this.anchor) {
+      this.shown = Math.min(this.shown + ((1 - this.shown) * (mean - this.anchor)) / (1 - this.anchor), 0.999);
+      this.anchor = mean;
+    }
     this.options.onProgress({
-      fraction: this.fraction,
+      fraction: this.shown,
       loadedItems,
       totalItems,
       bytesLoaded,

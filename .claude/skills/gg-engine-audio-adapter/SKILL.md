@@ -228,7 +228,8 @@ which pin an exact third-party dependency version in both `devDependencies` and
 `peerDependencies`) - `@gg-web-engine/audio` doesn't have one at all, only `@gg-web-engine/core` and
 `rxjs`. If your adapter *does* wrap a third-party library (e.g. a hypothetical Howler-backed
 package), follow the usual adapter convention instead (exact-pinned in both dependency lists) - see
-`gg-engine-visual-adapter`'s package.json section for that case.
+`gg-engine-visual-adapter`'s package.json section for that case. Declare `"sideEffects": false`
+(see that same section for when a package lists files instead).
 
 ## Testing
 
