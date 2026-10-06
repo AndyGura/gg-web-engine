@@ -118,8 +118,10 @@ finding those assets in the loader's cache. `fraction` counts an asset's downloa
 keeps a share of it for decoding, so it reaches 1 only when the level is built; it never goes
 down, though `totalItems` grows when an asset references more (a model's props) or a generator
 without a hook loads something. `bytesTotal` is `null` while a server hides a file's size.
-`"MapGraph"` chunks are not part of it: they stream in after the level is built (wait for the
-entity's `initialLoadComplete$` to keep a loading screen up until the first ones are there).
+A `"MapGraph"`'s first chunks are part of it - the ones it loads at its cursor's starting point
+(`loaderCursor$`'s initial value, the origin), within `loadDepth` - preloaded by the generator and
+held only until the entity's own chunks have taken them over, so they unload like any other chunk.
+Everything after that streams in as the app moves the cursor.
 
 An aborted load leaves nothing behind: no level entity, nothing cached.
 

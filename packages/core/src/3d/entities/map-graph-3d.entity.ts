@@ -1,6 +1,18 @@
 import { BehaviorSubject, Observable, startWith, Subject, takeUntil } from 'rxjs';
 import { distinctUntilChanged, map, tap } from 'rxjs/operators';
-import { AssetScope, Graph, IEntity, PausableClock, Pnt3, Point3, Point4, Qtrn, TickOrder } from '../../base';
+import {
+  AssetScope,
+  Graph,
+  IEntity,
+  isAbortError,
+  PausableClock,
+  Pnt3,
+  Point3,
+  Point4,
+  Qtrn,
+  throwIfAborted,
+  TickOrder,
+} from '../../base';
 import { Gg3dWorld, Gg3dWorldTypeDocRepo } from '../gg-3d-world';
 import { Entity3d } from './entity-3d';
 import { LoadOptions, LoadResultWithProps } from '../loader';
@@ -125,9 +137,13 @@ export class MapGraph3dEntity<
    * engine's own `chunkLoaded$` plumbing awaits or catches an async subscriber's own rejection.
    */
   private readonly loadingNodes: Set<MapGraphNodeType> = new Set();
+  /** Cancels the chunk loads in flight when the entity leaves the world; one per spawn. */
+  private chunkLoads: AbortController | null = null;
 
   /** What holds each loaded chunk's assets in the loader's cache, released when the chunk unloads. */
   private readonly chunkScopes: Map<MapGraphNodeType, AssetScope> = new Map();
+  /** The chunk each entity a chunk loaded itself came with - it shares that chunk's cached assets. */
+  private readonly loadedWith: Map<IEntity, MapGraphNodeType> = new Map();
 
   private _initialLoadComplete$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
   public get initialLoadComplete$(): Observable<boolean> {
@@ -198,8 +214,18 @@ export class MapGraph3dEntity<
     this.mapGraphNodes = mapGraph.nodes();
   }
 
+  /**
+   * The chunks this entity loads first once spawned, at the cursor's current position - the ones
+   * worth preloading with the level (the `"MapGraph"` level class does).
+   */
+  public get initialChunks(): MapGraphNodeType[] {
+    const nearest = this.mapGraph.getNearestDummy(this.mapGraphNodes, this.loaderCursor$.getValue());
+    return [...nearest.walkRead(this.options.loadDepth)].map(node => node.data);
+  }
+
   onSpawned(world: Gg3dWorld<TypeDoc>) {
     super.onSpawned(world);
+    this.chunkLoads = new AbortController();
     this.loadClock = world.createClock(true);
     this.loadClock.tickRateLimit = this._loadRateLimit;
 
@@ -287,15 +313,19 @@ export class MapGraph3dEntity<
           if (this._initialLoadComplete$.value && loadList.length > this.options.maxNodesLoadingPerTick) {
             let loadNow = loadList.slice(0, this.options.maxNodesLoadingPerTick);
             loadList = loadList.slice(this.options.maxNodesLoadingPerTick);
-            Promise.all(loadNow.map(n => this.loadChunk(n))).then(() => loadNow.forEach(queueIfNowStale));
+            Promise.all(loadNow.map(n => this.loadChunk(n)))
+              .then(() => loadNow.forEach(queueIfNowStale))
+              .catch(ignoreAbort);
           } else {
             const loadingNow = loadList;
-            Promise.all(loadingNow.map(n => this.loadChunk(n))).then(() => {
-              loadingNow.forEach(queueIfNowStale);
-              if (!this._initialLoadComplete$.value) {
-                this._initialLoadComplete$.next(true);
-              }
-            });
+            Promise.all(loadingNow.map(n => this.loadChunk(n)))
+              .then(() => {
+                loadingNow.forEach(queueIfNowStale);
+                if (!this._initialLoadComplete$.value) {
+                  this._initialLoadComplete$.next(true);
+                }
+              })
+              .catch(ignoreAbort);
             loadList = [];
           }
         }
@@ -304,6 +334,8 @@ export class MapGraph3dEntity<
 
   onRemoved() {
     super.onRemoved();
+    this.chunkLoads?.abort();
+    this.chunkLoads = null;
     if (this.loadClock) {
       this.loadClock.stop();
       this.loadClock = null;
@@ -315,12 +347,14 @@ export class MapGraph3dEntity<
     this.loadingNodes.add(node);
     // the chunk holds its assets on its own, so unloading it frees what no other chunk uses
     const scope = this.world!.loader.createAssetScope();
+    const signal = this.chunkLoads?.signal;
     try {
       const loaded = await this.world!.loader.loadGgGlb(node.path, {
         position: node.position,
         rotation: node.rotation || Qtrn.O,
         ...node.loadOptions,
         scope,
+        signal,
       });
       const entities = [
         ...loaded.entities,
@@ -331,8 +365,14 @@ export class MapGraph3dEntity<
             return p;
           }, []),
       ];
+      if (signal?.aborted) {
+        // removed from the world while a load that ignored the signal was finishing
+        entities.forEach(e => e.dispose());
+        throwIfAborted(signal);
+      }
       this.loaded.set(node, entities);
       this.chunkScopes.set(node, scope);
+      entities.forEach(e => this.loadedWith.set(e, node));
       this.addChildren(...entities);
       this._chunkLoaded$.next([loaded, { position: node.position, rotation: node.rotation || Qtrn.O }, node]);
       return [entities, loaded];
@@ -381,7 +421,9 @@ export class MapGraph3dEntity<
    * the world: they stay spawned, as children of this entity, and no chunk's unload touches them
    * any more. For content that has to outlive the chunk it was spawned with (e.g. a vehicle the
    * player drove away from its home chunk) - hand it back with `attachToChunk` once it should
-   * follow a chunk's lifecycle again, or remove it yourself.
+   * follow a chunk's lifecycle again, or remove it yourself. An entity the chunk loaded itself
+   * shares the chunk's cached geometry, materials and shapes: it keeps them alive on its own from
+   * here on, until it is disposed, so the chunk unloading doesn't free them under it.
    * @param entities - The entities to detach; one not attached to any chunk is skipped
    * @returns The entities that were actually attached to a chunk, and no longer are
    */
@@ -393,14 +435,30 @@ export class MapGraph3dEntity<
         if (index >= 0) {
           attached.splice(index, 1);
           detached.push(entity);
+          this.holdChunkAssets(entity);
         }
       }
     }
     return detached;
   }
 
+  /** Lets an entity a chunk loaded keep that chunk's assets after leaving it, until disposed. */
+  private holdChunkAssets(entity: IEntity): void {
+    const node = this.loadedWith.get(entity);
+    const chunkScope = node && this.chunkScopes.get(node);
+    this.loadedWith.delete(entity);
+    if (!chunkScope || !this.world) {
+      return;
+    }
+    const hold = this.world.loader.createAssetScope();
+    hold.adopt(chunkScope);
+    const release = () => hold.release();
+    entity.disposed$.subscribe({ next: release, complete: release });
+  }
+
   public override dispose(): void {
     super.dispose();
+    this.loadedWith.clear();
     for (const scope of this.chunkScopes.values()) {
       scope.release();
     }
@@ -411,9 +469,18 @@ export class MapGraph3dEntity<
     if (!this.loaded.has(node)) {
       return;
     }
-    this.removeChildren(this.loaded.get(node)!, true);
+    const entities = this.loaded.get(node)!;
+    entities.forEach(e => this.loadedWith.delete(e));
+    this.removeChildren(entities, true);
     this.loaded.delete(node);
     this.chunkScopes.get(node)?.release();
     this.chunkScopes.delete(node);
+  }
+}
+
+/** A chunk load cancelled because the map graph left the world is not an error. */
+function ignoreAbort(error: unknown): void {
+  if (!isAbortError(error)) {
+    throw error;
   }
 }

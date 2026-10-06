@@ -633,7 +633,8 @@ describe('LevelLoader', () => {
 
       await levelLoader.loadLevelFromUrl('https://example.com/level.json', 'TestLevel');
 
-      expect(global.fetch).toHaveBeenCalledWith('https://example.com/level.json');
+      // with the world's lifetime signal: disposing the world cancels the fetch
+      expect(global.fetch).toHaveBeenCalledWith('https://example.com/level.json', { signal: expect.anything() });
       expect(world.getEntityByName('TestEntity1')).toBeInstanceOf(TestEntity);
     });
 

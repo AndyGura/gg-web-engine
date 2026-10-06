@@ -20,6 +20,18 @@ export type ScreenManagerOptions = {
    * screen that is ready at once never flashes it. 150 by default.
    */
   loadingDelay?: number;
+  /**
+   * Once the loading view has appeared, the least time in milliseconds it stays, so a screen ready
+   * just after the delay doesn't flash it for a frame. 300 by default.
+   */
+  loadingMinDuration?: number;
+  /**
+   * Called when a screen's `enter()` throws (not when it is aborted). Return a screen to show in its
+   * place - an error screen, the main menu - so a failed `replace` or `clearHistory` push doesn't
+   * leave an empty stack. The operation then resolves with `false` instead of rejecting. Called once
+   * per operation: if the returned screen fails too, the operation rejects.
+   */
+  onEnterError?: (error: unknown, screen: Screen) => Screen | null | undefined | void;
 };
 
 export type ScreenPushOptions = {
@@ -63,13 +75,22 @@ const EMPTY_PROGRESS: LoadProgress = {
  * requested: first the screens that leave exit, top down (so a game being replaced has given up
  * its renderer and audio before the next screen allocates its own); then the screen that ends up on
  * top is entered if it never was, or uncovered. Screens placed below the top by `reset` enter
- * later, when they are first uncovered. Each operation returns a promise that resolves when its
- * transition is over, and rejects if the entered screen's `enter()` threw - that screen is then
- * removed again and the one below it shown.
+ * later, when they are first uncovered. The layers of the screens that left stay on the page until
+ * the new top screen (or the loading view) shows, so there is no blank frame in between.
  *
- * A request made while a screen is still entering waits for it if it is a plain `push`; any other
- * request aborts the entering screen (its `ctx.signal`) and goes on from there, so going back
- * during a long load cancels the load.
+ * Each operation returns a promise that resolves when its transition is over: with `true` when its
+ * top screen is shown (or the stack is empty), with `false` when a later request cancelled it. It
+ * rejects if the entered screen's `enter()` threw - that screen is then removed again and the one
+ * below it shown - unless `onEnterError` provided a screen to show instead.
+ *
+ * A plain `push` waits for the screens being entered before it. Any other operation cancels the
+ * screens it removes that were not shown yet, judged by the stack as the operations queued before
+ * it leave it: one entering is aborted (its `ctx.signal`), one whose operation still waits is never
+ * entered. So going back during a long load cancels the load, and `push(a); push(b); pop()` never
+ * enters `b`.
+ *
+ * Never await an operation from a screen's own `enter()` or `exit()`: it waits for the transition
+ * that is waiting for that very hook, and neither ends. Call it without awaiting instead.
  */
 export class ScreenManager {
   /** The element the screen layers are in. */
@@ -77,13 +98,24 @@ export class ScreenManager {
   private readonly ownsContainer: boolean;
   private readonly loadingViewFactory: (() => LoadingView) | null;
   private readonly loadingDelay: number;
+  private readonly loadingMinDuration: number;
+  private readonly onEnterError: ScreenManagerOptions['onEnterError'];
+  /** Every manager alive, for the dev console commands they share. */
+  private static readonly managers: ScreenManager[] = [];
 
   private readonly _stack$: BehaviorSubject<readonly Screen[]> = new BehaviorSubject<readonly Screen[]>([]);
   private readonly _busy$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
   private queue: Promise<void> = Promise.resolve();
   private pending = 0;
-  private entering: { screen: Screen; controller: AbortController } | null = null;
+  /** The stack as it will be once every queued operation has run. */
+  private projected: readonly Screen[] = [];
+  /** Screens removed by a later operation before they were shown. */
+  private readonly cancelled: Set<Screen> = new Set<Screen>();
+  private readonly enteringControllers: Map<Screen, AbortController> = new Map<Screen, AbortController>();
+  /** Cancelled screens that were put in the stack: the operation that cancelled them takes them out. */
   private readonly aborted: Set<Screen> = new Set<Screen>();
+  /** `pointerEvents` of a covered screen's layer as the screen had it, put back on uncover. */
+  private readonly pointerEventsBeforeCover: WeakMap<Screen, string> = new WeakMap<Screen, string>();
   private disposed = false;
 
   /** The screens, bottom first. */
@@ -120,10 +152,13 @@ export class ScreenManager {
     }
     this.loadingViewFactory = options.loadingView === undefined ? () => new DefaultLoadingView() : options.loadingView;
     this.loadingDelay = options.loadingDelay ?? 150;
+    this.loadingMinDuration = options.loadingMinDuration ?? 300;
+    this.onEnterError = options.onEnterError;
+    ScreenManager.managers.push(this);
     this.onGgStaticAdded = this.onGgStaticAdded.bind(this);
     if (typeof window !== 'undefined') {
       if ((window as any).ggstatic) {
-        this.registerConsoleCommands();
+        ScreenManager.registerConsoleCommands();
       } else {
         window.addEventListener('ggstatic_added', this.onGgStaticAdded);
       }
@@ -131,22 +166,28 @@ export class ScreenManager {
   }
 
   /** Puts `screen` on top of the stack, covering the current top screen. */
-  public push(screen: Screen, options: ScreenPushOptions = {}): Promise<void> {
-    return this.request(!!options.clearHistory, () =>
-      this.transition(options.clearHistory ? [screen] : [...this.stack, screen], options),
+  public push(screen: Screen, options: ScreenPushOptions = {}): Promise<boolean> {
+    return this.request(
+      !!options.clearHistory,
+      stack => (options.clearHistory ? [screen] : [...stack, screen]),
+      options,
     );
   }
 
   /** Puts `screen` in place of the top screen, which exits. */
-  public replace(screen: Screen, options: ScreenPushOptions = {}): Promise<void> {
-    return this.request(true, () =>
-      this.transition(options.clearHistory ? [screen] : [...this.stack.slice(0, -1), screen], options),
-    );
+  public replace(screen: Screen, options: ScreenPushOptions = {}): Promise<boolean> {
+    return this.request(true, stack => (options.clearHistory ? [screen] : [...stack.slice(0, -1), screen]), options);
   }
 
-  /** Removes the top `count` screens (one by default); the screen below them is on top again. */
-  public pop(count: number = 1): Promise<void> {
-    return this.request(true, () => this.transition(this.stack.slice(0, Math.max(0, this.stack.length - count)), {}));
+  /**
+   * Removes the top `count` screens (one by default); the screen below them is on top again.
+   * @throws (rejects) if `count` is not a positive integer
+   */
+  public pop(count: number = 1): Promise<boolean> {
+    if (!Number.isInteger(count) || count < 1) {
+      return Promise.reject(new RangeError(`ScreenManager.pop: count must be a positive integer, got ${count}`));
+    }
+    return this.request(true, stack => stack.slice(0, Math.max(0, stack.length - count)), {});
   }
 
   /**
@@ -154,29 +195,32 @@ export class ScreenManager {
    * topmost screen of that class).
    * @throws (rejects) if the stack has no such screen
    */
-  public popTo(target: Screen | ScreenClass): Promise<void> {
-    return this.request(true, () => {
-      const stack = this.stack;
-      let index = -1;
-      for (let i = stack.length - 1; i >= 0; i--) {
-        if (typeof target === 'function' ? stack[i] instanceof target : stack[i] === target) {
-          index = i;
-          break;
+  public popTo(target: Screen | ScreenClass): Promise<boolean> {
+    return this.request(
+      true,
+      stack => {
+        let index = -1;
+        for (let i = stack.length - 1; i >= 0; i--) {
+          if (typeof target === 'function' ? stack[i] instanceof target : stack[i] === target) {
+            index = i;
+            break;
+          }
         }
-      }
-      if (index < 0) {
-        throw new Error('ScreenManager.popTo: no such screen in the stack');
-      }
-      return this.transition(stack.slice(0, index + 1), {});
-    });
+        if (index < 0) {
+          throw new Error('ScreenManager.popTo: no such screen in the stack');
+        }
+        return stack.slice(0, index + 1);
+      },
+      {},
+    );
   }
 
   /**
    * Makes the stack exactly `screens` (bottom first) in one transition. Screens already in the
    * stack that are listed again stay as they are; the rest exit. Only the last one is entered now.
    */
-  public reset(screens: Screen[], options: ScreenPushOptions = {}): Promise<void> {
-    return this.request(true, () => this.transition([...screens], options));
+  public reset(screens: Screen[], options: ScreenPushOptions = {}): Promise<boolean> {
+    return this.request(true, () => [...screens], options);
   }
 
   /** Exits every screen and removes what the manager added to the page. */
@@ -186,11 +230,14 @@ export class ScreenManager {
     }
     await this.reset([]);
     this.disposed = true;
+    ScreenManager.managers.splice(ScreenManager.managers.indexOf(this), 1);
     if (typeof window !== 'undefined') {
       window.removeEventListener('ggstatic_added', this.onGgStaticAdded);
-      const ggstatic = (window as any).ggstatic;
-      ggstatic?.deregisterConsoleCommand?.(null, 'screens');
-      ggstatic?.deregisterConsoleCommand?.(null, 'screen_pop');
+      if (!ScreenManager.managers.length) {
+        const ggstatic = (window as any).ggstatic;
+        ggstatic?.deregisterConsoleCommand?.(null, 'screens');
+        ggstatic?.deregisterConsoleCommand?.(null, 'screen_pop');
+      }
     }
     if (this.ownsContainer) {
       this.container.remove();
@@ -199,21 +246,45 @@ export class ScreenManager {
     this._busy$.complete();
   }
 
-  private request(supersedes: boolean, run: () => Promise<void>): Promise<void> {
+  /**
+   * Queues one operation. `wanted` computes the stack the operation leads to from the one before
+   * it: applied now to `projected` (the stack once every queued operation has run), it tells which
+   * screens this operation removes; applied again when the operation's turn comes, to the real
+   * stack, it drives the transition.
+   */
+  private request(
+    supersedes: boolean,
+    wanted: (stack: readonly Screen[]) => Screen[],
+    options: ScreenPushOptions,
+  ): Promise<boolean> {
     if (this.disposed) {
       return Promise.reject(new Error('The ScreenManager is disposed'));
     }
-    if (supersedes && this.entering) {
-      this.aborted.add(this.entering.screen);
-      this.entering.controller.abort();
+    const before = this.projected.filter(screen => screen.state !== 'exited');
+    let after = before;
+    try {
+      after = wanted(before);
+    } catch {
+      // fails again when its turn comes, and is reported then
     }
+    if (supersedes) {
+      // a screen this operation removes before it was shown is cancelled: aborted while entering,
+      // never entered while its request still waits
+      for (const screen of before) {
+        if (!after.includes(screen) && (screen.state === 'pending' || screen.state === 'entering')) {
+          this.cancelled.add(screen);
+          this.enteringControllers.get(screen)?.abort();
+        }
+      }
+    }
+    this.projected = after;
     this.pending++;
     if (this.pending === 1) {
       this._busy$.next(true);
     }
     const result = this.queue.then(async () => {
       try {
-        await run();
+        return await this.transition(wanted(this.stack), options);
       } catch (e) {
         await this.removeAborted();
         throw e;
@@ -225,12 +296,15 @@ export class ScreenManager {
         this.pending--;
         if (this.pending === 0 && !this._busy$.closed) {
           this._busy$.next(false);
+          // nothing queued: the projection is the stack
+          this.projected = this.stack;
         }
       });
     return result;
   }
 
-  private async transition(wanted: Screen[], options: ScreenPushOptions): Promise<void> {
+  /** @returns whether the top screen ended up shown (`false`: a later request cancelled it) */
+  private async transition(wanted: Screen[], options: ScreenPushOptions): Promise<boolean> {
     // a screen whose entering was aborted is gone whatever the request says
     const next = wanted.filter(screen => !this.aborted.has(screen));
     for (const screen of next) {
@@ -242,46 +316,89 @@ export class ScreenManager {
       }
     }
     const current = this.stack;
-    for (const screen of [...current].reverse()) {
-      if (!next.includes(screen)) {
-        await this.exitScreen(screen);
-      }
-    }
-    for (const screen of next) {
-      if (!current.includes(screen)) {
-        const layer = document.createElement('div');
-        layer.className = 'gg-screen';
-        Object.assign(layer.style, { position: 'absolute', inset: '0', isolation: 'isolate', visibility: 'hidden' });
-        screen.internals.attach(this, layer);
-      }
-    }
-    this.setStack(next);
-
-    let error: unknown = undefined;
-    while (this.stack.length) {
-      const stack = this.stack;
-      const top = stack[stack.length - 1];
-      for (const screen of stack) {
-        if (screen !== top && screen.state === 'active') {
-          this.cover(screen, options.pauseBelow ?? true);
+    // layers of the screens leaving stay up, inert, until what replaces them is shown
+    const leaving: HTMLElement[] = [];
+    const dropLeaving = () => leaving.splice(0).forEach(layer => layer.remove());
+    try {
+      for (const screen of [...current].reverse()) {
+        if (!next.includes(screen)) {
+          const layer = screen.layer;
+          layer.setAttribute('inert', '');
+          leaving.push(layer);
+          await this.exitScreen(screen, true, true);
         }
       }
-      if (top.state === 'covered') {
-        this.uncover(top);
-        break;
+      for (const screen of next) {
+        if (!current.includes(screen)) {
+          this.attach(screen);
+        }
       }
-      if (top.state !== 'pending') {
-        break;
+      this.setStack(next);
+
+      let error: { error: unknown } | null = null;
+      let fallbackUsed = false;
+      while (this.stack.length) {
+        const stack = this.stack;
+        const top = stack[stack.length - 1];
+        if (top.state === 'pending' && this.cancelled.has(top)) {
+          // cancelled before it started: never entered, the request that cancelled it removes it
+          this.aborted.add(top);
+          return false;
+        }
+        for (const screen of stack) {
+          if (screen !== top && screen.state === 'active') {
+            this.cover(screen, options.pauseBelow ?? true);
+          }
+        }
+        if (top.state === 'covered') {
+          dropLeaving();
+          this.uncover(top);
+          break;
+        }
+        if (top.state !== 'pending') {
+          break;
+        }
+        const outcome = await this.enterScreen(top, options, dropLeaving);
+        if (outcome === 'aborted') {
+          return false;
+        }
+        if (outcome === 'entered') {
+          break;
+        }
+        // enter() threw: the screen is gone, show its replacement or what is below it
+        const fallback = fallbackUsed ? null : this.fallbackFor(outcome.error, top);
+        fallbackUsed = true;
+        if (fallback) {
+          this.attach(fallback);
+          this.setStack([...this.stack, fallback]);
+        }
+        error = fallback ? null : (error ?? outcome);
       }
-      const outcome = await this.enterScreen(top, options);
-      if (outcome === 'entered' || outcome === 'aborted') {
-        break;
+      if (error) {
+        throw error.error;
       }
-      // enter() threw: the screen is gone, show what is below it
-      error = error ?? outcome.error;
+      return !fallbackUsed;
+    } finally {
+      dropLeaving();
     }
-    if (error !== undefined) {
-      throw error;
+  }
+
+  private attach(screen: Screen): void {
+    const layer = document.createElement('div');
+    layer.className = 'gg-screen';
+    Object.assign(layer.style, { position: 'absolute', inset: '0', isolation: 'isolate', visibility: 'hidden' });
+    screen.internals.attach(this, layer);
+  }
+
+  private fallbackFor(error: unknown, screen: Screen): Screen | null {
+    if (!this.onEnterError) {
+      return null;
+    }
+    try {
+      return this.onEnterError(error, screen) || null;
+    } catch (e) {
+      console.error(e);
+      return null;
     }
   }
 
@@ -312,6 +429,7 @@ export class ScreenManager {
 
   private cover(screen: Screen, pauseWorlds: boolean): void {
     screen.layer.setAttribute('inert', '');
+    this.pointerEventsBeforeCover.set(screen, screen.layer.style.pointerEvents);
     screen.layer.style.pointerEvents = 'none';
     screen.internals.setCovered(true, pauseWorlds);
     screen.internals.setState('covered');
@@ -320,7 +438,8 @@ export class ScreenManager {
 
   private uncover(screen: Screen): void {
     screen.layer.removeAttribute('inert');
-    screen.layer.style.pointerEvents = '';
+    screen.layer.style.pointerEvents = this.pointerEventsBeforeCover.get(screen) ?? '';
+    this.pointerEventsBeforeCover.delete(screen);
     screen.internals.setCovered(false, false);
     screen.internals.setState('active');
     this.safely(() => screen.onUncovered());
@@ -329,13 +448,16 @@ export class ScreenManager {
   private async enterScreen(
     screen: Screen,
     options: ScreenPushOptions,
+    onShown: () => void,
   ): Promise<'entered' | 'aborted' | { error: unknown }> {
+    // aborted by a later request that removes the screen
     const controller = new AbortController();
-    this.entering = { screen, controller };
+    this.enteringControllers.set(screen, controller);
     screen.internals.setState('entering');
 
     const factory = options.loadingView === undefined ? this.loadingViewFactory : options.loadingView;
     let view: LoadingView | null = null;
+    let viewShownAt = 0;
     let last: LoadProgress = EMPTY_PROGRESS;
     const timer = factory
       ? setTimeout(() => {
@@ -343,6 +465,8 @@ export class ScreenManager {
           view.element.style.zIndex = '2147483647';
           view.setProgress(last);
           this.container.appendChild(view.element);
+          viewShownAt = Date.now();
+          onShown();
         }, this.loadingDelay)
       : null;
     const reportProgress = (progress: LoadProgress | number) => {
@@ -359,11 +483,16 @@ export class ScreenManager {
     if (timer !== null) {
       clearTimeout(timer);
     }
+    if (view && !failure && !controller.signal.aborted) {
+      // a loading view that has just appeared doesn't vanish again within a frame
+      await sleep(this.loadingMinDuration - (Date.now() - viewShownAt), controller.signal);
+    }
     (view as LoadingView | null)?.dispose();
-    this.entering = null;
+    this.enteringControllers.delete(screen);
 
     if (controller.signal.aborted) {
       // left in the stack for the request that aborted it: its transition takes it out
+      this.aborted.add(screen);
       if (failure && !isAbortError(failure.error)) {
         console.error(failure.error);
       }
@@ -374,14 +503,16 @@ export class ScreenManager {
       this.setStack(this.stack.filter(s => s !== screen));
       return failure;
     }
+    onShown();
     screen.layer.style.visibility = '';
     screen.internals.setState('active');
     return 'entered';
   }
 
-  private async exitScreen(screen: Screen, entered: boolean = true): Promise<void> {
+  private async exitScreen(screen: Screen, entered: boolean = true, keepLayer: boolean = false): Promise<void> {
     const wasEntered = entered && (screen.state === 'active' || screen.state === 'covered');
     this.aborted.delete(screen);
+    this.cancelled.delete(screen);
     if (wasEntered) {
       try {
         await screen.exit();
@@ -389,7 +520,7 @@ export class ScreenManager {
         console.error(e);
       }
     }
-    screen.internals.teardown();
+    screen.internals.teardown(keepLayer);
   }
 
   private safely(run: () => void): void {
@@ -402,22 +533,36 @@ export class ScreenManager {
 
   private onGgStaticAdded(): void {
     window.removeEventListener('ggstatic_added', this.onGgStaticAdded);
-    this.registerConsoleCommands();
+    ScreenManager.registerConsoleCommands();
   }
 
-  // the dev console is reached only through `window.ggstatic`, and only when the app created it
-  private registerConsoleCommands(): void {
+  private describeStack(indent: string): string {
+    if (!this.stack.length) {
+      return `${indent}(no screens)`;
+    }
+    return this.stack
+      .map((screen, index) => {
+        const type = (screen.constructor as typeof Screen).screenTypeName ?? screen.constructor.name;
+        return `${indent}${index}: ${type} (${screen.state})`;
+      })
+      .join('\n');
+  }
+
+  // the dev console is reached only through `window.ggstatic`, and only when the app created it;
+  // the commands are shared by every manager alive
+  private static registerConsoleCommands(): void {
     const ggstatic = (window as any).ggstatic;
     if (!ggstatic?.registerConsoleCommand) {
       return;
     }
+    const managers = ScreenManager.managers;
     ggstatic.registerConsoleCommand(
       null,
       'screens',
       async () =>
-        this.stack.length
-          ? this.stack.map((screen, index) => `${index}: ${screen.constructor.name} (${screen.state})`).join('\n')
-          : '(no screens)',
+        managers.length === 1
+          ? managers[0].describeStack('')
+          : managers.map((m, i) => `manager ${i}:\n${m.describeStack('  ')}`).join('\n'),
       'no args; Print the screen stack, bottom first, with the state of every screen',
     );
     ggstatic.registerConsoleCommand(
@@ -425,13 +570,32 @@ export class ScreenManager {
       'screen_pop',
       async (...args: string[]) => {
         const count = args[0] === undefined ? 1 : +args[0];
-        if (isNaN(count) || count < 1) {
-          throw new Error('usage: screen_pop [COUNT]');
+        const index = args[1] === undefined ? 0 : +args[1];
+        const manager = managers[index];
+        if (!Number.isInteger(count) || count < 1 || !manager) {
+          throw new Error('usage: screen_pop [COUNT] [MANAGER]');
         }
-        await this.pop(count);
-        return `popped, ${this.stack.length} screen(s) left`;
+        await manager.pop(count);
+        return `popped, ${manager.stack.length} screen(s) left`;
       },
-      'args: [ int? ]; Remove the top screen (or the given number of screens) from the screen stack',
+      'args: [ int?, int? ]; Remove the top screen (or the given number of screens) from the screen stack ' +
+        '(of the given manager, as listed by screens, when there are several)',
     );
   }
+}
+
+/** Resolves after `ms` (at once when not positive), or as soon as `signal` aborts. */
+function sleep(ms: number, signal: AbortSignal): Promise<void> {
+  if (ms <= 0 || signal.aborted) {
+    return Promise.resolve();
+  }
+  return new Promise(resolve => {
+    const done = () => {
+      clearTimeout(timer);
+      signal.removeEventListener('abort', done);
+      resolve();
+    };
+    const timer = setTimeout(done, ms);
+    signal.addEventListener('abort', done);
+  });
 }

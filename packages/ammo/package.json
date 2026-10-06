@@ -4,6 +4,9 @@
   "description": "An attempt to create open source game engine for browser",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "sideEffects": [
+    "./dist/ammo.js/*.js"
+  ],
   "scripts": {
     "test": "jest",
     "prettier-format": "prettier --config ../../.prettierrc 'src/**/*.ts' --write",

@@ -3,12 +3,14 @@ import { Application, ApplicationOptions, Sprite, Texture } from 'pixi.js';
 import { PixiSceneComponent } from './pixi-scene.component';
 import { PixiCameraComponent } from './pixi-camera.component';
 import { PixiGgWorld, PixiVisualTypeDocRepo2D } from '../types';
-import { first, Subject } from 'rxjs';
+import { Subject, take } from 'rxjs';
 import { PixiPhysicsDebugView } from './pixi-physics-debug-view';
 
 export class PixiRendererComponent extends IRenderer2dComponent<PixiVisualTypeDocRepo2D> {
   public readonly application: Application;
   private initialized: boolean = false;
+  /** Set by a `dispose()` that came before pixi's async `init` finished; init then destroys. */
+  private disposed: boolean = false;
   private onInitialized$: Subject<void> = new Subject();
   protected world: PixiGgWorld | null = null;
 
@@ -70,6 +72,11 @@ export class PixiRendererComponent extends IRenderer2dComponent<PixiVisualTypeDo
         this.application.ticker.stop();
         this.application.ticker.destroy();
         (this.application as any)._ticker = null!;
+        if (this.disposed) {
+          // disposed while initializing: what init just created (a GL context) is freed now
+          this.application.destroy(true, true);
+          return;
+        }
         this.initialized = true;
         this.onInitialized$.next();
         this.onInitialized$.complete();
@@ -80,7 +87,7 @@ export class PixiRendererComponent extends IRenderer2dComponent<PixiVisualTypeDo
     if (this.initialized) {
       this.application.renderer.resize(newSize.x, newSize.y);
     } else {
-      this.onInitialized$.pipe(first()).subscribe(() => this.resizeRenderer(newSize));
+      this.onInitialized$.pipe(take(1)).subscribe(() => this.resizeRenderer(newSize));
     }
   }
 
@@ -142,7 +149,7 @@ export class PixiRendererComponent extends IRenderer2dComponent<PixiVisualTypeDo
       }
       this.application.render();
     } else {
-      this.onInitialized$.pipe(first()).subscribe(() => this.render());
+      this.onInitialized$.pipe(take(1)).subscribe(() => this.render());
     }
   }
 
@@ -192,9 +199,19 @@ export class PixiRendererComponent extends IRenderer2dComponent<PixiVisualTypeDo
   }
 
   dispose(): void {
+    if (this.disposed) {
+      return;
+    }
+    this.disposed = true;
     this.scene.renderers.delete(this);
     this.backgroundSprite?.destroy({ texture: false });
     this.backgroundSprite = null;
-    this.application.destroy(true, true);
+    // nothing waiting for init (a deferred render or resize) runs any more
+    this.onInitialized$.complete();
+    if (this.initialized) {
+      this.application.destroy(true, true);
+    }
+    // otherwise pixi's Application can't be destroyed before its init resolves (its plugins
+    // aren't set up yet), so the init callback does it
   }
 }

@@ -2,6 +2,7 @@ import { GgWorld } from '../gg-world';
 import { KeyboardInput } from '../inputs/keyboard.input';
 import { LoadProgress } from '../assets/load-progress';
 import type { ScreenManager } from './screen-manager';
+import { Subscription } from 'rxjs';
 
 /**
  * Where a screen is in its life:
@@ -31,14 +32,21 @@ export type ScreenEnterContext = {
 /** Something a screen cleans up when it exits - see `Screen.addTeardown`. */
 export type ScreenTeardown = (() => void) | { unsubscribe(): void } | { dispose(): void };
 
-type OwnedWorld = { world: GgWorld<any, any>; pausedHere: boolean; inputDisabledHere: boolean };
+type OwnedWorld = {
+  world: GgWorld<any, any>;
+  pausedHere: boolean;
+  inputDisabledHere: boolean;
+  /** Follows `localPauseAllowed` while covered. */
+  pauseRule: Subscription | null;
+};
 
 /** What `ScreenManager` drives a screen through. Not for app code. */
 export type ScreenInternals = {
   attach(manager: ScreenManager, layer: HTMLElement): void;
   setState(state: ScreenState): void;
   setCovered(covered: boolean, pauseWorlds: boolean): void;
-  teardown(): void;
+  /** Runs the teardowns and disposes the worlds; with `keepLayer` the caller removes the layer. */
+  teardown(keepLayer?: boolean): void;
 };
 
 /**
@@ -74,6 +82,13 @@ export type ScreenInternals = {
  * ```
  */
 export abstract class Screen {
+  /**
+   * How the dev console's `screens` command names this screen's class. Declare it on every screen
+   * class (`static readonly screenTypeName: string = 'MenuScreen';`): the class's own name is what
+   * a production bundler minifies.
+   */
+  public static readonly screenTypeName?: string;
+
   private _layer: HTMLElement | null = null;
   private _manager: ScreenManager | null = null;
   private _state: ScreenState = 'pending';
@@ -135,12 +150,18 @@ export abstract class Screen {
    * Register everything that has to go away with the screen through `addWorld`/`addTeardown` as
    * soon as it exists, not at the end: if `enter()` throws or is aborted halfway, that is all that
    * gets cleaned up (`exit()` is not called for a screen that never finished entering).
+   *
+   * Don't `await` a `ScreenManager` operation in here (a boot screen awaiting `push(menu)`):
+   * operations run one after another, and that one only starts once this transition, which is
+   * waiting for `enter()`, is over - it never resolves. Call it without awaiting; it runs right
+   * after this screen has entered.
    */
   public abstract enter(ctx: ScreenEnterContext): void | Promise<void>;
 
   /**
    * Called when the screen leaves the stack after having entered, before its teardowns run and its
-   * worlds are disposed. May return a promise (a fade-out); the transition waits for it.
+   * worlds are disposed. May return a promise (a fade-out); the transition waits for it - so, as in
+   * `enter()`, never await a `ScreenManager` operation in here.
    */
   public exit(): void | Promise<void> {}
 
@@ -160,15 +181,17 @@ export abstract class Screen {
    *
    * Call it right after creating the world, before loading into it. Whether a covered world is
    * paused is decided by the push that covers it (`pauseBelow`) and by the world itself: a world
-   * with `localPauseAllowed === false` (a joined network session) keeps running. Its input is
-   * switched off either way.
+   * with `localPauseAllowed === false` (a joined network session) keeps running, and a change of
+   * that flag while the screen is covered pauses or resumes it. A world paused for a hidden tab
+   * (`pauseWhenHidden`) when it gets covered stays paused until the screen is uncovered. Its input
+   * is switched off either way.
    */
   protected addWorld<W extends GgWorld<any, any>>(world: W): W {
     if (this._state === 'exited') {
       world.dispose();
       return world;
     }
-    const owned: OwnedWorld = { world, pausedHere: false, inputDisabledHere: false };
+    const owned: OwnedWorld = { world, pausedHere: false, inputDisabledHere: false, pauseRule: null };
     this.worlds.push(owned);
     if (this.covered) {
       this.coverWorld(owned);
@@ -195,18 +218,44 @@ export abstract class Screen {
       world.inputEnabled = false;
       owned.inputDisabledHere = true;
     }
-    if (this.pauseWhileCovered && world.localPauseAllowed && world.isRunning && !world.isPaused) {
+    if (this.pauseWhileCovered) {
+      // a network session can start or end while the screen is covered
+      owned.pauseRule = world.localPauseAllowed$.subscribe(allowed =>
+        allowed ? this.pauseCoveredWorld(owned) : this.releasePause(owned),
+      );
+    }
+  }
+
+  private pauseCoveredWorld(owned: OwnedWorld): void {
+    const { world } = owned;
+    if (owned.pausedHere) {
+      return;
+    }
+    if (world.isRunning && !world.isPaused) {
       world.pauseWorld();
+      owned.pausedHere = true;
+    } else if (world.adoptVisibilityPause()) {
+      // paused for a hidden tab: showing the tab again must not resume it under this screen
       owned.pausedHere = true;
     }
   }
 
-  private uncoverWorld(owned: OwnedWorld): void {
-    // only what was changed here is put back: a world the app paused itself stays paused
-    if (owned.pausedHere) {
-      owned.pausedHere = false;
+  private releasePause(owned: OwnedWorld): void {
+    if (!owned.pausedHere) {
+      return;
+    }
+    owned.pausedHere = false;
+    // still hidden: the world resumes itself once the tab is shown
+    if (!owned.world.handVisibilityPauseBack()) {
       owned.world.resumeWorld();
     }
+  }
+
+  private uncoverWorld(owned: OwnedWorld): void {
+    owned.pauseRule?.unsubscribe();
+    owned.pauseRule = null;
+    // only what was changed here is put back: a world the app paused itself stays paused
+    this.releasePause(owned);
     if (owned.inputDisabledHere) {
       owned.inputDisabledHere = false;
       owned.world.inputEnabled = true;
@@ -241,7 +290,7 @@ export abstract class Screen {
         this.worlds.forEach(owned => this.uncoverWorld(owned));
       }
     },
-    teardown: () => {
+    teardown: keepLayer => {
       this._state = 'exited';
       this._keyboard?.stop();
       for (const teardown of this.teardowns.splice(0).reverse()) {
@@ -251,14 +300,17 @@ export abstract class Screen {
           console.error(e);
         }
       }
-      for (const { world } of this.worlds.splice(0).reverse()) {
+      for (const { world, pauseRule } of this.worlds.splice(0).reverse()) {
+        pauseRule?.unsubscribe();
         try {
           world.dispose();
         } catch (e) {
           console.error(e);
         }
       }
-      this._layer?.remove();
+      if (!keepLayer) {
+        this._layer?.remove();
+      }
       this._layer = null;
     },
   };

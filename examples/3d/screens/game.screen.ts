@@ -19,6 +19,9 @@ import { PauseScreen } from './pause.screen';
  * world, its renderer and its audio without any cleanup code here.
  */
 export class GameScreen extends Screen {
+  static readonly screenTypeName: string = 'GameScreen';
+  private pausing = false;
+
   async enter(ctx: ScreenEnterContext): Promise<void> {
     // A canvas of this screen's own: it is removed with the layer when the screen exits.
     const canvas = document.createElement('canvas');
@@ -87,9 +90,13 @@ export class GameScreen extends Screen {
   }
 
   private pause(): void {
-    // only the screen on top pauses: this also runs when the pause screen itself releases the lock
-    if (this.state === 'active') {
-      this.screens.push(new PauseScreen());
+    // only the screen on top pauses: this also runs when the pause screen itself releases the lock.
+    // Escape and the lock release can come in the same moment, before the first push has covered
+    // this screen, so a push still under way counts as paused too.
+    if (this.state !== 'active' || this.pausing) {
+      return;
     }
+    this.pausing = true;
+    this.screens.push(new PauseScreen()).finally(() => (this.pausing = false));
   }
 }

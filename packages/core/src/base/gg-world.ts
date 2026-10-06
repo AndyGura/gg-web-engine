@@ -168,7 +168,8 @@ export abstract class GgWorld<
   }
 
   public set inputEnabled(value: boolean) {
-    if (value === this._inputEnabled$.value) {
+    // after dispose() the keyboard stays stopped: nothing listens for keys of a disposed world
+    if (value === this._inputEnabled$.value || this.isDisposed) {
       return;
     }
     if (value) {
@@ -188,10 +189,27 @@ export abstract class GgWorld<
    * Whether pausing this world is a local matter. `false` means its simulation is shared with
    * someone else (a network layer sets it while a session is joined), so freezing it here would
    * freeze or desync it for them: UI that pauses the game on the player's behalf must leave it
-   * running. `ScreenManager` consults it before pausing the world of a covered screen.
-   * `pauseWorld()` itself does not - it stays the explicit, unconditional call.
+   * running. `ScreenManager` consults it whenever it would pause the world of a covered screen,
+   * and follows a change while the screen stays covered (`localPauseAllowed$`): the world resumes
+   * when a session is joined under an open menu, and pauses when the session ends.
+   * `pauseWorld()` itself does not consult it - it stays the explicit, unconditional call.
    */
-  public localPauseAllowed: boolean = true;
+  public get localPauseAllowed(): boolean {
+    return this._localPauseAllowed$.value;
+  }
+
+  public set localPauseAllowed(value: boolean) {
+    if (value !== this._localPauseAllowed$.value) {
+      this._localPauseAllowed$.next(value);
+    }
+  }
+
+  private readonly _localPauseAllowed$ = new BehaviorSubject<boolean>(true);
+
+  /** The current `localPauseAllowed` on subscription, then every change. Completes in `dispose()`. */
+  public get localPauseAllowed$(): Observable<boolean> {
+    return this._localPauseAllowed$.asObservable();
+  }
 
   /**
    * When `true`, this world pauses itself automatically while the document/tab is hidden
@@ -220,6 +238,37 @@ export abstract class GgWorld<
   // world - so its own "visible again" branch only ever resumes a world *it* paused, never one the
   // app paused itself independently
   private pausedByVisibility: boolean = false;
+  private isDisposed: boolean = false;
+
+  /**
+   * @internal Takes over a pause `pauseWhenHidden` made: the world no longer resumes itself when
+   * the tab is shown again, whoever called this resumes it. Returns whether there was such a pause.
+   * Used by a screen covering the world, so a menu opened for a hidden tab keeps the game paused.
+   */
+  public adoptVisibilityPause(): boolean {
+    const adopted = this.pausedByVisibility;
+    this.pausedByVisibility = false;
+    return adopted;
+  }
+
+  /**
+   * @internal The reverse of {@link adoptVisibilityPause}, for a caller about to resume the world:
+   * while the tab is hidden and `pauseWhenHidden` is on, the pause stays, and the world resumes
+   * itself once the tab is shown. Returns whether the pause was handed over (the caller must then
+   * not resume the world).
+   */
+  public handVisibilityPauseBack(): boolean {
+    if (
+      !this.pauseWhenHidden ||
+      !this.visibilityChangeListener ||
+      document.visibilityState !== 'hidden' ||
+      !this.isPaused
+    ) {
+      return false;
+    }
+    this.pausedByVisibility = true;
+    return true;
+  }
 
   /**
    * When set, `physicsWorld.simulate()` is driven by a fixed-timestep accumulator instead of the
@@ -500,7 +549,13 @@ export abstract class GgWorld<
     return new PausableClock(autoStart, this.worldClock);
   }
 
+  /**
+   * Releases everything the world holds: its entities, the loader's cached assets, then the
+   * physics, visual and audio scenes. A step that throws doesn't stop the ones after it; the first
+   * error is rethrown once every step has run.
+   */
   public dispose(): void {
+    this.isDisposed = true;
     if ((window as any).ggstatic) {
       (window as any).ggstatic.deregisterWorldCommands(this);
     } else {
@@ -518,27 +573,36 @@ export abstract class GgWorld<
     this._entityAdded$.complete();
     this._entityRemoved$.complete();
     this._inputEnabled$.complete();
+    this._localPauseAllowed$.complete();
+    // one failing step must not leave the rest unreleased (an open AudioContext, a GL context):
+    // every step runs, and the first error is rethrown at the end
+    const errors: unknown[] = [];
+    const step = (release: () => void) => {
+      try {
+        release();
+      } catch (e) {
+        errors.push(e);
+      }
+    };
     for (let i = 0; i < this.children.length; i++) {
-      this.children[i].onRemoved();
-      this.children[i].dispose();
+      const child = this.children[i];
+      step(() => child.onRemoved());
+      step(() => child.dispose());
     }
     this.children.splice(0, this.children.length);
     this.tickListeners.splice(0, this.tickListeners.length);
     this.entitiesByName.clear();
     // cached assets go after the entities made from them, and before the scenes they belong to
-    this.loader?.dispose();
-    if (this.physicsWorld) {
-      this.physicsWorld.dispose();
-    }
-    if (this.visualScene) {
-      this.visualScene.dispose();
-    }
-    if (this.audioScene) {
-      this.audioScene.dispose();
-    }
+    step(() => this.loader?.dispose());
+    step(() => this.physicsWorld?.dispose());
+    step(() => this.visualScene?.dispose());
+    step(() => this.audioScene?.dispose());
     GgWorld._documentWorlds.splice(GgWorld._documentWorlds.indexOf(this), 1);
     this.disposed$.next();
     this.disposed$.complete();
+    if (errors.length) {
+      throw errors[0];
+    }
   }
 
   abstract addPrimitiveRigidBody(

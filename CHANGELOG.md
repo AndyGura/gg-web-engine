@@ -29,6 +29,12 @@ where one exists.
 ## [Unreleased]
 
 ### Added
+- `@gg-web-engine/core`: `ScreenManagerOptions.onEnterError` returns a screen to show when a
+  screen's `enter()` throws, so a failed game load can fall back to the menu instead of an empty
+  page. `Screen.screenTypeName` names a screen class in the dev console in a minified build.
+- `@gg-web-engine/core`: a level's progress includes the first chunks of a `"MapGraph"`
+  (`MapGraph3dEntity.initialChunks`), and the level's signal cancels them. `AssetScope.adopt`
+  holds another scope's assets.
 - `@gg-web-engine/mobile-controls`: a built-in layout for `ObjectGrabController` - a grab button
   that turns into a release button while something is held, and a throw button shown only then
   (`grab` option, `grabLayout`). `ObjectGrabController` exposes `heldObject$`, `keyboard`, `options`
@@ -36,6 +42,13 @@ where one exists.
 - Examples: the coin run and portal room demos show on-screen controls on a phone.
 
 ### Changed
+- `@gg-web-engine/core`: `ScreenManager` operations resolve with `true` when their screen was shown
+  and `false` when a later operation cancelled it (they used to report success either way).
+  An operation cancels exactly the not-yet-shown screens it removes, judged by the stack the
+  queued operations lead to: `push(a); push(b); pop()` never enters `b`, and a `popTo` that fails
+  cancels nothing. `pop` rejects a count that isn't a positive integer. The screens leaving stay
+  visible until the next one (or the loading view) shows, and the loading view stays at least
+  `loadingMinDuration` (300 ms) once shown.
 - `@gg-web-engine/core`: `MouseInput.delta$` reports each mouse movement once. It used to report
   every movement twice (once from `pointermove` and once from the `mousemove` fired for the same
   motion), so every mouse-look sensitivity - `OrbitCameraController`'s orbiting/panning/dollying,
@@ -50,6 +63,31 @@ where one exists.
   of the browser's `movementX`/`movementY` and scales it by a new `touchSensitivity` option (3 by
   default, matching the mobile-controls look area). `ObjectGrabController` no longer throws or drops
   on a touch device's drag - the on-screen buttons do that there.
+- `@gg-web-engine/core`: load progress no longer jumps to 99.9% as soon as the first step of a load
+  is done (the level JSON of `loadLevelFromUrl`, the root file of `loadGgGlb` before its props, the
+  preload of `loadLevel` before its entities) and then sits there while the rest loads.
+  `LoadProgressGroup` reserves weight for steps that have not reported yet and gains `complete(slot)`.
+- `@gg-web-engine/core`: aborting a load rejects at once, also when another load is downloading the
+  same asset; a failing asset cancels the rest of `preload`; disposing a world cancels its running
+  loads (including `MapGraph3dEntity` chunk loads) and its loader takes no new ones.
+- `@gg-web-engine/core`: a pause screen opened while a network session was connecting no longer
+  leaves the game frozen after the join, and one open when the session ends now pauses it
+  (`GgWorld.localPauseAllowed$`). A pause screen opened while the tab was hidden keeps the game
+  paused when the tab is shown again (`pauseWhenHidden`).
+- `@gg-web-engine/core`: `GgWorld.dispose()` disposes everything even when one step throws, and
+  rethrows the first error afterwards.
+- Every package declares `sideEffects`, so a bundler leaves out the modules an app doesn't use -
+  for core that includes the dev console, debugger and stats.js.
+- `@gg-web-engine/pixi`: disposing a renderer (a world) before pixi finished initializing no longer
+  throws, and frees the WebGL context once initialization completes.
+- `@gg-web-engine/core`: an entity detached from its `MapGraph3dEntity` chunk (or moved to another
+  chunk) keeps the chunk's geometry, materials and shapes until it is disposed; the chunk unloading
+  freed them under it.
+- `@gg-web-engine/core`: loads of one file with different options at the same time (a model with
+  two offsets, a texture with two filters) download it once.
+- `@gg-web-engine/core`: uncovering a screen puts back the `pointerEvents` its layer had;
+  `world.inputEnabled = true` after `dispose()` no longer re-attaches keyboard listeners; two
+  `ScreenManager`s no longer overwrite each other's dev console commands.
 
 ## [0.0.78] - 2026-10-05
 

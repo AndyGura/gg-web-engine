@@ -6,6 +6,8 @@ import { MenuScreen } from './menu.screen';
  * by the time this screen enters; popping this screen gives both back.
  */
 export class PauseScreen extends Screen {
+  static readonly screenTypeName: string = 'PauseScreen';
+
   enter(): void {
     this.layer.innerHTML = `
       <div class='panel panel--pause'>

@@ -617,10 +617,10 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
   ): Promise<TypeDoc['vTypeDoc']['texture']> {
     const loader = this.visualLoader();
     const { onProgress, signal, scope, ...textureOptions } = options;
-    return this.acquireAsset(`texture:${url}:${stableKey(textureOptions)}`, url, options, async item => {
+    return this.acquireAsset(`texture:${url}:${stableKey(textureOptions)}`, url, options, async (item, loadSignal) => {
       let texture: TypeDoc['vTypeDoc']['texture'];
       if (loader.textureFromData) {
-        const data = await fetchWithProgress(url, item.file(), signal);
+        const data = await this.fetchShared(url, item, loadSignal);
         texture = await loader.textureFromData(imageBlob(data, url), { ...textureOptions, url });
       } else {
         texture = await loader.loadTexture(url, textureOptions);
@@ -640,11 +640,11 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
     options: LoadTaskOptions = {},
   ): Promise<TypeDoc['vTypeDoc']['texture']> {
     const loader = this.visualLoader();
-    return this.acquireAsset(`cubeTexture:${stableKey(faces)}`, faces.px, options, async item => {
+    return this.acquireAsset(`cubeTexture:${stableKey(faces)}`, faces.px, options, async (item, loadSignal) => {
       let texture: TypeDoc['vTypeDoc']['texture'];
       if (loader.cubeTextureFromData) {
         const names = ['px', 'nx', 'py', 'ny', 'pz', 'nz'] as const;
-        const files = await Promise.all(names.map(n => fetchWithProgress(faces[n], item.file(), options.signal)));
+        const files = await Promise.all(names.map(n => fetchWithProgress(faces[n], item.file(), loadSignal)));
         const blobs = {} as Record<keyof CubeTextureFaces, Blob>;
         names.forEach((n, i) => (blobs[n] = imageBlob(files[i], faces[n])));
         texture = await loader.cubeTextureFromData(blobs);
@@ -683,14 +683,19 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
       return null;
     }
     const { onProgress, signal, scope, ...glbOptions } = options;
-    return this.acquireAsset(`glb:${path}:${stableKey(glbOptions)}`, `${path}.glb`, options, async item => {
-      const glb = await fetchWithProgress(`${path}.glb`, item.file(), signal);
-      const object = await loader.loadFromGlb(glb, glbOptions);
-      if (object) {
-        await loader.prepare?.(object);
-      }
-      return { value: object, dispose: () => object?.dispose() };
-    });
+    return this.acquireAsset(
+      `glb:${path}:${stableKey(glbOptions)}`,
+      `${path}.glb`,
+      options,
+      async (item, loadSignal) => {
+        const glb = await this.fetchShared(`${path}.glb`, item, loadSignal);
+        const object = await loader.loadFromGlb(glb, glbOptions);
+        if (object) {
+          await loader.prepare?.(object);
+        }
+        return { value: object, dispose: () => object?.dispose() };
+      },
+    );
   }
 
   private visualLoader(): NonNullable<Gg3dWorld<TypeDoc>['visualScene']>['loader'] {
@@ -1392,7 +1397,17 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
    * @param settings - The map graph settings
    * @returns The created map graph entity
    */
-  private createMapGraph(world: Gg3dWorld<TypeDoc>, settings: MapGraph3DSettings): MapGraph3dEntity<TypeDoc> {
+  /**
+   * Makes the chunks a `"MapGraph"` loads first part of the level's load. Only a loader that loads
+   * `.glb`/`.meta` pairs (`Gg3dLoader`) can; here it does nothing.
+   */
+  protected async preloadInitialChunks(_entity: MapGraph3dEntity<TypeDoc>, _load: LoadTaskOptions): Promise<void> {}
+
+  private async createMapGraph(
+    world: Gg3dWorld<TypeDoc>,
+    settings: MapGraph3DSettings,
+    load: LoadTaskOptions = {},
+  ): Promise<MapGraph3dEntity<TypeDoc>> {
     const { graph, loadDepth, inertia, maxNodesLoadingPerTick, loadRateLimit } = settings;
     if (!graph) {
       throw new Error('"graph" is required for MapGraph class');
@@ -1424,6 +1439,7 @@ export class Gg3dLevelLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTyp
     if (loadRateLimit !== undefined) {
       entity.loadRateLimit = loadRateLimit;
     }
+    await this.preloadInitialChunks(entity, load);
     return entity;
   }
 }

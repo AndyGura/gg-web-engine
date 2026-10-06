@@ -4,6 +4,7 @@
   "description": "On-screen touch controls for gg-web-engine: buttons, sticks, d-pads, look areas and tilt steering over the game canvas",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "sideEffects": false,
   "scripts": {
     "test": "jest",
     "prettier-format": "prettier --config ../../.prettierrc 'src/**/*.ts' --write",

@@ -6,6 +6,7 @@ import {
   AssetRef,
   fetchWithProgress,
   GroupEntity,
+  linkSignals,
   LoadProgressGroup,
   LoadTaskOptions,
   Pnt3,
@@ -16,6 +17,8 @@ import {
   warnOnce,
 } from '../base';
 import { Gg3dLevelLoader } from './level-loader';
+import type { MapGraph3dEntity } from './entities/map-graph-3d.entity';
+import { first } from 'rxjs';
 
 /**
  * Whether `loadGgGlb` goes through the loader's asset cache. Left out, it does. `Nothing` fetches
@@ -232,9 +235,14 @@ export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocR
    */
   public async loadGgGlbFiles(path: string, options: LoadTaskOptions = {}): Promise<[ArrayBuffer, GgMeta]> {
     const item = new AssetProgress(path, options.onProgress);
-    const result = await this.fetchGgGlb(path, item, options.signal);
-    item.done();
-    return result;
+    const signal = linkSignals(options.signal, this.assetCache.lifetimeSignal);
+    try {
+      const result = await this.fetchGgGlb(path, item, signal.signal);
+      item.done();
+      return result;
+    } finally {
+      signal.release();
+    }
   }
 
   private async fetchGgGlb(
@@ -291,8 +299,8 @@ export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocR
 
   /** The cached, never-spawned original of a pair - `loadGgGlbResources` hands out copies of it. */
   private acquireGgGlb(path: string, options: LoadTaskOptions): Promise<LoadResourcesResult<TypeDoc>> {
-    return this.acquireAsset(`ggGlb:${path}`, path, options, async item => {
-      const template = await this.buildGgGlbResources(path, item, options.signal);
+    return this.acquireAsset(`ggGlb:${path}`, path, options, async (item, signal) => {
+      const template = await this.buildGgGlbResources(path, item, signal);
       return {
         value: template,
         dispose: () => {
@@ -320,10 +328,15 @@ export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocR
     if (cachingStrategy === CachingStrategy.Nothing) {
       throwIfAborted(options.signal);
       const item = new AssetProgress(path, options.onProgress);
-      const result = await this.buildGgGlbResources(path, item, options.signal);
-      throwIfAborted(options.signal);
-      item.done();
-      return result;
+      const signal = linkSignals(options.signal, this.assetCache.lifetimeSignal);
+      try {
+        const result = await this.buildGgGlbResources(path, item, signal.signal);
+        throwIfAborted(signal.signal);
+        item.done();
+        return result;
+      } finally {
+        signal.release();
+      }
     }
     return cloneLoadResourcesResult(await this.acquireGgGlb(path, options));
   }
@@ -349,15 +362,50 @@ export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocR
     options: LoadTaskOptions,
   ): Promise<void> {
     const group = new LoadProgressGroup(options);
-    const { meta } = await this.acquireGgGlb(path, group.sub());
+    const rootSlot = group.sub();
+    const propsSlot = group.sub();
+    const { meta } = await this.acquireGgGlb(path, rootSlot);
     if (loadProps) {
+      const props = new LoadProgressGroup(propsSlot);
       await Promise.all(
         Gg3dLoader.propsOf(meta, path, propsPath).map(prop =>
-          this.preloadGgGlb(prop.path, prop.loadProps, undefined, group.sub()),
+          this.preloadGgGlb(prop.path, prop.loadProps, undefined, props.sub()),
         ),
       );
     }
+    group.complete(propsSlot);
     group.finish();
+  }
+
+  /**
+   * Preloads the chunks `entity` loads first, with the level's progress and signal, held only until
+   * the entity's own chunk scopes have taken them over - so they unload with their chunk like any
+   * other.
+   */
+  protected override async preloadInitialChunks(
+    entity: MapGraph3dEntity<TypeDoc>,
+    load: LoadTaskOptions,
+  ): Promise<void> {
+    const hold = this.createAssetScope();
+    try {
+      await this.preload(
+        entity.initialChunks
+          .filter(node => node.loadOptions.cachingStrategy !== CachingStrategy.Nothing)
+          .map(node => ({
+            kind: 'ggGlb' as const,
+            url: node.path,
+            loadProps: node.loadOptions.loadProps ?? defaultLoadOptions.loadProps,
+            propsPath: node.loadOptions.propsPath,
+          })),
+        { ...load, scope: hold },
+      );
+    } catch (e) {
+      hold.release();
+      throw e;
+    }
+    const release = () => hold.release();
+    entity.initialLoadComplete$.pipe(first(complete => complete)).subscribe(release);
+    entity.disposed$.subscribe({ next: release, complete: release });
   }
 
   protected override async preloadAsset(ref: AssetRef, options: LoadTaskOptions): Promise<void> {
@@ -387,7 +435,9 @@ export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocR
     const group = new LoadProgressGroup(options);
     const nameScope: string | null =
       loadOptions.nameScope === undefined ? `glb_${Gg3dLoader.nameScopeCounter++}` : loadOptions.nameScope;
-    const { resources, meta } = await this.loadGgGlbResources(path, loadOptions.cachingStrategy, group.sub());
+    const rootSlot = group.sub();
+    const propsSlot = group.sub();
+    const { resources, meta } = await this.loadGgGlbResources(path, loadOptions.cachingStrategy, rootSlot);
     const result: LoadResultWithProps<TypeDoc> = {
       entities: resources.map((x, index) => {
         const entity = new Entity3d<TypeDoc>({ object3D: x.object3D, objectBody: x.body });
@@ -405,10 +455,11 @@ export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocR
       meta,
     };
     if (loadOptions.loadProps) {
+      const props = new LoadProgressGroup(propsSlot);
       result.props = await Promise.all(
         Gg3dLoader.propsOf(meta, path, loadOptions.propsPath).map(({ dummy, path: propPath, loadProps }) =>
           this.loadGgGlb(propPath, {
-            ...group.sub(),
+            ...props.sub(),
             loadProps,
             position: Pnt3.add(Pnt3.rot(dummy.position, loadOptions.rotation), loadOptions.position),
             rotation: Qtrn.combineRotations(dummy.rotation, loadOptions.rotation),
@@ -431,6 +482,7 @@ export class Gg3dLoader<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocR
       // FIXME this rotation is wrong
       e.rotation = Qtrn.mult(Qtrn.clone(e.rotation), loadOptions.rotation);
     });
+    group.complete(propsSlot);
     group.finish();
     return result;
   }

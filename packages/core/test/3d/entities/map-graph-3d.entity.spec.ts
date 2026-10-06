@@ -76,6 +76,31 @@ describe('MapGraph3dEntity', () => {
     expect(mapGraphEntity.loaded.has(nodeA)).toBe(false);
   });
 
+  it('cancels a chunk load in flight when removed from the world, and frees what it loaded anyway', async () => {
+    const node: MapGraphNodeType = { path: 'a', position: { x: 0, y: 0, z: 0 }, loadOptions: {} };
+    let finish!: (v: unknown) => void;
+    let signal: AbortSignal | undefined;
+    // a load that ignores its signal and finishes after the removal
+    jest.spyOn(world.loader, 'loadGgGlb').mockImplementation((_path: string, options: any): any => {
+      signal = options.signal;
+      return new Promise(resolve => (finish = resolve));
+    });
+    const createScope = jest.spyOn(world.loader, 'createAssetScope');
+    const mapGraphEntity = new MapGraph3dEntity(MapGraph.fromMapArray([node]), { loadDepth: 0, inertia: 0 });
+    world.addEntity(mapGraphEntity);
+    const scope = createScope.mock.results[0].value;
+
+    world.removeEntity(mapGraphEntity, true);
+    expect(signal!.aborted).toBe(true);
+    const chunkEntity = new Entity3d({});
+    finish({ entities: [chunkEntity], meta: { dummies: [] } });
+    await flushMicrotasks();
+
+    expect(chunkEntity.disposed).toBe(true);
+    expect(scope.released).toBe(true);
+    expect(mapGraphEntity.loaded.size).toBe(0);
+  });
+
   describe('attachToChunk / detachFromChunk', () => {
     const nodeA: MapGraphNodeType = { path: 'a', position: { x: 0, y: 0, z: 0 }, loadOptions: {} };
     const nodeB: MapGraphNodeType = { path: 'b', position: { x: 1000, y: 0, z: 0 }, loadOptions: {} };

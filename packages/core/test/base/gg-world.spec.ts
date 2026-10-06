@@ -1029,4 +1029,36 @@ describe('GgWorld', () => {
       expect(tickSpy).toHaveBeenCalledTimes(1);
     });
   });
+  describe('dispose', () => {
+    it('does not start listening to the keyboard again when input is enabled after dispose', () => {
+      const disposedWorld = new MockWorld();
+      disposedWorld.inputEnabled = false;
+      disposedWorld.dispose();
+      disposedWorld.inputEnabled = true;
+      expect(disposedWorld.keyboardInput.running).toBe(false);
+    });
+
+    it('runs every teardown step when one throws, then rethrows that error', () => {
+      const failure = new Error('physics dispose failed');
+      const failing = new MockWorld({
+        physicsWorld: {
+          init: async () => {},
+          simulate: () => {},
+          dispose: () => {
+            throw failure;
+          },
+        },
+      });
+      const visualDispose = jest.spyOn(failing.visualScene!, 'dispose');
+      const entity = new GgEntityMock();
+      failing.addEntity(entity);
+      const disposed = jest.fn();
+      failing.disposed$.subscribe({ complete: disposed });
+
+      expect(() => failing.dispose()).toThrow(failure);
+      expect(visualDispose).toHaveBeenCalled();
+      expect(entity.disposed).toBe(true);
+      expect(disposed).toHaveBeenCalled();
+    });
+  });
 });

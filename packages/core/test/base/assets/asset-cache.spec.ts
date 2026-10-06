@@ -103,4 +103,51 @@ describe('AssetCache', () => {
     expect(await b).toBe('second');
     expect(secondLoad).toHaveBeenCalledTimes(1);
   });
+  it('rejects a waiting request on its own signal at once, and keeps loading for the others', async () => {
+    const cache = new AssetCache();
+    let finish: (value: { value: string }) => void = () => {};
+    const load = jest.fn(() => new Promise<{ value: string }>(resolve => (finish = resolve)));
+    const first = cache.acquire('k', undefined, load);
+    const controller = new AbortController();
+    const second = cache.acquire('k', undefined, load, controller.signal).catch(e => e);
+    controller.abort();
+    expect(isAbortError(await second)).toBe(true);
+    finish({ value: 'done' });
+    expect(await first).toBe('done');
+    expect(load).toHaveBeenCalledTimes(1);
+  });
+
+  it('drops a load nobody waits for any more, and frees its result if it finishes anyway', async () => {
+    const cache = new AssetCache();
+    const dispose = jest.fn();
+    let finish: (value: { value: string; dispose: () => void }) => void = () => {};
+    // a load that ignores its signal
+    const load = () => new Promise<{ value: string; dispose: () => void }>(resolve => (finish = resolve));
+    const controller = new AbortController();
+    const request = cache.acquire('k', undefined, load, controller.signal).catch(e => e);
+    controller.abort();
+    expect(isAbortError(await request)).toBe(true);
+    expect(cache.size).toBe(0);
+    finish({ value: 'late', dispose });
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it('cancels running loads on dispose and takes no new ones', async () => {
+    const cache = new AssetCache();
+    let loadSignal: AbortSignal | undefined;
+    const pending = cache
+      .acquire('k', undefined, signal => {
+        loadSignal = signal;
+        return new Promise(() => {});
+      })
+      .catch(e => e);
+    cache.dispose();
+    expect(loadSignal!.aborted).toBe(true);
+    expect(isAbortError(await pending)).toBe(true);
+    await expect(cache.acquire('other', undefined, async () => ({ value: 1 }))).rejects.toHaveProperty(
+      'name',
+      'AbortError',
+    );
+  });
 });
