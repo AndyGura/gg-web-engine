@@ -132,18 +132,19 @@ world.init().then(async () => {
   world.addEntity(vehicle);
 
   carController.output$.subscribe(({ leftRight, upDown }) => {
+    // Newtons per wheel
     let engineForce = 0;
     let breakingForce = 0;
     if (upDown > 0) {
       if (vehicle.getSpeed() < -1) {
-        breakingForce = 100;
+        breakingForce = 12000;
       } else {
         engineForce = 2000;
       }
     }
     if (upDown < 0) {
       if (vehicle.getSpeed() > 1) {
-        breakingForce = 100;
+        breakingForce = 12000;
       } else {
         engineForce = -1000;
       }

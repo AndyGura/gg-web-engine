@@ -13,6 +13,15 @@ export type SurfaceFollowFunc = (p: Point3) => { position: Point3; normal: Point
  * Represents an entity that follows a surface dynamically by adjusting
  * its position and orientation based on a given surface function.
  *
+ * Every collider added gets its own infinite plane, in a collision group only that collider and
+ * the plane share, moved under the collider every tick to `followFunc`'s position and normal. The
+ * planes are `static` bodies: a road surface doesn't move, so a plane must have zero velocity even
+ * though it is teleported every tick. A kinematic plane would get a velocity derived from each
+ * teleport (the collider's own speed, plus a spin whenever the orientation changes), and the solver
+ * would push that velocity into the collider's chassis on every contact. A plane's orientation is
+ * the shortest-arc rotation from `+Z` to the surface normal (`Qtrn.fromTo`), so it has no twist
+ * around the normal that could change from tick to tick.
+ *
  * @template PTypeDoc - The physics type document repository.
  */
 export class SurfaceFollowingEntity<PTypeDoc extends PhysicsTypeDocRepo3D = PhysicsTypeDocRepo3D> extends IEntity<
@@ -63,15 +72,20 @@ export class SurfaceFollowingEntity<PTypeDoc extends PhysicsTypeDocRepo3D = Phys
     let cg = this.world.physicsWorld!.registerCollisionGroup();
     collider.ownCollisionGroups = [...collider.ownCollisionGroups, cg];
     collider.interactWithCollisionGroups = [...collider.ownCollisionGroups, cg];
-    let plane = this.world.physicsWorld!.factory.createRigidBody({
-      shape: { shape: 'PLANE' },
-      body: {
-        ...this.bodyOptions,
-        bodyType: 'kinematic_pos',
-        ownCollisionGroups: [cg],
-        interactWithCollisionGroups: [cg],
+    const { position, normal } = this.followFunc(collider.position);
+    let plane = this.world.physicsWorld!.factory.createRigidBody(
+      {
+        shape: { shape: 'PLANE' },
+        body: {
+          ...this.bodyOptions,
+          bodyType: 'static',
+          ownCollisionGroups: [cg],
+          interactWithCollisionGroups: [cg],
+        },
       },
-    })!;
+      // under the collider from the start, not at the world origin until the next tick
+      { position, rotation: Qtrn.fromTo(Pnt3.Z, normal) },
+    )!;
     if (this.debugBodySettings.customGlobalShape) {
       plane.debugBodySettings.shape = { shape: 'SPHERE', radius: 0.25 };
     } else {
@@ -245,7 +259,7 @@ export class SurfaceFollowingEntity<PTypeDoc extends PhysicsTypeDocRepo3D = Phys
       let [_, plane] = item!;
       const { position, normal } = this.followFunc(collider.position);
       plane.position = position;
-      plane.rotation = Qtrn.lookAt(normal, Pnt3.O);
+      plane.rotation = Qtrn.fromTo(Pnt3.Z, normal);
     }
   }
 }

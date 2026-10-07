@@ -1,6 +1,7 @@
 import {
   BitMask,
   CollisionGroup,
+  defaultMaxSuspensionForce,
   IRaycastVehicleComponent,
   Point3,
   Point4,
@@ -24,6 +25,9 @@ export class AmmoRaycastVehicleComponent
 
   public entity: RaycastVehicle3dEntity | null = null;
   protected readonly raycaster: Ammo.btDefaultVehicleRaycaster;
+
+  /** Brake force of every wheel, in Newtons - see `applyBrake()`. */
+  protected readonly brakeForces: number[] = [];
 
   get interactWithCollisionGroups(): ReadonlyArray<CollisionGroup> {
     return this.chassisBody.interactWithCollisionGroups;
@@ -77,6 +81,7 @@ export class AmmoRaycastVehicleComponent
     this.chassisBody.nativeBody.setActivationState(4); // btCollisionObject::DISABLE_DEACTIVATION
     this.chassisBody.addToWorld(world);
     this.world.dynamicAmmoWorld!.addAction(this.nativeVehicle);
+    this.world.raycastVehicles.add(this);
     this.world.added$.next(this);
   }
 
@@ -84,6 +89,7 @@ export class AmmoRaycastVehicleComponent
     this.addedToWorld = false;
     this.chassisBody.removeFromWorld(world);
     this.world.dynamicAmmoWorld!.removeAction(this.nativeVehicle);
+    this.world.raycastVehicles.delete(this);
     this.world.removed$.next(this);
     if (dispose) {
       this.dispose();
@@ -113,8 +119,9 @@ export class AmmoRaycastVehicleComponent
   }
 
   addWheel(options: WheelOptions, suspensionOptions: SuspensionOptions): void {
+    const connectionPoint = new Ammo.btVector3(options.position.x, options.position.y, options.position.z);
     const wheelInfo = this.nativeVehicle.addWheel(
-      new Ammo.btVector3(options.position.x, options.position.y, options.position.z),
+      connectionPoint,
       this.wheelDirectionCS0,
       this.wheelAxleCS,
       suspensionOptions.restLength,
@@ -128,6 +135,12 @@ export class AmmoRaycastVehicleComponent
     wheelInfo.set_m_frictionSlip(options.frictionSlip);
     wheelInfo.set_m_rollInfluence(options.rollInfluence);
     wheelInfo.set_m_maxSuspensionTravelCm(options.maxTravel * 100);
+    wheelInfo.set_m_maxSuspensionForce(
+      options.maxSuspensionForce ?? defaultMaxSuspensionForce(this.chassisBody.nativeBody.getMass()),
+    );
+    // copied into the wheel by addWheel
+    Ammo.destroy(connectionPoint);
+    this.brakeForces.push(0);
   }
 
   setSteering(wheelIndex: number, steering: number): void {
@@ -138,8 +151,28 @@ export class AmmoRaycastVehicleComponent
     this.nativeVehicle.applyEngineForce(force, wheelIndex);
   }
 
+  /**
+   * Stores the brake force (Newtons); `AmmoWorldComponent.simulate()` hands it to Bullet before
+   * every step - see `applyBrakeImpulses()`.
+   */
   applyBrake(wheelIndex: number, force: number): void {
-    this.nativeVehicle.setBrake(force, wheelIndex);
+    this.brakeForces[wheelIndex] = force;
+  }
+
+  /**
+   * Converts every wheel's brake force into what Bullet's `setBrake` takes: the maximum impulse
+   * the wheel's braking may apply in one internal substep (`btRaycastVehicle::updateFriction`
+   * clamps the wheel's rolling impulse to `m_brake`), i.e. `force × substep length`. Passing the
+   * force through unconverted brakes harder the shorter the substeps are, which is the case at a
+   * higher frame rate (`AmmoWorldComponent.simulate()` splits each frame into substeps of 5-10 ms
+   * depending on the frame's length): a 1.5 t car braked at 3.4 g at 50 FPS and 5 g at 144 FPS
+   * with the same values. Called by `AmmoWorldComponent.simulate()` right before
+   * `stepSimulation`, whose substeps all have exactly `subStepLength` seconds.
+   */
+  applyBrakeImpulses(subStepLength: number): void {
+    for (let i = 0; i < this.brakeForces.length; i++) {
+      this.nativeVehicle.setBrake(this.brakeForces[i] * subStepLength, i);
+    }
   }
 
   isWheelTouchesGround(wheelIndex: number): boolean {
@@ -174,7 +207,8 @@ export class AmmoRaycastVehicleComponent
   }
 
   resetMotion() {
-    this.resetSuspension();
     super.resetMotion();
+    // after the chassis motion state has the new pose, which the wheels are placed from
+    this.resetSuspension();
   }
 }

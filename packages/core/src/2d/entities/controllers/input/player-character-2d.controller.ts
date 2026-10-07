@@ -30,8 +30,9 @@ export type PlayerCharacterController2dOptions = {
    * Default 0.
    */
   lookAheadDistance: number;
-  /** How quickly the camera catches up to its target position, as a fraction closed per second
-   * (0..1 per tick, exponential smoothing - `1` snaps instantly). Default 0.1. */
+  /** How quickly the camera catches up to its target position: the fraction of the remaining
+   * distance closed per 1/60 s (0..1, exponential smoothing, the same at any frame rate - `1` snaps
+   * instantly). Default 0.1. */
   cameraSmoothing: number;
 };
 
@@ -179,7 +180,8 @@ export class PlayerCharacterController2d<TypeDoc extends Gg2dWorldTypeDocRepo = 
       this.character.position,
       Pnt2.scalarMult(right, this.options.lookAheadDistance * this.character.facing),
     );
-    const t = Math.min(1, this.options.cameraSmoothing <= 0 ? 1 : this.options.cameraSmoothing * 60 * dt);
+    const smoothing = this.options.cameraSmoothing;
+    const t = smoothing <= 0 || smoothing >= 1 ? 1 : 1 - Math.pow(1 - smoothing, dt * 60);
     this.camera.position = Pnt2.lerp(this.camera.position, target, t);
   }
 }

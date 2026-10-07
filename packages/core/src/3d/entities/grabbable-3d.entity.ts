@@ -43,10 +43,11 @@ export type Grabbable3dEntityOptions = {
    */
   maxAcceleration: number;
   /**
-   * How strongly the held object's own angular velocity is damped back towards zero each tick -
-   * `0` leaves it entirely alone (spins freely off whatever momentum it had when grabbed), `1`
-   * zeroes it outright every tick (rigid, non-spinning while carried, closest to Source's
-   * physcannon feel). Default 1.
+   * How strongly the held object's own angular velocity is damped back towards zero: the fraction
+   * of it removed per 1/60 s (scaled by each tick's real length, so the damping is the same at any
+   * frame rate) - `0` leaves it entirely alone (spins freely off whatever momentum it had when
+   * grabbed), `1` zeroes it outright every tick (rigid, non-spinning while carried, closest to
+   * Source's physcannon feel). Default 1.
    */
   angularDamping: number;
   /**
@@ -67,8 +68,10 @@ export type Grabbable3dEntityOptions = {
 };
 
 /**
- * How many consecutive ticks `updateHold()` must see the previous commanded velocity actually
- * achieved before trusting the object is free again - see `_consecutiveAchievedTicks`'s own doc.
+ * How long (seconds) `updateHold()` must keep seeing the previous commanded velocity actually
+ * achieved, tick after tick, before trusting the object is free again - see `_achievedStreakTime`'s
+ * own doc. Time rather than a tick count, so it means the same at any frame rate (it was tuned as
+ * 6 ticks at 60 FPS).
  * A single-tick check (this constant effectively `1`) was tried first and reverted: pinned against
  * a wall, a real physics body's per-tick contact response is noisy enough (a bounce, a settle, one
  * lucky mostly-unobstructed tick) to occasionally read as "achieved" for one tick in isolation even
@@ -81,7 +84,7 @@ export type Grabbable3dEntityOptions = {
  * longer than a few ticks at a time, so the streak requirement is met almost immediately and stays
  * met).
  */
-const UNBLOCK_STREAK = 6;
+const UNBLOCK_STREAK_SECONDS = 0.1;
 
 const DEFAULT_OPTIONS: Grabbable3dEntityOptions = {
   followStrength: 12,
@@ -150,12 +153,12 @@ export class Grabbable3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldT
    * `updateHold()` call of a new hold is never mistaken for a blocked one. */
   private _lastCommandedVelocity: Point3 | null = null;
 
-  /** Consecutive ticks in a row the previous tick's commanded velocity has actually been achieved -
+  /** How long (seconds) the previous ticks' commanded velocity has been achieved, tick after tick -
    * see `updateHold()`'s own doc for why this needs to be a *streak*, not a single-tick check: reset
    * to `0` the instant a tick isn't achieved, capped at (and reset back to, by `grab()`)
-   * `UNBLOCK_STREAK` once achieved consistently again. `updateHold()` only trusts the object is truly
-   * free once this reaches `UNBLOCK_STREAK`. */
-  private _consecutiveAchievedTicks: number = UNBLOCK_STREAK;
+   * `UNBLOCK_STREAK_SECONDS` once achieved consistently again. `updateHold()` only trusts the object
+   * is truly free once this reaches `UNBLOCK_STREAK_SECONDS`. */
+  private _achievedStreakTime: number = UNBLOCK_STREAK_SECONDS;
 
   constructor(
     options: {
@@ -208,7 +211,7 @@ export class Grabbable3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldT
     this.objectBody.linearVelocity = Pnt3.O;
     this.objectBody.angularVelocity = Pnt3.O;
     this._lastCommandedVelocity = null;
-    this._consecutiveAchievedTicks = UNBLOCK_STREAK;
+    this._achievedStreakTime = UNBLOCK_STREAK_SECONDS;
   }
 
   /**
@@ -258,8 +261,8 @@ export class Grabbable3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldT
    * arrives or drifts past the target, at which point ordinary spring behavior resumes from the other
    * side.
    *
-   * **Once `UNBLOCK_STREAK` consecutive ticks pass without the previous tick's commanded velocity
-   * actually being achieved, this tick's commanded velocity is rate-limited to
+   * **From the first tick the previous tick's commanded velocity isn't achieved, until it has been
+   * achieved for `UNBLOCK_STREAK_SECONDS` straight, this tick's commanded velocity is rate-limited to
    * `grabOptions.maxAcceleration`** - see that constant's and that option's own doc for why this is
    * conditional (an *unconditional* cap makes ordinary fast turns feel sluggish), why it's a streak
    * and not a single-tick check (a lone noisy "achieved" tick while still genuinely pinned against a
@@ -310,7 +313,7 @@ export class Grabbable3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldT
     // apart "free to move, a fresh command will just work" (achieved ~= commanded, e.g. an ordinary
     // turn) from "something's resisting the push" (achieved << commanded, e.g. pinned against a
     // wall) - a single large desired-velocity jump alone can't tell these apart, since a fast turn
-    // produces one too. See `UNBLOCK_STREAK`'s own doc for why this is a multi-tick streak, not a
+    // produces one too. See `UNBLOCK_STREAK_SECONDS`'s own doc for why this is a multi-tick streak, not a
     // single-tick check.
     let achievedThisTick = true;
     if (this._lastCommandedVelocity) {
@@ -321,10 +324,9 @@ export class Grabbable3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldT
         achievedThisTick = achievedSpeed >= lastCommandedSpeed * 0.5;
       }
     }
-    this._consecutiveAchievedTicks = achievedThisTick
-      ? Math.min(UNBLOCK_STREAK, this._consecutiveAchievedTicks + 1)
-      : 0;
-    const blocked = this._consecutiveAchievedTicks < UNBLOCK_STREAK;
+    this._achievedStreakTime = achievedThisTick ? Math.min(UNBLOCK_STREAK_SECONDS, this._achievedStreakTime + dt) : 0;
+    // the epsilon absorbs the rounding of summed tick lengths (six 1/60 s ticks sum to 0.0999...)
+    const blocked = this._achievedStreakTime < UNBLOCK_STREAK_SECONDS - 1e-9;
     // Recorded *before* the cap below touches `desiredVelocity` - deliberately what the spring
     // actually wanted this tick, not what it settled for once capped. Comparing next tick's
     // achievement against the *capped* value instead (tried first, reverted) is self-fulfilling:
@@ -352,7 +354,7 @@ export class Grabbable3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldT
     if (this.grabOptions.angularDamping > 0) {
       this.objectBody.angularVelocity = Pnt3.scalarMult(
         this.objectBody.angularVelocity,
-        1 - Math.min(1, this.grabOptions.angularDamping),
+        Math.pow(1 - Math.min(1, this.grabOptions.angularDamping), dt * 60),
       );
     }
   }

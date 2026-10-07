@@ -439,6 +439,11 @@ for it:
 - A WebGPU rendering adapter alongside `three`/`pixi`.
 - WASM spikes for physics/math hotspots.
 - Procedural content generation helpers.
+- Render interpolation for `GgWorld`'s `fixedPhysicsStep`: draw every physics body between its last
+  two fixed-step states, so a constant physics step (bit-identical physics at any frame rate) stops
+  stuttering on screen when a frame runs zero or two steps. Needs every physics adapter to keep the
+  previous state, and decides what `position` means for gameplay code; `AmmoWorldComponent
+  .fixedTimeStep`'s doc has the measurements behind not doing this by default.
 
 ---
 

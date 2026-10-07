@@ -6,6 +6,32 @@ import { AmmoGgWorld } from '../types';
 export abstract class AmmoBodyComponent<T extends Ammo.btCollisionObject> {
   public static nativeBodyReverseMap: Map<number, AmmoBodyComponent<any>> = new Map<number, AmmoBodyComponent<any>>();
 
+  private static _scratchVector: Ammo.btVector3 | null = null;
+  private static _scratchQuaternion: Ammo.btQuaternion | null = null;
+
+  /**
+   * One shared `btVector3` for passing a value into a native call that copies it (`setOrigin`,
+   * `setLinearVelocity`, ...). Setters run every tick for a moving body, and a `new Ammo.btVector3`
+   * per call is never freed by the garbage collector - it piles up in the WASM heap until
+   * `Aborted(OOM)`. Never hold on to it: the next setter call overwrites it.
+   */
+  protected static scratchVector(x: number, y: number, z: number): Ammo.btVector3 {
+    if (!AmmoBodyComponent._scratchVector) {
+      AmmoBodyComponent._scratchVector = new Ammo.btVector3();
+    }
+    AmmoBodyComponent._scratchVector.setValue(x, y, z);
+    return AmmoBodyComponent._scratchVector;
+  }
+
+  /** `btQuaternion` counterpart of {@link scratchVector}. */
+  protected static scratchQuaternion(q: Point4): Ammo.btQuaternion {
+    if (!AmmoBodyComponent._scratchQuaternion) {
+      AmmoBodyComponent._scratchQuaternion = new Ammo.btQuaternion(0, 0, 0, 1);
+    }
+    AmmoBodyComponent._scratchQuaternion.setValue(q.x, q.y, q.z, q.w);
+    return AmmoBodyComponent._scratchQuaternion;
+  }
+
   public get position(): Point3 {
     const origin = this.nativeBody.getWorldTransform().getOrigin();
     return { x: origin.x(), y: origin.y(), z: origin.z() };
@@ -13,9 +39,8 @@ export abstract class AmmoBodyComponent<T extends Ammo.btCollisionObject> {
 
   public set position(value: Point3) {
     const transform = this.nativeBody.getWorldTransform();
-    transform.setOrigin(new Ammo.btVector3(value.x, value.y, value.z));
-    this.nativeBody.setWorldTransform(transform);
-    this.nativeBody.activate(true);
+    transform.setOrigin(AmmoBodyComponent.scratchVector(value.x, value.y, value.z));
+    this.applyWorldTransform(transform);
   }
 
   public get rotation(): Point4 {
@@ -25,7 +50,16 @@ export abstract class AmmoBodyComponent<T extends Ammo.btCollisionObject> {
 
   public set rotation(value: Point4) {
     const transform = this.nativeBody.getWorldTransform();
-    transform.setRotation(new Ammo.btQuaternion(value.x, value.y, value.z, value.w));
+    transform.setRotation(AmmoBodyComponent.scratchQuaternion(value));
+    this.applyWorldTransform(transform);
+  }
+
+  /**
+   * Moves the body to `transform` (this body's own, already modified, world transform object) -
+   * what the `position`/`rotation` setters end with. Body types that keep more than one transform
+   * in sync override it (see `AmmoRigidBodyComponent`).
+   */
+  protected applyWorldTransform(transform: Ammo.btTransform): void {
     this.nativeBody.setWorldTransform(transform);
     this.nativeBody.activate(true);
   }

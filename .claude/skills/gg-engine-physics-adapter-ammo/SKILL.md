@@ -720,70 +720,62 @@ component should default to this same deferred-emission shape rather than assumi
 are safe to reenter synchronously - they generally aren't, since nothing about their own call sites
 was written expecting to run nested inside arbitrary unrelated removal code.
 
-## `AmmoWorldComponent.simulate()`'s fixed-substep accumulator drifting against the render loop
+## `AmmoWorldComponent.simulate()`: substeps of `delta / n`, never carried over
 
-`stepSimulation(timeStep, maxSubSteps, fixedTimeStep)` with a non-zero `maxSubSteps` puts Bullet into
-its own built-in fixed-timestep-with-accumulator mode: it keeps a running `m_localTime` counter,
-adds each call's `timeStep` to it, then consumes as many whole `fixedTimeStep`-sized chunks as fit,
-carrying the leftover fraction into the *next* call. `AmmoWorldComponent.simulate(delta)` used to hand
-`fixedTimeStep`/`maxSubSteps` straight through as those two arguments - which means the amount of
-physics time actually simulated in a given call is `floor(accumulated / fixedTimeStep) *
-fixedTimeStep`, not `delta` itself. At a real, variable render `delta` (~16.7ms at 60fps, essentially
-never an exact multiple of the default `fixedTimeStep: 0.01`), that accumulator alternates between
-consuming 10ms and 20ms of simulated time call to call while the true elapsed time stayed ~16.7ms
-both times - confirmed by isolating the arithmetic outside Ammo entirely: a realistic jittery ~60fps
-delta stream fed through the old accumulator formula showed simulated-time error alternating roughly
-±3-7ms in sign every other call, versus exactly `0` every call once fixed (see the fix below).
+`simulate(delta)` runs `n = max(1, ceil(dt / fixedTimeStep))` substeps (clamped by `maxSubSteps`) of
+exactly `dt / n` each, so the simulated time of every call equals `dt`. See `fixedTimeStep`'s doc for
+the whole rationale; the history behind it:
 
-Nothing else in this engine's tick loop goes through that same accumulator -
-`CharacterController3dEntity.move(desiredTranslation, dt)` (core, every adapter) applies the real,
-un-quantized per-tick `dt` directly, and `AmmoBodyComponent.position` reads
-`nativeBody.getWorldTransform()` straight off the rigid body with no render-time interpolation of its
-own. So a camera driven off the character controller advances by the exact real `delta` every tick,
-while a dynamic body's reported position advances by the accumulator's quantized, drifting amount -
-the mismatch alternates sign frame to frame and scales with the body's own speed (bigger speed ->
-bigger position error for the same few-millisecond timestep mismatch). Real, reported, reproduced
-symptom: grab a `Grabbable3dEntity`, walk sideways while looking forward - the held object visibly
-flickers back and forth along the strafe axis instead of settling into a smooth, linearly-closing
-offset from the camera; the same mechanism produces a fixed camera flickering relative to a moving
-raycast vehicle, or a chase camera's target flickering relative to its own spinning chassis.
-`Rapier3dWorldComponent.simulate` has no equivalent bug at all (confirmed reproducible on Ammo,
-never on Rapier3d) - it just sets its own `timestep` to `delta` and steps once, so simulated time
-always exactly equals real elapsed time, with no accumulator to drift.
+- **Bullet's own accumulator drifts against the render loop.** `stepSimulation(dt, maxSubSteps,
+  fixedTimeStep)` consumes whole `fixedTimeStep` chunks and carries the rest into the next call: at a
+  real ~16.7 ms delta it alternates between simulating 10 ms and 20 ms. Nothing else in the tick loop
+  is quantized like that (`CharacterController3dEntity.move()` uses the real `dt`, `position` reads
+  `getWorldTransform()` with no interpolation), so a held `Grabbable3dEntity` flickered along the
+  strafe axis, and a camera flickered against a moving raycast vehicle. `Rapier3dWorldComponent`
+  uses the same split (`delta / n` steps, nothing carried over) and never had this.
+- **Bullet's single-step variable-timestep mode (`stepSimulation(dt, 0)`) removes substepping
+  altogether**, and that broke this package's own tests at ordinary `simulate(60)` frames (a vehicle's
+  suspension stopped settling, a trigger's exit stopped firing).
+- **Even with `stepSimulation(dt, n, dt / n)`, Bullet's accumulator is involved inside the call and
+  keeps time in `float`**: `float(dt) / float(dt / n)` can come out just below `n`, so Bullet ran
+  `n - 1` substeps and carried one into the next call (which then ran `n + 1`, of its own length). It
+  happened about once per 1000 calls with jittery deltas; for a kinematic body it also doubled that
+  frame's derived velocity (`saveKinematicState` divides the move by `(n - 1) * h`). `simulate()` now
+  passes `dt + h / 2` (the float division always lands between `n` and `n + 1`), then calls
+  `stepSimulation(0, 0)`: variable-timestep mode with a zero step simulates nothing, sets
+  `m_localTime = 0` (dropping the half substep) and syncs every motion state to its body's current
+  transform. The return values are `[n, 0]` for every call - regression:
+  `ammo-frame-rate-independence.spec.ts`'s "runs exactly ceil(delta / fixedTimeStep) substeps".
+  `stepSimulation(0, 0)` also calls `clearForces()`, harmless since `stepSimulation` itself already
+  cleared them at the end of the real step.
 
-**Fix**: don't hand `fixedTimeStep`/`maxSubSteps` to Bullet's own accumulator at all - compute the
-substep count/size in JS instead, every call: `n = max(1, ceil(dt / fixedTimeStep))` (clamped by
-`maxSubSteps`, which is now purely a hard ceiling protecting against one huge catch-up call - e.g. a
-backgrounded tab - grinding through an enormous number of substeps), then call `stepSimulation(dt, n,
-dt / n)`. `n` equal-sized substeps of `dt / n` always sum to exactly `dt`, so nothing is ever left for
-Bullet's accumulator to carry into the next call - for any `delta` that already divides evenly by
-`fixedTimeStep` (every synthetic test in this package's own suite uses one) this reproduces the old
-accumulator's result exactly bit for bit; for a real, non-round render `delta` it's what actually
-removes the drift.
+**The substep length depends on the frame rate** (8.3 ms at 30/60 FPS, 5.6 ms at 90, 10 ms at 100,
+6.9 ms at 144), so the solver isn't bit-identical across frame rates. Measured with a 1549 kg raycast
+vehicle at 30/60/90/100/144 FPS: braking distance, cornering yaw over 3 s and suspension travel on a
+landing all agree within ~2% (after the brake conversion below). A constant substep with an
+accumulator plus render interpolation (the textbook alternative) would make the physics identical,
+but costs up to one substep of display lag against the camera (the jitter cases above, now as lag)
+and changes what `position` means for every consumer; `GgWorld`'s `fixedPhysicsStep` option already
+gives an app a constant step (without interpolation) if it needs one. A bouncing ball *does* differ
+by frame rate: its rebound height depends on where a step boundary falls relative to the impact,
+because the `erp2 = 0.8` penetration correction (`init()`) injects energy for a deep penetration -
+but that's equally sensitive to a 5 cm change of drop height at a fixed frame rate (apex 1.95 m vs
+4.73 m from ~5 m), a property of `erp2`, not of the substepping.
 
-**A first attempt at fixing this - `stepSimulation(dt, 0)`, Bullet's own single-step "variable
-timestep" mode, mirroring `Rapier3dWorldComponent.simulate` literally - also removed the drift, but
-was a real regression, not just a hypothetical stability concern, confirmed by running this package's
-own test suite against it: `ammo-raycast-vehicle.component.spec.ts`'s vehicle stopped settling
-correctly on its suspension, and `ammo-trigger.component.spec.ts`'s exit-detection test stopped firing,
-from nothing more extreme than those tests' own existing `world.simulate(60)`-per-frame loops - not a
-huge one-off catch-up delta.** Substep chunking turned out to be load-bearing for ordinary per-tick
-solver accuracy (suspension springs, narrow-phase overlap updates), not just a tunneling safeguard for
-rare large deltas, so a fix that removes all substepping to fix the accumulator drift trades one real
-bug for another. The `n = ceil(dt / fixedTimeStep)` scheme above keeps every substep bounded by
-`fixedTimeStep` unconditionally (not just above some delta threshold) while still eliminating the
-cross-call drift, which is why it - not plain variable-timestep mode - is the fix that shipped.
-`examples/3d/shooter`/`examples/3d/collision-groups-pool`, which both raise
-`maxSubSteps` explicitly for their own fast-shape/many-body stability needs, are unaffected by this
-change: their override still just clamps `n` the same way it clamped Bullet's own substep count before.
+**Raycast vehicle brakes are converted per substep.** Bullet's `btRaycastVehicle::setBrake` takes the
+maximum impulse of one substep (`updateFriction` -> `calcRollingFriction` clamps the wheel's rolling
+impulse to `m_brake`); the engine force, by contrast, is multiplied by the step length inside Bullet
+(`rollingFriction = m_engineForce * timeStep`), so it already is a force. `applyBrake()` stores the
+force (Newtons); `simulate()` calls `applyBrakeImpulses(dt / n)` on every vehicle in
+`raycastVehicles` right before `stepSimulation`, setting `m_brake = force × substep length` - exact,
+since every substep of one call has that length. Unconverted, a 1549 kg car braked at 3.4 g at 50
+FPS, 4.1 g at 60 and 5 g at 144 with the same values. Note also that Bullet applies a wheel's brake
+only while its engine force is exactly `0`.
 
-Regression coverage: this package's full existing suite (particularly the two round-`delta`-driven
-tests above, which pin the new scheme to reproduce the old accumulator's result exactly for exact
-multiples of `fixedTimeStep`) is what caught the plain-variable-timestep regression and confirms the
-shipped fix doesn't reintroduce it - no dedicated jitter regression test was added, since the drift
-itself only manifests as an accumulating position disagreement against a separate, non-quantized
-camera/controller across many non-round-delta ticks, not as a single-call assertion this package's
-existing per-component test style is set up to express.
+**Bullet's ray test against a box hundreds of meters long misses now and then.** A test car on a
+`4000 m` box floor lost wheel contact at random while braking (every few frames, a different wheel)
+and decelerated at a fraction of its brake force; on a `PLANE` it braked at exactly `sum(F) / m`.
+Use a plane or modest boxes for vehicle tests.
 
 ## `onCollisionStart`/`onCollisionEnd`: manifold polling, not a native callback
 
@@ -917,33 +909,53 @@ activation-state constant `AmmoRaycastVehicleComponent`'s chassis body already u
 Bullet eventually deactivates a kinematic body that's gone motionless for a while exactly like it would
 a resting dynamic one, and a deactivated body ignores further `setWorldTransform` writes.
 
-**The `position`/`rotation` setters (`AmmoBodyComponent`, shared by every body type) DO need to
-change for kinematic bodies - a real, reproduced regression, not a hypothetical.** `AmmoRigidBodyComponent`
-overrides both setters: for `kinematic_pos`/`kinematic_vel` it writes the new transform to *both*
-`nativeBody.setWorldTransform(transform)` **and** `nativeBody.getMotionState().setWorldTransform(transform)`;
-every other body type keeps using the base `AmmoBodyComponent` setter (`setWorldTransform` alone), via
-`super.position = value`/`super.rotation = value`.
+**A teleport has to write every pose slot Bullet reads for that body type.** The
+`position`/`rotation` setters (`AmmoBodyComponent`, shared by every body type) end in
+`applyWorldTransform(transform)`, which `AmmoRigidBodyComponent` overrides per body type:
 
-The reason: once `CF_KINEMATIC_OBJECT` is set, Bullet's own `btRigidBody::saveKinematicState` runs once
-per internal substep for that body and **overwrites `m_worldTransform` by reading it back out of the
-body's motion state** (`getMotionState()->getWorldTransform(m_worldTransform)`) - not from whatever
-`btRigidBody::setWorldTransform` was called with directly; those are two independent pieces of state,
-and only the motion-state one feeds `saveKinematicState`'s velocity computation (the delta between this
-read and the previous step's is what lets the kinematic body correctly push/wake dynamic bodies it
-sweeps into). Writing only `nativeBody.setWorldTransform(...)` - correct for `dynamic`/`static` bodies,
-since neither of those ever call `saveKinematicState` - is silently overwritten back to whatever the
-motion state's *own* stale transform still says (unchanged since the body's construction, since nothing
-else ever calls the motion state's `setWorldTransform`) the moment the next `stepSimulation` runs.
-Confirmed empirically: a slider-driven moving-platform floor (`bodyType: 'kinematic_pos'`, position
-written every tick from a UI slider) switched from `static` to `kinematic_pos` and appeared to fight/
-ignore position writes in one direction - the floor could be dragged down but not back up - because
-each tick's write was getting silently reverted by the very next physics step. Writing the *same*
-transform to both the body and its motion state keeps the synchronous `position`/`rotation` getters
-(which read `nativeBody.getWorldTransform()` directly, unaffected by the motion state) consistent
-immediately, while giving `saveKinematicState` a real, non-stale delta to compute kinematic velocity
-from. There is still no separate "next kinematic transform" API to reach for (unlike Rapier's
-`setNextKinematicTranslation`) - the fix is which of Bullet's *two* existing transform slots gets
-written, not a different API.
+- `kinematic_pos`/`kinematic_vel`: `nativeBody.setWorldTransform(transform)` **and**
+  `nativeBody.getMotionState().setWorldTransform(transform)`. Once `CF_KINEMATIC_OBJECT` is set,
+  Bullet's own `btRigidBody::saveKinematicState` runs every `stepSimulation` for that body and
+  **overwrites `m_worldTransform` by reading it back out of the body's motion state**
+  (`getMotionState()->getWorldTransform(m_worldTransform)`); the delta from the previous step is the
+  kinematic velocity that lets it push/wake dynamic bodies it sweeps into. A `setWorldTransform`
+  alone is reverted by the next step - confirmed with a slider-driven moving-platform floor
+  (`kinematic_pos`, position written every tick) that could be dragged down but not back up. There
+  is no separate "next kinematic transform" API (unlike Rapier's `setNextKinematicTranslation`).
+- `dynamic`: `nativeBody.setCenterOfMassTransform(transform)` **and** the motion state.
+  `setCenterOfMassTransform` also sets the interpolation transform/velocities and recomputes the
+  world-space inertia tensor (a rotation teleport through `setWorldTransform` alone leaves the
+  inertia tensor oriented for the old rotation until the next step). The motion state matters
+  because `btRaycastVehicle.updateWheelTransform(i, true)` (`AmmoRaycastVehicleComponent
+  .resetSuspension()`) places the wheels from the chassis's motion state, which otherwise still held
+  the pre-teleport pose.
+- `static`: the base `setWorldTransform` alone - Bullet reads nothing else of a static body, and a
+  static body teleported every tick (`SurfaceFollowingEntity`'s road planes) keeps zero velocity,
+  which is the point. Its broadphase AABB still follows, since `btCollisionWorld`'s
+  `m_forceUpdateAllAabbs` (default `true`) updates inactive objects too.
+
+**Setters pass values through shared scratch objects, never `new Ammo.btVector3(...)`.**
+`AmmoBodyComponent.scratchVector(x, y, z)`/`scratchQuaternion(q)` return one module-wide
+`btVector3`/`btQuaternion` with the value set; every native call they feed (`setOrigin`,
+`setRotation`, `setLinearVelocity`, `setAngularVelocity`) copies it. A `new Ammo.btVector3` per setter
+call is never freed by the garbage collector: `SurfaceFollowingEntity` moves its planes every tick,
+which piled up two leaked objects per plane per tick until `Aborted(OOM)`. Any new per-tick native
+call taking a vector should use the scratch objects (or free what it allocates).
+
+**`resetMotion()` works in place** - `clearForces()`, zero linear/angular velocity, and for a
+dynamic body `applyWorldTransform(getWorldTransform())` so the interpolation velocities (copied from
+the now-zero velocities by `setCenterOfMassTransform`) and the motion state are cleared too.
+`AmmoRaycastVehicleComponent.resetMotion()` calls it, then `resetSuspension()`. It used to remove the
+body (and the vehicle's action) from the world for one tick and re-add it, as a workaround for
+"linear velocity randomly turns NaN on the next tick after a reset". That workaround emitted
+`world.removed$`/`added$`, which made `SurfaceFollowingEntity` drop the reset car's road plane (the
+car then fell forever), and its own NaN check ran right after re-adding, before any step, so it could
+never detect anything. The NaN could not be reproduced: 9000 resets (a car driven around rolling
+hills at 30/60/144 FPS, reset to random positions and orientations, often embedded in the ground or
+upside down, on `SurfaceFollowingEntity` planes and on a triangle mesh; with the workaround, with
+`setWorldTransform` only, and with `setCenterOfMassTransform`) stayed finite. Regression coverage:
+`ammo-frame-rate-independence.spec.ts`'s reset tests. If a NaN after a reset ever shows up again,
+reproduce it with the reporter's exact pose before adding a workaround back.
 
 **`kinematic_vel` has no native Bullet equivalent at all** - a `CF_KINEMATIC_OBJECT` body's transform
 is only ever moved by explicit `setWorldTransform` writes; Bullet's dynamics solver never integrates a
@@ -972,6 +984,15 @@ AABB's diagonal as the radius, `motionThreshold = radius` (trigger the sweep onc
 exceeds roughly the body's own size) and `sweptSphereRadius = radius * 0.5` (Bullet's own canonical
 CCD setup convention, e.g. its `Kinematic`/`Chains` demos: the swept sphere approximating the moving
 shape is smaller than the shape itself, not equal to it).
+
+## `MESH` shapes were degenerate until this was fixed
+
+`AmmoFactory.createShape`'s `MESH` case built every triangle's three corners as
+`(vertices[f[0]].x, vertices[f[1]].y, vertices[f[2]].z)` - the same point three times - so every
+triangle-mesh collider was a cloud of zero-area triangles nothing collided with (a car or box fell
+straight through). Each corner is `vertices[f[j]]`. Regression: `ammo-frame-rate-independence.spec.ts`'s
+"collides with a triangle mesh". A mesh-shape bug like this is invisible to a test that only checks
+a body *was created* from every shape descriptor - drop something on it.
 
 ## Keep this skill current
 

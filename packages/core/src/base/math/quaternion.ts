@@ -302,6 +302,33 @@ export class Qtrn {
   }
 
   /**
+   * The shortest-arc rotation that turns direction `from` into direction `to` (neither needs to be
+   * normalized). It never adds a twist around `to`, so a `to` that changes slightly from call to
+   * call yields a rotation that changes slightly too - unlike `lookAt`, whose roll around the view
+   * direction is picked from an `up` vector and flips when the direction passes close to it.
+   * Opposite directions rotate by PI around an arbitrary axis perpendicular to `from`; a
+   * zero-length vector yields the identity rotation.
+   */
+  static fromTo(from: Point3, to: Point3): Point4 {
+    const lenProduct = Pnt3.len(from) * Pnt3.len(to);
+    if (!(lenProduct > 0)) {
+      return Qtrn.O;
+    }
+    const cos = Pnt3.dot(from, to) / lenProduct;
+    if (cos < -1 + 1e-9) {
+      let axis = Pnt3.cross(Pnt3.X, from);
+      if (Pnt3.len(axis) < 1e-6 * Pnt3.len(from)) {
+        axis = Pnt3.cross(Pnt3.Y, from);
+      }
+      return Qtrn.fromAngle(Pnt3.norm(axis), Math.PI);
+    }
+    const axis = Pnt3.scalarMult(Pnt3.cross(from, to), 1 / lenProduct);
+    const w = 1 + cos;
+    const len = Math.sqrt(w * w + axis.x * axis.x + axis.y * axis.y + axis.z * axis.z);
+    return { x: axis.x / len, y: axis.y / len, z: axis.z / len, w: w / len };
+  }
+
+  /**
    * Returns a quaternion that represents the input quaternion, rotated around provided axis vector by provided angle.
    * Assumes that axis vector is already normalized
    * @param q - Input quaternion.

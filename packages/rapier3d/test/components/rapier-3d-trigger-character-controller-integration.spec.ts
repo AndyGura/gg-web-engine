@@ -4,7 +4,7 @@ import { Rapier3dFactory, Rapier3dWorldComponent } from '../../src';
 // Regression coverage for the gap where `Trigger3dEntity.onEntityEntered`/`onEntityLeft` silently
 // never fired for a `Rapier3dCharacterControllerComponent` (the "Player" built-in / any app-authored
 // character), because `Rapier3dWorldComponent.handleIdEntityMap` never registered a character
-// controller's native body handle - `dispatchCollisionEvents` resolved both sides of every sensor
+// controller's native body handle - `collectCollisionEvents` resolved both sides of every sensor
 // pair through that same map, so a pair involving a character controller always bailed out at
 // `if (!comp1 || !comp2 ...)` before ever reaching `Rapier3dTriggerComponent.notifyOverlap`. See
 // `Rapier3dCharacterControllerComponent`'s own class doc and `Rapier3dWorldComponent.handleIdEntityMap`'s

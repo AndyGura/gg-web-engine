@@ -64,6 +64,9 @@ export type FreeCameraControllerOptions = {
   mouseOptions: Partial<MouseInputOptions>;
 };
 
+/** How fast the zoom keys change the camera's field of view, in degrees per second. */
+const FOV_CHANGE_PER_SECOND = 60;
+
 const DEFAULT_FREE_CAMERA_CONTROLLER_OPTIONS: FreeCameraControllerOptions = {
   keymap: 'wasd',
   cameraLinearSpeed: 20,
@@ -261,7 +264,7 @@ export class FreeCameraController extends IEntity {
         filter(() => this.active),
       )
       .subscribe(([_, delta]) => {
-        this.camera.camera.fov += cameraFovInc;
+        this.camera.camera.fov += (cameraFovInc * FOV_CHANGE_PER_SECOND * delta) / 1000;
         this.camera.position = Pnt3.add(
           this.camera.position,
           Pnt3.rot(

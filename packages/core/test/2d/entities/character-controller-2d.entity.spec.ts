@@ -129,7 +129,8 @@ describe('CharacterController2dEntity', () => {
       entity.tick$.next([1000, 1000]); // 1s tick, starts grounded (stale) so gravity not applied yet
       expect(moveSpy.mock.calls[0][0].y).toBeCloseTo(0);
       entity.tick$.next([2000, 1000]); // now airborne - gravity applies (down = +y, since up is {0,-1})
-      expect(moveSpy.mock.calls[1][0].y).toBeCloseTo(10);
+      // a 1 s fall from rest: the velocity reaches g, the displacement is the exact ½·g·t²
+      expect(moveSpy.mock.calls[1][0].y).toBeCloseTo(5);
     });
 
     it('follows physicsWorld.gravity when no `gravity` option is set, instead of a fixed downward pull', () => {
@@ -142,7 +143,7 @@ describe('CharacterController2dEntity', () => {
       entity.tick$.next([1000, 1000]);
       expect(moveSpy.mock.calls[0][0].y).toBeCloseTo(0);
       entity.tick$.next([2000, 1000]); // now airborne - matches the world's 20, not a hardcoded default
-      expect(moveSpy.mock.calls[1][0].y).toBeCloseTo(20);
+      expect(moveSpy.mock.calls[1][0].y).toBeCloseTo(10);
     });
 
     it('falls upward, not downward, when physicsWorld.gravity itself points along +up (regression: used to always fall down regardless of the world gravity vector)', () => {
@@ -177,7 +178,7 @@ describe('CharacterController2dEntity', () => {
       const moveSpy = jest.spyOn(cc, 'move');
       entity.tick$.next([1000, 1000]);
       entity.tick$.next([2000, 1000]);
-      expect(moveSpy.mock.calls[1][0].y).toBeCloseTo(5);
+      expect(moveSpy.mock.calls[1][0].y).toBeCloseTo(2.5);
     });
 
     it('drags the character along a horizontal gravity component too, not just its component along `up` (regression: only the vertical component of a tilted gravity vector was ever applied)', () => {
@@ -189,8 +190,8 @@ describe('CharacterController2dEntity', () => {
       const moveSpy = jest.spyOn(cc, 'move');
       entity.tick$.next([1000, 1000]);
       entity.tick$.next([2000, 1000]); // now airborne - both components of gravity must integrate
-      expect(moveSpy.mock.calls[1][0].y).toBeCloseTo(20);
-      expect(moveSpy.mock.calls[1][0].x).toBeCloseTo(6);
+      expect(moveSpy.mock.calls[1][0].y).toBeCloseTo(10);
+      expect(moveSpy.mock.calls[1][0].x).toBeCloseTo(3);
     });
 
     it('slides down (keeps integrating gravity) instead of resting, when grounded against a surface steeper than maxSlopeClimbAngleRad', () => {
@@ -249,7 +250,7 @@ describe('CharacterController2dEntity', () => {
       entity.jump(); // grounded (mock's initial isGrounded), takes off
       const moveSpy = jest.spyOn(cc, 'move');
       entity.tick$.next([1000, 100]); // 0.1s: rises, then immediately hits the ceiling, fully blocked
-      expect(moveSpy.mock.calls[0][0].y).toBeCloseTo(-0.5); // desired takeoff translation
+      expect(moveSpy.mock.calls[0][0].y).toBeCloseTo(-0.45); // desired takeoff translation: 5 * 0.1 - ½ * 10 * 0.1²
       entity.tick$.next([2000, 100]); // next tick: upward velocity cancelled, gravity pulls down (+y)
       expect(moveSpy.mock.calls[1][0].y).toBeGreaterThan(0);
     });

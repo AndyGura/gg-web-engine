@@ -44,6 +44,12 @@ describe(`Pnt3`, () => {
       expect(angle).not.toBeNaN();
       expect(angle).toBeAround(0);
     });
+
+    it('returns 0 instead of NaN when either vector has zero length', () => {
+      expect(Pnt3.angle(Pnt3.O, { x: 1, y: 2, z: 3 })).toBe(0);
+      expect(Pnt3.angle({ x: 1, y: 2, z: 3 }, Pnt3.O)).toBe(0);
+      expect(Pnt3.angle(Pnt3.O, Pnt3.O)).toBe(0);
+    });
   });
 
   describe('toSpherical', () => {

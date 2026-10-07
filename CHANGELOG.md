@@ -40,6 +40,11 @@ where one exists.
   (`grab` option, `grabLayout`). `ObjectGrabController` exposes `heldObject$`, `keyboard`, `options`
   and public `throwHeld()`/`dropHeld()` for it.
 - Examples: the coin run and portal room demos show on-screen controls on a phone.
+- `@gg-web-engine/core`: `WheelOptions.maxSuspensionForce` (Newtons per wheel, also in
+  `RVEntitySharedWheelOptions` and a `"GgCar"`'s wheel settings), defaulting to
+  `defaultMaxSuspensionForce(chassisMass)` - twice the car's weight per wheel. Ammo and Rapier used
+  their engines' own 6000 N, which bottoms a 1.5 t car out at ~1.6 g (hard braking, a dip, a landing).
+- `@gg-web-engine/core`: `Qtrn.fromTo(from, to)`, the shortest-arc rotation between two directions.
 
 ### Changed
 - `@gg-web-engine/core`: `ScreenManager` operations resolve with `true` when their screen was shown
@@ -55,6 +60,42 @@ where one exists.
   `PlayerCharacterController.mouseSensitivity`, `FreeCameraController.cameraRotationSensitivity` -
   effectively ran at double its documented "radians per 1000px". The same value now turns half as
   far; an app that wants its previous feel back doubles its sensitivity.
+- `@gg-web-engine/core`, `ammo`, `rapier3d`: raycast vehicle brakes are forces in Newtons per wheel
+  (`IRaycastVehicleComponent.applyBrake`, `RaycastVehicle3dEntity.applyBrake`,
+  `GgCarProperties.brake`) and brake the same at any frame rate. The value used to reach the physics
+  engine as the impulse of one step, so it braked harder the higher the frame rate: on Ammo a
+  1549 kg car braked at 3.4 g at 50 FPS and 5 g at 144 FPS with the same values, on Rapier in
+  proportion to the frame rate. Now the car decelerates by the sum of its wheels' forces divided by
+  its mass (until the tyres slide). To keep a car's 60 FPS braking, multiply its old brake values by
+  120 on Ammo and by 60 on Rapier. An app that converted forces into impulses itself (e.g. by
+  multiplying by Ammo's substep length) must stop doing so, or it brakes ~100 times too weakly.
+  Engine forces were already Newtons and are unchanged.
+- `@gg-web-engine/core`: `RaycastVehicle3dEntity`'s wheel defaults: `frictionSlip` 1.2 instead of
+  1000 (it is the tyre friction coefficient, so 1000 kept the car on rails), and `maxTravel` equal to
+  `suspension.restLength` instead of 0.5 (a wheel no longer rises above its connection point into the
+  body). Pass the old values explicitly to keep them.
+- `@gg-web-engine/core`: `SurfaceFollowingEntity`'s planes are static bodies again, oriented by the
+  shortest-arc rotation to the surface normal and placed under their collider from the start. As
+  kinematic bodies (since 0.0.72) Ammo gave them the collider's own speed, a spin of ~200 rad/s from a
+  twist that flipped with a nearly flat road's tilt, and a first step from the world origin - and
+  pushed all of it into the car body on every chassis contact.
+- `@gg-web-engine/core`: frame-rate independence of `tick$`-driven behavior: a character's jump
+  height and fall (`CharacterController3dEntity`/`CharacterController2dEntity` move by the exact
+  displacement under gravity, including the takeoff tick), `GgCarEntity`'s auto-shift (every 50 ms of
+  world time, no longer a wall-clock throttle), `Grabbable3dEntity`'s blocked-push detection (a time,
+  not 6 ticks) and `angularDamping` (now per 1/60 s), `FreeCameraController`'s zoom keys (60°/s, not
+  1° per tick), `PlayerCharacterController2d.cameraSmoothing` (per 1/60 s) and the network
+  corrections' per-second gains (exponential). Each behaves at 60 FPS about as before.
+- `@gg-web-engine/rapier3d`: `simulate()` splits every frame into steps of at most 10 ms
+  (`Rapier3dWorldComponent.fixedTimeStep`, `maxSubSteps`) instead of one step of the whole frame, so
+  the solver behaves the same at any frame rate: a raycast vehicle cornering at 20 m/s kept 16.2 m/s
+  at 30 FPS but 19.0 m/s at 144 FPS, now 18.85-19.03 m/s at 30/60/144 FPS. A `kinematic_pos` body
+  moves through its per-tick target in equal parts over the steps, and collision/trigger events of
+  every step are delivered after the last one.
+- `@gg-web-engine/ammo`: `resetMotion()` stops a body in place instead of taking it out of the world
+  for a tick, so it no longer emits `removed$`/`added$` (which made `SurfaceFollowingEntity` drop a
+  reset car's road plane). Setting `position`/`rotation` on a dynamic body also moves its motion state
+  and interpolation transform, so a reset vehicle's wheels sit at its new pose.
 
 ### Fixed
 - `@gg-web-engine/core`: looking around by dragging a finger over the canvas (`OrbitCameraController`,
@@ -91,6 +132,16 @@ where one exists.
 - `@gg-web-engine/core`: uncovering a screen puts back the `pointerEvents` its layer had;
   `world.inputEnabled = true` after `dispose()` no longer re-attaches keyboard listeners; two
   `ScreenManager`s no longer overwrite each other's dev console commands.
+- `@gg-web-engine/ammo`: triangle mesh (`MESH`) colliders collide. Every triangle was built from
+  the same point three times, so nothing ever hit one.
+- `@gg-web-engine/ammo`: every `simulate()` call runs exactly `ceil(delta / fixedTimeStep)` substeps.
+  Bullet's float accumulator sometimes ran one fewer and one more in the next call (about once per
+  1000 calls).
+- `@gg-web-engine/ammo`: setting a body's `position`, `rotation`, `linearVelocity` or
+  `angularVelocity` no longer leaks a native vector in the WASM heap per call (an entity moving a
+  body every tick, like `SurfaceFollowingEntity`, ran the page out of memory over time).
+- `@gg-web-engine/core`: `Pnt3.angle`/`Pnt2.angle` return 0 instead of `NaN` when a vector has zero
+  length.
 
 ## [0.0.78] - 2026-10-05
 

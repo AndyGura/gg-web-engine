@@ -218,6 +218,51 @@ describe('Grabbable3dEntity', () => {
       expect(objectBody.angularVelocity).toEqual({ x: 1, y: 0, z: 0 });
     });
 
+    it('damps angular velocity by the same amount per second at any frame rate', () => {
+      const dampedAfterOneSecond = (fps: number) => {
+        const { entity, objectBody } = setup({ angularDamping: 0.1 });
+        entity.grab();
+        objectBody.angularVelocity = { x: 2, y: 0, z: 0 };
+        for (let i = 0; i < fps; i++) {
+          entity.updateHold(objectBody.position, 1 / fps);
+        }
+        return objectBody.angularVelocity.x;
+      };
+      const at60 = dampedAfterOneSecond(60);
+      expect(at60).toBeCloseTo(2 * Math.pow(0.9, 60));
+      expect(dampedAfterOneSecond(30)).toBeCloseTo(at60);
+      expect(dampedAfterOneSecond(144)).toBeCloseTo(at60);
+    });
+
+    it('keeps the blocked cap engaged for the same time at any frame rate (regression: it counted 6 ticks)', () => {
+      const cappedTime = (fps: number) => {
+        const { entity, objectBody } = setup({
+          followStrength: 1000,
+          maxFollowSpeed: 1000,
+          maxHoldDistance: 1000,
+          maxAcceleration: 60,
+        });
+        const dt = 1 / fps;
+        entity.grab();
+        entity.updateHold({ x: 10, y: 0, z: 0 }, dt);
+        // blocked once: the push came back unachieved
+        objectBody.linearVelocity = { x: 0, y: 0, z: 0 };
+        entity.updateHold({ x: 10, y: 0, z: 0 }, dt);
+        // from now on the object moves at 600 m/s, over half of the 1000 commanded - "achieved" - so
+        // the cap lets go once that has lasted long enough; until then it holds the command near 600
+        let time = 0;
+        do {
+          objectBody.linearVelocity = { x: 600, y: 0, z: 0 };
+          entity.updateHold({ x: 10, y: 0, z: 0 }, dt);
+          time += dt;
+        } while (objectBody.linearVelocity.x < 999 && time < 1);
+        return time;
+      };
+      for (const fps of [30, 60, 144]) {
+        expect(Math.abs(cappedTime(fps) - 0.1)).toBeLessThanOrEqual(1 / fps + 1e-9);
+      }
+    });
+
     it('leaves angular velocity alone when angularDamping is 0', () => {
       const { entity, objectBody } = setup({ angularDamping: 0 });
       entity.grab();

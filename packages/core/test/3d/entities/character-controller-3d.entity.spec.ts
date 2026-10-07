@@ -138,7 +138,8 @@ describe('CharacterController3dEntity', () => {
       entity.tick$.next([1000, 1000]); // 1s tick, starts grounded (stale) so gravity not applied yet this tick
       expect(moveSpy.mock.calls[0][0].z).toBeCloseTo(0);
       entity.tick$.next([2000, 1000]); // now airborne (from previous move's result) - gravity applies
-      expect(moveSpy.mock.calls[1][0].z).toBeCloseTo(-10);
+      // a 1 s fall from rest: the velocity reaches g, the displacement is the exact ½·g·t²
+      expect(moveSpy.mock.calls[1][0].z).toBeCloseTo(-5);
     });
 
     it('follows physicsWorld.gravity when no `gravity` option is set, instead of a fixed downward pull', () => {
@@ -152,7 +153,7 @@ describe('CharacterController3dEntity', () => {
       entity.tick$.next([1000, 1000]); // starts grounded (stale) so gravity not applied yet this tick
       expect(moveSpy.mock.calls[0][0].z).toBeCloseTo(0);
       entity.tick$.next([2000, 1000]); // now airborne - gravity applies, matching the world's -20, not a hardcoded 9.82
-      expect(moveSpy.mock.calls[1][0].z).toBeCloseTo(-20);
+      expect(moveSpy.mock.calls[1][0].z).toBeCloseTo(-10);
     });
 
     it('falls upward, not downward, when physicsWorld.gravity itself points along +up (regression: used to always fall -Z regardless of the world gravity vector)', () => {
@@ -188,7 +189,7 @@ describe('CharacterController3dEntity', () => {
       const moveSpy = jest.spyOn(cc, 'move');
       entity.tick$.next([1000, 1000]);
       entity.tick$.next([2000, 1000]);
-      expect(moveSpy.mock.calls[1][0].z).toBeCloseTo(-5);
+      expect(moveSpy.mock.calls[1][0].z).toBeCloseTo(-2.5);
     });
 
     it('drags the character along a horizontal gravity component too, not just its component along `up` (regression: only the Z component of a tilted gravity vector was ever applied)', () => {
@@ -200,8 +201,8 @@ describe('CharacterController3dEntity', () => {
       const moveSpy = jest.spyOn(cc, 'move');
       entity.tick$.next([1000, 1000]);
       entity.tick$.next([2000, 1000]); // now airborne - both components of gravity must integrate
-      expect(moveSpy.mock.calls[1][0].z).toBeCloseTo(-20);
-      expect(moveSpy.mock.calls[1][0].x).toBeCloseTo(6);
+      expect(moveSpy.mock.calls[1][0].z).toBeCloseTo(-10);
+      expect(moveSpy.mock.calls[1][0].x).toBeCloseTo(3);
     });
 
     it('slides down (keeps integrating gravity) instead of resting, when grounded against a surface steeper than maxSlopeClimbAngleRad', () => {
@@ -261,9 +262,35 @@ describe('CharacterController3dEntity', () => {
       entity.jump(); // grounded (mock's initial isGrounded), takes off
       const moveSpy = jest.spyOn(cc, 'move');
       entity.tick$.next([1000, 100]); // 0.1s: rises, then immediately hits the ceiling, fully blocked
-      expect(moveSpy.mock.calls[0][0].z).toBeCloseTo(0.5); // desired takeoff translation, same as the ungated test above
+      expect(moveSpy.mock.calls[0][0].z).toBeCloseTo(0.45); // desired takeoff translation: 5 m/s * 0.1 s - ½ * 10 m/s² * (0.1 s)²
       entity.tick$.next([2000, 100]); // next tick: with the upward velocity cancelled, gravity alone should now pull down
       expect(moveSpy.mock.calls[1][0].z).toBeLessThan(0); // falling already, not still coasting upward
+    });
+
+    it('reaches the same jump height at 30, 60 and 144 FPS (regression: moving by the end-of-tick velocity lowered a jump by ~jumpSpeed * dt / 2)', () => {
+      for (const fps of [30, 60, 144]) {
+        // a floor at z = 0
+        const cc = mockCharacterController(0.4, 1, {
+          resolveMove: (d, current) =>
+            current.position.z + d.z <= 0
+              ? { appliedTranslation: { ...d, z: -current.position.z }, isGrounded: true, groundNormal: Pnt3.Z }
+              : { appliedTranslation: d, isGrounded: false, groundNormal: null },
+        });
+        const entity = new CharacterController3dEntity(
+          { radius: 0.4, centersDistance: 1, jumpSpeed: 5, gravity: 10 },
+          null,
+          cc,
+        );
+        entity.onSpawned({} as any);
+        entity.jump();
+        let apex = 0;
+        for (let i = 0; i < fps; i++) {
+          entity.tick$.next([(i * 1000) / fps, 1000 / fps]);
+          apex = Math.max(apex, entity.position.z);
+        }
+        // v² / 2g; sampled at frame boundaries, the highest sample is at most g·dt²/8 below it
+        expect(apex).toBeCloseTo(1.25, 2);
+      }
     });
 
     it('is a no-op mid-air', () => {

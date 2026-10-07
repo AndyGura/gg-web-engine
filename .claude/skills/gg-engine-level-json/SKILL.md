@@ -694,14 +694,14 @@ loads that file).
   "config": {
     "chassis": { "dimensions": { "x": 1.8, "y": 4, "z": 0.6 }, "material": { "color": 8947848 }, "body": { "mass": 900 } },
     "wheelBase": {
-      "shared": { "frictionSlip": 1000, "rollInfluence": 0.2, "display": { "wheelObjectDirection": "z" } },
+      "shared": { "frictionSlip": 1.2, "rollInfluence": 0.2, "display": { "wheelObjectDirection": "z" } },
       "front": { "halfAxleWidth": 1, "axlePosition": 1.7, "axleHeight": 0.3, "tyreRadius": 0.35, "tyreWidth": 0.2 },
       "rear": { "halfAxleWidth": 1, "axlePosition": -1, "axleHeight": 0.3, "tyreRadius": 0.4, "tyreWidth": 0.3 }
     },
     "suspension": { "stiffness": 20, "damping": 2.3, "compression": 4.4, "restLength": 0.53 },
     "tractionBias": 0,
     "engine": { "minRpm": 700, "maxRpm": 7000, "torques": [{ "rpm": 1000, "torque": 270 }, { "rpm": 7000, "torque": 430 }], "maxRpmIncreasePerSecond": 8000, "maxRpmDecreasePerSecond": 8000 },
-    "brake": { "frontAxleForce": 350, "rearAxleForce": 300, "handbrakeForce": 1500 },
+    "brake": { "frontAxleForce": 2650, "rearAxleForce": 1770, "handbrakeForce": 4500 },
     "transmission": { "isAuto": false, "drivelineEfficiency": 0.85, "finalDriveRatio": 3.21, "reverseGearRatio": -2.33, "gearRatios": [2.92, 1.87, 1.42, 1.09, 0.81], "upShifts": [7140, 7140, 7140, 7140, 7140], "autoHold": false },
     "maxSteerAngle": 0.35
   }
@@ -717,7 +717,10 @@ placeholder vehicle without any asset pipeline.
 `config` (`GgCar3DSettings`) always needs `chassis.dimensions` plus every field of `GgCarProperties`
 that isn't wheel-shaped - `suspension`, `tractionBias`, `engine`, `brake`, `transmission`,
 `maxSteerAngle`, and optionally `mpsToRpmFactor` - passed through as plain data exactly as
-`GgCarEntity`'s constructor expects them. For wheels, supply exactly one of:
+`GgCarEntity`'s constructor expects them. `brake` forces are Newtons per wheel (the example's
+values brake the 900 kg car at 1 g with a 60% front share - see `GgCarProperties.brake`), and a
+wheel's `frictionSlip` is its tyre friction coefficient (about 1.0-1.2 for street tyres - see
+`WheelOptions.frictionSlip`). For wheels, supply exactly one of:
 
 - `wheelBase: { shared?, front, rear }` - a symmetric 4-wheel car, `front`/`rear` each
   `{ halfAxleWidth, axlePosition, axleHeight, ...sharedWheelFields }`, inheriting anything they

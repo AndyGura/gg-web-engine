@@ -1,4 +1,5 @@
 import {
+  defaultMaxSuspensionForce,
   IRaycastVehicleComponent,
   Pnt3,
   Point3,
@@ -20,6 +21,8 @@ type WheelEntry = {
   radius: number;
   options: WheelOptions;
   suspension: SuspensionOptions;
+  /** Newtons - see `Rapier3dRaycastVehicleComponent.applyBrake()` */
+  brakeForce: number;
 };
 
 /**
@@ -114,6 +117,13 @@ export class Rapier3dRaycastVehicleComponent
     if (!this._nativeVehicle) {
       return;
     }
+    // Rapier's brake is "the maximum amount of braking impulse" of one `updateVehicle` call (the
+    // controller is a port of Bullet's raycast vehicle), and that runs once per tick: an
+    // unconverted force braked in proportion to the frame rate (0.16 / 0.32 / 0.76 g at 30 / 60 /
+    // 144 FPS for the same value). The impulse of a force over this tick is force × dt.
+    for (let i = 0; i < this.wheels.length; i++) {
+      this._nativeVehicle.setWheelBrake(i, this.wheels[i].brakeForce * dt);
+    }
     this._nativeVehicle.updateVehicle(dt, QueryFilterFlags.EXCLUDE_SENSORS, this.collisionGroups);
   }
 
@@ -124,6 +134,10 @@ export class Rapier3dRaycastVehicleComponent
     nativeVehicle.setWheelSuspensionRelaxation(i, wheel.suspension.damping);
     nativeVehicle.setWheelSuspensionCompression(i, wheel.suspension.compression);
     nativeVehicle.setWheelMaxSuspensionTravel(i, wheel.options.maxTravel);
+    nativeVehicle.setWheelMaxSuspensionForce(
+      i,
+      wheel.options.maxSuspensionForce ?? defaultMaxSuspensionForce(this.bodyOptions.mass),
+    );
     nativeVehicle.setWheelFrictionSlip(i, wheel.options.frictionSlip);
     // Rapier has no single field named "roll influence" - `WheelOptions.rollInfluence` (how much a
     // wheel resists roll-inducing side force, per `IRaycastVehicleComponent`'s doc) is approximated
@@ -154,6 +168,7 @@ export class Rapier3dRaycastVehicleComponent
       radius: options.tyreRadius,
       options,
       suspension: suspensionOptions,
+      brakeForce: 0,
     };
     this.wheels.push(wheel);
     if (this._nativeVehicle) {
@@ -169,8 +184,12 @@ export class Rapier3dRaycastVehicleComponent
     this.nativeVehicle?.setWheelEngineForce(wheelIndex, force);
   }
 
+  /** Stores the brake force (Newtons); `stepVehicleController()` converts it into Rapier's per-tick brake impulse. */
   applyBrake(wheelIndex: number, force: number): void {
-    this.nativeVehicle?.setWheelBrake(wheelIndex, force);
+    const wheel = this.wheels[wheelIndex];
+    if (wheel) {
+      wheel.brakeForce = force;
+    }
   }
 
   isWheelTouchesGround(wheelIndex: number): boolean {

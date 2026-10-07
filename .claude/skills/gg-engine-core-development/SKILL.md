@@ -802,6 +802,51 @@ with a carried remainder, the substep cap dropping (not carrying) the remainder,
 firing once per tick regardless of substep count, and a `PHYSICS_SIMULATION`-adjacent entity's
 `tick$` still firing exactly once per world tick.
 
+## Frame-rate independence: every per-tick rule has to be written in time, not ticks
+
+A game must behave the same at 30, 60 and 144 FPS. In core code driven from `tick$`, that rules out:
+
+- **A constant applied per tick.** Scale it by the tick's `delta` (`FreeCameraController`'s zoom is
+  `FOV_CHANGE_PER_SECOND * delta / 1000`, not `fov += 1`).
+- **A counter in ticks.** Accumulate time instead (`Grabbable3dEntity`'s unblock streak is
+  `UNBLOCK_STREAK_SECONDS`, `GgCarEntity`'s auto-shift runs every `AUTO_SHIFT_INTERVAL` ms of world
+  time). Don't use rxjs `throttleTime`/`debounceTime` on `tick$` for this either: they measure
+  wall-clock time, so a paused, slowed-down or manually stepped world (`worldClock.step()`, every
+  headless test) behaves differently from one running in real time.
+- **"Close a fraction `k` of the gap every tick" smoothing.** Use `1 - (1 - k)^(dt * 60)` when `k`
+  is defined per 1/60 s (`PlayerCharacterController2d.cameraSmoothing`, `Grabbable3dEntity
+  .angularDamping`), or `1 - e^(-rate * dt)` for a per-second rate (`gainFactor` in
+  `base/network/net-math.ts`, `ggElastic`). The linear `k * 60 * dt`/`rate * dt` is only a
+  first-order approximation that converges ~10% faster at 30 FPS than at 144.
+- **Moving by the end-of-tick velocity under constant acceleration.** `CharacterController3dEntity`/
+  `CharacterController2dEntity` move by the average of the fall velocity at the start and the end of
+  the tick (exact for constant gravity) - the end velocity alone lowered a 5 m/s jump by
+  `jumpSpeed * dt / 2` (6% at 30 FPS). A takeoff tick the adapter still reports as grounded
+  (`_justJumped`) is airborne for this too: skipping gravity on it raised the jump by
+  `jumpSpeed * dt`.
+- **An impulse handed to a physics engine once per tick or per step.** Core APIs speak in forces:
+  `IRaycastVehicleComponent.applyEngineForce`/`applyBrake` and `GgCarProperties.brake` are Newtons
+  per wheel, and the adapter converts a force into whatever its engine wants per step (see
+  `gg-engine-physics-adapter`'s `simulate()` notes). A per-tick velocity *set* (a velocity spring
+  like `Grabbable3dEntity.updateHold`'s `followStrength * error`) is fine: its steady-state tracking
+  lag `speed / followStrength` doesn't depend on `dt`.
+
+Test it the way the regressions do: run the same scenario at 30, 60 and 144 FPS (`tick$.next([t,
+1000 / fps])` on an entity, or `worldClock.step(1000 / fps)` on a world) and compare the outcome
+after the same world time - jump apex, gear checks per second, damping per second, braking time.
+
+**`SurfaceFollowingEntity`'s planes are `static` bodies, oriented with `Qtrn.fromTo(Pnt3.Z, normal)`,
+and placed under their collider from creation** (`setupCollider` passes the follow function's pose
+as the plane's initial transform). A road surface has zero velocity. As `kinematic_pos` (which they
+briefly were), Ammo derived a velocity from every per-tick teleport - the collider's own speed, plus
+a spin of ~200 rad/s around the normal, because `Qtrn.lookAt(normal, ...)` picks the plane's twist
+from `cross(up, normal)`, which flips sign with a nearly flat road's tiny tilt - and a new plane's
+first step "moved" it from the world origin. The chassis box got every bit of that velocity on any
+contact (landing, bottoming out, a tilted car). Raycast wheels never noticed, since Bullet's wheel
+ground object is always a fixed body - only the chassis contacts did. Moving a static body every
+tick is fine on both Ammo and Rapier (a teleport, no velocity). Note Rapier3d has no `PLANE` shape,
+so `SurfaceFollowingEntity` only works on Ammo today.
+
 ## Collision groups can't express "these two specific bodies don't collide"
 
 `ownCollisionGroups`/`interactWithCollisionGroups` filtering is bidirectional AND logic: a pair
@@ -1339,6 +1384,12 @@ story intact for adapters. Both `Pnt2` and `Pnt3` expose named axis constants �
 `Pnt2.nX`/`Pnt2.nY` for 2D, `Pnt3.X`/`Pnt3.Y`/`Pnt3.Z`/`Pnt3.nX`/`Pnt3.nY`/`Pnt3.nZ` for 3D (plus
 each namespace's own `O` origin) — use those instead of spelling out a unit-vector literal when the
 value represents a world axis or up-vector, not an arbitrary position.
+
+`Pnt3.angle`/`Pnt2.angle` return `0` when either vector has zero length (a caller for which a
+zero-length vector means "no direction at all" checks the length itself - see
+`CharacterController3dEntity.isWalkableGround`). To orient something along a direction, use
+`Qtrn.fromTo(from, to)` (shortest arc, no twist around `to`) rather than `Qtrn.lookAt`, whose twist
+comes from an `up` vector and flips when the direction passes near it.
 
 **Every 3D world is Z-up, always** — see `CLAUDE.md`'s "Non-obvious repo facts" section for the
 full statement; `Pnt3.Z` is "up" everywhere in this engine's 3D code (core, every adapter, every

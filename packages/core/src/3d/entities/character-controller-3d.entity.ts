@@ -208,9 +208,9 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
    * enough to clear that native threshold, snapping it straight back down via the adapter's own
    * ground-snapping the very next tick (see `gg-engine-physics-adapter-rapier`'s "two separate
    * native features silently cancel a jump" pitfall for the concrete mechanism). Staying exempt
-   * every tick where `restingOnGround` is still (incorrectly) true keeps `_fallVelocity` untouched
-   * (neither zeroed nor decayed - see the `grounded`/`restingOnGround` branches below) rather than
-   * cancelling the takeoff, so the character keeps rising tick after tick until the adapter's own
+   * every tick where `restingOnGround` is still (incorrectly) true treats it as airborne -
+   * `_fallVelocity` keeps integrating gravity instead of being zeroed (see `updateMovement`) rather
+   * than cancelling the takeoff, so the character keeps rising tick after tick until the adapter's own
    * flag catches up with reality - this self-resolves in one extra tick at typical frame rates and
    * only a handful at very high ones, without needing a fixed tick count or time-based timeout. */
   private _justJumped: boolean = false;
@@ -484,7 +484,11 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
    */
   private get isWalkableGround(): boolean {
     const normal = this.groundNormal;
-    return normal !== null && Pnt3.angle(normal, this.characterController.up) <= this.options.maxSlopeClimbAngleRad;
+    return (
+      normal !== null &&
+      Pnt3.len(normal) > 0 &&
+      Pnt3.angle(normal, this.characterController.up) <= this.options.maxSlopeClimbAngleRad
+    );
   }
 
   /**
@@ -539,19 +543,32 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
     // airborne for both fall-velocity and horizontal-momentum purposes below.
     const grounded = restingOnGround && !this._justJumped;
 
+    // what the fall velocity moves the character by this tick - see the airborne branch below
+    let fallDisplacement: Point3;
     if (grounded) {
       // fully arrest fall velocity - both the settling/landing speed along `up` and any horizontal
       // drift accumulated from gravity's tangential pull while airborne or sliding - once resting
       // stably; contact + friction with a walkable surface cancels both.
       this._fallVelocity = Pnt3.O;
-    } else if (!restingOnGround) {
+      fallDisplacement = Pnt3.O;
+    } else {
+      // Airborne, including a takeoff tick the adapter still reports as grounded (see
+      // `_justJumped`). Moves by the average of the velocities at the start and the end of the
+      // tick, the exact displacement under constant gravity: jump height and fall time don't
+      // depend on the frame rate (moving by the end velocity alone lowers a 5 m/s jump by
+      // ~v0 * dt / 2: 6% at 30 FPS, 1.4% at 144 FPS; skipping gravity on the takeoff tick raised it
+      // by v0 * dt).
+      const fallVelocityBefore = this._fallVelocity;
       this._fallVelocity = Pnt3.add(this._fallVelocity, Pnt3.scalarMult(gravityVector, dt));
-      // The adapter itself now agrees the character has actually left the ground - the exemption
-      // has served its purpose (see `_justJumped`'s doc); ordinary landing detection resumes from
-      // the next tick. Deliberately *not* cleared while `restingOnGround` is still true (even though
-      // `grounded` is false here too, via `!this._justJumped`), since that's exactly the stale-flag
-      // window the exemption exists to bridge.
-      this._justJumped = false;
+      fallDisplacement = Pnt3.scalarMult(Pnt3.add(fallVelocityBefore, this._fallVelocity), dt / 2);
+      if (!restingOnGround) {
+        // The adapter itself now agrees the character has actually left the ground - the
+        // exemption has served its purpose (see `_justJumped`'s doc); ordinary landing detection
+        // resumes from the next tick. Deliberately *not* cleared while `restingOnGround` is still
+        // true (even though `grounded` is false then too, via `!this._justJumped`), since that's
+        // exactly the stale-flag window the exemption exists to bridge.
+        this._justJumped = false;
+      }
     }
 
     let speed = this.options.walkSpeed;
@@ -598,7 +615,7 @@ export class CharacterController3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = 
     this._wasResting = grounded;
 
     const desiredTranslation = Pnt3.add(
-      Pnt3.add(Pnt3.scalarMult(horizontalVelocity, dt), Pnt3.scalarMult(this._fallVelocity, dt)),
+      Pnt3.add(Pnt3.scalarMult(horizontalVelocity, dt), fallDisplacement),
       this.externalDisplacement,
     );
     this.externalDisplacement = Pnt3.O;

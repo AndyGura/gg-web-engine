@@ -68,7 +68,32 @@ export type <Lib>PhysicsTypeDocRepo = {
   world/dispatcher/broadphase/solver construction), not in the constructor. This is where
   `this._factory` and any loader get instantiated.
 - `simulate(delta: number)` — `delta` arrives in **milliseconds**; most native engines step in
-  seconds, so convert (`delta / 1000`) before calling the native step function.
+  seconds, so convert (`delta / 1000`) before calling the native step function. Whatever the
+  adapter hands the native engine per step must give the same result at any frame rate: a value
+  the engine applies once per step (or per internal substep) as an *impulse* has to be converted
+  from the force the core API speaks in with that step's length, every step. The raycast vehicle
+  is where this bites: `IRaycastVehicleComponent.applyEngineForce`/`applyBrake` are both Newtons
+  per wheel, but Bullet's `btRaycastVehicle` and every port of it (Rapier's
+  `DynamicRayCastVehicleController`) take the engine force as a force and the **brake as the
+  maximum impulse of one step** (`updateFriction` clamps the wheel's rolling impulse to it). Store
+  the brake force in the component and set the native brake to `force × step length` right before
+  each native step - `AmmoWorldComponent.simulate()` calls
+  `AmmoRaycastVehicleComponent.applyBrakeImpulses(subStep)` before `stepSimulation`,
+  `Rapier3dRaycastVehicleComponent.stepVehicleController(dt)` does it before `updateVehicle`. Passed
+  through unconverted, the same brake value braked 3.4 g at 50 FPS and 5 g at 144 FPS on Ammo, and
+  in direct proportion to the frame rate on Rapier. A wheel's suspension force cap
+  (`WheelOptions.maxSuspensionForce`, default `defaultMaxSuspensionForce(chassisMass)` from core)
+  must be set on the native wheel too - Bullet's and Rapier's own 6000 N per wheel bottoms a
+  1.5 t car out at ~1.6 g.
+
+  Step the native world in substeps no longer than ~10 ms (`n = ceil(dt / maxStep)` steps of
+  `dt / n`, nothing carried over to the next call - see `AmmoWorldComponent.fixedTimeStep`'s doc
+  for why not an accumulator): one native step per frame makes every explicit per-step model
+  (suspension springs, tyre friction, contact correction) depend on the frame rate. Anything set
+  once per tick then has to hold for every substep: per-step impulses converted with the substep
+  length, a native event queue that clears itself before each step read after every step (deliver
+  the events after the last one), and a position-driven kinematic body's per-tick target spread over
+  the substeps (see `gg-engine-physics-adapter-rapier`'s substep notes for both).
 - `registerCollisionGroup()` / `deregisterCollisionGroup(group)` — maintain a pool of group IDs;
   respect any hard limit the engine imposes (Ammo's bitmask caps at 16 groups — see
   `AmmoWorldComponent.registerCollisionGroup`, which throws once exhausted) and throw a clear error
@@ -229,7 +254,7 @@ pair:
 - **Self-collision guard.** A compound body's own sub-colliders can resolve to the *same* component
   on both sides of a reported pair - that must never reach `onCollisionStart`/`onCollisionEnd`, or
   a body would appear to collide with itself. Skip the pair whenever both sides resolve to the same
-  component instance (see `Rapier3dWorldComponent.dispatchCollisionEvents`'s `comp1 === comp2`
+  component instance (see `Rapier3dWorldComponent.collectCollisionEvents`'s `comp1 === comp2`
   check, mirrored in `packages/rapier2d`).
 - **`onCollisionEnd(null)` means "removed mid-contact", and only the survivor hears it.** When a
   body is removed from the world while still touching others, the native engine typically never
@@ -595,6 +620,14 @@ against the real native engine headlessly. Mirror `packages/rapier2d/test/compon
   call, as `AmmoRaycastVehicleComponent` does via its own patched Bullet build - see
   `packages/ammo/build_gg_ammo/README.md`). A test that only drops a single vehicle onto a single
   matching-group floor cannot catch a raycast that silently ignores collision groups.
+- For a raycast vehicle, a frame-rate test too: brake a car from speed with a fixed brake force,
+  and accelerate one with a fixed engine force, at 30, 60 and 144 FPS (and, for an adapter that
+  substeps, at frame rates that give different substep counts/lengths, e.g. 50/90/100 FPS with a
+  10 ms max substep) - the deceleration must match `sum of forces / mass` within a few % at every
+  one (see `ammo-frame-rate-independence.spec.ts`, `rapier-3d-raycast-vehicle-frame-rate.spec.ts`).
+  Use a `PLANE` (or a small box) for the road, not a box hundreds of meters long: Bullet's ray test
+  against a very long box misses now and then, the wheels lose contact at random, and the test
+  measures that instead.
 - A shape/body-option factory test (`<lib>-factory.spec.ts` or similar) that creates a rigid body
   and a trigger for every `Shape(2D|3D)Descriptor` variant the adapter implements is worth adding
   too — it catches a shape mapping that throws or silently no-ops without needing a physically
