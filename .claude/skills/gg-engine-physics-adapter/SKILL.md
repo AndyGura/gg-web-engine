@@ -51,6 +51,8 @@ export type <Lib>PhysicsTypeDocRepo = {
 
 `IPhysicsWorldComponent<D, R, PTypeDoc>` requires:
 
+- `readonly backendName` — a short, stable library name (`'ammo'`, `'rapier3d'`, `'rapier2d'`,
+  `'matter'`), one constant per adapter; the dev console's `worlds`/`world` commands show it.
 - `readonly factory` — throw a clear "`<Lib>` world not initialized" error from the getter if
   accessed before `init()` completes (see `AmmoWorldComponent.factory`).
 - `gravity` — plain `Point2`/`Point3` getter/setter, translated to the native gravity

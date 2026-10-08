@@ -20,6 +20,8 @@ import { AmmoBodyComponent } from './ammo-body.component';
 import type { AmmoRaycastVehicleComponent } from './ammo-raycast-vehicle.component';
 
 export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsTypeDocRepo> {
+  public readonly backendName: string = 'ammo';
+
   private _factory: AmmoFactory | null = null;
   public get factory(): AmmoFactory {
     if (!this._factory) {

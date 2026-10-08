@@ -51,6 +51,8 @@ function interpolateRotation(a: Point4, b: Point4, t: number): Point4 {
 type Rapier3dWorldChild = Rapier3dRigidBodyComponent | Rapier3dCharacterControllerComponent;
 
 export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3dPhysicsTypeDocRepo> {
+  public readonly backendName: string = 'rapier3d';
+
   private _factory: Rapier3dFactory | null = null;
   public get factory(): Rapier3dFactory {
     if (!this._factory) {

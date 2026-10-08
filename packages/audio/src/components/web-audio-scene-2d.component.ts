@@ -12,6 +12,8 @@ export class WebAudioScene2dComponent
   extends WebAudioSceneComponentBase<Point2, number>
   implements IAudioScene2dComponent
 {
+  public readonly backendName: string = 'webaudio';
+
   public readonly factory: WebAudioSource2dComponentFactory;
 
   constructor() {

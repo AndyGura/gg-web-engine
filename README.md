@@ -382,8 +382,8 @@ Register your own commands with `GgStatic.instance.registerConsoleCommand`.
 |---------------|---------------------|-------------|
 | `commands`    | -                   | Print all available commands: global ones and those of the currently selected world |
 | `help`        | `string`            | Print the doc string of a command |
-| `worlds`      | -                   | Print all currently available worlds |
-| `world`       | `string?`           | Get the name of the selected world, or select a world by name |
+| `worlds`      | -                   | Print all currently available worlds, with the rendering/physics/audio backend each one runs on |
+| `world`       | `string?`           | Select a world by name (optional), then print the selected one: name, backends, clock state, time scale, fps limit, physics step, entity and renderer counts |
 | `stats_panel` | `0\|1?`             | Turn the stats panel on/off; skip the argument to toggle |
 | `debug_panel` | `0\|1?`             | Turn the debug panel on/off; skip the argument to toggle |
 | `bind_key`    | `string, ...string` | Bind a keyboard key (by [code](https://www.toptal.com/developers/keycode)) to a console command |

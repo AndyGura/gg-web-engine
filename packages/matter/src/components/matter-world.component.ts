@@ -89,6 +89,8 @@ function bodyPolygons(body: Body): Vector[][] {
 const MATTER_WORLD_SCALE = 0.0001;
 
 export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhysicsTypeDocRepo> {
+  public readonly backendName: string = 'matter';
+
   protected matterEngine_: Engine | null = null;
 
   public get matterEngine(): Engine | null {

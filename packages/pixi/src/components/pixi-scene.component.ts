@@ -7,6 +7,8 @@ import { PixiRendererComponent } from './pixi-renderer.component';
 import { PixiVisualTypeDocRepo2D } from '../types';
 
 export class PixiSceneComponent implements IVisualScene2dComponent<PixiVisualTypeDocRepo2D> {
+  public readonly backendName: string = 'pixi';
+
   private _nativeContainer: Container | null = null;
   public get nativeContainer(): Container | null {
     return this._nativeContainer;
