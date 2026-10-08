@@ -6,22 +6,24 @@ import {
   ElementRef,
   ViewChild,
 } from '@angular/core';
-import { Gg3dWorld, TypedGg3dWorld } from '@gg-web-engine/core';
+import { Gg3dWorld, Gg3dWorldWithPhysics, PhysicsTypeDocRepo3D, TypedGg3dWorld } from '@gg-web-engine/core';
 import { ThreeGgWorld, ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
-import { AmmoGgWorld, AmmoPhysicsTypeDocRepo, AmmoWorldComponent } from '@gg-web-engine/ammo';
 import { WebAudioGgWorld3D, WebAudioScene3dComponent, WebAudioTypeDocRepo3D } from '@gg-web-engine/audio';
 import { filter } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 import { GameRunner } from './game-runner';
 import { GameFactory } from './game-factory';
 import { Multiplayer } from './multiplayer';
+import { createPhysicsWorld, selectedPhysicsBackend } from './backends';
 
 export type FlyCityTypeDoc = {
   vTypeDoc: ThreeVisualTypeDocRepo,
-  pTypeDoc: AmmoPhysicsTypeDocRepo,
+  pTypeDoc: PhysicsTypeDocRepo3D,
   aTypeDoc: WebAudioTypeDocRepo3D,
 };
-export type FlyCityWorld = TypedGg3dWorld<ThreeGgWorld, AmmoGgWorld, WebAudioGgWorld3D>;
+// the physics engine is picked at startup (see backends.ts), so the world is typed with core's
+// physics interfaces rather than an adapter's
+export type FlyCityWorld = Gg3dWorldWithPhysics<TypedGg3dWorld<ThreeGgWorld, Gg3dWorld, WebAudioGgWorld3D>>;
 
 @Component({
     selector: 'app-root',
@@ -64,7 +66,7 @@ export class AppComponent implements AfterViewInit {
   private async initGame() {
     this.world = new Gg3dWorld({
       visualScene: new ThreeSceneComponent(),
-      physicsWorld: new AmmoWorldComponent(),
+      physicsWorld: await createPhysicsWorld(),
       audioScene: new WebAudioScene3dComponent(),
     });
     // multiplayer when the URL carries a room; the network controller exists before any car spawns,
@@ -114,7 +116,7 @@ export class AppComponent implements AfterViewInit {
       this.mpStatus = 'connecting...';
       this.cdr.markForCheck();
       mp.net.peers$.subscribe(peers => {
-        this.mpStatus = `${peers.length + 1} player${peers.length ? 's' : ''} (${mp.signalingKind} signaling)`;
+        this.mpStatus = `${peers.length + 1} player${peers.length ? 's' : ''} on ${selectedPhysicsBackend()} (${mp.signalingKind} signaling)`;
         this.cdr.markForCheck();
       });
       await mp.net.connect();

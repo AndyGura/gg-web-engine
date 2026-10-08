@@ -509,6 +509,10 @@ ground-snap/jump and push pitfalls.
    (false)`; matter-js: `body.sleepThreshold = Infinity`, which only matters once an app turns on
    `engine.enableSleeping`), make that body's `sleep()` a no-op, survive `clone()`, and read back
    through `bodyOptions.canSleep`. Static and kinematic bodies ignore it.
+   In 3D a dynamic body's centre of mass is its origin, whatever its shape (`BodyOptions.mass`'
+   doc). An engine that derives the centre of mass from its colliders (Rapier, PhysX, Jolt) has to
+   move it back to the origin, inertia included - see `gg-engine-physics-adapter-rapier`'s note on
+   `applyMassProperties`; Bullet's compound shape already behaves this way.
 3. Merge in engine-reasonable defaults (e.g. `friction: 0.5, restitution: 0.1,
    ownCollisionGroups: [world.mainCollisionGroup], interactWithCollisionGroups:
    [world.mainCollisionGroup]`) before applying the caller's overrides, so bodies work out of the
@@ -576,8 +580,10 @@ whatever bitmask/group-and-mask representation the native engine uses — see `B
 Copy `packages/rapier2d/package.json` or `packages/matter/package.json` as a template:
 
 - `name`: `@gg-web-engine/<lib>`, version kept in lockstep with `@gg-web-engine/core`.
-- The native physics library goes in **both** `devDependencies` and `peerDependencies`, pinned to
-  an exact version/build (e.g. `@dimforge/rapier3d-compat` is pinned to a specific compat build
+- The native physics library (and its `@types/*` package, if typings ship separately) goes in
+  `dependencies`, so an app installs the adapter alone and never lists the library itself.
+  `@gg-web-engine/core` and `rxjs` stay in `devDependencies` + `peerDependencies` (the app shares one
+  copy of each across every package). Pin the library to an exact version/build (e.g. `@dimforge/rapier3d-compat` is pinned to a specific compat build
   hash, matching what `rapier2d` uses for the 2D counterpart — keep sibling packages' native
   dependency versions aligned when they share an upstream project).
 - `"sideEffects"`: `false`, unless a module of the package does something on import that another

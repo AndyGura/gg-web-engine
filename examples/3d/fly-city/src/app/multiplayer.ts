@@ -12,6 +12,7 @@ import {
 } from '@gg-web-engine/multiplayer';
 import { FirebaseOptions } from 'firebase/app';
 import { FlyCityWorld } from './app.component';
+import { selectedPhysicsBackend } from './backends';
 
 /**
  * Firebase web config used for room signaling. Leave `null` to use the package's default project -
@@ -45,7 +46,17 @@ export class Multiplayer {
 
   /** Reload the page into a fresh room. */
   static createRoom(): void {
-    location.assign(buildRoomUrl(generateRoomId()));
+    location.assign(Multiplayer.urlFor(generateRoomId()));
+  }
+
+  /**
+   * The page URL for a room. It names the physics engine too: every peer in a room has to simulate
+   * with the same one, so a link opened elsewhere must not fall back to another default.
+   */
+  private static urlFor(roomId: string): string {
+    const url = new URL(buildRoomUrl(roomId));
+    url.searchParams.set('physics', selectedPhysicsBackend());
+    return url.toString();
   }
 
   constructor(
@@ -72,7 +83,7 @@ export class Multiplayer {
   }
 
   get roomUrl(): string {
-    return buildRoomUrl(this.roomId);
+    return Multiplayer.urlFor(this.roomId);
   }
 
   /**

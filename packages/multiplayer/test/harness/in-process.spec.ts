@@ -36,6 +36,21 @@ describe.each(ADAPTERS)('in-process multiplayer harness ($name)', adapter => {
     expect(replica.objectBody.isSleeping).toBe(box.objectBody!.isSleeping);
   });
 
+  it('replicates a character spawned through the level loader, and the replica lands with it', async () => {
+    h = new Harness(adapter);
+    const a = await h.addPeer('a');
+    await h.addPeer('b');
+    const player: any = await a.loader.createEntity({ class: 'Player', config: { position: adapter.at(0, 3) } } as any);
+    a.world.addEntity(player);
+    await h.run(5);
+    const replica = findByName(h, 'b', player.name);
+    expect(replica).toBeDefined();
+    expect(replica.constructor).toBe(player.constructor);
+    await h.run(180); // ~3 s: falls towards the ground
+    expect(meters(player.position, adapter.at(0, 3))).toBeGreaterThan(0.2);
+    expect(meters(player.position, replica.position)).toBeLessThan(0.1);
+  });
+
   it('converges under latency, jitter and loss', async () => {
     h = new Harness(adapter, { latencyMs: 60, jitterMs: 30, lossRate: 0.15 });
     const a = await h.addPeer('a');

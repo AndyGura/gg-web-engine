@@ -113,6 +113,17 @@ export type TypedGg2dWorld<
     : never
   : never;
 
+/**
+ * `W` (a world type such as `PixiGgWorld`) with a physics world of whichever adapter, known to be
+ * there: `world.physicsWorld` is a plain `IPhysicsWorld2dComponent`, never `null`. For an app that
+ * picks its physics backend at runtime and so can't name an adapter's world type:
+ * `const world: Gg2dWorldWithPhysics<PixiGgWorld> = new Gg2dWorld({ visualScene, physicsWorld })`.
+ */
+export type Gg2dWorldWithPhysics<W extends Gg2dWorld<any, any>> =
+  W extends Gg2dWorld<infer TD, infer STD>
+    ? Gg2dWorld<TD, Omit<STD, 'physicsWorld'> & { physicsWorld: IPhysicsWorld2dComponent<TD['pTypeDoc']> }>
+    : never;
+
 export class Gg2dWorld<
   TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTypeDocRepo,
   SceneTypeDoc extends Gg2dWorldSceneTypeRepo<TypeDoc> = Gg2dWorldSceneTypeRepo<TypeDoc>,

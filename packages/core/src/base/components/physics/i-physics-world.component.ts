@@ -47,6 +47,21 @@ export interface IPhysicsWorldComponent<
   readonly mainCollisionGroup: CollisionGroup;
 
   /**
+   * The longest single native step `simulate()` takes, in seconds: a call is split into as many
+   * equal steps as it needs to keep each one this short (bounded by `maxSubSteps`). `undefined` or
+   * `0` steps at most 1/60 s at a time. Only adapters that split a call into substeps have it
+   * (Ammo, Rapier 3D); on the others setting it does nothing.
+   */
+  fixedTimeStep?: number;
+
+  /**
+   * The most substeps one `simulate()` call runs, however long its delta - a huge catch-up delta
+   * then takes longer steps instead of grinding through a great many. `0`/`undefined` means no cap.
+   * See `fixedTimeStep` for which adapters have it.
+   */
+  maxSubSteps?: number;
+
+  /**
    * Initializes the physics world component.
    *
    * @returns A promise that resolves when initialization is complete.

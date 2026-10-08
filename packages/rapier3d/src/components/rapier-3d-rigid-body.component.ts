@@ -28,6 +28,7 @@ import {
 import { Observable, Subject } from 'rxjs';
 import { Rapier3dWorldComponent } from './rapier-3d-world.component';
 import { Rapier3dGgWorld, Rapier3dPhysicsTypeDocRepo } from '../types';
+import { inertiaAboutOrigin } from '../mass-properties';
 
 /** Inverse of `Rapier3dFactory.createRigidBodyDescr`'s own `BodyType -> RigidBodyType` mapping -
  * backs `Rapier3dRigidBodyComponent.bodyOptions`. */
@@ -88,7 +89,7 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
   }
 
   get linearVelocity(): Point3 {
-    return Pnt3.clone(this.nativeBody?.linvel() || Pnt3.O);
+    return Pnt3.clone(this.nativeBody ? this.nativeBody.linvel() : this._bodyDescr.linvel);
   }
 
   set linearVelocity(value: Point3) {
@@ -99,7 +100,7 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
   }
 
   get angularVelocity(): Point3 {
-    return Pnt3.clone(this.nativeBody?.angvel() || Pnt3.O);
+    return Pnt3.clone(this.nativeBody ? this.nativeBody.angvel() : this._bodyDescr.angvel);
   }
 
   set angularVelocity(value: Point3) {
@@ -256,7 +257,11 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
       d.setFriction(cd.friction);
       d.setEnabled(cd.enabled);
       d.setRestitution(cd.restitution);
-      // TODO more fields here?
+      // the factory turns on collision events (and sensors set `isSensor`); a clone must keep them,
+      // or it never reports collisions or trigger overlaps
+      d.setActiveEvents(cd.activeEvents);
+      d.setActiveCollisionTypes(cd.activeCollisionTypes);
+      d.setSensor(cd.isSensor);
       return d;
     });
     const bd = new RigidBodyDesc(this._bodyDescr.status);
@@ -268,7 +273,11 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
     // silently drop CCD off the copy.
     bd.setCcdEnabled(this._bodyDescr.ccdEnabled);
     bd.setCanSleep(this._bodyDescr.canSleep);
-    // TODO more fields here?
+    // `removeFromWorld` stores the live velocities on `_bodyDescr` so a re-added body resumes its
+    // motion; a copy built from an out-of-world body must start with the same velocities, or the
+    // clone would spawn at rest where the original re-adds in motion.
+    bd.setLinvel(this._bodyDescr.linvel.x, this._bodyDescr.linvel.y, this._bodyDescr.linvel.z);
+    bd.setAngvel(new Vector3(this._bodyDescr.angvel.x, this._bodyDescr.angvel.y, this._bodyDescr.angvel.z));
     return [colliderDescr, this.shape, bd, this._colliderOptions];
   }
 
@@ -349,8 +358,51 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
       col.setCollisionGroups(this.collisionGroups);
       return col;
     });
+    if (this._bodyDescr.status === RigidBodyType.Dynamic) {
+      this.applyMassProperties(this._nativeBody, this._nativeBodyColliders);
+    }
     this.world.handleIdEntityMap.set(this._nativeBody!.handle, this);
     this.world.added$.next(this);
+  }
+
+  /**
+   * Places a dynamic body's centre of mass at its origin, as `BodyOptions.mass` documents it for 3D
+   * (Bullet's compound shape does this natively). Rapier derives the centre of
+   * mass from the colliders instead, which for a compound shape (a car chassis built from a few
+   * boxes) lands wherever the boxes average out - often far above the wheels. The total mass is
+   * spread over the colliders by volume (uniform density), the resulting inertia is moved to the
+   * origin (parallel-axis theorem), and the body carries it as its own mass properties with
+   * massless colliders.
+   */
+  private applyMassProperties(body: RigidBody, colliders: Collider[]): void {
+    const total = colliders.reduce((sum, c) => sum + c.mass(), 0);
+    if (colliders.length > 1) {
+      const volumes = colliders.map(c => c.volume());
+      const volume = volumes.reduce((a, b) => a + b, 0);
+      if (volume > 0) {
+        colliders.forEach((c, i) => c.setMass((total * volumes[i]) / volume));
+      }
+    }
+    body.recomputeMassPropertiesFromColliders();
+    const com = body.localCom();
+    if (Pnt3.len(com) < 1e-6) {
+      return;
+    }
+    const { principal, frame } = inertiaAboutOrigin(
+      body.mass(),
+      com,
+      body.principalInertia(),
+      body.principalInertiaLocalFrame(),
+    );
+    colliders.forEach(c => c.setMass(0));
+    body.setAdditionalMassProperties(
+      total,
+      new Vector3(0, 0, 0),
+      new Vector3(principal.x, principal.y, principal.z),
+      new Quaternion(frame.x, frame.y, frame.z, frame.w),
+      false,
+    );
+    body.recomputeMassPropertiesFromColliders();
   }
 
   removeFromWorld(world: Rapier3dGgWorld, dispose?: boolean): void {
@@ -365,6 +417,17 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
     }
     this.collidingWith.clear();
     if (this._nativeBody) {
+      // `addToWorld` rebuilds the native body from `_bodyDescr`, and the getters fall back to it
+      // while the body is out of the world: carry the live state over, or a body re-added later
+      // (an entity reparented, or hidden by a network layer) would reappear at its spawn pose.
+      const t = this._nativeBody.translation();
+      const r = this._nativeBody.rotation();
+      const lv = this._nativeBody.linvel();
+      const av = this._nativeBody.angvel();
+      this._bodyDescr.setTranslation(t.x, t.y, t.z);
+      this._bodyDescr.setRotation(new Quaternion(r.x, r.y, r.z, r.w));
+      this._bodyDescr.setLinvel(lv.x, lv.y, lv.z);
+      this._bodyDescr.setAngvel(new Vector3(av.x, av.y, av.z));
       for (const col of this._nativeBodyColliders!) {
         this.world.nativeWorld!.removeCollider(col, false);
       }

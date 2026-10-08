@@ -87,7 +87,9 @@ export class GameRunner {
       }
     });
     this.mapBounds.onEntityLeft.subscribe((entity) => {
-      if (entity) {
+      // an entity removed from the world (a city tile unloading, a car despawned by its owner) also
+      // "leaves" the bounds; only one that fell out while still in the world needs handling
+      if (entity?.world) {
         const state = this.state$.getValue();
         if (state.mode === 'driving' && state.car.raycastVehicle === entity) {
           this.resetMyCar();

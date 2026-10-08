@@ -19,7 +19,7 @@ export type WheelDisplayOptions = {
 /**
  * Wheel settings shared by several wheels. Anything left out takes the default: `tyreWidth` 0.3,
  * `tyreRadius` 0.4, `frictionSlip` 1.2 (street tyres - see `WheelOptions.frictionSlip`),
- * `rollInfluence` 0.2, `maxTravel` equal to `suspension.restLength` (the wheel compresses at most
+ * `rollInfluence` 0.2, `sideFrictionStiffness` 1, `maxTravel` equal to `suspension.restLength` (the wheel compresses at most
  * up to its connection point), `maxSuspensionForce` per `defaultMaxSuspensionForce`.
  */
 export type RVEntitySharedWheelOptions = {
@@ -27,6 +27,7 @@ export type RVEntitySharedWheelOptions = {
   tyreRadius?: number;
   frictionSlip?: number;
   rollInfluence?: number;
+  sideFrictionStiffness?: number;
   maxTravel?: number;
   maxSuspensionForce?: number;
   display?: WheelDisplayOptions;

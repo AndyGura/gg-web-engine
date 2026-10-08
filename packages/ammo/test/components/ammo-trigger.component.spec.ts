@@ -155,4 +155,21 @@ describe(`AmmoTriggerComponent`, () => {
     await Promise.resolve();
     expect(exitRegistered).toBe(true);
   });
+  it('reports the body itself when it is removed and disposed while inside', async () => {
+    const trigger = factory.createTrigger({ shape: 'BOX', dimensions: { x: 10, y: 10, z: 10 } });
+    trigger.addToWorld({ physicsWorld: world } as any);
+    const ball = factory.createRigidBody({
+      shape: { shape: 'SPHERE', radius: 1 },
+      body: { bodyType: 'dynamic', mass: 1 },
+    }, { position: { x: 0, y: 0, z: 0 } });
+    ball.addToWorld({ physicsWorld: world } as any);
+    world.simulate(1);
+    trigger.checkOverlaps();
+    const left: any[] = [];
+    trigger.onEntityLeft.subscribe(obj => left.push(obj));
+    ball.removeFromWorld({ physicsWorld: world } as any);
+    ball.dispose();
+    await Promise.resolve();
+    expect(left).toEqual([ball]);
+  });
 });

@@ -21,18 +21,19 @@ function sedi {
   sed -i.bak "$1" "$2" && rm -f "$2.bak"
 }
 
-# A linked package resolves its peer dependencies (pixi.js, three, rxjs, the rapier builds, ...) from
-# its own real location - with the root npm workspace, the repo root's node_modules - while the
-# example resolves them from its own node_modules. Two copies of one library break anything compared
-# by identity (pixi's Texture.WHITE, three's classes, rxjs types), so replace the example's copy of
-# every linked package's peer dependency with a symlink to the copy that package actually uses: one
-# copy for webpack and tsc alike.
+# A linked package resolves its dependencies (pixi.js, three, the rapier builds, ...) and peer
+# dependencies (rxjs) from its own real location - with the root npm workspace, the repo root's
+# node_modules - while the example resolves them from its own node_modules. Two copies of one library
+# break anything compared by identity (pixi's Texture.WHITE, three's classes, rxjs types), so replace
+# the example's copy of each of them with a symlink to the copy that package actually uses: one copy
+# for webpack and tsc alike.
 function dedupe_peer_deps {
   node - "$@" <<'NODE'
 const fs = require('fs');
 const path = require('path');
 for (const pkgDir of process.argv.slice(2)) {
-  const peers = Object.keys(require(path.join(pkgDir, 'package.json')).peerDependencies || {});
+  const pkg = require(path.join(pkgDir, 'package.json'));
+  const peers = Object.keys({ ...pkg.dependencies, ...pkg.peerDependencies });
   for (const dep of peers.filter(d => !d.startsWith('@gg-web-engine/'))) {
     const own = path.join('node_modules', dep);
     if (!fs.existsSync(own)) continue;

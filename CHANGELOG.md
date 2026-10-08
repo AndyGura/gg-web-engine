@@ -40,11 +40,30 @@ where one exists.
   (`grab` option, `grabLayout`). `ObjectGrabController` exposes `heldObject$`, `keyboard`, `options`
   and public `throwHeld()`/`dropHeld()` for it.
 - Examples: the coin run and portal room demos show on-screen controls on a phone.
+- Examples: the screens, shooter and fly city demos run on Rapier 3D as well as Ammo. A fly city
+  room link names the physics engine, so everyone in the room uses the same one.
+- Examples: the coin run demo runs on Matter as well as Rapier 2D, with the engine in its invite
+  link. 2D examples make their camera with `factory.createCamera()`.
+- Examples: 3D examples no longer stub Node built-ins or list `mini-signals` for Ammo.
+- Examples: list only `@gg-web-engine/*` packages; three.js, pixi.js, matter-js and Rapier come with
+  the adapters.
 - `@gg-web-engine/core`: `WheelOptions.maxSuspensionForce` (Newtons per wheel, also in
   `RVEntitySharedWheelOptions` and a `"GgCar"`'s wheel settings), defaulting to
   `defaultMaxSuspensionForce(chassisMass)` - twice the car's weight per wheel. Ammo and Rapier used
   their engines' own 6000 N, which bottoms a 1.5 t car out at ~1.6 g (hard braking, a dip, a landing).
 - `@gg-web-engine/core`: `Qtrn.fromTo(from, to)`, the shortest-arc rotation between two directions.
+- `@gg-web-engine/core`: `WheelOptions.sideFrictionStiffness` (also in `RVEntitySharedWheelOptions`
+  and a `"GgCar"`'s wheel settings), a multiplier on a tyre's sideways grip, default 1. Rapier
+  applies it; Ammo has no such setting and ignores it.
+- `@gg-web-engine/core`: `IPhysicsWorldComponent.fixedTimeStep`/`maxSubSteps`, the substep settings
+  Ammo and Rapier 3D already had, so an app can set them without importing an adapter class. Adapters
+  that don't substep (Matter, Rapier 2D) ignore them.
+- `@gg-web-engine/core`: `IDisplayObject2dComponentFactory.createCamera()`, so a 2D app makes its
+  camera with `world.visualScene.factory.createCamera()` instead of constructing
+  `PixiCameraComponent` itself, as a 3D app does with `createPerspectiveCamera`.
+- `@gg-web-engine/core`: `Gg3dWorldWithPhysics<W>`/`Gg2dWorldWithPhysics<W>` type a world whose
+  physics backend is picked at runtime (`Gg3dWorldWithPhysics<ThreeGgWorld>`): `physicsWorld` is the
+  generic physics interface and never `null`, without naming a physics adapter.
 
 ### Changed
 - `@gg-web-engine/core`: `ScreenManager` operations resolve with `true` when their screen was shown
@@ -96,8 +115,29 @@ where one exists.
   for a tick, so it no longer emits `removed$`/`added$` (which made `SurfaceFollowingEntity` drop a
   reset car's road plane). Setting `position`/`rotation` on a dynamic body also moves its motion state
   and interpolation transform, so a reset vehicle's wheels sit at its new pose.
+- `@gg-web-engine/rapier3d`: a dynamic body's centre of mass is its origin, as on Ammo, instead of
+  the average of its colliders. A `COMPOUND` (a car chassis built from a few boxes) no longer gets
+  its centre of mass high above the wheels, and its mass is spread over the parts by volume.
+  `BodyOptions.mass` documents the rule for 3D.
+- `@gg-web-engine/rapier3d`: `WheelOptions.rollInfluence` is ignored, since Rapier's vehicle
+  controller has no roll influence. It used to be passed to Rapier as side-friction stiffness, so the
+  default `0.2` left wheels with a fifth of their sideways grip; side grip is now
+  `sideFrictionStiffness` (default 1).
+- `@gg-web-engine/ammo`: no longer has a `mini-signals` peer dependency (nothing used it), and its
+  bundled typings declare `namespace Ammo`, so an app type-checks them without `skipLibCheck`
+  under TypeScript 6. An app needs no `tsconfig` path mapping or `browser` field for the adapter any
+  more: the package's own `browser` field stubs the `fs` the ammo.js glue references.
+- `@gg-web-engine/three`, `@gg-web-engine/pixi`, `@gg-web-engine/matter`, `@gg-web-engine/rapier2d`,
+  `@gg-web-engine/rapier3d`: the library each adapter wraps (`three` with `@types/three`, `pixi.js`,
+  `matter-js` with `@types/matter-js`, the Rapier compat builds) is a regular dependency of the
+  adapter, pinned as before, instead of a peer dependency. An app installs only the
+  `@gg-web-engine/*` packages; one that imports the library itself should pin the same version.
 
 ### Fixed
+- `@gg-web-engine/rapier3d`: a cloned body reports collisions and trigger overlaps again; `clone()`
+  dropped the collider's event flags.
+- `@gg-web-engine/ammo`: a trigger's `onEntityLeft` reports a body removed *and disposed* while
+  inside as that body, as every other adapter does, instead of `null`.
 - `@gg-web-engine/core`: looking around by dragging a finger over the canvas (`OrbitCameraController`,
   `PlayerCharacterController`/`FreeCameraController` without an on-screen look area) was far slower
   than with a mouse. `MouseInput` now measures a touch pointer from its own previous position instead
@@ -142,6 +182,13 @@ where one exists.
   body every tick, like `SurfaceFollowingEntity`, ran the page out of memory over time).
 - `@gg-web-engine/core`: `Pnt3.angle`/`Pnt2.angle` return 0 instead of `NaN` when a vector has zero
   length.
+- `@gg-web-engine/rapier3d`, `@gg-web-engine/rapier2d`: a rigid body or character controller
+  removed from the world and added again keeps the position, rotation and velocity it had when
+  removed. It used to reappear where it was created - e.g. a car re-parented to another map chunk
+  snapped back to its spawn point.
+- `@gg-web-engine/matter`: the character controller marches a move in steps of half its radius
+  instead of at most 0.1 world units, so a pixel-scale character no longer runs hundreds of collision
+  queries per tick (8 characters: from ~1480 to ~35 queries per tick).
 
 ## [0.0.78] - 2026-10-05
 

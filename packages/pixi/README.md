@@ -15,3 +15,7 @@
     ```
     "offscreencanvas"
     ```
+
+The package brings `pixi.js` as its own dependency, pinned to the exact version it is
+built and tested against, so nothing else needs installing. If your app also imports it directly,
+use that same version, so the bundle carries only one copy.

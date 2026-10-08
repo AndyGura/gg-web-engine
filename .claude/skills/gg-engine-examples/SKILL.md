@@ -52,31 +52,40 @@ What that implies for the rest of the example:
 - **Type `world` with the visual adapter's alias** (`ThreeGgWorld`, `PixiGgWorld`), not
   `TypedGg3dWorld<ThreeGgWorld, AmmoGgWorld>` - the physics side is unknown at compile time. That
   alias leaves `world.physicsWorld` nullable, so the few places reaching it use `!`
-  (`world.physicsWorld!.factory.createRigidBody(...)`), the idiom core itself uses. Everything an
+  (`world.physicsWorld!.factory.createRigidBody(...)`). An example that reaches it often wraps the
+  alias instead: `Gg3dWorldWithPhysics<ThreeGgWorld>` (`Gg2dWorldWithPhysics<PixiGgWorld>`) types
+  `physicsWorld` as core's non-null physics interface (`3d/shooter`, `2d/coin-run`). Everything an
   example may call is on core's physics interfaces anyway (`npm run lint:examples` forbids anything
   else), so no adapter type is ever needed in `index.ts`.
 - **Backend-specific tuning goes in `backends.ts`, in that backend's branch**, not in `index.ts`
   behind an `instanceof` (which would need a static import and defeat the splitting).
-  `3d/collision-groups-pool` sets Bullet's `maxSubSteps` this way; Rapier has no such knob.
+  `3d/collision-groups-pool` raises Bullet's `maxSubSteps` this way, because only Bullet needs it
+  there. A setting that is on core's interfaces and wanted on every backend is set in `index.ts`
+  instead - `fixedTimeStep`/`maxSubSteps` are on `IPhysicsWorldComponent` (ignored by adapters that
+  don't substep).
+- **A world created later than startup** (a game screen's `enter()` in `3d/screens`) awaits
+  `createPhysicsWorld()` where it builds the world; no top-level `await` is needed then.
+- **A multiplayer example puts the backend in its room link.** Every peer of a room has to simulate
+  with the same engine, so `3d/fly-city` and `2d/coin-run` set `physics=` on the URL they build for a room, instead of
+  relying on the receiving page's default.
 - **The visual side is fixed per dimension** (three.js in 3D, pixi.js in 2D). The gallery still
   sends `visual=three`/`visual=pixi` and shows a (single-option) rendering selector so a visitor
   sees which renderer runs; examples ignore the parameter. A second visual adapter would get the
   same `await import()` treatment in `backends.ts`.
-- **An example that only runs on one backend** (`3d/fly-city`, `3d/shooter`, `3d/screens`,
-  `2d/coin-run`) keeps the plain static import and lists just that backend in `examples.json`; the
-  gallery disables the selector for it. Prefer the switch for anything new - it costs one file.
+- **Every example runs on every physics adapter of its dimension**, and `examples.json` lists them
+  all. The gallery still disables its selector for an entry that lists one backend, but none does.
 
 ## package.json
 
-Pin `@gg-web-engine/*` and underlying library (`three`/`pixi.js`/rapier compat build) versions to
-whatever `packages/core/package.json`'s current `version` is — examples are not meant to float on
-version ranges. A multi-backend example lists every physics adapter of its dimension *and* each
-adapter's own library (`@gg-web-engine/ammo` + `mini-signals`, `@gg-web-engine/rapier3d` +
-`@dimforge/rapier3d-compat`; `@gg-web-engine/matter` + `matter-js` + `@types/matter-js`,
-`@gg-web-engine/rapier2d` + `@dimforge/rapier2d-compat`), pinned to the adapter's own versions.
-Copy the `browser` field (`{"fs": false, "os": false, "path": false}`) and the matching
-`resolve.fallback` in both webpack configs whenever Ammo is among the backends (needed to stub Node
-built-ins the WASM glue references). Keep a trailing comma after every `@gg-web-engine/*` line (i.e.
+Pin every `@gg-web-engine/*` package to whatever `packages/core/package.json`'s current `version`
+is — examples are not meant to float on version ranges. A multi-backend example lists every physics
+adapter of its dimension and its visual adapter, and nothing of the libraries underneath:
+`three`/`@types/three`, `pixi.js`, `matter-js`/`@types/matter-js` and the rapier compat builds are
+dependencies of the adapter that wraps them, pinned there, so an example never pins them a second
+time (or in `overrides`) and can't drift from the version the adapter was built against. Ammo needs
+no setup either: the WASM glue ships inside `@gg-web-engine/ammo`, whose own `browser` field stubs
+the Node built-ins it references, so no `browser` field or `resolve.fallback` belongs in an example.
+`npm run lint:examples` rejects all of these. Keep a trailing comma after every `@gg-web-engine/*` line (i.e.
 never let one be the last dependency) - the release script's version bump matches `"...": "x.y.z",`
 with the comma.
 
@@ -193,7 +202,7 @@ did run a bare `npm install` afterwards by mistake, just re-run
 building again.
 
 **Every peer dependency of a linked package must be one physical copy.** A linked package resolves
-its peers (`pixi.js`, `three`, `rxjs`, the rapier compat builds, `firebase`, `mini-signals`) from its
+its peers (`rxjs`, `firebase`) and dependencies (`pixi.js`, `three`, the rapier compat builds) from its
 real location - with the root npm workspace hoisting everything, the repo root's `node_modules` -
 while the example's own imports resolve its own `node_modules`. Two copies break anything compared by
 identity: a pixi `Text`/`Graphics` built by the example holds its copy's `Texture.WHITE`, the
@@ -201,8 +210,7 @@ adapter's renderer compares against the other copy's, treats the fill as a textu
 `Failed to execute 'createPattern' on 'CanvasRenderingContext2D'` on the first render (three's
 classes and rxjs types fail similarly). The script's `dedupe_peer_deps` replaces the example's copy of
 each linked package's peer with a symlink to the copy that package resolves, which fixes webpack and
-`tsc` at once - so an example's committed `tsconfig.json` `paths` (e.g. ammo examples' `mini-signals`
-mapping into `./node_modules/...`) stay valid as they are. A published install never has the problem
+`tsc` at once. A published install never has the problem
 (peers dedupe). To confirm one copy in a running dev server: `curl -s localhost:<port>/main.js | grep
 -o '"[^"]*node_modules/pixi.js/lib/index.mjs"' | sort -u` prints one path.
 
@@ -238,6 +246,11 @@ npm install
 npm run start   # webpack-dev-server, for plain webpack examples
 npm run build   # produces dist/ (bundle.js + one chunk per physics adapter) for static hosting
 ```
+
+`3d/fly-city`'s Angular CLI refuses to start on Node older than 22.22.3 (or 24.15); an older system
+Node needs a newer one first (`nvm install 24`). Regenerate an example's `package-lock.json` with
+npm 11 too (`npm install --package-lock-only`): npm 10 drops the lockfile's `libc` fields, which
+shows up as a large unrelated diff.
 
 Append `?physics=<backend>` to the dev server's URL to run on another backend than the default. To
 see the result inside the gallery, `npm run build` and `node examples/serve_gallery.mjs` from the
@@ -475,7 +488,10 @@ bootstrap shape used in the root `README.md` quickstart so readers can map one t
 `matter-js` or `@dimforge/*`, and no adapter `native*` escape hatch (`nativeMesh`, `nativeSprite`,
 `nativeBody`, ...): an example is a tutorial, and one that reaches into the native library teaches a
 renderer-locked pattern and hides a gap in the engine. `npm run lint:examples` at the repo root
-(`etc/check_examples_no_native.mjs`, also run by the PR workflow) fails on any such line. When a demo
+(`etc/check_examples_no_native.mjs`, also run by the PR workflow) fails on any such line. It also
+fails on an integration library (or `mini-signals`) in an example's `package.json` or `overrides`, a
+`browser` field or `fs`/`os`/`path: false` stub in a build config, and an `examples.json` entry that
+doesn't list every physics adapter of its dimension. When a demo
 needs something core can't express yet, add the option to core and every relevant adapter (see
 `gg-engine-core-development` and the adapter skills) and use it from the example. A line that
 deliberately demonstrates native interop can opt out with a trailing `// gg-allow-native` comment.
@@ -523,11 +539,11 @@ independently:
   left to infer. Fix each real site with a `!` non-null assertion (matching the idiom already used
   in adapter source, e.g. `nativeScene!`) or a proper type annotation — don't paper over it with
   `"strict": false"`.
-- `"skipLibCheck": true` if the example depends on `@gg-web-engine/ammo` — its vendored
-  `dist/ammo.js/ammo.d.ts` declares `declare module Ammo { ... }`, which TypeScript 6 hard-errors on
-  (`TS1540`, wants `namespace` instead) rather than merely warning as TS 5.x did. The real fix
-  belongs in `packages/ammo`'s vendored build output; `skipLibCheck` is the correct app-side
-  stopgap for a third-party (including vendored-third-party) declaration file you don't own.
+- `"skipLibCheck": true` if the example depends on a rapier adapter — `@dimforge/rapier*-compat`'s
+  declarations use `Symbol.dispose` (`TS2550` below an `esnext` lib), and `@types/three` has errors
+  of its own under `"moduleResolution": "node"`. `skipLibCheck` is the app-side stopgap for a
+  third-party declaration file you don't own. A webpack build can pass without it while `npx tsc
+  --noEmit -p .` fails, so check with the latter.
 
 ## Dependency-version-skew pitfalls when examples and `packages/*` are upgraded in the same pass
 
@@ -539,15 +555,15 @@ point at the old versions, which causes two distinct problems in any example tha
 same shared library:
 
 - **`npm install` fails with `ERESOLVE`** the moment the example pins a peer'd library (e.g. `three`,
-  `rxjs`, `mini-signals`, a rapier compat package) to a version the published adapter's
+  `rxjs`, a rapier compat package) to a version the published adapter's
   `peerDependencies` doesn't allow. Fix: `npm install --legacy-peer-deps`. This is a temporary,
   repo-wide condition that resolves itself once the packages are actually republished at a version
   whose metadata matches — not something to "fix" by pinning the example back to an old version.
   `--legacy-peer-deps` also stops npm auto-installing peers, and prunes any peer-only package
-  already in the lockfile. An example that relied on a peer of an adapter instead of declaring it
-  (e.g. `matter-js`, a peer of `@gg-web-engine/matter`) then fails to build with `Module not found:
-  Can't resolve 'matter-js'`. Every example lists each adapter's underlying library in its own
-  `dependencies`, pinned to the adapter's version, so this can't happen.
+  already in the lockfile, so a library an adapter version still declared as a peer (adapters up to
+  0.0.78 did for `three`, `pixi.js`, `matter-js` and the rapier compat builds) is then missing:
+  `Module not found: Can't resolve 'matter-js'`. Adapters now carry those libraries as
+  `dependencies`, which `--legacy-peer-deps` still installs.
 - **A second, nested physical copy of the shared library gets installed even with
   `--legacy-peer-deps`**, if the published adapter package declares it as a real (non-peer)
   `dependency` with an exact version — `@gg-web-engine/core@0.0.59` does this for `rxjs` (pinned

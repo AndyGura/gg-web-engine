@@ -6,17 +6,13 @@
     "start": "webpack serve --config ./webpack.dev.config.js"
   },
   "dependencies": {
-    "@dimforge/rapier2d-compat": "0.21.0",
     "@gg-web-engine/core": "0.0.78",
     "@gg-web-engine/matter": "0.0.78",
     "@gg-web-engine/pixi": "0.0.78",
     "@gg-web-engine/rapier2d": "0.0.78",
-    "matter-js": "0.20.0",
-    "pixi.js": "8.22.0",
     "rxjs": "7.8.2"
   },
   "devDependencies": {
-    "@types/matter-js": "0.20.2",
     "html-webpack-plugin": "^5.6.8",
     "ts-loader": "^9.6.2",
     "typescript": "~6.0.3",

@@ -160,6 +160,9 @@ Every adapter component class then `implements I<Thing>Component<<Lib>VisualType
   carry a marker on their top and left edges, since solid-colored faces show the direction but not a
   rotated or mirrored image - and, for the environment map, the reflection on a mirror-like sphere.
   The loader's `disposeTexture(texture)` frees a texture either load method returned.
+- **Cameras**: the factory creates them, so an app never constructs an adapter class for one -
+  `createPerspectiveCamera(settings)` on the 3D factory, `createCamera()` (an `ICamera2dComponent`,
+  `position` at the view's top-left, `zoom` 1) on the 2D one.
 - **Draw order and backdrops (2D)**: `IDisplayObject2dComponent.zIndex` orders siblings.
   `IVisualScene2dComponent.environment`/`setEnvironment(partial)` holds `background`: a color, a
   texture drawn fixed to the screen and scaled to cover the view, or `null` for the clear color the
@@ -303,9 +306,10 @@ need a jest transform for an ESM-only library, see Testing below) as a template:
   module relies on - then list exactly those files (`dist/...`). It lets an app's bundler leave out
   every module of the package the app doesn't use; a module listed nowhere and whose exports go
   unused is dropped together with whatever it does on import. `three` and `pixi` have no such module and declare `false`.
-- `@gg-web-engine/core` and the underlying rendering library go in **both** `devDependencies` and
-  `peerDependencies`, pinned to the exact version you developed/tested against — adapters do not
-  use version ranges for these. A bump of the library must also update any other workspace member
+- `@gg-web-engine/core` goes in **both** `devDependencies` and `peerDependencies`; the underlying
+  rendering library (with its `@types/*` package, if typings ship separately - `three` +
+  `@types/three`) goes in `dependencies`, so an app installs the adapter alone. Both are pinned to
+  the exact version you developed/tested against — adapters do not use version ranges for these. A bump of the library must also update any other workspace member
   that pins it: `e2e/blender-export/app` pins `three` (and `@dimforge/rapier3d-compat`). A differing
   pin installs a second copy, and that harness's `instanceof` checks fail against the adapter's
   objects (see its README).

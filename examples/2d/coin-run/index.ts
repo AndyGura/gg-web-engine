@@ -12,11 +12,10 @@ import {
   PlayerCharacterController2d,
   Point2,
   TickOrder,
+  Gg2dWorldWithPhysics,
   Trigger2dEntity,
-  TypedGg2dWorld,
 } from '@gg-web-engine/core';
-import { PixiCameraComponent, PixiGgWorld, PixiSceneComponent } from '@gg-web-engine/pixi';
-import { Rapier2dGgWorld, Rapier2dWorldComponent } from '@gg-web-engine/rapier2d';
+import { PixiGgWorld, PixiSceneComponent } from '@gg-web-engine/pixi';
 import { MobileControls } from '@gg-web-engine/mobile-controls';
 import {
   BroadcastChannelSignaling,
@@ -29,6 +28,7 @@ import {
   WebRtcMeshTransport,
 } from '@gg-web-engine/multiplayer';
 import { FirebaseOptions } from 'firebase/app';
+import { createPhysicsWorld, selectedPhysicsBackend } from './backends';
 
 // Coin run: every peer runs its own character around one shared platformer level. A lone player
 // waits (and can warm up); once a second player joins, rounds start: a countdown, then a race for
@@ -263,14 +263,26 @@ class PopText extends Label {
   }
 }
 
-const world: TypedGg2dWorld<PixiGgWorld, Rapier2dGgWorld> = new Gg2dWorld({
+/**
+ * The room's invite link. It names the physics engine too: every peer of a room has to simulate
+ * with the same one, so a link opened elsewhere must not fall back to another default.
+ */
+function inviteUrl(roomId: string): string {
+  const url = new URL(buildRoomUrl(roomId));
+  url.searchParams.set('physics', selectedPhysicsBackend());
+  return url.toString();
+}
+
+// the physics engine is picked by `?physics=` (see backends.ts); everyone in a room uses the one
+// its invite link names
+const world: Gg2dWorldWithPhysics<PixiGgWorld> = new Gg2dWorld({
   visualScene: new PixiSceneComponent(),
-  physicsWorld: new Rapier2dWorldComponent(),
+  physicsWorld: await createPhysicsWorld(),
 });
 
 world.init().then(async () => {
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
-  const renderer = world.addRenderer(new PixiCameraComponent(), canvas);
+  const renderer = world.addRenderer(world.visualScene.factory.createCamera(), canvas);
   // On a phone: left/right, jump, run and crouch buttons for the round's character controller,
   // whichever round it is (the overlay follows the controllers of the world as they come and go).
   world.addEntity(new MobileControls());
@@ -299,8 +311,8 @@ world.init().then(async () => {
   let roomId = getRoomIdFromUrl();
   if (!roomId) {
     roomId = generateRoomId();
-    history.replaceState(null, '', buildRoomUrl(roomId));
   }
+  history.replaceState(null, '', inviteUrl(roomId));
   const config = FIREBASE_CONFIG ?? DEFAULT_FIREBASE_CONFIG;
   const signaling = config ? new FirebaseSignaling({ config }) : new BroadcastChannelSignaling();
   const net = new Network2dController({ transport: new WebRtcMeshTransport({ signaling, roomId }) });
@@ -435,7 +447,7 @@ world.init().then(async () => {
   world.loader.registerClass('Coin', (w: typeof world, settings: { position: Point2 }) => {
     const { x, y } = settings.position;
     const coin = new Trigger2dEntity(
-      w.physicsWorld!.factory.createTrigger({ shape: 'CIRCLE', radius: COIN_RADIUS }, { position: settings.position }),
+      w.physicsWorld.factory.createTrigger({ shape: 'CIRCLE', radius: COIN_RADIUS }, { position: settings.position }),
     );
     coin.position = settings.position;
     // a gold disc with a slot across it - nested in the disc, so it follows the disc's spin
@@ -492,7 +504,7 @@ world.init().then(async () => {
     if (display?.color !== undefined) {
       sprite.tint = pastel(display.color);
     }
-    const controller = w.physicsWorld!.factory.createCharacterController(
+    const controller = w.physicsWorld.factory.createCharacterController(
       { radius, centersDistance, ...(options.maxStepHeight !== undefined && { maxStepHeight: options.maxStepHeight }) },
       { position },
     );
@@ -633,10 +645,10 @@ world.init().then(async () => {
 
   function renderRoom() {
     const el = document.getElementById('room')!;
-    const label = `${allPlayers().length} in room · ${config ? 'Firebase' : 'local tabs'} signaling`;
+    const label = `${allPlayers().length} in room · ${selectedPhysicsBackend()} · ${config ? 'Firebase' : 'local tabs'} signaling`;
     if (el.dataset.label === label) return; // don't rebuild the input under the user's cursor
     el.dataset.label = label;
-    const url = buildRoomUrl(roomId!);
+    const url = inviteUrl(roomId!);
     el.innerHTML = '';
     const caption = document.createElement('span');
     caption.textContent = label;

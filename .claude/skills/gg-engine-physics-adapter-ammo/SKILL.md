@@ -698,8 +698,11 @@ synchronously from `removeFromWorld`, *before* that body's own `dispose()` runs 
 comparison time.
 
 **`onEntityLeft` itself is deliberately never emitted synchronously from this reaction** - only
-`queueMicrotask(() => this.onLeft$.next(removedPointer))`, after the stale entry is already deleted
-synchronously. Emitting synchronously was the first version of this fix, and it caused a real,
+`queueMicrotask(() => this.onLeft$.next(component))`, after the stale entry is already deleted
+synchronously. It carries the removed component itself, not its pointer: a body removed with
+`dispose` is already gone from `nativeBodyReverseMap` when the microtask runs, so a pointer would
+resolve to `null`, and core's `ITriggerComponent.onEntityLeft` contract (every adapter) is to report
+the removed body. `onLeft$` therefore carries either a pointer (from `checkOverlaps()`) or a component. Emitting synchronously was the first version of this fix, and it caused a real,
 reproduced regression: `world.removed$` can fire from deep inside another component's own in-progress
 lifecycle operation - found via `CharacterController3dEntity.recreateCapsule()` (called by the
 `isCrouching` setter), which removes the *old* `characterController` with `dispose: true` partway

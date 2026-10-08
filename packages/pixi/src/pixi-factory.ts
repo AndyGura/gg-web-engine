@@ -13,6 +13,7 @@ import type { PixiSceneComponent } from './components/pixi-scene.component';
 import { PixiParallaxLayerComponent } from './components/pixi-parallax-layer.component';
 import { PixiVisualTypeDocRepo2D } from './types';
 import { PixiTextComponent } from './components/pixi-text.component';
+import { PixiCameraComponent } from './components/pixi-camera.component';
 import { PixiAnimationClip, PixiAnimatedSpriteComponent } from './components/pixi-animated-sprite.component';
 
 /** A single named clip's location within a uniform-grid atlas - see `PixiGridAtlasOptions`. */
@@ -221,6 +222,10 @@ export class PixiFactory extends IDisplayObject2dComponentFactory<PixiVisualType
 
   createTextureFromCanvas(canvas: HTMLCanvasElement, options: TextureOptions = {}): Texture {
     return this.applyTextureOptions(Texture.from(canvas), options);
+  }
+
+  createCamera(): PixiCameraComponent {
+    return new PixiCameraComponent();
   }
 
   createText(text: string, style: Text2dStyle = {}): PixiTextComponent {

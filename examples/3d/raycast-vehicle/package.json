@@ -6,18 +6,14 @@
     "start": "webpack serve --config ./webpack.dev.config.js"
   },
   "dependencies": {
-    "@dimforge/rapier3d-compat": "0.21.0",
     "@gg-web-engine/ammo": "0.0.78",
     "@gg-web-engine/core": "0.0.78",
     "@gg-web-engine/mobile-controls": "0.0.78",
     "@gg-web-engine/rapier3d": "0.0.78",
     "@gg-web-engine/three": "0.0.78",
-    "mini-signals": "3.0.0",
-    "rxjs": "7.8.2",
-    "three": "0.186.1"
+    "rxjs": "7.8.2"
   },
   "devDependencies": {
-    "@types/three": "0.186.0",
     "html-webpack-plugin": "^5.6.8",
     "ts-loader": "^9.6.2",
     "typescript": "~6.0.3",
@@ -27,10 +23,5 @@
   },
   "overrides": {
     "rxjs": "7.8.2"
-  },
-  "browser": {
-    "fs": false,
-    "os": false,
-    "path": false
   }
 }

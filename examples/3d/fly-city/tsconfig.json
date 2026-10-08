@@ -21,8 +21,8 @@
     // TS6 hard-errors on the deprecated bare `baseUrl` (TS5101) instead of warning; see
     // .claude/skills/gg-engine-examples/SKILL.md.
     "ignoreDeprecations": "6.0",
-    // @gg-web-engine/ammo's vendored ammo.d.ts uses `declare module Ammo {}`, which TS6
-    // hard-errors on (TS1540); skipLibCheck is the correct app-side stopgap.
+    // @dimforge/rapier3d-compat's declarations use `Symbol.dispose`, which needs a newer `lib` than
+    // this target; skipLibCheck is the app-side stopgap for a declaration file we don't own.
     "skipLibCheck": true,
     "useDefineForClassFields": false
   },

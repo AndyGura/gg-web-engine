@@ -121,9 +121,8 @@ export class GameFactory {
               },
               { resources: [{ object3D: wheelMesh }] },
             ] = await Promise.all([
-              // TODO use caching strategy "Entities" after cloned Ammo.js object mass will be fixed
-              this.world.loader.loadGgGlbResources('https://gg-web-demos.guraklgames.com/assets/fly-city/' + dummy.car_id, CachingStrategy.Files),
-              this.world.loader.loadGgGlbResources('https://gg-web-demos.guraklgames.com/assets/fly-city/' + (dummy.car_id.startsWith('truck') ? 'truck_wheel' : 'wheel'), CachingStrategy.Files),
+              this.world.loader.loadGgGlbResources('https://gg-web-demos.guraklgames.com/assets/fly-city/' + dummy.car_id),
+              this.world.loader.loadGgGlbResources('https://gg-web-demos.guraklgames.com/assets/fly-city/' + (dummy.car_id.startsWith('truck') ? 'truck_wheel' : 'wheel')),
             ]);
             if (!chassisBody) {
               console.error('Cannot spawn car without chassis body');

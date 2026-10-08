@@ -139,12 +139,9 @@ export class Rapier3dRaycastVehicleComponent
       wheel.options.maxSuspensionForce ?? defaultMaxSuspensionForce(this.bodyOptions.mass),
     );
     nativeVehicle.setWheelFrictionSlip(i, wheel.options.frictionSlip);
-    // Rapier has no single field named "roll influence" - `WheelOptions.rollInfluence` (how much a
-    // wheel resists roll-inducing side force, per `IRaycastVehicleComponent`'s doc) is approximated
-    // with the closest native equivalent, side-friction stiffness. Best-effort, same spirit as
-    // `Rapier3dCharacterControllerComponent`'s documented ground-normal approximation - not
-    // guaranteed to produce an identical feel for a given numeric value across physics engines.
-    nativeVehicle.setWheelSideFrictionStiffness(i, wheel.options.rollInfluence);
+    // Rapier's vehicle controller has no roll influence, so `WheelOptions.rollInfluence` is ignored
+    // here (see its doc); side grip is its own option.
+    nativeVehicle.setWheelSideFrictionStiffness(i, wheel.options.sideFrictionStiffness ?? 1);
   }
 
   addWheel(options: WheelOptions, suspensionOptions: SuspensionOptions): void {

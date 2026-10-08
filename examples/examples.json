@@ -57,21 +57,21 @@
       "title": "Shooter",
       "description": "Free-fly camera shooting balls through a textured physics scene.",
       "visual": ["three"],
-      "physics": ["ammo"]
+      "physics": ["ammo", "rapier3d"]
     },
     {
       "dir": "3d/screens",
       "title": "Screens",
       "description": "Menu, loading, game and pause screens driven by the ScreenManager, with the world owned by the game screen.",
       "visual": ["three"],
-      "physics": ["ammo"]
+      "physics": ["ammo", "rapier3d"]
     },
     {
       "dir": "3d/fly-city",
       "title": "Fly city",
       "description": "Driving through a streamed city: cars, map graph, audio and multiplayer. An Angular app.",
       "visual": ["three"],
-      "physics": ["ammo"],
+      "physics": ["ammo", "rapier3d"],
       "entryFile": "src/app/app.component.ts"
     },
     {
@@ -93,7 +93,7 @@
       "title": "Coin run",
       "description": "Multiplayer platformer rounds: collect coins against everyone in the room. The page URL is the invite link.",
       "visual": ["pixi"],
-      "physics": ["rapier2d"]
+      "physics": ["rapier2d", "matter"]
     }
   ]
 }

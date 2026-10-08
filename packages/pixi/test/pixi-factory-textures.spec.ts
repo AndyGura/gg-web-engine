@@ -29,6 +29,7 @@ jest.mock('pixi.js', () => {
 
 import { Assets } from 'pixi.js';
 import { PixiFactory } from '../src/pixi-factory';
+import { PixiCameraComponent } from '../src/components/pixi-camera.component';
 
 describe('PixiFactory textures from fetched data', () => {
   const originalCreateImageBitmap = (global as any).createImageBitmap;
@@ -98,5 +99,13 @@ describe('PixiFactory textures from fetched data', () => {
     expect(ready.nativeTextureSystem.initSource).toHaveBeenCalledWith(texture.source);
 
     await expect(new PixiFactory().prepare(texture)).resolves.toBeUndefined();
+  });
+});
+
+describe('PixiFactory.createCamera', () => {
+  it('creates a camera at zoom 1', () => {
+    const camera = new PixiFactory().createCamera();
+    expect(camera).toBeInstanceOf(PixiCameraComponent);
+    expect(camera.zoom).toBe(1);
   });
 });

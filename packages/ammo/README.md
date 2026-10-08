@@ -14,15 +14,7 @@ import { Ammo } from "@gg-web-engine/ammo";
 ### Installation:
 1) make sure **@gg-web-engine/core** installed
 1) `npm install --save @gg-web-engine/ammo`
-1) Add to your `tsconfig.json` in the record `compilerOptions.paths`:
-```json lines
-"mini-signals": ["./node_modules/mini-signals/index.js"]
-```
-1) Add to your `package.json`:
-```json lines
-"browser": {
-    "fs": false,
-    "os": false,
-    "path": false
-}
-```
+
+The bundled ammo.js glue references Node's `fs`, only on its Node.js code path. This package's own
+`browser` field maps it away, which webpack, esbuild (Angular) and Vite honor, so an app needs no
+bundler configuration for it.

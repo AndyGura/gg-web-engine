@@ -1,14 +1,17 @@
-import { FreeCameraController, Gg3dWorld, GgStatic, Pnt3, Qtrn, TypedGg3dWorld } from '@gg-web-engine/core';
+import { FreeCameraController, Gg3dWorld, Gg3dWorldWithPhysics, GgStatic, Pnt3, Qtrn } from '@gg-web-engine/core';
 import { ThreeDisplayObject3dOpts, ThreeGgWorld, ThreeSceneComponent } from '@gg-web-engine/three';
-import { AmmoGgWorld, AmmoWorldComponent } from '@gg-web-engine/ammo';
+import { createPhysicsWorld } from './backends';
 
 GgStatic.instance.showStats = true;
 GgStatic.instance.devConsoleEnabled = true;
 
-const world: TypedGg3dWorld<ThreeGgWorld, AmmoGgWorld> = new Gg3dWorld({
+// the physics engine is picked by `?physics=` (see backends.ts); `Gg3dWorldWithPhysics` types
+// `world.physicsWorld` as core's interface, whichever engine that is
+const world: Gg3dWorldWithPhysics<ThreeGgWorld> = new Gg3dWorld({
   visualScene: new ThreeSceneComponent(),
-  physicsWorld: new AmmoWorldComponent(),
+  physicsWorld: await createPhysicsWorld(),
 });
+// up to 10 substeps of 1/60 s each, so a frame hitch doesn't let a ball tunnel through a wall
 world.physicsWorld.maxSubSteps = 10;
 world.physicsWorld.fixedTimeStep = undefined;
 

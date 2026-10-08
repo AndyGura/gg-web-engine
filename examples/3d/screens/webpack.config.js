@@ -15,14 +15,10 @@ module.exports = {
   },
   resolve: {
     extensions: ['.ts', '.js'],
-    fallback: {
-      "fs": false,
-      "os": false,
-      "path": false,
-    }
   },
   output: {
     filename: 'bundle.js',
+    chunkFilename: '[name].bundle.js',
     path: path.resolve(__dirname, 'dist'),
   },
   plugins: [new HtmlWebpackPlugin({

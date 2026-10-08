@@ -16,11 +16,6 @@ module.exports = {
   },
   resolve: {
     extensions: ['.ts', '.js'],
-    fallback: {
-      "fs": false,
-      "os": false,
-      "path": false,
-    }
   },
   plugins: [new HtmlWebpackPlugin({
     template: 'index.html'

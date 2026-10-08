@@ -231,8 +231,9 @@ export class Rapier3dFactory implements IPhysicsBody3dComponentFactory<Rapier3dP
       // is what resists it) while still translating at a realistic, correctly-scaled 800kg pace.
       // `setMass` instead asks Rapier to auto-derive inertia from the shape *scaled to that mass*, the
       // same computation an un-overridden default density would produce, just correctly sized. Split
-      // evenly across every sub-collider of a `COMPOUND` shape (no per-sub-shape volume query is
-      // exposed to weight this by volume instead) so the sum still equals the requested total mass.
+      // evenly across every sub-collider of a `COMPOUND` shape here, so the sum equals the requested
+      // total mass; `Rapier3dRigidBodyComponent.addToWorld` re-spreads it by each native collider's
+      // volume and moves the centre of mass to the body origin (see `applyMassProperties`).
       const mass = options.mass || 1;
       const perColliderMass = mass / (colliderDescr.length || 1);
       colliderDescr.forEach(c => c.setMass(perColliderMass));
