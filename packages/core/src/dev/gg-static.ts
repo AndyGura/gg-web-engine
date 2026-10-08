@@ -124,6 +124,36 @@ export class GgStatic {
     return Object.entries(commands);
   }
 
+  /** `three + rapier3d + webaudio`: the backend names of a world's scenes, `-` for a missing one. */
+  private static worldBackends(world: GgWorld<any, any>): string {
+    const names = [world.visualScene, world.physicsWorld, world.audioScene]
+      .filter(scene => !!scene)
+      .map(scene => (scene as { backendName?: string }).backendName || '?');
+    return names.length ? names.join(' + ') : '-';
+  }
+
+  /** The `world` command's report: the name first, then one `key: value` line per fact. */
+  private static describeWorld(world: GgWorld<any, any>): string {
+    const backend = (scene: { backendName?: string } | null | undefined) => (scene ? scene.backendName || '?' : '-');
+    // world.children lists every entity in the world, nested ones included
+    const topLevel = world.children.filter(e => !e.parent).length;
+    const clock = world.worldClock;
+    const state = world.isPaused ? 'paused' : world.isRunning ? 'running' : 'stopped';
+    const rows: [string, string][] = [
+      ['rendering', backend(world.visualScene)],
+      ['physics', backend(world.physicsWorld)],
+      ['audio', backend(world.audioScene)],
+      ['clock', `${state}, ${(world.worldTime / 1000).toFixed(1)} s world time`],
+      ['time scale', `${clock.timeScale}`],
+      ['fps limit', clock.tickRateLimit ? `${clock.tickRateLimit}` : 'none'],
+      ['physics step', world.fixedPhysicsStep !== undefined ? `fixed, ${world.fixedPhysicsStep} ms` : 'per tick'],
+      ['entities', `${world.children.length} (${topLevel} top-level)`],
+      ['renderers', `${world.renderers.length}`],
+      ['input', world.inputEnabled ? 'enabled' : 'disabled'],
+    ];
+    return [world.name, ...rows.map(([k, v]) => `  <span style='color:#aaa'>${k}:</span> ${v}`)].join('\n');
+  }
+
   private constructor() {
     this.registerConsoleCommand(
       null,
@@ -159,10 +189,15 @@ export class GgStatic {
       'worlds',
       async () => {
         return GgWorld.documentWorlds
-          .map(w => (w === this.selectedWorld ? `<span style='color:lightgreen;'>* ${w.name}</span>` : `  ${w.name}`))
+          .map(w => {
+            const backends = `<span style='color:#aaa'>${GgStatic.worldBackends(w)}</span>`;
+            return w === this.selectedWorld
+              ? `<span style='color:lightgreen;'>* ${w.name}</span>  ${backends}`
+              : `  ${w.name}  ${backends}`;
+          })
           .join('\n');
       },
-      'no args; Print all currently available worlds',
+      'no args; Print all currently available worlds, with the rendering/physics/audio backend each one runs on',
     );
     this.registerConsoleCommand(
       null,
@@ -174,10 +209,11 @@ export class GgStatic {
             break;
           }
         }
-        return this.selectedWorld?.name || 'null';
+        return this.selectedWorld ? GgStatic.describeWorld(this.selectedWorld) : 'null';
       },
-      'args: [ string? ]; Get name of selected world or select world by name. Use ' +
-        '"worlds" to get list of currently available worlds',
+      'args: [ string? ]; Print the selected world (name on the first line, then its backends, ' +
+        'clock state, entity and renderer counts and physics step), or select a world by name first. ' +
+        'Use "worlds" to get list of currently available worlds',
     );
     this.registerConsoleCommand(
       null,

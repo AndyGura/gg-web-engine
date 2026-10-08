@@ -10,13 +10,14 @@
 </p>
 
 <p align="center">
-  <b>Write your game once. Choose the renderer, the physics engine and the network later.</b>
+  <b>Multiplayer physics games in the browser, with no game server.<br/>Cars and character controllers built in. TypeScript end to end.</b>
 </p>
 
 <p align="center">
   <a href="https://gg-web-demos.guraklgames.com/"><b>Live demos</b></a> •
   <a href="#-quickstart">Quickstart</a> •
   <a href="#-multiplayer-in-a-dozen-lines">Multiplayer</a> •
+  <a href="#-when-to-use-it-and-when-not-to">When to use it</a> •
   <a href="#-packages">Packages</a> •
   <a href="#-architecture">Architecture</a> •
   <a href="https://andygura.github.io/gg-web-engine/">API docs</a> •
@@ -25,9 +26,15 @@
 
 ---
 
-GG Web Engine is an open-source TypeScript game engine for the browser that does not reinvent
-rendering or physics. It defines a small, strictly typed core - worlds, entities, clocks, input,
-levels, networking - and plugs battle-tested libraries in behind it:
+GG Web Engine is an open-source TypeScript game engine for the browser. Its strongest case is one the
+usual browser engines leave to you: **2-8 players share one physics world over WebRTC, peer to peer**, with
+ownership, late join, reconnection and replica correction built in - no game server to write or
+host ([how](#-multiplayer-in-a-dozen-lines)). It also ships the parts that driving and character
+games take longest to get right: a car model with engine, torque curve and gearbox, raycast
+vehicles, and first-person, third-person and 2D platformer character controllers.
+
+It does not reinvent rendering or physics. A small, strictly typed core - worlds, entities, clocks,
+input, levels, networking - drives battle-tested libraries plugged in behind it:
 [Three.js](https://github.com/mrdoob/three.js) or [Pixi.js](https://github.com/pixijs/pixijs) for
 rendering, [Rapier](https://github.com/dimforge/rapier.js), [Ammo.js](https://github.com/kripken/ammo.js)
 or [Matter.js](https://github.com/liabru/matter-js) for physics. Your game code talks to the core, so
@@ -41,23 +48,13 @@ changes. Each backend keeps its own simulation behavior, so expect to retune phy
 <tr>
 <td width="50%" valign="top">
 
-### 🧩 Library-agnostic by design
-One visual adapter + one physics adapter of matching dimensionality on top of the core. Switch from
-Ammo.js to Rapier by replacing a single constructor: your code keeps compiling and running. Feel and
-tuning (friction, restitution, vehicles, character sliding) differ per backend.
-
-</td>
-<td width="50%" valign="top">
-
 ### 🌐 P2P multiplayer, no game server
 Built for 2-8 players sharing one physics world over WebRTC, in 2D or 3D, on any physics adapter.
 Ownership, possession, late join, reconnection and replica correction are built in
 ([how it works](#-multiplayer-in-a-dozen-lines)).
 
 </td>
-</tr>
-<tr>
-<td valign="top">
+<td width="50%" valign="top">
 
 ### 🎮 Gameplay building blocks
 Character controllers (2D and 3D, first/third person), raycast vehicles and a full car model with
@@ -65,12 +62,22 @@ engine and gearbox, triggers, grabbable props, cameras, animators, positional au
 ([full list](#-architecture)).
 
 </td>
+</tr>
+<tr>
 <td valign="top">
 
 ### 🗺️ Data-driven levels
 Describe a scene as JSON, register your own entity classes, wire events to behavior with blueprint
 graphs, serialize live entities back. Author 3D scenes in Blender with the bundled
 [exporter add-on](blender-addon/README.md).
+
+</td>
+<td valign="top">
+
+### 🧩 Library-agnostic by design
+One visual adapter + one physics adapter of matching dimensionality on top of the core. Switch from
+Ammo.js to Rapier by replacing a single constructor: your code keeps compiling and running. Feel and
+tuning (friction, restitution, vehicles, character sliding) differ per backend.
 
 </td>
 </tr>
@@ -99,6 +106,7 @@ More of what is in the box:
 - **2D and 3D worlds** sharing one set of concepts - `Gg2dWorld` and `Gg3dWorld`.
 - **Automatic physics ↔ rendering sync**: an entity binds a display object to a rigid body and keeps them aligned every tick.
 - **Hierarchical pausable clocks**, time scale, optional fixed physics timestep, optional auto-pause when the tab is hidden (`pauseWhenHidden`).
+- **Screens and loading**: `ScreenManager` runs menu, game and pause screens as a stack of DOM layers; `LoadingScreen.show()`/`hide()` covers startup or a level load with the built-in loading screen, or with your own.
 - **Streaming large maps**: `MapGraph3dEntity` loads and disposes map chunks by proximity.
 - **Reactive API** on [RxJS](https://github.com/ReactiveX/rxjs): ticks, input, collisions and world events are observables.
 - **Strict TypeScript throughout**; annotate the world as `TypedGg3dWorld`/`TypedGg2dWorld` to get the native types of whichever libraries you plugged in ([how](#-faq)).
@@ -235,6 +243,40 @@ The rest of the game stays single-player code. What you get:
 Try it: open the [Coin run](https://gg-web-demos.guraklgames.com/?example=2d/coin-run)
 (2D) or [Fly city](https://gg-web-demos.guraklgames.com/?example=3d/fly-city) (3D) demo
 and share the room link.
+
+## 🧭 When to use it, and when not to
+
+A short, honest guide. Every option below is a fine choice for the right game.
+
+**Pick GG Web Engine when**
+
+- Several players should share **one physics world** in the browser (co-op, party, racing, physics
+  sandbox) and you don't want to write netcode or run a game server. This is the case it was built
+  for.
+- The game is a **driving or character game**: a car with an engine and gearbox, raycast vehicles,
+  a first/third-person or 2D platformer controller are already there, on every physics backend.
+- Levels are **data**: generated, edited by tools or written by an AI agent as JSON, with your own
+  entity classes and blueprint-wired events.
+- You want to write against an engine API but keep Three.js, Pixi.js, Rapier, Ammo.js or Matter.js
+  underneath, with their native objects one property away.
+
+**Pick something else when**
+
+- **Raw Three.js + Rapier (or Pixi.js + Matter.js)**: one scene, full control over the render loop and
+  the newest library release on day one. GG pins exact versions of the libraries it wraps and adds a
+  layer you may not need for a product viewer or a single physics toy.
+- **[Babylon.js](https://www.babylonjs.com/)**: a rendering-heavy 3D game or an XR experience. It has
+  a mature PBR pipeline, WebGPU, WebXR, an inspector and node editors, a large community and a long
+  record of stable releases. GG has no WebXR support and its 3D rendering is whatever Three.js gives.
+- **[Phaser](https://phaser.io/)**: a classic 2D game (tilemaps, sprite animation, arcade physics,
+  scenes) with a huge library of tutorials. Choose GG for 2D only if you need shared multiplayer
+  physics or one codebase across 2D and 3D.
+- **[Godot](https://godotengine.org/) (web export)**: you want a visual editor, or desktop and mobile
+  builds from the same project. Expect a large WebAssembly download, and multi-threaded exports need
+  cross-origin isolation (COOP/COEP) headers on the host.
+- **You need long-term API stability today.** GG is at `0.0.N` with one maintainer; the API can change
+  between releases (see [Project status](#-project-status)). Babylon.js, Phaser and Godot have
+  versioning policies and large teams behind them.
 
 ## 📦 Packages
 
@@ -382,8 +424,8 @@ Register your own commands with `GgStatic.instance.registerConsoleCommand`.
 |---------------|---------------------|-------------|
 | `commands`    | -                   | Print all available commands: global ones and those of the currently selected world |
 | `help`        | `string`            | Print the doc string of a command |
-| `worlds`      | -                   | Print all currently available worlds |
-| `world`       | `string?`           | Get the name of the selected world, or select a world by name |
+| `worlds`      | -                   | Print all currently available worlds, with the rendering/physics/audio backend each one runs on |
+| `world`       | `string?`           | Select a world by name (optional), then print the selected one: name, backends, clock state, time scale, fps limit, physics step, entity and renderer counts |
 | `stats_panel` | `0\|1?`             | Turn the stats panel on/off; skip the argument to toggle |
 | `debug_panel` | `0\|1?`             | Turn the debug panel on/off; skip the argument to toggle |
 | `bind_key`    | `string, ...string` | Bind a keyboard key (by [code](https://www.toptal.com/developers/keycode)) to a console command |

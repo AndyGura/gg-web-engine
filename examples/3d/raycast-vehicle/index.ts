@@ -3,6 +3,7 @@ import {
   createInlineTickController,
   Gg3dWorld,
   GgStatic,
+  LoadingScreen,
   OrbitCameraController,
   Pnt3,
   Qtrn,
@@ -16,6 +17,8 @@ import { createPhysicsWorld } from './backends';
 GgStatic.instance.showStats = true;
 GgStatic.instance.devConsoleEnabled = true;
 
+// the engine's loading screen, up until the game runs (hidden after world.start() below)
+const loading = LoadingScreen.show();
 const world: ThreeGgWorld = new Gg3dWorld({
   visualScene: new ThreeSceneComponent(),
   physicsWorld: await createPhysicsWorld(),
@@ -168,4 +171,5 @@ world.init().then(async () => {
   });
 
   world.start();
+  loading.hide();
 });

@@ -61,6 +61,8 @@ Every adapter component class then `implements I<Thing>Component<<Lib>VisualType
 ## Responsibilities per component
 
 - **Scene component** (`IVisualScene(2d|3d)Component`): owns the native scene graph root,
+  `readonly backendName` (a short, stable library name - `'three'`, `'pixi'` - shown by the dev
+  console's `worlds`/`world` commands; one constant per adapter, never per instance),
   `async init()` (create native scene — do heavy/async setup here, not in the constructor),
   `createRenderer(camera, canvas?, rendererOptions?)`, and `dispose()`. Expose the native scene
   object as a getter (`nativeScene` in `ThreeSceneComponent`) for advanced consumer access. 3D only:

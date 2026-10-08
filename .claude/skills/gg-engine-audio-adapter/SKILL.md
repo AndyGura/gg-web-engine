@@ -34,7 +34,8 @@ how `ICamera3dComponent` adds FOV that 2D has no equivalent for.
 ## The contract you must implement
 
 - **`IAudioSceneComponent<D,R,ATypeDoc>`** (`base/components/audio/i-audio-scene.component.ts`):
-  owns the native audio backend (an `AudioContext` for `packages/audio`), the source `factory`,
+  owns the native audio backend (an `AudioContext` for `packages/audio`), `backendName` (a short,
+  stable name for the dev console's `worlds`/`world` commands - `'webaudio'` there), the source `factory`,
   `masterVolume`/per-bus `getBusVolume`/`setBusVolume`, the single `activeListener` reference
   (`setActiveListener`), and `update(elapsed, delta)` - called once per world tick by `GgWorld`
   itself (see "How `update()` gets called" below), not by app code.

@@ -21,6 +21,8 @@ import { Subject } from 'rxjs';
 type Rapier2dWorldChild = Rapier2dRigidBodyComponent | Rapier2dCharacterControllerComponent;
 
 export class Rapier2dWorldComponent implements IPhysicsWorld2dComponent<Rapier2dPhysicsTypeDocRepo> {
+  public readonly backendName: string = 'rapier2d';
+
   private _factory: Rapier2dFactory | null = null;
   public get factory(): Rapier2dFactory {
     if (!this._factory) {

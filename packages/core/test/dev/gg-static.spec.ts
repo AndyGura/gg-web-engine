@@ -1,4 +1,4 @@
-import { GgStatic } from '../../src';
+import { GgStatic, GroupEntity } from '../../src';
 import { MockWorld } from '../mocks/world.mock';
 
 describe('GgStatic', () => {
@@ -114,9 +114,35 @@ describe('GgStatic', () => {
         const w2 = makeWorld('Beta');
 
         expect(instance.selectedWorld).toBe(w1);
-        expect(await instance.runConsoleCommand('world', [])).toBe('Alpha');
-        expect(await instance.runConsoleCommand('world', ['Beta'])).toBe('Beta');
+        expect((await instance.runConsoleCommand('world', [])).split('\n')[0]).toBe('Alpha');
+        expect((await instance.runConsoleCommand('world', ['Beta'])).split('\n')[0]).toBe('Beta');
         expect(instance.selectedWorld).toBe(w2);
+      });
+
+      it('worlds and world name the backends each world runs on', async () => {
+        const instance = GgStatic.instance;
+        const w = makeWorld('Alpha');
+        (w.visualScene as any).backendName = 'three';
+        (w.physicsWorld as any).backendName = 'rapier3d';
+
+        expect(await instance.runConsoleCommand('worlds', [])).toContain('three + rapier3d');
+        const info = await instance.runConsoleCommand('world', []);
+        expect(info).toContain('rendering:</span> three');
+        expect(info).toContain('physics:</span> rapier3d');
+        expect(info).toContain('audio:</span> -');
+      });
+
+      it('world reports clock state and entity counts, nested entities included', async () => {
+        const instance = GgStatic.instance;
+        const w = makeWorld('Alpha');
+        const parent = new GroupEntity();
+        parent.addChildren(new GroupEntity(), new GroupEntity());
+        w.addEntity(parent);
+
+        const info = await instance.runConsoleCommand('world', []);
+        expect(info).toContain('clock:</span> stopped');
+        expect(info).toContain('entities:</span> 3 (1 top-level)');
+        expect(info).toContain('physics step:</span> per tick');
       });
 
       it('world reports "null" when no world exists yet', async () => {

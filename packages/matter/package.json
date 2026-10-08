@@ -18,10 +18,17 @@
     "url": "git+https://github.com/AndyGura/gg-web-engine.git"
   },
   "keywords": [
-    "game-development",
     "game-engine",
-    "game-engine-framework",
-    "gamedev"
+    "gamedev",
+    "game-development",
+    "browser-game",
+    "typescript",
+    "matter-js",
+    "matter",
+    "physics",
+    "2d",
+    "character-controller",
+    "platformer"
   ],
   "author": "AndyGura",
   "license": "Apache-2.0",

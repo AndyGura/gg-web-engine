@@ -1,5 +1,6 @@
 import {
   GgWorld,
+  LoadingScreen,
   LoadingView,
   LoadProgress,
   runWhileInputEnabled,
@@ -550,6 +551,26 @@ describe('ScreenManager', () => {
       expect(view.disposed).toBe(true);
       expect(slow.layer.style.visibility).toBe('');
       expect(slow.state).toBe('active');
+    });
+
+    it('without a loadingView option, shows the game-wide default view set on LoadingScreen', async () => {
+      jest.useFakeTimers();
+      await screens.dispose();
+      screens = new ScreenManager({ loadingDelay: 100 });
+      LoadingScreen.setDefaultView(() => new FakeLoadingView());
+      try {
+        const slow = new SlowScreen('slow', log);
+        const pending = screens.push(slow);
+        await flush();
+        jest.advanceTimersByTime(100);
+        expect(FakeLoadingView.instances).toHaveLength(1);
+        slow.finish();
+        await flush();
+        jest.advanceTimersByTime(300);
+        await pending;
+      } finally {
+        LoadingScreen.setDefaultView(null);
+      }
     });
 
     it('never shows the loading view for a screen that is ready before the delay', async () => {

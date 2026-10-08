@@ -6,7 +6,7 @@ import {
   ElementRef,
   ViewChild,
 } from '@angular/core';
-import { Gg3dWorld, Gg3dWorldWithPhysics, PhysicsTypeDocRepo3D, TypedGg3dWorld } from '@gg-web-engine/core';
+import { Gg3dWorld, Gg3dWorldWithPhysics, LoadingScreen, PhysicsTypeDocRepo3D, TypedGg3dWorld } from '@gg-web-engine/core';
 import { ThreeGgWorld, ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
 import { WebAudioGgWorld3D, WebAudioScene3dComponent, WebAudioTypeDocRepo3D } from '@gg-web-engine/audio';
 import { filter } from 'rxjs';
@@ -64,6 +64,17 @@ export class AppComponent implements AfterViewInit {
   }
 
   private async initGame() {
+    // the engine's loading screen, up until the game runs; a level reload (L) comes back through here.
+    // Hidden in a finally, so a failed start isn't left behind it
+    const loading = LoadingScreen.show();
+    try {
+      await this.startGame();
+    } finally {
+      loading.hide();
+    }
+  }
+
+  private async startGame() {
     this.world = new Gg3dWorld({
       visualScene: new ThreeSceneComponent(),
       physicsWorld: await createPhysicsWorld(),
@@ -104,6 +115,12 @@ export class AppComponent implements AfterViewInit {
 
     this.world.keyboardInput.bind('KeyL').pipe(filter(x => x)).subscribe(() => {
       this.runner?.stopGame();
+      // disposing the renderer released the canvas's WebGL context for good, so the new world
+      // renders into a fresh canvas
+      const oldCanvas = this.canvas.nativeElement;
+      const newCanvas = oldCanvas.cloneNode() as HTMLCanvasElement;
+      oldCanvas.replaceWith(newCanvas);
+      this.canvas = new ElementRef(newCanvas);
       this.initGame().then();
     });
 

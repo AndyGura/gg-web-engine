@@ -17,6 +17,13 @@ export interface IPhysicsWorldComponent<
   PTypeDoc extends PhysicsTypeDocRepo<D, R> = PhysicsTypeDocRepo<D, R>,
 > extends IComponent {
   /**
+   * Short, stable name of the physics library behind this world (`'ammo'`, `'rapier3d'`,
+   * `'rapier2d'`, `'matter'`, ...), the same for every instance of an adapter. Shown in the dev
+   * console's world info and handy in logs or bug reports.
+   */
+  readonly backendName: string;
+
+  /**
    * Factory function for creating physics-related objects.
    */
   readonly factory: PTypeDoc['factory'];

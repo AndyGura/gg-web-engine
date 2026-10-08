@@ -16,10 +16,19 @@
     "url": "git+https://github.com/AndyGura/gg-web-engine.git"
   },
   "keywords": [
-    "game-development",
     "game-engine",
-    "game-engine-framework",
-    "gamedev"
+    "gamedev",
+    "game-development",
+    "browser-game",
+    "typescript",
+    "rapier",
+    "rapier3d",
+    "physics",
+    "3d",
+    "wasm",
+    "character-controller",
+    "vehicle",
+    "raycast-vehicle"
   ],
   "author": "AndyGura",
   "license": "Apache-2.0",

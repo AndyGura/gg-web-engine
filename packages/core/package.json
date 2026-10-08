@@ -19,10 +19,26 @@
     "url": "git+https://github.com/AndyGura/gg-web-engine.git"
   },
   "keywords": [
-    "game-development",
     "game-engine",
+    "gamedev",
+    "game-development",
+    "browser-game",
+    "typescript",
+    "webgl",
     "game-engine-framework",
-    "gamedev"
+    "2d",
+    "3d",
+    "physics",
+    "level-editor",
+    "json-levels",
+    "character-controller",
+    "vehicle",
+    "multiplayer",
+    "threejs",
+    "pixijs",
+    "rapier",
+    "ammo",
+    "matter-js"
   ],
   "author": "AndyGura",
   "license": "Apache-2.0",

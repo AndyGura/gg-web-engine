@@ -15,6 +15,8 @@ import { ThreeVisualTypeDocRepo } from '../types';
 import { ThreeComposerRendererComponent } from './three-composer-renderer.component';
 
 export class ThreeSceneComponent implements IVisualScene3dComponent<ThreeVisualTypeDocRepo> {
+  public readonly backendName: string = 'three';
+
   private _nativeScene: Scene | null = null;
   public get nativeScene(): Scene | null {
     return this._nativeScene;

@@ -18,6 +18,13 @@ export interface IAudioSceneComponent<
   R,
   ATypeDoc extends AudioTypeDocRepo<D, R> = AudioTypeDocRepo<D, R>,
 > extends IComponent {
+  /**
+   * Short, stable name of the audio backend behind this scene (`'webaudio'`, ...), the same for
+   * every instance of an adapter. Shown in the dev console's world info and handy in logs or bug
+   * reports.
+   */
+  readonly backendName: string;
+
   readonly factory: ATypeDoc['factory'];
 
   init(): Promise<void>;

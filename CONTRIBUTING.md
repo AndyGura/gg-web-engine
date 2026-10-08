@@ -55,7 +55,7 @@ best-effort.
 | `e2e/` | End-to-end test harnesses that need more than a package (currently the Blender export round-trip). |
 | `blender-addon/` | Blender extension that exports a scene as `.glb` + `.meta` for the 3D loader. Published alongside every engine release. |
 | `etc/` | Shell scripts: the release pipeline (`publish_new_version.sh`) and the example-linking helpers. |
-| `documentation/` | **Generated** API docs (typedoc + mkdocs), rebuilt by the release job. Never edit by hand. |
+| `documentation/` | **Generated** API docs (docs-ts + mkdocs), rebuilt by the release job. Never edit the output by hand; the inputs `generate.sh`, `mkdocs.yml` and `landing.md` (the site's home page) are hand-maintained. |
 | `.github/workflows/` | CI definitions (see [Continuous integration](#continuous-integration)). |
 | `.claude/skills/` | Per-task guides for AI coding agents. Also the most detailed written record of how each package works internally. |
 | `milestones.md` | Public roadmap with per-deliverable status. |
@@ -171,7 +171,8 @@ A change that alters behavior without updating them is incomplete.
   code as it is now, not the diff you just made.
 - **This file and the root `README.md`** — if you changed the build, test, or release process,
   or the quickstart API shown in the README.
-- **Never** `documentation/`. It's regenerated at release time.
+- **Never** `documentation/`'s generated output. It's regenerated at release time. Its home page is
+  `documentation/landing.md`: keep its pitch and install lines in step with the README.
 
 Conventions the review will check for:
 

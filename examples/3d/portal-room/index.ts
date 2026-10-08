@@ -8,6 +8,7 @@ import {
   GgStatic,
   Grabbable3dEntity,
   LevelJson,
+  LoadingScreen,
   ObjectGrabController,
   Pnt3,
   PlayerCharacterController,
@@ -242,6 +243,8 @@ const level: LevelJson = {
   ],
 };
 
+// the engine's loading screen, up until the game runs (hidden after world.start() below)
+const loading = LoadingScreen.show();
 const world: ThreeGgWorld = new Gg3dWorld({
   visualScene: new ThreeSceneComponent(),
   physicsWorld: await createPhysicsWorld(),
@@ -270,7 +273,7 @@ world.init().then(async () => {
     { x: INCINERATOR_X, y: INCINERATOR_Y, z: INCINERATOR_HEIGHT + 0.3 },
   ).light;
 
-  const levelGroup = await world.loader.loadLevel(level, 'MainLevel');
+  const levelGroup = await world.loader.loadLevel(level, 'MainLevel', { onProgress: p => loading.setProgress(p) });
   // the level's primitives and the player's model
   for (const item of levelGroup.children) {
     if ((item instanceof Entity3d || item instanceof CharacterController3dEntity) && item.object3D) {
@@ -471,6 +474,7 @@ world.init().then(async () => {
   });
 
   world.start();
+  loading.hide();
 
   playerController.mouseInput.isPointerLocked$.subscribe(locked => {
     if (locked) {

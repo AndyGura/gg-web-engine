@@ -9,6 +9,7 @@ import {
   IEntity,
   IText2dComponent,
   LevelJson,
+  LoadingScreen,
   PlayerCharacterController2d,
   Point2,
   TickOrder,
@@ -272,6 +273,9 @@ function inviteUrl(roomId: string): string {
   url.searchParams.set('physics', selectedPhysicsBackend());
   return url.toString();
 }
+
+// the engine's loading screen, up until the game runs (hidden after world.start() below)
+const loading = LoadingScreen.show();
 
 // the physics engine is picked by `?physics=` (see backends.ts); everyone in a room uses the one
 // its invite link names
@@ -627,6 +631,7 @@ world.init().then(async () => {
   await syncCoins();
   await spawnMe();
   world.start();
+  loading.hide();
   setInterval(() => {
     direct();
     renderHud();

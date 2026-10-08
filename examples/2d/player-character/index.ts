@@ -4,6 +4,7 @@ import {
   Gg2dWorld,
   GgStatic,
   LevelJson,
+  LoadingScreen,
   Pnt2,
   PlayerCharacterController2d,
 } from '@gg-web-engine/core';
@@ -76,6 +77,8 @@ const level: LevelJson = {
   ],
 };
 
+// the engine's loading screen, up until the game runs (hidden after world.start() below)
+const loading = LoadingScreen.show();
 const world: PixiGgWorld = new Gg2dWorld({
   visualScene: new PixiSceneComponent(),
   physicsWorld: await createPhysicsWorld(),
@@ -89,7 +92,7 @@ world.init().then(async () => {
     renderer.camera.zoom = Math.min(newSize.x / (ROOM_WIDTH + 100), newSize.y / (ROOM_HEIGHT + 100), 1);
   });
 
-  await world.loader.loadLevel(level, 'MainLevel');
+  await world.loader.loadLevel(level, 'MainLevel', { onProgress: p => loading.setProgress(p) });
 
   // A pixel-art atlas (idle/walk/run/jump/crouch rows on a uniform grid - see
   // ../assets/characters/generate-character-atlas.py) sliced into named animation clips.
@@ -136,4 +139,5 @@ world.init().then(async () => {
   world.addEntity(new MobileControls());
 
   world.start();
+  loading.hide();
 });
