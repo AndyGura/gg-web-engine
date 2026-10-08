@@ -426,7 +426,10 @@ touching this again:
   from another descriptor.** `Rapier3dRigidBodyComponent.factoryProps` (used by `clone()`) rebuilds a
   fresh `RigidBodyDesc` from the original's `status`/`mass`/`translation`/`rotation` - `ccdEnabled`
   silently dropped off every clone of a CCD-enabled body until an explicit `bd.setCcdEnabled(this
-  ._bodyDescr.ccdEnabled)` was added alongside the other fields. `Rapier2dRigidBodyComponent
+  ._bodyDescr.ccdEnabled)` was added alongside the other fields. The same goes for each rebuilt
+  `ColliderDesc`'s `activeEvents`/`activeCollisionTypes`/`isSensor`: without them a clone reports no
+  collisions. A test has to collide two clones, because Rapier reports a contact when either collider
+  asks for events (`rapier-3d-rigid-body-clone.spec.ts`). `Rapier2dRigidBodyComponent
   .factoryProps` doesn't have this problem - it returns the *same* `RigidBodyDesc` instance rather
   than reconstructing one, so nothing needs copying there; don't assume the two packages' `clone()`
   work identically just because their public shape matches.

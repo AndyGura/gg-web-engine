@@ -257,7 +257,11 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
       d.setFriction(cd.friction);
       d.setEnabled(cd.enabled);
       d.setRestitution(cd.restitution);
-      // TODO more fields here?
+      // the factory turns on collision events (and sensors set `isSensor`); a clone must keep them,
+      // or it never reports collisions or trigger overlaps
+      d.setActiveEvents(cd.activeEvents);
+      d.setActiveCollisionTypes(cd.activeCollisionTypes);
+      d.setSensor(cd.isSensor);
       return d;
     });
     const bd = new RigidBodyDesc(this._bodyDescr.status);

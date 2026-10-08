@@ -29,7 +29,7 @@ export class AmmoTriggerComponent
     return this.onLeft$.pipe(
       map(
         b =>
-          (AmmoBodyComponent.nativeBodyReverseMap.get(b) ?? null) as
+          (typeof b === 'number' ? (AmmoBodyComponent.nativeBodyReverseMap.get(b) ?? null) : b) as
             AmmoRigidBodyComponent | AmmoCharacterControllerComponent | null,
       ),
     );
@@ -78,7 +78,9 @@ export class AmmoTriggerComponent
       for (const overlap of this.overlaps) {
         if (Ammo.getPointer(overlap) === removedPointer) {
           this.overlaps.delete(overlap);
-          queueMicrotask(() => this.onLeft$.next(removedPointer));
+          // the component itself, not its pointer: a body removed with `dispose` is gone from
+          // `nativeBodyReverseMap` by the time the microtask runs
+          queueMicrotask(() => this.onLeft$.next(component as AmmoBodyComponent<any>));
           break;
         }
       }
@@ -89,7 +91,8 @@ export class AmmoTriggerComponent
 
   protected readonly overlaps: Set<Ammo.btCollisionObject> = new Set<Ammo.btCollisionObject>();
   protected readonly onEnter$: Subject<number> = new Subject<number>();
-  protected readonly onLeft$: Subject<number> = new Subject<number>();
+  /** A native pointer from `checkOverlaps()`, or the removed component itself from the `removed$` reaction. */
+  protected readonly onLeft$: Subject<number | AmmoBodyComponent<any>> = new Subject<number | AmmoBodyComponent<any>>();
 
   checkOverlaps(): void {
     const numOverlappingObjects = this.nativeBody.getNumOverlappingObjects();

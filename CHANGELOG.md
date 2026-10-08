@@ -127,6 +127,10 @@ where one exists.
   `@gg-web-engine/*` packages; one that imports the library itself should pin the same version.
 
 ### Fixed
+- `@gg-web-engine/rapier3d`: a cloned body reports collisions and trigger overlaps again; `clone()`
+  dropped the collider's event flags.
+- `@gg-web-engine/ammo`: a trigger's `onEntityLeft` reports a body removed *and disposed* while
+  inside as that body, as every other adapter does, instead of `null`.
 - `@gg-web-engine/core`: looking around by dragging a finger over the canvas (`OrbitCameraController`,
   `PlayerCharacterController`/`FreeCameraController` without an on-screen look area) was far slower
   than with a mouse. `MouseInput` now measures a touch pointer from its own previous position instead
