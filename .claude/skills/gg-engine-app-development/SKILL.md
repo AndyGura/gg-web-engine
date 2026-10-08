@@ -92,11 +92,14 @@ loading.hide();
 ```
 
 Show it before anything slow (a dynamically imported physics backend included), hide it after
-`world.start()`. Pass `view` to show a game's own loading screen - any object implementing
-`LoadingView` (`element`, `setProgress`, `dispose`). Don't wrap loads that happen while the game
+`world.start()`. A game with its own loading screen - any object implementing `LoadingView`
+(`element`, `setProgress`, `dispose`) - sets it once at startup with
+`LoadingScreen.setDefaultView(() => new MyLoadingView())`: every `show()` without a `view` and every
+`ScreenManager` without a `loadingView` then makes one from it. It takes a factory, not a view,
+because hiding disposes the view. `view` on a single `show()` overrides it for that one. Don't wrap loads that happen while the game
 keeps running (the next round's pieces, streamed map chunks) - that would cover the game. Hide it in
 a `finally` if the startup can fail, or a failure stays hidden behind it. A `ScreenManager` app
-doesn't need it: the manager shows the same `DefaultLoadingView` while a screen enters (see
+doesn't need it: the manager shows the same default view while a screen enters (see
 "Screens").
 
 

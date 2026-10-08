@@ -2,7 +2,7 @@ import { LoadProgress } from '../assets/load-progress';
 import { DefaultLoadingView, LoadingView } from './loading-view';
 
 export type LoadingScreenOptions = {
-  /** The view to show. A new `DefaultLoadingView` by default. */
+  /** The view to show. By default one made by the factory given to `LoadingScreen.setDefaultView`. */
   view?: LoadingView;
   /**
    * Where to show it. By default the screen covers the whole viewport, above the page (fixed, added
@@ -26,9 +26,13 @@ export type LoadingScreenOptions = {
  * loading.hide();
  * ```
  *
- * Without a `view` it shows a `DefaultLoadingView`; any object implementing `LoadingView` works.
+ * Without a `view` it shows the default view: a `DefaultLoadingView`, unless the game sets its own
+ * once with `LoadingScreen.setDefaultView(() => new MyLoadingView())`. Any object implementing
+ * `LoadingView` works.
  */
 export class LoadingScreen {
+  private static defaultViewFactory: () => LoadingView = () => new DefaultLoadingView();
+
   private readonly holder: HTMLElement;
   private readonly fadeOutDuration: number;
   private hidden = false;
@@ -51,10 +55,24 @@ export class LoadingScreen {
     (container ?? document.body).appendChild(this.holder);
   }
 
+  /**
+   * Sets how the default loading view is made, for `LoadingScreen.show()` without a `view` and for a
+   * `ScreenManager` without a `loadingView`. A factory, not a view: each screen disposes its view when
+   * it hides. `null` goes back to `DefaultLoadingView`.
+   */
+  public static setDefaultView(factory: (() => LoadingView) | null): void {
+    LoadingScreen.defaultViewFactory = factory ?? (() => new DefaultLoadingView());
+  }
+
+  /** A new instance of the default loading view (see `setDefaultView`). */
+  public static createDefaultView(): LoadingView {
+    return LoadingScreen.defaultViewFactory();
+  }
+
   /** Shows a loading view now and returns the handle that hides it. */
   public static show(options: LoadingScreenOptions = {}): LoadingScreen {
     return new LoadingScreen(
-      options.view ?? new DefaultLoadingView(),
+      options.view ?? LoadingScreen.createDefaultView(),
       options.container,
       options.fadeOutDuration ?? 250,
     );

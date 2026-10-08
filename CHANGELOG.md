@@ -33,8 +33,9 @@ where one exists.
   backdrop with an animated CSS 3D cube and "Loading" (a progress bar and percentage join it once
   a load reports progress), used by `ScreenManager` as before. `LoadingScreen.show()` puts it (or
   an app's own `LoadingView`) over the page until `hide()`, typically around `init()` and a level
-  load; `setProgress` feeds it a loader's progress. Every example that opens straight into a level
-  uses it.
+  load; `setProgress` feeds it a loader's progress. `LoadingScreen.setDefaultView(() => new
+  MyLoadingView())` makes a game's own view the default for every `show()` and for `ScreenManager`.
+  Every example that opens straight into a level uses it.
 - Every visual scene, physics world and audio scene names its backend: `backendName` (`'three'`,
   `'pixi'`, `'ammo'`, `'rapier3d'`, `'rapier2d'`, `'matter'`, `'webaudio'`). A required member of
   `IVisualSceneComponent`, `IPhysicsWorldComponent` and `IAudioSceneComponent`, so a third-party

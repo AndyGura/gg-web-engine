@@ -1,6 +1,7 @@
 import { BehaviorSubject, Observable } from 'rxjs';
 import { isAbortError, LoadProgress } from '../assets/load-progress';
-import { DefaultLoadingView, LoadingView } from './loading-view';
+import { LoadingScreen } from './loading-screen';
+import { LoadingView } from './loading-view';
 import { Screen } from './screen';
 
 export type ScreenManagerOptions = {
@@ -11,8 +12,9 @@ export type ScreenManagerOptions = {
    */
   container?: HTMLElement;
   /**
-   * Creates the view shown while a screen is entering. `DefaultLoadingView` by default; `null` for
-   * none (screens that show their own progress).
+   * Creates the view shown while a screen is entering. By default the game-wide default view (see
+   * `LoadingScreen.setDefaultView`, `DefaultLoadingView` unless set); `null` for none (screens that
+   * show their own progress).
    */
   loadingView?: (() => LoadingView) | null;
   /**
@@ -151,7 +153,8 @@ export class ScreenManager {
       document.body.appendChild(this.container);
       this.ownsContainer = true;
     }
-    this.loadingViewFactory = options.loadingView === undefined ? () => new DefaultLoadingView() : options.loadingView;
+    this.loadingViewFactory =
+      options.loadingView === undefined ? () => LoadingScreen.createDefaultView() : options.loadingView;
     this.loadingDelay = options.loadingDelay ?? 150;
     this.loadingMinDuration = options.loadingMinDuration ?? 300;
     this.onEnterError = options.onEnterError;

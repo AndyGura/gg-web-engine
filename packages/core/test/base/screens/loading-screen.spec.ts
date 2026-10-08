@@ -53,4 +53,27 @@ describe('LoadingScreen', () => {
     expect(view.setProgress).toHaveBeenCalledTimes(1);
     expect(container.childElementCount).toBe(0);
   });
+
+  it('makes a new view per screen from the default set with setDefaultView, until reset with null', () => {
+    const views: ReturnType<typeof fakeView>[] = [];
+    LoadingScreen.setDefaultView(() => {
+      const view = fakeView();
+      views.push(view);
+      return view;
+    });
+    try {
+      const first = LoadingScreen.show({ fadeOutDuration: 0 });
+      first.hide();
+      const second = LoadingScreen.show({ fadeOutDuration: 0 });
+      expect(views).toHaveLength(2);
+      expect(second.view).toBe(views[1]);
+      expect(views[0].dispose).toHaveBeenCalledTimes(1);
+      expect(views[1].dispose).not.toHaveBeenCalled();
+      second.hide();
+    } finally {
+      LoadingScreen.setDefaultView(null);
+    }
+    LoadingScreen.show({ fadeOutDuration: 0 }).hide();
+    expect(views).toHaveLength(2);
+  });
 });

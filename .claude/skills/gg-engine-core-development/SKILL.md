@@ -690,6 +690,9 @@ over a positioned container until `hide()`, which fades it out and then disposes
 in the engine shows it on its own - not the world, not the loader: the app brackets what it wants
 covered (startup, a level reload) with `show()`/`hide()`, since a world also loads while the game
 runs on (level pieces per round, streamed map chunks) and only the app knows which load is which.
+The default view is a static factory on `LoadingScreen` (`setDefaultView`/`createDefaultView`,
+`DefaultLoadingView` unless set), read at each `show()` and each `ScreenManager` transition (not at
+manager construction), so one call restyles every loading screen of a game.
 `DefaultLoadingView` uses
 inline styles and the Web Animations API (`element.animate`), never a stylesheet added to the page;
 jsdom has no `animate`, so the view checks for it, and jsdom drops a `background` shorthand that
