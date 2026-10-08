@@ -36,10 +36,11 @@ npm install --save @gg-web-engine/three @gg-web-engine/ammo        # 3D
 npm install --save @gg-web-engine/pixi @gg-web-engine/rapier2d     # 2D
 ```
 
-Check `peerDependencies` in the chosen adapter packages' `package.json` — `three`/`pixi.js`/the
-Rapier WASM build are pinned to exact versions per engine release; install matching versions
-alongside (or let npm peer resolution pick them). All `@gg-web-engine/*` packages in one app must
-share the same version.
+Each adapter brings its library as a regular dependency (`three` with `@types/three`, `pixi.js`,
+`matter-js` with `@types/matter-js`, the Rapier compat build; Ammo is vendored), pinned to the exact
+version that engine release is built against, so an app installs only `@gg-web-engine/*` packages.
+If the app also imports the library itself, pin that same version so the bundle has one copy. All
+`@gg-web-engine/*` packages in one app must share the same version.
 
 ## Bootstrap pattern
 

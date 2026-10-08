@@ -28,6 +28,7 @@
   },
   "homepage": "https://github.com/AndyGura/gg-web-engine#readme",
   "dependencies": {
+    "pixi.js": "8.22.0"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
@@ -36,7 +37,6 @@
     "@gg-web-engine/core": "0.0.78",
     "jest": "^30.5.0",
     "jest-environment-jsdom": "^30.5.0",
-    "pixi.js": "8.22.0",
     "prettier": "^3.9.6",
     "rxjs": "7.8.2",
     "ts-jest": "^29.4.12",
@@ -44,7 +44,6 @@
   },
   "peerDependencies": {
     "@gg-web-engine/core": "0.0.78",
-    "pixi.js": "8.22.0",
     "rxjs": "7.8.2"
   },
   "jest": {

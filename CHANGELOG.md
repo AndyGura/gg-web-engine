@@ -114,6 +114,11 @@ where one exists.
   bundled typings declare `namespace Ammo`, so an app type-checks them without `skipLibCheck`
   under TypeScript 6. An app needs no `tsconfig` path mapping or `browser` field for the adapter any
   more: the package's own `browser` field stubs the `fs` the ammo.js glue references.
+- `@gg-web-engine/three`, `@gg-web-engine/pixi`, `@gg-web-engine/matter`, `@gg-web-engine/rapier2d`,
+  `@gg-web-engine/rapier3d`: the library each adapter wraps (`three` with `@types/three`, `pixi.js`,
+  `matter-js` with `@types/matter-js`, the Rapier compat builds) is a regular dependency of the
+  adapter, pinned as before, instead of a peer dependency. An app installs only the
+  `@gg-web-engine/*` packages; one that imports the library itself should pin the same version.
 
 ### Fixed
 - `@gg-web-engine/core`: looking around by dragging a finger over the canvas (`OrbitCameraController`,
