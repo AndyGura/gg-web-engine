@@ -16,12 +16,19 @@ export type WheelDisplayOptions = {
   autoScaleMesh?: boolean;
 };
 
+/**
+ * Wheel settings shared by several wheels. Anything left out takes the default: `tyreWidth` 0.3,
+ * `tyreRadius` 0.4, `frictionSlip` 1.2 (street tyres - see `WheelOptions.frictionSlip`),
+ * `rollInfluence` 0.2, `maxTravel` equal to `suspension.restLength` (the wheel compresses at most
+ * up to its connection point), `maxSuspensionForce` per `defaultMaxSuspensionForce`.
+ */
 export type RVEntitySharedWheelOptions = {
   tyreWidth?: number;
   tyreRadius?: number;
   frictionSlip?: number;
   rollInfluence?: number;
   maxTravel?: number;
+  maxSuspensionForce?: number;
   display?: WheelDisplayOptions;
 };
 
@@ -57,12 +64,13 @@ export type RVEntityProperties = {
     }
 );
 
-const wheeelDefaults = {
+// see RVEntitySharedWheelOptions; maxTravel's default depends on the suspension, so it's filled in
+// the constructor
+const wheelDefaults = {
   tyreWidth: 0.3,
   tyreRadius: 0.4,
-  frictionSlip: 1000,
+  frictionSlip: 1.2,
   rollInfluence: 0.2,
-  maxTravel: 0.5,
 };
 
 export class RaycastVehicle3dEntity<
@@ -107,6 +115,7 @@ export class RaycastVehicle3dEntity<
     this.frontWheelsIndices.forEach(index => this.vehicleComponent.setSteering(index, value));
   }
 
+  /** Sets the engine force of every wheel of `axle`, in Newtons per wheel - see `IRaycastVehicleComponent.applyEngineForce`. */
   public applyTraction(axle: 'front' | 'rear' | 'both', force: number) {
     if (axle != 'rear') {
       this.frontWheelsIndices.forEach(index => this.vehicleComponent.applyEngineForce(index, force));
@@ -116,6 +125,7 @@ export class RaycastVehicle3dEntity<
     }
   }
 
+  /** Sets the brake force of every wheel of `axle`, in Newtons per wheel - see `IRaycastVehicleComponent.applyBrake`. */
   public applyBrake(axle: 'front' | 'rear' | 'both', force: number) {
     if (axle != 'rear') {
       this.frontWheelsIndices.forEach(index => this.vehicleComponent.applyBrake(index, force));
@@ -132,6 +142,10 @@ export class RaycastVehicle3dEntity<
     public readonly vehicleComponent: IRaycastVehicleComponent,
   ) {
     super({ object3D: chassis3D, objectBody: vehicleComponent });
+    const withSuspensionDefaults = <T extends { maxTravel?: number }>(o: T): T & { maxTravel: number } => ({
+      ...o,
+      maxTravel: o.maxTravel ?? carProperties.suspension.restLength,
+    });
     let wheelFullOptions: (WheelOptions & { display: WheelDisplayOptions })[] =
       'wheelBase' in carProperties
         ? [
@@ -139,31 +153,35 @@ export class RaycastVehicle3dEntity<
             carProperties.wheelBase.front,
             carProperties.wheelBase.rear,
             carProperties.wheelBase.rear,
-          ].map((a, i) => ({
-            ...wheeelDefaults,
-            ...(carProperties.wheelBase.shared || {}),
-            ...a,
-            isFront: i < 2,
-            isLeft: i % 2 === 0,
-            position: {
-              x: a.halfAxleWidth * (i % 2 === 0 ? 1 : -1),
-              y: a.axlePosition,
-              z: a.axleHeight,
-            },
-            display: {
-              ...(carProperties.wheelBase.shared?.display || {}),
-              ...(a.display || {}),
-            },
-          }))
-        : carProperties.wheelOptions.map((x, i) => ({
-            ...wheeelDefaults,
-            ...(carProperties.sharedWheelOptions || {}),
-            ...x,
-            display: {
-              ...(carProperties.sharedWheelOptions?.display || {}),
-              ...(x.display || {}),
-            },
-          }));
+          ].map((a, i) =>
+            withSuspensionDefaults({
+              ...wheelDefaults,
+              ...(carProperties.wheelBase.shared || {}),
+              ...a,
+              isFront: i < 2,
+              isLeft: i % 2 === 0,
+              position: {
+                x: a.halfAxleWidth * (i % 2 === 0 ? 1 : -1),
+                y: a.axlePosition,
+                z: a.axleHeight,
+              },
+              display: {
+                ...(carProperties.wheelBase.shared?.display || {}),
+                ...(a.display || {}),
+              },
+            }),
+          )
+        : carProperties.wheelOptions.map((x, i) =>
+            withSuspensionDefaults({
+              ...wheelDefaults,
+              ...(carProperties.sharedWheelOptions || {}),
+              ...x,
+              display: {
+                ...(carProperties.sharedWheelOptions?.display || {}),
+                ...(x.display || {}),
+              },
+            }),
+          );
     // TODO perform this in a parent application
     // chassisBody.setDamping(0.02, 0.02); // TODO imitates air resistance. calculate from properties
     wheelFullOptions.forEach((wheelOpts, i) => {

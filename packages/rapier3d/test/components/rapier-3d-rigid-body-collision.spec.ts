@@ -22,7 +22,7 @@ describe('Rapier3dRigidBodyComponent collision events', () => {
   // Small steps, mirroring Rapier3dTriggerComponent's own spec: a single huge `simulate()` call
   // detects a contact a whole step late (narrow-phase runs against start-of-step positions), which
   // would make a "did it fire at all" assertion flaky. `world.simulate()` now dispatches collision
-  // events internally (see `Rapier3dWorldComponent.dispatchCollisionEvents`), so no extra per-step
+  // events internally (see `Rapier3dWorldComponent.collectCollisionEvents`), so no extra per-step
   // hook is needed here the way `Rapier3dTriggerComponent.checkOverlaps()` needs calling for triggers.
   const advance = (totalMs: number, stepMs = 16) => {
     for (let elapsed = 0; elapsed < totalMs; elapsed += stepMs) {
@@ -99,7 +99,7 @@ describe('Rapier3dRigidBodyComponent collision events', () => {
 
     // relativeVelocity is "otherBody's velocity relative to this body", read from each body's own
     // `linvel()` *after* this step's solve already ran (see `Rapier3dWorldComponent.
-    // dispatchCollisionEvents`'s doc) - not the pre-response approach velocity the ball actually hit
+    // collectCollisionEvents`'s doc) - not the pre-response approach velocity the ball actually hit
     // at, since Rapier's constraint solver has already resolved the contact (and, with the default
     // Baumgarte-style bias, can leave a small outward/separating residual velocity behind) by the
     // time `drainCollisionEvents` reports it as `started`. What must still hold regardless: the two

@@ -155,9 +155,12 @@ export class Pnt3 {
     });
   }
 
-  /** angle between vectors in radians */
+  /** angle between vectors in radians, `0` when either vector has zero length */
   static angle(a: Point3, b: Point3): number {
     const magnitudeProduct = Pnt3.len(a) * Pnt3.len(b);
+    if (!(magnitudeProduct > 0)) {
+      return 0;
+    }
     let cos = Pnt3.dot(a, b) / magnitudeProduct;
     // this can happen due to precision error
     cos = Math.min(1, Math.max(cos, -1));

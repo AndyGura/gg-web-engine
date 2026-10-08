@@ -124,9 +124,13 @@ function normalizeQuat(q: Point4): Point4 {
   return { x: q.x / l, y: q.y / l, z: q.z / l, w: q.w / l };
 }
 
-/** Per-tick blend factor for a per-second gain: `gain * dt`, clamped to [0, 1]. */
+/**
+ * Per-tick blend factor for a per-second gain: `1 - e^(-gain * dt)`, so blending by it every tick
+ * closes the same part of a gap per second at any frame rate (`gain * dt` overshoots the
+ * exponential at a low frame rate and reaches 1 at `dt = 1 / gain`).
+ */
 export function gainFactor(gainPerSecond: number, dtMs: number): number {
-  return Math.max(0, Math.min(1, (gainPerSecond * dtMs) / 1000));
+  return Math.max(0, 1 - Math.exp((-gainPerSecond * dtMs) / 1000));
 }
 
 /** how far (seconds) a snapshot `ageMs` old is extrapolated: its age, capped at `extrapolateMaxMs` */

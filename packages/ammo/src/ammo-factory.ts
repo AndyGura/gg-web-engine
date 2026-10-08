@@ -142,11 +142,8 @@ export class AmmoFactory implements IPhysicsBody3dComponentFactory<AmmoPhysicsTy
         ];
         for (const f of descriptor.faces) {
           for (let j = 0; j < 3; j++) {
-            tmpVectors[j].setValue(
-              descriptor.vertices[f[0]].x,
-              descriptor.vertices[f[1]].y,
-              descriptor.vertices[f[2]].z,
-            );
+            const vertex = descriptor.vertices[f[j]];
+            tmpVectors[j].setValue(vertex.x, vertex.y, vertex.z);
           }
           mesh.addTriangle(...tmpVectors, true);
         }

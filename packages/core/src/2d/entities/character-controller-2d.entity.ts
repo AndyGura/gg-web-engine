@@ -353,7 +353,11 @@ export class CharacterController2dEntity<TypeDoc extends Gg2dWorldTypeDocRepo = 
   /** Whether the current `groundNormal` is shallow enough to walk on, per `maxSlopeClimbAngleRad`. */
   private get isWalkableGround(): boolean {
     const normal = this.groundNormal;
-    return normal !== null && Pnt2.angle(normal, this.characterController.up) <= this.options.maxSlopeClimbAngleRad;
+    return (
+      normal !== null &&
+      Pnt2.len(normal) > 0 &&
+      Pnt2.angle(normal, this.characterController.up) <= this.options.maxSlopeClimbAngleRad
+    );
   }
 
   /**
@@ -384,11 +388,20 @@ export class CharacterController2dEntity<TypeDoc extends Gg2dWorldTypeDocRepo = 
     const restingOnGround = this.isGrounded && this.isWalkableGround && gravityAlongUp <= 0;
     const grounded = restingOnGround && !this._justJumped;
 
+    // what the fall velocity moves the character by this tick - see CharacterController3dEntity
+    let fallDisplacement: Point2;
     if (grounded) {
       this._fallVelocity = Pnt2.O;
-    } else if (!restingOnGround) {
+      fallDisplacement = Pnt2.O;
+    } else {
+      // airborne, including a takeoff tick still reported as grounded: the average of the start and
+      // end velocities, exact under constant gravity, so jump height doesn't depend on the frame rate
+      const fallVelocityBefore = this._fallVelocity;
       this._fallVelocity = Pnt2.add(this._fallVelocity, Pnt2.scalarMult(gravityVector, dt));
-      this._justJumped = false;
+      fallDisplacement = Pnt2.scalarMult(Pnt2.add(fallVelocityBefore, this._fallVelocity), dt / 2);
+      if (!restingOnGround) {
+        this._justJumped = false;
+      }
     }
 
     let speed = this.options.walkSpeed;
@@ -422,7 +435,7 @@ export class CharacterController2dEntity<TypeDoc extends Gg2dWorldTypeDocRepo = 
     this._wasResting = grounded;
 
     const desiredTranslation = Pnt2.add(
-      Pnt2.add(Pnt2.scalarMult(horizontalVelocity, dt), Pnt2.scalarMult(this._fallVelocity, dt)),
+      Pnt2.add(Pnt2.scalarMult(horizontalVelocity, dt), fallDisplacement),
       this.externalDisplacement,
     );
     this.externalDisplacement = Pnt2.O;

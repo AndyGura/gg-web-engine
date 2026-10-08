@@ -122,10 +122,14 @@ export class Pnt2 {
     });
   }
 
-  /** angle between vectors in radians */
+  /** angle between vectors in radians, `0` when either vector has zero length */
   static angle(a: Point2, b: Point2): number {
     const magnitudeProduct = Pnt2.len(a) * Pnt2.len(b);
-    return Math.acos(Pnt2.dot(a, b) / magnitudeProduct);
+    if (!(magnitudeProduct > 0)) {
+      return 0;
+    }
+    // the ratio can leave [-1, 1] by a rounding error
+    return Math.acos(Math.min(1, Math.max(-1, Pnt2.dot(a, b) / magnitudeProduct)));
   }
 
   /** rotate point around zero by provided angle */

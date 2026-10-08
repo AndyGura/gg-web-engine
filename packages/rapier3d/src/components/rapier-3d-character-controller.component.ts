@@ -50,7 +50,7 @@ import { Rapier3dGgWorld, Rapier3dPhysicsTypeDocRepo } from '../types';
  * `Rapier3dWorldComponent.handleIdEntityMap` (see `addToWorld`/`removeFromWorld` below), alongside
  * ordinary `Rapier3dRigidBodyComponent`/`Rapier3dTriggerComponent` handles - this is what lets a
  * `Trigger3dEntity`'s `onEntityEntered`/`onEntityLeft` fire for a player walking through it, not just
- * for ordinary rigid bodies/vehicle chassis (`Rapier3dWorldComponent.dispatchCollisionEvents` resolves
+ * for ordinary rigid bodies/vehicle chassis (`Rapier3dWorldComponent.collectCollisionEvents` resolves
  * a sensor-overlap pair's components through this same map). `world.raycast()` deliberately still does
  * *not* resolve a hit against a character controller back to this component (filtered out in
  * `raycast()` itself) - widening that too would mean widening the public `raycast()` return-type
@@ -461,7 +461,7 @@ export class Rapier3dCharacterControllerComponent implements ICharacterControlle
       radius: this.radius,
       centersDistance: this.centersDistance,
     })[0];
-    // Both needed for `Rapier3dWorldComponent.dispatchCollisionEvents` to ever see a pair involving
+    // Both needed for `Rapier3dWorldComponent.collectCollisionEvents` to ever see a pair involving
     // this character controller (sensor overlap *or* real contact):
     // - `ActiveCollisionTypes` gates which pairs even reach narrow-phase at all, gated by the two
     //   bodies' *rigid-body* types - Rapier's own default (`ActiveCollisionTypes.DEFAULT`) is only

@@ -16,7 +16,7 @@ import {
   RigidBodyNetState,
   TickOrder,
 } from '../../../base';
-import { BehaviorSubject, filter, Observable, takeUntil, throttleTime } from 'rxjs';
+import { BehaviorSubject, Observable, takeUntil } from 'rxjs';
 import { DisplayObject3dOpts } from '../../factories';
 import { isMaterialReadable3d } from '../../components/rendering/i-material-readable-3d.component';
 
@@ -32,6 +32,14 @@ export type GgCarProperties = RVEntityProperties & {
     maxRpmIncreasePerSecond: number;
     maxRpmDecreasePerSecond: number;
   };
+  /**
+   * Brake forces, in Newtons per wheel (see `IRaycastVehicleComponent.applyBrake`): the pedal
+   * (`GgCarEntity.brake`, 0..1) scales `frontAxleForce` on each front wheel and `rearAxleForce` on
+   * each rear wheel, the handbrake applies `handbrakeForce` to each rear wheel. Until tyre grip
+   * runs out, the car decelerates by the sum of all wheels' forces divided by its mass, e.g. 1 g
+   * with a 60% front share for a car of mass `m`: `frontAxleForce = 0.6 * m * 9.82 / 2`,
+   * `rearAxleForce = 0.4 * m * 9.82 / 2`.
+   */
   brake: {
     frontAxleForce: number;
     rearAxleForce: number;
@@ -85,6 +93,9 @@ export interface GgCarInput {
   gear: number;
   handBrake: boolean;
 }
+
+/** How often (ms of world time) an automatic transmission reconsiders its gear. */
+const AUTO_SHIFT_INTERVAL = 50;
 
 export class GgCarEntity<
   TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo,
@@ -360,37 +371,46 @@ export class GgCarEntity<
       }
     });
     if (this.carProperties.transmission.isAuto) {
-      this.tick$
-        .pipe(
-          filter(() => this.autoShiftEnabled && !this._remoteInputActive),
-          throttleTime(50),
-          filter(() => this.raycastVehicle.isTouchingGround),
-        )
-        .subscribe(() => {
-          let gear = this.gear;
-          let upshifted = false;
-          if (gear > 0) {
-            let rpm = this.engineRpm;
-            while (rpm >= this.carProperties.transmission.upShifts[gear - 1]) {
-              rpm *=
-                this.carProperties.transmission.gearRatios[gear] / this.carProperties.transmission.gearRatios[gear - 1];
-              gear++;
-              upshifted = true;
-            }
-            if (!upshifted) {
-              while (gear > 1) {
-                rpm *=
-                  this.carProperties.transmission.gearRatios[gear - 2] /
-                  this.carProperties.transmission.gearRatios[gear - 1];
-                if (rpm > this.carProperties.transmission.upShifts[gear - 2]) {
-                  break;
-                }
-                gear--;
-              }
-            }
-            this.gear = gear;
+      // checked every AUTO_SHIFT_INTERVAL of world time (on average, at any frame rate above
+      // 1000 / AUTO_SHIFT_INTERVAL FPS), not every N ticks or wall-clock milliseconds: a paused,
+      // slowed-down or manually stepped world shifts exactly like one running in real time
+      let sinceShiftCheck = AUTO_SHIFT_INTERVAL;
+      this.tick$.pipe(takeUntil(this._onRemoved$)).subscribe(([_, delta]) => {
+        if (!this.autoShiftEnabled || this._remoteInputActive) {
+          return;
+        }
+        sinceShiftCheck += delta;
+        if (sinceShiftCheck < AUTO_SHIFT_INTERVAL) {
+          return;
+        }
+        sinceShiftCheck = Math.min(sinceShiftCheck - AUTO_SHIFT_INTERVAL, AUTO_SHIFT_INTERVAL);
+        if (!this.raycastVehicle.isTouchingGround) {
+          return;
+        }
+        let gear = this.gear;
+        let upshifted = false;
+        if (gear > 0) {
+          let rpm = this.engineRpm;
+          while (rpm >= this.carProperties.transmission.upShifts[gear - 1]) {
+            rpm *=
+              this.carProperties.transmission.gearRatios[gear] / this.carProperties.transmission.gearRatios[gear - 1];
+            gear++;
+            upshifted = true;
           }
-        });
+          if (!upshifted) {
+            while (gear > 1) {
+              rpm *=
+                this.carProperties.transmission.gearRatios[gear - 2] /
+                this.carProperties.transmission.gearRatios[gear - 1];
+              if (rpm > this.carProperties.transmission.upShifts[gear - 2]) {
+                break;
+              }
+              gear--;
+            }
+          }
+          this.gear = gear;
+        }
+      });
     }
   }
 

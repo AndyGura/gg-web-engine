@@ -21,7 +21,9 @@ the task before writing code:
 | [`gg-engine-app-development`](.claude/skills/gg-engine-app-development/SKILL.md) | Writing app/game code that *consumes* published `@gg-web-engine/*` packages. |
 | [`gg-engine-level-json`](.claude/skills/gg-engine-level-json/SKILL.md) | Authoring a level/scene JSON file, or registering an app-defined entity class the loader can dispatch to. |
 | [`gg-engine-core-development`](.claude/skills/gg-engine-core-development/SKILL.md) | Changing `packages/core` — the dimension-agnostic and 2D/3D interfaces every adapter implements. Also covers `packages/mobile-controls` (on-screen touch controls), which builds on core's input classes. |
-| [`gg-engine-visual-adapter`](.claude/skills/gg-engine-visual-adapter/SKILL.md) | Creating/modifying a rendering backend package (`packages/three`, `packages/pixi`, or a new one). |
+| [`gg-engine-visual-adapter`](.claude/skills/gg-engine-visual-adapter/SKILL.md) | Creating a **new** rendering backend package from scratch, or the general contract any visual adapter must satisfy. |
+| [`gg-engine-visual-adapter-three`](.claude/skills/gg-engine-visual-adapter-three/SKILL.md) | Fixing/extending the already-implemented `packages/three` adapter specifically — known three.js pitfalls (Z-up re-orientation, ESM-only jest setup, …). |
+| [`gg-engine-visual-adapter-pixi`](.claude/skills/gg-engine-visual-adapter-pixi/SKILL.md) | Fixing/extending `packages/pixi` specifically — known `pixi.js` v8 pitfalls (no `Container.clone()`, ticker-free animation, `earcut` under jest, …). |
 | [`gg-engine-audio-adapter`](.claude/skills/gg-engine-audio-adapter/SKILL.md) | Creating/modifying an audio backend package (`packages/audio`, or a new one), or the `audioScene` contract itself. |
 | [`gg-engine-physics-adapter`](.claude/skills/gg-engine-physics-adapter/SKILL.md) | Creating a **new** physics backend package from scratch, or the general contract any physics adapter must satisfy. |
 | [`gg-engine-physics-adapter-ammo`](.claude/skills/gg-engine-physics-adapter-ammo/SKILL.md) | Fixing/extending the already-implemented `packages/ammo` adapter specifically — known Bullet/embind pitfalls. |
@@ -33,10 +35,11 @@ the task before writing code:
 
 A task can span more than one skill (e.g. "add a Jolt physics backend and a demo" needs
 `gg-engine-physics-adapter` then `gg-engine-examples`) — load each in sequence as you reach that
-part of the work. The three `gg-engine-physics-adapter-*` skills hold implementation history for the
-four already-shipped physics adapters (already-solved native-engine quirks, build/typing gotchas) and
-are only relevant once you're touching one of those specific packages — building a brand-new adapter
-never needs them, only the general `gg-engine-physics-adapter` skill.
+part of the work. The three `gg-engine-physics-adapter-*` and two `gg-engine-visual-adapter-*`
+skills hold implementation history for the already-shipped adapters (already-solved native-library quirks,
+build/typing gotchas) and are only relevant once you're touching one of those specific packages —
+building a brand-new adapter never needs them, only the general `gg-engine-physics-adapter` /
+`gg-engine-visual-adapter` skill.
 
 ## Delegating this work to subagents
 
@@ -71,9 +74,10 @@ investigation this session already did. Concretely:
 
 ## Keep the repo-development skills current
 
-`gg-engine-core-development`, `gg-engine-visual-adapter`, `gg-engine-audio-adapter`,
-`gg-engine-physics-adapter`, `gg-engine-physics-adapter-ammo`, `gg-engine-physics-adapter-rapier`,
-`gg-engine-physics-adapter-matter`, `gg-engine-multiplayer`, `gg-engine-examples`, and
+`gg-engine-core-development`, `gg-engine-visual-adapter`, `gg-engine-visual-adapter-three`,
+`gg-engine-visual-adapter-pixi`, `gg-engine-audio-adapter`, `gg-engine-physics-adapter`, `gg-engine-physics-adapter-ammo`,
+`gg-engine-physics-adapter-rapier`, `gg-engine-physics-adapter-matter`, `gg-engine-multiplayer`,
+`gg-engine-examples`, and
 `gg-engine-release` document *how to work on this repo*. Whenever work under one of them hits a
 pitfall it doesn't mention, or something it says turns out to be wrong/incomplete and you had to
 find the real fix, update that skill's `SKILL.md` with the lesson before finishing the task — a
@@ -82,9 +86,10 @@ as an unstructured log. This applies whether you're doing the work directly or r
 subagent's — if a subagent you spawned hits and solves one of these, have it (or do it yourself)
 fold the lesson into the skill file as part of finishing, since the next agent to touch that package
 starts from the skill file alone and won't have this conversation's context. A lesson specific to
-one already-implemented physics adapter (`ammo`/`rapier2d`/`rapier3d`/`matter`) belongs in that
-library's own `gg-engine-physics-adapter-*` skill, not in the general `gg-engine-physics-adapter`
-file — see that file's own "Keep this skill current" section for the split.
+one already-implemented adapter (`ammo`/`rapier2d`/`rapier3d`/`matter`, `three`/`pixi`) belongs in that
+library's own `gg-engine-physics-adapter-*` / `gg-engine-visual-adapter-*` skill, not in the
+general `gg-engine-physics-adapter` / `gg-engine-visual-adapter` file — see each general file's own
+"Keep this skill current" section for the split.
 
 `CONTRIBUTING.md` at the repo root is the human-facing mirror of the process parts of
 `gg-engine-core-development` (build/test/format commands, the example-linking loop) and

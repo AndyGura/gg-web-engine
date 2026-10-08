@@ -52,4 +52,17 @@ describe(`Pnt2`, () => {
 
   });
 
+
+  describe('angle', () => {
+    it('returns 0 instead of NaN when either vector has zero length', () => {
+      expect(Pnt2.angle(Pnt2.O, { x: 1, y: 2 })).toBe(0);
+      expect(Pnt2.angle({ x: 1, y: 2 }, Pnt2.O)).toBe(0);
+    });
+
+    it('does not return NaN for almost identical vectors', () => {
+      const angle = Pnt2.angle({ x: 2.9611996755771295, y: 0.48093292813229027 }, { x: 0.9870665585257098, y: 0.16031097604409816 });
+      expect(angle).not.toBeNaN();
+      expect(angle).toBeCloseTo(0);
+    });
+  });
 });

@@ -131,6 +131,21 @@ describe(`GgCarEntity`, () => {
       expect(car.gear).toBeGreaterThan(1);
     });
 
+    it(`reconsiders the gear every 50 ms of world time, at any frame rate (regression: a wall-clock throttleTime)`, () => {
+      for (const fps of [30, 60, 144]) {
+        const car = spawnedCar();
+        car.gear = 1;
+        // the engine model reads engineRpm once a tick, a gear check once more
+        const rpmReads = jest.spyOn(car, 'engineRpm', 'get');
+        for (let i = 0; i < fps; i++) {
+          car.tick$.next([(i * 1000) / fps, 1000 / fps]);
+        }
+        const checks = rpmReads.mock.calls.length - fps;
+        expect(checks).toBeGreaterThanOrEqual(19);
+        expect(checks).toBeLessThanOrEqual(21);
+      }
+    });
+
     it(`skips auto-shifting while autoShiftEnabled is false`, () => {
       const car = spawnedCar();
       car.autoShiftEnabled = false;

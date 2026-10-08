@@ -5,10 +5,21 @@ import {
   IPhysicsWorld3dComponent,
   Pnt3,
   Point3,
+  Point4,
+  Qtrn,
   RaycastOptions,
   RaycastResult,
 } from '@gg-web-engine/core';
-import { Collider, EventQueue, init, QueryFilterFlags, Vector3, World } from '@dimforge/rapier3d-compat';
+import {
+  Collider,
+  EventQueue,
+  init,
+  QueryFilterFlags,
+  RigidBody,
+  RigidBodyType,
+  Vector3,
+  World,
+} from '@dimforge/rapier3d-compat';
 import { Rapier3dRigidBodyComponent } from './rapier-3d-rigid-body.component';
 import { Rapier3dTriggerComponent } from './rapier-3d-trigger.component';
 import { Rapier3dCharacterControllerComponent } from './rapier-3d-character-controller.component';
@@ -17,6 +28,24 @@ import { Rapier3dFactory } from '../rapier-3d-factory';
 import { Rapier3dLoader } from '../rapier-3d-loader';
 import { Rapier3dPhysicsTypeDocRepo } from '../types';
 import { Subject } from 'rxjs';
+
+/**
+ * Shortest-path rotation from `a` (t = 0) to `b` (t = 1): normalized lerp for nearly equal
+ * rotations (a kinematic body turns only slightly per step), slerp otherwise.
+ */
+function interpolateRotation(a: Point4, b: Point4, t: number): Point4 {
+  let dot = a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
+  if (dot < 0) {
+    b = { x: -b.x, y: -b.y, z: -b.z, w: -b.w };
+    dot = -dot;
+  }
+  if (dot > 0.9995) {
+    const q = Qtrn.lerp(a, b, t);
+    const len = Math.hypot(q.x, q.y, q.z, q.w);
+    return { x: q.x / len, y: q.y / len, z: q.z / len, w: q.w / len };
+  }
+  return Qtrn.slerp(a, b, t);
+}
 
 // bodies that get pushed into `children`/`added$`/`removed$` - see Rapier3dWorldComponent's ctor.
 type Rapier3dWorldChild = Rapier3dRigidBodyComponent | Rapier3dCharacterControllerComponent;
@@ -79,9 +108,9 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
    * `Rapier3dRigidBodyComponent`s (triggers included, since `Rapier3dTriggerComponent extends
    * Rapier3dRigidBodyComponent`) - a character controller's kinematic body still gets a real Rapier
    * rigid-body handle on `addToWorld` (see that class), so it registers here the same way, letting
-   * `dispatchCollisionEvents` resolve sensor-overlap pairs against it (so a `Trigger` fires for a
+   * `collectCollisionEvents` resolve sensor-overlap pairs against it (so a `Trigger` fires for a
    * player walking through it, not just for ordinary rigid bodies/vehicle chassis) and letting
-   * `raycast()` resolve a hit against it too. `dispatchCollisionEvents` still narrows to
+   * `raycast()` resolve a hit against it too. `collectCollisionEvents` still narrows to
    * `Rapier3dRigidBodyComponent` before treating a pair as a real (non-sensor) contact, since a
    * character controller has no `notifyCollisionStart`/`notifyCollisionEnd` to call - its physical
    * response comes from its own sweep-based `move()`, not Rapier's contact solver.
@@ -99,9 +128,57 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
    */
   public readonly raycastVehicles: Set<Rapier3dRaycastVehicleComponent> = new Set();
 
+  /**
+   * Every `kinematic_pos` body in this world, whose per-tick target `simulate()` spreads over its
+   * substeps - see `fixedTimeStep`'s doc. Maintained from `added$`/`removed$`.
+   */
+  private readonly kinematicPosBodies: Set<Rapier3dRigidBodyComponent> = new Set();
+
+  /**
+   * Hard ceiling on how many substeps `simulate()` runs for one call, however large `delta` is - a
+   * single huge catch-up call (a backgrounded tab) then runs longer substeps instead of grinding
+   * through an enormous number of them. `0`/`undefined` means no cap. Default `100`.
+   */
+  public maxSubSteps?: number = 100;
+
+  /**
+   * The longest a single native step may be, in seconds. Default `0.01` (10 ms).
+   *
+   * `simulate(delta)` splits every call into `n = ceil(delta / fixedTimeStep)` steps (clamped by
+   * `maxSubSteps`) of exactly `delta / n` each, so the simulated time always equals `delta` and
+   * nothing is carried over to the next call (see `AmmoWorldComponent.fixedTimeStep` in
+   * `@gg-web-engine/ammo` for why a carried-over accumulator jitters against the camera). A single
+   * step of the whole frame made the solver depend on the frame rate: a raycast vehicle cornering at
+   * 20 m/s for 3 s kept 16.2 m/s at 30 FPS but 19.0 m/s at 144 FPS (suspension and tyre friction are
+   * explicit per-step models, accurate only for short steps); with steps of at most 10 ms it keeps
+   * the same speed at any frame rate.
+   *
+   * Everything driven once per call is spread over the steps: each raycast vehicle's
+   * `updateVehicle` runs before every step (with its brake impulse for that step's length), and a
+   * `kinematic_pos` body's target (`setNextKinematicTranslation`/`Rotation`, set by its `position`/
+   * `rotation` setters during the tick) is reached in equal parts, one per step. Left to Rapier, a
+   * kinematic body would reach its whole target in the first step - moving `n` times too fast - and
+   * stand still for the rest, so whatever rides on it would get kicked forward and dragged back.
+   */
+  public fixedTimeStep?: number = 0.01;
+
   constructor() {
-    this.added$.subscribe(c => this.children.push(c));
-    this.removed$.subscribe(c => this.children.splice(this.children.indexOf(c), 1));
+    this.added$.subscribe(c => {
+      this.children.push(c);
+      // the native body exists by now (added$ fires from addToWorld)
+      if (
+        c instanceof Rapier3dRigidBodyComponent &&
+        c.nativeBody?.bodyType() === RigidBodyType.KinematicPositionBased
+      ) {
+        this.kinematicPosBodies.add(c);
+      }
+    });
+    this.removed$.subscribe(c => {
+      this.children.splice(this.children.indexOf(c), 1);
+      if (c instanceof Rapier3dRigidBodyComponent) {
+        this.kinematicPosBodies.delete(c);
+      }
+    });
   }
 
   async init(): Promise<void> {
@@ -113,23 +190,80 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
   }
 
   simulate(delta: number): void {
-    const dt = delta / 1000;
-    // must run *before* `World.step()` - `updateVehicle` directly writes each vehicle's chassis
-    // velocity from this tick's suspension/engine/brake forces, which `step()` then integrates like
-    // any other dynamic body's velocity (see `Rapier3dRaycastVehicleComponent`'s own doc).
-    for (const vehicle of this.raycastVehicles) {
-      vehicle.stepVehicleController(dt);
+    const world = this._nativeWorld;
+    if (!world) {
+      return;
     }
-    this._nativeWorld!.timestep = dt;
-    this._nativeWorld?.step(this.eventQueue);
-    this.dispatchCollisionEvents();
+    const dt = delta / 1000;
+    // see `fixedTimeStep`'s doc
+    const maxStep = this.fixedTimeStep && this.fixedTimeStep > 0 ? this.fixedTimeStep : 1 / 60;
+    let subSteps = Math.max(1, Math.ceil(dt / maxStep));
+    if (this.maxSubSteps) {
+      subSteps = Math.min(subSteps, this.maxSubSteps);
+    }
+    const subStep = dt / subSteps;
+    // this tick's kinematic moves, to split into one part per step
+    const kinematicMoves: { body: RigidBody; from: Point3; to: Point3; fromRot: Point4; toRot: Point4 }[] = [];
+    if (subSteps > 1) {
+      for (const component of this.kinematicPosBodies) {
+        const body = component.nativeBody;
+        if (!body) {
+          continue;
+        }
+        const from = Pnt3.clone(body.translation());
+        const to = Pnt3.clone(body.nextTranslation());
+        const fromRot = Qtrn.clone(body.rotation());
+        const toRot = Qtrn.clone(body.nextRotation());
+        if (
+          Pnt3.dist(from, to) > 0 ||
+          fromRot.x !== toRot.x ||
+          fromRot.y !== toRot.y ||
+          fromRot.z !== toRot.z ||
+          fromRot.w !== toRot.w
+        ) {
+          kinematicMoves.push({ body, from, to, fromRot, toRot });
+        }
+      }
+    }
+    // delivered only after the last step, so no subscriber runs (and changes the world) between steps
+    const pendingEvents: (() => void)[] = [];
+    world.timestep = subStep;
+    for (let i = 0; i < subSteps; i++) {
+      if (i < subSteps - 1) {
+        const t = (i + 1) / subSteps;
+        for (const move of kinematicMoves) {
+          move.body.setNextKinematicTranslation(Pnt3.lerp(move.from, move.to, t));
+          move.body.setNextKinematicRotation(interpolateRotation(move.fromRot, move.toRot, t));
+        }
+      } else {
+        for (const move of kinematicMoves) {
+          move.body.setNextKinematicTranslation(move.to);
+          move.body.setNextKinematicRotation(move.toRot);
+        }
+      }
+      // must run *before* `World.step()` - `updateVehicle` directly writes each vehicle's chassis
+      // velocity from this step's suspension/engine/brake forces, which `step()` then integrates
+      // like any other dynamic body's velocity (see `Rapier3dRaycastVehicleComponent`'s own doc).
+      for (const vehicle of this.raycastVehicles) {
+        vehicle.stepVehicleController(subStep);
+      }
+      world.step(this.eventQueue);
+      // the queue auto-drains before every step, so each step's events are read right after it
+      this.collectCollisionEvents(pendingEvents);
+    }
+    for (const notify of pendingEvents) {
+      notify();
+    }
   }
 
   /**
-   * Drains `eventQueue` exactly once per `simulate()` call and routes each entry to whichever
-   * component(s) care - this is the *only* place `drainCollisionEvents` is called for the whole
-   * world (see `Rapier3dTriggerComponent.notifyOverlap`'s doc for why a second/independent drain
-   * elsewhere would silently steal events from this one). A collider pair with sensor
+   * Drains `eventQueue` and routes each entry to whichever component(s) care, as a notification
+   * pushed to `out` - `simulate()` calls it after every step (the queue is created with
+   * `autoDrain`, so Rapier clears it before the next step) and runs the notifications once all
+   * steps are done. Contact geometry and velocities are read here, right after the step the contact
+   * started in. This is the *only* place `drainCollisionEvents` is called for the whole world (see
+   * `Rapier3dTriggerComponent.notifyOverlap`'s doc for why a second/independent drain elsewhere
+   * would silently steal events from this one). A collider pair with sensor
    * semantics (either side `isSensor()`) is routed as a trigger overlap; an ordinary pair is routed
    * as a real rigid-body collision.
    *
@@ -144,7 +278,7 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
    * branch narrows to `Rapier3dRigidBodyComponent` first, since a character controller has no
    * collision-event API to call into.
    */
-  protected dispatchCollisionEvents(): void {
+  protected collectCollisionEvents(out: (() => void)[]): void {
     const nativeWorld = this._nativeWorld;
     if (!nativeWorld) {
       return;
@@ -167,12 +301,14 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
       }
 
       if (collider1.isSensor() || collider2.isSensor()) {
-        if (comp1 instanceof Rapier3dTriggerComponent) {
-          comp1.notifyOverlap(comp2, started);
-        }
-        if (comp2 instanceof Rapier3dTriggerComponent) {
-          comp2.notifyOverlap(comp1, started);
-        }
+        out.push(() => {
+          if (comp1 instanceof Rapier3dTriggerComponent) {
+            comp1.notifyOverlap(comp2, started);
+          }
+          if (comp2 instanceof Rapier3dTriggerComponent) {
+            comp2.notifyOverlap(comp1, started);
+          }
+        });
         return;
       }
 
@@ -189,25 +325,29 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
         if (!geometry) {
           return;
         }
-        const v1 = body1.linvel();
-        const v2 = body2.linvel();
-        comp1.notifyCollisionStart({
-          otherBody: comp2,
-          position: geometry.position,
-          normal: geometry.normal,
-          relativeVelocity: Pnt3.sub(v2, v1),
-          impulse: geometry.impulse,
-        });
-        comp2.notifyCollisionStart({
-          otherBody: comp1,
-          position: geometry.position,
-          normal: Pnt3.scalarMult(geometry.normal, -1),
-          relativeVelocity: Pnt3.sub(v1, v2),
-          impulse: geometry.impulse,
+        const v1 = Pnt3.clone(body1.linvel());
+        const v2 = Pnt3.clone(body2.linvel());
+        out.push(() => {
+          comp1.notifyCollisionStart({
+            otherBody: comp2,
+            position: geometry.position,
+            normal: geometry.normal,
+            relativeVelocity: Pnt3.sub(v2, v1),
+            impulse: geometry.impulse,
+          });
+          comp2.notifyCollisionStart({
+            otherBody: comp1,
+            position: geometry.position,
+            normal: Pnt3.scalarMult(geometry.normal, -1),
+            relativeVelocity: Pnt3.sub(v1, v2),
+            impulse: geometry.impulse,
+          });
         });
       } else {
-        comp1.notifyCollisionEnd(comp2);
-        comp2.notifyCollisionEnd(comp1);
+        out.push(() => {
+          comp1.notifyCollisionEnd(comp2);
+          comp2.notifyCollisionEnd(comp1);
+        });
       }
     });
   }

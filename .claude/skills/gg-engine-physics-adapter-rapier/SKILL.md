@@ -560,7 +560,7 @@ had this bug; use it as the reference when checking a similar loop in a new adap
 handles in a pair to components and skips the pair if resolution failed - but originally didn't also
 skip a pair that resolved to the *same* component on both sides (a compound body's own sub-colliders
 touching each other). Fixed by adding a `c1 === c2` check alongside the existing `!c1 || !c2` one,
-mirroring `Rapier3dWorldComponent.dispatchCollisionEvents`'s pre-existing `comp1 === comp2` guard
+mirroring `Rapier3dWorldComponent.collectCollisionEvents`'s pre-existing `comp1 === comp2` guard
 (rapier3d had this from the start; rapier2d didn't).
 
 **Complete the RxJS Subjects on dispose**: `Rapier2dRigidBodyComponent.dispose()`/
@@ -584,7 +584,9 @@ after subscribing.
 ## `IRigidBodyComponent.onCollisionStart`/`onCollisionEnd` (3D, implemented in `packages/rapier3d`): same design as the 2D note above, three differences worth knowing
 
 `Rapier3dWorldComponent` follows the identical centralization strategy the 2D note above describes in
-full (one `simulate()`-owned drain of the world's single `EventQueue`, routed to a trigger's own
+full (`simulate()` owns every drain of the world's single `EventQueue` - one after each of its
+substeps, delivered together after the last, see the substep notes under `IRaycastVehicleComponent` -
+routed to a trigger's own
 overlap handling or to both sides' collision handling depending on whether either collider is a
 sensor) - read that note first, everything in it applies here too (the collider-handle-vs-rigid-body-
 handle distinction, `ActiveEvents.COLLISION_EVENTS` needing to be set on plain rigid-body colliders
@@ -620,7 +622,7 @@ too via `Rapier3dFactory.createRigidBody` and not just `createTrigger`, the `con
   case) - without it, the partner body would simply never hear that the contact ended at all.
 - **`relativeVelocity` reads each body's `linvel()` *after* the step that produced the `started` event
   has already fully resolved the contact** (both `drainCollisionEvents` and `contactPair` are read
-  post-`world.step()`, there is no earlier point to read from without re-deriving the pre-solve state
+  right after the `world.step()` the contact started in, there is no earlier point to read from without re-deriving the pre-solve state
   by hand) - don't assume its sign matches the bodies' pre-collision approach direction. Confirmed
   empirically: a ball dropped onto a static floor with `restitution: 0` still read a small *positive*
   (separating) z-velocity on the ball immediately after its `onCollisionStart` fired, not the negative
@@ -637,14 +639,14 @@ Two independent bugs, both required to genuinely fix "a player walking into a `T
 different symptom:
 
 1. **`Rapier3dWorldComponent.handleIdEntityMap` never registered a character controller's native
-   body handle.** `dispatchCollisionEvents` resolves both sides of every collider pair purely through
+   body handle.** `collectCollisionEvents` resolves both sides of every collider pair purely through
    this map (`this.handleIdEntityMap.get(bodyN.handle)`); a `Rapier3dCharacterControllerComponent`'s
    `kinematicPositionBased` body has a real Rapier rigid-body handle just like any other body once
    `addToWorld()` runs, but that handle was deliberately left out of the map (an earlier version of
    this class's own doc called this "a documented limitation rather than done speculatively" - it
    isn't a limitation any more, see below). Fix: register it in `addToWorld()`/deregister it in
    `removeFromWorld()`, same as `Rapier3dRigidBodyComponent`/`Rapier3dTriggerComponent` already do.
-   `dispatchCollisionEvents`'s real-contact branch (as opposed to its sensor-overlap branch) then
+   `collectCollisionEvents`'s real-contact branch (as opposed to its sensor-overlap branch) then
    needs an explicit `instanceof Rapier3dRigidBodyComponent` narrowing on both sides before calling
    `notifyCollisionStart`/`notifyCollisionEnd` - a character controller has no such API (its physical
    response comes from its own sweep-based `move()`, not Rapier's contact solver), so without the
@@ -714,6 +716,49 @@ It extends `Rapier3dRigidBodyComponent` and builds its own chassis body from `ch
 rather than reusing the passed-in `chassisBody` instance directly. The passed-in `chassisBody` component
 itself is never added to the world; only the vehicle component's own body is.
 
+**Rapier's wheel brake is an impulse per `updateVehicle` call, the engine force a force.** The
+controller is a port of Bullet's raycast vehicle: `setWheelBrake` is documented as "the maximum amount
+of braking impulse", applied once per `updateVehicle(dt)` - i.e. once per native step here - while
+`setWheelEngineForce` is multiplied by `dt` inside. Passing `IRaycastVehicleComponent.applyBrake`'s
+Newtons straight through braked in proportion to the frame rate (0.16 / 0.32 / 0.76 g at 30 / 60 /
+144 FPS for one value, measured on a 1549 kg car). `applyBrake()` stores the force on the wheel's
+entry, and `stepVehicleController(stepLength)` sets `setWheelBrake(i, force * stepLength)` for every
+wheel right before `updateVehicle`. `addWheel` also sets `setWheelMaxSuspensionForce` from
+`WheelOptions.maxSuspensionForce`, defaulting to `defaultMaxSuspensionForce(bodyOptions.mass)` -
+`bodyOptions.mass`, not `nativeBody.mass()`, since the native mass properties aren't guaranteed to be
+up to date right after the collider is attached. Regression: `rapier-3d-raycast-vehicle-frame-rate.spec.ts`.
+
+**`Rapier3dWorldComponent.simulate()` runs substeps** - `n = ceil(dt / fixedTimeStep)` native steps
+(default max 10 ms, clamped by `maxSubSteps`) of exactly `dt / n`, the same split as
+`AmmoWorldComponent` (nothing carried over between calls, so no render jitter). One step per frame
+made the solver depend on the frame rate: a vehicle cornering at 20 m/s for 3 s kept 16.2 m/s at 30
+FPS and 19.0 m/s at 144 FPS (suspension and tyre friction are explicit per-step models); with
+substeps it keeps 18.85 / 18.85 / 19.03 m/s at 30 / 60 / 144 FPS. Two things have to be spread over
+the substeps, and both broke tests until they were:
+
+- **Collision events.** The `EventQueue` is created with `autoDrain: true`, so Rapier clears it
+  before every `step()`: draining once after the loop kept only the last substep's events (a ball
+  landing on the floor in substep 1 of 2 never reported `onCollisionStart`, a trigger never saw a
+  body spawned inside it). `collectCollisionEvents(out)` runs after every step - reading contact
+  geometry and velocities right after the step the contact started in - and pushes notifications
+  that `simulate()` delivers after the last step, so no subscriber runs (and changes the world)
+  between steps.
+- **`kinematic_pos` targets.** A `kinematic_pos` body's `position`/`rotation` setters call
+  `setNextKinematicTranslation`/`Rotation` once per tick; Rapier reaches that target in the next
+  step and keeps it afterwards, so with `n` steps the body moved `n` times too fast in the first one
+  and stood still for the rest - a box on a platform moving at 3 m/s rode 0.07 m in a second at 30
+  FPS instead of 2.6 m (friction only saw the platform's velocity for one step in four). `simulate()`
+  reads each such body's `translation()`/`nextTranslation()` (and rotations) before the loop and
+  sets the next target to `1/n`, `2/n`, ... of the way before each step. The bodies come from a
+  `kinematicPosBodies` set maintained from `added$`/`removed$` by checking
+  `nativeBody.bodyType()` - not `bodyOptions`, which throws for a `Rapier3dTriggerComponent` (its
+  collider options are `null`). The character controller is unaffected: it teleports
+  (`setTranslation` and `setNextKinematicTranslation` to the same point), so a step never moves it.
+
+Every raycast vehicle's `stepVehicleController(stepLength)` runs before every substep.
+Regression: `rapier-3d-raycast-vehicle-frame-rate.spec.ts` (cornering, substep lengths, the moving
+platform at 30/60/144 FPS), plus the existing collision-event and trigger specs at 16 ms frames.
+
 **Rapier's vehicle controller has no equivalent of stepping automatically as part of the world -
 the world component must drive `updateVehicle()` itself, every tick, before stepping.**
 `DynamicRayCastVehicleController.updateVehicle(dt, filterFlags?, filterGroups?)`
@@ -722,8 +767,8 @@ model - nothing steps it automatically as part of `World.step()`.
 `Rapier3dWorldComponent` tracks every added vehicle in its own
 `raycastVehicles: Set<Rapier3dRaycastVehicleComponent>` (added/removed by the vehicle's own
 `addToWorld`/`removeFromWorld`, mirroring `handleIdEntityMap`'s pattern) and `simulate()` calls each one's
-`stepVehicleController(dt)` immediately *before* `nativeWorld.step()`, so the velocity `updateVehicle` just
-wrote gets integrated by that same step. `stepVehicleController` also threads this vehicle's own
+`stepVehicleController(stepLength)` immediately *before* every native `step()`, so the velocity
+`updateVehicle` just wrote gets integrated by that same step. `stepVehicleController` also threads this vehicle's own
 `collisionGroups` (inherited from `Rapier3dRigidBodyComponent`, already packed in the `InteractionGroups`
 layout Rapier expects) into `updateVehicle`'s `filterGroups` argument, plus `QueryFilterFlags.EXCLUDE_SENSORS`
 - without the former, the wheels' own suspension ray-casts would ignore collision groups entirely (only the

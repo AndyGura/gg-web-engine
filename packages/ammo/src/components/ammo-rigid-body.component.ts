@@ -11,9 +11,8 @@ import {
   Point3,
   Point4,
   Shape3DDescriptor,
-  warnOnce,
 } from '@gg-web-engine/core';
-import { first, Observable, Subject } from 'rxjs';
+import { Observable, Subject } from 'rxjs';
 import { AmmoGgWorld, AmmoPhysicsTypeDocRepo } from '../types';
 
 export class AmmoRigidBodyComponent
@@ -28,62 +27,41 @@ export class AmmoRigidBodyComponent
   }
 
   set linearVelocity(value: Point3) {
-    this.nativeBody.setLinearVelocity(new Ammo.btVector3(value.x, value.y, value.z));
+    this.nativeBody.setLinearVelocity(AmmoBodyComponent.scratchVector(value.x, value.y, value.z));
     this.nativeBody.activate(true);
   }
 
-  get position(): Point3 {
-    return super.position;
-  }
-
   /**
-   * Overridden (not inherited as-is from `AmmoBodyComponent`) for `kinematic_pos`/`kinematic_vel`
-   * bodies specifically - writing only `nativeBody.setWorldTransform(...)` (what the base setter
-   * does, still correct for `dynamic`/`static` bodies) is silently undone the moment
-   * `stepSimulation` next runs. Bullet's own kinematic bookkeeping
-   * (`btRigidBody::saveKinematicState`, run once per internal substep for every
-   * `CF_KINEMATIC_OBJECT`-flagged body - see `AmmoFactory.createRigidBodyFromShape`) derives that
-   * step's kinematic velocity (the value that lets this body correctly push/wake dynamic bodies it
-   * sweeps into, not just teleport through them) by *pulling* the transform from this body's own
-   * motion state (`getMotionState().getWorldTransform()`), not from whatever
-   * `btRigidBody::setWorldTransform` was last called with directly - those are two independent
-   * pieces of Bullet state, and only the motion state one ever feeds `saveKinematicState`. Real,
-   * reproduced regression: a moving kinematic floor's position writes looked fought/ignored (worse
-   * in one direction than the other, since the stale-vs-real delta interacts with gravity settling
-   * dynamic bodies resting on it) the instant `bodyType` switched from `static` (never touched by
-   * `saveKinematicState` at all, so the direct-only write "just worked" as a teleport) to
-   * `kinematic_pos`. Fixed by writing the same transform to both the body and its motion state -
-   * keeps the synchronous getter above consistent immediately (no need to wait for the next
-   * `stepSimulation` to read back what was just set), while still giving Bullet a real, non-stale
-   * delta to compute kinematic velocity from.
+   * Bullet keeps a rigid body's pose in three places, and a teleport (the `position`/`rotation`
+   * setters, `resetMotion()`) has to write every one this body type reads, or a later step reads a
+   * stale one:
+   * - `kinematic_pos`/`kinematic_vel`: Bullet's own kinematic bookkeeping
+   *   (`btRigidBody::saveKinematicState`, run every `stepSimulation` for every
+   *   `CF_KINEMATIC_OBJECT` body) *pulls* the body's transform from its motion state, overwriting
+   *   `m_worldTransform`, and derives the body's velocity for that step from the move (the velocity
+   *   that lets it push/wake the dynamic bodies it sweeps into). Writing only `setWorldTransform`
+   *   gets reverted by the next step - a real, reproduced regression: a moving kinematic floor's
+   *   position writes looked fought/ignored. So the motion state is written too.
+   * - `dynamic`: `setCenterOfMassTransform`, which besides `m_worldTransform` sets the
+   *   interpolation transform and velocities and the world-space inertia tensor (a rotation
+   *   teleport with `setWorldTransform` alone leaves the inertia tensor oriented for the old
+   *   rotation until the next step). The motion state is written too:
+   *   `btRaycastVehicle.updateWheelTransform(i, true)` (`AmmoRaycastVehicleComponent
+   *   .resetSuspension()`) places the wheels from the chassis's motion state.
+   * - `static`: the plain `setWorldTransform` of `AmmoBodyComponent` - Bullet never reads anything
+   *   else of a static body.
    */
-  set position(value: Point3) {
+  protected applyWorldTransform(transform: Ammo.btTransform): void {
     if (this.bodyType === 'kinematic_pos' || this.bodyType === 'kinematic_vel') {
-      const transform = this.nativeBody.getWorldTransform();
-      transform.setOrigin(new Ammo.btVector3(value.x, value.y, value.z));
       this.nativeBody.getMotionState().setWorldTransform(transform);
       this.nativeBody.setWorldTransform(transform);
       this.nativeBody.activate(true);
-    } else {
-      super.position = value;
-    }
-  }
-
-  get rotation(): Point4 {
-    return super.rotation;
-  }
-
-  /** See `position`'s own setter doc - same fix, same reason, for `btRigidBody::setRotation`'s
-   * rotational counterpart. */
-  set rotation(value: Point4) {
-    if (this.bodyType === 'kinematic_pos' || this.bodyType === 'kinematic_vel') {
-      const transform = this.nativeBody.getWorldTransform();
-      transform.setRotation(new Ammo.btQuaternion(value.x, value.y, value.z, value.w));
+    } else if (this.bodyType === 'dynamic') {
+      this.nativeBody.setCenterOfMassTransform(transform);
       this.nativeBody.getMotionState().setWorldTransform(transform);
-      this.nativeBody.setWorldTransform(transform);
       this.nativeBody.activate(true);
     } else {
-      super.rotation = value;
+      super.applyWorldTransform(transform);
     }
   }
 
@@ -93,7 +71,7 @@ export class AmmoRigidBodyComponent
   }
 
   set angularVelocity(value: Point3) {
-    this.nativeBody.setAngularVelocity(new Ammo.btVector3(value.x, value.y, value.z));
+    this.nativeBody.setAngularVelocity(AmmoBodyComponent.scratchVector(value.x, value.y, value.z));
     this.nativeBody.activate(true);
   }
 
@@ -262,35 +240,20 @@ export class AmmoRigidBodyComponent
     this.nativeBody.forceActivationState(AmmoRigidBodyComponent.ISLAND_SLEEPING);
   }
 
+  /**
+   * Stops the body where it is: clears its forces and velocities in place, without taking it out
+   * of the world (no `world.removed$`/`added$`, which would make e.g. `SurfaceFollowingEntity`
+   * drop the body's road plane). A dynamic body's interpolation velocities are cleared as well
+   * (`setCenterOfMassTransform` copies the now-zero velocities into them).
+   */
   resetMotion(): void {
-    const emptyVector = new Ammo.btVector3();
-    if (!this.addedToWorld) {
-      this.nativeBody.clearForces();
-      this.nativeBody.setLinearVelocity(emptyVector);
-      this.nativeBody.setAngularVelocity(emptyVector);
-    } else {
-      // when resetting object motion state in ammo.js while it's added to the simulation,
-      // on the next tick it randomly gets broken (linear velocity vector has NaN components and then position too)
-      // By removing and adding the object to the world it happens less often
-      const ammoWorld = this.world;
-      this.removeFromWorld({ physicsWorld: ammoWorld } as any);
-      const position = this.position;
-      const rotation = this.rotation;
-      this.nativeBody.clearForces();
-      this.nativeBody.setLinearVelocity(emptyVector);
-      this.nativeBody.setAngularVelocity(emptyVector);
-      this.world.afterTick$.pipe(first()).subscribe(() => {
-        this.addToWorld({ physicsWorld: ammoWorld } as any);
-        const newLinVel = this.linearVelocity;
-        if (isNaN(newLinVel.x) || isNaN(newLinVel.y) || isNaN(newLinVel.z)) {
-          warnOnce('resetMotion caused ammo body to have broken velocity. Fixing');
-          this.position = position;
-          this.rotation = rotation;
-          this.resetMotion();
-        }
-      });
+    const zero = AmmoBodyComponent.scratchVector(0, 0, 0);
+    this.nativeBody.clearForces();
+    this.nativeBody.setLinearVelocity(zero);
+    this.nativeBody.setAngularVelocity(zero);
+    if (this.bodyType === 'dynamic') {
+      this.applyWorldTransform(this.nativeBody.getWorldTransform());
     }
-    Ammo.destroy(emptyVector);
   }
 
   dispose(): void {
