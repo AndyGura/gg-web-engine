@@ -6,6 +6,8 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
+        <meta name="description" content="Open-source TypeScript game engine for the browser: peer-to-peer multiplayer physics with no game server, cars and character controllers built in, on Three.js or Pixi.js with Rapier, Ammo.js or Matter.js.">
+      
       
       
         <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/base/assets/asset-cache.ts/">
@@ -18,7 +20,7 @@
     
     
       
-        <title>core/base/assets/asset-cache.ts - GG-web-engine</title>
+        <title>core/base/assets/asset-cache.ts - GG Web Engine</title>
       
     
     
@@ -89,7 +91,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../../../.." title="GG-web-engine" class="md-header__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+    <a href="../../../../.." title="GG Web Engine" class="md-header__button md-logo" aria-label="GG Web Engine" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
@@ -103,7 +105,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            GG-web-engine
+            GG Web Engine
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -219,13 +221,13 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../../../.." title="GG-web-engine" class="md-nav__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+    <a href="../../../../.." title="GG Web Engine" class="md-nav__button md-logo" aria-label="GG Web Engine" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
 
     </a>
-    GG-web-engine
+    GG Web Engine
   </label>
   
     <div class="md-nav__source">
@@ -543,6 +545,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#abandon-method" class="md-nav__link">
+    abandon (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#remove-method" class="md-nav__link">
     remove (method)
   </a>
@@ -575,6 +584,13 @@
   
     <nav class="md-nav" aria-label="AssetScope (class)">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#adopt-method" class="md-nav__link">
+    adopt (method)
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#release-method" class="md-nav__link">
@@ -621,12 +637,14 @@
 <li><a href="#has-method">has (method)</a></li>
 <li><a href="#createscope-method">createScope (method)</a></li>
 <li><a href="#acquire-method">acquire (method)</a></li>
+<li><a href="#abandon-method">abandon (method)</a></li>
 <li><a href="#remove-method">remove (method)</a></li>
 <li><a href="#dispose-method">dispose (method)</a></li>
 <li><a href="#root-property">root (property)</a></li>
 </ul>
 </li>
 <li><a href="#assetscope-class">AssetScope (class)</a><ul>
+<li><a href="#adopt-method">adopt (method)</a></li>
 <li><a href="#release-method">release (method)</a></li>
 </ul>
 </li>
@@ -650,22 +668,28 @@ repeated loads, held by scopes and freed when the last scope holding it is relea
 <h3 id="acquire-method">acquire (method)</h3>
 <p>Returns the asset cached under <code>key</code> for <code>scope</code> to hold, loading it with <code>load</code> when it is not
 there. A load that is aborted by the caller that started it is started again for the others
-still waiting for it.</p>
+still waiting for it. A caller rejects as soon as its own <code>signal</code> aborts, without waiting for
+the load to stop. Rejects with an <code>AbortError</code> once the cache is disposed.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public async acquire&lt;T&gt;(
     key: string,
     scope: AssetScope | undefined,
-    load: () =&gt; Promise&lt;{ value: T; dispose?: () =&gt; void }&gt;,
+    load: (signal: AbortSignal) =&gt; Promise&lt;{ value: T; dispose?: () =&gt; void }&gt;,
     signal?: AbortSignal,
     onShared?: () =&gt; void,
   ): Promise&lt;T&gt;
+</code></pre>
+<h3 id="abandon-method">abandon (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private abandon(key: string, entry: Entry): void
 </code></pre>
 <h3 id="remove-method">remove (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">private remove(key: string, entry: Entry): void
 </code></pre>
 <h3 id="dispose-method">dispose (method)</h3>
-<p>Frees every entry. Loads still running free their result as they finish.</p>
+<p>Frees every entry and cancels the loads still running (a load that can't be cancelled frees
+its result when it finishes). The cache takes no new loads afterwards.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public dispose(): void
 </code></pre>
@@ -682,6 +706,12 @@ Created with <code>world.loader.createAssetScope()</code>.</p>
 <pre><code class="language-ts">export declare class AssetScope {
   constructor(private readonly cache: AssetCache)
 }
+</code></pre>
+<h3 id="adopt-method">adopt (method)</h3>
+<p>Holds everything <code>other</code> holds, independently of it: what <code>other</code> loaded stays cached until
+both have let go. For something made from another scope's assets that outlives it.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public adopt(other: AssetScope): void
 </code></pre>
 <h3 id="release-method">release (method)</h3>
 <p>Lets go of everything loaded with this scope. The scope can't be used afterwards.</p>

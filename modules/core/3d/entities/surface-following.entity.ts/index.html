@@ -6,6 +6,8 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
+        <meta name="description" content="Open-source TypeScript game engine for the browser: peer-to-peer multiplayer physics with no game server, cars and character controllers built in, on Three.js or Pixi.js with Rapier, Ammo.js or Matter.js.">
+      
       
       
         <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/3d/entities/surface-following.entity.ts/">
@@ -18,7 +20,7 @@
     
     
       
-        <title>core/3d/entities/surface-following.entity.ts - GG-web-engine</title>
+        <title>core/3d/entities/surface-following.entity.ts - GG Web Engine</title>
       
     
     
@@ -89,7 +91,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../../../.." title="GG-web-engine" class="md-header__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+    <a href="../../../../.." title="GG Web Engine" class="md-header__button md-logo" aria-label="GG Web Engine" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
@@ -103,7 +105,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            GG-web-engine
+            GG Web Engine
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -219,13 +221,13 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../../../.." title="GG-web-engine" class="md-nav__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+    <a href="../../../../.." title="GG Web Engine" class="md-nav__button md-logo" aria-label="GG Web Engine" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
 
     </a>
-    GG-web-engine
+    GG Web Engine
   </label>
   
     <div class="md-nav__source">
@@ -658,6 +660,14 @@ for a given point in 3D space.</p>
 <h2 id="surfacefollowingentity-class">SurfaceFollowingEntity (class)</h2>
 <p>Represents an entity that follows a surface dynamically by adjusting
 its position and orientation based on a given surface function.</p>
+<p>Every collider added gets its own infinite plane, in a collision group only that collider and
+the plane share, moved under the collider every tick to <code>followFunc</code>'s position and normal. The
+planes are <code>static</code> bodies: a road surface doesn't move, so a plane must have zero velocity even
+though it is teleported every tick. A kinematic plane would get a velocity derived from each
+teleport (the collider's own speed, plus a spin whenever the orientation changes), and the solver
+would push that velocity into the collider's chassis on every contact. A plane's orientation is
+the shortest-arc rotation from <code>+Z</code> to the surface normal (<code>Qtrn.fromTo</code>), so it has no twist
+around the normal that could change from tick to tick.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export declare class SurfaceFollowingEntity&lt;PTypeDoc&gt; {
   constructor(

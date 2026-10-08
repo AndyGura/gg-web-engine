@@ -6,6 +6,8 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
+        <meta name="description" content="Open-source TypeScript game engine for the browser: peer-to-peer multiplayer physics with no game server, cars and character controllers built in, on Three.js or Pixi.js with Rapier, Ammo.js or Matter.js.">
+      
       
       
         <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/base/gg-world.ts/">
@@ -18,7 +20,7 @@
     
     
       
-        <title>core/base/gg-world.ts - GG-web-engine</title>
+        <title>core/base/gg-world.ts - GG Web Engine</title>
       
     
     
@@ -89,7 +91,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../../.." title="GG-web-engine" class="md-header__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+    <a href="../../../.." title="GG Web Engine" class="md-header__button md-logo" aria-label="GG Web Engine" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
@@ -103,7 +105,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            GG-web-engine
+            GG Web Engine
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -219,13 +221,13 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../../.." title="GG-web-engine" class="md-nav__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+    <a href="../../../.." title="GG Web Engine" class="md-nav__button md-logo" aria-label="GG Web Engine" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
 
     </a>
-    GG-web-engine
+    GG Web Engine
   </label>
   
     <div class="md-nav__source">
@@ -697,13 +699,6 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#localpauseallowed-property" class="md-nav__link">
-    localPauseAllowed (property)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#pausewhenhidden-property" class="md-nav__link">
     pauseWhenHidden (property)
   </a>
@@ -945,7 +940,6 @@
 <li><a href="#loader-property">loader (property)</a></li>
 <li><a href="#worldclock-property">worldClock (property)</a></li>
 <li><a href="#keyboardinput-property">keyboardInput (property)</a></li>
-<li><a href="#localpauseallowed-property">localPauseAllowed (property)</a></li>
 <li><a href="#pausewhenhidden-property">pauseWhenHidden (property)</a></li>
 <li><a href="#visibility-property">visibility$ (property)</a></li>
 <li><a href="#fixedphysicsstep-property">fixedPhysicsStep (property)</a></li>
@@ -1074,6 +1068,9 @@ World classes are handed it through <code>window.ggstatic</code> and never impor
 <pre><code class="language-ts">public createClock(autoStart: boolean): PausableClock
 </code></pre>
 <h3 id="dispose-method">dispose (method)</h3>
+<p>Releases everything the world holds: its entities, the loader's cached assets, then the
+physics, visual and audio scenes. A step that throws doesn't stop the ones after it; the first
+error is rethrown once every step has run.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public dispose(): void
 </code></pre>
@@ -1173,15 +1170,6 @@ invariant in <code>TypeDoc</code> and breaks every <code>IEntity&lt;any, any&gt;
 <h3 id="keyboardinput-property">keyboardInput (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly keyboardInput: KeyboardInput
-</code></pre>
-<h3 id="localpauseallowed-property">localPauseAllowed (property)</h3>
-<p>Whether pausing this world is a local matter. <code>false</code> means its simulation is shared with
-someone else (a network layer sets it while a session is joined), so freezing it here would
-freeze or desync it for them: UI that pauses the game on the player's behalf must leave it
-running. <code>ScreenManager</code> consults it before pausing the world of a covered screen.
-<code>pauseWorld()</code> itself does not - it stays the explicit, unconditional call.</p>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">localPauseAllowed: boolean
 </code></pre>
 <h3 id="pausewhenhidden-property">pauseWhenHidden (property)</h3>
 <p>When <code>true</code>, this world pauses itself automatically while the document/tab is hidden

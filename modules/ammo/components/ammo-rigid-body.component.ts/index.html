@@ -6,6 +6,8 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
+        <meta name="description" content="Open-source TypeScript game engine for the browser: peer-to-peer multiplayer physics with no game server, cars and character controllers built in, on Three.js or Pixi.js with Rapier, Ammo.js or Matter.js.">
+      
       
       
         <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/ammo/components/ammo-rigid-body.component.ts/">
@@ -18,7 +20,7 @@
     
     
       
-        <title>ammo/components/ammo-rigid-body.component.ts - GG-web-engine</title>
+        <title>ammo/components/ammo-rigid-body.component.ts - GG Web Engine</title>
       
     
     
@@ -89,7 +91,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../../.." title="GG-web-engine" class="md-header__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+    <a href="../../../.." title="GG Web Engine" class="md-header__button md-logo" aria-label="GG Web Engine" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
@@ -103,7 +105,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            GG-web-engine
+            GG Web Engine
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -219,13 +221,13 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../../.." title="GG-web-engine" class="md-nav__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+    <a href="../../../.." title="GG Web Engine" class="md-nav__button md-logo" aria-label="GG Web Engine" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
 
     </a>
-    GG-web-engine
+    GG Web Engine
   </label>
   
     <div class="md-nav__source">
@@ -522,6 +524,13 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#applyworldtransform-method" class="md-nav__link">
+    applyWorldTransform (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#emitcollisionstart-method" class="md-nav__link">
     emitCollisionStart (method)
   </a>
@@ -668,6 +677,7 @@
 <ul>
 <li><a href="#utils">utils</a></li>
 <li><a href="#ammorigidbodycomponent-class">AmmoRigidBodyComponent (class)</a><ul>
+<li><a href="#applyworldtransform-method">applyWorldTransform (method)</a></li>
 <li><a href="#emitcollisionstart-method">emitCollisionStart (method)</a></li>
 <li><a href="#emitcollisionend-method">emitCollisionEnd (method)</a></li>
 <li><a href="#clone-method">clone (method)</a></li>
@@ -701,6 +711,30 @@
     public readonly canSleep: boolean = true
   )
 }
+</code></pre>
+<h3 id="applyworldtransform-method">applyWorldTransform (method)</h3>
+<p>Bullet keeps a rigid body's pose in three places, and a teleport (the <code>position</code>/<code>rotation</code>
+setters, <code>resetMotion()</code>) has to write every one this body type reads, or a later step reads a
+stale one:</p>
+<ul>
+<li><code>kinematic_pos</code>/<code>kinematic_vel</code>: Bullet's own kinematic bookkeeping
+  (<code>btRigidBody::saveKinematicState</code>, run every <code>stepSimulation</code> for every
+  <code>CF_KINEMATIC_OBJECT</code> body) <em>pulls</em> the body's transform from its motion state, overwriting
+  <code>m_worldTransform</code>, and derives the body's velocity for that step from the move (the velocity
+  that lets it push/wake the dynamic bodies it sweeps into). Writing only <code>setWorldTransform</code>
+  gets reverted by the next step - a real, reproduced regression: a moving kinematic floor's
+  position writes looked fought/ignored. So the motion state is written too.</li>
+<li><code>dynamic</code>: <code>setCenterOfMassTransform</code>, which besides <code>m_worldTransform</code> sets the
+  interpolation transform and velocities and the world-space inertia tensor (a rotation
+  teleport with <code>setWorldTransform</code> alone leaves the inertia tensor oriented for the old
+  rotation until the next step). The motion state is written too:
+  <code>btRaycastVehicle.updateWheelTransform(i, true)</code> (<code>AmmoRaycastVehicleComponent
+.resetSuspension()</code>) places the wheels from the chassis's motion state.</li>
+<li><code>static</code>: the plain <code>setWorldTransform</code> of <code>AmmoBodyComponent</code> - Bullet never reads anything
+  else of a static body.</li>
+</ul>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">protected applyWorldTransform(transform: Ammo.btTransform): void
 </code></pre>
 <h3 id="emitcollisionstart-method">emitCollisionStart (method)</h3>
 <p>Called by <code>AmmoWorldComponent.simulate()</code> only - see <code>onCollisionStart$</code>'s own doc.</p>
@@ -758,6 +792,10 @@ returned <code>true</code> for, mirroring <code>removeCollisionObject</code>/<co
 <pre><code class="language-ts">sleep(): void
 </code></pre>
 <h3 id="resetmotion-method">resetMotion (method)</h3>
+<p>Stops the body where it is: clears its forces and velocities in place, without taking it out
+of the world (no <code>world.removed$</code>/<code>added$</code>, which would make e.g. <code>SurfaceFollowingEntity</code>
+drop the body's road plane). A dynamic body's interpolation velocities are cleared as well
+(<code>setCenterOfMassTransform</code> copies the now-zero velocities into them).</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">resetMotion(): void
 </code></pre>

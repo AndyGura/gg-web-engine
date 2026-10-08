@@ -6,6 +6,8 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
+        <meta name="description" content="Open-source TypeScript game engine for the browser: peer-to-peer multiplayer physics with no game server, cars and character controllers built in, on Three.js or Pixi.js with Rapier, Ammo.js or Matter.js.">
+      
       
       
         <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/base/components/physics/i-physics-world.component.ts/">
@@ -18,7 +20,7 @@
     
     
       
-        <title>core/base/components/physics/i-physics-world.component.ts - GG-web-engine</title>
+        <title>core/base/components/physics/i-physics-world.component.ts - GG Web Engine</title>
       
     
     
@@ -89,7 +91,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../../../../.." title="GG-web-engine" class="md-header__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+    <a href="../../../../../.." title="GG Web Engine" class="md-header__button md-logo" aria-label="GG Web Engine" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
@@ -103,7 +105,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            GG-web-engine
+            GG Web Engine
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -219,13 +221,13 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../../../../.." title="GG-web-engine" class="md-nav__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+    <a href="../../../../../.." title="GG Web Engine" class="md-nav__button md-logo" aria-label="GG Web Engine" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
 
     </a>
-    GG-web-engine
+    GG Web Engine
   </label>
   
     <div class="md-nav__source">
@@ -559,6 +561,13 @@
 <pre><code class="language-ts">export interface IPhysicsWorldComponent&lt;D, R, PTypeDoc extends PhysicsTypeDocRepo&lt;D, R&gt; = PhysicsTypeDocRepo&lt;D, R&gt;&gt;
   extends IComponent {
   /**
+   * Short, stable name of the physics library behind this world (`'ammo'`, `'rapier3d'`,
+   * `'rapier2d'`, `'matter'`, ...), the same for every instance of an adapter. Shown in the dev
+   * console's world info and handy in logs or bug reports.
+   */
+  readonly backendName: string
+
+  /**
    * Factory function for creating physics-related objects.
    */
   readonly factory: PTypeDoc['factory']
@@ -587,6 +596,21 @@
    * The main collision group. All physics bodies have this collision group set by default.
    */
   readonly mainCollisionGroup: CollisionGroup
+
+  /**
+   * The longest single native step `simulate()` takes, in seconds: a call is split into as many
+   * equal steps as it needs to keep each one this short (bounded by `maxSubSteps`). `undefined` or
+   * `0` steps at most 1/60 s at a time. Only adapters that split a call into substeps have it
+   * (Ammo, Rapier 3D); on the others setting it does nothing.
+   */
+  fixedTimeStep?: number
+
+  /**
+   * The most substeps one `simulate()` call runs, however long its delta - a huge catch-up delta
+   * then takes longer steps instead of grinding through a great many. `0`/`undefined` means no cap.
+   * See `fixedTimeStep` for which adapters have it.
+   */
+  maxSubSteps?: number
 
   /**
    * Initializes the physics world component.

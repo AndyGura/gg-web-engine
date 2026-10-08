@@ -6,6 +6,8 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
+        <meta name="description" content="Open-source TypeScript game engine for the browser: peer-to-peer multiplayer physics with no game server, cars and character controllers built in, on Three.js or Pixi.js with Rapier, Ammo.js or Matter.js.">
+      
       
       
         <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/ammo/components/ammo-world.component.ts/">
@@ -18,7 +20,7 @@
     
     
       
-        <title>ammo/components/ammo-world.component.ts - GG-web-engine</title>
+        <title>ammo/components/ammo-world.component.ts - GG Web Engine</title>
       
     
     
@@ -89,7 +91,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../../.." title="GG-web-engine" class="md-header__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+    <a href="../../../.." title="GG Web Engine" class="md-header__button md-logo" aria-label="GG Web Engine" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
@@ -103,7 +105,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            GG-web-engine
+            GG Web Engine
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -219,13 +221,13 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../../.." title="GG-web-engine" class="md-nav__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+    <a href="../../../.." title="GG Web Engine" class="md-nav__button md-logo" aria-label="GG Web Engine" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
 
     </a>
-    GG-web-engine
+    GG Web Engine
   </label>
   
     <div class="md-nav__source">
@@ -627,6 +629,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#backendname-property" class="md-nav__link">
+    backendName (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#aftertick-property" class="md-nav__link">
     afterTick$ (property)
   </a>
@@ -657,6 +666,13 @@
           <li class="md-nav__item">
   <a href="#kinematicvelbodies-property" class="md-nav__link">
     kinematicVelBodies (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#raycastvehicles-property" class="md-nav__link">
+    raycastVehicles (property)
   </a>
   
 </li>
@@ -753,11 +769,13 @@
 <li><a href="#closestnontriggerhit-method">closestNonTriggerHit (method)</a></li>
 <li><a href="#solidrayfallback-method">solidRayFallback (method)</a></li>
 <li><a href="#dispose-method">dispose (method)</a></li>
+<li><a href="#backendname-property">backendName (property)</a></li>
 <li><a href="#aftertick-property">afterTick$ (property)</a></li>
 <li><a href="#added-property">added$ (property)</a></li>
 <li><a href="#removed-property">removed$ (property)</a></li>
 <li><a href="#children-property">children (property)</a></li>
 <li><a href="#kinematicvelbodies-property">kinematicVelBodies (property)</a></li>
+<li><a href="#raycastvehicles-property">raycastVehicles (property)</a></li>
 <li><a href="#maincollisiongroup-property">mainCollisionGroup (property)</a></li>
 <li><a href="#maxsubsteps-property">maxSubSteps (property)</a></li>
 <li><a href="#fixedtimestep-property">fixedTimeStep (property)</a></li>
@@ -961,6 +979,10 @@ its own engine-wide default <code>ownCollisionGroups</code>/<code>interactWithCo
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">dispose(): void
 </code></pre>
+<h3 id="backendname-property">backendName (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly backendName: string
+</code></pre>
 <h3 id="aftertick-property">afterTick$ (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly afterTick$: any
@@ -987,6 +1009,14 @@ this adapter's own <code>position</code>/<code>rotation</code> writes, never int
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly kinematicVelBodies: Set&lt;AmmoRigidBodyComponent&gt;
 </code></pre>
+<h3 id="raycastvehicles-property">raycastVehicles (property)</h3>
+<p>Every currently-in-world raycast vehicle, whose brake forces <code>simulate()</code> converts into
+Bullet's per-substep brake impulses before stepping (see
+<code>AmmoRaycastVehicleComponent.applyBrakeImpulses()</code>). Maintained by
+<code>AmmoRaycastVehicleComponent.addToWorld</code>/<code>removeFromWorld</code> - not meant to be written to directly.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly raycastVehicles: Set&lt;AmmoRaycastVehicleComponent&gt;
+</code></pre>
 <h3 id="maincollisiongroup-property">mainCollisionGroup (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly mainCollisionGroup: number
@@ -1007,39 +1037,37 @@ for guaranteeing <code>delta</code> is always fully consumed in one call, never 
 <p>The largest a single internal substep is allowed to be, in seconds - smaller keeps the solver
 (suspension springs, fast/thin shapes, etc.) accurate and stable, at the cost of more substeps
 per call. Default <code>0.01</code> (10ms).</p>
-<p><strong>Not passed straight through to <code>stepSimulation</code> as its own <code>fixedTimeStep</code> argument</strong> - that
-argument drives Bullet's built-in <em>accumulator</em> (<code>m_localTime</code>), which carries whatever doesn't
-divide evenly into <code>fixedTimeStep</code> over into the <em>next</em> call. That accumulator is invisible and
-harmless for a body at rest, but for anything moving it means the amount of physics time
-actually simulated in a given <code>simulate()</code> call silently drifts above and below that call's own
-<code>delta</code> from tick to tick, depending on the accumulator's leftover phase - since nothing else in
-this engine's tick loop goes through that same accumulator (a camera driven directly off
-<code>CharacterController3dEntity.move()</code>'s own un-quantized per-tick <code>dt</code>, for one), that drift shows
-up as the camera and a physics-driven body disagreeing by a small, sign-flipping amount every
-other frame - real, reported, reproduced symptom: back-and-forth position jitter on a
-<code>Grabbable3dEntity</code> held in front of a moving/turning camera (worse the faster the camera
-moves - the drift is a fixed few milliseconds' worth of position error, so it scales with
-speed), and the same mechanism behind a fixed camera flickering relative to a moving raycast
-vehicle, or a chase camera's target flickering relative to its spinning chassis. <code>Rapier3dWorldComponent.simulate</code>
-never has this problem in the first place - it just sets its own <code>timestep</code> to <code>delta</code> and steps
-once, so simulated time always exactly equals real elapsed time.</p>
-<p>Fixed here without giving up bounded substep size at all: <code>simulate()</code> computes its own substep
-count <code>n = ceil(delta / fixedTimeStep)</code> (clamped by <code>maxSubSteps</code>) and calls <code>stepSimulation</code>
-with substeps of exactly <code>delta / n</code> each - always summing to exactly <code>delta</code>, every call, with
-nothing ever carried over. For any <code>delta</code> that already divides evenly by <code>fixedTimeStep</code> (every
-existing synthetic test in this package uses one) this reproduces Bullet's own accumulator
-result exactly; for a real variable render <code>delta</code> (never an exact multiple of <code>0.01</code>) it's what
-actually removes the drift, while every substep is still no larger than <code>fixedTimeStep</code> (unless
-<code>maxSubSteps</code> itself has to trade accuracy for guaranteeing <code>delta</code> is fully consumed - see its
-own doc). A first attempt at this fix (<code>maxSubSteps: 0</code>, Bullet's own single-step "variable
-timestep" mode, mirroring <code>Rapier3dWorldComponent.simulate</code> literally) removed the drift too,
-but at the cost of <em>all</em> substepping, not just the accumulator - confirmed as a real regression,
-not a hypothetical one, by this package's own test suite: a raycast vehicle's suspension
-(<code>ammo-raycast-vehicle.component.spec.ts</code>) stopped settling correctly and a trigger's exit event
-(<code>ammo-trigger.component.spec.ts</code>) stopped firing, from nothing more exotic than the existing
-tests' own ordinary <code>world.simulate(60)</code>-per-frame loops - well short of a huge catch-up frame.
-Substep chunking earns its keep for solver accuracy on every call, not just huge ones, so it's
-kept unconditionally rather than only above some <code>delta</code> threshold.</p>
+<p><code>simulate(delta)</code> splits every call into <code>n = ceil(delta / fixedTimeStep)</code> substeps (clamped
+by <code>maxSubSteps</code>) of exactly <code>delta / n</code> each, so the physics time simulated always equals
+<code>delta</code>, with nothing carried over to the next call. The substep length therefore depends on
+the frame rate: 8.3 ms at 30 and 60 FPS, 5.6 ms at 90, 10 ms at 100, 6.9 ms at 144.</p>
+<p><strong>Why not a constant substep with an accumulator</strong> (Bullet's own <code>stepSimulation(delta,
+maxSubSteps, fixedTimeStep)</code> mode): the simulated time of a call would then drift above and
+below <code>delta</code> from call to call (a 60 FPS frame would simulate 10 ms, then 20 ms), and nothing
+else in the tick loop follows that drift - a camera driven by
+<code>CharacterController3dEntity.move()</code>'s real per-tick <code>dt</code>, for one. That showed up as
+sign-flipping jitter between the camera and physics bodies: a <code>Grabbable3dEntity</code> held in
+front of a moving camera, a fixed camera watching a moving raycast vehicle, a chase camera's
+target against its chassis. Hiding the drift would take interpolating every rendered body
+transform between the last two physics states, which costs up to one substep of display lag
+against the camera and changes what <code>position</code> means for every consumer. Measured with this
+package's own raycast vehicle at 30/60/90/100/144 FPS, the variable substep changes vehicle
+behavior by under 2% (braking distance, cornering yaw, suspension travel on a landing) once
+brakes are converted per substep (<code>AmmoRaycastVehicleComponent.applyBrakeImpulses()</code>), which
+doesn't justify that. An app that needs bit-identical physics across frame rates can use
+<code>GgWorld</code>'s <code>fixedPhysicsStep</code> option, which calls <code>simulate()</code> with a constant <code>delta</code>.</p>
+<p>Bullet's accumulator is still involved inside one call, and it keeps time in <code>float</code>:
+<code>delta / (delta / n)</code> can come out just below <code>n</code>, so Bullet ran <code>n - 1</code> substeps and carried
+one into the next call (<code>n + 1</code> substeps, of that call's length) - about one call in a
+thousand. <code>simulate()</code> passes half a substep more than <code>delta</code>, so the float division always
+lands between <code>n</code> and <code>n + 1</code>, then discards the leftover half substep with a zero-length
+step, which resets the accumulator.</p>
+<p>A first attempt at removing the accumulator drift (<code>maxSubSteps: 0</code>, Bullet's own single-step
+"variable timestep" mode, one step per call) removed all substepping too, and broke this
+package's own tests: a raycast vehicle's suspension (<code>ammo-raycast-vehicle.component.spec.ts</code>)
+stopped settling and a trigger's exit event (<code>ammo-trigger.component.spec.ts</code>) stopped firing
+at ordinary <code>simulate(60)</code> frames. Substeps no longer than <code>fixedTimeStep</code> are kept for every
+call.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">fixedTimeStep: number | undefined
 </code></pre>

@@ -6,6 +6,8 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
+        <meta name="description" content="Open-source TypeScript game engine for the browser: peer-to-peer multiplayer physics with no game server, cars and character controllers built in, on Three.js or Pixi.js with Rapier, Ammo.js or Matter.js.">
+      
       
       
         <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/3d/level-loader.ts/">
@@ -18,7 +20,7 @@
     
     
       
-        <title>core/3d/level-loader.ts - GG-web-engine</title>
+        <title>core/3d/level-loader.ts - GG Web Engine</title>
       
     
     
@@ -89,7 +91,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../../.." title="GG-web-engine" class="md-header__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+    <a href="../../../.." title="GG Web Engine" class="md-header__button md-logo" aria-label="GG Web Engine" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
@@ -103,7 +105,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            GG-web-engine
+            GG Web Engine
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -219,13 +221,13 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../../.." title="GG-web-engine" class="md-nav__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+    <a href="../../../.." title="GG Web Engine" class="md-nav__button md-logo" aria-label="GG Web Engine" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
 
     </a>
-    GG-web-engine
+    GG Web Engine
   </label>
   
     <div class="md-nav__source">
@@ -690,6 +692,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#preloadinitialchunks-method" class="md-nav__link">
+    preloadInitialChunks (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#createmapgraph-method" class="md-nav__link">
     createMapGraph (method)
   </a>
@@ -881,6 +890,7 @@
 <li><a href="#createplayer-method">createPlayer (method)</a></li>
 <li><a href="#resolvewheeldisplay-method">resolveWheelDisplay (method)</a></li>
 <li><a href="#createggcar-method">createGgCar (method)</a></li>
+<li><a href="#preloadinitialchunks-method">preloadInitialChunks (method)</a></li>
 <li><a href="#createmapgraph-method">createMapGraph (method)</a></li>
 <li><a href="#override-property">override (property)</a></li>
 </ul>
@@ -1183,13 +1193,19 @@ construction completes - see {@link GgCarStateSettings}.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">private createGgCar(world: Gg3dWorld&lt;TypeDoc&gt;, settings: GgCar3DSettings): GgCarEntity&lt;TypeDoc&gt; | undefined
 </code></pre>
-<h3 id="createmapgraph-method">createMapGraph (method)</h3>
-<p>Create a <code>"MapGraph"</code> entity: a <code>MapGraph</code> built from plain node data (a flat/looped path or
-a rectangular grid, see {@link MapGraph3DSettings}), wrapped in a ready-to-use
-<code>MapGraph3dEntity</code>. The app still has to drive <code>loaderCursor$</code> itself once the level is
-loaded - see <code>gg-engine-level-json</code>'s "MapGraph" section.</p>
+<h3 id="preloadinitialchunks-method">preloadInitialChunks (method)</h3>
+<p>Makes the chunks a <code>"MapGraph"</code> loads first part of the level's load. Only a loader that loads
+<code>.glb</code>/<code>.meta</code> pairs (<code>Gg3dLoader</code>) can; here it does nothing.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">private createMapGraph(world: Gg3dWorld&lt;TypeDoc&gt;, settings: MapGraph3DSettings): MapGraph3dEntity&lt;TypeDoc&gt;
+<pre><code class="language-ts">protected async preloadInitialChunks(_entity: MapGraph3dEntity&lt;TypeDoc&gt;, _load: LoadTaskOptions): Promise&lt;void&gt;
+</code></pre>
+<h3 id="createmapgraph-method">createMapGraph (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private async createMapGraph(
+    world: Gg3dWorld&lt;TypeDoc&gt;,
+    settings: MapGraph3DSettings,
+    load: LoadTaskOptions = {},
+  ): Promise&lt;MapGraph3dEntity&lt;TypeDoc&gt;&gt;
 </code></pre>
 <h3 id="override-property">override (property)</h3>
 <p><strong>Signature</strong></p>

@@ -6,6 +6,8 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
+        <meta name="description" content="Open-source TypeScript game engine for the browser: peer-to-peer multiplayer physics with no game server, cars and character controllers built in, on Three.js or Pixi.js with Rapier, Ammo.js or Matter.js.">
+      
       
       
         <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/base/screens/screen.ts/">
@@ -18,7 +20,7 @@
     
     
       
-        <title>core/base/screens/screen.ts - GG-web-engine</title>
+        <title>core/base/screens/screen.ts - GG Web Engine</title>
       
     
     
@@ -89,7 +91,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../../../.." title="GG-web-engine" class="md-header__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+    <a href="../../../../.." title="GG Web Engine" class="md-header__button md-logo" aria-label="GG Web Engine" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
@@ -103,7 +105,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            GG-web-engine
+            GG Web Engine
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -219,13 +221,13 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../../../.." title="GG-web-engine" class="md-nav__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+    <a href="../../../../.." title="GG Web Engine" class="md-nav__button md-logo" aria-label="GG Web Engine" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
 
     </a>
-    GG-web-engine
+    GG Web Engine
   </label>
   
     <div class="md-nav__source">
@@ -571,6 +573,20 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#pausecoveredworld-method" class="md-nav__link">
+    pauseCoveredWorld (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#releasepause-method" class="md-nav__link">
+    releasePause (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#uncoverworld-method" class="md-nav__link">
     uncoverWorld (method)
   </a>
@@ -647,6 +663,8 @@
 <li><a href="#addworld-method">addWorld (method)</a></li>
 <li><a href="#addteardown-method">addTeardown (method)</a></li>
 <li><a href="#coverworld-method">coverWorld (method)</a></li>
+<li><a href="#pausecoveredworld-method">pauseCoveredWorld (method)</a></li>
+<li><a href="#releasepause-method">releasePause (method)</a></li>
 <li><a href="#uncoverworld-method">uncoverWorld (method)</a></li>
 </ul>
 </li>
@@ -693,12 +711,17 @@ the layer is kept hidden and the manager shows its loading view, fed by <code>ct
 <p>Register everything that has to go away with the screen through <code>addWorld</code>/<code>addTeardown</code> as
 soon as it exists, not at the end: if <code>enter()</code> throws or is aborted halfway, that is all that
 gets cleaned up (<code>exit()</code> is not called for a screen that never finished entering).</p>
+<p>Don't <code>await</code> a <code>ScreenManager</code> operation in here (a boot screen awaiting <code>push(menu)</code>):
+operations run one after another, and that one only starts once this transition, which is
+waiting for <code>enter()</code>, is over - it never resolves. Call it without awaiting; it runs right
+after this screen has entered.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public abstract enter(ctx: ScreenEnterContext): void | Promise&lt;void&gt;;
 </code></pre>
 <h3 id="exit-method">exit (method)</h3>
 <p>Called when the screen leaves the stack after having entered, before its teardowns run and its
-worlds are disposed. May return a promise (a fade-out); the transition waits for it.</p>
+worlds are disposed. May return a promise (a fade-out); the transition waits for it - so, as in
+<code>enter()</code>, never await a <code>ScreenManager</code> operation in here.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public exit(): void | Promise&lt;void&gt;
 </code></pre>
@@ -719,8 +742,10 @@ them. Override for anything else the screen runs on its own.</p>
 is covered, and it is disposed when the screen exits. Returns the world, for chaining.</p>
 <p>Call it right after creating the world, before loading into it. Whether a covered world is
 paused is decided by the push that covers it (<code>pauseBelow</code>) and by the world itself: a world
-with <code>localPauseAllowed === false</code> (a joined network session) keeps running. Its input is
-switched off either way.</p>
+with <code>localPauseAllowed === false</code> (a joined network session) keeps running, and a change of
+that flag while the screen is covered pauses or resumes it. A world paused for a hidden tab
+(<code>pauseWhenHidden</code>) when it gets covered stays paused until the screen is uncovered. Its input
+is switched off either way.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">protected addWorld&lt;W extends GgWorld&lt;any, any&gt;&gt;(world: W): W
 </code></pre>
@@ -734,6 +759,14 @@ registration, before the screen's worlds are disposed.</p>
 <h3 id="coverworld-method">coverWorld (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">private coverWorld(owned: OwnedWorld): void
+</code></pre>
+<h3 id="pausecoveredworld-method">pauseCoveredWorld (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private pauseCoveredWorld(owned: OwnedWorld): void
+</code></pre>
+<h3 id="releasepause-method">releasePause (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private releasePause(owned: OwnedWorld): void
 </code></pre>
 <h3 id="uncoverworld-method">uncoverWorld (method)</h3>
 <p><strong>Signature</strong></p>
@@ -762,7 +795,8 @@ registration, before the screen's worlds are disposed.</p>
   attach(manager: ScreenManager, layer: HTMLElement): void
   setState(state: ScreenState): void
   setCovered(covered: boolean, pauseWorlds: boolean): void
-  teardown(): void
+  /** Runs the teardowns and disposes the worlds; with `keepLayer` the caller removes the layer. */
+  teardown(keepLayer?: boolean): void
 }
 </code></pre>
 <h2 id="screenstate-type-alias">ScreenState (type alias)</h2>

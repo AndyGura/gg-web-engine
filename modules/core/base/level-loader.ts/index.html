@@ -6,6 +6,8 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
+        <meta name="description" content="Open-source TypeScript game engine for the browser: peer-to-peer multiplayer physics with no game server, cars and character controllers built in, on Three.js or Pixi.js with Rapier, Ammo.js or Matter.js.">
+      
       
       
         <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/base/level-loader.ts/">
@@ -18,7 +20,7 @@
     
     
       
-        <title>core/base/level-loader.ts - GG-web-engine</title>
+        <title>core/base/level-loader.ts - GG Web Engine</title>
       
     
     
@@ -89,7 +91,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../../.." title="GG-web-engine" class="md-header__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+    <a href="../../../.." title="GG Web Engine" class="md-header__button md-logo" aria-label="GG Web Engine" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
@@ -103,7 +105,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            GG-web-engine
+            GG Web Engine
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -219,13 +221,13 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../../.." title="GG-web-engine" class="md-nav__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+    <a href="../../../.." title="GG Web Engine" class="md-nav__button md-logo" aria-label="GG Web Engine" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
 
     </a>
-    GG-web-engine
+    GG Web Engine
   </label>
   
     <div class="md-nav__source">
@@ -599,6 +601,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#fetchshared-method" class="md-nav__link">
+    fetchShared (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#acquireasset-method" class="md-nav__link">
     acquireAsset (method)
   </a>
@@ -805,6 +814,7 @@
 <li><a href="#loadclip-method">loadClip (method)</a></li>
 <li><a href="#preload-method">preload (method)</a></li>
 <li><a href="#preloadasset-method">preloadAsset (method)</a></li>
+<li><a href="#fetchshared-method">fetchShared (method)</a></li>
 <li><a href="#acquireasset-method">acquireAsset (method)</a></li>
 <li><a href="#registerclass-method">registerClass (method)</a></li>
 <li><a href="#registerblueprintnode-method">registerBlueprintNode (method)</a></li>
@@ -1023,15 +1033,24 @@ an audio scene, a model without a visual scene) is skipped.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">protected async preloadAsset(ref: AssetRef, options: LoadTaskOptions): Promise&lt;void&gt;
 </code></pre>
+<h3 id="fetchshared-method">fetchShared (method)</h3>
+<p>Fetches <code>url</code> for a cached asset whose key holds more than the url (a model loaded with
+different options, a texture with different filtering): loads of the same file running at the
+same time share one download. The bytes are not kept once every such load has them.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">protected async fetchShared(url: string, item: AssetProgress, signal: AbortSignal): Promise&lt;ArrayBuffer&gt;
+</code></pre>
 <h3 id="acquireasset-method">acquireAsset (method)</h3>
 <p>The cache access shared by every loader method: returns the asset under <code>key</code>, running <code>load</code>
-(with a progress reporter for it) when it is not cached, and reports the asset complete.</p>
+(with a progress reporter for it) when it is not cached, and reports the asset complete. <code>load</code>
+fetches with the signal it is given, not <code>options.signal</code>: that one also aborts when the world
+is disposed.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">protected async acquireAsset&lt;T&gt;(
     key: string,
     url: string,
     options: LoadTaskOptions,
-    load: (item: AssetProgress) =&gt; Promise&lt;{ value: T; dispose?: () =&gt; void }&gt;,
+    load: (item: AssetProgress, signal: AbortSignal) =&gt; Promise&lt;{ value: T; dispose?: () =&gt; void }&gt;,
   ): Promise&lt;T&gt;
 </code></pre>
 <h3 id="registerclass-method">registerClass (method)</h3>

@@ -6,6 +6,8 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
+        <meta name="description" content="Open-source TypeScript game engine for the browser: peer-to-peer multiplayer physics with no game server, cars and character controllers built in, on Three.js or Pixi.js with Rapier, Ammo.js or Matter.js.">
+      
       
       
         <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/3d/gg-3d-world.ts/">
@@ -18,7 +20,7 @@
     
     
       
-        <title>core/3d/gg-3d-world.ts - GG-web-engine</title>
+        <title>core/3d/gg-3d-world.ts - GG Web Engine</title>
       
     
     
@@ -89,7 +91,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../../.." title="GG-web-engine" class="md-header__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+    <a href="../../../.." title="GG Web Engine" class="md-header__button md-logo" aria-label="GG Web Engine" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
@@ -103,7 +105,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            GG-web-engine
+            GG Web Engine
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -219,13 +221,13 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../../.." title="GG-web-engine" class="md-nav__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+    <a href="../../../.." title="GG Web Engine" class="md-nav__button md-logo" aria-label="GG Web Engine" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
 
     </a>
-    GG-web-engine
+    GG Web Engine
   </label>
   
     <div class="md-nav__source">
@@ -632,6 +634,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#gg3dworldwithphysics-type-alias" class="md-nav__link">
+    Gg3dWorldWithPhysics (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#physicstypedocrepo3d-type-alias" class="md-nav__link">
     PhysicsTypeDocRepo3D (type alias)
   </a>
@@ -699,6 +708,7 @@
 <li><a href="#gg3dworldtypedocppatch-type-alias">Gg3dWorldTypeDocPPatch (type alias)</a></li>
 <li><a href="#gg3dworldtypedocrepo-type-alias">Gg3dWorldTypeDocRepo (type alias)</a></li>
 <li><a href="#gg3dworldtypedocvpatch-type-alias">Gg3dWorldTypeDocVPatch (type alias)</a></li>
+<li><a href="#gg3dworldwithphysics-type-alias">Gg3dWorldWithPhysics (type alias)</a></li>
 <li><a href="#physicstypedocrepo3d-type-alias">PhysicsTypeDocRepo3D (type alias)</a></li>
 <li><a href="#typedgg3dworld-type-alias">TypedGg3dWorld (type alias)</a></li>
 <li><a href="#visualtypedocrepo3d-type-alias">VisualTypeDocRepo3D (type alias)</a></li>
@@ -830,6 +840,16 @@ is what <code>DIRECTIONAL</code> and <code>SPOT</code> lights normally want.</p>
 <pre><code class="language-ts">export type Gg3dWorldTypeDocVPatch&lt;VTypeDoc extends VisualTypeDocRepo3D&gt; = Omit&lt;Gg3dWorldTypeDocRepo, 'vTypeDoc'&gt; &amp; {
   vTypeDoc: VTypeDoc
 }
+</code></pre>
+<h2 id="gg3dworldwithphysics-type-alias">Gg3dWorldWithPhysics (type alias)</h2>
+<p><code>W</code> (a world type such as <code>ThreeGgWorld</code>) with a physics world of whichever adapter, known to be
+there: <code>world.physicsWorld</code> is a plain <code>IPhysicsWorld3dComponent</code>, never <code>null</code>. For an app that
+picks its physics backend at runtime and so can't name an adapter's world type:
+<code>const world: Gg3dWorldWithPhysics&lt;ThreeGgWorld&gt; = new Gg3dWorld({ visualScene, physicsWorld })</code>.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type Gg3dWorldWithPhysics&lt;W extends Gg3dWorld&lt;any, any&gt;&gt; = W extends Gg3dWorld&lt;infer TD, infer STD&gt;
+  ? Gg3dWorld&lt;TD, Omit&lt;STD, 'physicsWorld'&gt; &amp; { physicsWorld: IPhysicsWorld3dComponent&lt;TD['pTypeDoc']&gt; }&gt;
+  : never
 </code></pre>
 <h2 id="physicstypedocrepo3d-type-alias">PhysicsTypeDocRepo3D (type alias)</h2>
 <p><strong>Signature</strong></p>
