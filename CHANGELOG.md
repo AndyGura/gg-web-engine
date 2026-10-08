@@ -39,6 +39,15 @@ where one exists.
   scene has `voiceCounts`, and the dev console has `audio_voices [int|inf]`. `maxVoices`,
   `voiceCounts`, `priority` and `isVirtual` are required members of `IAudioSceneComponent`/
   `IAudioSourceComponent`, so a third-party audio adapter has to add them.
+- Audio bus reverb. `world.audioScene.setBusReverb(bus, settings | null)` puts a reverb on one bus
+  (an echoing tunnel, a cave): `AudioReverbSettings` `{ wet, dry, decay, preDelay, damping }`,
+  defaults `0.3`/`1`/`1.5`s/`0.02`s/`0.5` (`DEFAULT_AUDIO_REVERB`, `resolveAudioReverbSettings`).
+  `wet`/`dry` are ramped, so a game fades it in and out by calling it every frame; at `wet: 0` the
+  reverb stops costing audio processing. `@gg-web-engine/audio` renders it with one `ConvolverNode`
+  per bus and a procedurally generated impulse response (decaying noise, high frequencies damped
+  over the tail). `getBusReverb(bus)` reads the settings back; the dev console has `audio_reverb`.
+  `setBusReverb`/`getBusReverb` are required members of `IAudioSceneComponent`, so a third-party
+  audio adapter has to add them.
 - 3D audio panning model. `panningModel: 'HRTF' | 'equalpower'` on `AudioSource3dDescriptor` (what
   a 3D audio factory's `createSource` and `AudioSource3dEntity.playOneShot` take, and the `"Sound"`
   3D level class) and on `IAudioSource3dComponent`, writable at runtime, and

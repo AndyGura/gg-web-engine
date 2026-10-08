@@ -430,7 +430,15 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   pan with HRTF by default (front/back and elevation, but a convolution per source);
   `world.audioScene.defaultPanningModel = 'equalpower'` before creating sources makes every new one
   use the far cheaper left/right split (worth it on mobile), or set `panningModel` per source (in
-  the descriptor or at runtime).
+  the descriptor or at runtime). **Reverb** (tunnel, cave, hall) is per bus, not per source:
+  `world.audioScene.setBusReverb('sfx', { wet, dry, decay, preDelay, damping })` (defaults
+  `0.3`/`1`/`1.5`s/`0.02`s/`0.5`; `damping` `0` = bright hard walls, `1` = dull), `null` to remove,
+  `getBusReverb(bus)` to read. Fade it by calling it every frame with a changing `wet` (ramped, no
+  clicks) and constant `decay`/`preDelay`/`damping` (changing those rebuilds the reverb); each call
+  replaces all settings, so pass the full object every time. At `wet: 0` it costs nothing; call it
+  once at load with `wet: 0` to build the impulse response up front. A car in a tunnel: `{ decay:
+  1.8, preDelay: 0.03, damping: 0.3 }`, `wet` faded towards ~`0.4` inside. Keep sounds that must not
+  echo (UI, music) on other buses. Console: `audio_reverb BUS [wet|off] [decay] [preDelay] [damping]`.
 - **Raycasting**: `world.physicsWorld.raycast({ from, to, collisionFilterGroups?, collisionFilterMask? })`.
 - **Collision groups**: `world.physicsWorld.registerCollisionGroup()` /
   `deregisterCollisionGroup(group)`; every body has `mainCollisionGroup` set by default (both

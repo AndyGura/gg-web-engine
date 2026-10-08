@@ -1,6 +1,7 @@
 import { IComponent } from '../i-component';
 import { AudioTypeDocRepo } from '../../gg-world';
 import { IPositionable } from '../../interfaces/i-positionable';
+import { AudioReverbSettings, ResolvedAudioReverbSettings } from '../../models/audio-reverb';
 
 /**
  * How many sources of one audio scene are playing, and how many of those are heard - see
@@ -56,6 +57,29 @@ export interface IAudioSceneComponent<
   getBusVolume(bus: string): number;
 
   setBusVolume(bus: string, volume: number): void;
+
+  /**
+   * Puts a reverb on one bus (`settings`, defaults filled in by `resolveAudioReverbSettings`), or
+   * takes it off (`null`). One reverb per bus, shared by every source routed through it, applied
+   * after the bus volume: the bus's signal is split into a direct part (`dry`) and a reverberated
+   * one (`wet`), both mixed into the master output.
+   *
+   * Made to be called every frame: `wet`/`dry` changes are smoothed like every other level, so a
+   * game fades the reverb in and out (a car entering and leaving a tunnel) by passing a changing
+   * `wet`. Each call replaces the bus's settings as a whole - a field left out gets its default,
+   * not its previous value. Changing `decay`/`preDelay`/`damping` rebuilds the reverb (the old one
+   * fades out under the new one), which costs a little on the main thread - keep them constant
+   * while fading. The reverb is built when its settings are first given, `wet: 0` included, so a
+   * game can set it up front at `wet: 0` and pay that cost at load time.
+   *
+   * At `wet: 0` (and after `null`) the reverb fades out and then stops costing any audio
+   * processing; `null` also fades `dry` back to `1` and forgets the settings.
+   * @throws RangeError when a setting is out of its documented range (see `AudioReverbSettings`)
+   */
+  setBusReverb(bus: string, settings: AudioReverbSettings | null): void;
+
+  /** The bus's current reverb settings, every default filled in, or `null` when it has none. */
+  getBusReverb(bus: string): ResolvedAudioReverbSettings | null;
 
   /**
    * The entity/component currently acting as the "ears" for spatial audio - normally a

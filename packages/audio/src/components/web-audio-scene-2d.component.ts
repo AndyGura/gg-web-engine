@@ -29,5 +29,6 @@ export class WebAudioScene2dComponent
       }
     }
     this.updateVoices();
+    this.updateReverbs();
   }
 }

@@ -41,7 +41,8 @@ map both values to its own panner, but must keep the property readable/writable.
 - **`IAudioSceneComponent<D,R,ATypeDoc>`** (`base/components/audio/i-audio-scene.component.ts`):
   owns the native audio backend (an `AudioContext` for `packages/audio`), `backendName` (a short,
   stable name for the dev console's `worlds`/`world` commands - `'webaudio'` there), the source `factory`,
-  `masterVolume`/per-bus `getBusVolume`/`setBusVolume`, the single `activeListener` reference
+  `masterVolume`/per-bus `getBusVolume`/`setBusVolume`, per-bus `setBusReverb`/`getBusReverb` (see
+  "Bus reverb" below), the single `activeListener` reference
   (`setActiveListener`), the voice budget `maxVoices` plus its `voiceCounts` (see "Voice budget"
   below), and `update(elapsed, delta)` - called once per world tick by `GgWorld`
   itself (see "How `update()` gets called" below), not by app code.
@@ -101,6 +102,7 @@ packages/<lib>/
     utils/
       ramp.ts                                # see "The ramped-write rule" below
       playhead.ts                            # clip position after N seconds, Web Audio loop rules
+      impulse-response.ts                    # procedural reverb impulse response (bus reverb)
       voice-ranking.ts                       # pure ranking behind the voice budget
       distance-gain.ts                       # only needed if your backend has no native distance model
       audio-source-pool.ts                   # optional: see "Pooling" below
@@ -124,13 +126,15 @@ as a click/zipper when repeated every tick - confirmed as the root cause of a re
 every position/volume/pan setter in every `WebAudioSource(2d|3d)Component`/`WebAudioScene(2d|3d)Component`
 routes through it, with **no exception for any write to an already-live node's `AudioParam`** - if
 you find yourself writing `someAudioParam.value = ...` against a node that's already connected/
-playing while extending this package, that's very likely the bug. The two legitimate direct
-assignments in this package are both an *initial* value on a node that was just created and isn't
+playing while extending this package, that's very likely the bug. The legitimate direct
+assignments in this package are all an *initial* value on a node that was just created and isn't
 producing output yet - there's no previous value playing to click against, so there's nothing for a
 ramp to smooth: `gainNode.gain.value = this._volume` in `WebAudioSourceComponentBase`'s constructor
 and `bufferSource.playbackRate.value = this._playbackRate` in its `play()` (both in
-`web-audio-source-base.component.ts`), each set once on a freshly-created node before it's started.
-The third is `setParamNow` (`utils/ramp.ts`): a jump on a chain that is silent right now - a virtual
+`web-audio-source-base.component.ts`), each set once on a freshly-created node before it's started,
+and a bus reverb's new `wet` gain starting at `0` before it is connected (`takeReverbChain` in
+`web-audio-scene-base.component.ts`), then ramped up. The other exception is `setParamNow`
+(`utils/ramp.ts`): a jump on a chain that is silent right now - a virtual
 source's gain/position/pan, re-applied just before it is started again and faded in (see "Voice
 budget" below), or its gain restored on a `play()` while no buffer source is playing into it.
 
@@ -242,6 +246,40 @@ and a new adapter should keep the same observable behavior:
   (fade-out included). `voiceCounts` is `{ playing, audible, virtual }`; the dev console's
   `audio_voices [int|inf]` reads/sets the budget and prints it.
 
+## Bus reverb: one convolver per bus, none while off
+
+`setBusReverb(bus, settings | null)` (contract and defaults in core: `AudioReverbSettings`,
+`resolveAudioReverbSettings` - validation and defaults live there so every adapter agrees) puts a
+reverb on a bus, made to be called every frame with a changing `wet` (a game fading a tunnel echo
+in and out). `packages/audio`'s graph per bus (`WebAudioSceneComponentBase.getBus`):
+
+```
+sources -> input (GainNode, bus volume) -> dry (GainNode) -------------------> masterGain
+                                         \-> ConvolverNode -> wet (GainNode) -/
+```
+
+- `input` is what `getBusNode` returns and sources connect to; `dry` exists on every bus from the
+  start (a plain gain at `1` costs nothing), so turning a reverb on never rewires the dry path -
+  a disconnect/connect pair on a live path can drop a render quantum in between.
+- The reverb sits after the bus volume, so muting a bus mutes its reverb too. It is per bus, not
+  per source: virtual voices and the voice budget need nothing from it (`estimateGain` ignores
+  `wet`/`dry`).
+- The impulse response is generated (`utils/impulse-response.ts`, pure and unit-tested: stereo
+  decorrelated noise, exponential 60 dB fall over `decay`, a one-pole low-pass sliding down over the
+  tail by `damping`, `preDelay` of leading zeros, seeded so it is deterministic) when the settings'
+  shape (`decay`/`preDelay`/`damping`) is first given or changes - `wet: 0` included, so an app can
+  prepare it at load time. Loudness is left to `ConvolverNode.normalize` (default `true`).
+- `wet`/`dry` are ramped, and skipped when equal to the previous call's value (a per-frame call
+  with nothing changing schedules no automation).
+- **No convolver while `wet` is 0.** Going to 0 (or `null`) ramps the chain's `wet` gain to 0 and
+  queues it in `releasingReverbs`; `updateReverbs()` (end of both scenes' `update()`) disconnects
+  it `REVERB_RELEASE_SECONDS` later. Fading in again takes the releasing chain back if it is still
+  there (just ramps up), else creates a **fresh** `ConvolverNode`: a disconnected convolver is not
+  processed, so one kept around would still hold the old tail and play it on reconnection.
+- A shape change crossfades: the old chain is released (fades out), a new one with the new impulse
+  ramps in.
+- `null` releases the chain, ramps `dry` back to `1` and forgets the settings.
+
 ## Autoplay policy (browser gesture requirement)
 
 Every browser suspends (or refuses to start) an `AudioContext` until a user gesture accepts it.
@@ -295,14 +333,18 @@ real `AudioContext` to construct in a test. What *is* tested, and should be for 
 
 - Pure logic that needs no native node: `computeDistanceGain` (`test/utils/distance-gain.spec.ts`,
   verified against the Web Audio spec's own three formulas), `wrapPlayhead`
-  (`test/utils/playhead.spec.ts`, the Web Audio loop rules), `rankVoices`
+  (`test/utils/playhead.spec.ts`, the Web Audio loop rules), `generateImpulseResponse`
+  (`test/utils/impulse-response.spec.ts`), `rankVoices`
   (`test/utils/voice-ranking.spec.ts`), and `AudioSourcePool`
   (`test/utils/audio-source-pool.spec.ts`, against a hand-rolled fake `IAudioSceneComponent`/
   `IAudioSourceComponent` - the same "mock the interface, not the native API" approach
   `packages/core`'s own tests use for physics/rendering components).
 - The real scene/source classes against a hand-rolled fake `AudioContext` installed as
   `global.AudioContext`: `test/components/web-audio-scene-base.component.spec.ts` (the gesture
-  listeners, `setPaused`, `decodeClip`) and `test/components/web-audio-voice-budget.spec.ts` (the
+  listeners, `setPaused`, `decodeClip`), `test/components/web-audio-bus-reverb.spec.ts` (the bus
+  reverb graph on both scenes; its fake nodes record their outgoing connections, so a test asks
+  whether a convolver is fed by the bus and reaches the master gain) and
+  `test/components/web-audio-voice-budget.spec.ts` (the
   voice budget end to end on a `WebAudioScene3dComponent`; the fake context's `currentTime` is
   advanced by the test, and its fake `AudioParam`s record the last ramp target, which is how a
   fade is asserted).

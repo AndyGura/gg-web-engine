@@ -32,6 +32,7 @@ export class WebAudioScene3dComponent
   public update(_elapsed: number, _delta: number): void {
     this.syncListener();
     this.updateVoices();
+    this.updateReverbs();
   }
 
   private syncListener(): void {

@@ -1098,6 +1098,40 @@ export abstract class GgWorld<
           'at once - beyond it the lowest-ranked go virtual), then print how many sources are ' +
           'playing, audible and virtual',
       );
+      ggstatic.registerConsoleCommand(
+        this,
+        'audio_reverb',
+        async (...args: string[]) => {
+          const usage = 'usage: audio_reverb BUS [wet|off] [decay] [preDelay] [damping]';
+          const [bus, wet, ...shape] = args;
+          if (!bus) {
+            throw new Error(usage);
+          }
+          if (wet === 'off') {
+            this.audioScene!.setBusReverb(bus, null);
+          } else if (wet !== undefined) {
+            if ([wet, ...shape].some(v => isNaN(+v))) {
+              throw new Error(usage);
+            }
+            const [decay, preDelay, damping] = shape.map(Number);
+            // fields not given keep their current value, unlike `setBusReverb` itself
+            this.audioScene!.setBusReverb(bus, {
+              ...this.audioScene!.getBusReverb(bus),
+              wet: +wet,
+              ...(decay !== undefined && { decay }),
+              ...(preDelay !== undefined && { preDelay }),
+              ...(damping !== undefined && { damping }),
+            });
+          }
+          const reverb = this.audioScene!.getBusReverb(bus);
+          return reverb
+            ? `${bus} reverb: wet ${reverb.wet}, dry ${reverb.dry}, decay ${reverb.decay}s, ` +
+                `preDelay ${reverb.preDelay}s, damping ${reverb.damping}`
+            : `${bus} reverb: off`;
+        },
+        'args: [ string, float|off?, float?, float?, float? ]; Get or set the reverb of one audio bus ' +
+          '(BUS wet decay preDelay damping, or BUS off); fields not given keep their current value',
+      );
     }
   }
 }

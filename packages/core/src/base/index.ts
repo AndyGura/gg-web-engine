@@ -48,6 +48,7 @@ export * from './network/net-extrapolation';
 
 export * from './logging';
 
+export * from './models/audio-reverb';
 export * from './models/axis-directions';
 export * from './models/body-options';
 export * from './models/collision-event';

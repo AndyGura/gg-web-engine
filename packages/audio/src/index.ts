@@ -13,3 +13,4 @@ export * from './utils/distance-gain';
 export * from './utils/audio-source-pool';
 export * from './utils/playhead';
 export * from './utils/voice-ranking';
+export * from './utils/impulse-response';

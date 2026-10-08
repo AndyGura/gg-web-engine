@@ -1,4 +1,12 @@
-import { Entity3d, GgWorld, GroupEntity, IEntity, IRendererEntity, TickOrder } from '../../src';
+import {
+  Entity3d,
+  GgWorld,
+  GroupEntity,
+  IEntity,
+  IRendererEntity,
+  resolveAudioReverbSettings,
+  TickOrder,
+} from '../../src';
 import { mock3DObject } from '../mocks/object.mock';
 import { MockWorld } from '../mocks/world.mock';
 import { mock3DBody } from '../mocks/body.mock';
@@ -859,6 +867,30 @@ describe('GgWorld', () => {
       await expect(audioVoices('-1')).rejects.toThrow('usage');
       await expect(audioVoices('lots')).rejects.toThrow('usage');
       expect(audioScene.maxVoices).toBe(Infinity);
+    });
+
+    it('audio_reverb reads and sets a bus reverb, keeping the fields not given', async () => {
+      const audioScene = makeFakeAudioScene();
+      const reverbs = new Map<string, any>();
+      audioScene.setBusReverb = jest.fn((bus: string, settings: any) =>
+        settings ? reverbs.set(bus, resolveAudioReverbSettings(settings)) : reverbs.delete(bus),
+      );
+      audioScene.getBusReverb = (bus: string) => reverbs.get(bus) ?? null;
+      const commands = collectConsoleCommands(worldWithAudioScene(audioScene));
+      const audioReverb = commands.get('audio_reverb')!;
+
+      expect(await audioReverb('sfx')).toBe('sfx reverb: off');
+      expect(await audioReverb('sfx', '0.4', '2.5')).toBe(
+        'sfx reverb: wet 0.4, dry 1, decay 2.5s, preDelay 0.02s, damping 0.5',
+      );
+      expect(await audioReverb('sfx', '0.1')).toBe(
+        'sfx reverb: wet 0.1, dry 1, decay 2.5s, preDelay 0.02s, damping 0.5',
+      );
+      expect(await audioReverb('sfx', 'off')).toBe('sfx reverb: off');
+      expect(audioScene.setBusReverb).toHaveBeenLastCalledWith('sfx', null);
+      await expect(audioReverb()).rejects.toThrow('usage');
+      await expect(audioReverb('sfx', 'loud')).rejects.toThrow('usage');
+      await expect(audioReverb('sfx', '0.3', 'long')).rejects.toThrow('usage');
     });
   });
 

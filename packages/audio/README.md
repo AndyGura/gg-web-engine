@@ -51,6 +51,44 @@ virtual one-shot stays virtual until it would have ended, then fires `ended$` as
 `world.audioScene.voiceCounts` gives `{ playing, audible, virtual }`, and the dev console command
 `audio_voices [int|inf]` reads or sets the budget and prints those counts.
 
+### Bus reverb
+
+A bus can have a reverb: one convolver shared by every source routed through it (an echoing tunnel,
+a cave, a hall), applied after the bus volume and mixed with the direct sound.
+
+```typescript
+// a car in a tunnel: hard walls, a fairly long, bright tail
+const tunnel = { decay: 1.8, preDelay: 0.03, damping: 0.3 };
+
+// at load time, silent: builds the impulse response up front
+world.audioScene!.setBusReverb('sfx', { ...tunnel, wet: 0 });
+
+// every frame: fade the reverb in while inside, out when leaving
+wet += ((inTunnel ? 0.4 : 0) - wet) * Math.min(1, delta / 300);
+world.audioScene!.setBusReverb('sfx', { ...tunnel, wet: wet < 0.005 ? 0 : wet });
+
+world.audioScene!.setBusReverb('sfx', null); // remove it altogether
+```
+
+Settings (`AudioReverbSettings`, every field optional, a field left out gets its default rather than
+its previous value):
+
+| Field | Default | Meaning |
+|---|---|---|
+| `wet` | `0.3` | level of the reverberated signal, `>= 0` |
+| `dry` | `1` | level of the direct signal, `>= 0` |
+| `decay` | `1.5` | seconds for the tail to fall by 60 dB (RT60), up to `10` |
+| `preDelay` | `0.02` | seconds before the tail starts, up to `1` |
+| `damping` | `0.5` | `0`-`1`, how much faster high frequencies die out: `0` bright (concrete, tiles), `1` dull |
+
+`wet`/`dry` changes are ramped, so calling it every frame with a changing `wet` fades without
+clicks. Changing `decay`/`preDelay`/`damping` regenerates the impulse response (procedural decaying
+noise) and crossfades to a new convolver - keep them constant while fading. At `wet: 0` the
+convolver fades out and is disconnected a moment later, so a reverb that is off costs no audio
+processing; the impulse response is kept, ready for the next fade-in. `getBusReverb(bus)` returns
+the current settings, and the dev console command `audio_reverb BUS [wet|off] [decay] [preDelay]
+[damping]` reads or changes them.
+
 ### Panning model (3D)
 
 3D sources pan with an HRTF `PannerNode` by default, which also conveys front/back and elevation but

@@ -1,18 +1,66 @@
-import { AudioVoiceCounts, IPositionable } from '@gg-web-engine/core';
+import {
+  AudioReverbSettings,
+  AudioVoiceCounts,
+  IPositionable,
+  resolveAudioReverbSettings,
+  ResolvedAudioReverbSettings,
+  sameAudioReverbShape,
+} from '@gg-web-engine/core';
 import { rankVoices, VoiceCandidate } from '../utils/voice-ranking';
-import { rampParam } from '../utils/ramp';
+import { DEFAULT_RAMP_TAU, rampParam } from '../utils/ramp';
+import { generateImpulseResponse } from '../utils/impulse-response';
 import { WebAudioSourceComponentBase } from './web-audio-source-base.component';
 
 /**
+ * How long a reverb whose wet level went to 0 keeps its convolver connected (5 ramp time constants,
+ * by then the ramp is below -40 dB), before it is disconnected and stops costing audio processing.
+ */
+export const REVERB_RELEASE_SECONDS = 5 * DEFAULT_RAMP_TAU;
+
+/** A convolver and the gain of its output - one bus reverb as rendered. */
+type ReverbChain = {
+  convolver: ConvolverNode;
+  wet: GainNode;
+};
+
+/** A bus's reverb: its settings, the impulse response built from their shape, and the chain that
+ * renders it, `null` while `wet` is 0 (nothing to render). */
+type BusReverb = {
+  settings: ResolvedAudioReverbSettings;
+  impulse: AudioBuffer;
+  chain: ReverbChain | null;
+};
+
+/**
+ * One bus's node graph: sources connect to `input`, whose gain is the bus volume; `input` feeds
+ * `dry` (the reverb's dry level, `1` without a reverb) into the master gain, and, while a reverb is
+ * heard, also its convolver, whose `wet` gain feeds the master gain too.
+ */
+type WebAudioBus = {
+  input: GainNode;
+  dry: GainNode;
+  reverb: BusReverb | null;
+};
+
+/**
  * Shared implementation behind `WebAudioScene3dComponent`/`WebAudioScene2dComponent`: owns the
- * `AudioContext`, the master/bus gain graph, clip loading+caching, and the currently active
- * listener reference, and the voice budget (`maxVoices`). Dimension-specific listener orientation
- * math lives in the two subclasses' `update()` overrides, which end with `updateVoices()`.
+ * `AudioContext`, the master/bus gain graph (bus reverbs included), clip loading+caching, the
+ * currently active listener reference, and the voice budget (`maxVoices`). Dimension-specific
+ * listener orientation math lives in the two subclasses' `update()` overrides, which end with
+ * `updateVoices()` and `updateReverbs()`.
  */
 export abstract class WebAudioSceneComponentBase<D, R> {
   public readonly context: AudioContext;
   protected readonly masterGain: GainNode;
-  private readonly buses = new Map<string, GainNode>();
+  private readonly buses = new Map<string, WebAudioBus>();
+  /** Reverb chains fading out (wet level ramping to 0), disconnected by `updateReverbs()` once
+   * `releaseAt` (context time) has passed - or taken back by their bus if it fades in again first. */
+  private readonly releasingReverbs: {
+    bus: WebAudioBus;
+    impulse: AudioBuffer;
+    chain: ReverbChain;
+    releaseAt: number;
+  }[] = [];
   private readonly clipCache = new Map<string, Promise<AudioBuffer>>();
   private readonly sources = new Set<WebAudioSourceComponentBase<D, R>>();
   /** Every source of this scene that is playing (`isPlaying`), whether or not it was added to a
@@ -83,22 +131,138 @@ export abstract class WebAudioSceneComponentBase<D, R> {
   }
 
   public getBusVolume(bus: string): number {
-    return this.buses.get(bus)?.gain.value ?? 1;
+    return this.buses.get(bus)?.input.gain.value ?? 1;
   }
 
   public setBusVolume(bus: string, volume: number): void {
     rampParam(this.context, this.getBusNode(bus).gain, volume);
   }
 
-  /** Lazily creates (and connects to `masterGain`) the named bus's own `GainNode`. */
+  /** Lazily creates (and connects to `masterGain`) the named bus's input `GainNode` - what a source
+   * connects to; its gain is the bus volume. */
   public getBusNode(bus: string): GainNode {
-    let node = this.buses.get(bus);
-    if (!node) {
-      node = this.context.createGain();
-      node.connect(this.masterGain);
-      this.buses.set(bus, node);
+    return this.getBus(bus).input;
+  }
+
+  private getBus(name: string): WebAudioBus {
+    let bus = this.buses.get(name);
+    if (!bus) {
+      const input = this.context.createGain();
+      const dry = this.context.createGain();
+      input.connect(dry);
+      dry.connect(this.masterGain);
+      bus = { input, dry, reverb: null };
+      this.buses.set(name, bus);
     }
-    return node;
+    return bus;
+  }
+
+  /**
+   * See `IAudioSceneComponent.setBusReverb`. One `ConvolverNode` per bus, fed from the bus's input
+   * (after its volume) in parallel with the dry path, with a procedurally generated impulse response
+   * (`generateImpulseResponse`), built when the settings' shape is first given or changes. `wet`/
+   * `dry` are ramped. While `wet` is 0 there is no convolver at all: the one that was heard ramps
+   * out and is disconnected `REVERB_RELEASE_SECONDS` later (in `update()`); fading in again creates
+   * a fresh one (no stale tail from before), or takes the releasing one back if it is still there.
+   */
+  public setBusReverb(name: string, settings: AudioReverbSettings | null): void {
+    if (!settings) {
+      const bus = this.buses.get(name);
+      if (bus?.reverb) {
+        this.releaseReverbChain(bus);
+        bus.reverb = null;
+        rampParam(this.context, bus.dry.gain, 1);
+      }
+      return;
+    }
+    const resolved = resolveAudioReverbSettings(settings);
+    const bus = this.getBus(name);
+    const previous = bus.reverb?.settings;
+    if (!bus.reverb || !sameAudioReverbShape(bus.reverb.settings, resolved)) {
+      this.releaseReverbChain(bus);
+      bus.reverb = { settings: resolved, impulse: this.createImpulseResponse(resolved), chain: null };
+    } else {
+      bus.reverb.settings = resolved;
+    }
+    const reverb = bus.reverb;
+    if (resolved.dry !== (previous?.dry ?? 1)) {
+      rampParam(this.context, bus.dry.gain, resolved.dry);
+    }
+    if (resolved.wet === 0) {
+      this.releaseReverbChain(bus);
+    } else if (!reverb.chain) {
+      reverb.chain = this.takeReverbChain(bus, reverb.impulse);
+      rampParam(this.context, reverb.chain.wet.gain, resolved.wet);
+    } else if (resolved.wet !== previous?.wet) {
+      rampParam(this.context, reverb.chain.wet.gain, resolved.wet);
+    }
+  }
+
+  public getBusReverb(bus: string): ResolvedAudioReverbSettings | null {
+    return this.buses.get(bus)?.reverb?.settings ?? null;
+  }
+
+  private createImpulseResponse(settings: ResolvedAudioReverbSettings): AudioBuffer {
+    const channels = generateImpulseResponse(this.context.sampleRate, settings, 2);
+    const buffer = this.context.createBuffer(channels.length, channels[0].length, this.context.sampleRate);
+    channels.forEach((data, i) => buffer.getChannelData(i).set(data));
+    return buffer;
+  }
+
+  /** A chain rendering `impulse` for `bus`: the one still releasing if there is one (its wet gain
+   * just ramps back up), otherwise a new one, connected and silent. */
+  private takeReverbChain(bus: WebAudioBus, impulse: AudioBuffer): ReverbChain {
+    const index = this.releasingReverbs.findIndex(r => r.bus === bus && r.impulse === impulse);
+    if (index >= 0) {
+      return this.releasingReverbs.splice(index, 1)[0].chain;
+    }
+    const convolver = this.context.createConvolver();
+    convolver.buffer = impulse;
+    const wet = this.context.createGain();
+    // initial value of a node that isn't connected yet - nothing to click against
+    wet.gain.value = 0;
+    bus.input.connect(convolver);
+    convolver.connect(wet);
+    wet.connect(this.masterGain);
+    return { convolver, wet };
+  }
+
+  /** Ramps the bus's reverb chain (if any) out and queues it for disconnection. */
+  private releaseReverbChain(bus: WebAudioBus): void {
+    const chain = bus.reverb?.chain;
+    if (!chain) {
+      return;
+    }
+    rampParam(this.context, chain.wet.gain, 0);
+    this.releasingReverbs.push({
+      bus,
+      impulse: bus.reverb!.impulse,
+      chain,
+      releaseAt: this.context.currentTime + REVERB_RELEASE_SECONDS,
+    });
+    bus.reverb!.chain = null;
+  }
+
+  private disconnectReverbChain(bus: WebAudioBus, chain: ReverbChain): void {
+    bus.input.disconnect(chain.convolver);
+    chain.convolver.disconnect();
+    chain.wet.disconnect();
+  }
+
+  /** Per-frame: disconnects the reverb chains whose fade-out has finished. Called at the end of
+   * both subclasses' `update()`. */
+  protected updateReverbs(): void {
+    if (this.releasingReverbs.length === 0) {
+      return;
+    }
+    const now = this.context.currentTime;
+    for (let i = this.releasingReverbs.length - 1; i >= 0; i--) {
+      const { bus, chain, releaseAt } = this.releasingReverbs[i];
+      if (now >= releaseAt) {
+        this.disconnectReverbChain(bus, chain);
+        this.releasingReverbs.splice(i, 1);
+      }
+    }
   }
 
   public get activeListener(): IPositionable<D, R> | null {
@@ -266,8 +430,16 @@ export abstract class WebAudioSceneComponentBase<D, R> {
     }
     this.sources.clear();
     this.voices.clear();
+    for (const { bus, chain } of this.releasingReverbs) {
+      this.disconnectReverbChain(bus, chain);
+    }
+    this.releasingReverbs.length = 0;
     for (const bus of this.buses.values()) {
-      bus.disconnect();
+      if (bus.reverb?.chain) {
+        this.disconnectReverbChain(bus, bus.reverb.chain);
+      }
+      bus.input.disconnect();
+      bus.dry.disconnect();
     }
     this.buses.clear();
     this.masterGain.disconnect();
