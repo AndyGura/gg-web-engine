@@ -106,7 +106,7 @@ More of what is in the box:
 - **2D and 3D worlds** sharing one set of concepts - `Gg2dWorld` and `Gg3dWorld`.
 - **Automatic physics ↔ rendering sync**: an entity binds a display object to a rigid body and keeps them aligned every tick.
 - **Hierarchical pausable clocks**, time scale, optional fixed physics timestep, optional auto-pause when the tab is hidden (`pauseWhenHidden`).
-- **Screens and loading**: `ScreenManager` runs menu, game and pause screens as a stack of DOM layers; `loadingScreen: true` covers a world's startup with the built-in loading screen.
+- **Screens and loading**: `ScreenManager` runs menu, game and pause screens as a stack of DOM layers; `LoadingScreen.show()`/`hide()` covers startup or a level load with the built-in loading screen, or with your own.
 - **Streaming large maps**: `MapGraph3dEntity` loads and disposes map chunks by proximity.
 - **Reactive API** on [RxJS](https://github.com/ReactiveX/rxjs): ticks, input, collisions and world events are observables.
 - **Strict TypeScript throughout**; annotate the world as `TypedGg3dWorld`/`TypedGg2dWorld` to get the native types of whichever libraries you plugged in ([how](#-faq)).

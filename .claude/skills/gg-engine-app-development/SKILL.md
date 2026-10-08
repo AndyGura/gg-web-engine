@@ -76,23 +76,28 @@ The 2D equivalent (`Gg2dWorld`) uses `Shape2DDescriptor` (`BOX`/`CIRCLE`/`CAPSUL
 
 ## Loading screen while the game starts
 
-Pass `loadingScreen: true` to the `Gg3dWorld`/`Gg2dWorld` constructor to cover the page with the
-engine's loading screen (`DefaultLoadingView`: opaque backdrop, an animated CSS 3D cube, "Loading")
-from that moment until the world's first `start()`, or `dispose()`. Everything the app does in
-between - `init()`, `loadLevel`, preloading, connecting a network session - happens behind it, and
-it fades out as the first frame renders. Pass a `LoadingView` of your own instead of `true` to show
-that. It covers startup only: later loads in a running world (a level reload, a streamed map chunk)
-don't bring it back - show it yourself for those with `LoadingScreen.show()`:
+`LoadingScreen.show()` covers the page with the engine's loading screen (`DefaultLoadingView`:
+opaque backdrop, an animated CSS 3D cube, "Loading", and a progress bar once progress is reported)
+until `hide()`, which fades it out. The app decides what it covers - usually startup and level
+(re)loads:
 
 ```typescript
 const loading = LoadingScreen.show(); // { view?, container?, fadeOutDuration? }
+const world = new Gg3dWorld({ visualScene, physicsWorld: await createPhysicsWorld() });
+await world.init();
 await world.loader.loadLevel(level, 'Level', { onProgress: p => loading.setProgress(p) });
+// ... renderer, controllers
+world.start();
 loading.hide();
 ```
 
-An app that rebuilds its whole world to restart (dispose the old one, construct a new one with
-`loadingScreen: true`) gets the screen again automatically. A `ScreenManager` app needs neither: the
-manager shows the same `DefaultLoadingView` while a screen enters (see "Screens").
+Show it before anything slow (a dynamically imported physics backend included), hide it after
+`world.start()`. Pass `view` to show a game's own loading screen - any object implementing
+`LoadingView` (`element`, `setProgress`, `dispose`). Don't wrap loads that happen while the game
+keeps running (the next round's pieces, streamed map chunks) - that would cover the game. Hide it in
+a `finally` if the startup can fail, or a failure stays hidden behind it. A `ScreenManager` app
+doesn't need it: the manager shows the same `DefaultLoadingView` while a screen enters (see
+"Screens").
 
 
 Pass `pauseWhenHidden: true` in the `Gg3dWorld`/`Gg2dWorld` constructor args to have the world pause

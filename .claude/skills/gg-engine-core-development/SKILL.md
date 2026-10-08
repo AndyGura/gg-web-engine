@@ -686,11 +686,11 @@ flow as a stack of DOM layers. The module imports nothing from an adapter and no
 
 The same `DefaultLoadingView` is the engine's general loading screen. `LoadingScreen`
 (`base/screens/loading-screen.ts`) mounts any `LoadingView` over the page (fixed, z-index 10000) or
-over a positioned container until `hide()`, which fades it out and then disposes the view.
-`GgWorld`'s `loadingScreen` constructor option (declared on all three constructors) is a
-`LoadingScreen` shown in the constructor and hidden by the first `start()` or by `dispose()` -
-startup only, by design: a world also loads mid-game (level pieces per round, streamed map chunks),
-and covering the page for those would be wrong far more often than right. `DefaultLoadingView` uses
+over a positioned container until `hide()`, which fades it out and then disposes the view. Nothing
+in the engine shows it on its own - not the world, not the loader: the app brackets what it wants
+covered (startup, a level reload) with `show()`/`hide()`, since a world also loads while the game
+runs on (level pieces per round, streamed map chunks) and only the app knows which load is which.
+`DefaultLoadingView` uses
 inline styles and the Web Animations API (`element.animate`), never a stylesheet added to the page;
 jsdom has no `animate`, so the view checks for it, and jsdom drops a `background` shorthand that
 mixes a gradient and a color (set `backgroundColor`/`backgroundImage` separately, and assert on the

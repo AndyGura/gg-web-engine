@@ -31,10 +31,10 @@ where one exists.
 ### Added
 - `@gg-web-engine/core`: an engine-provided loading screen. `DefaultLoadingView` is now an opaque
   backdrop with an animated CSS 3D cube and "Loading" (a progress bar and percentage join it once
-  a load reports progress), used by `ScreenManager` as before. `loadingScreen: true` in a
-  `Gg2dWorld`/`Gg3dWorld` constructor shows it from construction until the world's first
-  `start()`; `LoadingScreen.show()`/`hide()` shows it for any other load. Every example that opens
-  straight into a level uses it.
+  a load reports progress), used by `ScreenManager` as before. `LoadingScreen.show()` puts it (or
+  an app's own `LoadingView`) over the page until `hide()`, typically around `init()` and a level
+  load; `setProgress` feeds it a loader's progress. Every example that opens straight into a level
+  uses it.
 - Every visual scene, physics world and audio scene names its backend: `backendName` (`'three'`,
   `'pixi'`, `'ammo'`, `'rapier3d'`, `'rapier2d'`, `'matter'`, `'webaudio'`). A required member of
   `IVisualSceneComponent`, `IPhysicsWorldComponent` and `IAudioSceneComponent`, so a third-party

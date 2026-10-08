@@ -5,6 +5,7 @@ import {
   Gg3dWorld,
   GgStatic,
   LevelJson,
+  LoadingScreen,
   PlayerCharacterController,
   Pnt3,
 } from '@gg-web-engine/core';
@@ -176,10 +177,11 @@ const level: LevelJson = {
   ],
 };
 
+// the engine's loading screen, up until the game runs (hidden after world.start() below)
+const loading = LoadingScreen.show();
 const world: ThreeGgWorld = new Gg3dWorld({
   visualScene: new ThreeSceneComponent(),
   physicsWorld: await createPhysicsWorld(),
-  loadingScreen: true, // covers the page until world.start()
 });
 world.init().then(async () => {
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
@@ -197,7 +199,7 @@ world.init().then(async () => {
     Pnt3.O,
   );
 
-  const levelGroup = await world.loader.loadLevel(level, 'MainLevel');
+  const levelGroup = await world.loader.loadLevel(level, 'MainLevel', { onProgress: p => loading.setProgress(p) });
 
   // the level's primitives and the player's model
   for (const item of levelGroup.children) {
@@ -220,4 +222,5 @@ world.init().then(async () => {
   world.addEntity(new MobileControls());
 
   world.start();
+  loading.hide();
 });

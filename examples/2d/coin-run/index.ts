@@ -9,6 +9,7 @@ import {
   IEntity,
   IText2dComponent,
   LevelJson,
+  LoadingScreen,
   PlayerCharacterController2d,
   Point2,
   TickOrder,
@@ -273,12 +274,14 @@ function inviteUrl(roomId: string): string {
   return url.toString();
 }
 
+// the engine's loading screen, up until the game runs (hidden after world.start() below)
+const loading = LoadingScreen.show();
+
 // the physics engine is picked by `?physics=` (see backends.ts); everyone in a room uses the one
 // its invite link names
 const world: Gg2dWorldWithPhysics<PixiGgWorld> = new Gg2dWorld({
   visualScene: new PixiSceneComponent(),
   physicsWorld: await createPhysicsWorld(),
-  loadingScreen: true, // covers the page until world.start()
 });
 
 world.init().then(async () => {
@@ -628,6 +631,7 @@ world.init().then(async () => {
   await syncCoins();
   await spawnMe();
   world.start();
+  loading.hide();
   setInterval(() => {
     direct();
     renderHud();

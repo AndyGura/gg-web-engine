@@ -1,16 +1,18 @@
-import { FreeCameraController, Gg3dWorld, Gg3dWorldWithPhysics, GgStatic, Pnt3, Qtrn } from '@gg-web-engine/core';
+import { FreeCameraController, Gg3dWorld, Gg3dWorldWithPhysics, GgStatic, LoadingScreen, Pnt3, Qtrn } from '@gg-web-engine/core';
 import { ThreeDisplayObject3dOpts, ThreeGgWorld, ThreeSceneComponent } from '@gg-web-engine/three';
 import { createPhysicsWorld } from './backends';
 
 GgStatic.instance.showStats = true;
 GgStatic.instance.devConsoleEnabled = true;
 
+// the engine's loading screen, up until the game runs (hidden after world.start() below)
+const loading = LoadingScreen.show();
+
 // the physics engine is picked by `?physics=` (see backends.ts); `Gg3dWorldWithPhysics` types
 // `world.physicsWorld` as core's interface, whichever engine that is
 const world: Gg3dWorldWithPhysics<ThreeGgWorld> = new Gg3dWorld({
   visualScene: new ThreeSceneComponent(),
   physicsWorld: await createPhysicsWorld(),
-  loadingScreen: true, // covers the page until world.start()
 });
 // up to 10 substeps of 1/60 s each, so a frame hitch doesn't let a ball tunnel through a wall
 world.physicsWorld.maxSubSteps = 10;
@@ -133,6 +135,7 @@ world.init().then(async () => {
   }, false);
 
   world.start();
+  loading.hide();
 
   cameraController.mouseInput.isPointerLocked$.subscribe((l) => {
     if (l) {

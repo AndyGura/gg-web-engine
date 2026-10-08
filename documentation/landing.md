@@ -54,14 +54,14 @@ Optional: `@gg-web-engine/multiplayer` (peer-to-peer shared worlds), `@gg-web-en
 ## A first scene
 
 ```typescript
-import { Gg3dWorld, Pnt3, Qtrn } from '@gg-web-engine/core';
+import { Gg3dWorld, LoadingScreen, Pnt3, Qtrn } from '@gg-web-engine/core';
 import { ThreeSceneComponent } from '@gg-web-engine/three';
 import { Rapier3dWorldComponent } from '@gg-web-engine/rapier3d';
 
+const loading = LoadingScreen.show(); // the engine's loading screen, until hide() below
 const world = new Gg3dWorld({
   visualScene: new ThreeSceneComponent(),
   physicsWorld: new Rapier3dWorldComponent(),
-  loadingScreen: true, // the engine's loading screen until world.start()
 });
 await world.init();
 
@@ -83,6 +83,7 @@ const cube = world.addPrimitiveRigidBody({
 cube.position = { x: 0, y: 0, z: 10 };
 
 world.start();
+loading.hide();
 ```
 
 3D worlds are Z-up: `{x, y}` is the ground plane and `+Z` points to the sky.

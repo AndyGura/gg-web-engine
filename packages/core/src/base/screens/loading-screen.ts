@@ -15,16 +15,18 @@ export type LoadingScreenOptions = {
 };
 
 /**
- * A loading view shown over the page (or one element) until `hide()` - for loads outside a
- * `ScreenManager`, e.g. reloading a level in a running world:
+ * A loading view shown over the page (or one element) until `hide()`: the app decides what it
+ * covers. Typically a game's startup or a level (re)load:
  *
  * ```ts
- * const loading = LoadingScreen.show();
+ * const loading = LoadingScreen.show(); // or LoadingScreen.show({ view: myOwnLoadingView })
+ * await world.init();
  * await world.loader.loadLevel(level, 'Level', { onProgress: p => loading.setProgress(p) });
+ * world.start();
  * loading.hide();
  * ```
  *
- * A world's own startup needs none of this: pass `loadingScreen: true` to its constructor.
+ * Without a `view` it shows a `DefaultLoadingView`; any object implementing `LoadingView` works.
  */
 export class LoadingScreen {
   private readonly holder: HTMLElement;

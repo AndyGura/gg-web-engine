@@ -1,4 +1,4 @@
-import { Entity2d, GgWorld, LoadingView } from '../../src';
+import { Entity2d, GgWorld } from '../../src';
 
 export class MockWorld extends GgWorld<any, any> {
   constructor(
@@ -8,7 +8,6 @@ export class MockWorld extends GgWorld<any, any> {
       pauseWhenHidden?: boolean;
       fixedPhysicsStep?: number;
       maxPhysicsStepsPerTick?: number;
-      loadingScreen?: boolean | LoadingView;
     } = {},
   ) {
     super({
@@ -30,7 +29,6 @@ export class MockWorld extends GgWorld<any, any> {
       pauseWhenHidden: args.pauseWhenHidden,
       fixedPhysicsStep: args.fixedPhysicsStep,
       maxPhysicsStepsPerTick: args.maxPhysicsStepsPerTick,
-      loadingScreen: args.loadingScreen,
     });
   }
 

@@ -20,8 +20,6 @@ import {
 import { BehaviorSubject, lastValueFrom, Observable, Subject, take } from 'rxjs';
 import type { AssetScope } from './assets/asset-cache';
 import type { LoadTaskOptions } from './assets/load-progress';
-import { LoadingScreen } from './screens/loading-screen';
-import type { LoadingView } from './screens/loading-view';
 import { IVisualScene2dComponent, VisualTypeDocRepo2D } from '../2d';
 
 export type VisualTypeDocRepo<D, R> = {
@@ -390,14 +388,6 @@ export abstract class GgWorld<
      */
     pauseWhenHidden?: boolean;
     /**
-     * Covers the page with a loading view from the moment the world is constructed until the first
-     * `start()` (or `dispose()`), so `init()`, level loading and whatever else the app does before
-     * starting happen behind it. `true` shows a `DefaultLoadingView`; pass a `LoadingView` of your own
-     * to show that instead. Later loads in a running world don't bring it back - see
-     * `LoadingScreen.show()` for those. Ignored without a `document`. Defaults to `false`.
-     */
-    loadingScreen?: boolean | LoadingView;
-    /**
      * Opt-in fixed physics timestep, in milliseconds. Left `undefined` (the default), the tick
      * loop keeps its original behavior: `physicsWorld.simulate(delta)` is called exactly once per
      * world tick, with that tick's own (variable) delta. Set to a value, the tick loop instead
@@ -430,11 +420,6 @@ export abstract class GgWorld<
     this.pauseWhenHidden = args.pauseWhenHidden ?? false;
     this.fixedPhysicsStep = args.fixedPhysicsStep;
     this.maxPhysicsStepsPerTick = args.maxPhysicsStepsPerTick ?? 8;
-    if (args.loadingScreen && typeof document !== 'undefined') {
-      this.startupLoadingScreen = LoadingScreen.show({
-        view: args.loadingScreen === true ? undefined : args.loadingScreen,
-      });
-    }
     this.keyboardInput.start();
     if ((window as any).ggstatic) {
       this.registerConsoleCommands((window as any).ggstatic);
@@ -538,15 +523,6 @@ export abstract class GgWorld<
 
   public start() {
     this.worldClock.start();
-    this.hideStartupLoadingScreen();
-  }
-
-  /** The `loadingScreen` constructor option's screen, until the first `start()` or `dispose()`. */
-  private startupLoadingScreen: LoadingScreen | null = null;
-
-  private hideStartupLoadingScreen(): void {
-    this.startupLoadingScreen?.hide();
-    this.startupLoadingScreen = null;
   }
 
   public pauseWorld() {
@@ -580,7 +556,6 @@ export abstract class GgWorld<
    */
   public dispose(): void {
     this.isDisposed = true;
-    this.hideStartupLoadingScreen();
     if ((window as any).ggstatic) {
       (window as any).ggstatic.deregisterWorldCommands(this);
     } else {

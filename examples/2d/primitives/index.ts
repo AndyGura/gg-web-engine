@@ -1,4 +1,4 @@
-import { Gg2dWorld, GgStatic, LevelJson } from '@gg-web-engine/core';
+import { Gg2dWorld, GgStatic, LevelJson, LoadingScreen } from '@gg-web-engine/core';
 import { PixiGgWorld, PixiSceneComponent } from '@gg-web-engine/pixi';
 import { createPhysicsWorld } from './backends';
 import { ShapeSpawner, ShapeSpawnerSettings } from './shape-spawner';
@@ -29,10 +29,11 @@ const level: LevelJson = {
   ],
 };
 
+// the engine's loading screen, up until the game runs (hidden after world.start() below)
+const loading = LoadingScreen.show();
 const world: PixiGgWorld = new Gg2dWorld({
   visualScene: new PixiSceneComponent(),
   physicsWorld: await createPhysicsWorld(),
-  loadingScreen: true, // covers the page until world.start()
 });
 world.init().then(async () => {
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
@@ -48,6 +49,7 @@ world.init().then(async () => {
     new ShapeSpawner(w, settings),
   );
 
-  await world.loader.loadLevel(level, 'MainLevel');
+  await world.loader.loadLevel(level, 'MainLevel', { onProgress: p => loading.setProgress(p) });
   world.start();
+  loading.hide();
 });

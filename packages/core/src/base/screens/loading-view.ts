@@ -82,8 +82,8 @@ function cubelet(colors: FaceColors, edge: string, transform: string): HTMLEleme
  * Animations API (no stylesheet is added to the page); without that API, or with
  * `prefers-reduced-motion: reduce`, the cube stands still.
  *
- * `ScreenManager` shows it while a screen enters, and a world built with `loadingScreen: true`
- * shows it until it starts. Restyle it through the `gg-loading` classes (`gg-loading`,
+ * `ScreenManager` shows it while a screen enters, and `LoadingScreen.show()` puts it over the page
+ * for any other load. Restyle it through the `gg-loading` classes (`gg-loading`,
  * `gg-loading__cube`, `gg-loading__label`, `gg-loading__bar`, `gg-loading__fill`), or replace it
  * with any other `LoadingView`.
  */

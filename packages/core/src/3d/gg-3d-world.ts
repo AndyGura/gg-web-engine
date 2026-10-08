@@ -1,4 +1,4 @@
-import { BodyType, GgConsoleHost, GgWorld, LoadingView, Pnt3, Point3, Point4, Qtrn, RendererOptions } from '../base';
+import { BodyType, GgConsoleHost, GgWorld, Pnt3, Point3, Point4, Qtrn, RendererOptions } from '../base';
 import { Gg3dLoader } from './loader';
 import { Entity3d } from './entities/entity-3d';
 import { BodyShape3DDescriptor } from './models/shapes';
@@ -143,7 +143,6 @@ export class Gg3dWorld<
     audioScene?: SceneTypeDoc['audioScene'];
     maxTickDelta?: number;
     pauseWhenHidden?: boolean;
-    loadingScreen?: boolean | LoadingView;
     fixedPhysicsStep?: number;
     maxPhysicsStepsPerTick?: number;
   }) {

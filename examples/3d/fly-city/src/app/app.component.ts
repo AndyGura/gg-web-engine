@@ -6,7 +6,7 @@ import {
   ElementRef,
   ViewChild,
 } from '@angular/core';
-import { Gg3dWorld, Gg3dWorldWithPhysics, PhysicsTypeDocRepo3D, TypedGg3dWorld } from '@gg-web-engine/core';
+import { Gg3dWorld, Gg3dWorldWithPhysics, LoadingScreen, PhysicsTypeDocRepo3D, TypedGg3dWorld } from '@gg-web-engine/core';
 import { ThreeGgWorld, ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
 import { WebAudioGgWorld3D, WebAudioScene3dComponent, WebAudioTypeDocRepo3D } from '@gg-web-engine/audio';
 import { filter } from 'rxjs';
@@ -64,11 +64,12 @@ export class AppComponent implements AfterViewInit {
   }
 
   private async initGame() {
+    // the engine's loading screen, up until the game runs; a level reload (L) comes back through here
+    const loading = LoadingScreen.show();
     this.world = new Gg3dWorld({
       visualScene: new ThreeSceneComponent(),
       physicsWorld: await createPhysicsWorld(),
       audioScene: new WebAudioScene3dComponent(),
-      loadingScreen: true, // covers the page until world.start()
     });
     // multiplayer when the URL carries a room; the network controller exists before any car spawns,
     // so chunk cars can be marked shared as they load
@@ -124,6 +125,7 @@ export class AppComponent implements AfterViewInit {
     }
 
     this.world.start();
+    loading.hide();
   }
 
   createRoom() {

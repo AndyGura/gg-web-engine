@@ -1,5 +1,4 @@
 import { LoadingScreen, LoadingView } from '../../../src';
-import { MockWorld } from '../../mocks/world.mock';
 
 describe('LoadingScreen', () => {
   const progress = (fraction: number) => ({
@@ -53,37 +52,5 @@ describe('LoadingScreen', () => {
     expect(view.dispose).toHaveBeenCalledTimes(1);
     expect(view.setProgress).toHaveBeenCalledTimes(1);
     expect(container.childElementCount).toBe(0);
-  });
-
-  describe('world loadingScreen option', () => {
-    it('shows from construction until the first start()', async () => {
-      const view = fakeView();
-      const world = new MockWorld({ loadingScreen: view });
-      expect(view.element.isConnected).toBe(true);
-      await world.init();
-      expect(view.element.isConnected).toBe(true);
-      world.start();
-      jest.advanceTimersByTime(250);
-      expect(view.element.isConnected).toBe(false);
-      expect(view.dispose).toHaveBeenCalledTimes(1);
-      world.pauseWorld();
-      world.start();
-      expect(view.dispose).toHaveBeenCalledTimes(1);
-      world.dispose();
-    });
-
-    it('goes away when the world is disposed before starting', () => {
-      const world = new MockWorld({ loadingScreen: true });
-      expect(document.querySelector('.gg-loading')).not.toBeNull();
-      world.dispose();
-      jest.advanceTimersByTime(250);
-      expect(document.querySelector('.gg-loading')).toBeNull();
-    });
-
-    it('shows nothing by default', () => {
-      const world = new MockWorld();
-      expect(document.querySelector('.gg-loading-screen')).toBeNull();
-      world.dispose();
-    });
   });
 });

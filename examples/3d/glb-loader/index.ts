@@ -4,6 +4,7 @@ import {
   Gg3dWorldTypeDocVPatch,
   GgStatic,
   LevelJson,
+  LoadingScreen,
   OrbitCameraController,
   Pnt3,
 } from '@gg-web-engine/core';
@@ -44,10 +45,11 @@ const level: LevelJson = {
   ],
 };
 
+// the engine's loading screen, up until the game runs (hidden after world.start() below)
+const loading = LoadingScreen.show();
 const world: ThreeGgWorld = new Gg3dWorld({
   visualScene: new ThreeSceneComponent(),
   physicsWorld: await createPhysicsWorld(),
-  loadingScreen: true, // covers the page until world.start()
 });
 world.init().then(async () => {
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
@@ -71,7 +73,7 @@ world.init().then(async () => {
       new GlbSpawner(w, settings),
   );
 
-  const levelGroup = await world.loader.loadLevel(level, 'MainLevel');
+  const levelGroup = await world.loader.loadLevel(level, 'MainLevel', { onProgress: p => loading.setProgress(p) });
 
   const cameraEntity = levelGroup.getChildEntityByName<Camera3dEntity<ThreeVisualTypeDocRepo>>('MainCamera');
   const renderer = world.addRenderer(cameraEntity.camera, canvas);
@@ -79,4 +81,5 @@ world.init().then(async () => {
   world.addEntity(controller);
 
   world.start();
+  loading.hide();
 });
