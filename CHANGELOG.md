@@ -110,6 +110,10 @@ where one exists.
   controller has no roll influence. It used to be passed to Rapier as side-friction stiffness, so the
   default `0.2` left wheels with a fifth of their sideways grip; side grip is now
   `sideFrictionStiffness` (default 1).
+- `@gg-web-engine/ammo`: no longer has a `mini-signals` peer dependency (nothing used it), and its
+  bundled typings declare `namespace Ammo`, so an app type-checks them without `skipLibCheck`
+  under TypeScript 6. An app needs no `tsconfig` path mapping or `browser` field for the adapter any
+  more: the package's own `browser` field stubs the `fs` the ammo.js glue references.
 
 ### Fixed
 - `@gg-web-engine/core`: looking around by dragging a finger over the canvas (`OrbitCameraController`,

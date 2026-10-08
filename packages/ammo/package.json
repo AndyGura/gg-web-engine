@@ -42,7 +42,6 @@
     "@types/node": "^26.4.0",
     "jest": "^30.5.0",
     "jest-environment-jsdom": "^30.5.0",
-    "mini-signals": "3.0.0",
     "prettier": "^3.9.6",
     "rxjs": "7.8.2",
     "ts-jest": "^29.4.12",
@@ -50,7 +49,6 @@
   },
   "peerDependencies": {
     "@gg-web-engine/core": "0.0.78",
-    "mini-signals": "3.0.0",
     "rxjs": "7.8.2"
   },
   "jest": {
