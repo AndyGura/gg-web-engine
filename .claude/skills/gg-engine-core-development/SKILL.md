@@ -1300,7 +1300,7 @@ Changing any of these is a breaking change for every adapter package — grep
   `decodeClip` on the audio factory, `setPaused` on the audio scene. All optional, so adding one
   never breaks an adapter - and core must keep working (minus byte progress) without each of them.
 - The factory abstracts in `2d/factories.ts` / `3d/factories.ts` (3D includes `createLight`; 2D
-  includes `createParallaxLayer` and `loadTexture`)
+  includes `createParallaxLayer`, `loadTexture` and `createCamera`)
 - `ILight3dComponent` and the 3D scene's `environment`/`setEnvironment`, plus the 3D loader's
   `loadTexture`/`loadCubeTexture`/`disposeTexture` (`VisualTypeDocRepo3D` has a `light` member for the former)
 - `IDisplayObject2dComponent.zIndex`, `IParallaxLayer2dComponent` and the 2D scene's

@@ -160,6 +160,9 @@ Every adapter component class then `implements I<Thing>Component<<Lib>VisualType
   carry a marker on their top and left edges, since solid-colored faces show the direction but not a
   rotated or mirrored image - and, for the environment map, the reflection on a mirror-like sphere.
   The loader's `disposeTexture(texture)` frees a texture either load method returned.
+- **Cameras**: the factory creates them, so an app never constructs an adapter class for one -
+  `createPerspectiveCamera(settings)` on the 3D factory, `createCamera()` (an `ICamera2dComponent`,
+  `position` at the view's top-left, `zoom` 1) on the 2D one.
 - **Draw order and backdrops (2D)**: `IDisplayObject2dComponent.zIndex` orders siblings.
   `IVisualScene2dComponent.environment`/`setEnvironment(partial)` holds `background`: a color, a
   texture drawn fixed to the screen and scaled to cover the view, or `null` for the clear color the

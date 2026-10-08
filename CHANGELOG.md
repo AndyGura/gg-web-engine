@@ -51,6 +51,9 @@ where one exists.
 - `@gg-web-engine/core`: `IPhysicsWorldComponent.fixedTimeStep`/`maxSubSteps`, the substep settings
   Ammo and Rapier 3D already had, so an app can set them without importing an adapter class. Adapters
   that don't substep (Matter, Rapier 2D) ignore them.
+- `@gg-web-engine/core`: `IDisplayObject2dComponentFactory.createCamera()`, so a 2D app makes its
+  camera with `world.visualScene.factory.createCamera()` instead of constructing
+  `PixiCameraComponent` itself, as a 3D app does with `createPerspectiveCamera`.
 
 ### Changed
 - `@gg-web-engine/core`: `ScreenManager` operations resolve with `true` when their screen was shown

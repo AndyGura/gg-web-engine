@@ -57,6 +57,12 @@ export abstract class IDisplayObject2dComponentFactory<VTypeDoc extends VisualTy
   /** Creates a text object, see `IText2dComponent` and `Text2dStyle`. */
   abstract createText(text: string, style?: Text2dStyle): VTypeDoc['text'];
 
+  /**
+   * Creates a camera, to pass to `Gg2dWorld.addRenderer`. Its `position` is the world point shown
+   * at the renderer's top-left corner, and `zoom` scales the view (see `ICamera2dComponent`).
+   */
+  abstract createCamera(): VTypeDoc['camera'];
+
   randomColor(): number {
     return (
       (Math.floor(Math.random() * 256) << 16) | (Math.floor(Math.random() * 256) << 8) | Math.floor(Math.random() * 256)
