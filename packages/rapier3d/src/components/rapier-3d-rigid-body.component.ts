@@ -273,7 +273,11 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
     // silently drop CCD off the copy.
     bd.setCcdEnabled(this._bodyDescr.ccdEnabled);
     bd.setCanSleep(this._bodyDescr.canSleep);
-    // TODO more fields here?
+    // `removeFromWorld` stores the live velocities on `_bodyDescr` so a re-added body resumes its
+    // motion; a copy built from an out-of-world body must start with the same velocities, or the
+    // clone would spawn at rest where the original re-adds in motion.
+    bd.setLinvel(this._bodyDescr.linvel.x, this._bodyDescr.linvel.y, this._bodyDescr.linvel.z);
+    bd.setAngvel(new Vector3(this._bodyDescr.angvel.x, this._bodyDescr.angvel.y, this._bodyDescr.angvel.z));
     return [colliderDescr, this.shape, bd, this._colliderOptions];
   }
 

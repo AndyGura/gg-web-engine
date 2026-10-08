@@ -58,6 +58,24 @@ describe('Rapier3dRigidBodyComponent removed from the world and added again', ()
     body.removeFromWorld(ggWorld);
     expect(body.clone().position).toEqual({ x: 5, y: -3, z: 2 });
   });
+
+  it('a clone made after a move keeps the velocity the source had', () => {
+    const body = factory.createRigidBody(
+      { shape: { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } }, body: { bodyType: 'dynamic', mass: 1 } },
+      { position: { x: 0, y: 0, z: 0 } },
+    );
+    const ggWorld = { physicsWorld: world } as any;
+    body.addToWorld(ggWorld);
+    body.linearVelocity = { x: 1, y: 2, z: 3 };
+    body.angularVelocity = { x: 0, y: 0, z: 0.5 };
+    body.removeFromWorld(ggWorld);
+    const copy = body.clone();
+    expect(copy.linearVelocity).toEqual({ x: 1, y: 2, z: 3 });
+    expect(copy.angularVelocity).toEqual({ x: 0, y: 0, z: 0.5 });
+    copy.addToWorld(ggWorld);
+    expect(copy.linearVelocity.x).toBeCloseTo(1, 5);
+    expect(copy.angularVelocity.z).toBeCloseTo(0.5, 5);
+  });
 });
 
 describe('Rapier3dCharacterControllerComponent removed from the world and added again', () => {
