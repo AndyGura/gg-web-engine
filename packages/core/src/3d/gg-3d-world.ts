@@ -120,6 +120,17 @@ export type TypedGg3dWorld<
     : never
   : never;
 
+/**
+ * `W` (a world type such as `ThreeGgWorld`) with a physics world of whichever adapter, known to be
+ * there: `world.physicsWorld` is a plain `IPhysicsWorld3dComponent`, never `null`. For an app that
+ * picks its physics backend at runtime and so can't name an adapter's world type:
+ * `const world: Gg3dWorldWithPhysics<ThreeGgWorld> = new Gg3dWorld({ visualScene, physicsWorld })`.
+ */
+export type Gg3dWorldWithPhysics<W extends Gg3dWorld<any, any>> =
+  W extends Gg3dWorld<infer TD, infer STD>
+    ? Gg3dWorld<TD, Omit<STD, 'physicsWorld'> & { physicsWorld: IPhysicsWorld3dComponent<TD['pTypeDoc']> }>
+    : never;
+
 export class Gg3dWorld<
   TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo,
   SceneTypeDoc extends Gg3dWorldSceneTypeRepo<TypeDoc> = Gg3dWorldSceneTypeRepo<TypeDoc>,

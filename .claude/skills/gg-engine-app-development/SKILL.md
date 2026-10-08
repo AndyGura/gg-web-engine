@@ -173,6 +173,18 @@ work with any physics backend, a function parameter typed `world: AmmoGgWorld` s
 Ammo world under Three, other, or no renderer at all. That's exactly what leaving the other type
 argument at its generic-interface default is for.
 
+When the physics backend is chosen at runtime (a settings menu, a `?physics=` parameter loading the
+adapter with a dynamic `import()`), there is no adapter world type to name. Wrap the visual alias in
+`Gg3dWorldWithPhysics`/`Gg2dWorldWithPhysics` instead: `world.physicsWorld` is then the generic
+`IPhysicsWorld3dComponent`/`IPhysicsWorld2dComponent`, never `null`, so no `!` is needed:
+
+```typescript
+const world: Gg3dWorldWithPhysics<ThreeGgWorld> = new Gg3dWorld({
+  visualScene: new ThreeSceneComponent(),
+  physicsWorld: await createPhysicsWorld(), // returns IPhysicsWorld3dComponent
+});
+```
+
 The pitfall is narrower: don't reach for a single-adapter alias to type a `world` variable/
 parameter whose concrete instance genuinely has both halves and whose code *does* use both
 concretely (e.g. reads an Ammo-specific field off `world.physicsWorld` while also holding a

@@ -54,6 +54,9 @@ where one exists.
 - `@gg-web-engine/core`: `IDisplayObject2dComponentFactory.createCamera()`, so a 2D app makes its
   camera with `world.visualScene.factory.createCamera()` instead of constructing
   `PixiCameraComponent` itself, as a 3D app does with `createPerspectiveCamera`.
+- `@gg-web-engine/core`: `Gg3dWorldWithPhysics<W>`/`Gg2dWorldWithPhysics<W>` type a world whose
+  physics backend is picked at runtime (`Gg3dWorldWithPhysics<ThreeGgWorld>`): `physicsWorld` is the
+  generic physics interface and never `null`, without naming a physics adapter.
 
 ### Changed
 - `@gg-web-engine/core`: `ScreenManager` operations resolve with `true` when their screen was shown
