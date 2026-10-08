@@ -96,12 +96,14 @@ Show it before anything slow (a dynamically imported physics backend included), 
 (`element`, `setProgress`, `dispose`) - sets it once at startup with
 `LoadingScreen.setDefaultView(() => new MyLoadingView())`: every `show()` without a `view` and every
 `ScreenManager` without a `loadingView` then makes one from it. It takes a factory, not a view,
-because hiding disposes the view. `view` on a single `show()` overrides it for that one. Don't wrap loads that happen while the game
-keeps running (the next round's pieces, streamed map chunks) - that would cover the game. Hide it in
-a `finally` if the startup can fail, or a failure stays hidden behind it. A `ScreenManager` app
-doesn't need it: the manager shows the same default view while a screen enters (see
-"Screens").
+because hiding disposes the view. `view` on a single `show()` overrides it for that one.
 
+Don't wrap loads that happen while the game keeps running (the next round's pieces, streamed map
+chunks) - that would cover the game. Hide it in a `finally` if the startup can fail, or a failure
+stays hidden behind it. A `ScreenManager` app doesn't need it: the manager shows the same default
+view while a screen enters (see "Screens").
+
+## Hidden tab: pausing automatically, or just reacting to it
 
 Pass `pauseWhenHidden: true` in the `Gg3dWorld`/`Gg2dWorld` constructor args to have the world pause
 itself automatically while the browser tab is hidden and resume itself when it becomes visible again
