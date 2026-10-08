@@ -77,7 +77,8 @@ BSD/GNU-portable — plain `grep`/`awk`, no `sed -i`).
    gallery's "Edit in StackBlitz" links open the examples at.
 
 After the script, the workflow also regenerates API docs (`documentation/` via `npm run
-generate`), commits the version bump back to `main`, tags the release, and deploys
+generate`; its home page is the hand-written `documentation/landing.md`, which `generate.sh` copies
+over docs-ts's empty stub together with the banner), commits the version bump back to `main`, tags the release, and deploys
 `documentation/site` to GitHub Pages.
 
 ## Known failure modes when a package is new to the release

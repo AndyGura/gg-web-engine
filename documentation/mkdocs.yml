@@ -1,4 +1,8 @@
-site_name: GG-web-engine
+site_name: GG Web Engine
+site_description: >-
+  Open-source TypeScript game engine for the browser: peer-to-peer multiplayer physics with no
+  game server, cars and character controllers built in, on Three.js or Pixi.js with Rapier,
+  Ammo.js or Matter.js.
 repo_url: https://github.com/AndyGura/gg-web-engine
 site_url: https://AndyGura.github.io/gg-web-engine
 use_directory_urls: true
