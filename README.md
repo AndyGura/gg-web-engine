@@ -17,6 +17,7 @@
   <a href="https://gg-web-demos.guraklgames.com/"><b>Live demos</b></a> •
   <a href="#-quickstart">Quickstart</a> •
   <a href="#-multiplayer-in-a-dozen-lines">Multiplayer</a> •
+  <a href="#-when-to-use-it-and-when-not-to">When to use it</a> •
   <a href="#-packages">Packages</a> •
   <a href="#-architecture">Architecture</a> •
   <a href="https://andygura.github.io/gg-web-engine/">API docs</a> •
@@ -242,6 +243,40 @@ The rest of the game stays single-player code. What you get:
 Try it: open the [Coin run](https://gg-web-demos.guraklgames.com/?example=2d/coin-run)
 (2D) or [Fly city](https://gg-web-demos.guraklgames.com/?example=3d/fly-city) (3D) demo
 and share the room link.
+
+## 🧭 When to use it, and when not to
+
+A short, honest guide. Every option below is a fine choice for the right game.
+
+**Pick GG Web Engine when**
+
+- Several players should share **one physics world** in the browser (co-op, party, racing, physics
+  sandbox) and you don't want to write netcode or run a game server. This is the case it was built
+  for.
+- The game is a **driving or character game**: a car with an engine and gearbox, raycast vehicles,
+  a first/third-person or 2D platformer controller are already there, on every physics backend.
+- Levels are **data**: generated, edited by tools or written by an AI agent as JSON, with your own
+  entity classes and blueprint-wired events.
+- You want to write against an engine API but keep Three.js, Pixi.js, Rapier, Ammo.js or Matter.js
+  underneath, with their native objects one property away.
+
+**Pick something else when**
+
+- **Raw Three.js + Rapier (or Pixi.js + Matter.js)**: one scene, full control over the render loop and
+  the newest library release on day one. GG pins exact versions of the libraries it wraps and adds a
+  layer you may not need for a product viewer or a single physics toy.
+- **[Babylon.js](https://www.babylonjs.com/)**: a rendering-heavy 3D game or an XR experience. It has
+  a mature PBR pipeline, WebGPU, WebXR, an inspector and node editors, a large community and a long
+  record of stable releases. GG has no WebXR support and its 3D rendering is whatever Three.js gives.
+- **[Phaser](https://phaser.io/)**: a classic 2D game (tilemaps, sprite animation, arcade physics,
+  scenes) with a huge library of tutorials. Choose GG for 2D only if you need shared multiplayer
+  physics or one codebase across 2D and 3D.
+- **[Godot](https://godotengine.org/) (web export)**: you want a visual editor, or desktop and mobile
+  builds from the same project. Expect a large WebAssembly download, and multi-threaded exports need
+  cross-origin isolation (COOP/COEP) headers on the host.
+- **You need long-term API stability today.** GG is at `0.0.N` with one maintainer; the API can change
+  between releases (see [Project status](#-project-status)). Babylon.js, Phaser and Godot have
+  versioning policies and large teams behind them.
 
 ## 📦 Packages
 
