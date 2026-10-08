@@ -86,7 +86,7 @@ version, so your core changes are exercised by every adapter's real test suite.
 npm install          # one-time: installs and links the packages/* workspace
 npm run build        # full build of every package, core first (includes non-TS asset copies)
 npm test             # jest suites of every package
-npm run lint:examples  # examples use @gg-web-engine/* APIs only (no three/pixi.js/physics imports)
+npm run lint:examples  # examples use @gg-web-engine/* APIs and packages only, on every physics backend
 npm run build:watch  # tsc -b --watch at the root — rebuilds core + adapters on every save
 ```
 
@@ -187,7 +187,10 @@ Conventions the review will check for:
   build, deploy and release scripts iterate it), under `examples/2d` or `examples/3d`.
 - Examples use `@gg-web-engine/*` APIs only: no direct `three`/`pixi.js`/`ammo.js`/`matter-js`/
   `@dimforge/*` import and no `native*` escape hatch (`nativeMesh`, `nativeSprite`, `nativeBody`,
-  ...). `npm run lint:examples` checks this. If an example needs something core can't express,
+  ...). Their `package.json` lists `@gg-web-engine/*` packages only (each adapter brings its
+  library), nothing stubs Node built-ins for Ammo, and every example runs on every physics adapter
+  of its dimension (`examples.json`). `npm run lint:examples` checks all of this. If an example
+  needs something core can't express,
   add the option to core and the adapters instead. A line that deliberately demonstrates native
   interop can opt out with a trailing `// gg-allow-native` comment.
 - Unit tests for new core or adapter logic, in the package that owns the behavior.

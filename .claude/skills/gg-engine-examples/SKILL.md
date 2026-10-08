@@ -85,7 +85,7 @@ dependencies of the adapter that wraps them, pinned there, so an example never p
 time (or in `overrides`) and can't drift from the version the adapter was built against. Ammo needs
 no setup either: the WASM glue ships inside `@gg-web-engine/ammo`, whose own `browser` field stubs
 the Node built-ins it references, so no `browser` field or `resolve.fallback` belongs in an example.
-Keep a trailing comma after every `@gg-web-engine/*` line (i.e.
+`npm run lint:examples` rejects all of these. Keep a trailing comma after every `@gg-web-engine/*` line (i.e.
 never let one be the last dependency) - the release script's version bump matches `"...": "x.y.z",`
 with the comma.
 
@@ -488,7 +488,10 @@ bootstrap shape used in the root `README.md` quickstart so readers can map one t
 `matter-js` or `@dimforge/*`, and no adapter `native*` escape hatch (`nativeMesh`, `nativeSprite`,
 `nativeBody`, ...): an example is a tutorial, and one that reaches into the native library teaches a
 renderer-locked pattern and hides a gap in the engine. `npm run lint:examples` at the repo root
-(`etc/check_examples_no_native.mjs`, also run by the PR workflow) fails on any such line. When a demo
+(`etc/check_examples_no_native.mjs`, also run by the PR workflow) fails on any such line. It also
+fails on an integration library (or `mini-signals`) in an example's `package.json` or `overrides`, a
+`browser` field or `fs`/`os`/`path: false` stub in a build config, and an `examples.json` entry that
+doesn't list every physics adapter of its dimension. When a demo
 needs something core can't express yet, add the option to core and every relevant adapter (see
 `gg-engine-core-development` and the adapter skills) and use it from the example. A line that
 deliberately demonstrates native interop can opt out with a trailing `// gg-allow-native` comment.
