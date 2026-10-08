@@ -1,6 +1,6 @@
 ---
 title: three/utils/tabulate-array.ts
-nav_order: 221
+nav_order: 223
 parent: Modules
 ---
 

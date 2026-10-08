@@ -27,6 +27,7 @@ parent: Modules
   - [Gg3dWorldTypeDocPPatch (type alias)](#gg3dworldtypedocppatch-type-alias)
   - [Gg3dWorldTypeDocRepo (type alias)](#gg3dworldtypedocrepo-type-alias)
   - [Gg3dWorldTypeDocVPatch (type alias)](#gg3dworldtypedocvpatch-type-alias)
+  - [Gg3dWorldWithPhysics (type alias)](#gg3dworldwithphysics-type-alias)
   - [PhysicsTypeDocRepo3D (type alias)](#physicstypedocrepo3d-type-alias)
   - [TypedGg3dWorld (type alias)](#typedgg3dworld-type-alias)
   - [VisualTypeDocRepo3D (type alias)](#visualtypedocrepo3d-type-alias)
@@ -225,6 +226,21 @@ export type Gg3dWorldTypeDocRepo = {
 export type Gg3dWorldTypeDocVPatch<VTypeDoc extends VisualTypeDocRepo3D> = Omit<Gg3dWorldTypeDocRepo, 'vTypeDoc'> & {
   vTypeDoc: VTypeDoc
 }
+```
+
+## Gg3dWorldWithPhysics (type alias)
+
+`W` (a world type such as `ThreeGgWorld`) with a physics world of whichever adapter, known to be
+there: `world.physicsWorld` is a plain `IPhysicsWorld3dComponent`, never `null`. For an app that
+picks its physics backend at runtime and so can't name an adapter's world type:
+`const world: Gg3dWorldWithPhysics<ThreeGgWorld> = new Gg3dWorld({ visualScene, physicsWorld })`.
+
+**Signature**
+
+```ts
+export type Gg3dWorldWithPhysics<W extends Gg3dWorld<any, any>> = W extends Gg3dWorld<infer TD, infer STD>
+  ? Gg3dWorld<TD, Omit<STD, 'physicsWorld'> & { physicsWorld: IPhysicsWorld3dComponent<TD['pTypeDoc']> }>
+  : never
 ```
 
 ## PhysicsTypeDocRepo3D (type alias)

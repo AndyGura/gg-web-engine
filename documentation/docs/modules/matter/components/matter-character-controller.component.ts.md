@@ -1,6 +1,6 @@
 ---
 title: matter/components/matter-character-controller.component.ts
-nav_order: 174
+nav_order: 175
 parent: Modules
 ---
 
@@ -71,7 +71,7 @@ swept/time-of-impact query to call instead. A
 single test-then-clamp at the fully-displaced candidate position would tunnel clean through any
 obstacle thinner than the requested displacement (a large single-tick `move()` call, or a thin wall,
 would simply never register contact at all). `marchMove` compensates by subdividing the requested
-delta into substeps no longer than `min(radius, 0.1)` and re-querying after each one, stopping at the
+delta into substeps no longer than half its radius and re-querying after each one, stopping at the
 first substep that would overlap something - a standard workaround for discrete-only collision
 detection, and the direct 2D analog of what a sweep primitive gives other backends for free.
 

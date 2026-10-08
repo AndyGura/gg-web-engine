@@ -1,6 +1,6 @@
 ---
 title: three/three-factory.ts
-nav_order: 218
+nav_order: 220
 parent: Modules
 ---
 

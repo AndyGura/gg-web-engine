@@ -322,6 +322,14 @@ export type GgCarProperties = RVEntityProperties & {
     maxRpmIncreasePerSecond: number
     maxRpmDecreasePerSecond: number
   }
+  /**
+   * Brake forces, in Newtons per wheel (see `IRaycastVehicleComponent.applyBrake`): the pedal
+   * (`GgCarEntity.brake`, 0..1) scales `frontAxleForce` on each front wheel and `rearAxleForce` on
+   * each rear wheel, the handbrake applies `handbrakeForce` to each rear wheel. Until tyre grip
+   * runs out, the car decelerates by the sum of all wheels' forces divided by its mass, e.g. 1 g
+   * with a 60% front share for a car of mass `m`: `frontAxleForce = 0.6 * m * 9.82 / 2`,
+   * `rearAxleForce = 0.4 * m * 9.82 / 2`.
+   */
   brake: {
     frontAxleForce: number
     rearAxleForce: number

@@ -1,6 +1,6 @@
 ---
 title: matter/components/matter-world.component.ts
-nav_order: 177
+nav_order: 178
 parent: Modules
 ---
 
@@ -21,6 +21,7 @@ parent: Modules
     - [simulate (method)](#simulate-method)
     - [raycast (method)](#raycast-method)
     - [dispose (method)](#dispose-method)
+    - [backendName (property)](#backendname-property)
     - [matterEngine\_ (property)](#matterengine_-property)
     - [factory (property)](#factory-property)
     - [added$ (property)](#added-property)
@@ -168,6 +169,14 @@ raycast(options: RaycastOptions<Point2>): RaycastResult<Point2, MatterRigidBodyC
 
 ```ts
 dispose(): void
+```
+
+### backendName (property)
+
+**Signature**
+
+```ts
+readonly backendName: string
 ```
 
 ### matterEngine\_ (property)

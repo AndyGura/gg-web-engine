@@ -1,6 +1,6 @@
 ---
 title: three/components/three-scene.component.ts
-nav_order: 217
+nav_order: 219
 parent: Modules
 ---
 
@@ -21,6 +21,7 @@ parent: Modules
     - [createRenderer (method)](#createrenderer-method)
     - [createComposerRenderer (method)](#createcomposerrenderer-method)
     - [dispose (method)](#dispose-method)
+    - [backendName (property)](#backendname-property)
     - [factory (property)](#factory-property)
     - [loader (property)](#loader-property)
     - [renderers (property)](#renderers-property)
@@ -121,6 +122,14 @@ createComposerRenderer(
 
 ```ts
 dispose(): void
+```
+
+### backendName (property)
+
+**Signature**
+
+```ts
+readonly backendName: string
 ```
 
 ### factory (property)

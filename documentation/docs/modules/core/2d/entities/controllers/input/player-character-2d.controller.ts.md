@@ -118,8 +118,9 @@ export type PlayerCharacterController2dOptions = {
    * Default 0.
    */
   lookAheadDistance: number
-  /** How quickly the camera catches up to its target position, as a fraction closed per second
-   * (0..1 per tick, exponential smoothing - `1` snaps instantly). Default 0.1. */
+  /** How quickly the camera catches up to its target position: the fraction of the remaining
+   * distance closed per 1/60 s (0..1, exponential smoothing, the same at any frame rate - `1` snaps
+   * instantly). Default 0.1. */
   cameraSmoothing: number
 }
 ```

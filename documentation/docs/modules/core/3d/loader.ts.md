@@ -19,9 +19,11 @@ parent: Modules
     - [acquireGgGlb (method)](#acquireggglb-method)
     - [loadGgGlbResources (method)](#loadggglbresources-method)
     - [preloadGgGlb (method)](#preloadggglb-method)
+    - [preloadInitialChunks (method)](#preloadinitialchunks-method)
     - [preloadAsset (method)](#preloadasset-method)
     - [loadGgGlb (method)](#loadggglb-method)
     - [override (property)](#override-property)
+    - [override (property)](#override-property-1)
   - [Glb3DSettings (interface)](#glb3dsettings-interface)
   - [LoadOptions (type alias)](#loadoptions-type-alias)
   - [LoadResourcesResult (type alias)](#loadresourcesresult-type-alias)
@@ -137,6 +139,17 @@ private async preloadGgGlb(
   ): Promise<void>
 ```
 
+### preloadInitialChunks (method)
+
+**Signature**
+
+```ts
+async preloadInitialChunks(
+    entity: MapGraph3dEntity<TypeDoc>,
+    load: LoadTaskOptions,
+  ): Promise<void>
+```
+
 ### preloadAsset (method)
 
 **Signature**
@@ -160,6 +173,18 @@ public async loadGgGlb(
     path: string,
     options: Partial<LoadOptions> & LoadTaskOptions = {},
   ): Promise<LoadResultWithProps<TypeDoc>>
+```
+
+### override (property)
+
+Preloads the chunks `entity` loads first, with the level's progress and signal, held only until
+the entity's own chunk scopes have taken them over - so they unload with their chunk like any
+other.
+
+**Signature**
+
+```ts
+override: any
 ```
 
 ### override (property)

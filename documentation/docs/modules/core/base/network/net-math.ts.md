@@ -88,7 +88,9 @@ export declare function extrapolationSeconds(ageMs: number, tuning: CorrectionTu
 
 ## gainFactor
 
-Per-tick blend factor for a per-second gain: `gain * dt`, clamped to [0, 1].
+Per-tick blend factor for a per-second gain: `1 - e^(-gain * dt)`, so blending by it every tick
+closes the same part of a gap per second at any frame rate (`gain * dt` overshoots the
+exponential at a low frame rate and reaches 1 at `dt = 1 / gain`).
 
 **Signature**
 

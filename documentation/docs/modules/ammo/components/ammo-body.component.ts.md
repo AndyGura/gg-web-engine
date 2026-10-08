@@ -12,6 +12,9 @@ parent: Modules
 
 - [utils](#utils)
   - [AmmoBodyComponent (class)](#ammobodycomponent-class)
+    - [scratchVector (static method)](#scratchvector-static-method)
+    - [scratchQuaternion (static method)](#scratchquaternion-static-method)
+    - [applyWorldTransform (method)](#applyworldtransform-method)
     - [refreshCG (method)](#refreshcg-method)
     - [clone (method)](#clone-method)
     - [addToWorld (method)](#addtoworld-method)
@@ -39,6 +42,41 @@ export declare class AmmoBodyComponent<T> {
     public readonly shape: Shape3DDescriptor
   )
 }
+```
+
+### scratchVector (static method)
+
+One shared `btVector3` for passing a value into a native call that copies it (`setOrigin`,
+`setLinearVelocity`, ...). Setters run every tick for a moving body, and a `new Ammo.btVector3`
+per call is never freed by the garbage collector - it piles up in the WASM heap until
+`Aborted(OOM)`. Never hold on to it: the next setter call overwrites it.
+
+**Signature**
+
+```ts
+protected static scratchVector(x: number, y: number, z: number): Ammo.btVector3
+```
+
+### scratchQuaternion (static method)
+
+`btQuaternion` counterpart of {@link scratchVector}.
+
+**Signature**
+
+```ts
+protected static scratchQuaternion(q: Point4): Ammo.btQuaternion
+```
+
+### applyWorldTransform (method)
+
+Moves the body to `transform` (this body's own, already modified, world transform object) -
+what the `position`/`rotation` setters end with. Body types that keep more than one transform
+in sync override it (see `AmmoRigidBodyComponent`).
+
+**Signature**
+
+```ts
+protected applyWorldTransform(transform: Ammo.btTransform): void
 ```
 
 ### refreshCG (method)

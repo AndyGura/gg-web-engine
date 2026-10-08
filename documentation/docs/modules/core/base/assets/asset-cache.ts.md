@@ -15,10 +15,12 @@ parent: Modules
     - [has (method)](#has-method)
     - [createScope (method)](#createscope-method)
     - [acquire (method)](#acquire-method)
+    - [abandon (method)](#abandon-method)
     - [remove (method)](#remove-method)
     - [dispose (method)](#dispose-method)
     - [root (property)](#root-property)
   - [AssetScope (class)](#assetscope-class)
+    - [adopt (method)](#adopt-method)
     - [release (method)](#release-method)
 
 ---
@@ -56,7 +58,8 @@ public createScope(): AssetScope
 
 Returns the asset cached under `key` for `scope` to hold, loading it with `load` when it is not
 there. A load that is aborted by the caller that started it is started again for the others
-still waiting for it.
+still waiting for it. A caller rejects as soon as its own `signal` aborts, without waiting for
+the load to stop. Rejects with an `AbortError` once the cache is disposed.
 
 **Signature**
 
@@ -64,10 +67,18 @@ still waiting for it.
 public async acquire<T>(
     key: string,
     scope: AssetScope | undefined,
-    load: () => Promise<{ value: T; dispose?: () => void }>,
+    load: (signal: AbortSignal) => Promise<{ value: T; dispose?: () => void }>,
     signal?: AbortSignal,
     onShared?: () => void,
   ): Promise<T>
+```
+
+### abandon (method)
+
+**Signature**
+
+```ts
+private abandon(key: string, entry: Entry): void
 ```
 
 ### remove (method)
@@ -80,7 +91,8 @@ private remove(key: string, entry: Entry): void
 
 ### dispose (method)
 
-Frees every entry. Loads still running free their result as they finish.
+Frees every entry and cancels the loads still running (a load that can't be cancelled frees
+its result when it finishes). The cache takes no new loads afterwards.
 
 **Signature**
 
@@ -110,6 +122,17 @@ Created with `world.loader.createAssetScope()`.
 export declare class AssetScope {
   constructor(private readonly cache: AssetCache)
 }
+```
+
+### adopt (method)
+
+Holds everything `other` holds, independently of it: what `other` loaded stays cached until
+both have let go. For something made from another scope's assets that outlives it.
+
+**Signature**
+
+```ts
+public adopt(other: AssetScope): void
 ```
 
 ### release (method)

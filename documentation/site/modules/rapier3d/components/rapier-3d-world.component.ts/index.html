@@ -6,6 +6,8 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
+        <meta name="description" content="Open-source TypeScript game engine for the browser: peer-to-peer multiplayer physics with no game server, cars and character controllers built in, on Three.js or Pixi.js with Rapier, Ammo.js or Matter.js.">
+      
       
       
         <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/rapier3d/components/rapier-3d-world.component.ts/">
@@ -18,7 +20,7 @@
     
     
       
-        <title>rapier3d/components/rapier-3d-world.component.ts - GG-web-engine</title>
+        <title>rapier3d/components/rapier-3d-world.component.ts - GG Web Engine</title>
       
     
     
@@ -89,7 +91,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../../.." title="GG-web-engine" class="md-header__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+    <a href="../../../.." title="GG Web Engine" class="md-header__button md-logo" aria-label="GG Web Engine" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
@@ -103,7 +105,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            GG-web-engine
+            GG Web Engine
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -219,13 +221,13 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../../.." title="GG-web-engine" class="md-nav__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+    <a href="../../../.." title="GG Web Engine" class="md-nav__button md-logo" aria-label="GG Web Engine" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
 
     </a>
-    GG-web-engine
+    GG Web Engine
   </label>
   
     <div class="md-nav__source">
@@ -536,8 +538,8 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#dispatchcollisionevents-method" class="md-nav__link">
-    dispatchCollisionEvents (method)
+  <a href="#collectcollisionevents-method" class="md-nav__link">
+    collectCollisionEvents (method)
   </a>
   
 </li>
@@ -573,6 +575,13 @@
           <li class="md-nav__item">
   <a href="#dispose-method" class="md-nav__link">
     dispose (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#backendname-property" class="md-nav__link">
+    backendName (property)
   </a>
   
 </li>
@@ -627,6 +636,20 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#maxsubsteps-property" class="md-nav__link">
+    maxSubSteps (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fixedtimestep-property" class="md-nav__link">
+    fixedTimeStep (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#lockedcollisiongroups-property" class="md-nav__link">
     lockedCollisionGroups (property)
   </a>
@@ -670,12 +693,13 @@
 <li><a href="#rapier3dworldcomponent-class">Rapier3dWorldComponent (class)</a><ul>
 <li><a href="#init-method">init (method)</a></li>
 <li><a href="#simulate-method">simulate (method)</a></li>
-<li><a href="#dispatchcollisionevents-method">dispatchCollisionEvents (method)</a></li>
+<li><a href="#collectcollisionevents-method">collectCollisionEvents (method)</a></li>
 <li><a href="#computecontactgeometry-method">computeContactGeometry (method)</a></li>
 <li><a href="#registercollisiongroup-method">registerCollisionGroup (method)</a></li>
 <li><a href="#deregistercollisiongroup-method">deregisterCollisionGroup (method)</a></li>
 <li><a href="#raycast-method">raycast (method)</a></li>
 <li><a href="#dispose-method">dispose (method)</a></li>
+<li><a href="#backendname-property">backendName (property)</a></li>
 <li><a href="#added-property">added$ (property)</a></li>
 <li><a href="#removed-property">removed$ (property)</a></li>
 <li><a href="#children-property">children (property)</a></li>
@@ -683,6 +707,8 @@
 <li><a href="#_nativeworld-property">_nativeWorld (property)</a></li>
 <li><a href="#handleidentitymap-property">handleIdEntityMap (property)</a></li>
 <li><a href="#raycastvehicles-property">raycastVehicles (property)</a></li>
+<li><a href="#maxsubsteps-property">maxSubSteps (property)</a></li>
+<li><a href="#fixedtimestep-property">fixedTimeStep (property)</a></li>
 <li><a href="#lockedcollisiongroups-property">lockedCollisionGroups (property)</a></li>
 </ul>
 </li>
@@ -703,11 +729,14 @@
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">simulate(delta: number): void
 </code></pre>
-<h3 id="dispatchcollisionevents-method">dispatchCollisionEvents (method)</h3>
-<p>Drains <code>eventQueue</code> exactly once per <code>simulate()</code> call and routes each entry to whichever
-component(s) care - this is the <em>only</em> place <code>drainCollisionEvents</code> is called for the whole
-world (see <code>Rapier3dTriggerComponent.notifyOverlap</code>'s doc for why a second/independent drain
-elsewhere would silently steal events from this one). A collider pair with sensor
+<h3 id="collectcollisionevents-method">collectCollisionEvents (method)</h3>
+<p>Drains <code>eventQueue</code> and routes each entry to whichever component(s) care, as a notification
+pushed to <code>out</code> - <code>simulate()</code> calls it after every step (the queue is created with
+<code>autoDrain</code>, so Rapier clears it before the next step) and runs the notifications once all
+steps are done. Contact geometry and velocities are read here, right after the step the contact
+started in. This is the <em>only</em> place <code>drainCollisionEvents</code> is called for the whole world (see
+<code>Rapier3dTriggerComponent.notifyOverlap</code>'s doc for why a second/independent drain elsewhere
+would silently steal events from this one). A collider pair with sensor
 semantics (either side <code>isSensor()</code>) is routed as a trigger overlap; an ordinary pair is routed
 as a real rigid-body collision.</p>
 <p><code>EventQueue.drainCollisionEvents</code> reports <em>collider</em> handles, not rigid-body handles -
@@ -720,7 +749,7 @@ sensor branch handles that directly (<code>notifyOverlap</code> accepts either),
 branch narrows to <code>Rapier3dRigidBodyComponent</code> first, since a character controller has no
 collision-event API to call into.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">protected dispatchCollisionEvents(): void
+<pre><code class="language-ts">protected collectCollisionEvents(out: (() =&gt; void)[]): void
 </code></pre>
 <h3 id="computecontactgeometry-method">computeContactGeometry (method)</h3>
 <p>Reads world-space contact position/normal/impulse for a just-started contact between two
@@ -768,6 +797,10 @@ engine (a sensor with no collision response, see <code>ITrigger3dComponent</code
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">dispose(): void
 </code></pre>
+<h3 id="backendname-property">backendName (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly backendName: string
+</code></pre>
 <h3 id="added-property">added$ (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly added$: any
@@ -793,9 +826,9 @@ engine (a sensor with no collision response, see <code>ITrigger3dComponent</code
 <code>Rapier3dRigidBodyComponent</code>s (triggers included, since <code>Rapier3dTriggerComponent extends
 Rapier3dRigidBodyComponent</code>) - a character controller's kinematic body still gets a real Rapier
 rigid-body handle on <code>addToWorld</code> (see that class), so it registers here the same way, letting
-<code>dispatchCollisionEvents</code> resolve sensor-overlap pairs against it (so a <code>Trigger</code> fires for a
+<code>collectCollisionEvents</code> resolve sensor-overlap pairs against it (so a <code>Trigger</code> fires for a
 player walking through it, not just for ordinary rigid bodies/vehicle chassis) and letting
-<code>raycast()</code> resolve a hit against it too. <code>dispatchCollisionEvents</code> still narrows to
+<code>raycast()</code> resolve a hit against it too. <code>collectCollisionEvents</code> still narrows to
 <code>Rapier3dRigidBodyComponent</code> before treating a pair as a real (non-sensor) contact, since a
 character controller has no <code>notifyCollisionStart</code>/<code>notifyCollisionEnd</code> to call - its physical
 response comes from its own sweep-based <code>move()</code>, not Rapier's contact solver.</p>
@@ -811,6 +844,32 @@ vehicle from this set immediately before stepping the world, so the forces it ju
 the chassis's velocity get integrated by that same step.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly raycastVehicles: Set&lt;Rapier3dRaycastVehicleComponent&gt;
+</code></pre>
+<h3 id="maxsubsteps-property">maxSubSteps (property)</h3>
+<p>Hard ceiling on how many substeps <code>simulate()</code> runs for one call, however large <code>delta</code> is - a
+single huge catch-up call (a backgrounded tab) then runs longer substeps instead of grinding
+through an enormous number of them. <code>0</code>/<code>undefined</code> means no cap. Default <code>100</code>.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">maxSubSteps: number | undefined
+</code></pre>
+<h3 id="fixedtimestep-property">fixedTimeStep (property)</h3>
+<p>The longest a single native step may be, in seconds. Default <code>0.01</code> (10 ms).</p>
+<p><code>simulate(delta)</code> splits every call into <code>n = ceil(delta / fixedTimeStep)</code> steps (clamped by
+<code>maxSubSteps</code>) of exactly <code>delta / n</code> each, so the simulated time always equals <code>delta</code> and
+nothing is carried over to the next call (see <code>AmmoWorldComponent.fixedTimeStep</code> in
+<code>@gg-web-engine/ammo</code> for why a carried-over accumulator jitters against the camera). A single
+step of the whole frame made the solver depend on the frame rate: a raycast vehicle cornering at
+20 m/s for 3 s kept 16.2 m/s at 30 FPS but 19.0 m/s at 144 FPS (suspension and tyre friction are
+explicit per-step models, accurate only for short steps); with steps of at most 10 ms it keeps
+the same speed at any frame rate.</p>
+<p>Everything driven once per call is spread over the steps: each raycast vehicle's
+<code>updateVehicle</code> runs before every step (with its brake impulse for that step's length), and a
+<code>kinematic_pos</code> body's target (<code>setNextKinematicTranslation</code>/<code>Rotation</code>, set by its <code>position</code>/
+<code>rotation</code> setters during the tick) is reached in equal parts, one per step. Left to Rapier, a
+kinematic body would reach its whole target in the first step - moving <code>n</code> times too fast - and
+stand still for the rest, so whatever rides on it would get kicked forward and dragged back.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">fixedTimeStep: number | undefined
 </code></pre>
 <h3 id="lockedcollisiongroups-property">lockedCollisionGroups (property)</h3>
 <p><strong>Signature</strong></p>

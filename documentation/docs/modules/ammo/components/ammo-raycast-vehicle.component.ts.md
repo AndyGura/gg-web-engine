@@ -20,6 +20,7 @@ parent: Modules
     - [setSteering (method)](#setsteering-method)
     - [applyEngineForce (method)](#applyengineforce-method)
     - [applyBrake (method)](#applybrake-method)
+    - [applyBrakeImpulses (method)](#applybrakeimpulses-method)
     - [isWheelTouchesGround (method)](#iswheeltouchesground-method)
     - [getWheelTransform (method)](#getwheeltransform-method)
     - [resetSuspension (method)](#resetsuspension-method)
@@ -31,6 +32,7 @@ parent: Modules
     - [wheelAxleCS (property)](#wheelaxlecs-property)
     - [entity (property)](#entity-property)
     - [raycaster (property)](#raycaster-property)
+    - [brakeForces (property)](#brakeforces-property)
 
 ---
 
@@ -104,10 +106,30 @@ applyEngineForce(wheelIndex: number, force: number): void
 
 ### applyBrake (method)
 
+Stores the brake force (Newtons); `AmmoWorldComponent.simulate()` hands it to Bullet before
+every step - see `applyBrakeImpulses()`.
+
 **Signature**
 
 ```ts
 applyBrake(wheelIndex: number, force: number): void
+```
+
+### applyBrakeImpulses (method)
+
+Converts every wheel's brake force into what Bullet's `setBrake` takes: the maximum impulse
+the wheel's braking may apply in one internal substep (`btRaycastVehicle::updateFriction`
+clamps the wheel's rolling impulse to `m_brake`), i.e. `force × substep length`. Passing the
+force through unconverted brakes harder the shorter the substeps are, which is the case at a
+higher frame rate (`AmmoWorldComponent.simulate()` splits each frame into substeps of 5-10 ms
+depending on the frame's length): a 1.5 t car braked at 3.4 g at 50 FPS and 5 g at 144 FPS
+with the same values. Called by `AmmoWorldComponent.simulate()` right before
+`stepSimulation`, whose substeps all have exactly `subStepLength` seconds.
+
+**Signature**
+
+```ts
+applyBrakeImpulses(subStepLength: number): void
 ```
 
 ### isWheelTouchesGround (method)
@@ -196,4 +218,14 @@ entity: RaycastVehicle3dEntity<Gg3dWorldTypeDocRepo> | null
 
 ```ts
 readonly raycaster: Ammo.btDefaultVehicleRaycaster
+```
+
+### brakeForces (property)
+
+Brake force of every wheel, in Newtons - see `applyBrake()`.
+
+**Signature**
+
+```ts
+readonly brakeForces: number[]
 ```

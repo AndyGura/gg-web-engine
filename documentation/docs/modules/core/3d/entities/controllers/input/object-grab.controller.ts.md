@@ -37,7 +37,10 @@ HL2/Portal-style "use key carries a physics prop" input controller: raycasts fro
 current position/forward direction to find a `Grabbable3dEntity` within `maxGrabDistance`,
 `grabKey` picks it up (and drops it again if already holding one - a second `grabKey` press is
 equivalent to the right mouse button), left mouse button throws it forward (`throwSpeed`), right
-mouse button drops it in place. Mirrors `PlayerCharacterController` in shape (an input-only entity driving a
+mouse button drops it in place. On a touch device the mouse buttons do nothing here (a finger
+dragging to look around would otherwise throw the object): `grabKey` - emulated by an on-screen
+button - and the public `throwHeld`/`dropHeld` are the way to act on a held object there, which
+is what `@gg-web-engine/mobile-controls`' layout for this controller binds to. Mirrors `PlayerCharacterController` in shape (an input-only entity driving a
 separate physics entity, reading `camera` for aim rather than owning it) - pair the two by
 passing the same `keyboard`/`mouseInput`/`camera` instances to both, rather than constructing a
 second `MouseInput`/`KeyboardInput` here, so pointer-lock/focus behavior stays single-sourced.
@@ -81,7 +84,7 @@ when it isn't one.
 ```ts
 export declare class ObjectGrabController<TypeDoc> {
   constructor(
-    protected readonly keyboard: KeyboardInput,
+    public readonly keyboard: KeyboardInput,
     protected readonly mouseInput: MouseInput,
     protected readonly camera: Renderer3dEntity<TypeDoc['vTypeDoc']>,
     /** The character whose capsule the hold point is kept clear of - see this class's own doc. Pass
@@ -253,18 +256,22 @@ private unignoreForHolder(obj: Grabbable3dEntity<TypeDoc>): void
 
 ### throwHeld (method)
 
+Throws the held object forward at `throwSpeed`, if holding one - what the left mouse button does.
+
 **Signature**
 
 ```ts
-private throwHeld(): void
+public throwHeld(): void
 ```
 
 ### dropHeld (method)
 
+Lets go of the held object where it is, if holding one - what the right mouse button does.
+
 **Signature**
 
 ```ts
-private dropHeld(): void
+public dropHeld(): void
 ```
 
 ### tickOrder (property)

@@ -1,6 +1,6 @@
 ---
 title: rapier3d/components/rapier-3d-rigid-body.component.ts
-nav_order: 203
+nav_order: 204
 parent: Modules
 ---
 
@@ -16,6 +16,7 @@ parent: Modules
     - [notifyCollisionEnd (method)](#notifycollisionend-method)
     - [clone (method)](#clone-method)
     - [addToWorld (method)](#addtoworld-method)
+    - [applyMassProperties (method)](#applymassproperties-method)
     - [removeFromWorld (method)](#removefromworld-method)
     - [resetMotion (method)](#resetmotion-method)
     - [wakeUp (method)](#wakeup-method)
@@ -89,6 +90,22 @@ clone(): Rapier3dRigidBodyComponent
 
 ```ts
 addToWorld(world: Rapier3dGgWorld): void
+```
+
+### applyMassProperties (method)
+
+Places a dynamic body's centre of mass at its origin, as `BodyOptions.mass` documents it for 3D
+(Bullet's compound shape does this natively). Rapier derives the centre of
+mass from the colliders instead, which for a compound shape (a car chassis built from a few
+boxes) lands wherever the boxes average out - often far above the wheels. The total mass is
+spread over the colliders by volume (uniform density), the resulting inertia is moved to the
+origin (parallel-axis theorem), and the body carries it as its own mass properties with
+massless colliders.
+
+**Signature**
+
+```ts
+private applyMassProperties(body: RigidBody, colliders: Collider[]): void
 ```
 
 ### removeFromWorld (method)

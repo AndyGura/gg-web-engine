@@ -219,7 +219,7 @@ static slerp(a: Point3, b: Point3, t: number): Point3
 
 ### angle (static method)
 
-angle between vectors in radians
+angle between vectors in radians, `0` when either vector has zero length
 
 **Signature**
 

@@ -23,6 +23,7 @@ parent: Modules
     - [loadChunk (method)](#loadchunk-method)
     - [attachToChunk (method)](#attachtochunk-method)
     - [detachFromChunk (method)](#detachfromchunk-method)
+    - [holdChunkAssets (method)](#holdchunkassets-method)
     - [dispose (method)](#dispose-method)
     - [disposeChunk (method)](#disposechunk-method)
     - [tickOrder (property)](#tickorder-property)
@@ -156,12 +157,24 @@ Releases entities from whichever loaded chunk they are attached to, without remo
 the world: they stay spawned, as children of this entity, and no chunk's unload touches them
 any more. For content that has to outlive the chunk it was spawned with (e.g. a vehicle the
 player drove away from its home chunk) - hand it back with `attachToChunk` once it should
-follow a chunk's lifecycle again, or remove it yourself.
+follow a chunk's lifecycle again, or remove it yourself. An entity the chunk loaded itself
+shares the chunk's cached geometry, materials and shapes: it keeps them alive on its own from
+here on, until it is disposed, so the chunk unloading doesn't free them under it.
 
 **Signature**
 
 ```ts
 public detachFromChunk(entities: (IEntity & IPositionable3d)[]): (IEntity & IPositionable3d)[]
+```
+
+### holdChunkAssets (method)
+
+Lets an entity a chunk loaded keep that chunk's assets after leaving it, until disposed.
+
+**Signature**
+
+```ts
+private holdChunkAssets(entity: IEntity): void
 ```
 
 ### dispose (method)

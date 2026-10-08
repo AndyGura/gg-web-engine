@@ -27,6 +27,13 @@ Interface representing a physics world component.
 export interface IPhysicsWorldComponent<D, R, PTypeDoc extends PhysicsTypeDocRepo<D, R> = PhysicsTypeDocRepo<D, R>>
   extends IComponent {
   /**
+   * Short, stable name of the physics library behind this world (`'ammo'`, `'rapier3d'`,
+   * `'rapier2d'`, `'matter'`, ...), the same for every instance of an adapter. Shown in the dev
+   * console's world info and handy in logs or bug reports.
+   */
+  readonly backendName: string
+
+  /**
    * Factory function for creating physics-related objects.
    */
   readonly factory: PTypeDoc['factory']
@@ -55,6 +62,21 @@ export interface IPhysicsWorldComponent<D, R, PTypeDoc extends PhysicsTypeDocRep
    * The main collision group. All physics bodies have this collision group set by default.
    */
   readonly mainCollisionGroup: CollisionGroup
+
+  /**
+   * The longest single native step `simulate()` takes, in seconds: a call is split into as many
+   * equal steps as it needs to keep each one this short (bounded by `maxSubSteps`). `undefined` or
+   * `0` steps at most 1/60 s at a time. Only adapters that split a call into substeps have it
+   * (Ammo, Rapier 3D); on the others setting it does nothing.
+   */
+  fixedTimeStep?: number
+
+  /**
+   * The most substeps one `simulate()` call runs, however long its delta - a huge catch-up delta
+   * then takes longer steps instead of grinding through a great many. `0`/`undefined` means no cap.
+   * See `fixedTimeStep` for which adapters have it.
+   */
+  maxSubSteps?: number
 
   /**
    * Initializes the physics world component.

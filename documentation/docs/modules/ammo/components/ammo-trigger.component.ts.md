@@ -153,6 +153,8 @@ readonly onEnter$: any
 
 ### onLeft$ (property)
 
+A native pointer from `checkOverlaps()`, or the removed component itself from the `removed$` reaction.
+
 **Signature**
 
 ```ts

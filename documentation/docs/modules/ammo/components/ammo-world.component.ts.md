@@ -27,11 +27,13 @@ parent: Modules
     - [closestNonTriggerHit (method)](#closestnontriggerhit-method)
     - [solidRayFallback (method)](#solidrayfallback-method)
     - [dispose (method)](#dispose-method)
+    - [backendName (property)](#backendname-property)
     - [afterTick$ (property)](#aftertick-property)
     - [added$ (property)](#added-property)
     - [removed$ (property)](#removed-property)
     - [children (property)](#children-property)
     - [kinematicVelBodies (property)](#kinematicvelbodies-property)
+    - [raycastVehicles (property)](#raycastvehicles-property)
     - [mainCollisionGroup (property)](#maincollisiongroup-property)
     - [maxSubSteps (property)](#maxsubsteps-property)
     - [fixedTimeStep (property)](#fixedtimestep-property)
@@ -311,6 +313,14 @@ private solidRayFallback(
 dispose(): void
 ```
 
+### backendName (property)
+
+**Signature**
+
+```ts
+readonly backendName: string
+```
+
 ### afterTick$ (property)
 
 **Signature**
@@ -358,6 +368,19 @@ this adapter's own `position`/`rotation` writes, never integrated from `linearVe
 readonly kinematicVelBodies: Set<AmmoRigidBodyComponent>
 ```
 
+### raycastVehicles (property)
+
+Every currently-in-world raycast vehicle, whose brake forces `simulate()` converts into
+Bullet's per-substep brake impulses before stepping (see
+`AmmoRaycastVehicleComponent.applyBrakeImpulses()`). Maintained by
+`AmmoRaycastVehicleComponent.addToWorld`/`removeFromWorld` - not meant to be written to directly.
+
+**Signature**
+
+```ts
+readonly raycastVehicles: Set<AmmoRaycastVehicleComponent>
+```
+
 ### mainCollisionGroup (property)
 
 **Signature**
@@ -389,40 +412,40 @@ The largest a single internal substep is allowed to be, in seconds - smaller kee
 (suspension springs, fast/thin shapes, etc.) accurate and stable, at the cost of more substeps
 per call. Default `0.01` (10ms).
 
-**Not passed straight through to `stepSimulation` as its own `fixedTimeStep` argument** - that
-argument drives Bullet's built-in _accumulator_ (`m_localTime`), which carries whatever doesn't
-divide evenly into `fixedTimeStep` over into the _next_ call. That accumulator is invisible and
-harmless for a body at rest, but for anything moving it means the amount of physics time
-actually simulated in a given `simulate()` call silently drifts above and below that call's own
-`delta` from tick to tick, depending on the accumulator's leftover phase - since nothing else in
-this engine's tick loop goes through that same accumulator (a camera driven directly off
-`CharacterController3dEntity.move()`'s own un-quantized per-tick `dt`, for one), that drift shows
-up as the camera and a physics-driven body disagreeing by a small, sign-flipping amount every
-other frame - real, reported, reproduced symptom: back-and-forth position jitter on a
-`Grabbable3dEntity` held in front of a moving/turning camera (worse the faster the camera
-moves - the drift is a fixed few milliseconds' worth of position error, so it scales with
-speed), and the same mechanism behind a fixed camera flickering relative to a moving raycast
-vehicle, or a chase camera's target flickering relative to its spinning chassis. `Rapier3dWorldComponent.simulate`
-never has this problem in the first place - it just sets its own `timestep` to `delta` and steps
-once, so simulated time always exactly equals real elapsed time.
+`simulate(delta)` splits every call into `n = ceil(delta / fixedTimeStep)` substeps (clamped
+by `maxSubSteps`) of exactly `delta / n` each, so the physics time simulated always equals
+`delta`, with nothing carried over to the next call. The substep length therefore depends on
+the frame rate: 8.3 ms at 30 and 60 FPS, 5.6 ms at 90, 10 ms at 100, 6.9 ms at 144.
 
-Fixed here without giving up bounded substep size at all: `simulate()` computes its own substep
-count `n = ceil(delta / fixedTimeStep)` (clamped by `maxSubSteps`) and calls `stepSimulation`
-with substeps of exactly `delta / n` each - always summing to exactly `delta`, every call, with
-nothing ever carried over. For any `delta` that already divides evenly by `fixedTimeStep` (every
-existing synthetic test in this package uses one) this reproduces Bullet's own accumulator
-result exactly; for a real variable render `delta` (never an exact multiple of `0.01`) it's what
-actually removes the drift, while every substep is still no larger than `fixedTimeStep` (unless
-`maxSubSteps` itself has to trade accuracy for guaranteeing `delta` is fully consumed - see its
-own doc). A first attempt at this fix (`maxSubSteps: 0`, Bullet's own single-step "variable
-timestep" mode, mirroring `Rapier3dWorldComponent.simulate` literally) removed the drift too,
-but at the cost of _all_ substepping, not just the accumulator - confirmed as a real regression,
-not a hypothetical one, by this package's own test suite: a raycast vehicle's suspension
-(`ammo-raycast-vehicle.component.spec.ts`) stopped settling correctly and a trigger's exit event
-(`ammo-trigger.component.spec.ts`) stopped firing, from nothing more exotic than the existing
-tests' own ordinary `world.simulate(60)`-per-frame loops - well short of a huge catch-up frame.
-Substep chunking earns its keep for solver accuracy on every call, not just huge ones, so it's
-kept unconditionally rather than only above some `delta` threshold.
+**Why not a constant substep with an accumulator** (Bullet's own `stepSimulation(delta,
+maxSubSteps, fixedTimeStep)` mode): the simulated time of a call would then drift above and
+below `delta` from call to call (a 60 FPS frame would simulate 10 ms, then 20 ms), and nothing
+else in the tick loop follows that drift - a camera driven by
+`CharacterController3dEntity.move()`'s real per-tick `dt`, for one. That showed up as
+sign-flipping jitter between the camera and physics bodies: a `Grabbable3dEntity` held in
+front of a moving camera, a fixed camera watching a moving raycast vehicle, a chase camera's
+target against its chassis. Hiding the drift would take interpolating every rendered body
+transform between the last two physics states, which costs up to one substep of display lag
+against the camera and changes what `position` means for every consumer. Measured with this
+package's own raycast vehicle at 30/60/90/100/144 FPS, the variable substep changes vehicle
+behavior by under 2% (braking distance, cornering yaw, suspension travel on a landing) once
+brakes are converted per substep (`AmmoRaycastVehicleComponent.applyBrakeImpulses()`), which
+doesn't justify that. An app that needs bit-identical physics across frame rates can use
+`GgWorld`'s `fixedPhysicsStep` option, which calls `simulate()` with a constant `delta`.
+
+Bullet's accumulator is still involved inside one call, and it keeps time in `float`:
+`delta / (delta / n)` can come out just below `n`, so Bullet ran `n - 1` substeps and carried
+one into the next call (`n + 1` substeps, of that call's length) - about one call in a
+thousand. `simulate()` passes half a substep more than `delta`, so the float division always
+lands between `n` and `n + 1`, then discards the leftover half substep with a zero-length
+step, which resets the accumulator.
+
+A first attempt at removing the accumulator drift (`maxSubSteps: 0`, Bullet's own single-step
+"variable timestep" mode, one step per call) removed all substepping too, and broke this
+package's own tests: a raycast vehicle's suspension (`ammo-raycast-vehicle.component.spec.ts`)
+stopped settling and a trigger's exit event (`ammo-trigger.component.spec.ts`) stopped firing
+at ordinary `simulate(60)` frames. Substeps no longer than `fixedTimeStep` are kept for every
+call.
 
 **Signature**
 

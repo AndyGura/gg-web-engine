@@ -12,6 +12,7 @@ parent: Modules
 
 - [utils](#utils)
   - [AmmoRigidBodyComponent (class)](#ammorigidbodycomponent-class)
+    - [applyWorldTransform (method)](#applyworldtransform-method)
     - [emitCollisionStart (method)](#emitcollisionstart-method)
     - [emitCollisionEnd (method)](#emitcollisionend-method)
     - [clone (method)](#clone-method)
@@ -48,6 +49,34 @@ export declare class AmmoRigidBodyComponent {
     public readonly canSleep: boolean = true
   )
 }
+```
+
+### applyWorldTransform (method)
+
+Bullet keeps a rigid body's pose in three places, and a teleport (the `position`/`rotation`
+setters, `resetMotion()`) has to write every one this body type reads, or a later step reads a
+stale one:
+
+- `kinematic_pos`/`kinematic_vel`: Bullet's own kinematic bookkeeping
+  (`btRigidBody::saveKinematicState`, run every `stepSimulation` for every
+  `CF_KINEMATIC_OBJECT` body) _pulls_ the body's transform from its motion state, overwriting
+  `m_worldTransform`, and derives the body's velocity for that step from the move (the velocity
+  that lets it push/wake the dynamic bodies it sweeps into). Writing only `setWorldTransform`
+  gets reverted by the next step - a real, reproduced regression: a moving kinematic floor's
+  position writes looked fought/ignored. So the motion state is written too.
+- `dynamic`: `setCenterOfMassTransform`, which besides `m_worldTransform` sets the
+  interpolation transform and velocities and the world-space inertia tensor (a rotation
+  teleport with `setWorldTransform` alone leaves the inertia tensor oriented for the old
+  rotation until the next step). The motion state is written too:
+  `btRaycastVehicle.updateWheelTransform(i, true)` (`AmmoRaycastVehicleComponent
+.resetSuspension()`) places the wheels from the chassis's motion state.
+- `static`: the plain `setWorldTransform` of `AmmoBodyComponent` - Bullet never reads anything
+  else of a static body.
+
+**Signature**
+
+```ts
+protected applyWorldTransform(transform: Ammo.btTransform): void
 ```
 
 ### emitCollisionStart (method)
@@ -151,6 +180,11 @@ sleep(): void
 ```
 
 ### resetMotion (method)
+
+Stops the body where it is: clears its forces and velocities in place, without taking it out
+of the world (no `world.removed$`/`added$`, which would make e.g. `SurfaceFollowingEntity`
+drop the body's road plane). A dynamic body's interpolation velocities are cleared as well
+(`setCenterOfMassTransform` copies the now-zero velocities into them).
 
 **Signature**
 

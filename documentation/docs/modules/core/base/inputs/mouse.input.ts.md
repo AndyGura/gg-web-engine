@@ -92,6 +92,10 @@ Options for a MouseInput.
 
 canvas?: Canvas element. If not provided, mouse events will be listened on the whole window
 pointerLock: The flag to enable pointer lock when clicking on canvas
+touchSensitivity: What a finger's movement counts for in `delta$`, relative to the mouse: a drag of
+`n` pixels is reported as `n * touchSensitivity` pixels of mouse movement. A finger covers far
+less distance than a mouse does for the same intended turn, so this is 3 by default - the
+same factor the mobile-controls look area applies.
 
 **Signature**
 
@@ -99,5 +103,6 @@ pointerLock: The flag to enable pointer lock when clicking on canvas
 export type MouseInputOptions = {
   canvas?: HTMLCanvasElement
   pointerLock: boolean
+  touchSensitivity: number
 }
 ```

@@ -6,6 +6,8 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
+        <meta name="description" content="Open-source TypeScript game engine for the browser: peer-to-peer multiplayer physics with no game server, cars and character controllers built in, on Three.js or Pixi.js with Rapier, Ammo.js or Matter.js.">
+      
       
       
         <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/base/screens/screen-manager.ts/">
@@ -18,7 +20,7 @@
     
     
       
-        <title>core/base/screens/screen-manager.ts - GG-web-engine</title>
+        <title>core/base/screens/screen-manager.ts - GG Web Engine</title>
       
     
     
@@ -89,7 +91,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../../../.." title="GG-web-engine" class="md-header__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+    <a href="../../../../.." title="GG Web Engine" class="md-header__button md-logo" aria-label="GG Web Engine" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
@@ -103,7 +105,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            GG-web-engine
+            GG Web Engine
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -219,13 +221,13 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../../../.." title="GG-web-engine" class="md-nav__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+    <a href="../../../../.." title="GG Web Engine" class="md-nav__button md-logo" aria-label="GG Web Engine" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
 
     </a>
-    GG-web-engine
+    GG Web Engine
   </label>
   
     <div class="md-nav__source">
@@ -522,6 +524,13 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#registerconsolecommands-static-method" class="md-nav__link">
+    registerConsoleCommands (static method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#push-method" class="md-nav__link">
     push (method)
   </a>
@@ -564,6 +573,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#dodispose-method" class="md-nav__link">
+    doDispose (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#request-method" class="md-nav__link">
     request (method)
   </a>
@@ -573,6 +589,20 @@
           <li class="md-nav__item">
   <a href="#transition-method" class="md-nav__link">
     transition (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#attach-method" class="md-nav__link">
+    attach (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fallbackfor-method" class="md-nav__link">
+    fallbackFor (method)
   </a>
   
 </li>
@@ -634,8 +664,8 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#registerconsolecommands-method" class="md-nav__link">
-    registerConsoleCommands (method)
+  <a href="#describestack-method" class="md-nav__link">
+    describeStack (method)
   </a>
   
 </li>
@@ -696,14 +726,18 @@
 <ul>
 <li><a href="#utils">utils</a></li>
 <li><a href="#screenmanager-class">ScreenManager (class)</a><ul>
+<li><a href="#registerconsolecommands-static-method">registerConsoleCommands (static method)</a></li>
 <li><a href="#push-method">push (method)</a></li>
 <li><a href="#replace-method">replace (method)</a></li>
 <li><a href="#pop-method">pop (method)</a></li>
 <li><a href="#popto-method">popTo (method)</a></li>
 <li><a href="#reset-method">reset (method)</a></li>
 <li><a href="#dispose-method">dispose (method)</a></li>
+<li><a href="#dodispose-method">doDispose (method)</a></li>
 <li><a href="#request-method">request (method)</a></li>
 <li><a href="#transition-method">transition (method)</a></li>
+<li><a href="#attach-method">attach (method)</a></li>
+<li><a href="#fallbackfor-method">fallbackFor (method)</a></li>
 <li><a href="#removeaborted-method">removeAborted (method)</a></li>
 <li><a href="#setstack-method">setStack (method)</a></li>
 <li><a href="#cover-method">cover (method)</a></li>
@@ -712,7 +746,7 @@
 <li><a href="#exitscreen-method">exitScreen (method)</a></li>
 <li><a href="#safely-method">safely (method)</a></li>
 <li><a href="#onggstaticadded-method">onGgStaticAdded (method)</a></li>
-<li><a href="#registerconsolecommands-method">registerConsoleCommands (method)</a></li>
+<li><a href="#describestack-method">describeStack (method)</a></li>
 <li><a href="#container-property">container (property)</a></li>
 </ul>
 </li>
@@ -735,56 +769,87 @@ screens.push(new MenuScreen())
 requested: first the screens that leave exit, top down (so a game being replaced has given up
 its renderer and audio before the next screen allocates its own); then the screen that ends up on
 top is entered if it never was, or uncovered. Screens placed below the top by <code>reset</code> enter
-later, when they are first uncovered. Each operation returns a promise that resolves when its
-transition is over, and rejects if the entered screen's <code>enter()</code> threw - that screen is then
-removed again and the one below it shown.</p>
-<p>A request made while a screen is still entering waits for it if it is a plain <code>push</code>; any other
-request aborts the entering screen (its <code>ctx.signal</code>) and goes on from there, so going back
-during a long load cancels the load.</p>
+later, when they are first uncovered. The layers of the screens that left stay on the page until
+the new top screen (or the loading view) shows, so there is no blank frame in between.</p>
+<p>Each operation returns a promise that resolves when its transition is over: with <code>true</code> when its
+top screen is shown (or the stack is empty), with <code>false</code> when a later request cancelled it. It
+rejects if the entered screen's <code>enter()</code> threw - that screen is then removed again and the one
+below it shown - unless <code>onEnterError</code> provided a screen to show instead.</p>
+<p>A plain <code>push</code> waits for the screens being entered before it. Any other operation cancels the
+screens it removes that were not shown yet, judged by the stack as the operations queued before
+it leave it: one entering is aborted (its <code>ctx.signal</code>), one whose operation still waits is never
+entered. So going back during a long load cancels the load, and <code>push(a); push(b); pop()</code> never
+enters <code>b</code>.</p>
+<p>Never await an operation from a screen's own <code>enter()</code> or <code>exit()</code>: it waits for the transition
+that is waiting for that very hook, and neither ends. Call it without awaiting instead.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export declare class ScreenManager {
   constructor(options: ScreenManagerOptions = {})
 }
 </code></pre>
+<h3 id="registerconsolecommands-static-method">registerConsoleCommands (static method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private static registerConsoleCommands(): void
+</code></pre>
 <h3 id="push-method">push (method)</h3>
 <p>Puts <code>screen</code> on top of the stack, covering the current top screen.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">public push(screen: Screen, options: ScreenPushOptions = {}): Promise&lt;void&gt;
+<pre><code class="language-ts">public push(screen: Screen, options: ScreenPushOptions = {}): Promise&lt;boolean&gt;
 </code></pre>
 <h3 id="replace-method">replace (method)</h3>
 <p>Puts <code>screen</code> in place of the top screen, which exits.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">public replace(screen: Screen, options: ScreenPushOptions = {}): Promise&lt;void&gt;
+<pre><code class="language-ts">public replace(screen: Screen, options: ScreenPushOptions = {}): Promise&lt;boolean&gt;
 </code></pre>
 <h3 id="pop-method">pop (method)</h3>
 <p>Removes the top <code>count</code> screens (one by default); the screen below them is on top again.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">public pop(count: number = 1): Promise&lt;void&gt;
+<pre><code class="language-ts">public pop(count: number = 1): Promise&lt;boolean&gt;
 </code></pre>
 <h3 id="popto-method">popTo (method)</h3>
 <p>Removes every screen above <code>target</code>, which is a screen of the stack or a screen class (then the
 topmost screen of that class).</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">public popTo(target: Screen | ScreenClass): Promise&lt;void&gt;
+<pre><code class="language-ts">public popTo(target: Screen | ScreenClass): Promise&lt;boolean&gt;
 </code></pre>
 <h3 id="reset-method">reset (method)</h3>
 <p>Makes the stack exactly <code>screens</code> (bottom first) in one transition. Screens already in the
 stack that are listed again stay as they are; the rest exit. Only the last one is entered now.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">public reset(screens: Screen[], options: ScreenPushOptions = {}): Promise&lt;void&gt;
+<pre><code class="language-ts">public reset(screens: Screen[], options: ScreenPushOptions = {}): Promise&lt;boolean&gt;
 </code></pre>
 <h3 id="dispose-method">dispose (method)</h3>
 <p>Exits every screen and removes what the manager added to the page.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">public async dispose(): Promise&lt;void&gt;
+<pre><code class="language-ts">public dispose(): Promise&lt;void&gt;
+</code></pre>
+<h3 id="dodispose-method">doDispose (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private async doDispose(): Promise&lt;void&gt;
 </code></pre>
 <h3 id="request-method">request (method)</h3>
+<p>Queues one operation. <code>wanted</code> computes the stack the operation leads to from the one before
+it: applied now to <code>projected</code> (the stack once every queued operation has run), it tells which
+screens this operation removes; applied again when the operation's turn comes, to the real
+stack, it drives the transition.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">private request(supersedes: boolean, run: () =&gt; Promise&lt;void&gt;): Promise&lt;void&gt;
+<pre><code class="language-ts">private request(
+    supersedes: boolean,
+    wanted: (stack: readonly Screen[]) =&gt; Screen[],
+    options: ScreenPushOptions,
+  ): Promise&lt;boolean&gt;
 </code></pre>
 <h3 id="transition-method">transition (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">private async transition(wanted: Screen[], options: ScreenPushOptions): Promise&lt;void&gt;
+<pre><code class="language-ts">private async transition(wanted: Screen[], options: ScreenPushOptions): Promise&lt;boolean&gt;
+</code></pre>
+<h3 id="attach-method">attach (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private attach(screen: Screen): void
+</code></pre>
+<h3 id="fallbackfor-method">fallbackFor (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private fallbackFor(error: unknown, screen: Screen): Screen | null
 </code></pre>
 <h3 id="removeaborted-method">removeAborted (method)</h3>
 <p>A request that aborted the entering screen and then failed before its transition took that
@@ -809,11 +874,12 @@ screen out leaves it on top, never shown: remove it and give the screen below ba
 <pre><code class="language-ts">private async enterScreen(
     screen: Screen,
     options: ScreenPushOptions,
+    onShown: () =&gt; void,
   ): Promise&lt;'entered' | 'aborted' | { error: unknown }&gt;
 </code></pre>
 <h3 id="exitscreen-method">exitScreen (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">private async exitScreen(screen: Screen, entered: boolean = true): Promise&lt;void&gt;
+<pre><code class="language-ts">private async exitScreen(screen: Screen, entered: boolean = true, keepLayer: boolean = false): Promise&lt;void&gt;
 </code></pre>
 <h3 id="safely-method">safely (method)</h3>
 <p><strong>Signature</strong></p>
@@ -823,9 +889,9 @@ screen out leaves it on top, never shown: remove it and give the screen below ba
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">private onGgStaticAdded(): void
 </code></pre>
-<h3 id="registerconsolecommands-method">registerConsoleCommands (method)</h3>
+<h3 id="describestack-method">describeStack (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">private registerConsoleCommands(): void
+<pre><code class="language-ts">private describeStack(indent: string): string
 </code></pre>
 <h3 id="container-property">container (property)</h3>
 <p>The element the screen layers are in.</p>
@@ -842,8 +908,9 @@ screen out leaves it on top, never shown: remove it and give the screen below ba
    */
   container?: HTMLElement
   /**
-   * Creates the view shown while a screen is entering. `DefaultLoadingView` by default; `null` for
-   * none (screens that show their own progress).
+   * Creates the view shown while a screen is entering. By default the game-wide default view (see
+   * `LoadingScreen.setDefaultView`, `DefaultLoadingView` unless set); `null` for none (screens that
+   * show their own progress).
    */
   loadingView?: (() =&gt; LoadingView) | null
   /**
@@ -851,6 +918,18 @@ screen out leaves it on top, never shown: remove it and give the screen below ba
    * screen that is ready at once never flashes it. 150 by default.
    */
   loadingDelay?: number
+  /**
+   * Once the loading view has appeared, the least time in milliseconds it stays, so a screen ready
+   * just after the delay doesn't flash it for a frame. 300 by default.
+   */
+  loadingMinDuration?: number
+  /**
+   * Called when a screen's `enter()` throws (not when it is aborted). Return a screen to show in its
+   * place - an error screen, the main menu - so a failed `replace` or `clearHistory` push doesn't
+   * leave an empty stack. The operation then resolves with `false` instead of rejecting. Called once
+   * per operation: if the returned screen fails too, the operation rejects.
+   */
+  onEnterError?: (error: unknown, screen: Screen) =&gt; Screen | null | undefined | void
 }
 </code></pre>
 <h2 id="screenpushoptions-type-alias">ScreenPushOptions (type alias)</h2>

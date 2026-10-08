@@ -1,6 +1,6 @@
 ---
 title: core/base/screens/screen-manager.ts
-nav_order: 166
+nav_order: 167
 parent: Modules
 ---
 
@@ -12,14 +12,18 @@ parent: Modules
 
 - [utils](#utils)
   - [ScreenManager (class)](#screenmanager-class)
+    - [registerConsoleCommands (static method)](#registerconsolecommands-static-method)
     - [push (method)](#push-method)
     - [replace (method)](#replace-method)
     - [pop (method)](#pop-method)
     - [popTo (method)](#popto-method)
     - [reset (method)](#reset-method)
     - [dispose (method)](#dispose-method)
+    - [doDispose (method)](#dodispose-method)
     - [request (method)](#request-method)
     - [transition (method)](#transition-method)
+    - [attach (method)](#attach-method)
+    - [fallbackFor (method)](#fallbackfor-method)
     - [removeAborted (method)](#removeaborted-method)
     - [setStack (method)](#setstack-method)
     - [cover (method)](#cover-method)
@@ -28,7 +32,7 @@ parent: Modules
     - [exitScreen (method)](#exitscreen-method)
     - [safely (method)](#safely-method)
     - [onGgStaticAdded (method)](#onggstaticadded-method)
-    - [registerConsoleCommands (method)](#registerconsolecommands-method)
+    - [describeStack (method)](#describestack-method)
     - [container (property)](#container-property)
   - [ScreenManagerOptions (type alias)](#screenmanageroptions-type-alias)
   - [ScreenPushOptions (type alias)](#screenpushoptions-type-alias)
@@ -55,13 +59,22 @@ Every operation is one transition, and transitions run one after another in the 
 requested: first the screens that leave exit, top down (so a game being replaced has given up
 its renderer and audio before the next screen allocates its own); then the screen that ends up on
 top is entered if it never was, or uncovered. Screens placed below the top by `reset` enter
-later, when they are first uncovered. Each operation returns a promise that resolves when its
-transition is over, and rejects if the entered screen's `enter()` threw - that screen is then
-removed again and the one below it shown.
+later, when they are first uncovered. The layers of the screens that left stay on the page until
+the new top screen (or the loading view) shows, so there is no blank frame in between.
 
-A request made while a screen is still entering waits for it if it is a plain `push`; any other
-request aborts the entering screen (its `ctx.signal`) and goes on from there, so going back
-during a long load cancels the load.
+Each operation returns a promise that resolves when its transition is over: with `true` when its
+top screen is shown (or the stack is empty), with `false` when a later request cancelled it. It
+rejects if the entered screen's `enter()` threw - that screen is then removed again and the one
+below it shown - unless `onEnterError` provided a screen to show instead.
+
+A plain `push` waits for the screens being entered before it. Any other operation cancels the
+screens it removes that were not shown yet, judged by the stack as the operations queued before
+it leave it: one entering is aborted (its `ctx.signal`), one whose operation still waits is never
+entered. So going back during a long load cancels the load, and `push(a); push(b); pop()` never
+enters `b`.
+
+Never await an operation from a screen's own `enter()` or `exit()`: it waits for the transition
+that is waiting for that very hook, and neither ends. Call it without awaiting instead.
 
 **Signature**
 
@@ -71,6 +84,14 @@ export declare class ScreenManager {
 }
 ```
 
+### registerConsoleCommands (static method)
+
+**Signature**
+
+```ts
+private static registerConsoleCommands(): void
+```
+
 ### push (method)
 
 Puts `screen` on top of the stack, covering the current top screen.
@@ -78,7 +99,7 @@ Puts `screen` on top of the stack, covering the current top screen.
 **Signature**
 
 ```ts
-public push(screen: Screen, options: ScreenPushOptions = {}): Promise<void>
+public push(screen: Screen, options: ScreenPushOptions = {}): Promise<boolean>
 ```
 
 ### replace (method)
@@ -88,7 +109,7 @@ Puts `screen` in place of the top screen, which exits.
 **Signature**
 
 ```ts
-public replace(screen: Screen, options: ScreenPushOptions = {}): Promise<void>
+public replace(screen: Screen, options: ScreenPushOptions = {}): Promise<boolean>
 ```
 
 ### pop (method)
@@ -98,7 +119,7 @@ Removes the top `count` screens (one by default); the screen below them is on to
 **Signature**
 
 ```ts
-public pop(count: number = 1): Promise<void>
+public pop(count: number = 1): Promise<boolean>
 ```
 
 ### popTo (method)
@@ -109,7 +130,7 @@ topmost screen of that class).
 **Signature**
 
 ```ts
-public popTo(target: Screen | ScreenClass): Promise<void>
+public popTo(target: Screen | ScreenClass): Promise<boolean>
 ```
 
 ### reset (method)
@@ -120,7 +141,7 @@ stack that are listed again stay as they are; the rest exit. Only the last one i
 **Signature**
 
 ```ts
-public reset(screens: Screen[], options: ScreenPushOptions = {}): Promise<void>
+public reset(screens: Screen[], options: ScreenPushOptions = {}): Promise<boolean>
 ```
 
 ### dispose (method)
@@ -130,15 +151,32 @@ Exits every screen and removes what the manager added to the page.
 **Signature**
 
 ```ts
-public async dispose(): Promise<void>
+public dispose(): Promise<void>
 ```
 
-### request (method)
+### doDispose (method)
 
 **Signature**
 
 ```ts
-private request(supersedes: boolean, run: () => Promise<void>): Promise<void>
+private async doDispose(): Promise<void>
+```
+
+### request (method)
+
+Queues one operation. `wanted` computes the stack the operation leads to from the one before
+it: applied now to `projected` (the stack once every queued operation has run), it tells which
+screens this operation removes; applied again when the operation's turn comes, to the real
+stack, it drives the transition.
+
+**Signature**
+
+```ts
+private request(
+    supersedes: boolean,
+    wanted: (stack: readonly Screen[]) => Screen[],
+    options: ScreenPushOptions,
+  ): Promise<boolean>
 ```
 
 ### transition (method)
@@ -146,7 +184,23 @@ private request(supersedes: boolean, run: () => Promise<void>): Promise<void>
 **Signature**
 
 ```ts
-private async transition(wanted: Screen[], options: ScreenPushOptions): Promise<void>
+private async transition(wanted: Screen[], options: ScreenPushOptions): Promise<boolean>
+```
+
+### attach (method)
+
+**Signature**
+
+```ts
+private attach(screen: Screen): void
+```
+
+### fallbackFor (method)
+
+**Signature**
+
+```ts
+private fallbackFor(error: unknown, screen: Screen): Screen | null
 ```
 
 ### removeAborted (method)
@@ -192,6 +246,7 @@ private uncover(screen: Screen): void
 private async enterScreen(
     screen: Screen,
     options: ScreenPushOptions,
+    onShown: () => void,
   ): Promise<'entered' | 'aborted' | { error: unknown }>
 ```
 
@@ -200,7 +255,7 @@ private async enterScreen(
 **Signature**
 
 ```ts
-private async exitScreen(screen: Screen, entered: boolean = true): Promise<void>
+private async exitScreen(screen: Screen, entered: boolean = true, keepLayer: boolean = false): Promise<void>
 ```
 
 ### safely (method)
@@ -219,12 +274,12 @@ private safely(run: () => void): void
 private onGgStaticAdded(): void
 ```
 
-### registerConsoleCommands (method)
+### describeStack (method)
 
 **Signature**
 
 ```ts
-private registerConsoleCommands(): void
+private describeStack(indent: string): string
 ```
 
 ### container (property)
@@ -250,8 +305,9 @@ export type ScreenManagerOptions = {
    */
   container?: HTMLElement
   /**
-   * Creates the view shown while a screen is entering. `DefaultLoadingView` by default; `null` for
-   * none (screens that show their own progress).
+   * Creates the view shown while a screen is entering. By default the game-wide default view (see
+   * `LoadingScreen.setDefaultView`, `DefaultLoadingView` unless set); `null` for none (screens that
+   * show their own progress).
    */
   loadingView?: (() => LoadingView) | null
   /**
@@ -259,6 +315,18 @@ export type ScreenManagerOptions = {
    * screen that is ready at once never flashes it. 150 by default.
    */
   loadingDelay?: number
+  /**
+   * Once the loading view has appeared, the least time in milliseconds it stays, so a screen ready
+   * just after the delay doesn't flash it for a frame. 300 by default.
+   */
+  loadingMinDuration?: number
+  /**
+   * Called when a screen's `enter()` throws (not when it is aborted). Return a screen to show in its
+   * place - an error screen, the main menu - so a failed `replace` or `clearHistory` push doesn't
+   * leave an empty stack. The operation then resolves with `false` instead of rejecting. Called once
+   * per operation: if the returned screen fails too, the operation rejects.
+   */
+  onEnterError?: (error: unknown, screen: Screen) => Screen | null | undefined | void
 }
 ```
 

@@ -28,6 +28,8 @@ where one exists.
 
 ## [Unreleased]
 
+## [0.0.79] - 2026-10-08
+
 ### Added
 - `@gg-web-engine/core`: an engine-provided loading screen. `DefaultLoadingView` is now an opaque
   backdrop with an animated CSS 3D cube and "Loading" (a progress bar and percentage join it once
@@ -858,7 +860,8 @@ where one exists.
 
 First published version: `@gg-web-engine/core`, `three`, `pixi`, `ammo`, and `matter`.
 
-[Unreleased]: https://github.com/AndyGura/gg-web-engine/compare/0.0.78...HEAD
+[Unreleased]: https://github.com/AndyGura/gg-web-engine/compare/0.0.79...HEAD
+[0.0.79]: https://github.com/AndyGura/gg-web-engine/compare/0.0.78...0.0.79
 [0.0.78]: https://github.com/AndyGura/gg-web-engine/compare/0.0.77...0.0.78
 [0.0.77]: https://github.com/AndyGura/gg-web-engine/compare/0.0.76...0.0.77
 [0.0.76]: https://github.com/AndyGura/gg-web-engine/compare/0.0.75...0.0.76

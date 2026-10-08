@@ -6,6 +6,8 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
+        <meta name="description" content="Open-source TypeScript game engine for the browser: peer-to-peer multiplayer physics with no game server, cars and character controllers built in, on Three.js or Pixi.js with Rapier, Ammo.js or Matter.js.">
+      
       
       
         <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/base/assets/load-progress.ts/">
@@ -18,7 +20,7 @@
     
     
       
-        <title>core/base/assets/load-progress.ts - GG-web-engine</title>
+        <title>core/base/assets/load-progress.ts - GG Web Engine</title>
       
     
     
@@ -89,7 +91,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../../../.." title="GG-web-engine" class="md-header__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+    <a href="../../../../.." title="GG Web Engine" class="md-header__button md-logo" aria-label="GG Web Engine" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
@@ -103,7 +105,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            GG-web-engine
+            GG Web Engine
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -219,13 +221,13 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../../../.." title="GG-web-engine" class="md-nav__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+    <a href="../../../../.." title="GG Web Engine" class="md-nav__button md-logo" aria-label="GG Web Engine" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
 
     </a>
-    GG-web-engine
+    GG Web Engine
   </label>
   
     <div class="md-nav__source">
@@ -577,6 +579,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#complete-method" class="md-nav__link">
+    complete (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#finish-method" class="md-nav__link">
     finish (method)
   </a>
@@ -610,8 +619,22 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#abortable" class="md-nav__link">
+    abortable
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#isaborterror" class="md-nav__link">
     isAbortError
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#linksignals" class="md-nav__link">
+    linkSignals
   </a>
   
 </li>
@@ -662,13 +685,16 @@
 <li><a href="#loadprogress-type-alias">LoadProgress (type alias)</a></li>
 <li><a href="#loadprogressgroup-class">LoadProgressGroup (class)</a><ul>
 <li><a href="#sub-method">sub (method)</a></li>
+<li><a href="#complete-method">complete (method)</a></li>
 <li><a href="#finish-method">finish (method)</a></li>
 <li><a href="#emit-method-1">emit (method)</a></li>
 </ul>
 </li>
 <li><a href="#loadtaskoptions-type-alias">LoadTaskOptions (type alias)</a></li>
 <li><a href="#aborterror">abortError</a></li>
+<li><a href="#abortable">abortable</a></li>
 <li><a href="#isaborterror">isAbortError</a></li>
+<li><a href="#linksignals">linkSignals</a></li>
 <li><a href="#throwifaborted">throwIfAborted</a></li>
 </ul>
 <hr />
@@ -720,6 +746,12 @@ single asset it describes that asset, for a level (or <code>preload</code>) ever
 <h2 id="loadprogressgroup-class">LoadProgressGroup (class)</h2>
 <p>Combines the progress of several loads into one. Each <code>sub()</code> is a slot to hand to one nested
 loader call as its options; the combined fraction is the mean over every asset the slots report.</p>
+<p>A slot that has not reported any asset yet, and is not complete, holds the weight of one asset:
+create the slots of every step known up front (also the ones that only start after an earlier
+step finished), so a first step that completes early does not read as the whole load being done.
+When assets turn up late and lower the mean, the shown fraction stays where it was and from then
+on covers the rest of the bar in proportion to the work that remains, so it never goes down and
+never stalls.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export declare class LoadProgressGroup {
   constructor(private readonly options: LoadTaskOptions)
@@ -729,6 +761,12 @@ loader call as its options; the combined fraction is the mean over every asset t
 <p>Options for one nested load: its progress goes into this group, signal and scope carry over.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public sub(): LoadTaskOptions
+</code></pre>
+<h3 id="complete-method">complete (method)</h3>
+<p>Reports the load a slot was handed to as settled, also when it reported nothing (a step that
+loads nothing, or loaded only what the cache already held), so its reserved weight is released.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public complete(slot: LoadTaskOptions): void
 </code></pre>
 <h3 id="finish-method">finish (method)</h3>
 <p>Reports the group complete. Call once everything nested has settled.</p>
@@ -758,10 +796,24 @@ loader call as its options; the combined fraction is the mean over every asset t
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export declare function abortError(): Error
 </code></pre>
+<h2 id="abortable">abortable</h2>
+<p>Settles like <code>promise</code>, or rejects with an <code>AbortError</code> as soon as one of <code>signals</code> aborts.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export declare function abortable&lt;T&gt;(promise: Promise&lt;T&gt;, ...signals: (AbortSignal | undefined)[]): Promise&lt;T&gt;
+</code></pre>
 <h2 id="isaborterror">isAbortError</h2>
 <p>Whether <code>error</code> is what an aborted load rejects with.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export declare function isAbortError(error: unknown): boolean
+</code></pre>
+<h2 id="linksignals">linkSignals</h2>
+<p>A signal aborted as soon as any of <code>signals</code> is. <code>release()</code> detaches it from them once the work
+it was made for is over, so a long-lived source signal doesn't keep a listener per load.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export declare function linkSignals(...signals: (AbortSignal | undefined)[]): {
+  signal: AbortSignal
+  release: () =&gt; void
+}
 </code></pre>
 <h2 id="throwifaborted">throwIfAborted</h2>
 <p><strong>Signature</strong></p>

@@ -6,6 +6,8 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
+        <meta name="description" content="Open-source TypeScript game engine for the browser: peer-to-peer multiplayer physics with no game server, cars and character controllers built in, on Three.js or Pixi.js with Rapier, Ammo.js or Matter.js.">
+      
       
       
         <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/3d/entities/raycast-vehicle-3d.entity.ts/">
@@ -18,7 +20,7 @@
     
     
       
-        <title>core/3d/entities/raycast-vehicle-3d.entity.ts - GG-web-engine</title>
+        <title>core/3d/entities/raycast-vehicle-3d.entity.ts - GG Web Engine</title>
       
     
     
@@ -89,7 +91,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../../../.." title="GG-web-engine" class="md-header__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+    <a href="../../../../.." title="GG Web Engine" class="md-header__button md-logo" aria-label="GG Web Engine" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
@@ -103,7 +105,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            GG-web-engine
+            GG Web Engine
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -219,13 +221,13 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../../../.." title="GG-web-engine" class="md-nav__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+    <a href="../../../../.." title="GG Web Engine" class="md-nav__button md-logo" aria-label="GG Web Engine" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
 
     </a>
-    GG-web-engine
+    GG Web Engine
   </label>
   
     <div class="md-nav__source">
@@ -705,13 +707,19 @@
 )
 </code></pre>
 <h2 id="rventitysharedwheeloptions-type-alias">RVEntitySharedWheelOptions (type alias)</h2>
+<p>Wheel settings shared by several wheels. Anything left out takes the default: <code>tyreWidth</code> 0.3,
+<code>tyreRadius</code> 0.4, <code>frictionSlip</code> 1.2 (street tyres - see <code>WheelOptions.frictionSlip</code>),
+<code>rollInfluence</code> 0.2, <code>sideFrictionStiffness</code> 1, <code>maxTravel</code> equal to <code>suspension.restLength</code> (the wheel compresses at most
+up to its connection point), <code>maxSuspensionForce</code> per <code>defaultMaxSuspensionForce</code>.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export type RVEntitySharedWheelOptions = {
   tyreWidth?: number
   tyreRadius?: number
   frictionSlip?: number
   rollInfluence?: number
+  sideFrictionStiffness?: number
   maxTravel?: number
+  maxSuspensionForce?: number
   display?: WheelDisplayOptions
 }
 </code></pre>
@@ -730,10 +738,12 @@
 <pre><code class="language-ts">public getSpeed(): number
 </code></pre>
 <h3 id="applytraction-method">applyTraction (method)</h3>
+<p>Sets the engine force of every wheel of <code>axle</code>, in Newtons per wheel - see <code>IRaycastVehicleComponent.applyEngineForce</code>.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public applyTraction(axle: 'front' | 'rear' | 'both', force: number)
 </code></pre>
 <h3 id="applybrake-method">applyBrake (method)</h3>
+<p>Sets the brake force of every wheel of <code>axle</code>, in Newtons per wheel - see <code>IRaycastVehicleComponent.applyBrake</code>.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public applyBrake(axle: 'front' | 'rear' | 'both', force: number)
 </code></pre>

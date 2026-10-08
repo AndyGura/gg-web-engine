@@ -1,6 +1,6 @@
 ---
 title: rapier2d/components/rapier-2d-world.component.ts
-nav_order: 197
+nav_order: 198
 parent: Modules
 ---
 
@@ -20,6 +20,7 @@ parent: Modules
     - [deregisterCollisionGroup (method)](#deregistercollisiongroup-method)
     - [raycast (method)](#raycast-method)
     - [dispose (method)](#dispose-method)
+    - [backendName (property)](#backendname-property)
     - [added$ (property)](#added-property)
     - [removed$ (property)](#removed-property)
     - [children (property)](#children-property)
@@ -150,6 +151,14 @@ raycast(options: RaycastOptions<Point2>): RaycastResult<Point2, Rapier2dRigidBod
 
 ```ts
 dispose(): void
+```
+
+### backendName (property)
+
+**Signature**
+
+```ts
+readonly backendName: string
 ```
 
 ### added$ (property)

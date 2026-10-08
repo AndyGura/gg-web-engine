@@ -1,6 +1,6 @@
 ---
 title: pixi/components/pixi-scene.component.ts
-nav_order: 188
+nav_order: 189
 parent: Modules
 ---
 
@@ -16,6 +16,7 @@ parent: Modules
     - [setEnvironment (method)](#setenvironment-method)
     - [createRenderer (method)](#createrenderer-method)
     - [dispose (method)](#dispose-method)
+    - [backendName (property)](#backendname-property)
     - [factory (property)](#factory-property)
     - [renderers (property)](#renderers-property)
     - [parallaxLayers (property)](#parallaxlayers-property)
@@ -68,6 +69,14 @@ createRenderer(
 
 ```ts
 dispose(): void
+```
+
+### backendName (property)
+
+**Signature**
+
+```ts
+readonly backendName: string
 ```
 
 ### factory (property)

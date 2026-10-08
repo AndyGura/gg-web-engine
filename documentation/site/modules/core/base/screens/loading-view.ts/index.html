@@ -6,6 +6,8 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
+        <meta name="description" content="Open-source TypeScript game engine for the browser: peer-to-peer multiplayer physics with no game server, cars and character controllers built in, on Three.js or Pixi.js with Rapier, Ammo.js or Matter.js.">
+      
       
       
         <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/base/screens/loading-view.ts/">
@@ -18,7 +20,7 @@
     
     
       
-        <title>core/base/screens/loading-view.ts - GG-web-engine</title>
+        <title>core/base/screens/loading-view.ts - GG Web Engine</title>
       
     
     
@@ -89,7 +91,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../../../.." title="GG-web-engine" class="md-header__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+    <a href="../../../../.." title="GG Web Engine" class="md-header__button md-logo" aria-label="GG Web Engine" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
@@ -103,7 +105,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            GG-web-engine
+            GG Web Engine
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -219,13 +221,13 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../../../.." title="GG-web-engine" class="md-nav__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+    <a href="../../../../.." title="GG Web Engine" class="md-nav__button md-logo" aria-label="GG Web Engine" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
 
     </a>
-    GG-web-engine
+    GG Web Engine
   </label>
   
     <div class="md-nav__source">
@@ -548,6 +550,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#defaultloadingviewoptions-type-alias" class="md-nav__link">
+    DefaultLoadingViewOptions (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#loadingview-interface" class="md-nav__link">
     LoadingView (interface)
   </a>
@@ -589,18 +598,24 @@
 <li><a href="#element-property">element (property)</a></li>
 </ul>
 </li>
+<li><a href="#defaultloadingviewoptions-type-alias">DefaultLoadingViewOptions (type alias)</a></li>
 <li><a href="#loadingview-interface">LoadingView (interface)</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
 <h2 id="defaultloadingview-class">DefaultLoadingView (class)</h2>
-<p>The loading view a <code>ScreenManager</code> uses unless given another: an opaque backdrop with a progress
-bar and a percentage, plain DOM with inline styles. Restyle it through the <code>gg-loading</code> classes
-(<code>gg-loading</code>, <code>gg-loading__bar</code>, <code>gg-loading__fill</code>, <code>gg-loading__label</code>), or replace it with
-the manager's <code>loadingView</code> option.</p>
+<p>The engine's loading view: an opaque dark backdrop with a slowly turning 2x2x2 block, whose
+corner cube keeps lifting out and settling back, and "Loading" under it. Once a load reports
+progress, a thin bar and a percentage join the label. Plain DOM with inline styles and the Web
+Animations API (no stylesheet is added to the page); without that API, or with
+<code>prefers-reduced-motion: reduce</code>, the cube stands still.</p>
+<p><code>ScreenManager</code> shows it while a screen enters, and <code>LoadingScreen.show()</code> puts it over the page
+for any other load. Restyle it through the <code>gg-loading</code> classes (<code>gg-loading</code>,
+<code>gg-loading__cube</code>, <code>gg-loading__label</code>, <code>gg-loading__bar</code>, <code>gg-loading__fill</code>), or replace it
+with any other <code>LoadingView</code>.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export declare class DefaultLoadingView {
-  constructor()
+  constructor(options: DefaultLoadingViewOptions = {})
 }
 </code></pre>
 <h3 id="setprogress-method">setProgress (method)</h3>
@@ -615,9 +630,16 @@ the manager's <code>loadingView</code> option.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly element: HTMLElement
 </code></pre>
+<h2 id="defaultloadingviewoptions-type-alias">DefaultLoadingViewOptions (type alias)</h2>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type DefaultLoadingViewOptions = {
+  /** The word under the cube. `'Loading'` by default. */
+  label?: string
+}
+</code></pre>
 <h2 id="loadingview-interface">LoadingView (interface)</h2>
-<p>What a <code>ScreenManager</code> shows while a screen's <code>enter()</code> is pending. <code>element</code> is put on top of
-every screen layer; <code>setProgress</code> is called with whatever the entering screen reports.</p>
+<p>What a <code>ScreenManager</code> (or a <code>LoadingScreen</code>) shows while something loads. <code>element</code> is put on
+top of everything it covers; <code>setProgress</code> is called with whatever the load reports.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export interface LoadingView {
   readonly element: HTMLElement

@@ -150,8 +150,8 @@ already be close to `targetPosition`. It keeps that speed (redirected exactly at
 arrives or drifts past the target, at which point ordinary spring behavior resumes from the other
 side.
 
-**Once `UNBLOCK_STREAK` consecutive ticks pass without the previous tick's commanded velocity
-actually being achieved, this tick's commanded velocity is rate-limited to
+**From the first tick the previous tick's commanded velocity isn't achieved, until it has been
+achieved for `UNBLOCK_STREAK_SECONDS` straight, this tick's commanded velocity is rate-limited to
 `grabOptions.maxAcceleration`** - see that constant's and that option's own doc for why this is
 conditional (an _unconditional_ cap makes ordinary fast turns feel sluggish), why it's a streak
 and not a single-tick check (a lone noisy "achieved" tick while still genuinely pinned against a
@@ -238,10 +238,11 @@ export type Grabbable3dEntityOptions = {
    */
   maxAcceleration: number
   /**
-   * How strongly the held object's own angular velocity is damped back towards zero each tick -
-   * `0` leaves it entirely alone (spins freely off whatever momentum it had when grabbed), `1`
-   * zeroes it outright every tick (rigid, non-spinning while carried, closest to Source's
-   * physcannon feel). Default 1.
+   * How strongly the held object's own angular velocity is damped back towards zero: the fraction
+   * of it removed per 1/60 s (scaled by each tick's real length, so the damping is the same at any
+   * frame rate) - `0` leaves it entirely alone (spins freely off whatever momentum it had when
+   * grabbed), `1` zeroes it outright every tick (rigid, non-spinning while carried, closest to
+   * Source's physcannon feel). Default 1.
    */
   angularDamping: number
   /**

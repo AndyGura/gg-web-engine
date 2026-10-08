@@ -1,6 +1,6 @@
 {
   "name": "@gg-web-engine/three",
-  "version": "0.0.78",
+  "version": "0.0.79",
   "description": "Three.js rendering adapter for gg-web-engine: 3D scenes, meshes, cameras, lights and GLB loading",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -42,7 +42,7 @@
   "devDependencies": {
     "@babel/core": "^7.29.7",
     "@babel/plugin-transform-modules-commonjs": "^7.29.7",
-    "@gg-web-engine/core": "0.0.78",
+    "@gg-web-engine/core": "0.0.79",
     "@types/jest": "^30.0.0",
     "babel-jest": "^30.5.2",
     "jest": "^30.5.0",
@@ -53,7 +53,7 @@
     "typescript": "~6.0.3"
   },
   "peerDependencies": {
-    "@gg-web-engine/core": "0.0.78",
+    "@gg-web-engine/core": "0.0.79",
     "rxjs": "7.8.2"
   },
   "jest": {

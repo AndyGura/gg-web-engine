@@ -23,6 +23,7 @@ parent: Modules
     - [loadClip (method)](#loadclip-method)
     - [preload (method)](#preload-method)
     - [preloadAsset (method)](#preloadasset-method)
+    - [fetchShared (method)](#fetchshared-method)
     - [acquireAsset (method)](#acquireasset-method)
     - [registerClass (method)](#registerclass-method)
     - [registerBlueprintNode (method)](#registerblueprintnode-method)
@@ -301,10 +302,24 @@ Loads one {@link AssetRef}. Subclasses add the kinds of their dimension.
 protected async preloadAsset(ref: AssetRef, options: LoadTaskOptions): Promise<void>
 ```
 
+### fetchShared (method)
+
+Fetches `url` for a cached asset whose key holds more than the url (a model loaded with
+different options, a texture with different filtering): loads of the same file running at the
+same time share one download. The bytes are not kept once every such load has them.
+
+**Signature**
+
+```ts
+protected async fetchShared(url: string, item: AssetProgress, signal: AbortSignal): Promise<ArrayBuffer>
+```
+
 ### acquireAsset (method)
 
 The cache access shared by every loader method: returns the asset under `key`, running `load`
-(with a progress reporter for it) when it is not cached, and reports the asset complete.
+(with a progress reporter for it) when it is not cached, and reports the asset complete. `load`
+fetches with the signal it is given, not `options.signal`: that one also aborts when the world
+is disposed.
 
 **Signature**
 
@@ -313,7 +328,7 @@ protected async acquireAsset<T>(
     key: string,
     url: string,
     options: LoadTaskOptions,
-    load: (item: AssetProgress) => Promise<{ value: T; dispose?: () => void }>,
+    load: (item: AssetProgress, signal: AbortSignal) => Promise<{ value: T; dispose?: () => void }>,
   ): Promise<T>
 ```
 

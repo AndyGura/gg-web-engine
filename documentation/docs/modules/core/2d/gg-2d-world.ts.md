@@ -26,6 +26,7 @@ parent: Modules
   - [Gg2dWorldTypeDocPPatch (type alias)](#gg2dworldtypedocppatch-type-alias)
   - [Gg2dWorldTypeDocRepo (type alias)](#gg2dworldtypedocrepo-type-alias)
   - [Gg2dWorldTypeDocVPatch (type alias)](#gg2dworldtypedocvpatch-type-alias)
+  - [Gg2dWorldWithPhysics (type alias)](#gg2dworldwithphysics-type-alias)
   - [PhysicsTypeDocRepo2D (type alias)](#physicstypedocrepo2d-type-alias)
   - [TypedGg2dWorld (type alias)](#typedgg2dworld-type-alias)
   - [VisualTypeDocRepo2D (type alias)](#visualtypedocrepo2d-type-alias)
@@ -203,6 +204,21 @@ export type Gg2dWorldTypeDocRepo = {
 export type Gg2dWorldTypeDocVPatch<VTypeDoc extends VisualTypeDocRepo2D> = Omit<Gg2dWorldTypeDocRepo, 'vTypeDoc'> & {
   vTypeDoc: VTypeDoc
 }
+```
+
+## Gg2dWorldWithPhysics (type alias)
+
+`W` (a world type such as `PixiGgWorld`) with a physics world of whichever adapter, known to be
+there: `world.physicsWorld` is a plain `IPhysicsWorld2dComponent`, never `null`. For an app that
+picks its physics backend at runtime and so can't name an adapter's world type:
+`const world: Gg2dWorldWithPhysics<PixiGgWorld> = new Gg2dWorld({ visualScene, physicsWorld })`.
+
+**Signature**
+
+```ts
+export type Gg2dWorldWithPhysics<W extends Gg2dWorld<any, any>> = W extends Gg2dWorld<infer TD, infer STD>
+  ? Gg2dWorld<TD, Omit<STD, 'physicsWorld'> & { physicsWorld: IPhysicsWorld2dComponent<TD['pTypeDoc']> }>
+  : never
 ```
 
 ## PhysicsTypeDocRepo2D (type alias)

@@ -1,6 +1,6 @@
 ---
 title: pixi/components/pixi-text.component.ts
-nav_order: 189
+nav_order: 190
 parent: Modules
 ---
 

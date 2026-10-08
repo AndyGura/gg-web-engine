@@ -1,6 +1,6 @@
 ---
 title: three/utils/texture-options.ts
-nav_order: 222
+nav_order: 224
 parent: Modules
 ---
 

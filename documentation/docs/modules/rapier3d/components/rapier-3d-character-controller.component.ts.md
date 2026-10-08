@@ -1,6 +1,6 @@
 ---
 title: rapier3d/components/rapier-3d-character-controller.component.ts
-nav_order: 201
+nav_order: 202
 parent: Modules
 ---
 
@@ -60,7 +60,7 @@ Note: this component's native body handle _is_ registered in
 `Rapier3dWorldComponent.handleIdEntityMap` (see `addToWorld`/`removeFromWorld` below), alongside
 ordinary `Rapier3dRigidBodyComponent`/`Rapier3dTriggerComponent` handles - this is what lets a
 `Trigger3dEntity`'s `onEntityEntered`/`onEntityLeft` fire for a player walking through it, not just
-for ordinary rigid bodies/vehicle chassis (`Rapier3dWorldComponent.dispatchCollisionEvents` resolves
+for ordinary rigid bodies/vehicle chassis (`Rapier3dWorldComponent.collectCollisionEvents` resolves
 a sensor-overlap pair's components through this same map). `world.raycast()` deliberately still does
 _not_ resolve a hit against a character controller back to this component (filtered out in
 `raycast()` itself) - widening that too would mean widening the public `raycast()` return-type

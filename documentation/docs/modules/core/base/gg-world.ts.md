@@ -37,7 +37,6 @@ parent: Modules
     - [loader (property)](#loader-property)
     - [worldClock (property)](#worldclock-property)
     - [keyboardInput (property)](#keyboardinput-property)
-    - [localPauseAllowed (property)](#localpauseallowed-property)
     - [pauseWhenHidden (property)](#pausewhenhidden-property)
     - [visibility$ (property)](#visibility-property)
     - [fixedPhysicsStep (property)](#fixedphysicsstep-property)
@@ -199,6 +198,10 @@ public createClock(autoStart: boolean): PausableClock
 ```
 
 ### dispose (method)
+
+Releases everything the world holds: its entities, the loader's cached assets, then the
+physics, visual and audio scenes. A step that throws doesn't stop the ones after it; the first
+error is rethrown once every step has run.
 
 **Signature**
 
@@ -375,20 +378,6 @@ readonly worldClock: PausableClock
 
 ```ts
 readonly keyboardInput: KeyboardInput
-```
-
-### localPauseAllowed (property)
-
-Whether pausing this world is a local matter. `false` means its simulation is shared with
-someone else (a network layer sets it while a session is joined), so freezing it here would
-freeze or desync it for them: UI that pauses the game on the player's behalf must leave it
-running. `ScreenManager` consults it before pausing the world of a covered screen.
-`pauseWorld()` itself does not - it stays the explicit, unconditional call.
-
-**Signature**
-
-```ts
-localPauseAllowed: boolean
 ```
 
 ### pauseWhenHidden (property)

@@ -19,11 +19,14 @@ parent: Modules
   - [LoadProgress (type alias)](#loadprogress-type-alias)
   - [LoadProgressGroup (class)](#loadprogressgroup-class)
     - [sub (method)](#sub-method)
+    - [complete (method)](#complete-method)
     - [finish (method)](#finish-method)
     - [emit (method)](#emit-method-1)
   - [LoadTaskOptions (type alias)](#loadtaskoptions-type-alias)
   - [abortError](#aborterror)
+  - [abortable](#abortable)
   - [isAbortError](#isaborterror)
+  - [linkSignals](#linksignals)
   - [throwIfAborted](#throwifaborted)
 
 ---
@@ -108,6 +111,13 @@ export type LoadProgress = {
 Combines the progress of several loads into one. Each `sub()` is a slot to hand to one nested
 loader call as its options; the combined fraction is the mean over every asset the slots report.
 
+A slot that has not reported any asset yet, and is not complete, holds the weight of one asset:
+create the slots of every step known up front (also the ones that only start after an earlier
+step finished), so a first step that completes early does not read as the whole load being done.
+When assets turn up late and lower the mean, the shown fraction stays where it was and from then
+on covers the rest of the bar in proportion to the work that remains, so it never goes down and
+never stalls.
+
 **Signature**
 
 ```ts
@@ -124,6 +134,17 @@ Options for one nested load: its progress goes into this group, signal and scope
 
 ```ts
 public sub(): LoadTaskOptions
+```
+
+### complete (method)
+
+Reports the load a slot was handed to as settled, also when it reported nothing (a step that
+loads nothing, or loaded only what the cache already held), so its reserved weight is released.
+
+**Signature**
+
+```ts
+public complete(slot: LoadTaskOptions): void
 ```
 
 ### finish (method)
@@ -172,6 +193,16 @@ export type LoadTaskOptions = {
 export declare function abortError(): Error
 ```
 
+## abortable
+
+Settles like `promise`, or rejects with an `AbortError` as soon as one of `signals` aborts.
+
+**Signature**
+
+```ts
+export declare function abortable<T>(promise: Promise<T>, ...signals: (AbortSignal | undefined)[]): Promise<T>
+```
+
 ## isAbortError
 
 Whether `error` is what an aborted load rejects with.
@@ -180,6 +211,20 @@ Whether `error` is what an aborted load rejects with.
 
 ```ts
 export declare function isAbortError(error: unknown): boolean
+```
+
+## linkSignals
+
+A signal aborted as soon as any of `signals` is. `release()` detaches it from them once the work
+it was made for is over, so a long-lived source signal doesn't keep a listener per load.
+
+**Signature**
+
+```ts
+export declare function linkSignals(...signals: (AbortSignal | undefined)[]): {
+  signal: AbortSignal
+  release: () => void
+}
 ```
 
 ## throwIfAborted

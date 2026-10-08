@@ -1,6 +1,6 @@
 ---
 title: core/base/screens/screen.ts
-nav_order: 167
+nav_order: 168
 parent: Modules
 ---
 
@@ -19,6 +19,8 @@ parent: Modules
     - [addWorld (method)](#addworld-method)
     - [addTeardown (method)](#addteardown-method)
     - [coverWorld (method)](#coverworld-method)
+    - [pauseCoveredWorld (method)](#pausecoveredworld-method)
+    - [releasePause (method)](#releasepause-method)
     - [uncoverWorld (method)](#uncoverworld-method)
   - [ScreenEnterContext (type alias)](#screenentercontext-type-alias)
   - [ScreenInternals (type alias)](#screeninternals-type-alias)
@@ -76,6 +78,11 @@ Register everything that has to go away with the screen through `addWorld`/`addT
 soon as it exists, not at the end: if `enter()` throws or is aborted halfway, that is all that
 gets cleaned up (`exit()` is not called for a screen that never finished entering).
 
+Don't `await` a `ScreenManager` operation in here (a boot screen awaiting `push(menu)`):
+operations run one after another, and that one only starts once this transition, which is
+waiting for `enter()`, is over - it never resolves. Call it without awaiting; it runs right
+after this screen has entered.
+
 **Signature**
 
 ```ts
@@ -85,7 +92,8 @@ public abstract enter(ctx: ScreenEnterContext): void | Promise<void>;
 ### exit (method)
 
 Called when the screen leaves the stack after having entered, before its teardowns run and its
-worlds are disposed. May return a promise (a fade-out); the transition waits for it.
+worlds are disposed. May return a promise (a fade-out); the transition waits for it - so, as in
+`enter()`, never await a `ScreenManager` operation in here.
 
 **Signature**
 
@@ -122,8 +130,10 @@ is covered, and it is disposed when the screen exits. Returns the world, for cha
 
 Call it right after creating the world, before loading into it. Whether a covered world is
 paused is decided by the push that covers it (`pauseBelow`) and by the world itself: a world
-with `localPauseAllowed === false` (a joined network session) keeps running. Its input is
-switched off either way.
+with `localPauseAllowed === false` (a joined network session) keeps running, and a change of
+that flag while the screen is covered pauses or resumes it. A world paused for a hidden tab
+(`pauseWhenHidden`) when it gets covered stays paused until the screen is uncovered. Its input
+is switched off either way.
 
 **Signature**
 
@@ -149,6 +159,22 @@ protected addTeardown(teardown: ScreenTeardown): void
 
 ```ts
 private coverWorld(owned: OwnedWorld): void
+```
+
+### pauseCoveredWorld (method)
+
+**Signature**
+
+```ts
+private pauseCoveredWorld(owned: OwnedWorld): void
+```
+
+### releasePause (method)
+
+**Signature**
+
+```ts
+private releasePause(owned: OwnedWorld): void
 ```
 
 ### uncoverWorld (method)
@@ -191,7 +217,8 @@ export type ScreenInternals = {
   attach(manager: ScreenManager, layer: HTMLElement): void
   setState(state: ScreenState): void
   setCovered(covered: boolean, pauseWorlds: boolean): void
-  teardown(): void
+  /** Runs the teardowns and disposes the worlds; with `keepLayer` the caller removes the layer. */
+  teardown(keepLayer?: boolean): void
 }
 ```
 

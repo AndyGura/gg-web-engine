@@ -1,6 +1,6 @@
 ---
 title: rapier3d/components/rapier-3d-raycast-vehicle.component.ts
-nav_order: 202
+nav_order: 203
 parent: Modules
 ---
 
@@ -123,6 +123,8 @@ applyEngineForce(wheelIndex: number, force: number): void
 ```
 
 ### applyBrake (method)
+
+Stores the brake force (Newtons); `stepVehicleController()` converts it into Rapier's per-tick brake impulse.
 
 **Signature**
 

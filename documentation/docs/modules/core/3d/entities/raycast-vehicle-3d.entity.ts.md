@@ -72,6 +72,11 @@ export type RVEntityProperties = {
 
 ## RVEntitySharedWheelOptions (type alias)
 
+Wheel settings shared by several wheels. Anything left out takes the default: `tyreWidth` 0.3,
+`tyreRadius` 0.4, `frictionSlip` 1.2 (street tyres - see `WheelOptions.frictionSlip`),
+`rollInfluence` 0.2, `sideFrictionStiffness` 1, `maxTravel` equal to `suspension.restLength` (the wheel compresses at most
+up to its connection point), `maxSuspensionForce` per `defaultMaxSuspensionForce`.
+
 **Signature**
 
 ```ts
@@ -80,7 +85,9 @@ export type RVEntitySharedWheelOptions = {
   tyreRadius?: number
   frictionSlip?: number
   rollInfluence?: number
+  sideFrictionStiffness?: number
   maxTravel?: number
+  maxSuspensionForce?: number
   display?: WheelDisplayOptions
 }
 ```
@@ -109,6 +116,8 @@ public getSpeed(): number
 
 ### applyTraction (method)
 
+Sets the engine force of every wheel of `axle`, in Newtons per wheel - see `IRaycastVehicleComponent.applyEngineForce`.
+
 **Signature**
 
 ```ts
@@ -116,6 +125,8 @@ public applyTraction(axle: 'front' | 'rear' | 'both', force: number)
 ```
 
 ### applyBrake (method)
+
+Sets the brake force of every wheel of `axle`, in Newtons per wheel - see `IRaycastVehicleComponent.applyBrake`.
 
 **Signature**
 

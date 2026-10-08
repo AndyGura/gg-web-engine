@@ -36,6 +36,7 @@ parent: Modules
     - [createPlayer (method)](#createplayer-method)
     - [resolveWheelDisplay (method)](#resolvewheeldisplay-method)
     - [createGgCar (method)](#createggcar-method)
+    - [preloadInitialChunks (method)](#preloadinitialchunks-method)
     - [createMapGraph (method)](#createmapgraph-method)
     - [override (property)](#override-property)
   - [GgCar3DCommonSettings (interface)](#ggcar3dcommonsettings-interface)
@@ -462,17 +463,27 @@ construction completes - see {@link GgCarStateSettings}.
 private createGgCar(world: Gg3dWorld<TypeDoc>, settings: GgCar3DSettings): GgCarEntity<TypeDoc> | undefined
 ```
 
-### createMapGraph (method)
+### preloadInitialChunks (method)
 
-Create a `"MapGraph"` entity: a `MapGraph` built from plain node data (a flat/looped path or
-a rectangular grid, see {@link MapGraph3DSettings}), wrapped in a ready-to-use
-`MapGraph3dEntity`. The app still has to drive `loaderCursor$` itself once the level is
-loaded - see `gg-engine-level-json`'s "MapGraph" section.
+Makes the chunks a `"MapGraph"` loads first part of the level's load. Only a loader that loads
+`.glb`/`.meta` pairs (`Gg3dLoader`) can; here it does nothing.
 
 **Signature**
 
 ```ts
-private createMapGraph(world: Gg3dWorld<TypeDoc>, settings: MapGraph3DSettings): MapGraph3dEntity<TypeDoc>
+protected async preloadInitialChunks(_entity: MapGraph3dEntity<TypeDoc>, _load: LoadTaskOptions): Promise<void>
+```
+
+### createMapGraph (method)
+
+**Signature**
+
+```ts
+private async createMapGraph(
+    world: Gg3dWorld<TypeDoc>,
+    settings: MapGraph3DSettings,
+    load: LoadTaskOptions = {},
+  ): Promise<MapGraph3dEntity<TypeDoc>>
 ```
 
 ### override (property)

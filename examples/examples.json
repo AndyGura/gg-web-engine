@@ -1,6 +1,6 @@
 {
   "$comment": "Registry of every example: the gallery (index.html) renders it, build_examples.sh / deploy.sh / etc/publish_new_version.sh iterate it. `version` is the git tag the StackBlitz links open; the release script bumps it. Order within a dimension is the order the gallery lists; the first entry of `physics` / `visual` is the default backend.",
-  "version": "0.0.78",
+  "version": "0.0.79",
   "repository": "AndyGura/gg-web-engine",
   "examples": [
     {

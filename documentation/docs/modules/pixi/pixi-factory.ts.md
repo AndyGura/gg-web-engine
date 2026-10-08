@@ -1,6 +1,6 @@
 ---
 title: pixi/pixi-factory.ts
-nav_order: 190
+nav_order: 191
 parent: Modules
 ---
 
@@ -25,6 +25,7 @@ parent: Modules
     - [disposeTexture (method)](#disposetexture-method)
     - [prepare (method)](#prepare-method)
     - [createTextureFromCanvas (method)](#createtexturefromcanvas-method)
+    - [createCamera (method)](#createcamera-method)
     - [createText (method)](#createtext-method)
     - [applyTextureOptions (method)](#applytextureoptions-method)
   - [PixiGridAtlasClip (type alias)](#pixigridatlasclip-type-alias)
@@ -164,6 +165,14 @@ async prepare(texture: Texture): Promise<void>
 
 ```ts
 createTextureFromCanvas(canvas: HTMLCanvasElement, options: TextureOptions = {}): Texture
+```
+
+### createCamera (method)
+
+**Signature**
+
+```ts
+createCamera(): PixiCameraComponent
 ```
 
 ### createText (method)

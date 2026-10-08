@@ -1,6 +1,6 @@
 ---
 title: rapier3d/components/rapier-3d-world.component.ts
-nav_order: 205
+nav_order: 206
 parent: Modules
 ---
 
@@ -14,12 +14,13 @@ parent: Modules
   - [Rapier3dWorldComponent (class)](#rapier3dworldcomponent-class)
     - [init (method)](#init-method)
     - [simulate (method)](#simulate-method)
-    - [dispatchCollisionEvents (method)](#dispatchcollisionevents-method)
+    - [collectCollisionEvents (method)](#collectcollisionevents-method)
     - [computeContactGeometry (method)](#computecontactgeometry-method)
     - [registerCollisionGroup (method)](#registercollisiongroup-method)
     - [deregisterCollisionGroup (method)](#deregistercollisiongroup-method)
     - [raycast (method)](#raycast-method)
     - [dispose (method)](#dispose-method)
+    - [backendName (property)](#backendname-property)
     - [added$ (property)](#added-property)
     - [removed$ (property)](#removed-property)
     - [children (property)](#children-property)
@@ -27,6 +28,8 @@ parent: Modules
     - [\_nativeWorld (property)](#_nativeworld-property)
     - [handleIdEntityMap (property)](#handleidentitymap-property)
     - [raycastVehicles (property)](#raycastvehicles-property)
+    - [maxSubSteps (property)](#maxsubsteps-property)
+    - [fixedTimeStep (property)](#fixedtimestep-property)
     - [lockedCollisionGroups (property)](#lockedcollisiongroups-property)
 
 ---
@@ -59,12 +62,15 @@ async init(): Promise<void>
 simulate(delta: number): void
 ```
 
-### dispatchCollisionEvents (method)
+### collectCollisionEvents (method)
 
-Drains `eventQueue` exactly once per `simulate()` call and routes each entry to whichever
-component(s) care - this is the _only_ place `drainCollisionEvents` is called for the whole
-world (see `Rapier3dTriggerComponent.notifyOverlap`'s doc for why a second/independent drain
-elsewhere would silently steal events from this one). A collider pair with sensor
+Drains `eventQueue` and routes each entry to whichever component(s) care, as a notification
+pushed to `out` - `simulate()` calls it after every step (the queue is created with
+`autoDrain`, so Rapier clears it before the next step) and runs the notifications once all
+steps are done. Contact geometry and velocities are read here, right after the step the contact
+started in. This is the _only_ place `drainCollisionEvents` is called for the whole world (see
+`Rapier3dTriggerComponent.notifyOverlap`'s doc for why a second/independent drain elsewhere
+would silently steal events from this one). A collider pair with sensor
 semantics (either side `isSensor()`) is routed as a trigger overlap; an ordinary pair is routed
 as a real rigid-body collision.
 
@@ -82,7 +88,7 @@ collision-event API to call into.
 **Signature**
 
 ```ts
-protected dispatchCollisionEvents(): void
+protected collectCollisionEvents(out: (() => void)[]): void
 ```
 
 ### computeContactGeometry (method)
@@ -153,6 +159,14 @@ raycast(options: RaycastOptions<Point3>): RaycastResult<Point3, Rapier3dRigidBod
 dispose(): void
 ```
 
+### backendName (property)
+
+**Signature**
+
+```ts
+readonly backendName: string
+```
+
 ### added$ (property)
 
 **Signature**
@@ -199,9 +213,9 @@ Keyed by rigid-body handle. Includes `Rapier3dCharacterControllerComponent`s alo
 `Rapier3dRigidBodyComponent`s (triggers included, since `Rapier3dTriggerComponent extends
 Rapier3dRigidBodyComponent`) - a character controller's kinematic body still gets a real Rapier
 rigid-body handle on `addToWorld` (see that class), so it registers here the same way, letting
-`dispatchCollisionEvents` resolve sensor-overlap pairs against it (so a `Trigger` fires for a
+`collectCollisionEvents` resolve sensor-overlap pairs against it (so a `Trigger` fires for a
 player walking through it, not just for ordinary rigid bodies/vehicle chassis) and letting
-`raycast()` resolve a hit against it too. `dispatchCollisionEvents` still narrows to
+`raycast()` resolve a hit against it too. `collectCollisionEvents` still narrows to
 `Rapier3dRigidBodyComponent` before treating a pair as a real (non-sensor) contact, since a
 character controller has no `notifyCollisionStart`/`notifyCollisionEnd` to call - its physical
 response comes from its own sweep-based `move()`, not Rapier's contact solver.
@@ -225,6 +239,44 @@ the chassis's velocity get integrated by that same step.
 
 ```ts
 readonly raycastVehicles: Set<Rapier3dRaycastVehicleComponent>
+```
+
+### maxSubSteps (property)
+
+Hard ceiling on how many substeps `simulate()` runs for one call, however large `delta` is - a
+single huge catch-up call (a backgrounded tab) then runs longer substeps instead of grinding
+through an enormous number of them. `0`/`undefined` means no cap. Default `100`.
+
+**Signature**
+
+```ts
+maxSubSteps: number | undefined
+```
+
+### fixedTimeStep (property)
+
+The longest a single native step may be, in seconds. Default `0.01` (10 ms).
+
+`simulate(delta)` splits every call into `n = ceil(delta / fixedTimeStep)` steps (clamped by
+`maxSubSteps`) of exactly `delta / n` each, so the simulated time always equals `delta` and
+nothing is carried over to the next call (see `AmmoWorldComponent.fixedTimeStep` in
+`@gg-web-engine/ammo` for why a carried-over accumulator jitters against the camera). A single
+step of the whole frame made the solver depend on the frame rate: a raycast vehicle cornering at
+20 m/s for 3 s kept 16.2 m/s at 30 FPS but 19.0 m/s at 144 FPS (suspension and tyre friction are
+explicit per-step models, accurate only for short steps); with steps of at most 10 ms it keeps
+the same speed at any frame rate.
+
+Everything driven once per call is spread over the steps: each raycast vehicle's
+`updateVehicle` runs before every step (with its brake impulse for that step's length), and a
+`kinematic_pos` body's target (`setNextKinematicTranslation`/`Rotation`, set by its `position`/
+`rotation` setters during the tick) is reached in equal parts, one per step. Left to Rapier, a
+kinematic body would reach its whole target in the first step - moving `n` times too fast - and
+stand still for the rest, so whatever rides on it would get kicked forward and dragged back.
+
+**Signature**
+
+```ts
+fixedTimeStep: number | undefined
 ```
 
 ### lockedCollisionGroups (property)

@@ -44,6 +44,15 @@ export type SurfaceFollowFunc = (p: Point3) => { position: Point3; normal: Point
 Represents an entity that follows a surface dynamically by adjusting
 its position and orientation based on a given surface function.
 
+Every collider added gets its own infinite plane, in a collision group only that collider and
+the plane share, moved under the collider every tick to `followFunc`'s position and normal. The
+planes are `static` bodies: a road surface doesn't move, so a plane must have zero velocity even
+though it is teleported every tick. A kinematic plane would get a velocity derived from each
+teleport (the collider's own speed, plus a spin whenever the orientation changes), and the solver
+would push that velocity into the collider's chassis on every contact. A plane's orientation is
+the shortest-arc rotation from `+Z` to the surface normal (`Qtrn.fromTo`), so it has no twist
+around the normal that could change from tick to tick.
+
 **Signature**
 
 ```ts

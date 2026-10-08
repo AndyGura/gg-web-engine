@@ -1,6 +1,6 @@
 ---
 title: core/dev/gg-static.ts
-nav_order: 170
+nav_order: 171
 parent: Modules
 ---
 
@@ -12,6 +12,8 @@ parent: Modules
 
 - [utils](#utils)
   - [GgStatic (class)](#ggstatic-class)
+    - [worldBackends (static method)](#worldbackends-static-method)
+    - [describeWorld (static method)](#describeworld-static-method)
     - [toggleDevConsole (method)](#toggledevconsole-method)
     - [autoAssignSelectedWorld (method)](#autoassignselectedworld-method)
     - [registerConsoleCommand (method)](#registerconsolecommand-method)
@@ -35,6 +37,26 @@ parent: Modules
 export declare class GgStatic {
   private constructor()
 }
+```
+
+### worldBackends (static method)
+
+`three + rapier3d + webaudio`: the backend names of a world's scenes, `-` for a missing one.
+
+**Signature**
+
+```ts
+private static worldBackends(world: GgWorld<any, any>): string
+```
+
+### describeWorld (static method)
+
+The `world` command's report: the name first, then one `key: value` line per fact.
+
+**Signature**
+
+```ts
+private static describeWorld(world: GgWorld<any, any>): string
 ```
 
 ### toggleDevConsole (method)

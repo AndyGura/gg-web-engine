@@ -6,6 +6,8 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
+        <meta name="description" content="Open-source TypeScript game engine for the browser: peer-to-peer multiplayer physics with no game server, cars and character controllers built in, on Three.js or Pixi.js with Rapier, Ammo.js or Matter.js.">
+      
       
       
         <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/3d/entities/controllers/input/object-grab.controller.ts/">
@@ -18,7 +20,7 @@
     
     
       
-        <title>core/3d/entities/controllers/input/object-grab.controller.ts - GG-web-engine</title>
+        <title>core/3d/entities/controllers/input/object-grab.controller.ts - GG Web Engine</title>
       
     
     
@@ -89,7 +91,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../../../../../.." title="GG-web-engine" class="md-header__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+    <a href="../../../../../../.." title="GG Web Engine" class="md-header__button md-logo" aria-label="GG Web Engine" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
@@ -103,7 +105,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            GG-web-engine
+            GG Web Engine
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -219,13 +221,13 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../../../../../.." title="GG-web-engine" class="md-nav__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+    <a href="../../../../../../.." title="GG Web Engine" class="md-nav__button md-logo" aria-label="GG Web Engine" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
 
     </a>
-    GG-web-engine
+    GG Web Engine
   </label>
   
     <div class="md-nav__source">
@@ -678,7 +680,10 @@
 current position/forward direction to find a <code>Grabbable3dEntity</code> within <code>maxGrabDistance</code>,
 <code>grabKey</code> picks it up (and drops it again if already holding one - a second <code>grabKey</code> press is
 equivalent to the right mouse button), left mouse button throws it forward (<code>throwSpeed</code>), right
-mouse button drops it in place. Mirrors <code>PlayerCharacterController</code> in shape (an input-only entity driving a
+mouse button drops it in place. On a touch device the mouse buttons do nothing here (a finger
+dragging to look around would otherwise throw the object): <code>grabKey</code> - emulated by an on-screen
+button - and the public <code>throwHeld</code>/<code>dropHeld</code> are the way to act on a held object there, which
+is what <code>@gg-web-engine/mobile-controls</code>' layout for this controller binds to. Mirrors <code>PlayerCharacterController</code> in shape (an input-only entity driving a
 separate physics entity, reading <code>camera</code> for aim rather than owning it) - pair the two by
 passing the same <code>keyboard</code>/<code>mouseInput</code>/<code>camera</code> instances to both, rather than constructing a
 second <code>MouseInput</code>/<code>KeyboardInput</code> here, so pointer-lock/focus behavior stays single-sourced.</p>
@@ -715,7 +720,7 @@ when it isn't one.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export declare class ObjectGrabController&lt;TypeDoc&gt; {
   constructor(
-    protected readonly keyboard: KeyboardInput,
+    public readonly keyboard: KeyboardInput,
     protected readonly mouseInput: MouseInput,
     protected readonly camera: Renderer3dEntity&lt;TypeDoc['vTypeDoc']&gt;,
     /** The character whose capsule the hold point is kept clear of - see this class's own doc. Pass
@@ -840,12 +845,14 @@ permanently invisible to the holder's own collision queries.</p>
 <pre><code class="language-ts">private unignoreForHolder(obj: Grabbable3dEntity&lt;TypeDoc&gt;): void
 </code></pre>
 <h3 id="throwheld-method">throwHeld (method)</h3>
+<p>Throws the held object forward at <code>throwSpeed</code>, if holding one - what the left mouse button does.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">private throwHeld(): void
+<pre><code class="language-ts">public throwHeld(): void
 </code></pre>
 <h3 id="dropheld-method">dropHeld (method)</h3>
+<p>Lets go of the held object where it is, if holding one - what the right mouse button does.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">private dropHeld(): void
+<pre><code class="language-ts">public dropHeld(): void
 </code></pre>
 <h3 id="tickorder-property">tickOrder (property)</h3>
 <p><strong>Signature</strong></p>

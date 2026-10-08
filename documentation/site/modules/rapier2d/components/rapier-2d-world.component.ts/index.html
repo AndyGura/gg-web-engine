@@ -6,6 +6,8 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
+        <meta name="description" content="Open-source TypeScript game engine for the browser: peer-to-peer multiplayer physics with no game server, cars and character controllers built in, on Three.js or Pixi.js with Rapier, Ammo.js or Matter.js.">
+      
       
       
         <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/rapier2d/components/rapier-2d-world.component.ts/">
@@ -18,7 +20,7 @@
     
     
       
-        <title>rapier2d/components/rapier-2d-world.component.ts - GG-web-engine</title>
+        <title>rapier2d/components/rapier-2d-world.component.ts - GG Web Engine</title>
       
     
     
@@ -89,7 +91,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../../.." title="GG-web-engine" class="md-header__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+    <a href="../../../.." title="GG Web Engine" class="md-header__button md-logo" aria-label="GG Web Engine" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
@@ -103,7 +105,7 @@
       <div class="md-header__ellipsis">
         <div class="md-header__topic">
           <span class="md-ellipsis">
-            GG-web-engine
+            GG Web Engine
           </span>
         </div>
         <div class="md-header__topic" data-md-component="header-topic">
@@ -219,13 +221,13 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../../.." title="GG-web-engine" class="md-nav__button md-logo" aria-label="GG-web-engine" data-md-component="logo">
+    <a href="../../../.." title="GG Web Engine" class="md-nav__button md-logo" aria-label="GG Web Engine" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
 
     </a>
-    GG-web-engine
+    GG Web Engine
   </label>
   
     <div class="md-nav__source">
@@ -578,6 +580,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#backendname-property" class="md-nav__link">
+    backendName (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#added-property" class="md-nav__link">
     added$ (property)
   </a>
@@ -669,6 +678,7 @@
 <li><a href="#deregistercollisiongroup-method">deregisterCollisionGroup (method)</a></li>
 <li><a href="#raycast-method">raycast (method)</a></li>
 <li><a href="#dispose-method">dispose (method)</a></li>
+<li><a href="#backendname-property">backendName (property)</a></li>
 <li><a href="#added-property">added$ (property)</a></li>
 <li><a href="#removed-property">removed$ (property)</a></li>
 <li><a href="#children-property">children (property)</a></li>
@@ -758,6 +768,10 @@ engine (a sensor with no collision response, see <code>ITrigger2dComponent</code
 <h3 id="dispose-method">dispose (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">dispose(): void
+</code></pre>
+<h3 id="backendname-property">backendName (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly backendName: string
 </code></pre>
 <h3 id="added-property">added$ (property)</h3>
 <p><strong>Signature</strong></p>

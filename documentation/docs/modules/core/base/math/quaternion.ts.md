@@ -27,6 +27,7 @@ parent: Modules
     - [fromEuler (static method)](#fromeuler-static-method)
     - [toEuler (static method)](#toeuler-static-method)
     - [lookAt (static method)](#lookat-static-method)
+    - [fromTo (static method)](#fromto-static-method)
     - [rotAround (static method)](#rotaround-static-method)
 
 ---
@@ -200,6 +201,21 @@ Returns a quaternion that represents the rotation required to align an object to
 
 ```ts
 static lookAt(eye: Point3, target: Point3, up: Point3 = Pnt3.Z): Point4
+```
+
+### fromTo (static method)
+
+The shortest-arc rotation that turns direction `from` into direction `to` (neither needs to be
+normalized). It never adds a twist around `to`, so a `to` that changes slightly from call to
+call yields a rotation that changes slightly too - unlike `lookAt`, whose roll around the view
+direction is picked from an `up` vector and flips when the direction passes close to it.
+Opposite directions rotate by PI around an arbitrary axis perpendicular to `from`; a
+zero-length vector yields the identity rotation.
+
+**Signature**
+
+```ts
+static fromTo(from: Point3, to: Point3): Point4
 ```
 
 ### rotAround (static method)
