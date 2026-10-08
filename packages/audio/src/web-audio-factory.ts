@@ -1,4 +1,5 @@
 import {
+  AudioSource3dDescriptor,
   AudioSourceDescriptor,
   IAudioSource2dComponentFactory,
   IAudioSource3dComponentFactory,
@@ -19,7 +20,7 @@ export class WebAudioSource3dComponentFactory implements IAudioSource3dComponent
     return this.scene.decodeClip(data);
   }
 
-  public createSource(descriptor: AudioSourceDescriptor<AudioBuffer>): WebAudioSource3dComponent {
+  public createSource(descriptor: AudioSource3dDescriptor<AudioBuffer>): WebAudioSource3dComponent {
     return new WebAudioSource3dComponent(this.scene, descriptor);
   }
 }

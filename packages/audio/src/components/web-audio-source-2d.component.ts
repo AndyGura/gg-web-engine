@@ -1,5 +1,5 @@
 import { AudioDistanceModel, AudioSourceDescriptor, IAudioSource2dComponent, Pnt2, Point2 } from '@gg-web-engine/core';
-import { rampParam } from '../utils/ramp';
+import { rampParam, setParamNow } from '../utils/ramp';
 import { computeDistanceGain } from '../utils/distance-gain';
 import { WebAudioSourceComponentBase } from './web-audio-source-base.component';
 import { WebAudioScene2dComponent } from './web-audio-scene-2d.component';
@@ -71,20 +71,14 @@ export class WebAudioSource2dComponent
    * `IAudioSceneComponent.update` tick by `WebAudioScene2dComponent`, for every living spatial 2D
    * source. Not meant to be called by app code.
    */
-  public applySpatialUpdate(listenerPosition: Point2): void {
-    if (!this.spatial) {
+  public applySpatialUpdate(listenerPosition: Point2, write: typeof rampParam = rampParam): void {
+    if (!this.spatial || !this.isOutputConnected) {
+      // a virtual source's chain is cut off from the output: nothing to update until it is heard
+      // again, when `resyncSpatialParams` catches up
       return;
     }
     const dx = this._position.x - listenerPosition.x;
-    const dy = this._position.y - listenerPosition.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    const gain = computeDistanceGain(
-      distance,
-      this.refDistance,
-      this.maxDistance,
-      this.rolloffFactor,
-      this.distanceModel,
-    );
+    const gain = this.distanceGainAt(listenerPosition);
     // Pan is taken directly from the world-space horizontal offset, not rotated into the
     // listener's own facing direction - 2D worlds here are normally viewed straight-on (no
     // first-person notion of "which way the listener faces" the way a 3D camera has), so raw `dx`
@@ -92,8 +86,25 @@ export class WebAudioSource2dComponent
     const panRange = Math.max(this.refDistance, 1);
     const pan = Math.max(-1, Math.min(1, dx / panRange));
     const ctx = this.scene.context;
-    rampParam(ctx, this.distanceGain.gain, gain);
-    rampParam(ctx, this.panner.pan, pan);
+    write(ctx, this.distanceGain.gain, gain);
+    write(ctx, this.panner.pan, pan);
+  }
+
+  protected resyncSpatialParams(): void {
+    const listener = this.scene.activeListener;
+    if (listener) {
+      this.applySpatialUpdate(listener.position, setParamNow);
+    }
+  }
+
+  protected distanceGainAt(listenerPosition: Point2): number {
+    return computeDistanceGain(
+      Pnt2.dist(this._position, listenerPosition),
+      this.refDistance,
+      this.maxDistance,
+      this.rolloffFactor,
+      this.distanceModel,
+    );
   }
 
   public clone(): WebAudioSource2dComponent {
@@ -106,6 +117,7 @@ export class WebAudioSource2dComponent
       playbackRate: this.playbackRate,
       spatial: this.spatial,
       bus: this.bus,
+      priority: this.priority,
       autoplay: false,
     });
   }

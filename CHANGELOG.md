@@ -28,7 +28,29 @@ where one exists.
 
 ## [Unreleased]
 
+### Added
+- Audio voice budget. `world.audioScene.maxVoices` (default `Infinity`, so nothing changes until
+  an app sets it) bounds how many playing sources are rendered at once. Beyond it the lowest-ranked
+  sources go virtual: faded out, stopped and disconnected (no audio processing), their playback
+  position still advancing, and faded back in where they would be once they rank inside the budget
+  again. Ranking: audible before silent, then the new `priority` (on `AudioSourceDescriptor` and
+  `IAudioSourceComponent`, higher is more important, default `0`; also in the `"Sound"` level class
+  and the `"PlaySound"` blueprint node), then loudness at the listener. Sources have `isVirtual`, the
+  scene has `voiceCounts`, and the dev console has `audio_voices [int|inf]`. `maxVoices`,
+  `voiceCounts`, `priority` and `isVirtual` are required members of `IAudioSceneComponent`/
+  `IAudioSourceComponent`, so a third-party audio adapter has to add them.
+- 3D audio panning model. `panningModel: 'HRTF' | 'equalpower'` on `AudioSource3dDescriptor` (what
+  a 3D audio factory's `createSource` and `AudioSource3dEntity.playOneShot` take, and the `"Sound"`
+  3D level class) and on `IAudioSource3dComponent`, writable at runtime, and
+  `defaultPanningModel` on the 3D audio scene for every source created afterwards. Defaults to
+  `'HRTF'`, as before; `'equalpower'` is much cheaper on the audio thread (mobile). Required members
+  of `IAudioSource3dComponent`/`IAudioScene3dComponent`.
+
 ### Fixed
+- `@gg-web-engine/audio`: a paused source resumes where it was paused when its `playbackRate` is not
+  `1` or it loops a region (`loopStart`/`loopEnd`); its position was taken as elapsed time from the
+  clip's start.
+
 - `@gg-web-engine/core`: `ScreenManager` no longer blanks a leaving screen before its replacement
   shows. A screen that leaves the stack gets `exit()` as before, but its teardowns run and its
   worlds are disposed only when its layer is removed - once the next screen (or the loading view)

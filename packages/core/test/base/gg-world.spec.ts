@@ -843,6 +843,23 @@ describe('GgWorld', () => {
       // clobber it just because the renderer count dropped back to one
       expect(audioScene.activeListener).toBe(explicitListener);
     });
+
+    it('audio_voices reads and sets the voice budget and prints the voice counts', async () => {
+      const audioScene = makeFakeAudioScene();
+      audioScene.maxVoices = Infinity;
+      audioScene.voiceCounts = { playing: 5, audible: 3, virtual: 2 };
+      const commands = collectConsoleCommands(worldWithAudioScene(audioScene));
+      const audioVoices = commands.get('audio_voices')!;
+
+      expect(await audioVoices()).toBe('budget Infinity: 5 playing, 3 audible, 2 virtual');
+      expect(await audioVoices('3')).toBe('budget 3: 5 playing, 3 audible, 2 virtual');
+      expect(audioScene.maxVoices).toBe(3);
+      await audioVoices('inf');
+      expect(audioScene.maxVoices).toBe(Infinity);
+      await expect(audioVoices('-1')).rejects.toThrow('usage');
+      await expect(audioVoices('lots')).rejects.toThrow('usage');
+      expect(audioScene.maxVoices).toBe(Infinity);
+    });
   });
 
   describe('tab visibility', () => {

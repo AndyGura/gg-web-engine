@@ -18,3 +18,14 @@ export const DEFAULT_RAMP_TAU = 0.04;
 export function rampParam(context: BaseAudioContext, param: AudioParam, value: number, tau = DEFAULT_RAMP_TAU): void {
   param.setTargetAtTime(value, context.currentTime, tau);
 }
+
+/**
+ * Jump `param` to `value` right now, dropping any ramp still in progress. The one exception to
+ * `rampParam`: only for a param whose node is silent at this moment (nothing playing into it, or
+ * cut off from the output), so the jump can't be heard - e.g. a virtual source's gain/position just
+ * before it is started again and faded in (see `WebAudioSourceComponentBase`).
+ */
+export function setParamNow(context: BaseAudioContext, param: AudioParam, value: number): void {
+  param.cancelScheduledValues(context.currentTime);
+  param.setValueAtTime(value, context.currentTime);
+}

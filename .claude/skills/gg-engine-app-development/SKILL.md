@@ -416,6 +416,21 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   (default), `'y'`, `'both'` or `'none'`, drawn at `zIndex` (default `-1`, behind the world).
   `offset` is the texture's world position while the camera is at the origin; `scale` is world units
   per texture pixel. The level JSON has matching `"ParallaxLayer"`/`"Environment"` classes.
+- **Audio**: `world.audioScene.factory.loadClip(url)`/`world.loader.loadClip(url)` then
+  `createSource({ clip, loop, volume, playbackRate, spatial, bus, priority })`, placed with
+  `AudioSource(3d|2d)Entity` (static, attached to another entity, or `playOneShot`); bus volumes via
+  `setBusVolume`. With many simultaneous sources (vehicles, crowds), mobile especially, set a voice
+  budget: `world.audioScene.maxVoices = 16` (default `Infinity`). Beyond it the lowest-ranked playing
+  sources go virtual - silent, no audio processing, position still advancing, faded back in where
+  they would be when they rank high enough again. Rank = audible before silent, then `priority`
+  (higher wins, default `0`; give music/UI/the player's own vehicle a high one, ambient detail a low
+  one), then loudness at the listener. `source.isVirtual`, `audioScene.voiceCounts` and the
+  `audio_voices [int|inf]` console command show what is going on. Keeping a loop playing at volume 0
+  is fine under a budget: a silent source never takes a voice from one that is heard. 3D sources
+  pan with HRTF by default (front/back and elevation, but a convolution per source);
+  `world.audioScene.defaultPanningModel = 'equalpower'` before creating sources makes every new one
+  use the far cheaper left/right split (worth it on mobile), or set `panningModel` per source (in
+  the descriptor or at runtime).
 - **Raycasting**: `world.physicsWorld.raycast({ from, to, collisionFilterGroups?, collisionFilterMask? })`.
 - **Collision groups**: `world.physicsWorld.registerCollisionGroup()` /
   `deregisterCollisionGroup(group)`; every body has `mainCollisionGroup` set by default (both

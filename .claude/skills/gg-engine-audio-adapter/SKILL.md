@@ -28,8 +28,13 @@ if the need ever arises - just not expected to be common.
 Implement either the `3d/components/audio/*` interfaces (see `packages/audio`'s 3D classes) or the
 `2d/components/audio/*` ones (2D classes) from `packages/core/src`. They're structurally similar
 (both extend the base `IAudioSceneComponent`/`IAudioSourceComponent`) but the 3D ones add distance
-cone fields (`coneInnerAngle`/`coneOuterAngle`/`coneOuterGain`) and 3D-specific rolloff, mirroring
-how `ICamera3dComponent` adds FOV that 2D has no equivalent for.
+cone fields (`coneInnerAngle`/`coneOuterAngle`/`coneOuterGain`), 3D-specific rolloff and a
+`panningModel` (`'HRTF'`/`'equalpower'`), mirroring how `ICamera3dComponent` adds FOV that 2D has no
+equivalent for. `panningModel` is the one 3D field also set at creation: `AudioSource3dDescriptor`
+(the base descriptor plus `panningModel`) is what `IAudioSource3dComponentFactory.createSource`
+narrows its parameter to, and an unset one falls back to the 3D scene's `defaultPanningModel`
+(`'HRTF'` by default; the app's one switch for a cheaper mobile mix). A backend with no HRTF can
+map both values to its own panner, but must keep the property readable/writable.
 
 ## The contract you must implement
 
@@ -37,7 +42,8 @@ how `ICamera3dComponent` adds FOV that 2D has no equivalent for.
   owns the native audio backend (an `AudioContext` for `packages/audio`), `backendName` (a short,
   stable name for the dev console's `worlds`/`world` commands - `'webaudio'` there), the source `factory`,
   `masterVolume`/per-bus `getBusVolume`/`setBusVolume`, the single `activeListener` reference
-  (`setActiveListener`), and `update(elapsed, delta)` - called once per world tick by `GgWorld`
+  (`setActiveListener`), the voice budget `maxVoices` plus its `voiceCounts` (see "Voice budget"
+  below), and `update(elapsed, delta)` - called once per world tick by `GgWorld`
   itself (see "How `update()` gets called" below), not by app code.
 - **`IAudioSourceComponentFactory<D,R,ATypeDoc>`** (`base/components/audio/i-audio-source.component-factory.ts`):
   unlike the rendering/physics factories, this one is defined once at the *base* level and just
@@ -61,8 +67,8 @@ how `ICamera3dComponent` adds FOV that 2D has no equivalent for.
   the browser hasn't allowed to start yet - both are swallowed.
 - **`IAudioSourceComponent<D,R,ATypeDoc>`** (`base/components/audio/i-audio-source.component.ts`):
   one sound instance - `IPositionable<D,R>` (position/rotation proxied to the native
-  spatialization node) plus `loop`/`loopStart`/`loopEnd`/`volume`/`playbackRate`/`spatial`/`bus`,
-  `play()`/`pause()`/`stop()`, `isPlaying`, and `ended$` (fires once when a non-looping clip
+  spatialization node) plus `loop`/`loopStart`/`loopEnd`/`volume`/`playbackRate`/`spatial`/`bus`/
+  `priority`, `play()`/`pause()`/`stop()`, `isPlaying`, `isVirtual`, and `ended$` (fires once when a non-looping clip
   finishes - what `AudioSource(2d|3d)Entity.playOneShot` and the `"PlaySound"` blueprint node
   subscribe to for self-cleanup). `loopStart`/`loopEnd` (seconds, both default `0` - `loopEnd: 0`
   means "end of clip", matching `AudioBufferSourceNode.loopEnd`'s own default) confine looping to a
@@ -94,6 +100,8 @@ packages/<lib>/
       <lib>-source-2d.component.ts           # IAudioSource2dComponent
     utils/
       ramp.ts                                # see "The ramped-write rule" below
+      playhead.ts                            # clip position after N seconds, Web Audio loop rules
+      voice-ranking.ts                       # pure ranking behind the voice budget
       distance-gain.ts                       # only needed if your backend has no native distance model
       audio-source-pool.ts                   # optional: see "Pooling" below
 ```
@@ -122,9 +130,12 @@ producing output yet - there's no previous value playing to click against, so th
 ramp to smooth: `gainNode.gain.value = this._volume` in `WebAudioSourceComponentBase`'s constructor
 and `bufferSource.playbackRate.value = this._playbackRate` in its `play()` (both in
 `web-audio-source-base.component.ts`), each set once on a freshly-created node before it's started.
+The third is `setParamNow` (`utils/ramp.ts`): a jump on a chain that is silent right now - a virtual
+source's gain/position/pan, re-applied just before it is started again and faded in (see "Voice
+budget" below), or its gain restored on a `play()` while no buffer source is playing into it.
 
 Static tuning fields that don't change every frame (`refDistance`, `maxDistance`, `rolloffFactor`,
-`distanceModel`, `coneInnerAngle`/`coneOuterAngle`/`coneOuterGain`) are fine to proxy directly to
+`distanceModel`, `panningModel`, `coneInnerAngle`/`coneOuterAngle`/`coneOuterGain`) are fine to proxy directly to
 the native node without ramping - they're not written on a per-tick cadence, so there's no
 discontinuity to smooth away. The rule is specifically about anything driven by world state that
 changes every tick: position, and any gain/pan value derived from it.
@@ -180,11 +191,56 @@ orientation/listener facing silently disagree with which way the camera actually
 effect). What it actually bounds is each voice's own gain/spatialization node chain - a Web Audio
 `AudioBufferSourceNode` can only ever be `start()`ed once by spec regardless of pooling, so
 `play()` on a reused voice always creates a fresh one internally; the pool's payoff is never
-re-allocating the surrounding chain (or, at the browser level, running into the concurrent-node
-cap) for a debris field or crowd of impacts firing many sounds per second. It's opt-in - core's own
+re-allocating the surrounding chain for a debris field or crowd of impacts firing many sounds per
+second. It bounds allocations, not what is heard at once across the scene - that is the voice
+budget's job (below). It's opt-in - core's own
 `playOneShot`/`"PlaySound"` blueprint node don't use it automatically, since deciding whether a
 given sound effect is high-frequency enough to warrant pooling is an app-level call, not something
 core can infer from a clip alone.
+
+## Voice budget: `priority`, `maxVoices`, virtual sources
+
+Browsers have no hard cap on simultaneous sources or panners; what runs out, on a phone especially,
+is audio-thread CPU (an HRTF `PannerNode` is a convolution per source), and an overloaded render
+thread glitches or drops sound. `maxVoices` on the scene (default `Infinity`) bounds how many
+playing sources are rendered; the rest are *virtual*. `packages/audio` implements it as follows,
+and a new adapter should keep the same observable behavior:
+
+- **Who counts**: every source between `play()` and `pause()`/`stop()`/its end, added to a world or
+  not (an `AudioSourcePool` voice never is). Sources report to the scene (`voiceStarted`/
+  `voiceStopped`); this set is separate from the world-registered `livingSources` the 2D panning
+  sweep uses.
+- **Ranking** (`utils/voice-ranking.ts`, pure and unit-tested): audible before silent (estimated
+  gain <= `SILENT_VOICE_GAIN`, so a loop parked at volume 0 never takes a voice from a sound being
+  heard, whatever its priority), then `priority`, then estimated gain at the listener (volume x
+  bus volume x the source's own distance model through `computeDistanceGain` - cones ignored) with
+  `AUDIBLE_VOICE_BIAS` for the sources already heard (otherwise two near-equal sources at the
+  budget's edge swap every frame), then the one already heard, then creation order. Re-ranked every
+  `update()` (both scenes end theirs with `updateVoices()`) and synchronously in `play()` when the
+  budget is full, so a newcomer that ranks low starts virtual with no buffer source at all. A
+  scene with no virtual source and no more playing sources than the budget skips all of it -
+  `Infinity` costs nothing.
+- **Going virtual** (`demote`): ramp the gain to 0, and once `VIRTUAL_FADE_SECONDS` (5 ramp time
+  constants) have passed, stop the buffer source and disconnect the gain/spatial chain from the bus,
+  so neither renders. **Coming back** (`promote`): mid-fade, just ramp the gain back up (the buffer
+  source never stopped); fully virtual, reconnect, `setParamNow` the stored position/pan and a gain
+  of 0, start a new buffer source at the computed playhead and ramp the gain up.
+- **Playhead**: tracked on the main thread for every playing source - an offset plus the context
+  time it was taken at, re-anchored before every `playbackRate`/`loop`/`loopStart`/`loopEnd` change
+  so time already played keeps the rate it was played at, and wrapped with the Web Audio loop rules
+  (`utils/playhead.ts`). `pause()` uses the same tracker, so a paused source resumes at its real
+  position whatever its rate or loop region.
+- **Don't schedule `AudioParam` events on a disconnected chain.** A node outside the rendered graph
+  never processes its automation timeline, so a per-tick `setTargetAtTime` on a virtual source's
+  panner just piles events up (WebKit's own panner slowdown, bug 230950, was exactly an
+  ever-growing timeline). While virtual, `volume`/`position`/`rotation`/2D pan only store their value
+  (`isOutputConnected`, `gainSilenced`); `promote` writes the latest values at once.
+- **One-shots stay virtual until they would have ended** (not dropped): the per-frame pass
+  (`advanceVirtual`) ends them then and fires `ended$`, so `playOneShot`/`"PlaySound"`/
+  `AudioSourcePool` cleanup keeps working, and one promoted halfway through resumes halfway through.
+- `isPlaying` stays `true` while virtual; `isVirtual` is `true` from the moment a source is demoted
+  (fade-out included). `voiceCounts` is `{ playing, audible, virtual }`; the dev console's
+  `audio_voices [int|inf]` reads/sets the budget and prints it.
 
 ## Autoplay policy (browser gesture requirement)
 
@@ -235,16 +291,23 @@ package), follow the usual adapter convention instead (exact-pinned in both depe
 ## Testing
 
 jsdom (this repo's jest environment) has no native Web Audio implementation at all - there's no
-real `AudioContext` to construct in a test, which is why `packages/audio` has no unit tests
-directly exercising `WebAudioSceneComponentBase`/`WebAudioSourceComponentBase` against a real
-context. What *is* tested, and should be for any audio adapter: pure logic that doesn't need a
-real native node, plus scene logic against a hand-rolled fake `AudioContext`
-(`test/components/web-audio-scene-base.component.spec.ts`: the gesture listeners, `setPaused`,
-`decodeClip`) - `computeDistanceGain` (`test/utils/distance-gain.spec.ts`, verified against the
-Web Audio spec's own three formulas) and `AudioSourcePool` (`test/utils/audio-source-pool.spec.ts`,
-against a hand-rolled fake `IAudioSceneComponent`/`IAudioSourceComponent`, the same "mock the
-interface, not the native API" approach `packages/core`'s own tests use for physics/rendering
-components). Core-level behavior (the `"Sound"` class, `"PlaySound"` node, `GgWorld`'s
+real `AudioContext` to construct in a test. What *is* tested, and should be for any audio adapter:
+
+- Pure logic that needs no native node: `computeDistanceGain` (`test/utils/distance-gain.spec.ts`,
+  verified against the Web Audio spec's own three formulas), `wrapPlayhead`
+  (`test/utils/playhead.spec.ts`, the Web Audio loop rules), `rankVoices`
+  (`test/utils/voice-ranking.spec.ts`), and `AudioSourcePool`
+  (`test/utils/audio-source-pool.spec.ts`, against a hand-rolled fake `IAudioSceneComponent`/
+  `IAudioSourceComponent` - the same "mock the interface, not the native API" approach
+  `packages/core`'s own tests use for physics/rendering components).
+- The real scene/source classes against a hand-rolled fake `AudioContext` installed as
+  `global.AudioContext`: `test/components/web-audio-scene-base.component.spec.ts` (the gesture
+  listeners, `setPaused`, `decodeClip`) and `test/components/web-audio-voice-budget.spec.ts` (the
+  voice budget end to end on a `WebAudioScene3dComponent`; the fake context's `currentTime` is
+  advanced by the test, and its fake `AudioParam`s record the last ramp target, which is how a
+  fade is asserted).
+
+Core-level behavior (the `"Sound"` class, `"PlaySound"` node, `GgWorld`'s
 listener-auto-bind) is covered in `packages/core/test/` against `MockWorld`-style fakes - see
 `packages/core/test/base/blueprint/play-sound.node.spec.ts` and the "audio listener auto-bind"
 describe block in `packages/core/test/base/gg-world.spec.ts` for the pattern.

@@ -3,6 +3,17 @@ import { AudioTypeDocRepo } from '../../gg-world';
 import { IPositionable } from '../../interfaces/i-positionable';
 
 /**
+ * How many sources of one audio scene are playing, and how many of those are heard - see
+ * `IAudioSceneComponent.maxVoices`. `playing` counts every source between `play()` and its
+ * `pause()`/`stop()`/end; `audible + virtual === playing`.
+ */
+export interface AudioVoiceCounts {
+  playing: number;
+  audible: number;
+  virtual: number;
+}
+
+/**
  * The audio equivalent of `IVisualSceneComponent`: owns the native audio backend (e.g. a Web
  * Audio `AudioContext`), the source factory, and the single active listener a `GgWorld`'s
  * `audioScene` is composed from. Mirrors `visualScene`/`physicsWorld` (a `GgWorld`-composed
@@ -55,6 +66,24 @@ export interface IAudioSceneComponent<
    * (without guessing) once more than one renderer exists and no listener has been set.
    */
   readonly activeListener: IPositionable<D, R> | null;
+
+  /**
+   * Voice budget: how many playing sources this scene renders at once. Beyond it, sources are
+   * ranked and the lowest ones are made virtual (`IAudioSourceComponent.isVirtual`): silent and
+   * free of audio processing, their playback position still advancing, and faded back in where
+   * they would be once they rank inside the budget again. Ranking, re-evaluated every `update()`
+   * and whenever a source starts: an audible source before a silent one (effective gain ~0 - a
+   * muted loop never takes a voice from one that is heard), then higher
+   * `IAudioSourceComponent.priority`, then the louder at the listener (volume x bus volume x
+   * distance attenuation from the source's own distance model; cones are ignored), with a small
+   * bias towards the voices already heard so near-equal sources don't swap every frame, then the
+   * older source. Defaults to `Infinity` (every playing source is rendered, nothing is ranked);
+   * a non-negative integer, changeable at any time.
+   */
+  maxVoices: number;
+
+  /** Current playing/audible/virtual source counts, for debugging - see {@link AudioVoiceCounts}. */
+  readonly voiceCounts: AudioVoiceCounts;
 
   setActiveListener(target: IPositionable<D, R> | null): void;
 

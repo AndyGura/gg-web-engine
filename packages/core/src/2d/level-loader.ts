@@ -211,6 +211,7 @@ export interface Sound2DSettings {
   spatial?: boolean;
   bus?: string;
   autoplay?: boolean;
+  priority?: number;
   refDistance?: number;
   maxDistance?: number;
   rolloffFactor?: number;
@@ -671,6 +672,7 @@ export class Gg2dLevelLoader<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTyp
       spatial: settings.spatial,
       bus: settings.bus,
       autoplay: settings.autoplay,
+      priority: settings.priority,
     });
     if (settings.refDistance !== undefined) {
       source.refDistance = settings.refDistance;

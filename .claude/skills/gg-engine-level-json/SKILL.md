@@ -829,7 +829,10 @@ a thrown error.
 `config` (`Sound3DSettings`/`Sound2DSettings`): `path` (required - fetched+decoded via
 `world.loader.loadClip`), `loop` (default `true` - a static/ambient sound is normally
 continuous), `volume`, `playbackRate`, `spatial` (default `true`), `bus` (default `"sfx"`),
-`autoplay` (default `true`), and the 3D-only/2D-only distance-rolloff fields
+`autoplay` (default `true`), `priority` (default `0`, higher is more important - which sounds stay
+audible once the audio scene's voice budget `maxVoices` is exceeded; see `AudioSourceDescriptor.priority`),
+3D-only `panningModel` (`'HRTF'`/`'equalpower'`, default the audio scene's `defaultPanningModel`),
+and the 3D-only/2D-only distance-rolloff fields
 (`refDistance`/`maxDistance`/`rolloffFactor`/`distanceModel`) matching `IAudioSource(3d|2d)Component`
 directly. Missing `path` throws `"path" is required for Sound class`.
 
@@ -984,7 +987,8 @@ to a `"Trigger"` entity's `onEntityEntered` for an impact sound:
 `settings` (`PlaySoundNodeSettings`): `clip` (required - a URL, loaded via `world.loader.loadClip`,
 so it is fetched and decoded once however often the node fires, is preloaded with the level that
 declares the node, and is freed when the node is disposed), `volume`, `playbackRate`, `spatial` (default
-`true`), `bus` (default `"sfx"`), and an optional fixed `position` overriding where it plays. With
+`true`), `bus` (default `"sfx"`), `priority` (default `0`, same as `"Sound"`'s), and an optional fixed
+`position` overriding where it plays. With
 no `position` set, it uses the triggering value's own `.position` if it has one - true for whatever
 `onEntityEntered`/`onEntityLeft` emit (an `IEntity & IPositionable(2d|3d)`) and for `onCollisionStart`'s
 payload (see "Collision events" above), which is exactly what makes the "impact where something hit

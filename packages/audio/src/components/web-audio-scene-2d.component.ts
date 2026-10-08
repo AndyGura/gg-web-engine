@@ -23,11 +23,11 @@ export class WebAudioScene2dComponent
 
   public update(_elapsed: number, _delta: number): void {
     const listener = this.activeListener;
-    if (!listener) {
-      return;
+    if (listener) {
+      for (const source of this.livingSources) {
+        (source as WebAudioSource2dComponent).applySpatialUpdate(listener.position);
+      }
     }
-    for (const source of this.livingSources) {
-      (source as WebAudioSource2dComponent).applySpatialUpdate(listener.position);
-    }
+    this.updateVoices();
   }
 }

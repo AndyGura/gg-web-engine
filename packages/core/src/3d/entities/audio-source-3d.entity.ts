@@ -1,4 +1,5 @@
-import { AudioSourceDescriptor, IEntity, Pnt3, Point3, Point4, Qtrn, TickOrder } from '../../base';
+import { IEntity, Pnt3, Point3, Point4, Qtrn, TickOrder } from '../../base';
+import { AudioSource3dDescriptor } from '../components/audio/i-audio-source-3d.component';
 import { IPositionable3d } from '../interfaces/i-positionable-3d';
 import { Gg3dWorld, Gg3dWorldTypeDocRepo } from '../gg-3d-world';
 
@@ -86,7 +87,7 @@ export class AudioSource3dEntity<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorl
    */
   public static playOneShot<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo>(
     world: Gg3dWorld<TypeDoc>,
-    descriptor: AudioSourceDescriptor<TypeDoc['aTypeDoc']['clip']>,
+    descriptor: AudioSource3dDescriptor<TypeDoc['aTypeDoc']['clip']>,
     position: Point3,
     rotation: Point4 = Qtrn.O,
   ): AudioSource3dEntity<TypeDoc> {

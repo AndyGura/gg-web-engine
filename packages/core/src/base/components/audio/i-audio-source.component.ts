@@ -52,6 +52,15 @@ export interface AudioSourceDescriptor<Clip = unknown> {
   bus?: string;
   /** Whether to start playing immediately once created. Defaults to `true`. */
   autoplay?: boolean;
+  /**
+   * How important this sound is when more sources are playing than the audio scene's voice budget
+   * allows (`IAudioSceneComponent.maxVoices`): higher is more important, and the lowest-ranked
+   * sources are the ones made virtual (silent, but still advancing in time). Any number,
+   * negatives included; `Infinity` always ranks first. Defaults to `0`, so an app that only marks
+   * its important sounds (`> 0`) or its expendable ones (`< 0`) leaves everything else in the
+   * middle. Has no effect while the budget is unlimited (the default).
+   */
+  priority?: number;
 }
 
 /**
@@ -74,12 +83,27 @@ export interface IAudioSourceComponent<D, R, ATypeDoc extends AudioTypeDocRepo<D
   playbackRate: number;
   spatial: boolean;
   bus: string;
+  /** See `AudioSourceDescriptor.priority` - same semantics, readable/writable at runtime. */
+  priority: number;
 
+  /**
+   * Logically playing: between `play()` and `pause()`/`stop()`/the natural end of a non-looping
+   * clip. Stays `true` while the source is virtual (see `isVirtual`).
+   */
   readonly isPlaying: boolean;
 
   /**
+   * Playing, but not rendered: the source ranks outside the audio scene's voice budget
+   * (`IAudioSceneComponent.maxVoices`), so it is silent and costs no audio processing, while its
+   * playback position keeps advancing as if it were heard. It becomes audible again, from the
+   * position it would have reached, as soon as it ranks inside the budget. Always `false` while
+   * not playing, and while the budget is unlimited (the default).
+   */
+  readonly isVirtual: boolean;
+
+  /**
    * Fires once when playback reaches the end of a non-looping clip (never fires for a looping
-   * source, since it never ends on its own). What `AudioSource(2d|3d)Entity.playOneShot` and the
+   * source, since it never ends on its own). A virtual one-shot fires it when it would have ended. What `AudioSource(2d|3d)Entity.playOneShot` and the
    * `"PlaySound"` blueprint node subscribe to in order to remove/dispose the transient source
    * once it's done.
    */

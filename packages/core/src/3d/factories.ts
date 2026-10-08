@@ -2,6 +2,7 @@ import { BodyShape3DDescriptor, Shape3DDescriptor, Shape3DMeshDescriptor } from 
 import { IAudioSourceComponentFactory, Point3, Point4 } from '../base';
 import { LoadTextureOptions } from './models/environment';
 import { AudioTypeDocRepo3D, PhysicsTypeDocRepo3D, VisualTypeDocRepo3D } from './gg-3d-world';
+import { AudioSource3dDescriptor } from './components/audio/i-audio-source-3d.component';
 import { CharacterController3dOptions } from './models/character-controller-options';
 import { Light3dDescriptor } from './models/lights';
 
@@ -117,4 +118,7 @@ export interface IPhysicsBody3dComponentFactory<PTypeDoc extends PhysicsTypeDocR
 
 export interface IAudioSource3dComponentFactory<
   ATypeDoc extends AudioTypeDocRepo3D = AudioTypeDocRepo3D,
-> extends IAudioSourceComponentFactory<Point3, Point4, ATypeDoc> {}
+> extends IAudioSourceComponentFactory<Point3, Point4, ATypeDoc> {
+  /** Narrows the base `createSource` to take the 3D-only `panningModel` as well. */
+  createSource(descriptor: AudioSource3dDescriptor<ATypeDoc['clip']>): ATypeDoc['source'];
+}

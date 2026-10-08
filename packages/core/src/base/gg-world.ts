@@ -1080,6 +1080,24 @@ export abstract class GgWorld<
         'args: [ string, float? ]; Get or set the volume (0-1) of one audio bus (e.g. "sfx", ' +
           '"music", "ambient") - a bus not otherwise set behaves as if its volume were 1',
       );
+      ggstatic.registerConsoleCommand(
+        this,
+        'audio_voices',
+        async (...args: string[]) => {
+          if (args.length > 0) {
+            const value = args[0] === 'inf' ? Infinity : +args[0];
+            if (isNaN(value) || value < 0) {
+              throw new Error('usage: audio_voices [int|inf]');
+            }
+            this.audioScene!.maxVoices = value;
+          }
+          const { playing, audible, virtual } = this.audioScene!.voiceCounts;
+          return `budget ${this.audioScene!.maxVoices}: ${playing} playing, ${audible} audible, ${virtual} virtual`;
+        },
+        'args: [ int|inf? ]; Get or set the audio voice budget (how many playing sources are heard ' +
+          'at once - beyond it the lowest-ranked go virtual), then print how many sources are ' +
+          'playing, audible and virtual',
+      );
     }
   }
 }

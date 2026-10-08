@@ -17,9 +17,9 @@ interface Voice<D, R> {
  * each voice's own gain/panner node chain, not the underlying `AudioBufferSourceNode` (which the
  * Web Audio spec only allows starting once per instance regardless - `IAudioSourceComponent.
  * play()` always creates a fresh one internally): without a pool, a debris field playing dozens of
- * impacts per second would keep allocating a fresh `PannerNode`+`GainNode` chain per hit and
- * hitting the browser's cap on concurrent audio nodes; with one, at most `size` such chains ever
- * exist for this pool's clip.
+ * impacts per second would keep allocating a fresh `PannerNode`+`GainNode` chain per hit; with
+ * one, at most `size` such chains ever exist for this pool's clip. It bounds allocations for one
+ * effect, not how many sources the whole scene renders at once - that's the scene's `maxVoices`.
  *
  * Every voice in one pool shares the same `descriptor` (clip, volume, spatial, bus, ...) -
  * position (and, if given, rotation) are the only things that vary per `play()` call. Use a

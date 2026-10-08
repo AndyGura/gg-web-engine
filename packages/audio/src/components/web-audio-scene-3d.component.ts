@@ -1,4 +1,4 @@
-import { IAudioScene3dComponent, Pnt3, Point3, Point4 } from '@gg-web-engine/core';
+import { AudioPanningModel, IAudioScene3dComponent, Pnt3, Point3, Point4 } from '@gg-web-engine/core';
 import { rampParam } from '../utils/ramp';
 import { WebAudioSceneComponentBase } from './web-audio-scene-base.component';
 import { WebAudioSource3dComponentFactory } from '../web-audio-factory';
@@ -17,12 +17,24 @@ export class WebAudioScene3dComponent
 
   public readonly factory: WebAudioSource3dComponentFactory;
 
+  /**
+   * `PannerNode.panningModel` for every source created from now on whose descriptor sets none.
+   * `'HRTF'` by default; `'equalpower'` is far cheaper on the audio thread (see
+   * `AudioPanningModel`). Existing sources keep theirs.
+   */
+  public defaultPanningModel: AudioPanningModel = 'HRTF';
+
   constructor() {
     super();
     this.factory = new WebAudioSource3dComponentFactory(this);
   }
 
   public update(_elapsed: number, _delta: number): void {
+    this.syncListener();
+    this.updateVoices();
+  }
+
+  private syncListener(): void {
     const listener = this.activeListener;
     if (!listener) {
       return;
