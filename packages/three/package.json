@@ -60,7 +60,8 @@
       "/node_modules/(?!three/(build|examples/jsm)/)"
     ],
     "moduleNameMapper": {
-      "@gg-web-engine/core": "<rootDir>/../core/src/index.ts"
+      "@gg-web-engine/core": "<rootDir>/../core/src/index.ts",
+      "^three$": "<rootDir>/../../node_modules/three/build/three.module.js"
     },
     "preset": "ts-jest/presets/default",
     "collectCoverageFrom": [
