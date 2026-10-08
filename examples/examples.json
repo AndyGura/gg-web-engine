@@ -57,7 +57,7 @@
       "title": "Shooter",
       "description": "Free-fly camera shooting balls through a textured physics scene.",
       "visual": ["three"],
-      "physics": ["ammo"]
+      "physics": ["ammo", "rapier3d"]
     },
     {
       "dir": "3d/screens",

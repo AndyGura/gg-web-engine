@@ -67,7 +67,7 @@ What that implies for the rest of the example:
   sends `visual=three`/`visual=pixi` and shows a (single-option) rendering selector so a visitor
   sees which renderer runs; examples ignore the parameter. A second visual adapter would get the
   same `await import()` treatment in `backends.ts`.
-- **An example that only runs on one backend** (`3d/fly-city`, `3d/shooter`, `2d/coin-run`) keeps the plain static import and lists just that backend in `examples.json`; the
+- **An example that only runs on one backend** (`3d/fly-city`, `2d/coin-run`) keeps the plain static import and lists just that backend in `examples.json`; the
   gallery disables the selector for it. Prefer the switch for anything new - it costs one file.
 
 ## package.json
