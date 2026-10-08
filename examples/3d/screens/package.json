@@ -2,14 +2,16 @@
   "name": "screens-3d",
   "version": "0.0.0",
   "scripts": {
-    "build": "webpack && rm ./dist/bundle.js.LICENSE.txt",
+    "build": "webpack && rm -f ./dist/*.LICENSE.txt",
     "start": "webpack serve --config ./webpack.dev.config.js"
   },
   "dependencies": {
+    "@dimforge/rapier3d-compat": "0.21.0",
     "@gg-web-engine/ammo": "0.0.78",
     "@gg-web-engine/audio": "0.0.78",
     "@gg-web-engine/core": "0.0.78",
     "@gg-web-engine/mobile-controls": "0.0.78",
+    "@gg-web-engine/rapier3d": "0.0.78",
     "@gg-web-engine/three": "0.0.78",
     "mini-signals": "3.0.0",
     "rxjs": "7.8.2",

@@ -61,12 +61,13 @@ What that implies for the rest of the example:
   there. A setting that is on core's interfaces and wanted on every backend is set in `index.ts`
   instead - `fixedTimeStep`/`maxSubSteps` are on `IPhysicsWorldComponent` (ignored by adapters that
   don't substep).
+- **A world created later than startup** (a game screen's `enter()` in `3d/screens`) awaits
+  `createPhysicsWorld()` where it builds the world; no top-level `await` is needed then.
 - **The visual side is fixed per dimension** (three.js in 3D, pixi.js in 2D). The gallery still
   sends `visual=three`/`visual=pixi` and shows a (single-option) rendering selector so a visitor
   sees which renderer runs; examples ignore the parameter. A second visual adapter would get the
   same `await import()` treatment in `backends.ts`.
-- **An example that only runs on one backend** (`3d/fly-city`, `3d/shooter`, `3d/screens`,
-  `2d/coin-run`) keeps the plain static import and lists just that backend in `examples.json`; the
+- **An example that only runs on one backend** (`3d/fly-city`, `3d/shooter`, `2d/coin-run`) keeps the plain static import and lists just that backend in `examples.json`; the
   gallery disables the selector for it. Prefer the switch for anything new - it costs one file.
 
 ## package.json

@@ -6,10 +6,10 @@ import {
   Screen,
   ScreenEnterContext,
 } from '@gg-web-engine/core';
-import { AmmoWorldComponent } from '@gg-web-engine/ammo';
 import { WebAudioScene3dComponent } from '@gg-web-engine/audio';
 import { MobileControls, TouchButton } from '@gg-web-engine/mobile-controls';
 import { ThreeGgWorld, ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
+import { createPhysicsWorld } from './backends';
 import { LEVEL } from './level';
 import { PauseScreen } from './pause.screen';
 
@@ -27,12 +27,14 @@ export class GameScreen extends Screen {
     const canvas = document.createElement('canvas');
     this.layer.appendChild(canvas);
 
-    // addWorld right away, before anything can fail or be aborted: from here on the manager
+    // The physics engine picked by `?physics=` (see backends.ts); only its chunk is downloaded.
+    const physicsWorld = await createPhysicsWorld();
+    // addWorld right away, before anything else can fail or be aborted: from here on the manager
     // disposes the world whenever this screen goes, and pauses and silences it while it is covered.
     const world: ThreeGgWorld = this.addWorld(
       new Gg3dWorld({
         visualScene: new ThreeSceneComponent(),
-        physicsWorld: new AmmoWorldComponent(),
+        physicsWorld,
         audioScene: new WebAudioScene3dComponent(),
       }),
     );

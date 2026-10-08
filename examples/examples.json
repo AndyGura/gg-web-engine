@@ -64,7 +64,7 @@
       "title": "Screens",
       "description": "Menu, loading, game and pause screens driven by the ScreenManager, with the world owned by the game screen.",
       "visual": ["three"],
-      "physics": ["ammo"]
+      "physics": ["ammo", "rapier3d"]
     },
     {
       "dir": "3d/fly-city",
