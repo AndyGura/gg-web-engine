@@ -29,6 +29,19 @@ where one exists.
 ## [Unreleased]
 
 ### Added
+- `@gg-web-engine/core`: an engine-provided loading screen. `DefaultLoadingView` is now an opaque
+  backdrop with an animated CSS 3D cube and "Loading" (a progress bar and percentage join it once
+  a load reports progress), used by `ScreenManager` as before. `loadingScreen: true` in a
+  `Gg2dWorld`/`Gg3dWorld` constructor shows it from construction until the world's first
+  `start()`; `LoadingScreen.show()`/`hide()` shows it for any other load. Every example that opens
+  straight into a level uses it.
+- Every visual scene, physics world and audio scene names its backend: `backendName` (`'three'`,
+  `'pixi'`, `'ammo'`, `'rapier3d'`, `'rapier2d'`, `'matter'`, `'webaudio'`). A required member of
+  `IVisualSceneComponent`, `IPhysicsWorldComponent` and `IAudioSceneComponent`, so a third-party
+  adapter has to add it.
+- Dev console: `worlds` shows the backends each world runs on, and `world` prints the selected
+  world's backends, clock state, time scale, fps limit, physics step and entity/renderer counts
+  under its name.
 - `@gg-web-engine/core`: `ScreenManagerOptions.onEnterError` returns a screen to show when a
   screen's `enter()` throws, so a failed game load can fall back to the menu instead of an empty
   page. `Screen.screenTypeName` names a screen class in the dev console in a minified build.

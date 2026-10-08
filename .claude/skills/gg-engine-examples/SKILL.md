@@ -498,6 +498,11 @@ deliberately demonstrates native interop can opt out with a trailing `// gg-allo
 Adapter-package exports that aren't native objects (`ThreeSceneComponent`, `PixiCameraComponent`,
 `ThreeDisplayObject3dOpts`, world type aliases) are fine.
 
+**An example that opens straight into a level passes `loadingScreen: true` to its world.** The
+engine's loading screen then covers `init()` and the level load until `world.start()` (call
+`start()` last, once everything is built). An example that starts on its own menu (`3d/screens`)
+leaves it out; its `ScreenManager` shows the same view while a screen enters.
+
 **`GgStatic` in an example is a debugging aid for the demo, nothing more.** Examples turn on
 `GgStatic.instance.devConsoleEnabled` (and often `showStats`) so a reader can poke at the running
 scene. Nothing the demo shows may depend on it: no gameplay, UI or loading step goes through

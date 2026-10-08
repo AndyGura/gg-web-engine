@@ -179,6 +179,7 @@ const level: LevelJson = {
 const world: ThreeGgWorld = new Gg3dWorld({
   visualScene: new ThreeSceneComponent(),
   physicsWorld: await createPhysicsWorld(),
+  loadingScreen: true, // covers the page until world.start()
 });
 world.init().then(async () => {
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;

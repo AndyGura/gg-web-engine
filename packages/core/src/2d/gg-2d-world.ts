@@ -1,4 +1,4 @@
-import { BodyType, GgConsoleHost, GgWorld, Pnt2, Point2, RendererOptions } from '../base';
+import { BodyType, GgConsoleHost, GgWorld, LoadingView, Pnt2, Point2, RendererOptions } from '../base';
 import { Gg2dLoader } from './loader';
 import { BodyShape2DDescriptor } from './models/shapes';
 import { Entity2d } from './entities/entity-2d';
@@ -136,6 +136,7 @@ export class Gg2dWorld<
     audioScene?: SceneTypeDoc['audioScene'];
     maxTickDelta?: number;
     pauseWhenHidden?: boolean;
+    loadingScreen?: boolean | LoadingView;
     fixedPhysicsStep?: number;
     maxPhysicsStepsPerTick?: number;
   }) {

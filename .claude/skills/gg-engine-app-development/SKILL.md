@@ -74,7 +74,26 @@ The 2D equivalent (`Gg2dWorld`) uses `Shape2DDescriptor` (`BOX`/`CIRCLE`/`CAPSUL
 `POLYGON`/`COMPOUND`) and `Point2`/`number` rotation instead of quaternions - a `COMPOUND` child's
 `rotation` is a plain radians scalar rather than 3D's `Point4` quaternion.
 
-## Hidden tab: pausing automatically, or just reacting to it
+## Loading screen while the game starts
+
+Pass `loadingScreen: true` to the `Gg3dWorld`/`Gg2dWorld` constructor to cover the page with the
+engine's loading screen (`DefaultLoadingView`: opaque backdrop, an animated CSS 3D cube, "Loading")
+from that moment until the world's first `start()`, or `dispose()`. Everything the app does in
+between - `init()`, `loadLevel`, preloading, connecting a network session - happens behind it, and
+it fades out as the first frame renders. Pass a `LoadingView` of your own instead of `true` to show
+that. It covers startup only: later loads in a running world (a level reload, a streamed map chunk)
+don't bring it back - show it yourself for those with `LoadingScreen.show()`:
+
+```typescript
+const loading = LoadingScreen.show(); // { view?, container?, fadeOutDuration? }
+await world.loader.loadLevel(level, 'Level', { onProgress: p => loading.setProgress(p) });
+loading.hide();
+```
+
+An app that rebuilds its whole world to restart (dispose the old one, construct a new one with
+`loadingScreen: true`) gets the screen again automatically. A `ScreenManager` app needs neither: the
+manager shows the same `DefaultLoadingView` while a screen enters (see "Screens").
+
 
 Pass `pauseWhenHidden: true` in the `Gg3dWorld`/`Gg2dWorld` constructor args to have the world pause
 itself automatically while the browser tab is hidden and resume itself when it becomes visible again
@@ -509,7 +528,8 @@ class GameScreen extends Screen {
   the constructor. `enter()` runs once, `exit()` once.
 - **Loading**: while `enter()`'s promise is pending the screen's layer is hidden and, after
   `loadingDelay` (150 ms), the manager shows a loading view fed by `ctx.reportProgress` (a loader's
-  `LoadProgress`, or a 0..1 number). `DefaultLoadingView` is a plain progress bar; pass
+  `LoadProgress`, or a 0..1 number). `DefaultLoadingView` is the engine's loading screen (opaque
+  backdrop, an animated CSS 3D cube, "Loading" and, once progress is reported, a bar); pass
   `loadingView: () => myView` (an object with `element`, `setProgress`, `dispose`) to the manager
   or to one push, or `null` for none. Once shown, the view stays at least `loadingMinDuration`
   (300 ms). An operation that removes a screen not shown yet cancels it: one that is loading is
@@ -675,7 +695,9 @@ or the panel visible — they work as soon as `window.ggstatic` exists.
 ### Built-in commands
 
 Global (always available): `commands` (list all available commands), `help NAME` (print a
-command's doc string), `worlds` (list worlds), `world [name]` (get/select the active world —
+command's doc string), `worlds` (list worlds and the backends each runs on), `world [name]`
+(select the active world, then print it: name on the first line, then its backends - each scene's
+`backendName`, e.g. `three`/`rapier3d`/`webaudio` - clock state, time scale, entity counts —
 world-scoped commands only run while their world is selected; `GgWorld.documentWorlds` lists all
 worlds and the first one created is auto-selected), `stats_panel [0|1]`, `debug_panel [0|1]`,
 `bind_key CODE COMMAND [args...]` / `unbind_key CODE` (bind a command to a keyboard key —

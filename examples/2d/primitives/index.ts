@@ -32,6 +32,7 @@ const level: LevelJson = {
 const world: PixiGgWorld = new Gg2dWorld({
   visualScene: new PixiSceneComponent(),
   physicsWorld: await createPhysicsWorld(),
+  loadingScreen: true, // covers the page until world.start()
 });
 world.init().then(async () => {
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;

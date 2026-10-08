@@ -278,6 +278,7 @@ function inviteUrl(roomId: string): string {
 const world: Gg2dWorldWithPhysics<PixiGgWorld> = new Gg2dWorld({
   visualScene: new PixiSceneComponent(),
   physicsWorld: await createPhysicsWorld(),
+  loadingScreen: true, // covers the page until world.start()
 });
 
 world.init().then(async () => {

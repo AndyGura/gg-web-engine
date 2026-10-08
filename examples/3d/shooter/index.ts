@@ -10,6 +10,7 @@ GgStatic.instance.devConsoleEnabled = true;
 const world: Gg3dWorldWithPhysics<ThreeGgWorld> = new Gg3dWorld({
   visualScene: new ThreeSceneComponent(),
   physicsWorld: await createPhysicsWorld(),
+  loadingScreen: true, // covers the page until world.start()
 });
 // up to 10 substeps of 1/60 s each, so a frame hitch doesn't let a ball tunnel through a wall
 world.physicsWorld.maxSubSteps = 10;

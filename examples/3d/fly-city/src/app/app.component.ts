@@ -68,6 +68,7 @@ export class AppComponent implements AfterViewInit {
       visualScene: new ThreeSceneComponent(),
       physicsWorld: await createPhysicsWorld(),
       audioScene: new WebAudioScene3dComponent(),
+      loadingScreen: true, // covers the page until world.start()
     });
     // multiplayer when the URL carries a room; the network controller exists before any car spawns,
     // so chunk cars can be marked shared as they load
