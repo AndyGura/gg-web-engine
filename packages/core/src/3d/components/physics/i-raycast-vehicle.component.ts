@@ -22,7 +22,18 @@ export type WheelOptions = {
    * the car stick to the road like a train on rails.
    */
   frictionSlip: number;
+  /**
+   * Bullet's roll influence: the share (0..1) of the wheel's sideways force applied at the contact
+   * point rather than at the chassis' centre of mass, so lower values make the car lean and roll
+   * over less in a turn. Physics engines without this knob (Rapier) ignore it.
+   */
   rollInfluence: number;
+  /**
+   * Multiplier on the tyre's sideways grip (default 1): below 1 the car slides out of turns
+   * earlier, above 1 it holds the line harder. Physics engines without this knob (Ammo, whose side
+   * grip follows `frictionSlip` alone) ignore it.
+   */
+  sideFrictionStiffness?: number;
   /**
    * How far the wheel can move up from its rest position, in meters (from `restLength` toward
    * the connection point `position`). A value above `SuspensionOptions.restLength` lets the wheel

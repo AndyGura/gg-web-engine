@@ -45,6 +45,9 @@ where one exists.
   `defaultMaxSuspensionForce(chassisMass)` - twice the car's weight per wheel. Ammo and Rapier used
   their engines' own 6000 N, which bottoms a 1.5 t car out at ~1.6 g (hard braking, a dip, a landing).
 - `@gg-web-engine/core`: `Qtrn.fromTo(from, to)`, the shortest-arc rotation between two directions.
+- `@gg-web-engine/core`: `WheelOptions.sideFrictionStiffness` (also in `RVEntitySharedWheelOptions`
+  and a `"GgCar"`'s wheel settings), a multiplier on a tyre's sideways grip, default 1. Rapier
+  applies it; Ammo has no such setting and ignores it.
 
 ### Changed
 - `@gg-web-engine/core`: `ScreenManager` operations resolve with `true` when their screen was shown
@@ -100,6 +103,10 @@ where one exists.
   the average of its colliders. A `COMPOUND` (a car chassis built from a few boxes) no longer gets
   its centre of mass high above the wheels, and its mass is spread over the parts by volume.
   `BodyOptions.mass` documents the rule for 3D.
+- `@gg-web-engine/rapier3d`: `WheelOptions.rollInfluence` is ignored, since Rapier's vehicle
+  controller has no roll influence. It used to be passed to Rapier as side-friction stiffness, so the
+  default `0.2` left wheels with a fifth of their sideways grip; side grip is now
+  `sideFrictionStiffness` (default 1).
 
 ### Fixed
 - `@gg-web-engine/core`: looking around by dragging a finger over the canvas (`OrbitCameraController`,

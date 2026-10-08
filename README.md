@@ -431,8 +431,9 @@ friction, vehicles and character settings after a switch. Known differences:
   snapping and pushing of dynamic bodies. On Ammo the adapter sweeps the capsule itself, with its own
   step-up, slope-sliding and push logic. Ledges, steep slopes and walking into props feel different.
 - **Raycast vehicles.** Rapier's vehicle controller is a port of Bullet's, but suspension, tyre
-  friction and braking still differ, so the same wheel options drive differently. Tune a
-  `GgCarEntity` or raycast vehicle on the backend you ship.
+  friction and braking still differ, so the same wheel options drive differently. `rollInfluence`
+  only exists on Ammo and `sideFrictionStiffness` only on Rapier. Tune a `GgCarEntity` or raycast
+  vehicle on the backend you ship.
 - **Continuous collision detection.** Rapier sweeps the body's real shape; Ammo sweeps an
   approximating sphere, so fast bodies hitting thin geometry behave differently.
 - **Kinematic bodies.** Rapier has native position- and velocity-driven kinematic bodies. Ammo has one

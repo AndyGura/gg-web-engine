@@ -1,5 +1,10 @@
 import { SuspensionOptions, WheelOptions } from '@gg-web-engine/core';
-import { Rapier3dFactory, Rapier3dRaycastVehicleComponent, Rapier3dRigidBodyComponent, Rapier3dWorldComponent } from '../../src';
+import {
+  Rapier3dFactory,
+  Rapier3dRaycastVehicleComponent,
+  Rapier3dRigidBodyComponent,
+  Rapier3dWorldComponent,
+} from '../../src';
 
 // Shared suspension/wheel setup mirroring examples/3d/raycast-vehicle - see that example
 // for the full car setup.
@@ -33,7 +38,11 @@ const addWheels = (vehicle: Rapier3dRaycastVehicleComponent) => {
   }
 };
 
-const createFloor = (factory: Rapier3dFactory, world: Rapier3dWorldComponent, topZ: number): Rapier3dRigidBodyComponent => {
+const createFloor = (
+  factory: Rapier3dFactory,
+  world: Rapier3dWorldComponent,
+  topZ: number,
+): Rapier3dRigidBodyComponent => {
   const floor = factory.createRigidBody(
     { shape: { shape: 'BOX', dimensions: { x: 75, y: 75, z: 1 } }, body: { bodyType: 'static', mass: 0 } },
     { position: { x: 0, y: 0, z: topZ - 0.5 } },
@@ -156,5 +165,18 @@ describe('Rapier3dRaycastVehicleComponent', () => {
     expect(vehicle.position.y).toBeGreaterThan(settledY + 0.5);
     expect(vehicle.wheelSpeed).toBeGreaterThan(0.1);
     expect(vehicle.wheelSpeed).toBeLessThan(50);
+  });
+
+  it('applies sideFrictionStiffness as side grip, defaulting to 1, independently of rollInfluence', () => {
+    const chassis = factory.createRigidBody(
+      { shape: { shape: 'BOX', dimensions: { x: 1.8, y: 4, z: 0.6 } }, body: { bodyType: 'dynamic', mass: 800 } },
+      { position: { x: 0, y: 0, z: 2 } },
+    );
+    const vehicle = factory.createRaycastVehicle(chassis);
+    vehicle.addWheel({ ...wheelOptions(true, true), rollInfluence: 0.05 }, suspension);
+    vehicle.addWheel({ ...wheelOptions(true, false), sideFrictionStiffness: 0.5 }, suspension);
+    vehicle.addToWorld({ physicsWorld: world } as any);
+    expect(vehicle.nativeVehicle!.wheelSideFrictionStiffness(0)).toBeCloseTo(1, 5);
+    expect(vehicle.nativeVehicle!.wheelSideFrictionStiffness(1)).toBeCloseTo(0.5, 5);
   });
 });

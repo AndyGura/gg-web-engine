@@ -716,6 +716,12 @@ against a character controller would have hit a runtime `undefined`/throw with n
 
 ## `IRaycastVehicleComponent` (3D, implemented in `packages/rapier3d`)
 
+Option mapping: `frictionSlip` → `setWheelFrictionSlip`, `sideFrictionStiffness` (default 1) →
+`setWheelSideFrictionStiffness`, `maxTravel`/`maxSuspensionForce`/suspension straight through.
+Rapier's controller has no roll influence, so `WheelOptions.rollInfluence` is ignored. Don't map it
+onto side-friction stiffness: the two mean different things, and the usual roll influence of 0.2
+then cut every wheel's sideways grip to a fifth.
+
 `Rapier3dRaycastVehicleComponent` wraps Rapier's `DynamicRayCastVehicleController`
 (`world.createVehicleController(chassisBody)`), created and driven from `Rapier3dFactory.createRaycastVehicle`.
 It extends `Rapier3dRigidBodyComponent` and builds its own chassis body from `chassisBody.factoryProps`
