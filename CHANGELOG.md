@@ -96,6 +96,10 @@ where one exists.
   for a tick, so it no longer emits `removed$`/`added$` (which made `SurfaceFollowingEntity` drop a
   reset car's road plane). Setting `position`/`rotation` on a dynamic body also moves its motion state
   and interpolation transform, so a reset vehicle's wheels sit at its new pose.
+- `@gg-web-engine/rapier3d`: a dynamic body's centre of mass is its origin, as on Ammo, instead of
+  the average of its colliders. A `COMPOUND` (a car chassis built from a few boxes) no longer gets
+  its centre of mass high above the wheels, and its mass is spread over the parts by volume.
+  `BodyOptions.mass` documents the rule for 3D.
 
 ### Fixed
 - `@gg-web-engine/core`: looking around by dragging a finger over the canvas (`OrbitCameraController`,

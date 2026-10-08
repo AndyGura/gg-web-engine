@@ -28,6 +28,7 @@ import {
 import { Observable, Subject } from 'rxjs';
 import { Rapier3dWorldComponent } from './rapier-3d-world.component';
 import { Rapier3dGgWorld, Rapier3dPhysicsTypeDocRepo } from '../types';
+import { inertiaAboutOrigin } from '../mass-properties';
 
 /** Inverse of `Rapier3dFactory.createRigidBodyDescr`'s own `BodyType -> RigidBodyType` mapping -
  * backs `Rapier3dRigidBodyComponent.bodyOptions`. */
@@ -349,8 +350,51 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
       col.setCollisionGroups(this.collisionGroups);
       return col;
     });
+    if (this._bodyDescr.status === RigidBodyType.Dynamic) {
+      this.applyMassProperties(this._nativeBody, this._nativeBodyColliders);
+    }
     this.world.handleIdEntityMap.set(this._nativeBody!.handle, this);
     this.world.added$.next(this);
+  }
+
+  /**
+   * Places a dynamic body's centre of mass at its origin, as `BodyOptions.mass` documents it for 3D
+   * (Bullet's compound shape does this natively). Rapier derives the centre of
+   * mass from the colliders instead, which for a compound shape (a car chassis built from a few
+   * boxes) lands wherever the boxes average out - often far above the wheels. The total mass is
+   * spread over the colliders by volume (uniform density), the resulting inertia is moved to the
+   * origin (parallel-axis theorem), and the body carries it as its own mass properties with
+   * massless colliders.
+   */
+  private applyMassProperties(body: RigidBody, colliders: Collider[]): void {
+    const total = colliders.reduce((sum, c) => sum + c.mass(), 0);
+    if (colliders.length > 1) {
+      const volumes = colliders.map(c => c.volume());
+      const volume = volumes.reduce((a, b) => a + b, 0);
+      if (volume > 0) {
+        colliders.forEach((c, i) => c.setMass((total * volumes[i]) / volume));
+      }
+    }
+    body.recomputeMassPropertiesFromColliders();
+    const com = body.localCom();
+    if (Pnt3.len(com) < 1e-6) {
+      return;
+    }
+    const { principal, frame } = inertiaAboutOrigin(
+      body.mass(),
+      com,
+      body.principalInertia(),
+      body.principalInertiaLocalFrame(),
+    );
+    colliders.forEach(c => c.setMass(0));
+    body.setAdditionalMassProperties(
+      total,
+      new Vector3(0, 0, 0),
+      new Vector3(principal.x, principal.y, principal.z),
+      new Quaternion(frame.x, frame.y, frame.z, frame.w),
+      false,
+    );
+    body.recomputeMassPropertiesFromColliders();
   }
 
   removeFromWorld(world: Rapier3dGgWorld, dispose?: boolean): void {

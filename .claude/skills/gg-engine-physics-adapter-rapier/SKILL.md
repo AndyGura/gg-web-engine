@@ -825,8 +825,8 @@ produced wildly excessive angular acceleration (confirmed empirically: the chass
 oscillated and briefly tumbled before the fix below, versus settling into a smooth, steady turn after
 it). Fixed by moving mass onto the collider(s) instead: `createRigidBodyDescr` now takes the rigid
 body's `ColliderDesc[]` as a third parameter and, for a dynamic body, calls `c.setMass(mass /
-colliderDescr.length)` on every one of them (splitting evenly across a `COMPOUND`'s sub-colliders, since
-no per-sub-shape volume query is exposed to weight this by volume instead) rather than setting
+colliderDescr.length)` on every one of them (an even split across a `COMPOUND`'s sub-colliders at
+descriptor level) rather than setting
 `bodyDesc.mass` at all - `ColliderDesc.setMass` auto-derives inertia from the shape *scaled to that
 mass*, giving a consistent, correctly-proportioned mass/inertia pairing for any dynamic body in this
 package, vehicle chassis included, not just a special case bolted onto the vehicle component. Worth
@@ -834,6 +834,20 @@ re-checking if a future change ever reintroduces `RigidBodyDesc.mass`/`setAdditi
 body in this package - the failure mode (translation looks fine, rotation is wildly wrong) is easy to
 miss without specifically testing a torque-inducing scenario, which is exactly why the vehicle feature
 was what surfaced it instead of any of this package's pre-existing tests.
+
+**A dynamic body's centre of mass is its origin (3D contract), which Rapier doesn't do by itself.**
+Rapier derives the centre of mass from the attached colliders, so a `COMPOUND` (a car chassis built
+from 3-4 boxes) got its centre of mass at the plain average of the boxes - over a metre above the
+wheels, and a truck's 1.8 m forward of its origin - and rolled over on ordinary turns. Bullet's
+`btCompoundShape` keeps it at the body origin, and `BodyOptions.mass`' doc makes that the contract.
+`Rapier3dRigidBodyComponent.addToWorld` therefore calls `applyMassProperties` for a dynamic body:
+re-spread the total mass over the native colliders by `collider.volume()`, `recomputeMassPropertiesFromColliders()`,
+and if `localCom()` isn't at the origin, shift the inertia tensor to the origin (parallel-axis theorem,
+then re-diagonalize - `src/mass-properties.ts`), set every collider's mass to `0` and give the body that
+mass/inertia through `setAdditionalMassProperties` with a zero centre of mass. The descriptors keep
+their even split, so `bodyOptions.mass` and `clone()` are unaffected. Covered by
+`test/components/rapier-3d-rigid-body-mass.spec.ts` (centre of mass, inertia values, volume split,
+re-add).
 
 **`Rapier3dRigidBodyComponent.bodyOptions.mass` must sum collider mass, not read `_bodyDescr.mass`
 - a later addition that didn't account for the collider-mass design above.** `IRigidBodyComponent

@@ -3,6 +3,12 @@ export type BodyType = 'dynamic' | 'static' | 'kinematic_pos' | 'kinematic_vel';
 
 export interface BodyOptions {
   bodyType: BodyType;
+  /**
+   * Total mass of a dynamic body. In 3D the body's centre of mass is its origin, whatever its shape
+   * (a `COMPOUND`'s parts don't move it), so where a model's origin sits is where its weight is -
+   * low between the wheels for a car chassis. How rotational inertia follows from the shape is up
+   * to each physics adapter.
+   */
   mass: number;
   restitution: number;
   friction: number;

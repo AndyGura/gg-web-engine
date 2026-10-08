@@ -509,6 +509,10 @@ ground-snap/jump and push pitfalls.
    (false)`; matter-js: `body.sleepThreshold = Infinity`, which only matters once an app turns on
    `engine.enableSleeping`), make that body's `sleep()` a no-op, survive `clone()`, and read back
    through `bodyOptions.canSleep`. Static and kinematic bodies ignore it.
+   In 3D a dynamic body's centre of mass is its origin, whatever its shape (`BodyOptions.mass`'
+   doc). An engine that derives the centre of mass from its colliders (Rapier, PhysX, Jolt) has to
+   move it back to the origin, inertia included - see `gg-engine-physics-adapter-rapier`'s note on
+   `applyMassProperties`; Bullet's compound shape already behaves this way.
 3. Merge in engine-reasonable defaults (e.g. `friction: 0.5, restitution: 0.1,
    ownCollisionGroups: [world.mainCollisionGroup], interactWithCollisionGroups:
    [world.mainCollisionGroup]`) before applying the caller's overrides, so bodies work out of the
