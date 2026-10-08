@@ -1,7 +1,7 @@
 {
   "name": "gg-web-engine-docs",
   "version": "0.0.000",
-  "description": "An attempt to create open source game engine for browser",
+  "description": "API documentation site generator for gg-web-engine (docs-ts + mkdocs)",
   "scripts": {
     "generate": "bash generate.sh",
     "run-doc-gen": "docs-ts && docs-ts-mkdocs",

@@ -16,12 +16,20 @@
     "url": "git+https://github.com/AndyGura/gg-web-engine.git"
   },
   "keywords": [
-    "game-development",
     "game-engine",
-    "game-engine-framework",
     "gamedev",
+    "game-development",
+    "browser-game",
+    "typescript",
     "multiplayer",
-    "webrtc"
+    "webrtc",
+    "p2p",
+    "peer-to-peer",
+    "networking",
+    "netcode",
+    "serverless",
+    "firebase",
+    "physics"
   ],
   "author": "AndyGura",
   "license": "Apache-2.0",

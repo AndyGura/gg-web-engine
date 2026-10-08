@@ -16,13 +16,15 @@
     "url": "git+https://github.com/AndyGura/gg-web-engine.git"
   },
   "keywords": [
-    "game-development",
     "game-engine",
-    "game-engine-framework",
     "gamedev",
+    "game-development",
+    "browser-game",
+    "typescript",
     "touch-controls",
     "virtual-joystick",
-    "mobile"
+    "mobile",
+    "touch"
   ],
   "author": "AndyGura",
   "license": "Apache-2.0",
