@@ -74,11 +74,11 @@ const EMPTY_PROGRESS: LoadProgress = {
  * ```
  *
  * Every operation is one transition, and transitions run one after another in the order they were
- * requested: first the screens that leave exit, top down (so a game being replaced has given up
- * its renderer and audio before the next screen allocates its own); then the screen that ends up on
- * top is entered if it never was, or uncovered. Screens placed below the top by `reset` enter
- * later, when they are first uncovered. The layers of the screens that left stay on the page until
- * the new top screen (or the loading view) shows, so there is no blank frame in between.
+ * requested: first the screens that leave exit, top down; then the screen that ends up on top is
+ * entered if it never was, or uncovered. Screens placed below the top by `reset` enter
+ * later, when they are first uncovered. The screens that left stay on the page, inert and with their
+ * worlds paused, until the new top screen (or the loading view) shows, so there is no blank frame
+ * in between; only then are their layers removed, their teardowns run and their worlds disposed.
  *
  * Each operation returns a promise that resolves when its transition is over: with `true` when its
  * top screen is shown (or the stack is empty), with `false` when a later request cancelled it. It
@@ -325,16 +325,17 @@ export class ScreenManager {
       }
     }
     const current = this.stack;
-    // layers of the screens leaving stay up, inert, until what replaces them is shown
-    const leaving: HTMLElement[] = [];
-    const dropLeaving = () => leaving.splice(0).forEach(layer => layer.remove());
+    // the screens leaving stay on the page, inert and paused, until what replaces them is shown;
+    // only then are they torn down (their layer removed, teardowns run, worlds disposed) - once,
+    // whichever way the transition ends, since `dropLeaving` empties the list
+    const leaving: Screen[] = [];
+    const dropLeaving = () => leaving.splice(0).forEach(screen => screen.internals.teardown());
     try {
       for (const screen of [...current].reverse()) {
         if (!next.includes(screen)) {
-          const layer = screen.layer;
-          layer.setAttribute('inert', '');
-          leaving.push(layer);
-          await this.exitScreen(screen, true, true);
+          if (await this.exitScreen(screen)) {
+            leaving.push(screen);
+          }
         }
       }
       for (const screen of next) {
@@ -530,7 +531,8 @@ export class ScreenManager {
       return 'aborted';
     }
     if (failure) {
-      await this.exitScreen(screen, false);
+      this.forget(screen);
+      screen.internals.teardown();
       this.setStack(this.stack.filter(s => s !== screen));
       return failure;
     }
@@ -543,18 +545,31 @@ export class ScreenManager {
     return 'entered';
   }
 
-  private async exitScreen(screen: Screen, entered: boolean = true, keepLayer: boolean = false): Promise<void> {
-    const wasEntered = entered && (screen.state === 'active' || screen.state === 'covered');
+  /**
+   * Takes a screen out of the stack. One that entered gets `exit()` and then waits, inert and
+   * paused, for the caller to tear it down (returns `true`); one that never finished entering is
+   * torn down at once, its layer with it.
+   */
+  private async exitScreen(screen: Screen): Promise<boolean> {
+    const wasEntered = screen.state === 'active' || screen.state === 'covered';
+    this.forget(screen);
+    if (!wasEntered) {
+      screen.internals.teardown();
+      return false;
+    }
+    screen.layer.setAttribute('inert', '');
+    try {
+      await screen.exit();
+    } catch (e) {
+      console.error(e);
+    }
+    screen.internals.leave();
+    return true;
+  }
+
+  private forget(screen: Screen): void {
     this.aborted.delete(screen);
     this.cancelled.delete(screen);
-    if (wasEntered) {
-      try {
-        await screen.exit();
-      } catch (e) {
-        console.error(e);
-      }
-    }
-    screen.internals.teardown(keepLayer);
   }
 
   private safely(run: () => void): void {

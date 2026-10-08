@@ -661,9 +661,18 @@ flow as a stack of DOM layers. The module imports nothing from an adapter and no
   `reset` naming an exited screen), `request` removes the aborted screen itself (`removeAborted`),
   or it would stay on top, hidden, over an inert stack. `projected` is reset to the real stack
   whenever the queue drains.
-- **Leaving screens keep their layers** until the new top is shown or the loading view appears
-  (`teardown(keepLayer)`, the transition removes them), so a transition never shows a blank
-  container. A loading view that appeared stays `loadingMinDuration`.
+- **Leaving screens stay on the page, untouched, until the new top is shown or the loading view
+  appears.** `exitScreen` sets the layer inert, awaits `exit()` and calls `internals.leave()`,
+  which marks the screen exited, stops its keyboard and suspends its worlds (input off, paused -
+  through `coverWorld`, so a world that may not be paused locally keeps running). The screen is
+  then held in the transition's `leaving` list; `dropLeaving()` - called when the top is uncovered,
+  when the loading view appears, when the entered screen is shown, and in the transition's
+  `finally` - calls `internals.teardown()` on each: the layer is removed first, then the teardowns
+  run, then the worlds are disposed. The list is emptied as it is drained, so every path (shown,
+  failed with or without a fallback, cancelled, manager disposed mid-transition) cleans a screen
+  up exactly once. Consequence: a leaving screen's worlds coexist with the next screen's `enter()`;
+  a teardown sees `layer.isConnected === false`. A loading view that appeared stays
+  `loadingMinDuration`.
 - **Operations resolve with whether their top screen was shown** (`false` when cancelled). A failed
   `enter()` asks `onEnterError` once per operation for a replacement screen; with one, the
   operation resolves `false` instead of rejecting.
@@ -671,8 +680,9 @@ flow as a stack of DOM layers. The module imports nothing from an adapter and no
   deregistered when the last manager is disposed. `screens` names a screen by its class's
   `screenTypeName`, falling back to the minifiable class name.
 - **`exit()` is only for screens that finished entering.** A screen that was never entered, failed
-  or was aborted gets its teardowns and world disposal alone. `addWorld`/`addTeardown` called after
-  the screen has exited (an `enter()` that ignored its signal) dispose their argument immediately.
+  or was aborted gets its teardowns and world disposal alone, at once (`internals.teardown()`
+  directly, layer included - not through `leaving`). `addWorld`/`addTeardown` called after the
+  screen has exited (an `enter()` that ignored its signal) dispose their argument immediately.
 - **The manager reaches into a screen through `screen.internals`**, an object of closures, since TS
   has no package-private access. It is `@internal`; app code has no use for it.
 - **Covering a screen** sets `inert` on its layer, `inputEnabled = false` on its worlds and pauses

@@ -70,6 +70,22 @@ class HiddenAwareWorldScreen extends LogScreen {
   }
 }
 
+/** A world screen that records when its cleanup runs and what the page looked like then. */
+class TrackedWorldScreen extends WorldScreen {
+  public teardownRuns = 0;
+  public layerConnectedAtTeardown: boolean[] = [];
+  public worldDisposals = 0;
+
+  async enter(ctx: ScreenEnterContext): Promise<void> {
+    await super.enter(ctx);
+    this.world.disposed$.subscribe(() => this.worldDisposals++);
+    this.addTeardown(() => {
+      this.teardownRuns++;
+      this.layerConnectedAtTeardown.push(this.layer.isConnected);
+    });
+  }
+}
+
 const setVisibility = (state: 'visible' | 'hidden') => {
   Object.defineProperty(document, 'visibilityState', { value: state, configurable: true });
   document.dispatchEvent(new Event('visibilitychange'));
@@ -163,7 +179,7 @@ describe('ScreenManager', () => {
       await screens.push(new LogScreen('a', log));
       log.length = 0;
       await screens.replace(new LogScreen('b', log));
-      expect(log).toEqual(['exit a', 'teardown a', 'enter b']);
+      expect(log).toEqual(['exit a', 'enter b', 'teardown a']);
       expect(screens.stack.map(s => (s as LogScreen).label)).toEqual(['menu', 'b']);
     });
 
@@ -173,7 +189,7 @@ describe('ScreenManager', () => {
       log.length = 0;
       const game = new LogScreen('game', log);
       await screens.push(game, { clearHistory: true });
-      expect(log).toEqual(['exit settings', 'teardown settings', 'exit menu', 'teardown menu', 'enter game']);
+      expect(log).toEqual(['exit settings', 'exit menu', 'enter game', 'teardown settings', 'teardown menu']);
       expect(screens.stack).toEqual([game]);
     });
 
@@ -184,7 +200,7 @@ describe('ScreenManager', () => {
       await screens.push(new LogScreen('b', log));
       log.length = 0;
       await screens.pop(2);
-      expect(log).toEqual(['exit b', 'teardown b', 'exit a', 'teardown a', 'uncovered menu']);
+      expect(log).toEqual(['exit b', 'exit a', 'teardown b', 'teardown a', 'uncovered menu']);
       expect(screens.stack).toEqual([menu]);
     });
 
@@ -212,13 +228,13 @@ describe('ScreenManager', () => {
       const game = new LogScreen('game', log);
       await screens.reset([menu, lobby, game]);
 
-      expect(log).toEqual(['exit old', 'teardown old', 'enter game']);
+      expect(log).toEqual(['exit old', 'enter game', 'teardown old']);
       expect(menu.state).toBe('covered');
       expect(lobby.state).toBe('pending');
       expect(lobby.layer.style.visibility).toBe('hidden');
 
       await screens.pop();
-      expect(log.slice(3)).toEqual(['exit game', 'teardown game', 'enter lobby']);
+      expect(log.slice(3)).toEqual(['exit game', 'enter lobby', 'teardown game']);
       expect(lobby.state).toBe('active');
       expect(lobby.layer.style.visibility).toBe('');
     });
@@ -816,6 +832,147 @@ describe('ScreenManager', () => {
     });
   });
 
+  describe('leaving screens', () => {
+    let menu: TrackedWorldScreen;
+
+    beforeEach(async () => {
+      menu = new TrackedWorldScreen('menu', log);
+      await screens.push(menu);
+      log.length = 0;
+    });
+
+    const expectCleanedUpOnce = (screen: TrackedWorldScreen) => {
+      expect(screen.teardownRuns).toBe(1);
+      expect(screen.worldDisposals).toBe(1);
+      expect(screen.layerConnectedAtTeardown).toEqual([false]);
+      expect(screen.state).toBe('exited');
+    };
+
+    it('runs the teardowns and disposes the worlds only once its layer is off the page, after exit()', async () => {
+      const layer = menu.layer;
+      const slow = new SlowScreen('slow', log);
+      const replaced = screens.replace(slow);
+      await flush();
+
+      // exited, still on the page and untouched while the next screen loads
+      expect(log).toEqual(['exit menu', 'enter slow']);
+      expect(menu.state).toBe('exited');
+      expect(layer.isConnected).toBe(true);
+      expect(menu.teardownRuns).toBe(0);
+      expect(menu.worldDisposals).toBe(0);
+
+      slow.finish();
+      expect(await replaced).toBe(true);
+      expect(layer.isConnected).toBe(false);
+      expect(log).toEqual(['exit menu', 'enter slow', 'teardown menu']);
+      expectCleanedUpOnce(menu);
+    });
+
+    it('pauses its worlds and switches their input off while it waits', async () => {
+      const slow = new SlowScreen('slow', log);
+      const replaced = screens.replace(slow);
+      await flush();
+
+      expect(menu.world.isPaused).toBe(true);
+      expect(menu.world.inputEnabled).toBe(false);
+      expect(menu.world.keyboardInput.running).toBe(false);
+
+      slow.finish();
+      await replaced;
+      expect(GgWorld.documentWorlds).not.toContain(menu.world);
+    });
+
+    it('a leaving screen that was covered with its worlds running is paused all the same', async () => {
+      const pause = new LogScreen('pause', log);
+      await screens.push(pause, { pauseBelow: false });
+      expect(menu.world.isPaused).toBe(false);
+      const slow = new SlowScreen('slow', log);
+      const replaced = screens.replace(slow, { clearHistory: true });
+      await flush();
+
+      expect(menu.world.isPaused).toBe(true);
+      expect(menu.teardownRuns).toBe(0);
+
+      slow.finish();
+      await replaced;
+      expectCleanedUpOnce(menu);
+    });
+
+    it('is cleaned up once when the replacement fails and the stack is left empty', async () => {
+      const slow = new SlowScreen('slow', log);
+      const replaced = screens.replace(slow);
+      await flush();
+      slow.fail(new Error('broken'));
+
+      await expect(replaced).rejects.toThrow('broken');
+      expect(screens.stack).toEqual([]);
+      expectCleanedUpOnce(menu);
+    });
+
+    it('is cleaned up once when the replacement fails and a fallback is shown', async () => {
+      await screens.dispose();
+      const fallback = new MenuScreen('fallback', log);
+      screens = new ScreenManager({ loadingView: null, onEnterError: () => fallback });
+      menu = new TrackedWorldScreen('menu', log);
+      await screens.push(menu);
+      const slow = new SlowScreen('slow', log);
+      const replaced = screens.replace(slow);
+      await flush();
+      slow.fail(new Error('broken'));
+
+      expect(await replaced).toBe(false);
+      expect(screens.stack).toEqual([fallback]);
+      expect(fallback.state).toBe('active');
+      expectCleanedUpOnce(menu);
+    });
+
+    it('is cleaned up once when the replacement fails and the screen below is shown again', async () => {
+      const pause = new TrackedWorldScreen('pause', log);
+      await screens.push(pause);
+      const slow = new SlowScreen('slow', log);
+      const replaced = screens.replace(slow);
+      await flush();
+      expect(pause.teardownRuns).toBe(0);
+      slow.fail(new Error('broken'));
+
+      await expect(replaced).rejects.toThrow('broken');
+      expect(screens.stack).toEqual([menu]);
+      expect(menu.state).toBe('active');
+      expect(menu.world.isPaused).toBe(false);
+      expectCleanedUpOnce(pause);
+    });
+
+    it('is cleaned up once when the operation that removed it is cancelled by a later request', async () => {
+      const slow = new SlowScreen('slow', log);
+      const replaced = screens.replace(slow);
+      await flush();
+      const popped = screens.pop();
+      expect(slow.ctx.signal.aborted).toBe(true);
+
+      expect(await replaced).toBe(false);
+      await popped;
+      expect(screens.stack).toEqual([]);
+      expectCleanedUpOnce(menu);
+      expect(slow.state).toBe('exited');
+      expect(log.filter(line => line === 'teardown slow')).toHaveLength(1);
+    });
+
+    it('is cleaned up once when the manager is disposed in the middle of the transition', async () => {
+      const slow = new SlowScreen('slow', log);
+      const replaced = screens.replace(slow);
+      await flush();
+      const disposed = screens.dispose();
+      expect(slow.ctx.signal.aborted).toBe(true);
+
+      expect(await replaced).toBe(false);
+      await disposed;
+      expectCleanedUpOnce(menu);
+      expect(slow.state).toBe('exited');
+      expect(log.filter(line => line === 'teardown slow')).toHaveLength(1);
+      expect(screens.container.isConnected).toBe(false);
+    });
+  });
+
   describe('dev console', () => {
     afterEach(() => {
       delete (window as any).ggstatic;
@@ -930,7 +1087,7 @@ describe('ScreenManager', () => {
 
       await manager.dispose();
 
-      expect(log).toEqual(['exit pause', 'teardown pause', 'exit game', 'teardown game']);
+      expect(log).toEqual(['exit pause', 'exit game', 'teardown pause', 'teardown game']);
       expect(container.isConnected).toBe(false);
       await expect(manager.push(new LogScreen('late', log))).rejects.toThrow('disposed');
     });

@@ -551,11 +551,16 @@ class GameScreen extends Screen {
   `onEnterError: (error, screen) => new MenuScreen(...)` to show a screen in its place; the
   operation then resolves with `false` instead of rejecting.
 - **Cleanup is registration, not code in `exit()`**: `addWorld(world)` and
-  `addTeardown(fn | subscription | disposable)` as soon as the thing exists. On exit the teardowns
-  run in reverse and the worlds are disposed; this also happens when `enter()` throws or is
-  aborted, in which case `exit()` is not called at all. This is what makes menu → game → menu
-  repeatable: every game session is a new screen with a new world, and the old one is gone
-  completely, its WebGL context included (browsers allow only about 16 at once).
+  `addTeardown(fn | subscription | disposable)` as soon as the thing exists. The teardowns run in
+  reverse and the worlds are disposed once the screen is off the page: after `exit()`, when the
+  next screen or the loading view shows - which may be after the next screen's `enter()` started,
+  so a leaving world briefly coexists with the next screen's loading. Until then the screen looks
+  as it did (its worlds paused, input off), so a teardown that disposes a world rendering into the
+  layer causes no blank frame; `layer.isConnected` is already `false` in a teardown. When
+  `enter()` throws or is aborted the teardowns run at once, and `exit()` is not called at all. This
+  is what makes menu → game → menu repeatable: every game session is a new screen with a new
+  world, and the old one is gone completely, its WebGL context included (browsers allow only about
+  16 at once).
 - **A covered screen** (another one pushed on top) gets `onCovered()`, later `onUncovered()`. The
   manager makes its layer `inert`, switches `world.inputEnabled` off for its worlds (keyboard,
   the built-in controllers' mouse and direction inputs, pointer lock, the mobile-controls overlay)

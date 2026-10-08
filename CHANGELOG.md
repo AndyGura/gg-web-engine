@@ -28,6 +28,15 @@ where one exists.
 
 ## [Unreleased]
 
+### Fixed
+- `@gg-web-engine/core`: `ScreenManager` no longer blanks a leaving screen before its replacement
+  shows. A screen that leaves the stack gets `exit()` as before, but its teardowns run and its
+  worlds are disposed only when its layer is removed - once the next screen (or the loading view)
+  shows - with its worlds paused and their input off in between. A menu whose teardown disposes a
+  world rendering into its layer kept showing a blank canvas for the loading delay and the start
+  of the next screen's `enter()`. A screen that never finished entering is still cleaned up at
+  once. A leaving screen's resources now briefly coexist with the next screen's loading.
+
 ## [0.0.79] - 2026-10-08
 
 ### Added

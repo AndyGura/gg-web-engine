@@ -45,8 +45,14 @@ export type ScreenInternals = {
   attach(manager: ScreenManager, layer: HTMLElement): void;
   setState(state: ScreenState): void;
   setCovered(covered: boolean, pauseWorlds: boolean): void;
-  /** Runs the teardowns and disposes the worlds; with `keepLayer` the caller removes the layer. */
-  teardown(keepLayer?: boolean): void;
+  /**
+   * After `exit()`: the screen has left the stack, but its layer stays on the page until what
+   * replaces it is shown. Marks it exited, stops its keyboard and suspends its worlds (input off,
+   * paused) so nothing changes on the layer until `teardown()`.
+   */
+  leave(): void;
+  /** Removes the layer from the page, then runs the teardowns and disposes the worlds. */
+  teardown(): void;
 };
 
 /**
@@ -159,9 +165,15 @@ export abstract class Screen {
   public abstract enter(ctx: ScreenEnterContext): void | Promise<void>;
 
   /**
-   * Called when the screen leaves the stack after having entered, before its teardowns run and its
-   * worlds are disposed. May return a promise (a fade-out); the transition waits for it - so, as in
-   * `enter()`, never await a `ScreenManager` operation in here.
+   * Called when the screen leaves the stack after having entered. May return a promise (a
+   * fade-out); the transition waits for it - so, as in `enter()`, never await a `ScreenManager`
+   * operation in here.
+   *
+   * The screen stays visible after this: its layer is kept on the page, inert, with its worlds
+   * paused, until the next screen (or the loading view) shows, so the page is never blank in
+   * between. Only then is the layer removed and the teardowns run and the worlds disposed - which
+   * may be after the next screen started entering, so what this screen holds briefly coexists
+   * with the next screen's loading.
    */
   public exit(): void | Promise<void> {}
 
@@ -200,9 +212,15 @@ export abstract class Screen {
   }
 
   /**
-   * Registers something to clean up when the screen exits: a function to call, an rxjs
+   * Registers something to clean up when the screen is gone: a function to call, an rxjs
    * `Subscription` to unsubscribe, or anything with `dispose()`. They run in reverse order of
    * registration, before the screen's worlds are disposed.
+   *
+   * For a screen that entered, that is once its layer is no longer on the page (`layer.isConnected`
+   * is `false` by then): after `exit()`, when the next screen or the loading view shows - possibly
+   * after the next screen started entering, so a world or canvas disposed here briefly coexists
+   * with the next screen's loading. Until then the screen looks as it did, with its worlds paused.
+   * A screen that never finished entering (aborted, or `enter()` threw) gets its teardowns at once.
    */
   protected addTeardown(teardown: ScreenTeardown): void {
     if (this._state === 'exited') {
@@ -218,7 +236,7 @@ export abstract class Screen {
       world.inputEnabled = false;
       owned.inputDisabledHere = true;
     }
-    if (this.pauseWhileCovered) {
+    if (this.pauseWhileCovered && !owned.pauseRule) {
       // a network session can start or end while the screen is covered
       owned.pauseRule = world.localPauseAllowed$.subscribe(allowed =>
         allowed ? this.pauseCoveredWorld(owned) : this.releasePause(owned),
@@ -290,9 +308,19 @@ export abstract class Screen {
         this.worlds.forEach(owned => this.uncoverWorld(owned));
       }
     },
-    teardown: keepLayer => {
+    leave: () => {
       this._state = 'exited';
       this._keyboard?.stop();
+      // the same as being covered with its worlds paused, whatever an earlier cover said
+      this.covered = true;
+      this.pauseWhileCovered = true;
+      this.worlds.forEach(owned => this.coverWorld(owned));
+    },
+    teardown: () => {
+      this._state = 'exited';
+      this._keyboard?.stop();
+      // the layer goes first: a teardown disposes what renders into it once it is off the page
+      this._layer?.remove();
       for (const teardown of this.teardowns.splice(0).reverse()) {
         try {
           runTeardown(teardown);
@@ -307,9 +335,6 @@ export abstract class Screen {
         } catch (e) {
           console.error(e);
         }
-      }
-      if (!keepLayer) {
-        this._layer?.remove();
       }
       this._layer = null;
     },
