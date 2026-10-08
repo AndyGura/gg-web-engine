@@ -106,6 +106,12 @@ export class AppComponent implements AfterViewInit {
 
     this.world.keyboardInput.bind('KeyL').pipe(filter(x => x)).subscribe(() => {
       this.runner?.stopGame();
+      // disposing the renderer released the canvas's WebGL context for good, so the new world
+      // renders into a fresh canvas
+      const oldCanvas = this.canvas.nativeElement;
+      const newCanvas = oldCanvas.cloneNode() as HTMLCanvasElement;
+      oldCanvas.replaceWith(newCanvas);
+      this.canvas = new ElementRef(newCanvas);
       this.initGame().then();
     });
 
