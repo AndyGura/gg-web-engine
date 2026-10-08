@@ -80,12 +80,12 @@ What that implies for the rest of the example:
 Pin `@gg-web-engine/*` and underlying library (`three`/`pixi.js`/rapier compat build) versions to
 whatever `packages/core/package.json`'s current `version` is — examples are not meant to float on
 version ranges. A multi-backend example lists every physics adapter of its dimension *and* each
-adapter's own library (`@gg-web-engine/ammo` + `mini-signals`, `@gg-web-engine/rapier3d` +
-`@dimforge/rapier3d-compat`; `@gg-web-engine/matter` + `matter-js` + `@types/matter-js`,
-`@gg-web-engine/rapier2d` + `@dimforge/rapier2d-compat`), pinned to the adapter's own versions.
-Copy the `browser` field (`{"fs": false, "os": false, "path": false}`) and the matching
-`resolve.fallback` in both webpack configs whenever Ammo is among the backends (needed to stub Node
-built-ins the WASM glue references). Keep a trailing comma after every `@gg-web-engine/*` line (i.e.
+adapter's own library (`@gg-web-engine/rapier3d` + `@dimforge/rapier3d-compat`;
+`@gg-web-engine/matter` + `matter-js` + `@types/matter-js`, `@gg-web-engine/rapier2d` +
+`@dimforge/rapier2d-compat`), pinned to the adapter's own versions. Ammo needs no setup in an
+example: the WASM glue ships inside `@gg-web-engine/ammo`, whose own `browser` field stubs the Node
+built-ins it references, so no `browser` field, `resolve.fallback` or extra dependency belongs in the
+example (`npm run lint:examples` rejects them). Keep a trailing comma after every `@gg-web-engine/*` line (i.e.
 never let one be the last dependency) - the release script's version bump matches `"...": "x.y.z",`
 with the comma.
 
@@ -202,7 +202,7 @@ did run a bare `npm install` afterwards by mistake, just re-run
 building again.
 
 **Every peer dependency of a linked package must be one physical copy.** A linked package resolves
-its peers (`pixi.js`, `three`, `rxjs`, the rapier compat builds, `firebase`, `mini-signals`) from its
+its peers (`rxjs`, `firebase`) and dependencies (`pixi.js`, `three`, the rapier compat builds) from its
 real location - with the root npm workspace hoisting everything, the repo root's `node_modules` -
 while the example's own imports resolve its own `node_modules`. Two copies break anything compared by
 identity: a pixi `Text`/`Graphics` built by the example holds its copy's `Texture.WHITE`, the
@@ -210,8 +210,7 @@ adapter's renderer compares against the other copy's, treats the fill as a textu
 `Failed to execute 'createPattern' on 'CanvasRenderingContext2D'` on the first render (three's
 classes and rxjs types fail similarly). The script's `dedupe_peer_deps` replaces the example's copy of
 each linked package's peer with a symlink to the copy that package resolves, which fixes webpack and
-`tsc` at once - so an example's committed `tsconfig.json` `paths` (e.g. ammo examples' `mini-signals`
-mapping into `./node_modules/...`) stay valid as they are. A published install never has the problem
+`tsc` at once. A published install never has the problem
 (peers dedupe). To confirm one copy in a running dev server: `curl -s localhost:<port>/main.js | grep
 -o '"[^"]*node_modules/pixi.js/lib/index.mjs"' | sort -u` prints one path.
 
@@ -537,11 +536,11 @@ independently:
   left to infer. Fix each real site with a `!` non-null assertion (matching the idiom already used
   in adapter source, e.g. `nativeScene!`) or a proper type annotation — don't paper over it with
   `"strict": false"`.
-- `"skipLibCheck": true` if the example depends on `@gg-web-engine/ammo` — its vendored
-  `dist/ammo.js/ammo.d.ts` declares `declare module Ammo { ... }`, which TypeScript 6 hard-errors on
-  (`TS1540`, wants `namespace` instead) rather than merely warning as TS 5.x did. The real fix
-  belongs in `packages/ammo`'s vendored build output; `skipLibCheck` is the correct app-side
-  stopgap for a third-party (including vendored-third-party) declaration file you don't own.
+- `"skipLibCheck": true` if the example depends on a rapier adapter — `@dimforge/rapier*-compat`'s
+  declarations use `Symbol.dispose` (`TS2550` below an `esnext` lib), and `@types/three` has errors
+  of its own under `"moduleResolution": "node"`. `skipLibCheck` is the app-side stopgap for a
+  third-party declaration file you don't own. A webpack build can pass without it while `npx tsc
+  --noEmit -p .` fails, so check with the latter.
 
 ## Dependency-version-skew pitfalls when examples and `packages/*` are upgraded in the same pass
 
@@ -553,7 +552,7 @@ point at the old versions, which causes two distinct problems in any example tha
 same shared library:
 
 - **`npm install` fails with `ERESOLVE`** the moment the example pins a peer'd library (e.g. `three`,
-  `rxjs`, `mini-signals`, a rapier compat package) to a version the published adapter's
+  `rxjs`, a rapier compat package) to a version the published adapter's
   `peerDependencies` doesn't allow. Fix: `npm install --legacy-peer-deps`. This is a temporary,
   repo-wide condition that resolves itself once the packages are actually republished at a version
   whose metadata matches — not something to "fix" by pinning the example back to an old version.

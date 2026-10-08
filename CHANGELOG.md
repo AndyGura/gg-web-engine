@@ -44,6 +44,7 @@ where one exists.
   room link names the physics engine, so everyone in the room uses the same one.
 - Examples: the coin run demo runs on Matter as well as Rapier 2D, with the engine in its invite
   link. 2D examples make their camera with `factory.createCamera()`.
+- Examples: 3D examples no longer stub Node built-ins or list `mini-signals` for Ammo.
 - `@gg-web-engine/core`: `WheelOptions.maxSuspensionForce` (Newtons per wheel, also in
   `RVEntitySharedWheelOptions` and a `"GgCar"`'s wheel settings), defaulting to
   `defaultMaxSuspensionForce(chassisMass)` - twice the car's weight per wheel. Ammo and Rapier used

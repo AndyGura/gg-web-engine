@@ -12,7 +12,6 @@
     "@gg-web-engine/mobile-controls": "0.0.78",
     "@gg-web-engine/rapier3d": "0.0.78",
     "@gg-web-engine/three": "0.0.78",
-    "mini-signals": "3.0.0",
     "rxjs": "7.8.2",
     "three": "0.186.1"
   },
@@ -27,10 +26,5 @@
   },
   "overrides": {
     "rxjs": "7.8.2"
-  },
-  "browser": {
-    "fs": false,
-    "os": false,
-    "path": false
   }
 }

@@ -4,9 +4,6 @@
     "ignoreDeprecations": "6.0",
     "moduleResolution": "node",
     "sourceMap": true,
-    "skipLibCheck": true,
-    "paths": {
-      "mini-signals": ["./node_modules/mini-signals/index.js"]
-    }
+    "skipLibCheck": true
   }
 }
