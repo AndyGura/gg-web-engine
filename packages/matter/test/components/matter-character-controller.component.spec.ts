@@ -1,4 +1,5 @@
 import { CharacterController2dOptions, Pnt2 } from '@gg-web-engine/core';
+import { Query } from 'matter-js';
 import { MatterFactory, MatterWorldComponent } from '../../src';
 
 describe('MatterCharacterControllerComponent', () => {
@@ -83,6 +84,31 @@ describe('MatterCharacterControllerComponent', () => {
     expect(character.groundNormal!.y).toBeLessThan(-0.9);
   });
 
+  it('does not pass through a wall far thinner than its radius in one long move', () => {
+    addFloor(0, 20, 0);
+    addWall(2, 0.02);
+    const character = factory.createCharacterController(CHAR_OPTIONS, {
+      position: { x: 0, y: -(HALF_HEIGHT + 0.5) },
+    });
+    character.addToWorld({ physicsWorld: world } as any);
+    character.move({ x: 0, y: 1 });
+    character.move({ x: 7, y: 0 });
+    expect(character.position.x).toBeLessThan(2 - CHAR_OPTIONS.radius + 0.01);
+  });
+
+  it('marches a long move in steps of half its radius, whatever the world units', () => {
+    // a pixel-scale capsule: the step follows its size, not a fixed length in world units
+    const character = factory.createCharacterController(
+      { radius: 20, centersDistance: 40 },
+      { position: { x: 0, y: -1000 } },
+    );
+    character.addToWorld({ physicsWorld: world } as any);
+    const spy = jest.spyOn(Query, 'collides');
+    character.move({ x: 100, y: 0 });
+    expect(spy.mock.calls.length).toBeLessThan(40);
+    spy.mockRestore();
+  });
+
   it('should slide to a stop against a wall instead of passing through it', () => {
     addFloor(0, 20, 0);
     addWall(2);
@@ -137,7 +163,7 @@ describe('MatterCharacterControllerComponent', () => {
     'walks straight through a body added to ignoredBodies instead of sliding to a stop against it ' +
       "(regression: collision groups alone can't express excluding just one specific body while both " +
       'it and the character still need to collide with the rest of the world - see ' +
-      '`ICharacterController2dComponent.ignoredBodies`\'s doc)',
+      "`ICharacterController2dComponent.ignoredBodies`'s doc)",
     () => {
       addFloor(0, 20, 0);
       const wall = addWall(2);

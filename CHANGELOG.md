@@ -164,6 +164,9 @@ where one exists.
   removed from the world and added again keeps the position, rotation and velocity it had when
   removed. It used to reappear where it was created - e.g. a car re-parented to another map chunk
   snapped back to its spawn point.
+- `@gg-web-engine/matter`: the character controller marches a move in steps of half its radius
+  instead of at most 0.1 world units, so a pixel-scale character no longer runs hundreds of collision
+  queries per tick (8 characters: from ~1480 to ~35 queries per tick).
 
 ## [0.0.78] - 2026-10-05
 

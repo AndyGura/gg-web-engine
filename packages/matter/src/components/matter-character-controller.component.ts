@@ -69,7 +69,7 @@ type AxisMoveResult = {
  * single test-then-clamp at the fully-displaced candidate position would tunnel clean through any
  * obstacle thinner than the requested displacement (a large single-tick `move()` call, or a thin wall,
  * would simply never register contact at all). `marchMove` compensates by subdividing the requested
- * delta into substeps no longer than `min(radius, 0.1)` and re-querying after each one, stopping at the
+ * delta into substeps no longer than half its radius and re-querying after each one, stopping at the
  * first substep that would overlap something - a standard workaround for discrete-only collision
  * detection, and the direct 2D analog of what a sweep primitive gives other backends for free.
  *
@@ -318,7 +318,7 @@ export class MatterCharacterControllerComponent implements ICharacterController2
       return { pos: start, blocked: false, normal: null, overlappingBodies: [] };
     }
     const dir = Pnt2.scalarMult(delta, 1 / totalLen);
-    const maxSubstep = Math.max(Math.min(this.radius, 0.1), 1e-3);
+    const maxSubstep = Math.max(this.radius / 2, 1e-3);
     const steps = Math.min(1024, Math.max(1, Math.ceil(totalLen / maxSubstep)));
     const stepLen = totalLen / steps;
     const stepVec = Pnt2.scalarMult(dir, stepLen);

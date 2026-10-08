@@ -350,14 +350,19 @@ entirely (see `gg-engine-physics-adapter`'s general section on this pattern - ma
   candidate, then test" would tunnel clean through anything thinner than the requested displacement (a
   large single-tick `move()` call is routine - e.g. the "slide to a stop against a wall" test moves 5
   units in one call against a 1-unit-thick wall). `marchMove` subdivides every requested delta into
-  substeps no longer than `min(radius, 0.1)` and re-queries after each one, stopping at the first
-  substep whose query finds a meaningfully-opposing obstacle - the direct 2D analog of what a sweep
-  primitive gives other backends for free, and worth remembering for any other library in this position
-  (a discrete-only collision query with no swept-cast equivalent).
+  substeps no longer than half the capsule's radius and re-queries after each one, stopping at the
+  first substep whose query finds a meaningfully-opposing obstacle - the direct 2D analog of what a
+  sweep primitive gives other backends for free, and worth remembering for any other library in this
+  position (a discrete-only collision query with no swept-cast equivalent). The step must scale with
+  the capsule, never be a fixed length in world units: a cap of `min(radius, 0.1)` was tuned for a
+  metre-scale world and, in a pixel-scale one (a 20 px capsule running at 468 px/s), made every
+  character run ~185 `Query.collides` calls per tick. Half the radius still can't step past even a
+  zero-thickness wall (the capsule is `2 × radius` wide), and the exact-depth correction below keeps
+  the resting position precise regardless of step length.
 - **A rejected substep must correct along the blocking contact's own normal by its exact `Collision
   .depth`, not simply revert the whole substep.** An early version reverted fully to the pre-substep
-  position on any block, which is only ever as precise as the substep length itself (up to `maxSubstep`,
-  i.e. ~0.1 units) short of the true surface - regression, found via a "step up onto a ledge" test
+  position on any block, which is only ever as precise as the substep length itself (up to `maxSubstep`)
+  short of the true surface - regression, found via a "step up onto a ledge" test
   landing at `y=-1.0` instead of the true `y=-0.9` resting height, exactly one substep short. Instead,
   `marchMove` pushes the *candidate* (which the query already proved is embedded) back out along
   `normalTowardCharacter(collision)` by `collision.depth + this.options.offset` (the same
