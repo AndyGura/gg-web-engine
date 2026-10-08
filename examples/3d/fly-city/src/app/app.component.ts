@@ -64,8 +64,17 @@ export class AppComponent implements AfterViewInit {
   }
 
   private async initGame() {
-    // the engine's loading screen, up until the game runs; a level reload (L) comes back through here
+    // the engine's loading screen, up until the game runs; a level reload (L) comes back through here.
+    // Hidden in a finally, so a failed start isn't left behind it
     const loading = LoadingScreen.show();
+    try {
+      await this.startGame();
+    } finally {
+      loading.hide();
+    }
+  }
+
+  private async startGame() {
     this.world = new Gg3dWorld({
       visualScene: new ThreeSceneComponent(),
       physicsWorld: await createPhysicsWorld(),
@@ -131,7 +140,6 @@ export class AppComponent implements AfterViewInit {
     }
 
     this.world.start();
-    loading.hide();
   }
 
   createRoom() {
