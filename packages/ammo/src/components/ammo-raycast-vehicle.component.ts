@@ -156,7 +156,9 @@ export class AmmoRaycastVehicleComponent
    * every step - see `applyBrakeImpulses()`.
    */
   applyBrake(wheelIndex: number, force: number): void {
-    this.brakeForces[wheelIndex] = force;
+    if (wheelIndex >= 0 && wheelIndex < this.brakeForces.length) {
+      this.brakeForces[wheelIndex] = force;
+    }
   }
 
   /**
