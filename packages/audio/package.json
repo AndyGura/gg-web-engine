@@ -1,7 +1,7 @@
 {
   "name": "@gg-web-engine/audio",
   "version": "0.0.78",
-  "description": "An attempt to create open source game engine for browser",
+  "description": "Web Audio API adapter for gg-web-engine: 2D/3D positional audio sources attached to entities",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "sideEffects": false,

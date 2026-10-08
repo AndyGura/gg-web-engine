@@ -30,9 +30,10 @@ rendering or physics. It defines a small, strictly typed core - worlds, entities
 levels, networking - and plugs battle-tested libraries in behind it:
 [Three.js](https://github.com/mrdoob/three.js) or [Pixi.js](https://github.com/pixijs/pixijs) for
 rendering, [Rapier](https://github.com/dimforge/rapier.js), [Ammo.js](https://github.com/kripken/ammo.js)
-or [Matter.js](https://github.com/liabru/matter-js) for physics. Your game code talks to the core;
-swapping a library is a one-line change, and the native objects stay one property away whenever you
-need them.
+or [Matter.js](https://github.com/liabru/matter-js) for physics. Your game code talks to the core, so
+switching to another backend of the same dimension takes one line and needs no gameplay-code
+changes. Each backend keeps its own simulation behavior, so expect to retune physics
+([what differs](#-faq)). The native objects stay one property away whenever you need them.
 
 ## ✨ Highlights
 
@@ -42,14 +43,16 @@ need them.
 
 ### 🧩 Library-agnostic by design
 One visual adapter + one physics adapter of matching dimensionality on top of the core. Switch from
-Ammo.js to Rapier by replacing a single constructor - gameplay code stays untouched.
+Ammo.js to Rapier by replacing a single constructor: your code keeps compiling and running. Feel and
+tuning (friction, restitution, vehicles, character sliding) differ per backend.
 
 </td>
 <td width="50%" valign="top">
 
 ### 🌐 P2P multiplayer, no game server
-2-8 players share one physics world over WebRTC, in 2D or 3D, on any physics adapter. Ownership,
-possession, late join, reconnection and replica correction are built in.
+Built for 2-8 players sharing one physics world over WebRTC, in 2D or 3D, on any physics adapter.
+Ownership, possession, late join, reconnection and replica correction are built in
+([how it works](#-multiplayer-in-a-dozen-lines)).
 
 </td>
 </tr>
@@ -58,14 +61,16 @@ possession, late join, reconnection and replica correction are built in.
 
 ### 🎮 Gameplay building blocks
 Character controllers (2D and 3D, first/third person), raycast vehicles and a full car model with
-engine and gearbox, triggers, grabbable props, cameras, animators, positional audio.
+engine and gearbox, triggers, grabbable props, cameras, animators, positional audio
+([full list](#-architecture)).
 
 </td>
 <td valign="top">
 
 ### 🗺️ Data-driven levels
 Describe a scene as JSON, register your own entity classes, wire events to behavior with blueprint
-graphs, serialize live entities back. Author 3D scenes in Blender with the bundled exporter add-on.
+graphs, serialize live entities back. Author 3D scenes in Blender with the bundled
+[exporter add-on](blender-addon/README.md).
 
 </td>
 </tr>
@@ -74,14 +79,16 @@ graphs, serialize live entities back. Author 3D scenes in Blender with the bundl
 
 ### 🛠️ Developer tooling built in
 In-game console with custom commands, physics debug view, stats and per-entity performance
-profiling - available in every world out of the box.
+profiling. Import `GgStatic` in a development build to turn it on for every world
+([commands](#%EF%B8%8F-developer-console)).
 
 </td>
 <td valign="top">
 
 ### 🤖 AI-agent ready
 Ships a [Claude Code](https://claude.com/claude-code) skill that teaches a coding agent the engine's
-mental model, so it writes correct engine code instead of guessing.
+mental model, API and common pitfalls, so it guesses less
+([install it](#-build-with-an-ai-coding-agent)).
 
 </td>
 </tr>
@@ -91,10 +98,10 @@ More of what is in the box:
 
 - **2D and 3D worlds** sharing one set of concepts - `Gg2dWorld` and `Gg3dWorld`.
 - **Automatic physics ↔ rendering sync**: an entity binds a display object to a rigid body and keeps them aligned every tick.
-- **Hierarchical pausable clocks**, time scale, optional fixed physics timestep, auto-pause when the tab is hidden.
+- **Hierarchical pausable clocks**, time scale, optional fixed physics timestep, optional auto-pause when the tab is hidden (`pauseWhenHidden`).
 - **Streaming large maps**: `MapGraph3dEntity` loads and disposes map chunks by proximity.
 - **Reactive API** on [RxJS](https://github.com/ReactiveX/rxjs): ticks, input, collisions and world events are observables.
-- **Strict typing end to end**, including the native types of whichever libraries you plugged in.
+- **Strict TypeScript throughout**; annotate the world as `TypedGg3dWorld`/`TypedGg2dWorld` to get the native types of whichever libraries you plugged in ([how](#-faq)).
 
 ## 🚀 Quickstart
 
@@ -219,8 +226,8 @@ The rest of the game stays single-player code. What you get:
 - **Works with what you already have**: rigid bodies, cars and character controllers are networked
   out of the box, in 2D and 3D, on every supported physics library.
 - **Late join, reconnection and takeover** of entities whose owner left or hid the tab.
-- **Gameplay authority**: `net.hasAuthority(...)` guarantees a collision or trigger consequence runs
-  on exactly one peer.
+- **Gameplay authority**: `net.hasAuthority(...)` picks the one peer that runs a collision or trigger
+  consequence (the owner of the entity involved), so level `events` bindings fire once per room.
 - **Zoning** for bigger worlds: peers only connect to and stream state for the grid cells around them.
 - **Testable**: an in-process loopback transport with simulated latency, jitter and packet loss, plus
   `net_*` console commands for live inspection.
@@ -252,9 +259,10 @@ exports a scene as `.glb` + `.meta` (meshes, rigid bodies, splines, empties) for
 
 ## 🕹️ Demos
 
-**[Browse all interactive demos →](https://gg-web-demos.guraklgames.com/)** Each one runs on every
-physics backend of its dimension (switch it in place) and opens in StackBlitz with one click; the
-source lives under [`examples/2d`](examples/2d) and [`examples/3d`](examples/3d).
+**[Browse all interactive demos →](https://gg-web-demos.guraklgames.com/)** Most run on every
+physics backend of their dimension (switch it in place; Shooter, Screens, Fly city and Coin run use
+one backend only), and each opens in StackBlitz with one click; the source lives under
+[`examples/2d`](examples/2d) and [`examples/3d`](examples/3d).
 
 | Demo | Shows |
 |---|---|
@@ -262,7 +270,7 @@ source lives under [`examples/2d`](examples/2d) and [`examples/3d`](examples/3d)
 | [Coin run](https://gg-web-demos.guraklgames.com/?example=2d/coin-run) | 2D multiplayer platformer rounds |
 | [Portal room](https://gg-web-demos.guraklgames.com/?example=3d/portal-room&physics=rapier3d) | First-person character, grabbable props, positional sound |
 | [Player character](https://gg-web-demos.guraklgames.com/?example=3d/player-character&physics=rapier3d) | Animated character controllers, in 3D and 2D |
-| [Shooter](https://gg-web-demos.guraklgames.com/?example=3d/shooter) | Free-fly camera in a textured physics scene, using native Three.js materials |
+| [Shooter](https://gg-web-demos.guraklgames.com/?example=3d/shooter) | Free-fly camera shooting balls through a textured physics scene |
 | [Collision groups pool](https://gg-web-demos.guraklgames.com/?example=3d/collision-groups-pool&physics=rapier3d) | Collision filtering |
 | [Primitives](https://gg-web-demos.guraklgames.com/?example=3d/primitives&physics=rapier3d) | A level built from JSON, in 3D and 2D, on every physics backend |
 
@@ -408,6 +416,47 @@ The multiplayer package adds `net_status`, `net_owners`, `net_tuning` and `net_l
 </details>
 
 ## ❓ FAQ
+
+<details>
+<summary><b>Do all physics backends behave the same?</b></summary>
+
+No. Every backend of one dimension honors the same API contract: the same calls succeed, the same
+events fire, units match, and 3D is Z-up everywhere. The simulation underneath is the library's own,
+so switching backends keeps your code running but changes how things move. Expect to retune masses,
+friction, vehicles and character settings after a switch. Known differences:
+
+**3D: Rapier vs Ammo.js**
+
+- **Character controller.** Rapier's own kinematic character controller does the stepping, ground
+  snapping and pushing of dynamic bodies. On Ammo the adapter sweeps the capsule itself, with its own
+  step-up, slope-sliding and push logic. Ledges, steep slopes and walking into props feel different.
+- **Raycast vehicles.** Rapier's vehicle controller is a port of Bullet's, but suspension, tyre
+  friction and braking still differ, so the same wheel options drive differently. Tune a
+  `GgCarEntity` or raycast vehicle on the backend you ship.
+- **Continuous collision detection.** Rapier sweeps the body's real shape; Ammo sweeps an
+  approximating sphere, so fast bodies hitting thin geometry behave differently.
+- **Kinematic bodies.** Rapier has native position- and velocity-driven kinematic bodies. Ammo has one
+  kinematic flag; the adapter emulates `kinematic_vel` by moving the body once per tick.
+- **Sleeping.** Both put resting bodies to sleep automatically, with their own thresholds and timing.
+
+**2D: Rapier vs Matter.js**
+
+- **No CCD in Matter.** `ccd: true` logs a warning and has no effect; fast bodies can tunnel through
+  thin walls.
+- **No kinematic bodies in Matter.** `kinematic_pos`/`kinematic_vel` log a warning and fall back to
+  static bodies, which don't push or carry what rests on them when moved.
+- **Sleeping.** Matter bodies never fall asleep on their own (`sleep()`/`wakeUp()` still work), and
+  setting the position or velocity of a sleeping Matter body does not wake it. Rapier sleeps resting
+  bodies automatically and wakes a body you move.
+- **Character controller.** Rapier's native controller vs, on Matter, one built from overlap queries
+  over short substeps.
+- **Settling.** Matter's solver is not substepped: round bodies on a slope under weak gravity can roll
+  for a long time before they come to rest.
+
+Rapier supports every `BodyOptions` feature natively in both dimensions. Demos that offer a single
+backend in the [gallery](https://gg-web-demos.guraklgames.com/) have only been built and tuned on it.
+
+</details>
 
 <details>
 <summary><b>How do I reach the native Three.js / Pixi / physics objects?</b></summary>

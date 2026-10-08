@@ -806,10 +806,12 @@ on any named entity, including the player.
   implements this (see "Adding a loose component to the world without an entity" above), needs no
   adapter-specific cast on either side, and is what `Entity3d`/`Entity2d.addComponents` calls
   internally anyway.
-- Assuming feature parity across physics/render backends — the engines are facades over quite
-  different libraries; check the specific adapter's source under `packages/<adapter>/src` when a
-  capability seems missing, and consult `docs/tasks.md`/`milestones.md` for known parity gaps
-  before assuming a bug.
+- Assuming identical simulation across physics/render backends — every backend honors the same API,
+  but the libraries underneath differ: character sliding, vehicle feel, sleeping, CCD and kinematic
+  bodies all behave per backend (the engine's GitHub README, FAQ "Do all physics backends behave the
+  same?", lists the known differences). Tune physics on the backend the app ships with, check the
+  specific adapter's source under `packages/<adapter>/src` when a capability seems missing, and
+  consult `milestones.md` for known gaps before assuming a bug.
 - Writing `<...>`-style argument placeholders (`<name>`, `<x>`) into a console command's `doc`
   string or thrown `Error` message. The console panel renders both via raw `innerHTML`
   (`gg-console.ui.ts`), so `<name>` parses as an (unknown, self-closing) HTML tag and its text is

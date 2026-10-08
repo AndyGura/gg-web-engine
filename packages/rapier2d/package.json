@@ -1,7 +1,7 @@
 {
   "name": "@gg-web-engine/rapier2d",
   "version": "0.0.78",
-  "description": "An attempt to create open source game engine for browser",
+  "description": "Rapier 2D physics adapter for gg-web-engine: rigid bodies, triggers and character controller",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "sideEffects": false,

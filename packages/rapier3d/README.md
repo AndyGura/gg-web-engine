@@ -2,7 +2,7 @@
   <img src="../../documentation/assets/banner.png" width="100%" alt="GG Web Engine"/>
 </p>
 
-## [Rapier.js](https://github.com/dimforge/rapier.js) 3D integration for [gg-web-engine](https://github.com/AndyGura/gg-web-engine), providing 3D phycics simulation
+## [Rapier.js](https://github.com/dimforge/rapier.js) 3D integration for [gg-web-engine](https://github.com/AndyGura/gg-web-engine), providing 3D physics simulation
 
 ### Installation:
 1) make sure **@gg-web-engine/core** installed

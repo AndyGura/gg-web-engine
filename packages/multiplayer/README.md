@@ -4,7 +4,7 @@
 
 ## Shared-world multiplayer for [gg-web-engine](https://github.com/AndyGura/gg-web-engine)
 
-`@gg-web-engine/multiplayer` lets 2–8 peers share one physics world, 2D or 3D, on any physics
+`@gg-web-engine/multiplayer` is built for 2–8 peers sharing one physics world, 2D or 3D, on any physics
 adapter. It is peer-to-peer first (WebRTC data channels, signaling over Firebase Realtime Database),
 with the transport behind an `ITransport` seam so a dedicated server can slot in later.
 

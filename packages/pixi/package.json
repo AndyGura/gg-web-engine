@@ -1,7 +1,7 @@
 {
   "name": "@gg-web-engine/pixi",
   "version": "0.0.78",
-  "description": "An attempt to create open source game engine for browser",
+  "description": "Pixi.js v8 rendering adapter for gg-web-engine: 2D scenes, sprites, text and parallax layers",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "sideEffects": false,

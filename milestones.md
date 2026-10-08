@@ -305,14 +305,18 @@ Status
 
 ---
 
-## M3 — Rendering & Physics Parity Across Adapters
+## M3 — Shared API Contract Across Adapters
 Objectives
-- Keep behavior predictable when an app swaps rendering or physics libraries.
+- Every adapter honors the same API contract (same calls succeed, same events fire, same units, Z-up
+  in 3D), so an app that swaps rendering or physics libraries keeps compiling and running.
+  Simulation results are backend-specific by design: friction, vehicles, character sliding and
+  sleeping differ per physics library, and nothing here aims to make them match (the README's FAQ
+  lists the known differences).
 
 Status
 - 🚧 Facade consistency exists by construction — every adapter implements the same
   `IVisualScene*Component`/`IPhysicsWorldComponent` interfaces from core — but there's no
-  automated check that two adapters actually produce equivalent results for the same input.
+  automated check that every adapter actually honors that contract for the same input.
   Lights and scene environment are behind core too (2026-10-04: `createLight`/`Gg3dWorld.addLight`,
   `visualScene.setEnvironment`, `"Light"`/`"Environment"` level classes; in 2D, `zIndex`, a
   background color/image and parallax layers), so no example adds native lights or skyboxes any
@@ -321,15 +325,16 @@ Status
   body option are behind core too, so no example imports three/pixi.js/a physics library or uses
   a `native*` escape hatch any more (enforced in CI by `npm run lint:examples`). Custom shader
   materials, post-processing and particles are still adapter-native.
-- Cross-engine conformance tests (same scenario run against two renderers / two physics engines,
-  compared within tolerance) — not started.
+- Cross-adapter contract tests (one suite every physics adapter, and every renderer, runs: the same
+  calls succeed, the same events fire, units and axes match; never identical trajectories) — not
+  started.
 - ✅ Shared debug overlay already exists and is pluggable per renderer: the dev console's
   `debug_view` command and `renderer.physicsDebugViewActive` toggle physics wireframes/bounds
   (see `packages/core/src/base/gg-world.ts`). Undocumented outside the code.
-- Rendering-adapter test coverage: `ammo`/`matter`/`rapier2d`/`rapier3d` have real Jest suites;
-  `pixi` and `three` currently have none (`npm test` is a stub that exits 1) — examples are the
-  only verification for those two today. Closing this gap would make conformance testing above
-  much cheaper to build.
+- 🚧 Rendering-adapter test coverage: `pixi` and `three` have Jest suites (factories, loaders,
+  components, world lifecycle), thinner than the physics adapters' — examples still carry most of
+  the verification for rendering. Broader suites there would make the contract tests above cheaper
+  to build.
 
 ---
 
@@ -361,9 +366,9 @@ Status
 - Instanced rendering (3D) / batched sprites (2D) — not started.
 - Optional Web Worker physics stepping — not started.
 - LOD utilities — not started (not yet tracked).
-- A `packages/bench` benchmarking setup — doesn't exist yet. Create it with 2–3 baseline scenarios
-  before committing to any numeric improvement targets; the original version of this doc assumed
-  it already existed.
+- Baseline measurements before committing to any numeric improvement targets — not started. Record
+  2–3 baseline scenarios with the tooling already in `packages/core/src/dev` (the per-entity
+  `performance` console command and the stats panel); no separate benchmark package.
 
 Nothing here is started; treat this milestone as backlog, not near-term.
 
@@ -448,11 +453,11 @@ for it:
 ---
 
 ## Testing Strategy (applies across milestones)
-- Unit tests for math, loaders, and physics adapters (already the norm for `core`, `ammo`,
-  `matter`, `rapier2d`, `rapier3d` — see M3 for the `pixi`/`three` gap).
-- Cross-engine conformance tests once `pixi`/`three` have their own unit tests to build on (M3).
+- Unit tests for math, loaders, and every adapter (the norm across `core`, the physics adapters,
+  `three` and `pixi` — see M3 for how thin the rendering suites still are).
+- Cross-adapter contract tests: the API contract, never identical simulation results (M3).
 - Visual regression / automated example testing (M7).
-- Performance benchmarks once `packages/bench` exists (M5).
+- Baseline performance measurements with the `packages/core/src/dev` tooling (M5).
 
 ## Tracking
 - This document is a living proposal, not a contract. If you pick up a deliverable, update its

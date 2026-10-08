@@ -2,7 +2,7 @@
   <img src="../../documentation/assets/banner.png" width="100%" alt="GG Web Engine"/>
 </p>
 
-## [Ammo.js](https://github.com/kripken/ammo.js) integration for [gg-web-engine](https://github.com/AndyGura/gg-web-engine), providing 3D phycics simulation
+## [Ammo.js](https://github.com/kripken/ammo.js) integration for [gg-web-engine](https://github.com/AndyGura/gg-web-engine), providing 3D physics simulation
 
 ### Note:
 This module uses self-built ammo.js, because requires additional functionality. Do not install another copy of ammo.js, 

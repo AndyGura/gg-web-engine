@@ -1587,9 +1587,9 @@ Caveats:
 
 ## Before starting non-trivial work
 
-Skim `docs/tasks.md` and `milestones.md` — they're a maintained backlog of known architectural gaps
-(non-null assertions to remove, rotation-composition FIXME in the 3D loader, DI/event-bus work,
-etc.) and may already describe the exact task, its rationale, and acceptance criteria.
+Skim `milestones.md` — it's a maintained backlog of known architectural gaps (non-null assertions
+to remove, rotation-composition FIXME in the 3D loader, DI/event-bus work, etc.) and may already
+describe the exact task, its rationale, and acceptance criteria.
 
 ## Keep this skill current
 
