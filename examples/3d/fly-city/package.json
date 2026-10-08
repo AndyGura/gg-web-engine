@@ -16,7 +16,6 @@
     "@angular/platform-browser": "^22.1.4",
     "@angular/platform-browser-dynamic": "^22.1.4",
     "@angular/router": "^22.1.4",
-    "@dimforge/rapier3d-compat": "0.21.0",
     "@gg-web-engine/ammo": "0.0.78",
     "@gg-web-engine/audio": "0.0.78",
     "@gg-web-engine/core": "0.0.78",
@@ -26,7 +25,6 @@
     "@gg-web-engine/three": "0.0.78",
     "firebase": "12.19.0",
     "rxjs": "7.8.2",
-    "three": "0.186.1",
     "tslib": "^2.3.0",
     "zone.js": "~0.16.2"
   },
@@ -34,11 +32,9 @@
     "@angular/build": "^22.1.6",
     "@angular/cli": "~22.1.6",
     "@angular/compiler-cli": "^22.1.4",
-    "@types/three": "0.186.0",
     "typescript": "~6.0.3"
   },
   "overrides": {
-    "rxjs": "7.8.2",
-    "three": "0.186.1"
+    "rxjs": "7.8.2"
   }
 }

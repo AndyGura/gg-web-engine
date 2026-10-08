@@ -77,15 +77,15 @@ What that implies for the rest of the example:
 
 ## package.json
 
-Pin `@gg-web-engine/*` and underlying library (`three`/`pixi.js`/rapier compat build) versions to
-whatever `packages/core/package.json`'s current `version` is — examples are not meant to float on
-version ranges. A multi-backend example lists every physics adapter of its dimension *and* each
-adapter's own library (`@gg-web-engine/rapier3d` + `@dimforge/rapier3d-compat`;
-`@gg-web-engine/matter` + `matter-js` + `@types/matter-js`, `@gg-web-engine/rapier2d` +
-`@dimforge/rapier2d-compat`), pinned to the adapter's own versions. Ammo needs no setup in an
-example: the WASM glue ships inside `@gg-web-engine/ammo`, whose own `browser` field stubs the Node
-built-ins it references, so no `browser` field, `resolve.fallback` or extra dependency belongs in the
-example (`npm run lint:examples` rejects them). Keep a trailing comma after every `@gg-web-engine/*` line (i.e.
+Pin every `@gg-web-engine/*` package to whatever `packages/core/package.json`'s current `version`
+is — examples are not meant to float on version ranges. A multi-backend example lists every physics
+adapter of its dimension and its visual adapter, and nothing of the libraries underneath:
+`three`/`@types/three`, `pixi.js`, `matter-js`/`@types/matter-js` and the rapier compat builds are
+dependencies of the adapter that wraps them, pinned there, so an example never pins them a second
+time (or in `overrides`) and can't drift from the version the adapter was built against. Ammo needs
+no setup either: the WASM glue ships inside `@gg-web-engine/ammo`, whose own `browser` field stubs
+the Node built-ins it references, so no `browser` field or `resolve.fallback` belongs in an example.
+Keep a trailing comma after every `@gg-web-engine/*` line (i.e.
 never let one be the last dependency) - the release script's version bump matches `"...": "x.y.z",`
 with the comma.
 
@@ -557,10 +557,10 @@ same shared library:
   repo-wide condition that resolves itself once the packages are actually republished at a version
   whose metadata matches — not something to "fix" by pinning the example back to an old version.
   `--legacy-peer-deps` also stops npm auto-installing peers, and prunes any peer-only package
-  already in the lockfile. An example that relied on a peer of an adapter instead of declaring it
-  (e.g. `matter-js`, a peer of `@gg-web-engine/matter`) then fails to build with `Module not found:
-  Can't resolve 'matter-js'`. Every example lists each adapter's underlying library in its own
-  `dependencies`, pinned to the adapter's version, so this can't happen.
+  already in the lockfile, so a library an adapter version still declared as a peer (adapters up to
+  0.0.78 did for `three`, `pixi.js`, `matter-js` and the rapier compat builds) is then missing:
+  `Module not found: Can't resolve 'matter-js'`. Adapters now carry those libraries as
+  `dependencies`, which `--legacy-peer-deps` still installs.
 - **A second, nested physical copy of the shared library gets installed even with
   `--legacy-peer-deps`**, if the published adapter package declares it as a real (non-peer)
   `dependency` with an exact version — `@gg-web-engine/core@0.0.59` does this for `rxjs` (pinned
