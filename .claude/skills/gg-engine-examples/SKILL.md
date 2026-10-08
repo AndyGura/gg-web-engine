@@ -63,11 +63,14 @@ What that implies for the rest of the example:
   don't substep).
 - **A world created later than startup** (a game screen's `enter()` in `3d/screens`) awaits
   `createPhysicsWorld()` where it builds the world; no top-level `await` is needed then.
+- **A multiplayer example puts the backend in its room link.** Every peer of a room has to simulate
+  with the same engine, so `3d/fly-city` sets `physics=` on the URL it builds for a room, instead of
+  relying on the receiving page's default.
 - **The visual side is fixed per dimension** (three.js in 3D, pixi.js in 2D). The gallery still
   sends `visual=three`/`visual=pixi` and shows a (single-option) rendering selector so a visitor
   sees which renderer runs; examples ignore the parameter. A second visual adapter would get the
   same `await import()` treatment in `backends.ts`.
-- **An example that only runs on one backend** (`3d/fly-city`, `2d/coin-run`) keeps the plain static import and lists just that backend in `examples.json`; the
+- **An example that only runs on one backend** (`2d/coin-run`) keeps the plain static import and lists just that backend in `examples.json`; the
   gallery disables the selector for it. Prefer the switch for anything new - it costs one file.
 
 ## package.json
@@ -242,6 +245,11 @@ npm install
 npm run start   # webpack-dev-server, for plain webpack examples
 npm run build   # produces dist/ (bundle.js + one chunk per physics adapter) for static hosting
 ```
+
+`3d/fly-city`'s Angular CLI refuses to start on Node older than 22.22.3 (or 24.15); an older system
+Node needs a newer one first (`nvm install 24`). Regenerate an example's `package-lock.json` with
+npm 11 too (`npm install --package-lock-only`): npm 10 drops the lockfile's `libc` fields, which
+shows up as a large unrelated diff.
 
 Append `?physics=<backend>` to the dev server's URL to run on another backend than the default. To
 see the result inside the gallery, `npm run build` and `node examples/serve_gallery.mjs` from the

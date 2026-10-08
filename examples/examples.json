@@ -71,7 +71,7 @@
       "title": "Fly city",
       "description": "Driving through a streamed city: cars, map graph, audio and multiplayer. An Angular app.",
       "visual": ["three"],
-      "physics": ["ammo"],
+      "physics": ["ammo", "rapier3d"],
       "entryFile": "src/app/app.component.ts"
     },
     {
