@@ -522,6 +522,11 @@ export class Rapier3dCharacterControllerComponent implements ICharacterControlle
       this._nativeController = null;
     }
     if (this._nativeBody) {
+      // `addToWorld` rebuilds the body from `_bodyDescr`: keep the pose it has now
+      const t = this._nativeBody.translation();
+      const r = this._nativeBody.rotation();
+      this._bodyDescr.setTranslation(t.x, t.y, t.z);
+      this._bodyDescr.setRotation(new Quaternion(r.x, r.y, r.z, r.w));
       this.world.handleIdEntityMap.delete(this._nativeBody.handle);
       if (this._nativeCollider) {
         this.world.nativeWorld.removeCollider(this._nativeCollider, false);

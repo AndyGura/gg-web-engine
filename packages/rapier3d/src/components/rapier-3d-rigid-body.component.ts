@@ -88,7 +88,7 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
   }
 
   get linearVelocity(): Point3 {
-    return Pnt3.clone(this.nativeBody?.linvel() || Pnt3.O);
+    return Pnt3.clone(this.nativeBody ? this.nativeBody.linvel() : this._bodyDescr.linvel);
   }
 
   set linearVelocity(value: Point3) {
@@ -99,7 +99,7 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
   }
 
   get angularVelocity(): Point3 {
-    return Pnt3.clone(this.nativeBody?.angvel() || Pnt3.O);
+    return Pnt3.clone(this.nativeBody ? this.nativeBody.angvel() : this._bodyDescr.angvel);
   }
 
   set angularVelocity(value: Point3) {
@@ -365,6 +365,17 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
     }
     this.collidingWith.clear();
     if (this._nativeBody) {
+      // `addToWorld` rebuilds the native body from `_bodyDescr`, and the getters fall back to it
+      // while the body is out of the world: carry the live state over, or a body re-added later
+      // (an entity reparented, or hidden by a network layer) would reappear at its spawn pose.
+      const t = this._nativeBody.translation();
+      const r = this._nativeBody.rotation();
+      const lv = this._nativeBody.linvel();
+      const av = this._nativeBody.angvel();
+      this._bodyDescr.setTranslation(t.x, t.y, t.z);
+      this._bodyDescr.setRotation(new Quaternion(r.x, r.y, r.z, r.w));
+      this._bodyDescr.setLinvel(lv.x, lv.y, lv.z);
+      this._bodyDescr.setAngvel(new Vector3(av.x, av.y, av.z));
       for (const col of this._nativeBodyColliders!) {
         this.world.nativeWorld!.removeCollider(col, false);
       }

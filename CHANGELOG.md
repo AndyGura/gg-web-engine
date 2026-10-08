@@ -142,6 +142,10 @@ where one exists.
   body every tick, like `SurfaceFollowingEntity`, ran the page out of memory over time).
 - `@gg-web-engine/core`: `Pnt3.angle`/`Pnt2.angle` return 0 instead of `NaN` when a vector has zero
   length.
+- `@gg-web-engine/rapier3d`, `@gg-web-engine/rapier2d`: a rigid body or character controller
+  removed from the world and added again keeps the position, rotation and velocity it had when
+  removed. It used to reappear where it was created - e.g. a car re-parented to another map chunk
+  snapped back to its spawn point.
 
 ## [0.0.78] - 2026-10-05
 

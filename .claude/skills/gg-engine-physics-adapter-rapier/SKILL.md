@@ -29,6 +29,13 @@ own wheel list - see below), so eager freeing on every removal is both safe and 
 `dispose?: boolean` is accepted purely for interface conformance (and each `dispose()` passes `true`
 through to `removeFromWorld` for self-documentation), but the parameter doesn't change behavior
 anywhere in this package.
+Because `addToWorld` rebuilds from the stored `RigidBodyDesc`, `removeFromWorld` first writes the
+native body's live translation/rotation (and, for rigid bodies, linear/angular velocity) back into
+`_bodyDescr`; the `position`/`rotation`/velocity getters read `_bodyDescr` while the body is out of
+the world. Without that write-back the descriptor still holds the spawn pose, and a body that is
+removed and added again (`IEntity.addChildren` reparenting an already-spawned entity, a network layer
+hiding an entity) reappears where it was created. `test/components/rapier-*-rigid-body-readd.spec.ts`
+in both packages cover it.
 `Rapier3dRaycastVehicleComponent.removeFromWorld` is the one component whose native state includes a
 handle beyond the ordinary rigid-body/collider pair - its vehicle controller needs both
 `removeVehicleController` (unregisters it from the world) *and* an explicit `.free()` (releases its own

@@ -84,7 +84,7 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
   }
 
   get linearVelocity(): Point2 {
-    return Pnt2.clone(this.nativeBody?.linvel() || Pnt2.O);
+    return Pnt2.clone(this.nativeBody ? this.nativeBody.linvel() : this._bodyDescr.linvel);
   }
 
   set linearVelocity(value: Point2) {
@@ -94,7 +94,7 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
   }
 
   get angularVelocity(): number {
-    return this.nativeBody?.angvel() || 0;
+    return this.nativeBody ? this.nativeBody.angvel() : this._bodyDescr.angvel;
   }
 
   set angularVelocity(value: number) {
@@ -294,6 +294,13 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
         other.handleCollisionEnd(null);
       }
       this.activeContacts.clear();
+      // see `Rapier3dRigidBodyComponent.removeFromWorld`: `addToWorld` rebuilds from `_bodyDescr`
+      const t = this._nativeBody.translation();
+      const lv = this._nativeBody.linvel();
+      this._bodyDescr.setTranslation(t.x, t.y);
+      this._bodyDescr.setRotation(this._nativeBody.rotation());
+      this._bodyDescr.setLinvel(lv.x, lv.y);
+      this._bodyDescr.setAngvel(this._nativeBody.angvel());
       for (const col of this._nativeBodyColliders!) {
         this.world.nativeWorld!.removeCollider(col, false);
       }
