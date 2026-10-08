@@ -48,6 +48,9 @@ where one exists.
 - `@gg-web-engine/core`: `WheelOptions.sideFrictionStiffness` (also in `RVEntitySharedWheelOptions`
   and a `"GgCar"`'s wheel settings), a multiplier on a tyre's sideways grip, default 1. Rapier
   applies it; Ammo has no such setting and ignores it.
+- `@gg-web-engine/core`: `IPhysicsWorldComponent.fixedTimeStep`/`maxSubSteps`, the substep settings
+  Ammo and Rapier 3D already had, so an app can set them without importing an adapter class. Adapters
+  that don't substep (Matter, Rapier 2D) ignore them.
 
 ### Changed
 - `@gg-web-engine/core`: `ScreenManager` operations resolve with `true` when their screen was shown

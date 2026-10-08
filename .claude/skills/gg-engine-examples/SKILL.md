@@ -57,7 +57,10 @@ What that implies for the rest of the example:
   else), so no adapter type is ever needed in `index.ts`.
 - **Backend-specific tuning goes in `backends.ts`, in that backend's branch**, not in `index.ts`
   behind an `instanceof` (which would need a static import and defeat the splitting).
-  `3d/collision-groups-pool` sets Bullet's `maxSubSteps` this way; Rapier has no such knob.
+  `3d/collision-groups-pool` raises Bullet's `maxSubSteps` this way, because only Bullet needs it
+  there. A setting that is on core's interfaces and wanted on every backend is set in `index.ts`
+  instead - `fixedTimeStep`/`maxSubSteps` are on `IPhysicsWorldComponent` (ignored by adapters that
+  don't substep).
 - **The visual side is fixed per dimension** (three.js in 3D, pixi.js in 2D). The gallery still
   sends `visual=three`/`visual=pixi` and shows a (single-option) rendering selector so a visitor
   sees which renderer runs; examples ignore the parameter. A second visual adapter would get the
