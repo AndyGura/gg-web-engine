@@ -8,7 +8,7 @@ import {
   PlayerCharacterController2d,
 } from '@gg-web-engine/core';
 import { MobileControls } from '@gg-web-engine/mobile-controls';
-import { PixiCameraComponent, PixiGgWorld, PixiSceneComponent } from '@gg-web-engine/pixi';
+import { PixiGgWorld, PixiSceneComponent } from '@gg-web-engine/pixi';
 import { createPhysicsWorld } from './backends';
 
 const characterAtlasUrl = '/assets/characters/character-atlas.png';
@@ -83,7 +83,7 @@ const world: PixiGgWorld = new Gg2dWorld({
 
 world.init().then(async () => {
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
-  const renderer = world.addRenderer(new PixiCameraComponent(), canvas);
+  const renderer = world.addRenderer(world.visualScene.factory.createCamera(), canvas);
   renderer.rendererSize$.subscribe(newSize => {
     if (!newSize) return;
     renderer.camera.zoom = Math.min(newSize.x / (ROOM_WIDTH + 100), newSize.y / (ROOM_HEIGHT + 100), 1);

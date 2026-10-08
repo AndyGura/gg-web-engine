@@ -52,7 +52,9 @@ What that implies for the rest of the example:
 - **Type `world` with the visual adapter's alias** (`ThreeGgWorld`, `PixiGgWorld`), not
   `TypedGg3dWorld<ThreeGgWorld, AmmoGgWorld>` - the physics side is unknown at compile time. That
   alias leaves `world.physicsWorld` nullable, so the few places reaching it use `!`
-  (`world.physicsWorld!.factory.createRigidBody(...)`), the idiom core itself uses. Everything an
+  (`world.physicsWorld!.factory.createRigidBody(...)`). An example that reaches it often wraps the
+  alias instead: `Gg3dWorldWithPhysics<ThreeGgWorld>` (`Gg2dWorldWithPhysics<PixiGgWorld>`) types
+  `physicsWorld` as core's non-null physics interface (`3d/shooter`, `2d/coin-run`). Everything an
   example may call is on core's physics interfaces anyway (`npm run lint:examples` forbids anything
   else), so no adapter type is ever needed in `index.ts`.
 - **Backend-specific tuning goes in `backends.ts`, in that backend's branch**, not in `index.ts`
@@ -64,14 +66,14 @@ What that implies for the rest of the example:
 - **A world created later than startup** (a game screen's `enter()` in `3d/screens`) awaits
   `createPhysicsWorld()` where it builds the world; no top-level `await` is needed then.
 - **A multiplayer example puts the backend in its room link.** Every peer of a room has to simulate
-  with the same engine, so `3d/fly-city` sets `physics=` on the URL it builds for a room, instead of
+  with the same engine, so `3d/fly-city` and `2d/coin-run` set `physics=` on the URL they build for a room, instead of
   relying on the receiving page's default.
 - **The visual side is fixed per dimension** (three.js in 3D, pixi.js in 2D). The gallery still
   sends `visual=three`/`visual=pixi` and shows a (single-option) rendering selector so a visitor
   sees which renderer runs; examples ignore the parameter. A second visual adapter would get the
   same `await import()` treatment in `backends.ts`.
-- **An example that only runs on one backend** (`2d/coin-run`) keeps the plain static import and lists just that backend in `examples.json`; the
-  gallery disables the selector for it. Prefer the switch for anything new - it costs one file.
+- **Every example runs on every physics adapter of its dimension**, and `examples.json` lists them
+  all. The gallery still disables its selector for an entry that lists one backend, but none does.
 
 ## package.json
 

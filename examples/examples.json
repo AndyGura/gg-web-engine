@@ -93,7 +93,7 @@
       "title": "Coin run",
       "description": "Multiplayer platformer rounds: collect coins against everyone in the room. The page URL is the invite link.",
       "visual": ["pixi"],
-      "physics": ["rapier2d"]
+      "physics": ["rapier2d", "matter"]
     }
   ]
 }

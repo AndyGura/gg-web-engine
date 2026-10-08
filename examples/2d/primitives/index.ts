@@ -1,5 +1,5 @@
 import { Gg2dWorld, GgStatic, LevelJson } from '@gg-web-engine/core';
-import { PixiCameraComponent, PixiSceneComponent } from '@gg-web-engine/pixi';
+import { PixiGgWorld, PixiSceneComponent } from '@gg-web-engine/pixi';
 import { createPhysicsWorld } from './backends';
 import { ShapeSpawner, ShapeSpawnerSettings } from './shape-spawner';
 
@@ -29,13 +29,13 @@ const level: LevelJson = {
   ],
 };
 
-const world = new Gg2dWorld({
+const world: PixiGgWorld = new Gg2dWorld({
   visualScene: new PixiSceneComponent(),
   physicsWorld: await createPhysicsWorld(),
 });
 world.init().then(async () => {
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
-  const renderer = world.addRenderer(new PixiCameraComponent(), canvas);
+  const renderer = world.addRenderer(world.visualScene.factory.createCamera(), canvas);
 
   renderer.rendererSize$.subscribe(newSize => {
     if (!newSize) return;

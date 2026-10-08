@@ -42,6 +42,8 @@ where one exists.
 - Examples: the coin run and portal room demos show on-screen controls on a phone.
 - Examples: the screens, shooter and fly city demos run on Rapier 3D as well as Ammo. A fly city
   room link names the physics engine, so everyone in the room uses the same one.
+- Examples: the coin run demo runs on Matter as well as Rapier 2D, with the engine in its invite
+  link. 2D examples make their camera with `factory.createCamera()`.
 - `@gg-web-engine/core`: `WheelOptions.maxSuspensionForce` (Newtons per wheel, also in
   `RVEntitySharedWheelOptions` and a `"GgCar"`'s wheel settings), defaulting to
   `defaultMaxSuspensionForce(chassisMass)` - twice the car's weight per wheel. Ammo and Rapier used
