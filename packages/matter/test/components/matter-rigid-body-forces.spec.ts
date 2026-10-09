@@ -53,6 +53,17 @@ describe('MatterRigidBodyComponent force API', () => {
     expect(body.linearVelocity.x).toBeCloseTo(afterOne, 6);
   });
 
+  it('a force applied while the body is out of the world is dropped, not banked', () => {
+    const body = circle(2);
+    body.removeFromWorld({ physicsWorld: world } as any);
+    for (let i = 0; i < 60; i++) {
+      body.applyForce({ x: 10, y: 0 });
+    }
+    body.addToWorld({ physicsWorld: world } as any);
+    world.simulate(STEP);
+    expect(body.linearVelocity.x).toBeCloseTo(0, 6);
+  });
+
   it('an impulse changes the velocity by J / m at once', () => {
     const body = circle(2);
     body.applyImpulse({ x: 0, y: 4 });

@@ -27,6 +27,8 @@ const MATTER_VELOCITY_SCALE = 0.0166667;
 const MATTER_FORCE_SCALE = 1e-6;
 
 export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhysicsTypeDocRepo> {
+  private addedToWorld: boolean = false;
+
   public get position(): Point2 {
     return Pnt2.clone(this.nativeBody.position);
   }
@@ -55,9 +57,12 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
    * matter-js accumulates `body.force`/`body.torque` until its next `Engine.update`, which applies
    * and then clears them - `IRigidBodyComponent.applyForce`'s "next `simulate()` call only"
    * lifetime for free. `Body.applyForce` with a world point also adds the offset's torque.
+   * `Engine.update` only clears the accumulators of bodies in its composite, so a body outside the
+   * world ignores the call (per the contract) rather than banking every tick's force to fire at
+   * once after `addToWorld`.
    */
   applyForce(force: Point2, worldPoint?: Point2): void {
-    if (this.nativeBody.isStatic) {
+    if (this.nativeBody.isStatic || !this.addedToWorld) {
       return;
     }
     Body.applyForce(
@@ -70,7 +75,7 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
 
   /** matter-js has no impulse: the velocity change `impulse / mass` is written directly. */
   applyImpulse(impulse: Point2, worldPoint?: Point2): void {
-    if (this.nativeBody.isStatic) {
+    if (this.nativeBody.isStatic || !this.addedToWorld) {
       return;
     }
     const mass = this.nativeBody.mass;
@@ -83,7 +88,7 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
   }
 
   applyTorque(torque: number): void {
-    if (this.nativeBody.isStatic) {
+    if (this.nativeBody.isStatic || !this.addedToWorld) {
       return;
     }
     this.nativeBody.torque += torque * MATTER_FORCE_SCALE;
@@ -92,7 +97,7 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
 
   /** Same unit convention as `linearVelocity`: an angular velocity change of `torqueImpulse / inertia` per second. */
   applyTorqueImpulse(torqueImpulse: number): void {
-    if (this.nativeBody.isStatic) {
+    if (this.nativeBody.isStatic || !this.addedToWorld) {
       return;
     }
     this.angularVelocity = this.angularVelocity + (torqueImpulse / this.nativeBody.inertia) * MATTER_VELOCITY_SCALE;
@@ -262,11 +267,13 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
 
   addToWorld(world: MatterGgWorld): void {
     Composite.add(world.physicsWorld.matterWorld!, this.nativeBody);
+    this.addedToWorld = true;
     world.physicsWorld.added$.next(this);
   }
 
   removeFromWorld(world: MatterGgWorld, dispose: boolean = false): void {
     Composite.remove(world.physicsWorld.matterWorld!, this.nativeBody);
+    this.addedToWorld = false;
     world.physicsWorld.removed$.next(this);
     // this body is leaving the world while still touching others - per `onCollisionEnd`'s own
     // contract, each of those bodies sees `null` (no further contact geometry is available), not a

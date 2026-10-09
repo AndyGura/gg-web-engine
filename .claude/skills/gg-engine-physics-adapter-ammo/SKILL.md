@@ -737,6 +737,13 @@ sleeping body ignores the force. `applyBrakeImpulses` and the `kinematicVelBodie
 read/write `getWheelInfo(i).m_frictionSlip`, which `btRaycastVehicle::updateFriction` reads every
 step.
 
+**The "ignored while not in a world" half of the contract needs an explicit guard.** `clearForces()`
+only iterates the world's bodies, so a force/torque applied to a body outside the world (before
+spawn, or between `removeFromWorld` and `addToWorld`) stays in `m_totalForce`/`m_totalTorque` and
+fires as one summed push on the first step after it is (re)added. All four `apply*` methods return
+early on `!this.addedToWorld` (the flag `AmmoBodyComponent` keeps) besides the `bodyType !==
+'dynamic'` check; regression: `ammo-rigid-body-forces.spec.ts`'s "dropped, not banked".
+
 ## `AmmoWorldComponent.simulate()`: substeps of `delta / n`, never carried over
 
 `simulate(delta)` runs `n = max(1, ceil(dt / fixedTimeStep))` substeps (clamped by `maxSubSteps`) of
