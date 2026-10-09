@@ -272,6 +272,24 @@ describe('voice budget (WebAudioScene3dComponent)', () => {
     expect(panner.positionX.setValueAtTime).toHaveBeenLastCalledWith(42, expect.any(Number));
   });
 
+  it('plays a source moved while it ended virtually from its new position', () => {
+    scene.maxVoices = 1;
+    const horn = play({ priority: 100 });
+    const hit = play({ priority: 80, loop: false }, { x: 1, y: 0, z: 0 });
+    expect(hit.isVirtual).toBe(true);
+    tick(10.1); // the one-shot ends while virtual, its chain still disconnected
+    expect(hit.isPlaying).toBe(false);
+
+    horn.stop();
+    const panner = internals(hit).panner;
+    panner.positionX.setValueAtTime.mockClear();
+    hit.position = { x: 42, y: 0, z: 0 }; // pool-style reuse: move, then play
+    hit.play();
+    expect(hit.isVirtual).toBe(false);
+    expect(panner.positionX.setValueAtTime).toHaveBeenCalledWith(42, expect.any(Number));
+    expect(internals(hit).bufferSource!.start).toHaveBeenCalled();
+  });
+
   it('applies a budget change at once and restores everything on Infinity', () => {
     const sources = [10, 20, 30].map(priority => play({ priority }));
     scene.maxVoices = 1;

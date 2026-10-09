@@ -249,6 +249,9 @@ export abstract class WebAudioSourceComponentBase<D, R> {
     this.playheadAnchorTime = this.scene.context.currentTime;
     if (this.scene.voiceStarted(this)) {
       this.connectOutput();
+      // position/rotation set while the chain was disconnected (ended, paused or stopped as a
+      // virtual voice) were only stored: write them before anything is heard
+      this.resyncSpatialParams();
       if (this.gainSilenced) {
         // left faded out by an earlier virtual stretch; nothing is playing into it yet, so the
         // jump back to full volume can't be heard

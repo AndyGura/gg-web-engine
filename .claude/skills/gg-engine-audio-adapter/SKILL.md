@@ -238,7 +238,10 @@ and a new adapter should keep the same observable behavior:
   never processes its automation timeline, so a per-tick `setTargetAtTime` on a virtual source's
   panner just piles events up (WebKit's own panner slowdown, bug 230950, was exactly an
   ever-growing timeline). While virtual, `volume`/`position`/`rotation`/2D pan only store their value
-  (`isOutputConnected`, `gainSilenced`); `promote` writes the latest values at once.
+  (`isOutputConnected`, `gainSilenced`). The chain stays disconnected after a virtual source ends,
+  pauses or stops, so every path that reconnects it - `promote` *and* `play()` - must
+  `resyncSpatialParams()` right after `connectOutput()`, before the buffer source starts; otherwise
+  a pooled voice moved and replayed after ending virtually is heard from its previous position.
 - **One-shots stay virtual until they would have ended** (not dropped): the per-frame pass
   (`advanceVirtual`) ends them then and fires `ended$`, so `playOneShot`/`"PlaySound"`/
   `AudioSourcePool` cleanup keeps working, and one promoted halfway through resumes halfway through.
