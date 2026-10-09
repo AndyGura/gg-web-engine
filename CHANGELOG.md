@@ -28,6 +28,18 @@ where one exists.
 
 ## [Unreleased]
 
+### Added
+- Example-first JSDoc (a one-line summary plus an `@example` snippet) on the main public entry
+  points, visible in editors and in the published `.d.ts` files: `Gg3dWorld`/`Gg2dWorld` with
+  `addPrimitiveRigidBody`/`addRenderer`, `GgWorld.init`/`start`/`addEntity`/`removeEntity`,
+  `LevelLoader.loadLevel`/`registerClass`/`serializeLevel`, `Gg3dLoader.loadGgGlb`,
+  `PlayerCharacterController`/`PlayerCharacterController2d`, `GgCarEntity`,
+  `GgCarHandlingController`, `RaycastVehicle3dEntity`, `FreeCameraController`,
+  `OrbitCameraController`, `KeyboardInput`, `LoadingScreen`, `Network3dController`/
+  `Network2dController`, and each adapter's scene/world class (`ThreeSceneComponent`,
+  `PixiSceneComponent`, `AmmoWorldComponent`, `Rapier3dWorldComponent`, `Rapier2dWorldComponent`,
+  `MatterWorldComponent`).
+
 ## [0.0.81] - 2026-10-09
 
 ### Added

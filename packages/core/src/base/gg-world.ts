@@ -433,6 +433,22 @@ export abstract class GgWorld<
     GgWorld.worldCreated$.next(this);
   }
 
+  /**
+   * Initializes the visual scene, physics world and audio scene (loading a physics engine's WASM
+   * build, for one) and hooks the world clock up to them. Await it before using anything the scenes
+   * provide: factories, `addRenderer`, `addPrimitiveRigidBody`, the loader.
+   *
+   * @example
+   * ```ts
+   * import { Gg3dWorld } from '@gg-web-engine/core';
+   * import { ThreeSceneComponent } from '@gg-web-engine/three';
+   * import { AmmoWorldComponent } from '@gg-web-engine/ammo';
+   *
+   * const world = new Gg3dWorld({ visualScene: new ThreeSceneComponent(), physicsWorld: new AmmoWorldComponent() });
+   * await world.init();
+   * // now safe: world.visualScene.factory, world.physicsWorld.factory, world.loader.loadLevel(...)
+   * ```
+   */
   public async init() {
     if (typeof document !== 'undefined') {
       this.visibilityChangeListener = () => {
@@ -521,6 +537,22 @@ export abstract class GgWorld<
     });
   }
 
+  /**
+   * Starts the world clock: from now on every frame ticks the entities and steps the physics world.
+   * Call it once, after `init()` and after the initial content is in place;
+   * `pauseWorld()`/`resumeWorld()` stop and continue time afterwards.
+   *
+   * @example
+   * ```ts
+   * await world.init();
+   * await world.loader.loadLevel(levelJson, 'Level');
+   * world.start();
+   *
+   * world.keyboardInput.bind('KeyP').subscribe(down => {
+   *   if (down) world.isPaused ? world.resumeWorld() : world.pauseWorld();
+   * });
+   * ```
+   */
   public start() {
     this.worldClock.start();
   }
@@ -632,6 +664,18 @@ export abstract class GgWorld<
    * attach to a world's native scenes again
    * @throws if `entity` or any of its descendants carries a name already in use by another entity
    * in this world, or shared by two entities of the subtree
+   *
+   * @example
+   * ```ts
+   * import { OrbitCameraController } from '@gg-web-engine/core';
+   *
+   * // built-in controllers and any app-defined IEntity subclass go through addEntity
+   * const orbit = new OrbitCameraController(renderer);
+   * world.addEntity(orbit);
+   * // names are unique world-wide: find it again from anywhere
+   * orbit.name = 'CameraControl';
+   * world.getEntityByName<OrbitCameraController>('CameraControl').active = false;
+   * ```
    */
   public addEntity(entity: IEntity): void {
     if (entity.disposed) {
@@ -736,6 +780,25 @@ export abstract class GgWorld<
     }
   }
 
+  /**
+   * Removes `entity` (and everything nested under it) from this world: its bodies and display
+   * objects leave the native scenes and it stops ticking. Emits `entityRemoved$`.
+   * @param entity - The entity to remove; nothing happens if it isn't in a world
+   * @param dispose - Also free its native resources (meshes, bodies, textures it owns). Leave it
+   * `false` to add the same entity again later with `addEntity`; a disposed entity can't be re-added.
+   * @throws if `entity` belongs to another world
+   *
+   * @example
+   * ```ts
+   * const crate = world.addPrimitiveRigidBody({
+   *   shape: { shape: 'BOX', dimensions: { x: 1, y: 1, z: 1 } },
+   *   body: { mass: 1 },
+   * });
+   * world.removeEntity(crate); // hidden for now, can come back with world.addEntity(crate)
+   * world.addEntity(crate);
+   * world.removeEntity(crate, true); // gone for good
+   * ```
+   */
   public removeEntity(entity: IEntity, dispose = false): void {
     if (entity.world) {
       if (entity.world !== this) {

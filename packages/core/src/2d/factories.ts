@@ -59,7 +59,8 @@ export abstract class IDisplayObject2dComponentFactory<VTypeDoc extends VisualTy
 
   /**
    * Creates a camera, to pass to `Gg2dWorld.addRenderer`. Its `position` is the world point shown
-   * at the renderer's top-left corner, and `zoom` scales the view (see `ICamera2dComponent`).
+   * at the center of the renderer's view, and `zoom` scales the view around it (see
+   * `ICamera2dComponent`).
    */
   abstract createCamera(): VTypeDoc['camera'];
 
