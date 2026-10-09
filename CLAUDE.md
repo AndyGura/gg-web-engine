@@ -98,6 +98,11 @@ for a contributor not working through Claude Code. When a change alters that *pr
 package's internals, only how the repo is built, tested, reviewed, or released - update
 `CONTRIBUTING.md` in the same change as the skill file, so the two never disagree.
 
+`packages/core/AGENTS.md` is generated from `gg-engine-app-development`'s `SKILL.md` (it ships in
+the core tarball for non-Claude agents). After editing that skill, run `npm run agents-md` and
+commit the regenerated file in the same change; `npm run check:agents-md` fails PR CI and the
+release job when the two differ. Never edit `AGENTS.md` by hand.
+
 This does **not** apply to `gg-engine-app-development` or `gg-engine-level-json`: lessons learned
 while building an end-application (or authoring its level JSON content) on top of the engine
 belong in that app's own codebase/docs, not in this engine repo's skill set. `gg-engine-level-json`

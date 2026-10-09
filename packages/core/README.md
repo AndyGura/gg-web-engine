@@ -6,3 +6,8 @@
 
 ### Installation:
 1) `npm install --save @gg-web-engine/core`
+
+### For AI coding agents
+[`AGENTS.md`](AGENTS.md) in this package is the app-development guide: the mental model, bootstrap
+pattern, capabilities and common pitfalls. It is generated from the repository's
+`gg-engine-app-development` skill.

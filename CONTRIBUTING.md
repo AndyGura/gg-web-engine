@@ -171,6 +171,10 @@ A change that alters behavior without updating them is incomplete.
   code as it is now, not the diff you just made.
 - **This file and the root `README.md`** — if you changed the build, test, or release process,
   or the quickstart API shown in the README.
+- **`packages/core/AGENTS.md`** — generated from
+  `.claude/skills/gg-engine-app-development/SKILL.md` and shipped in the core npm package for
+  coding agents. If you edit that skill, run `npm run agents-md` and commit the result; CI
+  (`npm run check:agents-md`) fails when they differ. Never edit `AGENTS.md` by hand.
 - **Never** `documentation/`'s generated output. It's regenerated at release time. Its home page is
   `documentation/landing.md`: keep its pitch and install lines in step with the README.
 
@@ -200,7 +204,7 @@ Conventions the review will check for:
 
 | Workflow | Runs when | Does |
 |---|---|---|
-| `pull_request_build.yml` | every PR | `npm install`, `npm run build`, `npm test` at the root — every package, against the local core build — then `npm run lint:examples`. |
+| `pull_request_build.yml` | every PR | `npm install`, `npm run build`, `npm test` at the root — every package, against the local core build — then `npm run lint:examples` and `npm run check:agents-md`. |
 | `blender_export_e2e.yml` | PRs touching `blender-addon/`, `e2e/blender-export/`, `packages/core/src/3d/`, `packages/three/`, `packages/rapier3d/`; or manually | Installs Blender and runs the export round-trip test. |
 | `build_ammo.yml` | PRs touching `packages/ammo/build_gg_ammo/`; or manually | Rebuilds the vendored ammo.js binary from source and runs ammo's tests against it. On manual dispatch, commits the refreshed binary back to the branch. |
 | `release_action.yml` | every push to `main` | No-op unless the commit subject matches `[pre-release] [X.Y.Z]`; otherwise runs the full release described below. |
@@ -232,7 +236,8 @@ the add-on actually changed.
      compare link into `[X.Y.Z]: .../compare/<prev>...X.Y.Z` and added a new
      `[Unreleased]: .../compare/X.Y.Z...HEAD` above it. This is the first step after the version
      is parsed, so a malformed changelog fails the job before anything is built or published;
-   - built and tested everything from a workspace install as a preflight;
+   - checked `packages/core/AGENTS.md` matches the app-development skill, then built and tested
+     everything from a workspace install as a preflight;
    - bumped `packages/core`, published it, and waited for npm to serve the new version;
    - bumped every adapter's own version and its `@gg-web-engine/core` dependency, built each one
      against the *published* core (not the workspace symlink), and published them;
