@@ -37,12 +37,13 @@ export const mock2DBody = (
     bodyOptions,
     onCollisionStart: new Subject(),
     onCollisionEnd: new Subject(),
-    addToWorld() {
-    },
-    removeFromWorld() {
-    },
-    dispose() {
-    },
+    applyForce() {},
+    applyImpulse() {},
+    applyTorque() {},
+    applyTorqueImpulse() {},
+    addToWorld() {},
+    removeFromWorld() {},
+    dispose() {},
   } as unknown as IRigidBody2dComponent;
 };
 
@@ -63,11 +64,12 @@ export const mock3DBody = (
     bodyOptions,
     onCollisionStart: new Subject(),
     onCollisionEnd: new Subject(),
-    addToWorld() {
-    },
-    removeFromWorld() {
-    },
-    dispose() {
-    },
+    applyForce() {},
+    applyImpulse() {},
+    applyTorque() {},
+    applyTorqueImpulse() {},
+    addToWorld() {},
+    removeFromWorld() {},
+    dispose() {},
   } as unknown as IRigidBody3dComponent;
 };

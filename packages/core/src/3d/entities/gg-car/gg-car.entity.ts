@@ -10,6 +10,7 @@ import {
   ISerializableEntity,
   CorrectionOutcome,
   NetworkApplyContext,
+  Pnt3,
   Point3,
   Point4,
   RigidBodyCorrection,
@@ -31,6 +32,28 @@ export type GgCarProperties = RVEntityProperties & {
     }[];
     maxRpmIncreasePerSecond: number;
     maxRpmDecreasePerSecond: number;
+    /**
+     * Rev limiter. Whenever the wheels would spin the engine past `maxRpm` the throttle is cut, and
+     * this braking force (Newtons, for the whole car - see `GgCarEntity.tractionForce` for how a
+     * car's drive force is split over its driven wheels) holds the car back, against its direction
+     * of travel. Default {@link DEFAULT_OVER_REV_BRAKE_FORCE}. `0` makes the limiter a plain
+     * throttle cut: above redline the car coasts under ordinary engine braking instead.
+     */
+    overRevBrakeForce?: number;
+    /**
+     * Engine braking as an engine torque: N·m per 1000 rpm the engine turns above `minRpm`, with
+     * the throttle released, multiplied through the drivetrain (gear ratio, final drive,
+     * efficiencies, wheel radius) exactly like the drive torque - so a low gear brakes harder than
+     * a high one at the same speed, as in a real car. Replaces {@link brakingForcePerRpm} when set.
+     */
+    brakingTorquePer1000Rpm?: number;
+    /**
+     * Engine braking as a force at the wheels: Newtons per rpm of difference between `minRpm` and
+     * the rpm the wheels would spin the engine at, for the whole car, with the throttle released.
+     * Independent of the gear ratio, and below idle it turns into a push (an automatic's creep).
+     * Default {@link DEFAULT_BRAKING_FORCE_PER_RPM}; ignored when `brakingTorquePer1000Rpm` is set.
+     */
+    brakingForcePerRpm?: number;
   };
   /**
    * Brake forces, in Newtons per wheel (see `IRaycastVehicleComponent.applyBrake`): the pedal
@@ -51,9 +74,52 @@ export type GgCarProperties = RVEntityProperties & {
     gearRatios: number[];
     drivelineEfficiency: number;
     finalDriveRatio: number; // differential
+    /**
+     * Per forward gear, the engine rpm at which an automatic transmission shifts up out of that
+     * gear (`upShifts[0]` leaves 1st gear). It also shifts down whenever the lower gear would turn
+     * the engine no faster than that gear's own `upShifts` entry, less `downshiftMargin`.
+     */
     upShifts: number[];
+    /**
+     * Rpm of hysteresis for an automatic's downshifts (default `0`): the lower gear is only
+     * selected while the engine would turn at most `upShifts[lower] - downshiftMargin` in it.
+     * Without a margin a car that has just shifted up, then slows a little, shifts straight back.
+     */
+    downshiftMargin?: number;
+    /**
+     * How long a gear change takes, in milliseconds of world time (default `0`, instant). While
+     * a shift is in progress (`GgCarEntity.isShifting`) the engine is disconnected: no drive force
+     * and no engine braking reach the wheels, the throttle doesn't rev the engine, and an
+     * automatic doesn't reconsider its gear. Every change of `gear` to a gear other than neutral
+     * starts a shift, manual and automatic alike.
+     */
+    shiftTime?: number;
+    /**
+     * Efficiency of each forward gear (`gearEfficiencies[0]` for 1st), a multiplier on the drive
+     * torque on top of `drivelineEfficiency`. Missing entries (and reverse) count as `1`.
+     */
+    gearEfficiencies?: number[];
     autoHold: boolean;
   };
+  /**
+   * Air drag, `½ · ρ · Cd · A · v²` against the chassis' velocity, applied through
+   * `IRigidBodyComponent.applyForce` every tick, on the ground and in the air. Without it a car
+   * is only ever held back by engine braking and the rev limiter, so its top speed is the redline
+   * in top gear. `airDensity` (ρ) defaults to 1.225 kg/m³ (sea level); `dragCoefficient` (Cd) is
+   * about 0.25-0.35 for a modern road car, `frontalArea` (A) about 2-2.5 m².
+   */
+  aerodynamics?: {
+    dragCoefficient: number;
+    frontalArea: number;
+    airDensity?: number;
+  };
+  /**
+   * Rolling resistance coefficient (about 0.01-0.015 for car tyres on asphalt): a force of
+   * `rollingResistance · m · g` against the chassis' motion whenever the wheels touch the ground,
+   * never more than what stops the car within the tick. Applied through
+   * `IRigidBodyComponent.applyForce`. Default `0`.
+   */
+  rollingResistance?: number;
   /**
    * Max steering lock, in radians, applied at `steeringFactor` of ±1.
    *
@@ -79,6 +145,8 @@ export type GgCarProperties = RVEntityProperties & {
  */
 export type GgCarNetState = RigidBodyNetState<Point3, Point4> & {
   gear: number;
+  /** Milliseconds left of a gear change in progress (`GgCarEntity.isShifting`), `0` when none. */
+  shiftMs: number;
   steering: number;
   accel: number;
   brake: number;
@@ -96,6 +164,18 @@ export interface GgCarInput {
 
 /** How often (ms of world time) an automatic transmission reconsiders its gear. */
 const AUTO_SHIFT_INTERVAL = 50;
+
+/** Default `GgCarProperties.engine.overRevBrakeForce`: 24 000 N for the whole car. */
+export const DEFAULT_OVER_REV_BRAKE_FORCE = 24000;
+
+/** Default `GgCarProperties.engine.brakingForcePerRpm`: 1 N per rpm, for the whole car. */
+export const DEFAULT_BRAKING_FORCE_PER_RPM = 1;
+
+/** Default `GgCarProperties.aerodynamics.airDensity`, kg/m³ at sea level. */
+export const DEFAULT_AIR_DENSITY = 1.225;
+
+/** Below this speed (m/s) `autoHold` holds the car with the brakes - see `GgCarProperties.transmission.autoHold`. */
+const AUTO_HOLD_SPEED_THRESHOLD = 3;
 
 export class GgCarEntity<
   TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo,
@@ -176,13 +256,51 @@ export class GgCarEntity<
     return this._rpm$.getValue();
   }
 
-  protected get tractionForce(): number {
+  /**
+   * Multiplier of the current gear's own efficiency (`transmission.gearEfficiencies`), `1` for
+   * reverse, neutral or a gear without an entry.
+   */
+  protected get gearEfficiency(): number {
+    return this._gear > 0 ? (this.carProperties.transmission.gearEfficiencies?.[this._gear - 1] ?? 1) : 1;
+  }
+
+  /** `transmissionGearRatio × finalDriveRatio × drivelineEfficiency × gearEfficiency / tractionWheelRadius`: engine torque (N·m) to a force at the wheels (N). */
+  protected get drivetrainForcePerTorque(): number {
     return (
-      (this.engineTorque *
-        this.transmissionGearRatio *
+      (this.transmissionGearRatio *
         this.carProperties.transmission.finalDriveRatio *
-        this.carProperties.transmission.drivelineEfficiency) /
+        this.carProperties.transmission.drivelineEfficiency *
+        this.gearEfficiency) /
       this.raycastVehicle.tractionWheelRadius
+    );
+  }
+
+  /**
+   * The drive force at full throttle, in Newtons, for the whole car: the engine's torque at the
+   * current rpm through the current gear, the final drive, the efficiencies and the wheel radius.
+   * `applyDrive` splits it between the axles by `tractionBias` and then equally over each axle's
+   * wheels, so the car as a whole is pushed by exactly this force whatever its number of wheels.
+   */
+  protected get tractionForce(): number {
+    return this.engineTorque * this.drivetrainForcePerTorque;
+  }
+
+  /**
+   * The force at the wheels, in Newtons for the whole car and signed along the car's forward
+   * axis, from the engine being turned by the wheels with the throttle released, at the rpm
+   * `calculatedRpm` the wheels would spin it at - negative in a forward gear while above idle. See
+   * `GgCarProperties.engine.brakingTorquePer1000Rpm`/`brakingForcePerRpm` for the two models.
+   */
+  protected engineBrakingForce(calculatedRpm: number): number {
+    const engine = this.carProperties.engine;
+    if (engine.brakingTorquePer1000Rpm !== undefined) {
+      const torque = (engine.brakingTorquePer1000Rpm * Math.max(0, calculatedRpm - engine.minRpm)) / 1000;
+      return -torque * this.drivetrainForcePerTorque;
+    }
+    return (
+      (engine.brakingForcePerRpm ?? DEFAULT_BRAKING_FORCE_PER_RPM) *
+      (engine.minRpm - calculatedRpm) *
+      (this.gear > 0 ? 1 : -1)
     );
   }
 
@@ -282,6 +400,11 @@ export class GgCarEntity<
     return this._gear$.asObservable();
   }
 
+  /**
+   * Selects a gear: `-1` reverse, `0` neutral, `1..gearRatios.length` forward. Any change into a
+   * gear other than neutral starts a gear change of `transmission.shiftTime` ms (see
+   * `isShifting`); a change while one is in progress restarts it.
+   */
   set gear(value: number) {
     value = Math.max(-1, Math.min(this.carProperties.transmission.gearRatios.length, value));
     if (value === this._gear) {
@@ -289,6 +412,23 @@ export class GgCarEntity<
     }
     this._gear = value;
     this._gear$.next(value);
+    const shiftTime = this.carProperties.transmission.shiftTime;
+    this._shiftRemainingMs = value !== 0 && shiftTime && shiftTime > 0 ? shiftTime : 0;
+  }
+
+  private _shiftRemainingMs = 0;
+
+  /**
+   * Whether a gear change is in progress (`transmission.shiftTime` ms of world time after `gear`
+   * was set): the engine is disconnected from the wheels until it ends.
+   */
+  get isShifting(): boolean {
+    return this._shiftRemainingMs > 0;
+  }
+
+  /** Milliseconds of world time left of the gear change in progress, `0` when none. */
+  get shiftRemainingMs(): number {
+    return this._shiftRemainingMs;
   }
 
   // TODO remove
@@ -329,45 +469,12 @@ export class GgCarEntity<
     super.onSpawned(world);
     // until removed: an entity may be removed from the world and added again
     this.tick$.pipe(takeUntil(this._onRemoved$)).subscribe(([_, delta]) => {
+      this._shiftRemainingMs = Math.max(0, this._shiftRemainingMs - delta);
       this.updateEngine(delta);
+      this.applyResistance(delta);
       if (this.raycastVehicle.isTouchingGround) {
-        // TODO 1 - R (1000 rpm) quick switch with acceleration pedal should have the same speed as without acceleration pedal
-        let force = 0;
-        let brake = this.brake;
-        const calculatedRpm = this.calculateRpmFromCarSpeed();
-        if (this.gear !== 0 && calculatedRpm > this.carProperties.engine.maxRpm) {
-          // engine brake, this is related to clutch, better clutch condition - bigger force
-          force = this.gear > 0 ? -12000 : 12000;
-        } else {
-          force =
-            this.acceleration > 0
-              ? this.tractionForce * this.acceleration // apply torque
-              : 0.5 * (this.carProperties.engine.minRpm - calculatedRpm) * (this.gear > 0 ? 1 : -1); // released, use engine brake
-          // this functionality makes car stay still (parking gear) when speed is low
-          if (this.carProperties.transmission.autoHold) {
-            const speedThreshold = 3;
-            if (
-              Math.abs(this.raycastVehicle.getSpeed()) < speedThreshold &&
-              (this.gear == 0 || this.acceleration <= 0)
-            ) {
-              brake = Math.max(brake, (0.3 * (speedThreshold - this.raycastVehicle.getSpeed())) / speedThreshold);
-              force = 0;
-            }
-          }
-        }
-        if (brake === 0) {
-          this.raycastVehicle.applyTraction('front', force * this.carProperties.tractionBias);
-          this.raycastVehicle.applyTraction('rear', force * (1 - this.carProperties.tractionBias));
-          this.raycastVehicle.applyBrake('both', 0);
-        } else {
-          this.raycastVehicle.applyTraction('both', 0);
-          this.raycastVehicle.applyBrake('front', brake * this.carProperties.brake.frontAxleForce);
-          this.raycastVehicle.applyBrake('rear', brake * this.carProperties.brake.rearAxleForce);
-        }
-        if (this.handBrake) {
-          this.raycastVehicle.applyTraction('rear', 0);
-          this.raycastVehicle.applyBrake('rear', this.carProperties.brake.handbrakeForce);
-        }
+        const { force, brake } = this.computeDrive();
+        this.applyDrive(force, brake);
       }
     });
     if (this.carProperties.transmission.isAuto) {
@@ -384,43 +491,140 @@ export class GgCarEntity<
           return;
         }
         sinceShiftCheck = Math.min(sinceShiftCheck - AUTO_SHIFT_INTERVAL, AUTO_SHIFT_INTERVAL);
-        if (!this.raycastVehicle.isTouchingGround) {
+        if (!this.raycastVehicle.isTouchingGround || this.isShifting || this.gear <= 0) {
           return;
         }
-        let gear = this.gear;
-        let upshifted = false;
-        if (gear > 0) {
-          let rpm = this.engineRpm;
-          while (rpm >= this.carProperties.transmission.upShifts[gear - 1]) {
-            rpm *=
-              this.carProperties.transmission.gearRatios[gear] / this.carProperties.transmission.gearRatios[gear - 1];
-            gear++;
-            upshifted = true;
-          }
-          if (!upshifted) {
-            while (gear > 1) {
-              rpm *=
-                this.carProperties.transmission.gearRatios[gear - 2] /
-                this.carProperties.transmission.gearRatios[gear - 1];
-              if (rpm > this.carProperties.transmission.upShifts[gear - 2]) {
-                break;
-              }
-              gear--;
-            }
-          }
-          this.gear = gear;
-        }
+        this.gear = this.selectAutoGear();
       });
+    }
+  }
+
+  /**
+   * The automatic transmission's choice of forward gear for the current engine rpm, given the
+   * current forward gear (`gear > 0`): up while the rpm reaches the current gear's `upShifts`
+   * entry (projecting the rpm into each next gear), otherwise down while the lower gear would
+   * turn the engine at most its own `upShifts` entry less `downshiftMargin`. Override to
+   * replace the shift logic; called every `AUTO_SHIFT_INTERVAL` ms of world time while the car
+   * is on the ground, in a forward gear, not shifting, and not driven by remote input.
+   */
+  protected selectAutoGear(): number {
+    const { gearRatios, upShifts, downshiftMargin } = this.carProperties.transmission;
+    let gear = this.gear;
+    let rpm = this.engineRpm;
+    let upshifted = false;
+    while (gear < gearRatios.length && rpm >= upShifts[gear - 1]) {
+      rpm *= gearRatios[gear] / gearRatios[gear - 1];
+      gear++;
+      upshifted = true;
+    }
+    if (!upshifted) {
+      while (gear > 1) {
+        rpm *= gearRatios[gear - 2] / gearRatios[gear - 1];
+        if (rpm > upShifts[gear - 2] - (downshiftMargin ?? 0)) {
+          break;
+        }
+        gear--;
+      }
+    }
+    return gear;
+  }
+
+  /**
+   * This tick's drive force (Newtons for the whole car, signed along the car's forward axis) and
+   * brake pedal (0..1) from the car's inputs and state, for `applyDrive`. Override to change how
+   * the engine, the rev limiter, engine braking or `autoHold` turn into a force. Only called while
+   * the car touches the ground.
+   */
+  protected computeDrive(): { force: number; brake: number } {
+    let force = 0;
+    let brake = this.brake;
+    const calculatedRpm = this.calculateRpmFromCarSpeed();
+    const direction = this.gear > 0 ? 1 : -1;
+    if (this.gear === 0 || this.isShifting) {
+      // engine disconnected from the wheels
+      force = 0;
+    } else if (calculatedRpm > this.carProperties.engine.maxRpm) {
+      // rev limiter: throttle cut, plus the over-rev braking force against the direction of travel
+      const overRevBrakeForce = this.carProperties.engine.overRevBrakeForce ?? DEFAULT_OVER_REV_BRAKE_FORCE;
+      force = overRevBrakeForce > 0 ? -direction * overRevBrakeForce : this.engineBrakingForce(calculatedRpm);
+    } else if (this.acceleration > 0) {
+      force = this.tractionForce * this.acceleration;
+    } else {
+      force = this.engineBrakingForce(calculatedRpm);
+    }
+    // this functionality makes car stay still (parking gear) when speed is low
+    if (this.carProperties.transmission.autoHold && !this.isShifting) {
+      const speed = this.raycastVehicle.getSpeed();
+      if (Math.abs(speed) < AUTO_HOLD_SPEED_THRESHOLD && (this.gear == 0 || this.acceleration <= 0)) {
+        brake = Math.max(brake, (0.3 * (AUTO_HOLD_SPEED_THRESHOLD - speed)) / AUTO_HOLD_SPEED_THRESHOLD);
+        force = 0;
+      }
+    }
+    return { force, brake };
+  }
+
+  /**
+   * Hands `computeDrive`'s result to the wheels: with the brake pedal released, `force` is split
+   * between the axles by `tractionBias` and equally over each axle's wheels (so the whole car is
+   * pushed by `force`, whatever its wheel count); with it pressed, the wheels brake with
+   * `carProperties.brake`'s per-wheel forces instead. The handbrake then overrides the rear axle.
+   */
+  protected applyDrive(force: number, brake: number): void {
+    if (brake === 0) {
+      const bias = this.carProperties.tractionBias;
+      const frontWheels = this.raycastVehicle.wheelCount('front');
+      const rearWheels = this.raycastVehicle.wheelCount('rear');
+      this.raycastVehicle.applyTraction('front', frontWheels ? (force * bias) / frontWheels : 0);
+      this.raycastVehicle.applyTraction('rear', rearWheels ? (force * (1 - bias)) / rearWheels : 0);
+      this.raycastVehicle.applyBrake('both', 0);
+    } else {
+      this.raycastVehicle.applyTraction('both', 0);
+      this.raycastVehicle.applyBrake('front', brake * this.carProperties.brake.frontAxleForce);
+      this.raycastVehicle.applyBrake('rear', brake * this.carProperties.brake.rearAxleForce);
+    }
+    if (this.handBrake) {
+      this.raycastVehicle.applyTraction('rear', 0);
+      this.raycastVehicle.applyBrake('rear', this.carProperties.brake.handbrakeForce);
+    }
+  }
+
+  /**
+   * Applies this tick's air drag (`carProperties.aerodynamics`) and rolling resistance
+   * (`carProperties.rollingResistance`) to the chassis through `IRigidBodyComponent.applyForce`.
+   * Both are off unless configured. Override to add other forces acting on the chassis each tick.
+   */
+  protected applyResistance(delta: number): void {
+    const body = this.raycastVehicle.vehicleComponent;
+    const velocity = body.linearVelocity;
+    const speed = Pnt3.len(velocity);
+    if (speed <= 0) {
+      return;
+    }
+    const aero = this.carProperties.aerodynamics;
+    if (aero) {
+      const magnitude =
+        0.5 * (aero.airDensity ?? DEFAULT_AIR_DENSITY) * aero.dragCoefficient * aero.frontalArea * speed * speed;
+      body.applyForce(Pnt3.scalarMult(velocity, -magnitude / speed));
+    }
+    const rollingResistance = this.carProperties.rollingResistance;
+    if (rollingResistance && delta > 0 && this.raycastVehicle.isTouchingGround) {
+      const mass = body.bodyOptions.mass;
+      const worldGravity = this.world?.physicsWorld?.gravity;
+      const gravity = worldGravity ? Pnt3.len(worldGravity) : 9.82;
+      // never more than what stops the car within this tick, so it can't push it backwards
+      const magnitude = Math.min(rollingResistance * mass * gravity, (mass * speed) / (delta / 1000));
+      body.applyForce(Pnt3.scalarMult(velocity, -magnitude / speed));
     }
   }
 
   protected updateEngine(delta: number) {
     delta = delta / 1000; // ms -> s
-    const acceleration = this._acceleration$.getValue();
+    // a gear change in progress cuts the throttle: the engine falls towards idle meanwhile
+    const acceleration = this.isShifting ? 0 : this._acceleration$.getValue();
     let rpm = this.engineRpm;
-    // TODO here I will take perioud between gears and drift into account someday :)
-    const gripKoeff = this.gear === 0 || !this.raycastVehicle.isTouchingGround ? 0 : 1;
-    if (gripKoeff == 0) {
+    // engine connected to the wheels: the rpm follows the car's speed, within the engine's own rates
+    const coupled = this.gear !== 0 && !this.isShifting && this.raycastVehicle.isTouchingGround;
+    if (!coupled) {
       rpm +=
         (acceleration * 2 - 1) *
         (acceleration > 0.5
@@ -459,7 +663,17 @@ export class GgCarEntity<
    * `autoScaleMesh` doesn't, since `Gg3dLevelLoader.resolveWheelDisplay` never sets it either.
    */
   public serializeSettings(): { config: Record<string, any> } {
-    const { tractionBias, suspension, mpsToRpmFactor, engine, brake, transmission, maxSteerAngle } = this.carProperties;
+    const {
+      tractionBias,
+      suspension,
+      mpsToRpmFactor,
+      engine,
+      brake,
+      transmission,
+      maxSteerAngle,
+      aerodynamics,
+      rollingResistance,
+    } = this.carProperties;
 
     const chassisBody = this.raycastVehicle.objectBody;
     const chassisShape = chassisBody?.debugBodySettings.shape;
@@ -480,6 +694,8 @@ export class GgCarEntity<
       brake,
       transmission,
       maxSteerAngle,
+      ...(aerodynamics !== undefined ? { aerodynamics } : {}),
+      ...(rollingResistance !== undefined ? { rollingResistance } : {}),
       state: {
         gear: this.gear,
         acceleration: this.acceleration,
@@ -546,6 +762,7 @@ export class GgCarEntity<
   ) {
     this.raycastVehicle.resetTo(options);
     this.gear = 0;
+    this._shiftRemainingMs = 0;
     this._rpm$.next(this.carProperties.engine.minRpm);
   }
 
@@ -559,6 +776,7 @@ export class GgCarEntity<
     return {
       ...RigidBodyCorrection.capture(this.raycastVehicle.vehicleComponent),
       gear: this.gear,
+      shiftMs: this._shiftRemainingMs,
       steering: this.steeringFactor,
       accel: this.acceleration,
       brake: this.brake,
@@ -570,7 +788,9 @@ export class GgCarEntity<
    * `INetworkSyncable`: correct the chassis toward the owner's snapshot (see `RigidBodyCorrection`)
    * and adopt its driving state - unless remote input drives this car, which already carries the
    * same values (see `applyRemoteInput`). A snap also resets the suspension, so the wheels don't
-   * spring from the old pose.
+   * spring from the old pose. The gear change in progress is adopted as the owner has it
+   * (`shiftMs`), not restarted by the replica's own `gear` setter, so the replica's engine
+   * reconnects when the owner's does.
    */
   public applyNetworkState(target: GgCarNetState, ctx: NetworkApplyContext): CorrectionOutcome {
     const outcome = RigidBodyCorrection.correct(this.raycastVehicle.vehicleComponent, target, ctx);
@@ -581,6 +801,7 @@ export class GgCarEntity<
       return outcome;
     }
     this.gear = target.gear;
+    this._shiftRemainingMs = Math.max(0, target.shiftMs - ctx.ageMs);
     this.steeringFactor = target.steering;
     this.acceleration = target.accel;
     this.brake = target.brake;
@@ -603,7 +824,9 @@ export class GgCarEntity<
   /**
    * `INetworkInputDriven`: drive this replica with the possessor's input. `null` is neutral:
    * throttle 0, steering 0, full brake, neutral gear, handbrake off. Auto-shift stays suspended
-   * while non-null input arrives, since the gear comes from the possessor.
+   * while non-null input arrives, since the gear comes from the possessor. A gear change in the
+   * input starts the same `shiftTime` gear change here as on the possessor, through the `gear`
+   * setter, so both engines reconnect after the same world time.
    */
   public applyRemoteInput(input: GgCarInput | null): void {
     if (input === null) {

@@ -717,7 +717,28 @@ present on both), but any adapter-level code reaching `onEntityEntered`/`onEntit
 calling a rigid-body-only member (`linearVelocity`, `resetMotion()`, `onCollisionStart`/`onCollisionEnd`)
 against a character controller would have hit a runtime `undefined`/throw with no compile-time warning.
 
+## `IRigidBodyComponent.applyForce`/`applyTorque` (both packages): reset after the step, or the force lives forever
+
+Rapier's `RigidBody.addForce`/`addTorque`/`addForceAtPoint` accumulate until `resetForces`/
+`resetTorques` - a force added once would keep accelerating the body on every later step, unlike
+the "next `simulate()` call only" contract (`gg-engine-physics-adapter`). Each rigid body component
+registers itself in the world component's `forcedBodies` set when a force/torque is applied, and
+`simulate()` calls `resetAppliedForces()` on every entry after the last substep (3D) / after the
+step (2D) and clears the set. Resetting per substep instead would drop the force from the second
+substep on. `applyImpulse`/`applyTorqueImpulse` map to Rapier's calls of the same name (and the
+`AtPoint` variants) with `wakeUp: true`; all four return early unless `nativeBody.isDynamic()`.
+
+`packages/rapier2d`'s factory sets `RigidBodyDesc.mass` and leaves the collider's default density
+(1), so a dynamic body's native mass is the requested mass plus the shape's area - a 2 kg unit
+circle weighs 5.14 kg, and `F / m` comes out accordingly. `rapier-2d-rigid-body-forces.spec.ts`
+measures against `nativeBody.mass()` for that reason; `packages/rapier3d` sets the mass on the
+colliders (see below) and has no such offset.
+
 ## `IRaycastVehicleComponent` (3D, implemented in `packages/rapier3d`)
+
+`setWheelFrictionSlip(i, v)` writes both the native wheel (`setWheelFrictionSlip`) and the stored
+`WheelEntry.options`, since `addToWorld` rebuilds the native vehicle from the entries; the getter
+reads the native wheel first and falls back to the entry while the vehicle is out of a world.
 
 Option mapping: `frictionSlip` → `setWheelFrictionSlip`, `sideFrictionStiffness` (default 1) →
 `setWheelSideFrictionStiffness`, `maxTravel`/`maxSuspensionForce`/suspension straight through.

@@ -81,9 +81,19 @@ export class Rapier2dWorldComponent implements IPhysicsWorld2dComponent<Rapier2d
     this._factory = new Rapier2dFactory(this);
   }
 
+  /**
+   * Bodies with a force/torque applied this tick (`IRigidBodyComponent.applyForce`/`applyTorque`),
+   * reset after `simulate()` steps - Rapier otherwise keeps an added force forever.
+   */
+  public readonly forcedBodies: Set<Rapier2dRigidBodyComponent> = new Set();
+
   simulate(delta: number): void {
     this._nativeWorld!.timestep = delta / 1000;
     this._nativeWorld?.step(this.eventQueue);
+    for (const body of this.forcedBodies) {
+      body.resetAppliedForces();
+    }
+    this.forcedBodies.clear();
     this.dispatchCollisionEvents();
   }
 

@@ -460,7 +460,19 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   "Debugging with the dev console" below — it's the preferred way for an agent to inspect/mutate a
   *running* game instance instead of poking internals through devtools.
 - **Vehicles**: `RaycastVehicle3dEntity` / `GgCarEntity` in `packages/core/src/3d/entities/` for
-  raycast-based car physics.
+  raycast-based car physics. `GgCarProperties` has optional gearbox (`shiftTime`,
+  `downshiftMargin`, `gearEfficiencies`), rev limiter, engine braking, air drag and rolling
+  resistance settings, and `GgCarEntity` exposes `computeDrive`/`applyDrive`/`selectAutoGear`/
+  `applyResistance` as `protected` hooks for a subclass; `raycastVehicle.setFrictionSlip(axle, v)`
+  retunes tyre grip at runtime (a sliding handbrake, a surface change). A car's `engine.torques`
+  push the whole car, not each driven wheel.
+- **Forces and impulses**: `applyForce(force, worldPoint?)`/`applyImpulse(impulse, worldPoint?)`/
+  `applyTorque`/`applyTorqueImpulse` on every rigid body (`entity.objectBody`), on every physics
+  backend. A force acts during the next `simulate()` only, so re-apply a continuous one (wind,
+  drag, a thruster) every tick from an entity ticking before `TickOrder.PHYSICS_SIMULATION` and let
+  the adapter integrate it at any frame rate; an impulse (an explosion, a hit) changes the velocity
+  at once. Prefer these over writing `linearVelocity` each tick, which fights the solver and other
+  writers.
 
 ## Loading assets: progress, cancellation, and when they are freed
 

@@ -28,6 +28,45 @@ where one exists.
 
 ## [Unreleased]
 
+### Added
+- Forces and impulses on rigid bodies. `IRigidBodyComponent` gained `applyForce(force, worldPoint?)`,
+  `applyImpulse(impulse, worldPoint?)`, `applyTorque(torque)` and `applyTorqueImpulse(torqueImpulse)`
+  (Newtons, N·s, N·m, N·m·s; a torque is a `Point3` in 3D and a signed scalar in 2D). A force or
+  torque acts during the next `simulate()` call only, for all of its substeps, so a continuous
+  force (drag, wind, a thruster) is re-applied every tick and integrates the same at any frame
+  rate; an impulse changes the velocity at once. A `worldPoint` makes a force/impulse also spin the
+  body. Static and kinematic bodies ignore them. Implemented in `ammo`, `rapier3d`, `rapier2d` and
+  `matter`; a third-party physics adapter has to add the four methods.
+- `IRaycastVehicleComponent.setWheelFrictionSlip(wheelIndex, frictionSlip)`/`getWheelFrictionSlip`
+  and `RaycastVehicle3dEntity.setFrictionSlip(axle, frictionSlip)`/`wheelCount(axle)`: retune a
+  wheel's tyre grip on the live vehicle (a sliding handbrake, gravel, ice) without reaching into the
+  physics backend. Implemented in `ammo` and `rapier3d`.
+- `GgCarProperties` tuning, all optional with defaults that keep today's behavior:
+  `transmission.downshiftMargin` (rpm of hysteresis before an automatic shifts back down),
+  `transmission.shiftTime` (ms per gear change, engine disconnected and throttle cut meanwhile -
+  `GgCarEntity.isShifting`/`shiftRemainingMs`), `transmission.gearEfficiencies` (per forward gear),
+  `engine.overRevBrakeForce` (the rev limiter's braking force, `0` for a plain throttle cut),
+  `engine.brakingTorquePer1000Rpm` (engine braking as a drivetrain-scaled torque) or
+  `engine.brakingForcePerRpm` (as a force at the wheels), `aerodynamics` (`½·ρ·Cd·A·v²` air drag)
+  and `rollingResistance` (`Crr·m·g`), the last two applied through `applyForce` so a car now has a
+  drag-limited top speed. The `"GgCar"` level class and `GgCarEntity.serializeSettings` carry
+  `aerodynamics`/`rollingResistance` too.
+- `GgCarEntity` hook methods for subclasses: `computeDrive()` (inputs and state to a drive force and
+  brake pedal), `applyDrive(force, brake)` (to the wheels), `selectAutoGear()` (the automatic's
+  choice), `applyResistance(delta)` (chassis forces) and `engineBrakingForce(rpm)`.
+
+### Changed
+- **Breaking**: `GgCarEntity`'s drive force is now the whole car's, not per driven wheel.
+  `tractionForce` (engine torque through the drivetrain over the wheel radius) is split between the
+  axles by `tractionBias` and then equally over each axle's wheels, so a four-wheel car is pushed by
+  `tractionForce`, where it used to be pushed by twice that (the per-wheel force went to every
+  driven wheel). Double a car's `engine.torques` to keep its acceleration. The rev limiter and
+  engine braking are whole-car forces too, with defaults equal to the old per-wheel values summed
+  over four wheels (24 000 N, 1 N per rpm). In neutral the car no longer receives any drive force
+  (it used to be pushed backwards by the engine-braking formula).
+- `GgCarNetState` carries `shiftMs`, the gear change in progress; a replica adopts it by age instead
+  of restarting the shift from its own `gear` setter.
+
 ## [0.0.80] - 2026-10-09
 
 ### Added

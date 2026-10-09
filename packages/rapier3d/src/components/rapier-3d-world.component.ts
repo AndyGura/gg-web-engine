@@ -191,6 +191,12 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
     this._loader = new Rapier3dLoader(this);
   }
 
+  /**
+   * Bodies with a force/torque applied this tick (`IRigidBodyComponent.applyForce`/`applyTorque`),
+   * reset after the last substep of `simulate()` - Rapier otherwise keeps an added force forever.
+   */
+  public readonly forcedBodies: Set<Rapier3dRigidBodyComponent> = new Set();
+
   simulate(delta: number): void {
     const world = this._nativeWorld;
     if (!world) {
@@ -253,6 +259,10 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
       // the queue auto-drains before every step, so each step's events are read right after it
       this.collectCollisionEvents(pendingEvents);
     }
+    for (const body of this.forcedBodies) {
+      body.resetAppliedForces();
+    }
+    this.forcedBodies.clear();
     for (const notify of pendingEvents) {
       notify();
     }

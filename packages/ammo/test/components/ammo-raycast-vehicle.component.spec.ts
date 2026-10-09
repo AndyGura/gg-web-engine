@@ -33,10 +33,7 @@ const addWheels = (vehicle: AmmoRaycastVehicleComponent) => {
   }
 };
 
-const createFloor = (
-  factory: AmmoFactory,
-  topZ: number,
-): AmmoRigidBodyComponent =>
+const createFloor = (factory: AmmoFactory, topZ: number): AmmoRigidBodyComponent =>
   factory.createRigidBody(
     {
       shape: { shape: 'BOX', dimensions: { x: 75, y: 75, z: 1 } },
@@ -121,45 +118,56 @@ describe('AmmoRaycastVehicleComponent', () => {
     expect(vehicle.isWheelTouchesGround(0)).toBe(true);
   });
 
-  it('should let each vehicle fall through a floor with a different collision group and rest ' +
-    'only on the floor sharing its own collision group', () => {
-    const groupA = world.registerCollisionGroup();
-    const groupB = world.registerCollisionGroup();
+  it(
+    'should let each vehicle fall through a floor with a different collision group and rest ' +
+      'only on the floor sharing its own collision group',
+    () => {
+      const groupA = world.registerCollisionGroup();
+      const groupB = world.registerCollisionGroup();
 
-    const floorA = createFloor(factory, 0);
-    floorA.addToWorld({ physicsWorld: world } as any);
-    floorA.ownCollisionGroups = floorA.interactWithCollisionGroups = [groupA];
+      const floorA = createFloor(factory, 0);
+      floorA.addToWorld({ physicsWorld: world } as any);
+      floorA.ownCollisionGroups = floorA.interactWithCollisionGroups = [groupA];
 
-    const floorB = createFloor(factory, -10);
-    floorB.addToWorld({ physicsWorld: world } as any);
-    floorB.ownCollisionGroups = floorB.interactWithCollisionGroups = [groupB];
+      const floorB = createFloor(factory, -10);
+      floorB.addToWorld({ physicsWorld: world } as any);
+      floorB.ownCollisionGroups = floorB.interactWithCollisionGroups = [groupB];
 
-    const vehicleA = createVehicle(world, factory, { x: 0, y: 0, z: 4 });
-    vehicleA.addToWorld({ physicsWorld: world } as any);
-    vehicleA.ownCollisionGroups = vehicleA.interactWithCollisionGroups = [groupA];
+      const vehicleA = createVehicle(world, factory, { x: 0, y: 0, z: 4 });
+      vehicleA.addToWorld({ physicsWorld: world } as any);
+      vehicleA.ownCollisionGroups = vehicleA.interactWithCollisionGroups = [groupA];
 
-    const vehicleB = createVehicle(world, factory, { x: 20, y: 0, z: 4 });
-    vehicleB.addToWorld({ physicsWorld: world } as any);
-    vehicleB.ownCollisionGroups = vehicleB.interactWithCollisionGroups = [groupB];
+      const vehicleB = createVehicle(world, factory, { x: 20, y: 0, z: 4 });
+      vehicleB.addToWorld({ physicsWorld: world } as any);
+      vehicleB.ownCollisionGroups = vehicleB.interactWithCollisionGroups = [groupB];
 
-    for (let i = 0; i < 100; i++) {
-      world.simulate(60);
-    }
+      for (let i = 0; i < 100; i++) {
+        world.simulate(60);
+      }
 
-    // vehicleA shares its collision group with floorA (z=0) - it should have landed there,
-    // both via chassis-body collision and via the raycast vehicle's suspension.
-    expect(vehicleA.position.z).toBeGreaterThan(-1);
-    expect(vehicleA.position.z).toBeLessThan(3);
-    expect(vehicleA.isWheelTouchesGround(0)).toBe(true);
+      // vehicleA shares its collision group with floorA (z=0) - it should have landed there,
+      // both via chassis-body collision and via the raycast vehicle's suspension.
+      expect(vehicleA.position.z).toBeGreaterThan(-1);
+      expect(vehicleA.position.z).toBeLessThan(3);
+      expect(vehicleA.isWheelTouchesGround(0)).toBe(true);
 
-    // vehicleB does not share a collision group with floorA, so it must fall straight through
-    // it (this is what the custom btVehicleRaycaster collision-group patch fixes: without it,
-    // the wheel raycast ignores collision groups entirely and would detect floorA as ground,
-    // holding the vehicle up via suspension force even though its chassis passes through).
-    // It should come to rest on floorB (z=-10) instead.
-    expect(vehicleB.position.z).toBeGreaterThan(-11);
-    expect(vehicleB.position.z).toBeLessThan(-7);
-    expect(vehicleB.isWheelTouchesGround(0)).toBe(true);
+      // vehicleB does not share a collision group with floorA, so it must fall straight through
+      // it (this is what the custom btVehicleRaycaster collision-group patch fixes: without it,
+      // the wheel raycast ignores collision groups entirely and would detect floorA as ground,
+      // holding the vehicle up via suspension force even though its chassis passes through).
+      // It should come to rest on floorB (z=-10) instead.
+      expect(vehicleB.position.z).toBeGreaterThan(-11);
+      expect(vehicleB.position.z).toBeLessThan(-7);
+      expect(vehicleB.isWheelTouchesGround(0)).toBe(true);
+    },
+  );
+
+  it("retunes a wheel's frictionSlip on the live vehicle", () => {
+    const vehicle = createVehicle(world, factory, { x: 0, y: 0, z: 4 });
+    vehicle.addToWorld({ physicsWorld: world } as any);
+    vehicle.setWheelFrictionSlip(2, 0.3);
+    expect(vehicle.getWheelFrictionSlip(2)).toBeCloseTo(0.3, 6);
+    expect(vehicle.getWheelFrictionSlip(0)).not.toBeCloseTo(0.3, 6);
   });
 
   it('should not throw when disposed twice', () => {

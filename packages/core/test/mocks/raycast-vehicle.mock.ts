@@ -11,8 +11,10 @@ import {
 import { mock3DObject } from './object.mock';
 import { mock3DBody } from './body.mock';
 
-export const mockRaycastVehicleEntity: () => RaycastVehicle3dEntity = () => new RaycastVehicle3dEntity(mockCarProperties(), mock3DObject(), mockRaycastVehicle());
-export const mockGgCarEntity: () => GgCarEntity = () => new GgCarEntity(mockCarProperties(), mock3DObject(), mockRaycastVehicle());
+export const mockRaycastVehicleEntity: () => RaycastVehicle3dEntity = () =>
+  new RaycastVehicle3dEntity(mockCarProperties(), mock3DObject(), mockRaycastVehicle());
+export const mockGgCarEntity: () => GgCarEntity = () =>
+  new GgCarEntity(mockCarProperties(), mock3DObject(), mockRaycastVehicle());
 
 /**
  * A `mockRaycastVehicle()` is `IRaycastVehicleComponent extends IRigidBody3dComponent`, so it's
@@ -28,18 +30,15 @@ export const mockRaycastVehicle = (
   return {
     ...mock3DBody(shape, bodyOptions),
     wheelSpeed: 0,
-    addWheel: () => {
-    },
-    setSteering: () => {
-    },
-    applyEngineForce: () => {
-    },
-    applyBrake: () => {
-    },
+    addWheel: () => {},
+    setSteering: () => {},
+    applyEngineForce: () => {},
+    applyBrake: () => {},
     isWheelTouchesGround: () => true,
+    setWheelFrictionSlip: () => {},
+    getWheelFrictionSlip: () => 1,
     getWheelTransform: () => ({ position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0, w: 1 } }),
-    resetSuspension: () => {
-    },
+    resetSuspension: () => {},
     clone: () => mockRaycastVehicle(shape, bodyOptions),
   } as unknown as IRaycastVehicleComponent;
 };

@@ -872,6 +872,33 @@ ground object is always a fixed body - only the chassis contacts did. Moving a s
 tick is fine on both Ammo and Rapier (a teleport, no velocity). Note Rapier3d has no `PLANE` shape,
 so `SurfaceFollowingEntity` only works on Ammo today.
 
+## `GgCarEntity`: whole-car forces, a tunable gearbox, and hooks
+
+`GgCarEntity`'s tick is `updateEngine(delta)` (rpm), `applyResistance(delta)` (air drag and
+rolling resistance through `IRigidBodyComponent.applyForce`, off unless `carProperties.aerodynamics`/
+`rollingResistance` are set), then on the ground `computeDrive()` → `applyDrive(force, brake)`. All
+of these, plus `selectAutoGear()` and `engineBrakingForce(rpm)`, are `protected` hooks a subclass
+overrides instead of the getters. Units to keep straight when touching them:
+
+- **A drive force is the whole car's.** `tractionForce` (engine torque × gear ratio × final drive ×
+  efficiencies / wheel radius) is what pushes the car; `applyDrive` splits it between the axles by
+  `tractionBias` and equally over each axle's wheels (`RaycastVehicle3dEntity.wheelCount`), so the
+  wheel count never changes the acceleration. The rev limiter's `engine.overRevBrakeForce` and the
+  engine braking (`engine.brakingTorquePer1000Rpm` as a drivetrain-scaled torque, else
+  `engine.brakingForcePerRpm` at the wheels) are whole-car forces too. `RaycastVehicle3dEntity
+  .applyTraction`/`applyBrake` and `carProperties.brake` remain Newtons per wheel.
+- **A gear change takes `transmission.shiftTime` ms of world time** (`isShifting`/
+  `shiftRemainingMs`, started by the `gear` setter for any gear but neutral): no drive force, no
+  engine braking, throttle cut in `updateEngine`, no automatic reconsideration. `GgCarNetState
+  .shiftMs` carries it; `applyNetworkState` writes `_shiftRemainingMs` after the `gear` setter
+  (which would otherwise restart the shift), less `ctx.ageMs`.
+- The automatic shifts down only while the lower gear's projected rpm is at most that gear's
+  `upShifts` entry minus `transmission.downshiftMargin`.
+- In neutral the car gets no drive force at all.
+
+`test/3d/entities/gg-car.entity.spec.ts`'s `drivetrain` block pins each of these with a mocked
+vehicle (`totalForce()` sums the last engine force set per wheel).
+
 ## Collision groups can't express "these two specific bodies don't collide"
 
 `ownCollisionGroups`/`interactWithCollisionGroups` filtering is bidirectional AND logic: a pair

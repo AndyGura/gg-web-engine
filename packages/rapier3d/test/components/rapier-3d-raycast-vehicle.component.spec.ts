@@ -145,6 +145,16 @@ describe('Rapier3dRaycastVehicleComponent', () => {
     },
   );
 
+  it("retunes a wheel's frictionSlip on the live vehicle, and keeps it across a re-add", () => {
+    const vehicle = createVehicle(world, factory, { x: 0, y: 0, z: 4 });
+    vehicle.setWheelFrictionSlip(2, 0.3);
+    expect(vehicle.getWheelFrictionSlip(2)).toBeCloseTo(0.3, 6);
+    expect(vehicle.getWheelFrictionSlip(0)).not.toBeCloseTo(0.3, 6);
+    vehicle.removeFromWorld({ physicsWorld: world } as any);
+    vehicle.addToWorld({ physicsWorld: world } as any);
+    expect(vehicle.getWheelFrictionSlip(2)).toBeCloseTo(0.3, 6);
+  });
+
   it('should drive forward under engine force and report a matching positive wheelSpeed', () => {
     createFloor(factory, world, 0);
     const vehicle = createVehicle(world, factory, { x: 0, y: 0, z: 2 });

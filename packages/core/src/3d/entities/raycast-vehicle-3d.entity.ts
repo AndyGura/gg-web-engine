@@ -136,6 +136,27 @@ export class RaycastVehicle3dEntity<
     }
   }
 
+  /**
+   * Sets the tyre friction coefficient of every wheel of `axle` - see
+   * `IRaycastVehicleComponent.setWheelFrictionSlip`. Lets a handbrake or a surface change retune
+   * grip without touching the physics backend.
+   */
+  public setFrictionSlip(axle: 'front' | 'rear' | 'both', frictionSlip: number) {
+    if (axle != 'rear') {
+      this.frontWheelsIndices.forEach(index => this.vehicleComponent.setWheelFrictionSlip(index, frictionSlip));
+    }
+    if (axle != 'front') {
+      this.rearWheelsIndices.forEach(index => this.vehicleComponent.setWheelFrictionSlip(index, frictionSlip));
+    }
+  }
+
+  /** How many wheels `axle` has (`'both'`: all wheels). */
+  public wheelCount(axle: 'front' | 'rear' | 'both'): number {
+    return (
+      (axle != 'rear' ? this.frontWheelsIndices.length : 0) + (axle != 'front' ? this.rearWheelsIndices.length : 0)
+    );
+  }
+
   /** car mesh and physics body direction has to be pointing: y front, z up*/
   constructor(
     public readonly carProperties: RVEntityProperties,

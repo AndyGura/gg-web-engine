@@ -51,7 +51,9 @@ reuses.
 - `INetworkInputDriven<I>`: `captureLocalInput()` on the possessor, `applyRemoteInput(input | null)`
   on replicas; `null` = neutral (entity defines it).
 - Built-ins: `Entity2d`/`Entity3d` (rigid-body snapshot; enabled only with a non-static body),
-  `GgCarEntity` (chassis snapshot + gear/steering/throttle/brake/handbrake; input-driven;
+  `GgCarEntity` (chassis snapshot + gear/steering/throttle/brake/handbrake and `shiftMs`, the gear
+  change in progress, adopted by age so a replica reconnects its engine when the owner does;
+  input-driven;
   `autoShiftEnabled`, auto-suspended while remote input drives it; the snapshot's driving state is
   adopted only without remote input), both character entities
   (`MoverNetState`, input incl. `jumpSeq` = `jumpCount`, `externalDisplacement`, `actualVelocity`,

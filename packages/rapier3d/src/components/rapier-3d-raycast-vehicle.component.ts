@@ -173,6 +173,20 @@ export class Rapier3dRaycastVehicleComponent
     }
   }
 
+  setWheelFrictionSlip(wheelIndex: number, frictionSlip: number): void {
+    const wheel = this.wheels[wheelIndex];
+    if (!wheel) {
+      return;
+    }
+    // kept on the entry too, so a re-add (`attachWheel`) rebuilds the wheel with the live value
+    wheel.options = { ...wheel.options, frictionSlip };
+    this.nativeVehicle?.setWheelFrictionSlip(wheelIndex, frictionSlip);
+  }
+
+  getWheelFrictionSlip(wheelIndex: number): number {
+    return this.nativeVehicle?.wheelFrictionSlip(wheelIndex) ?? this.wheels[wheelIndex]?.options.frictionSlip ?? 0;
+  }
+
   setSteering(wheelIndex: number, steering: number): void {
     this.nativeVehicle?.setWheelSteering(wheelIndex, steering);
   }

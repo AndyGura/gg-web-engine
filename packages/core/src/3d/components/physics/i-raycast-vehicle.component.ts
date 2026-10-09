@@ -83,6 +83,16 @@ export interface IRaycastVehicleComponent<
    */
   applyBrake(wheelIndex: number, force: number): void;
 
+  /**
+   * Changes a wheel's `WheelOptions.frictionSlip` (tyre friction coefficient) on the live vehicle -
+   * a handbrake that lets the rear tyres slide, a car crossing onto gravel or ice, a tyre
+   * compound change. Takes effect from the next `simulate()` step on.
+   */
+  setWheelFrictionSlip(wheelIndex: number, frictionSlip: number): void;
+
+  /** The wheel's current `WheelOptions.frictionSlip` (see `setWheelFrictionSlip`). */
+  getWheelFrictionSlip(wheelIndex: number): number;
+
   isWheelTouchesGround(wheelIndex: number): boolean;
 
   getWheelTransform(wheelIndex: number): {
