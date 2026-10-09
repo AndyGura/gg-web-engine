@@ -167,7 +167,7 @@ export class ThreeDisplayObjectComponent
   }
 
   addToWorld(world: ThreeGgWorld): void {
-    world.visualScene.nativeScene?.add(this.nativeMesh);
+    world.visualScene.requireNativeScene('adding display objects to the world').add(this.nativeMesh);
   }
 
   removeFromWorld(world: ThreeGgWorld, dispose?: boolean): void {

@@ -1,4 +1,4 @@
-import { Environment2dOpts, IVisualScene2dComponent, RendererOptions } from '@gg-web-engine/core';
+import { Environment2dOpts, IVisualScene2dComponent, notInitializedError, RendererOptions } from '@gg-web-engine/core';
 import { ApplicationOptions, Container, Texture } from 'pixi.js';
 import type { PixiParallaxLayerComponent } from './pixi-parallax-layer.component';
 import { PixiFactory } from '../pixi-factory';
@@ -11,6 +11,18 @@ export class PixiSceneComponent implements IVisualScene2dComponent<PixiVisualTyp
 
   private _nativeContainer: Container | null = null;
   public get nativeContainer(): Container | null {
+    return this._nativeContainer;
+  }
+
+  /**
+   * The native world container, for code that needs it to exist: throws an error naming the fix
+   * (await `world.init()`) instead of silently dropping whatever was meant to go into it before
+   * `init()`.
+   */
+  public requireNativeContainer(action: string): Container {
+    if (!this._nativeContainer) {
+      throw notInitializedError('PixiSceneComponent', 'visualScene', action);
+    }
     return this._nativeContainer;
   }
 

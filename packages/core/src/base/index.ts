@@ -47,6 +47,7 @@ export * from './network/mover-correction';
 export * from './network/net-extrapolation';
 
 export * from './logging';
+export * from './setup-errors';
 
 export * from './models/audio-reverb';
 export * from './models/axis-directions';

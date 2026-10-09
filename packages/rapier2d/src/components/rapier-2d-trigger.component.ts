@@ -42,7 +42,10 @@ export class Rapier2dTriggerComponent
 
   addToWorld(world: Rapier2dGgWorld): void {
     if (world.physicsWorld != this.world) {
-      throw new Error('Rapier2D bodies cannot be shared between different worlds');
+      throw new Error(
+        "Rapier2D bodies cannot be shared between different worlds: this one was created by another world's factory. " +
+          'Create it with the factory of the world it is added to (`world.physicsWorld.factory`).',
+      );
     }
     this.overlaps.clear();
     this._nativeBody = this.world.nativeWorld!.createRigidBody(this._bodyDescr);

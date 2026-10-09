@@ -136,7 +136,9 @@ export class SurfaceFollowingEntity<PTypeDoc extends PhysicsTypeDocRepo3D = Phys
    */
   onSpawned(world: Gg3dWorld<Gg3dWorldTypeDocPPatch<PTypeDoc>>) {
     if (!world.physicsWorld) {
-      throw new Error('Cannot add surface following entity to the world without physics');
+      throw new Error(
+        'Cannot add a SurfaceFollowingEntity to a world without physics: pass a `physicsWorld` to the Gg3dWorld constructor',
+      );
     }
     super.onSpawned(world);
     for (const [collider] of this.colliders.entries()) {

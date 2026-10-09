@@ -83,7 +83,10 @@ export class Rapier3dRaycastVehicleComponent
 
   removeFromWorld(world: Rapier3dGgWorld, dispose?: boolean) {
     if (world.physicsWorld != this.world) {
-      throw new Error('Rapier3D bodies cannot be shared between different worlds');
+      throw new Error(
+        "Rapier3D bodies cannot be shared between different worlds: this one was created by another world's factory. " +
+          'Create it with the factory of the world it is added to (`world.physicsWorld.factory`).',
+      );
     }
     this.world.raycastVehicles.delete(this);
     if (this._nativeVehicle) {

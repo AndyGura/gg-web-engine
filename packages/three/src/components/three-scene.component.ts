@@ -2,6 +2,7 @@ import {
   Environment3dOpts,
   IVisualScene3dComponent,
   MAIN_RENDER_LAYER,
+  notInitializedError,
   RenderLayer,
   RendererOptions,
   SELF_VIEW_HIDDEN_RENDER_LAYER,
@@ -19,6 +20,17 @@ export class ThreeSceneComponent implements IVisualScene3dComponent<ThreeVisualT
 
   private _nativeScene: Scene | null = null;
   public get nativeScene(): Scene | null {
+    return this._nativeScene;
+  }
+
+  /**
+   * The native scene, for code that needs it to exist: throws an error naming the fix (await
+   * `world.init()`) instead of silently dropping whatever was meant to go into it before `init()`.
+   */
+  public requireNativeScene(action: string): Scene {
+    if (!this._nativeScene) {
+      throw notInitializedError('ThreeSceneComponent', 'visualScene', action);
+    }
     return this._nativeScene;
   }
 

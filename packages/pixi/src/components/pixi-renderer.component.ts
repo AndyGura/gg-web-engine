@@ -99,7 +99,7 @@ export class PixiRendererComponent extends IRenderer2dComponent<PixiVisualTypeDo
   addToWorld(world: PixiGgWorld): void {
     this.world = world;
     this.scene.renderers.add(this);
-    this.application.stage.addChild(this.scene.nativeContainer!);
+    this.application.stage.addChild(this.scene.requireNativeContainer('adding a renderer to the world'));
     if (this.physicsDebugViewActive) {
       this.debugView = new PixiPhysicsDebugView(world);
       this.application.stage.addChild(this.debugView.debugContainer);

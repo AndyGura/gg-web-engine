@@ -452,7 +452,10 @@ export class Rapier3dCharacterControllerComponent implements ICharacterControlle
 
   addToWorld(world: Rapier3dGgWorld): void {
     if (world.physicsWorld != this.world) {
-      throw new Error('Rapier3D bodies cannot be shared between different worlds');
+      throw new Error(
+        "Rapier3D bodies cannot be shared between different worlds: this one was created by another world's factory. " +
+          'Create it with the factory of the world it is added to (`world.physicsWorld.factory`).',
+      );
     }
     const nativeWorld = this.world.nativeWorld;
     this._nativeBody = nativeWorld.createRigidBody(this._bodyDescr);
@@ -515,7 +518,10 @@ export class Rapier3dCharacterControllerComponent implements ICharacterControlle
 
   removeFromWorld(world: Rapier3dGgWorld, dispose?: boolean): void {
     if (world.physicsWorld != this.world) {
-      throw new Error('Rapier3D bodies cannot be shared between different worlds');
+      throw new Error(
+        "Rapier3D bodies cannot be shared between different worlds: this one was created by another world's factory. " +
+          'Create it with the factory of the world it is added to (`world.physicsWorld.factory`).',
+      );
     }
     if (this._nativeController) {
       this.world.nativeWorld.removeCharacterController(this._nativeController);

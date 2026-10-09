@@ -266,7 +266,7 @@ export class MatterRigidBodyComponent implements IRigidBody2dComponent<MatterPhy
   }
 
   addToWorld(world: MatterGgWorld): void {
-    Composite.add(world.physicsWorld.matterWorld!, this.nativeBody);
+    Composite.add(world.physicsWorld.requireMatterWorld('adding bodies to the world'), this.nativeBody);
     this.addedToWorld = true;
     world.physicsWorld.added$.next(this);
   }

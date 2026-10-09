@@ -128,7 +128,7 @@ export class PixiDisplayObjectComponent
   }
 
   addToWorld(world: PixiGgWorld): void {
-    world.visualScene.nativeContainer?.addChild(this.nativeSprite);
+    world.visualScene.requireNativeContainer('adding display objects to the world').addChild(this.nativeSprite);
   }
 
   removeFromWorld(world: PixiGgWorld, dispose?: boolean): void {

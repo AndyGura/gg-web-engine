@@ -433,7 +433,46 @@ export abstract class GgWorld<
     GgWorld.worldCreated$.next(this);
   }
 
-  public async init() {
+  // the one in-flight/settled `init()` run - a second `init()` call returns it instead of
+  // initializing the scenes again and subscribing the tick loop a second time
+  private initPromise: Promise<void> | null = null;
+  private _initialized: boolean = false;
+
+  /** `true` once `init()` has resolved: every scene/physics world passed in is ready to use. */
+  public get isInitialized(): boolean {
+    return this._initialized;
+  }
+
+  /**
+   * Initializes the visual scene, physics world and audio scene (some, like a WASM physics engine,
+   * load asynchronously) and hooks the world clock up to the tick loop. Must be awaited before adding
+   * entities, loading a level or starting the world. Calling it again returns the same promise; a
+   * failed initialization can be retried.
+   */
+  public init(): Promise<void> {
+    if (!this.initPromise) {
+      const promise = this.initOnce().then(
+        () => {
+          this._initialized = true;
+        },
+        e => {
+          // let a retry start from scratch (e.g. after a transient WASM fetch failure)
+          if (this.initPromise === promise) {
+            this.initPromise = null;
+          }
+          if (this.visibilityChangeListener) {
+            document.removeEventListener('visibilitychange', this.visibilityChangeListener);
+            this.visibilityChangeListener = null;
+          }
+          throw e;
+        },
+      );
+      this.initPromise = promise;
+    }
+    return this.initPromise;
+  }
+
+  private async initOnce(): Promise<void> {
     if (typeof document !== 'undefined') {
       this.visibilityChangeListener = () => {
         const visible = document.visibilityState !== 'hidden';
@@ -521,7 +560,18 @@ export abstract class GgWorld<
     });
   }
 
+  /**
+   * Starts the world clock. Nothing ticks until `init()` has resolved, so call `await world.init()`
+   * first; starting a world whose `init()` was never called logs a warning.
+   */
   public start() {
+    if (!this.initPromise) {
+      console.warn(
+        `GgWorld "${this.name}": start() was called before init(), so nothing will tick (no entity ` +
+          `updates, no physics, no rendering) until the world is initialized. Call \`await world.init()\` ` +
+          `before \`world.start()\`.`,
+      );
+    }
     this.worldClock.start();
   }
 
