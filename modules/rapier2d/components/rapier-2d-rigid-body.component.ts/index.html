@@ -524,6 +524,34 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#applyforce-method" class="md-nav__link">
+    applyForce (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#applyimpulse-method" class="md-nav__link">
+    applyImpulse (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#applytorque-method" class="md-nav__link">
+    applyTorque (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#applytorqueimpulse-method" class="md-nav__link">
+    applyTorqueImpulse (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#clone-method" class="md-nav__link">
     clone (method)
   </a>
@@ -670,6 +698,10 @@
 <ul>
 <li><a href="#utils">utils</a></li>
 <li><a href="#rapier2drigidbodycomponent-class">Rapier2dRigidBodyComponent (class)</a><ul>
+<li><a href="#applyforce-method">applyForce (method)</a></li>
+<li><a href="#applyimpulse-method">applyImpulse (method)</a></li>
+<li><a href="#applytorque-method">applyTorque (method)</a></li>
+<li><a href="#applytorqueimpulse-method">applyTorqueImpulse (method)</a></li>
 <li><a href="#clone-method">clone (method)</a></li>
 <li><a href="#addtoworld-method">addToWorld (method)</a></li>
 <li><a href="#removefromworld-method">removeFromWorld (method)</a></li>
@@ -702,6 +734,25 @@
     protected _colliderOptions: Omit&lt;Omit&lt;Body2DOptions, 'bodyType'&gt;, 'mass'&gt;
   )
 }
+</code></pre>
+<h3 id="applyforce-method">applyForce (method)</h3>
+<p>Rapier keeps an added force until <code>resetForces</code> - <code>Rapier2dWorldComponent.simulate()</code> resets
+every body registered in its <code>forcedBodies</code> after stepping, which gives
+<code>IRigidBodyComponent.applyForce</code> its "next <code>simulate()</code> call only" lifetime.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">applyForce(force: Point2, worldPoint?: Point2): void
+</code></pre>
+<h3 id="applyimpulse-method">applyImpulse (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">applyImpulse(impulse: Point2, worldPoint?: Point2): void
+</code></pre>
+<h3 id="applytorque-method">applyTorque (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">applyTorque(torque: number): void
+</code></pre>
+<h3 id="applytorqueimpulse-method">applyTorqueImpulse (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">applyTorqueImpulse(torqueImpulse: number): void
 </code></pre>
 <h3 id="clone-method">clone (method)</h3>
 <p><strong>Signature</strong></p>

@@ -566,6 +566,20 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#setfrictionslip-method" class="md-nav__link">
+    setFrictionSlip (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#wheelcount-method" class="md-nav__link">
+    wheelCount (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#runtransformbinding-method" class="md-nav__link">
     runTransformBinding (method)
   </a>
@@ -662,6 +676,8 @@
 <li><a href="#getspeed-method">getSpeed (method)</a></li>
 <li><a href="#applytraction-method">applyTraction (method)</a></li>
 <li><a href="#applybrake-method">applyBrake (method)</a></li>
+<li><a href="#setfrictionslip-method">setFrictionSlip (method)</a></li>
+<li><a href="#wheelcount-method">wheelCount (method)</a></li>
 <li><a href="#runtransformbinding-method">runTransformBinding (method)</a></li>
 <li><a href="#resetto-method">resetTo (method)</a></li>
 <li><a href="#wheels-property">wheels (property)</a></li>
@@ -746,6 +762,18 @@ up to its connection point), <code>maxSuspensionForce</code> per <code>defaultMa
 <p>Sets the brake force of every wheel of <code>axle</code>, in Newtons per wheel - see <code>IRaycastVehicleComponent.applyBrake</code>.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public applyBrake(axle: 'front' | 'rear' | 'both', force: number)
+</code></pre>
+<h3 id="setfrictionslip-method">setFrictionSlip (method)</h3>
+<p>Sets the tyre friction coefficient of every wheel of <code>axle</code> - see
+<code>IRaycastVehicleComponent.setWheelFrictionSlip</code>. Lets a handbrake or a surface change retune
+grip without touching the physics backend.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public setFrictionSlip(axle: 'front' | 'rear' | 'both', frictionSlip: number)
+</code></pre>
+<h3 id="wheelcount-method">wheelCount (method)</h3>
+<p>How many wheels <code>axle</code> has (<code>'both'</code>: all wheels).</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public wheelCount(axle: 'front' | 'rear' | 'both'): number
 </code></pre>
 <h3 id="runtransformbinding-method">runTransformBinding (method)</h3>
 <p><strong>Signature</strong></p>
