@@ -693,7 +693,10 @@
 <h2 id="iaudiosource3dcomponentfactory-interface">IAudioSource3dComponentFactory (interface)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export interface IAudioSource3dComponentFactory&lt;ATypeDoc extends AudioTypeDocRepo3D = AudioTypeDocRepo3D&gt;
-  extends IAudioSourceComponentFactory&lt;Point3, Point4, ATypeDoc&gt; {}
+  extends IAudioSourceComponentFactory&lt;Point3, Point4, ATypeDoc&gt; {
+  /** Narrows the base `createSource` to take the 3D-only `panningModel` as well. */
+  createSource(descriptor: AudioSource3dDescriptor&lt;ATypeDoc['clip']&gt;): ATypeDoc['source']
+}
 </code></pre>
 <h2 id="idisplayobject3dcomponentfactory-class">IDisplayObject3dComponentFactory (class)</h2>
 <p><strong>Signature</strong></p>

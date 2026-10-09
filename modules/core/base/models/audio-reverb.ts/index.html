@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/base/screens/screen-manager.ts/">
+        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/base/models/audio-reverb.ts/">
       
       
       
@@ -20,7 +20,7 @@
     
     
       
-        <title>core/base/screens/screen-manager.ts - GG Web Engine</title>
+        <title>core/base/models/audio-reverb.ts - GG Web Engine</title>
       
     
     
@@ -75,7 +75,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#screen-manager-overview" class="md-skip">
+        <a href="#audio-reverb-overview" class="md-skip">
           Skip to content
         </a>
       
@@ -111,7 +111,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              core/base/screens/screen-manager.ts
+              core/base/models/audio-reverb.ts
             
           </span>
         </div>
@@ -501,8 +501,8 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#screen-manager-overview" class="md-nav__link">
-    screen-manager overview
+  <a href="#audio-reverb-overview" class="md-nav__link">
+    audio-reverb overview
   </a>
   
 </li>
@@ -516,189 +516,50 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#screenmanager-class" class="md-nav__link">
-    ScreenManager (class)
-  </a>
-  
-    <nav class="md-nav" aria-label="ScreenManager (class)">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#registerconsolecommands-static-method" class="md-nav__link">
-    registerConsoleCommands (static method)
+  <a href="#audioreverbsettings-type-alias" class="md-nav__link">
+    AudioReverbSettings (type alias)
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#push-method" class="md-nav__link">
-    push (method)
+  <a href="#default_audio_reverb" class="md-nav__link">
+    DEFAULT_AUDIO_REVERB
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#replace-method" class="md-nav__link">
-    replace (method)
+  <a href="#max_audio_reverb_decay" class="md-nav__link">
+    MAX_AUDIO_REVERB_DECAY
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#pop-method" class="md-nav__link">
-    pop (method)
+  <a href="#max_audio_reverb_pre_delay" class="md-nav__link">
+    MAX_AUDIO_REVERB_PRE_DELAY
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#popto-method" class="md-nav__link">
-    popTo (method)
+  <a href="#resolvedaudioreverbsettings-type-alias" class="md-nav__link">
+    ResolvedAudioReverbSettings (type alias)
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#reset-method" class="md-nav__link">
-    reset (method)
+  <a href="#resolveaudioreverbsettings" class="md-nav__link">
+    resolveAudioReverbSettings
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#dispose-method" class="md-nav__link">
-    dispose (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#dodispose-method" class="md-nav__link">
-    doDispose (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#request-method" class="md-nav__link">
-    request (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#transition-method" class="md-nav__link">
-    transition (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#attach-method" class="md-nav__link">
-    attach (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#fallbackfor-method" class="md-nav__link">
-    fallbackFor (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#removeaborted-method" class="md-nav__link">
-    removeAborted (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#setstack-method" class="md-nav__link">
-    setStack (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#cover-method" class="md-nav__link">
-    cover (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#uncover-method" class="md-nav__link">
-    uncover (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#enterscreen-method" class="md-nav__link">
-    enterScreen (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#exitscreen-method" class="md-nav__link">
-    exitScreen (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#forget-method" class="md-nav__link">
-    forget (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#safely-method" class="md-nav__link">
-    safely (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#onggstaticadded-method" class="md-nav__link">
-    onGgStaticAdded (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#describestack-method" class="md-nav__link">
-    describeStack (method)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#container-property" class="md-nav__link">
-    container (property)
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#screenmanageroptions-type-alias" class="md-nav__link">
-    ScreenManagerOptions (type alias)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#screenpushoptions-type-alias" class="md-nav__link">
-    ScreenPushOptions (type alias)
+  <a href="#sameaudioreverbshape" class="md-nav__link">
+    sameAudioReverbShape
   </a>
   
 </li>
@@ -726,241 +587,94 @@
   
 
 
-<h2 id="screen-manager-overview">screen-manager overview</h2>
+<h2 id="audio-reverb-overview">audio-reverb overview</h2>
+<p>Reverb on an audio bus - see <code>IAudioSceneComponent.setBusReverb</code>. Every field is optional;
+<code>resolveAudioReverbSettings</code> fills in the defaults (<code>DEFAULT_AUDIO_REVERB</code>), so every adapter
+agrees on them.</p>
+<p><code>wet</code>/<code>dry</code> are levels, changed smoothly and cheap to change every frame (fading the reverb in
+and out is just a series of <code>setBusReverb</code> calls with a changing <code>wet</code>). <code>decay</code>/<code>preDelay</code>/
+<code>damping</code> shape the reverb itself: changing one rebuilds it, which is not meant for every frame.</p>
 <hr />
 <h2 class="text-delta">Table of contents</h2>
 
 <ul>
 <li><a href="#utils">utils</a></li>
-<li><a href="#screenmanager-class">ScreenManager (class)</a><ul>
-<li><a href="#registerconsolecommands-static-method">registerConsoleCommands (static method)</a></li>
-<li><a href="#push-method">push (method)</a></li>
-<li><a href="#replace-method">replace (method)</a></li>
-<li><a href="#pop-method">pop (method)</a></li>
-<li><a href="#popto-method">popTo (method)</a></li>
-<li><a href="#reset-method">reset (method)</a></li>
-<li><a href="#dispose-method">dispose (method)</a></li>
-<li><a href="#dodispose-method">doDispose (method)</a></li>
-<li><a href="#request-method">request (method)</a></li>
-<li><a href="#transition-method">transition (method)</a></li>
-<li><a href="#attach-method">attach (method)</a></li>
-<li><a href="#fallbackfor-method">fallbackFor (method)</a></li>
-<li><a href="#removeaborted-method">removeAborted (method)</a></li>
-<li><a href="#setstack-method">setStack (method)</a></li>
-<li><a href="#cover-method">cover (method)</a></li>
-<li><a href="#uncover-method">uncover (method)</a></li>
-<li><a href="#enterscreen-method">enterScreen (method)</a></li>
-<li><a href="#exitscreen-method">exitScreen (method)</a></li>
-<li><a href="#forget-method">forget (method)</a></li>
-<li><a href="#safely-method">safely (method)</a></li>
-<li><a href="#onggstaticadded-method">onGgStaticAdded (method)</a></li>
-<li><a href="#describestack-method">describeStack (method)</a></li>
-<li><a href="#container-property">container (property)</a></li>
-</ul>
-</li>
-<li><a href="#screenmanageroptions-type-alias">ScreenManagerOptions (type alias)</a></li>
-<li><a href="#screenpushoptions-type-alias">ScreenPushOptions (type alias)</a></li>
+<li><a href="#audioreverbsettings-type-alias">AudioReverbSettings (type alias)</a></li>
+<li><a href="#default_audio_reverb">DEFAULT_AUDIO_REVERB</a></li>
+<li><a href="#max_audio_reverb_decay">MAX_AUDIO_REVERB_DECAY</a></li>
+<li><a href="#max_audio_reverb_pre_delay">MAX_AUDIO_REVERB_PRE_DELAY</a></li>
+<li><a href="#resolvedaudioreverbsettings-type-alias">ResolvedAudioReverbSettings (type alias)</a></li>
+<li><a href="#resolveaudioreverbsettings">resolveAudioReverbSettings</a></li>
+<li><a href="#sameaudioreverbshape">sameAudioReverbShape</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
-<h2 id="screenmanager-class">ScreenManager (class)</h2>
-<p>Keeps an app's screens as a stack and moves between them: the top screen is the one the player
-sees and controls, the ones below are covered (inert, silenced, by default paused) until they
-are on top again.</p>
-<pre><code class="language-ts">const screens = new ScreenManager()
-screens.push(new MenuScreen())
-// from the menu:   this.screens.push(new GameScreen('city'), { clearHistory: true });
-// from the game:   this.screens.push(new PauseScreen());
-// from the pause:  this.screens.pop();  or  this.screens.reset([new MenuScreen()]);
-</code></pre>
-<p>Every operation is one transition, and transitions run one after another in the order they were
-requested: first the screens that leave exit, top down; then the screen that ends up on top is
-entered if it never was, or uncovered. Screens placed below the top by <code>reset</code> enter
-later, when they are first uncovered. The screens that left stay on the page, inert and with their
-worlds paused, until the new top screen (or the loading view) shows, so there is no blank frame
-in between; only then are their layers removed, their teardowns run and their worlds disposed.</p>
-<p>Each operation returns a promise that resolves when its transition is over: with <code>true</code> when its
-top screen is shown (or the stack is empty), with <code>false</code> when a later request cancelled it. It
-rejects if the entered screen's <code>enter()</code> threw - that screen is then removed again and the one
-below it shown - unless <code>onEnterError</code> provided a screen to show instead.</p>
-<p>A plain <code>push</code> waits for the screens being entered before it. Any other operation cancels the
-screens it removes that were not shown yet, judged by the stack as the operations queued before
-it leave it: one entering is aborted (its <code>ctx.signal</code>), one whose operation still waits is never
-entered. So going back during a long load cancels the load, and <code>push(a); push(b); pop()</code> never
-enters <code>b</code>.</p>
-<p>Never await an operation from a screen's own <code>enter()</code> or <code>exit()</code>: it waits for the transition
-that is waiting for that very hook, and neither ends. Call it without awaiting instead.</p>
+<h2 id="audioreverbsettings-type-alias">AudioReverbSettings (type alias)</h2>
+<p>Reverb on an audio bus - see <code>IAudioSceneComponent.setBusReverb</code>. Every field is optional;
+<code>resolveAudioReverbSettings</code> fills in the defaults (<code>DEFAULT_AUDIO_REVERB</code>), so every adapter
+agrees on them.</p>
+<p><code>wet</code>/<code>dry</code> are levels, changed smoothly and cheap to change every frame (fading the reverb in
+and out is just a series of <code>setBusReverb</code> calls with a changing <code>wet</code>). <code>decay</code>/<code>preDelay</code>/
+<code>damping</code> shape the reverb itself: changing one rebuilds it, which is not meant for every frame.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class ScreenManager {
-  constructor(options: ScreenManagerOptions = {})
+<pre><code class="language-ts">export type AudioReverbSettings = {
+  /**
+   * Level of the reverberated signal, `&gt;= 0`. Default `0.3`. `0` means no reverb heard: once it
+   * has faded out the adapter stops processing it, while keeping the shape (`decay`/`preDelay`/
+   * `damping`) ready for the next fade-in.
+   */
+  wet?: number
+  /** Level of the direct (unreverberated) signal, `&gt;= 0`. Default `1`. */
+  dry?: number
+  /**
+   * Reverb time in seconds: how long the tail takes to fall by 60 dB (RT60), `&gt; 0` and `&lt;= 10`.
+   * Default `1.5`. Small rooms ~0.3-0.8, halls and tunnels ~1.5-3.
+   */
+  decay?: number
+  /**
+   * Seconds between the direct sound and the start of the tail, `0`-`1`. Default `0.02`. Larger
+   * values read as a bigger space (the first reflection comes from farther away).
+   */
+  preDelay?: number
+  /**
+   * How much faster high frequencies die out than low ones, `0`-`1`. Default `0.5`. `0` keeps the
+   * whole tail bright (hard surfaces: concrete, tiles, metal), `1` leaves only a dull rumble at its
+   * end (soft, absorbent spaces).
+   */
+  damping?: number
 }
 </code></pre>
-<h3 id="registerconsolecommands-static-method">registerConsoleCommands (static method)</h3>
+<h2 id="default_audio_reverb">DEFAULT_AUDIO_REVERB</h2>
+<p>The defaults <code>resolveAudioReverbSettings</code> fills in.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">private static registerConsoleCommands(): void
+<pre><code class="language-ts">export declare const DEFAULT_AUDIO_REVERB: Readonly&lt;Required&lt;AudioReverbSettings&gt;&gt;
 </code></pre>
-<h3 id="push-method">push (method)</h3>
-<p>Puts <code>screen</code> on top of the stack, covering the current top screen.</p>
+<h2 id="max_audio_reverb_decay">MAX_AUDIO_REVERB_DECAY</h2>
+<p>Upper bound of <code>AudioReverbSettings.decay</code>, seconds - the impulse response is held in memory.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">public push(screen: Screen, options: ScreenPushOptions = {}): Promise&lt;boolean&gt;
+<pre><code class="language-ts">export declare const MAX_AUDIO_REVERB_DECAY: 10
 </code></pre>
-<h3 id="replace-method">replace (method)</h3>
-<p>Puts <code>screen</code> in place of the top screen, which exits.</p>
+<h2 id="max_audio_reverb_pre_delay">MAX_AUDIO_REVERB_PRE_DELAY</h2>
+<p>Upper bound of <code>AudioReverbSettings.preDelay</code>, seconds.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">public replace(screen: Screen, options: ScreenPushOptions = {}): Promise&lt;boolean&gt;
+<pre><code class="language-ts">export declare const MAX_AUDIO_REVERB_PRE_DELAY: 1
 </code></pre>
-<h3 id="pop-method">pop (method)</h3>
-<p>Removes the top <code>count</code> screens (one by default); the screen below them is on top again.</p>
+<h2 id="resolvedaudioreverbsettings-type-alias">ResolvedAudioReverbSettings (type alias)</h2>
+<p><code>AudioReverbSettings</code> with every default filled in.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">public pop(count: number = 1): Promise&lt;boolean&gt;
+<pre><code class="language-ts">export type ResolvedAudioReverbSettings = Readonly&lt;Required&lt;AudioReverbSettings&gt;&gt;
 </code></pre>
-<h3 id="popto-method">popTo (method)</h3>
-<p>Removes every screen above <code>target</code>, which is a screen of the stack or a screen class (then the
-topmost screen of that class).</p>
+<h2 id="resolveaudioreverbsettings">resolveAudioReverbSettings</h2>
+<p>Fills in <code>AudioReverbSettings</code> defaults and validates the result - shared by adapters so they all
+agree on both. Throws a <code>RangeError</code> naming the first field out of its documented range.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">public popTo(target: Screen | ScreenClass): Promise&lt;boolean&gt;
+<pre><code class="language-ts">export declare function resolveAudioReverbSettings(settings: AudioReverbSettings): ResolvedAudioReverbSettings
 </code></pre>
-<h3 id="reset-method">reset (method)</h3>
-<p>Makes the stack exactly <code>screens</code> (bottom first) in one transition. Screens already in the
-stack that are listed again stay as they are; the rest exit. Only the last one is entered now.</p>
+<h2 id="sameaudioreverbshape">sameAudioReverbShape</h2>
+<p>Whether two resolved settings describe the same reverb shape (<code>decay</code>/<code>preDelay</code>/<code>damping</code>),
+i.e. differ in <code>wet</code>/<code>dry</code> at most.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">public reset(screens: Screen[], options: ScreenPushOptions = {}): Promise&lt;boolean&gt;
-</code></pre>
-<h3 id="dispose-method">dispose (method)</h3>
-<p>Exits every screen and removes what the manager added to the page.</p>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">public dispose(): Promise&lt;void&gt;
-</code></pre>
-<h3 id="dodispose-method">doDispose (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">private async doDispose(): Promise&lt;void&gt;
-</code></pre>
-<h3 id="request-method">request (method)</h3>
-<p>Queues one operation. <code>wanted</code> computes the stack the operation leads to from the one before
-it: applied now to <code>projected</code> (the stack once every queued operation has run), it tells which
-screens this operation removes; applied again when the operation's turn comes, to the real
-stack, it drives the transition.</p>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">private request(
-    supersedes: boolean,
-    wanted: (stack: readonly Screen[]) =&gt; Screen[],
-    options: ScreenPushOptions,
-  ): Promise&lt;boolean&gt;
-</code></pre>
-<h3 id="transition-method">transition (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">private async transition(wanted: Screen[], options: ScreenPushOptions): Promise&lt;boolean&gt;
-</code></pre>
-<h3 id="attach-method">attach (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">private attach(screen: Screen): void
-</code></pre>
-<h3 id="fallbackfor-method">fallbackFor (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">private fallbackFor(error: unknown, screen: Screen): Screen | null
-</code></pre>
-<h3 id="removeaborted-method">removeAborted (method)</h3>
-<p>A request that aborted the entering screen and then failed before its transition took that
-screen out leaves it on top, never shown: remove it and give the screen below back.</p>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">private async removeAborted(): Promise&lt;void&gt;
-</code></pre>
-<h3 id="setstack-method">setStack (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">private setStack(stack: Screen[]): void
-</code></pre>
-<h3 id="cover-method">cover (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">private cover(screen: Screen, pauseWorlds: boolean): void
-</code></pre>
-<h3 id="uncover-method">uncover (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">private uncover(screen: Screen): void
-</code></pre>
-<h3 id="enterscreen-method">enterScreen (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">private async enterScreen(
-    screen: Screen,
-    options: ScreenPushOptions,
-    onShown: () =&gt; void,
-  ): Promise&lt;'entered' | 'aborted' | { error: unknown }&gt;
-</code></pre>
-<h3 id="exitscreen-method">exitScreen (method)</h3>
-<p>Takes a screen out of the stack. One that entered gets <code>exit()</code> and then waits, inert and
-paused, for the caller to tear it down (returns <code>true</code>); one that never finished entering is
-torn down at once, its layer with it.</p>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">private async exitScreen(screen: Screen): Promise&lt;boolean&gt;
-</code></pre>
-<h3 id="forget-method">forget (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">private forget(screen: Screen): void
-</code></pre>
-<h3 id="safely-method">safely (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">private safely(run: () =&gt; void): void
-</code></pre>
-<h3 id="onggstaticadded-method">onGgStaticAdded (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">private onGgStaticAdded(): void
-</code></pre>
-<h3 id="describestack-method">describeStack (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">private describeStack(indent: string): string
-</code></pre>
-<h3 id="container-property">container (property)</h3>
-<p>The element the screen layers are in.</p>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly container: HTMLElement
-</code></pre>
-<h2 id="screenmanageroptions-type-alias">ScreenManagerOptions (type alias)</h2>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type ScreenManagerOptions = {
-  /**
-   * The element screens are laid out in. By default the manager creates one covering the viewport
-   * and adds it to `document.body`. An element of the app's own has to be positioned
-   * (`position: relative` or the like), since screen layers are placed absolutely inside it.
-   */
-  container?: HTMLElement
-  /**
-   * Creates the view shown while a screen is entering. By default the game-wide default view (see
-   * `LoadingScreen.setDefaultView`, `DefaultLoadingView` unless set); `null` for none (screens that
-   * show their own progress).
-   */
-  loadingView?: (() =&gt; LoadingView) | null
-  /**
-   * How long, in milliseconds, a screen may take to enter before the loading view appears - so a
-   * screen that is ready at once never flashes it. 150 by default.
-   */
-  loadingDelay?: number
-  /**
-   * Once the loading view has appeared, the least time in milliseconds it stays, so a screen ready
-   * just after the delay doesn't flash it for a frame. 300 by default.
-   */
-  loadingMinDuration?: number
-  /**
-   * Called when a screen's `enter()` throws (not when it is aborted). Return a screen to show in its
-   * place - an error screen, the main menu - so a failed `replace` or `clearHistory` push doesn't
-   * leave an empty stack. The operation then resolves with `false` instead of rejecting. Called once
-   * per operation: if the returned screen fails too, the operation rejects.
-   */
-  onEnterError?: (error: unknown, screen: Screen) =&gt; Screen | null | undefined | void
-}
-</code></pre>
-<h2 id="screenpushoptions-type-alias">ScreenPushOptions (type alias)</h2>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type ScreenPushOptions = {
-  /** Removes every screen currently in the stack: the pushed screen becomes the only one. */
-  clearHistory?: boolean
-  /**
-   * Whether the worlds of the screen that gets covered are paused. `true` by default. A world whose
-   * `localPauseAllowed` is `false` keeps running regardless, and input of covered worlds is
-   * switched off regardless.
-   */
-  pauseBelow?: boolean
-  /** Overrides the manager's `loadingView` for this transition. */
-  loadingView?: (() =&gt; LoadingView) | null
-}
+<pre><code class="language-ts">export declare function sameAudioReverbShape(a: ResolvedAudioReverbSettings, b: ResolvedAudioReverbSettings): boolean
 </code></pre>
 
 
