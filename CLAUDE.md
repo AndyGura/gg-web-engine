@@ -101,7 +101,10 @@ package's internals, only how the repo is built, tested, reviewed, or released -
 `packages/core/AGENTS.md` is generated from `gg-engine-app-development`'s `SKILL.md` (it ships in
 the core tarball for non-Claude agents). After editing that skill, run `npm run agents-md` and
 commit the regenerated file in the same change; `npm run check:agents-md` fails PR CI and the
-release job when the two differ. Never edit `AGENTS.md` by hand.
+release job when the two differ. Never edit `AGENTS.md` by hand. The same script
+(`etc/generate_agent_docs.mjs --llms`) builds the docs site's `llms.txt`/`llms-full.txt` from that
+skill, `documentation/landing.md`, `examples/examples.json` and the `player-character` examples at
+release time; nothing about them is committed.
 
 This does **not** apply to `gg-engine-app-development` or `gg-engine-level-json`: lessons learned
 while building an end-application (or authoring its level JSON content) on top of the engine

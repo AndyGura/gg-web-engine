@@ -97,6 +97,11 @@ pitfalls:
 npx skills add AndyGura/gg-web-engine --skill gg-engine-app-development -y
 ```
 
+Other agents get the same guide without a step: it ships as
+`node_modules/@gg-web-engine/core/AGENTS.md`. Before installing anything, an agent can read the
+whole engine in one request from [llms-full.txt](llms-full.txt) (pitch, install lines, the guide
+and one complete game per dimension), or start from the [llms.txt](llms.txt) index.
+
 ## Status
 
 The engine is experimental: versions are `0.0.N` and the API can change between releases. The
