@@ -168,6 +168,9 @@ export interface PlaySoundNodeSettings {
   /** Output bus/category (e.g. `"sfx"`). Defaults to `"sfx"`. */
   bus?: string
 
+  /** Voice priority, higher is more important - see `AudioSourceDescriptor.priority`. Defaults to `0`. */
+  priority?: number
+
   /**
    * Fixed world-space position (`Point2`/`Point3`, matching the world's own dimensionality) to
    * play at, overriding whatever the triggering payload carries. Leave unset to play at the

@@ -939,6 +939,12 @@ export interface Sound3DSettings {
   /** Whether to start playing as soon as the level loads. Defaults to `true`. */
   autoplay?: boolean
 
+  /** Voice priority, higher is more important - see `AudioSourceDescriptor.priority`. Defaults to `0`. */
+  priority?: number
+
+  /** `'HRTF'` or `'equalpower'` - see `AudioPanningModel`. Defaults to the audio scene's `defaultPanningModel`. */
+  panningModel?: AudioPanningModel
+
   refDistance?: number
   maxDistance?: number
   rolloffFactor?: number

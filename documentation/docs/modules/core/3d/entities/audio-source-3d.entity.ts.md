@@ -56,7 +56,7 @@ playback ends. The returned entity is only useful for advanced cases (e.g. stopp
 ```ts
 public static playOneShot<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo>(
     world: Gg3dWorld<TypeDoc>,
-    descriptor: AudioSourceDescriptor<TypeDoc['aTypeDoc']['clip']>,
+    descriptor: AudioSource3dDescriptor<TypeDoc['aTypeDoc']['clip']>,
     position: Point3,
     rotation: Point4 = Qtrn.O,
   ): AudioSource3dEntity<TypeDoc>

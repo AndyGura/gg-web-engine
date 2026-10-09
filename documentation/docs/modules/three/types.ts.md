@@ -1,6 +1,6 @@
 ---
 title: three/types.ts
-nav_order: 222
+nav_order: 223
 parent: Modules
 ---
 

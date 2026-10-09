@@ -1,6 +1,6 @@
 ---
 title: matter/poly-decomp.d.ts
-nav_order: 181
+nav_order: 182
 parent: Modules
 ---
 

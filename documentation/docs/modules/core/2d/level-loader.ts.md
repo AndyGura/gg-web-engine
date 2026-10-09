@@ -435,6 +435,7 @@ export interface Sound2DSettings {
   spatial?: boolean
   bus?: string
   autoplay?: boolean
+  priority?: number
   refDistance?: number
   maxDistance?: number
   rolloffFactor?: number

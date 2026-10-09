@@ -28,6 +28,8 @@ where one exists.
 
 ## [Unreleased]
 
+## [0.0.80] - 2026-10-09
+
 ### Added
 - Audio voice budget. `world.audioScene.maxVoices` (default `Infinity`, so nothing changes until
   an app sets it) bounds how many playing sources are rendered at once. Beyond it the lowest-ranked
@@ -900,7 +902,8 @@ where one exists.
 
 First published version: `@gg-web-engine/core`, `three`, `pixi`, `ammo`, and `matter`.
 
-[Unreleased]: https://github.com/AndyGura/gg-web-engine/compare/0.0.79...HEAD
+[Unreleased]: https://github.com/AndyGura/gg-web-engine/compare/0.0.80...HEAD
+[0.0.80]: https://github.com/AndyGura/gg-web-engine/compare/0.0.79...0.0.80
 [0.0.79]: https://github.com/AndyGura/gg-web-engine/compare/0.0.78...0.0.79
 [0.0.78]: https://github.com/AndyGura/gg-web-engine/compare/0.0.77...0.0.78
 [0.0.77]: https://github.com/AndyGura/gg-web-engine/compare/0.0.76...0.0.77

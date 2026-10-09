@@ -11,11 +11,28 @@ parent: Modules
 <h2 class="text-delta">Table of contents</h2>
 
 - [utils](#utils)
+  - [AudioVoiceCounts (interface)](#audiovoicecounts-interface)
   - [IAudioSceneComponent (interface)](#iaudioscenecomponent-interface)
 
 ---
 
 # utils
+
+## AudioVoiceCounts (interface)
+
+How many sources of one audio scene are playing, and how many of those are heard - see
+`IAudioSceneComponent.maxVoices`. `playing` counts every source between `play()` and its
+`pause()`/`stop()`/end; `audible + virtual === playing`.
+
+**Signature**
+
+```ts
+export interface AudioVoiceCounts {
+  playing: number
+  audible: number
+  virtual: number
+}
+```
 
 ## IAudioSceneComponent (interface)
 
@@ -60,6 +77,29 @@ export interface IAudioSceneComponent<D, R, ATypeDoc extends AudioTypeDocRepo<D,
   setBusVolume(bus: string, volume: number): void
 
   /**
+   * Puts a reverb on one bus (`settings`, defaults filled in by `resolveAudioReverbSettings`), or
+   * takes it off (`null`). One reverb per bus, shared by every source routed through it, applied
+   * after the bus volume: the bus's signal is split into a direct part (`dry`) and a reverberated
+   * one (`wet`), both mixed into the master output.
+   *
+   * Made to be called every frame: `wet`/`dry` changes are smoothed like every other level, so a
+   * game fades the reverb in and out (a car entering and leaving a tunnel) by passing a changing
+   * `wet`. Each call replaces the bus's settings as a whole - a field left out gets its default,
+   * not its previous value. Changing `decay`/`preDelay`/`damping` rebuilds the reverb (the old one
+   * fades out under the new one), which costs a little on the main thread - keep them constant
+   * while fading. The reverb is built when its settings are first given, `wet: 0` included, so a
+   * game can set it up front at `wet: 0` and pay that cost at load time.
+   *
+   * At `wet: 0` (and after `null`) the reverb fades out and then stops costing any audio
+   * processing; `null` also fades `dry` back to `1` and forgets the settings.
+   * @throws RangeError when a setting is out of its documented range (see `AudioReverbSettings`)
+   */
+  setBusReverb(bus: string, settings: AudioReverbSettings | null): void
+
+  /** The bus's current reverb settings, every default filled in, or `null` when it has none. */
+  getBusReverb(bus: string): ResolvedAudioReverbSettings | null
+
+  /**
    * The entity/component currently acting as the "ears" for spatial audio - normally a
    * renderer's camera. `null` means no spatial reference is set: positional sources are silent
    * (or rendered at a fixed neutral pan, depending on the adapter) while non-spatial sources
@@ -68,6 +108,24 @@ export interface IAudioSceneComponent<D, R, ATypeDoc extends AudioTypeDocRepo<D,
    * (without guessing) once more than one renderer exists and no listener has been set.
    */
   readonly activeListener: IPositionable<D, R> | null
+
+  /**
+   * Voice budget: how many playing sources this scene renders at once. Beyond it, sources are
+   * ranked and the lowest ones are made virtual (`IAudioSourceComponent.isVirtual`): silent and
+   * free of audio processing, their playback position still advancing, and faded back in where
+   * they would be once they rank inside the budget again. Ranking, re-evaluated every `update()`
+   * and whenever a source starts: an audible source before a silent one (effective gain ~0 - a
+   * muted loop never takes a voice from one that is heard), then higher
+   * `IAudioSourceComponent.priority`, then the louder at the listener (volume x bus volume x
+   * distance attenuation from the source's own distance model; cones are ignored), with a small
+   * bias towards the voices already heard so near-equal sources don't swap every frame, then the
+   * older source. Defaults to `Infinity` (every playing source is rendered, nothing is ranked);
+   * a non-negative integer, changeable at any time.
+   */
+  maxVoices: number
+
+  /** Current playing/audible/virtual source counts, for debugging - see {@link AudioVoiceCounts}. */
+  readonly voiceCounts: AudioVoiceCounts
 
   setActiveListener(target: IPositionable<D, R> | null): void
 

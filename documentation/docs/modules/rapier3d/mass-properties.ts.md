@@ -1,6 +1,6 @@
 ---
 title: rapier3d/mass-properties.ts
-nav_order: 208
+nav_order: 209
 parent: Modules
 ---
 

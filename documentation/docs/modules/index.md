@@ -167,6 +167,7 @@ has_children: true
 - [core/base/math/point3.ts](/gg-web-engine/modules/core/base/math/point3.ts)
 - [core/base/math/quaternion.ts](/gg-web-engine/modules/core/base/math/quaternion.ts)
 - [core/base/math/splines.ts](/gg-web-engine/modules/core/base/math/splines.ts)
+- [core/base/models/audio-reverb.ts](/gg-web-engine/modules/core/base/models/audio-reverb.ts)
 - [core/base/models/axis-directions.ts](/gg-web-engine/modules/core/base/models/axis-directions.ts)
 - [core/base/models/body-options.ts](/gg-web-engine/modules/core/base/models/body-options.ts)
 - [core/base/models/collision-event.ts](/gg-web-engine/modules/core/base/models/collision-event.ts)

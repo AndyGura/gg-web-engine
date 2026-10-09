@@ -1,6 +1,6 @@
 {
   "name": "@gg-web-engine/mobile-controls",
-  "version": "0.0.79",
+  "version": "0.0.80",
   "description": "On-screen touch controls for gg-web-engine: buttons, sticks, d-pads, look areas and tilt steering over the game canvas",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -34,7 +34,7 @@
   "homepage": "https://github.com/AndyGura/gg-web-engine#readme",
   "dependencies": {},
   "devDependencies": {
-    "@gg-web-engine/core": "0.0.79",
+    "@gg-web-engine/core": "0.0.80",
     "@types/jest": "^30.0.0",
     "@types/node": "^26.4.0",
     "jest": "^30.5.0",
@@ -45,7 +45,7 @@
     "typescript": "~6.0.3"
   },
   "peerDependencies": {
-    "@gg-web-engine/core": "0.0.79",
+    "@gg-web-engine/core": "0.0.80",
     "rxjs": "7.8.2"
   },
   "jest": {

@@ -1,6 +1,6 @@
 {
   "name": "@gg-web-engine/pixi",
-  "version": "0.0.79",
+  "version": "0.0.80",
   "description": "Pixi.js v8 rendering adapter for gg-web-engine: 2D scenes, sprites, text and parallax layers",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -43,7 +43,7 @@
     "@types/jest": "^30.0.0",
     "@types/node": "^26.4.0",
     "@types/offscreencanvas": "2019.7.3",
-    "@gg-web-engine/core": "0.0.79",
+    "@gg-web-engine/core": "0.0.80",
     "jest": "^30.5.0",
     "jest-environment-jsdom": "^30.5.0",
     "prettier": "^3.9.6",
@@ -52,7 +52,7 @@
     "typescript": "~6.0.3"
   },
   "peerDependencies": {
-    "@gg-web-engine/core": "0.0.79",
+    "@gg-web-engine/core": "0.0.80",
     "rxjs": "7.8.2"
   },
   "jest": {

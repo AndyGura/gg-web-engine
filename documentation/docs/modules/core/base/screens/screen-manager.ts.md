@@ -1,6 +1,6 @@
 ---
 title: core/base/screens/screen-manager.ts
-nav_order: 167
+nav_order: 168
 parent: Modules
 ---
 
@@ -30,6 +30,7 @@ parent: Modules
     - [uncover (method)](#uncover-method)
     - [enterScreen (method)](#enterscreen-method)
     - [exitScreen (method)](#exitscreen-method)
+    - [forget (method)](#forget-method)
     - [safely (method)](#safely-method)
     - [onGgStaticAdded (method)](#onggstaticadded-method)
     - [describeStack (method)](#describestack-method)
@@ -56,11 +57,11 @@ screens.push(new MenuScreen())
 ```
 
 Every operation is one transition, and transitions run one after another in the order they were
-requested: first the screens that leave exit, top down (so a game being replaced has given up
-its renderer and audio before the next screen allocates its own); then the screen that ends up on
-top is entered if it never was, or uncovered. Screens placed below the top by `reset` enter
-later, when they are first uncovered. The layers of the screens that left stay on the page until
-the new top screen (or the loading view) shows, so there is no blank frame in between.
+requested: first the screens that leave exit, top down; then the screen that ends up on top is
+entered if it never was, or uncovered. Screens placed below the top by `reset` enter
+later, when they are first uncovered. The screens that left stay on the page, inert and with their
+worlds paused, until the new top screen (or the loading view) shows, so there is no blank frame
+in between; only then are their layers removed, their teardowns run and their worlds disposed.
 
 Each operation returns a promise that resolves when its transition is over: with `true` when its
 top screen is shown (or the stack is empty), with `false` when a later request cancelled it. It
@@ -252,10 +253,22 @@ private async enterScreen(
 
 ### exitScreen (method)
 
+Takes a screen out of the stack. One that entered gets `exit()` and then waits, inert and
+paused, for the caller to tear it down (returns `true`); one that never finished entering is
+torn down at once, its layer with it.
+
 **Signature**
 
 ```ts
-private async exitScreen(screen: Screen, entered: boolean = true, keepLayer: boolean = false): Promise<void>
+private async exitScreen(screen: Screen): Promise<boolean>
+```
+
+### forget (method)
+
+**Signature**
+
+```ts
+private forget(screen: Screen): void
 ```
 
 ### safely (method)

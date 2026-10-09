@@ -5,6 +5,7 @@ has_children: true
 
 <h2 class="text-delta">Directory table of contents</h2>
 
+- [core/base/models/audio-reverb.ts](/gg-web-engine/modules/core/base/models/audio-reverb.ts)
 - [core/base/models/axis-directions.ts](/gg-web-engine/modules/core/base/models/axis-directions.ts)
 - [core/base/models/body-options.ts](/gg-web-engine/modules/core/base/models/body-options.ts)
 - [core/base/models/collision-event.ts](/gg-web-engine/modules/core/base/models/collision-event.ts)

@@ -1,6 +1,6 @@
 ---
 title: core/dev/performance-meter.entity.ts
-nav_order: 173
+nav_order: 174
 parent: Modules
 ---
 

@@ -558,7 +558,15 @@
 <h2 id="iaudioscene3dcomponent-interface">IAudioScene3dComponent (interface)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export interface IAudioScene3dComponent&lt;ATypeDoc extends AudioTypeDocRepo3D = AudioTypeDocRepo3D&gt;
-  extends IAudioSceneComponent&lt;Point3, Point4, ATypeDoc&gt; {}
+  extends IAudioSceneComponent&lt;Point3, Point4, ATypeDoc&gt; {
+  /**
+   * Panning model given to every 3D source created from now on whose descriptor sets none
+   * (`AudioSource3dDescriptor.panningModel`). Defaults to `'HRTF'`. Set it once at startup, e.g. to
+   * `'equalpower'` on mobile, to switch a whole game over in one place; sources that already exist
+   * keep theirs (`IAudioSource3dComponent.panningModel` changes one).
+   */
+  defaultPanningModel: AudioPanningModel
+}
 </code></pre>
 
 

@@ -6,10 +6,10 @@
     "start": "webpack serve --config ./webpack.dev.config.js"
   },
   "dependencies": {
-    "@gg-web-engine/core": "0.0.79",
-    "@gg-web-engine/matter": "0.0.79",
-    "@gg-web-engine/pixi": "0.0.79",
-    "@gg-web-engine/rapier2d": "0.0.79",
+    "@gg-web-engine/core": "0.0.80",
+    "@gg-web-engine/matter": "0.0.80",
+    "@gg-web-engine/pixi": "0.0.80",
+    "@gg-web-engine/rapier2d": "0.0.80",
     "rxjs": "7.8.2"
   },
   "devDependencies": {

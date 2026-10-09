@@ -56,7 +56,10 @@ export type DisplayObject3dOpts<Tex> = {
 
 ```ts
 export interface IAudioSource3dComponentFactory<ATypeDoc extends AudioTypeDocRepo3D = AudioTypeDocRepo3D>
-  extends IAudioSourceComponentFactory<Point3, Point4, ATypeDoc> {}
+  extends IAudioSourceComponentFactory<Point3, Point4, ATypeDoc> {
+  /** Narrows the base `createSource` to take the 3D-only `panningModel` as well. */
+  createSource(descriptor: AudioSource3dDescriptor<ATypeDoc['clip']>): ATypeDoc['source']
+}
 ```
 
 ## IDisplayObject3dComponentFactory (class)
