@@ -1,6 +1,6 @@
 {
   "name": "@gg-web-engine/multiplayer",
-  "version": "0.0.80",
+  "version": "0.0.81",
   "description": "Peer-to-peer shared-world multiplayer for gg-web-engine: 2-8 players in one physics world over WebRTC, with Firebase or BroadcastChannel signaling",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -38,7 +38,7 @@
   },
   "homepage": "https://github.com/AndyGura/gg-web-engine#readme",
   "devDependencies": {
-    "@gg-web-engine/core": "0.0.80",
+    "@gg-web-engine/core": "0.0.81",
     "@types/jest": "^30.0.0",
     "@types/node": "^26.4.0",
     "firebase": "12.19.0",
@@ -50,7 +50,7 @@
     "typescript": "~6.0.3"
   },
   "peerDependencies": {
-    "@gg-web-engine/core": "0.0.80",
+    "@gg-web-engine/core": "0.0.81",
     "firebase": "12.19.0",
     "rxjs": "7.8.2"
   },

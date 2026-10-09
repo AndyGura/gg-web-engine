@@ -30,6 +30,7 @@ parent: Modules
     - [raycastVehicles (property)](#raycastvehicles-property)
     - [maxSubSteps (property)](#maxsubsteps-property)
     - [fixedTimeStep (property)](#fixedtimestep-property)
+    - [forcedBodies (property)](#forcedbodies-property)
     - [lockedCollisionGroups (property)](#lockedcollisiongroups-property)
 
 ---
@@ -277,6 +278,17 @@ stand still for the rest, so whatever rides on it would get kicked forward and d
 
 ```ts
 fixedTimeStep: number | undefined
+```
+
+### forcedBodies (property)
+
+Bodies with a force/torque applied this tick (`IRigidBodyComponent.applyForce`/`applyTorque`),
+reset after the last substep of `simulate()` - Rapier otherwise keeps an added force forever.
+
+**Signature**
+
+```ts
+readonly forcedBodies: Set<Rapier3dRigidBodyComponent>
 ```
 
 ### lockedCollisionGroups (property)

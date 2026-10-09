@@ -27,6 +27,7 @@ parent: Modules
     - [mainCollisionGroup (property)](#maincollisiongroup-property)
     - [\_nativeWorld (property)](#_nativeworld-property)
     - [handleIdEntityMap (property)](#handleidentitymap-property)
+    - [forcedBodies (property)](#forcedbodies-property)
     - [lockedCollisionGroups (property)](#lockedcollisiongroups-property)
 
 ---
@@ -207,6 +208,17 @@ _nativeWorld: World | null
 
 ```ts
 readonly handleIdEntityMap: Map<number, Rapier2dWorldChild>
+```
+
+### forcedBodies (property)
+
+Bodies with a force/torque applied this tick (`IRigidBodyComponent.applyForce`/`applyTorque`),
+reset after `simulate()` steps - Rapier otherwise keeps an added force forever.
+
+**Signature**
+
+```ts
+readonly forcedBodies: Set<Rapier2dRigidBodyComponent>
 ```
 
 ### lockedCollisionGroups (property)

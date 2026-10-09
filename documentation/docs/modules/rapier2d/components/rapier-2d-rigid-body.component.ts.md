@@ -12,6 +12,10 @@ parent: Modules
 
 - [utils](#utils)
   - [Rapier2dRigidBodyComponent (class)](#rapier2drigidbodycomponent-class)
+    - [applyForce (method)](#applyforce-method)
+    - [applyImpulse (method)](#applyimpulse-method)
+    - [applyTorque (method)](#applytorque-method)
+    - [applyTorqueImpulse (method)](#applytorqueimpulse-method)
     - [clone (method)](#clone-method)
     - [addToWorld (method)](#addtoworld-method)
     - [removeFromWorld (method)](#removefromworld-method)
@@ -47,6 +51,42 @@ export declare class Rapier2dRigidBodyComponent {
     protected _colliderOptions: Omit<Omit<Body2DOptions, 'bodyType'>, 'mass'>
   )
 }
+```
+
+### applyForce (method)
+
+Rapier keeps an added force until `resetForces` - `Rapier2dWorldComponent.simulate()` resets
+every body registered in its `forcedBodies` after stepping, which gives
+`IRigidBodyComponent.applyForce` its "next `simulate()` call only" lifetime.
+
+**Signature**
+
+```ts
+applyForce(force: Point2, worldPoint?: Point2): void
+```
+
+### applyImpulse (method)
+
+**Signature**
+
+```ts
+applyImpulse(impulse: Point2, worldPoint?: Point2): void
+```
+
+### applyTorque (method)
+
+**Signature**
+
+```ts
+applyTorque(torque: number): void
+```
+
+### applyTorqueImpulse (method)
+
+**Signature**
+
+```ts
+applyTorqueImpulse(torqueImpulse: number): void
 ```
 
 ### clone (method)

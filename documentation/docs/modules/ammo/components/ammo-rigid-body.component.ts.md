@@ -13,6 +13,11 @@ parent: Modules
 - [utils](#utils)
   - [AmmoRigidBodyComponent (class)](#ammorigidbodycomponent-class)
     - [applyWorldTransform (method)](#applyworldtransform-method)
+    - [applyForce (method)](#applyforce-method)
+    - [applyImpulse (method)](#applyimpulse-method)
+    - [applyTorque (method)](#applytorque-method)
+    - [applyTorqueImpulse (method)](#applytorqueimpulse-method)
+    - [relativeToCenterOfMass (method)](#relativetocenterofmass-method)
     - [emitCollisionStart (method)](#emitcollisionstart-method)
     - [emitCollisionEnd (method)](#emitcollisionend-method)
     - [clone (method)](#clone-method)
@@ -77,6 +82,56 @@ stale one:
 
 ```ts
 protected applyWorldTransform(transform: Ammo.btTransform): void
+```
+
+### applyForce (method)
+
+Bullet accumulates applied forces/torques in the body (`m_totalForce`/`m_totalTorque`), uses
+them in every internal substep of the next `stepSimulation` and clears them at its end - exactly
+`IRigidBodyComponent.applyForce`'s "the next `simulate()` call, then gone" lifetime, so no
+bookkeeping is needed here. A force at a point is `applyForce(force, rel_pos)`, `rel_pos` being
+the point relative to the centre of mass in world orientation. Bullet only clears the
+accumulators of bodies in the world, so a body outside one ignores the call (per the contract)
+rather than banking every tick's force to fire at once after `addToWorld`.
+
+**Signature**
+
+```ts
+applyForce(force: Point3, worldPoint?: Point3): void
+```
+
+### applyImpulse (method)
+
+**Signature**
+
+```ts
+applyImpulse(impulse: Point3, worldPoint?: Point3): void
+```
+
+### applyTorque (method)
+
+**Signature**
+
+```ts
+applyTorque(torque: Point3): void
+```
+
+### applyTorqueImpulse (method)
+
+**Signature**
+
+```ts
+applyTorqueImpulse(torqueImpulse: Point3): void
+```
+
+### relativeToCenterOfMass (method)
+
+A fresh `btVector3` (caller destroys it) of `worldPoint` relative to the centre of mass, or zero without one.
+
+**Signature**
+
+```ts
+private relativeToCenterOfMass(worldPoint?: Point3): Ammo.btVector3
 ```
 
 ### emitCollisionStart (method)

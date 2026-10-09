@@ -524,6 +524,34 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#applyforce-method" class="md-nav__link">
+    applyForce (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#applyimpulse-method" class="md-nav__link">
+    applyImpulse (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#applytorque-method" class="md-nav__link">
+    applyTorque (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#applytorqueimpulse-method" class="md-nav__link">
+    applyTorqueImpulse (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#updatecollisionfilter-method" class="md-nav__link">
     updateCollisionFilter (method)
   </a>
@@ -670,6 +698,10 @@
 <ul>
 <li><a href="#utils">utils</a></li>
 <li><a href="#matterrigidbodycomponent-class">MatterRigidBodyComponent (class)</a><ul>
+<li><a href="#applyforce-method">applyForce (method)</a></li>
+<li><a href="#applyimpulse-method">applyImpulse (method)</a></li>
+<li><a href="#applytorque-method">applyTorque (method)</a></li>
+<li><a href="#applytorqueimpulse-method">applyTorqueImpulse (method)</a></li>
 <li><a href="#updatecollisionfilter-method">updateCollisionFilter (method)</a></li>
 <li><a href="#clone-method">clone (method)</a></li>
 <li><a href="#addtoworld-method">addToWorld (method)</a></li>
@@ -702,6 +734,30 @@
     public readonly canSleep: boolean = true
   )
 }
+</code></pre>
+<h3 id="applyforce-method">applyForce (method)</h3>
+<p>matter-js accumulates <code>body.force</code>/<code>body.torque</code> until its next <code>Engine.update</code>, which applies
+and then clears them - <code>IRigidBodyComponent.applyForce</code>'s "next <code>simulate()</code> call only"
+lifetime for free. <code>Body.applyForce</code> with a world point also adds the offset's torque.
+<code>Engine.update</code> only clears the accumulators of bodies in its composite, so a body outside the
+world ignores the call (per the contract) rather than banking every tick's force to fire at
+once after <code>addToWorld</code>.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">applyForce(force: Point2, worldPoint?: Point2): void
+</code></pre>
+<h3 id="applyimpulse-method">applyImpulse (method)</h3>
+<p>matter-js has no impulse: the velocity change <code>impulse / mass</code> is written directly.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">applyImpulse(impulse: Point2, worldPoint?: Point2): void
+</code></pre>
+<h3 id="applytorque-method">applyTorque (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">applyTorque(torque: number): void
+</code></pre>
+<h3 id="applytorqueimpulse-method">applyTorqueImpulse (method)</h3>
+<p>Same unit convention as <code>linearVelocity</code>: an angular velocity change of <code>torqueImpulse / inertia</code> per second.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">applyTorqueImpulse(torqueImpulse: number): void
 </code></pre>
 <h3 id="updatecollisionfilter-method">updateCollisionFilter (method)</h3>
 <p><strong>Signature</strong></p>

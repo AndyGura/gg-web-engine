@@ -650,6 +650,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#forcedbodies-property" class="md-nav__link">
+    forcedBodies (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#lockedcollisiongroups-property" class="md-nav__link">
     lockedCollisionGroups (property)
   </a>
@@ -709,6 +716,7 @@
 <li><a href="#raycastvehicles-property">raycastVehicles (property)</a></li>
 <li><a href="#maxsubsteps-property">maxSubSteps (property)</a></li>
 <li><a href="#fixedtimestep-property">fixedTimeStep (property)</a></li>
+<li><a href="#forcedbodies-property">forcedBodies (property)</a></li>
 <li><a href="#lockedcollisiongroups-property">lockedCollisionGroups (property)</a></li>
 </ul>
 </li>
@@ -870,6 +878,12 @@ kinematic body would reach its whole target in the first step - moving <code>n</
 stand still for the rest, so whatever rides on it would get kicked forward and dragged back.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">fixedTimeStep: number | undefined
+</code></pre>
+<h3 id="forcedbodies-property">forcedBodies (property)</h3>
+<p>Bodies with a force/torque applied this tick (<code>IRigidBodyComponent.applyForce</code>/<code>applyTorque</code>),
+reset after the last substep of <code>simulate()</code> - Rapier otherwise keeps an added force forever.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly forcedBodies: Set&lt;Rapier3dRigidBodyComponent&gt;
 </code></pre>
 <h3 id="lockedcollisiongroups-property">lockedCollisionGroups (property)</h3>
 <p><strong>Signature</strong></p>

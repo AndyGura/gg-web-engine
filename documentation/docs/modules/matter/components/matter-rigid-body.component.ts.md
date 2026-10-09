@@ -12,6 +12,10 @@ parent: Modules
 
 - [utils](#utils)
   - [MatterRigidBodyComponent (class)](#matterrigidbodycomponent-class)
+    - [applyForce (method)](#applyforce-method)
+    - [applyImpulse (method)](#applyimpulse-method)
+    - [applyTorque (method)](#applytorque-method)
+    - [applyTorqueImpulse (method)](#applytorqueimpulse-method)
     - [updateCollisionFilter (method)](#updatecollisionfilter-method)
     - [clone (method)](#clone-method)
     - [addToWorld (method)](#addtoworld-method)
@@ -47,6 +51,49 @@ export declare class MatterRigidBodyComponent {
     public readonly canSleep: boolean = true
   )
 }
+```
+
+### applyForce (method)
+
+matter-js accumulates `body.force`/`body.torque` until its next `Engine.update`, which applies
+and then clears them - `IRigidBodyComponent.applyForce`'s "next `simulate()` call only"
+lifetime for free. `Body.applyForce` with a world point also adds the offset's torque.
+`Engine.update` only clears the accumulators of bodies in its composite, so a body outside the
+world ignores the call (per the contract) rather than banking every tick's force to fire at
+once after `addToWorld`.
+
+**Signature**
+
+```ts
+applyForce(force: Point2, worldPoint?: Point2): void
+```
+
+### applyImpulse (method)
+
+matter-js has no impulse: the velocity change `impulse / mass` is written directly.
+
+**Signature**
+
+```ts
+applyImpulse(impulse: Point2, worldPoint?: Point2): void
+```
+
+### applyTorque (method)
+
+**Signature**
+
+```ts
+applyTorque(torque: number): void
+```
+
+### applyTorqueImpulse (method)
+
+Same unit convention as `linearVelocity`: an angular velocity change of `torqueImpulse / inertia` per second.
+
+**Signature**
+
+```ts
+applyTorqueImpulse(torqueImpulse: number): void
 ```
 
 ### updateCollisionFilter (method)

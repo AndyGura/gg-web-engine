@@ -1,6 +1,6 @@
 {
   "name": "@gg-web-engine/ammo",
-  "version": "0.0.80",
+  "version": "0.0.81",
   "description": "Ammo.js (Bullet) 3D physics adapter for gg-web-engine: rigid bodies, triggers, character controller and raycast vehicles",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -46,7 +46,7 @@
   "dependencies": {
   },
   "devDependencies": {
-    "@gg-web-engine/core": "0.0.80",
+    "@gg-web-engine/core": "0.0.81",
     "@types/jest": "^30.0.0",
     "@types/node": "^26.4.0",
     "jest": "^30.5.0",
@@ -57,7 +57,7 @@
     "typescript": "~6.0.3"
   },
   "peerDependencies": {
-    "@gg-web-engine/core": "0.0.80",
+    "@gg-web-engine/core": "0.0.81",
     "rxjs": "7.8.2"
   },
   "jest": {

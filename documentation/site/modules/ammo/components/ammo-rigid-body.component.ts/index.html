@@ -531,6 +531,41 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#applyforce-method" class="md-nav__link">
+    applyForce (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#applyimpulse-method" class="md-nav__link">
+    applyImpulse (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#applytorque-method" class="md-nav__link">
+    applyTorque (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#applytorqueimpulse-method" class="md-nav__link">
+    applyTorqueImpulse (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#relativetocenterofmass-method" class="md-nav__link">
+    relativeToCenterOfMass (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#emitcollisionstart-method" class="md-nav__link">
     emitCollisionStart (method)
   </a>
@@ -678,6 +713,11 @@
 <li><a href="#utils">utils</a></li>
 <li><a href="#ammorigidbodycomponent-class">AmmoRigidBodyComponent (class)</a><ul>
 <li><a href="#applyworldtransform-method">applyWorldTransform (method)</a></li>
+<li><a href="#applyforce-method">applyForce (method)</a></li>
+<li><a href="#applyimpulse-method">applyImpulse (method)</a></li>
+<li><a href="#applytorque-method">applyTorque (method)</a></li>
+<li><a href="#applytorqueimpulse-method">applyTorqueImpulse (method)</a></li>
+<li><a href="#relativetocenterofmass-method">relativeToCenterOfMass (method)</a></li>
 <li><a href="#emitcollisionstart-method">emitCollisionStart (method)</a></li>
 <li><a href="#emitcollisionend-method">emitCollisionEnd (method)</a></li>
 <li><a href="#clone-method">clone (method)</a></li>
@@ -735,6 +775,34 @@ stale one:</p>
 </ul>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">protected applyWorldTransform(transform: Ammo.btTransform): void
+</code></pre>
+<h3 id="applyforce-method">applyForce (method)</h3>
+<p>Bullet accumulates applied forces/torques in the body (<code>m_totalForce</code>/<code>m_totalTorque</code>), uses
+them in every internal substep of the next <code>stepSimulation</code> and clears them at its end - exactly
+<code>IRigidBodyComponent.applyForce</code>'s "the next <code>simulate()</code> call, then gone" lifetime, so no
+bookkeeping is needed here. A force at a point is <code>applyForce(force, rel_pos)</code>, <code>rel_pos</code> being
+the point relative to the centre of mass in world orientation. Bullet only clears the
+accumulators of bodies in the world, so a body outside one ignores the call (per the contract)
+rather than banking every tick's force to fire at once after <code>addToWorld</code>.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">applyForce(force: Point3, worldPoint?: Point3): void
+</code></pre>
+<h3 id="applyimpulse-method">applyImpulse (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">applyImpulse(impulse: Point3, worldPoint?: Point3): void
+</code></pre>
+<h3 id="applytorque-method">applyTorque (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">applyTorque(torque: Point3): void
+</code></pre>
+<h3 id="applytorqueimpulse-method">applyTorqueImpulse (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">applyTorqueImpulse(torqueImpulse: Point3): void
+</code></pre>
+<h3 id="relativetocenterofmass-method">relativeToCenterOfMass (method)</h3>
+<p>A fresh <code>btVector3</code> (caller destroys it) of <code>worldPoint</code> relative to the centre of mass, or zero without one.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private relativeToCenterOfMass(worldPoint?: Point3): Ammo.btVector3
 </code></pre>
 <h3 id="emitcollisionstart-method">emitCollisionStart (method)</h3>
 <p>Called by <code>AmmoWorldComponent.simulate()</code> only - see <code>onCollisionStart$</code>'s own doc.</p>

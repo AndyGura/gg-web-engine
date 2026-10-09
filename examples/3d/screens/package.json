@@ -6,12 +6,12 @@
     "start": "webpack serve --config ./webpack.dev.config.js"
   },
   "dependencies": {
-    "@gg-web-engine/ammo": "0.0.80",
-    "@gg-web-engine/audio": "0.0.80",
-    "@gg-web-engine/core": "0.0.80",
-    "@gg-web-engine/mobile-controls": "0.0.80",
-    "@gg-web-engine/rapier3d": "0.0.80",
-    "@gg-web-engine/three": "0.0.80",
+    "@gg-web-engine/ammo": "0.0.81",
+    "@gg-web-engine/audio": "0.0.81",
+    "@gg-web-engine/core": "0.0.81",
+    "@gg-web-engine/mobile-controls": "0.0.81",
+    "@gg-web-engine/rapier3d": "0.0.81",
+    "@gg-web-engine/three": "0.0.81",
     "rxjs": "7.8.2"
   },
   "devDependencies": {

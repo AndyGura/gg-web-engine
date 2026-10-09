@@ -516,6 +516,27 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#default_air_density" class="md-nav__link">
+    DEFAULT_AIR_DENSITY
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#default_braking_force_per_rpm" class="md-nav__link">
+    DEFAULT_BRAKING_FORCE_PER_RPM
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#default_over_rev_brake_force" class="md-nav__link">
+    DEFAULT_OVER_REV_BRAKE_FORCE
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#ggcarentity-class" class="md-nav__link">
     GgCarEntity (class)
   </a>
@@ -526,6 +547,13 @@
           <li class="md-nav__item">
   <a href="#calculaterpmfromcarspeed-method" class="md-nav__link">
     calculateRpmFromCarSpeed (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#enginebrakingforce-method" class="md-nav__link">
+    engineBrakingForce (method)
   </a>
   
 </li>
@@ -554,6 +582,34 @@
           <li class="md-nav__item">
   <a href="#onspawned-method" class="md-nav__link">
     onSpawned (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#selectautogear-method" class="md-nav__link">
+    selectAutoGear (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#computedrive-method" class="md-nav__link">
+    computeDrive (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#applydrive-method" class="md-nav__link">
+    applyDrive (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#applyresistance-method" class="md-nav__link">
+    applyResistance (method)
   </a>
   
 </li>
@@ -718,12 +774,20 @@
 
 <ul>
 <li><a href="#utils">utils</a></li>
+<li><a href="#default_air_density">DEFAULT_AIR_DENSITY</a></li>
+<li><a href="#default_braking_force_per_rpm">DEFAULT_BRAKING_FORCE_PER_RPM</a></li>
+<li><a href="#default_over_rev_brake_force">DEFAULT_OVER_REV_BRAKE_FORCE</a></li>
 <li><a href="#ggcarentity-class">GgCarEntity (class)</a><ul>
 <li><a href="#calculaterpmfromcarspeed-method">calculateRpmFromCarSpeed (method)</a></li>
+<li><a href="#enginebrakingforce-method">engineBrakingForce (method)</a></li>
 <li><a href="#settaillightson-method">setTailLightsOn (method)</a></li>
 <li><a href="#getmaxsteerangle-method">getMaxSteerAngle (method)</a></li>
 <li><a href="#createraycastvehicle-method">createRaycastVehicle (method)</a></li>
 <li><a href="#onspawned-method">onSpawned (method)</a></li>
+<li><a href="#selectautogear-method">selectAutoGear (method)</a></li>
+<li><a href="#computedrive-method">computeDrive (method)</a></li>
+<li><a href="#applydrive-method">applyDrive (method)</a></li>
+<li><a href="#applyresistance-method">applyResistance (method)</a></li>
 <li><a href="#updateengine-method">updateEngine (method)</a></li>
 <li><a href="#serializesettings-method">serializeSettings (method)</a></li>
 <li><a href="#serializewheelfields-method">serializeWheelFields (method)</a></li>
@@ -747,6 +811,21 @@
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
+<h2 id="default_air_density">DEFAULT_AIR_DENSITY</h2>
+<p>Default <code>GgCarProperties.aerodynamics.airDensity</code>, kg/m³ at sea level.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export declare const DEFAULT_AIR_DENSITY: 1.225
+</code></pre>
+<h2 id="default_braking_force_per_rpm">DEFAULT_BRAKING_FORCE_PER_RPM</h2>
+<p>Default <code>GgCarProperties.engine.brakingForcePerRpm</code>: 1 N per rpm, for the whole car.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export declare const DEFAULT_BRAKING_FORCE_PER_RPM: 1
+</code></pre>
+<h2 id="default_over_rev_brake_force">DEFAULT_OVER_REV_BRAKE_FORCE</h2>
+<p>Default <code>GgCarProperties.engine.overRevBrakeForce</code>: 24 000 N for the whole car.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export declare const DEFAULT_OVER_REV_BRAKE_FORCE: 24000
+</code></pre>
 <h2 id="ggcarentity-class">GgCarEntity (class)</h2>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export declare class GgCarEntity&lt;TypeDoc, RVEntity&gt; {
@@ -760,6 +839,14 @@
 <h3 id="calculaterpmfromcarspeed-method">calculateRpmFromCarSpeed (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public calculateRpmFromCarSpeed(): number
+</code></pre>
+<h3 id="enginebrakingforce-method">engineBrakingForce (method)</h3>
+<p>The force at the wheels, in Newtons for the whole car and signed along the car's forward
+axis, from the engine being turned by the wheels with the throttle released, at the rpm
+<code>calculatedRpm</code> the wheels would spin it at - negative in a forward gear while above idle. See
+<code>GgCarProperties.engine.brakingTorquePer1000Rpm</code>/<code>brakingForcePerRpm</code> for the two models.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">protected engineBrakingForce(calculatedRpm: number): number
 </code></pre>
 <h3 id="settaillightson-method">setTailLightsOn (method)</h3>
 <p><strong>Signature</strong></p>
@@ -782,6 +869,39 @@ scaling down with speed when that's given as a breakpoint array - see its TSDoc.
 <h3 id="onspawned-method">onSpawned (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">onSpawned(world: Gg3dWorld&lt;TypeDoc&gt;)
+</code></pre>
+<h3 id="selectautogear-method">selectAutoGear (method)</h3>
+<p>The automatic transmission's choice of forward gear for the current engine rpm, given the
+current forward gear (<code>gear &gt; 0</code>): up while the rpm reaches the current gear's <code>upShifts</code>
+entry (projecting the rpm into each next gear), otherwise down while the lower gear would
+turn the engine at most its own <code>upShifts</code> entry less <code>downshiftMargin</code>. Override to
+replace the shift logic; called every <code>AUTO_SHIFT_INTERVAL</code> ms of world time while the car
+is on the ground, in a forward gear, not shifting, and not driven by remote input.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">protected selectAutoGear(): number
+</code></pre>
+<h3 id="computedrive-method">computeDrive (method)</h3>
+<p>This tick's drive force (Newtons for the whole car, signed along the car's forward axis) and
+brake pedal (0..1) from the car's inputs and state, for <code>applyDrive</code>. Override to change how
+the engine, the rev limiter, engine braking or <code>autoHold</code> turn into a force. Only called while
+the car touches the ground.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">protected computeDrive(): { force: number; brake: number }
+</code></pre>
+<h3 id="applydrive-method">applyDrive (method)</h3>
+<p>Hands <code>computeDrive</code>'s result to the wheels: with the brake pedal released, <code>force</code> is split
+between the axles by <code>tractionBias</code> and equally over each axle's wheels (so the whole car is
+pushed by <code>force</code>, whatever its wheel count); with it pressed, the wheels brake with
+<code>carProperties.brake</code>'s per-wheel forces instead. The handbrake then overrides the rear axle.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">protected applyDrive(force: number, brake: number): void
+</code></pre>
+<h3 id="applyresistance-method">applyResistance (method)</h3>
+<p>Applies this tick's air drag (<code>carProperties.aerodynamics</code>) and rolling resistance
+(<code>carProperties.rollingResistance</code>) to the chassis through <code>IRigidBodyComponent.applyForce</code>.
+Both are off unless configured. Override to add other forces acting on the chassis each tick.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">protected applyResistance(delta: number): void
 </code></pre>
 <h3 id="updateengine-method">updateEngine (method)</h3>
 <p><strong>Signature</strong></p>
@@ -837,7 +957,9 @@ capability this depends on.</p>
 <p><code>INetworkSyncable</code>: correct the chassis toward the owner's snapshot (see <code>RigidBodyCorrection</code>)
 and adopt its driving state - unless remote input drives this car, which already carries the
 same values (see <code>applyRemoteInput</code>). A snap also resets the suspension, so the wheels don't
-spring from the old pose.</p>
+spring from the old pose. The gear change in progress is adopted as the owner has it
+(<code>shiftMs</code>), not restarted by the replica's own <code>gear</code> setter, so the replica's engine
+reconnects when the owner's does.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public applyNetworkState(target: GgCarNetState, ctx: NetworkApplyContext): CorrectionOutcome
 </code></pre>
@@ -849,7 +971,9 @@ spring from the old pose.</p>
 <h3 id="applyremoteinput-method">applyRemoteInput (method)</h3>
 <p><code>INetworkInputDriven</code>: drive this replica with the possessor's input. <code>null</code> is neutral:
 throttle 0, steering 0, full brake, neutral gear, handbrake off. Auto-shift stays suspended
-while non-null input arrives, since the gear comes from the possessor.</p>
+while non-null input arrives, since the gear comes from the possessor. A gear change in the
+input starts the same <code>shiftTime</code> gear change here as on the possessor, through the <code>gear</code>
+setter, so both engines reconnect after the same world time.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">public applyRemoteInput(input: GgCarInput | null): void
 </code></pre>
@@ -903,6 +1027,8 @@ Engine RPM is deliberately absent - it's derived locally from speed and gear on 
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">export type GgCarNetState = RigidBodyNetState&lt;Point3, Point4&gt; &amp; {
   gear: number
+  /** Milliseconds left of a gear change in progress (`GgCarEntity.isShifting`), `0` when none. */
+  shiftMs: number
   steering: number
   accel: number
   brake: number
@@ -922,6 +1048,28 @@ Engine RPM is deliberately absent - it's derived locally from speed and gear on 
     }[]
     maxRpmIncreasePerSecond: number
     maxRpmDecreasePerSecond: number
+    /**
+     * Rev limiter. Whenever the wheels would spin the engine past `maxRpm` the throttle is cut, and
+     * this braking force (Newtons, for the whole car - see `GgCarEntity.tractionForce` for how a
+     * car's drive force is split over its driven wheels) holds the car back, against its direction
+     * of travel. Default {@link DEFAULT_OVER_REV_BRAKE_FORCE}. `0` makes the limiter a plain
+     * throttle cut: above redline the car coasts under ordinary engine braking instead.
+     */
+    overRevBrakeForce?: number
+    /**
+     * Engine braking as an engine torque: N·m per 1000 rpm the engine turns above `minRpm`, with
+     * the throttle released, multiplied through the drivetrain (gear ratio, final drive,
+     * efficiencies, wheel radius) exactly like the drive torque - so a low gear brakes harder than
+     * a high one at the same speed, as in a real car. Replaces {@link brakingForcePerRpm} when set.
+     */
+    brakingTorquePer1000Rpm?: number
+    /**
+     * Engine braking as a force at the wheels: Newtons per rpm of difference between `minRpm` and
+     * the rpm the wheels would spin the engine at, for the whole car, with the throttle released.
+     * Independent of the gear ratio, and below idle it turns into a push (an automatic's creep).
+     * Default {@link DEFAULT_BRAKING_FORCE_PER_RPM}; ignored when `brakingTorquePer1000Rpm` is set.
+     */
+    brakingForcePerRpm?: number
   }
   /**
    * Brake forces, in Newtons per wheel (see `IRaycastVehicleComponent.applyBrake`): the pedal
@@ -942,9 +1090,52 @@ Engine RPM is deliberately absent - it's derived locally from speed and gear on 
     gearRatios: number[]
     drivelineEfficiency: number
     finalDriveRatio: number // differential
+    /**
+     * Per forward gear, the engine rpm at which an automatic transmission shifts up out of that
+     * gear (`upShifts[0]` leaves 1st gear). It also shifts down whenever the lower gear would turn
+     * the engine no faster than that gear's own `upShifts` entry, less `downshiftMargin`.
+     */
     upShifts: number[]
+    /**
+     * Rpm of hysteresis for an automatic's downshifts (default `0`): the lower gear is only
+     * selected while the engine would turn at most `upShifts[lower] - downshiftMargin` in it.
+     * Without a margin a car that has just shifted up, then slows a little, shifts straight back.
+     */
+    downshiftMargin?: number
+    /**
+     * How long a gear change takes, in milliseconds of world time (default `0`, instant). While
+     * a shift is in progress (`GgCarEntity.isShifting`) the engine is disconnected: no drive force
+     * and no engine braking reach the wheels, the throttle doesn't rev the engine, and an
+     * automatic doesn't reconsider its gear. Every change of `gear` to a gear other than neutral
+     * starts a shift, manual and automatic alike.
+     */
+    shiftTime?: number
+    /**
+     * Efficiency of each forward gear (`gearEfficiencies[0]` for 1st), a multiplier on the drive
+     * torque on top of `drivelineEfficiency`. Missing entries (and reverse) count as `1`.
+     */
+    gearEfficiencies?: number[]
     autoHold: boolean
   }
+  /**
+   * Air drag, `½ · ρ · Cd · A · v²` against the chassis' velocity, applied through
+   * `IRigidBodyComponent.applyForce` every tick, on the ground and in the air. Without it a car
+   * is only ever held back by engine braking and the rev limiter, so its top speed is the redline
+   * in top gear. `airDensity` (ρ) defaults to 1.225 kg/m³ (sea level); `dragCoefficient` (Cd) is
+   * about 0.25-0.35 for a modern road car, `frontalArea` (A) about 2-2.5 m².
+   */
+  aerodynamics?: {
+    dragCoefficient: number
+    frontalArea: number
+    airDensity?: number
+  }
+  /**
+   * Rolling resistance coefficient (about 0.01-0.015 for car tyres on asphalt): a force of
+   * `rollingResistance · m · g` against the chassis' motion whenever the wheels touch the ground,
+   * never more than what stops the car within the tick. Applied through
+   * `IRigidBodyComponent.applyForce`. Default `0`.
+   */
+  rollingResistance?: number
   /**
    * Max steering lock, in radians, applied at `steeringFactor` of ±1.
    *

@@ -1,6 +1,6 @@
 {
   "name": "@gg-web-engine/audio",
-  "version": "0.0.80",
+  "version": "0.0.81",
   "description": "Web Audio API adapter for gg-web-engine: 2D/3D positional audio sources attached to entities",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -35,7 +35,7 @@
   "homepage": "https://github.com/AndyGura/gg-web-engine#readme",
   "dependencies": {},
   "devDependencies": {
-    "@gg-web-engine/core": "0.0.80",
+    "@gg-web-engine/core": "0.0.81",
     "@types/jest": "^30.0.0",
     "@types/node": "^26.4.0",
     "jest": "^30.5.0",
@@ -46,7 +46,7 @@
     "typescript": "~6.0.3"
   },
   "peerDependencies": {
-    "@gg-web-engine/core": "0.0.80",
+    "@gg-web-engine/core": "0.0.81",
     "rxjs": "7.8.2"
   },
   "jest": {

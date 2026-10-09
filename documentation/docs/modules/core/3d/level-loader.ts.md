@@ -510,6 +510,8 @@ export interface GgCar3DCommonSettings {
   brake: GgCarProperties['brake']
   transmission: GgCarProperties['transmission']
   maxSteerAngle: GgCarProperties['maxSteerAngle']
+  aerodynamics?: GgCarProperties['aerodynamics']
+  rollingResistance?: GgCarProperties['rollingResistance']
 }
 ```
 

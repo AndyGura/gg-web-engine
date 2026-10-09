@@ -28,6 +28,8 @@ where one exists.
 
 ## [Unreleased]
 
+## [0.0.81] - 2026-10-09
+
 ### Added
 - Forces and impulses on rigid bodies. `IRigidBodyComponent` gained `applyForce(force, worldPoint?)`,
   `applyImpulse(impulse, worldPoint?)`, `applyTorque(torque)` and `applyTorqueImpulse(torqueImpulse)`
@@ -941,7 +943,8 @@ where one exists.
 
 First published version: `@gg-web-engine/core`, `three`, `pixi`, `ammo`, and `matter`.
 
-[Unreleased]: https://github.com/AndyGura/gg-web-engine/compare/0.0.80...HEAD
+[Unreleased]: https://github.com/AndyGura/gg-web-engine/compare/0.0.81...HEAD
+[0.0.81]: https://github.com/AndyGura/gg-web-engine/compare/0.0.80...0.0.81
 [0.0.80]: https://github.com/AndyGura/gg-web-engine/compare/0.0.79...0.0.80
 [0.0.79]: https://github.com/AndyGura/gg-web-engine/compare/0.0.78...0.0.79
 [0.0.78]: https://github.com/AndyGura/gg-web-engine/compare/0.0.77...0.0.78

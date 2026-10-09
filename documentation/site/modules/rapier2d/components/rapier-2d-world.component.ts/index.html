@@ -629,6 +629,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#forcedbodies-property" class="md-nav__link">
+    forcedBodies (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#lockedcollisiongroups-property" class="md-nav__link">
     lockedCollisionGroups (property)
   </a>
@@ -685,6 +692,7 @@
 <li><a href="#maincollisiongroup-property">mainCollisionGroup (property)</a></li>
 <li><a href="#_nativeworld-property">_nativeWorld (property)</a></li>
 <li><a href="#handleidentitymap-property">handleIdEntityMap (property)</a></li>
+<li><a href="#forcedbodies-property">forcedBodies (property)</a></li>
 <li><a href="#lockedcollisiongroups-property">lockedCollisionGroups (property)</a></li>
 </ul>
 </li>
@@ -796,6 +804,12 @@ engine (a sensor with no collision response, see <code>ITrigger2dComponent</code
 <h3 id="handleidentitymap-property">handleIdEntityMap (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly handleIdEntityMap: Map&lt;number, Rapier2dWorldChild&gt;
+</code></pre>
+<h3 id="forcedbodies-property">forcedBodies (property)</h3>
+<p>Bodies with a force/torque applied this tick (<code>IRigidBodyComponent.applyForce</code>/<code>applyTorque</code>),
+reset after <code>simulate()</code> steps - Rapier otherwise keeps an added force forever.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly forcedBodies: Set&lt;Rapier2dRigidBodyComponent&gt;
 </code></pre>
 <h3 id="lockedcollisiongroups-property">lockedCollisionGroups (property)</h3>
 <p><strong>Signature</strong></p>

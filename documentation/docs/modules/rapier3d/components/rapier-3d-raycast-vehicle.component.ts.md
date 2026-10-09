@@ -17,6 +17,8 @@ parent: Modules
     - [stepVehicleController (method)](#stepvehiclecontroller-method)
     - [attachWheel (method)](#attachwheel-method)
     - [addWheel (method)](#addwheel-method)
+    - [setWheelFrictionSlip (method)](#setwheelfrictionslip-method)
+    - [getWheelFrictionSlip (method)](#getwheelfrictionslip-method)
     - [setSteering (method)](#setsteering-method)
     - [applyEngineForce (method)](#applyengineforce-method)
     - [applyBrake (method)](#applybrake-method)
@@ -104,6 +106,22 @@ private attachWheel(nativeVehicle: DynamicRayCastVehicleController, wheel: Wheel
 
 ```ts
 addWheel(options: WheelOptions, suspensionOptions: SuspensionOptions): void
+```
+
+### setWheelFrictionSlip (method)
+
+**Signature**
+
+```ts
+setWheelFrictionSlip(wheelIndex: number, frictionSlip: number): void
+```
+
+### getWheelFrictionSlip (method)
+
+**Signature**
+
+```ts
+getWheelFrictionSlip(wheelIndex: number): number
 ```
 
 ### setSteering (method)

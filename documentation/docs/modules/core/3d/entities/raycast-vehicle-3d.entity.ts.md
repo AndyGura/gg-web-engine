@@ -18,6 +18,8 @@ parent: Modules
     - [getSpeed (method)](#getspeed-method)
     - [applyTraction (method)](#applytraction-method)
     - [applyBrake (method)](#applybrake-method)
+    - [setFrictionSlip (method)](#setfrictionslip-method)
+    - [wheelCount (method)](#wheelcount-method)
     - [runTransformBinding (method)](#runtransformbinding-method)
     - [resetTo (method)](#resetto-method)
     - [wheels (property)](#wheels-property)
@@ -132,6 +134,28 @@ Sets the brake force of every wheel of `axle`, in Newtons per wheel - see `IRayc
 
 ```ts
 public applyBrake(axle: 'front' | 'rear' | 'both', force: number)
+```
+
+### setFrictionSlip (method)
+
+Sets the tyre friction coefficient of every wheel of `axle` - see
+`IRaycastVehicleComponent.setWheelFrictionSlip`. Lets a handbrake or a surface change retune
+grip without touching the physics backend.
+
+**Signature**
+
+```ts
+public setFrictionSlip(axle: 'front' | 'rear' | 'both', frictionSlip: number)
+```
+
+### wheelCount (method)
+
+How many wheels `axle` has (`'both'`: all wheels).
+
+**Signature**
+
+```ts
+public wheelCount(axle: 'front' | 'rear' | 'both'): number
 ```
 
 ### runTransformBinding (method)

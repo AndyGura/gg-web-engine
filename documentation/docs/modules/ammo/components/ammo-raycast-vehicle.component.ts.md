@@ -17,6 +17,8 @@ parent: Modules
     - [removeFromWorld (method)](#removefromworld-method)
     - [dispose (method)](#dispose-method)
     - [addWheel (method)](#addwheel-method)
+    - [setWheelFrictionSlip (method)](#setwheelfrictionslip-method)
+    - [getWheelFrictionSlip (method)](#getwheelfrictionslip-method)
     - [setSteering (method)](#setsteering-method)
     - [applyEngineForce (method)](#applyengineforce-method)
     - [applyBrake (method)](#applybrake-method)
@@ -86,6 +88,22 @@ dispose(): void
 
 ```ts
 addWheel(options: WheelOptions, suspensionOptions: SuspensionOptions): void
+```
+
+### setWheelFrictionSlip (method)
+
+**Signature**
+
+```ts
+setWheelFrictionSlip(wheelIndex: number, frictionSlip: number): void
+```
+
+### getWheelFrictionSlip (method)
+
+**Signature**
+
+```ts
+getWheelFrictionSlip(wheelIndex: number): number
 ```
 
 ### setSteering (method)
