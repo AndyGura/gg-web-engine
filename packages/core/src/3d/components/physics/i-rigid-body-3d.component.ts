@@ -8,6 +8,12 @@ export interface IRigidBody3dComponent<
 > extends IRigidBodyComponent<Point3, Point4, PTypeDoc> {
   angularVelocity: Point3;
 
+  /** See `IRigidBodyComponent.applyTorque`: a world-space axis-scaled vector, in N·m. */
+  applyTorque(torque: Point3): void;
+
+  /** See `IRigidBodyComponent.applyTorqueImpulse`: a world-space axis-scaled vector, in N·m·s. */
+  applyTorqueImpulse(torqueImpulse: Point3): void;
+
   /** body info for physics debugger view */
   readonly debugBodySettings: DebugBody3DSettings;
 

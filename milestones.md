@@ -324,7 +324,14 @@ Status
   from a canvas, display-object nesting, 2D text, stroked 2D shapes, 2D tint and the `canSleep`
   body option are behind core too, so no example imports three/pixi.js/a physics library or uses
   a `native*` escape hatch any more (enforced in CI by `npm run lint:examples`). Custom shader
-  materials, post-processing and particles are still adapter-native.
+  materials, post-processing and particles are still adapter-native. 2026-10-09: forces and
+  impulses (`IRigidBodyComponent.applyForce`/`applyImpulse`/`applyTorque`/`applyTorqueImpulse`, a
+  force acting on the next `simulate()` only) and a live wheel grip setter
+  (`IRaycastVehicleComponent.setWheelFrictionSlip`) are behind core too, with the same units on
+  every adapter; `GgCarEntity` builds its air drag and rolling resistance on the former, and its
+  gearbox (shift time, downshift hysteresis, per-gear efficiency), rev limiter and engine braking
+  are tunable settings with subclass hooks, so a racing game no longer rewrites the chassis
+  velocity or reaches into the physics library for a handbrake.
 - Cross-adapter contract tests (one suite every physics adapter, and every renderer, runs: the same
   calls succeed, the same events fire, units and axes match; never identical trajectories) — not
   started.

@@ -93,6 +93,59 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
     }
   }
 
+  /**
+   * Rapier keeps an added force until `resetForces` - `Rapier2dWorldComponent.simulate()` resets
+   * every body registered in its `forcedBodies` after stepping, which gives
+   * `IRigidBodyComponent.applyForce` its "next `simulate()` call only" lifetime.
+   */
+  applyForce(force: Point2, worldPoint?: Point2): void {
+    if (!this.nativeBody || !this.nativeBody.isDynamic()) {
+      return;
+    }
+    if (worldPoint) {
+      this.nativeBody.addForceAtPoint(new Vector2(force.x, force.y), new Vector2(worldPoint.x, worldPoint.y), true);
+    } else {
+      this.nativeBody.addForce(new Vector2(force.x, force.y), true);
+    }
+    this.world.forcedBodies.add(this);
+  }
+
+  applyImpulse(impulse: Point2, worldPoint?: Point2): void {
+    if (!this.nativeBody || !this.nativeBody.isDynamic()) {
+      return;
+    }
+    if (worldPoint) {
+      this.nativeBody.applyImpulseAtPoint(
+        new Vector2(impulse.x, impulse.y),
+        new Vector2(worldPoint.x, worldPoint.y),
+        true,
+      );
+    } else {
+      this.nativeBody.applyImpulse(new Vector2(impulse.x, impulse.y), true);
+    }
+  }
+
+  applyTorque(torque: number): void {
+    if (!this.nativeBody || !this.nativeBody.isDynamic()) {
+      return;
+    }
+    this.nativeBody.addTorque(torque, true);
+    this.world.forcedBodies.add(this);
+  }
+
+  applyTorqueImpulse(torqueImpulse: number): void {
+    if (!this.nativeBody || !this.nativeBody.isDynamic()) {
+      return;
+    }
+    this.nativeBody.applyTorqueImpulse(torqueImpulse, true);
+  }
+
+  /** @internal `Rapier2dWorldComponent.simulate()`: drops this tick's `applyForce`/`applyTorque` accumulation. */
+  resetAppliedForces(): void {
+    this.nativeBody?.resetForces(false);
+    this.nativeBody?.resetTorques(false);
+  }
+
   get angularVelocity(): number {
     return this.nativeBody ? this.nativeBody.angvel() : this._bodyDescr.angvel;
   }

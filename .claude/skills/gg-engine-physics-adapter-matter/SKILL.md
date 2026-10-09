@@ -123,6 +123,28 @@ asleep *naturally* from prolonged inactivity, no matter how long it rests, only 
 `sleep()` call. Re-check this doc comment (and the "still work uniformly" claim above) if a future
 change ever turns `enableSleeping: true` on for this adapter.
 
+## `IRigidBodyComponent.applyForce`/`applyImpulse`/`applyTorque`/`applyTorqueImpulse`: matter-js units
+
+`Body.update` integrates `velocity += force / mass * dt²` with `dt` in **milliseconds** and the
+velocity in units per update, and `Engine.update` clears `body.force`/`body.torque` afterwards. So
+a force in Newtons is scaled by `MATTER_FORCE_SCALE = 1e-6` before `Body.applyForce`
+(`1 / 1000²`), after which one update of `dt` ms changes the velocity by `F / m * dt` seconds'
+worth; the same scale goes on `body.torque`. The clear-after-update is the core contract's "next
+`simulate()` only" lifetime for free. matter-js has no impulse: `applyImpulse` adds `J / m` through
+this component's own `linearVelocity` setter (which carries the `MATTER_VELOCITY_SCALE` conversion),
+plus `r × J / inertia` through `applyTorqueImpulse` for a world point; `applyTorqueImpulse` adds
+`L / inertia × MATTER_VELOCITY_SCALE` to the raw native `angularVelocity`. Every body has a default
+`frictionAir` of 0.01 (1% velocity damping per update), so a test checking `F / m` exactly sets
+`nativeBody.frictionAir = 0` first (`matter-rigid-body-forces.spec.ts`).
+
+**The "ignored while not in a world" half of the contract needs an explicit guard.** `Engine.update`
+only clears `force`/`torque` on bodies in its composite, so a call on a body outside the world
+(before spawn, or between `removeFromWorld` and `addToWorld`) would bank on the native body and
+fire as one summed push on the first update after it is (re)added. The component keeps its own
+`addedToWorld` flag (set/cleared in `addToWorld`/`removeFromWorld` - matter-js has no cheap
+"is this body in the composite" query) and all four `apply*` methods return early on it besides the
+`isStatic` check; regression: `matter-rigid-body-forces.spec.ts`'s "dropped, not banked".
+
 ## `bodyType: 'kinematic_pos'`/`'kinematic_vel'` and `ccd`: warn-once, fall back, never throw
 
 matter-js has no kinematic body concept (only `isStatic`) and no continuous collision detection at

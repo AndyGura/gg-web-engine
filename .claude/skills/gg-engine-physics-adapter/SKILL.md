@@ -227,6 +227,31 @@ re-sleeps it), and load-bearing on `packages/matter` (where the write never woke
 place, but calling `sleep()` afterward keeps the intent explicit and adapter-agnostic rather than
 relying on which adapter happens to be active).
 
+**Forces and impulses.** A rigid body component implements `applyForce(force, worldPoint?)`,
+`applyImpulse(impulse, worldPoint?)`, `applyTorque(torque)` and `applyTorqueImpulse(torqueImpulse)`
+(Newtons, N·s, N·m, N·m·s - a torque is a `Point3` in 3D, a signed scalar in 2D). The contract every
+adapter upholds, tested the same way in each (`*-rigid-body-forces.spec.ts`: a 10 N force on a 2 kg
+sphere re-applied for 60 ticks of 1/60 s gives 5 m/s; a force applied once changes nothing after the
+second `simulate()`; an impulse of 4 N·s gives 2 m/s at once; a torque over one second equals the
+same torque impulse; a force at a point off the centre spins the body; a static body ignores all
+four; a force wakes a sleeping body):
+
+- A force/torque acts during the **next `simulate()` call only, for every substep of it**, then is
+  gone - a continuous force is re-applied every tick by the caller. Bullet and matter-js already
+  work this way (both accumulate and clear after their step); Rapier keeps an added force until
+  `resetForces`/`resetTorques`, so the Rapier adapters register the body in the world's
+  `forcedBodies` set and reset it after the last substep of `simulate()`. Whatever the engine does,
+  a force must not be re-added per substep (it would stack) and must not survive the call.
+- An impulse changes the velocity at once (`J / m`, `L / I`), with no `simulate()` in between. An
+  engine with no impulse call (matter-js) writes the velocity delta directly.
+- A `worldPoint` is in world coordinates. Bullet's `applyForce(force, rel_pos)` takes the point
+  relative to the centre of mass (and has no `applyCentralForce` in this embind build - a zero
+  `rel_pos` does the same); Rapier's `addForceAtPoint`/`applyImpulseAtPoint` and matter-js's
+  `Body.applyForce(body, position, force)` take the world point.
+- All four wake a sleeping body and are no-ops on a static/kinematic body or one not in a world.
+- An engine with its own units (matter-js integrates `force / mass * dt²` with `dt` in
+  milliseconds) converts - see `gg-engine-physics-adapter-matter`.
+
 **Triggers** are sensor colliders with no collision response that emit enter/exit events; wire the
 native engine's collision-event mechanism into an RxJS-based interface matching
 `ITriggerComponent`, enabling the native "collision events" flag on the collider at creation time
@@ -279,6 +304,15 @@ For the exact per-library recipe (which native event/query API to hook, how cont
 geometry/impulse is actually extracted, ordering quirks), see the already-implemented adapters'
 own skills: `gg-engine-physics-adapter-ammo`, `gg-engine-physics-adapter-rapier`,
 `gg-engine-physics-adapter-matter`.
+
+## Raycast vehicle component (3D only): live wheel grip
+
+`IRaycastVehicleComponent.setWheelFrictionSlip(wheelIndex, frictionSlip)`/`getWheelFrictionSlip`
+change a wheel's `WheelOptions.frictionSlip` on the live vehicle (Bullet: `getWheelInfo(i)
+.set_m_frictionSlip`, Rapier: `setWheelFrictionSlip`). An adapter that rebuilds its native vehicle
+on re-add from stored wheel options (Rapier) updates the stored options too, so the value survives
+`removeFromWorld`/`addToWorld`. `GgCarEntity` relies on this for a handbrake that lets the rear
+tyres slide and for surface changes, instead of reaching into the backend.
 
 ## Character controller component (3D only)
 

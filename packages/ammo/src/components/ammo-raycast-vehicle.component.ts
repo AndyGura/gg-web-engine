@@ -143,6 +143,14 @@ export class AmmoRaycastVehicleComponent
     this.brakeForces.push(0);
   }
 
+  setWheelFrictionSlip(wheelIndex: number, frictionSlip: number): void {
+    this.nativeVehicle.getWheelInfo(wheelIndex).set_m_frictionSlip(frictionSlip);
+  }
+
+  getWheelFrictionSlip(wheelIndex: number): number {
+    return this.nativeVehicle.getWheelInfo(wheelIndex).get_m_frictionSlip();
+  }
+
   setSteering(wheelIndex: number, steering: number): void {
     this.nativeVehicle.setSteeringValue(steering, wheelIndex);
   }

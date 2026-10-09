@@ -99,6 +99,64 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
     }
   }
 
+  /**
+   * Rapier keeps an added force until `resetForces` - `Rapier3dWorldComponent.simulate()` resets
+   * every body registered in its `forcedBodies` after the last substep of the call, which gives
+   * `IRigidBodyComponent.applyForce` its "next `simulate()` call only" lifetime across all of that
+   * call's substeps.
+   */
+  applyForce(force: Point3, worldPoint?: Point3): void {
+    if (!this.nativeBody || !this.nativeBody.isDynamic()) {
+      return;
+    }
+    if (worldPoint) {
+      this.nativeBody.addForceAtPoint(
+        new Vector3(force.x, force.y, force.z),
+        new Vector3(worldPoint.x, worldPoint.y, worldPoint.z),
+        true,
+      );
+    } else {
+      this.nativeBody.addForce(new Vector3(force.x, force.y, force.z), true);
+    }
+    this.world.forcedBodies.add(this);
+  }
+
+  applyImpulse(impulse: Point3, worldPoint?: Point3): void {
+    if (!this.nativeBody || !this.nativeBody.isDynamic()) {
+      return;
+    }
+    if (worldPoint) {
+      this.nativeBody.applyImpulseAtPoint(
+        new Vector3(impulse.x, impulse.y, impulse.z),
+        new Vector3(worldPoint.x, worldPoint.y, worldPoint.z),
+        true,
+      );
+    } else {
+      this.nativeBody.applyImpulse(new Vector3(impulse.x, impulse.y, impulse.z), true);
+    }
+  }
+
+  applyTorque(torque: Point3): void {
+    if (!this.nativeBody || !this.nativeBody.isDynamic()) {
+      return;
+    }
+    this.nativeBody.addTorque(new Vector3(torque.x, torque.y, torque.z), true);
+    this.world.forcedBodies.add(this);
+  }
+
+  applyTorqueImpulse(torqueImpulse: Point3): void {
+    if (!this.nativeBody || !this.nativeBody.isDynamic()) {
+      return;
+    }
+    this.nativeBody.applyTorqueImpulse(new Vector3(torqueImpulse.x, torqueImpulse.y, torqueImpulse.z), true);
+  }
+
+  /** @internal `Rapier3dWorldComponent.simulate()`: drops this tick's `applyForce`/`applyTorque` accumulation. */
+  resetAppliedForces(): void {
+    this.nativeBody?.resetForces(false);
+    this.nativeBody?.resetTorques(false);
+  }
+
   get angularVelocity(): Point3 {
     return Pnt3.clone(this.nativeBody ? this.nativeBody.angvel() : this._bodyDescr.angvel);
   }

@@ -65,6 +65,66 @@ export class AmmoRigidBodyComponent
     }
   }
 
+  /**
+   * Bullet accumulates applied forces/torques in the body (`m_totalForce`/`m_totalTorque`), uses
+   * them in every internal substep of the next `stepSimulation` and clears them at its end - exactly
+   * `IRigidBodyComponent.applyForce`'s "the next `simulate()` call, then gone" lifetime, so no
+   * bookkeeping is needed here. A force at a point is `applyForce(force, rel_pos)`, `rel_pos` being
+   * the point relative to the centre of mass in world orientation. Bullet only clears the
+   * accumulators of bodies in the world, so a body outside one ignores the call (per the contract)
+   * rather than banking every tick's force to fire at once after `addToWorld`.
+   */
+  applyForce(force: Point3, worldPoint?: Point3): void {
+    if (this.bodyType !== 'dynamic' || !this.addedToWorld) {
+      return;
+    }
+    const f = new Ammo.btVector3(force.x, force.y, force.z);
+    const rel = this.relativeToCenterOfMass(worldPoint);
+    this.nativeBody.applyForce(f, rel);
+    Ammo.destroy(f);
+    Ammo.destroy(rel);
+    this.nativeBody.activate(true);
+  }
+
+  applyImpulse(impulse: Point3, worldPoint?: Point3): void {
+    if (this.bodyType !== 'dynamic' || !this.addedToWorld) {
+      return;
+    }
+    const j = new Ammo.btVector3(impulse.x, impulse.y, impulse.z);
+    const rel = this.relativeToCenterOfMass(worldPoint);
+    this.nativeBody.applyImpulse(j, rel);
+    Ammo.destroy(j);
+    Ammo.destroy(rel);
+    this.nativeBody.activate(true);
+  }
+
+  applyTorque(torque: Point3): void {
+    if (this.bodyType !== 'dynamic' || !this.addedToWorld) {
+      return;
+    }
+    this.nativeBody.applyTorque(AmmoBodyComponent.scratchVector(torque.x, torque.y, torque.z));
+    this.nativeBody.activate(true);
+  }
+
+  applyTorqueImpulse(torqueImpulse: Point3): void {
+    if (this.bodyType !== 'dynamic' || !this.addedToWorld) {
+      return;
+    }
+    this.nativeBody.applyTorqueImpulse(
+      AmmoBodyComponent.scratchVector(torqueImpulse.x, torqueImpulse.y, torqueImpulse.z),
+    );
+    this.nativeBody.activate(true);
+  }
+
+  /** A fresh `btVector3` (caller destroys it) of `worldPoint` relative to the centre of mass, or zero without one. */
+  private relativeToCenterOfMass(worldPoint?: Point3): Ammo.btVector3 {
+    if (!worldPoint) {
+      return new Ammo.btVector3(0, 0, 0);
+    }
+    const com = this.nativeBody.getCenterOfMassPosition();
+    return new Ammo.btVector3(worldPoint.x - com.x(), worldPoint.y - com.y(), worldPoint.z - com.z());
+  }
+
   get angularVelocity(): Point3 {
     const v = this.nativeBody.getAngularVelocity();
     return { x: v.x(), y: v.y(), z: v.z() };

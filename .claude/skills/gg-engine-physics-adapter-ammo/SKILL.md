@@ -723,6 +723,27 @@ component should default to this same deferred-emission shape rather than assumi
 are safe to reenter synchronously - they generally aren't, since nothing about their own call sites
 was written expecting to run nested inside arbitrary unrelated removal code.
 
+## `IRigidBodyComponent.applyForce`/`applyImpulse`/`applyTorque`/`applyTorqueImpulse`: Bullet's own semantics fit the contract
+
+Bullet accumulates `applyForce`/`applyTorque` into the body's `m_totalForce`/`m_totalTorque`, uses
+them in every internal substep of the next `stepSimulation` and clears them at its end
+(`clearForces`), which is exactly the "next `simulate()` call only, all substeps" lifetime the core
+contract asks for - no adapter bookkeeping. Two embind details: this build exposes no
+`applyCentralForce`, so a central force is `applyForce(force, zero rel_pos)`; and `rel_pos` is the
+point relative to the centre of mass in world orientation, so a world point is converted with
+`getCenterOfMassPosition()`. Every call ends in `activate(true)`, as the velocity setters do, or a
+sleeping body ignores the force. `applyBrakeImpulses` and the `kinematicVelBodies` integration in
+`simulate()` are unaffected. `setWheelFrictionSlip`/`getWheelFrictionSlip` on the raycast vehicle
+read/write `getWheelInfo(i).m_frictionSlip`, which `btRaycastVehicle::updateFriction` reads every
+step.
+
+**The "ignored while not in a world" half of the contract needs an explicit guard.** `clearForces()`
+only iterates the world's bodies, so a force/torque applied to a body outside the world (before
+spawn, or between `removeFromWorld` and `addToWorld`) stays in `m_totalForce`/`m_totalTorque` and
+fires as one summed push on the first step after it is (re)added. All four `apply*` methods return
+early on `!this.addedToWorld` (the flag `AmmoBodyComponent` keeps) besides the `bodyType !==
+'dynamic'` check; regression: `ammo-rigid-body-forces.spec.ts`'s "dropped, not banked".
+
 ## `AmmoWorldComponent.simulate()`: substeps of `delta / n`, never carried over
 
 `simulate(delta)` runs `n = max(1, ceil(dt / fixedTimeStep))` substeps (clamped by `maxSubSteps`) of

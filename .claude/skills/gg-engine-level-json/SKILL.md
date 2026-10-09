@@ -729,6 +729,18 @@ wheel's `frictionSlip` is its tyre friction coefficient (about 1.0-1.2 for stree
   top-level `sharedWheelOptions` - an arbitrary wheel layout (e.g. more than 4 wheels), one entry
   per wheel.
 
+The engine's `torques` are N·m at the crankshaft; the car as a whole is pushed by that torque
+through the gear, the final drive, the efficiencies and the wheel radius (split over the driven
+wheels), so a 900 kg car with 300 N·m, a 2.92 first gear, 3.21 final drive, 0.85 efficiency and
+0.4 m tyres accelerates at about `300 · 2.92 · 3.21 · 0.85 / 0.4 / 900 ≈ 6.6 m/s²` at full
+throttle until the tyres slip. Optional tuning, each with a default that keeps the plain behavior:
+`transmission.downshiftMargin` (rpm), `transmission.shiftTime` (ms per gear change),
+`transmission.gearEfficiencies` (per forward gear), `engine.overRevBrakeForce` (N, `0` for a
+throttle-cut-only limiter), `engine.brakingTorquePer1000Rpm` or `engine.brakingForcePerRpm`,
+and top-level `aerodynamics: { dragCoefficient, frontalArea, airDensity? }` and
+`rollingResistance` (a coefficient, about 0.012) - without the last two the car's top speed is the
+redline in top gear. See `GgCarProperties` for each field's exact meaning.
+
 Missing `chassis.dimensions`, or specifying neither `wheelBase` nor `wheelOptions`, throws.
 
 A wheel's visual mesh can't be declared by referencing an existing display object component (a
@@ -761,7 +773,8 @@ above), so `world.loader.serializeEntity(car)` reconstructs a `"GgCar"` `EntityJ
 the live car - every `GgCar3DSettings` field above (chassis `dimensions` recovered from the live
 chassis body, `material` recovered when the chassis/wheel meshes implement
 `IMaterialReadable3dComponent`, `engine`/`brake`/`transmission`/`suspension`/`tractionBias`/
-`maxSteerAngle`/`mpsToRpmFactor`/`wheelBase`/`wheelOptions` read straight off `carProperties`) plus
+`maxSteerAngle`/`mpsToRpmFactor`/`aerodynamics`/`rollingResistance`/`wheelBase`/`wheelOptions` read
+straight off `carProperties`) plus
 a `state` block reflecting the car's *current* `gear`/`acceleration`/`brake`/`handBrake`/
 `steeringFactor` - not just whatever it was originally spawned with. This works for a `"GgCar"`
 built through a level JSON and for one built directly (`new GgCarEntity(...)`) alike.
