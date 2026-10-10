@@ -91,7 +91,7 @@
     {
       "dir": "2d/coin-run",
       "title": "Coin run",
-      "description": "Multiplayer platformer rounds: collect coins against everyone in the room. The page URL is the invite link.",
+      "description": "Multiplayer platformer rounds: collect coins against everyone in the room, each pickup bursting into particles. The page URL is the invite link.",
       "visual": ["pixi"],
       "physics": ["rapier2d", "matter"]
     }

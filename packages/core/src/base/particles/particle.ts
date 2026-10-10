@@ -109,7 +109,10 @@ export class Particle<D extends Point2 | Point3 = Point3, T = any> {
   /** Opacity from `0` to `1`. Multiplied by the system's `opacityOverLife` curve when one is set. */
   public opacity: number = 1;
 
-  /** Rotation of the sprite in its own plane, radians, counter-clockwise as seen by the viewer. */
+  /**
+   * Rotation of the sprite in its own plane, radians: counter-clockwise as seen by the viewer in a
+   * 3D system; in a 2D system the world's own rotation sign (as `rotation` of any 2D display object).
+   */
   public rotation: number = 0;
 
   /** Radians per second added to {@link rotation}. */

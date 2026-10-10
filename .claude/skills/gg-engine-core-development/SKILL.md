@@ -885,9 +885,16 @@ region, four free `extra` floats). `ParticleSystem3dEntity` (`3d/entities/partic
 .entity.ts`) owns one, ticks it, and hands the buffers to `IParticleSystem3dComponent.setParticles`
 (`3d/components/rendering/i-particle-system-3d.component.ts`, created by the 3D factory's
 `createParticleSystem`; `VisualTypeDocRepo3D.particleSystem`/`particleSystemExtraOpts`, the latter
-merged into the render options the way `rendererExtraOpts` is). A 2D version adds an
-`IParticleSystem2dComponent`, a factory method and an entity, and reuses the simulation and buffers
-as they are (`dimensions: 2`). What to keep when changing it:
+merged into the render options the way `rendererExtraOpts` is). The 2D side mirrors it one for
+one on `Point2`: `ParticleSystem2dEntity` (`2d/entities/particle-system-2d.entity.ts`, emitter
+rotation a number, `Pnt2.rot` for the attachment offset) drives `IParticleSystem2dComponent`
+(`2d/components/rendering/i-particle-system-2d.component.ts`; `VisualTypeDocRepo2D.particleSystem`/
+`particleSystemExtraOpts`, the 2D factory's `createParticleSystem`) with the same simulation and
+buffers at `dimensions: 2`. `ParticleSystem2dRenderOptions` omits `textureAlpha`/`alphaTest`,
+narrows `blending` to `ParticleBlendMode2d` (`normal`/`additive`/`multiply`, what every 2D renderer
+has natively) and adds `zIndex`; a particle's `rotation` is documented per dimension (counter-
+clockwise as seen by the viewer in 3D, the 2D world's own sign in 2D - what a 2D display object's
+`rotation` means). What to keep when changing it:
 
 - **Every particle duration is in seconds** (`lifetime`, `fixedTimeStep`, `frameDuration`, speeds
   per second), unlike the world's `fixedPhysicsStep`/`tick$` deltas in ms; the entity converts.
@@ -919,8 +926,9 @@ as they are (`dimensions: 2`). What to keep when changing it:
 
 Tests: `test/base/particles/particle-simulation.spec.ts` (curves, frames, emission order and
 overflow, motion, death on the exact step, step order, fixed step with the same result at 30/60/144
-FPS, interpolation) and `test/3d/entities/particle-system-3d.entity.spec.ts` (world ticks,
-attachment with offset, local space, 30 Hz on the world clock) with a mock component.
+FPS, interpolation) and `test/3d/entities/particle-system-3d.entity.spec.ts` /
+`test/2d/entities/particle-system-2d.entity.spec.ts` (world ticks, attachment with offset, local
+space, a fixed step on the world clock) with a mock component.
 
 ## `GgCarEntity`: whole-car forces, a tunable gearbox, and hooks
 
@@ -1403,9 +1411,10 @@ Changing any of these is a breaking change for every adapter package — grep
   never breaks an adapter - and core must keep working (minus byte progress) without each of them.
 - The factory abstracts in `2d/factories.ts` / `3d/factories.ts` (3D includes `createLight`; 2D
   includes `createParallaxLayer`, `loadTexture` and `createCamera`)
-- `IParticleSystem3dComponent` and the 3D factory's `createParticleSystem` (`VisualTypeDocRepo3D`
-  has `particleSystem`/`particleSystemExtraOpts` members for them), and `ParticleRenderBuffers`,
-  the layout an adapter reads
+- `IParticleSystem3dComponent`/`IParticleSystem2dComponent` and each factory's
+  `createParticleSystem` (`VisualTypeDocRepo3D`/`VisualTypeDocRepo2D` have `particleSystem`/
+  `particleSystemExtraOpts` members for them), and `ParticleRenderBuffers`, the layout an adapter
+  reads
 - `ILight3dComponent` and the 3D scene's `environment`/`setEnvironment`, plus the 3D loader's
   `loadTexture`/`loadCubeTexture`/`disposeTexture` (`VisualTypeDocRepo3D` has a `light` member for the former)
 - `IDisplayObject2dComponent.zIndex`, `IParallaxLayer2dComponent` and the 2D scene's

@@ -50,6 +50,17 @@ where one exists.
   each render. Every 3D visual adapter now implements `createParticleSystem`, and
   `VisualTypeDocRepo3D` has `particleSystem`/`particleSystemExtraOpts` members. The raycast vehicle
   example leaves tyre smoke when braking.
+- Particle systems (2D). `Gg2dWorld.addParticleSystem(renderOptions, options)` (or
+  `new ParticleSystem2dEntity(visualScene.factory.createParticleSystem(renderOptions), options)`)
+  runs the same `ParticleSimulation` with 2D vectors - every simulation option above, sizes and
+  speeds in world units, a particle's `rotation` in the 2D world's own sign - and draws it through
+  `IParticleSystem2dComponent`. Render options: `capacity`, `texture`, `blending` (`normal`,
+  `additive`, `multiply` - the modes every 2D renderer has) and `zIndex`; the component's own
+  `tint`/`opacity` multiply the particles'. `@gg-web-engine/pixi` implements it with a
+  `ParticleContainer` (`PixiParticleSystemComponent`, atlas frames as sub-textures of the system's
+  texture; `roundPixels` extra option). Every 2D visual adapter now implements
+  `createParticleSystem`, and `VisualTypeDocRepo2D` has `particleSystem`/`particleSystemExtraOpts`
+  members. The coin run example bursts sparks out of every collected coin.
 
 ## [0.0.81] - 2026-10-09
 

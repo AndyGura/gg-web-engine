@@ -197,6 +197,18 @@ Every adapter component class then `implements I<Thing>Component<<Lib>VisualType
   `tilePosition = (origin - viewStart) mod tileSize`, a non-repeating one is placed at the origin
   one tile wide. `factory.loadTexture(url)` or `factory.createTextureFromCanvas` supplies textures
   for both. `PixiParallaxLayerComponent` is the reference implementation.
+- **Particle systems (2D)**: `IDisplayObject2dComponentFactory.createParticleSystem(options)`
+  returns the TypeDoc's `particleSystem` member, an `IParticleSystem2dComponent`: the 2D
+  counterpart of the 3D contract above, reading the same `ParticleRenderBuffers` (with
+  `dimensions: 2`, two floats per position). Draw every particle as a quad of `size` world units
+  around its center, rotated by `rotation` in the world's own rotation sign (the same sign as a
+  display object's `rotation`), in spawn order - oldest first, so the newest is on top - at the
+  system's `zIndex`, tinted (sRGB) with the texture's alpha times the particle's opacity, and let
+  the component's own `tint`/`opacity` multiply all of them as for any display object. The atlas
+  region is in image coordinates (top-left origin, `y` down). Honor `ParticleBlendMode2d`
+  (`normal`, `additive`, `multiply`) - there is no `textureAlpha`/`alphaTest` in 2D. Library-specific
+  knobs go into the TypeDoc's `particleSystemExtraOpts`. `PixiParticleSystemComponent` is the
+  reference implementation.
 - **Renderer component** (`IRenderer(2d|3d)Component`): accepts an optional `HTMLCanvasElement`
   (create an offscreen/detached canvas if none given) and `RendererOptions`, drives the actual
   draw call, supports resize, and `dispose()`s native GPU resources. `RendererOptions &

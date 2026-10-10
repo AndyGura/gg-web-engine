@@ -54,7 +54,7 @@ export type ParticleRenderBuffers = {
   readonly position: Float32Array;
   /** Sprite width and height in world units, 2 floats per particle. */
   readonly size: Float32Array;
-  /** Sprite rotation in radians, counter-clockwise as seen by the viewer, 1 float per particle. */
+  /** Sprite rotation in radians (see `Particle.rotation` for the sign), 1 float per particle. */
   readonly rotation: Float32Array;
   /** Tint red, green, blue (`0`..`1`, sRGB like the `0xRRGGBB` it came from) and opacity, 4 floats per particle. */
   readonly color: Float32Array;

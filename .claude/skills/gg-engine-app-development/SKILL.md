@@ -422,6 +422,13 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   `additive`, `multiply`, `subtractive`, `premultiplied` (+ `textureAlpha: 'brightness'` for a
   sprite on opaque black); with three.js, the `material` option adjusts or replaces the shader
   material for anything else.
+- **Particles (2D)**: `world.addParticleSystem({ capacity, texture?, blending?, zIndex? }, options)`
+  returns a `ParticleSystem2dEntity` with the same simulation options, callbacks and curves as in
+  3D, on `Point2` vectors: sizes, speeds and `gravity` in world units (`{ x: 0, y: 900 }` pulls down
+  in a y-down world), a particle's `rotation` in the 2D world's own sign (as any display object's),
+  `attachTo` any 2D entity. Blend modes are `normal`, `additive` and `multiply` only; the entity's
+  component `tint`/`opacity` multiply every particle's own. Particles are drawn in spawn order
+  (newest on top) at the system's `zIndex`.
 - **Draw order and backdrops (2D)**: every 2D display object has a `zIndex` (higher draws on top,
   default `0`). `world.visualScene.setEnvironment({ background })` sets a background color or a
   screen-fixed image scaled to cover the view (images from `world.loader.loadTexture(url)`).

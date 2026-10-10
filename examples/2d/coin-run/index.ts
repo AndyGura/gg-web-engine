@@ -11,6 +11,7 @@ import {
   LevelJson,
   LoadingScreen,
   PlayerCharacterController2d,
+  Pnt2,
   Point2,
   TickOrder,
   Gg2dWorldWithPhysics,
@@ -176,6 +177,16 @@ const paint = (width: number, height: number, draw: (ctx: CanvasRenderingContext
   return world.visualScene.factory.createTextureFromCanvas(canvas);
 };
 
+/** a soft round dot for the coin sparks */
+const sparkTexture = () =>
+  paint(16, 16, ctx => {
+    const gradient = ctx.createRadialGradient(8, 8, 0, 8, 8, 8);
+    gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+    gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 16, 16);
+  });
+
 /** a sky gradient: the scene background, fixed to the screen behind everything */
 const skyTexture = () =>
   paint(512, 256, ctx => {
@@ -310,6 +321,11 @@ world.init().then(async () => {
     zIndex: -1,
     offset: { x: 0, y: 40 },
   });
+  // sparks bursting out of a collected coin: additive sprites falling under gravity, fading out
+  const sparks = world.addParticleSystem(
+    { capacity: 200, texture: sparkTexture(), blending: 'additive', zIndex: 5 },
+    { lifetime: [0.3, 0.7], size: 10, gravity: { x: 0, y: 900 }, drag: 2, opacityOverLife: [1, 0] },
+  );
 
   // --- room: from the URL, or a fresh one put into the URL so the address bar is the invite link
   let roomId = getRoomIdFromUrl();
@@ -441,6 +457,11 @@ world.init().then(async () => {
     scores[by] = (scores[by] ?? 0) + 1;
     reachedAt[by] = ++pickups;
     world.addEntity(new PopText('+1', colorOf(by), at));
+    sparks.emit(16, (p, ctx) => {
+      p.position = at;
+      p.velocity = Pnt2.rot({ x: ctx.range(150, 400), y: 0 }, ctx.random() * Math.PI * 2);
+      p.tint = colorOf(by);
+    });
     renderHud();
     direct();
   };

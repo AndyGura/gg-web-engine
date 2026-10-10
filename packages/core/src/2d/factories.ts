@@ -4,6 +4,7 @@ import { AudioTypeDocRepo2D, PhysicsTypeDocRepo2D, VisualTypeDocRepo2D } from '.
 import { CharacterController2dOptions } from './models/character-controller-options';
 import { ParallaxLayer2dOpts } from './models/environment';
 import { Text2dStyle } from './models/text';
+import { ParticleSystem2dRenderOptions } from './components/rendering/i-particle-system-2d.component';
 
 export type DisplayObject2dOpts<Tex> = {
   /** Fill color of an untextured shape; with a `texture`, a tint multiplied over it instead. */
@@ -26,6 +27,15 @@ export abstract class IDisplayObject2dComponentFactory<VTypeDoc extends VisualTy
    * use `Gg2dWorld.addParallaxLayer`) to add it to a world.
    */
   abstract createParallaxLayer(options: ParallaxLayer2dOpts<VTypeDoc['texture']>): VTypeDoc['parallaxLayer'];
+
+  /**
+   * Creates the visual half of a particle system (see `IParticleSystem2dComponent`), merging in the
+   * adapter's own `particleSystemExtraOpts`. Wrap it in a `ParticleSystem2dEntity` (or use
+   * `Gg2dWorld.addParticleSystem`) to simulate and show it.
+   */
+  abstract createParticleSystem(
+    options: ParticleSystem2dRenderOptions<VTypeDoc['texture']> & Partial<VTypeDoc['particleSystemExtraOpts']>,
+  ): VTypeDoc['particleSystem'];
 
   /** Loads an image as a texture, for `DisplayObject2dOpts.texture`, a parallax layer or a background. */
   abstract loadTexture(url: string, options?: TextureOptions): Promise<VTypeDoc['texture']>;
