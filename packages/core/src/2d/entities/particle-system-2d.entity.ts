@@ -40,6 +40,7 @@ export type ParticleSystem2dOptions<T = any> = ParticleSimulationOptions<Point2,
  * and stay there (or move with the emitter, with `space: 'local'`). Sizes and speeds are in world
  * units, and a particle's `rotation` uses the 2D world's own rotation sign.
  *
+ * @example
  * ```ts
  * const sparks = world.addParticleSystem(
  *   { capacity: 100, texture, blending: 'additive', zIndex: 5 },

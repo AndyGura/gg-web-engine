@@ -74,6 +74,43 @@ const wheelDefaults = {
   rollInfluence: 0.2,
 };
 
+/**
+ * A raycast vehicle: a chassis rigid body whose wheels are rays with simulated suspension, from
+ * the physics adapter's own vehicle implementation. It has no engine or gearbox - apply forces per
+ * axle with `applyTraction`/`applyBrake` (Newtons per wheel) and set `steeringAngle` (radians), or
+ * use `GgCarEntity`, which adds a full drivetrain on top. Local axes: +X right, +Y forward, +Z up.
+ * Suspension and tyre grip are simulated differently by each physics adapter, so tune the wheel
+ * options on the backend you ship.
+ *
+ * @example
+ * ```ts
+ * import { RaycastVehicle3dEntity, RVEntityTractionBias } from '@gg-web-engine/core';
+ *
+ * const chassisSize = { x: 1.8, y: 4, z: 0.6 }; // 1.8 m wide, 4 m long (+Y is forward)
+ * const vehicle = new RaycastVehicle3dEntity(
+ *   {
+ *     suspension: { stiffness: 20, damping: 2.3, compression: 4.4, restLength: 0.6 },
+ *     tractionBias: RVEntityTractionBias.RWD,
+ *     wheelBase: {
+ *       shared: { tyreRadius: 0.4, tyreWidth: 0.3 },
+ *       front: { halfAxleWidth: 1, axlePosition: 1.7, axleHeight: 0.3 },
+ *       rear: { halfAxleWidth: 1, axlePosition: -1, axleHeight: 0.3 },
+ *     },
+ *   },
+ *   world.visualScene.factory.createBox(chassisSize, { color: 0xcc0000 }),
+ *   world.physicsWorld.factory.createRaycastVehicle(
+ *     world.physicsWorld.factory.createRigidBody({ shape: { shape: 'BOX', dimensions: chassisSize }, body: { mass: 800 } }),
+ *   ),
+ * );
+ * vehicle.position = { x: 0, y: 0, z: 2 };
+ * world.addEntity(vehicle);
+ *
+ * // every tick, e.g. from your own input handling:
+ * vehicle.applyTraction('rear', 2000);
+ * vehicle.steeringAngle = 0.2;
+ * console.log(vehicle.getSpeed() * 3.6, 'km/h');
+ * ```
+ */
 export class RaycastVehicle3dEntity<
   TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo,
 > extends Entity3d<TypeDoc> {

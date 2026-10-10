@@ -53,6 +53,27 @@ const DEFAULT_OPTIONS: PlayerCharacterController2dOptions = {
  * mouse-look/view-mode switching - a 2D side view has no such concept (see
  * `CharacterController2dEntity`'s own doc for why `moveDirection` is a scalar, not a look-relative
  * vector).
+ *
+ * @example
+ * ```ts
+ * import { CharacterController2dEntity, Pnt2, PlayerCharacterController2d } from '@gg-web-engine/core';
+ *
+ * // sizes and speeds in pixels; screen Y points down, so "up" is -Y
+ * const character = new CharacterController2dEntity(
+ *   { radius: 20, centersDistance: 40, walkSpeed: 260, jumpSpeed: 780, gravity: 2000 },
+ *   world.visualScene.factory.createCapsule(20, 40, { color: 0x3388ff }),
+ *   world.physicsWorld.factory.createCharacterController(
+ *     { radius: 20, centersDistance: 40, up: Pnt2.nY },
+ *     { position: { x: 0, y: 100 } },
+ *   ),
+ * );
+ * world.addEntity(character);
+ *
+ * const renderer = world.addRenderer(world.visualScene.factory.createCamera(), canvas);
+ * world.addEntity(
+ *   new PlayerCharacterController2d(world.keyboardInput, character, renderer, { lookAheadDistance: 120 }),
+ * );
+ * ```
  */
 export class PlayerCharacterController2d<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTypeDocRepo> extends IEntity {
   static readonly entityTypeName: string = 'PlayerCharacterController2d';

@@ -16,19 +16,25 @@ export type LoadingScreenOptions = {
 
 /**
  * A loading view shown over the page (or one element) until `hide()`: the app decides what it
- * covers. Typically a game's startup or a level (re)load:
- *
- * ```ts
- * const loading = LoadingScreen.show(); // or LoadingScreen.show({ view: myOwnLoadingView })
- * await world.init();
- * await world.loader.loadLevel(level, 'Level', { onProgress: p => loading.setProgress(p) });
- * world.start();
- * loading.hide();
- * ```
+ * covers. Typically a game's startup or a level (re)load.
  *
  * Without a `view` it shows the default view: a `DefaultLoadingView`, unless the game sets its own
  * once with `LoadingScreen.setDefaultView(() => new MyLoadingView())`. Any object implementing
  * `LoadingView` works.
+ *
+ * @example
+ * ```ts
+ * import { LoadingScreen } from '@gg-web-engine/core';
+ *
+ * const loading = LoadingScreen.show(); // or LoadingScreen.show({ view: myOwnLoadingView })
+ * try {
+ *   await world.init();
+ *   await world.loader.loadLevel(level, 'Level', { onProgress: p => loading.setProgress(p) });
+ *   world.start();
+ * } finally {
+ *   loading.hide(); // fades out; in a finally, so a failed start isn't hidden behind it
+ * }
+ * ```
  */
 export class LoadingScreen {
   private static defaultViewFactory: () => LoadingView = () => new DefaultLoadingView();

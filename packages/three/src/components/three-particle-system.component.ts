@@ -41,6 +41,15 @@ export type ThreeParticleSystemExtraOpts = {
    * one. A custom shader reads the attributes described on `ThreeParticleSystemComponent`. The
    * built-in material is disposed if another one is returned; the returned one is disposed with the
    * system.
+   *
+   * @example
+   * ```ts
+   * // a muzzle flash drawn on top of everything
+   * world.addParticleSystem(
+   *   { capacity: 16, blending: 'additive', material: m => { m.depthTest = false; return m; } },
+   *   { lifetime: 0.05 },
+   * );
+   * ```
    */
   material?: (defaultMaterial: ShaderMaterial) => Material;
 };

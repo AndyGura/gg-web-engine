@@ -13,7 +13,14 @@ import { PixiVisualTypeDocRepo2D } from '../types';
  * system (`factory.createParticleSystem` / `world.addParticleSystem`).
  */
 export type PixiParticleSystemExtraOpts = {
-  /** Whether sprite positions are rounded to whole pixels (crisp pixel art). Default `false`. */
+  /**
+   * Whether sprite positions are rounded to whole pixels (crisp pixel art). Default `false`.
+   *
+   * @example
+   * ```ts
+   * world.addParticleSystem({ capacity: 64, texture: pixelDust, roundPixels: true }, { lifetime: 0.4 });
+   * ```
+   */
   roundPixels?: boolean;
 };
 

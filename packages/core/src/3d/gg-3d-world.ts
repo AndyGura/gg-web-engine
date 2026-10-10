@@ -139,6 +139,40 @@ export type Gg3dWorldWithPhysics<W extends Gg3dWorld<any, any>> =
     ? Gg3dWorld<TD, Omit<STD, 'physicsWorld'> & { physicsWorld: IPhysicsWorld3dComponent<TD['pTypeDoc']> }>
     : never;
 
+/**
+ * The root object of a 3D game: a world clock plus one visual scene, one physics world and an
+ * optional audio scene, all 3D. Every 3D world is Z-up: `{x, y}` is the ground plane, `+Z` points
+ * to the sky (`Pnt3.Z`). Either scene may be left out for a rendering-only or physics-only world.
+ * Switching the physics adapter keeps the code compiling and running, but each library simulates in
+ * its own way, so masses, friction, vehicles and characters need retuning after a switch.
+ *
+ * @example
+ * ```ts
+ * import { Gg3dWorld, Pnt3, Qtrn, TypedGg3dWorld } from '@gg-web-engine/core';
+ * import { ThreeGgWorld, ThreeSceneComponent } from '@gg-web-engine/three';
+ * import { Rapier3dGgWorld, Rapier3dWorldComponent } from '@gg-web-engine/rapier3d';
+ *
+ * // the type makes world.visualScene/physicsWorld the adapters' own classes, never null
+ * const world: TypedGg3dWorld<ThreeGgWorld, Rapier3dGgWorld> = new Gg3dWorld({
+ *   visualScene: new ThreeSceneComponent(),
+ *   physicsWorld: new Rapier3dWorldComponent(), // or AmmoWorldComponent from '@gg-web-engine/ammo'
+ * });
+ * await world.init();
+ *
+ * const renderer = world.addRenderer(
+ *   world.visualScene.factory.createPerspectiveCamera(),
+ *   document.getElementById('gg') as HTMLCanvasElement,
+ * );
+ * renderer.position = { x: 12, y: 12, z: 12 };
+ * renderer.rotation = Qtrn.lookAt(renderer.position, Pnt3.O);
+ *
+ * world.addPrimitiveRigidBody({
+ *   shape: { shape: 'BOX', dimensions: { x: 7, y: 7, z: 1 } },
+ *   body: { bodyType: 'static' },
+ * });
+ * world.start();
+ * ```
+ */
 export class Gg3dWorld<
   TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo,
   SceneTypeDoc extends Gg3dWorldSceneTypeRepo<TypeDoc> = Gg3dWorldSceneTypeRepo<TypeDoc>,
@@ -158,6 +192,30 @@ export class Gg3dWorld<
     this.loader = new Gg3dLoader(this);
   }
 
+  /**
+   * Creates a primitive shape as both a mesh and a rigid body, wraps them in an `Entity3d` and adds
+   * it to the world. A missing visual scene or physics world leaves that half out.
+   * @param descr - The shape and its body options (`mass`, `bodyType`, friction, ...)
+   * @param position - Initial position (Z-up), the origin by default
+   * @param rotation - Initial rotation, identity by default
+   * @param material - Material of the mesh
+   * @returns The entity, already added to the world
+   *
+   * @example
+   * ```ts
+   * import { Pnt3, Qtrn } from '@gg-web-engine/core';
+   *
+   * // a 1 kg ball dropped from 10 m above the origin
+   * const ball = world.addPrimitiveRigidBody(
+   *   { shape: { shape: 'SPHERE', radius: 0.5 }, body: { mass: 1 } },
+   *   Pnt3.scalarMult(Pnt3.Z, 10),
+   *   Qtrn.O,
+   *   { color: 0xff8800 },
+   * );
+   * // later: remove it and free its mesh and body
+   * world.removeEntity(ball, true);
+   * ```
+   */
   addPrimitiveRigidBody(
     descr: BodyShape3DDescriptor,
     position: Point3 = Pnt3.O,
@@ -225,6 +283,26 @@ export class Gg3dWorld<
    * Creates a particle system - its visual component from `renderOptions` (plus the adapter's own
    * extra options, e.g. a custom material) and the simulation from `options` - wraps it in a
    * `ParticleSystem3dEntity` and adds it to the world.
+   *
+   * @example
+   * ```ts
+   * // embers rising from a campfire at the origin (3D worlds are Z-up), plus a one-off burst
+   * const embers = world.addParticleSystem(
+   *   { capacity: 300, blending: 'additive' },
+   *   {
+   *     rate: 40, // particles per second, while emitting
+   *     lifetime: [0.6, 1.2],
+   *     size: 0.15,
+   *     tint: 0xff8833,
+   *     gravity: { x: 0, y: 0, z: 1.5 },
+   *     opacityOverLife: [1, 0],
+   *   },
+   * );
+   * embers.position = { x: 0, y: 0, z: 0.2 };
+   * embers.emit(40, (p, ctx) => {
+   *   p.velocity = { x: ctx.range(-2, 2), y: ctx.range(-2, 2), z: ctx.range(1, 4) };
+   * });
+   * ```
    */
   addParticleSystem<T = any>(
     renderOptions: ParticleSystem3dRenderOptions<TypeDoc['vTypeDoc']['texture']> &
@@ -242,6 +320,28 @@ export class Gg3dWorld<
     return entity;
   }
 
+  /**
+   * Creates a renderer drawing the scene through `camera` onto `canvas`, wraps it in a
+   * `Renderer3dEntity` (which is also how the camera is moved) and adds it to the world.
+   * @param camera - A camera from `world.visualScene.factory.createPerspectiveCamera()`
+   * @param canvas - The canvas to draw on, already in the DOM
+   * @param rendererOptions - Size, background, antialiasing and the adapter's own extra options
+   * @returns The renderer entity; set its `position`/`rotation` to move the camera
+   * @throws if the world has no visual scene
+   *
+   * @example
+   * ```ts
+   * import { Pnt3, Qtrn } from '@gg-web-engine/core';
+   *
+   * const renderer = world.addRenderer(
+   *   world.visualScene.factory.createPerspectiveCamera({ fov: 70 }),
+   *   document.getElementById('gg') as HTMLCanvasElement,
+   * );
+   * // 3D worlds are Z-up: stand 10 m back on -Y, 3 m up, looking at the origin
+   * renderer.position = { x: 0, y: -10, z: 3 };
+   * renderer.rotation = Qtrn.lookAt(renderer.position, Pnt3.O);
+   * ```
+   */
   addRenderer(
     camera: TypeDoc['vTypeDoc']['camera'],
     canvas?: HTMLCanvasElement,

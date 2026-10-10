@@ -100,6 +100,28 @@ const DEFAULT_OPTIONS: PlayerCharacterControllerOptions = {
  *
  * The character's yaw always follows the camera's yaw (mouse-look), in both view modes - `WASD`
  * movement is relative to that facing.
+ *
+ * @example
+ * ```ts
+ * import { CharacterController3dEntity, PlayerCharacterController } from '@gg-web-engine/core';
+ *
+ * // a capsule character from the built-in "Player" level class (0.4 m radius, standing on Z-up ground)
+ * const player = (await world.loader.createEntity({
+ *   class: 'Player',
+ *   position: { x: 0, y: 0, z: 2 },
+ *   config: { display: { color: 0x3388ff } },
+ * })) as CharacterController3dEntity;
+ * world.addEntity(player);
+ *
+ * const canvas = document.getElementById('gg') as HTMLCanvasElement;
+ * const renderer = world.addRenderer(world.visualScene.factory.createPerspectiveCamera(), canvas);
+ * const controller = new PlayerCharacterController(world.keyboardInput, player, renderer, {
+ *   viewMode: 'third-person',
+ *   mouseOptions: { canvas }, // click the canvas to lock the pointer for mouse-look
+ * });
+ * world.addEntity(controller);
+ * // cutscene or menu: controller.active = false
+ * ```
  */
 export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo> extends IEntity {
   static readonly entityTypeName: string = 'PlayerCharacterController';

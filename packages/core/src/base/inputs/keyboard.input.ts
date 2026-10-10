@@ -6,6 +6,18 @@ import { distinctUntilChanged, map } from 'rxjs/operators';
  * A main keyboard input: it does not have own key bindings, but provides an API to bind keys.
  * It is responsible for listening key up/down events (when running!) and emit the events to subscribers.
  * Every World entity has its own dedicated instance of Keyboard input, which is running only when the world is running
+ *
+ * @example
+ * ```ts
+ * // each world has one: world.keyboardInput. Codes are KeyboardEvent.code values.
+ * world.keyboardInput.bind('KeyF').subscribe(pressed => {
+ *   if (pressed) flashlight.visible = !flashlight.visible;
+ * });
+ * // several keys for one action: true while any of them is held
+ * world.keyboardInput.bindMany('ShiftLeft', 'ShiftRight').subscribe(held => (player.isRunning = held));
+ * // an on-screen button can press a key the same way
+ * button.onclick = () => world.keyboardInput.emulateKeyPress('KeyF');
+ * ```
  */
 export class KeyboardInput extends IInput {
   private bindings: { [code: string]: BehaviorSubject<boolean>[] } = {};
