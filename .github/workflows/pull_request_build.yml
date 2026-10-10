@@ -33,3 +33,8 @@ jobs:
       # @dimforge directly or use an adapter's native* escape hatch. See gg-engine-examples.
       - name: Check examples use engine APIs only
         run: npm run lint:examples
+
+      # packages/core/AGENTS.md ships in the core tarball and is generated from the
+      # gg-engine-app-development skill; a skill edit without a regenerated AGENTS.md fails here.
+      - name: Check AGENTS.md matches the app-development skill
+        run: npm run check:agents-md
