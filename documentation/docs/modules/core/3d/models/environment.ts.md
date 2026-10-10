@@ -1,6 +1,6 @@
 ---
 title: core/3d/models/environment.ts
-nav_order: 95
+nav_order: 99
 parent: Modules
 ---
 

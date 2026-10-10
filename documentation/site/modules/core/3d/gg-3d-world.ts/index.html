@@ -552,6 +552,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#addparticlesystem-method" class="md-nav__link">
+    addParticleSystem (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#addrenderer-method" class="md-nav__link">
     addRenderer (method)
   </a>
@@ -695,6 +702,7 @@
 <li><a href="#addprimitiverigidbody-method">addPrimitiveRigidBody (method)</a></li>
 <li><a href="#addgrabbableprimitive-method">addGrabbablePrimitive (method)</a></li>
 <li><a href="#addlight-method">addLight (method)</a></li>
+<li><a href="#addparticlesystem-method">addParticleSystem (method)</a></li>
 <li><a href="#addrenderer-method">addRenderer (method)</a></li>
 <li><a href="#registerconsolecommands-method">registerConsoleCommands (method)</a></li>
 <li><a href="#loader-property">loader (property)</a></li>
@@ -769,6 +777,17 @@ is what <code>DIRECTIONAL</code> and <code>SPOT</code> lights normally want.</p>
     position: Point3 = Pnt3.O,
     target?: Point3,
   ): Light3dEntity&lt;TypeDoc['vTypeDoc']&gt;
+</code></pre>
+<h3 id="addparticlesystem-method">addParticleSystem (method)</h3>
+<p>Creates a particle system - its visual component from <code>renderOptions</code> (plus the adapter's own
+extra options, e.g. a custom material) and the simulation from <code>options</code> - wraps it in a
+<code>ParticleSystem3dEntity</code> and adds it to the world.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">addParticleSystem&lt;T = any&gt;(
+    renderOptions: ParticleSystem3dRenderOptions&lt;TypeDoc['vTypeDoc']['texture']&gt; &amp;
+      Partial&lt;TypeDoc['vTypeDoc']['particleSystemExtraOpts']&gt;,
+    options: ParticleSystem3dOptions&lt;T&gt; = {},
+  ): ParticleSystem3dEntity&lt;TypeDoc['vTypeDoc'], T&gt;
 </code></pre>
 <h3 id="addrenderer-method">addRenderer (method)</h3>
 <p><strong>Signature</strong></p>
@@ -896,6 +915,9 @@ picks its physics backend at runtime and so can't name an adapter's world type:
   rendererExtraOpts: {}
   camera: ICamera3dComponent
   light: ILight3dComponent
+  particleSystem: IParticleSystem3dComponent
+  /** Adapter-specific particle system options, merged into `ParticleSystem3dRenderOptions` (e.g. a custom material). */
+  particleSystemExtraOpts: {}
   texture: unknown
 }
 </code></pre>

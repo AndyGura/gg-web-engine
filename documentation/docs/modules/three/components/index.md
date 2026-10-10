@@ -10,6 +10,7 @@ has_children: true
 - [three/components/three-composer-renderer.component.ts](/gg-web-engine/modules/three/components/three-composer-renderer.component.ts)
 - [three/components/three-display-object.component.ts](/gg-web-engine/modules/three/components/three-display-object.component.ts)
 - [three/components/three-light.component.ts](/gg-web-engine/modules/three/components/three-light.component.ts)
+- [three/components/three-particle-system.component.ts](/gg-web-engine/modules/three/components/three-particle-system.component.ts)
 - [three/components/three-physics-debug-view.ts](/gg-web-engine/modules/three/components/three-physics-debug-view.ts)
 - [three/components/three-renderer.component.ts](/gg-web-engine/modules/three/components/three-renderer.component.ts)
 - [three/components/three-scene.component.ts](/gg-web-engine/modules/three/components/three-scene.component.ts)

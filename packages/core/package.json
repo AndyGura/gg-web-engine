@@ -1,6 +1,6 @@
 {
   "name": "@gg-web-engine/core",
-  "version": "0.0.81",
+  "version": "0.0.82",
   "description": "Library-agnostic 2D/3D game engine core for the browser: worlds, entities, clocks, input, level loader and networking contracts. Pair it with one rendering and one physics adapter",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

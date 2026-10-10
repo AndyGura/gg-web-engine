@@ -1,6 +1,6 @@
 ---
 title: three/types.ts
-nav_order: 223
+nav_order: 235
 parent: Modules
 ---
 
@@ -57,6 +57,8 @@ export type ThreeVisualTypeDocRepo = {
   rendererExtraOpts: WebGLRendererParameters
   camera: ThreeCameraComponent
   light: ThreeLightComponent
+  particleSystem: ThreeParticleSystemComponent
+  particleSystemExtraOpts: ThreeParticleSystemExtraOpts
   texture: Texture
 }
 ```

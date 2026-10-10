@@ -1,6 +1,6 @@
 ---
 title: core/3d/loaders.ts
-nav_order: 92
+nav_order: 96
 parent: Modules
 ---
 

@@ -25,6 +25,11 @@ import { IAudioScene2dComponent } from './components/audio/i-audio-scene-2d.comp
 import { IAudioSource2dComponent } from './components/audio/i-audio-source-2d.component';
 import { CharacterController2dEntity } from './entities/character-controller-2d.entity';
 import { PlayerCharacterController2d } from './entities/controllers/input/player-character-2d.controller';
+import {
+  IParticleSystem2dComponent,
+  ParticleSystem2dRenderOptions,
+} from './components/rendering/i-particle-system-2d.component';
+import { ParticleSystem2dEntity, ParticleSystem2dOptions } from './entities/particle-system-2d.entity';
 
 export type VisualTypeDocRepo2D = {
   factory: IDisplayObject2dComponentFactory;
@@ -34,6 +39,9 @@ export type VisualTypeDocRepo2D = {
   camera: ICamera2dComponent;
   parallaxLayer: IParallaxLayer2dComponent;
   text: IText2dComponent;
+  particleSystem: IParticleSystem2dComponent;
+  /** Adapter-specific particle system options, merged into `ParticleSystem2dRenderOptions`. */
+  particleSystemExtraOpts: {};
   texture: unknown;
 };
 
@@ -228,6 +236,41 @@ export class Gg2dWorld<
     }
     const entity = new ParallaxLayer2dEntity<TypeDoc['vTypeDoc']>(
       this.visualScene.factory.createParallaxLayer(options),
+    );
+    this.addEntity(entity);
+    return entity;
+  }
+
+  /**
+   * Creates a particle system - its visual component from `renderOptions` (plus the adapter's own
+   * extra options) and the simulation from `options` - wraps it in a `ParticleSystem2dEntity` and
+   * adds it to the world.
+   *
+   * @example
+   * ```ts
+   * // sparks bursting out of a collected coin (2D worlds are in pixels, +Y points down)
+   * const sparks = world.addParticleSystem(
+   *   { capacity: 200, blending: 'additive', zIndex: 5 },
+   *   { lifetime: [0.3, 0.7], size: 10, gravity: { x: 0, y: 900 }, drag: 2, opacityOverLife: [1, 0] },
+   * );
+   * sparks.position = coin.position;
+   * sparks.emit(12, (p, ctx) => {
+   *   const angle = ctx.range(0, Math.PI * 2);
+   *   p.velocity = { x: Math.cos(angle) * 300, y: Math.sin(angle) * 300 };
+   * });
+   * ```
+   */
+  addParticleSystem<T = any>(
+    renderOptions: ParticleSystem2dRenderOptions<TypeDoc['vTypeDoc']['texture']> &
+      Partial<TypeDoc['vTypeDoc']['particleSystemExtraOpts']>,
+    options: ParticleSystem2dOptions<T> = {},
+  ): ParticleSystem2dEntity<TypeDoc['vTypeDoc'], T> {
+    if (!this.visualScene) {
+      throw new Error('Cannot add a particle system to the world without visual scene');
+    }
+    const entity = new ParticleSystem2dEntity<TypeDoc['vTypeDoc'], T>(
+      this.visualScene.factory.createParticleSystem(renderOptions),
+      options,
     );
     this.addEntity(entity);
     return entity;

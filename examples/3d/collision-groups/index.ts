@@ -1,4 +1,13 @@
-import { Entity3d, Gg3dWorld, GgStatic, LoadingScreen, OrbitCameraController, Pnt3, Qtrn, Trigger3dEntity } from '@gg-web-engine/core';
+import {
+  Entity3d,
+  Gg3dWorld,
+  GgStatic,
+  LoadingScreen,
+  OrbitCameraController,
+  Pnt3,
+  Qtrn,
+  Trigger3dEntity,
+} from '@gg-web-engine/core';
 import { ThreeSceneComponent, ThreeGgWorld, ThreeTypeDoc } from '@gg-web-engine/three';
 import { createPhysicsWorld } from './backends';
 
@@ -13,10 +22,7 @@ const world: ThreeGgWorld = new Gg3dWorld({
 });
 world.init().then(async () => {
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
-  const renderer = world.addRenderer(
-    world.visualScene.factory.createPerspectiveCamera(),
-    canvas,
-  );
+  const renderer = world.addRenderer(world.visualScene.factory.createPerspectiveCamera(), canvas);
   renderer.position = { x: 20, y: -16, z: 9 };
 
   const controller = new OrbitCameraController(renderer, { mouseOptions: { canvas } });
@@ -35,28 +41,32 @@ world.init().then(async () => {
   );
   world.addLight({ type: 'AMBIENT', intensity: 0.3 });
 
-  const cgs = [
-    0xff0000,
-    0x00ff00,
-    0x0000ff,
-    0xffff00,
-    0xff00ff,
-  ].map(c => ([c, world.physicsWorld!.registerCollisionGroup()]));
+  const cgs = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xff00ff].map(c => [
+    c,
+    world.physicsWorld!.registerCollisionGroup(),
+  ]);
 
   for (let i = 0; i < cgs.length; i++) {
     const [color, collisionGroup] = cgs[i];
-    world.addPrimitiveRigidBody({
+    world.addPrimitiveRigidBody(
+      {
         shape: { shape: 'BOX', dimensions: { x: 7, y: 7, z: 0.5 } },
         // collision groups can be set immediately when creating entity
-        body: { bodyType: 'static', ownCollisionGroups: [collisionGroup], interactWithCollisionGroups: [collisionGroup] },
+        body: {
+          bodyType: 'static',
+          ownCollisionGroups: [collisionGroup],
+          interactWithCollisionGroups: [collisionGroup],
+        },
       },
       { x: 0, y: 0, z: -(i + 1 - cgs.length / 2) * 5 },
-      Qtrn.fromEuler({ x: Math.PI / 4, y: 0, z: 2 * i * Math.PI / cgs.length }), {
+      Qtrn.fromEuler({ x: Math.PI / 4, y: 0, z: (2 * i * Math.PI) / cgs.length }),
+      {
         color,
         shading: 'phong',
         castShadow: true,
         receiveShadow: true,
-      });
+      },
+    );
   }
 
   const destroyTrigger = new Trigger3dEntity(
@@ -66,7 +76,7 @@ world.init().then(async () => {
     }),
   );
   destroyTrigger.position = { x: 0, y: 0, z: -50 };
-  destroyTrigger.onEntityEntered.subscribe((entity) => {
+  destroyTrigger.onEntityEntered.subscribe(entity => {
     world.removeEntity(entity, true);
   });
   world.addEntity(destroyTrigger);

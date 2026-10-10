@@ -6,6 +6,7 @@ import {
   GgCarHandlingController,
   MapGraph3dEntity,
   MapGraphNodeType,
+  ParticleSystem3dEntity,
   Pnt3,
   Point3,
   Qtrn,
@@ -15,7 +16,7 @@ import {
   Trigger3dEntity,
 } from '@gg-web-engine/core';
 import { MobileControls, TouchButton } from '@gg-web-engine/mobile-controls';
-import { BehaviorSubject, combineLatest, filter, Observable, pairwise } from 'rxjs';
+import { BehaviorSubject, combineLatest, filter, NEVER, Observable, pairwise, switchMap } from 'rxjs';
 import { map, takeUntil } from 'rxjs/operators';
 import { GameCameraController } from './game-camera-controller';
 import { GameAudio } from './game-audio';
@@ -32,14 +33,19 @@ const ENTER_CAR_ARRIVE_DISTANCE = 0.3;
 type CarType = 'lambo' | 'truck' | 'car';
 
 export type CurrentState =
-  { mode: 'freecamera' }
-  | { mode: 'onfoot', character: CharacterController3dEntity<FlyCityTypeDoc> }
+  | { mode: 'freecamera' }
+  | { mode: 'onfoot'; character: CharacterController3dEntity<FlyCityTypeDoc> }
   // walking (no player control) towards the driver's seat, on the way to 'driving'
-  | { mode: 'entering', character: CharacterController3dEntity<FlyCityTypeDoc>, car: GgCarEntity, carType: CarType, target: Point3 }
-  | { mode: 'driving', car: GgCarEntity, carType: CarType };
+  | {
+      mode: 'entering';
+      character: CharacterController3dEntity<FlyCityTypeDoc>;
+      car: GgCarEntity;
+      carType: CarType;
+      target: Point3;
+    }
+  | { mode: 'driving'; car: GgCarEntity; carType: CarType };
 
 export class GameRunner {
-
   public handling?: GgCarHandlingController;
   public readonly gameCameraController: GameCameraController;
   public readonly audio: GameAudio;
@@ -57,9 +63,11 @@ export class GameRunner {
   private readonly roamingCars = new Set<GgCarEntity>();
   /** Where the driven car was last tick - a removed car can't be asked any more. */
   private drivenCarPosition: Point3 = Pnt3.O;
+  /** Exhaust smoke behind the driven car, puffing faster the harder the engine works. */
+  private readonly exhaust: ParticleSystem3dEntity<FlyCityTypeDoc['vTypeDoc']>;
 
   get controlCar$(): Observable<GgCarEntity | null> {
-    return this.state$.pipe(map(x => x.mode === 'driving' ? x.car : null));
+    return this.state$.pipe(map(x => (x.mode === 'driving' ? x.car : null)));
   }
 
   constructor(
@@ -75,7 +83,7 @@ export class GameRunner {
     if (this.mp) {
       this.setupMultiplayer(this.mp);
     }
-    this.state$.subscribe((state) => {
+    this.state$.subscribe(state => {
       this.gameCameraController.state = state;
       if (this.handling) {
         if (state.mode === 'driving') {
@@ -86,7 +94,7 @@ export class GameRunner {
         }
       }
     });
-    this.mapBounds.onEntityLeft.subscribe((entity) => {
+    this.mapBounds.onEntityLeft.subscribe(entity => {
       // an entity removed from the world (a city tile unloading, a car despawned by its owner) also
       // "leaves" the bounds; only one that fell out while still in the world needs handling
       if (entity?.world) {
@@ -108,13 +116,14 @@ export class GameRunner {
         }
       }
     });
-    combineLatest(this.gameCameraController.cameraIndex$, this.state$.pipe(pairwise()))
-      .subscribe(([index, [oldState, newState]]) => {
+    combineLatest(this.gameCameraController.cameraIndex$, this.state$.pipe(pairwise())).subscribe(
+      ([index, [oldState, newState]]) => {
         const car: RaycastVehicle3dEntity | undefined = (newState as any).car || (oldState as any).car;
         if (car && car.world) {
           car.visible = newState.mode !== 'driving' || index != 1; // invisible if bumper camera
         }
-      });
+      },
+    );
     this.state$.pipe(pairwise()).subscribe(([oldState, newState]) => {
       const oldCar = oldState.mode === 'driving' ? oldState.car : null;
       const newCar = newState.mode === 'driving' ? newState.car : null;
@@ -122,11 +131,8 @@ export class GameRunner {
         this.takeCar(newCar);
       }
     });
-    this.audio = new GameAudio(
-      this.http,
-      this.world,
-      this.state$.asObservable(),
-    );
+    this.audio = new GameAudio(this.http, this.world, this.state$.asObservable());
+    this.exhaust = this.createExhaust();
     // drives the character straight towards the car while 'entering' - runs before the character's
     // own movement tick (TickOrder.PHYSICS_SIMULATION - 5) so the moveDirection/rotation it sets
     // this tick are the ones actually applied this tick
@@ -153,18 +159,88 @@ export class GameRunner {
     }
   }
 
+  /**
+   * Smoke puffs left behind the driven car: emitted at its rear, in world space (so they stay where
+   * they were puffed out as the car drives on), at a rate following the engine rpm.
+   */
+  private createExhaust(): ParticleSystem3dEntity<FlyCityTypeDoc['vTypeDoc']> {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 64;
+    const context = canvas.getContext('2d')!;
+    const gradient = context.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gradient.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
+    gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, 64, 64);
+    const exhaust = this.world.addParticleSystem(
+      { capacity: 150, texture: this.world.visualScene.factory.createTextureFromCanvas(canvas) },
+      {
+        emitting: false,
+        lifetime: [0.8, 1.4],
+        size: 0.25,
+        tint: 0x9a9a9a,
+        gravity: { x: 0, y: 0, z: 0.5 },
+        drag: 2,
+        sizeOverLife: [1, 3.5],
+        opacityOverLife: [0.35, 0],
+        init: (p, ctx) => {
+          // out of the tailpipe, with the car's own motion left out: the puff stays behind
+          p.velocity = Pnt3.add(ctx.directionToSim({ x: ctx.range(-0.3, 0.3), y: -1.5, z: 0 }), {
+            x: 0,
+            y: 0,
+            z: ctx.range(0.2, 0.5),
+          });
+          p.angularVelocity = ctx.range(-1, 1);
+        },
+      },
+    );
+    this.state$.subscribe(state => {
+      if (state.mode === 'driving') {
+        // the tailpipe: just behind the rear axle, at wheel height - in the chassis' own frame, read
+        // off the car's wheel layout (a mesh's bounding box is in world space, no use as an offset)
+        const props = state.car.carProperties;
+        const rearAxleY =
+          'wheelOptions' in props
+            ? Math.min(...props.wheelOptions.map(w => w.position.y))
+            : props.wheelBase.rear.axlePosition;
+        const axleZ =
+          'wheelOptions' in props
+            ? Math.min(...props.wheelOptions.map(w => w.position.z))
+            : props.wheelBase.rear.axleHeight;
+        exhaust.attachTo(state.car, { x: 0, y: rearAxleY - 0.6, z: axleZ });
+      } else if (exhaust.attachedTo) {
+        exhaust.detach();
+      }
+      exhaust.emitting = state.mode === 'driving';
+    });
+    this.state$
+      .pipe(
+        switchMap(state =>
+          state.mode !== 'driving'
+            ? NEVER
+            : state.car.engineRpm$.pipe(map(rpm => rpm / state.car.carProperties.engine.maxRpm)),
+        ),
+      )
+      .subscribe(rpmFactor => {
+        exhaust.simulation.options.rate = 4 + 40 * Math.max(0, rpmFactor - 0.1);
+      });
+    return exhaust;
+  }
+
   private takeCar(car: GgCarEntity) {
     this.roam(car);
     this.drivenCarPosition = car.position;
     // whatever else removes the car (falling off the map, another peer despawning it): don't keep
     // driving a disposed entity - fly free, then get back on foot where the car was
-    car.onRemoved$.pipe(
-      takeUntil(this.state$.pipe(filter(s => s.mode !== 'driving' || s.car !== car))),
-      takeUntil(this.world.disposed$),
-    ).subscribe(() => {
-      this.state$.next({ mode: 'freecamera' });
-      this.spawnAndControl(Pnt3.add(this.drivenCarPosition, { x: 0, y: 0, z: 2 })).then();
-    });
+    car.onRemoved$
+      .pipe(
+        takeUntil(this.state$.pipe(filter(s => s.mode !== 'driving' || s.car !== car))),
+        takeUntil(this.world.disposed$),
+      )
+      .subscribe(() => {
+        this.state$.next({ mode: 'freecamera' });
+        this.spawnAndControl(Pnt3.add(this.drivenCarPosition, { x: 0, y: 0, z: 2 })).then();
+      });
   }
 
   /** A car left behind belongs to the tile it now stands on, and unloads with that one. */
@@ -200,7 +276,9 @@ export class GameRunner {
     const nearest = this.cityMapGraph.nearestDummy;
     if (nearest) {
       state.car.resetTo({ position: nearest.data.position, rotation: Qtrn.O });
-      this.gameCameraController.carCameraController.animationFunction = this.gameCameraController.cameraMotionFactory[this.gameCameraController.cameraIndex$.getValue()][0](state.car, state.carType); // reset elastic camera
+      this.gameCameraController.carCameraController.animationFunction = this.gameCameraController.cameraMotionFactory[
+        this.gameCameraController.cameraIndex$.getValue()
+      ][0](state.car, state.carType); // reset elastic camera
     }
   }
 
@@ -220,18 +298,23 @@ export class GameRunner {
     // inside a group entity, which is what we later remove to get rid of the character.
     // names are network ids: each peer's character needs its own
     const name = this.mp ? `Player_${this.mp.net.localPeerId}` : 'Player';
-    const group = await this.world.loader.loadLevel({
-      entities: [{
-        class: 'Player',
-        name,
-        position,
-        config: {
-          radius: 0.4,
-          centersDistance: 1.0,
-          display: { model: { path: PLAYER_MODEL_PATH } },
-        },
-      }],
-    }, 'PlayerGroup');
+    const group = await this.world.loader.loadLevel(
+      {
+        entities: [
+          {
+            class: 'Player',
+            name,
+            position,
+            config: {
+              radius: 0.4,
+              centersDistance: 1.0,
+              display: { model: { path: PLAYER_MODEL_PATH } },
+            },
+          },
+        ],
+      },
+      'PlayerGroup',
+    );
     this.characterGroup = group;
     const character = group.getChildEntityByName<CharacterController3dEntity<FlyCityTypeDoc>>(name);
     // a runtime spawn: it appears on every peer; possessing it makes this peer drive it
@@ -262,7 +345,7 @@ export class GameRunner {
   }
 
   private carType(car: GgCarEntity): CarType {
-    return car.name.startsWith('lambo') ? 'lambo' : (car.name.startsWith('truck') ? 'truck' : 'car');
+    return car.name.startsWith('lambo') ? 'lambo' : car.name.startsWith('truck') ? 'truck' : 'car';
   }
 
   // spot next to the driver's side, slightly above the ground so the character drops onto it -
@@ -405,50 +488,58 @@ export class GameRunner {
       }
     });
     this.world.addEntity(mobileControls);
-    this.world.keyboardInput.bind('KeyC').pipe(
-      filter(x => !!x && this.state$.getValue().mode === 'driving'),
-    ).subscribe(() => {
-      if (this.gameCameraController.cameraIndex$.getValue() >= this.gameCameraController.cameraMotionFactory.length - 1) {
-        this.gameCameraController.cameraIndex$.next(0);
-      } else {
-        this.gameCameraController.cameraIndex$.next(this.gameCameraController.cameraIndex$.getValue() + 1);
-      }
-    });
-    this.world.keyboardInput.bind('KeyF').pipe(filter(x => x)).subscribe(() => {
-      const state = this.state$.getValue();
-      if (state.mode === 'onfoot') {
-        const car = this.findNearestCar(state.character.position, ENTER_CAR_MAX_DISTANCE);
-        if (car) {
-          this.startEnteringCar(state.character, car);
+    this.world.keyboardInput
+      .bind('KeyC')
+      .pipe(filter(x => !!x && this.state$.getValue().mode === 'driving'))
+      .subscribe(() => {
+        if (
+          this.gameCameraController.cameraIndex$.getValue() >=
+          this.gameCameraController.cameraMotionFactory.length - 1
+        ) {
+          this.gameCameraController.cameraIndex$.next(0);
+        } else {
+          this.gameCameraController.cameraIndex$.next(this.gameCameraController.cameraIndex$.getValue() + 1);
         }
-      } else if (state.mode === 'entering') {
-        // cancel walking to the car, hand control back to the player right where it's standing
-        state.character.moveDirection = Pnt3.O;
-        this.state$.next({ mode: 'onfoot', character: state.character });
-      } else if (state.mode === 'driving') {
-        this.leaveCar(state.car).then();
-      }
-    });
+      });
+    this.world.keyboardInput
+      .bind('KeyF')
+      .pipe(filter(x => x))
+      .subscribe(() => {
+        const state = this.state$.getValue();
+        if (state.mode === 'onfoot') {
+          const car = this.findNearestCar(state.character.position, ENTER_CAR_MAX_DISTANCE);
+          if (car) {
+            this.startEnteringCar(state.character, car);
+          }
+        } else if (state.mode === 'entering') {
+          // cancel walking to the car, hand control back to the player right where it's standing
+          state.character.moveDirection = Pnt3.O;
+          this.state$.next({ mode: 'onfoot', character: state.character });
+        } else if (state.mode === 'driving') {
+          this.leaveCar(state.car).then();
+        }
+      });
 
-    this.world.keyboardInput.bind('KeyG').pipe(filter(x => x)).subscribe(() => {
-      const state = this.state$.getValue();
-      if (state.mode === 'freecamera') {
-        this.spawnInFrontOfCamera().then();
-      } else if (state.mode === 'onfoot') {
-        this.state$.next({ mode: 'freecamera' }); // the character stays where it is
-      }
-    });
+    this.world.keyboardInput
+      .bind('KeyG')
+      .pipe(filter(x => x))
+      .subscribe(() => {
+        const state = this.state$.getValue();
+        if (state.mode === 'freecamera') {
+          this.spawnInFrontOfCamera().then();
+        } else if (state.mode === 'onfoot') {
+          this.state$.next({ mode: 'freecamera' }); // the character stays where it is
+        }
+      });
 
-    this.world.keyboardInput.bind('KeyR')
+    this.world.keyboardInput
+      .bind('KeyR')
       .pipe(filter(x => x))
       .subscribe(() => this.resetMyCar());
 
-    combineLatest(
-      this.state$.pipe(map(s => s.mode === 'driving')),
-      this.world.keyboardInput.bind('KeyH'),
-    )
+    combineLatest(this.state$.pipe(map(s => s.mode === 'driving')), this.world.keyboardInput.bind('KeyH'))
       .pipe(map(([a, b]) => a && b))
-      .subscribe((honk) => {
+      .subscribe(honk => {
         this.audio.honk = honk;
       });
   }
@@ -457,6 +548,4 @@ export class GameRunner {
     this.world.dispose();
     this.audio.disposeAudio();
   }
-
-
 }

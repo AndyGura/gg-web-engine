@@ -27,6 +27,11 @@ import { IDisplayObject3dComponentLoader, IPhysicsBody3dComponentLoader } from '
 import { CharacterController3dEntity } from './entities/character-controller-3d.entity';
 import { PlayerCharacterController } from './entities/controllers/input/player-character.controller';
 import { Grabbable3dEntity, Grabbable3dEntityOptions } from './entities/grabbable-3d.entity';
+import {
+  IParticleSystem3dComponent,
+  ParticleSystem3dRenderOptions,
+} from './components/rendering/i-particle-system-3d.component';
+import { ParticleSystem3dEntity, ParticleSystem3dOptions } from './entities/particle-system-3d.entity';
 
 export type VisualTypeDocRepo3D = {
   factory: IDisplayObject3dComponentFactory;
@@ -36,6 +41,9 @@ export type VisualTypeDocRepo3D = {
   rendererExtraOpts: {};
   camera: ICamera3dComponent;
   light: ILight3dComponent;
+  particleSystem: IParticleSystem3dComponent;
+  /** Adapter-specific particle system options, merged into `ParticleSystem3dRenderOptions` (e.g. a custom material). */
+  particleSystemExtraOpts: {};
   texture: unknown;
 };
 
@@ -267,6 +275,47 @@ export class Gg3dWorld<
     if (target) {
       entity.lookAt(target);
     }
+    this.addEntity(entity);
+    return entity;
+  }
+
+  /**
+   * Creates a particle system - its visual component from `renderOptions` (plus the adapter's own
+   * extra options, e.g. a custom material) and the simulation from `options` - wraps it in a
+   * `ParticleSystem3dEntity` and adds it to the world.
+   *
+   * @example
+   * ```ts
+   * // embers rising from a campfire at the origin (3D worlds are Z-up), plus a one-off burst
+   * const embers = world.addParticleSystem(
+   *   { capacity: 300, blending: 'additive' },
+   *   {
+   *     rate: 40, // particles per second, while emitting
+   *     lifetime: [0.6, 1.2],
+   *     size: 0.15,
+   *     tint: 0xff8833,
+   *     gravity: { x: 0, y: 0, z: 1.5 },
+   *     opacityOverLife: [1, 0],
+   *   },
+   * );
+   * embers.position = { x: 0, y: 0, z: 0.2 };
+   * embers.emit(40, (p, ctx) => {
+   *   p.velocity = { x: ctx.range(-2, 2), y: ctx.range(-2, 2), z: ctx.range(1, 4) };
+   * });
+   * ```
+   */
+  addParticleSystem<T = any>(
+    renderOptions: ParticleSystem3dRenderOptions<TypeDoc['vTypeDoc']['texture']> &
+      Partial<TypeDoc['vTypeDoc']['particleSystemExtraOpts']>,
+    options: ParticleSystem3dOptions<T> = {},
+  ): ParticleSystem3dEntity<TypeDoc['vTypeDoc'], T> {
+    if (!this.visualScene) {
+      throw new Error('Cannot add a particle system to the world without visual scene');
+    }
+    const entity = new ParticleSystem3dEntity<TypeDoc['vTypeDoc'], T>(
+      this.visualScene.factory.createParticleSystem(renderOptions),
+      options,
+    );
     this.addEntity(entity);
     return entity;
   }

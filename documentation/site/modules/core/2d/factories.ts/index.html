@@ -552,6 +552,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#createparticlesystem-method" class="md-nav__link">
+    createParticleSystem (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#loadtexture-method" class="md-nav__link">
     loadTexture (method)
   </a>
@@ -667,6 +674,7 @@
 <li><a href="#idisplayobject2dcomponentfactory-class">IDisplayObject2dComponentFactory (class)</a><ul>
 <li><a href="#createprimitive-method">createPrimitive (method)</a></li>
 <li><a href="#createparallaxlayer-method">createParallaxLayer (method)</a></li>
+<li><a href="#createparticlesystem-method">createParticleSystem (method)</a></li>
 <li><a href="#loadtexture-method">loadTexture (method)</a></li>
 <li><a href="#createtexturefromcanvas-method">createTextureFromCanvas (method)</a></li>
 <li><a href="#createtext-method">createText (method)</a></li>
@@ -716,6 +724,15 @@
 use <code>Gg2dWorld.addParallaxLayer</code>) to add it to a world.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">abstract createParallaxLayer(options: ParallaxLayer2dOpts&lt;VTypeDoc['texture']&gt;): VTypeDoc['parallaxLayer'];
+</code></pre>
+<h3 id="createparticlesystem-method">createParticleSystem (method)</h3>
+<p>Creates the visual half of a particle system (see <code>IParticleSystem2dComponent</code>), merging in the
+adapter's own <code>particleSystemExtraOpts</code>. Wrap it in a <code>ParticleSystem2dEntity</code> (or use
+<code>Gg2dWorld.addParticleSystem</code>) to simulate and show it.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">abstract createParticleSystem(
+    options: ParticleSystem2dRenderOptions&lt;VTypeDoc['texture']&gt; &amp; Partial&lt;VTypeDoc['particleSystemExtraOpts']&gt;,
+  ): VTypeDoc['particleSystem'];
 </code></pre>
 <h3 id="loadtexture-method">loadTexture (method)</h3>
 <p>Loads an image as a texture, for <code>DisplayObject2dOpts.texture</code>, a parallax layer or a background.</p>

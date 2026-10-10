@@ -6,7 +6,7 @@ import {
   RendererOptions,
   SELF_VIEW_HIDDEN_RENDER_LAYER,
 } from '@gg-web-engine/core';
-import { Color, Fog, FogExp2, Scene, Texture, WebGLRendererParameters } from 'three';
+import { Camera, Color, Fog, FogExp2, Scene, Texture, WebGLRenderer, WebGLRendererParameters } from 'three';
 import { ThreeFactory } from '../three-factory';
 import { ThreeLoader } from '../three-loader';
 import { ThreeCameraComponent } from './three-camera.component';
@@ -48,9 +48,27 @@ export class ThreeSceneComponent implements IVisualScene3dComponent<ThreeVisualT
 
   public readonly mainRenderLayer: RenderLayer = MAIN_RENDER_LAYER;
 
+  /**
+   * Run at the start of every `WebGLRenderer.render` of this scene, with that render's camera -
+   * before three.js uploads changed geometry, so a hook can still rewrite buffers for this camera
+   * (`ThreeParticleSystemComponent` sorts its sprites here). Installed as the native scene's
+   * `onBeforeRender`: an app must not replace that, and adds a hook here instead.
+   */
+  public readonly beforeRenderHooks: Set<(camera: Camera, renderer: WebGLRenderer) => void> = new Set();
+
   async init(): Promise<void> {
-    this._nativeScene = new Scene();
+    this._nativeScene = this.createNativeScene();
     this.applyEnvironment();
+  }
+
+  private createNativeScene(): Scene {
+    const scene = new Scene();
+    scene.onBeforeRender = (renderer, _scene, camera) => {
+      for (const hook of this.beforeRenderHooks) {
+        hook(camera, renderer);
+      }
+    };
+    return scene;
   }
 
   private _environment: Environment3dOpts<Texture> = { background: null, environmentMap: null, fog: null };
@@ -136,7 +154,8 @@ export class ThreeSceneComponent implements IVisualScene3dComponent<ThreeVisualT
   }
 
   dispose(): void {
-    this._nativeScene = new Scene();
+    this.beforeRenderHooks.clear();
+    this._nativeScene = this.createNativeScene();
     this._environment = { background: null, environmentMap: null, fog: null };
   }
 }
