@@ -1,6 +1,6 @@
 ---
 title: core/base/assets/asset-ref.ts
-nav_order: 100
+nav_order: 104
 parent: Modules
 ---
 

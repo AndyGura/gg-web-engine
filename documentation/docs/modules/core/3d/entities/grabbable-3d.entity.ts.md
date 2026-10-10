@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/grabbable-3d.entity.ts
-nav_order: 78
+nav_order: 81
 parent: Modules
 ---
 

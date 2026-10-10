@@ -1,6 +1,6 @@
 ---
 title: matter/components/matter-world.component.ts
-nav_order: 179
+nav_order: 189
 parent: Modules
 ---
 

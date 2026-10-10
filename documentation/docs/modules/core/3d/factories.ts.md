@@ -1,6 +1,6 @@
 ---
 title: core/3d/factories.ts
-nav_order: 86
+nav_order: 90
 parent: Modules
 ---
 
@@ -17,6 +17,7 @@ parent: Modules
     - [createPrimitive (method)](#createprimitive-method)
     - [createPerspectiveCamera (method)](#createperspectivecamera-method)
     - [createLight (method)](#createlight-method)
+    - [createParticleSystem (method)](#createparticlesystem-method)
     - [createTextureFromCanvas (method)](#createtexturefromcanvas-method)
     - [randomColor (method)](#randomcolor-method)
     - [createPlane (method)](#createplane-method)
@@ -101,6 +102,20 @@ Creates a light. Wrap it in a `Light3dEntity` (or use `Gg3dWorld.addLight`) to a
 
 ```ts
 abstract createLight(descriptor: Light3dDescriptor): VTypeDoc['light'];
+```
+
+### createParticleSystem (method)
+
+Creates the visual half of a particle system (see `IParticleSystem3dComponent`), merging in the
+adapter's own `particleSystemExtraOpts` (e.g. a custom material). Wrap it in a
+`ParticleSystem3dEntity` (or use `Gg3dWorld.addParticleSystem`) to simulate and show it.
+
+**Signature**
+
+```ts
+abstract createParticleSystem(
+    options: ParticleSystem3dRenderOptions<VTypeDoc['texture']> & Partial<VTypeDoc['particleSystemExtraOpts']>,
+  ): VTypeDoc['particleSystem'];
 ```
 
 ### createTextureFromCanvas (method)

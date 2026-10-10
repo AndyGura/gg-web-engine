@@ -1,6 +1,6 @@
 ---
 title: core/3d/models/lights.ts
-nav_order: 97
+nav_order: 101
 parent: Modules
 ---
 

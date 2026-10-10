@@ -1,6 +1,6 @@
 ---
 title: pixi/pixi-factory.ts
-nav_order: 192
+nav_order: 203
 parent: Modules
 ---
 
@@ -19,6 +19,7 @@ parent: Modules
     - [createNativePrimitive (method)](#createnativeprimitive-method)
     - [createAnimatedSprite (method)](#createanimatedsprite-method)
     - [createParallaxLayer (method)](#createparallaxlayer-method)
+    - [createParticleSystem (method)](#createparticlesystem-method)
     - [loadTexture (method)](#loadtexture-method)
     - [textureFromData (method)](#texturefromdata-method)
     - [decodeSvg (method)](#decodesvg-method)
@@ -108,6 +109,16 @@ createAnimatedSprite(baseTexture: Texture, options: PixiGridAtlasOptions): PixiA
 
 ```ts
 createParallaxLayer(options: ParallaxLayer2dOpts<Texture>): PixiParallaxLayerComponent
+```
+
+### createParticleSystem (method)
+
+**Signature**
+
+```ts
+createParticleSystem(
+    options: ParticleSystem2dRenderOptions<Texture> & Partial<PixiParticleSystemExtraOpts>,
+  ): PixiParticleSystemComponent
 ```
 
 ### loadTexture (method)

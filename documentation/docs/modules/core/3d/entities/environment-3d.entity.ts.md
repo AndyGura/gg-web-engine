@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/environment-3d.entity.ts
-nav_order: 76
+nav_order: 79
 parent: Modules
 ---
 

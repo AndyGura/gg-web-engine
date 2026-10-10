@@ -36,6 +36,44 @@ where one exists.
   lines, the app-development guide and one complete example game per dimension, in one file),
   generated at release time.
 
+## [0.0.82] - 2026-10-10
+
+### Added
+- Particle systems (3D). `world.addParticleSystem(renderOptions, options)` (or
+  `new ParticleSystem3dEntity(visualScene.factory.createParticleSystem(renderOptions), options)`)
+  adds camera-facing sprites drawn in one draw call per system. The simulation runs in core
+  (`ParticleSimulation`, the same for every adapter, dimension-agnostic for a later 2D version) on
+  the world clock: manual `emit(count, init)` with a per-particle init callback, a continuous `rate`
+  and `bursts`; per-particle position, velocity, acceleration plus system `gravity`, drag, lifetime,
+  size (width and height in world units), opacity, rotation, tint, atlas frame (`frames`,
+  `ParticleFrames.grid`/`fromPixels`) with frame sequences, and user data; keyframed or function
+  curves for size and opacity over life (`sizeOverLife`/`opacityOverLife`, linear or stepped); a
+  per-particle `update` callback and a per-step `onStep` hook; an optional `fixedTimeStep` (e.g.
+  1/30 s to mirror a 30 Hz original) with interpolated rendering; `overflow` reusing the oldest
+  particle or dropping; emitters attached to an entity with a local `offset` (`attachTo`), particles
+  in world or `local` space. Rendering options: blend mode (`normal`, `additive`, `multiply`,
+  `subtractive`, `premultiplied`), `textureAlpha: 'brightness'` for sprites on an opaque black
+  background, camera-facing or vertical billboards, back-to-front sorting per camera, depth test
+  on and depth write off by default, fog, no shadows. `@gg-web-engine/three` implements it with an
+  instanced quad mesh (`ThreeParticleSystemComponent`) and a `material` hook to adjust or replace
+  the built-in shader material; `ThreeSceneComponent.beforeRenderHooks` runs per-camera code before
+  each render. Every 3D visual adapter now implements `createParticleSystem`, and
+  `VisualTypeDocRepo3D` has `particleSystem`/`particleSystemExtraOpts` members. The raycast vehicle
+  example leaves tyre smoke when braking, the portal room's incinerator spits embers and the city's
+  driven car puffs exhaust following its engine rpm.
+- Particle systems (2D). `Gg2dWorld.addParticleSystem(renderOptions, options)` (or
+  `new ParticleSystem2dEntity(visualScene.factory.createParticleSystem(renderOptions), options)`)
+  runs the same `ParticleSimulation` with 2D vectors - every simulation option above, sizes and
+  speeds in world units, a particle's `rotation` in the 2D world's own sign - and draws it through
+  `IParticleSystem2dComponent`. Render options: `capacity`, `texture`, `blending` (`normal`,
+  `additive`, `multiply` - the modes every 2D renderer has) and `zIndex`; the component's own
+  `tint`/`opacity` multiply the particles'. `@gg-web-engine/pixi` implements it with a
+  `ParticleContainer` (`PixiParticleSystemComponent`, atlas frames as sub-textures of the system's
+  texture; `roundPixels` extra option). Every 2D visual adapter now implements
+  `createParticleSystem`, and `VisualTypeDocRepo2D` has `particleSystem`/`particleSystemExtraOpts`
+  members. The coin run example bursts sparks out of every collected coin, and the side-view
+  character kicks up animated dust puffs when landing and running.
+
 ## [0.0.81] - 2026-10-09
 
 ### Added
@@ -951,7 +989,8 @@ where one exists.
 
 First published version: `@gg-web-engine/core`, `three`, `pixi`, `ammo`, and `matter`.
 
-[Unreleased]: https://github.com/AndyGura/gg-web-engine/compare/0.0.81...HEAD
+[Unreleased]: https://github.com/AndyGura/gg-web-engine/compare/0.0.82...HEAD
+[0.0.82]: https://github.com/AndyGura/gg-web-engine/compare/0.0.81...0.0.82
 [0.0.81]: https://github.com/AndyGura/gg-web-engine/compare/0.0.80...0.0.81
 [0.0.80]: https://github.com/AndyGura/gg-web-engine/compare/0.0.79...0.0.80
 [0.0.79]: https://github.com/AndyGura/gg-web-engine/compare/0.0.78...0.0.79

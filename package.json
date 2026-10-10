@@ -14,7 +14,8 @@
     "lint:examples": "node etc/check_examples_no_native.mjs",
     "agents-md": "node etc/generate_agent_docs.mjs",
     "check:agents-md": "node etc/generate_agent_docs.mjs --check",
-    "prettier-format": "npm run prettier-format --workspaces --if-present"
+    "prettier-format": "npm run prettier-format --workspaces --if-present",
+    "prettier-format:examples": "bash examples/prettier.sh"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",

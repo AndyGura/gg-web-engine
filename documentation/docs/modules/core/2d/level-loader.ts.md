@@ -1,6 +1,6 @@
 ---
 title: core/2d/level-loader.ts
-nav_order: 41
+nav_order: 43
 parent: Modules
 ---
 

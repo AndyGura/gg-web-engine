@@ -1,6 +1,6 @@
 ---
 title: rapier2d/components/rapier-2d-character-controller.component.ts
-nav_order: 196
+nav_order: 207
 parent: Modules
 ---
 

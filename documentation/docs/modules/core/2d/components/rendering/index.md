@@ -10,6 +10,7 @@ has_children: true
 - [core/2d/components/rendering/i-display-object-2d.component.ts](/gg-web-engine/modules/core/2d/components/rendering/i-display-object-2d.component.ts)
 - [core/2d/components/rendering/i-material-readable-2d.component.ts](/gg-web-engine/modules/core/2d/components/rendering/i-material-readable-2d.component.ts)
 - [core/2d/components/rendering/i-parallax-layer-2d.component.ts](/gg-web-engine/modules/core/2d/components/rendering/i-parallax-layer-2d.component.ts)
+- [core/2d/components/rendering/i-particle-system-2d.component.ts](/gg-web-engine/modules/core/2d/components/rendering/i-particle-system-2d.component.ts)
 - [core/2d/components/rendering/i-renderer-2d.component.ts](/gg-web-engine/modules/core/2d/components/rendering/i-renderer-2d.component.ts)
 - [core/2d/components/rendering/i-text-2d.component.ts](/gg-web-engine/modules/core/2d/components/rendering/i-text-2d.component.ts)
 - [core/2d/components/rendering/i-visual-scene-2d.component.ts](/gg-web-engine/modules/core/2d/components/rendering/i-visual-scene-2d.component.ts)

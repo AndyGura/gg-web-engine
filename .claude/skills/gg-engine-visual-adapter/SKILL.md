@@ -148,6 +148,21 @@ Every adapter component class then `implements I<Thing>Component<<Lib>VisualType
   `position`/`rotation` still mean what the engine expects (see `ThreeLightComponent` and
   `gg-engine-visual-adapter-three`). `clone()` should rebuild from `lightOptions` rather than
   deep-copying the native object, so a clone never references a target outside its own hierarchy.
+- **Particle systems (3D)**: `IDisplayObject3dComponentFactory.createParticleSystem(options)`
+  returns the TypeDoc's `particleSystem` member, an `IParticleSystem3dComponent`: a display object
+  that draws the first `buffers.count` particles of the `ParticleRenderBuffers` last given to
+  `setParticles` (the arrays are reused every tick; keep the reference and read them when drawing).
+  The simulation is core's, so the adapter only draws: one draw call per system (instanced quads),
+  each particle a quad of `size` world units (width, height) around its center, rotated in its own
+  plane, facing the camera - or, with `billboard: 'vertical'`, turning around world `Z` only. The
+  atlas region is in image coordinates (top-left origin, `y` down); account for the library's own
+  texture orientation. Tint is sRGB. Honor every `ParticleBlendMode` with the formulas its doc
+  gives, `textureAlpha: 'brightness'`, `alphaTest`, depth test on / depth write off by default,
+  fog, `renderOrder`, and sort back to front per camera with core's `sortParticlesBackToFront`
+  unless `sort: false` - at a point where the camera is known and the buffers can still be
+  uploaded for that draw. Particles never cast or receive shadows. Put a library-specific escape
+  hatch (a custom material/shader) into the TypeDoc's `particleSystemExtraOpts`, merged into the
+  options. `ThreeParticleSystemComponent` is the reference implementation.
 - **Scene environment (3D)**: `IVisualScene3dComponent.environment`/`setEnvironment(partial)` -
   merge semantics (an absent field is untouched, `null` clears it) over `background` (color or
   texture), `environmentMap` and `fog` (`LINEAR`/`EXPONENTIAL`). Sky textures come from the loader's
@@ -182,6 +197,18 @@ Every adapter component class then `implements I<Thing>Component<<Lib>VisualType
   `tilePosition = (origin - viewStart) mod tileSize`, a non-repeating one is placed at the origin
   one tile wide. `factory.loadTexture(url)` or `factory.createTextureFromCanvas` supplies textures
   for both. `PixiParallaxLayerComponent` is the reference implementation.
+- **Particle systems (2D)**: `IDisplayObject2dComponentFactory.createParticleSystem(options)`
+  returns the TypeDoc's `particleSystem` member, an `IParticleSystem2dComponent`: the 2D
+  counterpart of the 3D contract above, reading the same `ParticleRenderBuffers` (with
+  `dimensions: 2`, two floats per position). Draw every particle as a quad of `size` world units
+  around its center, rotated by `rotation` in the world's own rotation sign (the same sign as a
+  display object's `rotation`), in spawn order - oldest first, so the newest is on top - at the
+  system's `zIndex`, tinted (sRGB) with the texture's alpha times the particle's opacity, and let
+  the component's own `tint`/`opacity` multiply all of them as for any display object. The atlas
+  region is in image coordinates (top-left origin, `y` down). Honor `ParticleBlendMode2d`
+  (`normal`, `additive`, `multiply`) - there is no `textureAlpha`/`alphaTest` in 2D. Library-specific
+  knobs go into the TypeDoc's `particleSystemExtraOpts`. `PixiParticleSystemComponent` is the
+  reference implementation.
 - **Renderer component** (`IRenderer(2d|3d)Component`): accepts an optional `HTMLCanvasElement`
   (create an offscreen/detached canvas if none given) and `RendererOptions`, drives the actual
   draw call, supports resize, and `dispose()`s native GPU resources. `RendererOptions &

@@ -1,6 +1,6 @@
 ---
 title: rapier3d/components/rapier-3d-rigid-body.component.ts
-nav_order: 205
+nav_order: 216
 parent: Modules
 ---
 

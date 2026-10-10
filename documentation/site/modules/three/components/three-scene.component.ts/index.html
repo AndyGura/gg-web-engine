@@ -538,6 +538,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#createnativescene-method" class="md-nav__link">
+    createNativeScene (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#setenvironment-method" class="md-nav__link">
     setEnvironment (method)
   </a>
@@ -622,6 +629,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#beforerenderhooks-property" class="md-nav__link">
+    beforeRenderHooks (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#lockedrenderlayers-property" class="md-nav__link">
     lockedRenderLayers (property)
   </a>
@@ -665,6 +679,7 @@
 <li><a href="#threescenecomponent-class">ThreeSceneComponent (class)</a><ul>
 <li><a href="#zuprotationx-static-method">zUpRotationX (static method)</a></li>
 <li><a href="#init-method">init (method)</a></li>
+<li><a href="#createnativescene-method">createNativeScene (method)</a></li>
 <li><a href="#setenvironment-method">setEnvironment (method)</a></li>
 <li><a href="#applyenvironment-method">applyEnvironment (method)</a></li>
 <li><a href="#registerrenderlayer-method">registerRenderLayer (method)</a></li>
@@ -677,6 +692,7 @@
 <li><a href="#loader-property">loader (property)</a></li>
 <li><a href="#renderers-property">renderers (property)</a></li>
 <li><a href="#mainrenderlayer-property">mainRenderLayer (property)</a></li>
+<li><a href="#beforerenderhooks-property">beforeRenderHooks (property)</a></li>
 <li><a href="#lockedrenderlayers-property">lockedRenderLayers (property)</a></li>
 </ul>
 </li>
@@ -697,6 +713,10 @@ the engine's Z-up world (<code>ThreeLoader.loadCubeTexture</code> fills the cube
 <h3 id="init-method">init (method)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">async init(): Promise&lt;void&gt;
+</code></pre>
+<h3 id="createnativescene-method">createNativeScene (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private createNativeScene(): Scene
 </code></pre>
 <h3 id="setenvironment-method">setEnvironment (method)</h3>
 <p><strong>Signature</strong></p>
@@ -754,6 +774,14 @@ the engine's Z-up world (<code>ThreeLoader.loadCubeTexture</code> fills the cube
 <h3 id="mainrenderlayer-property">mainRenderLayer (property)</h3>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">readonly mainRenderLayer: number
+</code></pre>
+<h3 id="beforerenderhooks-property">beforeRenderHooks (property)</h3>
+<p>Run at the start of every <code>WebGLRenderer.render</code> of this scene, with that render's camera -
+before three.js uploads changed geometry, so a hook can still rewrite buffers for this camera
+(<code>ThreeParticleSystemComponent</code> sorts its sprites here). Installed as the native scene's
+<code>onBeforeRender</code>: an app must not replace that, and adds a hook here instead.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly beforeRenderHooks: Set&lt;(camera: Camera, renderer: WebGLRenderer) =&gt; void&gt;
 </code></pre>
 <h3 id="lockedrenderlayers-property">lockedRenderLayers (property)</h3>
 <p><strong>Signature</strong></p>

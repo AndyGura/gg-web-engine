@@ -1,6 +1,6 @@
 ---
 title: three/components/three-animated-display-object.component.ts
-nav_order: 213
+nav_order: 224
 parent: Modules
 ---
 
