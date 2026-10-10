@@ -28,6 +28,11 @@ where one exists.
 
 ## [Unreleased]
 
+### Added
+- `@gg-web-engine/core` ships an `AGENTS.md` guide for AI coding agents (Cursor, Codex, Copilot,
+  Claude Code, ...): after install it is at `node_modules/@gg-web-engine/core/AGENTS.md`. It is the
+  `gg-engine-app-development` skill's text, regenerated from it by `npm run agents-md`.
+
 ## [0.0.82] - 2026-10-10
 
 ### Added

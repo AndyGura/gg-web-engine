@@ -1,0 +1,947 @@
+<!-- Generated from .claude/skills/gg-engine-app-development/SKILL.md by etc/generate_agent_docs.mjs. Do not edit by hand: edit the skill and rerun the script. -->
+
+> **For AI coding agents building an app or game with `@gg-web-engine/*`.** This is the same
+> guide as the `gg-engine-app-development` Claude Code skill, shipped inside
+> `@gg-web-engine/core` so it is readable from `node_modules` by any agent. Other skills it
+> mentions by name live in [`.claude/skills`](https://github.com/AndyGura/gg-web-engine/tree/main/.claude/skills) of the
+> [repository](https://github.com/AndyGura/gg-web-engine); the API reference is at https://andygura.github.io/gg-web-engine/.
+
+# Building apps with gg-web-engine
+
+This skill is for writing consumer code against the published `@gg-web-engine/*` packages —
+gameplay, scenes, UI glue. It does **not** cover modifying the engine's own packages; for that see
+`gg-engine-core-development`, `gg-engine-visual-adapter`, or `gg-engine-physics-adapter`.
+
+## Mental model
+
+`GgWorld` (via `Gg3dWorld` or `Gg2dWorld`) is the root object. It composes two independent,
+swappable halves that must share dimensionality (both 2D or both 3D):
+
+- **visualScene** — a rendering backend component (`@gg-web-engine/three` for 3D,
+  `@gg-web-engine/pixi` for 2D).
+- **physicsWorld** — a physics backend component (3D: `@gg-web-engine/ammo` or
+  `@gg-web-engine/rapier3d`; 2D: `@gg-web-engine/matter` or `@gg-web-engine/rapier2d`).
+
+Either half can be `null`/omitted if you only need rendering or only physics. Both halves are
+optional generics on `GgWorld`, so entities gracefully no-op the missing side.
+
+An **Entity** (`Entity3d`/`Entity2d`) pairs a visual display object with a physics body and keeps
+their transforms in sync each tick. Renderer, trigger, raycast vehicle, and the built-in
+`GgCarEntity` are all specialized entities/components layered on top of this.
+
+## Setup
+
+```bash
+npm install --save @gg-web-engine/core
+# pick exactly one visual + one physics package of matching dimensionality:
+npm install --save @gg-web-engine/three @gg-web-engine/ammo        # 3D
+# or
+npm install --save @gg-web-engine/pixi @gg-web-engine/rapier2d     # 2D
+```
+
+Each adapter brings its library as a regular dependency (`three` with `@types/three`, `pixi.js`,
+`matter-js` with `@types/matter-js`, the Rapier compat build; Ammo is vendored), pinned to the exact
+version that engine release is built against, so an app installs only `@gg-web-engine/*` packages.
+If the app also imports the library itself, pin that same version so the bundle has one copy. All
+`@gg-web-engine/*` packages in one app must share the same version.
+
+## Bootstrap pattern
+
+```typescript
+import { Gg3dWorld, Pnt3, Qtrn } from '@gg-web-engine/core';
+import { ThreeSceneComponent } from '@gg-web-engine/three';
+import { AmmoWorldComponent } from '@gg-web-engine/ammo';
+
+const world = new Gg3dWorld({
+  visualScene: new ThreeSceneComponent(),
+  physicsWorld: new AmmoWorldComponent(),
+});
+await world.init(); // must await before touching factories/renderers
+
+const renderer = world.addRenderer(
+  world.visualScene!.factory.createPerspectiveCamera(),
+  document.getElementById('gg') as HTMLCanvasElement, // element must already exist in DOM
+);
+renderer.position = { x: 12, y: 12, z: 12 };
+renderer.rotation = Qtrn.lookAt(renderer.camera.position, Pnt3.O);
+
+world.addPrimitiveRigidBody({
+  shape: { shape: 'BOX', dimensions: { x: 7, y: 7, z: 1 } },
+  body: { bodyType: 'static' },
+});
+
+world.start(); // starts the tick clock (visual RAF loop + physics simulate())
+```
+
+The 2D equivalent (`Gg2dWorld`) uses `Shape2DDescriptor` (`BOX`/`CIRCLE`/`CAPSULE`/`CONVEX_HULL`/
+`POLYGON`/`COMPOUND`) and `Point2`/`number` rotation instead of quaternions - a `COMPOUND` child's
+`rotation` is a plain radians scalar rather than 3D's `Point4` quaternion.
+
+## Loading screen while the game starts
+
+`LoadingScreen.show()` covers the page with the engine's loading screen (`DefaultLoadingView`:
+opaque backdrop, an animated CSS 3D cube, "Loading", and a progress bar once progress is reported)
+until `hide()`, which fades it out. The app decides what it covers - usually startup and level
+(re)loads:
+
+```typescript
+const loading = LoadingScreen.show(); // { view?, container?, fadeOutDuration? }
+const world = new Gg3dWorld({ visualScene, physicsWorld: await createPhysicsWorld() });
+await world.init();
+await world.loader.loadLevel(level, 'Level', { onProgress: p => loading.setProgress(p) });
+// ... renderer, controllers
+world.start();
+loading.hide();
+```
+
+Show it before anything slow (a dynamically imported physics backend included), hide it after
+`world.start()`. A game with its own loading screen - any object implementing `LoadingView`
+(`element`, `setProgress`, `dispose`) - sets it once at startup with
+`LoadingScreen.setDefaultView(() => new MyLoadingView())`: every `show()` without a `view` and every
+`ScreenManager` without a `loadingView` then makes one from it. It takes a factory, not a view,
+because hiding disposes the view. `view` on a single `show()` overrides it for that one.
+
+Don't wrap loads that happen while the game keeps running (the next round's pieces, streamed map
+chunks) - that would cover the game. Hide it in a `finally` if the startup can fail, or a failure
+stays hidden behind it. A `ScreenManager` app doesn't need it: the manager shows the same default
+view while a screen enters (see "Screens").
+
+## Hidden tab: pausing automatically, or just reacting to it
+
+Pass `pauseWhenHidden: true` in the `Gg3dWorld`/`Gg2dWorld` constructor args to have the world pause
+itself automatically while the browser tab is hidden and resume itself when it becomes visible again
+(it won't resume a world your own code already paused before the tab was hidden - that pause is left
+alone). Whether or not you use that option, `world.visibility$` is an `Observable<boolean>` (`true` =
+visible) you can subscribe to directly for anything else that should react to tab visibility - muting
+audio, pausing polling/network calls, etc. Separately, `maxTickDelta?: number` in the same constructor
+args (default 250ms, forwarded to `world.worldClock.maxTickDelta`) bounds how large a single tick's
+delta can ever be, so returning to a long-backgrounded tab (if you didn't opt into
+`pauseWhenHidden`) can't hand physics/animation one huge catch-up frame - pass `0` only if your app
+genuinely needs unbounded ticks.
+
+## Opt-in fixed physics timestep
+
+By default, `world.physicsWorld.simulate()` runs once per world tick with that tick's own
+(variable) delta - fine for most apps, since every adapter's own physics stepping tolerates a
+varying `delta`. Pass `fixedPhysicsStep` (milliseconds) to `Gg3dWorld`/`Gg2dWorld`'s constructor to
+switch to a constant-size step instead:
+
+```typescript
+const world = new Gg3dWorld({
+  visualScene: new ThreeSceneComponent(),
+  physicsWorld: new AmmoWorldComponent(),
+  fixedPhysicsStep: 1000 / 60, // simulate physics at a constant 60Hz regardless of frame rate
+});
+```
+
+With this set, the world accumulates each tick's real delta and calls `simulate(fixedPhysicsStep)`
+as many times as fit into the accumulator that tick (zero, one, or several - a fast frame may
+accumulate for a couple of ticks before the next substep fires), carrying any leftover fractional
+time into the next tick. `maxPhysicsStepsPerTick` (default 8, also a constructor arg) caps how many
+of those calls one tick can make - if the world falls badly behind (e.g. the tab was backgrounded
+and resumes with a huge delta), the rest of that tick's accumulated time is dropped rather than
+queued up as an ever-growing backlog.
+
+Reach for this when gameplay logic depends on the physics engine advancing by predictable, identical
+steps regardless of the actual frame rate - a fighting-game-style input buffer keyed to physics
+ticks, replay/determinism work, or any tuning (spring constants, character-controller acceleration
+caps) that was validated at one step size and drifts visibly when the frame rate varies. Leave it
+unset for the common case of a physics simulation that already behaves fine driven by whatever delta
+the renderer happens to produce each frame - the fixed-step accumulator's own zero/one/several
+`simulate()` calls per rendered frame is a real behavior change from "always exactly once," not a
+free upgrade, and not needed unless something downstream actually cares about the step size being
+constant.
+
+## Typing the world down to the integration-library level
+
+`Gg3dWorld`/`Gg2dWorld` are generic over a `TypeDoc` (which concrete component classes fill each
+role — display object, renderer, camera, rigid body, trigger, factory, etc.) and a `SceneTypeDoc`
+(the concrete `visualScene`/`physicsWorld` instance types). Left at their bare/default generics,
+`world.visualScene`/`world.physicsWorld` and everything derived from them (`.factory`, entities'
+`.objectDisplay`/`.objectBody`) type as the dimension-agnostic *interfaces* (`IRenderer3dComponent`,
+`IRigidBody3dComponent`, ...) — enough to compile against, but not the real adapter classes, so
+backend-specific members (e.g. an Ammo-only tuning field, a Rapier-only collider handle) aren't
+visible and you'd need casts to reach them.
+
+Each adapter package exports one ready-made type alias for exactly this purpose — `Gg3dWorld`/
+`Gg2dWorld` pre-filled with that adapter's own concrete types on the half it implements, the other
+half left generic:
+
+| Package | World alias | Dim |
+|---|---|---|
+| `@gg-web-engine/three` | `ThreeGgWorld` | 3D visual |
+| `@gg-web-engine/pixi` | `PixiGgWorld` | 2D visual |
+| `@gg-web-engine/ammo` | `AmmoGgWorld` | 3D physics |
+| `@gg-web-engine/rapier3d` | `Rapier3dGgWorld` | 3D physics |
+| `@gg-web-engine/rapier2d` | `Rapier2dGgWorld` | 2D physics |
+| `@gg-web-engine/matter` | `MatterGgWorld` | 2D physics |
+
+Combine one visual alias and one physics alias of matching dimensionality with core's
+`TypedGg3dWorld<VW, PW>` / `TypedGg2dWorld<VW, PW>` to get a world type fully resolved on **both**
+sides — **visual world first, physics world second**:
+
+```typescript
+import { Gg3dWorld, TypedGg3dWorld } from '@gg-web-engine/core';
+import { ThreeGgWorld, ThreeSceneComponent } from '@gg-web-engine/three';
+import { AmmoGgWorld, AmmoWorldComponent } from '@gg-web-engine/ammo';
+
+const world: TypedGg3dWorld<ThreeGgWorld, AmmoGgWorld> = new Gg3dWorld({
+  visualScene: new ThreeSceneComponent(),
+  physicsWorld: new AmmoWorldComponent(),
+});
+```
+
+With this, `world.visualScene` is a `ThreeSceneComponent`, `world.physicsWorld` is an
+`AmmoWorldComponent`, `world.visualScene.factory.createPrimitive(...)` returns a
+`ThreeDisplayObjectComponent`, entities' physics bodies are `AmmoRigidBodyComponent`, and so on —
+full autocomplete/type-checking all the way down, no casts needed. If you only ever need one half
+(rendering-only or physics-only world), pass the literal `null` for the other type argument, e.g.
+`TypedGg3dWorld<ThreeGgWorld, null>` for a world constructed with no `physicsWorld`.
+
+A single adapter's alias (just `ThreeGgWorld`, just `AmmoGgWorld`, ...) is the *correct* type,
+not a shortcut to avoid, whenever the code is meant to stay agnostic on the other half — a
+physics-agnostic visual entity/helper that only touches `world.visualScene`, an entity written to
+work with any physics backend, a function parameter typed `world: AmmoGgWorld` so it accepts an
+Ammo world under Three, other, or no renderer at all. That's exactly what leaving the other type
+argument at its generic-interface default is for.
+
+When the physics backend is chosen at runtime (a settings menu, a `?physics=` parameter loading the
+adapter with a dynamic `import()`), there is no adapter world type to name. Wrap the visual alias in
+`Gg3dWorldWithPhysics`/`Gg2dWorldWithPhysics` instead: `world.physicsWorld` is then the generic
+`IPhysicsWorld3dComponent`/`IPhysicsWorld2dComponent`, never `null`, so no `!` is needed:
+
+```typescript
+const world: Gg3dWorldWithPhysics<ThreeGgWorld> = new Gg3dWorld({
+  visualScene: new ThreeSceneComponent(),
+  physicsWorld: await createPhysicsWorld(), // returns IPhysicsWorld3dComponent
+});
+```
+
+The pitfall is narrower: don't reach for a single-adapter alias to type a `world` variable/
+parameter whose concrete instance genuinely has both halves and whose code *does* use both
+concretely (e.g. reads an Ammo-specific field off `world.physicsWorld` while also holding a
+`ThreeSceneComponent`-specific reference) — that compiles (the unfilled half is still the generic
+interface, so a concrete `AmmoWorldComponent` satisfies it structurally) but silently downgrades
+the unfilled side back to the generic interface, forcing casts you didn't need. Use
+`TypedGg3dWorld`/`TypedGg2dWorld` there instead.
+
+For a larger app, extract a named `TypeDoc` alias once and reuse it everywhere a generic is needed
+— entity classes, renderer/trigger helper types, function signatures — rather than repeating
+`TypedGg3dWorld<...>` or spelling out the interfaces by hand:
+
+```typescript
+import { Gg3dWorldTypeDocRepo, TypedGg3dWorld } from '@gg-web-engine/core';
+import { ThreeGgWorld, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
+import { AmmoGgWorld, AmmoPhysicsTypeDocRepo } from '@gg-web-engine/ammo';
+
+export type AppTypeDoc = { vTypeDoc: ThreeVisualTypeDocRepo; pTypeDoc: AmmoPhysicsTypeDocRepo };
+export type AppWorld = TypedGg3dWorld<ThreeGgWorld, AmmoGgWorld>;
+```
+
+`AppTypeDoc` is what every other generic in the engine keys off of — pass it (or a `['vTypeDoc']`/
+`['pTypeDoc']` slice of it) wherever a class expects a `TypeDoc`:
+
+- `Entity3d<AppTypeDoc>` / `Entity2d<AppTypeDoc>` — both halves, e.g. an app entity subclass
+  (`class Car extends Entity3d<AppTypeDoc> { ... }`) or a variable holding one
+  (`world.addPrimitiveRigidBody(...)` already infers this from `world`, so you rarely annotate it
+  explicitly).
+- `Renderer3dEntity<AppTypeDoc['vTypeDoc']>` / `Renderer2dEntity<AppTypeDoc['vTypeDoc']>` — visual
+  side only (what `world.addRenderer(...)` returns).
+- `Trigger3dEntity<AppTypeDoc['pTypeDoc']>` / `Trigger2dEntity<AppTypeDoc['pTypeDoc']>` — physics
+  side only.
+- `RaycastVehicle3dEntity<AppTypeDoc>`, `MapGraph3dEntity<AppTypeDoc, ...>`, `GgCarEntity<AppTypeDoc>`
+  — 3D-only built-ins that need both halves, same as `Entity3d`.
+- `TypeDocOf<W>` / `SceneTypeDocOf<W>` (from core) recover `AppTypeDoc`/the scene type from an
+  already-typed world value `W` if you only have `world`'s type in scope and don't want a second
+  hand-written alias to drift out of sync with it.
+
+Use the extracted-alias form for any app that passes the world/entities across multiple files or
+classes (constructor parameters, helper functions, entity subclasses in their own modules). For a
+small single-file app, inlining `TypedGg3dWorld<ThreeGgWorld, Rapier3dGgWorld>` directly at the
+`world` declaration is enough — no need to name a separate `AppTypeDoc`/`AppWorld` alias.
+
+## Every custom entity class needs `static readonly entityTypeName`
+
+**Any class the app defines that extends `IEntity`/`Entity3d`/`Entity2d` (a `Car`, a
+`ShapeSpawner`-style level-JSON class registered via `registerClass`, a custom controller) must
+declare `static readonly entityTypeName: string = 'ClassName';`, matching the class's own name, as
+(or near) its first member.** This is a required practice, not an optional nicety - check for it on
+any new entity class you write, and flag its absence when reviewing one:
+
+```typescript
+class Car extends Entity3d<AppTypeDoc> {
+  static readonly entityTypeName: string = 'Car';
+  // ...
+}
+```
+
+**Why this matters more than it looks:** it's a stable, class-identifying string every entity's
+auto-generated default name is built from (see below). It's unrelated to `LevelLoader`'s own JSON
+round-trip - `loadLevel`/`world.loader.createEntity(entityJson)` to build an entity from a `class`
+alias, `world.loader.serializeEntity(entity)`/`serializeLevel(level)` to reconstruct an `EntityJson`
+back from a live entity (see the `gg-engine-level-json` skill) - which never reads `entityTypeName`
+either: it either matches a registered live serializer against the entity's own concrete class, or
+falls back to echoing the `class` alias an entity was actually built under via the loader. Declaring
+`entityTypeName` doesn't by itself make a class serializable either way, and skipping it doesn't
+prevent an entity the loader built from being serializable via the echo. Declare it anyway, for the
+naming benefit below.
+
+As a free bonus today: any `Car` an app constructs without an explicit `name` (`new Car(...)` with
+nothing else naming it - e.g. one dynamically spawned at runtime rather than loaded from level JSON)
+would otherwise show up in the dev console's `entities`/`entity` commands, and in any `console.log`
+of the raw entity, as an opaque `e0x7`-style default with no indication of what it even is. With the
+tag, it reads as `Car_0`, `Car_1`, ... instead - `IEntity` reads `entityTypeName` off
+`this.constructor` at construction time and uses it to build the default name, whenever the app
+hasn't given the entity an explicit `.name` itself (level-JSON-loaded and explicitly-named entities
+are unaffected either way - see `gg-engine-level-json`'s own naming section).
+
+Two details worth getting right:
+
+- **Always add the `: string` type annotation**, even though `static readonly entityTypeName =
+  'Car';` compiles fine on its own - TypeScript infers the bare literal type `'Car'` without it,
+  which breaks the moment a subclass of `Car` also declares its own tag (`Class static side ...
+  incorrectly extends base class static side ... Type '"..."' is not assignable to type '"Car"'`,
+  TS2417). The annotation avoids that surprise for any future subclass.
+- A subclass that doesn't declare its own tag inherits its parent's automatically (ordinary JS
+  static inheritance via the constructor prototype chain) - only give a subclass its own tag when it
+  should read as its own name rather than its parent's in the debug console.
+
+Don't derive this from `this.constructor.name`/`Function.name` instead - a production bundler
+commonly mangles a class's real `Function.name` under minification (most minifiers don't preserve it
+by default), which would make the default name meaningless, or worse, silently different between a
+dev build and this same app's production build. `entityTypeName` is a plain static string property,
+untouched by minification regardless of build config.
+
+## Adding a loose component to the world without an entity
+
+Every component that can live in a world - display objects/renderers (visual), rigid
+bodies/triggers (physics), audio sources - implements the same `IWorldComponent` contract:
+`addToWorld(world)` / `removeFromWorld(world, dispose?)`. `Entity3d`/`Entity2d.addComponents`
+(and `world.addPrimitiveRigidBody`, `world.addRenderer`, etc.) are just thin wrappers that call
+this for you and additionally track the component under an owning `IEntity` - there's no
+requirement to go through an entity at all. For a one-off object with no gameplay identity of its
+own (a placement/attachment preview "ghost" mesh, a debug marker, a fire-and-forget UI overlay),
+call `addToWorld`/`removeFromWorld` on the component directly:
+
+```typescript
+const ghost = world.visualScene!.factory.createPrimitive(shape, material);
+ghost.addToWorld(world);
+// ...
+ghost.removeFromWorld(world, true); // dispose: true also frees the native mesh/geometry
+```
+
+This is the correct replacement for reaching into `world.visualScene.nativeScene`/
+`world.physicsWorld`'s native handle and adding the adapter's native object yourself - every
+adapter's `addToWorld` already does exactly that internally (e.g. `ThreeDisplayObjectComponent
+.addToWorld` calls `world.visualScene.nativeScene.add(...)` for you), so calling it needs no cast
+to a concrete adapter class on either the component or the `world` argument - it's declared on the
+dimension-agnostic interface itself. The one thing you lose by skipping the entity wrapper: the
+component's own `entity` stays `null`, so anything that resolves a physics hit/collision back to
+an owning entity (raycasts, collision events) reports `entity: null` for it - expected for a
+standalone object with no entity-level identity, but worth knowing if you later want to give the
+ghost object gameplay behavior (tick logic, named lookup via `getEntityByName`) - at that point
+wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
+
+## Where to find capabilities
+
+- **Available 3D shapes**: `Shape3DDescriptor` in `packages/core/src/3d/models/shapes.ts` —
+  `PLANE`, `BOX`, `CONE`, `CYLINDER`, `CAPSULE`, `SPHERE`, `COMPOUND`, `CONVEX_HULL`, `MESH`.
+- **Available 2D shapes**: `Shape2DDescriptor` in `packages/core/src/2d/models/shapes.ts` —
+  `BOX`, `CIRCLE`, `CAPSULE`, `CONVEX_HULL`, `POLYGON`, `COMPOUND`.
+- **Body options** (`Partial<Body3DOptions>`/`Body2DOptions`): `mass`, `bodyType` (`'dynamic'` |
+  `'static'` | `'kinematic_pos'` | `'kinematic_vel'`), `ccd`, `canSleep` (default `true`; `false`
+  keeps a resting dynamic body simulated, e.g. one whose collision groups change under it),
+  friction/restitution, collision groups — see `packages/core/src/base/models/body-options.ts`.
+- **Materials and textures**: `DisplayObject3dOpts` (`color`, `shading`, `diffuse`, `opacity`,
+  `castShadow`, `receiveShadow`) and `DisplayObject2dOpts` (`color` - a tint when combined with a
+  `texture` -, `texture`, `stroke: { color, width }` for an outline, `opacity`). Textures come from
+  `world.loader.loadTexture(url, options)` - `{ repeat, filter, mapping }` in 3D (`repeat: { x, y }`
+  tiles a texture across a surface), `{ filter }` in 2D (`filter: 'nearest'` keeps pixel art crisp) -
+  or `world.visualScene.factory.createTextureFromCanvas(canvas)` for one drawn at runtime. See
+  "Loading assets" below. Every 3D display object also has live `castShadow`/`receiveShadow` properties
+  that apply to a loaded model's whole hierarchy (`loadGgGlb` and the `"Glb"` level class take the
+  same two options); every 2D display object has live `tint` and `opacity`.
+- **Nesting display objects**: `parent.addChild(child)` makes `child` (from the same visual adapter,
+  not added to the world on its own) follow `parent`'s position/rotation/scale; `removeChild` detaches
+  it. Use it for parts that must move with a body, e.g. a marker on a spinning wheel.
+- **Text (2D)**: `world.visualScene.factory.createText(text, style)` returns an `IText2dComponent`
+  (`text`, `style`, `setStyle(partial)`; `Text2dStyle` has font family/size/weight/style, `color`,
+  `stroke`, `align` and `anchor`). Wrap it in an `Entity2d` to place it. Never reach for the
+  adapter's own classes (`nativeMesh`, `nativeSprite`, `nativeBody`, pixi `Text`/`Graphics`, three
+  materials) for any of the above - that ties the game to one renderer or physics engine.
+- **Ready-made controllers** (attach to entities via `entity.addController(...)`):
+  `FreeCameraController`, `OrbitCameraController`, `PlayerCharacterController` (3D) /
+  `PlayerCharacterController2d` (2D), `CarHandlingController` /
+  `GgCarHandlingController` in `packages/core/src/3d/entities/controllers/input/` (2D under
+  `packages/core/src/2d/entities/controllers/input/`). Swapping a `PlayerCharacterController`/
+  `PlayerCharacterController2d` to drive a different character, or temporarily suspending player
+  input (a cutscene, a menu), only needs `controller.active = false`/`true` - setting `.character`
+  to `null` is optional and never required just to stop the controller from acting on it, since
+  `active = false` already stops every input subscription from touching `character` and neutralizes
+  whatever it last wrote (`moveDirection`/`isRunning` zeroed, plus `isCrouching` in "hold" crouch
+  mode) rather than leaving it stuck mid-motion.
+- **GLB scene loading (3D)**: GLB + `.gg` meta sidecar, driven by `packages/core/src/3d/loader.ts`
+  and the adapter's own `<lib>-loader.ts` (e.g. `ThreeLoader`). Levels are authored in Blender and
+  exported with the `GG Web Engine Exporter` add-on in `blender-addon/` (see `blender-addon/README.md`
+  for install/usage). `world.loader.loadGgGlb(path, options)` returns ready-to-add `Entity3d`s (plus
+  recursively loaded props) whose names are scoped under `options.nameScope` as
+  `` `${nameScope}__${blenderObjectName}` `` - by default a fresh process-unique scope per call
+  (`glb_0__Suzanne`, `glb_1__Suzanne`, ...), so spawning the same file repeatedly never trips
+  `GgWorld`'s world-wide name-uniqueness check (`addEntity` throws on a collision, adding nothing).
+  Pass a string `nameScope` when names must be deterministic (networked spawns, lookups by name), or
+  `null` to keep the raw Blender object names for a file loaded exactly once.
+- **Level JSON loading (2D & 3D)**: `world.loader` turns a JSON document of entities into world
+  content, with built-in `"Primitive"`/`"Trigger"`/`"Camera"`/`"Light"`/`"Environment"`/`"ParallaxLayer"`/`"Glb"`/`"GgCar"`/
+  `"MapGraph"` (all but the first two 3D only) classes and support for app-registered custom classes. Loading resolves to a
+  group entity holding everything the level
+  produced, so `world.removeEntity(level, true)` tears the whole level back down in one call, and
+  `level.getChildEntityByName(name)`/`world.getEntityByName(name)` find a named entity afterwards —
+  see the dedicated `gg-engine-level-json` skill for full authoring details.
+- **Lights, sky and fog (3D)**: `world.addLight(descriptor, position?, target?)` creates an
+  `AMBIENT`/`HEMISPHERE`/`DIRECTIONAL`/`POINT`/`SPOT` light (see `Light3dDescriptor` in
+  `packages/core/src/3d/models/lights.ts` - color, intensity, `castShadow` and `shadow: { mapSize,
+  area, near, far, bias, normalBias }`) wrapped in a `Light3dEntity`; `target` aims a directional/spot
+  light, which otherwise shines along its local `-Z` (the way a camera with the same rotation looks).
+  Meshes only take part in shadows with `castShadow`/`receiveShadow` in their `DisplayObject3dOpts`.
+  `world.visualScene.setEnvironment({ background, environmentMap, fog })` sets the scene background
+  (a color or a sky texture), image-based lighting and fog; sky textures come from
+  `world.loader.loadCubeTexture({ px, nx, py, ny, pz, nz })` (faces named by world
+  direction, `pz` overhead; side images' top edge towards `+Z`, `pz`'s towards `+Y`, `nz`'s towards
+  `-Y`) or `world.loader.loadTexture(url, { mapping: 'equirectangular' })`. The level JSON has
+  matching `"Light"`/`"Environment"` classes. Don't reach for the adapter's native light classes
+  (`THREE.DirectionalLight` on `nativeScene`) - that ties the game to one renderer.
+- **Particles (3D)**: `world.addParticleSystem({ capacity, texture?, blending?, textureAlpha?,
+  billboard?, sort?, depthWrite?, ... }, { lifetime, gravity, drag, size, frames, sizeOverLife,
+  opacityOverLife, rate, bursts, update, onStep, fixedTimeStep, attachTo, offset, space, ... })`
+  returns a `ParticleSystem3dEntity` (one draw call). Spawn with `system.emit(count, (p, ctx) => {
+  p.position = ctx.pointToSim(localPoint); p.velocity = ...; p.size = { x: w, y: h }; ... })` -
+  `ctx.pointToSim`/`directionToSim` map points in the attached entity's frame (offset included)
+  to where particles live. Every duration is in seconds. Curves are a number, an evenly spread
+  `number[]`, `{ t, value }[]` keyframes, `{ keyframes, interpolation: 'step' }` or a function;
+  they multiply the particle's own `size`/`opacity`, so leave them unset to drive everything from
+  `update`. `fixedTimeStep: 1 / 30` runs the simulation in 30 Hz steps (interpolated for display
+  unless `interpolate: false`); emit from `onStep` to spawn in lockstep with them. Atlas regions
+  come from `ParticleFrames.grid`/`fromPixels` (image coordinates). Blend modes: `normal`,
+  `additive`, `multiply`, `subtractive`, `premultiplied` (+ `textureAlpha: 'brightness'` for a
+  sprite on opaque black); with three.js, the `material` option adjusts or replaces the shader
+  material for anything else.
+- **Particles (2D)**: `world.addParticleSystem({ capacity, texture?, blending?, zIndex? }, options)`
+  returns a `ParticleSystem2dEntity` with the same simulation options, callbacks and curves as in
+  3D, on `Point2` vectors: sizes, speeds and `gravity` in world units (`{ x: 0, y: 900 }` pulls down
+  in a y-down world), a particle's `rotation` in the 2D world's own sign (as any display object's),
+  `attachTo` any 2D entity. Blend modes are `normal`, `additive` and `multiply` only; the entity's
+  component `tint`/`opacity` multiply every particle's own. Particles are drawn in spawn order
+  (newest on top) at the system's `zIndex`.
+- **Draw order and backdrops (2D)**: every 2D display object has a `zIndex` (higher draws on top,
+  default `0`). `world.visualScene.setEnvironment({ background })` sets a background color or a
+  screen-fixed image scaled to cover the view (images from `world.loader.loadTexture(url)`).
+  `world.addParallaxLayer({ texture, parallax?, zIndex?, repeat?, offset?, scale? })` adds a
+  `ParallaxLayer2dEntity`: a texture that scrolls at `parallax` times the world's rate as the camera
+  moves (`0` stays fixed on screen, `1` moves with the world; default `0.5`), repeating along `'x'`
+  (default), `'y'`, `'both'` or `'none'`, drawn at `zIndex` (default `-1`, behind the world).
+  `offset` is the texture's world position while the camera is at the origin; `scale` is world units
+  per texture pixel. The level JSON has matching `"ParallaxLayer"`/`"Environment"` classes.
+- **Audio**: `world.audioScene.factory.loadClip(url)`/`world.loader.loadClip(url)` then
+  `createSource({ clip, loop, volume, playbackRate, spatial, bus, priority })`, placed with
+  `AudioSource(3d|2d)Entity` (static, attached to another entity, or `playOneShot`); bus volumes via
+  `setBusVolume`. With many simultaneous sources (vehicles, crowds), mobile especially, set a voice
+  budget: `world.audioScene.maxVoices = 16` (default `Infinity`). Beyond it the lowest-ranked playing
+  sources go virtual - silent, no audio processing, position still advancing, faded back in where
+  they would be when they rank high enough again. Rank = audible before silent, then `priority`
+  (higher wins, default `0`; give music/UI/the player's own vehicle a high one, ambient detail a low
+  one), then loudness at the listener. `source.isVirtual`, `audioScene.voiceCounts` and the
+  `audio_voices [int|inf]` console command show what is going on. Keeping a loop playing at volume 0
+  is fine under a budget: a silent source never takes a voice from one that is heard. 3D sources
+  pan with HRTF by default (front/back and elevation, but a convolution per source);
+  `world.audioScene.defaultPanningModel = 'equalpower'` before creating sources makes every new one
+  use the far cheaper left/right split (worth it on mobile), or set `panningModel` per source (in
+  the descriptor or at runtime). **Reverb** (tunnel, cave, hall) is per bus, not per source:
+  `world.audioScene.setBusReverb('sfx', { wet, dry, decay, preDelay, damping })` (defaults
+  `0.3`/`1`/`1.5`s/`0.02`s/`0.5`; `damping` `0` = bright hard walls, `1` = dull), `null` to remove,
+  `getBusReverb(bus)` to read. Fade it by calling it every frame with a changing `wet` (ramped, no
+  clicks) and constant `decay`/`preDelay`/`damping` (changing those rebuilds the reverb); each call
+  replaces all settings, so pass the full object every time. At `wet: 0` it costs nothing; call it
+  once at load with `wet: 0` to build the impulse response up front. A car in a tunnel: `{ decay:
+  1.8, preDelay: 0.03, damping: 0.3 }`, `wet` faded towards ~`0.4` inside. Keep sounds that must not
+  echo (UI, music) on other buses. Console: `audio_reverb BUS [wet|off] [decay] [preDelay] [damping]`.
+- **Raycasting**: `world.physicsWorld.raycast({ from, to, collisionFilterGroups?, collisionFilterMask? })`.
+- **Collision groups**: `world.physicsWorld.registerCollisionGroup()` /
+  `deregisterCollisionGroup(group)`; every body has `mainCollisionGroup` set by default (both
+  `ownCollisionGroups` and `interactWithCollisionGroups` start as `[mainCollisionGroup]`, not
+  `'all'`, unless the body's creation options say otherwise). Filtering is **bidirectional** - two
+  bodies only collide if *each* one's own `ownCollisionGroups` appears in the *other*'s
+  `interactWithCollisionGroups` - so giving one body a new dedicated group to narrow what it collides
+  with must **add** that group to whatever the body already had, not replace it: dropping
+  `mainCollisionGroup` from a character's own groups makes it stop colliding with every other body
+  still relying on the default `[mainCollisionGroup]` mask - ordinary level geometry included, which
+  reads as the character falling straight through its own floor (a real regression this repo hit).
+  This bidirectional AND-based model also **cannot** express "these two specific bodies never
+  collide with each other, but both still collide with everything else" whenever they share a group
+  both need for that "everything else" (almost always true) - no rearrangement of bits fixes this; see
+  `ICharacterController3dComponent.ignoredBodies` for the mechanism that actually solves that specific
+  shape of problem (e.g. `ObjectGrabController` excluding a carried prop from its own holder).
+- **Dev tools**: `packages/core/src/dev/` — `gg-console.ui.ts` (in-page command console),
+  `gg-debugger.ui.ts` (physics wireframe overlay toggle), `performance-meter.entity.ts`. See
+  "Debugging with the dev console" below — it's the preferred way for an agent to inspect/mutate a
+  *running* game instance instead of poking internals through devtools.
+- **Vehicles**: `RaycastVehicle3dEntity` / `GgCarEntity` in `packages/core/src/3d/entities/` for
+  raycast-based car physics. `GgCarProperties` has optional gearbox (`shiftTime`,
+  `downshiftMargin`, `gearEfficiencies`), rev limiter, engine braking, air drag and rolling
+  resistance settings, and `GgCarEntity` exposes `computeDrive`/`applyDrive`/`selectAutoGear`/
+  `applyResistance` as `protected` hooks for a subclass; `raycastVehicle.setFrictionSlip(axle, v)`
+  retunes tyre grip at runtime (a sliding handbrake, a surface change). A car's `engine.torques`
+  push the whole car, not each driven wheel.
+- **Forces and impulses**: `applyForce(force, worldPoint?)`/`applyImpulse(impulse, worldPoint?)`/
+  `applyTorque`/`applyTorqueImpulse` on every rigid body (`entity.objectBody`), on every physics
+  backend. A force acts during the next `simulate()` only, so re-apply a continuous one (wind,
+  drag, a thruster) every tick from an entity ticking before `TickOrder.PHYSICS_SIMULATION` and let
+  the adapter integrate it at any frame rate; an impulse (an explosion, a hit) changes the velocity
+  at once. Prefer these over writing `linearVelocity` each tick, which fights the solver and other
+  writers.
+
+## Loading assets: progress, cancellation, and when they are freed
+
+Everything loaded from a URL goes through `world.loader`: `loadLevel`/`loadLevelFromUrl` (see
+`gg-engine-level-json`), `loadGgGlb` (a Blender-exported `.glb`+`.meta` pair, as entities),
+`loadModel` (a plain `.glb`, as a display object), `loadTexture`, `loadCubeTexture` (3D),
+`loadClip` (audio) and `preload([...])` (several assets at once, by `AssetRef`). They share three
+options:
+
+```typescript
+const result = await world.loader.loadGgGlb('assets/city', {
+  onProgress: p => console.log(p.fraction, p.loadedItems, p.totalItems, p.bytesLoaded, p.bytesTotal),
+  signal: abortController.signal, // abort() rejects with an AbortError
+  scope, // who holds the asset in the cache, see below
+});
+```
+
+- **Progress** covers the download (by bytes; `bytesTotal` is `null` when the server hides the size,
+  as compressed or cross-origin responses often do, and the asset then jumps when it arrives) and
+  the decoding after it: parsing a model, decoding an image or a clip, and uploading to the GPU.
+  The GPU part is only counted when the world already has a renderer, so call `world.addRenderer`
+  before loading if the first frames after a loading screen must not stutter. A level reports one
+  progress for all it references.
+- **Each asset is fetched and decoded once per world.** Loads of the same asset, at the same time or
+  later, share it. `loadGgGlb`/`loadModel` hand out a copy per call (own position, own animation
+  state) that shares geometry, materials and textures with the cached original; `loadTexture`/
+  `loadClip` return the one shared object. Consequences: changing a material on one copy changes it
+  on all, and you never dispose a loaded texture yourself. `cachingStrategy: CachingStrategy.Nothing`
+  on `loadGgGlb` loads a private, uncached instance instead.
+- **An asset is freed when nothing holds it anymore.** A level holds what it loaded until it is
+  removed; a `MapGraph` chunk until it unloads; an entity built with `world.loader.createEntity`
+  until it is disposed. Anything you load directly is held until `world.dispose()`, unless you pass
+  a scope and release it earlier:
+
+  ```typescript
+  const scope = world.loader.createAssetScope();
+  const boss = await world.loader.loadGgGlb('assets/boss', { scope });
+  // ... once the boss fight is over and its entities are removed:
+  scope.release();
+  ```
+
+  Dispose the entities made from an asset before releasing its scope, not after.
+
+Another world has its own cache: two worlds showing the same model each fetch and decode it (the
+browser's HTTP cache normally spares the second download).
+
+## Screens: menu, loading, game, pause
+
+`ScreenManager` and `Screen` (in `@gg-web-engine/core`) structure an app as a stack of screens.
+Each screen is a DOM layer over which it has full control; the game is usually the only screen with
+a world.
+
+```typescript
+const screens = new ScreenManager();
+screens.push(new MenuScreen());
+
+class MenuScreen extends Screen {
+  enter() {
+    this.layer.innerHTML = `<button>Play</button>`;
+    this.layer.querySelector('button')!.onclick = () =>
+      this.screens.push(new GameScreen('city'), { clearHistory: true });
+  }
+}
+
+class GameScreen extends Screen {
+  constructor(private readonly level: string) {
+    super();
+  }
+
+  async enter(ctx: ScreenEnterContext) {
+    const canvas = this.layer.appendChild(document.createElement('canvas'));
+    const world = this.addWorld(new Gg3dWorld({ visualScene, physicsWorld })); // before anything can fail
+    await world.init();
+    // ... camera, world.addRenderer(camera, canvas) ...
+    await world.loader.loadLevelFromUrl(`levels/${this.level}.json`, 'level', {
+      onProgress: ctx.reportProgress,
+      signal: ctx.signal,
+    });
+    world.addEntity(new MobileControls({ container: this.layer }));
+    this.addTeardown(this.keyboard.bind('Escape').subscribe(down => down && this.screens.push(new PauseScreen())));
+    world.start();
+  }
+}
+```
+
+- **Operations**: `push(screen, { clearHistory?, pauseBelow?, loadingView? })`, `replace(screen)`,
+  `pop(count = 1)` (a positive integer, else it rejects), `popTo(screenOrClass)`,
+  `reset([bottom, ..., top])`. Each is one transition and returns a promise for it; transitions run
+  in request order. Screens that leave exit first, top down, then the new top screen enters; their
+  layers stay up (inert) until the new screen or the loading view shows, so there is no blank frame.
+  `clearHistory` makes the pushed screen the only one. `reset` builds a whole stack at once; the
+  screens below its top enter later, when first uncovered. The promise resolves with `true` when
+  its screen was shown, `false` when a later operation cancelled it.
+- **Never `await` an operation inside a screen's own `enter()` or `exit()`** (a boot screen that
+  `await`s `push(menu)`): the operation waits for the transition, which waits for that hook, and
+  neither ends. Call it without awaiting - it runs right after.
+- **A screen instance is used once.** Create a new one per push and give it its parameters through
+  the constructor. `enter()` runs once, `exit()` once.
+- **Loading**: while `enter()`'s promise is pending the screen's layer is hidden and, after
+  `loadingDelay` (150 ms), the manager shows a loading view fed by `ctx.reportProgress` (a loader's
+  `LoadProgress`, or a 0..1 number). `DefaultLoadingView` is the engine's loading screen (opaque
+  backdrop, an animated CSS 3D cube, "Loading" and, once progress is reported, a bar); pass
+  `loadingView: () => myView` (an object with `element`, `setProgress`, `dispose`) to the manager
+  or to one push, or `null` for none. Once shown, the view stays at least `loadingMinDuration`
+  (300 ms). An operation that removes a screen not shown yet cancels it: one that is loading is
+  aborted (`ctx.signal`), one still waiting its turn is never entered - judged by the stack the
+  queued operations lead to, so `push(a); push(b); pop()` cancels only `b`. "Back" during loading
+  cancels the load: pass the signal to every load.
+- **A failed `enter()`** removes the screen and shows the one below, and the operation rejects. A
+  game that replaced the menu (`clearHistory`) leaves nothing below - give the manager
+  `onEnterError: (error, screen) => new MenuScreen(...)` to show a screen in its place; the
+  operation then resolves with `false` instead of rejecting.
+- **Cleanup is registration, not code in `exit()`**: `addWorld(world)` and
+  `addTeardown(fn | subscription | disposable)` as soon as the thing exists. The teardowns run in
+  reverse and the worlds are disposed once the screen is off the page: after `exit()`, when the
+  next screen or the loading view shows - which may be after the next screen's `enter()` started,
+  so a leaving world briefly coexists with the next screen's loading. Until then the screen looks
+  as it did (its worlds paused, input off), so a teardown that disposes a world rendering into the
+  layer causes no blank frame; `layer.isConnected` is already `false` in a teardown. When
+  `enter()` throws or is aborted the teardowns run at once, and `exit()` is not called at all. This
+  is what makes menu → game → menu repeatable: every game session is a new screen with a new
+  world, and the old one is gone completely, its WebGL context included (browsers allow only about
+  16 at once).
+- **A covered screen** (another one pushed on top) gets `onCovered()`, later `onUncovered()`. The
+  manager makes its layer `inert`, switches `world.inputEnabled` off for its worlds (keyboard,
+  the built-in controllers' mouse and direction inputs, pointer lock, the mobile-controls overlay)
+  and pauses them, audio included. `pauseBelow: false` on the push keeps them running (an inventory
+  over a live game). A world in a multiplayer session (`world.localPauseAllowed === false`, set by
+  `@gg-web-engine/multiplayer` while joined) is never paused this way - the shared world goes on,
+  only this player's input is off. A world you paused yourself is not resumed for you.
+- **Keys**: `this.keyboard` is the screen's own `KeyboardInput`, running only while the screen is
+  on top - use it for the screen's shortcuts (Escape, back). Gameplay keys stay on
+  `world.keyboardInput`. With the pointer locked the browser keeps Escape for releasing the lock,
+  so a game that pauses on Escape also pauses on `pointerlockchange` when the lock is gone. An
+  input you create yourself is not switched off for you: gate it on `world.inputEnabled$`, or
+  start/stop it with `runWhileInputEnabled(world, until$, start, stop)`.
+- **Touch controls**: pass `container: this.layer` to `MobileControls`, so the overlay belongs to
+  the game's layer and sits below any screen pushed on top. An on-screen pause button is
+  `controls.addControls(new TouchButton({ id: 'pause', content: 'II', placement: { top: 1, right: 1 } }).onPress(...))`.
+- **A screen can draw its UI with a renderer** instead of DOM: it creates its own world in `enter()`
+  (a 2D world for a pause menu over a 3D game, with a transparent renderer on a canvas in its
+  layer), registers it with `addWorld`, and never touches the game's world. Nothing requires both
+  renderers in an app that doesn't do this.
+- The manager adds a fixed, full-viewport container to `document.body` unless given `container`
+  (which must be positioned). `screens.stack`/`top`/`stack$`/`busy$` expose its state.
+- Declare `static readonly screenTypeName: string = 'MenuScreen';` on each screen class: the dev
+  console's `screens` command prints it, where the class name would be minified in a production
+  build (the same reason entities declare `entityTypeName`).
+
+## Touch devices: on-screen controls
+
+`@gg-web-engine/mobile-controls` (a separate, optional package) overlays sticks and buttons on the
+canvas on phones and tablets (see its package README for the full guide). One line covers every
+built-in input controller in the world, present or added later:
+
+```typescript
+world.addEntity(new MobileControls()); // shown on touch-first devices only; enabled: true forces it
+```
+
+- It follows `GgCarHandlingController`/`CarHandlingController`,
+  `PlayerCharacterController`, `PlayerCharacterController2d`, `FreeCameraController` and
+  `ObjectGrabController` (grab/release and throw buttons next to the character's), showing the
+  layout of whichever is `active` - so switching controllers by `active` (see "Common pitfalls")
+  switches the touch controls too. `OrbitCameraController` handles touch drags natively, as does
+  any controller's mouse-look without an overlay: `MouseInput` scales a finger's movement by its
+  `touchSensitivity` option (3 by default) so a drag turns the view about as far as it does through
+  the overlay's look area.
+- Options pick a scheme per controller (`car: { steering: 'buttons' | 'stick' | 'tilt' }`,
+  `character: { movement: 'stick' | 'dpad', look: 'drag' | 'stick' }`) and adjust single controls
+  (`placements`, `icons`, `hide`, `extra`).
+- An app's own keys get a button with `new TouchButton({...}).bindKey(world.keyboardInput, 'KeyF')`,
+  added to a layout's `extra` or kept always on screen with `controls.addControls(...)`.
+- An app's own controller class gets a layout with `controls.registerLayout(MyController, factory)`.
+  To be drivable by a stick, read movement from `DirectionInput.direction$` (a vector, keys
+  and analog sources combined) rather than `output$` (keys only).
+- An app that embeds the canvas in a page, or uses the Fullscreen API, passes a positioned wrapper
+  element as `container`; otherwise the overlay covers the viewport.
+
+## Multiplayer
+
+`@gg-web-engine/multiplayer` makes a world shared between 2–8 peers (see its package README for the
+full guide). The app-side shape:
+
+```typescript
+const net = new Network3dController({ transport: new WebRtcMeshTransport({ signaling, roomId }) });
+world.addEntity(net);
+await net.loadSharedLevel(levelJson, 'level', 'level.json'); // built by every peer itself
+await net.connect();
+const player = await world.loader.createEntity({ class: 'Player', name: `Player_${net.localPeerId}` });
+world.addEntity(player); // runtime spawn: appears on every peer
+net.possess(player); // this peer drives it; release(entity) gives it back
+```
+
+Rules of thumb:
+- **Names are network ids.** Anything every peer builds itself (levels, seeded/streamed content) needs
+  identical names everywhere - declare it shared (`loadSharedLevel`/`registerSharedLevel`,
+  `markShared(entities)` right after creating them); per-peer things need distinct names (prefix the
+  peer id). Seed per-chunk randomness from the room, never `Math.random()`.
+- **Every peer sees every event; consequences happen once.** Gate gameplay reactions with
+  `net.hasAuthority(entity, eventName, payload)` (level JSON `events` blueprints are gated
+  automatically), remove shared things with `net.despawn(entity)`, share game state with
+  `net.send(data)`/`appMessages$`, and give late joiners `net.joinState`.
+- **Possession is game logic**: possess on entering a car / taking a control panel, release on
+  leaving, and react to `possessionChanged$` (a race for the same seat is lost by one peer).
+- Set `net.localPosition` to where the player is (`null` while spectating) - distance arbitration
+  and zoning use it.
+- Custom entity classes take part by implementing `INetworkSyncable` (and `INetworkInputDriven` if a
+  player drives them) - see `gg-engine-multiplayer`.
+- In 2D, distances are pixels: `Network2dController` scales its defaults by `unitScale` (100).
+
+## Framework integration
+
+For Angular/React/Vue/vanilla wiring, the pattern is the same regardless of framework: create the
+`GgWorld` in a lifecycle hook (`ngOnInit`/`useEffect`) once a canvas ref exists, and call
+`world.dispose()` on teardown.
+
+## Debugging with the dev console
+
+Every `GgWorld` wires itself into one global command console (`packages/core/src/dev/`). This is
+the preferred way to inspect or mutate a *running* game instance — including from a browser
+automation session — instead of reverse-engineering bundled/minified internals through devtools.
+Commands go through the game's own public API (entity `.position`/`.rotation` setters, world
+getters, etc.), so they can't desync physics from rendering the way poking a raw property would.
+
+`GgStatic` is a development aid, not part of the game-facing API: nothing in the engine depends on
+it, and no engine feature is reachable only through it. Use it while developing; keep it out of a
+production build. Its commands move, spawn and retune anything in the world, so shipping it hands
+players a cheat console.
+
+### Turning it on
+
+```typescript
+import { GgStatic } from '@gg-web-engine/core';
+
+if (process.env.NODE_ENV !== 'production') {
+  GgStatic.instance.devConsoleEnabled = true;
+}
+```
+
+Guard every reference to `GgStatic` with a condition the bundler resolves at build time, as above
+(or `import.meta.env.DEV` under Vite): the engine never imports `GgStatic` itself, so the app's own
+references are the only ones there are, and a production build has none left. A runtime check (a
+query flag, say) leaves the console reachable in production and only hides it.
+
+This does two independent things:
+- Enables the backquote (`` ` ``) key to toggle the visual console UI (`gg-console.ui.ts`) — a
+  draggable panel with input, scrollback, ↑/↓ command history, and tab-style autocompletion.
+- Creates the `GgStatic` singleton and publishes it as `window.ggstatic`. Note this second part
+  happens from *any* access to `GgStatic.instance` (e.g. `GgStatic.instance.showStats = true`),
+  with or without `devConsoleEnabled`. Until some access happens, worlds queue their per-world
+  command registration on a `ggstatic_added` window event, so touch `GgStatic.instance` once
+  early (before or right after creating the first `GgWorld`) if you want per-world commands
+  registered from the start.
+
+### Driving it headlessly — this is what an agent should use
+
+`window.ggstatic` is a real scriptable object; the visual panel is just one frontend for it. From
+a browser automation tool (e.g. `claude-in-chrome`'s `javascript_tool`, or plain DevTools),
+evaluate:
+
+```javascript
+await window.ggstatic.console('set_position player 10 0 5')                        // one line, same parsing as the UI input box
+await window.ggstatic.runConsoleCommand('set_position', ['player', '10', '0', '5']) // same, pre-split args
+```
+
+Both resolve to a string (HTML with color `<span>`s, as shown in the visual console; strip tags
+if consuming it programmatically). Neither call needs `devConsoleEnabled` true, the backquote key,
+or the panel visible — they work as soon as `window.ggstatic` exists.
+
+### Built-in commands
+
+Global (always available): `commands` (list all available commands), `help NAME` (print a
+command's doc string), `worlds` (list worlds and the backends each runs on), `world [name]`
+(select the active world, then print it: name on the first line, then its backends - each scene's
+`backendName`, e.g. `three`/`rapier3d`/`webaudio` - clock state, time scale, entity counts —
+world-scoped commands only run while their world is selected; `GgWorld.documentWorlds` lists all
+worlds and the first one created is auto-selected), `stats_panel [0|1]`, `debug_panel [0|1]`,
+`bind_key CODE COMMAND [args...]` / `unbind_key CODE` (bind a command to a keyboard key —
+handy for a cheat-code hotkey).
+
+Per-world, registered by the base `GgWorld` (so identical for `Gg2dWorld`/`Gg3dWorld`):
+`timescale [float]`, `fps_limit [int]`, `renderers`, `debug_view [0|1] [rendererName]` (physics
+wireframe overlay), `performance [avg|peak] [sampleCount]`, and three **generic, dimension-agnostic
+entity commands that need no game-rules knowledge**:
+
+- `entities [nameFilter?]` — list every entity's name and class in the selected world (`children`
+  is already a flat list, nested entities included), optionally filtered by a substring. An entity
+  with no explicit `name` reads as `ClassName_0`/`ClassName_1`/... here rather than an opaque
+  `e0x7` - see "Every custom entity class needs `static readonly entityTypeName`" above - so an unreadable name in
+  this listing is a signal the class producing it is missing the tag.
+- `entity NAME` — dump one entity's class, active/visible flags, position/rotation (if it has
+  any — printed generically via duck-typing, so this works for both 2D and 3D entities), parent,
+  and children names.
+- `remove NAME [dispose=0|1]` — `world.removeEntity`, dispose defaults to on.
+- `step [ms]` — advance the world clock by exactly one manual tick of `ms` milliseconds (default
+  `8`, i.e. `1000/120`), for frame-by-frame physics debugging. Only works while the world is
+  paused (`timescale 0`) — it rejects otherwise, since stepping and letting the clock run freely
+  don't mix. `worldClock.elapsedTime` genuinely advances by `ms` (never throttled by `fps_limit`),
+  so anything keyed off elapsed time — animation mixers, tweens/lerps, child clocks from
+  `world.createClock()` — progresses correctly frame by frame; the world just stays paused (no
+  automatic ticking resumes) until you explicitly raise `timescale` again.
+
+`Gg2dWorld`/`Gg3dWorld` each additionally register their own copies of a few commands whose
+argument *shape* differs by dimension (mirroring how `addPrimitiveRigidBody` and its position/
+rotation args already differ) — same command names, different parsing:
+
+- `gravity` — 3D takes a `z` scalar or a full `x y z` vector; 2D takes a `y` scalar or `x y`.
+- `set_position NAME X Y [Z]` — teleport any named entity that has a `.position` (3D takes
+  `X Y Z`, 2D takes `X Y`). This is the generic "teleport" command — it works on *any* named
+  entity, not just a "player", since it goes through the same `Entity3d`/`Entity2d` position
+  setter gameplay code uses, keeping physics and rendering in sync.
+- `set_rotation NAME ...` — 3D accepts either 3 numbers (Euler angles, radians, converted via
+  `Qtrn.fromEuler`) or 4 (a raw quaternion `x y z w`); 2D takes a single angle in radians.
+- `spawn SHAPE X Y [Z] [bodyType=0|1|2|3|static|dynamic|kinematic_pos|kinematic_vel]` — drop a
+  default-sized primitive rigid body at a point for probing physics/collisions without touching
+  game code. 3D shapes: `BOX|SPHERE|CYLINDER|CONE|CAPSULE|PLANE`; 2D shapes:
+  `BOX|CIRCLE|CAPSULE|CONVEX_HULL|POLYGON`. `COMPOUND` is deliberately excluded from the spawner
+  in both dimensions - unlike every other shape, it has no single sensible "default size" (its
+  `children` array is open-ended), so it isn't wired into either `spawn` command; reach for
+  `addPrimitiveRigidBody` directly (or a level JSON `"Primitive"` entity - see `gg-engine-level-json`)
+  to spawn one. `bodyType` defaults to `dynamic` (falls under gravity);
+  numeric shorthand: `0`=static, `2`=kinematic_pos, `3`=kinematic_vel.
+
+3D worlds also register two commands for a default controllable character, gated on a physics
+world and at least one renderer already being present:
+
+- `player_spawn X Y Z` — spawn a default player character (capsule body, WASD/arrows movement,
+  mouse-look) at world-space position `X Y Z` (Z-up, so `Z` is height off the ground), controlling
+  the first renderer's camera. Prints the spawned controller entity's name (the "controlled by"
+  part of the output) — that name is what `player_mode` below needs.
+- `player_mode NAME first-person|third-person` — switch the named `PlayerCharacterController`
+  entity (`NAME` from `player_spawn`'s output) between first- and third-person view.
+
+Pausing is already covered by `timescale 0` (and the underlying `world.pauseWorld()`/
+`resumeWorld()` methods) — there's no separate `pause`/`resume` command. `timescale 0` + `step`
+together give a full pause/frame-advance/resume debug loop: `timescale 0`, then `step` as many
+times as needed, then `timescale 1` (or whatever the original scale was) to resume normally.
+
+Beyond these, there is **no built-in game-specific introspection** (health, inventory, win
+conditions, "the player" as a concept distinct from any other named entity) — that state is
+app-specific, so it's on the app (or the debugging agent) to register whatever verb the debugging
+session needs, per "Registering your own commands" below.
+
+### Registering your own commands
+
+`GgStatic.instance.registerConsoleCommand(world, name, handler, doc?)`:
+- `world`: a specific `GgWorld` instance scopes the command to it (only runs/shows up while that
+  world is selected — the common case for a single-world app); `null` registers a global command.
+- `handler`: `(...args: string[]) => Promise<string>` — args are whitespace-split from the raw
+  input; the resolved string is what gets printed/returned. Throw to report an error (rendered in
+  red by the UI).
+- `doc`: shown by `commands`/`help` — write one; it's the only way a later session (human or
+  agent) discovers the command's argument shape without reading source. Both `doc` and the
+  message of any thrown `Error` are pasted straight into the console panel's `innerHTML` (see
+  "Common pitfalls" below for why that rules out `<...>`-style placeholders).
+
+```typescript
+GgStatic.instance.registerConsoleCommand(
+  world,
+  'give_item',
+  async (...args: string[]) => {
+    const player = world.getEntityByName('player') as PlayerEntity; // this game's own entity class
+    const [itemId, countArg] = args;
+    if (!itemId) throw new Error('usage: give_item ITEM_ID [count=1]');
+    player.inventory.add(itemId, countArg === undefined ? 1 : +countArg);
+    return `gave ${countArg ?? 1}x ${itemId}`;
+  },
+  'args: [itemId, count?]; add an item to the player inventory',
+);
+```
+
+This is the pattern for anything genuinely game-specific — the engine has no idea what an
+"inventory" is, so a command like this can only live in app code. Positioning entities, by
+contrast, doesn't need a custom command at all: `set_position`/`set_rotation` above already work
+on any named entity, including the player.
+
+### Two ways to use this while debugging as an agent
+
+1. **Temporary, source-free** — for a one-off session (e.g. "why does the player fall through the
+   floor at this spot"), don't edit the app's source at all: call `registerConsoleCommand` (and/or
+   `world.getEntityByName`, `window.ggstatic.selectedWorld`, `GgWorld.documentWorlds`) straight
+   from `javascript_tool`/DevTools to close over whatever entity you need and add the missing verb
+   as a console command on the spot — reach for this once the built-in `entities`/`entity`/
+   `set_position`/`set_rotation`/`spawn`/`step` commands above aren't enough, e.g. a probe that
+   needs to read a game-specific field. This is far faster and more reliable than reverse-engineering the
+   game's internal class names/state shape by hand — it reuses the
+   entity's real `.position`/method API instead, so physics and rendering stay in sync exactly as
+   they would from normal gameplay code.
+2. **Permanent cheat codes** — a genuinely reusable debug affordance (`give_item`, `noclip`,
+   `set_health`, `skip_level`) is worth registering in the app's own bootstrap/entity code
+   permanently, gated the same way as `devConsoleEnabled` (dev build / query flag / env check), so
+   it's available every session without re-registering by hand. Pair with `bind_key` if a hotkey
+   is more convenient than typing the command.
+
+## Common pitfalls
+
+- Defining a custom entity class without `static readonly entityTypeName: string = 'ClassName';` -
+  see "Every custom entity class needs `static readonly entityTypeName`" above. Easy to miss since nothing fails to
+  compile or run without it; the only symptom is an opaque `e0x7`-style name for any instance the
+  app doesn't explicitly name, instead of a readable `ClassName_0`.
+- Forgetting `await world.init()` before calling `.factory`, `.addRenderer`, etc. (adapters throw
+  "not initialized" errors by design — see e.g. `AmmoWorldComponent.factory` getter).
+- Passing a canvas element that isn't attached to the DOM yet when calling `addRenderer`.
+- Mixing 2D and 3D packages, or mismatched `@gg-web-engine/*` versions across packages.
+- Typing `world` as a single adapter's world alias (e.g. `ThreeGgWorld`) when the code actually
+  uses *both* halves concretely — compiles, but silently erases the untyped half back to the
+  generic interface. (A single-adapter alias is correct, not a mistake, when the code is meant to
+  stay agnostic on the other half — see "Typing the world..." above.) Use `TypedGg3dWorld`/
+  `TypedGg2dWorld` when both concrete sides are actually needed.
+- Not disposing entities/world (`world.removeEntity(entity, true)`, `world.dispose()`) — native
+  physics engines (Ammo/Rapier WASM) leak memory if handles aren't explicitly destroyed.
+- Reaching into `world.visualScene.nativeScene`/a physics world's native handle and calling the
+  adapter's native `add`/`remove` yourself, with a cast to the concrete adapter class to get there.
+  Call `component.addToWorld(world)` / `removeFromWorld(world, dispose?)` on the component itself
+  instead — every display object/renderer/rigid body/trigger/audio source component already
+  implements this (see "Adding a loose component to the world without an entity" above), needs no
+  adapter-specific cast on either side, and is what `Entity3d`/`Entity2d.addComponents` calls
+  internally anyway.
+- Assuming identical simulation across physics/render backends — every backend honors the same API,
+  but the libraries underneath differ: character sliding, vehicle feel, sleeping, CCD and kinematic
+  bodies all behave per backend (the engine's GitHub README, FAQ "Do all physics backends behave the
+  same?", lists the known differences). Tune physics on the backend the app ships with, check the
+  specific adapter's source under `packages/<adapter>/src` when a capability seems missing, and
+  consult `milestones.md` for known gaps before assuming a bug.
+- Writing `<...>`-style argument placeholders (`<name>`, `<x>`) into a console command's `doc`
+  string or thrown `Error` message. The console panel renders both via raw `innerHTML`
+  (`gg-console.ui.ts`), so `<name>` parses as an (unknown, self-closing) HTML tag and its text is
+  silently swallowed — the user sees `usage: give_item` with nothing after it, not
+  `usage: give_item <itemId>`. Every built-in command's `doc`/usage text uses bracket-free
+  placeholders instead (`NAME`, `X`, `Y`, `Z`, `ITEM_ID`, `ANGLE_RADIANS`, or a bare
+  `first-person|third-person` choice list) — follow that convention for your own commands, and
+  reserve real `<...>` only where you deliberately want actual HTML (e.g. `bind_key`'s doc string
+  links to a key-code reference with a real `<a href=...>` tag).
+- Naming a new console command as a suffix extension of an existing one's prefix, e.g. adding
+  `spawn_player` alongside the existing `spawn` (both worlds register `spawn`). Tab-autocomplete
+  (`gg-console.ui.ts`) resolves a partial input to the *shortest* registered command that starts
+  with it, so typing `spawn` and hitting Tab (or having it auto-complete as you type) locks onto
+  `spawn`, not `spawn_player`, even if `spawn_player` was the intended target. Prefer a name that
+  doesn't share a common prefix with an unrelated existing command — this is why the built-in
+  player-spawning command is `player_spawn`, not `spawn_player` (it now shares the harmless
+  `player_` prefix with `player_mode` instead, where either full command is short enough that
+  autocomplete resolving to the wrong one isn't a practical problem).
+
+## Reference material
+
+- Root `README.md` — quickstart, feature overview, integrations list.
+- `https://andygura.github.io/gg-web-engine/` — generated API docs (TSDoc/docs-ts).

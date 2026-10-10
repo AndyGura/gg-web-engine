@@ -330,6 +330,10 @@ pitfalls. Install it into your own project with [`npx skills`](https://www.skill
 npx skills add AndyGura/gg-web-engine --skill gg-engine-app-development -y
 ```
 
+Other agents (Cursor, Codex, Copilot, ...) get the same guide with no extra step: it ships inside
+the core package as `node_modules/@gg-web-engine/core/AGENTS.md`, so point your agent there or
+copy it into your project's own `AGENTS.md`.
+
 Then ask your agent to build the scene or game. Add
 [`gg-engine-level-json`](.claude/skills/gg-engine-level-json/SKILL.md) the same way if you author
 levels as JSON. The remaining skills under [`.claude/skills`](.claude/skills) are for working on the

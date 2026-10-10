@@ -51,7 +51,10 @@ BSD/GNU-portable — plain `grep`/`awk`, no `sed -i`).
 ## What the pipeline does (`etc/publish_new_version.sh X.Y.Z`)
 
 0. Before `etc/publish_new_version.sh` even runs, `release_action.yml` rolls `CHANGELOG.md` (see
-   the section above — this is where a malformed changelog aborts the job) and then does a plain workspace
+   the section above — this is where a malformed changelog aborts the job), runs
+   `npm run check:agents-md` (fails when `packages/core/AGENTS.md`, which ships in the core tarball,
+   differs from the `gg-engine-app-development` skill it is generated from — regenerate it with
+   `npm run agents-md` and commit), and then does a plain workspace
    `npm install && npm run build && npm run test` at the repo root (the same commands
    `pull_request_build.yml` runs on every PR) and fails the job right there if any of it errors —
    so an outright broken commit never gets as far as publishing `core`. This is a different install
