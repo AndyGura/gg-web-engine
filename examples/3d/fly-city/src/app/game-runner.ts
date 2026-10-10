@@ -196,9 +196,18 @@ export class GameRunner {
     );
     this.state$.subscribe(state => {
       if (state.mode === 'driving') {
-        // the rear of the chassis, slightly above the ground
-        const bounds = state.car.raycastVehicle.object3D?.getBoundings();
-        exhaust.attachTo(state.car, { x: 0, y: (bounds?.min.y ?? -2) - 0.1, z: (bounds?.min.z ?? 0) + 0.25 });
+        // the tailpipe: just behind the rear axle, at wheel height - in the chassis' own frame, read
+        // off the car's wheel layout (a mesh's bounding box is in world space, no use as an offset)
+        const props = state.car.carProperties;
+        const rearAxleY =
+          'wheelOptions' in props
+            ? Math.min(...props.wheelOptions.map(w => w.position.y))
+            : props.wheelBase.rear.axlePosition;
+        const axleZ =
+          'wheelOptions' in props
+            ? Math.min(...props.wheelOptions.map(w => w.position.z))
+            : props.wheelBase.rear.axleHeight;
+        exhaust.attachTo(state.car, { x: 0, y: rearAxleY - 0.6, z: axleZ });
       } else if (exhaust.attachedTo) {
         exhaust.detach();
       }
