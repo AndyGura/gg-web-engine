@@ -1,6 +1,6 @@
 ---
 title: core/3d/components/rendering/i-light-3d.component.ts
-nav_order: 58
+nav_order: 60
 parent: Modules
 ---
 

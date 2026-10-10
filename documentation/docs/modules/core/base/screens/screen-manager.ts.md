@@ -1,6 +1,6 @@
 ---
 title: core/base/screens/screen-manager.ts
-nav_order: 168
+nav_order: 178
 parent: Modules
 ---
 

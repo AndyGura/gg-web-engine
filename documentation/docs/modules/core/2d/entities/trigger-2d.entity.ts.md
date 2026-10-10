@@ -1,6 +1,6 @@
 ---
 title: core/2d/entities/trigger-2d.entity.ts
-nav_order: 36
+nav_order: 38
 parent: Modules
 ---
 

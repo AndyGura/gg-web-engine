@@ -1,6 +1,6 @@
 ---
 title: matter/components/matter-character-controller.component.ts
-nav_order: 176
+nav_order: 186
 parent: Modules
 ---
 

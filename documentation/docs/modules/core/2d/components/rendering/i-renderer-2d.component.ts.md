@@ -1,6 +1,6 @@
 ---
 title: core/2d/components/rendering/i-renderer-2d.component.ts
-nav_order: 23
+nav_order: 24
 parent: Modules
 ---
 

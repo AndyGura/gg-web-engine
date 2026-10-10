@@ -1,6 +1,6 @@
 ---
 title: core/base/entities/group.entity.ts
-nav_order: 127
+nav_order: 131
 parent: Modules
 ---
 
