@@ -14,13 +14,16 @@ import { CurrentState } from './game-runner';
 import { FlyCityTypeDoc, FlyCityWorld } from './app.component';
 
 export class GameCameraController {
-
   public readonly freeCameraController: FreeCameraController;
   public readonly carCameraController: Camera3dAnimator<FlyCityTypeDoc['vTypeDoc']>;
   public readonly playerController: PlayerCharacterController<FlyCityTypeDoc>;
   public readonly cameraIndex$: BehaviorSubject<number> = new BehaviorSubject<number>(0);
 
-  cameraMotionFactory: [(car: IPositionable3d, type: 'lambo' | 'truck' | 'car') => AnimationFunction<Camera3dAnimationArgs>, number, (t: number) => number][] = [
+  cameraMotionFactory: [
+    (car: IPositionable3d, type: 'lambo' | 'truck' | 'car') => AnimationFunction<Camera3dAnimationArgs>,
+    number,
+    (t: number) => number,
+  ][] = [
     [farCamera, 600, (t: number) => Math.pow(t, 0.3)],
     [bumperCamera, 250, (t: number) => 0.7 * Math.pow(t, 0.3)],
     [nearCamera, 250, (t: number) => 0.7 + 0.3 * Math.pow(t, 0.3)],
@@ -70,43 +73,33 @@ export class GameCameraController {
     this.state_ = state;
   }
 
-
   constructor(
     public readonly world: FlyCityWorld,
     public readonly renderer: Renderer3dEntity<FlyCityTypeDoc['vTypeDoc']>,
   ) {
-    this.freeCameraController = new FreeCameraController(
-      this.world.keyboardInput,
-      renderer,
-      {
-        keymap: 'wasd+arrows',
-        cameraLinearSpeed: 40,
-        cameraMovementElasticity: 100,
-        cameraRotationElasticity: 50,
-        ignoreKeyboardUnlessPointerLocked: true,
-        ignoreMouseUnlessPointerLocked: true,
-        mouseOptions: {
-          canvas: this.renderer.renderer.canvas!,
-          pointerLock: true,
-        },
+    this.freeCameraController = new FreeCameraController(this.world.keyboardInput, renderer, {
+      keymap: 'wasd+arrows',
+      cameraLinearSpeed: 40,
+      cameraMovementElasticity: 100,
+      cameraRotationElasticity: 50,
+      ignoreKeyboardUnlessPointerLocked: true,
+      ignoreMouseUnlessPointerLocked: true,
+      mouseOptions: {
+        canvas: this.renderer.renderer.canvas!,
+        pointerLock: true,
       },
-    );
+    });
     this.freeCameraController.active = false;
     this.world.addEntity(this.freeCameraController);
     this.carCameraController = new Camera3dAnimator(renderer, null!);
     this.carCameraController.active = false;
     this.world.addEntity(this.carCameraController);
-    this.playerController = new PlayerCharacterController<FlyCityTypeDoc>(
-      this.world.keyboardInput,
-      null,
-      renderer,
-      {
-        viewMode: 'third-person',
-        toggleViewKey: null,
-        ignoreMouseUnlessPointerLocked: true,
-        mouseOptions: { canvas: this.renderer.renderer.canvas!, pointerLock: true },
-      },
-    );
+    this.playerController = new PlayerCharacterController<FlyCityTypeDoc>(this.world.keyboardInput, null, renderer, {
+      viewMode: 'third-person',
+      toggleViewKey: null,
+      ignoreMouseUnlessPointerLocked: true,
+      mouseOptions: { canvas: this.renderer.renderer.canvas!, pointerLock: true },
+    });
     this.playerController.active = false;
     this.world.addEntity(this.playerController);
     this.cameraIndex$.pipe(skip(1)).subscribe(index => {
@@ -120,6 +113,4 @@ export class GameCameraController {
       }
     });
   }
-
-
 }

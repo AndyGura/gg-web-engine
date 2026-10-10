@@ -6,7 +6,13 @@ import {
   ElementRef,
   ViewChild,
 } from '@angular/core';
-import { Gg3dWorld, Gg3dWorldWithPhysics, LoadingScreen, PhysicsTypeDocRepo3D, TypedGg3dWorld } from '@gg-web-engine/core';
+import {
+  Gg3dWorld,
+  Gg3dWorldWithPhysics,
+  LoadingScreen,
+  PhysicsTypeDocRepo3D,
+  TypedGg3dWorld,
+} from '@gg-web-engine/core';
 import { ThreeGgWorld, ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
 import { WebAudioGgWorld3D, WebAudioScene3dComponent, WebAudioTypeDocRepo3D } from '@gg-web-engine/audio';
 import { filter } from 'rxjs';
@@ -17,23 +23,22 @@ import { Multiplayer } from './multiplayer';
 import { createPhysicsWorld, selectedPhysicsBackend } from './backends';
 
 export type FlyCityTypeDoc = {
-  vTypeDoc: ThreeVisualTypeDocRepo,
-  pTypeDoc: PhysicsTypeDocRepo3D,
-  aTypeDoc: WebAudioTypeDocRepo3D,
+  vTypeDoc: ThreeVisualTypeDocRepo;
+  pTypeDoc: PhysicsTypeDocRepo3D;
+  aTypeDoc: WebAudioTypeDocRepo3D;
 };
 // the physics engine is picked at startup (see backends.ts), so the world is typed with core's
 // physics interfaces rather than an adapter's
 export type FlyCityWorld = Gg3dWorldWithPhysics<TypedGg3dWorld<ThreeGgWorld, Gg3dWorld, WebAudioGgWorld3D>>;
 
 @Component({
-    selector: 'app-root',
-    templateUrl: './app.component.html',
-    styleUrls: ['./app.component.css'],
-    changeDetection: ChangeDetectionStrategy.OnPush,
-    standalone: false
+  selector: 'app-root',
+  templateUrl: './app.component.html',
+  styleUrls: ['./app.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  standalone: false,
 })
 export class AppComponent implements AfterViewInit {
-
   @ViewChild('canvas') canvas!: ElementRef<HTMLCanvasElement>;
 
   world!: FlyCityWorld;
@@ -56,8 +61,7 @@ export class AppComponent implements AfterViewInit {
   constructor(
     private readonly http: HttpClient,
     private readonly cdr: ChangeDetectorRef,
-  ) {
-  }
+  ) {}
 
   async ngAfterViewInit(): Promise<void> {
     await this.initGame();
@@ -98,31 +102,40 @@ export class AppComponent implements AfterViewInit {
     await this.runner.audio.initAudio();
     this.runner.setupKeyBindings();
 
-    this.world.keyboardInput.bind('KeyX').pipe(filter(x => x)).subscribe(() => {
-      this.showHelpText = !this.showHelpText;
-      this.cdr.markForCheck();
-    });
+    this.world.keyboardInput
+      .bind('KeyX')
+      .pipe(filter(x => x))
+      .subscribe(() => {
+        this.showHelpText = !this.showHelpText;
+        this.cdr.markForCheck();
+      });
 
-    this.world.keyboardInput.bind('KeyP').pipe(filter(x => x)).subscribe(() => {
-      this.paused = !this.paused;
-      if (this.paused) {
-        this.world.pauseWorld();
-      } else {
-        this.world.resumeWorld();
-      }
-      this.cdr.markForCheck();
-    });
+    this.world.keyboardInput
+      .bind('KeyP')
+      .pipe(filter(x => x))
+      .subscribe(() => {
+        this.paused = !this.paused;
+        if (this.paused) {
+          this.world.pauseWorld();
+        } else {
+          this.world.resumeWorld();
+        }
+        this.cdr.markForCheck();
+      });
 
-    this.world.keyboardInput.bind('KeyL').pipe(filter(x => x)).subscribe(() => {
-      this.runner?.stopGame();
-      // disposing the renderer released the canvas's WebGL context for good, so the new world
-      // renders into a fresh canvas
-      const oldCanvas = this.canvas.nativeElement;
-      const newCanvas = oldCanvas.cloneNode() as HTMLCanvasElement;
-      oldCanvas.replaceWith(newCanvas);
-      this.canvas = new ElementRef(newCanvas);
-      this.initGame().then();
-    });
+    this.world.keyboardInput
+      .bind('KeyL')
+      .pipe(filter(x => x))
+      .subscribe(() => {
+        this.runner?.stopGame();
+        // disposing the renderer released the canvas's WebGL context for good, so the new world
+        // renders into a fresh canvas
+        const oldCanvas = this.canvas.nativeElement;
+        const newCanvas = oldCanvas.cloneNode() as HTMLCanvasElement;
+        oldCanvas.replaceWith(newCanvas);
+        this.canvas = new ElementRef(newCanvas);
+        this.initGame().then();
+      });
 
     this.runner.state$.subscribe(() => {
       this.cdr.markForCheck();

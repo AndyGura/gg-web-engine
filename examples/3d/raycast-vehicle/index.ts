@@ -26,11 +26,9 @@ const world: ThreeGgWorld = new Gg3dWorld({
 world.init().then(async () => {
   // init graphics
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
-  const renderer = world.addRenderer(
-    world.visualScene.factory.createPerspectiveCamera({ fov: 60 }),
-    canvas,
-    { background: 0xbfd1e5 },
-  );
+  const renderer = world.addRenderer(world.visualScene.factory.createPerspectiveCamera({ fov: 60 }), canvas, {
+    background: 0xbfd1e5,
+  });
   renderer.camera.position = { x: 4.84, y: -35.11, z: 4.39 };
   renderer.camera.rotation = Qtrn.lookAt(
     renderer.camera.position,
@@ -46,23 +44,38 @@ world.init().then(async () => {
   const materialInteractive: ThreeDisplayObject3dOpts = { shading: 'phong', color: 0x990000 };
 
   // create objects
-  world.addPrimitiveRigidBody({
-    shape: { shape: 'BOX', dimensions: { x: 75, y: 75, z: 1 } },
-    body: { bodyType: 'static', mass: 0 },
-  }, { x: 0, y: 0, z: -0.5 }, Qtrn.O, materialStatic);
-  world.addPrimitiveRigidBody({
-    shape: { shape: 'BOX', dimensions: { x: 8, y: 10, z: 4 } },
-    body: { bodyType: 'static', mass: 0 },
-  }, { x: 0, y: 0, z: -1.5 }, Qtrn.fromAngle(Pnt3.X, Math.PI / 18), materialStatic);
+  world.addPrimitiveRigidBody(
+    {
+      shape: { shape: 'BOX', dimensions: { x: 75, y: 75, z: 1 } },
+      body: { bodyType: 'static', mass: 0 },
+    },
+    { x: 0, y: 0, z: -0.5 },
+    Qtrn.O,
+    materialStatic,
+  );
+  world.addPrimitiveRigidBody(
+    {
+      shape: { shape: 'BOX', dimensions: { x: 8, y: 10, z: 4 } },
+      body: { bodyType: 'static', mass: 0 },
+    },
+    { x: 0, y: 0, z: -1.5 },
+    Qtrn.fromAngle(Pnt3.X, Math.PI / 18),
+    materialStatic,
+  );
   const size = 0.75;
   const nw = 8;
   const nh = 6;
   for (let j = 0; j < nw; j++)
     for (let i = 0; i < nh; i++) {
-      const item = world.addPrimitiveRigidBody({
-        shape: { shape: 'BOX', dimensions: { x: size, y: size, z: size } },
-        body: { bodyType: 'dynamic', mass: 10 },
-      }, { x: size * j - (size * (nw - 1)) / 2, y: 10, z: size * (i + 0.5) }, Qtrn.O, materialDynamic);
+      const item = world.addPrimitiveRigidBody(
+        {
+          shape: { shape: 'BOX', dimensions: { x: size, y: size, z: size } },
+          body: { bodyType: 'dynamic', mass: 10 },
+        },
+        { x: size * j - (size * (nw - 1)) / 2, y: 10, z: size * (i + 0.5) },
+        Qtrn.O,
+        materialDynamic,
+      );
     }
 
   const vehiclePos = { x: 0, y: -20, z: 4 };
@@ -71,25 +84,27 @@ world.init().then(async () => {
     shape: { shape: 'BOX', dimensions: chassisDimensions },
     body: { mass: 800 },
   });
-  const chassisMesh = world.visualScene.factory.createBox(
-    chassisDimensions,
-    materialInteractive,
-  );
+  const chassisMesh = world.visualScene.factory.createBox(chassisDimensions, materialInteractive);
   const createWheelMesh = (radius: number, width: number) => {
     const wheel = world.visualScene.factory.createCylinder(radius, width, materialInteractive);
     // a bar across the wheel, nested in it so it spins along and shows the wheel turning
-    wheel.addChild(world.visualScene.factory.createBox({
-      x: radius * 1.75,
-      y: radius * 0.25,
-      z: width * 1.5,
-    }, materialInteractive));
+    wheel.addChild(
+      world.visualScene.factory.createBox(
+        {
+          x: radius * 1.75,
+          y: radius * 0.25,
+          z: width * 1.5,
+        },
+        materialInteractive,
+      ),
+    );
     return wheel;
   };
 
-  const carController = new CarHandlingController(
-    world.keyboardInput,
-    { keymap: 'wasd', maxSteerDeltaPerSecond: .04 * 120 / .5 },
-  );
+  const carController = new CarHandlingController(world.keyboardInput, {
+    keymap: 'wasd',
+    maxSteerDeltaPerSecond: (0.04 * 120) / 0.5,
+  });
   world.addEntity(carController);
   // on-screen controls on phones and tablets; does nothing on a desktop
   world.addEntity(new MobileControls());
@@ -146,7 +161,10 @@ world.init().then(async () => {
   smokeContext.fillStyle = gradient;
   smokeContext.fillRect(0, 0, 64, 64);
   // wheel contact points in the chassis frame
-  const rearWheels = [{ x: -1, y: -1, z: -0.6 }, { x: 1, y: -1, z: -0.6 }];
+  const rearWheels = [
+    { x: -1, y: -1, z: -0.6 },
+    { x: 1, y: -1, z: -0.6 },
+  ];
   world.addParticleSystem(
     { capacity: 200, texture: world.visualScene.factory.createTextureFromCanvas(smokeCanvas) },
     {
@@ -195,7 +213,7 @@ world.init().then(async () => {
       }
     }
     braking = breakingForce > 0;
-    vehicle.steeringAngle = .5 * leftRight;
+    vehicle.steeringAngle = 0.5 * leftRight;
     vehicle.applyTraction('rear', engineForce);
     vehicle.applyBrake('front', breakingForce / 2);
     vehicle.applyBrake('rear', breakingForce);
@@ -209,8 +227,7 @@ world.init().then(async () => {
   const speedometer = document.getElementById('speedometer')!;
   createInlineTickController(world).subscribe(() => {
     const speed = vehicle.getSpeed() * 3.6;
-    speedometer.innerHTML =
-      (speed < 0 ? '(R) ' : '') + Math.abs(speed).toFixed(1) + ' km/h';
+    speedometer.innerHTML = (speed < 0 ? '(R) ' : '') + Math.abs(speed).toFixed(1) + ' km/h';
   });
 
   world.start();

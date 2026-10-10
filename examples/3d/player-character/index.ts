@@ -44,7 +44,11 @@ const level: LevelJson = {
       shape: 'BOX',
       name: 'Ceiling',
       position: { x: 0, y: 0, z: WALL_HEIGHT + 0.5 },
-      config: { dimensions: { x: ROOM_SIZE, y: ROOM_SIZE, z: 1 }, material: { color: 0xa0a0a0 }, body: { bodyType: 'static' } },
+      config: {
+        dimensions: { x: ROOM_SIZE, y: ROOM_SIZE, z: 1 },
+        material: { color: 0xa0a0a0 },
+        body: { bodyType: 'static' },
+      },
     },
     {
       class: 'Primitive',

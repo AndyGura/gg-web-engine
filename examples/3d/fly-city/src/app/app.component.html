@@ -1,8 +1,6 @@
 <canvas #canvas></canvas>
 @if (!!($safeNavigationMigration(runner?.controlCar$) | async)) {
-  <app-dashboard
-    [car]="$safeNavigationMigration(runner?.controlCar$) | async"
-  ></app-dashboard>
+  <app-dashboard [car]="$safeNavigationMigration(runner?.controlCar$) | async"></app-dashboard>
 }
 @if (showHelpText) {
   <div class="screen-text app-helper">
@@ -43,7 +41,7 @@
   @if (mp) {
     <span>ROOM {{ mpStatus }}</span>
     <div class="room-link">
-      <input readonly [value]="mp.roomUrl" (focus)="$any($event.target).select()"/>
+      <input readonly [value]="mp.roomUrl" (focus)="$any($event.target).select()" />
       <button (click)="copyRoomUrl()">{{ copied ? 'Copied' : 'Copy link' }}</button>
     </div>
   } @else {

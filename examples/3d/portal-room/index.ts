@@ -438,21 +438,19 @@ world.init().then(async () => {
     const hitClip = await world.audioScene!.factory.loadClip(`${ASSETS_BASE}/sfx/hit.mp3`);
 
     let radioBrokenLevel = 0;
-    newRadio.onCollisionStart
-      .pipe(throttleTime(100)).subscribe(
-      ({ position, relativeVelocity }) => {
-        let rvel = Pnt3.len(relativeVelocity);
-        if (rvel > 0.5) {
-          AudioSource3dEntity.playOneShot(world, { clip: hitClip }, position);
+    newRadio.onCollisionStart.pipe(throttleTime(100)).subscribe(({ position, relativeVelocity }) => {
+      let rvel = Pnt3.len(relativeVelocity);
+      if (rvel > 0.5) {
+        AudioSource3dEntity.playOneShot(world, { clip: hitClip }, position);
+      }
+      if (rvel > 4) {
+        radioBrokenLevel += 1;
+        if (radioBrokenLevel > 4 && radioAudio.source.isPlaying) {
+          radioAudio.stop();
         }
-        if (rvel > 4) {
-          radioBrokenLevel += 1;
-          if (radioBrokenLevel > 4 && radioAudio.source.isPlaying) {
-            radioAudio.stop();
-          }
-          radioAudio.source.playbackRate = 0.9 ** radioBrokenLevel;
-        }
-      });
+        radioAudio.source.playbackRate = 0.9 ** radioBrokenLevel;
+      }
+    });
 
     return newRadio;
   }

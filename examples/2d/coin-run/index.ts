@@ -310,13 +310,29 @@ world.init().then(async () => {
   // camera follows the player (lower parallax reads as farther away). Purely local decoration.
   world.visualScene.setEnvironment({ background: skyTexture() });
   world.addParallaxLayer({
-    texture: hillsTexture('#3b3561', 800, [[2, 30], [5, 12]], 0),
+    texture: hillsTexture(
+      '#3b3561',
+      800,
+      [
+        [2, 30],
+        [5, 12],
+      ],
+      0,
+    ),
     parallax: 0.2,
     zIndex: -2,
     offset: { x: 0, y: -40 },
   });
   world.addParallaxLayer({
-    texture: hillsTexture('#2a2546', 800, [[3, 25], [7, 8]], 1.3),
+    texture: hillsTexture(
+      '#2a2546',
+      800,
+      [
+        [3, 25],
+        [7, 8],
+      ],
+      1.3,
+    ),
     parallax: 0.5,
     zIndex: -1,
     offset: { x: 0, y: 40 },
