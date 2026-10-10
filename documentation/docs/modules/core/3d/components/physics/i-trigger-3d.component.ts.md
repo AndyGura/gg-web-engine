@@ -1,6 +1,6 @@
 ---
 title: core/3d/components/physics/i-trigger-3d.component.ts
-nav_order: 54
+nav_order: 56
 parent: Modules
 ---
 

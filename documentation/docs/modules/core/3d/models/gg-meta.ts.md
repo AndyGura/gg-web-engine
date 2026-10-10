@@ -1,6 +1,6 @@
 ---
 title: core/3d/models/gg-meta.ts
-nav_order: 96
+nav_order: 100
 parent: Modules
 ---
 

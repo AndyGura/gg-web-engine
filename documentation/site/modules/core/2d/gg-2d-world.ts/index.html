@@ -545,6 +545,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#addparticlesystem-method" class="md-nav__link">
+    addParticleSystem (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#addrenderer-method" class="md-nav__link">
     addRenderer (method)
   </a>
@@ -687,6 +694,7 @@
 <li><a href="#gg2dworld-class">Gg2dWorld (class)</a><ul>
 <li><a href="#addprimitiverigidbody-method">addPrimitiveRigidBody (method)</a></li>
 <li><a href="#addparallaxlayer-method">addParallaxLayer (method)</a></li>
+<li><a href="#addparticlesystem-method">addParticleSystem (method)</a></li>
 <li><a href="#addrenderer-method">addRenderer (method)</a></li>
 <li><a href="#registerconsolecommands-method">registerConsoleCommands (method)</a></li>
 <li><a href="#loader-property">loader (property)</a></li>
@@ -745,6 +753,17 @@ adds it to the world.</p>
 <pre><code class="language-ts">addParallaxLayer(
     options: ParallaxLayer2dOpts&lt;TypeDoc['vTypeDoc']['texture']&gt;,
   ): ParallaxLayer2dEntity&lt;TypeDoc['vTypeDoc']&gt;
+</code></pre>
+<h3 id="addparticlesystem-method">addParticleSystem (method)</h3>
+<p>Creates a particle system - its visual component from <code>renderOptions</code> (plus the adapter's own
+extra options) and the simulation from <code>options</code> - wraps it in a <code>ParticleSystem2dEntity</code> and
+adds it to the world.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">addParticleSystem&lt;T = any&gt;(
+    renderOptions: ParticleSystem2dRenderOptions&lt;TypeDoc['vTypeDoc']['texture']&gt; &amp;
+      Partial&lt;TypeDoc['vTypeDoc']['particleSystemExtraOpts']&gt;,
+    options: ParticleSystem2dOptions&lt;T&gt; = {},
+  ): ParticleSystem2dEntity&lt;TypeDoc['vTypeDoc'], T&gt;
 </code></pre>
 <h3 id="addrenderer-method">addRenderer (method)</h3>
 <p><strong>Signature</strong></p>
@@ -870,6 +889,9 @@ picks its physics backend at runtime and so can't name an adapter's world type:
   camera: ICamera2dComponent
   parallaxLayer: IParallaxLayer2dComponent
   text: IText2dComponent
+  particleSystem: IParticleSystem2dComponent
+  /** Adapter-specific particle system options, merged into `ParticleSystem2dRenderOptions`. */
+  particleSystemExtraOpts: {}
   texture: unknown
 }
 </code></pre>

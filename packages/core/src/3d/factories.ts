@@ -5,6 +5,7 @@ import { AudioTypeDocRepo3D, PhysicsTypeDocRepo3D, VisualTypeDocRepo3D } from '.
 import { AudioSource3dDescriptor } from './components/audio/i-audio-source-3d.component';
 import { CharacterController3dOptions } from './models/character-controller-options';
 import { Light3dDescriptor } from './models/lights';
+import { ParticleSystem3dRenderOptions } from './components/rendering/i-particle-system-3d.component';
 
 export type DisplayObject3dOpts<Tex> = {
   color?: number;
@@ -35,6 +36,15 @@ export abstract class IDisplayObject3dComponentFactory<VTypeDoc extends VisualTy
    * Creates a light. Wrap it in a `Light3dEntity` (or use `Gg3dWorld.addLight`) to add it to a world.
    */
   abstract createLight(descriptor: Light3dDescriptor): VTypeDoc['light'];
+
+  /**
+   * Creates the visual half of a particle system (see `IParticleSystem3dComponent`), merging in the
+   * adapter's own `particleSystemExtraOpts` (e.g. a custom material). Wrap it in a
+   * `ParticleSystem3dEntity` (or use `Gg3dWorld.addParticleSystem`) to simulate and show it.
+   */
+  abstract createParticleSystem(
+    options: ParticleSystem3dRenderOptions<VTypeDoc['texture']> & Partial<VTypeDoc['particleSystemExtraOpts']>,
+  ): VTypeDoc['particleSystem'];
 
   /**
    * Creates a texture from a canvas the app has drawn on, e.g. a procedurally generated pattern,

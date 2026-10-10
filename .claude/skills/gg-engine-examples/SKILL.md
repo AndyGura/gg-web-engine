@@ -477,6 +477,13 @@ reproduces for a real user, not through either the emulate-hook path or a direct
 gameplay API, as a real-browser-event-plumbing issue to reason through from source rather than one
 you can confirm live from this tool.
 
+## Formatting
+
+`bash examples/prettier.sh` (`npm run prettier-format:examples` at the root) formats every example
+listed in `examples.json` - `.ts`, `.js`, `.mjs`, `.json`, `.html`, `.css`, minus `node_modules`,
+`dist` and lockfiles - with the root `.prettierrc`; `--check` only reports. Run it before committing
+an example change; the package-side `npm run prettier-format` never touches `examples/`.
+
 ## Writing the demo itself
 
 Examples are read as documentation — keep `index.ts`/`src/` short, comment the non-obvious parts

@@ -410,6 +410,28 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   `-Y`) or `world.loader.loadTexture(url, { mapping: 'equirectangular' })`. The level JSON has
   matching `"Light"`/`"Environment"` classes. Don't reach for the adapter's native light classes
   (`THREE.DirectionalLight` on `nativeScene`) - that ties the game to one renderer.
+- **Particles (3D)**: `world.addParticleSystem({ capacity, texture?, blending?, textureAlpha?,
+  billboard?, sort?, depthWrite?, ... }, { lifetime, gravity, drag, size, frames, sizeOverLife,
+  opacityOverLife, rate, bursts, update, onStep, fixedTimeStep, attachTo, offset, space, ... })`
+  returns a `ParticleSystem3dEntity` (one draw call). Spawn with `system.emit(count, (p, ctx) => {
+  p.position = ctx.pointToSim(localPoint); p.velocity = ...; p.size = { x: w, y: h }; ... })` -
+  `ctx.pointToSim`/`directionToSim` map points in the attached entity's frame (offset included)
+  to where particles live. Every duration is in seconds. Curves are a number, an evenly spread
+  `number[]`, `{ t, value }[]` keyframes, `{ keyframes, interpolation: 'step' }` or a function;
+  they multiply the particle's own `size`/`opacity`, so leave them unset to drive everything from
+  `update`. `fixedTimeStep: 1 / 30` runs the simulation in 30 Hz steps (interpolated for display
+  unless `interpolate: false`); emit from `onStep` to spawn in lockstep with them. Atlas regions
+  come from `ParticleFrames.grid`/`fromPixels` (image coordinates). Blend modes: `normal`,
+  `additive`, `multiply`, `subtractive`, `premultiplied` (+ `textureAlpha: 'brightness'` for a
+  sprite on opaque black); with three.js, the `material` option adjusts or replaces the shader
+  material for anything else.
+- **Particles (2D)**: `world.addParticleSystem({ capacity, texture?, blending?, zIndex? }, options)`
+  returns a `ParticleSystem2dEntity` with the same simulation options, callbacks and curves as in
+  3D, on `Point2` vectors: sizes, speeds and `gravity` in world units (`{ x: 0, y: 900 }` pulls down
+  in a y-down world), a particle's `rotation` in the 2D world's own sign (as any display object's),
+  `attachTo` any 2D entity. Blend modes are `normal`, `additive` and `multiply` only; the entity's
+  component `tint`/`opacity` multiply every particle's own. Particles are drawn in spawn order
+  (newest on top) at the system's `zIndex`.
 - **Draw order and backdrops (2D)**: every 2D display object has a `zIndex` (higher draws on top,
   default `0`). `world.visualScene.setEnvironment({ background })` sets a background color or a
   screen-fixed image scaled to cover the view (images from `world.loader.loadTexture(url)`).

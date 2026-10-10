@@ -1,6 +1,6 @@
 ---
 title: matter/matter-factory.ts
-nav_order: 180
+nav_order: 190
 parent: Modules
 ---
 

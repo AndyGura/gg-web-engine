@@ -1,6 +1,6 @@
 ---
 title: three/three-factory.ts
-nav_order: 221
+nav_order: 233
 parent: Modules
 ---
 
@@ -18,6 +18,7 @@ parent: Modules
     - [createPrimitive (method)](#createprimitive-method)
     - [createPerspectiveCamera (method)](#createperspectivecamera-method)
     - [createLight (method)](#createlight-method)
+    - [createParticleSystem (method)](#createparticlesystem-method)
     - [createTextureFromCanvas (method)](#createtexturefromcanvas-method)
 
 ---
@@ -87,6 +88,16 @@ createPerspectiveCamera(
 
 ```ts
 createLight(descriptor: Light3dDescriptor): ThreeLightComponent
+```
+
+### createParticleSystem (method)
+
+**Signature**
+
+```ts
+createParticleSystem(
+    options: ParticleSystem3dRenderOptions<Texture> & Partial<ThreeParticleSystemExtraOpts>,
+  ): ThreeParticleSystemComponent
 ```
 
 ### createTextureFromCanvas (method)

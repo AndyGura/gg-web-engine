@@ -1,4 +1,12 @@
-import { FreeCameraController, Gg3dWorld, Gg3dWorldWithPhysics, GgStatic, LoadingScreen, Pnt3, Qtrn } from '@gg-web-engine/core';
+import {
+  FreeCameraController,
+  Gg3dWorld,
+  Gg3dWorldWithPhysics,
+  GgStatic,
+  LoadingScreen,
+  Pnt3,
+  Qtrn,
+} from '@gg-web-engine/core';
 import { ThreeDisplayObject3dOpts, ThreeGgWorld, ThreeSceneComponent } from '@gg-web-engine/three';
 import { createPhysicsWorld } from './backends';
 
@@ -24,7 +32,7 @@ world.init().then(async () => {
   const renderer = world.addRenderer(
     world.visualScene.factory.createPerspectiveCamera({ fov: 45, frustrum: { near: 0.2, far: 1000 } }),
     canvas,
-    { background: 0xBFD1E5 },
+    { background: 0xbfd1e5 },
   );
   renderer.camera.position = { x: 40, y: 40, z: 25 };
   renderer.camera.rotation = Qtrn.lookAt(renderer.camera.position, { x: 0, y: 0, z: 10 }, Pnt3.Z);
@@ -49,7 +57,7 @@ world.init().then(async () => {
     world.visualScene.loader.loadTexture('https://gg-web-demos.guraklgames.com/assets/shooter/brick.jpg'),
   ]);
 
-  const brickColors = [0xB7B7B7, 0xAAAAAA, 0xA4A4A4, 0x979797, 0x949494, 0x909090];
+  const brickColors = [0xb7b7b7, 0xaaaaaa, 0xa4a4a4, 0x979797, 0x949494, 0x909090];
   const brickMaterial = (): ThreeDisplayObject3dOpts => ({
     shading: 'phong',
     color: brickColors[Math.floor(Math.random() * brickColors.length)],
@@ -64,10 +72,15 @@ world.init().then(async () => {
       let offsetX = shift ? 1.5 : 0;
       shift = !shift;
       for (let x = startX; x <= endX; x += 3) {
-        world.addPrimitiveRigidBody({
-          shape: { shape: 'BOX', dimensions: { x: 3, y: 1.5, z: 1.5 }, collisionMargin: 0.05 },
-          body: { bodyType: 'dynamic', mass: brickMass },
-        }, { x: x + offsetX, y, z: z + 0.75 }, Qtrn.O, brickMaterial());
+        world.addPrimitiveRigidBody(
+          {
+            shape: { shape: 'BOX', dimensions: { x: 3, y: 1.5, z: 1.5 }, collisionMargin: 0.05 },
+            body: { bodyType: 'dynamic', mass: brickMass },
+          },
+          { x: x + offsetX, y, z: z + 0.75 },
+          Qtrn.O,
+          brickMaterial(),
+        );
       }
     }
   };
@@ -78,10 +91,15 @@ world.init().then(async () => {
       let offsetY = shift ? 1.5 : 0;
       shift = !shift;
       for (let y = startY; y <= endY; y += 3) {
-        const item = world.addPrimitiveRigidBody({
-          shape: { shape: 'BOX', dimensions: { x: 3, y: 1.5, z: 1.5 }, collisionMargin: 0.05 },
-          body: { bodyType: 'dynamic', mass: brickMass },
-        }, { x, y: y + offsetY, z: z + 0.75 }, Qtrn.O, brickMaterial());
+        const item = world.addPrimitiveRigidBody(
+          {
+            shape: { shape: 'BOX', dimensions: { x: 3, y: 1.5, z: 1.5 }, collisionMargin: 0.05 },
+            body: { bodyType: 'dynamic', mass: brickMass },
+          },
+          { x, y: y + offsetY, z: z + 0.75 },
+          Qtrn.O,
+          brickMaterial(),
+        );
         item.rotation = quat;
       }
     }
@@ -101,43 +119,43 @@ world.init().then(async () => {
     { shading: 'phong', castShadow: true, receiveShadow: true, diffuse: groundTexture },
   );
 
-  const cameraController = new FreeCameraController(
-    world.keyboardInput,
-    renderer,
-    {
-      keymap: 'wasd',
-      mouseOptions: { canvas, pointerLock: true },
-      cameraLinearSpeed: 50,
-      cameraMovementElasticity: 100,
-      cameraRotationSensitivity: 0.8,
-      ignoreMouseUnlessPointerLocked: true,
-      ignoreKeyboardUnlessPointerLocked: true,
-    });
+  const cameraController = new FreeCameraController(world.keyboardInput, renderer, {
+    keymap: 'wasd',
+    mouseOptions: { canvas, pointerLock: true },
+    cameraLinearSpeed: 50,
+    cameraMovementElasticity: 100,
+    cameraRotationSensitivity: 0.8,
+    ignoreMouseUnlessPointerLocked: true,
+    ignoreKeyboardUnlessPointerLocked: true,
+  });
   world.addEntity(cameraController);
 
+  window.addEventListener(
+    'mousedown',
+    event => {
+      let element = <Element>event.target;
+      if (element.nodeName == 'A' || world.isPaused) return;
+      else {
+        let ball = world.addPrimitiveRigidBody(
+          {
+            body: { mass: 10 },
+            shape: { shape: 'SPHERE', radius: 1.2, collisionMargin: 0.05 },
+          },
+          renderer.position,
+          Qtrn.O,
+          { shading: 'phong', color: 0x202020, castShadow: true, receiveShadow: true },
+        );
 
-  window.addEventListener('mousedown', (event) => {
-    let element = <Element>event.target;
-    if (element.nodeName == 'A' || world.isPaused)
-      return;
-    else {
-      let ball = world.addPrimitiveRigidBody(
-        {
-          body: { mass: 10 }, shape: { shape: 'SPHERE', radius: 1.2, collisionMargin: 0.05 },
-        },
-        renderer.position,
-        Qtrn.O,
-        { shading: 'phong', color: 0x202020, castShadow: true, receiveShadow: true },
-      );
-
-      ball.objectBody!.linearVelocity = Pnt3.rot(Pnt3.scalarMult(Pnt3.nZ, 80), renderer.rotation);
-    }
-  }, false);
+        ball.objectBody!.linearVelocity = Pnt3.rot(Pnt3.scalarMult(Pnt3.nZ, 80), renderer.rotation);
+      }
+    },
+    false,
+  );
 
   world.start();
   loading.hide();
 
-  cameraController.mouseInput.isPointerLocked$.subscribe((l) => {
+  cameraController.mouseInput.isPointerLocked$.subscribe(l => {
     if (l) {
       world.resumeWorld();
       document.getElementById('blocker')!.style.display = 'none';

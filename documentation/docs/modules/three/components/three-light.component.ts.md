@@ -1,6 +1,6 @@
 ---
 title: three/components/three-light.component.ts
-nav_order: 217
+nav_order: 228
 parent: Modules
 ---
 

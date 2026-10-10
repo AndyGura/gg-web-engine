@@ -1,6 +1,6 @@
 ---
 title: core/2d/gg-2d-world.ts
-nav_order: 38
+nav_order: 40
 parent: Modules
 ---
 
@@ -15,6 +15,7 @@ parent: Modules
   - [Gg2dWorld (class)](#gg2dworld-class)
     - [addPrimitiveRigidBody (method)](#addprimitiverigidbody-method)
     - [addParallaxLayer (method)](#addparallaxlayer-method)
+    - [addParticleSystem (method)](#addparticlesystem-method)
     - [addRenderer (method)](#addrenderer-method)
     - [registerConsoleCommands (method)](#registerconsolecommands-method)
     - [loader (property)](#loader-property)
@@ -89,6 +90,22 @@ adds it to the world.
 addParallaxLayer(
     options: ParallaxLayer2dOpts<TypeDoc['vTypeDoc']['texture']>,
   ): ParallaxLayer2dEntity<TypeDoc['vTypeDoc']>
+```
+
+### addParticleSystem (method)
+
+Creates a particle system - its visual component from `renderOptions` (plus the adapter's own
+extra options) and the simulation from `options` - wraps it in a `ParticleSystem2dEntity` and
+adds it to the world.
+
+**Signature**
+
+```ts
+addParticleSystem<T = any>(
+    renderOptions: ParticleSystem2dRenderOptions<TypeDoc['vTypeDoc']['texture']> &
+      Partial<TypeDoc['vTypeDoc']['particleSystemExtraOpts']>,
+    options: ParticleSystem2dOptions<T> = {},
+  ): ParticleSystem2dEntity<TypeDoc['vTypeDoc'], T>
 ```
 
 ### addRenderer (method)
@@ -275,6 +292,9 @@ export type VisualTypeDocRepo2D = {
   camera: ICamera2dComponent
   parallaxLayer: IParallaxLayer2dComponent
   text: IText2dComponent
+  particleSystem: IParticleSystem2dComponent
+  /** Adapter-specific particle system options, merged into `ParticleSystem2dRenderOptions`. */
+  particleSystemExtraOpts: {}
   texture: unknown
 }
 ```

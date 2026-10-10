@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/controllers/animators/entity-3d-positioning.animator.ts
-nav_order: 66
+nav_order: 69
 parent: Modules
 ---
 

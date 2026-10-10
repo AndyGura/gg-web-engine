@@ -1,6 +1,6 @@
 ---
 title: core/3d/gg-3d-world.ts
-nav_order: 87
+nav_order: 91
 parent: Modules
 ---
 
@@ -16,6 +16,7 @@ parent: Modules
     - [addPrimitiveRigidBody (method)](#addprimitiverigidbody-method)
     - [addGrabbablePrimitive (method)](#addgrabbableprimitive-method)
     - [addLight (method)](#addlight-method)
+    - [addParticleSystem (method)](#addparticlesystem-method)
     - [addRenderer (method)](#addrenderer-method)
     - [registerConsoleCommands (method)](#registerconsolecommands-method)
     - [loader (property)](#loader-property)
@@ -111,6 +112,22 @@ addLight(
     position: Point3 = Pnt3.O,
     target?: Point3,
   ): Light3dEntity<TypeDoc['vTypeDoc']>
+```
+
+### addParticleSystem (method)
+
+Creates a particle system - its visual component from `renderOptions` (plus the adapter's own
+extra options, e.g. a custom material) and the simulation from `options` - wraps it in a
+`ParticleSystem3dEntity` and adds it to the world.
+
+**Signature**
+
+```ts
+addParticleSystem<T = any>(
+    renderOptions: ParticleSystem3dRenderOptions<TypeDoc['vTypeDoc']['texture']> &
+      Partial<TypeDoc['vTypeDoc']['particleSystemExtraOpts']>,
+    options: ParticleSystem3dOptions<T> = {},
+  ): ParticleSystem3dEntity<TypeDoc['vTypeDoc'], T>
 ```
 
 ### addRenderer (method)
@@ -299,6 +316,9 @@ export type VisualTypeDocRepo3D = {
   rendererExtraOpts: {}
   camera: ICamera3dComponent
   light: ILight3dComponent
+  particleSystem: IParticleSystem3dComponent
+  /** Adapter-specific particle system options, merged into `ParticleSystem3dRenderOptions` (e.g. a custom material). */
+  particleSystemExtraOpts: {}
   texture: unknown
 }
 ```

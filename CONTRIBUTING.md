@@ -109,7 +109,9 @@ Notes:
 
 Code is formatted with Prettier using the root `.prettierrc`. `npm run prettier-format` at the
 root formats every package; the release pipeline also runs it, so unformatted code will show up
-as an unrelated diff in the next release commit if you skip it.
+as an unrelated diff in the next release commit if you skip it. Examples are formatted separately,
+with the same config: `npm run prettier-format:examples` (`bash examples/prettier.sh`, `--check` to
+only report) covers every example listed in `examples/examples.json`.
 
 ### Seeing a change in a running example
 

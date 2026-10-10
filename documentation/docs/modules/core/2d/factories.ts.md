@@ -1,6 +1,6 @@
 ---
 title: core/2d/factories.ts
-nav_order: 37
+nav_order: 39
 parent: Modules
 ---
 
@@ -16,6 +16,7 @@ parent: Modules
   - [IDisplayObject2dComponentFactory (class)](#idisplayobject2dcomponentfactory-class)
     - [createPrimitive (method)](#createprimitive-method)
     - [createParallaxLayer (method)](#createparallaxlayer-method)
+    - [createParticleSystem (method)](#createparticlesystem-method)
     - [loadTexture (method)](#loadtexture-method)
     - [createTextureFromCanvas (method)](#createtexturefromcanvas-method)
     - [createText (method)](#createtext-method)
@@ -85,6 +86,20 @@ use `Gg2dWorld.addParallaxLayer`) to add it to a world.
 
 ```ts
 abstract createParallaxLayer(options: ParallaxLayer2dOpts<VTypeDoc['texture']>): VTypeDoc['parallaxLayer'];
+```
+
+### createParticleSystem (method)
+
+Creates the visual half of a particle system (see `IParticleSystem2dComponent`), merging in the
+adapter's own `particleSystemExtraOpts`. Wrap it in a `ParticleSystem2dEntity` (or use
+`Gg2dWorld.addParticleSystem`) to simulate and show it.
+
+**Signature**
+
+```ts
+abstract createParticleSystem(
+    options: ParticleSystem2dRenderOptions<VTypeDoc['texture']> & Partial<VTypeDoc['particleSystemExtraOpts']>,
+  ): VTypeDoc['particleSystem'];
 ```
 
 ### loadTexture (method)

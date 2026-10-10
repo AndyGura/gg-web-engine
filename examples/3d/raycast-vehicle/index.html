@@ -1,47 +1,51 @@
 <!doctype html>
 <html>
   <head>
-    <meta charset='utf-8'>
+    <meta charset="utf-8" />
     <title>GG example</title>
-    <meta name='viewport' content='width=device-width,initial-scale=1'>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
   </head>
   <body>
     <style>
       body {
-          color: #61443e;
-          font-family: Monospace;
-          font-size: 13px;
-          text-align: center;
+        color: #61443e;
+        font-family: Monospace;
+        font-size: 13px;
+        text-align: center;
 
-          background-color: #bfd1e5;
-          margin: 0px;
-          overflow: hidden;
+        background-color: #bfd1e5;
+        margin: 0px;
+        overflow: hidden;
       }
       #speedometer {
-          color: #ffffff;
-          background-color: #990000;
-          position: absolute;
-          bottom: 0px;
-          padding: 5px;
+        color: #ffffff;
+        background-color: #990000;
+        position: absolute;
+        bottom: 0px;
+        padding: 5px;
       }
       #info {
-          position: absolute;
-          top: 0px;
-          width: 100%;
-          padding: 5px;
+        position: absolute;
+        top: 0px;
+        width: 100%;
+        padding: 5px;
       }
       #container {
-          position: absolute;
+        position: absolute;
       }
 
       a {
-          color: #a06851;
+        color: #a06851;
       }
     </style>
     <div id="container">
       <canvas id="gg"></canvas>
     </div>
     <div id="speedometer">0.0 km/h</div>
-    <div id="info">Raycast vehicle demo<br />Press W,A,S,D to move.<br/>A port of the <a href='https://kripken.github.io/ammo.js/examples/webgl_demo_vehicle/index.html'>ammo.js vehicle example</a> to the engine's raycast vehicle API, running on whichever physics backend is selected (Ammo.js or Rapier).</div>
+    <div id="info">
+      Raycast vehicle demo<br />Press W,A,S,D to move.<br />A port of the
+      <a href="https://kripken.github.io/ammo.js/examples/webgl_demo_vehicle/index.html">ammo.js vehicle example</a> to
+      the engine's raycast vehicle API, running on whichever physics backend is selected (Ammo.js or Rapier).
+    </div>
   </body>
 </html>

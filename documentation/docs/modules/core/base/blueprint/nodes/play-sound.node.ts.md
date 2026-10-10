@@ -1,6 +1,6 @@
 ---
 title: core/base/blueprint/nodes/play-sound.node.ts
-nav_order: 106
+nav_order: 110
 parent: Modules
 ---
 

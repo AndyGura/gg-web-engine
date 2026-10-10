@@ -7,6 +7,7 @@ import { Gg2dWorld, Gg2dWorldSceneTypeDocVPatch, Gg2dWorldTypeDocVPatch } from '
 import { PixiSceneComponent } from './components/pixi-scene.component';
 import { PixiParallaxLayerComponent } from './components/pixi-parallax-layer.component';
 import { PixiTextComponent } from './components/pixi-text.component';
+import { PixiParticleSystemComponent, PixiParticleSystemExtraOpts } from './components/pixi-particle-system.component';
 
 export type PixiVisualTypeDocRepo2D = {
   factory: PixiFactory;
@@ -14,6 +15,8 @@ export type PixiVisualTypeDocRepo2D = {
   camera: PixiCameraComponent;
   parallaxLayer: PixiParallaxLayerComponent;
   text: PixiTextComponent;
+  particleSystem: PixiParticleSystemComponent;
+  particleSystemExtraOpts: PixiParticleSystemExtraOpts;
   renderer: PixiRendererComponent;
   rendererExtraOpts: ApplicationOptions;
   texture: Texture;

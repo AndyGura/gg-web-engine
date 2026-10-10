@@ -1,57 +1,65 @@
 .screen-text {
-    z-index: 5;
-    position: absolute;
-    color: white;
-    font-family: monospace;
-    text-shadow: 0.05rem 0 0 #000, 0 -0.05rem 0 #000, 0 0.05rem 0 #000, -0.05rem 0 0 #000;
-    font-weight: bold;
-    display: flex;
-    pointer-events: none;
+  z-index: 5;
+  position: absolute;
+  color: white;
+  font-family: monospace;
+  text-shadow:
+    0.05rem 0 0 #000,
+    0 -0.05rem 0 #000,
+    0 0.05rem 0 #000,
+    -0.05rem 0 0 #000;
+  font-weight: bold;
+  display: flex;
+  pointer-events: none;
 }
 
 app-dashboard {
-    pointer-events: none;
+  pointer-events: none;
 }
 
 .app-helper {
-    font-size: larger;
-    padding: 1rem;
-    flex-direction: column;
-    row-gap: 0.5rem;
+  font-size: larger;
+  padding: 1rem;
+  flex-direction: column;
+  row-gap: 0.5rem;
 }
 
 .paused-text {
-    font-size: 5rem;
-    left: 0;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    margin: auto;
-    align-items: center;
-    justify-content: space-around;
+  font-size: 5rem;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  margin: auto;
+  align-items: center;
+  justify-content: space-around;
 }
 
 .room-panel {
-    z-index: 6;
-    position: absolute;
-    top: 1rem;
-    right: 1rem;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    row-gap: 0.4rem;
-    color: white;
-    font-family: monospace;
-    font-weight: bold;
-    text-shadow: 0.05rem 0 0 #000, 0 -0.05rem 0 #000, 0 0.05rem 0 #000, -0.05rem 0 0 #000;
+  z-index: 6;
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  row-gap: 0.4rem;
+  color: white;
+  font-family: monospace;
+  font-weight: bold;
+  text-shadow:
+    0.05rem 0 0 #000,
+    0 -0.05rem 0 #000,
+    0 0.05rem 0 #000,
+    -0.05rem 0 0 #000;
 }
 
 .room-link {
-    display: flex;
-    column-gap: 0.4rem;
+  display: flex;
+  column-gap: 0.4rem;
 }
 
 .room-link input {
-    width: 22rem;
-    font-family: monospace;
+  width: 22rem;
+  font-family: monospace;
 }
