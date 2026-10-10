@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/controllers/animators/camera-3d.animator.ts
-nav_order: 65
+nav_order: 68
 parent: Modules
 ---
 

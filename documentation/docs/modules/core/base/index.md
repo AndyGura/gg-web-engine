@@ -21,5 +21,6 @@ has_children: true
 - [core/base/math](/gg-web-engine/modules/core/base/math)
 - [core/base/models](/gg-web-engine/modules/core/base/models)
 - [core/base/network](/gg-web-engine/modules/core/base/network)
+- [core/base/particles](/gg-web-engine/modules/core/base/particles)
 - [core/base/pipes](/gg-web-engine/modules/core/base/pipes)
 - [core/base/screens](/gg-web-engine/modules/core/base/screens)

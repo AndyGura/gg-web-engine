@@ -79,6 +79,21 @@ describe('setup errors', () => {
     });
   });
 
+  describe('missing visual scene', () => {
+    it('addParticleSystem names the constructor argument to pass, in 3D and 2D', () => {
+      const w3 = new Gg3dWorld({ physicsWorld: physics3d() as any });
+      expect(() => w3.addParticleSystem({ capacity: 4 } as any)).toThrow(
+        "pass a `visualScene` (e.g. @gg-web-engine/three's ThreeSceneComponent) to the Gg3dWorld constructor",
+      );
+      const w2 = new Gg2dWorld({ physicsWorld: physics2d() as any });
+      expect(() => w2.addParticleSystem({ capacity: 4 } as any)).toThrow(
+        "pass a `visualScene` (e.g. @gg-web-engine/pixi's PixiSceneComponent) to the Gg2dWorld constructor",
+      );
+      w3.dispose();
+      w2.dispose();
+    });
+  });
+
   describe('init()', () => {
     it('warns when start() is called before init(), and not after', async () => {
       const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});

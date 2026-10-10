@@ -1,6 +1,6 @@
 ---
 title: core/base/models/texture-options.ts
-nav_order: 159
+nav_order: 163
 parent: Modules
 ---
 

@@ -22,10 +22,7 @@ const world: ThreeGgWorld = new Gg3dWorld({
 });
 world.init().then(async () => {
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
-  const renderer = world.addRenderer(
-    world.visualScene.factory.createPerspectiveCamera(),
-    canvas,
-  );
+  const renderer = world.addRenderer(world.visualScene.factory.createPerspectiveCamera(), canvas);
   renderer.position = { x: 20, y: -16, z: 9 };
 
   const controller = new OrbitCameraController(renderer, { mouseOptions: { canvas } });
@@ -44,18 +41,16 @@ world.init().then(async () => {
   );
   world.addLight({ type: 'AMBIENT', intensity: 0.3 });
 
-  const cgs = [
-    0xff0000,
-    0x00ff00,
-    0x0000ff,
-    0xffff00,
-    0xff00ff,
-  ].map(c => ([c, world.physicsWorld!.registerCollisionGroup()]));
+  const cgs = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xff00ff].map(c => [
+    c,
+    world.physicsWorld!.registerCollisionGroup(),
+  ]);
 
   const maxFloorTranslationPerTick = 0.5;
   for (let i = 0; i <= cgs.length; i++) {
     const [color, collisionGroup] = i < cgs.length ? cgs[i] : [0x00ffff, 15];
-    const floor = world.addPrimitiveRigidBody({
+    const floor = world.addPrimitiveRigidBody(
+      {
         shape: { shape: 'BOX', dimensions: { x: 16, y: 16, z: 1 } },
         // collision groups can be set immediately when creating entity
         body: {
@@ -66,12 +61,14 @@ world.init().then(async () => {
         },
       },
       Pnt3.O,
-      Qtrn.O, {
+      Qtrn.O,
+      {
         color,
         shading: 'phong',
         receiveShadow: true,
         opacity: 0.4,
-      });
+      },
+    );
     const slider: HTMLInputElement | undefined = document.getElementById('slider' + i) as any;
     if (slider) {
       createInlineTickController(world).subscribe(() => {
@@ -106,7 +103,7 @@ world.init().then(async () => {
         },
       }),
     });
-    wall.position = Pnt3.rotAround({ x: 28, y: 0, z: 0 }, Pnt3.Z, Math.PI * i / 2);
+    wall.position = Pnt3.rotAround({ x: 28, y: 0, z: 0 }, Pnt3.Z, (Math.PI * i) / 2);
     world.addEntity(wall);
   }
 

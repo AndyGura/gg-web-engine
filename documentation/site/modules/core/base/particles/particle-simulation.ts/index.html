@@ -1,0 +1,1055 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Open-source TypeScript game engine for the browser: peer-to-peer multiplayer physics with no game server, cars and character controllers built in, on Three.js or Pixi.js with Rapier, Ammo.js or Matter.js.">
+      
+      
+      
+        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/base/particles/particle-simulation.ts/">
+      
+      
+      
+      
+      <link rel="icon" href="../../../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.4.6">
+    
+    
+      
+        <title>core/base/particles/particle-simulation.ts - GG Web Engine</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../../../assets/stylesheets/main.35e1ed30.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../../../assets/stylesheets/palette.356b1318.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../../../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&"object"==typeof palette.color)for(var key of Object.keys(palette.color))document.body.setAttribute("data-md-color-"+key,palette.color[key])</script>
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#particle-simulation-overview" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../../../.." title="GG Web Engine" class="md-header__button md-logo" aria-label="GG Web Engine" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            GG Web Engine
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              core/base/particles/particle-simulation.ts
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12c0-2.42-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12 20 8.69Z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/AndyGura/gg-web-engine" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.4.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../../../.." title="GG Web Engine" class="md-nav__button md-logo" aria-label="GG Web Engine" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    GG Web Engine
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/AndyGura/gg-web-engine" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.4.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../../../" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Modules
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Modules
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../ammo" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    ammo
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    core
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../matter" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    matter
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../pixi" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    pixi
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../rapier2d" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    rapier2d
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../rapier3d" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    rapier3d
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../three" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    three
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#particle-simulation-overview" class="md-nav__link">
+    particle-simulation overview
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#utils" class="md-nav__link">
+    utils
+  </a>
+  
+    <nav class="md-nav" aria-label="utils">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#particleburst-type-alias" class="md-nav__link">
+    ParticleBurst (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#particleemitcontext-interface" class="md-nav__link">
+    ParticleEmitContext (interface)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#particleemittertransform-interface" class="md-nav__link">
+    ParticleEmitterTransform (interface)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#particleinit-type-alias" class="md-nav__link">
+    ParticleInit (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#particlesimulation-class" class="md-nav__link">
+    ParticleSimulation (class)
+  </a>
+  
+    <nav class="md-nav" aria-label="ParticleSimulation (class)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#foreachparticle-method" class="md-nav__link">
+    forEachParticle (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#emit-method" class="md-nav__link">
+    emit (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#advance-method" class="md-nav__link">
+    advance (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-method" class="md-nav__link">
+    step (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#writerenderbuffers-method" class="md-nav__link">
+    writeRenderBuffers (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#clear-method" class="md-nav__link">
+    clear (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#restart-method" class="md-nav__link">
+    restart (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#resetbursts-method" class="md-nav__link">
+    resetBursts (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#copyof-method" class="md-nav__link">
+    copyOf (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#acquire-method" class="md-nav__link">
+    acquire (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#spawn-method" class="md-nav__link">
+    spawn (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sequenceframe-method" class="md-nav__link">
+    sequenceFrame (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#compact-method" class="md-nav__link">
+    compact (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#buffers-property" class="md-nav__link">
+    buffers (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#time-property" class="md-nav__link">
+    time (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#timescale-property" class="md-nav__link">
+    timeScale (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#emitting-property" class="md-nav__link">
+    emitting (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#transform-property" class="md-nav__link">
+    transform (property)
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#particlesimulationoptions-type-alias" class="md-nav__link">
+    ParticleSimulationOptions (type alias)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#particleupdate-type-alias" class="md-nav__link">
+    ParticleUpdate (type alias)
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+  
+
+
+<h2 id="particle-simulation-overview">particle-simulation overview</h2>
+<hr />
+<h2 class="text-delta">Table of contents</h2>
+
+<ul>
+<li><a href="#utils">utils</a></li>
+<li><a href="#particleburst-type-alias">ParticleBurst (type alias)</a></li>
+<li><a href="#particleemitcontext-interface">ParticleEmitContext (interface)</a></li>
+<li><a href="#particleemittertransform-interface">ParticleEmitterTransform (interface)</a></li>
+<li><a href="#particleinit-type-alias">ParticleInit (type alias)</a></li>
+<li><a href="#particlesimulation-class">ParticleSimulation (class)</a><ul>
+<li><a href="#foreachparticle-method">forEachParticle (method)</a></li>
+<li><a href="#emit-method">emit (method)</a></li>
+<li><a href="#advance-method">advance (method)</a></li>
+<li><a href="#step-method">step (method)</a></li>
+<li><a href="#writerenderbuffers-method">writeRenderBuffers (method)</a></li>
+<li><a href="#clear-method">clear (method)</a></li>
+<li><a href="#restart-method">restart (method)</a></li>
+<li><a href="#resetbursts-method">resetBursts (method)</a></li>
+<li><a href="#copyof-method">copyOf (method)</a></li>
+<li><a href="#acquire-method">acquire (method)</a></li>
+<li><a href="#spawn-method">spawn (method)</a></li>
+<li><a href="#sequenceframe-method">sequenceFrame (method)</a></li>
+<li><a href="#compact-method">compact (method)</a></li>
+<li><a href="#buffers-property">buffers (property)</a></li>
+<li><a href="#time-property">time (property)</a></li>
+<li><a href="#timescale-property">timeScale (property)</a></li>
+<li><a href="#emitting-property">emitting (property)</a></li>
+<li><a href="#transform-property">transform (property)</a></li>
+</ul>
+</li>
+<li><a href="#particlesimulationoptions-type-alias">ParticleSimulationOptions (type alias)</a></li>
+<li><a href="#particleupdate-type-alias">ParticleUpdate (type alias)</a></li>
+</ul>
+<hr />
+<h1 id="utils">utils</h1>
+<h2 id="particleburst-type-alias">ParticleBurst (type alias)</h2>
+<p>A repeated burst: <code>count</code> particles at <code>time</code> seconds of simulation time, then every <code>interval</code>
+seconds, <code>cycles</code> times in all.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type ParticleBurst = {
+  readonly time: number
+  readonly count: number
+  /** Seconds between cycles. Default `0`: the cycles all fire at once (an infinite burst then fires once). */
+  readonly interval?: number
+  /** How many times the burst fires. Default `1`; `Infinity` repeats forever (with a positive `interval`). */
+  readonly cycles?: number
+}
+</code></pre>
+<h2 id="particleemitcontext-interface">ParticleEmitContext (interface)</h2>
+<p>What an init callback gets besides the particle.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export interface ParticleEmitContext&lt;D extends Point2 | Point3&gt; {
+  /** This particle's number within the current emission, `0` to `count - 1`. */
+  readonly index: number
+  /** How many particles the current emission asked for. */
+  readonly count: number
+  /** The emitter's origin in simulation space - also where the particle was placed before the callback. */
+  readonly origin: D
+  /** The simulation's time in seconds (see `ParticleSimulation.time`). */
+  readonly time: number
+  /** An emitter-local point in simulation space, e.g. a wheel's offset on a car the emitter is attached to. */
+  pointToSim(local: D): MutableParticleVector&lt;D&gt;
+  /** An emitter-local direction in simulation space, e.g. &quot;backwards&quot; on that car. */
+  directionToSim(local: D): MutableParticleVector&lt;D&gt;
+  /** The simulation's random source, a number in `[0, 1)`. */
+  random(): number
+  /** A random number in `[min, max)`. */
+  range(min: number, max: number): number
+}
+</code></pre>
+<h2 id="particleemittertransform-interface">ParticleEmitterTransform (interface)</h2>
+<p>Where particles spawn: maps points and directions given in the emitter's own frame into the space
+the particles live in. The entity owning a simulation provides it (from its position, rotation,
+and the entity it is attached to).</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export interface ParticleEmitterTransform&lt;D extends Point2 | Point3&gt; {
+  /** An emitter-local point in simulation space. */
+  pointToSim(local: D): MutableParticleVector&lt;D&gt;
+  /** An emitter-local direction in simulation space (rotated, not moved). */
+  directionToSim(local: D): MutableParticleVector&lt;D&gt;
+}
+</code></pre>
+<h2 id="particleinit-type-alias">ParticleInit (type alias)</h2>
+<p>Sets up a spawned particle: position, velocity, size, lifetime, user data, ...</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type ParticleInit&lt;D extends Point2 | Point3 = Point3, T = any&gt; = (
+  particle: Particle&lt;D, T&gt;,
+  context: ParticleEmitContext&lt;D&gt;
+) =&gt; void
+</code></pre>
+<h2 id="particlesimulation-class">ParticleSimulation (class)</h2>
+<p>The dimension-agnostic particle simulation behind a particle system entity: a pool of <code>capacity</code>
+particles, emission (manual, continuous, bursts), motion, aging, frame animation, curves, an
+optional fixed step with interpolation, and writing the result into <code>ParticleRenderBuffers</code> for a
+rendering adapter. It runs entirely in core, so a system behaves the same with every adapter.</p>
+<p>Order within one step: live particles age (a particle whose age reaches its lifetime dies), move
+(<code>velocity += (gravity + acceleration) * dt</code>, <code>velocity *= exp(-drag * dt)</code>,
+<code>position += velocity * dt</code>, <code>rotation += angularVelocity * dt</code>), advance their frame sequence and
+run the <code>update</code> callback; then <code>onStep</code> runs and <code>rate</code>/<code>bursts</code> spawn. A particle spawned during
+a step, or by <code>emit()</code> between steps, is drawn first in its initial state and first moves in the
+next step.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export declare class ParticleSimulation&lt;D, T&gt; {
+  constructor(
+    public readonly capacity: number,
+    public readonly dimensions: 2 | 3,
+    public readonly options: ParticleSimulationOptions&lt;D, T&gt; = {}
+  )
+}
+</code></pre>
+<h3 id="foreachparticle-method">forEachParticle (method)</h3>
+<p>Calls <code>callback</code> for every live particle, oldest first.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public forEachParticle(callback: (particle: Particle&lt;D, T&gt;) =&gt; void): void
+</code></pre>
+<h3 id="emit-method">emit (method)</h3>
+<p>Spawns up to <code>count</code> particles now. Each gets the defaults from the options, then the options'
+<code>init</code>, then <code>init</code> given here.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public emit(count: number, init?: ParticleInit&lt;D, T&gt;): number
+</code></pre>
+<h3 id="advance-method">advance (method)</h3>
+<p>Advances the simulation by <code>delta</code> seconds of world time (scaled by <code>timeScale</code>): one step of
+that length, or as many <code>fixedTimeStep</code> steps as fit, carrying the rest over.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public advance(delta: number): number
+</code></pre>
+<h3 id="step-method">step (method)</h3>
+<p>Runs exactly one simulation step of <code>dt</code> seconds (see the class doc for what happens in it).</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public step(dt: number): void
+</code></pre>
+<h3 id="writerenderbuffers-method">writeRenderBuffers (method)</h3>
+<p>Writes the live particles, interpolated per <code>interpolationAlpha</code>, into {@link buffers} in spawn
+order and returns them.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public writeRenderBuffers(): ParticleRenderBuffers
+</code></pre>
+<h3 id="clear-method">clear (method)</h3>
+<p>Kills every particle.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public clear(): void
+</code></pre>
+<h3 id="restart-method">restart (method)</h3>
+<p>Resets the simulation time to <code>0</code> and re-arms the bursts. With <code>clear</code>, kills every particle as well.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public restart(clear: boolean = false): void
+</code></pre>
+<h3 id="resetbursts-method">resetBursts (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private resetBursts(): void
+</code></pre>
+<h3 id="copyof-method">copyOf (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private copyOf(v: D): MutableParticleVector&lt;D&gt;
+</code></pre>
+<h3 id="acquire-method">acquire (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private acquire(): Particle&lt;D, T&gt; | null
+</code></pre>
+<h3 id="spawn-method">spawn (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private spawn(p: Particle&lt;D, T&gt;, origin: D): void
+</code></pre>
+<h3 id="sequenceframe-method">sequenceFrame (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private sequenceFrame(p: Particle&lt;D, T&gt;): number
+</code></pre>
+<h3 id="compact-method">compact (method)</h3>
+<p>drops dead particles from the live list, keeping spawn order, and returns them to the pool</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private compact(): void
+</code></pre>
+<h3 id="buffers-property">buffers (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly buffers: ParticleRenderBuffers
+</code></pre>
+<h3 id="time-property">time (property)</h3>
+<p>Simulated seconds since creation or the last <code>restart()</code>. Burst times count from here.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">time: number
+</code></pre>
+<h3 id="timescale-property">timeScale (property)</h3>
+<p>Multiplies the time <code>advance</code> is given: <code>0.5</code> is slow motion, <code>0</code> freezes the particles.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">timeScale: number
+</code></pre>
+<h3 id="emitting-property">emitting (property)</h3>
+<p>Whether <code>rate</code> and <code>bursts</code> spawn particles.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">emitting: boolean
+</code></pre>
+<h3 id="transform-property">transform (property)</h3>
+<p>Maps emitter-local points/directions into simulation space; set by the entity owning the
+simulation. Default: identity (the emitter at the origin).</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">transform: ParticleEmitterTransform&lt;D&gt;
+</code></pre>
+<h2 id="particlesimulationoptions-type-alias">ParticleSimulationOptions (type alias)</h2>
+<p>What a particle system simulates and how. Every duration is in seconds and every speed in world
+units per second (unlike the world's own <code>fixedPhysicsStep</code>, which is in milliseconds). Fields
+marked "live" are read on every step, so changing them on <code>simulation.options</code> takes effect at
+once; the others apply to particles spawned afterwards.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type ParticleSimulationOptions&lt;D extends Point2 | Point3 = Point3, T = any&gt; = {
+  /**
+   * What happens when a particle is spawned while `capacity` are alive: `'replace-oldest'` (default)
+   * reuses the oldest live particle, `'drop'` spawns nothing.
+   */
+  overflow?: 'replace-oldest' | 'drop'
+  /**
+   * `'world'` (default): particles live in world space, so they stay where they were emitted when the
+   * emitter moves on - smoke left behind a car. `'local'`: positions, velocities and gravity are in
+   * the emitter's own frame and the whole system moves and turns with it - a flame stuck to a car.
+   */
+  space?: 'world' | 'local'
+  /** Live. Acceleration applied to every particle, units per second². Default none. */
+  gravity?: D
+  /** Default `Particle.drag` of a spawned particle. Default `0`. */
+  drag?: number
+  /** Default lifetime of a spawned particle in seconds: a number, or `[min, max]` for a random one. Default `1`. */
+  lifetime?: number | readonly [number, number]
+  /** Default size of a spawned particle in world units: a number for a square, or `{ x: width, y: height }`. Default `1`. */
+  size?: number | Point2
+  /** Default opacity of a spawned particle. Default `1`. */
+  opacity?: number
+  /** Default tint of a spawned particle, `0xRRGGBB`. Default `0xffffff`. */
+  tint?: number
+  /** Live. The regions of the texture particles can show, indexed by `Particle.frame`. Default: the whole texture. */
+  frames?: readonly ParticleFrame[]
+  /** Default `Particle.frameSequence`. */
+  frameSequence?: readonly number[] | null
+  /** Default `Particle.frameDuration`. */
+  frameDuration?: number
+  /** Default `Particle.frameLoop`. */
+  frameLoop?: boolean
+  /** Live. Multiplies the drawn size over the normalized age: one curve for both axes, or one per axis. */
+  sizeOverLife?: ParticleCurve | { readonly x: ParticleCurve; readonly y: ParticleCurve }
+  /** Live. Multiplies the drawn opacity over the normalized age. */
+  opacityOverLife?: ParticleCurve
+  /**
+   * Live. Runs for every spawned particle - continuous, burst, and `emit()` ones - after the
+   * defaults above are applied and before the init passed to `emit()`.
+   */
+  init?: ParticleInit&lt;D, T&gt;
+  /** Live. Per-particle custom behaviour, see `ParticleUpdate`. */
+  update?: ParticleUpdate&lt;D, T&gt;
+  /** Live. Particles spawned per second while `emitting`. Default `0`. */
+  rate?: number
+  /** Bursts while `emitting`, timed by simulation time (see `ParticleSimulation.restart`). */
+  bursts?: readonly ParticleBurst[]
+  /** Whether `rate` and `bursts` spawn particles. Default `true`. `emit()` always works. */
+  emitting?: boolean
+  /**
+   * Live. Runs once per simulation step, after the live particles have moved, with the step in
+   * seconds: emit here to spawn particles in lockstep with the simulation (with `fixedTimeStep`,
+   * exactly like an original game's tick did).
+   */
+  onStep?: (dt: number, simulation: ParticleSimulation&lt;D, T&gt;) =&gt; void
+  /**
+   * Simulate in fixed steps of this many seconds (e.g. `1 / 30` to mirror a 30 Hz original) instead
+   * of one step per world tick. Leftover time carries over to the next tick. Default: off.
+   */
+  fixedTimeStep?: number
+  /** With `fixedTimeStep`: most steps per tick; time beyond them is dropped. Default `8`. */
+  maxStepsPerTick?: number
+  /**
+   * With `fixedTimeStep`: draw particles between their last two steps (position, size, opacity,
+   * rotation and the curves' age), so a 30 Hz simulation moves smoothly on a faster display. `false`
+   * shows each step's state as is, stepping like the original. Default `true`. Frames and tint are
+   * never interpolated.
+   */
+  interpolate?: boolean
+  /** Random source in `[0, 1)` for every random choice of the simulation. Default `Math.random`. */
+  random?: () =&gt; number
+}
+</code></pre>
+<h2 id="particleupdate-type-alias">ParticleUpdate (type alias)</h2>
+<p>Runs for every live particle on every simulation step, after the built-in motion, aging and frame
+animation. May change any field, or <code>kill()</code> the particle. <code>dt</code> is the step in seconds.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type ParticleUpdate&lt;D extends Point2 | Point3 = Point3, T = any&gt; = (
+  particle: Particle&lt;D, T&gt;,
+  dt: number,
+  simulation: ParticleSimulation&lt;D, T&gt;
+) =&gt; void
+</code></pre>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../../../../..", "features": ["navigation.indexes", "navigation.instant", "navigation.tracking"], "search": "../../../../../assets/javascripts/workers/search.f886a092.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../../../../../assets/javascripts/bundle.aecac24b.min.js"></script>
+      
+    
+  </body>
+</html>

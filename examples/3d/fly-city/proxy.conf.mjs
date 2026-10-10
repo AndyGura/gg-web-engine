@@ -18,7 +18,10 @@ const contentTypes = {
 };
 
 const server = http.createServer((req, res) => {
-  const file = path.join(assetsDir, decodeURIComponent(new URL(req.url, 'http://localhost').pathname).replace(/^\/assets/, ''));
+  const file = path.join(
+    assetsDir,
+    decodeURIComponent(new URL(req.url, 'http://localhost').pathname).replace(/^\/assets/, ''),
+  );
   if (!file.startsWith(assetsDir + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) {
     res.writeHead(404).end();
     return;

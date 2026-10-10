@@ -61,6 +61,36 @@ subclass built itself). **A new kind of native object the package starts creatin
   `tilePosition = (origin - viewStart) mod tileSize`, a non-repeating one is placed at the origin one
   tile wide.
 
+## Particle systems
+
+`PixiParticleSystemComponent` (`createParticleSystem`) is a `ParticleContainer` with every
+`dynamicProperties` flag on (`vertex`, `position`, `rotation`, `uvs`, `color`) - a particle's size
+(scale), frame (uvs) and tint/opacity (color) all change per frame, and a flag left off makes the
+container upload that attribute only on `update()`. `particleChildren` is filled directly from
+`capacity` pooled plain `IParticle` records (`x`, `y`, `scaleX/Y`, `anchorX/Y` = 0.5, `rotation`,
+`color`, `texture`) truncated to the drawn count, then `container.update()`, instead of
+`addParticle`/`removeParticle` churn. Things specific to pixi's particle pipeline:
+
+- **`IParticle.color` is packed ABGR** (`alpha << 24 | blue << 16 | green << 8 | red`, forced
+  unsigned with `>>> 0`), the same packing `Particle`'s `tint`/`alpha` setters produce; `tint` on a
+  real `Particle` is BGR internally too.
+- **Every particle of a container must share one texture source.** An atlas frame is a `new
+  Texture({ source: base.source, frame: new Rectangle(...) })` sub-texture of the system's texture
+  (its `frame` offset included, so a base texture that is itself an atlas region still works), one
+  per distinct region cached on the component, destroyed with `destroy(false)` - never the source -
+  when the texture is swapped or the system disposed. The whole image (region `0,0,1,1`) uses the
+  base texture itself.
+- **Sprite size is scale**: `scaleX = size.x / texture.orig.width` (the frame's pixel size), so a
+  system without a texture draws `Texture.WHITE` (1x1) scaled to the size in world units.
+- **The blend mode is the container's `blendMode`** (`'normal'`/`'add'`/`'multiply'`), which is why
+  core's 2D option type is limited to those three - `subtract` and the other advanced modes need
+  pixi's optional advanced-blend-modes import and a filter pass.
+- **`ParticleContainer` has no children and computes no bounds**; `getBoundings` reports the
+  (unset) `boundsArea`. It is not covered by `cloneContainer` - the component overrides `clone()`
+  to build a fresh system from its options.
+- A spec mocks `pixi.js` with a fake `ParticleContainer`/`Texture`/`Rectangle` (plus the empty
+  classes `clone-container.ts` imports), see `test/components/pixi-particle-system.component.spec.ts`.
+
 ## Animated sprites
 
 `PixiFactory.createAnimatedSprite(baseTexture, { frameWidth, frameHeight, clips })` builds a

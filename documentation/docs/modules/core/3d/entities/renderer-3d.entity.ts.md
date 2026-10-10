@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/renderer-3d.entity.ts
-nav_order: 83
+nav_order: 87
 parent: Modules
 ---
 

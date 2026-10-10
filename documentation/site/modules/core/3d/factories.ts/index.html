@@ -559,6 +559,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#createparticlesystem-method" class="md-nav__link">
+    createParticleSystem (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#createtexturefromcanvas-method" class="md-nav__link">
     createTextureFromCanvas (method)
   </a>
@@ -661,6 +668,7 @@
 <li><a href="#createprimitive-method">createPrimitive (method)</a></li>
 <li><a href="#createperspectivecamera-method">createPerspectiveCamera (method)</a></li>
 <li><a href="#createlight-method">createLight (method)</a></li>
+<li><a href="#createparticlesystem-method">createParticleSystem (method)</a></li>
 <li><a href="#createtexturefromcanvas-method">createTextureFromCanvas (method)</a></li>
 <li><a href="#randomcolor-method">randomColor (method)</a></li>
 <li><a href="#createplane-method">createPlane (method)</a></li>
@@ -721,6 +729,15 @@
 <p>Creates a light. Wrap it in a <code>Light3dEntity</code> (or use <code>Gg3dWorld.addLight</code>) to add it to a world.</p>
 <p><strong>Signature</strong></p>
 <pre><code class="language-ts">abstract createLight(descriptor: Light3dDescriptor): VTypeDoc['light'];
+</code></pre>
+<h3 id="createparticlesystem-method">createParticleSystem (method)</h3>
+<p>Creates the visual half of a particle system (see <code>IParticleSystem3dComponent</code>), merging in the
+adapter's own <code>particleSystemExtraOpts</code> (e.g. a custom material). Wrap it in a
+<code>ParticleSystem3dEntity</code> (or use <code>Gg3dWorld.addParticleSystem</code>) to simulate and show it.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">abstract createParticleSystem(
+    options: ParticleSystem3dRenderOptions&lt;VTypeDoc['texture']&gt; &amp; Partial&lt;VTypeDoc['particleSystemExtraOpts']&gt;,
+  ): VTypeDoc['particleSystem'];
 </code></pre>
 <h3 id="createtexturefromcanvas-method">createTextureFromCanvas (method)</h3>
 <p>Creates a texture from a canvas the app has drawn on, e.g. a procedurally generated pattern,

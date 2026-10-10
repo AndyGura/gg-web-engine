@@ -1,6 +1,6 @@
 ---
 title: core/2d/components/rendering/i-visual-scene-2d.component.ts
-nav_order: 25
+nav_order: 26
 parent: Modules
 ---
 

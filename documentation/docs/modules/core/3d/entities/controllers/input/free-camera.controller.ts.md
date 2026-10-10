@@ -1,6 +1,6 @@
 ---
 title: core/3d/entities/controllers/input/free-camera.controller.ts
-nav_order: 70
+nav_order: 73
 parent: Modules
 ---
 

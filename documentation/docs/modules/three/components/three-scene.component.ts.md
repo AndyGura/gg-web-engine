@@ -1,6 +1,6 @@
 ---
 title: three/components/three-scene.component.ts
-nav_order: 220
+nav_order: 232
 parent: Modules
 ---
 
@@ -14,6 +14,7 @@ parent: Modules
   - [ThreeSceneComponent (class)](#threescenecomponent-class)
     - [zUpRotationX (static method)](#zuprotationx-static-method)
     - [init (method)](#init-method)
+    - [createNativeScene (method)](#createnativescene-method)
     - [setEnvironment (method)](#setenvironment-method)
     - [applyEnvironment (method)](#applyenvironment-method)
     - [registerRenderLayer (method)](#registerrenderlayer-method)
@@ -26,6 +27,7 @@ parent: Modules
     - [loader (property)](#loader-property)
     - [renderers (property)](#renderers-property)
     - [mainRenderLayer (property)](#mainrenderlayer-property)
+    - [beforeRenderHooks (property)](#beforerenderhooks-property)
     - [lockedRenderLayers (property)](#lockedrenderlayers-property)
 
 ---
@@ -58,6 +60,14 @@ private static zUpRotationX(texture: Texture | null): number
 
 ```ts
 async init(): Promise<void>
+```
+
+### createNativeScene (method)
+
+**Signature**
+
+```ts
+private createNativeScene(): Scene
 ```
 
 ### setEnvironment (method)
@@ -164,6 +174,19 @@ readonly renderers: Set<ThreeRendererComponent>
 
 ```ts
 readonly mainRenderLayer: number
+```
+
+### beforeRenderHooks (property)
+
+Run at the start of every `WebGLRenderer.render` of this scene, with that render's camera -
+before three.js uploads changed geometry, so a hook can still rewrite buffers for this camera
+(`ThreeParticleSystemComponent` sorts its sprites here). Installed as the native scene's
+`onBeforeRender`: an app must not replace that, and adds a hook here instead.
+
+**Signature**
+
+```ts
+readonly beforeRenderHooks: Set<(camera: Camera, renderer: WebGLRenderer) => void>
 ```
 
 ### lockedRenderLayers (property)

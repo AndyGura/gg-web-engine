@@ -1,4 +1,11 @@
-import { Camera3dEntity, Gg3dWorld, GgStatic, LevelJson, LoadingScreen, OrbitCameraController } from '@gg-web-engine/core';
+import {
+  Camera3dEntity,
+  Gg3dWorld,
+  GgStatic,
+  LevelJson,
+  LoadingScreen,
+  OrbitCameraController,
+} from '@gg-web-engine/core';
 import { ThreeSceneComponent, ThreeVisualTypeDocRepo } from '@gg-web-engine/three';
 import { createPhysicsWorld } from './backends';
 import { ShapeSpawner, ShapeSpawnerSettings } from './shape-spawner';
@@ -53,8 +60,9 @@ const world = new Gg3dWorld({
 world.init().then(async () => {
   const canvas = document.getElementById('gg')! as HTMLCanvasElement;
 
-  world.loader.registerClass('ShapeSpawner', (w: Gg3dWorld, settings: ShapeSpawnerSettings) =>
-    new ShapeSpawner(w, settings),
+  world.loader.registerClass(
+    'ShapeSpawner',
+    (w: Gg3dWorld, settings: ShapeSpawnerSettings) => new ShapeSpawner(w, settings),
   );
 
   const levelGroup = await world.loader.loadLevel(level, 'MainLevel', { onProgress: p => loading.setProgress(p) });
