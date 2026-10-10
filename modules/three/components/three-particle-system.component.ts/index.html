@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/core/3d/gg-3d-world.ts/">
+        <link rel="canonical" href="https://AndyGura.github.io/gg-web-engine/modules/three/components/three-particle-system.component.ts/">
       
       
       
@@ -20,7 +20,7 @@
     
     
       
-        <title>core/3d/gg-3d-world.ts - GG Web Engine</title>
+        <title>three/components/three-particle-system.component.ts - GG Web Engine</title>
       
     
     
@@ -75,7 +75,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#gg-3d-world-overview" class="md-skip">
+        <a href="#three-particle-systemcomponent-overview" class="md-skip">
           Skip to content
         </a>
       
@@ -111,7 +111,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              core/3d/gg-3d-world.ts
+              three/components/three-particle-system.component.ts
             
           </span>
         </div>
@@ -355,7 +355,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href="../../../core" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -455,7 +455,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../three" class="md-nav__link">
+      <a href="../.." class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -501,8 +501,8 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#gg-3d-world-overview" class="md-nav__link">
-    gg-3d-world overview
+  <a href="#three-particle-systemcomponent-overview" class="md-nav__link">
+    three-particle-system.component overview
   </a>
   
 </li>
@@ -516,65 +516,107 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#audiotypedocrepo3d-type-alias" class="md-nav__link">
-    AudioTypeDocRepo3D (type alias)
+  <a href="#three_particle_fragment_shader" class="md-nav__link">
+    THREE_PARTICLE_FRAGMENT_SHADER
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#gg3dworld-class" class="md-nav__link">
-    Gg3dWorld (class)
+  <a href="#three_particle_vertex_shader" class="md-nav__link">
+    THREE_PARTICLE_VERTEX_SHADER
   </a>
   
-    <nav class="md-nav" aria-label="Gg3dWorld (class)">
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#threeparticlesystemcomponent-class" class="md-nav__link">
+    ThreeParticleSystemComponent (class)
+  </a>
+  
+    <nav class="md-nav" aria-label="ThreeParticleSystemComponent (class)">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#addprimitiverigidbody-method" class="md-nav__link">
-    addPrimitiveRigidBody (method)
+  <a href="#setparticles-method" class="md-nav__link">
+    setParticles (method)
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#addgrabbableprimitive-method" class="md-nav__link">
-    addGrabbablePrimitive (method)
+  <a href="#prepareforcamera-method" class="md-nav__link">
+    prepareForCamera (method)
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#addlight-method" class="md-nav__link">
-    addLight (method)
+  <a href="#uploadparticles-method" class="md-nav__link">
+    uploadParticles (method)
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#addparticlesystem-method" class="md-nav__link">
-    addParticleSystem (method)
+  <a href="#addtoworld-method" class="md-nav__link">
+    addToWorld (method)
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#addrenderer-method" class="md-nav__link">
-    addRenderer (method)
+  <a href="#removefromworld-method" class="md-nav__link">
+    removeFromWorld (method)
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#registerconsolecommands-method" class="md-nav__link">
-    registerConsoleCommands (method)
+  <a href="#clone-method" class="md-nav__link">
+    clone (method)
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#loader-property" class="md-nav__link">
-    loader (property)
+  <a href="#popchild-method" class="md-nav__link">
+    popChild (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#dispose-method" class="md-nav__link">
+    dispose (method)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#capacity-property" class="md-nav__link">
+    capacity (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nativegeometry-property" class="md-nav__link">
+    nativeGeometry (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nativematerial-property" class="md-nav__link">
+    nativeMaterial (property)
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#nativemesh-property" class="md-nav__link">
+    nativeMesh (property)
   </a>
   
 </li>
@@ -585,85 +627,15 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#gg3dworldscenetypedocapatch-type-alias" class="md-nav__link">
-    Gg3dWorldSceneTypeDocAPatch (type alias)
+  <a href="#threeparticlesystemextraopts-type-alias" class="md-nav__link">
+    ThreeParticleSystemExtraOpts (type alias)
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#gg3dworldscenetypedocppatch-type-alias" class="md-nav__link">
-    Gg3dWorldSceneTypeDocPPatch (type alias)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#gg3dworldscenetypedocvpatch-type-alias" class="md-nav__link">
-    Gg3dWorldSceneTypeDocVPatch (type alias)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#gg3dworldscenetyperepo-type-alias" class="md-nav__link">
-    Gg3dWorldSceneTypeRepo (type alias)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#gg3dworldtypedocapatch-type-alias" class="md-nav__link">
-    Gg3dWorldTypeDocAPatch (type alias)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#gg3dworldtypedocppatch-type-alias" class="md-nav__link">
-    Gg3dWorldTypeDocPPatch (type alias)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#gg3dworldtypedocrepo-type-alias" class="md-nav__link">
-    Gg3dWorldTypeDocRepo (type alias)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#gg3dworldtypedocvpatch-type-alias" class="md-nav__link">
-    Gg3dWorldTypeDocVPatch (type alias)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#gg3dworldwithphysics-type-alias" class="md-nav__link">
-    Gg3dWorldWithPhysics (type alias)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#physicstypedocrepo3d-type-alias" class="md-nav__link">
-    PhysicsTypeDocRepo3D (type alias)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#typedgg3dworld-type-alias" class="md-nav__link">
-    TypedGg3dWorld (type alias)
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#visualtypedocrepo3d-type-alias" class="md-nav__link">
-    VisualTypeDocRepo3D (type alias)
+  <a href="#createthreeparticlematerial" class="md-nav__link">
+    createThreeParticleMaterial
   </a>
   
 </li>
@@ -691,235 +663,146 @@
   
 
 
-<h2 id="gg-3d-world-overview">gg-3d-world overview</h2>
+<h2 id="three-particle-systemcomponent-overview">three-particle-system.component overview</h2>
 <hr />
 <h2 class="text-delta">Table of contents</h2>
 
 <ul>
 <li><a href="#utils">utils</a></li>
-<li><a href="#audiotypedocrepo3d-type-alias">AudioTypeDocRepo3D (type alias)</a></li>
-<li><a href="#gg3dworld-class">Gg3dWorld (class)</a><ul>
-<li><a href="#addprimitiverigidbody-method">addPrimitiveRigidBody (method)</a></li>
-<li><a href="#addgrabbableprimitive-method">addGrabbablePrimitive (method)</a></li>
-<li><a href="#addlight-method">addLight (method)</a></li>
-<li><a href="#addparticlesystem-method">addParticleSystem (method)</a></li>
-<li><a href="#addrenderer-method">addRenderer (method)</a></li>
-<li><a href="#registerconsolecommands-method">registerConsoleCommands (method)</a></li>
-<li><a href="#loader-property">loader (property)</a></li>
+<li><a href="#three_particle_fragment_shader">THREE_PARTICLE_FRAGMENT_SHADER</a></li>
+<li><a href="#three_particle_vertex_shader">THREE_PARTICLE_VERTEX_SHADER</a></li>
+<li><a href="#threeparticlesystemcomponent-class">ThreeParticleSystemComponent (class)</a><ul>
+<li><a href="#setparticles-method">setParticles (method)</a></li>
+<li><a href="#prepareforcamera-method">prepareForCamera (method)</a></li>
+<li><a href="#uploadparticles-method">uploadParticles (method)</a></li>
+<li><a href="#addtoworld-method">addToWorld (method)</a></li>
+<li><a href="#removefromworld-method">removeFromWorld (method)</a></li>
+<li><a href="#clone-method">clone (method)</a></li>
+<li><a href="#popchild-method">popChild (method)</a></li>
+<li><a href="#dispose-method">dispose (method)</a></li>
+<li><a href="#capacity-property">capacity (property)</a></li>
+<li><a href="#nativegeometry-property">nativeGeometry (property)</a></li>
+<li><a href="#nativematerial-property">nativeMaterial (property)</a></li>
+<li><a href="#nativemesh-property">nativeMesh (property)</a></li>
 </ul>
 </li>
-<li><a href="#gg3dworldscenetypedocapatch-type-alias">Gg3dWorldSceneTypeDocAPatch (type alias)</a></li>
-<li><a href="#gg3dworldscenetypedocppatch-type-alias">Gg3dWorldSceneTypeDocPPatch (type alias)</a></li>
-<li><a href="#gg3dworldscenetypedocvpatch-type-alias">Gg3dWorldSceneTypeDocVPatch (type alias)</a></li>
-<li><a href="#gg3dworldscenetyperepo-type-alias">Gg3dWorldSceneTypeRepo (type alias)</a></li>
-<li><a href="#gg3dworldtypedocapatch-type-alias">Gg3dWorldTypeDocAPatch (type alias)</a></li>
-<li><a href="#gg3dworldtypedocppatch-type-alias">Gg3dWorldTypeDocPPatch (type alias)</a></li>
-<li><a href="#gg3dworldtypedocrepo-type-alias">Gg3dWorldTypeDocRepo (type alias)</a></li>
-<li><a href="#gg3dworldtypedocvpatch-type-alias">Gg3dWorldTypeDocVPatch (type alias)</a></li>
-<li><a href="#gg3dworldwithphysics-type-alias">Gg3dWorldWithPhysics (type alias)</a></li>
-<li><a href="#physicstypedocrepo3d-type-alias">PhysicsTypeDocRepo3D (type alias)</a></li>
-<li><a href="#typedgg3dworld-type-alias">TypedGg3dWorld (type alias)</a></li>
-<li><a href="#visualtypedocrepo3d-type-alias">VisualTypeDocRepo3D (type alias)</a></li>
+<li><a href="#threeparticlesystemextraopts-type-alias">ThreeParticleSystemExtraOpts (type alias)</a></li>
+<li><a href="#createthreeparticlematerial">createThreeParticleMaterial</a></li>
 </ul>
 <hr />
 <h1 id="utils">utils</h1>
-<h2 id="audiotypedocrepo3d-type-alias">AudioTypeDocRepo3D (type alias)</h2>
+<h2 id="three_particle_fragment_shader">THREE_PARTICLE_FRAGMENT_SHADER</h2>
+<p>The built-in particle fragment shader: texture (<code>GG_USE_MAP</code>) times tint, alpha from the texture
+(or, with <code>GG_TEXTURE_ALPHA_BRIGHTNESS</code>, its brightest channel as stored in the image, i.e. in
+the output color space) times opacity, <code>uAlphaTest</code>
+discard, tone mapping, output color space and fog (faded out instead of mixed towards the fog
+color with <code>GG_FOG_FADE</code>, for blend modes that add or darken), and premultiplied output - by the
+alpha, or by the opacity alone with <code>GG_PREMULTIPLIED_INPUT</code>.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type AudioTypeDocRepo3D = {
-  factory: IAudioSource3dComponentFactory
-  source: IAudioSource3dComponent
-  clip: unknown
+<pre><code class="language-ts">export declare const THREE_PARTICLE_FRAGMENT_SHADER: '\n#include &lt;fog_pars_fragment&gt;\n#ifdef GG_USE_MAP\nuniform sampler2D map;\n#endif\nuniform float uAlphaTest;\nvarying vec2 vUv;\nvarying vec4 vColor;\nvarying vec4 vExtra;\nvoid main() {\n#ifdef GG_USE_MAP\n  vec4 texel = texture2D(map, vUv);\n#else\n  vec4 texel = vec4(1.0);\n#endif\n#ifdef GG_TEXTURE_ALPHA_BRIGHTNESS\n  // brightness as stored in the image (output color space), not of the linearized texel\n  vec3 imageColor = linearToOutputTexel(vec4(texel.rgb, 1.0)).rgb;\n  float textureAlpha = max(imageColor.r, max(imageColor.g, imageColor.b)) * texel.a;\n#else\n  float textureAlpha = texel.a;\n#endif\n  vec3 color = texel.rgb * sRGBTransferEOTF(vec4(vColor.rgb, 1.0)).rgb;\n  float opacity = vColor.a;\n#ifdef USE_FOG\n  #ifdef FOG_EXP2\n  float fogFactor = 1.0 - exp(-fogDensity * fogDensity * vFogDepth * vFogDepth);\n  #else\n  float fogFactor = smoothstep(fogNear, fogFar, vFogDepth);\n  #endif\n  #ifdef GG_FOG_FADE\n  opacity *= 1.0 - fogFactor;\n  #endif\n#endif\n  float alpha = textureAlpha * opacity;\n  if (alpha &lt;= uAlphaTest) discard;\n  gl_FragColor = vec4(color, alpha);\n#include &lt;tonemapping_fragment&gt;\n#include &lt;colorspace_fragment&gt;\n#if defined(USE_FOG) &amp;&amp; !defined(GG_FOG_FADE)\n  gl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor, fogFactor);\n#endif\n#ifdef GG_PREMULTIPLIED_INPUT\n  gl_FragColor.rgb *= opacity;\n#else\n  gl_FragColor.rgb *= alpha;\n#endif\n}\n'
+</code></pre>
+<h2 id="three_particle_vertex_shader">THREE_PARTICLE_VERTEX_SHADER</h2>
+<p>The built-in particle vertex shader: expands each instance of the unit quad (<code>position.xy</code> in
+<code>-0.5..0.5</code>, <code>uv</code> in <code>0..1</code>) into a sprite of <code>particleSize</code> world units around <code>particleCenter</code>,
+rotated by <code>particleRotation</code> in its own plane and facing the camera (or, with the
+<code>GG_BILLBOARD_VERTICAL</code> define, turning around world <code>Z</code> only). Passes <code>vUv</code> (the atlas region,
+<code>particleUv</code>, flipped for the texture's <code>flipY</code> through the <code>uFlipY</code> uniform), <code>vColor</code>
+(<code>particleColor</code>: sRGB tint and opacity) and <code>vExtra</code> (<code>particleExtra</code>) on, and supports fog.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export declare const THREE_PARTICLE_VERTEX_SHADER: &quot;\n#include &lt;fog_pars_vertex&gt;\nattribute vec3 particleCenter;\nattribute vec2 particleSize;\nattribute float particleRotation;\nattribute vec4 particleColor;\nattribute vec4 particleUv;\nattribute vec4 particleExtra;\nuniform float uFlipY;\nvarying vec2 vUv;\nvarying vec4 vColor;\nvarying vec4 vExtra;\nvoid main() {\n  vec2 corner = position.xy * particleSize;\n  float c = cos(particleRotation);\n  float s = sin(particleRotation);\n  corner = vec2(c * corner.x - s * corner.y, s * corner.x + c * corner.y);\n#ifdef GG_BILLBOARD_VERTICAL\n  vec3 worldCenter = (modelMatrix * vec4(particleCenter, 1.0)).xyz;\n  vec2 toCamera = cameraPosition.xy - worldCenter.xy;\n  float toCameraLength = length(toCamera);\n  vec3 right = toCameraLength &gt; 1e-6 ? vec3(-toCamera.y, toCamera.x, 0.0) / toCameraLength : vec3(1.0, 0.0, 0.0);\n  vec4 mvPosition = viewMatrix * vec4(worldCenter + right * corner.x + vec3(0.0, 0.0, corner.y), 1.0);\n#else\n  vec4 mvPosition = modelViewMatrix * vec4(particleCenter, 1.0);\n  mvPosition.xy += corner;\n#endif\n  gl_Position = projectionMatrix * mvPosition;\n  // particleUv is in image coordinates (top-left origin, y down); the quad's top edge is uv.y = 1\n  vec2 imageUv = vec2(particleUv.x + uv.x * particleUv.z, particleUv.y + (1.0 - uv.y) * particleUv.w);\n  vUv = vec2(imageUv.x, uFlipY &gt; 0.5 ? 1.0 - imageUv.y : imageUv.y);\n  vColor = particleColor;\n  vExtra = particleExtra;\n#include &lt;fog_vertex&gt;\n}\n&quot;
+</code></pre>
+<h2 id="threeparticlesystemcomponent-class">ThreeParticleSystemComponent (class)</h2>
+<p>The three.js <code>IParticleSystem3dComponent</code>: one <code>Mesh</code> of an <code>InstancedBufferGeometry</code> - a unit
+quad drawn once per particle in a single draw call. Per-instance attributes, filled from core's
+<code>ParticleRenderBuffers</code> right before each camera renders the scene (sorted back to front for that
+camera unless <code>sort: false</code>):</p>
+<ul>
+<li><code>particleCenter</code> (vec3), <code>particleSize</code> (vec2, world units), <code>particleRotation</code> (float, radians),</li>
+<li><code>particleColor</code> (vec4: sRGB tint and opacity), <code>particleUv</code> (vec4: atlas region <code>x, y, width,
+height</code>, top-left origin), <code>particleExtra</code> (vec4: <code>Particle.shaderData</code>).</li>
+</ul>
+<p>The mesh is never frustum-culled, casts no shadows and is ignored by three.js raycasting. Sorting
+runs in the scene's <code>onBeforeRender</code> (see <code>ThreeSceneComponent.beforeRenderHooks</code>): an app must
+not replace <code>nativeScene.onBeforeRender</code>.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export declare class ThreeParticleSystemComponent {
+  constructor(options: ParticleSystem3dRenderOptions&lt;Texture&gt; &amp; ThreeParticleSystemExtraOpts)
 }
 </code></pre>
-<h2 id="gg3dworld-class">Gg3dWorld (class)</h2>
+<h3 id="setparticles-method">setParticles (method)</h3>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">export declare class Gg3dWorld&lt;TypeDoc, SceneTypeDoc&gt; {
-  constructor(args: {
-    visualScene?: SceneTypeDoc['visualScene']
-    physicsWorld?: SceneTypeDoc['physicsWorld']
-    audioScene?: SceneTypeDoc['audioScene']
-    maxTickDelta?: number
-    pauseWhenHidden?: boolean
-    fixedPhysicsStep?: number
-    maxPhysicsStepsPerTick?: number
-  })
+<pre><code class="language-ts">setParticles(buffers: ParticleRenderBuffers): void
+</code></pre>
+<h3 id="prepareforcamera-method">prepareForCamera (method)</h3>
+<p>Fills the instance attributes from the current buffers for <code>camera</code>: sorted back to front from
+its point of view when sorting is on. Called by the scene before each render; call it yourself
+only when rendering the native scene some other way.</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">public prepareForCamera(camera: Camera): void
+</code></pre>
+<h3 id="uploadparticles-method">uploadParticles (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">private uploadParticles(order: Uint32Array | null): void
+</code></pre>
+<h3 id="addtoworld-method">addToWorld (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">addToWorld(world: ThreeGgWorld): void
+</code></pre>
+<h3 id="removefromworld-method">removeFromWorld (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">removeFromWorld(world: ThreeGgWorld, dispose?: boolean): void
+</code></pre>
+<h3 id="clone-method">clone (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">clone(): ThreeParticleSystemComponent
+</code></pre>
+<h3 id="popchild-method">popChild (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">popChild(): null
+</code></pre>
+<h3 id="dispose-method">dispose (method)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">dispose(): void
+</code></pre>
+<h3 id="capacity-property">capacity (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly capacity: number
+</code></pre>
+<h3 id="nativegeometry-property">nativeGeometry (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly nativeGeometry: InstancedBufferGeometry
+</code></pre>
+<h3 id="nativematerial-property">nativeMaterial (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">readonly nativeMaterial: Material&lt;MaterialEventMap&gt;
+</code></pre>
+<h3 id="nativemesh-property">nativeMesh (property)</h3>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">nativeMesh: Mesh&lt;InstancedBufferGeometry, Material&lt;MaterialEventMap&gt;, Object3DEventMap&gt;
+</code></pre>
+<h2 id="threeparticlesystemextraopts-type-alias">ThreeParticleSystemExtraOpts (type alias)</h2>
+<p>three.js-only particle system options, merged into <code>ParticleSystem3dRenderOptions</code> when creating a
+system (<code>factory.createParticleSystem</code> / <code>world.addParticleSystem</code>).</p>
+<p><strong>Signature</strong></p>
+<pre><code class="language-ts">export type ThreeParticleSystemExtraOpts = {
+  /**
+   * Replaces or adjusts the material the particles are drawn with: receives the built-in
+   * `ShaderMaterial`, already set up from the render options, and returns the material to use - the
+   * same one changed (e.g. `blending = CustomBlending` with the app's own `blendSrc`/`blendDst`/
+   * `blendEquation`, a different `fragmentShader` reusing `THREE_PARTICLE_VERTEX_SHADER`), or a new
+   * one. A custom shader reads the attributes described on `ThreeParticleSystemComponent`. The
+   * built-in material is disposed if another one is returned; the returned one is disposed with the
+   * system.
+   */
+  material?: (defaultMaterial: ShaderMaterial) =&gt; Material
 }
 </code></pre>
-<h3 id="addprimitiverigidbody-method">addPrimitiveRigidBody (method)</h3>
+<h2 id="createthreeparticlematerial">createThreeParticleMaterial</h2>
+<p>The built-in particle material for <code>options</code>: a <code>ShaderMaterial</code> with the shaders above, the
+blend mode as three.js blending with <code>premultipliedAlpha</code> (the shader outputs premultiplied
+color), <code>transparent</code>, depth test/write and fog from the options.</p>
 <p><strong>Signature</strong></p>
-<pre><code class="language-ts">addPrimitiveRigidBody(
-    descr: BodyShape3DDescriptor,
-    position: Point3 = Pnt3.O,
-    rotation: Point4 = Qtrn.O,
-    material: DisplayObject3dOpts&lt;TypeDoc['vTypeDoc']['texture']&gt; = {},
-  ): Entity3d&lt;TypeDoc&gt;
-</code></pre>
-<h3 id="addgrabbableprimitive-method">addGrabbablePrimitive (method)</h3>
-<p>Same as <code>addPrimitiveRigidBody</code>, but the returned entity is a <code>Grabbable3dEntity</code> - a prop
-that can be picked up/carried/thrown (see that class and <code>ObjectGrabController</code>). <code>descr.body</code>
-must describe a dynamic body (<code>bodyType: 'dynamic'</code>) - a static/kinematic prop can't be carried.</p>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">addGrabbablePrimitive(
-    descr: BodyShape3DDescriptor,
-    position: Point3 = Pnt3.O,
-    rotation: Point4 = Qtrn.O,
-    material: DisplayObject3dOpts&lt;TypeDoc['vTypeDoc']['texture']&gt; = {},
-    grabOptions: Partial&lt;Grabbable3dEntityOptions&gt; = {},
-  ): Grabbable3dEntity&lt;TypeDoc&gt;
-</code></pre>
-<h3 id="addlight-method">addLight (method)</h3>
-<p>Creates a light (see <code>Light3dDescriptor</code>), wraps it in a <code>Light3dEntity</code> and adds it to the
-world. When <code>target</code> is given, the light is rotated to shine from <code>position</code> towards it, which
-is what <code>DIRECTIONAL</code> and <code>SPOT</code> lights normally want.</p>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">addLight(
-    descriptor: Light3dDescriptor,
-    position: Point3 = Pnt3.O,
-    target?: Point3,
-  ): Light3dEntity&lt;TypeDoc['vTypeDoc']&gt;
-</code></pre>
-<h3 id="addparticlesystem-method">addParticleSystem (method)</h3>
-<p>Creates a particle system - its visual component from <code>renderOptions</code> (plus the adapter's own
-extra options, e.g. a custom material) and the simulation from <code>options</code> - wraps it in a
-<code>ParticleSystem3dEntity</code> and adds it to the world.</p>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">addParticleSystem&lt;T = any&gt;(
-    renderOptions: ParticleSystem3dRenderOptions&lt;TypeDoc['vTypeDoc']['texture']&gt; &amp;
-      Partial&lt;TypeDoc['vTypeDoc']['particleSystemExtraOpts']&gt;,
-    options: ParticleSystem3dOptions&lt;T&gt; = {},
-  ): ParticleSystem3dEntity&lt;TypeDoc['vTypeDoc'], T&gt;
-</code></pre>
-<h3 id="addrenderer-method">addRenderer (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">addRenderer(
-    camera: TypeDoc['vTypeDoc']['camera'],
-    canvas?: HTMLCanvasElement,
-    rendererOptions?: Partial&lt;RendererOptions &amp; TypeDoc['vTypeDoc']['rendererExtraOpts']&gt;,
-  ): Renderer3dEntity&lt;TypeDoc['vTypeDoc']&gt;
-</code></pre>
-<h3 id="registerconsolecommands-method">registerConsoleCommands (method)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">protected registerConsoleCommands(ggstatic: GgConsoleHost)
-</code></pre>
-<h3 id="loader-property">loader (property)</h3>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">readonly loader: Gg3dLoader&lt;TypeDoc&gt;
-</code></pre>
-<h2 id="gg3dworldscenetypedocapatch-type-alias">Gg3dWorldSceneTypeDocAPatch (type alias)</h2>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type Gg3dWorldSceneTypeDocAPatch&lt;
-  ATypeDoc extends AudioTypeDocRepo3D,
-  AS extends IAudioScene3dComponent&lt;ATypeDoc&gt; | null
-&gt; = Omit&lt;Gg3dWorldSceneTypeRepo, 'audioScene'&gt; &amp; { audioScene: AS }
-</code></pre>
-<h2 id="gg3dworldscenetypedocppatch-type-alias">Gg3dWorldSceneTypeDocPPatch (type alias)</h2>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type Gg3dWorldSceneTypeDocPPatch&lt;
-  PTypeDoc extends PhysicsTypeDocRepo3D,
-  PW extends IPhysicsWorld3dComponent&lt;PTypeDoc&gt; | null
-&gt; = Omit&lt;Gg3dWorldSceneTypeRepo, 'physicsWorld'&gt; &amp; { physicsWorld: PW }
-</code></pre>
-<h2 id="gg3dworldscenetypedocvpatch-type-alias">Gg3dWorldSceneTypeDocVPatch (type alias)</h2>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type Gg3dWorldSceneTypeDocVPatch&lt;
-  VTypeDoc extends VisualTypeDocRepo3D,
-  VS extends IVisualScene3dComponent&lt;VTypeDoc&gt; | null
-&gt; = Omit&lt;Gg3dWorldSceneTypeRepo, 'visualScene'&gt; &amp; { visualScene: VS }
-</code></pre>
-<h2 id="gg3dworldscenetyperepo-type-alias">Gg3dWorldSceneTypeRepo (type alias)</h2>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type Gg3dWorldSceneTypeRepo&lt;TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo&gt; = {
-  visualScene: IVisualScene3dComponent&lt;TypeDoc['vTypeDoc']&gt; | null
-  physicsWorld: IPhysicsWorld3dComponent&lt;TypeDoc['pTypeDoc']&gt; | null
-  audioScene: IAudioScene3dComponent&lt;TypeDoc['aTypeDoc']&gt; | null
-}
-</code></pre>
-<h2 id="gg3dworldtypedocapatch-type-alias">Gg3dWorldTypeDocAPatch (type alias)</h2>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type Gg3dWorldTypeDocAPatch&lt;ATypeDoc extends AudioTypeDocRepo3D&gt; = Omit&lt;Gg3dWorldTypeDocRepo, 'aTypeDoc'&gt; &amp; {
-  aTypeDoc: ATypeDoc
-}
-</code></pre>
-<h2 id="gg3dworldtypedocppatch-type-alias">Gg3dWorldTypeDocPPatch (type alias)</h2>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type Gg3dWorldTypeDocPPatch&lt;PTypeDoc extends PhysicsTypeDocRepo3D&gt; = Omit&lt;Gg3dWorldTypeDocRepo, 'pTypeDoc'&gt; &amp; {
-  pTypeDoc: PTypeDoc
-}
-</code></pre>
-<h2 id="gg3dworldtypedocrepo-type-alias">Gg3dWorldTypeDocRepo (type alias)</h2>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type Gg3dWorldTypeDocRepo = {
-  vTypeDoc: VisualTypeDocRepo3D
-  pTypeDoc: PhysicsTypeDocRepo3D
-  aTypeDoc: AudioTypeDocRepo3D
-}
-</code></pre>
-<h2 id="gg3dworldtypedocvpatch-type-alias">Gg3dWorldTypeDocVPatch (type alias)</h2>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type Gg3dWorldTypeDocVPatch&lt;VTypeDoc extends VisualTypeDocRepo3D&gt; = Omit&lt;Gg3dWorldTypeDocRepo, 'vTypeDoc'&gt; &amp; {
-  vTypeDoc: VTypeDoc
-}
-</code></pre>
-<h2 id="gg3dworldwithphysics-type-alias">Gg3dWorldWithPhysics (type alias)</h2>
-<p><code>W</code> (a world type such as <code>ThreeGgWorld</code>) with a physics world of whichever adapter, known to be
-there: <code>world.physicsWorld</code> is a plain <code>IPhysicsWorld3dComponent</code>, never <code>null</code>. For an app that
-picks its physics backend at runtime and so can't name an adapter's world type:
-<code>const world: Gg3dWorldWithPhysics&lt;ThreeGgWorld&gt; = new Gg3dWorld({ visualScene, physicsWorld })</code>.</p>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type Gg3dWorldWithPhysics&lt;W extends Gg3dWorld&lt;any, any&gt;&gt; = W extends Gg3dWorld&lt;infer TD, infer STD&gt;
-  ? Gg3dWorld&lt;TD, Omit&lt;STD, 'physicsWorld'&gt; &amp; { physicsWorld: IPhysicsWorld3dComponent&lt;TD['pTypeDoc']&gt; }&gt;
-  : never
-</code></pre>
-<h2 id="physicstypedocrepo3d-type-alias">PhysicsTypeDocRepo3D (type alias)</h2>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type PhysicsTypeDocRepo3D = {
-  factory: IPhysicsBody3dComponentFactory
-  loader: IPhysicsBody3dComponentLoader
-  rigidBody: IRigidBody3dComponent
-  trigger: ITrigger3dComponent
-  raycastVehicle: IRaycastVehicleComponent
-  characterController: ICharacterController3dComponent
-}
-</code></pre>
-<h2 id="typedgg3dworld-type-alias">TypedGg3dWorld (type alias)</h2>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type TypedGg3dWorld&lt;
-  VW extends Gg3dWorld&lt;any&gt; | null,
-  PW extends Gg3dWorld&lt;any&gt; | null,
-  AW extends Gg3dWorld&lt;any&gt; | null = null
-&gt; = VW extends Gg3dWorld&lt;infer VTD, infer VSTD&gt; | null
-  ? PW extends Gg3dWorld&lt;infer PTD, infer PSTD&gt; | null
-    ? AW extends Gg3dWorld&lt;infer ATD, infer ASTD&gt;
-      ? Gg3dWorld&lt;
-          { vTypeDoc: VTD['vTypeDoc']; pTypeDoc: PTD['pTypeDoc']; aTypeDoc: ATD['aTypeDoc'] },
-          { visualScene: VSTD['visualScene']; physicsWorld: PSTD['physicsWorld']; audioScene: ASTD['audioScene'] }
-        &gt;
-      : Gg3dWorld&lt;
-          { vTypeDoc: VTD['vTypeDoc']; pTypeDoc: PTD['pTypeDoc']; aTypeDoc: AudioTypeDocRepo3D },
-          {
-            visualScene: VSTD['visualScene']
-            physicsWorld: PSTD['physicsWorld']
-            audioScene: IAudioScene3dComponent | null
-          }
-        &gt;
-    : never
-  : never
-</code></pre>
-<h2 id="visualtypedocrepo3d-type-alias">VisualTypeDocRepo3D (type alias)</h2>
-<p><strong>Signature</strong></p>
-<pre><code class="language-ts">export type VisualTypeDocRepo3D = {
-  factory: IDisplayObject3dComponentFactory
-  loader: IDisplayObject3dComponentLoader
-  displayObject: IDisplayObject3dComponent
-  renderer: IRenderer3dComponent
-  rendererExtraOpts: {}
-  camera: ICamera3dComponent
-  light: ILight3dComponent
-  particleSystem: IParticleSystem3dComponent
-  /** Adapter-specific particle system options, merged into `ParticleSystem3dRenderOptions` (e.g. a custom material). */
-  particleSystemExtraOpts: {}
-  texture: unknown
-}
+<pre><code class="language-ts">export declare function createThreeParticleMaterial(options: ParticleSystem3dRenderOptions&lt;Texture&gt;): ShaderMaterial
 </code></pre>
 
 
