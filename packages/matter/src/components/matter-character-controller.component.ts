@@ -583,7 +583,10 @@ export class MatterCharacterControllerComponent implements ICharacterController2
 
   addToWorld(world: MatterGgWorld): void {
     if (world.physicsWorld != this.world) {
-      throw new Error('Matter bodies cannot be shared between different worlds');
+      throw new Error(
+        "Matter bodies cannot be shared between different worlds: this one was created by another world's factory. " +
+          'Create it with the factory of the world it is added to (`world.physicsWorld.factory`).',
+      );
     }
     this._added = true;
     this.world.added$.next(this);
@@ -591,7 +594,10 @@ export class MatterCharacterControllerComponent implements ICharacterController2
 
   removeFromWorld(world: MatterGgWorld, dispose: boolean = false): void {
     if (world.physicsWorld != this.world) {
-      throw new Error('Matter bodies cannot be shared between different worlds');
+      throw new Error(
+        "Matter bodies cannot be shared between different worlds: this one was created by another world's factory. " +
+          'Create it with the factory of the world it is added to (`world.physicsWorld.factory`).',
+      );
     }
     this._added = false;
     this.world.removed$.next(this);

@@ -3,6 +3,7 @@ import {
   CollisionEvent,
   CollisionGroup,
   IPhysicsWorld3dComponent,
+  notInitializedError,
   Pnt3,
   Point3,
   Qtrn,
@@ -18,6 +19,8 @@ import { AmmoRigidBodyComponent } from './ammo-rigid-body.component';
 import { AmmoTriggerComponent, isAmmoTrigger } from './ammo-trigger.component';
 import { AmmoBodyComponent } from './ammo-body.component';
 import type { AmmoRaycastVehicleComponent } from './ammo-raycast-vehicle.component';
+
+const AMMO_ASYNC_INIT = 'Ammo loads its WASM module asynchronously, so `init()` has to be awaited, not just called';
 
 /**
  * The 3D physics world backed by Bullet (ammo.js): pass a new one as `physicsWorld` of a
@@ -47,7 +50,12 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
   private _factory: AmmoFactory | null = null;
   public get factory(): AmmoFactory {
     if (!this._factory) {
-      throw new Error('Ammo world not initialized');
+      throw notInitializedError(
+        'AmmoWorldComponent',
+        'physicsWorld',
+        'creating bodies (physicsWorld.factory)',
+        AMMO_ASYNC_INIT,
+      );
     }
     return this._factory;
   }
@@ -86,7 +94,12 @@ export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsT
   private _loader: AmmoLoader | null = null;
   public get loader(): AmmoLoader {
     if (!this._loader) {
-      throw new Error('Ammo world not initialized');
+      throw notInitializedError(
+        'AmmoWorldComponent',
+        'physicsWorld',
+        'loading bodies (physicsWorld.loader)',
+        AMMO_ASYNC_INIT,
+      );
     }
     return this._loader;
   }

@@ -35,6 +35,24 @@ where one exists.
 - The docs site serves `llms.txt` (an index for AI agents) and `llms-full.txt` (pitch, install
   lines, the app-development guide and one complete example game per dimension, in one file),
   generated at release time.
+- Errors that say how to fix common setup mistakes. A `Gg3dWorld` given a 2D visual scene, physics
+  world or audio scene (or a `Gg2dWorld` given a 3D one) throws, naming the world class it belongs
+  in and the matching adapters. Using a scene or physics world before `await world.init()` throws
+  an error saying so (and, for `ammo`/`rapier2d`/`rapier3d`, that their WASM module loads
+  asynchronously) where it used to throw "X world not initialized" or fail inside the native
+  library; `three`/`pixi` display objects added before `init()` throw instead of silently never
+  appearing. `world.start()` before `init()` logs a warning. Loading two different
+  `@gg-web-engine/core` versions into one page (an adapter pinned to another core version) logs an
+  error naming both versions and the install command to align them. Bodies added to a world they
+  weren't created for, and lights/renderers/parallax layers added to a world without a visual
+  scene, say what to do instead.
+- `GgWorld.isInitialized`.
+
+### Fixed
+- Calling `GgWorld.init()` twice no longer initializes the scenes again and doubles every tick:
+  the second call returns the first call's promise. A failed `init()` can be retried.
+- Setting `gravity` on a `rapier2d`/`rapier3d` physics world before `init()` threw; it is now kept
+  and applied when the world initializes.
 
 ## [0.0.82] - 2026-10-10
 

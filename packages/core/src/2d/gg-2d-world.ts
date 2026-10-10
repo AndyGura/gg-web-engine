@@ -1,4 +1,4 @@
-import { BodyType, GgConsoleHost, GgWorld, Pnt2, Point2, RendererOptions } from '../base';
+import { assertWorldDimensions, BodyType, GgConsoleHost, GgWorld, Pnt2, Point2, RendererOptions } from '../base';
 import { Gg2dLoader } from './loader';
 import { BodyShape2DDescriptor } from './models/shapes';
 import { Entity2d } from './entities/entity-2d';
@@ -181,7 +181,7 @@ export class Gg2dWorld<
     fixedPhysicsStep?: number;
     maxPhysicsStepsPerTick?: number;
   }) {
-    super(args);
+    super(assertWorldDimensions('Gg2dWorld', 2, args));
     this.loader = new Gg2dLoader(this);
   }
 
@@ -232,7 +232,9 @@ export class Gg2dWorld<
     options: ParallaxLayer2dOpts<TypeDoc['vTypeDoc']['texture']>,
   ): ParallaxLayer2dEntity<TypeDoc['vTypeDoc']> {
     if (!this.visualScene) {
-      throw new Error('Cannot add a parallax layer to the world without visual scene');
+      throw new Error(
+        "Cannot add a parallax layer to a world without a visual scene: pass a `visualScene` (e.g. @gg-web-engine/pixi's PixiSceneComponent) to the Gg2dWorld constructor",
+      );
     }
     const entity = new ParallaxLayer2dEntity<TypeDoc['vTypeDoc']>(
       this.visualScene.factory.createParallaxLayer(options),
@@ -266,7 +268,9 @@ export class Gg2dWorld<
     options: ParticleSystem2dOptions<T> = {},
   ): ParticleSystem2dEntity<TypeDoc['vTypeDoc'], T> {
     if (!this.visualScene) {
-      throw new Error('Cannot add a particle system to the world without visual scene');
+      throw new Error(
+        "Cannot add a particle system to a world without a visual scene: pass a `visualScene` (e.g. @gg-web-engine/pixi's PixiSceneComponent) to the Gg2dWorld constructor",
+      );
     }
     const entity = new ParticleSystem2dEntity<TypeDoc['vTypeDoc'], T>(
       this.visualScene.factory.createParticleSystem(renderOptions),
@@ -304,7 +308,9 @@ export class Gg2dWorld<
     rendererOptions?: Partial<RendererOptions & TypeDoc['vTypeDoc']['rendererExtraOpts']>,
   ): Renderer2dEntity<TypeDoc['vTypeDoc']> {
     if (!this.visualScene) {
-      throw new Error('Cannot add renderer to the world without visual scene');
+      throw new Error(
+        "Cannot add a renderer to a world without a visual scene: pass a `visualScene` (e.g. @gg-web-engine/pixi's PixiSceneComponent) to the Gg2dWorld constructor",
+      );
     }
     const entity = new Renderer2dEntity(this.visualScene.createRenderer(camera, canvas, rendererOptions));
     this.addEntity(entity);

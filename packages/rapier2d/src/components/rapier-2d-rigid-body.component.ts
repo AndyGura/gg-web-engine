@@ -313,7 +313,10 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
 
   addToWorld(world: Rapier2dGgWorld): void {
     if (world.physicsWorld != this.world) {
-      throw new Error('Rapier2D bodies cannot be shared between different worlds');
+      throw new Error(
+        "Rapier2D bodies cannot be shared between different worlds: this one was created by another world's factory. " +
+          'Create it with the factory of the world it is added to (`world.physicsWorld.factory`).',
+      );
     }
     this._nativeBody = this.world.nativeWorld!.createRigidBody(this._bodyDescr);
     this._nativeBodyColliders = this._colliderDescr.map(c => {
@@ -335,7 +338,10 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
   // dispose-contract section for that contrast).
   removeFromWorld(world: Rapier2dGgWorld, dispose?: boolean): void {
     if (world.physicsWorld != this.world) {
-      throw new Error('Rapier2D bodies cannot be shared between different worlds');
+      throw new Error(
+        "Rapier2D bodies cannot be shared between different worlds: this one was created by another world's factory. " +
+          'Create it with the factory of the world it is added to (`world.physicsWorld.factory`).',
+      );
     }
     if (this._nativeBody) {
       // this body is vanishing while still touching others - the still-alive side of each pair

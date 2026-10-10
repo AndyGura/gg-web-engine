@@ -53,10 +53,17 @@ export type <Lib>PhysicsTypeDocRepo = {
 
 - `readonly backendName` — a short, stable library name (`'ammo'`, `'rapier3d'`, `'rapier2d'`,
   `'matter'`), one constant per adapter; the dev console's `worlds`/`world` commands show it.
-- `readonly factory` — throw a clear "`<Lib>` world not initialized" error from the getter if
-  accessed before `init()` completes (see `AmmoWorldComponent.factory`).
+- `readonly factory` — throw core's `notInitializedError(component, 'physicsWorld', action, reason?)`
+  from the getter if accessed before `init()` completes (see `AmmoWorldComponent.factory`); it
+  tells the app to `await world.init()`, and `reason` says why init is asynchronous (a WASM module).
+  Any other native-handle getter (`nativeWorld`, `eventQueue`) and any `addToWorld` that would hand
+  a not-yet-created native world to the library (`MatterWorldComponent.requireMatterWorld`) throws
+  the same error instead of a `TypeError` from inside the native library.
 - `gravity` — plain `Point2`/`Point3` getter/setter, translated to the native gravity
-  representation on write.
+  representation on write. Settable before `init()`: store it and apply it when the native world is
+  created - the setter checks the private native field (`this._nativeWorld`), never a getter that
+  throws before init. Core reads `gravity` to tell a 2D physics world from a 3D one (a `z`
+  component), so a 3D world's gravity always has `z` and a 2D world's never does.
 - `added$` / `removed$` (RxJS `Subject`) and a `children` array kept in sync by subscribing to your
   own `added$`/`removed$` in the constructor:
   ```typescript

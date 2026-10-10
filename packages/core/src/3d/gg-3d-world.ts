@@ -1,4 +1,14 @@
-import { BodyType, GgConsoleHost, GgWorld, Pnt3, Point3, Point4, Qtrn, RendererOptions } from '../base';
+import {
+  assertWorldDimensions,
+  BodyType,
+  GgConsoleHost,
+  GgWorld,
+  Pnt3,
+  Point3,
+  Point4,
+  Qtrn,
+  RendererOptions,
+} from '../base';
 import { Gg3dLoader } from './loader';
 import { Entity3d } from './entities/entity-3d';
 import { BodyShape3DDescriptor } from './models/shapes';
@@ -188,7 +198,7 @@ export class Gg3dWorld<
     fixedPhysicsStep?: number;
     maxPhysicsStepsPerTick?: number;
   }) {
-    super(args);
+    super(assertWorldDimensions('Gg3dWorld', 3, args));
     this.loader = new Gg3dLoader(this);
   }
 
@@ -268,7 +278,9 @@ export class Gg3dWorld<
     target?: Point3,
   ): Light3dEntity<TypeDoc['vTypeDoc']> {
     if (!this.visualScene) {
-      throw new Error('Cannot add a light to the world without visual scene');
+      throw new Error(
+        "Cannot add a light to a world without a visual scene: pass a `visualScene` (e.g. @gg-web-engine/three's ThreeSceneComponent) to the Gg3dWorld constructor",
+      );
     }
     const entity = new Light3dEntity<TypeDoc['vTypeDoc']>(this.visualScene.factory.createLight(descriptor));
     entity.position = position;
@@ -310,7 +322,9 @@ export class Gg3dWorld<
     options: ParticleSystem3dOptions<T> = {},
   ): ParticleSystem3dEntity<TypeDoc['vTypeDoc'], T> {
     if (!this.visualScene) {
-      throw new Error('Cannot add a particle system to the world without visual scene');
+      throw new Error(
+        "Cannot add a particle system to a world without a visual scene: pass a `visualScene` (e.g. @gg-web-engine/three's ThreeSceneComponent) to the Gg3dWorld constructor",
+      );
     }
     const entity = new ParticleSystem3dEntity<TypeDoc['vTypeDoc'], T>(
       this.visualScene.factory.createParticleSystem(renderOptions),
@@ -348,7 +362,9 @@ export class Gg3dWorld<
     rendererOptions?: Partial<RendererOptions & TypeDoc['vTypeDoc']['rendererExtraOpts']>,
   ): Renderer3dEntity<TypeDoc['vTypeDoc']> {
     if (!this.visualScene) {
-      throw new Error('Cannot add renderer to the world without visual scene');
+      throw new Error(
+        "Cannot add a renderer to a world without a visual scene: pass a `visualScene` (e.g. @gg-web-engine/three's ThreeSceneComponent) to the Gg3dWorld constructor",
+      );
     }
     const entity = new Renderer3dEntity(this.visualScene.createRenderer(camera, canvas, rendererOptions));
     this.addEntity(entity);

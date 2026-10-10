@@ -52,6 +52,40 @@ legitimately needs to reappear later (e.g. once per level load rather than once 
 something that changes into the message string itself - `warnOnce` has no notion of "reset" and
 dedupes purely on the string it's given.
 
+## Setup mistakes fail with the fix in the message (`base/setup-errors.ts`)
+
+A common app setup mistake throws (or, where throwing would break a valid ordering, logs once) with
+a message naming the fix. The pieces, all exported from the package root:
+
+- **Mismatched dimensions.** `Gg2dWorld`/`Gg3dWorld` wrap their `super(...)` argument in
+  `assertWorldDimensions(worldClass, 2|3, args)`, which throws when a scene of the other
+  dimensionality is passed, naming the world class it belongs in and the matching adapter packages.
+  TypeScript already rejects this, but with a structural error that never says "2D" or "3D"; the
+  runtime check covers that and JS/`any`. Detection is structural and only ever positive, so a
+  custom or mock scene with none of the telltale members is let through: `physicsWorldDimension`
+  (gravity has `z` or not), `visualSceneDimension` (`registerRenderLayer`/factory `createLight` is
+  3D, factory `createParallaxLayer` is 2D), `audioSceneDimension` (`defaultPanningModel` is 3D; a 2D
+  audio scene has nothing of its own, so it is never detected). Each reads members through a
+  `try`, since an adapter getter may throw before init. A new 2D-only or 3D-only interface member
+  is a candidate for these checks; a member added to both dimensions must not be used by them.
+- **Not initialized.** `notInitializedError(component, role, action, reason?)` is the error every
+  adapter throws when its native state is used before `init()` (see `gg-engine-physics-adapter`/
+  `gg-engine-visual-adapter`). `GgWorld.init()` itself is idempotent - a second call returns the
+  first call's promise (initializing the scenes twice re-created native worlds and subscribed the
+  tick loop twice, doubling every tick), a rejected run clears it so `init()` can be retried, and
+  `isInitialized` turns `true` once it resolves. `start()` before `init()` only warns: starting the
+  clock first and initializing afterwards works (the tick loop attaches when `init()` finishes),
+  so throwing would break it. `addEntity` before `init()` is not checked in core - many specs add
+  entities to an uninitialized `MockWorld`, and the real failure is adapter-specific (a three/pixi
+  display object would be dropped, Ammo/Rapier have no factory yet), so each adapter throws
+  `notInitializedError` at that point instead.
+- **Two core versions in one page.** `src/index.ts` calls `registerCoreVersion(VERSION)`, which
+  records every loaded copy's version on `window.gg_core_versions` and `console.error`s when a
+  different one is already there. Every adapter pins core exactly and lists it in `dependencies`,
+  so an app on another core version gets a second, nested copy - which breaks `instanceof` between
+  them. Same-version duplicates are deliberately silent (a hot-module reload re-runs `index.ts`).
+  Adapters don't carry a "built for core X" constant of their own, so this is the check.
+
 The Blender-side authoring tool that produces the `.glb`+`.meta` pair `src/3d/loader.ts`'s
 `Gg3dLoader.loadGgGlb` reads is **not** part of this package — it lives at the repo-root
 `blender-addon/` as a standalone, independently-versioned Blender add-on (see

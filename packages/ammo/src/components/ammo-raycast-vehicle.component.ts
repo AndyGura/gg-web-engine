@@ -74,7 +74,10 @@ export class AmmoRaycastVehicleComponent
 
   addToWorld(world: AmmoGgWorld) {
     if (world.physicsWorld != this.world) {
-      throw new Error('Ammo raycast vehicle cannot be shared between different worlds');
+      throw new Error(
+        "Ammo raycast vehicle cannot be shared between different worlds: this one was created by another world's factory. " +
+          'Create it with the factory of the world it is added to (`world.physicsWorld.factory`).',
+      );
     }
     this.addedToWorld = true;
     // TODO parked cars can be deactivated until we start handling them. Needs explicit activation call

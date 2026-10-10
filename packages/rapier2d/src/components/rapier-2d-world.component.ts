@@ -8,6 +8,7 @@ import {
   Point2,
   RaycastOptions,
   RaycastResult,
+  notInitializedError,
 } from '@gg-web-engine/core';
 import { Collider, EventQueue, init, QueryFilterFlags, Vector2, World } from '@dimforge/rapier2d-compat';
 import { Rapier2dRigidBodyComponent } from './rapier-2d-rigid-body.component';
@@ -19,6 +20,8 @@ import { Subject } from 'rxjs';
 
 // bodies that get pushed into `children`/`added$`/`removed$` - see Rapier2dWorldComponent's ctor.
 type Rapier2dWorldChild = Rapier2dRigidBodyComponent | Rapier2dCharacterControllerComponent;
+
+const RAPIER_ASYNC_INIT = 'Rapier loads its WASM module asynchronously, so `init()` has to be awaited, not just called';
 
 /**
  * The 2D physics world backed by Rapier (`@dimforge/rapier2d-compat`): pass a new one as
@@ -46,7 +49,12 @@ export class Rapier2dWorldComponent implements IPhysicsWorld2dComponent<Rapier2d
   private _factory: Rapier2dFactory | null = null;
   public get factory(): Rapier2dFactory {
     if (!this._factory) {
-      throw new Error('Rapier2d world not initialized');
+      throw notInitializedError(
+        'Rapier2dWorldComponent',
+        'physicsWorld',
+        'creating bodies (physicsWorld.factory)',
+        RAPIER_ASYNC_INIT,
+      );
     }
     return this._factory;
   }
@@ -63,7 +71,7 @@ export class Rapier2dWorldComponent implements IPhysicsWorld2dComponent<Rapier2d
 
   public set gravity(value: Point2) {
     this._gravity = Pnt2.scalarMult(value, this.unitScale);
-    if (this.nativeWorld) {
+    if (this._nativeWorld) {
       this.nativeWorld.gravity.x = this._gravity.x;
       this.nativeWorld.gravity.y = this._gravity.y;
     }
@@ -74,7 +82,12 @@ export class Rapier2dWorldComponent implements IPhysicsWorld2dComponent<Rapier2d
   protected _nativeWorld: World | null = null;
   public get nativeWorld(): World {
     if (!this._nativeWorld) {
-      throw new Error('Rapier2d world not initialized');
+      throw notInitializedError(
+        'Rapier2dWorldComponent',
+        'physicsWorld',
+        'accessing the native Rapier world (nativeWorld)',
+        RAPIER_ASYNC_INIT,
+      );
     }
     return this._nativeWorld;
   }
@@ -82,7 +95,12 @@ export class Rapier2dWorldComponent implements IPhysicsWorld2dComponent<Rapier2d
   private _eventQueue: EventQueue | null = null;
   public get eventQueue(): EventQueue {
     if (!this._eventQueue) {
-      throw new Error('Rapier2d world not initialized');
+      throw notInitializedError(
+        'Rapier2dWorldComponent',
+        'physicsWorld',
+        'reading collision events (eventQueue)',
+        RAPIER_ASYNC_INIT,
+      );
     }
     return this._eventQueue;
   }

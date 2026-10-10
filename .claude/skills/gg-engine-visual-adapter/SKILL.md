@@ -65,7 +65,13 @@ Every adapter component class then `implements I<Thing>Component<<Lib>VisualType
   console's `worlds`/`world` commands; one constant per adapter, never per instance),
   `async init()` (create native scene — do heavy/async setup here, not in the constructor),
   `createRenderer(camera, canvas?, rendererOptions?)`, and `dispose()`. Expose the native scene
-  object as a getter (`nativeScene` in `ThreeSceneComponent`) for advanced consumer access. 3D only:
+  object as a getter (`nativeScene` in `ThreeSceneComponent`) for advanced consumer access, plus a
+  `requireNativeScene(action)`-style accessor that throws core's
+  `notInitializedError(component, 'visualScene', action)` while it is `null`: a display object's or
+  renderer's `addToWorld` goes through it, so an entity added before `await world.init()` fails
+  with an error naming the fix instead of silently never appearing. Core tells a 3D scene from a 2D
+  one by `registerRenderLayer`/factory `createLight` (3D) and factory `createParallaxLayer` (2D), so
+  keep those members on the matching dimension only. 3D only:
   also owns render layers — `mainRenderLayer` must report `0` (matching a fresh native scene
   graph's own default layer, so it agrees with `MAIN_RENDER_LAYER` without either needing to be
   threaded through call sites) and `registerRenderLayer()`/`deregisterRenderLayer(layer)` allocate/

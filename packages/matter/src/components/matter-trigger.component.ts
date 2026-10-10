@@ -150,7 +150,10 @@ export class MatterTriggerComponent
 
   addToWorld(world: MatterGgWorld): void {
     if (world.physicsWorld != this.world) {
-      throw new Error('Matter bodies cannot be shared between different worlds');
+      throw new Error(
+        "Matter bodies cannot be shared between different worlds: this one was created by another world's factory. " +
+          'Create it with the factory of the world it is added to (`world.physicsWorld.factory`).',
+      );
     }
     this.intersectionsAmount = 0;
     this.currentOverlaps.clear();

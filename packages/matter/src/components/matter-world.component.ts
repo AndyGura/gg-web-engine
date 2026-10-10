@@ -2,6 +2,7 @@ import {
   BitMask,
   CollisionGroup,
   IPhysicsWorld2dComponent,
+  notInitializedError,
   Pnt2,
   Point2,
   RaycastOptions,
@@ -120,6 +121,18 @@ export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhys
 
   public get matterWorld(): World | null {
     return this.matterEngine && this.matterEngine.world;
+  }
+
+  /**
+   * The native world, for code that needs it to exist: throws an error naming the fix (await
+   * `world.init()`) instead of handing `null` to matter-js before `init()` has run.
+   */
+  public requireMatterWorld(action: string): World {
+    const world = this.matterWorld;
+    if (!world) {
+      throw notInitializedError('MatterWorldComponent', 'physicsWorld', action);
+    }
+    return world;
   }
 
   public readonly factory: MatterFactory;

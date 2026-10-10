@@ -22,7 +22,10 @@ export class ThreeComposerRendererComponent extends ThreeRendererComponent {
 
   addToWorld(world: ThreeGgWorld) {
     super.addToWorld(world);
-    const renderPass = new RenderPass(this.scene.nativeScene!, this.camera.nativeCamera);
+    const renderPass = new RenderPass(
+      this.scene.requireNativeScene('adding a renderer to the world'),
+      this.camera.nativeCamera,
+    );
     this.nativeComposer.insertPass(renderPass, 0);
   }
 

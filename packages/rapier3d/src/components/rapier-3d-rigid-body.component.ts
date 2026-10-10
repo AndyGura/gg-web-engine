@@ -406,7 +406,10 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
 
   addToWorld(world: Rapier3dGgWorld): void {
     if (world.physicsWorld != this.world) {
-      throw new Error('Rapier3D bodies cannot be shared between different worlds');
+      throw new Error(
+        "Rapier3D bodies cannot be shared between different worlds: this one was created by another world's factory. " +
+          'Create it with the factory of the world it is added to (`world.physicsWorld.factory`).',
+      );
     }
     this._nativeBody = this.world.nativeWorld!.createRigidBody(this._bodyDescr);
     this._nativeBodyColliders = this._colliderDescr.map(c => {
@@ -465,7 +468,10 @@ export class Rapier3dRigidBodyComponent implements IRigidBody3dComponent<Rapier3
 
   removeFromWorld(world: Rapier3dGgWorld, dispose?: boolean): void {
     if (world.physicsWorld != this.world) {
-      throw new Error('Rapier3D bodies cannot be shared between different worlds');
+      throw new Error(
+        "Rapier3D bodies cannot be shared between different worlds: this one was created by another world's factory. " +
+          'Create it with the factory of the world it is added to (`world.physicsWorld.factory`).',
+      );
     }
     // notify every body still touching this one that the contact ended because *this* body vanished
     // (not because they physically separated) - see `collidingWith`'s doc.

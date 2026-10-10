@@ -9,6 +9,7 @@ import {
   Qtrn,
   RaycastOptions,
   RaycastResult,
+  notInitializedError,
 } from '@gg-web-engine/core';
 import {
   Collider,
@@ -50,6 +51,8 @@ function interpolateRotation(a: Point4, b: Point4, t: number): Point4 {
 // bodies that get pushed into `children`/`added$`/`removed$` - see Rapier3dWorldComponent's ctor.
 type Rapier3dWorldChild = Rapier3dRigidBodyComponent | Rapier3dCharacterControllerComponent;
 
+const RAPIER_ASYNC_INIT = 'Rapier loads its WASM module asynchronously, so `init()` has to be awaited, not just called';
+
 /**
  * The 3D physics world backed by Rapier (`@dimforge/rapier3d-compat`): pass a new one as
  * `physicsWorld` of a `Gg3dWorld`; `world.init()` loads Rapier's WASM build. Behaves differently
@@ -78,7 +81,12 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
   private _factory: Rapier3dFactory | null = null;
   public get factory(): Rapier3dFactory {
     if (!this._factory) {
-      throw new Error('Rapier3d world not initialized');
+      throw notInitializedError(
+        'Rapier3dWorldComponent',
+        'physicsWorld',
+        'creating bodies (physicsWorld.factory)',
+        RAPIER_ASYNC_INIT,
+      );
     }
     return this._factory;
   }
@@ -86,7 +94,12 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
   private _loader: Rapier3dLoader | null = null;
   public get loader(): Rapier3dLoader {
     if (!this._loader) {
-      throw new Error('Rapier3d world not initialized');
+      throw notInitializedError(
+        'Rapier3dWorldComponent',
+        'physicsWorld',
+        'loading bodies (physicsWorld.loader)',
+        RAPIER_ASYNC_INIT,
+      );
     }
     return this._loader;
   }
@@ -102,7 +115,7 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
 
   public set gravity(value: Point3) {
     this._gravity = value;
-    if (this.nativeWorld) {
+    if (this._nativeWorld) {
       this.nativeWorld.gravity.x = value.x;
       this.nativeWorld.gravity.y = value.y;
       this.nativeWorld.gravity.z = value.z;
@@ -114,7 +127,12 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
   protected _nativeWorld: World | null = null;
   public get nativeWorld(): World {
     if (!this._nativeWorld) {
-      throw new Error('Rapier3d world not initialized');
+      throw notInitializedError(
+        'Rapier3dWorldComponent',
+        'physicsWorld',
+        'accessing the native Rapier world (nativeWorld)',
+        RAPIER_ASYNC_INIT,
+      );
     }
     return this._nativeWorld;
   }
@@ -122,7 +140,12 @@ export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3d
   private _eventQueue: EventQueue | null = null;
   public get eventQueue(): EventQueue {
     if (!this._eventQueue) {
-      throw new Error('Rapier3d world not initialized');
+      throw notInitializedError(
+        'Rapier3dWorldComponent',
+        'physicsWorld',
+        'reading collision events (eventQueue)',
+        RAPIER_ASYNC_INIT,
+      );
     }
     return this._eventQueue;
   }
