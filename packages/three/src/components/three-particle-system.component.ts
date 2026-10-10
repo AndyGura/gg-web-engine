@@ -449,6 +449,9 @@ export class ThreeParticleSystemComponent
       this.world.visualScene.beforeRenderHooks.delete(this.beforeRender);
     }
     this.buffers = null;
+    if (this.resourceOwnership === 'none') {
+      return;
+    }
     // geometry and material are this system's own; the texture belongs to whoever loaded it
     this.nativeGeometry.dispose();
     this.nativeMaterial.dispose();

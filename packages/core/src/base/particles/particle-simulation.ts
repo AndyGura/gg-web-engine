@@ -62,9 +62,9 @@ export type ParticleUpdate<D extends Point2 | Point3 = Point3, T = any> = (
 export type ParticleBurst = {
   readonly time: number;
   readonly count: number;
-  /** Seconds between cycles. Default `0`: the cycles all fire at once. */
+  /** Seconds between cycles. Default `0`: the cycles all fire at once (an infinite burst then fires once). */
   readonly interval?: number;
-  /** How many times the burst fires. Default `1`; `Infinity` repeats forever. */
+  /** How many times the burst fires. Default `1`; `Infinity` repeats forever (with a positive `interval`). */
   readonly cycles?: number;
 };
 
@@ -192,6 +192,8 @@ export class ParticleSimulation<D extends Point2 | Point3 = Point3, T = any> {
   private live: Particle<D, T>[] = [];
   private free: Particle<D, T>[] = [];
   private readonly scratch: Particle<D, T>[] = [];
+  /** the particle whose `update` callback is running, never recycled by an `emit()` from inside it */
+  private updating: Particle<D, T> | null = null;
   private serialCounter = 0;
   private accumulator = 0;
   private rateAccumulator = 0;
@@ -244,7 +246,8 @@ export class ParticleSimulation<D extends Point2 | Point3 = Point3, T = any> {
   /**
    * Spawns up to `count` particles now. Each gets the defaults from the options, then the options'
    * `init`, then `init` given here.
-   * @returns How many were spawned: fewer than `count` only with `overflow: 'drop'` and a full pool
+   * @returns How many were spawned: fewer than `count` only with a full pool, with `overflow: 'drop'`
+   * (or when the only live particle is the one whose `update` callback is emitting)
    */
   public emit(count: number, init?: ParticleInit<D, T>): number {
     if (!(count >= 1)) {
@@ -370,7 +373,11 @@ export class ParticleSimulation<D extends Point2 | Point3 = Point3, T = any> {
       if (p.frameSequence) {
         p.frame = this.sequenceFrame(p);
       }
-      update?.(p, dt, this);
+      if (update) {
+        this.updating = p;
+        update(p, dt, this);
+        this.updating = null;
+      }
     }
     snapshot.length = 0;
     this.compact();
@@ -388,10 +395,16 @@ export class ParticleSimulation<D extends Point2 | Point3 = Point3, T = any> {
       const defs = this.options.bursts ?? [];
       for (let i = 0; i < defs.length; i++) {
         const state = this.bursts[i];
+        const interval = defs[i].interval ?? 0;
         while (state && state.remaining > 0 && state.next <= this.time + TIME_EPSILON) {
           this.emit(defs[i].count);
           state.remaining--;
-          state.next += defs[i].interval ?? 0;
+          if (interval > 0) {
+            state.next += interval;
+          } else if (!isFinite(state.remaining)) {
+            // every cycle at once, forever: nothing sensible to loop over, so fire once
+            state.remaining = 0;
+          }
         }
       }
     }
@@ -506,8 +519,16 @@ export class ParticleSimulation<D extends Point2 | Point3 = Point3, T = any> {
     if (this.options.overflow === 'drop') {
       return null;
     }
-    // pool full and compacted: every live entry is alive, the first one is the oldest
-    particle = this.live.shift()!;
+    // pool full and compacted: every live entry is alive, the first one is the oldest - unless it is
+    // the particle whose update callback is emitting right now, which must survive its own callback
+    let oldest = 0;
+    if (this.live[0] === this.updating) {
+      if (this.live.length < 2) {
+        return null;
+      }
+      oldest = 1;
+    }
+    particle = this.live.splice(oldest, 1)[0];
     this.live.push(particle);
     return particle;
   }

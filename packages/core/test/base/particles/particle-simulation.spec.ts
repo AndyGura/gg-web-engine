@@ -46,12 +46,28 @@ describe('evaluateParticleCurve', () => {
     expect(evaluateParticleCurve(curve, 0.9, p)).toBe(4);
   });
 
-  it('holds each value until the next keyframe with step interpolation', () => {
+  it('gives every value of an even step table an equal share of the life', () => {
     const curve = { keyframes: [10, 20, 30, 40], interpolation: 'step' as const };
-    expect(evaluateParticleCurve(curve, 0.3, p)).toBe(10);
-    expect(evaluateParticleCurve(curve, 0.34, p)).toBe(20);
-    expect(evaluateParticleCurve(curve, 0.99, p)).toBe(30);
+    expect(evaluateParticleCurve(curve, 0, p)).toBe(10);
+    expect(evaluateParticleCurve(curve, 0.24, p)).toBe(10);
+    expect(evaluateParticleCurve(curve, 0.26, p)).toBe(20);
+    expect(evaluateParticleCurve(curve, 0.74, p)).toBe(30);
+    expect(evaluateParticleCurve(curve, 0.76, p)).toBe(40);
     expect(evaluateParticleCurve(curve, 1, p)).toBe(40);
+  });
+
+  it('holds each keyframe until the next one with step interpolation', () => {
+    const curve = {
+      keyframes: [
+        { t: 0.2, value: 1 },
+        { t: 0.6, value: 2 },
+      ],
+      interpolation: 'step' as const,
+    };
+    expect(evaluateParticleCurve(curve, 0, p)).toBe(1);
+    expect(evaluateParticleCurve(curve, 0.59, p)).toBe(1);
+    expect(evaluateParticleCurve(curve, 0.6, p)).toBe(2);
+    expect(evaluateParticleCurve(curve, 1, p)).toBe(2);
   });
 
   it('calls a function curve with the age and the particle', () => {
@@ -372,6 +388,43 @@ describe('ParticleSimulation', () => {
       s.advance(0.5);
       expect(s.count).toBe(0);
     });
+  });
+
+  it('fires an infinite burst without an interval once instead of looping forever', () => {
+    const s = sim3({ lifetime: 100, bursts: [{ time: 0, count: 2, cycles: Infinity }] });
+    s.step(0.1);
+    s.step(0.1);
+    expect(s.count).toBe(2);
+    const repeating = sim3({ lifetime: 100, bursts: [{ time: 0, count: 1, interval: 0.1, cycles: Infinity }] });
+    repeating.step(0.1);
+    repeating.step(0.1);
+    expect(repeating.count).toBe(3);
+  });
+
+  it('never recycles the particle whose update callback is emitting into a full pool', () => {
+    const s = sim3(
+      {
+        lifetime: 100,
+        update: (p, _dt, sim) => {
+          if (p.data === 'parent') {
+            sim.emit(1, child => (child.data = 'child'));
+            p.kill();
+          }
+        },
+      },
+      2,
+    );
+    s.emit(2, (p, ctx) => (p.data = ctx.index === 0 ? 'parent' : 'other'));
+    s.step(0.1);
+    const data: string[] = [];
+    s.forEachParticle(p => data.push(p.data));
+    // the second particle was recycled for the child; the parent killed itself afterwards
+    expect(data).toEqual(['child']);
+    const single = sim3({ lifetime: 100, update: (p, _dt, sim) => (p.data = sim.emit(1)) }, 1);
+    single.emit(1);
+    single.step(0.1);
+    expect(single.count).toBe(1);
+    single.forEachParticle(p => expect(p.data).toBe(0));
   });
 
   it('restart re-arms bursts and can clear', () => {

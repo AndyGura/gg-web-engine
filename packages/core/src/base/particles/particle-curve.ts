@@ -15,7 +15,10 @@ export type ParticleCurveFunction = (t: number, particle: Particle<any, any>) =>
  * - `ParticleKeyframe[]`: keyframes at given `t` (sorted ascending), linearly interpolated, held
  *   before the first and after the last;
  * - `{ keyframes, interpolation: 'step' }`: either keyframe form, each value held until the next
- *   keyframe instead of interpolated - a lookup table of an old game (`'linear'` is the default);
+ *   keyframe instead of interpolated - a lookup table of an old game (`'linear'` is the default).
+ *   With `number[]` keyframes every value gets an equal share of the life (`[a, b, c]` shows `a`
+ *   for the first third, `c` for the last), unlike the linear spread where the last value sits at
+ *   `t = 1`;
  * - a function `(t, particle) => number`, for anything else.
  */
 export type ParticleCurve =
@@ -39,11 +42,11 @@ function evaluateEven(values: readonly number[], t: number, step: boolean): numb
   if (t >= 1) {
     return values[n - 1];
   }
+  if (step) {
+    return values[Math.min(n - 1, Math.floor(t * n))];
+  }
   const f = t * (n - 1);
   const i = Math.floor(f);
-  if (step) {
-    return values[i];
-  }
   return values[i] + (values[i + 1] - values[i]) * (f - i);
 }
 
