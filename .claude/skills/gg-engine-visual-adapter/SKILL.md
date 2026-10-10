@@ -148,6 +148,21 @@ Every adapter component class then `implements I<Thing>Component<<Lib>VisualType
   `position`/`rotation` still mean what the engine expects (see `ThreeLightComponent` and
   `gg-engine-visual-adapter-three`). `clone()` should rebuild from `lightOptions` rather than
   deep-copying the native object, so a clone never references a target outside its own hierarchy.
+- **Particle systems (3D)**: `IDisplayObject3dComponentFactory.createParticleSystem(options)`
+  returns the TypeDoc's `particleSystem` member, an `IParticleSystem3dComponent`: a display object
+  that draws the first `buffers.count` particles of the `ParticleRenderBuffers` last given to
+  `setParticles` (the arrays are reused every tick; keep the reference and read them when drawing).
+  The simulation is core's, so the adapter only draws: one draw call per system (instanced quads),
+  each particle a quad of `size` world units (width, height) around its center, rotated in its own
+  plane, facing the camera - or, with `billboard: 'vertical'`, turning around world `Z` only. The
+  atlas region is in image coordinates (top-left origin, `y` down); account for the library's own
+  texture orientation. Tint is sRGB. Honor every `ParticleBlendMode` with the formulas its doc
+  gives, `textureAlpha: 'brightness'`, `alphaTest`, depth test on / depth write off by default,
+  fog, `renderOrder`, and sort back to front per camera with core's `sortParticlesBackToFront`
+  unless `sort: false` - at a point where the camera is known and the buffers can still be
+  uploaded for that draw. Particles never cast or receive shadows. Put a library-specific escape
+  hatch (a custom material/shader) into the TypeDoc's `particleSystemExtraOpts`, merged into the
+  options. `ThreeParticleSystemComponent` is the reference implementation.
 - **Scene environment (3D)**: `IVisualScene3dComponent.environment`/`setEnvironment(partial)` -
   merge semantics (an absent field is untouched, `null` clears it) over `background` (color or
   texture), `environmentMap` and `fog` (`LINEAR`/`EXPONENTIAL`). Sky textures come from the loader's

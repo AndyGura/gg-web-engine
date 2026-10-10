@@ -324,7 +324,11 @@ Status
   from a canvas, display-object nesting, 2D text, stroked 2D shapes, 2D tint and the `canSleep`
   body option are behind core too, so no example imports three/pixi.js/a physics library or uses
   a `native*` escape hatch any more (enforced in CI by `npm run lint:examples`). Custom shader
-  materials, post-processing and particles are still adapter-native. 2026-10-09: forces and
+  materials and post-processing are still adapter-native. 2026-10-10: particle systems are behind
+  core too (`ParticleSystem3dEntity`/`IParticleSystem3dComponent`, simulated in core so every
+  adapter draws the same particles; three.js only so far, a 2D/pixi version can reuse the
+  dimension-agnostic `ParticleSimulation`; the three adapter's `material` hook is the one
+  adapter-native escape for exact blending). 2026-10-09: forces and
   impulses (`IRigidBodyComponent.applyForce`/`applyImpulse`/`applyTorque`/`applyTorqueImpulse`, a
   force acting on the next `simulate()` only) and a live wheel grip setter
   (`IRaycastVehicleComponent.setWheelFrictionSlip`) are behind core too, with the same units on

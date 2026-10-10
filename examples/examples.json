@@ -34,7 +34,7 @@
     {
       "dir": "3d/raycast-vehicle",
       "title": "Raycast vehicle",
-      "description": "A drivable raycast vehicle, ported from the ammo.js vehicle demo to the engine's vehicle API.",
+      "description": "A drivable raycast vehicle, ported from the ammo.js vehicle demo to the engine's vehicle API, leaving tyre smoke particles when braking.",
       "visual": ["three"],
       "physics": ["ammo", "rapier3d"]
     },

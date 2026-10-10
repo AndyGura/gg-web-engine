@@ -4,6 +4,7 @@ import {
   getCylinderRadii,
   IDisplayObject3dComponentFactory,
   Light3dDescriptor,
+  ParticleSystem3dRenderOptions,
   Pnt3,
   Qtrn,
   Shape3DMeshDescriptor,
@@ -34,6 +35,10 @@ import { ThreeVisualTypeDocRepo } from './types';
 import { ThreeCameraComponent } from './components/three-camera.component';
 import { ThreeLightComponent } from './components/three-light.component';
 import { applyTextureOptions } from './utils/texture-options';
+import {
+  ThreeParticleSystemComponent,
+  ThreeParticleSystemExtraOpts,
+} from './components/three-particle-system.component';
 
 export type ThreeDisplayObject3dOpts = DisplayObject3dOpts<Texture>;
 
@@ -204,6 +209,12 @@ export class ThreeFactory extends IDisplayObject3dComponentFactory<ThreeVisualTy
 
   createLight(descriptor: Light3dDescriptor): ThreeLightComponent {
     return ThreeLightComponent.create(descriptor);
+  }
+
+  createParticleSystem(
+    options: ParticleSystem3dRenderOptions<Texture> & Partial<ThreeParticleSystemExtraOpts>,
+  ): ThreeParticleSystemComponent {
+    return new ThreeParticleSystemComponent(options);
   }
 
   createTextureFromCanvas(canvas: HTMLCanvasElement, options: LoadTextureOptions = {}): Texture {

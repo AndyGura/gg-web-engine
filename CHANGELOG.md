@@ -28,6 +28,29 @@ where one exists.
 
 ## [Unreleased]
 
+### Added
+- Particle systems (3D). `world.addParticleSystem(renderOptions, options)` (or
+  `new ParticleSystem3dEntity(visualScene.factory.createParticleSystem(renderOptions), options)`)
+  adds camera-facing sprites drawn in one draw call per system. The simulation runs in core
+  (`ParticleSimulation`, the same for every adapter, dimension-agnostic for a later 2D version) on
+  the world clock: manual `emit(count, init)` with a per-particle init callback, a continuous `rate`
+  and `bursts`; per-particle position, velocity, acceleration plus system `gravity`, drag, lifetime,
+  size (width and height in world units), opacity, rotation, tint, atlas frame (`frames`,
+  `ParticleFrames.grid`/`fromPixels`) with frame sequences, and user data; keyframed or function
+  curves for size and opacity over life (`sizeOverLife`/`opacityOverLife`, linear or stepped); a
+  per-particle `update` callback and a per-step `onStep` hook; an optional `fixedTimeStep` (e.g.
+  1/30 s to mirror a 30 Hz original) with interpolated rendering; `overflow` reusing the oldest
+  particle or dropping; emitters attached to an entity with a local `offset` (`attachTo`), particles
+  in world or `local` space. Rendering options: blend mode (`normal`, `additive`, `multiply`,
+  `subtractive`, `premultiplied`), `textureAlpha: 'brightness'` for sprites on an opaque black
+  background, camera-facing or vertical billboards, back-to-front sorting per camera, depth test
+  on and depth write off by default, fog, no shadows. `@gg-web-engine/three` implements it with an
+  instanced quad mesh (`ThreeParticleSystemComponent`) and a `material` hook to adjust or replace
+  the built-in shader material; `ThreeSceneComponent.beforeRenderHooks` runs per-camera code before
+  each render. Every 3D visual adapter now implements `createParticleSystem`, and
+  `VisualTypeDocRepo3D` has `particleSystem`/`particleSystemExtraOpts` members. The raycast vehicle
+  example leaves tyre smoke when braking.
+
 ## [0.0.81] - 2026-10-09
 
 ### Added
