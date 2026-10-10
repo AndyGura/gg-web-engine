@@ -15,4 +15,8 @@ cp landing.md docs/index.md
 mkdir -p docs/assets
 cp assets/banner.png docs/assets/banner.png
 
+# llms.txt / llms-full.txt for AI coding agents, served from the site root; generated from the
+# app-development skill, landing.md and examples/ (see etc/generate_agent_docs.mjs)
+node ../etc/generate_agent_docs.mjs --llms docs
+
 mkdocs build

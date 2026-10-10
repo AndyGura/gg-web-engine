@@ -32,6 +32,9 @@ where one exists.
 - `@gg-web-engine/core` ships an `AGENTS.md` guide for AI coding agents (Cursor, Codex, Copilot,
   Claude Code, ...): after install it is at `node_modules/@gg-web-engine/core/AGENTS.md`. It is the
   `gg-engine-app-development` skill's text, regenerated from it by `npm run agents-md`.
+- The docs site serves `llms.txt` (an index for AI agents) and `llms-full.txt` (pitch, install
+  lines, the app-development guide and one complete example game per dimension, in one file),
+  generated at release time.
 - Errors that say how to fix common setup mistakes. A `Gg3dWorld` given a 2D visual scene, physics
   world or audio scene (or a `Gg2dWorld` given a 3D one) throws, naming the world class it belongs
   in and the matching adapters. Using a scene or physics world before `await world.init()` throws
