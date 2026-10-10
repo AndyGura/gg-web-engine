@@ -341,6 +341,40 @@ world.init().then(async () => {
   incineratorEmbers.position = { x: INCINERATOR_X, y: INCINERATOR_Y, z: INCINERATOR_HEIGHT * 0.25 };
   world.addEntity(incineratorEmbers);
 
+  // Embers drifting up out of the incinerator's hole: a continuous particle system (simulated in
+  // core, drawn by the renderer in one draw call) emitting a few sparks per second from the glowing
+  // panel, rising, wandering sideways and fading out. Additive blending makes them glow against
+  // the dark shaft. The texture is drawn on a canvas, so no image file is needed.
+  const emberCanvas = document.createElement('canvas');
+  emberCanvas.width = emberCanvas.height = 32;
+  const emberContext = emberCanvas.getContext('2d')!;
+  const emberGradient = emberContext.createRadialGradient(16, 16, 0, 16, 16, 16);
+  emberGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+  emberGradient.addColorStop(0.3, 'rgba(255, 220, 160, 0.8)');
+  emberGradient.addColorStop(1, 'rgba(255, 120, 0, 0)');
+  emberContext.fillStyle = emberGradient;
+  emberContext.fillRect(0, 0, 32, 32);
+  const embers = world.addParticleSystem(
+    { capacity: 300, texture: world.visualScene.factory.createTextureFromCanvas(emberCanvas), blending: 'additive' },
+    {
+      rate: 12,
+      lifetime: [1.5, 2.5],
+      size: 0.07,
+      opacityOverLife: [1, 1, 0],
+      sizeOverLife: [1, 0.3],
+      drag: 0.5,
+      init: (p, ctx) => {
+        // anywhere over the glowing panel, rising with a bit of sideways wander
+        const r = INCINERATOR_INNER * 0.4;
+        p.position = ctx.pointToSim({ x: ctx.range(-r, r), y: ctx.range(-r, r), z: 0 });
+        p.velocity = { x: ctx.range(-0.2, 0.2), y: ctx.range(-0.2, 0.2), z: ctx.range(0.5, 1.1) };
+        p.size.x = p.size.y = ctx.range(0.04, 0.09);
+        p.tint = ctx.random() < 0.3 ? 0xffe0a0 : 0xff8c30;
+      },
+    },
+  );
+  embers.position = incineratorEmbers.position;
+
   // The one dynamic, grabbable prop: a plain visual GLB with no baked-in physics body (see the
   // asset's own .meta - "rigidBodies": []), so its collider is built by hand here from the loaded
   // mesh's own bounding box, as a `COMPOUND` shape offset by that box's center - not necessarily
@@ -470,6 +504,12 @@ world.init().then(async () => {
     world.removeEntity(entity, true);
     incineratorGlow.intensity = 6;
     setTimeout(() => (incineratorGlow.intensity = 1.5), 200);
+    // and a shower of embers shooting up out of the hole
+    embers.emit(80, p => {
+      p.velocity.x *= 4;
+      p.velocity.y *= 4;
+      p.velocity.z *= 3;
+    });
     spawnRadio().then(newRadio => (radio = newRadio));
   });
 

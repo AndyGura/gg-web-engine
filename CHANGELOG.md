@@ -49,7 +49,8 @@ where one exists.
   the built-in shader material; `ThreeSceneComponent.beforeRenderHooks` runs per-camera code before
   each render. Every 3D visual adapter now implements `createParticleSystem`, and
   `VisualTypeDocRepo3D` has `particleSystem`/`particleSystemExtraOpts` members. The raycast vehicle
-  example leaves tyre smoke when braking.
+  example leaves tyre smoke when braking, the portal room's incinerator spits embers and the city's
+  driven car puffs exhaust following its engine rpm.
 - Particle systems (2D). `Gg2dWorld.addParticleSystem(renderOptions, options)` (or
   `new ParticleSystem2dEntity(visualScene.factory.createParticleSystem(renderOptions), options)`)
   runs the same `ParticleSimulation` with 2D vectors - every simulation option above, sizes and
@@ -60,7 +61,8 @@ where one exists.
   `ParticleContainer` (`PixiParticleSystemComponent`, atlas frames as sub-textures of the system's
   texture; `roundPixels` extra option). Every 2D visual adapter now implements
   `createParticleSystem`, and `VisualTypeDocRepo2D` has `particleSystem`/`particleSystemExtraOpts`
-  members. The coin run example bursts sparks out of every collected coin.
+  members. The coin run example bursts sparks out of every collected coin, and the side-view
+  character kicks up animated dust puffs when landing and running.
 
 ## [0.0.81] - 2026-10-09
 

@@ -48,7 +48,7 @@
     {
       "dir": "3d/portal-room",
       "title": "Portal room",
-      "description": "First-person character, grabbable props and positional sound.",
+      "description": "First-person character, grabbable props, positional sound and an incinerator spitting embers.",
       "visual": ["three"],
       "physics": ["ammo", "rapier3d"]
     },
@@ -69,7 +69,7 @@
     {
       "dir": "3d/fly-city",
       "title": "Fly city",
-      "description": "Driving through a streamed city: cars, map graph, audio and multiplayer. An Angular app.",
+      "description": "Driving through a streamed city: cars with exhaust smoke, map graph, audio and multiplayer. An Angular app.",
       "visual": ["three"],
       "physics": ["ammo", "rapier3d"],
       "entryFile": "src/app/app.component.ts"
@@ -84,7 +84,7 @@
     {
       "dir": "2d/player-character",
       "title": "Player character",
-      "description": "Animated side-view character controller over a tiled level, with on-screen mobile controls.",
+      "description": "Animated side-view character controller over a tiled level, kicking up dust, with on-screen mobile controls.",
       "visual": ["pixi"],
       "physics": ["matter", "rapier2d"]
     },
