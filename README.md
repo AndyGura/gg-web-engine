@@ -334,6 +334,11 @@ Other agents (Cursor, Codex, Copilot, ...) get the same guide with no extra step
 the core package as `node_modules/@gg-web-engine/core/AGENTS.md`, so point your agent there or
 copy it into your project's own `AGENTS.md`.
 
+Agents deciding whether to use the engine can read it in one request: the docs site serves
+[`llms.txt`](https://andygura.github.io/gg-web-engine/llms.txt) (an index) and
+[`llms-full.txt`](https://andygura.github.io/gg-web-engine/llms-full.txt) (pitch, install lines,
+the full guide and one complete game per dimension).
+
 Then ask your agent to build the scene or game. Add
 [`gg-engine-level-json`](.claude/skills/gg-engine-level-json/SKILL.md) the same way if you author
 levels as JSON. The remaining skills under [`.claude/skills`](.claude/skills) are for working on the
