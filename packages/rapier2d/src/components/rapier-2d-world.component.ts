@@ -23,6 +23,26 @@ type Rapier2dWorldChild = Rapier2dRigidBodyComponent | Rapier2dCharacterControll
 
 const RAPIER_ASYNC_INIT = 'Rapier loads its WASM module asynchronously, so `init()` has to be awaited, not just called';
 
+/**
+ * The 2D physics world backed by Rapier (`@dimforge/rapier2d-compat`): pass a new one as
+ * `physicsWorld` of a `Gg2dWorld`; `world.init()` loads Rapier's WASM build. Works in pixels (100
+ * per meter). Unlike `MatterWorldComponent`, it supports CCD and kinematic bodies and puts resting
+ * bodies to sleep - retune after switching.
+ *
+ * @example
+ * ```ts
+ * import { Gg2dWorld, TypedGg2dWorld } from '@gg-web-engine/core';
+ * import { PixiGgWorld, PixiSceneComponent } from '@gg-web-engine/pixi';
+ * import { Rapier2dGgWorld, Rapier2dWorldComponent } from '@gg-web-engine/rapier2d';
+ *
+ * const world: TypedGg2dWorld<PixiGgWorld, Rapier2dGgWorld> = new Gg2dWorld({
+ *   visualScene: new PixiSceneComponent(),
+ *   physicsWorld: new Rapier2dWorldComponent(),
+ * });
+ * await world.init();
+ * const native = world.physicsWorld.nativeWorld; // the RAPIER.World itself
+ * ```
+ */
 export class Rapier2dWorldComponent implements IPhysicsWorld2dComponent<Rapier2dPhysicsTypeDocRepo> {
   public readonly backendName: string = 'rapier2d';
 

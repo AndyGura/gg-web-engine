@@ -80,7 +80,25 @@ const DEFAULT_FREE_CAMERA_CONTROLLER_OPTIONS: FreeCameraControllerOptions = {
 };
 
 /**
- * A controller for a free-moving camera.
+ * A controller for a free-moving camera: fly with WASD (or another `keymap`), `E`/`Q` up and
+ * down, `Shift` to boost, and mouse-look. Typical for a debug fly-through or a spectator view.
+ *
+ * @example
+ * ```ts
+ * import { FreeCameraController } from '@gg-web-engine/core';
+ *
+ * const canvas = document.getElementById('gg') as HTMLCanvasElement;
+ * const renderer = world.addRenderer(world.visualScene.factory.createPerspectiveCamera(), canvas);
+ * renderer.position = { x: 0, y: -10, z: 2 }; // 3D is Z-up: 2 m above the ground
+ *
+ * world.addEntity(
+ *   new FreeCameraController(world.keyboardInput, renderer, {
+ *     cameraLinearSpeed: 10, // m/s
+ *     mouseOptions: { canvas, pointerLock: true }, // click the canvas to look around
+ *     ignoreMouseUnlessPointerLocked: true,
+ *   }),
+ * );
+ * ```
  */
 export class FreeCameraController extends IEntity {
   static readonly entityTypeName: string = 'FreeCameraController';

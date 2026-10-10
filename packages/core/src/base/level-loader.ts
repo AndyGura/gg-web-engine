@@ -465,6 +465,29 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
    * neither loses anything by omitting it, since a spawn record already resolves `class` for any
    * instance actually built through this loader. An {@link EntityClassOptions} object in its place
    * carries it as `entityClass`, next to the class's `assets` hook.
+   *
+   * @example
+   * ```ts
+   * import { Gg3dWorld, IEntity, LevelJson, Point3, TickOrder } from '@gg-web-engine/core';
+   *
+   * class Spinner extends IEntity {
+   *   static readonly entityTypeName: string = 'Spinner';
+   *   public readonly tickOrder = TickOrder.CONTROLLERS;
+   * }
+   *
+   * // the generator gets the world and the entity's JSON `config`, plus its `name`/`position`/
+   * // `rotation`/`shape` when the JSON sets them
+   * world.loader.registerClass('Spinner', (w: Gg3dWorld, settings: { position?: Point3; speed?: number }) => {
+   *   const spinner = new Spinner();
+   *   // ...build it from settings.position / settings.speed
+   *   return spinner; // must return an IEntity; loadLevel adds it to the world
+   * });
+   *
+   * const level: LevelJson = {
+   *   entities: [{ class: 'Spinner', name: 'Fan', position: { x: 0, y: 0, z: 3 }, config: { speed: 2 } }],
+   * };
+   * await world.loader.loadLevel(level, 'Room');
+   * ```
    */
   public registerClass<Settings, W = any>(
     classAlias: string,
@@ -803,6 +826,18 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
    * keep the original `blueprints` alongside if those bindings reference named graphs.
    * @param level - A level's root group entity, as returned by `loadLevel`/`loadLevelFromUrl`
    * @returns The reconstructed level JSON (`entities` only - see above)
+   *
+   * @example
+   * ```ts
+   * const level = await world.loader.loadLevel(levelJson, 'Level');
+   * // ...play: bodies move, cars change gear...
+   * const saved = world.loader.serializeLevel(level); // a LevelJson of the current state
+   * localStorage.setItem('save', JSON.stringify(saved));
+   *
+   * // restore: drop the live level, load the saved one under the same name
+   * world.removeEntity(level, true);
+   * await world.loader.loadLevel(JSON.parse(localStorage.getItem('save')!), 'Level');
+   * ```
    */
   public serializeLevel(level: GroupEntity<D, R, TypeDoc>): LevelJson {
     const entities: EntityJson[] = [];
@@ -846,6 +881,29 @@ export abstract class LevelLoader<D, R, TypeDoc extends GgWorldTypeDocRepo<D, R>
    * @returns The level's root group entity
    * @throws if `levelName`, or any name (explicit or derived) an entity ends up with, collides
    * with a name already in use elsewhere in the world
+   *
+   * @example
+   * ```ts
+   * import { LevelJson } from '@gg-web-engine/core';
+   *
+   * const levelJson: LevelJson = {
+   *   entities: [
+   *     {
+   *       class: 'Primitive',
+   *       shape: 'BOX',
+   *       name: 'Floor',
+   *       config: { dimensions: { x: 20, y: 20, z: 1 }, body: { bodyType: 'static' } },
+   *     },
+   *     // 3D is Z-up: this crate starts 5 m above the floor
+   *     { class: 'Primitive', shape: 'BOX', name: 'Crate', position: { x: 0, y: 0, z: 5 }, config: { dimensions: { x: 1, y: 1, z: 1 } } },
+   *   ],
+   * };
+   *
+   * const level = await world.loader.loadLevel(levelJson, 'Level', { onProgress: p => console.log(p.fraction) });
+   * const crate = level.getChildEntityByName('Crate');
+   * // tear the whole level down (and free what only it loaded) in one call
+   * world.removeEntity(level, true);
+   * ```
    */
   public async loadLevel(
     levelJson: LevelJson,

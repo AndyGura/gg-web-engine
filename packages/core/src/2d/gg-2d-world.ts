@@ -132,6 +132,40 @@ export type Gg2dWorldWithPhysics<W extends Gg2dWorld<any, any>> =
     ? Gg2dWorld<TD, Omit<STD, 'physicsWorld'> & { physicsWorld: IPhysicsWorld2dComponent<TD['pTypeDoc']> }>
     : never;
 
+/**
+ * The root object of a 2D game: a world clock plus one visual scene, one physics world and an
+ * optional audio scene, all 2D. Positions are `{x, y}` in pixels (the 2D physics adapters work at
+ * 100 px per meter) and rotations are angles in radians. Either scene may be left out for a
+ * rendering-only or physics-only world. Switching the physics adapter keeps the code compiling and
+ * running, but each library simulates in its own way (Matter.js has no CCD and no kinematic bodies,
+ * for one), so expect to retune after a switch.
+ *
+ * @example
+ * ```ts
+ * import { Gg2dWorld, TypedGg2dWorld } from '@gg-web-engine/core';
+ * import { PixiGgWorld, PixiSceneComponent } from '@gg-web-engine/pixi';
+ * import { MatterGgWorld, MatterWorldComponent } from '@gg-web-engine/matter';
+ *
+ * // the type makes world.visualScene/physicsWorld the adapters' own classes, never null
+ * const world: TypedGg2dWorld<PixiGgWorld, MatterGgWorld> = new Gg2dWorld({
+ *   visualScene: new PixiSceneComponent(),
+ *   physicsWorld: new MatterWorldComponent(), // or Rapier2dWorldComponent from '@gg-web-engine/rapier2d'
+ * });
+ * await world.init();
+ *
+ * const renderer = world.addRenderer(
+ *   world.visualScene.factory.createCamera(),
+ *   document.getElementById('gg') as HTMLCanvasElement,
+ * );
+ * renderer.position = { x: 0, y: 0 }; // the world point shown at the center of the canvas
+ *
+ * world.addPrimitiveRigidBody(
+ *   { shape: { shape: 'BOX', dimensions: { x: 800, y: 40 } }, body: { bodyType: 'static' } },
+ *   { x: 0, y: 200 },
+ * );
+ * world.start();
+ * ```
+ */
 export class Gg2dWorld<
   TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTypeDocRepo,
   SceneTypeDoc extends Gg2dWorldSceneTypeRepo<TypeDoc> = Gg2dWorldSceneTypeRepo<TypeDoc>,
@@ -151,6 +185,29 @@ export class Gg2dWorld<
     this.loader = new Gg2dLoader(this);
   }
 
+  /**
+   * Creates a primitive shape as both a display object and a rigid body, wraps them in an
+   * `Entity2d` and adds it to the world. A missing visual scene or physics world leaves that half
+   * out.
+   * @param descr - The shape and its body options (`mass`, `bodyType`, friction, ...)
+   * @param position - Initial position in pixels, the origin by default
+   * @param rotation - Initial angle in radians, 0 by default
+   * @param material - Color, texture, stroke and opacity of the display object
+   * @returns The entity, already added to the world
+   *
+   * @example
+   * ```ts
+   * // a 1 kg crate, 30 px wide, spawned 200 px above the origin (screen Y points down)
+   * const crate = world.addPrimitiveRigidBody(
+   *   { shape: { shape: 'BOX', dimensions: { x: 30, y: 30 } }, body: { mass: 1 } },
+   *   { x: 0, y: -200 },
+   *   0,
+   *   { color: 0x996633, stroke: { color: 0x000000, width: 2 } },
+   * );
+   * // later: remove it and free its display object and body
+   * world.removeEntity(crate, true);
+   * ```
+   */
   addPrimitiveRigidBody(
     descr: BodyShape2DDescriptor,
     position: Point2 = Pnt2.O,
@@ -190,6 +247,20 @@ export class Gg2dWorld<
    * Creates a particle system - its visual component from `renderOptions` (plus the adapter's own
    * extra options) and the simulation from `options` - wraps it in a `ParticleSystem2dEntity` and
    * adds it to the world.
+   *
+   * @example
+   * ```ts
+   * // sparks bursting out of a collected coin (2D worlds are in pixels, +Y points down)
+   * const sparks = world.addParticleSystem(
+   *   { capacity: 200, blending: 'additive', zIndex: 5 },
+   *   { lifetime: [0.3, 0.7], size: 10, gravity: { x: 0, y: 900 }, drag: 2, opacityOverLife: [1, 0] },
+   * );
+   * sparks.position = coin.position;
+   * sparks.emit(12, (p, ctx) => {
+   *   const angle = ctx.range(0, Math.PI * 2);
+   *   p.velocity = { x: Math.cos(angle) * 300, y: Math.sin(angle) * 300 };
+   * });
+   * ```
    */
   addParticleSystem<T = any>(
     renderOptions: ParticleSystem2dRenderOptions<TypeDoc['vTypeDoc']['texture']> &
@@ -209,6 +280,28 @@ export class Gg2dWorld<
     return entity;
   }
 
+  /**
+   * Creates a renderer drawing the scene through `camera` onto `canvas`, wraps it in a
+   * `Renderer2dEntity` (which is also how the camera is moved) and adds it to the world.
+   * @param camera - A camera from `world.visualScene.factory.createCamera()`
+   * @param canvas - The canvas to draw on, already in the DOM
+   * @param rendererOptions - Size, background, antialiasing and the adapter's own extra options
+   * @returns The renderer entity; its `camera.zoom` scales the view
+   * @throws if the world has no visual scene
+   *
+   * @example
+   * ```ts
+   * const renderer = world.addRenderer(
+   *   world.visualScene.factory.createCamera(),
+   *   document.getElementById('gg') as HTMLCanvasElement,
+   *   { background: 0x87ceeb },
+   * );
+   * // fit an 800x600 px playfield into whatever size the canvas gets
+   * renderer.rendererSize$.subscribe(size => {
+   *   if (size) renderer.camera.zoom = Math.min(size.x / 800, size.y / 600);
+   * });
+   * ```
+   */
   addRenderer(
     camera: TypeDoc['vTypeDoc']['camera'],
     canvas?: HTMLCanvasElement,

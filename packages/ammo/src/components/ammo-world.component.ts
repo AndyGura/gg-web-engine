@@ -22,6 +22,28 @@ import type { AmmoRaycastVehicleComponent } from './ammo-raycast-vehicle.compone
 
 const AMMO_ASYNC_INIT = 'Ammo loads its WASM module asynchronously, so `init()` has to be awaited, not just called';
 
+/**
+ * The 3D physics world backed by Bullet (ammo.js): pass a new one as `physicsWorld` of a
+ * `Gg3dWorld`; `world.init()` loads the bundled ammo.js WASM build. Behaves differently from
+ * `Rapier3dWorldComponent` behind the same API: the character controller is the adapter's own
+ * capsule sweep, CCD sweeps an approximating sphere, and `kinematic_vel` bodies are moved by the
+ * adapter once per tick - retune after switching.
+ *
+ * @example
+ * ```ts
+ * import { Gg3dWorld, TypedGg3dWorld } from '@gg-web-engine/core';
+ * import { ThreeGgWorld, ThreeSceneComponent } from '@gg-web-engine/three';
+ * import { AmmoGgWorld, AmmoWorldComponent } from '@gg-web-engine/ammo';
+ *
+ * const world: TypedGg3dWorld<ThreeGgWorld, AmmoGgWorld> = new Gg3dWorld({
+ *   visualScene: new ThreeSceneComponent(),
+ *   physicsWorld: new AmmoWorldComponent(),
+ * });
+ * await world.init();
+ * world.physicsWorld.gravity = { x: 0, y: 0, z: -9.82 }; // Z-up: gravity pulls along -Z
+ * const native = world.physicsWorld.dynamicAmmoWorld; // the btDiscreteDynamicsWorld itself
+ * ```
+ */
 export class AmmoWorldComponent implements IPhysicsWorld3dComponent<AmmoPhysicsTypeDocRepo> {
   public readonly backendName: string = 'ammo';
 

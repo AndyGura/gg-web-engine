@@ -25,6 +25,33 @@ export type GgCarHandlingControllerOptions = CarHandlingControllerOptions & {
   handbrakeKey: string;
 };
 
+/**
+ * Keyboard driving for a `GgCarEntity`: throttle/brake and smoothed steering from the arrow keys
+ * (or another `keymap`), gear up/down keys, a handbrake key and, with `autoReverse`, reversing by
+ * holding "down" at a standstill. Set `car` to another car (or `null`) at any time, or `active =
+ * false` to hand the car to something else.
+ *
+ * @example
+ * ```ts
+ * import { GgCarEntity, GgCarHandlingController } from '@gg-web-engine/core';
+ *
+ * const car = level.getChildEntityByName<GgCarEntity>('Car');
+ * // without options: arrows, A/Z to shift up/down, Space for the handbrake, auto-reverse.
+ * // Here: WASD, shifting with E/Q, and the throttle alone picks first gear or reverse.
+ * const driving = new GgCarHandlingController(world.keyboardInput, car, {
+ *   keymap: 'wasd',
+ *   maxSteerDeltaPerSecond: 12,
+ *   gearUpDownKeys: ['KeyE', 'KeyQ'],
+ *   autoReverse: true,
+ *   neutralGear: false,
+ *   handbrakeKey: 'Space',
+ * });
+ * world.addEntity(driving);
+ *
+ * // the player gets out: the keys stop driving this car
+ * driving.active = false;
+ * ```
+ */
 export class GgCarHandlingController extends IEntity {
   static readonly entityTypeName: string = 'GgCarHandlingController';
   public readonly tickOrder = TickOrder.INPUT_CONTROLLERS;

@@ -89,6 +89,27 @@ function bodyPolygons(body: Body): Vector[][] {
 // TODO probably should be configurable in world
 const MATTER_WORLD_SCALE = 0.0001;
 
+/**
+ * The 2D physics world backed by matter-js: pass a new one as `physicsWorld` of a `Gg2dWorld`.
+ * Works in pixels (100 per meter). Behaves differently from `Rapier2dWorldComponent` behind the
+ * same API: no CCD (`ccd` is ignored), no kinematic bodies (they become static), bodies never fall
+ * asleep on their own, and the character controller is built by the adapter from overlap queries -
+ * retune after switching.
+ *
+ * @example
+ * ```ts
+ * import { Gg2dWorld, TypedGg2dWorld } from '@gg-web-engine/core';
+ * import { PixiGgWorld, PixiSceneComponent } from '@gg-web-engine/pixi';
+ * import { MatterGgWorld, MatterWorldComponent } from '@gg-web-engine/matter';
+ *
+ * const world: TypedGg2dWorld<PixiGgWorld, MatterGgWorld> = new Gg2dWorld({
+ *   visualScene: new PixiSceneComponent(),
+ *   physicsWorld: new MatterWorldComponent(),
+ * });
+ * await world.init();
+ * const engine = world.physicsWorld.matterEngine!; // the Matter.Engine itself
+ * ```
+ */
 export class MatterWorldComponent implements IPhysicsWorld2dComponent<MatterPhysicsTypeDocRepo> {
   public readonly backendName: string = 'matter';
 

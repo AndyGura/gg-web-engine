@@ -55,6 +55,25 @@ const DEFAULT_OPTIONS: OrbitCameraControllerOptions = {
   dollying: { sensitivity: 1 },
 };
 
+/**
+ * A mouse/touch controller orbiting the camera around a `target` point: left-drag (one finger)
+ * orbits, the wheel zooms, right-drag pans and middle-drag dollies (two fingers on a touch screen);
+ * each can be turned off in the options. The camera's starting position sets the distance;
+ * `target` is the world origin until set.
+ *
+ * @example
+ * ```ts
+ * import { OrbitCameraController, Pnt3, Qtrn } from '@gg-web-engine/core';
+ *
+ * const canvas = document.getElementById('gg') as HTMLCanvasElement;
+ * const renderer = world.addRenderer(world.visualScene.factory.createPerspectiveCamera(), canvas);
+ * renderer.position = { x: 12, y: 12, z: 8 }; // 3D is Z-up
+ * renderer.rotation = Qtrn.lookAt(renderer.position, Pnt3.O);
+ *
+ * const orbit = new OrbitCameraController(renderer, { mouseOptions: { canvas }, panning: false });
+ * world.addEntity(orbit);
+ * ```
+ */
 export class OrbitCameraController extends IEntity {
   static readonly entityTypeName: string = 'OrbitCameraController';
   public readonly tickOrder = TickOrder.INPUT_CONTROLLERS;

@@ -53,6 +53,28 @@ type Rapier3dWorldChild = Rapier3dRigidBodyComponent | Rapier3dCharacterControll
 
 const RAPIER_ASYNC_INIT = 'Rapier loads its WASM module asynchronously, so `init()` has to be awaited, not just called';
 
+/**
+ * The 3D physics world backed by Rapier (`@dimforge/rapier3d-compat`): pass a new one as
+ * `physicsWorld` of a `Gg3dWorld`; `world.init()` loads Rapier's WASM build. Behaves differently
+ * from `AmmoWorldComponent` behind the same API: Rapier's own kinematic character controller,
+ * shape-accurate CCD, native position- and velocity-based kinematic bodies, and no `PLANE`
+ * collider shape - retune after switching.
+ *
+ * @example
+ * ```ts
+ * import { Gg3dWorld, TypedGg3dWorld } from '@gg-web-engine/core';
+ * import { ThreeGgWorld, ThreeSceneComponent } from '@gg-web-engine/three';
+ * import { Rapier3dGgWorld, Rapier3dWorldComponent } from '@gg-web-engine/rapier3d';
+ *
+ * const world: TypedGg3dWorld<ThreeGgWorld, Rapier3dGgWorld> = new Gg3dWorld({
+ *   visualScene: new ThreeSceneComponent(),
+ *   physicsWorld: new Rapier3dWorldComponent(),
+ * });
+ * await world.init();
+ * world.physicsWorld.gravity = { x: 0, y: 0, z: -9.82 }; // Z-up: gravity pulls along -Z
+ * const native = world.physicsWorld.nativeWorld; // the RAPIER.World itself
+ * ```
+ */
 export class Rapier3dWorldComponent implements IPhysicsWorld3dComponent<Rapier3dPhysicsTypeDocRepo> {
   public readonly backendName: string = 'rapier3d';
 

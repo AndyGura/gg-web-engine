@@ -15,6 +15,24 @@ import { ThreeRendererComponent } from './three-renderer.component';
 import { ThreeVisualTypeDocRepo } from '../types';
 import { ThreeComposerRendererComponent } from './three-composer-renderer.component';
 
+/**
+ * The three.js visual scene of a `Gg3dWorld`: pass a new one as `visualScene`. Its `factory`
+ * creates meshes, cameras and lights, its `loader` textures and models; the three.js `Scene` itself
+ * is `nativeScene` once the world is initialized. Native three.js primitives are Y-up, but every
+ * shape, camera and sky this adapter creates is re-oriented to the engine's Z-up world.
+ *
+ * @example
+ * ```ts
+ * import { Gg3dWorld } from '@gg-web-engine/core';
+ * import { ThreeGgWorld, ThreeSceneComponent } from '@gg-web-engine/three';
+ *
+ * const world: ThreeGgWorld = new Gg3dWorld({ visualScene: new ThreeSceneComponent() }); // rendering only
+ * await world.init();
+ * world.visualScene.setEnvironment({ background: 0x88bbee });
+ * world.addLight({ type: 'HEMISPHERE', intensity: 2 });
+ * const scene = world.visualScene.nativeScene!; // the THREE.Scene, for what the engine doesn't wrap
+ * ```
+ */
 export class ThreeSceneComponent implements IVisualScene3dComponent<ThreeVisualTypeDocRepo> {
   public readonly backendName: string = 'three';
 

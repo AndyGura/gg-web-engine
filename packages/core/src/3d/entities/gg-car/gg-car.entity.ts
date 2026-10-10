@@ -177,6 +177,34 @@ export const DEFAULT_AIR_DENSITY = 1.225;
 /** Below this speed (m/s) `autoHold` holds the car with the brakes - see `GgCarProperties.transmission.autoHold`. */
 const AUTO_HOLD_SPEED_THRESHOLD = 3;
 
+/**
+ * A drivable car: a `RaycastVehicle3dEntity` plus an engine with a torque curve, a gearbox (manual
+ * or automatic), brakes, a handbrake and speed-dependent steering, all set by `GgCarProperties`.
+ * Drive it by setting `acceleration`/`brake` (0..1), `steeringFactor` (-1..1), `handBrake` and
+ * `gear` - from code, or with a `GgCarHandlingController` for the keyboard. Build one with the
+ * `"GgCar"` level class (box chassis, primitive wheels) or with the constructor from a loaded model.
+ * The wheel physics is the physics adapter's own raycast vehicle, so the same properties drive
+ * differently on each backend: tune the car on the one you ship.
+ *
+ * @example
+ * ```ts
+ * import { GgCarEntity } from '@gg-web-engine/core';
+ *
+ * // a level whose entities include { "class": "GgCar", "name": "Car", ... }
+ * const level = await world.loader.loadLevel(levelJson, 'Level');
+ * const car = level.getChildEntityByName<GgCarEntity>('Car');
+ *
+ * // drive it from code, e.g. an AI driver
+ * car.gear = 1;
+ * car.acceleration = 1; // full throttle
+ * car.steeringFactor = -0.3; // a gentle left turn
+ * car.gear$.subscribe(gear => console.log('gear', gear));
+ * world.createClock(true).tick$.subscribe(() => {
+ *   const kmh = car.raycastVehicle.getSpeed() * 3.6;
+ *   if (kmh > 80) car.acceleration = 0;
+ * });
+ * ```
+ */
 export class GgCarEntity<
   TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo,
   RVEntity extends RaycastVehicle3dEntity<TypeDoc> = RaycastVehicle3dEntity<TypeDoc>,

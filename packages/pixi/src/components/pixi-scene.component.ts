@@ -6,6 +6,22 @@ import { PixiCameraComponent } from './pixi-camera.component';
 import { PixiRendererComponent } from './pixi-renderer.component';
 import { PixiVisualTypeDocRepo2D } from '../types';
 
+/**
+ * The pixi.js (v8) visual scene of a `Gg2dWorld`: pass a new one as `visualScene`. Its `factory`
+ * creates shapes, sprites, text and the camera; the pixi `Container` holding the world is
+ * `nativeContainer` once the world is initialized.
+ *
+ * @example
+ * ```ts
+ * import { Gg2dWorld } from '@gg-web-engine/core';
+ * import { PixiGgWorld, PixiSceneComponent } from '@gg-web-engine/pixi';
+ *
+ * const world: PixiGgWorld = new Gg2dWorld({ visualScene: new PixiSceneComponent() }); // rendering only
+ * await world.init();
+ * world.visualScene.setEnvironment({ background: 0x203040 });
+ * const label = world.visualScene.factory.createText('Hello', { fontSize: 32, color: 0xffffff });
+ * ```
+ */
 export class PixiSceneComponent implements IVisualScene2dComponent<PixiVisualTypeDocRepo2D> {
   public readonly backendName: string = 'pixi';
 
