@@ -12,6 +12,7 @@ export * from './components/rendering/i-material-readable-2d.component';
 export * from './components/rendering/i-renderer-2d.component';
 export * from './components/rendering/i-visual-scene-2d.component';
 export * from './components/rendering/i-text-2d.component';
+export * from './components/rendering/i-particle-system-2d.component';
 
 export * from './entities/controllers/entity-2d-positioning.animator';
 export * from './entities/controllers/character-animation-2d.controller';
@@ -20,6 +21,7 @@ export * from './entities/character-controller-2d.entity';
 export * from './entities/entity-2d';
 export * from './entities/environment-2d.entity';
 export * from './entities/parallax-layer-2d.entity';
+export * from './entities/particle-system-2d.entity';
 export * from './entities/trigger-2d.entity';
 export * from './entities/renderer-2d.entity';
 export * from './entities/i-renderable-2d.entity';

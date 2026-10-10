@@ -86,6 +86,53 @@ position is kept at the rotated `+Z` unit vector instead. `clone()` rebuilds fro
 rather than `Object3D.clone()`, which would leave the clone's `target` pointing at an object outside
 its hierarchy.
 
+## Particle systems
+
+`ThreeParticleSystemComponent` (`components/three-particle-system.component.ts`) extends
+`ThreeDisplayObjectComponent` around one `Mesh` of an `InstancedBufferGeometry`: a unit quad
+(`position.xy` in `-0.5..0.5`, `uv`) plus per-instance `particleCenter`/`particleSize`/
+`particleRotation`/`particleColor`/`particleUv`/`particleExtra` attributes (`DynamicDrawUsage`,
+`addUpdateRange` over the live count), `instanceCount` = particles drawn (three skips the draw call
+at `0`). Not named `instanceColor`: three.js gives that name a meaning of its own for
+`InstancedMesh`. `frustumCulled = false` (the bounds change every frame), `raycast` is a no-op, and
+the `castShadow`/`receiveShadow` setters are ignored. The `ShaderMaterial`
+(`createThreeParticleMaterial`, shaders exported as `THREE_PARTICLE_VERTEX_SHADER`/
+`THREE_PARTICLE_FRAGMENT_SHADER`) switches features with defines (`GG_USE_MAP`,
+`GG_BILLBOARD_VERTICAL`, `GG_TEXTURE_ALPHA_BRIGHTNESS`, `GG_PREMULTIPLIED_INPUT`, `GG_FOG_FADE`);
+the `material` extra option receives it and returns the material to use. Pitfalls met:
+
+- **Sorting can't happen in the mesh's own `onBeforeRender`.** `WebGLRenderer.render` uploads
+  changed attributes in `projectObject` (`objects.update`, once per render call) *before* it calls
+  any `Object3D.onBeforeRender`, so buffers rewritten there reach the GPU one frame late and with
+  the previous camera's order. `Scene.onBeforeRender` runs before projection, with the render's
+  camera: `ThreeSceneComponent` installs it on its native scene and runs `beforeRenderHooks`, which
+  the particle component joins in `addToWorld` (and leaves in `removeFromWorld`/`dispose`). It
+  sorts there per camera (render calls each bump `info.render.frame`, so a second camera re-uploads
+  its own order) and otherwise copies the buffers only when `setParticles` gave new ones. An app
+  replacing `nativeScene.onBeforeRender` breaks this; the scene's `dispose()` recreates the hook.
+- **Premultiplied output for every blend mode.** Three's `MultiplyBlending`/`SubtractiveBlending`
+  require `premultipliedAlpha: true`, so the material always sets it and the shader multiplies the
+  color by alpha itself, *after* tone mapping, color space conversion and fog (three's own order) -
+  then `NormalBlending` is classic alpha blending, `AdditiveBlending` is `ONE, ONE` on a color
+  already weighted by alpha, and `'premultiplied'` multiplies by opacity only. For the modes that
+  add or darken, fog fades the sprite out (`GG_FOG_FADE`) instead of mixing towards the fog color.
+- **Color spaces.** The tint arrives as sRGB floats and is decoded with `sRGBTransferEOTF` in the
+  fragment shader (available there through the fragment prefix's `colorspace_pars_fragment`, not in
+  the vertex shader). `textureAlpha: 'brightness'` takes the brightest channel *after*
+  `linearToOutputTexel`, i.e. as stored in the image: of a linearized texel a mid grey `0x80` would
+  give alpha 0.22 instead of 0.5.
+- **Atlas orientation.** `particleUv` is in image coordinates (top-left origin); the vertex shader
+  flips `v` through the `uFlipY` uniform, set from `texture.flipY` before each render, so
+  `TextureLoader`/canvas textures (`flipY = true`) and `ImageBitmap`/GLTF textures (`false`) both
+  map right.
+
+The jest spec (`test/components/three-particle-system.component.spec.ts`) covers material options,
+the hook, sorting order and clone. Shader compilation and blending were verified by rendering in
+headless Chromium (SwiftShader) and reading pixels back: blend formulas over known backgrounds,
+sorted vs unsorted overlap, atlas regions (both axes), rotation of a non-square sprite, vertical
+billboards, fog fade, local space. Repeat that for any shader change: a GLSL error only shows up
+in a real context.
+
 ## Loading and `prepare()`
 
 - `textureFromData(blob, options)` wraps the blob in an object url and runs it through the very

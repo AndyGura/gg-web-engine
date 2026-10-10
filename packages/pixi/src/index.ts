@@ -2,6 +2,7 @@ export * from './components/pixi-animated-sprite.component';
 export * from './components/pixi-camera.component';
 export * from './components/pixi-display-object.component';
 export * from './components/pixi-parallax-layer.component';
+export * from './components/pixi-particle-system.component';
 export * from './components/pixi-renderer.component';
 export * from './components/pixi-scene.component';
 export * from './components/pixi-text.component';

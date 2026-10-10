@@ -872,6 +872,64 @@ ground object is always a fixed body - only the chassis contacts did. Moving a s
 tick is fine on both Ammo and Rapier (a teleport, no velocity). Note Rapier3d has no `PLANE` shape,
 so `SurfaceFollowingEntity` only works on Ammo today.
 
+## Particle systems: simulation in core, the adapter only draws (`base/particles/`)
+
+`ParticleSimulation<D, T>` (`base/particles/particle-simulation.ts`) is the whole particle
+behaviour, dimension-agnostic (`dimensions: 2 | 3`; vectors carry `z` only in 3D): a pool of
+`capacity` pooled `Particle` objects (fields, not typed arrays - the callbacks read and write them
+directly), a live list in spawn order, emission (`emit(count, init)`, `rate`, `bursts`), motion,
+aging, frame sequences, curves (`particle-curve.ts`), an optional `fixedTimeStep` with
+interpolation, and `writeRenderBuffers()` into `ParticleRenderBuffers` (`particle-render.ts`: flat
+`Float32Array`s sized for `capacity` - center, width/height, rotation, sRGB tint + opacity, atlas
+region, four free `extra` floats). `ParticleSystem3dEntity` (`3d/entities/particle-system-3d
+.entity.ts`) owns one, ticks it, and hands the buffers to `IParticleSystem3dComponent.setParticles`
+(`3d/components/rendering/i-particle-system-3d.component.ts`, created by the 3D factory's
+`createParticleSystem`; `VisualTypeDocRepo3D.particleSystem`/`particleSystemExtraOpts`, the latter
+merged into the render options the way `rendererExtraOpts` is). The 2D side mirrors it one for
+one on `Point2`: `ParticleSystem2dEntity` (`2d/entities/particle-system-2d.entity.ts`, emitter
+rotation a number, `Pnt2.rot` for the attachment offset) drives `IParticleSystem2dComponent`
+(`2d/components/rendering/i-particle-system-2d.component.ts`; `VisualTypeDocRepo2D.particleSystem`/
+`particleSystemExtraOpts`, the 2D factory's `createParticleSystem`) with the same simulation and
+buffers at `dimensions: 2`. `ParticleSystem2dRenderOptions` omits `textureAlpha`/`alphaTest`,
+narrows `blending` to `ParticleBlendMode2d` (`normal`/`additive`/`multiply`, what every 2D renderer
+has natively) and adds `zIndex`; a particle's `rotation` is documented per dimension (counter-
+clockwise as seen by the viewer in 3D, the 2D world's own sign in 2D - what a 2D display object's
+`rotation` means). What to keep when changing it:
+
+- **Every particle duration is in seconds** (`lifetime`, `fixedTimeStep`, `frameDuration`, speeds
+  per second), unlike the world's `fixedPhysicsStep`/`tick$` deltas in ms; the entity converts.
+- **Step order is part of the contract**: live particles age (dying when `age >= lifetime -
+  1e-7` - the epsilon makes `n` steps of `1/30` reach a lifetime of `n/30`), move (semi-implicit
+  Euler, drag as `exp(-drag * dt)`), advance frame sequences, run `update`; then `onStep` runs and
+  `rate`/`bursts` spawn. A particle spawned in a step is drawn first in its initial state and moves
+  from the next step on - apps mirroring a fixed-tick original rely on this. The integration loop
+  walks a snapshot of the live list and skips particles whose `serial` is newer than the step's
+  start, because an `update` callback may `emit()` (which pushes to, compacts or rotates the live
+  list).
+- **Interpolation renders one step behind**: drawn values are `lerp(state before the last step,
+  state after it, leftover / fixedTimeStep)`; a newly spawned particle has both equal. Curves are
+  evaluated at the interpolated age at write time; frames and tint are never interpolated (frames
+  change exactly on steps, like the original).
+- **Vectors on `Particle` are accessors that copy on assignment** (`p.position = shared` copies),
+  so one point object can seed many particles; `Point2`/`Point3` are `Readonly`, so the getters
+  return `MutableParticleVector<D>`.
+- **The emitter transform is read at `emit()` time**, not only on the entity's tick
+  (`syncAttachment` in `emit`), so an app emitting from its own tick, before the particle system
+  ticks, spawns at the target's current position. The entity ticks at `TickOrder.RENDERING - 10`,
+  after every controller and physics sync, right before the renderers.
+- **World vs local space**: in world space the component stays at the origin and particles carry
+  world positions; in local space the entity copies the emitter transform onto the component
+  every tick and `pointToSim`/`directionToSim` are the identity.
+- **Back-to-front sorting is a core helper** (`sortParticlesBackToFront`, by depth along the view
+  direction, ties in spawn order) that the adapter calls per camera at render time - the camera is
+  only known there.
+
+Tests: `test/base/particles/particle-simulation.spec.ts` (curves, frames, emission order and
+overflow, motion, death on the exact step, step order, fixed step with the same result at 30/60/144
+FPS, interpolation) and `test/3d/entities/particle-system-3d.entity.spec.ts` /
+`test/2d/entities/particle-system-2d.entity.spec.ts` (world ticks, attachment with offset, local
+space, a fixed step on the world clock) with a mock component.
+
 ## `GgCarEntity`: whole-car forces, a tunable gearbox, and hooks
 
 `GgCarEntity`'s tick is `updateEngine(delta)` (rpm), `applyResistance(delta)` (air drag and
@@ -1353,6 +1411,10 @@ Changing any of these is a breaking change for every adapter package — grep
   never breaks an adapter - and core must keep working (minus byte progress) without each of them.
 - The factory abstracts in `2d/factories.ts` / `3d/factories.ts` (3D includes `createLight`; 2D
   includes `createParallaxLayer`, `loadTexture` and `createCamera`)
+- `IParticleSystem3dComponent`/`IParticleSystem2dComponent` and each factory's
+  `createParticleSystem` (`VisualTypeDocRepo3D`/`VisualTypeDocRepo2D` have `particleSystem`/
+  `particleSystemExtraOpts` members for them), and `ParticleRenderBuffers`, the layout an adapter
+  reads
 - `ILight3dComponent` and the 3D scene's `environment`/`setEnvironment`, plus the 3D loader's
   `loadTexture`/`loadCubeTexture`/`disposeTexture` (`VisualTypeDocRepo3D` has a `light` member for the former)
 - `IDisplayObject2dComponent.zIndex`, `IParallaxLayer2dComponent` and the 2D scene's

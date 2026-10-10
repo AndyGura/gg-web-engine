@@ -7,6 +7,10 @@ import { Texture, WebGLRendererParameters } from 'three';
 import { Gg3dWorld, Gg3dWorldSceneTypeDocVPatch, Gg3dWorldTypeDocVPatch } from '@gg-web-engine/core';
 import { ThreeSceneComponent } from './components/three-scene.component';
 import { ThreeLightComponent } from './components/three-light.component';
+import {
+  ThreeParticleSystemComponent,
+  ThreeParticleSystemExtraOpts,
+} from './components/three-particle-system.component';
 
 export type ThreeVisualTypeDocRepo = {
   factory: ThreeFactory;
@@ -16,6 +20,8 @@ export type ThreeVisualTypeDocRepo = {
   rendererExtraOpts: WebGLRendererParameters;
   camera: ThreeCameraComponent;
   light: ThreeLightComponent;
+  particleSystem: ThreeParticleSystemComponent;
+  particleSystemExtraOpts: ThreeParticleSystemExtraOpts;
   texture: Texture;
 };
 

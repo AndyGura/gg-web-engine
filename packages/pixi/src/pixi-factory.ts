@@ -5,6 +5,7 @@ import {
   Pnt2,
   Shape2DDescriptor,
   Text2dStyle,
+  ParticleSystem2dRenderOptions,
   TextureOptions,
 } from '@gg-web-engine/core';
 import { PixiDisplayObjectComponent } from './components/pixi-display-object.component';
@@ -15,6 +16,7 @@ import { PixiVisualTypeDocRepo2D } from './types';
 import { PixiTextComponent } from './components/pixi-text.component';
 import { PixiCameraComponent } from './components/pixi-camera.component';
 import { PixiAnimationClip, PixiAnimatedSpriteComponent } from './components/pixi-animated-sprite.component';
+import { PixiParticleSystemComponent, PixiParticleSystemExtraOpts } from './components/pixi-particle-system.component';
 
 /** A single named clip's location within a uniform-grid atlas - see `PixiGridAtlasOptions`. */
 export type PixiGridAtlasClip = {
@@ -175,6 +177,12 @@ export class PixiFactory extends IDisplayObject2dComponentFactory<PixiVisualType
 
   createParallaxLayer(options: ParallaxLayer2dOpts<Texture>): PixiParallaxLayerComponent {
     return new PixiParallaxLayerComponent(options);
+  }
+
+  createParticleSystem(
+    options: ParticleSystem2dRenderOptions<Texture> & Partial<PixiParticleSystemExtraOpts>,
+  ): PixiParticleSystemComponent {
+    return new PixiParticleSystemComponent(options);
   }
 
   async loadTexture(url: string, options: TextureOptions = {}): Promise<Texture> {

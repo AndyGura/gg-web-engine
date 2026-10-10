@@ -30,10 +30,17 @@ export class GameFactory {
     public readonly world: FlyCityWorld,
     /** set in multiplayer mode */
     public readonly mp: Multiplayer | null = null,
-  ) {
-  }
+  ) {}
 
-  public async initGame(canvas: HTMLCanvasElement): Promise<[Renderer3dEntity<FlyCityTypeDoc['vTypeDoc']>, MapGraph3dEntity<FlyCityTypeDoc>, Trigger3dEntity<FlyCityTypeDoc['pTypeDoc']>]> {
+  public async initGame(
+    canvas: HTMLCanvasElement,
+  ): Promise<
+    [
+      Renderer3dEntity<FlyCityTypeDoc['vTypeDoc']>,
+      MapGraph3dEntity<FlyCityTypeDoc>,
+      Trigger3dEntity<FlyCityTypeDoc['pTypeDoc']>,
+    ]
+  > {
     await this.world.init();
     const renderer = await this.initRenderer(canvas);
     this.addLights();
@@ -77,25 +84,28 @@ export class GameFactory {
     this.world.visualScene.setEnvironment({ background: sky });
   }
 
-  private setupMapGraph(renderCursor: (IEntity & IPositionable3d)): MapGraph3dEntity<FlyCityTypeDoc> {
+  private setupMapGraph(renderCursor: IEntity & IPositionable3d): MapGraph3dEntity<FlyCityTypeDoc> {
     const mapGraph = MapGraph.fromMapSquareGrid(
-      Array(11).fill(null).map((_, i) => (
-        Array(11).fill(null).map((_, j) => ({
-          path: 'https://gg-web-demos.guraklgames.com/assets/fly-city/city_tile',
-          position: { x: (j - 5) * 75, y: (i - 5) * 75, z: 0 },
-          loadOptions: {
-            cachingStrategy: CachingStrategy.Entities,
-          },
-        }))
-      )),
+      Array(11)
+        .fill(null)
+        .map((_, i) =>
+          Array(11)
+            .fill(null)
+            .map((_, j) => ({
+              path: 'https://gg-web-demos.guraklgames.com/assets/fly-city/city_tile',
+              position: { x: (j - 5) * 75, y: (i - 5) * 75, z: 0 },
+              loadOptions: {
+                cachingStrategy: CachingStrategy.Entities,
+              },
+            })),
+        ),
     );
     const cityMapGraph = new MapGraph3dEntity<FlyCityTypeDoc>(mapGraph, { loadDepth: 3, inertia: 2 });
-    createInlineTickController(this.world).pipe(
-      takeUntil(cityMapGraph.onRemoved$),
-      takeUntil(renderCursor.onRemoved$),
-    ).subscribe(() => {
-      cityMapGraph.loaderCursor$.next(renderCursor.position);
-    });
+    createInlineTickController(this.world)
+      .pipe(takeUntil(cityMapGraph.onRemoved$), takeUntil(renderCursor.onRemoved$))
+      .subscribe(() => {
+        cityMapGraph.loaderCursor$.next(renderCursor.position);
+      });
     cityMapGraph.chunkLoaded$.subscribe(async ([{ meta }, { position }, node]) => {
       // spawn cars - in multiplayer the dice are seeded per room and tile, so every peer streaming
       // this tile spawns the very same cars (with the same names) and they can be shared content
@@ -106,9 +116,9 @@ export class GameFactory {
       // recurs in every tile too, so both need to be in the name to keep it world-wide unique;
       // `position` (the tile's own world position) is unique per tile in this grid.
       const carName = (dummy: GgDummy) => `${dummy.car_id}__${position.x}_${position.y}__${dummy.name}`;
-      const cars =
-        await Promise.all(meta.dummies
-          .filter(x => x.is_car && (random() < (x.spawn_probability || 1) / 3))
+      const cars = await Promise.all(
+        meta.dummies
+          .filter(x => x.is_car && random() < (x.spawn_probability || 1) / 3)
           // a car that was driven away from this tile outlives it (see `GameRunner`): when the tile
           // loads again while that car is still around, its spawn point stays empty. Filtered after
           // the dice roll, so the seeded sequence stays the same for every peer
@@ -119,22 +129,35 @@ export class GameFactory {
                 resources: [{ object3D: chassisMesh, body: chassisBody }],
                 meta: { dummies: chassisDummies },
               },
-              { resources: [{ object3D: wheelMesh }] },
+              {
+                resources: [{ object3D: wheelMesh }],
+              },
             ] = await Promise.all([
-              this.world.loader.loadGgGlbResources('https://gg-web-demos.guraklgames.com/assets/fly-city/' + dummy.car_id),
-              this.world.loader.loadGgGlbResources('https://gg-web-demos.guraklgames.com/assets/fly-city/' + (dummy.car_id.startsWith('truck') ? 'truck_wheel' : 'wheel')),
+              this.world.loader.loadGgGlbResources(
+                'https://gg-web-demos.guraklgames.com/assets/fly-city/' + dummy.car_id,
+              ),
+              this.world.loader.loadGgGlbResources(
+                'https://gg-web-demos.guraklgames.com/assets/fly-city/' +
+                  (dummy.car_id.startsWith('truck') ? 'truck_wheel' : 'wheel'),
+              ),
             ]);
             if (!chassisBody) {
               console.error('Cannot spawn car without chassis body');
               return null;
             }
-            const entity = this.generateCar(chassisMesh, chassisBody, chassisDummies, wheelMesh, (dummy.car_id.startsWith('truck') ? TRUCK_SPECS : CAR_SPECS));
+            const entity = this.generateCar(
+              chassisMesh,
+              chassisBody,
+              chassisDummies,
+              wheelMesh,
+              dummy.car_id.startsWith('truck') ? TRUCK_SPECS : CAR_SPECS,
+            );
             entity.name = carName(dummy);
             entity.position = Pnt3.add(position, dummy.position);
             entity.rotation = dummy.rotation;
             return entity;
           }),
-        );
+      );
       const spawned = cars.filter((car): car is GgCarEntity => {
         if (car && this.hasEntity(car.name)) {
           // showed up while this one's model was loading - before `markShared`, so the duplicate
@@ -186,10 +209,12 @@ export class GameFactory {
   }
 
   public createMapBounds(): Trigger3dEntity<FlyCityTypeDoc['pTypeDoc']> {
-    const playingArea = new Trigger3dEntity<FlyCityTypeDoc['pTypeDoc']>(this.world.physicsWorld.factory.createTrigger({
-      shape: 'BOX',
-      dimensions: { x: 1000, y: 1000, z: 200 },
-    }));
+    const playingArea = new Trigger3dEntity<FlyCityTypeDoc['pTypeDoc']>(
+      this.world.physicsWorld.factory.createTrigger({
+        shape: 'BOX',
+        dimensions: { x: 1000, y: 1000, z: 200 },
+      }),
+    );
     playingArea.position = { x: 0, y: 0, z: 90 };
     this.world.addEntity(playingArea);
     return playingArea;
@@ -201,12 +226,13 @@ export class GameFactory {
         resources: [{ object3D: chassisMesh, body: chassisBody }],
         meta: { dummies: chassisDummies },
       },
-      { resources: [{ object3D: wheelMesh }] },
+      {
+        resources: [{ object3D: wheelMesh }],
+      },
     ] = await Promise.all([
-        this.world.loader.loadGgGlbResources('https://gg-web-demos.guraklgames.com/assets/fly-city/lambo/body'),
-        this.world.loader.loadGgGlbResources('https://gg-web-demos.guraklgames.com/assets/fly-city/lambo/wheel'),
-      ],
-    );
+      this.world.loader.loadGgGlbResources('https://gg-web-demos.guraklgames.com/assets/fly-city/lambo/body'),
+      this.world.loader.loadGgGlbResources('https://gg-web-demos.guraklgames.com/assets/fly-city/lambo/wheel'),
+    ]);
     const lambo = this.generateCar(chassisMesh, chassisBody!, chassisDummies, wheelMesh, LAMBO_SPECS);
     lambo.name = 'lambo';
     this.mp?.net.markShared(lambo); // every peer spawns its own lambo at start
@@ -215,14 +241,17 @@ export class GameFactory {
   }
 
   private generateCar(
-    chassisMesh: FlyCityTypeDoc['vTypeDoc']['displayObject'] | null, chassisBody: FlyCityTypeDoc['pTypeDoc']['rigidBody'],
-    chassisDummies: GgDummy[], wheelMesh: FlyCityTypeDoc['vTypeDoc']['displayObject'] | null, specs: Omit<GgCarProperties, 'wheelOptions'>,
+    chassisMesh: FlyCityTypeDoc['vTypeDoc']['displayObject'] | null,
+    chassisBody: FlyCityTypeDoc['pTypeDoc']['rigidBody'],
+    chassisDummies: GgDummy[],
+    wheelMesh: FlyCityTypeDoc['vTypeDoc']['displayObject'] | null,
+    specs: Omit<GgCarProperties, 'wheelOptions'>,
   ): GgCarEntity {
     return new GgCarEntity(
       {
         wheelOptions: chassisDummies
           .filter(x => x.name.startsWith('wheel_'))
-          .map((wheel) => {
+          .map(wheel => {
             return {
               tyreRadius: wheel.tyre_radius || 0.3,
               tyreWidth: wheel.tyre_width || 0.4,
@@ -243,5 +272,4 @@ export class GameFactory {
       this.world.physicsWorld.factory.createRaycastVehicle(chassisBody),
     );
   }
-
 }

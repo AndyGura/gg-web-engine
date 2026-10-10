@@ -25,6 +25,11 @@ import { IAudioScene2dComponent } from './components/audio/i-audio-scene-2d.comp
 import { IAudioSource2dComponent } from './components/audio/i-audio-source-2d.component';
 import { CharacterController2dEntity } from './entities/character-controller-2d.entity';
 import { PlayerCharacterController2d } from './entities/controllers/input/player-character-2d.controller';
+import {
+  IParticleSystem2dComponent,
+  ParticleSystem2dRenderOptions,
+} from './components/rendering/i-particle-system-2d.component';
+import { ParticleSystem2dEntity, ParticleSystem2dOptions } from './entities/particle-system-2d.entity';
 
 export type VisualTypeDocRepo2D = {
   factory: IDisplayObject2dComponentFactory;
@@ -34,6 +39,9 @@ export type VisualTypeDocRepo2D = {
   camera: ICamera2dComponent;
   parallaxLayer: IParallaxLayer2dComponent;
   text: IText2dComponent;
+  particleSystem: IParticleSystem2dComponent;
+  /** Adapter-specific particle system options, merged into `ParticleSystem2dRenderOptions`. */
+  particleSystemExtraOpts: {};
   texture: unknown;
 };
 
@@ -171,6 +179,27 @@ export class Gg2dWorld<
     }
     const entity = new ParallaxLayer2dEntity<TypeDoc['vTypeDoc']>(
       this.visualScene.factory.createParallaxLayer(options),
+    );
+    this.addEntity(entity);
+    return entity;
+  }
+
+  /**
+   * Creates a particle system - its visual component from `renderOptions` (plus the adapter's own
+   * extra options) and the simulation from `options` - wraps it in a `ParticleSystem2dEntity` and
+   * adds it to the world.
+   */
+  addParticleSystem<T = any>(
+    renderOptions: ParticleSystem2dRenderOptions<TypeDoc['vTypeDoc']['texture']> &
+      Partial<TypeDoc['vTypeDoc']['particleSystemExtraOpts']>,
+    options: ParticleSystem2dOptions<T> = {},
+  ): ParticleSystem2dEntity<TypeDoc['vTypeDoc'], T> {
+    if (!this.visualScene) {
+      throw new Error('Cannot add a particle system to the world without visual scene');
+    }
+    const entity = new ParticleSystem2dEntity<TypeDoc['vTypeDoc'], T>(
+      this.visualScene.factory.createParticleSystem(renderOptions),
+      options,
     );
     this.addEntity(entity);
     return entity;

@@ -44,9 +44,9 @@ world.init().then(async () => {
     renderer.camera.zoom = Math.min(newSize.x / 850, newSize.y / 800, 1);
   });
 
-
-  world.loader.registerClass('ShapeSpawner', (w: Gg2dWorld, settings: ShapeSpawnerSettings) =>
-    new ShapeSpawner(w, settings),
+  world.loader.registerClass(
+    'ShapeSpawner',
+    (w: Gg2dWorld, settings: ShapeSpawnerSettings) => new ShapeSpawner(w, settings),
   );
 
   await world.loader.loadLevel(level, 'MainLevel', { onProgress: p => loading.setProgress(p) });

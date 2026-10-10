@@ -2,7 +2,7 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const path = require('path');
 
 module.exports = {
-  mode: "production",
+  mode: 'production',
   entry: path.resolve(__dirname, './index.ts'),
   module: {
     rules: [
@@ -14,14 +14,16 @@ module.exports = {
     ],
   },
   resolve: {
-    extensions: ['.ts', '.js']
+    extensions: ['.ts', '.js'],
   },
   output: {
     filename: 'bundle.js',
     chunkFilename: '[name].bundle.js',
     path: path.resolve(__dirname, 'dist'),
   },
-  plugins: [new HtmlWebpackPlugin({
-    template: 'index.html'
-  })],
+  plugins: [
+    new HtmlWebpackPlugin({
+      template: 'index.html',
+    }),
+  ],
 };
