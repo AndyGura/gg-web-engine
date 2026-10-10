@@ -179,12 +179,16 @@ export function createThreeParticleMaterial(options: ParticleSystem3dRenderOptio
   if (blending === 'additive' || blending === 'multiply' || blending === 'subtractive') {
     defines.GG_FOG_FADE = '';
   }
+  // `UniformsUtils.merge` clones every texture it finds (and turns a render-target texture into
+  // `null`), so the map uniform is assigned outside the merge to keep the app's own texture object.
+  const uniforms = UniformsUtils.merge([
+    UniformsLib.fog,
+    { uFlipY: { value: 1 }, uAlphaTest: { value: options.alphaTest ?? 0 } },
+  ]);
+  uniforms.map = { value: options.texture ?? null };
   return new ShaderMaterial({
     name: 'GgParticleMaterial',
-    uniforms: UniformsUtils.merge([
-      UniformsLib.fog,
-      { map: { value: options.texture ?? null }, uFlipY: { value: 1 }, uAlphaTest: { value: options.alphaTest ?? 0 } },
-    ]),
+    uniforms,
     defines,
     vertexShader: THREE_PARTICLE_VERTEX_SHADER,
     fragmentShader: THREE_PARTICLE_FRAGMENT_SHADER,

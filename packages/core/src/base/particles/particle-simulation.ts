@@ -304,9 +304,13 @@ export class ParticleSimulation<D extends Point2 | Point3 = Point3, T = any> {
     this.accumulator += dt;
     const maxSteps = this.options.maxStepsPerTick ?? 8;
     let steps = 0;
+    let dropped = false;
     while (this.accumulator >= fixed - TIME_EPSILON) {
       if (steps >= maxSteps) {
+        // Too far behind: drop the backlog. Render the latest step as-is (alpha 1) rather than
+        // interpolating from an empty accumulator, which would show the previous step's state.
         this.accumulator = 0;
+        dropped = true;
         break;
       }
       this.step(fixed);
@@ -316,7 +320,7 @@ export class ParticleSimulation<D extends Point2 | Point3 = Point3, T = any> {
     if (this.accumulator < 0) {
       this.accumulator = 0;
     }
-    this._alpha = this.options.interpolate === false ? 1 : Math.min(1, this.accumulator / fixed);
+    this._alpha = dropped || this.options.interpolate === false ? 1 : Math.min(1, this.accumulator / fixed);
     return steps;
   }
 

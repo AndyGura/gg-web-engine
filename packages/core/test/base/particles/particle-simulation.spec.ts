@@ -334,6 +334,14 @@ describe('ParticleSimulation', () => {
       expect(s.advance(1 / 60)).toBe(0);
     });
 
+    it('draws the latest step as is after dropping a step backlog', () => {
+      const s = sim3({ fixedTimeStep: 1 / 30, maxStepsPerTick: 2 });
+      expect(s.advance(10 / 30)).toBe(2);
+      expect(s.interpolationAlpha).toBe(1);
+      expect(s.advance(0.5 / 30)).toBe(0);
+      expect(s.interpolationAlpha).toBeCloseTo(0.5);
+    });
+
     it('interpolates drawn positions between the last two steps unless told not to', () => {
       const make = (interpolate?: boolean) => {
         const s = sim3({ fixedTimeStep: 0.1, interpolate });
