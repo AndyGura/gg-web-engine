@@ -20,6 +20,18 @@ export type ParticleCurveFunction = (t: number, particle: Particle<any, any>) =>
  *   for the first third, `c` for the last), unlike the linear spread where the last value sits at
  *   `t = 1`;
  * - a function `(t, particle) => number`, for anything else.
+ *
+ * @example
+ * ```ts
+ * world.addParticleSystem(
+ *   { capacity: 200 },
+ *   {
+ *     lifetime: 1,
+ *     sizeOverLife: [0.5, 2], // grows from half to double size
+ *     opacityOverLife: [{ t: 0, value: 0 }, { t: 0.1, value: 1 }, { t: 1, value: 0 }], // quick fade-in, slow fade-out
+ *   },
+ * );
+ * ```
  */
 export type ParticleCurve =
   | number

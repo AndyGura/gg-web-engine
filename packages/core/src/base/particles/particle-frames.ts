@@ -22,6 +22,15 @@ export class ParticleFrames {
    * @param columns - Cells per row
    * @param rows - Rows of cells
    * @param count - How many cells to return (default: all of them), for a last row that isn't full
+   *
+   * @example
+   * ```ts
+   * // a 4x1 strip of dust-puff frames, played over each particle's life
+   * const dust = world.addParticleSystem(
+   *   { capacity: 64, texture: dustStrip },
+   *   { lifetime: 0.5, size: 24, frames: ParticleFrames.grid(4, 1), frameSequence: [0, 1, 2, 3] },
+   * );
+   * ```
    */
   static grid(columns: number, rows: number, count: number = columns * rows): ParticleFrame[] {
     const frames: ParticleFrame[] = [];
@@ -36,6 +45,23 @@ export class ParticleFrames {
   /**
    * Regions given in pixels of a texture of `textureWidth` x `textureHeight` pixels, e.g. sprites of
    * different sizes packed into one atlas.
+   *
+   * @example
+   * ```ts
+   * // two sprites of different sizes packed into a 128x64 px atlas; each particle picks one
+   * const frames = ParticleFrames.fromPixels(
+   *   [
+   *     { x: 0, y: 0, width: 64, height: 64 },
+   *     { x: 64, y: 0, width: 64, height: 32 },
+   *   ],
+   *   128,
+   *   64,
+   * );
+   * const debris = world.addParticleSystem({ capacity: 100, texture: atlas }, { frames, lifetime: 2 });
+   * debris.emit(10, (p, ctx) => {
+   *   p.frame = ctx.random() < 0.5 ? 0 : 1;
+   * });
+   * ```
    */
   static fromPixels(
     regions: readonly { x: number; y: number; width: number; height: number }[],

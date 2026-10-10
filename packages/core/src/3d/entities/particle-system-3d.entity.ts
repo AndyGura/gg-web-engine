@@ -41,6 +41,7 @@ export type ParticleSystem3dOptions<T = any> = ParticleSimulationOptions<Point3,
  * follows another entity (`attachTo`) with a local `offset`; particles are spawned in world space
  * and stay there (or move with the emitter, with `space: 'local'`).
  *
+ * @example
  * ```ts
  * const smoke = world.addParticleSystem(
  *   { capacity: 200, texture, blending: 'normal' },
