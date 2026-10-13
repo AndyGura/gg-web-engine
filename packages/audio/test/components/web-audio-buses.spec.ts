@@ -262,3 +262,102 @@ describe.each([
     expect(b.outputs.size).toBe(0);
   });
 });
+
+describe.each([
+  ['3D', () => new WebAudioScene3dComponent()],
+  ['2D', () => new WebAudioScene2dComponent()],
+])('bus parents (%s scene)', (_name, createScene) => {
+  let originalAudioContext: unknown;
+  let scene: WebAudioScene3dComponent | WebAudioScene2dComponent;
+  let context: FakeAudioContext;
+
+  const internals = () => scene as unknown as SceneInternals;
+  const bus = (name: string) => internals().buses.get(name)!;
+
+  function tick(seconds: number) {
+    context.currentTime += seconds;
+    scene.update(0, seconds * 1000);
+  }
+
+  beforeEach(() => {
+    originalAudioContext = (global as any).AudioContext;
+    (global as any).AudioContext = FakeAudioContext;
+    scene = createScene();
+    context = scene.context as unknown as FakeAudioContext;
+  });
+
+  afterEach(() => {
+    scene.dispose();
+    (global as any).AudioContext = originalAudioContext;
+  });
+
+  it('routes a bus into its parent, so the parent volume and reverb apply to it too', () => {
+    scene.setBusParent('engine', 'world');
+    scene.setBusParent('sfx', 'world');
+    scene.setBusReverb('world', { wet: 0.4 });
+    expect(scene.getBusParent('engine')).toBe('world');
+    expect(scene.getBusParent('world')).toBeNull();
+    expect(bus('engine').dry.outputs).toEqual(new Set([bus('world').input]));
+    expect(bus('sfx').dry.outputs).toEqual(new Set([bus('world').input]));
+    expect(bus('world').dry.outputs).toEqual(new Set([internals().masterGain]));
+    // one convolver for both children
+    expect(context.convolvers).toHaveLength(1);
+    expect(bus('world').input.outputs.has(context.convolvers[0])).toBe(true);
+  });
+
+  it("sends a child's own reverb into the parent, and moves it (releasing ones included) on reparenting", () => {
+    scene.setBusReverb('sfx', { wet: 0.5, decay: 1 });
+    const releasingWet = bus('sfx').reverb!.chain!.wet;
+    scene.setBusReverb('sfx', { wet: 0.5, decay: 2 }); // the first chain is now releasing
+    const wet = bus('sfx').reverb!.chain!.wet;
+    expect(wet.outputs).toEqual(new Set([internals().masterGain]));
+
+    scene.setBusParent('sfx', 'world');
+    for (const node of [bus('sfx').dry, wet, releasingWet]) {
+      expect(node.outputs).toEqual(new Set([bus('world').input]));
+    }
+    scene.setBusParent('sfx', null);
+    for (const node of [bus('sfx').dry, wet, releasingWet]) {
+      expect(node.outputs).toEqual(new Set([internals().masterGain]));
+    }
+    // a reverb created under a parent is wired to it from the start
+    scene.setBusParent('ambient', 'world');
+    scene.setBusReverb('ambient', { wet: 0.2 });
+    expect(bus('ambient').reverb!.chain!.wet.outputs).toEqual(new Set([bus('world').input]));
+    tick(REVERB_RELEASE_SECONDS * 2);
+    expect(releasingWet.outputs.size).toBe(0);
+  });
+
+  it('rejects cycles without changing anything', () => {
+    scene.setBusParent('engine', 'world');
+    scene.setBusParent('world', 'game');
+    expect(() => scene.setBusParent('game', 'engine')).toThrow(RangeError);
+    expect(() => scene.setBusParent('game', 'game')).toThrow(RangeError);
+    expect(scene.getBusParent('game')).toBeNull();
+    expect(bus('game').dry.outputs).toEqual(new Set([internals().masterGain]));
+  });
+
+  it('does not create a bus to reset its parent, and skips a parent it already has', () => {
+    scene.setBusParent('engine', null);
+    expect(internals().buses.has('engine')).toBe(false);
+    scene.setBusParent('engine', 'world');
+    const dry = bus('engine').dry;
+    dry.connect.mockClear();
+    scene.setBusParent('engine', 'world');
+    expect(dry.connect).not.toHaveBeenCalled();
+  });
+
+  it('reads back the volume last set, multiplied down the chain for the effective volume', () => {
+    scene.setBusParent('engine', 'world');
+    scene.setBusVolume('world', 0.5);
+    scene.setBusVolume('engine', 0.4);
+    scene.masterVolume = 0.8;
+    // the gains are still ramping (the fake params only record their target)
+    expect(bus('engine').input.gain.value).toBe(1);
+    expect(scene.getBusVolume('engine')).toBe(0.4);
+    expect(scene.masterVolume).toBe(0.8);
+    expect(scene.getEffectiveBusVolume('engine')).toBeCloseTo(0.2);
+    expect(scene.getEffectiveBusVolume('world')).toBe(0.5);
+    expect(scene.getEffectiveBusVolume('unknown')).toBe(1);
+  });
+});

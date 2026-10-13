@@ -44,25 +44,47 @@ export interface IAudioSceneComponent<
   /**
    * Master output volume, 0-1, applied on top of every bus's own volume. Most backends can only
    * apply this once a user gesture has resumed the native audio context (browser autoplay
-   * policy) - see `gg-engine-audio-adapter` for the resume-on-first-input pattern.
+   * policy) - see `gg-engine-audio-adapter` for the resume-on-first-input pattern. Reads return
+   * the volume last set, like `getBusVolume`.
    */
   masterVolume: number;
 
   /**
    * Per-category output volume (e.g. `"sfx"`, `"music"`, `"ambient"`), 0-1, applied on top of
-   * `masterVolume` and independent of any individual source's own `volume`. A bus that hasn't
-   * been explicitly set behaves as if its volume were `1` - buses don't need to be declared up
-   * front, just referenced by name from `AudioSourceDescriptor.bus`.
+   * its parent bus's volume (see `setBusParent`), then `masterVolume`, and independent of any
+   * individual source's own `volume`. A bus that hasn't been explicitly set behaves as if its
+   * volume were `1` - buses don't need to be declared up front, just referenced by name from
+   * `AudioSourceDescriptor.bus`. Reads return the volume last set (the level being faded towards),
+   * not the level heard at this instant.
    */
   getBusVolume(bus: string): number;
 
   setBusVolume(bus: string, volume: number): void;
 
   /**
+   * Routes a bus's output into another bus (`parent`) instead of the master output (`null`, the
+   * default for every bus): its sound then goes through the parent's volume and the parent's
+   * reverb too, so volumes multiply down the chain. The usual game mixer layout - `"engine"`,
+   * `"sfx"` and `"ambient"` feeding one `"world"` bus that carries the environment reverb, with
+   * `"music"` and `"ui"` beside it - is
+   * `setBusParent('engine', 'world'); setBusParent('sfx', 'world'); setBusParent('ambient', 'world')`
+   * plus `setBusReverb('world', ...)`.
+   *
+   * Meant for setting the layout up, not for per-frame use: moving a bus that is playing can be
+   * heard as a click. Either bus is created if it doesn't exist yet.
+   * @throws RangeError when `parent` is `bus` itself or one of its descendants (a cycle)
+   */
+  setBusParent(bus: string, parent: string | null): void;
+
+  /** The bus `bus` feeds into, or `null` when it feeds the master output (the default). */
+  getBusParent(bus: string): string | null;
+
+  /**
    * Puts a reverb on one bus (`settings`, defaults filled in by `resolveAudioReverbSettings`), or
-   * takes it off (`null`). One reverb per bus, shared by every source routed through it, applied
-   * after the bus volume: the bus's signal is split into a direct part (`dry`) and a reverberated
-   * one (`wet`), both mixed into the master output.
+   * takes it off (`null`). One reverb per bus, shared by every source routed through it and through
+   * its child buses (`setBusParent`), applied after the bus volume: the bus's signal is split into
+   * a direct part (`dry`) and a reverberated one (`wet`), both mixed into its parent bus or, without
+   * one, the master output.
    *
    * Made to be called every frame: `wet`/`dry` changes are smoothed like every other level, so a
    * game fades the reverb in and out (a car entering and leaving a tunnel) by passing a changing
@@ -98,8 +120,9 @@ export interface IAudioSceneComponent<
    * they would be once they rank inside the budget again. Ranking, re-evaluated every `update()`
    * and whenever a source starts: an audible source before a silent one (effective gain ~0 - a
    * muted loop never takes a voice from one that is heard), then higher
-   * `IAudioSourceComponent.priority`, then the louder at the listener (volume x bus volume x
-   * distance attenuation from the source's own distance model; cones are ignored), with a small
+   * `IAudioSourceComponent.priority`, then the louder at the listener (volume x bus volume x every
+   * parent bus's volume x distance attenuation from the source's own distance model; cones are
+   * ignored), with a small
    * bias towards the voices already heard so near-equal sources don't swap every frame, then the
    * older source. Defaults to `Infinity` (every playing source is rendered, nothing is ranked);
    * a non-negative integer, changeable at any time.

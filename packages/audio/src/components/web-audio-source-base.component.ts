@@ -347,11 +347,11 @@ export abstract class WebAudioSourceComponentBase<D, R> {
   }
 
   /**
-   * @internal how loud this source is heard at `listenerPosition` (volume x bus volume x distance
-   * attenuation; `null` listener: no attenuation) - what the voice ranking compares.
+   * @internal how loud this source is heard at `listenerPosition` (volume x bus volume, parent
+   * buses included, x distance attenuation; `null` listener: no attenuation) - what the voice ranking compares.
    */
   public estimateGain(listenerPosition: D | null): number {
-    let gain = this._volume * this.scene.getBusVolume(this._bus);
+    let gain = this._volume * this.scene.getEffectiveBusVolume(this._bus);
     if (this._spatial && listenerPosition !== null && gain > 0) {
       gain *= this.distanceGainAt(listenerPosition);
     }

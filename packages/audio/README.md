@@ -43,7 +43,8 @@ Beyond the budget, the lowest-ranked playing sources go *virtual*: faded out, th
 disconnected so they cost no audio processing, while their playback position keeps advancing.
 Once they rank inside the budget again they fade back in where they would be by now. Ranking,
 redone every frame: a source heard before a silent one (a loop kept at volume 0 never takes a voice),
-then `priority`, then loudness at the listener (volume x bus volume x distance attenuation), with a
+then `priority`, then loudness at the listener (volume x bus volume x parent bus volumes x distance
+attenuation), with a
 slight preference for the sources already heard so near-equal ones don't swap back and forth. A
 virtual one-shot stays virtual until it would have ended, then fires `ended$` as usual.
 
@@ -51,10 +52,37 @@ virtual one-shot stays virtual until it would have ended, then fires `ended$` as
 `world.audioScene.voiceCounts` gives `{ playing, audible, virtual }`, and the dev console command
 `audio_voices [int|inf]` reads or sets the budget and prints those counts.
 
+### Bus layout
+
+Buses are created on first use, by name (`AudioSourceDescriptor.bus`, default `"sfx"`), and each one
+feeds the master output. `setBusParent(bus, parent)` makes a bus feed another bus instead, so the
+parent's volume and reverb apply to it as well - the usual game mixer layout, where everything that
+happens in the world shares one environment reverb and music and UI stay dry beside it:
+
+```typescript
+const audio = world.audioScene!;
+audio.setBusParent('engine', 'world');
+audio.setBusParent('sfx', 'world');
+audio.setBusParent('ambient', 'world');
+audio.setBusReverb('world', { decay: 1.8, wet: 0 }); // one tunnel echo for all three
+
+audio.setBusVolume('engine', settings.engineVolume); // a player's separate volume sliders
+audio.setBusVolume('sfx', settings.effectsVolume);
+audio.setBusVolume('world', 1);
+audio.setBusVolume('music', settings.musicVolume);
+```
+
+Volumes multiply down the chain (`engine` x `world` x master). `getBusVolume` returns the volume a
+bus itself was given, `getEffectiveBusVolume` the product with its parents'. Set the layout up once:
+moving a bus that is playing can click. `setBusParent(bus, null)` sends it back to the master
+output, and a parent that would form a cycle throws a `RangeError`. The dev console command
+`audio_bus_parent BUS [PARENT|master]` reads or changes it.
+
 ### Bus reverb
 
-A bus can have a reverb: one convolver shared by every source routed through it (an echoing tunnel,
-a cave, a hall), applied after the bus volume and mixed with the direct sound.
+A bus can have a reverb: one convolver shared by every source routed through it and through its child
+buses (an echoing tunnel, a cave, a hall), applied after the bus volume and mixed with the direct
+sound.
 
 ```typescript
 // a car in a tunnel: hard walls, a fairly long, bright tail

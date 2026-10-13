@@ -869,6 +869,24 @@ describe('GgWorld', () => {
       expect(audioScene.maxVoices).toBe(Infinity);
     });
 
+    it('audio_bus_parent reads and sets the bus a bus feeds into', async () => {
+      const audioScene = makeFakeAudioScene();
+      const parents = new Map<string, string>();
+      audioScene.setBusParent = jest.fn((bus: string, parent: string | null) =>
+        parent === null ? parents.delete(bus) : parents.set(bus, parent),
+      );
+      audioScene.getBusParent = (bus: string) => parents.get(bus) ?? null;
+      const commands = collectConsoleCommands(worldWithAudioScene(audioScene));
+      const audioBusParent = commands.get('audio_bus_parent')!;
+
+      expect(await audioBusParent('engine')).toBe('engine -> master');
+      expect(await audioBusParent('engine', 'world')).toBe('engine -> world');
+      expect(audioScene.setBusParent).toHaveBeenLastCalledWith('engine', 'world');
+      expect(await audioBusParent('engine', 'master')).toBe('engine -> master');
+      expect(audioScene.setBusParent).toHaveBeenLastCalledWith('engine', null);
+      await expect(audioBusParent()).rejects.toThrow('usage');
+    });
+
     it('audio_reverb reads and sets a bus reverb, keeping the fields not given', async () => {
       const audioScene = makeFakeAudioScene();
       const reverbs = new Map<string, any>();

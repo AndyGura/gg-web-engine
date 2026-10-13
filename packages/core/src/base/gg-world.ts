@@ -1187,6 +1187,22 @@ export abstract class GgWorld<
       );
       ggstatic.registerConsoleCommand(
         this,
+        'audio_bus_parent',
+        async (...args: string[]) => {
+          const [bus, parent] = args;
+          if (!bus) {
+            throw new Error('usage: audio_bus_parent BUS [PARENT|master]');
+          }
+          if (parent !== undefined) {
+            this.audioScene!.setBusParent(bus, parent === 'master' ? null : parent);
+          }
+          return `${bus} -> ${this.audioScene!.getBusParent(bus) ?? 'master'}`;
+        },
+        'args: [ string, string? ]; Get or set the bus an audio bus feeds into ("master" for the ' +
+          'master output, the default) - the parent volume and reverb then apply on top of its own',
+      );
+      ggstatic.registerConsoleCommand(
+        this,
         'audio_voices',
         async (...args: string[]) => {
           if (args.length > 0) {

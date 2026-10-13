@@ -461,6 +461,14 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   once at load with `wet: 0` to build the impulse response up front. A car in a tunnel: `{ decay:
   1.8, preDelay: 0.03, damping: 0.3 }`, `wet` faded towards ~`0.4` inside. Keep sounds that must not
   echo (UI, music) on other buses. Console: `audio_reverb BUS [wet|off] [decay] [preDelay] [damping]`.
+  **Bus layout**: `setBusParent('engine', 'world')` makes a bus feed another bus instead of the
+  master output, so the parent's volume and reverb apply to it too (volumes multiply down the
+  chain; a cycle throws). The usual layout: `engine`/`sfx`/`ambient` under one `world` bus that
+  carries the environment reverb, `music`/`ui` beside it - separate volume sliders per category, one
+  shared tunnel echo. Set it up once at load (moving a playing bus can click). `getBusVolume` reads
+  a bus's own volume, `getEffectiveBusVolume` (Web Audio scenes) the product with its parents'.
+  Console: `audio_bus_parent BUS [PARENT|master]`. A world's audio scene owns its own
+  `AudioContext`: apply the app's audio settings to each new world's scene when creating it.
 - **Raycasting**: `world.physicsWorld.raycast({ from, to, collisionFilterGroups?, collisionFilterMask? })`.
 - **Collision groups**: `world.physicsWorld.registerCollisionGroup()` /
   `deregisterCollisionGroup(group)`; every body has `mainCollisionGroup` set by default (both

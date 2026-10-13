@@ -32,14 +32,18 @@ type BusReverb = {
 };
 
 /**
- * One bus's node graph: sources connect to `input`, whose gain is the bus volume; `input` feeds
- * `dry` (the reverb's dry level, `1` without a reverb) into the master gain, and, while a reverb is
- * heard, also its convolver, whose `wet` gain feeds the master gain too.
+ * One bus's node graph: sources (and child buses) connect to `input`, whose gain is the bus volume;
+ * `input` feeds `dry` (the reverb's dry level, `1` without a reverb) into the bus's output - its
+ * parent bus's `input`, or the master gain - and, while a reverb is heard, also its convolver,
+ * whose `wet` gain feeds that same output.
  */
 type WebAudioBus = {
   input: GainNode;
   dry: GainNode;
   reverb: BusReverb | null;
+  /** The bus volume last set - `input.gain.value` lags behind it while ramping. */
+  volume: number;
+  parent: string | null;
 };
 
 /**
@@ -61,6 +65,7 @@ export abstract class WebAudioSceneComponentBase<D, R> {
     chain: ReverbChain;
     releaseAt: number;
   }[] = [];
+  private _masterVolume = 1;
   private readonly clipCache = new Map<string, Promise<AudioBuffer>>();
   private readonly sources = new Set<WebAudioSourceComponentBase<D, R>>();
   /** Every source of this scene that is playing (`isPlaying`), whether or not it was added to a
@@ -123,23 +128,38 @@ export abstract class WebAudioSceneComponentBase<D, R> {
   }
 
   public get masterVolume(): number {
-    return this.masterGain.gain.value;
+    return this._masterVolume;
   }
 
   public set masterVolume(value: number) {
+    this._masterVolume = value;
     rampParam(this.context, this.masterGain.gain, value);
   }
 
   public getBusVolume(bus: string): number {
-    return this.buses.get(bus)?.input.gain.value ?? 1;
+    return this.buses.get(bus)?.volume ?? 1;
   }
 
   public setBusVolume(bus: string, volume: number): void {
-    rampParam(this.context, this.getBusNode(bus).gain, volume);
+    const node = this.getBus(bus);
+    node.volume = volume;
+    rampParam(this.context, node.input.gain, volume);
+  }
+
+  /**
+   * The level a bus applies to what is routed into it: its own volume times every parent bus's
+   * (`masterVolume` not included). What the voice ranking multiplies a source's volume by.
+   */
+  public getEffectiveBusVolume(bus: string): number {
+    let volume = 1;
+    for (let name: string | null = bus; name !== null; name = this.buses.get(name)?.parent ?? null) {
+      volume *= this.getBusVolume(name);
+    }
+    return volume;
   }
 
   /** Lazily creates (and connects to `masterGain`) the named bus's input `GainNode` - what a source
-   * connects to; its gain is the bus volume. */
+   * or a child bus connects to; its gain is the bus volume. */
   public getBusNode(bus: string): GainNode {
     return this.getBus(bus).input;
   }
@@ -151,10 +171,59 @@ export abstract class WebAudioSceneComponentBase<D, R> {
       const dry = this.context.createGain();
       input.connect(dry);
       dry.connect(this.masterGain);
-      bus = { input, dry, reverb: null };
+      bus = { input, dry, reverb: null, volume: 1, parent: null };
       this.buses.set(name, bus);
     }
     return bus;
+  }
+
+  /** Where a bus's dry and wet outputs go: its parent bus's input, or the master gain. */
+  private busOutput(bus: WebAudioBus): AudioNode {
+    return bus.parent === null ? this.masterGain : this.getBus(bus.parent).input;
+  }
+
+  /**
+   * See `IAudioSceneComponent.setBusParent`. Reconnects the bus's `dry` gain and every reverb chain
+   * it has (heard or still releasing) from the old output to the new one; nothing else changes, so
+   * the sources routed into the bus and its own child buses stay connected as they are.
+   */
+  public setBusParent(name: string, parent: string | null): void {
+    for (let ancestor = parent; ancestor !== null; ancestor = this.buses.get(ancestor)?.parent ?? null) {
+      if (ancestor === name) {
+        throw new RangeError(
+          parent === name
+            ? `audio bus "${name}" can't be its own parent`
+            : `audio bus "${parent}" feeds into "${name}", so "${name}" can't feed into it`,
+        );
+      }
+    }
+    if (parent === null && !this.buses.has(name)) {
+      return;
+    }
+    const bus = this.getBus(name);
+    if (bus.parent === parent) {
+      return;
+    }
+    const previous = this.busOutput(bus);
+    bus.parent = parent;
+    const next = this.busOutput(bus);
+    const outputs = [bus.dry];
+    if (bus.reverb?.chain) {
+      outputs.push(bus.reverb.chain.wet);
+    }
+    for (const releasing of this.releasingReverbs) {
+      if (releasing.bus === bus) {
+        outputs.push(releasing.chain.wet);
+      }
+    }
+    for (const output of outputs) {
+      output.disconnect(previous);
+      output.connect(next);
+    }
+  }
+
+  public getBusParent(bus: string): string | null {
+    return this.buses.get(bus)?.parent ?? null;
   }
 
   /**
@@ -223,7 +292,7 @@ export abstract class WebAudioSceneComponentBase<D, R> {
     wet.gain.value = 0;
     bus.input.connect(convolver);
     convolver.connect(wet);
-    wet.connect(this.masterGain);
+    wet.connect(this.busOutput(bus));
     return { convolver, wet };
   }
 

@@ -23,6 +23,23 @@ The adapter boundary still exists structurally (core never references `AudioCont
 a second implementation (e.g. a Howler-backed package for wider legacy-browser reach) is additive
 if the need ever arises - just not expected to be common.
 
+## What belongs in the engine, and what stays in the game
+
+An audio feature joins core's contract (and `packages/audio`) when it is a generic mixer concept:
+something game audio middleware (Wwise, FMOD, Unity's AudioMixer) also has, useful to any game
+regardless of genre - buses and their hierarchy, per-bus reverb, a voice budget, listener handling,
+pause. What a particular game decides with those tools stays in that game: which settings screen
+drives which bus volume, which panning model a given device gets, a stylized output effect (a mono
+downmix, a bit-crushed retro output), a tuned reverb preset for one level. Before adding a request
+coming from one app, check whether it can already be built from the existing API with a few lines
+of app code; if so, that is where it belongs. When a game had to subclass a scene or override
+`getBusNode` to get something, that is the signal worth looking at - work out the generic concept
+it is missing rather than upstreaming the game's workaround.
+
+Sharing one `AudioContext` between several scenes is deliberately not supported: a context has a
+single native `listener`, which every 3D scene writes its camera into each frame, and `setPaused`
+suspends the whole context, which would silence every other world sharing it.
+
 ## Decide dimensionality, same as any other adapter
 
 Implement either the `3d/components/audio/*` interfaces (see `packages/audio`'s 3D classes) or the
@@ -41,8 +58,10 @@ map both values to its own panner, but must keep the property readable/writable.
 - **`IAudioSceneComponent<D,R,ATypeDoc>`** (`base/components/audio/i-audio-scene.component.ts`):
   owns the native audio backend (an `AudioContext` for `packages/audio`), `backendName` (a short,
   stable name for the dev console's `worlds`/`world` commands - `'webaudio'` there), the source `factory`,
-  `masterVolume`/per-bus `getBusVolume`/`setBusVolume`, per-bus `setBusReverb`/`getBusReverb` (see
-  "Bus reverb" below), the single `activeListener` reference
+  `masterVolume`/per-bus `getBusVolume`/`setBusVolume` (both read back the value last set, not
+  the level a ramp has reached so far), the bus hierarchy `setBusParent`/`getBusParent` (see
+  "Bus hierarchy" below), per-bus `setBusReverb`/`getBusReverb` (see "Bus reverb" below), the
+  single `activeListener` reference
   (`setActiveListener`), the voice budget `maxVoices` plus its `voiceCounts` (see "Voice budget"
   below), and `update(elapsed, delta)` - called once per world tick by `GgWorld`
   itself (see "How `update()` gets called" below), not by app code.
@@ -217,7 +236,8 @@ and a new adapter should keep the same observable behavior:
 - **Ranking** (`utils/voice-ranking.ts`, pure and unit-tested): audible before silent (estimated
   gain <= `SILENT_VOICE_GAIN`, so a loop parked at volume 0 never takes a voice from a sound being
   heard, whatever its priority), then `priority`, then estimated gain at the listener (volume x
-  bus volume x the source's own distance model through `computeDistanceGain` - cones ignored) with
+  effective bus volume - its own times every parent bus's, `getEffectiveBusVolume` - x the source's
+  own distance model through `computeDistanceGain` - cones ignored) with
   `AUDIBLE_VOICE_BIAS` for the sources already heard (otherwise two near-equal sources at the
   budget's edge swap every frame), then the one already heard, then creation order. Re-ranked every
   `update()` (both scenes end theirs with `updateVoices()`) and synchronously in `play()` when the
@@ -249,6 +269,26 @@ and a new adapter should keep the same observable behavior:
   (fade-out included). `voiceCounts` is `{ playing, audible, virtual }`; the dev console's
   `audio_voices [int|inf]` reads/sets the budget and prints it.
 
+## Bus hierarchy: a bus feeds its parent or the master gain
+
+Every bus feeds the master gain until `setBusParent(bus, parent)` points it at another bus. In
+`packages/audio` that means the bus's outputs - its `dry` gain and its reverb's `wet` gain(s) -
+connect to the parent's `input` instead of `masterGain` (`busOutput`), so a child is heard through
+the parent's volume and the parent's reverb, and volumes multiply down the chain. The bus stores
+its parent's *name*, so a parent is created lazily like any bus.
+
+- Reparenting disconnects those outputs from the old destination and connects them to the new one,
+  releasing reverb chains included (they still feed their bus's output until disconnected). This
+  is a live rewire that can drop a render quantum, which is why the contract calls it a setup-time
+  operation rather than adding a crossfade. Nothing upstream changes: sources and child buses stay
+  connected to the bus's `input`.
+- Cycles are rejected before anything changes, by walking up from the new parent.
+- Bus volumes are stored on the bus (`volume`) as well as ramped into `input.gain`: an
+  `AudioParam`'s `.value` reads where a ramp is *now*, so reading it back right after a set returns
+  the old value. `getBusVolume`/`masterVolume`/`getEffectiveBusVolume` all use the stored targets.
+- The voice ranking needs the multiplied volume (a muted parent must make its children's sources
+  count as silent), which is why `estimateGain` calls `getEffectiveBusVolume`, not `getBusVolume`.
+
 ## Bus reverb: one convolver per bus, none while off
 
 `setBusReverb(bus, settings | null)` (contract and defaults in core: `AudioReverbSettings`,
@@ -257,9 +297,11 @@ reverb on a bus, made to be called every frame with a changing `wet` (a game fad
 in and out). `packages/audio`'s graph per bus (`WebAudioSceneComponentBase.getBus`):
 
 ```
-sources -> input (GainNode, bus volume) -> dry (GainNode) -------------------> masterGain
-                                         \-> ConvolverNode -> wet (GainNode) -/
+sources, child buses -> input (GainNode, bus volume) -> dry (GainNode) -------------------> output
+                                                     \-> ConvolverNode -> wet (GainNode) -/
 ```
+
+where `output` is the parent bus's `input`, or `masterGain` (see "Bus hierarchy" above).
 
 - `input` is what `getBusNode` returns and sources connect to; `dry` exists on every bus from the
   start (a plain gain at `1` costs nothing), so turning a reverb on never rewires the dry path -
@@ -344,8 +386,8 @@ real `AudioContext` to construct in a test. What *is* tested, and should be for 
   `packages/core`'s own tests use for physics/rendering components).
 - The real scene/source classes against a hand-rolled fake `AudioContext` installed as
   `global.AudioContext`: `test/components/web-audio-scene-base.component.spec.ts` (the gesture
-  listeners, `setPaused`, `decodeClip`), `test/components/web-audio-bus-reverb.spec.ts` (the bus
-  reverb graph on both scenes; its fake nodes record their outgoing connections, so a test asks
+  listeners, `setPaused`, `decodeClip`), `test/components/web-audio-buses.spec.ts` (the bus
+  reverb graph and bus parents on both scenes; its fake nodes record their outgoing connections, so a test asks
   whether a convolver is fed by the bus and reaches the master gain) and
   `test/components/web-audio-voice-budget.spec.ts` (the
   voice budget end to end on a `WebAudioScene3dComponent`; the fake context's `currentTime` is

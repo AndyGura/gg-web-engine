@@ -47,12 +47,23 @@ where one exists.
   weren't created for, and lights/renderers/parallax layers added to a world without a visual
   scene, say what to do instead.
 - `GgWorld.isInitialized`.
+- Audio bus hierarchy. `world.audioScene.setBusParent(bus, parent | null)` makes a bus feed another
+  bus instead of the master output, so the parent's volume and reverb apply to it too: separate
+  `engine`/`sfx`/`ambient` volumes sharing one `world` bus reverb, with `music` beside it.
+  Volumes multiply down the chain, a cycle throws a `RangeError`, and the voice budget ranks a
+  source by its bus volume times its parents'. `getBusParent(bus)` reads it back,
+  `@gg-web-engine/audio` scenes add `getEffectiveBusVolume(bus)`, and the dev console has
+  `audio_bus_parent`. `setBusParent`/`getBusParent` are required members of
+  `IAudioSceneComponent`, so a third-party audio adapter has to add them.
 
 ### Fixed
 - Calling `GgWorld.init()` twice no longer initializes the scenes again and doubles every tick:
   the second call returns the first call's promise. A failed `init()` can be retried.
 - Setting `gravity` on a `rapier2d`/`rapier3d` physics world before `init()` threw; it is now kept
   and applied when the world initializes.
+- `getBusVolume` and `masterVolume` on `@gg-web-engine/audio` scenes returned the level a volume
+  change had faded to so far, so reading one right after setting it gave the old value. They return
+  the value last set.
 
 ## [0.0.82] - 2026-10-10
 

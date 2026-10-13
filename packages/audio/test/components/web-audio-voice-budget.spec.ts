@@ -238,6 +238,21 @@ describe('voice budget (WebAudioScene3dComponent)', () => {
     expect(engine.isVirtual).toBe(true);
   });
 
+  it('counts a source on a muted parent bus as silent', () => {
+    scene.setBusParent('engine', 'world');
+    scene.maxVoices = 1;
+    const engine = scene.factory.createSource({ clip, loop: true, autoplay: false, bus: 'engine', priority: 70 });
+    engine.play();
+    const music = play({ priority: 10 });
+    expect(engine.isVirtual).toBe(false);
+    expect(music.isVirtual).toBe(true);
+
+    scene.setBusVolume('world', 0);
+    tick(0.016);
+    expect(engine.isVirtual).toBe(true);
+    expect(music.isVirtual).toBe(false);
+  });
+
   it('keeps a virtual one-shot running silently and ends it when it would have ended', () => {
     scene.maxVoices = 1;
     play({ priority: 100 });

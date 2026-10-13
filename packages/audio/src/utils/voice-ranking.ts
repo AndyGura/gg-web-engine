@@ -16,7 +16,7 @@ export const AUDIBLE_VOICE_BIAS = 1.25;
 export interface VoiceCandidate {
   /** `IAudioSourceComponent.priority`, higher is more important. */
   priority: number;
-  /** Estimated gain at the listener: volume x bus volume x distance attenuation. */
+  /** Estimated gain at the listener: volume x bus volume (parent buses included) x distance attenuation. */
   gain: number;
   /** Whether the source is heard right now (gets `AUDIBLE_VOICE_BIAS`). */
   audible: boolean;
