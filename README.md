@@ -38,9 +38,10 @@ input, levels, networking - drives battle-tested libraries plugged in behind it:
 [Three.js](https://github.com/mrdoob/three.js) or [Pixi.js](https://github.com/pixijs/pixijs) for
 rendering, [Rapier](https://github.com/dimforge/rapier.js), [Ammo.js](https://github.com/kripken/ammo.js)
 or [Matter.js](https://github.com/liabru/matter-js) for physics. Your game code talks to the core, so
-switching to another backend of the same dimension takes one line and needs no gameplay-code
-changes. Each backend keeps its own simulation behavior, so expect to retune physics
-([what differs](#-faq)). The native objects stay one property away whenever you need them.
+switching to another backend of the same dimension takes one line and, apart from a few documented
+gaps, needs no gameplay-code changes. Each backend keeps its own simulation behavior, so expect to
+retune physics ([what differs](#-faq)). The native objects stay one property away whenever you need
+them.
 
 ## ✨ Highlights
 
@@ -86,7 +87,7 @@ tuning (friction, restitution, vehicles, character sliding) differ per backend.
 
 ### 🛠️ Developer tooling built in
 In-game console with custom commands, physics debug view, stats and per-entity performance
-profiling. Import `GgStatic` in a development build to turn it on for every world
+profiling. Use `GgStatic.instance` in a development build to turn it on for every world
 ([commands](#%EF%B8%8F-developer-console)).
 
 </td>
@@ -120,12 +121,12 @@ npm install @gg-web-engine/core @gg-web-engine/three @gg-web-engine/rapier3d
 Add a canvas to the page (`<canvas id="gg"></canvas>`, and `body { margin: 0; }`), then:
 
 ```typescript
-import { Gg3dWorld, Pnt3, Qtrn } from '@gg-web-engine/core';
-import { ThreeSceneComponent } from '@gg-web-engine/three';
-import { Rapier3dWorldComponent } from '@gg-web-engine/rapier3d';
+import { Gg3dWorld, Pnt3, Qtrn, TypedGg3dWorld } from '@gg-web-engine/core';
+import { ThreeGgWorld, ThreeSceneComponent } from '@gg-web-engine/three';
+import { Rapier3dGgWorld, Rapier3dWorldComponent } from '@gg-web-engine/rapier3d';
 
 // one world = clock + visual scene + physics world
-const world = new Gg3dWorld({
+const world: TypedGg3dWorld<ThreeGgWorld, Rapier3dGgWorld> = new Gg3dWorld({
   visualScene: new ThreeSceneComponent(),
   physicsWorld: new Rapier3dWorldComponent(), // or: new AmmoWorldComponent()
 });
@@ -169,8 +170,8 @@ world.start();
 ### The same scene as data
 
 Levels can be plain JSON, loaded with the world's `LevelLoader`. Built-in classes cover primitives,
-triggers, cameras, players, GLB models, cars, map graphs and sounds; your own classes join through
-`world.loader.registerClass(...)`.
+triggers, cameras, lights, environment, players, GLB models, cars, map graphs and sounds; your own
+classes join through `world.loader.registerClass(...)`.
 
 ```typescript
 import { LevelJson } from '@gg-web-engine/core';
@@ -221,7 +222,7 @@ world.addEntity(net);
 await net.loadSharedLevel(levelJson, 'level', 'level.json'); // every peer builds the level itself
 await net.connect();
 
-const player = await world.loader.createEntity({ class: 'Player', position: spawnPoint });
+const player = (await world.loader.createEntity({ class: 'Player', position: spawnPoint }))!;
 world.addEntity(player); // spawned at runtime: replicated to every peer automatically
 net.possess(player);     // local input drives it; state and input are broadcast
 ```
@@ -301,9 +302,9 @@ exports a scene as `.glb` + `.meta` (meshes, rigid bodies, splines, empties) for
 
 ## 🕹️ Demos
 
-**[Browse all interactive demos →](https://gg-web-demos.guraklgames.com/)** Most run on every
-physics backend of their dimension (switch it in place; Shooter, Screens, Fly city and Coin run use
-one backend only), and each opens in StackBlitz with one click; the source lives under
+**[Browse all interactive demos →](https://gg-web-demos.guraklgames.com/)** Every demo runs on
+each physics backend of its dimension (switch it in place), and each opens in StackBlitz with one
+click; the source lives under
 [`examples/2d`](examples/2d) and [`examples/3d`](examples/3d).
 
 | Demo | Shows |
@@ -392,18 +393,18 @@ Supporting pieces:
 
 - **[Entity2d](https://andygura.github.io/gg-web-engine/modules/core/2d/entities/entity-2d.ts/#entity2d-class)** / **[Entity3d](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/entity-3d.ts/#entity3d-class)** - a display object (sprite or mesh) plus a rigid body, kept in sync every tick
 - **[Trigger2dEntity](https://andygura.github.io/gg-web-engine/modules/core/2d/entities/trigger-2d.entity.ts/#trigger2dentity-class)** / **[Trigger3dEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/trigger-3d.entity.ts/#trigger3dentity-class)** - a physics volume that emits events when another entity enters or leaves it
-- **[CharacterController2dEntity](https://andygura.github.io/gg-web-engine/modules/core/2d/entities/character-controller-2d.entity.ts/#charactercontroller2dentity-class)** / **[CharacterController3dEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/character-controller-3d.entity.ts/#charactercontroller3dentity-class)** - a capsule-bodied, physics-driven character: walk, run, jump, gravity, plus crouch in 3D
+- **[CharacterController2dEntity](https://andygura.github.io/gg-web-engine/modules/core/2d/entities/character-controller-2d.entity.ts/#charactercontroller2dentity-class)** / **[CharacterController3dEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/character-controller-3d.entity.ts/#charactercontroller3dentity-class)** - a capsule-bodied, physics-driven character: walk, run, crouch, jump, gravity
 - **[PlayerCharacterController2d](https://andygura.github.io/gg-web-engine/modules/core/2d/entities/controllers/input/player-character-2d.controller.ts/#playercharactercontroller2d-class)** / **[PlayerCharacterController](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/controllers/input/player-character.controller.ts/#playercharactercontroller-class)** - keyboard/mouse control and a following camera for a character; first- and third-person modes with camera-collision avoidance in 3D
 - **[RaycastVehicle3dEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/raycast-vehicle-3d.entity.ts/#raycastvehicle3dentity-class)** - a raycast vehicle with chassis and wheel meshes bound to it
-- **[GgCarEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/gg-car/gg-car.entity.ts/#ggCarentity-class)** - a four-wheel car simulating an engine with a torque table, a gearbox and more, with **[CarHandlingController](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/controllers/input/car-handling.controller.ts/#carkeyboardhandlingcontroller-class)** to drive it
+- **[GgCarEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/gg-car/gg-car.entity.ts/#ggcarentity-class)** - a four-wheel car simulating an engine with a torque table, a gearbox and more, with **[GgCarHandlingController](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/controllers/input/gg-car-handling.controller.ts/#ggcarhandlingcontroller-class)** (throttle, steering, gears, handbrake) to drive it
 - **[Grabbable3dEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/grabbable-3d.entity.ts/#grabbable3dentity-class)** - a prop that can be picked up, carried and thrown, paired with **[ObjectGrabController](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/controllers/input/object-grab.controller.ts/#objectgrabcontroller-class)**
 - **[MapGraph3dEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/map-graph-3d.entity.ts/#mapgraph3dentity-class)** - loads the nearby parts of a big map and disposes the far ones
 - **[ParticleSystem2dEntity](https://andygura.github.io/gg-web-engine/modules/core/2d/entities/particle-system-2d.entity.ts/#particlesystem2dentity-class)** / **[ParticleSystem3dEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/particle-system-3d.entity.ts/#particlesystem3dentity-class)** - sprite particles (sparks, smoke, dust, fire; camera-facing in 3D) simulated in core, emitted by the app or at a rate, optionally attached to another entity, with a fixed step for old-school effects
-- **[SurfaceFollowingEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/surface-following.entity.ts/#surfacefollowingentity-class)** - a smooth surface collider declared parametrically
+- **[SurfaceFollowingEntity](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/surface-following.entity.ts/#surfacefollowingentity-class)** - keeps colliders on a smooth surface given as a function (position and normal) by moving a plane under each one every tick; Ammo.js only, since Rapier 3D has no plane collider
 - **[Renderer](https://andygura.github.io/gg-web-engine/modules/core/base/entities/i-renderer.entity.ts/#irendererentity-class)** - renders the scene and manages canvas size (fullscreen by default)
 - **[FreeCameraController](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/controllers/input/free-camera.controller.ts/#freecameracontroller-class)** - fly a camera with WASD + mouse
 - **[AnimationMixer](https://andygura.github.io/gg-web-engine/modules/core/base/entities/controllers/animation-mixer.ts/#animationmixer-class)** - smooth transitions between animation functions, with **[Entity2dPositioningAnimator](https://andygura.github.io/gg-web-engine/modules/core/2d/entities/controllers/entity-2d-positioning.animator.ts/#entity2dpositioninganimator-class)** / **[Entity3dPositioningAnimator](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/controllers/animators/entity-3d-positioning.animator.ts/#entity3dpositioninganimator-class)** for entities and **[Camera3dAnimator](https://andygura.github.io/gg-web-engine/modules/core/3d/entities/controllers/animators/camera-3d.animator.ts/#camera3danimator-class)** for cameras
-- **[InlineTickController](https://andygura.github.io/gg-web-engine/modules/core/base/entities/controllers/inline-controller.ts/#createinlinetickcontroller)** - a tick callback added to the world in one line
+- **[createInlineTickController](https://andygura.github.io/gg-web-engine/modules/core/base/entities/controllers/inline-controller.ts/#createinlinetickcontroller)** - a tick callback added to the world in one line
 
 </details>
 
@@ -464,7 +465,7 @@ Register your own commands with `GgStatic.instance.registerConsoleCommand`.
 | `player_spawn` | `float, float, float`                | Spawn a default player character (capsule body, WASD/arrows movement, mouse-look) at the given coordinates, controlling the first renderer's camera |
 | `player_mode`  | `string, first-person\|third-person` | Switch a named `PlayerCharacterController` (as returned by `player_spawn`) between first- and third-person view |
 
-The multiplayer package adds `net_status`, `net_owners`, `net_tuning` and `net_lag`.
+The multiplayer package adds `net_status`, `net_panel`, `net_owners`, `net_tuning` and `net_lag`.
 
 </details>
 
@@ -473,10 +474,11 @@ The multiplayer package adds `net_status`, `net_owners`, `net_tuning` and `net_l
 <details>
 <summary><b>Do all physics backends behave the same?</b></summary>
 
-No. Every backend of one dimension honors the same API contract: the same calls succeed, the same
-events fire, units match, and 3D is Z-up everywhere. The simulation underneath is the library's own,
-so switching backends keeps your code running but changes how things move. Expect to retune masses,
-friction, vehicles and character settings after a switch. Known differences:
+No. Every backend of one dimension honors the same API contract: the same calls succeed (apart from
+the Rapier 3D plane gap below), the same events fire, units match, and 3D is Z-up everywhere. The
+simulation underneath is the library's own, so switching backends keeps your code running but
+changes how things move. Expect to retune masses, friction, vehicles and character settings after a
+switch. Known differences:
 
 **3D: Rapier vs Ammo.js**
 
@@ -487,6 +489,9 @@ friction, vehicles and character settings after a switch. Known differences:
   friction and braking still differ, so the same wheel options drive differently. `rollInfluence`
   only exists on Ammo and `sideFrictionStiffness` only on Rapier. Tune a `GgCarEntity` or raycast
   vehicle on the backend you ship.
+- **No plane collider in Rapier 3D.** A `PLANE` body (a primitive, a level-JSON `Primitive` or the
+  `spawn` console command) throws on Rapier; use a large thin `BOX`. `SurfaceFollowingEntity` is built
+  on planes, so it runs on Ammo only.
 - **Continuous collision detection.** Rapier sweeps the body's real shape; Ammo sweeps an
   approximating sphere, so fast bodies hitting thin geometry behave differently.
 - **Kinematic bodies.** Rapier has native position- and velocity-driven kinematic bodies. Ammo has one
@@ -507,8 +512,7 @@ friction, vehicles and character settings after a switch. Known differences:
 - **Settling.** Matter's solver is not substepped: round bodies on a slope under weak gravity can roll
   for a long time before they come to rest.
 
-Rapier supports every `BodyOptions` feature natively in both dimensions. Demos that offer a single
-backend in the [gallery](https://gg-web-demos.guraklgames.com/) have only been built and tuned on it.
+Rapier supports every `BodyOptions` feature natively in both dimensions.
 
 </details>
 
@@ -521,10 +525,10 @@ Every component keeps a reference to the native object it wraps:
 - `nativeContainer` - 2D visual container
 - `nativeMesh` - 3D display object
 - `nativeSprite` - 2D display object
-- `nativeWorld` - 2D/3D physics world
+- `nativeWorld` - Rapier 2D/3D physics world (Ammo.js: `dynamicAmmoWorld`; Matter.js: `matterEngine` and `matterWorld`)
 - `nativeBody` - 2D/3D physics body
 
-For instance, `ThreeSceneComponent` has a public field `nativeScene: THREE.Scene`.
+For instance, `ThreeSceneComponent.nativeScene` is the `THREE.Scene` once `world.init()` has run (`null` before).
 
 </details>
 
@@ -540,8 +544,8 @@ const world = new Gg3dWorld({
   physicsWorld: new AmmoWorldComponent(),
 });
 const box = world.addPrimitiveRigidBody(...);
-box.object3D.scale = { x: 2, y: 2, z: 2 };          // ok
-box.object3D.nativeMesh.material = myThreeMaterial; // TypeScript error
+box.object3D!.scale = { x: 2, y: 2, z: 2 };       // ok
+box.object3D!.nativeMesh.castShadow = true;       // TypeScript error
 ```
 
 Annotate the world explicitly:
@@ -552,8 +556,8 @@ const world: TypedGg3dWorld<ThreeGgWorld, AmmoGgWorld> = new Gg3dWorld({
   physicsWorld: new AmmoWorldComponent(),
 });
 const box = world.addPrimitiveRigidBody(...);
-box.object3D.nativeMesh.material = myThreeMaterial; // works
-box.objectBody.nativeBody.applyTorque(...);         // works too
+box.object3D!.nativeMesh.castShadow = true;                     // works: a THREE.Object3D
+box.objectBody!.nativeBody.applyTorque(new Ammo.btVector3(0, 0, 1)); // works too
 ```
 
 Every adapter exports a `[ModuleName]GgWorld` type. `const world: ThreeGgWorld = new Gg3dWorld(...)`
