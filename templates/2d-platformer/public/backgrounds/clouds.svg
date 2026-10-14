@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 1200 300">
+  <!-- placeholder art: soft clouds, tiles left to right. Replace with your own image. -->
+  <g fill="#ffffff" fill-opacity="0.85">
+    <ellipse cx="140" cy="90" rx="90" ry="28"/><ellipse cx="190" cy="70" rx="55" ry="32"/>
+    <ellipse cx="560" cy="150" rx="110" ry="30"/><ellipse cx="610" cy="128" rx="60" ry="34"/>
+    <ellipse cx="960" cy="70" rx="80" ry="24"/><ellipse cx="1000" cy="54" rx="45" ry="26"/>
+  </g>
+</svg>

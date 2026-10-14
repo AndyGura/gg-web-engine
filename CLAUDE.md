@@ -30,7 +30,7 @@ the task before writing code:
 | [`gg-engine-physics-adapter-rapier`](.claude/skills/gg-engine-physics-adapter-rapier/SKILL.md) | Fixing/extending `packages/rapier2d`/`packages/rapier3d` specifically — known `@dimforge/rapier-compat` pitfalls. |
 | [`gg-engine-physics-adapter-matter`](.claude/skills/gg-engine-physics-adapter-matter/SKILL.md) | Fixing/extending `packages/matter` specifically — known `matter-js` pitfalls. |
 | [`gg-engine-multiplayer`](.claude/skills/gg-engine-multiplayer/SKILL.md) | Working on `packages/multiplayer` (shared-world networking, WebRTC/signaling transports) or core's networking contracts (`INetworkSyncable`/`INetworkInputDriven`, correction helpers), or making an entity class network-aware. |
-| [`gg-engine-examples`](.claude/skills/gg-engine-examples/SKILL.md) | Adding/updating a demo under `examples/`. |
+| [`gg-engine-examples`](.claude/skills/gg-engine-examples/SKILL.md) | Adding/updating a demo under `examples/` or a starter template under `templates/`. |
 | [`gg-engine-release`](.claude/skills/gg-engine-release/SKILL.md) | Cutting a coordinated multi-package release. |
 
 A task can span more than one skill (e.g. "add a Jolt physics backend and a demo" needs

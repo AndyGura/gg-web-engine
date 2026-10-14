@@ -134,6 +134,15 @@ for pid in "${example_pids[@]}"; do
     exit 1
   fi
 done
+# starter templates pin the engine version too; they commit no lockfile, so no install is needed
+for template in ./templates/*/
+do
+  sedi 's/"@gg-web-engine\/core": "[0-9.]*",/"@gg-web-engine\/core": "'$1'",/' ${template}package.json
+  for ix in ${!libs[*]}
+  do
+    sedi 's/"@gg-web-engine\/'${libs[$ix]}'": "[0-9.]*",/"@gg-web-engine\/'${libs[$ix]}'": "'$1'",/' ${template}package.json
+  done
+done
 # the gallery's StackBlitz links open the examples at the release tag
 sedi 's/"version": "[0-9.]*",/"version": "'$1'",/' ./examples/examples.json
 

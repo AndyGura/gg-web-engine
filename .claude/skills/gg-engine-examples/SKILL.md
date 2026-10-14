@@ -1,6 +1,6 @@
 ---
 name: gg-engine-examples
-description: Add or update a demo project under examples/ in gg-web-engine (webpack demos or the StackBlitz gallery). Use when the task is to create a new example app, not general app development against a published engine version outside this repo.
+description: Add or update a demo project under examples/ in gg-web-engine (webpack demos or the StackBlitz gallery), or a Vite starter template under templates/. Use when the task is to create a new example app, not general app development against a published engine version outside this repo.
 ---
 
 # Adding an example project
@@ -620,6 +620,40 @@ an already-bumped `three` is a common way for one example to get missed in an ot
 repo-wide dependency pass, and it fails as a confusing `TS2307: Cannot find module 'three/webgpu'`
 deep inside `@types/three/examples/jsm/loaders/KTX2Loader.d.ts` rather than an obvious
 version-mismatch error.
+
+## Starter templates (`templates/`)
+
+`templates/<name>/` holds starter projects a user copies with `npx degit
+AndyGura/gg-web-engine/templates/<name> my-game` (`3d-character`, `2d-platformer`,
+`multiplayer-cars`, listed in `templates/README.md`). They differ from examples on purpose:
+
+- **Vite + TypeScript, not webpack**: scripts `dev`/`build` (`tsc --noEmit && vite build`)/`preview`,
+  no vite config, `tsconfig.json` with `strict: true` and `moduleResolution: "bundler"` (fine for the
+  rapier adapters; the ammo `.d.ts` caveat in the TypeScript 6 section applies to `node` resolution).
+- **One physics backend, no `backends.ts`.** A template is a starting point, not a demo of backend
+  switching; its README says how to swap. Not in `examples.json`, not in the gallery.
+- **No lockfile committed.** The release script (`etc/publish_new_version.sh`) only rewrites each
+  template's `@gg-web-engine/*` versions; the same trailing-comma rule as examples applies.
+- **Dev console only in development**: `GgStatic` is touched only inside `if (import.meta.env.DEV)`,
+  which Rollup drops from the production bundle.
+- **An `AGENTS.md` per template** pointing coding agents at the engine guide (the core package's
+  `AGENTS.md`, `llms-full.txt`, and the `gg-engine-app-development` skill on GitHub).
+- Same API rules as examples: `npm run lint:examples` scans `templates/` too.
+
+Things that bit building them, worth knowing for any new template or example:
+
+- Three.js materials render unlit flat color unless the material sets `shading: 'standart'` (the
+  engine's spelling, `packages/core/src/3d/factories.ts`); lights and shadows do nothing without it.
+- `PlayerCharacterController` takes its initial look direction from the camera's rotation; a level
+  `Camera` with no `rotation` looks straight down, so give it one (`Qtrn.lookAt`).
+- The built-in `RemoveEntity` node removes the entity an event emits. A `Trigger`'s
+  `onEntityEntered` emits the entity that entered (the player), so a collectible needs its own class
+  whose event emits itself (`templates/2d-platformer/src/coin.ts`).
+- `FirebaseSignaling.createRoom()` waits on the network and never resolves when Firebase is
+  unreachable; a template generates the room id locally (`generateRoomId()`) so the level loads first.
+- Verify a template like an example: `npm install && npm run build`, then load `vite preview` in
+  Playwright with Chromium (`--use-gl=swiftshader --enable-unsafe-swiftshader`) and look at a
+  screenshot. Delete `node_modules`, `dist` and the lockfile before committing.
 
 ## Keep this skill current
 

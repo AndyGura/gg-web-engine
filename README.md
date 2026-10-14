@@ -114,6 +114,17 @@ More of what is in the box:
 
 ## 🚀 Quickstart
 
+The fastest start is a starter template: a Vite + TypeScript project with a level, controls and a
+camera already wired, ready to grow into a game.
+
+```bash
+npx degit AndyGura/gg-web-engine/templates/3d-character my-game   # or 2d-platformer, multiplayer-cars
+cd my-game && npm install && npm run dev
+```
+
+See [`templates/`](templates/README.md) for what each one contains. To add the engine to an existing
+project instead:
+
 ```bash
 npm install @gg-web-engine/core @gg-web-engine/three @gg-web-engine/rapier3d
 ```

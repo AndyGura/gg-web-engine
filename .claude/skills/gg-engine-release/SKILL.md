@@ -76,7 +76,9 @@ BSD/GNU-portable — plain `grep`/`awk`, no `sed -i`).
 4. Publishes each of those packages to npm, then polls npm again until every one is live.
 5. Bumps `@gg-web-engine/*` dependency versions in every example listed in
    `examples/examples.json` and reinstalls them, in parallel.
-6. Rewrites the top-level `version` of `examples/examples.json` to the new version - the git tag the
+6. Bumps `@gg-web-engine/*` dependency versions in every starter template under `templates/*/`.
+   Templates commit no lockfile, so nothing is reinstalled for them.
+7. Rewrites the top-level `version` of `examples/examples.json` to the new version - the git tag the
    gallery's "Edit in StackBlitz" links open the examples at.
 
 After the script, the workflow also regenerates API docs (`documentation/` via `npm run

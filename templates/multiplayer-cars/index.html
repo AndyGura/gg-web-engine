@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1, maximum-scale=1" />
+    <title>Multiplayer cars</title>
+    <link rel="icon" href="data:," />
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: #000;
+      }
+      #gg {
+        display: block; /* the renderer sizes the canvas to the window */
+      }
+      #hud {
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        max-width: calc(100% - 36px);
+        padding: 6px 10px;
+        background: rgba(0, 0, 0, 0.55);
+        color: #fff;
+        font: 12px/1.6 monospace;
+        border-radius: 4px;
+      }
+      #hud input {
+        width: 100%;
+        box-sizing: border-box;
+        font: inherit;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="gg"></canvas>
+    <div id="hud">
+      <div id="status">Connecting...</div>
+      <input id="room-link" readonly title="Open this link in another tab or send it to a friend" />
+      <div>Arrows / WASD - drive, Space - handbrake</div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
