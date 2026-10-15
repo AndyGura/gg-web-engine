@@ -75,6 +75,12 @@ jobs:
           export NODE_AUTH_TOKEN=${{ secrets.NPM_KEY }}
           ./etc/publish_new_version.sh ${{ env.version }}
 
+      # Rewrites the README's bundle-size table for the version just published; the
+      # "Update version in git" step below commits it with the rest of the release.
+      - name: Update README bundle sizes
+        if: env.PRE_RELEASE == 'true'
+        run: npm run bundle-sizes -- --write
+
       - name: Update docs
         if: env.PRE_RELEASE == 'true'
         run: |
