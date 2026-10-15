@@ -87,7 +87,11 @@ no setup either: the WASM glue ships inside `@gg-web-engine/ammo`, whose own `br
 the Node built-ins it references, so no `browser` field or `resolve.fallback` belongs in an example.
 `npm run lint:examples` rejects all of these. Keep a trailing comma after every `@gg-web-engine/*` line (i.e.
 never let one be the last dependency) - the release script's version bump matches `"...": "x.y.z",`
-with the comma.
+with the comma. `rxjs` is that last dependency: every engine package pins it at the same exact
+version (a dependency of core, a peer of the others), the example lists that same version, and npm
+installs one copy with no `overrides` block (an example that never imports `rxjs` still keeps the
+line, for the comma). The `overrides` fix under "Dependency-version-skew pitfalls" below is only for
+the mid-upgrade case it describes.
 
 ## tsconfig `target`
 
