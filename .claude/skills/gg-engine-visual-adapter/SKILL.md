@@ -372,8 +372,9 @@ need a jest transform for an ESM-only library, see Testing below) as a template:
 
 Both `three` and `pixi` have a jest + `jest-environment-jsdom` suite (`npm test` in each package;
 picked up automatically by the root `npm run test` / CI, no per-package wiring needed — see root
-`package.json`'s `test` script). Coverage is still thin relative to the physics adapters — mostly
-factory/shape-mapping and small pure-utility logic that doesn't need a real GPU context — and the
+`package.json`'s `test` script). Coverage is still thin relative to the physics adapters — the
+shared contract suite (below), factory/shape-mapping and small pure-utility logic that doesn't need
+a real GPU context — and the
 `examples/3d/primitives` / `examples/2d/primitives` example apps remain the way to
 smoke-test anything that does need a real renderer. When adding a test, mirror `packages/three`'s
 setup (the sibling visual adapter) rather than a physics adapter's: same `package.json` `jest` block
@@ -397,17 +398,26 @@ the library's own paths (`@babel/plugin-transform-modules-commonjs` in a `babel.
 second `transform` entry for `/node_modules/<lib>/.../.+\.js$`, and a matching
 `transformIgnorePatterns` carve-out), plus a `moduleNameMapper` entry that points the bare package
 name straight at its ESM entry when the `require` export condition is only a deprecation shim.
-`packages/three` has this applied; `gg-engine-visual-adapter-three` documents the exact config and
-the `@babel/*` version pins it needs (a peer-range mismatch there passes the workspace install but
-breaks the release script's standalone install). `packages/pixi` does not have it yet - `pixi.js`
-pulls in the pure-ESM `earcut`, so its specs never `require` the real module: they replace it with
-`jest.mock('pixi.js', () => ({ ... }))` (the factory must export every name the file under test
-imports at module level, as empty classes if nothing else) or use `import type` plus a plain fake
-object cast to the pixi type (see `gg-engine-visual-adapter-pixi`). Either way, jsdom has no
-`URL.createObjectURL`/`revokeObjectURL`, no `createImageBitmap` and no WebGL, so a spec for the
-decode-from-data methods assigns fakes for those and spies on the native loader, `prepare` is tested
-against fake renderer objects put into the scene's `renderers` set, and anything that needs a real
-draw call is verified in the primitives example or by rendering in headless Chromium.
+`packages/three` and `packages/pixi` both have it applied; `gg-engine-visual-adapter-three` documents
+the exact config and the `@babel/*` version pins it needs (a peer-range mismatch there passes the
+workspace install but breaks the release script's standalone install), and
+`gg-engine-visual-adapter-pixi` lists the extra ESM-only packages pixi.js pulls in. jsdom has no
+`URL.createObjectURL`/`revokeObjectURL`, no `createImageBitmap`, no WebGL and no 2D canvas, so a
+spec for the decode-from-data methods assigns fakes for those and spies on the native loader,
+`prepare` is tested against fake renderer objects put into the scene's `renderers` set, and anything
+that needs a real draw call is verified in the primitives example or by rendering in headless
+Chromium.
+
+**Every visual adapter runs the shared contract suite.** `packages/core/test/contract/
+visual-3d.contract.ts` and `visual-2d.contract.ts` export `describeVisual3dContract` /
+`describeVisual2dContract`, called from `test/contract/<lib>-contract.spec.ts` with a function that
+returns the adapter's factory (`() => new ThreeFactory()`), plus `{ unsupportedShapes }` for a
+primitive the renderer can't draw (three: `CONVEX_HULL`). It needs no GPU: it builds every
+primitive and checks its size through `getBoundings()` (meters with Z up in 3D, so a cylinder's
+height runs along Z; pixels in 2D, a capsule standing along Y), that a fresh primitive reads
+`scale` 1, that transforms read back as set, clones are independent and keep their transform, and
+`addChild`/`popChild`/`removeChild` nest by `name`. It needs the real rendering library to load
+under jest (above), not a mock.
 
 ## Wiring a new adapter into the repo
 

@@ -40,10 +40,13 @@
     "pixi.js": "8.22.0"
   },
   "devDependencies": {
+    "@babel/core": "^7.29.7",
+    "@babel/plugin-transform-modules-commonjs": "^7.29.7",
     "@types/jest": "^30.0.0",
     "@types/node": "^26.4.0",
     "@types/offscreencanvas": "2019.7.3",
     "@gg-web-engine/core": "0.0.82",
+    "babel-jest": "^30.5.2",
     "jest": "^30.5.0",
     "jest-environment-jsdom": "^30.5.0",
     "prettier": "^3.9.6",
@@ -59,8 +62,15 @@
     "rootDir": ".",
     "testRegex": "\\.spec\\.ts$",
     "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
+      "^.+\\.ts$": "ts-jest",
+      "/node_modules/.+\\.m?js$": "babel-jest"
     },
+    "transformIgnorePatterns": [
+      "/node_modules/(?!(pixi\\.js|@pixi|earcut|eventemitter3|ismobilejs|parse-svg-path|tiny-lru|gifuct-js|@xmldom)/)"
+    ],
+    "setupFiles": [
+      "<rootDir>/test/jest-setup.ts"
+    ],
     "moduleNameMapper": {
       "@gg-web-engine/core": "<rootDir>/../core/src/index.ts"
     },

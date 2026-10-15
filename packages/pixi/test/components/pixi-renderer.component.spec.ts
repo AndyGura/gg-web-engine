@@ -1,5 +1,5 @@
-// Replaces pixi.js with an Application stand-in whose async init is resolved by the test - this
-// package's jest setup can't load the real pixi.js runtime (see pixi-display-object.component.spec.ts).
+// Replaces pixi.js with an Application stand-in whose async init is resolved by the test, so the
+// test controls when initialization finishes.
 const pixi = {
   resolveInit: () => {},
   pendingInits: [] as (() => void)[],

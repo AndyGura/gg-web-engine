@@ -62,6 +62,20 @@ where one exists.
   `IAudioSceneComponent`, so a third-party audio adapter has to add them.
 
 ### Fixed
+- `rapier2d`: bodies were capped at 400 px/s (4 m/s). Rapier's speed limit and tolerances scale
+  with its `lengthUnit`, which the adapter left at 1 while working in pixels; it is now 100 (pixels
+  per meter). Sleep thresholds and contact tolerances scale with it too, so they now match the 3D
+  backends in physical units: a body slower than about 10 px/s can fall asleep.
+- `rapier2d`: a dynamic body weighed its `mass` plus its shape's area in pixels (a 20 px circle with
+  `mass: 4` weighed about 1261), so impulses and forces barely moved it. It now weighs exactly
+  `mass`, and its rotational inertia follows from that mass.
+- `pixi`: `getBoundings()` threw for every display object except particle systems. It now returns
+  world-space bounds.
+- `pixi`: setting `scale` on an untextured or textured `BOX` (or a textured `CIRCLE`) resized it to
+  `scale` pixels. `scale` is now relative to the size the primitive was built with, and a new
+  primitive reads `{ x: 1, y: 1 }`, as on three.
+- `pixi`: `popChild(name)` always returned `null`. It now detaches the named child; `name` is the
+  native `label`, and clones keep it.
 - Calling `GgWorld.init()` twice no longer initializes the scenes again and doubles every tick:
   the second call returns the first call's promise. A failed `init()` can be retried.
 - Setting `gravity` on a `rapier2d`/`rapier3d` physics world before `init()` threw; it is now kept

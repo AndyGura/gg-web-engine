@@ -28,14 +28,14 @@ describe('Rapier2dRigidBodyComponent onCollisionStart/onCollisionEnd', () => {
 
   function makeFloorAndBall(): { floor: Rapier2dRigidBodyComponent; ball: Rapier2dRigidBodyComponent } {
     const floor = factory.createRigidBody(
-      { shape: { shape: 'BOX', dimensions: { x: 20, y: 2 } }, body: { bodyType: 'static', mass: 0 } },
-      { position: { x: 0, y: -1 } },
+      { shape: { shape: 'BOX', dimensions: { x: 2000, y: 200 } }, body: { bodyType: 'static', mass: 0 } },
+      { position: { x: 0, y: -100 } },
     );
     floor.addToWorld({ physicsWorld: world } as any);
 
     const ball = factory.createRigidBody(
-      { shape: { shape: 'CIRCLE', radius: 1 }, body: { bodyType: 'dynamic', mass: 2 } },
-      { position: { x: 0, y: 5 } },
+      { shape: { shape: 'CIRCLE', radius: 100 }, body: { bodyType: 'dynamic', mass: 2 } },
+      { position: { x: 0, y: 500 } },
     );
     ball.addToWorld({ physicsWorld: world } as any);
 
@@ -65,8 +65,8 @@ describe('Rapier2dRigidBodyComponent onCollisionStart/onCollisionEnd', () => {
     // vertical, not sideways.
     expect(Math.abs(ballEvent.normal.y)).toBeGreaterThan(Math.abs(ballEvent.normal.x));
     // the contact point should sit roughly at the floor's top surface (y ≈ 0), not somewhere wild.
-    expect(ballEvent.position.y).toBeGreaterThan(-1);
-    expect(ballEvent.position.y).toBeLessThan(1);
+    expect(ballEvent.position.y).toBeGreaterThan(-100);
+    expect(ballEvent.position.y).toBeLessThan(100);
 
     const floorEvent = floorEvents[0];
     expect(floorEvent.otherBody).toBe(ball);
@@ -106,7 +106,7 @@ describe('Rapier2dRigidBodyComponent onCollisionStart/onCollisionEnd', () => {
     floor.onCollisionEnd.subscribe(e => floorEndEvents.push(e));
 
     // knock the ball away from the floor
-    ball.linearVelocity = { x: 0, y: 20 };
+    ball.linearVelocity = { x: 0, y: 2000 };
     settle(30);
 
     expect(ballEndEvents.length).toBeGreaterThanOrEqual(1);
@@ -195,16 +195,16 @@ describe('Rapier2dRigidBodyComponent onCollisionStart/onCollisionEnd', () => {
 
   it('does not fire onCollisionStart on a rigid body for a trigger overlap (sensor, no collision response)', () => {
     const trigger = factory.createTrigger(
-      { shape: 'BOX', dimensions: { x: 20, y: 20 } },
+      { shape: 'BOX', dimensions: { x: 2000, y: 2000 } },
       { position: { x: 0, y: 0 } },
     );
     trigger.addToWorld({ physicsWorld: world } as any);
 
-    // spawned clear of the trigger's top edge (square half-height 10, centered at y=0) so the
+    // spawned clear of the trigger's top edge (square half-height 1000, centered at y=0) so the
     // overlap genuinely starts *after* subscribing below, not at spawn time.
     const ball = factory.createRigidBody(
-      { shape: { shape: 'CIRCLE', radius: 1 }, body: { bodyType: 'dynamic', mass: 1 } },
-      { position: { x: 0, y: 15 } },
+      { shape: { shape: 'CIRCLE', radius: 100 }, body: { bodyType: 'dynamic', mass: 1 } },
+      { position: { x: 0, y: 1500 } },
     );
     ball.addToWorld({ physicsWorld: world } as any);
 
@@ -216,7 +216,7 @@ describe('Rapier2dRigidBodyComponent onCollisionStart/onCollisionEnd', () => {
     // no floor in this scene, and zero gravity - the only thing the ball can ever touch is the
     // sensor trigger volume it's about to drift straight through.
     world.gravity = Pnt2.O;
-    ball.linearVelocity = { x: 0, y: -2 };
+    ball.linearVelocity = { x: 0, y: -200 };
 
     const ballCollisionEvents: CollisionEvent<Point2, Rapier2dRigidBodyComponent>[] = [];
     let enteredTrigger = false;

@@ -486,7 +486,8 @@ The multiplayer package adds `net_status`, `net_panel`, `net_owners`, `net_tunin
 <summary><b>Do all physics backends behave the same?</b></summary>
 
 No. Every backend of one dimension honors the same API contract: the same calls succeed (apart from
-the Rapier 3D plane gap below), the same events fire, units match, and 3D is Z-up everywhere. The
+the Rapier 3D plane gap below), the same events fire, units match, and 3D is Z-up everywhere. A
+shared contract test suite checks this for every backend in CI (`packages/core/test/contract`). The
 simulation underneath is the library's own, so switching backends keeps your code running but
 changes how things move. Expect to retune masses, friction, vehicles and character settings after a
 switch. Known differences:

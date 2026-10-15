@@ -1,5 +1,5 @@
-// Replaces pixi.js with a minimal Text stand-in - this package's jest setup can't load the real
-// pixi.js runtime (see pixi-display-object.component.spec.ts).
+// Replaces pixi.js with a minimal Text stand-in, so the test sees exactly what the component writes
+// to it (the real runtime does load under jest, see test/contract).
 jest.mock('pixi.js', () => {
   class Point {
     x = 0;

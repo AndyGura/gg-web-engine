@@ -1558,6 +1558,13 @@ paths, with shared fakes in `test/mocks/` (`body.mock.ts`, `object.mock.ts`, `wo
 `raycast-vehicle.mock.ts`). New core logic should get a `.spec.ts` there, not in an adapter
 package, unless it's genuinely adapter-specific behavior.
 
+`test/contract/` holds the shared adapter contract suites (`describePhysics3dContract`,
+`describePhysics2dContract`, `describeVisual3dContract`, `describeVisual2dContract`). Core doesn't
+run them itself; every adapter's `test/contract/*.spec.ts` calls the one for its kind. When an
+interface change adds or alters behavior every backend must share (a new shape, a new body method,
+a unit convention), extend the matching suite in the same change, so each adapter is checked
+against it. `test/` is not published, so the suites can import anything from `src/`.
+
 **A `get someProp()` accessor defined inside an object literal that also uses `...spread` to pull
 in another object's properties silently stops being live** - this is real spec `Object.assign`/
 object-spread behavior (invokes `[[Get]]` on the source and copies the *current return value* as a

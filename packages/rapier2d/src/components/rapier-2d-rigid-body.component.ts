@@ -16,6 +16,7 @@ import {
   Collider,
   ColliderDesc,
   InteractionGroups,
+  MassPropsMode,
   RigidBody,
   RigidBodyDesc,
   RigidBodyType,
@@ -237,7 +238,10 @@ export class Rapier2dRigidBodyComponent implements IRigidBody2dComponent<Rapier2
   get bodyOptions(): Readonly<BodyOptions> {
     return {
       bodyType: rapierBodyTypeToBodyType(this._bodyDescr.status),
-      mass: this._bodyDescr.mass,
+      mass: this._colliderDescr.reduce(
+        (sum, cd) => sum + (cd.massPropsMode !== MassPropsMode.Density ? cd.mass : 0),
+        0,
+      ),
       friction: this._colliderOptions.friction,
       restitution: this._colliderOptions.restitution,
       ccd: this._bodyDescr.ccdEnabled,

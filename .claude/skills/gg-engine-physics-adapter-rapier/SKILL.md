@@ -19,6 +19,29 @@ plain scalar rotation instead of `Vector3`/`Quaternion`, otherwise the same meth
 each found on one specific side first; sections that genuinely don't apply to the other dimension say
 so explicitly.
 
+## Units: 2D works in pixels, so Rapier needs `lengthUnit` and mass on the colliders
+
+`packages/rapier2d` simulates in pixels (100 per meter): positions, velocities and shape sizes go to
+Rapier unscaled, and only gravity is multiplied by `unitScale` (100) on the way in and divided on the
+way out. Two Rapier defaults assume meters and both bite in pixels:
+
+- **`IntegrationParameters.lengthUnit`** (default 1) scales Rapier's tolerances and its hard speed
+  limit of 400 length units per second. Left at 1, every 2D body was capped at 400 px/s (4 m/s)
+  without any error, sleep thresholds were 0.1 px/s and contact tolerances sub-pixel.
+  `Rapier2dWorldComponent.init()` sets it to `unitScale`, which makes those the same physical
+  values as in a meter-based 3D world: bodies under about 10 px/s fall asleep, and allowed
+  penetration is about half a pixel. A test scene built at meter-like sizes (1 px radius, 1 px/s)
+  falls asleep at once under that; size test scenes in pixels.
+- **Mass goes on the colliders (`ColliderDesc.setMass`), not `RigidBodyDesc.mass`.** The body
+  field is extra mass on top of what each collider derives from its area at density 1, and a 20 px
+  circle alone weighs about 1257 that way, so `mass: 4` produced a ~1261 kg body and impulses barely
+  moved it. `Rapier2dFactory.createRigidBodyDescr` splits `mass` across the colliders, and
+  `bodyOptions.mass` sums them, as `packages/rapier3d` does (see its comment on why `RigidBodyDesc.mass`
+  also gave the wrong inertia).
+
+The shared contract suite (`packages/core/test/contract/physics-2d.contract.ts`) checks both: an
+impulse changes velocity by `impulse / mass`, and a body keeps a velocity of 600 px/s.
+
 ## The `removeFromWorld(dispose)` contract, Rapier specifics
 
 Rapier's native handles are WASM objects reference-counted per-call, not something this package needs

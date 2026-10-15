@@ -315,8 +315,8 @@ Objectives
 
 Status
 - 🚧 Facade consistency exists by construction — every adapter implements the same
-  `IVisualScene*Component`/`IPhysicsWorldComponent` interfaces from core — but there's no
-  automated check that every adapter actually honors that contract for the same input.
+  `IVisualScene*Component`/`IPhysicsWorldComponent` interfaces from core — and the contract tests
+  below check it for the same input.
   Lights and scene environment are behind core too (2026-10-04: `createLight`/`Gg3dWorld.addLight`,
   `visualScene.setEnvironment`, `"Light"`/`"Environment"` level classes; in 2D, `zIndex`, a
   background color/image and parallax layers), so no example adds native lights or skyboxes any
@@ -336,9 +336,15 @@ Status
   gearbox (shift time, downshift hysteresis, per-gear efficiency), rev limiter and engine braking
   are tunable settings with subclass hooks, so a racing game no longer rewrites the chassis
   velocity or reaches into the physics library for a handbrake.
-- Cross-adapter contract tests (one suite every physics adapter, and every renderer, runs: the same
-  calls succeed, the same events fire, units and axes match; never identical trajectories) — not
-  started.
+- ✅ Cross-adapter contract tests (2026-10-15): `packages/core/test/contract/` holds one suite per
+  dimension for physics (`describePhysics3dContract`/`describePhysics2dContract`) and one for
+  rendering (`describeVisual3dContract`/`describeVisual2dContract`), and every adapter runs its
+  dimension's suite from `test/contract/` in CI: ammo, rapier3d, matter, rapier2d, three and pixi
+  (pixi.js now loads under jest through a babel transform). They check that the same calls
+  succeed, the same events fire, and units and axes match (Z-up in 3D, pixels at 100 per meter in
+  2D), never identical trajectories. Shapes a backend can't build are declared per adapter and
+  must throw: `PLANE` on rapier3d, `CONVEX_HULL` on three. The first run found and fixed a 400 px/s
+  speed cap and wrong masses in rapier2d, and broken `getBoundings`/`popChild`/`scale` in pixi.
 - ✅ Shared debug overlay already exists and is pluggable per renderer: the dev console's
   `debug_view` command and `renderer.physicsDebugViewActive` toggle physics wireframes/bounds
   (see `packages/core/src/base/gg-world.ts`). Undocumented outside the code.

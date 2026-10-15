@@ -101,6 +101,9 @@ Notes:
   suite in turn.
 - Tests live under each package's `test/`, mirroring `src/`. New core logic gets a `.spec.ts` in
   `packages/core/test`; adapter-specific behavior gets one in that adapter's own `test/`.
+  Behavior every adapter of a dimension must share (units, axes, events, what each call does) goes
+  in the contract suites under `packages/core/test/contract/`, which every physics and rendering
+  adapter runs from its own `test/contract/`. A new adapter adds that one-line spec too.
 - Never hand-edit `packages/core/src/version.ts` — it's regenerated from `package.json` on every
   build.
 - `npm run clean` (`tsc -b --clean`) removes the incremental build outputs if a stale
