@@ -82,6 +82,13 @@
       "physics": ["rapier3d", "ammo"]
     },
     {
+      "dir": "3d/tower-climb",
+      "title": "Tower climb",
+      "description": "A complete third-person game: climb a spiral of floating pads, collect six crystals to light the beacon at the top. Title, pause, win and game over screens, three lives and checkpoints.",
+      "visual": ["three"],
+      "physics": ["ammo", "rapier3d"]
+    },
+    {
       "dir": "2d/primitives",
       "title": "Primitives",
       "description": "A level built from JSON: primitive shapes rain onto a floor.",
@@ -99,6 +106,13 @@
       "dir": "2d/coin-run",
       "title": "Coin run",
       "description": "Multiplayer platformer rounds: collect coins against everyone in the room, each pickup bursting into particles. The page URL is the invite link.",
+      "visual": ["pixi"],
+      "physics": ["rapier2d", "matter"]
+    },
+    {
+      "dir": "2d/platformer",
+      "title": "Platformer",
+      "description": "A complete platformer game: run, jump on slimes, dodge spikes and pits, and reach the flag. Title, pause, win and game over screens, three lives, checkpoints and coins.",
       "visual": ["pixi"],
       "physics": ["rapier2d", "matter"]
     }

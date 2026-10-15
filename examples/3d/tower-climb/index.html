@@ -1,0 +1,120 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Tower Climb</title>
+    <link rel="icon" href="data:," />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+  </head>
+  <body>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        font-family: system-ui, sans-serif;
+        background: #1b2333;
+      }
+
+      /* A screen's UI is plain DOM inside its layer. */
+      .panel {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        padding: 0 16px;
+        color: #eee;
+        text-align: center;
+      }
+
+      .panel--title {
+        background: radial-gradient(circle at 50% 30%, #3a4a78, #1b2333 70%);
+      }
+
+      /* Pause, win and game over let the frozen game show through. */
+      .panel--overlay {
+        background: rgba(10, 14, 22, 0.65);
+      }
+
+      .panel h1 {
+        margin: 0 0 8px;
+        font-size: 40px;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+      }
+
+      .panel p {
+        margin: 0;
+        max-width: 480px;
+        color: #b9c3d6;
+        font-size: 15px;
+        line-height: 1.5;
+      }
+
+      .panel .controls {
+        font-size: 13px;
+        color: #8e9ab3;
+      }
+
+      .panel .error {
+        color: #ff8a80;
+      }
+
+      .panel button {
+        min-width: 200px;
+        padding: 12px 24px;
+        border: 1px solid #55627a;
+        border-radius: 6px;
+        background: #2b3650;
+        color: inherit;
+        font: inherit;
+        font-size: 16px;
+        cursor: pointer;
+      }
+
+      .panel button:hover {
+        background: #37456a;
+      }
+
+      /* The game's HUD sits over the canvas and never takes clicks from it. */
+      .hud {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        color: #fff;
+        text-shadow: 0 1px 3px #000;
+      }
+
+      .hud__bar {
+        position: absolute;
+        top: 12px;
+        left: 16px;
+        display: flex;
+        gap: 20px;
+        font-size: 20px;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .hud__bar [data-hud='crystals'] {
+        color: #8fe3ff;
+      }
+
+      .hud__bar [data-hud='lives'] {
+        color: #ff6b6b;
+      }
+
+      .hud__message {
+        position: absolute;
+        top: 22%;
+        left: 16px;
+        right: 16px;
+        text-align: center;
+        font-size: 22px;
+        font-weight: 600;
+      }
+    </style>
+  </body>
+</html>
