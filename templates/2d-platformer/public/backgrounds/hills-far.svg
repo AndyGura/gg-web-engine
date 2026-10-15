@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+  <!-- placeholder art: distant hills; the left and right edges meet so it tiles horizontally.
+       The bottom rows stay transparent: the layer repeats, and a filled bottom edge would bleed
+       into the top edge as a faint line. -->
+  <path fill="#7fb7a4" d="M0 220 C150 120 300 120 400 200 S650 300 800 180 S1050 120 1200 220 V796 H0 Z"/>
+</svg>

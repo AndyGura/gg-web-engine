@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1, maximum-scale=1" />
+    <title>3D character</title>
+    <link rel="icon" href="data:," />
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: #000;
+      }
+      #gg {
+        display: block; /* the renderer sizes the canvas to the window */
+      }
+      #help {
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        padding: 6px 10px;
+        background: rgba(0, 0, 0, 0.5);
+        color: #fff;
+        font: 12px/1.6 monospace;
+        border-radius: 4px;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="gg"></canvas>
+    <div id="help">
+      Click to look around (Esc releases the mouse)<br />
+      WASD / arrows - move, Shift - run, Space - jump<br />
+      Ctrl - crouch, V - first/third person
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

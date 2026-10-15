@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-// Fails when an example under examples/ reaches past the engine into a third-party rendering or
-// physics library: importing three / pixi.js / ammo.js / matter-js / @dimforge/* directly, or using
-// an adapter's `native*` escape hatch (`nativeMesh`, `nativeSprite`, `nativeBody`, ...). Examples
-// are the engine's tutorials, so everything they do should go through @gg-web-engine/* APIs; a gap
-// found this way is a missing engine option, not something to work around in the example.
+// Fails when an example under examples/ (or a starter template under templates/) reaches past the
+// engine into a third-party rendering or physics library: importing three / pixi.js / ammo.js /
+// matter-js / @dimforge/* directly, or using an adapter's `native*` escape hatch (`nativeMesh`,
+// `nativeSprite`, `nativeBody`, ...). Examples are the engine's tutorials, so everything they do
+// should go through @gg-web-engine/* APIs; a gap found this way is a missing engine option, not
+// something to work around in the example.
 //
 // A line that deliberately demonstrates interop with the native library can opt out with a
 // trailing `// gg-allow-native` comment.
@@ -13,12 +14,14 @@
 // package does that itself), and every example in examples.json runs on every physics adapter of
 // its dimension.
 //
-// Usage: node etc/check_examples_no_native.mjs [examples-dir]
+// Usage: node etc/check_examples_no_native.mjs [examples-dir] [templates-dir]
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const root = process.argv[2] ?? fileURLToPath(new URL('../examples', import.meta.url));
+const examplesRoot = process.argv[2] ?? fileURLToPath(new URL('../examples', import.meta.url));
+const templatesRoot = process.argv[3] ?? fileURLToPath(new URL('../templates', import.meta.url));
+const roots = [examplesRoot, templatesRoot];
 const SKIP_DIRS = new Set(['node_modules', 'dist', '.angular', 'assets']);
 const SOURCE_FILE = /\.(ts|tsx|mts|js|mjs)$/;
 const CONFIG_FILE = /^(webpack|karma|jest)\..*\.js$|^webpack\.config\.js$/;
@@ -50,7 +53,7 @@ function* sourceFiles(dir) {
 }
 
 const violations = [];
-for (const file of sourceFiles(root)) {
+for (const file of roots.flatMap(root => [...sourceFiles(root)])) {
   readFileSync(file, 'utf8')
     .split('\n')
     .forEach((line, index) => {
@@ -79,7 +82,7 @@ function* exampleDirs(dir) {
   }
 }
 
-for (const dir of exampleDirs(root)) {
+for (const dir of roots.flatMap(root => [...exampleDirs(root)])) {
   const pkgFile = join(dir, 'package.json');
   const pkg = JSON.parse(readFileSync(pkgFile, 'utf8'));
   for (const section of ['dependencies', 'devDependencies', 'overrides']) {
@@ -108,7 +111,8 @@ for (const dir of exampleDirs(root)) {
   }
 }
 
-const registryFile = join(root, 'examples.json');
+// templates/ has no registry: each template is a single-backend starting point by design
+const registryFile = join(examplesRoot, 'examples.json');
 for (const example of JSON.parse(readFileSync(registryFile, 'utf8')).examples) {
   const expected = PHYSICS_BY_DIMENSION[example.dir.split('/')[0]] ?? [];
   const missing = expected.filter(backend => !example.physics.includes(backend));
@@ -122,4 +126,4 @@ if (violations.length) {
   console.error(violations.join('\n'));
   process.exit(1);
 }
-console.log('examples: engine APIs only, no library dependencies, every physics backend');
+console.log('examples and templates: engine APIs only, no library dependencies; examples on every physics backend');

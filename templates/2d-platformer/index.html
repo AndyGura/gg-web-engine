@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1, maximum-scale=1" />
+    <title>2D Platformer</title>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        background: #9fd3f0;
+      }
+      #gg {
+        display: block;
+      }
+      #hud {
+        position: fixed;
+        top: 12px;
+        left: 16px;
+        font:
+          bold 22px system-ui,
+          sans-serif;
+        color: #fff;
+        text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+        pointer-events: none;
+        user-select: none;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="gg"></canvas>
+    <!-- a plain DOM overlay for the score; main.ts writes into it -->
+    <div id="hud">Coins: <span id="score">0</span></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -33,7 +33,8 @@ behind it: [Three.js](https://threejs.org/) or [Pixi.js](https://pixijs.com/) fo
 - **Levels as data.** JSON levels with your own entity classes, blueprint-wired events and a
   serialization round trip. 3D scenes can be authored in Blender with the bundled exporter add-on.
 
-Switching to another physics backend of the same dimension takes one line and needs no gameplay-code
+Switching to another physics backend of the same dimension takes one line and, apart from a few
+gaps listed in the [FAQ](https://github.com/AndyGura/gg-web-engine#-faq), needs no gameplay-code
 changes. Each backend keeps its own simulation behavior, so expect to retune physics after a switch.
 
 ## Install
@@ -51,15 +52,33 @@ exact library version it is built against.
 Optional: `@gg-web-engine/multiplayer` (peer-to-peer shared worlds), `@gg-web-engine/audio`
 (positional audio), `@gg-web-engine/mobile-controls` (on-screen touch controls).
 
+## Start from a template
+
+Three Vite + TypeScript starter projects live under
+[`templates/`](https://github.com/AndyGura/gg-web-engine/tree/main/templates). Copy one and run it:
+
+```bash
+npx degit AndyGura/gg-web-engine/templates/3d-character my-game
+cd my-game && npm install && npm run dev
+```
+
+| Template | What you get |
+|---|---|
+| `3d-character` | Third-person character in a small arena, Three.js + Rapier |
+| `2d-platformer` | Side-view platformer with coins and a parallax background, Pixi.js + Rapier |
+| `multiplayer-cars` | Peer-to-peer driving arena: share the room link and drive together, Three.js + Rapier |
+
+Each template has an `AGENTS.md` that points a coding agent at the engine guide.
+
 ## A first scene
 
 ```typescript
-import { Gg3dWorld, LoadingScreen, Pnt3, Qtrn } from '@gg-web-engine/core';
-import { ThreeSceneComponent } from '@gg-web-engine/three';
-import { Rapier3dWorldComponent } from '@gg-web-engine/rapier3d';
+import { Gg3dWorld, LoadingScreen, Pnt3, Qtrn, TypedGg3dWorld } from '@gg-web-engine/core';
+import { ThreeGgWorld, ThreeSceneComponent } from '@gg-web-engine/three';
+import { Rapier3dGgWorld, Rapier3dWorldComponent } from '@gg-web-engine/rapier3d';
 
 const loading = LoadingScreen.show(); // the engine's loading screen, until hide() below
-const world = new Gg3dWorld({
+const world: TypedGg3dWorld<ThreeGgWorld, Rapier3dGgWorld> = new Gg3dWorld({
   visualScene: new ThreeSceneComponent(),
   physicsWorld: new Rapier3dWorldComponent(),
 });

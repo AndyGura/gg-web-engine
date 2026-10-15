@@ -1,0 +1,22 @@
+{
+  "name": "2d-platformer",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@gg-web-engine/core": "0.0.82",
+    "@gg-web-engine/mobile-controls": "0.0.82",
+    "@gg-web-engine/pixi": "0.0.82",
+    "@gg-web-engine/rapier2d": "0.0.82",
+    "rxjs": "7.8.2"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.3",
+    "vite": "^8.3.4"
+  }
+}

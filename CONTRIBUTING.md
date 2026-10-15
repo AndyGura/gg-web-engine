@@ -52,6 +52,7 @@ best-effort.
 | `packages/audio` | Web Audio API adapter. |
 | `packages/multiplayer` | Shared-world P2P multiplayer (network controller, WebRTC mesh transport, Firebase/BroadcastChannel signaling). Its in-process harness runs on all four physics adapters. |
 | `examples/` | Standalone demo apps, one directory per example under `examples/2d` and `examples/3d`. Each is an independent npm project so it stays cloneable into StackBlitz, and picks its physics backend at startup from a `?physics=` query parameter (its `backends.ts`), which is how the gallery page (`examples/index.html`) swaps backends in place. `examples/examples.json` is the registry the gallery, `build_examples.sh`/`deploy.sh` and the release script all read. |
+| `templates/` | Starter projects (`3d-character`, `2d-platformer`, `multiplayer-cars`) a user copies with `npx degit AndyGura/gg-web-engine/templates/<name> my-game`. Each is a standalone Vite + TypeScript project on one physics backend, pinned to the current engine version (the release script bumps it) and without a lockfile. |
 | `e2e/` | End-to-end test harnesses that need more than a package (currently the Blender export round-trip). |
 | `blender-addon/` | Blender extension that exports a scene as `.glb` + `.meta` for the 3D loader. Published alongside every engine release. |
 | `etc/` | Shell scripts: the release pipeline (`publish_new_version.sh`) and the example-linking helpers. |
@@ -86,7 +87,7 @@ version, so your core changes are exercised by every adapter's real test suite.
 npm install          # one-time: installs and links the packages/* workspace
 npm run build        # full build of every package, core first (includes non-TS asset copies)
 npm test             # jest suites of every package
-npm run lint:examples  # examples use @gg-web-engine/* APIs and packages only, on every physics backend
+npm run lint:examples  # examples and templates use @gg-web-engine/* APIs and packages only; examples on every physics backend
 npm run build:watch  # tsc -b --watch at the root — rebuilds core + adapters on every save
 ```
 
@@ -199,14 +200,16 @@ Conventions the review will check for:
   of its dimension (`examples.json`). `npm run lint:examples` checks all of this. If an example
   needs something core can't express,
   add the option to core and the adapters instead. A line that deliberately demonstrates native
-  interop can opt out with a trailing `// gg-allow-native` comment.
+  interop can opt out with a trailing `// gg-allow-native` comment. Starter templates under
+  `templates/` follow the same API and package rules (the lint checks them too), but each runs on
+  one physics backend by design.
 - Unit tests for new core or adapter logic, in the package that owns the behavior.
 
 ## Continuous integration
 
 | Workflow | Runs when | Does |
 |---|---|---|
-| `pull_request_build.yml` | every PR | `npm install`, `npm run build`, `npm test` at the root — every package, against the local core build — then `npm run lint:examples` and `npm run check:agents-md`. |
+| `pull_request_build.yml` | every PR | `npm install`, `npm run build`, `npm test` at the root — every package, against the local core build — then `npm run lint:examples`, a build of every starter template linked against the local packages, and `npm run check:agents-md`. |
 | `blender_export_e2e.yml` | PRs touching `blender-addon/`, `e2e/blender-export/`, `packages/core/src/3d/`, `packages/three/`, `packages/rapier3d/`; or manually | Installs Blender and runs the export round-trip test. |
 | `build_ammo.yml` | PRs touching `packages/ammo/build_gg_ammo/`; or manually | Rebuilds the vendored ammo.js binary from source and runs ammo's tests against it. On manual dispatch, commits the refreshed binary back to the branch. |
 | `release_action.yml` | every push to `main` | No-op unless the commit subject matches `[pre-release] [X.Y.Z]`; otherwise runs the full release described below. |
@@ -245,6 +248,9 @@ the add-on actually changed.
      against the *published* core (not the workspace symlink), and published them;
    - bumped `@gg-web-engine/*` versions in every example listed in `examples/examples.json`, and
      that file's `version` (the git tag the gallery's StackBlitz links open);
+   - bumped `@gg-web-engine/*` versions in every starter template under `templates/`, set its
+     `firebase`/`rxjs` pins to the engine packages' peer pins, and installed and built it against
+     the published packages;
    - regenerated `documentation/`, committed all of the above (the rolled changelog included) back to `main` as
      `X.Y.Z release`, tagged it `X.Y.Z`, and deployed the docs site plus the Blender extension
      repository to GitHub Pages.

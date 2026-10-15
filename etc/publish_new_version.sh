@@ -134,6 +134,52 @@ for pid in "${example_pids[@]}"; do
     exit 1
   fi
 done
+# starter templates pin the engine version too, plus the peer dependencies (firebase, rxjs) they
+# share with the engine packages, which follow the packages' own pins. They commit no lockfile: each
+# one is installed and built against the just-published packages as a check, then cleaned up again.
+sync_template_peer_pins() {
+  node - "$1" <<'NODE'
+const fs = require('fs');
+const file = process.argv[2];
+const text = fs.readFileSync(file, 'utf8');
+const deps = JSON.parse(text).dependencies ?? {};
+let out = text;
+for (const lib of fs.readdirSync('packages')) {
+  const peers = JSON.parse(fs.readFileSync(`packages/${lib}/package.json`, 'utf8')).peerDependencies ?? {};
+  for (const [name, version] of Object.entries(peers)) {
+    if (name.startsWith('@gg-web-engine/') || !(name in deps)) continue;
+    out = out.replace(new RegExp(`("${name.replace(/[/.]/g, '\\$&')}": )"[^"]*"`), `$1"${version}"`);
+  }
+}
+fs.writeFileSync(file, out);
+NODE
+}
+upgrade_template() {
+    sedi 's/"@gg-web-engine\/core": "[0-9.]*",/"@gg-web-engine\/core": "'$2'",/' $1package.json
+    for ix in ${!libs[*]}
+    do
+      sedi 's/"@gg-web-engine\/'${libs[$ix]}'": "[0-9.]*",/"@gg-web-engine\/'${libs[$ix]}'": "'$2'",/' $1package.json
+    done
+    sync_template_peer_pins $1package.json
+    pushd $1
+    rm -rf node_modules/ package-lock.json dist/
+    npm i
+    npm run build
+    rm -rf node_modules/ package-lock.json dist/
+    popd
+}
+template_pids=()
+for template in ./templates/*/
+do
+  upgrade_template $template $1 &
+  template_pids+=($!)
+done
+for pid in "${template_pids[@]}"; do
+  if ! wait $pid; then
+    echo "Error: A background process failed."
+    exit 1
+  fi
+done
 # the gallery's StackBlitz links open the examples at the release tag
 sedi 's/"version": "[0-9.]*",/"version": "'$1'",/' ./examples/examples.json
 

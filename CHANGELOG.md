@@ -29,6 +29,11 @@ where one exists.
 ## [Unreleased]
 
 ### Added
+- Starter templates under `templates/`: `3d-character` (Three.js + Rapier), `2d-platformer`
+  (Pixi.js + Rapier) and `multiplayer-cars` (peer-to-peer driving, Three.js + Rapier). Each is a
+  standalone Vite + TypeScript project with a level, controls and a camera wired, started with
+  `npx degit AndyGura/gg-web-engine/templates/<name> my-game`, and carries an `AGENTS.md` pointing
+  coding agents at the engine guide. The release script bumps their engine versions.
 - `@gg-web-engine/core` ships an `AGENTS.md` guide for AI coding agents (Cursor, Codex, Copilot,
   Claude Code, ...): after install it is at `node_modules/@gg-web-engine/core/AGENTS.md`. It is the
   `gg-engine-app-development` skill's text, regenerated from it by `npm run agents-md`.
