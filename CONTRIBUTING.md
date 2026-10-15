@@ -55,7 +55,7 @@ best-effort.
 | `templates/` | Starter projects (`3d-character`, `2d-platformer`, `multiplayer-cars`) a user copies with `npx degit AndyGura/gg-web-engine/templates/<name> my-game`. Each is a standalone Vite + TypeScript project on one physics backend, pinned to the current engine version (the release script bumps it) and without a lockfile. |
 | `e2e/` | End-to-end test harnesses that need more than a package (currently the Blender export round-trip). |
 | `blender-addon/` | Blender extension that exports a scene as `.glb` + `.meta` for the 3D loader. Published alongside every engine release. |
-| `etc/` | Shell scripts: the release pipeline (`publish_new_version.sh`) and the example-linking helpers. |
+| `etc/` | Scripts: the release pipeline (`publish_new_version.sh`), the bundle-size table (`bundle_sizes.mjs`), the AGENTS.md/llms.txt generator, the examples lint and the example-linking helpers. |
 | `documentation/` | **Generated** API docs (docs-ts + mkdocs), rebuilt by the release job. Never edit the output by hand; the inputs `generate.sh`, `mkdocs.yml` and `landing.md` (the site's home page) are hand-maintained. `generate.sh` also writes the site's `llms.txt`/`llms-full.txt` via `etc/generate_agent_docs.mjs --llms`, from the app-development skill, `landing.md` and the `player-character` examples. |
 | `.github/workflows/` | CI definitions (see [Continuous integration](#continuous-integration)). |
 | `.claude/skills/` | Per-task guides for AI coding agents. Also the most detailed written record of how each package works internally. |
@@ -212,7 +212,7 @@ Conventions the review will check for:
 
 | Workflow | Runs when | Does |
 |---|---|---|
-| `pull_request_build.yml` | every PR | `npm install`, `npm run build`, `npm test` at the root — every package, against the local core build — then `npm run lint:examples`, a build of every starter template linked against the local packages, and `npm run check:agents-md`. |
+| `pull_request_build.yml` | every PR | `npm install`, `npm run build`, `npm test` at the root — every package, against the local core build — then `npm run bundle-sizes` (gzipped package and template sizes, printed to the job summary), then `npm run lint:examples`, a build of every starter template linked against the local packages, and `npm run check:agents-md`. |
 | `blender_export_e2e.yml` | PRs touching `blender-addon/`, `e2e/blender-export/`, `packages/core/src/3d/`, `packages/three/`, `packages/rapier3d/`; or manually | Installs Blender and runs the export round-trip test. |
 | `build_ammo.yml` | PRs touching `packages/ammo/build_gg_ammo/`; or manually | Rebuilds the vendored ammo.js binary from source and runs ammo's tests against it. On manual dispatch, commits the refreshed binary back to the branch. |
 | `release_action.yml` | every push to `main` | No-op unless the commit subject matches `[pre-release] [X.Y.Z]`; otherwise runs the full release described below. |
@@ -254,6 +254,7 @@ the add-on actually changed.
    - bumped `@gg-web-engine/*` versions in every starter template under `templates/`, set its
      `firebase`/`rxjs` pins to the engine packages' peer pins, and installed and built it against
      the published packages;
+   - rewrote the bundle-size table in `README.md` (`npm run bundle-sizes -- --write`);
    - regenerated `documentation/`, committed all of the above (the rolled changelog included) back to `main` as
      `X.Y.Z release`, tagged it `X.Y.Z`, and deployed the docs site plus the Blender extension
      repository to GitHub Pages.

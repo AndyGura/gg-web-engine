@@ -85,10 +85,13 @@ BSD/GNU-portable — plain `grep`/`awk`, no `sed -i`).
 7. Rewrites the top-level `version` of `examples/examples.json` to the new version - the git tag the
    gallery's "Edit in StackBlitz" links open the examples at.
 
-After the script, the workflow also regenerates API docs (`documentation/` via `npm run
+After the script, the workflow rewrites the README's bundle-size table (`npm run bundle-sizes --
+--write`, i.e. `etc/bundle_sizes.mjs`: esbuild-minified, gzipped sizes of every package, the
+library it wraps and each starter template, between the `<!-- bundle-sizes:start/end -->` markers),
+regenerates API docs (`documentation/` via `npm run
 generate`; its home page is the hand-written `documentation/landing.md`, which `generate.sh` copies
 over docs-ts's empty stub together with the banner, then writes `llms.txt`/`llms-full.txt` into the
-site root with `node ../etc/generate_agent_docs.mjs --llms docs`), commits the version bump back to `main`, tags the release, and deploys
+site root with `node ../etc/generate_agent_docs.mjs --llms docs`), and commits the version bump back to `main`, tags the release, and deploys
 `documentation/site` to GitHub Pages.
 
 ## Known failure modes when a package is new to the release

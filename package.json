@@ -14,12 +14,14 @@
     "lint:examples": "node etc/check_examples_no_native.mjs",
     "agents-md": "node etc/generate_agent_docs.mjs",
     "check:agents-md": "node etc/generate_agent_docs.mjs --check",
+    "bundle-sizes": "node etc/bundle_sizes.mjs",
     "prettier-format": "npm run prettier-format --workspaces --if-present",
     "prettier-format:examples": "bash examples/prettier.sh"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
     "@types/node": "^26.4.0",
+    "esbuild": "0.28.2",
     "jest": "^30.5.0",
     "jest-environment-jsdom": "^30.5.0",
     "ts-jest": "^29.4.12",
