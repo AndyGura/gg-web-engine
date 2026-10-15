@@ -168,7 +168,9 @@ A change that alters behavior without updating them is incomplete.
 
 - **`CHANGELOG.md`** — add a line under `## [Unreleased]` for any user-visible change (new
   feature, behavior change, bug fix, dependency bump that affects consumers). Internal refactors
-  and doc-only changes don't need an entry.
+  and doc-only changes don't need an entry. A breaking change (see the versioning policy in the
+  README's "Project status") goes under "Changed" or "Removed" with a migration note saying what
+  app code has to change or what a game has to retune, and can only ship in a minor release.
 - **`milestones.md`** — if your change completes or advances a deliverable already listed there,
   update that bullet's status in place (with the date). Don't add new deliverables or milestones
   on your own initiative; that's the maintainer's call. Bug fixes don't belong there at all.
@@ -227,7 +229,9 @@ the add-on actually changed.
 
 ### Steps
 
-1. Make sure `main` is green and every change you want in the release is merged.
+1. Make sure `main` is green and every change you want in the release is merged. Pick the
+   version by the README's versioning policy: a minor bump (`0.1.x` to `0.2.0`) if `Unreleased`
+   lists any breaking change, a patch bump otherwise.
 2. Check `CHANGELOG.md` is in the shape the pipeline expects: exactly two `[Unreleased]` markers
    in the whole file (the `## [Unreleased]` heading and the `[Unreleased]: .../compare/<prev>...HEAD`
    link at the bottom), and the new version not mentioned anywhere yet. Don't roll the section

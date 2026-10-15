@@ -123,7 +123,9 @@ and one complete game per dimension), or start from the [llms.txt](llms.txt) ind
 
 ## Status
 
-The engine is experimental: versions are `0.0.N` and the API can change between releases. The
+Releases so far are `0.0.N`, and the API can change between any two of them. Starting with 0.1.0,
+breaking changes come only in a minor release (`0.1.x` to `0.2.0`), each listed in the CHANGELOG
+with a migration note; the README's "Project status" has the full versioning policy. The
 [README](https://github.com/AndyGura/gg-web-engine#readme) has an honest "when to use it, and when
 not to" comparison with Three.js, Babylon.js, Phaser and Godot.
 
