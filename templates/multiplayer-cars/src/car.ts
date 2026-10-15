@@ -32,7 +32,6 @@ export function carJson(name: string, position: Point3, rotation: Point4, color:
       wheelBase: {
         shared: {
           frictionSlip: 1.2,
-          rollInfluence: 0.2,
           display: { material: { color: 0x222222, shading: 'standart', castShadow: true }, wheelObjectDirection: 'z' },
         },
         front: { halfAxleWidth: 1, axlePosition: 1.4, axleHeight: 0.3, tyreRadius: 0.35, tyreWidth: 0.25 },

@@ -6,6 +6,7 @@ import {
   GgStatic,
   LoadingScreen,
   PlayerCharacterController,
+  Pnt3,
   Trigger3dEntity,
   TypedGg3dWorld,
 } from '@gg-web-engine/core';
@@ -73,5 +74,7 @@ createInlineTickController(world).subscribe(([_elapsed, _delta]) => {
   // e.g. put the player back if they somehow leave the arena
   if (player.position.z < -10) {
     player.position = spawnPoint;
+    player.fallVelocity = Pnt3.O;
+    player.airHorizontalVelocity = Pnt3.O;
   }
 });

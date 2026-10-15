@@ -632,13 +632,20 @@ AndyGura/gg-web-engine/templates/<name> my-game` (`3d-character`, `2d-platformer
   rapier adapters; the ammo `.d.ts` caveat in the TypeScript 6 section applies to `node` resolution).
 - **One physics backend, no `backends.ts`.** A template is a starting point, not a demo of backend
   switching; its README says how to swap. Not in `examples.json`, not in the gallery.
-- **No lockfile committed.** The release script (`etc/publish_new_version.sh`) only rewrites each
-  template's `@gg-web-engine/*` versions; the same trailing-comma rule as examples applies.
+- **No lockfile committed.** The release script (`etc/publish_new_version.sh`) rewrites each
+  template's `@gg-web-engine/*` versions (the same trailing-comma rule as examples applies) and its
+  `firebase`/`rxjs` pins to the engine packages' peer pins, then installs and builds it against the
+  just-published packages and deletes the install again.
 - **Dev console only in development**: `GgStatic` is touched only inside `if (import.meta.env.DEV)`,
   which Rollup drops from the production bundle.
 - **An `AGENTS.md` per template** pointing coding agents at the engine guide (the core package's
   `AGENTS.md`, `llms-full.txt`, and the `gg-engine-app-development` skill on GitHub).
 - Same API rules as examples: `npm run lint:examples` scans `templates/` too.
+- **PR CI builds every template against the PR's own packages** (`switch_example_to_local_gg.sh
+  templates/<name>/`, then `npm run build`), since the published version a template pins can't
+  show a break the PR introduces. Run the same two commands locally after changing a template or an
+  API one uses; `restore_example_from_local_gg.sh` and deleting `node_modules`, `dist` and the
+  lockfile undo it.
 
 Things that bit building them, worth knowing for any new template or example:
 

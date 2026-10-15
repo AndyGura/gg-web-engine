@@ -34,6 +34,15 @@ jobs:
       - name: Check examples use engine APIs only
         run: npm run lint:examples
 
+      # Starter templates pin the last published engine version; build each one against this PR's
+      # packages instead, so a change that breaks a template fails here, not after a release.
+      - name: Build starter templates against the local packages
+        run: |
+          for template in templates/*/; do
+            bash etc/switch_example_to_local_gg.sh "$template"
+            (cd "$template" && npm run build)
+          done
+
       # packages/core/AGENTS.md ships in the core tarball and is generated from the
       # gg-engine-app-development skill; a skill edit without a regenerated AGENTS.md fails here.
       - name: Check AGENTS.md matches the app-development skill

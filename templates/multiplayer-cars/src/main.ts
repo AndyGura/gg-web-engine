@@ -92,7 +92,8 @@ joined = true;
 // 8. Spawn this player's own car. A runtime spawn: it is serialized and rebuilt on every peer.
 //    Possessing it makes this peer drive it (its input and state win).
 const me = net.localPeerId;
-const car = (await world.loader.createEntity(carJson(`Car_${me}`, ...freeSpawnPoint(), colorOf(me)))) as GgCarEntity;
+const car = await world.loader.createEntity(carJson(`Car_${me}`, ...freeSpawnPoint(), colorOf(me)));
+if (!(car instanceof GgCarEntity)) throw new Error('The "GgCar" level class did not build a GgCarEntity');
 world.addEntity(car);
 net.possess(car);
 net.localPosition = () => car.position; // where this player is, for ownership of nearby props
@@ -101,19 +102,20 @@ net.localPosition = () => car.position; // where this player is, for ownership o
 const driving = new GgCarHandlingController(world.keyboardInput, car, {
   keymap: 'wasd+arrows',
   maxSteerDeltaPerSecond: 6,
-  gearUpDownKeys: ['KeyE', 'KeyQ'],
+  gearUpDownKeys: ['KeyE', 'KeyQ'], // manual shifting only; off below
   autoReverse: true,
   neutralGear: false,
   handbrakeKey: 'Space',
 });
-driving.switchingGearsEnabled = false; // automatic gearbox
+driving.switchingGearsEnabled = false; // automatic gearbox: E/Q do nothing until this is turned on
 world.addEntity(driving);
 followWithChaseCamera(renderer, car);
 
 // 10. When a player leaves the room, the peer that took over their car removes it.
 const despawnDepartedCars = () => {
   const present = new Set([me, ...net.peerInfos.map(p => p.peerId)]);
-  for (const entity of world.children) {
+  // a copy: despawning removes the car from world.children while the loop runs
+  for (const entity of [...world.children]) {
     if (!(entity instanceof GgCarEntity) || !entity.name.startsWith('Car_')) continue;
     const owner = entity.name.slice('Car_'.length);
     if (!present.has(owner) && net.isNetworked(entity) && net.isLocallyOwned(entity)) {

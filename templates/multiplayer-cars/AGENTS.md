@@ -5,9 +5,8 @@ This is a multiplayer browser game built on [gg-web-engine](https://github.com/A
 
 Before writing engine code, read the engine guide (the same text in each place):
 
-- `node_modules/@gg-web-engine/core/AGENTS.md`, shipped in the core package by engine releases newer
-  than 0.0.82;
-- https://andygura.github.io/gg-web-engine/llms-full.txt, published with those same releases;
+- `node_modules/@gg-web-engine/core/AGENTS.md`, shipped in the core package;
+- https://andygura.github.io/gg-web-engine/llms-full.txt, the same guide on the docs site;
 - always available: https://github.com/AndyGura/gg-web-engine/blob/main/.claude/skills/gg-engine-app-development/SKILL.md
 
 API reference: https://andygura.github.io/gg-web-engine/
