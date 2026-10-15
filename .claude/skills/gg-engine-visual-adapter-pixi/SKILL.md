@@ -1,6 +1,6 @@
 ---
 name: gg-engine-visual-adapter-pixi
-description: Known, already-solved implementation pitfalls specific to packages/pixi (the pixi.js v8 2D rendering adapter) - the hand-rolled cloneContainer/copyContainerState since Container has no clone(), stroked/tinted primitive representation, the background-color-resets-alpha quirk, TilingSprite parallax layers positioned per renderer, AnimatedSprite.update reading only ticker.deltaTime, decoding textures without the page-global Assets cache, prepare() via texture.initSource, Application.destroy() before init() resolves, and the jest situation (pixi.js can't be required under jest because of earcut; specs mock the module or use import type). Use when fixing or extending packages/pixi itself, not when building a new rendering adapter from scratch (see gg-engine-visual-adapter for the general contract every adapter implements).
+description: Known, already-solved implementation pitfalls specific to packages/pixi (the pixi.js v8 2D rendering adapter) - the hand-rolled cloneContainer/copyContainerState since Container has no clone(), stroked/tinted primitive representation, the background-color-resets-alpha quirk, TilingSprite parallax layers positioned per renderer, AnimatedSprite.update reading only ticker.deltaTime, decoding textures without the page-global Assets cache, prepare() via texture.initSource, Application.destroy() before init() resolves, scale relative to a sized sprite's built size, and the jest setup (a babel-jest transform loads the real ESM-only pixi.js; unit specs still mock it). Use when fixing or extending packages/pixi itself, not when building a new rendering adapter from scratch (see gg-engine-visual-adapter for the general contract every adapter implements).
 ---
 
 # packages/pixi implementation notes
@@ -40,7 +40,19 @@ subclass built itself). **A new kind of native object the package starts creatin
 `cloneContainer`**, which otherwise copies it as an empty `Container`.
 
 `addChild`/`removeChild` are `Container.addChild`/`removeChild`; `dispose()` is
-`destroy({ children: true })` so nested children go with the parent.
+`destroy({ children: true })` so nested children go with the parent. `name` is the native
+`Container.label` (copied by `copyContainerState`), and `popChild(name)` detaches the first child
+with that label and wraps it in a new `PixiDisplayObjectComponent`.
+
+## Scale and bounds
+
+An untextured `BOX` (a tinted `Texture.WHITE` sprite) and a textured `BOX`/`CIRCLE` get their size
+from the native sprite's `scale` (`sprite.width = ...` writes it). `PixiDisplayObjectComponent`
+records that native scale at construction as `baseScale` and reads/writes `scale` relative to it,
+so every primitive starts at `scale = { x: 1, y: 1 }` and `scale = { x: 2, y: 2 }` doubles it, as
+in three. `clone()` passes `baseScale` on, since the cloned native object already carries any scale
+the app set. `getBoundings()` is `Container.getBounds()` (world coordinates, scale and position
+included); `boundsArea` is only a user-set override and is usually `undefined`.
 
 ## Draw order, backdrops and parallax layers
 
@@ -85,8 +97,8 @@ container upload that attribute only on `update()`. `particleChildren` is filled
 - **The blend mode is the container's `blendMode`** (`'normal'`/`'add'`/`'multiply'`), which is why
   core's 2D option type is limited to those three - `subtract` and the other advanced modes need
   pixi's optional advanced-blend-modes import and a filter pass.
-- **`ParticleContainer` has no children and computes no bounds**; `getBoundings` reports the
-  (unset) `boundsArea`. It is not covered by `cloneContainer` - the component overrides `clone()`
+- **`ParticleContainer` has no children and computes no bounds**; `getBoundings`
+  (`Container.getBounds()`) reports its `boundsArea`, empty unless set, in world coordinates. It is not covered by `cloneContainer` - the component overrides `clone()`
   to build a fresh system from its options.
 - A spec mocks `pixi.js` with a fake `ParticleContainer`/`Texture`/`Rectangle` (plus the empty
   classes `clone-container.ts` imports), see `test/components/pixi-particle-system.component.spec.ts`.
@@ -140,28 +152,26 @@ dispose)` calls it when `dispose` is `true`.
 "auto-include everything under `node_modules/@types`" default, so leaving it out silently breaks
 that ambient type.
 
-**A spec that imports a real value from `'pixi.js'` fails to run at all.** `pixi.js`'s own
-`lib/utils/utils.js` transitively pulls in `earcut` (a pure-ESM package, no CJS build) through its
-rendering internals, and jest evaluates the entire module graph a `require`d file pulls in, not just
-the named export used - so even a spec needing a trivial `Container`/`Graphics` for a fake pays the
-whole chain and dies with `Must use import to load ES Module: .../node_modules/earcut/src/earcut.js`.
-The fix would be the same `babel-jest` transform `packages/three` uses for its ESM-only library
-(see `gg-engine-visual-adapter-three`), carved out for the offending `node_modules` path and paired
-with `transformIgnorePatterns`; it is not applied to this package's `jest` config yet. Until it is:
+**The real `pixi.js` loads under jest through a `babel-jest` transform.** `pixi.js` and several of
+its dependencies (`earcut`, `@pixi/colord`, `tiny-lru`, ...) are ESM-only, which jest's CommonJS
+runtime can't `require` from `node_modules` (`Must use import to load ES Module: .../earcut.js`).
+`babel.config.js` (`@babel/plugin-transform-modules-commonjs`), a `"/node_modules/.+\\.m?js$":
+"babel-jest"` transform and a `transformIgnorePatterns` carve-out listing those packages convert them
+for the test run only, the same approach `packages/three` uses (see `gg-engine-visual-adapter-three`
+for the `@babel/*` pins; pixi uses the same ranges). A pixi.js dependency that turns ESM-only in a
+version bump fails with that same message naming it: add it to the carve-out. Transforming pixi.js
+costs ~20 s on the first run (jest caches it afterwards). jsdom has no canvas backend and logs a
+"Not implemented: getContext" error whenever pixi.js probes for one, so `test/jest-setup.ts` stubs
+`HTMLCanvasElement.prototype.getContext` to return `null`; nothing in the suite draws.
 
-- A test that only needs a pixi.js *type* (`Container`, `Graphics`, `Sprite`, ...) uses a plain fake
-  object cast to it (`{} as unknown as Container`, or richer as needed) and imports the type with
-  `import type`, which is elided at compile time and adds no runtime `require('pixi.js')` -
-  `test/components/pixi-display-object.component.spec.ts` is the pattern.
-- A component that constructs a pixi.js object itself (`PixiParallaxLayerComponent`'s
-  `new TilingSprite(...)`) is tested by replacing the module with
-  `jest.mock('pixi.js', () => ({ TilingSprite: FakeTilingSprite }))` at the top of the spec - a
-  factory mock never loads the real module (`test/components/pixi-parallax-layer.component.spec.ts`,
-  `test/pixi-factory-textures.spec.ts`). The mock has to export every name the file under test
-  imports at module level, as empty classes if nothing else.
-- A test that genuinely needs pixi.js's real behavior (a real `Graphics` draw call, a real `Sprite`
-  texture) has no workaround yet; verify such behavior in `examples/2d/primitives` or by rendering in
-  headless Chromium instead.
+`test/contract/pixi-contract.spec.ts` runs the shared 2D visual contract (see
+`gg-engine-visual-adapter`) against the real `PixiFactory`. The unit specs under `test/components/`
+still replace `pixi.js` with small stand-ins (`jest.mock('pixi.js', () => ({ ... }))`, or a plain
+fake object cast to a type imported with `import type`), because they assert exactly what a
+component writes to its native object. A stand-in needs every field the code under test reads -
+`PixiDisplayObjectComponent`'s constructor reads `scale`, so every fake container has
+`scale: { x: 1, y: 1 }`. Anything that needs a real draw call is verified in
+`examples/2d/primitives` or by rendering in headless Chromium.
 
 ## Keep this skill current
 

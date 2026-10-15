@@ -27,13 +27,22 @@ export class PixiDisplayObjectComponent
    */
   public readonly materialOptions?: DisplayObject2dOpts<Texture>;
 
+  /**
+   * The native scale the object was built with: a sized sprite (a plain or textured `BOX`, a
+   * textured `CIRCLE`) gets its size from its native scale. `scale` is relative to it, so
+   * `scale = { x: 1, y: 1 }` is always the size the object was created at.
+   */
+  protected readonly baseScale: Point2;
+
   constructor(
     public nativeSprite: Container,
     materialOptions?: DisplayObject2dOpts<Texture>,
+    baseScale?: Point2,
   ) {
     if (materialOptions) {
       this.materialOptions = materialOptions;
     }
+    this.baseScale = baseScale ?? Pnt2.clone(nativeSprite.scale);
   }
 
   public get position(): Point2 {
@@ -54,12 +63,12 @@ export class PixiDisplayObjectComponent
   }
 
   public get scale(): Point2 {
-    return Pnt2.clone(this.nativeSprite.scale);
+    return { x: this.nativeSprite.scale.x / this.baseScale.x, y: this.nativeSprite.scale.y / this.baseScale.y };
   }
 
   public set scale(value: Point2) {
-    this.nativeSprite.scale.x = value.x;
-    this.nativeSprite.scale.y = value.y;
+    this.nativeSprite.scale.x = value.x * this.baseScale.x;
+    this.nativeSprite.scale.y = value.y * this.baseScale.y;
   }
 
   public get visible(): boolean {
@@ -94,7 +103,13 @@ export class PixiDisplayObjectComponent
     this.nativeSprite.alpha = value;
   }
 
-  public name: string = '';
+  public get name(): string {
+    return this.nativeSprite.label ?? '';
+  }
+
+  public set name(value: string) {
+    this.nativeSprite.label = value;
+  }
 
   public addChild(child: PixiDisplayObjectComponent): void {
     // `Container.addChild` already detaches the child from any previous parent
@@ -112,19 +127,25 @@ export class PixiDisplayObjectComponent
   }
 
   popChild(name: string): PixiDisplayObjectComponent | null {
-    return null;
+    const child = this.nativeSprite.children.find(c => c.label === name);
+    if (!child) {
+      return null;
+    }
+    this.nativeSprite.removeChild(child);
+    return new PixiDisplayObjectComponent(child);
   }
 
+  /** Bounds in world (stage) coordinates, like the 3D adapters' `getBoundings`. */
   getBoundings(): GgBox2d {
-    const bounds = this.nativeSprite.boundsArea;
+    const bounds = this.nativeSprite.getBounds();
     return {
-      min: { x: bounds.x, y: bounds.y },
-      max: { x: bounds.x + bounds.width, y: bounds.y + bounds.height },
+      min: { x: bounds.minX, y: bounds.minY },
+      max: { x: bounds.maxX, y: bounds.maxY },
     };
   }
 
   clone(): PixiDisplayObjectComponent {
-    return new PixiDisplayObjectComponent(cloneContainer(this.nativeSprite), this.materialOptions);
+    return new PixiDisplayObjectComponent(cloneContainer(this.nativeSprite), this.materialOptions, this.baseScale);
   }
 
   addToWorld(world: PixiGgWorld): void {

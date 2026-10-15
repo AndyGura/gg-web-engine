@@ -37,11 +37,12 @@ export class Rapier2dFactory implements IPhysicsBody2dComponentFactory<Rapier2dP
       rotation?: number;
     },
   ): Rapier2dRigidBodyComponent {
+    const colliderDescr = this.createColliderDescr(descriptor.shape);
     return new Rapier2dRigidBodyComponent(
       this.world,
-      this.createColliderDescr(descriptor.shape),
+      colliderDescr,
       descriptor.shape,
-      this.createRigidBodyDescr(descriptor.body, transform),
+      this.createRigidBodyDescr(descriptor.body, transform, colliderDescr),
       {
         friction: 0.5,
         restitution: 0.1,
@@ -165,6 +166,7 @@ export class Rapier2dFactory implements IPhysicsBody2dComponentFactory<Rapier2dP
   public createRigidBodyDescr(
     options: Partial<Body2DOptions>,
     transform?: { position?: Point2; rotation?: number },
+    colliderDescr: ColliderDesc[] = [],
   ): RigidBodyDesc {
     const pos = transform?.position || Pnt2.O;
     const rot = transform?.rotation || 0;
@@ -178,7 +180,13 @@ export class Rapier2dFactory implements IPhysicsBody2dComponentFactory<Rapier2dP
       bodyDesc = RigidBodyDesc.kinematicVelocityBased();
     } else {
       bodyDesc = RigidBodyDesc.dynamic();
-      bodyDesc.mass = options.mass || 1;
+      // Mass goes on the collider(s), not `RigidBodyDesc.mass`: that field is extra mass added on
+      // top of what the colliders derive from their area at density 1 (a 20 px circle alone weighs
+      // ~1257 then), and it adds no rotational inertia. `ColliderDesc.setMass` makes the body weigh
+      // exactly `mass`, with inertia derived from the shape at that mass. Split evenly across the
+      // sub-colliders of a `COMPOUND` shape so the total is `mass`.
+      const mass = options.mass || 1;
+      colliderDescr.forEach(c => c.setMass(mass / colliderDescr.length));
       // Only a dynamic body can tunnel through geometry it crosses within a single step - see
       // `BodyOptions.ccd`'s own doc.
       bodyDesc.setCcdEnabled(!!options.ccd);

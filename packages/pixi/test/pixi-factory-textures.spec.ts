@@ -1,5 +1,5 @@
-// Replaces pixi.js with stand-ins for what the texture methods touch - this package's jest setup
-// can't load the real pixi.js runtime (see components/pixi-display-object.component.spec.ts).
+// Replaces pixi.js with stand-ins for what the texture methods touch, so loading and decoding can be
+// observed without a network or a GPU (the real runtime does load under jest, see test/contract).
 jest.mock('pixi.js', () => {
   class ImageSource {
     scaleMode = 'linear';
@@ -12,7 +12,9 @@ jest.mock('pixi.js', () => {
       this.source = options.source;
     }
   }
-  class Stub {}
+  class Stub {
+    scale = { x: 1, y: 1 };
+  }
   return {
     ImageSource,
     Texture,

@@ -2,7 +2,7 @@ import { AnimatedSprite, Container, Graphics, Sprite, Text } from 'pixi.js';
 
 /**
  * Copies everything a display object component exposes (transform, visibility, z-index, tint,
- * opacity) from `source` to `target`, and gives `target` its own deep copy of each of `source`'s
+ * opacity, name) from `source` to `target`, and gives `target` its own deep copy of each of `source`'s
  * children.
  */
 export function copyContainerState(source: Container, target: Container): void {
@@ -15,6 +15,7 @@ export function copyContainerState(source: Container, target: Container): void {
   target.zIndex = source.zIndex;
   target.tint = source.tint;
   target.alpha = source.alpha;
+  target.label = source.label;
   for (const child of source.children) {
     target.addChild(cloneContainer(child));
   }

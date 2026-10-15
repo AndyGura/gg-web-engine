@@ -1,5 +1,5 @@
-// Replaces pixi.js with a minimal TilingSprite stand-in - this package's jest setup can't load the
-// real pixi.js runtime (see pixi-display-object.component.spec.ts).
+// Replaces pixi.js with a minimal TilingSprite stand-in, so the test sees exactly what the layer
+// writes to it (the real runtime does load under jest, see test/contract).
 jest.mock('pixi.js', () => {
   const point = () => ({
     x: 0,
@@ -14,6 +14,7 @@ jest.mock('pixi.js', () => {
     position = point();
     tilePosition = point();
     tileScale = point();
+    scale = { x: 1, y: 1 };
     width = 0;
     height = 0;
     zIndex = 0;

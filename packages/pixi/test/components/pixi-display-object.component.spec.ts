@@ -1,5 +1,5 @@
-// Replaces pixi.js with minimal stand-ins - this package's jest setup can't currently load the real
-// pixi.js runtime (its own ESM dependency chain, e.g. `earcut`, fails under ts-jest/CommonJS here).
+// Replaces pixi.js with minimal stand-ins, so the test sees exactly what the component writes to
+// them (the real runtime does load under jest, see test/contract).
 jest.mock('pixi.js', () => {
   class Point {
     x = 0;
@@ -72,10 +72,8 @@ import { AnimatedSprite, Container, Graphics, Sprite } from 'pixi.js';
 import { PixiDisplayObjectComponent } from '../../src/components/pixi-display-object.component';
 import { PixiAnimatedSpriteComponent } from '../../src/components/pixi-animated-sprite.component';
 
-// A minimal stand-in for a real pixi.js `Container` (`Graphics`/`Sprite`/...) - avoids importing
-// the real pixi.js runtime, which this package's jest setup can't currently load (its own ESM
-// dependency chain, e.g. `earcut`, fails under ts-jest/CommonJS here).
-const fakeContainer = () => ({}) as unknown as Container;
+// A minimal stand-in for a real pixi.js `Container` (`Graphics`/`Sprite`/...).
+const fakeContainer = () => ({ scale: { x: 1, y: 1 } }) as unknown as Container;
 
 describe('PixiDisplayObjectComponent', () => {
   describe('materialOptions (IMaterialReadable2dComponent)', () => {
@@ -95,7 +93,7 @@ describe('PixiDisplayObjectComponent', () => {
 
   describe('tint and opacity', () => {
     it('map to the native tint and alpha', () => {
-      const native = { tint: 0xffffff, alpha: 1 } as unknown as Container;
+      const native = { tint: 0xffffff, alpha: 1, scale: { x: 1, y: 1 } } as unknown as Container;
       const component = new PixiDisplayObjectComponent(native);
 
       component.tint = 0x336699;
@@ -112,6 +110,7 @@ describe('PixiDisplayObjectComponent', () => {
     // just enough of a Container's child bookkeeping to observe what the component does
     const fakeParentContainer = () => {
       const container: any = {
+        scale: { x: 1, y: 1 },
         children: [] as any[],
         addChild(child: any) {
           child.parent?.removeChild(child);

@@ -650,8 +650,33 @@ Copy `packages/rapier2d/package.json` or `packages/matter/package.json` as a tem
 
 Unlike rendering adapters, physics adapters in this repo **do** get jest test suites, because the
 logic (shape/body-option mapping, collision groups, gravity, triggers) is meaningfully testable
-against the real native engine headlessly. Mirror `packages/rapier2d/test/components/` or
-`packages/matter/test/components/`:
+against the real native engine headlessly.
+
+**Every physics adapter runs the shared contract suite.** `packages/core/test/contract/
+physics-3d.contract.ts` and `physics-2d.contract.ts` export `describePhysics3dContract` /
+`describePhysics2dContract`; an adapter calls one from `test/contract/<lib>-contract.spec.ts`:
+
+```ts
+import { describePhysics3dContract } from '../../../core/test/contract/physics-3d.contract';
+import { JoltWorldComponent } from '../../src';
+
+describePhysics3dContract('jolt', () => new JoltWorldComponent(), { unsupportedShapes: ['PLANE'] });
+```
+
+It checks the API contract every adapter of that dimension shares: default gravity (−Z in 3D, +Y
+in 2D, about 9.8 m/s²), `simulate()` in milliseconds, lengths in meters (3D) or pixels at 100 per
+meter (2D), velocity, impulse, force and torque units, every shape, `children`/`added$`/`removed$`,
+collision events and groups, triggers (polled with `checkOverlaps()` every step, as
+`Trigger(2d|3d)Entity` does), raycasts, sleep/wake, clone, and the character controller's axes,
+grounding and wall blocking. It never compares trajectories between backends, so its tolerances are
+wide. A shape the native engine can't build goes in `unsupportedShapes`, and the suite then requires
+creating it to throw; list the same gap in the README FAQ. When a contract test fails, fix the
+adapter (or, if the contract itself is wrong for every backend, the suite) - never loosen a
+tolerance to let one backend through. The suite lives under `core/test`, which is not published, and
+reaches core through the adapter's own `moduleNameMapper`, so nothing else is needed to wire it.
+
+Beyond the contract, mirror `packages/rapier2d/test/components/` or
+`packages/matter/test/components/` for adapter-specific behavior:
 
 - `<lib>-world.component.spec.ts` — init, simulate, gravity get/set, collision group
   register/deregister/exhaustion.

@@ -116,6 +116,9 @@ export class Rapier2dWorldComponent implements IPhysicsWorld2dComponent<Rapier2d
     await init();
     this._eventQueue = new EventQueue(true);
     this._nativeWorld = new World(new Vector2(this._gravity.x, this._gravity.y));
+    // Rapier's tolerances and its speed limit (400 lengthUnits per second) assume meters unless told
+    // the length unit; this world works in pixels, so without this every body is capped at 400 px/s.
+    this._nativeWorld.integrationParameters.lengthUnit = this.unitScale;
     this._factory = new Rapier2dFactory(this);
   }
 
