@@ -252,9 +252,9 @@ The rest of the game stays single-player code. What you get:
 - **Testable**: an in-process loopback transport with simulated latency, jitter and packet loss, plus
   `net_*` console commands for live inspection.
 
-Try it: open the [Coin run](https://gg-web-demos.guraklgames.com/?example=2d/coin-run)
-(2D) or [Fly city](https://gg-web-demos.guraklgames.com/?example=3d/fly-city) (3D) demo
-and share the room link.
+Try it: open the [Car race](https://gg-web-demos.guraklgames.com/?example=3d/car-race) (3D) or
+[Coin run](https://gg-web-demos.guraklgames.com/?example=2d/coin-run) (2D) demo and share the room
+link.
 
 ## 🧭 When to use it, and when not to
 
@@ -352,6 +352,7 @@ click; the source lives under
 
 | Demo | Shows |
 |---|---|
+| [Car race](https://gg-web-demos.guraklgames.com/?example=3d/car-race) | A complete multiplayer racing game: share the link, race three laps |
 | [Fly city](https://gg-web-demos.guraklgames.com/?example=3d/fly-city) | Driving through a streamed city: cars, map graph, audio, multiplayer |
 | [Coin run](https://gg-web-demos.guraklgames.com/?example=2d/coin-run) | 2D multiplayer platformer rounds |
 | [Portal room](https://gg-web-demos.guraklgames.com/?example=3d/portal-room&physics=rapier3d) | First-person character, grabbable props, positional sound |

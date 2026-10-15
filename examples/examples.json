@@ -75,6 +75,13 @@
       "entryFile": "src/app/app.component.ts"
     },
     {
+      "dir": "3d/car-race",
+      "title": "Car race",
+      "description": "A three-lap multiplayer race on a walled track: countdown on the grid, checkpoints, lap times and results. The page URL is the invite link; alone, press Enter for a time trial.",
+      "visual": ["three"],
+      "physics": ["rapier3d", "ammo"]
+    },
+    {
       "dir": "2d/primitives",
       "title": "Primitives",
       "description": "A level built from JSON: primitive shapes rain onto a floor.",

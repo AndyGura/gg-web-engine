@@ -30,6 +30,10 @@ where one exists.
 ## [Unreleased]
 
 ### Added
+- Examples: a car race demo (`examples/3d/car-race`), a complete serverless multiplayer game on
+  Rapier or Ammo. Everyone who opens the room link races on one shared track: a countdown on the
+  grid, three laps through every checkpoint in order, lap times and results, then the next race.
+  Alone, Enter starts a time trial.
 - Starter templates under `templates/`: `3d-character` (Three.js + Rapier), `2d-platformer`
   (Pixi.js + Rapier) and `multiplayer-cars` (peer-to-peer driving, Three.js + Rapier). Each is a
   standalone Vite + TypeScript project with a level, controls and a camera wired, started with
