@@ -3,9 +3,10 @@
 All notable changes to GG-Web-Engine are recorded here. Every `@gg-web-engine/*` package ships
 together at the version listed, so one section covers `core` and every adapter.
 
-The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versioning is
-`0.0.N` for now: the engine is experimental and the public API can change between any two
-releases (see the README's "Project status").
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). In the `0.0.N`
+releases the public API could change between any two versions. From 0.1.0 on, the README's
+versioning policy ("Project status") applies: breaking changes come only in a minor release, and
+each one is listed under "Changed" or "Removed" with a migration note.
 
 How this file is maintained:
 

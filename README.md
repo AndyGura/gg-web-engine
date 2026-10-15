@@ -645,8 +645,23 @@ Add this meta tag to your `<head>`:
 
 ## 🚧 Project status
 
-The engine is **experimental**: versions are `0.0.N` and the public API can change between any two
-releases. It began as the foundation of [The Need For Speed Web](https://tnfsw.guraklgames.com/),
+The engine is young and still changing. Releases so far are `0.0.N`, and the public API can change
+between any two of them. Starting with **0.1.0**, releases follow this versioning policy:
+
+- **Breaking changes come only in a minor release** (`0.1.x` to `0.2.0`). A patch release (`0.1.0` to
+  `0.1.1`) only fixes bugs and adds backwards-compatible API, so `^0.1.0` in `package.json` takes
+  only safe updates.
+- **Every breaking change is listed in [`CHANGELOG.md`](CHANGELOG.md) with a migration note**: what
+  to change in app code, or what to retune.
+- **A change in how a physics backend simulates** (sleep thresholds, contact tuning, solver
+  settings) that a game would have to retune counts as breaking.
+- **The public API is what the packages export and document.** The dev console (`GgStatic`) and the
+  wrapped libraries' native objects (`nativeWorld`, `nativeBody` and the like) are outside it: a
+  library upgrade is listed in the CHANGELOG, but its own API changes are that library's.
+- **All `@gg-web-engine/*` packages share one version.** Upgrade them together; each adapter requires
+  the exact core version it was released with.
+
+The engine began as the foundation of [The Need For Speed Web](https://tnfsw.guraklgames.com/),
 where the physics backend was swapped more than once - which is where the library-agnostic
 architecture comes from.
 

@@ -16,6 +16,16 @@ A push to `main` whose latest commit message matches `^\[pre-release\] \[X\.Y\.Z
 (`PRE_RELEASE=false`) — it's a no-op, not a failure. So "cutting a release" in practice means
 landing a commit on `main` with that exact message prefix and the target version.
 
+## Choosing the version number
+
+The README's "Project status" holds the versioning policy, in force from 0.1.0: breaking changes
+come only in a minor release (`0.1.x` to `0.2.0`), and a patch release only fixes bugs and adds
+backwards-compatible API. Breaking includes a physics-backend simulation change a game would have
+to retune; the dev console and the wrapped libraries' native objects are outside the public API.
+So before picking `X.Y.Z`, read `Unreleased` in `CHANGELOG.md`: any breaking entry means a minor
+bump, and every breaking entry needs a migration note (add it before the trigger commit if one is
+missing).
+
 ## `CHANGELOG.md` is rolled by the pipeline, not by hand
 
 The root `CHANGELOG.md` (Keep-a-Changelog format) has an `## [Unreleased]` section that every PR
