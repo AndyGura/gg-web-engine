@@ -70,6 +70,10 @@ where one exists.
   `@gg-web-engine/audio` scenes add `getEffectiveBusVolume(bus)`, and the dev console has
   `audio_bus_parent`. `setBusParent`/`getBusParent` are required members of
   `IAudioSceneComponent`, so a third-party audio adapter has to add them.
+- Blender exporter add-on 1.1.0: options to leave vertex data and lights out of the `.glb`
+  (normals, tangents, UVs, vertex colors, lights), in the export panel, as `export_glb_meta`
+  keyword arguments and as `export_cli.py` flags (`--no-normals`, `--no-tangents`,
+  `--no-texcoords`, `--vertex-color`, `--no-lights`). The defaults export what it always did.
 
 ### Fixed
 - `rapier2d`: bodies were capped at 400 px/s (4 m/s). Rapier's speed limit and tolerances scale

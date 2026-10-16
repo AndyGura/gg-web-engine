@@ -40,7 +40,9 @@ Re-run `export-fixture` any time `fixture/build_scene.py` or the add-on's `expor
 
 - **The exporter** (`blender-addon/gg_web_engine_exporter/exporter.py`, invoked here the same way
   `blender-addon/scripts/export_cli.py` invokes it for real CI/pipeline use) - does it produce a
-  `.glb`/`.meta` pair with the shapes/content `build_scene.py` put into the scene.
+  `.glb`/`.meta` pair with the shapes/content `build_scene.py` put into the scene, and do
+  `export_glb_meta`'s vertex-attribute/light options reach Blender's glTF exporter (a second,
+  stripped-down export the spec only parses, not loads).
 - **The loader** (`Gg3dLoader.loadGgGlb`, `packages/core/src/3d/loader.ts`) - does it correctly
   fetch, combine, and hand off that pair to the visual and physics adapters.
 - **The three.js adapter** (`@gg-web-engine/three`'s `ThreeLoader`) - does the mesh/light end up as

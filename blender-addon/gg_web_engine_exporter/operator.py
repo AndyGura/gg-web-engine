@@ -47,11 +47,53 @@ class GG_OT_export_scene(Operator, ExportHelper):
         default="",
     )
 
+    # Vertex data / content switches - see exporter.export_glb_meta's docstring. Defaults
+    # match export_glb_meta's (and export_cli.py's).
+    export_texcoords: BoolProperty(
+        name="UVs",
+        description="Write texture coordinates (UV maps)",
+        default=True,
+    )
+    export_normals: BoolProperty(
+        name="Normals",
+        description="Write vertex normals. Unchecked also drops tangents and stops splitting "
+        "vertices by normal (fewer vertices) - for meshes rendered unlit",
+        default=True,
+    )
+    export_tangents: BoolProperty(
+        name="Tangents",
+        description="Write vertex tangents (needed by normal maps; requires Normals, UVs and a UV map)",
+        default=True,
+    )
+    export_vertex_color: EnumProperty(
+        name="Vertex Colors",
+        description="Which color attributes to write as COLOR_n",
+        items=[
+            ("MATERIAL", "Material", "The glTF exporter's default: colors the materials use"),
+            ("ACTIVE", "Active", "The active color attribute"),
+            ("NONE", "None", "No vertex colors"),
+        ],
+        default="MATERIAL",
+    )
+    export_lights: BoolProperty(
+        name="Lights",
+        description="Write lights (KHR_lights_punctual)",
+        default=True,
+    )
+
     def draw(self, context):
         layout = self.layout
         layout.prop(self, "export_format")
         layout.prop(self, "export_materials")
         layout.prop(self, "export_copyright")
+        col = layout.column(heading="Include")
+        col.prop(self, "export_texcoords")
+        col.prop(self, "export_normals")
+        sub = col.column()
+        sub.active = self.export_normals and self.export_texcoords
+        sub.prop(self, "export_tangents")
+        col.prop(self, "export_lights")
+        layout.prop(self, "export_vertex_color")
 
     def execute(self, context):
         filepath = os.path.splitext(self.filepath)[0]
@@ -61,6 +103,11 @@ class GG_OT_export_scene(Operator, ExportHelper):
                     filepath,
                     export_materials=self.export_materials,
                     copyright=self.export_copyright,
+                    export_texcoords=self.export_texcoords,
+                    export_normals=self.export_normals,
+                    export_tangents=self.export_tangents,
+                    export_vertex_color=self.export_vertex_color,
+                    export_lights=self.export_lights,
                 )
             else:
                 raise NotImplementedError(f"Unknown export format {self.export_format}")

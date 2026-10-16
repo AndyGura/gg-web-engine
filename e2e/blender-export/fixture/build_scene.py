@@ -7,7 +7,11 @@ Usage:
 
 Writes `<output-path>.glb` + `<output-path>.meta`, read back by
 `../app/test/export-load.e2e.spec.ts` via a real @gg-web-engine/core +
-@gg-web-engine/three + @gg-web-engine/rapier3d app. Keep the object names/values
+@gg-web-engine/three + @gg-web-engine/rapier3d app. Also writes the same scene
+as `<output-path>_stripped.glb` + `.meta` with every optional vertex attribute
+and the lights switched off, which the spec only parses (glTF JSON chunk and
+`.meta`) - it checks that `export_glb_meta`'s options reach Blender's glTF
+exporter on the Blender version CI runs. Keep the object names/values
 below and the expectations in that spec file in sync - neither reads the other.
 
 Covers:
@@ -121,6 +125,14 @@ def main():
     build_scene()
     exporter.export_glb_meta(out_path, export_materials=True)
     print(f"Exported fixture to {out_path}.glb / {out_path}.meta")
+    exporter.export_glb_meta(
+        out_path + "_stripped",
+        export_normals=False,
+        export_texcoords=False,
+        export_vertex_color="NONE",
+        export_lights=False,
+    )
+    print(f"Exported fixture to {out_path}_stripped.glb / {out_path}_stripped.meta")
 
 
 if __name__ == "__main__":
