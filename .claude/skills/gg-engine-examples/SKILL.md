@@ -481,12 +481,26 @@ reproduces for a real user, not through either the emulate-hook path or a direct
 gameplay API, as a real-browser-event-plumbing issue to reason through from source rather than one
 you can confirm live from this tool.
 
+### Headless Playwright playtests
+
+Playwright from this environment (`page.keyboard`, Chromium with `--use-gl=swiftshader
+--enable-unsafe-swiftshader`) does deliver real key events to the page, unlike the background
+automation tab above, so a game can be played with real input. Swiftshader runs at about 7-20 fps,
+though, and a platforming route driven in real time from Node misses jumps (the press lands after
+the character has left the ledge). For a route that has to be exact, freeze the world with the dev
+console (`timescale 0`) and advance it with `step 16` between key presses: deterministic and still
+the real input path. In an app built on `ScreenManager`, a new game screen brings a new world while
+the console keeps the disposed one selected; re-select it with `worlds` / `world NAME` before any
+per-world command.
+
 ## Formatting
 
 `bash examples/prettier.sh` (`npm run prettier-format:examples` at the root) formats every example
 listed in `examples.json` - `.ts`, `.js`, `.mjs`, `.json`, `.html`, `.css`, minus `node_modules`,
 `dist` and lockfiles - with the root `.prettierrc`; `--check` only reports. Run it before committing
-an example change; the package-side `npm run prettier-format` never touches `examples/`.
+an example change; the package-side `npm run prettier-format` never touches `examples/`. The script
+reads its directory list from `examples.json`, so a new example is skipped until it has its entry
+there: register it first, then format.
 
 ## Writing the demo itself
 

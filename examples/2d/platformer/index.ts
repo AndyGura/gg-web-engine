@@ -1,0 +1,25 @@
+import { GgStatic, ScreenManager } from '@gg-web-engine/core';
+import { MenuScreen } from './menu.screen';
+
+// A small but complete platformer: title screen → game → pause / win / game over → again.
+//   menu.screen.ts   - the title screen (DOM only)
+//   game.screen.ts   - the game: the world, the level, the rules (lives, coins, checkpoints, goal)
+//   pause.screen.ts  - pushed over the game, which the manager pauses meanwhile
+//   result.screen.ts - "You win!" / "Game over", pushed over the game when it ends
+//   level.ts         - the level as JSON data; entities.ts - its coins, spikes, slimes and flags
+//   art.ts           - the textures, drawn on canvases at startup (no image files)
+
+// A debugging aid for the demo only (press ` for the console): nothing below depends on it.
+GgStatic.instance.devConsoleEnabled = true;
+
+// One manager for the app. It adds a full-viewport container to the page; every screen pushed to
+// it gets a layer of its own in there.
+const screens = new ScreenManager({
+  // The game replaces the menu (clearHistory): if its loading fails there is nothing left to show,
+  // so the menu comes back with the error instead of an empty page.
+  onEnterError: error => {
+    console.error(error);
+    return new MenuScreen(`Could not start the game: ${error instanceof Error ? error.message : error}`);
+  },
+});
+screens.push(new MenuScreen());

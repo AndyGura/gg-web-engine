@@ -30,6 +30,11 @@ where one exists.
 ## [Unreleased]
 
 ### Added
+- Examples: two small complete single-player games built on the screens API, each with a title
+  screen, pause, a win screen, game over, three lives, checkpoints and particle effects.
+  `examples/3d/tower-climb` is a third-person climb up floating pads to light a beacon (Ammo or
+  Rapier); `examples/2d/platformer` is a side-scrolling run past spikes, pits and slimes to a goal
+  flag (Rapier or Matter).
 - Examples: a car race demo (`examples/3d/car-race`), a complete serverless multiplayer game on
   Rapier or Ammo. Everyone who opens the room link races on one shared track: a countdown on the
   grid, three laps through every checkpoint in order, lap times and results, then the next race.

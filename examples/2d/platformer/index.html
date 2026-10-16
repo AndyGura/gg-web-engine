@@ -1,0 +1,130 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Coin Hopper</title>
+    <link rel="icon" href="data:," />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+  </head>
+  <body>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        background: #5fb4e8;
+        font-family: system-ui, sans-serif;
+      }
+
+      /* A screen's UI is plain DOM inside its layer. */
+      .panel {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        padding: 0 16px;
+        color: #fff;
+        text-align: center;
+      }
+
+      .panel--menu {
+        background: linear-gradient(#5fb4e8, #2f7a4a);
+      }
+
+      /* Pause and result panels let the game show through. */
+      .panel--overlay {
+        background: rgba(20, 30, 45, 0.55);
+      }
+
+      .panel h1 {
+        margin: 0 0 8px;
+        font-size: 44px;
+        text-shadow: 0 3px 0 rgba(0, 0, 0, 0.3);
+      }
+
+      .panel p {
+        margin: 0;
+        max-width: 420px;
+        font-size: 15px;
+        line-height: 1.4;
+      }
+
+      .panel .stats {
+        font-size: 20px;
+      }
+
+      .panel .error {
+        color: #ffd0cc;
+      }
+
+      .panel .controls {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        line-height: 2;
+      }
+
+      kbd {
+        padding: 1px 6px;
+        border: 1px solid rgba(255, 255, 255, 0.6);
+        border-radius: 4px;
+        background: rgba(0, 0, 0, 0.2);
+        font: inherit;
+        font-size: 13px;
+      }
+
+      .panel button {
+        min-width: 200px;
+        padding: 12px 24px;
+        border: 0;
+        border-radius: 8px;
+        background: #e94f37;
+        box-shadow: 0 4px 0 #a5321f;
+        color: #fff;
+        font: inherit;
+        font-size: 18px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .panel button:hover {
+        background: #f2634c;
+      }
+
+      .hud {
+        position: absolute;
+        top: 12px;
+        left: 16px;
+        display: flex;
+        gap: 24px;
+        color: #fff;
+        font-size: 22px;
+        font-weight: bold;
+        text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+        pointer-events: none;
+        user-select: none;
+      }
+
+      .hud .lives {
+        color: #ff5c5c;
+      }
+
+      .hud .lives s {
+        text-decoration: none;
+        opacity: 0.3;
+      }
+
+      .hint {
+        position: absolute;
+        left: 12px;
+        bottom: 12px;
+        color: #fff;
+        font-size: 13px;
+        text-shadow: 0 1px 2px #000;
+        pointer-events: none;
+      }
+    </style>
+  </body>
+</html>
