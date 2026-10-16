@@ -355,6 +355,7 @@ click; the source lives under
 | [Car race](https://gg-web-demos.guraklgames.com/?example=3d/car-race) | A complete multiplayer racing game: share the link, race three laps |
 | [Tower climb](https://gg-web-demos.guraklgames.com/?example=3d/tower-climb) | A complete third-person game: title, pause, win and game over screens |
 | [Platformer](https://gg-web-demos.guraklgames.com/?example=2d/platformer) | A complete 2D platformer: lives, checkpoints, enemies, a goal flag |
+| [Prompt to level](https://gg-web-demos.guraklgames.com/?example=3d/prompt-to-level) | A level an AI agent wrote as JSON from a prompt; paste your own |
 | [Fly city](https://gg-web-demos.guraklgames.com/?example=3d/fly-city) | Driving through a streamed city: cars, map graph, audio, multiplayer |
 | [Coin run](https://gg-web-demos.guraklgames.com/?example=2d/coin-run) | 2D multiplayer platformer rounds |
 | [Portal room](https://gg-web-demos.guraklgames.com/?example=3d/portal-room&physics=rapier3d) | First-person character, grabbable props, positional sound |

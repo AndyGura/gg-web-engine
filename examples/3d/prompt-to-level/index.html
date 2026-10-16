@@ -1,0 +1,154 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="data:," />
+    <title>GG example</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+  </head>
+  <body>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        font-family: system-ui, sans-serif;
+        background: #1b1420;
+      }
+
+      /* the game's canvas is created per loaded level, inside this full-page box */
+      #game,
+      #game canvas {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+      }
+
+      .hud {
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        padding: 6px 10px;
+        border-radius: 4px;
+        background: rgba(0, 0, 0, 0.5);
+        color: #fff;
+        font-size: 13px;
+        line-height: 1.5;
+        pointer-events: none;
+      }
+
+      .hud .timer {
+        font: 600 20px monospace;
+      }
+
+      .banner {
+        position: absolute;
+        top: 12%;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 20px 32px;
+        border-radius: 8px;
+        background: rgba(20, 12, 30, 0.85);
+        color: #ffe08a;
+        text-align: center;
+        font-size: 28px;
+      }
+
+      .banner p {
+        margin: 4px 0 16px;
+        color: #eee;
+        font-size: 16px;
+      }
+
+      button {
+        padding: 6px 14px;
+        border: 1px solid #8a6b9a;
+        border-radius: 5px;
+        background: #3a2a48;
+        color: #fff;
+        font: inherit;
+        font-size: 14px;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background: #4d3860;
+      }
+
+      .toggle {
+        position: absolute;
+        z-index: 1;
+        top: 8px;
+        right: 8px;
+      }
+
+      /* the side panel: the prompt, what was changed, and the "load your own level" box */
+      .panel {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        width: min(420px, 100vw);
+        box-sizing: border-box;
+        padding: 44px 16px 16px;
+        overflow-y: auto;
+        background: rgba(24, 18, 32, 0.94);
+        color: #ddd;
+        font-size: 13px;
+      }
+
+      .panel h2 {
+        margin: 16px 0 6px;
+        color: #ffe08a;
+        font-size: 15px;
+      }
+
+      .panel pre {
+        margin: 0;
+        white-space: pre-wrap;
+        font-size: 12px;
+      }
+
+      .panel textarea {
+        box-sizing: border-box;
+        width: 100%;
+        height: 140px;
+        font: 11px monospace;
+      }
+
+      .panel .error {
+        color: #ff8a80;
+        white-space: pre-wrap;
+      }
+
+      [hidden] {
+        display: none !important;
+      }
+    </style>
+    <div id="game"></div>
+    <div class="hud">
+      <div class="timer" id="timer">0.0 s</div>
+      <div id="status">Reach the glowing goal</div>
+      <div>Click to look around · WASD move · Shift run · Space jump</div>
+    </div>
+    <div class="banner" id="banner" hidden>
+      You made it!
+      <p id="banner-time"></p>
+      <button id="restart">Restart</button>
+    </div>
+    <div class="panel" id="panel">
+      <h2>The prompt</h2>
+      <pre id="prompt"></pre>
+      <h2>level.json was written by an agent from this prompt</h2>
+      <p>Changes after the agent's draft (as listed in PROMPT.md):</p>
+      <div id="changes"></div>
+      <h2>Load your own level</h2>
+      <p>Paste a level JSON an agent wrote (same names: Player, MainCamera, Goal, Checkpoint_N).</p>
+      <textarea id="custom" spellcheck="false" placeholder='{ "entities": [ ... ] }'></textarea>
+      <p><button id="load">Load</button> <button id="load-default">Back to the bundled level</button></p>
+      <div class="error" id="error"></div>
+    </div>
+    <!-- after the panel, so it stays clickable on top of it -->
+    <button class="toggle" id="toggle">Prompt</button>
+  </body>
+</html>

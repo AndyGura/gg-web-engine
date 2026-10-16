@@ -89,6 +89,13 @@
       "physics": ["ammo", "rapier3d"]
     },
     {
+      "dir": "3d/prompt-to-level",
+      "title": "Prompt to level",
+      "description": "An obstacle course an AI agent wrote as level JSON from a short prompt, shown next to it. Play it, or paste a level your own agent wrote.",
+      "visual": ["three"],
+      "physics": ["ammo", "rapier3d"]
+    },
+    {
       "dir": "2d/primitives",
       "title": "Primitives",
       "description": "A level built from JSON: primitive shapes rain onto a floor.",
