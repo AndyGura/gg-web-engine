@@ -30,6 +30,9 @@ where one exists.
 ## [Unreleased]
 
 ### Added
+- Examples: a prompt-to-level demo (`examples/3d/prompt-to-level`). It plays an obstacle course an
+  agent wrote as level JSON from the prompt shown beside it, lists the one fix the draft needed,
+  and loads any level JSON pasted into the page.
 - Examples: two small complete single-player games built on the screens API, each with a title
   screen, pause, a win screen, game over, three lives, checkpoints and particle effects.
   `examples/3d/tower-climb` is a third-person climb up floating pads to light a beacon (Ammo or

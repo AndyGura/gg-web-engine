@@ -1,0 +1,1118 @@
+{
+  "entities": [
+    {
+      "class": "Environment",
+      "name": "SunsetSky",
+      "config": {
+        "background": 15764061,
+        "fog": {
+          "type": "LINEAR",
+          "color": 15966830,
+          "near": 45,
+          "far": 170
+        }
+      }
+    },
+    {
+      "class": "Light",
+      "name": "SkyLight",
+      "config": {
+        "type": "HEMISPHERE",
+        "color": 16762010,
+        "groundColor": 3877455,
+        "intensity": 0.7
+      }
+    },
+    {
+      "class": "Light",
+      "name": "Sun",
+      "position": {
+        "x": -25,
+        "y": 95,
+        "z": 14
+      },
+      "config": {
+        "type": "DIRECTIONAL",
+        "color": 16753244,
+        "intensity": 1.8,
+        "castShadow": true,
+        "shadow": {
+          "mapSize": 2048,
+          "area": 80,
+          "near": 0.5,
+          "far": 250
+        },
+        "target": {
+          "x": 0,
+          "y": 30,
+          "z": 0
+        }
+      }
+    },
+    {
+      "class": "Camera",
+      "name": "MainCamera",
+      "position": {
+        "x": 0,
+        "y": -9,
+        "z": 4.5
+      },
+      "rotation": {
+        "x": 0.615661,
+        "y": 0,
+        "z": 0,
+        "w": 0.788011
+      },
+      "config": {
+        "fov": 70,
+        "frustrum": {
+          "near": 0.1,
+          "far": 400
+        }
+      }
+    },
+    {
+      "class": "Player",
+      "name": "Player",
+      "position": {
+        "x": 0,
+        "y": -2,
+        "z": 1.0
+      },
+      "config": {
+        "radius": 0.4,
+        "centersDistance": 1.0,
+        "walkSpeed": 4,
+        "runSpeedMultiplier": 1.8,
+        "jumpSpeed": 5.5,
+        "gravity": 9.81,
+        "airControlFactor": 0.5,
+        "maxStepHeight": 0.3,
+        "display": {
+          "color": 3368652,
+          "castShadow": true
+        }
+      }
+    },
+    {
+      "class": "Primitive",
+      "shape": "BOX",
+      "name": "StartIsland",
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": -0.5
+      },
+      "config": {
+        "dimensions": {
+          "x": 10,
+          "y": 10,
+          "z": 1
+        },
+        "material": {
+          "color": 6069818,
+          "shading": "standart",
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "body": {
+          "bodyType": "static",
+          "friction": 0.8
+        }
+      }
+    },
+    {
+      "class": "Primitive",
+      "shape": "CONE",
+      "name": "StartIslandRock",
+      "position": {
+        "x": 0,
+        "y": 0,
+        "z": -3.0
+      },
+      "rotation": {
+        "x": 1,
+        "y": 0,
+        "z": 0,
+        "w": 0
+      },
+      "config": {
+        "radius": 5,
+        "height": 4,
+        "material": {
+          "color": 7031347,
+          "shading": "standart"
+        },
+        "body": {
+          "bodyType": "static"
+        }
+      }
+    },
+    {
+      "class": "Primitive",
+      "shape": "CYLINDER",
+      "name": "TreeTrunk",
+      "position": {
+        "x": -3,
+        "y": -3,
+        "z": 1.0
+      },
+      "config": {
+        "radius": 0.25,
+        "height": 2,
+        "material": {
+          "color": 10251066,
+          "shading": "standart",
+          "castShadow": true
+        },
+        "body": {
+          "bodyType": "static"
+        }
+      }
+    },
+    {
+      "class": "Primitive",
+      "shape": "SPHERE",
+      "name": "TreeCanopy",
+      "position": {
+        "x": -3,
+        "y": -3,
+        "z": 2.8
+      },
+      "config": {
+        "radius": 1.2,
+        "material": {
+          "color": 4160810,
+          "shading": "standart",
+          "castShadow": true
+        },
+        "body": {
+          "bodyType": "static"
+        }
+      }
+    },
+    {
+      "class": "Primitive",
+      "shape": "BOX",
+      "name": "JumpPad_1",
+      "position": {
+        "x": 0,
+        "y": 8.0,
+        "z": -0.5
+      },
+      "config": {
+        "dimensions": {
+          "x": 3,
+          "y": 3,
+          "z": 1
+        },
+        "material": {
+          "color": 9078144,
+          "shading": "standart",
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "body": {
+          "bodyType": "static",
+          "friction": 0.8
+        }
+      }
+    },
+    {
+      "class": "Primitive",
+      "shape": "BOX",
+      "name": "JumpPad_2",
+      "position": {
+        "x": 0,
+        "y": 13.0,
+        "z": 0.0
+      },
+      "config": {
+        "dimensions": {
+          "x": 3,
+          "y": 3,
+          "z": 1
+        },
+        "material": {
+          "color": 7301734,
+          "shading": "standart",
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "body": {
+          "bodyType": "static",
+          "friction": 0.8
+        }
+      }
+    },
+    {
+      "class": "Primitive",
+      "shape": "BOX",
+      "name": "JumpPad_3",
+      "position": {
+        "x": 0,
+        "y": 18.5,
+        "z": 0.0
+      },
+      "config": {
+        "dimensions": {
+          "x": 3,
+          "y": 3,
+          "z": 1
+        },
+        "material": {
+          "color": 9078144,
+          "shading": "standart",
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "body": {
+          "bodyType": "static",
+          "friction": 0.8
+        }
+      }
+    },
+    {
+      "class": "Primitive",
+      "shape": "BOX",
+      "name": "SteppingStone_1",
+      "position": {
+        "x": 2.2,
+        "y": 22.5,
+        "z": 0.0
+      },
+      "config": {
+        "dimensions": {
+          "x": 2,
+          "y": 2,
+          "z": 1
+        },
+        "material": {
+          "color": 7301734,
+          "shading": "standart",
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "body": {
+          "bodyType": "static",
+          "friction": 0.8
+        }
+      }
+    },
+    {
+      "class": "Primitive",
+      "shape": "BOX",
+      "name": "SteppingStone_2",
+      "position": {
+        "x": -2.2,
+        "y": 26.0,
+        "z": 0.0
+      },
+      "config": {
+        "dimensions": {
+          "x": 2,
+          "y": 2,
+          "z": 1
+        },
+        "material": {
+          "color": 9078144,
+          "shading": "standart",
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "body": {
+          "bodyType": "static",
+          "friction": 0.8
+        }
+      }
+    },
+    {
+      "class": "Primitive",
+      "shape": "BOX",
+      "name": "SteppingStone_3",
+      "position": {
+        "x": 1.8,
+        "y": 29.5,
+        "z": 0.0
+      },
+      "config": {
+        "dimensions": {
+          "x": 2,
+          "y": 2,
+          "z": 1
+        },
+        "material": {
+          "color": 7301734,
+          "shading": "standart",
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "body": {
+          "bodyType": "static",
+          "friction": 0.8
+        }
+      }
+    },
+    {
+      "class": "Primitive",
+      "shape": "BOX",
+      "name": "SteppingStone_4",
+      "position": {
+        "x": 0,
+        "y": 33.0,
+        "z": 0.0
+      },
+      "config": {
+        "dimensions": {
+          "x": 2,
+          "y": 2,
+          "z": 1
+        },
+        "material": {
+          "color": 9078144,
+          "shading": "standart",
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "body": {
+          "bodyType": "static",
+          "friction": 0.8
+        }
+      }
+    },
+    {
+      "class": "Primitive",
+      "shape": "BOX",
+      "name": "CheckpointPad_1",
+      "position": {
+        "x": 0,
+        "y": 37.5,
+        "z": 0.0
+      },
+      "config": {
+        "dimensions": {
+          "x": 4,
+          "y": 4,
+          "z": 1
+        },
+        "material": {
+          "color": 9078144,
+          "shading": "standart",
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "body": {
+          "bodyType": "static",
+          "friction": 0.8
+        }
+      }
+    },
+    {
+      "class": "Trigger",
+      "name": "Checkpoint_1",
+      "position": {
+        "x": 0,
+        "y": 37.5,
+        "z": 1.75
+      },
+      "config": {
+        "dimensions": {
+          "x": 4,
+          "y": 4,
+          "z": 2.5
+        }
+      }
+    },
+    {
+      "class": "Primitive",
+      "shape": "BOX",
+      "name": "Stair_1",
+      "position": {
+        "x": 0,
+        "y": 39.9,
+        "z": 0.125
+      },
+      "config": {
+        "dimensions": {
+          "x": 3,
+          "y": 0.8,
+          "z": 1.25
+        },
+        "material": {
+          "color": 9078144,
+          "shading": "standart",
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "body": {
+          "bodyType": "static",
+          "friction": 0.8
+        }
+      }
+    },
+    {
+      "class": "Primitive",
+      "shape": "BOX",
+      "name": "Stair_2",
+      "position": {
+        "x": 0,
+        "y": 40.7,
+        "z": 0.25
+      },
+      "config": {
+        "dimensions": {
+          "x": 3,
+          "y": 0.8,
+          "z": 1.5
+        },
+        "material": {
+          "color": 7301734,
+          "shading": "standart",
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "body": {
+          "bodyType": "static",
+          "friction": 0.8
+        }
+      }
+    },
+    {
+      "class": "Primitive",
+      "shape": "BOX",
+      "name": "Stair_3",
+      "position": {
+        "x": 0,
+        "y": 41.5,
+        "z": 0.375
+      },
+      "config": {
+        "dimensions": {
+          "x": 3,
+          "y": 0.8,
+          "z": 1.75
+        },
+        "material": {
+          "color": 9078144,
+          "shading": "standart",
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "body": {
+          "bodyType": "static",
+          "friction": 0.8
+        }
+      }
+    },
+    {
+      "class": "Primitive",
+      "shape": "BOX",
+      "name": "Stair_4",
+      "position": {
+        "x": 0,
+        "y": 42.3,
+        "z": 0.5
+      },
+      "config": {
+        "dimensions": {
+          "x": 3,
+          "y": 0.8,
+          "z": 2.0
+        },
+        "material": {
+          "color": 7301734,
+          "shading": "standart",
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "body": {
+          "bodyType": "static",
+          "friction": 0.8
+        }
+      }
+    },
+    {
+      "class": "Primitive",
+      "shape": "BOX",
+      "name": "Stair_5",
+      "position": {
+        "x": 0,
+        "y": 43.1,
+        "z": 0.625
+      },
+      "config": {
+        "dimensions": {
+          "x": 3,
+          "y": 0.8,
+          "z": 2.25
+        },
+        "material": {
+          "color": 9078144,
+          "shading": "standart",
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "body": {
+          "bodyType": "static",
+          "friction": 0.8
+        }
+      }
+    },
+    {
+      "class": "Primitive",
+      "shape": "BOX",
+      "name": "Stair_6",
+      "position": {
+        "x": 0,
+        "y": 43.9,
+        "z": 0.75
+      },
+      "config": {
+        "dimensions": {
+          "x": 3,
+          "y": 0.8,
+          "z": 2.5
+        },
+        "material": {
+          "color": 7301734,
+          "shading": "standart",
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "body": {
+          "bodyType": "static",
+          "friction": 0.8
+        }
+      }
+    },
+    {
+      "class": "Primitive",
+      "shape": "BOX",
+      "name": "Stair_7",
+      "position": {
+        "x": 0,
+        "y": 44.7,
+        "z": 0.875
+      },
+      "config": {
+        "dimensions": {
+          "x": 3,
+          "y": 0.8,
+          "z": 2.75
+        },
+        "material": {
+          "color": 9078144,
+          "shading": "standart",
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "body": {
+          "bodyType": "static",
+          "friction": 0.8
+        }
+      }
+    },
+    {
+      "class": "Primitive",
+      "shape": "BOX",
+      "name": "Stair_8",
+      "position": {
+        "x": 0,
+        "y": 45.5,
+        "z": 1.0
+      },
+      "config": {
+        "dimensions": {
+          "x": 3,
+          "y": 0.8,
+          "z": 3.0
+        },
+        "material": {
+          "color": 7301734,
+          "shading": "standart",
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "body": {
+          "bodyType": "static",
+          "friction": 0.8
+        }
+      }
+    },
+    {
+      "class": "Primitive",
+      "shape": "BOX",
+      "name": "Landing",
+      "position": {
+        "x": 0,
+        "y": 47.9,
+        "z": 1.75
+      },
+      "config": {
+        "dimensions": {
+          "x": 4,
+          "y": 4,
+          "z": 1.5
+        },
+        "material": {
+          "color": 9078144,
+          "shading": "standart",
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "body": {
+          "bodyType": "static",
+          "friction": 0.8
+        }
+      }
+    },
+    {
+      "class": "Trigger",
+      "name": "Checkpoint_2",
+      "position": {
+        "x": 0,
+        "y": 47.9,
+        "z": 3.75
+      },
+      "config": {
+        "dimensions": {
+          "x": 4,
+          "y": 4,
+          "z": 2.5
+        }
+      }
+    },
+    {
+      "class": "Primitive",
+      "shape": "BOX",
+      "name": "NarrowBridge",
+      "position": {
+        "x": 0,
+        "y": 55.9,
+        "z": 2.35
+      },
+      "config": {
+        "dimensions": {
+          "x": 0.8,
+          "y": 12,
+          "z": 0.3
+        },
+        "material": {
+          "color": 10251066,
+          "shading": "standart",
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "body": {
+          "bodyType": "static",
+          "friction": 0.8
+        }
+      }
+    },
+    {
+      "class": "Primitive",
+      "shape": "BOX",
+      "name": "CrateYard",
+      "position": {
+        "x": 0,
+        "y": 64.9,
+        "z": 1.75
+      },
+      "config": {
+        "dimensions": {
+          "x": 6,
+          "y": 6,
+          "z": 1.5
+        },
+        "material": {
+          "color": 7301734,
+          "shading": "standart",
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "body": {
+          "bodyType": "static",
+          "friction": 0.8
+        }
+      }
+    },
+    {
+      "class": "Primitive",
+      "shape": "BOX",
+      "name": "Crate_1",
+      "position": {
+        "x": -1.6,
+        "y": 65.7,
+        "z": 3.0
+      },
+      "config": {
+        "dimensions": {
+          "x": 1,
+          "y": 1,
+          "z": 1
+        },
+        "material": {
+          "color": 11895359,
+          "shading": "standart",
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "body": {
+          "bodyType": "dynamic",
+          "mass": 15,
+          "friction": 0.6,
+          "restitution": 0.05
+        }
+      }
+    },
+    {
+      "class": "Primitive",
+      "shape": "BOX",
+      "name": "Crate_2",
+      "position": {
+        "x": 1.6,
+        "y": 64.1,
+        "z": 3.0
+      },
+      "config": {
+        "dimensions": {
+          "x": 1,
+          "y": 1,
+          "z": 1
+        },
+        "material": {
+          "color": 11895359,
+          "shading": "standart",
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "body": {
+          "bodyType": "dynamic",
+          "mass": 15,
+          "friction": 0.6,
+          "restitution": 0.05
+        }
+      }
+    },
+    {
+      "class": "Primitive",
+      "shape": "BOX",
+      "name": "UpperLedge",
+      "position": {
+        "x": 0,
+        "y": 69.4,
+        "z": 2.25
+      },
+      "config": {
+        "dimensions": {
+          "x": 4,
+          "y": 3,
+          "z": 2.5
+        },
+        "material": {
+          "color": 9078144,
+          "shading": "standart",
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "body": {
+          "bodyType": "static",
+          "friction": 0.8
+        }
+      }
+    },
+    {
+      "class": "Primitive",
+      "shape": "BOX",
+      "name": "GoalPlatform",
+      "position": {
+        "x": 0,
+        "y": 75.9,
+        "z": 2.75
+      },
+      "config": {
+        "dimensions": {
+          "x": 6,
+          "y": 6,
+          "z": 1.5
+        },
+        "material": {
+          "color": 14207395,
+          "shading": "standart",
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "body": {
+          "bodyType": "static",
+          "friction": 0.8
+        }
+      }
+    },
+    {
+      "class": "Primitive",
+      "shape": "CYLINDER",
+      "name": "GoalPad",
+      "position": {
+        "x": 0,
+        "y": 75.9,
+        "z": 3.525
+      },
+      "config": {
+        "radius": 1.4,
+        "height": 0.05,
+        "material": {
+          "color": 16769126,
+          "shading": "unlit"
+        },
+        "body": {
+          "bodyType": "static"
+        }
+      }
+    },
+    {
+      "class": "Primitive",
+      "shape": "SPHERE",
+      "name": "GoalBeacon",
+      "position": {
+        "x": 0,
+        "y": 75.9,
+        "z": 7.4
+      },
+      "config": {
+        "radius": 0.5,
+        "material": {
+          "color": 16773754,
+          "shading": "unlit",
+          "opacity": 0.9
+        },
+        "body": {
+          "bodyType": "static"
+        }
+      }
+    },
+    {
+      "class": "Light",
+      "name": "GoalGlow",
+      "position": {
+        "x": 0,
+        "y": 75.9,
+        "z": 6.0
+      },
+      "config": {
+        "type": "POINT",
+        "color": 16769658,
+        "intensity": 30,
+        "distance": 14,
+        "decay": 2
+      }
+    },
+    {
+      "class": "Trigger",
+      "name": "Goal",
+      "position": {
+        "x": 0,
+        "y": 75.9,
+        "z": 4.75
+      },
+      "config": {
+        "dimensions": {
+          "x": 3,
+          "y": 3,
+          "z": 2.5
+        }
+      }
+    },
+    {
+      "class": "Primitive",
+      "shape": "CONE",
+      "name": "FloatingRock_1",
+      "position": {
+        "x": -18,
+        "y": 20,
+        "z": -4
+      },
+      "rotation": {
+        "x": 1,
+        "y": 0,
+        "z": 0,
+        "w": 0
+      },
+      "config": {
+        "radius": 3,
+        "height": 3.5999999999999996,
+        "material": {
+          "color": 8018500,
+          "shading": "standart"
+        },
+        "body": {
+          "bodyType": "static"
+        }
+      }
+    },
+    {
+      "class": "Primitive",
+      "shape": "CONE",
+      "name": "FloatingRock_2",
+      "position": {
+        "x": 16,
+        "y": 40,
+        "z": -6
+      },
+      "rotation": {
+        "x": 1,
+        "y": 0,
+        "z": 0,
+        "w": 0
+      },
+      "config": {
+        "radius": 4,
+        "height": 4.8,
+        "material": {
+          "color": 8018500,
+          "shading": "standart"
+        },
+        "body": {
+          "bodyType": "static"
+        }
+      }
+    },
+    {
+      "class": "Primitive",
+      "shape": "CONE",
+      "name": "FloatingRock_3",
+      "position": {
+        "x": -20,
+        "y": 62,
+        "z": 0
+      },
+      "rotation": {
+        "x": 1,
+        "y": 0,
+        "z": 0,
+        "w": 0
+      },
+      "config": {
+        "radius": 2.5,
+        "height": 3.0,
+        "material": {
+          "color": 8018500,
+          "shading": "standart"
+        },
+        "body": {
+          "bodyType": "static"
+        }
+      }
+    },
+    {
+      "class": "Primitive",
+      "shape": "CONE",
+      "name": "FloatingRock_4",
+      "position": {
+        "x": 22,
+        "y": 78,
+        "z": -2
+      },
+      "rotation": {
+        "x": 1,
+        "y": 0,
+        "z": 0,
+        "w": 0
+      },
+      "config": {
+        "radius": 3.5,
+        "height": 4.2,
+        "material": {
+          "color": 8018500,
+          "shading": "standart"
+        },
+        "body": {
+          "bodyType": "static"
+        }
+      }
+    },
+    {
+      "class": "Primitive",
+      "shape": "SPHERE",
+      "name": "Cloud_1",
+      "position": {
+        "x": -30,
+        "y": 35,
+        "z": 10
+      },
+      "config": {
+        "radius": 4,
+        "material": {
+          "color": 16767424,
+          "shading": "unlit",
+          "opacity": 0.75
+        },
+        "body": {
+          "bodyType": "static"
+        }
+      }
+    },
+    {
+      "class": "Primitive",
+      "shape": "SPHERE",
+      "name": "Cloud_2",
+      "position": {
+        "x": 28,
+        "y": 15,
+        "z": 7
+      },
+      "config": {
+        "radius": 3,
+        "material": {
+          "color": 16767424,
+          "shading": "unlit",
+          "opacity": 0.75
+        },
+        "body": {
+          "bodyType": "static"
+        }
+      }
+    },
+    {
+      "class": "Primitive",
+      "shape": "SPHERE",
+      "name": "Cloud_3",
+      "position": {
+        "x": -26,
+        "y": 90,
+        "z": 14
+      },
+      "config": {
+        "radius": 5,
+        "material": {
+          "color": 16767424,
+          "shading": "unlit",
+          "opacity": 0.75
+        },
+        "body": {
+          "bodyType": "static"
+        }
+      }
+    },
+    {
+      "class": "Primitive",
+      "shape": "SPHERE",
+      "name": "Cloud_4",
+      "position": {
+        "x": 34,
+        "y": 60,
+        "z": 12
+      },
+      "config": {
+        "radius": 4,
+        "material": {
+          "color": 16767424,
+          "shading": "unlit",
+          "opacity": 0.75
+        },
+        "body": {
+          "bodyType": "static"
+        }
+      }
+    }
+  ]
+}
