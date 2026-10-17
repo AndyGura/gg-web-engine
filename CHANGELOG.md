@@ -30,6 +30,19 @@ where one exists.
 ## [Unreleased]
 
 ### Added
+- Gamepad input. Every world has a `gamepadInput` (`GamepadInput`, started and stopped with
+  `inputEnabled`) that polls the Gamepad API on every frame, also while the world is paused, and
+  reports controls by index (`'b7'`, `'a0-'`): `value$`/`pressed$`/`direction$`, `connected$`,
+  `inUse$` (gamepad used more recently than keyboard or mouse), `controlPushed$` for a controls menu
+  capturing a binding, `bindKeys(keyboard, { Space: 'b0' })` to hold keys while buttons are pressed
+  and `bindDirection(directionInput, binding)` to add a stick or the d-pad to a direction input.
+  The built-in input controllers (`CarHandlingController`, `GgCarHandlingController`,
+  `PlayerCharacterController`, `PlayerCharacterController2d`, `FreeCameraController`,
+  `ObjectGrabController`) are driven by the world's gamepad out of the box with standard-mapping
+  defaults (left stick or d-pad moves/steers, triggers are the pedals, bumpers shift, right stick
+  looks, A jumps, ...), each through a new `gamepad` option taking a custom binding or `null` to
+  leave the gamepad alone. `CarHandlingControllerOptions.keymap` accepts `null` for a car driven
+  by analog sources only.
 - Examples: two small complete single-player games built on the screens API, each with a title
   screen, pause, a win screen, game over, three lives, checkpoints and particle effects.
   `examples/3d/tower-climb` is a third-person climb up floating pads to light a beacon (Ammo or
@@ -76,6 +89,9 @@ where one exists.
   `--no-texcoords`, `--vertex-color`, `--no-lights`). The defaults export what it always did.
 
 ### Fixed
+- `FreeCameraController`: with a camera that has no field of view (an orthographic one), the boost
+  key (`ShiftLeft`) zoomed instead of boosting and never boosted - the key was read from the slot
+  of the zoom keys, which are only bound for a camera with a fov.
 - `@gg-web-engine/mobile-controls`: a WebGL game stuttered on every touch-button press and release
   on low-end phones (reported on a Samsung A16). The default stylesheet repainted the pressed
   control on every frame of its transitions, made the browser create and drop a layer at each press,

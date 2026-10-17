@@ -33,6 +33,7 @@ export * from './entities/i-renderer.entity';
 export * from './entities/i-renderable.entity';
 
 export * from './inputs/direction.input';
+export * from './inputs/gamepad.input';
 export * from './inputs/i-input';
 export * from './inputs/keyboard.input';
 export * from './inputs/mouse.input';

@@ -1,4 +1,5 @@
 import {
+  GamepadInput,
   Grabbable3dEntity,
   KeyboardInput,
   MouseInput,
@@ -8,6 +9,7 @@ import {
 } from '../../../../../src';
 import { mock3DBody } from '../../../../mocks/body.mock';
 import { mock3DObject } from '../../../../mocks/object.mock';
+import { stubGamepads } from '../../../../mocks/gamepad.mock';
 
 const fakeCamera = (position: any = Pnt3.O, rotation: any = { x: 0, y: 0, z: 0, w: 1 }) =>
   ({ position, rotation }) as any; // identity rotation: forward = -Z
@@ -450,5 +452,32 @@ describe('ObjectGrabController held object API', () => {
     (mouseInput as any)._state$.next(MouseInputState.NONE);
     (mouseInput as any)._state$.next(MouseInputState.DRAG_RIGHT_BUTTON);
     expect(controller.heldObject).toBe(entity);
+  });
+
+  describe('gamepad', () => {
+    let pads: ReturnType<typeof stubGamepads>;
+    let gamepadInput: GamepadInput;
+    beforeEach(() => {
+      pads = stubGamepads();
+      gamepadInput = new GamepadInput();
+      gamepadInput.start();
+    });
+    afterEach(() => {
+      gamepadInput.stop();
+      pads.restore();
+    });
+
+    it('grabs with the grab control and throws with the throw control', () => {
+      const { entity } = makeGrabbable();
+      const raycast = jest.fn().mockReturnValue({ hasHit: true, hitBody: { entity } });
+      const { controller } = setup();
+      controller.onSpawned({ physicsWorld: { raycast }, gamepadInput } as any);
+      pads.set({ buttons: { 2: true } });
+      gamepadInput.poll();
+      expect(controller.heldObject).toBe(entity);
+      pads.set({ buttons: { 5: true } });
+      gamepadInput.poll();
+      expect(controller.heldObject).toBeNull();
+    });
   });
 });

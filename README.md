@@ -426,8 +426,9 @@ Supporting pieces:
   Each world has a [`PausableClock`](https://andygura.github.io/gg-web-engine/modules/core/base/clock/pausable-clock.ts/);
   pausing a clock pauses its children, so in-game timers stop with the world.
 - **[Inputs](https://andygura.github.io/gg-web-engine/modules/core/base/inputs/input.ts/)** -
-  `KeyboardInput` (key bindings as `Observable<boolean>`), `MouseInput` (deltas, pointer lock) and
-  `DirectionInput` (WASD/arrows) - are created and consumed by controller entities.
+  `KeyboardInput` (key bindings as `Observable<boolean>`), `MouseInput` (deltas, pointer lock),
+  `DirectionInput` (WASD/arrows plus analog sources) and `GamepadInput` (buttons, triggers and
+  sticks by index, feeding the other inputs) - are created and consumed by controller entities.
 - **Factories** ([2D](https://andygura.github.io/gg-web-engine/modules/core/2d/factories.ts/),
   [3D](https://andygura.github.io/gg-web-engine/modules/core/3d/factories.ts/)) create primitive
   display objects and rigid bodies from a shape descriptor.

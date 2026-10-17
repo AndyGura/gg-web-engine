@@ -12,6 +12,7 @@ import {
   IRigidBodyComponent,
   ITriggerComponent,
   IVisualSceneComponent,
+  GamepadInput,
   KeyboardInput,
   PausableClock,
   TickOrder,
@@ -150,12 +151,18 @@ export abstract class GgWorld<
 
   public readonly worldClock: PausableClock = new PausableClock(false);
   public readonly keyboardInput: KeyboardInput = new KeyboardInput();
+  /**
+   * The gamepad of this world, polled on every frame while `inputEnabled` (also while the world is
+   * paused). The built-in input controllers bind their keys and directions to it by default; see
+   * `GamepadInput` for reading it directly.
+   */
+  public readonly gamepadInput: GamepadInput = new GamepadInput();
 
   private readonly _inputEnabled$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(true);
 
   /**
    * Whether this world reacts to the player. Switching it off stops `keyboardInput` (releasing
-   * every held key), and with it everything that follows `inputEnabled$`: the built-in input
+   * every held key) and `gamepadInput` (releasing what it holds), and with it everything that follows `inputEnabled$`: the built-in input
    * controllers stop their mouse and direction inputs and let go of pointer lock, and
    * `@gg-web-engine/mobile-controls` takes its touch overlay off the screen. The world itself keeps
    * running - this is independent of pausing. `ScreenManager` switches it off for the worlds of a
@@ -174,7 +181,9 @@ export abstract class GgWorld<
     }
     if (value) {
       this.keyboardInput.start();
+      this.gamepadInput.start();
     } else {
+      this.gamepadInput.stop();
       this.keyboardInput.stop();
     }
     this._inputEnabled$.next(value);
@@ -421,6 +430,7 @@ export abstract class GgWorld<
     this.fixedPhysicsStep = args.fixedPhysicsStep;
     this.maxPhysicsStepsPerTick = args.maxPhysicsStepsPerTick ?? 8;
     this.keyboardInput.start();
+    this.gamepadInput.start();
     if ((window as any).ggstatic) {
       this.registerConsoleCommands((window as any).ggstatic);
     } else {
@@ -640,6 +650,7 @@ export abstract class GgWorld<
       this.visibilityChangeListener = null;
     }
     this.worldClock.stop();
+    this.gamepadInput.stop();
     this.keyboardInput.stop();
     this.tickStarted$.complete();
     this.tickForwardTo$.complete();

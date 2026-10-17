@@ -1,7 +1,11 @@
-import { BehaviorSubject, combineLatest, filter, Subject, takeUntil } from 'rxjs';
+import { BehaviorSubject, combineLatest, filter, merge, Subject, take, takeUntil } from 'rxjs';
 import {
   DirectionInput,
   DirectionKeymap,
+  GAMEPAD_LEFT_STICK_OR_DPAD,
+  GAMEPAD_RIGHT_STICK,
+  GamepadControls,
+  GamepadDirectionBinding,
   ggElastic,
   GgWorld,
   IEntity,
@@ -20,6 +24,32 @@ import {
 } from '../../../../base';
 import { Renderer3dEntity } from '../../renderer-3d.entity';
 import { map } from 'rxjs/operators';
+
+/** Which gamepad controls fly the camera - see `GamepadControl` for the control names */
+export type FreeCameraGamepadBinding = {
+  /** The movement direction, added to the direction input */
+  move: GamepadDirectionBinding;
+  /** The look direction: turns the view at `lookSpeed` at full deflection */
+  look: GamepadDirectionBinding;
+  /** How fast `look` turns the view at full deflection, in radians per second */
+  lookSpeed: number;
+  /** Presses the up key (`KeyE`) */
+  up: GamepadControls;
+  /** Presses the down key (`KeyQ`) */
+  down: GamepadControls;
+  /** Presses the boost key (`ShiftLeft`) */
+  boost: GamepadControls;
+};
+
+/** Left stick or d-pad moves, right stick looks, RB/LB go up/down, the left stick's click boosts */
+export const DEFAULT_FREE_CAMERA_GAMEPAD_BINDING: FreeCameraGamepadBinding = {
+  move: GAMEPAD_LEFT_STICK_OR_DPAD,
+  look: GAMEPAD_RIGHT_STICK,
+  lookSpeed: 3,
+  up: 'b5',
+  down: 'b4',
+  boost: 'b10',
+};
 
 /**
  * Options for configuring a FreeCameraInput controller.
@@ -62,6 +92,13 @@ export type FreeCameraControllerOptions = {
    * Options for configuring mouse input.
    */
   mouseOptions: Partial<MouseInputOptions>;
+  /**
+   * The gamepad controls, bound on the world's `gamepadInput`: `move` goes to the direction input,
+   * `look` turns the view (regardless of `ignoreMouseUnlessPointerLocked`), the buttons press the
+   * up/down/boost keys on `keyboard`. `DEFAULT_FREE_CAMERA_GAMEPAD_BINDING` by default; `null`
+   * leaves the gamepad alone.
+   */
+  gamepad: FreeCameraGamepadBinding | null;
 };
 
 /** How fast the zoom keys change the camera's field of view, in degrees per second. */
@@ -77,6 +114,7 @@ const DEFAULT_FREE_CAMERA_CONTROLLER_OPTIONS: FreeCameraControllerOptions = {
   mouseOptions: {},
   ignoreMouseUnlessPointerLocked: false,
   ignoreKeyboardUnlessPointerLocked: false,
+  gamepad: DEFAULT_FREE_CAMERA_GAMEPAD_BINDING,
 };
 
 /**
@@ -191,7 +229,10 @@ export class FreeCameraController extends IEntity {
           c = { direction, rest };
         }
         let translate = { ...Pnt3.O } as { x: number; y: number; z: number };
-        const [u, d, zo, zi, speedBoost] = c.rest;
+        // the zoom keys are only bound for a camera with a fov; the boost key is always the last one
+        const [u, d, ...extraKeys] = c.rest;
+        const speedBoost = extraKeys[extraKeys.length - 1];
+        const [zo, zi] = extraKeys.length > 1 ? extraKeys : [false, false];
         translate.z = c.direction.y === 0 ? 0 : -c.direction.y;
         translate.x = c.direction.x;
         if (u != d) translate.y = d ? -1 : 1;
@@ -225,15 +266,20 @@ export class FreeCameraController extends IEntity {
       cameraFovInc = f;
     });
 
-    // Subscribe to mouse input for camera rotation
-    let mouseDelta$ = this.mouseInput.delta$.pipe(
-      takeUntil(this._onRemoved$),
-      filter(
-        () =>
-          this.active &&
-          (isTouchScreen || !this.options.ignoreMouseUnlessPointerLocked || this.mouseInput.isPointerLocked),
+    // Subscribe to mouse input for camera rotation. A gamepad's look is fed into the same path, as
+    // the mouse movement that turns the view by the same angle, so both react to the elasticity
+    // alike; it skips the pointer-lock gate, which is about stray mouse movement over the page.
+    const gamepadLook$ = new Subject<Point2>();
+    let mouseDelta$ = merge(
+      this.mouseInput.delta$.pipe(
+        filter(
+          () =>
+            this.active &&
+            (isTouchScreen || !this.options.ignoreMouseUnlessPointerLocked || this.mouseInput.isPointerLocked),
+        ),
       ),
-    );
+      gamepadLook$,
+    ).pipe(takeUntil(this._onRemoved$));
     if (this.options.cameraRotationElasticity > 0) {
       const s$: BehaviorSubject<Spherical> = new BehaviorSubject(this._spherical);
       mouseDelta$.subscribe(delta => {
@@ -275,6 +321,21 @@ export class FreeCameraController extends IEntity {
       });
     }
 
+    const gamepad = this.options.gamepad;
+    const gamepadInput = gamepad && world.gamepadInput;
+    if (gamepad && gamepadInput) {
+      const unbindKeys = gamepadInput.bindKeys(this.keyboard, {
+        KeyE: gamepad.up,
+        KeyQ: gamepad.down,
+        ShiftLeft: gamepad.boost,
+      });
+      const unbindMove = gamepadInput.bindDirection(this.directionsInput, gamepad.move);
+      this._onRemoved$.pipe(take(1)).subscribe(() => {
+        unbindKeys();
+        unbindMove();
+      });
+    }
+
     // Setup updating camera position and rotation based on input
     this.camera.tick$
       .pipe(
@@ -282,6 +343,15 @@ export class FreeCameraController extends IEntity {
         filter(() => this.active),
       )
       .subscribe(([_, delta]) => {
+        if (gamepad && gamepadInput && this.directionsInput.running && this.options.cameraRotationSensitivity > 0) {
+          // the stick turns the view at a rate, so it is applied per tick, scaled by the tick's time
+          const look = gamepadInput.direction(gamepad.look);
+          if (look.x !== 0 || look.y !== 0) {
+            // `cameraRotationSensitivity` is radians per 1000px: the pixels for this tick's angle
+            const px = (gamepad.lookSpeed * delta) / this.options.cameraRotationSensitivity;
+            gamepadLook$.next({ x: look.x * px, y: -look.y * px });
+          }
+        }
         this.camera.camera.fov += (cameraFovInc * FOV_CHANGE_PER_SECOND * delta) / 1000;
         this.camera.position = Pnt3.add(
           this.camera.position,

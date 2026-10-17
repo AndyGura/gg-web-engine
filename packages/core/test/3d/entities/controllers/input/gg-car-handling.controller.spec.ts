@@ -1,5 +1,6 @@
 import { GgCarHandlingController, KeyboardInput } from '../../../../../src';
 import { MockWorld } from '../../../../mocks/world.mock';
+import { stubGamepads } from '../../../../mocks/gamepad.mock';
 
 const fakeCar = (overrides: Partial<any> = {}) =>
   ({
@@ -160,6 +161,38 @@ describe('GgCarHandlingController', () => {
         expect(car.brake).toBeGreaterThan(0);
         expect(car.acceleration).toBe(0);
       });
+    });
+  });
+
+  describe('gamepad', () => {
+    let pads: ReturnType<typeof stubGamepads>;
+    beforeEach(() => (pads = stubGamepads()));
+    afterEach(() => pads.restore());
+
+    it('drives, shifts and pulls the handbrake from the world gamepad with the default binding', async () => {
+      const { world, car } = await setup();
+      pads.set({ axes: [-0.5, 0], buttons: { 7: 1, 5: true, 0: true } });
+      world.gamepadInput.poll();
+      tick(world, 0, 16);
+      expect(car.acceleration).toBe(1);
+      expect(car.steeringFactor).toBeGreaterThan(0);
+      expect(car.gear).toBe(2);
+      expect(car.handBrake).toBe(true);
+
+      pads.set({ buttons: { 4: true } });
+      world.gamepadInput.poll();
+      expect(car.gear).toBe(1);
+      expect(car.handBrake).toBe(false);
+    });
+
+    it('leaves the gamepad alone with gamepad: null', async () => {
+      const { world, car } = await setup({ gamepad: null } as any);
+      pads.set({ buttons: { 7: 1, 5: true, 0: true } });
+      world.gamepadInput.poll();
+      tick(world, 0, 16);
+      expect(car.acceleration).toBe(0);
+      expect(car.gear).toBe(1);
+      expect(car.handBrake).toBe(false);
     });
   });
 });

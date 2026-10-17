@@ -1,4 +1,12 @@
-import { KeyboardInput, Pnt3, PlayerCharacterController, Qtrn } from '../../../../../src';
+import {
+  DEFAULT_CHARACTER_GAMEPAD_BINDING,
+  GamepadInput,
+  KeyboardInput,
+  Pnt3,
+  PlayerCharacterController,
+  Qtrn,
+} from '../../../../../src';
+import { stubGamepads } from '../../../../mocks/gamepad.mock';
 
 const fakeCharacter = (overrides: Partial<any> = {}) =>
   ({
@@ -407,6 +415,50 @@ describe('PlayerCharacterController', () => {
       controller.lookDirection = Pnt3.Z; // straight up - well beyond a maxPitch of 0 (level)
       const pitch = Math.PI / 2 - Pnt3.toSpherical(controller.lookDirection).phi;
       expect(pitch).toBeCloseTo(0);
+    });
+  });
+
+  describe('gamepad', () => {
+    let pads: ReturnType<typeof stubGamepads>;
+    let gamepadInput: GamepadInput;
+    beforeEach(() => {
+      pads = stubGamepads();
+      gamepadInput = new GamepadInput();
+      gamepadInput.start();
+    });
+    afterEach(() => {
+      gamepadInput.stop();
+      pads.restore();
+    });
+
+    it('walks by the left stick, acts by the buttons and looks by the right stick, per tick', async () => {
+      const { controller, character } = setup();
+      await controller.onSpawned({ gamepadInput } as any);
+      const before = controller.lookDirection;
+
+      pads.set({ axes: [0.56, 0, 1, 0], buttons: { 0: true, 10: true, 1: true } });
+      gamepadInput.poll();
+      expect(character.moveDirection.x).toBeCloseTo(0.5);
+      expect(character.moveDirection.y).toBe(0);
+      expect(character.jump).toHaveBeenCalledTimes(1);
+      expect(character.isRunning).toBe(true);
+      expect(character.isCrouching).toBe(true);
+
+      controller.tick$.next([0, 500]); // half a second at full deflection to the right
+      const after = controller.lookDirection;
+      const turned = Math.atan2(after.y, after.x) - Math.atan2(before.y, before.x);
+      expect(Math.abs(turned)).toBeCloseTo(DEFAULT_CHARACTER_GAMEPAD_BINDING.lookSpeed / 2, 5);
+      expect(Pnt3.len(after)).toBeCloseTo(Pnt3.len(before), 5);
+    });
+
+    it('does nothing with gamepad: null', async () => {
+      const { controller, character } = setup(fakeCharacter(), { gamepad: null });
+      await controller.onSpawned({ gamepadInput } as any);
+      pads.set({ axes: [1, 0, 1, 0], buttons: { 0: true } });
+      gamepadInput.poll();
+      controller.tick$.next([0, 500]);
+      expect(character.moveDirection).toEqual(Pnt3.O);
+      expect(character.jump).not.toHaveBeenCalled();
     });
   });
 });

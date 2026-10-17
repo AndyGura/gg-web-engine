@@ -1,7 +1,10 @@
-import { filter, takeUntil } from 'rxjs';
+import { filter, take, takeUntil } from 'rxjs';
 import {
   DirectionInput,
   DirectionKeymap,
+  GAMEPAD_LEFT_STICK_OR_DPAD,
+  GamepadControls,
+  GamepadDirectionBinding,
   IEntity,
   KeyboardInput,
   Pnt2,
@@ -11,6 +14,26 @@ import {
 import { Renderer2dEntity } from '../../renderer-2d.entity';
 import { CharacterController2dEntity } from '../../character-controller-2d.entity';
 import { Gg2dWorld, Gg2dWorldTypeDocRepo } from '../../../gg-2d-world';
+
+/** Which gamepad controls move and act - see `GamepadControl` for the control names */
+export type Character2dGamepadBinding = {
+  /** The movement direction (only `x` moves the character), added to the direction input */
+  move: GamepadDirectionBinding;
+  /** Presses `jumpKey` */
+  jump: GamepadControls;
+  /** Presses `runKey` */
+  run: GamepadControls;
+  /** Presses `crouchKey` */
+  crouch: GamepadControls;
+};
+
+/** Left stick or d-pad moves, A jumps, X runs, B crouches */
+export const DEFAULT_CHARACTER_2D_GAMEPAD_BINDING: Character2dGamepadBinding = {
+  move: GAMEPAD_LEFT_STICK_OR_DPAD,
+  jump: 'b0',
+  run: 'b2',
+  crouch: 'b1',
+};
 
 /**
  * Options for configuring a `PlayerCharacterController2d`.
@@ -34,6 +57,12 @@ export type PlayerCharacterController2dOptions = {
    * distance closed per 1/60 s (0..1, exponential smoothing, the same at any frame rate - `1` snaps
    * instantly). Default 0.1. */
   cameraSmoothing: number;
+  /**
+   * The gamepad controls, bound on the world's `gamepadInput`: `move` goes to the direction input,
+   * the buttons press the keys above on `keyboard`. `DEFAULT_CHARACTER_2D_GAMEPAD_BINDING` by
+   * default; `null` leaves the gamepad alone.
+   */
+  gamepad: Character2dGamepadBinding | null;
 };
 
 const DEFAULT_OPTIONS: PlayerCharacterController2dOptions = {
@@ -43,6 +72,7 @@ const DEFAULT_OPTIONS: PlayerCharacterController2dOptions = {
   crouchKey: 'ControlLeft',
   lookAheadDistance: 0,
   cameraSmoothing: 0.1,
+  gamepad: DEFAULT_CHARACTER_2D_GAMEPAD_BINDING,
 };
 
 /**
@@ -178,6 +208,20 @@ export class PlayerCharacterController2d<TypeDoc extends Gg2dWorldTypeDocRepo = 
         filter(() => this.active),
       )
       .subscribe(([, delta]) => this.updateCamera(delta / 1000));
+
+    const gamepad = this.options.gamepad;
+    if (gamepad && world.gamepadInput) {
+      const unbindKeys = world.gamepadInput.bindKeys(this.keyboard, {
+        [this.options.jumpKey]: gamepad.jump,
+        [this.options.runKey]: gamepad.run,
+        [this.options.crouchKey]: gamepad.crouch,
+      });
+      const unbindMove = world.gamepadInput.bindDirection(this.directionsInput, gamepad.move);
+      this._onRemoved$.pipe(take(1)).subscribe(() => {
+        unbindKeys();
+        unbindMove();
+      });
+    }
 
     runWhileInputEnabled(
       world,
