@@ -169,7 +169,8 @@ export class GamepadInput extends IInput {
    * Whether the gamepad is the device the player uses: `true` from the first control pushed on it
    * (a button, or a stick moved past its dead zone - an axis at rest away from 0 does not count),
    * `false` again at the first real key press or pointer press, or when it is gone. Stopping the
-   * input (the world's `inputEnabled` off, for a menu) keeps it, so the menu can still show the
+   * input (the world's `inputEnabled` off, for a menu) keeps it - along with `connected`, `gamepad`
+   * and `standardMapping`, which stay as of the last poll - so the menu can still show the
    * gamepad's button names in its hints.
    */
   public get inUse(): boolean {
@@ -357,8 +358,14 @@ export class GamepadInput extends IInput {
   protected stopInternal(): void {
     window.removeEventListener('keydown', this.onDeviceUsed);
     window.removeEventListener('pointerdown', this.onDeviceUsed);
-    // every binding lets go of what it holds; the player's device stays known
-    this.readGamepad(null, true);
+    // every binding lets go of what it holds: every control reads as released. The gamepad itself
+    // stays known (`connected`, `standardMapping`, `inUse`), so a menu shown while the world's input
+    // is off still names its buttons, and nothing on `connected$` flickers over the stop
+    this.buttons = [];
+    this.axes = [];
+    this.previousAxes = [];
+    this.pushedRaw = new Set<GamepadControl>();
+    this.polled$.next();
   }
 
   private findGamepad(): Gamepad | null {
@@ -377,7 +384,7 @@ export class GamepadInput extends IInput {
     return gamepads.find(x => !!x && x.connected) || null;
   }
 
-  private readGamepad(gamepad: Gamepad | null, stopping: boolean = false): void {
+  private readGamepad(gamepad: Gamepad | null): void {
     this._gamepad = gamepad;
     const pushed = new Set<GamepadControl>();
     this.previousAxes = this.axes;
@@ -399,9 +406,7 @@ export class GamepadInput extends IInput {
     this.pushedRaw = pushed;
     this._connected$.next(!!gamepad);
     if (!gamepad) {
-      if (!stopping) {
-        this._inUse$.next(false);
-      }
+      this._inUse$.next(false);
     } else if (this.buttons.some(v => v > 0) || this.axes.some((v, i) => this.axisMoved(v, i))) {
       this._inUse$.next(true);
     }

@@ -1241,8 +1241,11 @@ What it holds to:
   `setAnalogDirection` with itself as the source; both return an unbind function. Both re-apply on
   every poll while held, not only on the edge: a `KeyboardInput`/`DirectionInput` restarted
   meanwhile (the world's input switched off and on) has let go, and gets the held state back on
-  the next poll. Stopping the gamepad input runs one last read with no gamepad, so every binding
-  releases. The world's `inputEnabled` therefore covers a gamepad through the inputs it feeds; a
+  the next poll. Stopping the gamepad input clears every control's value and emits one last poll,
+  so every binding releases - without forgetting the gamepad: `connected`, `gamepad`,
+  `standardMapping` and `inUse` stay as of the last poll, so a menu shown while the world's input
+  is off still names the buttons and `connected$` does not flicker over the stop. The world's
+  `inputEnabled` therefore covers a gamepad through the inputs it feeds; a
   controller that reads `value`/`direction` on its own tick (the look stick) gates on
   `directionsInput.running` for the same effect.
 - **Every built-in input controller takes a `gamepad` option** (`CarGamepadBinding`,
@@ -1261,7 +1264,10 @@ What it holds to:
   moved since the poll before* (a pad reporting its triggers as axes rests them at -1, and must
   not read as in use by merely being listed), and `false` on a real `keydown`/`pointerdown` on
   `window` (emulated keys fire no DOM event) or when the gamepad is gone. Stopping the input
-  (`inputEnabled` off for a menu) keeps the value, so a menu still shows gamepad hints.
+  (`inputEnabled` off for a menu) keeps the value, so a menu still shows gamepad hints. It is a
+  "which device did the player touch last" signal, not "is the gamepad pushed right now": a stick
+  held still through a key tap reads as not in use until it moves again, so a controller that
+  wants to know whether the gamepad is pushed reads `direction$`/`pressed$` of its own binding.
   `controlPushed$` emits each control the moment it passes half way, raw, for a controls menu
   capturing the player's choice.
 - `navigator.getGamepads()` is called inside a `try`: under a permissions policy that withholds
@@ -1271,11 +1277,21 @@ What it holds to:
   `resetAllKeys`) and ignores a real `keyup` of such a code. Without this, a gamepad button holding
   `Space` plus a tap on the physical `Space` would emit `false` on the keyup and `true` again on
   the next poll's re-press: a phantom rising edge that fires every edge-triggered action (jump,
-  grab, gear shift) a second time.
+  grab, gear shift) a second time. Symmetrically, it remembers the codes held on the physical
+  keyboard (real `keydown` to real `keyup`) and ignores an `emulateKeyUp` of such a code: a
+  sprint held on `ShiftLeft` survives a tap on the gamepad button bound to it. A key goes up when
+  the last of its two kinds of holder lets go.
+- The default gamepad bindings of controllers that are meant to run together share no button:
+  `ObjectGrabController` pairs with `PlayerCharacterController` (X grabs, RT throws; A/B/Y/L3 are
+  the character's) or with `FreeCameraController` (RB/LB fly up/down, L3 boosts). Check a new
+  controller's defaults against the ones it will be spawned next to.
 - `FreeCameraController`'s `ignoreKeyboardUnlessPointerLocked` gate also opens while
-  `gamepadInput.inUse` (its `inUse$` is part of the controls `combineLatest`): the gamepad's moves
-  and keys arrive through the same direction input and keyboard, and the gate is against stray
-  typing over the page, not against a gamepad - the look stick already bypasses it.
+  `gamepadInput.inUse`, or while the gamepad's `move` direction or one of its `up`/`down`/`boost`
+  controls is pushed (all part of the controls `combineLatest`): the gamepad's moves and keys
+  arrive through the same direction input and keyboard, and the gate is against stray typing over
+  the page, not against a gamepad - the look stick already bypasses it. `inUse` alone is not
+  enough there: a key tap hands it over to the keyboard while the stick is still held, and the
+  camera would stop until the stick moved again.
 
 `packages/mobile-controls` (`@gg-web-engine/mobile-controls`) is the consumer of this: DOM controls
 (`TouchButton`, `TouchStick`, `TouchDPad`, `TouchLookArea`, plus `TiltInput`) bound to those entry

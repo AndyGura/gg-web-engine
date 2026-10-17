@@ -475,7 +475,7 @@ describe('ObjectGrabController held object API', () => {
       pads.set({ buttons: { 2: true } });
       gamepadInput.poll();
       expect(controller.heldObject).toBe(entity);
-      pads.set({ buttons: { 5: true } });
+      pads.set({ buttons: { 7: true } });
       gamepadInput.poll();
       expect(controller.heldObject).toBeNull();
     });

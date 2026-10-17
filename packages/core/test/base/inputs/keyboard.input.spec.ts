@@ -48,6 +48,24 @@ describe('KeyboardInput', () => {
     expect(values).toEqual([false, true, false, true, false]);
   });
 
+  it('keeps a physically held key down across an emulateKeyUp of it, until its real keyup', () => {
+    keyboard.start();
+    const values: boolean[] = [];
+    keyboard.bind('ShiftLeft').subscribe(v => values.push(v));
+    dispatch('keydown', 'ShiftLeft');
+    dispatch('keydown', 'ShiftLeft', window, { repeat: true });
+    // a gamepad button bound to the same key is pressed and released meanwhile
+    keyboard.emulateKeyDown('ShiftLeft');
+    keyboard.emulateKeyUp('ShiftLeft');
+    expect(values).toEqual([false, true]);
+    dispatch('keyup', 'ShiftLeft');
+    expect(values).toEqual([false, true, false]);
+    // once released by its real keyup, an emulated press/release is a full edge again
+    keyboard.emulateKeyDown('ShiftLeft');
+    keyboard.emulateKeyUp('ShiftLeft');
+    expect(values).toEqual([false, true, false, true, false]);
+  });
+
   it('does not take the auto-repeat of a held key for a new press, though it still preventDefault()s it', () => {
     keyboard.start();
     const values: boolean[] = [];

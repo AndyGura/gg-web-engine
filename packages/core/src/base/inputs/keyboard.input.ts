@@ -26,6 +26,11 @@ export class KeyboardInput extends IInput {
    * keyup of such a code is not a release, the emulated hold still holds it
    */
   private emulatedHeld: Set<string> = new Set<string>();
+  /**
+   * Codes held down on the physical keyboard (a real keydown, no keyup yet): an `emulateKeyUp` of
+   * such a code is not a release either, the finger on the key still holds it
+   */
+  private physicalHeld: Set<string> = new Set<string>();
 
   /**
    * Flag which disables handling key downs, when document has some "typeable" element focused
@@ -125,7 +130,9 @@ export class KeyboardInput extends IInput {
   /**
    * Emulates a key down event for the given key code. The key stays down until `emulateKeyUp` (or
    * `resetAllKeys`): a real keyup of the same key meanwhile does not release it, so an on-screen
-   * button or a gamepad button holding a key is not let go of by a tap on the keyboard.
+   * button or a gamepad button holding a key is not let go of by a tap on the keyboard. The reverse
+   * holds too: a key held on the physical keyboard stays down across an `emulateKeyUp` of it, until
+   * its real keyup. A key is released when the last of its holders lets go.
    * @param code The key code to emulate
    */
   emulateKeyDown(code: string): void {
@@ -147,6 +154,10 @@ export class KeyboardInput extends IInput {
       return;
     }
     this.emulatedHeld.delete(code);
+    // a finger on the physical key still holds it
+    if (this.physicalHeld.has(code)) {
+      return;
+    }
     for (const subj of this.bindings[code] || []) {
       subj.next(false);
     }
@@ -172,6 +183,13 @@ export class KeyboardInput extends IInput {
           return;
         }
       }
+    }
+    // the auto-repeat of a held key keeps it held; a keyup of a key pressed before this input
+    // started (or while it skipped key downs) was never held here, and deletes nothing
+    if (pressed && !e.repeat) {
+      this.physicalHeld.add(e.code);
+    } else if (!pressed) {
+      this.physicalHeld.delete(e.code);
     }
     const subs = this.bindings[e.code];
     if (!subs || subs.length === 0) {
@@ -211,6 +229,7 @@ export class KeyboardInput extends IInput {
 
   public resetAllKeys() {
     this.emulatedHeld.clear();
+    this.physicalHeld.clear();
     for (const code in this.bindings) {
       for (const subj of this.bindings[code] || []) {
         subj.next(false);

@@ -66,6 +66,19 @@ describe('FreeCameraController', () => {
       controller.onRemoved();
     });
 
+    it('keeps flying by a held stick after a key is tapped, with ignoreKeyboardUnlessPointerLocked', async () => {
+      const { camera, controller } = await setup({ cameraLinearSpeed: 10, ignoreKeyboardUnlessPointerLocked: true });
+      pads.set({ axes: [0, -1] });
+      gamepadInput.poll();
+      // a tap on any key hands "in use" over to the keyboard, while the stick is still held forward
+      window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape' }));
+      expect(gamepadInput.inUse).toBe(false);
+      gamepadInput.poll();
+      camera.tick$.next([0, 1000]);
+      expect(Pnt3.len(camera.position)).toBeCloseTo(10, 5);
+      controller.onRemoved();
+    });
+
     it('looks by the right stick at lookSpeed', async () => {
       const { camera, controller } = await setup();
       camera.tick$.next([0, 16]);

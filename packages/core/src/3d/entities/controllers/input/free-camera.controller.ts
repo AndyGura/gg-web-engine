@@ -1,4 +1,4 @@
-import { BehaviorSubject, combineLatest, filter, merge, of, Subject, take, takeUntil } from 'rxjs';
+import { BehaviorSubject, combineLatest, filter, merge, Observable, of, Subject, take, takeUntil } from 'rxjs';
 import {
   DirectionInput,
   DirectionKeymap,
@@ -23,7 +23,7 @@ import {
   TickOrder,
 } from '../../../../base';
 import { Renderer3dEntity } from '../../renderer-3d.entity';
-import { map } from 'rxjs/operators';
+import { distinctUntilChanged, map } from 'rxjs/operators';
 
 /** Which gamepad controls fly the camera - see `GamepadControl` for the control names */
 export type FreeCameraGamepadBinding = {
@@ -86,7 +86,8 @@ export type FreeCameraControllerOptions = {
   /**
    * Flag to ignore keyboard events if pointer was not locked. false by default. Always ignored on a
    * touch device, like `ignoreMouseUnlessPointerLocked`, and while the gamepad is the device in use
-   * (`gamepadInput.inUse`): the gate is against stray typing over the page, not against a gamepad
+   * (`gamepadInput.inUse`) or has its `move` direction or one of its buttons pushed: the gate is
+   * against stray typing over the page, not against a gamepad
    */
   ignoreKeyboardUnlessPointerLocked: boolean;
   /**
@@ -224,10 +225,22 @@ export class FreeCameraController extends IEntity {
     const gamepad = this.options.gamepad;
     const gamepadInput = gamepad && world.gamepadInput;
 
+    // the gamepad's moves and keys come through the same inputs, and are not stray typing. A stick
+    // held still is not "in use" once a key is tapped (`inUse` hands over to the keyboard), so what
+    // is pushed on the gamepad right now opens the gate too, and a held stick keeps flying
+    const gamepadActive$: Observable<boolean> = gamepadInput
+      ? combineLatest([
+          gamepadInput.inUse$,
+          gamepadInput.direction$(gamepad.move),
+          gamepadInput.pressed$([gamepad.up, gamepad.down, gamepad.boost].flat()),
+        ]).pipe(
+          map(([inUse, move, pressed]) => inUse || move.x !== 0 || move.y !== 0 || pressed),
+          distinctUntilChanged(),
+        )
+      : of(false);
     let controlsObs = combineLatest([
       this.directionsInput.direction$,
-      // the gamepad's moves and keys come through the same inputs, and are not stray typing
-      gamepadInput ? gamepadInput.inUse$ : of(false),
+      gamepadActive$,
       ...keys.map(c => this.keyboard.bind(c)),
     ]).pipe(
       takeUntil(this._onRemoved$),

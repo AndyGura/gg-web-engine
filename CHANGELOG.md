@@ -133,7 +133,8 @@ where one exists.
 ### Changed
 - `KeyboardInput`: a key held through `emulateKeyDown` stays down across a real `keyup` of the same
   key, until `emulateKeyUp` (or `resetAllKeys`), so an on-screen or gamepad button holding a key is
-  not let go of by a tap on the keyboard.
+  not let go of by a tap on the keyboard - and a key held on the physical keyboard stays down across
+  an `emulateKeyUp` of it, until its real `keyup`. A key goes up when its last holder lets go.
 
 ## [0.0.82] - 2026-10-10
 

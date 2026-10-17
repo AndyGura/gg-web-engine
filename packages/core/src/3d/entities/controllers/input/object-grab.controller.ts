@@ -23,10 +23,13 @@ export type ObjectGrabGamepadBinding = {
   throw: GamepadControls;
 };
 
-/** X grabs and drops, RB throws */
+/**
+ * X grabs and drops, RT throws. Neither clashes with `DEFAULT_CHARACTER_GAMEPAD_BINDING` or
+ * `DEFAULT_FREE_CAMERA_GAMEPAD_BINDING`, the controllers this one is paired with
+ */
 export const DEFAULT_OBJECT_GRAB_GAMEPAD_BINDING: ObjectGrabGamepadBinding = {
   grab: 'b2',
-  throw: 'b5',
+  throw: 'b7',
 };
 
 /**

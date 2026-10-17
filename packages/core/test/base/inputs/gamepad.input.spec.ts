@@ -180,11 +180,20 @@ describe('GamepadInput', () => {
     expect(input.inUse).toBe(true);
   });
 
-  it('stays in use while stopped, and gives it up only when the gamepad is gone', () => {
+  it('stays in use and connected while stopped, and gives it up only when the gamepad is gone', () => {
+    const connected: boolean[] = [];
+    input.connected$.subscribe(v => connected.push(v));
     connect({ buttons: { 0: true } });
     expect(input.inUse).toBe(true);
     input.stop();
     expect(input.inUse).toBe(true);
+    // a menu shown while the world's input is off still names the gamepad's buttons
+    expect(input.connected).toBe(true);
+    expect(input.standardMapping).toBe(true);
+    expect(input.value('b0')).toBe(0); // but every control reads as released
+    input.start();
+    connect({ buttons: { 0: true } });
+    expect(connected).toEqual([false, true]); // no flicker over the stop
     input.start();
     connect({ buttons: { 0: true } });
     expect(input.inUse).toBe(true);
