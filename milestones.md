@@ -412,7 +412,16 @@ Status
   not shown yet cancels its load. Covered by `packages/core/test/base/screens/*.spec.ts`
   (including a leak test over 25 round trips) and the `3d/screens` example; documented in
   `gg-engine-app-development`.
-- Gamepad support — not started. The analog path above is what a gamepad input would feed too.
+- ✅ Gamepad support: `GamepadInput` (`packages/core/src/base/inputs/gamepad.input.ts`), one per
+  world as `world.gamepadInput`, polled on the global clock (so a gamepad can unpause a paused
+  world) while `inputEnabled`. It feeds the existing inputs - `bindKeys` presses a `KeyboardInput`'s
+  keys while buttons are held, `bindDirection` adds a stick or the d-pad to a `DirectionInput` as
+  an analog contribution - and exposes controls by index for anything else (`value$`, `pressed$`,
+  `direction$`, `controlPushed$` for binding capture, `inUse$` for input hints). Every built-in
+  input controller binds its keys and directions to it by default through a `gamepad` option with
+  standard-mapping defaults. Covered by `packages/core/test/base/inputs/gamepad.input.spec.ts` and
+  the controllers' specs; documented in `gg-engine-app-development`. Not done: haptics, and a
+  per-gamepad mapping database for pads without the standard mapping.
 - Touch/gesture recognition (pinch, pan, tap, swipe) — not started.
 - User-facing remapping API — not started; current input classes are configured in code, not
   remappable at runtime.

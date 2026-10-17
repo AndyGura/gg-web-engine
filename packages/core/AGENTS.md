@@ -380,6 +380,19 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   `active = false` already stops every input subscription from touching `character` and neutralizes
   whatever it last wrote (`moveDirection`/`isRunning` zeroed, plus `isCrouching` in "hold" crouch
   mode) rather than leaving it stuck mid-motion.
+- **Gamepad**: every one of those controllers is driven by a gamepad out of the box, through
+  `world.gamepadInput` (a `GamepadInput`, polled every frame while `world.inputEnabled`, also while
+  the world is paused): left stick or d-pad moves/steers, right stick looks, triggers are a car's
+  pedals, bumpers shift, A jumps, Start is yours to bind. Each controller's `gamepad` option takes
+  its own binding (`gamepad: { ...DEFAULT_GG_CAR_GAMEPAD_BINDING, handbrake: 'b1' }`) or `null` to
+  leave the gamepad alone. Controls are named by index (`'b7'` the right trigger, `'a0-'` the left
+  stick to the left, per the standard mapping; `GamepadInput.controlName('b7')` gives "RT" for a
+  menu). For your own actions: `world.gamepadInput.bindKeys(world.keyboardInput, { KeyF: 'b2' })`
+  holds a key while a button is pressed, so whatever is bound to the key works; `pressed$('b9')`,
+  `value$('b7')` (a trigger's 0..1) and `direction$(GAMEPAD_RIGHT_STICK)` read controls directly;
+  `inUse$` tells whether to show gamepad or keyboard hints; `controlPushed$` captures the next
+  control pushed for a "press a button" rebinding menu. Browsers list a gamepad only once a button
+  was pressed on it.
 - **GLB scene loading (3D)**: GLB + `.gg` meta sidecar, driven by `packages/core/src/3d/loader.ts`
   and the adapter's own `<lib>-loader.ts` (e.g. `ThreeLoader`). Levels are authored in Blender and
   exported with the `GG Web Engine Exporter` add-on in `blender-addon/` (see `blender-addon/README.md`

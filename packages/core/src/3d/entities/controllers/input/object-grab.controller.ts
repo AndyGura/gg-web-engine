@@ -1,10 +1,36 @@
-import { BehaviorSubject, filter, Observable, pairwise, startWith, takeUntil } from 'rxjs';
-import { IEntity, KeyboardInput, MouseInput, MouseInputState, Pnt3, Point3, TickOrder } from '../../../../base';
+import { BehaviorSubject, filter, Observable, pairwise, startWith, take, takeUntil } from 'rxjs';
+import {
+  GamepadControls,
+  IEntity,
+  KeyboardInput,
+  MouseInput,
+  MouseInputState,
+  Pnt3,
+  Point3,
+  TickOrder,
+} from '../../../../base';
 import { Renderer3dEntity } from '../../renderer-3d.entity';
 import { Grabbable3dEntity } from '../../grabbable-3d.entity';
 import { CharacterController3dEntity } from '../../character-controller-3d.entity';
 import { Gg3dWorld, Gg3dWorldTypeDocRepo } from '../../../gg-3d-world';
 import { characterControllerSelfHitSkip } from './character-controller-self-hit-skip';
+
+/** Which gamepad controls grab and throw - see `GamepadControl` for the control names */
+export type ObjectGrabGamepadBinding = {
+  /** Presses `grabKey` */
+  grab: GamepadControls;
+  /** Throws the held object (`throwHeld`), as the left mouse button does */
+  throw: GamepadControls;
+};
+
+/**
+ * X grabs and drops, RT throws. Neither clashes with `DEFAULT_CHARACTER_GAMEPAD_BINDING` or
+ * `DEFAULT_FREE_CAMERA_GAMEPAD_BINDING`, the controllers this one is paired with
+ */
+export const DEFAULT_OBJECT_GRAB_GAMEPAD_BINDING: ObjectGrabGamepadBinding = {
+  grab: 'b2',
+  throw: 'b7',
+};
 
 /**
  * Options for an `ObjectGrabController`.
@@ -30,6 +56,12 @@ export type ObjectGrabControllerOptions = {
    * Default 0.3.
    */
   holderExclusionMargin: number;
+  /**
+   * The gamepad controls, bound on the world's `gamepadInput`: `grab` presses `grabKey` on
+   * `keyboard`, `throw` throws. `DEFAULT_OBJECT_GRAB_GAMEPAD_BINDING` by default; `null` leaves the
+   * gamepad alone.
+   */
+  gamepad: ObjectGrabGamepadBinding | null;
 };
 
 const DEFAULT_OPTIONS: ObjectGrabControllerOptions = {
@@ -38,6 +70,7 @@ const DEFAULT_OPTIONS: ObjectGrabControllerOptions = {
   holdDistance: 1.5,
   throwSpeed: 12,
   holderExclusionMargin: 0.3,
+  gamepad: DEFAULT_OBJECT_GRAB_GAMEPAD_BINDING,
 };
 
 /**
@@ -146,6 +179,19 @@ export class ObjectGrabController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWor
         filter(down => this.active && down),
       )
       .subscribe(() => (this._heldObject ? this.dropHeld() : this.tryGrab()));
+
+    const gamepad = this.options.gamepad;
+    if (gamepad && world.gamepadInput) {
+      const unbind = world.gamepadInput.bindKeys(this.keyboard, { [this.options.grabKey]: gamepad.grab });
+      this._onRemoved$.pipe(take(1)).subscribe(unbind);
+      world.gamepadInput
+        .pressed$(gamepad.throw)
+        .pipe(
+          takeUntil(this._onRemoved$),
+          filter(down => down && this.active && this.keyboard.running),
+        )
+        .subscribe(() => this.throwHeld());
+    }
 
     // Left/right mouse button "just pressed" edges, derived from MouseInput's drag state (there is
     // no dedicated discrete click event on MouseInput itself - see its own doc for why DRAG/

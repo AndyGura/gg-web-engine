@@ -1,5 +1,6 @@
 import { CarHandlingController, KeyboardInput } from '../../../../../src';
 import { MockWorld } from '../../../../mocks/world.mock';
+import { stubGamepads } from '../../../../mocks/gamepad.mock';
 
 describe('CarHandlingController', () => {
   // `output$` is only ever pushed from this controller's own `tick$` subscription (see the class'
@@ -62,5 +63,59 @@ describe('CarHandlingController', () => {
     controller.active = true;
     tick(world, 16, 16);
     expect(outputs).toHaveLength(1);
+  });
+
+  describe('gamepad', () => {
+    let pads: ReturnType<typeof stubGamepads>;
+    beforeEach(() => (pads = stubGamepads()));
+    afterEach(() => pads.restore());
+
+    it('steers and pedals from the world gamepad with the default binding', async () => {
+      const { world, controller } = await setup();
+      const outputs: any[] = [];
+      controller.output$.subscribe(o => outputs.push(o));
+
+      pads.set({ axes: [1, 0], buttons: { 7: 0.8 } });
+      world.gamepadInput.poll();
+      tick(world, 0, 16);
+      expect(outputs[0]).toEqual({ upDown: 0.8, leftRight: -1 }); // leftRight is positive to the left
+
+      pads.set({ buttons: { 14: true, 6: true } }); // d-pad left, left trigger
+      world.gamepadInput.poll();
+      tick(world, 16, 16);
+      expect(outputs[1]).toEqual({ upDown: -1, leftRight: 1 });
+    });
+
+    it('takes a custom binding, and none with gamepad: null', async () => {
+      const custom = await setup({
+        gamepad: { steer: { negative: 'b4', positive: 'b5' }, throttle: 'b0', brake: 'b1' },
+      });
+      const off = await setup({ gamepad: null });
+      const customOutputs: any[] = [];
+      const offOutputs: any[] = [];
+      custom.controller.output$.subscribe(o => customOutputs.push(o));
+      off.controller.output$.subscribe(o => offOutputs.push(o));
+
+      pads.set({ buttons: { 5: true, 0: true }, axes: [-1, 0] });
+      custom.world.gamepadInput.poll();
+      off.world.gamepadInput.poll();
+      tick(custom.world, 0, 16);
+      tick(off.world, 0, 16);
+      expect(customOutputs[0]).toEqual({ upDown: 1, leftRight: -1 });
+      expect(offOutputs[0]).toEqual({ upDown: 0, leftRight: 0 });
+    });
+
+    it('lets go of the gamepad when removed from the world', async () => {
+      const { world, controller } = await setup();
+      pads.set({ axes: [1, 0] });
+      world.gamepadInput.poll();
+      expect(controller.directionsInput.direction.x).toBe(1);
+      world.removeEntity(controller);
+      // the direction input is stopped on removal; a started one gets nothing more from the gamepad
+      controller.directionsInput.start();
+      world.gamepadInput.poll();
+      expect(controller.directionsInput.direction.x).toBe(0);
+      controller.directionsInput.stop();
+    });
   });
 });

@@ -1,9 +1,29 @@
-import { filter, takeUntil } from 'rxjs';
-import { GgWorld, IEntity, KeyboardInput, TickOrder } from '../../../../base';
+import { filter, take, takeUntil } from 'rxjs';
+import { GamepadControls, GgWorld, IEntity, KeyboardInput, TickOrder } from '../../../../base';
 import { GgCarEntity } from '../../gg-car/gg-car.entity';
-import { CarHandlingControllerOptions, CarHandlingController } from './car-handling.controller';
+import {
+  CarGamepadBinding,
+  CarHandlingControllerOptions,
+  CarHandlingController,
+  DEFAULT_CAR_GAMEPAD_BINDING,
+} from './car-handling.controller';
 
-export type GgCarHandlingControllerOptions = CarHandlingControllerOptions & {
+/** `CarGamepadBinding` plus the controls pressing the gear and handbrake keys */
+export type GgCarGamepadBinding = CarGamepadBinding & {
+  gearUp: GamepadControls;
+  gearDown: GamepadControls;
+  handbrake: GamepadControls;
+};
+
+/** `DEFAULT_CAR_GAMEPAD_BINDING`, the bumpers shift (RB up, LB down), A is the handbrake */
+export const DEFAULT_GG_CAR_GAMEPAD_BINDING: GgCarGamepadBinding = {
+  ...DEFAULT_CAR_GAMEPAD_BINDING,
+  gearUp: 'b5',
+  gearDown: 'b4',
+  handbrake: 'b0',
+};
+
+export type GgCarHandlingControllerOptions = Omit<CarHandlingControllerOptions, 'gamepad'> & {
   gearUpDownKeys: [string, string];
   /**
    * Whether the throttle keys pick the driving direction by themselves. While `true`, holding
@@ -23,6 +43,12 @@ export type GgCarHandlingControllerOptions = CarHandlingControllerOptions & {
    */
   neutralGear?: boolean;
   handbrakeKey: string;
+  /**
+   * The gamepad controls, bound on the world's `gamepadInput`: steering and pedals go to the
+   * direction input, the gear and handbrake controls press `gearUpDownKeys`/`handbrakeKey` on
+   * `keyboard`. `DEFAULT_GG_CAR_GAMEPAD_BINDING` when omitted; `null` leaves the gamepad alone.
+   */
+  gamepad?: GgCarGamepadBinding | null;
 };
 
 /**
@@ -71,12 +97,24 @@ export class GgCarHandlingController extends IEntity {
     },
   ) {
     super();
-    this.carHandlingInput = new CarHandlingController(keyboard, options);
+    this.carHandlingInput = new CarHandlingController(keyboard, {
+      ...options,
+      gamepad: options.gamepad === undefined ? DEFAULT_GG_CAR_GAMEPAD_BINDING : options.gamepad,
+    });
     this.addChildren(this.carHandlingInput);
   }
 
   async onSpawned(world: GgWorld<any, any>): Promise<void> {
     super.onSpawned(world);
+    const gamepad = this.options.gamepad === undefined ? DEFAULT_GG_CAR_GAMEPAD_BINDING : this.options.gamepad;
+    if (gamepad && world.gamepadInput) {
+      const unbind = world.gamepadInput.bindKeys(this.keyboard, {
+        [this.options.gearUpDownKeys[0]]: gamepad.gearUp,
+        [this.options.gearUpDownKeys[1]]: gamepad.gearDown,
+        [this.options.handbrakeKey]: gamepad.handbrake,
+      });
+      this._onRemoved$.pipe(take(1)).subscribe(unbind);
+    }
     this.carHandlingInput.output$.pipe(takeUntil(this._onRemoved$)).subscribe(({ upDown, leftRight }) => {
       if (this.car) {
         this.car.steeringFactor = leftRight;

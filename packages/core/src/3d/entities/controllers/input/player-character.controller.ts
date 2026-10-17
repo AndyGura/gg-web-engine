@@ -1,7 +1,11 @@
-import { filter, takeUntil } from 'rxjs';
+import { filter, take, takeUntil } from 'rxjs';
 import {
   DirectionInput,
   DirectionKeymap,
+  GAMEPAD_LEFT_STICK_OR_DPAD,
+  GAMEPAD_RIGHT_STICK,
+  GamepadControls,
+  GamepadDirectionBinding,
   GgWorld,
   IEntity,
   KeyboardInput,
@@ -22,6 +26,38 @@ import { Gg3dWorldTypeDocRepo } from '../../../gg-3d-world';
 import { characterControllerSelfHitSkip } from './character-controller-self-hit-skip';
 
 export type PlayerCharacterControllerViewMode = 'first-person' | 'third-person';
+
+/** Which gamepad controls move, look and act - see `GamepadControl` for the control names */
+export type CharacterGamepadBinding = {
+  /** The walk/strafe direction, added to the direction input */
+  move: GamepadDirectionBinding;
+  /** The look direction: turns the view at `lookSpeed` at full deflection */
+  look: GamepadDirectionBinding;
+  /** How fast `look` turns the view at full deflection, in radians per second */
+  lookSpeed: number;
+  /** Presses `jumpKey` */
+  jump: GamepadControls;
+  /** Presses `runKey` */
+  run: GamepadControls;
+  /** Presses `crouchKey` */
+  crouch: GamepadControls;
+  /** Presses `toggleViewKey`; `null` for none */
+  toggleView: GamepadControls | null;
+};
+
+/**
+ * Left stick or d-pad walks, right stick looks, A jumps, the left stick's click runs, B crouches,
+ * Y toggles the view
+ */
+export const DEFAULT_CHARACTER_GAMEPAD_BINDING: CharacterGamepadBinding = {
+  move: GAMEPAD_LEFT_STICK_OR_DPAD,
+  look: GAMEPAD_RIGHT_STICK,
+  lookSpeed: 3,
+  jump: 'b0',
+  run: 'b10',
+  crouch: 'b1',
+  toggleView: 'b3',
+};
 
 /**
  * Options for configuring a `PlayerCharacterController`.
@@ -69,6 +105,13 @@ export type PlayerCharacterControllerOptions = {
   ignoreMouseUnlessPointerLocked: boolean;
   /** Options for the underlying `MouseInput` (e.g. `canvas` for pointer lock). `pointerLock: true` by default. */
   mouseOptions: Partial<MouseInputOptions>;
+  /**
+   * The gamepad controls, bound on the world's `gamepadInput`: `move` goes to the direction input,
+   * `look` turns the view (regardless of `ignoreMouseUnlessPointerLocked`), the buttons press the
+   * keys above on `keyboard`. `DEFAULT_CHARACTER_GAMEPAD_BINDING` by default; `null` leaves the
+   * gamepad alone.
+   */
+  gamepad: CharacterGamepadBinding | null;
 };
 
 const DEFAULT_OPTIONS: PlayerCharacterControllerOptions = {
@@ -88,6 +131,7 @@ const DEFAULT_OPTIONS: PlayerCharacterControllerOptions = {
   cameraCollisionMargin: 0.2,
   ignoreMouseUnlessPointerLocked: false,
   mouseOptions: { pointerLock: true },
+  gamepad: DEFAULT_CHARACTER_GAMEPAD_BINDING,
 };
 
 /**
@@ -365,12 +409,43 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
         this._spherical.phi = this.clampPitch(this._spherical.phi + (delta.y * this.options.mouseSensitivity) / 1000);
       });
 
+    const gamepad = this.options.gamepad;
+    const gamepadInput = gamepad && world.gamepadInput;
+    if (gamepad && gamepadInput) {
+      const keys: Record<string, GamepadControls> = {
+        [this.options.jumpKey]: gamepad.jump,
+        [this.options.runKey]: gamepad.run,
+        [this.options.crouchKey]: gamepad.crouch,
+      };
+      if (this.options.toggleViewKey && gamepad.toggleView) {
+        keys[this.options.toggleViewKey] = gamepad.toggleView;
+      }
+      const unbindKeys = gamepadInput.bindKeys(this.keyboard, keys);
+      const unbindMove = gamepadInput.bindDirection(this.directionsInput, gamepad.move);
+      this._onRemoved$.pipe(take(1)).subscribe(() => {
+        unbindKeys();
+        unbindMove();
+      });
+    }
+
     this.tick$
       .pipe(
         takeUntil(this._onRemoved$),
         filter(() => this.active),
       )
-      .subscribe(() => this.updateCamera());
+      .subscribe(([, delta]) => {
+        if (gamepad && gamepadInput && this.directionsInput.running) {
+          // the stick turns the view at a rate, so it is applied per tick, scaled by the tick's
+          // time; straight onto the look state, since the mouse path may wait for pointer lock
+          const look = gamepadInput.direction(gamepad.look);
+          if (look.x !== 0 || look.y !== 0) {
+            const angle = (gamepad.lookSpeed * delta) / 1000;
+            this._spherical.theta -= look.x * angle;
+            this._spherical.phi = this.clampPitch(this._spherical.phi - look.y * angle);
+          }
+        }
+        this.updateCamera();
+      });
 
     runWhileInputEnabled(
       world,

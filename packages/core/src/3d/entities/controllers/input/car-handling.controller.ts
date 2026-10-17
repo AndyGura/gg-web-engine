@@ -1,7 +1,9 @@
-import { combineLatest, filter, Observable, Subject, takeUntil } from 'rxjs';
+import { combineLatest, filter, Observable, Subject, take, takeUntil } from 'rxjs';
 import {
   DirectionInput,
   DirectionKeymap,
+  GamepadAxisBinding,
+  GamepadControls,
   GgWorld,
   IEntity,
   KeyboardInput,
@@ -9,9 +11,29 @@ import {
   TickOrder,
 } from '../../../../base';
 
+/** Which gamepad controls steer and pedal - see `GamepadControl` for the control names */
+export type CarGamepadBinding = {
+  /** The steering axis, `negative` to the left */
+  steer: GamepadAxisBinding;
+  throttle: GamepadControls;
+  brake: GamepadControls;
+};
+
+/** Left stick or d-pad steers, the right trigger is the throttle, the left one the brake */
+export const DEFAULT_CAR_GAMEPAD_BINDING: CarGamepadBinding = {
+  steer: { negative: ['a0-', 'b14'], positive: ['a0+', 'b15'] },
+  throttle: 'b7',
+  brake: 'b6',
+};
+
 export type CarHandlingControllerOptions = {
-  readonly keymap: DirectionKeymap;
+  readonly keymap: DirectionKeymap | null;
   readonly maxSteerDeltaPerSecond: number;
+  /**
+   * The gamepad controls, bound on the world's `gamepadInput`. `DEFAULT_CAR_GAMEPAD_BINDING` when
+   * omitted; `null` leaves the gamepad alone.
+   */
+  readonly gamepad?: CarGamepadBinding | null;
 };
 export type CarHandlingOutput = { upDown: number; leftRight: number };
 
@@ -70,6 +92,14 @@ export class CarHandlingController extends IEntity {
       () => this.directionsInput.start(),
       () => this.directionsInput.stop(),
     );
+    const gamepad = this.options.gamepad === undefined ? DEFAULT_CAR_GAMEPAD_BINDING : this.options.gamepad;
+    if (gamepad && world.gamepadInput) {
+      const unbind = world.gamepadInput.bindDirection(this.directionsInput, {
+        x: gamepad.steer,
+        y: { negative: gamepad.brake, positive: gamepad.throttle },
+      });
+      this._onRemoved$.pipe(take(1)).subscribe(unbind);
+    }
   }
 
   async onRemoved(): Promise<void> {

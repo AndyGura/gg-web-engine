@@ -1211,11 +1211,87 @@ controllers then drop.
 All three are ignored while the input is not running, and a stopped `DirectionInput` drops
 its contributions. A controller that moves by direction keys subscribes to `direction$`, never to
 `output$`, and treats the vector as analog (normalizing only when it is longer than 1) - that is the
-whole of what makes it drivable by an on-screen stick or, later, a gamepad.
+whole of what makes it drivable by an on-screen stick or a gamepad.
 `CharacterController3dEntity` likewise scales its speed by a `moveDirection` shorter than 1.
 
 All three are also what `GgWorld.inputEnabled` relies on (see "Screens"): an input that is stopped
 ignores emulated keys, analog directions and emulated moves, so nothing has to gate them separately.
+
+### `GamepadInput`: the gamepad feeds the other inputs
+
+`GamepadInput` (`base/inputs/gamepad.input.ts`) is the one gamepad reader. `GgWorld` owns one
+(`gamepadInput`), started in the constructor, stopped and started with `inputEnabled` (the
+`inputEnabled` setter and `dispose()` handle it next to `keyboardInput`). While running it polls
+`navigator.getGamepads()` on every tick of `GgGlobalClock` - not the world clock, on purpose: a
+paused world has no ticks, and a gamepad has to be able to unpause it. `poll()` is public, and that
+is how specs drive it: `test/mocks/gamepad.mock.ts` stubs `navigator.getGamepads` (jsdom has none)
+with `stubGamepads()`/`fakeGamepad()`, and a test calls `input.poll()` after `pads.set({...})`.
+
+What it holds to:
+
+- **Controls are strings by index** (`GamepadControl`: `'b7'`, `'a0-'`, `'a0+'`), never names: the
+  standard mapping is only a convention the browser reports (`standardMapping`), and a DirectInput
+  pad numbers its buttons differently. `GamepadInput.controlName` turns one into a menu label. A
+  direction is a `GamepadDirectionBinding` of `{ negative, positive }` control lists per axis, so
+  a stick, the d-pad and both together are the same shape (`GAMEPAD_LEFT_STICK`,
+  `GAMEPAD_RIGHT_STICK`, `GAMEPAD_DPAD`, `GAMEPAD_LEFT_STICK_OR_DPAD`); a stick's `y` is inverted
+  there, since the Gamepad API reports up as negative and `DirectionInput` wants up positive.
+- **It never drives an entity itself.** `bindKeys(keyboard, { code: controls })` presses keys
+  through `emulateKeyDown`/`emulateKeyUp`, `bindDirection(directionInput, binding)` calls
+  `setAnalogDirection` with itself as the source; both return an unbind function. Both re-apply on
+  every poll while held, not only on the edge: a `KeyboardInput`/`DirectionInput` restarted
+  meanwhile (the world's input switched off and on) has let go, and gets the held state back on
+  the next poll. Stopping the gamepad input clears every control's value and emits one last poll,
+  so every binding releases - without forgetting the gamepad: `connected`, `gamepad`,
+  `standardMapping` and `inUse` stay as of the last poll, so a menu shown while the world's input
+  is off still names the buttons and `connected$` does not flicker over the stop. The world's
+  `inputEnabled` therefore covers a gamepad through the inputs it feeds; a
+  controller that reads `value`/`direction` on its own tick (the look stick) gates on
+  `directionsInput.running` for the same effect.
+- **Every built-in input controller takes a `gamepad` option** (`CarGamepadBinding`,
+  `GgCarGamepadBinding`, `CharacterGamepadBinding`, `Character2dGamepadBinding`,
+  `FreeCameraGamepadBinding`, `ObjectGrabGamepadBinding`, each with a `DEFAULT_*_GAMEPAD_BINDING`
+  that is the default) and binds in `onSpawned` against `world.gamepadInput`, guarded by its
+  presence (specs spawn controllers into `{} as any` worlds) and unbound on `_onRemoved$`. `null`
+  turns it off, for an app with gamepad code of its own. Buttons go through the controller's own
+  key codes on its `keyboard` (so a `TouchButton`, a key and a gamepad button are one path); the
+  look stick is applied per tick, scaled by the tick's delta (`lookSpeed` is radians per second),
+  onto the controller's look state - `PlayerCharacterController` writes `_spherical` through
+  `clampPitch`, `FreeCameraController` feeds the pixel equivalent into its mouse-delta path, after
+  the pointer-lock gate, so elasticity applies alike. A new controller with keys and a direction
+  binds both the same way.
+- `inUse$` turns `true` on any button pushed or any axis that is past the stick dead zone *and
+  moved since the poll before* (a pad reporting its triggers as axes rests them at -1, and must
+  not read as in use by merely being listed), and `false` on a real `keydown`/`pointerdown` on
+  `window` (emulated keys fire no DOM event) or when the gamepad is gone. Stopping the input
+  (`inputEnabled` off for a menu) keeps the value, so a menu still shows gamepad hints. It is a
+  "which device did the player touch last" signal, not "is the gamepad pushed right now": a stick
+  held still through a key tap reads as not in use until it moves again, so a controller that
+  wants to know whether the gamepad is pushed reads `direction$`/`pressed$` of its own binding.
+  `controlPushed$` emits each control the moment it passes half way, raw, for a controls menu
+  capturing the player's choice.
+- `navigator.getGamepads()` is called inside a `try`: under a permissions policy that withholds
+  the gamepad feature (a game embedded cross-origin) it throws on every call, which from the
+  per-frame poll would be one unhandled error per frame. A throw reads as no gamepad.
+- `KeyboardInput` remembers the codes held through `emulateKeyDown` (until `emulateKeyUp` or
+  `resetAllKeys`) and ignores a real `keyup` of such a code. Without this, a gamepad button holding
+  `Space` plus a tap on the physical `Space` would emit `false` on the keyup and `true` again on
+  the next poll's re-press: a phantom rising edge that fires every edge-triggered action (jump,
+  grab, gear shift) a second time. Symmetrically, it remembers the codes held on the physical
+  keyboard (real `keydown` to real `keyup`) and ignores an `emulateKeyUp` of such a code: a
+  sprint held on `ShiftLeft` survives a tap on the gamepad button bound to it. A key goes up when
+  the last of its two kinds of holder lets go.
+- The default gamepad bindings of controllers that are meant to run together share no button:
+  `ObjectGrabController` pairs with `PlayerCharacterController` (X grabs, RT throws; A/B/Y/L3 are
+  the character's) or with `FreeCameraController` (RB/LB fly up/down, L3 boosts). Check a new
+  controller's defaults against the ones it will be spawned next to.
+- `FreeCameraController`'s `ignoreKeyboardUnlessPointerLocked` gate also opens while
+  `gamepadInput.inUse`, or while the gamepad's `move` direction or one of its `up`/`down`/`boost`
+  controls is pushed (all part of the controls `combineLatest`): the gamepad's moves and keys
+  arrive through the same direction input and keyboard, and the gate is against stray typing over
+  the page, not against a gamepad - the look stick already bypasses it. `inUse` alone is not
+  enough there: a key tap hands it over to the keyboard while the stick is still held, and the
+  camera would stop until the stick moved again.
 
 `packages/mobile-controls` (`@gg-web-engine/mobile-controls`) is the consumer of this: DOM controls
 (`TouchButton`, `TouchStick`, `TouchDPad`, `TouchLookArea`, plus `TiltInput`) bound to those entry

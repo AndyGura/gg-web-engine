@@ -1,4 +1,5 @@
-import { KeyboardInput, Pnt2, PlayerCharacterController2d } from '../../../../../src';
+import { GamepadInput, KeyboardInput, Pnt2, PlayerCharacterController2d } from '../../../../../src';
+import { stubGamepads } from '../../../../mocks/gamepad.mock';
 
 const fakeCharacter = (overrides: Partial<any> = {}) =>
   ({
@@ -200,6 +201,35 @@ describe('PlayerCharacterController2d', () => {
       await controller.onSpawned({} as any);
       expect(() => controller.tick$.next([0, 16])).not.toThrow();
       expect(camera.position).toEqual(Pnt2.O);
+    });
+  });
+
+  describe('gamepad', () => {
+    let pads: ReturnType<typeof stubGamepads>;
+    let gamepadInput: GamepadInput;
+    beforeEach(() => {
+      pads = stubGamepads();
+      gamepadInput = new GamepadInput();
+      gamepadInput.start();
+    });
+    afterEach(() => {
+      gamepadInput.stop();
+      pads.restore();
+    });
+
+    it('moves by the left stick or d-pad and acts by the buttons', async () => {
+      const { controller, character } = setup();
+      await controller.onSpawned({ gamepadInput } as any);
+      pads.set({ axes: [-1, 0], buttons: { 0: true, 2: true } });
+      gamepadInput.poll();
+      expect(character.moveDirection).toBe(-1);
+      expect(character.jump).toHaveBeenCalledTimes(1);
+      expect(character.isRunning).toBe(true);
+      pads.set({ buttons: { 15: true, 1: true } });
+      gamepadInput.poll();
+      expect(character.moveDirection).toBe(1);
+      expect(character.isRunning).toBe(false);
+      expect(character.isCrouching).toBe(true);
     });
   });
 });
