@@ -119,6 +119,9 @@ style keeps it that way by following the same three rules:
   every frame, so `--gg-mc-opacity` is applied where it covers one layer: to each control, except
   the stick, where it dims the knob and the base's `::before` (which draws the base). An `opacity`
   of yours on the overlay also multiplies with `--gg-mc-opacity` rather than replacing it.
+  Because the `::before` draws the base, a `background` or `border-color` set on
+  `.gg-mc-stick-base` itself is painted under it: recolour the base through `--gg-mc-background` /
+  `--gg-mc-border`, or style `.gg-mc-stick-base::before`.
 - **Change colours without a transition.** A pressed button or d-pad arm swaps its background for
   `--gg-mc-active-background` at once: one small repaint per press and release.
 

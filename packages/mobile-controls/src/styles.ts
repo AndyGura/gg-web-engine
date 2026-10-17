@@ -103,7 +103,10 @@ export const MOBILE_CONTROLS_CSS = `
 .gg-mc-stick-base::before {
   content: '';
   position: absolute;
-  inset: calc(var(--gg-mc-unit) * -0.22);
+  top: calc(var(--gg-mc-unit) * -0.22);
+  right: calc(var(--gg-mc-unit) * -0.22);
+  bottom: calc(var(--gg-mc-unit) * -0.22);
+  left: calc(var(--gg-mc-unit) * -0.22);
   box-sizing: border-box;
   border: calc(var(--gg-mc-unit) * 0.22) solid var(--gg-mc-border);
   border-radius: 50%;
