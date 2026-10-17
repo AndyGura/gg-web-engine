@@ -88,6 +88,10 @@ where one exists.
   instead of replacing it, and costs an offscreen pass on every frame: dim through
   `--gg-mc-opacity` instead. The stick base's border and background are drawn by its `::before`.
   Transitions are off under `prefers-reduced-motion: reduce`.
+- `@gg-web-engine/mobile-controls`: on browsers without the `inset` CSS shorthand (iOS Safari
+  before 14.5, Chrome before 87) the overlay collapsed to nothing and clipped every control, and a
+  `TouchLookArea` without a `placement` had no size, so it never reported drags or taps. The
+  overlay, the look area and the stick base now use the `top`/`right`/`bottom`/`left` longhands.
 - `rapier2d`: bodies were capped at 400 px/s (4 m/s). Rapier's speed limit and tolerances scale
   with its `lengthUnit`, which the adapter left at 1 while working in pixels; it is now 100 (pixels
   per meter). Sleep thresholds and contact tolerances scale with it too, so they now match the 3D

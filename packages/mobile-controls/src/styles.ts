@@ -32,7 +32,10 @@ export const MOBILE_CONTROLS_CSS = `
   --gg-mc-active-background: rgba(255, 255, 255, 0.4);
   --gg-mc-opacity: 0.85;
   position: fixed;
-  inset: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   z-index: 1000;
   overflow: hidden;
   pointer-events: none;
