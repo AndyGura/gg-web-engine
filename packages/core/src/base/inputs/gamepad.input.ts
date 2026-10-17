@@ -79,6 +79,8 @@ const DEFAULT_OPTIONS: GamepadInputOptions = {
 };
 
 const CONTROL_FORMAT = /^(b\d+|a\d+[+-])$/;
+/** an axis changed by less than this between two polls is the noise of a stick held still */
+const AXIS_MOVE_THRESHOLD = 0.01;
 
 const STANDARD_BUTTON_NAMES = [
   'A',
@@ -144,6 +146,8 @@ export class GamepadInput extends IInput {
   private buttons: number[] = [];
   /** raw axis values */
   private axes: number[] = [];
+  /** raw axis values of the poll before, to tell a stick moved from one resting off center */
+  private previousAxes: number[] = [];
   private pushedRaw: Set<GamepadControl> = new Set<GamepadControl>();
 
   constructor(options: Partial<GamepadInputOptions> = {}) {
@@ -162,9 +166,11 @@ export class GamepadInput extends IInput {
   }
 
   /**
-   * Whether the gamepad is the device the player uses: `true` from the first control pushed on it,
-   * `false` again at the first real key press or pointer press, or when it is gone. A game shows
-   * the gamepad's button names in its hints while this holds.
+   * Whether the gamepad is the device the player uses: `true` from the first control pushed on it
+   * (a button, or a stick moved past its dead zone - an axis at rest away from 0 does not count),
+   * `false` again at the first real key press or pointer press, or when it is gone. Stopping the
+   * input (the world's `inputEnabled` off, for a menu) keeps it, so the menu can still show the
+   * gamepad's button names in its hints.
    */
   public get inUse(): boolean {
     return this._inUse$.value;
@@ -272,6 +278,7 @@ export class GamepadInput extends IInput {
    * the control(s) that press it (`{ Space: 'b0', KeyE: ['b2', 'b5'] }`). The key goes down through
    * `emulateKeyDown` on the poll a control passes `pressThreshold` and up when none of them is
    * pressed any more - or when this input stops. Returns a function that unbinds (and releases).
+   * While a key is held this way, releasing the same physical key does not let go of it.
    */
   public bindKeys(keyboard: KeyboardInput, keys: Record<string, GamepadControls>): () => void {
     const held = new Set<string>();
@@ -350,12 +357,19 @@ export class GamepadInput extends IInput {
   protected stopInternal(): void {
     window.removeEventListener('keydown', this.onDeviceUsed);
     window.removeEventListener('pointerdown', this.onDeviceUsed);
-    // every binding lets go of what it holds
-    this.readGamepad(null);
+    // every binding lets go of what it holds; the player's device stays known
+    this.readGamepad(null, true);
   }
 
   private findGamepad(): Gamepad | null {
-    const gamepads: (Gamepad | null)[] = navigator.getGamepads?.() || [];
+    let gamepads: (Gamepad | null)[];
+    try {
+      gamepads = navigator.getGamepads?.() || [];
+    } catch (e) {
+      // a page whose permissions policy withholds the gamepad feature (an embedded game) throws
+      // here on every call: no gamepad, then
+      return null;
+    }
     if (this.options.gamepadIndex !== null) {
       const gamepad = gamepads[this.options.gamepadIndex];
       return gamepad && gamepad.connected ? gamepad : null;
@@ -363,9 +377,10 @@ export class GamepadInput extends IInput {
     return gamepads.find(x => !!x && x.connected) || null;
   }
 
-  private readGamepad(gamepad: Gamepad | null): void {
+  private readGamepad(gamepad: Gamepad | null, stopping: boolean = false): void {
     this._gamepad = gamepad;
     const pushed = new Set<GamepadControl>();
+    this.previousAxes = this.axes;
     if (gamepad) {
       this.buttons = gamepad.buttons.map(b => {
         if (b.value > this.options.triggerDeadzone) {
@@ -384,14 +399,28 @@ export class GamepadInput extends IInput {
     this.pushedRaw = pushed;
     this._connected$.next(!!gamepad);
     if (!gamepad) {
-      this._inUse$.next(false);
-    } else if (this.buttons.some(v => v > 0) || this.axes.some(v => Math.abs(v) > this.options.stickDeadzone)) {
+      if (!stopping) {
+        this._inUse$.next(false);
+      }
+    } else if (this.buttons.some(v => v > 0) || this.axes.some((v, i) => this.axisMoved(v, i))) {
       this._inUse$.next(true);
     }
     this.polled$.next();
     for (const control of newlyPushed) {
       this._controlPushed$.next(control);
     }
+  }
+
+  /**
+   * Whether axis `i` is pushed past its dead zone and moved since the poll before: a trigger
+   * reported as an axis rests at -1 and must not count as used until it is pulled
+   */
+  private axisMoved(value: number, i: number): boolean {
+    if (Math.abs(value) <= this.options.stickDeadzone) {
+      return false;
+    }
+    const previous = this.previousAxes[i];
+    return previous !== undefined && Math.abs(value - previous) > AXIS_MOVE_THRESHOLD;
   }
 
   private controlValue(control: GamepadControl): number {

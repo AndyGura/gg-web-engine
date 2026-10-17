@@ -33,6 +33,21 @@ describe('KeyboardInput', () => {
     expect(values).toEqual([false, true, false]); // BehaviorSubject's initial value, then down, then up
   });
 
+  it('keeps a key held through emulateKeyDown down across a real keyup of it, until emulateKeyUp', () => {
+    keyboard.start();
+    const values: boolean[] = [];
+    keyboard.bind('Space').subscribe(v => values.push(v));
+    keyboard.emulateKeyDown('Space');
+    dispatch('keydown', 'Space');
+    dispatch('keyup', 'Space');
+    expect(values).toEqual([false, true]);
+    keyboard.emulateKeyUp('Space');
+    expect(values).toEqual([false, true, false]);
+    dispatch('keydown', 'Space');
+    dispatch('keyup', 'Space');
+    expect(values).toEqual([false, true, false, true, false]);
+  });
+
   it('does not take the auto-repeat of a held key for a new press, though it still preventDefault()s it', () => {
     keyboard.start();
     const values: boolean[] = [];
@@ -99,7 +114,7 @@ describe('KeyboardInput', () => {
     expect(values).toEqual([false, true]);
   });
 
-  it('never preventDefault()s Tab even when bound, since that would break the browser\'s own focus movement', () => {
+  it("never preventDefault()s Tab even when bound, since that would break the browser's own focus movement", () => {
     keyboard.start();
     keyboard.bind('Tab').subscribe();
 

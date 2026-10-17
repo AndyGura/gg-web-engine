@@ -57,6 +57,15 @@ describe('FreeCameraController', () => {
       boosted.controller.onRemoved();
     });
 
+    it('flies by the gamepad with ignoreKeyboardUnlessPointerLocked and no pointer lock', async () => {
+      const { camera, controller } = await setup({ cameraLinearSpeed: 10, ignoreKeyboardUnlessPointerLocked: true });
+      pads.set({ axes: [0, -1], buttons: { 5: true } });
+      gamepadInput.poll();
+      camera.tick$.next([0, 1000]);
+      expect(Pnt3.len(camera.position)).toBeCloseTo(10, 5);
+      controller.onRemoved();
+    });
+
     it('looks by the right stick at lookSpeed', async () => {
       const { camera, controller } = await setup();
       camera.tick$.next([0, 16]);

@@ -130,6 +130,11 @@ where one exists.
   change had faded to so far, so reading one right after setting it gave the old value. They return
   the value last set.
 
+### Changed
+- `KeyboardInput`: a key held through `emulateKeyDown` stays down across a real `keyup` of the same
+  key, until `emulateKeyUp` (or `resetAllKeys`), so an on-screen or gamepad button holding a key is
+  not let go of by a tap on the keyboard.
+
 ## [0.0.82] - 2026-10-10
 
 ### Added

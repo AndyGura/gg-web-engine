@@ -1257,9 +1257,25 @@ What it holds to:
   `clampPitch`, `FreeCameraController` feeds the pixel equivalent into its mouse-delta path, after
   the pointer-lock gate, so elasticity applies alike. A new controller with keys and a direction
   binds both the same way.
-- `inUse$` turns `true` on any control pushed and `false` on a real `keydown`/`pointerdown` on
-  `window` (emulated keys fire no DOM event); `controlPushed$` emits each control the moment it
-  passes half way, raw, for a controls menu capturing the player's choice.
+- `inUse$` turns `true` on any button pushed or any axis that is past the stick dead zone *and
+  moved since the poll before* (a pad reporting its triggers as axes rests them at -1, and must
+  not read as in use by merely being listed), and `false` on a real `keydown`/`pointerdown` on
+  `window` (emulated keys fire no DOM event) or when the gamepad is gone. Stopping the input
+  (`inputEnabled` off for a menu) keeps the value, so a menu still shows gamepad hints.
+  `controlPushed$` emits each control the moment it passes half way, raw, for a controls menu
+  capturing the player's choice.
+- `navigator.getGamepads()` is called inside a `try`: under a permissions policy that withholds
+  the gamepad feature (a game embedded cross-origin) it throws on every call, which from the
+  per-frame poll would be one unhandled error per frame. A throw reads as no gamepad.
+- `KeyboardInput` remembers the codes held through `emulateKeyDown` (until `emulateKeyUp` or
+  `resetAllKeys`) and ignores a real `keyup` of such a code. Without this, a gamepad button holding
+  `Space` plus a tap on the physical `Space` would emit `false` on the keyup and `true` again on
+  the next poll's re-press: a phantom rising edge that fires every edge-triggered action (jump,
+  grab, gear shift) a second time.
+- `FreeCameraController`'s `ignoreKeyboardUnlessPointerLocked` gate also opens while
+  `gamepadInput.inUse` (its `inUse$` is part of the controls `combineLatest`): the gamepad's moves
+  and keys arrive through the same direction input and keyboard, and the gate is against stray
+  typing over the page, not against a gamepad - the look stick already bypasses it.
 
 `packages/mobile-controls` (`@gg-web-engine/mobile-controls`) is the consumer of this: DOM controls
 (`TouchButton`, `TouchStick`, `TouchDPad`, `TouchLookArea`, plus `TiltInput`) bound to those entry

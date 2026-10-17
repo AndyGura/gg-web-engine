@@ -169,6 +169,58 @@ describe('GamepadInput', () => {
     expect(values).toEqual([false, true, false, true, false]);
   });
 
+  it('is not in use by an axis resting off center, only by one that moved', () => {
+    connect({ axes: [0, 0, 0, 0, -1] }); // a trigger reported as an axis rests at -1
+    connect({ axes: [0, 0, 0, 0, -1] });
+    expect(input.inUse).toBe(false);
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyW' }));
+    connect({ axes: [0, 0, 0, 0, -1] });
+    expect(input.inUse).toBe(false);
+    connect({ axes: [0, 0, 0, 0, -0.5] });
+    expect(input.inUse).toBe(true);
+  });
+
+  it('stays in use while stopped, and gives it up only when the gamepad is gone', () => {
+    connect({ buttons: { 0: true } });
+    expect(input.inUse).toBe(true);
+    input.stop();
+    expect(input.inUse).toBe(true);
+    input.start();
+    connect({ buttons: { 0: true } });
+    expect(input.inUse).toBe(true);
+    pads.set(null);
+    input.poll();
+    expect(input.inUse).toBe(false);
+  });
+
+  it('reads no gamepad when getGamepads() throws', () => {
+    Object.defineProperty(navigator, 'getGamepads', {
+      value: () => {
+        throw new DOMException('denied', 'SecurityError');
+      },
+      configurable: true,
+      writable: true,
+    });
+    expect(() => input.poll()).not.toThrow();
+    expect(input.connected).toBe(false);
+  });
+
+  it('keeps holding a key when the same physical key is released', () => {
+    const keyboard = new KeyboardInput();
+    keyboard.start();
+    const space: boolean[] = [];
+    keyboard.bind('Space').subscribe(v => space.push(v));
+    input.bindKeys(keyboard, { Space: 'b0' });
+    connect({ buttons: { 0: true } });
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' }));
+    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'Space' }));
+    connect({ buttons: { 0: true } });
+    expect(space).toEqual([false, true]); // no second press
+    connect({ buttons: { 0: false } });
+    expect(space).toEqual([false, true, false]);
+    keyboard.stop();
+  });
+
   it('emits each control on the poll it becomes pushed, raw', () => {
     const pushed: GamepadControl[] = [];
     input.controlPushed$.subscribe(c => pushed.push(c));

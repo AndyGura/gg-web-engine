@@ -1,4 +1,4 @@
-import { BehaviorSubject, combineLatest, filter, merge, Subject, take, takeUntil } from 'rxjs';
+import { BehaviorSubject, combineLatest, filter, merge, of, Subject, take, takeUntil } from 'rxjs';
 import {
   DirectionInput,
   DirectionKeymap,
@@ -85,7 +85,8 @@ export type FreeCameraControllerOptions = {
   ignoreMouseUnlessPointerLocked: boolean;
   /**
    * Flag to ignore keyboard events if pointer was not locked. false by default. Always ignored on a
-   * touch device, like `ignoreMouseUnlessPointerLocked`
+   * touch device, like `ignoreMouseUnlessPointerLocked`, and while the gamepad is the device in use
+   * (`gamepadInput.inUse`): the gate is against stray typing over the page, not against a gamepad
    */
   ignoreKeyboardUnlessPointerLocked: boolean;
   /**
@@ -220,12 +221,24 @@ export class FreeCameraController extends IEntity {
     keys.push('ShiftLeft');
     // a touch screen has no pointer lock, so neither "unless pointer locked" option applies to it
     const isTouchScreen = MouseInput.isTouchDevice();
+    const gamepad = this.options.gamepad;
+    const gamepadInput = gamepad && world.gamepadInput;
 
-    let controlsObs = combineLatest([this.directionsInput.direction$, ...keys.map(c => this.keyboard.bind(c))]).pipe(
+    let controlsObs = combineLatest([
+      this.directionsInput.direction$,
+      // the gamepad's moves and keys come through the same inputs, and are not stray typing
+      gamepadInput ? gamepadInput.inUse$ : of(false),
+      ...keys.map(c => this.keyboard.bind(c)),
+    ]).pipe(
       takeUntil(this._onRemoved$),
-      map(([direction, ...rest]) => {
+      map(([direction, gamepadInUse, ...rest]) => {
         let c: { direction: Point2; rest: boolean[] } = { direction: Pnt2.O, rest: [] };
-        if (!this.options.ignoreKeyboardUnlessPointerLocked || this.mouseInput.isPointerLocked || isTouchScreen) {
+        if (
+          !this.options.ignoreKeyboardUnlessPointerLocked ||
+          this.mouseInput.isPointerLocked ||
+          isTouchScreen ||
+          gamepadInUse
+        ) {
           c = { direction, rest };
         }
         let translate = { ...Pnt3.O } as { x: number; y: number; z: number };
@@ -321,8 +334,6 @@ export class FreeCameraController extends IEntity {
       });
     }
 
-    const gamepad = this.options.gamepad;
-    const gamepadInput = gamepad && world.gamepadInput;
     if (gamepad && gamepadInput) {
       const unbindKeys = gamepadInput.bindKeys(this.keyboard, {
         KeyE: gamepad.up,

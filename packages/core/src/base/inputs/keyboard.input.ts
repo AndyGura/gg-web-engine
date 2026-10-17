@@ -21,6 +21,11 @@ import { distinctUntilChanged, map } from 'rxjs/operators';
  */
 export class KeyboardInput extends IInput {
   private bindings: { [code: string]: BehaviorSubject<boolean>[] } = {};
+  /**
+   * Codes held down through `emulateKeyDown` and not yet let go of through `emulateKeyUp`: a real
+   * keyup of such a code is not a release, the emulated hold still holds it
+   */
+  private emulatedHeld: Set<string> = new Set<string>();
 
   /**
    * Flag which disables handling key downs, when document has some "typeable" element focused
@@ -118,13 +123,16 @@ export class KeyboardInput extends IInput {
   }
 
   /**
-   * Emulates a key down event for the given key code
+   * Emulates a key down event for the given key code. The key stays down until `emulateKeyUp` (or
+   * `resetAllKeys`): a real keyup of the same key meanwhile does not release it, so an on-screen
+   * button or a gamepad button holding a key is not let go of by a tap on the keyboard.
    * @param code The key code to emulate
    */
   emulateKeyDown(code: string): void {
     if (!this.running) {
       return;
     }
+    this.emulatedHeld.add(code);
     for (const subj of this.bindings[code] || []) {
       subj.next(true);
     }
@@ -138,6 +146,7 @@ export class KeyboardInput extends IInput {
     if (!this.running) {
       return;
     }
+    this.emulatedHeld.delete(code);
     for (const subj of this.bindings[code] || []) {
       subj.next(false);
     }
@@ -184,6 +193,10 @@ export class KeyboardInput extends IInput {
     if (pressed && e.repeat) {
       return;
     }
+    // A key held through `emulateKeyDown` is still held after the physical key is released
+    if (!pressed && this.emulatedHeld.has(e.code)) {
+      return;
+    }
     for (const subj of subs) {
       subj.next(pressed);
     }
@@ -197,6 +210,7 @@ export class KeyboardInput extends IInput {
   }
 
   public resetAllKeys() {
+    this.emulatedHeld.clear();
     for (const code in this.bindings) {
       for (const subj of this.bindings[code] || []) {
         subj.next(false);
