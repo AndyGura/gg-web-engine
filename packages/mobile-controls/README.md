@@ -106,6 +106,27 @@ restyles everything, and `.gg-mc-id-<id>` reaches a single control:
 new MobileControls({ className: 'my-controls' });
 ```
 
+The default style is kept cheap for the GPU of a phone running a WebGL game below it, and a custom
+style keeps it that way by following the same three rules:
+
+- **Animate only `transform` and `opacity`, of an element that has `will-change` for them.** A
+  button shrinks by `transform`, the stick knob moves by `transform`, and the floating stick moves
+  and fades by `transform` and `opacity`. A transitioned `background`, `box-shadow` or size repaints
+  on every frame of every press, and a transition on an element without `will-change` makes the
+  browser create its layer at each press and drop it after.
+- **Dim the controls with `--gg-mc-opacity`, never with `opacity` on the overlay** (on `.gg-mc` or
+  on your `className`). An opacity below 1 over several layers is drawn through an offscreen pass on
+  every frame, so `--gg-mc-opacity` is applied where it covers one layer: to each control, except
+  the stick, where it dims the knob and the base's `::before` (which draws the base). An `opacity`
+  of yours on the overlay also multiplies with `--gg-mc-opacity` rather than replacing it.
+  Because the `::before` draws the base, a `background` or `border-color` set on
+  `.gg-mc-stick-base` itself is painted under it: recolour the base through `--gg-mc-background` /
+  `--gg-mc-border`, or style `.gg-mc-stick-base::before`.
+- **Change colours without a transition.** A pressed button or d-pad arm swaps its background for
+  `--gg-mc-active-background` at once: one small repaint per press and release.
+
+Transitions are off under `prefers-reduced-motion: reduce`.
+
 `injectStyles: false` drops the default stylesheet altogether for a fully custom look.
 
 ### Your own layout, your own controller

@@ -76,6 +76,22 @@ where one exists.
   `--no-texcoords`, `--vertex-color`, `--no-lights`). The defaults export what it always did.
 
 ### Fixed
+- `@gg-web-engine/mobile-controls`: a WebGL game stuttered on every touch-button press and release
+  on low-end phones (reported on a Samsung A16). The default stylesheet repainted the pressed
+  control on every frame of its transitions, made the browser create and drop a layer at each press,
+  and repainted the stick on every move of the finger. Now buttons, the stick knob and the floating
+  stick base are compositor layers for good, and only `transform` and `opacity` are animated. The
+  floating stick moves under the finger by `transform` instead of `left`/`top`. A press costs one small
+  repaint, and dragging the stick none. Changes in look and styling: the pressed colour of a
+  button or d-pad arm is instant rather than a 60 ms transition. `--gg-mc-opacity` dims each control (the stick: its knob and its base separately)
+  rather than the overlay as a whole. An `opacity` an app sets on the overlay now multiplies with it
+  instead of replacing it, and costs an offscreen pass on every frame: dim through
+  `--gg-mc-opacity` instead. The stick base's border and background are drawn by its `::before`.
+  Transitions are off under `prefers-reduced-motion: reduce`.
+- `@gg-web-engine/mobile-controls`: on browsers without the `inset` CSS shorthand (iOS Safari
+  before 14.5, Chrome before 87) the overlay collapsed to nothing and clipped every control, and a
+  `TouchLookArea` without a `placement` had no size, so it never reported drags or taps. The
+  overlay, the look area and the stick base now use the `top`/`right`/`bottom`/`left` longhands.
 - `rapier2d`: bodies were capped at 400 px/s (4 m/s). Rapier's speed limit and tolerances scale
   with its `lengthUnit`, which the adapter left at 1 while working in pixels; it is now 100 (pixels
   per meter). Sleep thresholds and contact tolerances scale with it too, so they now match the 3D

@@ -50,16 +50,16 @@ export class TouchStick extends TouchAxisControl {
   }
 
   protected onPointerStart(event: PointerEvent): void {
+    // measured at rest, before anything below changes the styles
+    const rect = this.base.getBoundingClientRect();
+    const rest = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
     this.element.classList.add('gg-mc-active');
     if (this.mode === 'floating') {
-      const zone = this.element.getBoundingClientRect();
-      this.base.style.left = `${event.clientX - zone.left}px`;
-      this.base.style.top = `${event.clientY - zone.top}px`;
+      // a transform, not left/top: moving the base takes no layout
+      this.base.style.transform = `translate(${event.clientX - rest.x}px, ${event.clientY - rest.y}px) translate(-50%, -50%)`;
       this.center = { x: event.clientX, y: event.clientY };
-    }
-    const rect = this.base.getBoundingClientRect();
-    if (this.mode === 'fixed') {
-      this.center = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    } else {
+      this.center = rest;
     }
     this.travel = this.travelOption ?? (rect.width * 0.36 || 50);
     this.update(event);
@@ -71,8 +71,7 @@ export class TouchStick extends TouchAxisControl {
 
   protected onPointerEnd(): void {
     this.element.classList.remove('gg-mc-active');
-    this.base.style.left = '';
-    this.base.style.top = '';
+    this.base.style.transform = '';
     this.knob.style.transform = '';
     this.setValue(Pnt2.O);
   }
