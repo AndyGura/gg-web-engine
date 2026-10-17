@@ -10,12 +10,17 @@ export const MOBILE_CONTROLS_STYLE_ID = 'gg-mobile-controls-styles';
  * the other `--gg-mc-*` custom properties declared on `.gg-mc`, so an app restyles the overlay by
  * overriding those on its own class, and a single control through its `.gg-mc-id-*` class.
  *
- * The press feedback runs on the compositor alone, so that it costs a WebGL game below the overlay
- * nothing on a weak mobile GPU: buttons, d-pad arms and the stick parts keep compositor layers of
- * their own for good (`will-change`), so a press never promotes or demotes a layer; a button's scale
- * is a transform, and the pressed colour (`--gg-mc-active-background`) is a `::before` layer fading
- * in by `opacity`, never a transitioned `background`. `--gg-mc-opacity` applies to every control
- * rather than to the full-screen overlay, which therefore is no effect layer covering the canvas.
+ * The overlay sits over a WebGL game, often on a weak mobile GPU, so it is kept cheap for it:
+ * - Whatever moves or fades is a compositor layer for good (`will-change`): buttons (scaled by a
+ *   transform), the stick knob, and the floating stick's base with its `::before`. A press never
+ *   promotes or demotes a layer, and nothing animates a property that repaints.
+ * - Nothing translucent contains such a layer. An opacity below 1 over several layers is drawn
+ *   through an offscreen pass on every frame, so `--gg-mc-opacity` is applied where it covers a
+ *   single layer: to each control, except the stick, where it is on the knob and on the `::before`
+ *   that draws the base (the knob is inside the base). An app dims the controls through
+ *   `--gg-mc-opacity`, never through `opacity` on the overlay.
+ * - The pressed colour of a button or d-pad arm replaces its background with no transition: one
+ *   small repaint per press and release.
  * Transitions are off under `prefers-reduced-motion: reduce`.
  */
 export const MOBILE_CONTROLS_CSS = `
@@ -71,33 +76,17 @@ export const MOBILE_CONTROLS_CSS = `
   border: calc(var(--gg-mc-unit) * 0.22) solid var(--gg-mc-border);
   border-radius: 50%;
   background: var(--gg-mc-background);
-  isolation: isolate;
   will-change: transform;
   transition: transform 60ms ease-out;
 }
 .gg-mc-button.gg-mc-active {
-  transform: scale(0.93);
-}
-.gg-mc-button::before,
-.gg-mc-dpad-arm::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  border-radius: inherit;
   background: var(--gg-mc-active-background);
-  opacity: 0;
-  will-change: opacity;
-  transition: opacity 60ms ease-out;
-  pointer-events: none;
-}
-.gg-mc-button.gg-mc-active::before,
-.gg-mc-dpad-arm.gg-mc-active::before {
-  opacity: 1;
+  transform: scale(0.93);
 }
 .gg-mc-stick {
   width: calc(var(--gg-mc-unit) * 15);
   height: calc(var(--gg-mc-unit) * 15);
+  opacity: 1;
 }
 .gg-mc-stick-base {
   position: absolute;
@@ -106,21 +95,20 @@ export const MOBILE_CONTROLS_CSS = `
   width: calc(var(--gg-mc-unit) * 15);
   height: calc(var(--gg-mc-unit) * 15);
   box-sizing: border-box;
-  border: calc(var(--gg-mc-unit) * 0.22) solid var(--gg-mc-border);
+  border: calc(var(--gg-mc-unit) * 0.22) solid transparent;
   border-radius: 50%;
-  background: var(--gg-mc-background);
   transform: translate(-50%, -50%);
   pointer-events: none;
 }
-.gg-mc-stick--floating .gg-mc-stick-base {
-  left: calc(var(--gg-mc-unit) * 13 + env(safe-area-inset-left, 0px));
-  top: calc(100% - var(--gg-mc-unit) * 12 - env(safe-area-inset-bottom, 0px));
-  opacity: 0.55;
-  will-change: opacity;
-  transition: opacity 120ms ease-out;
-}
-.gg-mc-stick--floating.gg-mc-active .gg-mc-stick-base {
-  opacity: 1;
+.gg-mc-stick-base::before {
+  content: '';
+  position: absolute;
+  inset: calc(var(--gg-mc-unit) * -0.22);
+  box-sizing: border-box;
+  border: calc(var(--gg-mc-unit) * 0.22) solid var(--gg-mc-border);
+  border-radius: 50%;
+  background: var(--gg-mc-background);
+  opacity: var(--gg-mc-opacity, 1);
 }
 .gg-mc-stick-knob {
   position: absolute;
@@ -133,7 +121,24 @@ export const MOBILE_CONTROLS_CSS = `
   border-radius: 50%;
   background: var(--gg-mc-active-background);
   transform: translate(-50%, -50%);
+  opacity: var(--gg-mc-opacity, 1);
+  will-change: transform, opacity;
+}
+.gg-mc-stick--floating .gg-mc-stick-base {
+  left: calc(var(--gg-mc-unit) * 13 + env(safe-area-inset-left, 0px));
+  top: calc(100% - var(--gg-mc-unit) * 12 - env(safe-area-inset-bottom, 0px));
   will-change: transform;
+}
+.gg-mc-stick--floating .gg-mc-stick-base::before {
+  will-change: opacity;
+}
+.gg-mc-stick--floating .gg-mc-stick-base::before,
+.gg-mc-stick--floating .gg-mc-stick-knob {
+  transition: opacity 120ms ease-out;
+}
+.gg-mc-stick--floating:not(.gg-mc-active) .gg-mc-stick-base::before,
+.gg-mc-stick--floating:not(.gg-mc-active) .gg-mc-stick-knob {
+  opacity: calc(var(--gg-mc-opacity, 1) * 0.55);
 }
 .gg-mc-dpad {
   width: calc(var(--gg-mc-unit) * 19);
@@ -150,8 +155,10 @@ export const MOBILE_CONTROLS_CSS = `
   border: calc(var(--gg-mc-unit) * 0.22) solid var(--gg-mc-border);
   border-radius: 22%;
   background: var(--gg-mc-background);
-  isolation: isolate;
   pointer-events: none;
+}
+.gg-mc-dpad-arm.gg-mc-active {
+  background: var(--gg-mc-active-background);
 }
 .gg-mc-dpad-arm--up {
   left: 33%;
@@ -171,9 +178,8 @@ export const MOBILE_CONTROLS_CSS = `
 }
 @media (prefers-reduced-motion: reduce) {
   .gg-mc-button,
-  .gg-mc-button::before,
-  .gg-mc-dpad-arm::before,
-  .gg-mc-stick--floating .gg-mc-stick-base {
+  .gg-mc-stick--floating .gg-mc-stick-base::before,
+  .gg-mc-stick--floating .gg-mc-stick-knob {
     transition: none;
   }
 }

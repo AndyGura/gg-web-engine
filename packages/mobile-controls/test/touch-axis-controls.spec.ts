@@ -47,6 +47,19 @@ describe('TouchStick', () => {
     expect(stick.value).toEqual({ x: 0, y: -0.5 });
   });
 
+  it('moves the floating base under the finger by a transform, which takes no layout', () => {
+    const stick = new TouchStick({ mode: 'floating' });
+    const base = stick.element.querySelector('.gg-mc-stick-base') as HTMLElement;
+    setRect(stick.element, 0, 0, 400, 300);
+    setRect(base, 50, 190, 100, 100);
+    pointer(stick.element, 'pointerdown', 200, 150);
+    expect(base.style.transform).toBe('translate(100px, -90px) translate(-50%, -50%)');
+    expect(base.style.left).toBe('');
+    expect(base.style.top).toBe('');
+    pointer(stick.element, 'pointerup', 200, 150);
+    expect(base.style.transform).toBe('');
+  });
+
   it('feeds a bound direction input and withdraws when released', () => {
     const keyboard = new KeyboardInput();
     keyboard.start();

@@ -1249,19 +1249,31 @@ Pitfalls met building it:
 - jsdom never computes layout: a spec gives an element a box by replacing its
   `getBoundingClientRect`, and dispatches pointer events as `MouseEvent`s with `pointerId`/
   `pointerType` defined on them (see `packages/mobile-controls/test/helpers.ts`).
-- The default stylesheet (`src/styles.ts`) sits over a WebGL canvas, often on a weak mobile GPU,
-  so press/release feedback must stay compositor-only. Animated elements keep their own layer for
-  good (`will-change: transform` on `.gg-mc-button` and `.gg-mc-stick-knob`, `will-change: opacity`
-  on the pressed-colour `::before` and the floating stick base): a transition starting on an element
-  without it makes Chrome promote it to a layer and demote it afterwards, a layer tree change and
-  re-raster on every press. The pressed colour is a `::before` (`inset: 0`, `z-index: -1` inside an
-  `isolation: isolate` control, so it covers the background but stays below the icon or text and
-  inside the border) fading in by `opacity`, never a transitioned `background`, which repaints on
-  the main thread every frame. `--gg-mc-opacity` is set on `.gg-mc-control`, not on the full-screen
-  `.gg-mc`, so the overlay is no full-screen effect layer. A real press stutter of this kind was
-  reported on a Samsung A16 (Mali GPU) while a gamepad on the same phone stayed smooth.
-  `test/styles.spec.ts` guards these rules: only `transform`/`opacity` transitions, each one also
-  turned off under `prefers-reduced-motion`.
+- The default stylesheet (`src/styles.ts`) sits over a WebGL canvas, often on a weak mobile GPU
+  (a press stutter was reported on a Samsung A16 while a gamepad on the same phone stayed smooth).
+  On Android the GPU main thread runs the WebGL commands, the compositor's drawing and GPU raster
+  alike, so whatever the overlay costs there is taken from the game. Three rules hold its cost down,
+  and `test/styles.spec.ts` checks them on real control elements:
+  - **Animate only `transform`/`opacity`, on an element with `will-change` for them.** A transition
+    on an element without it makes Chrome create its layer at each press and drop it afterwards, a
+    re-raster each time. A transitioned `background` repaints on every frame of the transition. The
+    knob is a layer because an inline transform on a non-composited element repaints on every
+    pointermove. The floating base moves by `transform` (not `left`/`top`, which is a layout).
+  - **Never put an element that is a layer of its own (`will-change`) under one with `opacity` below
+    1.** An opacity over two or more layers needs a render surface: an offscreen pass drawn on every
+    frame, pressed or not. A pressed-colour `::before` layer inside a translucent button is exactly
+    this, as is the knob inside a translucent stick. So `--gg-mc-opacity` is on `.gg-mc-control` but
+    `opacity: 1` on `.gg-mc-stick`; the stick dims its knob and the base's `::before` (which draws
+    the base's border and background) separately; and nothing sets `opacity` on the overlay.
+  - **Colour changes are instant.** A button's or d-pad arm's pressed background is one small
+    repaint per press and release. The alternative, a pressed-colour layer, needs the button's
+    opacity off the button and onto each of its parts, three layers per button.
+  To measure a change here, trace headless Chrome (`--use-angle=swiftshader`, a WebGL canvas under
+  the overlay, touches sent with `Input.dispatchTouchEvent`). Compare per phase (idle, taps, stick
+  drag) the `DirectRenderer::DrawRenderPass` count per `DirectRenderer::DrawFrame` (render surfaces)
+  and the duration of `RasterDecoderImpl::DoEndRasterCHROMIUM` (GPU raster). Frame rate there tells
+  nothing: a desktop GPU keeps 60 fps either way, and `--disable-frame-rate-limit` decouples
+  `requestAnimationFrame` from drawn frames.
 - Device orientation at `beta` = 90 is a gimbal singularity; `TiltInput` works from the gravity
   direction within the screen plane instead of reading `gamma`/`beta` as a roll angle directly. Its
   screen-rotation handling is covered by specs only, not yet by a hardware test.
