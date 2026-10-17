@@ -1,0 +1,43 @@
+# GG Web Engine
+
+> Open-source TypeScript game engine for the browser. Peer-to-peer multiplayer physics with no
+> game server, cars and character controllers built in, JSON levels; renders with Three.js (3D)
+> or Pixi.js (2D) and simulates with Rapier, Ammo.js (3D) or Matter.js (2D).
+
+Install `@gg-web-engine/core` plus one renderer and one physics package of the same dimension,
+e.g. `npm install @gg-web-engine/core @gg-web-engine/three @gg-web-engine/rapier3d`. 3D worlds are
+Z-up. Physics backends of one dimension share an API, but each keeps its own simulation behavior.
+The engine is experimental (versions `0.0.N`).
+
+## Docs
+
+- [Full guide (llms-full.txt)](https://andygura.github.io/gg-web-engine/llms-full.txt): pitch, install lines, mental model, bootstrap, capabilities, pitfalls and one complete game per dimension, in one file
+- [AGENTS.md](https://github.com/AndyGura/gg-web-engine/blob/main/packages/core/AGENTS.md): the app-development guide alone; also at `node_modules/@gg-web-engine/core/AGENTS.md` after install
+- [README](https://github.com/AndyGura/gg-web-engine#readme): features, quickstart, when to use it and when not to
+- [API reference](https://andygura.github.io/gg-web-engine/modules/): every package, generated from the TypeScript sources
+- [Changelog](https://github.com/AndyGura/gg-web-engine/blob/main/CHANGELOG.md)
+
+## Examples
+
+- [3D: Primitives](https://github.com/AndyGura/gg-web-engine/tree/main/examples/3d/primitives): A level built from JSON: primitive shapes rain onto a floor, with an orbit camera and a kill-floor trigger wired through a blueprint.
+- [3D: GLB loader](https://github.com/AndyGura/gg-web-engine/tree/main/examples/3d/glb-loader): Loads GLB models carrying physics metadata from the engine's Blender exporter and keeps spawning them into a scene.
+- [3D: Collision groups](https://github.com/AndyGura/gg-web-engine/tree/main/examples/3d/collision-groups): Collision filtering: bodies and triggers that only interact with their own groups.
+- [3D: Collision groups pool](https://github.com/AndyGura/gg-web-engine/tree/main/examples/3d/collision-groups-pool): Hundreds of balls on stacked kinematic floors, where each floor only ever carries its own collision group.
+- [3D: Raycast vehicle](https://github.com/AndyGura/gg-web-engine/tree/main/examples/3d/raycast-vehicle): A drivable raycast vehicle, ported from the ammo.js vehicle demo to the engine's vehicle API, leaving tyre smoke particles when braking.
+- [3D: Player character](https://github.com/AndyGura/gg-web-engine/tree/main/examples/3d/player-character): Animated third-person character controller over a GLB level, with on-screen mobile controls.
+- [3D: Portal room](https://github.com/AndyGura/gg-web-engine/tree/main/examples/3d/portal-room): First-person character, grabbable props, positional sound and an incinerator spitting embers.
+- [3D: Shooter](https://github.com/AndyGura/gg-web-engine/tree/main/examples/3d/shooter): Free-fly camera shooting balls through a textured physics scene.
+- [3D: Screens](https://github.com/AndyGura/gg-web-engine/tree/main/examples/3d/screens): Menu, loading, game and pause screens driven by the ScreenManager, with the world owned by the game screen.
+- [3D: Fly city](https://github.com/AndyGura/gg-web-engine/tree/main/examples/3d/fly-city): Driving through a streamed city: cars with exhaust smoke, map graph, audio and multiplayer. An Angular app.
+- [3D: Car race](https://github.com/AndyGura/gg-web-engine/tree/main/examples/3d/car-race): A three-lap multiplayer race on a walled track: countdown on the grid, checkpoints, lap times and results. The page URL is the invite link; alone, press Enter for a time trial.
+- [3D: Tower climb](https://github.com/AndyGura/gg-web-engine/tree/main/examples/3d/tower-climb): A complete third-person game: climb a spiral of floating pads, collect six crystals to light the beacon at the top. Title, pause, win and game over screens, three lives and checkpoints.
+- [2D: Primitives](https://github.com/AndyGura/gg-web-engine/tree/main/examples/2d/primitives): A level built from JSON: primitive shapes rain onto a floor.
+- [2D: Player character](https://github.com/AndyGura/gg-web-engine/tree/main/examples/2d/player-character): Animated side-view character controller over a tiled level, kicking up dust, with on-screen mobile controls.
+- [2D: Coin run](https://github.com/AndyGura/gg-web-engine/tree/main/examples/2d/coin-run): Multiplayer platformer rounds: collect coins against everyone in the room, each pickup bursting into particles. The page URL is the invite link.
+- [2D: Platformer](https://github.com/AndyGura/gg-web-engine/tree/main/examples/2d/platformer): A complete platformer game: run, jump on slimes, dodge spikes and pits, and reach the flag. Title, pause, win and game over screens, three lives, checkpoints and coins.
+
+## Optional
+
+- [Level JSON guide](https://github.com/AndyGura/gg-web-engine/blob/main/.claude/skills/gg-engine-level-json/SKILL.md): authoring levels as JSON, built-in entity classes, blueprints
+- [Multiplayer package](https://github.com/AndyGura/gg-web-engine/blob/main/packages/multiplayer/README.md): shared physics worlds over WebRTC
+- [Live demos](https://gg-web-demos.guraklgames.com/)
