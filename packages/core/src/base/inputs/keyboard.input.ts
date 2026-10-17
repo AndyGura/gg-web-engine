@@ -22,10 +22,15 @@ import { distinctUntilChanged, map } from 'rxjs/operators';
 export class KeyboardInput extends IInput {
   private bindings: { [code: string]: BehaviorSubject<boolean>[] } = {};
   /**
-   * Codes held down through `emulateKeyDown` and not yet let go of through `emulateKeyUp`: a real
-   * keyup of such a code is not a release, the emulated hold still holds it
+   * Codes held down through `emulateKeyDown` and not yet let go of through `emulateKeyUp`, with the
+   * holders (the `holder` argument, or `defaultHolder` without one) still holding each: a real keyup
+   * of such a code is not a release, nor is an `emulateKeyUp` by one holder while another holds it
    */
-  private emulatedHeld: Set<string> = new Set<string>();
+  private emulatedHeld: Map<string, Set<unknown>> = new Map<string, Set<unknown>>();
+  /**
+   * The holder an `emulateKeyDown`/`emulateKeyUp` call without a `holder` counts as
+   */
+  private readonly defaultHolder: unknown = {};
   /**
    * Codes held down on the physical keyboard (a real keydown, no keyup yet): an `emulateKeyUp` of
    * such a code is not a release either, the finger on the key still holds it
@@ -133,27 +138,49 @@ export class KeyboardInput extends IInput {
    * button or a gamepad button holding a key is not let go of by a tap on the keyboard. The reverse
    * holds too: a key held on the physical keyboard stays down across an `emulateKeyUp` of it, until
    * its real keyup. A key is released when the last of its holders lets go.
+   *
+   * `holder` identifies who holds the key, so that two sources holding the same code (a touch
+   * button and a gamepad button both bound to `Space`) do not let go of each other's hold: the key
+   * goes up when every holder has called `emulateKeyUp` with its own token. Repeated
+   * `emulateKeyDown` calls by one holder count as one hold. Calls without a `holder` all count as
+   * one and the same holder.
    * @param code The key code to emulate
+   * @param holder An object identifying the holder of the key, the same one to pass to `emulateKeyUp`
    */
-  emulateKeyDown(code: string): void {
+  emulateKeyDown(code: string, holder: unknown = this.defaultHolder): void {
     if (!this.running) {
       return;
     }
-    this.emulatedHeld.add(code);
+    let holders = this.emulatedHeld.get(code);
+    if (!holders) {
+      holders = new Set<unknown>();
+      this.emulatedHeld.set(code, holders);
+    }
+    holders.add(holder);
     for (const subj of this.bindings[code] || []) {
       subj.next(true);
     }
   }
 
   /**
-   * Emulates a key up event for the given key code
+   * Emulates a key up event for the given key code: `holder` lets go of it, and the key goes up
+   * unless another holder (or a finger on the physical key) still holds it
    * @param code The key code to emulate
+   * @param holder The object `emulateKeyDown` was called with
    */
-  emulateKeyUp(code: string): void {
+  emulateKeyUp(code: string, holder: unknown = this.defaultHolder): void {
     if (!this.running) {
       return;
     }
-    this.emulatedHeld.delete(code);
+    const holders = this.emulatedHeld.get(code);
+    if (holders) {
+      holders.delete(holder);
+      if (holders.size > 0) {
+        // another emulated holder still holds it
+        return;
+      }
+      this.emulatedHeld.delete(code);
+    }
     // a finger on the physical key still holds it
     if (this.physicalHeld.has(code)) {
       return;

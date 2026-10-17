@@ -77,10 +77,13 @@ export class TouchButton extends TouchControl {
 
   /**
    * Makes the button act as the key `code` of `keyboard`: pressing it is that key going down,
-   * releasing it the key going up.
+   * releasing it the key going up. The button is its own holder of the key: releasing it does not
+   * let go of a hold another source (a gamepad button bound to the same key) still has.
    */
   public bindKey(keyboard: KeyboardInput, code: string): this {
-    this.changes$.subscribe(pressed => (pressed ? keyboard.emulateKeyDown(code) : keyboard.emulateKeyUp(code)));
+    this.changes$.subscribe(pressed =>
+      pressed ? keyboard.emulateKeyDown(code, this) : keyboard.emulateKeyUp(code, this),
+    );
     return this;
   }
 

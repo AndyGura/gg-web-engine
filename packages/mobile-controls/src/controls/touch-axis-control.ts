@@ -56,7 +56,8 @@ export abstract class TouchAxisControl extends TouchControl {
         return;
       }
       held[code] = down;
-      down ? keyboard.emulateKeyDown(code) : keyboard.emulateKeyUp(code);
+      // this control is its own holder of the key, so it never lets go of another source's hold
+      down ? keyboard.emulateKeyDown(code, this) : keyboard.emulateKeyUp(code, this);
     };
     this.value$.subscribe(v => {
       set(keys.up, v.y > threshold);

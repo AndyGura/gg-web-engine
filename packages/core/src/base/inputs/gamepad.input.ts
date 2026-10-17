@@ -279,19 +279,22 @@ export class GamepadInput extends IInput {
    * the control(s) that press it (`{ Space: 'b0', KeyE: ['b2', 'b5'] }`). The key goes down through
    * `emulateKeyDown` on the poll a control passes `pressThreshold` and up when none of them is
    * pressed any more - or when this input stops. Returns a function that unbinds (and releases).
-   * While a key is held this way, releasing the same physical key does not let go of it.
+   * While a key is held this way, releasing the same physical key, or another binding's hold of the
+   * same key (a touch button, another controller's gamepad button), does not let go of it.
    */
   public bindKeys(keyboard: KeyboardInput, keys: Record<string, GamepadControls>): () => void {
     const held = new Set<string>();
+    // this binding's own hold on each key, so letting go here never releases another holder's
+    const holder = {};
     const update = () => {
       for (const code of Object.keys(keys)) {
         if (this.pressed(keys[code])) {
           // pressed on every poll, not only on the edge: a keyboard restarted meanwhile (the world's
           // input switched off and on) has let go of the key, and holds it again this way
           held.add(code);
-          keyboard.emulateKeyDown(code);
+          keyboard.emulateKeyDown(code, holder);
         } else if (held.delete(code)) {
-          keyboard.emulateKeyUp(code);
+          keyboard.emulateKeyUp(code, holder);
         }
       }
     };
@@ -300,7 +303,7 @@ export class GamepadInput extends IInput {
     return () => {
       subscription.unsubscribe();
       for (const code of held) {
-        keyboard.emulateKeyUp(code);
+        keyboard.emulateKeyUp(code, holder);
       }
       held.clear();
     };

@@ -66,6 +66,48 @@ describe('KeyboardInput', () => {
     expect(values).toEqual([false, true, false, true, false]);
   });
 
+  it('keeps a key held by two emulated holders down until the last of them lets go', () => {
+    keyboard.start();
+    const values: boolean[] = [];
+    keyboard.bind('Space').subscribe(v => values.push(v));
+    const touchButton = {};
+    const gamepadBinding = {};
+    keyboard.emulateKeyDown('Space', touchButton);
+    // a gamepad button bound to the same key is pressed (re-pressed on every poll) and released
+    keyboard.emulateKeyDown('Space', gamepadBinding);
+    keyboard.emulateKeyDown('Space', gamepadBinding);
+    keyboard.emulateKeyUp('Space', gamepadBinding);
+    expect(values).toEqual([false, true]);
+    keyboard.emulateKeyUp('Space', touchButton);
+    expect(values).toEqual([false, true, false]);
+  });
+
+  it('counts emulateKeyDown/Up calls without a holder as one holder', () => {
+    keyboard.start();
+    const values: boolean[] = [];
+    keyboard.bind('Space').subscribe(v => values.push(v));
+    keyboard.emulateKeyDown('Space');
+    keyboard.emulateKeyDown('Space');
+    keyboard.emulateKeyUp('Space');
+    expect(values).toEqual([false, true, false]);
+    // an emulateKeyUp with nothing holding the key is still a release
+    keyboard.emulateKeyUp('Space');
+    expect(values).toEqual([false, true, false]);
+  });
+
+  it('releases every emulated holder on resetAllKeys', () => {
+    keyboard.start();
+    const values: boolean[] = [];
+    keyboard.bind('Space').subscribe(v => values.push(v));
+    keyboard.emulateKeyDown('Space', {});
+    keyboard.emulateKeyDown('Space', {});
+    keyboard.resetAllKeys();
+    expect(values).toEqual([false, true, false]);
+    keyboard.emulateKeyDown('Space');
+    keyboard.emulateKeyUp('Space');
+    expect(values).toEqual([false, true, false, true, false]);
+  });
+
   it('does not take the auto-repeat of a held key for a new press, though it still preventDefault()s it', () => {
     keyboard.start();
     const values: boolean[] = [];

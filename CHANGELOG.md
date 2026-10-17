@@ -134,7 +134,10 @@ where one exists.
 - `KeyboardInput`: a key held through `emulateKeyDown` stays down across a real `keyup` of the same
   key, until `emulateKeyUp` (or `resetAllKeys`), so an on-screen or gamepad button holding a key is
   not let go of by a tap on the keyboard - and a key held on the physical keyboard stays down across
-  an `emulateKeyUp` of it, until its real `keyup`. A key goes up when its last holder lets go.
+  an `emulateKeyUp` of it, until its real `keyup`. A key goes up when its last holder lets go:
+  `emulateKeyDown`/`emulateKeyUp` take an optional `holder` token telling emulated holders apart,
+  so a touch button and a gamepad button bound to the same key (`GamepadInput.bindKeys` and the
+  mobile-controls bindings pass one) do not release each other's hold.
 
 ## [0.0.82] - 2026-10-10
 

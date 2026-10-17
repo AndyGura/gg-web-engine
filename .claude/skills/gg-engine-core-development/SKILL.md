@@ -1280,7 +1280,14 @@ What it holds to:
   grab, gear shift) a second time. Symmetrically, it remembers the codes held on the physical
   keyboard (real `keydown` to real `keyup`) and ignores an `emulateKeyUp` of such a code: a
   sprint held on `ShiftLeft` survives a tap on the gamepad button bound to it. A key goes up when
-  the last of its two kinds of holder lets go.
+  the last of its holders lets go. Emulated holders are told apart by the optional `holder` token
+  of `emulateKeyDown(code, holder)`/`emulateKeyUp(code, holder)`: `GamepadInput.bindKeys` passes
+  a token of its own per binding, a mobile-controls touch button/axis passes itself, so two
+  bindings on one key (a touch button and a gamepad button both on `Space`, or two controllers'
+  default gamepad buttons on `KeyE`) never release each other's hold - repeated `emulateKeyDown`
+  by one holder is one hold, which is what lets `bindKeys` re-press on every poll. Calls without a
+  token count as one shared holder. Anything that holds a key through `emulateKeyDown` for longer
+  than a call should pass a token.
 - The default gamepad bindings of controllers that are meant to run together share no button:
   `ObjectGrabController` pairs with `PlayerCharacterController` (X grabs, RT throws; A/B/Y/L3 are
   the character's) or with `FreeCameraController` (RB/LB fly up/down, L3 boosts). Check a new
