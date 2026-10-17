@@ -9,6 +9,14 @@ export const MOBILE_CONTROLS_STYLE_ID = 'gg-mobile-controls-styles';
  * 58 units across). Everything is sized in `--gg-mc-unit` and colored through
  * the other `--gg-mc-*` custom properties declared on `.gg-mc`, so an app restyles the overlay by
  * overriding those on its own class, and a single control through its `.gg-mc-id-*` class.
+ *
+ * The press feedback runs on the compositor alone, so that it costs a WebGL game below the overlay
+ * nothing on a weak mobile GPU: buttons, d-pad arms and the stick parts keep compositor layers of
+ * their own for good (`will-change`), so a press never promotes or demotes a layer; a button's scale
+ * is a transform, and the pressed colour (`--gg-mc-active-background`) is a `::before` layer fading
+ * in by `opacity`, never a transitioned `background`. `--gg-mc-opacity` applies to every control
+ * rather than to the full-screen overlay, which therefore is no effect layer covering the canvas.
+ * Transitions are off under `prefers-reduced-motion: reduce`.
  */
 export const MOBILE_CONTROLS_CSS = `
 .gg-mc {
@@ -29,7 +37,6 @@ export const MOBILE_CONTROLS_CSS = `
   -webkit-touch-callout: none;
   -webkit-tap-highlight-color: transparent;
   color: var(--gg-mc-color);
-  opacity: var(--gg-mc-opacity);
   font: 600 calc(var(--gg-mc-unit) * 2.4) / 1 system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 .gg-mc.gg-mc--contained {
@@ -40,6 +47,7 @@ export const MOBILE_CONTROLS_CSS = `
   box-sizing: border-box;
   pointer-events: auto;
   touch-action: none;
+  opacity: var(--gg-mc-opacity, 1);
 }
 .gg-mc-control[hidden] {
   display: none;
@@ -63,11 +71,29 @@ export const MOBILE_CONTROLS_CSS = `
   border: calc(var(--gg-mc-unit) * 0.22) solid var(--gg-mc-border);
   border-radius: 50%;
   background: var(--gg-mc-background);
-  transition: transform 60ms ease-out, background-color 60ms ease-out;
+  isolation: isolate;
+  will-change: transform;
+  transition: transform 60ms ease-out;
 }
 .gg-mc-button.gg-mc-active {
-  background: var(--gg-mc-active-background);
   transform: scale(0.93);
+}
+.gg-mc-button::before,
+.gg-mc-dpad-arm::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--gg-mc-active-background);
+  opacity: 0;
+  will-change: opacity;
+  transition: opacity 60ms ease-out;
+  pointer-events: none;
+}
+.gg-mc-button.gg-mc-active::before,
+.gg-mc-dpad-arm.gg-mc-active::before {
+  opacity: 1;
 }
 .gg-mc-stick {
   width: calc(var(--gg-mc-unit) * 15);
@@ -90,6 +116,7 @@ export const MOBILE_CONTROLS_CSS = `
   left: calc(var(--gg-mc-unit) * 13 + env(safe-area-inset-left, 0px));
   top: calc(100% - var(--gg-mc-unit) * 12 - env(safe-area-inset-bottom, 0px));
   opacity: 0.55;
+  will-change: opacity;
   transition: opacity 120ms ease-out;
 }
 .gg-mc-stick--floating.gg-mc-active .gg-mc-stick-base {
@@ -106,6 +133,7 @@ export const MOBILE_CONTROLS_CSS = `
   border-radius: 50%;
   background: var(--gg-mc-active-background);
   transform: translate(-50%, -50%);
+  will-change: transform;
 }
 .gg-mc-dpad {
   width: calc(var(--gg-mc-unit) * 19);
@@ -122,11 +150,8 @@ export const MOBILE_CONTROLS_CSS = `
   border: calc(var(--gg-mc-unit) * 0.22) solid var(--gg-mc-border);
   border-radius: 22%;
   background: var(--gg-mc-background);
-  transition: background-color 60ms ease-out;
+  isolation: isolate;
   pointer-events: none;
-}
-.gg-mc-dpad-arm.gg-mc-active {
-  background: var(--gg-mc-active-background);
 }
 .gg-mc-dpad-arm--up {
   left: 33%;
@@ -143,6 +168,14 @@ export const MOBILE_CONTROLS_CSS = `
 .gg-mc-dpad-arm--right {
   right: 0;
   top: 33%;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gg-mc-button,
+  .gg-mc-button::before,
+  .gg-mc-dpad-arm::before,
+  .gg-mc-stick--floating .gg-mc-stick-base {
+    transition: none;
+  }
 }
 `;
 

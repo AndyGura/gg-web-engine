@@ -106,6 +106,14 @@ restyles everything, and `.gg-mc-id-<id>` reaches a single control:
 new MobileControls({ className: 'my-controls' });
 ```
 
+`--gg-mc-opacity` is applied to each control, not to the overlay as a whole. The press feedback is
+kept cheap for the GPU of a phone running a WebGL game below it: buttons, d-pad arms and the stick
+parts keep compositor layers of their own (`will-change`), a button shrinks by `transform`, and the
+pressed colour is a `::before` layer that fades in by `opacity` (over the control's own background,
+below its icon and inside its border). A custom style keeps it that way by animating only
+`transform` and `opacity`; a transitioned `background`, `box-shadow` or size repaints on every frame
+of every press. Transitions are off under `prefers-reduced-motion: reduce`.
+
 `injectStyles: false` drops the default stylesheet altogether for a fully custom look.
 
 ### Your own layout, your own controller

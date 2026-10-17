@@ -76,6 +76,14 @@ where one exists.
   `--no-texcoords`, `--vertex-color`, `--no-lights`). The defaults export what it always did.
 
 ### Fixed
+- `@gg-web-engine/mobile-controls`: the press feedback of the default stylesheet runs on the
+  compositor alone, against a WebGL game stuttering on every touch-button press and release on
+  low-end phones (reported on a Samsung A16): buttons, d-pad arms and the stick parts keep their own layers
+  (`will-change`), the pressed colour is a `::before` layer fading in by `opacity` instead of a
+  transitioned `background`, and `--gg-mc-opacity` is applied to each control instead of the
+  full-screen overlay. The look is unchanged, except that the pressed colour now lies over the
+  control's normal background instead of replacing it. Transitions are off under
+  `prefers-reduced-motion: reduce`.
 - `rapier2d`: bodies were capped at 400 px/s (4 m/s). Rapier's speed limit and tolerances scale
   with its `lengthUnit`, which the adapter left at 1 while working in pixels; it is now 100 (pixels
   per meter). Sleep thresholds and contact tolerances scale with it too, so they now match the 3D
