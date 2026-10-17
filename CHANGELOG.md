@@ -29,6 +29,8 @@ where one exists.
 
 ## [Unreleased]
 
+## [0.0.83] - 2026-10-17
+
 ### Added
 - Gamepad input. Every world has a `gamepadInput` (`GamepadInput`, started and stopped with
   `inputEnabled`) that polls the Gamepad API on every frame, also while the world is paused, and
@@ -1092,7 +1094,8 @@ where one exists.
 
 First published version: `@gg-web-engine/core`, `three`, `pixi`, `ammo`, and `matter`.
 
-[Unreleased]: https://github.com/AndyGura/gg-web-engine/compare/0.0.82...HEAD
+[Unreleased]: https://github.com/AndyGura/gg-web-engine/compare/0.0.83...HEAD
+[0.0.83]: https://github.com/AndyGura/gg-web-engine/compare/0.0.82...0.0.83
 [0.0.82]: https://github.com/AndyGura/gg-web-engine/compare/0.0.81...0.0.82
 [0.0.81]: https://github.com/AndyGura/gg-web-engine/compare/0.0.80...0.0.81
 [0.0.80]: https://github.com/AndyGura/gg-web-engine/compare/0.0.79...0.0.80

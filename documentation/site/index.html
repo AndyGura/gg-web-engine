@@ -14,8 +14,6 @@
       
       
       
-        <link rel="next" href="modules/">
-      
       
       <link rel="icon" href="assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.4.6">
@@ -312,6 +310,13 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#start-from-a-template" class="md-nav__link">
+    Start from a template
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#a-first-scene" class="md-nav__link">
     A first scene
   </a>
@@ -356,8 +361,6 @@
     
       
         
-          
-        
       
         
       
@@ -385,24 +388,16 @@
         <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
         
           
-          
-          <div class="md-nav__link md-nav__container">
-            <a href="modules/" class="md-nav__link ">
-              
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
   
   <span class="md-ellipsis">
     Modules
   </span>
   
 
-            </a>
-            
-              
-              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="0">
-                <span class="md-nav__icon md-icon"></span>
-              </label>
-            
-          </div>
+            <span class="md-nav__icon md-icon"></span>
+          </label>
         
         <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_2">
@@ -411,6 +406,24 @@
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
             
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="modules/index.md" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Modules
+  </span>
+  
+
+      </a>
+    </li>
+  
+
               
             
               
@@ -601,6 +614,13 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#start-from-a-template" class="md-nav__link">
+    Start from a template
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#a-first-scene" class="md-nav__link">
     A first scene
   </a>
@@ -670,7 +690,8 @@ behind it: <a href="https://threejs.org/">Three.js</a> or <a href="https://pixij
 <li><strong>Levels as data.</strong> JSON levels with your own entity classes, blueprint-wired events and a
   serialization round trip. 3D scenes can be authored in Blender with the bundled exporter add-on.</li>
 </ul>
-<p>Switching to another physics backend of the same dimension takes one line and needs no gameplay-code
+<p>Switching to another physics backend of the same dimension takes one line and, apart from a few
+gaps listed in the <a href="https://github.com/AndyGura/gg-web-engine#-faq">FAQ</a>, needs no gameplay-code
 changes. Each backend keeps its own simulation behavior, so expect to retune physics after a switch.</p>
 <h2 id="install">Install</h2>
 <p>Pick the core, one renderer and one physics engine of the same dimension. Each adapter brings the
@@ -703,13 +724,42 @@ exact library version it is built against.</p>
 </table>
 <p>Optional: <code>@gg-web-engine/multiplayer</code> (peer-to-peer shared worlds), <code>@gg-web-engine/audio</code>
 (positional audio), <code>@gg-web-engine/mobile-controls</code> (on-screen touch controls).</p>
+<h2 id="start-from-a-template">Start from a template</h2>
+<p>Three Vite + TypeScript starter projects live under
+<a href="https://github.com/AndyGura/gg-web-engine/tree/main/templates"><code>templates/</code></a>. Copy one and run it:</p>
+<pre><code class="language-bash">npx degit AndyGura/gg-web-engine/templates/3d-character my-game
+cd my-game &amp;&amp; npm install &amp;&amp; npm run dev
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Template</th>
+<th>What you get</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>3d-character</code></td>
+<td>Third-person character in a small arena, Three.js + Rapier</td>
+</tr>
+<tr>
+<td><code>2d-platformer</code></td>
+<td>Side-view platformer with coins and a parallax background, Pixi.js + Rapier</td>
+</tr>
+<tr>
+<td><code>multiplayer-cars</code></td>
+<td>Peer-to-peer driving arena: share the room link and drive together, Three.js + Rapier</td>
+</tr>
+</tbody>
+</table>
+<p>Each template has an <code>AGENTS.md</code> that points a coding agent at the engine guide.</p>
 <h2 id="a-first-scene">A first scene</h2>
-<pre><code class="language-typescript">import { Gg3dWorld, LoadingScreen, Pnt3, Qtrn } from '@gg-web-engine/core';
-import { ThreeSceneComponent } from '@gg-web-engine/three';
-import { Rapier3dWorldComponent } from '@gg-web-engine/rapier3d';
+<pre><code class="language-typescript">import { Gg3dWorld, LoadingScreen, Pnt3, Qtrn, TypedGg3dWorld } from '@gg-web-engine/core';
+import { ThreeGgWorld, ThreeSceneComponent } from '@gg-web-engine/three';
+import { Rapier3dGgWorld, Rapier3dWorldComponent } from '@gg-web-engine/rapier3d';
 
 const loading = LoadingScreen.show(); // the engine's loading screen, until hide() below
-const world = new Gg3dWorld({
+const world: TypedGg3dWorld&lt;ThreeGgWorld, Rapier3dGgWorld&gt; = new Gg3dWorld({
   visualScene: new ThreeSceneComponent(),
   physicsWorld: new Rapier3dWorldComponent(),
 });
@@ -741,12 +791,18 @@ loading.hide();
 pitfalls:</p>
 <pre><code class="language-bash">npx skills add AndyGura/gg-web-engine --skill gg-engine-app-development -y
 </code></pre>
+<p>Other agents get the same guide without a step: it ships as
+<code>node_modules/@gg-web-engine/core/AGENTS.md</code>. Before installing anything, an agent can read the
+whole engine in one request from <a href="llms-full.txt">llms-full.txt</a> (pitch, install lines, the guide
+and one complete game per dimension), or start from the <a href="llms.txt">llms.txt</a> index.</p>
 <h2 id="status">Status</h2>
-<p>The engine is experimental: versions are <code>0.0.N</code> and the API can change between releases. The
+<p>Releases so far are <code>0.0.N</code>, and the API can change between any two of them. Starting with 0.1.0,
+breaking changes come only in a minor release (<code>0.1.x</code> to <code>0.2.0</code>), each listed in the CHANGELOG
+with a migration note; the README's "Project status" has the full versioning policy. The
 <a href="https://github.com/AndyGura/gg-web-engine#readme">README</a> has an honest "when to use it, and when
 not to" comparison with Three.js, Babylon.js, Phaser and Godot.</p>
 <h2 id="api-reference">API reference</h2>
-<p>The <a href="modules/">modules</a> section documents every package: <code>core</code> and each adapter
+<p>The <a href="modules/index.md">modules</a> section documents every package: <code>core</code> and each adapter
 (<code>three</code>, <code>pixi</code>, <code>ammo</code>, <code>rapier2d</code>, <code>rapier3d</code>, <code>matter</code>).</p>
 
 
