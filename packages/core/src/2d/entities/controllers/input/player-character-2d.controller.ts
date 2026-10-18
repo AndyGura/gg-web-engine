@@ -39,7 +39,11 @@ export const DEFAULT_CHARACTER_2D_GAMEPAD_BINDING: Character2dGamepadBinding = {
  * Options for configuring a `PlayerCharacterController2d`.
  */
 export type PlayerCharacterController2dOptions = {
-  /** Keymap for left/right movement. `'wasd+arrows'` by default (both layouts work at once). */
+  /**
+   * Keymap for left/right movement: `'wasd+arrows'` by default (both layouts work at once), or
+   * custom codes per direction (only `left`/`right` move the character). To
+   * rebind while the game runs, assign `directionsInput.keymap`.
+   */
   keymap: DirectionKeymap;
   /** Key code that triggers `character.jump()`. `'Space'` by default. */
   jumpKey: string;

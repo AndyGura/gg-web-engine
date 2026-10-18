@@ -66,6 +66,22 @@ describe('PlayerCharacterController', () => {
       keyboard.emulateKeyDown('ArrowUp');
       expect(character.moveDirection).toEqual({ x: 0, y: 1, z: 0 });
     });
+
+    it('moves by custom key codes, and by new ones once directionsInput.keymap is reassigned', async () => {
+      const { keyboard, controller, character } = setup(fakeCharacter(), {
+        keymap: { up: 'KeyI', down: 'KeyK', left: 'KeyJ', right: 'KeyL' },
+      });
+      await controller.onSpawned({} as any);
+      keyboard.emulateKeyDown('KeyI');
+      expect(character.moveDirection).toEqual({ x: 0, y: 1, z: 0 });
+      keyboard.emulateKeyUp('KeyI');
+
+      controller.directionsInput.keymap = { up: 'Numpad8', down: 'Numpad5', left: 'Numpad4', right: 'Numpad6' };
+      keyboard.emulateKeyDown('KeyI');
+      expect(character.moveDirection).toEqual({ x: 0, y: 0, z: 0 });
+      keyboard.emulateKeyDown('Numpad4');
+      expect(character.moveDirection).toEqual({ x: -1, y: 0, z: 0 });
+    });
   });
 
   describe('jump/run/crouch keys', () => {

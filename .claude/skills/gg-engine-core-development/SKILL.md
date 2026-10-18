@@ -1203,6 +1203,19 @@ keyboard and mouse they are named after. Anything else feeds them:
   several sources compose (a tilt sensor on `x`, a pedal button on `y`). `output$` stays keys-only.
 - `MouseInput.emulateMove(delta)` - a view rotation, through `delta$`.
 
+`DirectionInput.keymap` is a live setter: `bindKeys()`/`unbindKeys()` own one `Subscription`
+over `combineLatest` of the four directions' `bindMany`, shared by `start`/`stop` and the setter,
+so a rebind leaves no binding on the keyboard behind (the spec checks `KeyboardInput`'s private
+`bindings` lists are empty after stop). A direction with no codes binds `of(false)`, never
+`bindMany()` with nothing - that returns `NEVER`, and `combineLatest` would then never emit at all.
+Unbinding emits `{}` on `output$` and zeroes the keys' share of `direction$`. A new
+`KeyboardInput.bind` starts at `false` whatever the key's state, so a key of the new keymap already
+held counts from its next press. `KeyboardInput.keyName`'s layout map is module state filled by
+`loadKeyboardLayout()` (each call re-reads it; `keyName` triggers the first), never read at import
+time - `navigator` doesn't exist in every host. Specs stub `navigator.keyboard` with
+`Object.defineProperty(..., { configurable: true })` and reset it by deleting the stub and calling
+`loadKeyboardLayout()` again.
+
 `MouseInput.delta$` reports each movement exactly once, from `pointermove` alone - a mouse fires
 `mousemove` for the same motion, and listening to both (as this class once did) doubled every
 mouse-look sensitivity against its documented "radians per 1000px". Keep it that way when touching

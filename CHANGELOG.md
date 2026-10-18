@@ -39,6 +39,15 @@ where one exists.
   `super.loadChunk(node)`: such an override could put a chunk back into `loaded` after it had
   already been unloaded, leaving an entry without its terrain that never loaded again (or a second
   copy of the chunk).
+- Custom key codes in direction keymaps: `DirectionKeymap` (every built-in input controller's
+  `keymap` option) also takes `{ up, down, left, right }`, each a `KeyboardEvent.code` or a list
+  of them, and `DirectionInput.keymap` can be assigned while the input runs to rebind the keys at
+  once (`controller.directionsInput.keymap = ...`). `directionKeyCodes(keymap)` lists the codes a
+  keymap stands for.
+- Helpers for a controls menu on `KeyboardInput`: `keyName(code)` gives a short label ("W",
+  "Left", "Num 8", "L Shift") in the player's keyboard layout where the browser reports it
+  (`loadKeyboardLayout()`, Chromium), and `isBindable(code)` rejects keys the browser or OS keeps
+  for itself (Tab, Escape, function keys, Ctrl/Alt/Meta, lock and media keys).
 
 ### Changed
 - `MapGraph3dEntity` drops queued chunks that left the load window before their turn to load,

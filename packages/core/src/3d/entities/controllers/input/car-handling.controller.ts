@@ -27,6 +27,11 @@ export const DEFAULT_CAR_GAMEPAD_BINDING: CarGamepadBinding = {
 };
 
 export type CarHandlingControllerOptions = {
+  /**
+   * Steering (`left`/`right`) and pedal (`up` throttle, `down` brake) keys: `'arrows'` by default,
+   * custom codes per direction, or `null` for none. To rebind while the game runs, assign
+   * `directionsInput.keymap`.
+   */
   readonly keymap: DirectionKeymap | null;
   readonly maxSteerDeltaPerSecond: number;
   /**

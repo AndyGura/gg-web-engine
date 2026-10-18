@@ -1,4 +1,4 @@
-import { BehaviorSubject, combineLatest, Observable, Subject, takeUntil } from 'rxjs';
+import { BehaviorSubject, combineLatest, Observable, of, Subject, Subscription } from 'rxjs';
 import { KeyboardInput } from './keyboard.input';
 import { distinctUntilChanged, map } from 'rxjs/operators';
 import { IInput } from './i-input';
@@ -6,9 +6,58 @@ import { Point2 } from '../models/points';
 import { Pnt2 } from '../math/point2';
 
 /**
- * Which keys a `DirectionInput` reads
+ * Custom direction keys: `KeyboardEvent.code` values per direction (`'KeyW'`, `'ArrowUp'`,
+ * `'Numpad8'`), one code or a list of codes that each move that way. A direction with no codes is
+ * never pushed by a key.
  */
-export type DirectionKeymap = 'arrows' | 'wasd' | 'wasd+arrows';
+export type DirectionKeyCodes = {
+  up: string | readonly string[];
+  down: string | readonly string[];
+  left: string | readonly string[];
+  right: string | readonly string[];
+};
+
+/**
+ * Which keys a `DirectionInput` reads: one of the two most popular layouts, both of them, or
+ * custom codes per direction (for a controls menu letting the player rebind them)
+ */
+export type DirectionKeymap = 'arrows' | 'wasd' | 'wasd+arrows' | DirectionKeyCodes;
+
+const asCodeList = (codes: string | readonly string[]): string[] => (typeof codes === 'string' ? [codes] : [...codes]);
+
+/**
+ * The key codes a `DirectionKeymap` stands for, each direction as a list (a copy, never the
+ * keymap's own arrays)
+ */
+export function directionKeyCodes(keymap: DirectionKeymap): {
+  up: string[];
+  down: string[];
+  left: string[];
+  right: string[];
+} {
+  if (typeof keymap !== 'string') {
+    return {
+      up: asCodeList(keymap.up),
+      down: asCodeList(keymap.down),
+      left: asCodeList(keymap.left),
+      right: asCodeList(keymap.right),
+    };
+  }
+  const result = { up: [] as string[], down: [] as string[], left: [] as string[], right: [] as string[] };
+  if (keymap.includes('wasd')) {
+    result.up.push('KeyW');
+    result.left.push('KeyA');
+    result.down.push('KeyS');
+    result.right.push('KeyD');
+  }
+  if (keymap.includes('arrows')) {
+    result.up.push('ArrowUp');
+    result.left.push('ArrowLeft');
+    result.down.push('ArrowDown');
+    result.right.push('ArrowRight');
+  }
+  return result;
+}
 
 /**
  * The value of `DirectionInput.output$`: which way the direction keys point. An axis is `undefined`
@@ -27,7 +76,8 @@ const clampAxis = (value: number) => Math.max(-1, Math.min(1, value));
 /**
  * An input for a direction, whatever device it comes from. `direction$` reports it as a vector,
  * combined from two kinds of sources:
- * - direction keys of a keyboard, in the two most popular layouts: WASD and arrows;
+ * - direction keys of a keyboard: WASD, arrows, or any codes per direction (`keymap`, which can be
+ *   changed while the input runs);
  * - analog contributions from anything else that can point in a direction (an on-screen stick, a
  *   tilt sensor, a gamepad), set through `setAnalogDirection`.
  *
@@ -49,6 +99,31 @@ export class DirectionInput extends IInput {
   private readonly _direction$: BehaviorSubject<Point2> = new BehaviorSubject<Point2>(Pnt2.O);
   private keysDirection: Point2 = Pnt2.O;
   private readonly analogDirections: Map<unknown, AnalogDirection> = new Map<unknown, AnalogDirection>();
+  private keysSubscription: Subscription | null = null;
+  private _keymap: DirectionKeymap | null;
+
+  /**
+   * The keys this input reads, `null` for none. Assigning it while the input runs rebinds the keys
+   * at once: the keys of the old keymap stop counting, and a key of the new one that is already
+   * held counts from its next press.
+   *
+   * @example
+   * ```ts
+   * // a controls menu rebinding a character's movement keys
+   * controller.directionsInput.keymap = { up: 'KeyI', down: 'KeyK', left: 'KeyJ', right: 'KeyL' };
+   * ```
+   */
+  public get keymap(): DirectionKeymap | null {
+    return this._keymap;
+  }
+
+  public set keymap(value: DirectionKeymap | null) {
+    this._keymap = value;
+    if (this.running) {
+      this.unbindKeys();
+      this.bindKeys();
+    }
+  }
 
   /**
    * The current direction as a vector: `x` from -1 (left) to 1 (right), `y` from -1 (down/backward)
@@ -102,39 +177,36 @@ export class DirectionInput extends IInput {
    */
   constructor(
     protected readonly keyboard: KeyboardInput | null = null,
-    protected readonly keymap: DirectionKeymap | null = 'wasd+arrows',
+    keymap: DirectionKeymap | null = 'wasd+arrows',
   ) {
     super();
+    this._keymap = keymap;
   }
 
   /**
    * Called when the input handling should start.
    */
   protected startInternal() {
-    if (!this.keyboard || !this.keymap) {
+    this.bindKeys();
+  }
+
+  protected stopInternal() {
+    this.unbindKeys();
+    this.analogDirections.clear();
+    this.updateDirection();
+  }
+
+  private bindKeys(): void {
+    if (!this.keyboard || !this._keymap) {
       return;
     }
-    // Initialize an array to hold the keys to listen for
-    const keys = [[], [], [], []] as string[][];
-    // Add the "wasd" keys to the array if specified in the keymap
-    if (this.keymap.includes('wasd')) {
-      keys[0].push('KeyW');
-      keys[1].push('KeyA');
-      keys[2].push('KeyS');
-      keys[3].push('KeyD');
-    }
-    // Add the arrow keys to the array if specified in the keymap
-    if (this.keymap.includes('arrows')) {
-      keys[0].push('ArrowUp');
-      keys[1].push('ArrowLeft');
-      keys[2].push('ArrowDown');
-      keys[3].push('ArrowRight');
-    }
-    // Bind to the keyboard events for the specified keys
-    combineLatest(keys.map(x => this.keyboard!.bindMany(...x)))
+    const keyboard = this.keyboard;
+    const { up, left, down, right } = directionKeyCodes(this._keymap);
+    this.keysSubscription = combineLatest(
+      // a direction without keys is never held
+      [up, left, down, right].map(codes => (codes.length > 0 ? keyboard.bindMany(...codes) : of(false))),
+    )
       .pipe(
-        // Stop listening when the `stop$` signal is received
-        takeUntil(this.stop$),
         // Map the key states to a `DirectionKeyboardOutput` object
         map(moveDirection => {
           const result: DirectionKeyboardOutput = {};
@@ -157,9 +229,14 @@ export class DirectionInput extends IInput {
       });
   }
 
-  protected stopInternal() {
+  private unbindKeys(): void {
+    if (this.keysSubscription) {
+      this.keysSubscription.unsubscribe();
+      this.keysSubscription = null;
+      // nothing is held any more: report it, as releasing every key would
+      this._output$.next({});
+    }
     this.keysDirection = Pnt2.O;
-    this.analogDirections.clear();
     this.updateDirection();
   }
 }

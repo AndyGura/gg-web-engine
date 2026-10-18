@@ -380,6 +380,17 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   `active = false` already stops every input subscription from touching `character` and neutralizes
   whatever it last wrote (`moveDirection`/`isRunning` zeroed, plus `isCrouching` in "hold" crouch
   mode) rather than leaving it stuck mid-motion.
+- **Rebinding keys (controls menu)**: a controller's `keymap` option is `'wasd'`, `'arrows'`,
+  `'wasd+arrows'` or custom `KeyboardEvent.code`s per direction - `{ up: 'KeyI', down: 'KeyK',
+  left: 'KeyJ', right: 'KeyL' }`, each a code or a list. To rebind while the game runs, assign
+  the controller's `directionsInput.keymap` (`GgCarHandlingController`: `carHandlingInput
+  .directionsInput.keymap`); it takes effect at once. Label keys with `KeyboardInput.keyName(code)`
+  ("W", "Left", "Num 8"; in the player's layout on Chromium - `await KeyboardInput
+  .loadKeyboardLayout()` before showing the menu, so AZERTY's `KeyQ` reads "A" from the first
+  frame), and check a captured `keydown`'s `e.code` with `KeyboardInput.isBindable(code)` (false
+  for Tab, Escape, function keys, Ctrl/Alt/Meta, lock and media keys). A controller's other keys
+  (`jumpKey`, `gearUpDownKeys`, ...) are read from `options` when it spawns: to change them,
+  re-create the controller.
 - **Gamepad**: every one of those controllers is driven by a gamepad out of the box, through
   `world.gamepadInput` (a `GamepadInput`, polled every frame while `world.inputEnabled`, also while
   the world is paused): left stick or d-pad moves/steers, right stick looks, triggers are a car's

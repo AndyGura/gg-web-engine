@@ -199,4 +199,74 @@ describe('KeyboardInput', () => {
       document.body.removeChild(button);
     }
   });
+
+  describe('key names and bindability', () => {
+    const setLayout = (layout: Record<string, string> | undefined) =>
+      Object.defineProperty(navigator, 'keyboard', {
+        configurable: true,
+        value: layout && { getLayoutMap: () => Promise.resolve(new Map(Object.entries(layout))) },
+      });
+
+    afterEach(async () => {
+      delete (navigator as any).keyboard;
+      await KeyboardInput.loadKeyboardLayout();
+    });
+
+    it('names keys after the US layout when the browser does not tell the layout', async () => {
+      expect(await KeyboardInput.loadKeyboardLayout()).toBe(false);
+      expect(KeyboardInput.keyName('KeyQ')).toBe('Q');
+      expect(KeyboardInput.keyName('Digit1')).toBe('1');
+      expect(KeyboardInput.keyName('Numpad8')).toBe('Num 8');
+      expect(KeyboardInput.keyName('Semicolon')).toBe(';');
+      expect(KeyboardInput.keyName('ArrowLeft')).toBe('Left');
+      expect(KeyboardInput.keyName('ShiftLeft')).toBe('L Shift');
+      expect(KeyboardInput.keyName('Space')).toBe('Space');
+      expect(KeyboardInput.keyName('F7')).toBe('F7');
+    });
+
+    it("names keys after the player's layout once loaded", async () => {
+      setLayout({ KeyQ: 'a', Digit1: '&', Semicolon: 'm', Space: ' ' });
+      expect(await KeyboardInput.loadKeyboardLayout()).toBe(true);
+      expect(KeyboardInput.keyName('KeyQ')).toBe('A');
+      expect(KeyboardInput.keyName('Digit1')).toBe('&');
+      expect(KeyboardInput.keyName('Semicolon')).toBe('M');
+      expect(KeyboardInput.keyName('Space')).toBe('Space');
+      expect(KeyboardInput.keyName('ArrowUp')).toBe('Up');
+      // not in the layout map
+      expect(KeyboardInput.keyName('KeyW')).toBe('W');
+    });
+
+    it('resolves false rather than rejecting when the layout is withheld', async () => {
+      Object.defineProperty(navigator, 'keyboard', {
+        configurable: true,
+        value: { getLayoutMap: () => Promise.reject(new DOMException('not allowed', 'SecurityError')) },
+      });
+      expect(await KeyboardInput.loadKeyboardLayout()).toBe(false);
+      expect(KeyboardInput.keyName('KeyQ')).toBe('Q');
+    });
+
+    it('refuses browser, OS, modifier and lock keys as bindable', () => {
+      for (const code of ['KeyW', 'ArrowUp', 'Space', 'ShiftLeft', 'Numpad5', 'Digit0', 'Enter', 'Backquote']) {
+        expect(KeyboardInput.isBindable(code)).toBe(true);
+      }
+      for (const code of [
+        '',
+        'Unidentified',
+        'Tab',
+        'Escape',
+        'F5',
+        'F12',
+        'ControlLeft',
+        'AltRight',
+        'MetaLeft',
+        'CapsLock',
+        'MediaPlayPause',
+        'AudioVolumeUp',
+        'BrowserBack',
+        'ContextMenu',
+      ]) {
+        expect(KeyboardInput.isBindable(code)).toBe(false);
+      }
+    });
+  });
 });

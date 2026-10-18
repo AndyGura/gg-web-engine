@@ -423,8 +423,12 @@ Status
   the controllers' specs; documented in `gg-engine-app-development`. Not done: haptics, and a
   per-gamepad mapping database for pads without the standard mapping.
 - Touch/gesture recognition (pinch, pan, tap, swipe) — not started.
-- User-facing remapping API — not started; current input classes are configured in code, not
-  remappable at runtime.
+- ✅ Keyboard remapping: `DirectionKeymap` takes custom codes per direction and
+  `DirectionInput.keymap` rebinds while running; `KeyboardInput.keyName`/`isBindable`/
+  `loadKeyboardLayout` cover a controls menu's labels and key capture. Covered by
+  `packages/core/test/base/inputs/{direction,keyboard}.input.spec.ts`. Not done: a runtime setter
+  for the controllers' other keys (jump, run, gears, ...), which are still read from `options` at
+  spawn, and saving bindings.
 - Haptics — not started.
 
 ---

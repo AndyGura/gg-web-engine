@@ -63,7 +63,10 @@ export const DEFAULT_CHARACTER_GAMEPAD_BINDING: CharacterGamepadBinding = {
  * Options for configuring a `PlayerCharacterController`.
  */
 export type PlayerCharacterControllerOptions = {
-  /** Keymap for walk/strafe direction. 'wasd+arrows' by default (both layouts work at once). */
+  /**
+   * Keymap for walk/strafe direction: `'wasd+arrows'` by default (both layouts work at once), or
+   * custom codes per direction. To rebind while the game runs, assign `directionsInput.keymap`.
+   */
   keymap: DirectionKeymap;
   /** Key code that triggers `character.jump()`. 'Space' by default. */
   jumpKey: string;

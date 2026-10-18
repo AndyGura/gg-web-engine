@@ -56,7 +56,9 @@ export const DEFAULT_FREE_CAMERA_GAMEPAD_BINDING: FreeCameraGamepadBinding = {
  */
 export type FreeCameraControllerOptions = {
   /**
-   * A keymap for controlling camera movement, where each key corresponds to a movement direction. 'wasd' by default
+   * A keymap for controlling camera movement, where each key corresponds to a movement direction:
+   * `'wasd'` by default, or custom codes per direction. To rebind while the game runs, assign
+   * `directionsInput.keymap`.
    */
   keymap: DirectionKeymap;
   /**
