@@ -42,6 +42,20 @@ describe('ObjectGrabController', () => {
   const emitMouseState = (mouseInput: MouseInput, state: MouseInputState) => (mouseInput as any)._state$.next(state);
 
   describe('grabbing', () => {
+    it('grabs on the key given to setKeys instead of the old one', () => {
+      const raycast = jest.fn();
+      const { entity } = makeGrabbable();
+      raycast.mockReturnValue({ hasHit: true, hitBody: { entity } });
+      const { keyboard, controller } = setup();
+      controller.onSpawned({ physicsWorld: { raycast } } as any);
+
+      controller.setKeys({ grabKey: 'KeyF' });
+      keyboard.emulateKeyDown('KeyE');
+      expect(controller.heldObject).toBeNull();
+      keyboard.emulateKeyDown('KeyF');
+      expect(controller.heldObject).toBe(entity);
+    });
+
     it('grabs a Grabbable3dEntity hit by the forward raycast on the grab key', () => {
       const raycast = jest.fn();
       const { entity } = makeGrabbable();

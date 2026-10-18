@@ -37,6 +37,7 @@ export * from './inputs/gamepad.input';
 export * from './inputs/i-input';
 export * from './inputs/keyboard.input';
 export * from './inputs/mouse.input';
+export * from './inputs/rebindable-keys';
 export * from './inputs/world-input';
 
 export * from './interfaces/i-positionable';

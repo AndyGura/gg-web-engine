@@ -67,18 +67,18 @@ describe('PlayerCharacterController', () => {
       expect(character.moveDirection).toEqual({ x: 0, y: 1, z: 0 });
     });
 
-    it('moves by custom key codes, and by new ones once directionsInput.keymap is reassigned', async () => {
+    it('moves by custom key codes, and by new ones given to setKeys', async () => {
       const { keyboard, controller, character } = setup(fakeCharacter(), {
         keymap: { up: 'KeyI', down: 'KeyK', left: 'KeyJ', right: 'KeyL' },
       });
       await controller.onSpawned({} as any);
       keyboard.emulateKeyDown('KeyI');
       expect(character.moveDirection).toEqual({ x: 0, y: 1, z: 0 });
-      keyboard.emulateKeyUp('KeyI');
 
-      controller.directionsInput.keymap = { up: 'Numpad8', down: 'Numpad5', left: 'Numpad4', right: 'Numpad6' };
-      keyboard.emulateKeyDown('KeyI');
+      controller.setKeys({ keymap: { up: 'Numpad8', down: 'Numpad5', left: 'Numpad4', right: 'Numpad6' } });
+      // the old key, still held, stops counting at once
       expect(character.moveDirection).toEqual({ x: 0, y: 0, z: 0 });
+      expect(controller.directionsInput.keymap).toBe(controller.options.keymap);
       keyboard.emulateKeyDown('Numpad4');
       expect(character.moveDirection).toEqual({ x: -1, y: 0, z: 0 });
     });
@@ -445,6 +445,38 @@ describe('PlayerCharacterController', () => {
     afterEach(() => {
       gamepadInput.stop();
       pads.restore();
+    });
+
+    it('acts by the keys given to setKeys, from the keyboard and the gamepad buttons alike', async () => {
+      const { keyboard, controller, character } = setup();
+      await controller.onSpawned({ gamepadInput } as any);
+      const changes: void[] = [];
+      controller.keysChanged$.subscribe(v => changes.push(v));
+
+      keyboard.emulateKeyDown('ShiftLeft');
+      expect(character.isRunning).toBe(true);
+      controller.setKeys({ jumpKey: 'KeyJ', runKey: 'KeyR', toggleViewKey: null });
+      expect(changes.length).toBe(1);
+      expect(controller.options.jumpKey).toBe('KeyJ');
+      // a held key that was replaced lets go
+      expect(character.isRunning).toBe(false);
+
+      keyboard.emulateKeyDown('Space');
+      expect(character.jump).not.toHaveBeenCalled();
+      keyboard.emulateKeyDown('KeyJ');
+      expect(character.jump).toHaveBeenCalledTimes(1);
+      keyboard.emulateKeyUp('KeyJ');
+      const viewMode = controller.viewMode;
+      keyboard.emulateKeyDown('KeyV');
+      expect(controller.viewMode).toBe(viewMode);
+
+      const jumpKey: boolean[] = [];
+      keyboard.bind('KeyJ').subscribe(v => jumpKey.push(v));
+      pads.set({ buttons: { 0: true, 10: true } }); // A jumps, L3 runs
+      gamepadInput.poll();
+      expect(jumpKey).toEqual([false, true]);
+      expect(character.jump).toHaveBeenCalledTimes(2);
+      expect(character.isRunning).toBe(true);
     });
 
     it('walks by the left stick, acts by the buttons and looks by the right stick, per tick', async () => {

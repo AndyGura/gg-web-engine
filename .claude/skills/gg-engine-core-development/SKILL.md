@@ -1203,6 +1203,22 @@ keyboard and mouse they are named after. Anything else feeds them:
   several sources compose (a tilt sensor on `x`, a pedal button on `y`). `output$` stays keys-only.
 - `MouseInput.emulateMove(delta)` - a view rotation, through `delta$`.
 
+**Every key a built-in controller binds is rebindable through its `setKeys`**, and a new key option
+has to be too. The pattern, the same in each controller: a `XxxControllerKeys` type (`Pick` of the
+key options), `setKeys(partial)` = `assignKeys(this.options, keys)` (`base/inputs/assign-keys.ts`,
+deliberately not exported from the package; it skips `undefined`), forwarding `keymap` to
+`directionsInput.keymap` (`GgCarHandlingController` to its child's `setKeys`), then
+`_keysChanged$.next()`; a private `key$(o => o.someKey)` = `_keysChanged$` + `startWith` + read from
+`options`; and every binding in `onSpawned` goes through `followKey(this.keyboard, this.key$(...))`
+and `followGamepadKey(gamepadInput, this.keyboard, this.key$(...), controls)` - never
+`keyboard.bind(this.options.x)` or one `gamepadInput.bindKeys` map of all keys. One binding per key
+is the point: each follows its own code with `distinctUntilChanged`, so `setKeys` of one key leaves
+the others' bindings (and a held gamepad button on them) alone - rebinding a whole `bindKeys` map
+would release and re-press every held key, a rising edge that jumps or shifts gear again.
+`CarHandlingController`/`GgCarHandlingController` copy the options object they are given, since
+`setKeys` writes to it. `FreeCameraController` binds its zoom keys through `key$` returning `null`
+for a camera without a fov, so the `combineLatest` keeps a fixed shape.
+
 `DirectionInput.keymap` is a live setter: `bindKeys()`/`unbindKeys()` own one `Subscription`
 over `combineLatest` of the four directions' `bindMany`, shared by `start`/`stop` and the setter,
 so a rebind leaves no binding on the keyboard behind (the spec checks `KeyboardInput`'s private
@@ -1346,8 +1362,9 @@ changing one:
   `GgCarHandlingController`, `PlayerCharacterController`, `PlayerCharacterController2d`,
   `FreeCameraController` and `ObjectGrabController` - the layouts read key codes from them
   (`options.jumpKey`, `options.gearUpDownKeys`, `options.grabKey`, ...) and emulate on that same
-  `keyboard`. `FreeCameraController`'s up/down/boost keys are hardcoded (`KeyE`/`KeyQ`/`ShiftLeft`)
-  in both places. `ObjectGrabController`'s layout also reads `heldObject$` (to turn its grab button
+  `keyboard`. A layout reads the keys when it is built; `MobileControls` rebuilds a shown one when
+  the controller's `keysChanged$` emits (duck-typed, so an app's controller with one gets the same).
+  `ObjectGrabController`'s layout also reads `heldObject$` (to turn its grab button
   into a release button and show a throw button while something is held) and calls `throwHeld()`.
 - `directionsInput`/`mouseInput` are public on the same controllers and are what sticks and look
   areas bind to. A new option-driven key on a controller needs a button in its layout

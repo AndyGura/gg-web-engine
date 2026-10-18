@@ -42,6 +42,47 @@ describe('GgCarHandlingController', () => {
   const tick = (world: MockWorld, elapsed: number, delta: number) =>
     (world.worldClock as any)._tick$.next([elapsed, delta]);
 
+  it('rebinds gear, handbrake and direction keys through setKeys, without touching the options passed in', async () => {
+    const world = new MockWorld();
+    await world.init();
+    const keyboard = new KeyboardInput();
+    keyboard.start();
+    const car = fakeCar();
+    const options = {
+      keymap: 'arrows' as const,
+      maxSteerDeltaPerSecond: 1000,
+      gearUpDownKeys: ['KeyA', 'KeyZ'] as [string, string],
+      autoReverse: true,
+      handbrakeKey: 'Space',
+    };
+    const controller = new GgCarHandlingController(keyboard, car, options);
+    world.addEntity(controller);
+
+    controller.setKeys({ gearUpDownKeys: ['KeyE', 'KeyQ'], handbrakeKey: 'KeyB', keymap: 'wasd' });
+    expect(options.gearUpDownKeys).toEqual(['KeyA', 'KeyZ']);
+    expect(controller.options.handbrakeKey).toBe('KeyB');
+    expect(controller.carHandlingInput.options.keymap).toBe('wasd');
+
+    keyboard.emulateKeyDown('KeyA');
+    expect(car.gear).toBe(1);
+    keyboard.emulateKeyDown('KeyE');
+    expect(car.gear).toBe(2);
+    keyboard.emulateKeyDown('KeyQ');
+    expect(car.gear).toBe(1);
+
+    keyboard.emulateKeyDown('Space');
+    expect(car.handBrake).toBe(false);
+    keyboard.emulateKeyDown('KeyB');
+    expect(car.handBrake).toBe(true);
+
+    keyboard.emulateKeyDown('ArrowUp');
+    tick(world, 0, 16);
+    expect(car.acceleration).toBe(0);
+    keyboard.emulateKeyDown('KeyW');
+    tick(world, 16, 16);
+    expect(car.acceleration).toBeGreaterThan(0);
+  });
+
   it('drives acceleration/steering from held keys while active', async () => {
     const { world, keyboard, car } = await setup();
     keyboard.emulateKeyDown('ArrowUp');

@@ -105,12 +105,13 @@ export class DirectionInput extends IInput {
   /**
    * The keys this input reads, `null` for none. Assigning it while the input runs rebinds the keys
    * at once: the keys of the old keymap stop counting, and a key of the new one that is already
-   * held counts from its next press.
+   * held counts from its next press. A built-in controller's direction input is rebound through
+   * the controller's `setKeys({ keymap })` instead, which keeps its `options` in step.
    *
    * @example
    * ```ts
-   * // a controls menu rebinding a character's movement keys
-   * controller.directionsInput.keymap = { up: 'KeyI', down: 'KeyK', left: 'KeyJ', right: 'KeyL' };
+   * // a controls menu rebinding a direction input of the app's own
+   * moveInput.keymap = { up: 'KeyI', down: 'KeyK', left: 'KeyJ', right: 'KeyL' };
    * ```
    */
   public get keymap(): DirectionKeymap | null {

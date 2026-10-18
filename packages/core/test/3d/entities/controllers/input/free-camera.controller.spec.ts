@@ -42,6 +42,35 @@ describe('FreeCameraController', () => {
 
     const forward = (camera: any) => Pnt3.rot({ x: 0, y: 0, z: -1 }, camera.rotation);
 
+    it('flies by the keys given to setKeys, the gamepad buttons pressing the new keys', async () => {
+      const { keyboard, camera, controller } = await setup({ cameraLinearSpeed: 10 });
+      const changes: void[] = [];
+      controller.keysChanged$.subscribe(v => changes.push(v));
+      controller.setKeys({ upDownKeys: ['Space', 'KeyC'], boostKey: 'KeyB' });
+      expect(controller.options.upDownKeys).toEqual(['Space', 'KeyC']);
+      expect(controller.options.boostKey).toBe('KeyB');
+      expect(changes.length).toBe(1);
+
+      keyboard.emulateKeyDown('KeyE');
+      camera.tick$.next([0, 1000]);
+      expect(Pnt3.len(camera.position)).toBe(0);
+      keyboard.emulateKeyUp('KeyE');
+
+      keyboard.emulateKeyDown('Space');
+      keyboard.emulateKeyDown('KeyB');
+      camera.tick$.next([0, 1000]);
+      expect(Pnt3.len(camera.position)).toBeCloseTo(25, 5);
+      keyboard.emulateKeyUp('Space');
+      keyboard.emulateKeyUp('KeyB');
+
+      const pressed: boolean[] = [];
+      keyboard.bind('KeyC').subscribe(v => pressed.push(v));
+      pads.set({ buttons: { 4: true } }); // the down button
+      gamepadInput.poll();
+      expect(pressed).toEqual([false, true]);
+      controller.onRemoved();
+    });
+
     it('flies by the left stick and the up/down buttons, boosted by the boost button', async () => {
       const plain = await setup({ cameraLinearSpeed: 10 });
       const boosted = await setup({ cameraLinearSpeed: 10 });

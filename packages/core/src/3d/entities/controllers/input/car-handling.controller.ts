@@ -1,4 +1,5 @@
 import { combineLatest, filter, Observable, Subject, take, takeUntil } from 'rxjs';
+import { assignKeys } from '../../../../base/inputs/assign-keys';
 import {
   DirectionInput,
   DirectionKeymap,
@@ -29,8 +30,7 @@ export const DEFAULT_CAR_GAMEPAD_BINDING: CarGamepadBinding = {
 export type CarHandlingControllerOptions = {
   /**
    * Steering (`left`/`right`) and pedal (`up` throttle, `down` brake) keys: `'arrows'` by default,
-   * custom codes per direction, or `null` for none. To rebind while the game runs, assign
-   * `directionsInput.keymap`.
+   * custom codes per direction, or `null` for none. `setKeys` changes it while the game runs.
    */
   readonly keymap: DirectionKeymap | null;
   readonly maxSteerDeltaPerSecond: number;
@@ -40,6 +40,11 @@ export type CarHandlingControllerOptions = {
    */
   readonly gamepad?: CarGamepadBinding | null;
 };
+/**
+ * The keys of a `CarHandlingController`, which `setKeys` changes while the game runs
+ */
+export type CarHandlingControllerKeys = Pick<CarHandlingControllerOptions, 'keymap'>;
+
 export type CarHandlingOutput = { upDown: number; leftRight: number };
 
 export class CarHandlingController extends IEntity {
@@ -47,6 +52,35 @@ export class CarHandlingController extends IEntity {
   public readonly tickOrder = TickOrder.INPUT_CONTROLLERS;
 
   public readonly directionsInput: DirectionInput;
+  public readonly options: CarHandlingControllerOptions;
+
+  private readonly _keysChanged$: Subject<void> = new Subject<void>();
+
+  /**
+   * Emits after every `setKeys`, for whatever shows or uses this controller's keys (an on-screen
+   * hint, the touch layout of `@gg-web-engine/mobile-controls`, which rebuilds itself on it)
+   */
+  public get keysChanged$(): Observable<void> {
+    return this._keysChanged$.asObservable();
+  }
+
+  /**
+   * Rebinds the steering and pedal keys while the game runs - for a controls menu. They are written
+   * to `options` and take effect at once. A key held while it is replaced stops counting, and a new
+   * key already held counts from its next press.
+   *
+   * @example
+   * ```ts
+   * controller.setKeys({ keymap: { up: 'KeyW', down: 'KeyS', left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'] } });
+   * ```
+   */
+  public setKeys(keys: Partial<CarHandlingControllerKeys>): void {
+    assignKeys(this.options, keys);
+    if (keys.keymap !== undefined) {
+      this.directionsInput.keymap = keys.keymap;
+    }
+    this._keysChanged$.next();
+  }
 
   private _output$: Subject<CarHandlingOutput> = new Subject<CarHandlingOutput>();
   public get output$(): Observable<CarHandlingOutput> {
@@ -55,12 +89,14 @@ export class CarHandlingController extends IEntity {
 
   constructor(
     public readonly keyboard: KeyboardInput,
-    public readonly options: CarHandlingControllerOptions = {
+    options: CarHandlingControllerOptions = {
       keymap: 'arrows',
       maxSteerDeltaPerSecond: 12,
     },
   ) {
     super();
+    // a copy: `setKeys` writes to it
+    this.options = { ...options };
     this.directionsInput = new DirectionInput(keyboard, options.keymap);
   }
 

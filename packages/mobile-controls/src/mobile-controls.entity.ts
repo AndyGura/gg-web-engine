@@ -1,4 +1,4 @@
-import { takeUntil } from 'rxjs';
+import { isObservable, Observable, takeUntil } from 'rxjs';
 import {
   CarHandlingController,
   FreeCameraController,
@@ -222,7 +222,9 @@ export class MobileControls extends IEntity {
 
   /**
    * Builds the layout of `controller` anew - after something its layout was built from has changed
-   * (the car it drives, an option), since a layout is otherwise built once per activation.
+   * (the car it drives, an option), since a layout is otherwise built once per activation. A
+   * controller with a `keysChanged$` (every built-in one, emitting on `setKeys`) is refreshed on it
+   * without this call.
    */
   public refresh(controller?: IEntity): void {
     for (const key of controller ? [controller] : [...this.layouts.keys()]) {
@@ -335,6 +337,12 @@ export class MobileControls extends IEntity {
     for (const controller of this.tracked) {
       if (controller.active && !this.layouts.has(controller)) {
         const items = this.findFactory(controller)!(controller, { world: world!, controls: this });
+        // the built-in controllers' `setKeys`: the layout's buttons press keys read when it was built
+        const keysChanged$ = (controller as { keysChanged$?: Observable<unknown> }).keysChanged$;
+        if (isObservable(keysChanged$)) {
+          const subscription = keysChanged$.subscribe(() => this.refresh(controller));
+          items.push({ dispose: () => subscription.unsubscribe() });
+        }
         this.layouts.set(controller, items);
         // below the controls added by `addControls`, which stay on top
         const before = this.ownControls.size > 0 ? [...this.ownControls][0].element : null;

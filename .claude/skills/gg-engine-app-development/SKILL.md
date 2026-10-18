@@ -379,15 +379,21 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   mode) rather than leaving it stuck mid-motion.
 - **Rebinding keys (controls menu)**: a controller's `keymap` option is `'wasd'`, `'arrows'`,
   `'wasd+arrows'` or custom `KeyboardEvent.code`s per direction - `{ up: 'KeyI', down: 'KeyK',
-  left: 'KeyJ', right: 'KeyL' }`, each a code or a list. To rebind while the game runs, assign
-  the controller's `directionsInput.keymap` (`GgCarHandlingController`: `carHandlingInput
-  .directionsInput.keymap`); it takes effect at once. Label keys with `KeyboardInput.keyName(code)`
-  ("W", "Left", "Num 8"; in the player's layout on Chromium - `await KeyboardInput
-  .loadKeyboardLayout()` before showing the menu, so AZERTY's `KeyQ` reads "A" from the first
-  frame), and check a captured `keydown`'s `e.code` with `KeyboardInput.isBindable(code)` (false
-  for Tab, Escape, function keys, Ctrl/Alt/Meta, lock and media keys). A controller's other keys
-  (`jumpKey`, `gearUpDownKeys`, ...) are read from `options` when it spawns: to change them,
-  re-create the controller.
+  left: 'KeyJ', right: 'KeyL' }`, each a code or a list. To rebind while the game runs, call the
+  controller's `setKeys` with the keys that change - `player.setKeys({ jumpKey: 'KeyJ', keymap:
+  {...} })`, `car.setKeys({ gearUpDownKeys: ['KeyE', 'KeyQ'], handbrakeKey: 'KeyB' })`,
+  `freeCamera.setKeys({ upDownKeys, zoomOutInKeys, boostKey })`, `grab.setKeys({ grabKey })`. It
+  writes them to `options` and takes effect at once; gamepad buttons press the new keys, and a
+  `MobileControls` layout on screen is rebuilt (on the controller's `keysChanged$`, which a hint
+  of your own can listen to as well). For your own actions, `followKey(world.keyboardInput,
+  code$)` reports the state of whichever key an observable code names last, and
+  `followGamepadKey(world.gamepadInput, world.keyboardInput, code$, 'b2')` keeps a gamepad button
+  on it. Label keys with `KeyboardInput.keyName(code)` ("W", "Left", "Num 8"; in the player's
+  layout on Chromium - `await KeyboardInput.loadKeyboardLayout()` before showing the menu, so
+  AZERTY's `KeyQ` reads "A" from the first frame), and check a captured `keydown`'s `e.code` with
+  `KeyboardInput.isBindable(code)` (false for Tab, Escape, function keys, Ctrl/Alt/Meta, lock and
+  media keys). Saving the bindings, and what to do when two actions get the same key, is the
+  app's.
 - **Gamepad**: every one of those controllers is driven by a gamepad out of the box, through
   `world.gamepadInput` (a `GamepadInput`, polled every frame while `world.inputEnabled`, also while
   the world is paused): left stick or d-pad moves/steers, right stick looks, triggers are a car's

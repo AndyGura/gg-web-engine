@@ -29,6 +29,21 @@ describe('PlayerCharacterController2d', () => {
   };
 
   describe('movement mapping', () => {
+    it('moves and acts by the keys given to setKeys', async () => {
+      const { keyboard, controller, character } = setup(fakeCharacter(), { keymap: 'wasd' });
+      await controller.onSpawned({} as any);
+      controller.setKeys({ keymap: { up: [], down: 'KeyS', left: 'KeyJ', right: 'KeyL' }, jumpKey: 'KeyK' });
+
+      keyboard.emulateKeyDown('KeyA');
+      expect(character.moveDirection).toBe(0);
+      keyboard.emulateKeyDown('KeyJ');
+      expect(character.moveDirection).toBe(-1);
+      keyboard.emulateKeyDown('Space');
+      expect(character.jump).not.toHaveBeenCalled();
+      keyboard.emulateKeyDown('KeyK');
+      expect(character.jump).toHaveBeenCalledTimes(1);
+    });
+
     it('maps the left key to a negative moveDirection (left is against `right`)', async () => {
       const { keyboard, controller, character } = setup(fakeCharacter(), { keymap: 'wasd' });
       await controller.onSpawned({} as any);

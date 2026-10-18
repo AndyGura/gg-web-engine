@@ -42,14 +42,27 @@ where one exists.
 - Custom key codes in direction keymaps: `DirectionKeymap` (every built-in input controller's
   `keymap` option) also takes `{ up, down, left, right }`, each a `KeyboardEvent.code` or a list
   of them, and `DirectionInput.keymap` can be assigned while the input runs to rebind the keys at
-  once (`controller.directionsInput.keymap = ...`). `directionKeyCodes(keymap)` lists the codes a
-  keymap stands for.
+  once. `directionKeyCodes(keymap)` lists the codes a keymap stands for.
+- Rebinding a controller's keys while the game runs: `setKeys(partial)` on `PlayerCharacterController`,
+  `PlayerCharacterController2d`, `CarHandlingController`, `GgCarHandlingController`,
+  `FreeCameraController` and `ObjectGrabController` writes the given keys (`keymap`, `jumpKey`,
+  `gearUpDownKeys`, `grabKey`, ...) to `options` and rebinds them at once, keyboard and gamepad
+  buttons alike; `keysChanged$` emits after each call. `followKey(keyboard, code$)` and
+  `followGamepadKey(gamepadInput, keyboard, code$, controls)` do the same for an app's own
+  actions.
+- `FreeCameraController` options `upDownKeys` (`['KeyE', 'KeyQ']`), `zoomOutInKeys`
+  (`['KeyZ', 'KeyC']`) and `boostKey` (`'ShiftLeft'`) for the keys it had built in.
+- `@gg-web-engine/mobile-controls`: a shown layout is rebuilt when its controller's
+  `keysChanged$` emits, so its buttons press the new keys; the free camera layout presses the
+  keys in the controller's `options`.
 - Helpers for a controls menu on `KeyboardInput`: `keyName(code)` gives a short label ("W",
   "Left", "Num 8", "L Shift") in the player's keyboard layout where the browser reports it
   (`loadKeyboardLayout()`, Chromium), and `isBindable(code)` rejects keys the browser or OS keeps
   for itself (Tab, Escape, function keys, Ctrl/Alt/Meta, lock and media keys).
 
 ### Changed
+- `CarHandlingController` and `GgCarHandlingController` keep a copy of the options object passed to
+  them as `options`, instead of that object itself.
 - `MapGraph3dEntity` drops queued chunks that left the load window before their turn to load,
   instead of loading them only to unload them right after (a device loading chunks slower than
   the cursor moves).

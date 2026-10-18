@@ -1,5 +1,7 @@
-import { BehaviorSubject, filter, Observable, pairwise, startWith, take, takeUntil } from 'rxjs';
+import { BehaviorSubject, filter, map, Observable, pairwise, startWith, Subject, take, takeUntil } from 'rxjs';
 import {
+  followGamepadKey,
+  followKey,
   GamepadControls,
   IEntity,
   KeyboardInput,
@@ -14,6 +16,7 @@ import { Grabbable3dEntity } from '../../grabbable-3d.entity';
 import { CharacterController3dEntity } from '../../character-controller-3d.entity';
 import { Gg3dWorld, Gg3dWorldTypeDocRepo } from '../../../gg-3d-world';
 import { characterControllerSelfHitSkip } from './character-controller-self-hit-skip';
+import { assignKeys } from '../../../../base/inputs/assign-keys';
 
 /** Which gamepad controls grab and throw - see `GamepadControl` for the control names */
 export type ObjectGrabGamepadBinding = {
@@ -63,6 +66,11 @@ export type ObjectGrabControllerOptions = {
    */
   gamepad: ObjectGrabGamepadBinding | null;
 };
+
+/**
+ * The keys of an `ObjectGrabController`, which `setKeys` changes while the game runs
+ */
+export type ObjectGrabControllerKeys = Pick<ObjectGrabControllerOptions, 'grabKey'>;
 
 const DEFAULT_OPTIONS: ObjectGrabControllerOptions = {
   grabKey: 'KeyE',
@@ -128,6 +136,40 @@ export class ObjectGrabController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWor
 
   public readonly options: ObjectGrabControllerOptions;
 
+  private readonly _keysChanged$: Subject<void> = new Subject<void>();
+
+  /**
+   * Emits after every `setKeys`, for whatever shows or uses this controller's keys (an on-screen
+   * hint, the touch layout of `@gg-web-engine/mobile-controls`, which rebuilds itself on it)
+   */
+  public get keysChanged$(): Observable<void> {
+    return this._keysChanged$.asObservable();
+  }
+
+  /**
+   * Rebinds keys while the game runs - for a controls menu. Only the keys given change; they are
+   * written to `options` and take effect at once, keyboard and gamepad alike (the gamepad presses
+   * whichever key its button is for). A key held while it is replaced stops counting, and a new
+   * key already held counts from its next press.
+   *
+   * @example
+   * ```ts
+   * grabber.setKeys({ grabKey: 'KeyF' });
+   * ```
+   */
+  public setKeys(keys: Partial<ObjectGrabControllerKeys>): void {
+    assignKeys(this.options, keys);
+    this._keysChanged$.next();
+  }
+
+  /** The key `pick` reads from `options`, now and after every `setKeys` */
+  private key$(pick: (options: ObjectGrabControllerOptions) => string | null): Observable<string | null> {
+    return this._keysChanged$.pipe(
+      startWith(undefined),
+      map(() => pick(this.options)),
+    );
+  }
+
   private readonly _heldObject$: BehaviorSubject<Grabbable3dEntity<TypeDoc> | null> =
     new BehaviorSubject<Grabbable3dEntity<TypeDoc> | null>(null);
 
@@ -172,8 +214,10 @@ export class ObjectGrabController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWor
   onSpawned(world: Gg3dWorld<TypeDoc>): void {
     super.onSpawned(world);
 
-    this.keyboard
-      .bind(this.options.grabKey)
+    followKey(
+      this.keyboard,
+      this.key$(o => o.grabKey),
+    )
       .pipe(
         takeUntil(this._onRemoved$),
         filter(down => this.active && down),
@@ -182,7 +226,12 @@ export class ObjectGrabController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWor
 
     const gamepad = this.options.gamepad;
     if (gamepad && world.gamepadInput) {
-      const unbind = world.gamepadInput.bindKeys(this.keyboard, { [this.options.grabKey]: gamepad.grab });
+      const unbind = followGamepadKey(
+        world.gamepadInput,
+        this.keyboard,
+        this.key$(o => o.grabKey),
+        gamepad.grab,
+      );
       this._onRemoved$.pipe(take(1)).subscribe(unbind);
       world.gamepadInput
         .pressed$(gamepad.throw)
