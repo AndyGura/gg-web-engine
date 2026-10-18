@@ -943,6 +943,13 @@ on any named entity, including the player.
   same?", lists the known differences). Tune physics on the backend the app ships with, check the
   specific adapter's source under `packages/<adapter>/src` when a capability seems missing, and
   consult `milestones.md` for known gaps before assuming a bug.
+- Overriding `MapGraph3dEntity.loadChunk` to do more per-chunk work after `await super.loadChunk(node)`
+  (loading props, signs). By then the chunk is already in `loaded` and no longer loading, so it can
+  unload while the override awaits, and whatever the override then adds (`loaded.set`,
+  `addChildren`, `attachToChunk`) brings back a chunk that is gone: an entry without its terrain
+  that never loads again, or a second copy. Override `prepareChunk(node, loaded, entities, signal)`
+  instead: it is awaited before the chunk joins the world, may change the loaded entities, and the
+  entities it returns are added with the chunk and disposed when it unloads.
 - Writing `<...>`-style argument placeholders (`<name>`, `<x>`) into a console command's `doc`
   string or thrown `Error` message. The console panel renders both via raw `innerHTML`
   (`gg-console.ui.ts`), so `<name>` parses as an (unknown, self-closing) HTML tag and its text is

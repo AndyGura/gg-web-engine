@@ -29,6 +29,22 @@ where one exists.
 
 ## [Unreleased]
 
+### Added
+- `MapGraph3dEntity.prepareChunk(node, loaded, entities, signal)`: an overridable hook awaited
+  after a chunk's GLB loads and before the chunk is added to the world, for per-chunk work such as
+  shared materials or loading props. The extra entities it returns are added with the chunk and
+  removed and disposed when it unloads. The chunk stays "loading" until the hook resolves, so it
+  can't be unloaded meanwhile; if the map graph leaves the world or the hook throws, the chunk and
+  the extras are disposed. Use it instead of overriding `loadChunk` and awaiting after
+  `super.loadChunk(node)`: such an override could put a chunk back into `loaded` after it had
+  already been unloaded, leaving an entry without its terrain that never loaded again (or a second
+  copy of the chunk).
+
+### Changed
+- `MapGraph3dEntity` drops queued chunks that left the load window before their turn to load,
+  instead of loading them only to unload them right after (a device loading chunks slower than
+  the cursor moves).
+
 ### Fixed
 - `@gg-web-engine/pixi`: a display object built without a name no longer reports pixi.js's
   class-name default `label` ("Graphics", "Sprite", ...) as its `name`. Since 0.0.83 an `Entity2d`

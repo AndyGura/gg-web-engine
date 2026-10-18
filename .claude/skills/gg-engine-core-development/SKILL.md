@@ -443,6 +443,27 @@ every entity queued after it in that batch" failure mode from any *other* cause 
 double-`loadChunk()` case just fixed); attaching one entity at a time, each in its own `try`/`catch`,
 avoids that regardless of cause.
 
+Per-chunk work an app subclass adds goes into the `prepareChunk(node, loaded, entities, signal)`
+hook, never into a `loadChunk` override that awaits after `super.loadChunk(node)`. `loadChunk`
+awaits `prepareChunk` between the GLB load and committing the chunk (`loaded`, `chunkScopes`,
+`loadedWith`, `addChildren`, `chunkLoaded$`), so the node is still in `loadingNodes` meanwhile: the
+unload scan can't dispose it and the load list can't queue it again. A chunk that left the window
+while being prepared is committed and then queued for unload by `queueIfNowStale`. The entities the
+hook returns are committed with the chunk's own (part of `loaded.get(node)`, unloaded with it) but
+not put into `loadedWith`: they don't share the chunk's cached assets. Until it commits, `loadChunk`
+throws the chunk away on any failure - the load rejecting, the signal aborting (map graph removed)
+or the hook throwing: the chunk's entities and the hook's extras are disposed and the scope is
+released. The race the hook prevents: an override awaiting after `super.loadChunk` runs while the
+chunk is already committed and no longer loading, so the unload scan can dispose it in the
+meantime, and the override's `loaded.set`/`addChildren` then brings back a chunk without its
+terrain that the scan never loads again (it is in `loaded`), or a second copy if the node was
+queued again.
+
+The scan also filters `loadList` down to `canBeLoaded` each time it runs, so a queued chunk that
+fell out of range before its turn is never loaded. The entity's own tick runs before the load
+clock's scan within one world tick, so the chunk at the head of the queue can still be handed to
+`loadChunk` in the tick the cursor moves; it unloads through `queueIfNowStale`.
+
 `detachFromChunk(entities)` is the way out of a chunk's lifecycle: it drops the entities from
 whichever `loaded` list holds them and returns the ones that actually were attached. They stay
 spawned, as children of the `MapGraph3dEntity`, and no chunk unload touches them - for content that
