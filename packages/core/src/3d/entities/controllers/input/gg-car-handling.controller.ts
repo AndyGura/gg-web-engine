@@ -56,6 +56,7 @@ export type GgCarHandlingControllerOptions = Omit<CarHandlingControllerOptions, 
    * The gamepad controls, bound on the world's `gamepadInput`: steering and pedals go to the
    * direction input, the gear and handbrake controls press `gearUpDownKeys`/`handbrakeKey` on
    * `keyboard`. `DEFAULT_GG_CAR_GAMEPAD_BINDING` when omitted; `null` leaves the gamepad alone.
+   * `setGamepad` changes it while the game runs.
    */
   gamepad?: GgCarGamepadBinding | null;
 };
@@ -103,14 +104,15 @@ export class GgCarHandlingController extends IEntity {
   public switchingGearsEnabled: boolean = true;
   public readonly options: GgCarHandlingControllerOptions;
 
-  private readonly _keysChanged$: Subject<void> = new Subject<void>();
+  private readonly _bindingsChanged$: Subject<void> = new Subject<void>();
 
   /**
-   * Emits after every `setKeys`, for whatever shows or uses this controller's keys (an on-screen
-   * hint, the touch layout of `@gg-web-engine/mobile-controls`, which rebuilds itself on it)
+   * Emits after every `setKeys` and `setGamepad`, for whatever shows or uses this controller's
+   * bindings (an on-screen hint, the touch layout of `@gg-web-engine/mobile-controls`, which
+   * rebuilds itself on it)
    */
-  public get keysChanged$(): Observable<void> {
-    return this._keysChanged$.asObservable();
+  public get bindingsChanged$(): Observable<void> {
+    return this._bindingsChanged$.asObservable();
   }
 
   /**
@@ -129,12 +131,30 @@ export class GgCarHandlingController extends IEntity {
     if (keys.keymap !== undefined) {
       this.carHandlingInput.setKeys({ keymap: keys.keymap });
     }
-    this._keysChanged$.next();
+    this._bindingsChanged$.next();
   }
 
-  /** The key `pick` reads from `options`, now and after every `setKeys` */
-  private key$(pick: (options: GgCarHandlingControllerOptions) => string | null): Observable<string | null> {
-    return this._keysChanged$.pipe(
+  /**
+   * Rebinds the gamepad while the game runs - for a controls menu. The controls given replace the
+   * current ones (over `DEFAULT_GG_CAR_GAMEPAD_BINDING` while the gamepad is off), `null` turns the
+   * gamepad off. Written to `options.gamepad`, taking effect at once; a control held while it is
+   * replaced stops counting.
+   *
+   * @example
+   * ```ts
+   * driving.setGamepad({ gearUp: 'b3', gearDown: 'b2' });
+   * ```
+   */
+  public setGamepad(binding: Partial<GgCarGamepadBinding> | null): void {
+    this.options.gamepad =
+      binding === null ? null : { ...(this.options.gamepad ?? DEFAULT_GG_CAR_GAMEPAD_BINDING), ...binding };
+    this.carHandlingInput.setGamepad(this.options.gamepad);
+    this._bindingsChanged$.next();
+  }
+
+  /** What `pick` reads from `options`, now and after every `setKeys`/`setGamepad` */
+  private option$<T>(pick: (options: GgCarHandlingControllerOptions) => T): Observable<T> {
+    return this._bindingsChanged$.pipe(
       startWith(undefined),
       map(() => pick(this.options)),
     );
@@ -163,27 +183,32 @@ export class GgCarHandlingController extends IEntity {
 
   async onSpawned(world: GgWorld<any, any>): Promise<void> {
     super.onSpawned(world);
-    const gamepad = this.options.gamepad === undefined ? DEFAULT_GG_CAR_GAMEPAD_BINDING : this.options.gamepad;
-    if (gamepad && world.gamepadInput) {
-      const gamepadInput = world.gamepadInput;
+    const gamepadInput = world.gamepadInput;
+    if (gamepadInput) {
+      // `options.gamepad` left out is the default binding
+      const controls$ = (pick: (binding: GgCarGamepadBinding) => GamepadControls) =>
+        this.option$(o => {
+          const gamepad = o.gamepad === undefined ? DEFAULT_GG_CAR_GAMEPAD_BINDING : o.gamepad;
+          return gamepad && pick(gamepad);
+        });
       const unbinds = [
         followGamepadKey(
           gamepadInput,
           this.keyboard,
-          this.key$(o => o.gearUpDownKeys[0]),
-          gamepad.gearUp,
+          this.option$(o => o.gearUpDownKeys[0]),
+          controls$(g => g.gearUp),
         ),
         followGamepadKey(
           gamepadInput,
           this.keyboard,
-          this.key$(o => o.gearUpDownKeys[1]),
-          gamepad.gearDown,
+          this.option$(o => o.gearUpDownKeys[1]),
+          controls$(g => g.gearDown),
         ),
         followGamepadKey(
           gamepadInput,
           this.keyboard,
-          this.key$(o => o.handbrakeKey),
-          gamepad.handbrake,
+          this.option$(o => o.handbrakeKey),
+          controls$(g => g.handbrake),
         ),
       ];
       this._onRemoved$.pipe(take(1)).subscribe(() => unbinds.forEach(unbind => unbind()));
@@ -220,7 +245,7 @@ export class GgCarHandlingController extends IEntity {
     });
     followKey(
       this.keyboard,
-      this.key$(o => o.gearUpDownKeys[0]),
+      this.option$(o => o.gearUpDownKeys[0]),
     )
       .pipe(
         takeUntil(this._onRemoved$),
@@ -233,7 +258,7 @@ export class GgCarHandlingController extends IEntity {
       });
     followKey(
       this.keyboard,
-      this.key$(o => o.gearUpDownKeys[1]),
+      this.option$(o => o.gearUpDownKeys[1]),
     )
       .pipe(
         takeUntil(this._onRemoved$),
@@ -250,7 +275,7 @@ export class GgCarHandlingController extends IEntity {
       });
     followKey(
       this.keyboard,
-      this.key$(o => o.handbrakeKey),
+      this.option$(o => o.handbrakeKey),
     )
       .pipe(
         takeUntil(this._onRemoved$),

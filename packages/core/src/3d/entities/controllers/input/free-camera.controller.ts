@@ -7,12 +7,14 @@ import {
   of,
   startWith,
   Subject,
+  switchMap,
   take,
   takeUntil,
 } from 'rxjs';
 import {
   DirectionInput,
   DirectionKeymap,
+  followGamepadDirection,
   followGamepadKey,
   followKey,
   GAMEPAD_LEFT_STICK_OR_DPAD,
@@ -126,7 +128,7 @@ export type FreeCameraControllerOptions = {
    * The gamepad controls, bound on the world's `gamepadInput`: `move` goes to the direction input,
    * `look` turns the view (regardless of `ignoreMouseUnlessPointerLocked`), the buttons press the
    * up/down/boost keys on `keyboard`. `DEFAULT_FREE_CAMERA_GAMEPAD_BINDING` by default; `null`
-   * leaves the gamepad alone.
+   * leaves the gamepad alone. `setGamepad` changes it while the game runs.
    */
   gamepad: FreeCameraGamepadBinding | null;
 };
@@ -194,14 +196,15 @@ export class FreeCameraController extends IEntity {
    */
   public readonly directionsInput: DirectionInput;
 
-  private readonly _keysChanged$: Subject<void> = new Subject<void>();
+  private readonly _bindingsChanged$: Subject<void> = new Subject<void>();
 
   /**
-   * Emits after every `setKeys`, for whatever shows or uses this controller's keys (an on-screen
-   * hint, the touch layout of `@gg-web-engine/mobile-controls`, which rebuilds itself on it)
+   * Emits after every `setKeys` and `setGamepad`, for whatever shows or uses this controller's
+   * bindings (an on-screen hint, the touch layout of `@gg-web-engine/mobile-controls`, which
+   * rebuilds itself on it)
    */
-  public get keysChanged$(): Observable<void> {
-    return this._keysChanged$.asObservable();
+  public get bindingsChanged$(): Observable<void> {
+    return this._bindingsChanged$.asObservable();
   }
 
   /**
@@ -220,12 +223,29 @@ export class FreeCameraController extends IEntity {
     if (keys.keymap !== undefined) {
       this.directionsInput.keymap = keys.keymap;
     }
-    this._keysChanged$.next();
+    this._bindingsChanged$.next();
   }
 
-  /** The key `pick` reads from `options`, now and after every `setKeys` */
-  private key$(pick: (options: FreeCameraControllerOptions) => string | null): Observable<string | null> {
-    return this._keysChanged$.pipe(
+  /**
+   * Rebinds the gamepad while the game runs - for a controls menu. The controls given replace the
+   * current ones (over `DEFAULT_FREE_CAMERA_GAMEPAD_BINDING` while the gamepad is off), `null` turns the
+   * gamepad off. Written to `options.gamepad`, taking effect at once; a control held while it is
+   * replaced stops counting.
+   *
+   * @example
+   * ```ts
+   * camera.setGamepad({ up: 'b3', down: 'b0' });
+   * ```
+   */
+  public setGamepad(binding: Partial<FreeCameraGamepadBinding> | null): void {
+    this.options.gamepad =
+      binding === null ? null : { ...(this.options.gamepad ?? DEFAULT_FREE_CAMERA_GAMEPAD_BINDING), ...binding };
+    this._bindingsChanged$.next();
+  }
+
+  /** What `pick` reads from `options`, now and after every `setKeys`/`setGamepad` */
+  private option$<T>(pick: (options: FreeCameraControllerOptions) => T): Observable<T> {
+    return this._bindingsChanged$.pipe(
       startWith(undefined),
       map(() => pick(this.options)),
     );
@@ -293,27 +313,30 @@ export class FreeCameraController extends IEntity {
     // Subscribe to keyboard input for movement controls: up, down, boost and, for a camera with a
     // fov, zoom out and in
     const keys$ = [
-      this.key$(o => o.upDownKeys[0]),
-      this.key$(o => o.upDownKeys[1]),
-      this.key$(o => o.boostKey),
-      this.key$(o => (this.camera.camera.supportsFov ? o.zoomOutInKeys[0] : null)),
-      this.key$(o => (this.camera.camera.supportsFov ? o.zoomOutInKeys[1] : null)),
+      this.option$(o => o.upDownKeys[0]),
+      this.option$(o => o.upDownKeys[1]),
+      this.option$(o => o.boostKey),
+      this.option$(o => (this.camera.camera.supportsFov ? o.zoomOutInKeys[0] : null)),
+      this.option$(o => (this.camera.camera.supportsFov ? o.zoomOutInKeys[1] : null)),
     ];
     // a touch screen has no pointer lock, so neither "unless pointer locked" option applies to it
     const isTouchScreen = MouseInput.isTouchDevice();
-    const gamepad = this.options.gamepad;
-    const gamepadInput = gamepad && world.gamepadInput;
+    const gamepadInput = world.gamepadInput;
 
     // the gamepad's moves and keys come through the same inputs, and are not stray typing. A stick
     // held still is not "in use" once a key is tapped (`inUse` hands over to the keyboard), so what
     // is pushed on the gamepad right now opens the gate too, and a held stick keeps flying
     const gamepadActive$: Observable<boolean> = gamepadInput
-      ? combineLatest([
-          gamepadInput.inUse$,
-          gamepadInput.direction$(gamepad.move),
-          gamepadInput.pressed$([gamepad.up, gamepad.down, gamepad.boost].flat()),
-        ]).pipe(
-          map(([inUse, move, pressed]) => inUse || move.x !== 0 || move.y !== 0 || pressed),
+      ? this.option$(o => o.gamepad).pipe(
+          switchMap(gamepad =>
+            gamepad
+              ? combineLatest([
+                  gamepadInput.inUse$,
+                  gamepadInput.direction$(gamepad.move),
+                  gamepadInput.pressed$([gamepad.up, gamepad.down, gamepad.boost].flat()),
+                ]).pipe(map(([inUse, move, pressed]) => inUse || move.x !== 0 || move.y !== 0 || pressed))
+              : of(false),
+          ),
           distinctUntilChanged(),
         )
       : of(false);
@@ -424,27 +447,31 @@ export class FreeCameraController extends IEntity {
       });
     }
 
-    if (gamepad && gamepadInput) {
+    if (gamepadInput) {
       const unbinds = [
         followGamepadKey(
           gamepadInput,
           this.keyboard,
-          this.key$(o => o.upDownKeys[0]),
-          gamepad.up,
+          this.option$(o => o.upDownKeys[0]),
+          this.option$(o => o.gamepad?.up),
         ),
         followGamepadKey(
           gamepadInput,
           this.keyboard,
-          this.key$(o => o.upDownKeys[1]),
-          gamepad.down,
+          this.option$(o => o.upDownKeys[1]),
+          this.option$(o => o.gamepad?.down),
         ),
         followGamepadKey(
           gamepadInput,
           this.keyboard,
-          this.key$(o => o.boostKey),
-          gamepad.boost,
+          this.option$(o => o.boostKey),
+          this.option$(o => o.gamepad?.boost),
         ),
-        gamepadInput.bindDirection(this.directionsInput, gamepad.move),
+        followGamepadDirection(
+          gamepadInput,
+          this.directionsInput,
+          this.option$(o => o.gamepad?.move),
+        ),
       ];
       this._onRemoved$.pipe(take(1)).subscribe(() => unbinds.forEach(unbind => unbind()));
     }
@@ -456,6 +483,7 @@ export class FreeCameraController extends IEntity {
         filter(() => this.active),
       )
       .subscribe(([_, delta]) => {
+        const gamepad = this.options.gamepad;
         if (gamepad && gamepadInput && this.directionsInput.running && this.options.cameraRotationSensitivity > 0) {
           // the stick turns the view at a rate, so it is applied per tick, scaled by the tick's time
           const look = gamepadInput.direction(gamepad.look);

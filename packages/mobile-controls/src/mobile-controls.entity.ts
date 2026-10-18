@@ -223,7 +223,7 @@ export class MobileControls extends IEntity {
   /**
    * Builds the layout of `controller` anew - after something its layout was built from has changed
    * (the car it drives, an option), since a layout is otherwise built once per activation. A
-   * controller with a `keysChanged$` (every built-in one, emitting on `setKeys`) is refreshed on it
+   * controller with a `bindingsChanged$` (every built-in one, emitting on `setKeys`) is refreshed on it
    * without this call.
    */
   public refresh(controller?: IEntity): void {
@@ -338,9 +338,9 @@ export class MobileControls extends IEntity {
       if (controller.active && !this.layouts.has(controller)) {
         const items = this.findFactory(controller)!(controller, { world: world!, controls: this });
         // the built-in controllers' `setKeys`: the layout's buttons press keys read when it was built
-        const keysChanged$ = (controller as { keysChanged$?: Observable<unknown> }).keysChanged$;
-        if (isObservable(keysChanged$)) {
-          const subscription = keysChanged$.subscribe(() => this.refresh(controller));
+        const bindingsChanged$ = (controller as { bindingsChanged$?: Observable<unknown> }).bindingsChanged$;
+        if (isObservable(bindingsChanged$)) {
+          const subscription = bindingsChanged$.subscribe(() => this.refresh(controller));
           items.push({ dispose: () => subscription.unsubscribe() });
         }
         this.layouts.set(controller, items);

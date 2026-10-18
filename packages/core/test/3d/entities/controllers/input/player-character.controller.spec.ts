@@ -1,5 +1,7 @@
 import {
   DEFAULT_CHARACTER_GAMEPAD_BINDING,
+  GAMEPAD_LEFT_STICK,
+  GAMEPAD_RIGHT_STICK,
   GamepadInput,
   KeyboardInput,
   Pnt3,
@@ -447,11 +449,31 @@ describe('PlayerCharacterController', () => {
       pads.restore();
     });
 
+    it('moves, acts and looks by the controls given to setGamepad', async () => {
+      const { controller, character } = setup();
+      await controller.onSpawned({ gamepadInput } as any);
+      controller.setGamepad({ jump: 'b3', move: GAMEPAD_RIGHT_STICK, look: GAMEPAD_LEFT_STICK });
+      pads.set({ buttons: { 0: true }, axes: [0, 0, 1, 0] });
+      gamepadInput.poll();
+      expect(character.jump).not.toHaveBeenCalled();
+      expect(character.moveDirection.x).toBe(1);
+      const before = controller.lookDirection;
+      controller.tick$.next([0, 500]);
+      expect(controller.lookDirection).toEqual(before);
+
+      pads.set({ buttons: { 3: true }, axes: [1, 0, 0, 0] });
+      gamepadInput.poll();
+      expect(character.jump).toHaveBeenCalledTimes(1);
+      expect(character.moveDirection.x).toBe(0);
+      controller.tick$.next([500, 500]);
+      expect(controller.lookDirection).not.toEqual(before);
+    });
+
     it('acts by the keys given to setKeys, from the keyboard and the gamepad buttons alike', async () => {
       const { keyboard, controller, character } = setup();
       await controller.onSpawned({ gamepadInput } as any);
       const changes: void[] = [];
-      controller.keysChanged$.subscribe(v => changes.push(v));
+      controller.bindingsChanged$.subscribe(v => changes.push(v));
 
       keyboard.emulateKeyDown('ShiftLeft');
       expect(character.isRunning).toBe(true);

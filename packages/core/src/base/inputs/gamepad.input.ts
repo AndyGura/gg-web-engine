@@ -66,10 +66,18 @@ export type GamepadInputOptions = {
   pressThreshold: number;
   /**
    * Which gamepad to read, by its index in `navigator.getGamepads()`. `null` (the default) reads
-   * the first connected one, whichever it is.
+   * `GamepadInput.selectedGamepad()`: the player's `GamepadInput.choice`, else the first connected
+   * gamepad with the standard mapping, else the first connected one.
    */
   gamepadIndex: number | null;
 };
+
+/**
+ * A gamepad the player picked, as plain data to save and restore: its `Gamepad.id`, and which of
+ * the connected gamepads with that id it is (0 the first) for several of the same model. Unlike an
+ * index in `navigator.getGamepads()`, it finds the same device again after a reconnect or a reload.
+ */
+export type GamepadChoice = { id: string; nth: number };
 
 const DEFAULT_OPTIONS: GamepadInputOptions = {
   stickDeadzone: 0.12,
@@ -134,6 +142,110 @@ const asList = (controls: GamepadControls): readonly GamepadControl[] =>
  * ```
  */
 export class GamepadInput extends IInput {
+  private static readonly _choice$: BehaviorSubject<GamepadChoice | null> = new BehaviorSubject<GamepadChoice | null>(
+    null,
+  );
+
+  /**
+   * The gamepad the player picked, read by every `GamepadInput` without a `gamepadIndex` of its
+   * own - those of every world and any others - on its next poll. `null` (the default) reads the
+   * first connected gamepad with the standard mapping, else the first connected one. A choice not
+   * connected right now falls back the same way and is used again once it is. Not saved by the
+   * engine: store it (it is plain data) and assign it back at startup.
+   *
+   * Some devices list themselves as gamepads without being one (a keyboard with a gamepad
+   * interface, a wheel's separate pedals) and may come first: a controls menu letting the player
+   * pick (`chooseNext`) is the way out.
+   *
+   * @example
+   * ```ts
+   * GamepadInput.choice = JSON.parse(localStorage.getItem('gamepad') || 'null');
+   * GamepadInput.choice$.subscribe(choice => localStorage.setItem('gamepad', JSON.stringify(choice)));
+   * // a controls menu: "< Xbox 360 Controller >", stepping through the connected gamepads
+   * label.text = GamepadInput.gamepadName(GamepadInput.selectedGamepad());
+   * nextButton.onclick = () => GamepadInput.chooseNext(1);
+   * ```
+   */
+  public static get choice(): GamepadChoice | null {
+    return GamepadInput._choice$.value;
+  }
+
+  public static set choice(value: GamepadChoice | null) {
+    GamepadInput._choice$.next(value);
+  }
+
+  /** `choice`, on subscription and on every change */
+  public static get choice$(): Observable<GamepadChoice | null> {
+    return GamepadInput._choice$.asObservable();
+  }
+
+  /**
+   * The connected gamepads, in the browser's order. Browsers list a gamepad only once a button was
+   * pressed on it; a page whose permissions policy withholds the gamepad feature gets none.
+   */
+  public static connectedGamepads(): Gamepad[] {
+    try {
+      return (navigator.getGamepads?.() || []).filter((x): x is Gamepad => !!x && x.connected);
+    } catch (e) {
+      // a page whose permissions policy withholds the gamepad feature (an embedded game) throws
+      // here on every call: no gamepad, then
+      return [];
+    }
+  }
+
+  /** The `GamepadChoice` that finds `gamepad` (a connected one) again */
+  public static choiceOf(gamepad: Gamepad): GamepadChoice {
+    const nth = GamepadInput.connectedGamepads()
+      .filter(x => x.id === gamepad.id)
+      .findIndex(x => x.index === gamepad.index);
+    return { id: gamepad.id, nth: Math.max(0, nth) };
+  }
+
+  /**
+   * The gamepad a `GamepadInput` without a `gamepadIndex` reads: `choice` if connected, else the
+   * first connected gamepad with the standard mapping, else the first connected one; `null` with
+   * none connected
+   */
+  public static selectedGamepad(): Gamepad | null {
+    return GamepadInput.select(GamepadInput.connectedGamepads());
+  }
+
+  /**
+   * Sets `choice` to the connected gamepad after (`step` 1) or before (-1) the selected one,
+   * wrapping around, and returns it; `null` with none connected
+   */
+  public static chooseNext(step: 1 | -1 = 1): Gamepad | null {
+    const gamepads = GamepadInput.connectedGamepads();
+    if (gamepads.length === 0) {
+      return null;
+    }
+    const current = GamepadInput.select(gamepads);
+    const index = current ? gamepads.indexOf(current) : -1;
+    const next = gamepads[(index + step + gamepads.length) % gamepads.length];
+    GamepadInput.choice = GamepadInput.choiceOf(next);
+    return next;
+  }
+
+  /**
+   * A gamepad's name for a menu: its `id` without what browsers add to it - Chromium's
+   * "(STANDARD GAMEPAD Vendor: 045e Product: 028e)", Firefox's "045e-028e-" prefix
+   */
+  public static gamepadName(gamepad: Gamepad): string {
+    return gamepad.id.replace(/\s*\(.*$/, '').replace(/^[0-9a-f]{1,4}-[0-9a-f]{1,4}-/i, '') || gamepad.id;
+  }
+
+  private static select(gamepads: Gamepad[]): Gamepad | null {
+    const choice = GamepadInput._choice$.value;
+    if (choice) {
+      const same = gamepads.filter(x => x.id === choice.id);
+      const chosen = same[Math.min(choice.nth, same.length - 1)];
+      if (chosen) {
+        return chosen;
+      }
+    }
+    return gamepads.find(x => x.mapping === 'standard') || gamepads[0] || null;
+  }
+
   public readonly options: GamepadInputOptions;
 
   private readonly polled$: Subject<void> = new Subject<void>();
@@ -149,6 +261,8 @@ export class GamepadInput extends IInput {
   /** raw axis values of the poll before, to tell a stick moved from one resting off center */
   private previousAxes: number[] = [];
   private pushedRaw: Set<GamepadControl> = new Set<GamepadControl>();
+  /** the device read on the last poll, told apart by index and id (`Gamepad` objects are snapshots) */
+  private device: { index: number; id: string } | null = null;
 
   constructor(options: Partial<GamepadInputOptions> = {}) {
     super();
@@ -372,19 +486,18 @@ export class GamepadInput extends IInput {
   }
 
   private findGamepad(): Gamepad | null {
+    if (this.options.gamepadIndex === null) {
+      return GamepadInput.selectedGamepad();
+    }
     let gamepads: (Gamepad | null)[];
     try {
       gamepads = navigator.getGamepads?.() || [];
     } catch (e) {
-      // a page whose permissions policy withholds the gamepad feature (an embedded game) throws
-      // here on every call: no gamepad, then
+      // withheld by a permissions policy, see `connectedGamepads`
       return null;
     }
-    if (this.options.gamepadIndex !== null) {
-      const gamepad = gamepads[this.options.gamepadIndex];
-      return gamepad && gamepad.connected ? gamepad : null;
-    }
-    return gamepads.find(x => !!x && x.connected) || null;
+    const gamepad = gamepads[this.options.gamepadIndex];
+    return gamepad && gamepad.connected ? gamepad : null;
   }
 
   private readGamepad(gamepad: Gamepad | null): void {
@@ -405,7 +518,12 @@ export class GamepadInput extends IInput {
       this.buttons = [];
       this.axes = [];
     }
-    const newlyPushed = [...pushed].filter(c => !this.pushedRaw.has(c));
+    // switched to another gamepad (a new choice, the chosen one plugged back in): what is already
+    // held on it was not pushed now, and a controls menu capturing a control must not take it
+    const device = gamepad && { index: gamepad.index, id: gamepad.id };
+    const switched = !!device && !!this.device && (device.index !== this.device.index || device.id !== this.device.id);
+    this.device = device;
+    const newlyPushed = switched ? [] : [...pushed].filter(c => !this.pushedRaw.has(c));
     this.pushedRaw = pushed;
     this._connected$.next(!!gamepad);
     if (!gamepad) {

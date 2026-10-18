@@ -1,4 +1,17 @@
-import { BehaviorSubject, filter, map, Observable, pairwise, startWith, Subject, take, takeUntil } from 'rxjs';
+import {
+  BehaviorSubject,
+  distinctUntilChanged,
+  filter,
+  map,
+  Observable,
+  of,
+  pairwise,
+  startWith,
+  Subject,
+  switchMap,
+  take,
+  takeUntil,
+} from 'rxjs';
 import {
   followGamepadKey,
   followKey,
@@ -62,7 +75,7 @@ export type ObjectGrabControllerOptions = {
   /**
    * The gamepad controls, bound on the world's `gamepadInput`: `grab` presses `grabKey` on
    * `keyboard`, `throw` throws. `DEFAULT_OBJECT_GRAB_GAMEPAD_BINDING` by default; `null` leaves the
-   * gamepad alone.
+   * gamepad alone. `setGamepad` changes it while the game runs.
    */
   gamepad: ObjectGrabGamepadBinding | null;
 };
@@ -136,14 +149,15 @@ export class ObjectGrabController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWor
 
   public readonly options: ObjectGrabControllerOptions;
 
-  private readonly _keysChanged$: Subject<void> = new Subject<void>();
+  private readonly _bindingsChanged$: Subject<void> = new Subject<void>();
 
   /**
-   * Emits after every `setKeys`, for whatever shows or uses this controller's keys (an on-screen
-   * hint, the touch layout of `@gg-web-engine/mobile-controls`, which rebuilds itself on it)
+   * Emits after every `setKeys` and `setGamepad`, for whatever shows or uses this controller's
+   * bindings (an on-screen hint, the touch layout of `@gg-web-engine/mobile-controls`, which
+   * rebuilds itself on it)
    */
-  public get keysChanged$(): Observable<void> {
-    return this._keysChanged$.asObservable();
+  public get bindingsChanged$(): Observable<void> {
+    return this._bindingsChanged$.asObservable();
   }
 
   /**
@@ -159,12 +173,29 @@ export class ObjectGrabController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWor
    */
   public setKeys(keys: Partial<ObjectGrabControllerKeys>): void {
     assignKeys(this.options, keys);
-    this._keysChanged$.next();
+    this._bindingsChanged$.next();
   }
 
-  /** The key `pick` reads from `options`, now and after every `setKeys` */
-  private key$(pick: (options: ObjectGrabControllerOptions) => string | null): Observable<string | null> {
-    return this._keysChanged$.pipe(
+  /**
+   * Rebinds the gamepad while the game runs - for a controls menu. The controls given replace the
+   * current ones (over `DEFAULT_OBJECT_GRAB_GAMEPAD_BINDING` while the gamepad is off), `null` turns the
+   * gamepad off. Written to `options.gamepad`, taking effect at once; a control held while it is
+   * replaced stops counting.
+   *
+   * @example
+   * ```ts
+   * grabber.setGamepad({ grab: 'b3', throw: 'b5' });
+   * ```
+   */
+  public setGamepad(binding: Partial<ObjectGrabGamepadBinding> | null): void {
+    this.options.gamepad =
+      binding === null ? null : { ...(this.options.gamepad ?? DEFAULT_OBJECT_GRAB_GAMEPAD_BINDING), ...binding };
+    this._bindingsChanged$.next();
+  }
+
+  /** What `pick` reads from `options`, now and after every `setKeys`/`setGamepad` */
+  private option$<T>(pick: (options: ObjectGrabControllerOptions) => T): Observable<T> {
+    return this._bindingsChanged$.pipe(
       startWith(undefined),
       map(() => pick(this.options)),
     );
@@ -216,7 +247,7 @@ export class ObjectGrabController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWor
 
     followKey(
       this.keyboard,
-      this.key$(o => o.grabKey),
+      this.option$(o => o.grabKey),
     )
       .pipe(
         takeUntil(this._onRemoved$),
@@ -224,18 +255,20 @@ export class ObjectGrabController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWor
       )
       .subscribe(() => (this._heldObject ? this.dropHeld() : this.tryGrab()));
 
-    const gamepad = this.options.gamepad;
-    if (gamepad && world.gamepadInput) {
+    const gamepadInput = world.gamepadInput;
+    if (gamepadInput) {
       const unbind = followGamepadKey(
-        world.gamepadInput,
+        gamepadInput,
         this.keyboard,
-        this.key$(o => o.grabKey),
-        gamepad.grab,
+        this.option$(o => o.grabKey),
+        this.option$(o => o.gamepad?.grab),
       );
       this._onRemoved$.pipe(take(1)).subscribe(unbind);
-      world.gamepadInput
-        .pressed$(gamepad.throw)
+      this.option$(o => o.gamepad?.throw)
         .pipe(
+          // `setKeys` emits too: a throw button held meanwhile must not throw again
+          distinctUntilChanged((a, b) => JSON.stringify(a) === JSON.stringify(b)),
+          switchMap(controls => (controls ? gamepadInput.pressed$(controls) : of(false))),
           takeUntil(this._onRemoved$),
           filter(down => down && this.active && this.keyboard.running),
         )

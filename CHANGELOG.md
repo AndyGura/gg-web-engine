@@ -47,13 +47,21 @@ where one exists.
   `PlayerCharacterController2d`, `CarHandlingController`, `GgCarHandlingController`,
   `FreeCameraController` and `ObjectGrabController` writes the given keys (`keymap`, `jumpKey`,
   `gearUpDownKeys`, `grabKey`, ...) to `options` and rebinds them at once, keyboard and gamepad
-  buttons alike; `keysChanged$` emits after each call. `followKey(keyboard, code$)` and
-  `followGamepadKey(gamepadInput, keyboard, code$, controls)` do the same for an app's own
+  buttons alike, and `setGamepad(partial | null)` does the same for the `gamepad` binding (a
+  `null` turns the gamepad off, controls given while it is off go over the default binding);
+  `bindingsChanged$` emits after either. `followKey(keyboard, code$)`,
+  `followGamepadKey(gamepadInput, keyboard, code$, controls$)` and
+  `followGamepadDirection(gamepadInput, directionInput, binding$)` do the same for an app's own
   actions.
+- Choosing which gamepad drives: `GamepadInput.choice` (a `GamepadChoice`, `{ id, nth }`, plain data
+  to save) is read by every `GamepadInput` without a `gamepadIndex` of its own, on its next poll,
+  and finds the same device again after a reconnect or a reload. `GamepadInput.connectedGamepads()`,
+  `selectedGamepad()`, `chooseNext(step)`, `choiceOf(gamepad)`, `gamepadName(gamepad)` (the `id`
+  without the browser's additions) and `choice$` are there for a controls menu.
 - `FreeCameraController` options `upDownKeys` (`['KeyE', 'KeyQ']`), `zoomOutInKeys`
   (`['KeyZ', 'KeyC']`) and `boostKey` (`'ShiftLeft'`) for the keys it had built in.
 - `@gg-web-engine/mobile-controls`: a shown layout is rebuilt when its controller's
-  `keysChanged$` emits, so its buttons press the new keys; the free camera layout presses the
+  `bindingsChanged$` emits, so its buttons press the new keys; the free camera layout presses the
   keys in the controller's `options`.
 - Helpers for a controls menu on `KeyboardInput`: `keyName(code)` gives a short label ("W",
   "Left", "Num 8", "L Shift") in the player's keyboard layout where the browser reports it
@@ -61,6 +69,9 @@ where one exists.
   for itself (Tab, Escape, function keys, Ctrl/Alt/Meta, lock and media keys).
 
 ### Changed
+- With no `gamepadIndex` and no `GamepadInput.choice`, a `GamepadInput` reads the first connected
+  gamepad with the standard mapping, and only without one the first connected gamepad: some
+  keyboards and wheel pedals list themselves as gamepads and could come first.
 - `CarHandlingController` and `GgCarHandlingController` keep a copy of the options object passed to
   them as `options`, instead of that object itself.
 - `MapGraph3dEntity` drops queued chunks that left the load window before their turn to load,
@@ -68,6 +79,9 @@ where one exists.
   the cursor moves).
 
 ### Fixed
+- `GamepadInput.controlPushed$` no longer reports the controls already held on a gamepad it
+  switched to (another choice, the chosen one plugged back in) as pushed, so a controls menu
+  capturing a control doesn't take them.
 - `@gg-web-engine/pixi`: a display object built without a name no longer reports pixi.js's
   class-name default `label` ("Graphics", "Sprite", ...) as its `name`. Since 0.0.83 an `Entity2d`
   built around such an object adopted that label as its world-unique entity name, so adding a

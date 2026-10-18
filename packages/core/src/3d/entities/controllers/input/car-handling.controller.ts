@@ -1,8 +1,9 @@
-import { combineLatest, filter, Observable, Subject, take, takeUntil } from 'rxjs';
+import { combineLatest, filter, map, Observable, startWith, Subject, take, takeUntil } from 'rxjs';
 import { assignKeys } from '../../../../base/inputs/assign-keys';
 import {
   DirectionInput,
   DirectionKeymap,
+  followGamepadDirection,
   GamepadAxisBinding,
   GamepadControls,
   GgWorld,
@@ -36,7 +37,7 @@ export type CarHandlingControllerOptions = {
   readonly maxSteerDeltaPerSecond: number;
   /**
    * The gamepad controls, bound on the world's `gamepadInput`. `DEFAULT_CAR_GAMEPAD_BINDING` when
-   * omitted; `null` leaves the gamepad alone.
+   * omitted; `null` leaves the gamepad alone. `setGamepad` changes it while the game runs.
    */
   readonly gamepad?: CarGamepadBinding | null;
 };
@@ -54,14 +55,15 @@ export class CarHandlingController extends IEntity {
   public readonly directionsInput: DirectionInput;
   public readonly options: CarHandlingControllerOptions;
 
-  private readonly _keysChanged$: Subject<void> = new Subject<void>();
+  private readonly _bindingsChanged$: Subject<void> = new Subject<void>();
 
   /**
-   * Emits after every `setKeys`, for whatever shows or uses this controller's keys (an on-screen
-   * hint, the touch layout of `@gg-web-engine/mobile-controls`, which rebuilds itself on it)
+   * Emits after every `setKeys` and `setGamepad`, for whatever shows or uses this controller's
+   * bindings (an on-screen hint, the touch layout of `@gg-web-engine/mobile-controls`, which
+   * rebuilds itself on it)
    */
-  public get keysChanged$(): Observable<void> {
-    return this._keysChanged$.asObservable();
+  public get bindingsChanged$(): Observable<void> {
+    return this._bindingsChanged$.asObservable();
   }
 
   /**
@@ -79,7 +81,32 @@ export class CarHandlingController extends IEntity {
     if (keys.keymap !== undefined) {
       this.directionsInput.keymap = keys.keymap;
     }
-    this._keysChanged$.next();
+    this._bindingsChanged$.next();
+  }
+
+  /**
+   * Rebinds the gamepad while the game runs - for a controls menu. The controls given replace the
+   * current ones (over `DEFAULT_CAR_GAMEPAD_BINDING` while the gamepad is off), `null` turns the
+   * gamepad off. Written to `options.gamepad`, taking effect at once.
+   *
+   * @example
+   * ```ts
+   * controller.setGamepad({ throttle: 'b0', brake: 'b2' });
+   * ```
+   */
+  public setGamepad(binding: Partial<CarGamepadBinding> | null): void {
+    const options: { gamepad?: CarGamepadBinding | null } = this.options;
+    options.gamepad =
+      binding === null ? null : { ...(this.options.gamepad ?? DEFAULT_CAR_GAMEPAD_BINDING), ...binding };
+    this._bindingsChanged$.next();
+  }
+
+  /** What `pick` reads from `options`, now and after every `setKeys`/`setGamepad` */
+  private option$<T>(pick: (options: CarHandlingControllerOptions) => T): Observable<T> {
+    return this._bindingsChanged$.pipe(
+      startWith(undefined),
+      map(() => pick(this.options)),
+    );
   }
 
   private _output$: Subject<CarHandlingOutput> = new Subject<CarHandlingOutput>();
@@ -133,12 +160,15 @@ export class CarHandlingController extends IEntity {
       () => this.directionsInput.start(),
       () => this.directionsInput.stop(),
     );
-    const gamepad = this.options.gamepad === undefined ? DEFAULT_CAR_GAMEPAD_BINDING : this.options.gamepad;
-    if (gamepad && world.gamepadInput) {
-      const unbind = world.gamepadInput.bindDirection(this.directionsInput, {
-        x: gamepad.steer,
-        y: { negative: gamepad.brake, positive: gamepad.throttle },
-      });
+    if (world.gamepadInput) {
+      const unbind = followGamepadDirection(
+        world.gamepadInput,
+        this.directionsInput,
+        this.option$(o => {
+          const gamepad = o.gamepad === undefined ? DEFAULT_CAR_GAMEPAD_BINDING : o.gamepad;
+          return gamepad && { x: gamepad.steer, y: { negative: gamepad.brake, positive: gamepad.throttle } };
+        }),
+      );
       this._onRemoved$.pipe(take(1)).subscribe(unbind);
     }
   }

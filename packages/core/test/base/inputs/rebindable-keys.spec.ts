@@ -1,5 +1,14 @@
 import { BehaviorSubject } from 'rxjs';
-import { followGamepadKey, followKey, GamepadInput, KeyboardInput } from '../../../src';
+import {
+  DirectionInput,
+  followGamepadDirection,
+  followGamepadKey,
+  followKey,
+  GAMEPAD_DPAD,
+  GAMEPAD_LEFT_STICK,
+  GamepadInput,
+  KeyboardInput,
+} from '../../../src';
 import { stubGamepads } from '../../mocks/gamepad.mock';
 
 describe('followKey', () => {
@@ -94,6 +103,39 @@ describe('followGamepadKey', () => {
     expect(j).toEqual([false, true, false]);
     expect(space).toEqual([false, true, false]);
     unbind();
+  });
+
+  it('moves the hold over to new controls of the same key', () => {
+    const values: boolean[] = [];
+    keyboard.bind('KeyE').subscribe(v => values.push(v));
+    const controls$ = new BehaviorSubject<string | null>('b5');
+    const unbind = followGamepadKey(gamepadInput, keyboard, new BehaviorSubject<string | null>('KeyE'), controls$);
+    pads.set({ buttons: { 5: true } });
+    gamepadInput.poll();
+    controls$.next('b3');
+    gamepadInput.poll();
+    pads.set({ buttons: { 3: true } });
+    gamepadInput.poll();
+    expect(values).toEqual([false, true, false, true]);
+    unbind();
+  });
+
+  it('followGamepadDirection follows the latest binding, withdrawing the old one', () => {
+    const direction = new DirectionInput();
+    direction.start();
+    const binding$ = new BehaviorSubject<any>(GAMEPAD_LEFT_STICK);
+    const unbind = followGamepadDirection(gamepadInput, direction, binding$);
+    pads.set({ axes: [1, 0], buttons: { 14: true } });
+    gamepadInput.poll();
+    expect(direction.direction).toEqual({ x: 1, y: 0 });
+    binding$.next(GAMEPAD_DPAD);
+    expect(direction.direction).toEqual({ x: -1, y: 0 });
+    binding$.next(null);
+    expect(direction.direction).toEqual({ x: 0, y: 0 });
+    gamepadInput.poll();
+    expect(direction.direction).toEqual({ x: 0, y: 0 });
+    unbind();
+    direction.stop();
   });
 
   it('lets go of the held key when unbound', () => {

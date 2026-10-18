@@ -7,6 +7,10 @@ export type FakeGamepad = {
   axes?: number[];
   mapping?: string;
   connected?: boolean;
+  /** `Gamepad.id`, `'fake'` by default */
+  id?: string;
+  /** `Gamepad.index`, 0 by default */
+  index?: number;
 };
 
 export const fakeGamepad = (pad: FakeGamepad = {}): Gamepad => {
@@ -18,8 +22,8 @@ export const fakeGamepad = (pad: FakeGamepad = {}): Gamepad => {
   const axes = [0, 0, 0, 0];
   (pad.axes || []).forEach((v, i) => (axes[i] = v));
   return {
-    id: 'fake',
-    index: 0,
+    id: pad.id ?? 'fake',
+    index: pad.index ?? 0,
     connected: pad.connected ?? true,
     mapping: pad.mapping ?? 'standard',
     buttons,

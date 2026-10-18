@@ -419,9 +419,12 @@ Status
   an analog contribution - and exposes controls by index for anything else (`value$`, `pressed$`,
   `direction$`, `controlPushed$` for binding capture, `inUse$` for input hints). Every built-in
   input controller binds its keys and directions to it by default through a `gamepad` option with
-  standard-mapping defaults. Covered by `packages/core/test/base/inputs/gamepad.input.spec.ts` and
-  the controllers' specs; documented in `gg-engine-app-development`. Not done: haptics, and a
-  per-gamepad mapping database for pads without the standard mapping.
+  standard-mapping defaults, which `setGamepad` changes while the game runs. Which device drives is
+  `GamepadInput.choice` (`{ id, nth }`, shared by every input, surviving reconnects), else the first
+  standard-mapping gamepad. Covered by `packages/core/test/base/inputs/gamepad.input.spec.ts` and
+  the controllers' specs; documented in `gg-engine-app-development`. Not done: haptics, a
+  per-gamepad mapping database for pads without the standard mapping, and one gamepad per player
+  (controllers only read `world.gamepadInput`).
 - Touch/gesture recognition (pinch, pan, tap, swipe) — not started.
 - ✅ Keyboard remapping: `DirectionKeymap` takes custom codes per direction, every built-in input
   controller's `setKeys` rebinds its keys while the game runs (gamepad buttons and the

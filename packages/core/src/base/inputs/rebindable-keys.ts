@@ -1,6 +1,7 @@
-import { distinctUntilChanged, Observable, of, switchMap } from 'rxjs';
+import { combineLatest, distinctUntilChanged, isObservable, Observable, of, switchMap } from 'rxjs';
 import { KeyboardInput } from './keyboard.input';
-import { GamepadControls, GamepadInput } from './gamepad.input';
+import { DirectionInput } from './direction.input';
+import { GamepadControls, GamepadDirectionBinding, GamepadInput } from './gamepad.input';
 
 /**
  * The state of whichever key `code$` names last, for an action whose key can be rebound: `true`
@@ -23,21 +24,50 @@ export function followKey(keyboard: KeyboardInput, code$: Observable<string | nu
   );
 }
 
+/** Two bindings as plain data, compared by content */
+const sameBinding = (a: unknown, b: unknown): boolean => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+
 /**
- * `GamepadInput.bindKeys` for one key that can be rebound: while `controls` are pushed, holds the
- * key `code$` names last on `keyboard`. A new code moves the hold over (the old key is let go of);
- * `null` binds nothing. Returns a function that unbinds for good.
+ * `GamepadInput.bindKeys` for one key whose code and controls can both change: while `controls`
+ * are pushed, holds the key `code$` names last on `keyboard`. A new code or new controls move the
+ * hold over (the old key is let go of); a `null` code or controls bind nothing. Returns a function
+ * that unbinds for good.
  */
 export function followGamepadKey(
   gamepadInput: GamepadInput,
   keyboard: KeyboardInput,
   code$: Observable<string | null>,
-  controls: GamepadControls | null | undefined,
+  controls: GamepadControls | null | undefined | Observable<GamepadControls | null | undefined>,
+): () => void {
+  const controls$ = isObservable(controls) ? controls : of(controls);
+  let unbind: (() => void) | null = null;
+  const subscription = combineLatest([code$, controls$])
+    .pipe(distinctUntilChanged(([codeA, a], [codeB, b]) => codeA === codeB && sameBinding(a, b)))
+    .subscribe(([code, current]) => {
+      unbind?.();
+      unbind = code && current ? gamepadInput.bindKeys(keyboard, { [code]: current }) : null;
+    });
+  return () => {
+    subscription.unsubscribe();
+    unbind?.();
+    unbind = null;
+  };
+}
+
+/**
+ * `GamepadInput.bindDirection` for a binding that can change: adds the direction `binding$` names
+ * last to `direction`, `null` for none. A new binding withdraws the old one's contribution first.
+ * Returns a function that unbinds for good.
+ */
+export function followGamepadDirection(
+  gamepadInput: GamepadInput,
+  direction: DirectionInput,
+  binding$: Observable<GamepadDirectionBinding | null | undefined>,
 ): () => void {
   let unbind: (() => void) | null = null;
-  const subscription = code$.pipe(distinctUntilChanged()).subscribe(code => {
+  const subscription = binding$.pipe(distinctUntilChanged(sameBinding)).subscribe(binding => {
     unbind?.();
-    unbind = code && controls ? gamepadInput.bindKeys(keyboard, { [code]: controls }) : null;
+    unbind = binding ? gamepadInput.bindDirection(direction, binding) : null;
   });
   return () => {
     subscription.unsubscribe();

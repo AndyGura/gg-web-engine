@@ -15,6 +15,7 @@ describe('GamepadInput', () => {
   afterEach(() => {
     input.stop();
     pads.restore();
+    GamepadInput.choice = null;
   });
 
   const connect = (pad: FakeGamepad = {}) => {
@@ -151,6 +152,95 @@ describe('GamepadInput', () => {
     expect(indexed.value('b0')).toBe(0);
     expect(indexed.value('b1')).toBe(1);
     indexed.stop();
+  });
+
+  describe('choosing the gamepad', () => {
+    const keyboardPad = fakeGamepad({ id: 'Keyboard (Vendor: 1234 Product: 0001)', index: 0, mapping: '' });
+    const padA = fakeGamepad({ id: 'Pad (STANDARD GAMEPAD)', index: 1, buttons: { 0: true } });
+    const padB = fakeGamepad({ id: 'Pad (STANDARD GAMEPAD)', index: 2, buttons: { 1: true } });
+
+    it('reads the first gamepad with the standard mapping when nothing is chosen', () => {
+      pads.setAll([keyboardPad, padA]);
+      input.poll();
+      expect(input.gamepad).toBe(padA);
+      pads.setAll([keyboardPad]);
+      expect(GamepadInput.selectedGamepad()).toBe(keyboardPad);
+    });
+
+    it('reads the chosen one by id and nth, falling back while it is not connected', () => {
+      pads.setAll([keyboardPad, padA, padB]);
+      GamepadInput.choice = { id: padB.id, nth: 1 };
+      input.poll();
+      expect(input.value('b1')).toBe(1);
+
+      pads.setAll([keyboardPad, null, padB]);
+      // one of two of the same model left: that one
+      input.poll();
+      expect(input.gamepad).toBe(padB);
+      GamepadInput.choice = { id: 'Wheel', nth: 0 };
+      input.poll();
+      expect(input.gamepad).toBe(padB);
+      expect(input.gamepad).toBe(GamepadInput.selectedGamepad());
+    });
+
+    it('leaves an input with a gamepadIndex of its own alone', () => {
+      const indexed = new GamepadInput({ gamepadIndex: 0 });
+      indexed.start();
+      pads.setAll([keyboardPad, padA]);
+      GamepadInput.choice = GamepadInput.choiceOf(padA);
+      indexed.poll();
+      expect(indexed.gamepad).toBe(keyboardPad);
+      indexed.stop();
+    });
+
+    it('steps through the connected gamepads with chooseNext, reporting choice$', () => {
+      const choices: any[] = [];
+      GamepadInput.choice$.subscribe(c => choices.push(c));
+      pads.setAll([keyboardPad, padA, padB]);
+      expect(GamepadInput.chooseNext()).toBe(padB);
+      expect(GamepadInput.chooseNext()).toBe(keyboardPad);
+      expect(GamepadInput.chooseNext(-1)).toBe(padB);
+      expect(choices).toEqual([null, { id: padB.id, nth: 1 }, { id: keyboardPad.id, nth: 0 }, { id: padB.id, nth: 1 }]);
+      pads.setAll([]);
+      expect(GamepadInput.chooseNext()).toBeNull();
+    });
+
+    it('names a gamepad without what the browser adds to its id', () => {
+      const named = (id: string) => GamepadInput.gamepadName(fakeGamepad({ id }));
+      expect(named('Xbox 360 Controller (XInput STANDARD GAMEPAD)')).toBe('Xbox 360 Controller');
+      expect(named('USB Gamepad (Vendor: 0079 Product: 0011)')).toBe('USB Gamepad');
+      expect(named('45e-28e-Xbox 360 Wired Controller')).toBe('Xbox 360 Wired Controller');
+      expect(named('(STANDARD GAMEPAD)')).toBe('(STANDARD GAMEPAD)');
+    });
+
+    it('lists no gamepad when the browser withholds them', () => {
+      Object.defineProperty(navigator, 'getGamepads', {
+        value: () => {
+          throw new DOMException('not allowed', 'SecurityError');
+        },
+        configurable: true,
+        writable: true,
+      });
+      expect(GamepadInput.connectedGamepads()).toEqual([]);
+      expect(GamepadInput.chooseNext()).toBeNull();
+    });
+
+    it('does not report what is already held on a gamepad switched to as pushed', () => {
+      const pushed: GamepadControl[] = [];
+      input.controlPushed$.subscribe(c => pushed.push(c));
+      pads.setAll([fakeGamepad({ id: 'Pad', index: 1 }), fakeGamepad({ id: 'Pad', index: 2, buttons: { 3: true } })]);
+      input.poll();
+      GamepadInput.choice = { id: 'Pad', nth: 1 };
+      input.poll();
+      expect(input.value('b3')).toBe(1);
+      expect(pushed).toEqual([]);
+      pads.setAll([
+        fakeGamepad({ id: 'Pad', index: 1 }),
+        fakeGamepad({ id: 'Pad', index: 2, buttons: { 3: true, 0: true } }),
+      ]);
+      input.poll();
+      expect(pushed).toEqual(['b0']);
+    });
   });
 
   it('is in use from the first control pushed until a real key or pointer press', () => {
