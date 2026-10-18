@@ -54,6 +54,43 @@ export const GAMEPAD_LEFT_STICK_OR_DPAD: GamepadDirectionBinding = {
   y: { negative: ['a1+', 'b13'], positive: ['a1-', 'b12'] },
 };
 
+/**
+ * The keys a console-style menu is worked with, and the controls pressing them: the d-pad or the
+ * left stick are the arrows, A (`b0`) is Enter, B (`b1`) is Escape. What `Screen.bindGamepadKeys`
+ * binds by default.
+ */
+export const GAMEPAD_MENU_KEYS: Readonly<Record<string, GamepadControls>> = {
+  ArrowUp: ['b12', 'a1-'],
+  ArrowDown: ['b13', 'a1+'],
+  ArrowLeft: ['b14', 'a0-'],
+  ArrowRight: ['b15', 'a0+'],
+  Enter: 'b0',
+  Escape: 'b1',
+};
+
+/** How `GamepadInput.bindKeys` presses its keys */
+export type GamepadBindKeysOptions = {
+  /**
+   * Press a key only when its control becomes pressed while `keyboard` runs, like a key of a real
+   * keyboard: a control already held when the binding is made, or when `keyboard` starts, presses
+   * nothing until it is pushed again. For a menu's keys - a button that closed one screen must not
+   * act on the screen shown next. `false` by default: the key is held whenever the control is,
+   * pressed again on every poll, so a keyboard restarted meanwhile gets it back (gameplay keys).
+   */
+  edge?: boolean;
+  /**
+   * Codes that are pressed again while their control stays held, as a held key repeats: first
+   * after `repeatDelay`, then every `repeatInterval` milliseconds - each time a release and a press
+   * of the key. With `edge`, only as long as the keyboard holds the key from that press: not
+   * after the keyboard stopped or reset its keys meanwhile.
+   */
+  repeat?: readonly string[];
+  /** Milliseconds from the press to the first repeat. 350 by default. */
+  repeatDelay?: number;
+  /** Milliseconds between two repeats. 125 by default. */
+  repeatInterval?: number;
+};
+
 export type GamepadInputOptions = {
   /**
    * Below this a stick axis reads as 0, and the rest of its travel is rescaled to 0..1, so a stick
@@ -395,25 +432,71 @@ export class GamepadInput extends IInput {
    * pressed any more - or when this input stops. Returns a function that unbinds (and releases).
    * While a key is held this way, releasing the same physical key, or another binding's hold of the
    * same key (a touch button, another controller's gamepad button), does not let go of it.
+   * `options` make it press like a key of a real keyboard (`edge`) and repeat held keys (`repeat`),
+   * for a menu.
    */
-  public bindKeys(keyboard: KeyboardInput, keys: Record<string, GamepadControls>): () => void {
+  public bindKeys(
+    keyboard: KeyboardInput,
+    keys: Readonly<Record<string, GamepadControls>>,
+    options: GamepadBindKeysOptions = {},
+  ): () => void {
+    const edge = !!options.edge;
+    const repeating = new Set(options.repeat || []);
+    const repeatDelay = options.repeatDelay ?? 350;
+    const repeatInterval = options.repeatInterval ?? 125;
+    // the keys this binding holds down, and the controls pressed as of the last poll
     const held = new Set<string>();
+    const down = new Set<string>();
+    const nextRepeat = new Map<string, number>();
     // this binding's own hold on each key, so letting go here never releases another holder's
     const holder = {};
-    const update = () => {
+    const update = (initial: boolean) => {
+      const now = performance.now();
       for (const code of Object.keys(keys)) {
-        if (this.pressed(keys[code])) {
-          // pressed on every poll, not only on the edge: a keyboard restarted meanwhile (the world's
-          // input switched off and on) has let go of the key, and holds it again this way
+        const pressed = this.pressed(keys[code]);
+        const wasDown = down.has(code);
+        if (!pressed) {
+          down.delete(code);
+          nextRepeat.delete(code);
+          if (held.delete(code)) {
+            keyboard.emulateKeyUp(code, holder);
+          }
+          continue;
+        }
+        down.add(code);
+        if (edge && held.has(code) && !keyboard.isHeldBy(code, holder)) {
+          // let go of by the keyboard (stopped, restarted, reset): nothing more until the control
+          // is pushed again
+          held.delete(code);
+          nextRepeat.delete(code);
+        }
+        if (!wasDown) {
+          if (edge && (initial || !keyboard.running)) {
+            continue;
+          }
+          if (repeating.has(code)) {
+            nextRepeat.set(code, now + repeatDelay);
+          }
+        }
+        if (!edge || !wasDown) {
+          // pressed on every poll without `edge`, not only on the edge: a keyboard restarted
+          // meanwhile (the world's input switched off and on) has let go of the key, and holds it
+          // again this way
           held.add(code);
           keyboard.emulateKeyDown(code, holder);
-        } else if (held.delete(code)) {
+        }
+        const repeatAt = nextRepeat.get(code);
+        if (held.has(code) && repeatAt !== undefined && now >= repeatAt) {
+          // a stalled frame catches up with one repeat, not a burst of them
+          const next = repeatAt + repeatInterval;
+          nextRepeat.set(code, next > now ? next : now + repeatInterval);
           keyboard.emulateKeyUp(code, holder);
+          keyboard.emulateKeyDown(code, holder);
         }
       }
     };
-    const subscription = this.polled$.subscribe(update);
-    update();
+    const subscription = this.polled$.subscribe(() => update(false));
+    update(true);
     return () => {
       subscription.unsubscribe();
       for (const code of held) {

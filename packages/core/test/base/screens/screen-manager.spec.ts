@@ -9,6 +9,7 @@ import {
   ScreenManager,
 } from '../../../src';
 import { MockWorld } from '../../mocks/world.mock';
+import { stubGamepads } from '../../mocks/gamepad.mock';
 
 const flush = async (times = 5) => {
   for (let i = 0; i < times; i++) {
@@ -492,6 +493,70 @@ describe('ScreenManager', () => {
       press('Escape');
       expect(pressed).toHaveBeenCalledTimes(2);
       expect(menu.keyboard.running).toBe(false);
+    });
+
+    describe('gamepad keys', () => {
+      let pads: ReturnType<typeof stubGamepads>;
+      beforeEach(() => (pads = stubGamepads()));
+      afterEach(() => pads.restore());
+
+      /** A menu worked with the gamepad: Escape (B) closes it, Enter (A) opens the next one. */
+      class GamepadMenuScreen extends LogScreen {
+        constructor(label: string, log: string[], keys?: Record<string, string>) {
+          super(label, log);
+          this.bindGamepadKeys(keys);
+        }
+
+        enter(ctx: ScreenEnterContext): void {
+          super.enter(ctx);
+          this.addTeardown(
+            this.keyboard.bind('Escape').subscribe(down => down && this.log.push(`escape ${this.label}`)),
+          );
+          this.addTeardown(
+            this.keyboard.bind('Enter').subscribe(down => down && this.log.push(`enter key ${this.label}`)),
+          );
+        }
+      }
+
+      const poll = (buttons: Record<number, boolean>) => {
+        pads.set({ buttons });
+        screens.gamepadInput.poll();
+      };
+
+      it('presses the menu keys on the keyboard of the screen on top', async () => {
+        const menu = new GamepadMenuScreen('menu', log);
+        await screens.push(menu);
+        poll({ 0: true });
+        poll({});
+        expect(log).toContain('enter key menu');
+        await screens.push(new GamepadMenuScreen('settings', log));
+        poll({ 1: true });
+        expect(log.filter(l => l.startsWith('escape'))).toEqual(['escape settings']);
+      });
+
+      it('does not press for the screen below a button still held from closing the one above', async () => {
+        const game = new GamepadMenuScreen('game', log, { Escape: 'b1' });
+        await screens.push(game);
+        const pause = new GamepadMenuScreen('pause', log);
+        await screens.push(pause);
+        poll({ 1: true });
+        expect(log.filter(l => l.startsWith('escape'))).toEqual(['escape pause']);
+        await screens.pop();
+        poll({ 1: true });
+        poll({ 1: true });
+        expect(log.filter(l => l.startsWith('escape'))).toEqual(['escape pause']);
+        poll({});
+        poll({ 1: true });
+        expect(log.filter(l => l.startsWith('escape'))).toEqual(['escape pause', 'escape game']);
+      });
+
+      it('stops reading the gamepad when the manager is disposed', async () => {
+        await screens.push(new GamepadMenuScreen('menu', log));
+        const input = screens.gamepadInput;
+        expect(input.running).toBe(true);
+        await screens.dispose();
+        expect(input.running).toBe(false);
+      });
     });
 
     it('does not run the keyboard of a screen that is still entering', async () => {

@@ -740,6 +740,17 @@ flow as a stack of DOM layers. The module imports nothing from an adapter and no
   screen has exited (an `enter()` that ignored its signal) dispose their argument immediately.
 - **The manager reaches into a screen through `screen.internals`**, an object of closures, since TS
   has no package-private access. It is `@internal`; app code has no use for it.
+- **Gamepad keys of a screen** (`Screen.bindGamepadKeys`) are opt-in, never on by default: on a
+  game screen, B (Escape in `GAMEPAD_MENU_KEYS`) is a gameplay button and would open the pause
+  menu. They bind on `ScreenManager.gamepadInput` (created and started on first use, stopped in
+  `dispose`) with `bindKeys(..., { edge: true, repeat: arrows })` and end with the screen's
+  teardowns; a call before the screen is pushed waits for `attach`. `edge` is what makes it work
+  across screens: B closing the pause menu is still held when the game screen's keyboard starts,
+  and a binding re-pressing held keys every poll (the gameplay default) would open the menu again
+  at once. An edge binding presses only a control pushed while the keyboard runs, and drops a hold
+  the keyboard no longer has (`KeyboardInput.isHeldBy`, false after a stop or `resetAllKeys`) -
+  checking `keyboard.running` instead misses a stop and start between two polls (a screen
+  transition within one frame), and a held arrow would keep repeating on the next screen.
 - **Covering a screen** sets `inert` on its layer, `inputEnabled = false` on its worlds and pauses
   them unless the push said otherwise or `world.localPauseAllowed` is `false`. While covered it
   follows `world.localPauseAllowed$`: a network session joined under an open menu resumes the
@@ -1312,7 +1323,9 @@ What it holds to:
   `setAnalogDirection` with itself as the source; both return an unbind function. Both re-apply on
   every poll while held, not only on the edge: a `KeyboardInput`/`DirectionInput` restarted
   meanwhile (the world's input switched off and on) has let go, and gets the held state back on
-  the next poll. Stopping the gamepad input clears every control's value and emits one last poll,
+  the next poll. `bindKeys`' `edge` option turns that off for menus (see "Screens"), and `repeat`
+  releases and presses a held key again after `repeatDelay`, then every `repeatInterval` (wall
+  time, `performance.now()` - menus run without a world; specs stub it with `jest.spyOn`). Stopping the gamepad input clears every control's value and emits one last poll,
   so every binding releases - without forgetting the gamepad: `connected`, `gamepad`,
   `standardMapping` and `inUse` stay as of the last poll, so a menu shown while the world's input
   is off still names the buttons and `connected$` does not flicker over the stop. The world's

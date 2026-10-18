@@ -1,5 +1,6 @@
 import { GgWorld } from '../gg-world';
 import { KeyboardInput } from '../inputs/keyboard.input';
+import { GAMEPAD_MENU_KEYS, GamepadBindKeysOptions, GamepadControls } from '../inputs/gamepad.input';
 import { LoadProgress } from '../assets/load-progress';
 import type { ScreenManager } from './screen-manager';
 import { Subscription } from 'rxjs';
@@ -103,6 +104,8 @@ export abstract class Screen {
   private readonly teardowns: ScreenTeardown[] = [];
   private covered = false;
   private pauseWhileCovered = true;
+  /** `bindGamepadKeys` calls made before the screen was pushed */
+  private readonly pendingGamepadKeys: (() => void)[] = [];
 
   /**
    * This screen's DOM layer: fills the manager's container, stacked above the layers of the screens
@@ -146,6 +149,47 @@ export abstract class Screen {
       }
     }
     return this._keyboard;
+  }
+
+  /**
+   * Has the gamepad press keys of this screen's `keyboard` while the screen is on top, so its key
+   * handlers work from a gamepad too. `keys` maps key codes to the controls pressing them:
+   * `GAMEPAD_MENU_KEYS` by default (d-pad or left stick: the arrows, A: Enter, B: Escape). Keys are
+   * pressed like those of a real keyboard: only when a control is pushed while the screen is on
+   * top, so the button that closed the screen above presses nothing here. Held arrows repeat (the
+   * codes in `options.repeat`, every arrow by default), first after 350 ms, then every 125 ms.
+   * Call it from the constructor or `enter()`; the binding ends with the screen. The gamepad is
+   * `screens.gamepadInput`.
+   *
+   * Only the screen's own handlers (`this.keyboard.bind(...)`) see these keys: moving the focus in
+   * the screen's DOM, or clicking the focused element, is up to them. A game screen keeps the menu
+   * keys off - B is a gameplay button there, its world's controllers take the gamepad through
+   * `world.gamepadInput` - and binds only what opens its menu:
+   *
+   * ```ts
+   * this.bindGamepadKeys({ Escape: 'b9' }); // Start pauses, like Escape
+   * ```
+   */
+  protected bindGamepadKeys(
+    keys: Readonly<Record<string, GamepadControls>> = GAMEPAD_MENU_KEYS,
+    options: Omit<GamepadBindKeysOptions, 'edge'> = {},
+  ): void {
+    if (this._state === 'exited') {
+      return;
+    }
+    const bind = () =>
+      this.addTeardown(
+        this.screens.gamepadInput.bindKeys(this.keyboard, keys, {
+          repeat: ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'],
+          ...options,
+          edge: true,
+        }),
+      );
+    if (this._manager) {
+      bind();
+    } else {
+      this.pendingGamepadKeys.push(bind);
+    }
   }
 
   /**
@@ -285,6 +329,7 @@ export abstract class Screen {
     attach: (manager, layer) => {
       this._manager = manager;
       this._layer = layer;
+      this.pendingGamepadKeys.splice(0).forEach(bind => bind());
     },
     setState: state => {
       this._state = state;

@@ -409,9 +409,10 @@ Status
   `MobileControls` follow) and are paused unless the world's simulation is shared
   (`localPauseAllowed`); a screen's worlds and teardowns are disposed when it exits; a loading
   view shows the progress `enter()` reports. Operations are queued, and one that removes a screen
-  not shown yet cancels its load. Covered by `packages/core/test/base/screens/*.spec.ts`
-  (including a leak test over 25 round trips) and the `3d/screens` example; documented in
-  `gg-engine-app-development`.
+  not shown yet cancels its load. A screen opts into gamepad menu keys (`bindGamepadKeys`: d-pad,
+  A, B as arrows, Enter, Escape on its own keyboard). Covered by
+  `packages/core/test/base/screens/*.spec.ts` (including a leak test over 25 round trips) and the
+  `3d/screens` example; documented in `gg-engine-app-development`.
 - ✅ Gamepad support: `GamepadInput` (`packages/core/src/base/inputs/gamepad.input.ts`), one per
   world as `world.gamepadInput`, polled on the global clock (so a gamepad can unpause a paused
   world) while `inputEnabled`. It feeds the existing inputs - `bindKeys` presses a `KeyboardInput`'s

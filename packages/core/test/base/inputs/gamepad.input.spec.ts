@@ -85,6 +85,90 @@ describe('GamepadInput', () => {
     keyboard.stop();
   });
 
+  describe('bindKeys options', () => {
+    let keyboard: KeyboardInput;
+    let now: number;
+    beforeEach(() => {
+      keyboard = new KeyboardInput();
+      keyboard.start();
+      now = 0;
+      jest.spyOn(performance, 'now').mockImplementation(() => now);
+    });
+    afterEach(() => {
+      keyboard.stop();
+      jest.restoreAllMocks();
+    });
+
+    it('with edge, presses only for a control pushed while the keyboard runs', () => {
+      const enter: boolean[] = [];
+      keyboard.bind('Enter').subscribe(v => enter.push(v));
+      connect({ buttons: { 0: true } });
+      input.bindKeys(keyboard, { Enter: 'b0' }, { edge: true });
+      // held when bound: not a press
+      connect({ buttons: { 0: true } });
+      connect({});
+      connect({ buttons: { 0: true } });
+      expect(enter).toEqual([false, true]);
+
+      // still held across a keyboard restart: let go of, and not pressed again
+      keyboard.stop();
+      keyboard.start();
+      connect({ buttons: { 0: true } });
+      expect(enter).toEqual([false, true, false]);
+      connect({});
+      // pushed while the keyboard is stopped: nothing once it runs again
+      keyboard.stop();
+      connect({ buttons: { 0: true } });
+      keyboard.start();
+      connect({ buttons: { 0: true } });
+      expect(enter).toEqual([false, true, false]);
+      connect({});
+      connect({ buttons: { 0: true } });
+      expect(enter).toEqual([false, true, false, true]);
+    });
+
+    it('repeats the keys in repeat while held, after the delay and then every interval', () => {
+      const down: number[] = [];
+      keyboard.bind('ArrowDown').subscribe(v => v && down.push(now));
+      const enter: number[] = [];
+      keyboard.bind('Enter').subscribe(v => v && enter.push(now));
+      input.bindKeys(keyboard, { ArrowDown: 'b13', Enter: 'b0' }, { edge: true, repeat: ['ArrowDown'] });
+      connect({ buttons: { 13: true, 0: true } });
+      for (now = 50; now <= 700; now += 50) {
+        connect({ buttons: { 13: true, 0: true } });
+      }
+      // repeats come on the polls: 350, 475 (poll at 500), 600, 725 (poll at 750)
+      expect(down).toEqual([0, 350, 500, 600]);
+      expect(enter).toEqual([0]);
+
+      // a stalled frame: one repeat, the next a full interval later
+      now = 2000;
+      connect({ buttons: { 13: true } });
+      now = 2050;
+      connect({ buttons: { 13: true } });
+      now = 2125;
+      connect({ buttons: { 13: true } });
+      expect(down).toEqual([0, 350, 500, 600, 2000, 2125]);
+
+      connect({});
+      now = 3000;
+      connect({});
+      expect(down.length).toBe(6);
+    });
+
+    it('stops repeating with edge once the keyboard stops', () => {
+      const down: number[] = [];
+      keyboard.bind('ArrowDown').subscribe(v => v && down.push(now));
+      input.bindKeys(keyboard, { ArrowDown: 'b13' }, { edge: true, repeat: ['ArrowDown'] });
+      connect({ buttons: { 13: true } });
+      keyboard.stop();
+      keyboard.start();
+      now = 1000;
+      connect({ buttons: { 13: true } });
+      expect(down).toEqual([0]);
+    });
+  });
+
   it('holds a key again after the keyboard was restarted with the control still pressed', () => {
     const keyboard = new KeyboardInput();
     keyboard.start();

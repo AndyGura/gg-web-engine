@@ -326,6 +326,17 @@ export class KeyboardInput extends IInput {
   }
 
   /**
+   * Whether `holder` holds `code` down through `emulateKeyDown` right now. `false` again after its
+   * `emulateKeyUp`, after `resetAllKeys` and after the input stopped (which lets go of every key):
+   * how a holder tells that the key it pressed was let go of by something else.
+   * @param code The key code
+   * @param holder The object `emulateKeyDown` was called with
+   */
+  isHeldBy(code: string, holder: unknown = this.defaultHolder): boolean {
+    return !!this.emulatedHeld.get(code)?.has(holder);
+  }
+
+  /**
    * Emulates a key press event (down and up) for the given key code
    * @param code The key code to emulate
    */

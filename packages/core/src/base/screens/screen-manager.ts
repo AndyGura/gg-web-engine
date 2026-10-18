@@ -3,6 +3,7 @@ import { isAbortError, LoadProgress } from '../assets/load-progress';
 import { LoadingScreen } from './loading-screen';
 import { LoadingView } from './loading-view';
 import { Screen } from './screen';
+import { GamepadInput } from '../inputs/gamepad.input';
 
 export type ScreenManagerOptions = {
   /**
@@ -137,6 +138,23 @@ export class ScreenManager {
     return this._stack$.asObservable();
   }
 
+  private _gamepadInput: GamepadInput | null = null;
+
+  /**
+   * The gamepad input `Screen.bindGamepadKeys` binds on: one for the manager, created and started
+   * on first use and stopped when the manager is disposed. It reads the gamepad every input reads
+   * (`GamepadInput.choice`), whether or not a screen has a world.
+   */
+  public get gamepadInput(): GamepadInput {
+    if (!this._gamepadInput) {
+      this._gamepadInput = new GamepadInput();
+      if (!this.disposed) {
+        this._gamepadInput.start();
+      }
+    }
+    return this._gamepadInput;
+  }
+
   /** `true` while a transition is running or waiting. */
   public get busy$(): Observable<boolean> {
     return this._busy$.asObservable();
@@ -239,6 +257,7 @@ export class ScreenManager {
   private async doDispose(): Promise<void> {
     await this.reset([]);
     this.disposed = true;
+    this._gamepadInput?.stop();
     ScreenManager.managers.splice(ScreenManager.managers.indexOf(this), 1);
     if (typeof window !== 'undefined') {
       window.removeEventListener('ggstatic_added', this.onGgStaticAdded);

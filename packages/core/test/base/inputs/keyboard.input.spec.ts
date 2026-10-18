@@ -95,6 +95,22 @@ describe('KeyboardInput', () => {
     expect(values).toEqual([false, true, false]);
   });
 
+  it('tells whether a holder still holds a key, which a stop or resetAllKeys ends', () => {
+    keyboard.start();
+    const holder = {};
+    keyboard.emulateKeyDown('Enter', holder);
+    expect(keyboard.isHeldBy('Enter', holder)).toBe(true);
+    expect(keyboard.isHeldBy('Enter')).toBe(false);
+    keyboard.resetAllKeys();
+    expect(keyboard.isHeldBy('Enter', holder)).toBe(false);
+    keyboard.emulateKeyDown('Enter', holder);
+    keyboard.stop();
+    keyboard.start();
+    expect(keyboard.isHeldBy('Enter', holder)).toBe(false);
+    keyboard.emulateKeyDown('Enter');
+    expect(keyboard.isHeldBy('Enter')).toBe(true);
+  });
+
   it('releases every emulated holder on resetAllKeys', () => {
     keyboard.start();
     const values: boolean[] = [];

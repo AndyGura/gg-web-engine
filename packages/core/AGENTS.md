@@ -673,7 +673,12 @@ class GameScreen extends Screen {
   only this player's input is off. A world you paused yourself is not resumed for you.
 - **Keys**: `this.keyboard` is the screen's own `KeyboardInput`, running only while the screen is
   on top - use it for the screen's shortcuts (Escape, back). Gameplay keys stay on
-  `world.keyboardInput`. With the pointer locked the browser keeps Escape for releasing the lock,
+  `world.keyboardInput`. `this.bindGamepadKeys()` in a menu screen's constructor or `enter()` has
+  the gamepad press that keyboard too: d-pad or left stick are the arrows (held ones repeat), A is
+  Enter, B is Escape, so a menu driven by `this.keyboard.bind('ArrowDown')` etc. works from a pad.
+  Moving DOM focus or clicking the focused button on those keys is your handler's job. Keep the
+  menu keys off a game screen (B is a gameplay button there) and bind only its pause key:
+  `this.bindGamepadKeys({ Escape: 'b9' })` (Start). With the pointer locked the browser keeps Escape for releasing the lock,
   so a game that pauses on Escape also pauses on `pointerlockchange` when the lock is gone. An
   input you create yourself is not switched off for you: gate it on `world.inputEnabled$`, or
   start/stop it with `runWhileInputEnabled(world, until$, start, stop)`.

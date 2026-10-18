@@ -68,6 +68,15 @@ where one exists.
   (`loadKeyboardLayout()`, Chromium), and `isBindable(code)` rejects keys the browser or OS keeps
   for itself (Tab, Escape, function keys, Ctrl/Alt/Meta, lock and media keys).
 
+- Gamepad menu navigation for screens: `Screen.bindGamepadKeys(keys = GAMEPAD_MENU_KEYS)` has the
+  gamepad press keys of the screen's `keyboard` while the screen is on top - d-pad or left stick
+  as the arrows (repeating while held), A as Enter, B as Escape - pressing only for a button pushed
+  while the screen is on top, so the button that closed a screen does nothing on the one below. A
+  game screen binds only its pause key (`this.bindGamepadKeys({ Escape: 'b9' })`).
+  `ScreenManager.gamepadInput` is the input it reads. `GamepadInput.bindKeys` takes the options
+  behind it: `edge` (press like a real key) and `repeat`/`repeatDelay`/`repeatInterval`.
+  `KeyboardInput.isHeldBy(code, holder)` tells whether an emulated hold is still in place.
+
 ### Changed
 - With no `gamepadIndex` and no `GamepadInput.choice`, a `GamepadInput` reads the first connected
   gamepad with the standard mapping, and only without one the first connected gamepad: some
