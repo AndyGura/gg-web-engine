@@ -42,6 +42,11 @@ mirror-like sphere.
   traversal written as if it only visited descendants silently skips the root and leaves it on the
   wrong layer. The `castShadow` write skips lights embedded in the subtree (a loaded model can carry
   them): on a light that flag turns shadow map rendering on or off, which is the light's own setting.
+- **`name` is the native `Object3D.name`**, `''` until something names the object - never the
+  mesh's `uuid`. Core's `Entity3d` adopts a named display object's `name` as its own world-unique
+  entity name, so any always-truthy fallback there (a generated id, a class name) replaces the
+  readable `entityTypeName`-based default (`Entity3d_N`) with noise. `popChild(name)` matches a
+  child on its `name` or `userData.name`.
 - **Render layers** are three.js `Layers` bitmasks: `ThreeSceneComponent.mainRenderLayer` is `0`
   (a fresh `Object3D`'s default layer), `registerRenderLayer`/`deregisterRenderLayer` hand out
   indices from `lockedRenderLayers`, and a new camera calls `nativeCamera.layers.enableAll()` so it

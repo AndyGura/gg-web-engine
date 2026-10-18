@@ -11,6 +11,24 @@ import { PixiGgWorld, PixiVisualTypeDocRepo2D } from '../types';
 import { Container, Texture } from 'pixi.js';
 import { cloneContainer } from '../utils/clone-container';
 
+/**
+ * The `label` pixi.js gives a display object built without an explicit one: its class name (a
+ * `new Graphics()` is labelled `"Graphics"`, a `Sprite` `"Sprite"`, ...). Not a name in the
+ * engine's sense - `Entity2d` adopts a named display object's name as its own world-unique name, so
+ * every unnamed primitive of one kind would collide on it. The component clears it on construction.
+ */
+const PIXI_DEFAULT_LABELS: ReadonlySet<string> = new Set([
+  'Container',
+  'Graphics',
+  'Sprite',
+  'AnimatedSprite',
+  'Mesh',
+  'TilingSprite',
+  'NineSliceSprite',
+  'ParticleContainer',
+  'RenderContainer',
+]);
+
 export class PixiDisplayObjectComponent
   implements
     IDisplayObject2dComponent<PixiVisualTypeDocRepo2D>,
@@ -41,6 +59,9 @@ export class PixiDisplayObjectComponent
   ) {
     if (materialOptions) {
       this.materialOptions = materialOptions;
+    }
+    if (nativeSprite.label && PIXI_DEFAULT_LABELS.has(nativeSprite.label)) {
+      nativeSprite.label = '';
     }
     this.baseScale = baseScale ?? Pnt2.clone(nativeSprite.scale);
   }
@@ -103,6 +124,7 @@ export class PixiDisplayObjectComponent
     this.nativeSprite.alpha = value;
   }
 
+  /** the native `Container.label`; `''` while nothing has named this object */
   public get name(): string {
     return this.nativeSprite.label ?? '';
   }

@@ -85,8 +85,13 @@ export class ThreeDisplayObjectComponent
     this.nativeMesh.visible = value;
   }
 
+  /**
+   * The native `Object3D.name`; `''` while nothing has named this object. Never the mesh's `uuid`:
+   * `Entity3d` adopts a named display object's name as its own world-unique entity name, and a
+   * generated id there would replace the readable `entityTypeName`-based default.
+   */
   public get name(): string {
-    return this.nativeMesh.name || this.nativeMesh.uuid;
+    return this.nativeMesh.name;
   }
 
   public set name(value: string) {

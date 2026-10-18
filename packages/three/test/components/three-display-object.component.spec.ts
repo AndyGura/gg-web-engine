@@ -23,6 +23,18 @@ function buildCharacterModel(): Group {
 }
 
 describe('ThreeDisplayObjectComponent', () => {
+  describe('name', () => {
+    it('is the native Object3D name, and empty (not the uuid) until one is assigned', () => {
+      const mesh = new Mesh(new BoxGeometry(1, 1, 1), new MeshBasicMaterial());
+      const component = new ThreeDisplayObjectComponent(mesh);
+
+      expect(component.name).toBe('');
+      component.name = 'wheel';
+      expect(mesh.name).toBe('wheel');
+      expect(component.name).toBe('wheel');
+    });
+  });
+
   describe('materialOptions (IMaterialReadable3dComponent)', () => {
     it('exposes the options it was constructed with', () => {
       const mesh = new Mesh(new BoxGeometry(1, 1, 1), new MeshBasicMaterial());

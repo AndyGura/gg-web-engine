@@ -29,6 +29,16 @@ where one exists.
 
 ## [Unreleased]
 
+### Fixed
+- `@gg-web-engine/pixi`: a display object built without a name no longer reports pixi.js's
+  class-name default `label` ("Graphics", "Sprite", ...) as its `name`. Since 0.0.83 an `Entity2d`
+  built around such an object adopted that label as its world-unique entity name, so adding a
+  second unnamed primitive of the same kind to a world failed with
+  `Cannot add entity - name "Graphics" is already in use`.
+- `@gg-web-engine/three`: a display object built without a name reports an empty `name` instead
+  of the mesh's `uuid`, so an `Entity3d` built around an unnamed mesh keeps its readable
+  `Entity3d_N` default name rather than adopting a generated id.
+
 ## [0.0.83] - 2026-10-17
 
 ### Added

@@ -42,7 +42,14 @@ subclass built itself). **A new kind of native object the package starts creatin
 `addChild`/`removeChild` are `Container.addChild`/`removeChild`; `dispose()` is
 `destroy({ children: true })` so nested children go with the parent. `name` is the native
 `Container.label` (copied by `copyContainerState`), and `popChild(name)` detaches the first child
-with that label and wraps it in a new `PixiDisplayObjectComponent`.
+with that label and wraps it in a new `PixiDisplayObjectComponent`. **pixi.js 8 labels every
+object built without an explicit label with its class name** (`new Graphics()` is `"Graphics"`,
+a `Sprite` `"Sprite"`, `Mesh`, `TilingSprite`, ...). That is not a name: core's `Entity2d` adopts a
+named display object's `name` as its own world-unique entity name, so two unnamed primitives of
+one kind would make `GgWorld.addEntity` throw a name collision. The component's constructor
+clears such a default label (the `PIXI_DEFAULT_LABELS` set next to the class), so `name` reads
+`''` until something names the object; a new kind of native object the package starts creating
+needs its pixi default label added to that set (grep `label: "` under `pixi.js/lib/scene`).
 
 ## Scale and bounds
 
