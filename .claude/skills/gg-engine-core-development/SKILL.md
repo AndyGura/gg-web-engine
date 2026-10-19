@@ -1230,19 +1230,27 @@ in `base/inputs/rebindable-keys.ts`, and each controller only wires it: a `XxxCo
 DEFAULT_XXX_GAMEPAD_BINDING, this._onRemoved$)` built in the constructor right after `options` is
 (it writes to that object, which is why `CarHandlingController`/`GgCarHandlingController` copy the
 options they are given), `implements IRebindableController` with `bindingsChanged$` returning
-`bindings.changed$`, `setKeys(partial)` forwarding `keymap` to `directionsInput.keymap`
-(`GgCarHandlingController` to its child's `setKeys`) and then calling `bindings.setKeys(keys)`
-(copies the keys, skipping `undefined`, and emits `'keys'`), and `setGamepad(partial | null)`
-calling `bindings.setGamepad(binding)` (`null`, or the partial over the current binding or the
-default one while off; emits `'gamepad'` and returns what it wrote, which `GgCarHandlingController`
-hands to its child). Every binding in `onSpawned` goes through the bindings' own methods, each
-over a key picked from `options` and a control picked from `options.gamepad` (nothing while that
-is `null`): `this.bindings.followKey(this.keyboard, o => o.jumpKey)` (an observable, piped through
-`takeUntil(this._onRemoved$)`), `this.bindings.followGamepadKey(gamepadInput, this.keyboard, o =>
-o.jumpKey, g => g.jump)`, `this.bindings.followGamepadPressed(gamepadInput, g => g.throw)` for an
-edge-triggered action without a key of its own and `this.bindings.followGamepadDirection(
-gamepadInput, this.directionsInput, g => g.move)` - the two that bind are unbound by the bindings
-themselves when `_onRemoved$` next emits. These wrap the free functions `followKey`,
+`bindings.changed$`, `setKeys(partial)` calling `bindings.setKeys(keys)` (copies the keys, skipping
+`undefined`, and emits `'keys'`; typed `Partial<Omit<O, 'gamepad'>>`, so a gamepad change can never
+arrive as a `'keys'` one), and `setGamepad(partial | null)` calling `bindings.setGamepad(binding)`
+(`null`, or the partial over the current binding or the default one while off; emits `'gamepad'`
+and returns what it wrote). Every binding in `onSpawned` goes through the bindings' own methods,
+each over a key picked from `options` and a control picked from `options.gamepad` (nothing while
+that is `null`): `this.bindings.followKeymap(this.directionsInput, o => o.keymap)` keeps the
+`DirectionInput`'s keys at `options.keymap` (no `setKeys` special case for it - a controller
+only writes options, the bindings apply them), `this.bindings.followKey(this.keyboard, o =>
+o.jumpKey)` (an observable, piped through `takeUntil(this._onRemoved$)`),
+`this.bindings.followGamepadKey(gamepadInput, this.keyboard, o => o.jumpKey, g => g.jump)`,
+`this.bindings.followGamepadPressed(gamepadInput, g => g.throw)` for an edge-triggered action
+without a key of its own and `this.bindings.followGamepadDirection(gamepadInput,
+this.directionsInput, g => g.move)` - the three that bind are unbound by the bindings themselves
+when `_onRemoved$` next emits. `GgCarHandlingController` nests a `CarHandlingController` with
+bindings of its own: it constructs the child with only the child's options (keymap, steering rate
+and the steer/throttle/brake controls of its own binding - never the gear or handbrake controls),
+forwards `keymap` and the car controls of every `setKeys`/`setGamepad` to the child's methods, and
+mirrors a change made through the child's own public `setKeys`/`setGamepad` back into its `options`
+and `bindingsChanged$` (comparing first, so a change forwarded down is not mirrored up again) - the
+two `options` objects never drift. These wrap the free functions `followKey`,
 `followGamepadKey`, `followGamepadPressed` and `followGamepadDirection` (for an app's own actions,
 over plain observables) with `option$`/`gamepadOption$`; never `keyboard.bind(this.options.x)`, one
 `gamepadInput.bindKeys` map of all keys, a `switchMap` of `option$` straight onto `pressed$`, or a
@@ -1341,7 +1349,10 @@ What it holds to:
   gamepad, else the first connected one - by every input whose own `gamepadIndex` is `null` (an
   index there is a position in `navigator.getGamepads()`, as before). The gamepad in use is a
   static `inUseDevice` (`{ index, id }`), set by `readGamepad` the first time a control is pushed
-  on the gamepad read by default and cleared when it is gone or a `choice` is assigned: without
+  on the gamepad read by default and cleared when a poll finds it gone (`findGamepad`, the polling
+  path only - `select()` itself is pure, since `selectedGamepad()`/`chooseNext()` call it from a
+  menu, and a label refresh during a momentary disconnection must not forget the device) or a
+  `choice` is assigned: without
   it a standard pad whose button is pressed mid-game would displace a non-standard wheel being
   driven with (the first standard pad is preferred over the first listed one, since keyboards and
   pedals list themselves as gamepads), while a device merely listed first and never pushed must
@@ -1364,8 +1375,12 @@ What it holds to:
   `followGamepadPressed`) cannot go by `pressed$` reading `false`: it would bind at once and the
   button still held on the menu's close would fire the action on the restart. They wait on
   `GamepadInput.released$(controls)` instead, which only counts a poll of the gamepad itself (the
-  private `read$`, emitted by `readGamepad` and not by a stop) while `running`. Anything else
-  that must tell "released" from "not read" goes the same way.
+  private `read$`, emitted by `readGamepad` and not by a stop) and only once the values are those
+  of a read (`hasRead`: `false` from a start until the first poll, when the values are still empty,
+  and after a stop) - `running` alone would bind at once in the frame a world's input is switched
+  on and a captured binding applied, before the first poll, and the button still held from the
+  menu would act. A spec therefore polls once with nothing pushed after starting a gamepad input
+  before its first press. Anything else that must tell "released" from "not read" goes the same way.
 - **Controls are strings by index** (`GamepadControl`: `'b7'`, `'a0-'`, `'a0+'`), never names: the
   standard mapping is only a convention the browser reports (`standardMapping`), and a DirectInput
   pad numbers its buttons differently. `GamepadInput.controlName` turns one into a menu label. A

@@ -7,6 +7,7 @@ import {
   GgWorld,
   IEntity,
   KeyboardInput,
+  sameBinding,
   TickOrder,
 } from '../../../../base';
 import { GgCarEntity } from '../../gg-car/gg-car.entity';
@@ -123,10 +124,10 @@ export class GgCarHandlingController extends IEntity implements IRebindableContr
    * ```
    */
   public setKeys(keys: Partial<GgCarHandlingControllerKeys>): void {
+    this.bindings.setKeys(keys);
     if (keys.keymap !== undefined) {
       this.carHandlingInput.setKeys({ keymap: keys.keymap });
     }
-    this.bindings.setKeys(keys);
   }
 
   /**
@@ -142,7 +143,12 @@ export class GgCarHandlingController extends IEntity implements IRebindableContr
    * ```
    */
   public setGamepad(binding: Partial<GgCarGamepadBinding> | null): void {
-    this.carHandlingInput.setGamepad(this.bindings.setGamepad(binding));
+    this.carHandlingInput.setGamepad(GgCarHandlingController.carControls(this.bindings.setGamepad(binding)));
+  }
+
+  /** The steering and pedal controls of `binding`: what `carHandlingInput` is given, never the gear ones */
+  private static carControls(binding: GgCarGamepadBinding | null): CarGamepadBinding | null {
+    return binding && { steer: binding.steer, throttle: binding.throttle, brake: binding.brake };
   }
 
   constructor(
@@ -162,9 +168,27 @@ export class GgCarHandlingController extends IEntity implements IRebindableContr
       ...options,
       gamepad: options.gamepad === undefined ? DEFAULT_GG_CAR_GAMEPAD_BINDING : options.gamepad,
     };
-    this.carHandlingInput = new CarHandlingController(keyboard, this.options);
+    this.carHandlingInput = new CarHandlingController(keyboard, {
+      keymap: this.options.keymap,
+      maxSteerDeltaPerSecond: this.options.maxSteerDeltaPerSecond,
+      gamepad: GgCarHandlingController.carControls(this.options.gamepad ?? null),
+    });
     this.addChildren(this.carHandlingInput);
     this.bindings = new ControllerBindings(this.options, DEFAULT_GG_CAR_GAMEPAD_BINDING, this._onRemoved$);
+    // `carHandlingInput.setKeys`/`setGamepad` are public too: what is changed there is mirrored
+    // here, so `options` and `bindingsChanged$` tell the truth whichever of the two was called.
+    // A change made through this controller arrives already mirrored and is left alone.
+    this.carHandlingInput.bindingsChanged$.subscribe(change => {
+      const child = this.carHandlingInput.options;
+      if (change === 'keys' && child.keymap !== this.options.keymap) {
+        this.bindings.setKeys({ keymap: child.keymap });
+      } else if (
+        change === 'gamepad' &&
+        !sameBinding(child.gamepad, GgCarHandlingController.carControls(this.options.gamepad ?? null))
+      ) {
+        this.setGamepad(child.gamepad ?? null);
+      }
+    });
   }
 
   async onSpawned(world: GgWorld<any, any>): Promise<void> {

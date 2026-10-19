@@ -3,6 +3,7 @@ import {
   BindingsChange,
   ControllerBindings,
   DirectionInput,
+  DirectionKeymap,
   followGamepadDirection,
   followGamepadKey,
   followGamepadPressed,
@@ -73,6 +74,8 @@ describe('followGamepadKey', () => {
     pads = stubGamepads();
     gamepadInput = new GamepadInput();
     gamepadInput.start();
+    // a binding waits for a read of the gamepad with its control released: one poll with nothing pushed
+    gamepadInput.poll();
     keyboard = new KeyboardInput();
     keyboard.start();
   });
@@ -210,6 +213,25 @@ describe('followGamepadKey', () => {
     expect(values).toEqual([false, true, false, true]);
   });
 
+  it('does not press the key for a control held at the first poll after a start', () => {
+    // a world's input switched on (gamepad input started) and a binding made in the same frame, with
+    // the button that closed the menu still held: nothing has been read yet, so the hold waits
+    const values: boolean[] = [];
+    keyboard.bind('Space').subscribe(v => values.push(v));
+    gamepadInput.stop();
+    gamepadInput.start();
+    const unbind = followGamepadKey(gamepadInput, keyboard, of('Space'), of('b0'));
+    pads.set({ buttons: { 0: true } });
+    gamepadInput.poll();
+    expect(values).toEqual([false]);
+    pads.set({ buttons: {} });
+    gamepadInput.poll();
+    pads.set({ buttons: { 0: true } });
+    gamepadInput.poll();
+    expect(values).toEqual([false, true]);
+    unbind();
+  });
+
   it('moves the hold over to new controls of the same key', () => {
     const values: boolean[] = [];
     keyboard.bind('KeyE').subscribe(v => values.push(v));
@@ -270,6 +292,20 @@ describe('ControllerBindings', () => {
     expect(options).toEqual({ fireKey: 'KeyG', keymap: 'wasd', gamepad: null });
     expect(changes).toEqual(['keys']);
     expect(fireKeys).toEqual(['KeyF', 'KeyG']);
+  });
+
+  it('keeps a direction input at the picked keymap through setKeys until unbindOn$ emits', () => {
+    const options: Options = { fireKey: 'KeyF', keymap: 'wasd', gamepad: null };
+    const unbindOn$ = new Subject<void>();
+    const bindings = new ControllerBindings(options, DEFAULT_GAMEPAD, unbindOn$);
+    const direction = new DirectionInput(new KeyboardInput(), 'arrows');
+    bindings.followKeymap(direction, o => o.keymap as DirectionKeymap);
+    expect(direction.keymap).toBe('wasd');
+    bindings.setKeys({ keymap: 'arrows' });
+    expect(direction.keymap).toBe('arrows');
+    unbindOn$.next();
+    bindings.setKeys({ keymap: 'wasd' });
+    expect(direction.keymap).toBe('arrows');
   });
 
   it('merges a gamepad partial over the current binding, the default while off, and null turns it off', () => {

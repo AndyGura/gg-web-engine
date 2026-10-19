@@ -372,8 +372,35 @@ describe('GamepadInput', () => {
       const named = (id: string) => GamepadInput.gamepadName(fakeGamepad({ id }));
       expect(named('Xbox 360 Controller (XInput STANDARD GAMEPAD)')).toBe('Xbox 360 Controller');
       expect(named('USB Gamepad (Vendor: 0079 Product: 0011)')).toBe('USB Gamepad');
+      expect(named('Pad (STANDARD GAMEPAD Vendor: 046d Product: c21d)')).toBe('Pad');
       expect(named('45e-28e-Xbox 360 Wired Controller')).toBe('Xbox 360 Wired Controller');
       expect(named('(STANDARD GAMEPAD)')).toBe('(STANDARD GAMEPAD)');
+      // parentheses of the product name itself stay
+      expect(named('Logitech (R) Gamepad F310 (STANDARD GAMEPAD Vendor: 046d Product: c21d)')).toBe(
+        'Logitech (R) Gamepad F310',
+      );
+      expect(named('8BitDo (Wired) Controller')).toBe('8BitDo (Wired) Controller');
+    });
+
+    it('keeps the gamepad in use over a menu reading the selection while it is disconnected for a moment', () => {
+      const wheel = fakeGamepad({ id: 'Wheel', index: 0, mapping: '', buttons: { 0: true } });
+      pads.setAll([wheel]);
+      input.poll();
+      pads.setAll([wheel, padA]);
+      input.poll();
+      expect(input.gamepad).toBe(wheel);
+      // the wheel drops out between two polls while the menu refreshes its label
+      pads.setAll([null, padA]);
+      expect(GamepadInput.selectedGamepad()).toBe(padA);
+      pads.setAll([wheel, padA]);
+      input.poll();
+      expect(input.gamepad).toBe(wheel);
+      // gone at a poll: forgotten, the pad takes over
+      pads.setAll([null, padA]);
+      input.poll();
+      pads.setAll([wheel, padA]);
+      input.poll();
+      expect(input.gamepad).toBe(padA);
     });
 
     it('lists no gamepad when the browser withholds them', () => {

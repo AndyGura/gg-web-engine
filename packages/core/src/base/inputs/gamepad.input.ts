@@ -291,11 +291,20 @@ export class GamepadInput extends IInput {
   }
 
   /**
-   * A gamepad's name for a menu: its `id` without what browsers add to it - Chromium's
-   * "(STANDARD GAMEPAD Vendor: 045e Product: 028e)", Firefox's "045e-028e-" prefix
+   * A gamepad's name for a menu: its `id` without what browsers add to it - Chromium's trailing
+   * "(STANDARD GAMEPAD Vendor: 045e Product: 028e)" / "(XInput STANDARD GAMEPAD)" /
+   * "(Vendor: 045e Product: 028e)", Firefox's "045e-028e-" prefix. Parentheses of the product
+   * name itself ("Logitech (R) Gamepad F310") stay.
    */
   public static gamepadName(gamepad: Gamepad): string {
-    return gamepad.id.replace(/\s*\(.*$/, '').replace(/^[0-9a-f]{1,4}-[0-9a-f]{1,4}-/i, '') || gamepad.id;
+    return (
+      gamepad.id
+        .replace(
+          /\s*\((?:(?:XInput\s+)?STANDARD GAMEPAD(?:\s+Vendor: \w+ Product: \w+)?|Vendor: \w+ Product: \w+)\)\s*$/i,
+          '',
+        )
+        .replace(/^[0-9a-f]{1,4}-[0-9a-f]{1,4}-/i, '') || gamepad.id
+    );
   }
 
   private static select(gamepads: Gamepad[]): Gamepad | null {
@@ -307,14 +316,18 @@ export class GamepadInput extends IInput {
         return chosen;
       }
     }
-    const inUse = GamepadInput.inUseDevice;
-    const current = inUse && gamepads.find(x => x.index === inUse.index && x.id === inUse.id);
+    const current = GamepadInput.findInUse(gamepads);
     if (current) {
       return current;
     }
     // a gamepad merely listed first was never used: a gamepad listed (pressed) later takes over
-    GamepadInput.inUseDevice = null;
     return gamepads.find(x => x.mapping === 'standard') || gamepads[0] || null;
+  }
+
+  /** The gamepad in use among `gamepads`, if it is connected */
+  private static findInUse(gamepads: Gamepad[]): Gamepad | undefined {
+    const inUse = GamepadInput.inUseDevice;
+    return (inUse && gamepads.find(x => x.index === inUse.index && x.id === inUse.id)) || undefined;
   }
 
   public readonly options: GamepadInputOptions;
@@ -458,15 +471,16 @@ export class GamepadInput extends IInput {
   /**
    * Emits once, when `controls` are read released: on subscription if they are, else on the first
    * poll none of them is pushed on. Only a poll counts, so while this input is stopped (the
-   * world's `inputEnabled` off, for a controls menu) - every control reads as released then, which
-   * says nothing about the hand on the gamepad - it waits for a poll after the restart. For a
+   * world's `inputEnabled` off, for a controls menu), and between a start and its first poll -
+   * every control reads as released then, which says nothing about the hand on the gamepad - it
+   * waits for a poll after the restart. For a
    * control a menu captured, still held when it is assigned: what to act on it only from its next
    * push waits on this (`followGamepadKey`, `followGamepadPressed`).
    */
   public released$(controls: GamepadControls): Observable<void> {
     return this.read$.pipe(
       startWith(undefined),
-      filter(() => this.running && !this.pressed(controls)),
+      filter(() => this.hasRead && !this.pressed(controls)),
       take(1),
       map(() => undefined),
     );
@@ -647,6 +661,11 @@ export class GamepadInput extends IInput {
 
   private findGamepad(gamepads: Gamepad[]): Gamepad | null {
     if (this.options.gamepadIndex === null) {
+      if (GamepadInput.inUseDevice && !GamepadInput.findInUse(gamepads)) {
+        // the gamepad in use is gone: forgotten by a poll only, never by a menu reading
+        // `selectedGamepad()` during a momentary disconnection
+        GamepadInput.inUseDevice = null;
+      }
       return GamepadInput.select(gamepads);
     }
     const index = this.options.gamepadIndex;

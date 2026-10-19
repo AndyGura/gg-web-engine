@@ -244,9 +244,11 @@ describe('KeyboardInput', () => {
     });
 
     it("names keys after the player's layout once loaded", async () => {
-      setLayout({ KeyQ: 'a', Digit1: '&', Semicolon: 'm', Space: ' ' });
+      setLayout({ KeyQ: 'a', Digit1: '&', Semicolon: 'm', Space: ' ', Minus: 'ß' });
       expect(await KeyboardInput.loadKeyboardLayout()).toBe(true);
       expect(KeyboardInput.keyName('KeyQ')).toBe('A');
+      // a one-character label stays one: 'ß'.toUpperCase() is 'SS'
+      expect(KeyboardInput.keyName('Minus')).toBe('ß');
       expect(KeyboardInput.keyName('Digit1')).toBe('&');
       expect(KeyboardInput.keyName('Semicolon')).toBe('M');
       expect(KeyboardInput.keyName('Space')).toBe('Space');

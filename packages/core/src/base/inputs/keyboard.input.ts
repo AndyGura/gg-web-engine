@@ -144,7 +144,9 @@ export class KeyboardInput extends IInput {
     }
     const printed = keyboardLayoutMap?.get(code);
     if (printed && printed.trim()) {
-      return printed.toUpperCase();
+      // a label of one character stays one: 'ß'.toUpperCase() is 'SS'
+      const upper = printed.toUpperCase();
+      return upper.length === printed.length ? upper : printed;
     }
     const us = US_LAYOUT_KEY_NAMES.get(code);
     if (us) {

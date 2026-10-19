@@ -1,4 +1,4 @@
-import { GgCarHandlingController, KeyboardInput } from '../../../../../src';
+import { DEFAULT_GG_CAR_GAMEPAD_BINDING, GgCarHandlingController, KeyboardInput } from '../../../../../src';
 import { MockWorld } from '../../../../mocks/world.mock';
 import { stubGamepads } from '../../../../mocks/gamepad.mock';
 
@@ -226,8 +226,45 @@ describe('GgCarHandlingController', () => {
       expect(car.acceleration).toBe(1);
     });
 
+    it('hands the child only its steering and pedal controls, and mirrors changes made on the child', async () => {
+      const { controller } = await setup();
+      const changes: string[] = [];
+      controller.bindingsChanged$.subscribe(c => changes.push(c));
+      expect(controller.carHandlingInput.options.gamepad).toEqual({
+        steer: DEFAULT_GG_CAR_GAMEPAD_BINDING.steer,
+        throttle: 'b7',
+        brake: 'b6',
+      });
+      controller.setGamepad({ gearUp: 'b3', throttle: 'b0' });
+      expect(controller.carHandlingInput.options.gamepad).toEqual({
+        steer: DEFAULT_GG_CAR_GAMEPAD_BINDING.steer,
+        throttle: 'b0',
+        brake: 'b6',
+      });
+      expect(changes).toEqual(['gamepad']);
+
+      // the child's own public API: `options` and `bindingsChanged$` here follow
+      controller.carHandlingInput.setKeys({ keymap: 'wasd' });
+      expect(controller.options.keymap).toBe('wasd');
+      controller.carHandlingInput.setGamepad({ brake: 'b2' });
+      expect(controller.options.gamepad!.brake).toBe('b2');
+      expect(controller.options.gamepad!.gearUp).toBe('b3');
+      controller.carHandlingInput.setGamepad(null);
+      expect(controller.options.gamepad).toBeNull();
+      expect(changes).toEqual(['gamepad', 'keys', 'gamepad', 'gamepad']);
+
+      // a change made here reaches the child once, and is not mirrored back
+      const childChanges: string[] = [];
+      controller.carHandlingInput.bindingsChanged$.subscribe(c => childChanges.push(c));
+      controller.setKeys({ keymap: 'arrows' });
+      controller.setGamepad({ gearDown: 'b9' });
+      expect(childChanges).toEqual(['keys', 'gamepad']);
+      expect(changes).toEqual(['gamepad', 'keys', 'gamepad', 'gamepad', 'keys', 'gamepad']);
+    });
+
     it('drives, shifts and pulls the handbrake from the world gamepad with the default binding', async () => {
       const { world, car } = await setup();
+      world.gamepadInput.poll(); // a binding counts a control from the first read with it released
       pads.set({ axes: [-0.5, 0], buttons: { 7: 1, 5: true, 0: true } });
       world.gamepadInput.poll();
       tick(world, 0, 16);

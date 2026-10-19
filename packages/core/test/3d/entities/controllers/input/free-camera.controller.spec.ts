@@ -26,6 +26,7 @@ describe('FreeCameraController', () => {
       pads = stubGamepads();
       gamepadInput = new GamepadInput();
       gamepadInput.start();
+      gamepadInput.poll(); // a binding counts a control from the first read with it released
     });
     afterEach(() => {
       gamepadInput.stop();

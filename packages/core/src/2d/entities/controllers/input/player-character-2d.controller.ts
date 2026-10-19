@@ -150,9 +150,6 @@ export class PlayerCharacterController2d<TypeDoc extends Gg2dWorldTypeDocRepo = 
    * ```
    */
   public setKeys(keys: Partial<PlayerCharacterController2dKeys>): void {
-    if (keys.keymap !== undefined) {
-      this.directionsInput.keymap = keys.keymap;
-    }
     this.bindings.setKeys(keys);
   }
 
@@ -209,6 +206,7 @@ export class PlayerCharacterController2d<TypeDoc extends Gg2dWorldTypeDocRepo = 
 
   async onSpawned(world: Gg2dWorld<TypeDoc>): Promise<void> {
     super.onSpawned(world);
+    this.bindings.followKeymap(this.directionsInput, o => o.keymap);
 
     this.directionsInput.direction$
       .pipe(

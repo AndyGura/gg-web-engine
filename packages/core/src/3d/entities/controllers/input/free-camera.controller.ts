@@ -203,9 +203,6 @@ export class FreeCameraController extends IEntity implements IRebindableControll
    * ```
    */
   public setKeys(keys: Partial<FreeCameraControllerKeys>): void {
-    if (keys.keymap !== undefined) {
-      this.directionsInput.keymap = keys.keymap;
-    }
     this.bindings.setKeys(keys);
   }
 
@@ -284,6 +281,7 @@ export class FreeCameraController extends IEntity implements IRebindableControll
 
   async onSpawned(world: GgWorld<any, any>): Promise<void> {
     await super.onSpawned(world);
+    this.bindings.followKeymap(this.directionsInput, o => o.keymap);
     this._spherical = Pnt3.toSpherical(Pnt3.rot({ x: 0, y: 0, z: -1 }, this.camera.rotation));
     // Subscribe to keyboard input for movement controls: up, down, boost and, for a camera with a
     // fov, zoom out and in

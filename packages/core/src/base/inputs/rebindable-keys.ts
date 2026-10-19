@@ -11,7 +11,7 @@ import {
   take,
 } from 'rxjs';
 import { KeyboardInput } from './keyboard.input';
-import { DirectionInput } from './direction.input';
+import { DirectionInput, DirectionKeymap } from './direction.input';
 import { GamepadControls, GamepadDirectionBinding, GamepadInput } from './gamepad.input';
 
 /**
@@ -84,6 +84,18 @@ export function followGamepadKey(
   code$: Observable<string | null>,
   controls$: Observable<GamepadControls | null | undefined>,
 ): () => void {
+  return followGamepadKeyPair(gamepadInput, keyboard, combineLatest([code$, controls$]));
+}
+
+/**
+ * `followGamepadKey` over one observable of the code and controls together: one emission per
+ * change where a `combineLatest` of two streams derived from the same source would give two
+ */
+function followGamepadKeyPair(
+  gamepadInput: GamepadInput,
+  keyboard: KeyboardInput,
+  pair$: Observable<readonly [string | null, GamepadControls | null | undefined]>,
+): () => void {
   let unbind: (() => void) | null = null;
   const bindOnceReleased = (code: string, current: GamepadControls): (() => void) => {
     let bound: (() => void) | null = null;
@@ -95,7 +107,7 @@ export function followGamepadKey(
       bound?.();
     };
   };
-  const subscription = combineLatest([code$, controls$])
+  const subscription = pair$
     .pipe(distinctUntilChanged(([codeA, a], [codeB, b]) => codeA === codeB && sameBinding(a, b)))
     .subscribe(([code, current]) => {
       unbind?.();
@@ -158,7 +170,9 @@ export function isRebindableController(x: unknown): x is IRebindableController {
  * follow the options from then on: `followKey`, `followGamepadKey`, `followGamepadPressed` and
  * `followGamepadDirection` here are the functions of the same names over a key picked from
  * `options` and a control picked from `options.gamepad` (nothing while that is `null`), and the
- * two that bind are unbound when `unbindOn$` next emits - the controller's `_onRemoved$`. `option$
+ * two that bind are unbound when `unbindOn$` next emits - the controller's `_onRemoved$`.
+ * `followKeymap(directionInput, pick)` keeps a `DirectionInput`'s `keymap` at the one picked from
+ * `options`, unbound the same way. `option$
  * (pick)` is the picked value now and after every change, for anything else that follows an
  * option. The controller's `bindingsChanged$` is `changed$`.
  *
@@ -229,7 +243,11 @@ export class ControllerBindings<O extends { gamepad?: G | null }, G extends obje
     pickControls: (gamepad: G) => GamepadControls | null | undefined,
   ): void {
     this.untilUnbound(
-      followGamepadKey(gamepadInput, keyboard, this.option$(pickCode), this.gamepadOption$(pickControls)),
+      followGamepadKeyPair(
+        gamepadInput,
+        keyboard,
+        this.option$(o => [pickCode(o), o.gamepad ? pickControls(o.gamepad) : null] as const),
+      ),
     );
   }
 
@@ -253,15 +271,30 @@ export class ControllerBindings<O extends { gamepad?: G | null }, G extends obje
     this.untilUnbound(followGamepadDirection(gamepadInput, direction, this.gamepadOption$(pickBinding)));
   }
 
+  /**
+   * Keeps `direction.keymap` at the keymap `pickKeymap` picks from `options`, now and after every
+   * change, until `unbindOn$` next emits: how a controller's `DirectionInput` follows its
+   * `options.keymap` through `setKeys`
+   */
+  public followKeymap(direction: DirectionInput, pickKeymap: (options: O) => DirectionKeymap | null): void {
+    const subscription = this.option$(pickKeymap).subscribe(keymap => (direction.keymap = keymap));
+    this.untilUnbound(() => subscription.unsubscribe());
+  }
+
   private untilUnbound(unbind: () => void): void {
     this.unbindOn$.pipe(take(1)).subscribe(unbind);
   }
 
-  /** Copies the keys given (not the `undefined` ones) onto `options` and emits `'keys'` */
-  public setKeys(keys: Partial<O>): void {
-    for (const name of Object.keys(keys) as (keyof O)[]) {
-      if (keys[name] !== undefined) {
-        this.options[name] = keys[name] as O[keyof O];
+  /**
+   * Copies the keys given (not the `undefined` ones) onto `options` and emits `'keys'`. The
+   * `gamepad` binding is not a key: `setGamepad` writes it, so a `'keys'` change never stands for
+   * a gamepad change (the touch layout of `@gg-web-engine/mobile-controls` rebuilds on `'keys'` only).
+   */
+  public setKeys(keys: Partial<Omit<O, 'gamepad'>>): void {
+    const given = keys as Partial<O>;
+    for (const name of Object.keys(given) as (keyof O)[]) {
+      if (given[name] !== undefined) {
+        this.options[name] = given[name] as O[keyof O];
       }
     }
     this._changed$.next('keys');

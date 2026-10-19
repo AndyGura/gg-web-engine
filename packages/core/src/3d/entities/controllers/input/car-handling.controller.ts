@@ -74,9 +74,6 @@ export class CarHandlingController extends IEntity implements IRebindableControl
    * ```
    */
   public setKeys(keys: Partial<CarHandlingControllerKeys>): void {
-    if (keys.keymap !== undefined) {
-      this.directionsInput.keymap = keys.keymap;
-    }
     this.bindings.setKeys(keys);
   }
 
@@ -120,6 +117,7 @@ export class CarHandlingController extends IEntity implements IRebindableControl
 
   async onSpawned(world: GgWorld<any, any>): Promise<void> {
     super.onSpawned(world);
+    this.bindings.followKeymap(this.directionsInput, o => o.keymap);
     let input: CarHandlingOutput = { upDown: 0, leftRight: 0 };
     combineLatest([this.directionsInput.direction$, this.tick$])
       .pipe(
