@@ -742,9 +742,11 @@ flow as a stack of DOM layers. The module imports nothing from an adapter and no
   has no package-private access. It is `@internal`; app code has no use for it.
 - **Gamepad keys of a screen** (`Screen.bindGamepadKeys`) are opt-in, never on by default: on a
   game screen, B (Escape in `GAMEPAD_MENU_KEYS`) is a gameplay button and would open the pause
-  menu. They bind on `ScreenManager.gamepadInput` (created and started on first use, stopped in
-  `dispose`) with `bindKeys(..., { edge: true, repeat: arrows })` and end with the screen's
-  teardowns; a call before the screen is pushed waits for `attach`. `edge` is what makes it work
+  menu. They bind through `ScreenManager.bindGamepadKeys` on `ScreenManager.gamepadInput`
+  (created on first use; started by the first live binding and stopped by the last one ending,
+  or in `dispose` - never left polling `navigator.getGamepads()` every frame next to the world's
+  own input during gameplay) with `bindKeys(..., { edge: true, repeat: arrows })` and end with the
+  screen's teardowns; a call before the screen is pushed waits for `attach`. `edge` is what makes it work
   across screens: B closing the pause menu is still held when the game screen's keyboard starts,
   and a binding re-pressing held keys every poll (the gameplay default) would open the menu again
   at once. An edge binding presses only a control pushed while the keyboard runs, and drops a hold
@@ -1317,13 +1319,23 @@ What it holds to:
   as before). A choice by id survives a reconnect and a reload, an index does not; `nth` tells
   several pads of one model apart, and a choice whose `nth` is gone takes the last of that id.
   `Gamepad` objects are snapshots, so a device is told apart by `index` and `id`, never identity.
-  When the polled device changes from one gamepad to another, or one is read again after a poll
-  with none (the chosen one plugged back in), `readGamepad` reports nothing on `controlPushed$`
-  for that poll: what is already held on the new one was not pushed now. The first gamepad ever
-  read is the exception (a browser lists a gamepad only once a button was pressed on it, and that
-  press is the one meant), which is why `device` keeps the last gamepad over a disconnection and
-  the test is on the previous poll's `_connected$`.
+  When the polled device changes from one gamepad to another while one was connected (a new
+  choice), `readGamepad` reports nothing on `controlPushed$` for that poll: what is already held
+  on the new one was not pushed now. A gamepad read after a poll with none - the first ever, or
+  one plugged back in - is not a switch: a browser lists a gamepad only once a button was pressed
+  on it, that press is the one meant, and a "press any button" menu is waiting for exactly it.
+  That is why `device` keeps the last gamepad over a disconnection and the test is on the previous
+  poll's `_connected$`.
   `test/mocks/gamepad.mock.ts`'s `fakeGamepad` takes `id`/`index` (default `'fake'`/0) for this.
+- **A stopped `GamepadInput` reads every control as released** (`stopInternal` clears the button
+  and axis values and emits `polled$`), which says nothing about the hand on the gamepad - and a
+  controls menu runs with the world's `inputEnabled` off, i.e. with that very input stopped. So
+  "a control held when it is assigned counts from its next push" (`followGamepadKey`,
+  `followGamepadPressed`) cannot go by `pressed$` reading `false`: it would bind at once and the
+  button still held on the menu's close would fire the action on the restart. They wait on
+  `GamepadInput.released$(controls)` instead, which only counts a poll of the gamepad itself (the
+  private `read$`, emitted by `readGamepad` and not by a stop) while `running`. Anything else
+  that must tell "released" from "not read" goes the same way.
 - **Controls are strings by index** (`GamepadControl`: `'b7'`, `'a0-'`, `'a0+'`), never names: the
   standard mapping is only a convention the browser reports (`standardMapping`), and a DirectInput
   pad numbers its buttons differently. `GamepadInput.controlName` turns one into a menu label. A

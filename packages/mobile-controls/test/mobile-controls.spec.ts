@@ -114,7 +114,7 @@ describe('MobileControls', () => {
     expect(ids(controls)).toEqual(['steer-left', 'steer-right', 'accelerate', 'brake']);
   });
 
-  it("rebuilds a shown layout when its controller's keys change, letting go of the old key", () => {
+  it("rebuilds a shown layout when its controller's keys change, pressing the new key", () => {
     const car = new GgCarHandlingController(world.keyboardInput, null);
     world.addEntity(car);
     const controls = new MobileControls({ enabled: true });
@@ -124,9 +124,36 @@ describe('MobileControls', () => {
     world.keyboardInput.bind('Space').subscribe(v => space.push(v));
     world.keyboardInput.bind('KeyB').subscribe(v => b.push(v));
 
-    pointer(control(controls, 'handbrake'), 'pointerdown');
+    const handbrake = control(controls, 'handbrake');
     car.setKeys({ handbrakeKey: 'KeyB' });
+    expect(control(controls, 'handbrake')).not.toBe(handbrake);
+    pointer(control(controls, 'handbrake'), 'pointerdown');
+    pointer(control(controls, 'handbrake'), 'pointerup');
+    expect(b).toEqual([false, true, false]);
+    expect(space).toEqual([false]);
+  });
+
+  it("keeps a held button until the finger lifts when its controller's keys change, then rebuilds", () => {
+    const car = new GgCarHandlingController(world.keyboardInput, null);
+    world.addEntity(car);
+    const controls = new MobileControls({ enabled: true });
+    world.addEntity(controls);
+    const space: boolean[] = [];
+    const b: boolean[] = [];
+    world.keyboardInput.bind('Space').subscribe(v => space.push(v));
+    world.keyboardInput.bind('KeyB').subscribe(v => b.push(v));
+
+    const handbrake = control(controls, 'handbrake');
+    pointer(handbrake, 'pointerdown');
+    car.setKeys({ handbrakeKey: 'KeyB' });
+    tick(world);
+    // the same button, still held: not taken from under the finger
+    expect(control(controls, 'handbrake')).toBe(handbrake);
+    expect(space).toEqual([false, true]);
+    pointer(handbrake, 'pointerup');
     expect(space).toEqual([false, true, false]);
+    tick(world);
+    expect(control(controls, 'handbrake')).not.toBe(handbrake);
     pointer(control(controls, 'handbrake'), 'pointerdown');
     pointer(control(controls, 'handbrake'), 'pointerup');
     expect(b).toEqual([false, true, false]);

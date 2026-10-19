@@ -389,8 +389,9 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   button still held when `setGamepad` assigns it - the one a menu just captured - counts from its
   next push, so the capture never fires the action. For your own actions, `followKey(world.keyboardInput,
   code$)` reports the state of whichever key an observable code names last,
-  `followGamepadKey(world.gamepadInput, world.keyboardInput, code$, 'b2')` keeps a gamepad button
-  on it, and `followGamepadPressed(world.gamepadInput, controls$)` is the button's own down/up; a
+  `followGamepadKey(world.gamepadInput, world.keyboardInput, code$, controls$)` keeps a gamepad
+  button on it (an observable of the controls too; `of('b2')` for a fixed one), and
+  `followGamepadPressed(world.gamepadInput, controls$)` is the button's own down/up; a
   controller of your own gets `setKeys`/`setGamepad`/`option$` from `ControllerBindings` and
   declares `implements IRebindableController` so `MobileControls` refreshes its layout too. Label keys with `KeyboardInput.keyName(code)` ("W", "Left", "Num 8"; in the player's
   layout on Chromium - `await KeyboardInput.loadKeyboardLayout()` before showing the menu, so

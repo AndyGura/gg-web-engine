@@ -1,5 +1,5 @@
 import { BehaviorSubject, Observable, Subject, takeUntil } from 'rxjs';
-import { distinctUntilChanged, map, startWith } from 'rxjs/operators';
+import { distinctUntilChanged, filter, map, startWith, take } from 'rxjs/operators';
 import { IInput } from './i-input';
 import { KeyboardInput } from './keyboard.input';
 import { DirectionInput } from './direction.input';
@@ -285,7 +285,10 @@ export class GamepadInput extends IInput {
 
   public readonly options: GamepadInputOptions;
 
+  /** after every poll, and after a stop (every control reads as released then) */
   private readonly polled$: Subject<void> = new Subject<void>();
+  /** after every poll of the gamepad itself: not after a stop */
+  private readonly read$: Subject<void> = new Subject<void>();
   private readonly _connected$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
   private readonly _inUse$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
   private readonly _controlPushed$: Subject<GamepadControl> = new Subject<GamepadControl>();
@@ -298,8 +301,10 @@ export class GamepadInput extends IInput {
   /** raw axis values of the poll before, to tell a stick moved from one resting off center */
   private previousAxes: number[] = [];
   private pushedRaw: Set<GamepadControl> = new Set<GamepadControl>();
-  /** the device read on the last poll, told apart by index and id (`Gamepad` objects are snapshots) */
-  /** the gamepad read last, kept over a disconnection */
+  /**
+   * the gamepad read last, told apart by index and id (`Gamepad` objects are snapshots), kept over
+   * a disconnection
+   */
   private device: { index: number; id: string } | null = null;
 
   constructor(options: Partial<GamepadInputOptions> = {}) {
@@ -408,6 +413,23 @@ export class GamepadInput extends IInput {
       startWith(undefined),
       map(() => this.pressed(controls)),
       distinctUntilChanged(),
+    );
+  }
+
+  /**
+   * Emits once, when `controls` are read released: on subscription if they are, else on the first
+   * poll none of them is pushed on. Only a poll counts, so while this input is stopped (the
+   * world's `inputEnabled` off, for a controls menu) - every control reads as released then, which
+   * says nothing about the hand on the gamepad - it waits for a poll after the restart. For a
+   * control a menu captured, still held when it is assigned: what to act on it only from its next
+   * push waits on this (`followGamepadKey`, `followGamepadPressed`).
+   */
+  public released$(controls: GamepadControls): Observable<void> {
+    return this.read$.pipe(
+      startWith(undefined),
+      filter(() => this.running && !this.pressed(controls)),
+      take(1),
+      map(() => undefined),
     );
   }
 
@@ -595,16 +617,17 @@ export class GamepadInput extends IInput {
       this.buttons = [];
       this.axes = [];
     }
-    // switched to another gamepad (a new choice), or one connected again after none was (the
-    // chosen one plugged back in): what is already held on it was not pushed now, and a controls
-    // menu capturing a control must not take it. The first gamepad ever read is the exception -
-    // browsers list a gamepad only once a button was pressed on it, and that press is the one
-    // meant
+    // switched to another gamepad while one was connected (a new choice): what is already held on
+    // the new one was not pushed now, and a controls menu capturing a control must not take it. A
+    // gamepad read after none was - the first ever, or one plugged back in - is no switch: browsers
+    // list a gamepad only once a button was pressed on it, and that press is the one meant (a
+    // "press any button" menu waits for exactly it)
     const device = gamepad && { index: gamepad.index, id: gamepad.id };
     const switched =
       !!device &&
       !!this.device &&
-      (!this._connected$.value || device.index !== this.device.index || device.id !== this.device.id);
+      this._connected$.value &&
+      (device.index !== this.device.index || device.id !== this.device.id);
     if (device) {
       this.device = device;
     }
@@ -617,6 +640,7 @@ export class GamepadInput extends IInput {
       this._inUse$.next(true);
     }
     this.polled$.next();
+    this.read$.next();
     for (const control of newlyPushed) {
       this._controlPushed$.next(control);
     }

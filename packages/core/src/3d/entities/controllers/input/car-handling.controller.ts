@@ -110,8 +110,11 @@ export class CarHandlingController extends IEntity implements IRebindableControl
     },
   ) {
     super();
-    // a copy: `setKeys` writes to it
-    this.options = { ...options };
+    // a copy: `setKeys` writes to it. `gamepad` left out is the default binding
+    this.options = {
+      ...options,
+      gamepad: options.gamepad === undefined ? DEFAULT_CAR_GAMEPAD_BINDING : options.gamepad,
+    };
     this.directionsInput = new DirectionInput(keyboard, options.keymap);
     this.bindings = new ControllerBindings(this.options, DEFAULT_CAR_GAMEPAD_BINDING);
   }
@@ -153,10 +156,9 @@ export class CarHandlingController extends IEntity implements IRebindableControl
       const unbind = followGamepadDirection(
         world.gamepadInput,
         this.directionsInput,
-        this.bindings.option$(o => {
-          const gamepad = o.gamepad === undefined ? DEFAULT_CAR_GAMEPAD_BINDING : o.gamepad;
-          return gamepad && { x: gamepad.steer, y: { negative: gamepad.brake, positive: gamepad.throttle } };
-        }),
+        this.bindings.option$(
+          ({ gamepad }) => gamepad && { x: gamepad.steer, y: { negative: gamepad.brake, positive: gamepad.throttle } },
+        ),
       );
       this._onRemoved$.pipe(take(1)).subscribe(unbind);
     }

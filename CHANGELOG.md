@@ -48,9 +48,11 @@ where one exists.
   `FreeCameraController` and `ObjectGrabController` writes the given keys (`keymap`, `jumpKey`,
   `gearUpDownKeys`, `grabKey`, ...) to `options` and rebinds them at once, keyboard and gamepad
   buttons alike, and `setGamepad(partial | null)` does the same for the `gamepad` binding (a
-  `null` turns the gamepad off, controls given while it is off go over the default binding). A
-  control already held when it is assigned (the button a menu just captured) counts from its
-  next push. `bindingsChanged$` (the `IRebindableController` contract, `isRebindableController`
+  `null` turns the gamepad off, controls given while it is off go over the default binding,
+  `undefined` ones are left as they are). A control already held when it is assigned (the button
+  a menu just captured) counts from its next push - one the world's gamepad input reads while
+  running, so a menu shown with the world's input off does not make the button that closes it
+  act on the restart (`GamepadInput.released$`). `bindingsChanged$` (the `IRebindableController` contract, `isRebindableController`
   to tell one) emits `'keys'` or `'gamepad'` after either. `followKey(keyboard, code$)`,
   `followGamepadKey(gamepadInput, keyboard, code$, controls$)`,
   `followGamepadPressed(gamepadInput, controls$)` and
@@ -65,9 +67,9 @@ where one exists.
 - `FreeCameraController` options `upDownKeys` (`['KeyE', 'KeyQ']`), `zoomOutInKeys`
   (`['KeyZ', 'KeyC']`) and `boostKey` (`'ShiftLeft'`) for the keys it had built in.
 - `@gg-web-engine/mobile-controls`: a shown layout is rebuilt when its controller's
-  `bindingsChanged$` reports a `'keys'` change, so its buttons press the new keys (a gamepad change
-  leaves it, and the button a finger holds, alone); the free camera layout presses the keys in the
-  controller's `options`.
+  `bindingsChanged$` reports a `'keys'` change, so its buttons press the new keys - once no finger
+  is on it, so a held button is never taken from under one (a gamepad change leaves the layout
+  alone); the free camera layout presses the keys in the controller's `options`.
 - Helpers for a controls menu on `KeyboardInput`: `keyName(code)` gives a short label ("W",
   "Left", "Num 8", "L Shift") in the player's keyboard layout where the browser reports it
   (`loadKeyboardLayout()`, Chromium), and `isBindable(code)` rejects keys the browser or OS keeps
@@ -96,9 +98,9 @@ where one exists.
 
 ### Fixed
 - `GamepadInput.controlPushed$` no longer reports the controls already held on a gamepad it
-  switched to (another choice) or that connected again after none was (the chosen one plugged
-  back in) as pushed, so a controls menu capturing a control doesn't take them. The first gamepad
-  ever read still reports them: the browser lists it because of that very press.
+  switched to (another choice) as pushed, so a controls menu capturing a control doesn't take
+  them. A gamepad read after none was - the first ever, or one plugged back in - still reports
+  them: the browser lists it because of that very press.
 - `@gg-web-engine/pixi`: a display object built without a name no longer reports pixi.js's
   class-name default `label` ("Graphics", "Sprite", ...) as its `name`. Since 0.0.83 an `Entity2d`
   built around such an object adopted that label as its world-unique entity name, so adding a

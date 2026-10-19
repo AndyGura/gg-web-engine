@@ -113,6 +113,8 @@ export class MobileControls extends IEntity {
   private readonly tracked: Set<IEntity> = new Set<IEntity>();
   private readonly layouts: Map<IEntity, MobileControlsLayoutItem[]> = new Map<IEntity, MobileControlsLayoutItem[]>();
   private readonly ownControls: Set<TouchControl> = new Set<TouchControl>();
+  /** controllers whose layout is to be rebuilt (their keys changed) once no finger is on it */
+  private readonly stale: Set<IEntity> = new Set<IEntity>();
   private _enabled: boolean | 'auto';
   private _visible: boolean = true;
 
@@ -223,9 +225,12 @@ export class MobileControls extends IEntity {
 
   /**
    * Builds the layout of `controller` anew - after something its layout was built from has changed
-   * (the car it drives, an option), since a layout is otherwise built once per activation. An
-   * `IRebindableController` (every built-in one) is refreshed without this call when its
-   * `bindingsChanged$` reports a `'keys'` change.
+   * (the car it drives, an option), since a layout is otherwise built once per activation. Done at
+   * once, releasing whatever the layout's controls hold. An `IRebindableController` (every
+   * built-in one) is refreshed without this call when its `bindingsChanged$` reports a `'keys'`
+   * change: at once, or - with a finger on one of its controls at that moment - as soon as the last
+   * one lifts, so a rebind from elsewhere (a controls UI next to the game, a message over the network)
+   * never takes a held button from under a finger.
    */
   public refresh(controller?: IEntity): void {
     for (const key of controller ? [controller] : [...this.layouts.keys()]) {
@@ -330,6 +335,10 @@ export class MobileControls extends IEntity {
     for (const controller of [...this.layouts.keys()]) {
       if (!show || !this.tracked.has(controller) || !controller.active) {
         this.disposeLayout(controller);
+      } else if (this.stale.has(controller) && !this.layouts.get(controller)!.some(this.isTouched)) {
+        // its keys changed: rebuilt now that no finger is on it (rebuilding would take the held
+        // button from under the finger, and the finger's touch cannot move over to the new one)
+        this.disposeLayout(controller);
       }
     }
     if (!show) {
@@ -339,12 +348,13 @@ export class MobileControls extends IEntity {
       if (controller.active && !this.layouts.has(controller)) {
         const items = this.findFactory(controller)!(controller, { world: world!, controls: this });
         // the built-in controllers' `setKeys`: the layout's buttons press keys read when it was built.
-        // Not on a gamepad change, which the layout doesn't read - rebuilding would release the
-        // button a finger holds
+        // Not on a gamepad change, which the layout doesn't read
         if (isRebindableController(controller)) {
-          const subscription = controller.bindingsChanged$
-            .pipe(filter(change => change === 'keys'))
-            .subscribe(() => this.refresh(controller));
+          const subscription = controller.bindingsChanged$.pipe(filter(change => change === 'keys')).subscribe(() => {
+            this.stale.add(controller);
+            // `sync` runs on every tick too, for a layout held at this moment
+            this.sync();
+          });
           items.push({ dispose: () => subscription.unsubscribe() });
         }
         this.layouts.set(controller, items);
@@ -359,7 +369,11 @@ export class MobileControls extends IEntity {
     }
   }
 
+  private readonly isTouched = (item: MobileControlsLayoutItem): boolean =>
+    item instanceof TouchControl && item.touched;
+
   private disposeLayout(controller: IEntity): void {
+    this.stale.delete(controller);
     const items = this.layouts.get(controller);
     if (items) {
       this.layouts.delete(controller);

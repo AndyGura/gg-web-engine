@@ -159,12 +159,12 @@ export class GgCarHandlingController extends IEntity implements IRebindableContr
     },
   ) {
     super();
-    // a copy: `setKeys` writes to it
-    this.options = { ...options };
-    this.carHandlingInput = new CarHandlingController(keyboard, {
+    // a copy: `setKeys` writes to it. `gamepad` left out is the default binding
+    this.options = {
       ...options,
       gamepad: options.gamepad === undefined ? DEFAULT_GG_CAR_GAMEPAD_BINDING : options.gamepad,
-    });
+    };
+    this.carHandlingInput = new CarHandlingController(keyboard, this.options);
     this.addChildren(this.carHandlingInput);
     this.bindings = new ControllerBindings(this.options, DEFAULT_GG_CAR_GAMEPAD_BINDING);
   }
@@ -173,12 +173,8 @@ export class GgCarHandlingController extends IEntity implements IRebindableContr
     super.onSpawned(world);
     const gamepadInput = world.gamepadInput;
     if (gamepadInput) {
-      // `options.gamepad` left out is the default binding
       const controls$ = (pick: (binding: GgCarGamepadBinding) => GamepadControls) =>
-        this.bindings.option$(o => {
-          const gamepad = o.gamepad === undefined ? DEFAULT_GG_CAR_GAMEPAD_BINDING : o.gamepad;
-          return gamepad && pick(gamepad);
-        });
+        this.bindings.option$(({ gamepad }) => gamepad && pick(gamepad));
       const unbinds = [
         followGamepadKey(
           gamepadInput,

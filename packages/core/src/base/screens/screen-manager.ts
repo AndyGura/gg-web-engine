@@ -3,7 +3,8 @@ import { isAbortError, LoadProgress } from '../assets/load-progress';
 import { LoadingScreen } from './loading-screen';
 import { LoadingView } from './loading-view';
 import { Screen } from './screen';
-import { GamepadInput } from '../inputs/gamepad.input';
+import { GamepadBindKeysOptions, GamepadControls, GamepadInput } from '../inputs/gamepad.input';
+import { KeyboardInput } from '../inputs/keyboard.input';
 
 export type ScreenManagerOptions = {
   /**
@@ -139,20 +140,50 @@ export class ScreenManager {
   }
 
   private _gamepadInput: GamepadInput | null = null;
+  /** the live `bindGamepadKeys` bindings: the input runs while there is one */
+  private gamepadBindings = 0;
 
   /**
-   * The gamepad input `Screen.bindGamepadKeys` binds on: one for the manager, created and started
-   * on first use and stopped when the manager is disposed. It reads the gamepad every input reads
-   * (`GamepadInput.choice`), whether or not a screen has a world.
+   * The gamepad input `Screen.bindGamepadKeys` binds on: one for the manager, created on first use.
+   * It reads the gamepad every input reads (`GamepadInput.choice`), whether or not a screen has a
+   * world, and runs only while a screen has gamepad keys bound (`bindGamepadKeys`), so that during
+   * gameplay the world's own input is the one polling the gamepad. To read it at another time
+   * start it yourself; the last binding to end stops it again.
    */
   public get gamepadInput(): GamepadInput {
     if (!this._gamepadInput) {
       this._gamepadInput = new GamepadInput();
-      if (!this.disposed) {
-        this._gamepadInput.start();
-      }
     }
     return this._gamepadInput;
+  }
+
+  /**
+   * `gamepadInput.bindKeys` with the input running for as long as the binding lasts: started by
+   * the first live binding, stopped by the last one ending (or the manager's disposal). What
+   * `Screen.bindGamepadKeys` calls. Returns the function that unbinds.
+   */
+  public bindGamepadKeys(
+    keyboard: KeyboardInput,
+    keys: Readonly<Record<string, GamepadControls>>,
+    options: GamepadBindKeysOptions = {},
+  ): () => void {
+    if (this.disposed) {
+      return () => {};
+    }
+    const input = this.gamepadInput;
+    this.gamepadBindings++;
+    input.start();
+    let unbind: (() => void) | null = input.bindKeys(keyboard, keys, options);
+    return () => {
+      if (!unbind) {
+        return;
+      }
+      unbind();
+      unbind = null;
+      if (--this.gamepadBindings === 0) {
+        input.stop();
+      }
+    };
   }
 
   /** `true` while a transition is running or waiting. */

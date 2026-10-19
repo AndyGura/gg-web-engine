@@ -1,4 +1,4 @@
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, of } from 'rxjs';
 import {
   BindingsChange,
   ControllerBindings,
@@ -89,7 +89,7 @@ describe('followGamepadKey', () => {
     const j: boolean[] = [];
     keyboard.bind('Space').subscribe(v => space.push(v));
     keyboard.bind('KeyJ').subscribe(v => j.push(v));
-    const unbind = followGamepadKey(gamepadInput, keyboard, code$, 'b0');
+    const unbind = followGamepadKey(gamepadInput, keyboard, code$, of('b0'));
 
     pads.set({ buttons: { 0: true } });
     gamepadInput.poll();
@@ -132,6 +132,59 @@ describe('followGamepadKey', () => {
     expect(values).toEqual([false, true]);
     unbind();
     expect(values).toEqual([false, true, false]);
+  });
+
+  it('does not press the key on restart for a control held while it was assigned with the input stopped', () => {
+    const values: boolean[] = [];
+    keyboard.bind('Space').subscribe(v => values.push(v));
+    const controls$ = new BehaviorSubject<string | null>('b0');
+    const unbind = followGamepadKey(gamepadInput, keyboard, new BehaviorSubject<string | null>('Space'), controls$);
+    // a controls menu over the game: the world's gamepad input is stopped, every control reads
+    // released, and the menu captures B while it is still down
+    pads.set({ buttons: { 1: true } });
+    gamepadInput.stop();
+    controls$.next('b1');
+    // the menu closes with B still held
+    gamepadInput.start();
+    gamepadInput.poll();
+    expect(values).toEqual([false]);
+    pads.set({ buttons: {} });
+    gamepadInput.poll();
+    pads.set({ buttons: { 1: true } });
+    gamepadInput.poll();
+    expect(values).toEqual([false, true]);
+    unbind();
+  });
+
+  it('followGamepadPressed does not count a control held while it was assigned with the input stopped', () => {
+    const controls$ = new BehaviorSubject<string | null>('b0');
+    const values: boolean[] = [];
+    followGamepadPressed(gamepadInput, controls$).subscribe(v => values.push(v));
+    pads.set({ buttons: { 5: true } });
+    gamepadInput.stop();
+    controls$.next('b5');
+    gamepadInput.start();
+    gamepadInput.poll();
+    expect(values).toEqual([false]);
+    pads.set({ buttons: {} });
+    gamepadInput.poll();
+    pads.set({ buttons: { 5: true } });
+    gamepadInput.poll();
+    expect(values).toEqual([false, true]);
+  });
+
+  it('followGamepadPressed counts a control assigned released with the input stopped from the first push after the restart', () => {
+    const controls$ = new BehaviorSubject<string | null>(null);
+    const values: boolean[] = [];
+    followGamepadPressed(gamepadInput, controls$).subscribe(v => values.push(v));
+    gamepadInput.stop();
+    controls$.next('b5');
+    gamepadInput.start();
+    pads.set({ buttons: {} });
+    gamepadInput.poll();
+    pads.set({ buttons: { 5: true } });
+    gamepadInput.poll();
+    expect(values).toEqual([false, true]);
   });
 
   it('followGamepadPressed reports a control from its next push when it is assigned held, and not a repeat of the same controls', () => {
@@ -193,7 +246,7 @@ describe('followGamepadKey', () => {
   it('lets go of the held key when unbound', () => {
     const values: boolean[] = [];
     keyboard.bind('KeyE').subscribe(v => values.push(v));
-    const unbind = followGamepadKey(gamepadInput, keyboard, new BehaviorSubject<string | null>('KeyE'), 'b5');
+    const unbind = followGamepadKey(gamepadInput, keyboard, new BehaviorSubject<string | null>('KeyE'), of('b5'));
     pads.set({ buttons: { 5: true } });
     gamepadInput.poll();
     unbind();
@@ -231,6 +284,13 @@ describe('ControllerBindings', () => {
     expect(bindings.setGamepad(null)).toBeNull();
     expect(options.gamepad).toBeNull();
     expect(changes).toEqual(['gamepad', 'gamepad', 'gamepad']);
+  });
+
+  it('leaves the controls given as undefined to setGamepad as they are', () => {
+    const options: Options = { fireKey: 'KeyF', keymap: 'wasd', gamepad: { fire: 'b3', alt: 'b4' } };
+    const bindings = new ControllerBindings(options, DEFAULT_GAMEPAD);
+    expect(bindings.setGamepad({ fire: 'b5', alt: undefined })).toEqual({ fire: 'b5', alt: 'b4' });
+    expect(options.gamepad).toEqual({ fire: 'b5', alt: 'b4' });
   });
 
   it('isRebindableController tells a controller with a bindingsChanged$', () => {

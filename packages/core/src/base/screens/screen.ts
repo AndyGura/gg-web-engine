@@ -159,7 +159,7 @@ export abstract class Screen {
    * top, so the button that closed the screen above presses nothing here. Held arrows repeat (the
    * codes in `options.repeat`, every arrow by default), first after 350 ms, then every 125 ms.
    * Call it from the constructor or `enter()`; the binding ends with the screen. The gamepad is
-   * `screens.gamepadInput`.
+   * `screens.gamepadInput`, running while any screen has keys bound this way.
    *
    * Only the screen's own handlers (`this.keyboard.bind(...)`) see these keys: moving the focus in
    * the screen's DOM, or clicking the focused element, is up to them. A game screen keeps the menu
@@ -179,7 +179,7 @@ export abstract class Screen {
     }
     const bind = () =>
       this.addTeardown(
-        this.screens.gamepadInput.bindKeys(this.keyboard, keys, {
+        this.screens.bindGamepadKeys(this.keyboard, keys, {
           repeat: ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'],
           ...options,
           edge: true,

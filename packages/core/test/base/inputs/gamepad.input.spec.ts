@@ -327,7 +327,7 @@ describe('GamepadInput', () => {
     });
   });
 
-  it('does not report what is held on a gamepad connected again as pushed, but does on the first one', () => {
+  it('reports the press that lists a gamepad as pushed, on the first one and on one connected again', () => {
     const pushed: GamepadControl[] = [];
     input.controlPushed$.subscribe(c => pushed.push(c));
     // the first gamepad: listed by the browser because of this very press
@@ -336,12 +336,12 @@ describe('GamepadInput', () => {
     pads.setAll([]);
     input.poll();
     expect(input.connected).toBe(false);
-    // plugged back in with a button held
+    // plugged back in: listed again because of this press, which a "press any button" menu waits for
     connect({ buttons: { 3: true } });
     expect(input.value('b3')).toBe(1);
-    expect(pushed).toEqual(['b0']);
+    expect(pushed).toEqual(['b0', 'b3']);
     connect({ buttons: { 3: true, 1: true } });
-    expect(pushed).toEqual(['b0', 'b1']);
+    expect(pushed).toEqual(['b0', 'b3', 'b1']);
   });
 
   it('is in use from the first control pushed until a real key or pointer press', () => {

@@ -1,16 +1,13 @@
 import {
   combineLatest,
   distinctUntilChanged,
-  filter,
   isObservable,
   map,
   Observable,
   of,
-  skipWhile,
   startWith,
   Subject,
   switchMap,
-  take,
 } from 'rxjs';
 import { KeyboardInput } from './keyboard.input';
 import { DirectionInput } from './direction.input';
@@ -47,9 +44,11 @@ export const sameBinding = <T>(a: T, b: T): boolean => JSON.stringify(a ?? null)
 /**
  * `GamepadInput.pressed$` for controls that can change: whether the controls `controls$` names
  * last are pushed, `false` for none. Controls already pushed when they are assigned (a menu
- * capturing the very button that is still held) count from their next push, and a repeat of the
- * same controls (`setKeys` emitting too) leaves a held button alone, so an edge-triggered action
- * subscribed to this never fires on the rebinding itself. Emits the current state on subscription.
+ * capturing the very button that is still held) count from their next push - from a push `gamepadInput`
+ * reads while running, so a gamepad input stopped for the menu does not make a held button count
+ * on its restart (`GamepadInput.released$`) - and a repeat of the same controls (`setKeys`
+ * emitting too) leaves a held button alone, so an edge-triggered action subscribed to this never
+ * fires on the rebinding itself. Emits the current state on subscription.
  */
 export function followGamepadPressed(
   gamepadInput: GamepadInput,
@@ -59,8 +58,8 @@ export function followGamepadPressed(
     distinctUntilChanged(sameBinding),
     switchMap(controls =>
       controls
-        ? gamepadInput.pressed$(controls).pipe(
-            skipWhile(down => down),
+        ? gamepadInput.released$(controls).pipe(
+            switchMap(() => gamepadInput.pressed$(controls)),
             startWith(false),
           )
         : of(false),
@@ -70,28 +69,25 @@ export function followGamepadPressed(
 }
 
 /**
- * `GamepadInput.bindKeys` for one key whose code and controls can both change: while `controls`
- * are pushed, holds the key `code$` names last on `keyboard`. A new code or new controls move the
- * hold over (the old key is let go of), once the controls are released if they are pushed at that
- * moment - a control a menu captured is still held when it is assigned, and must not act on the
- * spot; a `null` code or controls bind nothing. Returns a function that unbinds for good.
+ * `GamepadInput.bindKeys` for one key whose code and controls can both change: while the controls
+ * `controls$` names last are pushed, holds the key `code$` names last on `keyboard`. A new code or
+ * new controls move the hold over (the old key is let go of), once the controls are read released
+ * by a running `gamepadInput` if they are pushed at that moment (`GamepadInput.released$`) - a
+ * control a menu captured is still held when it is assigned, and must not act on the spot, nor
+ * when the gamepad input stopped for the menu restarts; a `null` code or controls bind nothing.
+ * Returns a function that unbinds for good.
  */
 export function followGamepadKey(
   gamepadInput: GamepadInput,
   keyboard: KeyboardInput,
   code$: Observable<string | null>,
-  controls: GamepadControls | null | undefined | Observable<GamepadControls | null | undefined>,
+  controls$: Observable<GamepadControls | null | undefined>,
 ): () => void {
-  const controls$ = isObservable(controls) ? controls : of(controls);
   let unbind: (() => void) | null = null;
   const bindOnceReleased = (code: string, current: GamepadControls): (() => void) => {
     let bound: (() => void) | null = null;
     const waiting = gamepadInput
-      .pressed$(current)
-      .pipe(
-        filter(down => !down),
-        take(1),
-      )
+      .released$(current)
       .subscribe(() => (bound = gamepadInput.bindKeys(keyboard, { [code]: current })));
     return () => {
       waiting.unsubscribe();
@@ -207,11 +203,19 @@ export class ControllerBindings<O extends { gamepad?: G | null }, G extends obje
 
   /**
    * Writes `options.gamepad`: `null` turns the gamepad off, a partial goes over the current binding
-   * (over `defaultGamepad` while the gamepad is off or left out). Emits `'gamepad'` and returns the
-   * binding written.
+   * (over `defaultGamepad` while the gamepad is off or left out), its `undefined` controls left out
+   * as `setKeys` leaves out `undefined` keys. Emits `'gamepad'` and returns the binding written.
    */
   public setGamepad(binding: Partial<G> | null): G | null {
-    const next = binding === null ? null : { ...(this.options.gamepad ?? this.defaultGamepad), ...binding };
+    let next: G | null = null;
+    if (binding !== null) {
+      next = { ...(this.options.gamepad ?? this.defaultGamepad) };
+      for (const name of Object.keys(binding) as (keyof G)[]) {
+        if (binding[name] !== undefined) {
+          next[name] = binding[name] as G[keyof G];
+        }
+      }
+    }
     this.options.gamepad = next;
     this._changed$.next('gamepad');
     return next;
