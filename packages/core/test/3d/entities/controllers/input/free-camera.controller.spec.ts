@@ -1,5 +1,6 @@
 import { Subject } from 'rxjs';
 import {
+  BindingsChange,
   DEFAULT_FREE_CAMERA_GAMEPAD_BINDING,
   FreeCameraController,
   GamepadInput,
@@ -57,12 +58,12 @@ describe('FreeCameraController', () => {
 
     it('flies by the keys given to setKeys, the gamepad buttons pressing the new keys', async () => {
       const { keyboard, camera, controller } = await setup({ cameraLinearSpeed: 10 });
-      const changes: void[] = [];
+      const changes: BindingsChange[] = [];
       controller.bindingsChanged$.subscribe(v => changes.push(v));
       controller.setKeys({ upDownKeys: ['Space', 'KeyC'], boostKey: 'KeyB' });
       expect(controller.options.upDownKeys).toEqual(['Space', 'KeyC']);
       expect(controller.options.boostKey).toBe('KeyB');
-      expect(changes.length).toBe(1);
+      expect(changes).toEqual(['keys']);
 
       keyboard.emulateKeyDown('KeyE');
       camera.tick$.next([0, 1000]);

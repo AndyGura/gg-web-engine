@@ -1,8 +1,10 @@
-import { combineLatest, filter, map, Observable, startWith, Subject, take, takeUntil } from 'rxjs';
-import { assignKeys } from '../../../../base/inputs/assign-keys';
+import { combineLatest, filter, Observable, Subject, take, takeUntil } from 'rxjs';
 import {
   DirectionInput,
   DirectionKeymap,
+  BindingsChange,
+  ControllerBindings,
+  IRebindableController,
   followGamepadDirection,
   GamepadAxisBinding,
   GamepadControls,
@@ -48,22 +50,18 @@ export type CarHandlingControllerKeys = Pick<CarHandlingControllerOptions, 'keym
 
 export type CarHandlingOutput = { upDown: number; leftRight: number };
 
-export class CarHandlingController extends IEntity {
+export class CarHandlingController extends IEntity implements IRebindableController {
   static readonly entityTypeName: string = 'CarHandlingController';
   public readonly tickOrder = TickOrder.INPUT_CONTROLLERS;
 
   public readonly directionsInput: DirectionInput;
   public readonly options: CarHandlingControllerOptions;
 
-  private readonly _bindingsChanged$: Subject<void> = new Subject<void>();
+  private readonly bindings: ControllerBindings<CarHandlingControllerOptions, CarGamepadBinding>;
 
-  /**
-   * Emits after every `setKeys` and `setGamepad`, for whatever shows or uses this controller's
-   * bindings (an on-screen hint, the touch layout of `@gg-web-engine/mobile-controls`, which
-   * rebuilds itself on it)
-   */
-  public get bindingsChanged$(): Observable<void> {
-    return this._bindingsChanged$.asObservable();
+  /** Emits after every `setKeys` (`'keys'`) and `setGamepad` (`'gamepad'`) - see `IRebindableController` */
+  public get bindingsChanged$(): Observable<BindingsChange> {
+    return this.bindings.changed$;
   }
 
   /**
@@ -77,17 +75,18 @@ export class CarHandlingController extends IEntity {
    * ```
    */
   public setKeys(keys: Partial<CarHandlingControllerKeys>): void {
-    assignKeys(this.options, keys);
     if (keys.keymap !== undefined) {
       this.directionsInput.keymap = keys.keymap;
     }
-    this._bindingsChanged$.next();
+    this.bindings.setKeys(keys);
   }
 
   /**
    * Rebinds the gamepad while the game runs - for a controls menu. The controls given replace the
    * current ones (over `DEFAULT_CAR_GAMEPAD_BINDING` while the gamepad is off), `null` turns the
-   * gamepad off. Written to `options.gamepad`, taking effect at once.
+   * gamepad off. Written to `options.gamepad`, taking effect at once. A control held while it is replaced
+   * stops counting, and one already held when it is assigned (the button a menu just captured)
+   * counts from its next push.
    *
    * @example
    * ```ts
@@ -95,18 +94,7 @@ export class CarHandlingController extends IEntity {
    * ```
    */
   public setGamepad(binding: Partial<CarGamepadBinding> | null): void {
-    const options: { gamepad?: CarGamepadBinding | null } = this.options;
-    options.gamepad =
-      binding === null ? null : { ...(this.options.gamepad ?? DEFAULT_CAR_GAMEPAD_BINDING), ...binding };
-    this._bindingsChanged$.next();
-  }
-
-  /** What `pick` reads from `options`, now and after every `setKeys`/`setGamepad` */
-  private option$<T>(pick: (options: CarHandlingControllerOptions) => T): Observable<T> {
-    return this._bindingsChanged$.pipe(
-      startWith(undefined),
-      map(() => pick(this.options)),
-    );
+    this.bindings.setGamepad(binding);
   }
 
   private _output$: Subject<CarHandlingOutput> = new Subject<CarHandlingOutput>();
@@ -125,6 +113,7 @@ export class CarHandlingController extends IEntity {
     // a copy: `setKeys` writes to it
     this.options = { ...options };
     this.directionsInput = new DirectionInput(keyboard, options.keymap);
+    this.bindings = new ControllerBindings(this.options, DEFAULT_CAR_GAMEPAD_BINDING);
   }
 
   async onSpawned(world: GgWorld<any, any>): Promise<void> {
@@ -164,7 +153,7 @@ export class CarHandlingController extends IEntity {
       const unbind = followGamepadDirection(
         world.gamepadInput,
         this.directionsInput,
-        this.option$(o => {
+        this.bindings.option$(o => {
           const gamepad = o.gamepad === undefined ? DEFAULT_CAR_GAMEPAD_BINDING : o.gamepad;
           return gamepad && { x: gamepad.steer, y: { negative: gamepad.brake, positive: gamepad.throttle } };
         }),

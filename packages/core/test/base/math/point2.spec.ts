@@ -27,9 +27,7 @@ declare global {
 }
 
 describe(`Pnt2`, () => {
-
   describe('rot', () => {
-
     it('should rotate point correctly', () => {
       const point: Point2 = { x: 1, y: 0 };
       expect(Pnt2.rot(point, Math.PI / 6)).toMatchObject({
@@ -37,11 +35,9 @@ describe(`Pnt2`, () => {
         y: expect.toBeAround(0.5),
       });
     });
-
   });
 
   describe('rotAround', () => {
-
     it('should rotate point correctly', () => {
       const point: Point2 = { x: 35, y: 13 };
       expect(Pnt2.rotAround(point, { x: 34, y: 13 }, Math.PI / 6)).toMatchObject({
@@ -49,9 +45,7 @@ describe(`Pnt2`, () => {
         y: expect.toBeAround(13.5),
       });
     });
-
   });
-
 
   describe('angle', () => {
     it('returns 0 instead of NaN when either vector has zero length', () => {
@@ -60,7 +54,10 @@ describe(`Pnt2`, () => {
     });
 
     it('does not return NaN for almost identical vectors', () => {
-      const angle = Pnt2.angle({ x: 2.9611996755771295, y: 0.48093292813229027 }, { x: 0.9870665585257098, y: 0.16031097604409816 });
+      const angle = Pnt2.angle(
+        { x: 2.9611996755771295, y: 0.48093292813229027 },
+        { x: 0.9870665585257098, y: 0.16031097604409816 },
+      );
       expect(angle).not.toBeNaN();
       expect(angle).toBeCloseTo(0);
     });

@@ -1,5 +1,8 @@
-import { filter, map, Observable, startWith, Subject, take, takeUntil } from 'rxjs';
+import { filter, Observable, take, takeUntil } from 'rxjs';
 import {
+  BindingsChange,
+  ControllerBindings,
+  IRebindableController,
   followGamepadKey,
   followKey,
   GamepadControls,
@@ -8,7 +11,6 @@ import {
   KeyboardInput,
   TickOrder,
 } from '../../../../base';
-import { assignKeys } from '../../../../base/inputs/assign-keys';
 import { GgCarEntity } from '../../gg-car/gg-car.entity';
 import {
   CarGamepadBinding,
@@ -96,7 +98,7 @@ export type GgCarHandlingControllerKeys = Pick<
  * driving.active = false;
  * ```
  */
-export class GgCarHandlingController extends IEntity {
+export class GgCarHandlingController extends IEntity implements IRebindableController {
   static readonly entityTypeName: string = 'GgCarHandlingController';
   public readonly tickOrder = TickOrder.INPUT_CONTROLLERS;
 
@@ -104,15 +106,11 @@ export class GgCarHandlingController extends IEntity {
   public switchingGearsEnabled: boolean = true;
   public readonly options: GgCarHandlingControllerOptions;
 
-  private readonly _bindingsChanged$: Subject<void> = new Subject<void>();
+  private readonly bindings: ControllerBindings<GgCarHandlingControllerOptions, GgCarGamepadBinding>;
 
-  /**
-   * Emits after every `setKeys` and `setGamepad`, for whatever shows or uses this controller's
-   * bindings (an on-screen hint, the touch layout of `@gg-web-engine/mobile-controls`, which
-   * rebuilds itself on it)
-   */
-  public get bindingsChanged$(): Observable<void> {
-    return this._bindingsChanged$.asObservable();
+  /** Emits after every `setKeys` (`'keys'`) and `setGamepad` (`'gamepad'`) - see `IRebindableController` */
+  public get bindingsChanged$(): Observable<BindingsChange> {
+    return this.bindings.changed$;
   }
 
   /**
@@ -127,18 +125,18 @@ export class GgCarHandlingController extends IEntity {
    * ```
    */
   public setKeys(keys: Partial<GgCarHandlingControllerKeys>): void {
-    assignKeys(this.options, keys);
     if (keys.keymap !== undefined) {
       this.carHandlingInput.setKeys({ keymap: keys.keymap });
     }
-    this._bindingsChanged$.next();
+    this.bindings.setKeys(keys);
   }
 
   /**
    * Rebinds the gamepad while the game runs - for a controls menu. The controls given replace the
    * current ones (over `DEFAULT_GG_CAR_GAMEPAD_BINDING` while the gamepad is off), `null` turns the
-   * gamepad off. Written to `options.gamepad`, taking effect at once; a control held while it is
-   * replaced stops counting.
+   * gamepad off. Written to `options.gamepad`, taking effect at once. A control held while it is
+   * replaced stops counting, and one already held when it is assigned (the button a menu just
+   * captured) counts from its next push.
    *
    * @example
    * ```ts
@@ -146,18 +144,7 @@ export class GgCarHandlingController extends IEntity {
    * ```
    */
   public setGamepad(binding: Partial<GgCarGamepadBinding> | null): void {
-    this.options.gamepad =
-      binding === null ? null : { ...(this.options.gamepad ?? DEFAULT_GG_CAR_GAMEPAD_BINDING), ...binding };
-    this.carHandlingInput.setGamepad(this.options.gamepad);
-    this._bindingsChanged$.next();
-  }
-
-  /** What `pick` reads from `options`, now and after every `setKeys`/`setGamepad` */
-  private option$<T>(pick: (options: GgCarHandlingControllerOptions) => T): Observable<T> {
-    return this._bindingsChanged$.pipe(
-      startWith(undefined),
-      map(() => pick(this.options)),
-    );
+    this.carHandlingInput.setGamepad(this.bindings.setGamepad(binding));
   }
 
   constructor(
@@ -179,6 +166,7 @@ export class GgCarHandlingController extends IEntity {
       gamepad: options.gamepad === undefined ? DEFAULT_GG_CAR_GAMEPAD_BINDING : options.gamepad,
     });
     this.addChildren(this.carHandlingInput);
+    this.bindings = new ControllerBindings(this.options, DEFAULT_GG_CAR_GAMEPAD_BINDING);
   }
 
   async onSpawned(world: GgWorld<any, any>): Promise<void> {
@@ -187,7 +175,7 @@ export class GgCarHandlingController extends IEntity {
     if (gamepadInput) {
       // `options.gamepad` left out is the default binding
       const controls$ = (pick: (binding: GgCarGamepadBinding) => GamepadControls) =>
-        this.option$(o => {
+        this.bindings.option$(o => {
           const gamepad = o.gamepad === undefined ? DEFAULT_GG_CAR_GAMEPAD_BINDING : o.gamepad;
           return gamepad && pick(gamepad);
         });
@@ -195,19 +183,19 @@ export class GgCarHandlingController extends IEntity {
         followGamepadKey(
           gamepadInput,
           this.keyboard,
-          this.option$(o => o.gearUpDownKeys[0]),
+          this.bindings.option$(o => o.gearUpDownKeys[0]),
           controls$(g => g.gearUp),
         ),
         followGamepadKey(
           gamepadInput,
           this.keyboard,
-          this.option$(o => o.gearUpDownKeys[1]),
+          this.bindings.option$(o => o.gearUpDownKeys[1]),
           controls$(g => g.gearDown),
         ),
         followGamepadKey(
           gamepadInput,
           this.keyboard,
-          this.option$(o => o.handbrakeKey),
+          this.bindings.option$(o => o.handbrakeKey),
           controls$(g => g.handbrake),
         ),
       ];
@@ -245,7 +233,7 @@ export class GgCarHandlingController extends IEntity {
     });
     followKey(
       this.keyboard,
-      this.option$(o => o.gearUpDownKeys[0]),
+      this.bindings.option$(o => o.gearUpDownKeys[0]),
     )
       .pipe(
         takeUntil(this._onRemoved$),
@@ -258,7 +246,7 @@ export class GgCarHandlingController extends IEntity {
       });
     followKey(
       this.keyboard,
-      this.option$(o => o.gearUpDownKeys[1]),
+      this.bindings.option$(o => o.gearUpDownKeys[1]),
     )
       .pipe(
         takeUntil(this._onRemoved$),
@@ -275,7 +263,7 @@ export class GgCarHandlingController extends IEntity {
       });
     followKey(
       this.keyboard,
-      this.option$(o => o.handbrakeKey),
+      this.bindings.option$(o => o.handbrakeKey),
     )
       .pipe(
         takeUntil(this._onRemoved$),

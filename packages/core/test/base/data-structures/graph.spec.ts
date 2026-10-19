@@ -1,14 +1,21 @@
 import { Graph } from '../../../src/base/data-structures/graph';
 
 describe(`Graph<T>`, () => {
-
-  const testGrid = Array(150).fill(null).map((_, i) => (
-    Array(151).fill(null).map((_, j) => ({ i, j }))
-  ));
+  const testGrid = Array(150)
+    .fill(null)
+    .map((_, i) =>
+      Array(151)
+        .fill(null)
+        .map((_, j) => ({ i, j })),
+    );
   const testGridGraph = Graph.fromSquareGrid(testGrid);
-  const nodesArray: Graph<{ i: number, j: number }>[][] = Array(150).fill(null).map((_, i) => (
-    Array(151).fill(null).map((_, j) => null!)
-  ));
+  const nodesArray: Graph<{ i: number; j: number }>[][] = Array(150)
+    .fill(null)
+    .map((_, i) =>
+      Array(151)
+        .fill(null)
+        .map((_, j) => null!),
+    );
   for (const node of testGridGraph.nodes()) {
     nodesArray[node.data.i][node.data.j] = node;
   }

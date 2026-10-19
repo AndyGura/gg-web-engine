@@ -1215,28 +1215,37 @@ keyboard and mouse they are named after. Anything else feeds them:
 - `MouseInput.emulateMove(delta)` - a view rotation, through `delta$`.
 
 **Every key and gamepad control a built-in controller binds is rebindable through its `setKeys`/
-`setGamepad`**, and a new key option or gamepad control has to be too. The pattern, the same in each
-controller: a `XxxControllerKeys` type (`Pick` of the key options), `setKeys(partial)` =
-`assignKeys(this.options, keys)` (`base/inputs/assign-keys.ts`, deliberately not exported from the
-package; it skips `undefined`), forwarding `keymap` to `directionsInput.keymap`
-(`GgCarHandlingController` to its child's `setKeys`), then `_bindingsChanged$.next()`;
-`setGamepad(partial | null)` writes `options.gamepad` (`null`, or the partial over the current
-binding or the `DEFAULT_*` one while off; `GgCarHandlingController` hands the result to its child)
-and emits the same subject. A private `option$(o => ...)` = `_bindingsChanged$` + `startWith` + read
-from `options`, and every binding in `onSpawned` goes through `followKey(this.keyboard,
-this.option$(o => o.jumpKey))`, `followGamepadKey(gamepadInput, this.keyboard, this.option$(o =>
-o.jumpKey), this.option$(o => o.gamepad?.jump))` and `followGamepadDirection(gamepadInput,
-this.directionsInput, this.option$(o => o.gamepad?.move))` - never `keyboard.bind(this.options.x)`,
-one `gamepadInput.bindKeys` map of all keys, or a `gamepad` read once in `onSpawned`. Gamepad
-bindings are made whenever `world.gamepadInput` exists, even with `gamepad: null`, since
+`setGamepad`**, and a new key option or gamepad control has to be too. The mechanism is written once,
+in `base/inputs/rebindable-keys.ts`, and each controller only wires it: a `XxxControllerKeys` type
+(`Pick` of the key options), a private `bindings = new ControllerBindings(this.options,
+DEFAULT_XXX_GAMEPAD_BINDING)` built in the constructor right after `options` is (it writes to that
+object, which is why `CarHandlingController`/`GgCarHandlingController` copy the options they are
+given), `implements IRebindableController` with `bindingsChanged$` returning `bindings.changed$`,
+`setKeys(partial)` forwarding `keymap` to `directionsInput.keymap` (`GgCarHandlingController` to its
+child's `setKeys`) and then calling `bindings.setKeys(keys)` (copies the keys, skipping `undefined`,
+and emits `'keys'`), and `setGamepad(partial | null)` calling `bindings.setGamepad(binding)`
+(`null`, or the partial over the current binding or the default one while off; emits `'gamepad'`
+and returns what it wrote, which `GgCarHandlingController` hands to its child). Every binding in
+`onSpawned` goes through `followKey(this.keyboard, this.bindings.option$(o => o.jumpKey))`,
+`followGamepadKey(gamepadInput, this.keyboard, this.bindings.option$(o => o.jumpKey),
+this.bindings.option$(o => o.gamepad?.jump))`, `followGamepadPressed(gamepadInput,
+this.bindings.option$(o => o.gamepad?.throw))` for an edge-triggered action without a key of its own
+and `followGamepadDirection(gamepadInput, this.directionsInput, this.bindings.option$(o =>
+o.gamepad?.move))` - never `keyboard.bind(this.options.x)`, one `gamepadInput.bindKeys` map of all
+keys, a `switchMap` of `option$` straight onto `pressed$`, or a `gamepad` read once in `onSpawned`.
+Gamepad bindings are made whenever `world.gamepadInput` exists, even with `gamepad: null`, since
 `setGamepad` can turn it on later; something read per tick (the look stick, `lookSpeed`) reads
 `this.options.gamepad` on that tick. One binding per key is the point: each follows its own code
-and controls with `distinctUntilChanged` (controls compared by content), so changing one key leaves
-the others' bindings (and a held gamepad button on them) alone - rebinding a whole `bindKeys` map
-would release and re-press every held key, a rising edge that jumps or shifts gear again. Anything
-switching on `option$` to a `pressed$` (`ObjectGrabController`'s throw) needs the same
-`distinctUntilChanged` before the `switchMap`: `option$` emits on every `setKeys` too, and
-`pressed$` starts with the current state, so a held button would fire again.
+and controls with `distinctUntilChanged` (controls compared by content, `sameBinding`), so changing
+one key leaves the others' bindings (and a held gamepad button on them) alone - rebinding a whole
+`bindKeys` map would release and re-press every held key, a rising edge that jumps or shifts gear
+again. The same edge is why a control already pushed when it is assigned counts from its next push
+only: a controls menu captures a button from `controlPushed$` while it is still down, and a
+`bindKeys` made then would press the key on the spot (`followGamepadKey` binds once `pressed$`
+reports the controls released; `followGamepadPressed` skips the leading `true`). Anything that
+switches on `option$` into a `combineLatest` of gamepad state (`FreeCameraController`'s pointer-lock
+gate) puts `distinctUntilChanged(sameBinding)` before the `switchMap`, since `option$` emits on
+every `setKeys` too.
 `CarHandlingController`/`GgCarHandlingController` copy the options object they are given, since
 `setKeys`/`setGamepad` write to it. `FreeCameraController` binds its zoom keys through `option$`
 returning `null` for a camera without a fov, so the `combineLatest` keeps a fixed shape.
@@ -1308,8 +1317,12 @@ What it holds to:
   as before). A choice by id survives a reconnect and a reload, an index does not; `nth` tells
   several pads of one model apart, and a choice whose `nth` is gone takes the last of that id.
   `Gamepad` objects are snapshots, so a device is told apart by `index` and `id`, never identity.
-  When the polled device changes from one gamepad to another, `readGamepad` reports nothing on
-  `controlPushed$` for that poll: what is already held on the new one was not pushed now.
+  When the polled device changes from one gamepad to another, or one is read again after a poll
+  with none (the chosen one plugged back in), `readGamepad` reports nothing on `controlPushed$`
+  for that poll: what is already held on the new one was not pushed now. The first gamepad ever
+  read is the exception (a browser lists a gamepad only once a button was pressed on it, and that
+  press is the one meant), which is why `device` keeps the last gamepad over a disconnection and
+  the test is on the previous poll's `_connected$`.
   `test/mocks/gamepad.mock.ts`'s `fakeGamepad` takes `id`/`index` (default `'fake'`/0) for this.
 - **Controls are strings by index** (`GamepadControl`: `'b7'`, `'a0-'`, `'a0+'`), never names: the
   standard mapping is only a convention the browser reports (`standardMapping`), and a DirectInput
@@ -1397,7 +1410,9 @@ changing one:
   `FreeCameraController` and `ObjectGrabController` - the layouts read key codes from them
   (`options.jumpKey`, `options.gearUpDownKeys`, `options.grabKey`, ...) and emulate on that same
   `keyboard`. A layout reads the keys when it is built; `MobileControls` rebuilds a shown one when
-  the controller's `bindingsChanged$` emits (duck-typed, so an app's controller with one gets the same).
+  the controller's `bindingsChanged$` reports a `'keys'` change (`isRebindableController` from core,
+  so an app's controller implementing `IRebindableController` gets the same) - not on a `'gamepad'`
+  change, which the layout doesn't read and whose rebuild would release the button a finger holds.
   `ObjectGrabController`'s layout also reads `heldObject$` (to turn its grab button
   into a release button and show a throw button while something is held) and calls `throwHeld()`.
 - `directionsInput`/`mouseInput` are public on the same controllers and are what sticks and look

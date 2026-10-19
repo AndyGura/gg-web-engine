@@ -122,11 +122,12 @@ describe('DirectionInput', () => {
       keyboard.emulateKeyDown('KeyW');
       expect(input.direction).toEqual({ x: 0, y: 1 });
 
+      const before = outputs.length;
       input.keymap = { up: 'KeyI', down: 'KeyK', left: 'KeyJ', right: 'KeyL' };
       expect(input.keymap).toEqual({ up: 'KeyI', down: 'KeyK', left: 'KeyJ', right: 'KeyL' });
-      // the old key let go of, though still held
+      // the old key let go of, though still held: reported once
       expect(input.direction).toEqual({ x: 0, y: 0 });
-      expect(outputs[outputs.length - 1]).toEqual({});
+      expect(outputs.slice(before)).toEqual([{}]);
       keyboard.emulateKeyUp('KeyW');
       keyboard.emulateKeyDown('KeyW');
       expect(input.direction).toEqual({ x: 0, y: 0 });
@@ -134,8 +135,13 @@ describe('DirectionInput', () => {
       expect(input.direction).toEqual({ x: 1, y: 0 });
       expect(outputs[outputs.length - 1]).toEqual({ leftRight: false });
 
+      const beforeNull = outputs.length;
       input.keymap = null;
       expect(input.direction).toEqual({ x: 0, y: 0 });
+      expect(outputs.slice(beforeNull)).toEqual([{}]);
+      // nothing was bound: nothing to report
+      input.keymap = null;
+      expect(outputs.length).toBe(beforeNull + 1);
       keyboard.emulateKeyUp('KeyL');
       keyboard.emulateKeyDown('KeyL');
       expect(input.direction).toEqual({ x: 0, y: 0 });

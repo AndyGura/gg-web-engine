@@ -1,4 +1,5 @@
 import {
+  BindingsChange,
   DEFAULT_CHARACTER_GAMEPAD_BINDING,
   GAMEPAD_LEFT_STICK,
   GAMEPAD_RIGHT_STICK,
@@ -472,13 +473,13 @@ describe('PlayerCharacterController', () => {
     it('acts by the keys given to setKeys, from the keyboard and the gamepad buttons alike', async () => {
       const { keyboard, controller, character } = setup();
       await controller.onSpawned({ gamepadInput } as any);
-      const changes: void[] = [];
+      const changes: BindingsChange[] = [];
       controller.bindingsChanged$.subscribe(v => changes.push(v));
 
       keyboard.emulateKeyDown('ShiftLeft');
       expect(character.isRunning).toBe(true);
       controller.setKeys({ jumpKey: 'KeyJ', runKey: 'KeyR', toggleViewKey: null });
-      expect(changes.length).toBe(1);
+      expect(changes).toEqual(['keys']);
       expect(controller.options.jumpKey).toBe('KeyJ');
       // a held key that was replaced lets go
       expect(character.isRunning).toBe(false);

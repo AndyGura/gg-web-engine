@@ -111,7 +111,9 @@ describe('Gg3dLoader', () => {
         .mockResolvedValue({ entities: [new FakeEntity3d()], meta: {} as any } as unknown as LoadResultWithProps);
 
       await loader.loadLevel(
-        { entities: [{ class: 'Glb', name: 'A', config: { path: 'assets/m', castShadow: true, receiveShadow: false } }] },
+        {
+          entities: [{ class: 'Glb', name: 'A', config: { path: 'assets/m', castShadow: true, receiveShadow: false } }],
+        },
         'TestLevel',
       );
 
@@ -142,7 +144,13 @@ describe('Gg3dLoader', () => {
       jest.spyOn(loader, 'loadGgGlbResources').mockImplementation(async (path: string) => {
         if (path === 'assets/scene') {
           return resourcesFor('', [
-            { name: 'RadioSpot', is_prop: true, prop_id: 'radio', position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0, w: 1 } },
+            {
+              name: 'RadioSpot',
+              is_prop: true,
+              prop_id: 'radio',
+              position: { x: 0, y: 0, z: 0 },
+              rotation: { x: 0, y: 0, z: 0, w: 1 },
+            },
           ]);
         }
         return resourcesFor('_prop');
@@ -190,7 +198,11 @@ describe('Gg3dLoader', () => {
     it('keeps the raw native object names when nameScope is null, props included', async () => {
       const result = await loader.loadGgGlb('assets/scene', { nameScope: null });
 
-      expect(result.entities.map(e => e.name)).toEqual(['Suzanne', 'Floor', 'Entity3d_' + result.entities[2].name.split('_')[1]]);
+      expect(result.entities.map(e => e.name)).toEqual([
+        'Suzanne',
+        'Floor',
+        'Entity3d_' + result.entities[2].name.split('_')[1],
+      ]);
       expect(result.entities[2].name).toMatch(/^Entity3d_\d+$/);
       expect(result.props![0].entities.map(e => e.name).slice(0, 2)).toEqual(['Suzanne_prop', 'Floor_prop']);
     });
@@ -203,7 +215,15 @@ describe('Gg3dLoader', () => {
         meta: {
           dummies:
             path === 'assets/scene'
-              ? [{ name: 'Spot', is_prop: true, prop_id: 'prop', position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0, w: 1 } }]
+              ? [
+                  {
+                    name: 'Spot',
+                    is_prop: true,
+                    prop_id: 'prop',
+                    position: { x: 0, y: 0, z: 0 },
+                    rotation: { x: 0, y: 0, z: 0, w: 1 },
+                  },
+                ]
               : [],
         } as any,
       }));

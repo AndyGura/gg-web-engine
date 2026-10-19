@@ -133,6 +133,23 @@ describe('MobileControls', () => {
     expect(space).toEqual([false, true, false]);
   });
 
+  it("leaves a shown layout alone when only its controller's gamepad binding changes", () => {
+    const car = new GgCarHandlingController(world.keyboardInput, null);
+    world.addEntity(car);
+    const controls = new MobileControls({ enabled: true });
+    world.addEntity(controls);
+    const space: boolean[] = [];
+    world.keyboardInput.bind('Space').subscribe(v => space.push(v));
+    const handbrake = control(controls, 'handbrake');
+    pointer(handbrake, 'pointerdown');
+    car.setGamepad({ handbrake: 'b3' });
+    // the same button, still held
+    expect(control(controls, 'handbrake')).toBe(handbrake);
+    expect(space).toEqual([false, true]);
+    pointer(handbrake, 'pointerup');
+    expect(space).toEqual([false, true, false]);
+  });
+
   it('presses the free camera keys set in its options', () => {
     const renderer = {
       position: { x: 0, y: 0, z: 0 },

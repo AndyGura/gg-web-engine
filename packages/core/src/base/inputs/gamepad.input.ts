@@ -299,6 +299,7 @@ export class GamepadInput extends IInput {
   private previousAxes: number[] = [];
   private pushedRaw: Set<GamepadControl> = new Set<GamepadControl>();
   /** the device read on the last poll, told apart by index and id (`Gamepad` objects are snapshots) */
+  /** the gamepad read last, kept over a disconnection */
   private device: { index: number; id: string } | null = null;
 
   constructor(options: Partial<GamepadInputOptions> = {}) {
@@ -572,15 +573,8 @@ export class GamepadInput extends IInput {
     if (this.options.gamepadIndex === null) {
       return GamepadInput.selectedGamepad();
     }
-    let gamepads: (Gamepad | null)[];
-    try {
-      gamepads = navigator.getGamepads?.() || [];
-    } catch (e) {
-      // withheld by a permissions policy, see `connectedGamepads`
-      return null;
-    }
-    const gamepad = gamepads[this.options.gamepadIndex];
-    return gamepad && gamepad.connected ? gamepad : null;
+    const index = this.options.gamepadIndex;
+    return GamepadInput.connectedGamepads().find(x => x.index === index) ?? null;
   }
 
   private readGamepad(gamepad: Gamepad | null): void {
@@ -601,11 +595,19 @@ export class GamepadInput extends IInput {
       this.buttons = [];
       this.axes = [];
     }
-    // switched to another gamepad (a new choice, the chosen one plugged back in): what is already
-    // held on it was not pushed now, and a controls menu capturing a control must not take it
+    // switched to another gamepad (a new choice), or one connected again after none was (the
+    // chosen one plugged back in): what is already held on it was not pushed now, and a controls
+    // menu capturing a control must not take it. The first gamepad ever read is the exception -
+    // browsers list a gamepad only once a button was pressed on it, and that press is the one
+    // meant
     const device = gamepad && { index: gamepad.index, id: gamepad.id };
-    const switched = !!device && !!this.device && (device.index !== this.device.index || device.id !== this.device.id);
-    this.device = device;
+    const switched =
+      !!device &&
+      !!this.device &&
+      (!this._connected$.value || device.index !== this.device.index || device.id !== this.device.id);
+    if (device) {
+      this.device = device;
+    }
     const newlyPushed = switched ? [] : [...pushed].filter(c => !this.pushedRaw.has(c));
     this.pushedRaw = pushed;
     this._connected$.next(!!gamepad);

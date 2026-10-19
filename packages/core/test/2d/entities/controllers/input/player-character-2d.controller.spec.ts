@@ -250,10 +250,16 @@ describe('PlayerCharacterController2d', () => {
       gamepadInput.poll();
       expect(character.moveDirection).toBe(0);
       expect(character.isRunning).toBe(false);
-      // back on, over the default binding
+      // back on, over the default binding: the stick at once, the run button held at that moment
+      // from its next push
       controller.setGamepad({});
       gamepadInput.poll();
       expect(character.moveDirection).toBe(-1);
+      expect(character.isRunning).toBe(false);
+      pads.set({ axes: [-1, 0] });
+      gamepadInput.poll();
+      pads.set({ axes: [-1, 0], buttons: { 2: true } });
+      gamepadInput.poll();
       expect(character.isRunning).toBe(true);
     });
 

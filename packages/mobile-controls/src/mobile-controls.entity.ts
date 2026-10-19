@@ -1,10 +1,11 @@
-import { isObservable, Observable, takeUntil } from 'rxjs';
+import { filter, takeUntil } from 'rxjs';
 import {
   CarHandlingController,
   FreeCameraController,
   GgCarHandlingController,
   GgWorld,
   IEntity,
+  isRebindableController,
   ObjectGrabController,
   PlayerCharacterController,
   PlayerCharacterController2d,
@@ -222,9 +223,9 @@ export class MobileControls extends IEntity {
 
   /**
    * Builds the layout of `controller` anew - after something its layout was built from has changed
-   * (the car it drives, an option), since a layout is otherwise built once per activation. A
-   * controller with a `bindingsChanged$` (every built-in one, emitting on `setKeys`) is refreshed on it
-   * without this call.
+   * (the car it drives, an option), since a layout is otherwise built once per activation. An
+   * `IRebindableController` (every built-in one) is refreshed without this call when its
+   * `bindingsChanged$` reports a `'keys'` change.
    */
   public refresh(controller?: IEntity): void {
     for (const key of controller ? [controller] : [...this.layouts.keys()]) {
@@ -337,10 +338,13 @@ export class MobileControls extends IEntity {
     for (const controller of this.tracked) {
       if (controller.active && !this.layouts.has(controller)) {
         const items = this.findFactory(controller)!(controller, { world: world!, controls: this });
-        // the built-in controllers' `setKeys`: the layout's buttons press keys read when it was built
-        const bindingsChanged$ = (controller as { bindingsChanged$?: Observable<unknown> }).bindingsChanged$;
-        if (isObservable(bindingsChanged$)) {
-          const subscription = bindingsChanged$.subscribe(() => this.refresh(controller));
+        // the built-in controllers' `setKeys`: the layout's buttons press keys read when it was built.
+        // Not on a gamepad change, which the layout doesn't read - rebuilding would release the
+        // button a finger holds
+        if (isRebindableController(controller)) {
+          const subscription = controller.bindingsChanged$
+            .pipe(filter(change => change === 'keys'))
+            .subscribe(() => this.refresh(controller));
           items.push({ dispose: () => subscription.unsubscribe() });
         }
         this.layouts.set(controller, items);

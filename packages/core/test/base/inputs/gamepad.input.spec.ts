@@ -231,7 +231,7 @@ describe('GamepadInput', () => {
     pads.setAll([fakeGamepad({ buttons: { 0: true } }), null]);
     indexed.poll();
     expect(indexed.connected).toBe(false);
-    pads.setAll([fakeGamepad({ buttons: { 0: true } }), fakeGamepad({ buttons: { 1: true } })]);
+    pads.setAll([fakeGamepad({ buttons: { 0: true } }), fakeGamepad({ index: 1, buttons: { 1: true } })]);
     indexed.poll();
     expect(indexed.value('b0')).toBe(0);
     expect(indexed.value('b1')).toBe(1);
@@ -325,6 +325,23 @@ describe('GamepadInput', () => {
       input.poll();
       expect(pushed).toEqual(['b0']);
     });
+  });
+
+  it('does not report what is held on a gamepad connected again as pushed, but does on the first one', () => {
+    const pushed: GamepadControl[] = [];
+    input.controlPushed$.subscribe(c => pushed.push(c));
+    // the first gamepad: listed by the browser because of this very press
+    connect({ buttons: { 0: true } });
+    expect(pushed).toEqual(['b0']);
+    pads.setAll([]);
+    input.poll();
+    expect(input.connected).toBe(false);
+    // plugged back in with a button held
+    connect({ buttons: { 3: true } });
+    expect(input.value('b3')).toBe(1);
+    expect(pushed).toEqual(['b0']);
+    connect({ buttons: { 3: true, 1: true } });
+    expect(pushed).toEqual(['b0', 'b1']);
   });
 
   it('is in use from the first control pushed until a real key or pointer press', () => {

@@ -1,7 +1,6 @@
 import { Pnt3, Point3, Point4, Qtrn } from '../../../src';
 
 describe(`Qtrn`, () => {
-
   describe(`rotAround`, () => {
     it('should return the same quaternion if rotated by zero angle', () => {
       const quat: Point4 = { x: 0.707, y: 0, z: 0, w: 0.707 };

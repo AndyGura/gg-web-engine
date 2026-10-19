@@ -121,8 +121,12 @@ export class DirectionInput extends IInput {
   public set keymap(value: DirectionKeymap | null) {
     this._keymap = value;
     if (this.running) {
-      this.unbindKeys();
-      this.bindKeys();
+      // one `{}` on `output$` for the rebind: the new bindings' first emission, or, with no keys to
+      // bind, the release of the old ones
+      const wasBound = this.unbindKeys(false);
+      if (!this.bindKeys() && wasBound) {
+        this._output$.next({});
+      }
     }
   }
 
@@ -197,9 +201,10 @@ export class DirectionInput extends IInput {
     this.updateDirection();
   }
 
-  private bindKeys(): void {
+  /** Binds the keymap's keys, emitting their state on `output$` at once; `false` with none to bind */
+  private bindKeys(): boolean {
     if (!this.keyboard || !this._keymap) {
-      return;
+      return false;
     }
     const keyboard = this.keyboard;
     const { up, left, down, right } = directionKeyCodes(this._keymap);
@@ -228,16 +233,21 @@ export class DirectionInput extends IInput {
         this.updateDirection();
         this._output$.next(o);
       });
+    return true;
   }
 
-  private unbindKeys(): void {
+  /** Unbinds the keys, reporting `{}` on `output$` (nothing is held any more, as releasing every key would) unless told not to; whether any were bound */
+  private unbindKeys(report: boolean = true): boolean {
+    const wasBound = !!this.keysSubscription;
     if (this.keysSubscription) {
       this.keysSubscription.unsubscribe();
       this.keysSubscription = null;
-      // nothing is held any more: report it, as releasing every key would
-      this._output$.next({});
+      if (report) {
+        this._output$.next({});
+      }
     }
     this.keysDirection = Pnt2.O;
     this.updateDirection();
+    return wasBound;
   }
 }

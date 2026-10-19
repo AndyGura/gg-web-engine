@@ -1,7 +1,10 @@
-import { filter, map, Observable, startWith, Subject, take, takeUntil } from 'rxjs';
+import { filter, Observable, take, takeUntil } from 'rxjs';
 import {
   DirectionInput,
   DirectionKeymap,
+  BindingsChange,
+  ControllerBindings,
+  IRebindableController,
   followGamepadDirection,
   followGamepadKey,
   followKey,
@@ -27,7 +30,6 @@ import { Renderer3dEntity } from '../../renderer-3d.entity';
 import { CharacterController3dEntity } from '../../character-controller-3d.entity';
 import { Gg3dWorldTypeDocRepo } from '../../../gg-3d-world';
 import { characterControllerSelfHitSkip } from './character-controller-self-hit-skip';
-import { assignKeys } from '../../../../base/inputs/assign-keys';
 
 export type PlayerCharacterControllerViewMode = 'first-person' | 'third-person';
 
@@ -182,7 +184,10 @@ const DEFAULT_OPTIONS: PlayerCharacterControllerOptions = {
  * // cutscene or menu: controller.active = false
  * ```
  */
-export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo> extends IEntity {
+export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo>
+  extends IEntity
+  implements IRebindableController
+{
   static readonly entityTypeName: string = 'PlayerCharacterController';
   public readonly tickOrder = TickOrder.CONTROLLERS;
 
@@ -191,15 +196,11 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
   public readonly mouseInput: MouseInput;
   public readonly directionsInput: DirectionInput;
 
-  private readonly _bindingsChanged$: Subject<void> = new Subject<void>();
+  private readonly bindings: ControllerBindings<PlayerCharacterControllerOptions, CharacterGamepadBinding>;
 
-  /**
-   * Emits after every `setKeys` and `setGamepad`, for whatever shows or uses this controller's
-   * bindings (an on-screen hint, the touch layout of `@gg-web-engine/mobile-controls`, which
-   * rebuilds itself on it)
-   */
-  public get bindingsChanged$(): Observable<void> {
-    return this._bindingsChanged$.asObservable();
+  /** Emits after every `setKeys` (`'keys'`) and `setGamepad` (`'gamepad'`) - see `IRebindableController` */
+  public get bindingsChanged$(): Observable<BindingsChange> {
+    return this.bindings.changed$;
   }
 
   /**
@@ -214,18 +215,18 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
    * ```
    */
   public setKeys(keys: Partial<PlayerCharacterControllerKeys>): void {
-    assignKeys(this.options, keys);
     if (keys.keymap !== undefined) {
       this.directionsInput.keymap = keys.keymap;
     }
-    this._bindingsChanged$.next();
+    this.bindings.setKeys(keys);
   }
 
   /**
    * Rebinds the gamepad while the game runs - for a controls menu. The controls given replace the
    * current ones (over `DEFAULT_CHARACTER_GAMEPAD_BINDING` while the gamepad is off), `null` turns the
-   * gamepad off. Written to `options.gamepad`, taking effect at once; a control held while it is
-   * replaced stops counting.
+   * gamepad off. Written to `options.gamepad`, taking effect at once. A control held while it is
+   * replaced stops counting, and one already held when it is assigned (the button a menu just
+   * captured) counts from its next push.
    *
    * @example
    * ```ts
@@ -233,17 +234,7 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
    * ```
    */
   public setGamepad(binding: Partial<CharacterGamepadBinding> | null): void {
-    this.options.gamepad =
-      binding === null ? null : { ...(this.options.gamepad ?? DEFAULT_CHARACTER_GAMEPAD_BINDING), ...binding };
-    this._bindingsChanged$.next();
-  }
-
-  /** What `pick` reads from `options`, now and after every `setKeys`/`setGamepad` */
-  private option$<T>(pick: (options: PlayerCharacterControllerOptions) => T): Observable<T> {
-    return this._bindingsChanged$.pipe(
-      startWith(undefined),
-      map(() => pick(this.options)),
-    );
+    this.bindings.setGamepad(binding);
   }
 
   /**
@@ -380,6 +371,7 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
     };
     this.mouseInput = new MouseInput(this.options.mouseOptions);
     this.directionsInput = new DirectionInput(keyboard, this.options.keymap);
+    this.bindings = new ControllerBindings(this.options, DEFAULT_CHARACTER_GAMEPAD_BINDING);
     // Captured before the `viewMode` setter below ever runs, so it reflects the camera's fov as the
     // app configured it, not anything this controller (or a third-person restore) already touched -
     // see `baseFov`'s own doc.
@@ -417,7 +409,7 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
 
     followKey(
       this.keyboard,
-      this.option$(o => o.jumpKey),
+      this.bindings.option$(o => o.jumpKey),
     )
       .pipe(
         takeUntil(this._onRemoved$),
@@ -427,7 +419,7 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
 
     followKey(
       this.keyboard,
-      this.option$(o => o.runKey),
+      this.bindings.option$(o => o.runKey),
     )
       .pipe(
         takeUntil(this._onRemoved$),
@@ -441,7 +433,7 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
 
     followKey(
       this.keyboard,
-      this.option$(o => o.crouchKey),
+      this.bindings.option$(o => o.crouchKey),
     )
       .pipe(
         takeUntil(this._onRemoved$),
@@ -462,7 +454,7 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
 
     followKey(
       this.keyboard,
-      this.option$(o => o.toggleViewKey),
+      this.bindings.option$(o => o.toggleViewKey),
     )
       .pipe(
         takeUntil(this._onRemoved$),
@@ -491,31 +483,31 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
         followGamepadKey(
           gamepadInput,
           this.keyboard,
-          this.option$(o => o.jumpKey),
-          this.option$(o => o.gamepad?.jump),
+          this.bindings.option$(o => o.jumpKey),
+          this.bindings.option$(o => o.gamepad?.jump),
         ),
         followGamepadKey(
           gamepadInput,
           this.keyboard,
-          this.option$(o => o.runKey),
-          this.option$(o => o.gamepad?.run),
+          this.bindings.option$(o => o.runKey),
+          this.bindings.option$(o => o.gamepad?.run),
         ),
         followGamepadKey(
           gamepadInput,
           this.keyboard,
-          this.option$(o => o.crouchKey),
-          this.option$(o => o.gamepad?.crouch),
+          this.bindings.option$(o => o.crouchKey),
+          this.bindings.option$(o => o.gamepad?.crouch),
         ),
         followGamepadKey(
           gamepadInput,
           this.keyboard,
-          this.option$(o => o.toggleViewKey),
-          this.option$(o => o.gamepad?.toggleView),
+          this.bindings.option$(o => o.toggleViewKey),
+          this.bindings.option$(o => o.gamepad?.toggleView),
         ),
         followGamepadDirection(
           gamepadInput,
           this.directionsInput,
-          this.option$(o => o.gamepad?.move),
+          this.bindings.option$(o => o.gamepad?.move),
         ),
       ];
       this._onRemoved$.pipe(take(1)).subscribe(() => unbinds.forEach(unbind => unbind()));

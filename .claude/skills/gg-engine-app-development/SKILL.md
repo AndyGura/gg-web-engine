@@ -384,11 +384,15 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   {...} })`, `car.setKeys({ gearUpDownKeys: ['KeyE', 'KeyQ'], handbrakeKey: 'KeyB' })`,
   `freeCamera.setKeys({ upDownKeys, zoomOutInKeys, boostKey })`, `grab.setKeys({ grabKey })`. It
   writes them to `options` and takes effect at once; gamepad buttons press the new keys, and a
-  `MobileControls` layout on screen is rebuilt (on the controller's `bindingsChanged$`, which a hint
-  of your own can listen to as well). For your own actions, `followKey(world.keyboardInput,
-  code$)` reports the state of whichever key an observable code names last, and
+  `MobileControls` layout on screen is rebuilt (on the controller's `bindingsChanged$`, which
+  emits `'keys'` or `'gamepad'` and which a hint of your own can listen to as well). A gamepad
+  button still held when `setGamepad` assigns it - the one a menu just captured - counts from its
+  next push, so the capture never fires the action. For your own actions, `followKey(world.keyboardInput,
+  code$)` reports the state of whichever key an observable code names last,
   `followGamepadKey(world.gamepadInput, world.keyboardInput, code$, 'b2')` keeps a gamepad button
-  on it. Label keys with `KeyboardInput.keyName(code)` ("W", "Left", "Num 8"; in the player's
+  on it, and `followGamepadPressed(world.gamepadInput, controls$)` is the button's own down/up; a
+  controller of your own gets `setKeys`/`setGamepad`/`option$` from `ControllerBindings` and
+  declares `implements IRebindableController` so `MobileControls` refreshes its layout too. Label keys with `KeyboardInput.keyName(code)` ("W", "Left", "Num 8"; in the player's
   layout on Chromium - `await KeyboardInput.loadKeyboardLayout()` before showing the menu, so
   AZERTY's `KeyQ` reads "A" from the first frame), and check a captured `keydown`'s `e.code` with
   `KeyboardInput.isBindable(code)` (false for Tab, Escape, function keys, Ctrl/Alt/Meta, lock and
