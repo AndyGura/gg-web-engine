@@ -7,7 +7,11 @@ const clips = ['idle', 'walk', 'run', 'crouch', 'jump'];
 describe('CharacterAnimationController', () => {
   it('plays "idle" by default when grounded and not moving', () => {
     const object3D = mockAnimatedObject(clips);
-    const character = new CharacterController3dEntity({ radius: 0.4, centersDistance: 1 }, object3D, mockCharacterController());
+    const character = new CharacterController3dEntity(
+      { radius: 0.4, centersDistance: 1 },
+      object3D,
+      mockCharacterController(),
+    );
     character.onSpawned({} as any);
     const controller = new CharacterAnimationController(character);
     controller.onSpawned({} as any);
@@ -19,7 +23,11 @@ describe('CharacterAnimationController', () => {
 
   it('switches to "walk"/"run" based on moveDirection and isRunning', () => {
     const object3D = mockAnimatedObject(clips);
-    const character = new CharacterController3dEntity({ radius: 0.4, centersDistance: 1 }, object3D, mockCharacterController());
+    const character = new CharacterController3dEntity(
+      { radius: 0.4, centersDistance: 1 },
+      object3D,
+      mockCharacterController(),
+    );
     character.onSpawned({} as any);
     const controller = new CharacterAnimationController(character);
     controller.onSpawned({} as any);
@@ -127,7 +135,11 @@ describe('CharacterAnimationController', () => {
   });
 
   it('is a no-op when there is no object3D at all', () => {
-    const character = new CharacterController3dEntity({ radius: 0.4, centersDistance: 1 }, null, mockCharacterController());
+    const character = new CharacterController3dEntity(
+      { radius: 0.4, centersDistance: 1 },
+      null,
+      mockCharacterController(),
+    );
     character.onSpawned({} as any);
     const controller = new CharacterAnimationController(character);
     controller.onSpawned({} as any);
@@ -136,7 +148,7 @@ describe('CharacterAnimationController', () => {
   });
 
   describe('grounded debounce', () => {
-    it('adopts the very first tick\'s isGrounded reading immediately, with no delay', () => {
+    it("adopts the very first tick's isGrounded reading immediately, with no delay", () => {
       const object3D = mockAnimatedObject(clips);
       const cc = mockCharacterController(0.4, 1, {}, false); // starts airborne
       const character = new CharacterController3dEntity({ radius: 0.4, centersDistance: 1 }, object3D, cc);

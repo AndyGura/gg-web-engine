@@ -81,7 +81,7 @@ describe('CharacterController2dEntity', () => {
       expectCloseVector(moveSpy.mock.calls[0][0], { x: 2, y: 0 });
     });
 
-    it("carries the ground launch speed through the whole jump/fall arc, instead of throttling it once airborne", () => {
+    it('carries the ground launch speed through the whole jump/fall arc, instead of throttling it once airborne', () => {
       const cc = mockCharacterController2d(0.4, 1, {
         resolveMove: d => ({ appliedTranslation: d, isGrounded: false }),
       });
@@ -232,7 +232,7 @@ describe('CharacterController2dEntity', () => {
       expect(moveSpy.mock.calls[0][0].y).toBeCloseTo(-0.5); // jump goes along -y (up), 5 units/s * 0.1s
     });
 
-    it("cancels upward velocity immediately on hitting a ceiling, instead of coasting through the rest of an unobstructed jump arc before falling", () => {
+    it('cancels upward velocity immediately on hitting a ceiling, instead of coasting through the rest of an unobstructed jump arc before falling', () => {
       // simulates a ceiling: any upward (negative y) desired translation is fully blocked
       const cc = mockCharacterController2d(0.4, 1, {
         resolveMove: d => ({

@@ -1,4 +1,4 @@
-import { GgCarHandlingController, KeyboardInput } from '../../../../../src';
+import { DEFAULT_GG_CAR_GAMEPAD_BINDING, GgCarHandlingController, KeyboardInput } from '../../../../../src';
 import { MockWorld } from '../../../../mocks/world.mock';
 import { stubGamepads } from '../../../../mocks/gamepad.mock';
 
@@ -41,6 +41,47 @@ describe('GgCarHandlingController', () => {
 
   const tick = (world: MockWorld, elapsed: number, delta: number) =>
     (world.worldClock as any)._tick$.next([elapsed, delta]);
+
+  it('rebinds gear, handbrake and direction keys through setKeys, without touching the options passed in', async () => {
+    const world = new MockWorld();
+    await world.init();
+    const keyboard = new KeyboardInput();
+    keyboard.start();
+    const car = fakeCar();
+    const options = {
+      keymap: 'arrows' as const,
+      maxSteerDeltaPerSecond: 1000,
+      gearUpDownKeys: ['KeyA', 'KeyZ'] as [string, string],
+      autoReverse: true,
+      handbrakeKey: 'Space',
+    };
+    const controller = new GgCarHandlingController(keyboard, car, options);
+    world.addEntity(controller);
+
+    controller.setKeys({ gearUpDownKeys: ['KeyE', 'KeyQ'], handbrakeKey: 'KeyB', keymap: 'wasd' });
+    expect(options.gearUpDownKeys).toEqual(['KeyA', 'KeyZ']);
+    expect(controller.options.handbrakeKey).toBe('KeyB');
+    expect(controller.carHandlingInput.options.keymap).toBe('wasd');
+
+    keyboard.emulateKeyDown('KeyA');
+    expect(car.gear).toBe(1);
+    keyboard.emulateKeyDown('KeyE');
+    expect(car.gear).toBe(2);
+    keyboard.emulateKeyDown('KeyQ');
+    expect(car.gear).toBe(1);
+
+    keyboard.emulateKeyDown('Space');
+    expect(car.handBrake).toBe(false);
+    keyboard.emulateKeyDown('KeyB');
+    expect(car.handBrake).toBe(true);
+
+    keyboard.emulateKeyDown('ArrowUp');
+    tick(world, 0, 16);
+    expect(car.acceleration).toBe(0);
+    keyboard.emulateKeyDown('KeyW');
+    tick(world, 16, 16);
+    expect(car.acceleration).toBeGreaterThan(0);
+  });
 
   it('drives acceleration/steering from held keys while active', async () => {
     const { world, keyboard, car } = await setup();
@@ -169,8 +210,45 @@ describe('GgCarHandlingController', () => {
     beforeEach(() => (pads = stubGamepads()));
     afterEach(() => pads.restore());
 
+    it('shifts and pedals by the controls given to setGamepad', async () => {
+      const { world, controller, car } = await setup();
+      controller.setGamepad({ gearUp: 'b3', throttle: 'b0' });
+      expect(controller.carHandlingInput.options.gamepad!.throttle).toBe('b0');
+      pads.set({ buttons: { 5: true, 7: 1 } });
+      world.gamepadInput.poll();
+      tick(world, 0, 16);
+      expect(car.gear).toBe(1);
+      expect(car.acceleration).toBe(0);
+      pads.set({ buttons: { 3: true, 0: true } });
+      world.gamepadInput.poll();
+      tick(world, 16, 16);
+      expect(car.gear).toBe(2);
+      expect(car.acceleration).toBe(1);
+    });
+
+    it('hands the child only its steering and pedal controls', async () => {
+      const { controller } = await setup();
+      const changes: string[] = [];
+      controller.bindingsChanged$.subscribe(c => changes.push(c));
+      expect(controller.carHandlingInput.options.gamepad).toEqual({
+        steer: DEFAULT_GG_CAR_GAMEPAD_BINDING.steer,
+        throttle: 'b7',
+        brake: 'b6',
+      });
+      controller.setGamepad({ gearUp: 'b3', throttle: 'b0' });
+      expect(controller.carHandlingInput.options.gamepad).toEqual({
+        steer: DEFAULT_GG_CAR_GAMEPAD_BINDING.steer,
+        throttle: 'b0',
+        brake: 'b6',
+      });
+      controller.setKeys({ keymap: 'wasd' });
+      expect(controller.carHandlingInput.options.keymap).toBe('wasd');
+      expect(changes).toEqual(['gamepad', 'keys']);
+    });
+
     it('drives, shifts and pulls the handbrake from the world gamepad with the default binding', async () => {
       const { world, car } = await setup();
+      world.gamepadInput.poll(); // a binding counts a control from the first read with it released
       pads.set({ axes: [-0.5, 0], buttons: { 7: 1, 5: true, 0: true } });
       world.gamepadInput.poll();
       tick(world, 0, 16);

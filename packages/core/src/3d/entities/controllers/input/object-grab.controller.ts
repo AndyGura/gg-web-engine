@@ -1,5 +1,7 @@
-import { BehaviorSubject, filter, Observable, pairwise, startWith, take, takeUntil } from 'rxjs';
+import { BehaviorSubject, filter, Observable, pairwise, startWith, takeUntil } from 'rxjs';
 import {
+  BindingsChange,
+  IRebindableController,
   GamepadControls,
   IEntity,
   KeyboardInput,
@@ -9,6 +11,7 @@ import {
   Point3,
   TickOrder,
 } from '../../../../base';
+import { ControllerBindings } from '../../../../base/inputs/rebindable-keys';
 import { Renderer3dEntity } from '../../renderer-3d.entity';
 import { Grabbable3dEntity } from '../../grabbable-3d.entity';
 import { CharacterController3dEntity } from '../../character-controller-3d.entity';
@@ -59,10 +62,15 @@ export type ObjectGrabControllerOptions = {
   /**
    * The gamepad controls, bound on the world's `gamepadInput`: `grab` presses `grabKey` on
    * `keyboard`, `throw` throws. `DEFAULT_OBJECT_GRAB_GAMEPAD_BINDING` by default; `null` leaves the
-   * gamepad alone.
+   * gamepad alone. `setGamepad` changes it while the game runs.
    */
   gamepad: ObjectGrabGamepadBinding | null;
 };
+
+/**
+ * The keys of an `ObjectGrabController`, which `setKeys` changes while the game runs
+ */
+export type ObjectGrabControllerKeys = Pick<ObjectGrabControllerOptions, 'grabKey'>;
 
 const DEFAULT_OPTIONS: ObjectGrabControllerOptions = {
   grabKey: 'KeyE',
@@ -120,13 +128,54 @@ const DEFAULT_OPTIONS: ObjectGrabControllerOptions = {
  * resonate with in the first place, and nothing here needs the holder to be a physics body at all
  * when it isn't one.
  */
-export class ObjectGrabController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo> extends IEntity {
+export class ObjectGrabController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWorldTypeDocRepo>
+  extends IEntity
+  implements IRebindableController
+{
   static readonly entityTypeName: string = 'ObjectGrabController';
   // Must run before physics simulation, so the velocity `heldObject.updateHold()` sets this tick
   // is what actually gets integrated this frame - see `Grabbable3dEntity.updateHold`'s doc.
   public readonly tickOrder = TickOrder.PHYSICS_SIMULATION - 5;
 
   public readonly options: ObjectGrabControllerOptions;
+
+  private readonly bindings: ControllerBindings<ObjectGrabControllerOptions, ObjectGrabGamepadBinding>;
+
+  /** Emits after every `setKeys` (`'keys'`) and `setGamepad` (`'gamepad'`) - see `IRebindableController` */
+  public get bindingsChanged$(): Observable<BindingsChange> {
+    return this.bindings.changed$;
+  }
+
+  /**
+   * Rebinds keys while the game runs - for a controls menu. Only the keys given change; they are
+   * written to `options` and take effect at once, keyboard and gamepad alike (the gamepad presses
+   * whichever key its button is for). A key held while it is replaced stops counting, and a new
+   * key already held counts from its next press.
+   *
+   * @example
+   * ```ts
+   * grabber.setKeys({ grabKey: 'KeyF' });
+   * ```
+   */
+  public setKeys(keys: Partial<ObjectGrabControllerKeys>): void {
+    this.bindings.setKeys(keys);
+  }
+
+  /**
+   * Rebinds the gamepad while the game runs - for a controls menu. The controls given replace the
+   * current ones (over `DEFAULT_OBJECT_GRAB_GAMEPAD_BINDING` while the gamepad is off), `null` turns the
+   * gamepad off. Written to `options.gamepad`, taking effect at once. A control held while it is
+   * replaced stops counting, and one already held when it is assigned (the button a menu just
+   * captured) counts from its next push.
+   *
+   * @example
+   * ```ts
+   * grabber.setGamepad({ grab: 'b3', throw: 'b5' });
+   * ```
+   */
+  public setGamepad(binding: Partial<ObjectGrabGamepadBinding> | null): void {
+    this.bindings.setGamepad(binding);
+  }
 
   private readonly _heldObject$: BehaviorSubject<Grabbable3dEntity<TypeDoc> | null> =
     new BehaviorSubject<Grabbable3dEntity<TypeDoc> | null>(null);
@@ -167,25 +216,30 @@ export class ObjectGrabController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWor
   ) {
     super();
     this.options = { ...DEFAULT_OPTIONS, ...options };
+    this.bindings = new ControllerBindings(this.options, DEFAULT_OBJECT_GRAB_GAMEPAD_BINDING, this._onRemoved$);
   }
 
   onSpawned(world: Gg3dWorld<TypeDoc>): void {
     super.onSpawned(world);
 
-    this.keyboard
-      .bind(this.options.grabKey)
+    this.bindings
+      .followKey(this.keyboard, o => o.grabKey)
       .pipe(
         takeUntil(this._onRemoved$),
         filter(down => this.active && down),
       )
       .subscribe(() => (this._heldObject ? this.dropHeld() : this.tryGrab()));
 
-    const gamepad = this.options.gamepad;
-    if (gamepad && world.gamepadInput) {
-      const unbind = world.gamepadInput.bindKeys(this.keyboard, { [this.options.grabKey]: gamepad.grab });
-      this._onRemoved$.pipe(take(1)).subscribe(unbind);
-      world.gamepadInput
-        .pressed$(gamepad.throw)
+    const gamepadInput = world.gamepadInput;
+    if (gamepadInput) {
+      this.bindings.followGamepadKey(
+        gamepadInput,
+        this.keyboard,
+        o => o.grabKey,
+        g => g.grab,
+      );
+      this.bindings
+        .followGamepadPressed(gamepadInput, g => g.throw)
         .pipe(
           takeUntil(this._onRemoved$),
           filter(down => down && this.active && this.keyboard.running),

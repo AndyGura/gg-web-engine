@@ -3,6 +3,79 @@ import { BehaviorSubject, combineLatest, finalize, NEVER, Observable } from 'rxj
 import { distinctUntilChanged, map } from 'rxjs/operators';
 
 /**
+ * Codes `KeyboardInput.isBindable` refuses: browser and OS keys (Tab moves the focus, Escape
+ * leaves pointer lock and fullscreen, F5 reloads, Ctrl/Alt/Meta turn the other held keys into
+ * shortcuts: Ctrl+W closes the tab), lock keys (macOS reports Caps Lock only when it toggles),
+ * media, power and IME keys, and codes of no physical key
+ */
+const UNBINDABLE_KEY_CODES =
+  /^(|Unidentified|Escape|Tab|Meta(Left|Right)|OS(Left|Right)|Control(Left|Right)|Alt(Left|Right)|ContextMenu|CapsLock|NumLock|ScrollLock|PrintScreen|Fn|FnLock|F\d+|Audio\w+|Media\w+|Browser\w+|Launch\w+|Power|Sleep|WakeUp|Eject|Help|Lang\d|KanaMode|Convert|NonConvert|Hiragana|Katakana)$/;
+
+/**
+ * Names of keys that print nothing, or print a character that says less than the name. A `Map`,
+ * not an object: a code from saved data may be `'constructor'`, which an object has
+ */
+const SPECIAL_KEY_NAMES: ReadonlyMap<string, string> = new Map<string, string>([
+  ['ArrowLeft', 'Left'],
+  ['ArrowRight', 'Right'],
+  ['ArrowUp', 'Up'],
+  ['ArrowDown', 'Down'],
+  ['ShiftLeft', 'L Shift'],
+  ['ShiftRight', 'R Shift'],
+  ['ControlLeft', 'L Ctrl'],
+  ['ControlRight', 'R Ctrl'],
+  ['AltLeft', 'L Alt'],
+  ['AltRight', 'R Alt'],
+  ['MetaLeft', 'L Meta'],
+  ['MetaRight', 'R Meta'],
+  ['Space', 'Space'],
+  ['Enter', 'Enter'],
+  ['Tab', 'Tab'],
+  ['Escape', 'Esc'],
+  ['Backspace', 'Backspace'],
+  ['CapsLock', 'Caps Lock'],
+  ['Delete', 'Del'],
+  ['Insert', 'Ins'],
+  ['Home', 'Home'],
+  ['End', 'End'],
+  ['PageUp', 'PgUp'],
+  ['PageDown', 'PgDn'],
+  ['NumpadEnter', 'Num Enter'],
+  ['NumpadAdd', 'Num +'],
+  ['NumpadSubtract', 'Num -'],
+  ['NumpadMultiply', 'Num *'],
+  ['NumpadDivide', 'Num /'],
+  ['NumpadDecimal', 'Num .'],
+  ['NumpadEqual', 'Num ='],
+  ['NumpadComma', 'Num ,'],
+]);
+
+/**
+ * Characters the punctuation keys print in the US layout, for when the browser can't tell the
+ * player's layout
+ */
+const US_LAYOUT_KEY_NAMES: ReadonlyMap<string, string> = new Map<string, string>([
+  ['Backquote', '`'],
+  ['Minus', '-'],
+  ['Equal', '='],
+  ['BracketLeft', '['],
+  ['BracketRight', ']'],
+  ['Backslash', '\\'],
+  ['IntlBackslash', '\\'],
+  ['Semicolon', ';'],
+  ['Quote', "'"],
+  ['Comma', ','],
+  ['Period', '.'],
+  ['Slash', '/'],
+]);
+
+/**
+ * What each key prints in the player's keyboard layout, as of the last `loadKeyboardLayout`
+ */
+let keyboardLayoutMap: ReadonlyMap<string, string> | null = null;
+let keyboardLayoutRequested: boolean = false;
+
+/**
  * A main keyboard input: it does not have own key bindings, but provides an API to bind keys.
  * It is responsible for listening key up/down events (when running!) and emit the events to subscribers.
  * Every World entity has its own dedicated instance of Keyboard input, which is running only when the world is running
@@ -20,7 +93,8 @@ import { distinctUntilChanged, map } from 'rxjs/operators';
  * ```
  */
 export class KeyboardInput extends IInput {
-  private bindings: { [code: string]: BehaviorSubject<boolean>[] } = {};
+  /** a `Map`, not an object: a code from saved bindings may be `'constructor'`, which an object has */
+  private readonly bindings: Map<string, BehaviorSubject<boolean>[]> = new Map();
   /**
    * Codes held down through `emulateKeyDown` and not yet let go of through `emulateKeyUp`, with the
    * holders (the `holder` argument, or `defaultHolder` without one) still holding each: a real keyup
@@ -53,6 +127,73 @@ export class KeyboardInput extends IInput {
   ];
 
   /**
+   * A short name of a key for a menu or an on-screen hint: `'W'`, `'Left'`, `'Space'`, `'Num 8'`,
+   * `'L Shift'`. A key that prints a character shows the character of the player's keyboard
+   * layout where the browser tells it (Chromium, through `navigator.keyboard.getLayoutMap()`), so
+   * `KeyQ` reads "A" on an AZERTY keyboard; elsewhere, the US layout's. The layout is loaded on
+   * the first call, so the very first names may still be the US ones: await `loadKeyboardLayout()`
+   * before showing a menu to have them right from the start.
+   * @param code A `KeyboardEvent.code` value
+   */
+  public static keyName(code: string): string {
+    if (!keyboardLayoutRequested) {
+      KeyboardInput.loadKeyboardLayout();
+    }
+    const special = SPECIAL_KEY_NAMES.get(code);
+    if (special) {
+      return special;
+    }
+    const printed = keyboardLayoutMap?.get(code);
+    if (printed && printed.trim()) {
+      // a label of one character stays one: 'ß'.toUpperCase() is 'SS'
+      const upper = printed.toUpperCase();
+      return upper.length === printed.length ? upper : printed;
+    }
+    const us = US_LAYOUT_KEY_NAMES.get(code);
+    if (us) {
+      return us;
+    }
+    const match = /^(?:Key|Digit)(.)$/.exec(code) || /^Numpad(\d)$/.exec(code);
+    if (match) {
+      return (code.startsWith('Numpad') ? 'Num ' : '') + match[1];
+    }
+    return code;
+  }
+
+  /**
+   * Reads the player's keyboard layout for `keyName`, anew on every call (so a menu calling it
+   * when it opens picks up a layout switched meanwhile). Resolves `true` when the browser told the
+   * layout, `false` when it can't (no `navigator.keyboard`, as in Firefox and Safari, or a page
+   * embedded without the permission), never rejects.
+   */
+  public static async loadKeyboardLayout(): Promise<boolean> {
+    keyboardLayoutRequested = true;
+    const keyboard = typeof navigator === 'undefined' ? undefined : (navigator as any).keyboard;
+    try {
+      if (!keyboard?.getLayoutMap) {
+        keyboardLayoutMap = null;
+        return false;
+      }
+      keyboardLayoutMap = await keyboard.getLayoutMap();
+      return true;
+    } catch {
+      keyboardLayoutMap = null;
+      return false;
+    }
+  }
+
+  /**
+   * Whether a key is fit to bind a game action to, for a controls menu capturing the player's
+   * choice: `false` for keys the browser or the OS keeps for itself or reports unreliably - Tab,
+   * Escape, the function keys, Ctrl/Alt/Meta (they make shortcuts of the other held keys: Ctrl+W
+   * closes the tab), lock keys, media, power and IME keys.
+   * @param code A `KeyboardEvent.code` value
+   */
+  public static isBindable(code: string): boolean {
+    return !UNBINDABLE_KEY_CODES.test(code);
+  }
+
+  /**
    * Creates a new instance of the `KeyboardInput` class.
    */
   constructor() {
@@ -83,15 +224,13 @@ export class KeyboardInput extends IInput {
    * @returns An observable that emits true when the key is pressed and false when it's released
    */
   bind(code: string): Observable<boolean> {
-    if (!this.bindings[code]) {
-      this.bindings[code] = [];
-    }
     const subj = new BehaviorSubject<boolean>(false);
-    this.bindings[code].push(subj);
+    this.subjectsOf(code).push(subj);
     return subj.pipe(
       distinctUntilChanged(),
       finalize(() => {
-        this.bindings[code].splice(this.bindings[code].indexOf(subj), 1);
+        const subjects = this.subjectsOf(code);
+        subjects.splice(subjects.indexOf(subj), 1);
         subj.complete();
       }),
     );
@@ -113,17 +252,15 @@ export class KeyboardInput extends IInput {
     }
     const subjects: BehaviorSubject<boolean>[] = [];
     for (const code of codes) {
-      if (!this.bindings[code]) {
-        this.bindings[code] = [];
-      }
       const subj = new BehaviorSubject<boolean>(false);
-      this.bindings[code].push(subj);
+      this.subjectsOf(code).push(subj);
       subjects.push(subj);
     }
     return combineLatest(subjects).pipe(
       finalize(() => {
         for (let i = 0; i < codes.length; i++) {
-          this.bindings[codes[i]].splice(this.bindings[codes[i]].indexOf(subjects[i]), 1);
+          const bound = this.subjectsOf(codes[i]);
+          bound.splice(bound.indexOf(subjects[i]), 1);
           subjects[i].complete();
         }
       }),
@@ -157,7 +294,7 @@ export class KeyboardInput extends IInput {
       this.emulatedHeld.set(code, holders);
     }
     holders.add(holder);
-    for (const subj of this.bindings[code] || []) {
+    for (const subj of this.bindings.get(code) || []) {
       subj.next(true);
     }
   }
@@ -185,9 +322,20 @@ export class KeyboardInput extends IInput {
     if (this.physicalHeld.has(code)) {
       return;
     }
-    for (const subj of this.bindings[code] || []) {
+    for (const subj of this.bindings.get(code) || []) {
       subj.next(false);
     }
+  }
+
+  /**
+   * Whether `holder` holds `code` down through `emulateKeyDown` right now. `false` again after its
+   * `emulateKeyUp`, after `resetAllKeys` and after the input stopped (which lets go of every key):
+   * how a holder tells that the key it pressed was let go of by something else.
+   * @param code The key code
+   * @param holder The object `emulateKeyDown` was called with
+   */
+  isHeldBy(code: string, holder: unknown = this.defaultHolder): boolean {
+    return !!this.emulatedHeld.get(code)?.has(holder);
   }
 
   /**
@@ -218,7 +366,7 @@ export class KeyboardInput extends IInput {
     } else if (!pressed) {
       this.physicalHeld.delete(e.code);
     }
-    const subs = this.bindings[e.code];
+    const subs = this.bindings.get(e.code);
     if (!subs || subs.length === 0) {
       return;
     }
@@ -257,10 +405,19 @@ export class KeyboardInput extends IInput {
   public resetAllKeys() {
     this.emulatedHeld.clear();
     this.physicalHeld.clear();
-    for (const code in this.bindings) {
-      for (const subj of this.bindings[code] || []) {
+    for (const subjects of this.bindings.values()) {
+      for (const subj of subjects) {
         subj.next(false);
       }
     }
+  }
+
+  private subjectsOf(code: string): BehaviorSubject<boolean>[] {
+    let subjects = this.bindings.get(code);
+    if (!subjects) {
+      subjects = [];
+      this.bindings.set(code, subjects);
+    }
+    return subjects;
   }
 }

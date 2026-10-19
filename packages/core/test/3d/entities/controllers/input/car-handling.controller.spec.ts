@@ -70,6 +70,20 @@ describe('CarHandlingController', () => {
     beforeEach(() => (pads = stubGamepads()));
     afterEach(() => pads.restore());
 
+    it('pedals by the controls given to setGamepad', async () => {
+      const { world, controller } = await setup();
+      const outputs: any[] = [];
+      controller.output$.subscribe(o => outputs.push(o));
+      controller.setGamepad({ throttle: 'b0' });
+      pads.set({ buttons: { 7: 1 } });
+      world.gamepadInput.poll();
+      tick(world, 0, 16);
+      pads.set({ buttons: { 0: true } });
+      world.gamepadInput.poll();
+      tick(world, 16, 16);
+      expect(outputs.map(o => o.upDown)).toEqual([0, 1]);
+    });
+
     it('steers and pedals from the world gamepad with the default binding', async () => {
       const { world, controller } = await setup();
       const outputs: any[] = [];

@@ -1,4 +1,4 @@
-import { DirectionInput, KeyboardInput, MouseInput, Point2 } from '../../../src';
+import { DirectionInput, directionKeyCodes, KeyboardInput, MouseInput, Point2 } from '../../../src';
 
 describe('DirectionInput', () => {
   let keyboard: KeyboardInput;
@@ -71,6 +71,23 @@ describe('DirectionInput', () => {
     expect(analog.direction).toEqual({ x: 0, y: 0 });
   });
 
+  it('goes straight to zero on stop, with keys and contributions held', () => {
+    const values: Point2[] = [];
+    input.direction$.subscribe(v => values.push(v));
+    keyboard.emulateKeyDown('KeyW');
+    input.setAnalogDirection('stick', { y: 0.5 });
+    expect(values).toEqual([
+      { x: 0, y: 0 },
+      { x: 0, y: 1 },
+    ]);
+    input.stop();
+    expect(values).toEqual([
+      { x: 0, y: 0 },
+      { x: 0, y: 1 },
+      { x: 0, y: 0 },
+    ]);
+  });
+
   it('ignores analog contributions while stopped and drops them on stop', () => {
     input.setAnalogDirection('stick', { x: 1 });
     input.stop();
@@ -79,6 +96,132 @@ describe('DirectionInput', () => {
     expect(input.direction).toEqual({ x: 0, y: 0 });
     input.start();
     expect(input.direction).toEqual({ x: 0, y: 0 });
+  });
+
+  describe('custom key codes', () => {
+    it('reads the codes given per direction, a single code or a list', () => {
+      const custom = new DirectionInput(keyboard, {
+        up: ['KeyI', 'Numpad8'],
+        down: 'KeyK',
+        left: 'KeyJ',
+        right: 'KeyL',
+      });
+      custom.start();
+
+      keyboard.emulateKeyDown('Numpad8');
+      keyboard.emulateKeyDown('KeyJ');
+      expect(custom.direction).toEqual({ x: -1, y: 1 });
+      keyboard.emulateKeyDown('KeyL');
+      expect(custom.direction).toEqual({ x: 0, y: 1 });
+      keyboard.emulateKeyUp('Numpad8');
+      keyboard.emulateKeyUp('KeyJ');
+      keyboard.emulateKeyDown('KeyK');
+      expect(custom.direction).toEqual({ x: 1, y: -1 });
+      // keys of the built-in layouts are not read
+      keyboard.emulateKeyUp('KeyK');
+      keyboard.emulateKeyUp('KeyL');
+      keyboard.emulateKeyDown('KeyW');
+      expect(custom.direction).toEqual({ x: 0, y: 0 });
+      custom.stop();
+    });
+
+    it('works with a direction left without codes', () => {
+      const custom = new DirectionInput(keyboard, { up: [], down: [], left: 'KeyQ', right: 'KeyE' });
+      custom.start();
+      keyboard.emulateKeyDown('KeyE');
+      expect(custom.direction).toEqual({ x: 1, y: 0 });
+      custom.stop();
+    });
+
+    it('rebinds at once when keymap is assigned while running', () => {
+      const outputs: any[] = [];
+      input.output$.subscribe(o => outputs.push(o));
+      keyboard.emulateKeyDown('KeyW');
+      expect(input.direction).toEqual({ x: 0, y: 1 });
+
+      const before = outputs.length;
+      input.keymap = { up: 'KeyI', down: 'KeyK', left: 'KeyJ', right: 'KeyL' };
+      expect(input.keymap).toEqual({ up: 'KeyI', down: 'KeyK', left: 'KeyJ', right: 'KeyL' });
+      // the old key let go of, though still held: reported once
+      expect(input.direction).toEqual({ x: 0, y: 0 });
+      expect(outputs.slice(before)).toEqual([{}]);
+      keyboard.emulateKeyUp('KeyW');
+      keyboard.emulateKeyDown('KeyW');
+      expect(input.direction).toEqual({ x: 0, y: 0 });
+      keyboard.emulateKeyDown('KeyL');
+      expect(input.direction).toEqual({ x: 1, y: 0 });
+      expect(outputs[outputs.length - 1]).toEqual({ leftRight: false });
+
+      const beforeNull = outputs.length;
+      input.keymap = null;
+      expect(input.direction).toEqual({ x: 0, y: 0 });
+      expect(outputs.slice(beforeNull)).toEqual([{}]);
+      // nothing was bound: nothing to report
+      input.keymap = null;
+      expect(outputs.length).toBe(beforeNull + 1);
+      keyboard.emulateKeyUp('KeyL');
+      keyboard.emulateKeyDown('KeyL');
+      expect(input.direction).toEqual({ x: 0, y: 0 });
+    });
+
+    it('leaves a held key alone when the keymap assigned stands for the same codes', () => {
+      const outputs: any[] = [];
+      input.output$.subscribe(o => outputs.push(o));
+      keyboard.emulateKeyDown('KeyW');
+      expect(input.direction).toEqual({ x: 0, y: 1 });
+      const before = outputs.length;
+      input.keymap = 'wasd';
+      input.keymap = { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD' };
+      expect(input.direction).toEqual({ x: 0, y: 1 });
+      expect(outputs.length).toBe(before);
+      expect(input.keymap).toEqual({ up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD' });
+      // the same codes in another order
+      input.keymap = 'wasd+arrows';
+      keyboard.emulateKeyDown('ArrowUp');
+      const afterBoth = outputs.length;
+      input.keymap = {
+        up: ['ArrowUp', 'KeyW'],
+        down: ['ArrowDown', 'KeyS'],
+        left: ['ArrowLeft', 'KeyA'],
+        right: ['ArrowRight', 'KeyD'],
+      };
+      expect(input.direction).toEqual({ x: 0, y: 1 });
+      expect(outputs.length).toBe(afterBoth);
+    });
+
+    it('keeps analog contributions across a rebind', () => {
+      input.setAnalogDirection('stick', { x: 0.5 });
+      input.keymap = 'arrows';
+      expect(input.direction).toEqual({ x: 0.5, y: 0 });
+      keyboard.emulateKeyDown('ArrowUp');
+      expect(input.direction).toEqual({ x: 0.5, y: 1 });
+    });
+
+    it('takes a keymap assigned while stopped on the next start, and leaves no old binding behind', () => {
+      input.stop();
+      input.keymap = 'arrows';
+      input.start();
+      keyboard.emulateKeyDown('KeyW');
+      expect(input.direction).toEqual({ x: 0, y: 0 });
+      keyboard.emulateKeyDown('ArrowLeft');
+      expect(input.direction).toEqual({ x: -1, y: 0 });
+      input.stop();
+      expect((keyboard as any).bindings.get('ArrowLeft')).toEqual([]);
+      expect((keyboard as any).bindings.get('KeyW')).toEqual([]);
+    });
+  });
+
+  it('directionKeyCodes lists the codes of every keymap, as copies', () => {
+    expect(directionKeyCodes('wasd+arrows')).toEqual({
+      up: ['KeyW', 'ArrowUp'],
+      down: ['KeyS', 'ArrowDown'],
+      left: ['KeyA', 'ArrowLeft'],
+      right: ['KeyD', 'ArrowRight'],
+    });
+    const up = ['KeyI'];
+    const codes = directionKeyCodes({ up, down: 'KeyK', left: [], right: 'KeyL' });
+    expect(codes).toEqual({ up: ['KeyI'], down: ['KeyK'], left: [], right: ['KeyL'] });
+    expect(codes.up).not.toBe(up);
   });
 });
 

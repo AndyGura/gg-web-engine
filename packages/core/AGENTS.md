@@ -380,19 +380,47 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   `active = false` already stops every input subscription from touching `character` and neutralizes
   whatever it last wrote (`moveDirection`/`isRunning` zeroed, plus `isCrouching` in "hold" crouch
   mode) rather than leaving it stuck mid-motion.
+- **Rebinding keys (controls menu)**: a controller's `keymap` option is `'wasd'`, `'arrows'`,
+  `'wasd+arrows'` or custom `KeyboardEvent.code`s per direction - `{ up: 'KeyI', down: 'KeyK',
+  left: 'KeyJ', right: 'KeyL' }`, each a code or a list. To rebind while the game runs, call the
+  controller's `setKeys` with the keys that change - `player.setKeys({ jumpKey: 'KeyJ', keymap:
+  {...} })`, `car.setKeys({ gearUpDownKeys: ['KeyE', 'KeyQ'], handbrakeKey: 'KeyB' })`,
+  `freeCamera.setKeys({ upDownKeys, zoomOutInKeys, boostKey })`, `grab.setKeys({ grabKey })`. It
+  writes them to `options` and takes effect at once; gamepad buttons press the new keys, and a
+  `MobileControls` layout on screen is rebuilt (on the controller's `bindingsChanged$`, which
+  emits `'keys'` or `'gamepad'` and which a hint of your own can listen to as well). A gamepad
+  button still held when `setGamepad` assigns it - the one a menu just captured - counts from its
+  next push, so the capture never fires the action. For your own actions, `followKey(world.keyboardInput,
+  code$)` reports the state of whichever key an observable code names last,
+  `followGamepadKey(world.gamepadInput, world.keyboardInput, code$, controls$)` keeps a gamepad
+  button on it (an observable of the controls too; `of('b2')` for a fixed one), and
+  `followGamepadPressed(world.gamepadInput, controls$)` is the button's own down/up (each
+  `followGamepad*` that binds returns an unbind function: call it when the action goes away). A
+  controller of your own that should rebuild a `MobileControls` layout declares `implements
+  IRebindableController` and emits `'keys'` on its `bindingsChanged$` after a change. Label keys with `KeyboardInput.keyName(code)` ("W", "Left", "Num 8"; in the player's
+  layout on Chromium - `await KeyboardInput.loadKeyboardLayout()` before showing the menu, so
+  AZERTY's `KeyQ` reads "A" from the first frame), and check a captured `keydown`'s `e.code` with
+  `KeyboardInput.isBindable(code)` (false for Tab, Escape, function keys, Ctrl/Alt/Meta, lock and
+  media keys). Saving the bindings, and what to do when two actions get the same key, is the
+  app's.
 - **Gamepad**: every one of those controllers is driven by a gamepad out of the box, through
   `world.gamepadInput` (a `GamepadInput`, polled every frame while `world.inputEnabled`, also while
   the world is paused): left stick or d-pad moves/steers, right stick looks, triggers are a car's
   pedals, bumpers shift, A jumps, Start is yours to bind. Each controller's `gamepad` option takes
   its own binding (`gamepad: { ...DEFAULT_GG_CAR_GAMEPAD_BINDING, handbrake: 'b1' }`) or `null` to
-  leave the gamepad alone. Controls are named by index (`'b7'` the right trigger, `'a0-'` the left
+  leave the gamepad alone; `controller.setGamepad({ handbrake: 'b1' })` (or `null`) changes it
+  while the game runs, like `setKeys`. Controls are named by index (`'b7'` the right trigger, `'a0-'` the left
   stick to the left, per the standard mapping; `GamepadInput.controlName('b7')` gives "RT" for a
   menu). For your own actions: `world.gamepadInput.bindKeys(world.keyboardInput, { KeyF: 'b2' })`
   holds a key while a button is pressed, so whatever is bound to the key works; `pressed$('b9')`,
   `value$('b7')` (a trigger's 0..1) and `direction$(GAMEPAD_RIGHT_STICK)` read controls directly;
   `inUse$` tells whether to show gamepad or keyboard hints; `controlPushed$` captures the next
   control pushed for a "press a button" rebinding menu. Browsers list a gamepad only once a button
-  was pressed on it.
+  was pressed on it. Which gamepad drives, with several connected (some keyboards and wheel pedals
+  list themselves as gamepads too): `GamepadInput.choice`, a `{ id, nth }` every world's input
+  follows - save it and assign it back at startup; without one, the first gamepad with the
+  standard mapping. A controls menu shows `GamepadInput.gamepadName(GamepadInput.selectedGamepad())`
+  and steps with `GamepadInput.chooseNext(1)`/`(-1)`.
 - **GLB scene loading (3D)**: GLB + `.gg` meta sidecar, driven by `packages/core/src/3d/loader.ts`
   and the adapter's own `<lib>-loader.ts` (e.g. `ThreeLoader`). Levels are authored in Blender and
   exported with the `GG Web Engine Exporter` add-on in `blender-addon/` (see `blender-addon/README.md`
@@ -651,7 +679,12 @@ class GameScreen extends Screen {
   only this player's input is off. A world you paused yourself is not resumed for you.
 - **Keys**: `this.keyboard` is the screen's own `KeyboardInput`, running only while the screen is
   on top - use it for the screen's shortcuts (Escape, back). Gameplay keys stay on
-  `world.keyboardInput`. With the pointer locked the browser keeps Escape for releasing the lock,
+  `world.keyboardInput`. `this.bindGamepadKeys()` in a menu screen's constructor or `enter()` has
+  the gamepad press that keyboard too: d-pad or left stick are the arrows (held ones repeat), A is
+  Enter, B is Escape, so a menu driven by `this.keyboard.bind('ArrowDown')` etc. works from a pad.
+  Moving DOM focus or clicking the focused button on those keys is your handler's job. Keep the
+  menu keys off a game screen (B is a gameplay button there) and bind only its pause key:
+  `this.bindGamepadKeys({ Escape: 'b9' })` (Start). With the pointer locked the browser keeps Escape for releasing the lock,
   so a game that pauses on Escape also pauses on `pointerlockchange` when the lock is gone. An
   input you create yourself is not switched off for you: gate it on `world.inputEnabled$`, or
   start/stop it with `runWhileInputEnabled(world, until$, start, stop)`.

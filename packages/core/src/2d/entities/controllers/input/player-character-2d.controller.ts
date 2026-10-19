@@ -1,7 +1,9 @@
-import { filter, take, takeUntil } from 'rxjs';
+import { filter, Observable, takeUntil } from 'rxjs';
 import {
   DirectionInput,
   DirectionKeymap,
+  BindingsChange,
+  IRebindableController,
   GAMEPAD_LEFT_STICK_OR_DPAD,
   GamepadControls,
   GamepadDirectionBinding,
@@ -11,6 +13,7 @@ import {
   runWhileInputEnabled,
   TickOrder,
 } from '../../../../base';
+import { ControllerBindings } from '../../../../base/inputs/rebindable-keys';
 import { Renderer2dEntity } from '../../renderer-2d.entity';
 import { CharacterController2dEntity } from '../../character-controller-2d.entity';
 import { Gg2dWorld, Gg2dWorldTypeDocRepo } from '../../../gg-2d-world';
@@ -39,7 +42,11 @@ export const DEFAULT_CHARACTER_2D_GAMEPAD_BINDING: Character2dGamepadBinding = {
  * Options for configuring a `PlayerCharacterController2d`.
  */
 export type PlayerCharacterController2dOptions = {
-  /** Keymap for left/right movement. `'wasd+arrows'` by default (both layouts work at once). */
+  /**
+   * Keymap for left/right movement: `'wasd+arrows'` by default (both layouts work at once), or
+   * custom codes per direction (only `left`/`right` move the character). `setKeys` changes it
+   * while the game runs.
+   */
   keymap: DirectionKeymap;
   /** Key code that triggers `character.jump()`. `'Space'` by default. */
   jumpKey: string;
@@ -60,10 +67,18 @@ export type PlayerCharacterController2dOptions = {
   /**
    * The gamepad controls, bound on the world's `gamepadInput`: `move` goes to the direction input,
    * the buttons press the keys above on `keyboard`. `DEFAULT_CHARACTER_2D_GAMEPAD_BINDING` by
-   * default; `null` leaves the gamepad alone.
+   * default; `null` leaves the gamepad alone. `setGamepad` changes it while the game runs.
    */
   gamepad: Character2dGamepadBinding | null;
 };
+
+/**
+ * The keys of a `PlayerCharacterController2d`, which `setKeys` changes while the game runs
+ */
+export type PlayerCharacterController2dKeys = Pick<
+  PlayerCharacterController2dOptions,
+  'keymap' | 'jumpKey' | 'runKey' | 'crouchKey'
+>;
 
 const DEFAULT_OPTIONS: PlayerCharacterController2dOptions = {
   keymap: 'wasd+arrows',
@@ -105,13 +120,54 @@ const DEFAULT_OPTIONS: PlayerCharacterController2dOptions = {
  * );
  * ```
  */
-export class PlayerCharacterController2d<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTypeDocRepo> extends IEntity {
+export class PlayerCharacterController2d<TypeDoc extends Gg2dWorldTypeDocRepo = Gg2dWorldTypeDocRepo>
+  extends IEntity
+  implements IRebindableController
+{
   static readonly entityTypeName: string = 'PlayerCharacterController2d';
   public readonly tickOrder = TickOrder.CONTROLLERS;
 
   public readonly options: PlayerCharacterController2dOptions;
 
   public readonly directionsInput: DirectionInput;
+
+  private readonly bindings: ControllerBindings<PlayerCharacterController2dOptions, Character2dGamepadBinding>;
+
+  /** Emits after every `setKeys` (`'keys'`) and `setGamepad` (`'gamepad'`) - see `IRebindableController` */
+  public get bindingsChanged$(): Observable<BindingsChange> {
+    return this.bindings.changed$;
+  }
+
+  /**
+   * Rebinds keys while the game runs - for a controls menu. Only the keys given change; they are
+   * written to `options` and take effect at once, keyboard and gamepad alike (the gamepad presses
+   * whichever key its button is for). A key held while it is replaced stops counting, and a new
+   * key already held counts from its next press.
+   *
+   * @example
+   * ```ts
+   * controller.setKeys({ jumpKey: 'KeyW', keymap: { up: [], down: 'KeyS', left: 'KeyA', right: 'KeyD' } });
+   * ```
+   */
+  public setKeys(keys: Partial<PlayerCharacterController2dKeys>): void {
+    this.bindings.setKeys(keys);
+  }
+
+  /**
+   * Rebinds the gamepad while the game runs - for a controls menu. The controls given replace the
+   * current ones (over `DEFAULT_CHARACTER_2D_GAMEPAD_BINDING` while the gamepad is off), `null` turns the
+   * gamepad off. Written to `options.gamepad`, taking effect at once. A control held while it is
+   * replaced stops counting, and one already held when it is assigned (the button a menu just
+   * captured) counts from its next push.
+   *
+   * @example
+   * ```ts
+   * controller.setGamepad({ jump: 'b1' });
+   * ```
+   */
+  public setGamepad(binding: Partial<Character2dGamepadBinding> | null): void {
+    this.bindings.setGamepad(binding);
+  }
 
   get active(): boolean {
     return super.active;
@@ -145,10 +201,12 @@ export class PlayerCharacterController2d<TypeDoc extends Gg2dWorldTypeDocRepo = 
     super();
     this.options = { ...DEFAULT_OPTIONS, ...options };
     this.directionsInput = new DirectionInput(keyboard, this.options.keymap);
+    this.bindings = new ControllerBindings(this.options, DEFAULT_CHARACTER_2D_GAMEPAD_BINDING, this._onRemoved$);
   }
 
   async onSpawned(world: Gg2dWorld<TypeDoc>): Promise<void> {
     super.onSpawned(world);
+    this.bindings.followKeymap(this.directionsInput, o => o.keymap);
 
     this.directionsInput.direction$
       .pipe(
@@ -163,16 +221,16 @@ export class PlayerCharacterController2d<TypeDoc extends Gg2dWorldTypeDocRepo = 
         }
       });
 
-    this.keyboard
-      .bind(this.options.jumpKey)
+    this.bindings
+      .followKey(this.keyboard, o => o.jumpKey)
       .pipe(
         takeUntil(this._onRemoved$),
         filter(down => this.active && down),
       )
       .subscribe(() => this.character?.jump());
 
-    this.keyboard
-      .bind(this.options.runKey)
+    this.bindings
+      .followKey(this.keyboard, o => o.runKey)
       .pipe(
         takeUntil(this._onRemoved$),
         filter(() => this.active),
@@ -183,8 +241,8 @@ export class PlayerCharacterController2d<TypeDoc extends Gg2dWorldTypeDocRepo = 
         }
       });
 
-    this.keyboard
-      .bind(this.options.crouchKey)
+    this.bindings
+      .followKey(this.keyboard, o => o.crouchKey)
       .pipe(
         takeUntil(this._onRemoved$),
         filter(() => this.active),
@@ -209,18 +267,27 @@ export class PlayerCharacterController2d<TypeDoc extends Gg2dWorldTypeDocRepo = 
       )
       .subscribe(([, delta]) => this.updateCamera(delta / 1000));
 
-    const gamepad = this.options.gamepad;
-    if (gamepad && world.gamepadInput) {
-      const unbindKeys = world.gamepadInput.bindKeys(this.keyboard, {
-        [this.options.jumpKey]: gamepad.jump,
-        [this.options.runKey]: gamepad.run,
-        [this.options.crouchKey]: gamepad.crouch,
-      });
-      const unbindMove = world.gamepadInput.bindDirection(this.directionsInput, gamepad.move);
-      this._onRemoved$.pipe(take(1)).subscribe(() => {
-        unbindKeys();
-        unbindMove();
-      });
+    const gamepadInput = world.gamepadInput;
+    if (gamepadInput) {
+      this.bindings.followGamepadKey(
+        gamepadInput,
+        this.keyboard,
+        o => o.jumpKey,
+        g => g.jump,
+      );
+      this.bindings.followGamepadKey(
+        gamepadInput,
+        this.keyboard,
+        o => o.runKey,
+        g => g.run,
+      );
+      this.bindings.followGamepadKey(
+        gamepadInput,
+        this.keyboard,
+        o => o.crouchKey,
+        g => g.crouch,
+      );
+      this.bindings.followGamepadDirection(gamepadInput, this.directionsInput, g => g.move);
     }
 
     runWhileInputEnabled(

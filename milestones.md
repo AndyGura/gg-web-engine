@@ -409,9 +409,10 @@ Status
   `MobileControls` follow) and are paused unless the world's simulation is shared
   (`localPauseAllowed`); a screen's worlds and teardowns are disposed when it exits; a loading
   view shows the progress `enter()` reports. Operations are queued, and one that removes a screen
-  not shown yet cancels its load. Covered by `packages/core/test/base/screens/*.spec.ts`
-  (including a leak test over 25 round trips) and the `3d/screens` example; documented in
-  `gg-engine-app-development`.
+  not shown yet cancels its load. A screen opts into gamepad menu keys (`bindGamepadKeys`: d-pad,
+  A, B as arrows, Enter, Escape on its own keyboard). Covered by
+  `packages/core/test/base/screens/*.spec.ts` (including a leak test over 25 round trips) and the
+  `3d/screens` example; documented in `gg-engine-app-development`.
 - ✅ Gamepad support: `GamepadInput` (`packages/core/src/base/inputs/gamepad.input.ts`), one per
   world as `world.gamepadInput`, polled on the global clock (so a gamepad can unpause a paused
   world) while `inputEnabled`. It feeds the existing inputs - `bindKeys` presses a `KeyboardInput`'s
@@ -419,12 +420,20 @@ Status
   an analog contribution - and exposes controls by index for anything else (`value$`, `pressed$`,
   `direction$`, `controlPushed$` for binding capture, `inUse$` for input hints). Every built-in
   input controller binds its keys and directions to it by default through a `gamepad` option with
-  standard-mapping defaults. Covered by `packages/core/test/base/inputs/gamepad.input.spec.ts` and
-  the controllers' specs; documented in `gg-engine-app-development`. Not done: haptics, and a
-  per-gamepad mapping database for pads without the standard mapping.
+  standard-mapping defaults, which `setGamepad` changes while the game runs. Which device drives is
+  `GamepadInput.choice` (`{ id, nth }`, shared by every input, surviving reconnects), else the
+  gamepad in use, else the first standard-mapping gamepad. Covered by
+  `packages/core/test/base/inputs/gamepad.input.spec.ts` and the controllers' specs; documented in `gg-engine-app-development`. Not done: haptics, a
+  per-gamepad mapping database for pads without the standard mapping, and one gamepad per player
+  (controllers only read `world.gamepadInput`).
 - Touch/gesture recognition (pinch, pan, tap, swipe) — not started.
-- User-facing remapping API — not started; current input classes are configured in code, not
-  remappable at runtime.
+- ✅ Keyboard remapping: `DirectionKeymap` takes custom codes per direction, every built-in input
+  controller's `setKeys` rebinds its keys while the game runs (gamepad buttons and the
+  mobile-controls layout follow), `followKey`/`followGamepadKey` do the same for an app's own
+  actions, and `KeyboardInput.keyName`/`isBindable`/`loadKeyboardLayout` cover a controls menu's
+  labels and key capture. Covered by `packages/core/test/base/inputs/{direction.input,
+  keyboard.input,rebindable-keys}.spec.ts` and the controllers' specs. Not done: saving bindings, resolving
+  conflicts between actions (left to the app).
 - Haptics — not started.
 
 ---

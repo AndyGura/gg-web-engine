@@ -740,6 +740,24 @@ flow as a stack of DOM layers. The module imports nothing from an adapter and no
   screen has exited (an `enter()` that ignored its signal) dispose their argument immediately.
 - **The manager reaches into a screen through `screen.internals`**, an object of closures, since TS
   has no package-private access. It is `@internal`; app code has no use for it.
+- **Gamepad keys of a screen** (`Screen.bindGamepadKeys`) are opt-in, never on by default: on a
+  game screen, B (Escape in `GAMEPAD_MENU_KEYS`) is a gameplay button and would open the pause
+  menu. They bind on `ScreenManager.gamepadInput` (created and started on first use, stopped in
+  `dispose`; running beside a world's own input costs no second `navigator.getGamepads()` read -
+  every running `GamepadInput` shares one per frame) with `bindKeys(..., { edge: true, repeat: arrows })` and end with the
+  screen's teardowns; a call before the screen is pushed waits for `attach`. `edge` is what makes it work
+  across screens: B closing the pause menu is still held when the game screen's keyboard starts,
+  and pressing it would open the menu again at once. An edge binding presses only a control
+  pushed while the keyboard runs. Every binding, edge or not, drops a hold the keyboard no longer
+  has (`KeyboardInput.isHeldBy`, false after a stop or `resetAllKeys`) and waits for the control's
+  next push - checking `keyboard.running` instead misses a stop and start between two polls (a
+  screen transition within one frame) - and treats what is held at the first read after the
+  gamepad input itself restarted as a baseline, not a press: until then the control values are
+  empty, which says nothing about the hand on the gamepad. Without both, A pressed on a pause
+  menu's "Resume" (Enter) is still down when the world's input comes back and jumps (A is the
+  character's jump). An edge binding also takes its first read after it was made as a baseline,
+  so the button that closed the previous screen does not close the new one on its first frame. A
+  spec therefore polls once with nothing pushed before its first press.
 - **Covering a screen** sets `inert` on its layer, `inputEnabled = false` on its worlds and pauses
   them unless the push said otherwise or `world.localPauseAllowed` is `false`. While covered it
   follows `world.localPauseAllowed$`: a network session joined under an open menu resumes the
@@ -1203,6 +1221,77 @@ keyboard and mouse they are named after. Anything else feeds them:
   several sources compose (a tilt sensor on `x`, a pedal button on `y`). `output$` stays keys-only.
 - `MouseInput.emulateMove(delta)` - a view rotation, through `delta$`.
 
+**Every key and gamepad control a built-in controller binds is rebindable through its `setKeys`/
+`setGamepad`**, and a new key option or gamepad control has to be too. The mechanism is written once,
+in `base/inputs/rebindable-keys.ts`, and each controller only wires it. `ControllerBindings` and
+`sameBinding` there are internal - `base/index.ts` lists that module's exports by name and leaves
+them out, and controllers import them by path; an app has the free `follow*` functions and
+`IRebindableController` only. Each controller has a `XxxControllerKeys` type
+(`Pick` of the key options), a private `bindings = new ControllerBindings(this.options,
+DEFAULT_XXX_GAMEPAD_BINDING, this._onRemoved$)` built in the constructor right after `options` is
+(it writes to that object, which is why `CarHandlingController`/`GgCarHandlingController` copy the
+options they are given), `implements IRebindableController` with `bindingsChanged$` returning
+`bindings.changed$`, `setKeys(partial)` calling `bindings.setKeys(keys)` (copies the keys, skipping
+`undefined`, and emits `'keys'`; typed `Partial<Omit<O, 'gamepad'>>`, so a gamepad change can never
+arrive as a `'keys'` one), and `setGamepad(partial | null)` calling `bindings.setGamepad(binding)`
+(`null`, or the partial over the current binding or the default one while off; emits `'gamepad'`
+and returns what it wrote). Every binding in `onSpawned` goes through the bindings' own methods,
+each over a key picked from `options` and a control picked from `options.gamepad` (nothing while
+that is `null`): `this.bindings.followKeymap(this.directionsInput, o => o.keymap)` keeps the
+`DirectionInput`'s keys at `options.keymap` (no `setKeys` special case for it - a controller
+only writes options, the bindings apply them), `this.bindings.followKey(this.keyboard, o =>
+o.jumpKey)` (an observable, piped through `takeUntil(this._onRemoved$)`),
+`this.bindings.followGamepadKey(gamepadInput, this.keyboard, o => o.jumpKey, g => g.jump)`,
+`this.bindings.followGamepadPressed(gamepadInput, g => g.throw)` for an edge-triggered action
+without a key of its own and `this.bindings.followGamepadDirection(gamepadInput,
+this.directionsInput, g => g.move)` - the three that bind are unbound by the bindings themselves
+when `_onRemoved$` next emits. `GgCarHandlingController` nests a `CarHandlingController` with
+bindings of its own: it constructs the child with only the child's options (keymap, steering rate
+and the steer/throttle/brake controls of its own binding - never the gear or handbrake controls)
+and forwards `keymap` and the car controls of every `setKeys`/`setGamepad` to the child's methods.
+The child is rebound only through the parent (its doc says so); nothing syncs a change made on
+the child back up, on purpose - a two-way sync made the order of every forward matter. These wrap the free functions `followKey`,
+`followGamepadKey`, `followGamepadPressed` and `followGamepadDirection` (for an app's own actions,
+over plain observables) with `option$`/`gamepadOption$`; never `keyboard.bind(this.options.x)`, one
+`gamepadInput.bindKeys` map of all keys, a `switchMap` of `option$` straight onto `pressed$`, or a
+`gamepad` read once in `onSpawned`. Gamepad bindings are made whenever `world.gamepadInput` exists,
+even with `gamepad: null`, since `setGamepad` can turn it on later; something read per tick (the
+look stick, `lookSpeed`) reads `this.options.gamepad` on that tick. One binding per key is the
+point: each follows its own code
+and controls with `distinctUntilChanged` (controls compared by content, `sameBinding`), so changing
+one key leaves the others' bindings (and a held gamepad button on them) alone - rebinding a whole
+`bindKeys` map would release and re-press every held key, a rising edge that jumps or shifts gear
+again. The same edge is why a control already pushed when it is assigned counts from its next push
+only: a controls menu captures a button from `controlPushed$` while it is still down, and a
+`bindKeys` made then would press the key on the spot (`followGamepadKey` binds, and
+`followGamepadPressed` starts reporting, once `GamepadInput.released$` fires - see below). Anything that
+switches on `option$` into a `combineLatest` of gamepad state (`FreeCameraController`'s pointer-lock
+gate) puts `distinctUntilChanged(sameBinding)` before the `switchMap`, since `option$` emits on
+every `setKeys` too.
+`CarHandlingController`/`GgCarHandlingController` copy the options object they are given, since
+`setKeys`/`setGamepad` write to it. `FreeCameraController` binds its zoom keys through `option$`
+returning `null` for a camera without a fov, so the `combineLatest` keeps a fixed shape.
+
+`DirectionInput.keymap` is a live setter: `bindKeys()`/`unbindKeys()` own one `Subscription`
+over `combineLatest` of the four directions' `bindMany`, shared by `start`/`stop` and the setter,
+so a rebind leaves no binding on the keyboard behind (the spec checks `KeyboardInput`'s private
+`bindings` lists are empty after stop). A keymap standing for the same codes as the current one
+(`'wasd'` over its codes spelled out, compared through `directionKeyCodes`) rebinds nothing: a
+controller's `setKeys` forwards whatever `keymap` it is given, and a controls menu applying a whole
+key set mid-game must not drop a held direction key. A direction with no codes binds `of(false)`,
+never `bindMany()` with nothing - that returns `NEVER`, and `combineLatest` would then never emit
+at all. Unbinding emits `{}` on `output$` and zeroes the keys' share of `direction$`; on a stop the
+analog contributions are cleared first, so `direction$` goes straight to zero instead of reporting
+the contributions alone on the way. A new
+`KeyboardInput.bind` starts at `false` whatever the key's state, so a key of the new keymap already
+held counts from its next press. `KeyboardInput.keyName`'s layout map is module state filled by
+`loadKeyboardLayout()` (each call re-reads it; `keyName` triggers the first), never read at import
+time - `navigator` doesn't exist in every host. Its name tables are `Map`s, not object literals: a
+code comes from saved bindings, and `'constructor'` indexed into an object literal returns a
+function, not a label. Specs stub `navigator.keyboard` with
+`Object.defineProperty(..., { configurable: true })` and reset it by deleting the stub and calling
+`loadKeyboardLayout()` again.
+
 `MouseInput.delta$` reports each movement exactly once, from `pointermove` alone - a mouse fires
 `mousemove` for the same motion, and listening to both (as this class once did) doubled every
 mouse-look sensitivity against its documented "radians per 1000px". Keep it that way when touching
@@ -1242,14 +1331,60 @@ ignores emulated keys, analog directions and emulated moves, so nothing has to g
 
 `GamepadInput` (`base/inputs/gamepad.input.ts`) is the one gamepad reader. `GgWorld` owns one
 (`gamepadInput`), started in the constructor, stopped and started with `inputEnabled` (the
-`inputEnabled` setter and `dispose()` handle it next to `keyboardInput`). While running it polls
-`navigator.getGamepads()` on every tick of `GgGlobalClock` - not the world clock, on purpose: a
-paused world has no ticks, and a gamepad has to be able to unpause it. `poll()` is public, and that
-is how specs drive it: `test/mocks/gamepad.mock.ts` stubs `navigator.getGamepads` (jsdom has none)
-with `stubGamepads()`/`fakeGamepad()`, and a test calls `input.poll()` after `pads.set({...})`.
+`inputEnabled` setter and `dispose()` handle it next to `keyboardInput`). While running it is
+polled on every tick of `GgGlobalClock` - not the world clock, on purpose: a paused world has no
+ticks, and a gamepad has to be able to unpause it. All running inputs are polled together from one
+static tick subscription (`pollAll`, a static `Set` of the running ones), so `navigator
+.getGamepads()` is read once per frame however many inputs run - a `ScreenManager`'s beside a
+world's, or several worlds'. `poll()` is public and reads on its own, and that is how specs drive
+it: `test/mocks/gamepad.mock.ts` stubs `navigator.getGamepads` (jsdom has none) with
+`stubGamepads()`/`fakeGamepad()`, and a test calls `input.poll()` after `pads.set({...})`; a spec
+of the shared read drives `(GgGlobalClock.instance as any)._tick$.next([t, dt])` instead.
 
 What it holds to:
 
+- **Which gamepad is read** is one decision for the whole page: `GamepadInput.choice` (static, a
+  `GamepadChoice` `{ id, nth }`) resolved on every poll by `select()` (`selectedGamepad()` for a
+  menu) - the chosen one if connected, else the gamepad in use, else the first with a button
+  pressed, else the first standard-mapping gamepad, else the first connected one - by every input whose own `gamepadIndex` is `null` (an
+  index there is a position in `navigator.getGamepads()`, as before). The gamepad in use is a
+  static `inUseDevice` (`{ index, id }`), set by `readGamepad` the first time the gamepad read by
+  default is used - a button pressed or an axis moved from where it rests, the same test as
+  `inUse$`, never "a control past half way": pedals and axis triggers rest at -1 and would lock
+  in on their first read - and cleared when a poll finds it gone (`findGamepad`, the polling
+  path only - `select()` itself is pure, since `selectedGamepad()`/`chooseNext()` call it from a
+  menu, and a label refresh during a momentary disconnection must not forget the device) or a
+  `choice` is assigned: without
+  it a standard pad whose button is pressed mid-game would displace a non-standard wheel being
+  driven with (the first standard pad is preferred over the first listed one, since keyboards and
+  pedals list themselves as gamepads), while a device merely listed first and never pushed must
+  still give way to a pad plugged back in - a browser lists it because of a press on it. A choice
+  by id survives a reconnect and a reload, an index does not; `nth` tells
+  several pads of one model apart, and a choice whose `nth` is gone takes the last of that id.
+  `Gamepad` objects are snapshots, so a device is told apart by `index` and `id`, never identity.
+  When the polled device changes from one gamepad to another while one was connected (a new
+  choice), `readGamepad` reports nothing on `controlPushed$` for that poll: what is already held
+  on the new one was not pushed now. A gamepad read after a poll with none - the first ever, or
+  one plugged back in - is not a switch: a browser lists a gamepad only once a button was pressed
+  on it, that press is the one meant, and a "press any button" menu is waiting for exactly it.
+  That is why `device` keeps the last gamepad over a disconnection and the test is on the previous
+  poll's `_connected$`. Whether a browser needs a new press to list a replugged pad was not checked
+  on hardware; if it doesn't, a control held on it reports as pushed once - the smaller harm,
+  against swallowing the press a menu waits for. Change this only with a hardware test behind it.
+  `test/mocks/gamepad.mock.ts`'s `fakeGamepad` takes `id`/`index` (default `'fake'`/0) for this.
+- **A stopped `GamepadInput` reads every control as released** (`stopInternal` clears the button
+  and axis values and emits `polled$`), which says nothing about the hand on the gamepad - and a
+  controls menu runs with the world's `inputEnabled` off, i.e. with that very input stopped. So
+  "a control held when it is assigned counts from its next push" (`followGamepadKey`,
+  `followGamepadPressed`) cannot go by `pressed$` reading `false`: it would bind at once and the
+  button still held on the menu's close would fire the action on the restart. They wait on
+  `GamepadInput.released$(controls)` instead, which only counts a poll of the gamepad itself (the
+  private `read$`, emitted by `readGamepad` and not by a stop) and only once the values are those
+  of a read (`hasRead`: `false` from a start until the first poll, when the values are still empty,
+  and after a stop) - `running` alone would bind at once in the frame a world's input is switched
+  on and a captured binding applied, before the first poll, and the button still held from the
+  menu would act. A spec therefore polls once with nothing pushed after starting a gamepad input
+  before its first press. Anything else that must tell "released" from "not read" goes the same way.
 - **Controls are strings by index** (`GamepadControl`: `'b7'`, `'a0-'`, `'a0+'`), never names: the
   standard mapping is only a convention the browser reports (`standardMapping`), and a DirectInput
   pad numbers its buttons differently. `GamepadInput.controlName` turns one into a menu label. A
@@ -1259,10 +1394,14 @@ What it holds to:
   there, since the Gamepad API reports up as negative and `DirectionInput` wants up positive.
 - **It never drives an entity itself.** `bindKeys(keyboard, { code: controls })` presses keys
   through `emulateKeyDown`/`emulateKeyUp`, `bindDirection(directionInput, binding)` calls
-  `setAnalogDirection` with itself as the source; both return an unbind function. Both re-apply on
-  every poll while held, not only on the edge: a `KeyboardInput`/`DirectionInput` restarted
-  meanwhile (the world's input switched off and on) has let go, and gets the held state back on
-  the next poll. Stopping the gamepad input clears every control's value and emits one last poll,
+  `setAnalogDirection` with itself as the source; both return an unbind function.
+  `bindDirection` re-applies on every poll while the stick is off center, so a `DirectionInput`
+  restarted meanwhile gets the direction back. `bindKeys` does not: a key the keyboard let go of
+  (the world's input switched off and on for a menu) is pressed again only by the control's next
+  push, since the button that closed the menu must not act in the game (see "Screens" for this
+  and for `edge`). `repeat`
+  releases and presses a held key again after `repeatDelay`, then every `repeatInterval` (wall
+  time, `performance.now()` - menus run without a world; specs stub it with `jest.spyOn`). Stopping the gamepad input clears every control's value and emits one last poll,
   so every binding releases - without forgetting the gamepad: `connected`, `gamepad`,
   `standardMapping` and `inUse` stay as of the last poll, so a menu shown while the world's input
   is off still names the buttons and `connected$` does not flicker over the stop. The world's
@@ -1333,8 +1472,11 @@ changing one:
   `GgCarHandlingController`, `PlayerCharacterController`, `PlayerCharacterController2d`,
   `FreeCameraController` and `ObjectGrabController` - the layouts read key codes from them
   (`options.jumpKey`, `options.gearUpDownKeys`, `options.grabKey`, ...) and emulate on that same
-  `keyboard`. `FreeCameraController`'s up/down/boost keys are hardcoded (`KeyE`/`KeyQ`/`ShiftLeft`)
-  in both places. `ObjectGrabController`'s layout also reads `heldObject$` (to turn its grab button
+  `keyboard`. A layout reads the keys when it is built; `MobileControls` rebuilds a shown one when
+  the controller's `bindingsChanged$` reports a `'keys'` change (`isRebindableController` from core,
+  so an app's controller implementing `IRebindableController` gets the same) - not on a `'gamepad'`
+  change, which the layout doesn't read and whose rebuild would release the button a finger holds.
+  `ObjectGrabController`'s layout also reads `heldObject$` (to turn its grab button
   into a release button and show a throw button while something is held) and calls `throwHeld()`.
 - `directionsInput`/`mouseInput` are public on the same controllers and are what sticks and look
   areas bind to. A new option-driven key on a controller needs a button in its layout

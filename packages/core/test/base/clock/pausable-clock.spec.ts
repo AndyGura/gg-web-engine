@@ -3,7 +3,6 @@ import { Observable, Subject } from 'rxjs';
 import { map } from 'rxjs/operators';
 
 describe('PausableClock', () => {
-
   class GlobalClockMock extends IClock {
     public readonly _tick$: Subject<[number, number]> = new Subject<[number, number]>();
 
@@ -32,7 +31,7 @@ describe('PausableClock', () => {
     it('should propagate ticks from parent clock', () => {
       const c = new PausableClock(true, gClockMock);
       let tickData = null;
-      c.tick$.subscribe((x) => {
+      c.tick$.subscribe(x => {
         tickData = x;
       });
       gClockMock._tick$.next([0, 0]);
@@ -42,7 +41,7 @@ describe('PausableClock', () => {
     it('should not propagate ticks if not started', () => {
       const c = new PausableClock(false, gClockMock);
       let tickData = null;
-      c.tick$.subscribe((x) => {
+      c.tick$.subscribe(x => {
         tickData = x;
       });
       gClockMock._tick$.next([0, 0]);
@@ -52,7 +51,7 @@ describe('PausableClock', () => {
     it('should propagate ticks if paused', () => {
       const c = new PausableClock(true, gClockMock);
       let tickData = null;
-      c.tick$.subscribe((x) => {
+      c.tick$.subscribe(x => {
         tickData = x;
       });
       c.pause();
@@ -63,7 +62,7 @@ describe('PausableClock', () => {
     it('should propagate ticks if stopped', () => {
       const c = new PausableClock(true, gClockMock);
       let tickData = null;
-      c.tick$.subscribe((x) => {
+      c.tick$.subscribe(x => {
         tickData = x;
       });
       c.stop();
@@ -124,10 +123,10 @@ describe('PausableClock', () => {
       const c2 = new PausableClock(true, intermediateClock);
       let caughtTicks1: [number, number][] = [];
       let caughtTicks2: [number, number][] = [];
-      c1.tick$.subscribe((x) => {
+      c1.tick$.subscribe(x => {
         caughtTicks1.push(x);
       });
-      c2.tick$.subscribe((x) => {
+      c2.tick$.subscribe(x => {
         caughtTicks2.push(x);
       });
       gClockMock._tick$.next([0, 25]);
@@ -141,10 +140,16 @@ describe('PausableClock', () => {
       gClockMock._tick$.next([200, 225]);
       jest.advanceTimersByTime(225);
       expect(caughtTicks1).toHaveLength(2);
-      expect(caughtTicks1).toEqual([[100, 100], [200, 100]]);
+      expect(caughtTicks1).toEqual([
+        [100, 100],
+        [200, 100],
+      ]);
       expect(c1.elapsedTime).toEqual(225);
       expect(caughtTicks2).toHaveLength(2);
-      expect(caughtTicks2).toEqual([[100, 100], [200, 100]]);
+      expect(caughtTicks2).toEqual([
+        [100, 100],
+        [200, 100],
+      ]);
       expect(c2.elapsedTime).toEqual(225);
     });
   });
@@ -247,7 +252,7 @@ describe('PausableClock', () => {
       const c = new PausableClock(true, gClockMock);
       jest.advanceTimersByTime(100);
       const ticks: [number, number][] = [];
-      c.tick$.subscribe((x) => ticks.push(x));
+      c.tick$.subscribe(x => ticks.push(x));
 
       gClockMock._tick$.next([150, 200]);
       c.timeScale = 2;
@@ -407,7 +412,7 @@ describe('PausableClock', () => {
       const c = new PausableClock(true, gClockMock);
       c.maxTickDelta = 100;
       const ticks: [number, number][] = [];
-      c.tick$.subscribe((x) => ticks.push(x));
+      c.tick$.subscribe(x => ticks.push(x));
       gClockMock._tick$.next([0, 300]);
       expect(ticks).toEqual([[100, 100]]);
     });
@@ -416,7 +421,7 @@ describe('PausableClock', () => {
       const c = new PausableClock(true, gClockMock);
       c.maxTickDelta = 100;
       const ticks: [number, number][] = [];
-      c.tick$.subscribe((x) => ticks.push(x));
+      c.tick$.subscribe(x => ticks.push(x));
       gClockMock._tick$.next([0, 50]);
       expect(ticks).toEqual([[50, 50]]);
     });
@@ -425,7 +430,7 @@ describe('PausableClock', () => {
       const c = new PausableClock(true, gClockMock);
       c.maxTickDelta = 0;
       const ticks: [number, number][] = [];
-      c.tick$.subscribe((x) => ticks.push(x));
+      c.tick$.subscribe(x => ticks.push(x));
       gClockMock._tick$.next([0, 5000]);
       expect(ticks).toEqual([[5000, 5000]]);
     });
@@ -444,7 +449,7 @@ describe('PausableClock', () => {
       const c = new PausableClock(true, gClockMock);
       c.maxTickDelta = 100;
       const ticks: [number, number][] = [];
-      c.tick$.subscribe((x) => ticks.push(x));
+      c.tick$.subscribe(x => ticks.push(x));
       gClockMock._tick$.next([0, 300]);
       gClockMock._tick$.next([300, 700]);
       expect(ticks).toEqual([
@@ -459,7 +464,7 @@ describe('PausableClock', () => {
       jest.advanceTimersByTime(1500);
       c.pause();
       const ticks: [number, number][] = [];
-      c.tick$.subscribe((x) => ticks.push(x));
+      c.tick$.subscribe(x => ticks.push(x));
       c.step(1000);
       expect(ticks).toEqual([[2500, 1000]]);
       expect(c.elapsedTime).toBe(2500);
@@ -478,7 +483,7 @@ describe('PausableClock', () => {
       const parent = new PausableClock(true, gClockMock);
       const child = new PausableClock(true, parent);
       let tickData = null;
-      child.tick$.subscribe((x) => {
+      child.tick$.subscribe(x => {
         tickData = x;
       });
       gClockMock._tick$.next([0, 0]);
@@ -490,7 +495,7 @@ describe('PausableClock', () => {
       parent.pause();
       const child = new PausableClock(true, parent);
       let tickData = null;
-      child.tick$.subscribe((x) => {
+      child.tick$.subscribe(x => {
         tickData = x;
       });
       gClockMock._tick$.next([0, 0]);
@@ -513,5 +518,4 @@ describe('PausableClock', () => {
       expect(child.elapsedTime).toBe(3500);
     });
   });
-
 });

@@ -12,19 +12,16 @@ export class MockWorld extends GgWorld<any, any> {
   ) {
     super({
       visualScene: {
-        init: async () => {
-        },
-        dispose: () => {
-        },
+        init: async () => {},
+        dispose: () => {},
       } as any,
-      physicsWorld: args.physicsWorld ?? ({
-        init: async () => {
-        },
-        simulate: () => {
-        },
-        dispose: () => {
-        },
-      } as any),
+      physicsWorld:
+        args.physicsWorld ??
+        ({
+          init: async () => {},
+          simulate: () => {},
+          dispose: () => {},
+        } as any),
       maxTickDelta: args.maxTickDelta,
       pauseWhenHidden: args.pauseWhenHidden,
       fixedPhysicsStep: args.fixedPhysicsStep,
@@ -35,5 +32,4 @@ export class MockWorld extends GgWorld<any, any> {
   addPrimitiveRigidBody(descr: any, position: any, rotation: any): Entity2d {
     return undefined!;
   }
-
 }

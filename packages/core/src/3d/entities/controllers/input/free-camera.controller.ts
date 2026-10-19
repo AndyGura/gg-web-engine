@@ -1,7 +1,9 @@
-import { BehaviorSubject, combineLatest, filter, merge, Observable, of, Subject, take, takeUntil } from 'rxjs';
+import { BehaviorSubject, combineLatest, filter, merge, Observable, of, Subject, switchMap, takeUntil } from 'rxjs';
 import {
   DirectionInput,
   DirectionKeymap,
+  BindingsChange,
+  IRebindableController,
   GAMEPAD_LEFT_STICK_OR_DPAD,
   GAMEPAD_RIGHT_STICK,
   GamepadControls,
@@ -22,6 +24,7 @@ import {
   Spherical,
   TickOrder,
 } from '../../../../base';
+import { ControllerBindings, sameBinding } from '../../../../base/inputs/rebindable-keys';
 import { Renderer3dEntity } from '../../renderer-3d.entity';
 import { distinctUntilChanged, map } from 'rxjs/operators';
 
@@ -33,11 +36,11 @@ export type FreeCameraGamepadBinding = {
   look: GamepadDirectionBinding;
   /** How fast `look` turns the view at full deflection, in radians per second */
   lookSpeed: number;
-  /** Presses the up key (`KeyE`) */
+  /** Presses the up key (`upDownKeys[0]`) */
   up: GamepadControls;
-  /** Presses the down key (`KeyQ`) */
+  /** Presses the down key (`upDownKeys[1]`) */
   down: GamepadControls;
-  /** Presses the boost key (`ShiftLeft`) */
+  /** Presses `boostKey` */
   boost: GamepadControls;
 };
 
@@ -56,7 +59,8 @@ export const DEFAULT_FREE_CAMERA_GAMEPAD_BINDING: FreeCameraGamepadBinding = {
  */
 export type FreeCameraControllerOptions = {
   /**
-   * A keymap for controlling camera movement, where each key corresponds to a movement direction. 'wasd' by default
+   * A keymap for controlling camera movement, where each key corresponds to a movement direction:
+   * `'wasd'` by default, or custom codes per direction. `setKeys` changes it while the game runs.
    */
   keymap: DirectionKeymap;
   /**
@@ -68,7 +72,20 @@ export type FreeCameraControllerOptions = {
    */
   cameraMovementElasticity: number;
   /**
-   * A linear speed multiplier when user holds shift key. 2.5 by default
+   * Key codes flying the camera up and down. `['KeyE', 'KeyQ']` by default
+   */
+  upDownKeys: [string, string];
+  /**
+   * Key codes narrowing and widening the field of view, for a camera that has one. `['KeyZ',
+   * 'KeyC']` by default (Z zooms out, C in)
+   */
+  zoomOutInKeys: [string, string];
+  /**
+   * Key code multiplying the speed by `cameraBoostMultiplier` while held. `'ShiftLeft'` by default
+   */
+  boostKey: string;
+  /**
+   * A linear speed multiplier while `boostKey` is held. 2.5 by default
    */
   cameraBoostMultiplier: number;
   /**
@@ -98,7 +115,7 @@ export type FreeCameraControllerOptions = {
    * The gamepad controls, bound on the world's `gamepadInput`: `move` goes to the direction input,
    * `look` turns the view (regardless of `ignoreMouseUnlessPointerLocked`), the buttons press the
    * up/down/boost keys on `keyboard`. `DEFAULT_FREE_CAMERA_GAMEPAD_BINDING` by default; `null`
-   * leaves the gamepad alone.
+   * leaves the gamepad alone. `setGamepad` changes it while the game runs.
    */
   gamepad: FreeCameraGamepadBinding | null;
 };
@@ -108,6 +125,9 @@ const FOV_CHANGE_PER_SECOND = 60;
 
 const DEFAULT_FREE_CAMERA_CONTROLLER_OPTIONS: FreeCameraControllerOptions = {
   keymap: 'wasd',
+  upDownKeys: ['KeyE', 'KeyQ'],
+  zoomOutInKeys: ['KeyZ', 'KeyC'],
+  boostKey: 'ShiftLeft',
   cameraLinearSpeed: 20,
   cameraMovementElasticity: 0,
   cameraBoostMultiplier: 2.5,
@@ -120,8 +140,16 @@ const DEFAULT_FREE_CAMERA_CONTROLLER_OPTIONS: FreeCameraControllerOptions = {
 };
 
 /**
+ * The keys of a `FreeCameraController`, which `setKeys` changes while the game runs
+ */
+export type FreeCameraControllerKeys = Pick<
+  FreeCameraControllerOptions,
+  'keymap' | 'upDownKeys' | 'zoomOutInKeys' | 'boostKey'
+>;
+
+/**
  * A controller for a free-moving camera: fly with WASD (or another `keymap`), `E`/`Q` up and
- * down, `Shift` to boost, and mouse-look. Typical for a debug fly-through or a spectator view.
+ * down, `Shift` to boost, `Z`/`C` to zoom, and mouse-look (every key in `options`). Typical for a debug fly-through or a spectator view.
  *
  * @example
  * ```ts
@@ -140,7 +168,7 @@ const DEFAULT_FREE_CAMERA_CONTROLLER_OPTIONS: FreeCameraControllerOptions = {
  * );
  * ```
  */
-export class FreeCameraController extends IEntity {
+export class FreeCameraController extends IEntity implements IRebindableController {
   static readonly entityTypeName: string = 'FreeCameraController';
   public readonly tickOrder = TickOrder.INPUT_CONTROLLERS;
 
@@ -154,6 +182,44 @@ export class FreeCameraController extends IEntity {
    * The keyboard input controller used for camera movement.
    */
   public readonly directionsInput: DirectionInput;
+
+  private readonly bindings: ControllerBindings<FreeCameraControllerOptions, FreeCameraGamepadBinding>;
+
+  /** Emits after every `setKeys` (`'keys'`) and `setGamepad` (`'gamepad'`) - see `IRebindableController` */
+  public get bindingsChanged$(): Observable<BindingsChange> {
+    return this.bindings.changed$;
+  }
+
+  /**
+   * Rebinds keys while the game runs - for a controls menu. Only the keys given change; they are
+   * written to `options` and take effect at once, keyboard and gamepad alike (the gamepad presses
+   * whichever key its button is for). A key held while it is replaced stops counting, and a new
+   * key already held counts from its next press.
+   *
+   * @example
+   * ```ts
+   * camera.setKeys({ upDownKeys: ['Space', 'KeyC'], zoomOutInKeys: ['Minus', 'Equal'] });
+   * ```
+   */
+  public setKeys(keys: Partial<FreeCameraControllerKeys>): void {
+    this.bindings.setKeys(keys);
+  }
+
+  /**
+   * Rebinds the gamepad while the game runs - for a controls menu. The controls given replace the
+   * current ones (over `DEFAULT_FREE_CAMERA_GAMEPAD_BINDING` while the gamepad is off), `null` turns the
+   * gamepad off. Written to `options.gamepad`, taking effect at once. A control held while it is
+   * replaced stops counting, and one already held when it is assigned (the button a menu just
+   * captured) counts from its next push.
+   *
+   * @example
+   * ```ts
+   * camera.setGamepad({ up: 'b3', down: 'b0' });
+   * ```
+   */
+  public setGamepad(binding: Partial<FreeCameraGamepadBinding> | null): void {
+    this.bindings.setGamepad(binding);
+  }
 
   protected _spherical: MutableSpherical = { phi: 0, radius: 1, theta: 0 };
 
@@ -204,6 +270,7 @@ export class FreeCameraController extends IEntity {
     }
     this.mouseInput = new MouseInput(this.options.mouseOptions);
     this.directionsInput = new DirectionInput(keyboard, this.options.keymap);
+    this.bindings = new ControllerBindings(this.options, DEFAULT_FREE_CAMERA_GAMEPAD_BINDING, this._onRemoved$);
   }
 
   public reset(): void {
@@ -213,36 +280,43 @@ export class FreeCameraController extends IEntity {
 
   async onSpawned(world: GgWorld<any, any>): Promise<void> {
     await super.onSpawned(world);
+    this.bindings.followKeymap(this.directionsInput, o => o.keymap);
     this._spherical = Pnt3.toSpherical(Pnt3.rot({ x: 0, y: 0, z: -1 }, this.camera.rotation));
-    // Subscribe to keyboard input for movement controls
-    const keys = ['KeyE', 'KeyQ'];
-    if (this.camera.camera.supportsFov) {
-      keys.push('KeyZ', 'KeyC');
-    }
-    keys.push('ShiftLeft');
+    // Subscribe to keyboard input for movement controls: up, down, boost and, for a camera with a
+    // fov, zoom out and in
+    const keys$ = [
+      this.bindings.followKey(this.keyboard, o => o.upDownKeys[0]),
+      this.bindings.followKey(this.keyboard, o => o.upDownKeys[1]),
+      this.bindings.followKey(this.keyboard, o => o.boostKey),
+      this.bindings.followKey(this.keyboard, o => (this.camera.camera.supportsFov ? o.zoomOutInKeys[0] : null)),
+      this.bindings.followKey(this.keyboard, o => (this.camera.camera.supportsFov ? o.zoomOutInKeys[1] : null)),
+    ];
     // a touch screen has no pointer lock, so neither "unless pointer locked" option applies to it
     const isTouchScreen = MouseInput.isTouchDevice();
-    const gamepad = this.options.gamepad;
-    const gamepadInput = gamepad && world.gamepadInput;
+    const gamepadInput = world.gamepadInput;
 
     // the gamepad's moves and keys come through the same inputs, and are not stray typing. A stick
     // held still is not "in use" once a key is tapped (`inUse` hands over to the keyboard), so what
     // is pushed on the gamepad right now opens the gate too, and a held stick keeps flying
     const gamepadActive$: Observable<boolean> = gamepadInput
-      ? combineLatest([
-          gamepadInput.inUse$,
-          gamepadInput.direction$(gamepad.move),
-          gamepadInput.pressed$([gamepad.up, gamepad.down, gamepad.boost].flat()),
-        ]).pipe(
-          map(([inUse, move, pressed]) => inUse || move.x !== 0 || move.y !== 0 || pressed),
-          distinctUntilChanged(),
-        )
+      ? this.bindings
+          .option$(o => o.gamepad)
+          .pipe(
+            // `setKeys` emits too, and must not resubscribe
+            distinctUntilChanged(sameBinding),
+            switchMap(gamepad =>
+              gamepad
+                ? combineLatest([
+                    gamepadInput.inUse$,
+                    gamepadInput.direction$(gamepad.move),
+                    gamepadInput.pressed$([gamepad.up, gamepad.down, gamepad.boost].flat()),
+                  ]).pipe(map(([inUse, move, pressed]) => inUse || move.x !== 0 || move.y !== 0 || pressed))
+                : of(false),
+            ),
+            distinctUntilChanged(),
+          )
       : of(false);
-    let controlsObs = combineLatest([
-      this.directionsInput.direction$,
-      gamepadActive$,
-      ...keys.map(c => this.keyboard.bind(c)),
-    ]).pipe(
+    let controlsObs = combineLatest([this.directionsInput.direction$, gamepadActive$, ...keys$]).pipe(
       takeUntil(this._onRemoved$),
       map(([direction, gamepadInUse, ...rest]) => {
         let c: { direction: Point2; rest: boolean[] } = { direction: Pnt2.O, rest: [] };
@@ -255,10 +329,8 @@ export class FreeCameraController extends IEntity {
           c = { direction, rest };
         }
         let translate = { ...Pnt3.O } as { x: number; y: number; z: number };
-        // the zoom keys are only bound for a camera with a fov; the boost key is always the last one
-        const [u, d, ...extraKeys] = c.rest;
-        const speedBoost = extraKeys[extraKeys.length - 1];
-        const [zo, zi] = extraKeys.length > 1 ? extraKeys : [false, false];
+        // the zoom keys are never held for a camera without a fov
+        const [u, d, speedBoost, zo, zi] = c.rest;
         translate.z = c.direction.y === 0 ? 0 : -c.direction.y;
         translate.x = c.direction.x;
         if (u != d) translate.y = d ? -1 : 1;
@@ -347,17 +419,26 @@ export class FreeCameraController extends IEntity {
       });
     }
 
-    if (gamepad && gamepadInput) {
-      const unbindKeys = gamepadInput.bindKeys(this.keyboard, {
-        KeyE: gamepad.up,
-        KeyQ: gamepad.down,
-        ShiftLeft: gamepad.boost,
-      });
-      const unbindMove = gamepadInput.bindDirection(this.directionsInput, gamepad.move);
-      this._onRemoved$.pipe(take(1)).subscribe(() => {
-        unbindKeys();
-        unbindMove();
-      });
+    if (gamepadInput) {
+      this.bindings.followGamepadKey(
+        gamepadInput,
+        this.keyboard,
+        o => o.upDownKeys[0],
+        g => g.up,
+      );
+      this.bindings.followGamepadKey(
+        gamepadInput,
+        this.keyboard,
+        o => o.upDownKeys[1],
+        g => g.down,
+      );
+      this.bindings.followGamepadKey(
+        gamepadInput,
+        this.keyboard,
+        o => o.boostKey,
+        g => g.boost,
+      );
+      this.bindings.followGamepadDirection(gamepadInput, this.directionsInput, g => g.move);
     }
 
     // Setup updating camera position and rotation based on input
@@ -367,6 +448,7 @@ export class FreeCameraController extends IEntity {
         filter(() => this.active),
       )
       .subscribe(([_, delta]) => {
+        const gamepad = this.options.gamepad;
         if (gamepad && gamepadInput && this.directionsInput.running && this.options.cameraRotationSensitivity > 0) {
           // the stick turns the view at a rate, so it is applied per tick, scaled by the tick's time
           const look = gamepadInput.direction(gamepad.look);

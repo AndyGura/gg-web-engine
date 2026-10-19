@@ -1,7 +1,9 @@
-import { combineLatest, filter, Observable, Subject, take, takeUntil } from 'rxjs';
+import { combineLatest, filter, Observable, Subject, takeUntil } from 'rxjs';
 import {
   DirectionInput,
   DirectionKeymap,
+  BindingsChange,
+  IRebindableController,
   GamepadAxisBinding,
   GamepadControls,
   GgWorld,
@@ -10,6 +12,7 @@ import {
   runWhileInputEnabled,
   TickOrder,
 } from '../../../../base';
+import { ControllerBindings } from '../../../../base/inputs/rebindable-keys';
 
 /** Which gamepad controls steer and pedal - see `GamepadControl` for the control names */
 export type CarGamepadBinding = {
@@ -27,21 +30,68 @@ export const DEFAULT_CAR_GAMEPAD_BINDING: CarGamepadBinding = {
 };
 
 export type CarHandlingControllerOptions = {
+  /**
+   * Steering (`left`/`right`) and pedal (`up` throttle, `down` brake) keys: `'arrows'` by default,
+   * custom codes per direction, or `null` for none. `setKeys` changes it while the game runs.
+   */
   readonly keymap: DirectionKeymap | null;
   readonly maxSteerDeltaPerSecond: number;
   /**
    * The gamepad controls, bound on the world's `gamepadInput`. `DEFAULT_CAR_GAMEPAD_BINDING` when
-   * omitted; `null` leaves the gamepad alone.
+   * omitted; `null` leaves the gamepad alone. `setGamepad` changes it while the game runs.
    */
   readonly gamepad?: CarGamepadBinding | null;
 };
+/**
+ * The keys of a `CarHandlingController`, which `setKeys` changes while the game runs
+ */
+export type CarHandlingControllerKeys = Pick<CarHandlingControllerOptions, 'keymap'>;
+
 export type CarHandlingOutput = { upDown: number; leftRight: number };
 
-export class CarHandlingController extends IEntity {
+export class CarHandlingController extends IEntity implements IRebindableController {
   static readonly entityTypeName: string = 'CarHandlingController';
   public readonly tickOrder = TickOrder.INPUT_CONTROLLERS;
 
   public readonly directionsInput: DirectionInput;
+  public readonly options: CarHandlingControllerOptions;
+
+  private readonly bindings: ControllerBindings<CarHandlingControllerOptions, CarGamepadBinding>;
+
+  /** Emits after every `setKeys` (`'keys'`) and `setGamepad` (`'gamepad'`) - see `IRebindableController` */
+  public get bindingsChanged$(): Observable<BindingsChange> {
+    return this.bindings.changed$;
+  }
+
+  /**
+   * Rebinds the steering and pedal keys while the game runs - for a controls menu. They are written
+   * to `options` and take effect at once. A key held while it is replaced stops counting, and a new
+   * key already held counts from its next press.
+   *
+   * @example
+   * ```ts
+   * controller.setKeys({ keymap: { up: 'KeyW', down: 'KeyS', left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'] } });
+   * ```
+   */
+  public setKeys(keys: Partial<CarHandlingControllerKeys>): void {
+    this.bindings.setKeys(keys);
+  }
+
+  /**
+   * Rebinds the gamepad while the game runs - for a controls menu. The controls given replace the
+   * current ones (over `DEFAULT_CAR_GAMEPAD_BINDING` while the gamepad is off), `null` turns the
+   * gamepad off. Written to `options.gamepad`, taking effect at once. A control held while it is replaced
+   * stops counting, and one already held when it is assigned (the button a menu just captured)
+   * counts from its next push.
+   *
+   * @example
+   * ```ts
+   * controller.setGamepad({ throttle: 'b0', brake: 'b2' });
+   * ```
+   */
+  public setGamepad(binding: Partial<CarGamepadBinding> | null): void {
+    this.bindings.setGamepad(binding);
+  }
 
   private _output$: Subject<CarHandlingOutput> = new Subject<CarHandlingOutput>();
   public get output$(): Observable<CarHandlingOutput> {
@@ -50,17 +100,24 @@ export class CarHandlingController extends IEntity {
 
   constructor(
     public readonly keyboard: KeyboardInput,
-    public readonly options: CarHandlingControllerOptions = {
+    options: CarHandlingControllerOptions = {
       keymap: 'arrows',
       maxSteerDeltaPerSecond: 12,
     },
   ) {
     super();
+    // a copy: `setKeys` writes to it. `gamepad` left out is the default binding
+    this.options = {
+      ...options,
+      gamepad: options.gamepad === undefined ? DEFAULT_CAR_GAMEPAD_BINDING : options.gamepad,
+    };
     this.directionsInput = new DirectionInput(keyboard, options.keymap);
+    this.bindings = new ControllerBindings(this.options, DEFAULT_CAR_GAMEPAD_BINDING, this._onRemoved$);
   }
 
   async onSpawned(world: GgWorld<any, any>): Promise<void> {
     super.onSpawned(world);
+    this.bindings.followKeymap(this.directionsInput, o => o.keymap);
     let input: CarHandlingOutput = { upDown: 0, leftRight: 0 };
     combineLatest([this.directionsInput.direction$, this.tick$])
       .pipe(
@@ -92,13 +149,11 @@ export class CarHandlingController extends IEntity {
       () => this.directionsInput.start(),
       () => this.directionsInput.stop(),
     );
-    const gamepad = this.options.gamepad === undefined ? DEFAULT_CAR_GAMEPAD_BINDING : this.options.gamepad;
-    if (gamepad && world.gamepadInput) {
-      const unbind = world.gamepadInput.bindDirection(this.directionsInput, {
-        x: gamepad.steer,
-        y: { negative: gamepad.brake, positive: gamepad.throttle },
-      });
-      this._onRemoved$.pipe(take(1)).subscribe(unbind);
+    if (world.gamepadInput) {
+      this.bindings.followGamepadDirection(world.gamepadInput, this.directionsInput, g => ({
+        x: g.steer,
+        y: { negative: g.brake, positive: g.throttle },
+      }));
     }
   }
 

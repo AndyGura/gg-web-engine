@@ -3,7 +3,6 @@ import { lerpNumber } from '../../../../src';
 import { firstValueFrom, timeout } from 'rxjs';
 
 describe(`AnimationMixer<T>`, () => {
-
   class NumberMixer extends AnimationMixer<number> {
     constructor(protected _animationFunction: AnimationFunction<number>) {
       super(_animationFunction, lerpNumber);
@@ -177,7 +176,7 @@ describe(`AnimationMixer<T>`, () => {
       mixer.tick$.next([100, 100]); // expected 50: (50 * 1 + 100 * 0)
       mixer.tick$.next([200, 100]); // expected 80: (50 * 0.8 + 200 * 0.2)
       mixer.tick$.next([300, 100]); // expected 150 (50 * 0.6 + 300 * 0.4)
-      mixer.transitAnimationFunction((elapsed, _) => (500 - elapsed / 2), 500);
+      mixer.transitAnimationFunction((elapsed, _) => 500 - elapsed / 2, 500);
       mixer.tick$.next([400, 100]); // expected 150 (150 * 1 + 300 * 0)
       mixer.tick$.next([500, 100]); // expected 170 (150 * 0.8 + 250 * 0.2)
       mixer.tick$.next([600, 100]); // expected 170 (150 * 0.6 + 200 * 0.4)

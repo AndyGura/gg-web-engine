@@ -42,6 +42,20 @@ describe('ObjectGrabController', () => {
   const emitMouseState = (mouseInput: MouseInput, state: MouseInputState) => (mouseInput as any)._state$.next(state);
 
   describe('grabbing', () => {
+    it('grabs on the key given to setKeys instead of the old one', () => {
+      const raycast = jest.fn();
+      const { entity } = makeGrabbable();
+      raycast.mockReturnValue({ hasHit: true, hitBody: { entity } });
+      const { keyboard, controller } = setup();
+      controller.onSpawned({ physicsWorld: { raycast } } as any);
+
+      controller.setKeys({ grabKey: 'KeyF' });
+      keyboard.emulateKeyDown('KeyE');
+      expect(controller.heldObject).toBeNull();
+      keyboard.emulateKeyDown('KeyF');
+      expect(controller.heldObject).toBe(entity);
+    });
+
     it('grabs a Grabbable3dEntity hit by the forward raycast on the grab key', () => {
       const raycast = jest.fn();
       const { entity } = makeGrabbable();
@@ -461,10 +475,36 @@ describe('ObjectGrabController held object API', () => {
       pads = stubGamepads();
       gamepadInput = new GamepadInput();
       gamepadInput.start();
+      gamepadInput.poll(); // a binding counts a control from the first read with it released
     });
     afterEach(() => {
       gamepadInput.stop();
       pads.restore();
+    });
+
+    it('grabs and throws by the controls given to setGamepad, a held throw button not throwing again', () => {
+      const { entity } = makeGrabbable();
+      const raycast = jest.fn().mockReturnValue({ hasHit: true, hitBody: { entity } });
+      const { controller } = setup();
+      controller.onSpawned({ physicsWorld: { raycast }, gamepadInput } as any);
+      controller.setGamepad({ grab: 'b3', throw: 'b5' });
+      pads.set({ buttons: { 2: true } });
+      gamepadInput.poll();
+      expect(controller.heldObject).toBeNull();
+      pads.set({ buttons: { 3: true } });
+      gamepadInput.poll();
+      expect(controller.heldObject).toBe(entity);
+      pads.set({ buttons: { 7: true } });
+      gamepadInput.poll();
+      expect(controller.heldObject).toBe(entity);
+
+      const throwHeld = jest.spyOn(controller, 'throwHeld');
+      pads.set({ buttons: { 5: true } });
+      gamepadInput.poll();
+      expect(throwHeld).toHaveBeenCalledTimes(1);
+      controller.setKeys({ grabKey: 'KeyF' });
+      gamepadInput.poll();
+      expect(throwHeld).toHaveBeenCalledTimes(1);
     });
 
     it('grabs with the grab control and throws with the throw control', () => {

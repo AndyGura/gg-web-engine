@@ -520,11 +520,15 @@ describe('Gg2dLevelLoader', () => {
       const level = await levelLoader.loadLevel(levelJson, 'TestLevel');
 
       // Verify that the custom generator was called with the correct arguments, and reachable by name
-      expect(mockGenerator).toHaveBeenCalledWith(world, {
-        position: { x: 100, y: 200 },
-        name: 'TestCustomEntity',
-        customProperty: 'value',
-      }, expect.anything());
+      expect(mockGenerator).toHaveBeenCalledWith(
+        world,
+        {
+          position: { x: 100, y: 200 },
+          name: 'TestCustomEntity',
+          customProperty: 'value',
+        },
+        expect.anything(),
+      );
       expect(level.getChildEntityByName('TestCustomEntity')).toBeInstanceOf(TestEntity);
     });
 
@@ -663,7 +667,7 @@ describe('Gg2dLevelLoader', () => {
       });
     });
 
-    it('round-trips a Player\'s non-default options and runtime state through serializeEntity/createEntity', async () => {
+    it("round-trips a Player's non-default options and runtime state through serializeEntity/createEntity", async () => {
       const character = (await levelLoader.createEntity({
         class: 'Player',
         name: 'StatefulPlayer',
