@@ -29,6 +29,8 @@ where one exists.
 
 ## [Unreleased]
 
+## [0.0.84] - 2026-10-19
+
 ### Added
 - `MapGraph3dEntity.prepareChunk(node, loaded, entities, signal)`: an overridable hook awaited
   after a chunk's GLB loads and before the chunk is added to the world, for per-chunk work such as
@@ -1167,7 +1169,8 @@ where one exists.
 
 First published version: `@gg-web-engine/core`, `three`, `pixi`, `ammo`, and `matter`.
 
-[Unreleased]: https://github.com/AndyGura/gg-web-engine/compare/0.0.83...HEAD
+[Unreleased]: https://github.com/AndyGura/gg-web-engine/compare/0.0.84...HEAD
+[0.0.84]: https://github.com/AndyGura/gg-web-engine/compare/0.0.83...0.0.84
 [0.0.83]: https://github.com/AndyGura/gg-web-engine/compare/0.0.82...0.0.83
 [0.0.82]: https://github.com/AndyGura/gg-web-engine/compare/0.0.81...0.0.82
 [0.0.81]: https://github.com/AndyGura/gg-web-engine/compare/0.0.80...0.0.81

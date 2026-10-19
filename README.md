@@ -311,24 +311,24 @@ of the same dimensionality; audio, multiplayer and mobile controls are optional.
 ### Bundle sizes
 
 <!-- bundle-sizes:start -->
-Measured for 0.0.83 by `etc/bundle_sizes.mjs`: minified with esbuild, then gzipped. A package's own
+Measured for 0.0.84 by `etc/bundle_sizes.mjs`: minified with esbuild, then gzipped. A package's own
 size keeps every export and leaves out its dependencies; the library it wraps is listed separately. Apps
 import less than everything, so their bundles tree-shake below these sums.
 
 | Package | Own code (gzip) | Wrapped library (gzip) |
 |---|---|---|
-| `@gg-web-engine/core` | 74.2 kB | - |
+| `@gg-web-engine/core` | 77.3 kB | - |
 | `@gg-web-engine/three` | 13.0 kB | 185.6 kB `three` |
-| `@gg-web-engine/pixi` | 7.9 kB | 259.8 kB `pixi.js` |
+| `@gg-web-engine/pixi` | 8.0 kB | 259.8 kB `pixi.js` |
 | `@gg-web-engine/rapier3d` | 11.6 kB | 1.57 MB `@dimforge/rapier3d-compat`, WebAssembly inlined as base64 |
 | `@gg-web-engine/ammo` | 649.3 kB | Bullet, compiled to WebAssembly, ships inside the package |
 | `@gg-web-engine/rapier2d` | 9.3 kB | 1.22 MB `@dimforge/rapier2d-compat`, WebAssembly inlined as base64 |
 | `@gg-web-engine/matter` | 8.4 kB | 27.1 kB `matter-js` |
 | `@gg-web-engine/audio` | 9.0 kB | - |
 | `@gg-web-engine/multiplayer` | 28.2 kB | - |
-| `@gg-web-engine/mobile-controls` | 21.4 kB | - |
+| `@gg-web-engine/mobile-controls` | 25.1 kB | - |
 
-Core without the dev console (`GgStatic`, left out of an app that never imports it) is 67.8 kB.
+Core without the dev console (`GgStatic`, left out of an app that never imports it) is 70.9 kB.
 Core's own dependency, `rxjs`, is 18.1 kB if imported whole.
 
 The [starter templates](templates/README.md), bundled as complete apps (engine, libraries and game code):
@@ -337,7 +337,7 @@ The [starter templates](templates/README.md), bundled as complete apps (engine, 
 |---|---|---|
 | `3d-character` | rapier3d + three | 1.81 MB |
 | `2d-platformer` | mobile-controls + pixi + rapier2d | 1.49 MB |
-| `multiplayer-cars` | multiplayer + rapier3d + three | 1.91 MB |
+| `multiplayer-cars` | multiplayer + rapier3d + three | 1.92 MB |
 <!-- bundle-sizes:end -->
 
 Also in this repo: the [GG Web Engine Exporter](blender-addon/README.md) Blender add-on, which
