@@ -235,6 +235,9 @@ describe('KeyboardInput', () => {
       expect(KeyboardInput.keyName('Numpad8')).toBe('Num 8');
       expect(KeyboardInput.keyName('Semicolon')).toBe(';');
       expect(KeyboardInput.keyName('ArrowLeft')).toBe('Left');
+      // a code from saved data that an object would have as a member
+      expect(KeyboardInput.keyName('constructor')).toBe('constructor');
+      expect(KeyboardInput.keyName('toString')).toBe('toString');
       expect(KeyboardInput.keyName('ShiftLeft')).toBe('L Shift');
       expect(KeyboardInput.keyName('Space')).toBe('Space');
       expect(KeyboardInput.keyName('F7')).toBe('F7');

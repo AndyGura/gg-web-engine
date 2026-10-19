@@ -1,10 +1,8 @@
-import { filter, Observable, take, takeUntil } from 'rxjs';
+import { filter, Observable, takeUntil } from 'rxjs';
 import {
   BindingsChange,
   ControllerBindings,
   IRebindableController,
-  followGamepadKey,
-  followKey,
   GamepadControls,
   GgWorld,
   IEntity,
@@ -166,36 +164,31 @@ export class GgCarHandlingController extends IEntity implements IRebindableContr
     };
     this.carHandlingInput = new CarHandlingController(keyboard, this.options);
     this.addChildren(this.carHandlingInput);
-    this.bindings = new ControllerBindings(this.options, DEFAULT_GG_CAR_GAMEPAD_BINDING);
+    this.bindings = new ControllerBindings(this.options, DEFAULT_GG_CAR_GAMEPAD_BINDING, this._onRemoved$);
   }
 
   async onSpawned(world: GgWorld<any, any>): Promise<void> {
     super.onSpawned(world);
     const gamepadInput = world.gamepadInput;
     if (gamepadInput) {
-      const controls$ = (pick: (binding: GgCarGamepadBinding) => GamepadControls) =>
-        this.bindings.option$(({ gamepad }) => gamepad && pick(gamepad));
-      const unbinds = [
-        followGamepadKey(
-          gamepadInput,
-          this.keyboard,
-          this.bindings.option$(o => o.gearUpDownKeys[0]),
-          controls$(g => g.gearUp),
-        ),
-        followGamepadKey(
-          gamepadInput,
-          this.keyboard,
-          this.bindings.option$(o => o.gearUpDownKeys[1]),
-          controls$(g => g.gearDown),
-        ),
-        followGamepadKey(
-          gamepadInput,
-          this.keyboard,
-          this.bindings.option$(o => o.handbrakeKey),
-          controls$(g => g.handbrake),
-        ),
-      ];
-      this._onRemoved$.pipe(take(1)).subscribe(() => unbinds.forEach(unbind => unbind()));
+      this.bindings.followGamepadKey(
+        gamepadInput,
+        this.keyboard,
+        o => o.gearUpDownKeys[0],
+        g => g.gearUp,
+      );
+      this.bindings.followGamepadKey(
+        gamepadInput,
+        this.keyboard,
+        o => o.gearUpDownKeys[1],
+        g => g.gearDown,
+      );
+      this.bindings.followGamepadKey(
+        gamepadInput,
+        this.keyboard,
+        o => o.handbrakeKey,
+        g => g.handbrake,
+      );
     }
     this.carHandlingInput.output$.pipe(takeUntil(this._onRemoved$)).subscribe(({ upDown, leftRight }) => {
       if (this.car) {
@@ -227,10 +220,8 @@ export class GgCarHandlingController extends IEntity implements IRebindableContr
         }
       }
     });
-    followKey(
-      this.keyboard,
-      this.bindings.option$(o => o.gearUpDownKeys[0]),
-    )
+    this.bindings
+      .followKey(this.keyboard, o => o.gearUpDownKeys[0])
       .pipe(
         takeUntil(this._onRemoved$),
         filter(x => this.active && this.switchingGearsEnabled && !!x),
@@ -240,10 +231,8 @@ export class GgCarHandlingController extends IEntity implements IRebindableContr
           this.car.gear++;
         }
       });
-    followKey(
-      this.keyboard,
-      this.bindings.option$(o => o.gearUpDownKeys[1]),
-    )
+    this.bindings
+      .followKey(this.keyboard, o => o.gearUpDownKeys[1])
       .pipe(
         takeUntil(this._onRemoved$),
         filter(x => this.active && this.switchingGearsEnabled && !!x),
@@ -257,10 +246,8 @@ export class GgCarHandlingController extends IEntity implements IRebindableContr
           }
         }
       });
-    followKey(
-      this.keyboard,
-      this.bindings.option$(o => o.handbrakeKey),
-    )
+    this.bindings
+      .followKey(this.keyboard, o => o.handbrakeKey)
       .pipe(
         takeUntil(this._onRemoved$),
         filter(() => this.active),

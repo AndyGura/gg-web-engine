@@ -1,11 +1,8 @@
-import { BehaviorSubject, filter, Observable, of, pairwise, startWith, take, takeUntil } from 'rxjs';
+import { BehaviorSubject, filter, Observable, pairwise, startWith, takeUntil } from 'rxjs';
 import {
   BindingsChange,
   ControllerBindings,
   IRebindableController,
-  followGamepadKey,
-  followGamepadPressed,
-  followKey,
   GamepadControls,
   IEntity,
   KeyboardInput,
@@ -219,16 +216,14 @@ export class ObjectGrabController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWor
   ) {
     super();
     this.options = { ...DEFAULT_OPTIONS, ...options };
-    this.bindings = new ControllerBindings(this.options, DEFAULT_OBJECT_GRAB_GAMEPAD_BINDING);
+    this.bindings = new ControllerBindings(this.options, DEFAULT_OBJECT_GRAB_GAMEPAD_BINDING, this._onRemoved$);
   }
 
   onSpawned(world: Gg3dWorld<TypeDoc>): void {
     super.onSpawned(world);
 
-    followKey(
-      this.keyboard,
-      this.bindings.option$(o => o.grabKey),
-    )
+    this.bindings
+      .followKey(this.keyboard, o => o.grabKey)
       .pipe(
         takeUntil(this._onRemoved$),
         filter(down => this.active && down),
@@ -237,17 +232,14 @@ export class ObjectGrabController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg3dWor
 
     const gamepadInput = world.gamepadInput;
     if (gamepadInput) {
-      const unbind = followGamepadKey(
+      this.bindings.followGamepadKey(
         gamepadInput,
         this.keyboard,
-        this.bindings.option$(o => o.grabKey),
-        this.bindings.option$(o => o.gamepad?.grab),
+        o => o.grabKey,
+        g => g.grab,
       );
-      this._onRemoved$.pipe(take(1)).subscribe(unbind);
-      followGamepadPressed(
-        gamepadInput,
-        this.bindings.option$(o => o.gamepad?.throw),
-      )
+      this.bindings
+        .followGamepadPressed(gamepadInput, g => g.throw)
         .pipe(
           takeUntil(this._onRemoved$),
           filter(down => down && this.active && this.keyboard.running),

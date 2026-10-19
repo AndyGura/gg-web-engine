@@ -1,13 +1,10 @@
-import { filter, Observable, take, takeUntil } from 'rxjs';
+import { filter, Observable, takeUntil } from 'rxjs';
 import {
   DirectionInput,
   DirectionKeymap,
   BindingsChange,
   ControllerBindings,
   IRebindableController,
-  followGamepadDirection,
-  followGamepadKey,
-  followKey,
   GAMEPAD_LEFT_STICK_OR_DPAD,
   GamepadControls,
   GamepadDirectionBinding,
@@ -207,7 +204,7 @@ export class PlayerCharacterController2d<TypeDoc extends Gg2dWorldTypeDocRepo = 
     super();
     this.options = { ...DEFAULT_OPTIONS, ...options };
     this.directionsInput = new DirectionInput(keyboard, this.options.keymap);
-    this.bindings = new ControllerBindings(this.options, DEFAULT_CHARACTER_2D_GAMEPAD_BINDING);
+    this.bindings = new ControllerBindings(this.options, DEFAULT_CHARACTER_2D_GAMEPAD_BINDING, this._onRemoved$);
   }
 
   async onSpawned(world: Gg2dWorld<TypeDoc>): Promise<void> {
@@ -226,20 +223,16 @@ export class PlayerCharacterController2d<TypeDoc extends Gg2dWorldTypeDocRepo = 
         }
       });
 
-    followKey(
-      this.keyboard,
-      this.bindings.option$(o => o.jumpKey),
-    )
+    this.bindings
+      .followKey(this.keyboard, o => o.jumpKey)
       .pipe(
         takeUntil(this._onRemoved$),
         filter(down => this.active && down),
       )
       .subscribe(() => this.character?.jump());
 
-    followKey(
-      this.keyboard,
-      this.bindings.option$(o => o.runKey),
-    )
+    this.bindings
+      .followKey(this.keyboard, o => o.runKey)
       .pipe(
         takeUntil(this._onRemoved$),
         filter(() => this.active),
@@ -250,10 +243,8 @@ export class PlayerCharacterController2d<TypeDoc extends Gg2dWorldTypeDocRepo = 
         }
       });
 
-    followKey(
-      this.keyboard,
-      this.bindings.option$(o => o.crouchKey),
-    )
+    this.bindings
+      .followKey(this.keyboard, o => o.crouchKey)
       .pipe(
         takeUntil(this._onRemoved$),
         filter(() => this.active),
@@ -280,32 +271,25 @@ export class PlayerCharacterController2d<TypeDoc extends Gg2dWorldTypeDocRepo = 
 
     const gamepadInput = world.gamepadInput;
     if (gamepadInput) {
-      const unbinds = [
-        followGamepadKey(
-          gamepadInput,
-          this.keyboard,
-          this.bindings.option$(o => o.jumpKey),
-          this.bindings.option$(o => o.gamepad?.jump),
-        ),
-        followGamepadKey(
-          gamepadInput,
-          this.keyboard,
-          this.bindings.option$(o => o.runKey),
-          this.bindings.option$(o => o.gamepad?.run),
-        ),
-        followGamepadKey(
-          gamepadInput,
-          this.keyboard,
-          this.bindings.option$(o => o.crouchKey),
-          this.bindings.option$(o => o.gamepad?.crouch),
-        ),
-        followGamepadDirection(
-          gamepadInput,
-          this.directionsInput,
-          this.bindings.option$(o => o.gamepad?.move),
-        ),
-      ];
-      this._onRemoved$.pipe(take(1)).subscribe(() => unbinds.forEach(unbind => unbind()));
+      this.bindings.followGamepadKey(
+        gamepadInput,
+        this.keyboard,
+        o => o.jumpKey,
+        g => g.jump,
+      );
+      this.bindings.followGamepadKey(
+        gamepadInput,
+        this.keyboard,
+        o => o.runKey,
+        g => g.run,
+      );
+      this.bindings.followGamepadKey(
+        gamepadInput,
+        this.keyboard,
+        o => o.crouchKey,
+        g => g.crouch,
+      );
+      this.bindings.followGamepadDirection(gamepadInput, this.directionsInput, g => g.move);
     }
 
     runWhileInputEnabled(

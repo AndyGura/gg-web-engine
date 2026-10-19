@@ -8,6 +8,7 @@ import {
   startWith,
   Subject,
   switchMap,
+  take,
 } from 'rxjs';
 import { KeyboardInput } from './keyboard.input';
 import { DirectionInput } from './direction.input';
@@ -153,19 +154,28 @@ export function isRebindableController(x: unknown): x is IRebindableController {
  * optional `gamepad` binding, written once here and used by every built-in input controller:
  * `setKeys` copies the given keys onto `options` (skipping `undefined` ones), `setGamepad` writes
  * `options.gamepad` (`null`, or the partial over the current binding - over `defaultGamepad` while
- * the gamepad is off), and both emit on `changed$`. `option$(pick)` is what a binding made in
- * `onSpawned` follows (`followKey`, `followGamepadKey`, `followGamepadDirection`): the picked value
- * now and after every change. The controller's `bindingsChanged$` is `changed$`.
+ * the gamepad is off), and both emit on `changed$`. The bindings a controller makes in `onSpawned`
+ * follow the options from then on: `followKey`, `followGamepadKey`, `followGamepadPressed` and
+ * `followGamepadDirection` here are the functions of the same names over a key picked from
+ * `options` and a control picked from `options.gamepad` (nothing while that is `null`), and the
+ * two that bind are unbound when `unbindOn$` next emits - the controller's `_onRemoved$`. `option$
+ * (pick)` is the picked value now and after every change, for anything else that follows an
+ * option. The controller's `bindingsChanged$` is `changed$`.
  *
  * @example
  * ```ts
  * class MyController extends IEntity implements IRebindableController {
- *   private readonly bindings = new ControllerBindings(this.options, DEFAULT_MY_GAMEPAD_BINDING);
+ *   private readonly bindings = new ControllerBindings(this.options, DEFAULT_MY_GAMEPAD_BINDING, this._onRemoved$);
  *   get bindingsChanged$() { return this.bindings.changed$; }
  *   setKeys(keys: Partial<MyControllerKeys>) { this.bindings.setKeys(keys); }
  *   setGamepad(binding: Partial<MyGamepadBinding> | null) { this.bindings.setGamepad(binding); }
  *   onSpawned(world) {
- *     followKey(this.keyboard, this.bindings.option$(o => o.fireKey)).subscribe(down => down && this.fire());
+ *     this.bindings.followKey(this.keyboard, o => o.fireKey)
+ *       .pipe(takeUntil(this._onRemoved$))
+ *       .subscribe(down => down && this.fire());
+ *     if (world.gamepadInput) {
+ *       this.bindings.followGamepadKey(world.gamepadInput, this.keyboard, o => o.fireKey, g => g.fire);
+ *     }
  *   }
  * }
  * ```
@@ -173,9 +183,16 @@ export function isRebindableController(x: unknown): x is IRebindableController {
 export class ControllerBindings<O extends { gamepad?: G | null }, G extends object> {
   private readonly _changed$: Subject<BindingsChange> = new Subject<BindingsChange>();
 
+  /**
+   * @param options The controller's options, written to by `setKeys`/`setGamepad`
+   * @param defaultGamepad The binding a `setGamepad` partial goes over while the gamepad is off
+   * @param unbindOn$ When the gamepad bindings made by `followGamepadKey`/`followGamepadDirection`
+   * are unbound: the controller's `_onRemoved$`
+   */
   constructor(
     private readonly options: O,
     private readonly defaultGamepad: G,
+    private readonly unbindOn$: Observable<unknown>,
   ) {}
 
   /** Emits after every `setKeys` (`'keys'`) and `setGamepad` (`'gamepad'`) */
@@ -189,6 +206,55 @@ export class ControllerBindings<O extends { gamepad?: G | null }, G extends obje
       startWith(undefined),
       map(() => pick(this.options)),
     );
+  }
+
+  /** What `pick` reads from `options.gamepad`, now and after every change; `null` while the gamepad is off */
+  public gamepadOption$<T>(pick: (gamepad: G) => T): Observable<T | null> {
+    return this.option$(o => (o.gamepad ? pick(o.gamepad) : null));
+  }
+
+  /** `followKey` over the key `pickCode` picks from `options` */
+  public followKey(keyboard: KeyboardInput, pickCode: (options: O) => string | null): Observable<boolean> {
+    return followKey(keyboard, this.option$(pickCode));
+  }
+
+  /**
+   * `followGamepadKey` over the key `pickCode` picks from `options` and the controls `pickControls`
+   * picks from `options.gamepad`, unbound when `unbindOn$` next emits
+   */
+  public followGamepadKey(
+    gamepadInput: GamepadInput,
+    keyboard: KeyboardInput,
+    pickCode: (options: O) => string | null,
+    pickControls: (gamepad: G) => GamepadControls | null | undefined,
+  ): void {
+    this.untilUnbound(
+      followGamepadKey(gamepadInput, keyboard, this.option$(pickCode), this.gamepadOption$(pickControls)),
+    );
+  }
+
+  /** `followGamepadPressed` over the controls `pickControls` picks from `options.gamepad` */
+  public followGamepadPressed(
+    gamepadInput: GamepadInput,
+    pickControls: (gamepad: G) => GamepadControls | null | undefined,
+  ): Observable<boolean> {
+    return followGamepadPressed(gamepadInput, this.gamepadOption$(pickControls));
+  }
+
+  /**
+   * `followGamepadDirection` over the direction `pickBinding` picks from `options.gamepad`, unbound
+   * when `unbindOn$` next emits
+   */
+  public followGamepadDirection(
+    gamepadInput: GamepadInput,
+    direction: DirectionInput,
+    pickBinding: (gamepad: G) => GamepadDirectionBinding | null | undefined,
+  ): void {
+    this.untilUnbound(followGamepadDirection(gamepadInput, direction, this.gamepadOption$(pickBinding)));
+  }
+
+  private untilUnbound(unbind: () => void): void {
+    this.unbindOn$.pipe(take(1)).subscribe(unbind);
   }
 
   /** Copies the keys given (not the `undefined` ones) onto `options` and emits `'keys'` */

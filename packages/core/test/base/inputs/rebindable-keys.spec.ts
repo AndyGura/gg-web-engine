@@ -1,4 +1,4 @@
-import { BehaviorSubject, of } from 'rxjs';
+import { BehaviorSubject, NEVER, of, Subject } from 'rxjs';
 import {
   BindingsChange,
   ControllerBindings,
@@ -261,7 +261,7 @@ describe('ControllerBindings', () => {
 
   it('writes the keys given, skipping undefined, and reports a keys change', () => {
     const options: Options = { fireKey: 'KeyF', keymap: 'wasd', gamepad: null };
-    const bindings = new ControllerBindings(options, DEFAULT_GAMEPAD);
+    const bindings = new ControllerBindings(options, DEFAULT_GAMEPAD, NEVER);
     const changes: BindingsChange[] = [];
     bindings.changed$.subscribe(c => changes.push(c));
     const fireKeys: string[] = [];
@@ -274,7 +274,7 @@ describe('ControllerBindings', () => {
 
   it('merges a gamepad partial over the current binding, the default while off, and null turns it off', () => {
     const options: Options = { fireKey: 'KeyF', keymap: 'wasd', gamepad: null };
-    const bindings = new ControllerBindings(options, DEFAULT_GAMEPAD);
+    const bindings = new ControllerBindings(options, DEFAULT_GAMEPAD, NEVER);
     const changes: BindingsChange[] = [];
     bindings.changed$.subscribe(c => changes.push(c));
     expect(bindings.setGamepad({ fire: 'b3' })).toEqual({ fire: 'b3', alt: 'b1' });
@@ -288,13 +288,96 @@ describe('ControllerBindings', () => {
 
   it('leaves the controls given as undefined to setGamepad as they are', () => {
     const options: Options = { fireKey: 'KeyF', keymap: 'wasd', gamepad: { fire: 'b3', alt: 'b4' } };
-    const bindings = new ControllerBindings(options, DEFAULT_GAMEPAD);
+    const bindings = new ControllerBindings(options, DEFAULT_GAMEPAD, NEVER);
     expect(bindings.setGamepad({ fire: 'b5', alt: undefined })).toEqual({ fire: 'b5', alt: 'b4' });
     expect(options.gamepad).toEqual({ fire: 'b5', alt: 'b4' });
   });
 
+  it('binds a gamepad key over the picked key and control, and unbinds when unbindOn$ emits', () => {
+    const pads = stubGamepads();
+    const gamepadInput = new GamepadInput();
+    gamepadInput.start();
+    const keyboard = new KeyboardInput();
+    keyboard.start();
+    try {
+      const options: Options = { fireKey: 'KeyF', keymap: 'wasd', gamepad: { ...DEFAULT_GAMEPAD } };
+      const removed$ = new Subject<void>();
+      const bindings = new ControllerBindings(options, DEFAULT_GAMEPAD, removed$);
+      const fire: boolean[] = [];
+      bindings.followKey(keyboard, o => o.fireKey).subscribe(v => fire.push(v));
+      bindings.followGamepadKey(
+        gamepadInput,
+        keyboard,
+        o => o.fireKey,
+        g => g.fire,
+      );
+      pads.set({});
+      gamepadInput.poll();
+      pads.set({ buttons: { 0: true } });
+      gamepadInput.poll();
+      expect(fire).toEqual([false, true]);
+      pads.set({});
+      gamepadInput.poll();
+      // the key and the button both rebound: G from the next push of B
+      bindings.setKeys({ fireKey: 'KeyG' });
+      bindings.setGamepad({ fire: 'b1' });
+      pads.set({ buttons: { 1: true } });
+      gamepadInput.poll();
+      expect(fire).toEqual([false, true, false, true]);
+      pads.set({});
+      gamepadInput.poll();
+      // off: the button presses nothing
+      bindings.setGamepad(null);
+      pads.set({ buttons: { 1: true } });
+      gamepadInput.poll();
+      expect(fire).toEqual([false, true, false, true, false]);
+      bindings.setGamepad({});
+      pads.set({});
+      gamepadInput.poll();
+      removed$.next();
+      pads.set({ buttons: { 1: true } });
+      gamepadInput.poll();
+      expect(fire).toEqual([false, true, false, true, false]);
+      expect((keyboard as any).emulatedHeld.size).toBe(0);
+    } finally {
+      keyboard.stop();
+      gamepadInput.stop();
+      pads.restore();
+    }
+  });
+
+  it('follows a gamepad direction and a pressed control picked from the gamepad binding', () => {
+    const pads = stubGamepads();
+    const gamepadInput = new GamepadInput();
+    gamepadInput.start();
+    try {
+      const options = { gamepad: { move: GAMEPAD_LEFT_STICK, alt: 'b1' } as { move: any; alt: string } | null };
+      const removed$ = new Subject<void>();
+      const bindings = new ControllerBindings(options, { move: GAMEPAD_LEFT_STICK, alt: 'b1' }, removed$);
+      const direction = new DirectionInput(null, null);
+      direction.start();
+      const alt: boolean[] = [];
+      bindings.followGamepadPressed(gamepadInput, g => g.alt).subscribe(v => alt.push(v));
+      bindings.followGamepadDirection(gamepadInput, direction, g => g.move);
+      pads.set({});
+      gamepadInput.poll();
+      pads.set({ axes: [1, 0], buttons: { 1: true } });
+      gamepadInput.poll();
+      expect(direction.direction).toEqual({ x: 1, y: 0 });
+      expect(alt).toEqual([false, true]);
+      bindings.setGamepad(null);
+      gamepadInput.poll();
+      expect(direction.direction).toEqual({ x: 0, y: 0 });
+      expect(alt).toEqual([false, true, false]);
+      direction.stop();
+    } finally {
+      gamepadInput.stop();
+      pads.restore();
+    }
+  });
+
   it('isRebindableController tells a controller with a bindingsChanged$', () => {
-    const bindings = new ControllerBindings({ gamepad: null }, {});
+    const bindings = new ControllerBindings({ gamepad: null }, {}, NEVER);
     expect(isRebindableController({ bindingsChanged$: bindings.changed$ })).toBe(true);
     expect(isRebindableController({ bindingsChanged$: () => undefined })).toBe(false);
     expect(isRebindableController(null)).toBe(false);

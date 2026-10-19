@@ -1,11 +1,10 @@
-import { combineLatest, filter, Observable, Subject, take, takeUntil } from 'rxjs';
+import { combineLatest, filter, Observable, Subject, takeUntil } from 'rxjs';
 import {
   DirectionInput,
   DirectionKeymap,
   BindingsChange,
   ControllerBindings,
   IRebindableController,
-  followGamepadDirection,
   GamepadAxisBinding,
   GamepadControls,
   GgWorld,
@@ -116,7 +115,7 @@ export class CarHandlingController extends IEntity implements IRebindableControl
       gamepad: options.gamepad === undefined ? DEFAULT_CAR_GAMEPAD_BINDING : options.gamepad,
     };
     this.directionsInput = new DirectionInput(keyboard, options.keymap);
-    this.bindings = new ControllerBindings(this.options, DEFAULT_CAR_GAMEPAD_BINDING);
+    this.bindings = new ControllerBindings(this.options, DEFAULT_CAR_GAMEPAD_BINDING, this._onRemoved$);
   }
 
   async onSpawned(world: GgWorld<any, any>): Promise<void> {
@@ -153,14 +152,10 @@ export class CarHandlingController extends IEntity implements IRebindableControl
       () => this.directionsInput.stop(),
     );
     if (world.gamepadInput) {
-      const unbind = followGamepadDirection(
-        world.gamepadInput,
-        this.directionsInput,
-        this.bindings.option$(
-          ({ gamepad }) => gamepad && { x: gamepad.steer, y: { negative: gamepad.brake, positive: gamepad.throttle } },
-        ),
-      );
-      this._onRemoved$.pipe(take(1)).subscribe(unbind);
+      this.bindings.followGamepadDirection(world.gamepadInput, this.directionsInput, g => ({
+        x: g.steer,
+        y: { negative: g.brake, positive: g.throttle },
+      }));
     }
   }
 

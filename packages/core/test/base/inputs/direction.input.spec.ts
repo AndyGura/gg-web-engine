@@ -71,6 +71,23 @@ describe('DirectionInput', () => {
     expect(analog.direction).toEqual({ x: 0, y: 0 });
   });
 
+  it('goes straight to zero on stop, with keys and contributions held', () => {
+    const values: Point2[] = [];
+    input.direction$.subscribe(v => values.push(v));
+    keyboard.emulateKeyDown('KeyW');
+    input.setAnalogDirection('stick', { y: 0.5 });
+    expect(values).toEqual([
+      { x: 0, y: 0 },
+      { x: 0, y: 1 },
+    ]);
+    input.stop();
+    expect(values).toEqual([
+      { x: 0, y: 0 },
+      { x: 0, y: 1 },
+      { x: 0, y: 0 },
+    ]);
+  });
+
   it('ignores analog contributions while stopped and drops them on stop', () => {
     input.setAnalogDirection('stick', { x: 1 });
     input.stop();
@@ -145,6 +162,19 @@ describe('DirectionInput', () => {
       keyboard.emulateKeyUp('KeyL');
       keyboard.emulateKeyDown('KeyL');
       expect(input.direction).toEqual({ x: 0, y: 0 });
+    });
+
+    it('leaves a held key alone when the keymap assigned stands for the same codes', () => {
+      const outputs: any[] = [];
+      input.output$.subscribe(o => outputs.push(o));
+      keyboard.emulateKeyDown('KeyW');
+      expect(input.direction).toEqual({ x: 0, y: 1 });
+      const before = outputs.length;
+      input.keymap = 'wasd';
+      input.keymap = { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD' };
+      expect(input.direction).toEqual({ x: 0, y: 1 });
+      expect(outputs.length).toBe(before);
+      expect(input.keymap).toEqual({ up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD' });
     });
 
     it('keeps analog contributions across a rebind', () => {

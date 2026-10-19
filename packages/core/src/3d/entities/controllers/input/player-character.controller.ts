@@ -1,13 +1,10 @@
-import { filter, Observable, take, takeUntil } from 'rxjs';
+import { filter, Observable, takeUntil } from 'rxjs';
 import {
   DirectionInput,
   DirectionKeymap,
   BindingsChange,
   ControllerBindings,
   IRebindableController,
-  followGamepadDirection,
-  followGamepadKey,
-  followKey,
   GAMEPAD_LEFT_STICK_OR_DPAD,
   GAMEPAD_RIGHT_STICK,
   GamepadControls,
@@ -371,7 +368,7 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
     };
     this.mouseInput = new MouseInput(this.options.mouseOptions);
     this.directionsInput = new DirectionInput(keyboard, this.options.keymap);
-    this.bindings = new ControllerBindings(this.options, DEFAULT_CHARACTER_GAMEPAD_BINDING);
+    this.bindings = new ControllerBindings(this.options, DEFAULT_CHARACTER_GAMEPAD_BINDING, this._onRemoved$);
     // Captured before the `viewMode` setter below ever runs, so it reflects the camera's fov as the
     // app configured it, not anything this controller (or a third-person restore) already touched -
     // see `baseFov`'s own doc.
@@ -407,20 +404,16 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
         }
       });
 
-    followKey(
-      this.keyboard,
-      this.bindings.option$(o => o.jumpKey),
-    )
+    this.bindings
+      .followKey(this.keyboard, o => o.jumpKey)
       .pipe(
         takeUntil(this._onRemoved$),
         filter(down => this.active && down),
       )
       .subscribe(() => this.character?.jump());
 
-    followKey(
-      this.keyboard,
-      this.bindings.option$(o => o.runKey),
-    )
+    this.bindings
+      .followKey(this.keyboard, o => o.runKey)
       .pipe(
         takeUntil(this._onRemoved$),
         filter(() => this.active),
@@ -431,10 +424,8 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
         }
       });
 
-    followKey(
-      this.keyboard,
-      this.bindings.option$(o => o.crouchKey),
-    )
+    this.bindings
+      .followKey(this.keyboard, o => o.crouchKey)
       .pipe(
         takeUntil(this._onRemoved$),
         filter(() => this.active),
@@ -452,10 +443,8 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
         }
       });
 
-    followKey(
-      this.keyboard,
-      this.bindings.option$(o => o.toggleViewKey),
-    )
+    this.bindings
+      .followKey(this.keyboard, o => o.toggleViewKey)
       .pipe(
         takeUntil(this._onRemoved$),
         filter(down => this.active && down),
@@ -479,38 +468,31 @@ export class PlayerCharacterController<TypeDoc extends Gg3dWorldTypeDocRepo = Gg
 
     const gamepadInput = world.gamepadInput;
     if (gamepadInput) {
-      const unbinds = [
-        followGamepadKey(
-          gamepadInput,
-          this.keyboard,
-          this.bindings.option$(o => o.jumpKey),
-          this.bindings.option$(o => o.gamepad?.jump),
-        ),
-        followGamepadKey(
-          gamepadInput,
-          this.keyboard,
-          this.bindings.option$(o => o.runKey),
-          this.bindings.option$(o => o.gamepad?.run),
-        ),
-        followGamepadKey(
-          gamepadInput,
-          this.keyboard,
-          this.bindings.option$(o => o.crouchKey),
-          this.bindings.option$(o => o.gamepad?.crouch),
-        ),
-        followGamepadKey(
-          gamepadInput,
-          this.keyboard,
-          this.bindings.option$(o => o.toggleViewKey),
-          this.bindings.option$(o => o.gamepad?.toggleView),
-        ),
-        followGamepadDirection(
-          gamepadInput,
-          this.directionsInput,
-          this.bindings.option$(o => o.gamepad?.move),
-        ),
-      ];
-      this._onRemoved$.pipe(take(1)).subscribe(() => unbinds.forEach(unbind => unbind()));
+      this.bindings.followGamepadKey(
+        gamepadInput,
+        this.keyboard,
+        o => o.jumpKey,
+        g => g.jump,
+      );
+      this.bindings.followGamepadKey(
+        gamepadInput,
+        this.keyboard,
+        o => o.runKey,
+        g => g.run,
+      );
+      this.bindings.followGamepadKey(
+        gamepadInput,
+        this.keyboard,
+        o => o.crouchKey,
+        g => g.crouch,
+      );
+      this.bindings.followGamepadKey(
+        gamepadInput,
+        this.keyboard,
+        o => o.toggleViewKey,
+        g => g.toggleView,
+      );
+      this.bindings.followGamepadDirection(gamepadInput, this.directionsInput, g => g.move);
     }
 
     this.tick$

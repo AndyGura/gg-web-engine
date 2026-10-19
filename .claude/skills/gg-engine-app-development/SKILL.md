@@ -392,7 +392,10 @@ wrap it in an `Entity3d`/`Entity2d` instead and add it via `world.addEntity`.
   `followGamepadKey(world.gamepadInput, world.keyboardInput, code$, controls$)` keeps a gamepad
   button on it (an observable of the controls too; `of('b2')` for a fixed one), and
   `followGamepadPressed(world.gamepadInput, controls$)` is the button's own down/up; a
-  controller of your own gets `setKeys`/`setGamepad`/`option$` from `ControllerBindings` and
+  controller of your own gets `setKeys`/`setGamepad` from `ControllerBindings` (built over its
+  options, its default gamepad binding and its `_onRemoved$`), binds through the bindings' own
+  `followKey`/`followGamepadKey`/`followGamepadPressed`/`followGamepadDirection` - each over a key
+  picked from the options and a control picked from the gamepad binding - and
   declares `implements IRebindableController` so `MobileControls` refreshes its layout too. Label keys with `KeyboardInput.keyName(code)` ("W", "Left", "Num 8"; in the player's
   layout on Chromium - `await KeyboardInput.loadKeyboardLayout()` before showing the menu, so
   AZERTY's `KeyQ` reads "A" from the first frame), and check a captured `keydown`'s `e.code` with

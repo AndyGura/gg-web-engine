@@ -1,4 +1,4 @@
-import { BehaviorSubject, Observable, Subject, takeUntil } from 'rxjs';
+import { BehaviorSubject, Observable, Subject, Subscription } from 'rxjs';
 import { distinctUntilChanged, filter, map, startWith, take } from 'rxjs/operators';
 import { IInput } from './i-input';
 import { KeyboardInput } from './keyboard.input';
@@ -103,8 +103,8 @@ export type GamepadInputOptions = {
   pressThreshold: number;
   /**
    * Which gamepad to read, by its index in `navigator.getGamepads()`. `null` (the default) reads
-   * `GamepadInput.selectedGamepad()`: the player's `GamepadInput.choice`, else the first connected
-   * gamepad with the standard mapping, else the first connected one.
+   * `GamepadInput.selectedGamepad()`: the player's `GamepadInput.choice`, else the gamepad in use,
+   * else the first connected gamepad with the standard mapping, else the first connected one.
    */
   gamepadIndex: number | null;
 };
@@ -167,6 +167,9 @@ const asList = (controls: GamepadControls): readonly GamepadControl[] =>
  * Browsers only list a gamepad once a button was pressed on it, so `connected` turns `true` on the
  * first press, not when the cable is plugged in.
  *
+ * All running inputs share one read of `navigator.getGamepads()` per frame, so a second input
+ * beside a world's (a `ScreenManager`'s, another world's) costs no second read.
+ *
  * @example
  * ```ts
  * // a horn on the B button, a boost proportional to how far the right trigger is pulled
@@ -186,9 +189,12 @@ export class GamepadInput extends IInput {
   /**
    * The gamepad the player picked, read by every `GamepadInput` without a `gamepadIndex` of its
    * own - those of every world and any others - on its next poll. `null` (the default) reads the
-   * first connected gamepad with the standard mapping, else the first connected one. A choice not
-   * connected right now falls back the same way and is used again once it is. Not saved by the
-   * engine: store it (it is plain data) and assign it back at startup.
+   * gamepad in use: the one read so far, while it is connected, once a control was pushed on it -
+   * so a gamepad listed later (a button pressed on it) does not take over mid-game - and before
+   * that the first connected gamepad with the standard mapping, else the first connected one. A
+   * choice not connected right now falls back the same way and is used again once it is.
+   * Assigning a choice (`null` too) starts over. Not saved by the engine: store it (it is plain
+   * data) and assign it back at startup.
    *
    * Some devices list themselves as gamepads without being one (a keyboard with a gamepad
    * interface, a wheel's separate pedals) and may come first: a controls menu letting the player
@@ -208,7 +214,28 @@ export class GamepadInput extends IInput {
   }
 
   public static set choice(value: GamepadChoice | null) {
+    GamepadInput.inUseDevice = null;
     GamepadInput._choice$.next(value);
+  }
+
+  /**
+   * The gamepad read by default (no `choice` connected) on which a control was pushed, told apart
+   * by index and id: it stays the one read while it is connected. `null` until then, after a
+   * `choice` is assigned, and once it is gone.
+   */
+  private static inUseDevice: { index: number; id: string } | null = null;
+
+  /** The running inputs, polled together on every frame: one `navigator.getGamepads()` read for all */
+  private static readonly runningInputs: Set<GamepadInput> = new Set<GamepadInput>();
+  private static frameSubscription: Subscription | null = null;
+
+  private static pollAll(): void {
+    const gamepads = GamepadInput.connectedGamepads();
+    for (const input of [...GamepadInput.runningInputs]) {
+      if (input.running) {
+        input.readGamepad(input.findGamepad(gamepads));
+      }
+    }
   }
 
   /** `choice`, on subscription and on every change */
@@ -240,8 +267,8 @@ export class GamepadInput extends IInput {
 
   /**
    * The gamepad a `GamepadInput` without a `gamepadIndex` reads: `choice` if connected, else the
-   * first connected gamepad with the standard mapping, else the first connected one; `null` with
-   * none connected
+   * gamepad in use (see `choice`), else the first connected gamepad with the standard mapping, else
+   * the first connected one; `null` with none connected
    */
   public static selectedGamepad(): Gamepad | null {
     return GamepadInput.select(GamepadInput.connectedGamepads());
@@ -280,6 +307,13 @@ export class GamepadInput extends IInput {
         return chosen;
       }
     }
+    const inUse = GamepadInput.inUseDevice;
+    const current = inUse && gamepads.find(x => x.index === inUse.index && x.id === inUse.id);
+    if (current) {
+      return current;
+    }
+    // a gamepad merely listed first was never used: a gamepad listed (pressed) later takes over
+    GamepadInput.inUseDevice = null;
     return gamepads.find(x => x.mapping === 'standard') || gamepads[0] || null;
   }
 
@@ -294,6 +328,11 @@ export class GamepadInput extends IInput {
   private readonly _controlPushed$: Subject<GamepadControl> = new Subject<GamepadControl>();
 
   private _gamepad: Gamepad | null = null;
+  /**
+   * whether the control values are those of a read of the gamepad: `false` until the first poll
+   * and after a stop, when every control reads as released whatever the hand on the gamepad does
+   */
+  private hasRead: boolean = false;
   /** button values after the trigger dead zone */
   private buttons: number[] = [];
   /** raw axis values */
@@ -473,8 +512,14 @@ export class GamepadInput extends IInput {
     const nextRepeat = new Map<string, number>();
     // this binding's own hold on each key, so letting go here never releases another holder's
     const holder = {};
+    // with `edge`, what is held at the first read of the gamepad after the binding was made - or
+    // after this input stopped - was not pushed now: the values before that read are empty (an
+    // input not polled yet, or stopped since), not the state of the gamepad
+    let awaitingRead = true;
     const update = (initial: boolean) => {
       const now = performance.now();
+      const baseline = initial || awaitingRead;
+      awaitingRead = !this.hasRead;
       for (const code of Object.keys(keys)) {
         const pressed = this.pressed(keys[code]);
         const wasDown = down.has(code);
@@ -494,7 +539,7 @@ export class GamepadInput extends IInput {
           nextRepeat.delete(code);
         }
         if (!wasDown) {
-          if (edge && (initial || !keyboard.running)) {
+          if (edge && (baseline || !keyboard.running)) {
             continue;
           }
           if (repeating.has(code)) {
@@ -569,21 +614,30 @@ export class GamepadInput extends IInput {
     if (!this.running) {
       return;
     }
-    this.readGamepad(this.findGamepad());
+    this.readGamepad(this.findGamepad(GamepadInput.connectedGamepads()));
   }
 
   protected startInternal(): void {
     window.addEventListener('keydown', this.onDeviceUsed);
     window.addEventListener('pointerdown', this.onDeviceUsed);
-    GgGlobalClock.instance.tick$.pipe(takeUntil(this.stop$)).subscribe(() => this.poll());
+    GamepadInput.runningInputs.add(this);
+    if (!GamepadInput.frameSubscription) {
+      GamepadInput.frameSubscription = GgGlobalClock.instance.tick$.subscribe(() => GamepadInput.pollAll());
+    }
   }
 
   protected stopInternal(): void {
     window.removeEventListener('keydown', this.onDeviceUsed);
     window.removeEventListener('pointerdown', this.onDeviceUsed);
+    GamepadInput.runningInputs.delete(this);
+    if (GamepadInput.runningInputs.size === 0) {
+      GamepadInput.frameSubscription?.unsubscribe();
+      GamepadInput.frameSubscription = null;
+    }
     // every binding lets go of what it holds: every control reads as released. The gamepad itself
     // stays known (`connected`, `standardMapping`, `inUse`), so a menu shown while the world's input
     // is off still names its buttons, and nothing on `connected$` flickers over the stop
+    this.hasRead = false;
     this.buttons = [];
     this.axes = [];
     this.previousAxes = [];
@@ -591,16 +645,17 @@ export class GamepadInput extends IInput {
     this.polled$.next();
   }
 
-  private findGamepad(): Gamepad | null {
+  private findGamepad(gamepads: Gamepad[]): Gamepad | null {
     if (this.options.gamepadIndex === null) {
-      return GamepadInput.selectedGamepad();
+      return GamepadInput.select(gamepads);
     }
     const index = this.options.gamepadIndex;
-    return GamepadInput.connectedGamepads().find(x => x.index === index) ?? null;
+    return gamepads.find(x => x.index === index) ?? null;
   }
 
   private readGamepad(gamepad: Gamepad | null): void {
     this._gamepad = gamepad;
+    this.hasRead = true;
     const pushed = new Set<GamepadControl>();
     this.previousAxes = this.axes;
     if (gamepad) {
@@ -630,6 +685,11 @@ export class GamepadInput extends IInput {
       (device.index !== this.device.index || device.id !== this.device.id);
     if (device) {
       this.device = device;
+      if (pushed.size > 0 && this.options.gamepadIndex === null && !GamepadInput.inUseDevice) {
+        // a control pushed on the gamepad read by default: it is the one in use, and stays the one
+        // read while connected (see `choice`)
+        GamepadInput.inUseDevice = device;
+      }
     }
     const newlyPushed = switched ? [] : [...pushed].filter(c => !this.pushedRaw.has(c));
     this.pushedRaw = pushed;

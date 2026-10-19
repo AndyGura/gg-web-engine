@@ -1,24 +1,10 @@
-import {
-  BehaviorSubject,
-  combineLatest,
-  filter,
-  merge,
-  Observable,
-  of,
-  Subject,
-  switchMap,
-  take,
-  takeUntil,
-} from 'rxjs';
+import { BehaviorSubject, combineLatest, filter, merge, Observable, of, Subject, switchMap, takeUntil } from 'rxjs';
 import {
   DirectionInput,
   DirectionKeymap,
   BindingsChange,
   ControllerBindings,
   IRebindableController,
-  followGamepadDirection,
-  followGamepadKey,
-  followKey,
   sameBinding,
   GAMEPAD_LEFT_STICK_OR_DPAD,
   GAMEPAD_RIGHT_STICK,
@@ -288,7 +274,7 @@ export class FreeCameraController extends IEntity implements IRebindableControll
     }
     this.mouseInput = new MouseInput(this.options.mouseOptions);
     this.directionsInput = new DirectionInput(keyboard, this.options.keymap);
-    this.bindings = new ControllerBindings(this.options, DEFAULT_FREE_CAMERA_GAMEPAD_BINDING);
+    this.bindings = new ControllerBindings(this.options, DEFAULT_FREE_CAMERA_GAMEPAD_BINDING, this._onRemoved$);
   }
 
   public reset(): void {
@@ -302,11 +288,11 @@ export class FreeCameraController extends IEntity implements IRebindableControll
     // Subscribe to keyboard input for movement controls: up, down, boost and, for a camera with a
     // fov, zoom out and in
     const keys$ = [
-      this.bindings.option$(o => o.upDownKeys[0]),
-      this.bindings.option$(o => o.upDownKeys[1]),
-      this.bindings.option$(o => o.boostKey),
-      this.bindings.option$(o => (this.camera.camera.supportsFov ? o.zoomOutInKeys[0] : null)),
-      this.bindings.option$(o => (this.camera.camera.supportsFov ? o.zoomOutInKeys[1] : null)),
+      this.bindings.followKey(this.keyboard, o => o.upDownKeys[0]),
+      this.bindings.followKey(this.keyboard, o => o.upDownKeys[1]),
+      this.bindings.followKey(this.keyboard, o => o.boostKey),
+      this.bindings.followKey(this.keyboard, o => (this.camera.camera.supportsFov ? o.zoomOutInKeys[0] : null)),
+      this.bindings.followKey(this.keyboard, o => (this.camera.camera.supportsFov ? o.zoomOutInKeys[1] : null)),
     ];
     // a touch screen has no pointer lock, so neither "unless pointer locked" option applies to it
     const isTouchScreen = MouseInput.isTouchDevice();
@@ -333,11 +319,7 @@ export class FreeCameraController extends IEntity implements IRebindableControll
             distinctUntilChanged(),
           )
       : of(false);
-    let controlsObs = combineLatest([
-      this.directionsInput.direction$,
-      gamepadActive$,
-      ...keys$.map(code$ => followKey(this.keyboard, code$)),
-    ]).pipe(
+    let controlsObs = combineLatest([this.directionsInput.direction$, gamepadActive$, ...keys$]).pipe(
       takeUntil(this._onRemoved$),
       map(([direction, gamepadInUse, ...rest]) => {
         let c: { direction: Point2; rest: boolean[] } = { direction: Pnt2.O, rest: [] };
@@ -441,32 +423,25 @@ export class FreeCameraController extends IEntity implements IRebindableControll
     }
 
     if (gamepadInput) {
-      const unbinds = [
-        followGamepadKey(
-          gamepadInput,
-          this.keyboard,
-          this.bindings.option$(o => o.upDownKeys[0]),
-          this.bindings.option$(o => o.gamepad?.up),
-        ),
-        followGamepadKey(
-          gamepadInput,
-          this.keyboard,
-          this.bindings.option$(o => o.upDownKeys[1]),
-          this.bindings.option$(o => o.gamepad?.down),
-        ),
-        followGamepadKey(
-          gamepadInput,
-          this.keyboard,
-          this.bindings.option$(o => o.boostKey),
-          this.bindings.option$(o => o.gamepad?.boost),
-        ),
-        followGamepadDirection(
-          gamepadInput,
-          this.directionsInput,
-          this.bindings.option$(o => o.gamepad?.move),
-        ),
-      ];
-      this._onRemoved$.pipe(take(1)).subscribe(() => unbinds.forEach(unbind => unbind()));
+      this.bindings.followGamepadKey(
+        gamepadInput,
+        this.keyboard,
+        o => o.upDownKeys[0],
+        g => g.up,
+      );
+      this.bindings.followGamepadKey(
+        gamepadInput,
+        this.keyboard,
+        o => o.upDownKeys[1],
+        g => g.down,
+      );
+      this.bindings.followGamepadKey(
+        gamepadInput,
+        this.keyboard,
+        o => o.boostKey,
+        g => g.boost,
+      );
+      this.bindings.followGamepadDirection(gamepadInput, this.directionsInput, g => g.move);
     }
 
     // Setup updating camera position and rotation based on input

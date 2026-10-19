@@ -146,9 +146,10 @@ export class ScreenManager {
   /**
    * The gamepad input `Screen.bindGamepadKeys` binds on: one for the manager, created on first use.
    * It reads the gamepad every input reads (`GamepadInput.choice`), whether or not a screen has a
-   * world, and runs only while a screen has gamepad keys bound (`bindGamepadKeys`), so that during
-   * gameplay the world's own input is the one polling the gamepad. To read it at another time
-   * start it yourself; the last binding to end stops it again.
+   * world, and runs only while a screen has gamepad keys bound (`bindGamepadKeys`). Running beside
+   * a world's own input (a game screen with its pause key bound) costs no second read of the
+   * gamepads: every running `GamepadInput` shares one per frame. To read it at another time start
+   * it yourself; the last binding to end stops it again.
    */
   public get gamepadInput(): GamepadInput {
     if (!this._gamepadInput) {

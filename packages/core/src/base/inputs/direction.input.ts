@@ -73,6 +73,10 @@ export type AnalogDirection = { x?: number; y?: number };
 
 const clampAxis = (value: number) => Math.max(-1, Math.min(1, value));
 
+/** Whether two keymaps stand for the same codes per direction */
+const sameKeymap = (a: DirectionKeymap | null, b: DirectionKeymap | null): boolean =>
+  a === b || (!!a && !!b && JSON.stringify(directionKeyCodes(a)) === JSON.stringify(directionKeyCodes(b)));
+
 /**
  * An input for a direction, whatever device it comes from. `direction$` reports it as a vector,
  * combined from two kinds of sources:
@@ -105,8 +109,10 @@ export class DirectionInput extends IInput {
   /**
    * The keys this input reads, `null` for none. Assigning it while the input runs rebinds the keys
    * at once: the keys of the old keymap stop counting, and a key of the new one that is already
-   * held counts from its next press. A built-in controller's direction input is rebound through
-   * the controller's `setKeys({ keymap })` instead, which keeps its `options` in step.
+   * held counts from its next press. A keymap standing for the same codes as the current one
+   * (`'wasd'` over its own codes spelled out) rebinds nothing, so a held key stays held. A built-in
+   * controller's direction input is rebound through the controller's `setKeys({ keymap })` instead,
+   * which keeps its `options` in step.
    *
    * @example
    * ```ts
@@ -119,8 +125,9 @@ export class DirectionInput extends IInput {
   }
 
   public set keymap(value: DirectionKeymap | null) {
+    const same = sameKeymap(value, this._keymap);
     this._keymap = value;
-    if (this.running) {
+    if (this.running && !same) {
       // one `{}` on `output$` for the rebind: the new bindings' first emission, or, with no keys to
       // bind, the release of the old ones
       const wasBound = this.unbindKeys(false);
@@ -196,9 +203,10 @@ export class DirectionInput extends IInput {
   }
 
   protected stopInternal() {
-    this.unbindKeys();
+    // the contributions go first, so that `direction$` goes straight to zero: `unbindKeys` reports
+    // the direction, and would otherwise report the contributions alone on the way
     this.analogDirections.clear();
-    this.updateDirection();
+    this.unbindKeys();
   }
 
   /** Binds the keymap's keys, emitting their state on `output$` at once; `false` with none to bind */

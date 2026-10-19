@@ -12,61 +12,62 @@ const UNBINDABLE_KEY_CODES =
   /^(|Unidentified|Escape|Tab|Meta(Left|Right)|OS(Left|Right)|Control(Left|Right)|Alt(Left|Right)|ContextMenu|CapsLock|NumLock|ScrollLock|PrintScreen|Fn|FnLock|F\d+|Audio\w+|Media\w+|Browser\w+|Launch\w+|Power|Sleep|WakeUp|Eject|Help|Lang\d|KanaMode|Convert|NonConvert|Hiragana|Katakana)$/;
 
 /**
- * Names of keys that print nothing, or print a character that says less than the name
+ * Names of keys that print nothing, or print a character that says less than the name. A `Map`,
+ * not an object: a code from saved data may be `'constructor'`, which an object has
  */
-const SPECIAL_KEY_NAMES: { [code: string]: string } = {
-  ArrowLeft: 'Left',
-  ArrowRight: 'Right',
-  ArrowUp: 'Up',
-  ArrowDown: 'Down',
-  ShiftLeft: 'L Shift',
-  ShiftRight: 'R Shift',
-  ControlLeft: 'L Ctrl',
-  ControlRight: 'R Ctrl',
-  AltLeft: 'L Alt',
-  AltRight: 'R Alt',
-  MetaLeft: 'L Meta',
-  MetaRight: 'R Meta',
-  Space: 'Space',
-  Enter: 'Enter',
-  Tab: 'Tab',
-  Escape: 'Esc',
-  Backspace: 'Backspace',
-  CapsLock: 'Caps Lock',
-  Delete: 'Del',
-  Insert: 'Ins',
-  Home: 'Home',
-  End: 'End',
-  PageUp: 'PgUp',
-  PageDown: 'PgDn',
-  NumpadEnter: 'Num Enter',
-  NumpadAdd: 'Num +',
-  NumpadSubtract: 'Num -',
-  NumpadMultiply: 'Num *',
-  NumpadDivide: 'Num /',
-  NumpadDecimal: 'Num .',
-  NumpadEqual: 'Num =',
-  NumpadComma: 'Num ,',
-};
+const SPECIAL_KEY_NAMES: ReadonlyMap<string, string> = new Map<string, string>([
+  ['ArrowLeft', 'Left'],
+  ['ArrowRight', 'Right'],
+  ['ArrowUp', 'Up'],
+  ['ArrowDown', 'Down'],
+  ['ShiftLeft', 'L Shift'],
+  ['ShiftRight', 'R Shift'],
+  ['ControlLeft', 'L Ctrl'],
+  ['ControlRight', 'R Ctrl'],
+  ['AltLeft', 'L Alt'],
+  ['AltRight', 'R Alt'],
+  ['MetaLeft', 'L Meta'],
+  ['MetaRight', 'R Meta'],
+  ['Space', 'Space'],
+  ['Enter', 'Enter'],
+  ['Tab', 'Tab'],
+  ['Escape', 'Esc'],
+  ['Backspace', 'Backspace'],
+  ['CapsLock', 'Caps Lock'],
+  ['Delete', 'Del'],
+  ['Insert', 'Ins'],
+  ['Home', 'Home'],
+  ['End', 'End'],
+  ['PageUp', 'PgUp'],
+  ['PageDown', 'PgDn'],
+  ['NumpadEnter', 'Num Enter'],
+  ['NumpadAdd', 'Num +'],
+  ['NumpadSubtract', 'Num -'],
+  ['NumpadMultiply', 'Num *'],
+  ['NumpadDivide', 'Num /'],
+  ['NumpadDecimal', 'Num .'],
+  ['NumpadEqual', 'Num ='],
+  ['NumpadComma', 'Num ,'],
+]);
 
 /**
  * Characters the punctuation keys print in the US layout, for when the browser can't tell the
  * player's layout
  */
-const US_LAYOUT_KEY_NAMES: { [code: string]: string } = {
-  Backquote: '`',
-  Minus: '-',
-  Equal: '=',
-  BracketLeft: '[',
-  BracketRight: ']',
-  Backslash: '\\',
-  IntlBackslash: '\\',
-  Semicolon: ';',
-  Quote: "'",
-  Comma: ',',
-  Period: '.',
-  Slash: '/',
-};
+const US_LAYOUT_KEY_NAMES: ReadonlyMap<string, string> = new Map<string, string>([
+  ['Backquote', '`'],
+  ['Minus', '-'],
+  ['Equal', '='],
+  ['BracketLeft', '['],
+  ['BracketRight', ']'],
+  ['Backslash', '\\'],
+  ['IntlBackslash', '\\'],
+  ['Semicolon', ';'],
+  ['Quote', "'"],
+  ['Comma', ','],
+  ['Period', '.'],
+  ['Slash', '/'],
+]);
 
 /**
  * What each key prints in the player's keyboard layout, as of the last `loadKeyboardLayout`
@@ -137,15 +138,17 @@ export class KeyboardInput extends IInput {
     if (!keyboardLayoutRequested) {
       KeyboardInput.loadKeyboardLayout();
     }
-    if (SPECIAL_KEY_NAMES[code]) {
-      return SPECIAL_KEY_NAMES[code];
+    const special = SPECIAL_KEY_NAMES.get(code);
+    if (special) {
+      return special;
     }
     const printed = keyboardLayoutMap?.get(code);
     if (printed && printed.trim()) {
       return printed.toUpperCase();
     }
-    if (US_LAYOUT_KEY_NAMES[code]) {
-      return US_LAYOUT_KEY_NAMES[code];
+    const us = US_LAYOUT_KEY_NAMES.get(code);
+    if (us) {
+      return us;
     }
     const match = /^(?:Key|Digit)(.)$/.exec(code) || /^Numpad(\d)$/.exec(code);
     if (match) {

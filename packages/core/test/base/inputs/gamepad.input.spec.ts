@@ -1,4 +1,12 @@
-import { DirectionInput, GAMEPAD_LEFT_STICK, GamepadControl, GamepadInput, KeyboardInput, Point2 } from '../../../src';
+import {
+  DirectionInput,
+  GAMEPAD_LEFT_STICK,
+  GamepadControl,
+  GamepadInput,
+  GgGlobalClock,
+  KeyboardInput,
+  Point2,
+} from '../../../src';
 import { MockWorld } from '../../mocks/world.mock';
 import { FakeGamepad, fakeGamepad, stubGamepads } from '../../mocks/gamepad.mock';
 
@@ -127,12 +135,42 @@ describe('GamepadInput', () => {
       expect(enter).toEqual([false, true, false, true]);
     });
 
+    it('with edge, does not press for a control held when the input first reads the gamepad', () => {
+      const escape: boolean[] = [];
+      keyboard.bind('Escape').subscribe(v => escape.push(v));
+      // a fresh input, never polled: the binding is made with no state of the gamepad
+      const fresh = new GamepadInput();
+      pads.set({ buttons: { 1: true } });
+      fresh.bindKeys(keyboard, { Escape: 'b1' }, { edge: true });
+      fresh.start();
+      fresh.poll();
+      expect(escape).toEqual([false]);
+      pads.set({});
+      fresh.poll();
+      pads.set({ buttons: { 1: true } });
+      fresh.poll();
+      expect(escape).toEqual([false, true]);
+      // stopped and started again with the button still held: not a press either
+      fresh.stop();
+      expect(escape).toEqual([false, true, false]);
+      fresh.start();
+      fresh.poll();
+      expect(escape).toEqual([false, true, false]);
+      pads.set({});
+      fresh.poll();
+      pads.set({ buttons: { 1: true } });
+      fresh.poll();
+      expect(escape).toEqual([false, true, false, true]);
+      fresh.stop();
+    });
+
     it('repeats the keys in repeat while held, after the delay and then every interval', () => {
       const down: number[] = [];
       keyboard.bind('ArrowDown').subscribe(v => v && down.push(now));
       const enter: number[] = [];
       keyboard.bind('Enter').subscribe(v => v && enter.push(now));
       input.bindKeys(keyboard, { ArrowDown: 'b13', Enter: 'b0' }, { edge: true, repeat: ['ArrowDown'] });
+      connect({});
       connect({ buttons: { 13: true, 0: true } });
       for (now = 50; now <= 700; now += 50) {
         connect({ buttons: { 13: true, 0: true } });
@@ -160,6 +198,7 @@ describe('GamepadInput', () => {
       const down: number[] = [];
       keyboard.bind('ArrowDown').subscribe(v => v && down.push(now));
       input.bindKeys(keyboard, { ArrowDown: 'b13' }, { edge: true, repeat: ['ArrowDown'] });
+      connect({});
       connect({ buttons: { 13: true } });
       keyboard.stop();
       keyboard.start();
@@ -249,6 +288,46 @@ describe('GamepadInput', () => {
       expect(input.gamepad).toBe(padA);
       pads.setAll([keyboardPad]);
       expect(GamepadInput.selectedGamepad()).toBe(keyboardPad);
+    });
+
+    it('keeps reading the gamepad in use when another is listed later, until it is gone', () => {
+      const wheel = fakeGamepad({ id: 'Wheel', index: 0, mapping: '', buttons: { 0: true } });
+      pads.setAll([wheel]);
+      input.poll();
+      expect(input.gamepad).toBe(wheel);
+      // a standard pad pressed mid-game: the wheel is the one in use
+      pads.setAll([wheel, padA]);
+      input.poll();
+      expect(input.gamepad).toBe(wheel);
+      expect(GamepadInput.selectedGamepad()).toBe(wheel);
+      pads.setAll([null, padA]);
+      input.poll();
+      expect(input.gamepad).toBe(padA);
+      // the wheel back: the pad is in use now
+      pads.setAll([wheel, padA]);
+      input.poll();
+      expect(input.gamepad).toBe(padA);
+      // a new choice starts over
+      GamepadInput.choice = null;
+      input.poll();
+      expect(input.gamepad).toBe(padA);
+      pads.setAll([wheel]);
+      input.poll();
+      pads.setAll([wheel, padA]);
+      input.poll();
+      expect(input.gamepad).toBe(wheel);
+    });
+
+    it('lets a gamepad listed later take over from one merely listed first, never pushed', () => {
+      pads.setAll([keyboardPad, padA]);
+      input.poll();
+      expect(input.gamepad).toBe(padA);
+      pads.setAll([keyboardPad]);
+      input.poll();
+      expect(input.gamepad).toBe(keyboardPad);
+      pads.setAll([keyboardPad, padA]);
+      input.poll();
+      expect(input.gamepad).toBe(padA);
     });
 
     it('reads the chosen one by id and nth, falling back while it is not connected', () => {
@@ -449,6 +528,25 @@ describe('GamepadInput', () => {
     expect(GamepadInput.isControl('a2-')).toBe(true);
     expect(GamepadInput.isControl('a2')).toBe(false);
     expect(GamepadInput.isControl('x1')).toBe(false);
+  });
+
+  it('reads navigator.getGamepads() once per frame for every running input', () => {
+    const other = new GamepadInput();
+    other.start();
+    const getGamepads = jest.spyOn(navigator, 'getGamepads');
+    pads.set({ buttons: { 0: true } });
+    (GgGlobalClock.instance as any)._tick$.next([0, 16]);
+    expect(getGamepads).toHaveBeenCalledTimes(1);
+    expect(input.pressed('b0')).toBe(true);
+    expect(other.pressed('b0')).toBe(true);
+    other.stop();
+    (GgGlobalClock.instance as any)._tick$.next([16, 16]);
+    expect(getGamepads).toHaveBeenCalledTimes(2);
+    expect(other.pressed('b0')).toBe(false);
+    input.stop();
+    (GgGlobalClock.instance as any)._tick$.next([32, 16]);
+    expect(getGamepads).toHaveBeenCalledTimes(2);
+    getGamepads.mockRestore();
   });
 
   it('is started by the world and stopped with its inputEnabled', () => {

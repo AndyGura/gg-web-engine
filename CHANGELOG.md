@@ -85,11 +85,19 @@ where one exists.
   `KeyboardInput.isHeldBy(code, holder)` tells whether an emulated hold is still in place.
 
 ### Changed
-- With no `gamepadIndex` and no `GamepadInput.choice`, a `GamepadInput` reads the first connected
+- With no `gamepadIndex` and no `GamepadInput.choice`, a `GamepadInput` reads the gamepad in use:
+  the one read so far, while it stays connected, once a control was pushed on it - a gamepad listed
+  later (a button pressed on it) no longer takes over mid-game - and before that the first connected
   gamepad with the standard mapping, and only without one the first connected gamepad: some
-  keyboards and wheel pedals list themselves as gamepads and could come first.
+  keyboards and wheel pedals list themselves as gamepads and could come first. All running
+  `GamepadInput`s share one `navigator.getGamepads()` read per frame.
 - `CarHandlingController` and `GgCarHandlingController` keep a copy of the options object passed to
-  them as `options`, instead of that object itself.
+  them as `options`, instead of that object itself, with `options.gamepad` holding the default
+  binding when it was left out.
+- `ControllerBindings` takes the observable its gamepad bindings end on (the controller's
+  `_onRemoved$`) as a third constructor argument, and binds through its own `followKey`,
+  `followGamepadKey`, `followGamepadPressed` and `followGamepadDirection`, each over a key picked
+  from the options and a control picked from the gamepad binding.
 - `DirectionInput.output$` emits `{}` when the input stops, as it does when its keys are rebound:
   nothing is held any more.
 - `MapGraph3dEntity` drops queued chunks that left the load window before their turn to load,

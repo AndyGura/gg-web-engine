@@ -526,6 +526,8 @@ describe('ScreenManager', () => {
       it('presses the menu keys on the keyboard of the screen on top', async () => {
         const menu = new GamepadMenuScreen('menu', log);
         await screens.push(menu);
+        // what is held at the first read of the gamepad was not pushed now
+        poll({});
         poll({ 0: true });
         poll({});
         expect(log).toContain('enter key menu');
@@ -539,6 +541,7 @@ describe('ScreenManager', () => {
         await screens.push(game);
         const pause = new GamepadMenuScreen('pause', log);
         await screens.push(pause);
+        poll({});
         poll({ 1: true });
         expect(log.filter(l => l.startsWith('escape'))).toEqual(['escape pause']);
         await screens.pop();
