@@ -74,9 +74,10 @@ export type GamepadBindKeysOptions = {
    * Press a key only when its control becomes pressed while `keyboard` runs, like a key of a real
    * keyboard: a control pushed while `keyboard` is stopped presses nothing until it is pushed
    * again. For a menu's keys - a button that closed one screen must not act on the screen shown
-   * next. Every binding, edge or not, ignores a control already held when it is made or when this
-   * input starts, and one still held after `keyboard` let go of its key (stopped, reset): those
-   * count from their next push, so the button that closes a pause menu does not act in the game.
+   * next. An edge binding also ignores a control already held when it is made or when this input
+   * first starts. Every binding, edge or not, ignores a control held through a stop and restart of
+   * this input, and one still held after `keyboard` let go of its key (stopped, reset): those count
+   * from their next push, so the button that closes a pause menu does not act in the game.
    */
   edge?: boolean;
   /**
