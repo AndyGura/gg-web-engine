@@ -1,15 +1,14 @@
 import { filter, Observable, takeUntil } from 'rxjs';
 import {
   BindingsChange,
-  ControllerBindings,
   IRebindableController,
   GamepadControls,
   GgWorld,
   IEntity,
   KeyboardInput,
-  sameBinding,
   TickOrder,
 } from '../../../../base';
+import { ControllerBindings } from '../../../../base/inputs/rebindable-keys';
 import { GgCarEntity } from '../../gg-car/gg-car.entity';
 import {
   CarGamepadBinding,
@@ -101,6 +100,10 @@ export class GgCarHandlingController extends IEntity implements IRebindableContr
   static readonly entityTypeName: string = 'GgCarHandlingController';
   public readonly tickOrder = TickOrder.INPUT_CONTROLLERS;
 
+  /**
+   * The steering and pedals, driven by this controller: rebind them through this controller's
+   * `setKeys`/`setGamepad`, which pass them on, never through the child's own
+   */
   public readonly carHandlingInput: CarHandlingController;
   public switchingGearsEnabled: boolean = true;
   public readonly options: GgCarHandlingControllerOptions;
@@ -175,20 +178,6 @@ export class GgCarHandlingController extends IEntity implements IRebindableContr
     });
     this.addChildren(this.carHandlingInput);
     this.bindings = new ControllerBindings(this.options, DEFAULT_GG_CAR_GAMEPAD_BINDING, this._onRemoved$);
-    // `carHandlingInput.setKeys`/`setGamepad` are public too: what is changed there is mirrored
-    // here, so `options` and `bindingsChanged$` tell the truth whichever of the two was called.
-    // A change made through this controller arrives already mirrored and is left alone.
-    this.carHandlingInput.bindingsChanged$.subscribe(change => {
-      const child = this.carHandlingInput.options;
-      if (change === 'keys' && child.keymap !== this.options.keymap) {
-        this.bindings.setKeys({ keymap: child.keymap });
-      } else if (
-        change === 'gamepad' &&
-        !sameBinding(child.gamepad, GgCarHandlingController.carControls(this.options.gamepad ?? null))
-      ) {
-        this.setGamepad(child.gamepad ?? null);
-      }
-    });
   }
 
   async onSpawned(world: GgWorld<any, any>): Promise<void> {

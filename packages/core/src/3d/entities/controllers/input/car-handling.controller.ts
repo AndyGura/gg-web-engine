@@ -3,7 +3,6 @@ import {
   DirectionInput,
   DirectionKeymap,
   BindingsChange,
-  ControllerBindings,
   IRebindableController,
   GamepadAxisBinding,
   GamepadControls,
@@ -13,6 +12,7 @@ import {
   runWhileInputEnabled,
   TickOrder,
 } from '../../../../base';
+import { ControllerBindings } from '../../../../base/inputs/rebindable-keys';
 
 /** Which gamepad controls steer and pedal - see `GamepadControl` for the control names */
 export type CarGamepadBinding = {

@@ -189,9 +189,10 @@ export class GamepadInput extends IInput {
   /**
    * The gamepad the player picked, read by every `GamepadInput` without a `gamepadIndex` of its
    * own - those of every world and any others - on its next poll. `null` (the default) reads the
-   * gamepad in use: the one read so far, while it is connected, once a control was pushed on it -
-   * so a gamepad listed later (a button pressed on it) does not take over mid-game - and before
-   * that the first connected gamepad with the standard mapping, else the first connected one. A
+   * gamepad in use: the one read so far, while it is connected, once it was used (a button
+   * pressed, an axis moved from rest) - so a gamepad listed later (a button pressed on it) does not
+   * take over mid-game - and before that the first connected gamepad with the standard mapping,
+   * else the first connected one. A
    * choice not connected right now falls back the same way and is used again once it is.
    * Assigning a choice (`null` too) starts over. Not saved by the engine: store it (it is plain
    * data) and assign it back at startup.
@@ -219,9 +220,9 @@ export class GamepadInput extends IInput {
   }
 
   /**
-   * The gamepad read by default (no `choice` connected) on which a control was pushed, told apart
-   * by index and id: it stays the one read while it is connected. `null` until then, after a
-   * `choice` is assigned, and once it is gone.
+   * The gamepad read by default (no `choice` connected) once it was used, told apart by index
+   * and id: it stays the one read while it is connected. `null` until then, after a `choice` is
+   * assigned, and once it is gone.
    */
   private static inUseDevice: { index: number; id: string } | null = null;
 
@@ -691,11 +692,13 @@ export class GamepadInput extends IInput {
       this.buttons = [];
       this.axes = [];
     }
+    // a button pressed, or an axis moved from where it rests (a trigger reported as an axis rests
+    // at -1, and pedals listed as a gamepad rest pushed)
+    const used = !!gamepad && (this.buttons.some(v => v > 0) || this.axes.some((v, i) => this.axisMoved(v, i)));
     // switched to another gamepad while one was connected (a new choice): what is already held on
     // the new one was not pushed now, and a controls menu capturing a control must not take it. A
-    // gamepad read after none was - the first ever, or one plugged back in - is no switch: browsers
-    // list a gamepad only once a button was pressed on it, and that press is the one meant (a
-    // "press any button" menu waits for exactly it)
+    // gamepad read after none was (the first ever, or one plugged back in) is no switch, so a
+    // "press any button" menu gets the press that made the browser list it
     const device = gamepad && { index: gamepad.index, id: gamepad.id };
     const switched =
       !!device &&
@@ -704,9 +707,8 @@ export class GamepadInput extends IInput {
       (device.index !== this.device.index || device.id !== this.device.id);
     if (device) {
       this.device = device;
-      if (pushed.size > 0 && this.options.gamepadIndex === null && !GamepadInput.inUseDevice) {
-        // a control pushed on the gamepad read by default: it is the one in use, and stays the one
-        // read while connected (see `choice`)
+      if (used && this.options.gamepadIndex === null && !GamepadInput.inUseDevice) {
+        // the gamepad read by default was used: it stays the one read while connected (see `choice`)
         GamepadInput.inUseDevice = device;
       }
     }
@@ -715,7 +717,7 @@ export class GamepadInput extends IInput {
     this._connected$.next(!!gamepad);
     if (!gamepad) {
       this._inUse$.next(false);
-    } else if (this.buttons.some(v => v > 0) || this.axes.some((v, i) => this.axisMoved(v, i))) {
+    } else if (used) {
       this._inUse$.next(true);
     }
     this.polled$.next();

@@ -421,9 +421,9 @@ Status
   `direction$`, `controlPushed$` for binding capture, `inUse$` for input hints). Every built-in
   input controller binds its keys and directions to it by default through a `gamepad` option with
   standard-mapping defaults, which `setGamepad` changes while the game runs. Which device drives is
-  `GamepadInput.choice` (`{ id, nth }`, shared by every input, surviving reconnects), else the first
-  standard-mapping gamepad. Covered by `packages/core/test/base/inputs/gamepad.input.spec.ts` and
-  the controllers' specs; documented in `gg-engine-app-development`. Not done: haptics, a
+  `GamepadInput.choice` (`{ id, nth }`, shared by every input, surviving reconnects), else the
+  gamepad in use, else the first standard-mapping gamepad. Covered by
+  `packages/core/test/base/inputs/gamepad.input.spec.ts` and the controllers' specs; documented in `gg-engine-app-development`. Not done: haptics, a
   per-gamepad mapping database for pads without the standard mapping, and one gamepad per player
   (controllers only read `world.gamepadInput`).
 - Touch/gesture recognition (pinch, pan, tap, swipe) — not started.
@@ -431,8 +431,8 @@ Status
   controller's `setKeys` rebinds its keys while the game runs (gamepad buttons and the
   mobile-controls layout follow), `followKey`/`followGamepadKey` do the same for an app's own
   actions, and `KeyboardInput.keyName`/`isBindable`/`loadKeyboardLayout` cover a controls menu's
-  labels and key capture. Covered by `packages/core/test/base/inputs/{direction,keyboard,
-  rebindable-keys}.input.spec.ts` and the controllers' specs. Not done: saving bindings, resolving
+  labels and key capture. Covered by `packages/core/test/base/inputs/{direction.input,
+  keyboard.input,rebindable-keys}.spec.ts` and the controllers' specs. Not done: saving bindings, resolving
   conflicts between actions (left to the app).
 - Haptics — not started.
 

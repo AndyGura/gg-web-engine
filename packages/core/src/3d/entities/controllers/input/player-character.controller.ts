@@ -3,7 +3,6 @@ import {
   DirectionInput,
   DirectionKeymap,
   BindingsChange,
-  ControllerBindings,
   IRebindableController,
   GAMEPAD_LEFT_STICK_OR_DPAD,
   GAMEPAD_RIGHT_STICK,
@@ -23,6 +22,7 @@ import {
   SELF_VIEW_HIDDEN_RENDER_LAYER,
   TickOrder,
 } from '../../../../base';
+import { ControllerBindings } from '../../../../base/inputs/rebindable-keys';
 import { Renderer3dEntity } from '../../renderer-3d.entity';
 import { CharacterController3dEntity } from '../../character-controller-3d.entity';
 import { Gg3dWorldTypeDocRepo } from '../../../gg-3d-world';

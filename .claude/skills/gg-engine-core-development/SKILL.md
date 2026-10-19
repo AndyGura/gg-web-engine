@@ -742,11 +742,9 @@ flow as a stack of DOM layers. The module imports nothing from an adapter and no
   has no package-private access. It is `@internal`; app code has no use for it.
 - **Gamepad keys of a screen** (`Screen.bindGamepadKeys`) are opt-in, never on by default: on a
   game screen, B (Escape in `GAMEPAD_MENU_KEYS`) is a gameplay button and would open the pause
-  menu. They bind through `ScreenManager.bindGamepadKeys` on `ScreenManager.gamepadInput`
-  (created on first use; started by the first live binding and stopped by the last one ending,
-  or in `dispose`; a game screen with its pause key bound keeps it running beside the world's own
-  input, which costs no second `navigator.getGamepads()` read - every running `GamepadInput`
-  shares one per frame) with `bindKeys(..., { edge: true, repeat: arrows })` and end with the
+  menu. They bind on `ScreenManager.gamepadInput` (created and started on first use, stopped in
+  `dispose`; running beside a world's own input costs no second `navigator.getGamepads()` read -
+  every running `GamepadInput` shares one per frame) with `bindKeys(..., { edge: true, repeat: arrows })` and end with the
   screen's teardowns; a call before the screen is pushed waits for `attach`. `edge` is what makes it work
   across screens: B closing the pause menu is still held when the game screen's keyboard starts,
   and a binding re-pressing held keys every poll (the gameplay default) would open the menu again
@@ -1225,7 +1223,10 @@ keyboard and mouse they are named after. Anything else feeds them:
 
 **Every key and gamepad control a built-in controller binds is rebindable through its `setKeys`/
 `setGamepad`**, and a new key option or gamepad control has to be too. The mechanism is written once,
-in `base/inputs/rebindable-keys.ts`, and each controller only wires it: a `XxxControllerKeys` type
+in `base/inputs/rebindable-keys.ts`, and each controller only wires it. `ControllerBindings` and
+`sameBinding` there are internal - `base/index.ts` lists that module's exports by name and leaves
+them out, and controllers import them by path; an app has the free `follow*` functions and
+`IRebindableController` only. Each controller has a `XxxControllerKeys` type
 (`Pick` of the key options), a private `bindings = new ControllerBindings(this.options,
 DEFAULT_XXX_GAMEPAD_BINDING, this._onRemoved$)` built in the constructor right after `options` is
 (it writes to that object, which is why `CarHandlingController`/`GgCarHandlingController` copy the
@@ -1246,11 +1247,10 @@ without a key of its own and `this.bindings.followGamepadDirection(gamepadInput,
 this.directionsInput, g => g.move)` - the three that bind are unbound by the bindings themselves
 when `_onRemoved$` next emits. `GgCarHandlingController` nests a `CarHandlingController` with
 bindings of its own: it constructs the child with only the child's options (keymap, steering rate
-and the steer/throttle/brake controls of its own binding - never the gear or handbrake controls),
-forwards `keymap` and the car controls of every `setKeys`/`setGamepad` to the child's methods, and
-mirrors a change made through the child's own public `setKeys`/`setGamepad` back into its `options`
-and `bindingsChanged$` (comparing first, so a change forwarded down is not mirrored up again) - the
-two `options` objects never drift. These wrap the free functions `followKey`,
+and the steer/throttle/brake controls of its own binding - never the gear or handbrake controls)
+and forwards `keymap` and the car controls of every `setKeys`/`setGamepad` to the child's methods.
+The child is rebound only through the parent (its doc says so); nothing syncs a change made on
+the child back up, on purpose - a two-way sync made the order of every forward matter. These wrap the free functions `followKey`,
 `followGamepadKey`, `followGamepadPressed` and `followGamepadDirection` (for an app's own actions,
 over plain observables) with `option$`/`gamepadOption$`; never `keyboard.bind(this.options.x)`, one
 `gamepadInput.bindKeys` map of all keys, a `switchMap` of `option$` straight onto `pressed$`, or a
@@ -1348,8 +1348,10 @@ What it holds to:
   menu) - the chosen one if connected, else the gamepad in use, else the first standard-mapping
   gamepad, else the first connected one - by every input whose own `gamepadIndex` is `null` (an
   index there is a position in `navigator.getGamepads()`, as before). The gamepad in use is a
-  static `inUseDevice` (`{ index, id }`), set by `readGamepad` the first time a control is pushed
-  on the gamepad read by default and cleared when a poll finds it gone (`findGamepad`, the polling
+  static `inUseDevice` (`{ index, id }`), set by `readGamepad` the first time the gamepad read by
+  default is used - a button pressed or an axis moved from where it rests, the same test as
+  `inUse$`, never "a control past half way": pedals and axis triggers rest at -1 and would lock
+  in on their first read - and cleared when a poll finds it gone (`findGamepad`, the polling
   path only - `select()` itself is pure, since `selectedGamepad()`/`chooseNext()` call it from a
   menu, and a label refresh during a momentary disconnection must not forget the device) or a
   `choice` is assigned: without
@@ -1366,7 +1368,9 @@ What it holds to:
   one plugged back in - is not a switch: a browser lists a gamepad only once a button was pressed
   on it, that press is the one meant, and a "press any button" menu is waiting for exactly it.
   That is why `device` keeps the last gamepad over a disconnection and the test is on the previous
-  poll's `_connected$`.
+  poll's `_connected$`. Whether a browser needs a new press to list a replugged pad was not checked
+  on hardware; if it doesn't, a control held on it reports as pushed once - the smaller harm,
+  against swallowing the press a menu waits for. Change this only with a hardware test behind it.
   `test/mocks/gamepad.mock.ts`'s `fakeGamepad` takes `id`/`index` (default `'fake'`/0) for this.
 - **A stopped `GamepadInput` reads every control as released** (`stopInternal` clears the button
   and axis values and emits `polled$`), which says nothing about the hand on the gamepad - and a

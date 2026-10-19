@@ -553,20 +553,6 @@ describe('ScreenManager', () => {
         expect(log.filter(l => l.startsWith('escape'))).toEqual(['escape pause', 'escape game']);
       });
 
-      it('reads the gamepad only while a screen has gamepad keys bound', async () => {
-        const input = screens.gamepadInput;
-        expect(input.running).toBe(false);
-        await screens.push(new LogScreen('game', log));
-        expect(input.running).toBe(false);
-        await screens.push(new GamepadMenuScreen('pause', log));
-        expect(input.running).toBe(true);
-        await screens.push(new GamepadMenuScreen('settings', log));
-        await screens.pop();
-        expect(input.running).toBe(true);
-        await screens.pop();
-        expect(input.running).toBe(false);
-      });
-
       it('stops reading the gamepad when the manager is disposed', async () => {
         await screens.push(new GamepadMenuScreen('menu', log));
         const input = screens.gamepadInput;

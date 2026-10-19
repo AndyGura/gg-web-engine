@@ -43,61 +43,45 @@ where one exists.
   `keymap` option) also takes `{ up, down, left, right }`, each a `KeyboardEvent.code` or a list
   of them, and `DirectionInput.keymap` can be assigned while the input runs to rebind the keys at
   once. `directionKeyCodes(keymap)` lists the codes a keymap stands for.
-- Rebinding a controller's keys while the game runs: `setKeys(partial)` on `PlayerCharacterController`,
-  `PlayerCharacterController2d`, `CarHandlingController`, `GgCarHandlingController`,
-  `FreeCameraController` and `ObjectGrabController` writes the given keys (`keymap`, `jumpKey`,
-  `gearUpDownKeys`, `grabKey`, ...) to `options` and rebinds them at once, keyboard and gamepad
-  buttons alike, and `setGamepad(partial | null)` does the same for the `gamepad` binding (a
-  `null` turns the gamepad off, controls given while it is off go over the default binding,
-  `undefined` ones are left as they are). A control already held when it is assigned (the button
-  a menu just captured) counts from its next push - one the world's gamepad input reads while
-  running, so a menu shown with the world's input off does not make the button that closes it
-  act on the restart (`GamepadInput.released$`). `bindingsChanged$` (the `IRebindableController` contract, `isRebindableController`
-  to tell one) emits `'keys'` or `'gamepad'` after either. `followKey(keyboard, code$)`,
-  `followGamepadKey(gamepadInput, keyboard, code$, controls$)`,
-  `followGamepadPressed(gamepadInput, controls$)` and
-  `followGamepadDirection(gamepadInput, directionInput, binding$)` do the same for an app's own
-  actions, and `ControllerBindings` is the `setKeys`/`setGamepad`/`option$` mechanism behind the
-  built-in controllers, for a controller of the app's own.
-- Choosing which gamepad drives: `GamepadInput.choice` (a `GamepadChoice`, `{ id, nth }`, plain data
-  to save) is read by every `GamepadInput` without a `gamepadIndex` of its own, on its next poll,
-  and finds the same device again after a reconnect or a reload. `GamepadInput.connectedGamepads()`,
-  `selectedGamepad()`, `chooseNext(step)`, `choiceOf(gamepad)`, `gamepadName(gamepad)` (the `id`
-  without the browser's additions) and `choice$` are there for a controls menu.
+- Rebinding controls while the game runs: `setKeys(partial)` and `setGamepad(partial | null)` on
+  `PlayerCharacterController`, `PlayerCharacterController2d`, `CarHandlingController`,
+  `GgCarHandlingController`, `FreeCameraController` and `ObjectGrabController` write the given
+  keys or gamepad controls to `options` and rebind them at once (`null` turns the gamepad off). A
+  control already held when it is assigned (the button a controls menu just captured) counts from
+  its next push. `bindingsChanged$` (`IRebindableController`, `isRebindableController`) emits
+  `'keys'` or `'gamepad'` after either. `followKey`, `followGamepadKey`, `followGamepadPressed`
+  and `followGamepadDirection` do the same for an app's own actions, and
+  `GamepadInput.released$(controls)` tells when controls are read released.
+- Choosing which gamepad drives: `GamepadInput.choice` (`{ id, nth }`, plain data to save) is read
+  by every `GamepadInput` without a `gamepadIndex` of its own and finds the same device again
+  after a reconnect or a reload. `connectedGamepads()`, `selectedGamepad()`, `chooseNext(step)`,
+  `choiceOf(gamepad)`, `gamepadName(gamepad)` and `choice$` are there for a controls menu.
 - `FreeCameraController` options `upDownKeys` (`['KeyE', 'KeyQ']`), `zoomOutInKeys`
   (`['KeyZ', 'KeyC']`) and `boostKey` (`'ShiftLeft'`) for the keys it had built in.
-- `@gg-web-engine/mobile-controls`: a shown layout is rebuilt when its controller's
-  `bindingsChanged$` reports a `'keys'` change, so its buttons press the new keys - once no finger
-  is on it, so a held button is never taken from under one (a gamepad change leaves the layout
-  alone); the free camera layout presses the keys in the controller's `options`.
+- `@gg-web-engine/mobile-controls`: a shown layout is rebuilt when its controller reports a
+  `'keys'` change, so its buttons press the new keys, once no finger is on it.
 - Helpers for a controls menu on `KeyboardInput`: `keyName(code)` gives a short label ("W",
   "Left", "Num 8", "L Shift") in the player's keyboard layout where the browser reports it
   (`loadKeyboardLayout()`, Chromium), and `isBindable(code)` rejects keys the browser or OS keeps
   for itself (Tab, Escape, function keys, Ctrl/Alt/Meta, lock and media keys).
-
 - Gamepad menu navigation for screens: `Screen.bindGamepadKeys(keys = GAMEPAD_MENU_KEYS)` has the
-  gamepad press keys of the screen's `keyboard` while the screen is on top - d-pad or left stick
-  as the arrows (repeating while held), A as Enter, B as Escape - pressing only for a button pushed
-  while the screen is on top, so the button that closed a screen does nothing on the one below. A
-  game screen binds only its pause key (`this.bindGamepadKeys({ Escape: 'b9' })`).
+  gamepad press keys of the screen's `keyboard` while the screen is on top (d-pad or left stick as
+  the arrows, repeating while held, A as Enter, B as Escape), only for a button pushed while the
+  screen is on top. A game screen binds only its pause key (`this.bindGamepadKeys({ Escape: 'b9' })`).
   `ScreenManager.gamepadInput` is the input it reads. `GamepadInput.bindKeys` takes the options
   behind it: `edge` (press like a real key) and `repeat`/`repeatDelay`/`repeatInterval`.
   `KeyboardInput.isHeldBy(code, holder)` tells whether an emulated hold is still in place.
 
 ### Changed
-- With no `gamepadIndex` and no `GamepadInput.choice`, a `GamepadInput` reads the gamepad in use:
-  the one read so far, while it stays connected, once a control was pushed on it - a gamepad listed
-  later (a button pressed on it) no longer takes over mid-game - and before that the first connected
-  gamepad with the standard mapping, and only without one the first connected gamepad: some
-  keyboards and wheel pedals list themselves as gamepads and could come first. All running
-  `GamepadInput`s share one `navigator.getGamepads()` read per frame.
+- With no `gamepadIndex` and no `GamepadInput.choice`, a `GamepadInput` keeps reading the gamepad
+  in use (a button pressed or an axis moved on it) while it stays connected, so a gamepad listed
+  later doesn't take over mid-game. Before that it reads the first connected gamepad with the
+  standard mapping, and only without one the first connected gamepad: some keyboards and wheel
+  pedals list themselves as gamepads and could come first. All running `GamepadInput`s share one
+  `navigator.getGamepads()` read per frame.
 - `CarHandlingController` and `GgCarHandlingController` keep a copy of the options object passed to
   them as `options`, instead of that object itself, with `options.gamepad` holding the default
   binding when it was left out.
-- `ControllerBindings` takes the observable its gamepad bindings end on (the controller's
-  `_onRemoved$`) as a third constructor argument, and binds through its own `followKey`,
-  `followGamepadKey`, `followGamepadPressed` and `followGamepadDirection`, each over a key picked
-  from the options and a control picked from the gamepad binding.
 - `DirectionInput.output$` emits `{}` when the input stops, as it does when its keys are rebound:
   nothing is held any more.
 - `MapGraph3dEntity` drops queued chunks that left the load window before their turn to load,
@@ -107,7 +91,7 @@ where one exists.
 ### Fixed
 - `GamepadInput.controlPushed$` no longer reports the controls already held on a gamepad it
   switched to (another choice) as pushed, so a controls menu capturing a control doesn't take
-  them. A gamepad read after none was - the first ever, or one plugged back in - still reports
+  them. A gamepad read after none was (the first ever, or one plugged back in) still reports
   them: the browser lists it because of that very press.
 - `@gg-web-engine/pixi`: a display object built without a name no longer reports pixi.js's
   class-name default `label` ("Graphics", "Sprite", ...) as its `name`. Since 0.0.83 an `Entity2d`

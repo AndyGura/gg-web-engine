@@ -38,7 +38,8 @@ export function followKey(keyboard: KeyboardInput, code$: Observable<string | nu
 /**
  * Whether two gamepad bindings (`GamepadControls`, a `GamepadDirectionBinding`, a whole binding
  * object) are the same, compared by content; `null` and `undefined` are the same binding (none).
- * The comparator for a `distinctUntilChanged` over an observable of bindings.
+ * The comparator for a `distinctUntilChanged` over an observable of bindings. Not exported from the
+ * package.
  */
 export const sameBinding = <T>(a: T, b: T): boolean => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 
@@ -76,7 +77,9 @@ export function followGamepadPressed(
  * by a running `gamepadInput` if they are pushed at that moment (`GamepadInput.released$`) - a
  * control a menu captured is still held when it is assigned, and must not act on the spot, nor
  * when the gamepad input stopped for the menu restarts; a `null` code or controls bind nothing.
- * Returns a function that unbinds for good.
+ * Returns a function that unbinds for good. When `code$` and `controls$` derive from one source,
+ * a change of both arrives as two emissions, the first pairing the new code with the old
+ * controls: the hold moves twice in a row, with nothing pressed in between.
  */
 export function followGamepadKey(
   gamepadInput: GamepadInput,
@@ -162,37 +165,18 @@ export function isRebindableController(x: unknown): x is IRebindableController {
 }
 
 /**
- * The rebinding mechanism of a controller with an `options` object holding its keys and an
- * optional `gamepad` binding, written once here and used by every built-in input controller:
- * `setKeys` copies the given keys onto `options` (skipping `undefined` ones), `setGamepad` writes
- * `options.gamepad` (`null`, or the partial over the current binding - over `defaultGamepad` while
- * the gamepad is off), and both emit on `changed$`. The bindings a controller makes in `onSpawned`
- * follow the options from then on: `followKey`, `followGamepadKey`, `followGamepadPressed` and
- * `followGamepadDirection` here are the functions of the same names over a key picked from
- * `options` and a control picked from `options.gamepad` (nothing while that is `null`), and the
- * two that bind are unbound when `unbindOn$` next emits - the controller's `_onRemoved$`.
- * `followKeymap(directionInput, pick)` keeps a `DirectionInput`'s `keymap` at the one picked from
- * `options`, unbound the same way. `option$
- * (pick)` is the picked value now and after every change, for anything else that follows an
- * option. The controller's `bindingsChanged$` is `changed$`.
- *
- * @example
- * ```ts
- * class MyController extends IEntity implements IRebindableController {
- *   private readonly bindings = new ControllerBindings(this.options, DEFAULT_MY_GAMEPAD_BINDING, this._onRemoved$);
- *   get bindingsChanged$() { return this.bindings.changed$; }
- *   setKeys(keys: Partial<MyControllerKeys>) { this.bindings.setKeys(keys); }
- *   setGamepad(binding: Partial<MyGamepadBinding> | null) { this.bindings.setGamepad(binding); }
- *   onSpawned(world) {
- *     this.bindings.followKey(this.keyboard, o => o.fireKey)
- *       .pipe(takeUntil(this._onRemoved$))
- *       .subscribe(down => down && this.fire());
- *     if (world.gamepadInput) {
- *       this.bindings.followGamepadKey(world.gamepadInput, this.keyboard, o => o.fireKey, g => g.fire);
- *     }
- *   }
- * }
- * ```
+ * The rebinding mechanism of the built-in input controllers, not exported from the package (an
+ * app's own controller uses the free `follow*` functions and implements `IRebindableController`
+ * itself). `setKeys` copies the given keys onto `options` (skipping `undefined` ones), `setGamepad`
+ * writes `options.gamepad` (`null`, or the partial over the current binding - over
+ * `defaultGamepad` while the gamepad is off), and both emit on `changed$`, the controller's
+ * `bindingsChanged$`. The bindings a controller makes in `onSpawned` follow the options from then
+ * on: `followKey`, `followGamepadKey`, `followGamepadPressed` and `followGamepadDirection` here are
+ * the functions of the same names over a key picked from `options` and a control picked from
+ * `options.gamepad` (nothing while that is `null`), and `followKeymap` keeps a `DirectionInput`'s
+ * `keymap` at the one picked from `options`. Whatever binds is unbound when `unbindOn$` (the
+ * controller's `_onRemoved$`) next emits. `option$(pick)` is the picked value now and after every
+ * change, for anything else that follows an option.
  */
 export class ControllerBindings<O extends { gamepad?: G | null }, G extends object> {
   private readonly _changed$: Subject<BindingsChange> = new Subject<BindingsChange>();

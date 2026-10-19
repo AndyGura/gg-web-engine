@@ -1,7 +1,6 @@
 import { BehaviorSubject, NEVER, of, Subject } from 'rxjs';
 import {
   BindingsChange,
-  ControllerBindings,
   DirectionInput,
   DirectionKeymap,
   followGamepadDirection,
@@ -14,6 +13,7 @@ import {
   isRebindableController,
   KeyboardInput,
 } from '../../../src';
+import { ControllerBindings } from '../../../src/base/inputs/rebindable-keys';
 import { stubGamepads } from '../../mocks/gamepad.mock';
 
 describe('followKey', () => {

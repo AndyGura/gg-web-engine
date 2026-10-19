@@ -330,6 +330,17 @@ describe('GamepadInput', () => {
       expect(input.gamepad).toBe(padA);
     });
 
+    it('does not hold on to pedals listed first that merely rest pushed', () => {
+      const pedals = fakeGamepad({ id: 'Pedals', index: 0, mapping: '', axes: [-1, -1, -1] });
+      pads.setAll([pedals]);
+      input.poll();
+      input.poll();
+      expect(input.gamepad).toBe(pedals);
+      pads.setAll([pedals, padA]);
+      input.poll();
+      expect(input.gamepad).toBe(padA);
+    });
+
     it('reads the chosen one by id and nth, falling back while it is not connected', () => {
       pads.setAll([keyboardPad, padA, padB]);
       GamepadInput.choice = { id: padB.id, nth: 1 };

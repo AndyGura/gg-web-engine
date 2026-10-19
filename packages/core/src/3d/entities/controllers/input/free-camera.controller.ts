@@ -3,9 +3,7 @@ import {
   DirectionInput,
   DirectionKeymap,
   BindingsChange,
-  ControllerBindings,
   IRebindableController,
-  sameBinding,
   GAMEPAD_LEFT_STICK_OR_DPAD,
   GAMEPAD_RIGHT_STICK,
   GamepadControls,
@@ -26,6 +24,7 @@ import {
   Spherical,
   TickOrder,
 } from '../../../../base';
+import { ControllerBindings, sameBinding } from '../../../../base/inputs/rebindable-keys';
 import { Renderer3dEntity } from '../../renderer-3d.entity';
 import { distinctUntilChanged, map } from 'rxjs/operators';
 

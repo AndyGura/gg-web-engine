@@ -1,7 +1,6 @@
 import { BehaviorSubject, filter, Observable, pairwise, startWith, takeUntil } from 'rxjs';
 import {
   BindingsChange,
-  ControllerBindings,
   IRebindableController,
   GamepadControls,
   IEntity,
@@ -12,6 +11,7 @@ import {
   Point3,
   TickOrder,
 } from '../../../../base';
+import { ControllerBindings } from '../../../../base/inputs/rebindable-keys';
 import { Renderer3dEntity } from '../../renderer-3d.entity';
 import { Grabbable3dEntity } from '../../grabbable-3d.entity';
 import { CharacterController3dEntity } from '../../character-controller-3d.entity';

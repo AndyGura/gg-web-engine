@@ -3,7 +3,6 @@ import {
   DirectionInput,
   DirectionKeymap,
   BindingsChange,
-  ControllerBindings,
   IRebindableController,
   GAMEPAD_LEFT_STICK_OR_DPAD,
   GamepadControls,
@@ -14,6 +13,7 @@ import {
   runWhileInputEnabled,
   TickOrder,
 } from '../../../../base';
+import { ControllerBindings } from '../../../../base/inputs/rebindable-keys';
 import { Renderer2dEntity } from '../../renderer-2d.entity';
 import { CharacterController2dEntity } from '../../character-controller-2d.entity';
 import { Gg2dWorld, Gg2dWorldTypeDocRepo } from '../../../gg-2d-world';

@@ -226,7 +226,7 @@ describe('GgCarHandlingController', () => {
       expect(car.acceleration).toBe(1);
     });
 
-    it('hands the child only its steering and pedal controls, and mirrors changes made on the child', async () => {
+    it('hands the child only its steering and pedal controls', async () => {
       const { controller } = await setup();
       const changes: string[] = [];
       controller.bindingsChanged$.subscribe(c => changes.push(c));
@@ -241,25 +241,9 @@ describe('GgCarHandlingController', () => {
         throttle: 'b0',
         brake: 'b6',
       });
-      expect(changes).toEqual(['gamepad']);
-
-      // the child's own public API: `options` and `bindingsChanged$` here follow
-      controller.carHandlingInput.setKeys({ keymap: 'wasd' });
-      expect(controller.options.keymap).toBe('wasd');
-      controller.carHandlingInput.setGamepad({ brake: 'b2' });
-      expect(controller.options.gamepad!.brake).toBe('b2');
-      expect(controller.options.gamepad!.gearUp).toBe('b3');
-      controller.carHandlingInput.setGamepad(null);
-      expect(controller.options.gamepad).toBeNull();
-      expect(changes).toEqual(['gamepad', 'keys', 'gamepad', 'gamepad']);
-
-      // a change made here reaches the child once, and is not mirrored back
-      const childChanges: string[] = [];
-      controller.carHandlingInput.bindingsChanged$.subscribe(c => childChanges.push(c));
-      controller.setKeys({ keymap: 'arrows' });
-      controller.setGamepad({ gearDown: 'b9' });
-      expect(childChanges).toEqual(['keys', 'gamepad']);
-      expect(changes).toEqual(['gamepad', 'keys', 'gamepad', 'gamepad', 'keys', 'gamepad']);
+      controller.setKeys({ keymap: 'wasd' });
+      expect(controller.carHandlingInput.options.keymap).toBe('wasd');
+      expect(changes).toEqual(['gamepad', 'keys']);
     });
 
     it('drives, shifts and pulls the handbrake from the world gamepad with the default binding', async () => {
