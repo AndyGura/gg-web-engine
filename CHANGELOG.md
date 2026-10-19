@@ -75,8 +75,8 @@ where one exists.
 ### Changed
 - With no `gamepadIndex` and no `GamepadInput.choice`, a `GamepadInput` keeps reading the gamepad
   in use (a button pressed or an axis moved on it) while it stays connected, so a gamepad listed
-  later doesn't take over mid-game. Before that it reads the first connected gamepad with the
-  standard mapping, and only without one the first connected gamepad: some keyboards and wheel
+  later doesn't take over mid-game. Before that it reads the first gamepad with a button pressed,
+  else the first with the standard mapping, else the first connected one: some keyboards and wheel
   pedals list themselves as gamepads and could come first. All running `GamepadInput`s share one
   `navigator.getGamepads()` read per frame.
 - `CarHandlingController` and `GgCarHandlingController` keep a copy of the options object passed to

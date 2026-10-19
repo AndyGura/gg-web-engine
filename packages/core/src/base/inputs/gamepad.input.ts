@@ -72,10 +72,11 @@ export const GAMEPAD_MENU_KEYS: Readonly<Record<string, GamepadControls>> = {
 export type GamepadBindKeysOptions = {
   /**
    * Press a key only when its control becomes pressed while `keyboard` runs, like a key of a real
-   * keyboard: a control already held when the binding is made, or when `keyboard` starts, presses
-   * nothing until it is pushed again. For a menu's keys - a button that closed one screen must not
-   * act on the screen shown next. `false` by default: the key is held whenever the control is,
-   * pressed again on every poll, so a keyboard restarted meanwhile gets it back (gameplay keys).
+   * keyboard: a control pushed while `keyboard` is stopped presses nothing until it is pushed
+   * again. For a menu's keys - a button that closed one screen must not act on the screen shown
+   * next. Every binding, edge or not, ignores a control already held when it is made or when this
+   * input starts, and one still held after `keyboard` let go of its key (stopped, reset): those
+   * count from their next push, so the button that closes a pause menu does not act in the game.
    */
   edge?: boolean;
   /**
@@ -104,7 +105,8 @@ export type GamepadInputOptions = {
   /**
    * Which gamepad to read, by its index in `navigator.getGamepads()`. `null` (the default) reads
    * `GamepadInput.selectedGamepad()`: the player's `GamepadInput.choice`, else the gamepad in use,
-   * else the first connected gamepad with the standard mapping, else the first connected one.
+   * else the first connected gamepad with a button pressed, else the first with the standard
+   * mapping, else the first connected one.
    */
   gamepadIndex: number | null;
 };
@@ -191,9 +193,11 @@ export class GamepadInput extends IInput {
    * own - those of every world and any others - on its next poll. `null` (the default) reads the
    * gamepad in use: the one read so far, while it is connected, once it was used (a button
    * pressed, an axis moved from rest) - so a gamepad listed later (a button pressed on it) does not
-   * take over mid-game - and before that the first connected gamepad with the standard mapping,
-   * else the first connected one. A
-   * choice not connected right now falls back the same way and is used again once it is.
+   * take over mid-game - and before that the first connected gamepad with a button pressed, else
+   * the first one with the standard mapping, else the first connected one. A choice whose model
+   * (`id`) is not connected right now falls back the same way and is used again once it is; with
+   * fewer pads of that model than `nth + 1` connected, the last of them is read - a browser cannot
+   * tell two identical pads apart across a reconnect anyway, so the order among them is a guess.
    * Assigning a choice (`null` too) starts over. Not saved by the engine: store it (it is plain
    * data) and assign it back at startup.
    *
@@ -268,8 +272,8 @@ export class GamepadInput extends IInput {
 
   /**
    * The gamepad a `GamepadInput` without a `gamepadIndex` reads: `choice` if connected, else the
-   * gamepad in use (see `choice`), else the first connected gamepad with the standard mapping, else
-   * the first connected one; `null` with none connected
+   * gamepad in use (see `choice`), else the first connected gamepad with a button pressed, else the
+   * first with the standard mapping, else the first connected one; `null` with none connected
    */
   public static selectedGamepad(): Gamepad | null {
     return GamepadInput.select(GamepadInput.connectedGamepads());
@@ -321,8 +325,10 @@ export class GamepadInput extends IInput {
     if (current) {
       return current;
     }
-    // a gamepad merely listed first was never used: a gamepad listed (pressed) later takes over
-    return gamepads.find(x => x.mapping === 'standard') || gamepads[0] || null;
+    // none used yet: the one a button is pressed on (and becomes the one in use), so a second pad
+    // the player picked up is not ignored for an idle one listed first
+    const pressed = gamepads.find(x => x.buttons.some(b => b.pressed));
+    return pressed || gamepads.find(x => x.mapping === 'standard') || gamepads[0] || null;
   }
 
   /** The gamepad in use among `gamepads`, if it is connected */
@@ -527,19 +533,25 @@ export class GamepadInput extends IInput {
     const nextRepeat = new Map<string, number>();
     // this binding's own hold on each key, so letting go here never releases another holder's
     const holder = {};
-    // with `edge`, what is held at the first read of the gamepad after the binding was made - or
-    // after this input stopped - was not pushed now: the values before that read are empty (an
-    // input not polled yet, or stopped since), not the state of the gamepad
+    // controls held while `keyboard` let go of their key: nothing until they are pushed again
+    const waiting = new Set<string>();
+    // what is held at the first read of the gamepad after this input stopped was not pushed now:
+    // the values before that read are empty, not the state of the gamepad. With `edge` the same
+    // goes for the first read after the binding was made
     let awaitingRead = true;
+    let stopped = false;
     const update = (initial: boolean) => {
       const now = performance.now();
-      const baseline = initial || awaitingRead;
+      const afterStop = stopped && this.hasRead;
+      stopped = (stopped && !this.hasRead) || (!initial && !this.hasRead);
+      const baseline = afterStop || (edge && (initial || awaitingRead));
       awaitingRead = !this.hasRead;
       for (const code of Object.keys(keys)) {
         const pressed = this.pressed(keys[code]);
         const wasDown = down.has(code);
         if (!pressed) {
           down.delete(code);
+          waiting.delete(code);
           nextRepeat.delete(code);
           if (held.delete(code)) {
             keyboard.emulateKeyUp(code, holder);
@@ -547,24 +559,23 @@ export class GamepadInput extends IInput {
           continue;
         }
         down.add(code);
-        if (edge && held.has(code) && !keyboard.isHeldBy(code, holder)) {
+        if (held.has(code) && !keyboard.isHeldBy(code, holder)) {
           // let go of by the keyboard (stopped, restarted, reset): nothing more until the control
           // is pushed again
           held.delete(code);
           nextRepeat.delete(code);
+          waiting.add(code);
+        }
+        if (!wasDown && (baseline || (edge && !keyboard.running))) {
+          waiting.add(code);
+        }
+        if (waiting.has(code)) {
+          continue;
         }
         if (!wasDown) {
-          if (edge && (baseline || !keyboard.running)) {
-            continue;
-          }
           if (repeating.has(code)) {
             nextRepeat.set(code, now + repeatDelay);
           }
-        }
-        if (!edge || !wasDown) {
-          // pressed on every poll without `edge`, not only on the edge: a keyboard restarted
-          // meanwhile (the world's input switched off and on) has let go of the key, and holds it
-          // again this way
           held.add(code);
           keyboard.emulateKeyDown(code, holder);
         }

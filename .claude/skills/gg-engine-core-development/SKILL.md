@@ -747,17 +747,17 @@ flow as a stack of DOM layers. The module imports nothing from an adapter and no
   every running `GamepadInput` shares one per frame) with `bindKeys(..., { edge: true, repeat: arrows })` and end with the
   screen's teardowns; a call before the screen is pushed waits for `attach`. `edge` is what makes it work
   across screens: B closing the pause menu is still held when the game screen's keyboard starts,
-  and a binding re-pressing held keys every poll (the gameplay default) would open the menu again
-  at once. An edge binding presses only a control pushed while the keyboard runs, and drops a hold
-  the keyboard no longer has (`KeyboardInput.isHeldBy`, false after a stop or `resetAllKeys`) -
-  checking `keyboard.running` instead misses a stop and start between two polls (a screen
-  transition within one frame), and a held arrow would keep repeating on the next screen. What is
-  held at the binding's first read of the gamepad counts as a baseline too, not as a press - also
-  when that read is the first poll after the input started (a binding made on a fresh input, or on
-  the manager's input restarted by a new screen after the last binding ended): until then the
-  control values are empty, which says nothing about the hand on the gamepad, and the button that
-  closed the previous screen would otherwise close the new one on its first frame. A spec therefore
-  polls once with nothing pushed before its first press.
+  and pressing it would open the menu again at once. An edge binding presses only a control
+  pushed while the keyboard runs. Every binding, edge or not, drops a hold the keyboard no longer
+  has (`KeyboardInput.isHeldBy`, false after a stop or `resetAllKeys`) and waits for the control's
+  next push - checking `keyboard.running` instead misses a stop and start between two polls (a
+  screen transition within one frame) - and treats what is held at the first read after the
+  gamepad input itself restarted as a baseline, not a press: until then the control values are
+  empty, which says nothing about the hand on the gamepad. Without both, A pressed on a pause
+  menu's "Resume" (Enter) is still down when the world's input comes back and jumps (A is the
+  character's jump). An edge binding also takes its first read after it was made as a baseline,
+  so the button that closed the previous screen does not close the new one on its first frame. A
+  spec therefore polls once with nothing pushed before its first press.
 - **Covering a screen** sets `inert` on its layer, `inputEnabled = false` on its worlds and pauses
   them unless the push said otherwise or `world.localPauseAllowed` is `false`. While covered it
   follows `world.localPauseAllowed$`: a network session joined under an open menu resumes the
@@ -1263,8 +1263,8 @@ one key leaves the others' bindings (and a held gamepad button on them) alone - 
 `bindKeys` map would release and re-press every held key, a rising edge that jumps or shifts gear
 again. The same edge is why a control already pushed when it is assigned counts from its next push
 only: a controls menu captures a button from `controlPushed$` while it is still down, and a
-`bindKeys` made then would press the key on the spot (`followGamepadKey` binds once `pressed$`
-reports the controls released; `followGamepadPressed` skips the leading `true`). Anything that
+`bindKeys` made then would press the key on the spot (`followGamepadKey` binds, and
+`followGamepadPressed` starts reporting, once `GamepadInput.released$` fires - see below). Anything that
 switches on `option$` into a `combineLatest` of gamepad state (`FreeCameraController`'s pointer-lock
 gate) puts `distinctUntilChanged(sameBinding)` before the `switchMap`, since `option$` emits on
 every `setKeys` too.
@@ -1345,8 +1345,8 @@ What it holds to:
 
 - **Which gamepad is read** is one decision for the whole page: `GamepadInput.choice` (static, a
   `GamepadChoice` `{ id, nth }`) resolved on every poll by `select()` (`selectedGamepad()` for a
-  menu) - the chosen one if connected, else the gamepad in use, else the first standard-mapping
-  gamepad, else the first connected one - by every input whose own `gamepadIndex` is `null` (an
+  menu) - the chosen one if connected, else the gamepad in use, else the first with a button
+  pressed, else the first standard-mapping gamepad, else the first connected one - by every input whose own `gamepadIndex` is `null` (an
   index there is a position in `navigator.getGamepads()`, as before). The gamepad in use is a
   static `inUseDevice` (`{ index, id }`), set by `readGamepad` the first time the gamepad read by
   default is used - a button pressed or an axis moved from where it rests, the same test as
@@ -1394,10 +1394,12 @@ What it holds to:
   there, since the Gamepad API reports up as negative and `DirectionInput` wants up positive.
 - **It never drives an entity itself.** `bindKeys(keyboard, { code: controls })` presses keys
   through `emulateKeyDown`/`emulateKeyUp`, `bindDirection(directionInput, binding)` calls
-  `setAnalogDirection` with itself as the source; both return an unbind function. Both re-apply on
-  every poll while held, not only on the edge: a `KeyboardInput`/`DirectionInput` restarted
-  meanwhile (the world's input switched off and on) has let go, and gets the held state back on
-  the next poll. `bindKeys`' `edge` option turns that off for menus (see "Screens"), and `repeat`
+  `setAnalogDirection` with itself as the source; both return an unbind function.
+  `bindDirection` re-applies on every poll while the stick is off center, so a `DirectionInput`
+  restarted meanwhile gets the direction back. `bindKeys` does not: a key the keyboard let go of
+  (the world's input switched off and on for a menu) is pressed again only by the control's next
+  push, since the button that closed the menu must not act in the game (see "Screens" for this
+  and for `edge`). `repeat`
   releases and presses a held key again after `repeatDelay`, then every `repeatInterval` (wall
   time, `performance.now()` - menus run without a world; specs stub it with `jest.spyOn`). Stopping the gamepad input clears every control's value and emits one last poll,
   so every binding releases - without forgetting the gamepad: `connected`, `gamepad`,

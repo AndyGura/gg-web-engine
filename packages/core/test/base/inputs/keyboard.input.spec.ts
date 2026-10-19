@@ -33,6 +33,15 @@ describe('KeyboardInput', () => {
     expect(values).toEqual([false, true, false]); // BehaviorSubject's initial value, then down, then up
   });
 
+  it('binds codes that are names of object members, such as ones read from saved bindings', () => {
+    keyboard.start();
+    const values: boolean[] = [];
+    keyboard.bind('constructor').subscribe(v => values.push(v));
+    keyboard.bindMany('toString', 'Space').subscribe(v => values.push(v));
+    dispatch('keydown', 'constructor');
+    expect(values).toEqual([false, false, true]);
+  });
+
   it('keeps a key held through emulateKeyDown down across a real keyup of it, until emulateKeyUp', () => {
     keyboard.start();
     const values: boolean[] = [];

@@ -208,7 +208,7 @@ describe('GamepadInput', () => {
     });
   });
 
-  it('holds a key again after the keyboard was restarted with the control still pressed', () => {
+  it('presses a key let go of by a restarted keyboard only once its control is pushed again', () => {
     const keyboard = new KeyboardInput();
     keyboard.start();
     const space: boolean[] = [];
@@ -219,7 +219,27 @@ describe('GamepadInput', () => {
     keyboard.start();
     expect(space).toEqual([false, true, false]);
     connect({ buttons: { 0: true } });
+    expect(space).toEqual([false, true, false]);
+    connect({ buttons: {} });
+    connect({ buttons: { 0: true } });
     expect(space).toEqual([false, true, false, true]);
+    keyboard.stop();
+  });
+
+  it('does not press a key for a control held through a stop of the gamepad input (a pause menu closed with it)', () => {
+    const keyboard = new KeyboardInput();
+    keyboard.start();
+    const space: boolean[] = [];
+    keyboard.bind('Space').subscribe(v => space.push(v));
+    input.bindKeys(keyboard, { Space: 'b0' });
+    connect({ buttons: {} });
+    input.stop();
+    input.start();
+    connect({ buttons: { 0: true } });
+    expect(space).toEqual([false]);
+    connect({ buttons: {} });
+    connect({ buttons: { 0: true } });
+    expect(space).toEqual([false, true]);
     keyboard.stop();
   });
 
@@ -307,10 +327,10 @@ describe('GamepadInput', () => {
       pads.setAll([wheel, padA]);
       input.poll();
       expect(input.gamepad).toBe(padA);
-      // a new choice starts over
+      // a new choice starts over, from the wheel's held button
       GamepadInput.choice = null;
       input.poll();
-      expect(input.gamepad).toBe(padA);
+      expect(input.gamepad).toBe(wheel);
       pads.setAll([wheel]);
       input.poll();
       pads.setAll([wheel, padA]);
@@ -328,6 +348,18 @@ describe('GamepadInput', () => {
       pads.setAll([keyboardPad, padA]);
       input.poll();
       expect(input.gamepad).toBe(padA);
+    });
+
+    it('reads a pad pressed while an idle one is listed first, and keeps it', () => {
+      const idle = fakeGamepad({ id: 'Pad (STANDARD GAMEPAD)', index: 0 });
+      const pressed = fakeGamepad({ id: 'Pad (STANDARD GAMEPAD)', index: 1, buttons: { 0: true } });
+      pads.setAll([idle, pressed]);
+      input.poll();
+      expect(input.gamepad).toBe(pressed);
+      const released = fakeGamepad({ id: 'Pad (STANDARD GAMEPAD)', index: 1 });
+      pads.setAll([idle, released]);
+      input.poll();
+      expect(input.gamepad).toBe(released);
     });
 
     it('does not hold on to pedals listed first that merely rest pushed', () => {
@@ -430,6 +462,7 @@ describe('GamepadInput', () => {
       const pushed: GamepadControl[] = [];
       input.controlPushed$.subscribe(c => pushed.push(c));
       pads.setAll([fakeGamepad({ id: 'Pad', index: 1 }), fakeGamepad({ id: 'Pad', index: 2, buttons: { 3: true } })]);
+      GamepadInput.choice = { id: 'Pad', nth: 0 };
       input.poll();
       GamepadInput.choice = { id: 'Pad', nth: 1 };
       input.poll();

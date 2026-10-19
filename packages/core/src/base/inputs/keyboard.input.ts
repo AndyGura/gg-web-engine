@@ -93,7 +93,8 @@ let keyboardLayoutRequested: boolean = false;
  * ```
  */
 export class KeyboardInput extends IInput {
-  private bindings: { [code: string]: BehaviorSubject<boolean>[] } = {};
+  /** a `Map`, not an object: a code from saved bindings may be `'constructor'`, which an object has */
+  private readonly bindings: Map<string, BehaviorSubject<boolean>[]> = new Map();
   /**
    * Codes held down through `emulateKeyDown` and not yet let go of through `emulateKeyUp`, with the
    * holders (the `holder` argument, or `defaultHolder` without one) still holding each: a real keyup
@@ -223,15 +224,13 @@ export class KeyboardInput extends IInput {
    * @returns An observable that emits true when the key is pressed and false when it's released
    */
   bind(code: string): Observable<boolean> {
-    if (!this.bindings[code]) {
-      this.bindings[code] = [];
-    }
     const subj = new BehaviorSubject<boolean>(false);
-    this.bindings[code].push(subj);
+    this.subjectsOf(code).push(subj);
     return subj.pipe(
       distinctUntilChanged(),
       finalize(() => {
-        this.bindings[code].splice(this.bindings[code].indexOf(subj), 1);
+        const subjects = this.subjectsOf(code);
+        subjects.splice(subjects.indexOf(subj), 1);
         subj.complete();
       }),
     );
@@ -253,17 +252,15 @@ export class KeyboardInput extends IInput {
     }
     const subjects: BehaviorSubject<boolean>[] = [];
     for (const code of codes) {
-      if (!this.bindings[code]) {
-        this.bindings[code] = [];
-      }
       const subj = new BehaviorSubject<boolean>(false);
-      this.bindings[code].push(subj);
+      this.subjectsOf(code).push(subj);
       subjects.push(subj);
     }
     return combineLatest(subjects).pipe(
       finalize(() => {
         for (let i = 0; i < codes.length; i++) {
-          this.bindings[codes[i]].splice(this.bindings[codes[i]].indexOf(subjects[i]), 1);
+          const bound = this.subjectsOf(codes[i]);
+          bound.splice(bound.indexOf(subjects[i]), 1);
           subjects[i].complete();
         }
       }),
@@ -297,7 +294,7 @@ export class KeyboardInput extends IInput {
       this.emulatedHeld.set(code, holders);
     }
     holders.add(holder);
-    for (const subj of this.bindings[code] || []) {
+    for (const subj of this.bindings.get(code) || []) {
       subj.next(true);
     }
   }
@@ -325,7 +322,7 @@ export class KeyboardInput extends IInput {
     if (this.physicalHeld.has(code)) {
       return;
     }
-    for (const subj of this.bindings[code] || []) {
+    for (const subj of this.bindings.get(code) || []) {
       subj.next(false);
     }
   }
@@ -369,7 +366,7 @@ export class KeyboardInput extends IInput {
     } else if (!pressed) {
       this.physicalHeld.delete(e.code);
     }
-    const subs = this.bindings[e.code];
+    const subs = this.bindings.get(e.code);
     if (!subs || subs.length === 0) {
       return;
     }
@@ -408,10 +405,19 @@ export class KeyboardInput extends IInput {
   public resetAllKeys() {
     this.emulatedHeld.clear();
     this.physicalHeld.clear();
-    for (const code in this.bindings) {
-      for (const subj of this.bindings[code] || []) {
+    for (const subjects of this.bindings.values()) {
+      for (const subj of subjects) {
         subj.next(false);
       }
     }
+  }
+
+  private subjectsOf(code: string): BehaviorSubject<boolean>[] {
+    let subjects = this.bindings.get(code);
+    if (!subjects) {
+      subjects = [];
+      this.bindings.set(code, subjects);
+    }
+    return subjects;
   }
 }

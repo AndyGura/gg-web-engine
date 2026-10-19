@@ -175,6 +175,18 @@ describe('DirectionInput', () => {
       expect(input.direction).toEqual({ x: 0, y: 1 });
       expect(outputs.length).toBe(before);
       expect(input.keymap).toEqual({ up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD' });
+      // the same codes in another order
+      input.keymap = 'wasd+arrows';
+      keyboard.emulateKeyDown('ArrowUp');
+      const afterBoth = outputs.length;
+      input.keymap = {
+        up: ['ArrowUp', 'KeyW'],
+        down: ['ArrowDown', 'KeyS'],
+        left: ['ArrowLeft', 'KeyA'],
+        right: ['ArrowRight', 'KeyD'],
+      };
+      expect(input.direction).toEqual({ x: 0, y: 1 });
+      expect(outputs.length).toBe(afterBoth);
     });
 
     it('keeps analog contributions across a rebind', () => {
@@ -194,8 +206,8 @@ describe('DirectionInput', () => {
       keyboard.emulateKeyDown('ArrowLeft');
       expect(input.direction).toEqual({ x: -1, y: 0 });
       input.stop();
-      expect((keyboard as any).bindings['ArrowLeft']).toEqual([]);
-      expect((keyboard as any).bindings['KeyW']).toEqual([]);
+      expect((keyboard as any).bindings.get('ArrowLeft')).toEqual([]);
+      expect((keyboard as any).bindings.get('KeyW')).toEqual([]);
     });
   });
 

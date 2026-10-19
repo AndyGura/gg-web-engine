@@ -73,9 +73,19 @@ export type AnalogDirection = { x?: number; y?: number };
 
 const clampAxis = (value: number) => Math.max(-1, Math.min(1, value));
 
-/** Whether two keymaps stand for the same codes per direction */
-const sameKeymap = (a: DirectionKeymap | null, b: DirectionKeymap | null): boolean =>
-  a === b || (!!a && !!b && JSON.stringify(directionKeyCodes(a)) === JSON.stringify(directionKeyCodes(b)));
+/** Whether two keymaps stand for the same codes per direction, in whatever order */
+const sameKeymap = (a: DirectionKeymap | null, b: DirectionKeymap | null): boolean => {
+  if (a === b) {
+    return true;
+  }
+  if (!a || !b) {
+    return false;
+  }
+  const codesA = directionKeyCodes(a);
+  const codesB = directionKeyCodes(b);
+  const sorted = (codes: readonly string[]) => [...codes].sort().join(' ');
+  return (['up', 'down', 'left', 'right'] as const).every(d => sorted(codesA[d]) === sorted(codesB[d]));
+};
 
 /**
  * An input for a direction, whatever device it comes from. `direction$` reports it as a vector,

@@ -127,10 +127,11 @@ export class GgCarHandlingController extends IEntity implements IRebindableContr
    * ```
    */
   public setKeys(keys: Partial<GgCarHandlingControllerKeys>): void {
-    this.bindings.setKeys(keys);
+    // the child first, so a listener to `bindingsChanged$` finds the steering keys rebound too
     if (keys.keymap !== undefined) {
       this.carHandlingInput.setKeys({ keymap: keys.keymap });
     }
+    this.bindings.setKeys(keys);
   }
 
   /**

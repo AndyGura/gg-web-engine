@@ -60,8 +60,8 @@ describe('followKey', () => {
     const subscription = followKey(keyboard, code$).subscribe();
     code$.next('KeyB');
     subscription.unsubscribe();
-    expect((keyboard as any).bindings['KeyA']).toEqual([]);
-    expect((keyboard as any).bindings['KeyB']).toEqual([]);
+    expect((keyboard as any).bindings.get('KeyA')).toEqual([]);
+    expect((keyboard as any).bindings.get('KeyB')).toEqual([]);
   });
 });
 
